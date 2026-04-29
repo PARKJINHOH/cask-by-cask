@@ -1,0 +1,18 @@
+spring:
+  profiles:
+    active: local
+
+  jpa:
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+
+  data:
+    redis:
+      timeout: 2000ms
+
+jwt:
+  secret: ${JWT_SECRET:drinkindex-secret-key-must-be-at-least-32-characters-long-for-hs256}
+  access-token-expiry: 3600000      # 1h  (ms)
+  refresh-token-expiry: 604800000   # 7d  (ms)

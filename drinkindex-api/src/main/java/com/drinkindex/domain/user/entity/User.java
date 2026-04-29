@@ -1,0 +1,77 @@
+package com.drinkindex.domain.user.entity;
+
+import com.drinkindex.domain.distillery.entity.Distillery;
+import com.drinkindex.domain.user.entity.enums.Role;
+import com.drinkindex.global.entity.BaseTimeEntity;
+import jakarta.persistence.*;
+import lombok.*;
+import org.hibernate.annotations.SQLRestriction;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(
+        name = "users",
+        indexes = {
+                @Index(name = "idx_user_email", columnList = "email"),
+                @Index(name = "idx_user_oauth", columnList = "oauth_provider, oauth_id")
+        }
+)
+@SQLRestriction("deleted_at IS NULL")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Builder
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+public class User extends BaseTimeEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(unique = true, nullable = false)
+    private String email;
+
+    @Column
+    private String password;
+
+    @Column(nullable = false, length = 100)
+    private String nickname;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private Role role;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "distillery_id")
+    private Distillery distillery;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private Boolean isActive = true;
+
+    @Column(length = 50)
+    private String oauthProvider;
+
+    @Column(length = 255)
+    private String oauthId;
+
+    @Column
+    private LocalDateTime deletedAt;
+
+    public void updateNickname(String nickname) {
+        this.nickname = nickname;
+    }
+
+    public void updatePassword(String encodedPassword) {
+        this.password = encodedPassword;
+    }
+
+    public void softDelete() {
+        this.deletedAt = LocalDateTime.now();
+        this.isActive = false;
+    }
+
+    public void assignDistillery(Distillery distillery) {
+        this.distillery = distillery;
+    }
+}
