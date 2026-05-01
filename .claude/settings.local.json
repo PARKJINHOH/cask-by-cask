@@ -6,7 +6,8 @@
       "Bash(./gradlew compileJava)",
       "PowerShell(Get-Command *)",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\JINHOH_PC\\\\Desktop\\\\workspace\\\\drink-index\\\\drinkindex-api\\\\src\" -Recurse -Directory)",
-      "Bash(Sort-Object)"
+      "Bash(Sort-Object)",
+      "Bash(Get-ChildItem *)"
     ]
   }
 }
