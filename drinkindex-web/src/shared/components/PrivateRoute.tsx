@@ -1,7 +1,10 @@
-import { Navigate, Outlet } from 'react-router-dom'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 
 export default function PrivateRoute() {
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
-  return isLoggedIn ? <Outlet /> : <Navigate to="/login" replace />
+  const location   = useLocation()
+  return isLoggedIn
+    ? <Outlet />
+    : <Navigate to="/login" state={{ from: location }} replace />
 }
