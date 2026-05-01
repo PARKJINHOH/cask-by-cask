@@ -1,142 +1,204 @@
-import { useParams, Link } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useState } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 import { useSpiritDetail } from '@/domain/spirit/hooks/useSpiritDetail'
-import { useReviews } from '@/domain/review/hooks/useReviews'
-import Spinner from '@/shared/components/Spinner'
+import { scoreColor } from '@/shared/utils/format'
 import Badge from '@/shared/components/Badge'
+import StarScore from '@/shared/components/StarScore'
+import Spinner from '@/shared/components/Spinner'
+import Modal from '@/shared/components/Modal'
+import Button from '@/shared/components/Button'
+import ReviewList from '@/domain/review/components/ReviewList'
+import CommentList from '@/domain/comment/components/CommentList'
+import WishlistButtons from '@/domain/wishlist/components/WishlistButtons'
+import type { SpiritImage } from '@/domain/spirit/types/spirit.types'
+
+type Tab = 'reviews' | 'community'
+
+// ── Sub-components ────────────────────────────────────────
+
+function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div>
+      <dt className="text-xs text-neutral-400 mb-0.5">{label}</dt>
+      <dd className="text-sm font-medium text-neutral-900">{value}</dd>
+    </div>
+  )
+}
+
+function Gallery({
+  images, nameKo, selectedIdx, onSelect,
+}: {
+  images: SpiritImage[]
+  nameKo: string
+  selectedIdx: number
+  onSelect: (i: number) => void
+}) {
+  const current = images[selectedIdx]
+  return (
+    <div className="space-y-3">
+      <div className="aspect-square rounded-xl overflow-hidden bg-neutral-100">
+        {current ? (
+          <img key={current.id} src={current.imageUrl} alt={nameKo}
+            className="w-full h-full object-cover" loading="eager" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-5xl">🥃</div>
+        )}
+      </div>
+      {images.length > 1 && (
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {images.map((img, i) => (
+            <button key={img.id} onClick={() => onSelect(i)}
+              className={`w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 border-2 transition-colors ${
+                i === selectedIdx ? 'border-primary-500' : 'border-transparent hover:border-neutral-300'
+              }`}>
+              <img src={img.imageUrl} alt={`${nameKo} ${i + 1}`} className="w-full h-full object-cover" />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function TabBar({ active, onChange }: { active: Tab; onChange: (t: Tab) => void }) {
+  const tabs: { id: Tab; label: string }[] = [
+    { id: 'reviews',   label: '리뷰' },
+    { id: 'community', label: '커뮤니티' },
+  ]
+  return (
+    <div role="tablist" className="flex border-b border-neutral-200 gap-6">
+      {tabs.map(({ id, label }) => (
+        <button key={id} role="tab" aria-selected={active === id} onClick={() => onChange(id)}
+          className={`pb-3 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            active === id
+              ? 'border-primary-600 text-primary-700'
+              : 'border-transparent text-neutral-500 hover:text-neutral-700'
+          }`}>
+          {label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// ── Main Page ─────────────────────────────────────────────
 
 export default function SpiritDetailPage() {
-  const { id } = useParams<{ id: string }>()
-  const { t } = useTranslation()
+  const { id }   = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const spiritId = Number(id)
 
-  const { data: spirit, isLoading } = useSpiritDetail(spiritId)
-  const { data: reviews } = useReviews(spiritId)
+  const [selectedImg, setSelectedImg] = useState(0)
+  const [activeTab, setActiveTab]     = useState<Tab>('reviews')
+  const [loginModal, setLoginModal]   = useState(false)
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center py-20">
-        <Spinner size="lg" className="text-primary-600" />
-      </div>
-    )
-  }
+  const { data: spirit, isLoading } = useSpiritDetail(spiritId)
+
+  if (isLoading) return <Spinner fullscreen />
 
   if (!spirit) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-20 text-center">
-        <p className="text-neutral-400">{t('common.noData')}</p>
-        <Link to="/" className="mt-4 inline-block text-primary-600 hover:underline">
-          {t('common.back')}
-        </Link>
+        <p className="text-neutral-500 mb-4">술 정보를 찾을 수 없습니다.</p>
+        <button onClick={() => navigate('/')}
+          className="text-primary-600 hover:underline text-sm">
+          ← 목록으로
+        </button>
       </div>
     )
   }
 
-  const primaryImage = spirit.images.find((img) => img.isPrimary) ?? spirit.images[0]
-
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
-      <Link to="/" className="text-sm text-neutral-400 hover:text-primary-600 mb-6 inline-block">
-        ← {t('common.back')}
-      </Link>
+    <div className="max-w-5xl mx-auto px-4 py-6">
+      {/* Back */}
+      <button onClick={() => navigate(-1)}
+        className="flex items-center gap-1 text-sm text-neutral-400 hover:text-primary-600 mb-5 transition-colors">
+        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <polyline points="15,18 9,12 15,6" />
+        </svg>
+        뒤로
+      </button>
 
-      <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+      {/* Header card */}
+      <div className="bg-white rounded-2xl shadow-sm mb-6 overflow-hidden">
         <div className="md:flex">
-          <div className="md:w-72 aspect-square bg-neutral-100 flex-shrink-0">
-            {primaryImage ? (
-              <img
-                src={primaryImage.imageUrl}
-                alt={spirit.nameKo}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-6xl">🥃</div>
-            )}
+          {/* Gallery */}
+          <div className="md:w-72 flex-shrink-0 p-4 md:border-r border-neutral-100">
+            <Gallery
+              images={spirit.images}
+              nameKo={spirit.nameKo}
+              selectedIdx={selectedImg}
+              onSelect={setSelectedImg}
+            />
           </div>
 
-          <div className="p-6 flex-1">
-            <Badge variant="primary" className="mb-3">
-              {t(`spirit.category.${spirit.category.toLowerCase()}`)}
-            </Badge>
-            <h1 className="text-2xl font-bold text-neutral-900">{spirit.nameKo}</h1>
-            <p className="text-neutral-500 mt-1">{spirit.nameEn}</p>
+          {/* Info */}
+          <div className="flex-1 p-6 flex flex-col gap-5 min-w-0">
+            <div>
+              <Badge variant={spirit.category} size="sm" className="mb-2">
+                {spirit.category}
+              </Badge>
+              <h1 className="text-2xl font-bold text-neutral-900 leading-tight">
+                {spirit.nameKo}
+              </h1>
+              <p className="text-sm text-neutral-500 mt-0.5">{spirit.nameEn}</p>
+              {spirit.distilleryNameKo && (
+                <p className="text-sm text-neutral-400 mt-1">
+                  {spirit.distilleryNameKo}
+                  {spirit.distilleryNameEn ? ` · ${spirit.distilleryNameEn}` : ''}
+                </p>
+              )}
+            </div>
 
-            {spirit.distilleryNameKo && (
-              <p className="text-sm text-neutral-500 mt-2">
-                {spirit.distilleryNameKo}
-                {spirit.distilleryNameEn && ` · ${spirit.distilleryNameEn}`}
-              </p>
-            )}
-
-            <dl className="grid grid-cols-2 gap-3 mt-6">
-              {spirit.country && (
-                <div>
-                  <dt className="text-xs text-neutral-400">국가</dt>
-                  <dd className="text-sm font-medium">{spirit.country}</dd>
-                </div>
-              )}
-              {spirit.abv != null && (
-                <div>
-                  <dt className="text-xs text-neutral-400">도수</dt>
-                  <dd className="text-sm font-medium">{spirit.abv}%</dd>
-                </div>
-              )}
-              {spirit.volumeMl && (
-                <div>
-                  <dt className="text-xs text-neutral-400">용량</dt>
-                  <dd className="text-sm font-medium">{spirit.volumeMl}ml</dd>
-                </div>
-              )}
-              {spirit.bottledYear && (
-                <div>
-                  <dt className="text-xs text-neutral-400">병입 연도</dt>
-                  <dd className="text-sm font-medium">{spirit.bottledYear}</dd>
-                </div>
-              )}
+            <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
+              {spirit.country     && <InfoRow label="원산지"   value={spirit.country} />}
+              {spirit.abv != null  && <InfoRow label="도수"     value={`${spirit.abv}%`} />}
+              {spirit.volumeMl    && <InfoRow label="용량"     value={`${spirit.volumeMl}ml`} />}
+              {spirit.region      && <InfoRow label="지역"     value={spirit.region} />}
+              {spirit.bottler     && <InfoRow label="병입자"   value={spirit.bottler} />}
+              {spirit.bottledYear && <InfoRow label="병입 연도" value={spirit.bottledYear} />}
+              {spirit.vintageYear && <InfoRow label="빈티지"   value={spirit.vintageYear} />}
             </dl>
 
-            {spirit.avgScore != null && (
-              <div className="mt-6 flex items-center gap-2">
-                <span className="text-3xl font-bold text-primary-600">
-                  {spirit.avgScore.toFixed(1)}
-                </span>
-                <div>
-                  <p className="text-xs text-neutral-400">평균 점수</p>
-                  <p className="text-xs text-neutral-400">{spirit.reviewCount}개 리뷰</p>
-                </div>
-              </div>
-            )}
+            <StarScore score={spirit.avgScore} reviewCount={spirit.reviewCount} size="lg" showBar />
+
+            <WishlistButtons spiritId={spiritId} onNeedLogin={() => setLoginModal(true)} />
           </div>
         </div>
       </div>
 
-      <section className="mt-8">
-        <h2 className="text-lg font-semibold text-neutral-900 mb-4">{t('review.title')}</h2>
-        {!reviews || reviews.empty ? (
-          <p className="text-neutral-400 text-sm">{t('review.noReview')}</p>
-        ) : (
-          <div className="space-y-4">
-            {reviews.content.map((review) => (
-              <div key={review.id} className="bg-white rounded-xl p-4 shadow-sm">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium text-sm">{review.nickname}</span>
-                  <span className="text-lg font-bold text-primary-600">
-                    {review.totalScore.toFixed(1)}
-                  </span>
-                </div>
-                <div className="flex gap-4 text-xs text-neutral-500 mb-2">
-                  <span>향 {review.noseScore}</span>
-                  <span>맛 {review.tasteScore}</span>
-                  <span>피니시 {review.finishScore}</span>
-                </div>
-                {review.comment && (
-                  <p className="text-sm text-neutral-700">{review.comment}</p>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+      {/* Tabs */}
+      <div className="space-y-5">
+        <TabBar active={activeTab} onChange={setActiveTab} />
+        <div role="tabpanel">
+          {activeTab === 'reviews' ? (
+            <ReviewList spiritId={spiritId} onNeedLogin={() => setLoginModal(true)} />
+          ) : (
+            <CommentList spiritId={spiritId} onNeedLogin={() => setLoginModal(true)} />
+          )}
+        </div>
+      </div>
+
+      {/* Login modal */}
+      <Modal
+        open={loginModal}
+        onClose={() => setLoginModal(false)}
+        title="로그인이 필요합니다"
+        footer={
+          <>
+            <Button variant="secondary" size="sm" onClick={() => setLoginModal(false)}>취소</Button>
+            <Button size="sm" onClick={() => { setLoginModal(false); navigate('/login') }}>
+              로그인하기
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-neutral-600 leading-relaxed">
+          이 기능을 사용하려면 로그인이 필요합니다.
+          <br />
+          로그인 페이지로 이동하시겠습니까?
+        </p>
+      </Modal>
     </div>
   )
 }

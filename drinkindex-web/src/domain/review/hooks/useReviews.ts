@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { reviewApi } from '../api/reviewApi'
-import type { CreateReviewRequest } from '../types/review.types'
+import type { CreateReviewRequest, UpdateReviewRequest } from '../types/review.types'
 
 export function useReviews(spiritId: number, page = 0) {
   return useQuery({
@@ -14,6 +14,18 @@ export function useCreateReview(spiritId: number) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (data: CreateReviewRequest) => reviewApi.createReview(spiritId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reviews', spiritId] })
+      queryClient.invalidateQueries({ queryKey: ['spirit', spiritId] })
+    },
+  })
+}
+
+export function useUpdateReview(spiritId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ reviewId, data }: { reviewId: number; data: UpdateReviewRequest }) =>
+      reviewApi.updateReview(spiritId, reviewId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reviews', spiritId] })
       queryClient.invalidateQueries({ queryKey: ['spirit', spiritId] })

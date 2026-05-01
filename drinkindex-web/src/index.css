@@ -7,3 +7,53 @@
     @apply text-neutral-900 antialiased;
   }
 }
+
+@layer components {
+  /* Dual range slider — transparent input overlaid on a custom track */
+  .range-dual {
+    pointer-events: none;
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    outline: none;
+  }
+  .range-dual::-webkit-slider-runnable-track {
+    background: transparent;
+    height: 6px;
+  }
+  .range-dual::-moz-range-track {
+    background: transparent;
+    height: 6px;
+  }
+  .range-dual::-webkit-slider-thumb {
+    pointer-events: auto;
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 2px solid #d97706;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.15);
+    margin-top: -5px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .range-dual::-moz-range-thumb {
+    pointer-events: auto;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 2px solid #d97706;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.15);
+  }
+  .range-dual:focus-visible::-webkit-slider-thumb {
+    border-color: #b45309;
+    box-shadow: 0 0 0 3px rgb(217 119 6 / 0.25);
+  }
+}
