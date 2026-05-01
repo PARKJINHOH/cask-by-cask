@@ -80,6 +80,23 @@ public class Spirit extends BaseTimeEntity {
     @JoinColumn(name = "registered_by_id")
     private User registeredBy;
 
+    public void update(String nameKo, String nameEn, SpiritCategory category,
+                       Distillery distillery, String bottler, Integer bottledYear,
+                       Integer vintageYear, BigDecimal abv, Integer volumeMl,
+                       String country, String region) {
+        this.nameKo = nameKo;
+        this.nameEn = nameEn;
+        this.category = category;
+        this.distillery = distillery;
+        this.bottler = bottler;
+        this.bottledYear = bottledYear;
+        this.vintageYear = vintageYear;
+        this.abv = abv;
+        this.volumeMl = volumeMl;
+        this.country = country;
+        this.region = region;
+    }
+
     public void updateAvgScore(BigDecimal avgScore, int reviewCount) {
         this.avgScore = avgScore;
         this.reviewCount = reviewCount;

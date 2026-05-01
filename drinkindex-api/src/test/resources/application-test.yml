@@ -1,0 +1,27 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+upload:
+  path: ./test-uploads
+
+jwt:
+  secret: test-secret-key-must-be-at-least-32-characters-long
+  access-token-expiry: 3600000
+  refresh-token-expiry: 604800000
