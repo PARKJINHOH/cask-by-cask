@@ -1,0 +1,84 @@
+{
+  "nav": {
+    "login": "로그인",
+    "signup": "회원가입",
+    "logout": "로그아웃",
+    "mypage": "마이페이지",
+    "admin": "관리자"
+  },
+  "auth": {
+    "email": "이메일",
+    "password": "비밀번호",
+    "nickname": "닉네임",
+    "login": {
+      "title": "로그인",
+      "submit": "로그인",
+      "error": "이메일 또는 비밀번호가 올바르지 않습니다.",
+      "noAccount": "계정이 없으신가요?"
+    },
+    "signup": {
+      "title": "회원가입",
+      "submit": "가입하기",
+      "error": "회원가입 중 오류가 발생했습니다.",
+      "hasAccount": "이미 계정이 있으신가요?"
+    }
+  },
+  "spirit": {
+    "search": {
+      "placeholder": "위스키, 꼬냑, 와인 검색..."
+    },
+    "category": {
+      "whisky": "위스키",
+      "cognac": "꼬냑",
+      "wine": "와인",
+      "tequila": "데낄라",
+      "rum": "럼",
+      "gin": "진",
+      "vodka": "보드카",
+      "other": "기타"
+    },
+    "sort": {
+      "latest": "최신순",
+      "score_desc": "평점순",
+      "review_count_desc": "리뷰수순"
+    }
+  },
+  "review": {
+    "title": "리뷰",
+    "write": "리뷰 작성",
+    "nose": "향 (Nose)",
+    "taste": "맛 (Taste)",
+    "finish": "피니시 (Finish)",
+    "comment": "코멘트",
+    "noReview": "아직 리뷰가 없습니다.",
+    "duplicate": "이미 리뷰를 작성하셨습니다."
+  },
+  "wishlist": {
+    "tried": "마셔봤어요",
+    "wishlist": "마시고 싶어요",
+    "collection": "소장 중",
+    "noItem": "위시리스트가 비어 있습니다."
+  },
+  "admin": {
+    "title": "관리자",
+    "nav": {
+      "spirits": "술 관리",
+      "users": "회원 관리",
+      "reviews": "리뷰 관리",
+      "comments": "댓글 관리",
+      "reports": "신고 관리"
+    }
+  },
+  "common": {
+    "loading": "로딩 중...",
+    "error": "오류가 발생했습니다.",
+    "save": "저장",
+    "cancel": "취소",
+    "delete": "삭제",
+    "edit": "수정",
+    "confirm": "확인",
+    "back": "뒤로",
+    "noData": "데이터가 없습니다.",
+    "all": "전체"
+  }
+}

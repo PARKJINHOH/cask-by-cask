@@ -1,0 +1,84 @@
+{
+  "nav": {
+    "login": "Login",
+    "signup": "Sign Up",
+    "logout": "Logout",
+    "mypage": "My Page",
+    "admin": "Admin"
+  },
+  "auth": {
+    "email": "Email",
+    "password": "Password",
+    "nickname": "Nickname",
+    "login": {
+      "title": "Login",
+      "submit": "Login",
+      "error": "Invalid email or password.",
+      "noAccount": "Don't have an account?"
+    },
+    "signup": {
+      "title": "Sign Up",
+      "submit": "Create Account",
+      "error": "An error occurred during sign up.",
+      "hasAccount": "Already have an account?"
+    }
+  },
+  "spirit": {
+    "search": {
+      "placeholder": "Search whisky, cognac, wine..."
+    },
+    "category": {
+      "whisky": "Whisky",
+      "cognac": "Cognac",
+      "wine": "Wine",
+      "tequila": "Tequila",
+      "rum": "Rum",
+      "gin": "Gin",
+      "vodka": "Vodka",
+      "other": "Other"
+    },
+    "sort": {
+      "latest": "Latest",
+      "score_desc": "Top Rated",
+      "review_count_desc": "Most Reviewed"
+    }
+  },
+  "review": {
+    "title": "Reviews",
+    "write": "Write a Review",
+    "nose": "Nose",
+    "taste": "Taste",
+    "finish": "Finish",
+    "comment": "Comment",
+    "noReview": "No reviews yet.",
+    "duplicate": "You have already reviewed this spirit."
+  },
+  "wishlist": {
+    "tried": "Tried",
+    "wishlist": "Want to Try",
+    "collection": "In Collection",
+    "noItem": "Your wishlist is empty."
+  },
+  "admin": {
+    "title": "Admin",
+    "nav": {
+      "spirits": "Spirits",
+      "users": "Users",
+      "reviews": "Reviews",
+      "comments": "Comments",
+      "reports": "Reports"
+    }
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred.",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "confirm": "Confirm",
+    "back": "Back",
+    "noData": "No data available.",
+    "all": "All"
+  }
+}
