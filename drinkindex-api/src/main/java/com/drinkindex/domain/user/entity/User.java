@@ -74,4 +74,13 @@ public class User extends BaseTimeEntity {
     public void assignDistillery(Distillery distillery) {
         this.distillery = distillery;
     }
+
+    public void deactivate() {
+        this.isActive = false;
+    }
+
+    public void changeRole(Role role, Distillery distillery) {
+        this.role = role;
+        this.distillery = distillery;
+    }
 }

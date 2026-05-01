@@ -39,4 +39,16 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 
     @Query("SELECT COUNT(r) FROM Review r WHERE r.spirit.id = :spiritId AND r.isHidden = false")
     long countActiveBySpiritId(@Param("spiritId") Long spiritId);
+
+    @Query(value = """
+            SELECT r FROM Review r
+            JOIN FETCH r.user
+            JOIN FETCH r.spirit
+            WHERE (:isHidden IS NULL OR r.isHidden = :isHidden)
+            """,
+            countQuery = """
+            SELECT COUNT(r) FROM Review r
+            WHERE (:isHidden IS NULL OR r.isHidden = :isHidden)
+            """)
+    Page<Review> findForAdmin(@Param("isHidden") Boolean isHidden, Pageable pageable);
 }

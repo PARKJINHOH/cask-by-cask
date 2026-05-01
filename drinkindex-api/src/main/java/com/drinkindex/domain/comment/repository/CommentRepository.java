@@ -39,4 +39,16 @@ public interface CommentRepository extends JpaRepository<CommunityComment, Long>
             @Param("parentIds") List<Long> parentIds);
 
     Optional<CommunityComment> findByIdAndSpiritId(Long id, Long spiritId);
+
+    @Query(value = """
+            SELECT c FROM CommunityComment c
+            JOIN FETCH c.user
+            JOIN FETCH c.spirit
+            WHERE (:isHidden IS NULL OR c.isHidden = :isHidden)
+            """,
+            countQuery = """
+            SELECT COUNT(c) FROM CommunityComment c
+            WHERE (:isHidden IS NULL OR c.isHidden = :isHidden)
+            """)
+    Page<CommunityComment> findForAdmin(@Param("isHidden") Boolean isHidden, Pageable pageable);
 }
