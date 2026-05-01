@@ -34,6 +34,8 @@ public enum ErrorCode {
 
     // Review
     REVIEW_NOT_FOUND(HttpStatus.NOT_FOUND, "REVIEW_001", "리뷰를 찾을 수 없습니다."),
+    DUPLICATE_REVIEW(HttpStatus.CONFLICT, "REVIEW_002", "이미 해당 술에 리뷰를 작성하셨습니다."),
+    REVIEW_ACCESS_DENIED(HttpStatus.FORBIDDEN, "REVIEW_003", "본인이 작성한 리뷰가 아닙니다."),
 
     // Comment
     COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "COMMENT_001", "댓글을 찾을 수 없습니다."),
