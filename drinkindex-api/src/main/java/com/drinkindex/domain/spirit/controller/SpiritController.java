@@ -3,17 +3,18 @@ package com.drinkindex.domain.spirit.controller;
 import com.drinkindex.domain.spirit.dto.*;
 import com.drinkindex.domain.spirit.entity.enums.SpiritCategory;
 import com.drinkindex.domain.spirit.entity.enums.SpiritSort;
+import com.drinkindex.domain.spirit.entity.enums.SpiritStatus;
 import com.drinkindex.domain.spirit.service.SpiritService;
 import com.drinkindex.global.auth.security.CustomUserDetails;
 import com.drinkindex.global.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,20 +30,22 @@ public class SpiritController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<SpiritListResponse>>> search(
+            @RequestParam(required = false) String keyword,
             @RequestParam(required = false) SpiritCategory category,
             @RequestParam(required = false) String country,
             @RequestParam(required = false) BigDecimal minAbv,
             @RequestParam(required = false) BigDecimal maxAbv,
             @RequestParam(required = false) BigDecimal minScore,
             @RequestParam(required = false) BigDecimal maxScore,
-            @RequestParam(required = false) String keyword,
             @RequestParam(required = false) SpiritSort sort,
             @PageableDefault(size = 20) Pageable pageable) {
+
+        SpiritSearchCondition condition = new SpiritSearchCondition(
+                keyword, category, country, minAbv, maxAbv, minScore, maxScore,
+                SpiritStatus.ACTIVE, sort);
+
         return ResponseEntity.ok(ApiResponse.success(
-                spiritService.searchSpirits(
-                        category, country, minAbv, maxAbv, minScore, maxScore,
-                        keyword, sort, pageable)
-        ));
+                spiritService.searchSpirits(condition, pageable)));
     }
 
     @GetMapping("/{id}")
@@ -56,8 +59,7 @@ public class SpiritController {
             @Valid @RequestBody SpiritRegisterRequestBody body,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(
-                spiritService.submitRegisterRequest(body, userDetails.getUserId())
-        ));
+                spiritService.submitRegisterRequest(body, userDetails.getUserId())));
     }
 
     @GetMapping("/requests/me")
@@ -65,7 +67,6 @@ public class SpiritController {
     public ResponseEntity<ApiResponse<List<SpiritRegisterRequestResponse>>> getMyRequests(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.ok(ApiResponse.success(
-                spiritService.getMyRegisterRequests(userDetails.getUserId())
-        ));
+                spiritService.getMyRegisterRequests(userDetails.getUserId())));
     }
 }

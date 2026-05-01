@@ -8,7 +8,6 @@ import com.drinkindex.domain.spirit.entity.SpiritImage;
 import com.drinkindex.domain.spirit.entity.SpiritRegisterRequest;
 import com.drinkindex.domain.spirit.entity.enums.RequestStatus;
 import com.drinkindex.domain.spirit.entity.enums.SpiritCategory;
-import com.drinkindex.domain.spirit.entity.enums.SpiritSort;
 import com.drinkindex.domain.spirit.entity.enums.SpiritStatus;
 import com.drinkindex.domain.spirit.repository.SpiritImageRepository;
 import com.drinkindex.domain.spirit.repository.SpiritRegisterRequestRepository;
@@ -26,10 +25,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -45,29 +41,9 @@ public class SpiritService {
     // ── 공개 조회 ──────────────────────────────────────────
 
     @Transactional(readOnly = true)
-    public Page<SpiritListResponse> searchSpirits(
-            SpiritCategory category, String country,
-            BigDecimal minAbv, BigDecimal maxAbv,
-            BigDecimal minScore, BigDecimal maxScore,
-            String keyword, SpiritSort sort, Pageable pageable) {
-
-        Page<Spirit> spirits = spiritRepository.search(
-                category, country, minAbv, maxAbv, minScore, maxScore, keyword, sort, pageable);
-
-        List<Long> ids = spirits.stream().map(Spirit::getId).toList();
-        if (ids.isEmpty()) {
-            return spirits.map(s -> SpiritListResponse.of(s, null));
-        }
-
-        Map<Long, String> primaryImages = spiritImageRepository
-                .findBySpiritIdInAndIsPrimaryTrue(ids)
-                .stream()
-                .collect(Collectors.toMap(
-                        img -> img.getSpirit().getId(),
-                        SpiritImage::getImageUrl
-                ));
-
-        return spirits.map(s -> SpiritListResponse.of(s, primaryImages.get(s.getId())));
+    public Page<SpiritListResponse> searchSpirits(SpiritSearchCondition condition,
+                                                   Pageable pageable) {
+        return spiritRepository.search(condition, pageable);
     }
 
     @Transactional(readOnly = true)

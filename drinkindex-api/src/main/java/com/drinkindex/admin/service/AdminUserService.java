@@ -5,6 +5,7 @@ import com.drinkindex.domain.distillery.repository.DistilleryRepository;
 import com.drinkindex.domain.user.dto.AdminUserResponse;
 import com.drinkindex.domain.user.dto.ChangeRoleRequest;
 import com.drinkindex.domain.user.dto.CreateDistilleryManagerRequest;
+import com.drinkindex.domain.user.dto.UserSearchCondition;
 import com.drinkindex.domain.user.entity.User;
 import com.drinkindex.domain.user.entity.enums.Role;
 import com.drinkindex.domain.user.repository.UserRepository;
@@ -38,7 +39,8 @@ public class AdminUserService {
                 Sort.by(Sort.Direction.DESC, "createdAt"));
 
         String kw = StringUtils.hasText(keyword) ? keyword.trim() : null;
-        return userRepository.findForAdmin(kw, role, isActive, sorted)
+        UserSearchCondition condition = new UserSearchCondition(kw, role, isActive);
+        return userRepository.searchUsers(condition, sorted)
                 .map(AdminUserResponse::from);
     }
 
