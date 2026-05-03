@@ -6,6 +6,7 @@ import type { CommentItem } from '../types/comment.types'
 export interface CommentFormProps {
   spiritId: number
   parentId?: number
+  parentNickname?: string
   editingComment?: CommentItem
   placeholder?: string
   onSuccess: () => void
@@ -15,6 +16,7 @@ export interface CommentFormProps {
 export default function CommentForm({
   spiritId,
   parentId,
+  parentNickname,
   editingComment,
   placeholder = '댓글을 입력하세요...',
   onSuccess,
@@ -46,6 +48,26 @@ export default function CommentForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-2">
+      {/* Reply-to indicator */}
+      {parentNickname && !editingComment && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-primary-50 rounded-lg">
+          <span className="text-primary-400 text-sm">↩</span>
+          <span className="text-sm text-primary-700 font-medium flex-1">
+            @ {parentNickname}에게 답글
+          </span>
+          {onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              aria-label="답글 취소"
+              className="text-primary-300 hover:text-primary-600 transition-colors text-xs"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+      )}
+
       <textarea
         value={content}
         onChange={(e) => setContent(e.target.value)}
@@ -56,11 +78,11 @@ export default function CommentForm({
           focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent
           placeholder:text-neutral-400"
       />
-      {error && <p className="text-xs text-danger-600">{error}</p>}
+      {error && <p className="text-xs text-red-600">{error}</p>}
       <div className="flex items-center justify-between">
-        <span className="text-xs text-neutral-400">{content.length}/1000</span>
+        <span className="text-xs text-neutral-400 tabular-nums">{content.length}/1000</span>
         <div className="flex gap-2">
-          {onCancel && (
+          {onCancel && !parentNickname && (
             <Button variant="ghost" size="sm" type="button" onClick={onCancel}>
               취소
             </Button>

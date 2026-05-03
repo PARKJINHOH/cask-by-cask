@@ -5,7 +5,7 @@ import EmptyState from '@/shared/components/EmptyState'
 import Pagination from '@/shared/components/Pagination'
 import Button from '@/shared/components/Button'
 import ReviewItem from './ReviewItem'
-import ReviewForm from './ReviewForm'
+import ReviewFormModal from './ReviewFormModal'
 import { useReviews, useDeleteReview } from '../hooks/useReviews'
 import type { ReviewItem as ReviewItemType } from '../types/review.types'
 
@@ -16,15 +16,14 @@ interface ReviewListProps {
 
 export default function ReviewList({ spiritId, onNeedLogin }: ReviewListProps) {
   const user = useAuthStore((s) => s.user)
-  const [page, setPage]                 = useState(0)
-  const [showForm, setShowForm]         = useState(false)
-  const [editingReview, setEditingReview] = useState<ReviewItemType | null>(null)
-  const [hasReviewed, setHasReviewed]   = useState(false)
+  const [page, setPage]                     = useState(0)
+  const [modalOpen, setModalOpen]           = useState(false)
+  const [editingReview, setEditingReview]   = useState<ReviewItemType | null>(null)
+  const [hasReviewed, setHasReviewed]       = useState(false)
 
   const { data, isLoading } = useReviews(spiritId, page)
   const deleteMutation      = useDeleteReview(spiritId)
 
-  // Detect if the current user has a review on this page
   useEffect(() => {
     if (!user || !data) return
     if (data.content.some((r) => r.userId === user.id)) setHasReviewed(true)
@@ -32,19 +31,23 @@ export default function ReviewList({ spiritId, onNeedLogin }: ReviewListProps) {
 
   const handleWriteClick = () => {
     if (!user) { onNeedLogin(); return }
-    setShowForm(true)
-  }
-
-  const handleFormSuccess = () => {
-    setShowForm(false)
     setEditingReview(null)
-    setHasReviewed(true)
-    setPage(0)
+    setModalOpen(true)
   }
 
   const handleEdit = (review: ReviewItemType) => {
     setEditingReview(review)
-    setShowForm(false)
+    setModalOpen(true)
+  }
+
+  const handleModalClose = () => {
+    setModalOpen(false)
+    setEditingReview(null)
+  }
+
+  const handleModalSuccess = () => {
+    setHasReviewed(true)
+    setPage(0)
   }
 
   const handleDelete = async (reviewId: number) => {
@@ -55,28 +58,13 @@ export default function ReviewList({ spiritId, onNeedLogin }: ReviewListProps) {
 
   return (
     <div className="space-y-4">
-      {/* Write / editing form */}
-      {editingReview ? (
-        <ReviewForm
-          spiritId={spiritId}
-          editingReview={editingReview}
-          onSuccess={handleFormSuccess}
-          onCancel={() => setEditingReview(null)}
-        />
-      ) : showForm ? (
-        <ReviewForm
-          spiritId={spiritId}
-          onSuccess={handleFormSuccess}
-          onCancel={() => setShowForm(false)}
-        />
-      ) : (
-        user && !hasReviewed && (
-          <div className="flex justify-end">
-            <Button size="sm" onClick={handleWriteClick}>
-              리뷰 작성
-            </Button>
-          </div>
-        )
+      {/* Write button */}
+      {user && !hasReviewed && (
+        <div className="flex justify-end">
+          <Button size="sm" onClick={handleWriteClick}>
+            리뷰 작성
+          </Button>
+        </div>
       )}
 
       {/* Login prompt for guests */}
@@ -118,6 +106,14 @@ export default function ReviewList({ spiritId, onNeedLogin }: ReviewListProps) {
           />
         </>
       )}
+
+      <ReviewFormModal
+        open={modalOpen}
+        onClose={handleModalClose}
+        onSuccess={handleModalSuccess}
+        spiritId={spiritId}
+        editingReview={editingReview ?? undefined}
+      />
     </div>
   )
 }

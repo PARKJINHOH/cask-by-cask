@@ -7,7 +7,9 @@
       "PowerShell(Get-Command *)",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\JINHOH_PC\\\\Desktop\\\\workspace\\\\drink-index\\\\drinkindex-api\\\\src\" -Recurse -Directory)",
       "Bash(Sort-Object)",
-      "Bash(Get-ChildItem *)"
+      "Bash(Get-ChildItem *)",
+      "Bash(npx tsc *)",
+      "Bash(node_modules\\\\.bin\\\\tsc --noEmit)"
     ]
   }
 }
