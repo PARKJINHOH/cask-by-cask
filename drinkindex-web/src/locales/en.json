@@ -1,25 +1,33 @@
 {
+  "app": {
+    "name": "DrinkIndex",
+    "tagline": "Whisky · Cognac · Wine · Tequila Review Community"
+  },
   "nav": {
-    "login": "Login",
-    "signup": "Sign Up",
-    "logout": "Logout",
-    "mypage": "My Page",
-    "admin": "Admin"
+    "home":     "Home",
+    "search":   "Search",
+    "wishlist": "Wishlist",
+    "login":    "Login",
+    "signup":   "Sign Up",
+    "logout":   "Logout",
+    "mypage":   "My Page",
+    "admin":    "Admin",
+    "more":     "More"
   },
   "auth": {
-    "email": "Email",
+    "email":    "Email",
     "password": "Password",
     "nickname": "Nickname",
     "login": {
-      "title": "Login",
-      "submit": "Login",
-      "error": "Invalid email or password.",
+      "title":     "Login",
+      "submit":    "Login",
+      "error":     "Invalid email or password.",
       "noAccount": "Don't have an account?"
     },
     "signup": {
-      "title": "Sign Up",
-      "submit": "Create Account",
-      "error": "An error occurred during sign up.",
+      "title":      "Sign Up",
+      "submit":     "Create Account",
+      "error":      "An error occurred during sign up.",
       "hasAccount": "Already have an account?"
     }
   },
@@ -27,58 +35,233 @@
     "search": {
       "placeholder": "Search whisky, cognac, wine..."
     },
+    "count": "{{count}} spirits",
     "category": {
-      "whisky": "Whisky",
-      "cognac": "Cognac",
-      "wine": "Wine",
+      "whisky":  "Whisky",
+      "cognac":  "Cognac",
+      "wine":    "Wine",
       "tequila": "Tequila",
-      "rum": "Rum",
-      "gin": "Gin",
-      "vodka": "Vodka",
-      "other": "Other"
+      "rum":     "Rum",
+      "gin":     "Gin",
+      "vodka":   "Vodka",
+      "other":   "Other",
+      "WHISKY":  "Whisky",
+      "COGNAC":  "Cognac",
+      "WINE":    "Wine",
+      "TEQUILA": "Tequila",
+      "RUM":     "Rum",
+      "GIN":     "Gin",
+      "VODKA":   "Vodka",
+      "OTHER":   "Other"
     },
     "sort": {
-      "latest": "Latest",
-      "score_desc": "Top Rated",
-      "review_count_desc": "Most Reviewed"
+      "latest":            "Latest",
+      "score_desc":        "Top Rated",
+      "review_count_desc": "Most Reviewed",
+      "LATEST":            "Latest",
+      "SCORE_DESC":        "Top Rated",
+      "REVIEW_COUNT_DESC": "Most Reviewed"
+    },
+    "filter": {
+      "title":    "Filters",
+      "category": "Category",
+      "country":  "Country",
+      "abv":      "ABV (%)",
+      "score":    "Avg. Score",
+      "reset":    "Reset Filters",
+      "apply":    "Apply",
+      "all":      "All"
+    },
+    "noResult": {
+      "title":       "No results found.",
+      "description": "Try different keywords or filters.",
+      "reset":       "Reset Filters"
+    },
+    "detail": {
+      "distillery":  "Distillery",
+      "category":    "Category",
+      "country":     "Country",
+      "region":      "Region",
+      "abv":         "ABV",
+      "volume":      "Volume",
+      "bottledYear": "Bottled",
+      "vintageYear": "Vintage",
+      "bottler":     "Bottler",
+      "avgScore":    "Avg. Score",
+      "reviewCount": "Reviews"
+    },
+    "status": {
+      "ACTIVE":  "Active",
+      "HIDDEN":  "Hidden",
+      "PENDING": "Pending"
     }
   },
   "review": {
-    "title": "Reviews",
-    "write": "Write a Review",
-    "nose": "Nose",
-    "taste": "Taste",
-    "finish": "Finish",
-    "comment": "Comment",
-    "noReview": "No reviews yet.",
-    "duplicate": "You have already reviewed this spirit."
+    "title":         "Reviews",
+    "tab":           "Reviews",
+    "write":         "Write a Review",
+    "edit":          "Edit Review",
+    "delete":        "Delete Review",
+    "nose":          "Nose",
+    "taste":         "Taste",
+    "finish":        "Finish",
+    "total":         "Total Score",
+    "totalPreview":  "Score Preview",
+    "comment":       "Additional Comments",
+    "commentHint":   "Optional text comment without score",
+    "noReview":      "No reviews yet.",
+    "noReviewDesc":  "Be the first to write a review!",
+    "duplicate":     "You have already reviewed this spirit.",
+    "loginPrompt":   "Login to write a review →",
+    "submit":        "Post Review",
+    "submitEdit":    "Save Changes",
+    "score":         "pts",
+    "myReviews":     "My Reviews",
+    "noMyReview":    "No reviews yet.",
+    "noMyReviewDesc":"Visit a spirit's page to write your first review!"
+  },
+  "comment": {
+    "title":        "Community",
+    "tab":          "Community",
+    "placeholder":  "Write a comment...",
+    "spiritPlaceholder": "Share your thoughts about this spirit...",
+    "reply":        "Reply",
+    "replyTo":      "@ Reply to {{nickname}}",
+    "edit":         "Edit",
+    "delete":       "Delete",
+    "report":       "Report",
+    "like":         "Like",
+    "submit":       "Post Comment",
+    "submitReply":  "Post Reply",
+    "submitEdit":   "Save",
+    "cancel":       "Cancel",
+    "noComment":    "No comments yet.",
+    "noCommentDesc":"Be the first to leave a comment!",
+    "loginPrompt":  "Login to leave a comment →",
+    "reportTitle":  "Report Reason (Optional)",
+    "reportSubmit": "Submit Report",
+    "reportPlaceholder": "Please describe the reason for reporting..."
   },
   "wishlist": {
-    "tried": "Tried",
-    "wishlist": "Want to Try",
+    "tried":      "Tried",
+    "wishlist":   "Want to Try",
     "collection": "In Collection",
-    "noItem": "Your wishlist is empty."
-  },
-  "admin": {
-    "title": "Admin",
-    "nav": {
-      "spirits": "Spirits",
-      "users": "Users",
-      "reviews": "Reviews",
-      "comments": "Comments",
-      "reports": "Reports"
+    "noItem":     "No items yet.",
+    "noItemDesc": "Add spirits to your wishlist from the detail page!",
+    "add":        "Add to Wishlist",
+    "remove":     "Remove",
+    "tab":        "Wishlist",
+    "subtab": {
+      "TRIED":      "Tried",
+      "WISHLIST":   "Want to Try",
+      "COLLECTION": "Collection"
     }
   },
+  "mypage": {
+    "title":       "My Page",
+    "reviewsTab":  "My Reviews",
+    "wishlistTab": "Wishlist",
+    "settingsTab": "Account Settings",
+    "joinDate":    "Joined",
+    "nickname": {
+      "section": "Change Nickname",
+      "label":   "New Nickname",
+      "hint":    "2–20 characters, no spaces",
+      "success": "Nickname updated successfully.",
+      "save":    "Save"
+    },
+    "password": {
+      "section": "Change Password",
+      "current": "Current Password",
+      "new":     "New Password",
+      "confirm": "Confirm New Password",
+      "hint":    "At least 8 characters",
+      "success": "Password updated successfully.",
+      "submit":  "Change"
+    },
+    "danger": {
+      "section":      "Danger Zone",
+      "description":  "Deleting your account removes all your data permanently.",
+      "button":       "Delete Account",
+      "confirmTitle": "Are you sure you want to delete your account?",
+      "confirmDesc":  "This action cannot be undone. All your reviews, comments, and wishlists will be permanently deleted.",
+      "confirmBtn":   "Confirm Deletion"
+    }
+  },
+  "admin": {
+    "title": "Admin Console",
+    "nav": {
+      "users":    "Users",
+      "spirits":  "Spirits",
+      "requests": "Requests",
+      "reviews":  "Reviews",
+      "comments": "Comments",
+      "reports":  "Reports"
+    },
+    "user": {
+      "id":          "ID",
+      "email":       "Email",
+      "nickname":    "Nickname",
+      "role":        "Role",
+      "joinDate":    "Joined",
+      "active":      "Status",
+      "actions":     "Actions",
+      "roleChange":  "Change Role",
+      "deactivate":  "Deactivate",
+      "active_label":   "Active",
+      "inactive_label": "Inactive",
+      "role": {
+        "ADMIN":      "Admin",
+        "MEMBER":     "Member",
+        "DISTILLERY": "Distillery"
+      }
+    },
+    "spirit": {
+      "hide":   "Hide",
+      "edit":   "Edit",
+      "status": "Status"
+    },
+    "request": {
+      "approve":  "Approve",
+      "reject":   "Reject",
+      "detail":   "View Details",
+      "reason":   "Rejection Reason",
+      "pending":  "Pending",
+      "approved": "Approved",
+      "rejected": "Rejected"
+    },
+    "report": {
+      "resolve":   "Resolve",
+      "dismiss":   "Dismiss",
+      "reporter":  "Reporter",
+      "target":    "Target",
+      "content":   "Content",
+      "reason":    "Reason",
+      "status":    "Status",
+      "date":      "Reported",
+      "pending":   "Pending",
+      "resolved":  "Resolved",
+      "dismissed": "Dismissed",
+      "noReason":  "No reason provided"
+    },
+    "siteLink": "Back to site"
+  },
   "common": {
-    "loading": "Loading...",
-    "error": "An error occurred.",
-    "save": "Save",
-    "cancel": "Cancel",
-    "delete": "Delete",
-    "edit": "Edit",
-    "confirm": "Confirm",
-    "back": "Back",
-    "noData": "No data available.",
-    "all": "All"
+    "loading":  "Loading...",
+    "error":    "An error occurred.",
+    "save":     "Save",
+    "cancel":   "Cancel",
+    "close":    "Close",
+    "delete":   "Delete",
+    "edit":     "Edit",
+    "confirm":  "Confirm",
+    "back":     "Back",
+    "noData":   "No data available.",
+    "all":      "All",
+    "search":   "Search",
+    "reset":    "Reset",
+    "apply":    "Apply",
+    "required": "required",
+    "optional": "optional"
   }
 }

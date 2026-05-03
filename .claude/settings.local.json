@@ -10,7 +10,10 @@
       "Bash(Get-ChildItem *)",
       "Bash(npx tsc *)",
       "Bash(node_modules\\\\.bin\\\\tsc --noEmit)",
-      "Bash(grep -E '\\\\.\\(tsx?|jsx?\\)$')"
+      "Bash(grep -E '\\\\.\\(tsx?|jsx?\\)$')",
+      "Bash(Select-Object FullName)",
+      "Bash(ConvertTo-Csv -NoTypeInformation)",
+      "Bash(Format-Table)"
     ]
   }
 }
