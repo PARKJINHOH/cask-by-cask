@@ -14,6 +14,7 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     @Query(value = """
             SELECT r FROM Review r
             JOIN FETCH r.user
+            JOIN FETCH r.spirit
             WHERE r.spirit.id = :spiritId AND r.isHidden = false
             """,
             countQuery = """
@@ -29,6 +30,7 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     @Query(value = """
             SELECT r FROM Review r
             JOIN FETCH r.user
+            JOIN FETCH r.spirit
             WHERE r.user.id = :userId
             """,
             countQuery = "SELECT COUNT(r) FROM Review r WHERE r.user.id = :userId")

@@ -2,6 +2,9 @@ export interface ReviewItem {
   id: number
   userId: number
   nickname: string
+  spiritId: number
+  spiritNameKo: string
+  spiritNameEn: string
   noseScore: number
   tasteScore: number
   finishScore: number
