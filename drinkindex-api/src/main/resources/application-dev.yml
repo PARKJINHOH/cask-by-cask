@@ -1,19 +1,23 @@
 spring:
   datasource:
-    url: jdbc:mariadb://${DEV_DB_HOST}:3306/drinkindex_dev?useUnicode=true&characterEncoding=utf8mb4&serverTimezone=Asia/Seoul
+    url: jdbc:mariadb://${DEV_DB_HOST}:13306/drinkindex_dev?useUnicode=true&characterEncoding=utf8mb4&serverTimezone=Asia/Seoul
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: org.mariadb.jdbc.Driver
 
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
     show-sql: false
 
   data:
     redis:
       host: ${DEV_REDIS_HOST}
-      port: 6379
+      port: 16379
+      password: ${DEV_REDIS_PASSWORD}
+
+cors:
+  allowed-origins: ${FRONTEND_URL:http://localhost:5173}
 
 logging:
   level:
