@@ -12,6 +12,7 @@ export interface SpiritListItem {
   avgScore: number | null
   reviewCount: number
   primaryImageUrl: string | null
+  status?: SpiritStatus
 }
 
 export interface SpiritImage {

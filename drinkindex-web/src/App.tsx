@@ -8,7 +8,10 @@ import SpiritDetailPage from '@/pages/SpiritDetailPage'
 import LoginPage from '@/pages/LoginPage'
 import SignupPage from '@/pages/SignupPage'
 import MyPage from '@/pages/MyPage'
+import AdminUserPage from '@/pages/admin/AdminUserPage'
 import AdminSpiritPage from '@/pages/admin/AdminSpiritPage'
+import AdminRequestPage from '@/pages/admin/AdminRequestPage'
+import AdminReportPage from '@/pages/admin/AdminReportPage'
 import PrivateRoute from '@/shared/components/PrivateRoute'
 import AdminRoute from '@/shared/components/AdminRoute'
 
@@ -26,10 +29,14 @@ export default function App() {
               <Route path="mypage" element={<MyPage />} />
             </Route>
           </Route>
+
           <Route element={<AdminRoute />}>
             <Route path="admin" element={<AdminLayout />}>
-              <Route index element={<Navigate to="spirits" replace />} />
+              <Route index element={<Navigate to="users" replace />} />
+              <Route path="users" element={<AdminUserPage />} />
               <Route path="spirits" element={<AdminSpiritPage />} />
+              <Route path="spirits/requests" element={<AdminRequestPage />} />
+              <Route path="reports" element={<AdminReportPage />} />
             </Route>
           </Route>
         </Routes>

@@ -1,17 +1,21 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/domain/auth/hooks/useAuth'
 
-const navItems = [
-  { path: '/admin/spirits',  labelKey: 'admin.nav.spirits' },
-  { path: '/admin/users',    labelKey: 'admin.nav.users' },
-  { path: '/admin/reviews',  labelKey: 'admin.nav.reviews' },
-  { path: '/admin/comments', labelKey: 'admin.nav.comments' },
-  { path: '/admin/reports',  labelKey: 'admin.nav.reports' },
+interface NavItem {
+  path: string
+  label: string
+  icon: string
+  exact?: boolean
+}
+
+const navItems: NavItem[] = [
+  { path: '/admin/users',            label: '회원 관리',  icon: '👥', exact: true },
+  { path: '/admin/spirits',          label: '술 관리',    icon: '🥃', exact: true },
+  { path: '/admin/spirits/requests', label: '등록 요청',  icon: '📋' },
+  { path: '/admin/reports',          label: '신고 관리',  icon: '🚨' },
 ]
 
 export default function AdminLayout() {
-  const { t } = useTranslation()
   const location = useLocation()
   const navigate = useNavigate()
   const { logout } = useAuth()
@@ -21,38 +25,60 @@ export default function AdminLayout() {
     navigate('/')
   }
 
+  const isActive = (item: NavItem) =>
+    item.exact
+      ? location.pathname === item.path
+      : location.pathname.startsWith(item.path)
+
   return (
     <div className="min-h-screen bg-neutral-50 flex">
+      {/* 사이드바 */}
       <aside className="w-56 bg-white border-r border-neutral-200 flex flex-col flex-shrink-0">
+        {/* 헤더 */}
         <div className="p-5 border-b border-neutral-100">
           <Link to="/" className="text-lg font-bold text-primary-600">DrinkIndex</Link>
-          <p className="text-xs text-neutral-400 mt-0.5">{t('admin.title')}</p>
+          <p className="text-xs text-neutral-400 mt-0.5">관리자 콘솔</p>
         </div>
+
+        {/* 네비게이션 */}
         <nav className="flex-1 px-3 py-4 space-y-0.5">
-          {navItems.map(({ path, labelKey }) => (
+          {navItems.map((item) => (
             <Link
-              key={path}
-              to={path}
-              className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                location.pathname.startsWith(path)
+              key={item.path}
+              to={item.path}
+              className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium
+                transition-colors ${
+                isActive(item)
                   ? 'bg-primary-50 text-primary-700'
                   : 'text-neutral-600 hover:bg-neutral-100'
               }`}
             >
-              {t(labelKey)}
+              <span className="text-base leading-none">{item.icon}</span>
+              {item.label}
             </Link>
           ))}
         </nav>
-        <div className="p-4 border-t border-neutral-100">
+
+        {/* 바닥 */}
+        <div className="p-4 border-t border-neutral-100 space-y-1">
+          <Link
+            to="/"
+            className="flex items-center gap-2 px-3 py-2 text-sm text-neutral-500
+              hover:text-neutral-700 hover:bg-neutral-50 rounded-lg transition-colors"
+          >
+            ← 사이트로 돌아가기
+          </Link>
           <button
             onClick={handleLogout}
-            className="w-full text-left text-sm text-neutral-400 hover:text-neutral-600 px-3 py-2"
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-neutral-400
+              hover:text-neutral-600 hover:bg-neutral-50 rounded-lg transition-colors text-left"
           >
-            {t('nav.logout')}
+            로그아웃
           </button>
         </div>
       </aside>
 
+      {/* 컨텐츠 */}
       <div className="flex-1 overflow-auto">
         <Outlet />
       </div>

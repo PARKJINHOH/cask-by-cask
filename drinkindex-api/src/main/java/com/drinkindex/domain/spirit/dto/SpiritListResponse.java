@@ -2,6 +2,7 @@ package com.drinkindex.domain.spirit.dto;
 
 import com.drinkindex.domain.spirit.entity.Spirit;
 import com.drinkindex.domain.spirit.entity.enums.SpiritCategory;
+import com.drinkindex.domain.spirit.entity.enums.SpiritStatus;
 
 import java.math.BigDecimal;
 
@@ -14,7 +15,8 @@ public record SpiritListResponse(
         BigDecimal abv,
         BigDecimal avgScore,
         Integer reviewCount,
-        String primaryImageUrl
+        String primaryImageUrl,
+        SpiritStatus status
 ) {
     public static SpiritListResponse of(Spirit spirit, String primaryImageUrl) {
         return new SpiritListResponse(
@@ -26,7 +28,8 @@ public record SpiritListResponse(
                 spirit.getAbv(),
                 spirit.getAvgScore(),
                 spirit.getReviewCount(),
-                primaryImageUrl
+                primaryImageUrl,
+                spirit.getStatus()
         );
     }
 }
