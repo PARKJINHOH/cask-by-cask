@@ -35,11 +35,7 @@ export default function LoginPage() {
   const location   = useLocation()
   const { login }  = useAuth()
 
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname ?? '/'
-
-  // 이미 로그인된 사용자는 이전 페이지 또는 홈으로
-  if (isLoggedIn) return <Navigate to={from} replace />
-
+  // 모든 훅을 조건 분기 전에 선언
   const {
     register,
     handleSubmit,
@@ -49,6 +45,11 @@ export default function LoginPage() {
     resolver: zodResolver(schema),
     defaultValues: { email: '', password: '' },
   })
+
+  const from = (location.state as { from?: { pathname: string } })?.from?.pathname ?? '/'
+
+  // 이미 로그인된 사용자는 이전 페이지 또는 홈으로
+  if (isLoggedIn) return <Navigate to={from} replace />
 
   const onSubmit = async (data: FormValues) => {
     try {
