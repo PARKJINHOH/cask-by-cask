@@ -1,6 +1,7 @@
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { startTransition } from 'react'
 import { useNavigate, useLocation, Link, Navigate } from 'react-router-dom'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { useAuth } from '@/domain/auth/hooks/useAuth'
@@ -54,7 +55,9 @@ export default function LoginPage() {
   const onSubmit = async (data: FormValues) => {
     try {
       await login(data)
-      navigate(from, { replace: true })
+      startTransition(() => {
+        navigate(from, { replace: true })
+      })
     } catch {
       setError('root', { message: '이메일 또는 비밀번호가 올바르지 않습니다.' })
     }

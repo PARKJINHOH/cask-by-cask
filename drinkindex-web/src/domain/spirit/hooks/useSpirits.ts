@@ -11,7 +11,7 @@ export function useSpirits() {
       spiritApi
         .search({
           keyword:  keyword  || undefined,
-          category: (category as string) || undefined,
+          category: category || undefined,
           country:  country  || undefined,
           sort,
           page,

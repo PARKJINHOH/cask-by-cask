@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useSpiritDetail } from '@/domain/spirit/hooks/useSpiritDetail'
-import { scoreColor } from '@/shared/utils/format'
 import Badge from '@/shared/components/Badge'
 import StarScore from '@/shared/components/StarScore'
 import Spinner from '@/shared/components/Spinner'
