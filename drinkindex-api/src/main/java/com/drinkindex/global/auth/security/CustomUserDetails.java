@@ -16,12 +16,14 @@ public class CustomUserDetails implements UserDetails {
     private final String email;
     private final String password;
     private final Role role;
+    private final boolean active;
 
-    public CustomUserDetails(Long userId, String email, String password, Role role) {
+    public CustomUserDetails(Long userId, String email, String password, Role role, boolean active) {
         this.userId = userId;
         this.email = email;
         this.password = password;
         this.role = role;
+        this.active = active;
     }
 
     @Override
@@ -34,23 +36,12 @@ public class CustomUserDetails implements UserDetails {
         return email;
     }
 
-    @Override
-    public boolean isAccountNonExpired() {
-        return true;
-    }
-
-    @Override
-    public boolean isAccountNonLocked() {
-        return true;
-    }
-
-    @Override
-    public boolean isCredentialsNonExpired() {
-        return true;
-    }
+    @Override public boolean isAccountNonExpired()     { return true; }
+    @Override public boolean isAccountNonLocked()      { return true; }
+    @Override public boolean isCredentialsNonExpired() { return true; }
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return active;
     }
 }

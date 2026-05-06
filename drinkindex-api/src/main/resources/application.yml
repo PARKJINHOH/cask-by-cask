@@ -28,3 +28,9 @@ jwt:
 
 upload:
   path: ${UPLOAD_PATH:./uploads}
+
+admin:
+  seed:
+    email: ${ADMIN_EMAIL}
+    password: ${ADMIN_PASSWORD}
+    nickname: 관리자
