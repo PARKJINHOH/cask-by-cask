@@ -27,7 +27,13 @@ public record ReviewResponse(
         BigDecimal finishScore,
         @Schema(description = "총점 (Nose·Taste·Finish 평균, 소수점 1자리)")
         BigDecimal totalScore,
-        @Schema(description = "텍스트 코멘트")
+        @Schema(description = "향 노트")
+        String noseNote,
+        @Schema(description = "맛 노트")
+        String tasteNote,
+        @Schema(description = "피니시 노트")
+        String finishNote,
+        @Schema(description = "기타 텍스트 코멘트")
         String comment,
         @Schema(description = "작성 일시")
         LocalDateTime createdAt
@@ -44,6 +50,9 @@ public record ReviewResponse(
                 review.getTasteScore(),
                 review.getFinishScore(),
                 review.getTotalScore(),
+                review.getNoseNote(),
+                review.getTasteNote(),
+                review.getFinishNote(),
                 review.getComment(),
                 review.getCreatedAt()
         );

@@ -1,3 +1,5 @@
+import { scoreColor } from '@/shared/utils/format'
+
 export interface StarScoreProps {
   /** 0–100 평균 점수. null이면 "리뷰 없음" 표시 */
   score: number | null
@@ -5,13 +7,6 @@ export interface StarScoreProps {
   showBar?: boolean
   size?: 'sm' | 'md' | 'lg'
   className?: string
-}
-
-function barColor(score: number): string {
-  if (score >= 85) return 'bg-green-500'
-  if (score >= 70) return 'bg-amber-500'
-  if (score >= 50) return 'bg-orange-500'
-  return 'bg-danger-500'
 }
 
 const sizeMap = {
@@ -38,6 +33,7 @@ export default function StarScore({
   }
 
   const pct = Math.min(100, Math.max(0, score))
+  const color = scoreColor(score)
 
   return (
     <div
@@ -47,7 +43,7 @@ export default function StarScore({
     >
       {/* Numeric score */}
       <div className="flex items-baseline gap-2">
-        <span className={`font-bold tabular-nums text-neutral-900 ${cls.score}`}>
+        <span className={`font-bold tabular-nums ${cls.score}`} style={{ color }}>
           {score.toFixed(1)}
         </span>
         <span className={`text-neutral-400 ${cls.label}`}>/ 100</span>
@@ -65,8 +61,8 @@ export default function StarScore({
           aria-hidden="true"
         >
           <div
-            className={`h-full rounded-full transition-all duration-500 ${barColor(score)}`}
-            style={{ width: `${pct}%` }}
+            className="h-full rounded-full transition-all duration-500"
+            style={{ width: `${pct}%`, backgroundColor: color }}
           />
         </div>
       )}

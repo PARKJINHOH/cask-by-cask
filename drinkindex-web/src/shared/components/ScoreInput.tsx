@@ -4,36 +4,66 @@ export interface ScoreInputProps {
   label: string
   value: number
   onChange: (value: number) => void
+  note?: string
+  onNoteChange?: (note: string) => void
+  notePlaceholder?: string
   disabled?: boolean
 }
 
 function scoreColor(v: number): string {
-  if (v >= 85) return '#22c55e'  // green-500
-  if (v >= 70) return '#f59e0b'  // amber-500
-  if (v >= 50) return '#f97316'  // orange-500
-  return '#ef4444'               // red-500
+  if (v >= 95) return '#007BFF'
+  if (v >= 90) return '#28A745'
+  if (v >= 85) return '#5e6f00'
+  if (v >= 80) return '#FFC107'
+  if (v >= 60) return '#FD7E14'
+  return '#DC3545'
 }
 
-export default function ScoreInput({ label, value, onChange, disabled = false }: ScoreInputProps) {
+export default function ScoreInput({
+  label,
+  value,
+  onChange,
+  note,
+  onNoteChange,
+  notePlaceholder,
+  disabled = false,
+}: ScoreInputProps) {
   const id = useId()
-  const clamp = useCallback((n: number) => Math.max(0, Math.min(100, Math.round(n))), [])
 
-  const handleSlider = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(clamp(Number(e.target.value)))
+  const clamp = useCallback(
+    (n: number) => Math.max(0, Math.min(100, Math.round(n * 10) / 10)),
+    [],
+  )
+
+  const adjust = (delta: number) => {
+    if (disabled) return
+    onChange(clamp(value + delta))
   }
+
+  const handleSlider = (e: React.ChangeEvent<HTMLInputElement>) =>
+    onChange(clamp(Number(e.target.value)))
 
   const handleNumber = (e: React.ChangeEvent<HTMLInputElement>) => {
     const v = Number(e.target.value)
     if (!isNaN(v)) onChange(clamp(v))
   }
 
+  // 마우스 휠: 슬라이더 위에서 스크롤 → ±0.1 조정 (데스크탑)
+  const handleWheel = (e: React.WheelEvent) => {
+    if (disabled) return
+    e.preventDefault()
+    adjust(e.deltaY > 0 ? -0.1 : 0.1)
+  }
+
   const color = scoreColor(value)
+  const pct = `${value}%`
 
   return (
-    <div className={`space-y-2 ${disabled ? 'opacity-50' : ''}`}>
-      {/* Label + number input */}
-      <div className="flex items-center justify-between gap-3">
-        <label htmlFor={`${id}-num`} className="text-sm font-medium text-neutral-700 flex-1">
+    <div className={`space-y-3 ${disabled ? 'opacity-50 pointer-events-none' : ''}`}>
+
+      {/* 상단: 라벨 + 점수 입력 */}
+      <div className="flex items-center justify-between gap-2">
+        <label htmlFor={`${id}-num`} className="text-sm font-semibold text-neutral-700">
           {label}
         </label>
         <input
@@ -41,59 +71,120 @@ export default function ScoreInput({ label, value, onChange, disabled = false }:
           type="number"
           min={0}
           max={100}
+          step={0.1}
           value={value}
           onChange={handleNumber}
           disabled={disabled}
-          aria-label={`${label} 점수 (0–100)`}
-          className="w-16 text-center text-lg font-bold py-1 rounded-lg border border-neutral-200
-            focus:outline-none focus:ring-2 focus:ring-primary-400 tabular-nums
-            disabled:cursor-not-allowed bg-white"
+          className="w-20 text-center text-xl font-bold py-1.5 px-1 rounded-xl border border-neutral-200
+            focus:outline-none focus:ring-2 focus:ring-primary-400 tabular-nums bg-white
+            [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none
+            [&::-webkit-inner-spin-button]:appearance-none"
           style={{ color }}
         />
       </div>
 
-      {/* Slider track + input */}
-      <div className="relative h-5 flex items-center">
-        {/* Visual track */}
-        <div className="absolute inset-x-0 h-1.5 rounded-full bg-neutral-200" aria-hidden="true">
+      {/* 슬라이더 행: [-] [슬라이더] [+] */}
+      <div className="flex items-center gap-2 sm:gap-3">
+
+        {/* 감소 버튼 */}
+        <button
+          type="button"
+          onClick={() => adjust(-0.1)}
+          disabled={disabled || value <= 0}
+          aria-label={`${label} 0.1 감소`}
+          className="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-xl
+            border border-neutral-200 bg-white text-neutral-600 text-xl font-light
+            hover:bg-neutral-50 active:scale-95
+            disabled:opacity-30 disabled:cursor-not-allowed
+            touch-manipulation transition-all select-none"
+        >
+          −
+        </button>
+
+        {/* 슬라이더 트랙 */}
+        <div
+          className="relative flex-1 h-8 flex items-center"
+          onWheel={handleWheel}
+        >
+          {/* 배경 트랙 */}
+          <div className="absolute inset-x-0 h-2 rounded-full bg-neutral-200" aria-hidden>
+            <div
+              className="h-full rounded-full transition-[width] duration-75"
+              style={{ width: pct, backgroundColor: color }}
+            />
+          </div>
+
+          {/* 썸 마커 */}
           <div
-            className="h-full rounded-full transition-all duration-100"
-            style={{ width: `${value}%`, backgroundColor: color }}
+            className="absolute w-5 h-5 rounded-full shadow-md border-2 border-white
+              transition-[left] duration-75 -translate-x-1/2 pointer-events-none"
+            style={{ left: pct, backgroundColor: color }}
+            aria-hidden
+          />
+
+          {/* 투명 range input */}
+          <input
+            id={`${id}-slider`}
+            type="range"
+            min={0}
+            max={100}
+            step={0.1}
+            value={value}
+            onChange={handleSlider}
+            disabled={disabled}
+            aria-label={`${label} 슬라이더`}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={value}
+            className="absolute inset-0 w-full opacity-0 cursor-pointer
+              disabled:cursor-not-allowed touch-manipulation"
           />
         </div>
 
-        {/* Thumb marker */}
-        <div
-          className="absolute w-4 h-4 rounded-full shadow-sm border-2 border-white transition-all duration-100 -translate-x-1/2 pointer-events-none"
-          style={{ left: `${value}%`, backgroundColor: color }}
-          aria-hidden="true"
-        />
-
-        {/* Invisible range input (covers the track for interaction) */}
-        <input
-          type="range"
-          min={0}
-          max={100}
-          step={1}
-          value={value}
-          onChange={handleSlider}
-          disabled={disabled}
-          aria-label={`${label} 슬라이더`}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={value}
-          className="absolute inset-0 w-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
-        />
+        {/* 증가 버튼 */}
+        <button
+          type="button"
+          onClick={() => adjust(0.1)}
+          disabled={disabled || value >= 100}
+          aria-label={`${label} 0.1 증가`}
+          className="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-xl
+            border border-neutral-200 bg-white text-neutral-600 text-xl font-light
+            hover:bg-neutral-50 active:scale-95
+            disabled:opacity-30 disabled:cursor-not-allowed
+            touch-manipulation transition-all select-none"
+        >
+          +
+        </button>
       </div>
 
-      {/* Scale labels */}
-      <div className="flex justify-between text-xs text-neutral-300 select-none">
+      {/* 눈금 레이블 */}
+      <div className="flex justify-between text-[10px] text-neutral-300 select-none px-12 sm:px-13">
         <span>0</span>
         <span>25</span>
         <span>50</span>
         <span>75</span>
         <span>100</span>
       </div>
+
+      {/* 카테고리 노트 textarea */}
+      {onNoteChange !== undefined && (
+        <div>
+          <textarea
+            value={note ?? ''}
+            onChange={(e) => onNoteChange(e.target.value)}
+            disabled={disabled}
+            placeholder={notePlaceholder}
+            maxLength={200}
+            rows={2}
+            className="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl resize-y
+              focus:outline-none focus:ring-2 focus:ring-primary-400
+              placeholder:text-neutral-300 leading-relaxed min-h-[4rem]"
+          />
+          <p className="text-right text-[10px] text-neutral-300 mt-0.5 tabular-nums">
+            {(note ?? '').length}/200
+          </p>
+        </div>
+      )}
     </div>
   )
 }

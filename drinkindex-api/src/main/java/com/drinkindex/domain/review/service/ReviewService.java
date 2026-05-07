@@ -70,9 +70,12 @@ public class ReviewService {
         Review review = Review.builder()
                 .spirit(spirit)
                 .user(user)
-                .noseScore(BigDecimal.valueOf(request.noseScore()))
-                .tasteScore(BigDecimal.valueOf(request.tasteScore()))
-                .finishScore(BigDecimal.valueOf(request.finishScore()))
+                .noseScore(request.noseScore())
+                .tasteScore(request.tasteScore())
+                .finishScore(request.finishScore())
+                .noseNote(request.noseNote())
+                .tasteNote(request.tasteNote())
+                .finishNote(request.finishNote())
                 .comment(request.comment())
                 .build();
 
@@ -91,13 +94,13 @@ public class ReviewService {
         checkOwnership(review, userId);
 
         review.update(
-                request.noseScore() != null
-                        ? BigDecimal.valueOf(request.noseScore()) : review.getNoseScore(),
-                request.tasteScore() != null
-                        ? BigDecimal.valueOf(request.tasteScore()) : review.getTasteScore(),
-                request.finishScore() != null
-                        ? BigDecimal.valueOf(request.finishScore()) : review.getFinishScore(),
-                request.comment() != null ? request.comment() : review.getComment()
+                request.noseScore()  != null ? request.noseScore()  : review.getNoseScore(),
+                request.tasteScore() != null ? request.tasteScore() : review.getTasteScore(),
+                request.finishScore() != null ? request.finishScore() : review.getFinishScore(),
+                request.noseNote()   != null ? request.noseNote()   : review.getNoseNote(),
+                request.tasteNote()  != null ? request.tasteNote()  : review.getTasteNote(),
+                request.finishNote() != null ? request.finishNote() : review.getFinishNote(),
+                request.comment()    != null ? request.comment()    : review.getComment()
         );
 
         // flush to trigger @PreUpdate → totalScore 재계산

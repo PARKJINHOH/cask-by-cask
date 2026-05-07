@@ -10,10 +10,13 @@ import { useCreateReview, useUpdateReview } from '../hooks/useReviews'
 import type { ReviewItem } from '../types/review.types'
 
 const reviewSchema = z.object({
-  noseScore: z.number().int().min(0, '0 이상이어야 합니다.').max(100, '100 이하여야 합니다.'),
-  tasteScore: z.number().int().min(0, '0 이상이어야 합니다.').max(100, '100 이하여야 합니다.'),
-  finishScore: z.number().int().min(0, '0 이상이어야 합니다.').max(100, '100 이하여야 합니다.'),
-  comment: z.string().max(500, '500자 이내로 작성해주세요.').optional(),
+  noseScore:   z.number().min(0, '0 이상이어야 합니다.').max(100, '100 이하여야 합니다.'),
+  tasteScore:  z.number().min(0, '0 이상이어야 합니다.').max(100, '100 이하여야 합니다.'),
+  finishScore: z.number().min(0, '0 이상이어야 합니다.').max(100, '100 이하여야 합니다.'),
+  noseNote:    z.string().max(200, '200자 이내로 작성해주세요.').optional(),
+  tasteNote:   z.string().max(200, '200자 이내로 작성해주세요.').optional(),
+  finishNote:  z.string().max(200, '200자 이내로 작성해주세요.').optional(),
+  comment:     z.string().max(500, '500자 이내로 작성해주세요.').optional(),
 })
 
 type ReviewFormValues = z.infer<typeof reviewSchema>
@@ -40,43 +43,51 @@ export default function ReviewFormModal({
     control,
     handleSubmit,
     watch,
+    setValue,
     reset,
     formState: { errors, isSubmitting },
   } = useForm<ReviewFormValues>({
     resolver: zodResolver(reviewSchema),
     defaultValues: {
-      noseScore: editingReview?.noseScore ?? 70,
-      tasteScore: editingReview?.tasteScore ?? 70,
+      noseScore:   editingReview?.noseScore   ?? 70,
+      tasteScore:  editingReview?.tasteScore  ?? 70,
       finishScore: editingReview?.finishScore ?? 70,
-      comment: editingReview?.comment ?? '',
+      noseNote:    editingReview?.noseNote    ?? '',
+      tasteNote:   editingReview?.tasteNote   ?? '',
+      finishNote:  editingReview?.finishNote  ?? '',
+      comment:     editingReview?.comment     ?? '',
     },
   })
 
   useEffect(() => {
     if (open) {
       reset({
-        noseScore: editingReview?.noseScore ?? 70,
-        tasteScore: editingReview?.tasteScore ?? 70,
+        noseScore:   editingReview?.noseScore   ?? 70,
+        tasteScore:  editingReview?.tasteScore  ?? 70,
         finishScore: editingReview?.finishScore ?? 70,
-        comment: editingReview?.comment ?? '',
+        noseNote:    editingReview?.noseNote    ?? '',
+        tasteNote:   editingReview?.tasteNote   ?? '',
+        finishNote:  editingReview?.finishNote  ?? '',
+        comment:     editingReview?.comment     ?? '',
       })
     }
   }, [open, editingReview, reset])
 
-  const [nose, taste, finish, commentValue] = watch([
-    'noseScore',
-    'tasteScore',
-    'finishScore',
-    'comment',
+  const [nose, taste, finish, commentValue, noseNote, tasteNote, finishNote] = watch([
+    'noseScore', 'tasteScore', 'finishScore', 'comment',
+    'noseNote', 'tasteNote', 'finishNote',
   ])
   const totalPreview = (nose + taste + finish) / 3
 
   const onSubmit = async (values: ReviewFormValues) => {
     const payload = {
-      noseScore: values.noseScore,
-      tasteScore: values.tasteScore,
+      noseScore:   values.noseScore,
+      tasteScore:  values.tasteScore,
       finishScore: values.finishScore,
-      comment: values.comment?.trim() || undefined,
+      noseNote:    values.noseNote?.trim()   || undefined,
+      tasteNote:   values.tasteNote?.trim()  || undefined,
+      finishNote:  values.finishNote?.trim() || undefined,
+      comment:     values.comment?.trim()    || undefined,
     }
     if (editingReview) {
       await updateMutation.mutateAsync({ reviewId: editingReview.id, data: payload })
@@ -95,52 +106,79 @@ export default function ReviewFormModal({
       open={open}
       onClose={onClose}
       title={editingReview ? '리뷰 수정' : '리뷰 작성'}
-      size="md"
+      size="lg"
       closeOnOverlay={!isPending}
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        {/* Score inputs */}
-        <div className="space-y-5">
-          <Controller
-            name="noseScore"
-            control={control}
-            render={({ field }) => (
-              <div>
-                <ScoreInput label="향 (Nose)" value={field.value} onChange={field.onChange} />
-                {errors.noseScore && (
-                  <p className="mt-1 text-xs text-red-500">{errors.noseScore.message}</p>
-                )}
-              </div>
+
+        {/* 향 / 맛 / 피니시 스코어 + 노트 */}
+        <div className="space-y-6">
+          {/* 향 */}
+          <div className="bg-neutral-50 rounded-2xl p-4 space-y-1">
+            <Controller
+              name="noseScore"
+              control={control}
+              render={({ field }) => (
+                <ScoreInput
+                  label="향 (Nose)"
+                  value={field.value}
+                  onChange={field.onChange}
+                  note={noseNote}
+                  onNoteChange={(v) => setValue('noseNote', v)}
+                  notePlaceholder="향에 대한 노트를 남겨주세요... (선택)"
+                />
+              )}
+            />
+            {errors.noseScore && (
+              <p className="text-xs text-red-500 mt-1">{errors.noseScore.message}</p>
             )}
-          />
-          <Controller
-            name="tasteScore"
-            control={control}
-            render={({ field }) => (
-              <div>
-                <ScoreInput label="맛 (Taste)" value={field.value} onChange={field.onChange} />
-                {errors.tasteScore && (
-                  <p className="mt-1 text-xs text-red-500">{errors.tasteScore.message}</p>
-                )}
-              </div>
+          </div>
+
+          {/* 맛 */}
+          <div className="bg-neutral-50 rounded-2xl p-4 space-y-1">
+            <Controller
+              name="tasteScore"
+              control={control}
+              render={({ field }) => (
+                <ScoreInput
+                  label="맛 (Taste)"
+                  value={field.value}
+                  onChange={field.onChange}
+                  note={tasteNote}
+                  onNoteChange={(v) => setValue('tasteNote', v)}
+                  notePlaceholder="맛에 대한 노트를 남겨주세요... (선택)"
+                />
+              )}
+            />
+            {errors.tasteScore && (
+              <p className="text-xs text-red-500 mt-1">{errors.tasteScore.message}</p>
             )}
-          />
-          <Controller
-            name="finishScore"
-            control={control}
-            render={({ field }) => (
-              <div>
-                <ScoreInput label="피니시 (Finish)" value={field.value} onChange={field.onChange} />
-                {errors.finishScore && (
-                  <p className="mt-1 text-xs text-red-500">{errors.finishScore.message}</p>
-                )}
-              </div>
+          </div>
+
+          {/* 피니시 */}
+          <div className="bg-neutral-50 rounded-2xl p-4 space-y-1">
+            <Controller
+              name="finishScore"
+              control={control}
+              render={({ field }) => (
+                <ScoreInput
+                  label="피니시 (Finish)"
+                  value={field.value}
+                  onChange={field.onChange}
+                  note={finishNote}
+                  onNoteChange={(v) => setValue('finishNote', v)}
+                  notePlaceholder="피니시에 대한 노트를 남겨주세요... (선택)"
+                />
+              )}
+            />
+            {errors.finishScore && (
+              <p className="text-xs text-red-500 mt-1">{errors.finishScore.message}</p>
             )}
-          />
+          </div>
         </div>
 
-        {/* Total score preview */}
-        <div className="flex items-center justify-between px-4 py-3 bg-neutral-50 rounded-xl border border-neutral-100">
+        {/* 총점 미리보기 */}
+        <div className="flex items-center justify-between px-4 py-3 bg-neutral-50 rounded-2xl border border-neutral-100">
           <div>
             <p className="text-xs font-medium text-neutral-600">총점 미리보기</p>
             <p className="text-xs text-neutral-400 mt-0.5">향 + 맛 + 피니시 평균</p>
@@ -153,7 +191,7 @@ export default function ReviewFormModal({
           </span>
         </div>
 
-        {/* Comment */}
+        {/* 기타 코멘트 */}
         <Controller
           name="comment"
           control={control}
@@ -161,16 +199,16 @@ export default function ReviewFormModal({
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1.5">
                 기타 코멘트{' '}
-                <span className="text-neutral-400 font-normal text-xs">(선택, 점수 없는 텍스트 코멘트)</span>
+                <span className="text-neutral-400 font-normal text-xs">(선택, 점수 없는 전체 코멘트)</span>
               </label>
               <textarea
                 {...field}
-                rows={4}
+                rows={3}
                 maxLength={500}
-                placeholder="이 술에 대한 생각을 자유롭게 남겨주세요..."
-                className="w-full px-3 py-2.5 text-sm border border-neutral-300 rounded-lg resize-none
-                  focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent
-                  placeholder:text-neutral-400"
+                placeholder="이 술에 대한 전반적인 느낌을 자유롭게 남겨주세요..."
+                className="w-full px-3 py-2.5 text-sm border border-neutral-300 rounded-xl resize-y
+                  focus:outline-none focus:ring-2 focus:ring-primary-400
+                  placeholder:text-neutral-400 min-h-[5rem]"
               />
               <div className="flex items-start justify-between mt-1">
                 <p className="text-xs text-red-500 min-h-[1rem]">

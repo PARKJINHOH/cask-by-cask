@@ -50,6 +50,15 @@ public class Review extends BaseTimeEntity {
     @Column(nullable = false, precision = 4, scale = 1)
     private BigDecimal totalScore;
 
+    @Column(length = 300)
+    private String noseNote;
+
+    @Column(length = 300)
+    private String tasteNote;
+
+    @Column(length = 300)
+    private String finishNote;
+
     @Column(length = 500)
     private String comment;
 
@@ -73,10 +82,14 @@ public class Review extends BaseTimeEntity {
         }
     }
 
-    public void update(BigDecimal noseScore, BigDecimal tasteScore, BigDecimal finishScore, String comment) {
+    public void update(BigDecimal noseScore, BigDecimal tasteScore, BigDecimal finishScore,
+                       String noseNote, String tasteNote, String finishNote, String comment) {
         this.noseScore = noseScore;
         this.tasteScore = tasteScore;
         this.finishScore = finishScore;
+        this.noseNote = noseNote;
+        this.tasteNote = tasteNote;
+        this.finishNote = finishNote;
         this.comment = comment;
     }
 

@@ -11,8 +11,10 @@ export function formatDate(dateStr: string): string {
 }
 
 export function scoreColor(v: number): string {
-  if (v >= 85) return '#22c55e'
-  if (v >= 70) return '#f59e0b'
-  if (v >= 50) return '#f97316'
-  return '#ef4444'
+  if (v >= 95) return '#007BFF'
+  if (v >= 90) return '#28A745'
+  if (v >= 85) return '#5e6f00'
+  if (v >= 80) return '#FFC107'
+  if (v >= 60) return '#FD7E14'
+  return '#DC3545'
 }

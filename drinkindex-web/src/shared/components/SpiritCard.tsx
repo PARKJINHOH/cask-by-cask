@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import Badge from './Badge'
+import { scoreColor } from '@/shared/utils/format'
 import type { SpiritListItem } from '@/domain/spirit/types/spirit.types'
 
 export interface SpiritCardProps {
@@ -67,7 +68,7 @@ export default function SpiritCard({ spirit, className = '' }: SpiritCardProps) 
 
             <div className="flex items-center gap-2 ml-auto">
               {spirit.avgScore != null && (
-                <span className="text-xs font-bold text-primary-600">
+                <span className="text-xs font-bold" style={{ color: scoreColor(spirit.avgScore) }}>
                   ★ {spirit.avgScore.toFixed(1)}
                 </span>
               )}
