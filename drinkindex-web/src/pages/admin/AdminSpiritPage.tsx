@@ -1,15 +1,11 @@
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { z } from 'zod'
-import { zodResolver } from '@hookform/resolvers/zod'
+import { useNavigate } from 'react-router-dom'
 import Badge from '@/shared/components/Badge'
 import Button from '@/shared/components/Button'
 import Input from '@/shared/components/Input'
 import Spinner from '@/shared/components/Spinner'
 import Pagination from '@/shared/components/Pagination'
-import Modal from '@/shared/components/Modal'
-import { useAdminSpirits, useUpdateSpirit, useDeleteSpirit } from '@/domain/admin/hooks/useAdminSpirits'
-import type { AdminSpiritItem, UpdateSpiritPayload } from '@/domain/admin/types/admin.types'
+import { useAdminSpirits } from '@/domain/admin/hooks/useAdminSpirits'
 import type { SpiritCategory, SpiritStatus } from '@/domain/spirit/types/spirit.types'
 
 // ── 상수 ────────────────────────────────────────────────────────
@@ -27,151 +23,14 @@ const STATUS_OPTIONS: Array<{ value: SpiritStatus; label: string }> = [
   { value: 'PENDING', label: '대기' },
 ]
 
-// ── 수정 모달 ──────────────────────────────────────────────────
-
-const editSchema = z.object({
-  nameKo:       z.string().min(1, '한글 이름은 필수입니다.'),
-  nameEn:       z.string().min(1, '영문 이름은 필수입니다.'),
-  category:     z.enum(['WHISKY', 'COGNAC', 'WINE', 'TEQUILA', 'RUM', 'GIN', 'VODKA', 'OTHER']),
-  country:      z.string().optional(),
-  region:       z.string().optional(),
-  abv:          z.number().min(0).max(100).optional().or(z.literal('')),
-  volumeMl:     z.number().int().positive().optional().or(z.literal('')),
-  bottler:      z.string().optional(),
-  bottledYear:  z.number().int().min(1700).max(2100).optional().or(z.literal('')),
-  vintageYear:  z.number().int().min(1700).max(2100).optional().or(z.literal('')),
-  distilleryId: z.number().int().positive().optional().or(z.literal('')),
-})
-
-type EditForm = z.infer<typeof editSchema>
-
-interface EditModalProps {
-  spirit: AdminSpiritItem
-  onClose: () => void
-}
-
-function SpiritEditModal({ spirit, onClose }: EditModalProps) {
-  const updateSpirit = useUpdateSpirit()
-  const [serverError, setServerError] = useState('')
-
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<EditForm>({
-    resolver: zodResolver(editSchema),
-    defaultValues: {
-      nameKo:       spirit.nameKo,
-      nameEn:       spirit.nameEn,
-      category:     spirit.category,
-      country:      spirit.country ?? '',
-      abv:          spirit.abv ?? '',
-    },
-  })
-
-  const onSubmit = async (values: EditForm) => {
-    setServerError('')
-    const payload: UpdateSpiritPayload = {
-      nameKo:       values.nameKo,
-      nameEn:       values.nameEn,
-      category:     values.category,
-      country:      values.country || null,
-      region:       values.region || null,
-      abv:          values.abv === '' ? null : values.abv as number,
-      volumeMl:     values.volumeMl === '' ? null : values.volumeMl as number,
-      bottler:      values.bottler || null,
-      bottledYear:  values.bottledYear === '' ? null : values.bottledYear as number,
-      vintageYear:  values.vintageYear === '' ? null : values.vintageYear as number,
-      distilleryId: values.distilleryId === '' ? null : values.distilleryId as number,
-    }
-    try {
-      await updateSpirit.mutateAsync({ id: spirit.id, data: payload })
-      onClose()
-    } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-      setServerError(msg ?? '수정 중 오류가 발생했습니다.')
-    }
-  }
-
-  return (
-    <Modal open onClose={onClose} title={`술 수정 — ${spirit.nameKo}`} size="lg">
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
-          <Input label="한글 이름" error={errors.nameKo?.message} {...register('nameKo')} />
-          <Input label="영문 이름" error={errors.nameEn?.message} {...register('nameEn')} />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-neutral-700 mb-1">카테고리</label>
-          <select
-            {...register('category')}
-            className="w-full h-9 px-3 text-sm border border-neutral-300 rounded-lg bg-white
-              focus:outline-none focus:ring-2 focus:ring-primary-400"
-          >
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c}>{CATEGORY_LABEL[c]}</option>
-            ))}
-          </select>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <Input label="국가" placeholder="예: Scotland" {...register('country')} />
-          <Input label="지역" placeholder="예: Speyside" {...register('region')} />
-        </div>
-
-        <div className="grid grid-cols-3 gap-3">
-          <Input
-            label="도수 (%)"
-            type="number"
-            placeholder="0~100"
-            {...register('abv', { valueAsNumber: true })}
-          />
-          <Input
-            label="용량 (ml)"
-            type="number"
-            placeholder="700"
-            {...register('volumeMl', { valueAsNumber: true })}
-          />
-          <Input
-            label="증류소 ID"
-            type="number"
-            {...register('distilleryId', { valueAsNumber: true })}
-          />
-        </div>
-
-        <div className="grid grid-cols-3 gap-3">
-          <Input label="보틀러" placeholder="Independent" {...register('bottler')} />
-          <Input
-            label="병입년도"
-            type="number"
-            placeholder="2023"
-            {...register('bottledYear', { valueAsNumber: true })}
-          />
-          <Input
-            label="빈티지년도"
-            type="number"
-            placeholder="2010"
-            {...register('vintageYear', { valueAsNumber: true })}
-          />
-        </div>
-
-        {serverError && <p className="text-sm text-red-600">{serverError}</p>}
-
-        <div className="flex gap-2 justify-end pt-2 border-t border-neutral-100">
-          <Button variant="secondary" size="sm" type="button" onClick={onClose}>취소</Button>
-          <Button size="sm" type="submit" isLoading={isSubmitting || updateSpirit.isPending}>
-            저장
-          </Button>
-        </div>
-      </form>
-    </Modal>
-  )
-}
-
 // ── 메인 페이지 ────────────────────────────────────────────────
 
 export default function AdminSpiritPage() {
-  const [keyword, setKeyword]         = useState('')
-  const [category, setCategory]       = useState<SpiritCategory | ''>('')
-  const [status, setStatus]           = useState<SpiritStatus>('ACTIVE')
-  const [page, setPage]               = useState(0)
-  const [editSpirit, setEditSpirit]   = useState<AdminSpiritItem | null>(null)
+  const navigate = useNavigate()
+  const [keyword, setKeyword]   = useState('')
+  const [category, setCategory] = useState<SpiritCategory | ''>('')
+  const [status, setStatus]     = useState<SpiritStatus>('ACTIVE')
+  const [page, setPage]         = useState(0)
 
   const { data, isLoading } = useAdminSpirits({
     keyword: keyword.trim() || undefined,
@@ -179,12 +38,6 @@ export default function AdminSpiritPage() {
     status,
     page,
   })
-  const deleteSpirit = useDeleteSpirit()
-
-  const handleDelete = async (spirit: AdminSpiritItem) => {
-    if (!confirm(`"${spirit.nameKo}"을(를) 숨김 처리하시겠습니까?`)) return
-    await deleteSpirit.mutateAsync(spirit.id)
-  }
 
   return (
     <div className="p-6 space-y-5">
@@ -286,19 +139,11 @@ export default function AdminSpiritPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2 justify-end">
                           <button
-                            onClick={() => setEditSpirit(spirit)}
+                            onClick={() => navigate(`/admin/spirits/${spirit.id}`)}
                             className="text-xs text-primary-600 hover:text-primary-800 font-medium
                               transition-colors"
                           >
-                            수정
-                          </button>
-                          <button
-                            onClick={() => handleDelete(spirit)}
-                            disabled={deleteSpirit.isPending}
-                            className="text-xs text-red-500 hover:text-red-700 font-medium
-                              transition-colors disabled:opacity-40"
-                          >
-                            숨김
+                            상세보기
                           </button>
                         </div>
                       </td>
@@ -319,9 +164,6 @@ export default function AdminSpiritPage() {
         </>
       )}
 
-      {editSpirit && (
-        <SpiritEditModal spirit={editSpirit} onClose={() => setEditSpirit(null)} />
-      )}
     </div>
   )
 }

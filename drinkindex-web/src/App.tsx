@@ -8,9 +8,13 @@ import SpiritDetailPage from '@/pages/SpiritDetailPage'
 import LoginPage from '@/pages/LoginPage'
 import SignupPage from '@/pages/SignupPage'
 import MyPage from '@/pages/MyPage'
+import SpiritRequestPage from '@/pages/SpiritRequestPage'
 import AdminUserPage from '@/pages/admin/AdminUserPage'
 import AdminSpiritPage from '@/pages/admin/AdminSpiritPage'
+import AdminSpiritDetailPage from '@/pages/admin/AdminSpiritDetailPage'
 import AdminRequestPage from '@/pages/admin/AdminRequestPage'
+import AdminRequestDetailPage from '@/pages/admin/AdminRequestDetailPage'
+import AdminDistilleryPage from '@/pages/admin/AdminDistilleryPage'
 import AdminReportPage from '@/pages/admin/AdminReportPage'
 import PrivateRoute from '@/shared/components/PrivateRoute'
 import AdminRoute from '@/shared/components/AdminRoute'
@@ -27,6 +31,7 @@ export default function App() {
             <Route path="signup" element={<SignupPage />} />
             <Route element={<PrivateRoute />}>
               <Route path="mypage" element={<MyPage />} />
+              <Route path="request/spirit" element={<SpiritRequestPage />} />
             </Route>
           </Route>
 
@@ -35,7 +40,10 @@ export default function App() {
               <Route index element={<Navigate to="users" replace />} />
               <Route path="users" element={<AdminUserPage />} />
               <Route path="spirits" element={<AdminSpiritPage />} />
+              <Route path="spirits/:id" element={<AdminSpiritDetailPage />} />
               <Route path="spirits/requests" element={<AdminRequestPage />} />
+              <Route path="spirits/requests/:id" element={<AdminRequestDetailPage />} />
+              <Route path="distilleries" element={<AdminDistilleryPage />} />
               <Route path="reports" element={<AdminReportPage />} />
             </Route>
           </Route>

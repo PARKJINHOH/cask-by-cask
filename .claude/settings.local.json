@@ -20,7 +20,8 @@
       "Bash(find \"D:\\\\\\\\workspace\\\\\\\\easymediaProject\\\\\\\\drink-index\\\\\\\\drinkindex-api\\\\\\\\src\\\\\\\\main\\\\\\\\java\" -type f -path \"*enums*\" -name \"*.java\")",
       "Bash(npm install *)",
       "Bash(npm audit *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(xargs grep -l \"class.*Distillery\")"
     ]
   }
 }

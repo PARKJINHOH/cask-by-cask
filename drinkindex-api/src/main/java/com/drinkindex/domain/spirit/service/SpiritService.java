@@ -20,16 +20,32 @@ import com.drinkindex.global.exception.ErrorCode;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class SpiritService {
+
+    private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of("image/jpeg", "image/png");
+    private static final Set<String> ALLOWED_EXTENSIONS    = Set.of("jpg", "jpeg", "png");
+    private static final long        MAX_FILE_SIZE          = 10L * 1024 * 1024;
+
+    @Value("${upload.path}")
+    private String uploadPath;
 
     private final SpiritRepository spiritRepository;
     private final SpiritImageRepository spiritImageRepository;
@@ -164,6 +180,61 @@ public class SpiritService {
                 .map(this::parseRegisterResponse);
     }
 
+    @Transactional(readOnly = true)
+    public SpiritRegisterRequestDetailResponse getRegisterRequestDetail(Long requestId) {
+        SpiritRegisterRequest req = getRegisterRequest(requestId);
+        SpiritRegisterRequestBody body = parseSpiritData(req.getSpiritData());
+        return SpiritRegisterRequestDetailResponse.of(req, body, resolveDistilleryName(body.distilleryId()));
+    }
+
+    @Transactional
+    public SpiritRegisterRequestDetailResponse updateRegisterRequest(
+            Long requestId, SpiritRegisterRequestBody body) {
+        SpiritRegisterRequest req = getRegisterRequest(requestId);
+        SpiritRegisterRequestBody existing = parseSpiritData(req.getSpiritData());
+
+        // 이미지 URL은 별도 엔드포인트로만 관리 — 필드 수정 시 기존 이미지 보존
+        SpiritRegisterRequestBody merged = new SpiritRegisterRequestBody(
+                body.nameKo(), body.nameEn(), body.category(),
+                body.distilleryId(), body.bottler(), body.bottledYear(), body.vintageYear(),
+                body.abv(), body.volumeMl(), body.country(), body.region(),
+                existing.imageUrls()
+        );
+
+        req.updateSpiritData(serialize(merged));
+        return SpiritRegisterRequestDetailResponse.of(req, merged, resolveDistilleryName(merged.distilleryId()));
+    }
+
+    @Transactional
+    public SpiritRegisterRequestDetailResponse uploadRequestImage(Long requestId, MultipartFile file) {
+        SpiritRegisterRequest req = getRegisterRequest(requestId);
+        validateImageFile(file);
+
+        String filename = UUID.randomUUID() + "." + getExtension(file.getOriginalFilename());
+        String imageUrl = saveRequestFile(requestId, filename, file);
+
+        SpiritRegisterRequestBody body = parseSpiritData(req.getSpiritData());
+        List<String> imageUrls = new ArrayList<>(body.imageUrls() != null ? body.imageUrls() : List.of());
+        imageUrls.add(imageUrl);
+
+        SpiritRegisterRequestBody updated = withImageUrls(body, imageUrls);
+        req.updateSpiritData(serialize(updated));
+        return SpiritRegisterRequestDetailResponse.of(req, updated, resolveDistilleryName(updated.distilleryId()));
+    }
+
+    @Transactional
+    public SpiritRegisterRequestDetailResponse removeRequestImageUrl(Long requestId, String imageUrl) {
+        SpiritRegisterRequest req = getRegisterRequest(requestId);
+        SpiritRegisterRequestBody body = parseSpiritData(req.getSpiritData());
+
+        List<String> imageUrls = new ArrayList<>(body.imageUrls() != null ? body.imageUrls() : List.of());
+        imageUrls.remove(imageUrl);
+
+        SpiritRegisterRequestBody updated = withImageUrls(body, imageUrls);
+        req.updateSpiritData(serialize(updated));
+        return SpiritRegisterRequestDetailResponse.of(req, updated, resolveDistilleryName(updated.distilleryId()));
+    }
+
     @Transactional
     public SpiritDetailResponse approveRegisterRequest(Long requestId, Long adminId) {
         SpiritRegisterRequest req = getRegisterRequest(requestId);
@@ -242,6 +313,13 @@ public class SpiritService {
                 .orElseThrow(() -> new CustomException(ErrorCode.DISTILLERY_NOT_FOUND));
     }
 
+    private String resolveDistilleryName(Long distilleryId) {
+        if (distilleryId == null) return null;
+        return distilleryRepository.findById(distilleryId)
+                .map(Distillery::getNameKo)
+                .orElse(null);
+    }
+
     private void verifyDistilleryAccess(User user, Distillery distillery) {
         if (user.getRole() != Role.DISTILLERY) return;
         if (distillery == null
@@ -257,6 +335,23 @@ public class SpiritService {
         } catch (JsonProcessingException e) {
             throw new CustomException(ErrorCode.INVALID_INPUT);
         }
+    }
+
+    private String serialize(SpiritRegisterRequestBody body) {
+        try {
+            return objectMapper.writeValueAsString(body);
+        } catch (JsonProcessingException e) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+    }
+
+    private SpiritRegisterRequestBody withImageUrls(SpiritRegisterRequestBody body, List<String> imageUrls) {
+        return new SpiritRegisterRequestBody(
+                body.nameKo(), body.nameEn(), body.category(),
+                body.distilleryId(), body.bottler(), body.bottledYear(), body.vintageYear(),
+                body.abv(), body.volumeMl(), body.country(), body.region(),
+                imageUrls
+        );
     }
 
     private SpiritRegisterRequestResponse parseRegisterResponse(SpiritRegisterRequest req) {
@@ -276,5 +371,33 @@ public class SpiritService {
                 req.getCreatedAt(),
                 req.getReviewedAt()
         );
+    }
+
+    // ── 요청 이미지 업로드 ───────────────────────────────────
+
+    private void validateImageFile(MultipartFile file) {
+        if (file == null || file.isEmpty()) throw new CustomException(ErrorCode.INVALID_IMAGE_FORMAT);
+        if (file.getSize() > MAX_FILE_SIZE) throw new CustomException(ErrorCode.IMAGE_SIZE_EXCEEDED);
+        String ct = file.getContentType();
+        if (ct == null || !ALLOWED_CONTENT_TYPES.contains(ct.toLowerCase()))
+            throw new CustomException(ErrorCode.INVALID_IMAGE_FORMAT);
+        if (!ALLOWED_EXTENSIONS.contains(getExtension(file.getOriginalFilename()).toLowerCase()))
+            throw new CustomException(ErrorCode.INVALID_IMAGE_FORMAT);
+    }
+
+    private String getExtension(String filename) {
+        if (filename == null || !filename.contains(".")) return "";
+        return filename.substring(filename.lastIndexOf('.') + 1);
+    }
+
+    private String saveRequestFile(Long requestId, String filename, MultipartFile file) {
+        try {
+            Path dir = Paths.get(uploadPath, "requests", requestId.toString());
+            Files.createDirectories(dir);
+            file.transferTo(dir.resolve(filename));
+            return "/uploads/requests/" + requestId + "/" + filename;
+        } catch (IOException e) {
+            throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR);
+        }
     }
 }

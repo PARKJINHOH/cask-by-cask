@@ -17,7 +17,7 @@ const CATEGORIES: SpiritCategory[] = [
 ]
 const SORT_VALUES: SpiritSort[] = ['LATEST', 'SCORE_DESC', 'REVIEW_COUNT_DESC']
 const COUNTRIES = [
-  'Scotland', 'Japan', 'United States', 'Ireland', 'France', 'Mexico',
+  '스코틀랜드', 'Japan', 'United States', 'Ireland', 'France', 'Mexico',
   'Jamaica', 'Russia', 'Netherlands', 'Sweden', 'Australia', 'Taiwan', 'India',
 ]
 

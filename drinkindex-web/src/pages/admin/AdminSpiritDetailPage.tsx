@@ -1,0 +1,341 @@
+import { useRef, useState } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import { useForm } from 'react-hook-form'
+import Badge from '@/shared/components/Badge'
+import Button from '@/shared/components/Button'
+import Spinner from '@/shared/components/Spinner'
+import { formatDate } from '@/shared/utils/format'
+import {
+  useAdminSpiritDetail,
+  useUpdateSpirit,
+  useDeleteSpirit,
+  useUploadSpiritImage,
+  useDeleteSpiritImage,
+  useSetPrimarySpiritImage,
+} from '@/domain/admin/hooks/useAdminSpirits'
+import type { AdminSpiritImageItem, UpdateSpiritPayload } from '@/domain/admin/types/admin.types'
+import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
+import DistillerySelector from '@/domain/distillery/components/DistillerySelector'
+import CountryRegionSelector from '@/domain/location/components/CountryRegionSelector'
+import { ISO3166_COUNTRIES } from '@/domain/location/data/iso3166Countries'
+
+// ── 상수 ────────────────────────────────────────────────────────
+
+const CATEGORIES: SpiritCategory[] = ['WHISKY', 'COGNAC', 'WINE', 'TEQUILA', 'RUM', 'GIN', 'VODKA', 'OTHER']
+const CATEGORY_LABEL: Record<string, string> = {
+  WHISKY: '위스키', COGNAC: '꼬냑', WINE: '와인', TEQUILA: '데낄라',
+  RUM: '럼', GIN: '진', VODKA: '보드카', OTHER: '기타',
+}
+const STATUS_LABEL: Record<string, string> = {
+  ACTIVE: '공개', HIDDEN: '숨김', PENDING: '대기',
+}
+
+// ── 공통 행 ─────────────────────────────────────────────────────
+
+function Row({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-3 py-1.5">
+      <span className="w-24 text-sm text-neutral-400 flex-shrink-0 pt-0.5">{label}</span>
+      <div className="flex-1 text-sm text-neutral-800">{children}</div>
+    </div>
+  )
+}
+
+// ── 이미지 섹션 ──────────────────────────────────────────────────
+
+function SpiritImageSection({ spiritId, images }: { spiritId: number; images: AdminSpiritImageItem[] }) {
+  const fileRef = useRef<HTMLInputElement>(null)
+  const upload = useUploadSpiritImage()
+  const deleteImg = useDeleteSpiritImage()
+  const setPrimary = useSetPrimarySpiritImage()
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    upload.mutate({ id: spiritId, file })
+    e.target.value = ''
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-neutral-700">이미지</h3>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => fileRef.current?.click()}
+          isLoading={upload.isPending}
+        >
+          + 이미지 추가
+        </Button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/jpeg,image/png"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+      </div>
+
+      {images.length === 0 ? (
+        <p className="text-xs text-neutral-400">등록된 이미지가 없습니다.</p>
+      ) : (
+        <div className="grid grid-cols-3 gap-3">
+          {images.map((img) => (
+            <div
+              key={img.id}
+              className="relative group aspect-square rounded-xl overflow-hidden border border-neutral-200"
+            >
+              <img src={img.imageUrl} alt="" className="w-full h-full object-cover" />
+              {img.isPrimary && (
+                <span className="absolute top-1 left-1 bg-amber-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-semibold">
+                  대표
+                </span>
+              )}
+              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100
+                transition-opacity flex flex-col items-center justify-center gap-1.5">
+                {!img.isPrimary && (
+                  <button
+                    onClick={() => setPrimary.mutate({ id: spiritId, imageId: img.id })}
+                    disabled={setPrimary.isPending}
+                    className="text-white text-xs font-semibold px-2 py-1 bg-amber-500/80 rounded
+                      hover:bg-amber-500 disabled:opacity-50"
+                  >
+                    대표 설정
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    if (confirm('이미지를 삭제하시겠습니까?'))
+                      deleteImg.mutate({ id: spiritId, imageId: img.id })
+                  }}
+                  disabled={deleteImg.isPending}
+                  className="text-white text-xs font-semibold px-2 py-1 bg-red-500/80 rounded
+                    hover:bg-red-500 disabled:opacity-50"
+                >
+                  삭제
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── 메인 페이지 ────────────────────────────────────────────────
+
+export default function AdminSpiritDetailPage() {
+  const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const spiritId = Number(id)
+
+  const { data: spirit, isLoading } = useAdminSpiritDetail(spiritId)
+  const updateSpirit = useUpdateSpirit()
+  const deleteSpirit = useDeleteSpirit()
+
+  const [savedMsg, setSavedMsg] = useState('')
+  const [saveError, setSaveError] = useState('')
+  const [countryCode, setCountryCode] = useState<string | null>(null)
+  const [countryNameKo, setCountryNameKo] = useState('')
+  const [regionNameKo, setRegionNameKo] = useState('')
+
+  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<UpdateSpiritPayload>()
+
+  const [initialized, setInitialized] = useState(false)
+  if (spirit && !initialized) {
+    setValue('nameKo', spirit.nameKo)
+    setValue('nameEn', spirit.nameEn)
+    setValue('category', spirit.category)
+    setValue('distilleryId', spirit.distilleryId ?? undefined)
+    setValue('bottler', spirit.bottler ?? undefined)
+    setValue('bottledYear', spirit.bottledYear ?? undefined)
+    setValue('vintageYear', spirit.vintageYear ?? undefined)
+    setValue('abv', spirit.abv ?? undefined)
+    setValue('volumeMl', spirit.volumeMl ?? undefined)
+    const matched = ISO3166_COUNTRIES.find((c) => c.nameKo === spirit.country)
+    setCountryCode(matched?.code ?? null)
+    setCountryNameKo(spirit.country ?? '')
+    setRegionNameKo(spirit.region ?? '')
+    setInitialized(true)
+  }
+
+  const onSave = (data: UpdateSpiritPayload) => {
+    setSaveError('')
+    updateSpirit.mutate(
+      { id: spiritId, data: { ...data, country: countryNameKo || null, region: regionNameKo || null } },
+      {
+        onSuccess: () => {
+          setSavedMsg('저장되었습니다.')
+          setTimeout(() => setSavedMsg(''), 3000)
+        },
+        onError: () => setSaveError('저장 중 오류가 발생했습니다.'),
+      },
+    )
+  }
+
+  const handleDelete = async () => {
+    if (!spirit || !confirm(`"${spirit.nameKo}"을(를) 숨김 처리하시겠습니까?`)) return
+    await deleteSpirit.mutateAsync(spiritId)
+    navigate('/admin/spirits')
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center py-40">
+        <Spinner size="lg" className="text-primary-600" />
+      </div>
+    )
+  }
+
+  if (!spirit) {
+    return <div className="p-6"><p className="text-neutral-500">데이터를 찾을 수 없습니다.</p></div>
+  }
+
+  return (
+    <div className="p-6 max-w-3xl space-y-6">
+      {/* 헤더 */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => navigate('/admin/spirits')}
+          className="text-sm text-neutral-500 hover:text-neutral-700 transition-colors"
+        >
+          ← 목록으로
+        </button>
+        <h1 className="text-xl font-bold text-neutral-900">술 상세 / 수정</h1>
+        <Badge variant={spirit.status} size="md">{STATUS_LABEL[spirit.status]}</Badge>
+      </div>
+
+      {/* 메타 정보 */}
+      <div className="bg-white rounded-xl shadow-sm p-5">
+        <Row label="ID">{spirit.id}</Row>
+        <Row label="평점">{spirit.avgScore != null ? Number(spirit.avgScore).toFixed(1) : '-'}</Row>
+        <Row label="리뷰 수">{spirit.reviewCount}</Row>
+        <Row label="등록일">{formatDate(spirit.createdAt)}</Row>
+        <Row label="수정일">{formatDate(spirit.updatedAt)}</Row>
+      </div>
+
+      {/* 수정 폼 */}
+      <form onSubmit={handleSubmit(onSave)} noValidate>
+        <div className="bg-white rounded-xl shadow-sm p-5 space-y-5">
+          <h2 className="text-sm font-semibold text-neutral-700 border-b border-neutral-100 pb-3">
+            기본 정보 수정
+          </h2>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-medium text-neutral-600">한국어 이름 *</label>
+              <input
+                {...register('nameKo', { required: true })}
+                className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none
+                  focus:ring-2 focus:ring-primary-400 ${errors.nameKo ? 'border-red-400' : 'border-neutral-200'}`}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-xs font-medium text-neutral-600">영어 이름 *</label>
+              <input
+                {...register('nameEn', { required: true })}
+                className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none
+                  focus:ring-2 focus:ring-primary-400 ${errors.nameEn ? 'border-red-400' : 'border-neutral-200'}`}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="block text-xs font-medium text-neutral-600">카테고리 *</label>
+            <select
+              {...register('category', { required: true })}
+              className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg
+                focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
+            >
+              {CATEGORIES.map((cat) => (
+                <option key={cat} value={cat}>{CATEGORY_LABEL[cat]}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="block text-xs font-medium text-neutral-600">증류소</label>
+            <DistillerySelector
+              value={watch('distilleryId') ?? null}
+              defaultName={spirit.distilleryNameKo ?? undefined}
+              onChange={(id) => setValue('distilleryId', id ?? undefined)}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="block text-xs font-medium text-neutral-600">국가 / 지역</label>
+            <CountryRegionSelector
+              countryCode={countryCode}
+              regionNameKo={regionNameKo}
+              onCountryChange={(code, nameKo) => { setCountryCode(code); setCountryNameKo(nameKo) }}
+              onRegionChange={(nameKo) => setRegionNameKo(nameKo)}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-medium text-neutral-600">병입업체명</label>
+              <input
+                {...register('bottler')}
+                className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg
+                  focus:outline-none focus:ring-2 focus:ring-primary-400"
+              />
+            </div>
+            {([
+              { name: 'abv',         label: '도수 (%)',   step: '0.1', min: '0',    max: '100'  },
+              { name: 'bottledYear', label: '병입년도',    step: '1',   min: '1800', max: '2100' },
+              { name: 'vintageYear', label: '빈티지',      step: '1',   min: '1800', max: '2100' },
+              { name: 'volumeMl',    label: '용량 (ml)',   step: '1',   min: '1',    max: undefined },
+            ] as const).map(({ name, label, step, min, max }) => (
+              <div key={name} className="space-y-1.5">
+                <label className="block text-xs font-medium text-neutral-600">{label}</label>
+                <input
+                  type="number"
+                  step={step}
+                  min={min}
+                  max={max}
+                  {...register(name, { valueAsNumber: true })}
+                  className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg
+                    focus:outline-none focus:ring-2 focus:ring-primary-400"
+                />
+              </div>
+            ))}
+          </div>
+
+          {savedMsg && (
+            <p className="text-sm text-green-600 bg-green-50 rounded-lg px-3 py-2">{savedMsg}</p>
+          )}
+          {saveError && <p className="text-sm text-red-600">{saveError}</p>}
+
+          <div className="flex justify-end">
+            <Button type="submit" size="sm" isLoading={updateSpirit.isPending}>
+              변경사항 저장
+            </Button>
+          </div>
+        </div>
+      </form>
+
+      {/* 이미지 */}
+      <div className="bg-white rounded-xl shadow-sm p-5">
+        <SpiritImageSection spiritId={spiritId} images={spirit.images} />
+      </div>
+
+      {/* 관리 액션 */}
+      <div className="bg-white rounded-xl shadow-sm p-5">
+        <h2 className="text-sm font-semibold text-neutral-700 mb-4">관리</h2>
+        <div className="flex justify-end">
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={handleDelete}
+            isLoading={deleteSpirit.isPending}
+          >
+            숨김 처리
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}

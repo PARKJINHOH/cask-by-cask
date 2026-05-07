@@ -60,4 +60,8 @@ public class SpiritRegisterRequest extends BaseTimeEntity {
         this.reviewedAt = LocalDateTime.now();
         this.rejectReason = reason;
     }
+
+    public void updateSpiritData(String spiritData) {
+        this.spiritData = spiritData;
+    }
 }

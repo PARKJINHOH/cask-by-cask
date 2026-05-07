@@ -14,6 +14,46 @@
     "admin":    "Admin",
     "more":     "More"
   },
+  "menu": {
+    "notice":        "Notice",
+    "request":       "Request",
+    "requestSpirit": "Register Spirit",
+    "requestReport": "Report",
+    "community":     "Community",
+    "communityNews": "News",
+    "communityBoard": "Free Board"
+  },
+  "spiritRequest": {
+    "title": "Spirit Registration Request",
+    "subtitle": "Request a spirit not in our database. It will be reviewed by an admin.",
+    "form": {
+      "nameKo":       "Korean Name",
+      "nameEn":       "English Name",
+      "category":     "Category",
+      "abv":          "ABV (%)",
+      "country":      "Country",
+      "region":       "Region",
+      "bottler":      "Bottler",
+      "bottledYear":  "Bottled Year",
+      "vintageYear":  "Vintage Year",
+      "distillery":   "Distillery",
+      "volumeMl":     "Volume (ml)",
+      "submit":       "Submit Request",
+      "success":      "Your request has been submitted successfully."
+    },
+    "myRequests": {
+      "title": "My Requests",
+      "empty": "No requests yet.",
+      "status": {
+        "PENDING":  "Pending",
+        "APPROVED": "Approved",
+        "REJECTED": "Rejected"
+      },
+      "rejectReason": "Rejection Reason",
+      "requestedAt":  "Requested",
+      "reviewedAt":   "Reviewed"
+    }
+  },
   "auth": {
     "email":    "Email",
     "password": "Password",

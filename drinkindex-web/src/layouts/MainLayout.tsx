@@ -6,6 +6,119 @@ import { useAuth } from '@/domain/auth/hooks/useAuth'
 import { saveLang } from '@/shared/utils/i18n'
 import BottomNav from '@/shared/components/BottomNav'
 
+// ── GNB (글로벌 내비게이션 바) ────────────────────────────────
+
+type GNBChild = { key: string; label: string; to: string; comingSoon?: boolean }
+type GNBItem =
+  | { key: string; label: string; to: string }
+  | { key: string; label: string; children: GNBChild[] }
+
+function GNB() {
+  const { t } = useTranslation()
+  const [open, setOpen] = useState<string | null>(null)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(null)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const menus: GNBItem[] = [
+    { key: 'notice', label: t('menu.notice'), to: '/notice' },
+    {
+      key: 'request',
+      label: t('menu.request'),
+      children: [
+        { key: 'requestSpirit', label: t('menu.requestSpirit'), to: '/request/spirit' },
+        { key: 'requestReport', label: t('menu.requestReport'), to: '/request/report', comingSoon: true },
+      ],
+    },
+    {
+      key: 'community',
+      label: t('menu.community'),
+      children: [
+        { key: 'communityNews', label: t('menu.communityNews'), to: '/community/news', comingSoon: true },
+        { key: 'communityBoard', label: t('menu.communityBoard'), to: '/community/board', comingSoon: true },
+      ],
+    },
+  ]
+
+  const itemCls = (active: boolean) =>
+    `inline-flex items-center gap-1 px-3 py-2.5 text-sm font-medium transition-colors
+    ${active ? 'text-primary-600' : 'text-neutral-600 hover:text-primary-600'}`
+
+  return (
+    <nav className="bg-white border-b border-neutral-100">
+      <div className="max-w-7xl mx-auto px-4" ref={ref}>
+        <ul className="flex items-center">
+          {menus.map(menu => {
+            if ('to' in menu) {
+              return (
+                <li key={menu.key}>
+                  <Link to={menu.to} className={itemCls(false)}>
+                    {menu.label}
+                  </Link>
+                </li>
+              )
+            }
+
+            const isOpen = open === menu.key
+            return (
+              <li key={menu.key} className="relative">
+                <button
+                  onClick={() => setOpen(isOpen ? null : menu.key)}
+                  className={itemCls(isOpen)}
+                >
+                  {menu.label}
+                  <svg
+                    className={`w-3.5 h-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                    viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+
+                {isOpen && (
+                  <div className="absolute top-full left-0 mt-0.5 w-40 bg-white rounded-xl
+                    shadow-lg border border-neutral-100 py-1 z-30">
+                    {menu.children.map(child =>
+                      child.comingSoon ? (
+                        <span
+                          key={child.key}
+                          className="flex items-center justify-between px-4 py-2 text-sm
+                            text-neutral-400 cursor-default select-none"
+                        >
+                          {child.label}
+                          <span className="text-xs bg-neutral-100 text-neutral-400 px-1.5 py-0.5 rounded">
+                            준비중
+                          </span>
+                        </span>
+                      ) : (
+                        <Link
+                          key={child.key}
+                          to={child.to}
+                          onClick={() => setOpen(null)}
+                          className="flex items-center px-4 py-2 text-sm text-neutral-700
+                            hover:bg-neutral-50 hover:text-primary-600 transition-colors"
+                        >
+                          {child.label}
+                        </Link>
+                      )
+                    )}
+                  </div>
+                )}
+              </li>
+            )
+          })}
+        </ul>
+      </div>
+    </nav>
+  )
+}
+
 // ── 언어 토글 버튼 ────────────────────────────────────────────
 
 function LangToggle() {
@@ -215,6 +328,9 @@ export default function MainLayout() {
           </div>
         </div>
       </header>
+
+      {/* GNB */}
+      <GNB />
 
       {/* 본문 */}
       <main className="flex-1 pb-16 lg:pb-0">

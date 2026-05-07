@@ -41,6 +41,36 @@ export interface AdminSpiritItem {
   status: SpiritStatus
 }
 
+export interface AdminSpiritImageItem {
+  id: number
+  imageUrl: string
+  isPrimary: boolean
+  sortOrder: number
+}
+
+export interface AdminSpiritDetail {
+  id: number
+  nameKo: string
+  nameEn: string
+  category: SpiritCategory
+  distilleryId: number | null
+  distilleryNameKo: string | null
+  distilleryNameEn: string | null
+  bottler: string | null
+  bottledYear: number | null
+  vintageYear: number | null
+  abv: number | null
+  volumeMl: number | null
+  country: string | null
+  region: string | null
+  avgScore: number | null
+  reviewCount: number
+  status: SpiritStatus
+  images: AdminSpiritImageItem[]
+  createdAt: string
+  updatedAt: string
+}
+
 export interface UpdateSpiritPayload {
   nameKo?: string
   nameEn?: string
@@ -57,6 +87,43 @@ export interface UpdateSpiritPayload {
 
 // ── Register Requests ──────────────────────────────────────────
 export type RequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
+
+export interface SpiritRegisterRequestDetail {
+  id: number
+  requesterId: number
+  requesterNickname: string
+  nameKo: string
+  nameEn: string
+  category: SpiritCategory
+  distilleryId: number | null
+  distilleryNameKo: string | null
+  bottler: string | null
+  bottledYear: number | null
+  vintageYear: number | null
+  abv: number | null
+  volumeMl: number | null
+  country: string | null
+  region: string | null
+  imageUrls: string[]
+  status: RequestStatus
+  rejectReason: string | null
+  createdAt: string
+  reviewedAt: string | null
+}
+
+export interface UpdateRequestBody {
+  nameKo: string
+  nameEn: string
+  category: SpiritCategory
+  distilleryId?: number | null
+  bottler?: string | null
+  bottledYear?: number | null
+  vintageYear?: number | null
+  abv?: number | null
+  volumeMl?: number | null
+  country?: string | null
+  region?: string | null
+}
 
 export interface SpiritRegisterRequest {
   id: number

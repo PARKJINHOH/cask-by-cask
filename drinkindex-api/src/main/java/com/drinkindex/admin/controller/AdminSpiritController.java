@@ -94,6 +94,45 @@ public class AdminSpiritController {
         ));
     }
 
+    @GetMapping("/requests/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<SpiritRegisterRequestDetailResponse>> getRequestDetail(
+            @PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(
+                spiritService.getRegisterRequestDetail(id)
+        ));
+    }
+
+    @PatchMapping("/requests/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<SpiritRegisterRequestDetailResponse>> updateRequest(
+            @PathVariable Long id,
+            @Valid @RequestBody SpiritRegisterRequestBody body) {
+        return ResponseEntity.ok(ApiResponse.success(
+                spiritService.updateRegisterRequest(id, body)
+        ));
+    }
+
+    @PostMapping("/requests/{id}/images")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<SpiritRegisterRequestDetailResponse>> uploadRequestImage(
+            @PathVariable Long id,
+            @RequestParam MultipartFile file) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(
+                spiritService.uploadRequestImage(id, file)
+        ));
+    }
+
+    @DeleteMapping("/requests/{id}/images")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<SpiritRegisterRequestDetailResponse>> removeRequestImage(
+            @PathVariable Long id,
+            @RequestParam String imageUrl) {
+        return ResponseEntity.ok(ApiResponse.success(
+                spiritService.removeRequestImageUrl(id, imageUrl)
+        ));
+    }
+
     @PatchMapping("/requests/{id}/approve")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<SpiritDetailResponse>> approveRequest(
