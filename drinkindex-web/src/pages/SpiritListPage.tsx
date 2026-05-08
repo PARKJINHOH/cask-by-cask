@@ -88,7 +88,7 @@ function FilterPanel(p: FilterPanelProps) {
           {t('spirit.filter.abv')}
         </h3>
         <RangeSlider
-          min={0} max={70}
+          min={0} max={100}
           value={p.abvRange}
           onChange={p.onAbv}
           onChangeEnd={p.onAbvEnd}
@@ -189,7 +189,7 @@ export default function SpiritListPage() {
   const sort        = (searchParams.get('sort') as SpiritSort) ?? 'LATEST'
   const page        = parseInt(searchParams.get('page')     ?? '0')
   const urlMinAbv   = parseFloat(searchParams.get('minAbv') ?? '0')
-  const urlMaxAbv   = parseFloat(searchParams.get('maxAbv') ?? '70')
+  const urlMaxAbv   = parseFloat(searchParams.get('maxAbv') ?? '100')
   const urlMinScore = parseFloat(searchParams.get('minScore') ?? '0')
   const urlMaxScore = parseFloat(searchParams.get('maxScore') ?? '100')
 
@@ -228,13 +228,13 @@ export default function SpiritListPage() {
   }, [setSearchParams])
 
   const commitAbv   = ([lo, hi]: [number, number]) => {
-    setParam({ minAbv: lo > 0 ? lo : null, maxAbv: hi < 70 ? hi : null })
+    setParam({ minAbv: lo > 0 ? lo : null, maxAbv: hi < 100 ? hi : null })
   }
   const commitScore = ([lo, hi]: [number, number]) => {
     setParam({ minScore: lo > 0 ? lo : null, maxScore: hi < 100 ? hi : null })
   }
   const handleReset = () => {
-    setAbvRange([0, 70])
+    setAbvRange([0, 100])
     setScoreRange([0, 100])
     setKeywordInput('')
     setSearchParams({}, { replace: true })
@@ -254,7 +254,7 @@ export default function SpiritListPage() {
         page,
         size: 20,
         minAbv:    urlMinAbv   > 0   ? urlMinAbv   : undefined,
-        maxAbv:    urlMaxAbv   < 70  ? urlMaxAbv   : undefined,
+        maxAbv:    urlMaxAbv   < 100 ? urlMaxAbv   : undefined,
         minScore:  urlMinScore > 0   ? urlMinScore : undefined,
         maxScore:  urlMaxScore < 100 ? urlMaxScore : undefined,
       }).then((r) => r.data.data!),
@@ -336,7 +336,7 @@ export default function SpiritListPage() {
             </select>
           </div>
 
-          {/* 그리드 */}
+          {/* 목록 */}
           {isLoading ? (
             <div className="flex justify-center py-20">
               <Spinner size="lg" className="text-primary-600" />
@@ -349,11 +349,11 @@ export default function SpiritListPage() {
             />
           ) : (
             <div
-              className={`grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4
+              className={`flex flex-col gap-2
                 transition-opacity ${isFetching ? 'opacity-70 pointer-events-none' : ''}`}
             >
               {data.content.map((spirit) => (
-                <SpiritCard key={spirit.id} spirit={spirit} />
+                <SpiritCard key={spirit.id} spirit={spirit} listView />
               ))}
             </div>
           )}
