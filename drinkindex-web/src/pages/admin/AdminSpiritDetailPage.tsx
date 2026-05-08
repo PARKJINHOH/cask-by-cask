@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form'
 import Badge from '@/shared/components/Badge'
 import Button from '@/shared/components/Button'
 import Spinner from '@/shared/components/Spinner'
+import ImageLightbox from '@/shared/components/ImageLightbox'
 import { formatDate } from '@/shared/utils/format'
 import {
   useAdminSpiritDetail,
@@ -48,6 +49,9 @@ function SpiritImageSection({ spiritId, images }: { spiritId: number; images: Ad
   const upload = useUploadSpiritImage()
   const deleteImg = useDeleteSpiritImage()
   const setPrimary = useSetPrimarySpiritImage()
+  const [lightboxIndex, setLightboxIndex] = useState(-1)
+
+  const imageUrls = images.map((img) => img.imageUrl)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -81,10 +85,12 @@ function SpiritImageSection({ spiritId, images }: { spiritId: number; images: Ad
         <p className="text-xs text-neutral-400">등록된 이미지가 없습니다.</p>
       ) : (
         <div className="grid grid-cols-3 gap-3">
-          {images.map((img) => (
+          {images.map((img, idx) => (
             <div
               key={img.id}
-              className="relative group aspect-square rounded-xl overflow-hidden border border-neutral-200"
+              onClick={() => setLightboxIndex(idx)}
+              className="relative group aspect-square rounded-xl overflow-hidden border border-neutral-200
+                cursor-zoom-in"
             >
               <img src={img.imageUrl} alt="" className="w-full h-full object-cover" />
               {img.isPrimary && (
@@ -96,7 +102,7 @@ function SpiritImageSection({ spiritId, images }: { spiritId: number; images: Ad
                 transition-opacity flex flex-col items-center justify-center gap-1.5">
                 {!img.isPrimary && (
                   <button
-                    onClick={() => setPrimary.mutate({ id: spiritId, imageId: img.id })}
+                    onClick={(e) => { e.stopPropagation(); setPrimary.mutate({ id: spiritId, imageId: img.id }) }}
                     disabled={setPrimary.isPending}
                     className="text-white text-xs font-semibold px-2 py-1 bg-amber-500/80 rounded
                       hover:bg-amber-500 disabled:opacity-50"
@@ -105,7 +111,8 @@ function SpiritImageSection({ spiritId, images }: { spiritId: number; images: Ad
                   </button>
                 )}
                 <button
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation()
                     if (confirm('이미지를 삭제하시겠습니까?'))
                       deleteImg.mutate({ id: spiritId, imageId: img.id })
                   }}
@@ -120,6 +127,13 @@ function SpiritImageSection({ spiritId, images }: { spiritId: number; images: Ad
           ))}
         </div>
       )}
+
+      <ImageLightbox
+        images={imageUrls}
+        initialIndex={lightboxIndex >= 0 ? lightboxIndex : 0}
+        open={lightboxIndex >= 0}
+        onClose={() => setLightboxIndex(-1)}
+      />
     </div>
   )
 }

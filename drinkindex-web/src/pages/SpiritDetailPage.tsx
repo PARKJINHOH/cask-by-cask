@@ -6,6 +6,7 @@ import StarScore from '@/shared/components/StarScore'
 import Spinner from '@/shared/components/Spinner'
 import Modal from '@/shared/components/Modal'
 import Button from '@/shared/components/Button'
+import ImageLightbox from '@/shared/components/ImageLightbox'
 import ReviewList from '@/domain/review/components/ReviewList'
 import CommentList from '@/domain/comment/components/CommentList'
 import WishlistButtons from '@/domain/wishlist/components/WishlistButtons'
@@ -25,26 +26,44 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 function Gallery({
-  images, nameKo, selectedIdx, onSelect,
+  images, nameKo, selectedIdx, onSelect, onImageClick,
 }: {
   images: SpiritImage[]
   nameKo: string
   selectedIdx: number
   onSelect: (i: number) => void
+  onImageClick: (i: number) => void
 }) {
   const current = images[selectedIdx]
   return (
     <div className="space-y-3">
-      <div className="aspect-square rounded-xl overflow-hidden bg-neutral-100">
+      <div
+        onClick={() => current && onImageClick(selectedIdx)}
+        className={`aspect-square rounded-xl overflow-hidden bg-neutral-100 relative group ${
+          current ? 'cursor-zoom-in' : ''
+        }`}
+      >
         {current ? (
-          <img key={current.id} src={current.imageUrl} alt={nameKo}
-            className="w-full h-full object-cover" loading="eager" />
+          <>
+            <img key={current.id} src={current.imageUrl} alt={nameKo}
+              className="w-full h-full object-cover" loading="eager" />
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-colors
+              flex items-center justify-center">
+              <svg className="w-8 h-8 text-white opacity-0 group-hover:opacity-80 transition-opacity drop-shadow-lg"
+                viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <circle cx="11" cy="11" r="7" />
+                <line x1="16.5" y1="16.5" x2="21" y2="21" />
+                <line x1="11" y1="8" x2="11" y2="14" />
+                <line x1="8" y1="11" x2="14" y2="11" />
+              </svg>
+            </div>
+          </>
         ) : (
           <div className="w-full h-full flex items-center justify-center text-5xl">🥃</div>
         )}
       </div>
       {images.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto pb-1">
+        <div className="flex gap-2 overflow-x-hidden pb-1">
           {images.map((img, i) => (
             <button key={img.id} onClick={() => onSelect(i)}
               className={`w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 border-2 transition-colors ${
@@ -87,9 +106,10 @@ export default function SpiritDetailPage() {
   const navigate = useNavigate()
   const spiritId = Number(id)
 
-  const [selectedImg, setSelectedImg] = useState(0)
-  const [activeTab, setActiveTab]     = useState<Tab>('reviews')
-  const [loginModal, setLoginModal]   = useState(false)
+  const [selectedImg, setSelectedImg]   = useState(0)
+  const [activeTab, setActiveTab]       = useState<Tab>('reviews')
+  const [loginModal, setLoginModal]     = useState(false)
+  const [lightboxIdx, setLightboxIdx]   = useState(-1)
 
   const { data: spirit, isLoading } = useSpiritDetail(spiritId)
 
@@ -128,6 +148,7 @@ export default function SpiritDetailPage() {
               nameKo={spirit.nameKo}
               selectedIdx={selectedImg}
               onSelect={setSelectedImg}
+              onImageClick={setLightboxIdx}
             />
           </div>
 
@@ -177,6 +198,13 @@ export default function SpiritDetailPage() {
           )}
         </div>
       </div>
+
+      <ImageLightbox
+        images={spirit.images.map((img) => img.imageUrl)}
+        initialIndex={lightboxIdx >= 0 ? lightboxIdx : 0}
+        open={lightboxIdx >= 0}
+        onClose={() => setLightboxIdx(-1)}
+      />
 
       {/* Login modal */}
       <Modal

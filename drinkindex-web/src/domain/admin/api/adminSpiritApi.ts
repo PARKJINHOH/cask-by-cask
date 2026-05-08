@@ -6,11 +6,15 @@ import type {
   SpiritRegisterRequest,
   SpiritRegisterRequestDetail,
   UpdateSpiritPayload,
+  CreateSpiritPayload,
   UpdateRequestBody,
 } from '../types/admin.types'
 import type { SpiritCategory, SpiritStatus } from '@/domain/spirit/types/spirit.types'
 
 export const adminSpiritApi = {
+  create: (data: CreateSpiritPayload) =>
+    axiosInstance.post<ApiResponse<AdminSpiritDetail>>('/api/admin/spirits', data),
+
   list: (params: {
     keyword?: string
     category?: SpiritCategory

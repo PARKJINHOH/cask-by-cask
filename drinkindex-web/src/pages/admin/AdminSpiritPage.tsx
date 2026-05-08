@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Badge from '@/shared/components/Badge'
-import Button from '@/shared/components/Button'
 import Input from '@/shared/components/Input'
 import Spinner from '@/shared/components/Spinner'
 import Pagination from '@/shared/components/Pagination'
+import ImageLightbox from '@/shared/components/ImageLightbox'
 import { useAdminSpirits } from '@/domain/admin/hooks/useAdminSpirits'
 import type { SpiritCategory, SpiritStatus } from '@/domain/spirit/types/spirit.types'
 
@@ -31,6 +31,7 @@ export default function AdminSpiritPage() {
   const [category, setCategory] = useState<SpiritCategory | ''>('')
   const [status, setStatus]     = useState<SpiritStatus>('ACTIVE')
   const [page, setPage]         = useState(0)
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
 
   const { data, isLoading } = useAdminSpirits({
     keyword: keyword.trim() || undefined,
@@ -97,6 +98,7 @@ export default function AdminSpiritPage() {
               <thead className="bg-neutral-50 border-b border-neutral-200">
                 <tr>
                   <th className="text-left px-4 py-3 text-neutral-500 font-medium w-16">ID</th>
+                  <th className="text-left px-3 py-3 text-neutral-500 font-medium w-14">사진</th>
                   <th className="text-left px-4 py-3 text-neutral-500 font-medium">이름</th>
                   <th className="text-left px-4 py-3 text-neutral-500 font-medium">카테고리</th>
                   <th className="text-left px-4 py-3 text-neutral-500 font-medium">상태</th>
@@ -108,7 +110,7 @@ export default function AdminSpiritPage() {
               <tbody className="divide-y divide-neutral-100">
                 {!data || data.empty ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-10 text-center text-neutral-400">
+                    <td colSpan={8} className="px-4 py-10 text-center text-neutral-400">
                       데이터가 없습니다.
                     </td>
                   </tr>
@@ -116,6 +118,32 @@ export default function AdminSpiritPage() {
                   data.content.map((spirit) => (
                     <tr key={spirit.id} className="hover:bg-neutral-50 transition-colors">
                       <td className="px-4 py-3 text-neutral-400 tabular-nums">{spirit.id}</td>
+
+                      {/* 썸네일 */}
+                      <td className="px-3 py-2">
+                        {spirit.primaryImageUrl ? (
+                          <button
+                            type="button"
+                            onClick={() => setLightboxUrl(spirit.primaryImageUrl)}
+                            aria-label={`${spirit.nameKo} 이미지 확대`}
+                            className="w-10 h-10 rounded-lg overflow-hidden bg-neutral-100
+                              cursor-zoom-in hover:ring-2 hover:ring-primary-400 transition-all
+                              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                          >
+                            <img
+                              src={spirit.primaryImageUrl}
+                              alt=""
+                              className="w-full h-full object-cover"
+                            />
+                          </button>
+                        ) : (
+                          <div className="w-10 h-10 rounded-lg bg-neutral-100 flex items-center justify-center
+                            text-neutral-300 text-lg">
+                            🥃
+                          </div>
+                        )}
+                      </td>
+
                       <td className="px-4 py-3">
                         <p className="font-medium text-neutral-900">{spirit.nameKo}</p>
                         <p className="text-xs text-neutral-400">{spirit.nameEn}</p>
@@ -164,6 +192,11 @@ export default function AdminSpiritPage() {
         </>
       )}
 
+      <ImageLightbox
+        images={lightboxUrl ? [lightboxUrl] : []}
+        open={lightboxUrl !== null}
+        onClose={() => setLightboxUrl(null)}
+      />
     </div>
   )
 }

@@ -85,6 +85,20 @@ export interface UpdateSpiritPayload {
   region?: string | null
 }
 
+export interface CreateSpiritPayload {
+  nameKo: string
+  nameEn: string
+  category: SpiritCategory
+  distilleryId?: number | null
+  bottler?: string | null
+  bottledYear?: number | null
+  vintageYear?: number | null
+  abv?: number | null
+  volumeMl?: number | null
+  country?: string | null
+  region?: string | null
+}
+
 // ── Register Requests ──────────────────────────────────────────
 export type RequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
 
