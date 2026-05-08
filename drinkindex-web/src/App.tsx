@@ -5,6 +5,8 @@ import MainLayout from '@/layouts/MainLayout'
 import AdminLayout from '@/layouts/AdminLayout'
 import SpiritListPage from '@/pages/SpiritListPage'
 import SpiritDetailPage from '@/pages/SpiritDetailPage'
+import NoticePage from '@/pages/NoticePage'
+import NoticeDetailPage from '@/pages/NoticeDetailPage'
 import LoginPage from '@/pages/LoginPage'
 import SignupPage from '@/pages/SignupPage'
 import MyPage from '@/pages/MyPage'
@@ -29,6 +31,8 @@ export default function App() {
           <Route element={<MainLayout />}>
             <Route index element={<SpiritListPage />} />
             <Route path="spirits/:id" element={<SpiritDetailPage />} />
+            <Route path="notices" element={<NoticePage />} />
+            <Route path="notices/:id" element={<NoticeDetailPage />} />
             <Route path="login" element={<LoginPage />} />
             <Route path="signup" element={<SignupPage />} />
             <Route element={<PrivateRoute />}>

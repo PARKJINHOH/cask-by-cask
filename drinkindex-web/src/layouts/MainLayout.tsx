@@ -5,6 +5,9 @@ import { useAuthStore } from '@/domain/auth/store/authStore'
 import { useAuth } from '@/domain/auth/hooks/useAuth'
 import { saveLang } from '@/shared/utils/i18n'
 import BottomNav from '@/shared/components/BottomNav'
+import { useLatestNotice } from '@/domain/notice/hooks/useNotices'
+
+const SEEN_KEY = 'notice:lastSeenId'
 
 // ── GNB (글로벌 내비게이션 바) ────────────────────────────────
 
@@ -18,6 +21,11 @@ function GNB() {
   const [open, setOpen] = useState<string | null>(null)
   const ref = useRef<HTMLDivElement>(null)
 
+  // 미확인 공지 배지: 최신 공지 id > localStorage 저장 id 이면 표시
+  const { data: latestNotice } = useLatestNotice()
+  const lastSeenId = Number(localStorage.getItem(SEEN_KEY) ?? 0)
+  const hasUnread = latestNotice != null && latestNotice.id > lastSeenId
+
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(null)
@@ -27,7 +35,7 @@ function GNB() {
   }, [])
 
   const menus: GNBItem[] = [
-    { key: 'notice', label: t('menu.notice'), to: '/notice' },
+    { key: 'notice', label: t('menu.notice'), to: '/notices' },
     {
       key: 'request',
       label: t('menu.request'),
@@ -56,10 +64,17 @@ function GNB() {
         <ul className="flex items-center">
           {menus.map(menu => {
             if ('to' in menu) {
+              const isNotice = menu.key === 'notice'
               return (
                 <li key={menu.key}>
-                  <Link to={menu.to} className={itemCls(false)}>
+                  <Link to={menu.to} className={`${itemCls(false)} relative`}>
                     {menu.label}
+                    {isNotice && hasUnread && (
+                      <span
+                        className="absolute top-1.5 right-0.5 w-1.5 h-1.5 rounded-full bg-red-500"
+                        aria-label="새 공지"
+                      />
+                    )}
                   </Link>
                 </li>
               )
