@@ -16,6 +16,8 @@ import AdminRequestPage from '@/pages/admin/AdminRequestPage'
 import AdminRequestDetailPage from '@/pages/admin/AdminRequestDetailPage'
 import AdminDistilleryPage from '@/pages/admin/AdminDistilleryPage'
 import AdminReportPage from '@/pages/admin/AdminReportPage'
+import AdminNoticeListPage from '@/pages/admin/AdminNoticeListPage'
+import AdminNoticeFormPage from '@/pages/admin/AdminNoticeFormPage'
 import PrivateRoute from '@/shared/components/PrivateRoute'
 import AdminRoute from '@/shared/components/AdminRoute'
 
@@ -45,6 +47,9 @@ export default function App() {
               <Route path="spirits/requests/:id" element={<AdminRequestDetailPage />} />
               <Route path="distilleries" element={<AdminDistilleryPage />} />
               <Route path="reports" element={<AdminReportPage />} />
+              <Route path="notices" element={<AdminNoticeListPage />} />
+              <Route path="notices/new" element={<AdminNoticeFormPage />} />
+              <Route path="notices/:id/edit" element={<AdminNoticeFormPage />} />
             </Route>
           </Route>
         </Routes>

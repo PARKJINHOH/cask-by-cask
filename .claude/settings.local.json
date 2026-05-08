@@ -21,7 +21,9 @@
       "Bash(npm install *)",
       "Bash(npm audit *)",
       "Bash(npm run *)",
-      "Bash(xargs grep -l \"class.*Distillery\")"
+      "Bash(xargs grep -l \"class.*Distillery\")",
+      "Bash(dir /s /b \"D:\\\\workspace\\\\easymediaProject\\\\drink-index\\\\drinkindex-web\\\\src\")",
+      "Bash(findstr /v \"\\\\.\")"
     ]
   }
 }

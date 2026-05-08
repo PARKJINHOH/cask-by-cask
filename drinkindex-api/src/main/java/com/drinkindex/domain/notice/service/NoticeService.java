@@ -1,6 +1,7 @@
 package com.drinkindex.domain.notice.service;
 
 import com.drinkindex.domain.notice.dto.*;
+import com.drinkindex.domain.notice.dto.NoticeAdminDetailResponse;
 import com.drinkindex.domain.notice.entity.Notice;
 import com.drinkindex.domain.notice.entity.NoticeCategory;
 import com.drinkindex.domain.notice.entity.NoticeImage;
@@ -77,6 +78,14 @@ public class NoticeService {
     // ═══════════════════════════════════════════
     // 관리자 공지 CRUD
     // ═══════════════════════════════════════════
+
+    @Transactional(readOnly = true)
+    public NoticeAdminDetailResponse getNoticeForAdmin(Long noticeId) {
+        Notice notice = noticeRepository.findById(noticeId)
+                .orElseThrow(() -> new CustomException(ErrorCode.NOTICE_NOT_FOUND));
+        List<NoticeImage> images = noticeImageRepository.findByNoticeIdAndIsUsedTrue(noticeId);
+        return NoticeAdminDetailResponse.from(notice, images);
+    }
 
     @Transactional(readOnly = true)
     public Page<NoticeListResponse> getAllNoticesForAdmin(NoticeCategory category, Boolean isPublished,

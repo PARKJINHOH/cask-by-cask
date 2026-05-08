@@ -1,6 +1,7 @@
 package com.drinkindex.domain.notice.controller;
 
 import com.drinkindex.domain.notice.dto.*;
+import com.drinkindex.domain.notice.dto.NoticeAdminDetailResponse;
 import com.drinkindex.domain.notice.entity.NoticeCategory;
 import com.drinkindex.domain.notice.service.NoticeService;
 import com.drinkindex.global.auth.security.CustomUserDetails;
@@ -23,6 +24,15 @@ public class NoticeAdminController {
     private final NoticeService noticeService;
 
     // ─── 공지 CRUD ───────────────────────────────────────
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<NoticeAdminDetailResponse>> getNoticeDetail(
+            @PathVariable Long id
+    ) {
+        return ResponseEntity.ok(
+                ApiResponse.success(noticeService.getNoticeForAdmin(id))
+        );
+    }
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<NoticeListResponse>>> getAllNotices(

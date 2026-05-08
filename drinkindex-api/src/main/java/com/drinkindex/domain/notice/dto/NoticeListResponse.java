@@ -14,15 +14,18 @@ public class NoticeListResponse {
     private final String title;
     private final NoticeCategory category;
     private final Boolean isPinned;
+    private final Boolean isPublished;
     private final Long viewCount;
     private final LocalDateTime createdAt;
 
     private NoticeListResponse(Long id, String title, NoticeCategory category,
-                               Boolean isPinned, Long viewCount, LocalDateTime createdAt) {
+                               Boolean isPinned, Boolean isPublished,
+                               Long viewCount, LocalDateTime createdAt) {
         this.id = id;
         this.title = title;
         this.category = category;
         this.isPinned = isPinned;
+        this.isPublished = isPublished;
         this.viewCount = viewCount;
         this.createdAt = createdAt;
     }
@@ -33,6 +36,7 @@ public class NoticeListResponse {
                 notice.getTitle(),
                 notice.getCategory(),
                 notice.getIsPinned(),
+                notice.getIsPublished(),
                 notice.getViewCount(),
                 notice.getCreatedAt()
         );
