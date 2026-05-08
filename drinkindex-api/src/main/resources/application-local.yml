@@ -22,6 +22,10 @@ spring:
 upload:
   path: ${user.home}/drinkindex-uploads
 
+storage:
+  local:
+    base-path: ${user.home}/drinkindex-uploads
+
 cors:
   allowed-origins: "http://localhost:5173,http://localhost:3000"
 

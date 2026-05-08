@@ -16,6 +16,13 @@ spring:
       port: 16379
       password: ${DEV_REDIS_PASSWORD}
 
+storage:
+  s3:
+    bucket: TODO
+    region: TODO
+    access-key: TODO
+    secret-key: TODO
+
 cors:
   allowed-origins: ${FRONTEND_URL:http://localhost:5173}
 

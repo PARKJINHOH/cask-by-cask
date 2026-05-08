@@ -51,6 +51,20 @@ public enum ErrorCode {
     REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "REPORT_002", "신고 내역을 찾을 수 없습니다."),
     TARGET_NOT_FOUND(HttpStatus.NOT_FOUND, "REPORT_003", "신고 대상을 찾을 수 없습니다."),
 
+    // Notice
+    NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTICE_001", "공지사항을 찾을 수 없습니다."),
+    NOTICE_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTICE_002", "공지사항 이미지를 찾을 수 없습니다."),
+    NOTICE_ACCESS_DENIED(HttpStatus.FORBIDDEN, "NOTICE_003", "공지사항 접근 권한이 없습니다."),
+    NOTICE_INVALID_IMAGE_FORMAT(HttpStatus.BAD_REQUEST, "NOTICE_004", "허용되지 않는 이미지 형식입니다. (JPG, JPEG, PNG, GIF, WEBP)"),
+    NOTICE_INVALID_IMAGE_MAGIC_BYTES(HttpStatus.BAD_REQUEST, "NOTICE_005", "이미지 파일의 실제 형식이 확장자와 일치하지 않습니다."),
+    NOTICE_IMAGE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "NOTICE_006", "이미지 파일 크기는 10MB를 초과할 수 없습니다."),
+    DELETE_USED_IMAGE(HttpStatus.BAD_REQUEST, "NOTICE_007", "공지에 사용 중인 이미지는 삭제할 수 없습니다."),
+    RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "RATE_001", "요청 한도를 초과했습니다."),
+
+    // Storage
+    STORAGE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "STORAGE_001", "파일 저장 중 오류가 발생했습니다."),
+    INVALID_FILE_PATH(HttpStatus.BAD_REQUEST, "STORAGE_002", "잘못된 파일 경로입니다."),
+
     // Common
     NOT_FOUND(HttpStatus.NOT_FOUND, "COMMON_001", "리소스를 찾을 수 없습니다."),
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "COMMON_002", "입력값이 올바르지 않습니다."),

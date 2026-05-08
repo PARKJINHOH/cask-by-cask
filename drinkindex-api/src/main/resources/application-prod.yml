@@ -15,6 +15,13 @@ spring:
       host: ${PROD_REDIS_HOST}
       port: 6379
 
+storage:
+  s3:
+    bucket: TODO
+    region: TODO
+    access-key: TODO
+    secret-key: TODO
+
 cors:
   allowed-origins: ${FRONTEND_URL}
 

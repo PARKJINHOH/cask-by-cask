@@ -56,6 +56,13 @@ dependencies {
     annotationProcessor("jakarta.annotation:jakarta.annotation-api")
     annotationProcessor("jakarta.persistence:jakarta.persistence-api")
 
+    // HTML Sanitizer — XSS 방어 (공지사항 TipTap 콘텐츠 서버 측 재검증)
+    implementation("org.jsoup:jsoup:1.17.2")
+
+    // Rate Limiting — 이미지 업로드 남용 방지 (Bucket4j + Lettuce)
+    implementation("io.github.bucket4j:bucket4j-core:8.10.1")
+    implementation("io.github.bucket4j:bucket4j-redis:8.10.1")
+
     // Swagger / OpenAPI
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.3")
 
