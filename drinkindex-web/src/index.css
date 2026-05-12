@@ -47,7 +47,11 @@
   .notice-content img {
     @apply max-w-full rounded-lg my-4;
     height: auto;
+    display: block;
   }
+  .notice-content img[style*="text-align: center"] { margin-left: auto; margin-right: auto; }
+  .notice-content img[style*="text-align: right"]  { margin-left: auto; margin-right: 0; }
+  .notice-content img[style*="text-align: left"]   { margin-left: 0; margin-right: auto; }
   .notice-content table {
     @apply w-full border-collapse mb-4 text-sm;
   }

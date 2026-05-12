@@ -1,6 +1,8 @@
 .notice-editor {
   max-height: 600px;
   overflow-y: auto;
+  /* 스크롤바가 나타날 때 레이아웃 시프트 방지 */
+  scrollbar-gutter: stable;
 }
 
 .notice-editor .ProseMirror {
@@ -130,6 +132,11 @@
   display: block;
   height: auto;
 }
+
+/* 이미지 정렬: TextAlign이 img에 text-align style을 삽입하므로 margin으로 변환 */
+.notice-editor .ProseMirror img[style*="text-align: center"] { margin-left: auto; margin-right: auto; }
+.notice-editor .ProseMirror img[style*="text-align: right"]  { margin-left: auto; margin-right: 0; }
+.notice-editor .ProseMirror img[style*="text-align: left"]   { margin-left: 0; margin-right: auto; }
 
 /* HR */
 .notice-editor .ProseMirror hr {

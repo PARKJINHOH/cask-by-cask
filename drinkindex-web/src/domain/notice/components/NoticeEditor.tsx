@@ -82,7 +82,7 @@ export default function NoticeEditor({ value, onChange, onImageUploadError, plac
         HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' },
       }),
       ResizableImage.configure({ inline: false, allowBase64: false }),
-      TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      TextAlign.configure({ types: ['heading', 'paragraph', 'image'] }),
       Placeholder.configure({ placeholder: placeholder ?? '공지 내용을 입력하세요...' }),
       CharacterCount.configure({ limit: MAX_CHARS }),
       Table.configure({ resizable: true }),

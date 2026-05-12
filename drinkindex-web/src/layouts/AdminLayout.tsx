@@ -9,12 +9,12 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
+  { path: '/admin/notices',          label: '공지 관리',  icon: '📢' },
+  { path: '/admin/spirits/requests', label: '등록 요청',  icon: '📋' },
+  { path: '/admin/reports',          label: '신고 관리',  icon: '🚨' },
   { path: '/admin/users',            label: '회원 관리',  icon: '👥', exact: true },
   { path: '/admin/spirits',          label: '술 관리',    icon: '🥃', exact: true },
-  { path: '/admin/spirits/requests', label: '등록 요청',  icon: '📋' },
   { path: '/admin/distilleries',     label: '증류소 관리', icon: '🏭', exact: true },
-  { path: '/admin/reports',          label: '신고 관리',  icon: '🚨' },
-  { path: '/admin/notices',          label: '공지 관리',  icon: '📢' },
 ]
 
 export default function AdminLayout() {

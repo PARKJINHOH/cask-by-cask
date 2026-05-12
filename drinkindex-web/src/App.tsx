@@ -20,6 +20,7 @@ import AdminDistilleryPage from '@/pages/admin/AdminDistilleryPage'
 import AdminReportPage from '@/pages/admin/AdminReportPage'
 import AdminNoticeListPage from '@/pages/admin/AdminNoticeListPage'
 import AdminNoticeFormPage from '@/pages/admin/AdminNoticeFormPage'
+import AdminNoticePreviewPage from '@/pages/admin/AdminNoticePreviewPage'
 import PrivateRoute from '@/shared/components/PrivateRoute'
 import AdminRoute from '@/shared/components/AdminRoute'
 
@@ -53,6 +54,7 @@ export default function App() {
               <Route path="reports" element={<AdminReportPage />} />
               <Route path="notices" element={<AdminNoticeListPage />} />
               <Route path="notices/new" element={<AdminNoticeFormPage />} />
+              <Route path="notices/:id" element={<AdminNoticePreviewPage />} />
               <Route path="notices/:id/edit" element={<AdminNoticeFormPage />} />
             </Route>
           </Route>

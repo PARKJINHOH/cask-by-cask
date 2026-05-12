@@ -116,7 +116,7 @@ export default function AdminNoticeListPage() {
               <th className="text-left px-4 py-3 font-medium text-neutral-500 w-20">발행</th>
               <th className="text-left px-4 py-3 font-medium text-neutral-500 w-24">조회수</th>
               <th className="text-left px-4 py-3 font-medium text-neutral-500 w-36">등록일</th>
-              <th className="px-4 py-3 w-24" />
+              <th className="px-4 py-3 w-36" />
             </tr>
           </thead>
           <tbody>
@@ -141,15 +141,25 @@ export default function AdminNoticeListPage() {
                   <td className="px-4 py-3 text-neutral-400">{notice.id}</td>
                   <td className="px-4 py-3">
                     <Link
-                      to={`/notices/${notice.id}`}
-                      className="font-medium text-neutral-900 hover:text-primary-600 transition-colors line-clamp-1"
+                      to={`/admin/notices/${notice.id}`}
+                      className="group/title inline-flex items-center gap-1.5 max-w-full font-medium
+                        text-primary-700 hover:text-primary-900 hover:underline underline-offset-2
+                        transition-colors"
                     >
                       {notice.isPinned && (
-                        <span className="inline-block mr-1.5 text-xs px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded font-semibold">
+                        <span className="inline-block flex-shrink-0 text-xs px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded font-semibold">
                           고정
                         </span>
                       )}
-                      {notice.title}
+                      <span className="line-clamp-1">{notice.title}</span>
+                      <svg
+                        className="w-3.5 h-3.5 flex-shrink-0 opacity-0 group-hover/title:opacity-100 transition-opacity text-primary-400"
+                        viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                      >
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                        <polyline points="15 3 21 3 21 9" />
+                        <line x1="10" y1="14" x2="21" y2="3" />
+                      </svg>
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-neutral-500">
@@ -170,22 +180,34 @@ export default function AdminNoticeListPage() {
                     {new Date(notice.createdAt).toLocaleDateString('ko-KR')}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-1.5 justify-end">
-                      <Button
-                        variant="ghost"
-                        size="sm"
+                    <div className="flex items-center gap-1.5 justify-end flex-nowrap">
+                      <button
+                        type="button"
                         onClick={() => navigate(`/admin/notices/${notice.id}/edit`)}
+                        className="inline-flex items-center gap-1 h-7 px-2.5 text-xs font-medium
+                          rounded-md border border-neutral-300 bg-white text-neutral-600
+                          hover:bg-neutral-50 hover:border-neutral-400 transition-colors whitespace-nowrap"
                       >
+                        <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg>
                         수정
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-danger-600 hover:bg-danger-50"
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => setDeleteTarget({ id: notice.id, title: notice.title })}
+                        className="inline-flex items-center gap-1 h-7 px-2.5 text-xs font-medium
+                          rounded-md border border-red-200 bg-white text-red-600
+                          hover:bg-red-50 hover:border-red-300 transition-colors whitespace-nowrap"
                       >
+                        <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="3 6 5 6 21 6" />
+                          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                          <path d="M10 11v6M14 11v6" />
+                        </svg>
                         삭제
-                      </Button>
+                      </button>
                     </div>
                   </td>
                 </tr>

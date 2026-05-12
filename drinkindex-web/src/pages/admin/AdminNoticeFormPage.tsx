@@ -20,6 +20,7 @@ const schema = z.object({
   content: z.string().min(1, '내용을 입력하세요'),
   category: z.enum(['GENERAL', 'UPDATE', 'EVENT', 'MAINTENANCE'] as const),
   isPinned: z.boolean(),
+  isPublished: z.boolean(),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -40,6 +41,7 @@ export default function AdminNoticeFormPage() {
     handleSubmit,
     control,
     reset,
+    watch,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -48,6 +50,7 @@ export default function AdminNoticeFormPage() {
       content: '',
       category: 'GENERAL',
       isPinned: false,
+      isPublished: false,
     },
   })
 
@@ -58,20 +61,21 @@ export default function AdminNoticeFormPage() {
         content: existing.content,
         category: existing.category,
         isPinned: existing.isPinned,
+        isPublished: existing.isPublished,
       })
     }
   }, [existing, reset])
 
-  const onSubmit = async (values: FormValues, isPublished: boolean) => {
+  const onSubmit = async (values: FormValues) => {
     try {
       if (isEdit && noticeId != null) {
         await updateMutation.mutateAsync({
           id: noticeId,
-          data: { ...values, isPublished },
+          data: values,
         })
-        showToast('공지사항이 수정되었습니다.', 'success')
+        showToast('공지사항이 저장되었습니다.', 'success')
       } else {
-        await createMutation.mutateAsync({ ...values, isPublished })
+        await createMutation.mutateAsync(values)
         showToast('공지사항이 저장되었습니다.', 'success')
       }
       setTimeout(() => navigate('/admin/notices'), 800)
@@ -81,6 +85,7 @@ export default function AdminNoticeFormPage() {
   }
 
   const isPending = createMutation.isPending || updateMutation.isPending
+  const isPublished = watch('isPublished')
 
   if (isEdit && isLoading) {
     return (
@@ -190,6 +195,40 @@ export default function AdminNoticeFormPage() {
           )}
         </div>
 
+        {/* 노출 설정 */}
+        <Controller
+          name="isPublished"
+          control={control}
+          render={({ field }) => (
+            <div className="flex items-center justify-between px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-lg">
+              <div>
+                <p className="text-sm font-medium text-neutral-700">공지 노출</p>
+                <p className="text-xs text-neutral-400 mt-0.5">
+                  {isPublished ? '사용자에게 공지가 공개됩니다.' : '저장만 되고 사용자에게 노출되지 않습니다.'}
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={field.value}
+                onClick={() => field.onChange(!field.value)}
+                className={[
+                  'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent',
+                  'transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
+                  field.value ? 'bg-primary-600' : 'bg-neutral-300',
+                ].join(' ')}
+              >
+                <span
+                  className={[
+                    'pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform duration-200',
+                    field.value ? 'translate-x-5' : 'translate-x-0',
+                  ].join(' ')}
+                />
+              </button>
+            </div>
+          )}
+        />
+
         {/* 하단 버튼 */}
         <div className="flex items-center gap-3 pt-2 border-t border-neutral-100">
           <Button
@@ -201,18 +240,11 @@ export default function AdminNoticeFormPage() {
           </Button>
           <div className="flex-1" />
           <Button
-            variant="secondary"
-            isLoading={isPending}
-            onClick={handleSubmit((v) => onSubmit(v, false))}
-          >
-            임시저장
-          </Button>
-          <Button
             variant="primary"
             isLoading={isPending}
-            onClick={handleSubmit((v) => onSubmit(v, true))}
+            onClick={handleSubmit(onSubmit)}
           >
-            발행
+            저장
           </Button>
         </div>
       </form>

@@ -40,7 +40,7 @@ public class HtmlSanitizer {
                 // 상대 경로 URL을 사용하므로 프로토콜 제한을 두지 않음.
                 // data: URI 악용은 업로드 시 Magic Bytes 검증 + 클라이언트 DOMPurify로 방어.
                 .addTags("img")
-                .addAttributes("img", "src", "alt", "width", "height")
+                .addAttributes("img", "src", "alt", "width", "height", "style")
                 // 테이블
                 .addTags("table", "thead", "tbody", "tr", "th", "td")
                 .addAttributes("th", "scope", "colspan", "rowspan")
