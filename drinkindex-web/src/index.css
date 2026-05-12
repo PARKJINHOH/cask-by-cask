@@ -45,7 +45,8 @@
     @apply bg-transparent text-inherit p-0 rounded-none;
   }
   .notice-content img {
-    @apply max-w-full rounded-lg my-4 mx-auto;
+    @apply max-w-full rounded-lg my-4;
+    height: auto;
   }
   .notice-content table {
     @apply w-full border-collapse mb-4 text-sm;

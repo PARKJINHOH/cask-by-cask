@@ -33,13 +33,12 @@ public class Notice extends BaseTimeEntity {
     private String title;
 
     // [보안] XSS: 원본 HTML. DB 저장 전용, API 응답에서 절대 노출 금지.
-    @Lob
-    @Column(nullable = false)
+    // LONGTEXT: HTML 원본은 이미지 src, 서식 태그 등으로 쉽게 수십 KB를 초과하므로 LONGTEXT 필수.
+    @Column(nullable = false, columnDefinition = "LONGTEXT")
     private String content;
 
     // [보안] XSS: jsoup Sanitize 완료본. API 응답은 이 필드만 사용.
-    @Lob
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "LONGTEXT")
     private String contentSanitized;
 
     @Enumerated(EnumType.STRING)

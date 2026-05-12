@@ -70,7 +70,9 @@ public class NoticeService {
         noticeRepository.incrementViewCount(noticeId);
 
         List<NoticeImage> images = noticeImageRepository.findByNoticeIdAndIsUsedTrue(noticeId);
-        return NoticeDetailResponse.from(notice, images);
+        // 현재 whitelist 기준으로 재Sanitize — 이전 버전 저장 데이터도 수정 없이 정상 렌더링
+        String freshSanitized = htmlSanitizer.sanitize(notice.getContent());
+        return NoticeDetailResponse.from(notice, images, freshSanitized);
     }
 
     // ═══════════════════════════════════════════
@@ -82,7 +84,9 @@ public class NoticeService {
         Notice notice = noticeRepository.findById(noticeId)
                 .orElseThrow(() -> new CustomException(ErrorCode.NOTICE_NOT_FOUND));
         List<NoticeImage> images = noticeImageRepository.findByNoticeIdAndIsUsedTrue(noticeId);
-        return NoticeAdminDetailResponse.from(notice, images);
+        // 현재 whitelist 기준으로 재Sanitize — 이전 버전 저장 데이터도 수정 없이 정상 렌더링
+        String freshSanitized = htmlSanitizer.sanitize(notice.getContent());
+        return NoticeAdminDetailResponse.from(notice, images, freshSanitized);
     }
 
     @Transactional(readOnly = true)
@@ -129,7 +133,7 @@ public class NoticeService {
         syncImageUsage(saved, request.getContent());
 
         List<NoticeImage> images = noticeImageRepository.findByNoticeIdAndIsUsedTrue(saved.getId());
-        return NoticeDetailResponse.from(saved, images);
+        return NoticeDetailResponse.from(saved, images, contentSanitized);
     }
 
     @Transactional
@@ -163,7 +167,7 @@ public class NoticeService {
         }
 
         List<NoticeImage> images = noticeImageRepository.findByNoticeIdAndIsUsedTrue(noticeId);
-        return NoticeDetailResponse.from(notice, images);
+        return NoticeDetailResponse.from(notice, images, newContentSanitized);
     }
 
     @Transactional

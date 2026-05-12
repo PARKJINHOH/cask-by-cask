@@ -1,9 +1,10 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
 import Link from '@tiptap/extension-link'
 import Image from '@tiptap/extension-image'
+import TextAlign from '@tiptap/extension-text-align'
 import Placeholder from '@tiptap/extension-placeholder'
 import CharacterCount from '@tiptap/extension-character-count'
 import { Table } from '@tiptap/extension-table'
@@ -13,6 +14,24 @@ import { TableHeader } from '@tiptap/extension-table-header'
 import DOMPurify from 'dompurify'
 import { noticeApi } from '../api/noticeApi'
 import NoticeEditorToolbar from './NoticeEditorToolbar'
+import './NoticeEditor.css'
+
+// width 속성을 지원하도록 Image 확장 (이미지 크기 조절)
+const ResizableImage = Image.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      width: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('width'),
+        renderHTML: (attributes) => {
+          if (!attributes.width) return {}
+          return { width: attributes.width }
+        },
+      },
+    }
+  },
+})
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024
 const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp']
@@ -62,7 +81,8 @@ export default function NoticeEditor({ value, onChange, onImageUploadError, plac
         openOnClick: false,
         HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' },
       }),
-      Image.configure({ inline: false, allowBase64: false }),
+      ResizableImage.configure({ inline: false, allowBase64: false }),
+      TextAlign.configure({ types: ['heading', 'paragraph'] }),
       Placeholder.configure({ placeholder: placeholder ?? '공지 내용을 입력하세요...' }),
       CharacterCount.configure({ limit: MAX_CHARS }),
       Table.configure({ resizable: true }),
@@ -80,7 +100,7 @@ export default function NoticeEditor({ value, onChange, onImageUploadError, plac
           'h1', 'h2', 'h3', 'h4', 'ul', 'ol', 'li', 'a', 'img',
           'table', 'thead', 'tbody', 'tr', 'th', 'td',
         ],
-        ALLOWED_ATTR: ['href', 'src', 'alt', 'class', 'colspan', 'rowspan', 'rel', 'target'],
+        ALLOWED_ATTR: ['href', 'src', 'alt', 'class', 'colspan', 'rowspan', 'rel', 'target', 'style', 'width', 'height'],
         FORCE_BODY: true,
       })
       onChange(clean)
@@ -99,6 +119,15 @@ export default function NoticeEditor({ value, onChange, onImageUploadError, plac
     },
     [editor, handleImageUpload],
   )
+
+  // 수정 모드에서 API 데이터 로드 후 reset() 호출 시 에디터 내용 동기화
+  // (useEditor는 content를 초기화 시점에만 읽으므로 prop 변경에 직접 반응하지 않음)
+  useEffect(() => {
+    if (!editor) return
+    if (value !== editor.getHTML()) {
+      editor.commands.setContent(value || '', { emitUpdate: false })
+    }
+  }, [editor, value])
 
   if (!editor) return null
 
@@ -129,20 +158,7 @@ export default function NoticeEditor({ value, onChange, onImageUploadError, plac
         <span className="text-xs text-neutral-400">JPG · PNG · GIF · WEBP, 최대 5MB</span>
       </div>
 
-      <EditorContent
-        editor={editor}
-        className="
-          prose prose-sm max-w-none min-h-[300px] p-4
-          [&_.ProseMirror]:outline-none
-          [&_.ProseMirror_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)]
-          [&_.ProseMirror_p.is-editor-empty:first-child::before]:text-neutral-400
-          [&_.ProseMirror_p.is-editor-empty:first-child::before]:pointer-events-none
-          [&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left
-          [&_.ProseMirror_table]:border-collapse
-          [&_.ProseMirror_td]:border [&_.ProseMirror_td]:border-neutral-300 [&_.ProseMirror_td]:p-2
-          [&_.ProseMirror_th]:border [&_.ProseMirror_th]:border-neutral-300 [&_.ProseMirror_th]:p-2 [&_.ProseMirror_th]:bg-neutral-50
-        "
-      />
+      <EditorContent editor={editor} className="notice-editor" />
 
       <div className={`px-4 py-1.5 border-t border-neutral-100 text-right text-xs
         ${isNearLimit ? 'text-amber-600' : 'text-neutral-400'}`}>

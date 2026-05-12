@@ -14,7 +14,7 @@ export function sanitizeHtml(dirty: string): string {
       'a', 'img',
       'table', 'thead', 'tbody', 'tr', 'th', 'td',
     ],
-    ALLOWED_ATTR: ['href', 'target', 'rel', 'src', 'alt', 'width', 'height'],
+    ALLOWED_ATTR: ['href', 'target', 'rel', 'src', 'alt', 'width', 'height', 'style'],
     FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form', 'input', 'style'],
     // on* 이벤트 핸들러 전체 차단
     FORBID_ATTR: ['onerror', 'onclick', 'onload', 'onmouseover'],

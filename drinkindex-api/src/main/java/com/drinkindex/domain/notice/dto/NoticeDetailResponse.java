@@ -38,11 +38,11 @@ public class NoticeDetailResponse {
         this.updatedAt = updatedAt;
     }
 
-    public static NoticeDetailResponse from(Notice notice, List<NoticeImage> images) {
+    public static NoticeDetailResponse from(Notice notice, List<NoticeImage> images, String freshSanitized) {
         return new NoticeDetailResponse(
                 notice.getId(),
                 notice.getTitle(),
-                notice.getContentSanitized(),
+                freshSanitized,
                 notice.getCategory(),
                 notice.getIsPinned(),
                 notice.getViewCount(),

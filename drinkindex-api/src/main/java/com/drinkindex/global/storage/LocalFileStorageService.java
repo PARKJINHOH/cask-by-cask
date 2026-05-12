@@ -8,7 +8,11 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.nio.file.*;
 
 @Slf4j
@@ -36,6 +40,20 @@ public class LocalFileStorageService implements FileStorageService {
         }
 
         return "/api/notices/images/" + savedFileName;
+    }
+
+    @Override
+    public Resource loadAsResource(String savedFileName, String subPath) {
+        Path file = resolveAndValidate(subPath, savedFileName);
+        try {
+            Resource resource = new UrlResource(file.toUri());
+            if (!resource.exists() || !resource.isReadable()) {
+                throw new CustomException(ErrorCode.NOTICE_IMAGE_NOT_FOUND);
+            }
+            return resource;
+        } catch (MalformedURLException e) {
+            throw new CustomException(ErrorCode.STORAGE_ERROR);
+        }
     }
 
     @Override

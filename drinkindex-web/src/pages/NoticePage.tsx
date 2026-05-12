@@ -69,7 +69,7 @@ export default function NoticePage() {
       </div>
 
       {/* 카테고리 탭 */}
-      <div className="flex gap-1 border-b border-neutral-200 mb-6 overflow-x-auto scrollbar-hide">
+      <div className="flex gap-1 border-b border-neutral-200 mb-6 overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
         {CATEGORY_TABS.map((tab) => {
           const isActive = categoryParam === tab.key
           return (

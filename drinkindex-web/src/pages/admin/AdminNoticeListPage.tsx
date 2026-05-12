@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useAdminNoticeList, useDeleteNotice } from '@/domain/notice/hooks/useAdminNotices'
 import { NOTICE_CATEGORY_LABELS } from '@/domain/notice/types/notice.types'
 import type { NoticeCategory } from '@/domain/notice/types/notice.types'
@@ -140,14 +140,17 @@ export default function AdminNoticeListPage() {
                 >
                   <td className="px-4 py-3 text-neutral-400">{notice.id}</td>
                   <td className="px-4 py-3">
-                    <span className="font-medium text-neutral-900 line-clamp-1">
+                    <Link
+                      to={`/notices/${notice.id}`}
+                      className="font-medium text-neutral-900 hover:text-primary-600 transition-colors line-clamp-1"
+                    >
                       {notice.isPinned && (
                         <span className="inline-block mr-1.5 text-xs px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded font-semibold">
                           고정
                         </span>
                       )}
                       {notice.title}
-                    </span>
+                    </Link>
                   </td>
                   <td className="px-4 py-3 text-neutral-500">
                     {NOTICE_CATEGORY_LABELS[notice.category]}

@@ -43,12 +43,12 @@ public class NoticeAdminDetailResponse {
         this.updatedAt = updatedAt;
     }
 
-    public static NoticeAdminDetailResponse from(Notice notice, List<NoticeImage> images) {
+    public static NoticeAdminDetailResponse from(Notice notice, List<NoticeImage> images, String freshSanitized) {
         return new NoticeAdminDetailResponse(
                 notice.getId(),
                 notice.getTitle(),
                 notice.getContent(),
-                notice.getContentSanitized(),
+                freshSanitized,
                 notice.getCategory(),
                 notice.getIsPinned(),
                 notice.getIsPublished(),
