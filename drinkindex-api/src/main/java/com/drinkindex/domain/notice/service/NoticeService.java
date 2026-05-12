@@ -11,7 +11,6 @@ import com.drinkindex.domain.user.entity.User;
 import com.drinkindex.domain.user.repository.UserRepository;
 import com.drinkindex.global.exception.CustomException;
 import com.drinkindex.global.exception.ErrorCode;
-import com.drinkindex.global.ratelimit.NoticeImageRateLimiter;
 import com.drinkindex.global.storage.FileStorageService;
 import com.drinkindex.global.util.HtmlSanitizer;
 import com.drinkindex.global.util.NoticeImageValidator;
@@ -42,7 +41,6 @@ public class NoticeService {
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
     private final NoticeImageValidator noticeImageValidator;
-    private final NoticeImageRateLimiter noticeImageRateLimiter;
     private final HtmlSanitizer htmlSanitizer;
 
     // ═══════════════════════════════════════════
@@ -181,11 +179,6 @@ public class NoticeService {
 
     @Transactional
     public NoticeImageResponse uploadImage(MultipartFile file, Long uploaderId) {
-        // [보안] Rate Limiting: 분당 20회 초과 시 429 반환
-        if (!noticeImageRateLimiter.tryConsume(uploaderId)) {
-            throw new CustomException(ErrorCode.RATE_LIMIT_EXCEEDED);
-        }
-
         // [보안] 4단계 검증: 크기 → 확장자 → Magic Bytes → UUID 파일명 생성
         String mimeType = noticeImageValidator.validate(file);
         String savedFileName = noticeImageValidator.generateSavedFileName(file.getOriginalFilename());

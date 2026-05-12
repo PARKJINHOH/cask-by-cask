@@ -180,7 +180,7 @@ class AuthServiceTest {
     @Test
     @DisplayName("로그아웃 성공 — Redis에서 Refresh Token 삭제")
     void logout_success() {
-        CustomUserDetails userDetails = new CustomUserDetails(42L, "test@example.com", "pw", Role.MEMBER);
+        CustomUserDetails userDetails = new CustomUserDetails(42L, "test@example.com", "pw", Role.MEMBER, true);
 
         authService.logout(userDetails);
 

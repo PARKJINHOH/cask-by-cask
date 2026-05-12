@@ -74,11 +74,7 @@ public class NoticeAdminController {
 
     // ─── 이미지 업로드/삭제 ────────────────────────────
 
-    /**
-     * 이미지 업로드
-     * [보안] Rate Limiting: userId 기준 분당 20회 제한
-     * [보안] 4단계 검증: 크기 → 확장자 → Magic Bytes → UUID 파일명
-     */
+    // [보안] 4단계 검증: 크기 → 확장자 → Magic Bytes → UUID 파일명
     @PostMapping("/images")
     public ResponseEntity<ApiResponse<NoticeImageResponse>> uploadImage(
             @RequestParam("image") MultipartFile file,

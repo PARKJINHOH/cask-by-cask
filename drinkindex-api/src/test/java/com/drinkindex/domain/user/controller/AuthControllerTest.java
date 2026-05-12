@@ -40,7 +40,7 @@ class AuthControllerTest {
     @DisplayName("POST /api/auth/signup — 201 Created, 응답 바디 확인")
     void signup_success() throws Exception {
         SignupRequest request = new SignupRequest("test@example.com", "password123", "tester");
-        UserResponse response = new UserResponse(1L, "test@example.com", "tester", Role.MEMBER);
+        UserResponse response = new UserResponse(1L, "test@example.com", "tester", Role.MEMBER, null);
 
         given(authService.signup(any())).willReturn(response);
 

@@ -8,6 +8,7 @@ import com.drinkindex.domain.spirit.entity.Spirit;
 import com.drinkindex.domain.spirit.entity.enums.SpiritCategory;
 import com.drinkindex.domain.spirit.entity.enums.SpiritSort;
 import com.drinkindex.domain.spirit.entity.enums.SpiritStatus;
+import com.drinkindex.global.config.JpaAuditingConfig;
 import com.drinkindex.global.config.QuerydslConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -27,7 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DataJpaTest
 @ActiveProfiles("test")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import(QuerydslConfig.class)
+@Import({QuerydslConfig.class, JpaAuditingConfig.class})
 class SpiritQueryRepositoryTest {
 
     @Autowired

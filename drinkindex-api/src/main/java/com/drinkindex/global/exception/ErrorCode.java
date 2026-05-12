@@ -59,7 +59,6 @@ public enum ErrorCode {
     NOTICE_INVALID_IMAGE_MAGIC_BYTES(HttpStatus.BAD_REQUEST, "NOTICE_005", "이미지 파일의 실제 형식이 확장자와 일치하지 않습니다."),
     NOTICE_IMAGE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "NOTICE_006", "이미지 파일 크기는 10MB를 초과할 수 없습니다."),
     DELETE_USED_IMAGE(HttpStatus.BAD_REQUEST, "NOTICE_007", "공지에 사용 중인 이미지는 삭제할 수 없습니다."),
-    RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "RATE_001", "요청 한도를 초과했습니다."),
 
     // Storage
     STORAGE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "STORAGE_001", "파일 저장 중 오류가 발생했습니다."),
