@@ -1,4 +1,4 @@
-export type WishlistType = 'TRIED' | 'WISHLIST' | 'COLLECTION'
+export type WishlistType = 'COLLECTION'
 
 export interface WishlistSpiritInfo {
   id: number

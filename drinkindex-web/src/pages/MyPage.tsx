@@ -9,7 +9,7 @@ type Tab = 'reviews' | 'wishlist' | 'settings'
 
 const TABS: { value: Tab; label: string }[] = [
   { value: 'reviews',  label: '내 리뷰' },
-  { value: 'wishlist', label: '위시리스트' },
+  { value: 'wishlist', label: '즐겨찾기' },
   { value: 'settings', label: '계정 설정' },
 ]
 

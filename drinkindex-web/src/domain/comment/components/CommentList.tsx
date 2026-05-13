@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import Spinner from '@/shared/components/Spinner'
 import EmptyState from '@/shared/components/EmptyState'
@@ -13,6 +14,7 @@ interface CommentListProps {
 }
 
 export default function CommentList({ spiritId, onNeedLogin }: CommentListProps) {
+  const { t } = useTranslation()
   const user = useAuthStore((s) => s.user)
   const [page, setPage]             = useState(0)
   const [replyingToId, setReplyingToId] = useState<number | null>(null)
@@ -28,7 +30,7 @@ export default function CommentList({ spiritId, onNeedLogin }: CommentListProps)
         <div className="bg-neutral-50 rounded-xl p-4">
           <CommentForm
             spiritId={spiritId}
-            placeholder="이 술에 대한 이야기를 나눠보세요..."
+            placeholder={t('comment.spiritPlaceholder')}
             onSuccess={() => setPage(0)}
           />
         </div>
@@ -38,7 +40,7 @@ export default function CommentList({ spiritId, onNeedLogin }: CommentListProps)
           className="w-full py-3 border border-dashed border-neutral-300 rounded-xl
             text-sm text-neutral-400 hover:text-primary-600 hover:border-primary-300 transition-colors"
         >
-          로그인하고 댓글을 남겨보세요 →
+          {t('comment.loginPrompt')}
         </button>
       )}
 
@@ -48,7 +50,7 @@ export default function CommentList({ spiritId, onNeedLogin }: CommentListProps)
           <Spinner className="text-primary-600" />
         </div>
       ) : !data || data.empty ? (
-        <EmptyState title="아직 댓글이 없습니다." description="첫 번째 댓글을 남겨보세요!" />
+        <EmptyState title={t('comment.noComment')} description={t('comment.noCommentDesc')} />
       ) : (
         <>
           <div className="divide-y divide-neutral-50">

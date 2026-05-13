@@ -1,13 +1,21 @@
-export function formatDate(dateStr: string): string {
+export function formatDate(dateStr: string, lang = 'ko'): string {
   const d = new Date(dateStr)
   const diff = Date.now() - d.getTime()
+  const abs = `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`
 
-  if (diff < 60_000) return '방금 전'
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}분 전`
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}시간 전`
-  if (diff < 604_800_000) return `${Math.floor(diff / 86_400_000)}일 전`
+  if (lang === 'en') {
+    if (diff < 60_000)       return 'just now'
+    if (diff < 3_600_000)    return `${Math.floor(diff / 60_000)}m ago`
+    if (diff < 86_400_000)   return `${Math.floor(diff / 3_600_000)}h ago`
+    if (diff < 604_800_000)  return `${Math.floor(diff / 86_400_000)}d ago`
+    return abs
+  }
 
-  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`
+  if (diff < 60_000)       return '방금 전'
+  if (diff < 3_600_000)    return `${Math.floor(diff / 60_000)}분 전`
+  if (diff < 86_400_000)   return `${Math.floor(diff / 3_600_000)}시간 전`
+  if (diff < 604_800_000)  return `${Math.floor(diff / 86_400_000)}일 전`
+  return abs
 }
 
 export function scoreColor(v: number): string {

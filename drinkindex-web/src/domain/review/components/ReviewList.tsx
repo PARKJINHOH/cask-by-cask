@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import Spinner from '@/shared/components/Spinner'
 import EmptyState from '@/shared/components/EmptyState'
@@ -15,6 +16,7 @@ interface ReviewListProps {
 }
 
 export default function ReviewList({ spiritId, onNeedLogin }: ReviewListProps) {
+  const { t } = useTranslation()
   const user = useAuthStore((s) => s.user)
   const [page, setPage]                     = useState(0)
   const [modalOpen, setModalOpen]           = useState(false)
@@ -51,7 +53,7 @@ export default function ReviewList({ spiritId, onNeedLogin }: ReviewListProps) {
   }
 
   const handleDelete = async (reviewId: number) => {
-    if (!confirm('리뷰를 삭제하시겠습니까?')) return
+    if (!confirm(t('review.deleteConfirm'))) return
     await deleteMutation.mutateAsync(reviewId)
     setHasReviewed(false)
   }
@@ -62,7 +64,7 @@ export default function ReviewList({ spiritId, onNeedLogin }: ReviewListProps) {
       {user && !hasReviewed && (
         <div className="flex justify-end">
           <Button size="sm" onClick={handleWriteClick}>
-            리뷰 작성
+            {t('review.write')}
           </Button>
         </div>
       )}
@@ -74,7 +76,7 @@ export default function ReviewList({ spiritId, onNeedLogin }: ReviewListProps) {
           className="w-full py-3 border border-dashed border-neutral-300 rounded-xl
             text-sm text-neutral-400 hover:text-primary-600 hover:border-primary-300 transition-colors"
         >
-          로그인하고 리뷰를 작성해보세요 →
+          {t('review.loginPrompt')}
         </button>
       )}
 
@@ -84,7 +86,7 @@ export default function ReviewList({ spiritId, onNeedLogin }: ReviewListProps) {
           <Spinner className="text-primary-600" />
         </div>
       ) : !data || data.empty ? (
-        <EmptyState title="아직 리뷰가 없습니다." description="첫 번째 리뷰를 작성해보세요!" />
+        <EmptyState title={t('review.noReview')} description={t('review.noReviewDesc')} />
       ) : (
         <>
           <div className="space-y-3">

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, Fragment } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { localizeCountry } from '@/shared/utils/countryName'
 import { useQuery } from '@tanstack/react-query'
 import { Dialog, Transition, TransitionChild, DialogPanel, DialogTitle } from '@headlessui/react'
 import { spiritApi } from '@/domain/spirit/api/spiritApi'
@@ -37,7 +38,7 @@ interface FilterPanelProps {
 }
 
 function FilterPanel(p: FilterPanelProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   return (
     <div className="space-y-6">
@@ -77,7 +78,7 @@ function FilterPanel(p: FilterPanelProps) {
         >
           <option value="">{t('spirit.filter.all')}</option>
           {COUNTRIES.map((c) => (
-            <option key={c} value={c}>{c}</option>
+            <option key={c} value={c}>{localizeCountry(c, i18n.language)}</option>
           ))}
         </select>
       </div>

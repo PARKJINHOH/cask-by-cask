@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import Badge from './Badge'
 import ImageLightbox from './ImageLightbox'
 import { scoreColor } from '@/shared/utils/format'
+import { localizeCountry } from '@/shared/utils/countryName'
 import type { SpiritListItem } from '@/domain/spirit/types/spirit.types'
 
 export interface SpiritCardProps {
@@ -22,13 +24,13 @@ function PlaceholderImage() {
   )
 }
 
-const CATEGORY_LABEL: Record<string, string> = {
-  WHISKY: '위스키', COGNAC: '꼬냑', WINE: '와인', TEQUILA: '데낄라',
-  RUM: '럼', GIN: '진', VODKA: '보드카', OTHER: '기타',
-}
-
 export default function SpiritCard({ spirit, className = '', listView = false }: SpiritCardProps) {
   const [lightboxOpen, setLightboxOpen] = useState(false)
+  const { t, i18n } = useTranslation()
+  const isEn = i18n.language === 'en'
+  const primaryName   = isEn ? (spirit.nameEn || spirit.nameKo) : spirit.nameKo
+  const secondaryName = isEn ? spirit.nameKo : spirit.nameEn
+  const countryLabel  = localizeCountry(spirit.country, i18n.language)
 
   if (listView) {
     return (
@@ -41,14 +43,14 @@ export default function SpiritCard({ spirit, className = '', listView = false }:
             <button
               type="button"
               onClick={() => setLightboxOpen(true)}
-              aria-label={`${spirit.nameKo} 이미지 확대`}
+              aria-label={primaryName}
               className="w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden bg-neutral-100
                 cursor-zoom-in focus-visible:outline-none focus-visible:ring-2
                 focus-visible:ring-primary-500 focus-visible:ring-offset-1"
             >
               <img
                 src={spirit.primaryImageUrl}
-                alt={spirit.nameKo}
+                alt={primaryName}
                 loading="lazy"
                 className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
               />
@@ -64,21 +66,21 @@ export default function SpiritCard({ spirit, className = '', listView = false }:
             to={`/spirits/${spirit.id}`}
             className="flex-1 flex items-center gap-3 min-w-0 focus-visible:outline-none
               focus-visible:ring-2 focus-visible:ring-primary-500 rounded-lg"
-            aria-label={`${spirit.nameKo} 상세 보기`}
+            aria-label={primaryName}
           >
             <div className="flex-1 min-w-0 space-y-0.5">
               <div className="flex items-center gap-2">
                 <Badge variant={spirit.category} size="sm">
-                  {CATEGORY_LABEL[spirit.category] ?? spirit.category}
+                  {t(`spirit.category.${spirit.category}`)}
                 </Badge>
                 {spirit.country && (
-                  <span className="text-xs text-neutral-400">{spirit.country}</span>
+                  <span className="text-xs text-neutral-400">{countryLabel}</span>
                 )}
               </div>
               <h3 className="text-sm font-semibold text-neutral-900 line-clamp-1 leading-snug">
-                {spirit.nameKo}
+                {primaryName}
               </h3>
-              <p className="text-xs text-neutral-400 line-clamp-1">{spirit.nameEn}</p>
+              <p className="text-xs text-neutral-400 line-clamp-1">{secondaryName}</p>
             </div>
 
             <div className="flex-shrink-0 flex flex-col items-end gap-1 pr-1">
@@ -89,7 +91,7 @@ export default function SpiritCard({ spirit, className = '', listView = false }:
               )}
               {spirit.reviewCount > 0 && (
                 <span className="text-xs text-neutral-400">
-                  리뷰 {spirit.reviewCount.toLocaleString()}
+                  {t('review.count', { n: spirit.reviewCount.toLocaleString() })}
                 </span>
               )}
             </div>
@@ -112,7 +114,7 @@ export default function SpiritCard({ spirit, className = '', listView = false }:
       to={`/spirits/${spirit.id}`}
       className={`group block focus-visible:outline-none focus-visible:ring-2
         focus-visible:ring-primary-500 focus-visible:ring-offset-2 rounded-2xl ${className}`}
-      aria-label={`${spirit.nameKo} 상세 보기`}
+      aria-label={primaryName}
     >
       <article className="bg-white rounded-2xl shadow-sm overflow-hidden
         hover:shadow-md transition-shadow duration-200">
@@ -121,7 +123,7 @@ export default function SpiritCard({ spirit, className = '', listView = false }:
           {spirit.primaryImageUrl ? (
             <img
               src={spirit.primaryImageUrl}
-              alt={spirit.nameKo}
+              alt={primaryName}
               loading="lazy"
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             />
@@ -133,19 +135,19 @@ export default function SpiritCard({ spirit, className = '', listView = false }:
         {/* Info */}
         <div className="p-3 space-y-1.5">
           <Badge variant={spirit.category} size="sm">
-            {CATEGORY_LABEL[spirit.category] ?? spirit.category}
+            {t(`spirit.category.${spirit.category}`)}
           </Badge>
 
           <div>
             <h3 className="text-sm font-semibold text-neutral-900 line-clamp-1 leading-snug">
-              {spirit.nameKo}
+              {primaryName}
             </h3>
-            <p className="text-xs text-neutral-400 line-clamp-1">{spirit.nameEn}</p>
+            <p className="text-xs text-neutral-400 line-clamp-1">{secondaryName}</p>
           </div>
 
           <div className="flex items-center justify-between pt-0.5">
             {spirit.country && (
-              <span className="text-xs text-neutral-400">{spirit.country}</span>
+              <span className="text-xs text-neutral-400">{countryLabel}</span>
             )}
 
             <div className="flex items-center gap-2 ml-auto">

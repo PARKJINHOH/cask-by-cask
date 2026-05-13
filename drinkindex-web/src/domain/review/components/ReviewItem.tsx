@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { formatDate, scoreColor } from '@/shared/utils/format'
 import Modal from '@/shared/components/Modal'
 import type { ReviewItem as ReviewItemType } from '../types/review.types'
@@ -45,20 +46,21 @@ interface ReviewDetailModalProps {
 }
 
 function ReviewDetailModal({ review, open, onClose }: ReviewDetailModalProps) {
+  const { t, i18n } = useTranslation()
   const scores = [
-    { label: '향 (Nose)',       score: review.noseScore,   note: review.noseNote },
-    { label: '맛 (Taste)',      score: review.tasteScore,  note: review.tasteNote },
-    { label: '피니시 (Finish)', score: review.finishScore, note: review.finishNote },
+    { label: t('review.nose'),   score: review.noseScore,   note: review.noseNote },
+    { label: t('review.taste'),  score: review.tasteScore,  note: review.tasteNote },
+    { label: t('review.finish'), score: review.finishScore, note: review.finishNote },
   ]
 
   return (
-    <Modal open={open} onClose={onClose} title="리뷰 상세" size="md">
+    <Modal open={open} onClose={onClose} title={t('review.detailTitle')} size="md">
       <div className="space-y-5">
         {/* 작성자 / 총점 */}
         <div className="flex items-center justify-between pb-3 border-b border-neutral-100">
           <div>
             <p className="text-sm font-semibold text-neutral-900">{review.nickname}</p>
-            <p className="text-xs text-neutral-400 mt-0.5">{formatDate(review.createdAt)}</p>
+            <p className="text-xs text-neutral-400 mt-0.5">{formatDate(review.createdAt, i18n.language)}</p>
           </div>
           <span
             className="text-3xl font-bold tabular-nums"
@@ -99,7 +101,7 @@ function ReviewDetailModal({ review, open, onClose }: ReviewDetailModalProps) {
         {/* 기타 코멘트 */}
         {review.comment && (
           <div className="border-t border-neutral-100 pt-4">
-            <p className="text-xs font-semibold text-neutral-400 mb-2">기타 코멘트</p>
+            <p className="text-xs font-semibold text-neutral-400 mb-2">{t('review.comment')}</p>
             <p className="text-sm text-neutral-700 leading-relaxed whitespace-pre-wrap">
               {review.comment}
             </p>
@@ -120,6 +122,7 @@ export interface ReviewItemProps {
 }
 
 export default function ReviewItem({ review, currentUserId, onEdit, onDelete }: ReviewItemProps) {
+  const { t, i18n } = useTranslation()
   const [detailOpen, setDetailOpen] = useState(false)
   const isOwner = !!currentUserId && currentUserId === review.userId
 
@@ -132,7 +135,7 @@ export default function ReviewItem({ review, currentUserId, onEdit, onDelete }: 
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <span className="text-sm font-semibold text-neutral-900">{review.nickname}</span>
-            <span className="ml-2 text-xs text-neutral-400">{formatDate(review.createdAt)}</span>
+            <span className="ml-2 text-xs text-neutral-400">{formatDate(review.createdAt, i18n.language)}</span>
           </div>
           <div className="flex items-center gap-3 flex-shrink-0">
             <span
@@ -147,13 +150,13 @@ export default function ReviewItem({ review, currentUserId, onEdit, onDelete }: 
                   onClick={() => onEdit(review)}
                   className="text-xs text-neutral-400 hover:text-neutral-700 transition-colors"
                 >
-                  수정
+                  {t('common.edit')}
                 </button>
                 <button
                   onClick={() => onDelete(review.id)}
                   className="text-xs text-danger-400 hover:text-danger-600 transition-colors"
                 >
-                  삭제
+                  {t('common.delete')}
                 </button>
               </div>
             )}
@@ -162,9 +165,9 @@ export default function ReviewItem({ review, currentUserId, onEdit, onDelete }: 
 
         {/* 점수 바 + 노트 (2줄 제한) */}
         <div className="space-y-2.5">
-          <ScoreBar label="향 (Nose)"  value={review.noseScore}   note={review.noseNote} />
-          <ScoreBar label="맛 (Taste)" value={review.tasteScore}  note={review.tasteNote} />
-          <ScoreBar label="피니시"     value={review.finishScore} note={review.finishNote} />
+          <ScoreBar label={t('review.nose')}   value={review.noseScore}   note={review.noseNote} />
+          <ScoreBar label={t('review.taste')}  value={review.tasteScore}  note={review.tasteNote} />
+          <ScoreBar label={t('review.finish')} value={review.finishScore} note={review.finishNote} />
         </div>
 
         {/* 코멘트 미리보기 (2줄) */}
@@ -181,7 +184,7 @@ export default function ReviewItem({ review, currentUserId, onEdit, onDelete }: 
               onClick={() => setDetailOpen(true)}
               className="text-xs text-primary-600 hover:text-primary-800 font-medium transition-colors"
             >
-              전체 리뷰 보기 →
+              {t('review.viewAll')}
             </button>
           </div>
         )}

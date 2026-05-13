@@ -69,7 +69,10 @@
       "submit": "가입하기",
       "error": "회원가입 중 오류가 발생했습니다.",
       "hasAccount": "이미 계정이 있으신가요?"
-    }
+    },
+    "loginRequired": "로그인이 필요합니다",
+    "loginRequiredDesc": "이 기능을 사용하려면 로그인이 필요합니다.\n로그인 페이지로 이동하시겠습니까?",
+    "goToLogin": "로그인하기"
   },
   "spirit": {
     "search": {
@@ -120,15 +123,17 @@
     "detail": {
       "distillery":   "증류소",
       "category":     "카테고리",
-      "country":      "국가",
+      "country":      "원산지",
       "region":       "지역",
       "abv":          "도수",
       "volume":       "용량",
       "bottledYear":  "병입년도",
       "vintageYear":  "빈티지",
-      "bottler":      "병입업체명",
+      "bottler":      "병입자",
       "avgScore":     "평균 점수",
-      "reviewCount":  "리뷰 수"
+      "reviewCount":  "리뷰 수",
+      "notFound":     "술 정보를 찾을 수 없습니다.",
+      "backToList":   "목록으로"
     },
     "status": {
       "ACTIVE":  "공개",
@@ -139,9 +144,13 @@
   "review": {
     "title":         "리뷰",
     "tab":           "리뷰",
+    "count":         "리뷰 {{n}}",
     "write":         "리뷰 작성",
     "edit":          "리뷰 수정",
     "delete":        "리뷰 삭제",
+    "deleteConfirm": "리뷰를 삭제하시겠습니까?",
+    "detailTitle":   "리뷰 상세",
+    "viewAll":       "전체 리뷰 보기 →",
     "nose":          "향 (Nose)",
     "taste":         "맛 (Taste)",
     "finish":        "피니시 (Finish)",
@@ -151,6 +160,8 @@
     "commentHint":   "선택, 점수 없는 텍스트 코멘트",
     "noReview":      "아직 리뷰가 없습니다.",
     "noReviewDesc":  "첫 번째 리뷰를 작성해보세요!",
+    "noScore":       "리뷰 없음",
+    "scoreCount":    "{{n}}개 리뷰",
     "duplicate":     "이미 리뷰를 작성하셨습니다.",
     "loginPrompt":   "로그인하고 리뷰를 작성해보세요 →",
     "submit":        "리뷰 등록",
@@ -161,46 +172,37 @@
     "noMyReviewDesc":"술 상세 페이지에서 첫 번째 리뷰를 작성해보세요!"
   },
   "comment": {
-    "title":        "커뮤니티",
-    "tab":          "커뮤니티",
-    "placeholder":  "댓글을 입력하세요...",
+    "title":             "커뮤니티",
+    "tab":               "커뮤니티",
+    "placeholder":       "댓글을 입력하세요...",
     "spiritPlaceholder": "이 술에 대한 이야기를 나눠보세요...",
-    "reply":        "답글",
-    "replyTo":      "@ {{nickname}}에게 답글",
-    "edit":         "수정",
-    "delete":       "삭제",
-    "report":       "신고",
-    "like":         "좋아요",
-    "submit":       "댓글 등록",
-    "submitReply":  "답글 등록",
-    "submitEdit":   "수정",
-    "cancel":       "취소",
-    "noComment":    "아직 댓글이 없습니다.",
-    "noCommentDesc":"첫 번째 댓글을 남겨보세요!",
-    "loginPrompt":  "로그인하고 댓글을 남겨보세요 →",
-    "reportTitle":  "신고 이유 (선택사항)",
-    "reportSubmit": "신고하기",
+    "reply":             "답글",
+    "replyTo":           "@ {{nickname}}에게 답글",
+    "cancelReplyAria":   "답글 취소",
+    "edit":              "수정",
+    "delete":            "삭제",
+    "deleteConfirm":     "댓글을 삭제하시겠습니까?",
+    "report":            "신고",
+    "reporting":         "신고 중...",
+    "like":              "좋아요",
+    "likeAria":          "좋아요 {{n}}개",
+    "submit":            "댓글 등록",
+    "submitReply":       "답글 등록",
+    "submitEdit":        "수정",
+    "cancel":            "취소",
+    "saveError":         "저장 중 오류가 발생했습니다.",
+    "noComment":         "아직 댓글이 없습니다.",
+    "noCommentDesc":     "첫 번째 댓글을 남겨보세요!",
+    "loginPrompt":       "로그인하고 댓글을 남겨보세요 →",
+    "reportTitle":       "신고 이유 (선택사항)",
+    "reportSubmit":      "신고하기",
+    "reportError":       "오류가 발생했습니다. 다시 시도해주세요.",
     "reportPlaceholder": "신고 이유를 입력해주세요..."
-  },
-  "wishlist": {
-    "tried":      "마셔봤어요",
-    "wishlist":   "마시고 싶어요",
-    "collection": "컬렉션",
-    "noItem":     "아직 항목이 없습니다.",
-    "noItemDesc": "술 상세 페이지에서 위시리스트에 추가해보세요!",
-    "add":        "위시리스트 추가",
-    "remove":     "제거",
-    "tab":        "위시리스트",
-    "subtab": {
-      "TRIED":      "마셔봤어요",
-      "WISHLIST":   "마시고 싶어요",
-      "COLLECTION": "컬렉션"
-    }
   },
   "mypage": {
     "title":        "마이페이지",
     "reviewsTab":   "내 리뷰",
-    "wishlistTab":  "위시리스트",
+    "wishlistTab":  "즐겨찾기",
     "settingsTab":  "계정 설정",
     "joinDate":     "가입일",
     "nickname": {
@@ -285,6 +287,16 @@
       "noReason":  "사유 없음"
     },
     "siteLink": "사이트로 돌아가기"
+  },
+  "wishlist": {
+    "removeConfirm":  "\"{{name}}\"을(를) 즐겨찾기에서 제거하시겠습니까?",
+    "removeAria":     "즐겨찾기에서 제거",
+    "noItem":         "아직 즐겨찾기 항목이 없습니다.",
+    "noItemDesc":     "술 상세 페이지에서 즐겨찾기에 추가해보세요!",
+    "add":            "즐겨찾기 추가",
+    "remove":         "제거",
+    "tab":            "즐겨찾기",
+    "favorites":      "즐겨찾기"
   },
   "common": {
     "loading":  "로딩 중...",

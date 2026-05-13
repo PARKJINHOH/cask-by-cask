@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { formatDate } from '@/shared/utils/format'
 import CommentForm from './CommentForm'
 import { useToggleLike, useDeleteComment } from '../hooks/useComments'
@@ -24,6 +25,7 @@ export default function CommentItem({
   onReplyToggle,
   onNeedLogin,
 }: CommentItemProps) {
+  const { t, i18n } = useTranslation()
   const [editMode, setEditMode]       = useState(false)
   const [isLiked, setIsLiked]         = useState(false)
   const [localLikes, setLocalLikes]   = useState(comment.likeCount)
@@ -51,7 +53,7 @@ export default function CommentItem({
   }
 
   const handleDelete = async () => {
-    if (!confirm('댓글을 삭제하시겠습니까?')) return
+    if (!confirm(t('comment.deleteConfirm'))) return
     await deleteMutation.mutateAsync(comment.id)
   }
 
@@ -86,7 +88,7 @@ export default function CommentItem({
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-2">
               <span className="text-sm font-semibold text-neutral-900">{comment.nickname}</span>
-              <span className="text-xs text-neutral-400">{formatDate(comment.createdAt)}</span>
+              <span className="text-xs text-neutral-400">{formatDate(comment.createdAt, i18n.language)}</span>
             </div>
             <div className="flex items-center gap-2">
               {isOwner && (
@@ -95,13 +97,13 @@ export default function CommentItem({
                     onClick={() => setEditMode(true)}
                     className="text-xs text-neutral-400 hover:text-neutral-700 transition-colors"
                   >
-                    수정
+                    {t('common.edit')}
                   </button>
                   <button
                     onClick={handleDelete}
                     className="text-xs text-red-400 hover:text-red-600 transition-colors"
                   >
-                    삭제
+                    {t('common.delete')}
                   </button>
                 </>
               )}
@@ -117,7 +119,7 @@ export default function CommentItem({
                       : 'text-neutral-400 hover:text-primary-600'
                   }`}
                 >
-                  {isReplying ? '취소' : '답글'}
+                  {isReplying ? t('comment.cancel') : t('comment.reply')}
                 </button>
               )}
             </div>
@@ -132,7 +134,7 @@ export default function CommentItem({
           <div className="mt-1.5 flex items-center gap-3">
             <button
               onClick={handleLike}
-              aria-label={`좋아요 ${localLikes}개`}
+              aria-label={t('comment.likeAria', { n: localLikes })}
               className={`flex items-center gap-1 text-xs transition-colors ${
                 isLiked ? 'text-rose-500' : 'text-neutral-400 hover:text-rose-500'
               }`}
@@ -146,7 +148,7 @@ export default function CommentItem({
                 onClick={() => setReportOpen(true)}
                 className="text-xs text-neutral-300 hover:text-red-400 transition-colors"
               >
-                신고
+                {t('comment.report')}
               </button>
             )}
           </div>
@@ -154,18 +156,18 @@ export default function CommentItem({
           {/* Inline report form */}
           {!isOwner && currentUserId && reportOpen && (
             <div className="mt-2 p-3 bg-red-50 border border-red-100 rounded-lg space-y-2">
-              <p className="text-xs font-medium text-red-700">신고 이유 (선택사항)</p>
+              <p className="text-xs font-medium text-red-700">{t('comment.reportTitle')}</p>
               <textarea
                 value={reportReason}
                 onChange={(e) => setReportReason(e.target.value)}
                 maxLength={500}
                 rows={2}
-                placeholder="신고 이유를 입력해주세요..."
+                placeholder={t('comment.reportPlaceholder')}
                 className="w-full px-2 py-1.5 text-xs border border-red-200 rounded-lg resize-none
                   focus:outline-none focus:ring-1 focus:ring-red-400 bg-white"
               />
               {reportMutation.isError && (
-                <p className="text-xs text-red-600">오류가 발생했습니다. 다시 시도해주세요.</p>
+                <p className="text-xs text-red-600">{t('comment.reportError')}</p>
               )}
               <div className="flex gap-3 justify-end">
                 <button
@@ -173,7 +175,7 @@ export default function CommentItem({
                   onClick={() => { setReportOpen(false); setReportReason('') }}
                   className="text-xs text-neutral-400 hover:text-neutral-600 transition-colors"
                 >
-                  취소
+                  {t('comment.cancel')}
                 </button>
                 <button
                   type="button"
@@ -182,7 +184,7 @@ export default function CommentItem({
                   className="text-xs font-medium text-red-600 hover:text-red-800
                     transition-colors disabled:opacity-50"
                 >
-                  {reportMutation.isPending ? '신고 중...' : '신고하기'}
+                  {reportMutation.isPending ? t('comment.reporting') : t('comment.reportSubmit')}
                 </button>
               </div>
             </div>

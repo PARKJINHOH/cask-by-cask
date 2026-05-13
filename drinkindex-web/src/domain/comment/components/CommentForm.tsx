@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/shared/components/Button'
 import { useCreateComment, useUpdateComment } from '../hooks/useComments'
 import type { CommentItem } from '../types/comment.types'
@@ -18,10 +19,12 @@ export default function CommentForm({
   parentId,
   parentNickname,
   editingComment,
-  placeholder = '댓글을 입력하세요...',
+  placeholder,
   onSuccess,
   onCancel,
 }: CommentFormProps) {
+  const { t } = useTranslation()
+  const resolvedPlaceholder = placeholder ?? t('comment.placeholder')
   const [content, setContent] = useState(editingComment?.content ?? '')
   const [error, setError]     = useState('')
 
@@ -42,7 +45,7 @@ export default function CommentForm({
       setContent('')
       onSuccess()
     } catch {
-      setError('저장 중 오류가 발생했습니다.')
+      setError(t('comment.saveError'))
     }
   }
 
@@ -53,13 +56,13 @@ export default function CommentForm({
         <div className="flex items-center gap-2 px-3 py-2 bg-primary-50 rounded-lg">
           <span className="text-primary-400 text-sm">↩</span>
           <span className="text-sm text-primary-700 font-medium flex-1">
-            @ {parentNickname}에게 답글
+            {t('comment.replyTo', { nickname: parentNickname })}
           </span>
           {onCancel && (
             <button
               type="button"
               onClick={onCancel}
-              aria-label="답글 취소"
+              aria-label={t('comment.cancelReplyAria')}
               className="text-primary-300 hover:text-primary-600 transition-colors text-xs"
             >
               ✕
@@ -73,7 +76,7 @@ export default function CommentForm({
         onChange={(e) => setContent(e.target.value)}
         maxLength={1000}
         rows={editingComment ? 3 : 2}
-        placeholder={placeholder}
+        placeholder={resolvedPlaceholder}
         className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg resize-none
           focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent
           placeholder:text-neutral-400"
@@ -84,11 +87,11 @@ export default function CommentForm({
         <div className="flex gap-2">
           {onCancel && !parentNickname && (
             <Button variant="ghost" size="sm" type="button" onClick={onCancel}>
-              취소
+              {t('comment.cancel')}
             </Button>
           )}
           <Button size="sm" type="submit" isLoading={isPending} disabled={!content.trim()}>
-            {editingComment ? '수정' : parentId ? '답글 등록' : '댓글 등록'}
+            {editingComment ? t('comment.submitEdit') : parentId ? t('comment.submitReply') : t('comment.submit')}
           </Button>
         </div>
       </div>

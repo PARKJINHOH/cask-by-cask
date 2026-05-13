@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useSpiritDetail } from '@/domain/spirit/hooks/useSpiritDetail'
+import { localizeCountry } from '@/shared/utils/countryName'
+import { localizeRegion } from '@/shared/utils/regionName'
 import Badge from '@/shared/components/Badge'
 import StarScore from '@/shared/components/StarScore'
 import Spinner from '@/shared/components/Spinner'
@@ -79,9 +82,10 @@ function Gallery({
 }
 
 function TabBar({ active, onChange }: { active: Tab; onChange: (t: Tab) => void }) {
+  const { t } = useTranslation()
   const tabs: { id: Tab; label: string }[] = [
-    { id: 'reviews',   label: '리뷰' },
-    { id: 'community', label: '커뮤니티' },
+    { id: 'reviews',   label: t('review.tab') },
+    { id: 'community', label: t('comment.tab') },
   ]
   return (
     <div role="tablist" className="flex border-b border-neutral-200 gap-6">
@@ -105,6 +109,8 @@ export default function SpiritDetailPage() {
   const { id }   = useParams<{ id: string }>()
   const navigate = useNavigate()
   const spiritId = Number(id)
+  const { t, i18n } = useTranslation()
+  const isEn = i18n.language === 'en'
 
   const [selectedImg, setSelectedImg]   = useState(0)
   const [activeTab, setActiveTab]       = useState<Tab>('reviews')
@@ -118,14 +124,21 @@ export default function SpiritDetailPage() {
   if (!spirit) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-20 text-center">
-        <p className="text-neutral-500 mb-4">술 정보를 찾을 수 없습니다.</p>
+        <p className="text-neutral-500 mb-4">{t('spirit.detail.notFound')}</p>
         <button onClick={() => navigate('/')}
           className="text-primary-600 hover:underline text-sm">
-          ← 목록으로
+          ← {t('spirit.detail.backToList')}
         </button>
       </div>
     )
   }
+
+  const primaryName   = isEn ? (spirit.nameEn || spirit.nameKo) : spirit.nameKo
+  const secondaryName = isEn ? spirit.nameKo : spirit.nameEn
+  const primaryDistillery   = isEn ? (spirit.distilleryNameEn || spirit.distilleryNameKo) : spirit.distilleryNameKo
+  const secondaryDistillery = isEn ? spirit.distilleryNameKo : spirit.distilleryNameEn
+  const countryLabel = localizeCountry(spirit.country, i18n.language)
+  const regionLabel  = localizeRegion(spirit.region, i18n.language)
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-6">
@@ -135,7 +148,7 @@ export default function SpiritDetailPage() {
         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <polyline points="15,18 9,12 15,6" />
         </svg>
-        뒤로
+        {t('common.back')}
       </button>
 
       {/* Header card */}
@@ -145,7 +158,7 @@ export default function SpiritDetailPage() {
           <div className="md:w-72 flex-shrink-0 p-4 md:border-r border-neutral-100">
             <Gallery
               images={spirit.images}
-              nameKo={spirit.nameKo}
+              nameKo={primaryName}
               selectedIdx={selectedImg}
               onSelect={setSelectedImg}
               onImageClick={setLightboxIdx}
@@ -153,36 +166,39 @@ export default function SpiritDetailPage() {
           </div>
 
           {/* Info */}
-          <div className="flex-1 p-6 flex flex-col gap-5 min-w-0">
-            <div>
+          <div className="flex-1 p-6 flex flex-col gap-5 min-w-0 relative">
+            {/* Favorites button — top right */}
+            <div className="absolute top-4 right-4">
+              <WishlistButtons spiritId={spiritId} onNeedLogin={() => setLoginModal(true)} />
+            </div>
+
+            <div className="pr-12">
               <Badge variant={spirit.category} size="sm" className="mb-2">
-                {spirit.category}
+                {t(`spirit.category.${spirit.category}`)}
               </Badge>
               <h1 className="text-2xl font-bold text-neutral-900 leading-tight">
-                {spirit.nameKo}
+                {primaryName}
               </h1>
-              <p className="text-sm text-neutral-500 mt-0.5">{spirit.nameEn}</p>
-              {spirit.distilleryNameKo && (
+              <p className="text-sm text-neutral-500 mt-0.5">{secondaryName}</p>
+              {primaryDistillery && (
                 <p className="text-sm text-neutral-400 mt-1">
-                  {spirit.distilleryNameKo}
-                  {spirit.distilleryNameEn ? ` · ${spirit.distilleryNameEn}` : ''}
+                  {primaryDistillery}
+                  {secondaryDistillery ? ` · ${secondaryDistillery}` : ''}
                 </p>
               )}
             </div>
 
             <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
-              {spirit.country     && <InfoRow label="원산지"   value={spirit.country} />}
-              {spirit.abv != null  && <InfoRow label="도수"     value={`${spirit.abv}%`} />}
-              {spirit.volumeMl    && <InfoRow label="용량"     value={`${spirit.volumeMl}ml`} />}
-              {spirit.region      && <InfoRow label="지역"     value={spirit.region} />}
-              {spirit.bottler     && <InfoRow label="병입자"   value={spirit.bottler} />}
-              {spirit.bottledYear && <InfoRow label="병입 연도" value={spirit.bottledYear} />}
-              {spirit.vintageYear && <InfoRow label="빈티지"   value={spirit.vintageYear} />}
+              {spirit.country     && <InfoRow label={t('spirit.detail.country')}     value={countryLabel} />}
+              {spirit.abv != null  && <InfoRow label={t('spirit.detail.abv')}         value={`${spirit.abv}%`} />}
+              {spirit.volumeMl    && <InfoRow label={t('spirit.detail.volume')}       value={`${spirit.volumeMl}ml`} />}
+              {spirit.region      && <InfoRow label={t('spirit.detail.region')}       value={regionLabel} />}
+              {spirit.bottler     && <InfoRow label={t('spirit.detail.bottler')}      value={spirit.bottler} />}
+              {spirit.bottledYear && <InfoRow label={t('spirit.detail.bottledYear')}  value={spirit.bottledYear} />}
+              {spirit.vintageYear && <InfoRow label={t('spirit.detail.vintageYear')}  value={spirit.vintageYear} />}
             </dl>
 
             <StarScore score={spirit.avgScore} reviewCount={spirit.reviewCount} size="lg" showBar />
-
-            <WishlistButtons spiritId={spiritId} onNeedLogin={() => setLoginModal(true)} />
           </div>
         </div>
       </div>
@@ -210,20 +226,20 @@ export default function SpiritDetailPage() {
       <Modal
         open={loginModal}
         onClose={() => setLoginModal(false)}
-        title="로그인이 필요합니다"
+        title={t('auth.loginRequired')}
         footer={
           <>
-            <Button variant="secondary" size="sm" onClick={() => setLoginModal(false)}>취소</Button>
+            <Button variant="secondary" size="sm" onClick={() => setLoginModal(false)}>
+              {t('common.cancel')}
+            </Button>
             <Button size="sm" onClick={() => { setLoginModal(false); navigate('/login') }}>
-              로그인하기
+              {t('auth.goToLogin')}
             </Button>
           </>
         }
       >
-        <p className="text-sm text-neutral-600 leading-relaxed">
-          이 기능을 사용하려면 로그인이 필요합니다.
-          <br />
-          로그인 페이지로 이동하시겠습니까?
+        <p className="text-sm text-neutral-600 leading-relaxed whitespace-pre-line">
+          {t('auth.loginRequiredDesc')}
         </p>
       </Modal>
     </div>

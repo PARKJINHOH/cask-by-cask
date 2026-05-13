@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { scoreColor } from '@/shared/utils/format'
 
 export interface StarScoreProps {
@@ -22,12 +23,13 @@ export default function StarScore({
   size = 'md',
   className = '',
 }: StarScoreProps) {
+  const { t } = useTranslation()
   const cls = sizeMap[size]
 
   if (score == null) {
     return (
-      <div className={`text-neutral-400 ${cls.label} ${className}`} aria-label="리뷰 없음">
-        리뷰 없음
+      <div className={`text-neutral-400 ${cls.label} ${className}`} aria-label={t('review.noScore')}>
+        {t('review.noScore')}
       </div>
     )
   }
@@ -39,7 +41,7 @@ export default function StarScore({
     <div
       className={`space-y-1 ${className}`}
       role="img"
-      aria-label={`평균 점수 ${score.toFixed(1)}점${reviewCount != null ? `, 리뷰 ${reviewCount}개` : ''}`}
+      aria-label={`${score.toFixed(1)}${reviewCount != null ? ` · ${t('review.scoreCount', { n: reviewCount })}` : ''}`}
     >
       {/* Numeric score */}
       <div className="flex items-baseline gap-2">
@@ -49,7 +51,7 @@ export default function StarScore({
         <span className={`text-neutral-400 ${cls.label}`}>/ 100</span>
         {reviewCount != null && (
           <span className={`text-neutral-400 ${cls.label}`}>
-            · {reviewCount.toLocaleString()}개 리뷰
+            · {t('review.scoreCount', { n: reviewCount.toLocaleString() })}
           </span>
         )}
       </div>

@@ -15,8 +15,7 @@ import {
 } from '@/domain/admin/hooks/useAdminSpirits'
 import type { UpdateRequestBody } from '@/domain/admin/types/admin.types'
 import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
-import DistillerySelector from '@/domain/distillery/components/DistillerySelector'
-import CountryRegionSelector from '@/domain/location/components/CountryRegionSelector'
+import SpiritOptionalFields from '@/domain/admin/components/SpiritOptionalFields'
 import { ISO3166_COUNTRIES } from '@/domain/location/data/iso3166Countries'
 
 // ── 상수 ────────────────────────────────────────────────────────
@@ -269,60 +268,22 @@ export default function AdminRequestDetailPage() {
             </select>
           </div>
 
-          {/* 증류소 */}
-          <div className="space-y-1.5">
-            <label className="block text-xs font-medium text-neutral-600">증류소</label>
-            <DistillerySelector
-              value={watch('distilleryId') ?? null}
-              defaultName={req.distilleryNameKo ?? undefined}
-              onChange={(id) => setValue('distilleryId', id ?? undefined)}
-            />
-          </div>
-
-          {/* optional fields */}
-          <div className="space-y-1.5">
-            <label className="block text-xs font-medium text-neutral-600">국가 / 지역</label>
-            <CountryRegionSelector
+          {/* 선택 옵션 */}
+          <div className="border-t border-neutral-100 pt-4">
+            <p className="text-xs font-medium text-neutral-500 mb-4">선택 옵션</p>
+            <SpiritOptionalFields
+              register={register}
+              setValue={setValue}
+              watch={watch}
               countryCode={countryCode}
+              countryNameKo={countryNameKo}
               regionNameKo={regionNameKo}
               onCountryChange={(code, nameKo) => { setCountryCode(code); setCountryNameKo(nameKo) }}
               onRegionChange={(nameKo) => setRegionNameKo(nameKo)}
+              defaultDistilleryName={req.distilleryNameKo ?? undefined}
+              initialValues={req}
+              dataReady={initialized}
             />
-            {(countryNameKo || regionNameKo) && countryCode === null && (
-              <p className="text-xs text-neutral-400">
-                현재 값: {[countryNameKo, regionNameKo].filter(Boolean).join(' / ')}
-              </p>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="block text-xs font-medium text-neutral-600">병입업체명</label>
-              <input
-                {...register('bottler')}
-                className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg
-                  focus:outline-none focus:ring-2 focus:ring-primary-400"
-              />
-            </div>
-            {([
-              { name: 'abv', label: '도수 (%)', step: '0.1', min: '0', max: '100' },
-              { name: 'bottledYear', label: '병입년도', step: '1', min: '1800', max: '2100' },
-              { name: 'vintageYear', label: '빈티지', step: '1', min: '1800', max: '2100' },
-              { name: 'volumeMl', label: '용량 (ml)', step: '1', min: '1', max: undefined },
-            ] as const).map(({ name, label, step, min, max }) => (
-              <div key={name} className="space-y-1.5">
-                <label className="block text-xs font-medium text-neutral-600">{label}</label>
-                <input
-                  type="number"
-                  step={step}
-                  min={min}
-                  max={max}
-                  {...register(name, { valueAsNumber: true })}
-                  className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg
-                    focus:outline-none focus:ring-2 focus:ring-primary-400"
-                />
-              </div>
-            ))}
           </div>
 
           {savedMsg && (
