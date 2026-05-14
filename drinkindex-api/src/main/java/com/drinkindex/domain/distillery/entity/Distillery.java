@@ -28,10 +28,14 @@ public class Distillery extends BaseTimeEntity {
     @Column(length = 100)
     private String region;
 
-    public void update(String nameKo, String nameEn, String country, String region) {
+    @Column(length = 500)
+    private String website;
+
+    public void update(String nameKo, String nameEn, String country, String region, String website) {
         this.nameKo = nameKo;
         this.nameEn = nameEn;
         this.country = country;
         this.region = region;
+        this.website = website;
     }
 }

@@ -40,6 +40,7 @@ public class DistilleryService {
                 .nameEn(request.nameEn())
                 .country(request.country())
                 .region(request.region())
+                .website(request.website())
                 .build();
         return DistilleryResponse.from(distilleryRepository.save(distillery));
     }
@@ -50,10 +51,11 @@ public class DistilleryService {
 
         // null 필드는 기존 값 유지 (PATCH 동작)
         distillery.update(
-                request.nameKo()  != null ? request.nameKo()  : distillery.getNameKo(),
-                request.nameEn()  != null ? request.nameEn()  : distillery.getNameEn(),
-                request.country() != null ? request.country() : distillery.getCountry(),
-                request.region()  != null ? request.region()  : distillery.getRegion()
+                request.nameKo()   != null ? request.nameKo()   : distillery.getNameKo(),
+                request.nameEn()   != null ? request.nameEn()   : distillery.getNameEn(),
+                request.country()  != null ? request.country()  : distillery.getCountry(),
+                request.region()   != null ? request.region()   : distillery.getRegion(),
+                request.website()  != null ? request.website()  : distillery.getWebsite()
         );
         return DistilleryResponse.from(distillery);
     }

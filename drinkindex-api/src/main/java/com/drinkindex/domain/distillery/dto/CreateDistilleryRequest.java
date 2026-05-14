@@ -22,5 +22,9 @@ public record CreateDistilleryRequest(
 
         @Schema(description = "소재 지역 (선택)")
         @Size(max = 100, message = "지역명은 100자 이하로 입력해주세요.")
-        String region
+        String region,
+
+        @Schema(description = "공식 웹사이트 URL (선택)")
+        @Size(max = 500, message = "웹사이트 URL은 500자 이하로 입력해주세요.")
+        String website
 ) {}

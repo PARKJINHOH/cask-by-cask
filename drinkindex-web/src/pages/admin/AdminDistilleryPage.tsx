@@ -20,6 +20,7 @@ interface FormValues {
   nameEn: string
   country: string
   region?: string
+  website?: string
 }
 
 interface DistilleryFormProps {
@@ -39,14 +40,14 @@ function DistilleryForm({ initial, onSave, onCancel, isPending }: DistilleryForm
   const [regionNameKo, setRegionNameKo] = useState(initial?.region ?? '')
   const [countryError, setCountryError] = useState(false)
 
-  const { register, handleSubmit, formState: { errors } } = useForm<Pick<FormValues, 'nameKo' | 'nameEn'>>({
-    defaultValues: initial ? { nameKo: initial.nameKo, nameEn: initial.nameEn } : undefined,
+  const { register, handleSubmit, formState: { errors } } = useForm<Pick<FormValues, 'nameKo' | 'nameEn' | 'website'>>({
+    defaultValues: initial ? { nameKo: initial.nameKo, nameEn: initial.nameEn, website: initial.website ?? '' } : undefined,
   })
 
-  const onSubmit = (data: Pick<FormValues, 'nameKo' | 'nameEn'>) => {
+  const onSubmit = (data: Pick<FormValues, 'nameKo' | 'nameEn' | 'website'>) => {
     if (!countryNameKo) { setCountryError(true); return }
     setCountryError(false)
-    onSave({ ...data, country: countryNameKo, region: regionNameKo || undefined })
+    onSave({ ...data, country: countryNameKo, region: regionNameKo || undefined, website: data.website || undefined })
   }
 
   return (
@@ -86,6 +87,16 @@ function DistilleryForm({ initial, onSave, onCancel, isPending }: DistilleryForm
             <p className="text-xs text-red-500">국가를 선택해주세요.</p>
           )}
         </div>
+        <div className="space-y-1 sm:col-span-2">
+          <label className="block text-xs font-medium text-neutral-600">웹사이트</label>
+          <input
+            {...register('website')}
+            type="url"
+            placeholder="https://example.com"
+            className="w-full px-3 py-2 text-sm border rounded-lg focus:outline-none
+              focus:ring-2 focus:ring-primary-400 border-neutral-200"
+          />
+        </div>
       </div>
 
       <div className="flex gap-2 justify-end">
@@ -124,6 +135,7 @@ export default function AdminDistilleryPage() {
       nameEn: form.nameEn,
       country: form.country,
       region: form.region || undefined,
+      website: form.website || undefined,
     }
     create.mutate(payload, {
       onSuccess: () => setShowCreate(false),
@@ -137,6 +149,7 @@ export default function AdminDistilleryPage() {
       nameEn: form.nameEn,
       country: form.country,
       region: form.region || null,
+      website: form.website || null,
     }
     update.mutate({ id: editTarget.id, data: payload }, {
       onSuccess: () => setEditTarget(null),
@@ -211,13 +224,14 @@ export default function AdminDistilleryPage() {
                   <th className="text-left px-4 py-3 text-neutral-500 font-medium">영어명</th>
                   <th className="text-left px-4 py-3 text-neutral-500 font-medium">국가</th>
                   <th className="text-left px-4 py-3 text-neutral-500 font-medium">지역</th>
+                  <th className="text-left px-4 py-3 text-neutral-500 font-medium">웹사이트</th>
                   <th className="text-right px-4 py-3 text-neutral-500 font-medium">액션</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100">
                 {!data || data.empty ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-10 text-center text-neutral-400">
+                    <td colSpan={7} className="px-4 py-10 text-center text-neutral-400">
                       데이터가 없습니다.
                     </td>
                   </tr>
@@ -229,6 +243,11 @@ export default function AdminDistilleryPage() {
                       <td className="px-4 py-3 text-neutral-500">{d.nameEn}</td>
                       <td className="px-4 py-3 text-neutral-500">{d.country}</td>
                       <td className="px-4 py-3 text-neutral-400">{d.region ?? '-'}</td>
+                      <td className="px-4 py-3 text-neutral-400">
+                        {d.website
+                          ? <a href={d.website} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline truncate max-w-[160px] inline-block">{d.website}</a>
+                          : '-'}
+                      </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex gap-2 justify-end">
                           <button

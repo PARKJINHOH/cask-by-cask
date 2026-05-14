@@ -13,7 +13,9 @@ public record DistilleryResponse(
         @Schema(description = "소재 국가")
         String country,
         @Schema(description = "소재 지역")
-        String region
+        String region,
+        @Schema(description = "공식 웹사이트 URL")
+        String website
 ) {
     public static DistilleryResponse from(Distillery distillery) {
         return new DistilleryResponse(
@@ -21,7 +23,8 @@ public record DistilleryResponse(
                 distillery.getNameKo(),
                 distillery.getNameEn(),
                 distillery.getCountry(),
-                distillery.getRegion()
+                distillery.getRegion(),
+                distillery.getWebsite()
         );
     }
 }
