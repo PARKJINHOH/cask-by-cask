@@ -18,6 +18,9 @@ import AdminSpiritFormPage from '@/pages/admin/AdminSpiritFormPage'
 import AdminRequestPage from '@/pages/admin/AdminRequestPage'
 import AdminRequestDetailPage from '@/pages/admin/AdminRequestDetailPage'
 import AdminDistilleryPage from '@/pages/admin/AdminDistilleryPage'
+import AdminWineryPage from '@/pages/admin/AdminWineryPage'
+import AdminCognacHousePage from '@/pages/admin/AdminCognacHousePage'
+import AdminCognacAppellationPage from '@/pages/admin/AdminCognacAppellationPage'
 import AdminReportPage from '@/pages/admin/AdminReportPage'
 import AdminNoticeListPage from '@/pages/admin/AdminNoticeListPage'
 import AdminNoticeFormPage from '@/pages/admin/AdminNoticeFormPage'
@@ -54,6 +57,9 @@ export default function App() {
               <Route path="spirits/requests" element={<AdminRequestPage />} />
               <Route path="spirits/requests/:id" element={<AdminRequestDetailPage />} />
               <Route path="distilleries" element={<AdminDistilleryPage />} />
+              <Route path="wineries" element={<AdminWineryPage />} />
+              <Route path="cognac-houses" element={<AdminCognacHousePage />} />
+              <Route path="cognac-appellations" element={<AdminCognacAppellationPage />} />
               <Route path="reports" element={<AdminReportPage />} />
               <Route path="notices" element={<AdminNoticeListPage />} />
               <Route path="notices/new" element={<AdminNoticeFormPage />} />

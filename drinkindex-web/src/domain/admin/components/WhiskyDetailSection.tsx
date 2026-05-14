@@ -105,6 +105,7 @@ export default function WhiskyDetailSection({ value, onChange, bottlingSlot, cou
             value={value.maturationStyle}
             onChange={(e) => onChange({ maturationStyle: e.target.value })}
             placeholder="예) 버번 캐스크 60% + 셰리 캐스크 40%"
+            maxLength={20}
             className={`${INPUT} mt-2`}
           />
         )}

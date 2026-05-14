@@ -5,6 +5,9 @@ export interface Distillery {
   country: string
   region: string | null
   website: string | null
+  foundedYear: number | null
+  descriptionKo: string | null
+  descriptionEn: string | null
 }
 
 export interface CreateDistilleryPayload {
@@ -13,6 +16,9 @@ export interface CreateDistilleryPayload {
   country: string
   region?: string
   website?: string
+  foundedYear?: number
+  descriptionKo?: string
+  descriptionEn?: string
 }
 
 export interface UpdateDistilleryPayload {
@@ -21,4 +27,7 @@ export interface UpdateDistilleryPayload {
   country?: string
   region?: string | null
   website?: string | null
+  foundedYear?: number | null
+  descriptionKo?: string | null
+  descriptionEn?: string | null
 }

@@ -30,6 +30,7 @@ export default function GrapeVarietyInput({ value, onChange }: Props) {
             value={row.name}
             onChange={(e) => update(idx, 'name', e.target.value)}
             placeholder="품종명 (예: Cabernet Sauvignon)"
+            maxLength={100}
             className="flex-1 px-3 py-2 text-sm border border-neutral-200 rounded-lg
               focus:outline-none focus:ring-2 focus:ring-primary-400"
           />

@@ -112,7 +112,8 @@ export default function SpiritRequestPage() {
                 <span className="ml-1 text-xs text-red-500">{t('common.required')}</span>
               </label>
               <input
-                {...register('nameKo', { required: true })}
+                {...register('nameKo', { required: true, maxLength: 200 })}
+                maxLength={200}
                 className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2
                   focus:ring-primary-400 transition-colors
                   ${errors.nameKo ? 'border-red-400' : 'border-neutral-200'}`}
@@ -129,7 +130,8 @@ export default function SpiritRequestPage() {
                 <span className="ml-1 text-xs text-red-500">{t('common.required')}</span>
               </label>
               <input
-                {...register('nameEn', { required: true })}
+                {...register('nameEn', { required: true, maxLength: 200 })}
+                maxLength={200}
                 className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2
                   focus:ring-primary-400 transition-colors
                   ${errors.nameEn ? 'border-red-400' : 'border-neutral-200'}`}
@@ -212,7 +214,8 @@ export default function SpiritRequestPage() {
                   {t('spiritRequest.form.bottler')}
                 </label>
                 <input
-                  {...register('bottler')}
+                  {...register('bottler', { maxLength: 200 })}
+                  maxLength={200}
                   className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg
                     focus:outline-none focus:ring-2 focus:ring-primary-400 transition-colors"
                 />

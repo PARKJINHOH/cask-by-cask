@@ -128,6 +128,7 @@ export default function AdminNoticeFormPage() {
           <input
             {...register('title')}
             placeholder="공지 제목을 입력하세요"
+            maxLength={300}
             className="w-full h-10 px-3 text-sm border border-neutral-300 rounded-lg
               focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none
               disabled:bg-neutral-50"

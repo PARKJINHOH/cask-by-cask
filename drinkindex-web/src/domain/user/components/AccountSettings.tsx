@@ -55,6 +55,7 @@ function NicknameSection() {
         <Input
           label="새 닉네임"
           placeholder="변경할 닉네임을 입력하세요"
+          maxLength={20}
           error={errors.nickname?.message}
           {...register('nickname')}
         />
@@ -132,6 +133,7 @@ function PasswordSection() {
           type="password"
           placeholder="현재 비밀번호"
           autoComplete="current-password"
+          maxLength={100}
           error={errors.currentPassword?.message}
           {...register('currentPassword')}
         />
@@ -140,6 +142,7 @@ function PasswordSection() {
           type="password"
           placeholder="8자 이상"
           autoComplete="new-password"
+          maxLength={100}
           error={errors.newPassword?.message}
           {...register('newPassword')}
         />
@@ -148,6 +151,7 @@ function PasswordSection() {
           type="password"
           placeholder="새 비밀번호를 다시 입력"
           autoComplete="new-password"
+          maxLength={100}
           error={errors.confirmPassword?.message}
           {...register('confirmPassword')}
         />

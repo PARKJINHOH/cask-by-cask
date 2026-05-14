@@ -57,6 +57,7 @@ export default function SpiritCommonDetailSection({ value, onChange, dateErrors 
             value={value.distilledDate}
             onChange={(e) => onChange({ distilledDate: e.target.value })}
             placeholder="YYYY 또는 YYYY-MM"
+            maxLength={7}
             className={`${INPUT} ${dateErrors?.distilledDate ? 'border-red-400' : ''}`}
           />
           {dateErrors?.distilledDate && (
@@ -72,6 +73,7 @@ export default function SpiritCommonDetailSection({ value, onChange, dateErrors 
             value={value.bottledDate}
             onChange={(e) => onChange({ bottledDate: e.target.value })}
             placeholder="YYYY 또는 YYYY-MM"
+            maxLength={7}
             className={`${INPUT} ${dateErrors?.bottledDate ? 'border-red-400' : ''}`}
           />
           {dateErrors?.bottledDate && (

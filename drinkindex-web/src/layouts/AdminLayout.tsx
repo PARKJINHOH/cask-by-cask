@@ -4,17 +4,37 @@ import { useAuth } from '@/domain/auth/hooks/useAuth'
 interface NavItem {
   path: string
   label: string
-  icon: string
   exact?: boolean
+  subItem?: boolean
 }
 
-const navItems: NavItem[] = [
-  { path: '/admin/notices',          label: '공지 관리',  icon: '📢' },
-  { path: '/admin/spirits/requests', label: '등록 요청',  icon: '📋' },
-  { path: '/admin/reports',          label: '신고 관리',  icon: '🚨' },
-  { path: '/admin/users',            label: '회원 관리',  icon: '👥', exact: true },
-  { path: '/admin/spirits',          label: '술 관리',    icon: '🥃', exact: true },
-  { path: '/admin/distilleries',     label: '증류소 관리', icon: '🏭', exact: true },
+interface NavGroup {
+  groupLabel: string
+  groupIcon: string
+  items: NavItem[]
+}
+
+type NavEntry =
+  | { type: 'item'; path: string; label: string; icon: string; exact?: boolean }
+  | { type: 'group'; groupLabel: string; groupIcon: string; items: NavItem[] }
+
+const navEntries: NavEntry[] = [
+  { type: 'item', path: '/admin/notices',          label: '공지 관리',  icon: '📢' },
+  { type: 'item', path: '/admin/spirits/requests', label: '등록 요청',  icon: '📋' },
+  { type: 'item', path: '/admin/reports',          label: '신고 관리',  icon: '🚨' },
+  { type: 'item', path: '/admin/users',            label: '회원 관리',  icon: '👥', exact: true },
+  { type: 'item', path: '/admin/spirits',          label: '술 관리',    icon: '🥃', exact: true },
+  {
+    type: 'group',
+    groupLabel: '제조사 관리',
+    groupIcon: '🏭',
+    items: [
+      { path: '/admin/distilleries',          label: '증류소 목록',     exact: true },
+      { path: '/admin/wineries',              label: '와이너리 목록',   exact: true },
+      { path: '/admin/cognac-houses',         label: '꼬냑 하우스 목록', exact: true },
+      { path: '/admin/cognac-appellations',   label: '세부 산지 목록',  exact: true, subItem: true },
+    ],
+  },
 ]
 
 export default function AdminLayout() {
@@ -27,10 +47,13 @@ export default function AdminLayout() {
     navigate('/')
   }
 
-  const isActive = (item: NavItem) =>
+  const isItemActive = (item: NavItem) =>
     item.exact
       ? location.pathname === item.path
       : location.pathname.startsWith(item.path)
+
+  const isGroupActive = (group: NavGroup) =>
+    group.items.some((item) => location.pathname.startsWith(item.path))
 
   return (
     <div className="min-h-screen bg-neutral-50 flex">
@@ -43,22 +66,65 @@ export default function AdminLayout() {
         </div>
 
         {/* 네비게이션 */}
-        <nav className="flex-1 px-3 py-4 space-y-0.5">
-          {navItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium
-                transition-colors ${
-                isActive(item)
-                  ? 'bg-primary-50 text-primary-700'
-                  : 'text-neutral-600 hover:bg-neutral-100'
-              }`}
-            >
-              <span className="text-base leading-none">{item.icon}</span>
-              {item.label}
-            </Link>
-          ))}
+        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+          {navEntries.map((entry) => {
+            if (entry.type === 'item') {
+              const active = entry.exact
+                ? location.pathname === entry.path
+                : location.pathname.startsWith(entry.path)
+              return (
+                <Link
+                  key={entry.path}
+                  to={entry.path}
+                  className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium
+                    transition-colors ${
+                    active
+                      ? 'bg-primary-50 text-primary-700'
+                      : 'text-neutral-600 hover:bg-neutral-100'
+                  }`}
+                >
+                  <span className="text-base leading-none">{entry.icon}</span>
+                  {entry.label}
+                </Link>
+              )
+            }
+
+            // group
+            const groupActive = entry.items.some((item) => location.pathname.startsWith(item.path))
+            return (
+              <div key={entry.groupLabel}>
+                {/* 그룹 헤더 */}
+                <div className={`flex items-center gap-2.5 px-3 py-2 text-sm font-semibold
+                  ${groupActive ? 'text-primary-700' : 'text-neutral-500'}`}>
+                  <span className="text-base leading-none">{entry.groupIcon}</span>
+                  {entry.groupLabel}
+                </div>
+                {/* 그룹 항목 */}
+                <div className="space-y-0.5">
+                  {entry.items.map((item) => {
+                    const active = item.exact
+                      ? location.pathname === item.path
+                      : location.pathname.startsWith(item.path)
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        className={`flex items-center gap-2 rounded-lg text-sm transition-colors
+                          ${item.subItem ? 'pl-10 pr-3 py-1.5' : 'pl-8 pr-3 py-1.5'}
+                          ${active
+                            ? 'bg-primary-50 text-primary-700 font-medium'
+                            : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700'
+                          }`}
+                      >
+                        {item.subItem && <span className="text-neutral-300 text-xs">└</span>}
+                        {item.label}
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })}
         </nav>
 
         {/* 바닥 */}

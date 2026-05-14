@@ -385,12 +385,14 @@ export default function AdminSpiritFormPage() {
             <div>
               <label className={LABEL}>영어 이름 *</label>
               <input value={nameEn} onChange={(e) => setNameEn(e.target.value)}
+                maxLength={200}
                 className={`${INPUT} ${errors.nameEn ? 'border-red-400' : ''}`} />
               {errors.nameEn && <p className="text-xs text-red-500 mt-1">{errors.nameEn}</p>}
             </div>
             <div>
               <label className={LABEL}>한국어 이름 *</label>
               <input value={nameKo} onChange={(e) => setNameKo(e.target.value)}
+                maxLength={200}
                 className={`${INPUT} ${errors.nameKo ? 'border-red-400' : ''}`} />
               {errors.nameKo && <p className="text-xs text-red-500 mt-1">{errors.nameKo}</p>}
             </div>
@@ -460,7 +462,8 @@ export default function AdminSpiritFormPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={LABEL}>병입업체</label>
-              <input value={bottler} onChange={(e) => setBottler(e.target.value)} className={INPUT} />
+              <input value={bottler} onChange={(e) => setBottler(e.target.value)}
+                maxLength={200} className={INPUT} />
             </div>
             {category === 'WINE' ? (
               <div>

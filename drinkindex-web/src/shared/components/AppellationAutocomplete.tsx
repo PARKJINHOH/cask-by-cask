@@ -42,6 +42,7 @@ export default function AppellationAutocomplete({ value, onChange, placeholder }
         onChange={(e) => onChange(e.target.value)}
         onFocus={() => suggestions.length > 0 && setOpen(true)}
         placeholder={placeholder ?? '예: AOC Bordeaux'}
+        maxLength={200}
         className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg
           focus:outline-none focus:ring-2 focus:ring-primary-400"
       />

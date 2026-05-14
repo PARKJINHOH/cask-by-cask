@@ -22,5 +22,14 @@ public record UpdateDistilleryRequest(
 
         @Schema(description = "공식 웹사이트 URL (null이면 변경 안 함)")
         @Size(max = 500, message = "웹사이트 URL은 500자 이하로 입력해주세요.")
-        String website
+        String website,
+
+        @Schema(description = "설립연도 (null이면 변경 안 함)")
+        Integer foundedYear,
+
+        @Schema(description = "한글 소개 (null이면 변경 안 함)")
+        String descriptionKo,
+
+        @Schema(description = "영문 소개 (null이면 변경 안 함)")
+        String descriptionEn
 ) {}

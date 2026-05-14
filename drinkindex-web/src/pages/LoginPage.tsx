@@ -83,6 +83,7 @@ export default function LoginPage() {
             type="email"
             placeholder="example@email.com"
             autoComplete="email"
+            maxLength={255}
             {...register('email')}
             error={errors.email?.message}
           />
@@ -92,6 +93,7 @@ export default function LoginPage() {
             type="password"
             placeholder="비밀번호 입력"
             autoComplete="current-password"
+            maxLength={100}
             {...register('password')}
             error={errors.password?.message}
           />

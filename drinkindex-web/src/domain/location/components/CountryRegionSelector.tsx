@@ -11,6 +11,8 @@ interface Props {
   disabled?: boolean;
 }
 
+const CUSTOM_VALUE = '__custom__';
+
 export default function CountryRegionSelector({
   countryCode,
   regionNameKo,
@@ -25,6 +27,21 @@ export default function CountryRegionSelector({
 
   const regions = countryCode ? (REGION_SUGGESTIONS[countryCode] ?? []) : [];
   const hasRegions = regions.length > 0;
+
+  // 편집 진입 시 regionNameKo 가 목록에 없으면 직접입력 모드로 시작
+  const [isCustomInput, setIsCustomInput] = useState(() => {
+    if (!regionNameKo || !countryCode) return false;
+    const initial = REGION_SUGGESTIONS[countryCode] ?? [];
+    if (initial.length === 0) return false;
+    return !initial.some((r) => r.nameKo === regionNameKo);
+  });
+
+  // 국가가 바뀌면 직접입력 모드 초기화 (첫 렌더는 건너뜀)
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return; }
+    setIsCustomInput(false);
+  }, [countryCode]);
 
   const display = (nameKo: string, nameEn: string) =>
     i18n.language === 'ko' ? nameKo : nameEn;
@@ -73,9 +90,81 @@ export default function CountryRegionSelector({
     'focus:outline-none focus:ring-2 focus:ring-primary-400 ' +
     'disabled:bg-neutral-50 disabled:text-neutral-400';
 
+  // 지역 영역 렌더링
+  const renderRegion = () => {
+    // 국가에 사전 정의된 지역 목록이 없는 경우 → 텍스트 입력
+    if (!hasRegions) {
+      return (
+        <input
+          value={regionNameKo}
+          onChange={(e) => onRegionChange(e.target.value, e.target.value)}
+          disabled={disabled || !countryCode}
+          placeholder={countryCode ? '지역 입력 (선택)' : '국가를 먼저 선택하세요'}
+          maxLength={100}
+          className={cls}
+        />
+      );
+    }
+
+    // 직접 입력 모드
+    if (isCustomInput) {
+      return (
+        <div className="relative w-full">
+          <input
+            autoFocus
+            value={regionNameKo}
+            onChange={(e) => onRegionChange(e.target.value, e.target.value)}
+            disabled={disabled}
+            placeholder="지역 직접 입력"
+            maxLength={100}
+            className={`${cls} pr-8`}
+          />
+          <button
+            type="button"
+            onClick={() => {
+              setIsCustomInput(false);
+              onRegionChange('', '');
+            }}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 text-xs leading-none"
+            title="목록으로 돌아가기"
+          >
+            ✕
+          </button>
+        </div>
+      );
+    }
+
+    // 사전 정의 목록 select + 직접 입력 옵션
+    return (
+      <select
+        className={cls}
+        value={regionNameKo}
+        onChange={(e) => {
+          if (e.target.value === CUSTOM_VALUE) {
+            setIsCustomInput(true);
+            onRegionChange('', '');
+          } else {
+            const nameKo = e.target.value;
+            const r = regions.find((x) => x.nameKo === nameKo);
+            onRegionChange(nameKo, r?.nameEn ?? '');
+          }
+        }}
+        disabled={disabled || !countryCode}
+      >
+        <option value="">지역 선택</option>
+        {regions.map((r) => (
+          <option key={r.nameKo} value={r.nameKo}>
+            {display(r.nameKo, r.nameEn)}
+          </option>
+        ))}
+        <option value={CUSTOM_VALUE}>✏ 직접 입력</option>
+      </select>
+    );
+  };
+
   return (
     <div className="flex gap-2">
-      {/* Country combobox */}
+      {/* 국가 콤보박스 */}
       <div ref={containerRef} className="relative w-full">
         {open ? (
           <input
@@ -129,34 +218,8 @@ export default function CountryRegionSelector({
         )}
       </div>
 
-      {/* Region */}
-      {hasRegions ? (
-        <select
-          className={cls}
-          value={regionNameKo}
-          onChange={(e) => {
-            const nameKo = e.target.value;
-            const r = regions.find((x) => x.nameKo === nameKo);
-            onRegionChange(nameKo, r?.nameEn ?? '');
-          }}
-          disabled={disabled || !countryCode}
-        >
-          <option value="">지역 선택</option>
-          {regions.map((r) => (
-            <option key={r.nameKo} value={r.nameKo}>
-              {display(r.nameKo, r.nameEn)}
-            </option>
-          ))}
-        </select>
-      ) : (
-        <input
-          value={regionNameKo}
-          onChange={(e) => onRegionChange(e.target.value, e.target.value)}
-          disabled={disabled || !countryCode}
-          placeholder={countryCode ? '지역 입력 (선택)' : '국가를 먼저 선택하세요'}
-          className={cls}
-        />
-      )}
+      {/* 지역 */}
+      {renderRegion()}
     </div>
   );
 }

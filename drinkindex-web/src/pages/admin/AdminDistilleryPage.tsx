@@ -13,14 +13,15 @@ import type { Distillery, CreateDistilleryPayload, UpdateDistilleryPayload } fro
 import CountryRegionSelector from '@/domain/location/components/CountryRegionSelector'
 import { ISO3166_COUNTRIES } from '@/domain/location/data/iso3166Countries'
 
-// ── 생성/수정 폼 ─────────────────────────────────────────────────
-
 interface FormValues {
   nameKo: string
   nameEn: string
   country: string
   region?: string
   website?: string
+  foundedYear?: number | ''
+  descriptionKo?: string
+  descriptionEn?: string
 }
 
 interface DistilleryFormProps {
@@ -40,14 +41,29 @@ function DistilleryForm({ initial, onSave, onCancel, isPending }: DistilleryForm
   const [regionNameKo, setRegionNameKo] = useState(initial?.region ?? '')
   const [countryError, setCountryError] = useState(false)
 
-  const { register, handleSubmit, formState: { errors } } = useForm<Pick<FormValues, 'nameKo' | 'nameEn' | 'website'>>({
-    defaultValues: initial ? { nameKo: initial.nameKo, nameEn: initial.nameEn, website: initial.website ?? '' } : undefined,
+  const { register, handleSubmit, formState: { errors } } = useForm<Omit<FormValues, 'country' | 'region'>>({
+    defaultValues: initial ? {
+      nameKo: initial.nameKo,
+      nameEn: initial.nameEn,
+      website: initial.website ?? '',
+      foundedYear: initial.foundedYear ?? '',
+      descriptionKo: initial.descriptionKo ?? '',
+      descriptionEn: initial.descriptionEn ?? '',
+    } : undefined,
   })
 
-  const onSubmit = (data: Pick<FormValues, 'nameKo' | 'nameEn' | 'website'>) => {
+  const onSubmit = (data: Omit<FormValues, 'country' | 'region'>) => {
     if (!countryNameKo) { setCountryError(true); return }
     setCountryError(false)
-    onSave({ ...data, country: countryNameKo, region: regionNameKo || undefined, website: data.website || undefined })
+    onSave({
+      ...data,
+      country: countryNameKo,
+      region: regionNameKo || undefined,
+      website: data.website || undefined,
+      foundedYear: data.foundedYear ? Number(data.foundedYear) : undefined,
+      descriptionKo: data.descriptionKo || undefined,
+      descriptionEn: data.descriptionEn || undefined,
+    })
   }
 
   return (
@@ -56,7 +72,8 @@ function DistilleryForm({ initial, onSave, onCancel, isPending }: DistilleryForm
         <div className="space-y-1">
           <label className="block text-xs font-medium text-neutral-600">한국어명 *</label>
           <input
-            {...register('nameKo', { required: true })}
+            {...register('nameKo', { required: true, maxLength: 200 })}
+            maxLength={200}
             className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none
               focus:ring-2 focus:ring-primary-400 ${errors.nameKo ? 'border-red-400' : 'border-neutral-200'}`}
           />
@@ -64,15 +81,37 @@ function DistilleryForm({ initial, onSave, onCancel, isPending }: DistilleryForm
         <div className="space-y-1">
           <label className="block text-xs font-medium text-neutral-600">영어명 *</label>
           <input
-            {...register('nameEn', { required: true })}
+            {...register('nameEn', { required: true, maxLength: 200 })}
+            maxLength={200}
             className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none
               focus:ring-2 focus:ring-primary-400 ${errors.nameEn ? 'border-red-400' : 'border-neutral-200'}`}
           />
         </div>
+        <div className="space-y-1">
+          <label className="block text-xs font-medium text-neutral-600">설립연도</label>
+          <input
+            {...register('foundedYear')}
+            type="number"
+            placeholder="예) 1824"
+            min={1500}
+            max={new Date().getFullYear()}
+            className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none
+              focus:ring-2 focus:ring-primary-400"
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="block text-xs font-medium text-neutral-600">웹사이트</label>
+          <input
+            {...register('website')}
+            type="url"
+            placeholder="https://example.com"
+            maxLength={500}
+            className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none
+              focus:ring-2 focus:ring-primary-400"
+          />
+        </div>
         <div className="space-y-1 sm:col-span-2">
-          <label className="block text-xs font-medium text-neutral-600">
-            국가 * / 지역
-          </label>
+          <label className="block text-xs font-medium text-neutral-600">국가 * / 지역</label>
           <CountryRegionSelector
             countryCode={countryCode}
             regionNameKo={regionNameKo}
@@ -83,18 +122,28 @@ function DistilleryForm({ initial, onSave, onCancel, isPending }: DistilleryForm
             }}
             onRegionChange={(nameKo) => setRegionNameKo(nameKo)}
           />
-          {countryError && (
-            <p className="text-xs text-red-500">국가를 선택해주세요.</p>
-          )}
+          {countryError && <p className="text-xs text-red-500">국가를 선택해주세요.</p>}
         </div>
         <div className="space-y-1 sm:col-span-2">
-          <label className="block text-xs font-medium text-neutral-600">웹사이트</label>
-          <input
-            {...register('website')}
-            type="url"
-            placeholder="https://example.com"
-            className="w-full px-3 py-2 text-sm border rounded-lg focus:outline-none
-              focus:ring-2 focus:ring-primary-400 border-neutral-200"
+          <label className="block text-xs font-medium text-neutral-600">소개 (한국어)</label>
+          <textarea
+            {...register('descriptionKo')}
+            rows={3}
+            placeholder="증류소 소개를 입력하세요."
+            maxLength={2000}
+            className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none
+              focus:ring-2 focus:ring-primary-400 resize-none"
+          />
+        </div>
+        <div className="space-y-1 sm:col-span-2">
+          <label className="block text-xs font-medium text-neutral-600">소개 (영어)</label>
+          <textarea
+            {...register('descriptionEn')}
+            rows={3}
+            placeholder="Enter distillery description."
+            maxLength={2000}
+            className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none
+              focus:ring-2 focus:ring-primary-400 resize-none"
           />
         </div>
       </div>
@@ -108,8 +157,6 @@ function DistilleryForm({ initial, onSave, onCancel, isPending }: DistilleryForm
     </form>
   )
 }
-
-// ── 메인 페이지 ────────────────────────────────────────────────
 
 export default function AdminDistilleryPage() {
   const [keyword, setKeyword] = useState('')
@@ -136,10 +183,11 @@ export default function AdminDistilleryPage() {
       country: form.country,
       region: form.region || undefined,
       website: form.website || undefined,
+      foundedYear: form.foundedYear ? Number(form.foundedYear) : undefined,
+      descriptionKo: form.descriptionKo || undefined,
+      descriptionEn: form.descriptionEn || undefined,
     }
-    create.mutate(payload, {
-      onSuccess: () => setShowCreate(false),
-    })
+    create.mutate(payload, { onSuccess: () => setShowCreate(false) })
   }
 
   const handleUpdate = (form: FormValues) => {
@@ -150,10 +198,11 @@ export default function AdminDistilleryPage() {
       country: form.country,
       region: form.region || null,
       website: form.website || null,
+      foundedYear: form.foundedYear ? Number(form.foundedYear) : null,
+      descriptionKo: form.descriptionKo || null,
+      descriptionEn: form.descriptionEn || null,
     }
-    update.mutate({ id: editTarget.id, data: payload }, {
-      onSuccess: () => setEditTarget(null),
-    })
+    update.mutate({ id: editTarget.id, data: payload }, { onSuccess: () => setEditTarget(null) })
   }
 
   const handleDelete = (id: number, name: string) => {
@@ -170,7 +219,6 @@ export default function AdminDistilleryPage() {
         </Button>
       </div>
 
-      {/* 검색 */}
       <form onSubmit={handleSearch} className="flex gap-2 p-4 bg-white rounded-xl shadow-sm">
         <input
           ref={searchRef}
@@ -181,7 +229,6 @@ export default function AdminDistilleryPage() {
         <Button type="submit" size="sm" variant="secondary">검색</Button>
       </form>
 
-      {/* 생성 폼 */}
       {showCreate && (
         <div className="bg-white rounded-xl shadow-sm p-5 border border-primary-100">
           <h2 className="text-sm font-semibold text-neutral-700 mb-4">새 증류소 등록</h2>
@@ -193,7 +240,6 @@ export default function AdminDistilleryPage() {
         </div>
       )}
 
-      {/* 수정 폼 */}
       {editTarget && (
         <div className="bg-white rounded-xl shadow-sm p-5 border border-amber-100">
           <h2 className="text-sm font-semibold text-neutral-700 mb-4">
@@ -208,7 +254,6 @@ export default function AdminDistilleryPage() {
         </div>
       )}
 
-      {/* 테이블 */}
       {isLoading ? (
         <div className="flex justify-center py-20">
           <Spinner size="lg" className="text-primary-600" />
@@ -224,6 +269,7 @@ export default function AdminDistilleryPage() {
                   <th className="text-left px-4 py-3 text-neutral-500 font-medium">영어명</th>
                   <th className="text-left px-4 py-3 text-neutral-500 font-medium">국가</th>
                   <th className="text-left px-4 py-3 text-neutral-500 font-medium">지역</th>
+                  <th className="text-left px-4 py-3 text-neutral-500 font-medium">설립연도</th>
                   <th className="text-left px-4 py-3 text-neutral-500 font-medium">웹사이트</th>
                   <th className="text-right px-4 py-3 text-neutral-500 font-medium">액션</th>
                 </tr>
@@ -231,7 +277,7 @@ export default function AdminDistilleryPage() {
               <tbody className="divide-y divide-neutral-100">
                 {!data || data.empty ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-10 text-center text-neutral-400">
+                    <td colSpan={8} className="px-4 py-10 text-center text-neutral-400">
                       데이터가 없습니다.
                     </td>
                   </tr>
@@ -243,9 +289,10 @@ export default function AdminDistilleryPage() {
                       <td className="px-4 py-3 text-neutral-500">{d.nameEn}</td>
                       <td className="px-4 py-3 text-neutral-500">{d.country}</td>
                       <td className="px-4 py-3 text-neutral-400">{d.region ?? '-'}</td>
+                      <td className="px-4 py-3 text-neutral-400">{d.foundedYear ?? '-'}</td>
                       <td className="px-4 py-3 text-neutral-400">
                         {d.website
-                          ? <a href={d.website} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline truncate max-w-[160px] inline-block">{d.website}</a>
+                          ? <a href={d.website} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline truncate max-w-[140px] inline-block">{d.website}</a>
                           : '-'}
                       </td>
                       <td className="px-4 py-3 text-right">
@@ -259,8 +306,7 @@ export default function AdminDistilleryPage() {
                           <button
                             onClick={() => handleDelete(d.id, d.nameKo)}
                             disabled={remove.isPending}
-                            className="text-xs text-red-500 hover:text-red-700 font-medium
-                              disabled:opacity-40"
+                            className="text-xs text-red-500 hover:text-red-700 font-medium disabled:opacity-40"
                           >
                             삭제
                           </button>

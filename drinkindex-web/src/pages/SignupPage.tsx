@@ -106,6 +106,7 @@ export default function SignupPage() {
             type="email"
             placeholder="example@email.com"
             autoComplete="email"
+            maxLength={255}
             {...register('email')}
             error={errors.email?.message}
           />
@@ -115,6 +116,7 @@ export default function SignupPage() {
             type="text"
             placeholder="2~100자"
             autoComplete="nickname"
+            maxLength={100}
             {...register('nickname')}
             error={errors.nickname?.message}
             hint="커뮤니티에서 사용되는 이름입니다"
@@ -125,6 +127,7 @@ export default function SignupPage() {
             type="password"
             placeholder="8자 이상 입력"
             autoComplete="new-password"
+            maxLength={100}
             {...register('password')}
             error={errors.password?.message}
           />
@@ -134,6 +137,7 @@ export default function SignupPage() {
             type="password"
             placeholder="비밀번호 재입력"
             autoComplete="new-password"
+            maxLength={100}
             {...register('passwordConfirm')}
             error={errors.passwordConfirm?.message}
           />

@@ -41,6 +41,9 @@ public class DistilleryService {
                 .country(request.country())
                 .region(request.region())
                 .website(request.website())
+                .foundedYear(request.foundedYear())
+                .descriptionKo(request.descriptionKo())
+                .descriptionEn(request.descriptionEn())
                 .build();
         return DistilleryResponse.from(distilleryRepository.save(distillery));
     }
@@ -51,11 +54,14 @@ public class DistilleryService {
 
         // null 필드는 기존 값 유지 (PATCH 동작)
         distillery.update(
-                request.nameKo()   != null ? request.nameKo()   : distillery.getNameKo(),
-                request.nameEn()   != null ? request.nameEn()   : distillery.getNameEn(),
-                request.country()  != null ? request.country()  : distillery.getCountry(),
-                request.region()   != null ? request.region()   : distillery.getRegion(),
-                request.website()  != null ? request.website()  : distillery.getWebsite()
+                request.nameKo()        != null ? request.nameKo()        : distillery.getNameKo(),
+                request.nameEn()        != null ? request.nameEn()        : distillery.getNameEn(),
+                request.country()       != null ? request.country()       : distillery.getCountry(),
+                request.region()        != null ? request.region()        : distillery.getRegion(),
+                request.website()       != null ? request.website()       : distillery.getWebsite(),
+                request.foundedYear()   != null ? request.foundedYear()   : distillery.getFoundedYear(),
+                request.descriptionKo() != null ? request.descriptionKo() : distillery.getDescriptionKo(),
+                request.descriptionEn() != null ? request.descriptionEn() : distillery.getDescriptionEn()
         );
         return DistilleryResponse.from(distillery);
     }
