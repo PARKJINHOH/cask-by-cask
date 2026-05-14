@@ -1,7 +1,7 @@
 {
   "app": {
     "name": "DrinkIndex",
-    "tagline": "Whisky · Cognac · Wine · Tequila Review Community"
+    "tagline": "Whisky · Cognac · Wine Review Community"
   },
   "nav": {
     "home":     "Home",
@@ -83,18 +83,10 @@
       "whisky":  "Whisky",
       "cognac":  "Cognac",
       "wine":    "Wine",
-      "tequila": "Tequila",
-      "rum":     "Rum",
-      "gin":     "Gin",
-      "vodka":   "Vodka",
       "other":   "Other",
       "WHISKY":  "Whisky",
       "COGNAC":  "Cognac",
       "WINE":    "Wine",
-      "TEQUILA": "Tequila",
-      "RUM":     "Rum",
-      "GIN":     "Gin",
-      "VODKA":   "Vodka",
       "OTHER":   "Other"
     },
     "sort": {

@@ -52,7 +52,7 @@ class SpiritQueryRepositoryTest {
                 "Scotland", new BigDecimal("43.0"), new BigDecimal("92.0"), 250, distillery));
         spiritRepository.save(spirit("헤네시 VSOP", "Hennessy VSOP", SpiritCategory.COGNAC,
                 "France", new BigDecimal("40.0"), new BigDecimal("85.0"), 80, null));
-        spiritRepository.save(spirit("돈 훌리오", "Don Julio", SpiritCategory.TEQUILA,
+        spiritRepository.save(spirit("기타 스피릿", "Other Spirit", SpiritCategory.OTHER,
                 "Mexico", new BigDecimal("38.0"), null, 60, null));
 
         Spirit hidden = spirit("숨김술", "Hidden Spirit", SpiritCategory.WHISKY,

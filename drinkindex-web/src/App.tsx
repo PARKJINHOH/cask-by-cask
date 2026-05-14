@@ -14,6 +14,7 @@ import SpiritRequestPage from '@/pages/SpiritRequestPage'
 import AdminUserPage from '@/pages/admin/AdminUserPage'
 import AdminSpiritPage from '@/pages/admin/AdminSpiritPage'
 import AdminSpiritDetailPage from '@/pages/admin/AdminSpiritDetailPage'
+import AdminSpiritFormPage from '@/pages/admin/AdminSpiritFormPage'
 import AdminRequestPage from '@/pages/admin/AdminRequestPage'
 import AdminRequestDetailPage from '@/pages/admin/AdminRequestDetailPage'
 import AdminDistilleryPage from '@/pages/admin/AdminDistilleryPage'
@@ -47,7 +48,9 @@ export default function App() {
               <Route index element={<Navigate to="users" replace />} />
               <Route path="users" element={<AdminUserPage />} />
               <Route path="spirits" element={<AdminSpiritPage />} />
+              <Route path="spirits/new" element={<AdminSpiritFormPage />} />
               <Route path="spirits/:id" element={<AdminSpiritDetailPage />} />
+              <Route path="spirits/:id/edit" element={<AdminSpiritFormPage />} />
               <Route path="spirits/requests" element={<AdminRequestPage />} />
               <Route path="spirits/requests/:id" element={<AdminRequestDetailPage />} />
               <Route path="distilleries" element={<AdminDistilleryPage />} />

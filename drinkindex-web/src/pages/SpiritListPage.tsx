@@ -14,7 +14,7 @@ import RangeSlider from '@/shared/components/RangeSlider'
 
 // ── 상수 ───────────────────────────────────────────────────────
 const CATEGORIES: SpiritCategory[] = [
-  'WHISKY', 'COGNAC', 'WINE', 'TEQUILA', 'RUM', 'GIN', 'VODKA', 'OTHER',
+  'WHISKY', 'COGNAC', 'WINE', 'OTHER',
 ]
 const SORT_VALUES: SpiritSort[] = ['LATEST', 'SCORE_DESC', 'REVIEW_COUNT_DESC']
 const COUNTRIES = [

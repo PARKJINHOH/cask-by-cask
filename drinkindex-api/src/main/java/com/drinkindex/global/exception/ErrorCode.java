@@ -28,6 +28,8 @@ public enum ErrorCode {
     SPIRIT_ACCESS_DENIED(HttpStatus.FORBIDDEN, "SPIRIT_004", "해당 술에 대한 접근 권한이 없습니다."),
     INVALID_IMAGE_FORMAT(HttpStatus.BAD_REQUEST, "SPIRIT_005", "JPG, PNG 형식의 이미지만 업로드할 수 있습니다."),
     IMAGE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "SPIRIT_006", "이미지 파일 크기는 10MB를 초과할 수 없습니다."),
+    INVALID_GRAPE_PERCENTAGE(HttpStatus.BAD_REQUEST, "SPIRIT_007", "포도 품종 비율 합계는 100%를 초과할 수 없습니다."),
+    INVALID_DATE_FORMAT(HttpStatus.BAD_REQUEST, "SPIRIT_008", "날짜 형식이 올바르지 않습니다 (YYYY 또는 YYYY-MM)."),
 
     // Distillery
     DISTILLERY_NOT_FOUND(HttpStatus.NOT_FOUND, "DISTILLERY_001", "증류소 정보를 찾을 수 없습니다."),

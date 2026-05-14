@@ -11,11 +11,10 @@ import type { SpiritCategory, SpiritStatus } from '@/domain/spirit/types/spirit.
 // ── 상수 ────────────────────────────────────────────────────────
 
 const CATEGORY_LABEL: Record<SpiritCategory, string> = {
-  WHISKY: '위스키', COGNAC: '꼬냑', WINE: '와인', TEQUILA: '데낄라',
-  RUM: '럼', GIN: '진', VODKA: '보드카', OTHER: '기타',
+  WHISKY: '위스키', COGNAC: '꼬냑', WINE: '와인', OTHER: '기타',
 }
 
-const CATEGORIES: SpiritCategory[] = ['WHISKY', 'COGNAC', 'WINE', 'TEQUILA', 'RUM', 'GIN', 'VODKA', 'OTHER']
+const CATEGORIES: SpiritCategory[] = ['WHISKY', 'COGNAC', 'WINE', 'OTHER']
 
 const STATUS_OPTIONS: Array<{ value: SpiritStatus; label: string }> = [
   { value: 'ACTIVE',  label: '공개' },

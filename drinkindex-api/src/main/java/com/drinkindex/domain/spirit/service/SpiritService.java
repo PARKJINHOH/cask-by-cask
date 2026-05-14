@@ -20,6 +20,7 @@ import com.drinkindex.global.exception.ErrorCode;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -36,6 +37,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class SpiritService {
@@ -53,6 +55,7 @@ public class SpiritService {
     private final DistilleryRepository distilleryRepository;
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
+    private final SpiritDetailService spiritDetailService;
 
     // ── 공개 조회 ──────────────────────────────────────────
 
@@ -64,7 +67,7 @@ public class SpiritService {
 
     @Transactional(readOnly = true)
     public SpiritDetailResponse getSpiritDetail(Long id) {
-        Spirit spirit = spiritRepository.findByIdAndStatus(id, SpiritStatus.ACTIVE)
+        Spirit spirit = spiritRepository.findByIdWithAllDetails(id, SpiritStatus.ACTIVE)
                 .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_NOT_FOUND));
 
         List<SpiritImageResponse> images = spiritImageRepository.findBySpiritId(id)
@@ -72,7 +75,7 @@ public class SpiritService {
                 .map(SpiritImageResponse::from)
                 .toList();
 
-        return SpiritDetailResponse.of(spirit, images);
+        return spiritDetailService.buildFullDetailResponse(spirit, images);
     }
 
     // ── 관리자 CRUD ─────────────────────────────────────────
@@ -100,7 +103,12 @@ public class SpiritService {
                 .registeredBy(registeredBy)
                 .build();
 
-        return SpiritDetailResponse.of(spiritRepository.save(spirit), List.of());
+        Spirit saved = spiritRepository.save(spirit);
+
+        spiritDetailService.saveCommonDetail(saved, request.commonDetail());
+        spiritDetailService.saveCategoryDetail(saved, request);
+
+        return SpiritDetailResponse.of(saved, List.of());
     }
 
     @Transactional
@@ -113,6 +121,8 @@ public class SpiritService {
         Distillery distillery = request.distilleryId() != null
                 ? resolveDistillery(request.distilleryId())
                 : spirit.getDistillery();
+
+        SpiritCategory prevCategory = spirit.getCategory();
 
         spirit.update(
                 request.nameKo() != null ? request.nameKo() : spirit.getNameKo(),
@@ -127,6 +137,9 @@ public class SpiritService {
                 request.country() != null ? request.country() : spirit.getCountry(),
                 request.region() != null ? request.region() : spirit.getRegion()
         );
+
+        spiritDetailService.saveCommonDetail(spirit, request.commonDetail());
+        spiritDetailService.updateCategoryDetail(spirit, prevCategory, request);
 
         List<SpiritImageResponse> images = spiritImageRepository.findBySpiritId(id)
                 .stream().map(SpiritImageResponse::from).toList();

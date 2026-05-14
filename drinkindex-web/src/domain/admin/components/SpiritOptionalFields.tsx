@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { UseFormRegister, UseFormSetValue, UseFormWatch } from 'react-hook-form'
 import DistillerySelector from '@/domain/distillery/components/DistillerySelector'
 import CountryRegionSelector from '@/domain/location/components/CountryRegionSelector'
+import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
 
 type FieldKey =
   | 'distilleryId'
@@ -21,6 +22,16 @@ const FIELD_DEFS: Array<{ key: FieldKey; label: string; group: string }> = [
   { key: 'abv',           label: '도수 (%)',    group: '규격' },
   { key: 'volumeMl',      label: '용량 (ml)',   group: '규격' },
 ]
+
+// 카테고리별로 숨길 선택 옵션
+// 와인: vintageYear 대신 bottledYear 사용 (vintage는 wineDetail에서 관리)
+// 비와인: vintageYear 불필요
+const CATEGORY_HIDDEN: Partial<Record<string, FieldKey[]>> = {
+  WINE:   ['bottledYear'],
+  WHISKY: ['vintageYear'],
+  COGNAC: ['vintageYear'],
+  OTHER:  ['vintageYear'],
+}
 
 interface InitialValues {
   distilleryId?: number | null
@@ -48,6 +59,14 @@ interface Props {
   defaultDistilleryName?: string
   initialValues?: InitialValues
   dataReady?: boolean
+  category?: SpiritCategory
+  hiddenFields?: FieldKey[]
+  /** 항상 표시되며 사용자가 제거할 수 없는 필드 */
+  pinnedFields?: FieldKey[]
+  /** 레이블에 * 표시할 필수 필드 */
+  requiredFields?: FieldKey[]
+  /** 필드별 에러 메시지 */
+  fieldErrors?: Partial<Record<FieldKey, string>>
 }
 
 const INPUT_CLS =
@@ -65,10 +84,17 @@ export default function SpiritOptionalFields({
   defaultDistilleryName,
   initialValues = {},
   dataReady = true,
+  category,
+  hiddenFields = [],
+  pinnedFields = [],
+  requiredFields = [],
+  fieldErrors = {},
 }: Props) {
+  const producerLabel = category === 'WINE' ? '양조장' : '증류소'
   const [activeFields, setActiveFields] = useState<Set<FieldKey>>(new Set())
   const [didInit, setDidInit] = useState(false)
 
+  // 초기값 기반 활성 필드 설정
   useEffect(() => {
     if (!dataReady || didInit) return
     const active = new Set<FieldKey>()
@@ -79,9 +105,62 @@ export default function SpiritOptionalFields({
     if (initialValues.vintageYear != null)             active.add('vintageYear')
     if (initialValues.abv != null)                     active.add('abv')
     if (initialValues.volumeMl != null)                active.add('volumeMl')
+    // 초기화 시점에도 pinnedFields 반영
+    pinnedFields.forEach(f => active.add(f))
     setActiveFields(active)
     setDidInit(true)
   }, [dataReady]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 카테고리 변경 시 해당 카테고리에서 숨겨야 할 필드를 activeFields에서 제거
+  useEffect(() => {
+    if (!category) return
+    const toHide: FieldKey[] = CATEGORY_HIDDEN[category] ?? []
+    if (toHide.length === 0) return
+    setActiveFields(prev => {
+      const next = new Set(prev)
+      toHide.forEach(f => {
+        if (next.has(f)) {
+          next.delete(f)
+          if (f === 'bottledYear') setValue('bottledYear', undefined)
+          if (f === 'vintageYear') setValue('vintageYear', undefined)
+        }
+      })
+      return next
+    })
+  }, [category]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // pinnedFields 변경 시 activeFields 동기화
+  // - 새로 pinned된 필드 → activeFields에 추가
+  // - pinned 해제된 필드 → activeFields에서 제거
+  const prevPinnedRef = useRef<FieldKey[]>([])
+  const pinnedKey = pinnedFields.join(',')
+
+  useEffect(() => {
+    const prev = prevPinnedRef.current
+    const curr = pinnedFields
+    prevPinnedRef.current = curr
+
+    setActiveFields(state => {
+      const next = new Set(state)
+      // 더 이상 pinned가 아닌 필드 제거
+      prev.forEach(f => {
+        if (!curr.includes(f)) {
+          next.delete(f)
+        }
+      })
+      // 새로 pinned된 필드 추가
+      curr.forEach(f => next.add(f))
+      return next
+    })
+  }, [pinnedKey]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // abv 값 0~100 클램핑
+  const watchedAbv = watch('abv')
+  useEffect(() => {
+    if (typeof watchedAbv !== 'number') return
+    if (watchedAbv > 100) setValue('abv', 100)
+    else if (watchedAbv < 0) setValue('abv', 0)
+  }, [watchedAbv, setValue])
 
   const addField = (key: FieldKey) =>
     setActiveFields(prev => new Set([...prev, key]))
@@ -97,8 +176,12 @@ export default function SpiritOptionalFields({
     if (key === 'volumeMl')      setValue('volumeMl', undefined)
   }
 
-  const activeList  = FIELD_DEFS.filter(f =>  activeFields.has(f.key))
-  const inactiveList = FIELD_DEFS.filter(f => !activeFields.has(f.key))
+  const categoryHidden: FieldKey[] = (category && CATEGORY_HIDDEN[category]) ?? []
+  const allHidden = [...hiddenFields, ...categoryHidden]
+  const visibleDefs   = FIELD_DEFS.filter(f => !allHidden.includes(f.key))
+  const activeList    = visibleDefs.filter(f =>  activeFields.has(f.key))
+  // pinned 필드는 inactiveList(추가 피커)에서 제외
+  const inactiveList  = visibleDefs.filter(f => !activeFields.has(f.key) && !pinnedFields.includes(f.key))
 
   const inactiveByGroup = inactiveList.reduce<Record<string, typeof FIELD_DEFS>>((acc, f) => {
     ;(acc[f.group] ??= []).push(f)
@@ -108,80 +191,95 @@ export default function SpiritOptionalFields({
   return (
     <div className="space-y-4">
       {/* 활성화된 옵션 필드 */}
-      {activeList.map(({ key, label }) => (
-        <div key={key} className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <label className="block text-xs font-medium text-neutral-600">{label}</label>
-            <button
-              type="button"
-              onClick={() => removeField(key)}
-              className="text-[11px] text-neutral-400 hover:text-red-500 transition-colors"
-            >
-              − 제거
-            </button>
-          </div>
+      {activeList.map(({ key, label }) => {
+        const isPinned   = pinnedFields.includes(key)
+        const isRequired = requiredFields.includes(key)
+        const errorMsg   = fieldErrors[key]
 
-          {key === 'distilleryId' && (
-            <DistillerySelector
-              value={watch('distilleryId') ?? null}
-              defaultName={defaultDistilleryName}
-              onChange={(id) => setValue('distilleryId', id ?? undefined)}
-            />
-          )}
-
-          {key === 'countryRegion' && (
-            <>
-              <CountryRegionSelector
-                countryCode={countryCode}
-                regionNameKo={regionNameKo}
-                onCountryChange={onCountryChange}
-                onRegionChange={onRegionChange}
-              />
-              {(countryNameKo || regionNameKo) && countryCode === null && (
-                <p className="text-xs text-neutral-400">
-                  현재 값: {[countryNameKo, regionNameKo].filter(Boolean).join(' / ')}
-                </p>
+        return (
+          <div key={key} className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-medium text-neutral-600">
+                {key === 'distilleryId' ? producerLabel : label}
+                {isRequired && <span className="text-red-400 ml-0.5">*</span>}
+              </label>
+              {!isPinned && (
+                <button
+                  type="button"
+                  onClick={() => removeField(key)}
+                  className="text-[11px] text-neutral-400 hover:text-red-500 transition-colors"
+                >
+                  − 제거
+                </button>
               )}
-            </>
-          )}
+            </div>
 
-          {key === 'bottler' && (
-            <input {...register('bottler')} className={INPUT_CLS} />
-          )}
+            {key === 'distilleryId' && (
+              <DistillerySelector
+                value={watch('distilleryId') ?? null}
+                defaultName={defaultDistilleryName}
+                onChange={(id) => setValue('distilleryId', id ?? undefined)}
+              />
+            )}
 
-          {key === 'bottledYear' && (
-            <input
-              type="number" step="1" min="1800" max="2100"
-              {...register('bottledYear', { valueAsNumber: true })}
-              className={INPUT_CLS}
-            />
-          )}
+            {key === 'countryRegion' && (
+              <>
+                <CountryRegionSelector
+                  countryCode={countryCode}
+                  regionNameKo={regionNameKo}
+                  onCountryChange={onCountryChange}
+                  onRegionChange={onRegionChange}
+                />
+                {(countryNameKo || regionNameKo) && countryCode === null && (
+                  <p className="text-xs text-neutral-400">
+                    현재 값: {[countryNameKo, regionNameKo].filter(Boolean).join(' / ')}
+                  </p>
+                )}
+              </>
+            )}
 
-          {key === 'vintageYear' && (
-            <input
-              type="number" step="1" min="1800" max="2100"
-              {...register('vintageYear', { valueAsNumber: true })}
-              className={INPUT_CLS}
-            />
-          )}
+            {key === 'bottler' && (
+              <input {...register('bottler')} className={INPUT_CLS} />
+            )}
 
-          {key === 'abv' && (
-            <input
-              type="number" step="0.1" min="0" max="100"
-              {...register('abv', { valueAsNumber: true })}
-              className={INPUT_CLS}
-            />
-          )}
+            {key === 'bottledYear' && (
+              <input
+                type="number" step="1" min="1800" max="2100"
+                {...register('bottledYear', { valueAsNumber: true })}
+                className={INPUT_CLS}
+              />
+            )}
 
-          {key === 'volumeMl' && (
-            <input
-              type="number" step="1" min="1"
-              {...register('volumeMl', { valueAsNumber: true })}
-              className={INPUT_CLS}
-            />
-          )}
-        </div>
-      ))}
+            {key === 'vintageYear' && (
+              <input
+                type="number" step="1" min="1800" max="2100"
+                {...register('vintageYear', { valueAsNumber: true })}
+                className={INPUT_CLS}
+              />
+            )}
+
+            {key === 'abv' && (
+              <input
+                type="number" step="0.1" min="0" max="100"
+                {...register('abv', { valueAsNumber: true })}
+                className={INPUT_CLS}
+              />
+            )}
+
+            {key === 'volumeMl' && (
+              <input
+                type="number" step="1" min="1"
+                {...register('volumeMl', { valueAsNumber: true })}
+                className={INPUT_CLS}
+              />
+            )}
+
+            {errorMsg && (
+              <p className="text-xs text-red-500">{errorMsg}</p>
+            )}
+          </div>
+        )
+      })}
 
       {/* 비활성 필드 추가 피커 */}
       {inactiveList.length > 0 && (
@@ -201,7 +299,7 @@ export default function SpiritOptionalFields({
                       hover:bg-amber-50 hover:border-amber-300 hover:text-amber-700
                       transition-colors"
                   >
-                    + {label}
+                    + {key === 'distilleryId' ? producerLabel : label}
                   </button>
                 ))}
               </div>

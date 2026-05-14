@@ -2,7 +2,7 @@ import React from 'react'
 
 // Spirit categories
 type SpiritCategoryVariant =
-  | 'WHISKY' | 'COGNAC' | 'WINE' | 'TEQUILA' | 'RUM' | 'GIN' | 'VODKA' | 'OTHER'
+  | 'WHISKY' | 'COGNAC' | 'WINE' | 'OTHER'
 
 // Content / entity status
 type StatusVariant =
@@ -34,10 +34,6 @@ const variantClasses: Record<BadgeVariant, string> = {
   WHISKY:    'bg-amber-100 text-amber-800',
   COGNAC:    'bg-orange-100 text-orange-800',
   WINE:      'bg-rose-100 text-rose-800',
-  TEQUILA:   'bg-green-100 text-green-800',
-  RUM:       'bg-yellow-100 text-yellow-800',
-  GIN:       'bg-sky-100 text-sky-800',
-  VODKA:     'bg-blue-100 text-blue-800',
   OTHER:     'bg-neutral-100 text-neutral-600',
   // Status
   ACTIVE:    'bg-green-100 text-green-700',

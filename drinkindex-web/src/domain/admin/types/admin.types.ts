@@ -1,4 +1,63 @@
-import type { SpiritCategory, SpiritStatus } from '@/domain/spirit/types/spirit.types'
+import type {
+  SpiritCategory, SpiritStatus,
+  SpiritCommonDetailResponse, WhiskyDetailResponse, WineDetailResponse,
+  CognacDetailResponse,
+} from '@/domain/spirit/types/spirit.types'
+
+// ── 폼용 Detail Request 타입 ─────────────────────────────────
+export interface SpiritCommonDetailRequest {
+  isNas?: boolean
+  ageStatement?: number | null
+  distilledDate?: string | null
+  bottledDate?: string | null
+  releaseDate?: string | null
+  volumeMl?: number | null
+  abv?: number | null
+  bottleNo?: string | null
+  batchNo?: string | null
+  totalBottles?: number | null
+}
+
+export interface GrapeVarietyRequest { name: string; percentage: number | null }
+
+export interface WhiskyDetailRequest {
+  style?: string | null
+  bottlingType?: string | null
+  caskType?: string | null
+  maturationStyle?: string | null
+  finishCaskType?: string | null
+  isNonChillFiltered?: boolean | null
+  isNaturalColour?: boolean | null
+  isSingleCask?: boolean | null
+  isCaskStrength?: boolean | null
+  isPeated?: boolean | null
+  phenolPpm?: number | null
+  caskNo?: string | null
+  finishCaskDetail?: string | null
+}
+
+export interface WineDetailRequest {
+  wineType?: string | null
+  vintage?: number | null
+  isOakAged?: boolean | null
+  isNaturalWine?: boolean | null
+  certification?: string | null
+  grapeVarieties?: GrapeVarietyRequest[] | null
+  appellationDesignation?: string | null
+  soilType?: string | null
+  altitudeM?: number | null
+  harvestMethod?: string | null
+  fermentationVessel?: string | null
+  oakType?: string | null
+  oakAgedMonths?: number | null
+}
+
+export interface CognacDetailRequest {
+  grade?: string | null
+  cru?: string | null
+  isFineChampagne?: boolean | null
+  blendDetail?: string | null
+}
 
 // ── Users ──────────────────────────────────────────────────────
 export type AdminUserRole = 'ADMIN' | 'MEMBER' | 'DISTILLERY'
@@ -69,6 +128,10 @@ export interface AdminSpiritDetail {
   images: AdminSpiritImageItem[]
   createdAt: string
   updatedAt: string
+  commonDetail: SpiritCommonDetailResponse | null
+  whiskyDetail: WhiskyDetailResponse | null
+  wineDetail: WineDetailResponse | null
+  cognacDetail: CognacDetailResponse | null
 }
 
 export interface UpdateSpiritPayload {
@@ -83,6 +146,10 @@ export interface UpdateSpiritPayload {
   volumeMl?: number | null
   country?: string | null
   region?: string | null
+  commonDetail?: SpiritCommonDetailRequest
+  whiskyDetail?: WhiskyDetailRequest
+  wineDetail?: WineDetailRequest
+  cognacDetail?: CognacDetailRequest
 }
 
 export interface CreateSpiritPayload {
@@ -97,6 +164,10 @@ export interface CreateSpiritPayload {
   volumeMl?: number | null
   country?: string | null
   region?: string | null
+  commonDetail?: SpiritCommonDetailRequest
+  whiskyDetail?: WhiskyDetailRequest
+  wineDetail?: WineDetailRequest
+  cognacDetail?: CognacDetailRequest
 }
 
 // ── Register Requests ──────────────────────────────────────────

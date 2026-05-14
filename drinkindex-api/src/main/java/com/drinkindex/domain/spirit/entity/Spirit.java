@@ -8,6 +8,9 @@ import com.drinkindex.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import static jakarta.persistence.CascadeType.ALL;
+import static jakarta.persistence.FetchType.LAZY;
+
 import java.math.BigDecimal;
 
 @Entity
@@ -80,6 +83,18 @@ public class Spirit extends BaseTimeEntity {
     @JoinColumn(name = "registered_by_id")
     private User registeredBy;
 
+    @OneToOne(mappedBy = "spirit", cascade = ALL, orphanRemoval = true, fetch = LAZY)
+    private SpiritCommonDetail commonDetail;
+
+    @OneToOne(mappedBy = "spirit", cascade = ALL, orphanRemoval = true, fetch = LAZY)
+    private SpiritWhiskyDetail whiskyDetail;
+
+    @OneToOne(mappedBy = "spirit", cascade = ALL, orphanRemoval = true, fetch = LAZY)
+    private SpiritWineDetail wineDetail;
+
+    @OneToOne(mappedBy = "spirit", cascade = ALL, orphanRemoval = true, fetch = LAZY)
+    private SpiritCognacDetail cognacDetail;
+
     public void update(String nameKo, String nameEn, SpiritCategory category,
                        Distillery distillery, String bottler, Integer bottledYear,
                        Integer vintageYear, BigDecimal abv, Integer volumeMl,
@@ -112,5 +127,12 @@ public class Spirit extends BaseTimeEntity {
 
     public void activate() {
         this.status = SpiritStatus.ACTIVE;
+    }
+
+    /** 카테고리 변경 시 기존 서브 테이블 row 제거 (orphanRemoval이 처리) */
+    public void clearCategoryDetail() {
+        this.whiskyDetail = null;
+        this.wineDetail = null;
+        this.cognacDetail = null;
     }
 }

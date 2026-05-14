@@ -7,7 +7,7 @@ import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
 import DistillerySelector from '@/domain/distillery/components/DistillerySelector'
 import CountryRegionSelector from '@/domain/location/components/CountryRegionSelector'
 
-const CATEGORIES: SpiritCategory[] = ['WHISKY', 'COGNAC', 'WINE', 'TEQUILA', 'RUM', 'GIN', 'VODKA', 'OTHER']
+const CATEGORIES: SpiritCategory[] = ['WHISKY', 'COGNAC', 'WINE', 'OTHER']
 
 const STATUS_STYLE: Record<RequestStatus, string> = {
   PENDING:  'bg-amber-50 text-amber-700',

@@ -13,9 +13,183 @@ import ImageLightbox from '@/shared/components/ImageLightbox'
 import ReviewList from '@/domain/review/components/ReviewList'
 import CommentList from '@/domain/comment/components/CommentList'
 import WishlistButtons from '@/domain/wishlist/components/WishlistButtons'
-import type { SpiritImage } from '@/domain/spirit/types/spirit.types'
+import type { SpiritDetail, SpiritImage } from '@/domain/spirit/types/spirit.types'
 
 type Tab = 'reviews' | 'community'
+
+// ── 카테고리 상세 섹션 ─────────────────────────────────────
+
+function Badge2({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-block px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600 text-xs font-medium mr-1 mb-1">
+      {children}
+    </span>
+  )
+}
+
+function DetailGrid({ children }: { children: React.ReactNode }) {
+  return <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">{children}</dl>
+}
+
+function DI({ label, value }: { label: string; value: React.ReactNode }) {
+  if (value === null || value === undefined || value === '') return null
+  return (
+    <div>
+      <dt className="text-xs text-neutral-400 mb-0.5">{label}</dt>
+      <dd className="text-sm font-medium text-neutral-900">{value}</dd>
+    </div>
+  )
+}
+
+function SpiritDetailSections({ spirit, isEn }: { spirit: SpiritDetail; isEn: boolean }) {
+  const cd = spirit.commonDetail
+  const whisky = spirit.whiskyDetail
+  const wine = spirit.wineDetail
+  const cognac = spirit.cognacDetail
+
+  const hasAny = cd || whisky || wine || cognac
+  if (!hasAny) return null
+
+  const WHISKY_STYLE_LABEL: Record<string, string> = {
+    SINGLE_MALT: isEn ? 'Single Malt' : '싱글 몰트',
+    BLENDED_MALT: isEn ? 'Blended Malt' : '블렌디드 몰트',
+    BLENDED_WHISKY: isEn ? 'Blended Whisky' : '블렌디드 위스키',
+    BOURBON: 'Bourbon', RYE: 'Rye', CORN: 'Corn', GRAIN: 'Grain', POT_STILL: 'Pot Still',
+  }
+  const CASK_LABEL: Record<string, string> = {
+    EX_BOURBON: 'Ex-Bourbon', EX_SHERRY: 'Ex-Sherry', EX_PORT: 'Ex-Port',
+    EX_WINE: 'Ex-Wine', NEW_OAK: 'New Oak', EX_RUM: 'Ex-Rum', EX_MADEIRA: 'Ex-Madeira',
+    EX_SAUTERNES: 'Ex-Sauternes', EX_COGNAC: 'Ex-Cognac', MIZUNARA: 'Mizunara', OTHER: isEn ? 'Other' : '기타',
+  }
+  const GRADE_LABEL: Record<string, string> = {
+    VS: 'VS', NAPOLEON: 'Napoléon', VSOP: 'VSOP', XO: 'XO', XXO: 'XXO', HORS_DAGE: "Hors d'Age",
+  }
+  const CRU_LABEL: Record<string, string> = {
+    GRANDE_CHAMPAGNE: 'Grande Champagne', PETITE_CHAMPAGNE: 'Petite Champagne',
+    BORDERIES: 'Borderies', FINS_BOIS: 'Fins Bois', BONS_BOIS: 'Bons Bois',
+  }
+  return (
+    <div className="bg-white rounded-2xl shadow-sm p-6 space-y-6">
+      <h2 className="text-base font-bold text-neutral-900 border-b border-neutral-100 pb-3">
+        {isEn ? 'Detailed Information' : '상세 정보'}
+      </h2>
+
+      {/* 공통 상세 */}
+      {cd && (
+        <div className="space-y-3">
+          <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">
+            {isEn ? 'Common' : '공통'}
+          </h3>
+          <DetailGrid>
+            <DI label={isEn ? 'Age Statement' : '숙성 연수'}
+              value={cd.isNas
+                ? <span className="px-2 py-0.5 rounded bg-neutral-800 text-white text-xs font-bold">NAS</span>
+                : (cd.ageStatement != null ? `${cd.ageStatement}년` : null)} />
+            <DI label={isEn ? 'Distilled' : '증류 연월'} value={cd.distilledDate} />
+            <DI label={isEn ? 'Bottled' : '병입 연월'} value={cd.bottledDate} />
+            <DI label={isEn ? 'Release Date' : '출시일'} value={cd.releaseDate} />
+            <DI label={isEn ? 'Volume' : '용량'} value={cd.volumeMl ? `${cd.volumeMl}ml` : null} />
+            <DI label={isEn ? 'ABV' : '도수'} value={cd.abv != null ? `${cd.abv}%` : null} />
+            <DI label={isEn ? 'Bottle No.' : '병 번호'} value={cd.bottleNo} />
+            <DI label={isEn ? 'Batch No.' : '배치 번호'} value={cd.batchNo} />
+            <DI label={isEn ? 'Total Bottles' : '총 병 수'}
+              value={cd.totalBottles != null ? cd.totalBottles.toLocaleString() : null} />
+          </DetailGrid>
+        </div>
+      )}
+
+      {/* 위스키 상세 */}
+      {whisky && (
+        <div className="space-y-3">
+          <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Whisky</h3>
+          <DetailGrid>
+            <DI label={isEn ? 'Style' : '스타일'}
+              value={whisky.style ? WHISKY_STYLE_LABEL[whisky.style] ?? whisky.style : null} />
+            <DI label={isEn ? 'Bottling' : '병입'} value={whisky.bottlingType} />
+            <DI label={isEn ? 'Cask' : '캐스크'}
+              value={whisky.caskType ? CASK_LABEL[whisky.caskType] ?? whisky.caskType : null} />
+            <DI label={isEn ? 'Maturation' : '숙성 방식'}
+              value={whisky.maturationStyle === 'FINISH'
+                ? (isEn ? 'Finish' : '피니시')
+                : whisky.maturationStyle === 'FULL_MATURATION'
+                ? (isEn ? 'Full Maturation' : '풀 머추레이션')
+                : null} />
+            {whisky.finishCaskType && (
+              <DI label={isEn ? 'Finish Cask' : '피니시 캐스크'}
+                value={CASK_LABEL[whisky.finishCaskType] ?? whisky.finishCaskType} />
+            )}
+            <DI label={isEn ? 'Phenol (ppm)' : '피트 강도'}
+              value={whisky.phenolPpm != null ? `${whisky.phenolPpm} ppm` : null} />
+            <DI label={isEn ? 'Cask No.' : '캐스크 번호'} value={whisky.caskNo} />
+          </DetailGrid>
+          <div className="flex flex-wrap gap-1 mt-2">
+            {whisky.isNonChillFiltered && <Badge2>NCF</Badge2>}
+            {whisky.isNaturalColour && <Badge2>{isEn ? 'Natural Colour' : '천연 색상'}</Badge2>}
+            {whisky.isSingleCask && <Badge2>Single Cask</Badge2>}
+            {whisky.isCaskStrength && <Badge2>Cask Strength</Badge2>}
+            {whisky.isPeated && <Badge2>Peated</Badge2>}
+          </div>
+        </div>
+      )}
+
+      {/* 와인 상세 */}
+      {wine && (
+        <div className="space-y-3">
+          <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Wine</h3>
+          <DetailGrid>
+            <DI label={isEn ? 'Type' : '종류'} value={wine.wineType} />
+            <DI label={isEn ? 'Vintage' : '빈티지'} value={wine.vintage} />
+            <DI label={isEn ? 'Appellation' : '원산지'} value={wine.appellationDesignation} />
+            <DI label={isEn ? 'Certification' : '인증'} value={wine.certification !== 'NONE' ? wine.certification : null} />
+            <DI label={isEn ? 'Oak Aged' : '오크 숙성'}
+              value={wine.isOakAged != null ? (wine.isOakAged ? (isEn ? 'Yes' : '예') : (isEn ? 'No' : '아니요')) : null} />
+            {wine.oakType && <DI label={isEn ? 'Oak' : '오크'} value={wine.oakType} />}
+            {wine.oakAgedMonths && (
+              <DI label={isEn ? 'Oak Months' : '오크 숙성'} value={`${wine.oakAgedMonths}${isEn ? ' mo.' : '개월'}`} />
+            )}
+            <DI label={isEn ? 'Natural Wine' : '내추럴 와인'}
+              value={wine.isNaturalWine ? (isEn ? 'Yes' : '예') : null} />
+          </DetailGrid>
+          {wine.grapeVarieties && wine.grapeVarieties.length > 0 && (
+            <div>
+              <p className="text-xs text-neutral-400 mb-1.5">{isEn ? 'Grape Varieties' : '포도 품종'}</p>
+              <div className="flex flex-wrap">
+                {wine.grapeVarieties.map((g, i) => (
+                  <Badge2 key={i}>{g.name}{g.percentage ? ` ${g.percentage}%` : ''}</Badge2>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 꼬냑 상세 */}
+      {cognac && (
+        <div className="space-y-3">
+          <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Cognac</h3>
+          <div className="flex items-center gap-4">
+            {cognac.grade && (
+              <span className="px-4 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-lg font-bold">
+                {GRADE_LABEL[cognac.grade] ?? cognac.grade}
+              </span>
+            )}
+            {cognac.cru && (
+              <div>
+                <p className="text-xs text-neutral-400">{isEn ? 'Cru' : '크뤼'}</p>
+                <p className="text-sm font-medium text-neutral-900">{CRU_LABEL[cognac.cru] ?? cognac.cru}</p>
+              </div>
+            )}
+            {cognac.isFineChampagne && <Badge2>Fine Champagne</Badge2>}
+          </div>
+          {cognac.blendDetail && (
+            <p className="text-sm text-neutral-600 leading-relaxed">{cognac.blendDetail}</p>
+          )}
+        </div>
+      )}
+
+    </div>
+  )
+}
 
 // ── Sub-components ────────────────────────────────────────
 
@@ -202,6 +376,9 @@ export default function SpiritDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* 카테고리 상세 정보 */}
+      <SpiritDetailSections spirit={spirit} isEn={isEn} />
 
       {/* Tabs */}
       <div className="space-y-5">

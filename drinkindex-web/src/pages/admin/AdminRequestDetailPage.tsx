@@ -15,15 +15,16 @@ import {
 } from '@/domain/admin/hooks/useAdminSpirits'
 import type { UpdateRequestBody } from '@/domain/admin/types/admin.types'
 import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
+
+const INPUT_CLS = 'w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400'
 import SpiritOptionalFields from '@/domain/admin/components/SpiritOptionalFields'
 import { ISO3166_COUNTRIES } from '@/domain/location/data/iso3166Countries'
 
 // ── 상수 ────────────────────────────────────────────────────────
 
-const CATEGORIES: SpiritCategory[] = ['WHISKY', 'COGNAC', 'WINE', 'TEQUILA', 'RUM', 'GIN', 'VODKA', 'OTHER']
+const CATEGORIES: SpiritCategory[] = ['WHISKY', 'COGNAC', 'WINE', 'OTHER']
 const CATEGORY_LABEL: Record<string, string> = {
-  WHISKY: '위스키', COGNAC: '꼬냑', WINE: '와인', TEQUILA: '데낄라',
-  RUM: '럼', GIN: '진', VODKA: '보드카', OTHER: '기타',
+  WHISKY: '위스키', COGNAC: '꼬냑', WINE: '와인', OTHER: '기타',
 }
 const STATUS_LABEL: Record<string, string> = {
   PENDING: '대기 중', APPROVED: '승인됨', REJECTED: '반려됨',
@@ -234,22 +235,22 @@ export default function AdminRequestDetailPage() {
         <div className="bg-white rounded-xl shadow-sm p-5 space-y-5">
           <h2 className="text-sm font-semibold text-neutral-700 border-b border-neutral-100 pb-3">기본 정보 수정</h2>
 
-          {/* nameKo / nameEn */}
+          {/* nameEn / nameKo */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="block text-xs font-medium text-neutral-600">한국어 이름 *</label>
-              <input
-                {...register('nameKo', { required: true })}
-                className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none
-                  focus:ring-2 focus:ring-primary-400 ${errors.nameKo ? 'border-red-400' : 'border-neutral-200'}`}
-              />
-            </div>
             <div className="space-y-1.5">
               <label className="block text-xs font-medium text-neutral-600">영어 이름 *</label>
               <input
                 {...register('nameEn', { required: true })}
                 className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none
                   focus:ring-2 focus:ring-primary-400 ${errors.nameEn ? 'border-red-400' : 'border-neutral-200'}`}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-xs font-medium text-neutral-600">한국어 이름 *</label>
+              <input
+                {...register('nameKo', { required: true })}
+                className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none
+                  focus:ring-2 focus:ring-primary-400 ${errors.nameKo ? 'border-red-400' : 'border-neutral-200'}`}
               />
             </div>
           </div>
@@ -268,6 +269,39 @@ export default function AdminRequestDetailPage() {
             </select>
           </div>
 
+          {/* 필수 정보 */}
+          <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-4 space-y-4">
+            <p className="text-xs font-semibold text-amber-700">필수 정보</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="block text-xs font-medium text-neutral-600">
+                  도수 (%) <span className="text-red-400">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="number" step="0.1" min="0" max="100"
+                    {...register('abv', { valueAsNumber: true })}
+                    className={`${INPUT_CLS} pr-8`}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">%</span>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <label className="block text-xs font-medium text-neutral-600">
+                  용량 (ml) <span className="text-red-400">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="number" step="1" min="1"
+                    {...register('volumeMl', { valueAsNumber: true })}
+                    className={`${INPUT_CLS} pr-10`}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">ml</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* 선택 옵션 */}
           <div className="border-t border-neutral-100 pt-4">
             <p className="text-xs font-medium text-neutral-500 mb-4">선택 옵션</p>
@@ -283,6 +317,8 @@ export default function AdminRequestDetailPage() {
               defaultDistilleryName={req.distilleryNameKo ?? undefined}
               initialValues={req}
               dataReady={initialized}
+              category={watch('category') as SpiritCategory}
+              hiddenFields={['abv', 'volumeMl']}
             />
           </div>
 

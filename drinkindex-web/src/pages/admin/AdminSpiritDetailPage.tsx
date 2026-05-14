@@ -21,10 +21,9 @@ import { ISO3166_COUNTRIES } from '@/domain/location/data/iso3166Countries'
 
 // ── 상수 ────────────────────────────────────────────────────────
 
-const CATEGORIES: SpiritCategory[] = ['WHISKY', 'COGNAC', 'WINE', 'TEQUILA', 'RUM', 'GIN', 'VODKA', 'OTHER']
+const CATEGORIES: SpiritCategory[] = ['WHISKY', 'COGNAC', 'WINE', 'OTHER']
 const CATEGORY_LABEL: Record<string, string> = {
-  WHISKY: '위스키', COGNAC: '꼬냑', WINE: '와인', TEQUILA: '데낄라',
-  RUM: '럼', GIN: '진', VODKA: '보드카', OTHER: '기타',
+  WHISKY: '위스키', COGNAC: '꼬냑', WINE: '와인', OTHER: '기타',
 }
 const STATUS_LABEL: Record<string, string> = {
   ACTIVE: '공개', HIDDEN: '숨김', PENDING: '대기',
@@ -229,7 +228,19 @@ export default function AdminSpiritDetailPage() {
         <Row label="수정일">{formatDate(spirit.updatedAt)}</Row>
       </div>
 
-      {/* 수정 폼 */}
+      {/* 수정 링크 */}
+      <div className="bg-white rounded-xl shadow-sm p-5">
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-neutral-500">
+            카테고리 상세 정보(위스키/와인 등)를 포함한 전체 수정은 아래 버튼을 사용하세요.
+          </p>
+          <Button size="sm" onClick={() => navigate(`/admin/spirits/${spiritId}/edit`)}>
+            상세 수정 (3단계 폼)
+          </Button>
+        </div>
+      </div>
+
+      {/* 수정 폼 (기본 정보 빠른 수정) */}
       <form onSubmit={handleSubmit(onSave)} noValidate>
         <div className="bg-white rounded-xl shadow-sm p-5 space-y-5">
           <h2 className="text-sm font-semibold text-neutral-700 border-b border-neutral-100 pb-3">
@@ -238,19 +249,19 @@ export default function AdminSpiritDetailPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="block text-xs font-medium text-neutral-600">한국어 이름 *</label>
-              <input
-                {...register('nameKo', { required: true })}
-                className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none
-                  focus:ring-2 focus:ring-primary-400 ${errors.nameKo ? 'border-red-400' : 'border-neutral-200'}`}
-              />
-            </div>
-            <div className="space-y-1.5">
               <label className="block text-xs font-medium text-neutral-600">영어 이름 *</label>
               <input
                 {...register('nameEn', { required: true })}
                 className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none
                   focus:ring-2 focus:ring-primary-400 ${errors.nameEn ? 'border-red-400' : 'border-neutral-200'}`}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-xs font-medium text-neutral-600">한국어 이름 *</label>
+              <input
+                {...register('nameKo', { required: true })}
+                className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none
+                  focus:ring-2 focus:ring-primary-400 ${errors.nameKo ? 'border-red-400' : 'border-neutral-200'}`}
               />
             </div>
           </div>
@@ -282,6 +293,7 @@ export default function AdminSpiritDetailPage() {
               defaultDistilleryName={spirit.distilleryNameKo ?? undefined}
               initialValues={spirit}
               dataReady={initialized}
+              category={watch('category') as SpiritCategory}
             />
           </div>
 

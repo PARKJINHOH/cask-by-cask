@@ -10,13 +10,14 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public record SpiritDetailResponse(
+
         @Schema(description = "술 고유 ID")
         Long id,
         @Schema(description = "한글 제품명")
         String nameKo,
         @Schema(description = "영문 제품명")
         String nameEn,
-        @Schema(description = "카테고리 (WHISKY, COGNAC, WINE 등)")
+        @Schema(description = "카테고리")
         SpiritCategory category,
         @Schema(description = "증류소 ID")
         Long distilleryId,
@@ -28,7 +29,7 @@ public record SpiritDetailResponse(
         String bottler,
         @Schema(description = "병입 연도")
         Integer bottledYear,
-        @Schema(description = "빈티지 연도 (원액 수확 연도)")
+        @Schema(description = "빈티지 연도")
         Integer vintageYear,
         @Schema(description = "알코올 도수 %")
         BigDecimal abv,
@@ -42,16 +43,37 @@ public record SpiritDetailResponse(
         BigDecimal avgScore,
         @Schema(description = "리뷰 수")
         Integer reviewCount,
-        @Schema(description = "공개 상태 (ACTIVE, HIDDEN, PENDING)")
+        @Schema(description = "공개 상태")
         SpiritStatus status,
         @Schema(description = "이미지 목록")
         List<SpiritImageResponse> images,
         @Schema(description = "등록 일시")
         LocalDateTime createdAt,
         @Schema(description = "최종 수정 일시")
-        LocalDateTime updatedAt
+        LocalDateTime updatedAt,
+
+        // ── 상세 필드 ──────────────────────────────────────────
+        @Schema(description = "공통 상세 정보")
+        SpiritCommonDetailResponse commonDetail,
+        @Schema(description = "위스키 상세 (category=WHISKY 전용)")
+        WhiskyDetailResponse whiskyDetail,
+        @Schema(description = "와인 상세 (category=WINE 전용)")
+        WineDetailResponse wineDetail,
+        @Schema(description = "꼬냑 상세 (category=COGNAC 전용)")
+        CognacDetailResponse cognacDetail
+
 ) {
+    /** 상세 없이 기본 정보만 반환 (등록·수정 응답) */
     public static SpiritDetailResponse of(Spirit spirit, List<SpiritImageResponse> images) {
+        return of(spirit, images, null, null, null, null);
+    }
+
+    /** 전체 상세 포함 응답 (GET /api/spirits/{id}) */
+    public static SpiritDetailResponse of(Spirit spirit, List<SpiritImageResponse> images,
+                                           SpiritCommonDetailResponse commonDetail,
+                                           WhiskyDetailResponse whiskyDetail,
+                                           WineDetailResponse wineDetail,
+                                           CognacDetailResponse cognacDetail) {
         return new SpiritDetailResponse(
                 spirit.getId(),
                 spirit.getNameKo(),
@@ -72,7 +94,11 @@ public record SpiritDetailResponse(
                 spirit.getStatus(),
                 images,
                 spirit.getCreatedAt(),
-                spirit.getUpdatedAt()
+                spirit.getUpdatedAt(),
+                commonDetail,
+                whiskyDetail,
+                wineDetail,
+                cognacDetail
         );
     }
 }

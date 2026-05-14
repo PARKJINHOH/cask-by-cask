@@ -1,7 +1,7 @@
 {
   "app": {
     "name": "DrinkIndex",
-    "tagline": "위스키·와인·꼬냑·데낄라·럼 리뷰 커뮤니티"
+    "tagline": "위스키·와인·꼬냑 리뷰 커뮤니티"
   },
   "nav": {
     "home": "홈",
@@ -76,25 +76,17 @@
   },
   "spirit": {
     "search": {
-      "placeholder": "위스키, 꼬냑, 와인 검색..."
+      "placeholder": "위스키, 와인, 꼬냑 검색..."
     },
     "count": "총 {{count}}개",
     "category": {
       "whisky":  "위스키",
       "cognac":  "꼬냑",
       "wine":    "와인",
-      "tequila": "데낄라",
-      "rum":     "럼",
-      "gin":     "진",
-      "vodka":   "보드카",
       "other":   "기타",
       "WHISKY":  "위스키",
       "COGNAC":  "꼬냑",
       "WINE":    "와인",
-      "TEQUILA": "데낄라",
-      "RUM":     "럼",
-      "GIN":     "진",
-      "VODKA":   "보드카",
       "OTHER":   "기타"
     },
     "sort": {
