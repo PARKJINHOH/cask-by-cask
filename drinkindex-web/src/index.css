@@ -3,6 +3,9 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    font-family: 'Pretendard', sans-serif;
+  }
   body {
     @apply text-neutral-900 antialiased;
   }
