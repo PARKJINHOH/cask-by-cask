@@ -16,6 +16,8 @@ import NoticeBoardPage from '@/pages/community/NoticeBoardPage'
 import FreeBoardPage from '@/pages/community/FreeBoardPage'
 import PostDetailPage from '@/pages/community/PostDetailPage'
 import PostFormPage from '@/pages/community/PostFormPage'
+import NotificationsPage from '@/pages/NotificationsPage'
+import MessagesPage from '@/pages/MessagesPage'
 import AdminUserPage from '@/pages/admin/AdminUserPage'
 import AdminSpiritPage from '@/pages/admin/AdminSpiritPage'
 import AdminSpiritDetailPage from '@/pages/admin/AdminSpiritDetailPage'
@@ -55,8 +57,11 @@ export default function App() {
             <Route path="community/free" element={<FreeBoardPage />} />
             <Route path="community/:boardType/:id/edit" element={<PostFormPage />} />
             <Route path="community/:boardType/:id" element={<PostDetailPage />} />
+            {/* 공개 읽기용 (비회원 접근 가능) */}
+            <Route path="notifications" element={<NotificationsPage />} />
             <Route element={<PrivateRoute />}>
               <Route path="community/:boardType/write" element={<PostFormPage />} />
+              <Route path="messages" element={<MessagesPage />} />
               <Route path="mypage" element={<MyPage />} />
               <Route path="request/spirit" element={<SpiritRequestPage />} />
             </Route>

@@ -376,5 +376,36 @@
     "commentSection": "Comments",
     "loginToComment": "Log in to leave a comment",
     "lockedNotice": "This post is locked and cannot be viewed."
+  },
+  "notification": {
+    "title": "Notifications",
+    "all": "All",
+    "comment": "Comments",
+    "reply": "Replies",
+    "mention": "Mentions",
+    "like": "Likes",
+    "message": "Messages",
+    "system": "System",
+    "markAllRead": "Mark all read",
+    "viewAll": "View all notifications",
+    "noNotification": "No new notifications.",
+    "badgeMax": "99+"
+  },
+  "messages": {
+    "title": "Messages",
+    "inbox": "Inbox",
+    "sent": "Sent",
+    "newMessage": "New Message",
+    "to": "To",
+    "content": "Content",
+    "send": "Send",
+    "reply": "Reply",
+    "delete": "Delete",
+    "deleteConfirm": "Delete this message?",
+    "noMessages": "No messages.",
+    "recipientPlaceholder": "Recipient nickname",
+    "contentPlaceholder": "Type a message...",
+    "unread": "Unread",
+    "selectThread": "Select a message."
   }
 }

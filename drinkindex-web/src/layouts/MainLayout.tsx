@@ -6,6 +6,7 @@ import { useAuth } from '@/domain/auth/hooks/useAuth'
 import { saveLang } from '@/shared/utils/i18n'
 import BottomNav from '@/shared/components/BottomNav'
 import { useLatestNotice } from '@/domain/notice/hooks/useNotices'
+import NotificationBell from '@/domain/notification/components/NotificationBell'
 
 const SEEN_KEY = 'notice:lastSeenId'
 
@@ -348,6 +349,7 @@ export default function MainLayout() {
           {/* 우측 액션 */}
           <div className="flex items-center gap-2 ml-auto flex-shrink-0">
             <LangToggle />
+            <NotificationBell />
             <UserDropdown />
           </div>
         </div>
