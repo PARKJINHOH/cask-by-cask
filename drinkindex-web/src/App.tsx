@@ -12,6 +12,10 @@ import LoginPage from '@/pages/LoginPage'
 import SignupPage from '@/pages/SignupPage'
 import MyPage from '@/pages/MyPage'
 import SpiritRequestPage from '@/pages/SpiritRequestPage'
+import NoticeBoardPage from '@/pages/community/NoticeBoardPage'
+import FreeBoardPage from '@/pages/community/FreeBoardPage'
+import PostDetailPage from '@/pages/community/PostDetailPage'
+import PostFormPage from '@/pages/community/PostFormPage'
 import AdminUserPage from '@/pages/admin/AdminUserPage'
 import AdminSpiritPage from '@/pages/admin/AdminSpiritPage'
 import AdminSpiritDetailPage from '@/pages/admin/AdminSpiritDetailPage'
@@ -46,7 +50,13 @@ export default function App() {
             <Route path="notices/:id" element={<NoticeDetailPage />} />
             <Route path="login" element={<LoginPage />} />
             <Route path="signup" element={<SignupPage />} />
+            {/* 커뮤니티 */}
+            <Route path="community/notice" element={<NoticeBoardPage />} />
+            <Route path="community/free" element={<FreeBoardPage />} />
+            <Route path="community/:boardType/:id/edit" element={<PostFormPage />} />
+            <Route path="community/:boardType/:id" element={<PostDetailPage />} />
             <Route element={<PrivateRoute />}>
+              <Route path="community/:boardType/write" element={<PostFormPage />} />
               <Route path="mypage" element={<MyPage />} />
               <Route path="request/spirit" element={<SpiritRequestPage />} />
             </Route>

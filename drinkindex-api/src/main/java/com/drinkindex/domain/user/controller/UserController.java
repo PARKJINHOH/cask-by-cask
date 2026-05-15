@@ -1,14 +1,19 @@
 package com.drinkindex.domain.user.controller;
 
 import com.drinkindex.domain.community.dto.UserMentionResponse;
+import com.drinkindex.domain.community.entity.UserBlock;
+import com.drinkindex.domain.community.repository.UserBlockRepository;
 import com.drinkindex.domain.review.dto.ReviewResponse;
 import com.drinkindex.domain.review.service.ReviewService;
 import com.drinkindex.domain.user.dto.UpdateNicknameRequest;
 import com.drinkindex.domain.user.dto.UpdatePasswordRequest;
 import com.drinkindex.domain.user.dto.UserResponse;
+import com.drinkindex.domain.user.entity.User;
 import com.drinkindex.domain.user.repository.UserRepository;
 import com.drinkindex.domain.user.service.UserService;
 import com.drinkindex.global.auth.security.CustomUserDetails;
+import com.drinkindex.global.exception.CustomException;
+import com.drinkindex.global.exception.ErrorCode;
 import com.drinkindex.global.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +37,7 @@ public class UserController {
     private final UserService userService;
     private final ReviewService reviewService;
     private final UserRepository userRepository;
+    private final UserBlockRepository userBlockRepository;
 
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<UserResponse>> getMe(
@@ -79,6 +85,34 @@ public class UserController {
                 .map(UserMentionResponse::from)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    // ─── 사용자 차단 토글 ──────────────────────────────────────
+
+    @PostMapping("/{userId}/block")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<Void>> toggleBlock(
+            @PathVariable Long userId,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        Long blockerId = userDetails.getUserId();
+        if (blockerId.equals(userId)) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+
+        userBlockRepository.findByBlockerIdAndBlockedId(blockerId, userId)
+                .ifPresentOrElse(
+                        userBlockRepository::delete,
+                        () -> {
+                            User blocker = userRepository.findById(blockerId)
+                                    .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+                            User blocked = userRepository.findById(userId)
+                                    .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+                            userBlockRepository.save(
+                                    UserBlock.builder().blocker(blocker).blocked(blocked).build());
+                        }
+                );
+        return ResponseEntity.ok(ApiResponse.success());
     }
 
     @GetMapping("/me/reviews")

@@ -6,4 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface UserBlockRepository extends JpaRepository<UserBlock, Long> {
 
     boolean existsByBlockerIdAndBlockedId(Long blockerId, Long blockedId);
+
+    java.util.Optional<UserBlock> findByBlockerIdAndBlockedId(Long blockerId, Long blockedId);
 }
