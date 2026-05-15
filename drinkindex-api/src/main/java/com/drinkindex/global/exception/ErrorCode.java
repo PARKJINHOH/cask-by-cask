@@ -99,6 +99,16 @@ public enum ErrorCode {
     POLL_OPTION_TOO_FEW(HttpStatus.BAD_REQUEST, "POST_005", "투표 항목은 최소 2개 이상이어야 합니다."),
     SERIES_NOT_FOUND(HttpStatus.NOT_FOUND, "POST_006", "시리즈를 찾을 수 없습니다."),
     SERIES_ACCESS_DENIED(HttpStatus.FORBIDDEN, "POST_007", "본인이 생성한 시리즈에만 게시글을 추가할 수 있습니다."),
+    SERIES_FORBIDDEN(HttpStatus.FORBIDDEN, "POST_013", "본인 시리즈만 수정할 수 있습니다."),
+
+    // Community - Notification
+    NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTI_001", "알림을 찾을 수 없습니다."),
+    NOTIFICATION_ACCESS_DENIED(HttpStatus.FORBIDDEN, "NOTI_002", "본인 알림에만 접근할 수 있습니다."),
+
+    // Community - Message
+    MESSAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "MSG_001", "쪽지를 찾을 수 없습니다."),
+    MESSAGE_ACCESS_DENIED(HttpStatus.FORBIDDEN, "MSG_002", "쪽지 접근 권한이 없습니다."),
+    MESSAGE_BLOCKED(HttpStatus.FORBIDDEN, "MSG_003", "차단된 사용자에게 쪽지를 보낼 수 없습니다."),
     POST_PREFIX_NOT_FOUND(HttpStatus.NOT_FOUND, "POST_008", "말머리를 찾을 수 없습니다."),
     SELF_REPORT_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "POST_009", "본인 게시글은 신고할 수 없습니다."),
     DELETED_POST_NOT_FOUND(HttpStatus.NOT_FOUND, "POST_010", "삭제된 게시글을 찾을 수 없습니다."),

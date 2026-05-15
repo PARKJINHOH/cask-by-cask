@@ -1,6 +1,7 @@
 package com.drinkindex.domain.community.repository;
 
 import com.drinkindex.domain.community.entity.Notification;
+import com.drinkindex.domain.community.entity.enums.NotificationType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -13,6 +14,9 @@ import java.time.LocalDateTime;
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
 
     Page<Notification> findByRecipientIdOrderByCreatedAtDesc(Long recipientId, Pageable pageable);
+
+    Page<Notification> findByRecipientIdAndTypeOrderByCreatedAtDesc(
+            Long recipientId, NotificationType type, Pageable pageable);
 
     long countByRecipientIdAndIsReadFalse(Long recipientId);
 

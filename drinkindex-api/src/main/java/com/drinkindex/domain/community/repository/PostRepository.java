@@ -6,7 +6,23 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
+import java.util.Optional;
+
 public interface PostRepository extends JpaRepository<Post, Long>, PostQueryRepository {
+
+    List<Post> findBySeriesIdOrderBySeriesOrderAsc(Long seriesId);
+
+    @Query("SELECT MAX(p.seriesOrder) FROM Post p WHERE p.series.id = :seriesId")
+    Optional<Integer> findMaxSeriesOrderBySeriesId(@Param("seriesId") Long seriesId);
+
+    @Modifying
+    @Query("UPDATE Post p SET p.series = null, p.seriesOrder = null WHERE p.series.id = :seriesId")
+    void unlinkAllFromSeries(@Param("seriesId") Long seriesId);
+
+    @Modifying
+    @Query("UPDATE Post p SET p.series = null, p.seriesOrder = null WHERE p.id = :postId")
+    void unlinkFromSeries(@Param("postId") Long postId);
 
     @Modifying
     @Query("UPDATE Post p SET p.viewCount = p.viewCount + 1 WHERE p.id = :id")

@@ -30,4 +30,12 @@ public interface UserRepository extends JpaRepository<User, Long>, UserQueryRepo
             @Param("prefix") String prefix,
             @Param("blockerId") Long blockerId,
             Pageable pageable);
+
+    // 쪽지 수신자 조회 (삭제되지 않은 유저, @SQLRestriction이 이미 처리하지만 명시적으로)
+    Optional<User> findByNickname(String nickname);
+
+    // @SQLRestriction("deleted_at IS NULL") 이 적용된 findByNickname 사용
+    default Optional<User> findByNicknameAndNotDeleted(String nickname) {
+        return findByNickname(nickname);
+    }
 }
