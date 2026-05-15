@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { usePostDetail, usePostActions } from '@/domain/community/hooks/usePostDetail'
 import PostPollWidget from '@/domain/community/components/PostPollWidget'
 import PostSeriesNav from '@/domain/community/components/PostSeriesNav'
+import CommentSection from '@/domain/community/components/CommentSection'
 import { sanitizeHtml } from '@/shared/utils/sanitize'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { useToast } from '@/shared/hooks/useToast'
@@ -291,14 +292,7 @@ export default function PostDetailPage() {
         <h2 className="text-base font-semibold text-neutral-700 mb-4">
           {t('post.commentSection')} {post.commentCount > 0 && `(${post.commentCount})`}
         </h2>
-        {!isLoggedIn && (
-          <div className="py-8 text-center text-sm text-neutral-400">
-            <Link to="/login" className="text-primary-600 hover:underline">
-              {t('post.loginToComment')}
-            </Link>
-          </div>
-        )}
-        {/* TODO: <CommentSection postId={postId} /> */}
+        <CommentSection postId={postId} />
       </section>
     </div>
   )

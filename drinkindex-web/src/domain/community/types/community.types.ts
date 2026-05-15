@@ -108,3 +108,67 @@ export interface SeriesDetail {
   posts: SeriesPostItem[]
   createdAt: string
 }
+
+// ── 댓글 ─────────────────────────────────────────────────────
+
+export interface EmojiReactionSummary {
+  emojiId: number
+  unicode: string | null
+  imageUrl: string | null
+  count: number
+  isMyReaction: boolean
+}
+
+export interface PostCommentItem {
+  id: number
+  authorNickname: string | null
+  content: string
+  mentionedUserNickname: string | null
+  emojiReactions: EmojiReactionSummary[]
+  children: PostCommentItem[]
+  createdAt: string
+  isMyComment: boolean
+}
+
+export interface CommunityEmoji {
+  id: number
+  unicode: string | null
+  imageUrl: string | null
+  label: string
+  sortOrder: number
+}
+
+export interface UserMention {
+  id: number
+  nickname: string
+}
+
+// ── 글쓰기 페이로드 ──────────────────────────────────────────
+
+export interface PollOptionPayload {
+  optionText: string
+  sortOrder: number
+}
+
+export interface PollPayload {
+  question: string
+  isMultipleChoice?: boolean
+  endsAt?: string | null
+  options: PollOptionPayload[]
+}
+
+export interface CreatePostPayload {
+  boardType: BoardType
+  prefixId?: number
+  title: string
+  content: string
+  isAnonymous?: boolean
+  poll?: PollPayload
+  seriesId?: number
+}
+
+export interface UpdatePostPayload {
+  prefixId?: number | null
+  title?: string
+  content?: string
+}

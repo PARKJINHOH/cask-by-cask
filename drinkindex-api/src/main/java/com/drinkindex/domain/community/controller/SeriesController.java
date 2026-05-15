@@ -2,6 +2,7 @@ package com.drinkindex.domain.community.controller;
 
 import com.drinkindex.domain.community.dto.*;
 import com.drinkindex.domain.community.entity.enums.BoardType;
+import com.drinkindex.domain.community.repository.SeriesRepository;
 import com.drinkindex.domain.community.service.SeriesService;
 import com.drinkindex.global.auth.security.CustomUserDetails;
 import com.drinkindex.global.response.ApiResponse;
@@ -13,12 +14,32 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 @RestController
 @RequestMapping("/api/series")
 @RequiredArgsConstructor
 public class SeriesController {
 
     private final SeriesService seriesService;
+    private final SeriesRepository seriesRepository;
+
+    // 내 시리즈 목록 (글쓰기 폼 드롭다운용)
+    @GetMapping("/mine")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<List<SeriesResponse>>> getMySeries(
+            @RequestParam BoardType boardType,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        List<SeriesResponse> result = seriesRepository
+                .findByAuthorIdOrderByCreatedAtDesc(userDetails.getUserId())
+                .stream()
+                .filter(s -> s.getBoardType().equals(boardType))
+                .map(SeriesResponse::from)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<SeriesResponse>>> getSeries(

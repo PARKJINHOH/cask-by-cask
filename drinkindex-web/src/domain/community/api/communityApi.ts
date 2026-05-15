@@ -10,6 +10,12 @@ import type {
   PollResponse,
   SeriesItem,
   SeriesDetail,
+  PostCommentItem,
+  CommunityEmoji,
+  EmojiReactionSummary,
+  UserMention,
+  CreatePostPayload,
+  UpdatePostPayload,
 } from '../types/community.types'
 
 export const communityApi = {
@@ -68,4 +74,46 @@ export const communityApi = {
 
   getSeriesDetail: (id: number) =>
     axiosInstance.get<ApiResponse<SeriesDetail>>(`/api/series/${id}`),
+
+  getMySeries: (boardType: BoardType) =>
+    axiosInstance.get<ApiResponse<SeriesItem[]>>('/api/series/mine', { params: { boardType } }),
+
+  // ── 게시글 작성/수정 ─────────────────────────────────────────
+  createPost: (data: CreatePostPayload) =>
+    axiosInstance.post<ApiResponse<PostDetail>>('/api/posts', data),
+
+  updatePost: (id: number, data: UpdatePostPayload) =>
+    axiosInstance.patch<ApiResponse<PostDetail>>(`/api/posts/${id}`, data),
+
+  uploadPostImage: (file: File) => {
+    const form = new FormData()
+    form.append('image', file)
+    return axiosInstance.post<ApiResponse<{ id: number; imageUrl: string; originalFileName: string }>>(
+      '/api/posts/images', form, { headers: { 'Content-Type': 'multipart/form-data' } },
+    )
+  },
+
+  // ── 댓글 ─────────────────────────────────────────────────────
+  getComments: (postId: number, params: { page?: number; size?: number }) =>
+    axiosInstance.get<ApiResponse<PageResponse<PostCommentItem>>>(`/api/posts/${postId}/comments`, { params }),
+
+  createComment: (postId: number, data: { content: string; parentId?: number; mentionedUserId?: number }) =>
+    axiosInstance.post<ApiResponse<PostCommentItem>>(`/api/posts/${postId}/comments`, data),
+
+  updateComment: (postId: number, commentId: number, data: { content: string }) =>
+    axiosInstance.patch<ApiResponse<PostCommentItem>>(`/api/posts/${postId}/comments/${commentId}`, data),
+
+  deleteComment: (postId: number, commentId: number) =>
+    axiosInstance.delete<ApiResponse<null>>(`/api/posts/${postId}/comments/${commentId}`),
+
+  // ── 이모지 ───────────────────────────────────────────────────
+  getEmojis: () =>
+    axiosInstance.get<ApiResponse<CommunityEmoji[]>>('/api/emojis'),
+
+  toggleReaction: (commentId: number, emojiId: number) =>
+    axiosInstance.post<ApiResponse<EmojiReactionSummary>>(`/api/comments/${commentId}/reactions`, { emojiId }),
+
+  // ── @멘션 검색 ───────────────────────────────────────────────
+  searchUsers: (nickname: string, limit = 5) =>
+    axiosInstance.get<ApiResponse<UserMention[]>>('/api/users/search', { params: { nickname, limit } }),
 }
