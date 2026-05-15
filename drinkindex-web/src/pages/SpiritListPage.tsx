@@ -1,8 +1,6 @@
 import { useState, useEffect, useCallback, Fragment } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { usePopups } from '@/domain/popup/hooks/usePopups'
-import { PopupViewer } from '@/domain/popup/components/PopupViewer'
 import { localizeCountry } from '@/shared/utils/countryName'
 import { useQuery } from '@tanstack/react-query'
 import { Dialog, Transition, TransitionChild, DialogPanel, DialogTitle } from '@headlessui/react'
@@ -182,18 +180,9 @@ function FilterDrawer({ open, onClose, children }: DrawerProps) {
 
 // ── 메인 페이지 ───────────────────────────────────────────────
 export default function SpiritListPage() {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const [searchParams, setSearchParams] = useSearchParams()
   const [drawerOpen, setDrawerOpen] = useState(false)
-
-  // ── 팝업 ────────────────────────────────────────────────────
-  const popupLanguage = (i18n.language.toUpperCase() === 'EN' ? 'EN' : 'KO') as 'KO' | 'EN'
-  const { data: popups = [] } = usePopups(popupLanguage)
-  const [isPopupOpen, setIsPopupOpen] = useState(false)
-
-  useEffect(() => {
-    if (popups.length > 0) setIsPopupOpen(true)
-  }, [popups.length])
 
   // URL에서 필터 값 읽기
   const category    = searchParams.get('category') ?? ''
@@ -386,13 +375,6 @@ export default function SpiritListPage() {
         <FilterPanel {...filterProps} />
       </FilterDrawer>
 
-      {/* 팝업 */}
-      {isPopupOpen && popups.length > 0 && (
-        <PopupViewer
-          popups={popups}
-          onClose={() => setIsPopupOpen(false)}
-        />
-      )}
     </div>
   )
 }

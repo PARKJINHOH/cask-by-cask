@@ -55,8 +55,7 @@ axiosInstance.interceptors.response.use(
     const { refreshToken, setTokens, logout } = useAuthStore.getState()
 
     if (!refreshToken) {
-      logout()
-      window.location.href = '/login'
+      // 미인증 상태에서 보호된 엔드포인트 접근 — 강제 리다이렉트 없이 거부만 처리
       return Promise.reject(error)
     }
 

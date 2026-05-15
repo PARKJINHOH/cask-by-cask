@@ -299,7 +299,7 @@ export default function SpiritDetailPage() {
     return (
       <div className="max-w-2xl mx-auto px-4 py-20 text-center">
         <p className="text-neutral-500 mb-4">{t('spirit.detail.notFound')}</p>
-        <button onClick={() => navigate('/')}
+        <button onClick={() => navigate('/spirits')}
           className="text-primary-600 hover:underline text-sm">
           ← {t('spirit.detail.backToList')}
         </button>

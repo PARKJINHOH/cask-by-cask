@@ -79,6 +79,11 @@ public enum ErrorCode {
     POPUP_TYPE_MISMATCH(HttpStatus.BAD_REQUEST, "POPUP_005", "팝업 타입에 맞는 필드를 입력해주세요."),
     POPUP_IMAGE_RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "POPUP_006", "이미지 업로드 횟수를 초과했습니다. 잠시 후 다시 시도해주세요."),
 
+    // Banner
+    BANNER_NOT_FOUND(HttpStatus.NOT_FOUND, "BANNER_001", "배너를 찾을 수 없습니다."),
+    BANNER_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "BANNER_002", "배너 이미지를 찾을 수 없습니다."),
+    DELETE_USED_BANNER_IMAGE(HttpStatus.BAD_REQUEST, "BANNER_003", "배너에 사용 중인 이미지는 삭제할 수 없습니다."),
+
     // Storage
     STORAGE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "STORAGE_001", "파일 저장 중 오류가 발생했습니다."),
     INVALID_FILE_PATH(HttpStatus.BAD_REQUEST, "STORAGE_002", "잘못된 파일 경로입니다."),

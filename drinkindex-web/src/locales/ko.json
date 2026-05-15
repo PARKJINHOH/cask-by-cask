@@ -6,6 +6,7 @@
   "nav": {
     "home": "홈",
     "search": "검색",
+    "spirits": "주류 탐색",
     "wishlist": "위시리스트",
     "login": "로그인",
     "signup": "회원가입",
@@ -13,6 +14,20 @@
     "mypage": "마이페이지",
     "admin": "관리자",
     "more": "더보기"
+  },
+  "home": {
+    "menu": {
+      "title": "주류 아카이브",
+      "subtitle": "위스키, 꼬냑, 와인을 탐색하고 리뷰해보세요",
+      "explore": "탐색하기"
+    },
+    "sections": {
+      "recent": "최근 등록된 술",
+      "topRated": "평점 높은 술",
+      "popular": "인기 술",
+      "notices": "공지사항",
+      "viewAll": "전체보기"
+    }
   },
   "menu": {
     "notice": "공지사항",

@@ -35,6 +35,7 @@ function GNB() {
   }, [])
 
   const menus: GNBItem[] = [
+    { key: 'spirits', label: t('nav.spirits'), to: '/spirits' },
     { key: 'notice', label: t('menu.notice'), to: '/notices' },
     {
       key: 'request',
@@ -64,10 +65,18 @@ function GNB() {
         <ul className="flex items-center">
           {menus.map(menu => {
             if ('to' in menu) {
-              const isNotice = menu.key === 'notice'
+              const isNotice  = menu.key === 'notice'
+              const isSpirits = menu.key === 'spirits'
               return (
-                <li key={menu.key}>
-                  <Link to={menu.to} className={`${itemCls(false)} relative`}>
+                <li key={menu.key} className={isSpirits ? 'mr-1' : ''}>
+                  <Link
+                    to={menu.to}
+                    className={isSpirits
+                      ? 'inline-flex items-center px-3.5 py-1.5 text-sm font-semibold rounded-lg\
+ bg-primary-600 text-white hover:bg-primary-700 transition-colors'
+                      : `${itemCls(false)} relative`
+                    }
+                  >
                     {menu.label}
                     {isNotice && hasUnread && (
                       <span
@@ -170,7 +179,7 @@ function HeaderSearch() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     const kw = value.trim()
-    navigate(kw ? `/?keyword=${encodeURIComponent(kw)}` : '/')
+    navigate(kw ? `/spirits?keyword=${encodeURIComponent(kw)}` : '/spirits')
     setValue('')
   }
 

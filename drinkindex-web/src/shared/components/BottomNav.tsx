@@ -55,6 +55,7 @@ export default function BottomNav() {
   const { isLoggedIn } = useAuthStore()
 
   const isHome    = location.pathname === '/'
+  const isSpirits = location.pathname.startsWith('/spirits')
   const isMypage  = location.pathname.startsWith('/mypage')
 
   const tabs = [
@@ -67,8 +68,8 @@ export default function BottomNav() {
     {
       label:  t('nav.search'),
       icon:   <SearchIcon />,
-      active: false,
-      onClick: () => navigate('/'),
+      active: isSpirits,
+      onClick: () => navigate('/spirits'),
     },
     {
       label:  t('wishlist.tab'),

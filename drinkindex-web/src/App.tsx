@@ -3,6 +3,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from '@/shared/api/queryClient'
 import MainLayout from '@/layouts/MainLayout'
 import AdminLayout from '@/layouts/AdminLayout'
+import MainPage from '@/pages/MainPage'
 import SpiritListPage from '@/pages/SpiritListPage'
 import SpiritDetailPage from '@/pages/SpiritDetailPage'
 import NoticePage from '@/pages/NoticePage'
@@ -27,6 +28,8 @@ import AdminNoticeFormPage from '@/pages/admin/AdminNoticeFormPage'
 import AdminNoticePreviewPage from '@/pages/admin/AdminNoticePreviewPage'
 import AdminPopupListPage from '@/pages/admin/AdminPopupListPage'
 import AdminPopupFormPage from '@/pages/admin/AdminPopupFormPage'
+import AdminBannerListPage from '@/pages/admin/AdminBannerListPage'
+import AdminBannerFormPage from '@/pages/admin/AdminBannerFormPage'
 import PrivateRoute from '@/shared/components/PrivateRoute'
 import AdminRoute from '@/shared/components/AdminRoute'
 
@@ -36,7 +39,8 @@ export default function App() {
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
           <Route element={<MainLayout />}>
-            <Route index element={<SpiritListPage />} />
+            <Route index element={<MainPage />} />
+            <Route path="spirits" element={<SpiritListPage />} />
             <Route path="spirits/:id" element={<SpiritDetailPage />} />
             <Route path="notices" element={<NoticePage />} />
             <Route path="notices/:id" element={<NoticeDetailPage />} />
@@ -70,6 +74,9 @@ export default function App() {
               <Route path="popups" element={<AdminPopupListPage />} />
               <Route path="popups/new" element={<AdminPopupFormPage />} />
               <Route path="popups/:id/edit" element={<AdminPopupFormPage />} />
+              <Route path="banners" element={<AdminBannerListPage />} />
+              <Route path="banners/new" element={<AdminBannerFormPage />} />
+              <Route path="banners/:id/edit" element={<AdminBannerFormPage />} />
             </Route>
           </Route>
         </Routes>

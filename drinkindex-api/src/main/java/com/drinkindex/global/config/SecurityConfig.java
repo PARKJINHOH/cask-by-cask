@@ -96,6 +96,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/spirits/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/notices/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/popups/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/banners/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/signup").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/refresh").permitAll()

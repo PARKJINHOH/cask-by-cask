@@ -19,6 +19,7 @@ const navEntries: NavEntry[] = [
     groupIcon: '⚙️',
     items: [
       { path: '/admin/notices', label: '공지사항' },
+      { path: '/admin/banners', label: '배너',    exact: true },
       { path: '/admin/popups',  label: '팝업',    exact: true },
     ],
   },
