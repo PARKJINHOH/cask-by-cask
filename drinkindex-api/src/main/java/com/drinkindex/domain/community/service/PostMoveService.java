@@ -1,0 +1,86 @@
+package com.drinkindex.domain.community.service;
+
+import com.drinkindex.domain.community.entity.DeletedPost;
+import com.drinkindex.domain.community.entity.Post;
+import com.drinkindex.domain.community.entity.PostImage;
+import com.drinkindex.domain.community.entity.enums.PostStatus;
+import com.drinkindex.domain.community.repository.DeletedPostRepository;
+import com.drinkindex.domain.community.repository.PostCommentRepository;
+import com.drinkindex.domain.community.repository.PostImageRepository;
+import com.drinkindex.domain.community.repository.PostRepository;
+import com.drinkindex.global.storage.FileStorageService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class PostMoveService {
+
+    private final DeletedPostRepository deletedPostRepository;
+    private final PostRepository postRepository;
+    private final PostCommentRepository postCommentRepository;
+    private final PostImageRepository postImageRepository;
+    private final FileStorageService fileStorageService;
+
+    /**
+     * Post → deleted_posts 이동.
+     * 1) DeletedPost 생성 및 저장
+     * 2) 댓글의 post FK를 null로 처리 (댓글 레코드 유지)
+     * 3) 연결 이미지 파일 물리 삭제
+     * 4) Post 레코드 DB 삭제
+     */
+    @Transactional
+    public void moveToDeleted(Post post, Long deletedBy, String deleteReason) {
+        // 1. DeletedPost 생성
+        DeletedPost deletedPost = DeletedPost.builder()
+                .originalPostId(post.getId())
+                .boardType(post.getBoardType())
+                .authorId(post.getAuthor().getId())
+                .title(post.getTitle())
+                .content(post.getContent())
+                .contentSanitized(post.getContentSanitized())
+                .deletedBy(deletedBy)
+                .deleteReason(deleteReason)
+                .deletedAt(LocalDateTime.now())
+                .originalCreatedAt(post.getCreatedAt())
+                .build();
+        deletedPostRepository.save(deletedPost);
+
+        // 2. 댓글의 post FK null 처리 (댓글 자체는 유지)
+        postCommentRepository.clearPostReference(post.getId());
+
+        // 3. 연결 이미지 파일 물리 삭제
+        List<PostImage> images = postImageRepository.findByPostId(post.getId());
+        images.forEach(img -> {
+            try {
+                // subPath = "posts/YYYYMM" 형태로 savedFileName의 업로드 경로를 추론
+                String subPath = extractSubPath(img.getImageUrl(), img.getSavedFileName());
+                fileStorageService.delete(img.getSavedFileName(), subPath);
+            } catch (Exception e) {
+                log.warn("이미지 파일 삭제 실패 (무시): {}", img.getSavedFileName(), e);
+            }
+        });
+
+        // 4. Post 레코드 삭제 (cascade로 PostImage, Poll, PollOption 함께 삭제)
+        postRepository.delete(post);
+    }
+
+    // imageUrl에서 subPath 추출: /api/posts/images/{savedFileName} → posts
+    private String extractSubPath(String imageUrl, String savedFileName) {
+        // URL 패턴: /api/posts/images/{savedFileName}
+        // subPath는 FileStorageService에서 업로드 시 사용한 값이 필요하지만
+        // PostImage에 subPath 컬럼이 없으므로 URL에서 도메인 세그먼트로 추론
+        if (imageUrl != null && imageUrl.contains("/api/")) {
+            String[] parts = imageUrl.split("/api/")[1].split("/");
+            // parts[0] = domain (예: "posts"), parts[1] = "images", parts[2] = savedFileName
+            return parts[0];
+        }
+        return "posts";
+    }
+}

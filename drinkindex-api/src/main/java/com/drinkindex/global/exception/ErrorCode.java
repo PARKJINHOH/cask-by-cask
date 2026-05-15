@@ -79,7 +79,21 @@ public enum ErrorCode {
     POPUP_TYPE_MISMATCH(HttpStatus.BAD_REQUEST, "POPUP_005", "팝업 타입에 맞는 필드를 입력해주세요."),
     POPUP_IMAGE_RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "POPUP_006", "이미지 업로드 횟수를 초과했습니다. 잠시 후 다시 시도해주세요."),
 
-    // Community
+    // Community - Post
+    POST_NOT_FOUND(HttpStatus.NOT_FOUND, "POST_001", "게시글을 찾을 수 없습니다."),
+    POST_ACCESS_DENIED(HttpStatus.FORBIDDEN, "POST_002", "게시글 수정/삭제 권한이 없습니다."),
+    POST_NOTICE_FORBIDDEN(HttpStatus.FORBIDDEN, "POST_003", "소식 게시판은 관리자 또는 증류소 계정만 작성할 수 있습니다."),
+    POST_LOCKED(HttpStatus.FORBIDDEN, "POST_004", "신고가 누적되어 잠긴 게시글입니다."),
+    POLL_OPTION_TOO_FEW(HttpStatus.BAD_REQUEST, "POST_005", "투표 항목은 최소 2개 이상이어야 합니다."),
+    SERIES_NOT_FOUND(HttpStatus.NOT_FOUND, "POST_006", "시리즈를 찾을 수 없습니다."),
+    SERIES_ACCESS_DENIED(HttpStatus.FORBIDDEN, "POST_007", "본인이 생성한 시리즈에만 게시글을 추가할 수 있습니다."),
+    POST_PREFIX_NOT_FOUND(HttpStatus.NOT_FOUND, "POST_008", "말머리를 찾을 수 없습니다."),
+    SELF_REPORT_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "POST_009", "본인 게시글은 신고할 수 없습니다."),
+    DELETED_POST_NOT_FOUND(HttpStatus.NOT_FOUND, "POST_010", "삭제된 게시글을 찾을 수 없습니다."),
+    DUPLICATE_REPORT(HttpStatus.CONFLICT, "POST_011", "이미 신고한 게시글입니다."),
+    POST_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "POST_012", "게시글 이미지를 찾을 수 없습니다."),
+
+    // Community - BadWord
     BAD_WORD_DETECTED(HttpStatus.BAD_REQUEST, "BAD_WORD_DETECTED", "욕설이 포함되어 있습니다."),
     BAD_WORD_NOT_FOUND(HttpStatus.NOT_FOUND, "COMMUNITY_001", "금지어를 찾을 수 없습니다."),
     DUPLICATE_BAD_WORD(HttpStatus.CONFLICT, "COMMUNITY_002", "이미 등록된 금지어입니다."),
