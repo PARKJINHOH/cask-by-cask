@@ -79,6 +79,18 @@ public enum ErrorCode {
     POPUP_TYPE_MISMATCH(HttpStatus.BAD_REQUEST, "POPUP_005", "팝업 타입에 맞는 필드를 입력해주세요."),
     POPUP_IMAGE_RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "POPUP_006", "이미지 업로드 횟수를 초과했습니다. 잠시 후 다시 시도해주세요."),
 
+    // Community - Poll
+    POLL_NOT_FOUND(HttpStatus.NOT_FOUND, "POLL_001", "투표를 찾을 수 없습니다."),
+    POLL_ENDED(HttpStatus.BAD_REQUEST, "POLL_002", "종료된 투표입니다."),
+    ALREADY_VOTED(HttpStatus.BAD_REQUEST, "POLL_003", "이미 투표하셨습니다."),
+    INVALID_VOTE(HttpStatus.BAD_REQUEST, "POLL_004", "투표 옵션이 올바르지 않습니다."),
+    POLL_OPTION_NOT_FOUND(HttpStatus.NOT_FOUND, "POLL_005", "투표 항목을 찾을 수 없습니다."),
+
+    // Community - Emoji
+    EMOJI_NOT_FOUND(HttpStatus.NOT_FOUND, "EMOJI_001", "이모지를 찾을 수 없습니다."),
+    DUPLICATE_EMOJI_CODE(HttpStatus.CONFLICT, "EMOJI_002", "이미 등록된 이모지 코드입니다."),
+    EMOJI_UNICODE_OR_IMAGE_REQUIRED(HttpStatus.BAD_REQUEST, "EMOJI_003", "유니코드 또는 이미지 URL 중 하나는 필수입니다."),
+
     // Community - Post
     POST_NOT_FOUND(HttpStatus.NOT_FOUND, "POST_001", "게시글을 찾을 수 없습니다."),
     POST_ACCESS_DENIED(HttpStatus.FORBIDDEN, "POST_002", "게시글 수정/삭제 권한이 없습니다."),

@@ -36,6 +36,8 @@ public class CommunityEmoji extends BaseTimeEntity {
     @Column(name = "sort_order", nullable = false)
     private Integer sortOrder = 0;
 
+    public void toggleActive() { this.isActive = !this.isActive; }
+
     public void update(String imageUrl, String unicode, String label, Boolean isActive, Integer sortOrder) {
         this.imageUrl = imageUrl;
         this.unicode = unicode;

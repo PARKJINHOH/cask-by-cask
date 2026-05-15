@@ -1,0 +1,21 @@
+package com.drinkindex.domain.community.dto;
+
+import lombok.Builder;
+import lombok.Getter;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Getter
+@Builder
+public class PostCommentResponse {
+
+    private final Long id;
+    private final String authorNickname;
+    private final String content;
+    private final String mentionedUserNickname;
+    private final List<EmojiReactionSummary> emojiReactions;
+    private final List<PostCommentResponse> children;
+    private final LocalDateTime createdAt;
+    private final boolean isMyComment;
+}

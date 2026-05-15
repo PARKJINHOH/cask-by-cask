@@ -1,21 +1,28 @@
 package com.drinkindex.domain.user.controller;
 
+import com.drinkindex.domain.community.dto.UserMentionResponse;
 import com.drinkindex.domain.review.dto.ReviewResponse;
 import com.drinkindex.domain.review.service.ReviewService;
 import com.drinkindex.domain.user.dto.UpdateNicknameRequest;
 import com.drinkindex.domain.user.dto.UpdatePasswordRequest;
 import com.drinkindex.domain.user.dto.UserResponse;
+import com.drinkindex.domain.user.repository.UserRepository;
 import com.drinkindex.domain.user.service.UserService;
 import com.drinkindex.global.auth.security.CustomUserDetails;
 import com.drinkindex.global.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/users")
@@ -24,6 +31,7 @@ public class UserController {
 
     private final UserService userService;
     private final ReviewService reviewService;
+    private final UserRepository userRepository;
 
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<UserResponse>> getMe(
@@ -53,6 +61,24 @@ public class UserController {
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         userService.deleteMe(userDetails.getUserId());
         return ResponseEntity.ok(ApiResponse.success());
+    }
+
+    // ─── @멘션 자동완성: 닉네임 prefix 검색, 차단 사용자 제외 ───
+
+    @GetMapping("/search")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<List<UserMentionResponse>>> searchByNickname(
+            @RequestParam String nickname,
+            @RequestParam(defaultValue = "5") int limit,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        List<UserMentionResponse> result = userRepository
+                .findByNicknamePrefixExcludingBlocked(nickname, userDetails.getUserId(),
+                        PageRequest.of(0, limit))
+                .stream()
+                .map(UserMentionResponse::from)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @GetMapping("/me/reviews")
