@@ -39,7 +39,11 @@ public class LocalFileStorageService implements FileStorageService {
             throw new CustomException(ErrorCode.STORAGE_ERROR);
         }
 
-        return "/api/notices/images/" + savedFileName;
+        // subPath 첫 번째 세그먼트(domain)로 URL 프리픽스 결정
+        // 예: "notices/202506" → /api/notices/images/, "popups/202506" → /api/popups/images/
+        int slashIdx = subPath.indexOf('/');
+        String domain = slashIdx >= 0 ? subPath.substring(0, slashIdx) : subPath;
+        return "/api/" + domain + "/images/" + savedFileName;
     }
 
     @Override

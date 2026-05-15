@@ -8,31 +8,47 @@ interface NavItem {
   subItem?: boolean
 }
 
-interface NavGroup {
-  groupLabel: string
-  groupIcon: string
-  items: NavItem[]
-}
-
 type NavEntry =
   | { type: 'item'; path: string; label: string; icon: string; exact?: boolean }
   | { type: 'group'; groupLabel: string; groupIcon: string; items: NavItem[] }
 
 const navEntries: NavEntry[] = [
-  { type: 'item', path: '/admin/notices',          label: '공지 관리',  icon: '📢' },
-  { type: 'item', path: '/admin/spirits/requests', label: '등록 요청',  icon: '📋' },
-  { type: 'item', path: '/admin/reports',          label: '신고 관리',  icon: '🚨' },
-  { type: 'item', path: '/admin/users',            label: '회원 관리',  icon: '👥', exact: true },
-  { type: 'item', path: '/admin/spirits',          label: '술 관리',    icon: '🥃', exact: true },
   {
     type: 'group',
-    groupLabel: '제조사 관리',
+    groupLabel: '관리',
+    groupIcon: '⚙️',
+    items: [
+      { path: '/admin/notices', label: '공지사항' },
+      { path: '/admin/popups',  label: '팝업',    exact: true },
+    ],
+  },
+  {
+    type: 'group',
+    groupLabel: '주류',
+    groupIcon: '🥃',
+    items: [
+      { path: '/admin/spirits/requests', label: '등록 요청' },
+      { path: '/admin/spirits',          label: '주류 관리', exact: true },
+    ],
+  },
+  {
+    type: 'group',
+    groupLabel: '회원',
+    groupIcon: '👥',
+    items: [
+      { path: '/admin/users',   label: '회원 관리', exact: true },
+      { path: '/admin/reports', label: '신고 관리' },
+    ],
+  },
+  {
+    type: 'group',
+    groupLabel: '제조사',
     groupIcon: '🏭',
     items: [
-      { path: '/admin/distilleries',          label: '증류소 목록',     exact: true },
-      { path: '/admin/wineries',              label: '와이너리 목록',   exact: true },
-      { path: '/admin/cognac-houses',         label: '꼬냑 하우스 목록', exact: true },
-      { path: '/admin/cognac-appellations',   label: '세부 산지 목록',  exact: true, subItem: true },
+      { path: '/admin/distilleries',        label: '증류소 관리',      exact: true },
+      { path: '/admin/wineries',            label: '와이너리 관리',    exact: true },
+      { path: '/admin/cognac-houses',       label: '꼬냑 하우스 관리', exact: true },
+      { path: '/admin/cognac-appellations', label: '세부 산지 관리',   exact: true, subItem: true },
     ],
   },
 ]
@@ -46,14 +62,6 @@ export default function AdminLayout() {
     await logout()
     navigate('/')
   }
-
-  const isItemActive = (item: NavItem) =>
-    item.exact
-      ? location.pathname === item.path
-      : location.pathname.startsWith(item.path)
-
-  const isGroupActive = (group: NavGroup) =>
-    group.items.some((item) => location.pathname.startsWith(item.path))
 
   return (
     <div className="min-h-screen bg-neutral-50 flex">

@@ -71,6 +71,14 @@ public enum ErrorCode {
     NOTICE_IMAGE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "NOTICE_006", "이미지 파일 크기는 10MB를 초과할 수 없습니다."),
     DELETE_USED_IMAGE(HttpStatus.BAD_REQUEST, "NOTICE_007", "공지에 사용 중인 이미지는 삭제할 수 없습니다."),
 
+    // Popup
+    POPUP_NOT_FOUND(HttpStatus.NOT_FOUND, "POPUP_001", "팝업을 찾을 수 없습니다."),
+    POPUP_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "POPUP_002", "팝업 이미지를 찾을 수 없습니다."),
+    DELETE_USED_POPUP_IMAGE(HttpStatus.BAD_REQUEST, "POPUP_003", "팝업에 사용 중인 이미지는 삭제할 수 없습니다."),
+    INVALID_POPUP_DATE_RANGE(HttpStatus.BAD_REQUEST, "POPUP_004", "종료일시는 시작일시 이후여야 합니다."),
+    POPUP_TYPE_MISMATCH(HttpStatus.BAD_REQUEST, "POPUP_005", "팝업 타입에 맞는 필드를 입력해주세요."),
+    POPUP_IMAGE_RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "POPUP_006", "이미지 업로드 횟수를 초과했습니다. 잠시 후 다시 시도해주세요."),
+
     // Storage
     STORAGE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "STORAGE_001", "파일 저장 중 오류가 발생했습니다."),
     INVALID_FILE_PATH(HttpStatus.BAD_REQUEST, "STORAGE_002", "잘못된 파일 경로입니다."),

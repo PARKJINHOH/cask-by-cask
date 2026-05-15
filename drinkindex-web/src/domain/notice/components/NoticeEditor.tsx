@@ -42,9 +42,10 @@ interface Props {
   onChange: (html: string) => void
   onImageUploadError?: (message: string) => void
   placeholder?: string
+  uploadImage?: (file: File) => Promise<string | null>
 }
 
-export default function NoticeEditor({ value, onChange, onImageUploadError, placeholder }: Props) {
+export default function NoticeEditor({ value, onChange, onImageUploadError, placeholder, uploadImage }: Props) {
   const handleImageUpload = useCallback(
     async (file: File): Promise<string | null> => {
       if (file.size > MAX_FILE_SIZE) {
@@ -58,6 +59,7 @@ export default function NoticeEditor({ value, onChange, onImageUploadError, plac
       }
 
       try {
+        if (uploadImage) return await uploadImage(file)
         const res = await noticeApi.uploadImage(file)
         return res.data.data?.imageUrl ?? null
       } catch (err: unknown) {
@@ -70,7 +72,7 @@ export default function NoticeEditor({ value, onChange, onImageUploadError, plac
         return null
       }
     },
-    [onImageUploadError],
+    [onImageUploadError, uploadImage],
   )
 
   const editor = useEditor({
