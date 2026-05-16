@@ -20,5 +20,5 @@ public class CreateEmojiRequest {
     @Size(max = 50)
     private String label;
 
-    private int sortOrder = 0;
+    private Long groupId;
 }

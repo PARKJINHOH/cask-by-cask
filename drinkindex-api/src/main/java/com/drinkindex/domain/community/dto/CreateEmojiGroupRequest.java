@@ -1,21 +1,15 @@
 package com.drinkindex.domain.community.dto;
 
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Getter
 @NoArgsConstructor
-public class UpdateEmojiRequest {
+public class CreateEmojiGroupRequest {
 
-    @Size(max = 10)
-    private String unicode;
-
-    @Size(max = 500)
-    private String imageUrl;
-
+    @NotBlank(message = "그룹 이름을 입력해주세요.")
     @Size(max = 50)
-    private String label;
-
-    private Long groupId;
+    private String name;
 }

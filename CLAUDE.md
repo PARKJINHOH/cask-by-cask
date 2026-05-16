@@ -16,7 +16,7 @@
 - MariaDB — local/dev/prod 환경 분리
 - 공통 응답: ApiResponse<T> 래퍼
 - 예외: GlobalExceptionHandler + ErrorCode Enum
-- JAVA_HOME = "C:/Users/EM_NB139/.jdks/temurin-21.0.10"
+- JAVA_HOME = "C:\Users\JINHOH_PC\.jdks\temurin-21.0.10"
 
 ## 프론트엔드 (drinkindex-web)
 - React + TypeScript + Vite
@@ -27,6 +27,7 @@
 - react-i18next (ko 기본, en 지원)
 - PC, 모바일 반응형 고려해서 구현
 - node = "C:\Program Files\nodejs"
+- API가 추가되면 Localhost에서 테스트가 가능하도록 vite.config.ts에 api URL 추가하기.
 
 ## 다국어(i18n) 개발 원칙
 - **모든 UI 문자열은 반드시 `t()` 번역키 사용** — 하드코딩 한글/영어 금지 (관리자 페이지 제외)
@@ -47,39 +48,3 @@
 ## 신고 자동 숨김
 신고 3회 이상 → isHidden=true 자동 처리
 관리자 dismiss → isHidden=false 복구
-
-## 커뮤니티 (Community) — STEP 31~38
-
-### 게시판 종류
-- NOTICE(소식): ADMIN + DISTILLERY Role만 작성. 비회원 열람 가능.
-- FREE(자유): 로그인 회원 작성. 익명 글쓰기 지원 (user_id는 DB 저장).
-
-### 핵심 정책
-- 삭제: posts → deleted_posts 이동 (Hard Delete 금지)
-- 신고 5회 누적 → 게시글 LOCKED (제목 빨간색, 본문 비노출)
-- 욕설 필터: bad_words 테이블 기반, 제목+본문+댓글+쪽지 전체 적용
-- 추천 알림 임계치: NotificationConstants.LIKE_NOTIFY_THRESHOLD = 10 (소스 변경 가능)
-
-### 투표 정책
-- 게시글 1개당 투표 1개
-- 작성자가 단일/복수 선택 설정
-- 종료일시 이후 투표 불가, 결과만 공개
-
-### 알림 정책
-- 폴링 방식 (30초 간격), 추후 롱폴링 전환 고려한 구조
-- 알림 종류: COMMENT, REPLY, MENTION, LIKE, MESSAGE, SYSTEM
-- 보관 기간: 90일 후 자동 삭제
-
-### 동영상 CSP
-- 게시글 상세 페이지 응답 헤더에만 frame-src 완화
-- 허용: https://www.youtube.com https://player.vimeo.com
-- 전체 페이지 CSP는 기존 유지 (frame-src 'none')
-
-### 테이블 목록
-커뮤니티: posts, deleted_posts, post_prefixes, post_comments,
-          post_reports, post_likes, post_scraps, post_images,
-          comment_emoji_reactions, community_emojis,
-          bad_words, user_blocks
-투표: polls, poll_options, poll_votes
-시리즈: series, series_posts
-알림/쪽지: notifications, messages, message_items

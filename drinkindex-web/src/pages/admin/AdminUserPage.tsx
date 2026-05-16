@@ -5,6 +5,7 @@ import Input from '@/shared/components/Input'
 import Spinner from '@/shared/components/Spinner'
 import Pagination from '@/shared/components/Pagination'
 import Modal from '@/shared/components/Modal'
+import DistillerySelector from '@/domain/distillery/components/DistillerySelector'
 import { formatDate } from '@/shared/utils/format'
 import {
   useAdminUsers,
@@ -32,16 +33,16 @@ interface RoleModalProps {
 
 function RoleChangeModal({ user, onClose }: RoleModalProps) {
   const [role, setRole]               = useState<AdminUserRole>(user.role)
-  const [distilleryId, setDistilleryId] = useState<string>(
-    user.distilleryId ? String(user.distilleryId) : '',
+  const [distilleryId, setDistilleryId] = useState<number | null>(
+    user.distilleryId ?? null,
   )
   const [error, setError] = useState('')
   const changeRole = useChangeRole()
 
   const handleSubmit = async () => {
     setError('')
-    if (role === 'DISTILLERY' && !distilleryId.trim()) {
-      setError('DISTILLERY 역할은 증류소 ID가 필요합니다.')
+    if (role === 'DISTILLERY' && distilleryId === null) {
+      setError('DISTILLERY 역할은 증류소를 선택해야 합니다.')
       return
     }
     try {
@@ -49,7 +50,7 @@ function RoleChangeModal({ user, onClose }: RoleModalProps) {
         id: user.id,
         data: {
           role,
-          distilleryId: role === 'DISTILLERY' ? Number(distilleryId) : null,
+          distilleryId: role === 'DISTILLERY' ? distilleryId : null,
         },
       })
       onClose()
@@ -89,14 +90,18 @@ function RoleChangeModal({ user, onClose }: RoleModalProps) {
         </div>
 
         {role === 'DISTILLERY' && (
-          <Input
-            label="증류소 ID"
-            type="number"
-            placeholder="증류소 ID를 입력하세요"
-            value={distilleryId}
-            onChange={(e) => setDistilleryId(e.target.value)}
-            hint={user.distilleryNameKo ? `현재: ${user.distilleryNameKo}` : undefined}
-          />
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 mb-1.5">증류소 선택</label>
+            <DistillerySelector
+              value={distilleryId}
+              defaultName={user.distilleryNameKo ?? undefined}
+              onChange={setDistilleryId}
+              placeholder="증류소 이름으로 검색..."
+            />
+            {user.distilleryNameKo && distilleryId === user.distilleryId && (
+              <p className="text-xs text-neutral-400 mt-1">현재: {user.distilleryNameKo}</p>
+            )}
+          </div>
         )}
 
         {error && <p className="text-sm text-red-600">{error}</p>}
@@ -257,11 +262,12 @@ export default function AdminUserPage() {
                         </Badge>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-2 justify-end">
+                        <div className="flex items-center gap-1 justify-end">
                           <button
                             onClick={() => setRoleModalUser(user)}
-                            className="text-xs text-primary-600 hover:text-primary-800 font-medium
-                              transition-colors"
+                            className="inline-flex items-center gap-1 h-7 px-2.5 text-xs font-medium
+                              rounded-md border border-neutral-300 bg-white text-neutral-600
+                              hover:bg-neutral-50 transition-colors whitespace-nowrap"
                           >
                             등급 변경
                           </button>
@@ -269,8 +275,9 @@ export default function AdminUserPage() {
                             <button
                               onClick={() => handleDeactivate(user)}
                               disabled={deactivate.isPending}
-                              className="text-xs text-red-500 hover:text-red-700 font-medium
-                                transition-colors disabled:opacity-40"
+                              className="inline-flex items-center gap-1 h-7 px-2.5 text-xs font-medium
+                                rounded-md border border-red-200 bg-white text-red-600
+                                hover:bg-red-50 transition-colors whitespace-nowrap disabled:opacity-40"
                             >
                               비활성화
                             </button>

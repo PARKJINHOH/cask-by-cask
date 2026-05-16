@@ -3,8 +3,9 @@ import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { useCreateComment, useUpdateComment } from '../hooks/useComments'
 import { communityApi } from '../api/communityApi'
-import type { PostCommentItem, UserMention } from '../types/community.types'
+import type { PostCommentItem, UserMention, CommunityEmoji } from '../types/community.types'
 import Button from '@/shared/components/Button'
+import EmojiPicker from './EmojiPicker'
 
 interface Props {
   postId: number
@@ -32,6 +33,7 @@ export default function CommunityCommentForm({
   const [mentionedUserId, setMentionedUserId] = useState<number | null>(null)
   const [mentionQuery, setMentionQuery] = useState('')
   const [mentionStart, setMentionStart] = useState<number | null>(null)
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [error, setError] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -84,6 +86,27 @@ export default function CommunityCommentForm({
     setMentionStart(null)
     textareaRef.current.focus()
   }
+
+  const handleEmojiSelect = useCallback(async (emoji: CommunityEmoji) => {
+    const insert = emoji.unicode ?? (emoji.imageUrl ? `[emoji-img:${emoji.imageUrl}]` : emoji.label)
+    setShowEmojiPicker(false)
+    setError('')
+    try {
+      await createMutation.mutateAsync({
+        content: insert,
+        parentId,
+        mentionedUserId: undefined,
+      })
+      onSuccess()
+    } catch (err: unknown) {
+      const data = (err as { response?: { data?: { code?: string; detectedWords?: string[] } } })?.response?.data
+      if (data?.code === 'BAD_WORD_DETECTED' && data.detectedWords) {
+        onBadWord?.(data.detectedWords)
+      } else {
+        setError(t('comment.saveError'))
+      }
+    }
+  }, [createMutation, parentId, onSuccess, onBadWord, t])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -157,12 +180,33 @@ export default function CommunityCommentForm({
       {error && <p className="text-xs text-red-500">{error}</p>}
 
       <div className="flex items-center justify-between">
-        <span className="text-xs text-neutral-400 tabular-nums">{content.length}/{MAX_LENGTH}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-neutral-400 tabular-nums">{content.length}/{MAX_LENGTH}</span>
+          {/* 이모지 버튼 */}
+          <div
+            className="relative"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setShowEmojiPicker((v) => !v)}
+              className="text-xs text-neutral-400 hover:text-neutral-600 px-2 py-0.5 rounded border border-neutral-200 hover:border-neutral-300 transition-colors"
+            >
+              이모지
+            </button>
+            {showEmojiPicker && (
+              <EmojiPicker
+                onSelect={handleEmojiSelect}
+                onClose={() => setShowEmojiPicker(false)}
+              />
+            )}
+          </div>
+        </div>
         <div className="flex gap-2">
           {onCancel && !parentNickname && (
             <Button variant="ghost" size="sm" type="button" onClick={onCancel}>{t('common.cancel')}</Button>
           )}
-          <Button size="sm" type="submit" isLoading={isPending} disabled={!content.trim()}>
+          <Button variant="primary" size="sm" type="submit" isLoading={isPending} disabled={!content.trim()}>
             {editingComment ? t('comment.submitEdit') : parentId ? t('comment.submitReply') : t('comment.submit')}
           </Button>
         </div>

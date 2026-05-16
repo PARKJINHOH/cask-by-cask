@@ -27,10 +27,6 @@ export default defineConfig({
         target: 'http://localhost:8080',
         changeOrigin: true,
       },
-      '/api/emojis/images': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-      },
     },
   },
 })

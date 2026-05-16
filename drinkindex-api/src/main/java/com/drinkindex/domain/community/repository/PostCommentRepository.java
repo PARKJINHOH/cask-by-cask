@@ -12,12 +12,12 @@ import java.util.List;
 
 public interface PostCommentRepository extends JpaRepository<PostComment, Long> {
 
-    // 게시글 루트 댓글 목록 (부모 없음, 삭제 안 됨, 숨김 아님)
-    Page<PostComment> findByPostIdAndParentIsNullAndDeletedAtIsNullAndIsHiddenFalse(
+    // 게시글 루트 댓글 목록 (삭제 포함, 숨김 제외) — 삭제 댓글은 "삭제된 댓글" 표시
+    Page<PostComment> findByPostIdAndParentIsNullAndIsHiddenFalse(
             Long postId, Pageable pageable);
 
-    // 부모 댓글의 대댓글 목록
-    List<PostComment> findByParentIdAndDeletedAtIsNullAndIsHiddenFalseOrderByCreatedAtAsc(
+    // 부모 댓글의 대댓글 목록 (삭제 포함, 숨김 제외)
+    List<PostComment> findByParentIdAndIsHiddenFalseOrderByCreatedAtAsc(
             Long parentId);
 
     // 게시글 삭제 시 댓글의 post FK를 null로 처리 (댓글 레코드 자체는 유지)

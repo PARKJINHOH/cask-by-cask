@@ -47,7 +47,9 @@ export default function LoginPage() {
     defaultValues: { email: '', password: '' },
   })
 
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname ?? '/'
+  const state = location.state as { from?: { pathname: string }; signupSuccess?: boolean } | null
+  const from = state?.from?.pathname ?? '/'
+  const signupSuccess = !!state?.signupSuccess
 
   // 이미 로그인된 사용자는 이전 페이지 또는 홈으로
   if (isLoggedIn) return <Navigate to={from} replace />
@@ -75,6 +77,16 @@ export default function LoginPage() {
           <h1 className="mt-3 text-xl font-semibold text-neutral-900">로그인</h1>
           <p className="mt-1 text-sm text-neutral-500">계속하려면 로그인해주세요</p>
         </div>
+
+        {/* 회원가입 완료 안내 */}
+        {signupSuccess && (
+          <div className="mb-4 flex items-center gap-2 px-3 py-2.5 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+            <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5l-3.5-3.5 1.41-1.41L10 13.67l6.59-6.59L18 8.5l-8 8z"/>
+            </svg>
+            회원가입이 완료되었습니다. 로그인해주세요.
+          </div>
+        )}
 
         {/* Form */}
         <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">

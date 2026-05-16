@@ -219,7 +219,7 @@ export default function BoardListPage({ boardType, title }: Props) {
                 <tr className="bg-neutral-50 border-b border-neutral-100">
                   <th className="text-left px-4 py-3 font-medium text-neutral-500 w-28">{t('board.prefix')}</th>
                   <th className="text-left px-4 py-3 font-medium text-neutral-500">{t('common.search')}</th>
-                  <th className="text-left px-4 py-3 font-medium text-neutral-500 w-24">작성자</th>
+                  <th className="text-left px-4 py-3 font-medium text-neutral-500 w-24">닉네임</th>
                   <th className="text-right px-4 py-3 font-medium text-neutral-500 w-16">{t('board.likes')}</th>
                   <th className="text-right px-4 py-3 font-medium text-neutral-500 w-16">{t('board.views')}</th>
                   <th className="text-right px-4 py-3 font-medium text-neutral-500 w-24">작성일</th>

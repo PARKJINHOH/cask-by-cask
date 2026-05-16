@@ -22,11 +22,11 @@ public class PostDetailResponse {
     private final Long authorId;           // null if isAnonymous
     private final long viewCount;
     private final int likeCount;
-    private final int dislikeCount;
     private final int commentCount;
     private final PollDetailResponse poll;
     private final List<PostImageInfo> images;
     private final SeriesInfo series;
+    private final Boolean isMyPost;   // null if not logged in
     private final Boolean isLiked;    // null if not logged in
     private final Boolean isScrapped; // null if not logged in
     private final Boolean isBlocked;  // null if not logged in
@@ -44,11 +44,11 @@ public class PostDetailResponse {
         this.authorId         = b.authorId;
         this.viewCount        = b.viewCount;
         this.likeCount        = b.likeCount;
-        this.dislikeCount     = b.dislikeCount;
         this.commentCount     = b.commentCount;
         this.poll             = b.poll;
         this.images           = b.images;
         this.series           = b.series;
+        this.isMyPost         = b.isMyPost;
         this.isLiked          = b.isLiked;
         this.isScrapped       = b.isScrapped;
         this.isBlocked        = b.isBlocked;
@@ -69,7 +69,6 @@ public class PostDetailResponse {
                 .authorId(Boolean.TRUE.equals(post.getIsAnonymous()) ? null : post.getAuthor().getId())
                 .viewCount(post.getViewCount())
                 .likeCount(post.getLikeCount())
-                .dislikeCount(post.getDislikeCount())
                 .commentCount(post.getCommentCount())
                 .poll(post.getPoll() != null ? PollDetailResponse.from(post.getPoll()) : null)
                 .images(post.getImages().stream().map(PostImageInfo::from).collect(Collectors.toList()))
@@ -89,11 +88,11 @@ public class PostDetailResponse {
         private Long authorId;
         private long viewCount;
         private int likeCount;
-        private int dislikeCount;
         private int commentCount;
         private PollDetailResponse poll;
         private List<PostImageInfo> images;
         private SeriesInfo series;
+        private Boolean isMyPost;
         private Boolean isLiked;
         private Boolean isScrapped;
         private Boolean isBlocked;
@@ -110,11 +109,11 @@ public class PostDetailResponse {
         public Builder authorId(Long id)                  { this.authorId = id; return this; }
         public Builder viewCount(long v)                  { this.viewCount = v; return this; }
         public Builder likeCount(int l)                   { this.likeCount = l; return this; }
-        public Builder dislikeCount(int d)                { this.dislikeCount = d; return this; }
         public Builder commentCount(int c)                { this.commentCount = c; return this; }
         public Builder poll(PollDetailResponse p)         { this.poll = p; return this; }
         public Builder images(List<PostImageInfo> i)      { this.images = i; return this; }
         public Builder series(SeriesInfo s)               { this.series = s; return this; }
+        public Builder isMyPost(Boolean m)                { this.isMyPost = m; return this; }
         public Builder isLiked(Boolean l)                 { this.isLiked = l; return this; }
         public Builder isScrapped(Boolean s)              { this.isScrapped = s; return this; }
         public Builder isBlocked(Boolean b)               { this.isBlocked = b; return this; }

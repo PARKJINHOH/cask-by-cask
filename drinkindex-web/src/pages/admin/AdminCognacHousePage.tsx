@@ -295,17 +295,21 @@ export default function AdminCognacHousePage() {
                           : '-'}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <div className="flex gap-2 justify-end">
+                        <div className="flex gap-1 justify-end">
                           <button
                             onClick={() => { setEditTarget(h); setShowCreate(false) }}
-                            className="text-xs text-primary-600 hover:text-primary-800 font-medium"
+                            className="inline-flex items-center gap-1 h-7 px-2.5 text-xs font-medium
+                              rounded-md border border-neutral-300 bg-white text-neutral-600
+                              hover:bg-neutral-50 transition-colors whitespace-nowrap"
                           >
                             수정
                           </button>
                           <button
                             onClick={() => handleDelete(h.id, h.nameKo)}
                             disabled={remove.isPending}
-                            className="text-xs text-red-500 hover:text-red-700 font-medium disabled:opacity-40"
+                            className="inline-flex items-center gap-1 h-7 px-2.5 text-xs font-medium
+                              rounded-md border border-red-200 bg-white text-red-600
+                              hover:bg-red-50 transition-colors whitespace-nowrap disabled:opacity-40"
                           >
                             삭제
                           </button>

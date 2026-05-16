@@ -244,7 +244,7 @@ export default function PostEditor({ value, onChange, placeholder, onImageError 
       {editor && <PostEditorToolbar editor={editor} />}
       <EditorContent
         editor={editor}
-        className="prose prose-sm max-w-none min-h-[240px] p-4 focus:outline-none notice-content"
+        className="prose prose-sm max-w-none p-4 focus:outline-none notice-content [&_.ProseMirror]:min-h-[200px] [&_.ProseMirror]:cursor-text [&_.ProseMirror]:outline-none"
       />
       <div className="flex justify-end px-3 py-1.5 bg-neutral-50 border-t border-neutral-100">
         <span className="text-xs text-neutral-400 tabular-nums">{charCount.toLocaleString()} / {MAX_CHARS.toLocaleString()}</span>

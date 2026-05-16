@@ -37,14 +37,6 @@ public interface PostRepository extends JpaRepository<Post, Long>, PostQueryRepo
     void decrementLikeCount(@Param("id") Long id);
 
     @Modifying
-    @Query("UPDATE Post p SET p.dislikeCount = p.dislikeCount + 1 WHERE p.id = :id")
-    void incrementDislikeCount(@Param("id") Long id);
-
-    @Modifying
-    @Query("UPDATE Post p SET p.dislikeCount = p.dislikeCount - 1 WHERE p.id = :id AND p.dislikeCount > 0")
-    void decrementDislikeCount(@Param("id") Long id);
-
-    @Modifying
     @Query("UPDATE Post p SET p.commentCount = p.commentCount + 1 WHERE p.id = :id")
     void incrementCommentCount(@Param("id") Long id);
 

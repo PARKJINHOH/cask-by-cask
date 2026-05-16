@@ -90,6 +90,8 @@ public enum ErrorCode {
     EMOJI_NOT_FOUND(HttpStatus.NOT_FOUND, "EMOJI_001", "이모지를 찾을 수 없습니다."),
     DUPLICATE_EMOJI_CODE(HttpStatus.CONFLICT, "EMOJI_002", "이미 등록된 이모지 코드입니다."),
     EMOJI_UNICODE_OR_IMAGE_REQUIRED(HttpStatus.BAD_REQUEST, "EMOJI_003", "유니코드 또는 이미지 URL 중 하나는 필수입니다."),
+    EMOJI_GROUP_NOT_FOUND(HttpStatus.NOT_FOUND, "EMOJI_004", "이모지 그룹을 찾을 수 없습니다."),
+    EMOJI_GROUP_IN_USE(HttpStatus.CONFLICT, "EMOJI_005", "해당 그룹에 속한 이모지가 있어 삭제할 수 없습니다."),
 
     // Community - Post
     POST_NOT_FOUND(HttpStatus.NOT_FOUND, "POST_001", "게시글을 찾을 수 없습니다."),

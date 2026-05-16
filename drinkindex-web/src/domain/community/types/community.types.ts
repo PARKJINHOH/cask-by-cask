@@ -17,7 +17,6 @@ export interface PostListItem {
   authorNickname: string
   viewCount: number
   likeCount: number
-  dislikeCount: number
   commentCount: number
   hasPoll: boolean
   createdAt: string
@@ -68,11 +67,11 @@ export interface PostDetail {
   authorId: number | null
   viewCount: number
   likeCount: number
-  dislikeCount: number
   commentCount: number
   poll: PollDetail | null
   images: PostImageInfo[]
   series: SeriesInfo | null
+  isMyPost: boolean | null
   isLiked: boolean | null
   isScrapped: boolean | null
   isBlocked: boolean | null
@@ -128,10 +127,13 @@ export interface PostCommentItem {
   children: PostCommentItem[]
   createdAt: string
   isMyComment: boolean
+  isDeleted: boolean
 }
 
 export interface CommunityEmoji {
   id: number
+  groupId: number | null
+  groupName: string | null
   unicode: string | null
   imageUrl: string | null
   label: string

@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { useToggleReaction } from '../hooks/useEmojis'
 import { useEmojis } from '../hooks/useEmojis'
-import type { EmojiReactionSummary, CommunityEmoji } from '../types/community.types'
-import EmojiPicker from './EmojiPicker'
+import type { EmojiReactionSummary } from '../types/community.types'
 
 interface Props {
   commentId: number
@@ -13,9 +12,8 @@ interface Props {
 }
 
 export default function EmojiReactionBar({ commentId, postId, reactions, isLoggedIn, onLoginNeeded }: Props) {
-  const [pickerOpen, setPickerOpen] = useState(false)
   const [localReactions, setLocalReactions] = useState<EmojiReactionSummary[]>(reactions)
-  useEmojis() // 캐시 워밍업 — EmojiPicker에서 사용
+  useEmojis()
   const toggleMutation = useToggleReaction(commentId, postId)
 
   // 낙관적 업데이트
@@ -38,14 +36,10 @@ export default function EmojiReactionBar({ commentId, postId, reactions, isLogge
     })
   }
 
-  const handlePickerSelect = (emoji: CommunityEmoji) => {
-    handleToggle(emoji.id, emoji.unicode, emoji.imageUrl)
-  }
-
-  if (localReactions.length === 0 && !isLoggedIn) return null
+  if (localReactions.length === 0) return null
 
   return (
-    <div className="relative flex flex-wrap items-center gap-1 mt-2">
+    <div className="flex flex-wrap items-center gap-1 mt-2">
       {localReactions.map((r) => (
         <button
           key={r.emojiId}
@@ -65,21 +59,6 @@ export default function EmojiReactionBar({ commentId, postId, reactions, isLogge
           <span className="tabular-nums">{r.count}</span>
         </button>
       ))}
-
-      {isLoggedIn && (
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setPickerOpen((v) => !v)}
-            className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full border border-dashed border-neutral-300 text-xs text-neutral-400 hover:border-neutral-400 hover:text-neutral-500 transition-colors"
-          >
-            + 😊
-          </button>
-          {pickerOpen && (
-            <EmojiPicker onSelect={handlePickerSelect} onClose={() => setPickerOpen(false)} />
-          )}
-        </div>
-      )}
     </div>
   )
 }

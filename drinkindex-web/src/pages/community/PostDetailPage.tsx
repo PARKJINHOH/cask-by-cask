@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { usePostDetail, usePostActions } from '@/domain/community/hooks/usePostDetail'
@@ -14,7 +14,7 @@ export default function PostDetailPage() {
   const postId = Number(id)
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { isLoggedIn, user } = useAuthStore()
+  const { isLoggedIn } = useAuthStore()
   const { showToast } = useToast()
   const boardPath = boardType ?? 'free'
 
@@ -23,6 +23,19 @@ export default function PostDetailPage() {
 
   const [reportReason, setReportReason] = useState('')
   const [showReport, setShowReport] = useState(false)
+  const [copyBanner, setCopyBanner] = useState(false)
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const handleShare = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+    } catch {
+      return
+    }
+    if (copyTimerRef.current) clearTimeout(copyTimerRef.current)
+    setCopyBanner(true)
+    copyTimerRef.current = setTimeout(() => setCopyBanner(false), 2500)
+  }, [])
 
   if (isLoading) {
     return (
@@ -40,8 +53,10 @@ export default function PostDetailPage() {
     )
   }
 
-  const isMyPost = isLoggedIn && user && post.authorId === user.id
+  const isMyPost = isLoggedIn && !!post.isMyPost
   const isLocked = post.isLocked
+
+
 
   const handleDelete = async () => {
     if (!window.confirm(t('post.deleteConfirm'))) return
@@ -74,6 +89,16 @@ export default function PostDetailPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
+      {/* 링크 복사 상단 슬라이드 배너 */}
+      <div
+        className={[
+          'fixed top-0 left-0 right-0 z-50 flex items-center justify-center py-3 text-sm font-medium text-white bg-neutral-800 shadow-md transition-transform duration-300',
+          copyBanner ? 'translate-y-0' : '-translate-y-full',
+        ].join(' ')}
+      >
+        🔗 링크가 복사되었습니다.
+      </div>
+
       {/* 뒤로가기 */}
       <Link
         to={`/community/${boardPath}`}
@@ -120,9 +145,36 @@ export default function PostDetailPage() {
             )}
           </div>
 
-          <h1 className={['text-xl sm:text-2xl font-bold mb-3', isLocked ? 'text-red-600' : 'text-neutral-900'].join(' ')}>
-            {post.title}
-          </h1>
+          {/* 제목 + 스크랩/공유 아이콘 */}
+          <div className="flex items-start gap-2 mb-3">
+            <h1 className={['flex-1 text-xl sm:text-2xl font-bold', isLocked ? 'text-red-600' : 'text-neutral-900'].join(' ')}>
+              {post.title}
+            </h1>
+            <div className="flex items-center gap-1 mt-0.5 flex-shrink-0">
+              {/* 스크랩 */}
+              {isLoggedIn && (
+                <button
+                  onClick={() => scrapMutation.mutate()}
+                  title={post.isScrapped ? t('post.scrapped') : t('post.scrap')}
+                  className={['p-1.5 rounded-lg transition-colors', post.isScrapped ? 'text-amber-500 hover:bg-amber-50' : 'text-neutral-400 hover:bg-neutral-100'].join(' ')}
+                >
+                  <svg className="w-5 h-5" fill={post.isScrapped ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
+                  </svg>
+                </button>
+              )}
+              {/* 공유 */}
+              <button
+                onClick={handleShare}
+                title="공유"
+                className="p-1.5 rounded-lg text-neutral-400 hover:bg-neutral-100 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
+                </svg>
+              </button>
+            </div>
+          </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3 text-sm text-neutral-500">
@@ -131,8 +183,17 @@ export default function PostDetailPage() {
               <span>조회 {post.viewCount.toLocaleString()}</span>
             </div>
 
-            {/* 액션 버튼 (작성자만: 수정/삭제) */}
+            {/* 우측: 신고 + 작성자 액션 */}
             <div className="flex items-center gap-2">
+              {/* 신고 */}
+              {isLoggedIn && !isMyPost && (
+                <button
+                  onClick={() => setShowReport(true)}
+                  className="text-xs text-neutral-400 hover:text-red-500 transition-colors"
+                >
+                  {t('post.report')}
+                </button>
+              )}
               {isMyPost && (
                 <>
                   <Link
@@ -178,59 +239,25 @@ export default function PostDetailPage() {
           <PostPollWidget postId={postId} pollSummary={post.poll} />
         )}
 
-        {/* 추천 / 비추천 / 스크랩 / 신고 */}
+        {/* 추천 / 차단 */}
         {!post.isBlocked && (
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             {/* 추천 */}
             <button
               onClick={() => isLoggedIn ? likeMutation.mutate(true) : navigate('/login')}
               className={[
-                'flex items-center gap-1.5 px-4 py-2 rounded-full border text-sm font-medium transition-colors',
+                'flex items-center gap-1.5 px-5 py-2 rounded-full border text-sm font-medium transition-colors',
                 post.isLiked === true
                   ? 'border-primary-500 bg-primary-50 text-primary-600'
                   : 'border-neutral-200 text-neutral-600 hover:border-primary-300 hover:bg-primary-50',
               ].join(' ')}
             >
-              ▲ {t('post.like')} {post.likeCount > 0 && <span className="font-bold">{post.likeCount}</span>}
+              <svg className="w-4 h-4" fill={post.isLiked === true ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3H14z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3" />
+              </svg>
+              {t('post.like')} {post.likeCount > 0 && <span className="font-bold">{post.likeCount}</span>}
             </button>
-
-            {/* 비추천 */}
-            <button
-              onClick={() => isLoggedIn ? likeMutation.mutate(false) : navigate('/login')}
-              className={[
-                'flex items-center gap-1.5 px-4 py-2 rounded-full border text-sm font-medium transition-colors',
-                post.isLiked === false
-                  ? 'border-neutral-500 bg-neutral-100 text-neutral-700'
-                  : 'border-neutral-200 text-neutral-500 hover:border-neutral-300',
-              ].join(' ')}
-            >
-              ▼ {t('post.dislike')} {post.dislikeCount > 0 && <span className="font-bold">{post.dislikeCount}</span>}
-            </button>
-
-            {/* 스크랩 */}
-            {isLoggedIn && (
-              <button
-                onClick={() => scrapMutation.mutate()}
-                className={[
-                  'flex items-center gap-1.5 px-4 py-2 rounded-full border text-sm font-medium transition-colors',
-                  post.isScrapped
-                    ? 'border-amber-500 bg-amber-50 text-amber-600'
-                    : 'border-neutral-200 text-neutral-500 hover:border-amber-300',
-                ].join(' ')}
-              >
-                {post.isScrapped ? '★' : '☆'} {post.isScrapped ? t('post.scrapped') : t('post.scrap')}
-              </button>
-            )}
-
-            {/* 신고 */}
-            {isLoggedIn && !isMyPost && (
-              <button
-                onClick={() => setShowReport(true)}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-full border border-neutral-200 text-sm text-neutral-500 hover:border-red-300 hover:text-red-500 transition-colors"
-              >
-                {t('post.report')}
-              </button>
-            )}
 
             {/* 차단 버튼 */}
             {isLoggedIn && !isMyPost && post.authorId && (

@@ -75,11 +75,13 @@ public class PostService {
         PostDetailResponse.Builder builder = PostDetailResponse.builder(post, showContent);
 
         if (userId != null) {
+            boolean mine = post.getAuthor().getId().equals(userId);
+            builder.isMyPost(mine);
             builder.isLiked(postLikeRepository.existsByPostIdAndUserId(postId, userId));
             builder.isScrapped(postScrapRepository.existsByPostIdAndUserId(postId, userId));
-            // 작성자가 차단된 사용자인지
+            // 작성자가 차단된 사용자인지 (익명 글 차단 불가)
             Long authorId = post.getIsAnonymous() ? null : post.getAuthor().getId();
-            boolean blocked = authorId != null && !authorId.equals(userId)
+            boolean blocked = !mine && authorId != null
                     && userBlockRepository.existsByBlockerIdAndBlockedId(userId, authorId);
             builder.isBlocked(blocked);
         }
@@ -235,30 +237,16 @@ public class PostService {
 
         postLikeRepository.findByPostIdAndUserId(postId, userId).ifPresentOrElse(
                 existing -> {
-                    if (existing.getIsLike().equals(isLike)) {
-                        // 같은 타입 재클릭 → 취소
-                        postLikeRepository.delete(existing);
-                        if (isLike) post.decrementLikeCount();
-                        else post.decrementDislikeCount();
-                    } else {
-                        // 타입 전환
-                        existing.toggle(isLike);
-                        if (isLike) {
-                            post.incrementLikeCount();
-                            post.decrementDislikeCount();
-                        } else {
-                            post.decrementLikeCount();
-                            post.incrementDislikeCount();
-                        }
-                    }
+                    // 재클릭 → 추천 취소
+                    postLikeRepository.delete(existing);
+                    post.decrementLikeCount();
                 },
                 () -> {
-                    // 신규 등록
+                    // 신규 추천
                     PostLike newLike = PostLike.builder()
-                            .post(post).user(user).isLike(isLike).build();
+                            .post(post).user(user).isLike(true).build();
                     postLikeRepository.save(newLike);
-                    if (isLike) post.incrementLikeCount();
-                    else post.incrementDislikeCount();
+                    post.incrementLikeCount();
                 }
         );
 

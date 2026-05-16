@@ -50,8 +50,8 @@ function GNB() {
       key: 'community',
       label: t('menu.community'),
       children: [
-        { key: 'communityNews', label: t('menu.communityNews'), to: '/community/news', comingSoon: true },
-        { key: 'communityBoard', label: t('menu.communityBoard'), to: '/community/board', comingSoon: true },
+        { key: 'communityNews', label: t('menu.communityNews'), to: '/community/notice' },
+        { key: 'communityBoard', label: t('menu.communityBoard'), to: '/community/free' },
       ],
     },
   ]

@@ -32,7 +32,9 @@ function relativeTime(dateStr: string): string {
 function targetPath(item: NotificationItem): string | null {
   if (!item.targetId) return null
   switch (item.targetType) {
-    case 'POST':    return `/community/free/${item.targetId}`
+    case 'FREE':    return `/community/free/${item.targetId}`
+    case 'NOTICE':  return `/community/notice/${item.targetId}`
+    case 'POST':    return `/community/free/${item.targetId}` // 하위 호환
     case 'MESSAGE': return '/messages'
     default:        return null
   }

@@ -17,5 +17,6 @@ public class PostCommentResponse {
     private final List<EmojiReactionSummary> emojiReactions;
     private final List<PostCommentResponse> children;
     private final LocalDateTime createdAt;
-    private final boolean isMyComment;
+    private final Boolean isMyComment;
+    private final Boolean isDeleted;
 }

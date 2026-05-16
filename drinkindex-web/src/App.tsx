@@ -36,6 +36,9 @@ import AdminPopupListPage from '@/pages/admin/AdminPopupListPage'
 import AdminPopupFormPage from '@/pages/admin/AdminPopupFormPage'
 import AdminBannerListPage from '@/pages/admin/AdminBannerListPage'
 import AdminBannerFormPage from '@/pages/admin/AdminBannerFormPage'
+import AdminPostReportPage from '@/pages/admin/AdminPostReportPage'
+import AdminBadWordPage from '@/pages/admin/AdminBadWordPage'
+import AdminEmojiPage from '@/pages/admin/AdminEmojiPage'
 import PrivateRoute from '@/shared/components/PrivateRoute'
 import AdminRoute from '@/shared/components/AdminRoute'
 
@@ -55,12 +58,12 @@ export default function App() {
             {/* 커뮤니티 */}
             <Route path="community/notice" element={<NoticeBoardPage />} />
             <Route path="community/free" element={<FreeBoardPage />} />
-            <Route path="community/:boardType/:id/edit" element={<PostFormPage />} />
             <Route path="community/:boardType/:id" element={<PostDetailPage />} />
             {/* 공개 읽기용 (비회원 접근 가능) */}
             <Route path="notifications" element={<NotificationsPage />} />
             <Route element={<PrivateRoute />}>
               <Route path="community/:boardType/write" element={<PostFormPage />} />
+              <Route path="community/:boardType/:id/edit" element={<PostFormPage />} />
               <Route path="messages" element={<MessagesPage />} />
               <Route path="mypage" element={<MyPage />} />
               <Route path="request/spirit" element={<SpiritRequestPage />} />
@@ -92,6 +95,9 @@ export default function App() {
               <Route path="banners" element={<AdminBannerListPage />} />
               <Route path="banners/new" element={<AdminBannerFormPage />} />
               <Route path="banners/:id/edit" element={<AdminBannerFormPage />} />
+              <Route path="community/post-reports" element={<AdminPostReportPage />} />
+              <Route path="community/bad-words" element={<AdminBadWordPage />} />
+              <Route path="community/emojis" element={<AdminEmojiPage />} />
             </Route>
           </Route>
         </Routes>

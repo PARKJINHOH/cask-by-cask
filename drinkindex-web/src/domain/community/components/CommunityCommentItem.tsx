@@ -14,19 +14,26 @@ interface Props {
   onBadWord: (words: string[]) => void
 }
 
-// @닉네임을 파란색으로 강조
 function renderContent(content: string) {
-  const parts = content.split(/(@[\w가-힣]+)/g)
-  return parts.map((part, i) =>
-    /^@[\w가-힣]+/.test(part)
-      ? <span key={i} className="text-primary-600 font-medium">{part}</span>
-      : <span key={i}>{part}</span>
-  )
+  const parts = content.split(/(@[\w가-힣]+|\[emoji-img:[^\]]+\])/g)
+  return parts.map((part, i) => {
+    if (/^@[\w가-힣]+/.test(part))
+      return <span key={i} className="text-primary-600 font-medium">{part}</span>
+    const imgMatch = part.match(/^\[emoji-img:(.+)\]$/)
+    if (imgMatch)
+      return <img key={i} src={imgMatch[1]} alt="이모지" className="inline-block h-12 w-auto align-middle" />
+    return <span key={i}>{part}</span>
+  })
+}
+
+function isEmojiOnly(content: string) {
+  return /^\[emoji-img:.+\]$/.test(content.trim())
 }
 
 export default function CommunityCommentItem({ comment, postId, isLoggedIn, depth = 0, onLoginNeeded, onBadWord }: Props) {
   const { t } = useTranslation()
   const [isEditing, setIsEditing] = useState(false)
+  const emojiComment = isEmojiOnly(comment.content)
   const [isReplying, setIsReplying] = useState(false)
   const [showReport, setShowReport] = useState(false)
   const deleteMutation = useDeleteComment(postId)
@@ -38,7 +45,27 @@ export default function CommunityCommentItem({ comment, postId, isLoggedIn, dept
 
   return (
     <div className={depth > 0 ? 'pl-5 border-l-2 border-neutral-100 ml-2' : ''}>
-      {isEditing ? (
+      {/* 삭제된 댓글 */}
+      {comment.isDeleted ? (
+        <div className="py-3">
+          <p className="text-xs text-neutral-400 italic">삭제된 댓글입니다.</p>
+          {comment.children.length > 0 && (
+            <div className="mt-1 space-y-0">
+              {comment.children.map((child) => (
+                <CommunityCommentItem
+                  key={child.id}
+                  comment={child}
+                  postId={postId}
+                  isLoggedIn={isLoggedIn}
+                  depth={depth + 1}
+                  onLoginNeeded={onLoginNeeded}
+                  onBadWord={onBadWord}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      ) : isEditing ? (
         <div className="py-2">
           <CommunityCommentForm
             postId={postId}
@@ -75,35 +102,41 @@ export default function CommunityCommentItem({ comment, postId, isLoggedIn, dept
           />
 
           {/* 액션 버튼 */}
-          <div className="flex items-center gap-3 mt-2">
-            {isLoggedIn && depth === 0 && (
-              <button
-                type="button"
-                onClick={() => setIsReplying((v) => !v)}
-                className="text-xs text-neutral-400 hover:text-primary-600 transition-colors"
-              >
-                {t('comment.reply')}
-              </button>
-            )}
-            {!comment.isMyComment && isLoggedIn && (
-              <button
-                type="button"
-                onClick={() => setShowReport(true)}
-                className="text-xs text-neutral-400 hover:text-red-500 transition-colors"
-              >
-                {t('comment.report')}
-              </button>
-            )}
-            {comment.isMyComment && (
-              <>
-                <button type="button" onClick={() => setIsEditing(true)} className="text-xs text-neutral-400 hover:text-neutral-600 transition-colors">
-                  {t('common.edit')}
+          <div className="flex items-center justify-between mt-2">
+            <div className="flex items-center gap-3">
+              {comment.isMyComment && (
+                <>
+                  {!emojiComment && (
+                    <button type="button" onClick={() => setIsEditing(true)} className="text-xs text-neutral-400 hover:text-neutral-600 transition-colors">
+                      {t('common.edit')}
+                    </button>
+                  )}
+                  <button type="button" onClick={handleDelete} className="text-xs text-neutral-400 hover:text-red-500 transition-colors">
+                    {t('common.delete')}
+                  </button>
+                </>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
+              {isLoggedIn && depth === 0 && (
+                <button
+                  type="button"
+                  onClick={() => setIsReplying((v) => !v)}
+                  className="text-xs text-neutral-400 hover:text-primary-600 transition-colors"
+                >
+                  {t('comment.reply')}
                 </button>
-                <button type="button" onClick={handleDelete} className="text-xs text-neutral-400 hover:text-red-500 transition-colors">
-                  {t('common.delete')}
+              )}
+              {!comment.isMyComment && isLoggedIn && (
+                <button
+                  type="button"
+                  onClick={() => setShowReport(true)}
+                  className="text-xs text-neutral-400 hover:text-red-500 transition-colors"
+                >
+                  {t('comment.report')}
                 </button>
-              </>
-            )}
+              )}
+            </div>
           </div>
 
           {/* 답글 폼 */}
@@ -135,8 +168,8 @@ export default function CommunityCommentItem({ comment, postId, isLoggedIn, dept
         </div>
       )}
 
-      {/* 대댓글 */}
-      {comment.children.length > 0 && (
+      {/* 대댓글 (삭제된 댓글은 isDeleted 블록 내부에서 렌더링) */}
+      {!comment.isDeleted && comment.children.length > 0 && (
         <div className="space-y-0 mt-1">
           {comment.children.map((child) => (
             <CommunityCommentItem

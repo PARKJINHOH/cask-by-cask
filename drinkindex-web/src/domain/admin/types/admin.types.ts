@@ -236,3 +236,44 @@ export interface AdminReport {
   targetContent: string | null
   createdAt: string
 }
+
+// ── Community Admin ────────────────────────────────────────────
+export type PostReportAdminStatus = 'PENDING' | 'RESOLVED' | 'DISMISSED'
+
+export interface PostReportAdmin {
+  id: number
+  postId: number | null
+  postTitle: string | null
+  reporterNickname: string
+  reason: string | null
+  status: PostReportAdminStatus
+  createdAt: string
+}
+
+export interface BadWord {
+  id: number
+  word: string
+  isActive: boolean
+  createdAt: string
+}
+
+export interface EmojiGroup {
+  id: number
+  name: string
+  sortOrder: number
+  isActive: boolean
+  createdAt: string
+}
+
+export interface EmojiAdmin {
+  id: number
+  groupId: number | null
+  groupName: string | null
+  code: string
+  unicode: string | null
+  imageUrl: string | null
+  label: string
+  isActive: boolean
+  sortOrder: number
+  createdAt: string
+}

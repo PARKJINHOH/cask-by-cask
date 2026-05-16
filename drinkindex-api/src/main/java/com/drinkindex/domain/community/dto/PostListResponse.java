@@ -17,7 +17,6 @@ public class PostListResponse {
     private final String authorNickname;
     private final long viewCount;
     private final int likeCount;
-    private final int dislikeCount;
     private final int commentCount;
     private final boolean hasPoll;
     private final LocalDateTime createdAt;
@@ -31,7 +30,6 @@ public class PostListResponse {
         this.authorNickname = Boolean.TRUE.equals(post.getIsAnonymous()) ? "익명" : post.getAuthor().getNickname();
         this.viewCount     = post.getViewCount();
         this.likeCount     = post.getLikeCount();
-        this.dislikeCount  = post.getDislikeCount();
         this.commentCount  = post.getCommentCount();
         this.hasPoll       = post.getPoll() != null;
         this.createdAt     = post.getCreatedAt();

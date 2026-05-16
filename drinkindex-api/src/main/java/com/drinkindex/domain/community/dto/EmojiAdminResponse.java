@@ -9,6 +9,8 @@ import java.time.LocalDateTime;
 public class EmojiAdminResponse {
 
     private final Long id;
+    private final Long groupId;
+    private final String groupName;
     private final String code;
     private final String unicode;
     private final String imageUrl;
@@ -19,6 +21,8 @@ public class EmojiAdminResponse {
 
     private EmojiAdminResponse(CommunityEmoji emoji) {
         this.id        = emoji.getId();
+        this.groupId   = emoji.getGroup() != null ? emoji.getGroup().getId() : null;
+        this.groupName = emoji.getGroup() != null ? emoji.getGroup().getName() : null;
         this.code      = emoji.getCode();
         this.unicode   = emoji.getUnicode();
         this.imageUrl  = emoji.getImageUrl();

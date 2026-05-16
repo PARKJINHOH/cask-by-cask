@@ -21,7 +21,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-@Service
+@Service("communityCommentService")
 @RequiredArgsConstructor
 public class CommentService {
 
@@ -41,7 +41,7 @@ public class CommentService {
     public Page<PostCommentResponse> getComments(Long postId, Long userId, int page, int size) {
         PageRequest pageRequest = PageRequest.of(page, size, Sort.by("createdAt").ascending());
         Page<PostComment> roots = commentRepository
-                .findByPostIdAndParentIsNullAndDeletedAtIsNullAndIsHiddenFalse(postId, pageRequest);
+                .findByPostIdAndParentIsNullAndIsHiddenFalse(postId, pageRequest);
 
         // 루트 댓글 ID 수집
         List<Long> rootIds = roots.stream().map(PostComment::getId).collect(Collectors.toList());
@@ -51,7 +51,7 @@ public class CommentService {
         if (!rootIds.isEmpty()) {
             rootIds.forEach(rootId -> {
                 List<PostComment> children = commentRepository
-                        .findByParentIdAndDeletedAtIsNullAndIsHiddenFalseOrderByCreatedAtAsc(rootId);
+                        .findByParentIdAndIsHiddenFalseOrderByCreatedAtAsc(rootId);
                 childrenMap.put(rootId, children);
             });
         }
@@ -105,12 +105,16 @@ public class CommentService {
             }
         }
 
+        boolean isPostAuthorAnonymous = Boolean.TRUE.equals(post.getIsAnonymous())
+                && post.getAuthor().getId().equals(userId);
+
         PostComment comment = PostComment.builder()
                 .post(post)
                 .author(author)
                 .parent(parent)
                 .content(request.getContent())
                 .mentionedUserId(request.getMentionedUserId())
+                .isAnonymous(isPostAuthorAnonymous)
                 .build();
 
         PostComment saved = commentRepository.save(comment);
@@ -167,6 +171,25 @@ public class CommentService {
     private PostCommentResponse toResponse(PostComment comment, List<PostComment> children,
                                            Map<Long, List<CommentEmojiReaction>> reactionMap,
                                            Long currentUserId) {
+        boolean deleted = comment.isDeleted();
+
+        if (deleted) {
+            List<PostCommentResponse> childResponses = children.stream()
+                    .map(child -> toResponse(child, List.of(), reactionMap, currentUserId))
+                    .collect(Collectors.toList());
+            return PostCommentResponse.builder()
+                    .id(comment.getId())
+                    .authorNickname(null)
+                    .content("삭제된 댓글입니다.")
+                    .mentionedUserNickname(null)
+                    .emojiReactions(List.of())
+                    .children(childResponses)
+                    .createdAt(comment.getCreatedAt())
+                    .isMyComment(false)
+                    .isDeleted(true)
+                    .build();
+        }
+
         boolean blocked = currentUserId != null
                 && !comment.getAuthor().getId().equals(currentUserId)
                 && userBlockRepository.existsByBlockerIdAndBlockedId(
@@ -178,7 +201,7 @@ public class CommentService {
         String content = blocked ? "차단한 사용자의 댓글입니다" : comment.getContent();
 
         String mentionedNickname = null;
-        if (comment.getMentionedUserId() != null) {
+        if (!blocked && comment.getMentionedUserId() != null) {
             mentionedNickname = userRepository.findById(comment.getMentionedUserId())
                     .map(User::getNickname).orElse(null);
         }
@@ -199,6 +222,7 @@ public class CommentService {
                 .children(childResponses)
                 .createdAt(comment.getCreatedAt())
                 .isMyComment(currentUserId != null && comment.getAuthor().getId().equals(currentUserId))
+                .isDeleted(false)
                 .build();
     }
 
@@ -223,21 +247,23 @@ public class CommentService {
 
     private void sendCommentNotifications(PostComment comment, Post post, PostComment parent,
                                           Long mentionedUserId, Long authorId) {
+        String boardTargetType = post.getBoardType().name(); // "FREE" 또는 "NOTICE"
+
         // 게시글 작성자에게 COMMENT 알림 (본인 댓글 제외)
         if (!post.getAuthor().getId().equals(authorId)) {
             notificationService.send(post.getAuthor(), NotificationType.COMMENT,
-                    "'" + post.getTitle() + "' 게시글에 댓글이 달렸습니다.", "POST", post.getId());
+                    "'" + post.getTitle() + "' 게시글에 댓글이 달렸습니다.", boardTargetType, post.getId());
         }
-        // 부모 댓글 작성자에게 REPLY 알림
+        // 부모 댓글 작성자에게 REPLY 알림 → 게시글로 이동
         if (parent != null && !parent.getAuthor().getId().equals(authorId)) {
             notificationService.send(parent.getAuthor(), NotificationType.REPLY,
-                    "회원님의 댓글에 답글이 달렸습니다.", "COMMENT", parent.getId());
+                    "'" + post.getTitle() + "' 게시글에 답글이 달렸습니다.", boardTargetType, post.getId());
         }
-        // 멘션된 사용자에게 MENTION 알림
+        // 멘션된 사용자에게 MENTION 알림 → 게시글로 이동
         if (mentionedUserId != null && !mentionedUserId.equals(authorId)) {
             userRepository.findById(mentionedUserId).ifPresent(mentioned ->
                     notificationService.send(mentioned, NotificationType.MENTION,
-                            "댓글에서 회원님이 멘션되었습니다.", "COMMENT", comment.getId()));
+                            "'" + post.getTitle() + "' 게시글에서 회원님이 멘션되었습니다.", boardTargetType, post.getId()));
         }
     }
 

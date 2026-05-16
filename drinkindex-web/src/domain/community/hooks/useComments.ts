@@ -17,7 +17,10 @@ export function useCreateComment(postId: number) {
   return useMutation({
     mutationFn: (data: { content: string; parentId?: number; mentionedUserId?: number }) =>
       communityApi.createComment(postId, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: COMMENT_KEY(postId) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: COMMENT_KEY(postId) })
+      qc.invalidateQueries({ queryKey: ['post', postId] }) // commentCount 갱신
+    },
   })
 }
 

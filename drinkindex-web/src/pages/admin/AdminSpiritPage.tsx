@@ -164,11 +164,12 @@ export default function AdminSpiritPage() {
                         {spirit.reviewCount}
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-2 justify-end">
+                        <div className="flex items-center gap-1 justify-end">
                           <button
                             onClick={() => navigate(`/admin/spirits/${spirit.id}`)}
-                            className="text-xs text-primary-600 hover:text-primary-800 font-medium
-                              transition-colors"
+                            className="inline-flex items-center gap-1 h-7 px-2.5 text-xs font-medium
+                              rounded-md border border-neutral-300 bg-white text-neutral-600
+                              hover:bg-neutral-50 transition-colors whitespace-nowrap"
                           >
                             상세보기
                           </button>

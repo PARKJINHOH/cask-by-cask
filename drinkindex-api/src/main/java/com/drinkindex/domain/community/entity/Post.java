@@ -72,10 +72,6 @@ public class Post extends BaseTimeEntity {
 
     @Builder.Default
     @Column(nullable = false)
-    private Integer dislikeCount = 0;
-
-    @Builder.Default
-    @Column(nullable = false)
     private Integer commentCount = 0;
 
     @Builder.Default
@@ -98,8 +94,6 @@ public class Post extends BaseTimeEntity {
     public void incrementViewCount()    { this.viewCount++; }
     public void incrementLikeCount()    { this.likeCount++; }
     public void decrementLikeCount()    { if (this.likeCount > 0) this.likeCount--; }
-    public void incrementDislikeCount() { this.dislikeCount++; }
-    public void decrementDislikeCount() { if (this.dislikeCount > 0) this.dislikeCount--; }
     public void incrementCommentCount() { this.commentCount++; }
     public void decrementCommentCount() { if (this.commentCount > 0) this.commentCount--; }
 

@@ -43,6 +43,16 @@ const navEntries: NavEntry[] = [
   },
   {
     type: 'group',
+    groupLabel: '커뮤니티',
+    groupIcon: '💬',
+    items: [
+      { path: '/admin/community/post-reports', label: '게시글 신고' },
+      { path: '/admin/community/bad-words',    label: '욕설 필터' },
+      { path: '/admin/community/emojis',       label: '이모지 관리', exact: true },
+    ],
+  },
+  {
+    type: 'group',
     groupLabel: '제조사',
     groupIcon: '🏭',
     items: [

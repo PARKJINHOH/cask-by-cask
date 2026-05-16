@@ -150,20 +150,22 @@ export default function AdminReportPage() {
                       </td>
                       <td className="px-4 py-3">
                         {report.status === 'PENDING' && (
-                          <div className="flex items-center gap-2 justify-end">
+                          <div className="flex items-center gap-1 justify-end">
                             <button
                               onClick={() => handleDismiss(report.id)}
                               disabled={isActionPending}
-                              className="text-xs text-green-600 hover:text-green-800 font-medium
-                                transition-colors disabled:opacity-40"
+                              className="inline-flex items-center gap-1 h-7 px-2.5 text-xs font-medium
+                                rounded-md border border-neutral-300 bg-white text-neutral-600
+                                hover:bg-neutral-50 transition-colors whitespace-nowrap disabled:opacity-40"
                             >
                               복구
                             </button>
                             <button
                               onClick={() => handleResolve(report.id)}
                               disabled={isActionPending}
-                              className="text-xs text-red-500 hover:text-red-700 font-medium
-                                transition-colors disabled:opacity-40"
+                              className="inline-flex items-center gap-1 h-7 px-2.5 text-xs font-medium
+                                rounded-md border border-red-200 bg-white text-red-600
+                                hover:bg-red-50 transition-colors whitespace-nowrap disabled:opacity-40"
                             >
                               삭제
                             </button>

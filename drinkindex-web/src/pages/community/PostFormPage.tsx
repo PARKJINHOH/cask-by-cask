@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { usePostPrefixes } from '@/domain/community/hooks/usePosts'
 import { usePostDetail } from '@/domain/community/hooks/usePostDetail'
 import { communityApi } from '@/domain/community/api/communityApi'
@@ -22,6 +22,7 @@ export default function PostFormPage() {
 
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { toasts, showToast, removeToast } = useToast()
 
   const { data: existingPost } = usePostDetail(postId ?? 0)
@@ -78,6 +79,7 @@ export default function PostFormPage() {
     },
     onSuccess: (res) => {
       const newId = res.data.data?.id
+      queryClient.invalidateQueries({ queryKey: ['posts'] })
       navigate(newId ? `/community/${boardPath}/${newId}` : `/community/${boardPath}`, { replace: true })
     },
     onError: (err: unknown) => {
@@ -129,15 +131,24 @@ export default function PostFormPage() {
             </select>
           )}
           {boardType === 'FREE' && !isEdit && (
-            <label className="flex items-center gap-2 text-sm text-neutral-600 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={isAnonymous}
-                onChange={(e) => setIsAnonymous(e.target.checked)}
-                className="w-4 h-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-400"
-              />
-              {t('board.anonymous')}
-            </label>
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-2 text-sm text-neutral-600 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={isAnonymous}
+                  onChange={(e) => setIsAnonymous(e.target.checked)}
+                  className="w-4 h-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-400"
+                />
+                {t('board.anonymous')}
+              </label>
+              <div className="relative group">
+                <span className="flex items-center justify-center w-4 h-4 rounded-full bg-neutral-200 text-neutral-500 text-xs cursor-default">?</span>
+                <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-10 w-56 px-3 py-2 bg-neutral-800 text-white text-xs rounded-lg shadow-lg leading-relaxed whitespace-normal">
+                  닉네임만 &apos;익명&apos;으로 표시됩니다. 게시글 내용은 그대로 공개되며, 본인은 언제든지 수정·삭제할 수 있습니다.
+                  <span className="absolute left-1/2 -translate-x-1/2 top-full border-4 border-transparent border-t-neutral-800" />
+                </div>
+              </div>
+            </div>
           )}
         </div>
 

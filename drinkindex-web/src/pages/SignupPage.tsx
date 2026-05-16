@@ -1,9 +1,8 @@
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useNavigate, Link, Navigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import type { AxiosError } from 'axios'
-import { useAuthStore } from '@/domain/auth/store/authStore'
 import { useAuth } from '@/domain/auth/hooks/useAuth'
 import Button from '@/shared/components/Button'
 import Input from '@/shared/components/Input'
@@ -49,11 +48,8 @@ function ErrorBanner({ message }: { message: string }) {
 
 // ── Page ───────────────────────────────────────────────────
 export default function SignupPage() {
-  const isLoggedIn        = useAuthStore((s) => s.isLoggedIn)
-  const navigate          = useNavigate()
-  const { signup, login } = useAuth()
-
-  if (isLoggedIn) return <Navigate to="/" replace />
+  const navigate     = useNavigate()
+  const { signup }   = useAuth()
 
   const {
     register,
@@ -72,8 +68,7 @@ export default function SignupPage() {
         nickname: data.nickname,
         password: data.password,
       })
-      await login({ email: data.email, password: data.password })
-      navigate('/', { replace: true })
+      navigate('/login', { replace: true, state: { signupSuccess: true } })
     } catch (err) {
       const code = (err as AxiosError<ApiResponse<unknown>>)?.response?.data?.code
       if (code === 'USER_002') {

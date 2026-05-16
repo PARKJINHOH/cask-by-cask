@@ -16,6 +16,10 @@ public class CommunityEmoji extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "group_id")
+    private EmojiGroup group;
+
     @Column(nullable = false, unique = true, length = 50)
     private String code;
 
@@ -38,11 +42,14 @@ public class CommunityEmoji extends BaseTimeEntity {
 
     public void toggleActive() { this.isActive = !this.isActive; }
 
-    public void update(String imageUrl, String unicode, String label, Boolean isActive, Integer sortOrder) {
+    public void updateSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }
+
+    public void update(String imageUrl, String unicode, String label, Boolean isActive, Integer sortOrder, EmojiGroup group) {
         this.imageUrl = imageUrl;
         this.unicode = unicode;
         this.label = label;
         this.isActive = isActive;
         this.sortOrder = sortOrder;
+        this.group = group;
     }
 }

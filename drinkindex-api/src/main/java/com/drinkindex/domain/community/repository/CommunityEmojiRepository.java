@@ -13,5 +13,9 @@ public interface CommunityEmojiRepository extends JpaRepository<CommunityEmoji, 
 
     Page<CommunityEmoji> findAllByOrderBySortOrderAsc(Pageable pageable);
 
+    List<CommunityEmoji> findByGroupIdOrderBySortOrderAsc(Long groupId);
+
+    List<CommunityEmoji> findByGroupIsNullOrderBySortOrderAsc();
+
     boolean existsByCode(String code);
 }
