@@ -159,9 +159,9 @@ function LangToggle() {
     <button
       onClick={toggle}
       aria-label="언어 전환"
-      className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold
-        border border-neutral-200 text-neutral-500 hover:border-primary-400
-        hover:text-primary-600 transition-colors select-none"
+      className="flex items-center gap-1 px-3.5 py-1.5 rounded-lg text-sm font-semibold
+        border border-neutral-300 text-neutral-500 hover:border-primary-400
+        hover:text-primary-600 transition-all duration-150 select-none"
     >
       <span className={i18n.language === 'ko' ? 'text-primary-600' : 'text-neutral-400'}>KO</span>
       <span className="text-neutral-300">/</span>
@@ -236,15 +236,31 @@ function UserDropdown() {
       <div className="flex items-center gap-2">
         <Link
           to="/login"
-          className="text-sm text-neutral-700 hover:text-primary-600 transition-colors font-medium"
+          className="inline-flex items-center gap-1.5 text-sm font-medium px-3.5 py-1.5 rounded-lg
+            border border-neutral-300 text-neutral-700
+            hover:border-primary-400 hover:text-primary-600 hover:bg-primary-50
+            transition-all duration-150"
         >
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+            <polyline points="10 17 15 12 10 7" />
+            <line x1="15" y1="12" x2="3" y2="12" />
+          </svg>
           {t('nav.login')}
         </Link>
         <Link
           to="/signup"
-          className="text-sm bg-primary-600 text-white px-4 py-1.5 rounded-lg
-            hover:bg-primary-700 transition-colors font-medium"
+          className="inline-flex items-center gap-1.5 text-sm font-semibold px-3.5 py-1.5 rounded-lg
+            bg-primary-600 text-white shadow-sm
+            hover:bg-primary-700 active:bg-primary-800
+            transition-all duration-150"
         >
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <line x1="19" y1="8" x2="19" y2="14" />
+            <line x1="22" y1="11" x2="16" y2="11" />
+          </svg>
           {t('nav.signup')}
         </Link>
       </div>
@@ -332,6 +348,7 @@ function UserDropdown() {
 
 export default function MainLayout() {
   const { t } = useTranslation()
+  const { isLoggedIn } = useAuthStore()
 
   return (
     <div className="min-h-screen bg-neutral-50 flex flex-col">
@@ -343,13 +360,15 @@ export default function MainLayout() {
             DrinkIndex
           </Link>
 
+          {/* 언어 토글 */}
+          <LangToggle />
+
           {/* PC 검색바 */}
           <HeaderSearch />
 
           {/* 우측 액션 */}
           <div className="flex items-center gap-2 ml-auto flex-shrink-0">
-            <LangToggle />
-            <NotificationBell />
+            {isLoggedIn && <NotificationBell />}
             <UserDropdown />
           </div>
         </div>
