@@ -5,7 +5,7 @@ import Input from '@/shared/components/Input'
 import Spinner from '@/shared/components/Spinner'
 import Pagination from '@/shared/components/Pagination'
 import Modal from '@/shared/components/Modal'
-import DistillerySelector from '@/domain/distillery/components/DistillerySelector'
+import AdminDistillerySelector from '@/domain/distillery/components/AdminDistillerySelector'
 import { formatDate } from '@/shared/utils/format'
 import {
   useAdminUsers,
@@ -92,11 +92,10 @@ function RoleChangeModal({ user, onClose }: RoleModalProps) {
         {role === 'DISTILLERY' && (
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-1.5">증류소 선택</label>
-            <DistillerySelector
+            <AdminDistillerySelector
               value={distilleryId}
               defaultName={user.distilleryNameKo ?? undefined}
               onChange={setDistilleryId}
-              placeholder="증류소 이름으로 검색..."
             />
             {user.distilleryNameKo && distilleryId === user.distilleryId && (
               <p className="text-xs text-neutral-400 mt-1">현재: {user.distilleryNameKo}</p>
@@ -243,15 +242,24 @@ export default function AdminUserPage() {
                       </td>
                       <td className="px-4 py-3 font-medium text-neutral-900">{user.nickname}</td>
                       <td className="px-4 py-3">
-                        <Badge
-                          variant={user.role === 'ADMIN' ? 'danger' : user.role === 'DISTILLERY' ? 'warning' : 'neutral'}
-                          size="sm"
-                        >
-                          {ROLE_LABEL[user.role]}
-                        </Badge>
-                        {user.distilleryNameKo && (
-                          <p className="text-xs text-neutral-400 mt-0.5">{user.distilleryNameKo}</p>
-                        )}
+                        <div className="flex flex-col gap-1 items-start">
+                          <Badge
+                            variant={user.role === 'ADMIN' ? 'danger' : user.role === 'DISTILLERY' ? 'warning' : 'neutral'}
+                            size="sm"
+                          >
+                            {ROLE_LABEL[user.role]}
+                          </Badge>
+                          {user.distilleryNameKo && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md
+                              bg-amber-50 border border-amber-200 text-amber-700 text-[11px] font-medium leading-tight">
+                              <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                                <path d="M3 21h18M6 21V7l6-4 6 4v14M9 21v-6h6v6" />
+                              </svg>
+                              {user.distilleryNameKo}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-neutral-500 tabular-nums text-xs">
                         {formatDate(user.createdAt)}

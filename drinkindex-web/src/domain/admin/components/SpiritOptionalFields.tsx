@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import type { UseFormRegister, UseFormSetValue, UseFormWatch } from 'react-hook-form'
 import DistillerySelector from '@/domain/distillery/components/DistillerySelector'
+import AdminDistillerySelector from '@/domain/distillery/components/AdminDistillerySelector'
 import CountryRegionSelector from '@/domain/location/components/CountryRegionSelector'
 import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
 
@@ -67,6 +68,8 @@ interface Props {
   requiredFields?: FieldKey[]
   /** 필드별 에러 메시지 */
   fieldErrors?: Partial<Record<FieldKey, string>>
+  /** 관리자 페이지에서 사용 시 true — 전체 목록 selectbox 방식으로 전환 */
+  adminSelector?: boolean
 }
 
 const INPUT_CLS =
@@ -89,6 +92,7 @@ export default function SpiritOptionalFields({
   pinnedFields = [],
   requiredFields = [],
   fieldErrors = {},
+  adminSelector = false,
 }: Props) {
   const producerLabel = category === 'WINE' ? '양조장' : '증류소'
   const [activeFields, setActiveFields] = useState<Set<FieldKey>>(new Set())
@@ -215,11 +219,19 @@ export default function SpiritOptionalFields({
             </div>
 
             {key === 'distilleryId' && (
-              <DistillerySelector
-                value={watch('distilleryId') ?? null}
-                defaultName={defaultDistilleryName}
-                onChange={(id) => setValue('distilleryId', id ?? undefined)}
-              />
+              adminSelector ? (
+                <AdminDistillerySelector
+                  value={watch('distilleryId') ?? null}
+                  defaultName={defaultDistilleryName}
+                  onChange={(id) => setValue('distilleryId', id ?? undefined)}
+                />
+              ) : (
+                <DistillerySelector
+                  value={watch('distilleryId') ?? null}
+                  defaultName={defaultDistilleryName}
+                  onChange={(id) => setValue('distilleryId', id ?? undefined)}
+                />
+              )
             )}
 
             {key === 'countryRegion' && (

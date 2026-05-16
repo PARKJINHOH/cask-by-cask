@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useAdminSpiritDetail } from '@/domain/admin/hooks/useAdminSpirits'
 import { adminSpiritApi } from '@/domain/admin/api/adminSpiritApi'
 import { ISO3166_COUNTRIES } from '@/domain/location/data/iso3166Countries'
-import DistillerySelector from '@/domain/distillery/components/DistillerySelector'
+import AdminDistillerySelector from '@/domain/distillery/components/AdminDistillerySelector'
 import CountryRegionSelector from '@/domain/location/components/CountryRegionSelector'
 import Button from '@/shared/components/Button'
 import Modal from '@/shared/components/Modal'
@@ -444,7 +444,7 @@ export default function AdminSpiritFormPage() {
           {/* 증류소 / 양조장 */}
           <div>
             <label className={LABEL}>{PRODUCER_LABEL[category] ?? '증류소'}</label>
-            <DistillerySelector value={distilleryId} defaultName={distilleryName}
+            <AdminDistillerySelector value={distilleryId} defaultName={distilleryName}
               onChange={(id) => setDistilleryId(id ?? null)} />
           </div>
 

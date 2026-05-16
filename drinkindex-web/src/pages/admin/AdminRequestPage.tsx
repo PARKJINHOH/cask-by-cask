@@ -11,7 +11,7 @@ import { useAdminRequests, useCreateSpirit } from '@/domain/admin/hooks/useAdmin
 import type { RequestStatus, CreateSpiritPayload } from '@/domain/admin/types/admin.types'
 import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
 import SpiritOptionalFields from '@/domain/admin/components/SpiritOptionalFields'
-import DistillerySelector from '@/domain/distillery/components/DistillerySelector'
+import AdminDistillerySelector from '@/domain/distillery/components/AdminDistillerySelector'
 import CountryRegionSelector from '@/domain/location/components/CountryRegionSelector'
 import SpiritCommonDetailSection, {
   type CommonDetailForm,
@@ -349,7 +349,7 @@ function CreateSpiritModal({ open, onClose }: CreateSpiritModalProps) {
                           whiskyDetail.bottlingType === 'OB' ? (
                             <div className="space-y-1.5">
                               <label className="block text-xs font-medium text-neutral-600">증류소</label>
-                              <DistillerySelector
+                              <AdminDistillerySelector
                                 value={watch('distilleryId') ?? null}
                                 onChange={(id) => setValue('distilleryId', id ?? undefined)}
                               />
@@ -411,6 +411,7 @@ function CreateSpiritModal({ open, onClose }: CreateSpiritModalProps) {
                     category={selectedCategory}
                     hiddenFields={extraHidden}
                     pinnedFields={pinnedFields}
+                    adminSelector
                   />
                 </div>
 

@@ -12,3 +12,14 @@ export function useDistilleries(keyword: string) {
     staleTime: 60_000,
   })
 }
+
+export function useAllDistilleries() {
+  return useQuery({
+    queryKey: ['distilleries', 'all'],
+    queryFn: async () => {
+      const res = await distilleryApi.search({ size: 500 })
+      return res.data.data?.content ?? []
+    },
+    staleTime: 5 * 60_000,
+  })
+}
