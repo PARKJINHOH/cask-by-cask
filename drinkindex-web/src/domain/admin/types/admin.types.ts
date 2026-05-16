@@ -277,3 +277,12 @@ export interface EmojiAdmin {
   sortOrder: number
   createdAt: string
 }
+
+export interface PostPrefixAdmin {
+  id: number
+  boardType: 'NOTICE' | 'FREE'
+  name: string
+  colorHex: string | null
+  isActive: boolean
+  sortOrder: number
+}

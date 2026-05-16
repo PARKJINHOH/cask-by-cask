@@ -39,6 +39,7 @@ import AdminBannerFormPage from '@/pages/admin/AdminBannerFormPage'
 import AdminPostReportPage from '@/pages/admin/AdminPostReportPage'
 import AdminBadWordPage from '@/pages/admin/AdminBadWordPage'
 import AdminEmojiPage from '@/pages/admin/AdminEmojiPage'
+import AdminPrefixPage from '@/pages/admin/AdminPrefixPage'
 import PrivateRoute from '@/shared/components/PrivateRoute'
 import AdminRoute from '@/shared/components/AdminRoute'
 
@@ -98,6 +99,7 @@ export default function App() {
               <Route path="community/post-reports" element={<AdminPostReportPage />} />
               <Route path="community/bad-words" element={<AdminBadWordPage />} />
               <Route path="community/emojis" element={<AdminEmojiPage />} />
+              <Route path="community/prefixes" element={<AdminPrefixPage />} />
             </Route>
           </Route>
         </Routes>

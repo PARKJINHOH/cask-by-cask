@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { usePosts, useBestPosts, usePostPrefixes } from '@/domain/community/hooks/usePosts'
-import type { BoardType, PostSort, PostPeriod } from '@/domain/community/types/community.types'
+import type { BoardType, PostSort } from '@/domain/community/types/community.types'
 import Pagination from '@/shared/components/Pagination'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 
@@ -14,11 +14,8 @@ const SORT_OPTIONS: { value: PostSort; labelKey: string }[] = [
   { value: 'VIEW',   labelKey: 'board.sortView' },
 ]
 
-const PERIOD_OPTIONS: { value: PostPeriod; labelKey: string }[] = [
-  { value: 'ALL',   labelKey: 'board.periodAll' },
-  { value: 'WEEK',  labelKey: 'board.periodWeek' },
-  { value: 'TODAY', labelKey: 'board.periodToday' },
-]
+
+type Tab = 'all' | 'best' | 'event'
 
 interface Props {
   boardType: BoardType
@@ -27,15 +24,17 @@ interface Props {
 
 export default function BoardListPage({ boardType, title }: Props) {
   const { t } = useTranslation()
-  const { isLoggedIn } = useAuthStore()
+  const { isLoggedIn, user } = useAuthStore()
   const [searchParams, setSearchParams] = useSearchParams()
   const boardPath = boardType === 'NOTICE' ? 'notice' : 'free'
 
+  const tabs: Tab[] = boardType === 'NOTICE' ? ['all', 'event'] : ['all', 'best']
+
   // ── URL 파라미터 ──────────────────────────────────────────
-  const tabParam    = (searchParams.get('tab') ?? 'all') as 'all' | 'best'
+  const rawTab      = searchParams.get('tab') ?? 'all'
+  const tabParam    = (tabs.includes(rawTab as Tab) ? rawTab : 'all') as Tab
   const prefixParam = searchParams.get('prefix') ? Number(searchParams.get('prefix')) : undefined
   const sortParam   = (searchParams.get('sort') ?? 'LATEST') as PostSort
-  const periodParam = (searchParams.get('period') ?? 'ALL') as PostPeriod
   const keywordParam = searchParams.get('keyword') ?? ''
   const pageParam   = Number(searchParams.get('page') ?? '0')
 
@@ -45,9 +44,12 @@ export default function BoardListPage({ boardType, title }: Props) {
   // ── 데이터 ────────────────────────────────────────────────
   const { data: prefixes = [] } = usePostPrefixes(boardType)
 
+  const eventPrefix = prefixes.find(p => p.name === '이벤트')
+  const effectivePrefixId = tabParam === 'event' ? eventPrefix?.id : prefixParam
+
   const allPostsQuery = usePosts({
     boardType,
-    prefixId: prefixParam,
+    prefixId: effectivePrefixId,
     keyword: keywordParam || undefined,
     sort: sortParam,
     page: pageParam,
@@ -56,7 +58,6 @@ export default function BoardListPage({ boardType, title }: Props) {
 
   const bestPostsQuery = useBestPosts({
     boardType,
-    period: periodParam,
     page: pageParam,
     size: PAGE_SIZE,
   })
@@ -64,6 +65,13 @@ export default function BoardListPage({ boardType, title }: Props) {
   const query    = tabParam === 'best' ? bestPostsQuery : allPostsQuery
   const posts    = query.data?.content ?? []
   const totalPages = query.data?.totalPages ?? 0
+
+  // NOTICE 게시판: ADMIN·DISTILLERY만 글쓰기 가능
+  const canWrite = isLoggedIn && (
+    boardType === 'FREE' ||
+    user?.role === 'ADMIN' ||
+    user?.role === 'DISTILLERY'
+  )
 
   // ── 파라미터 업데이트 헬퍼 ────────────────────────────────
   const setParam = (key: string, value: string | null) => {
@@ -83,7 +91,7 @@ export default function BoardListPage({ boardType, title }: Props) {
     return () => clearTimeout(debounceRef.current)
   }, [keywordInput])
 
-  const setTab = (tab: 'all' | 'best') => {
+  const setTab = (tab: Tab) => {
     const next = new URLSearchParams(searchParams)
     next.set('tab', tab)
     next.set('page', '0')
@@ -95,7 +103,7 @@ export default function BoardListPage({ boardType, title }: Props) {
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-neutral-900">{title}</h1>
-        {isLoggedIn && (
+        {canWrite && (
           <Link
             to={`/community/${boardPath}/write`}
             className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition-colors"
@@ -108,9 +116,9 @@ export default function BoardListPage({ boardType, title }: Props) {
         )}
       </div>
 
-      {/* 탭: 전체글 / 베스트 */}
+      {/* 탭: NOTICE → 전체글/이벤트, FREE → 전체글/베스트 */}
       <div className="flex gap-1 border-b border-neutral-200 mb-5">
-        {(['all', 'best'] as const).map((tab) => (
+        {tabs.map((tab) => (
           <button
             key={tab}
             onClick={() => setTab(tab)}
@@ -121,33 +129,15 @@ export default function BoardListPage({ boardType, title }: Props) {
                 : 'border-transparent text-neutral-500 hover:text-neutral-700',
             ].join(' ')}
           >
-            {tab === 'all' ? t('board.all') : t('board.best')}
+            {tab === 'all' ? t('board.all') : tab === 'best' ? t('board.best') : t('board.event')}
           </button>
         ))}
       </div>
 
-      {/* 베스트 기간 필터 */}
-      {tabParam === 'best' && (
-        <div className="flex gap-2 mb-4">
-          {PERIOD_OPTIONS.map(({ value, labelKey }) => (
-            <button
-              key={value}
-              onClick={() => setParam('period', value)}
-              className={[
-                'px-3 py-1.5 text-xs font-medium rounded-full border transition-colors',
-                periodParam === value
-                  ? 'border-primary-500 bg-primary-50 text-primary-700'
-                  : 'border-neutral-200 text-neutral-600 hover:border-neutral-300',
-              ].join(' ')}
-            >
-              {t(labelKey)}
-            </button>
-          ))}
-        </div>
-      )}
 
-      {/* 말머리 필터 */}
-      {prefixes.length > 0 && (
+
+      {/* 말머리 필터 (FREE 게시판 전체글 탭에서만 표시) */}
+      {boardType === 'FREE' && tabParam === 'all' && prefixes.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-4">
           <button
             onClick={() => setParam('prefix', null)}
@@ -192,7 +182,7 @@ export default function BoardListPage({ boardType, title }: Props) {
             className="w-full pl-9 pr-4 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-400"
           />
         </div>
-        {tabParam === 'all' && (
+        {(tabParam === 'all' || tabParam === 'event') && (
           <select
             value={sortParam}
             onChange={(e) => setParam('sort', e.target.value)}

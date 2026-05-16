@@ -44,6 +44,7 @@ export default function PostFormPage() {
   const [pollOptions, setPollOptions] = useState(['', ''])
   const [seriesId, setSeriesId] = useState<number | ''>('')
 
+  // 수정 모드: 기존 게시글 값 복원
   useEffect(() => {
     if (existingPost && isEdit) {
       setPrefixId(existingPost.prefix?.id ?? '')
@@ -51,6 +52,14 @@ export default function PostFormPage() {
       setContent(existingPost.contentSanitized ?? '')
     }
   }, [existingPost, isEdit])
+
+  // 신규 작성: 말머리 목록이 로드되면 "일반"을 기본 선택
+  useEffect(() => {
+    if (!isEdit && prefixes.length > 0 && prefixId === '') {
+      const defaultPrefix = prefixes.find((p) => p.name === '일반') ?? prefixes[0]
+      setPrefixId(defaultPrefix.id)
+    }
+  }, [prefixes])
 
   const mutation = useMutation({
     mutationFn: () => {
@@ -93,6 +102,7 @@ export default function PostFormPage() {
   })
 
   const canSubmit = title.trim().length > 0 && content.trim().length > 0 &&
+    prefixId !== '' &&
     (!pollEnabled || (pollQuestion.trim() && pollOptions.filter((o) => o.trim()).length >= 2))
 
   const addPollOption = () => {
@@ -118,40 +128,6 @@ export default function PostFormPage() {
       </div>
 
       <div className="space-y-5">
-        {/* 말머리 + 익명 */}
-        <div className="flex flex-wrap items-center gap-3">
-          {prefixes.length > 0 && (
-            <select
-              value={prefixId}
-              onChange={(e) => setPrefixId(e.target.value !== '' ? Number(e.target.value) : '')}
-              className="px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-300 bg-white"
-            >
-              <option value="">말머리 없음</option>
-              {prefixes.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-          )}
-          {boardType === 'FREE' && !isEdit && (
-            <div className="flex items-center gap-2">
-              <label className="flex items-center gap-2 text-sm text-neutral-600 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={isAnonymous}
-                  onChange={(e) => setIsAnonymous(e.target.checked)}
-                  className="w-4 h-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-400"
-                />
-                {t('board.anonymous')}
-              </label>
-              <div className="relative group">
-                <span className="flex items-center justify-center w-4 h-4 rounded-full bg-neutral-200 text-neutral-500 text-xs cursor-default">?</span>
-                <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-10 w-56 px-3 py-2 bg-neutral-800 text-white text-xs rounded-lg shadow-lg leading-relaxed whitespace-normal">
-                  닉네임만 &apos;익명&apos;으로 표시됩니다. 게시글 내용은 그대로 공개되며, 본인은 언제든지 수정·삭제할 수 있습니다.
-                  <span className="absolute left-1/2 -translate-x-1/2 top-full border-4 border-transparent border-t-neutral-800" />
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
         {/* 제목 */}
         <div className="relative">
           <input
@@ -165,6 +141,52 @@ export default function PostFormPage() {
             {title.length}/{MAX_TITLE}
           </span>
         </div>
+
+        {/* 말머리 탭 (제목 아래, 말머리가 있을 때만) */}
+        {prefixes.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            {prefixes.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setPrefixId(prefixId === p.id ? '' : p.id)}
+                className={[
+                  'px-4 py-1.5 text-sm font-medium rounded-full border transition-colors',
+                  prefixId === p.id
+                    ? 'bg-primary-600 text-white border-primary-600'
+                    : 'border-neutral-300 text-neutral-600 hover:border-neutral-400',
+                ].join(' ')}
+                style={prefixId !== p.id && p.colorHex
+                  ? { borderColor: p.colorHex, color: p.colorHex }
+                  : undefined}
+              >
+                {p.name}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* 익명 (FREE 게시판 신규 작성 시) */}
+        {boardType === 'FREE' && !isEdit && (
+          <div className="flex items-center gap-2">
+            <label className="flex items-center gap-2 text-sm text-neutral-600 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={isAnonymous}
+                onChange={(e) => setIsAnonymous(e.target.checked)}
+                className="w-4 h-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-400"
+              />
+              {t('board.anonymous')}
+            </label>
+            <div className="relative group">
+              <span className="flex items-center justify-center w-4 h-4 rounded-full bg-neutral-200 text-neutral-500 text-xs cursor-default">?</span>
+              <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-10 w-56 px-3 py-2 bg-neutral-800 text-white text-xs rounded-lg shadow-lg leading-relaxed whitespace-normal">
+                닉네임만 &apos;익명&apos;으로 표시됩니다. 게시글 내용은 그대로 공개되며, 본인은 언제든지 수정·삭제할 수 있습니다.
+                <span className="absolute left-1/2 -translate-x-1/2 top-full border-4 border-transparent border-t-neutral-800" />
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* 본문 */}
         <PostEditor

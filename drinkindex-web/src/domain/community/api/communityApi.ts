@@ -3,7 +3,6 @@ import type { ApiResponse, PageResponse } from '@/shared/types/common.types'
 import type {
   BoardType,
   PostSort,
-  PostPeriod,
   PostListItem,
   PostDetail,
   PostPrefix,
@@ -31,7 +30,6 @@ export const communityApi = {
 
   getBestPosts: (params: {
     boardType: BoardType
-    period?: PostPeriod
     page?: number
     size?: number
   }) => axiosInstance.get<ApiResponse<PageResponse<PostListItem>>>('/api/posts/best', { params }),

@@ -57,9 +57,11 @@ public class PostService {
                 .map(PostListResponse::from);
     }
 
+    private static final int BEST_MIN_LIKE_COUNT = 5;
+
     @Transactional(readOnly = true)
-    public Page<PostListResponse> getBestPosts(BoardType boardType, PostPeriod period, int page, int size) {
-        return postRepository.findBestPosts(boardType, period, PageRequest.of(page, size))
+    public Page<PostListResponse> getBestPosts(BoardType boardType, int page, int size) {
+        return postRepository.findBestPosts(boardType, BEST_MIN_LIKE_COUNT, PageRequest.of(page, size))
                 .map(PostListResponse::from);
     }
 

@@ -49,6 +49,7 @@ const navEntries: NavEntry[] = [
       { path: '/admin/community/post-reports', label: '게시글 신고' },
       { path: '/admin/community/bad-words',    label: '욕설 필터' },
       { path: '/admin/community/emojis',       label: '이모지 관리', exact: true },
+      { path: '/admin/community/prefixes',     label: '말머리 관리', exact: true },
     ],
   },
   {

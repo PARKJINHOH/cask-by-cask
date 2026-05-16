@@ -1,6 +1,5 @@
 package com.drinkindex.domain.community.repository;
 
-import com.drinkindex.domain.community.dto.PostPeriod;
 import com.drinkindex.domain.community.dto.PostSort;
 import com.drinkindex.domain.community.entity.Post;
 import com.drinkindex.domain.community.entity.PostReport;
@@ -18,7 +17,6 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.util.StringUtils;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @RequiredArgsConstructor
@@ -67,17 +65,13 @@ public class PostQueryRepositoryImpl implements PostQueryRepository {
     }
 
     @Override
-    public Page<Post> findBestPosts(BoardType boardType, PostPeriod period, Pageable pageable) {
+    public Page<Post> findBestPosts(BoardType boardType, int minLikeCount, Pageable pageable) {
         QPost post = QPost.post;
 
         BooleanBuilder predicate = new BooleanBuilder();
         predicate.and(post.boardType.eq(boardType));
         predicate.and(post.status.eq(PostStatus.ACTIVE));
-
-        LocalDateTime cutoff = resolvePeriodCutoff(period);
-        if (cutoff != null) {
-            predicate.and(post.createdAt.goe(cutoff));
-        }
+        predicate.and(post.likeCount.goe(minLikeCount));
 
         List<Post> posts = queryFactory
                 .selectFrom(post)
@@ -135,12 +129,4 @@ public class PostQueryRepositoryImpl implements PostQueryRepository {
         };
     }
 
-    private LocalDateTime resolvePeriodCutoff(PostPeriod period) {
-        if (period == null || period == PostPeriod.ALL) return null;
-        return switch (period) {
-            case TODAY -> LocalDateTime.now().toLocalDate().atStartOfDay();
-            case WEEK  -> LocalDateTime.now().minusDays(7);
-            default    -> null;
-        };
-    }
 }

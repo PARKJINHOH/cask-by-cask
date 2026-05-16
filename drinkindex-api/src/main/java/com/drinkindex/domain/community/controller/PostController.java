@@ -48,12 +48,11 @@ public class PostController {
     @GetMapping("/best")
     public ResponseEntity<ApiResponse<Page<PostListResponse>>> getBestPosts(
             @RequestParam BoardType boardType,
-            @RequestParam(defaultValue = "ALL") PostPeriod period,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
         return ResponseEntity.ok(ApiResponse.success(
-                postService.getBestPosts(boardType, period, page, size)));
+                postService.getBestPosts(boardType, page, size)));
     }
 
     // ─── 상세 ───────────────────────────────────

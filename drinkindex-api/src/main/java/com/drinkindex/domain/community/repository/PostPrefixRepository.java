@@ -9,4 +9,6 @@ import java.util.List;
 public interface PostPrefixRepository extends JpaRepository<PostPrefix, Long> {
 
     List<PostPrefix> findByBoardTypeAndIsActiveTrueOrderBySortOrderAsc(BoardType boardType);
+
+    List<PostPrefix> findByBoardTypeOrderBySortOrderAsc(BoardType boardType);
 }

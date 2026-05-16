@@ -1,6 +1,5 @@
 export type BoardType = 'NOTICE' | 'FREE'
 export type PostSort = 'LATEST' | 'BEST' | 'VIEW'
-export type PostPeriod = 'TODAY' | 'WEEK' | 'ALL'
 
 export interface PostPrefix {
   id: number

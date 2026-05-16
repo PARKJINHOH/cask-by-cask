@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { communityApi } from '../api/communityApi'
-import type { BoardType, PostSort, PostPeriod } from '../types/community.types'
+import type { BoardType, PostSort } from '../types/community.types'
 
 export function usePosts(params: {
   boardType: BoardType
@@ -19,7 +19,6 @@ export function usePosts(params: {
 
 export function useBestPosts(params: {
   boardType: BoardType
-  period?: PostPeriod
   page?: number
   size?: number
 }) {

@@ -1,6 +1,7 @@
 import axiosInstance from '@/shared/api/axiosInstance'
 import type { ApiResponse, PageResponse } from '@/shared/types/common.types'
-import type { PostReportAdmin, PostReportAdminStatus, BadWord, EmojiAdmin, EmojiGroup } from '../types/admin.types'
+import type { PostReportAdmin, PostReportAdminStatus, BadWord, EmojiAdmin, EmojiGroup, PostPrefixAdmin } from '../types/admin.types'
+import type { BoardType } from '@/domain/community/types/community.types'
 
 export const adminCommunityApi = {
   // ── 게시글 신고 ──────────────────────────────────────────────
@@ -75,4 +76,20 @@ export const adminCommunityApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
   },
+
+  // ── 말머리 관리 ──────────────────────────────────────────────
+  getPrefixes: (boardType: BoardType) =>
+    axiosInstance.get<ApiResponse<PostPrefixAdmin[]>>('/api/admin/post-prefixes', { params: { boardType } }),
+
+  createPrefix: (data: { boardType: BoardType; name: string; colorHex?: string; isActive?: boolean; sortOrder?: number }) =>
+    axiosInstance.post<ApiResponse<PostPrefixAdmin>>('/api/admin/post-prefixes', data),
+
+  updatePrefix: (id: number, data: { name?: string; colorHex?: string; isActive?: boolean; sortOrder?: number }) =>
+    axiosInstance.patch<ApiResponse<PostPrefixAdmin>>(`/api/admin/post-prefixes/${id}`, data),
+
+  togglePrefix: (id: number) =>
+    axiosInstance.patch<ApiResponse<PostPrefixAdmin>>(`/api/admin/post-prefixes/${id}/toggle`),
+
+  deletePrefix: (id: number) =>
+    axiosInstance.delete<ApiResponse<null>>(`/api/admin/post-prefixes/${id}`),
 }
