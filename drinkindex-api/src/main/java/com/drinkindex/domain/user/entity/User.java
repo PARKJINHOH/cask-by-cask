@@ -7,6 +7,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.SQLRestriction;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -58,6 +59,21 @@ public class User extends BaseTimeEntity {
     @Column
     private LocalDateTime deletedAt;
 
+    @Builder.Default
+    @Column(nullable = false)
+    private Integer maturingPower = 0;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private Integer currentLevel = 1;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private Integer consecutiveAttendance = 0;
+
+    @Column
+    private LocalDate lastAttendanceDate;
+
     public void updateNickname(String nickname) {
         this.nickname = nickname;
     }
@@ -82,5 +98,18 @@ public class User extends BaseTimeEntity {
     public void changeRole(Role role, Distillery distillery) {
         this.role = role;
         this.distillery = distillery;
+    }
+
+    public void addMaturingPower(int delta) {
+        this.maturingPower = Math.max(0, this.maturingPower + delta);
+    }
+
+    public void updateLevel(int level) {
+        this.currentLevel = level;
+    }
+
+    public void updateAttendance(LocalDate date, int streak) {
+        this.lastAttendanceDate = date;
+        this.consecutiveAttendance = streak;
     }
 }

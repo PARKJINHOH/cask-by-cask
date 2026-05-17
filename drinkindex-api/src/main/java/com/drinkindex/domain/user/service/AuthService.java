@@ -1,5 +1,6 @@
 package com.drinkindex.domain.user.service;
 
+import com.drinkindex.domain.score.service.AttendanceService;
 import com.drinkindex.domain.user.dto.*;
 import com.drinkindex.domain.user.entity.User;
 import com.drinkindex.domain.user.entity.enums.Role;
@@ -24,6 +25,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final AttendanceService attendanceService;
 
     @Transactional
     public UserResponse signup(SignupRequest request) {
@@ -40,7 +42,7 @@ public class AuthService {
     }
 
     @Transactional
-    public TokenResponse login(LoginRequest request) {
+    public LoginResponse login(LoginRequest request) {
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
@@ -48,7 +50,8 @@ public class AuthService {
             throw new CustomException(ErrorCode.INVALID_PASSWORD);
         }
 
-        return issueTokens(user.getId(), user.getRole());
+        TokenResponse tokens = issueTokens(user.getId(), user.getRole());
+        return LoginResponse.of(tokens, attendanceService.checkAttendance(user.getId()));
     }
 
     @Transactional

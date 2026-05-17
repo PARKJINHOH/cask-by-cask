@@ -122,6 +122,11 @@ public enum ErrorCode {
     BAD_WORD_NOT_FOUND(HttpStatus.NOT_FOUND, "COMMUNITY_001", "금지어를 찾을 수 없습니다."),
     DUPLICATE_BAD_WORD(HttpStatus.CONFLICT, "COMMUNITY_002", "이미 등록된 금지어입니다."),
 
+    // Score
+    SCORE_CONFIG_NOT_FOUND(HttpStatus.NOT_FOUND, "SCORE_001", "점수 설정을 찾을 수 없습니다."),
+    LEVEL_CONFIG_NOT_FOUND(HttpStatus.NOT_FOUND, "SCORE_002", "레벨 설정을 찾을 수 없습니다."),
+    CANNOT_DELETE_BASE_LEVEL(HttpStatus.BAD_REQUEST, "SCORE_003", "기본 레벨은 삭제할 수 없습니다."),
+
     // Banner
     BANNER_NOT_FOUND(HttpStatus.NOT_FOUND, "BANNER_001", "배너를 찾을 수 없습니다."),
     BANNER_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "BANNER_002", "배너 이미지를 찾을 수 없습니다."),
