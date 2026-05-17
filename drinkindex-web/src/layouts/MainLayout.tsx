@@ -5,10 +5,41 @@ import { useAuthStore } from '@/domain/auth/store/authStore'
 import { useAuth } from '@/domain/auth/hooks/useAuth'
 import { saveLang } from '@/shared/utils/i18n'
 import BottomNav from '@/shared/components/BottomNav'
+import Toast from '@/shared/components/Toast'
+import { useToast } from '@/shared/hooks/useToast'
 import { useLatestNotice } from '@/domain/notice/hooks/useNotices'
 import NotificationBell from '@/domain/notification/components/NotificationBell'
 
 const SEEN_KEY = 'notice:lastSeenId'
+
+// ── 출석 체크 토스트 핸들러 ──────────────────────────────────────
+// 로그인 직후 authStore에 적재된 pendingAttendanceToast를 소비하여 토스트 표시
+function AttendanceToastHandler() {
+  const { pendingAttendanceToast, setPendingAttendanceToast } = useAuthStore()
+  const { toasts, showToast, removeToast } = useToast()
+
+  useEffect(() => {
+    if (!pendingAttendanceToast) return
+
+    const { streakCount, bonusAwarded, totalMaturingPower } = pendingAttendanceToast
+
+    showToast(
+      `🥃 출석 체크! ${streakCount}일 연속 · 총 ${totalMaturingPower.toLocaleString()} 숙성력`,
+      'success',
+    )
+
+    if (bonusAwarded === 'STREAK_30') {
+      setTimeout(() => showToast('🏆 30일 연속 출석 달성! 특별 보너스 지급', 'success'), 600)
+    } else if (bonusAwarded === 'STREAK_7') {
+      setTimeout(() => showToast('🎉 7일 연속 출석 보너스! 추가 숙성력 지급', 'success'), 600)
+    }
+
+    // 소비 완료 → 초기화 (재표시 방지)
+    setPendingAttendanceToast(null)
+  }, [pendingAttendanceToast]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  return <Toast toasts={toasts} onRemove={removeToast} />
+}
 
 // ── GNB (글로벌 내비게이션 바) ────────────────────────────────
 
@@ -393,6 +424,9 @@ export default function MainLayout() {
 
       {/* 모바일 하단 탭 네비게이션 */}
       <BottomNav />
+
+      {/* 로그인 출석 체크 토스트 */}
+      <AttendanceToastHandler />
     </div>
   )
 }
