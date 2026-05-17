@@ -1,0 +1,18 @@
+import axiosInstance from '@/shared/api/axiosInstance'
+import type { ApiResponse, PageResponse } from '@/shared/types/common.types'
+import type { ScoreHistoryFilterType, ScoreHistoryItem } from '../types/score.types'
+
+export const scoreApi = {
+  getMyHistory: (params: {
+    page: number
+    size?: number
+    type?: ScoreHistoryFilterType
+  }) => {
+    const { page, size = 20, type = 'ALL' } = params
+    const query = new URLSearchParams({ page: String(page), size: String(size) })
+    if (type !== 'ALL') query.set('type', type)
+    return axiosInstance.get<ApiResponse<PageResponse<ScoreHistoryItem>>>(
+      `/api/score-history/me?${query}`,
+    )
+  },
+}

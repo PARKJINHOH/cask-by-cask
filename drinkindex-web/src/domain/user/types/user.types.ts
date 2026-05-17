@@ -4,6 +4,9 @@ export interface UserProfile {
   nickname: string
   role: string
   createdAt: string
+  maturingPower?: number
+  currentLevel?: number
+  consecutiveAttendance?: number
 }
 
 export interface UpdateNicknameRequest {

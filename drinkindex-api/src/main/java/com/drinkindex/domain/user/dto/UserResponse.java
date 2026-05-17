@@ -16,7 +16,13 @@ public record UserResponse(
         @Schema(description = "역할 (ADMIN, MEMBER, DISTILLERY)")
         Role role,
         @Schema(description = "가입 일시")
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        @Schema(description = "현재 숙성력 총합")
+        Integer maturingPower,
+        @Schema(description = "현재 레벨 (1~11)")
+        Integer currentLevel,
+        @Schema(description = "현재 연속 출석 일수")
+        Integer consecutiveAttendance
 ) {
     public static UserResponse from(User user) {
         return new UserResponse(
@@ -24,7 +30,10 @@ public record UserResponse(
                 user.getEmail(),
                 user.getNickname(),
                 user.getRole(),
-                user.getCreatedAt()
+                user.getCreatedAt(),
+                user.getMaturingPower(),
+                user.getCurrentLevel(),
+                user.getConsecutiveAttendance()
         );
     }
 }

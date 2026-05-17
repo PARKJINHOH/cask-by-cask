@@ -4,13 +4,16 @@ import { useMe } from '@/domain/user/hooks/useUser'
 import MyReviewList from '@/domain/review/components/MyReviewList'
 import MyWishlist from '@/domain/wishlist/components/MyWishlist'
 import AccountSettings from '@/domain/user/components/AccountSettings'
+import MaturingPowerSection from '@/domain/score/components/MaturingPowerSection'
+import LevelIcon from '@/shared/components/icons/LevelIcon'
 
-type Tab = 'reviews' | 'wishlist' | 'settings'
+type Tab = 'maturing' | 'reviews' | 'wishlist' | 'settings'
 
 const TABS: { value: Tab; label: string }[] = [
-  { value: 'reviews',  label: '내 리뷰' },
-  { value: 'wishlist', label: '즐겨찾기' },
-  { value: 'settings', label: '계정 설정' },
+  { value: 'maturing',  label: '숙성력' },
+  { value: 'reviews',   label: '내 리뷰' },
+  { value: 'wishlist',  label: '즐겨찾기' },
+  { value: 'settings',  label: '계정 설정' },
 ]
 
 const ROLE_LABEL: Record<string, string> = {
@@ -22,31 +25,45 @@ const ROLE_LABEL: Record<string, string> = {
 export default function MyPage() {
   const authUser = useAuthStore((s) => s.user)
   const { data: profile } = useMe()
-  const [tab, setTab] = useState<Tab>('reviews')
+  const [tab, setTab] = useState<Tab>('maturing')
 
-  const nickname  = profile?.nickname  ?? authUser?.nickname  ?? ''
-  const email     = profile?.email     ?? authUser?.email     ?? ''
-  const role      = profile?.role      ?? authUser?.role      ?? ''
-  const createdAt = profile?.createdAt
+  const nickname     = profile?.nickname     ?? authUser?.nickname  ?? ''
+  const email        = profile?.email        ?? authUser?.email     ?? ''
+  const role         = profile?.role         ?? authUser?.role      ?? ''
+  const createdAt    = profile?.createdAt
+  const currentLevel = profile?.currentLevel ?? 1
+  const maturingPower = profile?.maturingPower ?? 0
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
       {/* Profile card */}
       <div className="bg-white rounded-2xl p-6 shadow-sm flex items-center gap-5">
-        {/* Avatar */}
-        <div className="w-14 h-14 rounded-full bg-primary-100 flex items-center justify-center
-          text-xl font-bold text-primary-600 flex-shrink-0 select-none">
-          {nickname ? nickname[0].toUpperCase() : '?'}
+        {/* 레벨 아이콘 + 아바타 */}
+        <div className="relative flex-shrink-0">
+          <div className="w-14 h-14 rounded-full bg-primary-100 flex items-center justify-center
+            text-xl font-bold text-primary-600 select-none">
+            {nickname ? nickname[0].toUpperCase() : '?'}
+          </div>
+          {role === 'MEMBER' && (
+            <div className="absolute -bottom-1 -right-1">
+              <LevelIcon level={currentLevel} size={20} />
+            </div>
+          )}
         </div>
 
         <div className="min-w-0 flex-1">
           <h1 className="text-lg font-bold text-neutral-900 truncate">{nickname}</h1>
           <p className="text-sm text-neutral-400 truncate">{email}</p>
-          <div className="flex items-center gap-2 mt-1.5">
+          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs
               font-medium bg-primary-50 text-primary-700">
               {ROLE_LABEL[role] ?? role}
             </span>
+            {role === 'MEMBER' && (
+              <span className="text-xs text-amber-600 font-semibold">
+                숙성력 {maturingPower.toLocaleString()}
+              </span>
+            )}
             {createdAt && (
               <span className="text-xs text-neutral-400">
                 가입일 {new Date(createdAt).toLocaleDateString('ko-KR')}
@@ -57,12 +74,13 @@ export default function MyPage() {
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-1 border-b border-neutral-200">
+      <div className="flex gap-1 border-b border-neutral-200 overflow-x-auto">
         {TABS.map(({ value, label }) => (
           <button
             key={value}
             onClick={() => setTab(value)}
-            className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
+            className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px
+              whitespace-nowrap flex-shrink-0 ${
               tab === value
                 ? 'border-primary-600 text-primary-700'
                 : 'border-transparent text-neutral-500 hover:text-neutral-700'
@@ -74,9 +92,10 @@ export default function MyPage() {
       </div>
 
       {/* Tab panels */}
-      {tab === 'reviews'  && <MyReviewList />}
-      {tab === 'wishlist' && <MyWishlist />}
-      {tab === 'settings' && <AccountSettings />}
+      {tab === 'maturing'  && <MaturingPowerSection profile={profile ?? { id: 0, email, nickname, role, createdAt: '' }} />}
+      {tab === 'reviews'   && <MyReviewList />}
+      {tab === 'wishlist'  && <MyWishlist />}
+      {tab === 'settings'  && <AccountSettings />}
     </div>
   )
 }

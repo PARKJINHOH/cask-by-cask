@@ -24,6 +24,13 @@ public interface ScoreHistoryRepository extends JpaRepository<ScoreHistory, Long
 
     Page<ScoreHistory> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
 
+    // 사용자 본인 이력 필터링 — 적립(score > 0) / 차감(score < 0)
+    Page<ScoreHistory> findByUserIdAndScoreGreaterThanOrderByCreatedAtDesc(
+            Long userId, int score, Pageable pageable);
+
+    Page<ScoreHistory> findByUserIdAndScoreLessThanOrderByCreatedAtDesc(
+            Long userId, int score, Pageable pageable);
+
     @Modifying
     @Query("DELETE FROM ScoreHistory sh WHERE sh.createdAt < :cutoff")
     int deleteOlderThan(@Param("cutoff") LocalDateTime cutoff);
