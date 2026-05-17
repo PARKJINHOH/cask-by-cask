@@ -4,6 +4,8 @@ import com.drinkindex.domain.community.dto.*;
 import com.drinkindex.domain.community.entity.*;
 import com.drinkindex.domain.community.entity.enums.NotificationType;
 import com.drinkindex.domain.community.repository.*;
+import com.drinkindex.domain.score.entity.enums.ScoreActionType;
+import com.drinkindex.domain.score.service.ScoreService;
 import com.drinkindex.domain.user.entity.User;
 import com.drinkindex.domain.user.entity.enums.Role;
 import com.drinkindex.domain.user.repository.UserRepository;
@@ -32,6 +34,7 @@ public class CommentService {
     private final CommentEmojiReactionRepository reactionRepository;
     private final NotificationService notificationService;
     private final BadWordFilter badWordFilter;
+    private final ScoreService scoreService;
 
     // ═══════════════════════════════════════════
     // 댓글 목록
@@ -119,6 +122,9 @@ public class CommentService {
 
         PostComment saved = commentRepository.save(comment);
         postRepository.incrementCommentCount(postId);
+
+        // [숙성력] 댓글 작성 점수 지급 (일일 한도 적용)
+        scoreService.award(userId, ScoreActionType.COMMENT_WRITE, "COMMENT", saved.getId());
 
         // 알림 발송 (비동기)
         sendCommentNotifications(saved, post, parent, request.getMentionedUserId(), userId);

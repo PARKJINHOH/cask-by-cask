@@ -1,5 +1,7 @@
 package com.drinkindex.domain.wishlist.service;
 
+import com.drinkindex.domain.score.entity.enums.ScoreActionType;
+import com.drinkindex.domain.score.service.ScoreService;
 import com.drinkindex.domain.spirit.entity.SpiritImage;
 import com.drinkindex.domain.spirit.entity.enums.SpiritStatus;
 import com.drinkindex.domain.spirit.repository.SpiritImageRepository;
@@ -34,6 +36,7 @@ public class WishlistService {
     private final SpiritRepository spiritRepository;
     private final SpiritImageRepository spiritImageRepository;
     private final UserRepository userRepository;
+    private final ScoreService scoreService;
 
     // ── 토글 ──────────────────────────────────────────────
 
@@ -57,6 +60,9 @@ public class WishlistService {
                     .type(request.type())
                     .build();
             wishlistRepository.save(wishlist);
+
+            // [숙성력] 위시리스트 추가 시 지급. 제거 시 차감 없음.
+            scoreService.award(userId, ScoreActionType.WISHLIST_ADD, "WISHLIST", request.spiritId());
         }
     }
 
