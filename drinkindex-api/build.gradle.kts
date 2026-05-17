@@ -56,6 +56,9 @@ dependencies {
     annotationProcessor("jakarta.annotation:jakarta.annotation-api")
     annotationProcessor("jakarta.persistence:jakarta.persistence-api")
 
+    // Email
+    implementation("org.springframework.boot:spring-boot-starter-mail")
+
     // HTML Sanitizer — XSS 방어 (공지사항 TipTap 콘텐츠 서버 측 재검증)
     implementation("org.jsoup:jsoup:1.17.2")
 

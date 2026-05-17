@@ -50,6 +50,10 @@ public class User extends BaseTimeEntity {
     @Column(nullable = false)
     private Boolean isActive = true;
 
+    @Builder.Default
+    @Column(nullable = false)
+    private Boolean emailVerified = false;
+
     @Column(length = 50)
     private String oauthProvider;
 
@@ -73,6 +77,10 @@ public class User extends BaseTimeEntity {
 
     @Column
     private LocalDate lastAttendanceDate;
+
+    public void verifyEmail() {
+        this.emailVerified = true;
+    }
 
     public void updateNickname(String nickname) {
         this.nickname = nickname;

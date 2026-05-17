@@ -8,6 +8,7 @@ import com.drinkindex.domain.user.repository.UserRepository;
 import com.drinkindex.global.auth.jwt.JwtProvider;
 import com.drinkindex.global.auth.jwt.RefreshTokenRepository;
 import com.drinkindex.global.auth.security.CustomUserDetails;
+import com.drinkindex.global.email.EmailVerificationService;
 import com.drinkindex.global.exception.CustomException;
 import com.drinkindex.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -26,11 +27,15 @@ public class AuthService {
     private final JwtProvider jwtProvider;
     private final RefreshTokenRepository refreshTokenRepository;
     private final AttendanceService attendanceService;
+    private final EmailVerificationService emailVerificationService;
 
     @Transactional
     public UserResponse signup(SignupRequest request) {
         if (userRepository.existsByEmail(request.email())) {
             throw new CustomException(ErrorCode.DUPLICATE_EMAIL);
+        }
+        if (userRepository.existsByNickname(request.nickname())) {
+            throw new CustomException(ErrorCode.DUPLICATE_NICKNAME);
         }
         User user = User.builder()
                 .email(request.email())
@@ -38,7 +43,9 @@ public class AuthService {
                 .nickname(request.nickname())
                 .role(Role.MEMBER)
                 .build();
-        return UserResponse.from(userRepository.save(user));
+        userRepository.save(user);
+        emailVerificationService.sendCode(request.email());
+        return UserResponse.from(user);
     }
 
     @Transactional
@@ -50,8 +57,33 @@ public class AuthService {
             throw new CustomException(ErrorCode.INVALID_PASSWORD);
         }
 
+        if (!Boolean.TRUE.equals(user.getEmailVerified())) {
+            throw new CustomException(ErrorCode.EMAIL_NOT_VERIFIED);
+        }
+
         TokenResponse tokens = issueTokens(user.getId(), user.getRole());
         return LoginResponse.of(tokens, attendanceService.checkAttendance(user.getId()));
+    }
+
+    public CheckAvailableResponse checkEmail(String email) {
+        return new CheckAvailableResponse(!userRepository.existsByEmail(email));
+    }
+
+    public CheckAvailableResponse checkNickname(String nickname) {
+        return new CheckAvailableResponse(!userRepository.existsByNickname(nickname));
+    }
+
+    @Transactional
+    public void sendVerificationCode(String email) {
+        emailVerificationService.sendCode(email);
+    }
+
+    @Transactional
+    public void verifyEmail(String email, String code) {
+        emailVerificationService.verifyCode(email, code);
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        user.verifyEmail();
     }
 
     @Transactional

@@ -408,5 +408,23 @@
     "contentPlaceholder": "Type a message...",
     "unread": "Unread",
     "selectThread": "Select a message."
+  },
+  "emailVerify": {
+    "title": "Email Verification",
+    "sentTo": "A verification code has been sent to {{email}}.",
+    "code": "Verification Code",
+    "codePlaceholder": "Enter 6-digit code",
+    "verify": "Verify",
+    "resend": "Resend",
+    "resendIn": "Resend in {{seconds}}s",
+    "expires": "Code expires in {{time}}",
+    "expired": "Code has expired. Please click resend.",
+    "backToLogin": "Back to login",
+    "errors": {
+      "invalidCode": "Invalid verification code.",
+      "expired": "Code has expired. Please request a new one.",
+      "cooldown": "Please wait a moment before trying again.",
+      "generic": "An error occurred. Please try again."
+    }
   }
 }

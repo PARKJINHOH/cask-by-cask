@@ -34,3 +34,8 @@ admin:
     email: ${ADMIN_EMAIL}
     password: ${ADMIN_PASSWORD}
     nickname: 관리자
+
+app:
+  email:
+    provider: smtp
+    from: ${EMAIL_FROM:noreply@drinkindex.com}

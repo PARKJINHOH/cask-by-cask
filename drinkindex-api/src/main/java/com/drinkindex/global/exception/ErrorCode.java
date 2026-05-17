@@ -20,6 +20,10 @@ public enum ErrorCode {
     DUPLICATE_EMAIL(HttpStatus.CONFLICT, "USER_002", "이미 사용 중인 이메일입니다."),
     DUPLICATE_NICKNAME(HttpStatus.CONFLICT, "USER_003", "이미 사용 중인 닉네임입니다."),
     INVALID_PASSWORD(HttpStatus.BAD_REQUEST, "USER_004", "비밀번호가 올바르지 않습니다."),
+    EMAIL_NOT_VERIFIED(HttpStatus.FORBIDDEN, "USER_005", "이메일 인증이 필요합니다."),
+    INVALID_VERIFICATION_CODE(HttpStatus.BAD_REQUEST, "USER_006", "인증 코드가 올바르지 않습니다."),
+    VERIFICATION_CODE_EXPIRED(HttpStatus.BAD_REQUEST, "USER_007", "인증 코드가 만료되었습니다. 재발송 후 다시 시도해주세요."),
+    VERIFICATION_COOLDOWN(HttpStatus.TOO_MANY_REQUESTS, "USER_008", "잠시 후 다시 시도해주세요. (1분 대기)"),
 
     // Spirit
     SPIRIT_NOT_FOUND(HttpStatus.NOT_FOUND, "SPIRIT_001", "술 정보를 찾을 수 없습니다."),

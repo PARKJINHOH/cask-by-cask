@@ -3,10 +3,12 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { startTransition } from 'react'
 import { useNavigate, useLocation, Link, Navigate } from 'react-router-dom'
+import type { AxiosError } from 'axios'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { useAuth } from '@/domain/auth/hooks/useAuth'
 import Button from '@/shared/components/Button'
 import Input from '@/shared/components/Input'
+import type { ApiResponse } from '@/shared/types/common.types'
 
 // ── Validation schema ──────────────────────────────────────
 const schema = z.object({
@@ -47,9 +49,10 @@ export default function LoginPage() {
     defaultValues: { email: '', password: '' },
   })
 
-  const state = location.state as { from?: { pathname: string }; signupSuccess?: boolean } | null
+  const state = location.state as { from?: { pathname: string }; signupSuccess?: boolean; verifySuccess?: boolean } | null
   const from = state?.from?.pathname ?? '/'
-  const signupSuccess = !!state?.signupSuccess
+  const signupSuccess  = !!state?.signupSuccess
+  const verifySuccess  = !!state?.verifySuccess
 
   // 이미 로그인된 사용자는 이전 페이지 또는 홈으로
   if (isLoggedIn) return <Navigate to={from} replace />
@@ -60,8 +63,13 @@ export default function LoginPage() {
       startTransition(() => {
         navigate(from, { replace: true })
       })
-    } catch {
-      setError('root', { message: '이메일 또는 비밀번호가 올바르지 않습니다.' })
+    } catch (err) {
+      const code = (err as AxiosError<ApiResponse<unknown>>)?.response?.data?.code
+      if (code === 'USER_005') {
+        navigate('/verify-email', { state: { email: data.email } })
+      } else {
+        setError('root', { message: '이메일 또는 비밀번호가 올바르지 않습니다.' })
+      }
     }
   }
 
@@ -78,8 +86,18 @@ export default function LoginPage() {
           <p className="mt-1 text-sm text-neutral-500">계속하려면 로그인해주세요</p>
         </div>
 
-        {/* 회원가입 완료 안내 */}
-        {signupSuccess && (
+        {/* 이메일 인증 완료 안내 */}
+        {verifySuccess && (
+          <div className="mb-4 flex items-center gap-2 px-3 py-2.5 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+            <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5l-3.5-3.5 1.41-1.41L10 13.67l6.59-6.59L18 8.5l-8 8z"/>
+            </svg>
+            이메일 인증이 완료되었습니다. 로그인해주세요.
+          </div>
+        )}
+
+        {/* 회원가입 완료 안내 (하위 호환) */}
+        {signupSuccess && !verifySuccess && (
           <div className="mb-4 flex items-center gap-2 px-3 py-2.5 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
             <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5l-3.5-3.5 1.41-1.41L10 13.67l6.59-6.59L18 8.5l-8 8z"/>

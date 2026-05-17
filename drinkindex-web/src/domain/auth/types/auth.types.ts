@@ -40,3 +40,12 @@ export interface SignupRequest {
   password: string
   nickname: string
 }
+
+export interface VerifyEmailRequest {
+  email: string
+  code: string
+}
+
+export interface CheckAvailableResponse {
+  available: boolean
+}
