@@ -39,6 +39,10 @@ const GLASS_HEIGHT = 18
 
 export default function LevelIcon({ level, size = 20 }: Props) {
   const uid = useId()
+
+  if (level === 1) return <GrainIcon size={size} />
+  if (level === 2) return <StillIcon size={size} />
+
   const clipId = `lv-clip-${uid.replace(/:/g, '')}`
 
   const cfg = CFG[level] ?? CFG[11]
@@ -143,5 +147,81 @@ function SparkleDecor() {
       <circle cx="6.5" cy="2" r="0.7" fill="#F59E0B" fillOpacity={0.7} />
       <circle cx="13.5" cy="2" r="0.7" fill="#F59E0B" fillOpacity={0.7} />
     </g>
+  )
+}
+
+// Lv.1 몰트 — 보리 이삭
+function GrainIcon({ size }: { size: number }) {
+  return (
+    <svg
+      width={size}
+      height={size * 1.2}
+      viewBox="0 0 20 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <g stroke="#9CA3AF" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+        {/* 줄기 */}
+        <line x1="10" y1="22" x2="10" y2="4" />
+        {/* 꼭대기 수염 */}
+        <line x1="10" y1="4" x2="8.5" y2="2" />
+        <line x1="10" y1="4" x2="11.5" y2="2" />
+        {/* 왼쪽 이삭 가지 */}
+        <path d="M 10 7 Q 8 6.5 7 5" />
+        <path d="M 10 10 Q 8 9.5 7 8" />
+        <path d="M 10 13 Q 8 12.5 7 11" />
+        <path d="M 10 16 Q 8 15.5 7 14" />
+        <path d="M 10 19 Q 8 18.5 7 17" />
+        {/* 오른쪽 이삭 가지 */}
+        <path d="M 10 7 Q 12 6.5 13 5" />
+        <path d="M 10 10 Q 12 9.5 13 8" />
+        <path d="M 10 13 Q 12 12.5 13 11" />
+        <path d="M 10 16 Q 12 15.5 13 14" />
+        <path d="M 10 19 Q 12 18.5 13 17" />
+      </g>
+    </svg>
+  )
+}
+
+// Lv.2 스피릿 — 포트 스틸 (증류기)
+function StillIcon({ size }: { size: number }) {
+  return (
+    <svg
+      width={size}
+      height={size * 1.2}
+      viewBox="0 0 20 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      {/* 솥 본체 */}
+      <path
+        d="M 4 21 Q 4 14 10 14 Q 16 14 16 21 L 15.5 22.5 Q 10 25 4.5 22.5 Z"
+        stroke="#D97706"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="#FEF9C3"
+        fillOpacity={0.6}
+      />
+      {/* 넥 */}
+      <path
+        d="M 7.5 14 L 8 9 Q 10 6 12 9 L 12.5 14"
+        stroke="#D97706"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* 파이프 (라인 암) */}
+      <path
+        d="M 12 8.5 Q 15.5 6 16 10"
+        stroke="#D97706"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+      />
+      {/* 방울 */}
+      <circle cx="16" cy="11" r="1.2" fill="#FCD34D" fillOpacity={0.9} />
+    </svg>
   )
 }

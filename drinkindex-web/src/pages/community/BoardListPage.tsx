@@ -3,7 +3,9 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { usePosts, useBestPosts, usePostPrefixes } from '@/domain/community/hooks/usePosts'
 import type { BoardType, PostSort } from '@/domain/community/types/community.types'
+import type { UserRole } from '@/domain/auth/types/auth.types'
 import Pagination from '@/shared/components/Pagination'
+import UserBadge from '@/shared/components/UserBadge'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 
 const PAGE_SIZE = 20
@@ -249,7 +251,16 @@ export default function BoardListPage({ boardType, title }: Props) {
                         {post.hasPoll && <span className="text-xs text-neutral-400 flex-shrink-0">📊</span>}
                       </Link>
                     </td>
-                    <td className="px-4 py-3 text-neutral-500 text-xs truncate">{post.authorNickname}</td>
+                    <td className="px-4 py-3">
+                      {post.authorRole ? (
+                        <UserBadge
+                          user={{ nickname: post.authorNickname, role: post.authorRole as UserRole, currentLevel: post.authorLevel }}
+                          size="sm"
+                        />
+                      ) : (
+                        <span className="text-neutral-500 text-xs">{post.authorNickname}</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-right text-neutral-500 text-xs">{post.likeCount}</td>
                     <td className="px-4 py-3 text-right text-neutral-500 text-xs">{post.viewCount.toLocaleString()}</td>
                     <td className="px-4 py-3 text-right text-neutral-400 text-xs">
@@ -289,7 +300,14 @@ export default function BoardListPage({ boardType, title }: Props) {
                   {post.title}
                 </p>
                 <div className="flex items-center gap-3 mt-1.5 text-xs text-neutral-400">
-                  <span>{post.authorNickname}</span>
+                  {post.authorRole ? (
+                    <UserBadge
+                      user={{ nickname: post.authorNickname, role: post.authorRole as UserRole, currentLevel: post.authorLevel }}
+                      size="sm"
+                    />
+                  ) : (
+                    <span>{post.authorNickname}</span>
+                  )}
                   <span>▲ {post.likeCount}</span>
                   <span>조회 {post.viewCount.toLocaleString()}</span>
                   <span>{new Date(post.createdAt).toLocaleDateString('ko-KR')}</span>

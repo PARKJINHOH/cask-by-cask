@@ -9,6 +9,9 @@ import Toast from '@/shared/components/Toast'
 import { useToast } from '@/shared/hooks/useToast'
 import { useLatestNotice } from '@/domain/notice/hooks/useNotices'
 import NotificationBell from '@/domain/notification/components/NotificationBell'
+import LevelIcon from '@/shared/components/icons/LevelIcon'
+import AdminIcon from '@/shared/components/icons/AdminIcon'
+import DistilleryIcon from '@/shared/components/icons/DistilleryIcon'
 
 const SEEN_KEY = 'notice:lastSeenId'
 
@@ -307,10 +310,27 @@ function UserDropdown() {
         aria-haspopup="true"
         aria-expanded={open}
       >
-        {/* Avatar */}
-        <span className="w-7 h-7 rounded-full bg-primary-100 text-primary-600 flex items-center
-          justify-center text-xs font-bold flex-shrink-0 select-none">
-          {user?.nickname?.[0]?.toUpperCase() ?? '?'}
+        {/* Avatar with role icon overlay */}
+        <span className="relative flex-shrink-0">
+          <span className="w-7 h-7 rounded-full bg-primary-100 text-primary-600 flex items-center
+            justify-center text-xs font-bold select-none">
+            {user?.nickname?.[0]?.toUpperCase() ?? '?'}
+          </span>
+          {user?.role === 'MEMBER' && (
+            <span className="absolute -bottom-1 -left-1 bg-white rounded-full ring-1 ring-white flex items-center justify-center">
+              <LevelIcon level={user.currentLevel ?? 1} size={13} />
+            </span>
+          )}
+          {user?.role === 'ADMIN' && (
+            <span className="absolute -bottom-1 -left-1 bg-white rounded-full ring-1 ring-white flex items-center justify-center">
+              <AdminIcon size={13} />
+            </span>
+          )}
+          {user?.role === 'DISTILLERY' && (
+            <span className="absolute -bottom-1 -left-1 bg-white rounded-full ring-1 ring-white flex items-center justify-center">
+              <DistilleryIcon size={13} />
+            </span>
+          )}
         </span>
         <span className="hidden sm:inline max-w-[120px] truncate">{user?.nickname}</span>
         <svg

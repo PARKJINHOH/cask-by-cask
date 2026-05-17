@@ -63,7 +63,6 @@ public class AdminScoreService {
                 .level(request.level())
                 .name(request.name())
                 .minScore(request.minScore())
-                .iconKey(request.iconKey())
                 .build();
         return LevelConfigResponse.from(memberLevelConfigRepository.save(config));
     }
@@ -72,7 +71,7 @@ public class AdminScoreService {
     public LevelConfigResponse updateLevelConfig(Long id, UpdateLevelConfigRequest request) {
         MemberLevelConfig config = memberLevelConfigRepository.findById(id)
                 .orElseThrow(() -> new CustomException(ErrorCode.LEVEL_CONFIG_NOT_FOUND));
-        config.update(request.name(), request.minScore(), request.iconKey(), request.isActive());
+        config.update(request.name(), request.minScore(), request.isActive());
         return LevelConfigResponse.from(config);
     }
 

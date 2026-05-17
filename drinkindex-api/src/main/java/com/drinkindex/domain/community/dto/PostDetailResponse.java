@@ -20,6 +20,8 @@ public class PostDetailResponse {
     private final String contentSanitized; // null if LOCKED and not admin
     private final String authorNickname;
     private final Long authorId;           // null if isAnonymous
+    private final String authorRole;       // null if isAnonymous
+    private final Integer authorLevel;     // null if isAnonymous
     private final long viewCount;
     private final int likeCount;
     private final int commentCount;
@@ -42,6 +44,8 @@ public class PostDetailResponse {
         this.contentSanitized = b.contentSanitized;
         this.authorNickname   = b.authorNickname;
         this.authorId         = b.authorId;
+        this.authorRole       = b.authorRole;
+        this.authorLevel      = b.authorLevel;
         this.viewCount        = b.viewCount;
         this.likeCount        = b.likeCount;
         this.commentCount     = b.commentCount;
@@ -67,6 +71,8 @@ public class PostDetailResponse {
                 .contentSanitized(showContent ? post.getContentSanitized() : null)
                 .authorNickname(Boolean.TRUE.equals(post.getIsAnonymous()) ? "익명" : post.getAuthor().getNickname())
                 .authorId(Boolean.TRUE.equals(post.getIsAnonymous()) ? null : post.getAuthor().getId())
+                .authorRole(Boolean.TRUE.equals(post.getIsAnonymous()) ? null : post.getAuthor().getRole().name())
+                .authorLevel(Boolean.TRUE.equals(post.getIsAnonymous()) ? null : post.getAuthor().getCurrentLevel())
                 .viewCount(post.getViewCount())
                 .likeCount(post.getLikeCount())
                 .commentCount(post.getCommentCount())
@@ -86,6 +92,8 @@ public class PostDetailResponse {
         private String contentSanitized;
         private String authorNickname;
         private Long authorId;
+        private String authorRole;
+        private Integer authorLevel;
         private long viewCount;
         private int likeCount;
         private int commentCount;
@@ -107,6 +115,8 @@ public class PostDetailResponse {
         public Builder contentSanitized(String c)         { this.contentSanitized = c; return this; }
         public Builder authorNickname(String n)           { this.authorNickname = n; return this; }
         public Builder authorId(Long id)                  { this.authorId = id; return this; }
+        public Builder authorRole(String r)               { this.authorRole = r; return this; }
+        public Builder authorLevel(Integer l)             { this.authorLevel = l; return this; }
         public Builder viewCount(long v)                  { this.viewCount = v; return this; }
         public Builder likeCount(int l)                   { this.likeCount = l; return this; }
         public Builder commentCount(int c)                { this.commentCount = c; return this; }

@@ -8,6 +8,8 @@ import CommentSection from '@/domain/community/components/CommentSection'
 import { sanitizeHtml } from '@/shared/utils/sanitize'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { useToast } from '@/shared/hooks/useToast'
+import type { UserRole } from '@/domain/auth/types/auth.types'
+import UserBadge from '@/shared/components/UserBadge'
 
 export default function PostDetailPage() {
   const { boardType, id } = useParams<{ boardType: string; id: string }>()
@@ -178,7 +180,14 @@ export default function PostDetailPage() {
 
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3 text-sm text-neutral-500">
-              <span className="font-medium">{post.authorNickname}</span>
+              {post.authorRole ? (
+                <UserBadge
+                  user={{ nickname: post.authorNickname, role: post.authorRole as UserRole, currentLevel: post.authorLevel }}
+                  size="sm"
+                />
+              ) : (
+                <span className="font-medium">{post.authorNickname}</span>
+              )}
               <span>{new Date(post.createdAt).toLocaleString('ko-KR')}</span>
               <span>조회 {post.viewCount.toLocaleString()}</span>
             </div>

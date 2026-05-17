@@ -9,7 +9,6 @@ public record LevelConfigResponse(
         Integer level,
         String name,
         Integer minScore,
-        String iconKey,
         Boolean isActive,
         LocalDateTime updatedAt
 ) {
@@ -19,7 +18,6 @@ public record LevelConfigResponse(
                 config.getLevel(),
                 config.getName(),
                 config.getMinScore(),
-                config.getIconKey(),
                 config.getIsActive(),
                 config.getUpdatedAt()
         );

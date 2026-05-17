@@ -60,10 +60,9 @@ public class ScoreService {
 
     private void applyScore(Long userId, ScoreActionType actionType,
                             String referenceType, Long referenceId, String customDescription) {
-        ScoreConfig config = scoreConfigRepository.findByActionType(actionType)
-                .orElseThrow(() -> new CustomException(ErrorCode.SCORE_CONFIG_NOT_FOUND));
-
-        if (!config.getIsActive()) return;
+        // config가 없으면 스킵 (미등록 액션 = 점수 미부여, 로그인 등 핵심 흐름 중단 방지)
+        ScoreConfig config = scoreConfigRepository.findByActionType(actionType).orElse(null);
+        if (config == null || !config.getIsActive()) return;
 
         int actualScore = config.getScore();
 

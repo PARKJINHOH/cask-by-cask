@@ -15,6 +15,8 @@ public class PostListResponse {
     private final String title;
     private final boolean isLocked;
     private final String authorNickname;
+    private final String authorRole;   // null if anonymous
+    private final Integer authorLevel; // null if anonymous
     private final long viewCount;
     private final int likeCount;
     private final int commentCount;
@@ -27,7 +29,10 @@ public class PostListResponse {
         this.prefix        = post.getPrefix() != null ? PrefixInfo.from(post.getPrefix()) : null;
         this.title         = post.getTitle();
         this.isLocked      = post.getStatus() != null && post.getStatus().name().equals("LOCKED");
-        this.authorNickname = Boolean.TRUE.equals(post.getIsAnonymous()) ? "익명" : post.getAuthor().getNickname();
+        boolean anon       = Boolean.TRUE.equals(post.getIsAnonymous());
+        this.authorNickname = anon ? "익명" : post.getAuthor().getNickname();
+        this.authorRole    = anon ? null : post.getAuthor().getRole().name();
+        this.authorLevel   = anon ? null : post.getAuthor().getCurrentLevel();
         this.viewCount     = post.getViewCount();
         this.likeCount     = post.getLikeCount();
         this.commentCount  = post.getCommentCount();

@@ -201,9 +201,10 @@ public class CommentService {
                 && userBlockRepository.existsByBlockerIdAndBlockedId(
                         currentUserId, comment.getAuthor().getId());
 
-        String authorNickname = blocked ? null
-                : (Boolean.TRUE.equals(comment.getIsAnonymous()) ? "익명"
-                        : comment.getAuthor().getNickname());
+        boolean anon = Boolean.TRUE.equals(comment.getIsAnonymous());
+        String authorNickname = blocked ? null : (anon ? "익명" : comment.getAuthor().getNickname());
+        String authorRole  = blocked || anon ? null : comment.getAuthor().getRole().name();
+        Integer authorLevel = blocked || anon ? null : comment.getAuthor().getCurrentLevel();
         String content = blocked ? "차단한 사용자의 댓글입니다" : comment.getContent();
 
         String mentionedNickname = null;
@@ -222,6 +223,8 @@ public class CommentService {
         return PostCommentResponse.builder()
                 .id(comment.getId())
                 .authorNickname(authorNickname)
+                .authorRole(authorRole)
+                .authorLevel(authorLevel)
                 .content(content)
                 .mentionedUserNickname(mentionedNickname)
                 .emojiReactions(emojiReactions)

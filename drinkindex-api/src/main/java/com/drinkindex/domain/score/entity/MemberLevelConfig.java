@@ -25,18 +25,13 @@ public class MemberLevelConfig extends BaseTimeEntity {
     @Column(nullable = false)
     private Integer minScore;
 
-    // 프론트에서 이 키로 SVG 컴포넌트 선택. 예: "lv1_malt", "lv11_50yo"
-    @Column(nullable = false, length = 50)
-    private String iconKey;
-
     @Builder.Default
     @Column(nullable = false)
     private Boolean isActive = true;
 
-    public void update(String name, Integer minScore, String iconKey, Boolean isActive) {
+    public void update(String name, Integer minScore, Boolean isActive) {
         if (name != null) this.name = name;
         if (minScore != null) this.minScore = minScore;
-        if (iconKey != null) this.iconKey = iconKey;
         if (isActive != null) this.isActive = isActive;
     }
 }

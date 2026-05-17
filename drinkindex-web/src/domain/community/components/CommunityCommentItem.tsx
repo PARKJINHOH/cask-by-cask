@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDeleteComment } from '../hooks/useComments'
 import type { PostCommentItem } from '../types/community.types'
+import type { UserRole } from '@/domain/auth/types/auth.types'
+import UserBadge from '@/shared/components/UserBadge'
 import EmojiReactionBar from './EmojiReactionBar'
 import CommunityCommentForm from './CommunityCommentForm'
 
@@ -79,9 +81,16 @@ export default function CommunityCommentItem({ comment, postId, isLoggedIn, dept
         <div className="py-3">
           {/* 헤더 */}
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-semibold text-neutral-700">
-              {comment.authorNickname ?? t('board.anonymous')}
-            </span>
+            {comment.authorRole ? (
+              <UserBadge
+                user={{ nickname: comment.authorNickname ?? t('board.anonymous'), role: comment.authorRole as UserRole, currentLevel: comment.authorLevel }}
+                size="sm"
+              />
+            ) : (
+              <span className="text-xs font-semibold text-neutral-700">
+                {comment.authorNickname ?? t('board.anonymous')}
+              </span>
+            )}
             <span className="text-xs text-neutral-400">
               {new Date(comment.createdAt).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
             </span>

@@ -14,6 +14,8 @@ export interface PostListItem {
   title: string
   isLocked: boolean
   authorNickname: string
+  authorRole?: string   // null if anonymous
+  authorLevel?: number  // null if anonymous
   viewCount: number
   likeCount: number
   commentCount: number
@@ -64,6 +66,8 @@ export interface PostDetail {
   contentSanitized: string | null
   authorNickname: string
   authorId: number | null
+  authorRole?: string   // null if anonymous
+  authorLevel?: number  // null if anonymous
   viewCount: number
   likeCount: number
   commentCount: number
@@ -120,6 +124,8 @@ export interface EmojiReactionSummary {
 export interface PostCommentItem {
   id: number
   authorNickname: string | null
+  authorRole?: string   // null if anonymous or deleted
+  authorLevel?: number  // null if anonymous or deleted
   content: string
   mentionedUserNickname: string | null
   emojiReactions: EmojiReactionSummary[]

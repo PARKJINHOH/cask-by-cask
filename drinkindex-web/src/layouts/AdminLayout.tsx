@@ -54,6 +54,15 @@ const navEntries: NavEntry[] = [
   },
   {
     type: 'group',
+    groupLabel: '숙성력',
+    groupIcon: '🥃',
+    items: [
+      { path: '/admin/score/points', label: '점수 설정',  exact: true },
+      { path: '/admin/score/levels', label: '레벨 설정',  exact: true },
+    ],
+  },
+  {
+    type: 'group',
     groupLabel: '제조사',
     groupIcon: '🏭',
     items: [
