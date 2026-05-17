@@ -11,6 +11,7 @@ import NoticeDetailPage from '@/pages/NoticeDetailPage'
 import LoginPage from '@/pages/LoginPage'
 import SignupPage from '@/pages/SignupPage'
 import MyPage from '@/pages/MyPage'
+import RankingPage from '@/pages/RankingPage'
 import SpiritRequestPage from '@/pages/SpiritRequestPage'
 import NoticeBoardPage from '@/pages/community/NoticeBoardPage'
 import FreeBoardPage from '@/pages/community/FreeBoardPage'
@@ -54,6 +55,7 @@ export default function App() {
             <Route path="spirits/:id" element={<SpiritDetailPage />} />
             <Route path="notices" element={<NoticePage />} />
             <Route path="notices/:id" element={<NoticeDetailPage />} />
+            <Route path="ranking" element={<RankingPage />} />
             <Route path="login" element={<LoginPage />} />
             <Route path="signup" element={<SignupPage />} />
             {/* 커뮤니티 */}
