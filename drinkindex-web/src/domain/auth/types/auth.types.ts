@@ -9,6 +9,7 @@ export interface UserInfo {
   maturingPower?: number
   distilleryLogoUrl?: string
   nicknameFixed?: boolean
+  profileImageUrl?: string | null
 }
 
 export interface TokenResponse {

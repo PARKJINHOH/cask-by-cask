@@ -93,6 +93,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/notices/images/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/popups/images/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/profiles/images/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/spirits/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/notices/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/popups/**").permitAll()

@@ -8,6 +8,7 @@ import Input from '@/shared/components/Input'
 import Button from '@/shared/components/Button'
 import Modal from '@/shared/components/Modal'
 import { useUpdateNickname, useUpdatePassword, useDeleteMe, useResetPassword, useFixNickname, useMe } from '../hooks/useUser'
+import ProfileImageSection from './ProfileImageSection'
 
 // ── 닉네임 폼 ───────────────────────────────────────────────
 
@@ -425,6 +426,7 @@ function DangerZone() {
 export default function AccountSettings() {
   return (
     <div className="space-y-4">
+      <ProfileImageSection />
       <NicknameSection />
       <FixedNicknameSection />
       <PasswordSection />

@@ -24,6 +24,7 @@ public class PostDetailResponse {
     private final Integer authorLevel;         // null if isAnonymous
     private final Integer authorMaturingPower; // null if isAnonymous
     private final Boolean authorNicknameFixed; // null if isAnonymous
+    private final String authorProfileImageUrl; // null if isAnonymous
     private final long viewCount;
     private final int likeCount;
     private final int commentCount;
@@ -49,7 +50,8 @@ public class PostDetailResponse {
         this.authorRole          = b.authorRole;
         this.authorLevel         = b.authorLevel;
         this.authorMaturingPower = b.authorMaturingPower;
-        this.authorNicknameFixed = b.authorNicknameFixed;
+        this.authorNicknameFixed   = b.authorNicknameFixed;
+        this.authorProfileImageUrl = b.authorProfileImageUrl;
         this.viewCount        = b.viewCount;
         this.likeCount        = b.likeCount;
         this.commentCount     = b.commentCount;
@@ -79,6 +81,7 @@ public class PostDetailResponse {
                 .authorLevel(Boolean.TRUE.equals(post.getIsAnonymous()) ? null : post.getAuthor().getCurrentLevel())
                 .authorMaturingPower(Boolean.TRUE.equals(post.getIsAnonymous()) ? null : post.getAuthor().getMaturingPower())
                 .authorNicknameFixed(Boolean.TRUE.equals(post.getIsAnonymous()) ? null : post.getAuthor().getNicknameFixed())
+                .authorProfileImageUrl(Boolean.TRUE.equals(post.getIsAnonymous()) ? null : post.getAuthor().getProfileImageUrl())
                 .viewCount(post.getViewCount())
                 .likeCount(post.getLikeCount())
                 .commentCount(post.getCommentCount())
@@ -102,6 +105,7 @@ public class PostDetailResponse {
         private Integer authorLevel;
         private Integer authorMaturingPower;
         private Boolean authorNicknameFixed;
+        private String authorProfileImageUrl;
         private long viewCount;
         private int likeCount;
         private int commentCount;
@@ -126,7 +130,8 @@ public class PostDetailResponse {
         public Builder authorRole(String r)               { this.authorRole = r; return this; }
         public Builder authorLevel(Integer l)             { this.authorLevel = l; return this; }
         public Builder authorMaturingPower(Integer m)     { this.authorMaturingPower = m; return this; }
-        public Builder authorNicknameFixed(Boolean f)     { this.authorNicknameFixed = f; return this; }
+        public Builder authorNicknameFixed(Boolean f)      { this.authorNicknameFixed = f; return this; }
+        public Builder authorProfileImageUrl(String u)    { this.authorProfileImageUrl = u; return this; }
         public Builder viewCount(long v)                  { this.viewCount = v; return this; }
         public Builder likeCount(int l)                   { this.likeCount = l; return this; }
         public Builder commentCount(int c)                { this.commentCount = c; return this; }

@@ -255,6 +255,7 @@ function UserDropdown() {
   const ref = useRef<HTMLDivElement>(null)
   const { data: profile } = useMe()
   const isFixed = profile?.nicknameFixed === true
+  const profileImageUrl = profile?.profileImageUrl ?? user?.profileImageUrl
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -320,14 +321,18 @@ function UserDropdown() {
           {isFixed ? (
             <span className="p-[2px] rounded-full inline-flex bg-gradient-to-br from-amber-400 via-orange-400 to-amber-600">
               <span className="w-7 h-7 rounded-full bg-primary-100 text-primary-600 flex items-center
-                justify-center text-xs font-bold select-none ring-[1.5px] ring-white">
-                {user?.nickname?.[0]?.toUpperCase() ?? '?'}
+                justify-center text-xs font-bold select-none ring-[1.5px] ring-white overflow-hidden">
+                {profileImageUrl
+                  ? <img src={profileImageUrl} alt="" className="w-full h-full object-cover" />
+                  : (user?.nickname?.[0]?.toUpperCase() ?? '?')}
               </span>
             </span>
           ) : (
             <span className="w-7 h-7 rounded-full bg-primary-100 text-primary-600 flex items-center
-              justify-center text-xs font-bold select-none">
-              {user?.nickname?.[0]?.toUpperCase() ?? '?'}
+              justify-center text-xs font-bold select-none overflow-hidden">
+              {profileImageUrl
+                ? <img src={profileImageUrl} alt="" className="w-full h-full object-cover" />
+                : (user?.nickname?.[0]?.toUpperCase() ?? '?')}
             </span>
           )}
           {user?.role === 'MEMBER' && (

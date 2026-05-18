@@ -39,12 +39,13 @@ export default function MyPage() {
     queryClient.invalidateQueries({ queryKey: ['scoreHistory', 'me'] })
   }, [queryClient])
 
-  const nickname      = profile?.nickname     ?? authUser?.nickname  ?? ''
-  const email         = profile?.email        ?? authUser?.email     ?? ''
-  const createdAt     = profile?.createdAt
-  const currentLevel  = profile?.currentLevel ?? 1
-  const maturingPower = profile?.maturingPower ?? 0
-  const isFixed       = profile?.nicknameFixed === true
+  const nickname        = profile?.nickname     ?? authUser?.nickname  ?? ''
+  const email           = profile?.email        ?? authUser?.email     ?? ''
+  const createdAt       = profile?.createdAt
+  const currentLevel    = profile?.currentLevel ?? 1
+  const maturingPower   = profile?.maturingPower ?? 0
+  const isFixed         = profile?.nicknameFixed === true
+  const profileImageUrl = profile?.profileImageUrl ?? authUser?.profileImageUrl
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
@@ -58,9 +59,13 @@ export default function MyPage() {
             : ''
           }>
             <div className={`w-14 h-14 rounded-full bg-primary-100 flex items-center justify-center
-              text-xl font-bold text-primary-600 select-none
+              text-xl font-bold text-primary-600 select-none overflow-hidden
               ${isFixed ? 'ring-2 ring-white' : ''}`}>
-              {nickname ? nickname[0].toUpperCase() : '?'}
+              {profileImageUrl ? (
+                <img src={profileImageUrl} alt={nickname} className="w-full h-full object-cover" />
+              ) : (
+                nickname ? nickname[0].toUpperCase() : '?'
+              )}
             </div>
           </div>
           {role === 'MEMBER' && (

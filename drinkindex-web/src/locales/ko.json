@@ -212,6 +212,21 @@
     "wishlistTab": "즐겨찾기",
     "settingsTab": "계정 설정",
     "joinDate": "가입일",
+    "profileImage": {
+      "section": "프로필 이미지",
+      "change": "이미지 변경",
+      "delete": "이미지 삭제",
+      "save": "저장",
+      "preview": "미리보기",
+      "hint": "JPG, PNG, WEBP / 최대 2MB",
+      "invalidFormat": "JPG, PNG, WEBP 형식의 이미지만 업로드할 수 있습니다.",
+      "sizeExceeded": "이미지 파일 크기는 2MB를 초과할 수 없습니다.",
+      "changeLock": "{{days}}일 후 변경 가능",
+      "uploadError": "업로드 중 오류가 발생했습니다. 다시 시도해주세요.",
+      "deleteConfirm": "프로필 이미지를 삭제하시겠습니까?",
+      "deleteBtn": "삭제",
+      "deleteError": "삭제 중 오류가 발생했습니다. 다시 시도해주세요."
+    },
     "nickname": {
       "section": "닉네임 수정",
       "label": "새 닉네임",

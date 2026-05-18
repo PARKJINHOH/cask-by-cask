@@ -70,6 +70,12 @@ public class User extends BaseTimeEntity {
     @Column
     private LocalDateTime nicknameChangedAt;
 
+    @Column(length = 500)
+    private String profileImageUrl;
+
+    @Column
+    private LocalDateTime profileImageChangedAt;
+
     @Builder.Default
     @Column(nullable = false)
     private Integer maturingPower = 0;
@@ -131,5 +137,14 @@ public class User extends BaseTimeEntity {
     public void updateAttendance(LocalDate date, int streak) {
         this.lastAttendanceDate = date;
         this.consecutiveAttendance = streak;
+    }
+
+    public void updateProfileImage(String profileImageUrl) {
+        this.profileImageUrl = profileImageUrl;
+        this.profileImageChangedAt = LocalDateTime.now();
+    }
+
+    public void removeProfileImage() {
+        this.profileImageUrl = null;
     }
 }

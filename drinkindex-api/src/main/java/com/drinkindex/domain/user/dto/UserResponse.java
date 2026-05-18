@@ -26,7 +26,11 @@ public record UserResponse(
         @Schema(description = "고정닉 여부")
         Boolean nicknameFixed,
         @Schema(description = "마지막 닉네임 변경 일시 (null이면 변경 이력 없음)")
-        LocalDateTime nicknameChangedAt
+        LocalDateTime nicknameChangedAt,
+        @Schema(description = "프로필 이미지 URL (null이면 기본 아바타)")
+        String profileImageUrl,
+        @Schema(description = "마지막 프로필 이미지 변경 일시 (null이면 변경 이력 없음)")
+        LocalDateTime profileImageChangedAt
 ) {
     public static UserResponse from(User user) {
         return new UserResponse(
@@ -39,7 +43,9 @@ public record UserResponse(
                 user.getCurrentLevel(),
                 user.getConsecutiveAttendance(),
                 user.getEmailVerified(),
-                user.getNicknameChangedAt()
+                user.getNicknameChangedAt(),
+                user.getProfileImageUrl(),
+                user.getProfileImageChangedAt()
         );
     }
 }

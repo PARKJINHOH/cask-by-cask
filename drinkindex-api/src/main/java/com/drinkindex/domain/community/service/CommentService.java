@@ -204,10 +204,11 @@ public class CommentService {
 
         boolean anon = Boolean.TRUE.equals(comment.getIsAnonymous());
         String authorNickname = blocked ? null : (anon ? "익명" : comment.getAuthor().getNickname());
-        String authorRole          = blocked || anon ? null : comment.getAuthor().getRole().name();
-        Integer authorLevel        = blocked || anon ? null : comment.getAuthor().getCurrentLevel();
-        Integer authorMaturingPower = blocked || anon ? null : comment.getAuthor().getMaturingPower();
-        Boolean authorNicknameFixed = blocked || anon ? null : comment.getAuthor().getNicknameFixed();
+        String authorRole            = blocked || anon ? null : comment.getAuthor().getRole().name();
+        Integer authorLevel          = blocked || anon ? null : comment.getAuthor().getCurrentLevel();
+        Integer authorMaturingPower  = blocked || anon ? null : comment.getAuthor().getMaturingPower();
+        Boolean authorNicknameFixed  = blocked || anon ? null : comment.getAuthor().getNicknameFixed();
+        String authorProfileImageUrl = blocked || anon ? null : comment.getAuthor().getProfileImageUrl();
         String content = blocked ? "차단한 사용자의 댓글입니다" : comment.getContent();
 
         String mentionedNickname = null;
@@ -230,6 +231,7 @@ public class CommentService {
                 .authorLevel(authorLevel)
                 .authorMaturingPower(authorMaturingPower)
                 .authorNicknameFixed(authorNicknameFixed)
+                .authorProfileImageUrl(authorProfileImageUrl)
                 .content(content)
                 .mentionedUserNickname(mentionedNickname)
                 .emojiReactions(emojiReactions)

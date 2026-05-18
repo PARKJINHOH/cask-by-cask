@@ -9,21 +9,31 @@ import com.drinkindex.global.auth.jwt.RefreshTokenRepository;
 import com.drinkindex.global.email.EmailSender;
 import com.drinkindex.global.exception.CustomException;
 import com.drinkindex.global.exception.ErrorCode;
+import com.drinkindex.global.storage.FileStorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class UserService {
 
     private static final long NICKNAME_CHANGE_DAYS = 60;
+    private static final long PROFILE_IMAGE_CHANGE_DAYS = 30;
+    private static final long PROFILE_IMAGE_MAX_BYTES = 2L * 1024 * 1024; // 2MB
+    private static final Set<String> ALLOWED_MIME_TYPES =
+            Set.of("image/jpeg", "image/png", "image/webp");
+    private static final Set<String> ALLOWED_EXTENSIONS =
+            Set.of("jpg", "jpeg", "png", "webp");
+    private static final String PROFILE_SUB_PATH = "profiles";
     private static final String RESET_PW_COOLDOWN_PREFIX = "user:reset-pw:cooldown:";
     private static final Duration RESET_PW_COOLDOWN_TTL = Duration.ofMinutes(1);
     private static final String TEMP_PW_CHARS =
@@ -35,6 +45,7 @@ public class UserService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final EmailSender emailSender;
     private final StringRedisTemplate redisTemplate;
+    private final FileStorageService fileStorageService;
 
     @Transactional(readOnly = true)
     public UserResponse getMe(Long userId) {
@@ -108,8 +119,75 @@ public class UserService {
     @Transactional
     public void deleteMe(Long userId) {
         User user = findUser(userId);
+        if (user.getProfileImageUrl() != null) {
+            deleteStoredProfileImage(user.getProfileImageUrl());
+        }
         user.softDelete();
         refreshTokenRepository.deleteByUserId(userId);
+    }
+
+    @Transactional
+    public UserResponse uploadProfileImage(Long userId, MultipartFile file) {
+        validateProfileImage(file);
+
+        User user = findUser(userId);
+
+        if (user.getProfileImageChangedAt() != null &&
+                user.getProfileImageChangedAt().plusDays(PROFILE_IMAGE_CHANGE_DAYS).isAfter(LocalDateTime.now())) {
+            throw new CustomException(ErrorCode.PROFILE_IMAGE_CHANGE_TOO_SOON);
+        }
+
+        if (user.getProfileImageUrl() != null) {
+            deleteStoredProfileImage(user.getProfileImageUrl());
+        }
+
+        String ext = getExtension(file.getOriginalFilename());
+        String savedFileName = "profile_" + userId + "_" + System.currentTimeMillis() + "." + ext;
+        String url = fileStorageService.upload(file, savedFileName, PROFILE_SUB_PATH);
+
+        user.updateProfileImage(url);
+        return UserResponse.from(user);
+    }
+
+    @Transactional
+    public UserResponse deleteProfileImage(Long userId) {
+        User user = findUser(userId);
+        if (user.getProfileImageUrl() == null) {
+            throw new CustomException(ErrorCode.PROFILE_IMAGE_NOT_FOUND);
+        }
+        deleteStoredProfileImage(user.getProfileImageUrl());
+        user.removeProfileImage();
+        return UserResponse.from(user);
+    }
+
+    private void validateProfileImage(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new CustomException(ErrorCode.PROFILE_IMAGE_INVALID_FORMAT);
+        }
+        if (file.getSize() > PROFILE_IMAGE_MAX_BYTES) {
+            throw new CustomException(ErrorCode.PROFILE_IMAGE_SIZE_EXCEEDED);
+        }
+        String contentType = file.getContentType();
+        if (contentType == null || !ALLOWED_MIME_TYPES.contains(contentType.toLowerCase())) {
+            throw new CustomException(ErrorCode.PROFILE_IMAGE_INVALID_FORMAT);
+        }
+        String ext = getExtension(file.getOriginalFilename());
+        if (!ALLOWED_EXTENSIONS.contains(ext)) {
+            throw new CustomException(ErrorCode.PROFILE_IMAGE_INVALID_FORMAT);
+        }
+    }
+
+    private String getExtension(String originalFilename) {
+        if (originalFilename == null || !originalFilename.contains(".")) return "jpg";
+        return originalFilename.substring(originalFilename.lastIndexOf('.') + 1).toLowerCase();
+    }
+
+    private void deleteStoredProfileImage(String profileImageUrl) {
+        int lastSlash = profileImageUrl.lastIndexOf('/');
+        if (lastSlash >= 0) {
+            String savedFileName = profileImageUrl.substring(lastSlash + 1);
+            fileStorageService.delete(savedFileName, PROFILE_SUB_PATH);
+        }
     }
 
     private User findUser(Long userId) {

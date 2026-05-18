@@ -21,10 +21,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -74,6 +76,21 @@ public class UserController {
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.ok(
                 ApiResponse.success(userService.fixNickname(userDetails.getUserId())));
+    }
+
+    @PostMapping(value = "/me/profile-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<UserResponse>> uploadProfileImage(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam("file") MultipartFile file) {
+        return ResponseEntity.ok(
+                ApiResponse.success(userService.uploadProfileImage(userDetails.getUserId(), file)));
+    }
+
+    @DeleteMapping("/me/profile-image")
+    public ResponseEntity<ApiResponse<UserResponse>> deleteProfileImage(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(
+                ApiResponse.success(userService.deleteProfileImage(userDetails.getUserId())));
     }
 
     @DeleteMapping("/me")

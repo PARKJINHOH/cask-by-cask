@@ -18,6 +18,7 @@ export interface PostListItem {
   authorLevel?: number  // null if anonymous
   authorMaturingPower?: number | null
   authorNicknameFixed?: boolean | null
+  authorProfileImageUrl?: string | null
   viewCount: number
   likeCount: number
   commentCount: number
@@ -72,6 +73,7 @@ export interface PostDetail {
   authorLevel?: number  // null if anonymous
   authorMaturingPower?: number | null
   authorNicknameFixed?: boolean | null
+  authorProfileImageUrl?: string | null
   viewCount: number
   likeCount: number
   commentCount: number
@@ -132,6 +134,7 @@ export interface PostCommentItem {
   authorLevel?: number  // null if anonymous or deleted
   authorMaturingPower?: number | null
   authorNicknameFixed?: boolean | null
+  authorProfileImageUrl?: string | null
   content: string
   mentionedUserNickname: string | null
   emojiReactions: EmojiReactionSummary[]

@@ -222,6 +222,21 @@
     "wishlistTab": "Favorites",
     "settingsTab": "Account Settings",
     "joinDate": "Joined",
+    "profileImage": {
+      "section": "Profile Image",
+      "change": "Change Image",
+      "delete": "Remove Image",
+      "save": "Save",
+      "preview": "Preview",
+      "hint": "JPG, PNG, WEBP / Max 2MB",
+      "invalidFormat": "Only JPG, PNG, or WEBP images are allowed.",
+      "sizeExceeded": "Image file size must not exceed 2MB.",
+      "changeLock": "Available in {{days}} days",
+      "uploadError": "Upload failed. Please try again.",
+      "deleteConfirm": "Remove your profile image?",
+      "deleteBtn": "Remove",
+      "deleteError": "Failed to remove. Please try again."
+    },
     "nickname": {
       "section": "Change Nickname",
       "label": "New Nickname",

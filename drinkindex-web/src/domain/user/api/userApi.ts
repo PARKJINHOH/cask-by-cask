@@ -20,4 +20,15 @@ export const userApi = {
 
   fixNickname: () =>
     axiosInstance.post<ApiResponse<UserProfile>>('/api/users/me/fix-nickname'),
+
+  uploadProfileImage: (file: File) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return axiosInstance.post<ApiResponse<UserProfile>>('/api/users/me/profile-image', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+
+  deleteProfileImage: () =>
+    axiosInstance.delete<ApiResponse<UserProfile>>('/api/users/me/profile-image'),
 }

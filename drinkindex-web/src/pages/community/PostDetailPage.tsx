@@ -1,6 +1,7 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useQueryClient } from '@tanstack/react-query'
 import { usePostDetail, usePostActions } from '@/domain/community/hooks/usePostDetail'
 import PostPollWidget from '@/domain/community/components/PostPollWidget'
 import PostSeriesNav from '@/domain/community/components/PostSeriesNav'
@@ -19,6 +20,13 @@ export default function PostDetailPage() {
   const { isLoggedIn } = useAuthStore()
   const { showToast } = useToast()
   const boardPath = boardType ?? 'free'
+
+  const qc = useQueryClient()
+  useEffect(() => {
+    return () => {
+      qc.invalidateQueries({ queryKey: ['posts'] })
+    }
+  }, [qc])
 
   const { data: post, isLoading, isError } = usePostDetail(postId)
   const { likeMutation, scrapMutation, reportMutation, deleteMutation, blockMutation } = usePostActions(postId)
@@ -182,7 +190,7 @@ export default function PostDetailPage() {
             <div className="flex items-center gap-3 text-sm text-neutral-500">
               {post.authorRole ? (
                 <UserBadge
-                  user={{ nickname: post.authorNickname, role: post.authorRole as UserRole, currentLevel: post.authorLevel, maturingPower: post.authorMaturingPower ?? undefined, nicknameFixed: post.authorNicknameFixed }}
+                  user={{ nickname: post.authorNickname, role: post.authorRole as UserRole, currentLevel: post.authorLevel, maturingPower: post.authorMaturingPower ?? undefined, nicknameFixed: post.authorNicknameFixed, profileImageUrl: post.authorProfileImageUrl }}
                   size="sm"
                 />
               ) : (

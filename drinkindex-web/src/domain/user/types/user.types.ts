@@ -9,6 +9,8 @@ export interface UserProfile {
   consecutiveAttendance?: number
   nicknameFixed?: boolean
   nicknameChangedAt?: string | null
+  profileImageUrl?: string | null
+  profileImageChangedAt?: string | null
 }
 
 export interface UpdateNicknameRequest {
