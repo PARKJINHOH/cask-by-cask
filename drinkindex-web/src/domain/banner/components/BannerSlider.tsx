@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import DOMPurify from 'dompurify'
+import { sanitizeHtml } from '@/shared/utils/sanitize'
 import type { BannerResponse } from '../types/banner.types'
 
 interface BannerSliderProps {
@@ -101,7 +101,7 @@ export default function BannerSlider({ banners }: BannerSliderProps) {
               <div
                 className="w-full h-full overflow-hidden prose max-w-none"
                 dangerouslySetInnerHTML={{
-                  __html: DOMPurify.sanitize(b.contentSanitized ?? ''),
+                  __html: sanitizeHtml(b.contentSanitized ?? ''),
                 }}
               />
             )}

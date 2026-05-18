@@ -76,6 +76,12 @@ public class User extends BaseTimeEntity {
     @Column
     private LocalDateTime profileImageChangedAt;
 
+    @Column
+    private LocalDateTime termsAgreedAt;
+
+    @Column
+    private LocalDateTime privacyAgreedAt;
+
     @Builder.Default
     @Column(nullable = false)
     private Integer maturingPower = 0;

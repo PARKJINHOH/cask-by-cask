@@ -3,10 +3,10 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useForm, Controller } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import DOMPurify from 'dompurify'
 import { useAdminBannerDetail, useCreateBanner, useUpdateBanner } from '@/domain/banner/hooks/useAdminBanners'
 import { bannerApi } from '@/domain/banner/api/bannerApi'
-import NoticeEditor from '@/domain/notice/components/NoticeEditor'
+import HtmlEditorField from '@/shared/components/HtmlEditorField'
+import { sanitizeHtml } from '@/shared/utils/sanitize'
 import type { UploadedBannerImage, BannerType } from '@/domain/banner/types/banner.types'
 import Button from '@/shared/components/Button'
 import Toast from '@/shared/components/Toast'
@@ -234,7 +234,7 @@ function BannerPreview({
       return (
         <div
           className="w-full h-full overflow-auto prose max-w-none p-4 text-white"
-          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(content ?? '') }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(content ?? '') }}
         />
       )
     }
@@ -661,7 +661,7 @@ export default function AdminBannerFormPage() {
                 name="content"
                 control={control}
                 render={({ field }) => (
-                  <NoticeEditor
+                  <HtmlEditorField
                     value={field.value ?? ''}
                     onChange={field.onChange}
                     onImageUploadError={(msg) => showToast(msg, 'error')}

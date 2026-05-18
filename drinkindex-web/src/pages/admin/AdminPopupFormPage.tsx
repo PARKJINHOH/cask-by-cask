@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useAdminPopupDetail, useCreatePopup, useUpdatePopup } from '@/domain/popup/hooks/useAdminPopups'
 import { popupApi } from '@/domain/popup/api/popupApi'
 import PopupPreviewModal from '@/domain/popup/components/PopupPreviewModal'
-import NoticeEditor from '@/domain/notice/components/NoticeEditor'
+import HtmlEditorField from '@/shared/components/HtmlEditorField'
 import type { UploadedPopupImage, PopupType, PopupPreviewData } from '@/domain/popup/types/popup.types'
 import Button from '@/shared/components/Button'
 import Toast from '@/shared/components/Toast'
@@ -590,7 +590,7 @@ export default function AdminPopupFormPage() {
                 name="content"
                 control={control}
                 render={({ field }) => (
-                  <NoticeEditor
+                  <HtmlEditorField
                     value={field.value ?? ''}
                     onChange={field.onChange}
                     onImageUploadError={(msg) => showToast(msg, 'error')}

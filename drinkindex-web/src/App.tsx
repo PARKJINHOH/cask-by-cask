@@ -46,6 +46,10 @@ import AdminScorePage from '@/pages/admin/AdminScorePage'
 import AdminLevelPage from '@/pages/admin/AdminLevelPage'
 import PrivateRoute from '@/shared/components/PrivateRoute'
 import AdminRoute from '@/shared/components/AdminRoute'
+import TermsPage from '@/pages/legal/TermsPage'
+import PrivacyPage from '@/pages/legal/PrivacyPage'
+import AdminLegalListPage from '@/pages/admin/AdminLegalListPage'
+import AdminLegalFormPage from '@/pages/admin/AdminLegalFormPage'
 
 export default function App() {
   return (
@@ -62,6 +66,8 @@ export default function App() {
             <Route path="login" element={<LoginPage />} />
             <Route path="signup" element={<SignupPage />} />
             <Route path="verify-email" element={<EmailVerifyPage />} />
+            <Route path="terms" element={<TermsPage />} />
+            <Route path="privacy" element={<PrivacyPage />} />
             {/* 커뮤니티 */}
             <Route path="community/notice" element={<NoticeBoardPage />} />
             <Route path="community/free" element={<FreeBoardPage />} />
@@ -108,6 +114,9 @@ export default function App() {
               <Route path="community/prefixes" element={<AdminPrefixPage />} />
               <Route path="score/points" element={<AdminScorePage />} />
               <Route path="score/levels" element={<AdminLevelPage />} />
+              <Route path="legal" element={<AdminLegalListPage />} />
+              <Route path="legal/new" element={<AdminLegalFormPage />} />
+              <Route path="legal/:id/edit" element={<AdminLegalFormPage />} />
             </Route>
           </Route>
         </Routes>

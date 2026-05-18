@@ -139,6 +139,10 @@ public enum ErrorCode {
     LEVEL_CONFIG_NOT_FOUND(HttpStatus.NOT_FOUND, "SCORE_002", "레벨 설정을 찾을 수 없습니다."),
     CANNOT_DELETE_BASE_LEVEL(HttpStatus.BAD_REQUEST, "SCORE_003", "기본 레벨은 삭제할 수 없습니다."),
 
+    // Legal
+    LEGAL_DOCUMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "LEGAL_001", "등록된 법적 문서를 찾을 수 없습니다."),
+    CANNOT_DELETE_ACTIVE_LEGAL_DOCUMENT(HttpStatus.BAD_REQUEST, "LEGAL_002", "현재 활성화된 문서는 삭제할 수 없습니다. 다른 버전을 먼저 활성화해주세요."),
+
     // Banner
     BANNER_NOT_FOUND(HttpStatus.NOT_FOUND, "BANNER_001", "배너를 찾을 수 없습니다."),
     BANNER_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "BANNER_002", "배너 이미지를 찾을 수 없습니다."),

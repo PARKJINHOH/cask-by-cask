@@ -41,6 +41,8 @@ export interface SignupRequest {
   email: string
   password: string
   nickname: string
+  agreedToTerms: boolean
+  agreedToPrivacy: boolean
 }
 
 export interface VerifyEmailRequest {

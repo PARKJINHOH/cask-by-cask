@@ -10,7 +10,7 @@ import {
 } from '@/domain/notice/hooks/useAdminNotices'
 import { NOTICE_CATEGORY_LABELS } from '@/domain/notice/types/notice.types'
 import type { NoticeCategory } from '@/domain/notice/types/notice.types'
-import NoticeEditor from '@/domain/notice/components/NoticeEditor'
+import HtmlEditorField from '@/shared/components/HtmlEditorField'
 import Button from '@/shared/components/Button'
 import Toast from '@/shared/components/Toast'
 import { useToast } from '@/shared/hooks/useToast'
@@ -183,7 +183,7 @@ export default function AdminNoticeFormPage() {
             name="content"
             control={control}
             render={({ field }) => (
-              <NoticeEditor
+              <HtmlEditorField
                 value={field.value}
                 onChange={field.onChange}
                 onImageUploadError={(msg) => showToast(msg, 'error')}

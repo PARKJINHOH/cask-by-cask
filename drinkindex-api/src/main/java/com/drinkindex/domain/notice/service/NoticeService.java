@@ -71,7 +71,7 @@ public class NoticeService {
 
         List<NoticeImage> images = noticeImageRepository.findByNoticeIdAndIsUsedTrue(noticeId);
         // 현재 whitelist 기준으로 재Sanitize — 이전 버전 저장 데이터도 수정 없이 정상 렌더링
-        String freshSanitized = htmlSanitizer.sanitize(notice.getContent());
+        String freshSanitized = htmlSanitizer.sanitizeLegal(notice.getContent());
         return NoticeDetailResponse.from(notice, images, freshSanitized);
     }
 
@@ -85,7 +85,7 @@ public class NoticeService {
                 .orElseThrow(() -> new CustomException(ErrorCode.NOTICE_NOT_FOUND));
         List<NoticeImage> images = noticeImageRepository.findByNoticeIdAndIsUsedTrue(noticeId);
         // 현재 whitelist 기준으로 재Sanitize — 이전 버전 저장 데이터도 수정 없이 정상 렌더링
-        String freshSanitized = htmlSanitizer.sanitize(notice.getContent());
+        String freshSanitized = htmlSanitizer.sanitizeLegal(notice.getContent());
         return NoticeAdminDetailResponse.from(notice, images, freshSanitized);
     }
 
@@ -112,7 +112,7 @@ public class NoticeService {
     public NoticeDetailResponse createNotice(CreateNoticeRequest request, Long authorId) {
         // [보안] XSS: 저장 전 서버 Sanitize 필수.
         //   프론트 DOMPurify만으로는 불충분 — API 직접 호출 시 우회 가능.
-        String contentSanitized = htmlSanitizer.sanitize(request.getContent());
+        String contentSanitized = htmlSanitizer.sanitizeLegal(request.getContent());
 
         User author = userRepository.findById(authorId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
@@ -144,7 +144,7 @@ public class NoticeService {
         // content 변경 시 재Sanitize
         String newContent = request.getContent() != null ? request.getContent() : notice.getContent();
         String newContentSanitized = request.getContent() != null
-                ? htmlSanitizer.sanitize(request.getContent())
+                ? htmlSanitizer.sanitizeLegal(request.getContent())
                 : notice.getContentSanitized();
 
         notice.update(

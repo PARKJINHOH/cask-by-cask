@@ -83,7 +83,14 @@
       "title": "회원가입",
       "submit": "가입하기",
       "error": "회원가입 중 오류가 발생했습니다.",
-      "hasAccount": "이미 계정이 있으신가요?"
+      "hasAccount": "이미 계정이 있으신가요?",
+      "terms": {
+        "agreeTerms": "이용약관에 동의합니다 (필수)",
+        "agreePrivacy": "개인정보 처리방침에 동의합니다 (필수)",
+        "viewFull": "전문보기",
+        "termsRequired": "이용약관에 동의해주세요.",
+        "privacyRequired": "개인정보 처리방침에 동의해주세요."
+      }
     },
     "loginRequired": "로그인이 필요합니다",
     "loginRequiredDesc": "이 기능을 사용하려면 로그인이 필요합니다.\n로그인 페이지로 이동하시겠습니까?",

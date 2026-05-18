@@ -454,10 +454,15 @@ export default function MainLayout() {
 
       {/* 푸터 (PC only) */}
       <footer className="hidden lg:block bg-white border-t border-neutral-200 py-8">
-        <div className="max-w-7xl mx-auto px-4 text-center space-y-1">
+        <div className="max-w-7xl mx-auto px-4 text-center space-y-2">
           <p className="text-sm font-semibold text-primary-600">DrinkIndex</p>
           <p className="text-xs text-neutral-400">{t('app.tagline')}</p>
-          <p className="text-xs text-neutral-400">© 2024 DrinkIndex.</p>
+          <div className="flex items-center justify-center gap-4 text-xs text-neutral-400">
+            <a href="/terms" className="hover:text-neutral-600 hover:underline transition-colors">이용약관</a>
+            <span>|</span>
+            <a href="/privacy" className="hover:text-neutral-700 font-medium hover:underline transition-colors">개인정보 처리방침</a>
+          </div>
+          <p className="text-xs text-neutral-400">© 2026 DrinkIndex.</p>
         </div>
       </footer>
 

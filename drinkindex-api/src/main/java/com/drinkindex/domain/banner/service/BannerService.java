@@ -91,7 +91,7 @@ public class BannerService {
         LocalDateTime endAt   = Boolean.TRUE.equals(request.getIsAlwaysVisible()) ? null : request.getEndAt();
 
         String contentSanitized = BannerType.HTML.equals(request.getBannerType())
-                ? htmlSanitizer.sanitize(request.getContent())
+                ? htmlSanitizer.sanitizeLegal(request.getContent())
                 : null;
 
         Banner banner = Banner.builder()
@@ -140,7 +140,7 @@ public class BannerService {
 
         String newContent = request.getContent() != null ? request.getContent() : banner.getContent();
         String newContentSanitized = (request.getContent() != null && BannerType.HTML.equals(banner.getBannerType()))
-                ? htmlSanitizer.sanitize(request.getContent())
+                ? htmlSanitizer.sanitizeLegal(request.getContent())
                 : banner.getContentSanitized();
 
         banner.update(

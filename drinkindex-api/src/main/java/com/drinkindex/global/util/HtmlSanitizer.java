@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 public class HtmlSanitizer {
 
     private static final Safelist NOTICE_SAFELIST = buildNoticeSafelist();
+    private static final Safelist LEGAL_SAFELIST  = buildLegalSafelist();
 
     private static Safelist buildNoticeSafelist() {
         return new Safelist()
@@ -47,6 +48,38 @@ public class HtmlSanitizer {
                 .addAttributes("td", "colspan", "rowspan");
     }
 
+    // [보안] 법적 문서(약관·개인정보처리방침)용 Safelist.
+    //   관리자만 등록 가능한 콘텐츠이므로 구조적 태그(div, article, section)와
+    //   class 속성(Tailwind CSS 클래스)을 허용.
+    //   on* 이벤트 속성, script, iframe, javascript: 프로토콜은 차단.
+    private static Safelist buildLegalSafelist() {
+        return new Safelist()
+                // 구조적 태그
+                .addTags("div", "article", "section", "header", "footer", "main", "span")
+                // 텍스트 서식
+                .addTags("p", "br", "strong", "em", "u", "s", "code", "pre", "blockquote")
+                // 제목
+                .addTags("h1", "h2", "h3", "h4", "h5", "h6")
+                // 목록
+                .addTags("ul", "ol", "li")
+                // 링크
+                .addTags("a")
+                .addAttributes("a", "href", "target", "rel")
+                .addProtocols("a", "href", "http", "https", "mailto")
+                .addEnforcedAttribute("a", "rel", "noopener noreferrer")
+                // 테이블
+                .addTags("table", "thead", "tbody", "tfoot", "tr", "th", "td")
+                .addAttributes("th", "scope", "colspan", "rowspan")
+                .addAttributes("td", "colspan", "rowspan")
+                // 이미지
+                .addTags("img")
+                .addAttributes("img", "src", "alt", "width", "height")
+                // Tailwind class 속성 — 모든 허용 태그에 적용
+                .addAttributes(":all", "class")
+                // id 속성 (앵커 링크 목적 허용)
+                .addAttributes(":all", "id");
+    }
+
     /**
      * TipTap HTML을 화이트리스트 기반으로 Sanitize.
      */
@@ -55,6 +88,17 @@ public class HtmlSanitizer {
             return "";
         }
         return Jsoup.clean(rawHtml, NOTICE_SAFELIST);
+    }
+
+    /**
+     * 법적 문서(약관·개인정보처리방침) HTML Sanitize.
+     * class 속성, div/article 등 구조 태그 허용.
+     */
+    public String sanitizeLegal(String rawHtml) {
+        if (rawHtml == null || rawHtml.isBlank()) {
+            return "";
+        }
+        return Jsoup.clean(rawHtml, LEGAL_SAFELIST);
     }
 
     /**

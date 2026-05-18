@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -9,9 +9,12 @@ import { authApi } from '@/domain/auth/api/authApi'
 import Button from '@/shared/components/Button'
 import Input from '@/shared/components/Input'
 import type { ApiResponse } from '@/shared/types/common.types'
+import { TermsContent, PrivacyContent } from '@/pages/legal/LegalContent'
+import { useLegalLatest } from '@/domain/legal/hooks/useLegal'
 
 // ── Types ──────────────────────────────────────────────────
 type CheckStatus = 'idle' | 'checking' | 'available' | 'taken'
+type PolicyType = 'terms' | 'privacy'
 
 // ── Schema ─────────────────────────────────────────────────
 const SPECIAL_CHARS = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/
@@ -33,6 +36,8 @@ const schema = z
       .regex(/\d/, '비밀번호에 숫자가 최소 1개 포함되어야 합니다.')
       .regex(SPECIAL_CHARS, '비밀번호에 특수문자가 최소 1개 포함되어야 합니다.'),
     passwordConfirm: z.string().min(1, '비밀번호 확인을 입력해주세요.'),
+    agreedToTerms: z.boolean().refine(v => v === true, { message: '이용약관에 동의해주세요.' }),
+    agreedToPrivacy: z.boolean().refine(v => v === true, { message: '개인정보 처리방침에 동의해주세요.' }),
   })
   .refine((d) => d.password === d.passwordConfirm, {
     message: '비밀번호가 일치하지 않습니다.',
@@ -128,6 +133,68 @@ function CheckStatusMsg({ status, field }: { status: CheckStatus; field: 'email'
   return null
 }
 
+// ── Policy Modal ───────────────────────────────────────────
+function PolicyModal({ type, onClose }: { type: PolicyType; onClose: () => void }) {
+  const apiType = type === 'terms' ? 'TERMS' : 'PRIVACY_POLICY'
+  const { data, isLoading } = useLegalLatest(apiType)
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = '' }
+  }, [])
+
+  const title = type === 'terms' ? '이용약관' : '개인정보 처리방침'
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div className="w-full max-w-2xl max-h-[85vh] flex flex-col bg-white rounded-xl shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200 shrink-0">
+          <div className="flex items-baseline gap-2">
+            <h2 className="text-base font-semibold text-neutral-900">{title}</h2>
+            {data && <span className="text-xs text-neutral-400">{data.version}</span>}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-neutral-100 transition-colors"
+            aria-label="닫기"
+          >
+            <svg className="w-5 h-5 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto px-6 py-5 text-sm text-neutral-700">
+          {isLoading ? (
+            <div className="py-12 text-center text-neutral-400">불러오는 중...</div>
+          ) : data ? (
+            <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: data.contentSanitized }} />
+          ) : type === 'terms' ? (
+            <TermsContent />
+          ) : (
+            <PrivacyContent />
+          )}
+        </div>
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-neutral-200 shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full py-2.5 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors"
+          >
+            확인
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Input base style helpers ────────────────────────────────
 const inputBase = [
   'w-full px-3 py-2 text-sm rounded-lg border transition-colors',
@@ -145,6 +212,7 @@ export default function SignupPage() {
 
   const [emailStatus,    setEmailStatus]    = useState<CheckStatus>('idle')
   const [nicknameStatus, setNicknameStatus] = useState<CheckStatus>('idle')
+  const [policyModal,    setPolicyModal]    = useState<PolicyType | null>(null)
 
   const {
     register,
@@ -155,7 +223,7 @@ export default function SignupPage() {
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { email: '', nickname: '', password: '', passwordConfirm: '' },
+    defaultValues: { email: '', nickname: '', password: '', passwordConfirm: '', agreedToTerms: false, agreedToPrivacy: false },
   })
 
   // ── 이메일 중복확인 ──────────────────────────────────────
@@ -217,7 +285,7 @@ export default function SignupPage() {
       if (!valid) return
 
       // Step 3: 회원가입
-      await signup({ email: data.email, password: data.password, nickname: data.nickname })
+      await signup({ email: data.email, password: data.password, nickname: data.nickname, agreedToTerms: data.agreedToTerms, agreedToPrivacy: data.agreedToPrivacy })
       navigate('/verify-email', { replace: true, state: { email: data.email } })
     } catch (err) {
       const code = (err as AxiosError<ApiResponse<unknown>>)?.response?.data?.code
@@ -321,6 +389,57 @@ export default function SignupPage() {
             error={errors.passwordConfirm?.message}
           />
 
+          {/* 약관 동의 */}
+          <div className="space-y-2 pt-2 border-t border-neutral-100">
+            {/* 이용약관 */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between gap-2">
+                <label className="flex items-center gap-2 cursor-pointer min-w-0">
+                  <input
+                    type="checkbox"
+                    {...register('agreedToTerms')}
+                    className="w-4 h-4 shrink-0 rounded accent-primary-600 cursor-pointer"
+                  />
+                  <span className="text-sm text-neutral-700 truncate">
+                    이용약관 동의 <span className="text-danger-500">(필수)</span>
+                  </span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setPolicyModal('terms')}
+                  className="shrink-0 text-xs text-primary-600 hover:underline"
+                >
+                  전문보기
+                </button>
+              </div>
+              {errors.agreedToTerms?.message && <FieldError message={errors.agreedToTerms.message} />}
+            </div>
+
+            {/* 개인정보 처리방침 */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between gap-2">
+                <label className="flex items-center gap-2 cursor-pointer min-w-0">
+                  <input
+                    type="checkbox"
+                    {...register('agreedToPrivacy')}
+                    className="w-4 h-4 shrink-0 rounded accent-primary-600 cursor-pointer"
+                  />
+                  <span className="text-sm text-neutral-700 truncate">
+                    개인정보 처리방침 동의 <span className="text-danger-500">(필수)</span>
+                  </span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setPolicyModal('privacy')}
+                  className="shrink-0 text-xs text-primary-600 hover:underline"
+                >
+                  전문보기
+                </button>
+              </div>
+              {errors.agreedToPrivacy?.message && <FieldError message={errors.agreedToPrivacy.message} />}
+            </div>
+          </div>
+
           {errors.root?.message && <ErrorBanner message={errors.root.message} />}
 
           <Button type="submit" isLoading={isSubmitting} fullWidth className="!mt-6">
@@ -336,6 +455,9 @@ export default function SignupPage() {
           </Link>
         </p>
       </div>
+
+      {/* Policy Modals */}
+      {policyModal && <PolicyModal type={policyModal} onClose={() => setPolicyModal(null)} />}
     </div>
   )
 }

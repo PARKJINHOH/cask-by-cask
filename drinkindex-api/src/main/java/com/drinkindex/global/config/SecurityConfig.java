@@ -111,6 +111,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/post-prefixes").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/ranking").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/score-history/level-config").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/legal/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/signup").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/refresh").permitAll()

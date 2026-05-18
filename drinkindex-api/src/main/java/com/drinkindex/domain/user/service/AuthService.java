@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -41,12 +42,15 @@ public class AuthService {
         if (userRepository.existsByNickname(request.nickname())) {
             throw new CustomException(ErrorCode.DUPLICATE_NICKNAME);
         }
+        LocalDateTime now = LocalDateTime.now();
         User user = User.builder()
                 .email(request.email())
                 .password(passwordEncoder.encode(request.password()))
                 .nickname(request.nickname())
                 .role(Role.MEMBER)
                 .emailVerified(!emailVerificationRequired)
+                .termsAgreedAt(now)
+                .privacyAgreedAt(now)
                 .build();
         userRepository.save(user);
         if (emailVerificationRequired) {

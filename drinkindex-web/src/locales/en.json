@@ -83,7 +83,14 @@
       "title": "Sign Up",
       "submit": "Create Account",
       "error": "An error occurred during sign up.",
-      "hasAccount": "Already have an account?"
+      "hasAccount": "Already have an account?",
+      "terms": {
+        "agreeTerms": "I agree to the Terms of Service (Required)",
+        "agreePrivacy": "I agree to the Privacy Policy (Required)",
+        "viewFull": "View Full",
+        "termsRequired": "You must agree to the Terms of Service.",
+        "privacyRequired": "You must agree to the Privacy Policy."
+      }
     },
     "loginRequired": "Login Required",
     "loginRequiredDesc": "You need to log in to use this feature.\nWould you like to go to the login page?",
