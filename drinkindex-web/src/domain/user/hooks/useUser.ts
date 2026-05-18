@@ -88,3 +88,14 @@ export function useFixNickname() {
     },
   })
 }
+
+export function useUpdateEmailSubscription() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (emailSubscribed: boolean) => userApi.updateEmailSubscription(emailSubscribed),
+    onSuccess: (res) => {
+      const profile = res.data.data!
+      queryClient.setQueryData(['me'], profile)
+    },
+  })
+}

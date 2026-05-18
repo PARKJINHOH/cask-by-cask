@@ -1,5 +1,6 @@
 package com.drinkindex.domain.user.service;
 
+import com.drinkindex.domain.user.dto.UpdateEmailSubscriptionRequest;
 import com.drinkindex.domain.user.dto.UpdateNicknameRequest;
 import com.drinkindex.domain.user.dto.UpdatePasswordRequest;
 import com.drinkindex.domain.user.dto.UserResponse;
@@ -114,6 +115,13 @@ public class UserService {
             "[DrinkIndex] 임시 비밀번호 안내",
             buildTempPasswordBody(user.getNickname(), tempPassword)
         );
+    }
+
+    @Transactional
+    public UserResponse updateEmailSubscription(Long userId, UpdateEmailSubscriptionRequest request) {
+        User user = findUser(userId);
+        user.updateEmailSubscription(request.emailSubscribed());
+        return UserResponse.from(user);
     }
 
     @Transactional

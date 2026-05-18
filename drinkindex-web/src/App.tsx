@@ -50,6 +50,8 @@ import TermsPage from '@/pages/legal/TermsPage'
 import PrivacyPage from '@/pages/legal/PrivacyPage'
 import AdminLegalListPage from '@/pages/admin/AdminLegalListPage'
 import AdminLegalFormPage from '@/pages/admin/AdminLegalFormPage'
+import AdminEmailPage from '@/pages/admin/AdminEmailPage'
+import AdminEmailHistoryPage from '@/pages/admin/AdminEmailHistoryPage'
 
 export default function App() {
   return (
@@ -117,6 +119,8 @@ export default function App() {
               <Route path="legal" element={<AdminLegalListPage />} />
               <Route path="legal/new" element={<AdminLegalFormPage />} />
               <Route path="legal/:id/edit" element={<AdminLegalFormPage />} />
+              <Route path="emails/send" element={<AdminEmailPage />} />
+              <Route path="emails/history" element={<AdminEmailHistoryPage />} />
             </Route>
           </Route>
         </Routes>

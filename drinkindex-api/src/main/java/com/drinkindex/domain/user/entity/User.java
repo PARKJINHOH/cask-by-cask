@@ -84,6 +84,16 @@ public class User extends BaseTimeEntity {
 
     @Builder.Default
     @Column(nullable = false)
+    private Boolean emailSubscribed = false;
+
+    @Column
+    private LocalDateTime suspendedUntil;
+
+    @Column(length = 500)
+    private String suspendReason;
+
+    @Builder.Default
+    @Column(nullable = false)
     private Integer maturingPower = 0;
 
     @Builder.Default
@@ -127,6 +137,15 @@ public class User extends BaseTimeEntity {
         this.isActive = false;
     }
 
+    public void activate() {
+        this.isActive = true;
+    }
+
+    public void suspend(LocalDateTime until, String reason) {
+        this.suspendedUntil = until;
+        this.suspendReason = reason;
+    }
+
     public void changeRole(Role role, Distillery distillery) {
         this.role = role;
         this.distillery = distillery;
@@ -152,5 +171,9 @@ public class User extends BaseTimeEntity {
 
     public void removeProfileImage() {
         this.profileImageUrl = null;
+    }
+
+    public void updateEmailSubscription(boolean emailSubscribed) {
+        this.emailSubscribed = emailSubscribed;
     }
 }

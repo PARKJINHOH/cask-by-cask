@@ -44,6 +44,15 @@ const navEntries: NavEntry[] = [
   },
   {
     type: 'group',
+    groupLabel: '메일',
+    groupIcon: '✉️',
+    items: [
+      { path: '/admin/emails/send',    label: '메일 발송',  exact: true },
+      { path: '/admin/emails/history', label: '메일 이력',  exact: true },
+    ],
+  },
+  {
+    type: 'group',
     groupLabel: '커뮤니티',
     groupIcon: '💬',
     items: [

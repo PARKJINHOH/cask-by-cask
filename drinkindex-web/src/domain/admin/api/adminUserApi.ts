@@ -1,6 +1,6 @@
 import axiosInstance from '@/shared/api/axiosInstance'
 import type { ApiResponse, PageResponse } from '@/shared/types/common.types'
-import type { AdminUser, AdminUserSearchParams, ChangeRoleRequest } from '../types/admin.types'
+import type { AdminUser, AdminUserSearchParams, ChangeRoleRequest, SuspendUserRequest } from '../types/admin.types'
 
 export const adminUserApi = {
   search: (params: AdminUserSearchParams) =>
@@ -11,4 +11,13 @@ export const adminUserApi = {
 
   deactivate: (id: number) =>
     axiosInstance.patch<ApiResponse<null>>(`/api/admin/users/${id}/deactivate`),
+
+  activate: (id: number) =>
+    axiosInstance.patch<ApiResponse<null>>(`/api/admin/users/${id}/activate`),
+
+  suspend: (id: number, data: SuspendUserRequest) =>
+    axiosInstance.post<ApiResponse<null>>(`/api/admin/users/${id}/suspend`, data),
+
+  deleteUser: (id: number) =>
+    axiosInstance.delete<ApiResponse<null>>(`/api/admin/users/${id}`),
 }

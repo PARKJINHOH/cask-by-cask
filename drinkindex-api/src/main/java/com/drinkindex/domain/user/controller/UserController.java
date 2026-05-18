@@ -5,6 +5,7 @@ import com.drinkindex.domain.community.entity.UserBlock;
 import com.drinkindex.domain.community.repository.UserBlockRepository;
 import com.drinkindex.domain.review.dto.ReviewResponse;
 import com.drinkindex.domain.review.service.ReviewService;
+import com.drinkindex.domain.user.dto.UpdateEmailSubscriptionRequest;
 import com.drinkindex.domain.user.dto.UpdateNicknameRequest;
 import com.drinkindex.domain.user.dto.UpdatePasswordRequest;
 import com.drinkindex.domain.user.dto.UserResponse;
@@ -91,6 +92,14 @@ public class UserController {
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.ok(
                 ApiResponse.success(userService.deleteProfileImage(userDetails.getUserId())));
+    }
+
+    @PatchMapping("/me/email-subscription")
+    public ResponseEntity<ApiResponse<UserResponse>> updateEmailSubscription(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestBody UpdateEmailSubscriptionRequest request) {
+        return ResponseEntity.ok(
+                ApiResponse.success(userService.updateEmailSubscription(userDetails.getUserId(), request)));
     }
 
     @DeleteMapping("/me")

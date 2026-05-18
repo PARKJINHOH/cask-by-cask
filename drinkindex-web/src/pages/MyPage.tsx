@@ -106,7 +106,7 @@ export default function MyPage() {
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-1 border-b border-neutral-200 overflow-x-auto">
+      <div className="flex gap-1 border-b border-neutral-200">
         {tabs.map(({ value, label }) => (
           <button
             key={value}

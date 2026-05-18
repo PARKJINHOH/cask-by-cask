@@ -1,7 +1,7 @@
+import { useState, startTransition } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { startTransition } from 'react'
 import { useNavigate, useLocation, Link, Navigate } from 'react-router-dom'
 import type { AxiosError } from 'axios'
 import { useAuthStore } from '@/domain/auth/store/authStore'
@@ -18,7 +18,12 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>
 
-// ── Sub-component ──────────────────────────────────────────
+interface SuspensionDetail {
+  suspendedUntil: string
+  reason: string | null
+}
+
+// ── Sub-components ─────────────────────────────────────────
 function ErrorBanner({ message }: { message: string }) {
   return (
     <div role="alert"
@@ -31,14 +36,61 @@ function ErrorBanner({ message }: { message: string }) {
   )
 }
 
+function InactiveBanner() {
+  return (
+    <div role="alert" className="bg-neutral-100 border border-neutral-300 rounded-lg overflow-hidden">
+      <div className="flex items-center gap-2 px-3 py-2 bg-neutral-200 border-b border-neutral-300">
+        <svg className="w-4 h-4 text-neutral-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+        </svg>
+        <p className="text-sm font-semibold text-neutral-700">비활성화된 계정입니다</p>
+      </div>
+      <div className="px-3 py-2.5">
+        <p className="text-sm text-neutral-600 leading-relaxed">
+          이 계정은 관리자에 의해 비활성화되었습니다. 문의사항이 있으시면 고객센터로 연락해 주세요.
+        </p>
+      </div>
+    </div>
+  )
+}
+
+function SuspensionBanner({ detail }: { detail: SuspensionDetail }) {
+  const until = new Date(detail.suspendedUntil).toLocaleDateString('ko-KR', {
+    year: 'numeric', month: 'long', day: 'numeric',
+  })
+  return (
+    <div role="alert" className="bg-amber-50 border border-amber-300 rounded-lg overflow-hidden">
+      <div className="flex items-center gap-2 px-3 py-2 bg-amber-100 border-b border-amber-300">
+        <svg className="w-4 h-4 text-amber-600 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+        </svg>
+        <p className="text-sm font-semibold text-amber-800">계정이 정지되었습니다</p>
+      </div>
+      <div className="px-3 py-2.5 space-y-1.5">
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-amber-600 font-medium w-20 shrink-0">정지 해제일</span>
+          <span className="text-amber-900">{until}</span>
+        </div>
+        {detail.reason && (
+          <div className="flex items-start gap-2 text-sm">
+            <span className="text-amber-600 font-medium w-20 shrink-0">사유</span>
+            <span className="text-amber-900 leading-relaxed">{detail.reason}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Page ───────────────────────────────────────────────────
 export default function LoginPage() {
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
   const navigate   = useNavigate()
   const location   = useLocation()
   const { login }  = useAuth()
+  const [suspensionDetail, setSuspensionDetail] = useState<SuspensionDetail | null>(null)
+  const [showInactive, setShowInactive]         = useState(false)
 
-  // 모든 훅을 조건 분기 전에 선언
   const {
     register,
     handleSubmit,
@@ -58,15 +110,22 @@ export default function LoginPage() {
   if (isLoggedIn) return <Navigate to={from} replace />
 
   const onSubmit = async (data: FormValues) => {
+    setSuspensionDetail(null)
+    setShowInactive(false)
     try {
       await login(data)
       startTransition(() => {
         navigate(from, { replace: true })
       })
     } catch (err) {
-      const code = (err as AxiosError<ApiResponse<unknown>>)?.response?.data?.code
+      const res = (err as AxiosError<ApiResponse<SuspensionDetail>>)?.response?.data
+      const code = res?.code
       if (code === 'USER_005') {
         navigate('/verify-email', { state: { email: data.email } })
+      } else if (code === 'USER_016') {
+        setShowInactive(true)
+      } else if (code === 'USER_017' && res?.data) {
+        setSuspensionDetail(res.data)
       } else {
         setError('root', { message: '이메일 또는 비밀번호가 올바르지 않습니다.' })
       }
@@ -129,6 +188,8 @@ export default function LoginPage() {
           />
 
           {errors.root?.message && <ErrorBanner message={errors.root.message} />}
+          {showInactive && <InactiveBanner />}
+          {suspensionDetail && <SuspensionBanner detail={suspensionDetail} />}
 
           <Button type="submit" isLoading={isSubmitting} fullWidth className="!mt-6">
             로그인

@@ -25,9 +25,14 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(CustomException.class)
-    public ResponseEntity<ApiResponse<Void>> handleCustomException(CustomException e) {
+    public ResponseEntity<ApiResponse<?>> handleCustomException(CustomException e) {
         ErrorCode errorCode = e.getErrorCode();
         log.warn("CustomException: [{}] {}", errorCode.getCode(), errorCode.getMessage());
+        if (e.getDetail() != null) {
+            return ResponseEntity
+                    .status(errorCode.getHttpStatus())
+                    .body(ApiResponse.fail(errorCode.getCode(), errorCode.getMessage(), e.getDetail()));
+        }
         return ResponseEntity
                 .status(errorCode.getHttpStatus())
                 .body(ApiResponse.fail(errorCode.getCode(), errorCode.getMessage()));

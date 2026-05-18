@@ -31,4 +31,7 @@ export const userApi = {
 
   deleteProfileImage: () =>
     axiosInstance.delete<ApiResponse<UserProfile>>('/api/users/me/profile-image'),
+
+  updateEmailSubscription: (emailSubscribed: boolean) =>
+    axiosInstance.patch<ApiResponse<UserProfile>>('/api/users/me/email-subscription', { emailSubscribed }),
 }

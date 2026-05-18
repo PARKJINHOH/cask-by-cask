@@ -4,6 +4,7 @@ import com.drinkindex.admin.service.AdminUserService;
 import com.drinkindex.domain.user.dto.AdminUserResponse;
 import com.drinkindex.domain.user.dto.ChangeRoleRequest;
 import com.drinkindex.domain.user.dto.CreateDistilleryManagerRequest;
+import com.drinkindex.domain.user.dto.SuspendUserRequest;
 import com.drinkindex.domain.user.entity.enums.Role;
 import com.drinkindex.global.response.ApiResponse;
 import jakarta.validation.Valid;
@@ -55,6 +56,26 @@ public class AdminUserController {
     @PatchMapping("/{id}/deactivate")
     public ResponseEntity<ApiResponse<Void>> deactivate(@PathVariable Long id) {
         adminUserService.deactivateUser(id);
+        return ResponseEntity.ok(ApiResponse.success());
+    }
+
+    @PatchMapping("/{id}/activate")
+    public ResponseEntity<ApiResponse<Void>> activate(@PathVariable Long id) {
+        adminUserService.activateUser(id);
+        return ResponseEntity.ok(ApiResponse.success());
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable Long id) {
+        adminUserService.deleteUser(id);
+        return ResponseEntity.ok(ApiResponse.success());
+    }
+
+    @PostMapping("/{id}/suspend")
+    public ResponseEntity<ApiResponse<Void>> suspend(
+            @PathVariable Long id,
+            @Valid @RequestBody SuspendUserRequest request) {
+        adminUserService.suspendUser(id, request);
         return ResponseEntity.ok(ApiResponse.success());
     }
 }

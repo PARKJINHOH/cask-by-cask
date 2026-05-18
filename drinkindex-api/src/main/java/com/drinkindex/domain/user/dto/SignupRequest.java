@@ -36,5 +36,8 @@ public record SignupRequest(
 
         @Schema(description = "개인정보 처리방침 동의 여부")
         @AssertTrue(message = "개인정보 처리방침에 동의해주세요.")
-        boolean agreedToPrivacy
+        boolean agreedToPrivacy,
+
+        @Schema(description = "이메일 수신 동의 여부 (선택)")
+        boolean emailSubscribed
 ) {}

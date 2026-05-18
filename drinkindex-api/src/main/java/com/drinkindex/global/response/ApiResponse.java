@@ -28,4 +28,8 @@ public class ApiResponse<T> {
     public static <T> ApiResponse<T> fail(String code, String message) {
         return new ApiResponse<>(false, null, code, message);
     }
+
+    public static <T> ApiResponse<T> fail(String code, String message, T data) {
+        return new ApiResponse<>(false, data, code, message);
+    }
 }

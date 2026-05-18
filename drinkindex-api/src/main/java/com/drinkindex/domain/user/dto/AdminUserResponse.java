@@ -22,7 +22,11 @@ public record AdminUserResponse(
         @Schema(description = "담당 증류소 한글명 (DISTILLERY 역할인 경우)")
         String distilleryNameKo,
         @Schema(description = "가입 일시")
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        @Schema(description = "징계 종료 일시 (null이면 징계 없음)")
+        LocalDateTime suspendedUntil,
+        @Schema(description = "징계 사유")
+        String suspendReason
 ) {
     public static AdminUserResponse from(User user) {
         return new AdminUserResponse(
@@ -33,7 +37,9 @@ public record AdminUserResponse(
                 user.getIsActive(),
                 user.getDistillery() != null ? user.getDistillery().getId() : null,
                 user.getDistillery() != null ? user.getDistillery().getNameKo() : null,
-                user.getCreatedAt()
+                user.getCreatedAt(),
+                user.getSuspendedUntil(),
+                user.getSuspendReason()
         );
     }
 }

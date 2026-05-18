@@ -51,6 +51,7 @@ public class AuthService {
                 .emailVerified(!emailVerificationRequired)
                 .termsAgreedAt(now)
                 .privacyAgreedAt(now)
+                .emailSubscribed(request.emailSubscribed())
                 .build();
         userRepository.save(user);
         if (emailVerificationRequired) {
@@ -66,6 +67,15 @@ public class AuthService {
 
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
             throw new CustomException(ErrorCode.INVALID_PASSWORD);
+        }
+
+        if (!Boolean.TRUE.equals(user.getIsActive())) {
+            throw new CustomException(ErrorCode.ACCOUNT_INACTIVE);
+        }
+
+        if (user.getSuspendedUntil() != null && user.getSuspendedUntil().isAfter(LocalDateTime.now())) {
+            throw new CustomException(ErrorCode.ACCOUNT_SUSPENDED,
+                    new SuspensionDetail(user.getSuspendedUntil(), user.getSuspendReason()));
         }
 
         if (emailVerificationRequired && !Boolean.TRUE.equals(user.getEmailVerified())) {

@@ -11,6 +11,7 @@ export interface UserProfile {
   nicknameChangedAt?: string | null
   profileImageUrl?: string | null
   profileImageChangedAt?: string | null
+  emailSubscribed?: boolean
 }
 
 export interface UpdateNicknameRequest {

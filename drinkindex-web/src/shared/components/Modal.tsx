@@ -7,14 +7,16 @@ export interface ModalProps {
   title?: string
   children: ReactNode
   footer?: ReactNode
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl'
   closeOnOverlay?: boolean
 }
 
 const sizeClasses: Record<string, string> = {
-  sm: 'max-w-sm',
-  md: 'max-w-md',
-  lg: 'max-w-lg',
+  sm:  'max-w-sm',
+  md:  'max-w-md',
+  lg:  'max-w-lg',
+  xl:  'max-w-3xl',
+  '2xl': 'max-w-5xl',
 }
 
 export default function Modal({

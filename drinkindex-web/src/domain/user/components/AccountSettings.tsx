@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import Input from '@/shared/components/Input'
 import Button from '@/shared/components/Button'
 import Modal from '@/shared/components/Modal'
-import { useUpdateNickname, useUpdatePassword, useDeleteMe, useResetPassword, useFixNickname, useMe } from '../hooks/useUser'
+import { useUpdateNickname, useUpdatePassword, useDeleteMe, useResetPassword, useFixNickname, useMe, useUpdateEmailSubscription } from '../hooks/useUser'
 import ProfileImageSection from './ProfileImageSection'
 
 // ── 닉네임 폼 ───────────────────────────────────────────────
@@ -358,6 +358,69 @@ function TempPasswordSection() {
   )
 }
 
+// ── 이메일 수신 동의 ─────────────────────────────────────────
+
+function EmailSubscriptionSection() {
+  const { data: profile } = useMe()
+  const updateSubscription = useUpdateEmailSubscription()
+  const [optimistic, setOptimistic] = useState<boolean | null>(null)
+
+  const current = optimistic !== null ? optimistic : (profile?.emailSubscribed ?? false)
+
+  const handleToggle = async () => {
+    const next = !current
+    setOptimistic(next)
+    try {
+      await updateSubscription.mutateAsync(next)
+    } catch {
+      setOptimistic(!next)
+    } finally {
+      setOptimistic(null)
+    }
+  }
+
+  return (
+    <section className="p-5 bg-white rounded-xl border border-neutral-100 space-y-3">
+      <div>
+        <h3 className="text-sm font-semibold text-neutral-800">이메일 수신 동의</h3>
+        <p className="text-xs text-neutral-500 mt-0.5">새소식, 이벤트, 프로모션 안내 이메일을 받습니다.</p>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className={`w-2 h-2 rounded-full ${current ? 'bg-green-400' : 'bg-neutral-300'}`} />
+          <span className="text-sm text-neutral-700">
+            {current ? '수신 동의' : '수신 거부'}
+          </span>
+        </div>
+
+        <button
+          type="button"
+          role="switch"
+          aria-checked={current}
+          onClick={handleToggle}
+          disabled={updateSubscription.isPending}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors
+            focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2
+            disabled:opacity-50 disabled:cursor-not-allowed
+            ${current ? 'bg-primary-600' : 'bg-neutral-300'}`}
+        >
+          <span
+            className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform
+              ${current ? 'translate-x-6' : 'translate-x-1'}`}
+          />
+        </button>
+      </div>
+
+      {updateSubscription.isSuccess && (
+        <p className="text-xs text-green-600">
+          {current ? '이메일 수신에 동의했습니다.' : '이메일 수신을 거부했습니다.'}
+        </p>
+      )}
+    </section>
+  )
+}
+
 // ── 회원 탈퇴 ───────────────────────────────────────────────
 
 function DangerZone() {
@@ -437,6 +500,7 @@ export default function AccountSettings() {
       <FixedNicknameSection />
       <PasswordSection />
       <TempPasswordSection />
+      <EmailSubscriptionSection />
       <DangerZone />
     </div>
   )

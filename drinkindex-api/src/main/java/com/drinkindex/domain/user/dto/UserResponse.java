@@ -30,7 +30,9 @@ public record UserResponse(
         @Schema(description = "프로필 이미지 URL (null이면 기본 아바타)")
         String profileImageUrl,
         @Schema(description = "마지막 프로필 이미지 변경 일시 (null이면 변경 이력 없음)")
-        LocalDateTime profileImageChangedAt
+        LocalDateTime profileImageChangedAt,
+        @Schema(description = "이메일 수신 동의 여부")
+        Boolean emailSubscribed
 ) {
     public static UserResponse from(User user) {
         return new UserResponse(
@@ -45,7 +47,8 @@ public record UserResponse(
                 user.getEmailVerified(),
                 user.getNicknameChangedAt(),
                 user.getProfileImageUrl(),
-                user.getProfileImageChangedAt()
+                user.getProfileImageChangedAt(),
+                user.getEmailSubscribed()
         );
     }
 }

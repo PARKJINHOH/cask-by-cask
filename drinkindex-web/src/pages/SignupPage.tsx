@@ -38,6 +38,7 @@ const schema = z
     passwordConfirm: z.string().min(1, '비밀번호 확인을 입력해주세요.'),
     agreedToTerms: z.boolean().refine(v => v === true, { message: '이용약관에 동의해주세요.' }),
     agreedToPrivacy: z.boolean().refine(v => v === true, { message: '개인정보 처리방침에 동의해주세요.' }),
+    emailSubscribed: z.boolean(),
   })
   .refine((d) => d.password === d.passwordConfirm, {
     message: '비밀번호가 일치하지 않습니다.',
@@ -223,7 +224,7 @@ export default function SignupPage() {
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { email: '', nickname: '', password: '', passwordConfirm: '', agreedToTerms: false, agreedToPrivacy: false },
+    defaultValues: { email: '', nickname: '', password: '', passwordConfirm: '', agreedToTerms: false, agreedToPrivacy: false, emailSubscribed: false },
   })
 
   // ── 이메일 중복확인 ──────────────────────────────────────
@@ -285,7 +286,7 @@ export default function SignupPage() {
       if (!valid) return
 
       // Step 3: 회원가입
-      await signup({ email: data.email, password: data.password, nickname: data.nickname, agreedToTerms: data.agreedToTerms, agreedToPrivacy: data.agreedToPrivacy })
+      await signup({ email: data.email, password: data.password, nickname: data.nickname, agreedToTerms: data.agreedToTerms, agreedToPrivacy: data.agreedToPrivacy, emailSubscribed: data.emailSubscribed })
       navigate('/verify-email', { replace: true, state: { email: data.email } })
     } catch (err) {
       const code = (err as AxiosError<ApiResponse<unknown>>)?.response?.data?.code
@@ -437,6 +438,21 @@ export default function SignupPage() {
                 </button>
               </div>
               {errors.agreedToPrivacy?.message && <FieldError message={errors.agreedToPrivacy.message} />}
+            </div>
+
+            {/* 이메일 수신 동의 (선택) */}
+            <div className="flex items-center justify-between gap-2">
+              <label className="flex items-center gap-2 cursor-pointer min-w-0">
+                <input
+                  type="checkbox"
+                  {...register('emailSubscribed')}
+                  className="w-4 h-4 shrink-0 rounded accent-primary-600 cursor-pointer"
+                />
+                <span className="text-sm text-neutral-700 truncate">
+                  이메일 수신 동의 <span className="text-neutral-400">(선택)</span>
+                </span>
+              </label>
+              <span className="shrink-0 text-xs text-neutral-400">새소식·이벤트 안내</span>
             </div>
           </div>
 

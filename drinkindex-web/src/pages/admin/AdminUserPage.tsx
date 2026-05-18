@@ -11,8 +11,11 @@ import {
   useAdminUsers,
   useChangeRole,
   useDeactivateUser,
+  useActivateUser,
+  useSuspendUser,
+  useDeleteUser,
 } from '@/domain/admin/hooks/useAdminUsers'
-import type { AdminUser, AdminUserRole } from '@/domain/admin/types/admin.types'
+import type { AdminUser, AdminUserRole, SuspendUserRequest } from '@/domain/admin/types/admin.types'
 
 // ── 상수 ────────────────────────────────────────────────────────
 
@@ -23,6 +26,10 @@ const ROLE_LABEL: Record<AdminUserRole, string> = {
 }
 
 const ROLE_OPTIONS: AdminUserRole[] = ['MEMBER', 'ADMIN', 'DISTILLERY']
+
+function isSuspended(user: AdminUser): boolean {
+  return !!user.suspendedUntil && new Date(user.suspendedUntil) > new Date()
+}
 
 // ── 역할 변경 모달 ─────────────────────────────────────────────
 
@@ -118,16 +125,234 @@ function RoleChangeModal({ user, onClose }: RoleModalProps) {
   )
 }
 
+// ── 징계 모달 ──────────────────────────────────────────────────
+
+interface SuspendModalProps {
+  user: AdminUser
+  onClose: () => void
+}
+
+function SuspendModal({ user, onClose }: SuspendModalProps) {
+  const [days, setDays]     = useState(7)
+  const [reason, setReason] = useState('')
+  const [error, setError]   = useState('')
+  const suspendUser = useSuspendUser()
+
+  const handleSubmit = async () => {
+    setError('')
+    if (days < 1 || days > 365) {
+      setError('정지 기간은 1~365일 사이여야 합니다.')
+      return
+    }
+    if (!reason.trim()) {
+      setError('사유를 입력해주세요.')
+      return
+    }
+    try {
+      await suspendUser.mutateAsync({ id: user.id, data: { days, reason: reason.trim() } as SuspendUserRequest })
+      onClose()
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      setError(msg ?? '징계 처리에 실패했습니다.')
+    }
+  }
+
+  return (
+    <Modal open onClose={onClose} title="계정 징계" size="sm">
+      <div className="space-y-4">
+        <div>
+          <p className="text-xs text-neutral-500 mb-1">대상 회원</p>
+          <p className="text-sm font-semibold text-neutral-900">{user.nickname}</p>
+          <p className="text-xs text-neutral-400">{user.email}</p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-neutral-700 mb-1.5">
+            정지 기간 (일)
+          </label>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min={1}
+              max={365}
+              value={days}
+              onChange={(e) => setDays(Number(e.target.value))}
+              className="w-24 h-9 px-3 text-sm border border-neutral-300 rounded-lg
+                focus:outline-none focus:ring-2 focus:ring-primary-400"
+            />
+            <span className="text-sm text-neutral-500">일 동안 로그인 불가</span>
+          </div>
+          <div className="flex gap-1.5 mt-2 flex-wrap">
+            {[1, 3, 7, 14, 30].map((d) => (
+              <button
+                key={d}
+                type="button"
+                onClick={() => setDays(d)}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
+                  days === d
+                    ? 'bg-amber-500 text-white border-amber-500'
+                    : 'bg-white text-neutral-600 border-neutral-200 hover:border-amber-400'
+                }`}
+              >
+                {d}일
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-neutral-700 mb-1.5">
+            징계 사유
+            <span className="ml-1 text-xs text-neutral-400 font-normal">(이메일로 발송됩니다)</span>
+          </label>
+          <textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            maxLength={500}
+            rows={4}
+            placeholder="징계 사유를 입력하세요."
+            className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg resize-none
+              focus:outline-none focus:ring-2 focus:ring-primary-400"
+          />
+          <p className="text-right text-xs text-neutral-400 mt-0.5">{reason.length}/500</p>
+        </div>
+
+        {error && <p className="text-sm text-red-600">{error}</p>}
+
+        <div className="flex gap-2 justify-end pt-1">
+          <Button variant="secondary" size="sm" onClick={onClose}>
+            취소
+          </Button>
+          <Button
+            size="sm"
+            onClick={handleSubmit}
+            isLoading={suspendUser.isPending}
+            className="bg-amber-600 hover:bg-amber-700"
+          >
+            징계 적용
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+// ── 계정 삭제 확인 모달 ────────────────────────────────────
+
+interface DeleteModalProps {
+  user: AdminUser
+  onClose: () => void
+}
+
+function DeleteModal({ user, onClose }: DeleteModalProps) {
+  const [input, setInput] = useState('')
+  const [error, setError] = useState('')
+  const deleteUser = useDeleteUser()
+
+  const handleDelete = async () => {
+    setError('')
+    if (input !== user.nickname) {
+      setError('닉네임이 일치하지 않습니다.')
+      return
+    }
+    try {
+      await deleteUser.mutateAsync(user.id)
+      onClose()
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      setError(msg ?? '삭제에 실패했습니다. 연관 데이터가 있을 수 있습니다.')
+    }
+  }
+
+  return (
+    <Modal open onClose={onClose} title="계정 삭제" size="sm">
+      <div className="space-y-4">
+        <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-sm font-semibold text-red-700 mb-1">이 작업은 되돌릴 수 없습니다.</p>
+          <p className="text-xs text-red-600">계정과 모든 관련 데이터가 DB에서 영구 삭제됩니다.</p>
+        </div>
+
+        <div>
+          <p className="text-xs text-neutral-500 mb-1">삭제할 계정</p>
+          <p className="text-sm font-semibold text-neutral-900">{user.nickname}</p>
+          <p className="text-xs text-neutral-400">{user.email}</p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-neutral-700 mb-1.5">
+            확인을 위해 닉네임{' '}
+            <span className="font-bold text-neutral-900">"{user.nickname}"</span>을 입력하세요.
+          </label>
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder={user.nickname}
+            className="w-full h-9 px-3 text-sm border border-neutral-300 rounded-lg
+              focus:outline-none focus:ring-2 focus:ring-red-400"
+          />
+        </div>
+
+        {error && <p className="text-sm text-red-600">{error}</p>}
+
+        <div className="flex gap-2 justify-end pt-1">
+          <Button variant="secondary" size="sm" onClick={onClose}>
+            취소
+          </Button>
+          <button
+            onClick={handleDelete}
+            disabled={input !== user.nickname || deleteUser.isPending}
+            className="inline-flex items-center justify-center h-8 px-3 text-sm font-medium
+              rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors
+              disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {deleteUser.isPending ? '삭제 중...' : '영구 삭제'}
+          </button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+// ── 활성여부 셀 ────────────────────────────────────────────────
+
+function ActiveStatusCell({ user }: { user: AdminUser }) {
+  const suspended = isSuspended(user)
+
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap">
+      <Badge variant={user.isActive ? 'success' : 'neutral'} size="sm">
+        {user.isActive ? '활성' : '비활성'}
+      </Badge>
+      {suspended && (
+        <div className="relative group">
+          <Badge variant="warning" size="sm" className="cursor-default">정지중</Badge>
+          <div
+            className="absolute left-0 bottom-full mb-1.5 hidden group-hover:block
+              bg-neutral-800 text-white text-xs rounded-lg p-3 w-52 z-20 shadow-xl pointer-events-none"
+          >
+            <p className="font-medium mb-1">
+              ~{new Date(user.suspendedUntil!).toLocaleDateString('ko-KR', {
+                year: 'numeric', month: 'long', day: 'numeric',
+              })}
+            </p>
+            <p className="text-neutral-300 leading-relaxed whitespace-pre-wrap break-words">
+              {user.suspendReason}
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── 메인 페이지 ────────────────────────────────────────────────
 
 export default function AdminUserPage() {
-  // 검색 입력 (즉시 반영하지 않고 검색 버튼으로)
   const [keyword, setKeyword]         = useState('')
   const [roleFilter, setRoleFilter]   = useState<AdminUserRole | ''>('')
   const [activeFilter, setActiveFilter] = useState<'' | 'true' | 'false'>('')
   const [page, setPage]               = useState(0)
 
-  // 실제 쿼리에 사용되는 confirmed params
   const [queryParams, setQueryParams] = useState({
     keyword: '',
     role: undefined as AdminUserRole | undefined,
@@ -136,8 +361,12 @@ export default function AdminUserPage() {
     size: 20,
   })
 
-  const [roleModalUser, setRoleModalUser] = useState<AdminUser | null>(null)
+  const [roleModalUser, setRoleModalUser]       = useState<AdminUser | null>(null)
+  const [suspendModalUser, setSuspendModalUser] = useState<AdminUser | null>(null)
+  const [deleteModalUser, setDeleteModalUser]   = useState<AdminUser | null>(null)
+
   const deactivate = useDeactivateUser()
+  const activate   = useActivateUser()
 
   const { data, isLoading } = useAdminUsers({ ...queryParams, page })
 
@@ -155,6 +384,11 @@ export default function AdminUserPage() {
   const handleDeactivate = async (user: AdminUser) => {
     if (!confirm(`"${user.nickname}" 계정을 비활성화하시겠습니까?`)) return
     await deactivate.mutateAsync(user.id)
+  }
+
+  const handleActivate = async (user: AdminUser) => {
+    if (!confirm(`"${user.nickname}" 계정을 활성화하시겠습니까?`)) return
+    await activate.mutateAsync(user.id)
   }
 
   return (
@@ -213,7 +447,7 @@ export default function AdminUserPage() {
         </div>
       ) : (
         <>
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="bg-white rounded-xl shadow-sm">
             <table className="w-full text-sm">
               <thead className="bg-neutral-50 border-b border-neutral-200">
                 <tr>
@@ -265,12 +499,10 @@ export default function AdminUserPage() {
                         {formatDate(user.createdAt)}
                       </td>
                       <td className="px-4 py-3">
-                        <Badge variant={user.isActive ? 'success' : 'neutral'} size="sm">
-                          {user.isActive ? '활성' : '비활성'}
-                        </Badge>
+                        <ActiveStatusCell user={user} />
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-1 justify-end">
+                        <div className="flex items-center gap-1 justify-end flex-wrap">
                           <button
                             onClick={() => setRoleModalUser(user)}
                             className="inline-flex items-center gap-1 h-7 px-2.5 text-xs font-medium
@@ -281,6 +513,16 @@ export default function AdminUserPage() {
                           </button>
                           {user.isActive && (
                             <button
+                              onClick={() => setSuspendModalUser(user)}
+                              className="inline-flex items-center gap-1 h-7 px-2.5 text-xs font-medium
+                                rounded-md border border-amber-300 bg-white text-amber-700
+                                hover:bg-amber-50 transition-colors whitespace-nowrap"
+                            >
+                              징계
+                            </button>
+                          )}
+                          {user.isActive ? (
+                            <button
                               onClick={() => handleDeactivate(user)}
                               disabled={deactivate.isPending}
                               className="inline-flex items-center gap-1 h-7 px-2.5 text-xs font-medium
@@ -289,7 +531,25 @@ export default function AdminUserPage() {
                             >
                               비활성화
                             </button>
+                          ) : (
+                            <button
+                              onClick={() => handleActivate(user)}
+                              disabled={activate.isPending}
+                              className="inline-flex items-center gap-1 h-7 px-2.5 text-xs font-medium
+                                rounded-md border border-green-200 bg-white text-green-700
+                                hover:bg-green-50 transition-colors whitespace-nowrap disabled:opacity-40"
+                            >
+                              활성화
+                            </button>
                           )}
+                          <button
+                            onClick={() => setDeleteModalUser(user)}
+                            className="inline-flex items-center gap-1 h-7 px-2.5 text-xs font-medium
+                              rounded-md bg-red-600 text-white
+                              hover:bg-red-700 transition-colors whitespace-nowrap"
+                          >
+                            삭제
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -311,6 +571,12 @@ export default function AdminUserPage() {
 
       {roleModalUser && (
         <RoleChangeModal user={roleModalUser} onClose={() => setRoleModalUser(null)} />
+      )}
+      {suspendModalUser && (
+        <SuspendModal user={suspendModalUser} onClose={() => setSuspendModalUser(null)} />
+      )}
+      {deleteModalUser && (
+        <DeleteModal user={deleteModalUser} onClose={() => setDeleteModalUser(null)} />
       )}
     </div>
   )

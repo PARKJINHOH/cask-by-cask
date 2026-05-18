@@ -71,11 +71,18 @@ export interface AdminUser {
   distilleryId: number | null
   distilleryNameKo: string | null
   createdAt: string
+  suspendedUntil: string | null
+  suspendReason: string | null
 }
 
 export interface ChangeRoleRequest {
   role: AdminUserRole
   distilleryId?: number | null
+}
+
+export interface SuspendUserRequest {
+  days: number
+  reason: string
 }
 
 export interface AdminUserSearchParams {

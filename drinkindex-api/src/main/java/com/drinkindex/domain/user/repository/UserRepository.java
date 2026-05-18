@@ -38,4 +38,6 @@ public interface UserRepository extends JpaRepository<User, Long>, UserQueryRepo
     default Optional<User> findByNicknameAndNotDeleted(String nickname) {
         return findByNickname(nickname);
     }
+
+    List<User> findAllByEmailSubscribedTrue();
 }
