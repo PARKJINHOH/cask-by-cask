@@ -65,6 +65,13 @@ public class User extends BaseTimeEntity {
 
     @Builder.Default
     @Column(nullable = false)
+    private Boolean nicknameFixed = false;
+
+    @Column
+    private LocalDateTime nicknameChangedAt;
+
+    @Builder.Default
+    @Column(nullable = false)
     private Integer maturingPower = 0;
 
     @Builder.Default
@@ -84,6 +91,11 @@ public class User extends BaseTimeEntity {
 
     public void updateNickname(String nickname) {
         this.nickname = nickname;
+        this.nicknameChangedAt = LocalDateTime.now();
+    }
+
+    public void fixNickname() {
+        this.nicknameFixed = true;
     }
 
     public void updatePassword(String encodedPassword) {

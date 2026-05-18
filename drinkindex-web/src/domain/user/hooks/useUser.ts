@@ -41,3 +41,20 @@ export function useDeleteMe() {
     },
   })
 }
+
+export function useResetPassword() {
+  return useMutation({
+    mutationFn: () => userApi.resetPassword(),
+  })
+}
+
+export function useFixNickname() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => userApi.fixNickname(),
+    onSuccess: (res) => {
+      const profile = res.data.data!
+      queryClient.setQueryData(['me'], profile)
+    },
+  })
+}

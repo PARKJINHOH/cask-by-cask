@@ -14,4 +14,10 @@ export const userApi = {
 
   deleteMe: () =>
     axiosInstance.delete<ApiResponse<null>>('/api/users/me'),
+
+  resetPassword: () =>
+    axiosInstance.post<ApiResponse<null>>('/api/users/me/reset-password'),
+
+  fixNickname: () =>
+    axiosInstance.post<ApiResponse<UserProfile>>('/api/users/me/fix-nickname'),
 }

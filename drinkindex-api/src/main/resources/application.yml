@@ -39,3 +39,4 @@ app:
   email:
     provider: smtp
     from: ${EMAIL_FROM:noreply@drinkindex.com}
+    verification-required: true

@@ -1,6 +1,8 @@
 package com.drinkindex.domain.score.controller;
 
+import com.drinkindex.domain.score.dto.LevelConfigResponse;
 import com.drinkindex.domain.score.dto.ScoreHistoryResponse;
+import com.drinkindex.domain.score.repository.MemberLevelConfigRepository;
 import com.drinkindex.domain.score.repository.ScoreHistoryRepository;
 import com.drinkindex.global.auth.security.CustomUserDetails;
 import com.drinkindex.global.response.ApiResponse;
@@ -16,12 +18,16 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 @RestController
 @RequestMapping("/api/score-history")
 @RequiredArgsConstructor
 public class ScoreHistoryController {
 
     private final ScoreHistoryRepository scoreHistoryRepository;
+    private final MemberLevelConfigRepository memberLevelConfigRepository;
 
     /**
      * 본인 점수 이력 조회.
@@ -57,5 +63,16 @@ public class ScoreHistoryController {
         };
 
         return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    @GetMapping("/level-config")
+    @Transactional(readOnly = true)
+    public ResponseEntity<ApiResponse<List<LevelConfigResponse>>> getLevelConfigs() {
+        List<LevelConfigResponse> levels = memberLevelConfigRepository
+                .findAllByOrderByLevelAsc()
+                .stream()
+                .map(LevelConfigResponse::from)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(ApiResponse.success(levels));
     }
 }

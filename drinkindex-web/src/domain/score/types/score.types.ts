@@ -11,9 +11,11 @@ export interface ScoreHistoryItem {
 
 // 레벨 구간 — member_level_config 테이블 기본값과 동기화
 export interface LevelInfo {
+  id?: number
   level: number
   name: string
   minScore: number
+  isActive?: boolean
 }
 
 export const LEVELS: LevelInfo[] = [

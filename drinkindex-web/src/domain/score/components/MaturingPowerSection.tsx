@@ -4,15 +4,16 @@ import LevelIcon from '@/shared/components/icons/LevelIcon'
 import Spinner from '@/shared/components/Spinner'
 import EmptyState from '@/shared/components/EmptyState'
 import { formatDate } from '@/shared/utils/format'
-import { useInfiniteScoreHistory } from '../hooks/useScoreHistory'
+import { useInfiniteScoreHistory, useLevelConfigs } from '../hooks/useScoreHistory'
 import {
   MAX_LEVEL,
   getLevelInfo,
   getNextLevelInfo,
   calcProgress,
   ACTION_ICONS,
+  LEVELS,
 } from '../types/score.types'
-import type { ScoreHistoryFilterType } from '../types/score.types'
+import type { ScoreHistoryFilterType, LevelInfo } from '../types/score.types'
 import { useState } from 'react'
 
 // ── 진행 바 컴포넌트 ──────────────────────────────────────────
@@ -89,6 +90,59 @@ function LevelCard({ profile }: { profile: UserProfile }) {
             </p>
           </>
         )}
+      </div>
+    </div>
+  )
+}
+
+// ── 레벨 맵 카드 ─────────────────────────────────────────────
+
+function LevelMapCard({ maturingPower, currentLevel }: { maturingPower: number; currentLevel: number }) {
+  const { data: levels } = useLevelConfigs()
+  const displayLevels: LevelInfo[] = levels && levels.length > 0 ? levels : LEVELS
+
+  return (
+    <div className="bg-white rounded-2xl px-4 py-4 shadow-sm border border-neutral-100">
+      <p className="text-xs font-semibold text-neutral-500 mb-3">레벨 현황</p>
+      <div className="overflow-x-auto -mx-1 px-1">
+        <div className="flex gap-2 min-w-max pb-1">
+          {displayLevels.map((lv) => {
+            const isPast    = lv.level < currentLevel
+            const isCurrent = lv.level === currentLevel
+            const isFuture  = lv.level > currentLevel
+
+            return (
+              <div
+                key={lv.level}
+                className={[
+                  'flex flex-col items-center gap-1 px-2.5 py-2 rounded-xl border transition-colors flex-shrink-0',
+                  isCurrent
+                    ? 'bg-amber-50 border-amber-400 shadow-sm'
+                    : isPast
+                    ? 'bg-neutral-50 border-neutral-200'
+                    : 'bg-white border-neutral-100',
+                ].join(' ')}
+              >
+                <LevelIcon
+                  level={lv.level}
+                  size={isCurrent ? 28 : 22}
+                />
+                <span className={[
+                  'text-[10px] font-bold leading-none',
+                  isCurrent ? 'text-amber-700' : isPast ? 'text-neutral-500' : 'text-neutral-300',
+                ].join(' ')}>
+                  {lv.name}
+                </span>
+                <span className={[
+                  'text-[9px] leading-none tabular-nums',
+                  isCurrent ? 'text-amber-500' : isFuture ? 'text-neutral-300' : 'text-neutral-400',
+                ].join(' ')}>
+                  {lv.minScore.toLocaleString()}
+                </span>
+              </div>
+            )
+          })}
+        </div>
       </div>
     </div>
   )
@@ -276,9 +330,13 @@ function ScoreHistoryList() {
 // ── 메인 export ───────────────────────────────────────────────
 
 export default function MaturingPowerSection({ profile }: { profile: UserProfile }) {
+  const currentLevel  = profile.currentLevel ?? 1
+  const maturingPower = profile.maturingPower ?? 0
+
   return (
     <div className="space-y-4">
       <LevelCard profile={profile} />
+      <LevelMapCard maturingPower={maturingPower} currentLevel={currentLevel} />
       <AttendanceCard profile={profile} />
       <ScoreHistoryList />
     </div>

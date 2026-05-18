@@ -7,6 +7,8 @@ export interface UserProfile {
   maturingPower?: number
   currentLevel?: number
   consecutiveAttendance?: number
+  nicknameFixed?: boolean
+  nicknameChangedAt?: string | null
 }
 
 export interface UpdateNicknameRequest {

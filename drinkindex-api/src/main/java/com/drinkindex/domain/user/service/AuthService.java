@@ -12,6 +12,7 @@ import com.drinkindex.global.email.EmailVerificationService;
 import com.drinkindex.global.exception.CustomException;
 import com.drinkindex.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +30,9 @@ public class AuthService {
     private final AttendanceService attendanceService;
     private final EmailVerificationService emailVerificationService;
 
+    @Value("${app.email.verification-required:true}")
+    private boolean emailVerificationRequired;
+
     @Transactional
     public UserResponse signup(SignupRequest request) {
         if (userRepository.existsByEmail(request.email())) {
@@ -42,9 +46,12 @@ public class AuthService {
                 .password(passwordEncoder.encode(request.password()))
                 .nickname(request.nickname())
                 .role(Role.MEMBER)
+                .emailVerified(!emailVerificationRequired)
                 .build();
         userRepository.save(user);
-        emailVerificationService.sendCode(request.email());
+        if (emailVerificationRequired) {
+            emailVerificationService.sendCode(request.email());
+        }
         return UserResponse.from(user);
     }
 
@@ -57,7 +64,7 @@ public class AuthService {
             throw new CustomException(ErrorCode.INVALID_PASSWORD);
         }
 
-        if (!Boolean.TRUE.equals(user.getEmailVerified())) {
+        if (emailVerificationRequired && !Boolean.TRUE.equals(user.getEmailVerified())) {
             throw new CustomException(ErrorCode.EMAIL_NOT_VERIFIED);
         }
 

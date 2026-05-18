@@ -22,7 +22,11 @@ public record UserResponse(
         @Schema(description = "현재 레벨 (1~11)")
         Integer currentLevel,
         @Schema(description = "현재 연속 출석 일수")
-        Integer consecutiveAttendance
+        Integer consecutiveAttendance,
+        @Schema(description = "고정닉 여부")
+        Boolean nicknameFixed,
+        @Schema(description = "마지막 닉네임 변경 일시 (null이면 변경 이력 없음)")
+        LocalDateTime nicknameChangedAt
 ) {
     public static UserResponse from(User user) {
         return new UserResponse(
@@ -33,7 +37,9 @@ public record UserResponse(
                 user.getCreatedAt(),
                 user.getMaturingPower(),
                 user.getCurrentLevel(),
-                user.getConsecutiveAttendance()
+                user.getConsecutiveAttendance(),
+                user.getEmailVerified(),
+                user.getNicknameChangedAt()
         );
     }
 }

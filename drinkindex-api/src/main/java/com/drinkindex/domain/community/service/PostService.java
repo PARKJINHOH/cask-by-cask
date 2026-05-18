@@ -253,6 +253,9 @@ public class PostService {
     @Transactional
     public void likePost(Long postId, boolean isLike, Long userId) {
         Post post = findPost(postId);
+        if (post.getAuthor().getId().equals(userId)) {
+            throw new CustomException(ErrorCode.SELF_LIKE_NOT_ALLOWED);
+        }
         User user = findUser(userId);
 
         boolean[] newLikeAdded = {false};

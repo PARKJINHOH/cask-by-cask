@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { useMe } from '@/domain/user/hooks/useUser'
 import MyReviewList from '@/domain/review/components/MyReviewList'
@@ -9,8 +10,8 @@ import LevelIcon from '@/shared/components/icons/LevelIcon'
 
 type Tab = 'maturing' | 'reviews' | 'wishlist' | 'settings'
 
-const TABS: { value: Tab; label: string }[] = [
-  { value: 'maturing',  label: '숙성력' },
+const ALL_TABS: { value: Tab; label: string; adminHidden?: boolean }[] = [
+  { value: 'maturing',  label: '숙성력',   adminHidden: true },
   { value: 'reviews',   label: '내 리뷰' },
   { value: 'wishlist',  label: '즐겨찾기' },
   { value: 'settings',  label: '계정 설정' },
@@ -25,14 +26,25 @@ const ROLE_LABEL: Record<string, string> = {
 export default function MyPage() {
   const authUser = useAuthStore((s) => s.user)
   const { data: profile } = useMe()
-  const [tab, setTab] = useState<Tab>('maturing')
+  const queryClient = useQueryClient()
 
-  const nickname     = profile?.nickname     ?? authUser?.nickname  ?? ''
-  const email        = profile?.email        ?? authUser?.email     ?? ''
-  const role         = profile?.role         ?? authUser?.role      ?? ''
-  const createdAt    = profile?.createdAt
-  const currentLevel = profile?.currentLevel ?? 1
+  const role = profile?.role ?? authUser?.role ?? ''
+  const isAdmin = role === 'ADMIN'
+
+  const tabs = ALL_TABS.filter((t) => !(isAdmin && t.adminHidden))
+  const [tab, setTab] = useState<Tab>(() => (isAdmin ? 'reviews' : 'maturing'))
+
+  useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: ['me'] })
+    queryClient.invalidateQueries({ queryKey: ['scoreHistory', 'me'] })
+  }, [queryClient])
+
+  const nickname      = profile?.nickname     ?? authUser?.nickname  ?? ''
+  const email         = profile?.email        ?? authUser?.email     ?? ''
+  const createdAt     = profile?.createdAt
+  const currentLevel  = profile?.currentLevel ?? 1
   const maturingPower = profile?.maturingPower ?? 0
+  const isFixed       = profile?.nicknameFixed === true
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
@@ -40,9 +52,16 @@ export default function MyPage() {
       <div className="bg-white rounded-2xl p-6 shadow-sm flex items-center gap-5">
         {/* 레벨 아이콘 + 아바타 */}
         <div className="relative flex-shrink-0">
-          <div className="w-14 h-14 rounded-full bg-primary-100 flex items-center justify-center
-            text-xl font-bold text-primary-600 select-none">
-            {nickname ? nickname[0].toUpperCase() : '?'}
+          {/* 고정닉: amber gradient 테두리 래퍼 */}
+          <div className={isFixed
+            ? 'p-[3px] rounded-full bg-gradient-to-br from-amber-400 via-orange-400 to-amber-600'
+            : ''
+          }>
+            <div className={`w-14 h-14 rounded-full bg-primary-100 flex items-center justify-center
+              text-xl font-bold text-primary-600 select-none
+              ${isFixed ? 'ring-2 ring-white' : ''}`}>
+              {nickname ? nickname[0].toUpperCase() : '?'}
+            </div>
           </div>
           {role === 'MEMBER' && (
             <div className="absolute -bottom-1 -right-1">
@@ -52,7 +71,15 @@ export default function MyPage() {
         </div>
 
         <div className="min-w-0 flex-1">
-          <h1 className="text-lg font-bold text-neutral-900 truncate">{nickname}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg font-bold text-neutral-900 truncate">{nickname}</h1>
+            {isFixed && (
+              <span className="flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-full
+                text-xs font-bold bg-gradient-to-r from-amber-400 to-orange-500 text-white">
+                고정닉
+              </span>
+            )}
+          </div>
           <p className="text-sm text-neutral-400 truncate">{email}</p>
           <div className="flex items-center gap-2 mt-1.5 flex-wrap">
             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs
@@ -75,7 +102,7 @@ export default function MyPage() {
 
       {/* Tab bar */}
       <div className="flex gap-1 border-b border-neutral-200 overflow-x-auto">
-        {TABS.map(({ value, label }) => (
+        {tabs.map(({ value, label }) => (
           <button
             key={value}
             onClick={() => setTab(value)}

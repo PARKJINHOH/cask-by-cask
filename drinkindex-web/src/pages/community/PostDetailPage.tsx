@@ -182,7 +182,7 @@ export default function PostDetailPage() {
             <div className="flex items-center gap-3 text-sm text-neutral-500">
               {post.authorRole ? (
                 <UserBadge
-                  user={{ nickname: post.authorNickname, role: post.authorRole as UserRole, currentLevel: post.authorLevel }}
+                  user={{ nickname: post.authorNickname, role: post.authorRole as UserRole, currentLevel: post.authorLevel, maturingPower: post.authorMaturingPower ?? undefined, nicknameFixed: post.authorNicknameFixed }}
                   size="sm"
                 />
               ) : (
@@ -251,12 +251,19 @@ export default function PostDetailPage() {
         {/* 추천 / 차단 */}
         {!post.isBlocked && (
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            {/* 추천 */}
+            {/* 추천 — 본인 게시글(익명 포함) 비활성화 */}
             <button
-              onClick={() => isLoggedIn ? likeMutation.mutate(true) : navigate('/login')}
+              onClick={() => {
+                if (isMyPost) return
+                isLoggedIn ? likeMutation.mutate(true) : navigate('/login')
+              }}
+              disabled={isMyPost}
+              title={isMyPost ? t('post.selfLikeDisabled') : undefined}
               className={[
                 'flex items-center gap-1.5 px-5 py-2 rounded-full border text-sm font-medium transition-colors',
-                post.isLiked === true
+                isMyPost
+                  ? 'border-neutral-100 bg-neutral-50 text-neutral-300 cursor-not-allowed'
+                  : post.isLiked === true
                   ? 'border-primary-500 bg-primary-50 text-primary-600'
                   : 'border-neutral-200 text-neutral-600 hover:border-primary-300 hover:bg-primary-50',
               ].join(' ')}

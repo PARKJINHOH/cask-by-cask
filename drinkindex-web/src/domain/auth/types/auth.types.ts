@@ -8,6 +8,7 @@ export interface UserInfo {
   currentLevel?: number
   maturingPower?: number
   distilleryLogoUrl?: string
+  nicknameFixed?: boolean
 }
 
 export interface TokenResponse {

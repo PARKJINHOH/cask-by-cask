@@ -227,7 +227,21 @@
       "label": "New Nickname",
       "hint": "2–20 characters, no spaces",
       "success": "Nickname updated successfully.",
-      "save": "Save"
+      "save": "Save",
+      "changeAvailableOn": "Available from {{date}}",
+      "changeAvailableDays": "Available in {{days}} days",
+      "fixedBadge": "Fixed"
+    },
+    "fixNickname": {
+      "section": "Fixed Nickname",
+      "desc": "Once set as a fixed nickname, it cannot be changed permanently. Please decide carefully.",
+      "currentNickname": "Current nickname",
+      "btn": "Set as Fixed Nickname",
+      "alreadyFixed": "This account already has a fixed nickname.",
+      "confirmTitle": "Set as Fixed Nickname?",
+      "confirmDesc": "Setting a fixed nickname will permanently lock \"{{nickname}}\". This action cannot be undone.",
+      "confirmBtn": "Confirm",
+      "success": "Your nickname has been fixed permanently."
     },
     "password": {
       "section": "Change Password",
@@ -236,7 +250,12 @@
       "confirm": "Confirm New Password",
       "hint": "At least 8 characters",
       "success": "Password updated successfully.",
-      "submit": "Change"
+      "submit": "Change",
+      "resetSection": "Temporary Password",
+      "resetDesc": "If you forgot your current password, we can send a temporary password to your registered email.",
+      "resetBtn": "Send Temporary Password",
+      "resetSuccess": "A temporary password has been sent to your email. Please check your inbox.",
+      "resetCooldown": "Please wait a moment before trying again. (1 minute cooldown)"
     },
     "danger": {
       "section": "Danger Zone",
@@ -349,6 +368,7 @@
   },
   "post": {
     "like": "Like",
+    "selfLikeDisabled": "You cannot like your own post.",
     "dislike": "Dislike",
     "scrap": "Save",
     "scrapped": "Saved",

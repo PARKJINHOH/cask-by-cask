@@ -19,9 +19,11 @@ public class PostDetailResponse {
     private final boolean isLocked;
     private final String contentSanitized; // null if LOCKED and not admin
     private final String authorNickname;
-    private final Long authorId;           // null if isAnonymous
-    private final String authorRole;       // null if isAnonymous
-    private final Integer authorLevel;     // null if isAnonymous
+    private final Long authorId;               // null if isAnonymous
+    private final String authorRole;           // null if isAnonymous
+    private final Integer authorLevel;         // null if isAnonymous
+    private final Integer authorMaturingPower; // null if isAnonymous
+    private final Boolean authorNicknameFixed; // null if isAnonymous
     private final long viewCount;
     private final int likeCount;
     private final int commentCount;
@@ -42,10 +44,12 @@ public class PostDetailResponse {
         this.title            = b.title;
         this.isLocked         = b.isLocked;
         this.contentSanitized = b.contentSanitized;
-        this.authorNickname   = b.authorNickname;
-        this.authorId         = b.authorId;
-        this.authorRole       = b.authorRole;
-        this.authorLevel      = b.authorLevel;
+        this.authorNickname      = b.authorNickname;
+        this.authorId            = b.authorId;
+        this.authorRole          = b.authorRole;
+        this.authorLevel         = b.authorLevel;
+        this.authorMaturingPower = b.authorMaturingPower;
+        this.authorNicknameFixed = b.authorNicknameFixed;
         this.viewCount        = b.viewCount;
         this.likeCount        = b.likeCount;
         this.commentCount     = b.commentCount;
@@ -73,6 +77,8 @@ public class PostDetailResponse {
                 .authorId(Boolean.TRUE.equals(post.getIsAnonymous()) ? null : post.getAuthor().getId())
                 .authorRole(Boolean.TRUE.equals(post.getIsAnonymous()) ? null : post.getAuthor().getRole().name())
                 .authorLevel(Boolean.TRUE.equals(post.getIsAnonymous()) ? null : post.getAuthor().getCurrentLevel())
+                .authorMaturingPower(Boolean.TRUE.equals(post.getIsAnonymous()) ? null : post.getAuthor().getMaturingPower())
+                .authorNicknameFixed(Boolean.TRUE.equals(post.getIsAnonymous()) ? null : post.getAuthor().getNicknameFixed())
                 .viewCount(post.getViewCount())
                 .likeCount(post.getLikeCount())
                 .commentCount(post.getCommentCount())
@@ -94,6 +100,8 @@ public class PostDetailResponse {
         private Long authorId;
         private String authorRole;
         private Integer authorLevel;
+        private Integer authorMaturingPower;
+        private Boolean authorNicknameFixed;
         private long viewCount;
         private int likeCount;
         private int commentCount;
@@ -117,6 +125,8 @@ public class PostDetailResponse {
         public Builder authorId(Long id)                  { this.authorId = id; return this; }
         public Builder authorRole(String r)               { this.authorRole = r; return this; }
         public Builder authorLevel(Integer l)             { this.authorLevel = l; return this; }
+        public Builder authorMaturingPower(Integer m)     { this.authorMaturingPower = m; return this; }
+        public Builder authorNicknameFixed(Boolean f)     { this.authorNicknameFixed = f; return this; }
         public Builder viewCount(long v)                  { this.viewCount = v; return this; }
         public Builder likeCount(int l)                   { this.likeCount = l; return this; }
         public Builder commentCount(int c)                { this.commentCount = c; return this; }

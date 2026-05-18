@@ -62,6 +62,20 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success());
     }
 
+    @PostMapping("/me/reset-password")
+    public ResponseEntity<ApiResponse<Void>> resetPassword(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        userService.resetTempPassword(userDetails.getUserId());
+        return ResponseEntity.ok(ApiResponse.success());
+    }
+
+    @PostMapping("/me/fix-nickname")
+    public ResponseEntity<ApiResponse<UserResponse>> fixNickname(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(
+                ApiResponse.success(userService.fixNickname(userDetails.getUserId())));
+    }
+
     @DeleteMapping("/me")
     public ResponseEntity<ApiResponse<Void>> deleteMe(
             @AuthenticationPrincipal CustomUserDetails userDetails) {

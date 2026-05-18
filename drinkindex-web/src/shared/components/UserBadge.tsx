@@ -20,6 +20,7 @@ export interface UserBadgeUser {
   currentLevel?: number
   maturingPower?: number
   distilleryLogoUrl?: string
+  nicknameFixed?: boolean | null
 }
 
 interface Props {
@@ -53,25 +54,42 @@ export default function UserBadge({
   const level = user.currentLevel ?? 1
   const levelName = getLevelName(level)
 
-  // 툴팁 텍스트
+  // 툴팁 텍스트 — ADMIN은 숙성력 미표시
   const tooltip =
     user.role === 'ADMIN'
       ? '관리자'
       : user.role === 'DISTILLERY'
         ? '증류소 담당자'
-        : `Lv.${level} ${levelName} · 숙성력 ${user.maturingPower ?? 0}`
+        : `Lv.${level} ${levelName} · 숙성력 ${(user.maturingPower ?? 0).toLocaleString()}`
+
+  const isFixed = Boolean(user.nicknameFixed)
 
   return (
     <span
       className={`group relative inline-flex items-center gap-1 ${className}`}
       title={tooltip}
     >
-      {/* 아이콘 */}
-      {user.role === 'ADMIN' && <AdminIcon size={iconSize} />}
-      {user.role === 'DISTILLERY' && (
-        <DistilleryIcon logoUrl={user.distilleryLogoUrl} size={iconSize} />
+      {/* 아이콘 — 고정닉이면 amber gradient ring */}
+      {isFixed ? (
+        <span className="p-[2px] rounded-full inline-flex items-center justify-center
+          bg-gradient-to-br from-amber-400 via-orange-400 to-amber-600 flex-shrink-0">
+          <span className="rounded-full bg-white p-[1px] inline-flex items-center justify-center">
+            {user.role === 'ADMIN' && <AdminIcon size={iconSize} />}
+            {user.role === 'DISTILLERY' && (
+              <DistilleryIcon logoUrl={user.distilleryLogoUrl} size={iconSize} />
+            )}
+            {user.role === 'MEMBER' && <LevelIcon level={level} size={iconSize} />}
+          </span>
+        </span>
+      ) : (
+        <>
+          {user.role === 'ADMIN' && <AdminIcon size={iconSize} />}
+          {user.role === 'DISTILLERY' && (
+            <DistilleryIcon logoUrl={user.distilleryLogoUrl} size={iconSize} />
+          )}
+          {user.role === 'MEMBER' && <LevelIcon level={level} size={iconSize} />}
+        </>
       )}
-      {user.role === 'MEMBER' && <LevelIcon level={level} size={iconSize} />}
 
       {/* 닉네임 */}
       {showName && (
@@ -107,15 +125,17 @@ export default function UserBadge({
         </span>
       )}
 
-      {/* 커스텀 툴팁 (hover) */}
-      <span
-        className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5
-          px-2 py-1 text-xs bg-neutral-800 text-white rounded-lg whitespace-nowrap
-          opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50"
-        role="tooltip"
-      >
-        {tooltip}
-      </span>
+      {/* 커스텀 툴팁 (hover) — ADMIN은 숙성력 없으므로 미표시 */}
+      {user.role !== 'ADMIN' && (
+        <span
+          className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5
+            px-2 py-1 text-xs bg-neutral-800 text-white rounded-lg whitespace-nowrap
+            opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50"
+          role="tooltip"
+        >
+          {tooltip}
+        </span>
+      )}
     </span>
   )
 }

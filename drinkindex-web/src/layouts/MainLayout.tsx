@@ -3,6 +3,7 @@ import { Outlet, Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { useAuth } from '@/domain/auth/hooks/useAuth'
+import { useMe } from '@/domain/user/hooks/useUser'
 import { saveLang } from '@/shared/utils/i18n'
 import BottomNav from '@/shared/components/BottomNav'
 import Toast from '@/shared/components/Toast'
@@ -53,6 +54,8 @@ type GNBItem =
 
 function GNB() {
   const { t } = useTranslation()
+  const { user } = useAuthStore()
+  const isAdmin = user?.role === 'ADMIN'
   const [open, setOpen] = useState<string | null>(null)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -250,6 +253,8 @@ function UserDropdown() {
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const { data: profile } = useMe()
+  const isFixed = profile?.nicknameFixed === true
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -312,10 +317,19 @@ function UserDropdown() {
       >
         {/* Avatar with role icon overlay */}
         <span className="relative flex-shrink-0">
-          <span className="w-7 h-7 rounded-full bg-primary-100 text-primary-600 flex items-center
-            justify-center text-xs font-bold select-none">
-            {user?.nickname?.[0]?.toUpperCase() ?? '?'}
-          </span>
+          {isFixed ? (
+            <span className="p-[2px] rounded-full inline-flex bg-gradient-to-br from-amber-400 via-orange-400 to-amber-600">
+              <span className="w-7 h-7 rounded-full bg-primary-100 text-primary-600 flex items-center
+                justify-center text-xs font-bold select-none ring-[1.5px] ring-white">
+                {user?.nickname?.[0]?.toUpperCase() ?? '?'}
+              </span>
+            </span>
+          ) : (
+            <span className="w-7 h-7 rounded-full bg-primary-100 text-primary-600 flex items-center
+              justify-center text-xs font-bold select-none">
+              {user?.nickname?.[0]?.toUpperCase() ?? '?'}
+            </span>
+          )}
           {user?.role === 'MEMBER' && (
             <span className="absolute -bottom-1 -left-1 bg-white rounded-full ring-1 ring-white flex items-center justify-center">
               <LevelIcon level={user.currentLevel ?? 1} size={13} />

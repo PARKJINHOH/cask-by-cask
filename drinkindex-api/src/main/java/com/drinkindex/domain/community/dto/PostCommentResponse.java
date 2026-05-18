@@ -12,8 +12,10 @@ public class PostCommentResponse {
 
     private final Long id;
     private final String authorNickname;
-    private final String authorRole;   // null if anonymous or deleted
-    private final Integer authorLevel; // null if anonymous or deleted
+    private final String authorRole;           // null if anonymous or deleted
+    private final Integer authorLevel;         // null if anonymous or deleted
+    private final Integer authorMaturingPower; // null if anonymous or deleted
+    private final Boolean authorNicknameFixed; // null if anonymous or deleted
     private final String content;
     private final String mentionedUserNickname;
     private final List<EmojiReactionSummary> emojiReactions;

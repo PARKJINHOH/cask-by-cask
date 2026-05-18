@@ -1,6 +1,6 @@
 import axiosInstance from '@/shared/api/axiosInstance'
 import type { ApiResponse, PageResponse } from '@/shared/types/common.types'
-import type { ScoreHistoryFilterType, ScoreHistoryItem } from '../types/score.types'
+import type { ScoreHistoryFilterType, ScoreHistoryItem, LevelInfo } from '../types/score.types'
 
 export const scoreApi = {
   getMyHistory: (params: {
@@ -15,4 +15,7 @@ export const scoreApi = {
       `/api/score-history/me?${query}`,
     )
   },
+
+  getLevelConfigs: () =>
+    axiosInstance.get<ApiResponse<LevelInfo[]>>('/api/score-history/level-config'),
 }

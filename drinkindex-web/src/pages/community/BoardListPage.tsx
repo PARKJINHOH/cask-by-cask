@@ -254,7 +254,7 @@ export default function BoardListPage({ boardType, title }: Props) {
                     <td className="px-4 py-3">
                       {post.authorRole ? (
                         <UserBadge
-                          user={{ nickname: post.authorNickname, role: post.authorRole as UserRole, currentLevel: post.authorLevel }}
+                          user={{ nickname: post.authorNickname, role: post.authorRole as UserRole, currentLevel: post.authorLevel, maturingPower: post.authorMaturingPower ?? undefined, nicknameFixed: post.authorNicknameFixed }}
                           size="sm"
                         />
                       ) : (
@@ -302,7 +302,7 @@ export default function BoardListPage({ boardType, title }: Props) {
                 <div className="flex items-center gap-3 mt-1.5 text-xs text-neutral-400">
                   {post.authorRole ? (
                     <UserBadge
-                      user={{ nickname: post.authorNickname, role: post.authorRole as UserRole, currentLevel: post.authorLevel }}
+                      user={{ nickname: post.authorNickname, role: post.authorRole as UserRole, currentLevel: post.authorLevel, maturingPower: post.authorMaturingPower ?? undefined, nicknameFixed: post.authorNicknameFixed }}
                       size="sm"
                     />
                   ) : (
