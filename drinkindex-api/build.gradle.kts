@@ -62,6 +62,9 @@ dependencies {
     // HTML Sanitizer — XSS 방어 (공지사항 TipTap 콘텐츠 서버 측 재검증)
     implementation("org.jsoup:jsoup:1.17.2")
 
+    // SQL 로깅 (local: 파라미터 인라인 + 유저 ID)
+    implementation("com.github.gavlyukovskiy:datasource-proxy-spring-boot-starter:1.10.0")
+
     // Swagger / OpenAPI
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.3")
 
