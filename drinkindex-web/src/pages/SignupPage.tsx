@@ -14,17 +14,24 @@ import type { ApiResponse } from '@/shared/types/common.types'
 type CheckStatus = 'idle' | 'checking' | 'available' | 'taken'
 
 // ── Schema ─────────────────────────────────────────────────
+const SPECIAL_CHARS = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/
+const PASSWORD_CHARS = /^[a-zA-Z\d!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]+$/
+
 const schema = z
   .object({
     email: z.string().email('올바른 이메일 형식이 아닙니다.'),
     nickname: z
       .string()
-      .min(2,   '닉네임은 2자 이상이어야 합니다.')
-      .max(100, '닉네임은 100자 이하여야 합니다.'),
+      .min(2, '닉네임은 2자 이상이어야 합니다.')
+      .max(8,  '닉네임은 8자 이하여야 합니다.')
+      .regex(/^[가-힣a-zA-Z]+$/, '닉네임은 한글 또는 영문만 사용 가능합니다.'),
     password: z
       .string()
-      .min(8,   '비밀번호는 8자 이상이어야 합니다.')
-      .max(100, '비밀번호는 100자 이하여야 합니다.'),
+      .min(7,   '비밀번호는 7자 이상이어야 합니다.')
+      .max(100, '비밀번호는 100자 이하여야 합니다.')
+      .regex(PASSWORD_CHARS, '비밀번호는 영문, 숫자, 특수문자만 사용 가능합니다.')
+      .regex(/\d/, '비밀번호에 숫자가 최소 1개 포함되어야 합니다.')
+      .regex(SPECIAL_CHARS, '비밀번호에 특수문자가 최소 1개 포함되어야 합니다.'),
     passwordConfirm: z.string().min(1, '비밀번호 확인을 입력해주세요.'),
   })
   .refine((d) => d.password === d.passwordConfirm, {
@@ -274,9 +281,9 @@ export default function SignupPage() {
             <div className="flex gap-2 items-start">
               <input
                 type="text"
-                placeholder="2~100자"
+                placeholder="2~8자, 한글 또는 영문"
                 autoComplete="nickname"
-                maxLength={100}
+                maxLength={8}
                 aria-invalid={!!errors.nickname}
                 className={`${inputBase} ${errors.nickname || nicknameStatus === 'taken' ? inputError : inputNormal}`}
                 {...nicknameReg}
@@ -296,7 +303,7 @@ export default function SignupPage() {
           <Input
             label="비밀번호"
             type="password"
-            placeholder="8자 이상 입력"
+            placeholder="영문+숫자+특수문자 포함, 7자 이상"
             autoComplete="new-password"
             maxLength={100}
             {...register('password')}

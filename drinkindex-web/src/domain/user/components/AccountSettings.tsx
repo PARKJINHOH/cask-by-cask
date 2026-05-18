@@ -18,8 +18,8 @@ const nicknameSchema = z.object({
   nickname: z
     .string()
     .min(2, '닉네임은 최소 2자 이상이어야 합니다.')
-    .max(20, '닉네임은 20자 이내로 입력해주세요.')
-    .regex(/^\S+$/, '닉네임에 공백을 포함할 수 없습니다.'),
+    .max(8,  '닉네임은 8자 이내로 입력해주세요.')
+    .regex(/^[가-힣a-zA-Z]+$/, '닉네임은 한글 또는 영문만 사용 가능합니다.'),
 })
 type NicknameForm = z.infer<typeof nicknameSchema>
 
@@ -96,7 +96,7 @@ function NicknameSection() {
         <Input
           label={t('mypage.nickname.label')}
           placeholder={t('mypage.nickname.hint')}
-          maxLength={20}
+          maxLength={8}
           error={errors.nickname?.message}
           disabled={isDisabled}
           {...register('nickname')}
@@ -218,13 +218,19 @@ function FixedNicknameSection() {
 
 // ── 비밀번호 폼 ─────────────────────────────────────────────
 
+const _SPECIAL = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/
+const _PW_CHARS = /^[a-zA-Z\d!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]+$/
+
 const passwordSchema = z
   .object({
     currentPassword: z.string().min(1, '현재 비밀번호를 입력해주세요.'),
     newPassword: z
       .string()
-      .min(8, '새 비밀번호는 최소 8자 이상이어야 합니다.')
-      .max(100, '비밀번호가 너무 깁니다.'),
+      .min(7,   '새 비밀번호는 최소 7자 이상이어야 합니다.')
+      .max(100, '비밀번호가 너무 깁니다.')
+      .regex(_PW_CHARS, '비밀번호는 영문, 숫자, 특수문자만 사용 가능합니다.')
+      .regex(/\d/, '비밀번호에 숫자가 최소 1개 포함되어야 합니다.')
+      .regex(_SPECIAL, '비밀번호에 특수문자가 최소 1개 포함되어야 합니다.'),
     confirmPassword: z.string().min(1, '비밀번호 확인을 입력해주세요.'),
   })
   .refine((v) => v.newPassword === v.confirmPassword, {
