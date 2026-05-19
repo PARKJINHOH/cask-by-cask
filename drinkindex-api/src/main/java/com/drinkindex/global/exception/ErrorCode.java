@@ -145,6 +145,13 @@ public enum ErrorCode {
     LEGAL_DOCUMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "LEGAL_001", "등록된 법적 문서를 찾을 수 없습니다."),
     CANNOT_DELETE_ACTIVE_LEGAL_DOCUMENT(HttpStatus.BAD_REQUEST, "LEGAL_002", "현재 활성화된 문서는 삭제할 수 없습니다. 다른 버전을 먼저 활성화해주세요."),
 
+    // Inquiry
+    INQUIRY_NOT_FOUND(HttpStatus.NOT_FOUND, "INQUIRY_001", "문의를 찾을 수 없습니다."),
+    INQUIRY_TOO_MANY_IMAGES(HttpStatus.BAD_REQUEST, "INQUIRY_002", "이미지는 최대 3개까지 첨부할 수 있습니다."),
+    INQUIRY_IMAGE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "INQUIRY_003", "이미지 파일 크기는 2MB를 초과할 수 없습니다."),
+    INQUIRY_TOTAL_IMAGE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "INQUIRY_004", "첨부 이미지 총 크기는 6MB를 초과할 수 없습니다."),
+    INQUIRY_INVALID_IMAGE_FORMAT(HttpStatus.BAD_REQUEST, "INQUIRY_005", "JPG, PNG, WEBP, GIF 형식의 이미지만 첨부할 수 있습니다."),
+
     // Banner
     BANNER_NOT_FOUND(HttpStatus.NOT_FOUND, "BANNER_001", "배너를 찾을 수 없습니다."),
     BANNER_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "BANNER_002", "배너 이미지를 찾을 수 없습니다."),

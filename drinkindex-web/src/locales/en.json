@@ -474,6 +474,46 @@
     "unread": "Unread",
     "selectThread": "Select a message."
   },
+  "inquiry": {
+    "title": "Contact Us",
+    "subtitle": "Have a question or feedback? We'll get back to you as soon as possible.",
+    "form": {
+      "category": "Inquiry Type",
+      "categoryPlaceholder": "Select inquiry type",
+      "title": "Subject",
+      "titlePlaceholder": "Enter subject",
+      "body": "Message",
+      "bodyPlaceholder": "Describe your inquiry in detail (max 5,000 characters)",
+      "senderName": "Name",
+      "senderNamePlaceholder": "Enter your name",
+      "senderEmail": "Email",
+      "senderEmailPlaceholder": "Email address for reply",
+      "senderEmailInvalid": "Please enter a valid email address.",
+      "images": "Attachments",
+      "imagesHint": "Up to 3 images, 2MB each (JPG, PNG, WEBP, GIF)",
+      "addImage": "Add Image",
+      "submit": "Submit",
+      "submitting": "Submitting...",
+      "success": "Your inquiry has been submitted. We'll get back to you soon.",
+      "error": "Failed to submit inquiry. Please try again."
+    },
+    "category": {
+      "BUG_REPORT": "Bug Report",
+      "FEATURE_REQUEST": "Feature Request",
+      "ACCOUNT_INQUIRY": "Account Inquiry",
+      "OTHER": "Other"
+    },
+    "status": {
+      "PENDING": "Pending",
+      "IN_PROGRESS": "In Progress",
+      "RESOLVED": "Resolved"
+    }
+  },
+  "footer": {
+    "inquiry": "Contact Us",
+    "terms": "Terms of Service",
+    "privacy": "Privacy Policy"
+  },
   "emailVerify": {
     "title": "Email Verification",
     "sentTo": "A verification code has been sent to {{email}}.",

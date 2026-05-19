@@ -53,6 +53,14 @@ const navEntries: NavEntry[] = [
   },
   {
     type: 'group',
+    groupLabel: '문의',
+    groupIcon: '💬',
+    items: [
+      { path: '/admin/inquiries', label: '문의 관리', exact: true },
+    ],
+  },
+  {
+    type: 'group',
     groupLabel: '커뮤니티',
     groupIcon: '💬',
     items: [

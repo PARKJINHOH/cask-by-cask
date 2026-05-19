@@ -53,6 +53,8 @@ import AdminLegalFormPage from '@/pages/admin/AdminLegalFormPage'
 import AdminEmailPage from '@/pages/admin/AdminEmailPage'
 import AdminEmailHistoryPage from '@/pages/admin/AdminEmailHistoryPage'
 import ReviewFormPage from '@/pages/ReviewFormPage'
+import InquiryPage from '@/pages/InquiryPage'
+import AdminInquiryPage from '@/pages/admin/AdminInquiryPage'
 
 export default function App() {
   return (
@@ -71,6 +73,7 @@ export default function App() {
             <Route path="verify-email" element={<EmailVerifyPage />} />
             <Route path="terms" element={<TermsPage />} />
             <Route path="privacy" element={<PrivacyPage />} />
+            <Route path="inquiry" element={<InquiryPage />} />
             {/* 커뮤니티 */}
             <Route path="community/notice" element={<NoticeBoardPage />} />
             <Route path="community/free" element={<FreeBoardPage />} />
@@ -124,6 +127,7 @@ export default function App() {
               <Route path="legal/:id/edit" element={<AdminLegalFormPage />} />
               <Route path="emails/send" element={<AdminEmailPage />} />
               <Route path="emails/history" element={<AdminEmailHistoryPage />} />
+              <Route path="inquiries" element={<AdminInquiryPage />} />
             </Route>
           </Route>
         </Routes>

@@ -474,6 +474,46 @@
     "unread": "미읽음",
     "selectThread": "쪽지를 선택하세요."
   },
+  "inquiry": {
+    "title": "문의하기",
+    "subtitle": "서비스 관련 문의사항을 남겨주세요. 빠른 시일 내에 답변드리겠습니다.",
+    "form": {
+      "category": "문의 유형",
+      "categoryPlaceholder": "문의 유형을 선택해주세요",
+      "title": "제목",
+      "titlePlaceholder": "문의 제목을 입력해주세요",
+      "body": "문의 내용",
+      "bodyPlaceholder": "문의 내용을 자세히 입력해주세요 (최대 5,000자)",
+      "senderName": "이름",
+      "senderNamePlaceholder": "이름을 입력해주세요",
+      "senderEmail": "이메일",
+      "senderEmailPlaceholder": "답변 받을 이메일 주소",
+      "senderEmailInvalid": "올바른 이메일 형식을 입력해주세요.",
+      "images": "첨부 이미지",
+      "imagesHint": "최대 3개, 개당 2MB (JPG, PNG, WEBP, GIF)",
+      "addImage": "이미지 추가",
+      "submit": "문의 제출",
+      "submitting": "제출 중...",
+      "success": "문의가 접수되었습니다. 빠른 시일 내에 답변드리겠습니다.",
+      "error": "문의 제출 중 오류가 발생했습니다. 다시 시도해주세요."
+    },
+    "category": {
+      "BUG_REPORT": "버그 신고",
+      "FEATURE_REQUEST": "기능 제안",
+      "ACCOUNT_INQUIRY": "계정 문의",
+      "OTHER": "기타"
+    },
+    "status": {
+      "PENDING": "대기 중",
+      "IN_PROGRESS": "처리 중",
+      "RESOLVED": "처리 완료"
+    }
+  },
+  "footer": {
+    "inquiry": "문의하기",
+    "terms": "이용약관",
+    "privacy": "개인정보 처리방침"
+  },
   "emailVerify": {
     "title": "이메일 인증",
     "sentTo": "{{email}}으로 인증 코드를 발송했습니다.",

@@ -35,6 +35,10 @@ export default defineConfig({
         target: 'http://localhost:8080',
         changeOrigin: true,
       },
+      '/api/inquiries/images': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
       '/api/score-history': {
         target: 'http://localhost:8080',
         changeOrigin: true,

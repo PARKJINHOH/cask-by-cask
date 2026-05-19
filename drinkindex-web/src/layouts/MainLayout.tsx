@@ -458,9 +458,11 @@ export default function MainLayout() {
           <p className="text-sm font-semibold text-primary-600">DrinkIndex</p>
           <p className="text-xs text-neutral-400">{t('app.tagline')}</p>
           <div className="flex items-center justify-center gap-4 text-xs text-neutral-400">
-            <a href="/terms" className="hover:text-neutral-600 hover:underline transition-colors">이용약관</a>
+            <a href="/terms" className="hover:text-neutral-600 hover:underline transition-colors">{t('footer.terms')}</a>
             <span>|</span>
-            <a href="/privacy" className="hover:text-neutral-700 font-medium hover:underline transition-colors">개인정보 처리방침</a>
+            <a href="/privacy" className="hover:text-neutral-700 font-medium hover:underline transition-colors">{t('footer.privacy')}</a>
+            <span>|</span>
+            <Link to="/inquiry" className="hover:text-neutral-700 font-medium hover:underline transition-colors">{t('footer.inquiry')}</Link>
           </div>
           <p className="text-xs text-neutral-400">© 2026 DrinkIndex.</p>
         </div>
