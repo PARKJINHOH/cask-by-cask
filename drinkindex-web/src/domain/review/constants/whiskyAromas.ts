@@ -221,6 +221,11 @@ export const WHISKY_AROMA_MAP = new Map<string, AromaItem>(
   WHISKY_AROMA_CATEGORIES.flatMap((c) => c.items).map((item) => [item.id, item]),
 )
 
+/** 모든 술 종류 아로마 ID → AromaItem 통합 맵 (ReviewItem 표시용) */
+export function buildAromaMap(categories: AromaCategory[]): Map<string, AromaItem> {
+  return new Map(categories.flatMap((c) => c.items).map((item) => [item.id, item]))
+}
+
 // ── 섹션별 아로마 노트 (선택 ID + 커스텀 텍스트) ──────────────────
 
 export interface AromaNotes {

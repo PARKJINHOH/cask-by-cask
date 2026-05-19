@@ -52,6 +52,7 @@ import AdminLegalListPage from '@/pages/admin/AdminLegalListPage'
 import AdminLegalFormPage from '@/pages/admin/AdminLegalFormPage'
 import AdminEmailPage from '@/pages/admin/AdminEmailPage'
 import AdminEmailHistoryPage from '@/pages/admin/AdminEmailHistoryPage'
+import ReviewFormPage from '@/pages/ReviewFormPage'
 
 export default function App() {
   return (
@@ -77,6 +78,8 @@ export default function App() {
             {/* 공개 읽기용 (비회원 접근 가능) */}
             <Route path="notifications" element={<NotificationsPage />} />
             <Route element={<PrivateRoute />}>
+              <Route path="spirits/:id/review/write" element={<ReviewFormPage />} />
+              <Route path="spirits/:id/review/:reviewId/edit" element={<ReviewFormPage />} />
               <Route path="community/:boardType/write" element={<PostFormPage />} />
               <Route path="community/:boardType/:id/edit" element={<PostFormPage />} />
               <Route path="messages" element={<MessagesPage />} />

@@ -1,38 +1,45 @@
-import { useEffect, useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useForm, Controller } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
-import Modal from '@/shared/components/Modal'
+import { useSpiritDetail } from '@/domain/spirit/hooks/useSpiritDetail'
+import Spinner from '@/shared/components/Spinner'
 import Button from '@/shared/components/Button'
 import { scoreColor } from '@/shared/utils/format'
-import { useCreateReview, useUpdateReview } from '../hooks/useReviews'
-import ReviewScoreSection from './ReviewScoreSection'
-import { EMPTY_AROMA_NOTES, parseAromaNotes, serializeAromaNotes, WHISKY_AROMA_CATEGORIES } from '../constants/whiskyAromas'
-import { WINE_AROMA_CATEGORIES } from '../constants/wineAromas'
-import { COGNAC_AROMA_CATEGORIES } from '../constants/cognacAromas'
-import type { AromaCategory, AromaNotes } from '../constants/whiskyAromas'
-import type { ReviewItem } from '../types/review.types'
+import { useCreateReview, useUpdateReview } from '@/domain/review/hooks/useReviews'
+import ReviewScoreSection from '@/domain/review/components/ReviewScoreSection'
+import {
+  EMPTY_AROMA_NOTES,
+  parseAromaNotes,
+  serializeAromaNotes,
+  WHISKY_AROMA_CATEGORIES,
+} from '@/domain/review/constants/whiskyAromas'
+import { WINE_AROMA_CATEGORIES } from '@/domain/review/constants/wineAromas'
+import { COGNAC_AROMA_CATEGORIES } from '@/domain/review/constants/cognacAromas'
+import type { AromaCategory, AromaNotes } from '@/domain/review/constants/whiskyAromas'
+import type { ReviewItem } from '@/domain/review/types/review.types'
 import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
 
 function getAromaCategories(category?: SpiritCategory): AromaCategory[] | undefined {
   if (category === 'WHISKY') return WHISKY_AROMA_CATEGORIES
-  if (category === 'WINE')   return WINE_AROMA_CATEGORIES
+  if (category === 'WINE') return WINE_AROMA_CATEGORIES
   if (category === 'COGNAC') return COGNAC_AROMA_CATEGORIES
   return undefined
 }
 
 function getAromaWheelKey(category?: SpiritCategory): string {
   if (category === 'WHISKY') return 'review.aromaWheelWhisky'
-  if (category === 'WINE')   return 'review.aromaWheelWine'
+  if (category === 'WINE') return 'review.aromaWheelWine'
   if (category === 'COGNAC') return 'review.aromaWheelCognac'
   return 'review.aromaWheel'
 }
 
 const reviewSchema = z.object({
-  noseScore:   z.number().min(0, '0 이상이어야 합니다.').max(100, '100 이하여야 합니다.'),
-  tasteScore:  z.number().min(0, '0 이상이어야 합니다.').max(100, '100 이하여야 합니다.'),
-  finishScore: z.number().min(0, '0 이상이어야 합니다.').max(100, '100 이하여야 합니다.'),
+  noseScore:   z.number().min(0).max(100),
+  tasteScore:  z.number().min(0).max(100),
+  finishScore: z.number().min(0).max(100),
   noseNote:    z.string().min(20, '최소 20글자 이상 작성해주세요.').max(200, '200자 이내로 작성해주세요.'),
   tasteNote:   z.string().min(20, '최소 20글자 이상 작성해주세요.').max(200, '200자 이내로 작성해주세요.'),
   finishNote:  z.string().min(20, '최소 20글자 이상 작성해주세요.').max(200, '200자 이내로 작성해주세요.'),
@@ -41,29 +48,29 @@ const reviewSchema = z.object({
 
 type ReviewFormValues = z.infer<typeof reviewSchema>
 
-export interface ReviewFormModalProps {
-  open: boolean
-  onClose: () => void
-  onSuccess?: () => void
-  spiritId: number
-  spiritCategory?: SpiritCategory
-  editingReview?: ReviewItem
+interface LocationState {
+  review?: ReviewItem
 }
 
-export default function ReviewFormModal({
-  open,
-  onClose,
-  onSuccess,
-  spiritId,
-  spiritCategory,
-  editingReview,
-}: ReviewFormModalProps) {
-  const { t } = useTranslation()
+export default function ReviewFormPage() {
+  const { id, reviewId } = useParams<{ id: string; reviewId?: string }>()
+  const spiritId = Number(id)
+  const isEdit = !!reviewId
+
+  const navigate = useNavigate()
+  const location = useLocation()
+  const { t, i18n } = useTranslation()
+  const isEn = i18n.language === 'en'
+
+  const editingReview = (location.state as LocationState)?.review
+
+  const { data: spirit, isLoading: spiritLoading } = useSpiritDetail(spiritId)
+
   const createMutation = useCreateReview(spiritId)
   const updateMutation = useUpdateReview(spiritId)
 
-  const aromaCategories  = getAromaCategories(spiritCategory)
-  const aromaWheelTitle  = t(getAromaWheelKey(spiritCategory))
+  const aromaCategories = getAromaCategories(spirit?.category)
+  const aromaWheelTitle = t(getAromaWheelKey(spirit?.category))
 
   const [noseAromas, setNoseAromas]     = useState<AromaNotes>(EMPTY_AROMA_NOTES)
   const [tasteAromas, setTasteAromas]   = useState<AromaNotes>(EMPTY_AROMA_NOTES)
@@ -90,21 +97,27 @@ export default function ReviewFormModal({
   })
 
   useEffect(() => {
-    if (open) {
-      reset({
-        noseScore:   editingReview?.noseScore   ?? 70,
-        tasteScore:  editingReview?.tasteScore  ?? 70,
-        finishScore: editingReview?.finishScore ?? 70,
-        noseNote:    editingReview?.noseNote    ?? '',
-        tasteNote:   editingReview?.tasteNote   ?? '',
-        finishNote:  editingReview?.finishNote  ?? '',
-        comment:     editingReview?.comment     ?? '',
-      })
-      setNoseAromas(parseAromaNotes(editingReview?.noseAromaWheelNotes))
-      setTasteAromas(parseAromaNotes(editingReview?.tasteAromaWheelNotes))
-      setFinishAromas(parseAromaNotes(editingReview?.finishAromaWheelNotes))
+    if (isEdit && !editingReview) {
+      navigate(`/spirits/${spiritId}`, { replace: true })
     }
-  }, [open, editingReview, reset])
+  }, [isEdit, editingReview, navigate, spiritId])
+
+  useEffect(() => {
+    if (editingReview) {
+      reset({
+        noseScore:   editingReview.noseScore,
+        tasteScore:  editingReview.tasteScore,
+        finishScore: editingReview.finishScore,
+        noseNote:    editingReview.noseNote    ?? '',
+        tasteNote:   editingReview.tasteNote   ?? '',
+        finishNote:  editingReview.finishNote  ?? '',
+        comment:     editingReview.comment     ?? '',
+      })
+      setNoseAromas(parseAromaNotes(editingReview.noseAromaWheelNotes))
+      setTasteAromas(parseAromaNotes(editingReview.tasteAromaWheelNotes))
+      setFinishAromas(parseAromaNotes(editingReview.finishAromaWheelNotes))
+    }
+  }, [editingReview, reset])
 
   const [nose, taste, finish, commentValue, noseNote, tasteNote, finishNote] = watch([
     'noseScore', 'tasteScore', 'finishScore', 'comment',
@@ -125,29 +138,52 @@ export default function ReviewFormModal({
       tasteAromaWheelNotes:  aromaCategories ? serializeAromaNotes(tasteAromas)  : undefined,
       finishAromaWheelNotes: aromaCategories ? serializeAromaNotes(finishAromas) : undefined,
     }
-    if (editingReview) {
+    if (isEdit && editingReview) {
       await updateMutation.mutateAsync({ reviewId: editingReview.id, data: payload })
     } else {
       await createMutation.mutateAsync(payload)
     }
-    onSuccess?.()
-    onClose()
+    navigate(`/spirits/${spiritId}`, { replace: true })
   }
+
+  const handleCancel = () => navigate(-1)
 
   const isPending = createMutation.isPending || updateMutation.isPending || isSubmitting
   const serverError = createMutation.error || updateMutation.error
 
+  if (spiritLoading) return <Spinner fullscreen />
+
+  const primaryName = isEn ? (spirit?.nameEn || spirit?.nameKo) : spirit?.nameKo
+
   return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title={editingReview ? t('review.edit') : t('review.write')}
-      size={aromaCategories ? '2xl' : 'lg'}
-      closeOnOverlay={!isPending}
-    >
+    <div className="max-w-7xl mx-auto px-4 py-6">
+      {/* 뒤로가기 */}
+      <button
+        onClick={handleCancel}
+        className="flex items-center gap-1 text-sm text-neutral-400 hover:text-primary-600 mb-5 transition-colors"
+      >
+        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <polyline points="15,18 9,12 15,6" />
+        </svg>
+        {t('common.back')}
+      </button>
+
+      {/* 카드 래퍼 */}
+      <div className="bg-white rounded-2xl shadow-sm border border-neutral-100 p-6 md:p-8">
+
+        {/* 헤더 */}
+        <div className="mb-6 pb-5 border-b border-neutral-100">
+          <h1 className="text-xl font-bold text-neutral-900">
+            {isEdit ? t('review.edit') : t('review.write')}
+          </h1>
+          {primaryName && (
+            <p className="text-sm text-neutral-500 mt-1">{primaryName}</p>
+          )}
+        </div>
+
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
 
-        {/* ── 향 ── */}
+        {/* 향 */}
         <Controller
           name="noseScore"
           control={control}
@@ -169,7 +205,7 @@ export default function ReviewFormModal({
           )}
         />
 
-        {/* ── 맛 ── */}
+        {/* 맛 */}
         <Controller
           name="tasteScore"
           control={control}
@@ -191,7 +227,7 @@ export default function ReviewFormModal({
           )}
         />
 
-        {/* ── 피니시 ── */}
+        {/* 피니시 */}
         <Controller
           name="finishScore"
           control={control}
@@ -213,10 +249,9 @@ export default function ReviewFormModal({
           )}
         />
 
-        {/* ── 총점 미리보기 + 총평: PC는 가로 배치 ── */}
-        <div className="md:grid md:grid-cols-[200px_1fr] md:gap-4 md:items-start space-y-4 md:space-y-0">
+        {/* 총점 미리보기 + 총평 */}
+        <div className="md:grid md:grid-cols-[180px_1fr] md:gap-5 md:items-start space-y-4 md:space-y-0">
 
-          {/* 총점 미리보기 */}
           <div className="flex items-center justify-between px-4 py-3 bg-neutral-50 rounded-2xl border border-neutral-100
             md:flex-col md:items-center md:justify-center md:gap-1 md:h-full">
             <div className="md:text-center">
@@ -231,7 +266,6 @@ export default function ReviewFormModal({
             </span>
           </div>
 
-          {/* 총평 */}
           <Controller
             name="comment"
             control={control}
@@ -265,20 +299,20 @@ export default function ReviewFormModal({
           <p className="text-sm text-red-600">{t('review.saveError')}</p>
         )}
 
-        {/* ── 경고 문구 ── */}
         <p className="text-[11px] text-neutral-400 text-center leading-relaxed px-2">
           {t('review.qualityWarning')}
         </p>
 
         <div className="flex gap-2 justify-end pt-2 border-t border-neutral-100">
-          <Button variant="secondary" size="sm" type="button" onClick={onClose} disabled={isPending}>
+          <Button variant="secondary" size="sm" type="button" onClick={handleCancel} disabled={isPending}>
             {t('common.cancel')}
           </Button>
           <Button size="sm" type="submit" isLoading={isPending}>
-            {editingReview ? t('review.submitEdit') : t('review.submit')}
+            {isEdit ? t('review.submitEdit') : t('review.submit')}
           </Button>
         </div>
       </form>
-    </Modal>
+      </div>
+    </div>
   )
 }

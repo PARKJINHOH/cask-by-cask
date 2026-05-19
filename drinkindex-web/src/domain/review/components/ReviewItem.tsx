@@ -3,7 +3,11 @@ import { useTranslation } from 'react-i18next'
 import { formatDate, scoreColor } from '@/shared/utils/format'
 import Modal from '@/shared/components/Modal'
 import { parseAromaNotes, WHISKY_AROMA_MAP } from '../constants/whiskyAromas'
+import { WINE_AROMA_MAP } from '../constants/wineAromas'
 import type { AromaNotes } from '../constants/whiskyAromas'
+
+/** 위스키 + 와인 통합 아로마 맵 */
+const ALL_AROMA_MAP = new Map([...WHISKY_AROMA_MAP, ...WINE_AROMA_MAP])
 import type { ReviewItem as ReviewItemType } from '../types/review.types'
 
 // ── 점수 바 ────────────────────────────────────────────────────
@@ -50,7 +54,7 @@ function AromaChips({ aromaNotes, isEn, max, rest }: AromaChipsProps) {
   return (
     <div className="flex flex-wrap gap-1 pl-16">
       {shownIds.map((id) => {
-        const item = WHISKY_AROMA_MAP.get(id)
+        const item = ALL_AROMA_MAP.get(id)
         if (!item) return null
         return (
           <span key={id} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-[10px] text-amber-700">
@@ -102,7 +106,7 @@ function DetailScoreSection({ label, score, note, aromaNotes, isEn }: DetailScor
       {hasAroma && (
         <div className="pl-[6.5rem] flex flex-wrap gap-1.5">
           {aromaNotes.ids.map((id) => {
-            const item = WHISKY_AROMA_MAP.get(id)
+            const item = ALL_AROMA_MAP.get(id)
             if (!item) return null
             return (
               <span key={id} className="inline-flex flex-col items-center px-2.5 py-1.5 rounded-xl bg-amber-50 border border-amber-200">

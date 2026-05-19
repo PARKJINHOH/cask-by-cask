@@ -377,18 +377,20 @@ export default function SpiritDetailPage() {
         </div>
       </div>
 
-      {/* 카테고리 상세 정보 */}
-      <SpiritDetailSections spirit={spirit} isEn={isEn} />
+      {/* 카테고리 상세 정보 + Tabs */}
+      <div className="space-y-6">
+        <SpiritDetailSections spirit={spirit} isEn={isEn} />
 
-      {/* Tabs */}
-      <div className="space-y-5">
+        {/* Tabs */}
+        <div className="space-y-5">
         <TabBar active={activeTab} onChange={setActiveTab} />
         <div role="tabpanel">
           {activeTab === 'reviews' ? (
-            <ReviewList spiritId={spiritId} spiritCategory={spirit.category} onNeedLogin={() => setLoginModal(true)} />
+            <ReviewList spiritId={spiritId} onNeedLogin={() => setLoginModal(true)} />
           ) : (
             <CommentList spiritId={spiritId} onNeedLogin={() => setLoginModal(true)} />
           )}
+        </div>
         </div>
       </div>
 

@@ -1,29 +1,26 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import Spinner from '@/shared/components/Spinner'
 import EmptyState from '@/shared/components/EmptyState'
 import Pagination from '@/shared/components/Pagination'
 import Button from '@/shared/components/Button'
 import ReviewItem from './ReviewItem'
-import ReviewFormModal from './ReviewFormModal'
 import { useReviews, useDeleteReview } from '../hooks/useReviews'
 import type { ReviewItem as ReviewItemType } from '../types/review.types'
-import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
 
 interface ReviewListProps {
   spiritId: number
-  spiritCategory?: SpiritCategory
   onNeedLogin: () => void
 }
 
-export default function ReviewList({ spiritId, spiritCategory, onNeedLogin }: ReviewListProps) {
+export default function ReviewList({ spiritId, onNeedLogin }: ReviewListProps) {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
-  const [page, setPage]                     = useState(0)
-  const [modalOpen, setModalOpen]           = useState(false)
-  const [editingReview, setEditingReview]   = useState<ReviewItemType | null>(null)
-  const [hasReviewed, setHasReviewed]       = useState(false)
+  const [page, setPage]               = useState(0)
+  const [hasReviewed, setHasReviewed] = useState(false)
 
   const { data, isLoading } = useReviews(spiritId, page)
   const deleteMutation      = useDeleteReview(spiritId)
@@ -35,23 +32,11 @@ export default function ReviewList({ spiritId, spiritCategory, onNeedLogin }: Re
 
   const handleWriteClick = () => {
     if (!user) { onNeedLogin(); return }
-    setEditingReview(null)
-    setModalOpen(true)
+    navigate(`/spirits/${spiritId}/review/write`)
   }
 
   const handleEdit = (review: ReviewItemType) => {
-    setEditingReview(review)
-    setModalOpen(true)
-  }
-
-  const handleModalClose = () => {
-    setModalOpen(false)
-    setEditingReview(null)
-  }
-
-  const handleModalSuccess = () => {
-    setHasReviewed(true)
-    setPage(0)
+    navigate(`/spirits/${spiritId}/review/${review.id}/edit`, { state: { review } })
   }
 
   const handleDelete = async (reviewId: number) => {
@@ -111,14 +96,6 @@ export default function ReviewList({ spiritId, spiritCategory, onNeedLogin }: Re
         </>
       )}
 
-      <ReviewFormModal
-        open={modalOpen}
-        onClose={handleModalClose}
-        onSuccess={handleModalSuccess}
-        spiritId={spiritId}
-        spiritCategory={spiritCategory}
-        editingReview={editingReview ?? undefined}
-      />
     </div>
   )
 }
