@@ -35,6 +35,12 @@ public record ReviewResponse(
         String finishNote,
         @Schema(description = "기타 텍스트 코멘트")
         String comment,
+        @Schema(description = "향 아로마 휠")
+        String noseAromaWheelNotes,
+        @Schema(description = "맛 아로마 휠")
+        String tasteAromaWheelNotes,
+        @Schema(description = "피니시 아로마 휠")
+        String finishAromaWheelNotes,
         @Schema(description = "작성 일시")
         LocalDateTime createdAt
 ) {
@@ -54,6 +60,9 @@ public record ReviewResponse(
                 review.getTasteNote(),
                 review.getFinishNote(),
                 review.getComment(),
+                review.getNoseAromaWheelNotes(),
+                review.getTasteAromaWheelNotes(),
+                review.getFinishAromaWheelNotes(),
                 review.getCreatedAt()
         );
     }

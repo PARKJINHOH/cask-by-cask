@@ -80,6 +80,9 @@ public class ReviewService {
                 .tasteNote(request.tasteNote())
                 .finishNote(request.finishNote())
                 .comment(request.comment())
+                .noseAromaWheelNotes(request.noseAromaWheelNotes())
+                .tasteAromaWheelNotes(request.tasteAromaWheelNotes())
+                .finishAromaWheelNotes(request.finishAromaWheelNotes())
                 .build();
 
         Review saved = reviewRepository.save(review);
@@ -100,13 +103,16 @@ public class ReviewService {
         checkOwnership(review, userId);
 
         review.update(
-                request.noseScore()  != null ? request.noseScore()  : review.getNoseScore(),
-                request.tasteScore() != null ? request.tasteScore() : review.getTasteScore(),
-                request.finishScore() != null ? request.finishScore() : review.getFinishScore(),
-                request.noseNote()   != null ? request.noseNote()   : review.getNoseNote(),
-                request.tasteNote()  != null ? request.tasteNote()  : review.getTasteNote(),
-                request.finishNote() != null ? request.finishNote() : review.getFinishNote(),
-                request.comment()    != null ? request.comment()    : review.getComment()
+                request.noseScore()            != null ? request.noseScore()            : review.getNoseScore(),
+                request.tasteScore()           != null ? request.tasteScore()           : review.getTasteScore(),
+                request.finishScore()          != null ? request.finishScore()          : review.getFinishScore(),
+                request.noseNote()             != null ? request.noseNote()             : review.getNoseNote(),
+                request.tasteNote()            != null ? request.tasteNote()            : review.getTasteNote(),
+                request.finishNote()           != null ? request.finishNote()           : review.getFinishNote(),
+                request.comment()              != null ? request.comment()              : review.getComment(),
+                request.noseAromaWheelNotes()  != null ? request.noseAromaWheelNotes()  : review.getNoseAromaWheelNotes(),
+                request.tasteAromaWheelNotes() != null ? request.tasteAromaWheelNotes() : review.getTasteAromaWheelNotes(),
+                request.finishAromaWheelNotes() != null ? request.finishAromaWheelNotes() : review.getFinishAromaWheelNotes()
         );
 
         // flush to trigger @PreUpdate → totalScore 재계산

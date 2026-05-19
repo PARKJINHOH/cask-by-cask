@@ -13,6 +13,9 @@ export interface ReviewItem {
   tasteNote: string | null
   finishNote: string | null
   comment: string | null
+  noseAromaWheelNotes: string | null
+  tasteAromaWheelNotes: string | null
+  finishAromaWheelNotes: string | null
   createdAt: string
 }
 
@@ -24,6 +27,9 @@ export interface CreateReviewRequest {
   tasteNote?: string
   finishNote?: string
   comment?: string
+  noseAromaWheelNotes?: string
+  tasteAromaWheelNotes?: string
+  finishAromaWheelNotes?: string
 }
 
 export interface UpdateReviewRequest {
@@ -34,4 +40,7 @@ export interface UpdateReviewRequest {
   tasteNote?: string
   finishNote?: string
   comment?: string
+  noseAromaWheelNotes?: string
+  tasteAromaWheelNotes?: string
+  finishAromaWheelNotes?: string
 }

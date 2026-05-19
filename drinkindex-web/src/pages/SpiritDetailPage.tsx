@@ -385,7 +385,7 @@ export default function SpiritDetailPage() {
         <TabBar active={activeTab} onChange={setActiveTab} />
         <div role="tabpanel">
           {activeTab === 'reviews' ? (
-            <ReviewList spiritId={spiritId} onNeedLogin={() => setLoginModal(true)} />
+            <ReviewList spiritId={spiritId} spiritCategory={spirit.category} onNeedLogin={() => setLoginModal(true)} />
           ) : (
             <CommentList spiritId={spiritId} onNeedLogin={() => setLoginModal(true)} />
           )}

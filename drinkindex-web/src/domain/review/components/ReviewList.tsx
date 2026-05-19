@@ -9,13 +9,15 @@ import ReviewItem from './ReviewItem'
 import ReviewFormModal from './ReviewFormModal'
 import { useReviews, useDeleteReview } from '../hooks/useReviews'
 import type { ReviewItem as ReviewItemType } from '../types/review.types'
+import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
 
 interface ReviewListProps {
   spiritId: number
+  spiritCategory?: SpiritCategory
   onNeedLogin: () => void
 }
 
-export default function ReviewList({ spiritId, onNeedLogin }: ReviewListProps) {
+export default function ReviewList({ spiritId, spiritCategory, onNeedLogin }: ReviewListProps) {
   const { t } = useTranslation()
   const user = useAuthStore((s) => s.user)
   const [page, setPage]                     = useState(0)
@@ -114,6 +116,7 @@ export default function ReviewList({ spiritId, onNeedLogin }: ReviewListProps) {
         onClose={handleModalClose}
         onSuccess={handleModalSuccess}
         spiritId={spiritId}
+        spiritCategory={spiritCategory}
         editingReview={editingReview ?? undefined}
       />
     </div>

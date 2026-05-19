@@ -41,5 +41,17 @@ public record ReviewRequest(
 
         @Schema(description = "기타 텍스트 코멘트 (500자 이내, 선택)")
         @Size(max = 500, message = "코멘트는 500자 이내여야 합니다.")
-        String comment
+        String comment,
+
+        @Schema(description = "향 아로마 휠 (800자 이내, 선택)")
+        @Size(max = 800, message = "아로마 휠 데이터는 800자 이내여야 합니다.")
+        String noseAromaWheelNotes,
+
+        @Schema(description = "맛 아로마 휠 (800자 이내, 선택)")
+        @Size(max = 800, message = "아로마 휠 데이터는 800자 이내여야 합니다.")
+        String tasteAromaWheelNotes,
+
+        @Schema(description = "피니시 아로마 휠 (800자 이내, 선택)")
+        @Size(max = 800, message = "아로마 휠 데이터는 800자 이내여야 합니다.")
+        String finishAromaWheelNotes
 ) {}

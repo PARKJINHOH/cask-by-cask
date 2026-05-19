@@ -62,6 +62,15 @@ public class Review extends BaseTimeEntity {
     @Column(length = 500)
     private String comment;
 
+    @Column(length = 800)
+    private String noseAromaWheelNotes;
+
+    @Column(length = 800)
+    private String tasteAromaWheelNotes;
+
+    @Column(length = 800)
+    private String finishAromaWheelNotes;
+
     @Builder.Default
     @Column(nullable = false)
     private Boolean isHidden = false;
@@ -83,7 +92,8 @@ public class Review extends BaseTimeEntity {
     }
 
     public void update(BigDecimal noseScore, BigDecimal tasteScore, BigDecimal finishScore,
-                       String noseNote, String tasteNote, String finishNote, String comment) {
+                       String noseNote, String tasteNote, String finishNote, String comment,
+                       String noseAromaWheelNotes, String tasteAromaWheelNotes, String finishAromaWheelNotes) {
         this.noseScore = noseScore;
         this.tasteScore = tasteScore;
         this.finishScore = finishScore;
@@ -91,6 +101,9 @@ public class Review extends BaseTimeEntity {
         this.tasteNote = tasteNote;
         this.finishNote = finishNote;
         this.comment = comment;
+        this.noseAromaWheelNotes = noseAromaWheelNotes;
+        this.tasteAromaWheelNotes = tasteAromaWheelNotes;
+        this.finishAromaWheelNotes = finishAromaWheelNotes;
     }
 
     public void softDelete() {
