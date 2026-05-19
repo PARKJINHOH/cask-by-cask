@@ -5,6 +5,7 @@ import com.drinkindex.domain.review.dto.ReviewResponse;
 import com.drinkindex.domain.review.dto.UpdateReviewRequest;
 import com.drinkindex.domain.review.entity.Review;
 import com.drinkindex.domain.review.repository.ReviewRepository;
+import com.drinkindex.domain.score.service.ScoreService;
 import com.drinkindex.domain.spirit.entity.Spirit;
 import com.drinkindex.domain.spirit.entity.enums.SpiritCategory;
 import com.drinkindex.domain.spirit.entity.enums.SpiritStatus;
@@ -38,6 +39,7 @@ class ReviewServiceTest {
     @Mock private ReviewRepository reviewRepository;
     @Mock private SpiritRepository spiritRepository;
     @Mock private UserRepository userRepository;
+    @Mock private ScoreService scoreService;
 
     @InjectMocks
     private ReviewService reviewService;
@@ -68,7 +70,7 @@ class ReviewServiceTest {
     @Test
     @DisplayName("리뷰 작성 후 Spirit avgScore 업데이트")
     void createReview_updatesAvgScore() {
-        ReviewRequest request = new ReviewRequest(new BigDecimal("90"), new BigDecimal("85"), new BigDecimal("88"), null, null, null, "훌륭합니다");
+        ReviewRequest request = new ReviewRequest(new BigDecimal("90"), new BigDecimal("85"), new BigDecimal("88"), null, null, null, "훌륭합니다", null, null, null);
 
         given(spiritRepository.findByIdAndStatus(1L, SpiritStatus.ACTIVE))
                 .willReturn(Optional.of(spirit));
@@ -92,7 +94,7 @@ class ReviewServiceTest {
     @Test
     @DisplayName("리뷰 작성 후 reviewCount 증가 검증")
     void createReview_incrementsReviewCount() {
-        ReviewRequest request = new ReviewRequest(new BigDecimal("80"), new BigDecimal("80"), new BigDecimal("80"), null, null, null, null);
+        ReviewRequest request = new ReviewRequest(new BigDecimal("80"), new BigDecimal("80"), new BigDecimal("80"), null, null, null, null, null, null, null);
 
         given(spiritRepository.findByIdAndStatus(1L, SpiritStatus.ACTIVE))
                 .willReturn(Optional.of(spirit));
@@ -116,7 +118,7 @@ class ReviewServiceTest {
     @Test
     @DisplayName("같은 술에 중복 리뷰 작성 시 DUPLICATE_REVIEW 예외")
     void createReview_duplicate_throwsDuplicateReview() {
-        ReviewRequest request = new ReviewRequest(new BigDecimal("90"), new BigDecimal("85"), new BigDecimal("88"), null, null, null, "중복");
+        ReviewRequest request = new ReviewRequest(new BigDecimal("90"), new BigDecimal("85"), new BigDecimal("88"), null, null, null, "중복", null, null, null);
 
         given(spiritRepository.findByIdAndStatus(1L, SpiritStatus.ACTIVE))
                 .willReturn(Optional.of(spirit));
@@ -132,7 +134,7 @@ class ReviewServiceTest {
     @Test
     @DisplayName("soft delete된 리뷰 제외 후 재작성 가능 (중복 아님)")
     void createReview_afterSoftDelete_notDuplicate() {
-        ReviewRequest request = new ReviewRequest(new BigDecimal("70"), new BigDecimal("70"), new BigDecimal("70"), null, null, null, "재작성");
+        ReviewRequest request = new ReviewRequest(new BigDecimal("70"), new BigDecimal("70"), new BigDecimal("70"), null, null, null, "재작성", null, null, null);
 
         given(spiritRepository.findByIdAndStatus(1L, SpiritStatus.ACTIVE))
                 .willReturn(Optional.of(spirit));
@@ -210,7 +212,7 @@ class ReviewServiceTest {
 
         given(reviewRepository.findByIdAndSpiritId(10L, 1L)).willReturn(Optional.of(review));
 
-        UpdateReviewRequest request = new UpdateReviewRequest(new BigDecimal("90"), null, null, null, null, null, null);
+        UpdateReviewRequest request = new UpdateReviewRequest(new BigDecimal("90"), null, null, null, null, null, null, null, null, null);
 
         assertThatThrownBy(() -> reviewService.updateReview(1L, 10L, 1L, request))
                 .isInstanceOf(CustomException.class)
@@ -246,7 +248,7 @@ class ReviewServiceTest {
                 .willReturn(Optional.empty());
 
         assertThatThrownBy(() -> reviewService.createReview(999L, 1L,
-                new ReviewRequest(new BigDecimal("80"), new BigDecimal("80"), new BigDecimal("80"), null, null, null, null)))
+                new ReviewRequest(new BigDecimal("80"), new BigDecimal("80"), new BigDecimal("80"), null, null, null, null, null, null, null)))
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.SPIRIT_NOT_FOUND);

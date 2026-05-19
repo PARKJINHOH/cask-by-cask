@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Badge from '@/shared/components/Badge'
 import Spinner from '@/shared/components/Spinner'
 import Pagination from '@/shared/components/Pagination'
-import { formatDate } from '@/shared/utils/format'
+import { formatDateTime } from '@/shared/utils/format'
 import {
   getAdminInquiries,
   getAdminInquiryDetail,
@@ -169,7 +169,7 @@ export default function AdminInquiryPage() {
                         </Badge>
                       </td>
                       <td className="px-3 py-3 text-neutral-500 text-xs tabular-nums whitespace-nowrap">
-                        {formatDate(item.createdAt)}
+                        {formatDateTime(item.createdAt)}
                       </td>
                     </tr>
                   ))
@@ -224,7 +224,7 @@ export default function AdminInquiryPage() {
                     <a href={`mailto:${detail.senderEmail}`}
                       className="text-primary-600 hover:underline">{detail.senderEmail}</a></p>
                   <p><span className="text-neutral-500 w-20 inline-block">접수일</span>
-                    <span>{formatDate(detail.createdAt)}</span></p>
+                    <span>{formatDateTime(detail.createdAt)}</span></p>
                 </div>
 
                 {/* 문의 내용 */}
@@ -268,7 +268,16 @@ export default function AdminInquiryPage() {
                   {/* 기존 발송된 답변 내용 표시 */}
                   {detail.replyBody && (
                     <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-3">
-                      <p className="text-xs font-medium text-amber-700 mb-1.5">발송된 답변</p>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <p className="text-xs font-medium text-amber-700">발송된 답변</p>
+                        {(detail.repliedBy || detail.repliedAt) && (
+                          <p className="text-xs text-neutral-400">
+                            {detail.repliedBy && <span>{detail.repliedBy}</span>}
+                            {detail.repliedBy && detail.repliedAt && <span className="mx-1">·</span>}
+                            {detail.repliedAt && <span>{formatDateTime(detail.repliedAt)}</span>}
+                          </p>
+                        )}
+                      </div>
                       <p className="text-sm text-neutral-700 whitespace-pre-wrap leading-relaxed">
                         {detail.replyBody}
                       </p>

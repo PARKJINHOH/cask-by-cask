@@ -1,5 +1,7 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/domain/auth/hooks/useAuth'
+import { getInquiryPendingCount } from '@/domain/inquiry/api/inquiryApi'
 
 interface NavItem {
   path: string
@@ -97,6 +99,12 @@ export default function AdminLayout() {
   const navigate = useNavigate()
   const { logout } = useAuth()
 
+  const { data: inquiryPendingCount = 0 } = useQuery({
+    queryKey: ['admin', 'inquiry-pending-count'],
+    queryFn: getInquiryPendingCount,
+    refetchInterval: 60_000,
+  })
+
   const handleLogout = async () => {
     await logout()
     navigate('/')
@@ -152,6 +160,7 @@ export default function AdminLayout() {
                     const active = item.exact
                       ? location.pathname === item.path
                       : location.pathname.startsWith(item.path)
+                    const isInquiryMenu = item.path === '/admin/inquiries'
                     return (
                       <Link
                         key={item.path}
@@ -165,6 +174,11 @@ export default function AdminLayout() {
                       >
                         {item.subItem && <span className="text-neutral-300 text-xs">└</span>}
                         {item.label}
+                        {isInquiryMenu && inquiryPendingCount > 0 && (
+                          <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center leading-none">
+                            {inquiryPendingCount > 99 ? '99+' : inquiryPendingCount}
+                          </span>
+                        )}
                       </Link>
                     )
                   })}

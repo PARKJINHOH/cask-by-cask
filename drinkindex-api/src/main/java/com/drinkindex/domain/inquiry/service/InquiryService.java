@@ -117,7 +117,6 @@ public class InquiryService {
         appendRow(html, "문의 유형", categoryLabel);
         appendRow(html, "제목", inquiry.getTitle());
         appendRow(html, "이메일", inquiry.getSenderEmail());
-        appendRow(html, "회원 ID", inquiry.getUserId() != null ? "#" + inquiry.getUserId() : "비회원");
         html.append("</table>");
         html.append("<div style='background:#fafafa;border:1px solid #e5e7eb;border-radius:8px;padding:16px;margin-bottom:16px;'>");
         html.append("<h3 style='margin-top:0;color:#374151;'>문의 내용</h3>");

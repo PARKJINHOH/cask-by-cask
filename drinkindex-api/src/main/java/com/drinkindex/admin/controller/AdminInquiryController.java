@@ -7,11 +7,13 @@ import com.drinkindex.domain.inquiry.dto.InquiryReplyRequest;
 import com.drinkindex.domain.inquiry.dto.UpdateInquiryStatusRequest;
 import com.drinkindex.domain.inquiry.entity.enums.InquiryCategory;
 import com.drinkindex.domain.inquiry.entity.enums.InquiryStatus;
+import com.drinkindex.global.auth.security.CustomUserDetails;
 import com.drinkindex.global.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -22,6 +24,11 @@ import java.util.Map;
 public class AdminInquiryController {
 
     private final AdminInquiryService adminInquiryService;
+
+    @GetMapping("/pending-count")
+    public ResponseEntity<ApiResponse<Long>> pendingCount() {
+        return ResponseEntity.ok(ApiResponse.success(adminInquiryService.pendingCount()));
+    }
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<InquiryListResponse>>> list(
@@ -58,9 +65,10 @@ public class AdminInquiryController {
     @PostMapping("/{id}/reply")
     public ResponseEntity<ApiResponse<Void>> reply(
             @PathVariable Long id,
-            @Valid @RequestBody InquiryReplyRequest request
+            @Valid @RequestBody InquiryReplyRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-        adminInquiryService.reply(id, request.replyBody());
+        adminInquiryService.reply(id, request.replyBody(), userDetails.getEmail());
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 }

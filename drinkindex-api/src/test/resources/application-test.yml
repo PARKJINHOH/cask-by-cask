@@ -31,6 +31,10 @@ admin:
     password: TestAdminPass123!
     nickname: 관리자
 
+app:
+  email:
+    inquiry-to: test-inquiry@example.com
+
 cors:
   allowed-origins: "http://localhost:5173"
 

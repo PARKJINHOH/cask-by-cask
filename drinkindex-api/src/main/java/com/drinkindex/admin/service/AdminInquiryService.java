@@ -25,6 +25,11 @@ public class AdminInquiryService {
     private final EmailSender emailSender;
 
     @Transactional(readOnly = true)
+    public long pendingCount() {
+        return inquiryRepository.countByStatusNot(InquiryStatus.RESOLVED);
+    }
+
+    @Transactional(readOnly = true)
     public Page<InquiryListResponse> list(InquiryStatus status, InquiryCategory category, int page) {
         Pageable pageable = PageRequest.of(page, 20, Sort.by("createdAt").descending());
         Page<Inquiry> result;
@@ -56,10 +61,10 @@ public class AdminInquiryService {
     }
 
     @Transactional
-    public void reply(Long id, String replyBody) {
+    public void reply(Long id, String replyBody, String replierEmail) {
         Inquiry inquiry = findById(id);
         sendReplyEmail(inquiry, replyBody);
-        inquiry.saveReply(replyBody);
+        inquiry.saveReply(replyBody, replierEmail);
     }
 
     private void sendReplyEmail(Inquiry inquiry, String replyBody) {

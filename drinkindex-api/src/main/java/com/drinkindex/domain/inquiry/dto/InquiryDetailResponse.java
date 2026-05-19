@@ -19,6 +19,8 @@ public record InquiryDetailResponse(
         InquiryStatus status,
         String adminNote,
         String replyBody,
+        String repliedBy,
+        LocalDateTime repliedAt,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
@@ -36,6 +38,8 @@ public record InquiryDetailResponse(
                 inquiry.getStatus(),
                 inquiry.getAdminNote(),
                 inquiry.getReplyBody(),
+                inquiry.getRepliedBy(),
+                inquiry.getRepliedAt(),
                 inquiry.getCreatedAt(),
                 inquiry.getUpdatedAt()
         );

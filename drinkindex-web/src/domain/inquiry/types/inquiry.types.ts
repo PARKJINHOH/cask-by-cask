@@ -21,6 +21,8 @@ export interface InquiryDetailResponse {
   status: InquiryStatus
   adminNote: string | null
   replyBody: string | null
+  repliedBy: string | null
+  repliedAt: string | null
   createdAt: string
   updatedAt: string
 }

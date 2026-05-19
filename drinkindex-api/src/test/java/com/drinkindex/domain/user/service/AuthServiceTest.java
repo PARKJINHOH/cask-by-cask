@@ -1,5 +1,7 @@
 package com.drinkindex.domain.user.service;
 
+import com.drinkindex.domain.score.dto.AttendanceResult;
+import com.drinkindex.domain.score.service.AttendanceService;
 import com.drinkindex.domain.user.dto.*;
 import com.drinkindex.domain.user.entity.User;
 import com.drinkindex.domain.user.entity.enums.Role;
@@ -33,13 +35,14 @@ class AuthServiceTest {
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private JwtProvider jwtProvider;
     @Mock private RefreshTokenRepository refreshTokenRepository;
+    @Mock private AttendanceService attendanceService;
 
     // ───────────────────── signup ─────────────────────
 
     @Test
     @DisplayName("회원가입 성공")
     void signup_success() {
-        SignupRequest request = new SignupRequest("new@example.com", "password123", "tester");
+        SignupRequest request = new SignupRequest("new@example.com", "password123", "tester", true, true, false);
         User savedUser = User.builder()
                 .email(request.email()).password("hashed").nickname(request.nickname()).role(Role.MEMBER)
                 .build();
@@ -59,7 +62,7 @@ class AuthServiceTest {
     @Test
     @DisplayName("회원가입 실패 — 이메일 중복")
     void signup_fail_duplicateEmail() {
-        SignupRequest request = new SignupRequest("dup@example.com", "password123", "tester");
+        SignupRequest request = new SignupRequest("dup@example.com", "password123", "tester", true, true, false);
         given(userRepository.existsByEmail(request.email())).willReturn(true);
 
         assertThatThrownBy(() -> authService.signup(request))
@@ -85,8 +88,9 @@ class AuthServiceTest {
         given(jwtProvider.generateAccessToken(any(), eq(Role.MEMBER))).willReturn("access_token");
         given(jwtProvider.generateRefreshToken(any(), eq(Role.MEMBER))).willReturn("refresh_token");
         given(jwtProvider.getRefreshTokenExpiry()).willReturn(604_800_000L);
+        given(attendanceService.checkAttendance(any())).willReturn(AttendanceResult.ofAlreadyChecked());
 
-        TokenResponse response = authService.login(request);
+        LoginResponse response = authService.login(request);
 
         assertThat(response.accessToken()).isEqualTo("access_token");
         assertThat(response.refreshToken()).isEqualTo("refresh_token");

@@ -49,3 +49,8 @@ export const updateInquiryNote = async (id: number, note: string): Promise<void>
 export const replyInquiry = async (id: number, replyBody: string): Promise<void> => {
   await axiosInstance.post(`/api/admin/inquiries/${id}/reply`, { replyBody })
 }
+
+export const getInquiryPendingCount = async (): Promise<number> => {
+  const { data } = await axiosInstance.get<ApiResponse<number>>('/api/admin/inquiries/pending-count')
+  return data.data!
+}

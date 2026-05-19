@@ -6,6 +6,8 @@ import com.drinkindex.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(
         name = "inquiry",
@@ -52,6 +54,11 @@ public class Inquiry extends BaseTimeEntity {
     @Column(columnDefinition = "TEXT")
     private String replyBody;
 
+    @Column(length = 200)
+    private String repliedBy;
+
+    private LocalDateTime repliedAt;
+
     public void updateStatus(InquiryStatus status) {
         this.status = status;
     }
@@ -60,8 +67,10 @@ public class Inquiry extends BaseTimeEntity {
         this.adminNote = note;
     }
 
-    public void saveReply(String reply) {
+    public void saveReply(String reply, String repliedBy) {
         this.replyBody = reply;
+        this.repliedBy = repliedBy;
+        this.repliedAt = LocalDateTime.now();
         this.status = InquiryStatus.RESOLVED;
     }
 }

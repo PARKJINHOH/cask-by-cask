@@ -39,8 +39,8 @@ class AuthControllerTest {
     @Test
     @DisplayName("POST /api/auth/signup — 201 Created, 응답 바디 확인")
     void signup_success() throws Exception {
-        SignupRequest request = new SignupRequest("test@example.com", "password123", "tester");
-        UserResponse response = new UserResponse(1L, "test@example.com", "tester", Role.MEMBER, null);
+        SignupRequest request = new SignupRequest("test@example.com", "Password1!", "tester", true, true, false);
+        UserResponse response = new UserResponse(1L, "test@example.com", "tester", Role.MEMBER, null, null, null, null, null, null, null, null, null);
 
         given(authService.signup(any())).willReturn(response);
 
@@ -57,7 +57,7 @@ class AuthControllerTest {
     @Test
     @DisplayName("POST /api/auth/signup — 이메일 형식 오류 시 400")
     void signup_fail_invalidEmail() throws Exception {
-        SignupRequest request = new SignupRequest("not-an-email", "password123", "tester");
+        SignupRequest request = new SignupRequest("not-an-email", "password123", "tester", true, true, false);
 
         mockMvc.perform(post("/api/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -69,7 +69,7 @@ class AuthControllerTest {
     @Test
     @DisplayName("POST /api/auth/signup — 이메일 중복 시 409")
     void signup_fail_duplicateEmail() throws Exception {
-        SignupRequest request = new SignupRequest("dup@example.com", "password123", "tester");
+        SignupRequest request = new SignupRequest("dup@example.com", "Password1!", "tester", true, true, false);
 
         given(authService.signup(any())).willThrow(new CustomException(ErrorCode.DUPLICATE_EMAIL));
 
@@ -87,7 +87,7 @@ class AuthControllerTest {
     @DisplayName("POST /api/auth/login — 200 OK, 토큰 반환")
     void login_success() throws Exception {
         LoginRequest request = new LoginRequest("test@example.com", "password123");
-        TokenResponse response = TokenResponse.of("access_token", "refresh_token");
+        LoginResponse response = LoginResponse.of(TokenResponse.of("access_token", "refresh_token"), null);
 
         given(authService.login(any())).willReturn(response);
 
