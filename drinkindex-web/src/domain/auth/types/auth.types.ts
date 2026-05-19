@@ -1,4 +1,12 @@
-export type UserRole = 'ADMIN' | 'MEMBER' | 'DISTILLERY'
+export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'MODERATOR' | 'MEMBER' | 'PARTNER'
+
+export type AdminMenuKey =
+  | 'SPIRIT_REQUESTS'
+  | 'SPIRITS'
+  | 'DISTILLERIES'
+  | 'WINERIES'
+  | 'COGNAC_HOUSES'
+  | 'COGNAC_APPELLATIONS'
 
 export interface UserInfo {
   id: number
@@ -10,6 +18,7 @@ export interface UserInfo {
   distilleryLogoUrl?: string
   nicknameFixed?: boolean
   profileImageUrl?: string | null
+  allowedMenus?: AdminMenuKey[]
 }
 
 export interface TokenResponse {

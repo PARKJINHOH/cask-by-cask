@@ -1,5 +1,8 @@
 package com.drinkindex.domain.community.service;
 
+import com.drinkindex.admin.service.AdminLogService;
+import com.drinkindex.domain.admin.entity.enums.AdminLogTargetType;
+import com.drinkindex.domain.admin.entity.enums.AdminLogType;
 import com.drinkindex.domain.community.dto.*;
 import com.drinkindex.domain.community.entity.*;
 import com.drinkindex.domain.community.entity.enums.BoardType;
@@ -48,6 +51,7 @@ public class PostService {
     private final BadWordFilter badWordFilter;
     private final HtmlSanitizer htmlSanitizer;
     private final ScoreService scoreService;
+    private final AdminLogService adminLogService;
 
     // ═══════════════════════════════════════════
     // 조회
@@ -351,6 +355,34 @@ public class PostService {
         findPost(postId).unlock();
     }
 
+    @Transactional
+    public void hidePost(Long postId, User actor) {
+        Post post = findPost(postId);
+        checkModeratorPermission(actor, post.getBoardType());
+        post.hide();
+        adminLogService.record(actor, AdminLogType.CONTENT_HIDE,
+                AdminLogTargetType.POST, postId,
+                String.format("게시글 숨김 (게시판: %s, 제목: %s)", post.getBoardType(), post.getTitle()),
+                null);
+    }
+
+    @Transactional
+    public void restorePostHide(Long postId, User actor) {
+        Post post = findPost(postId);
+        checkModeratorPermission(actor, post.getBoardType());
+        post.restore();
+        adminLogService.record(actor, AdminLogType.CONTENT_RESTORE,
+                AdminLogTargetType.POST, postId,
+                String.format("게시글 숨김 복구 (게시판: %s, 제목: %s)", post.getBoardType(), post.getTitle()),
+                null);
+    }
+
+    private void checkModeratorPermission(User actor, BoardType boardType) {
+        if (actor.getRole() == Role.SUPER_ADMIN || actor.getRole() == Role.ADMIN) return;
+        if (actor.getRole() == Role.MODERATOR && actor.getBoardPermissions().contains(boardType)) return;
+        throw new CustomException(ErrorCode.FORBIDDEN);
+    }
+
     @Transactional(readOnly = true)
     public Page<PostReportAdminResponse> getReports(ReportStatus status, int page, int size) {
         return postRepository.findReports(status, PageRequest.of(page, size))
@@ -390,7 +422,7 @@ public class PostService {
     private void validateBoardPermission(BoardType boardType, Role role) {
         if (BoardType.NOTICE.equals(boardType)
                 && !Role.ADMIN.equals(role)
-                && !Role.DISTILLERY.equals(role)) {
+                && !Role.PARTNER.equals(role)) {
             throw new CustomException(ErrorCode.POST_NOTICE_FORBIDDEN);
         }
     }

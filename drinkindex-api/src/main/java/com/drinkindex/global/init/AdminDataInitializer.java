@@ -30,16 +30,16 @@ public class AdminDataInitializer implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        if (userRepository.existsByRole(Role.ADMIN)) {
+        if (userRepository.existsByRole(Role.SUPER_ADMIN)) {
             return;
         }
         User admin = User.builder()
                 .email(adminEmail)
                 .password(passwordEncoder.encode(adminPassword))
                 .nickname(adminNickname)
-                .role(Role.ADMIN)
+                .role(Role.SUPER_ADMIN)
                 .build();
         userRepository.save(admin);
-        log.info("[AdminDataInitializer] 기본 관리자 계정 생성 완료 — email: {}", adminEmail);
+        log.info("[AdminDataInitializer] 최고 관리자 계정 생성 완료 — email: {}", adminEmail);
     }
 }

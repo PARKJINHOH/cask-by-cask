@@ -16,6 +16,8 @@
 - MariaDB — local/dev/prod 환경 분리
 - 공통 응답: ApiResponse<T> 래퍼
 - 예외: GlobalExceptionHandler + ErrorCode Enum
+- 구현 후 항상 gradle build 테스트 해줘
+- JAVA_HOME = "C:\Users\EM_NB139\.jdks\temurin-21.0.10"
 - JAVA_HOME = "C:\Users\JINHOH_PC\.jdks\temurin-21.0.10"
 
 ## 프론트엔드 (drinkindex-web)

@@ -4,6 +4,8 @@ import com.drinkindex.domain.community.dto.*;
 import com.drinkindex.domain.community.entity.enums.BoardType;
 import com.drinkindex.domain.community.service.PostImageService;
 import com.drinkindex.domain.community.service.PostService;
+import com.drinkindex.domain.user.entity.User;
+import com.drinkindex.domain.user.repository.UserRepository;
 import com.drinkindex.global.auth.security.CustomUserDetails;
 import com.drinkindex.global.exception.CustomException;
 import com.drinkindex.global.exception.ErrorCode;
@@ -29,6 +31,7 @@ public class PostController {
 
     private final PostService postService;
     private final PostImageService postImageService;
+    private final UserRepository userRepository;
 
     // ─── 목록 ───────────────────────────────────
 
@@ -154,6 +157,30 @@ public class PostController {
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         postService.toggleScrap(id, userDetails.getUserId());
+        return ResponseEntity.ok(ApiResponse.success());
+    }
+
+    // ─── 숨김 / 복구 (모더레이터 이상) ──────────────
+
+    @PatchMapping("/{id}/hide")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','MODERATOR')")
+    public ResponseEntity<ApiResponse<Void>> hidePost(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        User actor = userRepository.findById(userDetails.getUserId())
+                .orElseThrow();
+        postService.hidePost(id, actor);
+        return ResponseEntity.ok(ApiResponse.success());
+    }
+
+    @PatchMapping("/{id}/restore-hide")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','MODERATOR')")
+    public ResponseEntity<ApiResponse<Void>> restorePostHide(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        User actor = userRepository.findById(userDetails.getUserId())
+                .orElseThrow();
+        postService.restorePostHide(id, actor);
         return ResponseEntity.ok(ApiResponse.success());
     }
 

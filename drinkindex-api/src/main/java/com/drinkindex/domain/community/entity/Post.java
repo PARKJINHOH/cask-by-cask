@@ -78,6 +78,10 @@ public class Post extends BaseTimeEntity {
     @Column(nullable = false)
     private Integer reportCount = 0;
 
+    @Builder.Default
+    @Column(nullable = false)
+    private Boolean isHidden = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "series_id")
     private Series series;
@@ -106,6 +110,8 @@ public class Post extends BaseTimeEntity {
 
     public void markDeleted()   { this.status = PostStatus.DELETED; }
     public void unlock()        { this.status = PostStatus.ACTIVE; }
+    public void hide()          { this.isHidden = true; }
+    public void restore()       { this.isHidden = false; }
 
     public void update(String title, String content, String contentSanitized, PostPrefix prefix) {
         this.title = title;

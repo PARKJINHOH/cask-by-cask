@@ -1,5 +1,8 @@
 package com.drinkindex.domain.community.service;
 
+import com.drinkindex.admin.service.AdminLogService;
+import com.drinkindex.domain.admin.entity.enums.AdminLogTargetType;
+import com.drinkindex.domain.admin.entity.enums.AdminLogType;
 import com.drinkindex.domain.community.dto.*;
 import com.drinkindex.domain.community.entity.*;
 import com.drinkindex.domain.community.entity.enums.NotificationType;
@@ -33,6 +36,7 @@ public class CommentService {
     private final UserBlockRepository userBlockRepository;
     private final CommentEmojiReactionRepository reactionRepository;
     private final NotificationService notificationService;
+    private final AdminLogService adminLogService;
     private final BadWordFilter badWordFilter;
     private final ScoreService scoreService;
 
@@ -168,6 +172,36 @@ public class CommentService {
         if (comment.getPost() != null) {
             postRepository.decrementCommentCount(postId);
         }
+    }
+
+    @Transactional
+    public void hideComment(Long commentId, User actor) {
+        PostComment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new CustomException(ErrorCode.COMMENT_NOT_FOUND));
+        checkModeratorPermission(actor, comment);
+        comment.setHidden(true);
+        adminLogService.record(actor, AdminLogType.CONTENT_HIDE,
+                AdminLogTargetType.COMMENT, commentId,
+                String.format("댓글 숨김 (ID: %d)", commentId), null);
+    }
+
+    @Transactional
+    public void restoreComment(Long commentId, User actor) {
+        PostComment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new CustomException(ErrorCode.COMMENT_NOT_FOUND));
+        checkModeratorPermission(actor, comment);
+        comment.setHidden(false);
+        adminLogService.record(actor, AdminLogType.CONTENT_RESTORE,
+                AdminLogTargetType.COMMENT, commentId,
+                String.format("댓글 숨김 복구 (ID: %d)", commentId), null);
+    }
+
+    private void checkModeratorPermission(User actor, PostComment comment) {
+        if (actor.getRole() == Role.SUPER_ADMIN || actor.getRole() == Role.ADMIN) return;
+        if (actor.getRole() == Role.MODERATOR && comment.getPost() != null) {
+            if (actor.getBoardPermissions().contains(comment.getPost().getBoardType())) return;
+        }
+        throw new CustomException(ErrorCode.FORBIDDEN);
     }
 
     // ═══════════════════════════════════════════

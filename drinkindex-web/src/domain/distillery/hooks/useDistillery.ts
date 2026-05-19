@@ -20,6 +20,5 @@ export function useAllDistilleries() {
       const res = await distilleryApi.search({ size: 500 })
       return res.data.data?.content ?? []
     },
-    staleTime: 5 * 60_000,
   })
 }

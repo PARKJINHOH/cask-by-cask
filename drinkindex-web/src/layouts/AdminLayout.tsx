@@ -1,17 +1,21 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
+import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/domain/auth/hooks/useAuth'
+import { useAuthStore } from '@/domain/auth/store/authStore'
 import { getInquiryPendingCount } from '@/domain/inquiry/api/inquiryApi'
+import type { AdminMenuKey } from '@/domain/auth/types/auth.types'
 
 interface NavItem {
   path: string
   label: string
   exact?: boolean
   subItem?: boolean
+  menuKey?: AdminMenuKey
 }
 
 type NavEntry =
-  | { type: 'item'; path: string; label: string; icon: string; exact?: boolean }
+  | { type: 'item'; path: string; label: string; icon: string; exact?: boolean; menuKey?: AdminMenuKey }
   | { type: 'group'; groupLabel: string; groupIcon: string; items: NavItem[] }
 
 const navEntries: NavEntry[] = [
@@ -21,18 +25,9 @@ const navEntries: NavEntry[] = [
     groupIcon: '⚙️',
     items: [
       { path: '/admin/notices',  label: '공지사항' },
-      { path: '/admin/banners',  label: '배너',    exact: true },
-      { path: '/admin/popups',   label: '팝업',    exact: true },
+      { path: '/admin/banners',  label: '배너',     exact: true },
+      { path: '/admin/popups',   label: '팝업',     exact: true },
       { path: '/admin/legal',    label: '약관 관리', exact: true },
-    ],
-  },
-  {
-    type: 'group',
-    groupLabel: '주류',
-    groupIcon: '🥃',
-    items: [
-      { path: '/admin/spirits/requests', label: '등록 요청' },
-      { path: '/admin/spirits',          label: '주류 관리', exact: true },
     ],
   },
   {
@@ -40,25 +35,42 @@ const navEntries: NavEntry[] = [
     groupLabel: '회원',
     groupIcon: '👥',
     items: [
-      { path: '/admin/users',   label: '회원 관리', exact: true },
-      { path: '/admin/reports', label: '신고 관리' },
+      { path: '/admin/users',           label: '회원 관리', exact: true },
+      { path: '/admin/roles',           label: '역할 관리', exact: true },
+      { path: '/admin/logs',            label: '변경 이력', exact: true },
+      { path: '/admin/reports',         label: '신고 관리' },
+      { path: '/admin/inquiries',       label: '문의 관리', exact: true },
+      { path: '/admin/emails/send',     label: '메일 발송', exact: true },
+      { path: '/admin/emails/history',  label: '메일 이력', exact: true },
     ],
   },
   {
     type: 'group',
-    groupLabel: '메일',
-    groupIcon: '✉️',
+    groupLabel: '주류',
+    groupIcon: '🥃',
     items: [
-      { path: '/admin/emails/send',    label: '메일 발송',  exact: true },
-      { path: '/admin/emails/history', label: '메일 이력',  exact: true },
+      { path: '/admin/spirits/requests', label: '등록 요청', menuKey: 'SPIRIT_REQUESTS' },
+      { path: '/admin/spirits',          label: '주류 관리', exact: true, menuKey: 'SPIRITS' },
     ],
   },
   {
     type: 'group',
-    groupLabel: '문의',
-    groupIcon: '💬',
+    groupLabel: '제조사',
+    groupIcon: '🏭',
     items: [
-      { path: '/admin/inquiries', label: '문의 관리', exact: true },
+      { path: '/admin/distilleries',        label: '증류소 관리',      exact: true, menuKey: 'DISTILLERIES' },
+      { path: '/admin/wineries',            label: '와이너리 관리',    exact: true, menuKey: 'WINERIES' },
+      { path: '/admin/cognac-houses',       label: '꼬냑 하우스 관리', exact: true, menuKey: 'COGNAC_HOUSES' },
+      { path: '/admin/cognac-appellations', label: '세부 산지 관리',   exact: true, subItem: true, menuKey: 'COGNAC_APPELLATIONS' },
+    ],
+  },
+  {
+    type: 'group',
+    groupLabel: '숙성력',
+    groupIcon: '🏅',
+    items: [
+      { path: '/admin/score/points', label: '점수 설정', exact: true },
+      { path: '/admin/score/levels', label: '레벨 설정', exact: true },
     ],
   },
   {
@@ -72,38 +84,47 @@ const navEntries: NavEntry[] = [
       { path: '/admin/community/prefixes',     label: '말머리 관리', exact: true },
     ],
   },
-  {
-    type: 'group',
-    groupLabel: '숙성력',
-    groupIcon: '🥃',
-    items: [
-      { path: '/admin/score/points', label: '점수 설정',  exact: true },
-      { path: '/admin/score/levels', label: '레벨 설정',  exact: true },
-    ],
-  },
-  {
-    type: 'group',
-    groupLabel: '제조사',
-    groupIcon: '🏭',
-    items: [
-      { path: '/admin/distilleries',        label: '증류소 관리',      exact: true },
-      { path: '/admin/wineries',            label: '와이너리 관리',    exact: true },
-      { path: '/admin/cognac-houses',       label: '꼬냑 하우스 관리', exact: true },
-      { path: '/admin/cognac-appellations', label: '세부 산지 관리',   exact: true, subItem: true },
-    ],
-  },
 ]
+
+function isItemVisible(item: NavItem, isAdmin: boolean, allowedMenus: AdminMenuKey[]): boolean {
+  if (isAdmin) return true
+  if (!item.menuKey) return false  // menuKey 없는 메뉴 = ADMIN 전용
+  return allowedMenus.includes(item.menuKey)
+}
 
 export default function AdminLayout() {
   const location = useLocation()
   const navigate = useNavigate()
   const { logout } = useAuth()
+  const user = useAuthStore((s) => s.user)
+
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN'
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN'
+  const allowedMenus: AdminMenuKey[] = user?.allowedMenus ?? []
 
   const { data: inquiryPendingCount = 0 } = useQuery({
     queryKey: ['admin', 'inquiry-pending-count'],
     queryFn: getInquiryPendingCount,
     refetchInterval: 60_000,
+    enabled: isAdmin,
   })
+
+  // DISTILLERY 사용자가 허용되지 않은 페이지에 직접 접근 시 첫 번째 허용 메뉴로 이동
+  useEffect(() => {
+    if (isAdmin || allowedMenus.length === 0) return
+
+    const allItems = navEntries.flatMap((e) => (e.type === 'group' ? e.items : [e]))
+    const currentItem = allItems.find((item) =>
+      item.exact
+        ? location.pathname === item.path
+        : location.pathname.startsWith(item.path),
+    )
+
+    if (currentItem && !isItemVisible(currentItem as NavItem, false, allowedMenus)) {
+      const firstAllowed = allItems.find((item) => isItemVisible(item as NavItem, false, allowedMenus))
+      navigate(firstAllowed ? firstAllowed.path : '/', { replace: true })
+    }
+  }, [location.pathname, isAdmin, allowedMenus, navigate])
 
   const handleLogout = async () => {
     await logout()
@@ -111,19 +132,22 @@ export default function AdminLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50 flex">
+    <div className="h-screen bg-neutral-50 flex overflow-hidden">
       {/* 사이드바 */}
       <aside className="w-56 bg-white border-r border-neutral-200 flex flex-col flex-shrink-0">
         {/* 헤더 */}
         <div className="p-5 border-b border-neutral-100">
           <Link to="/" className="text-lg font-bold text-primary-600">DrinkIndex</Link>
-          <p className="text-xs text-neutral-400 mt-0.5">관리자 콘솔</p>
+          <p className="text-xs text-neutral-400 mt-0.5">
+            {isSuperAdmin ? '최고관리자 콘솔' : isAdmin ? '관리자 콘솔' : '파트너 콘솔'}
+          </p>
         </div>
 
         {/* 네비게이션 */}
         <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
           {navEntries.map((entry) => {
             if (entry.type === 'item') {
+              if (!isItemVisible(entry, isAdmin, allowedMenus)) return null
               const active = entry.exact
                 ? location.pathname === entry.path
                 : location.pathname.startsWith(entry.path)
@@ -145,18 +169,23 @@ export default function AdminLayout() {
             }
 
             // group
-            const groupActive = entry.items.some((item) => location.pathname.startsWith(item.path))
+            const visibleItems = entry.items.filter((item) =>
+              isItemVisible(item, isAdmin, allowedMenus),
+            )
+            if (visibleItems.length === 0) return null
+
+            const groupActive = visibleItems.some((item) =>
+              location.pathname.startsWith(item.path),
+            )
             return (
               <div key={entry.groupLabel}>
-                {/* 그룹 헤더 */}
                 <div className={`flex items-center gap-2.5 px-3 py-2 text-sm font-semibold
                   ${groupActive ? 'text-primary-700' : 'text-neutral-500'}`}>
                   <span className="text-base leading-none">{entry.groupIcon}</span>
                   {entry.groupLabel}
                 </div>
-                {/* 그룹 항목 */}
                 <div className="space-y-0.5">
-                  {entry.items.map((item) => {
+                  {visibleItems.map((item) => {
                     const active = item.exact
                       ? location.pathname === item.path
                       : location.pathname.startsWith(item.path)

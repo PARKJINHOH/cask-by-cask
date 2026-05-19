@@ -27,6 +27,7 @@ public class AdminSpiritController {
     private final SpiritImageService spiritImageService;
 
     // ── 술 CRUD ─────────────────────────────────────────────
+    // PARTNER 포함 접근 가능 (verifyDistilleryAccess 로 세부 제어)
 
     @PostMapping
     public ResponseEntity<ApiResponse<SpiritDetailResponse>> create(
@@ -48,7 +49,7 @@ public class AdminSpiritController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
         spiritService.deleteSpirit(id);
         return ResponseEntity.ok(ApiResponse.success());
@@ -82,10 +83,9 @@ public class AdminSpiritController {
         ));
     }
 
-    // ── 등록 요청 처리 ───────────────────────────────────────
+    // ── 등록 요청 — 조회/수정 (PARTNER 포함) ──────────────────
 
     @GetMapping("/requests")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Page<SpiritRegisterRequestResponse>>> getRequests(
             @RequestParam(defaultValue = "PENDING") RequestStatus status,
             @PageableDefault(size = 20) Pageable pageable) {
@@ -95,7 +95,6 @@ public class AdminSpiritController {
     }
 
     @GetMapping("/requests/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<SpiritRegisterRequestDetailResponse>> getRequestDetail(
             @PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(
@@ -104,7 +103,6 @@ public class AdminSpiritController {
     }
 
     @PatchMapping("/requests/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<SpiritRegisterRequestDetailResponse>> updateRequest(
             @PathVariable Long id,
             @Valid @RequestBody SpiritRegisterRequestBody body) {
@@ -114,7 +112,6 @@ public class AdminSpiritController {
     }
 
     @PostMapping("/requests/{id}/images")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<SpiritRegisterRequestDetailResponse>> uploadRequestImage(
             @PathVariable Long id,
             @RequestParam MultipartFile file) {
@@ -124,7 +121,6 @@ public class AdminSpiritController {
     }
 
     @DeleteMapping("/requests/{id}/images")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<SpiritRegisterRequestDetailResponse>> removeRequestImage(
             @PathVariable Long id,
             @RequestParam String imageUrl) {
@@ -133,8 +129,10 @@ public class AdminSpiritController {
         ));
     }
 
+    // ── 등록 요청 — 승인/거절 (ADMIN 이상만) ──────────────────
+
     @PatchMapping("/requests/{id}/approve")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
     public ResponseEntity<ApiResponse<SpiritDetailResponse>> approveRequest(
             @PathVariable Long id,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -144,7 +142,7 @@ public class AdminSpiritController {
     }
 
     @PatchMapping("/requests/{id}/reject")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
     public ResponseEntity<ApiResponse<Void>> rejectRequest(
             @PathVariable Long id,
             @Valid @RequestBody RejectSpiritRequestRequest request,

@@ -1,5 +1,6 @@
 package com.drinkindex.domain.user.entity;
 
+import com.drinkindex.domain.community.entity.enums.BoardType;
 import com.drinkindex.domain.distillery.entity.Distillery;
 import com.drinkindex.domain.user.entity.enums.Role;
 import com.drinkindex.global.entity.BaseTimeEntity;
@@ -9,6 +10,8 @@ import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(
@@ -107,6 +110,18 @@ public class User extends BaseTimeEntity {
     @Column
     private LocalDate lastAttendanceDate;
 
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "role_type_id")
+    private RoleType roleType;
+
+    /** 모더레이터 게시판 권한 (MODERATOR 역할 전용) */
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "user_board_permissions", joinColumns = @JoinColumn(name = "user_id"))
+    @Enumerated(EnumType.STRING)
+    @Column(name = "board_type", length = 20)
+    @Builder.Default
+    private Set<BoardType> boardPermissions = new HashSet<>();
+
     public void verifyEmail() {
         this.emailVerified = true;
     }
@@ -146,9 +161,10 @@ public class User extends BaseTimeEntity {
         this.suspendReason = reason;
     }
 
-    public void changeRole(Role role, Distillery distillery) {
+    public void changeRole(Role role, Distillery distillery, RoleType roleType) {
         this.role = role;
         this.distillery = distillery;
+        this.roleType = roleType;
     }
 
     public void addMaturingPower(int delta) {
@@ -175,5 +191,10 @@ public class User extends BaseTimeEntity {
 
     public void updateEmailSubscription(boolean emailSubscribed) {
         this.emailSubscribed = emailSubscribed;
+    }
+
+    public void updateBoardPermissions(Set<BoardType> boards) {
+        this.boardPermissions.clear();
+        this.boardPermissions.addAll(boards);
     }
 }

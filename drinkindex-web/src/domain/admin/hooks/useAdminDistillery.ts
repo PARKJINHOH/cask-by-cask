@@ -14,7 +14,10 @@ export function useCreateDistillery() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (data: CreateDistilleryPayload) => adminDistilleryApi.create(data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-distilleries'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-distilleries'] })
+      qc.invalidateQueries({ queryKey: ['distilleries'] })
+    },
   })
 }
 
@@ -23,7 +26,10 @@ export function useUpdateDistillery() {
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: UpdateDistilleryPayload }) =>
       adminDistilleryApi.update(id, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-distilleries'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-distilleries'] })
+      qc.invalidateQueries({ queryKey: ['distilleries'] })
+    },
   })
 }
 
@@ -31,6 +37,9 @@ export function useDeleteDistillery() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: number) => adminDistilleryApi.delete(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-distilleries'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-distilleries'] })
+      qc.invalidateQueries({ queryKey: ['distilleries'] })
+    },
   })
 }

@@ -345,7 +345,7 @@ function UserDropdown() {
               <AdminIcon size={13} />
             </span>
           )}
-          {user?.role === 'DISTILLERY' && (
+          {(user?.role === 'PARTNER' || user?.role === 'SUPER_ADMIN') && (
             <span className="absolute -bottom-1 -left-1 bg-white rounded-full ring-1 ring-white flex items-center justify-center">
               <DistilleryIcon size={13} />
             </span>
@@ -377,7 +377,9 @@ function UserDropdown() {
             {t('nav.mypage')}
           </Link>
 
-          {user?.role === 'ADMIN' && (
+          {(user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN' ||
+            (user?.role === 'PARTNER' && user.allowedMenus && user.allowedMenus.length > 0)
+          ) && (
             <Link
               to="/admin"
               onClick={() => setOpen(false)}
@@ -389,7 +391,7 @@ function UserDropdown() {
                 <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" />
                 <rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" />
               </svg>
-              {t('nav.admin')}
+              {user?.role === 'PARTNER' ? '파트너 콘솔' : t('nav.admin')}
             </Link>
           )}
 

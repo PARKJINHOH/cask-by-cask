@@ -1,14 +1,20 @@
 package com.drinkindex.admin.service;
 
+import com.drinkindex.domain.admin.entity.enums.AdminLogTargetType;
+import com.drinkindex.domain.admin.entity.enums.AdminLogType;
+import com.drinkindex.domain.community.entity.enums.BoardType;
 import com.drinkindex.domain.distillery.entity.Distillery;
 import com.drinkindex.domain.distillery.repository.DistilleryRepository;
 import com.drinkindex.domain.user.dto.AdminUserResponse;
 import com.drinkindex.domain.user.dto.ChangeRoleRequest;
 import com.drinkindex.domain.user.dto.CreateDistilleryManagerRequest;
 import com.drinkindex.domain.user.dto.SuspendUserRequest;
+import com.drinkindex.domain.user.dto.UpdateBoardPermissionsRequest;
 import com.drinkindex.domain.user.dto.UserSearchCondition;
+import com.drinkindex.domain.user.entity.RoleType;
 import com.drinkindex.domain.user.entity.User;
 import com.drinkindex.domain.user.entity.enums.Role;
+import com.drinkindex.domain.user.repository.RoleTypeRepository;
 import com.drinkindex.domain.user.repository.UserRepository;
 import com.drinkindex.global.email.EmailSender;
 import com.drinkindex.global.exception.CustomException;
@@ -26,6 +32,9 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -36,8 +45,10 @@ public class AdminUserService {
 
     private final UserRepository userRepository;
     private final DistilleryRepository distilleryRepository;
+    private final RoleTypeRepository roleTypeRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailSender emailSender;
+    private final AdminLogService adminLogService;
 
     // ── 회원 목록 ──────────────────────────────────────────
 
@@ -47,10 +58,8 @@ public class AdminUserService {
         Pageable sorted = PageRequest.of(
                 pageable.getPageNumber(), pageable.getPageSize(),
                 Sort.by(Sort.Direction.DESC, "createdAt"));
-
         String kw = StringUtils.hasText(keyword) ? keyword.trim() : null;
-        UserSearchCondition condition = new UserSearchCondition(kw, role, isActive);
-        return userRepository.searchUsers(condition, sorted)
+        return userRepository.searchUsers(new UserSearchCondition(kw, role, isActive), sorted)
                 .map(AdminUserResponse::from);
     }
 
@@ -64,53 +73,155 @@ public class AdminUserService {
     // ── 역할 변경 ──────────────────────────────────────────
 
     @Transactional
-    public AdminUserResponse changeRole(Long id, ChangeRoleRequest request) {
-        User user = findUser(id);
+    public AdminUserResponse changeRole(Long id, ChangeRoleRequest request, Long actorId) {
+        User actor = findUser(actorId);
+        User target = findUser(id);
+
+        checkCanModify(actor, target);
+
+        if (request.role() == Role.SUPER_ADMIN) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+
+        String oldRoleName = buildRoleName(target);
 
         Distillery distillery = null;
-        if (request.role() == Role.DISTILLERY) {
-            if (request.distilleryId() == null) {
-                throw new CustomException(ErrorCode.INVALID_INPUT);
-            }
+        if (request.distilleryId() != null) {
             distillery = distilleryRepository.findById(request.distilleryId())
                     .orElseThrow(() -> new CustomException(ErrorCode.DISTILLERY_NOT_FOUND));
         }
 
-        user.changeRole(request.role(), distillery);
-        return AdminUserResponse.from(user);
+        RoleType roleType = null;
+        if (request.roleTypeId() != null) {
+            roleType = roleTypeRepository.findById(request.roleTypeId())
+                    .orElseThrow(() -> new CustomException(ErrorCode.ROLE_TYPE_NOT_FOUND));
+        }
+
+        target.changeRole(request.role(), distillery, roleType);
+
+        String newRoleName = buildRoleName(target);
+        adminLogService.record(actor, AdminLogType.ROLE_CHANGE,
+                AdminLogTargetType.USER, target.getId(),
+                String.format("[%s] 역할 변경: %s → %s", target.getNickname(), oldRoleName, newRoleName),
+                String.format("{\"oldRole\":\"%s\",\"newRole\":\"%s\"}", oldRoleName, newRoleName));
+
+        return AdminUserResponse.from(target);
+    }
+
+    // ── 모더레이터 게시판 권한 ──────────────────────────────
+
+    @Transactional
+    public AdminUserResponse updateBoardPermissions(Long id, UpdateBoardPermissionsRequest request,
+                                                     Long actorId) {
+        User target = findUser(id);
+        if (target.getRole() != Role.MODERATOR) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+        // 모더레이터는 자유게시판만 허용
+        Set<BoardType> allowed = request.boardTypes().stream()
+                .filter(bt -> bt == BoardType.FREE)
+                .collect(Collectors.toSet());
+        target.updateBoardPermissions(allowed);
+        return AdminUserResponse.from(target);
     }
 
     // ── 계정 비활성화 / 활성화 / 삭제 ────────────────────────
 
     @Transactional
-    public void deactivateUser(Long id) {
-        findUser(id).deactivate();
+    public void deactivateUser(Long id, Long actorId) {
+        User actor = findUser(actorId);
+        User target = findUser(id);
+        checkCanModify(actor, target);
+        target.deactivate();
     }
 
     @Transactional
-    public void activateUser(Long id) {
-        findUser(id).activate();
+    public void activateUser(Long id, Long actorId) {
+        User actor = findUser(actorId);
+        User target = findUser(id);
+        checkCanModify(actor, target);
+        target.activate();
     }
 
     @Transactional
-    public void deleteUser(Long id) {
-        userRepository.delete(findUser(id));
+    public void deleteUser(Long id, Long actorId) {
+        User actor = findUser(actorId);
+        User target = findUser(id);
+        checkCanModify(actor, target);
+
+        adminLogService.record(actor, AdminLogType.ACCOUNT_DELETE,
+                AdminLogTargetType.USER, target.getId(),
+                String.format("[%s] 계정 삭제", target.getNickname()),
+                String.format("{\"email\":\"%s\",\"role\":\"%s\"}", target.getEmail(), target.getRole()));
+
+        userRepository.delete(target);
     }
 
     // ── 계정 징계 ──────────────────────────────────────────
 
     @Transactional
-    public void suspendUser(Long id, SuspendUserRequest request) {
-        User user = findUser(id);
+    public void suspendUser(Long id, SuspendUserRequest request, Long actorId) {
+        User actor = findUser(actorId);
+        User target = findUser(id);
+        checkCanModify(actor, target);
+
         LocalDateTime until = LocalDateTime.now().plusDays(request.days());
-        user.suspend(until, request.reason());
+        target.suspend(until, request.reason());
+
+        adminLogService.record(actor, AdminLogType.ACCOUNT_SUSPEND,
+                AdminLogTargetType.USER, target.getId(),
+                String.format("[%s] 계정 정지 %d일 (사유: %s)", target.getNickname(), request.days(), request.reason()),
+                String.format("{\"days\":%d,\"until\":\"%s\",\"reason\":\"%s\"}",
+                        request.days(), until, request.reason()));
 
         try {
-            emailSender.sendHtml(user.getEmail(), "[DrinkIndex] 계정 이용 정지 안내",
-                    buildSuspensionEmail(user.getNickname(), request.days(), until, request.reason()));
+            emailSender.sendHtml(target.getEmail(), "[DrinkIndex] 계정 이용 정지 안내",
+                    buildSuspensionEmail(target.getNickname(), request.days(), until, request.reason()));
         } catch (Exception e) {
             log.warn("징계 이메일 발송 실패: userId={}", id, e);
         }
+    }
+
+    // ── 증류소 담당자 계정 생성 ────────────────────────────
+
+    @Transactional
+    public AdminUserResponse createDistilleryManager(CreateDistilleryManagerRequest request) {
+        if (userRepository.existsByEmail(request.email())) {
+            throw new CustomException(ErrorCode.DUPLICATE_EMAIL);
+        }
+        if (userRepository.existsByNickname(request.nickname())) {
+            throw new CustomException(ErrorCode.DUPLICATE_NICKNAME);
+        }
+        Distillery distillery = distilleryRepository.findById(request.distilleryId())
+                .orElseThrow(() -> new CustomException(ErrorCode.DISTILLERY_NOT_FOUND));
+        User user = User.builder()
+                .email(request.email())
+                .password(passwordEncoder.encode(request.password()))
+                .nickname(request.nickname())
+                .role(Role.PARTNER)
+                .distillery(distillery)
+                .build();
+        return AdminUserResponse.from(userRepository.save(user));
+    }
+
+    // ── 권한 체크 ──────────────────────────────────────────
+
+    /**
+     * ADMIN은 SUPER_ADMIN 또는 다른 ADMIN 계정을 수정할 수 없다.
+     * SUPER_ADMIN은 제한 없음.
+     */
+    private void checkCanModify(User actor, User target) {
+        if (actor.getRole() == Role.SUPER_ADMIN) return;
+        if (target.getRole() == Role.SUPER_ADMIN || target.getRole() == Role.ADMIN) {
+            throw new CustomException(ErrorCode.FORBIDDEN);
+        }
+    }
+
+    // ── 헬퍼 ──────────────────────────────────────────────
+
+    private String buildRoleName(User user) {
+        String base = user.getRole().name();
+        return user.getRoleType() != null ? base + "(" + user.getRoleType().getName() + ")" : base;
     }
 
     private String buildSuspensionEmail(String nickname, int days, LocalDateTime until, String reason) {
@@ -133,33 +244,6 @@ public class AdminUserService {
                 </div>
                 """.formatted(nickname, days, until.format(DATE_FMT), reason);
     }
-
-    // ── 증류소 담당자 계정 생성 ────────────────────────────
-
-    @Transactional
-    public AdminUserResponse createDistilleryManager(CreateDistilleryManagerRequest request) {
-        if (userRepository.existsByEmail(request.email())) {
-            throw new CustomException(ErrorCode.DUPLICATE_EMAIL);
-        }
-        if (userRepository.existsByNickname(request.nickname())) {
-            throw new CustomException(ErrorCode.DUPLICATE_NICKNAME);
-        }
-
-        Distillery distillery = distilleryRepository.findById(request.distilleryId())
-                .orElseThrow(() -> new CustomException(ErrorCode.DISTILLERY_NOT_FOUND));
-
-        User user = User.builder()
-                .email(request.email())
-                .password(passwordEncoder.encode(request.password()))
-                .nickname(request.nickname())
-                .role(Role.DISTILLERY)
-                .distillery(distillery)
-                .build();
-
-        return AdminUserResponse.from(userRepository.save(user));
-    }
-
-    // ── Private helpers ────────────────────────────────────
 
     private User findUser(Long id) {
         return userRepository.findById(id)

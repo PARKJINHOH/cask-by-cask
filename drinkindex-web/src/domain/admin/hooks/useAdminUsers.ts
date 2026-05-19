@@ -1,11 +1,29 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { adminUserApi } from '../api/adminUserApi'
-import type { AdminUserSearchParams, ChangeRoleRequest, SuspendUserRequest } from '../types/admin.types'
+import type { AdminUserSearchParams, ChangeRoleRequest, SuspendUserRequest, UpdateBoardPermissionsRequest } from '../types/admin.types'
 
 export function useAdminUsers(params: AdminUserSearchParams) {
   return useQuery({
     queryKey: ['admin-users', params],
     queryFn: () => adminUserApi.search(params).then((res) => res.data.data!),
+  })
+}
+
+export function useAdminUser(id: number) {
+  return useQuery({
+    queryKey: ['admin-user', id],
+    queryFn: () => adminUserApi.getUser(id).then((res) => res.data.data!),
+  })
+}
+
+export function useUpdateBoardPermissions() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: UpdateBoardPermissionsRequest }) =>
+      adminUserApi.updateBoardPermissions(id, data),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-user', id] })
+    },
   })
 }
 
@@ -60,3 +78,4 @@ export function useDeleteUser() {
     },
   })
 }
+

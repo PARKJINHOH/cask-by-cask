@@ -60,8 +60,73 @@ export interface CognacDetailRequest {
 }
 
 // ── Users ──────────────────────────────────────────────────────
-export type AdminUserRole = 'ADMIN' | 'MEMBER' | 'DISTILLERY'
+export type AdminUserRole = 'SUPER_ADMIN' | 'ADMIN' | 'MODERATOR' | 'MEMBER' | 'PARTNER'
 
+export type BoardType = 'NOTICE' | 'FREE'
+
+export const BOARD_TYPE_LABELS: Record<BoardType, string> = {
+  NOTICE: '공지 게시판',
+  FREE: '자유 게시판',
+}
+
+export const ALL_BOARD_TYPES: BoardType[] = ['FREE']
+
+export type AdminMenuKey =
+  | 'SPIRIT_REQUESTS'
+  | 'SPIRITS'
+  | 'DISTILLERIES'
+  | 'WINERIES'
+  | 'COGNAC_HOUSES'
+  | 'COGNAC_APPELLATIONS'
+
+export const ADMIN_MENU_KEY_LABELS: Record<AdminMenuKey, string> = {
+  SPIRIT_REQUESTS: '등록 요청',
+  SPIRITS: '주류 관리',
+  DISTILLERIES: '증류소 관리',
+  WINERIES: '와이너리 관리',
+  COGNAC_HOUSES: '꼬냑 하우스 관리',
+  COGNAC_APPELLATIONS: '세부 산지 관리',
+}
+
+export const ALL_ADMIN_MENU_KEYS: AdminMenuKey[] = [
+  'SPIRIT_REQUESTS',
+  'SPIRITS',
+  'DISTILLERIES',
+  'WINERIES',
+  'COGNAC_HOUSES',
+  'COGNAC_APPELLATIONS',
+]
+
+// ── RoleType ───────────────────────────────────────────────────
+export type RoleSystemType = 'ADMIN' | 'PARTNER'
+
+export interface RoleType {
+  id: number
+  name: string
+  description: string | null
+  systemRole: RoleSystemType
+  allowedMenus: AdminMenuKey[]
+  isActive: boolean
+  sortOrder: number
+}
+
+export interface CreateRoleTypeRequest {
+  name: string
+  description?: string
+  systemRole: RoleSystemType
+  allowedMenus: AdminMenuKey[]
+  sortOrder?: number
+}
+
+export interface UpdateRoleTypeRequest {
+  name: string
+  description?: string
+  allowedMenus: AdminMenuKey[]
+  isActive: boolean
+  sortOrder: number
+}
+
+// ── AdminUser ──────────────────────────────────────────────────
 export interface AdminUser {
   id: number
   email: string
@@ -73,10 +138,64 @@ export interface AdminUser {
   createdAt: string
   suspendedUntil: string | null
   suspendReason: string | null
+  roleTypeId: number | null
+  roleTypeName: string | null
+  allowedMenus: AdminMenuKey[] | null
+  boardPermissions: BoardType[] | null
+}
+
+export interface UpdateBoardPermissionsRequest {
+  boardTypes: BoardType[]
+}
+
+// ── AdminLog ───────────────────────────────────────────────────
+export type AdminLogType =
+  | 'CONTENT_HIDE'
+  | 'CONTENT_RESTORE'
+  | 'ROLE_CHANGE'
+  | 'ACCOUNT_SUSPEND'
+  | 'ACCOUNT_DELETE'
+
+export type AdminLogTargetType = 'POST' | 'COMMENT' | 'USER'
+
+export const ADMIN_LOG_TYPE_LABELS: Record<AdminLogType, string> = {
+  CONTENT_HIDE:    '게시글/댓글 숨김',
+  CONTENT_RESTORE: '게시글/댓글 복구',
+  ROLE_CHANGE:     '역할 변경',
+  ACCOUNT_SUSPEND: '계정 정지',
+  ACCOUNT_DELETE:  '계정 삭제',
+}
+
+export const ADMIN_LOG_CATEGORY: Record<string, AdminLogType[]> = {
+  커뮤니티: ['CONTENT_HIDE', 'CONTENT_RESTORE'],
+  회원:     ['ROLE_CHANGE', 'ACCOUNT_SUSPEND', 'ACCOUNT_DELETE'],
+}
+
+export interface AdminLog {
+  id: number
+  logType: AdminLogType
+  logTypeLabel: string
+  actorId: number
+  actorNickname: string
+  targetType: AdminLogTargetType
+  targetId: number
+  summary: string
+  detail: string | null
+  createdAt: string
+}
+
+export interface AdminLogSearchParams {
+  logTypes?: AdminLogType[]
+  actorNickname?: string
+  from?: string
+  to?: string
+  page?: number
+  size?: number
 }
 
 export interface ChangeRoleRequest {
   role: AdminUserRole
+  roleTypeId?: number | null
   distilleryId?: number | null
 }
 

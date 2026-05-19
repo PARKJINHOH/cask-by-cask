@@ -21,6 +21,7 @@ import PostFormPage from '@/pages/community/PostFormPage'
 import NotificationsPage from '@/pages/NotificationsPage'
 import MessagesPage from '@/pages/MessagesPage'
 import AdminUserPage from '@/pages/admin/AdminUserPage'
+import AdminUserDetailPage from '@/pages/admin/AdminUserDetailPage'
 import AdminSpiritPage from '@/pages/admin/AdminSpiritPage'
 import AdminSpiritDetailPage from '@/pages/admin/AdminSpiritDetailPage'
 import AdminSpiritFormPage from '@/pages/admin/AdminSpiritFormPage'
@@ -55,6 +56,8 @@ import AdminEmailHistoryPage from '@/pages/admin/AdminEmailHistoryPage'
 import ReviewFormPage from '@/pages/ReviewFormPage'
 import InquiryPage from '@/pages/InquiryPage'
 import AdminInquiryPage from '@/pages/admin/AdminInquiryPage'
+import AdminRolePage from '@/pages/admin/AdminRolePage'
+import AdminLogPage from '@/pages/admin/AdminLogPage'
 
 export default function App() {
   return (
@@ -95,6 +98,7 @@ export default function App() {
             <Route path="admin" element={<AdminLayout />}>
               <Route index element={<Navigate to="users" replace />} />
               <Route path="users" element={<AdminUserPage />} />
+              <Route path="users/:id" element={<AdminUserDetailPage />} />
               <Route path="spirits" element={<AdminSpiritPage />} />
               <Route path="spirits/new" element={<AdminSpiritFormPage />} />
               <Route path="spirits/:id" element={<AdminSpiritDetailPage />} />
@@ -128,6 +132,8 @@ export default function App() {
               <Route path="emails/send" element={<AdminEmailPage />} />
               <Route path="emails/history" element={<AdminEmailHistoryPage />} />
               <Route path="inquiries" element={<AdminInquiryPage />} />
+              <Route path="roles" element={<AdminRolePage />} />
+              <Route path="logs" element={<AdminLogPage />} />
             </Route>
           </Route>
         </Routes>

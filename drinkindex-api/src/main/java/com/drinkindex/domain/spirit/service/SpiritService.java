@@ -88,6 +88,12 @@ public class SpiritService {
         User registeredBy = getUser(userId);
         Distillery distillery = resolveDistillery(request.distilleryId());
 
+        // PARTNER는 distilleryId 미입력 시 자신의 증류소 자동 사용
+        if (registeredBy.getRole() == Role.PARTNER && distillery == null
+                && registeredBy.getDistillery() != null) {
+            distillery = registeredBy.getDistillery();
+        }
+
         verifyDistilleryAccess(registeredBy, distillery);
 
         Spirit spirit = Spirit.builder()
@@ -344,7 +350,7 @@ public class SpiritService {
     }
 
     private void verifyDistilleryAccess(User user, Distillery distillery) {
-        if (user.getRole() != Role.DISTILLERY) return;
+        if (user.getRole() != Role.PARTNER) return;
         if (distillery == null
                 || user.getDistillery() == null
                 || !user.getDistillery().getId().equals(distillery.getId())) {

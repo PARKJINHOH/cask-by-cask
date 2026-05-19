@@ -71,7 +71,7 @@ export default function UserBadge({
   const tooltip =
     user.role === 'ADMIN'
       ? '관리자'
-      : user.role === 'DISTILLERY'
+      : user.role === 'PARTNER'
         ? '증류소 담당자'
         : `Lv.${level} ${levelName} · 숙성력 ${(user.maturingPower ?? 0).toLocaleString()}`
 
@@ -104,7 +104,7 @@ export default function UserBadge({
   ) : (
     <span className="flex items-center justify-center w-full h-full">
       {user.role === 'ADMIN' && <AdminIcon size={ICON_IN_AVATAR[size]} />}
-      {user.role === 'DISTILLERY' && (
+      {user.role === 'PARTNER' && (
         <DistilleryIcon logoUrl={user.distilleryLogoUrl} size={ICON_IN_AVATAR[size]} />
       )}
       {user.role === 'MEMBER' && <LevelIcon level={level} size={ICON_IN_AVATAR[size]} />}
@@ -175,7 +175,7 @@ export default function UserBadge({
             관리자
           </span>
         )}
-        {user.role === 'DISTILLERY' && (
+        {user.role === 'PARTNER' && (
           <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-semibold
             rounded-full bg-emerald-100 text-emerald-700 leading-none flex-shrink-0">
             증류소

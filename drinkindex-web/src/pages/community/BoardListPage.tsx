@@ -68,11 +68,12 @@ export default function BoardListPage({ boardType, title }: Props) {
   const posts    = query.data?.content ?? []
   const totalPages = query.data?.totalPages ?? 0
 
-  // NOTICE 게시판: ADMIN·DISTILLERY만 글쓰기 가능
+  // NOTICE 게시판: ADMIN·SUPER_ADMIN·PARTNER만 글쓰기 가능
   const canWrite = isLoggedIn && (
     boardType === 'FREE' ||
+    user?.role === 'SUPER_ADMIN' ||
     user?.role === 'ADMIN' ||
-    user?.role === 'DISTILLERY'
+    user?.role === 'PARTNER'
   )
 
   // ── 파라미터 업데이트 헬퍼 ────────────────────────────────

@@ -161,6 +161,11 @@ public enum ErrorCode {
     STORAGE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "STORAGE_001", "파일 저장 중 오류가 발생했습니다."),
     INVALID_FILE_PATH(HttpStatus.BAD_REQUEST, "STORAGE_002", "잘못된 파일 경로입니다."),
 
+    // RoleType
+    ROLE_TYPE_NOT_FOUND(HttpStatus.NOT_FOUND, "ROLE_001", "역할 타입을 찾을 수 없습니다."),
+    ROLE_TYPE_IN_USE(HttpStatus.CONFLICT, "ROLE_002", "해당 역할을 사용 중인 계정이 있어 삭제할 수 없습니다."),
+    DUPLICATE_VALUE(HttpStatus.CONFLICT, "ROLE_003", "이미 존재하는 값입니다."),
+
     // Common
     NOT_FOUND(HttpStatus.NOT_FOUND, "COMMON_001", "리소스를 찾을 수 없습니다."),
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "COMMON_002", "입력값이 올바르지 않습니다."),

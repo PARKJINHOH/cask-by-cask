@@ -18,6 +18,8 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.List;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -40,7 +42,7 @@ class AuthControllerTest {
     @DisplayName("POST /api/auth/signup — 201 Created, 응답 바디 확인")
     void signup_success() throws Exception {
         SignupRequest request = new SignupRequest("test@example.com", "Password1!", "tester", true, true, false);
-        UserResponse response = new UserResponse(1L, "test@example.com", "tester", Role.MEMBER, null, null, null, null, null, null, null, null, null);
+        UserResponse response = new UserResponse(1L, "test@example.com", "tester", Role.MEMBER, null, null, null, null, null, null, null, null, null, List.of());
 
         given(authService.signup(any())).willReturn(response);
 

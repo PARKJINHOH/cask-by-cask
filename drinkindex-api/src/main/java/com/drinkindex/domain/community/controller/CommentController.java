@@ -4,6 +4,8 @@ import com.drinkindex.domain.community.dto.CreateCommentRequest;
 import com.drinkindex.domain.community.dto.PostCommentResponse;
 import com.drinkindex.domain.community.dto.UpdateCommentRequest;
 import com.drinkindex.domain.community.service.CommentService;
+import com.drinkindex.domain.user.entity.User;
+import com.drinkindex.domain.user.repository.UserRepository;
 import com.drinkindex.global.auth.security.CustomUserDetails;
 import com.drinkindex.global.response.ApiResponse;
 import jakarta.validation.Valid;
@@ -20,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 public class CommentController {
 
     private final CommentService commentService;
+    private final UserRepository userRepository;
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<PostCommentResponse>>> getComments(
@@ -64,6 +67,30 @@ public class CommentController {
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         commentService.deleteComment(postId, commentId, userDetails.getUserId());
+        return ResponseEntity.ok(ApiResponse.success());
+    }
+
+    @PatchMapping("/{commentId}/hide")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','MODERATOR')")
+    public ResponseEntity<ApiResponse<Void>> hideComment(
+            @PathVariable Long postId,
+            @PathVariable Long commentId,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        User actor = userRepository.findById(userDetails.getUserId()).orElseThrow();
+        commentService.hideComment(commentId, actor);
+        return ResponseEntity.ok(ApiResponse.success());
+    }
+
+    @PatchMapping("/{commentId}/restore-hide")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','MODERATOR')")
+    public ResponseEntity<ApiResponse<Void>> restoreComment(
+            @PathVariable Long postId,
+            @PathVariable Long commentId,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        User actor = userRepository.findById(userDetails.getUserId()).orElseThrow();
+        commentService.restoreComment(commentId, actor);
         return ResponseEntity.ok(ApiResponse.success());
     }
 }
