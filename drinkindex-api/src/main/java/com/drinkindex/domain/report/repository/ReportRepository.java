@@ -9,6 +9,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
+
 public interface ReportRepository extends JpaRepository<Report, Long> {
 
     boolean existsByReporterIdAndTargetTypeAndTargetId(
@@ -32,4 +34,9 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
             @Param("status") ReportStatus status,
             @Param("targetType") ReportTargetType targetType,
             Pageable pageable);
+
+    long countByStatus(ReportStatus status);
+
+    @Query("SELECT r.status, COUNT(r) FROM Report r GROUP BY r.status")
+    List<Object[]> findStatusStats();
 }

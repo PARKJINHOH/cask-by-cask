@@ -1,5 +1,6 @@
 package com.drinkindex.domain.review.repository;
 
+import com.drinkindex.domain.admin.dto.DailyCountProjection;
 import com.drinkindex.domain.review.entity.Review;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -7,6 +8,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 public interface ReviewRepository extends JpaRepository<Review, Long> {
@@ -53,4 +56,7 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
             WHERE (:isHidden IS NULL OR r.isHidden = :isHidden)
             """)
     Page<Review> findForAdmin(@Param("isHidden") Boolean isHidden, Pageable pageable);
+
+    @Query(value = "SELECT DATE(created_at) as date, COUNT(*) as count FROM review WHERE created_at >= :from GROUP BY DATE(created_at) ORDER BY DATE(created_at)", nativeQuery = true)
+    List<DailyCountProjection> findDailyReviewTrend(@Param("from") LocalDateTime from);
 }

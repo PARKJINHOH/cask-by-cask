@@ -20,6 +20,13 @@ type NavEntry =
 
 const navEntries: NavEntry[] = [
   {
+    type: 'item',
+    path: '/admin',
+    label: '대시보드',
+    icon: '📊',
+    exact: true,
+  },
+  {
     type: 'group',
     groupLabel: '관리',
     groupIcon: '⚙️',

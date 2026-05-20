@@ -1,5 +1,6 @@
 package com.drinkindex.domain.user.repository;
 
+import com.drinkindex.domain.admin.dto.DailyCountProjection;
 import com.drinkindex.domain.community.entity.UserBlock;
 import com.drinkindex.domain.user.entity.RoleType;
 import com.drinkindex.domain.user.entity.User;
@@ -9,6 +10,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -41,6 +43,14 @@ public interface UserRepository extends JpaRepository<User, Long>, UserQueryRepo
     default Optional<User> findByNicknameAndNotDeleted(String nickname) {
         return findByNickname(nickname);
     }
+
+    long countByIsActiveTrue();
+
+    @Query("SELECT COUNT(u) FROM User u WHERE u.createdAt >= :start AND u.createdAt < :end")
+    long countByCreatedAtBetween(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+    @Query(value = "SELECT DATE(created_at) as date, COUNT(*) as count FROM users WHERE created_at >= :from AND deleted_at IS NULL GROUP BY DATE(created_at) ORDER BY DATE(created_at)", nativeQuery = true)
+    List<DailyCountProjection> findDailySignupTrend(@Param("from") LocalDateTime from);
 
     List<User> findAllByEmailSubscribedTrue();
 

@@ -13,4 +13,6 @@ public interface SpiritRegisterRequestRepository extends JpaRepository<SpiritReg
     Page<SpiritRegisterRequest> findByStatus(RequestStatus status, Pageable pageable);
 
     List<SpiritRegisterRequest> findByUserIdOrderByCreatedAtDesc(Long userId);
+
+    long countByStatus(RequestStatus status);
 }

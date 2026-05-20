@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from '@/shared/api/queryClient'
 import MainLayout from '@/layouts/MainLayout'
@@ -58,6 +58,7 @@ import InquiryPage from '@/pages/InquiryPage'
 import AdminInquiryPage from '@/pages/admin/AdminInquiryPage'
 import AdminRolePage from '@/pages/admin/AdminRolePage'
 import AdminLogPage from '@/pages/admin/AdminLogPage'
+import AdminDashboardPage from '@/pages/admin/AdminDashboardPage'
 
 export default function App() {
   return (
@@ -96,7 +97,7 @@ export default function App() {
 
           <Route element={<AdminRoute />}>
             <Route path="admin" element={<AdminLayout />}>
-              <Route index element={<Navigate to="users" replace />} />
+              <Route index element={<AdminDashboardPage />} />
               <Route path="users" element={<AdminUserPage />} />
               <Route path="users/:id" element={<AdminUserDetailPage />} />
               <Route path="spirits" element={<AdminSpiritPage />} />
