@@ -24,7 +24,7 @@ repositories {
 }
 
 val queryDslVersion = "5.1.0"
-val jjwtVersion = "0.12.6"
+val jjwtVersion = "0.13.0"
 
 dependencies {
     // Web
@@ -60,13 +60,13 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-mail")
 
     // HTML Sanitizer — XSS 방어 (공지사항 TipTap 콘텐츠 서버 측 재검증)
-    implementation("org.jsoup:jsoup:1.17.2")
+    implementation("org.jsoup:jsoup:1.22.2")
 
     // SQL 로깅 (local: 파라미터 인라인 + 유저 ID)
-    implementation("com.github.gavlyukovskiy:datasource-proxy-spring-boot-starter:1.10.0")
+    implementation("com.github.gavlyukovskiy:datasource-proxy-spring-boot-starter:1.12.1")
 
     // Swagger / OpenAPI
-    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.3")
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.17")
 
     // Lombok
     compileOnly("org.projectlombok:lombok")

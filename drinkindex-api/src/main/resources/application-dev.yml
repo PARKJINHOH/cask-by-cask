@@ -16,6 +16,16 @@ spring:
       port: 6379
       password: ${DEV_REDIS_PASSWORD}
 
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${GMAIL_USERNAME}
+    password: ${GMAIL_APP_PASSWORD}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.starttls.required: true
+
 storage:
   s3:
     bucket: TODO
@@ -24,8 +34,14 @@ storage:
     secret-key: TODO
 
 cors:
-  allowed-origins: ${FRONTEND_URL:http://localhost:5173}
+  allowed-origins: https://drinkindex.ptory.net
 
 logging:
   level:
     com.drinkindex: INFO
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
