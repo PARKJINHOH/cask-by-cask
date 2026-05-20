@@ -25,13 +25,13 @@ public class AdminLogController {
     @GetMapping
     public ResponseEntity<ApiResponse<Page<AdminLogResponse>>> getLogs(
             @RequestParam(required = false) List<AdminLogType> logTypes,
-            @RequestParam(required = false) String actorNickname,
+            @RequestParam(required = false) String actorEmail,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
             @PageableDefault(size = 30, sort = "createdAt") Pageable pageable) {
         return ResponseEntity.ok(ApiResponse.success(
-                adminLogService.search(logTypes, actorNickname, from, to, pageable)));
+                adminLogService.search(logTypes, actorEmail, from, to, pageable)));
     }
 }

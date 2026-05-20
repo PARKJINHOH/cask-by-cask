@@ -6,6 +6,7 @@ import com.drinkindex.domain.admin.entity.enums.AdminLogTargetType;
 import com.drinkindex.domain.admin.entity.enums.AdminLogType;
 import com.drinkindex.domain.admin.repository.AdminLogRepository;
 import com.drinkindex.domain.user.entity.User;
+import com.drinkindex.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -20,6 +21,7 @@ import java.util.List;
 public class AdminLogService {
 
     private final AdminLogRepository adminLogRepository;
+    private final UserRepository userRepository;
 
     public void record(User actor, AdminLogType logType,
                        AdminLogTargetType targetType, Long targetId,
@@ -36,13 +38,19 @@ public class AdminLogService {
 
     @Transactional(readOnly = true)
     public Page<AdminLogResponse> search(List<AdminLogType> logTypes,
-                                         String actorNickname,
+                                         String actorEmail,
                                          LocalDateTime from,
                                          LocalDateTime to,
                                          Pageable pageable) {
         List<AdminLogType> types = (logTypes == null || logTypes.isEmpty()) ? null : logTypes;
-        String nickname = (actorNickname == null || actorNickname.isBlank()) ? null : actorNickname.trim();
-        return adminLogRepository.search(types, nickname, from, to, pageable)
-                .map(AdminLogResponse::from);
+        String email = (actorEmail == null || actorEmail.isBlank()) ? null : actorEmail.trim();
+        return adminLogRepository.search(types, email, from, to, pageable)
+                .map(log -> {
+                    String targetUserEmail = null;
+                    if (log.getTargetType() == AdminLogTargetType.USER) {
+                        targetUserEmail = userRepository.findEmailById(log.getTargetId()).orElse(null);
+                    }
+                    return AdminLogResponse.from(log, targetUserEmail);
+                });
     }
 }

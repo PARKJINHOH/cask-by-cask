@@ -37,19 +37,19 @@ const TARGET_LABELS = { POST: '게시글', COMMENT: '댓글', USER: '회원' }
 
 export default function AdminLogPage() {
   const [category, setCategory] = useState<CategoryKey>('전체')
-  const [actorNickname, setActorNickname] = useState('')
-  const [nicknameInput, setNicknameInput] = useState('')
+  const [actorEmail, setActorEmail] = useState('')
+  const [emailInput, setEmailInput] = useState('')
   const [page, setPage] = useState(0)
 
   const { data, isLoading } = useAdminLogs({
     logTypes: getLogTypes(category),
-    actorNickname: actorNickname || undefined,
+    actorEmail: actorEmail || undefined,
     page,
     size: 30,
   })
 
   const handleSearch = () => {
-    setActorNickname(nicknameInput.trim())
+    setActorEmail(emailInput.trim())
     setPage(0)
   }
 
@@ -87,13 +87,13 @@ export default function AdminLogPage() {
 
         {/* 처리자 검색 */}
         <div>
-          <p className="text-xs font-medium text-neutral-500 mb-1.5">처리자 닉네임</p>
+          <p className="text-xs font-medium text-neutral-500 mb-1.5">처리자 아이디</p>
           <div className="flex gap-2">
             <input
-              value={nicknameInput}
-              onChange={(e) => setNicknameInput(e.target.value)}
+              value={emailInput}
+              onChange={(e) => setEmailInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              placeholder="닉네임 검색"
+              placeholder="아이디 검색"
               className="h-9 px-3 text-sm border border-neutral-300 rounded-lg w-40
                 focus:outline-none focus:ring-2 focus:ring-primary-400"
             />
@@ -144,14 +144,16 @@ export default function AdminLogPage() {
                           {ADMIN_LOG_TYPE_LABELS[log.logType]}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3 font-medium text-neutral-800">
-                        {log.actorNickname}
+                      <td className="px-4 py-3 font-medium text-neutral-800 text-xs">
+                        {log.actorEmail}
                       </td>
                       <td className="px-4 py-3 text-neutral-500 text-xs">
                         <span className="px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600 text-[11px] font-medium mr-1">
                           {TARGET_LABELS[log.targetType]}
                         </span>
-                        #{log.targetId}
+                        {log.targetType === 'USER' && log.targetUserEmail
+                          ? log.targetUserEmail
+                          : `#${log.targetId}`}
                       </td>
                       <td className="px-4 py-3 text-neutral-600 max-w-xs truncate">
                         {log.summary}

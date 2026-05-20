@@ -17,14 +17,14 @@ public interface AdminLogRepository extends JpaRepository<AdminLog, Long> {
         SELECT l FROM AdminLog l
         JOIN FETCH l.actor
         WHERE (:logTypes IS NULL OR l.logType IN :logTypes)
-          AND (:actorNickname IS NULL OR l.actor.nickname LIKE %:actorNickname%)
+          AND (:actorEmail IS NULL OR l.actor.email LIKE %:actorEmail%)
           AND (:from IS NULL OR l.createdAt >= :from)
           AND (:to IS NULL OR l.createdAt <= :to)
         ORDER BY l.createdAt DESC
         """)
     Page<AdminLog> search(
             @Param("logTypes") List<AdminLogType> logTypes,
-            @Param("actorNickname") String actorNickname,
+            @Param("actorEmail") String actorEmail,
             @Param("from") LocalDateTime from,
             @Param("to") LocalDateTime to,
             Pageable pageable

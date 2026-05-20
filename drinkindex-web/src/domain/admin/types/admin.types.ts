@@ -176,9 +176,10 @@ export interface AdminLog {
   logType: AdminLogType
   logTypeLabel: string
   actorId: number
-  actorNickname: string
+  actorEmail: string
   targetType: AdminLogTargetType
   targetId: number
+  targetUserEmail: string | null
   summary: string
   detail: string | null
   createdAt: string
@@ -186,7 +187,7 @@ export interface AdminLog {
 
 export interface AdminLogSearchParams {
   logTypes?: AdminLogType[]
-  actorNickname?: string
+  actorEmail?: string
   from?: string
   to?: string
   page?: number

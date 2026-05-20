@@ -11,9 +11,10 @@ public record AdminLogResponse(
         AdminLogType logType,
         String logTypeLabel,
         Long actorId,
-        String actorNickname,
+        String actorEmail,
         AdminLogTargetType targetType,
         Long targetId,
+        String targetUserEmail,
         String summary,
         String detail,
         LocalDateTime createdAt
@@ -26,15 +27,16 @@ public record AdminLogResponse(
             AdminLogType.ACCOUNT_DELETE,  "계정 삭제"
     );
 
-    public static AdminLogResponse from(AdminLog log) {
+    public static AdminLogResponse from(AdminLog log, String targetUserEmail) {
         return new AdminLogResponse(
                 log.getId(),
                 log.getLogType(),
                 LABELS.getOrDefault(log.getLogType(), log.getLogType().name()),
                 log.getActor().getId(),
-                log.getActor().getNickname(),
+                log.getActor().getEmail(),
                 log.getTargetType(),
                 log.getTargetId(),
+                targetUserEmail,
                 log.getSummary(),
                 log.getDetail(),
                 log.getCreatedAt()
