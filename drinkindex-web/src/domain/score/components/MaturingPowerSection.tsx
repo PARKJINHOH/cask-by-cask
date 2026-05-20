@@ -97,7 +97,7 @@ function LevelCard({ profile }: { profile: UserProfile }) {
 
 // ── 레벨 맵 카드 ─────────────────────────────────────────────
 
-function LevelMapCard({ maturingPower, currentLevel }: { maturingPower: number; currentLevel: number }) {
+function LevelMapCard({ currentLevel }: { maturingPower: number; currentLevel: number }) {
   const { data: levels } = useLevelConfigs()
   const displayLevels: LevelInfo[] = levels && levels.length > 0 ? levels : LEVELS
 

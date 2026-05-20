@@ -22,7 +22,7 @@ const schema = z
     linkUrl: z.string().optional(),
     linkTargetBlank: z.boolean(),
     isVisible: z.boolean(),
-    sortOrder: z.coerce.number().min(0, '0 이상이어야 합니다'),
+    sortOrder: z.number().min(0, '0 이상이어야 합니다'),
     closeOnOverlay: z.boolean(),
     isAlwaysVisible: z.boolean(),
     startAt: z.string().optional(),

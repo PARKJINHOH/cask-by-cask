@@ -63,7 +63,7 @@ import AdminDashboardPage from '@/pages/admin/AdminDashboardPage'
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <BrowserRouter>
         <Routes>
           <Route element={<MainLayout />}>
             <Route index element={<MainPage />} />

@@ -55,8 +55,6 @@ type GNBItem =
 
 function GNB() {
   const { t } = useTranslation()
-  const { user } = useAuthStore()
-  const isAdmin = user?.role === 'ADMIN'
   const [open, setOpen] = useState<string | null>(null)
   const ref = useRef<HTMLDivElement>(null)
 
