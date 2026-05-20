@@ -472,7 +472,17 @@
     "recipientPlaceholder": "Recipient nickname",
     "contentPlaceholder": "Type a message...",
     "unread": "Unread",
-    "selectThread": "Select a message."
+    "selectThread": "Select a message.",
+    "tab": "Messages",
+    "sentSuccess": "Message sent",
+    "selfError": "You cannot send a message to yourself",
+    "blockedError": "You cannot send a message to this user",
+    "notFoundError": "User not found",
+    "badWordError": "Your message contains prohibited language",
+    "readStatus": "Read",
+    "backToList": "← Back",
+    "newMessageBtn": "+ New",
+    "closingSoon": "Closing shortly..."
   },
   "inquiry": {
     "title": "Contact Us",

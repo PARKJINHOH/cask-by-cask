@@ -83,7 +83,7 @@ export default function CommunityCommentItem({ comment, postId, isLoggedIn, dept
           <div className="flex items-center gap-2 mb-1">
             {comment.authorRole ? (
               <UserBadge
-                user={{ nickname: comment.authorNickname ?? t('board.anonymous'), role: comment.authorRole as UserRole, currentLevel: comment.authorLevel, maturingPower: comment.authorMaturingPower ?? undefined, nicknameFixed: comment.authorNicknameFixed, profileImageUrl: comment.authorProfileImageUrl }}
+                user={{ id: comment.authorId ?? undefined, nickname: comment.authorNickname ?? t('board.anonymous'), role: comment.authorRole as UserRole, currentLevel: comment.authorLevel, maturingPower: comment.authorMaturingPower ?? undefined, nicknameFixed: comment.authorNicknameFixed, profileImageUrl: comment.authorProfileImageUrl }}
                 size="sm"
               />
             ) : (

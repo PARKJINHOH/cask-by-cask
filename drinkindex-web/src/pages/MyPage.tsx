@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { useMe } from '@/domain/user/hooks/useUser'
@@ -6,14 +7,17 @@ import MyReviewList from '@/domain/review/components/MyReviewList'
 import MyWishlist from '@/domain/wishlist/components/MyWishlist'
 import AccountSettings from '@/domain/user/components/AccountSettings'
 import MaturingPowerSection from '@/domain/score/components/MaturingPowerSection'
+import MessagesTab from '@/domain/message/components/MessagesTab'
 import LevelIcon from '@/shared/components/icons/LevelIcon'
+import { useMessageList } from '@/domain/message/hooks/useMessages'
 
-type Tab = 'maturing' | 'reviews' | 'wishlist' | 'settings'
+type Tab = 'maturing' | 'reviews' | 'wishlist' | 'messages' | 'settings'
 
 const ALL_TABS: { value: Tab; label: string; adminHidden?: boolean }[] = [
   { value: 'maturing',  label: '숙성력',   adminHidden: true },
   { value: 'reviews',   label: '내 리뷰' },
   { value: 'wishlist',  label: '즐겨찾기' },
+  { value: 'messages',  label: '쪽지' },
   { value: 'settings',  label: '계정 설정' },
 ]
 
@@ -27,17 +31,34 @@ export default function MyPage() {
   const authUser = useAuthStore((s) => s.user)
   const { data: profile } = useMe()
   const queryClient = useQueryClient()
+  const [searchParams] = useSearchParams()
 
   const role = profile?.role ?? authUser?.role ?? ''
   const isAdmin = role === 'ADMIN'
 
   const tabs = ALL_TABS.filter((t) => !(isAdmin && t.adminHidden))
-  const [tab, setTab] = useState<Tab>(() => (isAdmin ? 'reviews' : 'maturing'))
+
+  const tabParam = searchParams.get('tab') as Tab | null
+  const messageIdParam = searchParams.get('messageId') ? Number(searchParams.get('messageId')) : undefined
+
+  const [tab, setTab] = useState<Tab>(() => {
+    if (tabParam && tabs.some((t) => t.value === tabParam)) return tabParam
+    return isAdmin ? 'reviews' : 'maturing'
+  })
+
+  useEffect(() => {
+    if (tabParam && tabs.some((t) => t.value === tabParam)) {
+      setTab(tabParam)
+    }
+  }, [tabParam]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     queryClient.invalidateQueries({ queryKey: ['me'] })
     queryClient.invalidateQueries({ queryKey: ['scoreHistory', 'me'] })
   }, [queryClient])
+
+  const { data: allMsgData } = useMessageList('ALL')
+  const unreadMsgCount = allMsgData?.content?.filter((m) => m.hasUnread).length ?? 0
 
   const nickname        = profile?.nickname     ?? authUser?.nickname  ?? ''
   const email           = profile?.email        ?? authUser?.email     ?? ''
@@ -106,12 +127,12 @@ export default function MyPage() {
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-1 border-b border-neutral-200">
+      <div className="flex gap-1 border-b border-neutral-200 overflow-x-auto [&::-webkit-scrollbar]:hidden">
         {tabs.map(({ value, label }) => (
           <button
             key={value}
             onClick={() => setTab(value)}
-            className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px
+            className={`inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px
               whitespace-nowrap flex-shrink-0 ${
               tab === value
                 ? 'border-primary-600 text-primary-700'
@@ -119,6 +140,11 @@ export default function MyPage() {
             }`}
           >
             {label}
+            {value === 'messages' && unreadMsgCount > 0 && (
+              <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold rounded-full bg-red-500 text-white">
+                {unreadMsgCount > 99 ? '99+' : unreadMsgCount}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -127,6 +153,7 @@ export default function MyPage() {
       {tab === 'maturing'  && <MaturingPowerSection profile={profile ?? { id: 0, email, nickname, role, createdAt: '' }} />}
       {tab === 'reviews'   && <MyReviewList />}
       {tab === 'wishlist'  && <MyWishlist />}
+      {tab === 'messages'  && <MessagesTab initialMessageId={messageIdParam} />}
       {tab === 'settings'  && <AccountSettings />}
     </div>
   )

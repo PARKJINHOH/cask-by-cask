@@ -190,7 +190,7 @@ export default function PostDetailPage() {
             <div className="flex items-center gap-3 text-sm text-neutral-500">
               {post.authorRole ? (
                 <UserBadge
-                  user={{ nickname: post.authorNickname, role: post.authorRole as UserRole, currentLevel: post.authorLevel, maturingPower: post.authorMaturingPower ?? undefined, nicknameFixed: post.authorNicknameFixed, profileImageUrl: post.authorProfileImageUrl }}
+                  user={{ id: post.authorId ?? undefined, nickname: post.authorNickname, role: post.authorRole as UserRole, currentLevel: post.authorLevel, maturingPower: post.authorMaturingPower ?? undefined, nicknameFixed: post.authorNicknameFixed, profileImageUrl: post.authorProfileImageUrl }}
                   size="sm"
                 />
               ) : (

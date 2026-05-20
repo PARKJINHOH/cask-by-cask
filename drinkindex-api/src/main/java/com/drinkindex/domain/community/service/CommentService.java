@@ -258,6 +258,8 @@ public class CommentService {
                 .map(child -> toResponse(child, List.of(), reactionMap, currentUserId))
                 .collect(Collectors.toList());
 
+        Long authorId = (blocked || anon) ? null : comment.getAuthor().getId();
+
         return PostCommentResponse.builder()
                 .id(comment.getId())
                 .authorNickname(authorNickname)
@@ -266,6 +268,7 @@ public class CommentService {
                 .authorMaturingPower(authorMaturingPower)
                 .authorNicknameFixed(authorNicknameFixed)
                 .authorProfileImageUrl(authorProfileImageUrl)
+                .authorId(authorId)
                 .content(content)
                 .mentionedUserNickname(mentionedNickname)
                 .emojiReactions(emojiReactions)

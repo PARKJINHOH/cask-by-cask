@@ -59,8 +59,11 @@ public class PostService {
 
     @Transactional(readOnly = true)
     public Page<PostListResponse> getPosts(BoardType boardType, Long prefixId,
-                                           String keyword, PostSort sort, int page, int size) {
-        return postRepository.findPosts(boardType, prefixId, keyword, sort, PageRequest.of(page, size))
+                                           String keyword, PostSort sort,
+                                           Long authorId, Long commentAuthorId,
+                                           int page, int size) {
+        return postRepository.findPosts(boardType, prefixId, keyword, sort,
+                        authorId, commentAuthorId, PageRequest.of(page, size))
                 .map(PostListResponse::from);
     }
 

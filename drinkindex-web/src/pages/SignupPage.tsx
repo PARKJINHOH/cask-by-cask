@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -14,7 +14,11 @@ import { useLegalLatest } from '@/domain/legal/hooks/useLegal'
 
 // ── Types ──────────────────────────────────────────────────
 type CheckStatus = 'idle' | 'checking' | 'available' | 'taken'
-type PolicyType = 'terms' | 'privacy'
+type VerifyStep  = 'idle' | 'sending' | 'sent' | 'verifying' | 'verified'
+type PolicyType  = 'terms' | 'privacy'
+
+const CODE_TTL    = 5 * 60
+const COOLDOWN_SEC = 60
 
 // ── Schema ─────────────────────────────────────────────────
 const SPECIAL_CHARS = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/
@@ -27,7 +31,7 @@ const schema = z
       .string()
       .min(2, '닉네임은 2자 이상이어야 합니다.')
       .max(8,  '닉네임은 8자 이하여야 합니다.')
-      .regex(/^[가-힣a-zA-Z]+$/, '닉네임은 한글 또는 영문만 사용 가능합니다.'),
+      .regex(/^[가-힣a-zA-Z0-9]+$/, '닉네임은 한글, 영문 또는 숫자만 사용 가능합니다.'),
     password: z
       .string()
       .min(7,   '비밀번호는 7자 이상이어야 합니다.')
@@ -215,6 +219,14 @@ export default function SignupPage() {
   const [nicknameStatus, setNicknameStatus] = useState<CheckStatus>('idle')
   const [policyModal,    setPolicyModal]    = useState<PolicyType | null>(null)
 
+  const [verifyStep,  setVerifyStep]  = useState<VerifyStep>('idle')
+  const [verifyCode,  setVerifyCode]  = useState('')
+  const [verifyError, setVerifyError] = useState('')
+  const [timeLeft,    setTimeLeft]    = useState(0)
+  const [cooldown,    setCooldown]    = useState(0)
+  const timerRef    = useRef<ReturnType<typeof setInterval> | null>(null)
+  const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
   const {
     register,
     handleSubmit,
@@ -226,6 +238,36 @@ export default function SignupPage() {
     resolver: zodResolver(schema),
     defaultValues: { email: '', nickname: '', password: '', passwordConfirm: '', agreedToTerms: false, agreedToPrivacy: false, emailSubscribed: false },
   })
+
+  useEffect(() => {
+    return () => {
+      clearInterval(timerRef.current!)
+      clearInterval(cooldownRef.current!)
+    }
+  }, [])
+
+  const formatTime = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+
+  const startTimers = useCallback(() => {
+    setTimeLeft(CODE_TTL)
+    setCooldown(COOLDOWN_SEC)
+    clearInterval(timerRef.current!)
+    clearInterval(cooldownRef.current!)
+    timerRef.current = setInterval(() => {
+      setTimeLeft((prev) => { if (prev <= 1) { clearInterval(timerRef.current!); return 0 } return prev - 1 })
+    }, 1000)
+    cooldownRef.current = setInterval(() => {
+      setCooldown((prev) => { if (prev <= 1) { clearInterval(cooldownRef.current!); return 0 } return prev - 1 })
+    }, 1000)
+  }, [])
+
+  const resetVerify = useCallback(() => {
+    setVerifyStep('idle')
+    setVerifyCode('')
+    setVerifyError('')
+    clearInterval(timerRef.current!)
+    clearInterval(cooldownRef.current!)
+  }, [])
 
   // ── 이메일 중복확인 ──────────────────────────────────────
   const handleCheckEmail = async () => {
@@ -253,11 +295,64 @@ export default function SignupPage() {
     }
   }
 
+  // ── 이메일 인증 ─────────────────────────────────────────
+  const handleSendCode = useCallback(async () => {
+    const valid = await trigger('email')
+    if (!valid) return
+    setVerifyStep('sending')
+    setVerifyError('')
+    try {
+      await authApi.sendVerificationCode(getValues('email'))
+      setVerifyStep('sent')
+      setVerifyCode('')
+      startTimers()
+    } catch {
+      setVerifyStep('idle')
+      setVerifyError('인증코드 발송에 실패했습니다. 다시 시도해주세요.')
+    }
+  }, [trigger, getValues, startTimers])
+
+  const handleVerifyCode = useCallback(async () => {
+    if (verifyCode.length !== 6) { setVerifyError('인증코드 6자리를 입력해주세요.'); return }
+    setVerifyStep('verifying')
+    setVerifyError('')
+    try {
+      await authApi.verifyEmail({ email: getValues('email'), code: verifyCode })
+      clearInterval(timerRef.current!)
+      clearInterval(cooldownRef.current!)
+      setVerifyStep('verified')
+    } catch (err) {
+      const apiCode = (err as AxiosError<ApiResponse<unknown>>)?.response?.data?.code
+      setVerifyStep('sent')
+      if (apiCode === 'USER_007') setVerifyError('인증코드가 만료되었습니다. 재발송해주세요.')
+      else if (apiCode === 'USER_006') setVerifyError('인증코드가 올바르지 않습니다.')
+      else setVerifyError('인증 중 오류가 발생했습니다. 다시 시도해주세요.')
+    }
+  }, [verifyCode, getValues])
+
+  const handleResendCode = useCallback(async () => {
+    if (cooldown > 0) return
+    setVerifyError('')
+    try {
+      await authApi.sendVerificationCode(getValues('email'))
+      setVerifyCode('')
+      startTimers()
+    } catch (err) {
+      const apiCode = (err as AxiosError<ApiResponse<unknown>>)?.response?.data?.code
+      if (apiCode === 'USER_008') setVerifyError('잠시 후 다시 시도해주세요. (1분 대기)')
+      else setVerifyError('재발송에 실패했습니다.')
+    }
+  }, [cooldown, getValues, startTimers])
+
   // ── 제출 ────────────────────────────────────────────────
   const onSubmit = async (data: FormValues) => {
     // Step 1: 로컬 상태 검사
     if (emailStatus !== 'available') {
       setError('email', { message: '이메일 중복확인을 완료해주세요.' })
+      return
+    }
+    if (verifyStep !== 'verified') {
+      setError('email', { message: '이메일 인증을 완료해주세요.' })
       return
     }
     if (nicknameStatus !== 'available') {
@@ -287,7 +382,7 @@ export default function SignupPage() {
 
       // Step 3: 회원가입
       await signup({ email: data.email, password: data.password, nickname: data.nickname, agreedToTerms: data.agreedToTerms, agreedToPrivacy: data.agreedToPrivacy, emailSubscribed: data.emailSubscribed })
-      navigate('/verify-email', { replace: true, state: { email: data.email } })
+      navigate('/login', { replace: true, state: { verifySuccess: true } })
     } catch (err) {
       const code = (err as AxiosError<ApiResponse<unknown>>)?.response?.data?.code
       if (code === 'USER_002') {
@@ -334,7 +429,7 @@ export default function SignupPage() {
                 aria-invalid={!!errors.email}
                 className={`${inputBase} ${errors.email || emailStatus === 'taken' ? inputError : inputNormal}`}
                 {...emailReg}
-                onChange={(e) => { emailReg.onChange(e); setEmailStatus('idle') }}
+                onChange={(e) => { emailReg.onChange(e); setEmailStatus('idle'); resetVerify() }}
               />
               <CheckBtn status={emailStatus} onClick={handleCheckEmail} />
             </div>
@@ -342,6 +437,68 @@ export default function SignupPage() {
               ? <FieldError message={errors.email.message} />
               : <CheckStatusMsg status={emailStatus} field="email" />
             }
+
+            {/* 이메일 인증 */}
+            {emailStatus === 'available' && verifyStep !== 'verified' && (
+              <div className="space-y-1.5 pt-0.5">
+                {(verifyStep === 'sent' || verifyStep === 'verifying') && (
+                  <p className={`text-xs font-medium ${timeLeft <= 60 ? 'text-danger-500' : 'text-neutral-500'}`}>
+                    {timeLeft > 0 ? `만료까지 ${formatTime(timeLeft)}` : '인증코드가 만료되었습니다.'}
+                  </p>
+                )}
+                <div className="flex gap-2 items-start">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={6}
+                    value={verifyCode}
+                    onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="인증코드 6자리"
+                    disabled={verifyStep === 'idle' || verifyStep === 'sending' || timeLeft === 0}
+                    className={`${inputBase} text-center tracking-widest font-mono ${verifyError ? inputError : inputNormal} disabled:bg-neutral-100 disabled:text-neutral-400`}
+                  />
+                  {(verifyStep === 'idle' || verifyStep === 'sending') ? (
+                    <button
+                      type="button"
+                      onClick={handleSendCode}
+                      disabled={verifyStep === 'sending'}
+                      className="shrink-0 h-[38px] px-3 text-xs font-medium rounded-lg border border-neutral-300 text-neutral-600 bg-white hover:bg-neutral-50 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap transition-colors"
+                    >
+                      {verifyStep === 'sending' ? '발송 중...' : '코드발송'}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleVerifyCode}
+                      disabled={verifyCode.length !== 6 || timeLeft === 0 || verifyStep === 'verifying'}
+                      className="shrink-0 h-[38px] px-3 text-xs font-medium rounded-lg border border-primary-400 text-primary-600 bg-white hover:bg-primary-50 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap transition-colors"
+                    >
+                      {verifyStep === 'verifying' ? '확인 중...' : '인증확인'}
+                    </button>
+                  )}
+                </div>
+                {verifyError && <FieldError message={verifyError} />}
+                {(verifyStep === 'sent' || verifyStep === 'verifying') && (
+                  <button
+                    type="button"
+                    onClick={handleResendCode}
+                    disabled={cooldown > 0}
+                    className="text-xs text-neutral-500 hover:underline disabled:text-neutral-300 disabled:no-underline disabled:cursor-not-allowed"
+                  >
+                    {cooldown > 0 ? `재발송 ${cooldown}초 후 가능` : '인증코드 재발송'}
+                  </button>
+                )}
+              </div>
+            )}
+            {verifyStep === 'verified' && (
+              <div className="flex items-center gap-1 text-xs text-green-600">
+                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                이메일 인증이 완료되었습니다.
+              </div>
+            )}
           </div>
 
           {/* 닉네임 */}
@@ -350,7 +507,7 @@ export default function SignupPage() {
             <div className="flex gap-2 items-start">
               <input
                 type="text"
-                placeholder="2~8자, 한글 또는 영문"
+                placeholder="2~8자, 한글·영문·숫자"
                 autoComplete="nickname"
                 maxLength={8}
                 aria-invalid={!!errors.nickname}

@@ -32,7 +32,7 @@ public class MessageService {
     private final NotificationService notificationService;
     private final BadWordFilter badWordFilter;
 
-    public enum MessageBox { INBOX, SENT }
+    public enum MessageBox { INBOX, SENT, ALL }
 
     // ═══════════════════════════════════════════
     // 목록
@@ -46,9 +46,11 @@ public class MessageService {
         if (box == MessageBox.INBOX) {
             messages = messageRepository
                     .findByReceiverIdAndIsDeletedByReceiverFalseOrderByCreatedAtDesc(userId, pageRequest);
-        } else {
+        } else if (box == MessageBox.SENT) {
             messages = messageRepository
                     .findBySenderIdAndIsDeletedBySenderFalseOrderByCreatedAtDesc(userId, pageRequest);
+        } else {
+            messages = messageRepository.findAllByParticipant(userId, pageRequest);
         }
 
         return messages.map(m -> buildSummary(m, userId, box));
@@ -65,12 +67,12 @@ public class MessageService {
 
         List<MessageItem> items = messageItemRepository.findByMessageIdOrderByCreatedAtAsc(messageId);
 
-        // 수신자로 접근 시 미읽음 아이템 읽음 처리
-        if (message.getReceiver().getId().equals(userId)) {
-            items.stream()
-                 .filter(item -> !Boolean.TRUE.equals(item.getIsRead()))
-                 .forEach(MessageItem::markRead);
-        }
+        // 상대방이 보낸 항목만 읽음 처리 (내가 보낸 것은 제외)
+        // → receiver뿐 아니라 sender도 상대방 답장을 읽을 수 있음
+        items.stream()
+             .filter(item -> !Boolean.TRUE.equals(item.getIsRead()))
+             .filter(item -> !item.getSender().getId().equals(userId))
+             .forEach(MessageItem::markRead);
 
         return new MessageDetailResponse(message, items);
     }
@@ -175,17 +177,16 @@ public class MessageService {
     // ═══════════════════════════════════════════
 
     private MessageSummaryResponse buildSummary(Message message, Long userId, MessageBox box) {
-        String partnerNickname = box == MessageBox.INBOX
-                ? message.getSender().getNickname()
-                : message.getReceiver().getNickname();
+        String partnerNickname = message.getSender().getId().equals(userId)
+                ? message.getReceiver().getNickname()
+                : message.getSender().getNickname();
 
         String lastMessage = messageItemRepository
                 .findFirstByMessageIdOrderByCreatedAtDesc(message.getId())
                 .map(MessageItem::getContent)
                 .orElse("");
 
-        boolean hasUnread = box == MessageBox.INBOX
-                && messageItemRepository.existsUnreadByMessageId(message.getId());
+        boolean hasUnread = messageItemRepository.existsUnreadReceivedBy(message.getId(), userId);
 
         return MessageSummaryResponse.builder()
                 .id(message.getId())

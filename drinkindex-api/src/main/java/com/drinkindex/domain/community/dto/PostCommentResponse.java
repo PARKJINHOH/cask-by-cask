@@ -17,6 +17,7 @@ public class PostCommentResponse {
     private final Integer authorMaturingPower; // null if anonymous or deleted
     private final Boolean authorNicknameFixed; // null if anonymous or deleted
     private final String authorProfileImageUrl; // null if anonymous or deleted
+    private final Long authorId;               // null if anonymous, blocked, or deleted
     private final String content;
     private final String mentionedUserNickname;
     private final List<EmojiReactionSummary> emojiReactions;

@@ -20,6 +20,7 @@ public class PostListResponse {
     private final Integer authorMaturingPower; // null if anonymous
     private final Boolean authorNicknameFixed; // null if anonymous
     private final String authorProfileImageUrl; // null if anonymous
+    private final Long authorId;               // null if anonymous
     private final long viewCount;
     private final int likeCount;
     private final int commentCount;
@@ -39,6 +40,7 @@ public class PostListResponse {
         this.authorMaturingPower = anon ? null : post.getAuthor().getMaturingPower();
         this.authorNicknameFixed    = anon ? null : post.getAuthor().getNicknameFixed();
         this.authorProfileImageUrl  = anon ? null : post.getAuthor().getProfileImageUrl();
+        this.authorId               = anon ? null : post.getAuthor().getId();
         this.viewCount     = post.getViewCount();
         this.likeCount     = post.getLikeCount();
         this.commentCount  = post.getCommentCount();

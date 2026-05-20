@@ -15,8 +15,10 @@ public class EmailVerificationService {
 
     private static final Duration CODE_TTL = Duration.ofMinutes(5);
     private static final Duration COOLDOWN_TTL = Duration.ofSeconds(60);
+    private static final Duration PREVERIFIED_TTL = Duration.ofMinutes(30);
     private static final String CODE_PREFIX = "email:verify:";
     private static final String COOLDOWN_PREFIX = "email:cooldown:";
+    private static final String PREVERIFIED_PREFIX = "email:preverified:";
 
     private final StringRedisTemplate redisTemplate;
     private final EmailSender emailSender;
@@ -47,6 +49,18 @@ public class EmailVerificationService {
         }
         redisTemplate.delete(CODE_PREFIX + email);
         redisTemplate.delete(COOLDOWN_PREFIX + email);
+    }
+
+    public void markPreVerified(String email) {
+        redisTemplate.opsForValue().set(PREVERIFIED_PREFIX + email, "1", PREVERIFIED_TTL);
+    }
+
+    public boolean isPreVerified(String email) {
+        return Boolean.TRUE.equals(redisTemplate.hasKey(PREVERIFIED_PREFIX + email));
+    }
+
+    public void clearPreVerified(String email) {
+        redisTemplate.delete(PREVERIFIED_PREFIX + email);
     }
 
     private String generateCode() {

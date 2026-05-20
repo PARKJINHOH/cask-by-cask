@@ -27,4 +27,11 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
     List<Message> findThreadsBetween(@Param("uid1") Long uid1,
                                      @Param("uid2") Long uid2,
                                      Pageable pageable);
+
+    // 통합 쪽지함: 내가 참여한 스레드 전체 (삭제하지 않은 것)
+    @Query("SELECT m FROM Message m WHERE " +
+           "(m.sender.id = :userId AND m.isDeletedBySender = false) OR " +
+           "(m.receiver.id = :userId AND m.isDeletedByReceiver = false) " +
+           "ORDER BY m.createdAt DESC")
+    Page<Message> findAllByParticipant(@Param("userId") Long userId, Pageable pageable);
 }

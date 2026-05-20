@@ -50,3 +50,20 @@
 ## 신고 자동 숨김
 신고 3회 이상 → isHidden=true 자동 처리
 관리자 dismiss → isHidden=false 복구
+
+## 쪽지 UI — STEP 44
+
+### 확정 사항
+- 쪽지 팝업: 좌측 상단 고정 플로팅 팝업. 상단에 작게 "(쪽지)" 레이블.
+- 쪽지 길이: 최대 100자
+- 쪽지함: 마이페이지 탭으로만 운영 (/messages 별도 페이지 없음)
+- 닉네임 클릭 컨텍스트 메뉴: 사용자 게시글 보기 / 사용자 댓글 보기 / 쪽지 보내기
+- 비로그인: 쪽지 보내기 진입점 미노출
+
+### 백엔드 API (STEP 35 구현 완료)
+GET    /api/messages?box=INBOX|SENT&page=0&size=20
+GET    /api/messages/{id}
+POST   /api/messages          { receiverNickname, content }
+POST   /api/messages/{id}/reply { content }
+DELETE /api/messages/{id}
+GET    /api/users/search?nickname=&limit=5   (자동완성용)

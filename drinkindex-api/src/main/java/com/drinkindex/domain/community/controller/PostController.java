@@ -41,11 +41,14 @@ public class PostController {
             @RequestParam(required = false) Long prefixId,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) PostSort sort,
+            @RequestParam(required = false) Long authorId,
+            @RequestParam(required = false) Long commentAuthorId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
         return ResponseEntity.ok(ApiResponse.success(
-                postService.getPosts(boardType, prefixId, keyword, sort, page, size)));
+                postService.getPosts(boardType, prefixId, keyword, sort,
+                        authorId, commentAuthorId, page, size)));
     }
 
     @GetMapping("/best")

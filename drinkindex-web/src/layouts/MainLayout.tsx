@@ -10,6 +10,7 @@ import Toast from '@/shared/components/Toast'
 import { useToast } from '@/shared/hooks/useToast'
 import { useLatestNotice } from '@/domain/notice/hooks/useNotices'
 import NotificationBell from '@/domain/notification/components/NotificationBell'
+import MessagePopup from '@/domain/message/components/MessagePopup'
 import LevelIcon from '@/shared/components/icons/LevelIcon'
 import AdminIcon from '@/shared/components/icons/AdminIcon'
 import DistilleryIcon from '@/shared/components/icons/DistilleryIcon'
@@ -475,6 +476,9 @@ export default function MainLayout() {
 
       {/* 로그인 출석 체크 토스트 */}
       <AttendanceToastHandler />
+
+      {/* 쪽지 보내기 플로팅 팝업 */}
+      {isLoggedIn && <MessagePopup />}
     </div>
   )
 }

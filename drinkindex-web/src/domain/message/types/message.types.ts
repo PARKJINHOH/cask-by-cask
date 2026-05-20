@@ -1,4 +1,4 @@
-export type MessageBox = 'INBOX' | 'SENT'
+export type MessageBox = 'INBOX' | 'SENT' | 'ALL'
 
 export interface MessageSummary {
   id: number

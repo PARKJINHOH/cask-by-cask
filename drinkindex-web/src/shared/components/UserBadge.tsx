@@ -4,6 +4,8 @@ import type { UserRole } from '@/domain/auth/types/auth.types'
 import LevelIcon from './icons/LevelIcon'
 import AdminIcon from './icons/AdminIcon'
 import DistilleryIcon from './icons/DistilleryIcon'
+import UserContextMenu from './UserContextMenu'
+import { useAuthStore } from '@/domain/auth/store/authStore'
 
 const LEVEL_NAMES: Record<number, string> = {
   1: '몰트', 2: '스피릿', 3: '스카치', 4: '12yo',
@@ -17,6 +19,7 @@ function getLevelName(level?: number): string {
 }
 
 export interface UserBadgeUser {
+  id?: number
   nickname: string
   role: UserRole
   currentLevel?: number
@@ -63,6 +66,7 @@ export default function UserBadge({
   showScore = false,
   className = '',
 }: Props) {
+  const currentUser = useAuthStore((s) => s.user)
   const level = user.currentLevel ?? 1
   const levelName = getLevelName(level)
   const isFixed = Boolean(user.nicknameFixed)
@@ -161,7 +165,17 @@ export default function UserBadge({
               user.role === 'ADMIN' ? 'text-blue-700' : 'text-neutral-800',
             ].join(' ')}
           >
-            {user.nickname}
+            {user.id ? (
+              <UserContextMenu
+                nickname={user.nickname}
+                userId={user.id}
+                disabled={user.id === currentUser?.id}
+              >
+                <span className="hover:underline">{user.nickname}</span>
+              </UserContextMenu>
+            ) : (
+              user.nickname
+            )}
           </span>
         )}
 

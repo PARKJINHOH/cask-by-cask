@@ -43,18 +43,21 @@ public class AuthService {
             throw new CustomException(ErrorCode.DUPLICATE_NICKNAME);
         }
         LocalDateTime now = LocalDateTime.now();
+        boolean preVerified = emailVerificationRequired && emailVerificationService.isPreVerified(request.email());
         User user = User.builder()
                 .email(request.email())
                 .password(passwordEncoder.encode(request.password()))
                 .nickname(request.nickname())
                 .role(Role.MEMBER)
-                .emailVerified(!emailVerificationRequired)
+                .emailVerified(preVerified || !emailVerificationRequired)
                 .termsAgreedAt(now)
                 .privacyAgreedAt(now)
                 .emailSubscribed(request.emailSubscribed())
                 .build();
         userRepository.save(user);
-        if (emailVerificationRequired) {
+        if (preVerified) {
+            emailVerificationService.clearPreVerified(request.email());
+        } else if (emailVerificationRequired) {
             emailVerificationService.sendCode(request.email());
         }
         return UserResponse.from(user);
@@ -102,9 +105,10 @@ public class AuthService {
     @Transactional
     public void verifyEmail(String email, String code) {
         emailVerificationService.verifyCode(email, code);
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-        user.verifyEmail();
+        userRepository.findByEmail(email).ifPresentOrElse(
+            User::verifyEmail,
+            () -> emailVerificationService.markPreVerified(email)
+        );
     }
 
     @Transactional

@@ -24,6 +24,8 @@ export const communityApi = {
     prefixId?: number
     keyword?: string
     sort?: PostSort
+    authorId?: number
+    commentAuthorId?: number
     page?: number
     size?: number
   }) => axiosInstance.get<ApiResponse<PageResponse<PostListItem>>>('/api/posts', { params }),

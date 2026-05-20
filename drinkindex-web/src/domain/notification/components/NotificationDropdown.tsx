@@ -35,7 +35,9 @@ function targetPath(item: NotificationItem): string | null {
     case 'FREE':    return `/community/free/${item.targetId}`
     case 'NOTICE':  return `/community/notice/${item.targetId}`
     case 'POST':    return `/community/free/${item.targetId}` // 하위 호환
-    case 'MESSAGE': return '/messages'
+    case 'MESSAGE': return item.targetId
+      ? `/mypage?tab=messages&messageId=${item.targetId}`
+      : '/mypage?tab=messages'
     default:        return null
   }
 }

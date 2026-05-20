@@ -16,4 +16,8 @@ public interface MessageItemRepository extends JpaRepository<MessageItem, Long> 
 
     @Query("SELECT COUNT(mi) > 0 FROM MessageItem mi WHERE mi.message.id = :messageId AND mi.isRead = false")
     boolean existsUnreadByMessageId(@Param("messageId") Long messageId);
+
+    // 나에게 온 미읽음 메시지 여부 (내가 보낸 것 제외)
+    @Query("SELECT COUNT(mi) > 0 FROM MessageItem mi WHERE mi.message.id = :messageId AND mi.isRead = false AND mi.sender.id != :userId")
+    boolean existsUnreadReceivedBy(@Param("messageId") Long messageId, @Param("userId") Long userId);
 }

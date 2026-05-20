@@ -39,6 +39,9 @@ export default function BoardListPage({ boardType, title }: Props) {
   const sortParam   = (searchParams.get('sort') ?? 'LATEST') as PostSort
   const keywordParam = searchParams.get('keyword') ?? ''
   const pageParam   = Number(searchParams.get('page') ?? '0')
+  const authorIdParam = searchParams.get('authorId') ? Number(searchParams.get('authorId')) : undefined
+  const commentAuthorIdParam = searchParams.get('commentAuthorId') ? Number(searchParams.get('commentAuthorId')) : undefined
+  const authorNicknameParam = searchParams.get('authorNickname') ?? ''
 
   const [keywordInput, setKeywordInput] = useState(keywordParam)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -54,6 +57,8 @@ export default function BoardListPage({ boardType, title }: Props) {
     prefixId: effectivePrefixId,
     keyword: keywordParam || undefined,
     sort: sortParam,
+    authorId: authorIdParam,
+    commentAuthorId: commentAuthorIdParam,
     page: pageParam,
     size: PAGE_SIZE,
   })
@@ -103,6 +108,30 @@ export default function BoardListPage({ boardType, title }: Props) {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
+      {/* 작성자/댓글 필터 배너 */}
+      {(authorIdParam || commentAuthorIdParam) && authorNicknameParam && (
+        <div className="flex items-center gap-2 mb-4 px-3 py-2 bg-primary-50 border border-primary-200 rounded-lg text-sm text-primary-700">
+          <span>
+            {authorIdParam
+              ? `"${authorNicknameParam}"님의 게시글`
+              : `"${authorNicknameParam}"님이 댓글 단 게시글`}
+          </span>
+          <button
+            onClick={() => {
+              const next = new URLSearchParams(searchParams)
+              next.delete('authorId')
+              next.delete('commentAuthorId')
+              next.delete('authorNickname')
+              next.set('page', '0')
+              setSearchParams(next, { replace: true })
+            }}
+            className="ml-auto text-xs text-primary-500 hover:text-primary-700 underline"
+          >
+            필터 해제
+          </button>
+        </div>
+      )}
+
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-neutral-900">{title}</h1>
@@ -255,7 +284,7 @@ export default function BoardListPage({ boardType, title }: Props) {
                     <td className="px-4 py-3">
                       {post.authorRole ? (
                         <UserBadge
-                          user={{ nickname: post.authorNickname, role: post.authorRole as UserRole, currentLevel: post.authorLevel, maturingPower: post.authorMaturingPower ?? undefined, nicknameFixed: post.authorNicknameFixed, profileImageUrl: post.authorProfileImageUrl }}
+                          user={{ id: post.authorId ?? undefined, nickname: post.authorNickname, role: post.authorRole as UserRole, currentLevel: post.authorLevel, maturingPower: post.authorMaturingPower ?? undefined, nicknameFixed: post.authorNicknameFixed, profileImageUrl: post.authorProfileImageUrl }}
                           size="sm"
                         />
                       ) : (

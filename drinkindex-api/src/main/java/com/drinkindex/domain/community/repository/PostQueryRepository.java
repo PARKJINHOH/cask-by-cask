@@ -10,7 +10,8 @@ import org.springframework.data.domain.Pageable;
 
 public interface PostQueryRepository {
 
-    Page<Post> findPosts(BoardType boardType, Long prefixId, String keyword, PostSort sort, Pageable pageable);
+    Page<Post> findPosts(BoardType boardType, Long prefixId, String keyword, PostSort sort,
+                         Long authorId, Long commentAuthorId, Pageable pageable);
 
     Page<Post> findBestPosts(BoardType boardType, int minLikeCount, Pageable pageable);
 

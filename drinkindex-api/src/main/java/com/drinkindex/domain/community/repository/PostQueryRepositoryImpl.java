@@ -4,7 +4,9 @@ import com.drinkindex.domain.community.dto.PostSort;
 import com.drinkindex.domain.community.entity.Post;
 import com.drinkindex.domain.community.entity.PostReport;
 import com.drinkindex.domain.community.entity.QPost;
+import com.drinkindex.domain.community.entity.QPostComment;
 import com.drinkindex.domain.community.entity.QPostReport;
+import com.querydsl.jpa.JPAExpressions;
 import com.drinkindex.domain.community.entity.enums.BoardType;
 import com.drinkindex.domain.community.entity.enums.PostStatus;
 import com.drinkindex.domain.community.entity.enums.ReportStatus;
@@ -26,7 +28,7 @@ public class PostQueryRepositoryImpl implements PostQueryRepository {
 
     @Override
     public Page<Post> findPosts(BoardType boardType, Long prefixId, String keyword,
-                                PostSort sort, Pageable pageable) {
+                                PostSort sort, Long authorId, Long commentAuthorId, Pageable pageable) {
         QPost post = QPost.post;
 
         BooleanBuilder predicate = new BooleanBuilder();
@@ -41,6 +43,19 @@ public class PostQueryRepositoryImpl implements PostQueryRepository {
                 post.title.containsIgnoreCase(keyword)
                     .or(post.contentSanitized.containsIgnoreCase(keyword))
             );
+        }
+        if (authorId != null) {
+            predicate.and(post.author.id.eq(authorId));
+            predicate.and(post.isAnonymous.isFalse());
+        }
+        if (commentAuthorId != null) {
+            QPostComment comment = QPostComment.postComment;
+            predicate.and(JPAExpressions.selectOne()
+                    .from(comment)
+                    .where(comment.post.id.eq(post.id)
+                            .and(comment.author.id.eq(commentAuthorId))
+                            .and(comment.deletedAt.isNull()))
+                    .exists());
         }
 
         OrderSpecifier<?> primary = resolveOrder(sort, post);

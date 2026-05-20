@@ -7,6 +7,8 @@ export function usePosts(params: {
   prefixId?: number
   keyword?: string
   sort?: PostSort
+  authorId?: number
+  commentAuthorId?: number
   page?: number
   size?: number
 }) {
