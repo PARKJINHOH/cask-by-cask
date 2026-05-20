@@ -429,8 +429,9 @@ export default function MainLayout() {
       <header className="bg-white border-b border-neutral-200 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center gap-4">
           {/* 로고 */}
-          <Link to="/" className="text-xl font-bold text-primary-600 tracking-tight flex-shrink-0">
-            DrinkIndex
+          <Link to="/" className="flex items-center gap-2 flex-shrink-0">
+            <img src="/logo.png" alt="DrinkIndex" className="h-8 w-auto" />
+            <span className="text-xl font-bold text-primary-600 tracking-tight">DrinkIndex</span>
           </Link>
 
           {/* 언어 토글 */}
