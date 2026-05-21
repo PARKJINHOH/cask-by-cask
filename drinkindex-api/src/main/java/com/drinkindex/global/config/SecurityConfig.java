@@ -3,6 +3,8 @@ package com.drinkindex.global.config;
 import com.drinkindex.global.auth.jwt.JwtAuthenticationFilter;
 import com.drinkindex.global.auth.jwt.JwtProvider;
 import com.drinkindex.global.auth.security.CustomUserDetailsService;
+import com.drinkindex.global.ratelimit.RateLimitFilter;
+import org.springframework.beans.factory.ObjectProvider;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,6 +35,8 @@ public class SecurityConfig {
 
     private final JwtProvider jwtProvider;
     private final CustomUserDetailsService customUserDetailsService;
+    // rate-limit.enabled=false 일 때를 위해 Optional 주입.
+    private final ObjectProvider<RateLimitFilter> rateLimitFilterProvider;
 
     @Value("${cors.allowed-origins}")
     private String allowedOriginsRaw;
@@ -54,7 +58,10 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        return http
+        JwtAuthenticationFilter jwtFilter = new JwtAuthenticationFilter(jwtProvider, customUserDetailsService);
+        RateLimitFilter rateLimitFilter = rateLimitFilterProvider.getIfAvailable();
+
+        HttpSecurity chain = http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 // [보안] CSRF: 이 API는 JWT Bearer Token 기반 Stateless 구조 (세션 쿠키 미사용).
                 // CSRF 취약점 조건(쿠키 기반 세션) 미해당이므로 명시적 비활성화.
@@ -90,6 +97,11 @@ public class SecurityConfig {
                 //   코드 리뷰 시 이 주석을 체크포인트로 활용할 것.
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        // Actuator: management.server.port=8081 로 분리 노출, 외부 차단.
+                        // 8080 으로 들어온 /actuator/** 요청도 함께 permitAll 처리 (필터 통과만, 실제 노출은 management 포트만).
+                        .requestMatchers("/actuator/**").permitAll()
+                        // SEO: sitemap.xml — 검색엔진 크롤러용
+                        .requestMatchers(HttpMethod.GET, "/sitemap.xml").permitAll()
                         .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/notices/images/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/popups/images/**").permitAll()
@@ -147,11 +159,14 @@ public class SecurityConfig {
                             );
                         })
                 )
-                .addFilterBefore(
-                        new JwtAuthenticationFilter(jwtProvider, customUserDetailsService),
-                        UsernamePasswordAuthenticationFilter.class
-                )
-                .build();
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+
+        // JWT 인증 직후에 RateLimit 적용 — 인증된 요청은 userId, 비인증은 IP 기반.
+        if (rateLimitFilter != null) {
+            chain.addFilterAfter(rateLimitFilter, JwtAuthenticationFilter.class);
+        }
+
+        return chain.build();
     }
 
     @Bean

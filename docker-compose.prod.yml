@@ -1,0 +1,67 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# DrinkIndex — prod override (Oracle Cloud)
+# Cloudflare → Compute Instance(80) → nginx(web container) → api/uploads
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  api:
+    container_name: di-prod-api
+    expose:
+      - "8080"
+      - "8081"   # actuator (외부 노출 X, prometheus container 만 접근)
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
+        reservations:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  web:
+    container_name: di-prod-web
+    ports:
+      - "80:80"
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+  mariadb:
+    container_name: di-prod-mariadb
+    # 외부 노출 절대 금지 — 같은 docker network 내부에서만 접근
+    expose:
+      - "3306"
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+        reservations:
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "30m"
+        max-file: "5"
+
+  redis:
+    container_name: di-prod-redis
+    expose:
+      - "6379"
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"

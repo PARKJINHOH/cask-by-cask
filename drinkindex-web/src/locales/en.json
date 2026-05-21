@@ -575,5 +575,19 @@
       "cooldown": "Please wait a moment before trying again.",
       "generic": "An error occurred. Please try again."
     }
+  },
+  "errors": {
+    "notFound": {
+      "title": "Page not found",
+      "description": "The page you requested does not exist, has been moved, or is temporarily unavailable.",
+      "goHome": "Go home",
+      "goBack": "Go back"
+    },
+    "serverError": {
+      "title": "Something went wrong",
+      "description": "Please try again in a moment. If the problem persists, contact the administrator.",
+      "retry": "Retry",
+      "goHome": "Go home"
+    }
   }
 }

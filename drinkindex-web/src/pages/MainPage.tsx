@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
+import SeoMeta from '@/shared/components/SeoMeta'
 import { spiritApi } from '@/domain/spirit/api/spiritApi'
 import { useBanners } from '@/domain/banner/hooks/useBanners'
 import { usePopups } from '@/domain/popup/hooks/usePopups'
@@ -133,8 +134,21 @@ export default function MainPage() {
   const popular        = popularData?.content  ?? []
   const notices        = noticesData?.content  ?? []
 
+  const isEn = i18n.language === 'en'
+
   return (
     <div>
+      <SeoMeta
+        title={isEn
+          ? 'DrinkIndex — Whisky, Wine & Cognac Review Community'
+          : 'DrinkIndex — 위스키 · 와인 · 꼬냑 리뷰 커뮤니티'}
+        description={isEn
+          ? 'Explore whisky, wine, cognac, rum and tequila. Read user reviews, distillery profiles and ratings.'
+          : '위스키, 와인, 꼬냑 등 다양한 주류 정보를 탐색하고 리뷰를 공유하세요. 증류소·와이너리 정보와 사용자 평점을 한 곳에서.'}
+        canonical="https://drinkindex.net/"
+        locale={isEn ? 'en_US' : 'ko_KR'}
+      />
+
       {/* ── 메인 배너 슬라이더 ─────────────────────────────────── */}
       {banners.length > 0 && <BannerSlider banners={banners} />}
 

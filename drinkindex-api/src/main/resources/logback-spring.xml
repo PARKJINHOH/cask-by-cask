@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!--
+        DrinkIndex 로깅 정책
+        - 로그 디렉토리: ${LOG_PATH} env var (기본값 ./logs)
+        - 일별 + 사이즈 롤링: 매일 자정 또는 100MB 초과 시 새 파일
+        - 일반 로그: 30일 보관, 총 10GB 캡
+        - ERROR 로그: 별도 파일로 90일 보관 (장애 분석용)
+        - prod: 비동기 file appender + 콘솔(WARN+)
+        - dev:  비동기 file appender + 콘솔(INFO+) + Swagger 사용
+        - local: 콘솔만 (DEBUG)
+        ※ Slack ERROR 알림 appender 는 Phase 4c 에서 끼움 (현재는 hook 자리 비워둠)
+    -->
+
+    <springProperty scope="context" name="LOG_PATH"
+                    source="logging.file.path" defaultValue="./logs"/>
+    <springProperty scope="context" name="APP_NAME"
+                    source="spring.application.name" defaultValue="drinkindex-api"/>
+    <springProperty scope="context" name="SLACK_WEBHOOK_URL"
+                    source="slack.webhook-url" defaultValue=""/>
+    <springProperty scope="context" name="SLACK_CHANNEL"
+                    source="slack.channel" defaultValue="#drinkindex-alerts"/>
+
+    <property name="CONSOLE_PATTERN"
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} %clr(%-5level) [%thread] %clr(%logger{36}){cyan} - %msg%n"/>
+    <property name="FILE_PATTERN"
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n"/>
+    <property name="FILE_PATTERN_WITH_EX"
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n%ex{full}"/>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${CONSOLE_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="FILE_ALL" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/${APP_NAME}.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/archived/${APP_NAME}-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>10GB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${FILE_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="FILE_ERROR" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/${APP_NAME}-error.log</file>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>ERROR</level>
+        </filter>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/archived/${APP_NAME}-error-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>50MB</maxFileSize>
+            <maxHistory>90</maxHistory>
+            <totalSizeCap>5GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${FILE_PATTERN_WITH_EX}</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="ASYNC_FILE_ALL" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>1024</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <neverBlock>true</neverBlock>
+        <appender-ref ref="FILE_ALL"/>
+    </appender>
+
+    <appender name="ASYNC_FILE_ERROR" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>256</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <neverBlock>false</neverBlock>
+        <includeCallerData>true</includeCallerData>
+        <appender-ref ref="FILE_ERROR"/>
+    </appender>
+
+    <!-- 시끄러운 외부 라이브러리 톤다운 -->
+    <logger name="org.hibernate.SQL" level="WARN"/>
+    <logger name="org.hibernate.orm.deprecation" level="ERROR"/>
+    <logger name="org.springframework.security.web.authentication" level="WARN"/>
+    <logger name="org.springframework.web.servlet.DispatcherServlet" level="WARN"/>
+
+    <springProfile name="local">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+        <logger name="com.drinkindex" level="DEBUG"/>
+    </springProfile>
+
+    <springProfile name="dev">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ASYNC_FILE_ALL"/>
+            <appender-ref ref="ASYNC_FILE_ERROR"/>
+        </root>
+        <logger name="com.drinkindex" level="INFO"/>
+    </springProfile>
+
+    <springProfile name="prod">
+        <appender name="SLACK" class="com.drinkindex.global.logging.SlackErrorAppender">
+            <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+                <level>ERROR</level>
+            </filter>
+            <webhookUrl>${SLACK_WEBHOOK_URL}</webhookUrl>
+            <channel>${SLACK_CHANNEL}</channel>
+            <env>prod</env>
+            <maxPerMinute>5</maxPerMinute>
+        </appender>
+
+        <root level="WARN">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ASYNC_FILE_ALL"/>
+            <appender-ref ref="ASYNC_FILE_ERROR"/>
+            <appender-ref ref="SLACK"/>
+        </root>
+        <logger name="com.drinkindex" level="INFO"/>
+    </springProfile>
+
+</configuration>

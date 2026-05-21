@@ -26,20 +26,15 @@ spring:
       mail.smtp.starttls.enable: true
       mail.smtp.starttls.required: true
 
-storage:
-  s3:
-    bucket: TODO
-    region: TODO
-    access-key: TODO
-    secret-key: TODO
-
 cors:
   allowed-origins: https://drinkindex.net
 
 logging:
+  file:
+    path: ${LOG_PATH:/var/drinkindex/logs/prod}
   level:
     root: WARN
-    com.drinkindex: WARN
+    com.drinkindex: INFO
 
 springdoc:
   api-docs:

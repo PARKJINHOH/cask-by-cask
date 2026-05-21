@@ -13,6 +13,7 @@ import ImageLightbox from '@/shared/components/ImageLightbox'
 import ReviewList from '@/domain/review/components/ReviewList'
 import CommentList from '@/domain/comment/components/CommentList'
 import WishlistButtons from '@/domain/wishlist/components/WishlistButtons'
+import SeoMeta from '@/shared/components/SeoMeta'
 import type { SpiritDetail, SpiritImage } from '@/domain/spirit/types/spirit.types'
 
 type Tab = 'reviews' | 'community'
@@ -314,8 +315,47 @@ export default function SpiritDetailPage() {
   const countryLabel = localizeCountry(spirit.country, i18n.language)
   const regionLabel  = localizeRegion(spirit.region, i18n.language)
 
+  const canonicalUrl = `https://drinkindex.net/spirits/${spirit.id}`
+  const rawImage = spirit.primaryImageUrl || spirit.images?.[0]?.imageUrl
+  const heroImage = rawImage
+    ? (rawImage.startsWith('http') ? rawImage : `https://drinkindex.net${rawImage}`)
+    : 'https://drinkindex.net/og-image.png'
+
+  const productJsonLd = {
+    '@type': 'Product',
+    name: primaryName,
+    alternateName: secondaryName || undefined,
+    description: isEn
+      ? `${primaryName} — ${primaryDistillery || ''} ${countryLabel ? `· ${countryLabel}` : ''} · DrinkIndex tasting notes & user reviews.`
+      : `${primaryName} — ${primaryDistillery || ''} ${countryLabel ? `· ${countryLabel}` : ''} · DrinkIndex 테이스팅 노트와 사용자 리뷰.`,
+    image: heroImage,
+    brand: primaryDistillery ? { '@type': 'Brand', name: primaryDistillery } : undefined,
+    countryOfOrigin: countryLabel || undefined,
+    category: spirit.category,
+    aggregateRating: (spirit.avgScore != null && spirit.reviewCount > 0) ? {
+      '@type': 'AggregateRating',
+      ratingValue: spirit.avgScore,
+      reviewCount: spirit.reviewCount,
+      bestRating: 5,
+      worstRating: 0,
+    } : undefined,
+  }
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-6">
+      <SeoMeta
+        title={primaryName}
+        description={isEn
+          ? `${primaryName} tasting notes, ratings and reviews. ${primaryDistillery || ''} ${countryLabel || ''}`.trim()
+          : `${primaryName} 테이스팅 노트와 사용자 리뷰. ${primaryDistillery || ''} ${countryLabel || ''}`.trim()}
+        canonical={canonicalUrl}
+        ogType="product"
+        ogImage={heroImage}
+        ogImageAlt={primaryName}
+        locale={isEn ? 'en_US' : 'ko_KR'}
+        jsonLd={productJsonLd}
+      />
+
       {/* Back */}
       <button onClick={() => navigate(-1)}
         className="flex items-center gap-1 text-sm text-neutral-400 hover:text-primary-600 mb-5 transition-colors">

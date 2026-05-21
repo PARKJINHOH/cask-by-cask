@@ -1,0 +1,52 @@
+global:
+  resolve_timeout: 5m
+  slack_api_url: '${SLACK_WEBHOOK_URL}'
+
+route:
+  receiver: slack-default
+  group_by: ['alertname', 'service', 'severity']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - matchers:
+        - severity = critical
+      receiver: slack-critical
+      repeat_interval: 1h
+
+receivers:
+  - name: slack-default
+    slack_configs:
+      - channel: '${SLACK_CHANNEL}'
+        send_resolved: true
+        title: '⚠️ [{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}'
+        text: |
+          {{ range .Alerts }}
+          *서비스*: {{ .Labels.service }}
+          *심각도*: {{ .Labels.severity }}
+          *요약*: {{ .Annotations.summary }}
+          *상세*: {{ .Annotations.description }}
+          *시작*: {{ .StartsAt.Format "2006-01-02 15:04:05" }}
+          {{ end }}
+
+  - name: slack-critical
+    slack_configs:
+      - channel: '${SLACK_CHANNEL}'
+        send_resolved: true
+        title: '🚨 [CRITICAL] {{ .CommonLabels.alertname }}'
+        color: 'danger'
+        text: |
+          {{ range .Alerts }}
+          *서비스*: {{ .Labels.service }}
+          *요약*: {{ .Annotations.summary }}
+          *상세*: {{ .Annotations.description }}
+          *시작*: {{ .StartsAt.Format "2006-01-02 15:04:05" }}
+          {{ end }}
+
+inhibit_rules:
+  # 같은 서비스의 critical 이 발생하면 warning 은 묵음 처리
+  - source_matchers:
+      - severity = critical
+    target_matchers:
+      - severity = warning
+    equal: ['alertname', 'service']

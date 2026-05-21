@@ -1,4 +1,6 @@
 spring:
+  application:
+    name: drinkindex-api
   profiles:
     active: local
 
@@ -12,6 +14,14 @@ spring:
       hibernate:
         format_sql: false
 
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 0
+    baseline-description: "init baseline"
+    locations: classpath:db/migration
+    validate-on-migrate: true
+
   data:
     redis:
       timeout: 2000ms
@@ -23,11 +33,18 @@ spring:
 
 jwt:
   secret: ${JWT_SECRET}
+  # 키 회전 중에만 설정 — 신규 키를 JWT_SECRET 로 옮길 때 기존 키를 여기에 두어
+  # Refresh Token TTL(7일) 동안 무중단 회전 가능.
+  secret-previous: ${JWT_SECRET_PREVIOUS:}
   access-token-expiry: 3600000      # 1h  (ms)
   refresh-token-expiry: 604800000   # 7d  (ms)
 
 upload:
   path: ${UPLOAD_PATH:./uploads}
+
+storage:
+  local:
+    base-path: ${UPLOAD_PATH:./uploads}
 
 admin:
   seed:
@@ -45,3 +62,39 @@ app:
 decorator:
   datasource:
     enabled: false
+
+rate-limit:
+  enabled: true
+
+# Slack 알림 (ERROR 로그 + 운영 자동화) — webhook-url 비어있으면 no-op
+slack:
+  webhook-url: ${SLACK_WEBHOOK_URL:}
+  channel: ${SLACK_CHANNEL:#drinkindex-alerts}
+
+# SEO 메타 — sitemap.xml 의 base URL
+seo:
+  site-url: ${SEO_SITE_URL:https://drinkindex.net}
+
+# Actuator: Prometheus/Health 만 노출, 별도 관리 포트로 분리 — 외부에서 접근 불가
+management:
+  server:
+    port: 8081
+    # 운영에서는 ${MANAGEMENT_HOST:127.0.0.1} 로 localhost 바인딩 (docker network 내부만)
+    address: ${MANAGEMENT_HOST:127.0.0.1}
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        include: prometheus,health,info
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  prometheus:
+    metrics:
+      export:
+        enabled: true

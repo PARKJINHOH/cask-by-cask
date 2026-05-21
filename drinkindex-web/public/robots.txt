@@ -1,0 +1,24 @@
+# DrinkIndex robots.txt
+# https://drinkindex.net/robots.txt
+
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /mypage
+Disallow: /messages
+Disallow: /notifications
+Disallow: /request/spirit
+Disallow: /community/*/write
+Disallow: /community/*/edit
+Disallow: /spirits/*/review/write
+Disallow: /spirits/*/review/*/edit
+Disallow: /verify-email
+
+# AI 크롤러 — 콘텐츠는 허용 (검색 노출 / AEO 강화)
+# 무단 학습 금지를 원하면 아래 주석 해제
+# User-agent: GPTBot
+# Disallow: /
+# User-agent: ClaudeBot
+# Disallow: /
+
+Sitemap: https://drinkindex.net/sitemap.xml

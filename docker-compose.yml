@@ -1,0 +1,121 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# DrinkIndex — base compose (공통 정의)
+#
+# 환경별 override 파일과 함께 사용:
+#   dev  : docker compose --env-file .env.dev  -f docker-compose.yml -f docker-compose.dev.yml  up -d --build
+#   prod : docker compose --env-file .env.prod -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# 또는 deploy/deploy.sh dev|prod 스크립트 사용.
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  api:
+    build:
+      context: ./drinkindex-api
+    image: drinkindex/api:${IMAGE_TAG:-latest}
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+      # DB
+      DEV_DB_HOST: ${DEV_DB_HOST:-mariadb}
+      PROD_DB_HOST: ${PROD_DB_HOST:-mariadb}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      # Redis
+      DEV_REDIS_HOST: ${DEV_REDIS_HOST:-redis}
+      PROD_REDIS_HOST: ${PROD_REDIS_HOST:-redis}
+      DEV_REDIS_PASSWORD: ${REDIS_PASSWORD}
+      PROD_REDIS_PASSWORD: ${REDIS_PASSWORD}
+      # JWT
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_SECRET_PREVIOUS: ${JWT_SECRET_PREVIOUS:-}
+      # Admin / Email
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      EMAIL_FROM: ${EMAIL_FROM}
+      INQUIRY_EMAIL: ${INQUIRY_EMAIL}
+      GMAIL_USERNAME: ${GMAIL_USERNAME}
+      GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD}
+      # Storage / Logs
+      UPLOAD_PATH: /var/drinkindex/uploads
+      LOG_PATH: /var/drinkindex/logs
+      # Actuator (docker network 내부에서 prometheus 접근)
+      MANAGEMENT_HOST: 0.0.0.0
+    volumes:
+      - uploads:/var/drinkindex/uploads
+      - logs:/var/drinkindex/logs
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - drinkindex
+
+  web:
+    build:
+      context: ./drinkindex-web
+    image: drinkindex/web:${IMAGE_TAG:-latest}
+    environment:
+      API_HOST: api
+      API_PORT: 8080
+      MAINTENANCE_MODE: ${MAINTENANCE_MODE:-off}
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks:
+      - drinkindex
+
+  mariadb:
+    image: mariadb:11.4
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+      MARIADB_DATABASE: ${MARIADB_DATABASE}
+      MARIADB_USER: ${DB_USERNAME}
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+      MARIADB_AUTO_UPGRADE: "1"
+      TZ: Asia/Seoul
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --max_connections=200
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - drinkindex
+
+  redis:
+    image: redis:7-alpine
+    command:
+      - sh
+      - -c
+      - 'redis-server --requirepass "$$REDIS_PASSWORD" --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru'
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $$REDIS_PASSWORD ping | grep -q PONG"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - drinkindex
+
+volumes:
+  uploads:
+  logs:
+  db_data:
+  redis_data:
+
+networks:
+  drinkindex:
+    driver: bridge

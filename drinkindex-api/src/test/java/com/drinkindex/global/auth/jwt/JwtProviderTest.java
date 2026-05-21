@@ -12,7 +12,8 @@ import static org.assertj.core.api.Assertions.*;
 class JwtProviderTest {
 
     // 32자 이상 (256bit+) 필수
-    private static final String SECRET = "drinkindex-test-secret-key-must-be-at-least-32-chars!!";
+    private static final String PRIMARY_SECRET  = "drinkindex-test-secret-key-must-be-at-least-32-chars!!";
+    private static final String PREVIOUS_SECRET = "drinkindex-PREVIOUS-secret-key-also-at-least-32-chars!";
     private static final long ACCESS_EXPIRY  = 3_600_000L;   // 1h
     private static final long REFRESH_EXPIRY = 604_800_000L; // 7d
 
@@ -20,7 +21,8 @@ class JwtProviderTest {
 
     @BeforeEach
     void setUp() {
-        jwtProvider = new JwtProvider(SECRET, ACCESS_EXPIRY, REFRESH_EXPIRY);
+        // 기본 시나리오: previous 키 없음
+        jwtProvider = new JwtProvider(PRIMARY_SECRET, "", ACCESS_EXPIRY, REFRESH_EXPIRY);
     }
 
     @Test
@@ -59,7 +61,7 @@ class JwtProviderTest {
     @Test
     @DisplayName("만료된 토큰 파싱 시 EXPIRED_TOKEN 예외 발생")
     void expiredTokenThrowsExpiredTokenError() throws InterruptedException {
-        JwtProvider shortLived = new JwtProvider(SECRET, 1L, REFRESH_EXPIRY); // 1ms 만료
+        JwtProvider shortLived = new JwtProvider(PRIMARY_SECRET, "", 1L, REFRESH_EXPIRY); // 1ms 만료
         String token = shortLived.generateAccessToken(1L, Role.MEMBER);
 
         Thread.sleep(10);
@@ -88,5 +90,54 @@ class JwtProviderTest {
     @DisplayName("getRefreshTokenExpiry 는 설정값 반환")
     void getRefreshTokenExpiry() {
         assertThat(jwtProvider.getRefreshTokenExpiry()).isEqualTo(REFRESH_EXPIRY);
+    }
+
+    // ───── 키 회전 시나리오 ─────
+
+    @Test
+    @DisplayName("키 회전: PREVIOUS 키로 발급된 토큰을 PRIMARY+PREVIOUS 환경에서 검증 성공")
+    void verifyTokenIssuedWithPreviousKey() {
+        // 1단계: 회전 전 — PREVIOUS_SECRET 로만 운영
+        JwtProvider beforeRotation = new JwtProvider(PREVIOUS_SECRET, "", ACCESS_EXPIRY, REFRESH_EXPIRY);
+        String legacyToken = beforeRotation.generateAccessToken(7L, Role.MEMBER);
+
+        // 2단계: 회전 후 — PRIMARY 가 신규 키, PREVIOUS 가 기존 키
+        JwtProvider afterRotation = new JwtProvider(PRIMARY_SECRET, PREVIOUS_SECRET, ACCESS_EXPIRY, REFRESH_EXPIRY);
+
+        assertThat(afterRotation.isTokenValid(legacyToken)).isTrue();
+        assertThat(afterRotation.extractUserId(legacyToken)).isEqualTo(7L);
+        assertThat(afterRotation.extractRole(legacyToken)).isEqualTo(Role.MEMBER);
+    }
+
+    @Test
+    @DisplayName("키 회전: PRIMARY 키로 새로 발급된 토큰은 우선 PRIMARY 로 검증 성공")
+    void verifyTokenIssuedWithPrimaryKey() {
+        JwtProvider afterRotation = new JwtProvider(PRIMARY_SECRET, PREVIOUS_SECRET, ACCESS_EXPIRY, REFRESH_EXPIRY);
+        String newToken = afterRotation.generateAccessToken(8L, Role.MEMBER);
+
+        assertThat(afterRotation.isTokenValid(newToken)).isTrue();
+        assertThat(afterRotation.extractUserId(newToken)).isEqualTo(8L);
+    }
+
+    @Test
+    @DisplayName("키 회전 종료 후 — PREVIOUS 제거 시 옛 키 토큰은 INVALID_TOKEN")
+    void afterRotationCompletePreviousTokenInvalid() {
+        // 회전 중 PREVIOUS 키로 발급된 토큰
+        JwtProvider midRotation = new JwtProvider(PRIMARY_SECRET, PREVIOUS_SECRET, ACCESS_EXPIRY, REFRESH_EXPIRY);
+        // 실제로는 회전 전 (PREVIOUS_SECRET 가 당시의 PRIMARY) 발급
+        JwtProvider beforeRotation = new JwtProvider(PREVIOUS_SECRET, "", ACCESS_EXPIRY, REFRESH_EXPIRY);
+        String legacyToken = beforeRotation.generateAccessToken(9L, Role.MEMBER);
+
+        // 회전 완료 — PREVIOUS 제거
+        JwtProvider afterCleanup = new JwtProvider(PRIMARY_SECRET, "", ACCESS_EXPIRY, REFRESH_EXPIRY);
+
+        assertThat(midRotation.isTokenValid(legacyToken)).isTrue();
+        assertThat(afterCleanup.isTokenValid(legacyToken)).isFalse();
+
+        assertThatThrownBy(() -> afterCleanup.extractUserId(legacyToken))
+                .isInstanceOf(CustomException.class)
+                .satisfies(e ->
+                        assertThat(((CustomException) e).getErrorCode()).isEqualTo(ErrorCode.INVALID_TOKEN)
+                );
     }
 }

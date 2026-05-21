@@ -10,6 +10,9 @@ spring:
       ddl-auto: create
     show-sql: false
 
+  flyway:
+    enabled: false
+
   data:
     redis:
       host: ${DEV_REDIS_HOST}
@@ -27,11 +30,11 @@ spring:
       mail.smtp.starttls.required: true
 
 upload:
-  path: ${user.home}/drinkindex-uploads
+  path: ${UPLOAD_PATH:${user.home}/drinkindex-uploads}
 
 storage:
   local:
-    base-path: ${user.home}/drinkindex-uploads
+    base-path: ${UPLOAD_PATH:${user.home}/drinkindex-uploads}
 
 app:
   email:
@@ -53,3 +56,12 @@ springdoc:
     enabled: true
   swagger-ui:
     enabled: true
+
+# 로컬 개발 편의를 위해 rate limit 비활성화 (Redis 없이도 동작 가능)
+rate-limit:
+  enabled: false
+
+# 로컬은 메인 포트(8080)에서 actuator 함께 노출 — 별도 포트 분리 불필요
+management:
+  server:
+    port: 8080

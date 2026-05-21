@@ -25,6 +25,7 @@ repositories {
 
 val queryDslVersion = "5.1.0"
 val jjwtVersion = "0.13.0"
+val bucket4jVersion = "8.19.0"
 
 dependencies {
     // Web
@@ -44,6 +45,18 @@ dependencies {
 
     // MariaDB
     runtimeOnly("org.mariadb.jdbc:mariadb-java-client")
+
+    // Flyway (DB Migration)
+    implementation("org.flywaydb:flyway-core")
+    implementation("org.flywaydb:flyway-mysql")
+
+    // Rate Limiting (Bucket4j + Redis Lettuce)
+    implementation("com.bucket4j:bucket4j_jdk17-core:$bucket4jVersion")
+    implementation("com.bucket4j:bucket4j_jdk17-lettuce:$bucket4jVersion")
+
+    // Actuator + Prometheus 메트릭 (관리 포트 8081 분리 노출)
+    implementation("org.springframework.boot:spring-boot-starter-actuator")
+    implementation("io.micrometer:micrometer-registry-prometheus")
 
     // JWT
     implementation("io.jsonwebtoken:jjwt-api:$jjwtVersion")

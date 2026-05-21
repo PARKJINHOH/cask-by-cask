@@ -1,0 +1,198 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# DrinkIndex Web — Nginx config (envsubst template)
+#
+# 환경변수 (docker-compose env_file 로 주입):
+#   API_HOST           — 백엔드 호스트 (compose 내부망 service 명, 예: api)
+#   API_PORT           — 백엔드 포트 (기본 8080)
+#   MAINTENANCE_MODE   — on | off  (on 이면 maintenance.html 503 반환)
+#
+# Cloudflare 뒤에 있으므로:
+#   - HTTPS 종료는 Cloudflare 에서, 컨테이너는 80 만 listen
+#   - 실제 client IP 는 CF-Connecting-IP 헤더에서 추출
+#
+# 다층 Rate Limit:
+#   - Nginx limit_req 로 IP당 거시적 차단 (signup/login/email)
+#   - 세밀 제어는 Bucket4j (백엔드)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Cloudflare IP 대역 — https://www.cloudflare.com/ips/
+# 운영 배포 후 주기적으로 갱신 권장 (보통 안정적이지만 추가될 수 있음)
+set_real_ip_from 173.245.48.0/20;
+set_real_ip_from 103.21.244.0/22;
+set_real_ip_from 103.22.200.0/22;
+set_real_ip_from 103.31.4.0/22;
+set_real_ip_from 141.101.64.0/18;
+set_real_ip_from 108.162.192.0/18;
+set_real_ip_from 190.93.240.0/20;
+set_real_ip_from 188.114.96.0/20;
+set_real_ip_from 197.234.240.0/22;
+set_real_ip_from 198.41.128.0/17;
+set_real_ip_from 162.158.0.0/15;
+set_real_ip_from 104.16.0.0/13;
+set_real_ip_from 104.24.0.0/14;
+set_real_ip_from 172.64.0.0/13;
+set_real_ip_from 131.0.72.0/22;
+set_real_ip_from 2400:cb00::/32;
+set_real_ip_from 2606:4700::/32;
+set_real_ip_from 2803:f800::/32;
+set_real_ip_from 2405:b500::/32;
+set_real_ip_from 2405:8100::/32;
+set_real_ip_from 2a06:98c0::/29;
+set_real_ip_from 2c0f:f248::/32;
+real_ip_header CF-Connecting-IP;
+real_ip_recursive on;
+
+# Rate Limit zones (nginx 거시적 IP 차단)
+limit_req_zone $binary_remote_addr zone=auth_login:10m rate=20r/m;
+limit_req_zone $binary_remote_addr zone=auth_signup:10m rate=10r/m;
+limit_req_zone $binary_remote_addr zone=auth_email:10m rate=5r/m;
+limit_req_zone $binary_remote_addr zone=api_general:10m rate=600r/m;
+
+# 점검 모드 환경변수 (envsubst 가 치환)
+map "${MAINTENANCE_MODE}" $is_maintenance {
+    default 0;
+    "on"    1;
+}
+
+server {
+    listen 80;
+    server_name _;
+
+    # 인코딩 / 보안 / 압축
+    charset utf-8;
+    client_max_body_size 15M;  # 이미지 업로드 (10MB) 여유분
+    server_tokens off;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    gzip on;
+    gzip_comp_level 5;
+    gzip_min_length 256;
+    gzip_proxied any;
+    gzip_vary on;
+    gzip_types
+        text/plain text/css text/xml text/javascript application/javascript
+        application/json application/xml application/xml+rss image/svg+xml font/woff2;
+
+    # ── 컨테이너 헬스체크 (점검 모드와 무관하게 항상 응답) ──
+    location = /healthz {
+        access_log off;
+        add_header Content-Type text/plain;
+        return 200 "ok";
+    }
+
+    # ── 점검 모드: maintenance.html 자체는 항상 접근 가능 ──
+    location = /maintenance.html {
+        root /usr/share/nginx/html;
+        internal;
+    }
+
+    # ── 백엔드 API 프록시 ──
+    location /api/ {
+        if ($is_maintenance) { return 503; }
+
+        proxy_pass http://${API_HOST}:${API_PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
+        proxy_set_header CF-Connecting-IP $remote_addr;
+        proxy_read_timeout 60s;
+
+        # 엔드포인트별 nginx 거시적 rate limit
+        limit_req zone=api_general burst=200 nodelay;
+        limit_req_status 429;
+    }
+
+    # 인증 엔드포인트 — 더 엄격한 nginx 제한 (Bucket4j 와 이중 방어)
+    location = /api/auth/login {
+        if ($is_maintenance) { return 503; }
+        limit_req zone=auth_login burst=10 nodelay;
+        limit_req_status 429;
+        proxy_pass http://${API_HOST}:${API_PORT};
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header CF-Connecting-IP $remote_addr;
+    }
+
+    location = /api/auth/signup {
+        if ($is_maintenance) { return 503; }
+        limit_req zone=auth_signup burst=5 nodelay;
+        limit_req_status 429;
+        proxy_pass http://${API_HOST}:${API_PORT};
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header CF-Connecting-IP $remote_addr;
+    }
+
+    location = /api/auth/send-verification {
+        if ($is_maintenance) { return 503; }
+        limit_req zone=auth_email burst=2 nodelay;
+        limit_req_status 429;
+        proxy_pass http://${API_HOST}:${API_PORT};
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header CF-Connecting-IP $remote_addr;
+    }
+
+    # ── 업로드 정적 자원 (백엔드가 서빙) ──
+    location /uploads/ {
+        if ($is_maintenance) { return 503; }
+        proxy_pass http://${API_HOST}:${API_PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header CF-Connecting-IP $remote_addr;
+        expires 7d;
+        add_header Cache-Control "public, max-age=604800";
+    }
+
+    # ── Actuator 외부 차단 (관리 포트는 8081, 컨테이너 외부 노출 안 됨) ──
+    location /actuator {
+        return 404;
+    }
+
+    # ── SEO: sitemap.xml (api 동적 생성) ──
+    location = /sitemap.xml {
+        proxy_pass http://${API_HOST}:${API_PORT}/sitemap.xml;
+        proxy_set_header Host $host;
+        proxy_set_header CF-Connecting-IP $remote_addr;
+        proxy_cache_valid 200 1h;
+        expires 1h;
+        add_header Cache-Control "public, max-age=3600";
+    }
+
+    # ── SPA 자원 ──
+    # 해시된 자산 (assets/) 은 1년 캐시
+    location /assets/ {
+        root /usr/share/nginx/html;
+        expires 1y;
+        add_header Cache-Control "public, immutable, max-age=31536000";
+        try_files $uri =404;
+    }
+
+    # SPA fallback — 모든 미매칭 경로는 index.html
+    location / {
+        if ($is_maintenance) { return 503; }
+        root /usr/share/nginx/html;
+        try_files $uri $uri/ /index.html;
+        # SPA index 는 캐시 금지 (배포 시 즉시 반영)
+        location = /index.html {
+            add_header Cache-Control "no-store, no-cache, must-revalidate";
+            expires off;
+        }
+    }
+
+    # ── 점검 페이지 ──
+    error_page 503 = @maintenance;
+    location @maintenance {
+        root /usr/share/nginx/html;
+        rewrite ^ /maintenance.html break;
+        # 점검 페이지는 캐시 금지 (재기동 즉시 반영)
+        add_header Cache-Control "no-store" always;
+    }
+
+    # 기본 에러 페이지 — SPA 가 처리하므로 fallback
+    error_page 502 504 /index.html;
+}

@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from '@/shared/api/queryClient'
+import ErrorBoundary from '@/shared/components/ErrorBoundary'
+import NotFoundPage from '@/pages/NotFoundPage'
 import MainLayout from '@/layouts/MainLayout'
 import AdminLayout from '@/layouts/AdminLayout'
 import MainPage from '@/pages/MainPage'
@@ -63,8 +65,9 @@ import AdminDashboardPage from '@/pages/admin/AdminDashboardPage'
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Routes>
+      <ErrorBoundary>
+        <BrowserRouter>
+          <Routes>
           <Route element={<MainLayout />}>
             <Route index element={<MainPage />} />
             <Route path="spirits" element={<SpiritListPage />} />
@@ -93,6 +96,8 @@ export default function App() {
               <Route path="mypage" element={<MyPage />} />
               <Route path="request/spirit" element={<SpiritRequestPage />} />
             </Route>
+            {/* MainLayout 안의 catch-all 404 — 헤더/푸터 유지 */}
+            <Route path="*" element={<NotFoundPage />} />
           </Route>
 
           <Route element={<AdminRoute />}>
@@ -135,10 +140,13 @@ export default function App() {
               <Route path="inquiries" element={<AdminInquiryPage />} />
               <Route path="roles" element={<AdminRolePage />} />
               <Route path="logs" element={<AdminLogPage />} />
+              {/* 관리자 영역 catch-all */}
+              <Route path="*" element={<NotFoundPage />} />
             </Route>
           </Route>
-        </Routes>
-      </BrowserRouter>
+          </Routes>
+        </BrowserRouter>
+      </ErrorBoundary>
     </QueryClientProvider>
   )
 }

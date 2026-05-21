@@ -1,0 +1,28 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# DrinkIndex — dev override (Synology NAS)
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  api:
+    container_name: di-dev-api
+    # NAS 내부 디버깅용 — 외부에는 노출 안 함 (nginx 통해서만 접근)
+    expose:
+      - "8080"
+      - "8081"
+
+  web:
+    container_name: di-dev-web
+    # NAS 의 다른 컨테이너/서비스와 포트 충돌 회피 — 8081 → 80 매핑
+    ports:
+      - "8081:80"
+
+  mariadb:
+    container_name: di-dev-mariadb
+    # NAS 에서 직접 접속 디버깅용 (외부 차단, 방화벽 OFF)
+    ports:
+      - "127.0.0.1:3307:3306"
+
+  redis:
+    container_name: di-dev-redis
+    ports:
+      - "127.0.0.1:6380:6379"

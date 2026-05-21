@@ -2,10 +2,75 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/favicon.png" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard-dynamic-subset.css" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DrinkIndex — 위스키·와인·꼬냑·데낄라·럼 리뷰 커뮤니티</title>
+
+    <!-- 기본 SEO (페이지별 동적 메타가 이 값을 오버라이드) -->
+    <title>DrinkIndex — 위스키 · 와인 · 꼬냑 리뷰 커뮤니티</title>
+    <meta name="description" content="DrinkIndex 는 위스키, 와인, 꼬냑, 데킬라, 럼 등 다양한 주류 정보를 탐색하고 리뷰를 공유하는 커뮤니티입니다. 증류소·와이너리별 정보와 사용자 평점을 만나보세요." />
+    <meta name="keywords" content="위스키, 와인, 꼬냑, 럼, 데킬라, 주류 리뷰, 증류소, 와이너리, drinkindex, 드링크인덱스" />
+    <meta name="author" content="DrinkIndex" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://drinkindex.net/" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="DrinkIndex" />
+    <meta property="og:locale" content="ko_KR" />
+    <meta property="og:locale:alternate" content="en_US" />
+    <meta property="og:title" content="DrinkIndex — 위스키 · 와인 · 꼬냑 리뷰 커뮤니티" />
+    <meta property="og:description" content="다양한 주류 정보를 탐색하고 리뷰를 공유하는 커뮤니티." />
+    <meta property="og:url" content="https://drinkindex.net/" />
+    <meta property="og:image" content="https://drinkindex.net/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="DrinkIndex — 위스키 · 와인 · 꼬냑 리뷰 커뮤니티" />
+    <meta name="twitter:description" content="다양한 주류 정보를 탐색하고 리뷰를 공유하는 커뮤니티." />
+    <meta name="twitter:image" content="https://drinkindex.net/og-image.png" />
+
+    <!-- 언어 대체 -->
+    <link rel="alternate" hreflang="ko" href="https://drinkindex.net/" />
+    <link rel="alternate" hreflang="en" href="https://drinkindex.net/" />
+    <link rel="alternate" hreflang="x-default" href="https://drinkindex.net/" />
+
+    <!-- Theme -->
+    <meta name="theme-color" content="#d97706" />
+
+    <!-- 정적 자원 -->
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard-dynamic-subset.css" />
+
+    <!-- JSON-LD: WebSite + Organization (전역) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "@id": "https://drinkindex.net/#website",
+          "url": "https://drinkindex.net/",
+          "name": "DrinkIndex",
+          "description": "위스키 · 와인 · 꼬냑 리뷰 커뮤니티",
+          "inLanguage": "ko-KR",
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://drinkindex.net/spirits?q={search_term_string}",
+            "query-input": "required name=search_term_string"
+          }
+        },
+        {
+          "@type": "Organization",
+          "@id": "https://drinkindex.net/#organization",
+          "name": "DrinkIndex",
+          "url": "https://drinkindex.net/",
+          "logo": "https://drinkindex.net/logo.png"
+        }
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>
