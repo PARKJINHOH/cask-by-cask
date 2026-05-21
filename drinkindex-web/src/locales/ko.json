@@ -122,12 +122,46 @@
     "filter": {
       "title": "필터",
       "category": "카테고리",
+      "subType": "세부 종류",
       "country": "국가",
+      "countrySearch": "국가 검색...",
+      "countryAll": "모든 국가",
+      "showMore": "더보기",
+      "showLess": "접기",
+      "region": "지역",
       "abv": "도수 (%)",
       "score": "평균 점수",
       "reset": "필터 초기화",
+      "resetAll": "모두 지우기",
       "apply": "적용하기",
-      "all": "전체"
+      "all": "전체",
+      "activeTitle": "적용된 필터"
+    },
+    "whiskyStyle": {
+      "SINGLE_MALT":    "싱글 몰트",
+      "BLENDED_MALT":   "블렌디드 몰트",
+      "BLENDED_WHISKY": "블렌디드",
+      "BOURBON":        "버번",
+      "RYE":            "라이",
+      "CORN":           "콘",
+      "GRAIN":          "그레인",
+      "POT_STILL":      "팟 스틸"
+    },
+    "wineType": {
+      "RED":       "레드",
+      "WHITE":     "화이트",
+      "ROSE":      "로제",
+      "SPARKLING": "스파클링",
+      "DESSERT":   "디저트",
+      "ORANGE":    "오렌지"
+    },
+    "cognacGrade": {
+      "VS":        "VS",
+      "NAPOLEON":  "Napoléon",
+      "VSOP":      "VSOP",
+      "XO":        "XO",
+      "XXO":       "XXO",
+      "HORS_DAGE": "Hors d'Age"
     },
     "noResult": {
       "title": "검색 결과가 없습니다.",

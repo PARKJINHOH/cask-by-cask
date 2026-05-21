@@ -69,6 +69,20 @@ public class SpiritService {
     }
 
     @Transactional(readOnly = true)
+    public List<CountryStatsResponse> getCountryStats(SpiritCategory category) {
+        return spiritRepository.findCountryStats(category).stream()
+                .map(row -> new CountryStatsResponse((String) row[0], (Long) row[1]))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<RegionStatsResponse> getRegionStats(SpiritCategory category, String country) {
+        return spiritRepository.findRegionStats(category, country).stream()
+                .map(row -> new RegionStatsResponse((String) row[0], (Long) row[1]))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public SpiritDetailResponse getSpiritDetail(Long id) {
         Spirit spirit = spiritRepository.findByIdWithAllDetails(id, SpiritStatus.ACTIVE)
                 .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_NOT_FOUND));

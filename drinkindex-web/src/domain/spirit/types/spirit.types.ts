@@ -109,7 +109,11 @@ export interface CognacDetailResponse {
 export interface SpiritSearchParams {
   keyword?: string
   category?: SpiritCategory
+  whiskyStyle?: WhiskyStyle
+  wineType?: WineType
+  cognacGrade?: CognacGrade
   country?: string
+  region?: string
   minAbv?: number
   maxAbv?: number
   minScore?: number
@@ -117,4 +121,14 @@ export interface SpiritSearchParams {
   sort?: SpiritSort
   page?: number
   size?: number
+}
+
+export interface CountryStats {
+  country: string
+  count: number
+}
+
+export interface RegionStats {
+  region: string
+  count: number
 }

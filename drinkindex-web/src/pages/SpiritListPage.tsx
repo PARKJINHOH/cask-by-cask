@@ -1,87 +1,77 @@
 import { useState, useEffect, useCallback, Fragment } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { localizeCountry } from '@/shared/utils/countryName'
 import { useQuery } from '@tanstack/react-query'
 import { Dialog, Transition, TransitionChild, DialogPanel, DialogTitle } from '@headlessui/react'
 import { spiritApi } from '@/domain/spirit/api/spiritApi'
-import type { SpiritCategory, SpiritSort } from '@/domain/spirit/types/spirit.types'
+import type {
+  SpiritCategory, SpiritSort, WhiskyStyle, WineType, CognacGrade,
+} from '@/domain/spirit/types/spirit.types'
 import SpiritCard from '@/shared/components/SpiritCard'
 import Spinner from '@/shared/components/Spinner'
 import Pagination from '@/shared/components/Pagination'
 import EmptyState from '@/shared/components/EmptyState'
 import RangeSlider from '@/shared/components/RangeSlider'
+import CategoryTree from '@/domain/spirit/components/filter/CategoryTree'
+import CountryCombobox from '@/domain/spirit/components/filter/CountryCombobox'
+import RegionChips from '@/domain/spirit/components/filter/RegionChips'
+import ActiveFilterChips, {
+  type ActiveFilterState,
+} from '@/domain/spirit/components/filter/ActiveFilterChips'
 
-// ── 상수 ───────────────────────────────────────────────────────
-const CATEGORIES: SpiritCategory[] = [
-  'WHISKY', 'COGNAC', 'WINE', 'OTHER',
-]
 const SORT_VALUES: SpiritSort[] = ['LATEST', 'SCORE_DESC', 'REVIEW_COUNT_DESC']
-const COUNTRIES = [
-  '스코틀랜드', 'Japan', 'United States', 'Ireland', 'France', 'Mexico',
-  'Jamaica', 'Russia', 'Netherlands', 'Sweden', 'Australia', 'Taiwan', 'India',
-]
 
 // ── 필터 패널 ─────────────────────────────────────────────────
 interface FilterPanelProps {
-  category:    string
-  country:     string
-  abvRange:    [number, number]
-  scoreRange:  [number, number]
-  onCategory:  (v: string) => void
-  onCountry:   (v: string) => void
-  onAbv:       (v: [number, number]) => void
-  onAbvEnd:    (v: [number, number]) => void
-  onScore:     (v: [number, number]) => void
-  onScoreEnd:  (v: [number, number]) => void
-  onReset:     () => void
+  category:     SpiritCategory | ''
+  whiskyStyle:  WhiskyStyle | ''
+  wineType:     WineType | ''
+  cognacGrade:  CognacGrade | ''
+  country:      string
+  region:       string
+  abvRange:     [number, number]
+  scoreRange:   [number, number]
+  onCategory:   (v: SpiritCategory | '') => void
+  onWhiskyStyle: (v: WhiskyStyle | '') => void
+  onWineType:   (v: WineType | '') => void
+  onCognacGrade: (v: CognacGrade | '') => void
+  onCountry:    (v: string) => void
+  onRegion:     (v: string) => void
+  onAbv:        (v: [number, number]) => void
+  onAbvEnd:     (v: [number, number]) => void
+  onScore:      (v: [number, number]) => void
+  onScoreEnd:   (v: [number, number]) => void
+  onReset:      () => void
 }
 
 function FilterPanel(p: FilterPanelProps) {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
 
   return (
     <div className="space-y-6">
-      {/* 카테고리 */}
-      <div>
-        <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-2">
-          {t('spirit.filter.category')}
-        </h3>
-        <div className="space-y-1">
-          {CATEGORIES.map((cat) => (
-            <label key={cat} className="flex items-center gap-2 cursor-pointer group">
-              <input
-                type="checkbox"
-                className="w-4 h-4 rounded border-neutral-300 text-primary-600
-                  focus:ring-primary-400 focus:ring-offset-0"
-                checked={p.category === cat}
-                onChange={() => p.onCategory(p.category === cat ? '' : cat)}
-              />
-              <span className="text-sm text-neutral-700 group-hover:text-neutral-900">
-                {t(`spirit.category.${cat}`)}
-              </span>
-            </label>
-          ))}
-        </div>
-      </div>
+      <CategoryTree
+        category={p.category}
+        whiskyStyle={p.whiskyStyle}
+        wineType={p.wineType}
+        cognacGrade={p.cognacGrade}
+        onCategory={p.onCategory}
+        onWhiskyStyle={p.onWhiskyStyle}
+        onWineType={p.onWineType}
+        onCognacGrade={p.onCognacGrade}
+      />
 
-      {/* 국가 */}
-      <div>
-        <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-2">
-          {t('spirit.filter.country')}
-        </h3>
-        <select
-          value={p.country}
-          onChange={(e) => p.onCountry(e.target.value)}
-          className="w-full text-sm border border-neutral-200 rounded-lg px-3 py-2
-            focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white text-neutral-700"
-        >
-          <option value="">{t('spirit.filter.all')}</option>
-          {COUNTRIES.map((c) => (
-            <option key={c} value={c}>{localizeCountry(c, i18n.language)}</option>
-          ))}
-        </select>
-      </div>
+      <CountryCombobox
+        category={p.category}
+        value={p.country}
+        onChange={p.onCountry}
+      />
+
+      <RegionChips
+        category={p.category}
+        country={p.country}
+        value={p.region}
+        onChange={p.onRegion}
+      />
 
       {/* 도수 */}
       <div>
@@ -145,7 +135,7 @@ function FilterDrawer({ open, onClose, children }: DrawerProps) {
             enter="ease-out duration-250" enterFrom="-translate-x-full" enterTo="translate-x-0"
             leave="ease-in duration-200" leaveFrom="translate-x-0" leaveTo="-translate-x-full"
           >
-            <DialogPanel className="relative w-72 max-w-[85vw] bg-white h-full overflow-y-auto shadow-xl flex flex-col">
+            <DialogPanel className="relative w-80 max-w-[85vw] bg-white h-full overflow-y-auto shadow-xl flex flex-col">
               <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-100">
                 <DialogTitle className="font-semibold text-neutral-900">
                   {t('spirit.filter.title')}
@@ -185,8 +175,12 @@ export default function SpiritListPage() {
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   // URL에서 필터 값 읽기
-  const category    = searchParams.get('category') ?? ''
-  const country     = searchParams.get('country')  ?? ''
+  const category    = (searchParams.get('category') as SpiritCategory) ?? ''
+  const whiskyStyle = (searchParams.get('whiskyStyle') as WhiskyStyle) ?? ''
+  const wineType    = (searchParams.get('wineType') as WineType) ?? ''
+  const cognacGrade = (searchParams.get('cognacGrade') as CognacGrade) ?? ''
+  const country     = searchParams.get('country') ?? ''
+  const region      = searchParams.get('region')  ?? ''
   const sort        = (searchParams.get('sort') as SpiritSort) ?? 'LATEST'
   const page        = parseInt(searchParams.get('page')     ?? '0')
   const urlMinAbv   = parseFloat(searchParams.get('minAbv') ?? '0')
@@ -241,16 +235,57 @@ export default function SpiritListPage() {
     setSearchParams({}, { replace: true })
   }
 
+  // 카테고리 변경 시 region도 클리어 (다른 카테고리에서 의미 없음)
+  const handleCategoryChange = (v: SpiritCategory | '') => {
+    setParam({
+      category: v,
+      whiskyStyle: null, wineType: null, cognacGrade: null,
+      region: null,
+    })
+  }
+
+  // 국가 변경 시 region 클리어
+  const handleCountryChange = (v: string) => {
+    setParam({ country: v, region: null })
+  }
+
+  // ActiveFilterChips용 클리어 핸들러
+  const handleClearKey = (key: keyof ActiveFilterState | 'abv' | 'score') => {
+    if (key === 'abv') {
+      setAbvRange([0, 100])
+      setParam({ minAbv: null, maxAbv: null })
+    } else if (key === 'score') {
+      setScoreRange([0, 100])
+      setParam({ minScore: null, maxScore: null })
+    } else if (key === 'category') {
+      handleCategoryChange('')
+    } else if (key === 'country') {
+      handleCountryChange('')
+    } else if (key === 'minAbv' || key === 'maxAbv'
+            || key === 'minScore' || key === 'maxScore') {
+      // ActiveFilterState 타입상 키지만 abv/score 묶음으로만 클리어됨 — 무시
+    } else {
+      setParam({ [key]: null })
+    }
+  }
+
   // 쿼리
   const keyword = searchParams.get('keyword') ?? ''
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['spirits', { keyword, category, country, sort, page,
-      minAbv: urlMinAbv, maxAbv: urlMaxAbv, minScore: urlMinScore, maxScore: urlMaxScore }],
+    queryKey: ['spirits', {
+      keyword, category, whiskyStyle, wineType, cognacGrade,
+      country, region, sort, page,
+      minAbv: urlMinAbv, maxAbv: urlMaxAbv, minScore: urlMinScore, maxScore: urlMaxScore,
+    }],
     queryFn: () =>
       spiritApi.search({
-        keyword:   keyword   || undefined,
-        category:  (category as SpiritCategory) || undefined,
-        country:   country   || undefined,
+        keyword:     keyword     || undefined,
+        category:    (category as SpiritCategory) || undefined,
+        whiskyStyle: (whiskyStyle as WhiskyStyle) || undefined,
+        wineType:    (wineType as WineType) || undefined,
+        cognacGrade: (cognacGrade as CognacGrade) || undefined,
+        country:     country     || undefined,
+        region:      region      || undefined,
         sort,
         page,
         size: 20,
@@ -263,14 +298,26 @@ export default function SpiritListPage() {
   })
 
   const filterProps: FilterPanelProps = {
-    category, country, abvRange, scoreRange,
-    onCategory: (v) => setParam({ category: v }),
-    onCountry:  (v) => setParam({ country: v }),
-    onAbv:      setAbvRange,
-    onAbvEnd:   commitAbv,
-    onScore:    setScoreRange,
-    onScoreEnd: commitScore,
-    onReset:    handleReset,
+    category, whiskyStyle, wineType, cognacGrade,
+    country, region, abvRange, scoreRange,
+    onCategory:    handleCategoryChange,
+    onWhiskyStyle: (v) => setParam({ whiskyStyle: v }),
+    onWineType:    (v) => setParam({ wineType: v }),
+    onCognacGrade: (v) => setParam({ cognacGrade: v }),
+    onCountry:     handleCountryChange,
+    onRegion:      (v) => setParam({ region: v }),
+    onAbv:         setAbvRange,
+    onAbvEnd:      commitAbv,
+    onScore:       setScoreRange,
+    onScoreEnd:    commitScore,
+    onReset:       handleReset,
+  }
+
+  const activeState: ActiveFilterState = {
+    category, whiskyStyle, wineType, cognacGrade,
+    country, region,
+    minAbv: urlMinAbv, maxAbv: urlMaxAbv,
+    minScore: urlMinScore, maxScore: urlMaxScore,
   }
 
   return (
@@ -308,14 +355,22 @@ export default function SpiritListPage() {
 
       <div className="flex gap-6">
         {/* PC 좌측 고정 필터 패널 */}
-        <aside className="hidden lg:block w-56 flex-shrink-0">
-          <div className="sticky top-20 bg-white rounded-2xl border border-neutral-100 p-5">
+        <aside className="hidden lg:block w-64 flex-shrink-0">
+          <div className="sticky top-20 bg-white rounded-2xl border border-neutral-100 p-5
+            max-h-[calc(100vh-6rem)] overflow-y-auto">
             <FilterPanel {...filterProps} />
           </div>
         </aside>
 
         {/* 메인 영역 */}
         <div className="flex-1 min-w-0">
+          {/* 적용된 필터 칩 */}
+          <ActiveFilterChips
+            state={activeState}
+            onClear={handleClearKey}
+            onClearAll={handleReset}
+          />
+
           {/* 정렬 + 건수 */}
           <div className="flex items-center justify-between mb-4">
             <p className="text-sm text-neutral-500">

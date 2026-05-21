@@ -1,8 +1,11 @@
 package com.drinkindex.domain.spirit.dto;
 
+import com.drinkindex.domain.spirit.entity.enums.CognacGrade;
 import com.drinkindex.domain.spirit.entity.enums.SpiritCategory;
 import com.drinkindex.domain.spirit.entity.enums.SpiritSort;
 import com.drinkindex.domain.spirit.entity.enums.SpiritStatus;
+import com.drinkindex.domain.spirit.entity.enums.WhiskyStyle;
+import com.drinkindex.domain.spirit.entity.enums.WineType;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
@@ -12,8 +15,16 @@ public record SpiritSearchCondition(
         String keyword,
         @Schema(description = "카테고리 필터 (null이면 전체)")
         SpiritCategory category,
+        @Schema(description = "위스키 세부 스타일 (category=WHISKY일 때만 의미)")
+        WhiskyStyle whiskyStyle,
+        @Schema(description = "와인 타입 (category=WINE일 때만 의미)")
+        WineType wineType,
+        @Schema(description = "꼬냑 등급 (category=COGNAC일 때만 의미)")
+        CognacGrade cognacGrade,
         @Schema(description = "생산 국가 필터 (null이면 전체)")
         String country,
+        @Schema(description = "지역 필터 (null이면 전체)")
+        String region,
         @Schema(description = "최소 알코올 도수")
         BigDecimal minAbv,
         @Schema(description = "최대 알코올 도수")

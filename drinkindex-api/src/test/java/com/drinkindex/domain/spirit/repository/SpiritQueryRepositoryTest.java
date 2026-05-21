@@ -164,7 +164,8 @@ class SpiritQueryRepositoryTest {
     @DisplayName("status 파라미터 미지정 시 ACTIVE 기본 적용")
     void searchWithDefaultStatus() {
         SpiritSearchCondition cond = new SpiritSearchCondition(
-                null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null,
+                null, null, null, null, null, null);
         assertThat(cond.status()).isEqualTo(SpiritStatus.ACTIVE);
         Page<SpiritListResponse> result = spiritRepository.search(cond, page);
         assertThat(result.getTotalElements()).isEqualTo(4);
@@ -222,7 +223,8 @@ class SpiritQueryRepositoryTest {
 
         SpiritSearchCondition build() {
             return new SpiritSearchCondition(
-                    keyword, category, country, minAbv, maxAbv,
+                    keyword, category, null, null, null,
+                    country, null, minAbv, maxAbv,
                     minScore, maxScore, SpiritStatus.ACTIVE, sort);
         }
     }

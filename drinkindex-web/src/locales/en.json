@@ -122,12 +122,46 @@
     "filter": {
       "title": "Filters",
       "category": "Category",
+      "subType": "Sub-type",
       "country": "Country",
+      "countrySearch": "Search country...",
+      "countryAll": "All countries",
+      "showMore": "Show more",
+      "showLess": "Show less",
+      "region": "Region",
       "abv": "ABV (%)",
       "score": "Avg. Score",
       "reset": "Reset Filters",
+      "resetAll": "Clear all",
       "apply": "Apply",
-      "all": "All"
+      "all": "All",
+      "activeTitle": "Active filters"
+    },
+    "whiskyStyle": {
+      "SINGLE_MALT":    "Single Malt",
+      "BLENDED_MALT":   "Blended Malt",
+      "BLENDED_WHISKY": "Blended",
+      "BOURBON":        "Bourbon",
+      "RYE":            "Rye",
+      "CORN":           "Corn",
+      "GRAIN":          "Grain",
+      "POT_STILL":      "Pot Still"
+    },
+    "wineType": {
+      "RED":       "Red",
+      "WHITE":     "White",
+      "ROSE":      "Rosé",
+      "SPARKLING": "Sparkling",
+      "DESSERT":   "Dessert",
+      "ORANGE":    "Orange"
+    },
+    "cognacGrade": {
+      "VS":        "VS",
+      "NAPOLEON":  "Napoléon",
+      "VSOP":      "VSOP",
+      "XO":        "XO",
+      "XXO":       "XXO",
+      "HORS_DAGE": "Hors d'Age"
     },
     "noResult": {
       "title": "No results found.",

@@ -18,6 +18,28 @@ public interface SpiritRepository extends JpaRepository<Spirit, Long>, SpiritQue
     @Query("SELECT s.category, COUNT(s) FROM Spirit s WHERE s.status = com.drinkindex.domain.spirit.entity.enums.SpiritStatus.ACTIVE GROUP BY s.category")
     List<Object[]> findCategoryStats();
 
+    @Query("""
+            SELECT s.country, COUNT(s) FROM Spirit s
+            WHERE s.status = com.drinkindex.domain.spirit.entity.enums.SpiritStatus.ACTIVE
+              AND s.country IS NOT NULL AND s.country <> ''
+              AND (:category IS NULL OR s.category = :category)
+            GROUP BY s.country
+            ORDER BY COUNT(s) DESC, s.country ASC
+            """)
+    List<Object[]> findCountryStats(@Param("category") SpiritCategory category);
+
+    @Query("""
+            SELECT s.region, COUNT(s) FROM Spirit s
+            WHERE s.status = com.drinkindex.domain.spirit.entity.enums.SpiritStatus.ACTIVE
+              AND s.category = :category
+              AND s.country = :country
+              AND s.region IS NOT NULL AND s.region <> ''
+            GROUP BY s.region
+            ORDER BY COUNT(s) DESC, s.region ASC
+            """)
+    List<Object[]> findRegionStats(@Param("category") SpiritCategory category,
+                                   @Param("country") String country);
+
     /** 상세 조회용 — 모든 서브 테이블 LEFT JOIN FETCH (N+1 방지) */
     @Query("""
             SELECT DISTINCT s FROM Spirit s

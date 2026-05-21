@@ -1,9 +1,12 @@
 package com.drinkindex.domain.spirit.controller;
 
 import com.drinkindex.domain.spirit.dto.*;
+import com.drinkindex.domain.spirit.entity.enums.CognacGrade;
 import com.drinkindex.domain.spirit.entity.enums.SpiritCategory;
 import com.drinkindex.domain.spirit.entity.enums.SpiritSort;
 import com.drinkindex.domain.spirit.entity.enums.SpiritStatus;
+import com.drinkindex.domain.spirit.entity.enums.WhiskyStyle;
+import com.drinkindex.domain.spirit.entity.enums.WineType;
 import com.drinkindex.domain.spirit.service.SpiritService;
 import com.drinkindex.global.auth.security.CustomUserDetails;
 import com.drinkindex.global.response.ApiResponse;
@@ -32,7 +35,11 @@ public class SpiritController {
     public ResponseEntity<ApiResponse<Page<SpiritListResponse>>> search(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) SpiritCategory category,
+            @RequestParam(required = false) WhiskyStyle whiskyStyle,
+            @RequestParam(required = false) WineType wineType,
+            @RequestParam(required = false) CognacGrade cognacGrade,
             @RequestParam(required = false) String country,
+            @RequestParam(required = false) String region,
             @RequestParam(required = false) BigDecimal minAbv,
             @RequestParam(required = false) BigDecimal maxAbv,
             @RequestParam(required = false) BigDecimal minScore,
@@ -41,11 +48,25 @@ public class SpiritController {
             @PageableDefault(size = 20) Pageable pageable) {
 
         SpiritSearchCondition condition = new SpiritSearchCondition(
-                keyword, category, country, minAbv, maxAbv, minScore, maxScore,
+                keyword, category, whiskyStyle, wineType, cognacGrade,
+                country, region, minAbv, maxAbv, minScore, maxScore,
                 SpiritStatus.ACTIVE, sort);
 
         return ResponseEntity.ok(ApiResponse.success(
                 spiritService.searchSpirits(condition, pageable)));
+    }
+
+    @GetMapping("/countries")
+    public ResponseEntity<ApiResponse<List<CountryStatsResponse>>> getCountries(
+            @RequestParam(required = false) SpiritCategory category) {
+        return ResponseEntity.ok(ApiResponse.success(spiritService.getCountryStats(category)));
+    }
+
+    @GetMapping("/regions")
+    public ResponseEntity<ApiResponse<List<RegionStatsResponse>>> getRegions(
+            @RequestParam SpiritCategory category,
+            @RequestParam String country) {
+        return ResponseEntity.ok(ApiResponse.success(spiritService.getRegionStats(category, country)));
     }
 
     @GetMapping("/{id}")

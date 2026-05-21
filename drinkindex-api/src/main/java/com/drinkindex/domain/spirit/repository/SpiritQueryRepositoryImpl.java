@@ -3,12 +3,16 @@ package com.drinkindex.domain.spirit.repository;
 import com.drinkindex.domain.spirit.dto.SpiritListResponse;
 import com.drinkindex.domain.spirit.dto.SpiritSearchCondition;
 import com.drinkindex.domain.spirit.entity.QSpirit;
+import com.drinkindex.domain.spirit.entity.QSpiritCognacDetail;
 import com.drinkindex.domain.spirit.entity.QSpiritImage;
+import com.drinkindex.domain.spirit.entity.QSpiritWhiskyDetail;
+import com.drinkindex.domain.spirit.entity.QSpiritWineDetail;
 import com.drinkindex.domain.spirit.entity.Spirit;
 import com.drinkindex.domain.spirit.entity.enums.SpiritSort;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.Tuple;
+import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -33,10 +37,12 @@ public class SpiritQueryRepositoryImpl implements SpiritQueryRepository {
         BooleanBuilder predicate = buildPredicate(condition, spirit);
         OrderSpecifier<?> order = buildOrder(condition.sort(), spirit);
 
-        // ── 1. 데이터 조회 (distillery fetch join) ────────────
-        List<Spirit> spirits = queryFactory
+        // ── 1. 데이터 조회 (distillery fetch join + 서브타입 조건부 join) ─
+        JPAQuery<Spirit> dataQuery = queryFactory
                 .selectFrom(spirit)
-                .leftJoin(spirit.distillery).fetchJoin()
+                .leftJoin(spirit.distillery).fetchJoin();
+        applySubTypeJoin(dataQuery, condition, spirit);
+        List<Spirit> spirits = dataQuery
                 .where(predicate)
                 .orderBy(order)
                 .offset(pageable.getOffset())
@@ -44,11 +50,9 @@ public class SpiritQueryRepositoryImpl implements SpiritQueryRepository {
                 .fetch();
 
         // ── 2. COUNT 분리 쿼리 ─────────────────────────────────
-        Long total = queryFactory
-                .select(spirit.count())
-                .from(spirit)
-                .where(predicate)
-                .fetchOne();
+        JPAQuery<Long> countQuery = queryFactory.select(spirit.count()).from(spirit);
+        applySubTypeJoin(countQuery, condition, spirit);
+        Long total = countQuery.where(predicate).fetchOne();
 
         // ── 3. 대표 이미지 IN 배치 조회 ────────────────────────
         Map<Long, String> primaryImages = fetchPrimaryImages(spirits, image);
@@ -59,6 +63,23 @@ public class SpiritQueryRepositoryImpl implements SpiritQueryRepository {
                 .toList();
 
         return new PageImpl<>(content, pageable, total != null ? total : 0L);
+    }
+
+    // ── 서브타입 join (필터가 있을 때만 join 추가, fetch join은 사용하지 않음) ──
+
+    private void applySubTypeJoin(JPAQuery<?> query, SpiritSearchCondition cond, QSpirit spirit) {
+        if (cond.whiskyStyle() != null) {
+            QSpiritWhiskyDetail whisky = QSpiritWhiskyDetail.spiritWhiskyDetail;
+            query.leftJoin(spirit.whiskyDetail, whisky);
+        }
+        if (cond.wineType() != null) {
+            QSpiritWineDetail wine = QSpiritWineDetail.spiritWineDetail;
+            query.leftJoin(spirit.wineDetail, wine);
+        }
+        if (cond.cognacGrade() != null) {
+            QSpiritCognacDetail cognac = QSpiritCognacDetail.spiritCognacDetail;
+            query.leftJoin(spirit.cognacDetail, cognac);
+        }
     }
 
     // ── 동적 조건 빌더 ─────────────────────────────────────────
@@ -76,8 +97,20 @@ public class SpiritQueryRepositoryImpl implements SpiritQueryRepository {
         if (cond.category() != null) {
             builder.and(spirit.category.eq(cond.category()));
         }
+        if (cond.whiskyStyle() != null) {
+            builder.and(QSpiritWhiskyDetail.spiritWhiskyDetail.style.eq(cond.whiskyStyle()));
+        }
+        if (cond.wineType() != null) {
+            builder.and(QSpiritWineDetail.spiritWineDetail.wineType.eq(cond.wineType()));
+        }
+        if (cond.cognacGrade() != null) {
+            builder.and(QSpiritCognacDetail.spiritCognacDetail.grade.eq(cond.cognacGrade()));
+        }
         if (StringUtils.hasText(cond.country())) {
             builder.and(spirit.country.eq(cond.country()));
+        }
+        if (StringUtils.hasText(cond.region())) {
+            builder.and(spirit.region.eq(cond.region()));
         }
         if (cond.minAbv() != null) {
             builder.and(spirit.abv.isNotNull().and(spirit.abv.goe(cond.minAbv())));
