@@ -18,6 +18,49 @@ import RegionChips from '@/domain/spirit/components/filter/RegionChips'
 import ActiveFilterChips, {
   type ActiveFilterState,
 } from '@/domain/spirit/components/filter/ActiveFilterChips'
+import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
+import { buildBreadcrumbSchema, buildItemListSchema } from '@/shared/utils/seoSchema'
+
+// ── 카테고리별 정의문 (AEO/SEO) ──────────────────────────────
+// SpiritCategory 페이지 진입 시 카탈로그 상단에 간략한 정의 박스를 노출.
+// AI 검색이 사이트를 "위스키/꼬냑/와인 정보" 출처로 인식하게 하기 위함.
+const CATEGORY_INTRO: Partial<Record<SpiritCategory, { ko: string; en: string }>> = {
+  WHISKY: {
+    ko: '위스키 (Whisky) 는 보리·밀·옥수수·호밀 등 곡물을 발효·증류한 뒤 오크통에서 숙성시킨 증류주입니다. 원산지·곡물·증류 방식에 따라 스카치, 버번, 아이리시, 재패니즈, 라이 위스키 등으로 나뉘며, DrinkIndex 에서는 싱글 몰트·블렌디드·캐스크 타입·피티드 여부·연수 등 세부 정보로 탐색할 수 있습니다.',
+    en: 'Whisky is a distilled spirit made from fermented grains (barley, wheat, corn, rye) and aged in oak casks. Browse Scotch, Bourbon, Irish, Japanese, and Rye whisky on DrinkIndex with detailed filters by style, cask, peat and age.',
+  },
+  COGNAC: {
+    ko: '꼬냑 (Cognac) 은 프랑스 꼬냑 지방에서 백포도를 증류해 만든 브랜디로, 원산지 명칭 보호 (AOC) 를 받습니다. 등급은 VS·VSOP·나폴레옹·XO·XXO 순으로 숙성 연수가 늘어나며, 그랑드 샹파뉴 등 6개 크뤼 (Cru) 로 토양이 구분됩니다.',
+    en: 'Cognac is a brandy from the Cognac region of France, protected by AOC. Graded VS, VSOP, Napoléon, XO, XXO by minimum aging, and classified by six crus (Grande Champagne, Petite Champagne, Borderies, Fins Bois, Bons Bois, Bois Ordinaires).',
+  },
+  WINE: {
+    ko: '와인 (Wine) 은 포도를 발효시켜 만든 양조주입니다. 색·발효 방식에 따라 레드·화이트·로제·스파클링·디저트·오렌지 와인으로 나뉘며, 빈티지 (수확 연도), 포도 품종, 아펠라시옹 (원산지) 등이 풍미에 결정적 영향을 미칩니다.',
+    en: 'Wine is fermented from grapes and classified as red, white, rosé, sparkling, dessert or orange. Vintage, grape varieties, and appellation are the key factors shaping flavor.',
+  },
+  OTHER: {
+    ko: '럼 (Rum), 데킬라 (Tequila), 진 (Gin), 보드카 (Vodka) 등 위스키·와인·꼬냑 외의 다양한 증류주·양조주를 포함합니다.',
+    en: 'Other spirits including rum, tequila, gin, vodka and more — outside of whisky, wine and cognac categories.',
+  },
+}
+
+// ── SEO 카테고리별 메타 ─────────────────────────────────────────
+const CATEGORY_META: Record<SpiritCategory | '', { titleKo: string; titleEn: string; descKo: string; descEn: string }> = {
+  '':       { titleKo: '주류 카탈로그',  titleEn: 'Spirit Catalog',
+              descKo: '위스키, 와인, 꼬냑, 럼, 데킬라까지 — DrinkIndex 의 주류 전체 카탈로그를 탐색하고 사용자 평점·리뷰를 확인하세요.',
+              descEn: 'Browse the full spirit catalog — whisky, wine, cognac, rum, tequila and more. User ratings and reviews on DrinkIndex.' },
+  WHISKY:   { titleKo: '위스키',       titleEn: 'Whisky',
+              descKo: '싱글 몰트, 블렌디드, 버번까지. 증류소·지역별 위스키 정보와 사용자 평점을 한 곳에서.',
+              descEn: 'Single malt, blended, bourbon and more. Explore whisky by distillery and region with user ratings.' },
+  COGNAC:   { titleKo: '꼬냑',         titleEn: 'Cognac',
+              descKo: 'VS·VSOP·XO 등급별, 그랑드 샹파뉴·프티트 샹파뉴 등 크뤼별 꼬냑 정보와 사용자 리뷰.',
+              descEn: 'Cognac by grade (VS, VSOP, XO) and cru (Grande/Petite Champagne, etc.). User reviews and ratings.' },
+  WINE:     { titleKo: '와인',         titleEn: 'Wine',
+              descKo: '레드·화이트·스파클링·디저트 와인. 와이너리·국가·지역별 와인 정보와 사용자 평점.',
+              descEn: 'Red, white, sparkling and dessert wines. Browse wines by winery, country and region.' },
+  OTHER:    { titleKo: '기타 주류',     titleEn: 'Other Spirits',
+              descKo: '럼, 데킬라, 진, 보드카 등 기타 주류 카탈로그. 사용자 평점과 리뷰.',
+              descEn: 'Rum, tequila, gin, vodka and other spirits. User ratings and reviews.' },
+}
 
 const SORT_VALUES: SpiritSort[] = ['LATEST', 'SCORE_DESC', 'REVIEW_COUNT_DESC']
 
@@ -170,7 +213,7 @@ function FilterDrawer({ open, onClose, children }: DrawerProps) {
 
 // ── 메인 페이지 ───────────────────────────────────────────────
 export default function SpiritListPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [searchParams, setSearchParams] = useSearchParams()
   const [drawerOpen, setDrawerOpen] = useState(false)
 
@@ -320,8 +363,71 @@ export default function SpiritListPage() {
     minScore: urlMinScore, maxScore: urlMaxScore,
   }
 
+  // ── SEO 메타 계산 ────────────────────────────────────────
+  const isEn = i18n.language === 'en'
+  const meta = CATEGORY_META[category] ?? CATEGORY_META['']
+  // canonical: 카테고리만 보존, 세부 필터/페이지/sort 는 제거 (중복 인덱싱 방지)
+  const seoCanonical = category
+    ? buildCanonical(`/spirits?category=${category}`)
+    : buildCanonical('/spirits')
+  // keyword 검색결과 / 2페이지 이후는 noindex (무한 인덱싱 방지)
+  const seoNoindex = !!keyword || page > 0
+
+  // JSON-LD: Breadcrumb + ItemList (+ CollectionPage 카테고리 페이지)
+  const seoBreadcrumb = buildBreadcrumbSchema(
+    category
+      ? [
+          { name: isEn ? 'Home' : '홈', path: '/' },
+          { name: isEn ? 'Spirits' : '주류 카탈로그', path: '/spirits' },
+          { name: isEn ? meta.titleEn : meta.titleKo,
+            path: `/spirits?category=${category}` },
+        ]
+      : [
+          { name: isEn ? 'Home' : '홈', path: '/' },
+          { name: isEn ? 'Spirits' : '주류 카탈로그', path: '/spirits' },
+        ],
+  )
+
+  const seoItemList = buildItemListSchema(
+    (data?.content ?? []).slice(0, 20).map((s) => ({
+      name: isEn ? (s.nameEn || s.nameKo) : s.nameKo,
+      path: `/spirits/${s.id}`,
+    })),
+  )
+
+  const seoJsonLd = [
+    seoBreadcrumb,
+    ...(seoItemList.itemListElement.length > 0 ? [seoItemList] : []),
+    ...(category ? [{
+      '@type': 'CollectionPage' as const,
+      name: isEn ? meta.titleEn : meta.titleKo,
+      description: isEn ? meta.descEn : meta.descKo,
+    }] : []),
+  ]
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
+      <SeoMeta
+        title={isEn ? meta.titleEn : meta.titleKo}
+        description={isEn ? meta.descEn : meta.descKo}
+        canonical={seoCanonical}
+        locale={isEn ? 'en_US' : 'ko_KR'}
+        noindex={seoNoindex}
+        jsonLd={seoJsonLd}
+      />
+
+      {/* 카테고리 정의문 — 1페이지 + 키워드 없는 상태에서만 노출 (AEO/SEO) */}
+      {category && CATEGORY_INTRO[category] && page === 0 && !keyword && (
+        <section className="mb-6 px-4 py-3 bg-neutral-50 border border-neutral-100 rounded-xl">
+          <h2 className="sr-only">
+            {isEn ? `About ${meta.titleEn}` : `${meta.titleKo} 소개`}
+          </h2>
+          <p className="text-xs sm:text-sm text-neutral-600 leading-relaxed">
+            {isEn ? CATEGORY_INTRO[category]!.en : CATEGORY_INTRO[category]!.ko}
+          </p>
+        </section>
+      )}
+
       {/* 검색 + 모바일 필터 버튼 (모바일 전용 — PC는 헤더 검색 사용) */}
       <div className="flex gap-2 mb-5 lg:hidden">
         <div className="relative flex-1">

@@ -5,6 +5,7 @@ import { NOTICE_CATEGORY_LABELS } from '@/domain/notice/types/notice.types'
 import type { NoticeCategory } from '@/domain/notice/types/notice.types'
 import Badge from '@/shared/components/Badge'
 import Pagination from '@/shared/components/Pagination'
+import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 
 const PAGE_SIZE = 20
 
@@ -62,6 +63,13 @@ export default function NoticePage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
+      <SeoMeta
+        title="공지사항"
+        description="DrinkIndex의 새로운 소식, 업데이트, 이벤트, 점검 안내 등 공지사항을 확인하세요."
+        canonical={buildCanonical('/notices')}
+        keywords="DrinkIndex 공지사항, 위스키 커뮤니티 소식, 업데이트, 이벤트"
+      />
+
       {/* 페이지 헤더 */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-neutral-900">공지사항</h1>

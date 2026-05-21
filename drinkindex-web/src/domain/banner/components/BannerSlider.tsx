@@ -61,7 +61,7 @@ export default function BannerSlider({ banners }: BannerSliderProps) {
         className="flex transition-transform duration-500 ease-in-out"
         style={{ transform: `translateX(-${current * 100}%)` }}
       >
-        {banners.map((b) => (
+        {banners.map((b, idx) => (
           <div
             key={b.id}
             className={[
@@ -76,12 +76,15 @@ export default function BannerSlider({ banners }: BannerSliderProps) {
             {b.bannerType === 'IMAGE' ? (
               (b.pcImage || b.moImage) ? (
                 <>
-                  {/* PC: pcImage. 없으면 moImage 폴백 */}
+                  {/* PC: pcImage. 없으면 moImage 폴백. 첫 슬라이드만 LCP 우선. */}
                   <img
                     src={(b.pcImage ?? b.moImage)!.imageUrl}
                     alt="배너"
                     className="hidden lg:block w-full h-full object-cover"
                     draggable={false}
+                    loading={idx === 0 ? 'eager' : 'lazy'}
+                    fetchPriority={idx === 0 ? 'high' : 'auto'}
+                    decoding="async"
                   />
                   {/* MO: moImage. 없으면 pcImage 폴백 */}
                   <img
@@ -89,6 +92,9 @@ export default function BannerSlider({ banners }: BannerSliderProps) {
                     alt="배너"
                     className="block lg:hidden w-full h-full object-cover"
                     draggable={false}
+                    loading={idx === 0 ? 'eager' : 'lazy'}
+                    fetchPriority={idx === 0 ? 'high' : 'auto'}
+                    decoding="async"
                   />
                 </>
               ) : (

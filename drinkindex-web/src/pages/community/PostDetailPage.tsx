@@ -7,10 +7,13 @@ import PostPollWidget from '@/domain/community/components/PostPollWidget'
 import PostSeriesNav from '@/domain/community/components/PostSeriesNav'
 import CommentSection from '@/domain/community/components/CommentSection'
 import { sanitizeHtml } from '@/shared/utils/sanitize'
+import { stripHtmlForMeta } from '@/shared/utils/seoText'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { useToast } from '@/shared/hooks/useToast'
 import type { UserRole } from '@/domain/auth/types/auth.types'
 import UserBadge from '@/shared/components/UserBadge'
+import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
+import { buildBreadcrumbSchema } from '@/shared/utils/seoSchema'
 
 export default function PostDetailPage() {
   const { boardType, id } = useParams<{ boardType: string; id: string }>()
@@ -97,8 +100,40 @@ export default function PostDetailPage() {
     })
   }
 
+  const seoDescription = stripHtmlForMeta(post.contentSanitized ?? '', 160)
+    || `DrinkIndex 커뮤니티 게시글 — ${post.title}`
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
+      <SeoMeta
+        title={post.title}
+        description={seoDescription}
+        canonical={buildCanonical(`/community/${boardPath}/${postId}`)}
+        ogType="article"
+        noindex={!!post.isBlocked || !!post.isLocked}
+        jsonLd={[
+          {
+            '@type': 'Article',
+            headline: post.title,
+            datePublished: post.createdAt,
+            author: post.authorNickname
+              ? { '@type': 'Person', name: post.authorNickname }
+              : undefined,
+            publisher: {
+              '@type': 'Organization',
+              name: 'DrinkIndex',
+              logo: { '@type': 'ImageObject', url: 'https://drinkindex.net/logo.png' },
+            },
+          },
+          buildBreadcrumbSchema([
+            { name: '홈', path: '/' },
+            { name: boardPath === 'notice' ? '소식 게시판' : '자유게시판',
+              path: `/community/${boardPath}` },
+            { name: post.title, path: `/community/${boardPath}/${postId}` },
+          ]),
+        ]}
+      />
+
       {/* 링크 복사 상단 슬라이드 배너 */}
       <div
         className={[

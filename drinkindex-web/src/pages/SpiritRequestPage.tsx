@@ -6,6 +6,7 @@ import type { SpiritRegisterRequestForm, MySpiritRequest, RequestStatus } from '
 import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
 import DistillerySelector from '@/domain/distillery/components/DistillerySelector'
 import CountryRegionSelector from '@/domain/location/components/CountryRegionSelector'
+import SeoMeta from '@/shared/components/SeoMeta'
 
 const CATEGORIES: SpiritCategory[] = ['WHISKY', 'COGNAC', 'WINE', 'OTHER']
 
@@ -94,6 +95,7 @@ export default function SpiritRequestPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 space-y-8">
+      <SeoMeta title={t('spiritRequest.title')} description={t('spiritRequest.subtitle')} noindex />
       {/* Page title */}
       <div>
         <h1 className="text-2xl font-bold text-neutral-900">{t('spiritRequest.title')}</h1>

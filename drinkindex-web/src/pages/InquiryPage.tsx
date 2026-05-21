@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { submitInquiry } from '@/domain/inquiry/api/inquiryApi'
 import type { InquiryCategory } from '@/domain/inquiry/types/inquiry.types'
+import SeoMeta from '@/shared/components/SeoMeta'
 
 const CATEGORIES: InquiryCategory[] = ['BUG_REPORT', 'FEATURE_REQUEST', 'ACCOUNT_INQUIRY', 'OTHER']
 const MAX_IMAGES = 3
@@ -104,6 +105,7 @@ export default function InquiryPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-10">
+      <SeoMeta title={t('inquiry.title')} description={t('inquiry.subtitle')} noindex />
       {/* 헤더 */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-neutral-900">{t('inquiry.title')}</h1>

@@ -1,3 +1,5 @@
+import { SITE_NAME, DEFAULT_OG_IMAGE } from '@/shared/config/site'
+
 /**
  * 페이지별 SEO/OG/JSON-LD 메타 설정 컴포넌트.
  *
@@ -7,7 +9,7 @@
  *
  * 사용법:
  *   <SeoMeta
- *     title="라프로익 10년 — DrinkIndex"
+ *     title="라프로익 10년"
  *     description="라프로익 10년의 테이스팅 노트와 사용자 평점을 확인하세요."
  *     canonical="https://drinkindex.net/spirits/123"
  *     ogImage="https://drinkindex.net/uploads/spirit/123.jpg"
@@ -33,9 +35,6 @@ interface Props {
   locale?: 'ko_KR' | 'en_US'
 }
 
-const SITE_NAME = 'DrinkIndex'
-const DEFAULT_OG_IMAGE = 'https://drinkindex.net/og-image.png'
-
 export default function SeoMeta({
   title,
   description,
@@ -50,6 +49,7 @@ export default function SeoMeta({
 }: Props) {
   const fullTitle = title.includes(SITE_NAME) ? title : `${title} — ${SITE_NAME}`
   const jsonLdArray = Array.isArray(jsonLd) ? jsonLd : jsonLd ? [jsonLd] : []
+  const altLocale = locale === 'ko_KR' ? 'en_US' : 'ko_KR'
 
   return (
     <>
@@ -63,10 +63,22 @@ export default function SeoMeta({
       )}
       {canonical && <link rel="canonical" href={canonical} />}
 
+      {/* hreflang — SPA 단일 URL이지만 콘텐츠가 i18n 으로 양쪽 노출되므로
+          동일 URL을 ko/en alternate 로 명시하고 x-default 도 추가.
+          (정공법은 /en, /ko 경로 분리지만 현 SPA 구조에서는 동일 URL 시그널이 안전한 차선.) */}
+      {canonical && (
+        <>
+          <link rel="alternate" hrefLang="ko" href={canonical} />
+          <link rel="alternate" hrefLang="en" href={canonical} />
+          <link rel="alternate" hrefLang="x-default" href={canonical} />
+        </>
+      )}
+
       {/* Open Graph */}
       <meta property="og:type" content={ogType} />
       <meta property="og:site_name" content={SITE_NAME} />
       <meta property="og:locale" content={locale} />
+      <meta property="og:locale:alternate" content={altLocale} />
       <meta property="og:title" content={fullTitle} />
       {description && <meta property="og:description" content={description} />}
       {canonical && <meta property="og:url" content={canonical} />}
@@ -91,3 +103,6 @@ export default function SeoMeta({
     </>
   )
 }
+
+/** SITE_URL 재-export — 페이지에서 canonical 작성 시 사용 편의. */
+export { SITE_URL, buildCanonical } from '@/shared/config/site'

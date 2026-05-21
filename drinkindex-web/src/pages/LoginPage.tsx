@@ -8,6 +8,7 @@ import { useAuthStore } from '@/domain/auth/store/authStore'
 import { useAuth } from '@/domain/auth/hooks/useAuth'
 import Button from '@/shared/components/Button'
 import Input from '@/shared/components/Input'
+import SeoMeta from '@/shared/components/SeoMeta'
 import type { ApiResponse } from '@/shared/types/common.types'
 
 // ── Validation schema ──────────────────────────────────────
@@ -134,6 +135,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-[calc(100vh-9rem)] flex items-center justify-center px-4 py-12">
+      <SeoMeta title="로그인" description="DrinkIndex 로그인 페이지." noindex />
       <div className="w-full max-w-sm">
 
         {/* Branding */}

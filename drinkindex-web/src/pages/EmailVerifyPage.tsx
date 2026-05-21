@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import type { AxiosError } from 'axios'
 import { authApi } from '@/domain/auth/api/authApi'
 import Button from '@/shared/components/Button'
+import SeoMeta from '@/shared/components/SeoMeta'
 import type { ApiResponse } from '@/shared/types/common.types'
 
 const CODE_TTL = 5 * 60 // 5분 (초)
@@ -128,6 +129,7 @@ export default function EmailVerifyPage() {
 
   return (
     <div className="min-h-[calc(100vh-9rem)] flex items-center justify-center px-4 py-12">
+      <SeoMeta title={t('emailVerify.title')} description="DrinkIndex 이메일 인증." noindex />
       <div className="w-full max-w-sm">
 
         {/* Branding */}

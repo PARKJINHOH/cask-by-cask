@@ -4,7 +4,10 @@ import { useNoticeDetail } from '@/domain/notice/hooks/useNoticeDetail'
 import { useNotices } from '@/domain/notice/hooks/useNotices'
 import { NOTICE_CATEGORY_LABELS } from '@/domain/notice/types/notice.types'
 import { sanitizeHtml } from '@/shared/utils/sanitize'
+import { stripHtmlForMeta } from '@/shared/utils/seoText'
 import Badge from '@/shared/components/Badge'
+import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
+import { buildBreadcrumbSchema } from '@/shared/utils/seoSchema'
 import { markNoticesAsSeen } from './NoticePage'
 
 const CATEGORY_BADGE_VARIANT: Record<string, 'primary' | 'warning' | 'success' | 'neutral'> = {
@@ -59,6 +62,32 @@ export default function NoticeDetailPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
+      <SeoMeta
+        title={notice.title}
+        description={stripHtmlForMeta(notice.contentSanitized, 160)
+          || `DrinkIndex 공지사항 — ${notice.title}`}
+        canonical={buildCanonical(`/notices/${notice.id}`)}
+        ogType="article"
+        jsonLd={[
+          {
+            '@type': 'Article',
+            headline: notice.title,
+            datePublished: notice.createdAt,
+            author: { '@type': 'Organization', name: 'DrinkIndex' },
+            publisher: {
+              '@type': 'Organization',
+              name: 'DrinkIndex',
+              logo: { '@type': 'ImageObject', url: 'https://drinkindex.net/logo.png' },
+            },
+          },
+          buildBreadcrumbSchema([
+            { name: '홈', path: '/' },
+            { name: '공지사항', path: '/notices' },
+            { name: notice.title, path: `/notices/${notice.id}` },
+          ]),
+        ]}
+      />
+
       {/* 브레드크럼 */}
       <nav className="flex items-center gap-1.5 text-xs text-neutral-400 mb-6">
         <Link to="/" className="hover:text-neutral-600 transition-colors">홈</Link>

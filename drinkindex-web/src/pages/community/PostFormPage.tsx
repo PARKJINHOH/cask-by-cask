@@ -9,6 +9,7 @@ import PostEditor from '@/domain/community/components/PostEditor'
 import type { BoardType } from '@/domain/community/types/community.types'
 import { useToast } from '@/shared/hooks/useToast'
 import Toast from '@/shared/components/Toast'
+import SeoMeta from '@/shared/components/SeoMeta'
 
 const MAX_TITLE = 300
 const MAX_POLL_OPTIONS = 10
@@ -114,6 +115,7 @@ export default function PostFormPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
+      <SeoMeta title={isEdit ? '게시글 수정' : '게시글 작성'} description="DrinkIndex 커뮤니티 게시글 작성." noindex />
       <Toast toasts={toasts} onRemove={removeToast} />
 
       <div className="flex items-center gap-3 mb-6">

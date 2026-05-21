@@ -53,6 +53,7 @@ public class SitemapService {
         appendUrl(sb, siteUrl + "/community/free",         null, "hourly", "0.8");
         appendUrl(sb, siteUrl + "/community/notice",       null, "daily",  "0.7");
         appendUrl(sb, siteUrl + "/ranking",                null, "weekly", "0.5");
+        appendUrl(sb, siteUrl + "/faq",                    null, "monthly", "0.6");
         appendUrl(sb, siteUrl + "/terms",                  null, "yearly", "0.2");
         appendUrl(sb, siteUrl + "/privacy",                null, "yearly", "0.2");
 

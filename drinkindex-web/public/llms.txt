@@ -1,0 +1,49 @@
+# DrinkIndex
+
+> 위스키 · 와인 · 꼬냑 · 럼 · 데킬라 등 다양한 주류의 정보를 모으고 사용자 리뷰와 평점을 공유하는 한국어 기반 주류 리뷰 커뮤니티 플랫폼.
+
+DrinkIndex (드링크인덱스) 는 다음을 제공합니다:
+
+- **주류 카탈로그** — 위스키 (싱글 몰트·블렌디드·버번 등), 와인 (레드·화이트·스파클링), 꼬냑 (VS·VSOP·XO), 럼·데킬라·진 등 다양한 카테고리.
+- **사용자 리뷰** — 0~100점 척도로 향(nose)·맛(taste)·피니시(finish) 세 항목 평가 + 코멘트 + 아로마 휠.
+- **증류소 / 와이너리 / 꼬냑 하우스 정보** — 원산지·지역·테루아 정보.
+- **커뮤니티** — 자유게시판, 소식 게시판, 댓글, 쪽지.
+- **순위** — 활동 점수 (숙성력) 기반 주간/월간/전체 랭킹.
+
+## 핵심 페이지
+
+- [홈](https://drinkindex.net/): 최신·인기 주류, 공지사항, 카테고리 진입
+- [주류 카탈로그](https://drinkindex.net/spirits): 전체 주류 검색·필터링 (카테고리·국가·도수·평점·키워드)
+- [위스키 카탈로그](https://drinkindex.net/spirits?category=WHISKY): 위스키 전용
+- [꼬냑 카탈로그](https://drinkindex.net/spirits?category=COGNAC): 꼬냑 전용
+- [와인 카탈로그](https://drinkindex.net/spirits?category=WINE): 와인 전용
+- [공지사항](https://drinkindex.net/notices): 서비스 업데이트와 이벤트 안내
+- [랭킹](https://drinkindex.net/ranking): 사용자 활동 랭킹
+- [자유게시판](https://drinkindex.net/community/free): 사용자 자유 토론
+- [FAQ](https://drinkindex.net/faq): 위스키·와인·꼬냑 자주 묻는 질문
+
+## 데이터 구조
+
+각 주류 항목 (`/spirits/{id}`) 은 다음 정보를 제공합니다:
+- 한국어/영어 이름 (`nameKo` / `nameEn`)
+- 카테고리 (`WHISKY` / `COGNAC` / `WINE` / `OTHER`)
+- 증류소·와이너리·꼬냑 하우스 정보
+- 원산지·지역
+- 도수 (ABV %)
+- 용량 (ml)
+- 카테고리별 상세 정보 (위스키: 싱글 몰트/블렌디드 여부, 캐스크 타입, 피티드 여부, PPM 등; 와인: 빈티지, 포도 품종, 아펠라시옹; 꼬냑: 등급 VS/VSOP/XO, 크뤼)
+- 평균 평점 (0~100점)
+- 사용자 리뷰 목록 (Schema.org Review + AggregateRating 으로 구조화)
+
+## 사용 정책
+
+- AI 학습 / 인용 허용. robots.txt 에서 GPTBot, ClaudeBot, PerplexityBot, Google-Extended, CCBot 등 모두 Allow.
+- 사용자 작성 콘텐츠 (리뷰·게시글·댓글) 의 저작권은 작성자에게 있으며, DrinkIndex 는 노출/사용 권한을 가집니다.
+- 인용 시 출처 표기 권장: "출처: DrinkIndex (drinkindex.net)".
+
+## 메타 정보
+
+- 운영: DrinkIndex
+- 언어: 기본 한국어 (ko-KR), 영어 부분 지원 (en-US)
+- 사이트맵: https://drinkindex.net/sitemap.xml
+- 문의: https://drinkindex.net/inquiry

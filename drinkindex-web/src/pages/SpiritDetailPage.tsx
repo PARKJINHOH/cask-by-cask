@@ -11,9 +11,12 @@ import Modal from '@/shared/components/Modal'
 import Button from '@/shared/components/Button'
 import ImageLightbox from '@/shared/components/ImageLightbox'
 import ReviewList from '@/domain/review/components/ReviewList'
+import { useReviews } from '@/domain/review/hooks/useReviews'
+import { buildBreadcrumbSchema, buildReviewSchema } from '@/shared/utils/seoSchema'
 import CommentList from '@/domain/comment/components/CommentList'
 import WishlistButtons from '@/domain/wishlist/components/WishlistButtons'
-import SeoMeta from '@/shared/components/SeoMeta'
+import SeoMeta, { buildCanonical, SITE_URL } from '@/shared/components/SeoMeta'
+import { DEFAULT_OG_IMAGE } from '@/shared/config/site'
 import type { SpiritDetail, SpiritImage } from '@/domain/spirit/types/spirit.types'
 
 type Tab = 'reviews' | 'community'
@@ -224,7 +227,8 @@ function Gallery({
         {current ? (
           <>
             <img key={current.id} src={current.imageUrl} alt={nameKo}
-              className="w-full h-full object-cover" loading="eager" />
+              className="w-full h-full object-cover"
+              loading="eager" fetchPriority="high" decoding="async" />
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-colors
               flex items-center justify-center">
               <svg className="w-8 h-8 text-white opacity-0 group-hover:opacity-80 transition-opacity drop-shadow-lg"
@@ -247,7 +251,8 @@ function Gallery({
               className={`w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 border-2 transition-colors ${
                 i === selectedIdx ? 'border-primary-500' : 'border-transparent hover:border-neutral-300'
               }`}>
-              <img src={img.imageUrl} alt={`${nameKo} ${i + 1}`} className="w-full h-full object-cover" />
+              <img src={img.imageUrl} alt={`${nameKo} ${i + 1}`}
+                loading="lazy" decoding="async" className="w-full h-full object-cover" />
             </button>
           ))}
         </div>
@@ -293,6 +298,8 @@ export default function SpiritDetailPage() {
   const [lightboxIdx, setLightboxIdx]   = useState(-1)
 
   const { data: spirit, isLoading } = useSpiritDetail(spiritId)
+  // SEO Review 스키마용 — 첫 페이지 (ReviewList 와 동일 queryKey 라 캐시 공유)
+  const { data: reviewsPage } = useReviews(spiritId, 0)
 
   if (isLoading) return <Spinner fullscreen />
 
@@ -315,11 +322,23 @@ export default function SpiritDetailPage() {
   const countryLabel = localizeCountry(spirit.country, i18n.language)
   const regionLabel  = localizeRegion(spirit.region, i18n.language)
 
-  const canonicalUrl = `https://drinkindex.net/spirits/${spirit.id}`
+  const canonicalUrl = buildCanonical(`/spirits/${spirit.id}`)
   const rawImage = spirit.primaryImageUrl || spirit.images?.[0]?.imageUrl
   const heroImage = rawImage
-    ? (rawImage.startsWith('http') ? rawImage : `https://drinkindex.net${rawImage}`)
-    : 'https://drinkindex.net/og-image.png'
+    ? (rawImage.startsWith('http') ? rawImage : `${SITE_URL}${rawImage}`)
+    : DEFAULT_OG_IMAGE
+
+  // 개별 리뷰 (rich snippet 신뢰도 향상) — 최대 5건
+  const reviewSchemas = (reviewsPage?.content ?? []).slice(0, 5).map((r) =>
+    buildReviewSchema({
+      authorName: r.nickname,
+      ratingValue: r.totalScore,
+      bestRating: 100,
+      worstRating: 0,
+      datePublished: r.createdAt,
+      reviewBody: r.comment ?? r.tasteNote ?? r.noseNote ?? r.finishNote,
+    }),
+  )
 
   const productJsonLd = {
     '@type': 'Product',
@@ -336,10 +355,19 @@ export default function SpiritDetailPage() {
       '@type': 'AggregateRating',
       ratingValue: spirit.avgScore,
       reviewCount: spirit.reviewCount,
-      bestRating: 5,
+      bestRating: 100,
       worstRating: 0,
     } : undefined,
+    ...(reviewSchemas.length > 0 ? { review: reviewSchemas } : {}),
   }
+
+  // BreadcrumbList — 홈 / 카탈로그 / 카테고리 / 현재 spirit
+  const breadcrumbJsonLd = buildBreadcrumbSchema([
+    { name: isEn ? 'Home' : '홈', path: '/' },
+    { name: isEn ? 'Spirits' : '주류 카탈로그', path: '/spirits' },
+    { name: t(`spirit.category.${spirit.category}`), path: `/spirits?category=${spirit.category}` },
+    { name: primaryName ?? '', path: `/spirits/${spirit.id}` },
+  ])
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-6">
@@ -353,7 +381,7 @@ export default function SpiritDetailPage() {
         ogImage={heroImage}
         ogImageAlt={primaryName}
         locale={isEn ? 'en_US' : 'ko_KR'}
-        jsonLd={productJsonLd}
+        jsonLd={[productJsonLd, breadcrumbJsonLd]}
       />
 
       {/* Back */}

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useInfiniteNotifications } from '@/domain/notification/hooks/useNotifications'
 import { useMarkNotificationRead } from '@/domain/notification/hooks/useNotificationPolling'
 import type { NotificationItem, NotificationType } from '@/domain/notification/types/notification.types'
+import SeoMeta from '@/shared/components/SeoMeta'
 
 type Tab = '' | NotificationType
 
@@ -75,6 +76,7 @@ export default function NotificationsPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
+      <SeoMeta title={t('notification.title')} description="DrinkIndex 알림함." noindex />
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-5">
         <h1 className="text-2xl font-bold text-neutral-900">{t('notification.title')}</h1>

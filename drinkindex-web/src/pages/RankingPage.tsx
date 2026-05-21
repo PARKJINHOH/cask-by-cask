@@ -9,6 +9,7 @@ import AdminIcon from '@/shared/components/icons/AdminIcon'
 import DistilleryIcon from '@/shared/components/icons/DistilleryIcon'
 import Spinner from '@/shared/components/Spinner'
 import Pagination from '@/shared/components/Pagination'
+import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 
 // ── 기간 탭 ───────────────────────────────────────────────────
 
@@ -218,6 +219,13 @@ export default function RankingPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 pb-24 lg:pb-16 space-y-5">
+      <SeoMeta
+        title="숙성력 랭킹"
+        description="DrinkIndex 사용자 활동 점수 랭킹. 주간·월간·전체 기간별 리뷰와 활동에 따른 숙성력 순위를 확인하세요."
+        canonical={buildCanonical('/ranking')}
+        keywords="DrinkIndex 랭킹, 숙성력, 위스키 리뷰 랭킹, 사용자 활동 점수"
+      />
+
       {/* 헤더 */}
       <div className="text-center space-y-1">
         <h1 className="text-2xl font-extrabold text-neutral-900">🏆 숙성력 랭킹</h1>

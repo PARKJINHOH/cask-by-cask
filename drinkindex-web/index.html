@@ -30,9 +30,8 @@
     <meta name="twitter:description" content="다양한 주류 정보를 탐색하고 리뷰를 공유하는 커뮤니티." />
     <meta name="twitter:image" content="https://drinkindex.net/og-image.png" />
 
-    <!-- 언어 대체 -->
-    <link rel="alternate" hreflang="ko" href="https://drinkindex.net/" />
-    <link rel="alternate" hreflang="en" href="https://drinkindex.net/" />
+    <!-- 언어 대체 — 페이지별 hreflang 은 SeoMeta 가 동적으로 주입.
+         메인 fallback (정적 HTML 만 보는 봇 대비) 만 유지. -->
     <link rel="alternate" hreflang="x-default" href="https://drinkindex.net/" />
 
     <!-- Theme -->
@@ -41,6 +40,9 @@
     <!-- 정적 자원 -->
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!-- 폰트 CDN preconnect — FCP/LCP 단축 -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard-dynamic-subset.css" />
 
     <!-- JSON-LD: WebSite + Organization (전역) -->

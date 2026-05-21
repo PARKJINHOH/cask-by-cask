@@ -57,6 +57,7 @@ import AdminEmailPage from '@/pages/admin/AdminEmailPage'
 import AdminEmailHistoryPage from '@/pages/admin/AdminEmailHistoryPage'
 import ReviewFormPage from '@/pages/ReviewFormPage'
 import InquiryPage from '@/pages/InquiryPage'
+import FaqPage from '@/pages/FaqPage'
 import AdminInquiryPage from '@/pages/admin/AdminInquiryPage'
 import AdminRolePage from '@/pages/admin/AdminRolePage'
 import AdminLogPage from '@/pages/admin/AdminLogPage'
@@ -81,6 +82,7 @@ export default function App() {
             <Route path="terms" element={<TermsPage />} />
             <Route path="privacy" element={<PrivacyPage />} />
             <Route path="inquiry" element={<InquiryPage />} />
+            <Route path="faq" element={<FaqPage />} />
             {/* 커뮤니티 */}
             <Route path="community/notice" element={<NoticeBoardPage />} />
             <Route path="community/free" element={<FreeBoardPage />} />

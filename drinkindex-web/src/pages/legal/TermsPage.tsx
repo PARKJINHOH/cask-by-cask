@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useLegalLatest } from '@/domain/legal/hooks/useLegal'
+import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 import { TermsContent } from './LegalContent'
 
 export default function TermsPage() {
@@ -7,6 +8,11 @@ export default function TermsPage() {
 
   return (
     <div className="min-h-[calc(100vh-9rem)] px-4 py-12">
+      <SeoMeta
+        title="이용약관"
+        description="DrinkIndex 서비스 이용약관."
+        canonical={buildCanonical('/terms')}
+      />
       <div className="w-full max-w-2xl mx-auto">
         <div className="mb-6">
           <Link to="/signup" className="text-sm text-primary-600 hover:underline">← 회원가입으로 돌아가기</Link>

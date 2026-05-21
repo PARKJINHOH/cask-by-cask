@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { useSpiritDetail } from '@/domain/spirit/hooks/useSpiritDetail'
 import Spinner from '@/shared/components/Spinner'
 import Button from '@/shared/components/Button'
+import SeoMeta from '@/shared/components/SeoMeta'
 import { scoreColor } from '@/shared/utils/format'
 import { useCreateReview, useUpdateReview } from '@/domain/review/hooks/useReviews'
 import ReviewScoreSection from '@/domain/review/components/ReviewScoreSection'
@@ -157,6 +158,7 @@ export default function ReviewFormPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
+      <SeoMeta title={`${primaryName ?? ''} 리뷰 작성`} description="DrinkIndex 리뷰 작성 페이지." noindex />
       {/* 뒤로가기 */}
       <button
         onClick={handleCancel}

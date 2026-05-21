@@ -7,6 +7,7 @@ import { communityApi } from '@/domain/community/api/communityApi'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { useToast } from '@/shared/hooks/useToast'
 import Toast from '@/shared/components/Toast'
+import SeoMeta from '@/shared/components/SeoMeta'
 
 // ── 날짜 포맷 ──────────────────────────────────────────────────
 function formatTime(d: string) {
@@ -285,6 +286,7 @@ export default function MessagesPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-6">
+      <SeoMeta title={t('messages.title')} description="DrinkIndex 쪽지함." noindex />
       <Toast toasts={toasts} onRemove={removeToast} />
 
       {/* 헤더 */}

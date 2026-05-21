@@ -9,6 +9,7 @@ import AccountSettings from '@/domain/user/components/AccountSettings'
 import MaturingPowerSection from '@/domain/score/components/MaturingPowerSection'
 import MessagesTab from '@/domain/message/components/MessagesTab'
 import LevelIcon from '@/shared/components/icons/LevelIcon'
+import SeoMeta from '@/shared/components/SeoMeta'
 import { useMessageList } from '@/domain/message/hooks/useMessages'
 
 type Tab = 'maturing' | 'reviews' | 'wishlist' | 'messages' | 'settings'
@@ -70,6 +71,7 @@ export default function MyPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
+      <SeoMeta title="마이페이지" description="DrinkIndex 마이페이지." noindex />
       {/* Profile card */}
       <div className="bg-white rounded-2xl p-6 shadow-sm flex items-center gap-5">
         {/* 레벨 아이콘 + 아바타 */}

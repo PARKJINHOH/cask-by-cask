@@ -8,6 +8,7 @@ import { useAuth } from '@/domain/auth/hooks/useAuth'
 import { authApi } from '@/domain/auth/api/authApi'
 import Button from '@/shared/components/Button'
 import Input from '@/shared/components/Input'
+import SeoMeta from '@/shared/components/SeoMeta'
 import type { ApiResponse } from '@/shared/types/common.types'
 import { TermsContent, PrivacyContent } from '@/pages/legal/LegalContent'
 import { useLegalLatest } from '@/domain/legal/hooks/useLegal'
@@ -403,6 +404,7 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-[calc(100vh-9rem)] flex items-center justify-center px-4 py-12">
+      <SeoMeta title="회원가입" description="DrinkIndex 회원가입 페이지." noindex />
       <div className="w-full max-w-sm">
 
         {/* Branding */}
