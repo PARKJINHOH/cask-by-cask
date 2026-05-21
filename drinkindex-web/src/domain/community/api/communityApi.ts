@@ -51,6 +51,9 @@ export const communityApi = {
   scrapPost: (id: number) =>
     axiosInstance.post<ApiResponse<null>>(`/api/posts/${id}/scraps`),
 
+  getMyScrappedPosts: (params: { page?: number; size?: number }) =>
+    axiosInstance.get<ApiResponse<PageResponse<PostListItem>>>('/api/posts/me/scraps', { params }),
+
   reportPost: (id: number, reason?: string) =>
     axiosInstance.post<ApiResponse<null>>(`/api/posts/${id}/reports`, { reason }),
 

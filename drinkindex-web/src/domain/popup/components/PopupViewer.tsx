@@ -4,16 +4,16 @@ import { sanitizeHtml } from '@/shared/utils/sanitize'
 import { hidePopupToday } from '@/shared/utils/popupStorage'
 import type { PopupResponse } from '../types/popup.types'
 
-const AUTOPLAY_MS = 3000
+const AUTOPLAY_MS = 4000
 
 // ─── 슬라이드 콘텐츠 ──────────────────────────────────────────
-function SlideContent({ popup }: { popup: PopupResponse }) {
+function SlideContent({ popup, onLinkClick }: { popup: PopupResponse; onLinkClick?: () => void }) {
   if (popup.popupType === 'IMAGE') {
     const img = (
       <img
         src={popup.mainImage?.imageUrl ?? ''}
         alt=""
-        className="block max-w-full h-auto mx-auto"
+        className="block w-auto h-auto max-w-full max-h-[70vh] mx-auto"
         draggable={false}
       />
     )
@@ -24,6 +24,7 @@ function SlideContent({ popup }: { popup: PopupResponse }) {
           target={popup.linkTargetBlank ? '_blank' : '_self'}
           rel="noopener noreferrer"
           className="block"
+          onClick={onLinkClick}
         >
           {img}
         </a>
@@ -148,6 +149,7 @@ export function PopupViewer({ popups, onClose, isPreview = false }: Props) {
   const [activeIndex, setActiveIndex] = useState(0)
   const [isHideToday, setIsHideToday] = useState(false)
   const [isPlaying, setIsPlaying]     = useState(true)
+  const [isHovering, setIsHovering]   = useState(false)
   const touchStartX = useRef(0)
   const touchStartY = useRef(0)
 
@@ -158,14 +160,28 @@ export function PopupViewer({ popups, onClose, isPreview = false }: Props) {
   const canCloseOverlay = currentPopup.closeOnOverlay !== false
 
   // ── 오토플레이 ────────────────────────────────────────────
-  // activeIndex를 deps에 포함 → 수동 이동 후에도 타이머 리셋 (3초 재시작)
+  // activeIndex를 deps에 포함 → 수동 이동 후에도 타이머 리셋 (4초 재시작)
+  // isHovering=true이면 일시정지
   useEffect(() => {
-    if (!isPlaying || !isMultiple) return
+    if (!isPlaying || !isMultiple || isHovering) return
     const timer = setInterval(() => {
       setActiveIndex((prev) => (prev + 1) % popups.length)
     }, AUTOPLAY_MS)
     return () => clearInterval(timer)
-  }, [isPlaying, isMultiple, activeIndex, popups.length])
+  }, [isPlaying, isMultiple, activeIndex, popups.length, isHovering])
+
+  // ── ESC 키로 닫기 ─────────────────────────────────────────
+  useEffect(() => {
+    if (isPreview) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isHideToday) hidePopupToday()
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [isPreview, isHideToday, onClose])
 
   // ── 내비게이션 ────────────────────────────────────────────
   const goTo   = (i: number) => setActiveIndex((i + popups.length) % popups.length)
@@ -199,11 +215,16 @@ export function PopupViewer({ popups, onClose, isPreview = false }: Props) {
         aria-hidden="true"
       />
 
-      {/* 팝업 컨테이너 */}
+      {/* 팝업 컨테이너 — 단일 IMAGE 팝업은 이미지 자연 크기에 맞춰 폭이 줄어듦 */}
       <div
-        className="relative z-10 flex flex-col bg-white rounded-xl shadow-2xl
-          w-[min(90vw,_560px)] max-h-[90vh] overflow-hidden"
+        className={[
+          'relative z-10 flex flex-col bg-white rounded-xl shadow-2xl',
+          'max-w-[min(90vw,_560px)] max-h-[90vh] overflow-hidden',
+          !isMultiple && popups[0].popupType === 'IMAGE' ? 'w-fit' : 'w-[min(90vw,_560px)]',
+        ].join(' ')}
         onClick={(e) => e.stopPropagation()}
+        onMouseEnter={() => setIsHovering(true)}
+        onMouseLeave={() => setIsHovering(false)}
       >
         {/* X 닫기 버튼 */}
         <button
@@ -220,7 +241,7 @@ export function PopupViewer({ popups, onClose, isPreview = false }: Props) {
 
         {/* 슬라이드 영역 */}
         {!isMultiple ? (
-          <SlideContent popup={popups[0]} />
+          <SlideContent popup={popups[0]} onLinkClick={isPreview ? undefined : handleClose} />
         ) : (
           <div
             className="relative w-full"
@@ -236,7 +257,7 @@ export function PopupViewer({ popups, onClose, isPreview = false }: Props) {
                     : 'absolute inset-0 opacity-0 pointer-events-none'
                 }`}
               >
-                <SlideContent popup={popup} />
+                <SlideContent popup={popup} onLinkClick={isPreview ? undefined : handleClose} />
               </div>
             ))}
           </div>

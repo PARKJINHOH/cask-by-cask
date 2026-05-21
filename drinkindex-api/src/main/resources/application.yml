@@ -75,12 +75,9 @@ slack:
 seo:
   site-url: ${SEO_SITE_URL:https://drinkindex.net}
 
-# Actuator: Prometheus/Health 만 노출, 별도 관리 포트로 분리 — 외부에서 접근 불가
+# Actuator: Prometheus/Health 만 노출
+# server.port / server.address 는 프로파일별로 설정 (local: 메인과 동일 포트 / dev,prod: 별도 포트 + localhost 바인딩)
 management:
-  server:
-    port: 8081
-    # 운영에서는 ${MANAGEMENT_HOST:127.0.0.1} 로 localhost 바인딩 (docker network 내부만)
-    address: ${MANAGEMENT_HOST:127.0.0.1}
   endpoints:
     web:
       base-path: /actuator

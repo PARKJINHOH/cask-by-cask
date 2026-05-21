@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { useMe } from '@/domain/user/hooks/useUser'
 import MyReviewList from '@/domain/review/components/MyReviewList'
-import MyWishlist from '@/domain/wishlist/components/MyWishlist'
+import MyFavorites from '@/domain/wishlist/components/MyFavorites'
 import AccountSettings from '@/domain/user/components/AccountSettings'
 import MaturingPowerSection from '@/domain/score/components/MaturingPowerSection'
 import MessagesTab from '@/domain/message/components/MessagesTab'
@@ -154,7 +154,7 @@ export default function MyPage() {
       {/* Tab panels */}
       {tab === 'maturing'  && <MaturingPowerSection profile={profile ?? { id: 0, email, nickname, role, createdAt: '' }} />}
       {tab === 'reviews'   && <MyReviewList />}
-      {tab === 'wishlist'  && <MyWishlist />}
+      {tab === 'wishlist'  && <MyFavorites />}
       {tab === 'messages'  && <MessagesTab initialMessageId={messageIdParam} />}
       {tab === 'settings'  && <AccountSettings />}
     </div>

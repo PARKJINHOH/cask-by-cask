@@ -8,6 +8,19 @@ export function formatDateTime(dateStr: string): string {
   return `${y}-${mo}-${da} ${h}:${mi}`
 }
 
+export function formatBoardDate(dateStr: string): string {
+  const d = new Date(dateStr)
+  const now = new Date()
+  const sameDay =
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
+  if (sameDay) {
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  }
+  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`
+}
+
 export function formatDate(dateStr: string, lang = 'ko'): string {
   const d = new Date(dateStr)
   const diff = Date.now() - d.getTime()

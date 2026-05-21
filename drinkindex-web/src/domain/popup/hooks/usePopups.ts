@@ -9,7 +9,7 @@ export function usePopups(language: PopupLanguage) {
   const query = useQuery({
     queryKey: ['popups', language],
     queryFn: () => popupApi.getPopups(language).then((r) => r.data.data ?? []),
-    staleTime: 5 * 60 * 1000,  // 5분 캐시 (팝업은 자주 변경되지 않음)
+    staleTime: 60_000,  // 60초 — 탭 복귀 시 관리자 변경사항 빠르게 반영
   })
 
   // API 호출은 항상 수행하되, 하루 안보기 설정 시 빈 배열 반환

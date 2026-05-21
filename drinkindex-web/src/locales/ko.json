@@ -428,6 +428,7 @@
     "event": "이벤트",
     "write": "글쓰기",
     "searchPlaceholder": "제목 또는 내용 검색",
+    "title": "제목",
     "sortLatest": "최신순",
     "sortBest": "추천순",
     "sortView": "조회순",

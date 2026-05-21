@@ -41,3 +41,9 @@ springdoc:
     enabled: false
   swagger-ui:
     enabled: false
+
+# Actuator 를 별도 포트로 분리 + localhost 바인딩 (docker network 내부만)
+management:
+  server:
+    port: 8081
+    address: ${MANAGEMENT_HOST:127.0.0.1}

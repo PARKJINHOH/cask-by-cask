@@ -366,22 +366,22 @@ export default function AdminBannerListPage() {
                 </Button>
               )}
             </div>
-            <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden">
-              <table className="w-full text-sm">
-                {TABLE_HEAD}
-                <tbody>
-                  {orderedVisible.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="px-4 py-10 text-center text-neutral-400">
-                        노출 중인 배너가 없습니다.
-                      </td>
-                    </tr>
-                  ) : (
-                    <DndContext
-                      sensors={sensors}
-                      collisionDetection={closestCenter}
-                      onDragEnd={handleDragEnd}
-                    >
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden">
+                <table className="w-full text-sm">
+                  {TABLE_HEAD}
+                  <tbody>
+                    {orderedVisible.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="px-4 py-10 text-center text-neutral-400">
+                          노출 중인 배너가 없습니다.
+                        </td>
+                      </tr>
+                    ) : (
                       <SortableContext
                         items={orderedVisible.map((b) => String(b.id))}
                         strategy={verticalListSortingStrategy}
@@ -390,11 +390,11 @@ export default function AdminBannerListPage() {
                           <SortableRow key={banner.id} banner={banner} {...commonRowProps} />
                         ))}
                       </SortableContext>
-                    </DndContext>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </DndContext>
           </div>
 
           {/* 대기 배너 */}

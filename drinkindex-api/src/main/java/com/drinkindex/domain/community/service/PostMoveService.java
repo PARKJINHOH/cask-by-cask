@@ -7,7 +7,10 @@ import com.drinkindex.domain.community.entity.enums.PostStatus;
 import com.drinkindex.domain.community.repository.DeletedPostRepository;
 import com.drinkindex.domain.community.repository.PostCommentRepository;
 import com.drinkindex.domain.community.repository.PostImageRepository;
+import com.drinkindex.domain.community.repository.PostLikeRepository;
+import com.drinkindex.domain.community.repository.PostReportRepository;
 import com.drinkindex.domain.community.repository.PostRepository;
+import com.drinkindex.domain.community.repository.PostScrapRepository;
 import com.drinkindex.global.storage.FileStorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +29,9 @@ public class PostMoveService {
     private final PostRepository postRepository;
     private final PostCommentRepository postCommentRepository;
     private final PostImageRepository postImageRepository;
+    private final PostScrapRepository postScrapRepository;
+    private final PostLikeRepository postLikeRepository;
+    private final PostReportRepository postReportRepository;
     private final FileStorageService fileStorageService;
 
     /**
@@ -54,6 +60,11 @@ public class PostMoveService {
 
         // 2. 댓글의 post FK null 처리 (댓글 자체는 유지)
         postCommentRepository.clearPostReference(post.getId());
+
+        // 2-1. 자식 레코드 일괄 삭제 (FK 위반 방지) — 스크랩/추천/신고
+        postScrapRepository.deleteAllByPostId(post.getId());
+        postLikeRepository.deleteAllByPostId(post.getId());
+        postReportRepository.deleteAllByPostId(post.getId());
 
         // 3. 연결 이미지 파일 물리 삭제
         List<PostImage> images = postImageRepository.findByPostId(post.getId());

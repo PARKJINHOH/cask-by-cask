@@ -41,8 +41,14 @@ export default function PopupPreviewModal({ isOpen, onClose, popupData }: Props)
         <span>미리보기 모드 — 실제 노출 화면입니다</span>
       </div>
 
-      {/* 팝업 본문 */}
-      <div className="relative z-10 w-full max-w-lg bg-white rounded-xl shadow-2xl overflow-hidden">
+      {/* 팝업 본문 — IMAGE는 이미지 자연 크기에 맞춰 폭이 줄어듦 */}
+      <div
+        className={[
+          'relative z-10 bg-white rounded-xl shadow-2xl overflow-hidden',
+          'max-w-[min(90vw,_560px)] max-h-[90vh]',
+          popupData.popupType === 'IMAGE' ? 'w-fit' : 'w-full max-w-lg',
+        ].join(' ')}
+      >
         {/* 닫기 버튼 (항상 표시 — 미리보기이므로 closeOnOverlay 무관) */}
         <button
           type="button"
@@ -69,14 +75,14 @@ export default function PopupPreviewModal({ isOpen, onClose, popupData }: Props)
                   <img
                     src={popupData.mainImageUrl}
                     alt="팝업 이미지"
-                    className="w-full block"
+                    className="block w-auto h-auto max-w-full max-h-[70vh] mx-auto"
                   />
                 </a>
               ) : (
                 <img
                   src={popupData.mainImageUrl}
                   alt="팝업 이미지"
-                  className="w-full block"
+                  className="block w-auto h-auto max-w-full max-h-[70vh] mx-auto"
                 />
               )
             ) : (

@@ -7,7 +7,7 @@ export function useBanners(language: BannerLanguage) {
     queryKey: ['banners', language],
     queryFn: () =>
       bannerApi.getBanners(language).then((r) => r.data.data ?? []),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 60_000,  // 60초 — 탭 복귀 시 관리자 변경사항 빠르게 반영
     retry: false,
   })
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { usePosts, useBestPosts, usePostPrefixes } from '@/domain/community/hooks/usePosts'
 import type { BoardType, PostSort } from '@/domain/community/types/community.types'
@@ -8,6 +8,7 @@ import Pagination from '@/shared/components/Pagination'
 import UserBadge from '@/shared/components/UserBadge'
 import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 import { useAuthStore } from '@/domain/auth/store/authStore'
+import { formatBoardDate } from '@/shared/utils/format'
 
 const PAGE_SIZE = 20
 
@@ -28,6 +29,7 @@ interface Props {
 export default function BoardListPage({ boardType, title }: Props) {
   const { t } = useTranslation()
   const { isLoggedIn, user } = useAuthStore()
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const boardPath = boardType === 'NOTICE' ? 'notice' : 'free'
 
@@ -255,7 +257,7 @@ export default function BoardListPage({ boardType, title }: Props) {
               <thead>
                 <tr className="bg-neutral-50 border-b border-neutral-100">
                   <th className="text-left px-4 py-3 font-medium text-neutral-500 w-28">{t('board.prefix')}</th>
-                  <th className="text-left px-4 py-3 font-medium text-neutral-500">{t('common.search')}</th>
+                  <th className="text-left px-4 py-3 font-medium text-neutral-500">{t('board.title')}</th>
                   <th className="text-left px-4 py-3 font-medium text-neutral-500 w-24">닉네임</th>
                   <th className="text-right px-4 py-3 font-medium text-neutral-500 w-16">{t('board.likes')}</th>
                   <th className="text-right px-4 py-3 font-medium text-neutral-500 w-16">{t('board.views')}</th>
@@ -264,7 +266,11 @@ export default function BoardListPage({ boardType, title }: Props) {
               </thead>
               <tbody>
                 {posts.map((post) => (
-                  <tr key={post.id} className="border-b border-neutral-50 hover:bg-neutral-50 transition-colors">
+                  <tr
+                    key={post.id}
+                    onClick={() => navigate(`/community/${boardPath}/${post.id}`)}
+                    className="group/row border-b border-neutral-50 hover:bg-neutral-50 transition-colors cursor-pointer"
+                  >
                     <td className="px-4 py-3">
                       {post.prefix && (
                         <span
@@ -277,15 +283,11 @@ export default function BoardListPage({ boardType, title }: Props) {
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3">
-                      <Link
-                        to={`/community/${boardPath}/${post.id}`}
-                        className="flex items-center gap-2 group"
-                        title={post.isLocked ? t('board.locked') : undefined}
-                      >
+                    <td className="px-4 py-3" title={post.isLocked ? t('board.locked') : undefined}>
+                      <div className="flex items-center gap-2">
                         {post.isLocked && <span className="text-neutral-400">🔒</span>}
                         <span className={[
-                          'font-medium group-hover:text-primary-600 transition-colors truncate',
+                          'font-medium group-hover/row:text-primary-600 transition-colors truncate',
                           post.isLocked ? 'text-red-600' : 'text-neutral-800',
                         ].join(' ')}>
                           {post.title}
@@ -294,7 +296,7 @@ export default function BoardListPage({ boardType, title }: Props) {
                           <span className="text-primary-500 text-xs flex-shrink-0">[{post.commentCount}]</span>
                         )}
                         {post.hasPoll && <span className="text-xs text-neutral-400 flex-shrink-0">📊</span>}
-                      </Link>
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       {post.authorRole ? (
@@ -309,7 +311,7 @@ export default function BoardListPage({ boardType, title }: Props) {
                     <td className="px-4 py-3 text-right text-neutral-500 text-xs">{post.likeCount}</td>
                     <td className="px-4 py-3 text-right text-neutral-500 text-xs">{post.viewCount.toLocaleString()}</td>
                     <td className="px-4 py-3 text-right text-neutral-400 text-xs">
-                      {new Date(post.createdAt).toLocaleDateString('ko-KR')}
+                      {formatBoardDate(post.createdAt)}
                     </td>
                   </tr>
                 ))}
@@ -355,7 +357,7 @@ export default function BoardListPage({ boardType, title }: Props) {
                   )}
                   <span>▲ {post.likeCount}</span>
                   <span>조회 {post.viewCount.toLocaleString()}</span>
-                  <span>{new Date(post.createdAt).toLocaleDateString('ko-KR')}</span>
+                  <span>{formatBoardDate(post.createdAt)}</span>
                 </div>
               </Link>
             ))}

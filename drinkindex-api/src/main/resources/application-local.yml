@@ -61,7 +61,5 @@ springdoc:
 rate-limit:
   enabled: false
 
-# 로컬은 메인 포트(8080)에서 actuator 함께 노출 — 별도 포트 분리 불필요
-management:
-  server:
-    port: 8080
+# 로컬: 메인 포트(8080)에서 actuator 함께 노출 — server 섹션 자체를 비워둠
+# (base 에 management.server 가 없으므로 별도 override 불필요)

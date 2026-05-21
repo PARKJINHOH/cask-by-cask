@@ -19,6 +19,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import {
   useAdminPopupList,
+  useAdminPopupDetail,
   useDeletePopup,
   useUpdateVisibility,
   useUpdateSortOrder,
@@ -276,7 +277,7 @@ export default function AdminPopupListPage() {
 
   const [langFilter, setLangFilter] = useState<LangFilter>('ALL')
   const [deleteTarget, setDeleteTarget] = useState<AdminPopupListItem | null>(null)
-  const [previewTarget, setPreviewTarget] = useState<PopupPreviewData | null>(null)
+  const [previewId, setPreviewId] = useState<number | null>(null)
   const [localVisibility, setLocalVisibility] = useState<Record<number, boolean>>({})
   const [orderedVisible, setOrderedVisible] = useState<AdminPopupListItem[]>([])
   const [isSortDirty, setIsSortDirty] = useState(false)
@@ -287,6 +288,19 @@ export default function AdminPopupListPage() {
     page: 0,
     size: 200,
   })
+
+  const { data: previewDetail } = useAdminPopupDetail(previewId)
+
+  const previewData: PopupPreviewData | null = previewDetail
+    ? {
+        popupType: previewDetail.popupType,
+        content: previewDetail.contentSanitized ?? previewDetail.content,
+        mainImageUrl: previewDetail.mainImage?.imageUrl ?? null,
+        linkUrl: previewDetail.linkUrl,
+        linkTargetBlank: previewDetail.linkTargetBlank,
+        closeOnOverlay: previewDetail.closeOnOverlay,
+      }
+    : null
 
   const deleteMutation = useDeletePopup()
   const visibilityMutation = useUpdateVisibility()
@@ -363,7 +377,7 @@ export default function AdminPopupListPage() {
   }
 
   const openPreview = (item: AdminPopupListItem) => {
-    setPreviewTarget({ popupType: item.popupType, closeOnOverlay: true })
+    setPreviewId(item.id)
   }
 
   const commonRowProps = {
@@ -437,22 +451,22 @@ export default function AdminPopupListPage() {
               )}
             </div>
 
-            <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden">
-              <table className="w-full text-sm">
-                {TABLE_HEAD}
-                <tbody>
-                  {orderedVisible.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="px-4 py-10 text-center text-neutral-400">
-                        노출 중인 팝업이 없습니다.
-                      </td>
-                    </tr>
-                  ) : (
-                    <DndContext
-                      sensors={sensors}
-                      collisionDetection={closestCenter}
-                      onDragEnd={handleDragEnd}
-                    >
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden">
+                <table className="w-full text-sm">
+                  {TABLE_HEAD}
+                  <tbody>
+                    {orderedVisible.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="px-4 py-10 text-center text-neutral-400">
+                          노출 중인 팝업이 없습니다.
+                        </td>
+                      </tr>
+                    ) : (
                       <SortableContext
                         items={orderedVisible.map((p) => String(p.id))}
                         strategy={verticalListSortingStrategy}
@@ -461,11 +475,11 @@ export default function AdminPopupListPage() {
                           <SortableRow key={popup.id} popup={popup} {...commonRowProps} />
                         ))}
                       </SortableContext>
-                    </DndContext>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </DndContext>
           </div>
 
           {/* ── 팝업 대기 목록 ── */}
@@ -525,11 +539,11 @@ export default function AdminPopupListPage() {
       </Modal>
 
       {/* 미리보기 모달 */}
-      {previewTarget && (
+      {previewData && (
         <PopupPreviewModal
-          isOpen={previewTarget != null}
-          onClose={() => setPreviewTarget(null)}
-          popupData={previewTarget}
+          isOpen={previewId != null}
+          onClose={() => setPreviewId(null)}
+          popupData={previewData}
         />
       )}
     </div>

@@ -49,6 +49,23 @@ const schema = z
         path: ['endAt'],
       })
     }
+    // 노출 ON: 상시 노출 또는 게시 기간(시작·종료) 둘 중 하나는 필수
+    if (data.isVisible && !data.isAlwaysVisible) {
+      if (!data.startAt) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: '노출하려면 상시 노출을 체크하거나 시작일시를 입력하세요',
+          path: ['startAt'],
+        })
+      }
+      if (!data.endAt) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: '노출하려면 상시 노출을 체크하거나 종료일시를 입력하세요',
+          path: ['endAt'],
+        })
+      }
+    }
   })
 
 type FormValues = z.infer<typeof schema>
@@ -60,6 +77,19 @@ const toApiDt   = (input: string | undefined)       => (input ? `${input}:00` : 
 // ─── 이미지 업로드 드롭존 ─────────────────────────────
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024
 const ALLOWED_EXTS   = ['jpg', 'jpeg', 'png', 'gif', 'webp']
+// 비율(가로:세로) 권장 범위. 0.4 ≈ 2:5 (세로 긴 이미지), 2.5 = 5:2 (가로 긴 이미지)
+const MIN_RATIO = 0.4
+const MAX_RATIO = 2.5
+
+function readImageDimensions(file: File): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload  = () => { URL.revokeObjectURL(url); resolve({ width: img.naturalWidth, height: img.naturalHeight }) }
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('이미지 로드 실패')) }
+    img.src = url
+  })
+}
 
 interface ImageDropzoneProps {
   uploadedImage: UploadedPopupImage | null
@@ -76,7 +106,7 @@ function ImageDropzone({ uploadedImage, existingImageUrl, onUpload, onRemove, is
 
   const displayUrl = uploadedImage?.imageUrl ?? existingImageUrl
 
-  const handleFile = (file: File) => {
+  const handleFile = async (file: File) => {
     const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
     if (!ALLOWED_EXTS.includes(ext)) {
       alert('JPG, PNG, GIF, WEBP 형식만 업로드 가능합니다. (SVG 불가)')
@@ -84,6 +114,22 @@ function ImageDropzone({ uploadedImage, existingImageUrl, onUpload, onRemove, is
     }
     if (file.size > MAX_IMAGE_SIZE) {
       alert('이미지 크기는 10MB 이하여야 합니다.')
+      return
+    }
+    // 비율 검증: MIN_RATIO ~ MAX_RATIO 범위 밖이면 업로드 거부
+    try {
+      const { width, height } = await readImageDimensions(file)
+      const ratio = width / height
+      if (ratio < MIN_RATIO || ratio > MAX_RATIO) {
+        alert(
+          `이미지 비율(${width}×${height}, ${ratio.toFixed(2)}:1)이 권장 범위를 벗어났습니다.\n` +
+          `가로:세로 비율이 ${MIN_RATIO} ~ ${MAX_RATIO} 사이인 이미지만 업로드할 수 있습니다.\n` +
+          `권장 비율: 4:5 · 1:1 · 9:16`
+        )
+        return
+      }
+    } catch {
+      alert('이미지를 분석할 수 없습니다. 다른 파일을 시도해주세요.')
       return
     }
     onUpload(file)
@@ -141,6 +187,9 @@ function ImageDropzone({ uploadedImage, existingImageUrl, onUpload, onRemove, is
             </svg>
             <p className="text-sm text-neutral-500">이미지를 드래그하거나 클릭하여 업로드</p>
             <p className="text-xs text-neutral-400 mt-1">JPG · PNG · GIF · WEBP, 최대 10MB</p>
+            <p className="text-xs text-neutral-400 mt-0.5">
+              권장 비율: 4:5 · 1:1 · 9:16 (가로:세로 {MIN_RATIO} ~ {MAX_RATIO} 사이)
+            </p>
           </>
         )}
       </div>
@@ -548,6 +597,12 @@ export default function AdminPopupFormPage() {
                 />
               </div>
 
+              {/* 캐러셀 운영 안내 */}
+              <p className="text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-md px-3 py-2">
+                💡 여러 팝업을 동시에 노출(캐러셀)할 경우, 모든 팝업이 <strong>동일한 비율의 이미지</strong>를 사용하면
+                슬라이드 전환 시 컨테이너 크기가 변하지 않아 일관된 UI가 됩니다.
+              </p>
+
               {/* 링크 URL */}
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1.5">
@@ -641,6 +696,12 @@ export default function AdminPopupFormPage() {
               <span className="text-xs text-neutral-400">(기간 설정 무시)</span>
             </label>
 
+            {isVisible && !isAlwaysVisible && (
+              <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                노출하려면 <strong>상시 노출</strong>을 체크하거나 <strong>시작일시·종료일시</strong>를 모두 입력해야 합니다.
+              </p>
+            )}
+
             <div className={`grid grid-cols-2 gap-3 ${isAlwaysVisible ? 'opacity-40 pointer-events-none' : ''}`}>
               <div>
                 <label className="block text-xs font-medium text-neutral-500 mb-1">시작일시</label>
@@ -652,6 +713,9 @@ export default function AdminPopupFormPage() {
                     focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none
                     disabled:bg-neutral-100"
                 />
+                {errors.startAt && (
+                  <p className="mt-1 text-xs text-red-600">{errors.startAt.message}</p>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-medium text-neutral-500 mb-1">종료일시</label>

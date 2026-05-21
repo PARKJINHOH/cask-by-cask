@@ -163,6 +163,17 @@ public class PostController {
         return ResponseEntity.ok(ApiResponse.success());
     }
 
+    @GetMapping("/me/scraps")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<Page<PostListResponse>>> getMyScraps(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                postService.getMyScraps(userDetails.getUserId(), page, size)));
+    }
+
     // ─── 숨김 / 복구 (모더레이터 이상) ──────────────
 
     @PatchMapping("/{id}/hide")

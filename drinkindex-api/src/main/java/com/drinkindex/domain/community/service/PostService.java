@@ -307,6 +307,13 @@ public class PostService {
     // 스크랩
     // ═══════════════════════════════════════════
 
+    @Transactional(readOnly = true)
+    public Page<PostListResponse> getMyScraps(Long userId, int page, int size) {
+        return postScrapRepository
+                .findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(page, size))
+                .map(scrap -> PostListResponse.from(scrap.getPost()));
+    }
+
     @Transactional
     public void toggleScrap(Long postId, Long userId) {
         Post post = findPost(postId);

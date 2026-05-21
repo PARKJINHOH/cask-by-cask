@@ -46,6 +46,23 @@ const schema = z
         path: ['endAt'],
       })
     }
+    // 노출 ON: 상시 노출 또는 게시 기간(시작·종료) 둘 중 하나는 필수
+    if (data.isVisible && !data.isAlwaysVisible) {
+      if (!data.startAt) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: '노출하려면 상시 노출을 체크하거나 시작일시를 입력하세요',
+          path: ['startAt'],
+        })
+      }
+      if (!data.endAt) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: '노출하려면 상시 노출을 체크하거나 종료일시를 입력하세요',
+          path: ['endAt'],
+        })
+      }
+    }
   })
 
 type FormValues = z.infer<typeof schema>
@@ -716,6 +733,13 @@ export default function AdminBannerFormPage() {
               <span className="text-sm font-medium text-neutral-700">상시 노출</span>
               <span className="text-xs text-neutral-400">(기간 설정 무시)</span>
             </label>
+
+            {isVisible && !isAlwaysVisible && (
+              <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                노출하려면 <strong>상시 노출</strong>을 체크하거나 <strong>시작일시·종료일시</strong>를 모두 입력해야 합니다.
+              </p>
+            )}
+
             <div className={`grid grid-cols-2 gap-3 ${isAlwaysVisible ? 'opacity-40 pointer-events-none' : ''}`}>
               <div>
                 <label className="block text-xs font-medium text-neutral-500 mb-1">시작일시</label>
@@ -726,6 +750,7 @@ export default function AdminBannerFormPage() {
                   className="w-full h-9 px-2 text-sm border border-neutral-300 rounded-lg
                     focus:ring-2 focus:ring-primary-500 outline-none disabled:bg-neutral-100"
                 />
+                {errors.startAt && <p className="mt-1 text-xs text-red-600">{errors.startAt.message}</p>}
               </div>
               <div>
                 <label className="block text-xs font-medium text-neutral-500 mb-1">종료일시</label>
