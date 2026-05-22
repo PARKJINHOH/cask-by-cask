@@ -35,9 +35,9 @@ public class SpiritController {
     public ResponseEntity<ApiResponse<Page<SpiritListResponse>>> search(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) SpiritCategory category,
-            @RequestParam(required = false) WhiskyStyle whiskyStyle,
-            @RequestParam(required = false) WineType wineType,
-            @RequestParam(required = false) CognacGrade cognacGrade,
+            @RequestParam(required = false) List<WhiskyStyle> whiskyStyle,
+            @RequestParam(required = false) List<WineType> wineType,
+            @RequestParam(required = false) List<CognacGrade> cognacGrade,
             @RequestParam(required = false) String country,
             @RequestParam(required = false) String region,
             @RequestParam(required = false) BigDecimal minAbv,

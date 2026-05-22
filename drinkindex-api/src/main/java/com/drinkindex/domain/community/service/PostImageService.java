@@ -9,6 +9,7 @@ import com.drinkindex.domain.user.repository.UserRepository;
 import com.drinkindex.global.exception.CustomException;
 import com.drinkindex.global.exception.ErrorCode;
 import com.drinkindex.global.storage.FileStorageService;
+import com.drinkindex.global.storage.ImageUploadResult;
 import com.drinkindex.global.util.NoticeImageValidator;
 import lombok.RequiredArgsConstructor;
 import org.jsoup.Jsoup;
@@ -34,19 +35,19 @@ public class PostImageService {
     @Transactional
     public PostImageUploadResponse upload(MultipartFile file, Long uploaderId) {
         String mimeType = noticeImageValidator.validate(file);
-        String savedFileName = noticeImageValidator.generateSavedFileName(file.getOriginalFilename());
+        String originalSavedFileName = noticeImageValidator.generateSavedFileName(file.getOriginalFilename());
         String subPath = "posts/" + YearMonth.now().format(DateTimeFormatter.ofPattern("yyyyMM"));
-        String imageUrl = fileStorageService.upload(file, savedFileName, subPath);
+        ImageUploadResult result = fileStorageService.uploadImage(file, originalSavedFileName, subPath, mimeType);
 
         User uploader = userRepository.findById(uploaderId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
         PostImage image = PostImage.builder()
                 .originalFileName(file.getOriginalFilename())
-                .savedFileName(savedFileName)
+                .savedFileName(result.savedFileName())
                 .fileSize(file.getSize())
-                .mimeType(mimeType)
-                .imageUrl(imageUrl)
+                .mimeType(result.mimeType())
+                .imageUrl(result.imageUrl())
                 .uploadedBy(uploader)
                 .build();
 

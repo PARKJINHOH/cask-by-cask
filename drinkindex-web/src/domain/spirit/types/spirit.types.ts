@@ -109,9 +109,9 @@ export interface CognacDetailResponse {
 export interface SpiritSearchParams {
   keyword?: string
   category?: SpiritCategory
-  whiskyStyle?: WhiskyStyle
-  wineType?: WineType
-  cognacGrade?: CognacGrade
+  whiskyStyle?: WhiskyStyle[]
+  wineType?: WineType[]
+  cognacGrade?: CognacGrade[]
   country?: string
   region?: string
   minAbv?: number

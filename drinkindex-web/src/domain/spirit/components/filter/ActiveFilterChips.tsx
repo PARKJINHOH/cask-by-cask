@@ -6,9 +6,9 @@ import type {
 
 export interface ActiveFilterState {
   category:    SpiritCategory | ''
-  whiskyStyle: WhiskyStyle | ''
-  wineType:    WineType | ''
-  cognacGrade: CognacGrade | ''
+  whiskyStyle: WhiskyStyle[]
+  wineType:    WineType[]
+  cognacGrade: CognacGrade[]
   country:     string
   region:      string
   minAbv:      number
@@ -19,7 +19,9 @@ export interface ActiveFilterState {
 
 export interface ActiveFilterChipsProps {
   state: ActiveFilterState
-  onClear: (key: keyof ActiveFilterState | 'abv' | 'score') => void
+  // value: 다중선택 키(whiskyStyle/wineType/cognacGrade)에서 특정 항목 1개만 제거할 때 사용.
+  // 생략 시 해당 키 전체 클리어.
+  onClear: (key: keyof ActiveFilterState | 'abv' | 'score', value?: string) => void
   onClearAll: () => void
 }
 
@@ -37,27 +39,27 @@ export default function ActiveFilterChips({ state, onClear, onClearAll }: Active
       onRemove: () => onClear('category'),
     })
   }
-  if (state.whiskyStyle) {
+  state.whiskyStyle.forEach((v) => {
     chips.push({
-      key: 'whiskyStyle',
-      label: t(`spirit.whiskyStyle.${state.whiskyStyle}`),
-      onRemove: () => onClear('whiskyStyle'),
+      key: `whiskyStyle:${v}`,
+      label: t(`spirit.whiskyStyle.${v}`),
+      onRemove: () => onClear('whiskyStyle', v),
     })
-  }
-  if (state.wineType) {
+  })
+  state.wineType.forEach((v) => {
     chips.push({
-      key: 'wineType',
-      label: t(`spirit.wineType.${state.wineType}`),
-      onRemove: () => onClear('wineType'),
+      key: `wineType:${v}`,
+      label: t(`spirit.wineType.${v}`),
+      onRemove: () => onClear('wineType', v),
     })
-  }
-  if (state.cognacGrade) {
+  })
+  state.cognacGrade.forEach((v) => {
     chips.push({
-      key: 'cognacGrade',
-      label: t(`spirit.cognacGrade.${state.cognacGrade}`),
-      onRemove: () => onClear('cognacGrade'),
+      key: `cognacGrade:${v}`,
+      label: t(`spirit.cognacGrade.${v}`),
+      onRemove: () => onClear('cognacGrade', v),
     })
-  }
+  })
   if (state.country) {
     chips.push({
       key: 'country',

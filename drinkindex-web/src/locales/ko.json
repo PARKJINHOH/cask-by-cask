@@ -1,7 +1,7 @@
 {
   "app": {
     "name": "DrinkIndex",
-    "tagline": "위스키·와인·꼬냑 리뷰 커뮤니티"
+    "tagline": "위스키·와인·꼬냑 커뮤니티"
   },
   "nav": {
     "home": "홈",
@@ -557,7 +557,9 @@
   "footer": {
     "inquiry": "문의하기",
     "terms": "이용약관",
-    "privacy": "개인정보 처리방침"
+    "privacy": "개인정보 처리방침",
+    "explore": "탐색",
+    "info": "정보"
   },
   "emailVerify": {
     "title": "이메일 인증",

@@ -8,6 +8,7 @@ import com.drinkindex.domain.spirit.repository.SpiritImageRepository;
 import com.drinkindex.domain.spirit.repository.SpiritRepository;
 import com.drinkindex.global.exception.CustomException;
 import com.drinkindex.global.exception.ErrorCode;
+import com.drinkindex.global.storage.WebpConversionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -37,6 +38,9 @@ class SpiritImageServiceTest {
 
     @Mock
     private SpiritImageRepository spiritImageRepository;
+
+    @Mock
+    private WebpConversionService webpConversionService;
 
     @InjectMocks
     private SpiritImageService spiritImageService;

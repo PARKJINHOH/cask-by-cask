@@ -8,7 +8,9 @@ import com.drinkindex.domain.spirit.repository.SpiritImageRepository;
 import com.drinkindex.domain.spirit.repository.SpiritRepository;
 import com.drinkindex.global.exception.CustomException;
 import com.drinkindex.global.exception.ErrorCode;
+import com.drinkindex.global.storage.WebpConversionService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +24,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class SpiritImageService {
@@ -35,6 +38,7 @@ public class SpiritImageService {
 
     private final SpiritRepository spiritRepository;
     private final SpiritImageRepository spiritImageRepository;
+    private final WebpConversionService webpConversionService;
 
     @Transactional
     public SpiritImageResponse uploadImage(Long spiritId, MultipartFile file) {
@@ -115,11 +119,27 @@ public class SpiritImageService {
         try {
             Path dir = Paths.get(uploadPath, "spirits", spiritId.toString());
             Files.createDirectories(dir);
-            Path dest = dir.resolve(filename);
-            file.transferTo(dest);
-            return "/uploads/spirits/" + spiritId + "/" + filename;
+            Path originalDest = dir.resolve(filename);
+            file.transferTo(originalDest);
+
+            // JPG/PNG → WebP 변환본 동시 저장. 실패 시 원본 URL 반환 (graceful degrade).
+            String webpFilename = stripExt(filename) + ".webp";
+            Path webpDest = dir.resolve(webpFilename);
+            try {
+                byte[] webpBytes = webpConversionService.toWebp(Files.readAllBytes(originalDest));
+                Files.write(webpDest, webpBytes);
+                return "/uploads/spirits/" + spiritId + "/" + webpFilename;
+            } catch (Exception e) {
+                log.warn("WebP 변환 실패, 원본 서빙으로 fallback: spiritId={}, filename={}", spiritId, filename, e);
+                return "/uploads/spirits/" + spiritId + "/" + filename;
+            }
         } catch (IOException e) {
             throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR);
         }
+    }
+
+    private String stripExt(String name) {
+        int dot = name.lastIndexOf('.');
+        return dot < 0 ? name : name.substring(0, dot);
     }
 }

@@ -15,6 +15,16 @@ public class S3FileStorageService implements FileStorageService {
     }
 
     @Override
+    public ImageUploadResult uploadImage(
+            MultipartFile file,
+            String originalSavedFileName,
+            String subPath,
+            String detectedMimeType
+    ) {
+        throw new UnsupportedOperationException("S3 설정 필요");
+    }
+
+    @Override
     public void delete(String savedFileName, String subPath) {
         throw new UnsupportedOperationException("S3 설정 필요");
     }

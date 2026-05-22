@@ -67,17 +67,17 @@ const SORT_VALUES: SpiritSort[] = ['LATEST', 'SCORE_DESC', 'REVIEW_COUNT_DESC']
 // ── 필터 패널 ─────────────────────────────────────────────────
 interface FilterPanelProps {
   category:     SpiritCategory | ''
-  whiskyStyle:  WhiskyStyle | ''
-  wineType:     WineType | ''
-  cognacGrade:  CognacGrade | ''
+  whiskyStyle:  WhiskyStyle[]
+  wineType:     WineType[]
+  cognacGrade:  CognacGrade[]
   country:      string
   region:       string
   abvRange:     [number, number]
   scoreRange:   [number, number]
   onCategory:   (v: SpiritCategory | '') => void
-  onWhiskyStyle: (v: WhiskyStyle | '') => void
-  onWineType:   (v: WineType | '') => void
-  onCognacGrade: (v: CognacGrade | '') => void
+  onWhiskyStyle: (v: WhiskyStyle[]) => void
+  onWineType:   (v: WineType[]) => void
+  onCognacGrade: (v: CognacGrade[]) => void
   onCountry:    (v: string) => void
   onRegion:     (v: string) => void
   onAbv:        (v: [number, number]) => void
@@ -219,9 +219,9 @@ export default function SpiritListPage() {
 
   // URL에서 필터 값 읽기
   const category    = (searchParams.get('category') as SpiritCategory) ?? ''
-  const whiskyStyle = (searchParams.get('whiskyStyle') as WhiskyStyle) ?? ''
-  const wineType    = (searchParams.get('wineType') as WineType) ?? ''
-  const cognacGrade = (searchParams.get('cognacGrade') as CognacGrade) ?? ''
+  const whiskyStyle = searchParams.getAll('whiskyStyle') as WhiskyStyle[]
+  const wineType    = searchParams.getAll('wineType') as WineType[]
+  const cognacGrade = searchParams.getAll('cognacGrade') as CognacGrade[]
   const country     = searchParams.get('country') ?? ''
   const region      = searchParams.get('region')  ?? ''
   const sort        = (searchParams.get('sort') as SpiritSort) ?? 'LATEST'
@@ -253,12 +253,20 @@ export default function SpiritListPage() {
   useEffect(() => { setAbvRange([urlMinAbv, urlMaxAbv]) }, [urlMinAbv, urlMaxAbv]) // eslint-disable-line
   useEffect(() => { setScoreRange([urlMinScore, urlMaxScore]) }, [urlMinScore, urlMaxScore]) // eslint-disable-line
 
-  const setParam = useCallback((updates: Record<string, string | number | null>) => {
+  const setParam = useCallback((updates: Record<string, string | number | string[] | null>) => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev)
       Object.entries(updates).forEach(([k, v]) => {
-        if (v === null || v === '' || v === 0) next.delete(k)
-        else next.set(k, String(v))
+        if (Array.isArray(v)) {
+          next.delete(k)
+          v.forEach((item) => {
+            if (item !== '' && item != null) next.append(k, String(item))
+          })
+        } else if (v === null || v === '' || v === 0) {
+          next.delete(k)
+        } else {
+          next.set(k, String(v))
+        }
       })
       if (!Object.keys(updates).includes('page')) next.set('page', '0')
       return next
@@ -282,7 +290,7 @@ export default function SpiritListPage() {
   const handleCategoryChange = (v: SpiritCategory | '') => {
     setParam({
       category: v,
-      whiskyStyle: null, wineType: null, cognacGrade: null,
+      whiskyStyle: [], wineType: [], cognacGrade: [],
       region: null,
     })
   }
@@ -293,7 +301,10 @@ export default function SpiritListPage() {
   }
 
   // ActiveFilterChips용 클리어 핸들러
-  const handleClearKey = (key: keyof ActiveFilterState | 'abv' | 'score') => {
+  const handleClearKey = (
+    key: keyof ActiveFilterState | 'abv' | 'score',
+    value?: string,
+  ) => {
     if (key === 'abv') {
       setAbvRange([0, 100])
       setParam({ minAbv: null, maxAbv: null })
@@ -304,6 +315,12 @@ export default function SpiritListPage() {
       handleCategoryChange('')
     } else if (key === 'country') {
       handleCountryChange('')
+    } else if (key === 'whiskyStyle') {
+      setParam({ whiskyStyle: value ? whiskyStyle.filter((v) => v !== value) : [] })
+    } else if (key === 'wineType') {
+      setParam({ wineType: value ? wineType.filter((v) => v !== value) : [] })
+    } else if (key === 'cognacGrade') {
+      setParam({ cognacGrade: value ? cognacGrade.filter((v) => v !== value) : [] })
     } else if (key === 'minAbv' || key === 'maxAbv'
             || key === 'minScore' || key === 'maxScore') {
       // ActiveFilterState 타입상 키지만 abv/score 묶음으로만 클리어됨 — 무시
@@ -324,9 +341,9 @@ export default function SpiritListPage() {
       spiritApi.search({
         keyword:     keyword     || undefined,
         category:    (category as SpiritCategory) || undefined,
-        whiskyStyle: (whiskyStyle as WhiskyStyle) || undefined,
-        wineType:    (wineType as WineType) || undefined,
-        cognacGrade: (cognacGrade as CognacGrade) || undefined,
+        whiskyStyle: whiskyStyle.length > 0 ? whiskyStyle : undefined,
+        wineType:    wineType.length > 0    ? wineType    : undefined,
+        cognacGrade: cognacGrade.length > 0 ? cognacGrade : undefined,
         country:     country     || undefined,
         region:      region      || undefined,
         sort,

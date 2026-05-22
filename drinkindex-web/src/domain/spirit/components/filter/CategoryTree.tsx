@@ -14,32 +14,25 @@ const CATEGORIES: SpiritCategory[] = ['WHISKY', 'COGNAC', 'WINE', 'OTHER']
 
 export interface CategoryTreeProps {
   category:     SpiritCategory | ''
-  whiskyStyle:  WhiskyStyle | ''
-  wineType:     WineType | ''
-  cognacGrade:  CognacGrade | ''
+  whiskyStyle:  WhiskyStyle[]
+  wineType:     WineType[]
+  cognacGrade:  CognacGrade[]
   onCategory:   (v: SpiritCategory | '') => void
-  onWhiskyStyle: (v: WhiskyStyle | '') => void
-  onWineType:   (v: WineType | '') => void
-  onCognacGrade: (v: CognacGrade | '') => void
+  onWhiskyStyle: (v: WhiskyStyle[]) => void
+  onWineType:   (v: WineType[]) => void
+  onCognacGrade: (v: CognacGrade[]) => void
+}
+
+function toggle<T>(arr: T[], v: T): T[] {
+  return arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]
 }
 
 export default function CategoryTree(p: CategoryTreeProps) {
   const { t } = useTranslation()
 
   const handleCategoryClick = (cat: SpiritCategory) => {
-    if (p.category === cat) {
-      // 같은 카테고리 다시 클릭 → 해제 + 모든 서브타입 해제
-      p.onCategory('')
-      p.onWhiskyStyle('')
-      p.onWineType('')
-      p.onCognacGrade('')
-    } else {
-      p.onCategory(cat)
-      // 다른 카테고리로 바꾸면 모든 서브타입 초기화
-      p.onWhiskyStyle('')
-      p.onWineType('')
-      p.onCognacGrade('')
-    }
+    // 부모의 onCategory 가 단일 setParam 에서 category + 서브타입 + region 을 함께 갱신.
+    p.onCategory(p.category === cat ? '' : cat)
   }
 
   return (
@@ -80,7 +73,7 @@ export default function CategoryTree(p: CategoryTreeProps) {
                 <SubList
                   values={WHISKY_STYLES}
                   current={p.whiskyStyle}
-                  onChange={p.onWhiskyStyle}
+                  onToggle={(v) => p.onWhiskyStyle(toggle(p.whiskyStyle, v))}
                   labelKey="spirit.whiskyStyle"
                 />
               )}
@@ -88,7 +81,7 @@ export default function CategoryTree(p: CategoryTreeProps) {
                 <SubList
                   values={WINE_TYPES}
                   current={p.wineType}
-                  onChange={p.onWineType}
+                  onToggle={(v) => p.onWineType(toggle(p.wineType, v))}
                   labelKey="spirit.wineType"
                 />
               )}
@@ -96,7 +89,7 @@ export default function CategoryTree(p: CategoryTreeProps) {
                 <SubList
                   values={COGNAC_GRADES}
                   current={p.cognacGrade}
-                  onChange={p.onCognacGrade}
+                  onToggle={(v) => p.onCognacGrade(toggle(p.cognacGrade, v))}
                   labelKey="spirit.cognacGrade"
                 />
               )}
@@ -110,17 +103,17 @@ export default function CategoryTree(p: CategoryTreeProps) {
 
 interface SubListProps<T extends string> {
   values: T[]
-  current: T | ''
-  onChange: (v: T | '') => void
+  current: T[]
+  onToggle: (v: T) => void
   labelKey: string
 }
 
-function SubList<T extends string>({ values, current, onChange, labelKey }: SubListProps<T>) {
+function SubList<T extends string>({ values, current, onToggle, labelKey }: SubListProps<T>) {
   const { t } = useTranslation()
   return (
     <ul className="mt-1 ml-5 space-y-0.5 border-l border-neutral-200 pl-2">
       {values.map((v) => {
-        const checked = current === v
+        const checked = current.includes(v)
         return (
           <li key={v}>
             <label className="flex items-center gap-2 px-2 py-1 rounded-md cursor-pointer
@@ -130,7 +123,7 @@ function SubList<T extends string>({ values, current, onChange, labelKey }: SubL
                 className="w-3.5 h-3.5 rounded border-neutral-300 text-primary-600
                   focus:ring-primary-400 focus:ring-offset-0"
                 checked={checked}
-                onChange={() => onChange(checked ? '' : v)}
+                onChange={() => onToggle(v)}
               />
               <span className={`text-sm ${checked
                 ? 'text-primary-700 font-medium' : 'text-neutral-600 group-hover:text-neutral-900'}`}>

@@ -13,7 +13,28 @@ public interface FileStorageService {
     String upload(MultipartFile file, String savedFileName, String subPath);
 
     /**
+     * 이미지 업로드 + WebP 변환본 동시 저장 (dual-save).
+     * - 원본(JPG/PNG/GIF/WEBP) 은 originalSavedFileName 으로 서버에 보관
+     * - JPG/PNG 인 경우 같은 디렉토리에 {uuid}.webp 추가 저장, 브라우저는 .webp 를 받음
+     * - GIF/WEBP 는 변환하지 않음 (애니메이션 보존, 이미 WebP)
+     * - 변환 실패 시 graceful degrade: 원본 그대로 서빙
+     *
+     * @param file                    업로드된 MultipartFile
+     * @param originalSavedFileName   원본 보관용 파일명 (예: uuid.png)
+     * @param subPath                 저장 경로 (예: notices/202506)
+     * @param detectedMimeType        Magic Bytes 로 검증된 MIME 타입
+     * @return 서빙용 savedFileName / mimeType / imageUrl 을 담은 결과
+     */
+    ImageUploadResult uploadImage(
+            MultipartFile file,
+            String originalSavedFileName,
+            String subPath,
+            String detectedMimeType
+    );
+
+    /**
      * 파일 삭제. savedFileName 기준.
+     * 구현체는 dual-save 로 생성된 sibling 파일({uuid}.원본확장자) 도 함께 제거해야 한다.
      */
     void delete(String savedFileName, String subPath);
 

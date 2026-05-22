@@ -12,6 +12,7 @@ import com.drinkindex.domain.user.repository.UserRepository;
 import com.drinkindex.global.exception.CustomException;
 import com.drinkindex.global.exception.ErrorCode;
 import com.drinkindex.global.storage.FileStorageService;
+import com.drinkindex.global.storage.ImageUploadResult;
 import com.drinkindex.global.util.HtmlSanitizer;
 import com.drinkindex.global.util.NoticeImageValidator;
 import com.querydsl.core.BooleanBuilder;
@@ -185,12 +186,13 @@ public class NoticeService {
     public NoticeImageResponse uploadImage(MultipartFile file, Long uploaderId) {
         // [보안] 4단계 검증: 크기 → 확장자 → Magic Bytes → UUID 파일명 생성
         String mimeType = noticeImageValidator.validate(file);
-        String savedFileName = noticeImageValidator.generateSavedFileName(file.getOriginalFilename());
+        String originalSavedFileName = noticeImageValidator.generateSavedFileName(file.getOriginalFilename());
 
         // 연월별 디렉토리 분리 (예: notices/202506)
         String subPath = "notices/" + YearMonth.now().format(DateTimeFormatter.ofPattern("yyyyMM"));
 
-        String imageUrl = fileStorageService.upload(file, savedFileName, subPath);
+        // 원본 보관 + WebP 변환본 동시 저장. JPG/PNG 는 .webp 가 서빙됨.
+        ImageUploadResult result = fileStorageService.uploadImage(file, originalSavedFileName, subPath, mimeType);
 
         User uploader = userRepository.findById(uploaderId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
@@ -198,11 +200,11 @@ public class NoticeService {
         // notice=null, isUsed=false: 공지 저장 전 임시 상태
         NoticeImage noticeImage = NoticeImage.builder()
                 .originalFileName(file.getOriginalFilename())
-                .savedFileName(savedFileName)
+                .savedFileName(result.savedFileName())
                 .subPath(subPath)
                 .fileSize(file.getSize())
-                .mimeType(mimeType)
-                .imageUrl(imageUrl)
+                .mimeType(result.mimeType())
+                .imageUrl(result.imageUrl())
                 .uploadedBy(uploader)
                 .build();
 

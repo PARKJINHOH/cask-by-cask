@@ -68,15 +68,15 @@ public class SpiritQueryRepositoryImpl implements SpiritQueryRepository {
     // ── 서브타입 join (필터가 있을 때만 join 추가, fetch join은 사용하지 않음) ──
 
     private void applySubTypeJoin(JPAQuery<?> query, SpiritSearchCondition cond, QSpirit spirit) {
-        if (cond.whiskyStyle() != null) {
+        if (cond.hasWhiskyStyle()) {
             QSpiritWhiskyDetail whisky = QSpiritWhiskyDetail.spiritWhiskyDetail;
             query.leftJoin(spirit.whiskyDetail, whisky);
         }
-        if (cond.wineType() != null) {
+        if (cond.hasWineType()) {
             QSpiritWineDetail wine = QSpiritWineDetail.spiritWineDetail;
             query.leftJoin(spirit.wineDetail, wine);
         }
-        if (cond.cognacGrade() != null) {
+        if (cond.hasCognacGrade()) {
             QSpiritCognacDetail cognac = QSpiritCognacDetail.spiritCognacDetail;
             query.leftJoin(spirit.cognacDetail, cognac);
         }
@@ -97,14 +97,14 @@ public class SpiritQueryRepositoryImpl implements SpiritQueryRepository {
         if (cond.category() != null) {
             builder.and(spirit.category.eq(cond.category()));
         }
-        if (cond.whiskyStyle() != null) {
-            builder.and(QSpiritWhiskyDetail.spiritWhiskyDetail.style.eq(cond.whiskyStyle()));
+        if (cond.hasWhiskyStyle()) {
+            builder.and(QSpiritWhiskyDetail.spiritWhiskyDetail.style.in(cond.whiskyStyles()));
         }
-        if (cond.wineType() != null) {
-            builder.and(QSpiritWineDetail.spiritWineDetail.wineType.eq(cond.wineType()));
+        if (cond.hasWineType()) {
+            builder.and(QSpiritWineDetail.spiritWineDetail.wineType.in(cond.wineTypes()));
         }
-        if (cond.cognacGrade() != null) {
-            builder.and(QSpiritCognacDetail.spiritCognacDetail.grade.eq(cond.cognacGrade()));
+        if (cond.hasCognacGrade()) {
+            builder.and(QSpiritCognacDetail.spiritCognacDetail.grade.in(cond.cognacGrades()));
         }
         if (StringUtils.hasText(cond.country())) {
             builder.and(spirit.country.eq(cond.country()));

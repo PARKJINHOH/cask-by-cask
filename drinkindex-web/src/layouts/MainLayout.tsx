@@ -455,18 +455,42 @@ export default function MainLayout() {
       </main>
 
       {/* 푸터 (PC only) */}
-      <footer className="hidden lg:block bg-white border-t border-neutral-200 py-8">
-        <div className="max-w-7xl mx-auto px-4 text-center space-y-2">
-          <p className="text-sm font-semibold text-primary-600">DrinkIndex</p>
-          <p className="text-xs text-neutral-400">{t('app.tagline')}</p>
-          <div className="flex items-center justify-center gap-4 text-xs text-neutral-400">
-            <a href="/terms" className="hover:text-neutral-600 hover:underline transition-colors">{t('footer.terms')}</a>
-            <span>|</span>
-            <a href="/privacy" className="hover:text-neutral-700 font-medium hover:underline transition-colors">{t('footer.privacy')}</a>
-            <span>|</span>
-            <Link to="/inquiry" className="hover:text-neutral-700 font-medium hover:underline transition-colors">{t('footer.inquiry')}</Link>
+      <footer className="hidden lg:block bg-white border-t border-neutral-200 py-6">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="grid grid-cols-[1fr_auto_auto] gap-12 mb-5">
+            {/* 로고 + 태그라인 */}
+            <div>
+              <Link to="/" className="inline-block text-sm font-bold text-primary-600 tracking-tight mb-1">
+                DrinkIndex
+              </Link>
+              <p className="text-xs text-neutral-400">{t('app.tagline')}</p>
+            </div>
+
+            {/* 탐색 */}
+            <div>
+              <p className="text-xs font-semibold text-neutral-400 mb-2">{t('footer.explore')}</p>
+              <ul className="space-y-1.5">
+                <li><Link to="/spirits" className="text-xs text-neutral-500 hover:text-primary-600 transition-colors">{t('nav.spirits')}</Link></li>
+                <li><Link to="/community/free" className="text-xs text-neutral-500 hover:text-primary-600 transition-colors">{t('menu.communityBoard')}</Link></li>
+                <li><Link to="/notices" className="text-xs text-neutral-500 hover:text-primary-600 transition-colors">{t('menu.notice')}</Link></li>
+                <li><Link to="/request/spirit" className="text-xs text-neutral-500 hover:text-primary-600 transition-colors">{t('menu.requestSpirit')}</Link></li>
+              </ul>
+            </div>
+
+            {/* 정보 */}
+            <div>
+              <p className="text-xs font-semibold text-neutral-400 mb-2">{t('footer.info')}</p>
+              <ul className="space-y-1.5">
+                <li><a href="/terms" className="text-xs text-neutral-500 hover:text-primary-600 transition-colors">{t('footer.terms')}</a></li>
+                <li><a href="/privacy" className="text-xs text-neutral-500 hover:text-neutral-700 transition-colors">{t('footer.privacy')}</a></li>
+                <li><Link to="/inquiry" className="text-xs text-neutral-500 hover:text-neutral-700 transition-colors">{t('footer.inquiry')}</Link></li>
+              </ul>
+            </div>
           </div>
-          <p className="text-xs text-neutral-400">© 2026 DrinkIndex.</p>
+
+          <div className="border-t border-neutral-100 pt-4 text-center">
+            <p className="text-xs text-neutral-400">© 2026 DrinkIndex. All rights reserved.</p>
+          </div>
         </div>
       </footer>
 

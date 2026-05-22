@@ -8,6 +8,7 @@ import com.drinkindex.global.email.EmailSender;
 import com.drinkindex.global.exception.CustomException;
 import com.drinkindex.global.exception.ErrorCode;
 import com.drinkindex.global.storage.FileStorageService;
+import com.drinkindex.global.storage.ImageUploadResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -53,14 +54,15 @@ public class InquiryService {
 
         for (MultipartFile image : validImages) {
             String ext = getExtension(image.getOriginalFilename());
-            String savedName = UUID.randomUUID() + "." + ext;
+            String originalSavedName = UUID.randomUUID() + "." + ext;
             try {
                 // 업로드 전에 바이트 읽기 (transferTo 후에는 스트림이 소비될 수 있음)
                 byte[] bytes = image.getBytes();
-                String url = fileStorageService.upload(image, savedName, subPath);
-                imageUrls.add(url);
+                String mime = image.getContentType() != null ? image.getContentType().toLowerCase() : extToMime(ext);
+                ImageUploadResult result = fileStorageService.uploadImage(image, originalSavedName, subPath, mime);
+                imageUrls.add(result.imageUrl());
                 attachmentContents.add(bytes);
-                attachmentNames.add(image.getOriginalFilename() != null ? image.getOriginalFilename() : savedName);
+                attachmentNames.add(image.getOriginalFilename() != null ? image.getOriginalFilename() : originalSavedName);
             } catch (Exception e) {
                 log.error("문의 이미지 업로드 실패", e);
                 throw new CustomException(ErrorCode.STORAGE_ERROR);
@@ -162,5 +164,15 @@ public class InquiryService {
     private String getExtension(String filename) {
         if (filename == null || !filename.contains(".")) return "jpg";
         return filename.substring(filename.lastIndexOf('.') + 1).toLowerCase();
+    }
+
+    private String extToMime(String ext) {
+        return switch (ext) {
+            case "jpg", "jpeg" -> "image/jpeg";
+            case "png" -> "image/png";
+            case "webp" -> "image/webp";
+            case "gif" -> "image/gif";
+            default -> "application/octet-stream";
+        };
     }
 }

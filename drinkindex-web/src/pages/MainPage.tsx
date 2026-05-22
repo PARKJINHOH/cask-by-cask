@@ -15,11 +15,96 @@ import type { NoticeListItem } from '@/domain/notice/types/notice.types'
 
 // ── 카테고리 메뉴 데이터 ─────────────────────────────────────────
 const CATEGORY_MENU = [
-  { key: 'WHISKY', icon: '🥃' },
-  { key: 'COGNAC', icon: '🍾' },
-  { key: 'WINE',   icon: '🍷' },
-  { key: 'OTHER',  icon: '🫗' },
+  {
+    key: 'WHISKY',
+    icon: '🥃',
+    image: '/images/whisky-category.png',
+    subtitle: 'Single Malt · Blended · Bourbon',
+    accent: 'from-amber-950/80 via-amber-900/50 to-transparent',
+  },
+  {
+    key: 'COGNAC',
+    icon: '🍾',
+    image: '/images/cognac-category.png',
+    subtitle: 'VS · VSOP · XO · Hors d\'Âge',
+    accent: 'from-stone-950/80 via-amber-900/50 to-transparent',
+  },
+  {
+    key: 'WINE',
+    icon: '🍷',
+    image: '/images/wine-category.png',
+    subtitle: 'Red · White · Rosé · Sparkling',
+    accent: 'from-rose-950/85 via-rose-900/60 to-transparent',
+  },
+  {
+    key: 'OTHER',
+    icon: '🫗',
+    image: '/images/etc-category.png',
+    subtitle: 'Rum · Gin · Tequila · Vodka',
+    accent: 'from-neutral-950/85 via-neutral-800/60 to-transparent',
+  },
 ] as const
+
+// ── 카테고리 카드 내부 (모바일/데스크탑 공용) ────────────────────
+type CatItem = typeof CATEGORY_MENU[number]
+function CategoryCardInner({
+  cat,
+  idx,
+  t,
+  expanded,
+}: {
+  cat: CatItem
+  idx: number
+  t: (key: string) => string
+  expanded: boolean
+}) {
+  return (
+    <>
+      {cat.image ? (
+        <img
+          src={cat.image}
+          alt={t(`spirit.category.${cat.key}`)}
+          className="absolute inset-0 w-full h-full object-cover
+            transition-transform duration-500 group-hover:scale-105"
+        />
+      ) : (
+        <div
+          className={[
+            'absolute inset-0',
+            idx === 2
+              ? 'bg-gradient-to-br from-rose-950 via-red-900 to-rose-950'
+              : 'bg-gradient-to-br from-neutral-800 via-slate-700 to-neutral-900',
+          ].join(' ')}
+        />
+      )}
+
+      <div className={`absolute inset-0 bg-gradient-to-t ${cat.accent}`} />
+      <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors duration-300" />
+
+      <div className="absolute inset-0 flex flex-col justify-between p-4 lg:p-5">
+        <span className="text-white/90 text-sm lg:text-base font-bold tracking-wide drop-shadow-lg">
+          {t(`spirit.category.${cat.key}`)}
+        </span>
+        <div>
+          {cat.subtitle && (
+            <p className={`text-white/60 text-xs lg:text-sm mb-1 drop-shadow
+              transition-opacity duration-300
+              ${expanded ? 'opacity-100' : 'opacity-0'}`}>
+              {cat.subtitle}
+            </p>
+          )}
+          <div className="flex items-center gap-1.5">
+            {!cat.image && <span className="text-lg">{cat.icon}</span>}
+            <span className="text-white/80 text-xs font-medium group-hover:text-white
+              transition-colors drop-shadow">
+              {t('home.menu.explore')} →
+            </span>
+          </div>
+        </div>
+      </div>
+    </>
+  )
+}
 
 // ── 섹션 헤더 ────────────────────────────────────────────────────
 function SectionHeader({
@@ -98,6 +183,7 @@ function NoticeRow({ notice }: { notice: NoticeListItem }) {
 // ── 메인 페이지 ──────────────────────────────────────────────────
 export default function MainPage() {
   const { t, i18n } = useTranslation()
+  const [hoveredCat, setHoveredCat] = useState<string | null>(null)
 
   const bannerLanguage = (i18n.language.toUpperCase() === 'EN' ? 'EN' : 'KO') as 'KO' | 'EN'
   const { data: banners = [] } = useBanners(bannerLanguage)
@@ -154,44 +240,48 @@ export default function MainPage() {
 
       <div className="max-w-7xl mx-auto px-4 py-8 lg:py-10 space-y-14">
 
-        {/* ── 주류 카테고리 메뉴 (버튼형) ─────────────────────────── */}
+        {/* ── 주류 아카이브 카테고리 ────────────────────────────────── */}
         <section>
-          <div className="mb-4">
+          <div className="mb-5">
             <h2 className="text-xl lg:text-2xl font-bold text-neutral-900 tracking-tight">
               {t('home.menu.title')}
             </h2>
             <p className="text-sm text-neutral-500 mt-1.5">{t('home.menu.subtitle')}</p>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 lg:gap-3">
-            {CATEGORY_MENU.map((cat) => (
+          {/* ── 모바일: 2×2 균등 그리드 ─────────────────────────────── */}
+          <div className="grid grid-cols-2 gap-3 lg:hidden">
+            {CATEGORY_MENU.map((cat, idx) => (
               <Link
                 key={cat.key}
                 to={`/spirits?category=${cat.key}`}
-                className="group flex items-center gap-3 px-4 py-3.5 lg:px-5 lg:py-4
-                  bg-primary-600 hover:bg-primary-700 active:bg-primary-800
-                  text-white rounded-xl transition-all duration-200
-                  hover:shadow-md hover:-translate-y-px"
+                className="group relative overflow-hidden rounded-2xl h-40"
               >
-                <span className="text-2xl lg:text-3xl flex-shrink-0">{cat.icon}</span>
-                <div className="min-w-0">
-                  <p className="text-sm lg:text-base font-bold leading-tight truncate">
-                    {t(`spirit.category.${cat.key}`)}
-                  </p>
-                  <p className="text-xs text-white/70 leading-tight mt-0.5 truncate">
-                    {cat.key === 'WHISKY' ? 'Whisky'
-                      : cat.key === 'COGNAC' ? 'Cognac'
-                      : cat.key === 'WINE' ? 'Wine'
-                      : 'Other'}
-                  </p>
-                </div>
-                <svg
-                  className="w-4 h-4 ml-auto flex-shrink-0 text-white/60
-                    group-hover:text-white group-hover:translate-x-0.5 transition-all"
-                  viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-                >
-                  <polyline points="9 18 15 12 9 6" />
-                </svg>
+                <CategoryCardInner cat={cat} idx={idx} t={t} expanded={false} />
+              </Link>
+            ))}
+          </div>
+
+          {/* ── 데스크탑: flex hover 확장 ──────────────────────────────── */}
+          <div className="hidden lg:flex gap-4 h-80">
+            {CATEGORY_MENU.map((cat, idx) => (
+              <Link
+                key={cat.key}
+                to={`/spirits?category=${cat.key}`}
+                onMouseEnter={() => setHoveredCat(cat.key)}
+                onMouseLeave={() => setHoveredCat(null)}
+                style={{
+                  flex: hoveredCat === cat.key ? '2 1 0%' : '1 1 0%',
+                  transition: 'flex 0.4s cubic-bezier(0.4,0,0.2,1)',
+                }}
+                className="group relative overflow-hidden rounded-2xl"
+              >
+                <CategoryCardInner
+                  cat={cat}
+                  idx={idx}
+                  t={t}
+                  expanded={hoveredCat === cat.key}
+                />
               </Link>
             ))}
           </div>

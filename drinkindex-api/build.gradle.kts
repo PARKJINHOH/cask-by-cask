@@ -75,6 +75,11 @@ dependencies {
     // HTML Sanitizer — XSS 방어 (공지사항 TipTap 콘텐츠 서버 측 재검증)
     implementation("org.jsoup:jsoup:1.22.2")
 
+    // WebP 인코딩 (이미지 업로드 시 .webp 변환본 생성)
+    // 원본 JPG/PNG 는 서버에 보관, 브라우저에는 WebP 서빙
+    implementation("com.sksamuel.scrimage:scrimage-core:4.3.0")
+    implementation("com.sksamuel.scrimage:scrimage-webp:4.3.0")
+
     // SQL 로깅 (local: 파라미터 인라인 + 유저 ID)
     implementation("com.github.gavlyukovskiy:datasource-proxy-spring-boot-starter:1.12.1")
 

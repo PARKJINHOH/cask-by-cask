@@ -207,9 +207,9 @@ public class EmojiService {
     }
 
     public String uploadImage(MultipartFile file) {
-        imageValidator.validate(file);
-        String savedFileName = imageValidator.generateSavedFileName(file.getOriginalFilename());
-        return fileStorageService.upload(file, savedFileName, "emojis");
+        String mimeType = imageValidator.validate(file);
+        String originalSavedFileName = imageValidator.generateSavedFileName(file.getOriginalFilename());
+        return fileStorageService.uploadImage(file, originalSavedFileName, "emojis", mimeType).imageUrl();
     }
 
     // ═══════════════════════════════════════════

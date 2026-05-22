@@ -14,6 +14,7 @@ import com.drinkindex.domain.user.repository.UserRepository;
 import com.drinkindex.global.exception.CustomException;
 import com.drinkindex.global.exception.ErrorCode;
 import com.drinkindex.global.storage.FileStorageService;
+import com.drinkindex.global.storage.ImageUploadResult;
 import com.drinkindex.global.util.HtmlSanitizer;
 import com.drinkindex.global.util.NoticeImageValidator;
 import com.drinkindex.global.util.PopupImageRateLimiter;
@@ -204,10 +205,10 @@ public class PopupService {
 
         // [보안] 4단계 검증 재사용: 크기 → 확장자 → Magic Bytes → UUID 파일명
         String mimeType = noticeImageValidator.validate(file);
-        String savedFileName = noticeImageValidator.generateSavedFileName(file.getOriginalFilename());
+        String originalSavedFileName = noticeImageValidator.generateSavedFileName(file.getOriginalFilename());
 
         String subPath = "popups/" + YearMonth.now().format(DateTimeFormatter.ofPattern("yyyyMM"));
-        String imageUrl = fileStorageService.upload(file, savedFileName, subPath);
+        ImageUploadResult result = fileStorageService.uploadImage(file, originalSavedFileName, subPath, mimeType);
 
         User uploader = userRepository.findById(uploaderId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
@@ -215,11 +216,11 @@ public class PopupService {
         PopupImage popupImage = PopupImage.builder()
                 .imageType(imageType)
                 .originalFileName(file.getOriginalFilename())
-                .savedFileName(savedFileName)
+                .savedFileName(result.savedFileName())
                 .subPath(subPath)
                 .fileSize(file.getSize())
-                .mimeType(mimeType)
-                .imageUrl(imageUrl)
+                .mimeType(result.mimeType())
+                .imageUrl(result.imageUrl())
                 .uploadedBy(uploader)
                 .build();
 

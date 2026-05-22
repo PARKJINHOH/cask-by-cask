@@ -11,6 +11,7 @@ import com.drinkindex.global.email.EmailSender;
 import com.drinkindex.global.exception.CustomException;
 import com.drinkindex.global.exception.ErrorCode;
 import com.drinkindex.global.storage.FileStorageService;
+import com.drinkindex.global.storage.ImageUploadResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -150,10 +151,11 @@ public class UserService {
         }
 
         String ext = getExtension(file.getOriginalFilename());
-        String savedFileName = "profile_" + userId + "_" + System.currentTimeMillis() + "." + ext;
-        String url = fileStorageService.upload(file, savedFileName, PROFILE_SUB_PATH);
+        String originalSavedFileName = "profile_" + userId + "_" + System.currentTimeMillis() + "." + ext;
+        String mimeType = file.getContentType() != null ? file.getContentType().toLowerCase() : "image/jpeg";
+        ImageUploadResult result = fileStorageService.uploadImage(file, originalSavedFileName, PROFILE_SUB_PATH, mimeType);
 
-        user.updateProfileImage(url);
+        user.updateProfileImage(result.imageUrl());
         return UserResponse.from(user);
     }
 
