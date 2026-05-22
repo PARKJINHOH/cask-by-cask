@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+﻿import { useState, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { useMessageList, useMessageThread, useMessageActions } from '@/domain/message/hooks/useMessages'
@@ -109,7 +109,7 @@ function NewMessageModal({ onClose, onSend, isSending, onBadWord: _onBadWord }: 
             <button
               type="submit"
               disabled={!nickname.trim() || !content.trim() || isSending}
-              className="flex-1 py-2.5 text-sm font-medium rounded-xl bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex-1 py-2.5 text-sm font-medium rounded-xl bg-primary-800 text-white hover:bg-primary-900 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {isSending ? '...' : t('messages.send')}
             </button>
@@ -198,7 +198,7 @@ function ThreadPanel({ threadId, currentUser, onClose, onDelete }: ThreadPanelPr
                 )}
                 <div className={[
                   'px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words',
-                  isMine ? 'bg-primary-600 text-white rounded-tr-sm' : 'bg-neutral-100 text-neutral-800 rounded-tl-sm',
+                  isMine ? 'bg-primary-800 text-white rounded-tr-sm' : 'bg-neutral-100 text-neutral-800 rounded-tl-sm',
                 ].join(' ')}>
                   {item.content}
                 </div>
@@ -228,7 +228,7 @@ function ThreadPanel({ threadId, currentUser, onClose, onDelete }: ThreadPanelPr
         <button
           type="submit"
           disabled={!replyContent.trim() || replyMutation.isPending}
-          className="px-4 py-2 text-sm font-medium rounded-xl bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-40 flex-shrink-0"
+          className="px-4 py-2 text-sm font-medium rounded-xl bg-primary-800 text-white hover:bg-primary-900 disabled:opacity-40 flex-shrink-0"
         >
           {t('messages.send')}
         </button>
@@ -294,7 +294,7 @@ export default function MessagesPage() {
         <h1 className="text-2xl font-bold text-neutral-900">{t('messages.title')}</h1>
         <button
           onClick={() => setShowNewModal(true)}
-          className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition-colors"
+          className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg bg-primary-800 text-white hover:bg-primary-900 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -319,7 +319,7 @@ export default function MessagesPage() {
                 onClick={() => { setBox(b); setSelectedId(null) }}
                 className={[
                   'flex-1 py-3 text-sm font-medium transition-colors',
-                  box === b ? 'text-primary-600 border-b-2 border-primary-600' : 'text-neutral-500',
+                  box === b ? 'text-primary-800 border-b-2 border-primary-800' : 'text-neutral-500',
                 ].join(' ')}
               >
                 {b === 'INBOX' ? t('messages.inbox') : t('messages.sent')}

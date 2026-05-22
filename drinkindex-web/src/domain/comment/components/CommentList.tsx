@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import Spinner from '@/shared/components/Spinner'
@@ -38,7 +38,7 @@ export default function CommentList({ spiritId, onNeedLogin }: CommentListProps)
         <button
           onClick={handleGuestClick}
           className="w-full py-3 border border-dashed border-neutral-300 rounded-xl
-            text-sm text-neutral-400 hover:text-primary-600 hover:border-primary-300 transition-colors"
+            text-sm text-neutral-400 hover:text-primary-800 hover:border-primary-300 transition-colors"
         >
           {t('comment.loginPrompt')}
         </button>
@@ -47,7 +47,7 @@ export default function CommentList({ spiritId, onNeedLogin }: CommentListProps)
       {/* List */}
       {isLoading ? (
         <div className="flex justify-center py-10">
-          <Spinner className="text-primary-600" />
+          <Spinner className="text-primary-800" />
         </div>
       ) : !data || data.empty ? (
         <EmptyState title={t('comment.noComment')} description={t('comment.noCommentDesc')} />

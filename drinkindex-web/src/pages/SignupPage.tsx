@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+﻿import { useState, useEffect, useRef, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -191,7 +191,7 @@ function PolicyModal({ type, onClose }: { type: PolicyType; onClose: () => void 
           <button
             type="button"
             onClick={onClose}
-            className="w-full py-2.5 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors"
+            className="w-full py-2.5 text-sm font-medium text-white bg-primary-800 rounded-lg hover:bg-primary-900 transition-colors"
           >
             확인
           </button>
@@ -409,7 +409,7 @@ export default function SignupPage() {
 
         {/* Branding */}
         <div className="text-center mb-8">
-          <Link to="/" className="inline-block text-2xl font-bold text-primary-600 tracking-tight">
+          <Link to="/" className="inline-block text-2xl font-bold text-primary-800 tracking-tight">
             DrinkIndex
           </Link>
           <h1 className="mt-3 text-xl font-semibold text-neutral-900">회원가입</h1>
@@ -474,7 +474,7 @@ export default function SignupPage() {
                       type="button"
                       onClick={handleVerifyCode}
                       disabled={verifyCode.length !== 6 || timeLeft === 0 || verifyStep === 'verifying'}
-                      className="shrink-0 h-[38px] px-3 text-xs font-medium rounded-lg border border-primary-400 text-primary-600 bg-white hover:bg-primary-50 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap transition-colors"
+                      className="shrink-0 h-[38px] px-3 text-xs font-medium rounded-lg border border-primary-400 text-primary-800 bg-white hover:bg-primary-50 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap transition-colors"
                     >
                       {verifyStep === 'verifying' ? '확인 중...' : '인증확인'}
                     </button>
@@ -558,7 +558,7 @@ export default function SignupPage() {
                   <input
                     type="checkbox"
                     {...register('agreedToTerms')}
-                    className="w-4 h-4 shrink-0 rounded accent-primary-600 cursor-pointer"
+                    className="w-4 h-4 shrink-0 rounded accent-primary-800 cursor-pointer"
                   />
                   <span className="text-sm text-neutral-700 truncate">
                     이용약관 동의 <span className="text-danger-500">(필수)</span>
@@ -567,7 +567,7 @@ export default function SignupPage() {
                 <button
                   type="button"
                   onClick={() => setPolicyModal('terms')}
-                  className="shrink-0 text-xs text-primary-600 hover:underline"
+                  className="shrink-0 text-xs text-primary-800 hover:underline"
                 >
                   전문보기
                 </button>
@@ -582,7 +582,7 @@ export default function SignupPage() {
                   <input
                     type="checkbox"
                     {...register('agreedToPrivacy')}
-                    className="w-4 h-4 shrink-0 rounded accent-primary-600 cursor-pointer"
+                    className="w-4 h-4 shrink-0 rounded accent-primary-800 cursor-pointer"
                   />
                   <span className="text-sm text-neutral-700 truncate">
                     개인정보 처리방침 동의 <span className="text-danger-500">(필수)</span>
@@ -591,7 +591,7 @@ export default function SignupPage() {
                 <button
                   type="button"
                   onClick={() => setPolicyModal('privacy')}
-                  className="shrink-0 text-xs text-primary-600 hover:underline"
+                  className="shrink-0 text-xs text-primary-800 hover:underline"
                 >
                   전문보기
                 </button>
@@ -605,7 +605,7 @@ export default function SignupPage() {
                 <input
                   type="checkbox"
                   {...register('emailSubscribed')}
-                  className="w-4 h-4 shrink-0 rounded accent-primary-600 cursor-pointer"
+                  className="w-4 h-4 shrink-0 rounded accent-primary-800 cursor-pointer"
                 />
                 <span className="text-sm text-neutral-700 truncate">
                   이메일 수신 동의 <span className="text-neutral-400">(선택)</span>
@@ -625,7 +625,7 @@ export default function SignupPage() {
         {/* Footer */}
         <p className="mt-6 text-center text-sm text-neutral-500">
           이미 계정이 있으신가요?{' '}
-          <Link to="/login" className="text-primary-600 font-semibold hover:underline">
+          <Link to="/login" className="text-primary-800 font-semibold hover:underline">
             로그인
           </Link>
         </p>

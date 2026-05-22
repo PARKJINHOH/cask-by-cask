@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+﻿import { useEffect } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import { useNoticeDetail } from '@/domain/notice/hooks/useNoticeDetail'
 import { useNotices } from '@/domain/notice/hooks/useNotices'
@@ -52,7 +52,7 @@ export default function NoticeDetailPage() {
         <p className="text-neutral-500 text-sm mb-4">공지사항을 찾을 수 없습니다.</p>
         <button
           onClick={() => navigate('/notices')}
-          className="text-sm text-primary-600 hover:underline"
+          className="text-sm text-primary-800 hover:underline"
         >
           목록으로 돌아가기
         </button>
@@ -141,7 +141,7 @@ export default function NoticeDetailPage() {
                 className="flex items-center gap-3 px-4 py-3 hover:bg-neutral-100 rounded-t-xl transition-colors group"
               >
                 <span className="text-xs text-neutral-400 flex-shrink-0 w-12">다음 글</span>
-                <span className="text-sm text-neutral-700 group-hover:text-primary-600 transition-colors truncate">
+                <span className="text-sm text-neutral-700 group-hover:text-primary-800 transition-colors truncate">
                   {nextNotice.title}
                 </span>
                 <svg
@@ -161,7 +161,7 @@ export default function NoticeDetailPage() {
                 ].join(' ')}
               >
                 <span className="text-xs text-neutral-400 flex-shrink-0 w-12">이전 글</span>
-                <span className="text-sm text-neutral-700 group-hover:text-primary-600 transition-colors truncate">
+                <span className="text-sm text-neutral-700 group-hover:text-primary-800 transition-colors truncate">
                   {prevNotice.title}
                 </span>
                 <svg

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDeleteComment } from '../hooks/useComments'
 import type { PostCommentItem } from '../types/community.types'
@@ -20,7 +20,7 @@ function renderContent(content: string) {
   const parts = content.split(/(@[\w가-힣]+|\[emoji-img:[^\]]+\])/g)
   return parts.map((part, i) => {
     if (/^@[\w가-힣]+/.test(part))
-      return <span key={i} className="text-primary-600 font-medium">{part}</span>
+      return <span key={i} className="text-primary-800 font-medium">{part}</span>
     const imgMatch = part.match(/^\[emoji-img:(.+)\]$/)
     if (imgMatch)
       return <img key={i} src={imgMatch[1]} alt="이모지" className="inline-block h-12 w-auto align-middle" />
@@ -132,7 +132,7 @@ export default function CommunityCommentItem({ comment, postId, isLoggedIn, dept
                 <button
                   type="button"
                   onClick={() => setIsReplying((v) => !v)}
-                  className="text-xs text-neutral-400 hover:text-primary-600 transition-colors"
+                  className="text-xs text-neutral-400 hover:text-primary-800 transition-colors"
                 >
                   {t('comment.reply')}
                 </button>

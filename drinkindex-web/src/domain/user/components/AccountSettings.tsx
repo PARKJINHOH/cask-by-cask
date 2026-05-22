@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+﻿import { useState, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -403,7 +403,7 @@ function EmailSubscriptionSection() {
           className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors
             focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2
             disabled:opacity-50 disabled:cursor-not-allowed
-            ${current ? 'bg-primary-600' : 'bg-neutral-300'}`}
+            ${current ? 'bg-primary-800' : 'bg-neutral-300'}`}
         >
           <span
             className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform

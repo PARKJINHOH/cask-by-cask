@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+﻿import { Link } from 'react-router-dom'
 import { useLegalLatest } from '@/domain/legal/hooks/useLegal'
 import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 import { PrivacyContent } from './LegalContent'
@@ -15,7 +15,7 @@ export default function PrivacyPage() {
       />
       <div className="w-full max-w-2xl mx-auto">
         <div className="mb-6">
-          <Link to="/signup" className="text-sm text-primary-600 hover:underline">← 회원가입으로 돌아가기</Link>
+          <Link to="/signup" className="text-sm text-primary-800 hover:underline">← 회원가입으로 돌아가기</Link>
           <div className="flex items-baseline gap-3 mt-3">
             <h1 className="text-2xl font-bold text-neutral-900">개인정보 처리방침</h1>
             {data && (

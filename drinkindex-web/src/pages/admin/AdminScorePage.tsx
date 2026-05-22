@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { adminScoreApi, type ScoreConfigAdmin, type UpdateScoreConfigRequest } from '@/domain/admin/api/adminScoreApi'
 import { ACTION_ICONS } from '@/domain/score/types/score.types'
@@ -181,7 +181,7 @@ function EditRow({
           type="checkbox"
           checked={isActive}
           onChange={(e) => setIsActive(e.target.checked)}
-          className="w-4 h-4 accent-primary-600"
+          className="w-4 h-4 accent-primary-800"
         />
       </td>
       <td className="px-4 py-3">
@@ -189,7 +189,7 @@ function EditRow({
           <button
             onClick={handleSave}
             disabled={isPending}
-            className="h-7 px-2.5 text-xs font-medium rounded-md bg-primary-600 text-white hover:bg-primary-700 transition-colors disabled:opacity-40"
+            className="h-7 px-2.5 text-xs font-medium rounded-md bg-primary-800 text-white hover:bg-primary-900 transition-colors disabled:opacity-40"
           >
             저장
           </button>

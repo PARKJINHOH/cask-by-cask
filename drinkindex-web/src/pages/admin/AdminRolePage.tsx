@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import Badge from '@/shared/components/Badge'
 import Button from '@/shared/components/Button'
 import Modal from '@/shared/components/Modal'
@@ -51,7 +51,7 @@ function MenuSelector({
             type="checkbox"
             checked={selected.includes(key)}
             onChange={() => toggle(key)}
-            className="w-4 h-4 accent-primary-600"
+            className="w-4 h-4 accent-primary-800"
           />
           <span className="text-sm text-neutral-700">{ADMIN_MENU_KEY_LABELS[key]}</span>
         </label>
@@ -124,7 +124,7 @@ function RoleFormModal({ editTarget, onClose }: RoleFormModalProps) {
                 <button key={r} type="button" onClick={() => setSystemRole(r)}
                   className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
                     systemRole === r
-                      ? 'bg-primary-600 text-white border-primary-600'
+                      ? 'bg-primary-800 text-white border-primary-800'
                       : 'bg-white text-neutral-600 border-neutral-200 hover:border-primary-400'
                   }`}>
                   {SYSTEM_ROLE_LABEL[r]}
@@ -172,7 +172,7 @@ function RoleFormModal({ editTarget, onClose }: RoleFormModalProps) {
           <div className="flex items-center gap-4">
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)}
-                className="w-4 h-4 accent-primary-600" />
+                className="w-4 h-4 accent-primary-800" />
               <span className="text-sm text-neutral-700">활성</span>
             </label>
             <div className="flex items-center gap-2">
@@ -232,7 +232,7 @@ export default function AdminRolePage() {
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center py-20"><Spinner size="lg" className="text-primary-600" /></div>
+        <div className="flex justify-center py-20"><Spinner size="lg" className="text-primary-800" /></div>
       ) : (
         <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
           <table className="w-full text-sm">
@@ -277,7 +277,7 @@ export default function AdminRolePage() {
                         <div className="flex flex-wrap gap-1">
                           {role.allowedMenus.map((key) => (
                             <span key={key} className="px-1.5 py-0.5 rounded bg-primary-50
-                              text-primary-700 text-[11px] font-medium border border-primary-100">
+                              text-primary-900 text-[11px] font-medium border border-primary-100">
                               {ADMIN_MENU_KEY_LABELS[key]}
                             </span>
                           ))}

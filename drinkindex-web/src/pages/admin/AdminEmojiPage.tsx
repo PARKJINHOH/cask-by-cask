@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+﻿import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   DndContext,
@@ -107,7 +107,7 @@ export default function AdminEmojiPage() {
         <h1 className="text-xl font-bold text-neutral-900">이모지 관리</h1>
         <button
           onClick={() => { setEditEmoji(null); setShowEmojiForm(true) }}
-          className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors"
+          className="px-4 py-2 bg-primary-800 text-white text-sm font-medium rounded-lg hover:bg-primary-900 transition-colors"
         >
           + 이모지 추가
         </button>
@@ -119,7 +119,7 @@ export default function AdminEmojiPage() {
           <h2 className="text-sm font-semibold text-neutral-700">이모지 그룹</h2>
           <button
             onClick={() => { setEditGroup(null); setShowGroupForm(true) }}
-            className="text-xs px-3 py-1.5 border border-primary-300 text-primary-600 rounded-lg
+            className="text-xs px-3 py-1.5 border border-primary-300 text-primary-800 rounded-lg
               hover:bg-primary-50 transition-colors font-medium"
           >
             + 그룹 추가
@@ -127,14 +127,14 @@ export default function AdminEmojiPage() {
         </div>
 
         {groupsLoading ? (
-          <div className="flex justify-center py-4"><Spinner size="sm" className="text-primary-600" /></div>
+          <div className="flex justify-center py-4"><Spinner size="sm" className="text-primary-800" /></div>
         ) : (
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setSelectedGroupId('all')}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                 selectedGroupId === 'all'
-                  ? 'bg-primary-600 text-white'
+                  ? 'bg-primary-800 text-white'
                   : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
               }`}
             >
@@ -144,7 +144,7 @@ export default function AdminEmojiPage() {
               onClick={() => setSelectedGroupId(UNGROUPED_ID)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                 selectedGroupId === UNGROUPED_ID
-                  ? 'bg-primary-600 text-white'
+                  ? 'bg-primary-800 text-white'
                   : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
               }`}
             >
@@ -156,7 +156,7 @@ export default function AdminEmojiPage() {
                   onClick={() => setSelectedGroupId(group.id)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                     selectedGroupId === group.id
-                      ? 'bg-primary-600 text-white'
+                      ? 'bg-primary-800 text-white'
                       : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
                   }`}
                 >
@@ -207,7 +207,7 @@ export default function AdminEmojiPage() {
 
         {emojisLoading ? (
           <div className="flex justify-center py-16">
-            <Spinner size="lg" className="text-primary-600" />
+            <Spinner size="lg" className="text-primary-800" />
           </div>
         ) : displayEmojis.length === 0 ? (
           <div className="py-14 text-center text-neutral-400 text-sm">이모지가 없습니다.</div>
@@ -610,7 +610,7 @@ function EmojiForm({
           <button
             type="submit"
             disabled={isPending || !label.trim() || (!unicode.trim() && !imageUrl.trim())}
-            className="flex-1 px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-40"
+            className="flex-1 px-4 py-2 bg-primary-800 text-white text-sm font-medium rounded-lg hover:bg-primary-900 transition-colors disabled:opacity-40"
           >
             {isPending ? '저장 중...' : '저장'}
           </button>
@@ -685,7 +685,7 @@ function GroupForm({
           <button
             type="submit"
             disabled={isPending || !name.trim()}
-            className="flex-1 px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-40"
+            className="flex-1 px-4 py-2 bg-primary-800 text-white text-sm font-medium rounded-lg hover:bg-primary-900 transition-colors disabled:opacity-40"
           >
             {isPending ? '저장 중...' : '저장'}
           </button>

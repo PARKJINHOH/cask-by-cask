@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next'
+﻿import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { spiritApi } from '@/domain/spirit/api/spiritApi'
 import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
@@ -39,7 +39,7 @@ export default function RegionChips({ category, country, value, onChange }: Regi
               className={`px-2 py-0.5 text-xs rounded-full border transition-colors
                 inline-flex items-center gap-1
                 ${active
-                  ? 'bg-primary-600 text-white border-primary-600'
+                  ? 'bg-primary-800 text-white border-primary-800'
                   : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-400'}`}
             >
               <span>{r.region}</span>

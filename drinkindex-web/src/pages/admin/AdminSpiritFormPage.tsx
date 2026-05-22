@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAdminSpiritDetail } from '@/domain/admin/hooks/useAdminSpirits'
 import { adminSpiritApi } from '@/domain/admin/api/adminSpiritApi'
@@ -333,7 +333,7 @@ export default function AdminSpiritFormPage() {
   }
 
   if (isEdit && isLoading) {
-    return <div className="flex justify-center py-32"><Spinner size="lg" className="text-primary-600" /></div>
+    return <div className="flex justify-center py-32"><Spinner size="lg" className="text-primary-800" /></div>
   }
 
   return (

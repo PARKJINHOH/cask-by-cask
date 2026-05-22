@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+﻿import { useState, useCallback, useRef, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -162,7 +162,7 @@ export default function PostDetailPage() {
           <p className="text-xs text-neutral-400 mb-3">{t('post.blockedDesc')}</p>
           <button
             onClick={handleBlock}
-            className="text-xs text-primary-600 hover:underline"
+            className="text-xs text-primary-800 hover:underline"
           >
             {t('post.unblock')}
           </button>
@@ -308,7 +308,7 @@ export default function PostDetailPage() {
                 isMyPost
                   ? 'border-neutral-100 bg-neutral-50 text-neutral-300 cursor-not-allowed'
                   : post.isLiked === true
-                  ? 'border-primary-500 bg-primary-50 text-primary-600'
+                  ? 'border-primary-500 bg-primary-50 text-primary-800'
                   : 'border-neutral-200 text-neutral-600 hover:border-primary-300 hover:bg-primary-50',
               ].join(' ')}
             >

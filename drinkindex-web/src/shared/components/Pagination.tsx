@@ -1,4 +1,4 @@
-export interface PaginationProps {
+﻿export interface PaginationProps {
   currentPage: number
   totalPages: number
   onPageChange: (page: number) => void
@@ -61,7 +61,7 @@ export default function Pagination({
             className={[
               navBtn,
               p === currentPage
-                ? 'bg-primary-600 text-white border-primary-600 font-semibold'
+                ? 'bg-primary-800 text-white border-primary-800 font-semibold'
                 : 'border-neutral-200 text-neutral-700 hover:bg-neutral-50',
             ].join(' ')}
           >

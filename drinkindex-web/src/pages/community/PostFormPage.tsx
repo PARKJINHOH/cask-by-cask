@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -155,7 +155,7 @@ export default function PostFormPage() {
                 className={[
                   'px-4 py-1.5 text-sm font-medium rounded-full border transition-colors',
                   prefixId === p.id
-                    ? 'bg-primary-600 text-white border-primary-600'
+                    ? 'bg-primary-800 text-white border-primary-800'
                     : 'border-neutral-300 text-neutral-600 hover:border-neutral-400',
                 ].join(' ')}
                 style={prefixId !== p.id && p.colorHex
@@ -176,7 +176,7 @@ export default function PostFormPage() {
                 type="checkbox"
                 checked={isAnonymous}
                 onChange={(e) => setIsAnonymous(e.target.checked)}
-                className="w-4 h-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-400"
+                className="w-4 h-4 rounded border-neutral-300 text-primary-800 focus:ring-primary-400"
               />
               {t('board.anonymous')}
             </label>
@@ -228,7 +228,7 @@ export default function PostFormPage() {
                   {[false, true].map((multi) => (
                     <label key={String(multi)} className="flex items-center gap-2 text-sm cursor-pointer">
                       <input type="radio" checked={pollMultiple === multi} onChange={() => setPollMultiple(multi)}
-                        className="text-primary-600 focus:ring-primary-400" />
+                        className="text-primary-800 focus:ring-primary-400" />
                       {multi ? '복수 선택' : '단일 선택'}
                     </label>
                   ))}
@@ -252,7 +252,7 @@ export default function PostFormPage() {
                   ))}
                   {pollOptions.length < MAX_POLL_OPTIONS && (
                     <button type="button" onClick={addPollOption}
-                      className="text-xs text-primary-600 hover:text-primary-700 font-medium">
+                      className="text-xs text-primary-800 hover:text-primary-900 font-medium">
                       + 선택지 추가
                     </button>
                   )}
@@ -294,7 +294,7 @@ export default function PostFormPage() {
             type="button"
             onClick={() => mutation.mutate()}
             disabled={!canSubmit || mutation.isPending}
-            className="px-6 py-2.5 text-sm font-medium rounded-xl bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="px-6 py-2.5 text-sm font-medium rounded-xl bg-primary-800 text-white hover:bg-primary-900 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             {mutation.isPending ? '저장 중...' : isEdit ? t('common.save') : t('board.write')}
           </button>

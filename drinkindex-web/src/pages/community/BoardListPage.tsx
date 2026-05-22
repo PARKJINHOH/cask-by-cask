@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+﻿import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { usePosts, useBestPosts, usePostPrefixes } from '@/domain/community/hooks/usePosts'
@@ -127,7 +127,7 @@ export default function BoardListPage({ boardType, title }: Props) {
 
       {/* 작성자/댓글 필터 배너 */}
       {(authorIdParam || commentAuthorIdParam) && authorNicknameParam && (
-        <div className="flex items-center gap-2 mb-4 px-3 py-2 bg-primary-50 border border-primary-200 rounded-lg text-sm text-primary-700">
+        <div className="flex items-center gap-2 mb-4 px-3 py-2 bg-primary-50 border border-primary-200 rounded-lg text-sm text-primary-900">
           <span>
             {authorIdParam
               ? `"${authorNicknameParam}"님의 게시글`
@@ -142,7 +142,7 @@ export default function BoardListPage({ boardType, title }: Props) {
               next.set('page', '0')
               setSearchParams(next, { replace: true })
             }}
-            className="ml-auto text-xs text-primary-500 hover:text-primary-700 underline"
+            className="ml-auto text-xs text-primary-500 hover:text-primary-900 underline"
           >
             필터 해제
           </button>
@@ -155,7 +155,7 @@ export default function BoardListPage({ boardType, title }: Props) {
         {canWrite && (
           <Link
             to={`/community/${boardPath}/write`}
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition-colors"
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg bg-primary-800 text-white hover:bg-primary-900 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -174,7 +174,7 @@ export default function BoardListPage({ boardType, title }: Props) {
             className={[
               'px-5 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors',
               tabParam === tab
-                ? 'border-primary-600 text-primary-600'
+                ? 'border-primary-800 text-primary-800'
                 : 'border-transparent text-neutral-500 hover:text-neutral-700',
             ].join(' ')}
           >
@@ -193,7 +193,7 @@ export default function BoardListPage({ boardType, title }: Props) {
             className={[
               'px-3 py-1.5 text-xs font-medium rounded-full border transition-colors',
               !prefixParam
-                ? 'border-primary-500 bg-primary-50 text-primary-700'
+                ? 'border-primary-500 bg-primary-50 text-primary-900'
                 : 'border-neutral-200 text-neutral-600 hover:border-neutral-300',
             ].join(' ')}
           >
@@ -206,7 +206,7 @@ export default function BoardListPage({ boardType, title }: Props) {
               className={[
                 'px-3 py-1.5 text-xs font-medium rounded-full border transition-colors',
                 prefixParam === p.id
-                  ? 'border-primary-500 bg-primary-50 text-primary-700'
+                  ? 'border-primary-500 bg-primary-50 text-primary-900'
                   : 'border-neutral-200 text-neutral-600 hover:border-neutral-300',
               ].join(' ')}
               style={p.colorHex ? { borderColor: p.colorHex, color: p.colorHex } : undefined}
@@ -287,7 +287,7 @@ export default function BoardListPage({ boardType, title }: Props) {
                       <div className="flex items-center gap-2">
                         {post.isLocked && <span className="text-neutral-400">🔒</span>}
                         <span className={[
-                          'font-medium group-hover/row:text-primary-600 transition-colors truncate',
+                          'font-medium group-hover/row:text-primary-800 transition-colors truncate',
                           post.isLocked ? 'text-red-600' : 'text-neutral-800',
                         ].join(' ')}>
                           {post.title}

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import Badge from '@/shared/components/Badge'
 import Spinner from '@/shared/components/Spinner'
@@ -26,7 +26,7 @@ function SubjectPreviewModal({ logId, onClose }: { logId: number; onClose: () =>
     <Modal open onClose={onClose} title="이메일 미리보기" size="xl">
       {isLoading ? (
         <div className="flex justify-center py-10">
-          <Spinner size="lg" className="text-primary-600" />
+          <Spinner size="lg" className="text-primary-800" />
         </div>
       ) : detail ? (
         <div className="border border-neutral-200 rounded-lg overflow-hidden">
@@ -59,7 +59,7 @@ function LogDetailModal({ logId, onClose }: { logId: number; onClose: () => void
     <Modal open onClose={onClose} title="발송 상세" size="lg">
       {isLoading ? (
         <div className="flex justify-center py-10">
-          <Spinner size="lg" className="text-primary-600" />
+          <Spinner size="lg" className="text-primary-800" />
         </div>
       ) : detail ? (
         <div className="space-y-5">
@@ -148,7 +148,7 @@ export default function AdminEmailHistoryPage() {
 
       {isLoading ? (
         <div className="flex justify-center py-20">
-          <Spinner size="lg" className="text-primary-600" />
+          <Spinner size="lg" className="text-primary-800" />
         </div>
       ) : (
         <>
@@ -181,7 +181,7 @@ export default function AdminEmailHistoryPage() {
                       <td className="px-4 py-3 max-w-xs">
                         <button
                           onClick={() => setPreviewId(log.id)}
-                          className="text-neutral-800 hover:text-primary-600 hover:underline truncate block w-full text-left"
+                          className="text-neutral-800 hover:text-primary-800 hover:underline truncate block w-full text-left"
                         >
                           {log.subject}
                         </button>
@@ -199,7 +199,7 @@ export default function AdminEmailHistoryPage() {
                       <td className="px-4 py-3 text-right">
                         <button
                           onClick={() => setSelectedId(log.id)}
-                          className="text-xs text-primary-600 hover:underline font-medium"
+                          className="text-xs text-primary-800 hover:underline font-medium"
                         >
                           상세
                         </button>

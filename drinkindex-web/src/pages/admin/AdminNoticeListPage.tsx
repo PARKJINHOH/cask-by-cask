@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAdminNoticeList, useDeleteNotice } from '@/domain/notice/hooks/useAdminNotices'
 import { NOTICE_CATEGORY_LABELS } from '@/domain/notice/types/notice.types'
@@ -94,7 +94,7 @@ export default function AdminNoticeListPage() {
               }}
               className={`h-9 px-4 text-sm font-medium transition-colors
                 ${publishedFilter === opt.value
-                  ? 'bg-primary-600 text-white'
+                  ? 'bg-primary-800 text-white'
                   : 'bg-white text-neutral-600 hover:bg-neutral-50'
                 }`}
             >
@@ -143,7 +143,7 @@ export default function AdminNoticeListPage() {
                     <Link
                       to={`/admin/notices/${notice.id}`}
                       className="group/title inline-flex items-center gap-1.5 max-w-full font-medium
-                        text-primary-700 hover:text-primary-900 hover:underline underline-offset-2
+                        text-primary-900 hover:text-primary-900 hover:underline underline-offset-2
                         transition-colors"
                     >
                       {notice.isPinned && (

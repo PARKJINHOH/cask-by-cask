@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+﻿import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useForm, Controller } from 'react-hook-form'
 import { z } from 'zod'
@@ -232,7 +232,7 @@ function ToggleSwitch({ checked, onChange, label, description }: ToggleProps) {
         className={[
           'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent',
           'transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
-          checked ? 'bg-primary-600' : 'bg-neutral-300',
+          checked ? 'bg-primary-800' : 'bg-neutral-300',
         ].join(' ')}
       >
         <span
@@ -516,7 +516,7 @@ export default function AdminPopupFormPage() {
                     'flex-1 py-3 rounded-xl border-2 text-sm font-medium transition-all',
                     isEdit ? 'cursor-default opacity-75' : 'cursor-pointer',
                     popupType === t
-                      ? 'border-primary-500 bg-primary-50 text-primary-700'
+                      ? 'border-primary-500 bg-primary-50 text-primary-900'
                       : 'border-neutral-200 text-neutral-500 hover:border-neutral-300',
                   ].join(' ')}
                 >
@@ -543,7 +543,7 @@ export default function AdminPopupFormPage() {
                     'flex items-center gap-2 px-4 py-2.5 rounded-lg border cursor-pointer transition-all',
                     isEdit ? 'cursor-default opacity-75' : '',
                     watch('language') === l
-                      ? 'border-primary-500 bg-primary-50 text-primary-700'
+                      ? 'border-primary-500 bg-primary-50 text-primary-900'
                       : 'border-neutral-200 text-neutral-600',
                   ].join(' ')}
                 >
@@ -556,7 +556,7 @@ export default function AdminPopupFormPage() {
                         checked={field.value === l}
                         onChange={() => !isEdit && field.onChange(l)}
                         disabled={isEdit}
-                        className="accent-primary-600"
+                        className="accent-primary-800"
                       />
                     )}
                   />
@@ -629,7 +629,7 @@ export default function AdminPopupFormPage() {
                       type="checkbox"
                       checked={field.value}
                       onChange={field.onChange}
-                      className="w-4 h-4 accent-primary-600 rounded"
+                      className="w-4 h-4 accent-primary-800 rounded"
                     />
                   )}
                 />
@@ -688,7 +688,7 @@ export default function AdminPopupFormPage() {
                     type="checkbox"
                     checked={field.value}
                     onChange={field.onChange}
-                    className="w-4 h-4 accent-primary-600 rounded"
+                    className="w-4 h-4 accent-primary-800 rounded"
                   />
                 )}
               />

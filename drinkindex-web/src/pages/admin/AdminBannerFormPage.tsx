@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+﻿import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useForm, Controller } from 'react-hook-form'
 import { z } from 'zod'
@@ -194,7 +194,7 @@ function ToggleSwitch({ checked, onChange, label, description }: {
         className={[
           'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent',
           'transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
-          checked ? 'bg-primary-600' : 'bg-neutral-300',
+          checked ? 'bg-primary-800' : 'bg-neutral-300',
         ].join(' ')}
       >
         <span
@@ -280,7 +280,7 @@ function BannerPreview({
           <span className="text-xs font-semibold text-neutral-600">💻 PC</span>
           <span className="text-xs text-neutral-400">· 21:5 비율</span>
           {linkUrl && (
-            <span className="ml-auto text-xs text-primary-600 flex items-center gap-1">
+            <span className="ml-auto text-xs text-primary-800 flex items-center gap-1">
               <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
                 <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
@@ -558,7 +558,7 @@ export default function AdminBannerFormPage() {
                     'flex-1 py-3 rounded-xl border-2 text-sm font-medium transition-all',
                     isEdit ? 'cursor-default opacity-75' : 'cursor-pointer',
                     bannerType === t
-                      ? 'border-primary-500 bg-primary-50 text-primary-700'
+                      ? 'border-primary-500 bg-primary-50 text-primary-900'
                       : 'border-neutral-200 text-neutral-500 hover:border-neutral-300',
                   ].join(' ')}
                 >
@@ -584,7 +584,7 @@ export default function AdminBannerFormPage() {
                     'flex items-center gap-2 px-4 py-2.5 rounded-lg border cursor-pointer transition-all',
                     isEdit ? 'cursor-default opacity-75' : '',
                     watch('language') === l
-                      ? 'border-primary-500 bg-primary-50 text-primary-700'
+                      ? 'border-primary-500 bg-primary-50 text-primary-900'
                       : 'border-neutral-200 text-neutral-600',
                   ].join(' ')}
                 >
@@ -597,7 +597,7 @@ export default function AdminBannerFormPage() {
                         checked={field.value === l}
                         onChange={() => !isEdit && field.onChange(l)}
                         disabled={isEdit}
-                        className="accent-primary-600"
+                        className="accent-primary-800"
                       />
                     )}
                   />
@@ -662,7 +662,7 @@ export default function AdminBannerFormPage() {
                       type="checkbox"
                       checked={field.value}
                       onChange={field.onChange}
-                      className="w-4 h-4 accent-primary-600 rounded"
+                      className="w-4 h-4 accent-primary-800 rounded"
                     />
                   )}
                 />
@@ -726,7 +726,7 @@ export default function AdminBannerFormPage() {
                     type="checkbox"
                     checked={field.value}
                     onChange={field.onChange}
-                    className="w-4 h-4 accent-primary-600 rounded"
+                    className="w-4 h-4 accent-primary-800 rounded"
                   />
                 )}
               />

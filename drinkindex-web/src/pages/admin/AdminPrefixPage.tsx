@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { adminCommunityApi } from '@/domain/admin/api/adminCommunityApi'
 import type { PostPrefixAdmin } from '@/domain/admin/types/admin.types'
@@ -46,7 +46,7 @@ export default function AdminPrefixPage() {
         <h1 className="text-xl font-bold text-neutral-900">말머리 관리</h1>
         <button
           onClick={() => { setEditItem(null); setShowForm(true) }}
-          className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors"
+          className="px-4 py-2 bg-primary-800 text-white text-sm font-medium rounded-lg hover:bg-primary-900 transition-colors"
         >
           + 말머리 추가
         </button>
@@ -61,7 +61,7 @@ export default function AdminPrefixPage() {
             className={[
               'px-5 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors',
               boardType === tab.value
-                ? 'border-primary-600 text-primary-600'
+                ? 'border-primary-800 text-primary-800'
                 : 'border-transparent text-neutral-500 hover:text-neutral-700',
             ].join(' ')}
           >
@@ -288,7 +288,7 @@ function PrefixForm({
           <button
             type="submit"
             disabled={isPending || !name.trim()}
-            className="flex-1 px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-40"
+            className="flex-1 px-4 py-2 bg-primary-800 text-white text-sm font-medium rounded-lg hover:bg-primary-900 transition-colors disabled:opacity-40"
           >
             {isPending ? '저장 중...' : '저장'}
           </button>

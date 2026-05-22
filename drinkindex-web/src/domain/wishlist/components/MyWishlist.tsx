@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import Spinner from '@/shared/components/Spinner'
@@ -23,7 +23,7 @@ export default function MyWishlist() {
     <div className="space-y-4">
       {isLoading ? (
         <div className="flex justify-center py-12">
-          <Spinner className="text-primary-600" />
+          <Spinner className="text-primary-800" />
         </div>
       ) : !data || data.empty ? (
         <EmptyState
@@ -81,7 +81,7 @@ export default function MyWishlist() {
                         {isEn ? item.spirit.nameKo : item.spirit.nameEn}
                       </p>
                       {item.spirit.avgScore != null && (
-                        <p className="text-xs font-bold text-primary-600 pt-0.5">
+                        <p className="text-xs font-bold text-primary-800 pt-0.5">
                           ★ {item.spirit.avgScore.toFixed(1)}
                         </p>
                       )}

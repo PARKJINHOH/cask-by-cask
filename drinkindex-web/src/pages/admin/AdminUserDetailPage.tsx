@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useParams, useNavigate, Navigate } from 'react-router-dom'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { formatDate } from '@/shared/utils/format'
@@ -131,7 +131,7 @@ function MenuTreePanel({ user }: MenuTreePanelProps) {
                     checked={isChecked}
                     disabled
                     readOnly
-                    className={`w-3.5 h-3.5 flex-shrink-0 ${isDimmed ? 'opacity-20' : 'accent-primary-600 opacity-70'}`}
+                    className={`w-3.5 h-3.5 flex-shrink-0 ${isDimmed ? 'opacity-20' : 'accent-primary-800 opacity-70'}`}
                   />
                   <span className={`text-sm ${isDimmed ? 'text-neutral-300' : isChecked ? 'text-neutral-700' : 'text-neutral-400'}`}>
                     {item.subItem && <span className="text-neutral-300 text-xs mr-1">└</span>}
@@ -197,7 +197,7 @@ function RoleChangeModal({ user, onClose }: { user: AdminUser; onClose: () => vo
             {CHANGEABLE_ROLES.map((r) => (
               <button key={r} type="button" onClick={() => { setRole(r); setRoleTypeId(null) }}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
-                  role === r ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-neutral-600 border-neutral-200 hover:border-primary-400'
+                  role === r ? 'bg-primary-800 text-white border-primary-800' : 'bg-white text-neutral-600 border-neutral-200 hover:border-primary-400'
                 }`}>
                 {ROLE_LABEL[r]}
               </button>
@@ -417,7 +417,7 @@ export default function AdminUserDetailPage() {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <Spinner size="lg" className="text-primary-600" />
+        <Spinner size="lg" className="text-primary-800" />
       </div>
     )
   }
@@ -479,7 +479,7 @@ export default function AdminUserDetailPage() {
                   </Badge>
                   {user.roleTypeName && (
                     <span className="px-2 py-0.5 rounded bg-primary-50 border border-primary-200
-                      text-primary-700 text-[11px] font-medium">
+                      text-primary-900 text-[11px] font-medium">
                       {user.roleTypeName}
                     </span>
                   )}
@@ -549,7 +549,7 @@ export default function AdminUserDetailPage() {
                           prev.includes(bt) ? prev.filter((b) => b !== bt) : [...prev, bt],
                         )
                       }
-                      className="w-4 h-4 accent-primary-600"
+                      className="w-4 h-4 accent-primary-800"
                     />
                     <span className="text-sm text-neutral-700">{BOARD_TYPE_LABELS[bt]}</span>
                   </label>
@@ -574,7 +574,7 @@ export default function AdminUserDetailPage() {
               <p className="text-sm font-semibold text-neutral-700 mb-1">메뉴 접근 권한</p>
               {user.roleTypeName ? (
                 <p className="text-xs text-neutral-500">
-                  역할 타입 <strong className="text-primary-600">{user.roleTypeName}</strong>에 설정된 메뉴가 적용됩니다.
+                  역할 타입 <strong className="text-primary-800">{user.roleTypeName}</strong>에 설정된 메뉴가 적용됩니다.
                   메뉴를 변경하려면 <strong>역할 관리</strong> 페이지에서 역할 타입을 수정하세요.
                 </p>
               ) : (

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/domain/auth/store/authStore'
@@ -61,7 +61,7 @@ export default function ReviewList({ spiritId, onNeedLogin }: ReviewListProps) {
         <button
           onClick={onNeedLogin}
           className="w-full py-3 border border-dashed border-neutral-300 rounded-xl
-            text-sm text-neutral-400 hover:text-primary-600 hover:border-primary-300 transition-colors"
+            text-sm text-neutral-400 hover:text-primary-800 hover:border-primary-300 transition-colors"
         >
           {t('review.loginPrompt')}
         </button>
@@ -70,7 +70,7 @@ export default function ReviewList({ spiritId, onNeedLogin }: ReviewListProps) {
       {/* List */}
       {isLoading ? (
         <div className="flex justify-center py-10">
-          <Spinner className="text-primary-600" />
+          <Spinner className="text-primary-800" />
         </div>
       ) : !data || data.empty ? (
         <EmptyState title={t('review.noReview')} description={t('review.noReviewDesc')} />

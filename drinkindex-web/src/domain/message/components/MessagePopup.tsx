@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+﻿import { useState, useEffect, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMessageStore } from '../store/messageStore'
 import { useMessageActions } from '../hooks/useMessages'
@@ -199,7 +199,7 @@ export default function MessagePopup() {
           <button
             onClick={handleSend}
             disabled={!canSend}
-            className="flex-1 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 py-2 text-sm font-medium text-white bg-primary-800 rounded-lg hover:bg-primary-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {sendMutation.isPending ? t('common.loading') : t('messages.send')}
           </button>

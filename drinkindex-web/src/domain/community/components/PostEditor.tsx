@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react'
+﻿import { useCallback, useEffect } from 'react'
 import { useEditor, EditorContent, Node, mergeAttributes } from '@tiptap/react'
 import type { Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
@@ -66,7 +66,7 @@ function ToolbarBtn({ onClick, isActive, title, children }: {
       onMouseDown={(e) => { e.preventDefault(); onClick() }}
       className={[
         'h-7 w-7 flex items-center justify-center rounded text-sm transition-colors',
-        isActive ? 'bg-primary-100 text-primary-700' : 'text-neutral-600 hover:bg-neutral-100',
+        isActive ? 'bg-primary-100 text-primary-900' : 'text-neutral-600 hover:bg-neutral-100',
       ].join(' ')}
     >
       {children}

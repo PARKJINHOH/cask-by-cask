@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Badge from '@/shared/components/Badge'
 import Input from '@/shared/components/Input'
@@ -88,7 +88,7 @@ export default function AdminSpiritPage() {
       {/* 테이블 */}
       {isLoading ? (
         <div className="flex justify-center py-20">
-          <Spinner size="lg" className="text-primary-600" />
+          <Spinner size="lg" className="text-primary-800" />
         </div>
       ) : (
         <>
@@ -157,7 +157,7 @@ export default function AdminSpiritPage() {
                           {STATUS_OPTIONS.find((s) => s.value === spirit.status)?.label ?? spirit.status}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3 text-right font-medium text-primary-600 tabular-nums">
+                      <td className="px-4 py-3 text-right font-medium text-primary-800 tabular-nums">
                         {spirit.avgScore != null ? spirit.avgScore.toFixed(1) : '-'}
                       </td>
                       <td className="px-4 py-3 text-right text-neutral-600 tabular-nums">

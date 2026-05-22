@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+﻿import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { communityApi } from '../api/communityApi'
@@ -33,7 +33,7 @@ export default function PostSeriesNav({ seriesId, currentPostId, seriesTitle, bo
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
         </svg>
         <span className="text-sm font-semibold text-neutral-700">{t('post.seriesLabel')}</span>
-        <Link to={`/series/${seriesId}`} className="text-sm text-primary-600 hover:underline ml-1 truncate">
+        <Link to={`/series/${seriesId}`} className="text-sm text-primary-800 hover:underline ml-1 truncate">
           {seriesTitle}
         </Link>
       </div>
@@ -45,7 +45,7 @@ export default function PostSeriesNav({ seriesId, currentPostId, seriesTitle, bo
             className="flex items-center gap-3 px-4 py-3 hover:bg-neutral-50 transition-colors group"
           >
             <span className="text-xs text-neutral-400 w-14 flex-shrink-0">{t('post.seriesPrev')}</span>
-            <span className="text-sm text-neutral-700 group-hover:text-primary-600 transition-colors truncate">
+            <span className="text-sm text-neutral-700 group-hover:text-primary-800 transition-colors truncate">
               {prev.title}
             </span>
           </Link>
@@ -56,7 +56,7 @@ export default function PostSeriesNav({ seriesId, currentPostId, seriesTitle, bo
             className="flex items-center gap-3 px-4 py-3 hover:bg-neutral-50 transition-colors group"
           >
             <span className="text-xs text-neutral-400 w-14 flex-shrink-0">{t('post.seriesNext')}</span>
-            <span className="text-sm text-neutral-700 group-hover:text-primary-600 transition-colors truncate">
+            <span className="text-sm text-neutral-700 group-hover:text-primary-800 transition-colors truncate">
               {next.title}
             </span>
           </Link>

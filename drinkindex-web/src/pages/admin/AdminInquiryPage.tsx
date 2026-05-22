@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Badge from '@/shared/components/Badge'
 import Spinner from '@/shared/components/Spinner'
@@ -115,7 +115,7 @@ export default function AdminInquiryPage() {
       {/* 목록 */}
       {isLoading ? (
         <div className="flex justify-center py-20">
-          <Spinner size="lg" className="text-primary-600" />
+          <Spinner size="lg" className="text-primary-800" />
         </div>
       ) : (
         <>
@@ -194,7 +194,7 @@ export default function AdminInquiryPage() {
           >
             {detailLoading ? (
               <div className="flex justify-center py-20">
-                <Spinner size="lg" className="text-primary-600" />
+                <Spinner size="lg" className="text-primary-800" />
               </div>
             ) : detail ? (
               <div className="p-6 space-y-5">
@@ -222,7 +222,7 @@ export default function AdminInquiryPage() {
                 <div className="bg-neutral-50 rounded-xl p-4 space-y-1.5 text-sm">
                   <p><span className="text-neutral-500 w-20 inline-block">이메일</span>
                     <a href={`mailto:${detail.senderEmail}`}
-                      className="text-primary-600 hover:underline">{detail.senderEmail}</a></p>
+                      className="text-primary-800 hover:underline">{detail.senderEmail}</a></p>
                   <p><span className="text-neutral-500 w-20 inline-block">접수일</span>
                     <span>{formatDateTime(detail.createdAt)}</span></p>
                 </div>
@@ -314,7 +314,7 @@ export default function AdminInquiryPage() {
                           }}
                           disabled={replyMutation.isPending || !replyInput.trim()}
                           className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium
-                            bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors
+                            bg-primary-800 text-white rounded-lg hover:bg-primary-900 transition-colors
                             disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -383,7 +383,7 @@ function FilterTabs<T extends string>({
             onClick={() => onChange(opt.value)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
               value === opt.value
-                ? 'bg-primary-600 text-white'
+                ? 'bg-primary-800 text-white'
                 : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
             }`}
           >

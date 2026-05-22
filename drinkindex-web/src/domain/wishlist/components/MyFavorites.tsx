@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import MyWishlist from './MyWishlist'
 import MyScrappedPosts from '@/domain/community/components/MyScrappedPosts'
 
@@ -23,7 +23,7 @@ export default function MyFavorites() {
             className={[
               'px-4 py-1.5 text-sm font-medium rounded-md transition-colors',
               subTab === value
-                ? 'bg-white text-primary-700 shadow-sm'
+                ? 'bg-white text-primary-900 shadow-sm'
                 : 'text-neutral-500 hover:text-neutral-700',
             ].join(' ')}
           >

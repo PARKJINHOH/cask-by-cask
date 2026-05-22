@@ -1,4 +1,4 @@
-import React from 'react'
+﻿import React from 'react'
 
 // Spirit categories
 type SpiritCategoryVariant =
@@ -25,7 +25,7 @@ export interface BadgeProps {
 
 const variantClasses: Record<BadgeVariant, string> = {
   // Generic
-  primary:   'bg-primary-100 text-primary-700',
+  primary:   'bg-primary-100 text-primary-900',
   neutral:   'bg-neutral-100 text-neutral-600',
   success:   'bg-green-100 text-green-700',
   danger:    'bg-danger-100 text-danger-700',

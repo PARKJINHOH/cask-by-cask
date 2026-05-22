@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+﻿import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import type { AxiosError } from 'axios'
@@ -134,7 +134,7 @@ export default function EmailVerifyPage() {
 
         {/* Branding */}
         <div className="text-center mb-8">
-          <Link to="/" className="inline-block text-2xl font-bold text-primary-600 tracking-tight">
+          <Link to="/" className="inline-block text-2xl font-bold text-primary-800 tracking-tight">
             DrinkIndex
           </Link>
           <h1 className="mt-3 text-xl font-semibold text-neutral-900">{t('emailVerify.title')}</h1>
@@ -193,7 +193,7 @@ export default function EmailVerifyPage() {
             type="button"
             onClick={handleResend}
             disabled={cooldown > 0 || resending}
-            className="text-sm text-primary-600 font-semibold hover:underline disabled:text-neutral-400 disabled:no-underline disabled:cursor-not-allowed"
+            className="text-sm text-primary-800 font-semibold hover:underline disabled:text-neutral-400 disabled:no-underline disabled:cursor-not-allowed"
           >
             {cooldown > 0
               ? t('emailVerify.resendIn', { seconds: cooldown })

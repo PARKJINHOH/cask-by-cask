@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import Badge from '@/shared/components/Badge'
 import Spinner from '@/shared/components/Spinner'
 import Pagination from '@/shared/components/Pagination'
@@ -83,7 +83,7 @@ export default function AdminReportPage() {
       {/* 테이블 */}
       {isLoading ? (
         <div className="flex justify-center py-20">
-          <Spinner size="lg" className="text-primary-600" />
+          <Spinner size="lg" className="text-primary-800" />
         </div>
       ) : (
         <>
@@ -215,7 +215,7 @@ function FilterTabs<T extends string>({
             onClick={() => onChange(opt.value)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
               value === opt.value
-                ? 'bg-primary-600 text-white'
+                ? 'bg-primary-800 text-white'
                 : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
             }`}
           >

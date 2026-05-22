@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 import { buildBreadcrumbSchema } from '@/shared/utils/seoSchema'
 
@@ -159,7 +159,7 @@ export default function FaqPage() {
       </div>
 
       <p className="mt-6 text-xs text-neutral-400">
-        더 궁금한 점이 있으면 <a href="/inquiry" className="text-primary-600 hover:underline">문의하기</a> 를 이용해주세요.
+        더 궁금한 점이 있으면 <a href="/inquiry" className="text-primary-800 hover:underline">문의하기</a> 를 이용해주세요.
       </p>
     </div>
   )

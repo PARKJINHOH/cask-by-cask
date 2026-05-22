@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatDate } from '@/shared/utils/format'
 import CommentForm from './CommentForm'
@@ -115,8 +115,8 @@ export default function CommentItem({
                   }}
                   className={`text-xs transition-colors ${
                     isReplying
-                      ? 'text-primary-600'
-                      : 'text-neutral-400 hover:text-primary-600'
+                      ? 'text-primary-800'
+                      : 'text-neutral-400 hover:text-primary-800'
                   }`}
                 >
                   {isReplying ? t('comment.cancel') : t('comment.reply')}

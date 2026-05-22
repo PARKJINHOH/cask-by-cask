@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useForm, Controller } from 'react-hook-form'
 import { z } from 'zod'
@@ -162,7 +162,7 @@ export default function ReviewFormPage() {
       {/* 뒤로가기 */}
       <button
         onClick={handleCancel}
-        className="flex items-center gap-1 text-sm text-neutral-400 hover:text-primary-600 mb-5 transition-colors"
+        className="flex items-center gap-1 text-sm text-neutral-400 hover:text-primary-800 mb-5 transition-colors"
       >
         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <polyline points="15,18 9,12 15,6" />

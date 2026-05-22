@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+﻿import { useState, useRef, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { useCreateComment, useUpdateComment } from '../hooks/useComments'
@@ -141,11 +141,11 @@ export default function CommunityCommentForm({
       {parentNickname && !editingComment && (
         <div className="flex items-center gap-2 px-3 py-2 bg-primary-50 rounded-lg">
           <span className="text-primary-400 text-sm">↩</span>
-          <span className="text-sm text-primary-700 font-medium flex-1">
+          <span className="text-sm text-primary-900 font-medium flex-1">
             {t('comment.replyTo', { nickname: parentNickname })}
           </span>
           {onCancel && (
-            <button type="button" onClick={onCancel} className="text-primary-300 hover:text-primary-600 text-xs">✕</button>
+            <button type="button" onClick={onCancel} className="text-primary-300 hover:text-primary-800 text-xs">✕</button>
           )}
         </div>
       )}
@@ -168,7 +168,7 @@ export default function CommunityCommentForm({
                 key={u.id}
                 type="button"
                 onMouseDown={(e) => { e.preventDefault(); selectMention(u) }}
-                className="w-full text-left px-3 py-2 text-sm hover:bg-primary-50 hover:text-primary-700 transition-colors"
+                className="w-full text-left px-3 py-2 text-sm hover:bg-primary-50 hover:text-primary-900 transition-colors"
               >
                 @{u.nickname}
               </button>

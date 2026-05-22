@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+﻿import type { ReactNode } from 'react'
 import { useEditorState } from '@tiptap/react'
 import type { Editor } from '@tiptap/react'
 
@@ -24,7 +24,7 @@ function ToolbarButton({ onClick, isActive, disabled, title, children }: Toolbar
         'h-7 w-7 flex items-center justify-center rounded text-sm transition-colors',
         'disabled:opacity-40 disabled:cursor-not-allowed',
         isActive
-          ? 'bg-primary-100 text-primary-700'
+          ? 'bg-primary-100 text-primary-900'
           : 'text-neutral-600 hover:bg-neutral-100',
       ].join(' ')}
     >

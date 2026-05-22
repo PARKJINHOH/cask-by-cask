@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
@@ -129,7 +129,7 @@ function SectionHeader({
       <h2 className="text-lg font-bold text-neutral-900 tracking-tight">{title}</h2>
       <Link
         to={link}
-        className="text-sm text-primary-600 hover:text-primary-700 font-medium
+        className="text-sm text-primary-800 hover:text-primary-900 font-medium
           flex items-center gap-0.5 transition-colors"
       >
         {linkLabel}
@@ -164,7 +164,7 @@ function NoticeRow({ notice }: { notice: NoticeListItem }) {
     <Link
       to={`/notices/${notice.id}`}
       className="flex items-center justify-between py-3.5 border-b border-neutral-100
-        last:border-b-0 hover:text-primary-600 transition-colors group"
+        last:border-b-0 hover:text-primary-800 transition-colors group"
     >
       <div className="flex items-center gap-2 min-w-0 flex-1">
         {notice.isPinned && (
@@ -173,7 +173,7 @@ function NoticeRow({ notice }: { notice: NoticeListItem }) {
             공지
           </span>
         )}
-        <span className="text-sm text-neutral-700 group-hover:text-primary-600
+        <span className="text-sm text-neutral-700 group-hover:text-primary-800
           line-clamp-1 transition-colors">
           {notice.title}
         </span>

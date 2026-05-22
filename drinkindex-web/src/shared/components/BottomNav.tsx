@@ -1,4 +1,4 @@
-import { useLocation, useNavigate } from 'react-router-dom'
+﻿import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 
@@ -99,7 +99,7 @@ export default function BottomNav() {
             aria-current={tab.active ? 'page' : undefined}
             className={`flex flex-col items-center justify-center gap-0.5 transition-colors
               ${tab.active
-                ? 'text-primary-600'
+                ? 'text-primary-800'
                 : 'text-neutral-400 hover:text-neutral-600'
               }`}
           >

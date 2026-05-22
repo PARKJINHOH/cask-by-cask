@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+﻿import { useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useForm, Controller } from 'react-hook-form'
 import { z } from 'zod'
@@ -165,7 +165,7 @@ export default function AdminNoticeFormPage() {
                     type="checkbox"
                     checked={field.value}
                     onChange={field.onChange}
-                    className="w-4 h-4 accent-primary-600 rounded"
+                    className="w-4 h-4 accent-primary-800 rounded"
                   />
                 )}
               />
@@ -216,7 +216,7 @@ export default function AdminNoticeFormPage() {
                 className={[
                   'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent',
                   'transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
-                  field.value ? 'bg-primary-600' : 'bg-neutral-300',
+                  field.value ? 'bg-primary-800' : 'bg-neutral-300',
                 ].join(' ')}
               >
                 <span

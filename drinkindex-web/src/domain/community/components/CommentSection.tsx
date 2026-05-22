@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+﻿import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useComments } from '../hooks/useComments'
 import CommunityCommentItem from './CommunityCommentItem'
@@ -49,7 +49,7 @@ export default function CommentSection({ postId }: Props) {
         </div>
       ) : (
         <div className="mb-6 py-4 text-center text-sm text-neutral-400 bg-neutral-50 rounded-xl border border-dashed border-neutral-200">
-          <button onClick={() => navigate('/login')} className="text-primary-600 hover:underline">
+          <button onClick={() => navigate('/login')} className="text-primary-800 hover:underline">
             {t('post.loginToComment')}
           </button>
         </div>

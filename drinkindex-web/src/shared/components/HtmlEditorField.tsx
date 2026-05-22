@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+﻿import { useEffect, useRef, useState } from 'react'
 import NoticeEditor from '@/domain/notice/components/NoticeEditor'
 import { sanitizeHtml } from '@/shared/utils/sanitize'
 
@@ -19,7 +19,7 @@ function HtmlModeToggle({ isHtml, onToggle }: { isHtml: boolean; onToggle: () =>
       className={[
         'inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md border transition-colors',
         isHtml
-          ? 'border-primary-400 bg-primary-50 text-primary-700'
+          ? 'border-primary-400 bg-primary-50 text-primary-900'
           : 'border-neutral-300 text-neutral-500 hover:bg-neutral-50',
       ].join(' ')}
       title={isHtml ? '비주얼 에디터로 전환' : 'HTML 직접 편집 모드로 전환'}

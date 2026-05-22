@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { useMyRequests, useSubmitRequest } from '@/domain/spirit/hooks/useSpiritRequest'
@@ -278,8 +278,8 @@ export default function SpiritRequestPage() {
           <button
             type="submit"
             disabled={isPending}
-            className="w-full py-2.5 bg-primary-600 text-white text-sm font-semibold rounded-xl
-              hover:bg-primary-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+            className="w-full py-2.5 bg-primary-800 text-white text-sm font-semibold rounded-xl
+              hover:bg-primary-900 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
           >
             {isPending ? t('common.loading') : t('spiritRequest.form.submit')}
           </button>

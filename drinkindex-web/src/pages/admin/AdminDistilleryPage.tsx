@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+﻿import { useState, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import Button from '@/shared/components/Button'
 import Spinner from '@/shared/components/Spinner'
@@ -256,7 +256,7 @@ export default function AdminDistilleryPage() {
 
       {isLoading ? (
         <div className="flex justify-center py-20">
-          <Spinner size="lg" className="text-primary-600" />
+          <Spinner size="lg" className="text-primary-800" />
         </div>
       ) : (
         <>
@@ -292,7 +292,7 @@ export default function AdminDistilleryPage() {
                       <td className="px-4 py-3 text-neutral-400">{d.foundedYear ?? '-'}</td>
                       <td className="px-4 py-3 text-neutral-400">
                         {d.website
-                          ? <a href={d.website} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline truncate max-w-[140px] inline-block">{d.website}</a>
+                          ? <a href={d.website} target="_blank" rel="noopener noreferrer" className="text-primary-800 hover:underline truncate max-w-[140px] inline-block">{d.website}</a>
                           : '-'}
                       </td>
                       <td className="px-4 py-3 text-right">

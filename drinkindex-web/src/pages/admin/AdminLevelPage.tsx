@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   adminScoreApi,
@@ -49,7 +49,7 @@ export default function AdminLevelPage() {
         </div>
         <button
           onClick={() => setShowAddForm(true)}
-          className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors"
+          className="px-4 py-2 bg-primary-800 text-white text-sm font-medium rounded-lg hover:bg-primary-900 transition-colors"
         >
           + 레벨 추가
         </button>
@@ -210,7 +210,7 @@ function LevelEditRow({
           type="checkbox"
           checked={isActive}
           onChange={(e) => setIsActive(e.target.checked)}
-          className="w-4 h-4 accent-primary-600"
+          className="w-4 h-4 accent-primary-800"
         />
       </td>
       <td className="px-4 py-2">
@@ -218,7 +218,7 @@ function LevelEditRow({
           <button
             onClick={() => onSave({ name: name.trim(), minScore: Number(minScore), isActive })}
             disabled={isPending || !name.trim()}
-            className="h-7 px-2.5 text-xs font-medium rounded-md bg-primary-600 text-white hover:bg-primary-700 transition-colors disabled:opacity-40"
+            className="h-7 px-2.5 text-xs font-medium rounded-md bg-primary-800 text-white hover:bg-primary-900 transition-colors disabled:opacity-40"
           >
             저장
           </button>
@@ -294,7 +294,7 @@ function LevelAddModal({
           <button
             type="submit"
             disabled={isPending || !level || !name}
-            className="flex-1 px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-40"
+            className="flex-1 px-4 py-2 bg-primary-800 text-white text-sm font-medium rounded-lg hover:bg-primary-900 transition-colors disabled:opacity-40"
           >
             {isPending ? '추가 중...' : '추가'}
           </button>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { adminCommunityApi } from '@/domain/admin/api/adminCommunityApi'
 import Spinner from '@/shared/components/Spinner'
@@ -63,8 +63,8 @@ export default function AdminBadWordPage() {
         <button
           type="submit"
           disabled={createMutation.isPending || !input.trim()}
-          className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg
-            hover:bg-primary-700 transition-colors disabled:opacity-40"
+          className="px-4 py-2 bg-primary-800 text-white text-sm font-medium rounded-lg
+            hover:bg-primary-900 transition-colors disabled:opacity-40"
         >
           추가
         </button>
@@ -73,7 +73,7 @@ export default function AdminBadWordPage() {
       {/* 목록 */}
       {isLoading ? (
         <div className="flex justify-center py-20">
-          <Spinner size="lg" className="text-primary-600" />
+          <Spinner size="lg" className="text-primary-800" />
         </div>
       ) : (
         <>

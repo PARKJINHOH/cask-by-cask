@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import Spinner from '@/shared/components/Spinner'
 import EmptyState from '@/shared/components/EmptyState'
@@ -23,7 +23,7 @@ export default function MyScrappedPosts() {
   if (isLoading) {
     return (
       <div className="flex justify-center py-12">
-        <Spinner className="text-primary-600" />
+        <Spinner className="text-primary-800" />
       </div>
     )
   }

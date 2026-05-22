@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import Badge from '@/shared/components/Badge'
 import Spinner from '@/shared/components/Spinner'
 import Pagination from '@/shared/components/Pagination'
@@ -75,7 +75,7 @@ export default function AdminLogPage() {
                 onClick={() => { setCategory(c); setPage(0) }}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
                   category === c
-                    ? 'bg-primary-600 text-white border-primary-600'
+                    ? 'bg-primary-800 text-white border-primary-800'
                     : 'bg-white text-neutral-600 border-neutral-200 hover:border-primary-400'
                 }`}
               >
@@ -99,8 +99,8 @@ export default function AdminLogPage() {
             />
             <button
               onClick={handleSearch}
-              className="h-9 px-4 text-sm font-medium rounded-lg bg-primary-600 text-white
-                hover:bg-primary-700 transition-colors"
+              className="h-9 px-4 text-sm font-medium rounded-lg bg-primary-800 text-white
+                hover:bg-primary-900 transition-colors"
             >
               검색
             </button>
@@ -111,7 +111,7 @@ export default function AdminLogPage() {
       {/* 테이블 */}
       {isLoading ? (
         <div className="flex justify-center py-20">
-          <Spinner size="lg" className="text-primary-600" />
+          <Spinner size="lg" className="text-primary-800" />
         </div>
       ) : (
         <>

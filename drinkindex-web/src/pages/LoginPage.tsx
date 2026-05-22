@@ -1,4 +1,4 @@
-import { useState, startTransition } from 'react'
+﻿import { useState, startTransition } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -140,7 +140,7 @@ export default function LoginPage() {
 
         {/* Branding */}
         <div className="text-center mb-8">
-          <Link to="/" className="inline-block text-2xl font-bold text-primary-600 tracking-tight">
+          <Link to="/" className="inline-block text-2xl font-bold text-primary-800 tracking-tight">
             DrinkIndex
           </Link>
           <h1 className="mt-3 text-xl font-semibold text-neutral-900">로그인</h1>
@@ -201,7 +201,7 @@ export default function LoginPage() {
         {/* Footer */}
         <p className="mt-6 text-center text-sm text-neutral-500">
           계정이 없으신가요?{' '}
-          <Link to="/signup" className="text-primary-600 font-semibold hover:underline">
+          <Link to="/signup" className="text-primary-800 font-semibold hover:underline">
             회원가입
           </Link>
         </p>

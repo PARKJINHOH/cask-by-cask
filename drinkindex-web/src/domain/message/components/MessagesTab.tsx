@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+﻿import { useState, useEffect, useRef, useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useMessageList, useMessageThread, useMessageActions } from '../hooks/useMessages'
 import { useMessageStore } from '../store/messageStore'
@@ -185,7 +185,7 @@ function ThreadPanel({
           <button
             onClick={handleReply}
             disabled={!replyText.trim() || replyMutation.isPending}
-            className="px-4 py-1.5 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
+            className="px-4 py-1.5 text-sm font-medium text-white bg-primary-800 rounded-lg hover:bg-primary-900 transition-colors disabled:opacity-50"
           >
             {replyMutation.isPending ? '전송 중...' : '보내기'}
           </button>
@@ -243,7 +243,7 @@ export default function MessagesTab({ initialMessageId }: Props) {
             </div>
             <button
               onClick={() => openPopup()}
-              className="text-xs text-primary-600 hover:text-primary-700 font-medium"
+              className="text-xs text-primary-800 hover:text-primary-900 font-medium"
             >
               + 새 쪽지
             </button>

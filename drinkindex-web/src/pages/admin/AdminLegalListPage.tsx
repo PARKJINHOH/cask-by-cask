@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import {
   useAdminLegalList,
@@ -120,7 +120,7 @@ export default function AdminLegalListPage() {
                   <td className="px-4 py-3">
                     <Link
                       to={`/admin/legal/${doc.id}/edit`}
-                      className="font-medium text-primary-700 hover:text-primary-900 hover:underline underline-offset-2"
+                      className="font-medium text-primary-900 hover:text-primary-900 hover:underline underline-offset-2"
                     >
                       {doc.version}
                     </Link>
@@ -134,7 +134,7 @@ export default function AdminLegalListPage() {
                           <button
                             onClick={() => handleActivate(doc.id, doc.version)}
                             disabled={activateMutation.isPending}
-                            className="text-xs px-2.5 py-1 border border-primary-300 text-primary-600 rounded-lg hover:bg-primary-50 transition-colors disabled:opacity-50"
+                            className="text-xs px-2.5 py-1 border border-primary-300 text-primary-800 rounded-lg hover:bg-primary-50 transition-colors disabled:opacity-50"
                           >
                             활성화
                           </button>

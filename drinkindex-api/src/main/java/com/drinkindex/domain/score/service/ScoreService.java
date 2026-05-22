@@ -10,6 +10,7 @@ import com.drinkindex.domain.score.repository.MemberLevelConfigRepository;
 import com.drinkindex.domain.score.repository.ScoreConfigRepository;
 import com.drinkindex.domain.score.repository.ScoreHistoryRepository;
 import com.drinkindex.domain.user.entity.User;
+import com.drinkindex.domain.user.entity.enums.Role;
 import com.drinkindex.domain.user.repository.UserRepository;
 import com.drinkindex.global.exception.CustomException;
 import com.drinkindex.global.exception.ErrorCode;
@@ -64,6 +65,12 @@ public class ScoreService {
         ScoreConfig config = scoreConfigRepository.findByActionType(actionType).orElse(null);
         if (config == null || !config.getIsActive()) return;
 
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+        // SUPER_ADMIN은 숙성력 적립 제외
+        if (user.getRole() == Role.SUPER_ADMIN) return;
+
         int actualScore = config.getScore();
 
         if (config.getDailyLimit() != null && actualScore > 0) {
@@ -73,9 +80,6 @@ public class ScoreService {
             if (remaining <= 0) return;
             actualScore = Math.min(actualScore, remaining);
         }
-
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
         user.addMaturingPower(actualScore);
 

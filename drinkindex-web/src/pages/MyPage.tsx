@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/domain/auth/store/authStore'
@@ -82,7 +82,7 @@ export default function MyPage() {
             : ''
           }>
             <div className={`w-14 h-14 rounded-full bg-primary-100 flex items-center justify-center
-              text-xl font-bold text-primary-600 select-none overflow-hidden
+              text-xl font-bold text-primary-800 select-none overflow-hidden
               ${isFixed ? 'ring-2 ring-white' : ''}`}>
               {profileImageUrl ? (
                 <img src={profileImageUrl} alt={nickname} className="w-full h-full object-cover" />
@@ -111,7 +111,7 @@ export default function MyPage() {
           <p className="text-sm text-neutral-400 truncate">{email}</p>
           <div className="flex items-center gap-2 mt-1.5 flex-wrap">
             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs
-              font-medium bg-primary-50 text-primary-700">
+              font-medium bg-primary-50 text-primary-900">
               {ROLE_LABEL[role] ?? role}
             </span>
             {role === 'MEMBER' && (
@@ -137,7 +137,7 @@ export default function MyPage() {
             className={`inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px
               whitespace-nowrap flex-shrink-0 ${
               tab === value
-                ? 'border-primary-600 text-primary-700'
+                ? 'border-primary-800 text-primary-900'
                 : 'border-transparent text-neutral-500 hover:text-neutral-700'
             }`}
           >

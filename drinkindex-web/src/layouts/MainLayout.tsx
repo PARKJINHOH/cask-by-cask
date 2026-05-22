@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+﻿import { useState, useRef, useEffect } from 'react'
 import { Outlet, Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/domain/auth/store/authStore'
@@ -94,7 +94,7 @@ function GNB() {
 
   const itemCls = (active: boolean) =>
     `inline-flex items-center gap-1 px-3 py-2.5 text-sm font-medium transition-colors
-    ${active ? 'text-primary-600' : 'text-neutral-600 hover:text-primary-600'}`
+    ${active ? 'text-primary-800' : 'text-neutral-600 hover:text-primary-800'}`
 
   return (
     <nav className="bg-white border-b border-neutral-100">
@@ -110,7 +110,7 @@ function GNB() {
                     to={menu.to}
                     className={isSpirits
                       ? 'inline-flex items-center px-3.5 py-1.5 text-sm font-semibold rounded-lg\
- bg-primary-600 text-white hover:bg-primary-700 transition-colors'
+ bg-primary-800 text-white hover:bg-primary-900 transition-colors'
                       : `${itemCls(false)} relative`
                     }
                   >
@@ -163,7 +163,7 @@ function GNB() {
                           to={child.to}
                           onClick={() => setOpen(null)}
                           className="flex items-center px-4 py-2 text-sm text-neutral-700
-                            hover:bg-neutral-50 hover:text-primary-600 transition-colors"
+                            hover:bg-neutral-50 hover:text-primary-800 transition-colors"
                         >
                           {child.label}
                         </Link>
@@ -197,11 +197,11 @@ function LangToggle() {
       aria-label="언어 전환"
       className="flex items-center gap-1 px-3.5 py-1.5 rounded-lg text-sm font-semibold
         border border-neutral-300 text-neutral-500 hover:border-primary-400
-        hover:text-primary-600 transition-all duration-150 select-none"
+        hover:text-primary-800 transition-all duration-150 select-none"
     >
-      <span className={i18n.language === 'ko' ? 'text-primary-600' : 'text-neutral-400'}>KO</span>
+      <span className={i18n.language === 'ko' ? 'text-primary-800' : 'text-neutral-400'}>KO</span>
       <span className="text-neutral-300">/</span>
-      <span className={i18n.language === 'en' ? 'text-primary-600' : 'text-neutral-400'}>EN</span>
+      <span className={i18n.language === 'en' ? 'text-primary-800' : 'text-neutral-400'}>EN</span>
     </button>
   )
 }
@@ -277,7 +277,7 @@ function UserDropdown() {
           to="/login"
           className="inline-flex items-center gap-1.5 text-sm font-medium px-3.5 py-1.5 rounded-lg
             border border-neutral-300 text-neutral-700
-            hover:border-primary-400 hover:text-primary-600 hover:bg-primary-50
+            hover:border-primary-400 hover:text-primary-800 hover:bg-primary-50
             transition-all duration-150"
         >
           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -290,8 +290,8 @@ function UserDropdown() {
         <Link
           to="/signup"
           className="inline-flex items-center gap-1.5 text-sm font-semibold px-3.5 py-1.5 rounded-lg
-            bg-primary-600 text-white shadow-sm
-            hover:bg-primary-700 active:bg-primary-800
+            bg-primary-800 text-white shadow-sm
+            hover:bg-primary-900 active:bg-primary-800
             transition-all duration-150"
         >
           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -319,7 +319,7 @@ function UserDropdown() {
         <span className="relative flex-shrink-0">
           {isFixed ? (
             <span className="p-[2px] rounded-full inline-flex bg-gradient-to-br from-amber-400 via-orange-400 to-amber-600">
-              <span className="w-7 h-7 rounded-full bg-primary-100 text-primary-600 flex items-center
+              <span className="w-7 h-7 rounded-full bg-primary-100 text-primary-800 flex items-center
                 justify-center text-xs font-bold select-none ring-[1.5px] ring-white overflow-hidden">
                 {profileImageUrl
                   ? <img src={profileImageUrl} alt="" className="w-full h-full object-cover" />
@@ -327,7 +327,7 @@ function UserDropdown() {
               </span>
             </span>
           ) : (
-            <span className="w-7 h-7 rounded-full bg-primary-100 text-primary-600 flex items-center
+            <span className="w-7 h-7 rounded-full bg-primary-100 text-primary-800 flex items-center
               justify-center text-xs font-bold select-none overflow-hidden">
               {profileImageUrl
                 ? <img src={profileImageUrl} alt="" className="w-full h-full object-cover" />
@@ -436,7 +436,7 @@ export default function MainLayout() {
           {/* 로고 */}
           <Link to="/" className="flex items-center gap-2 flex-shrink-0">
             <img src="/logo.png" alt="DrinkIndex" className="h-8 w-auto" />
-            <span className="text-xl font-bold text-primary-600 tracking-tight">DrinkIndex</span>
+            <span className="text-xl font-bold text-primary-800 tracking-tight">DrinkIndex</span>
           </Link>
 
           {/* 언어 토글 */}
@@ -464,10 +464,10 @@ export default function MainLayout() {
       {/* 푸터 (PC only) */}
       <footer className="hidden lg:block bg-white border-t border-neutral-200 py-6">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="grid grid-cols-[1fr_auto_auto] gap-12 mb-5">
+          <div className="flex justify-center items-start gap-16 mb-5">
             {/* 로고 + 태그라인 */}
             <div>
-              <Link to="/" className="inline-block text-sm font-bold text-primary-600 tracking-tight mb-1">
+              <Link to="/" className="inline-block text-sm font-bold text-primary-800 tracking-tight mb-1">
                 DrinkIndex
               </Link>
               <p className="text-xs text-neutral-400">{t('app.tagline')}</p>
@@ -475,20 +475,20 @@ export default function MainLayout() {
 
             {/* 탐색 */}
             <div>
-              <p className="text-xs font-semibold text-neutral-400 mb-2">{t('footer.explore')}</p>
+              <p className="text-xs font-bold text-neutral-700 mb-2">{t('footer.explore')}</p>
               <ul className="space-y-1.5">
-                <li><Link to="/spirits" className="text-xs text-neutral-500 hover:text-primary-600 transition-colors">{t('nav.spirits')}</Link></li>
-                <li><Link to="/community/free" className="text-xs text-neutral-500 hover:text-primary-600 transition-colors">{t('menu.communityBoard')}</Link></li>
-                <li><Link to="/notices" className="text-xs text-neutral-500 hover:text-primary-600 transition-colors">{t('menu.notice')}</Link></li>
-                <li><Link to="/request/spirit" className="text-xs text-neutral-500 hover:text-primary-600 transition-colors">{t('menu.requestSpirit')}</Link></li>
+                <li><Link to="/spirits" className="text-xs text-neutral-500 hover:text-primary-800 transition-colors">{t('nav.spirits')}</Link></li>
+                <li><Link to="/community/free" className="text-xs text-neutral-500 hover:text-primary-800 transition-colors">{t('menu.communityBoard')}</Link></li>
+                <li><Link to="/notices" className="text-xs text-neutral-500 hover:text-primary-800 transition-colors">{t('menu.notice')}</Link></li>
+                <li><Link to="/request/spirit" className="text-xs text-neutral-500 hover:text-primary-800 transition-colors">{t('menu.requestSpirit')}</Link></li>
               </ul>
             </div>
 
             {/* 정보 */}
             <div>
-              <p className="text-xs font-semibold text-neutral-400 mb-2">{t('footer.info')}</p>
+              <p className="text-xs font-bold text-neutral-700 mb-2">{t('footer.info')}</p>
               <ul className="space-y-1.5">
-                <li><a href="/terms" className="text-xs text-neutral-500 hover:text-primary-600 transition-colors">{t('footer.terms')}</a></li>
+                <li><a href="/terms" className="text-xs text-neutral-500 hover:text-primary-800 transition-colors">{t('footer.terms')}</a></li>
                 <li><a href="/privacy" className="text-xs text-neutral-500 hover:text-neutral-700 transition-colors">{t('footer.privacy')}</a></li>
                 <li><Link to="/inquiry" className="text-xs text-neutral-500 hover:text-neutral-700 transition-colors">{t('footer.inquiry')}</Link></li>
               </ul>

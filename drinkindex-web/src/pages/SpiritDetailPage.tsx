@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useSpiritDetail } from '@/domain/spirit/hooks/useSpiritDetail'
@@ -273,7 +273,7 @@ function TabBar({ active, onChange }: { active: Tab; onChange: (t: Tab) => void 
         <button key={id} role="tab" aria-selected={active === id} onClick={() => onChange(id)}
           className={`pb-3 text-sm font-medium border-b-2 -mb-px transition-colors ${
             active === id
-              ? 'border-primary-600 text-primary-700'
+              ? 'border-primary-800 text-primary-900'
               : 'border-transparent text-neutral-500 hover:text-neutral-700'
           }`}>
           {label}
@@ -308,7 +308,7 @@ export default function SpiritDetailPage() {
       <div className="max-w-2xl mx-auto px-4 py-20 text-center">
         <p className="text-neutral-500 mb-4">{t('spirit.detail.notFound')}</p>
         <button onClick={() => navigate('/spirits')}
-          className="text-primary-600 hover:underline text-sm">
+          className="text-primary-800 hover:underline text-sm">
           ← {t('spirit.detail.backToList')}
         </button>
       </div>
@@ -386,7 +386,7 @@ export default function SpiritDetailPage() {
 
       {/* Back */}
       <button onClick={() => navigate(-1)}
-        className="flex items-center gap-1 text-sm text-neutral-400 hover:text-primary-600 mb-5 transition-colors">
+        className="flex items-center gap-1 text-sm text-neutral-400 hover:text-primary-800 mb-5 transition-colors">
         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <polyline points="15,18 9,12 15,6" />
         </svg>

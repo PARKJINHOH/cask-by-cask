@@ -1,4 +1,4 @@
-import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
+﻿import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
 import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/domain/auth/hooks/useAuth'
@@ -144,7 +144,7 @@ export default function AdminLayout() {
       <aside className="w-56 bg-white border-r border-neutral-200 flex flex-col flex-shrink-0">
         {/* 헤더 */}
         <div className="p-5 border-b border-neutral-100">
-          <Link to="/" className="text-lg font-bold text-primary-600">DrinkIndex</Link>
+          <Link to="/" className="text-lg font-bold text-primary-800">DrinkIndex</Link>
           <p className="text-xs text-neutral-400 mt-0.5">
             {isSuperAdmin ? '최고관리자 콘솔' : isAdmin ? '관리자 콘솔' : '파트너 콘솔'}
           </p>
@@ -165,7 +165,7 @@ export default function AdminLayout() {
                   className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium
                     transition-colors ${
                     active
-                      ? 'bg-primary-50 text-primary-700'
+                      ? 'bg-primary-50 text-primary-900'
                       : 'text-neutral-600 hover:bg-neutral-100'
                   }`}
                 >
@@ -187,7 +187,7 @@ export default function AdminLayout() {
             return (
               <div key={entry.groupLabel}>
                 <div className={`flex items-center gap-2.5 px-3 py-2 text-sm font-semibold
-                  ${groupActive ? 'text-primary-700' : 'text-neutral-500'}`}>
+                  ${groupActive ? 'text-primary-900' : 'text-neutral-500'}`}>
                   <span className="text-base leading-none">{entry.groupIcon}</span>
                   {entry.groupLabel}
                 </div>
@@ -204,7 +204,7 @@ export default function AdminLayout() {
                         className={`flex items-center gap-2 rounded-lg text-sm transition-colors
                           ${item.subItem ? 'pl-10 pr-3 py-1.5' : 'pl-8 pr-3 py-1.5'}
                           ${active
-                            ? 'bg-primary-50 text-primary-700 font-medium'
+                            ? 'bg-primary-50 text-primary-900 font-medium'
                             : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700'
                           }`}
                       >

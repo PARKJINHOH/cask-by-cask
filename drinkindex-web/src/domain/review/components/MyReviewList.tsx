@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import Spinner from '@/shared/components/Spinner'
 import EmptyState from '@/shared/components/EmptyState'
@@ -44,7 +44,7 @@ export default function MyReviewList() {
     <div className="space-y-3">
       {isLoading ? (
         <div className="flex justify-center py-12">
-          <Spinner className="text-primary-600" />
+          <Spinner className="text-primary-800" />
         </div>
       ) : !data || data.empty ? (
         <EmptyState
@@ -64,7 +64,7 @@ export default function MyReviewList() {
                   <div className="min-w-0 flex-1">
                     <Link
                       to={`/spirits/${review.spiritId}`}
-                      className="text-sm font-semibold text-neutral-900 hover:text-primary-600
+                      className="text-sm font-semibold text-neutral-900 hover:text-primary-800
                         transition-colors line-clamp-1 block"
                     >
                       {review.spiritNameKo}

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+﻿import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { sanitizeHtml } from '@/shared/utils/sanitize'
 import { hidePopupToday } from '@/shared/utils/popupStorage'
@@ -287,7 +287,7 @@ export function PopupViewer({ popups, onClose, isPreview = false }: Props) {
                 type="checkbox"
                 checked={isHideToday}
                 onChange={(e) => setIsHideToday(e.target.checked)}
-                className="w-4 h-4 accent-primary-600 rounded"
+                className="w-4 h-4 accent-primary-800 rounded"
               />
               <span className="text-sm text-neutral-600">오늘 하루 보지 않기</span>
             </label>

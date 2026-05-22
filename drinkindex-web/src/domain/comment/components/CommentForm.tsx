@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/shared/components/Button'
 import { useCreateComment, useUpdateComment } from '../hooks/useComments'
@@ -55,7 +55,7 @@ export default function CommentForm({
       {parentNickname && !editingComment && (
         <div className="flex items-center gap-2 px-3 py-2 bg-primary-50 rounded-lg">
           <span className="text-primary-400 text-sm">↩</span>
-          <span className="text-sm text-primary-700 font-medium flex-1">
+          <span className="text-sm text-primary-900 font-medium flex-1">
             {t('comment.replyTo', { nickname: parentNickname })}
           </span>
           {onCancel && (
@@ -63,7 +63,7 @@ export default function CommentForm({
               type="button"
               onClick={onCancel}
               aria-label={t('comment.cancelReplyAria')}
-              className="text-primary-300 hover:text-primary-600 transition-colors text-xs"
+              className="text-primary-300 hover:text-primary-800 transition-colors text-xs"
             >
               ✕
             </button>

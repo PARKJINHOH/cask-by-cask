@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Badge from '@/shared/components/Badge'
 import Button from '@/shared/components/Button'
@@ -139,7 +139,7 @@ export default function AdminUserPage() {
       {/* 테이블 */}
       {isLoading ? (
         <div className="flex justify-center py-20">
-          <Spinner size="lg" className="text-primary-600" />
+          <Spinner size="lg" className="text-primary-800" />
         </div>
       ) : (
         <>
@@ -191,7 +191,7 @@ export default function AdminUserPage() {
                           </Badge>
                           {user.roleTypeName && (
                             <span className="inline-flex px-1.5 py-0.5 rounded-md
-                              bg-primary-50 border border-primary-100 text-primary-700 text-[11px] font-medium leading-tight">
+                              bg-primary-50 border border-primary-100 text-primary-900 text-[11px] font-medium leading-tight">
                               {user.roleTypeName}
                             </span>
                           )}

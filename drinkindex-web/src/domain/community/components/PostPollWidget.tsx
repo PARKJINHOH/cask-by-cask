@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { usePoll, usePostActions } from '../hooks/usePostDetail'
 import type { PollDetail } from '../types/community.types'
@@ -34,7 +34,7 @@ export default function PostPollWidget({ postId, pollSummary }: Props) {
   return (
     <div className="my-6 border border-neutral-200 rounded-xl p-5 bg-neutral-50">
       <div className="flex items-center gap-2 mb-3">
-        <svg className="w-4 h-4 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <svg className="w-4 h-4 text-primary-800" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
         </svg>
         <span className="text-sm font-semibold text-neutral-700">
@@ -60,7 +60,7 @@ export default function PostPollWidget({ postId, pollSummary }: Props) {
                   style={{ width: `${pct}%` }}
                 />
                 <div className="relative flex items-center justify-between px-3 py-2.5 text-sm">
-                  <span className={['font-medium', isMyVote ? 'text-primary-700' : 'text-neutral-700'].join(' ')}>
+                  <span className={['font-medium', isMyVote ? 'text-primary-900' : 'text-neutral-700'].join(' ')}>
                     {isMyVote && <span className="mr-1">✓</span>}
                     {opt.optionText}
                   </span>
@@ -90,7 +90,7 @@ export default function PostPollWidget({ postId, pollSummary }: Props) {
               className={[
                 'w-full text-left px-3 py-2.5 rounded-lg border text-sm transition-colors',
                 isChecked
-                  ? 'border-primary-500 bg-primary-50 text-primary-700'
+                  ? 'border-primary-500 bg-primary-50 text-primary-900'
                   : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:bg-neutral-50',
                 !isLoggedIn && 'cursor-not-allowed opacity-60',
               ].join(' ')}
@@ -113,7 +113,7 @@ export default function PostPollWidget({ postId, pollSummary }: Props) {
         <button
           onClick={handleVote}
           disabled={selected.length === 0 || voteMutation.isPending}
-          className="mt-4 w-full py-2 text-sm font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="mt-4 w-full py-2 text-sm font-medium rounded-lg bg-primary-800 text-white hover:bg-primary-900 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           {voteMutation.isPending ? '...' : t('post.pollVote')}
         </button>

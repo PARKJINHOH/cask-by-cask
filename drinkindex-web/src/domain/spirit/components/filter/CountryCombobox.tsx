@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+﻿import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { spiritApi } from '@/domain/spirit/api/spiritApi'
@@ -56,7 +56,7 @@ export default function CountryCombobox({ category, value, onChange }: CountryCo
               onClick={() => onChange(active ? '' : c)}
               className={`px-2 py-0.5 text-xs rounded-full border transition-colors
                 ${active
-                  ? 'bg-primary-600 text-white border-primary-600'
+                  ? 'bg-primary-800 text-white border-primary-800'
                   : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-400'}`}
             >
               {localizeCountry(c, i18n.language)}
@@ -89,7 +89,7 @@ export default function CountryCombobox({ category, value, onChange }: CountryCo
         onClick={() => onChange('')}
         className={`w-full text-left text-sm px-2 py-1 rounded-md transition-colors
           ${value === ''
-            ? 'bg-primary-50 text-primary-700 font-medium'
+            ? 'bg-primary-50 text-primary-900 font-medium'
             : 'text-neutral-600 hover:bg-neutral-50'}`}
       >
         {t('spirit.filter.countryAll')}
@@ -113,12 +113,12 @@ export default function CountryCombobox({ category, value, onChange }: CountryCo
                 className={`w-full flex items-center justify-between gap-2 px-2 py-1 rounded-md
                   text-sm transition-colors
                   ${active
-                    ? 'bg-primary-50 text-primary-700 font-medium'
+                    ? 'bg-primary-50 text-primary-900 font-medium'
                     : 'text-neutral-700 hover:bg-neutral-50'}`}
               >
                 <span className="truncate">{localizeCountry(s.country, i18n.language)}</span>
                 <span className={`text-xs flex-shrink-0
-                  ${active ? 'text-primary-600' : 'text-neutral-400'}`}>
+                  ${active ? 'text-primary-800' : 'text-neutral-400'}`}>
                   {s.count}
                 </span>
               </button>
@@ -131,7 +131,7 @@ export default function CountryCombobox({ category, value, onChange }: CountryCo
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="mt-1.5 text-xs text-neutral-500 hover:text-primary-600 transition-colors"
+          className="mt-1.5 text-xs text-neutral-500 hover:text-primary-800 transition-colors"
         >
           {expanded ? t('spirit.filter.showLess') : t('spirit.filter.showMore')}
         </button>

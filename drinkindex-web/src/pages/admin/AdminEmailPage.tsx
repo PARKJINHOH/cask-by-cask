@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Button from '@/shared/components/Button'
 import Input from '@/shared/components/Input'
@@ -193,7 +193,7 @@ export default function AdminEmailPage() {
             <div>
               <h1 className="text-xl font-bold text-neutral-900">메일 발송</h1>
               <p className="text-sm text-neutral-500 mt-0.5">
-                이메일 수신 동의 회원 <strong className="text-primary-600">{subscriberCount ?? '-'}명</strong>에게 발송됩니다.
+                이메일 수신 동의 회원 <strong className="text-primary-800">{subscriberCount ?? '-'}명</strong>에게 발송됩니다.
               </p>
             </div>
             <button
@@ -224,7 +224,7 @@ export default function AdminEmailPage() {
                 <button
                   type="button"
                   onClick={() => { setEditTarget(null); setSaveModal(true) }}
-                  className="flex items-center gap-1 text-xs text-primary-600 hover:underline"
+                  className="flex items-center gap-1 text-xs text-primary-800 hover:underline"
                 >
                   <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
@@ -311,7 +311,7 @@ export default function AdminEmailPage() {
                           type="button"
                           onClick={() => openEditTemplate(tpl)}
                           title="수정"
-                          className="p-1 rounded text-neutral-400 hover:text-primary-600 hover:bg-primary-50"
+                          className="p-1 rounded text-neutral-400 hover:text-primary-800 hover:bg-primary-50"
                         >
                           <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>

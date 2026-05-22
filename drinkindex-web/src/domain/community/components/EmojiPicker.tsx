@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+﻿import { useEffect, useRef, useState } from 'react'
 import { useEmojis } from '../hooks/useEmojis'
 import type { CommunityEmoji } from '../types/community.types'
 
@@ -38,7 +38,7 @@ export default function EmojiPicker({ onSelect, onClose }: Props) {
           <button
             onClick={() => setActiveGroupId('all')}
             className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
-              activeGroupId === 'all' ? 'bg-primary-100 text-primary-700' : 'text-neutral-500 hover:bg-neutral-100'
+              activeGroupId === 'all' ? 'bg-primary-100 text-primary-900' : 'text-neutral-500 hover:bg-neutral-100'
             }`}
           >
             전체
@@ -50,7 +50,7 @@ export default function EmojiPicker({ onSelect, onClose }: Props) {
                 key={id}
                 onClick={() => setActiveGroupId(id)}
                 className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
-                  activeGroupId === id ? 'bg-primary-100 text-primary-700' : 'text-neutral-500 hover:bg-neutral-100'
+                  activeGroupId === id ? 'bg-primary-100 text-primary-900' : 'text-neutral-500 hover:bg-neutral-100'
                 }`}
               >
                 {groupName}

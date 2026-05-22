@@ -1,4 +1,4 @@
-type Size = 'sm' | 'md' | 'lg'
+﻿type Size = 'sm' | 'md' | 'lg'
 
 export interface SpinnerProps {
   size?: Size
@@ -19,7 +19,7 @@ function SpinnerIcon({ size = 'md', className = '', label = '로딩 중' }: Omit
       role="status"
       aria-label={label}
       className={[
-        'animate-spin rounded-full border-current border-t-transparent text-primary-600',
+        'animate-spin rounded-full border-current border-t-transparent text-primary-800',
         sizeClasses[size],
         className,
       ].join(' ')}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useNotices } from '@/domain/notice/hooks/useNotices'
 import { NOTICE_CATEGORY_LABELS } from '@/domain/notice/types/notice.types'
@@ -89,7 +89,7 @@ export default function NoticePage() {
                 'flex-shrink-0 px-4 py-2.5 text-sm font-medium transition-colors whitespace-nowrap',
                 'border-b-2 -mb-px',
                 isActive
-                  ? 'border-primary-600 text-primary-600'
+                  ? 'border-primary-800 text-primary-800'
                   : 'border-transparent text-neutral-500 hover:text-neutral-700',
               ].join(' ')}
             >
@@ -149,7 +149,7 @@ export default function NoticePage() {
                             <path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5v6l1 1 1-1v-6h5v-2l-2-2z" />
                           </svg>
                         )}
-                        <span className="font-medium text-neutral-800 group-hover:text-primary-600 transition-colors truncate">
+                        <span className="font-medium text-neutral-800 group-hover:text-primary-800 transition-colors truncate">
                           {notice.title}
                         </span>
                       </Link>

@@ -1,4 +1,4 @@
-import { ButtonHTMLAttributes } from 'react'
+﻿import { ButtonHTMLAttributes } from 'react'
 import Spinner from './Spinner'
 
 type Variant = 'primary' | 'secondary' | 'danger' | 'ghost'
@@ -13,7 +13,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<Variant, string> = {
   primary:
-    'bg-primary-600 text-white hover:bg-primary-700 active:bg-primary-800 ' +
+    'bg-primary-800 text-white hover:bg-primary-900 active:bg-primary-900 ' +
     'disabled:bg-primary-300 disabled:text-white/70',
   secondary:
     'bg-white text-neutral-700 border border-neutral-300 ' +

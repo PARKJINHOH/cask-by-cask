@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, Fragment } from 'react'
+﻿import { useState, useEffect, useCallback, Fragment } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
@@ -197,8 +197,8 @@ function FilterDrawer({ open, onClose, children }: DrawerProps) {
               <div className="p-4 border-t border-neutral-100">
                 <button
                   onClick={onClose}
-                  className="w-full py-2.5 bg-primary-600 text-white text-sm font-medium
-                    rounded-lg hover:bg-primary-700 transition-colors"
+                  className="w-full py-2.5 bg-primary-800 text-white text-sm font-medium
+                    rounded-lg hover:bg-primary-900 transition-colors"
                 >
                   {t('spirit.filter.apply')}
                 </button>
@@ -518,7 +518,7 @@ export default function SpiritListPage() {
           {/* 목록 */}
           {isLoading ? (
             <div className="flex justify-center py-20">
-              <Spinner size="lg" className="text-primary-600" />
+              <Spinner size="lg" className="text-primary-800" />
             </div>
           ) : !data || data.empty ? (
             <EmptyState

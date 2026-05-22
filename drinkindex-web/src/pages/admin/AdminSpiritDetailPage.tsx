@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+﻿import { useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import Badge from '@/shared/components/Badge'
@@ -196,7 +196,7 @@ export default function AdminSpiritDetailPage() {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center py-40">
-        <Spinner size="lg" className="text-primary-600" />
+        <Spinner size="lg" className="text-primary-800" />
       </div>
     )
   }

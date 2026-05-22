@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatDate, scoreColor } from '@/shared/utils/format'
 import Modal from '@/shared/components/Modal'
@@ -300,7 +300,7 @@ export default function ReviewItem({ review, currentUserId, onEdit, onDelete }: 
           <div className="pt-1">
             <button
               onClick={() => setDetailOpen(true)}
-              className="text-xs text-primary-600 hover:text-primary-800 font-medium transition-colors"
+              className="text-xs text-primary-800 hover:text-primary-800 font-medium transition-colors"
             >
               {t('review.viewAll')}
             </button>

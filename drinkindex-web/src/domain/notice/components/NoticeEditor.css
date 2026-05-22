@@ -115,12 +115,12 @@
 
 /* Link */
 .notice-editor .ProseMirror a {
-  color: #d97706;
+  color: #92400e;
   text-decoration: underline;
   cursor: pointer;
 }
 .notice-editor .ProseMirror a:hover {
-  color: #b45309;
+  color: #78350f;
 }
 
 /* Image */
@@ -180,7 +180,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: rgba(217, 119, 6, 0.1);
+  background: rgba(146, 64, 14, 0.1);
   pointer-events: none;
 }
 

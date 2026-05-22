@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+﻿import { useState, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import Button from '@/shared/components/Button'
 import Spinner from '@/shared/components/Spinner'
@@ -189,7 +189,7 @@ export default function AdminCognacAppellationPage() {
 
       {isLoading ? (
         <div className="flex justify-center py-20">
-          <Spinner size="lg" className="text-primary-600" />
+          <Spinner size="lg" className="text-primary-800" />
         </div>
       ) : (
         <>

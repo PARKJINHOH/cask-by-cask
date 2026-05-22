@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react'
+﻿import { useRef, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useInfiniteNotifications } from '@/domain/notification/hooks/useNotifications'
@@ -82,7 +82,7 @@ export default function NotificationsPage() {
         <h1 className="text-2xl font-bold text-neutral-900">{t('notification.title')}</h1>
         <button
           onClick={markAllRead}
-          className="text-sm text-neutral-500 hover:text-primary-600 transition-colors"
+          className="text-sm text-neutral-500 hover:text-primary-800 transition-colors"
         >
           {t('notification.markAllRead')}
         </button>
@@ -97,7 +97,7 @@ export default function NotificationsPage() {
             className={[
               'flex-shrink-0 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors',
               tab === key
-                ? 'border-primary-600 text-primary-600'
+                ? 'border-primary-800 text-primary-800'
                 : 'border-transparent text-neutral-500 hover:text-neutral-700',
             ].join(' ')}
           >

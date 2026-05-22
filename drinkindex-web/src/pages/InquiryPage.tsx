@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+﻿import { useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { submitInquiry } from '@/domain/inquiry/api/inquiryApi'
 import type { InquiryCategory } from '@/domain/inquiry/types/inquiry.types'
@@ -96,7 +96,7 @@ export default function InquiryPage() {
           </svg>
         </div>
         <h2 className="text-xl font-bold text-neutral-900 mb-2">{t('inquiry.form.success')}</h2>
-        <a href="/" className="mt-6 inline-block text-sm text-primary-600 hover:underline">
+        <a href="/" className="mt-6 inline-block text-sm text-primary-800 hover:underline">
           {t('nav.home')} →
         </a>
       </div>
@@ -245,7 +245,7 @@ export default function InquiryPage() {
                 onClick={() => fileInputRef.current?.click()}
                 className="inline-flex items-center gap-2 px-4 py-2 text-sm border border-dashed
                   border-neutral-300 rounded-xl text-neutral-500 hover:border-primary-400
-                  hover:text-primary-600 transition-colors"
+                  hover:text-primary-800 transition-colors"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -269,8 +269,8 @@ export default function InquiryPage() {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full py-3 bg-primary-600 text-white text-sm font-semibold rounded-xl
-            hover:bg-primary-700 active:bg-primary-800 transition-colors disabled:opacity-50
+          className="w-full py-3 bg-primary-800 text-white text-sm font-semibold rounded-xl
+            hover:bg-primary-900 active:bg-primary-800 transition-colors disabled:opacity-50
             disabled:cursor-not-allowed"
         >
           {submitting ? t('inquiry.form.submitting') : t('inquiry.form.submit')}

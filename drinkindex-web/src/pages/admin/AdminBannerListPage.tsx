@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   DndContext,
@@ -104,7 +104,7 @@ function BannerRowCells({ banner, localVisibility, onToggleVisibility, onEdit, o
         <button
           type="button"
           onClick={() => onEdit(banner.id)}
-          className="text-left line-clamp-1 hover:text-primary-600 hover:underline transition-colors"
+          className="text-left line-clamp-1 hover:text-primary-800 hover:underline transition-colors"
         >
           {banner.adminTitle}
         </button>
@@ -126,7 +126,7 @@ function BannerRowCells({ banner, localVisibility, onToggleVisibility, onEdit, o
             'relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full',
             'border-2 border-transparent transition-colors duration-200',
             'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1',
-            visible ? 'bg-primary-600' : 'bg-neutral-300',
+            visible ? 'bg-primary-800' : 'bg-neutral-300',
           ].join(' ')}
         >
           <span
@@ -334,7 +334,7 @@ export default function AdminBannerListPage() {
               onClick={() => setLangFilter(tab.value)}
               className={`h-9 px-4 text-sm font-medium transition-colors ${
                 langFilter === tab.value
-                  ? 'bg-primary-600 text-white'
+                  ? 'bg-primary-800 text-white'
                   : 'bg-white text-neutral-600 hover:bg-neutral-50'
               }`}
             >

@@ -1,4 +1,4 @@
-import { Fragment, useState, useEffect } from 'react'
+﻿import { Fragment, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { Dialog, Transition, TransitionChild, DialogPanel, DialogTitle } from '@headlessui/react'
@@ -468,7 +468,7 @@ export default function AdminRequestPage() {
                 onClick={() => { setStatus(value); setPage(0) }}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                   status === value
-                    ? 'bg-primary-600 text-white'
+                    ? 'bg-primary-800 text-white'
                     : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
                 }`}
               >
@@ -482,7 +482,7 @@ export default function AdminRequestPage() {
       {/* 테이블 */}
       {isLoading ? (
         <div className="flex justify-center py-20">
-          <Spinner size="lg" className="text-primary-600" />
+          <Spinner size="lg" className="text-primary-800" />
         </div>
       ) : (
         <>
@@ -530,7 +530,7 @@ export default function AdminRequestPage() {
                         {formatDate(req.createdAt)}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <span className="text-xs text-primary-600 font-medium">상세 보기 →</span>
+                        <span className="text-xs text-primary-800 font-medium">상세 보기 →</span>
                       </td>
                     </tr>
                   ))

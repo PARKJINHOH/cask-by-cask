@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next'
+﻿import { useTranslation } from 'react-i18next'
 import type {
   SpiritCategory, WhiskyStyle, WineType, CognacGrade,
 } from '@/domain/spirit/types/spirit.types'
@@ -51,7 +51,7 @@ export default function CategoryTree(p: CategoryTreeProps) {
                 className={`w-full flex items-center justify-between px-2 py-1.5 rounded-md text-sm
                   transition-colors group
                   ${isExpanded
-                    ? 'bg-primary-50 text-primary-700 font-medium'
+                    ? 'bg-primary-50 text-primary-900 font-medium'
                     : 'text-neutral-700 hover:bg-neutral-50'}`}
                 aria-expanded={isExpanded}
               >
@@ -120,13 +120,13 @@ function SubList<T extends string>({ values, current, onToggle, labelKey }: SubL
               hover:bg-neutral-50 group">
               <input
                 type="checkbox"
-                className="w-3.5 h-3.5 rounded border-neutral-300 text-primary-600
+                className="w-3.5 h-3.5 rounded border-neutral-300 text-primary-800
                   focus:ring-primary-400 focus:ring-offset-0"
                 checked={checked}
                 onChange={() => onToggle(v)}
               />
               <span className={`text-sm ${checked
-                ? 'text-primary-700 font-medium' : 'text-neutral-600 group-hover:text-neutral-900'}`}>
+                ? 'text-primary-900 font-medium' : 'text-neutral-600 group-hover:text-neutral-900'}`}>
                 {t(`${labelKey}.${v}`)}
               </span>
             </label>

@@ -1,4 +1,4 @@
-import { useRef, useState, useMemo, useCallback } from 'react'
+﻿import { useRef, useState, useMemo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMe, useUploadProfileImage, useDeleteProfileImage } from '../hooks/useUser'
 import Button from '@/shared/components/Button'
@@ -123,7 +123,7 @@ export default function ProfileImageSection() {
       <div className="flex items-center gap-5">
         {/* 현재 이미지 or 기본 아바타 */}
         <div className="flex-shrink-0 w-20 h-20 rounded-full overflow-hidden bg-primary-100
-          flex items-center justify-center text-2xl font-bold text-primary-600 select-none border
+          flex items-center justify-center text-2xl font-bold text-primary-800 select-none border
           border-neutral-200">
           {currentImageUrl ? (
             <img
@@ -143,7 +143,7 @@ export default function ProfileImageSection() {
               disabled={!canChange || isUploading || isDeleting}
               onClick={() => fileInputRef.current?.click()}
               className="px-3 py-1.5 text-sm font-medium rounded-lg border border-primary-500
-                text-primary-600 hover:bg-primary-50 disabled:opacity-40 disabled:cursor-not-allowed
+                text-primary-800 hover:bg-primary-50 disabled:opacity-40 disabled:cursor-not-allowed
                 transition-colors"
             >
               {t('mypage.profileImage.change')}

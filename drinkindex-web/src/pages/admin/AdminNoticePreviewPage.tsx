@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAdminNoticeDetail, useDeleteNotice } from '@/domain/notice/hooks/useAdminNotices'
 import { NOTICE_CATEGORY_LABELS } from '@/domain/notice/types/notice.types'
@@ -53,7 +53,7 @@ export default function AdminNoticePreviewPage() {
         <p className="text-neutral-500 text-sm mb-4">공지사항을 찾을 수 없습니다.</p>
         <button
           onClick={() => navigate('/admin/notices')}
-          className="text-sm text-primary-600 hover:underline"
+          className="text-sm text-primary-800 hover:underline"
         >
           목록으로 돌아가기
         </button>

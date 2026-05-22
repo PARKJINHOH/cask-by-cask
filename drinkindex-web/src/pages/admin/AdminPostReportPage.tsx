@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { adminCommunityApi } from '@/domain/admin/api/adminCommunityApi'
 import type { PostReportAdminStatus } from '@/domain/admin/types/admin.types'
@@ -66,7 +66,7 @@ export default function AdminPostReportPage() {
               onClick={() => { setStatus(opt.value as PostReportAdminStatus | ''); setPage(0) }}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                 status === opt.value
-                  ? 'bg-primary-600 text-white'
+                  ? 'bg-primary-800 text-white'
                   : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
               }`}
             >
@@ -79,7 +79,7 @@ export default function AdminPostReportPage() {
       {/* 테이블 */}
       {isLoading ? (
         <div className="flex justify-center py-20">
-          <Spinner size="lg" className="text-primary-600" />
+          <Spinner size="lg" className="text-primary-800" />
         </div>
       ) : (
         <>

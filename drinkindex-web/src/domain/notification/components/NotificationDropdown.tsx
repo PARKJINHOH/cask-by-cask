@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useRecentNotifications } from '../hooks/useNotifications'
@@ -64,7 +64,7 @@ export default function NotificationDropdown({ onClose }: Props) {
         <span className="text-sm font-semibold text-neutral-800">{t('notification.title')}</span>
         <button
           onClick={markAllRead}
-          className="text-xs text-neutral-400 hover:text-primary-600 transition-colors"
+          className="text-xs text-neutral-400 hover:text-primary-800 transition-colors"
         >
           {t('notification.markAllRead')}
         </button>
@@ -79,7 +79,7 @@ export default function NotificationDropdown({ onClose }: Props) {
             className={[
               'flex-shrink-0 px-4 py-2 text-xs font-medium border-b-2 -mb-px transition-colors',
               tab === key
-                ? 'border-primary-600 text-primary-600'
+                ? 'border-primary-800 text-primary-800'
                 : 'border-transparent text-neutral-500 hover:text-neutral-700',
             ].join(' ')}
           >
@@ -124,7 +124,7 @@ export default function NotificationDropdown({ onClose }: Props) {
         <Link
           to="/notifications"
           onClick={onClose}
-          className="text-xs text-primary-600 hover:text-primary-700 font-medium"
+          className="text-xs text-primary-800 hover:text-primary-900 font-medium"
         >
           {t('notification.viewAll')} →
         </Link>

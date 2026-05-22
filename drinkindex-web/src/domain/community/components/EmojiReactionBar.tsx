@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useToggleReaction } from '../hooks/useEmojis'
 import { useEmojis } from '../hooks/useEmojis'
 import type { EmojiReactionSummary } from '../types/community.types'
@@ -48,7 +48,7 @@ export default function EmojiReactionBar({ commentId, postId, reactions, isLogge
           className={[
             'inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs transition-colors',
             r.isMyReaction
-              ? 'border-primary-400 bg-primary-50 text-primary-600'
+              ? 'border-primary-400 bg-primary-50 text-primary-800'
               : 'border-neutral-200 bg-neutral-50 text-neutral-600 hover:border-neutral-300',
           ].join(' ')}
         >
