@@ -48,7 +48,7 @@ public record UserResponse(
                 user.getMaturingPower(),
                 user.getCurrentLevel(),
                 user.getConsecutiveAttendance(),
-                user.getEmailVerified(),
+                user.getNicknameFixed(),
                 user.getNicknameChangedAt(),
                 user.getProfileImageUrl(),
                 user.getProfileImageChangedAt(),

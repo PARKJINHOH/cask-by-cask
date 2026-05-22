@@ -20,6 +20,9 @@ import NoticeBoardPage from '@/pages/community/NoticeBoardPage'
 import FreeBoardPage from '@/pages/community/FreeBoardPage'
 import PostDetailPage from '@/pages/community/PostDetailPage'
 import PostFormPage from '@/pages/community/PostFormPage'
+import ByobListPage from '@/pages/community/ByobListPage'
+import ByobDetailPage from '@/pages/community/ByobDetailPage'
+import ByobFormPage from '@/pages/community/ByobFormPage'
 import NotificationsPage from '@/pages/NotificationsPage'
 import MessagesPage from '@/pages/MessagesPage'
 import AdminUserPage from '@/pages/admin/AdminUserPage'
@@ -86,6 +89,8 @@ export default function App() {
             {/* 커뮤니티 */}
             <Route path="community/notice" element={<NoticeBoardPage />} />
             <Route path="community/free" element={<FreeBoardPage />} />
+            <Route path="community/byob" element={<ByobListPage />} />
+            <Route path="community/byob/:id" element={<ByobDetailPage />} />
             <Route path="community/:boardType/:id" element={<PostDetailPage />} />
             {/* 공개 읽기용 (비회원 접근 가능) */}
             <Route path="notifications" element={<NotificationsPage />} />
@@ -94,6 +99,8 @@ export default function App() {
               <Route path="spirits/:id/review/:reviewId/edit" element={<ReviewFormPage />} />
               <Route path="community/:boardType/write" element={<PostFormPage />} />
               <Route path="community/:boardType/:id/edit" element={<PostFormPage />} />
+              <Route path="community/byob/write" element={<ByobFormPage />} />
+              <Route path="community/byob/:id/edit" element={<ByobFormPage />} />
               <Route path="messages" element={<MessagesPage />} />
               <Route path="mypage" element={<MyPage />} />
               <Route path="request/spirit" element={<SpiritRequestPage />} />

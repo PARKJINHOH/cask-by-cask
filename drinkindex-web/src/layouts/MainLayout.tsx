@@ -86,8 +86,9 @@ function GNB() {
       key: 'community',
       label: t('menu.community'),
       children: [
-        { key: 'communityNews', label: t('menu.communityNews'), to: '/community/notice' },
+        { key: 'communityNews',  label: t('menu.communityNews'),  to: '/community/notice' },
         { key: 'communityBoard', label: t('menu.communityBoard'), to: '/community/free' },
+        { key: 'communityByob',  label: t('menu.communityByob'),  to: '/community/byob' },
       ],
     },
   ]

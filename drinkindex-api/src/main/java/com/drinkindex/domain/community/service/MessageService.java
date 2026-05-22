@@ -173,6 +173,29 @@ public class MessageService {
     }
 
     // ═══════════════════════════════════════════
+    // 시스템 발송 (차단/금칙어 검사 없음)
+    // ═══════════════════════════════════════════
+
+    @Transactional
+    public void sendSystemMessage(User sender, User receiver, String content) {
+        List<Message> existing = messageRepository.findThreadsBetween(sender.getId(), receiver.getId(),
+                PageRequest.of(0, 1));
+
+        Message message;
+        if (!existing.isEmpty()) {
+            message = existing.get(0);
+        } else {
+            message = messageRepository.save(Message.builder().sender(sender).receiver(receiver).build());
+        }
+
+        messageItemRepository.save(MessageItem.builder()
+                .message(message).sender(sender).content(content).build());
+
+        notificationService.send(receiver, NotificationType.MESSAGE,
+                sender.getNickname() + "님으로부터 쪽지가 도착했습니다.", "MESSAGE", message.getId());
+    }
+
+    // ═══════════════════════════════════════════
     // Private
     // ═══════════════════════════════════════════
 

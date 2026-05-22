@@ -8,16 +8,18 @@ import MyFavorites from '@/domain/wishlist/components/MyFavorites'
 import AccountSettings from '@/domain/user/components/AccountSettings'
 import MaturingPowerSection from '@/domain/score/components/MaturingPowerSection'
 import MessagesTab from '@/domain/message/components/MessagesTab'
+import ByobHistoryTab from '@/domain/byob/components/ByobHistoryTab'
 import LevelIcon from '@/shared/components/icons/LevelIcon'
 import SeoMeta from '@/shared/components/SeoMeta'
 import { useMessageList } from '@/domain/message/hooks/useMessages'
 
-type Tab = 'maturing' | 'reviews' | 'wishlist' | 'messages' | 'settings'
+type Tab = 'maturing' | 'reviews' | 'wishlist' | 'byob' | 'messages' | 'settings'
 
 const ALL_TABS: { value: Tab; label: string; adminHidden?: boolean }[] = [
   { value: 'maturing',  label: '숙성력',   adminHidden: true },
   { value: 'reviews',   label: '내 리뷰' },
   { value: 'wishlist',  label: '즐겨찾기' },
+  { value: 'byob',      label: 'BYOB 이력' },
   { value: 'messages',  label: '쪽지' },
   { value: 'settings',  label: '계정 설정' },
 ]
@@ -155,6 +157,7 @@ export default function MyPage() {
       {tab === 'maturing'  && <MaturingPowerSection profile={profile ?? { id: 0, email, nickname, role, createdAt: '' }} />}
       {tab === 'reviews'   && <MyReviewList />}
       {tab === 'wishlist'  && <MyFavorites />}
+      {tab === 'byob'      && <ByobHistoryTab />}
       {tab === 'messages'  && <MessagesTab initialMessageId={messageIdParam} />}
       {tab === 'settings'  && <AccountSettings />}
     </div>

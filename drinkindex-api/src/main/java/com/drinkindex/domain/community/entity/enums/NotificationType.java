@@ -6,5 +6,9 @@ public enum NotificationType {
     MENTION,
     LIKE,
     MESSAGE,
-    SYSTEM
+    SYSTEM,
+    BYOB_APPLY,
+    BYOB_APPROVE,
+    BYOB_REJECT,
+    BYOB_REMOVE
 }

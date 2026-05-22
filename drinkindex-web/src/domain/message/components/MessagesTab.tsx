@@ -148,7 +148,7 @@ function ThreadPanel({
             <div key={item.id} className={['flex flex-col', isMine ? 'items-end' : 'items-start'].join(' ')}>
               <div
                 className={[
-                  'max-w-[80%] rounded-xl px-3 py-2 text-sm',
+                  'max-w-[80%] rounded-xl px-3 py-2 text-sm whitespace-pre-wrap break-words',
                   isMine
                     ? 'bg-primary-500 text-white rounded-br-sm'
                     : 'bg-neutral-100 text-neutral-800 rounded-bl-sm',

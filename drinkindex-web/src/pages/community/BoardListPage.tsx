@@ -292,6 +292,21 @@ export default function BoardListPage({ boardType, title }: Props) {
                         ].join(' ')}>
                           {post.title}
                         </span>
+                        {(post as any).byobStatus && (
+                          <span className="flex-shrink-0 inline-flex items-center text-xs font-bold
+                            px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 border border-orange-200">
+                            비욥
+                          </span>
+                        )}
+                        {(post as any).byobStatus === 'OPEN' && (
+                          <span className="flex-shrink-0 text-xs text-green-700 font-medium">모집중</span>
+                        )}
+                        {(post as any).byobStatus === 'CLOSED' && (
+                          <span className="flex-shrink-0 text-xs text-yellow-700 font-medium">마감</span>
+                        )}
+                        {(post as any).byobStatus === 'CANCELLED' && (
+                          <span className="flex-shrink-0 text-xs text-neutral-400 font-medium">취소</span>
+                        )}
                         {post.commentCount > 0 && (
                           <span className="text-primary-500 text-xs flex-shrink-0">[{post.commentCount}]</span>
                         )}
@@ -339,6 +354,12 @@ export default function BoardListPage({ boardType, title }: Props) {
                     </span>
                   )}
                   {post.isLocked && <span className="text-neutral-400 text-sm">🔒</span>}
+                  {(post as any).byobStatus && (
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-100
+                      text-orange-700 border border-orange-200 inline-flex items-center">
+                      비욥
+                    </span>
+                  )}
                 </div>
                 <p className={[
                   'text-sm font-medium line-clamp-1',

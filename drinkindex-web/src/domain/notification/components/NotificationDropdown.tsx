@@ -5,17 +5,19 @@ import { useRecentNotifications } from '../hooks/useNotifications'
 import { useMarkNotificationRead } from '../hooks/useNotificationPolling'
 import type { NotificationItem, NotificationType } from '../types/notification.types'
 
-type Tab = '' | 'COMMENT' | 'MENTION' | 'MESSAGE'
+type Tab = '' | 'COMMENT' | 'MENTION' | 'MESSAGE' | 'BYOB_APPLY' | 'BYOB_APPROVE'
 
 const TABS: { key: Tab; labelKey: string }[] = [
   { key: '', labelKey: 'notification.all' },
   { key: 'COMMENT', labelKey: 'notification.comment' },
   { key: 'MENTION', labelKey: 'notification.mention' },
   { key: 'MESSAGE', labelKey: 'notification.message' },
+  { key: 'BYOB_APPLY', labelKey: 'notification.byob' },
 ]
 
 const TYPE_ICON: Record<NotificationType, string> = {
   COMMENT: '💬', REPLY: '↩', MENTION: '@', LIKE: '♥', MESSAGE: '✉', SYSTEM: 'ℹ',
+  BYOB_APPLY: '🍾', BYOB_APPROVE: '✅', BYOB_REJECT: '❌', BYOB_REMOVE: '🚫',
 }
 
 function relativeTime(dateStr: string): string {
@@ -34,10 +36,9 @@ function targetPath(item: NotificationItem): string | null {
   switch (item.targetType) {
     case 'FREE':    return `/community/free/${item.targetId}`
     case 'NOTICE':  return `/community/notice/${item.targetId}`
-    case 'POST':    return `/community/free/${item.targetId}` // 하위 호환
-    case 'MESSAGE': return item.targetId
-      ? `/mypage?tab=messages&messageId=${item.targetId}`
-      : '/mypage?tab=messages'
+    case 'POST':    return `/community/free/${item.targetId}`
+    case 'BYOB':    return `/community/byob/${item.targetId}`
+    case 'MESSAGE': return `/mypage?tab=messages&messageId=${item.targetId}`
     default:        return null
   }
 }
@@ -48,7 +49,12 @@ export default function NotificationDropdown({ onClose }: Props) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [tab, setTab] = useState<Tab>('')
-  const { data: items = [] } = useRecentNotifications(tab as NotificationType || undefined)
+  // BYOB 탭은 BYOB_APPLY로 쿼리하되, 프론트에서 BYOB_APPROVE도 함께 표시
+  const queryTab = tab === 'BYOB_APPROVE' ? undefined : (tab as NotificationType || undefined)
+  const { data: rawItems = [] } = useRecentNotifications(queryTab)
+  const items = tab === 'BYOB_APPLY'
+    ? rawItems.filter((n) => n.type === 'BYOB_APPLY' || n.type === 'BYOB_APPROVE' || n.type === 'BYOB_REJECT' || n.type === 'BYOB_REMOVE')
+    : rawItems
   const { markRead, markAllRead } = useMarkNotificationRead()
 
   const handleClick = async (item: NotificationItem) => {

@@ -166,6 +166,22 @@ public enum ErrorCode {
     ROLE_TYPE_IN_USE(HttpStatus.CONFLICT, "ROLE_002", "해당 역할을 사용 중인 계정이 있어 삭제할 수 없습니다."),
     DUPLICATE_VALUE(HttpStatus.CONFLICT, "ROLE_003", "이미 존재하는 값입니다."),
 
+    // BYOB
+    BYOB_NOT_FOUND(HttpStatus.NOT_FOUND, "BYOB_001", "BYOB 모임을 찾을 수 없습니다."),
+    BYOB_ACCESS_DENIED(HttpStatus.FORBIDDEN, "BYOB_002", "BYOB 모임 접근 권한이 없습니다."),
+    BYOB_HAS_APPROVED_PARTICIPANT(HttpStatus.BAD_REQUEST, "BYOB_003", "승인된 참여자가 있어 수정/삭제할 수 없습니다."),
+    BYOB_PARTICIPANT_NOT_FOUND(HttpStatus.NOT_FOUND, "BYOB_004", "참여자 정보를 찾을 수 없습니다."),
+    BYOB_ALREADY_APPLIED(HttpStatus.CONFLICT, "BYOB_005", "이미 신청한 모임입니다."),
+    BYOB_NOT_OPEN(HttpStatus.BAD_REQUEST, "BYOB_006", "모집 중인 모임에만 신청할 수 있습니다."),
+    BYOB_FULL(HttpStatus.BAD_REQUEST, "BYOB_007", "정원이 초과되었습니다."),
+    BYOB_HOST_CANNOT_APPLY(HttpStatus.BAD_REQUEST, "BYOB_008", "주최자는 본인 모임에 신청할 수 없습니다."),
+    BYOB_CANNOT_CANCEL(HttpStatus.BAD_REQUEST, "BYOB_009", "대기 중인 신청만 취소할 수 있습니다."),
+    BYOB_INVALID_STATUS_TRANSITION(HttpStatus.BAD_REQUEST, "BYOB_010", "잘못된 상태 전환입니다."),
+    BYOB_INVALID_DATE_RANGE(HttpStatus.BAD_REQUEST, "BYOB_011", "모집 종료일은 시작일 이후여야 합니다."),
+    BYOB_COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "BYOB_012", "댓글을 찾을 수 없습니다."),
+    BYOB_HOST_COMMENT_MUST_REPLY(HttpStatus.BAD_REQUEST, "BYOB_013", "주최자는 기존 댓글에 답글만 작성할 수 있습니다."),
+    BYOB_PARTICIPANT_CANNOT_REPLY(HttpStatus.BAD_REQUEST, "BYOB_014", "참여자는 답글을 작성할 수 없습니다."),
+
     // Common
     NOT_FOUND(HttpStatus.NOT_FOUND, "COMMON_001", "리소스를 찾을 수 없습니다."),
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "COMMON_002", "입력값이 올바르지 않습니다."),

@@ -102,7 +102,7 @@ function CategoryCardInner({
             </p>
           )}
           <div className="flex items-center gap-1.5">
-            {!cat.image && <span className="text-lg">{cat.icon}</span>}
+            {!cat.image && <span className="text-lg">{(cat as { icon: string }).icon}</span>}
             <span className="text-white/80 text-xs font-medium group-hover:text-white
               transition-colors drop-shadow">
               {t('home.menu.explore')} →
