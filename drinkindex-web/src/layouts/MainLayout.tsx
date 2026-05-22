@@ -350,7 +350,14 @@ function UserDropdown() {
             </span>
           )}
         </span>
-        <span className="hidden sm:inline max-w-[120px] truncate">{user?.nickname}</span>
+        <span className="hidden sm:flex flex-col items-start leading-none">
+          <span className="max-w-[120px] truncate text-sm font-medium text-neutral-800">{user?.nickname}</span>
+          {user?.role === 'MEMBER' && user?.currentLevel != null && (
+            <span className="text-[10px] text-amber-500 font-semibold mt-0.5">
+              {t('nav.maturingPower', { level: user.currentLevel, power: (user.maturingPower ?? 0).toLocaleString() })}
+            </span>
+          )}
+        </span>
         <svg
           className={`w-3.5 h-3.5 text-neutral-400 transition-transform ${open ? 'rotate-180' : ''}`}
           viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
@@ -490,6 +497,7 @@ export default function MainLayout() {
 
           <div className="border-t border-neutral-100 pt-4 text-center">
             <p className="text-xs text-neutral-400">© 2026 DrinkIndex. All rights reserved.</p>
+            <p className="text-xs text-neutral-400">지나친 음주는 뇌졸중, 기억력 손상이나 치매를 유발합니다.</p>
           </div>
         </div>
       </footer>

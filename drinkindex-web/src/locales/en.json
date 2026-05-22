@@ -13,7 +13,8 @@
     "logout": "Logout",
     "mypage": "My Page",
     "admin": "Admin",
-    "more": "More"
+    "more": "More",
+    "maturingPower": "Aging Lv.{{level}} ({{power}}p)"
   },
   "home": {
     "menu": {

@@ -13,7 +13,8 @@
     "logout": "로그아웃",
     "mypage": "마이페이지",
     "admin": "관리자",
-    "more": "더보기"
+    "more": "더보기",
+    "maturingPower": "숙성력 Lv.{{level}} ({{power}}p)"
   },
   "home": {
     "menu": {

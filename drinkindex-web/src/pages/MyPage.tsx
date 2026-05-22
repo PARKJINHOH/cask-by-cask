@@ -116,7 +116,7 @@ export default function MyPage() {
             </span>
             {role === 'MEMBER' && (
               <span className="text-xs text-amber-600 font-semibold">
-                숙성력 {maturingPower.toLocaleString()}
+                숙성력 Lv.{currentLevel} ({maturingPower.toLocaleString()}p)
               </span>
             )}
             {createdAt && (

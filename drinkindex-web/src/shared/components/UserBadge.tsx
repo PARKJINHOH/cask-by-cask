@@ -34,6 +34,7 @@ interface Props {
   size?: 'sm' | 'md' | 'lg'
   showName?: boolean
   showScore?: boolean
+  scoreBelow?: boolean
   className?: string
 }
 
@@ -64,6 +65,7 @@ export default function UserBadge({
   size = 'md',
   showName = true,
   showScore = false,
+  scoreBelow = false,
   className = '',
 }: Props) {
   const currentUser = useAuthStore((s) => s.user)
@@ -138,8 +140,14 @@ export default function UserBadge({
     </span>
   )
 
+  const scoreBelowEl = scoreBelow && user.role === 'MEMBER' && (
+    <span className={`${SCORE_CLS[size]} text-amber-600 font-medium leading-none`}>
+      숙성력 Lv.{level} ({(user.maturingPower ?? 0).toLocaleString()}p)
+    </span>
+  )
+
   return (
-    <span className={`relative inline-flex items-center gap-1 ${className}`}>
+    <span className={`relative inline-flex ${scoreBelow ? 'items-start' : 'items-center'} gap-1 ${className}`}>
       {/* 아바타 — 툴팁 없음, hover 시 포털 오버레이 표시 */}
       {avatarEl}
 
@@ -156,51 +164,57 @@ export default function UserBadge({
       )}
 
       {/* 닉네임·레벨·배지 묶음 — 이 영역 hover 시에만 툴팁 표시 */}
-      <span className="group inline-flex items-center gap-1">
-        {showName && (
-          <span
-            className={[
-              TEXT_CLS[size],
-              'font-medium truncate max-w-[120px]',
-              user.role === 'ADMIN' ? 'text-blue-700' : 'text-neutral-800',
-            ].join(' ')}
-          >
-            {user.id ? (
-              <UserContextMenu
-                nickname={user.nickname}
-                userId={user.id}
-                disabled={user.id === currentUser?.id}
-              >
-                <span className="hover:underline">{user.nickname}</span>
-              </UserContextMenu>
-            ) : (
-              user.nickname
-            )}
-          </span>
-        )}
+      <span className={`group inline-flex gap-1 ${scoreBelow ? 'flex-col' : 'items-center'}`}>
+        {/* 닉네임 행 */}
+        <span className="inline-flex items-center gap-1">
+          {showName && (
+            <span
+              className={[
+                TEXT_CLS[size],
+                'font-medium truncate max-w-[120px]',
+                user.role === 'ADMIN' ? 'text-blue-700' : 'text-neutral-800',
+              ].join(' ')}
+            >
+              {user.id ? (
+                <UserContextMenu
+                  nickname={user.nickname}
+                  userId={user.id}
+                  disabled={user.id === currentUser?.id}
+                >
+                  <span className="hover:underline">{user.nickname}</span>
+                </UserContextMenu>
+              ) : (
+                user.nickname
+              )}
+            </span>
+          )}
 
-        {showName && user.role === 'MEMBER' && hasPhoto && (
-          <LevelIcon level={level} size={ICON_AFTER_NAME[size]} />
-        )}
+          {showName && user.role === 'MEMBER' && hasPhoto && (
+            <LevelIcon level={level} size={ICON_AFTER_NAME[size]} />
+          )}
 
-        {user.role === 'ADMIN' && (
-          <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-semibold
-            rounded-full bg-blue-100 text-blue-700 leading-none flex-shrink-0">
-            관리자
-          </span>
-        )}
-        {user.role === 'PARTNER' && (
-          <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-semibold
-            rounded-full bg-emerald-100 text-emerald-700 leading-none flex-shrink-0">
-            증류소
-          </span>
-        )}
+          {user.role === 'ADMIN' && (
+            <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-semibold
+              rounded-full bg-blue-100 text-blue-700 leading-none flex-shrink-0">
+              관리자
+            </span>
+          )}
+          {user.role === 'PARTNER' && (
+            <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-semibold
+              rounded-full bg-emerald-100 text-emerald-700 leading-none flex-shrink-0">
+              증류소
+            </span>
+          )}
 
-        {showScore && user.role === 'MEMBER' && (
-          <span className={`${SCORE_CLS[size]} text-amber-600 font-medium`}>
-            {(user.maturingPower ?? 0).toLocaleString()}
-          </span>
-        )}
+          {showScore && !scoreBelow && user.role === 'MEMBER' && (
+            <span className={`${SCORE_CLS[size]} text-amber-600 font-medium`}>
+              {(user.maturingPower ?? 0).toLocaleString()}
+            </span>
+          )}
+        </span>
+
+        {/* 숙성력 두 번째 줄 */}
+        {scoreBelowEl}
 
         {/* 툴팁 — 닉네임·레벨 영역 hover 시만 */}
         {user.role !== 'ADMIN' && (

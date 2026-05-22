@@ -85,6 +85,7 @@ export default function CommunityCommentItem({ comment, postId, isLoggedIn, dept
               <UserBadge
                 user={{ id: comment.authorId ?? undefined, nickname: comment.authorNickname ?? t('board.anonymous'), role: comment.authorRole as UserRole, currentLevel: comment.authorLevel, maturingPower: comment.authorMaturingPower ?? undefined, nicknameFixed: comment.authorNicknameFixed, profileImageUrl: comment.authorProfileImageUrl }}
                 size="sm"
+                scoreBelow
               />
             ) : (
               <span className="text-xs font-semibold text-neutral-700">

@@ -19,6 +19,7 @@ const CATEGORY_MENU = [
     key: 'WHISKY',
     icon: '🥃',
     image: '/images/whisky-category.png',
+    imageWebp: '/images/whisky-category.webp',
     subtitle: 'Single Malt · Blended · Bourbon',
     accent: 'from-amber-950/80 via-amber-900/50 to-transparent',
   },
@@ -26,6 +27,7 @@ const CATEGORY_MENU = [
     key: 'COGNAC',
     icon: '🍾',
     image: '/images/cognac-category.png',
+    imageWebp: '/images/cognac-category.webp',
     subtitle: 'VS · VSOP · XO · Hors d\'Âge',
     accent: 'from-stone-950/80 via-amber-900/50 to-transparent',
   },
@@ -33,6 +35,7 @@ const CATEGORY_MENU = [
     key: 'WINE',
     icon: '🍷',
     image: '/images/wine-category.png',
+    imageWebp: '/images/wine-category.webp',
     subtitle: 'Red · White · Rosé · Sparkling',
     accent: 'from-rose-950/85 via-rose-900/60 to-transparent',
   },
@@ -40,6 +43,7 @@ const CATEGORY_MENU = [
     key: 'OTHER',
     icon: '🫗',
     image: '/images/etc-category.png',
+    imageWebp: '/images/etc-category.webp',
     subtitle: 'Rum · Gin · Tequila · Vodka',
     accent: 'from-neutral-950/85 via-neutral-800/60 to-transparent',
   },
@@ -61,12 +65,16 @@ function CategoryCardInner({
   return (
     <>
       {cat.image ? (
-        <img
-          src={cat.image}
-          alt={t(`spirit.category.${cat.key}`)}
-          className="absolute inset-0 w-full h-full object-cover
-            transition-transform duration-500 group-hover:scale-105"
-        />
+        <picture>
+          <source srcSet={cat.imageWebp} type="image/webp" />
+          <img
+            src={cat.image}
+            alt={t(`spirit.category.${cat.key}`)}
+            className="absolute inset-0 w-full h-full object-cover
+              transition-transform duration-500 group-hover:scale-105"
+            loading="lazy"
+          />
+        </picture>
       ) : (
         <div
           className={[

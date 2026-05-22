@@ -227,6 +227,7 @@ export default function PostDetailPage() {
                 <UserBadge
                   user={{ id: post.authorId ?? undefined, nickname: post.authorNickname, role: post.authorRole as UserRole, currentLevel: post.authorLevel, maturingPower: post.authorMaturingPower ?? undefined, nicknameFixed: post.authorNicknameFixed, profileImageUrl: post.authorProfileImageUrl }}
                   size="sm"
+                  scoreBelow
                 />
               ) : (
                 <span className="font-medium">{post.authorNickname}</span>
