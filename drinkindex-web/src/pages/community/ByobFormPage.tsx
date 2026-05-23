@@ -10,6 +10,18 @@ function toLocalDatetimeValue(iso: string) {
   return iso.slice(0, 16)
 }
 
+// yyyy가 6자리로 중복 입력되는 브라우저 버그 방지
+function fixDatetimeYear(val: string) {
+  if (!val) return val
+  const dashIdx = val.indexOf('-')
+  if (dashIdx > 4) return val.slice(dashIdx - 4)
+  return val
+}
+
+function openPicker(e: React.MouseEvent<HTMLInputElement>) {
+  try { (e.currentTarget as HTMLInputElement).showPicker() } catch { /* fallback: native focus */ }
+}
+
 // ── 주최자 바틀 목록 입력 컴포넌트 ────────────────────────────
 interface HostBottlesInputProps {
   bottles: string[]
@@ -108,7 +120,11 @@ export default function ByobFormPage() {
   const [location, setLocation] = useState('')
   const [address, setAddress] = useState('')
   const [eventAt, setEventAt] = useState('')
-  const [recruitStartAt, setRecruitStartAt] = useState('')
+  const [recruitStartAt, setRecruitStartAt] = useState(() => {
+    const now = new Date()
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`
+  })
   const [recruitEndAt, setRecruitEndAt] = useState('')
   const [maxParticipants, setMaxParticipants] = useState(10)
   const [hostBottles, setHostBottles] = useState<string[]>([])
@@ -240,7 +256,9 @@ export default function ByobFormPage() {
                 {t('byob.formEventAt')} <span className="text-red-500">*</span>
               </label>
               <input type="datetime-local" value={eventAt}
-                onChange={(e) => setEventAt(e.target.value)} className={`${inputCls} w-full sm:w-64`} />
+                onChange={(e) => setEventAt(fixDatetimeYear(e.target.value))}
+                onClick={openPicker}
+                className={`${inputCls} w-full sm:w-64 cursor-pointer`} />
             </div>
 
             {/* 모집 기간 */}
@@ -250,14 +268,18 @@ export default function ByobFormPage() {
                   {t('byob.formRecruitStart')} <span className="text-red-500">*</span>
                 </label>
                 <input type="datetime-local" value={recruitStartAt}
-                  onChange={(e) => setRecruitStartAt(e.target.value)} className={inputCls} />
+                  onChange={(e) => setRecruitStartAt(fixDatetimeYear(e.target.value))}
+                  onClick={openPicker}
+                  className={`${inputCls} cursor-pointer`} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
                   {t('byob.formRecruitEnd')} <span className="text-red-500">*</span>
                 </label>
                 <input type="datetime-local" value={recruitEndAt}
-                  onChange={(e) => setRecruitEndAt(e.target.value)} className={inputCls} />
+                  onChange={(e) => setRecruitEndAt(fixDatetimeYear(e.target.value))}
+                  onClick={openPicker}
+                  className={`${inputCls} cursor-pointer`} />
               </div>
             </div>
 

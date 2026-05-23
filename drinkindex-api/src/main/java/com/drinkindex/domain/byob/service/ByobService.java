@@ -9,13 +9,19 @@ import com.drinkindex.domain.byob.entity.enums.ParticipantStatus;
 import com.drinkindex.domain.byob.repository.ByobCommentRepository;
 import com.drinkindex.domain.byob.repository.ByobParticipantRepository;
 import com.drinkindex.domain.byob.repository.ByobRepository;
+import com.drinkindex.domain.community.entity.Post;
+import com.drinkindex.domain.community.entity.PostPrefix;
+import com.drinkindex.domain.community.entity.enums.BoardType;
 import com.drinkindex.domain.community.entity.enums.NotificationType;
+import com.drinkindex.domain.community.repository.PostPrefixRepository;
+import com.drinkindex.domain.community.repository.PostRepository;
 import com.drinkindex.domain.community.service.MessageService;
 import com.drinkindex.domain.community.service.NotificationService;
 import com.drinkindex.domain.user.entity.User;
 import com.drinkindex.domain.user.repository.UserRepository;
 import com.drinkindex.global.exception.CustomException;
 import com.drinkindex.global.exception.ErrorCode;
+import com.drinkindex.global.util.HtmlSanitizer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -36,6 +42,9 @@ public class ByobService {
     private final ByobParticipantRepository participantRepository;
     private final ByobCommentRepository commentRepository;
     private final UserRepository userRepository;
+    private final PostRepository postRepository;
+    private final PostPrefixRepository postPrefixRepository;
+    private final HtmlSanitizer htmlSanitizer;
     private final MessageService messageService;
     private final NotificationService notificationService;
 
@@ -93,6 +102,27 @@ public class ByobService {
                .map(String::strip)
                .filter(s -> !s.isBlank())
                .forEach(saved.getHostBottles()::add);
+        }
+        if (req.isExposeToFreeBoard()) {
+            PostPrefix byobPrefix = postPrefixRepository
+                    .findByBoardTypeAndName(BoardType.FREE, "비욥")
+                    .orElse(null);
+            String infoHtml = buildByobInfoHtml(saved);
+            String linkHtml = "<p><a href=\"/community/byob/" + saved.getId()
+                    + "\" rel=\"noopener noreferrer\">바로가기</a></p>";
+            String fullContent = infoHtml + saved.getContent() + linkHtml;
+            String sanitizedContent = infoHtml + htmlSanitizer.sanitize(saved.getContent()) + linkHtml;
+            Post freePost = Post.builder()
+                    .boardType(BoardType.FREE)
+                    .prefix(byobPrefix)
+                    .author(host)
+                    .isAnonymous(false)
+                    .title(saved.getTitle())
+                    .content(fullContent)
+                    .contentSanitized(sanitizedContent)
+                    .build();
+            Post savedPost = postRepository.save(freePost);
+            saved.setLinkedFreePostId(savedPost.getId());
         }
         return ByobDetailResponse.from(saved, null);
     }
@@ -164,6 +194,18 @@ public class ByobService {
         for (ByobParticipant participant : approved) {
             messageService.sendSystemMessage(host, participant.getUser(), content);
         }
+    }
+
+    private String buildByobInfoHtml(Byob byob) {
+        String eventAt       = byob.getEventAt().format(DATE_FMT);
+        String recruitStart  = byob.getRecruitStartAt().format(DATE_FMT);
+        String recruitEnd    = byob.getRecruitEndAt().format(DATE_FMT);
+        return "<table>" +
+               "<tr><th>모임 날짜</th><td>" + eventAt + "</td></tr>" +
+               "<tr><th>장소</th><td>" + byob.getLocation() + "</td></tr>" +
+               "<tr><th>모집 기간</th><td>" + recruitStart + " ~ " + recruitEnd + "</td></tr>" +
+               "<tr><th>모집 인원</th><td>" + byob.getMaxParticipants() + "명</td></tr>" +
+               "</table>";
     }
 
     // ── 삭제 ──────────────────────────────────────────────────────

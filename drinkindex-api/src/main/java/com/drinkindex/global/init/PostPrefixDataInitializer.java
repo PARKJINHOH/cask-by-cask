@@ -29,8 +29,10 @@ public class PostPrefixDataInitializer implements ApplicationRunner {
         seedIfEmpty(BoardType.FREE, List.of(
                 new PrefixSeed("일반", null,      0),
                 new PrefixSeed("나눔", "#10b981", 1),
-                new PrefixSeed("질문", "#3b82f6", 2)
+                new PrefixSeed("질문", "#3b82f6", 2),
+                new PrefixSeed("비욥", "#f97316", 3)
         ));
+        seedPrefixIfMissing(BoardType.FREE, new PrefixSeed("비욥", "#f97316", 3));
     }
 
     private void seedIfEmpty(BoardType boardType, List<PrefixSeed> seeds) {
@@ -47,6 +49,22 @@ public class PostPrefixDataInitializer implements ApplicationRunner {
                         .build()
         ));
         log.info("[PostPrefixDataInitializer] {} 말머리 {}개 초기화 완료", boardType, seeds.size());
+    }
+
+    private void seedPrefixIfMissing(BoardType boardType, PrefixSeed seed) {
+        if (postPrefixRepository.findByBoardTypeAndName(boardType, seed.name()).isPresent()) {
+            return;
+        }
+        postPrefixRepository.save(
+                PostPrefix.builder()
+                        .boardType(boardType)
+                        .name(seed.name())
+                        .colorHex(seed.colorHex())
+                        .isActive(true)
+                        .sortOrder(seed.sortOrder())
+                        .build()
+        );
+        log.info("[PostPrefixDataInitializer] {} '{}' 말머리 추가 완료", boardType, seed.name());
     }
 
     private record PrefixSeed(String name, String colorHex, int sortOrder) {}
