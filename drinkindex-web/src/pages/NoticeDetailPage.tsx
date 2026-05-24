@@ -73,6 +73,7 @@ export default function NoticeDetailPage() {
             '@type': 'Article',
             headline: notice.title,
             datePublished: notice.createdAt,
+            dateModified: notice.updatedAt ?? notice.createdAt,
             author: { '@type': 'Organization', name: 'DrinkIndex' },
             publisher: {
               '@type': 'Organization',

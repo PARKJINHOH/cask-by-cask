@@ -116,6 +116,7 @@ export default function PostDetailPage() {
             '@type': 'Article',
             headline: post.title,
             datePublished: post.createdAt,
+            dateModified: post.updatedAt ?? post.createdAt,
             author: post.authorNickname
               ? { '@type': 'Person', name: post.authorNickname }
               : undefined,
