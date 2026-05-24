@@ -31,6 +31,7 @@ const CATEGORY_LABEL: Record<InquiryCategory, string> = {
   BUG_REPORT: '버그 신고',
   FEATURE_REQUEST: '기능 제안',
   ACCOUNT_INQUIRY: '계정 문의',
+  CORRECTION_REQUEST: '정보 수정 요청',
   OTHER: '기타',
 }
 

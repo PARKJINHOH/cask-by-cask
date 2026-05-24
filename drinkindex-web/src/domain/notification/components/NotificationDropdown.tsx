@@ -18,6 +18,7 @@ const TABS: { key: Tab; labelKey: string }[] = [
 const TYPE_ICON: Record<NotificationType, string> = {
   COMMENT: '💬', REPLY: '↩', MENTION: '@', LIKE: '♥', MESSAGE: '✉', SYSTEM: 'ℹ',
   BYOB_APPLY: '🍾', BYOB_APPROVE: '✅', BYOB_REJECT: '❌', BYOB_REMOVE: '🚫',
+  REQUEST_APPROVED: '✅', REQUEST_REJECTED: '❌',
 }
 
 function relativeTime(dateStr: string): string {
