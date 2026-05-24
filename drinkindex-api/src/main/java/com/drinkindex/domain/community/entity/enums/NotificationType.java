@@ -10,5 +10,7 @@ public enum NotificationType {
     BYOB_APPLY,
     BYOB_APPROVE,
     BYOB_REJECT,
-    BYOB_REMOVE
+    BYOB_REMOVE,
+    REQUEST_APPROVED,
+    REQUEST_REJECTED
 }
