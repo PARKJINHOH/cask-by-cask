@@ -77,7 +77,8 @@ function GNB() {
       key: 'request',
       label: t('menu.request'),
       children: [
-        { key: 'requestSpirit', label: t('menu.requestSpirit'), to: '/request/spirit' },
+        { key: 'requestSpirit',     label: t('menu.requestSpirit'),     to: '/request/spirit' },
+        { key: 'requestDistillery', label: t('menu.requestDistillery'), to: '/request/distillery' },
       ],
     },
     { key: 'notice', label: t('menu.notice'), to: '/notices' },

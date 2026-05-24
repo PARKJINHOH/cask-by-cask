@@ -16,6 +16,7 @@ import EmailVerifyPage from '@/pages/EmailVerifyPage'
 import MyPage from '@/pages/MyPage'
 import RankingPage from '@/pages/RankingPage'
 import SpiritRequestPage from '@/pages/SpiritRequestPage'
+import DistilleryRequestPage from '@/pages/DistilleryRequestPage'
 import NoticeBoardPage from '@/pages/community/NoticeBoardPage'
 import FreeBoardPage from '@/pages/community/FreeBoardPage'
 import PostDetailPage from '@/pages/community/PostDetailPage'
@@ -104,6 +105,7 @@ export default function App() {
               <Route path="messages" element={<MessagesPage />} />
               <Route path="mypage" element={<MyPage />} />
               <Route path="request/spirit" element={<SpiritRequestPage />} />
+              <Route path="request/distillery" element={<DistilleryRequestPage />} />
             </Route>
             {/* MainLayout 안의 catch-all 404 — 헤더/푸터 유지 */}
             <Route path="*" element={<NotFoundPage />} />
