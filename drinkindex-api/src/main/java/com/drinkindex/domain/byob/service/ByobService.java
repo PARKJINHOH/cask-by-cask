@@ -311,7 +311,7 @@ public class ByobService {
     // ── 거절 ──────────────────────────────────────────────────────
 
     @Transactional
-    public void reject(Long byobId, Long participantId, Long userId) {
+    public void reject(Long byobId, Long participantId, Long userId, RejectParticipantRequest req) {
         Byob byob = findByob(byobId);
         checkHost(byob, userId);
         ByobParticipant p = findParticipant(participantId);
@@ -327,6 +327,15 @@ public class ByobService {
                 "BYOB",
                 byobId
         );
+        // 신청자에게 거절 사유 쪽지 발송
+        String content = String.format(
+                "[BYOB 참여 신청 거절 안내]\n\n" +
+                "'%s' 모임 참여 신청이 거절되었습니다.\n\n" +
+                "사유: %s",
+                byob.getTitle(),
+                req.getRejectedReason()
+        );
+        messageService.sendSystemMessage(byob.getHost(), p.getUser(), content);
     }
 
     // ── 제외 ──────────────────────────────────────────────────────

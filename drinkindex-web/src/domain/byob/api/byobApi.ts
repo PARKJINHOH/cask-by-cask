@@ -9,6 +9,7 @@ import type {
   UpdateByobPayload,
   ApplyByobPayload,
   RemoveParticipantPayload,
+  RejectParticipantPayload,
   ByobStatusUpdatePayload,
   ByobMyHosted,
   ByobMyJoined,
@@ -45,8 +46,8 @@ export const byobApi = {
   approveParticipant: (id: number, pid: number) =>
     axiosInstance.patch<ApiResponse<null>>(`/api/byob/${id}/participants/${pid}/approve`),
 
-  rejectParticipant: (id: number, pid: number) =>
-    axiosInstance.patch<ApiResponse<null>>(`/api/byob/${id}/participants/${pid}/reject`),
+  rejectParticipant: (id: number, pid: number, payload: RejectParticipantPayload) =>
+    axiosInstance.patch<ApiResponse<null>>(`/api/byob/${id}/participants/${pid}/reject`, payload),
 
   removeParticipant: (id: number, pid: number, payload: RemoveParticipantPayload) =>
     axiosInstance.patch<ApiResponse<null>>(

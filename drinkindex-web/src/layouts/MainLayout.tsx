@@ -73,15 +73,14 @@ function GNB() {
 
   const menus: GNBItem[] = [
     { key: 'spirits', label: t('nav.spirits'), to: '/spirits' },
-    { key: 'notice', label: t('menu.notice'), to: '/notices' },
     {
       key: 'request',
       label: t('menu.request'),
       children: [
         { key: 'requestSpirit', label: t('menu.requestSpirit'), to: '/request/spirit' },
-        { key: 'requestReport', label: t('menu.requestReport'), to: '/request/report', comingSoon: true },
       ],
     },
+    { key: 'notice', label: t('menu.notice'), to: '/notices' },
     {
       key: 'community',
       label: t('menu.community'),

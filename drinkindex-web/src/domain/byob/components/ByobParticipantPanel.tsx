@@ -27,12 +27,21 @@ export default function ByobParticipantPanel({ byobId }: Props) {
   const { approveMutation, rejectMutation, removeMutation } = useByobActions(byobId)
   const [removeTarget, setRemoveTarget] = useState<ByobParticipant | null>(null)
   const [removedReason, setRemovedReason] = useState('')
+  const [rejectTarget, setRejectTarget] = useState<ByobParticipant | null>(null)
+  const [rejectedReason, setRejectedReason] = useState('')
 
   const handleRemove = async () => {
     if (!removeTarget || !removedReason.trim()) return
     await removeMutation.mutateAsync({ pid: removeTarget.id, payload: { removedReason: removedReason.trim() } })
     setRemoveTarget(null)
     setRemovedReason('')
+  }
+
+  const handleReject = async () => {
+    if (!rejectTarget || !rejectedReason.trim()) return
+    await rejectMutation.mutateAsync({ pid: rejectTarget.id, payload: { rejectedReason: rejectedReason.trim() } })
+    setRejectTarget(null)
+    setRejectedReason('')
   }
 
   return (
@@ -76,8 +85,7 @@ export default function ByobParticipantPanel({ byobId }: Props) {
                     {t('byob.approve')}
                   </button>
                   <button
-                    onClick={() => rejectMutation.mutate(p.id)}
-                    disabled={rejectMutation.isPending}
+                    onClick={() => setRejectTarget(p)}
                     className="px-3 py-1 text-xs font-medium rounded-lg bg-red-500 text-white
                       hover:bg-red-600 disabled:opacity-50 transition-colors"
                   >
@@ -97,6 +105,41 @@ export default function ByobParticipantPanel({ byobId }: Props) {
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {rejectTarget && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl">
+            <h4 className="text-base font-semibold text-neutral-900 mb-1">
+              {rejectTarget.nickname}{t('byob.rejectModalTitle')}
+            </h4>
+            <textarea
+              value={rejectedReason}
+              onChange={(e) => setRejectedReason(e.target.value)}
+              rows={3}
+              placeholder={t('byob.rejectReasonPlaceholder')}
+              className="w-full mt-3 px-3 py-2 border border-neutral-200 rounded-lg text-sm resize-none
+                focus:outline-none focus:ring-2 focus:ring-primary-300"
+            />
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={() => { setRejectTarget(null); setRejectedReason('') }}
+                className="flex-1 py-2 text-sm font-medium border border-neutral-200 rounded-lg
+                  text-neutral-600 hover:bg-neutral-50"
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                onClick={handleReject}
+                disabled={!rejectedReason.trim() || rejectMutation.isPending}
+                className="flex-1 py-2 text-sm font-semibold rounded-lg bg-red-500 text-white
+                  hover:bg-red-600 disabled:opacity-50"
+              >
+                {t('byob.reject')}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

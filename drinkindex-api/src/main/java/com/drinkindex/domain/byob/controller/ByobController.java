@@ -146,9 +146,10 @@ public class ByobController {
     public ResponseEntity<ApiResponse<Void>> reject(
             @PathVariable Long id,
             @PathVariable Long pid,
+            @Valid @RequestBody RejectParticipantRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-        byobService.reject(id, pid, userDetails.getUserId());
+        byobService.reject(id, pid, userDetails.getUserId(), request);
         return ResponseEntity.ok(ApiResponse.success());
     }
 

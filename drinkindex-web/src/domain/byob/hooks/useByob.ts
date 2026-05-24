@@ -5,6 +5,7 @@ import type {
   UpdateByobPayload,
   ApplyByobPayload,
   RemoveParticipantPayload,
+  RejectParticipantPayload,
   ByobStatusUpdatePayload,
 } from '../types/byob.types'
 
@@ -104,7 +105,8 @@ export function useByobActions(byobId: number) {
   })
 
   const rejectMutation = useMutation({
-    mutationFn: (pid: number) => byobApi.rejectParticipant(byobId, pid),
+    mutationFn: ({ pid, payload }: { pid: number; payload: RejectParticipantPayload }) =>
+      byobApi.rejectParticipant(byobId, pid, payload),
     onSuccess: () => {
       invalidate()
       qc.invalidateQueries({ queryKey: ['byob', byobId, 'participants'] })

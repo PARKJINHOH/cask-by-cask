@@ -102,6 +102,10 @@ export interface RemoveParticipantPayload {
   removedReason: string
 }
 
+export interface RejectParticipantPayload {
+  rejectedReason: string
+}
+
 export interface ByobStatusUpdatePayload {
   status: ByobStatus
 }
