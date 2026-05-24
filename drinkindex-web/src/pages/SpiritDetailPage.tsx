@@ -348,7 +348,20 @@ export default function SpiritDetailPage() {
       ? `${primaryName} — ${primaryDistillery || ''} ${countryLabel ? `· ${countryLabel}` : ''} · DrinkIndex tasting notes & user reviews.`
       : `${primaryName} — ${primaryDistillery || ''} ${countryLabel ? `· ${countryLabel}` : ''} · DrinkIndex 테이스팅 노트와 사용자 리뷰.`,
     image: heroImage,
-    brand: primaryDistillery ? { '@type': 'Brand', name: primaryDistillery } : undefined,
+    brand: primaryDistillery ? {
+      '@type': 'Brand',
+      name: primaryDistillery,
+      ...(secondaryDistillery ? { alternateName: secondaryDistillery } : {}),
+    } : undefined,
+    manufacturer: primaryDistillery ? {
+      '@type': 'Organization',
+      name: primaryDistillery,
+      ...(secondaryDistillery ? { alternateName: secondaryDistillery } : {}),
+      address: spirit.country ? {
+        '@type': 'PostalAddress',
+        addressCountry: spirit.country,
+      } : undefined,
+    } : undefined,
     countryOfOrigin: countryLabel || undefined,
     category: spirit.category,
     aggregateRating: (spirit.avgScore != null && spirit.reviewCount > 0) ? {
