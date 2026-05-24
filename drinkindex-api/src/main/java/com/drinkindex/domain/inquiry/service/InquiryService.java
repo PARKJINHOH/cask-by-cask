@@ -157,6 +157,7 @@ public class InquiryService {
             case BUG_REPORT -> "버그 신고";
             case FEATURE_REQUEST -> "기능 제안";
             case ACCOUNT_INQUIRY -> "계정 문의";
+            case CORRECTION_REQUEST -> "정보 수정 요청";
             case OTHER -> "기타";
         };
     }
