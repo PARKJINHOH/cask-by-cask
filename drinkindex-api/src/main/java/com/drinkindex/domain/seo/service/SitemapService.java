@@ -17,7 +17,8 @@ import java.util.List;
  * sitemap.xml 본문 생성.
  *
  * 포함 URL:
- *   - 정적 페이지: /, /spirits, /notices, /community/free, /community/notice, /ranking, /terms, /privacy
+ *   - 정적 페이지: /, /spirits, /spirits?category={WHISKY|COGNAC|WINE|OTHER},
+ *                 /notices, /community/free, /community/notice, /ranking, /terms, /privacy
  *   - 동적: /spirits/{id}, /notices/{id}, /community/{boardType}/{postId}
  *
  * 제외:
