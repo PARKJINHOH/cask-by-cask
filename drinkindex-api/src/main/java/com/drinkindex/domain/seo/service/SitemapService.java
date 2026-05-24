@@ -49,6 +49,13 @@ public class SitemapService {
         // ── 정적 페이지 ──
         appendUrl(sb, siteUrl + "/",                       null, "daily",  "1.0");
         appendUrl(sb, siteUrl + "/spirits",                null, "daily",  "0.9");
+
+        // ── 카테고리 필터 페이지 ──
+        appendUrl(sb, siteUrl + "/spirits?category=WHISKY",  null, "daily",  "0.8");
+        appendUrl(sb, siteUrl + "/spirits?category=COGNAC",  null, "daily",  "0.8");
+        appendUrl(sb, siteUrl + "/spirits?category=WINE",    null, "daily",  "0.8");
+        appendUrl(sb, siteUrl + "/spirits?category=OTHER",   null, "daily",  "0.7");
+
         appendUrl(sb, siteUrl + "/notices",                null, "daily",  "0.7");
         appendUrl(sb, siteUrl + "/community/free",         null, "hourly", "0.8");
         appendUrl(sb, siteUrl + "/community/notice",       null, "daily",  "0.7");
