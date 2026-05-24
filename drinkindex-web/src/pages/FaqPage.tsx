@@ -78,6 +78,61 @@ const QAS: QA[] = [
     q: '직접 술 정보를 등록할 수 있나요?',
     a: '로그인한 회원은 [주류 등록 요청] (/request/spirit) 페이지에서 카탈로그에 없는 술을 신청할 수 있습니다. 관리자가 검토 후 승인하면 카탈로그에 추가됩니다.',
   },
+  {
+    q: '아이라(Islay) 위스키란 무엇인가요?',
+    a: '아이라는 스코틀랜드 서부 해안의 섬으로, 강한 피트 훈연과 해양성 바람의 영향을 받은 위스키로 유명합니다. 라가불린, 라프로익, 보모어, 브루흐라디, 아드벡 등이 대표 증류소이며, 스모키·아이오딘·바닷소금 향이 특징입니다.',
+  },
+  {
+    q: '스카치 위스키의 5대 산지는 어디인가요?',
+    a: '스카치 위스키는 하이랜드 (Highland), 스페이사이드 (Speyside), 아일랜드 (Islay), 로우랜드 (Lowland), 캠벨타운 (Campbeltown) 5개 지역으로 구분됩니다. 스페이사이드는 과일·꿀·바닐라 풍미, 하이랜드는 다채로운 스타일, 아일라는 강한 피트향이 특징입니다.',
+  },
+  {
+    q: '버번(Bourbon) 위스키의 법적 정의와 조건은 무엇인가요?',
+    a: '버번은 미국에서 생산되며 곡물 중 51% 이상이 옥수수여야 하고, 새 참나무 오크통에서 숙성해야 합니다. 증류 도수 160 proof(80%) 이하, 병입 도수 80 proof(40%) 이상이 요건입니다. 켄터키 주 생산이 많지만 법적으로 반드시 켄터키일 필요는 없습니다.',
+  },
+  {
+    q: '와인 아펠라시옹(Appellation)이란 무엇인가요?',
+    a: '아펠라시옹은 와인의 원산지 명칭 보호 제도입니다. 특정 지역에서 규정된 포도 품종·재배 방식·양조 방법을 따라 만들어진 와인만이 해당 명칭을 사용할 수 있습니다. 프랑스 AOC(원산지 명칭 통제), 이탈리아 DOC, 스페인 DO 등이 대표적입니다.',
+  },
+  {
+    q: '내추럴 와인(Natural Wine)이란 무엇인가요?',
+    a: '내추럴 와인은 유기농 또는 바이오다이나믹 농법으로 재배한 포도를 사용하고, 양조 과정에서 첨가물(이산화황, 인공 효모 등)을 최소화하거나 전혀 넣지 않은 와인입니다. 구름처럼 탁한 외관과 독특한 개성이 특징이며, 정해진 법적 기준은 없습니다.',
+  },
+  {
+    q: '오크 숙성이 와인 맛에 미치는 영향은?',
+    a: '오크통 숙성은 와인에 바닐라·토스트·향신료·삼나무 향을 더하고, 탄닌을 부드럽게 하며, 산화를 통해 복잡성을 높입니다. 새 오크통일수록 영향이 강하며, 프렌치 오크는 우아한 향신료 풍미, 아메리칸 오크는 강한 바닐라·코코넛 향을 주는 경향이 있습니다.',
+  },
+  {
+    q: 'DrinkIndex 숙성력(점수·레벨) 시스템이란 무엇인가요?',
+    a: 'DrinkIndex의 숙성력은 사용자 활동(리뷰 작성, 댓글, 좋아요 등)에 따라 쌓이는 활동 점수입니다. 점수가 쌓일수록 레벨이 올라가며, 주간·월간·전체 기간별 랭킹 (/ranking) 에서 다른 사용자와 비교할 수 있습니다.',
+  },
+  {
+    q: '주류 등록 요청은 어떻게 하나요?',
+    a: '로그인 후 [주류 등록 요청] (/request/spirit) 페이지에서 카탈로그에 없는 술의 이름·카테고리·증류소·도수 등 정보를 입력해 신청할 수 있습니다. 관리자가 검토 후 승인하면 정식 카탈로그에 추가되며, 신청 상태는 마이페이지에서 확인 가능합니다.',
+  },
+]
+
+const QAS_EN: QA[] = [
+  {
+    q: 'What is DrinkIndex?',
+    a: 'DrinkIndex is a Korean-based spirits review community for whisky, wine, cognac, rum, tequila and more. Users rate each spirit on nose, taste and finish (0–100 each) and share tasting notes alongside distillery and winery information.',
+  },
+  {
+    q: 'What is a Single Malt Whisky?',
+    a: "A single malt whisky is made entirely from malted barley at a single distillery. It is distilled in pot stills and aged in oak casks. Each distillery's single malt has its own distinct character shaped by water source, distillation style, and cask type.",
+  },
+  {
+    q: 'What do VS, VSOP, and XO mean for Cognac?',
+    a: "These grades reflect the minimum age of the youngest eau-de-vie in the blend. VS (Very Special): at least 2 years. VSOP (Very Superior Old Pale): at least 4 years. Napoléon: at least 6 years. XO (Extra Old): at least 10 years (since 2018). XXO: at least 14 years.",
+  },
+  {
+    q: 'What is a NAS Whisky?',
+    a: "NAS stands for No Age Statement — a whisky without a stated age on the label. It allows distillers to blend spirits of various ages freely, often creating consistent house styles without being constrained by a specific maturation period.",
+  },
+  {
+    q: 'How does DrinkIndex score spirits?',
+    a: 'DrinkIndex uses a 0–100 scale across three dimensions: nose, taste, and finish. The totalScore is the average of these three ratings. Users can also add written tasting notes and select aromas from a wheel to create detailed reviews.',
+  },
 ]
 
 function FaqItem({ qa, open, onToggle }: { qa: QA; open: boolean; onToggle: () => void }) {
@@ -116,7 +171,7 @@ export default function FaqPage() {
 
   const faqJsonLd = {
     '@type': 'FAQPage' as const,
-    mainEntity: QAS.map((qa) => ({
+    mainEntity: [...QAS, ...QAS_EN].map((qa) => ({
       '@type': 'Question',
       name: qa.q,
       acceptedAnswer: { '@type': 'Answer', text: qa.a },
@@ -134,7 +189,7 @@ export default function FaqPage() {
         title="자주 묻는 질문 (FAQ)"
         description="위스키, 와인, 꼬냑 등 주류에 대한 자주 묻는 질문 — NAS, 캐스크 타입, 피티드, VSOP/XO 등급, 빈티지 등 핵심 용어 정리. DrinkIndex FAQ."
         canonical={buildCanonical('/faq')}
-        keywords="위스키 FAQ, 꼬냑 FAQ, 와인 FAQ, NAS, VSOP, XO, 캐스크, 피티드, 빈티지"
+        keywords="위스키 FAQ, 꼬냑 FAQ, 와인 FAQ, NAS, VSOP, XO, 캐스크, 피티드, 빈티지, whisky FAQ, cognac grade, single malt, bourbon"
         jsonLd={[faqJsonLd, breadcrumbJsonLd]}
       />
 
@@ -156,6 +211,22 @@ export default function FaqPage() {
             onToggle={() => setOpenIdx(openIdx === i ? null : i)}
           />
         ))}
+      </div>
+
+      {/* ── 영어 FAQ 섹션 ── */}
+      <div className="mt-10">
+        <h2 className="text-xl font-bold text-neutral-900 mb-1">FAQ — English</h2>
+        <p className="text-sm text-neutral-500 mb-6">Key questions about whisky, wine and cognac.</p>
+        <div className="bg-white border border-neutral-200 rounded-2xl divide-y divide-neutral-100">
+          {QAS_EN.map((qa, i) => (
+            <FaqItem
+              key={`en-${i}`}
+              qa={qa}
+              open={openIdx === QAS.length + i}
+              onToggle={() => setOpenIdx(openIdx === QAS.length + i ? null : QAS.length + i)}
+            />
+          ))}
+        </div>
       </div>
 
       <p className="mt-6 text-xs text-neutral-400">
