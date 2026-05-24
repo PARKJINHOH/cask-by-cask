@@ -4,6 +4,8 @@ import com.drinkindex.domain.distillery.entity.Distillery;
 import com.drinkindex.domain.distillery.repository.DistilleryRepository;
 import com.drinkindex.domain.score.entity.enums.ScoreActionType;
 import com.drinkindex.domain.score.service.ScoreService;
+import com.drinkindex.domain.community.entity.enums.NotificationType;
+import com.drinkindex.domain.community.service.NotificationService;
 import com.drinkindex.domain.spirit.dto.*;
 import com.drinkindex.domain.spirit.entity.Spirit;
 import com.drinkindex.domain.spirit.entity.SpiritImage;
@@ -59,6 +61,7 @@ public class SpiritService {
     private final ObjectMapper objectMapper;
     private final SpiritDetailService spiritDetailService;
     private final ScoreService scoreService;
+    private final NotificationService notificationService;
 
     // ── 공개 조회 ──────────────────────────────────────────
 
@@ -322,6 +325,14 @@ public class SpiritService {
         // [숙성력] 술 등록 요청 승인 — 요청자(관리자 아님)에게 지급
         scoreService.award(req.getUser().getId(), ScoreActionType.SPIRIT_REQUEST_APPROVED, "SPIRIT_REQUEST", requestId);
 
+        notificationService.send(
+                req.getUser(),
+                NotificationType.REQUEST_APPROVED,
+                "술 등록 요청 '" + body.nameKo() + "'이(가) 승인되었습니다.",
+                "SPIRIT_REQUEST",
+                requestId
+        );
+
         return SpiritDetailResponse.of(saved,
                 images.stream().map(SpiritImageResponse::from).toList());
     }
@@ -330,7 +341,15 @@ public class SpiritService {
     public void rejectRegisterRequest(Long requestId, String rejectReason, Long adminId) {
         SpiritRegisterRequest req = getRegisterRequest(requestId);
         User admin = getUser(adminId);
+        SpiritRegisterRequestBody body = parseSpiritData(req.getSpiritData());
         req.reject(admin, rejectReason);
+        notificationService.send(
+                req.getUser(),
+                NotificationType.REQUEST_REJECTED,
+                "술 등록 요청 '" + body.nameKo() + "'이(가) 반려되었습니다.",
+                "SPIRIT_REQUEST",
+                requestId
+        );
     }
 
     // ── Private helpers ─────────────────────────────────────
