@@ -34,6 +34,7 @@
     "notice": "공지사항",
     "request": "요청",
     "requestSpirit": "술 등록하기",
+    "requestDistillery": "증류소 등록하기",
     "community": "커뮤니티",
     "communityNews": "소식",
     "communityBoard": "자유게시판",
@@ -54,6 +55,30 @@
       "vintageYear": "빈티지",
       "distillery": "증류소",
       "volumeMl": "용량 (ml)",
+      "submit": "등록 요청하기",
+      "success": "등록 요청이 완료되었습니다."
+    },
+    "myRequests": {
+      "title": "내 요청 목록",
+      "empty": "아직 요청한 내역이 없습니다.",
+      "status": {
+        "PENDING": "검토 중",
+        "APPROVED": "승인됨",
+        "REJECTED": "반려됨"
+      },
+      "rejectReason": "반려 사유",
+      "requestedAt": "신청일",
+      "reviewedAt": "처리일"
+    }
+  },
+  "distilleryRequest": {
+    "title": "증류소 등록 요청",
+    "subtitle": "DB에 없는 증류소를 요청해주세요. 관리자 검토 후 등록됩니다.",
+    "form": {
+      "nameKo": "한국어 이름",
+      "nameEn": "영어 이름",
+      "country": "국가",
+      "region": "지역 (선택)",
       "submit": "등록 요청하기",
       "success": "등록 요청이 완료되었습니다."
     },
@@ -492,6 +517,8 @@
     "message": "쪽지",
     "system": "시스템",
     "byob": "비욥",
+    "requestApproved": "요청 승인",
+    "requestRejected": "요청 반려",
     "markAllRead": "전체 읽음",
     "viewAll": "알림 전체보기",
     "noNotification": "새로운 알림이 없습니다.",
@@ -551,6 +578,7 @@
       "BUG_REPORT": "버그 신고",
       "FEATURE_REQUEST": "기능 제안",
       "ACCOUNT_INQUIRY": "계정 문의",
+      "CORRECTION_REQUEST": "정보 수정 요청",
       "OTHER": "기타"
     },
     "status": {

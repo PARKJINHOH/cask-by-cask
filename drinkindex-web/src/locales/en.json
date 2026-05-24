@@ -34,6 +34,7 @@
     "notice": "Notice",
     "request": "Request",
     "requestSpirit": "Register Spirit",
+    "requestDistillery": "Register Distillery",
     "community": "Community",
     "communityNews": "News",
     "communityBoard": "Free Board",
@@ -56,6 +57,30 @@
       "volumeMl": "Volume (ml)",
       "submit": "Submit Request",
       "success": "Your request has been submitted successfully."
+    },
+    "myRequests": {
+      "title": "My Requests",
+      "empty": "No requests yet.",
+      "status": {
+        "PENDING": "Pending",
+        "APPROVED": "Approved",
+        "REJECTED": "Rejected"
+      },
+      "rejectReason": "Rejection Reason",
+      "requestedAt": "Requested",
+      "reviewedAt": "Reviewed"
+    }
+  },
+  "distilleryRequest": {
+    "title": "Distillery Registration Request",
+    "subtitle": "Request a distillery not in our database. It will be reviewed by an admin.",
+    "form": {
+      "nameKo": "Korean Name",
+      "nameEn": "English Name",
+      "country": "Country",
+      "region": "Region (optional)",
+      "submit": "Submit Request",
+      "success": "Your request has been submitted."
     },
     "myRequests": {
       "title": "My Requests",
@@ -492,6 +517,8 @@
     "message": "Messages",
     "system": "System",
     "byob": "BYOB",
+    "requestApproved": "Request Approved",
+    "requestRejected": "Request Rejected",
     "markAllRead": "Mark all read",
     "viewAll": "View all notifications",
     "noNotification": "No new notifications.",
@@ -551,6 +578,7 @@
       "BUG_REPORT": "Bug Report",
       "FEATURE_REQUEST": "Feature Request",
       "ACCOUNT_INQUIRY": "Account Inquiry",
+      "CORRECTION_REQUEST": "Correction Request",
       "OTHER": "Other"
     },
     "status": {
