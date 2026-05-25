@@ -82,6 +82,7 @@ function GNB() {
       ],
     },
     { key: 'notice', label: t('menu.notice'), to: '/notices' },
+    { key: 'faq', label: t('menu.faq'), to: '/faq' },
     {
       key: 'community',
       label: t('menu.community'),
@@ -482,6 +483,7 @@ export default function MainLayout() {
                 <li><Link to="/community/free" className="text-xs text-neutral-500 hover:text-primary-800 transition-colors">{t('menu.communityBoard')}</Link></li>
                 <li><Link to="/notices" className="text-xs text-neutral-500 hover:text-primary-800 transition-colors">{t('menu.notice')}</Link></li>
                 <li><Link to="/request/spirit" className="text-xs text-neutral-500 hover:text-primary-800 transition-colors">{t('menu.requestSpirit')}</Link></li>
+                <li><Link to="/faq" className="text-xs text-neutral-500 hover:text-primary-800 transition-colors">{t('menu.faq')}</Link></li>
               </ul>
             </div>
 

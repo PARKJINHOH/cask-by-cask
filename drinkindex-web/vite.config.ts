@@ -70,6 +70,10 @@ export default defineConfig({
         target: 'http://localhost:8080',
         changeOrigin: true,
       },
+      '/api/faq': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
       '/api/byob': {
         target: 'http://localhost:8080',
         changeOrigin: true,

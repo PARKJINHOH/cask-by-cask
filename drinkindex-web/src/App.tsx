@@ -67,6 +67,8 @@ import AdminInquiryPage from '@/pages/admin/AdminInquiryPage'
 import AdminRolePage from '@/pages/admin/AdminRolePage'
 import AdminLogPage from '@/pages/admin/AdminLogPage'
 import AdminDashboardPage from '@/pages/admin/AdminDashboardPage'
+import AdminFaqPage from '@/pages/admin/AdminFaqPage'
+import AdminFaqFormPage from '@/pages/admin/AdminFaqFormPage'
 
 export default function App() {
   return (
@@ -153,6 +155,9 @@ export default function App() {
               <Route path="inquiries" element={<AdminInquiryPage />} />
               <Route path="roles" element={<AdminRolePage />} />
               <Route path="logs" element={<AdminLogPage />} />
+              <Route path="faq" element={<AdminFaqPage />} />
+              <Route path="faq/new" element={<AdminFaqFormPage />} />
+              <Route path="faq/:id/edit" element={<AdminFaqFormPage />} />
               {/* 관리자 영역 catch-all */}
               <Route path="*" element={<NotFoundPage />} />
             </Route>

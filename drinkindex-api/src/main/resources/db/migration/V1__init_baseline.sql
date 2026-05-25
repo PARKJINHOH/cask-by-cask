@@ -19,4 +19,20 @@
 -- Flyway는 적용된 마이그레이션의 체크섬을 검증하므로 변경 시 기동 실패합니다.
 -- =============================================================================
 
+CREATE TABLE IF NOT EXISTS faqs (
+    id         BIGINT       NOT NULL AUTO_INCREMENT,
+    language   VARCHAR(5)   NOT NULL COMMENT 'KO|EN',
+    category   VARCHAR(20)  NOT NULL COMMENT 'SERVICE|WHISKY|COGNAC|WINE',
+    question   VARCHAR(500) NOT NULL,
+    answer     TEXT         NOT NULL,
+    sort_order INT          NOT NULL DEFAULT 0,
+    is_active  TINYINT(1)   NOT NULL DEFAULT 1,
+    created_at DATETIME(6)  NOT NULL,
+    updated_at DATETIME(6)  NOT NULL,
+    PRIMARY KEY (id),
+    INDEX idx_faq_language  (language),
+    INDEX idx_faq_category  (category),
+    INDEX idx_faq_sort_order (sort_order)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 SELECT 1;

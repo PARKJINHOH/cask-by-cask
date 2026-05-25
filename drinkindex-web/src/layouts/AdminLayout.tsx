@@ -35,6 +35,7 @@ const navEntries: NavEntry[] = [
       { path: '/admin/banners',  label: '배너',     exact: true },
       { path: '/admin/popups',   label: '팝업',     exact: true },
       { path: '/admin/legal',    label: '약관 관리', exact: true },
+      { path: '/admin/faq',      label: 'FAQ 관리',  exact: true },
     ],
   },
   {
