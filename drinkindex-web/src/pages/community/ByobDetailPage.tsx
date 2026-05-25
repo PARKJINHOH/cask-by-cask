@@ -123,7 +123,6 @@ export default function ByobDetailPage() {
   const isHost = isLoggedIn && user?.id === byob.hostUserId
   const myParticipant = byob.myParticipant
   const hasApplied = !!myParticipant
-  const isApproved = myParticipant?.status === 'APPROVED'
   const canApply = isLoggedIn && !isHost && !hasApplied
     && byob.status === 'OPEN'
     && byob.approvedCount < byob.maxParticipants

@@ -7,12 +7,11 @@ interface CommentItemProps {
   comment: ByobComment
   myUserId: number
   hostUserId: number
-  isHost: boolean
   onReply: (parentId: number) => void
   onDelete: (cid: number) => void
 }
 
-function CommentItem({ comment, myUserId, hostUserId, isHost, onReply, onDelete }: CommentItemProps) {
+function CommentItem({ comment, myUserId, hostUserId, onReply, onDelete }: CommentItemProps) {
   const isOwner = comment.authorUserId === myUserId
 
   return (
@@ -132,7 +131,6 @@ export default function ByobCommentSection({ byobId, myUserId, hostUserId, isHos
               comment={c}
               myUserId={myUserId}
               hostUserId={hostUserId}
-              isHost={isHost}
               onReply={(parentId) => setReplyParentId(parentId)}
               onDelete={(cid) => deleteCommentMutation.mutate(cid)}
             />
