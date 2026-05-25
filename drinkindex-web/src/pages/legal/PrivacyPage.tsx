@@ -1,6 +1,7 @@
 ﻿import { Link } from 'react-router-dom'
 import { useLegalLatest } from '@/domain/legal/hooks/useLegal'
 import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
+import { sanitizeHtml } from '@/shared/utils/sanitize'
 import { PrivacyContent } from './LegalContent'
 
 export default function PrivacyPage() {
@@ -31,7 +32,7 @@ export default function PrivacyPage() {
           ) : (
             <div
               className="prose prose-sm max-w-none text-neutral-700"
-              dangerouslySetInnerHTML={{ __html: data.contentSanitized }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(data.contentSanitized ?? '') }}
             />
           )}
         </div>

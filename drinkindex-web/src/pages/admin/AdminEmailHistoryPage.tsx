@@ -1,4 +1,5 @@
 ﻿import { useState } from 'react'
+import DOMPurify from 'dompurify'
 import { useQuery } from '@tanstack/react-query'
 import Badge from '@/shared/components/Badge'
 import Spinner from '@/shared/components/Spinner'
@@ -37,7 +38,7 @@ function SubjectPreviewModal({ logId, onClose }: { logId: number; onClose: () =>
           <div
             className="px-5 py-5 text-sm prose prose-sm max-w-none overflow-y-auto"
             style={{ minHeight: '320px', maxHeight: '60vh' }}
-            dangerouslySetInnerHTML={{ __html: detail.body || '<p style="color:#aaa">(본문 없음)</p>' }}
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(detail.body || '<p style="color:#aaa">(본문 없음)</p>') }}
           />
         </div>
       ) : (

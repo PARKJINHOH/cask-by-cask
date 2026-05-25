@@ -12,6 +12,7 @@ import SeoMeta from '@/shared/components/SeoMeta'
 import type { ApiResponse } from '@/shared/types/common.types'
 import { TermsContent, PrivacyContent } from '@/pages/legal/LegalContent'
 import { useLegalLatest } from '@/domain/legal/hooks/useLegal'
+import { sanitizeHtml } from '@/shared/utils/sanitize'
 
 // ── Types ──────────────────────────────────────────────────
 type CheckStatus = 'idle' | 'checking' | 'available' | 'taken'
@@ -179,7 +180,7 @@ function PolicyModal({ type, onClose }: { type: PolicyType; onClose: () => void 
           {isLoading ? (
             <div className="py-12 text-center text-neutral-400">불러오는 중...</div>
           ) : data ? (
-            <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: data.contentSanitized }} />
+            <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: sanitizeHtml(data.contentSanitized ?? '') }} />
           ) : type === 'terms' ? (
             <TermsContent />
           ) : (
