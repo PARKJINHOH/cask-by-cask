@@ -27,7 +27,10 @@
       "topRated": "평점 높은 술",
       "popular": "인기 술",
       "notices": "공지사항",
-      "viewAll": "전체보기"
+      "ranking": "숙성력 랭킹",
+      "viewAll": "전체보기",
+      "weekly": "주간",
+      "allTime": "전체"
     }
   },
   "menu": {

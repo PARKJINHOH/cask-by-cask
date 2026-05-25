@@ -7,11 +7,14 @@ import { spiritApi } from '@/domain/spirit/api/spiritApi'
 import { useBanners } from '@/domain/banner/hooks/useBanners'
 import { usePopups } from '@/domain/popup/hooks/usePopups'
 import { useNotices } from '@/domain/notice/hooks/useNotices'
+import { useRanking } from '@/domain/ranking/hooks/useRanking'
 import { PopupViewer } from '@/domain/popup/components/PopupViewer'
 import BannerSlider from '@/domain/banner/components/BannerSlider'
 import SpiritCard from '@/shared/components/SpiritCard'
+import LevelIcon from '@/shared/components/icons/LevelIcon'
 import type { SpiritListItem } from '@/domain/spirit/types/spirit.types'
 import type { NoticeListItem } from '@/domain/notice/types/notice.types'
+import type { RankingPeriod } from '@/domain/ranking/types/ranking.types'
 
 // ── 카테고리 메뉴 데이터 ─────────────────────────────────────────
 const CATEGORY_MENU = [
@@ -111,6 +114,88 @@ function CategoryCardInner({
         </div>
       </div>
     </>
+  )
+}
+
+// ── 랭킹 위젯 ────────────────────────────────────────────────────
+function RankingWidget() {
+  const { t } = useTranslation()
+  const [period, setPeriod] = useState<RankingPeriod>('WEEKLY')
+  const { data } = useRanking(period, 0)
+  const top5 = data?.content.slice(0, 5) ?? []
+
+  const MEDAL: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' }
+
+  return (
+    <div className="bg-white rounded-2xl border border-neutral-100 px-4 lg:px-5 py-4 h-full flex flex-col">
+      {/* 헤더 */}
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-base font-bold text-neutral-900 tracking-tight">
+          {t('home.sections.ranking')}
+        </h2>
+        <Link
+          to="/ranking"
+          className="text-sm text-primary-800 hover:text-primary-900 font-medium
+            flex items-center gap-0.5 transition-colors"
+        >
+          {t('home.sections.viewAll')}
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </Link>
+      </div>
+
+      {/* 기간 탭 */}
+      <div className="flex gap-1 mb-3">
+        {(['WEEKLY', 'ALL'] as RankingPeriod[]).map((p) => (
+          <button
+            key={p}
+            onClick={() => setPeriod(p)}
+            className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+              period === p
+                ? 'bg-primary-800 text-white'
+                : 'bg-neutral-100 text-neutral-500 hover:bg-neutral-200'
+            }`}
+          >
+            {p === 'WEEKLY' ? t('home.sections.weekly') : t('home.sections.allTime')}
+          </button>
+        ))}
+      </div>
+
+      {/* 랭킹 목록 */}
+      <div className="flex-1 space-y-2">
+        {top5.length === 0 ? (
+          <p className="text-sm text-neutral-400 py-4 text-center">데이터가 없습니다.</p>
+        ) : (
+          top5.map((item) => {
+            const score = period === 'WEEKLY' ? item.weeklyScore : item.maturingPower
+            return (
+              <div
+                key={item.userId}
+                className="flex items-center gap-2.5 py-1.5"
+              >
+                {/* 순위 */}
+                <span className="w-6 text-center text-sm leading-none flex-shrink-0">
+                  {MEDAL[item.rank] ?? (
+                    <span className="text-xs font-bold text-neutral-400">{item.rank}</span>
+                  )}
+                </span>
+                {/* 레벨 아이콘 */}
+                <LevelIcon level={item.currentLevel} size={20} />
+                {/* 닉네임 */}
+                <span className="flex-1 text-sm text-neutral-800 truncate font-medium">
+                  {item.nickname}
+                </span>
+                {/* 점수 */}
+                <span className="text-xs font-semibold text-amber-600 tabular-nums flex-shrink-0">
+                  {score.toLocaleString()}p
+                </span>
+              </div>
+            )
+          })
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -334,21 +419,39 @@ export default function MainPage() {
           </section>
         )}
 
-        {/* ── 공지사항 미리보기 ──────────────────────────────────── */}
-        {notices.length > 0 && (
-          <section>
-            <SectionHeader
-              title={t('home.sections.notices')}
-              link="/notices"
-              linkLabel={t('home.sections.viewAll')}
-            />
-            <div className="bg-white rounded-2xl border border-neutral-100 px-4 lg:px-5">
-              {notices.map((notice) => (
-                <NoticeRow key={notice.id} notice={notice} />
-              ))}
+        {/* ── 랭킹 + 공지사항 (2열) ────────────────────────────── */}
+        <section className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
+          {/* 랭킹 위젯 (40%) */}
+          <div className="lg:col-span-2">
+            <RankingWidget />
+          </div>
+
+          {/* 공지사항 (60%) */}
+          {notices.length > 0 && (
+            <div className="lg:col-span-3">
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-base font-bold text-neutral-900 tracking-tight">
+                  {t('home.sections.notices')}
+                </h2>
+                <Link
+                  to="/notices"
+                  className="text-sm text-primary-800 hover:text-primary-900 font-medium
+                    flex items-center gap-0.5 transition-colors"
+                >
+                  {t('home.sections.viewAll')}
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
+                </Link>
+              </div>
+              <div className="bg-white rounded-2xl border border-neutral-100 px-4 lg:px-5">
+                {notices.map((notice) => (
+                  <NoticeRow key={notice.id} notice={notice} />
+                ))}
+              </div>
             </div>
-          </section>
-        )}
+          )}
+        </section>
       </div>
 
       {/* ── 팝업 뷰어 ──────────────────────────────────────────── */}

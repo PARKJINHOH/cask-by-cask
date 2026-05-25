@@ -27,7 +27,10 @@
       "topRated": "Top Rated",
       "popular": "Most Popular",
       "notices": "Notices",
-      "viewAll": "View All"
+      "ranking": "Aging Power Ranking",
+      "viewAll": "View All",
+      "weekly": "Weekly",
+      "allTime": "All Time"
     }
   },
   "menu": {
