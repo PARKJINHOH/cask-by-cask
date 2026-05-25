@@ -329,8 +329,8 @@ public class SpiritService {
                 req.getUser(),
                 NotificationType.REQUEST_APPROVED,
                 "술 등록 요청 '" + body.nameKo() + "'이(가) 승인되었습니다.",
-                "SPIRIT_REQUEST",
-                requestId
+                "SPIRIT",
+                saved.getId()
         );
 
         return SpiritDetailResponse.of(saved,

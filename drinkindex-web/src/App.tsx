@@ -25,7 +25,6 @@ import ByobListPage from '@/pages/community/ByobListPage'
 import ByobDetailPage from '@/pages/community/ByobDetailPage'
 import ByobFormPage from '@/pages/community/ByobFormPage'
 import NotificationsPage from '@/pages/NotificationsPage'
-import MessagesPage from '@/pages/MessagesPage'
 import AdminUserPage from '@/pages/admin/AdminUserPage'
 import AdminUserDetailPage from '@/pages/admin/AdminUserDetailPage'
 import AdminSpiritPage from '@/pages/admin/AdminSpiritPage'
@@ -105,8 +104,7 @@ export default function App() {
               <Route path="community/:boardType/:id/edit" element={<PostFormPage />} />
               <Route path="community/byob/write" element={<ByobFormPage />} />
               <Route path="community/byob/:id/edit" element={<ByobFormPage />} />
-              <Route path="messages" element={<MessagesPage />} />
-              <Route path="mypage" element={<MyPage />} />
+<Route path="mypage" element={<MyPage />} />
               <Route path="request/spirit" element={<SpiritRequestPage />} />
               <Route path="request/distillery" element={<DistilleryRequestPage />} />
             </Route>
