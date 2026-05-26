@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { UserBottle, UserBottleRequest, SpiritCategory, BottleStatus } from '../types/userBottle.types';
 import { useCreateBottle, useUpdateBottle, useUploadBottleImage } from '../hooks/useUserBottle';
+import axiosInstance from '@/shared/api/axiosInstance';
 
 interface SpiritOption { id: number; nameKo: string; nameEn: string | null; category: string; }
 interface Props { open: boolean; onClose: () => void; editing?: UserBottle; }
@@ -43,10 +44,8 @@ export function BottleFormModal({ open, onClose, editing }: Props) {
     if (spiritQuery.length < 2) { setSpiritOptions([]); return; }
     const timer = setTimeout(async () => {
       try {
-        // Spirit 검색 API — 기존 spiritApi.ts에서 경로 확인 필요
-        const res = await fetch(`/api/spirits?keyword=${encodeURIComponent(spiritQuery)}&size=5`);
-        const json = await res.json();
-        setSpiritOptions(json.data?.content ?? []);
+        const res = await axiosInstance.get('/api/spirits', { params: { keyword: spiritQuery, size: 5 } });
+        setSpiritOptions(res.data?.data?.content ?? []);
       } catch { setSpiritOptions([]); }
     }, 300);
     return () => clearTimeout(timer);
@@ -54,24 +53,28 @@ export function BottleFormModal({ open, onClose, editing }: Props) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const payload: UserBottleRequest = {
-      ...form,
-      spiritId: selectedSpirit?.id,
-      spiritNameText: selectedSpirit ? undefined : (spiritQuery || form.spiritNameText),
-    };
-    let bottleId: number;
-    if (editing) {
-      const updated = await updateMut.mutateAsync({ id: editing.id, data: payload });
-      bottleId = updated?.id ?? editing.id;
-    } else {
-      const created = await createMut.mutateAsync(payload);
-      if (!created) return;
-      bottleId = created.id;
+    try {
+      const payload: UserBottleRequest = {
+        ...form,
+        spiritId: selectedSpirit?.id,
+        spiritNameText: selectedSpirit ? undefined : (spiritQuery || form.spiritNameText),
+      };
+      let bottleId: number;
+      if (editing) {
+        const updated = await updateMut.mutateAsync({ id: editing.id, data: payload });
+        bottleId = updated?.id ?? editing.id;
+      } else {
+        const created = await createMut.mutateAsync(payload);
+        if (!created?.id) return;
+        bottleId = created.id;
+      }
+      for (const file of pendingImages) {
+        await uploadImageMut.mutateAsync({ id: bottleId, file });
+      }
+      onClose();
+    } catch {
+      // Errors surfaced via mutation.error or global axios interceptor toast
     }
-    for (const file of pendingImages) {
-      await uploadImageMut.mutateAsync({ id: bottleId, file });
-    }
-    onClose();
   };
 
   if (!open) return null;
@@ -192,7 +195,9 @@ export function BottleFormModal({ open, onClose, editing }: Props) {
             <label className="block text-sm font-medium text-gray-700 mb-1">{t('collection.form.images')}</label>
             <input type="file" accept="image/jpeg,image/png" multiple
               onChange={e => {
-                const files = Array.from(e.target.files ?? []).slice(0, 2);
+                const alreadyUploaded = editing?.imageUrls.length ?? 0;
+                const remaining = Math.max(0, 2 - alreadyUploaded);
+                const files = Array.from(e.target.files ?? []).slice(0, remaining);
                 setPendingImages(files);
               }}
               className="w-full text-sm text-gray-500 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-sm file:bg-amber-50 file:text-amber-700" />
