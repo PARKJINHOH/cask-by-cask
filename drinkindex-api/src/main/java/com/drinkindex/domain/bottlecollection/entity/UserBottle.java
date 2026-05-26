@@ -6,6 +6,7 @@ import com.drinkindex.domain.user.entity.User;
 import com.drinkindex.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.BatchSize;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -74,6 +75,7 @@ public class UserBottle extends BaseTimeEntity {
     @OneToMany(mappedBy = "userBottle", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("sortOrder ASC")
     @Builder.Default
+    @BatchSize(size = 50)
     private List<UserBottleImage> images = new ArrayList<>();
 
     public void update(Spirit spirit, String spiritNameText, SpiritCategory category,

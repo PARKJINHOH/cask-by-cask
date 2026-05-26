@@ -18,6 +18,6 @@ public record UserBottleRequest(
     @NotNull @Min(0) Integer price,
     @NotBlank String store,
     @NotNull BottleStatus status,
-    boolean isPublic,
+    Boolean isPublic,
     String memo
 ) {}

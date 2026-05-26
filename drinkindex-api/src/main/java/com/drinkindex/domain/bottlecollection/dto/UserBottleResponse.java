@@ -21,7 +21,7 @@ public record UserBottleResponse(
     Integer price,
     String store,
     BottleStatus status,
-    boolean isPublic,
+    Boolean isPublic,
     String memo,
     List<String> imageUrls,
     LocalDateTime createdAt

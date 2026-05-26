@@ -57,18 +57,15 @@ public class UserBottleQueryRepository {
     }
 
     public BottleStatsDto getStats(Long userId) {
-        long totalCount = queryFactory
-            .select(bottle.count())
+        var totals = queryFactory
+            .select(bottle.count(), bottle.price.sum())
             .from(bottle)
             .where(bottle.user.id.eq(userId))
             .fetchOne();
 
-        Integer priceSum = queryFactory
-            .select(bottle.price.sum())
-            .from(bottle)
-            .where(bottle.user.id.eq(userId))
-            .fetchOne();
-        long totalPrice = priceSum != null ? priceSum.longValue() : 0L;
+        long totalCount = totals != null ? totals.get(bottle.count()) : 0L;
+        long totalPrice = (totals != null && totals.get(bottle.price.sum()) != null)
+            ? totals.get(bottle.price.sum()).longValue() : 0L;
 
         Long openedRaw = queryFactory
             .select(bottle.count())
