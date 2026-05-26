@@ -37,7 +37,7 @@ public class PostController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<PostListResponse>>> getPosts(
-            @RequestParam BoardType boardType,
+            @RequestParam(required = false) BoardType boardType,
             @RequestParam(required = false) Long prefixId,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) PostSort sort,

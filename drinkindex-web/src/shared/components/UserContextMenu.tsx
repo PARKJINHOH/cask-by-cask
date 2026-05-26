@@ -73,7 +73,7 @@ export default function UserContextMenu({ nickname, userId, children, disabled }
             className="flex items-center gap-2 px-4 py-2 text-sm text-neutral-700 hover:bg-gray-50 w-full text-left"
             onClick={() => {
               setOpen(false)
-              navigate(`/community/free?authorId=${userId}&authorNickname=${encodeURIComponent(nickname)}`)
+              navigate(`/community/all?authorId=${userId}&authorNickname=${encodeURIComponent(nickname)}`)
             }}
           >
             📋 사용자 게시글 보기
@@ -82,7 +82,7 @@ export default function UserContextMenu({ nickname, userId, children, disabled }
             className="flex items-center gap-2 px-4 py-2 text-sm text-neutral-700 hover:bg-gray-50 w-full text-left"
             onClick={() => {
               setOpen(false)
-              navigate(`/community/free?commentAuthorId=${userId}&authorNickname=${encodeURIComponent(nickname)}`)
+              navigate(`/community/all?commentAuthorId=${userId}&authorNickname=${encodeURIComponent(nickname)}`)
             }}
           >
             💬 사용자 댓글 보기

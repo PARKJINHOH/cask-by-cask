@@ -17,6 +17,7 @@ import MyPage from '@/pages/MyPage'
 import RankingPage from '@/pages/RankingPage'
 import SpiritRequestPage from '@/pages/SpiritRequestPage'
 import DistilleryRequestPage from '@/pages/DistilleryRequestPage'
+import AllBoardPage from '@/pages/community/AllBoardPage'
 import NoticeBoardPage from '@/pages/community/NoticeBoardPage'
 import FreeBoardPage from '@/pages/community/FreeBoardPage'
 import PostDetailPage from '@/pages/community/PostDetailPage'
@@ -90,6 +91,7 @@ export default function App() {
             <Route path="inquiry" element={<InquiryPage />} />
             <Route path="faq" element={<FaqPage />} />
             {/* 커뮤니티 */}
+            <Route path="community/all" element={<AllBoardPage />} />
             <Route path="community/notice" element={<NoticeBoardPage />} />
             <Route path="community/free" element={<FreeBoardPage />} />
             <Route path="community/byob" element={<ByobListPage />} />

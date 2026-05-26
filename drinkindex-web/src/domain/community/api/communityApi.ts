@@ -20,7 +20,7 @@ import type {
 export const communityApi = {
   // ── 게시글 목록 ──────────────────────────────────────────────
   getPosts: (params: {
-    boardType: BoardType
+    boardType?: BoardType
     prefixId?: number
     keyword?: string
     sort?: PostSort

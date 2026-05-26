@@ -32,7 +32,12 @@ public class PostQueryRepositoryImpl implements PostQueryRepository {
         QPost post = QPost.post;
 
         BooleanBuilder predicate = new BooleanBuilder();
-        predicate.and(post.boardType.eq(boardType));
+        if (boardType != null) {
+            predicate.and(post.boardType.eq(boardType));
+        } else {
+            // "전체" 게시판: NOTICE + FREE 통합 조회
+            predicate.and(post.boardType.in(BoardType.NOTICE, BoardType.FREE));
+        }
         predicate.and(post.status.ne(PostStatus.DELETED));
 
         if (prefixId != null) {

@@ -4,7 +4,7 @@ import type { BoardType, PostSort } from '../types/community.types'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 
 export function usePosts(params: {
-  boardType: BoardType
+  boardType?: BoardType
   prefixId?: number
   keyword?: string
   sort?: PostSort

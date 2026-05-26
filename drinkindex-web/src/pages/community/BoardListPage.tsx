@@ -22,7 +22,7 @@ const SORT_OPTIONS: { value: PostSort; labelKey: string }[] = [
 type Tab = 'all' | 'best' | 'event'
 
 interface Props {
-  boardType: BoardType
+  boardType?: BoardType
   title: string
 }
 
@@ -31,9 +31,12 @@ export default function BoardListPage({ boardType, title }: Props) {
   const { isLoggedIn, user } = useAuthStore()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const boardPath = boardType === 'NOTICE' ? 'notice' : 'free'
+  const isAll = !boardType
+  const boardPath = isAll ? 'all' : boardType === 'NOTICE' ? 'notice' : 'free'
 
-  const tabs: Tab[] = boardType === 'NOTICE' ? ['all', 'event'] : ['all', 'best']
+  const tabs: Tab[] = isAll
+    ? ['all']
+    : boardType === 'NOTICE' ? ['all', 'event'] : ['all', 'best']
 
   // ── URL 파라미터 ──────────────────────────────────────────
   const rawTab      = searchParams.get('tab') ?? 'all'
@@ -50,16 +53,17 @@ export default function BoardListPage({ boardType, title }: Props) {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   // ── 데이터 ────────────────────────────────────────────────
-  const { data: prefixes = [] } = usePostPrefixes(boardType)
+  // "전체" 게시판은 말머리 필터를 노출하지 않으므로 prefix 호출도 생략
+  const { data: prefixes = [] } = usePostPrefixes(boardType ?? 'FREE')
 
   const eventPrefix = prefixes.find(p => p.name === '이벤트')
   const effectivePrefixId = tabParam === 'event' ? eventPrefix?.id : prefixParam
 
   const allPostsQuery = usePosts({
     boardType,
-    prefixId: effectivePrefixId,
+    prefixId: isAll ? undefined : effectivePrefixId,
     keyword: keywordParam || undefined,
-    sort: sortParam,
+    sort: isAll ? 'LATEST' : sortParam,
     authorId: authorIdParam,
     commentAuthorId: commentAuthorIdParam,
     page: pageParam,
@@ -67,17 +71,17 @@ export default function BoardListPage({ boardType, title }: Props) {
   })
 
   const bestPostsQuery = useBestPosts({
-    boardType,
+    boardType: boardType ?? 'FREE',
     page: pageParam,
     size: PAGE_SIZE,
   })
 
-  const query    = tabParam === 'best' ? bestPostsQuery : allPostsQuery
+  const query    = !isAll && tabParam === 'best' ? bestPostsQuery : allPostsQuery
   const posts    = query.data?.content ?? []
   const totalPages = query.data?.totalPages ?? 0
 
-  // NOTICE 게시판: ADMIN·SUPER_ADMIN·PARTNER만 글쓰기 가능
-  const canWrite = isLoggedIn && (
+  // 전체: 글쓰기 불가. NOTICE: ADMIN·SUPER_ADMIN·PARTNER만 글쓰기 가능
+  const canWrite = !isAll && isLoggedIn && (
     boardType === 'FREE' ||
     user?.role === 'SUPER_ADMIN' ||
     user?.role === 'ADMIN' ||
@@ -109,12 +113,23 @@ export default function BoardListPage({ boardType, title }: Props) {
     setSearchParams(next, { replace: true })
   }
 
-  const seoTitle = boardType === 'NOTICE' ? '소식 게시판' : '자유게시판'
-  const seoDesc = boardType === 'NOTICE'
-    ? 'DrinkIndex 소식 게시판 — 위스키·와인·꼬냑 관련 소식과 이벤트 게시글.'
-    : 'DrinkIndex 자유게시판 — 위스키, 와인, 꼬냑 등 주류에 대한 자유로운 의견과 정보 공유.'
+  const seoTitle = isAll
+    ? '전체 게시판'
+    : boardType === 'NOTICE' ? '소식 게시판' : '자유게시판'
+  const seoDesc = isAll
+    ? 'DrinkIndex 커뮤니티 전체 게시판 — 소식과 자유게시판 글을 한 곳에서.'
+    : boardType === 'NOTICE'
+      ? 'DrinkIndex 소식 게시판 — 위스키·와인·꼬냑 관련 소식과 이벤트 게시글.'
+      : 'DrinkIndex 자유게시판 — 위스키, 와인, 꼬냑 등 주류에 대한 자유로운 의견과 정보 공유.'
   const seoNoindex = !!keywordParam || pageParam > 0 || tabParam !== 'all'
     || !!authorIdParam || !!commentAuthorIdParam
+
+  // "전체" 게시판에서 게시글 클릭 시 원래 게시판 경로로 분기
+  const getPostHref = (post: typeof posts[number]) => {
+    if (!isAll) return `/community/${boardPath}/${post.id}`
+    const sub = post.boardType === 'NOTICE' ? 'notice' : 'free'
+    return `/community/${sub}/${post.id}`
+  }
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
@@ -165,23 +180,25 @@ export default function BoardListPage({ boardType, title }: Props) {
         )}
       </div>
 
-      {/* 탭: NOTICE → 전체글/이벤트, FREE → 전체글/베스트 */}
-      <div className="flex gap-1 border-b border-neutral-200 mb-5">
-        {tabs.map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setTab(tab)}
-            className={[
-              'px-5 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors',
-              tabParam === tab
-                ? 'border-primary-800 text-primary-800'
-                : 'border-transparent text-neutral-500 hover:text-neutral-700',
-            ].join(' ')}
-          >
-            {tab === 'all' ? t('board.all') : tab === 'best' ? t('board.best') : t('board.event')}
-          </button>
-        ))}
-      </div>
+      {/* 탭: NOTICE → 전체글/이벤트, FREE → 전체글/베스트. "전체"는 탭 없음 */}
+      {!isAll && (
+        <div className="flex gap-1 border-b border-neutral-200 mb-5">
+          {tabs.map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setTab(tab)}
+              className={[
+                'px-5 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors',
+                tabParam === tab
+                  ? 'border-primary-800 text-primary-800'
+                  : 'border-transparent text-neutral-500 hover:text-neutral-700',
+              ].join(' ')}
+            >
+              {tab === 'all' ? t('board.all') : tab === 'best' ? t('board.best') : t('board.event')}
+            </button>
+          ))}
+        </div>
+      )}
 
 
 
@@ -231,7 +248,7 @@ export default function BoardListPage({ boardType, title }: Props) {
             className="w-full pl-9 pr-4 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-400"
           />
         </div>
-        {(tabParam === 'all' || tabParam === 'event') && (
+        {!isAll && (tabParam === 'all' || tabParam === 'event') && (
           <select
             value={sortParam}
             onChange={(e) => setParam('sort', e.target.value)}
@@ -268,7 +285,7 @@ export default function BoardListPage({ boardType, title }: Props) {
                 {posts.map((post) => (
                   <tr
                     key={post.id}
-                    onClick={() => navigate(`/community/${boardPath}/${post.id}`)}
+                    onClick={() => navigate(getPostHref(post))}
                     className="group/row border-b border-neutral-50 hover:bg-neutral-50 transition-colors cursor-pointer"
                   >
                     <td className="px-4 py-3">
@@ -339,7 +356,7 @@ export default function BoardListPage({ boardType, title }: Props) {
             {posts.map((post) => (
               <Link
                 key={post.id}
-                to={`/community/${boardPath}/${post.id}`}
+                to={getPostHref(post)}
                 className="block bg-white border border-neutral-200 rounded-xl px-4 py-3.5 hover:border-neutral-300 transition-colors"
               >
                 <div className="flex items-center gap-2 mb-1.5">
