@@ -86,6 +86,14 @@ export default defineConfig({
         target: 'http://localhost:8080',
         changeOrigin: true,
       },
+      '/api/bottles': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+      '/api/users': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
     },
   },
 })
