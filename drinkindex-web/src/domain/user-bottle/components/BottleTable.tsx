@@ -46,7 +46,7 @@ export function BottleTable({ bottles, editable, onEdit, onDelete, onToggleStatu
               <td className="px-3 py-2 text-right whitespace-nowrap">
                 {b.price > 0 ? `₩${b.price.toLocaleString()}` : '-'}
               </td>
-              <td className="px-3 py-2 text-gray-600 max-w-[120px] truncate">{b.store}</td>
+              <td className="px-3 py-2 text-gray-600 max-w-[120px] truncate" title={b.store}>{b.store}</td>
               <td className="px-3 py-2 text-center">
                 <button onClick={() => editable && onToggleStatus?.(b.id)} disabled={!editable}
                   className={`text-xs px-2 py-0.5 rounded-full ${
@@ -59,15 +59,15 @@ export function BottleTable({ bottles, editable, onEdit, onDelete, onToggleStatu
                 <td className="px-3 py-2 text-center">
                   <button onClick={() => onTogglePublic?.(b.id)}
                     className={b.isPublic ? 'text-blue-500' : 'text-gray-300'}>
-                    {b.isPublic ? '🔓' : '🔒'}
+                    <span className="text-xs">{b.isPublic ? t('collection.visibility.public') : t('collection.visibility.private')}</span>
                   </button>
                 </td>
               )}
               {editable && (
                 <td className="px-3 py-2">
                   <div className="flex gap-1 justify-center">
-                    <button onClick={() => onEdit?.(b)} className="text-gray-400 hover:text-amber-600 text-xs px-1">✏️</button>
-                    <button onClick={() => onDelete?.(b)} className="text-gray-400 hover:text-red-500 text-xs px-1">🗑️</button>
+                    <button onClick={() => onEdit?.(b)} className="text-gray-400 hover:text-amber-600 text-xs px-1">{t('collection.editBottle')}</button>
+                    <button onClick={() => onDelete?.(b)} className="text-gray-400 hover:text-red-500 text-xs px-1">{t('collection.deleteBottle')}</button>
                   </div>
                 </td>
               )}

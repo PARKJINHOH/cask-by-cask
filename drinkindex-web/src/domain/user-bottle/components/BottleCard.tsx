@@ -29,7 +29,7 @@ export function BottleCard({ bottle: b, editable, onEdit, onDelete, onToggleStat
         {editable && (
           <button onClick={() => onTogglePublic?.(b.id)}
             className={`text-sm ${b.isPublic ? 'text-blue-500' : 'text-gray-300'}`}>
-            {b.isPublic ? '🔓' : '🔒'}
+            <span className="text-xs">{b.isPublic ? t('collection.visibility.public') : t('collection.visibility.private')}</span>
           </button>
         )}
       </div>
