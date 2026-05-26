@@ -70,6 +70,7 @@ import AdminLogPage from '@/pages/admin/AdminLogPage'
 import AdminDashboardPage from '@/pages/admin/AdminDashboardPage'
 import AdminFaqPage from '@/pages/admin/AdminFaqPage'
 import AdminFaqFormPage from '@/pages/admin/AdminFaqFormPage'
+import UserBottlePublicPage from '@/pages/UserBottlePublicPage'
 
 export default function App() {
   return (
@@ -100,6 +101,7 @@ export default function App() {
             <Route path="community/:boardType/:id" element={<PostDetailPage />} />
             {/* 공개 읽기용 (비회원 접근 가능) */}
             <Route path="notifications" element={<NotificationsPage />} />
+            <Route path="users/:userId/bottles" element={<UserBottlePublicPage />} />
             <Route element={<PrivateRoute />}>
               <Route path="spirits/:id/review/write" element={<ReviewFormPage />} />
               <Route path="spirits/:id/review/:reviewId/edit" element={<ReviewFormPage />} />
