@@ -94,7 +94,7 @@ public class UserBottleService {
         return UserBottleResponse.from(bottle);
     }
 
-    public UserBottle findAndValidateOwner(Long bottleId, Long userId) {
+    UserBottle findAndValidateOwner(Long bottleId, Long userId) {
         UserBottle bottle = userBottleRepository.findById(bottleId)
             .orElseThrow(() -> new CustomException(ErrorCode.BOTTLE_NOT_FOUND));
         if (!bottle.isOwnedBy(userId)) throw new CustomException(ErrorCode.BOTTLE_ACCESS_DENIED);
