@@ -75,6 +75,7 @@ public enum ErrorCode {
     BOTTLE_NOT_FOUND(HttpStatus.NOT_FOUND, "BOTTLE_001", "바틀을 찾을 수 없습니다."),
     BOTTLE_ACCESS_DENIED(HttpStatus.FORBIDDEN, "BOTTLE_002", "본인의 바틀만 수정/삭제할 수 있습니다."),
     BOTTLE_IMAGE_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "BOTTLE_003", "이미지는 최대 2장까지 등록할 수 있습니다."),
+    BOTTLE_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "BOTTLE_004", "이미지를 찾을 수 없습니다."),
 
     // Report
     ALREADY_REPORTED(HttpStatus.CONFLICT, "REPORT_001", "이미 신고한 항목입니다."),

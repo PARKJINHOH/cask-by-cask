@@ -48,7 +48,7 @@ public class UserBottleImageService {
         String ext = getExt(file.getOriginalFilename());
         String filename = UUID.randomUUID() + "." + ext;
         String relativeUrl = saveFile(bottleId, filename, file);
-        int sortOrder = userBottleImageRepository.countByUserBottleId(bottleId);
+        int sortOrder = bottle.getImages().size();
 
         userBottleImageRepository.save(UserBottleImage.builder()
             .userBottle(bottle).imageUrl(relativeUrl).sortOrder(sortOrder).build());
@@ -58,7 +58,15 @@ public class UserBottleImageService {
     public void deleteImage(Long bottleId, Long imageId, Long userId) {
         userBottleService.findAndValidateOwner(bottleId, userId);
         UserBottleImage image = userBottleImageRepository.findByIdAndUserBottleId(imageId, bottleId)
-            .orElseThrow(() -> new CustomException(ErrorCode.BOTTLE_NOT_FOUND));
+            .orElseThrow(() -> new CustomException(ErrorCode.BOTTLE_IMAGE_NOT_FOUND));
+        // Delete physical file
+        try {
+            String urlPath = image.getImageUrl(); // e.g. "/uploads/bottles/1/uuid.webp"
+            Path filePath = Paths.get(uploadPath + urlPath);
+            Files.deleteIfExists(filePath);
+        } catch (IOException e) {
+            log.warn("이미지 파일 삭제 실패: {}", image.getImageUrl());
+        }
         userBottleImageRepository.delete(image);
     }
 
