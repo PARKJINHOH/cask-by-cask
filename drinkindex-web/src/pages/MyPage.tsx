@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { useMe } from '@/domain/user/hooks/useUser'
 import MyReviewList from '@/domain/review/components/MyReviewList'
@@ -16,14 +17,14 @@ import { useMessageList } from '@/domain/message/hooks/useMessages'
 
 type Tab = 'maturing' | 'reviews' | 'wishlist' | 'byob' | 'collection' | 'messages' | 'settings'
 
-const ALL_TABS: { value: Tab; label: string; adminHidden?: boolean }[] = [
-  { value: 'maturing',  label: '숙성력',   adminHidden: true },
-  { value: 'reviews',   label: '내 리뷰' },
-  { value: 'wishlist',  label: '즐겨찾기' },
-  { value: 'byob',       label: 'BYOB 이력' },
-  { value: 'collection', label: '내 컬렉션' },
-  { value: 'messages',   label: '쪽지' },
-  { value: 'settings',  label: '계정 설정' },
+const ALL_TABS: { value: Tab; labelKey: string; adminHidden?: boolean }[] = [
+  { value: 'maturing',   labelKey: 'mypage.maturingTab',    adminHidden: true },
+  { value: 'reviews',    labelKey: 'mypage.reviewsTab' },
+  { value: 'wishlist',   labelKey: 'mypage.wishlistTab' },
+  { value: 'byob',       labelKey: 'mypage.byobTab' },
+  { value: 'collection', labelKey: 'mypage.collectionTab' },
+  { value: 'messages',   labelKey: 'mypage.messagesTab' },
+  { value: 'settings',   labelKey: 'mypage.settingsTab' },
 ]
 
 const ROLE_LABEL: Record<string, string> = {
@@ -33,6 +34,7 @@ const ROLE_LABEL: Record<string, string> = {
 }
 
 export default function MyPage() {
+  const { t } = useTranslation()
   const authUser = useAuthStore((s) => s.user)
   const { data: profile } = useMe()
   const queryClient = useQueryClient()
@@ -134,7 +136,7 @@ export default function MyPage() {
 
       {/* Tab bar */}
       <div className="flex gap-1 border-b border-neutral-200 overflow-x-auto [&::-webkit-scrollbar]:hidden">
-        {tabs.map(({ value, label }) => (
+        {tabs.map(({ value, labelKey }) => (
           <button
             key={value}
             onClick={() => setTab(value)}
@@ -145,7 +147,7 @@ export default function MyPage() {
                 : 'border-transparent text-neutral-500 hover:text-neutral-700'
             }`}
           >
-            {label}
+            {t(labelKey)}
             {value === 'messages' && unreadMsgCount > 0 && (
               <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold rounded-full bg-red-500 text-white">
                 {unreadMsgCount > 99 ? '99+' : unreadMsgCount}

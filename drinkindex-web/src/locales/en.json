@@ -313,9 +313,12 @@
   },
   "mypage": {
     "title": "My Page",
+    "maturingTab": "Aging Power",
     "reviewsTab": "My Reviews",
     "wishlistTab": "Favorites",
+    "byobTab": "BYOB History",
     "collectionTab": "My Collection",
+    "messagesTab": "Messages",
     "settingsTab": "Account Settings",
     "joinDate": "Joined",
     "profileImage": {
