@@ -64,8 +64,9 @@ public class UserBottle extends BaseTimeEntity {
     @Column(name = "status", nullable = false, length = 20)
     private BottleStatus status;
 
+    @Builder.Default
     @Column(name = "is_public", nullable = false)
-    private boolean isPublic;
+    private Boolean isPublic = false;
 
     @Column(name = "memo", columnDefinition = "TEXT")
     private String memo;
@@ -78,7 +79,7 @@ public class UserBottle extends BaseTimeEntity {
     public void update(Spirit spirit, String spiritNameText, SpiritCategory category,
                        LocalDate purchaseDate, String batch, String bottlingYear,
                        Integer price, String store, BottleStatus status,
-                       boolean isPublic, String memo) {
+                       Boolean isPublic, String memo) {
         this.spirit = spirit;
         this.spiritNameText = spiritNameText;
         this.category = category;
@@ -97,7 +98,11 @@ public class UserBottle extends BaseTimeEntity {
     }
 
     public void togglePublic() {
-        this.isPublic = !this.isPublic;
+        this.isPublic = !Boolean.TRUE.equals(this.isPublic);
+    }
+
+    public void addImage(UserBottleImage image) {
+        images.add(image);
     }
 
     public boolean isOwnedBy(Long userId) {
