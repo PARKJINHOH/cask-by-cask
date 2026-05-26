@@ -292,8 +292,14 @@ export default function SignupPage() {
     try {
       const res = await authApi.checkNicknameAvailable(getValues('nickname'))
       setNicknameStatus(res.data.data?.available ? 'available' : 'taken')
-    } catch {
-      setNicknameStatus('idle')
+    } catch (err) {
+      const apiCode = (err as AxiosError<ApiResponse<unknown>>)?.response?.data?.code
+      if (apiCode === 'NICKNAME_BAD_WORD_DETECTED') {
+        setNicknameStatus('taken')
+        setError('nickname', { message: '사용할 수 없는 단어가 포함되어 있습니다.' })
+      } else {
+        setNicknameStatus('idle')
+      }
     }
   }
 
@@ -393,6 +399,9 @@ export default function SignupPage() {
       } else if (code === 'USER_003') {
         setNicknameStatus('taken')
         setError('nickname', { message: '이미 사용 중인 닉네임입니다.' })
+      } else if (code === 'NICKNAME_BAD_WORD_DETECTED') {
+        setNicknameStatus('taken')
+        setError('nickname', { message: '사용할 수 없는 단어가 포함되어 있습니다.' })
       } else {
         setError('root', { message: '회원가입 중 오류가 발생했습니다. 다시 시도해주세요.' })
       }
@@ -526,6 +535,10 @@ export default function SignupPage() {
                 ? <p className="text-xs text-neutral-400">커뮤니티에서 사용되는 이름입니다</p>
                 : <CheckStatusMsg status={nicknameStatus} field="nickname" />
             }
+            <p className="text-[11px] leading-relaxed text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5 mt-1.5">
+              ⚠ 욕설, 비속어, 타인을 모욕하거나 운영을 방해하는 닉네임은 사전 통보 없이
+              계정 일시 정지 및 닉네임 강제 변경 처리될 수 있습니다.
+            </p>
           </div>
 
           {/* 비밀번호 */}

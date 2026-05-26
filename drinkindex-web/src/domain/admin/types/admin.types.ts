@@ -384,6 +384,13 @@ export interface BadWord {
   createdAt: string
 }
 
+export interface NicknameBadWord {
+  id: number
+  word: string
+  isActive: boolean
+  createdAt: string
+}
+
 export interface EmojiGroup {
   id: number
   name: string

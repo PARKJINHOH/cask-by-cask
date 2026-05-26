@@ -61,9 +61,11 @@ function NicknameSection() {
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
     } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-      setError('nickname', { message: msg ?? t('mypage.nickname.save') })
+      const apiErr = (err as { response?: { data?: { code?: string; message?: string } } })?.response?.data
+      const fallbackMsg = apiErr?.code === 'NICKNAME_BAD_WORD_DETECTED'
+        ? t('mypage.nickname.badWordError')
+        : (apiErr?.message ?? t('mypage.nickname.save'))
+      setError('nickname', { message: fallbackMsg })
     }
   }
 
@@ -101,6 +103,9 @@ function NicknameSection() {
           disabled={isDisabled}
           {...register('nickname')}
         />
+        <p className="text-[11px] leading-relaxed text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5">
+          ⚠ {t('mypage.nickname.policyWarning')}
+        </p>
         {success && (
           <p className="text-sm text-green-600">{t('mypage.nickname.success')}</p>
         )}

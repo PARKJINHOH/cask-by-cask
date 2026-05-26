@@ -330,7 +330,9 @@
       "save": "저장",
       "changeAvailableOn": "{{date}} 이후 변경 가능",
       "changeAvailableDays": "{{days}}일 후 변경 가능",
-      "fixedBadge": "고정닉"
+      "fixedBadge": "고정닉",
+      "badWordError": "사용할 수 없는 단어가 포함되어 있습니다.",
+      "policyWarning": "욕설, 비속어, 타인을 모욕하거나 운영을 방해하는 닉네임은 사전 통보 없이 계정 일시 정지 및 닉네임 강제 변경 처리될 수 있습니다."
     },
     "fixNickname": {
       "section": "고정닉 설정",

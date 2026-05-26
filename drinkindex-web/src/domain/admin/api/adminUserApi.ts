@@ -1,6 +1,6 @@
 import axiosInstance from '@/shared/api/axiosInstance'
 import type { ApiResponse, PageResponse } from '@/shared/types/common.types'
-import type { AdminUser, AdminUserSearchParams, ChangeRoleRequest, SuspendUserRequest, UpdateBoardPermissionsRequest } from '../types/admin.types'
+import type { AdminUser, AdminUserSearchParams, ChangeRoleRequest, NicknameBadWord, SuspendUserRequest, UpdateBoardPermissionsRequest } from '../types/admin.types'
 
 export const adminUserApi = {
   search: (params: AdminUserSearchParams) =>
@@ -26,4 +26,17 @@ export const adminUserApi = {
 
   updateBoardPermissions: (id: number, data: UpdateBoardPermissionsRequest) =>
     axiosInstance.put<ApiResponse<AdminUser>>(`/api/admin/users/${id}/board-permissions`, data),
+
+  // ── 닉네임 금지 단어 ─────────────────────────────────────────
+  getNicknameBadWords: (params: { page?: number; size?: number }) =>
+    axiosInstance.get<ApiResponse<PageResponse<NicknameBadWord>>>('/api/admin/nickname-bad-words', { params }),
+
+  createNicknameBadWord: (word: string) =>
+    axiosInstance.post<ApiResponse<NicknameBadWord>>('/api/admin/nickname-bad-words', { word }),
+
+  deleteNicknameBadWord: (id: number) =>
+    axiosInstance.delete<ApiResponse<null>>(`/api/admin/nickname-bad-words/${id}`),
+
+  toggleNicknameBadWord: (id: number) =>
+    axiosInstance.patch<ApiResponse<NicknameBadWord>>(`/api/admin/nickname-bad-words/${id}/toggle`),
 }

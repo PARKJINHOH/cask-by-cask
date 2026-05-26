@@ -44,6 +44,7 @@ const navEntries: NavEntry[] = [
     groupIcon: '👥',
     items: [
       { path: '/admin/users',           label: '회원 관리', exact: true },
+      { path: '/admin/users/nickname-bad-words', label: '닉네임 금지 단어', exact: true },
       { path: '/admin/roles',           label: '역할 관리', exact: true },
       { path: '/admin/logs',            label: '변경 이력', exact: true },
       { path: '/admin/reports',         label: '신고 관리' },

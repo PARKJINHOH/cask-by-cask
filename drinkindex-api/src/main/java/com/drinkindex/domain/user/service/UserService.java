@@ -1,5 +1,6 @@
 package com.drinkindex.domain.user.service;
 
+import com.drinkindex.domain.nicknamebadword.service.NicknameBadWordValidator;
 import com.drinkindex.domain.user.dto.UpdateEmailSubscriptionRequest;
 import com.drinkindex.domain.user.dto.UpdateNicknameRequest;
 import com.drinkindex.domain.user.dto.UpdatePasswordRequest;
@@ -48,6 +49,7 @@ public class UserService {
     private final EmailSender emailSender;
     private final StringRedisTemplate redisTemplate;
     private final FileStorageService fileStorageService;
+    private final NicknameBadWordValidator nicknameBadWordValidator;
 
     @Transactional(readOnly = true)
     public UserResponse getMe(Long userId) {
@@ -72,6 +74,8 @@ public class UserService {
         if (userRepository.existsByNicknameAndIdNot(request.nickname(), userId)) {
             throw new CustomException(ErrorCode.DUPLICATE_NICKNAME);
         }
+
+        nicknameBadWordValidator.validate(request.nickname());
 
         user.updateNickname(request.nickname());
         return UserResponse.from(user);

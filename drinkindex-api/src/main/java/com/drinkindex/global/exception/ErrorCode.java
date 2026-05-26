@@ -137,6 +137,11 @@ public enum ErrorCode {
     BAD_WORD_NOT_FOUND(HttpStatus.NOT_FOUND, "COMMUNITY_001", "금지어를 찾을 수 없습니다."),
     DUPLICATE_BAD_WORD(HttpStatus.CONFLICT, "COMMUNITY_002", "이미 등록된 금지어입니다."),
 
+    // Nickname BadWord
+    NICKNAME_BAD_WORD_DETECTED(HttpStatus.BAD_REQUEST, "NICKNAME_BAD_WORD_DETECTED", "닉네임에 사용할 수 없는 단어가 포함되어 있습니다."),
+    NICKNAME_BAD_WORD_NOT_FOUND(HttpStatus.NOT_FOUND, "NICKNAME_BAD_WORD_001", "닉네임 금지 단어를 찾을 수 없습니다."),
+    DUPLICATE_NICKNAME_BAD_WORD(HttpStatus.CONFLICT, "NICKNAME_BAD_WORD_002", "이미 등록된 닉네임 금지 단어입니다."),
+
     // Score
     SCORE_CONFIG_NOT_FOUND(HttpStatus.NOT_FOUND, "SCORE_001", "점수 설정을 찾을 수 없습니다."),
     LEVEL_CONFIG_NOT_FOUND(HttpStatus.NOT_FOUND, "SCORE_002", "레벨 설정을 찾을 수 없습니다."),

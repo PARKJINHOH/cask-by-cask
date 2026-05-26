@@ -48,6 +48,7 @@ import AdminBannerListPage from '@/pages/admin/AdminBannerListPage'
 import AdminBannerFormPage from '@/pages/admin/AdminBannerFormPage'
 import AdminPostReportPage from '@/pages/admin/AdminPostReportPage'
 import AdminBadWordPage from '@/pages/admin/AdminBadWordPage'
+import AdminNicknameBadWordPage from '@/pages/admin/AdminNicknameBadWordPage'
 import AdminEmojiPage from '@/pages/admin/AdminEmojiPage'
 import AdminPrefixPage from '@/pages/admin/AdminPrefixPage'
 import AdminScorePage from '@/pages/admin/AdminScorePage'
@@ -119,6 +120,7 @@ export default function App() {
               <Route index element={<AdminDashboardPage />} />
               <Route path="users" element={<AdminUserPage />} />
               <Route path="users/:id" element={<AdminUserDetailPage />} />
+              <Route path="users/nickname-bad-words" element={<AdminNicknameBadWordPage />} />
               <Route path="spirits" element={<AdminSpiritPage />} />
               <Route path="spirits/new" element={<AdminSpiritFormPage />} />
               <Route path="spirits/:id" element={<AdminSpiritDetailPage />} />

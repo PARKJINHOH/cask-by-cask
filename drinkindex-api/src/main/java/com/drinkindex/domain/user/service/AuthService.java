@@ -1,5 +1,6 @@
 package com.drinkindex.domain.user.service;
 
+import com.drinkindex.domain.nicknamebadword.service.NicknameBadWordValidator;
 import com.drinkindex.domain.score.service.AttendanceService;
 import com.drinkindex.domain.user.dto.*;
 import com.drinkindex.domain.user.entity.User;
@@ -30,6 +31,7 @@ public class AuthService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final AttendanceService attendanceService;
     private final EmailVerificationService emailVerificationService;
+    private final NicknameBadWordValidator nicknameBadWordValidator;
 
     @Value("${app.email.verification-required:true}")
     private boolean emailVerificationRequired;
@@ -42,6 +44,7 @@ public class AuthService {
         if (userRepository.existsByNickname(request.nickname())) {
             throw new CustomException(ErrorCode.DUPLICATE_NICKNAME);
         }
+        nicknameBadWordValidator.validate(request.nickname());
         LocalDateTime now = LocalDateTime.now();
         boolean preVerified = emailVerificationRequired && emailVerificationService.isPreVerified(request.email());
         User user = User.builder()
@@ -94,6 +97,7 @@ public class AuthService {
     }
 
     public CheckAvailableResponse checkNickname(String nickname) {
+        nicknameBadWordValidator.validate(nickname);
         return new CheckAvailableResponse(!userRepository.existsByNickname(nickname));
     }
 

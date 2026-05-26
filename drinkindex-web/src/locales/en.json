@@ -340,7 +340,9 @@
       "save": "Save",
       "changeAvailableOn": "Available from {{date}}",
       "changeAvailableDays": "Available in {{days}} days",
-      "fixedBadge": "Fixed"
+      "fixedBadge": "Fixed",
+      "badWordError": "This nickname contains words that are not allowed.",
+      "policyWarning": "Nicknames containing profanity, slurs, insults toward others, or anything that disrupts service operation may result in temporary account suspension and forced nickname change without prior notice."
     },
     "fixNickname": {
       "section": "Fixed Nickname",
