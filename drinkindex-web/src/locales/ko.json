@@ -751,6 +751,7 @@
       "isPublicDesc": "공개 시 내 프로필 URL로 공유 가능",
       "images": "이미지 (최대 2장)",
       "memo": "메모 (선택)",
+      "imageSelected": "{{count}}장 선택됨",
       "save": "저장",
       "cancel": "취소"
     },

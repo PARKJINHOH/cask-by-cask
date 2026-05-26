@@ -751,6 +751,7 @@
       "isPublicDesc": "Public bottles are visible via your profile URL",
       "images": "Images (up to 2)",
       "memo": "Memo (optional)",
+      "imageSelected": "{{count}} file(s) selected",
       "save": "Save",
       "cancel": "Cancel"
     },
