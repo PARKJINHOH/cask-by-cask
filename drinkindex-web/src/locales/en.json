@@ -315,6 +315,7 @@
     "title": "My Page",
     "reviewsTab": "My Reviews",
     "wishlistTab": "Favorites",
+    "collectionTab": "My Collection",
     "settingsTab": "Account Settings",
     "joinDate": "Joined",
     "profileImage": {
@@ -699,6 +700,75 @@
     "byobBadge": "BYOB",
     "appliedAt": "Applied At",
     "hostNickname": "Host"
+  },
+  "collection": {
+    "stats": {
+      "totalBottles": "{{count}} bottles",
+      "totalPrice": "₩{{price}}",
+      "opened": "Opened: {{count}}",
+      "unopened": "Sealed: {{count}}"
+    },
+    "filter": {
+      "all": "All",
+      "WHISKY": "Whisky",
+      "COGNAC": "Cognac",
+      "WINE": "Wine",
+      "OTHER": "Other"
+    },
+    "status": {
+      "OPENED": "Opened",
+      "UNOPENED": "Sealed"
+    },
+    "visibility": {
+      "public": "Public",
+      "private": "Private"
+    },
+    "view": {
+      "table": "Table",
+      "card": "Card"
+    },
+    "addBottle": "+ Add",
+    "editBottle": "Edit",
+    "deleteBottle": "Delete",
+    "deleteConfirm": "Delete \"{{name}}\"?",
+    "empty": "No bottles yet.",
+    "emptyDesc": "Start adding your purchase records!",
+    "form": {
+      "title": {
+        "add": "Add Bottle",
+        "edit": "Edit Bottle"
+      },
+      "spiritSearch": "Search spirit (or type manually)",
+      "spiritName": "Name",
+      "category": "Category",
+      "purchaseDate": "Purchase Date",
+      "price": "Price",
+      "store": "Store",
+      "batch": "Batch (optional)",
+      "bottlingYear": "Bottling Year (optional)",
+      "status": "Status",
+      "isPublic": "Visibility",
+      "isPublicDesc": "Public bottles are visible via your profile URL",
+      "images": "Images (up to 2)",
+      "memo": "Memo (optional)",
+      "save": "Save",
+      "cancel": "Cancel"
+    },
+    "table": {
+      "category": "Type",
+      "purchaseDate": "Date",
+      "name": "Name",
+      "batch": "Batch",
+      "bottlingYear": "Bottled",
+      "price": "Price",
+      "store": "Store",
+      "status": "Status",
+      "visibility": "Visibility",
+      "actions": "Edit"
+    },
+    "publicPage": {
+      "title": "{{nickname}}'s Collection"
+    }
   },
   "errors": {
     "notFound": {
