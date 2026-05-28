@@ -24,8 +24,10 @@ services:
 
   web:
     container_name: di-dev-web
+    # 호스트 80/443 은 Nginx Proxy Manager 가 점유 → 고포트로 올리고 NPM 이 프록시.
+    # (frontend-prod=30000, frontend-dev=30001 컨벤션에 맞춰 30002 사용)
     ports:
-      - "80:80"
+      - "30002:80"
     environment:
       ROBOTS_NOINDEX: "on"
     build:
