@@ -11,7 +11,7 @@
 ## 0. 변수 (본인 값으로)
 
 ```bash
-APP_DIR=/home/ubuntu/app_drinkindex     # 코드 클론 위치
+APP_DIR=/home/ubuntu/app/drink-index     # 코드 클론 위치
 REPO=https://github.com/PARKJINHOH/drink-index.git
 DEPLOY_USER=ubuntu
 ```

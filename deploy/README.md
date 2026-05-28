@@ -79,7 +79,7 @@ git add . && git commit -m "feat: V1 baseline schema for Flyway"
 
 자동 (crontab):
 ```cron
-0 3 * * * /home/ubuntu/app_drinkindex/deploy/backup.sh prod >> /var/log/drinkindex-backup.log 2>&1
+0 3 * * * /home/ubuntu/app/drink-index/deploy/backup.sh prod >> /var/log/drinkindex-backup.log 2>&1
 ```
 
 보관 정책:
