@@ -27,7 +27,7 @@ spring:
       mail.smtp.starttls.required: true
 
 cors:
-  allowed-origins: https://drinkindex.ptory.net
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:https://drink-dev.pinner.dev}
 
 logging:
   file:

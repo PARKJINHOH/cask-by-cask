@@ -3,8 +3,13 @@ import { useAuthStore } from '@/domain/auth/store/authStore'
 import type { ApiResponse } from '@/shared/types/common.types'
 import type { TokenResponse } from '@/domain/auth/types/auth.types'
 
+// 빌드 시 VITE_API_BASE_URL 미설정이면 빈 문자열 → nginx 상대경로(/api) 프록시 사용.
+// (운영/개발 서버는 .env 없이 빌드되므로 undefined 가 되어 'undefined/api/...' 로
+//  깨지는 것을 방지)
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
+
 const axiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
+  baseURL: API_BASE_URL,
   headers: { 'Content-Type': 'application/json' },
 })
 
@@ -61,7 +66,7 @@ axiosInstance.interceptors.response.use(
 
     try {
       const { data } = await axios.post<ApiResponse<TokenResponse>>(
-        `${import.meta.env.VITE_API_BASE_URL}/api/auth/refresh`,
+        `${API_BASE_URL}/api/auth/refresh`,
         { refreshToken },
       )
       const { accessToken: newAccess, refreshToken: newRefresh } = data.data!

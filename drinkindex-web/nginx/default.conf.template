@@ -54,6 +54,13 @@ map "${MAINTENANCE_MODE}" $is_maintenance {
     "on"    1;
 }
 
+# 검색엔진 색인 정책 — dev 서버는 ROBOTS_NOINDEX=on 으로 색인 차단.
+# off(기본): "all" = 색인 제한 없음 / on: noindex,nofollow 로 차단.
+map "${ROBOTS_NOINDEX}" $robots_noindex_header {
+    default "all";
+    "on"    "noindex, nofollow";
+}
+
 server {
     listen 80;
     server_name _;
@@ -65,6 +72,7 @@ server {
     add_header X-Content-Type-Options "nosniff" always;
     add_header X-Frame-Options "DENY" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header X-Robots-Tag $robots_noindex_header always;
 
     gzip on;
     gzip_comp_level 5;
