@@ -3,13 +3,15 @@
 # DrinkIndex 배포 스크립트
 #
 # 사용법:
-#   ./deploy/deploy.sh dev      # NAS 개발 환경 배포
-#   ./deploy/deploy.sh prod     # Oracle Cloud 운영 환경 배포
+#   ./deploy/deploy.sh dev      # 개발 환경 배포 (drink-dev.pinner.dev)
+#   ./deploy/deploy.sh prod     # 운영 환경 배포
 #
 # 사전 조건:
 #   - 프로젝트 루트에 .env.dev 또는 .env.prod 가 존재
+#   - 호스트에 MariaDB 와 Redis 가 설치되어 있고 컨테이너에서 접근 가능
+#       · drinkindex_dev / drinkindex_prod 스키마 존재
+#       · drink_index 사용자가 docker bridge 에서 접속 가능
 #   - docker, docker compose v2 설치
-#   - git 로그인 (private repo 인 경우)
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
@@ -51,30 +53,11 @@ fi
 log "Building images..."
 docker compose --env-file "$ENV_FILE" $COMPOSE_FILES build --pull
 
-# ── 3. 컨테이너 기동 (DB/Redis 먼저, 그 후 API/Web) ──
-log "Starting infrastructure (mariadb, redis)..."
-docker compose --env-file "$ENV_FILE" $COMPOSE_FILES up -d mariadb redis
-
-log "Waiting for DB/Redis healthchecks..."
-for i in {1..30}; do
-    sleep 2
-    DB_HEALTH=$(docker inspect --format='{{.State.Health.Status}}' "di-${ENV}-mariadb" 2>/dev/null || echo "starting")
-    REDIS_HEALTH=$(docker inspect --format='{{.State.Health.Status}}' "di-${ENV}-redis" 2>/dev/null || echo "starting")
-    if [[ "$DB_HEALTH" == "healthy" && "$REDIS_HEALTH" == "healthy" ]]; then
-        log "Infrastructure ready."
-        break
-    fi
-    if [[ $i -eq 30 ]]; then
-        err "Infrastructure failed to become healthy (db=$DB_HEALTH, redis=$REDIS_HEALTH)"
-        exit 1
-    fi
-done
-
-# ── 4. API + Web 기동 (Flyway 마이그레이션은 Spring Boot 기동 시 자동 수행) ──
+# ── 3. 컨테이너 기동 (Flyway 마이그레이션은 Spring Boot 기동 시 자동 수행) ──
 log "Starting API + Web..."
 docker compose --env-file "$ENV_FILE" $COMPOSE_FILES up -d api web
 
-# ── 5. API 헬스체크 대기 ──
+# ── 4. API 헬스체크 대기 ──
 log "Waiting for API readiness..."
 for i in {1..60}; do
     sleep 2
@@ -90,7 +73,7 @@ for i in {1..60}; do
     fi
 done
 
-# ── 6. 미사용 이미지 정리 ──
+# ── 5. 미사용 이미지 정리 ──
 log "Pruning dangling images..."
 docker image prune -f >/dev/null
 

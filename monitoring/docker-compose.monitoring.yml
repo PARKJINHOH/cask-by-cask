@@ -106,7 +106,9 @@ services:
     container_name: di-prod-mariadb-exporter
     command:
       - --mysqld.username=${DB_USERNAME}:${DB_PASSWORD}
-      - --mysqld.address=mariadb:3306
+      - --mysqld.address=host.docker.internal:3306
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - drinkindex
     depends_on:
@@ -117,8 +119,10 @@ services:
     image: oliver006/redis_exporter:v1.62.0
     container_name: di-prod-redis-exporter
     environment:
-      REDIS_ADDR: redis://redis:6379
+      REDIS_ADDR: redis://host.docker.internal:6379
       REDIS_PASSWORD: ${REDIS_PASSWORD}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - drinkindex
     depends_on:

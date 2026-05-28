@@ -1,6 +1,11 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # DrinkIndex — base compose (공통 정의)
 #
+# DB/Redis 는 호스트(Oracle Cloud)에 설치된 것을 그대로 사용 — 컨테이너로 띄우지 않음.
+# api 컨테이너에서 호스트 서비스로 붙기 위해 extra_hosts 로 host.docker.internal 매핑.
+#   - 같은 서버에 DB 가 있으면: DEV_DB_HOST=host.docker.internal
+#   - 다른 서버에 DB 가 있으면: DEV_DB_HOST=<DB 서버 IP/호스트명>
+#
 # 환경별 override 파일과 함께 사용:
 #   dev  : docker compose --env-file .env.dev  -f docker-compose.yml -f docker-compose.dev.yml  up -d --build
 #   prod : docker compose --env-file .env.prod -f docker-compose.yml -f docker-compose.prod.yml up -d --build
@@ -15,14 +20,14 @@ services:
     image: drinkindex/api:${IMAGE_TAG:-latest}
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
-      # DB
-      DEV_DB_HOST: ${DEV_DB_HOST:-mariadb}
-      PROD_DB_HOST: ${PROD_DB_HOST:-mariadb}
+      # DB (호스트 MariaDB)
+      DEV_DB_HOST: ${DEV_DB_HOST:-host.docker.internal}
+      PROD_DB_HOST: ${PROD_DB_HOST:-host.docker.internal}
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
-      # Redis
-      DEV_REDIS_HOST: ${DEV_REDIS_HOST:-redis}
-      PROD_REDIS_HOST: ${PROD_REDIS_HOST:-redis}
+      # Redis (호스트 Redis)
+      DEV_REDIS_HOST: ${DEV_REDIS_HOST:-host.docker.internal}
+      PROD_REDIS_HOST: ${PROD_REDIS_HOST:-host.docker.internal}
       DEV_REDIS_PASSWORD: ${REDIS_PASSWORD}
       PROD_REDIS_PASSWORD: ${REDIS_PASSWORD}
       # JWT
@@ -43,11 +48,9 @@ services:
     volumes:
       - uploads:/var/drinkindex/uploads
       - logs:/var/drinkindex/logs
-    depends_on:
-      mariadb:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+    extra_hosts:
+      # 호스트의 MariaDB/Redis 접속용. Linux 에서는 명시가 필요 (Docker Desktop 은 자동).
+      - "host.docker.internal:host-gateway"
     restart: unless-stopped
     networks:
       - drinkindex
@@ -66,55 +69,9 @@ services:
     networks:
       - drinkindex
 
-  mariadb:
-    image: mariadb:11.4
-    environment:
-      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
-      MARIADB_DATABASE: ${MARIADB_DATABASE}
-      MARIADB_USER: ${DB_USERNAME}
-      MARIADB_PASSWORD: ${DB_PASSWORD}
-      MARIADB_AUTO_UPGRADE: "1"
-      TZ: Asia/Seoul
-    command:
-      - --character-set-server=utf8mb4
-      - --collation-server=utf8mb4_unicode_ci
-      - --max_connections=200
-    volumes:
-      - db_data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
-    restart: unless-stopped
-    networks:
-      - drinkindex
-
-  redis:
-    image: redis:7-alpine
-    command:
-      - sh
-      - -c
-      - 'redis-server --requirepass "$$REDIS_PASSWORD" --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru'
-    environment:
-      REDIS_PASSWORD: ${REDIS_PASSWORD}
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a $$REDIS_PASSWORD ping | grep -q PONG"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
-    restart: unless-stopped
-    networks:
-      - drinkindex
-
 volumes:
   uploads:
   logs:
-  db_data:
-  redis_data:
 
 networks:
   drinkindex:

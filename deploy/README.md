@@ -48,9 +48,8 @@ git add . && git commit -m "feat: V1 baseline schema for Flyway"
 스크립트가 자동으로:
 1. `git pull` (변경 사항 가져오기)
 2. 이미지 빌드 (Gradle bootJar + Vite build + Nginx 패키징)
-3. MariaDB + Redis 기동, healthcheck 대기
-4. API + Web 기동, readiness probe 대기
-5. dangling 이미지 정리
+3. API + Web 기동, readiness probe 대기 (DB/Redis 는 호스트 서비스 사용)
+4. dangling 이미지 정리
 
 ### 4. Cloudflare DNS / SSL
 
@@ -140,9 +139,10 @@ docker logs di-prod-api | grep -i flyway
 체크섬 불일치는 운영 DB 에 적용된 V*.sql 을 변경한 경우. 절대 적용된 마이그레이션은 수정 금지.
 
 ### Rate Limit 오인 차단
+호스트 Redis 에 직접 접속:
 ```
-docker compose exec redis redis-cli -a $REDIS_PASSWORD keys 'rl:*'
-docker compose exec redis redis-cli -a $REDIS_PASSWORD del rl:login:ip:xxx.xxx.xxx.xxx
+redis-cli -a $REDIS_PASSWORD keys 'rl:*'
+redis-cli -a $REDIS_PASSWORD del rl:login:ip:xxx.xxx.xxx.xxx
 ```
 
 ### 로그 위치

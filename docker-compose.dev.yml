@@ -1,12 +1,12 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # DrinkIndex — dev override (Oracle Cloud, drink-dev.pinner.dev)
 # Cloudflare(프록시 / SSL 종료) → Compute Instance(80) → nginx(web) → api/uploads
+# DB/Redis 는 호스트의 것을 사용 (base compose 의 extra_hosts 로 매핑됨).
 # ─────────────────────────────────────────────────────────────────────────────
 
 services:
   api:
     container_name: di-dev-api
-    # 외부 노출 X — nginx(web) 통해서만 접근. actuator(8081)도 컨테이너 내부 전용.
     expose:
       - "8080"
       - "8081"
@@ -24,14 +24,11 @@ services:
 
   web:
     container_name: di-dev-web
-    # Cloudflare → 서버 80 → nginx
     ports:
       - "80:80"
-    # dev 서버는 검색엔진 색인 차단
     environment:
       ROBOTS_NOINDEX: "on"
     build:
-      # dev 는 SEO prerender(puppeteer) 생략 — alpine 에 Chromium 없음
       args:
         BUILD_CMD: "build:no-prerender"
     deploy:
@@ -43,35 +40,3 @@ services:
       options:
         max-size: "20m"
         max-file: "5"
-
-  mariadb:
-    container_name: di-dev-mariadb
-    # 외부 노출 금지 — docker network 내부에서만 접근.
-    # (직접 디버깅이 필요하면 아래 한 줄을 임시로 추가: ports: ["127.0.0.1:3307:3306"])
-    expose:
-      - "3306"
-    deploy:
-      resources:
-        limits:
-          memory: 1024M
-        reservations:
-          memory: 256M
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "30m"
-        max-file: "5"
-
-  redis:
-    container_name: di-dev-redis
-    expose:
-      - "6379"
-    deploy:
-      resources:
-        limits:
-          memory: 384M
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "20m"
-        max-file: "3"

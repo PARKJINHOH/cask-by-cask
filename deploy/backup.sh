@@ -6,11 +6,16 @@
 #   ./deploy/backup.sh dev|prod
 #
 # 동작:
-#   1. mariadb 컨테이너에서 mysqldump 실행
+#   1. 호스트의 MariaDB 에서 mariadb-dump 실행 (drink_index 사용자 사용)
 #   2. gzip 압축 후 /var/drinkindex/backups/ 에 저장
 #   3. Oracle Object Storage 업로드 (OCI CLI 필요, 옵션)
 #   4. 보관 정책: 일간 7개 + 주간 4개 + 월간 6개
 #   5. Slack 알림 (성공/실패) — SLACK_WEBHOOK_URL env var 가 있을 때만
+#
+# 사전 조건:
+#   - 호스트에 mariadb-client (mariadb-dump) 설치
+#       sudo apt-get install -y mariadb-client
+#   - .env.${ENV} 에 DB_USERNAME / DB_PASSWORD 설정
 #
 # Cron 예시 (매일 03:00 KST):
 #   0 3 * * * /opt/drinkindex/deploy/backup.sh prod >> /var/log/drinkindex-backup.log 2>&1
@@ -46,7 +51,7 @@ DAY_OF_WEEK=$(date +'%u')  # 1=Mon ... 7=Sun
 DAY_OF_MONTH=$(date +'%d')
 
 DAILY_FILE="$BACKUP_DIR/daily/drinkindex_${ENV}_${NOW}.sql.gz"
-CONTAINER="di-${ENV}-mariadb"
+DB_NAME="drinkindex_${ENV}"
 
 log()  { printf "\033[1;36m[backup:%s]\033[0m %s\n" "$ENV" "$*"; }
 err()  { printf "\033[1;31m[backup:%s]\033[0m %s\n" "$ENV" "$*" >&2; }
@@ -59,17 +64,17 @@ notify_slack() {
         "$SLACK_WEBHOOK_URL" >/dev/null || true
 }
 
-# ── 1. mysqldump (단일 트랜잭션, 락 없이) ──
-log "Dumping database..."
-if ! docker exec "$CONTAINER" \
-        mariadb-dump \
-            --single-transaction --quick --routines --triggers \
-            --skip-comments --skip-lock-tables \
-            -u root -p"$MARIADB_ROOT_PASSWORD" \
-            "$MARIADB_DATABASE" \
+# ── 1. mariadb-dump (호스트 MariaDB, 단일 트랜잭션) ──
+log "Dumping $DB_NAME from host MariaDB..."
+if ! mariadb-dump \
+        --host=127.0.0.1 \
+        --user="$DB_USERNAME" --password="$DB_PASSWORD" \
+        --single-transaction --quick --routines --triggers \
+        --skip-comments --skip-lock-tables \
+        "$DB_NAME" \
         | gzip > "$DAILY_FILE"; then
-    err "mysqldump failed."
-    notify_slack "danger" "DB Backup FAILED ($ENV)" "mysqldump 실패. 서버 확인 필요."
+    err "mariadb-dump failed."
+    notify_slack "danger" "DB Backup FAILED ($ENV)" "mariadb-dump 실패. 서버 확인 필요."
     exit 1
 fi
 
