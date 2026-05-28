@@ -1,0 +1,48 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// DrinkIndex 백엔드 배포 파이프라인 (Docker 미사용 / systemd)
+//
+// Jenkins 설정:
+//   - Pipeline job → "Pipeline script from SCM" → Script Path: deploy/jenkins/Jenkinsfile.api
+//   - SCM 폴링/웹훅에 path filter 로 drinkindex-api/** 만 트리거하면 FE 수정 시 빌드 안 됨
+//   - Credentials:
+//       · drinkindex-dev-env  (Secret file)  = /etc/drinkindex/dev.env 내용 전체
+//   - Jenkins 실행 유저가 systemctl / env 설치를 무암호 sudo 가능해야 함 (런북 sudoers 참고)
+// ─────────────────────────────────────────────────────────────────────────────
+pipeline {
+    agent any
+
+    parameters {
+        choice(name: 'DEPLOY_ENV', choices: ['dev'], description: '배포 환경')
+    }
+
+    options {
+        timestamps()
+        disableConcurrentBuilds()
+    }
+
+    stages {
+        stage('Checkout') {
+            steps { checkout scm }
+        }
+
+        stage('Sync EnvironmentFile') {
+            steps {
+                // /etc/drinkindex 는 런북에서 ubuntu 소유로 생성 → sudo 불필요
+                withCredentials([file(credentialsId: "drinkindex-${params.DEPLOY_ENV}-env", variable: 'ENVFILE')]) {
+                    sh 'install -m 600 "$ENVFILE" /etc/drinkindex/${DEPLOY_ENV}.env'
+                }
+            }
+        }
+
+        stage('Build & Deploy') {
+            steps {
+                sh 'chmod +x deploy/deploy-api.sh && ./deploy/deploy-api.sh ${DEPLOY_ENV}'
+            }
+        }
+    }
+
+    post {
+        failure { echo '❌ 백엔드 배포 실패 — journalctl -u drinkindex-${DEPLOY_ENV}-api 확인' }
+        success { echo '✅ 백엔드 배포 성공' }
+    }
+}
