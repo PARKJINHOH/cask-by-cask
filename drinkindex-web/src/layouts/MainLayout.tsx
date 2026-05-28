@@ -56,20 +56,10 @@ type GNBItem =
 function GNB() {
   const { t } = useTranslation()
   const [open, setOpen] = useState<string | null>(null)
-  const ref = useRef<HTMLDivElement>(null)
 
-  // 미확인 공지 배지: 최신 공지 id > localStorage 저장 id 이면 표시
   const { data: latestNotice } = useLatestNotice()
   const lastSeenId = Number(localStorage.getItem(SEEN_KEY) ?? 0)
   const hasUnread = latestNotice != null && latestNotice.id > lastSeenId
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(null)
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
 
   const menus: GNBItem[] = [
     { key: 'spirits', label: t('nav.spirits'), to: '/spirits' },
@@ -101,8 +91,8 @@ function GNB() {
 
   return (
     <nav className="bg-white border-b border-neutral-100">
-      <div className="max-w-7xl mx-auto px-4" ref={ref}>
-        <ul className="flex items-center">
+      <div className="max-w-7xl mx-auto px-4">
+        <ul className="flex items-center gap-1">
           {menus.map(menu => {
             if ('to' in menu) {
               const isNotice  = menu.key === 'notice'
@@ -131,11 +121,13 @@ function GNB() {
 
             const isOpen = open === menu.key
             return (
-              <li key={menu.key} className="relative">
-                <button
-                  onClick={() => setOpen(isOpen ? null : menu.key)}
-                  className={itemCls(isOpen)}
-                >
+              <li
+                key={menu.key}
+                className="relative"
+                onMouseEnter={() => setOpen(menu.key)}
+                onMouseLeave={() => setOpen(null)}
+              >
+                <button className={itemCls(isOpen)}>
                   {menu.label}
                   <svg
                     className={`w-3.5 h-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`}
@@ -146,8 +138,8 @@ function GNB() {
                 </button>
 
                 {isOpen && (
-                  <div className="absolute top-full left-0 mt-0.5 w-40 bg-white rounded-xl
-                    shadow-lg border border-neutral-100 py-1 z-30">
+                  <div className="absolute top-full left-0 w-40 pt-1 z-30">
+                  <div className="bg-white rounded-xl shadow-lg border border-neutral-100 py-1">
                     {menu.children.map(child =>
                       child.comingSoon ? (
                         <span
@@ -172,6 +164,7 @@ function GNB() {
                         </Link>
                       )
                     )}
+                  </div>
                   </div>
                 )}
               </li>
