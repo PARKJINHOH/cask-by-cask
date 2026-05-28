@@ -137,4 +137,5 @@ volumes:
 networks:
   drinkindex:
     external: true
-    name: drink-index_drinkindex
+    # base compose 의 'name: drinkindex' 로 프로젝트명이 고정됨 → 네트워크명도 고정
+    name: drinkindex_drinkindex

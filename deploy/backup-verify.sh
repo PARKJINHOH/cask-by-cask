@@ -9,7 +9,7 @@
 #   4. 결과 Slack 알림
 #
 # 권장 cron (매주 월요일 04:00):
-#   0 4 * * 1 /opt/drinkindex/deploy/backup-verify.sh prod >> /var/log/drinkindex-backup-verify.log 2>&1
+#   0 4 * * 1 /home/ubuntu/app_drinkindex/deploy/backup-verify.sh prod >> /var/log/drinkindex-backup-verify.log 2>&1
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 

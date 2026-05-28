@@ -13,6 +13,10 @@
 # 또는 deploy/deploy.sh dev|prod 스크립트 사용.
 # ─────────────────────────────────────────────────────────────────────────────
 
+# 프로젝트명 고정 — 클론 디렉터리명(app_drinkindex 등)에 상관없이 항상 동일한
+# 네트워크/볼륨 이름을 갖도록 함 (network: drinkindex_drinkindex, volume: drinkindex_uploads ...)
+name: drinkindex
+
 services:
   api:
     build:

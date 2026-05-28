@@ -18,7 +18,7 @@
 #   - .env.${ENV} 에 DB_USERNAME / DB_PASSWORD 설정
 #
 # Cron 예시 (매일 03:00 KST):
-#   0 3 * * * /opt/drinkindex/deploy/backup.sh prod >> /var/log/drinkindex-backup.log 2>&1
+#   0 3 * * * /home/ubuntu/app_drinkindex/deploy/backup.sh prod >> /var/log/drinkindex-backup.log 2>&1
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 

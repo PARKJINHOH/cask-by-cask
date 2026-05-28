@@ -79,7 +79,7 @@ git add . && git commit -m "feat: V1 baseline schema for Flyway"
 
 자동 (crontab):
 ```cron
-0 3 * * * /opt/drinkindex/deploy/backup.sh prod >> /var/log/drinkindex-backup.log 2>&1
+0 3 * * * /home/ubuntu/app_drinkindex/deploy/backup.sh prod >> /var/log/drinkindex-backup.log 2>&1
 ```
 
 보관 정책:
@@ -147,5 +147,5 @@ redis-cli -a $REDIS_PASSWORD del rl:login:ip:xxx.xxx.xxx.xxx
 
 ### 로그 위치
 - API 컨테이너 내부: `/var/drinkindex/logs/drinkindex-api.log`
-- Docker volume: `docker volume inspect drink-index_logs`
+- Docker volume: `docker volume inspect drinkindex_logs`
 - 호스트 마운트로 변경하려면 `docker-compose.{env}.yml` 에 bind mount 추가
