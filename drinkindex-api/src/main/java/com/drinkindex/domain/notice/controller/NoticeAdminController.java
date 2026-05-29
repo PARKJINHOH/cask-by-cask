@@ -6,9 +6,9 @@ import com.drinkindex.domain.notice.entity.NoticeCategory;
 import com.drinkindex.domain.notice.service.NoticeService;
 import com.drinkindex.global.auth.security.CustomUserDetails;
 import com.drinkindex.global.response.ApiResponse;
+import com.drinkindex.global.response.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -35,14 +35,14 @@ public class NoticeAdminController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<NoticeListResponse>>> getAllNotices(
+    public ResponseEntity<ApiResponse<PageResponse<NoticeListResponse>>> getAllNotices(
             @RequestParam(required = false) NoticeCategory category,
             @RequestParam(required = false) Boolean isPublished,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
         return ResponseEntity.ok(
-                ApiResponse.success(noticeService.getAllNoticesForAdmin(category, isPublished, page, size))
+                ApiResponse.success(PageResponse.from(noticeService.getAllNoticesForAdmin(category, isPublished, page, size)))
         );
     }
 

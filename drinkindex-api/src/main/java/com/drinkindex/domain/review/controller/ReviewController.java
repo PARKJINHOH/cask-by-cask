@@ -7,9 +7,9 @@ import com.drinkindex.domain.review.entity.enums.ReviewSort;
 import com.drinkindex.domain.review.service.ReviewService;
 import com.drinkindex.global.auth.security.CustomUserDetails;
 import com.drinkindex.global.response.ApiResponse;
+import com.drinkindex.global.response.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
@@ -25,12 +25,12 @@ public class ReviewController {
     private final ReviewService reviewService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<ReviewResponse>>> getReviews(
+    public ResponseEntity<ApiResponse<PageResponse<ReviewResponse>>> getReviews(
             @PathVariable Long spiritId,
             @RequestParam(required = false) ReviewSort sort,
             @PageableDefault(size = 10) Pageable pageable) {
         return ResponseEntity.ok(ApiResponse.success(
-                reviewService.getReviews(spiritId, sort, pageable)));
+                PageResponse.from(reviewService.getReviews(spiritId, sort, pageable))));
     }
 
     @PostMapping

@@ -16,9 +16,9 @@ import com.drinkindex.global.auth.security.CustomUserDetails;
 import com.drinkindex.global.exception.CustomException;
 import com.drinkindex.global.exception.ErrorCode;
 import com.drinkindex.global.response.ApiResponse;
+import com.drinkindex.global.response.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -156,10 +156,10 @@ public class UserController {
     }
 
     @GetMapping("/me/reviews")
-    public ResponseEntity<ApiResponse<Page<ReviewResponse>>> getMyReviews(
+    public ResponseEntity<ApiResponse<PageResponse<ReviewResponse>>> getMyReviews(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PageableDefault(size = 10) Pageable pageable) {
         return ResponseEntity.ok(ApiResponse.success(
-                reviewService.getMyReviews(userDetails.getUserId(), pageable)));
+                PageResponse.from(reviewService.getMyReviews(userDetails.getUserId(), pageable))));
     }
 }

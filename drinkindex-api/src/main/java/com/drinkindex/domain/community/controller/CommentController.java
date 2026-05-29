@@ -8,9 +8,9 @@ import com.drinkindex.domain.user.entity.User;
 import com.drinkindex.domain.user.repository.UserRepository;
 import com.drinkindex.global.auth.security.CustomUserDetails;
 import com.drinkindex.global.response.ApiResponse;
+import com.drinkindex.global.response.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -25,7 +25,7 @@ public class CommentController {
     private final UserRepository userRepository;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<PostCommentResponse>>> getComments(
+    public ResponseEntity<ApiResponse<PageResponse<PostCommentResponse>>> getComments(
             @PathVariable Long postId,
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestParam(defaultValue = "0") int page,
@@ -33,7 +33,7 @@ public class CommentController {
     ) {
         Long userId = userDetails != null ? userDetails.getUserId() : null;
         return ResponseEntity.ok(ApiResponse.success(
-                commentService.getComments(postId, userId, page, size)));
+                PageResponse.from(commentService.getComments(postId, userId, page, size))));
     }
 
     @PostMapping

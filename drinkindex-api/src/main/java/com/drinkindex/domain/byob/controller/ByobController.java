@@ -4,9 +4,9 @@ import com.drinkindex.domain.byob.dto.*;
 import com.drinkindex.domain.byob.service.ByobService;
 import com.drinkindex.global.auth.security.CustomUserDetails;
 import com.drinkindex.global.response.ApiResponse;
+import com.drinkindex.global.response.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -24,12 +24,12 @@ public class ByobController {
     // ── 목록 (공개) ───────────────────────────────────────────────
 
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<ByobListResponse>>> getList(
+    public ResponseEntity<ApiResponse<PageResponse<ByobListResponse>>> getList(
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "12") int size
     ) {
-        return ResponseEntity.ok(ApiResponse.success(byobService.getList(status, page, size)));
+        return ResponseEntity.ok(ApiResponse.success(PageResponse.from(byobService.getList(status, page, size))));
     }
 
     // ── 상세 (공개, 로그인 시 myParticipant 포함) ─────────────────
@@ -207,23 +207,23 @@ public class ByobController {
 
     @GetMapping("/my/hosted")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ApiResponse<Page<ByobMyHostedResponse>>> getMyHosted(
+    public ResponseEntity<ApiResponse<PageResponse<ByobMyHostedResponse>>> getMyHosted(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-        return ResponseEntity.ok(ApiResponse.success(byobService.getMyHosted(userDetails.getUserId(), page, size)));
+        return ResponseEntity.ok(ApiResponse.success(PageResponse.from(byobService.getMyHosted(userDetails.getUserId(), page, size))));
     }
 
     // ── 마이페이지: 참여한 모임 ───────────────────────────────────
 
     @GetMapping("/my/joined")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ApiResponse<Page<ByobMyJoinedResponse>>> getMyJoined(
+    public ResponseEntity<ApiResponse<PageResponse<ByobMyJoinedResponse>>> getMyJoined(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-        return ResponseEntity.ok(ApiResponse.success(byobService.getMyJoined(userDetails.getUserId(), page, size)));
+        return ResponseEntity.ok(ApiResponse.success(PageResponse.from(byobService.getMyJoined(userDetails.getUserId(), page, size))));
     }
 }

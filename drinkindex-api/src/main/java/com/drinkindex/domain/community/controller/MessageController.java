@@ -8,9 +8,9 @@ import com.drinkindex.domain.community.service.MessageService;
 import com.drinkindex.domain.community.service.MessageService.MessageBox;
 import com.drinkindex.global.auth.security.CustomUserDetails;
 import com.drinkindex.global.response.ApiResponse;
+import com.drinkindex.global.response.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -25,14 +25,14 @@ public class MessageController {
     private final MessageService messageService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<MessageSummaryResponse>>> getMessages(
+    public ResponseEntity<ApiResponse<PageResponse<MessageSummaryResponse>>> getMessages(
             @RequestParam(defaultValue = "INBOX") MessageBox box,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         return ResponseEntity.ok(ApiResponse.success(
-                messageService.getMessages(userDetails.getUserId(), box, page, size)));
+                PageResponse.from(messageService.getMessages(userDetails.getUserId(), box, page, size))));
     }
 
     @GetMapping("/{id}")

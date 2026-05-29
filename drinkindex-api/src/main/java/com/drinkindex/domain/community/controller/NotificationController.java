@@ -6,8 +6,8 @@ import com.drinkindex.domain.community.entity.enums.NotificationType;
 import com.drinkindex.domain.community.service.NotificationService;
 import com.drinkindex.global.auth.security.CustomUserDetails;
 import com.drinkindex.global.response.ApiResponse;
+import com.drinkindex.global.response.PageResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -23,14 +23,14 @@ public class NotificationController {
 
     // 30초마다 프론트 폴링. 추후 롱폴링 전환 시 DeferredResult로 교체 가능.
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<NotificationResponse>>> getNotifications(
+    public ResponseEntity<ApiResponse<PageResponse<NotificationResponse>>> getNotifications(
             @RequestParam(required = false) NotificationType type,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         return ResponseEntity.ok(ApiResponse.success(
-                notificationService.getNotifications(userDetails.getUserId(), type, page, size)));
+                PageResponse.from(notificationService.getNotifications(userDetails.getUserId(), type, page, size))));
     }
 
     @GetMapping("/unread-count")

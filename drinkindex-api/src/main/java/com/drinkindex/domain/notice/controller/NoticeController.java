@@ -5,8 +5,8 @@ import com.drinkindex.domain.notice.dto.NoticeListResponse;
 import com.drinkindex.domain.notice.entity.NoticeCategory;
 import com.drinkindex.domain.notice.service.NoticeService;
 import com.drinkindex.global.response.ApiResponse;
+import com.drinkindex.global.response.PageResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,13 +22,13 @@ public class NoticeController {
      * 공개 공지 목록 조회 (isPinned DESC, createdAt DESC)
      */
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<NoticeListResponse>>> getPublishedNotices(
+    public ResponseEntity<ApiResponse<PageResponse<NoticeListResponse>>> getPublishedNotices(
             @RequestParam(required = false) NoticeCategory category,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
         return ResponseEntity.ok(
-                ApiResponse.success(noticeService.getPublishedNotices(category, page, size))
+                ApiResponse.success(PageResponse.from(noticeService.getPublishedNotices(category, page, size)))
         );
     }
 

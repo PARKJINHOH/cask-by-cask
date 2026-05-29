@@ -7,8 +7,8 @@ import com.drinkindex.domain.community.entity.enums.ReportStatus;
 import com.drinkindex.domain.community.service.PostService;
 import com.drinkindex.global.auth.security.CustomUserDetails;
 import com.drinkindex.global.response.ApiResponse;
+import com.drinkindex.global.response.PageResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -23,12 +23,12 @@ public class PostAdminController {
     private final PostService postService;
 
     @GetMapping("/reports")
-    public ResponseEntity<ApiResponse<Page<PostReportAdminResponse>>> getReports(
+    public ResponseEntity<ApiResponse<PageResponse<PostReportAdminResponse>>> getReports(
             @RequestParam(required = false) ReportStatus status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        return ResponseEntity.ok(ApiResponse.success(postService.getReports(status, page, size)));
+        return ResponseEntity.ok(ApiResponse.success(PageResponse.from(postService.getReports(status, page, size))));
     }
 
     @DeleteMapping("/{id}")

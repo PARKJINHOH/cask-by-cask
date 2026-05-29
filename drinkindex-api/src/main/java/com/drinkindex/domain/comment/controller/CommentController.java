@@ -6,9 +6,9 @@ import com.drinkindex.domain.comment.dto.UpdateCommentRequest;
 import com.drinkindex.domain.comment.service.CommentService;
 import com.drinkindex.global.auth.security.CustomUserDetails;
 import com.drinkindex.global.response.ApiResponse;
+import com.drinkindex.global.response.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
@@ -25,11 +25,11 @@ public class CommentController {
     // ── /api/spirits/{spiritId}/comments ──────────────────
 
     @GetMapping("/api/spirits/{spiritId}/comments")
-    public ResponseEntity<ApiResponse<Page<CommentResponse>>> getComments(
+    public ResponseEntity<ApiResponse<PageResponse<CommentResponse>>> getComments(
             @PathVariable Long spiritId,
             @PageableDefault(size = 20) Pageable pageable) {
         return ResponseEntity.ok(ApiResponse.success(
-                commentService.getComments(spiritId, pageable)));
+                PageResponse.from(commentService.getComments(spiritId, pageable))));
     }
 
     @PostMapping("/api/spirits/{spiritId}/comments")

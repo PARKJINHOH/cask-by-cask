@@ -6,8 +6,8 @@ import com.drinkindex.domain.score.entity.enums.RankingPeriod;
 import com.drinkindex.domain.score.service.RankingService;
 import com.drinkindex.global.auth.security.CustomUserDetails;
 import com.drinkindex.global.response.ApiResponse;
+import com.drinkindex.global.response.PageResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -21,12 +21,12 @@ public class RankingController {
     private final RankingService rankingService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<RankingResponse>>> getRanking(
+    public ResponseEntity<ApiResponse<PageResponse<RankingResponse>>> getRanking(
             @RequestParam(defaultValue = "ALL") RankingPeriod period,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size) {
         return ResponseEntity.ok(ApiResponse.success(
-                rankingService.getRanking(period, page, Math.min(size, 50))));
+                PageResponse.from(rankingService.getRanking(period, page, Math.min(size, 50)))));
     }
 
     @GetMapping("/me")

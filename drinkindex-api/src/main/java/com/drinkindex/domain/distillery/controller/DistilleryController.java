@@ -6,9 +6,9 @@ import com.drinkindex.domain.distillery.dto.DistilleryResponse;
 import com.drinkindex.domain.distillery.service.DistilleryService;
 import com.drinkindex.global.auth.security.CustomUserDetails;
 import com.drinkindex.global.response.ApiResponse;
+import com.drinkindex.global.response.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
@@ -26,12 +26,12 @@ public class DistilleryController {
     private final DistilleryService distilleryService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<DistilleryResponse>>> search(
+    public ResponseEntity<ApiResponse<PageResponse<DistilleryResponse>>> search(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String country,
             @PageableDefault(size = 20, sort = "nameKo") Pageable pageable) {
         return ResponseEntity.ok(
-                ApiResponse.success(distilleryService.search(keyword, country, pageable)));
+                ApiResponse.success(PageResponse.from(distilleryService.search(keyword, country, pageable))));
     }
 
     @GetMapping("/{id}")

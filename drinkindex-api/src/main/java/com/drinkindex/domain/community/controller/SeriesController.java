@@ -6,9 +6,9 @@ import com.drinkindex.domain.community.repository.SeriesRepository;
 import com.drinkindex.domain.community.service.SeriesService;
 import com.drinkindex.global.auth.security.CustomUserDetails;
 import com.drinkindex.global.response.ApiResponse;
+import com.drinkindex.global.response.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -42,12 +42,12 @@ public class SeriesController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<SeriesResponse>>> getSeries(
+    public ResponseEntity<ApiResponse<PageResponse<SeriesResponse>>> getSeries(
             @RequestParam BoardType boardType,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        return ResponseEntity.ok(ApiResponse.success(seriesService.getSeries(boardType, page, size)));
+        return ResponseEntity.ok(ApiResponse.success(PageResponse.from(seriesService.getSeries(boardType, page, size))));
     }
 
     @GetMapping("/{id}")

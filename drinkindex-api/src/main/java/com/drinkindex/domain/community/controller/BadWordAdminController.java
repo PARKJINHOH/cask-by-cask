@@ -4,9 +4,9 @@ import com.drinkindex.domain.community.dto.BadWordResponse;
 import com.drinkindex.domain.community.dto.CreateBadWordRequest;
 import com.drinkindex.domain.community.service.BadWordService;
 import com.drinkindex.global.response.ApiResponse;
+import com.drinkindex.global.response.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -20,11 +20,11 @@ public class BadWordAdminController {
     private final BadWordService badWordService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<BadWordResponse>>> getAll(
+    public ResponseEntity<ApiResponse<PageResponse<BadWordResponse>>> getAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size
     ) {
-        return ResponseEntity.ok(ApiResponse.success(badWordService.getAll(page, size)));
+        return ResponseEntity.ok(ApiResponse.success(PageResponse.from(badWordService.getAll(page, size))));
     }
 
     @PostMapping

@@ -9,9 +9,9 @@ import com.drinkindex.domain.inquiry.entity.enums.InquiryCategory;
 import com.drinkindex.domain.inquiry.entity.enums.InquiryStatus;
 import com.drinkindex.global.auth.security.CustomUserDetails;
 import com.drinkindex.global.response.ApiResponse;
+import com.drinkindex.global.response.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -31,12 +31,12 @@ public class AdminInquiryController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<InquiryListResponse>>> list(
+    public ResponseEntity<ApiResponse<PageResponse<InquiryListResponse>>> list(
             @RequestParam(required = false) InquiryStatus status,
             @RequestParam(required = false) InquiryCategory category,
             @RequestParam(defaultValue = "0") int page
     ) {
-        return ResponseEntity.ok(ApiResponse.success(adminInquiryService.list(status, category, page)));
+        return ResponseEntity.ok(ApiResponse.success(PageResponse.from(adminInquiryService.list(status, category, page))));
     }
 
     @GetMapping("/{id}")

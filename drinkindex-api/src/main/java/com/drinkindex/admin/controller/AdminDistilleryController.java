@@ -5,9 +5,9 @@ import com.drinkindex.domain.distillery.service.DistilleryService;
 import com.drinkindex.domain.spirit.entity.enums.RequestStatus;
 import com.drinkindex.global.auth.security.CustomUserDetails;
 import com.drinkindex.global.response.ApiResponse;
+import com.drinkindex.global.response.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
@@ -49,11 +49,11 @@ public class AdminDistilleryController {
 
     @GetMapping("/requests")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
-    public ResponseEntity<ApiResponse<Page<DistilleryRegisterRequestResponse>>> getRequests(
+    public ResponseEntity<ApiResponse<PageResponse<DistilleryRegisterRequestResponse>>> getRequests(
             @RequestParam(defaultValue = "PENDING") RequestStatus status,
             @PageableDefault(size = 20) Pageable pageable) {
         return ResponseEntity.ok(ApiResponse.success(
-                distilleryService.getDistilleryRequests(status, pageable)));
+                PageResponse.from(distilleryService.getDistilleryRequests(status, pageable))));
     }
 
     @PatchMapping("/requests/{id}/approve")

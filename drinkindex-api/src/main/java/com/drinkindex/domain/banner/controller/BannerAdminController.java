@@ -6,11 +6,11 @@ import com.drinkindex.domain.banner.entity.enums.BannerLanguage;
 import com.drinkindex.domain.banner.service.BannerService;
 import com.drinkindex.global.auth.security.CustomUserDetails;
 import com.drinkindex.global.response.ApiResponse;
+import com.drinkindex.global.response.PageResponse;
 import jakarta.validation.Valid;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -28,14 +28,14 @@ public class BannerAdminController {
     // ─── 배너 CRUD ─────────────────────────────────────────
 
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<AdminBannerListResponse>>> getAllBanners(
+    public ResponseEntity<ApiResponse<PageResponse<AdminBannerListResponse>>> getAllBanners(
             @RequestParam(required = false) BannerLanguage language,
             @RequestParam(required = false) Boolean isVisible,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
         return ResponseEntity.ok(
-                ApiResponse.success(bannerService.getAllBannersForAdmin(language, isVisible, page, size))
+                ApiResponse.success(PageResponse.from(bannerService.getAllBannersForAdmin(language, isVisible, page, size)))
         );
     }
 

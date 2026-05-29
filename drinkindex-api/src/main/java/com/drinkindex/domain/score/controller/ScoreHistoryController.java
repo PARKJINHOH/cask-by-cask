@@ -6,6 +6,7 @@ import com.drinkindex.domain.score.repository.MemberLevelConfigRepository;
 import com.drinkindex.domain.score.repository.ScoreHistoryRepository;
 import com.drinkindex.global.auth.security.CustomUserDetails;
 import com.drinkindex.global.response.ApiResponse;
+import com.drinkindex.global.response.PageResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -38,7 +39,7 @@ public class ScoreHistoryController {
     @GetMapping("/me")
     @PreAuthorize("isAuthenticated()")
     @Transactional(readOnly = true)
-    public ResponseEntity<ApiResponse<Page<ScoreHistoryResponse>>> getMyHistory(
+    public ResponseEntity<ApiResponse<PageResponse<ScoreHistoryResponse>>> getMyHistory(
             @RequestParam(required = false) String type,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -62,7 +63,7 @@ public class ScoreHistoryController {
                     .map(ScoreHistoryResponse::from);
         };
 
-        return ResponseEntity.ok(ApiResponse.success(result));
+        return ResponseEntity.ok(ApiResponse.success(PageResponse.from(result)));
     }
 
     @GetMapping("/level-config")

@@ -36,10 +36,6 @@ storage:
   local:
     base-path: ${UPLOAD_PATH:${user.home}/drinkindex-uploads}
 
-app:
-  email:
-    verification-required: false
-
 cors:
   allowed-origins: "http://localhost:5173,http://localhost:3000"
 

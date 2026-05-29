@@ -3,8 +3,8 @@ package com.drinkindex.domain.cognacappellation.controller;
 import com.drinkindex.domain.cognacappellation.dto.CognacAppellationResponse;
 import com.drinkindex.domain.cognacappellation.service.CognacAppellationService;
 import com.drinkindex.global.response.ApiResponse;
+import com.drinkindex.global.response.PageResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
@@ -18,10 +18,10 @@ public class CognacAppellationController {
     private final CognacAppellationService cognacAppellationService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<CognacAppellationResponse>>> search(
+    public ResponseEntity<ApiResponse<PageResponse<CognacAppellationResponse>>> search(
             @RequestParam(required = false) String keyword,
             @PageableDefault(size = 50, sort = "nameKo") Pageable pageable) {
-        return ResponseEntity.ok(ApiResponse.success(cognacAppellationService.search(keyword, pageable)));
+        return ResponseEntity.ok(ApiResponse.success(PageResponse.from(cognacAppellationService.search(keyword, pageable))));
     }
 
     @GetMapping("/{id}")

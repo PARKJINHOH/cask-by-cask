@@ -10,9 +10,9 @@ import com.drinkindex.domain.spirit.entity.enums.WineType;
 import com.drinkindex.domain.spirit.service.SpiritService;
 import com.drinkindex.global.auth.security.CustomUserDetails;
 import com.drinkindex.global.response.ApiResponse;
+import com.drinkindex.global.response.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
@@ -32,7 +32,7 @@ public class SpiritController {
     private final SpiritService spiritService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<SpiritListResponse>>> search(
+    public ResponseEntity<ApiResponse<PageResponse<SpiritListResponse>>> search(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) SpiritCategory category,
             @RequestParam(required = false) List<WhiskyStyle> whiskyStyle,
@@ -53,7 +53,7 @@ public class SpiritController {
                 SpiritStatus.ACTIVE, sort);
 
         return ResponseEntity.ok(ApiResponse.success(
-                spiritService.searchSpirits(condition, pageable)));
+                PageResponse.from(spiritService.searchSpirits(condition, pageable))));
     }
 
     @GetMapping("/countries")

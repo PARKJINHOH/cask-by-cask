@@ -9,9 +9,9 @@ import com.drinkindex.domain.user.dto.UpdateBoardPermissionsRequest;
 import com.drinkindex.domain.user.entity.enums.Role;
 import com.drinkindex.global.auth.security.CustomUserDetails;
 import com.drinkindex.global.response.ApiResponse;
+import com.drinkindex.global.response.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
@@ -27,13 +27,13 @@ public class AdminUserController {
     private final AdminUserService adminUserService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<AdminUserResponse>>> searchUsers(
+    public ResponseEntity<ApiResponse<PageResponse<AdminUserResponse>>> searchUsers(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Role role,
             @RequestParam(required = false) Boolean isActive,
             @PageableDefault(size = 20) Pageable pageable) {
         return ResponseEntity.ok(ApiResponse.success(
-                adminUserService.searchUsers(keyword, role, isActive, pageable)));
+                PageResponse.from(adminUserService.searchUsers(keyword, role, isActive, pageable))));
     }
 
     @GetMapping("/{id}")

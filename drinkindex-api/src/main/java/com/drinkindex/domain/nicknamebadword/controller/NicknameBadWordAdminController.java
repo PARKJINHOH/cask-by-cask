@@ -4,9 +4,9 @@ import com.drinkindex.domain.nicknamebadword.dto.CreateNicknameBadWordRequest;
 import com.drinkindex.domain.nicknamebadword.dto.NicknameBadWordResponse;
 import com.drinkindex.domain.nicknamebadword.service.NicknameBadWordService;
 import com.drinkindex.global.response.ApiResponse;
+import com.drinkindex.global.response.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -20,11 +20,11 @@ public class NicknameBadWordAdminController {
     private final NicknameBadWordService service;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<NicknameBadWordResponse>>> getAll(
+    public ResponseEntity<ApiResponse<PageResponse<NicknameBadWordResponse>>> getAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size
     ) {
-        return ResponseEntity.ok(ApiResponse.success(service.getAll(page, size)));
+        return ResponseEntity.ok(ApiResponse.success(PageResponse.from(service.getAll(page, size))));
     }
 
     @PostMapping

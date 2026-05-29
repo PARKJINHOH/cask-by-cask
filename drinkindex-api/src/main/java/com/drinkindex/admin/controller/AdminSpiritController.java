@@ -6,9 +6,9 @@ import com.drinkindex.domain.spirit.service.SpiritImageService;
 import com.drinkindex.domain.spirit.service.SpiritService;
 import com.drinkindex.global.auth.security.CustomUserDetails;
 import com.drinkindex.global.response.ApiResponse;
+import com.drinkindex.global.response.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
@@ -86,11 +86,11 @@ public class AdminSpiritController {
     // ── 등록 요청 — 조회/수정 (PARTNER 포함) ──────────────────
 
     @GetMapping("/requests")
-    public ResponseEntity<ApiResponse<Page<SpiritRegisterRequestResponse>>> getRequests(
+    public ResponseEntity<ApiResponse<PageResponse<SpiritRegisterRequestResponse>>> getRequests(
             @RequestParam(defaultValue = "PENDING") RequestStatus status,
             @PageableDefault(size = 20) Pageable pageable) {
         return ResponseEntity.ok(ApiResponse.success(
-                spiritService.getRegisterRequests(status, pageable)
+                PageResponse.from(spiritService.getRegisterRequests(status, pageable))
         ));
     }
 

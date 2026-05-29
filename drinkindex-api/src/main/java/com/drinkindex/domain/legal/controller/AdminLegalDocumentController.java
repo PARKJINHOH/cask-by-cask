@@ -8,9 +8,9 @@ import com.drinkindex.domain.legal.entity.enums.LegalDocumentType;
 import com.drinkindex.domain.legal.service.LegalDocumentService;
 import com.drinkindex.global.auth.security.CustomUserDetails;
 import com.drinkindex.global.response.ApiResponse;
+import com.drinkindex.global.response.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -25,12 +25,12 @@ public class AdminLegalDocumentController {
     private final LegalDocumentService legalDocumentService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<LegalDocumentListItem>>> list(
+    public ResponseEntity<ApiResponse<PageResponse<LegalDocumentListItem>>> list(
             @RequestParam LegalDocumentType type,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        return ResponseEntity.ok(ApiResponse.success(legalDocumentService.getAllVersions(type, page, size)));
+        return ResponseEntity.ok(ApiResponse.success(PageResponse.from(legalDocumentService.getAllVersions(type, page, size))));
     }
 
     @PostMapping

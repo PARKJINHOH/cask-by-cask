@@ -3,9 +3,9 @@ package com.drinkindex.domain.community.controller;
 import com.drinkindex.domain.community.dto.*;
 import com.drinkindex.domain.community.service.EmojiService;
 import com.drinkindex.global.response.ApiResponse;
+import com.drinkindex.global.response.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -60,11 +60,11 @@ public class EmojiAdminController {
     // ─── 이모지 ───────────────────────────────────────────────────
 
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<EmojiAdminResponse>>> getAll(
+    public ResponseEntity<ApiResponse<PageResponse<EmojiAdminResponse>>> getAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size
     ) {
-        return ResponseEntity.ok(ApiResponse.success(emojiService.getAll(page, size)));
+        return ResponseEntity.ok(ApiResponse.success(PageResponse.from(emojiService.getAll(page, size))));
     }
 
     @GetMapping("/by-group")

@@ -10,13 +10,13 @@ import com.drinkindex.global.auth.security.CustomUserDetails;
 import com.drinkindex.global.exception.CustomException;
 import com.drinkindex.global.exception.ErrorCode;
 import com.drinkindex.global.response.ApiResponse;
+import com.drinkindex.global.response.PageResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.io.Resource;
-import org.springframework.data.domain.Page;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -36,7 +36,7 @@ public class PostController {
     // ─── 목록 ───────────────────────────────────
 
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<PostListResponse>>> getPosts(
+    public ResponseEntity<ApiResponse<PageResponse<PostListResponse>>> getPosts(
             @RequestParam(required = false) BoardType boardType,
             @RequestParam(required = false) Long prefixId,
             @RequestParam(required = false) String keyword,
@@ -47,18 +47,18 @@ public class PostController {
             @RequestParam(defaultValue = "20") int size
     ) {
         return ResponseEntity.ok(ApiResponse.success(
-                postService.getPosts(boardType, prefixId, keyword, sort,
-                        authorId, commentAuthorId, page, size)));
+                PageResponse.from(postService.getPosts(boardType, prefixId, keyword, sort,
+                        authorId, commentAuthorId, page, size))));
     }
 
     @GetMapping("/best")
-    public ResponseEntity<ApiResponse<Page<PostListResponse>>> getBestPosts(
+    public ResponseEntity<ApiResponse<PageResponse<PostListResponse>>> getBestPosts(
             @RequestParam BoardType boardType,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
         return ResponseEntity.ok(ApiResponse.success(
-                postService.getBestPosts(boardType, page, size)));
+                PageResponse.from(postService.getBestPosts(boardType, page, size))));
     }
 
     // ─── 상세 ───────────────────────────────────
@@ -165,13 +165,13 @@ public class PostController {
 
     @GetMapping("/me/scraps")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ApiResponse<Page<PostListResponse>>> getMyScraps(
+    public ResponseEntity<ApiResponse<PageResponse<PostListResponse>>> getMyScraps(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         return ResponseEntity.ok(ApiResponse.success(
-                postService.getMyScraps(userDetails.getUserId(), page, size)));
+                PageResponse.from(postService.getMyScraps(userDetails.getUserId(), page, size))));
     }
 
     // ─── 숨김 / 복구 (모더레이터 이상) ──────────────

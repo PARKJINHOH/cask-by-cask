@@ -6,9 +6,9 @@ import com.drinkindex.domain.wishlist.entity.enums.WishlistType;
 import com.drinkindex.domain.wishlist.service.WishlistService;
 import com.drinkindex.global.auth.security.CustomUserDetails;
 import com.drinkindex.global.response.ApiResponse;
+import com.drinkindex.global.response.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
@@ -31,12 +31,12 @@ public class WishlistController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<ApiResponse<Page<WishlistResponse>>> getMyWishlist(
+    public ResponseEntity<ApiResponse<PageResponse<WishlistResponse>>> getMyWishlist(
             @RequestParam(required = false) WishlistType type,
             @PageableDefault(size = 20) Pageable pageable,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.ok(ApiResponse.success(
-                wishlistService.getMyWishlist(userDetails.getUserId(), type, pageable)));
+                PageResponse.from(wishlistService.getMyWishlist(userDetails.getUserId(), type, pageable))));
     }
 
     @DeleteMapping("/{id}")

@@ -4,9 +4,9 @@ import com.drinkindex.admin.service.AdminScoreService;
 import com.drinkindex.domain.score.dto.*;
 import com.drinkindex.global.auth.security.CustomUserDetails;
 import com.drinkindex.global.response.ApiResponse;
+import com.drinkindex.global.response.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -65,11 +65,11 @@ public class AdminScoreController {
     // ─── 점수 이력 조회 ──────────────────────────────────────────────────────
 
     @GetMapping("/score-history")
-    public ResponseEntity<ApiResponse<Page<ScoreHistoryResponse>>> getScoreHistory(
+    public ResponseEntity<ApiResponse<PageResponse<ScoreHistoryResponse>>> getScoreHistory(
             @RequestParam Long userId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "30") int size) {
-        return ResponseEntity.ok(ApiResponse.success(adminScoreService.getScoreHistory(userId, page, size)));
+        return ResponseEntity.ok(ApiResponse.success(PageResponse.from(adminScoreService.getScoreHistory(userId, page, size))));
     }
 
     // ─── 관리자 수동 점수 조정 ───────────────────────────────────────────────

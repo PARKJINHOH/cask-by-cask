@@ -3,9 +3,9 @@ package com.drinkindex.admin.controller;
 import com.drinkindex.admin.dto.*;
 import com.drinkindex.admin.service.AdminEmailService;
 import com.drinkindex.global.response.ApiResponse;
+import com.drinkindex.global.response.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
@@ -43,9 +43,9 @@ public class AdminEmailController {
     // ── 이력 ─────────────────────────────────────────────────────────
 
     @GetMapping("/logs")
-    public ResponseEntity<ApiResponse<Page<EmailSendLogResponse>>> getLogs(
+    public ResponseEntity<ApiResponse<PageResponse<EmailSendLogResponse>>> getLogs(
             @PageableDefault(size = 20) Pageable pageable) {
-        return ResponseEntity.ok(ApiResponse.success(adminEmailService.getLogs(pageable)));
+        return ResponseEntity.ok(ApiResponse.success(PageResponse.from(adminEmailService.getLogs(pageable))));
     }
 
     @GetMapping("/logs/{id}")
