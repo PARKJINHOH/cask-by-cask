@@ -11,8 +11,8 @@ import { SITE_NAME, DEFAULT_OG_IMAGE } from '@/shared/config/site'
  *   <SeoMeta
  *     title="라프로익 10년"
  *     description="라프로익 10년의 테이스팅 노트와 사용자 평점을 확인하세요."
- *     canonical="https://drinkindex.net/spirits/123"
- *     ogImage="https://drinkindex.net/uploads/spirit/123.jpg"
+ *     canonical="https://drinkindex.pinner.dev/spirits/123"
+ *     ogImage="https://drinkindex.pinner.dev/uploads/spirit/123.jpg"
  *     jsonLd={{ "@type": "Product", ... }}
  *   />
  */

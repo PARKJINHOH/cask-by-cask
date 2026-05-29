@@ -40,11 +40,11 @@ jwt:
   refresh-token-expiry: 604800000   # 7d  (ms)
 
 upload:
-  path: ${UPLOAD_PATH:./uploads}
+  path: ./uploads
 
 storage:
   local:
-    base-path: ${UPLOAD_PATH:./uploads}
+    base-path: ./uploads
 
 admin:
   seed:
@@ -55,9 +55,9 @@ admin:
 app:
   email:
     provider: smtp
-    from: ${EMAIL_FROM:noreply@drinkindex.com}
+    from: drinkindex.cs@gmail.com
     verification-required: true
-    inquiry-to: ${INQUIRY_EMAIL:${ADMIN_EMAIL}}
+    inquiry-to: drinkindex.cs@gmail.com
 
 decorator:
   datasource:
@@ -66,14 +66,9 @@ decorator:
 rate-limit:
   enabled: true
 
-# Slack 알림 (ERROR 로그 + 운영 자동화) — webhook-url 비어있으면 no-op
-slack:
-  webhook-url: ${SLACK_WEBHOOK_URL:}
-  channel: ${SLACK_CHANNEL:#drinkindex-alerts}
-
 # SEO 메타 — sitemap.xml 의 base URL
 seo:
-  site-url: ${SEO_SITE_URL:https://drinkindex.net}
+  site-url: https://drinkindex.pinner.dev
 
 # Actuator: Prometheus/Health 만 노출
 # server.port / server.address 는 프로파일별로 설정 (local: 메인과 동일 포트 / dev,prod: 별도 포트 + localhost 바인딩)

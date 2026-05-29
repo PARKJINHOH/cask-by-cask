@@ -1,5 +1,5 @@
 # DrinkIndex robots.txt
-# https://drinkindex.net/robots.txt
+# https://drinkindex.pinner.dev/robots.txt
 #
 # 정책 요약:
 #   - 일반 검색엔진: 사이트 전체 색인 허용, 비공개/관리 경로만 제외
@@ -16,7 +16,6 @@ Disallow: /community/*/write
 Disallow: /community/*/edit
 Disallow: /spirits/*/review/write
 Disallow: /spirits/*/review/*/edit
-Disallow: /verify-email
 Disallow: /login
 Disallow: /signup
 
@@ -60,4 +59,4 @@ User-agent: CCBot
 Allow: /
 
 # ── 사이트맵 / LLM 안내 ────────────────────────────────────────
-Sitemap: https://drinkindex.net/sitemap.xml
+Sitemap: https://drinkindex.pinner.dev/sitemap.xml

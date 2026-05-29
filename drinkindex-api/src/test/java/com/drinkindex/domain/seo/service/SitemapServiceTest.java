@@ -27,7 +27,7 @@ class SitemapServiceTest {
 
     @BeforeEach
     void setUp() {
-        ReflectionTestUtils.setField(sitemapService, "siteUrl", "https://drinkindex.net");
+        ReflectionTestUtils.setField(sitemapService, "siteUrl", "https://drinkindex.pinner.dev");
     }
 
     @Test
@@ -41,10 +41,10 @@ class SitemapServiceTest {
 
         String xml = sitemapService.generateSitemap();
 
-        assertThat(xml).contains("https://drinkindex.net/spirits?category=WHISKY");
-        assertThat(xml).contains("https://drinkindex.net/spirits?category=COGNAC");
-        assertThat(xml).contains("https://drinkindex.net/spirits?category=WINE");
-        assertThat(xml).contains("https://drinkindex.net/spirits?category=OTHER");
+        assertThat(xml).contains("https://drinkindex.pinner.dev/spirits?category=WHISKY");
+        assertThat(xml).contains("https://drinkindex.pinner.dev/spirits?category=COGNAC");
+        assertThat(xml).contains("https://drinkindex.pinner.dev/spirits?category=WINE");
+        assertThat(xml).contains("https://drinkindex.pinner.dev/spirits?category=OTHER");
     }
 
     @Test

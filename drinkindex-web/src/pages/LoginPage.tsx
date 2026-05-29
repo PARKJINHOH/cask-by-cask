@@ -37,6 +37,26 @@ function ErrorBanner({ message }: { message: string }) {
   )
 }
 
+function UnverifiedBanner() {
+  return (
+    <div role="alert" className="bg-amber-50 border border-amber-300 rounded-lg overflow-hidden">
+      <div className="flex items-center gap-2 px-3 py-2 bg-amber-100 border-b border-amber-300">
+        <svg className="w-4 h-4 text-amber-600 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+        </svg>
+        <p className="text-sm font-semibold text-amber-800">이메일 인증이 필요합니다</p>
+      </div>
+      <div className="px-3 py-2.5">
+        <p className="text-sm text-amber-900 leading-relaxed">
+          이메일 인증이 완료되지 않은 계정입니다.{' '}
+          <a href="/signup" className="font-semibold underline">회원가입</a>을 다시 진행하거나
+          문의사항이 있으시면 고객센터로 연락해주세요.
+        </p>
+      </div>
+    </div>
+  )
+}
+
 function InactiveBanner() {
   return (
     <div role="alert" className="bg-neutral-100 border border-neutral-300 rounded-lg overflow-hidden">
@@ -91,6 +111,7 @@ export default function LoginPage() {
   const { login }  = useAuth()
   const [suspensionDetail, setSuspensionDetail] = useState<SuspensionDetail | null>(null)
   const [showInactive, setShowInactive]         = useState(false)
+  const [showUnverified, setShowUnverified]     = useState(false)
 
   const {
     register,
@@ -113,6 +134,7 @@ export default function LoginPage() {
   const onSubmit = async (data: FormValues) => {
     setSuspensionDetail(null)
     setShowInactive(false)
+    setShowUnverified(false)
     try {
       await login(data)
       startTransition(() => {
@@ -122,7 +144,7 @@ export default function LoginPage() {
       const res = (err as AxiosError<ApiResponse<SuspensionDetail>>)?.response?.data
       const code = res?.code
       if (code === 'USER_005') {
-        navigate('/verify-email', { state: { email: data.email } })
+        setShowUnverified(true)
       } else if (code === 'USER_016') {
         setShowInactive(true)
       } else if (code === 'USER_017' && res?.data) {
@@ -190,6 +212,7 @@ export default function LoginPage() {
           />
 
           {errors.root?.message && <ErrorBanner message={errors.root.message} />}
+          {showUnverified && <UnverifiedBanner />}
           {showInactive && <InactiveBanner />}
           {suspensionDetail && <SuspensionBanner detail={suspensionDetail} />}
 

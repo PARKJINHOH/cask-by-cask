@@ -38,7 +38,7 @@ public class SitemapService {
     @PersistenceContext
     private EntityManager em;
 
-    @Value("${seo.site-url:https://drinkindex.net}")
+    @Value("${seo.site-url:https://drinkindex.pinner.dev}")
     private String siteUrl;
 
     @Transactional(readOnly = true)

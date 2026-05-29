@@ -12,7 +12,6 @@ import NoticePage from '@/pages/NoticePage'
 import NoticeDetailPage from '@/pages/NoticeDetailPage'
 import LoginPage from '@/pages/LoginPage'
 import SignupPage from '@/pages/SignupPage'
-import EmailVerifyPage from '@/pages/EmailVerifyPage'
 import MyPage from '@/pages/MyPage'
 import RankingPage from '@/pages/RankingPage'
 import SpiritRequestPage from '@/pages/SpiritRequestPage'
@@ -87,7 +86,6 @@ export default function App() {
             <Route path="ranking" element={<RankingPage />} />
             <Route path="login" element={<LoginPage />} />
             <Route path="signup" element={<SignupPage />} />
-            <Route path="verify-email" element={<EmailVerifyPage />} />
             <Route path="terms" element={<TermsPage />} />
             <Route path="privacy" element={<PrivacyPage />} />
             <Route path="inquiry" element={<InquiryPage />} />

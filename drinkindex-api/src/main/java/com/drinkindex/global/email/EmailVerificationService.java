@@ -14,7 +14,7 @@ import java.time.Duration;
 public class EmailVerificationService {
 
     private static final Duration CODE_TTL = Duration.ofMinutes(5);
-    private static final Duration COOLDOWN_TTL = Duration.ofSeconds(60);
+    private static final Duration COOLDOWN_TTL = Duration.ofSeconds(30);
     private static final Duration PREVERIFIED_TTL = Duration.ofMinutes(30);
     private static final String CODE_PREFIX = "email:verify:";
     private static final String COOLDOWN_PREFIX = "email:cooldown:";
@@ -32,10 +32,10 @@ public class EmailVerificationService {
         redisTemplate.opsForValue().set(CODE_PREFIX + email, code, CODE_TTL);
         redisTemplate.opsForValue().set(COOLDOWN_PREFIX + email, "1", COOLDOWN_TTL);
 
-        emailSender.send(
+        emailSender.sendHtml(
             email,
             "[DrinkIndex] 이메일 인증 코드",
-            buildBody(code)
+            buildHtmlBody(code)
         );
     }
 
@@ -67,14 +67,44 @@ public class EmailVerificationService {
         return String.format("%06d", new SecureRandom().nextInt(1_000_000));
     }
 
-    private String buildBody(String code) {
+    private String buildHtmlBody(String code) {
         return """
-                안녕하세요, DrinkIndex 이메일 인증 코드입니다.
-
-                인증 코드: %s
-
-                이 코드는 5분간 유효합니다.
-                본인이 요청하지 않았다면 이 이메일을 무시해주세요.
+                <!DOCTYPE html>
+                <html lang="ko">
+                <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+                <body style="margin:0;padding:0;background:#f5f5f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+                  <table width="100%%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;padding:40px 16px;">
+                    <tr><td align="center">
+                      <table width="100%%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08);">
+                        <!-- Header -->
+                        <tr><td style="background:#92400e;padding:28px 32px;text-align:center;">
+                          <p style="margin:0;font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.5px;">DrinkIndex</p>
+                          <p style="margin:6px 0 0;font-size:13px;color:#fde68a;">위스키·꼬냑·와인 리뷰 커뮤니티</p>
+                        </td></tr>
+                        <!-- Body -->
+                        <tr><td style="padding:36px 32px 28px;">
+                          <p style="margin:0 0 8px;font-size:16px;font-weight:600;color:#111827;">이메일 인증 코드</p>
+                          <p style="margin:0 0 28px;font-size:14px;color:#6b7280;line-height:1.6;">
+                            아래 인증 코드를 입력창에 입력해주세요.<br>코드는 발급 후 <strong>5분간</strong> 유효합니다.
+                          </p>
+                          <!-- Code Box -->
+                          <div style="background:#fef3c7;border:2px dashed #f59e0b;border-radius:10px;padding:20px;text-align:center;margin-bottom:28px;">
+                            <p style="margin:0;font-size:36px;font-weight:700;color:#92400e;letter-spacing:12px;font-family:'Courier New',monospace;">%s</p>
+                          </div>
+                          <p style="margin:0;font-size:12px;color:#9ca3af;line-height:1.6;">
+                            본인이 요청하지 않은 경우 이 이메일을 무시하셔도 됩니다.<br>
+                            계정 보안에 문제가 있다고 생각되시면 고객센터로 문의해주세요.
+                          </p>
+                        </td></tr>
+                        <!-- Footer -->
+                        <tr><td style="background:#f9fafb;padding:16px 32px;border-top:1px solid #e5e7eb;text-align:center;">
+                          <p style="margin:0;font-size:11px;color:#9ca3af;">© 2026 DrinkIndex. All rights reserved.</p>
+                        </td></tr>
+                      </table>
+                    </td></tr>
+                  </table>
+                </body>
+                </html>
                 """.formatted(code);
     }
 }

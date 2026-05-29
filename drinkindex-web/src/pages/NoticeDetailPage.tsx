@@ -8,6 +8,7 @@ import { stripHtmlForMeta } from '@/shared/utils/seoText'
 import Badge from '@/shared/components/Badge'
 import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 import { buildBreadcrumbSchema } from '@/shared/utils/seoSchema'
+import { SITE_URL } from '@/shared/config/site'
 import { markNoticesAsSeen } from './NoticePage'
 
 const CATEGORY_BADGE_VARIANT: Record<string, 'primary' | 'warning' | 'success' | 'neutral'> = {
@@ -78,7 +79,7 @@ export default function NoticeDetailPage() {
             publisher: {
               '@type': 'Organization',
               name: 'DrinkIndex',
-              logo: { '@type': 'ImageObject', url: 'https://drinkindex.net/logo.png' },
+              logo: { '@type': 'ImageObject', url: `${SITE_URL}/logo.png` },
             },
           },
           buildBreadcrumbSchema([

@@ -25,7 +25,7 @@ function Ol({ items }: { items: string[] }) {
 export function TermsContent() {
   return (
     <article className="text-sm">
-      <p className="text-xs text-neutral-500 mb-4">시행일: 2025년 1월 1일</p>
+      <p className="text-xs text-neutral-500 mb-4">시행일: 2026년 6월 1일</p>
 
       <Section title="제1조 (목적)">
         <P>
@@ -108,7 +108,7 @@ export function TermsContent() {
         ]} />
       </Section>
 
-      <p className="text-xs text-neutral-400 mt-4">부칙: 이 약관은 2025년 1월 1일부터 시행합니다.</p>
+      <p className="text-xs text-neutral-400 mt-4">부칙: 이 약관은 2026년 6월 1일부터 시행합니다.</p>
     </article>
   )
 }
@@ -117,7 +117,7 @@ export function TermsContent() {
 export function PrivacyContent() {
   return (
     <article className="text-sm">
-      <p className="text-xs text-neutral-500 mb-1">시행일: 2025년 1월 1일</p>
+      <p className="text-xs text-neutral-500 mb-1">시행일: 2026년 6월 1일</p>
       <p className="text-neutral-700 mb-4 leading-relaxed">
         DrinkIndex(이하 "서비스")는 「개인정보 보호법」 제30조에 따라 정보주체의 개인정보를 보호하고
         이와 관련한 고충을 신속하고 원활하게 처리할 수 있도록 다음과 같이 개인정보 처리방침을 수립·공개합니다.
@@ -175,7 +175,7 @@ export function PrivacyContent() {
           '처리 정지 요구',
         ]} />
         <P className="mt-2">
-          위 권리 행사는 마이페이지 또는 이메일(admin@drinkindex.com)로 요청하실 수 있습니다.
+          위 권리 행사는 마이페이지 또는 이메일(drinkindex.cs@gmail.com)로 요청하실 수 있습니다.
         </P>
       </Section>
 
@@ -191,7 +191,7 @@ export function PrivacyContent() {
       <Section title="제9조 (개인정보 보호책임자)">
         <P>서비스는 개인정보 처리에 관한 업무를 총괄하는 개인정보 보호책임자를 지정합니다.</P>
         <ul className="list-disc list-inside mt-1 space-y-0.5">
-          <li>이메일: admin@drinkindex.com</li>
+          <li>이메일: drinkindex.cs@gmail.com</li>
         </ul>
         <P className="mt-1.5">
           정보주체는 서비스를 이용하면서 발생한 모든 개인정보 보호 관련 문의, 불만, 피해구제 등에
@@ -206,7 +206,7 @@ export function PrivacyContent() {
         </P>
       </Section>
 
-      <p className="text-xs text-neutral-400 mt-4">시행일: 2025년 1월 1일</p>
+      <p className="text-xs text-neutral-400 mt-4">시행일: 2026년 6월 1일</p>
     </article>
   )
 }

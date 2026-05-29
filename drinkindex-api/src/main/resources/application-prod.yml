@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: jdbc:mariadb://${PROD_DB_HOST}:3306/drinkindex_prod?useUnicode=true&characterEncoding=utf8mb4&serverTimezone=Asia/Seoul
+    url: jdbc:mariadb://${DB_HOST}:3306/drinkindex_prod?useUnicode=true&characterEncoding=utf8mb4&serverTimezone=Asia/Seoul
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: org.mariadb.jdbc.Driver
@@ -12,26 +12,33 @@ spring:
 
   data:
     redis:
-      host: ${PROD_REDIS_HOST}
+      host: ${REDIS_HOST}
       port: 6379
-      password: ${PROD_REDIS_PASSWORD}
+      password: ${REDIS_PASSWORD}
 
   mail:
     host: smtp.gmail.com
     port: 587
-    username: ${GMAIL_USERNAME}
+    username: drinkindex.cs@gmail.com
     password: ${GMAIL_APP_PASSWORD}
     properties:
       mail.smtp.auth: true
       mail.smtp.starttls.enable: true
       mail.smtp.starttls.required: true
 
+app:
+  email:
+    from: drinkindex.cs@gmail.com
+
 cors:
-  allowed-origins: https://drinkindex.net
+  allowed-origins: https://drinkindex.pinner.dev
+
+seo:
+  site-url: https://drinkindex.pinner.dev
 
 logging:
   file:
-    path: ${LOG_PATH:/var/drinkindex/logs/prod}
+    path: ./logs
   level:
     root: WARN
     com.drinkindex: INFO
@@ -42,8 +49,12 @@ springdoc:
   swagger-ui:
     enabled: false
 
+slack:
+  webhook-url: ${SLACK_WEBHOOK_URL}
+  channel: ${SLACK_CHANNEL:#drinkindex-alerts}
+
 # Actuator 를 별도 포트로 분리 + localhost 바인딩 (docker network 내부만)
 management:
   server:
     port: 8081
-    address: ${MANAGEMENT_HOST:127.0.0.1}
+    address: 127.0.0.1

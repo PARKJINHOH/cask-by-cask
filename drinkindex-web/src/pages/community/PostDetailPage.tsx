@@ -13,6 +13,7 @@ import { useToast } from '@/shared/hooks/useToast'
 import type { UserRole } from '@/domain/auth/types/auth.types'
 import UserBadge from '@/shared/components/UserBadge'
 import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
+import { SITE_URL } from '@/shared/config/site'
 import { buildBreadcrumbSchema } from '@/shared/utils/seoSchema'
 
 export default function PostDetailPage() {
@@ -123,7 +124,7 @@ export default function PostDetailPage() {
             publisher: {
               '@type': 'Organization',
               name: 'DrinkIndex',
-              logo: { '@type': 'ImageObject', url: 'https://drinkindex.net/logo.png' },
+              logo: { '@type': 'ImageObject', url: `${SITE_URL}/logo.png` },
             },
           },
           buildBreadcrumbSchema([

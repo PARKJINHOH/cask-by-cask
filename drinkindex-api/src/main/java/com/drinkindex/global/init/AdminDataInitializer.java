@@ -38,6 +38,7 @@ public class AdminDataInitializer implements ApplicationRunner {
                 .password(passwordEncoder.encode(adminPassword))
                 .nickname(adminNickname)
                 .role(Role.SUPER_ADMIN)
+                .emailVerified(true)
                 .build();
         userRepository.save(admin);
         log.info("[AdminDataInitializer] 최고 관리자 계정 생성 완료 — email: {}", adminEmail);
