@@ -27,8 +27,14 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 SERVICE="drinkindex-${ENV}-api"
 TARGET_DIR="/opt/drinkindex-${ENV}/api"
-# dev: 8093, prod: (필요시 EnvironmentFile 의 MANAGEMENT_SERVER_PORT 와 일치시킬 것)
-MGMT_PORT="${MGMT_PORT:-8093}"
+# 헬스체크용 management 포트 — EnvironmentFile 의 MANAGEMENT_SERVER_PORT 와 일치해야 함.
+# (dev=8093, prod=8095. MGMT_PORT 환경변수로 강제 override 가능)
+if [[ -z "${MGMT_PORT:-}" ]]; then
+    case "$ENV" in
+        dev)  MGMT_PORT=8093 ;;
+        prod) MGMT_PORT=8095 ;;
+    esac
+fi
 
 log() { printf "\033[1;36m[api:%s]\033[0m %s\n" "$ENV" "$*"; }
 err() { printf "\033[1;31m[api:%s]\033[0m %s\n" "$ENV" "$*" >&2; }
