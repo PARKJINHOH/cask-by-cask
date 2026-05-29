@@ -10,6 +10,9 @@ import type { BoardType } from '@/domain/community/types/community.types'
 import { useToast } from '@/shared/hooks/useToast'
 import Toast from '@/shared/components/Toast'
 import SeoMeta from '@/shared/components/SeoMeta'
+import { draftApi } from '@/shared/api/draftApi'
+import DraftSavedNotice from '@/shared/components/DraftSavedNotice'
+import DraftListModal from '@/shared/components/DraftListModal'
 
 const MAX_TITLE = 300
 const MAX_POLL_OPTIONS = 10
@@ -45,6 +48,14 @@ export default function PostFormPage() {
   const [pollOptions, setPollOptions] = useState(['', ''])
   const [seriesId, setSeriesId] = useState<number | ''>('')
 
+  // ── 임시저장 (신규 작성 시에만) ──
+  const draftKey = `POST:${boardType}`
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
+  const [isSavingDraft, setIsSavingDraft] = useState(false)
+  // 목록에서 불러온 임시저장 id (있으면 임시저장 시 해당 항목 갱신)
+  const [currentDraftId, setCurrentDraftId] = useState<number | undefined>(undefined)
+  const [draftListOpen, setDraftListOpen] = useState(false)
+
   // 수정 모드: 기존 게시글 값 복원
   useEffect(() => {
     if (existingPost && isEdit) {
@@ -53,6 +64,52 @@ export default function PostFormPage() {
       setContent(existingPost.contentSanitized ?? '')
     }
   }, [existingPost, isEdit])
+
+  const saveDraft = async () => {
+    if (!title.trim() && !content.trim()) {
+      showToast('임시저장할 내용이 없습니다.', 'error')
+      return
+    }
+    setIsSavingDraft(true)
+    try {
+      const res = await draftApi.save({
+        id: currentDraftId,
+        draftKey,
+        title,
+        content,
+        meta: JSON.stringify({ prefixId: prefixId !== '' ? prefixId : null, isAnonymous }),
+      })
+      const saved = res.data.data
+      if (saved?.id) setCurrentDraftId(saved.id)
+      setLastSavedAt(saved?.updatedAt ?? new Date().toISOString())
+      showToast('임시저장되었습니다.', 'success')
+    } catch (err: unknown) {
+      const code = (err as { response?: { data?: { code?: string } } })?.response?.data?.code
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      if (code === 'DRAFT_003') {
+        showToast(msg ?? '임시저장 개수가 가득 찼습니다.', 'error')
+      } else {
+        showToast(t('common.error'), 'error')
+      }
+    } finally {
+      setIsSavingDraft(false)
+    }
+  }
+
+  // 목록에서 임시저장 불러오기
+  const loadDraft = (d: { id: number; title: string | null; content: string | null; meta: string | null }) => {
+    setCurrentDraftId(d.id)
+    setTitle(d.title ?? '')
+    setContent(d.content ?? '')
+    if (d.meta) {
+      try {
+        const m = JSON.parse(d.meta) as { prefixId?: number | null; isAnonymous?: boolean }
+        if (m.prefixId != null) setPrefixId(m.prefixId)
+        if (typeof m.isAnonymous === 'boolean') setIsAnonymous(m.isAnonymous)
+      } catch { /* meta 파싱 실패 무시 */ }
+    }
+    showToast('임시저장을 불러왔습니다.', 'success')
+  }
 
   // 신규 작성: 말머리 목록이 로드되면 "일반"을 기본 선택
   useEffect(() => {
@@ -90,6 +147,8 @@ export default function PostFormPage() {
     onSuccess: (res) => {
       const newId = res.data.data?.id
       queryClient.invalidateQueries({ queryKey: ['posts'] })
+      // 게시 완료 → 불러온/저장된 임시저장 삭제
+      if (!isEdit && currentDraftId) draftApi.remove(currentDraftId).catch(() => { /* 무시 */ })
       navigate(newId ? `/community/${boardPath}/${newId}` : `/community/${boardPath}`, { replace: true })
     },
     onError: (err: unknown) => {
@@ -117,6 +176,13 @@ export default function PostFormPage() {
     <div className="max-w-3xl mx-auto px-4 py-8">
       <SeoMeta title={isEdit ? '게시글 수정' : '게시글 작성'} description="DrinkIndex 커뮤니티 게시글 작성." noindex />
       <Toast toasts={toasts} onRemove={removeToast} />
+      <DraftListModal
+        open={draftListOpen}
+        draftKey={draftKey}
+        onClose={() => setDraftListOpen(false)}
+        onLoad={loadDraft}
+        onError={(msg) => showToast(msg, 'error')}
+      />
 
       <div className="flex items-center gap-3 mb-6">
         <Link to={`/community/${boardPath}`} className="text-neutral-400 hover:text-neutral-600">
@@ -191,12 +257,50 @@ export default function PostFormPage() {
         )}
 
         {/* 본문 */}
-        <PostEditor
-          value={content}
-          onChange={setContent}
-          placeholder="내용을 입력하세요. YouTube/Vimeo URL을 붙여넣으면 자동 임베드됩니다."
-          onImageError={(msg) => showToast(msg, 'error')}
-        />
+        <div>
+          <PostEditor
+            value={content}
+            onChange={setContent}
+            placeholder="내용을 입력하세요. YouTube/Vimeo URL을 붙여넣으면 자동 임베드됩니다."
+            onImageError={(msg) => showToast(msg, 'error')}
+          />
+          {/* 임시저장 (신규 작성 시) */}
+          {!isEdit && (
+            <div className="mt-2 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={saveDraft}
+                disabled={isSavingDraft}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg
+                  border border-neutral-300 text-neutral-600 hover:bg-neutral-50 disabled:opacity-50 transition-colors"
+              >
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                  <polyline points="17 21 17 13 7 13 7 21" />
+                  <polyline points="7 3 7 8 15 8" />
+                </svg>
+                {isSavingDraft ? '저장 중...' : '임시저장'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setDraftListOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg
+                  border border-neutral-300 text-neutral-600 hover:bg-neutral-50 transition-colors"
+              >
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="8" y1="6" x2="21" y2="6" />
+                  <line x1="8" y1="12" x2="21" y2="12" />
+                  <line x1="8" y1="18" x2="21" y2="18" />
+                  <line x1="3" y1="6" x2="3.01" y2="6" />
+                  <line x1="3" y1="12" x2="3.01" y2="12" />
+                  <line x1="3" y1="18" x2="3.01" y2="18" />
+                </svg>
+                임시저장목록
+              </button>
+              <DraftSavedNotice savedAt={lastSavedAt} />
+            </div>
+          )}
+        </div>
 
         {/* 투표 */}
         {!isEdit && (

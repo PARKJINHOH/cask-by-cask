@@ -6,6 +6,7 @@ import type { BoardType, PostSort } from '@/domain/community/types/community.typ
 import type { UserRole } from '@/domain/auth/types/auth.types'
 import Pagination from '@/shared/components/Pagination'
 import UserBadge from '@/shared/components/UserBadge'
+import RecommendBadge from '@/shared/components/RecommendBadge'
 import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { formatBoardDate } from '@/shared/utils/format'
@@ -273,12 +274,12 @@ export default function BoardListPage({ boardType, title }: Props) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-neutral-50 border-b border-neutral-100">
-                  <th className="text-left px-4 py-3 font-medium text-neutral-500 w-28">{t('board.prefix')}</th>
-                  <th className="text-left px-4 py-3 font-medium text-neutral-500">{t('board.title')}</th>
-                  <th className="text-left px-4 py-3 font-medium text-neutral-500 w-24">닉네임</th>
-                  <th className="text-right px-4 py-3 font-medium text-neutral-500 w-16">{t('board.likes')}</th>
-                  <th className="text-right px-4 py-3 font-medium text-neutral-500 w-16">{t('board.views')}</th>
-                  <th className="text-right px-4 py-3 font-medium text-neutral-500 w-24">작성일</th>
+                  <th className="text-center px-4 py-3 font-medium text-neutral-500 w-28">{t('board.prefix')}</th>
+                  <th className="text-center px-4 py-3 font-medium text-neutral-500">{t('board.title')}</th>
+                  <th className="text-center px-4 py-3 font-medium text-neutral-500 w-24">닉네임</th>
+                  <th className="text-center px-4 py-3 font-medium text-neutral-500 w-16">{t('board.likes')}</th>
+                  <th className="text-center px-4 py-3 font-medium text-neutral-500 w-16">{t('board.views')}</th>
+                  <th className="text-center px-4 py-3 font-medium text-neutral-500 w-24">작성일</th>
                 </tr>
               </thead>
               <tbody>
@@ -288,7 +289,7 @@ export default function BoardListPage({ boardType, title }: Props) {
                     onClick={() => navigate(getPostHref(post))}
                     className="group/row border-b border-neutral-50 hover:bg-neutral-50 transition-colors cursor-pointer"
                   >
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 text-center">
                       {post.prefix && (
                         <span
                           className="inline-block text-xs font-medium px-2 py-0.5 rounded-full border bg-neutral-50"
@@ -330,7 +331,7 @@ export default function BoardListPage({ boardType, title }: Props) {
                         {post.hasPoll && <span className="text-xs text-neutral-400 flex-shrink-0">📊</span>}
                       </div>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 text-center">
                       {post.authorRole ? (
                         <UserBadge
                           user={{ id: post.authorId ?? undefined, nickname: post.authorNickname, role: post.authorRole as UserRole, currentLevel: post.authorLevel, maturingPower: post.authorMaturingPower ?? undefined, nicknameFixed: post.authorNicknameFixed, profileImageUrl: post.authorProfileImageUrl }}
@@ -340,9 +341,9 @@ export default function BoardListPage({ boardType, title }: Props) {
                         <span className="text-neutral-500 text-xs">{post.authorNickname}</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right text-neutral-500 text-xs">{post.likeCount}</td>
-                    <td className="px-4 py-3 text-right text-neutral-500 text-xs">{post.viewCount.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-right text-neutral-400 text-xs">
+                    <td className="px-4 py-3 text-center"><div className="flex justify-center"><RecommendBadge count={post.likeCount} /></div></td>
+                    <td className="px-4 py-3 text-center text-neutral-500 text-xs">{post.viewCount.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-center text-neutral-400 text-xs">
                       {formatBoardDate(post.createdAt)}
                     </td>
                   </tr>
@@ -393,7 +394,7 @@ export default function BoardListPage({ boardType, title }: Props) {
                   ) : (
                     <span>{post.authorNickname}</span>
                   )}
-                  <span>▲ {post.likeCount}</span>
+                  <RecommendBadge count={post.likeCount} />
                   <span>조회 {post.viewCount.toLocaleString()}</span>
                   <span>{formatBoardDate(post.createdAt)}</span>
                 </div>

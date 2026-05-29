@@ -194,6 +194,11 @@ public enum ErrorCode {
     BYOB_HOST_COMMENT_MUST_REPLY(HttpStatus.BAD_REQUEST, "BYOB_013", "주최자는 기존 댓글에 답글만 작성할 수 있습니다."),
     BYOB_PARTICIPANT_CANNOT_REPLY(HttpStatus.BAD_REQUEST, "BYOB_014", "참여자는 답글을 작성할 수 없습니다."),
 
+    // Draft (임시저장)
+    DRAFT_NOT_FOUND(HttpStatus.NOT_FOUND, "DRAFT_001", "임시저장을 찾을 수 없습니다."),
+    DRAFT_ACCESS_DENIED(HttpStatus.FORBIDDEN, "DRAFT_002", "본인의 임시저장만 접근할 수 있습니다."),
+    DRAFT_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "DRAFT_003", "임시저장은 최대 10개까지 저장할 수 있습니다. 기존 임시저장을 삭제 후 다시 시도해주세요."),
+
     // Common
     NOT_FOUND(HttpStatus.NOT_FOUND, "COMMON_001", "리소스를 찾을 수 없습니다."),
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "COMMON_002", "입력값이 올바르지 않습니다."),

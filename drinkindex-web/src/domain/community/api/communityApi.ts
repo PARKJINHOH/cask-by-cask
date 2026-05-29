@@ -88,11 +88,16 @@ export const communityApi = {
   updatePost: (id: number, data: UpdatePostPayload) =>
     axiosInstance.patch<ApiResponse<PostDetail>>(`/api/posts/${id}`, data),
 
-  uploadPostImage: (file: File) => {
+  uploadPostImage: (file: File, onProgress?: (percent: number) => void) => {
     const form = new FormData()
     form.append('image', file)
     return axiosInstance.post<ApiResponse<{ id: number; imageUrl: string; originalFileName: string }>>(
-      '/api/posts/images', form, { headers: { 'Content-Type': 'multipart/form-data' } },
+      '/api/posts/images', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (e) => {
+          if (onProgress && e.total) onProgress(Math.round((e.loaded / e.total) * 100))
+        },
+      },
     )
   },
 

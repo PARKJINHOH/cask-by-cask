@@ -1,6 +1,9 @@
 ﻿import type { ReactNode } from 'react'
 import { useEditorState } from '@tiptap/react'
 import type { Editor } from '@tiptap/react'
+import EditorColorPicker from '@/shared/tiptap/EditorColorPicker'
+import EditorHighlightPicker from '@/shared/tiptap/EditorHighlightPicker'
+import { toEmbedUrl } from '@/shared/tiptap/VideoEmbed'
 
 interface ToolbarButtonProps {
   onClick: () => void
@@ -83,6 +86,14 @@ export default function NoticeEditorToolbar({ editor }: Props) {
     editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
   }
 
+  const insertVideo = () => {
+    const url = window.prompt('YouTube 또는 Vimeo URL을 입력하세요')
+    if (!url) return
+    const embedUrl = toEmbedUrl(url)
+    if (!embedUrl) { alert('YouTube 또는 Vimeo URL만 지원합니다.'); return }
+    editor.chain().focus().insertContent({ type: 'videoEmbed', attrs: { src: embedUrl } }).run()
+  }
+
   const setImageWidth = (width: string) => {
     editor.chain().focus().updateAttributes('image', { width }).run()
   }
@@ -129,6 +140,10 @@ export default function NoticeEditorToolbar({ editor }: Props) {
       >
         <span className="font-mono text-xs">`</span>
       </ToolbarButton>
+
+      {/* 글자 색상 / 배경색 */}
+      <EditorColorPicker editor={editor} />
+      <EditorHighlightPicker editor={editor} />
 
       <Divider />
 
@@ -271,6 +286,13 @@ export default function NoticeEditorToolbar({ editor }: Props) {
           <line x1="3" y1="15" x2="21" y2="15" />
           <line x1="9" y1="3" x2="9" y2="21" />
           <line x1="15" y1="3" x2="15" y2="21" />
+        </svg>
+      </ToolbarButton>
+
+      <ToolbarButton title="YouTube/Vimeo 삽입" onClick={insertVideo}>
+        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+          <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       </ToolbarButton>
 

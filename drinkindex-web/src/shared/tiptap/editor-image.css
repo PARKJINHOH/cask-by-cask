@@ -1,0 +1,48 @@
+/* 공통 Tiptap 이미지 NodeView 스타일 (사용자/관리자 에디터 공용) */
+
+.ProseMirror .di-image {
+  display: block;
+  margin: 0.5rem 0;
+}
+
+.ProseMirror .di-image__frame {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+  max-width: 100%;
+}
+
+.ProseMirror .di-image__frame > img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  display: inline-block;
+  vertical-align: bottom;
+}
+
+/* 이미지 클릭(노드 선택) 시 테두리 */
+.ProseMirror .di-image.ProseMirror-selectednode .di-image__frame > img {
+  outline: 2px solid #2563eb;
+  outline-offset: 1px;
+}
+
+/* 모서리 리사이즈 핸들 — 선택 시에만 표시 */
+.ProseMirror .di-image__handle {
+  display: none;
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: #ffffff;
+  border: 2px solid #2563eb;
+  border-radius: 2px;
+  z-index: 5;
+}
+
+.ProseMirror .di-image.ProseMirror-selectednode .di-image__handle {
+  display: block;
+}
+
+.ProseMirror .di-image__handle--nw { top: -6px;    left: -6px;  cursor: nwse-resize; }
+.ProseMirror .di-image__handle--ne { top: -6px;    right: -6px; cursor: nesw-resize; }
+.ProseMirror .di-image__handle--sw { bottom: -6px; left: -6px;  cursor: nesw-resize; }
+.ProseMirror .di-image__handle--se { bottom: -6px; right: -6px; cursor: nwse-resize; }

@@ -1,59 +1,21 @@
-﻿import { useCallback, useEffect } from 'react'
-import { useEditor, EditorContent, Node, mergeAttributes } from '@tiptap/react'
+﻿import { useCallback, useEffect, useState } from 'react'
+import { useEditor, EditorContent } from '@tiptap/react'
 import type { Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
 import Link from '@tiptap/extension-link'
-import Image from '@tiptap/extension-image'
 import TextAlign from '@tiptap/extension-text-align'
 import Placeholder from '@tiptap/extension-placeholder'
 import CharacterCount from '@tiptap/extension-character-count'
+import { TextStyle, Color } from '@tiptap/extension-text-style'
+import Highlight from '@tiptap/extension-highlight'
 import DOMPurify from 'dompurify'
 import { communityApi } from '../api/communityApi'
-
-// ── 영상 임베드 커스텀 노드 ──────────────────────────────────
-const VideoEmbed = Node.create({
-  name: 'videoEmbed',
-  group: 'block',
-  atom: true,
-
-  addAttributes() {
-    return {
-      src: { default: null },
-    }
-  },
-
-  parseHTML() {
-    return [{ tag: 'div[data-video-embed]' }]
-  },
-
-  renderHTML({ HTMLAttributes }) {
-    return ['div', mergeAttributes({ 'data-video-embed': '' }, HTMLAttributes)]
-  },
-
-  addNodeView() {
-    return ({ node }) => {
-      const wrapper = document.createElement('div')
-      wrapper.className = 'relative pb-[56.25%] h-0 overflow-hidden rounded-lg my-4 bg-neutral-100'
-      wrapper.setAttribute('data-video-embed', '')
-      const iframe = document.createElement('iframe')
-      iframe.src = node.attrs.src
-      iframe.className = 'absolute inset-0 w-full h-full rounded-lg'
-      iframe.allowFullscreen = true
-      iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture')
-      wrapper.appendChild(iframe)
-      return { dom: wrapper }
-    }
-  },
-})
-
-function toEmbedUrl(url: string): string | null {
-  const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
-  if (yt) return `https://www.youtube.com/embed/${yt[1]}`
-  const vi = url.match(/vimeo\.com\/(\d+)/)
-  if (vi) return `https://player.vimeo.com/video/${vi[1]}`
-  return null
-}
+import { ResizableImage } from '@/shared/tiptap/ResizableImage'
+import { VideoEmbed, toEmbedUrl, handleVideoEnter } from '@/shared/tiptap/VideoEmbed'
+import EditorColorPicker from '@/shared/tiptap/EditorColorPicker'
+import EditorHighlightPicker from '@/shared/tiptap/EditorHighlightPicker'
+import '@/shared/tiptap/editor-image.css'
 
 // ── 툴바 ────────────────────────────────────────────────────
 function ToolbarBtn({ onClick, isActive, title, children }: {
@@ -112,6 +74,8 @@ function PostEditorToolbar({ editor }: { editor: Editor }) {
       <ToolbarBtn onClick={() => editor.chain().focus().toggleUnderline().run()} isActive={u} title="밑줄">
         <span className="text-xs underline">U</span>
       </ToolbarBtn>
+      <EditorColorPicker editor={editor} />
+      <EditorHighlightPicker editor={editor} />
       <Divider />
       <ToolbarBtn onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} isActive={h2} title="제목2">
         <span className="text-xs font-bold">H2</span>
@@ -153,17 +117,23 @@ interface Props {
 }
 
 export default function PostEditor({ value, onChange, placeholder, onImageError }: Props) {
+  // 이미지 업로드 진행률 (null = 업로드 중 아님)
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null)
+
   const handleUpload = useCallback(async (file: File): Promise<string | null> => {
     if (file.size > 5 * 1024 * 1024) {
       onImageError?.('이미지 크기는 5MB 이하여야 합니다.')
       return null
     }
+    setUploadProgress(0)
     try {
-      const res = await communityApi.uploadPostImage(file)
+      const res = await communityApi.uploadPostImage(file, setUploadProgress)
       return res.data.data?.imageUrl ?? null
     } catch {
       onImageError?.('이미지 업로드 중 오류가 발생했습니다.')
       return null
+    } finally {
+      setUploadProgress(null)
     }
   }, [onImageError])
 
@@ -171,8 +141,11 @@ export default function PostEditor({ value, onChange, placeholder, onImageError 
     extensions: [
       StarterKit.configure({ heading: { levels: [1, 2, 3, 4] } }),
       Underline,
+      TextStyle,
+      Color,
+      Highlight.configure({ multicolor: true }),
       Link.configure({ openOnClick: false, HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' } }),
-      Image.configure({ inline: false, allowBase64: false }),
+      ResizableImage.configure({ inline: false, allowBase64: false }),
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       Placeholder.configure({ placeholder: placeholder ?? '내용을 입력하세요...' }),
       CharacterCount.configure({ limit: MAX_CHARS }),
@@ -181,13 +154,20 @@ export default function PostEditor({ value, onChange, placeholder, onImageError 
     content: value,
     onUpdate({ editor: e }) {
       const clean = DOMPurify.sanitize(e.getHTML(), {
-        ALLOWED_TAGS: ['p','br','strong','em','u','s','code','pre','blockquote','h1','h2','h3','h4','ul','ol','li','a','img','div','iframe'],
-        ALLOWED_ATTR: ['href','src','alt','class','rel','target','style','width','height','data-video-embed','allowfullscreen','allow'],
+        ALLOWED_TAGS: ['p','br','span','mark','strong','em','u','s','code','pre','blockquote','h1','h2','h3','h4','ul','ol','li','a','img','div','iframe'],
+        ALLOWED_ATTR: ['href','src','alt','class','rel','target','style','width','height','data-color','data-video-embed','allowfullscreen','allow','frameborder'],
         FORCE_BODY: true,
       })
       onChange(clean)
     },
     editorProps: {
+      handleKeyDown(_view, event) {
+        // 영상 URL 한 줄 입력 후 Enter → 임베드 변환
+        if ((event.key === 'Enter') && !event.shiftKey && editor) {
+          if (handleVideoEnter(editor)) return true
+        }
+        return false
+      },
       handleDrop(view, event) {
         const file = event.dataTransfer?.files?.[0]
         if (!file?.type.startsWith('image/')) return false
@@ -240,8 +220,25 @@ export default function PostEditor({ value, onChange, placeholder, onImageError 
   const charCount = editor?.storage.characterCount?.characters() ?? 0
 
   return (
-    <div className="border border-neutral-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-primary-300 focus-within:border-primary-400">
+    <div className="border border-neutral-200 rounded-xl overflow-hidden bg-white focus-within:ring-2 focus-within:ring-primary-300 focus-within:border-primary-400">
       {editor && <PostEditorToolbar editor={editor} />}
+
+      {/* 이미지 업로드 진행률 */}
+      {uploadProgress !== null && (
+        <div className="px-4 py-2 border-b border-neutral-100 bg-primary-50/60">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs font-medium text-primary-800">이미지 업로드 중...</span>
+            <span className="text-xs text-primary-800 tabular-nums">{uploadProgress}%</span>
+          </div>
+          <div className="h-1.5 w-full rounded-full bg-primary-100 overflow-hidden">
+            <div
+              className="h-full bg-primary-600 transition-all duration-150"
+              style={{ width: `${uploadProgress}%` }}
+            />
+          </div>
+        </div>
+      )}
+
       <EditorContent
         editor={editor}
         className="prose prose-sm max-w-none p-4 focus:outline-none notice-content [&_.ProseMirror]:min-h-[200px] [&_.ProseMirror]:cursor-text [&_.ProseMirror]:outline-none"

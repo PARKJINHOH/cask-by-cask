@@ -19,12 +19,15 @@ public class NoticeDetailResponse {
     private final NoticeCategory category;
     private final Boolean isPinned;
     private final Long viewCount;
+    private final Long recommendCount;
+    private final Boolean isRecommended;
     private final List<NoticeImageResponse> images;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
 
     private NoticeDetailResponse(Long id, String title, String contentSanitized,
                                  NoticeCategory category, Boolean isPinned, Long viewCount,
+                                 Long recommendCount, Boolean isRecommended,
                                  List<NoticeImageResponse> images,
                                  LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
@@ -33,12 +36,19 @@ public class NoticeDetailResponse {
         this.category = category;
         this.isPinned = isPinned;
         this.viewCount = viewCount;
+        this.recommendCount = recommendCount;
+        this.isRecommended = isRecommended;
         this.images = images;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
 
     public static NoticeDetailResponse from(Notice notice, List<NoticeImage> images, String freshSanitized) {
+        return from(notice, images, freshSanitized, false);
+    }
+
+    public static NoticeDetailResponse from(Notice notice, List<NoticeImage> images,
+                                            String freshSanitized, boolean isRecommended) {
         return new NoticeDetailResponse(
                 notice.getId(),
                 notice.getTitle(),
@@ -46,6 +56,8 @@ public class NoticeDetailResponse {
                 notice.getCategory(),
                 notice.getIsPinned(),
                 notice.getViewCount(),
+                notice.getRecommendCount(),
+                isRecommended,
                 images.stream().map(NoticeImageResponse::from).collect(Collectors.toList()),
                 notice.getCreatedAt(),
                 notice.getUpdatedAt()

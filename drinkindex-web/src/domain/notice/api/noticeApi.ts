@@ -8,6 +8,7 @@ import type {
   UpdateNoticePayload,
   UploadedNoticeImage,
   NoticeCategory,
+  NoticeRecommendResult,
 } from '../types/notice.types'
 
 export const noticeApi = {
@@ -17,6 +18,9 @@ export const noticeApi = {
 
   getDetail: (id: number) =>
     axiosInstance.get<ApiResponse<NoticeDetail>>(`/api/notices/${id}`),
+
+  toggleRecommend: (id: number) =>
+    axiosInstance.post<ApiResponse<NoticeRecommendResult>>(`/api/notices/${id}/recommend`),
 
   // ── 관리자 ────────────────────────────────────────────────
   adminList: (params: {
@@ -39,13 +43,18 @@ export const noticeApi = {
   delete: (id: number) =>
     axiosInstance.delete<ApiResponse<null>>(`/api/admin/notices/${id}`),
 
-  uploadImage: (file: File) => {
+  uploadImage: (file: File, onProgress?: (percent: number) => void) => {
     const form = new FormData()
     form.append('image', file)
     return axiosInstance.post<ApiResponse<UploadedNoticeImage>>(
       '/api/admin/notices/images',
       form,
-      { headers: { 'Content-Type': 'multipart/form-data' } },
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (e) => {
+          if (onProgress && e.total) onProgress(Math.round((e.loaded / e.total) * 100))
+        },
+      },
     )
   },
 

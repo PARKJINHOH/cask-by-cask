@@ -58,6 +58,10 @@ public class Notice extends BaseTimeEntity {
     @Column(nullable = false)
     private Long viewCount = 0L;
 
+    @Builder.Default
+    @Column(nullable = false)
+    private Long recommendCount = 0L;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "author_id", nullable = false)
     private User author;
@@ -78,6 +82,9 @@ public class Notice extends BaseTimeEntity {
     public void unpublish(){ this.isPublished = false; }
 
     public void incrementViewCount() { this.viewCount++; }
+
+    public void increaseRecommendCount() { this.recommendCount++; }
+    public void decreaseRecommendCount() { if (this.recommendCount > 0) this.recommendCount--; }
 
     public void softDelete() { this.deletedAt = LocalDateTime.now(); }
 }

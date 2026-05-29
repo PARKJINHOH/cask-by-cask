@@ -1,4 +1,4 @@
-﻿import { useEffect } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useForm, Controller } from 'react-hook-form'
 import { z } from 'zod'
@@ -14,6 +14,11 @@ import HtmlEditorField from '@/shared/components/HtmlEditorField'
 import Button from '@/shared/components/Button'
 import Toast from '@/shared/components/Toast'
 import { useToast } from '@/shared/hooks/useToast'
+import { draftApi } from '@/shared/api/draftApi'
+import DraftSavedNotice from '@/shared/components/DraftSavedNotice'
+import DraftListModal from '@/shared/components/DraftListModal'
+
+const DRAFT_KEY = 'NOTICE'
 
 const schema = z.object({
   title: z.string().min(1, '제목을 입력하세요').max(300, '제목은 300자 이하여야 합니다'),
@@ -42,6 +47,7 @@ export default function AdminNoticeFormPage() {
     control,
     reset,
     watch,
+    getValues,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -66,6 +72,62 @@ export default function AdminNoticeFormPage() {
     }
   }, [existing, reset])
 
+  // ── 임시저장 (신규 작성 시에만) ──
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
+  const [isSavingDraft, setIsSavingDraft] = useState(false)
+  const [currentDraftId, setCurrentDraftId] = useState<number | undefined>(undefined)
+  const [draftListOpen, setDraftListOpen] = useState(false)
+
+  const saveDraft = async () => {
+    const v = getValues()
+    if (!v.title.trim() && !v.content.replace(/<[^>]*>/g, '').trim()) {
+      showToast('임시저장할 내용이 없습니다.', 'error')
+      return
+    }
+    setIsSavingDraft(true)
+    try {
+      const res = await draftApi.save({
+        id: currentDraftId,
+        draftKey: DRAFT_KEY,
+        title: v.title,
+        content: v.content,
+        meta: JSON.stringify({ category: v.category, isPinned: v.isPinned }),
+      })
+      const saved = res.data.data
+      if (saved?.id) setCurrentDraftId(saved.id)
+      setLastSavedAt(saved?.updatedAt ?? new Date().toISOString())
+      showToast('임시저장되었습니다.', 'success')
+    } catch (err: unknown) {
+      const code = (err as { response?: { data?: { code?: string } } })?.response?.data?.code
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      showToast(code === 'DRAFT_003' ? (msg ?? '임시저장 개수가 가득 찼습니다.') : '임시저장 중 오류가 발생했습니다.', 'error')
+    } finally {
+      setIsSavingDraft(false)
+    }
+  }
+
+  // 목록에서 임시저장 불러오기
+  const loadDraft = (d: { id: number; title: string | null; content: string | null; meta: string | null }) => {
+    let category: NoticeCategory = 'GENERAL'
+    let isPinned = false
+    if (d.meta) {
+      try {
+        const m = JSON.parse(d.meta) as { category?: NoticeCategory; isPinned?: boolean }
+        if (m.category) category = m.category
+        if (typeof m.isPinned === 'boolean') isPinned = m.isPinned
+      } catch { /* meta 파싱 실패 무시 */ }
+    }
+    setCurrentDraftId(d.id)
+    reset({
+      title: d.title ?? '',
+      content: d.content ?? '',
+      category,
+      isPinned,
+      isPublished: false,
+    })
+    showToast('임시저장을 불러왔습니다.', 'success')
+  }
+
   const onSubmit = async (values: FormValues) => {
     try {
       if (isEdit && noticeId != null) {
@@ -77,6 +139,8 @@ export default function AdminNoticeFormPage() {
       } else {
         await createMutation.mutateAsync(values)
         showToast('공지사항이 저장되었습니다.', 'success')
+        // 등록 완료 → 불러온/저장된 임시저장 삭제
+        if (currentDraftId) draftApi.remove(currentDraftId).catch(() => { /* 무시 */ })
       }
       setTimeout(() => navigate('/admin/notices'), 800)
     } catch {
@@ -98,6 +162,13 @@ export default function AdminNoticeFormPage() {
   return (
     <div className="p-8 max-w-4xl">
       <Toast toasts={toasts} onRemove={removeToast} />
+      <DraftListModal
+        open={draftListOpen}
+        draftKey={DRAFT_KEY}
+        onClose={() => setDraftListOpen(false)}
+        onLoad={loadDraft}
+        onError={(msg) => showToast(msg, 'error')}
+      />
 
       {/* 헤더 */}
       <div className="flex items-center gap-3 mb-8">
@@ -193,6 +264,42 @@ export default function AdminNoticeFormPage() {
           />
           {errors.content && (
             <p className="mt-1 text-xs text-danger-600">{errors.content.message}</p>
+          )}
+          {/* 임시저장 (신규 작성 시) */}
+          {!isEdit && (
+            <div className="mt-2 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={saveDraft}
+                disabled={isSavingDraft}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg
+                  border border-neutral-300 text-neutral-600 hover:bg-neutral-50 disabled:opacity-50 transition-colors"
+              >
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                  <polyline points="17 21 17 13 7 13 7 21" />
+                  <polyline points="7 3 7 8 15 8" />
+                </svg>
+                {isSavingDraft ? '저장 중...' : '임시저장'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setDraftListOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg
+                  border border-neutral-300 text-neutral-600 hover:bg-neutral-50 transition-colors"
+              >
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="8" y1="6" x2="21" y2="6" />
+                  <line x1="8" y1="12" x2="21" y2="12" />
+                  <line x1="8" y1="18" x2="21" y2="18" />
+                  <line x1="3" y1="6" x2="3.01" y2="6" />
+                  <line x1="3" y1="12" x2="3.01" y2="12" />
+                  <line x1="3" y1="18" x2="3.01" y2="18" />
+                </svg>
+                임시저장목록
+              </button>
+              <DraftSavedNotice savedAt={lastSavedAt} />
+            </div>
           )}
         </div>
 

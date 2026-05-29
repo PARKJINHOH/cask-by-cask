@@ -3,11 +3,33 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useNotices } from '@/domain/notice/hooks/useNotices'
 import { NOTICE_CATEGORY_LABELS } from '@/domain/notice/types/notice.types'
 import type { NoticeCategory } from '@/domain/notice/types/notice.types'
-import Badge from '@/shared/components/Badge'
 import Pagination from '@/shared/components/Pagination'
+import RecommendBadge from '@/shared/components/RecommendBadge'
 import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 
 const PAGE_SIZE = 20
+
+// 카테고리 사각형 칩 색상 (모서리 살짝 둥글게 · 중앙 정렬)
+const CATEGORY_CHIP_CLASS: Record<NoticeCategory, string> = {
+  GENERAL: 'bg-neutral-100 text-neutral-600',
+  UPDATE: 'bg-blue-50 text-blue-700',
+  EVENT: 'bg-green-50 text-green-700',
+  MAINTENANCE: 'bg-orange-50 text-orange-700',
+}
+
+function CategoryChip({ category }: { category: NoticeCategory }) {
+  return (
+    <span
+      className={[
+        'inline-flex items-center justify-center min-w-[68px] px-2.5 py-1 rounded-md',
+        'text-xs font-medium text-center whitespace-nowrap',
+        CATEGORY_CHIP_CLASS[category],
+      ].join(' ')}
+    >
+      {NOTICE_CATEGORY_LABELS[category]}
+    </span>
+  )
+}
 
 const CATEGORY_TABS: { key: NoticeCategory | ''; label: string }[] = [
   { key: '', label: '전체' },
@@ -16,13 +38,6 @@ const CATEGORY_TABS: { key: NoticeCategory | ''; label: string }[] = [
   { key: 'EVENT', label: NOTICE_CATEGORY_LABELS.EVENT },
   { key: 'MAINTENANCE', label: NOTICE_CATEGORY_LABELS.MAINTENANCE },
 ]
-
-const CATEGORY_BADGE_VARIANT: Record<NoticeCategory, 'primary' | 'warning' | 'success' | 'neutral'> = {
-  GENERAL: 'neutral',
-  UPDATE: 'primary',
-  EVENT: 'success',
-  MAINTENANCE: 'warning',
-}
 
 // localStorage 미확인 공지 갱신
 const SEEN_KEY = 'notice:lastSeenId'
@@ -113,10 +128,11 @@ export default function NoticePage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-neutral-100 bg-neutral-50">
-                  <th className="text-left px-5 py-3 font-medium text-neutral-500 w-24">카테고리</th>
-                  <th className="text-left px-5 py-3 font-medium text-neutral-500">제목</th>
-                  <th className="text-left px-5 py-3 font-medium text-neutral-500 w-28">작성일</th>
-                  <th className="text-left px-5 py-3 font-medium text-neutral-500 w-20">조회수</th>
+                  <th className="text-center px-5 py-3 font-medium text-neutral-500 w-20">추천</th>
+                  <th className="text-center px-5 py-3 font-medium text-neutral-500 w-36">카테고리</th>
+                  <th className="text-center px-5 py-3 font-medium text-neutral-500">제목</th>
+                  <th className="text-center px-5 py-3 font-medium text-neutral-500 w-28">작성일</th>
+                  <th className="text-center px-5 py-3 font-medium text-neutral-500 w-20">조회수</th>
                 </tr>
               </thead>
               <tbody>
@@ -131,9 +147,14 @@ export default function NoticePage() {
                     ].join(' ')}
                   >
                     <td className="px-5 py-3.5">
-                      <Badge variant={CATEGORY_BADGE_VARIANT[notice.category]} size="sm">
-                        {NOTICE_CATEGORY_LABELS[notice.category]}
-                      </Badge>
+                      <div className="flex items-center justify-center">
+                        <RecommendBadge count={notice.recommendCount} />
+                      </div>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center justify-center">
+                        <CategoryChip category={notice.category} />
+                      </div>
                     </td>
                     <td className="px-5 py-3.5">
                       <Link
@@ -154,10 +175,10 @@ export default function NoticePage() {
                         </span>
                       </Link>
                     </td>
-                    <td className="px-5 py-3.5 text-neutral-400 text-xs">
+                    <td className="px-5 py-3.5 text-center text-neutral-400 text-xs">
                       {new Date(notice.createdAt).toLocaleDateString('ko-KR')}
                     </td>
-                    <td className="px-5 py-3.5 text-neutral-400 text-xs">
+                    <td className="px-5 py-3.5 text-center text-neutral-400 text-xs">
                       {notice.viewCount.toLocaleString()}
                     </td>
                   </tr>
@@ -180,9 +201,8 @@ export default function NoticePage() {
                 ].join(' ')}
               >
                 <div className="flex items-center gap-2 mb-1.5">
-                  <Badge variant={CATEGORY_BADGE_VARIANT[notice.category]} size="sm">
-                    {NOTICE_CATEGORY_LABELS[notice.category]}
-                  </Badge>
+                  <CategoryChip category={notice.category} />
+                  <RecommendBadge count={notice.recommendCount} />
                   {notice.isPinned && (
                     <svg
                       className="w-3.5 h-3.5 text-amber-500"

@@ -22,6 +22,8 @@ export interface NoticeListItem {
   isPinned: boolean
   isPublished: boolean
   viewCount: number
+  recommendCount: number
+  isRecommended: boolean
   createdAt: string
 }
 
@@ -32,9 +34,16 @@ export interface NoticeDetail {
   category: NoticeCategory
   isPinned: boolean
   viewCount: number
+  recommendCount: number
+  isRecommended: boolean
   images: NoticeImageItem[]
   createdAt: string
   updatedAt: string
+}
+
+export interface NoticeRecommendResult {
+  recommended: boolean
+  recommendCount: number
 }
 
 // 관리자 전용: 편집용 원본 content 포함

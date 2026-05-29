@@ -5,7 +5,9 @@ import com.drinkindex.domain.notice.dto.NoticeAdminDetailResponse;
 import com.drinkindex.domain.notice.entity.Notice;
 import com.drinkindex.domain.notice.entity.NoticeCategory;
 import com.drinkindex.domain.notice.entity.NoticeImage;
+import com.drinkindex.domain.notice.entity.NoticeRecommend;
 import com.drinkindex.domain.notice.repository.NoticeImageRepository;
+import com.drinkindex.domain.notice.repository.NoticeRecommendRepository;
 import com.drinkindex.domain.notice.repository.NoticeRepository;
 import com.drinkindex.domain.user.entity.User;
 import com.drinkindex.domain.user.repository.UserRepository;
@@ -39,6 +41,7 @@ public class NoticeService {
 
     private final NoticeRepository noticeRepository;
     private final NoticeImageRepository noticeImageRepository;
+    private final NoticeRecommendRepository noticeRecommendRepository;
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
     private final NoticeImageValidator noticeImageValidator;
@@ -49,7 +52,7 @@ public class NoticeService {
     // ═══════════════════════════════════════════
 
     @Transactional(readOnly = true)
-    public Page<NoticeListResponse> getPublishedNotices(NoticeCategory category, int page, int size) {
+    public Page<NoticeListResponse> getPublishedNotices(NoticeCategory category, int page, int size, Long userId) {
         // isPinned DESC, createdAt DESC — 고정 공지 우선, 나머지 최신순
         Sort sort = Sort.by(Sort.Direction.DESC, "isPinned", "createdAt");
         Pageable pageable = PageRequest.of(page, size, sort);
@@ -58,11 +61,20 @@ public class NoticeService {
                 ? noticeRepository.findAllByIsPublishedTrueAndCategory(category, pageable)
                 : noticeRepository.findAllByIsPublishedTrue(pageable);
 
-        return notices.map(NoticeListResponse::from);
+        // 현재 사용자가 추천한 공지 id 집합 (비회원은 빈 집합)
+        final Set<Long> recommendedIds;
+        if (userId != null && notices.hasContent()) {
+            List<Long> ids = notices.getContent().stream().map(Notice::getId).collect(Collectors.toList());
+            recommendedIds = Set.copyOf(noticeRecommendRepository.findRecommendedNoticeIds(userId, ids));
+        } else {
+            recommendedIds = Set.of();
+        }
+
+        return notices.map(n -> NoticeListResponse.from(n, recommendedIds.contains(n.getId())));
     }
 
     @Transactional
-    public NoticeDetailResponse getPublishedNoticeDetail(Long noticeId) {
+    public NoticeDetailResponse getPublishedNoticeDetail(Long noticeId, Long userId) {
         // [보안] isPublished=true 조건으로 미발행 공지 직접 접근 차단
         Notice notice = noticeRepository.findByIdAndIsPublishedTrue(noticeId)
                 .orElseThrow(() -> new CustomException(ErrorCode.NOTICE_NOT_FOUND));
@@ -70,10 +82,40 @@ public class NoticeService {
         // [동시성] DB 레벨 UPDATE — 애플리케이션 레벨 갱신보다 race condition에 안전
         noticeRepository.incrementViewCount(noticeId);
 
+        boolean isRecommended = userId != null
+                && noticeRecommendRepository.existsByNoticeIdAndUserId(noticeId, userId);
+
         List<NoticeImage> images = noticeImageRepository.findByNoticeIdAndIsUsedTrue(noticeId);
         // 현재 whitelist 기준으로 재Sanitize — 이전 버전 저장 데이터도 수정 없이 정상 렌더링
         String freshSanitized = htmlSanitizer.sanitizeLegal(notice.getContent());
-        return NoticeDetailResponse.from(notice, images, freshSanitized);
+        return NoticeDetailResponse.from(notice, images, freshSanitized, isRecommended);
+    }
+
+    /**
+     * 공지 추천 토글 (추천 ↔ 추천 취소).
+     * 발행된 공지만 추천 가능.
+     */
+    @Transactional
+    public NoticeRecommendResponse toggleRecommend(Long noticeId, Long userId) {
+        Notice notice = noticeRepository.findByIdAndIsPublishedTrue(noticeId)
+                .orElseThrow(() -> new CustomException(ErrorCode.NOTICE_NOT_FOUND));
+
+        return noticeRecommendRepository.findByNoticeIdAndUserId(noticeId, userId)
+                .map(existing -> {
+                    // 이미 추천 → 취소
+                    noticeRecommendRepository.delete(existing);
+                    notice.decreaseRecommendCount();
+                    return NoticeRecommendResponse.of(false, notice.getRecommendCount());
+                })
+                .orElseGet(() -> {
+                    // 미추천 → 추천
+                    User user = userRepository.findById(userId)
+                            .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+                    noticeRecommendRepository.save(
+                            NoticeRecommend.builder().notice(notice).user(user).build());
+                    notice.increaseRecommendCount();
+                    return NoticeRecommendResponse.of(true, notice.getRecommendCount());
+                });
     }
 
     // ═══════════════════════════════════════════

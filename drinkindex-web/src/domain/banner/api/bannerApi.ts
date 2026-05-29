@@ -45,14 +45,19 @@ export const bannerApi = {
   updateSortOrder: (id: number, sortOrder: number) =>
     axiosInstance.patch<ApiResponse<null>>(`/api/admin/banners/${id}/sort-order`, { sortOrder }),
 
-  uploadBannerImage: (file: File, imageType: BannerImageType) => {
+  uploadBannerImage: (file: File, imageType: BannerImageType, onProgress?: (percent: number) => void) => {
     const form = new FormData()
     form.append('image', file)
     form.append('imageType', imageType)
     return axiosInstance.post<ApiResponse<UploadedBannerImage>>(
       '/api/admin/banners/images',
       form,
-      { headers: { 'Content-Type': 'multipart/form-data' } },
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (e) => {
+          if (onProgress && e.total) onProgress(Math.round((e.loaded / e.total) * 100))
+        },
+      },
     )
   },
 

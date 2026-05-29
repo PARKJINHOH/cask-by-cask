@@ -46,11 +46,15 @@ export default function HtmlEditorField({
   const [htmlModeEverUsed, setHtmlModeEverUsed] = useState(false)
   const hasAutoDetected = useRef(false)
 
-  // 편집 모드: 기존 내용에 div/class가 있으면 HTML 모드로 자동 전환 (최초 1회)
+  // 편집 모드: TipTap이 표현할 수 없는 구조적 raw HTML(div/article/section 등)이 있으면
+  // HTML 모드로 자동 전환 (최초 1회). 단, 영상 임베드(<div data-video-embed>)는
+  // TipTap VideoEmbed 노드가 처리하므로 자동 전환 대상에서 제외한다.
   useEffect(() => {
     if (hasAutoDetected.current || !value) return
     hasAutoDetected.current = true
-    if (/<div|class=/.test(value)) {
+    // 영상 임베드 div 를 먼저 제거한 뒤 구조적 태그 존재 여부만 검사
+    const withoutEmbeds = value.replace(/<div[^>]*data-video-embed[\s\S]*?<\/div>/gi, '')
+    if (/<div|<article|<section|<header|<footer|<main/i.test(withoutEmbeds)) {
       setIsHtmlMode(true)
       setHtmlModeEverUsed(true)
     }

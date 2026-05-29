@@ -102,6 +102,29 @@
   .notice-content u { @apply underline underline-offset-2; }
   .notice-content s { @apply line-through text-neutral-400; }
 
+  /* ── 영상 임베드(YouTube/Vimeo) ──────────────────────────────
+     Tailwind 임의값 클래스 purge 여부와 무관하게 16:9 비율로 표시되도록
+     data-video-embed 속성 기준으로 직접 스타일링 (에디터/본문 공통) */
+  [data-video-embed] {
+    position: relative;
+    width: 100%;
+    padding-bottom: 56.25%;
+    height: 0;
+    overflow: hidden;
+    border-radius: 0.5rem;
+    margin: 1rem 0;
+    background-color: #f5f5f5;
+  }
+  [data-video-embed] iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    border-radius: 0.5rem;
+  }
+
   /* Dual range slider — transparent input overlaid on a custom track */
   .range-dual {
     pointer-events: none;

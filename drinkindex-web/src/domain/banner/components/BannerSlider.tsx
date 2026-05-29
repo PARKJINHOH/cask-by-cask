@@ -114,6 +114,21 @@ export default function BannerSlider({ banners }: BannerSliderProps) {
 
             {/* 하단 그라데이션 (도트 가독성 향상) */}
             <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/30 to-transparent pointer-events-none" />
+
+            {/* 링크 연결 표시 (클릭 가능 안내) */}
+            {b.linkUrl && (
+              <span
+                className="absolute top-3 left-3 z-10 inline-flex items-center gap-1
+                  rounded-full bg-black/40 backdrop-blur-sm px-2 py-0.5 text-[11px] font-medium
+                  text-white/90 pointer-events-none"
+              >
+                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
+                  <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
+                </svg>
+                바로가기
+              </span>
+            )}
           </div>
         ))}
       </div>

@@ -93,9 +93,10 @@ interface RowCellsProps {
   onToggleVisibility: (id: number) => void
   onEdit: (id: number) => void
   onDelete: (banner: AdminBannerListItem) => void
+  order?: number
 }
 
-function BannerRowCells({ banner, localVisibility, onToggleVisibility, onEdit, onDelete }: RowCellsProps) {
+function BannerRowCells({ banner, localVisibility, onToggleVisibility, onEdit, onDelete, order }: RowCellsProps) {
   const visible = localVisibility[banner.id] ?? banner.isVisible
   return (
     <>
@@ -143,6 +144,16 @@ function BannerRowCells({ banner, localVisibility, onToggleVisibility, onEdit, o
       </td>
       <td className="px-4 py-3 text-neutral-400 text-xs whitespace-nowrap w-28">
         {new Date(banner.createdAt).toLocaleDateString('ko-KR')}
+      </td>
+      <td className="px-4 py-3 w-20 text-center">
+        {order != null ? (
+          <span className="inline-flex items-center justify-center w-6 h-6 rounded-md
+            bg-primary-50 text-primary-800 text-xs font-semibold tabular-nums">
+            {order}
+          </span>
+        ) : (
+          <span className="text-neutral-300">—</span>
+        )}
       </td>
       <td className="px-4 py-3 w-28">
         <div className="flex items-center gap-1 justify-end">
@@ -210,6 +221,7 @@ const TABLE_HEAD = (
       <th className="text-left px-4 py-3 font-medium text-neutral-500 w-20">노출</th>
       <th className="text-left px-4 py-3 font-medium text-neutral-500 w-52">게시기간</th>
       <th className="text-left px-4 py-3 font-medium text-neutral-500 w-28">등록일</th>
+      <th className="text-center px-4 py-3 font-medium text-neutral-500 w-20">노출 순서</th>
       <th className="px-4 py-3 w-28" />
     </tr>
   </thead>
@@ -377,7 +389,7 @@ export default function AdminBannerListPage() {
                   <tbody>
                     {orderedVisible.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="px-4 py-10 text-center text-neutral-400">
+                        <td colSpan={9} className="px-4 py-10 text-center text-neutral-400">
                           노출 중인 배너가 없습니다.
                         </td>
                       </tr>
@@ -386,8 +398,8 @@ export default function AdminBannerListPage() {
                         items={orderedVisible.map((b) => String(b.id))}
                         strategy={verticalListSortingStrategy}
                       >
-                        {orderedVisible.map((banner) => (
-                          <SortableRow key={banner.id} banner={banner} {...commonRowProps} />
+                        {orderedVisible.map((banner, index) => (
+                          <SortableRow key={banner.id} banner={banner} order={index + 1} {...commonRowProps} />
                         ))}
                       </SortableContext>
                     )}
@@ -411,7 +423,7 @@ export default function AdminBannerListPage() {
                 <tbody>
                   {hiddenBanners.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-4 py-10 text-center text-neutral-400">
+                      <td colSpan={9} className="px-4 py-10 text-center text-neutral-400">
                         대기 중인 배너가 없습니다.
                       </td>
                     </tr>

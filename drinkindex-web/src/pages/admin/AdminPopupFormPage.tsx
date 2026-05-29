@@ -294,7 +294,7 @@ export default function AdminPopupFormPage() {
       language: 'KO',
       content: '',
       linkUrl: '',
-      linkTargetBlank: false,
+      linkTargetBlank: true,
       isVisible: false,
       sortOrder: 0,
       closeOnOverlay: true,
@@ -344,7 +344,7 @@ export default function AdminPopupFormPage() {
     setValue('popupType', newType)
     setValue('content', '')
     setValue('linkUrl', '')
-    setValue('linkTargetBlank', false)
+    setValue('linkTargetBlank', true)
     setUploadedImage(null)
     setImageError(undefined)
   }
@@ -677,63 +677,65 @@ export default function AdminPopupFormPage() {
             )}
           />
 
-          {/* 게시 기간 */}
-          <div className="space-y-3">
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <Controller
-                name="isAlwaysVisible"
-                control={control}
-                render={({ field }) => (
+          {/* 게시 기간 — 노출 ON일 때만 표시 */}
+          {isVisible && (
+            <div className="space-y-3">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <Controller
+                  name="isAlwaysVisible"
+                  control={control}
+                  render={({ field }) => (
+                    <input
+                      type="checkbox"
+                      checked={field.value}
+                      onChange={field.onChange}
+                      className="w-4 h-4 accent-primary-800 rounded"
+                    />
+                  )}
+                />
+                <span className="text-sm font-medium text-neutral-700">상시 노출</span>
+                <span className="text-xs text-neutral-400">(기간 설정 무시)</span>
+              </label>
+
+              {!isAlwaysVisible && (
+                <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                  노출하려면 <strong>상시 노출</strong>을 체크하거나 <strong>시작일시·종료일시</strong>를 모두 입력해야 합니다.
+                </p>
+              )}
+
+              <div className={`grid grid-cols-2 gap-3 ${isAlwaysVisible ? 'opacity-40 pointer-events-none' : ''}`}>
+                <div>
+                  <label className="block text-xs font-medium text-neutral-500 mb-1">시작일시</label>
                   <input
-                    type="checkbox"
-                    checked={field.value}
-                    onChange={field.onChange}
-                    className="w-4 h-4 accent-primary-800 rounded"
+                    type="datetime-local"
+                    {...register('startAt')}
+                    disabled={isAlwaysVisible}
+                    className="w-full h-9 px-2 text-sm border border-neutral-300 rounded-lg
+                      focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none
+                      disabled:bg-neutral-100"
                   />
-                )}
-              />
-              <span className="text-sm font-medium text-neutral-700">상시 노출</span>
-              <span className="text-xs text-neutral-400">(기간 설정 무시)</span>
-            </label>
-
-            {isVisible && !isAlwaysVisible && (
-              <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-                노출하려면 <strong>상시 노출</strong>을 체크하거나 <strong>시작일시·종료일시</strong>를 모두 입력해야 합니다.
-              </p>
-            )}
-
-            <div className={`grid grid-cols-2 gap-3 ${isAlwaysVisible ? 'opacity-40 pointer-events-none' : ''}`}>
-              <div>
-                <label className="block text-xs font-medium text-neutral-500 mb-1">시작일시</label>
-                <input
-                  type="datetime-local"
-                  {...register('startAt')}
-                  disabled={isAlwaysVisible}
-                  className="w-full h-9 px-2 text-sm border border-neutral-300 rounded-lg
-                    focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none
-                    disabled:bg-neutral-100"
-                />
-                {errors.startAt && (
-                  <p className="mt-1 text-xs text-red-600">{errors.startAt.message}</p>
-                )}
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-neutral-500 mb-1">종료일시</label>
-                <input
-                  type="datetime-local"
-                  {...register('endAt')}
-                  min={startAt || undefined}
-                  disabled={isAlwaysVisible}
-                  className="w-full h-9 px-2 text-sm border border-neutral-300 rounded-lg
-                    focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none
-                    disabled:bg-neutral-100"
-                />
-                {errors.endAt && (
-                  <p className="mt-1 text-xs text-red-600">{errors.endAt.message}</p>
-                )}
+                  {errors.startAt && (
+                    <p className="mt-1 text-xs text-red-600">{errors.startAt.message}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-neutral-500 mb-1">종료일시</label>
+                  <input
+                    type="datetime-local"
+                    {...register('endAt')}
+                    min={startAt || undefined}
+                    disabled={isAlwaysVisible}
+                    className="w-full h-9 px-2 text-sm border border-neutral-300 rounded-lg
+                      focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none
+                      disabled:bg-neutral-100"
+                  />
+                  {errors.endAt && (
+                    <p className="mt-1 text-xs text-red-600">{errors.endAt.message}</p>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* 오버레이 닫기 */}
           <Controller
