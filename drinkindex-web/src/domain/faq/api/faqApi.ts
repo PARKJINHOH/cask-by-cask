@@ -34,4 +34,7 @@ export const faqApi = {
 
   updateActive: (id: number, isActive: boolean) =>
     axiosInstance.patch<ApiResponse<null>>(`/api/admin/faq/${id}/active`, { isActive }),
+
+  updateSortOrder: (id: number, sortOrder: number) =>
+    axiosInstance.patch<ApiResponse<null>>(`/api/admin/faq/${id}/sort-order`, { sortOrder }),
 }

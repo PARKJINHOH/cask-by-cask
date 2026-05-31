@@ -67,8 +67,22 @@ public class FaqAdminController {
         return ResponseEntity.ok(ApiResponse.success());
     }
 
+    @PatchMapping("/{id}/sort-order")
+    public ResponseEntity<ApiResponse<Void>> updateSortOrder(
+            @PathVariable Long id,
+            @RequestBody SortOrderRequest request
+    ) {
+        faqService.updateSortOrder(id, request.getSortOrder());
+        return ResponseEntity.ok(ApiResponse.success());
+    }
+
     @Getter @NoArgsConstructor
     public static class ActiveRequest {
         private Boolean isActive;
+    }
+
+    @Getter @NoArgsConstructor
+    public static class SortOrderRequest {
+        private Integer sortOrder;
     }
 }

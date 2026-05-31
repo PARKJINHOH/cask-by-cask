@@ -127,6 +127,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/users/*/bottles").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/score-history/level-config").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/legal/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/faq").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/inquiries").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/inquiries/images/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()

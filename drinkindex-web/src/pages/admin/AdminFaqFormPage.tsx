@@ -19,7 +19,6 @@ interface FormState {
   category: FaqCategory
   question: string
   answer: string
-  sortOrder: number
   isActive: boolean
 }
 
@@ -28,7 +27,6 @@ const INIT: FormState = {
   category: 'SERVICE',
   question: '',
   answer: '',
-  sortOrder: 0,
   isActive: true,
 }
 
@@ -51,7 +49,6 @@ export default function AdminFaqFormPage() {
         category: detail.category,
         question: detail.question,
         answer: detail.answer,
-        sortOrder: detail.sortOrder,
         isActive: detail.isActive,
       })
     }
@@ -73,7 +70,6 @@ export default function AdminFaqFormPage() {
             category: form.category,
             question: form.question,
             answer: form.answer,
-            sortOrder: form.sortOrder,
             isActive: form.isActive,
           },
         })
@@ -179,33 +175,24 @@ export default function AdminFaqFormPage() {
           />
         </div>
 
-        {/* 순서 + 노출 */}
-        <div className="flex gap-6">
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-              정렬 순서 <span className="text-neutral-400 font-normal">(숫자가 작을수록 위)</span>
-            </label>
+        {/* 노출 */}
+        <div>
+          <label className="block text-sm font-medium text-neutral-700 mb-1.5">노출 여부</label>
+          <label className="flex items-center gap-2 cursor-pointer h-9">
             <input
-              type="number"
-              value={form.sortOrder}
-              onChange={(e) => set('sortOrder', Number(e.target.value))}
-              min={0}
-              className="w-32 h-9 px-3 text-sm border border-neutral-300 rounded-lg
-                focus:outline-none focus:ring-2 focus:ring-primary-400"
+              type="checkbox"
+              checked={form.isActive}
+              onChange={(e) => set('isActive', e.target.checked)}
+              className="w-4 h-4 accent-primary-800"
             />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1.5">노출 여부</label>
-            <label className="flex items-center gap-2 cursor-pointer h-9">
-              <input
-                type="checkbox"
-                checked={form.isActive}
-                onChange={(e) => set('isActive', e.target.checked)}
-                className="w-4 h-4 accent-primary-800"
-              />
-              <span className="text-sm text-neutral-700">공개</span>
-            </label>
-          </div>
+            <span className="text-sm text-neutral-700">공개</span>
+          </label>
+          {!isEdit && (
+            <p className="text-xs text-neutral-400 mt-1.5">
+              등록 시 선택한 카테고리의 <span className="font-medium text-neutral-500">맨 위</span>에 추가됩니다.
+              순서는 목록에서 드래그로 변경할 수 있습니다.
+            </p>
+          )}
         </div>
 
         {/* 버튼 */}

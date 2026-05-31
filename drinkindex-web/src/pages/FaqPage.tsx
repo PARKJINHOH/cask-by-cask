@@ -24,7 +24,7 @@ function FaqItemRow({ qa, open, onToggle }: { qa: FaqItem; open: boolean; onTogg
         </svg>
       </button>
       {open && (
-        <div className="px-2 pb-5 text-sm text-neutral-700 leading-relaxed">{qa.answer}</div>
+        <div className="px-2 pb-5 text-sm text-neutral-700 leading-relaxed whitespace-pre-line">{qa.answer}</div>
       )}
     </div>
   )

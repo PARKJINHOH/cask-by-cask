@@ -22,8 +22,5 @@ public class UpdateFaqRequest {
     private String answer;
 
     @NotNull
-    private Integer sortOrder;
-
-    @NotNull
     private Boolean isActive;
 }

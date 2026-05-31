@@ -43,7 +43,6 @@ export interface CreateFaqPayload {
   category: FaqCategory
   question: string
   answer: string
-  sortOrder: number
   isActive: boolean
 }
 
@@ -51,6 +50,5 @@ export interface UpdateFaqPayload {
   category: FaqCategory
   question: string
   answer: string
-  sortOrder: number
   isActive: boolean
 }

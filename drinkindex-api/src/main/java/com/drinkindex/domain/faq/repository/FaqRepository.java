@@ -1,6 +1,7 @@
 package com.drinkindex.domain.faq.repository;
 
 import com.drinkindex.domain.faq.entity.Faq;
+import com.drinkindex.domain.faq.entity.enums.FaqCategory;
 import com.drinkindex.domain.faq.entity.enums.FaqLanguage;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -13,4 +14,6 @@ public interface FaqRepository extends JpaRepository<Faq, Long> {
     List<Faq> findByLanguageOrderByCategoryAscSortOrderAsc(FaqLanguage language);
 
     List<Faq> findAllByOrderByLanguageAscCategoryAscSortOrderAsc();
+
+    List<Faq> findByLanguageAndCategoryOrderBySortOrderAsc(FaqLanguage language, FaqCategory category);
 }

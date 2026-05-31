@@ -68,3 +68,12 @@ export function useUpdateFaqActive() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['faq', 'admin'] }),
   })
 }
+
+export function useUpdateFaqSortOrder() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, sortOrder }: { id: number; sortOrder: number }) =>
+      faqApi.updateSortOrder(id, sortOrder),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['faq', 'admin'] }),
+  })
+}

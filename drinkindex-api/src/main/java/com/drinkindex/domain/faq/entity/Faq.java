@@ -47,12 +47,10 @@ public class Faq extends BaseTimeEntity {
     @Column(nullable = false)
     private Boolean isActive = true;
 
-    public void update(FaqCategory category, String question, String answer,
-                       Integer sortOrder, Boolean isActive) {
+    public void update(FaqCategory category, String question, String answer, Boolean isActive) {
         this.category = category;
         this.question = question;
         this.answer = answer;
-        this.sortOrder = sortOrder;
         this.isActive = isActive;
     }
 

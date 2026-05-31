@@ -25,8 +25,5 @@ public class CreateFaqRequest {
     @NotBlank
     private String answer;
 
-    @NotNull
-    private Integer sortOrder;
-
     private Boolean isActive = true;
 }
