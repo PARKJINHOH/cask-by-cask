@@ -25,9 +25,10 @@
 - Zustand (authStore, 각 도메인 store)
 - React Query (서버 상태)
 - Axios (인터셉터: 자동 토큰 갱신)
-- Tailwind CSS (primary: amber)
+- Tailwind V4 (primary: amber)
 - react-i18next (ko 기본, en 지원)
 - PC, 모바일 반응형 고려해서 구현
+- PC에서는 화면을 보다 넓게 사용하는 UI/UX로 구현.
 - node = "C:\Program Files\nodejs"
 - API가 추가되면 Localhost에서 테스트가 가능하도록 vite.config.ts에 api URL 추가하기.
 

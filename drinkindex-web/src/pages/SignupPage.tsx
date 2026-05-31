@@ -10,7 +10,6 @@ import Button from '@/shared/components/Button'
 import Input from '@/shared/components/Input'
 import SeoMeta from '@/shared/components/SeoMeta'
 import type { ApiResponse } from '@/shared/types/common.types'
-import { TermsContent, PrivacyContent } from '@/pages/legal/LegalContent'
 import { useLegalLatest } from '@/domain/legal/hooks/useLegal'
 import { sanitizeHtml } from '@/shared/utils/sanitize'
 
@@ -180,11 +179,12 @@ function PolicyModal({ type, onClose }: { type: PolicyType; onClose: () => void 
           {isLoading ? (
             <div className="py-12 text-center text-neutral-400">불러오는 중...</div>
           ) : data ? (
-            <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: sanitizeHtml(data.contentSanitized ?? '') }} />
-          ) : type === 'terms' ? (
-            <TermsContent />
+            <div className="notice-content" dangerouslySetInnerHTML={{ __html: sanitizeHtml(data.contentSanitized ?? '') }} />
           ) : (
-            <PrivacyContent />
+            <div className="py-12 text-center">
+              <p className="text-sm text-neutral-500">{title}을(를) 불러오지 못했습니다.</p>
+              <p className="mt-1 text-xs text-neutral-400">잠시 후 다시 시도해주세요.</p>
+            </div>
           )}
         </div>
         {/* Footer */}

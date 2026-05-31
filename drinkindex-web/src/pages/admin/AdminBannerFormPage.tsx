@@ -505,7 +505,7 @@ export default function AdminBannerFormPage() {
   }
 
   return (
-    <div className="p-8 max-w-3xl">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-4xl lg:max-w-6xl mx-auto">
       <Toast toasts={toasts} onRemove={removeToast} />
 
       <AdminPageHeader
@@ -519,6 +519,9 @@ export default function AdminBannerFormPage() {
       />
 
       <form onSubmit={(e) => e.preventDefault()} className="space-y-5">
+        <div className="space-y-5 lg:space-y-0 lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-6 lg:items-start">
+          {/* ── 좌측: 입력 ── */}
+          <div className="space-y-5">
 
         {/* 기본 설정 */}
         <Section title="기본 설정">
@@ -686,6 +689,11 @@ export default function AdminBannerFormPage() {
           )}
         </Section>
 
+          </div>
+
+          {/* ── 우측: 미리보기 · 노출 설정 (PC에서 우측 고정) ── */}
+          <div className="space-y-5 lg:sticky lg:top-6">
+
         {/* 미리보기 */}
         <Section title="미리보기">
           <BannerPreview
@@ -765,6 +773,9 @@ export default function AdminBannerFormPage() {
             </div>
           )}
         </Section>
+
+          </div>
+        </div>
 
         {/* 액션 */}
         <div className="flex items-center gap-3 pt-1">

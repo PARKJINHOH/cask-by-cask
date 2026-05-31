@@ -7,6 +7,7 @@ import { useAdminPopupDetail, useCreatePopup, useUpdatePopup } from '@/domain/po
 import { popupApi } from '@/domain/popup/api/popupApi'
 import PopupPreviewModal from '@/domain/popup/components/PopupPreviewModal'
 import HtmlEditorField from '@/shared/components/HtmlEditorField'
+import { sanitizeHtml } from '@/shared/utils/sanitize'
 import type { UploadedPopupImage, PopupType, PopupPreviewData } from '@/domain/popup/types/popup.types'
 import Button from '@/shared/components/Button'
 import AdminPageHeader from '@/shared/components/AdminPageHeader'
@@ -260,6 +261,72 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   )
 }
 
+// ─── 인라인 미리보기 (우측 패널, 실제 노출 형태 축소) ──
+function InlinePopupPreview({ data }: { data: PopupPreviewData }) {
+  const hasHtml = !!data.content?.replace(/<[^>]*>/g, '').trim()
+  return (
+    <div>
+      {/* 오버레이 배경 위 팝업 카드 */}
+      <div className="rounded-lg bg-neutral-800/90 p-4 flex items-center justify-center min-h-[220px]">
+        <div className="relative w-full max-w-[260px] bg-white rounded-xl shadow-2xl overflow-hidden">
+          <span
+            aria-hidden
+            className="absolute top-1.5 right-1.5 w-5 h-5 flex items-center justify-center
+              rounded-full bg-black/30 text-white text-xs leading-none"
+          >
+            ×
+          </span>
+
+          {data.popupType === 'IMAGE' ? (
+            data.mainImageUrl ? (
+              <img
+                src={data.mainImageUrl}
+                alt="팝업 미리보기"
+                className="block w-full h-auto max-h-56 object-contain"
+              />
+            ) : (
+              <div className="h-40 flex flex-col items-center justify-center bg-neutral-100">
+                <svg className="w-8 h-8 text-neutral-300 mb-1.5" viewBox="0 0 24 24"
+                  fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <circle cx="8.5" cy="8.5" r="1.5" />
+                  <polyline points="21 15 16 10 5 21" />
+                </svg>
+                <p className="text-xs text-neutral-400">이미지 업로드 시 표시</p>
+              </div>
+            )
+          ) : hasHtml ? (
+            <div
+              className="notice-editor prose max-w-none text-xs p-4 max-h-56 overflow-y-auto"
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(data.content ?? '') }}
+            />
+          ) : (
+            <p className="text-xs text-neutral-400 text-center py-10">내용을 입력하면 표시됩니다</p>
+          )}
+
+          {data.popupType === 'IMAGE' && data.linkUrl && (
+            <div className="px-3 py-1.5 bg-neutral-50 border-t border-neutral-100">
+              <p className="text-[11px] text-neutral-500 truncate">
+                🔗 {data.linkUrl}
+                {data.linkTargetBlank && <span className="ml-1 text-neutral-400">(새 탭)</span>}
+              </p>
+            </div>
+          )}
+
+          {data.closeOnOverlay === false && (
+            <div className="px-3 py-1.5 bg-neutral-50 border-t border-neutral-100">
+              <p className="text-[11px] text-neutral-400 text-center">X 버튼으로만 닫힘</p>
+            </div>
+          )}
+        </div>
+      </div>
+      <p className="mt-2 text-xs text-neutral-400 leading-relaxed">
+        실제 노출 시 화면 중앙에 표시됩니다. 정확한 크기는 아래 ‘실제 크기로 보기’로 확인하세요.
+      </p>
+    </div>
+  )
+}
+
 // ─── 페이지 ───────────────────────────────────────────
 export default function AdminPopupFormPage() {
   const { id } = useParams<{ id: string }>()
@@ -458,7 +525,7 @@ export default function AdminPopupFormPage() {
   }
 
   return (
-    <div className="p-8 max-w-3xl">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-4xl lg:max-w-6xl mx-auto">
       <Toast toasts={toasts} onRemove={removeToast} />
 
       {/* 헤더 */}
@@ -473,6 +540,9 @@ export default function AdminPopupFormPage() {
       />
 
       <form onSubmit={(e) => e.preventDefault()} className="space-y-5">
+        <div className="space-y-5 lg:space-y-0 lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-6 lg:items-start">
+          {/* ── 좌측: 입력 ── */}
+          <div className="space-y-5">
 
         {/* ─── 섹션 1: 기본 설정 ─── */}
         <Section title="기본 설정">
@@ -656,6 +726,29 @@ export default function AdminPopupFormPage() {
           )}
         </Section>
 
+          </div>
+
+          {/* ── 우측: 미리보기 · 노출 설정 (PC에서 우측 고정) ── */}
+          <div className="space-y-5 lg:sticky lg:top-6">
+
+        {/* ─── 미리보기 ─── */}
+        <Section title="미리보기">
+          <InlinePopupPreview data={previewData} />
+          <button
+            type="button"
+            onClick={() => setPreviewOpen(true)}
+            className="w-full mt-1 inline-flex items-center justify-center gap-1.5 px-3 py-2
+              text-xs font-medium rounded-lg border border-neutral-300 text-neutral-600
+              hover:bg-neutral-50 transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            실제 크기로 보기
+          </button>
+        </Section>
+
         {/* ─── 섹션 3: 노출 설정 ─── */}
         <Section title="노출 설정">
           {/* 노출 여부 */}
@@ -748,6 +841,9 @@ export default function AdminPopupFormPage() {
 
         </Section>
 
+          </div>
+        </div>
+
         {/* ─── 섹션 4: 액션 버튼 ─── */}
         <div className="flex items-center gap-3 pt-1">
           <Button
@@ -756,20 +852,6 @@ export default function AdminPopupFormPage() {
             disabled={isPending}
           >
             취소
-          </Button>
-
-          <Button
-            variant="secondary"
-            type="button"
-            onClick={() => setPreviewOpen(true)}
-            disabled={isPending}
-          >
-            <svg className="w-4 h-4 mr-1 inline-block" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" strokeWidth="2">
-              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
-            미리보기
           </Button>
 
           <div className="flex-1" />

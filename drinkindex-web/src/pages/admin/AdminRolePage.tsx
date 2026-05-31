@@ -1,7 +1,6 @@
 ﻿import { useState } from 'react'
 import Badge from '@/shared/components/Badge'
 import Button from '@/shared/components/Button'
-import Modal from '@/shared/components/Modal'
 import Spinner from '@/shared/components/Spinner'
 import {
   useAdminRoleTypes,
@@ -60,14 +59,14 @@ function MenuSelector({
   )
 }
 
-// ── 역할 폼 모달 ───────────────────────────────────────────────
+// ── 역할 폼 ────────────────────────────────────────────────────
 
-interface RoleFormModalProps {
+interface RoleFormProps {
   editTarget?: RoleType
   onClose: () => void
 }
 
-function RoleFormModal({ editTarget, onClose }: RoleFormModalProps) {
+function RoleForm({ editTarget, onClose }: RoleFormProps) {
   const isEdit = !!editTarget
   const [name, setName]             = useState(editTarget?.name ?? '')
   const [description, setDescription] = useState(editTarget?.description ?? '')
@@ -113,7 +112,8 @@ function RoleFormModal({ editTarget, onClose }: RoleFormModalProps) {
   const isPending = createRole.isPending || updateRole.isPending
 
   return (
-    <Modal open onClose={onClose} title={isEdit ? '역할 수정' : '역할 추가'} size="sm">
+    <div className={`bg-white rounded-xl shadow-sm p-5 border ${isEdit ? 'border-amber-100' : 'border-primary-100'}`}>
+      <h2 className="text-sm font-semibold text-neutral-700 mb-4">{isEdit ? '역할 수정' : '역할 추가'}</h2>
       <div className="space-y-4">
         {/* 계열 선택 (신규만) */}
         {!isEdit && (
@@ -191,7 +191,7 @@ function RoleFormModal({ editTarget, onClose }: RoleFormModalProps) {
           <Button size="sm" onClick={handleSubmit} isLoading={isPending}>저장</Button>
         </div>
       </div>
-    </Modal>
+    </div>
   )
 }
 
@@ -222,6 +222,14 @@ export default function AdminRolePage() {
         </div>
         <Button size="sm" onClick={() => setFormTarget('new')}>+ 역할 추가</Button>
       </div>
+
+      {/* 인라인 폼 (추가/수정) */}
+      {formTarget && (
+        <RoleForm
+          editTarget={formTarget === 'new' ? undefined : formTarget}
+          onClose={() => setFormTarget(null)}
+        />
+      )}
 
       {/* 안내 */}
       <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800 space-y-1">
@@ -309,13 +317,6 @@ export default function AdminRolePage() {
             </tbody>
           </table>
         </div>
-      )}
-
-      {formTarget && (
-        <RoleFormModal
-          editTarget={formTarget === 'new' ? undefined : formTarget}
-          onClose={() => setFormTarget(null)}
-        />
       )}
     </div>
   )

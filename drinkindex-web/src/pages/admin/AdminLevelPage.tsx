@@ -55,6 +55,15 @@ export default function AdminLevelPage() {
         </button>
       </div>
 
+      {/* 인라인 폼 (추가) */}
+      {showAddForm && (
+        <LevelAddForm
+          onClose={() => setShowAddForm(false)}
+          onSave={(data) => createMutation.mutate(data)}
+          isPending={createMutation.isPending}
+        />
+      )}
+
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         {isLoading ? (
           <div className="py-16 text-center text-neutral-400 text-sm">불러오는 중...</div>
@@ -97,15 +106,6 @@ export default function AdminLevelPage() {
           </table>
         )}
       </div>
-
-      {/* 레벨 추가 모달 */}
-      {showAddForm && (
-        <LevelAddModal
-          onClose={() => setShowAddForm(false)}
-          onSave={(data) => createMutation.mutate(data)}
-          isPending={createMutation.isPending}
-        />
-      )}
     </div>
   )
 }
@@ -234,7 +234,7 @@ function LevelEditRow({
   )
 }
 
-function LevelAddModal({
+function LevelAddForm({
   onClose,
   onSave,
   isPending,
@@ -254,12 +254,11 @@ function LevelAddModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6 space-y-4"
-      >
-        <h2 className="text-base font-semibold text-neutral-900">레벨 추가</h2>
+    <form
+      onSubmit={handleSubmit}
+      className="bg-white rounded-xl shadow-sm p-5 space-y-4 max-w-lg border border-primary-100"
+    >
+      <h2 className="text-sm font-semibold text-neutral-700">레벨 추가</h2>
 
         <div className="space-y-3">
           {[
@@ -299,7 +298,6 @@ function LevelAddModal({
             {isPending ? '추가 중...' : '추가'}
           </button>
         </div>
-      </form>
-    </div>
+    </form>
   )
 }

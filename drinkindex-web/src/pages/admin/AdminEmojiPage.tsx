@@ -113,6 +113,17 @@ export default function AdminEmojiPage() {
         </button>
       </div>
 
+      {/* 이모지 인라인 폼 (추가/수정) */}
+      {showEmojiForm && (
+        <EmojiForm
+          initial={editEmoji}
+          groups={groups}
+          defaultGroupId={typeof selectedGroupId === 'number' ? selectedGroupId : null}
+          onClose={() => { setShowEmojiForm(false); setEditEmoji(null) }}
+          onSaved={handleSaved}
+        />
+      )}
+
       {/* 그룹 관리 섹션 */}
       <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
         <div className="flex items-center justify-between">
@@ -187,6 +198,19 @@ export default function AdminEmojiPage() {
             ))}
           </div>
         )}
+
+        {/* 그룹 인라인 폼 (추가/수정) */}
+        {showGroupForm && (
+          <GroupForm
+            initial={editGroup}
+            onClose={() => { setShowGroupForm(false); setEditGroup(null) }}
+            onSaved={() => {
+              queryClient.invalidateQueries({ queryKey: ['admin-emoji-groups'] })
+              setShowGroupForm(false)
+              setEditGroup(null)
+            }}
+          />
+        )}
       </div>
 
       {/* 이모지 목록 */}
@@ -256,30 +280,6 @@ export default function AdminEmojiPage() {
           </DndContext>
         )}
       </div>
-
-      {/* 이모지 추가/수정 폼 */}
-      {showEmojiForm && (
-        <EmojiForm
-          initial={editEmoji}
-          groups={groups}
-          defaultGroupId={typeof selectedGroupId === 'number' ? selectedGroupId : null}
-          onClose={() => { setShowEmojiForm(false); setEditEmoji(null) }}
-          onSaved={handleSaved}
-        />
-      )}
-
-      {/* 그룹 추가/수정 폼 */}
-      {showGroupForm && (
-        <GroupForm
-          initial={editGroup}
-          onClose={() => { setShowGroupForm(false); setEditGroup(null) }}
-          onSaved={() => {
-            queryClient.invalidateQueries({ queryKey: ['admin-emoji-groups'] })
-            setShowGroupForm(false)
-            setEditGroup(null)
-          }}
-        />
-      )}
     </div>
   )
 }
@@ -510,12 +510,11 @@ function EmojiForm({
   const isPending = createMutation.isPending || updateMutation.isPending || uploading
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6 space-y-4"
-      >
-        <h2 className="text-base font-semibold text-neutral-900">
+    <form
+      onSubmit={handleSubmit}
+      className={`bg-white rounded-xl shadow-sm p-5 space-y-4 max-w-lg border ${initial ? 'border-amber-100' : 'border-primary-100'}`}
+    >
+        <h2 className="text-sm font-semibold text-neutral-700">
           {initial ? '이모지 수정' : '이모지 추가'}
         </h2>
 
@@ -615,8 +614,7 @@ function EmojiForm({
             {isPending ? '저장 중...' : '저장'}
           </button>
         </div>
-      </form>
-    </div>
+    </form>
   )
 }
 
@@ -653,12 +651,11 @@ function GroupForm({
   const isPending = createMutation.isPending || updateMutation.isPending
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white rounded-2xl shadow-xl w-full max-w-xs mx-4 p-6 space-y-4"
-      >
-        <h2 className="text-base font-semibold text-neutral-900">
+    <form
+      onSubmit={handleSubmit}
+      className={`rounded-lg p-4 space-y-4 max-w-sm border ${initial ? 'border-amber-200 bg-amber-50/40' : 'border-primary-200 bg-primary-50/40'}`}
+    >
+        <h2 className="text-sm font-semibold text-neutral-700">
           {initial ? '그룹 수정' : '그룹 추가'}
         </h2>
         <div>
@@ -690,7 +687,6 @@ function GroupForm({
             {isPending ? '저장 중...' : '저장'}
           </button>
         </div>
-      </form>
-    </div>
+    </form>
   )
 }

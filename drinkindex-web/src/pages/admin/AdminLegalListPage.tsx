@@ -129,6 +129,13 @@ export default function AdminLegalListPage() {
                   <td className="px-4 py-3 text-neutral-500">{formatDate(doc.createdAt)}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => navigate(`/admin/legal/new?type=${activeTab}&copyFrom=${doc.id}`)}
+                        className="text-xs px-2.5 py-1 border border-neutral-300 text-neutral-600 rounded-lg hover:bg-neutral-50 transition-colors"
+                        title="이 버전의 내용을 복사해 새 버전을 작성합니다"
+                      >
+                        복사
+                      </button>
                       {!doc.isActive && (
                         <>
                           <button

@@ -15,6 +15,8 @@ public interface LegalDocumentRepository extends JpaRepository<LegalDocument, Lo
 
     Optional<LegalDocument> findByTypeAndIsActiveTrue(LegalDocumentType type);
 
+    boolean existsByType(LegalDocumentType type);
+
     Page<LegalDocument> findAllByTypeOrderByCreatedAtDesc(LegalDocumentType type, Pageable pageable);
 
     @Modifying

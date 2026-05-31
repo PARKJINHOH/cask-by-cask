@@ -2,7 +2,6 @@
 import { useLegalLatest } from '@/domain/legal/hooks/useLegal'
 import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 import { sanitizeHtml } from '@/shared/utils/sanitize'
-import { TermsContent } from './LegalContent'
 
 export default function TermsPage() {
   const { data, isLoading, isError } = useLegalLatest('TERMS')
@@ -28,10 +27,13 @@ export default function TermsPage() {
           {isLoading ? (
             <div className="py-12 text-center text-sm text-neutral-400">불러오는 중...</div>
           ) : isError || !data ? (
-            <TermsContent />
+            <div className="py-12 text-center">
+              <p className="text-sm text-neutral-500">약관을 불러오지 못했습니다.</p>
+              <p className="mt-1 text-xs text-neutral-400">잠시 후 다시 시도해주세요.</p>
+            </div>
           ) : (
             <div
-              className="prose prose-sm max-w-none text-neutral-700"
+              className="notice-content"
               dangerouslySetInnerHTML={{ __html: sanitizeHtml(data.contentSanitized ?? '') }}
             />
           )}

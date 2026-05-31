@@ -98,7 +98,7 @@ export default function HtmlEditorField({
             </span>
           </div>
           <div
-            className="px-4 py-3 min-h-24 text-sm text-neutral-700"
+            className="px-4 py-3 min-h-24 notice-content"
             dangerouslySetInnerHTML={{ __html: sanitizeHtml(value) }}
           />
         </div>

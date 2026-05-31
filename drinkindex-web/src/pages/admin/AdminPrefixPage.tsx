@@ -52,6 +52,16 @@ export default function AdminPrefixPage() {
         </button>
       </div>
 
+      {/* 인라인 폼 (추가/수정) */}
+      {showForm && (
+        <PrefixForm
+          initial={editItem}
+          boardType={boardType}
+          onClose={() => { setShowForm(false); setEditItem(null) }}
+          onSaved={handleSaved}
+        />
+      )}
+
       {/* 게시판 탭 */}
       <div className="flex gap-1 border-b border-neutral-200">
         {BOARD_TABS.map((tab) => (
@@ -152,15 +162,6 @@ export default function AdminPrefixPage() {
           </table>
         )}
       </div>
-
-      {showForm && (
-        <PrefixForm
-          initial={editItem}
-          boardType={boardType}
-          onClose={() => { setShowForm(false); setEditItem(null) }}
-          onSaved={handleSaved}
-        />
-      )}
     </div>
   )
 }
@@ -209,14 +210,13 @@ function PrefixForm({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6 space-y-4"
-      >
-        <h2 className="text-base font-semibold text-neutral-900">
-          {initial ? '말머리 수정' : '말머리 추가'}
-        </h2>
+    <form
+      onSubmit={handleSubmit}
+      className={`bg-white rounded-xl shadow-sm p-5 space-y-4 max-w-lg border ${initial ? 'border-amber-100' : 'border-primary-100'}`}
+    >
+      <h2 className="text-sm font-semibold text-neutral-700">
+        {initial ? '말머리 수정' : '말머리 추가'}
+      </h2>
 
         <div className="space-y-3">
           <div>
@@ -293,7 +293,6 @@ function PrefixForm({
             {isPending ? '저장 중...' : '저장'}
           </button>
         </div>
-      </form>
-    </div>
+    </form>
   )
 }

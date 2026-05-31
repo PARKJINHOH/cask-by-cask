@@ -4,7 +4,7 @@ import { sanitizeHtml } from '@/shared/utils/sanitize'
 import { hidePopupToday } from '@/shared/utils/popupStorage'
 import type { PopupResponse } from '../types/popup.types'
 
-const AUTOPLAY_MS = 4000
+const AUTOPLAY_MS = 5000
 
 // ─── 슬라이드 콘텐츠 ──────────────────────────────────────────
 function SlideContent({ popup, onLinkClick }: { popup: PopupResponse; onLinkClick?: () => void }) {
@@ -42,97 +42,85 @@ function SlideContent({ popup, onLinkClick }: { popup: PopupResponse; onLinkClic
 }
 
 // ─── SVG 아이콘 ───────────────────────────────────────────────
-function IconPrev() {
+function IconPrev({ className = 'w-5 h-5' }: { className?: string }) {
   return (
-    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="15 18 9 12 15 6" />
     </svg>
   )
 }
-function IconNext() {
+function IconNext({ className = 'w-5 h-5' }: { className?: string }) {
   return (
-    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="9 18 15 12 9 6" />
     </svg>
   )
 }
-function IconPause() {
+function IconPause({ className = 'w-4 h-4' }: { className?: string }) {
   return (
-    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
       <rect x="6" y="4" width="4" height="16" rx="1" />
       <rect x="14" y="4" width="4" height="16" rx="1" />
     </svg>
   )
 }
-function IconPlay() {
+function IconPlay({ className = 'w-4 h-4' }: { className?: string }) {
   return (
-    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
       <polygon points="5,3 19,12 5,21" />
     </svg>
   )
 }
 
-// ─── 컨트롤 바 (◀ ●○○ ⏸/▶ ▶) ────────────────────────────────
-function Controls({
+// ─── 좌/우 내비게이션 화살표 (이미지 위 오버레이, hover 시 표시) ──
+function NavArrows({ onPrev, onNext }: { onPrev: () => void; onNext: () => void }) {
+  const btnCls =
+    'absolute top-1/2 -translate-y-1/2 z-20 w-9 h-9 flex items-center justify-center ' +
+    'rounded-full bg-black/35 text-white hover:bg-black/55 backdrop-blur-sm ' +
+    'opacity-0 group-hover:opacity-100 transition-all duration-200 focus:outline-none'
+
+  return (
+    <>
+      <button type="button" onClick={onPrev} aria-label="이전" className={`${btnCls} left-2`}>
+        <IconPrev />
+      </button>
+      <button type="button" onClick={onNext} aria-label="다음" className={`${btnCls} right-2`}>
+        <IconNext />
+      </button>
+    </>
+  )
+}
+
+// ─── 카운터 + 재생/일시정지 (우측 하단 캡슐) ───────────────────
+function SlideCounter({
   total,
   activeIndex,
   isPlaying,
-  onPrev,
-  onNext,
-  onDotClick,
   onTogglePlay,
 }: {
   total: number
   activeIndex: number
   isPlaying: boolean
-  onPrev: () => void
-  onNext: () => void
-  onDotClick: (i: number) => void
   onTogglePlay: () => void
 }) {
-  const btnCls =
-    'w-7 h-7 flex items-center justify-center rounded-full text-neutral-500 ' +
-    'hover:bg-neutral-100 hover:text-neutral-800 transition-colors focus:outline-none'
-
   return (
-    <div className="flex items-center justify-center gap-2 py-2.5 border-t border-neutral-100">
-      {/* 이전 */}
-      <button type="button" onClick={onPrev} aria-label="이전" className={btnCls}>
-        <IconPrev />
-      </button>
-
-      {/* 도트 인디케이터 */}
-      <div className="flex items-center gap-1.5 mx-1">
-        {Array.from({ length: total }).map((_, i) => (
-          <button
-            key={i}
-            type="button"
-            onClick={() => onDotClick(i)}
-            aria-label={`${i + 1}번째 팝업`}
-            aria-current={i === activeIndex ? 'true' : undefined}
-            className={[
-              'rounded-full transition-all duration-300 ease-in-out focus:outline-none',
-              i === activeIndex
-                ? 'w-2.5 h-2.5 bg-neutral-700'
-                : 'w-2 h-2 bg-neutral-300 hover:bg-neutral-400',
-            ].join(' ')}
-          />
-        ))}
-      </div>
-
-      {/* 재생 / 일시정지 */}
+    <div
+      className="absolute bottom-2.5 right-2.5 z-20 flex items-center gap-1.5 pl-3 pr-1.5 py-1
+        rounded-full bg-black/50 backdrop-blur-sm text-white text-xs font-medium select-none"
+    >
+      <span className="tabular-nums tracking-wide">
+        {activeIndex + 1}
+        <span className="mx-0.5 text-white/50">/</span>
+        {total}
+      </span>
       <button
         type="button"
         onClick={onTogglePlay}
         aria-label={isPlaying ? '일시정지' : '재생'}
-        className={btnCls}
+        className="w-5 h-5 flex items-center justify-center rounded-full hover:bg-white/20
+          transition-colors focus:outline-none"
       >
-        {isPlaying ? <IconPause /> : <IconPlay />}
-      </button>
-
-      {/* 다음 */}
-      <button type="button" onClick={onNext} aria-label="다음" className={btnCls}>
-        <IconNext />
+        {isPlaying ? <IconPause className="w-3 h-3" /> : <IconPlay className="w-3 h-3" />}
       </button>
     </div>
   )
@@ -152,6 +140,13 @@ export function PopupViewer({ popups, onClose, isPreview = false }: Props) {
   const [isHovering, setIsHovering]   = useState(false)
   const touchStartX = useRef(0)
   const touchStartY = useRef(0)
+
+  // 직전 슬라이드 인덱스 — 전환 중 불투명 배경으로 깔아 흰 배경 번쩍임 방지
+  const prevIndexRef = useRef(0)
+  const prevIndex = prevIndexRef.current
+  useEffect(() => {
+    prevIndexRef.current = activeIndex
+  }, [activeIndex])
 
   if (popups.length === 0) return null
 
@@ -215,12 +210,12 @@ export function PopupViewer({ popups, onClose, isPreview = false }: Props) {
         aria-hidden="true"
       />
 
-      {/* 팝업 컨테이너 — 단일 IMAGE 팝업은 이미지 자연 크기에 맞춰 폭이 줄어듦 */}
+      {/* 팝업 컨테이너 — IMAGE 팝업은 현재 이미지 비율에 맞춰 폭이 줄어듦(흰 여백 제거) */}
       <div
         className={[
-          'relative z-10 flex flex-col bg-white rounded-xl shadow-2xl',
+          'group relative z-10 flex flex-col bg-white rounded-xl shadow-2xl',
           'max-w-[min(90vw,_560px)] max-h-[90vh] overflow-hidden',
-          !isMultiple && popups[0].popupType === 'IMAGE' ? 'w-fit' : 'w-[min(90vw,_560px)]',
+          currentPopup.popupType === 'IMAGE' ? 'w-fit' : 'w-[min(90vw,_560px)]',
         ].join(' ')}
         onClick={(e) => e.stopPropagation()}
         onMouseEnter={() => setIsHovering(true)}
@@ -244,36 +239,39 @@ export function PopupViewer({ popups, onClose, isPreview = false }: Props) {
           <SlideContent popup={popups[0]} onLinkClick={isPreview ? undefined : handleClose} />
         ) : (
           <div
-            className="relative w-full"
+            className="relative overflow-hidden"
             onTouchStart={onTouchStart}
             onTouchEnd={onTouchEnd}
           >
-            {popups.map((popup, i) => (
-              <div
-                key={popup.id}
-                className={`transition-opacity duration-300 ease-in-out ${
-                  i === activeIndex
-                    ? 'relative opacity-100 pointer-events-auto'
-                    : 'absolute inset-0 opacity-0 pointer-events-none'
-                }`}
-              >
-                <SlideContent popup={popup} onLinkClick={isPreview ? undefined : handleClose} />
-              </div>
-            ))}
-          </div>
-        )}
+            {popups.map((popup, i) => {
+              // active: 박스 크기 결정 + 위에서 페이드인 / prev: 불투명 배경으로 깔림 / 그 외: 숨김
+              const slideCls =
+                i === activeIndex
+                  ? 'relative z-20 opacity-100 pointer-events-auto'
+                  : i === prevIndex
+                    ? 'absolute inset-0 z-10 opacity-100 pointer-events-none'
+                    : 'absolute inset-0 z-0 opacity-0 pointer-events-none'
+              return (
+                <div
+                  key={popup.id}
+                  className={`bg-white transition-opacity duration-500 ease-in-out ${slideCls}`}
+                >
+                  <SlideContent popup={popup} onLinkClick={isPreview ? undefined : handleClose} />
+                </div>
+              )
+            })}
 
-        {/* 컨트롤 바 (복수 팝업 전용) */}
-        {isMultiple && (
-          <Controls
-            total={popups.length}
-            activeIndex={activeIndex}
-            isPlaying={isPlaying}
-            onPrev={goPrev}
-            onNext={goNext}
-            onDotClick={goTo}
-            onTogglePlay={() => setIsPlaying((p) => !p)}
-          />
+            {/* 좌/우 화살표 (hover 시 표시) */}
+            <NavArrows onPrev={goPrev} onNext={goNext} />
+
+            {/* 우측 하단 카운터 + 재생/일시정지 */}
+            <SlideCounter
+              total={popups.length}
+              activeIndex={activeIndex}
+              isPlaying={isPlaying}
+              onTogglePlay={() => setIsPlaying((p) => !p)}
+            />
+          </div>
         )}
 
         {/* 하단 바 — 하루 안보기 + 닫기 */}

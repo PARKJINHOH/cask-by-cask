@@ -161,7 +161,7 @@ export default function AdminNoticeFormPage() {
   }
 
   return (
-    <div className="p-8 max-w-4xl">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto">
       <Toast toasts={toasts} onRemove={removeToast} />
       <DraftListModal
         open={draftListOpen}

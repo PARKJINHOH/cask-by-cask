@@ -1,5 +1,8 @@
 package com.drinkindex.domain.user.service;
 
+import com.drinkindex.domain.legal.entity.LegalDocument;
+import com.drinkindex.domain.legal.entity.enums.LegalDocumentType;
+import com.drinkindex.domain.legal.repository.LegalDocumentRepository;
 import com.drinkindex.domain.nicknamebadword.service.NicknameBadWordValidator;
 import com.drinkindex.domain.score.service.AttendanceService;
 import com.drinkindex.domain.user.dto.*;
@@ -32,6 +35,7 @@ public class AuthService {
     private final AttendanceService attendanceService;
     private final EmailVerificationService emailVerificationService;
     private final NicknameBadWordValidator nicknameBadWordValidator;
+    private final LegalDocumentRepository legalDocumentRepository;
 
     @Value("${app.email.verification-required:true}")
     private boolean emailVerificationRequired;
@@ -47,6 +51,9 @@ public class AuthService {
         nicknameBadWordValidator.validate(request.nickname());
         LocalDateTime now = LocalDateTime.now();
         boolean preVerified = emailVerificationRequired && emailVerificationService.isPreVerified(request.email());
+        // 동의 시점의 활성 약관/처리방침 버전을 스냅샷으로 기록 (법적 증빙용)
+        String termsVersion = activeVersion(LegalDocumentType.TERMS);
+        String privacyVersion = activeVersion(LegalDocumentType.PRIVACY_POLICY);
         User user = User.builder()
                 .email(request.email())
                 .password(passwordEncoder.encode(request.password()))
@@ -55,6 +62,8 @@ public class AuthService {
                 .emailVerified(preVerified || !emailVerificationRequired)
                 .termsAgreedAt(now)
                 .privacyAgreedAt(now)
+                .termsAgreedVersion(termsVersion)
+                .privacyAgreedVersion(privacyVersion)
                 .emailSubscribed(request.emailSubscribed())
                 .build();
         userRepository.save(user);
@@ -64,6 +73,12 @@ public class AuthService {
             emailVerificationService.sendCode(request.email());
         }
         return UserResponse.from(user);
+    }
+
+    private String activeVersion(LegalDocumentType type) {
+        return legalDocumentRepository.findByTypeAndIsActiveTrue(type)
+                .map(LegalDocument::getVersion)
+                .orElse(null);
     }
 
     @Transactional

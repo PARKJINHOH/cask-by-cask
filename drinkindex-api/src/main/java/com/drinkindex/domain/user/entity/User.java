@@ -85,6 +85,14 @@ public class User extends BaseTimeEntity {
     @Column
     private LocalDateTime privacyAgreedAt;
 
+    /** 가입 시 동의한 이용약관 버전 (법적 증빙용 — 동의 시점의 활성 버전 스냅샷) */
+    @Column(length = 50)
+    private String termsAgreedVersion;
+
+    /** 가입 시 동의한 개인정보 처리방침 버전 (법적 증빙용 — 동의 시점의 활성 버전 스냅샷) */
+    @Column(length = 50)
+    private String privacyAgreedVersion;
+
     @Builder.Default
     @Column(nullable = false)
     private Boolean emailSubscribed = false;
