@@ -55,6 +55,9 @@ public record UpdateSpiritRequest(
         @Valid WineDetailRequest wineDetail,
 
         @Schema(description = "꼬냑 상세 (null이면 변경 안 함)")
-        @Valid CognacDetailRequest cognacDetail
+        @Valid CognacDetailRequest cognacDetail,
+
+        @Schema(description = "기타 상세 (null이면 변경 안 함)")
+        @Valid OtherDetailRequest otherDetail
 
 ) {}

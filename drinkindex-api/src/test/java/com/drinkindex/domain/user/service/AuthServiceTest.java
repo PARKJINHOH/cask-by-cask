@@ -1,8 +1,10 @@
 package com.drinkindex.domain.user.service;
 
+import com.drinkindex.domain.nicknamebadword.service.NicknameBadWordValidator;
 import com.drinkindex.domain.score.dto.AttendanceResult;
 import com.drinkindex.domain.score.service.AttendanceService;
 import com.drinkindex.domain.user.dto.*;
+import com.drinkindex.global.email.EmailVerificationService;
 import com.drinkindex.domain.user.entity.User;
 import com.drinkindex.domain.user.entity.enums.Role;
 import com.drinkindex.domain.user.repository.UserRepository;
@@ -36,6 +38,8 @@ class AuthServiceTest {
     @Mock private JwtProvider jwtProvider;
     @Mock private RefreshTokenRepository refreshTokenRepository;
     @Mock private AttendanceService attendanceService;
+    @Mock private EmailVerificationService emailVerificationService;
+    @Mock private NicknameBadWordValidator nicknameBadWordValidator;
 
     // ───────────────────── signup ─────────────────────
 

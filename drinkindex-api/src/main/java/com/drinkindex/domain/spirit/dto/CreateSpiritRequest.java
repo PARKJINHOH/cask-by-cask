@@ -57,6 +57,9 @@ public record CreateSpiritRequest(
         @Valid WineDetailRequest wineDetail,
 
         @Schema(description = "꼬냑 상세 (category=COGNAC 일 때)")
-        @Valid CognacDetailRequest cognacDetail
+        @Valid CognacDetailRequest cognacDetail,
+
+        @Schema(description = "기타 상세 (category=OTHER 일 때)")
+        @Valid OtherDetailRequest otherDetail
 
 ) {}

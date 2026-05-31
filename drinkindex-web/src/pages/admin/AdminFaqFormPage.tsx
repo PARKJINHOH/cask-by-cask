@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useAdminFaqDetail, useCreateFaq, useUpdateFaq } from '@/domain/faq/hooks/useFaq'
 import type { FaqLanguage, FaqCategory } from '@/domain/faq/types/faq.types'
 import Button from '@/shared/components/Button'
+import AdminPageHeader from '@/shared/components/AdminPageHeader'
 import { useToast } from '@/shared/hooks/useToast'
 import Toast from '@/shared/components/Toast'
 
@@ -98,11 +99,15 @@ export default function AdminFaqFormPage() {
     <div className="p-8 max-w-2xl">
       <Toast toasts={toasts} onRemove={removeToast} />
 
-      <div className="mb-6">
-        <h1 className="text-xl font-bold text-neutral-900">
-          {isEdit ? 'FAQ 수정' : 'FAQ 등록'}
-        </h1>
-      </div>
+      <AdminPageHeader
+        breadcrumbs={[
+          { label: 'FAQ 관리', to: '/admin/faq' },
+          { label: isEdit ? 'FAQ 수정' : 'FAQ 등록' },
+        ]}
+        backTo="/admin/faq"
+        backLabel="FAQ 목록"
+        title={isEdit ? 'FAQ 수정' : 'FAQ 등록'}
+      />
 
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* 언어 (신규만) */}

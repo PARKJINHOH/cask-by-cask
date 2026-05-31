@@ -95,6 +95,9 @@ public class Spirit extends BaseTimeEntity {
     @OneToOne(mappedBy = "spirit", cascade = ALL, orphanRemoval = true, fetch = LAZY)
     private SpiritCognacDetail cognacDetail;
 
+    @OneToOne(mappedBy = "spirit", cascade = ALL, orphanRemoval = true, fetch = LAZY)
+    private SpiritOtherDetail otherDetail;
+
     public void update(String nameKo, String nameEn, SpiritCategory category,
                        Distillery distillery, String bottler, Integer bottledYear,
                        Integer vintageYear, BigDecimal abv, Integer volumeMl,
@@ -134,5 +137,6 @@ public class Spirit extends BaseTimeEntity {
         this.whiskyDetail = null;
         this.wineDetail = null;
         this.cognacDetail = null;
+        this.otherDetail = null;
     }
 }

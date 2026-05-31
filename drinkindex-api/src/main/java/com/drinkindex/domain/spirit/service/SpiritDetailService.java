@@ -25,6 +25,7 @@ public class SpiritDetailService {
     private final SpiritWhiskyDetailRepository  whiskyDetailRepo;
     private final SpiritWineDetailRepository    wineDetailRepo;
     private final SpiritCognacDetailRepository  cognacDetailRepo;
+    private final SpiritOtherDetailRepository   otherDetailRepo;
     private final ObjectMapper objectMapper;
 
     // ── 공통 상세 저장 (create / update 공통 upsert) ───────────
@@ -63,7 +64,7 @@ public class SpiritDetailService {
             case WHISKY  -> saveWhiskyDetail(spirit, req.whiskyDetail());
             case WINE    -> saveWineDetail(spirit, req.wineDetail());
             case COGNAC  -> saveCognacDetail(spirit, req.cognacDetail());
-            default -> {}
+            case OTHER   -> saveOtherDetail(spirit, req.otherDetail());
         }
     }
 
@@ -88,7 +89,7 @@ public class SpiritDetailService {
             case WHISKY  -> { if (req.whiskyDetail()  != null) saveWhiskyDetail(spirit,  req.whiskyDetail()); }
             case WINE    -> { if (req.wineDetail()    != null) saveWineDetail(spirit,    req.wineDetail()); }
             case COGNAC  -> { if (req.cognacDetail()  != null) saveCognacDetail(spirit,  req.cognacDetail()); }
-            default -> {}
+            case OTHER   -> { if (req.otherDetail()   != null) saveOtherDetail(spirit,   req.otherDetail()); }
         }
     }
 
@@ -195,12 +196,31 @@ public class SpiritDetailService {
         );
     }
 
+    private void saveOtherDetail(Spirit spirit, OtherDetailRequest req) {
+        if (req == null) return;
+
+        Map<String, Object> extra = new LinkedHashMap<>();
+        extra.put("mainIngredient", req.mainIngredient());
+        extra.put("productionMethod", req.productionMethod());
+        extra.put("notes", req.notes());
+        String extraJson = serialize(extra);
+
+        otherDetailRepo.findById(spirit.getId()).ifPresentOrElse(
+            existing -> existing.update(req.otherType(), extraJson),
+            () -> otherDetailRepo.save(SpiritOtherDetail.builder()
+                .spirit(spirit)
+                .otherType(req.otherType())
+                .extraData(extraJson)
+                .build())
+        );
+    }
+
     private void deleteCategoryDetail(Long spiritId, SpiritCategory category) {
         switch (category) {
             case WHISKY  -> whiskyDetailRepo.findById(spiritId).ifPresent(whiskyDetailRepo::delete);
             case WINE    -> wineDetailRepo.findById(spiritId).ifPresent(wineDetailRepo::delete);
             case COGNAC  -> cognacDetailRepo.findById(spiritId).ifPresent(cognacDetailRepo::delete);
-            default -> {}
+            case OTHER   -> otherDetailRepo.findById(spiritId).ifPresent(otherDetailRepo::delete);
         }
     }
 
@@ -215,16 +235,17 @@ public class SpiritDetailService {
         WhiskyDetailResponse  whiskyDetail  = null;
         WineDetailResponse    wineDetail    = null;
         CognacDetailResponse  cognacDetail  = null;
+        OtherDetailResponse   otherDetail   = null;
 
         switch (spirit.getCategory()) {
             case WHISKY  -> whiskyDetail  = buildWhiskyDetailResponse(spirit.getWhiskyDetail());
             case WINE    -> wineDetail    = buildWineDetailResponse(spirit.getWineDetail());
             case COGNAC  -> cognacDetail  = buildCognacDetailResponse(spirit.getCognacDetail());
-            default -> {}
+            case OTHER   -> otherDetail   = buildOtherDetailResponse(spirit.getOtherDetail());
         }
 
         return SpiritDetailResponse.of(spirit, images,
-                commonDetail, whiskyDetail, wineDetail, cognacDetail);
+                commonDetail, whiskyDetail, wineDetail, cognacDetail, otherDetail);
     }
 
     private WhiskyDetailResponse buildWhiskyDetailResponse(SpiritWhiskyDetail detail) {
@@ -274,6 +295,17 @@ public class SpiritDetailService {
         return new CognacDetailResponse(
                 detail.getGrade(), detail.getCru(), detail.getIsFineChampagne(),
                 str(extra, "blendDetail")
+        );
+    }
+
+    private OtherDetailResponse buildOtherDetailResponse(SpiritOtherDetail detail) {
+        if (detail == null) return null;
+        Map<String, Object> extra = parseExtra(detail.getExtraData());
+        return new OtherDetailResponse(
+                detail.getOtherType(),
+                str(extra, "mainIngredient"),
+                str(extra, "productionMethod"),
+                str(extra, "notes")
         );
     }
 

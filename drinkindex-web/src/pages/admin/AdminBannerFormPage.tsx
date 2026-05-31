@@ -9,6 +9,7 @@ import HtmlEditorField from '@/shared/components/HtmlEditorField'
 import { sanitizeHtml } from '@/shared/utils/sanitize'
 import type { UploadedBannerImage, BannerType } from '@/domain/banner/types/banner.types'
 import Button from '@/shared/components/Button'
+import AdminPageHeader from '@/shared/components/AdminPageHeader'
 import Toast from '@/shared/components/Toast'
 import { useToast } from '@/shared/hooks/useToast'
 
@@ -507,21 +508,15 @@ export default function AdminBannerFormPage() {
     <div className="p-8 max-w-3xl">
       <Toast toasts={toasts} onRemove={removeToast} />
 
-      <div className="flex items-center gap-3 mb-8">
-        <button
-          type="button"
-          onClick={() => navigate('/admin/banners')}
-          className="text-neutral-400 hover:text-neutral-600 transition-colors"
-          aria-label="목록으로"
-        >
-          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M19 12H5M12 19l-7-7 7-7" />
-          </svg>
-        </button>
-        <h1 className="text-xl font-bold text-neutral-900">
-          {isEdit ? '배너 수정' : '배너 등록'}
-        </h1>
-      </div>
+      <AdminPageHeader
+        breadcrumbs={[
+          { label: '배너', to: '/admin/banners' },
+          { label: isEdit ? '배너 수정' : '배너 등록' },
+        ]}
+        backTo="/admin/banners"
+        backLabel="배너 목록"
+        title={isEdit ? '배너 수정' : '배너 등록'}
+      />
 
       <form onSubmit={(e) => e.preventDefault()} className="space-y-5">
 

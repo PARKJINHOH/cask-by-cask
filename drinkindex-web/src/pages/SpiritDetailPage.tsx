@@ -50,8 +50,9 @@ function SpiritDetailSections({ spirit, isEn }: { spirit: SpiritDetail; isEn: bo
   const whisky = spirit.whiskyDetail
   const wine = spirit.wineDetail
   const cognac = spirit.cognacDetail
+  const other = spirit.otherDetail
 
-  const hasAny = cd || whisky || wine || cognac
+  const hasAny = cd || whisky || wine || cognac || other
   if (!hasAny) return null
 
   const WHISKY_STYLE_LABEL: Record<string, string> = {
@@ -71,6 +72,13 @@ function SpiritDetailSections({ spirit, isEn }: { spirit: SpiritDetail; isEn: bo
   const CRU_LABEL: Record<string, string> = {
     GRANDE_CHAMPAGNE: 'Grande Champagne', PETITE_CHAMPAGNE: 'Petite Champagne',
     BORDERIES: 'Borderies', FINS_BOIS: 'Fins Bois', BONS_BOIS: 'Bons Bois',
+  }
+  const OTHER_TYPE_LABEL: Record<string, string> = {
+    RUM: isEn ? 'Rum' : '럼', GIN: isEn ? 'Gin' : '진', VODKA: isEn ? 'Vodka' : '보드카',
+    TEQUILA: isEn ? 'Tequila' : '데킬라', MEZCAL: isEn ? 'Mezcal' : '메스칼',
+    BRANDY: isEn ? 'Brandy' : '브랜디', LIQUEUR: isEn ? 'Liqueur' : '리큐르',
+    SAKE: isEn ? 'Sake' : '사케', SOJU: isEn ? 'Soju' : '소주', BAIJIU: isEn ? 'Baijiu' : '바이주',
+    ABSINTHE: isEn ? 'Absinthe' : '압생트', BEER: isEn ? 'Beer' : '맥주', OTHER: isEn ? 'Other' : '기타',
   }
   return (
     <div className="bg-white rounded-2xl shadow-sm p-6 space-y-6">
@@ -187,6 +195,24 @@ function SpiritDetailSections({ spirit, isEn }: { spirit: SpiritDetail; isEn: bo
           </div>
           {cognac.blendDetail && (
             <p className="text-sm text-neutral-600 leading-relaxed">{cognac.blendDetail}</p>
+          )}
+        </div>
+      )}
+
+      {/* 기타 상세 */}
+      {other && (
+        <div className="space-y-3">
+          <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">
+            {isEn ? 'Other' : '기타'}
+          </h3>
+          <DetailGrid>
+            <DI label={isEn ? 'Type' : '주종'}
+              value={other.otherType ? OTHER_TYPE_LABEL[other.otherType] ?? other.otherType : null} />
+            <DI label={isEn ? 'Main Ingredient' : '주원료'} value={other.mainIngredient} />
+            <DI label={isEn ? 'Production' : '제조 방식'} value={other.productionMethod} />
+          </DetailGrid>
+          {other.notes && (
+            <p className="text-sm text-neutral-600 leading-relaxed">{other.notes}</p>
           )}
         </div>
       )}

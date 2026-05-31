@@ -40,6 +40,7 @@ export interface SpiritDetail extends SpiritListItem {
   whiskyDetail: WhiskyDetailResponse | null
   wineDetail: WineDetailResponse | null
   cognacDetail: CognacDetailResponse | null
+  otherDetail: OtherDetailResponse | null
 }
 
 // ── 카테고리 상세 Enum 타입 ────────────────────────────────────
@@ -51,6 +52,7 @@ export type WineType = 'RED' | 'WHITE' | 'ROSE' | 'SPARKLING' | 'DESSERT' | 'ORA
 export type WineCertification = 'ORGANIC' | 'BIODYNAMIC' | 'SUSTAINABLE' | 'NONE'
 export type CognacGrade = 'VS' | 'NAPOLEON' | 'VSOP' | 'XO' | 'XXO' | 'HORS_DAGE'
 export type CognacCru = 'GRANDE_CHAMPAGNE' | 'PETITE_CHAMPAGNE' | 'BORDERIES' | 'FINS_BOIS' | 'BONS_BOIS'
+export type OtherSpiritType = 'RUM' | 'GIN' | 'VODKA' | 'TEQUILA' | 'MEZCAL' | 'BRANDY' | 'LIQUEUR' | 'SAKE' | 'SOJU' | 'BAIJIU' | 'ABSINTHE' | 'BEER' | 'OTHER'
 // ── 상세 응답 타입 ──────────────────────────────────────────────
 export interface GrapeVariety { name: string; percentage: number | null }
 
@@ -104,6 +106,13 @@ export interface CognacDetailResponse {
   cru: CognacCru | null
   isFineChampagne: boolean | null
   blendDetail: string | null
+}
+
+export interface OtherDetailResponse {
+  otherType: OtherSpiritType | null
+  mainIngredient: string | null
+  productionMethod: string | null
+  notes: string | null
 }
 
 export interface SpiritSearchParams {

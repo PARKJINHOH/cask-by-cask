@@ -48,6 +48,7 @@ public interface SpiritRepository extends JpaRepository<Spirit, Long>, SpiritQue
             LEFT JOIN FETCH s.whiskyDetail
             LEFT JOIN FETCH s.wineDetail
             LEFT JOIN FETCH s.cognacDetail
+            LEFT JOIN FETCH s.otherDetail
             WHERE s.id = :id AND s.status = :status
             """)
     Optional<Spirit> findByIdWithAllDetails(@Param("id") Long id,

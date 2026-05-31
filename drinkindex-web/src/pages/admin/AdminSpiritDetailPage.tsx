@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form'
 import Badge from '@/shared/components/Badge'
 import Button from '@/shared/components/Button'
 import Spinner from '@/shared/components/Spinner'
+import AdminPageHeader from '@/shared/components/AdminPageHeader'
 import ImageLightbox from '@/shared/components/ImageLightbox'
 import { formatDate } from '@/shared/utils/format'
 import {
@@ -208,16 +209,16 @@ export default function AdminSpiritDetailPage() {
   return (
     <div className="p-6 max-w-3xl space-y-6">
       {/* 헤더 */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => navigate('/admin/spirits')}
-          className="text-sm text-neutral-500 hover:text-neutral-700 transition-colors"
-        >
-          ← 목록으로
-        </button>
-        <h1 className="text-xl font-bold text-neutral-900">술 상세 / 수정</h1>
-        <Badge variant={spirit.status} size="md">{STATUS_LABEL[spirit.status]}</Badge>
-      </div>
+      <AdminPageHeader
+        breadcrumbs={[
+          { label: '주류 관리', to: '/admin/spirits' },
+          { label: '주류 상세' },
+        ]}
+        backTo="/admin/spirits"
+        backLabel="주류 목록"
+        title="술 상세 / 수정"
+        badge={<Badge variant={spirit.status} size="md">{STATUS_LABEL[spirit.status]}</Badge>}
+      />
 
       {/* 메타 정보 */}
       <div className="bg-white rounded-xl shadow-sm p-5">

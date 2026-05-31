@@ -60,12 +60,14 @@ public record SpiritDetailResponse(
         @Schema(description = "와인 상세 (category=WINE 전용)")
         WineDetailResponse wineDetail,
         @Schema(description = "꼬냑 상세 (category=COGNAC 전용)")
-        CognacDetailResponse cognacDetail
+        CognacDetailResponse cognacDetail,
+        @Schema(description = "기타 상세 (category=OTHER 전용)")
+        OtherDetailResponse otherDetail
 
 ) {
     /** 상세 없이 기본 정보만 반환 (등록·수정 응답) */
     public static SpiritDetailResponse of(Spirit spirit, List<SpiritImageResponse> images) {
-        return of(spirit, images, null, null, null, null);
+        return of(spirit, images, null, null, null, null, null);
     }
 
     /** 전체 상세 포함 응답 (GET /api/spirits/{id}) */
@@ -73,7 +75,8 @@ public record SpiritDetailResponse(
                                            SpiritCommonDetailResponse commonDetail,
                                            WhiskyDetailResponse whiskyDetail,
                                            WineDetailResponse wineDetail,
-                                           CognacDetailResponse cognacDetail) {
+                                           CognacDetailResponse cognacDetail,
+                                           OtherDetailResponse otherDetail) {
         return new SpiritDetailResponse(
                 spirit.getId(),
                 spirit.getNameKo(),
@@ -98,7 +101,8 @@ public record SpiritDetailResponse(
                 commonDetail,
                 whiskyDetail,
                 wineDetail,
-                cognacDetail
+                cognacDetail,
+                otherDetail
         );
     }
 }

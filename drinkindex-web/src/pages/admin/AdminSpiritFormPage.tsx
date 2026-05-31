@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAdminSpiritDetail } from '@/domain/admin/hooks/useAdminSpirits'
 import { adminSpiritApi } from '@/domain/admin/api/adminSpiritApi'
@@ -8,6 +8,7 @@ import CountryRegionSelector from '@/domain/location/components/CountryRegionSel
 import Button from '@/shared/components/Button'
 import Modal from '@/shared/components/Modal'
 import Spinner from '@/shared/components/Spinner'
+import AdminPageHeader from '@/shared/components/AdminPageHeader'
 import SpiritCommonDetailSection, {
   type CommonDetailForm,
   DEFAULT_COMMON_DETAIL,
@@ -15,49 +16,44 @@ import SpiritCommonDetailSection, {
 import WhiskyDetailSection, { type WhiskyDetailForm, DEFAULT_WHISKY } from '@/domain/admin/components/WhiskyDetailSection'
 import WineDetailSection, { type WineDetailForm, DEFAULT_WINE } from '@/domain/admin/components/WineDetailSection'
 import CognacDetailSection, { type CognacDetailForm, DEFAULT_COGNAC } from '@/domain/admin/components/CognacDetailSection'
+import OtherDetailSection, { type OtherDetailForm, DEFAULT_OTHER } from '@/domain/admin/components/OtherDetailSection'
 import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
 
 // ── 상수 ────────────────────────────────────────────────────────
 
-const CATEGORIES: Array<[SpiritCategory, string]> = [
-  ['WHISKY','위스키'],['COGNAC','꼬냑'],['WINE','와인'],['OTHER','기타'],
+const CATEGORIES: Array<[SpiritCategory, string, string]> = [
+  ['WHISKY', '위스키', '🥃'],
+  ['COGNAC', '꼬냑',   '🍇'],
+  ['WINE',   '와인',   '🍷'],
+  ['OTHER',  '기타',   '🍸'],
 ]
 
-const PRODUCER_LABEL: Partial<Record<SpiritCategory, string>> = {
-  WINE: '양조장',
+const CATEGORY_LABEL: Record<SpiritCategory, string> = {
+  WHISKY: '위스키', COGNAC: '꼬냑', WINE: '와인', OTHER: '기타',
+}
+
+const PRODUCER_LABEL: Record<SpiritCategory, string> = {
+  WHISKY: '증류소', COGNAC: '증류소', WINE: '양조장', OTHER: '생산자',
 }
 
 const DATE_RE = /^\d{4}(-\d{2})?$/
 
-// ── Step 인디케이터 ──────────────────────────────────────────────
+// ── 공통 스타일 ──────────────────────────────────────────────────
 
-function StepIndicator({ current, total }: { current: number; total: number }) {
+const CARD = 'bg-white rounded-2xl shadow-sm p-6 space-y-5'
+const INPUT = 'w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400'
+const LABEL = 'block text-xs font-medium text-neutral-600 mb-1.5'
+
+function SectionTitle({ step, title, hint }: { step: number; title: string; hint?: string }) {
   return (
-    <div className="flex items-center gap-2 mb-6">
-      {Array.from({ length: total }, (_, i) => i + 1).map((n) => (
-        <div key={n} className="flex items-center gap-2">
-          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
-            n === current
-              ? 'bg-amber-500 text-white'
-              : n < current
-              ? 'bg-amber-100 text-amber-600'
-              : 'bg-neutral-100 text-neutral-400'
-          }`}>
-            {n < current ? '✓' : n}
-          </div>
-          {n < total && <div className={`w-8 h-0.5 ${n < current ? 'bg-amber-300' : 'bg-neutral-100'}`} />}
-        </div>
-      ))}
-      <span className="ml-2 text-xs text-neutral-500">Step {current} / {total}</span>
+    <div className="flex items-center gap-2.5">
+      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-500 text-white text-xs font-bold
+        flex items-center justify-center">{step}</span>
+      <h2 className="text-sm font-bold text-neutral-800">{title}</h2>
+      {hint && <span className="text-xs text-neutral-400">{hint}</span>}
     </div>
   )
 }
-
-// ── 폼 필드 ─────────────────────────────────────────────────────
-
-const CARD = 'bg-white rounded-xl shadow-sm p-5 space-y-5'
-const INPUT = 'w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400'
-const LABEL = 'block text-xs font-medium text-neutral-600 mb-1.5'
 
 // ── 메인 페이지 ────────────────────────────────────────────────
 
@@ -69,9 +65,8 @@ export default function AdminSpiritFormPage() {
 
   const { data: spirit, isLoading } = useAdminSpiritDetail(spiritId ?? 0)
 
-  // ── Step 상태 ────────────────────────────────────────────────
-  const [step, setStep] = useState<1 | 2 | 3>(1)
-  const [category, setCategory] = useState<SpiritCategory>('WHISKY')
+  // ── 카테고리 ─────────────────────────────────────────────────
+  const [category, setCategory] = useState<SpiritCategory | null>(null)
   const [showCatModal, setShowCatModal] = useState(false)
   const [pendingCat, setPendingCat] = useState<SpiritCategory | null>(null)
 
@@ -92,10 +87,10 @@ export default function AdminSpiritFormPage() {
   const [whiskyDetail, setWhiskyDetail] = useState<WhiskyDetailForm>(DEFAULT_WHISKY)
   const [wineDetail, setWineDetail] = useState<WineDetailForm>(DEFAULT_WINE)
   const [cognacDetail, setCognacDetail] = useState<CognacDetailForm>(DEFAULT_COGNAC)
+  const [otherDetail, setOtherDetail] = useState<OtherDetailForm>(DEFAULT_OTHER)
 
   // ── UI 상태 ──────────────────────────────────────────────────
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [step3Errors, setStep3Errors] = useState<Record<string, string>>({})
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [initialized, setInitialized] = useState(false)
@@ -174,54 +169,64 @@ export default function AdminSpiritFormPage() {
       })
     }
 
+    if (spirit.otherDetail) {
+      const o = spirit.otherDetail
+      setOtherDetail({
+        otherType: o.otherType ?? '',
+        mainIngredient: o.mainIngredient ?? '',
+        productionMethod: o.productionMethod ?? '',
+        notes: o.notes ?? '',
+      })
+    }
+
     setInitialized(true)
   }, [spirit, isEdit, initialized])
 
   // ── 카테고리 변경 처리 ────────────────────────────────────────
+  const applyCategory = (cat: SpiritCategory) => {
+    // 와인 ↔ 비와인 전환 시 연도 필드 정리
+    if (cat === 'WINE' && category !== 'WINE') setBottledYear('')
+    else if (cat !== 'WINE' && category === 'WINE') setVintageYear('')
+    setCategory(cat)
+    setErrors({})
+  }
+
   const handleCategorySelect = (cat: SpiritCategory) => {
-    if (cat !== category) {
-      // 카테고리가 와인↔비와인으로 바뀌면 해당 연도 필드 초기화
-      if (cat === 'WINE' && category !== 'WINE') setBottledYear('')
-      else if (cat !== 'WINE' && category === 'WINE') setVintageYear('')
-    }
-    if (isEdit && cat !== category) {
+    if (cat === category) return
+    // 수정 모드에서 카테고리 변경 시 기존 상세 삭제 경고
+    if (isEdit && category) {
       setPendingCat(cat)
       setShowCatModal(true)
     } else {
-      setCategory(cat)
-      setStep(2)
+      applyCategory(cat)
     }
   }
 
   const confirmCategoryChange = () => {
-    if (pendingCat) {
-      if (pendingCat === 'WINE' && category !== 'WINE') setBottledYear('')
-      else if (pendingCat !== 'WINE' && category === 'WINE') setVintageYear('')
-      setCategory(pendingCat)
-      setPendingCat(null)
-    }
+    if (pendingCat) applyCategory(pendingCat)
+    setPendingCat(null)
     setShowCatModal(false)
-    setStep(2)
   }
 
-  // ── 유효성 검증 ───────────────────────────────────────────────
-  const validateStep2 = () => {
+  // ── 유효성 검증 (한 화면 통합) ────────────────────────────────
+  const validate = () => {
     const errs: Record<string, string> = {}
-    if (!nameKo.trim()) errs.nameKo = '한글 이름은 필수입니다.'
+
+    if (!category) errs.category = '카테고리를 선택해주세요.'
     if (!nameEn.trim()) errs.nameEn = '영문 이름은 필수입니다.'
+    if (!nameKo.trim()) errs.nameKo = '한글 이름은 필수입니다.'
+
     if (!commonDetail.abv) errs.abv = '알코올 도수는 필수입니다.'
-    else if (Number(commonDetail.abv) < 0 || Number(commonDetail.abv) > 100) errs.abv = '도수는 0~100 사이여야 합니다.'
+    else if (Number(commonDetail.abv) < 0 || Number(commonDetail.abv) > 100)
+      errs.abv = '도수는 0~100 사이여야 합니다.'
     if (!commonDetail.volumeMl) errs.volumeMl = '용량은 필수입니다.'
+
     if (commonDetail.distilledDate && !DATE_RE.test(commonDetail.distilledDate))
       errs.distilledDate = '형식: YYYY 또는 YYYY-MM'
     if (commonDetail.bottledDate && !DATE_RE.test(commonDetail.bottledDate))
       errs.bottledDate = '형식: YYYY 또는 YYYY-MM'
-    setErrors(errs)
-    return Object.keys(errs).length === 0
-  }
 
-  const validateStep3 = () => {
-    const errs: Record<string, string> = {}
+    // 카테고리 전용 필수
     if (category === 'WINE') {
       if (!wineDetail.wineType) errs.wineType = '와인 종류를 선택해주세요.'
       const total = wineDetail.grapeVarieties.reduce(
@@ -230,11 +235,13 @@ export default function AdminSpiritFormPage() {
       if (total > 100) errs.grapeVarieties = '포도 품종 비율 합계가 100%를 초과합니다.'
     }
     if (category === 'COGNAC' && !cognacDetail.grade) errs.grade = '등급을 선택해주세요.'
-    setStep3Errors(errs)
+    if (category === 'OTHER' && !otherDetail.otherType) errs.otherType = '주종을 선택해주세요.'
+
+    setErrors(errs)
     return Object.keys(errs).length === 0
   }
 
-  // ── 공통 상세 페이로드 빌드 ───────────────────────────────────
+  // ── 페이로드 빌드 ─────────────────────────────────────────────
   const buildCommonPayload = () => ({
     isNas: commonDetail.isNas,
     ageStatement: commonDetail.isNas ? null : (commonDetail.ageStatement ?? null),
@@ -294,13 +301,26 @@ export default function AdminSpiritFormPage() {
           blendDetail: cognacDetail.blendDetail || null,
         },
       }
+      case 'OTHER': return {
+        otherDetail: {
+          otherType: otherDetail.otherType || null,
+          mainIngredient: otherDetail.mainIngredient || null,
+          productionMethod: otherDetail.productionMethod || null,
+          notes: otherDetail.notes || null,
+        },
+      }
       default: return {}
     }
   }
 
   // ── Submit ─────────────────────────────────────────────────────
   const handleSubmit = async () => {
-    if (!validateStep3()) return
+    if (!validate()) {
+      // 첫 에러로 스크롤
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
+    if (!category) return
     setIsSaving(true)
     setSaveError('')
     try {
@@ -309,8 +329,8 @@ export default function AdminSpiritFormPage() {
         nameKo, nameEn, category,
         distilleryId: distilleryId ?? null,
         bottler: bottler || null,
-        bottledYear: bottledYear ? Number(bottledYear) : null,
-        vintageYear: vintageYear ? Number(vintageYear) : null,
+        bottledYear: category !== 'WINE' && bottledYear ? Number(bottledYear) : null,
+        vintageYear: category === 'WINE' && vintageYear ? Number(vintageYear) : null,
         abv: common.abv,
         volumeMl: common.volumeMl,
         country: country || null,
@@ -336,153 +356,186 @@ export default function AdminSpiritFormPage() {
     return <div className="flex justify-center py-32"><Spinner size="lg" className="text-primary-800" /></div>
   }
 
+  const producerLabel = category ? PRODUCER_LABEL[category] : '증류소'
+
   return (
-    <div className="p-6 max-w-3xl space-y-6">
+    <div className="p-6 mx-auto space-y-6 pb-28 max-w-3xl lg:max-w-6xl">
       {/* 헤더 */}
-      <div className="flex items-center gap-3">
-        <button onClick={() => navigate(isEdit ? `/admin/spirits/${spiritId}` : '/admin/spirits')}
-          className="text-sm text-neutral-500 hover:text-neutral-700 transition-colors">
-          ← {isEdit ? '상세로' : '목록으로'}
-        </button>
-        <h1 className="text-xl font-bold text-neutral-900">
-          {isEdit ? '술 정보 수정' : '새 술 등록'}
-        </h1>
-      </div>
+      <AdminPageHeader
+        breadcrumbs={[
+          { label: '주류 관리', to: '/admin/spirits' },
+          { label: isEdit ? '주류 수정' : '주류 등록' },
+        ]}
+        backTo={isEdit ? `/admin/spirits/${spiritId}` : '/admin/spirits'}
+        backLabel={isEdit ? '상세로' : '주류 목록'}
+        title={isEdit ? '술 정보 수정' : '새 술 등록'}
+      />
 
-      <StepIndicator current={step} total={3} />
+      {/* PC: 2단 컬럼 레이아웃 / MO: 단일 컬럼(기존 유지) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        {/* ═══════════ 좌측 컬럼: ① 기본 / ② 생산·병입 ═══════════ */}
+        <div className="space-y-6">
+      {/* ── 1. 카테고리 & 기본 정보 ─────────────────────────── */}
+      <div className={CARD}>
+        <SectionTitle step={1} title="카테고리 & 기본 정보" />
 
-      {/* ── STEP 1: 카테고리 선택 ────────────────────────────── */}
-      {step === 1 && (
-        <div className={CARD}>
-          <h2 className="text-sm font-semibold text-neutral-700">카테고리 선택</h2>
+        {/* 카테고리 */}
+        <div>
+          <label className={LABEL}>카테고리 <span className="text-red-400">*</span></label>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {CATEGORIES.map(([cat, label]) => (
+            {CATEGORIES.map(([cat, label, emoji]) => (
               <button key={cat} type="button" onClick={() => handleCategorySelect(cat)}
-                className={`py-4 rounded-xl border-2 text-sm font-semibold transition-all ${
+                className={`py-4 rounded-xl border-2 text-sm font-semibold transition-all flex flex-col items-center gap-1.5 ${
                   category === cat
                     ? 'border-amber-500 bg-amber-50 text-amber-700'
                     : 'border-neutral-200 text-neutral-600 hover:border-amber-300 hover:bg-amber-50/50'
                 }`}>
+                <span className="text-2xl leading-none">{emoji}</span>
                 {label}
               </button>
             ))}
           </div>
-          <div className="flex justify-end pt-2">
-            <Button onClick={() => setStep(2)}>다음 →</Button>
+          {errors.category && <p className="text-xs text-red-500 mt-1">{errors.category}</p>}
+        </div>
+
+        {/* 이름 */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className={LABEL}>영어 이름 <span className="text-red-400">*</span></label>
+            <input value={nameEn} onChange={(e) => setNameEn(e.target.value)}
+              maxLength={200} placeholder="Balvenie 12Y DoubleWood"
+              className={`${INPUT} ${errors.nameEn ? 'border-red-400' : ''}`} />
+            {errors.nameEn && <p className="text-xs text-red-500 mt-1">{errors.nameEn}</p>}
+          </div>
+          <div>
+            <label className={LABEL}>한국어 이름 <span className="text-red-400">*</span></label>
+            <input value={nameKo} onChange={(e) => setNameKo(e.target.value)}
+              maxLength={200} placeholder="예) 발베니 12년 더블우드"
+              className={`${INPUT} ${errors.nameKo ? 'border-red-400' : ''}`} />
+            {errors.nameKo && <p className="text-xs text-red-500 mt-1">{errors.nameKo}</p>}
           </div>
         </div>
-      )}
 
-      {/* ── STEP 2: 기본 정보 ────────────────────────────────── */}
-      {step === 2 && (
-        <div className={CARD}>
-          <h2 className="text-sm font-semibold text-neutral-700">
-            기본 정보 — <span className="text-amber-600">{CATEGORIES.find(([c]) => c === category)?.[1]}</span>
-          </h2>
-
-          {/* 이름 */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* 필수 규격 */}
+        <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-4 space-y-4">
+          <p className="text-xs font-semibold text-amber-700">필수 규격</p>
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={LABEL}>영어 이름 *</label>
-              <input value={nameEn} onChange={(e) => setNameEn(e.target.value)}
-                maxLength={200}
-                className={`${INPUT} ${errors.nameEn ? 'border-red-400' : ''}`} />
-              {errors.nameEn && <p className="text-xs text-red-500 mt-1">{errors.nameEn}</p>}
+              <label className={LABEL}>알코올 도수 <span className="text-red-400">*</span></label>
+              <div className="relative">
+                <input
+                  type="number" step="0.1" min="0" max="100"
+                  value={commonDetail.abv}
+                  onChange={(e) => {
+                    let val = e.target.value
+                    const num = parseFloat(val)
+                    if (!isNaN(num) && num > 100) val = '100'
+                    else if (!isNaN(num) && num < 0) val = '0'
+                    setCommonDetail((prev) => ({ ...prev, abv: val }))
+                  }}
+                  className={`${INPUT} pr-8 ${errors.abv ? 'border-red-400' : ''}`}
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">%</span>
+              </div>
+              {errors.abv && <p className="text-xs text-red-500 mt-1">{errors.abv}</p>}
             </div>
             <div>
-              <label className={LABEL}>한국어 이름 *</label>
-              <input value={nameKo} onChange={(e) => setNameKo(e.target.value)}
-                maxLength={200}
-                className={`${INPUT} ${errors.nameKo ? 'border-red-400' : ''}`} />
-              {errors.nameKo && <p className="text-xs text-red-500 mt-1">{errors.nameKo}</p>}
+              <label className={LABEL}>용량 <span className="text-red-400">*</span></label>
+              <div className="relative">
+                <input
+                  type="number" min="1" max="100000"
+                  value={commonDetail.volumeMl}
+                  onChange={(e) => setCommonDetail((prev) => ({ ...prev, volumeMl: e.target.value }))}
+                  className={`${INPUT} pr-10 ${errors.volumeMl ? 'border-red-400' : ''}`}
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">ml</span>
+              </div>
+              {errors.volumeMl && <p className="text-xs text-red-500 mt-1">{errors.volumeMl}</p>}
             </div>
           </div>
+        </div>
+      </div>
 
-          {/* 필수 정보 */}
-          <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-4 space-y-4">
-            <p className="text-xs font-semibold text-amber-700">필수 정보</p>
-            <div className="grid grid-cols-2 gap-4">
+          {/* ── 2. 생산 / 병입 정보 ─────────────────────────── */}
+          {category && (
+          <div className={CARD}>
+            <SectionTitle step={2} title="생산 / 병입 정보" hint="선택" />
+
+            <div>
+              <label className={LABEL}>{producerLabel}</label>
+              <AdminDistillerySelector value={distilleryId} defaultName={distilleryName}
+                onChange={(id) => setDistilleryId(id ?? null)} />
+            </div>
+
+            <div>
+              <label className={LABEL}>국가 / 지역</label>
+              <CountryRegionSelector
+                countryCode={countryCode} regionNameKo={region}
+                onCountryChange={(code, nameKo) => { setCountryCode(code); setCountry(nameKo) }}
+                onRegionChange={setRegion}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className={LABEL}>
-                  알코올 도수 <span className="text-red-400">*</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type="number" step="0.1" min="0" max="100"
-                    value={commonDetail.abv}
-                    onChange={(e) => {
-                      let val = e.target.value
-                      const num = parseFloat(val)
-                      if (!isNaN(num) && num > 100) val = '100'
-                      else if (!isNaN(num) && num < 0) val = '0'
-                      setCommonDetail((prev) => ({ ...prev, abv: val }))
-                    }}
-                    className={`${INPUT} pr-8 ${errors.abv ? 'border-red-400' : ''}`}
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">%</span>
+                <label className={LABEL}>병입업체</label>
+                <input value={bottler} onChange={(e) => setBottler(e.target.value)}
+                  maxLength={200} className={INPUT} />
+              </div>
+              {category === 'WINE' ? (
+                <div>
+                  <label className={LABEL}>빈티지 연도</label>
+                  <input type="number" min={1800} max={2100} value={vintageYear}
+                    onChange={(e) => setVintageYear(e.target.value)} className={INPUT} />
                 </div>
-                {errors.abv && <p className="text-xs text-red-500 mt-1">{errors.abv}</p>}
-              </div>
-              <div>
-                <label className={LABEL}>
-                  용량 <span className="text-red-400">*</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type="number" min="1" max="100000"
-                    value={commonDetail.volumeMl}
-                    onChange={(e) => setCommonDetail((prev) => ({ ...prev, volumeMl: e.target.value }))}
-                    className={`${INPUT} pr-10 ${errors.volumeMl ? 'border-red-400' : ''}`}
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">ml</span>
+              ) : (
+                <div>
+                  <label className={LABEL}>병입 연도</label>
+                  <input type="number" min={1800} max={2100} value={bottledYear}
+                    onChange={(e) => setBottledYear(e.target.value)} className={INPUT} />
                 </div>
-                {errors.volumeMl && <p className="text-xs text-red-500 mt-1">{errors.volumeMl}</p>}
-              </div>
+              )}
             </div>
           </div>
+          )}
+        </div>
 
-          {/* 증류소 / 양조장 */}
-          <div>
-            <label className={LABEL}>{PRODUCER_LABEL[category] ?? '증류소'}</label>
-            <AdminDistillerySelector value={distilleryId} defaultName={distilleryName}
-              onChange={(id) => setDistilleryId(id ?? null)} />
-          </div>
-
-          {/* 국가/지역 */}
-          <div>
-            <label className={LABEL}>국가 / 지역</label>
-            <CountryRegionSelector
-              countryCode={countryCode} regionNameKo={region}
-              onCountryChange={(code, nameKo) => { setCountryCode(code); setCountry(nameKo) }}
-              onRegionChange={setRegion}
-            />
-          </div>
-
-          {/* 선택 필드들 */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className={LABEL}>병입업체</label>
-              <input value={bottler} onChange={(e) => setBottler(e.target.value)}
-                maxLength={200} className={INPUT} />
+        {/* ═══════════ 우측 컬럼: ③ 카테고리 상세 / ④ 공통 상세 ═══════════ */}
+        <div className="space-y-6">
+          {!category ? (
+            <div className="rounded-2xl border-2 border-dashed border-neutral-200 bg-neutral-50/50 py-12 text-center">
+              <p className="text-sm text-neutral-400">카테고리를 먼저 선택하면 상세 입력 항목이 표시됩니다.</p>
             </div>
-            {category === 'WINE' ? (
-              <div>
-                <label className={LABEL}>빈티지 연도</label>
-                <input type="number" min={1800} max={2100} value={vintageYear}
-                  onChange={(e) => setVintageYear(e.target.value)} className={INPUT} />
-              </div>
-            ) : (
-              <div>
-                <label className={LABEL}>병입 연도</label>
-                <input type="number" min={1800} max={2100} value={bottledYear}
-                  onChange={(e) => setBottledYear(e.target.value)} className={INPUT} />
-              </div>
+          ) : (
+            <>
+          {/* ── 3. 카테고리 전용 상세 ───────────────────────── */}
+          <div className={CARD}>
+            <SectionTitle step={3} title={`${CATEGORY_LABEL[category]} 상세`} />
+
+            {category === 'WHISKY' && (
+              <WhiskyDetailSection value={whiskyDetail}
+                onChange={(u) => setWhiskyDetail((prev) => ({ ...prev, ...u }))} />
+            )}
+            {category === 'WINE' && (
+              <WineDetailSection value={wineDetail}
+                onChange={(u) => setWineDetail((prev) => ({ ...prev, ...u }))}
+                errors={errors} />
+            )}
+            {category === 'COGNAC' && (
+              <CognacDetailSection value={cognacDetail}
+                onChange={(u) => setCognacDetail((prev) => ({ ...prev, ...u }))}
+                errors={errors} />
+            )}
+            {category === 'OTHER' && (
+              <OtherDetailSection value={otherDetail}
+                onChange={(u) => setOtherDetail((prev) => ({ ...prev, ...u }))}
+                errors={errors} />
             )}
           </div>
 
-          {/* 공통 상세 */}
-          <div className="border-t border-neutral-100 pt-4 space-y-1">
-            <p className="text-xs font-semibold text-neutral-500 mb-3">공통 상세 정보 (선택)</p>
+          {/* ── 4. 공통 상세 정보 (선택) ─────────────────────── */}
+          <div className={CARD}>
+            <SectionTitle step={4} title="공통 상세 정보" hint="선택" />
             <SpiritCommonDetailSection
               value={commonDetail}
               onChange={(u) => setCommonDetail((prev) => ({ ...prev, ...u }))}
@@ -492,55 +545,29 @@ export default function AdminSpiritFormPage() {
               }}
             />
           </div>
-
-          <div className="flex justify-between pt-2">
-            <Button variant="secondary" onClick={() => setStep(1)}>← 이전</Button>
-            <Button onClick={() => { if (validateStep2()) setStep(3) }}>다음 →</Button>
-          </div>
+            </>
+          )}
         </div>
+      </div>
+
+      {saveError && (
+        <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{saveError}</p>
       )}
 
-      {/* ── STEP 3: 카테고리 전용 필드 ─────────────────────── */}
-      {step === 3 && (
-        <div className={CARD}>
-          <h2 className="text-sm font-semibold text-neutral-700">
-            카테고리 상세 — <span className="text-amber-600">{CATEGORIES.find(([c]) => c === category)?.[1]}</span>
-          </h2>
-
-          {category === 'WHISKY' && (
-            <WhiskyDetailSection value={whiskyDetail}
-              onChange={(u) => setWhiskyDetail((prev) => ({ ...prev, ...u }))} />
-          )}
-          {category === 'WINE' && (
-            <WineDetailSection value={wineDetail}
-              onChange={(u) => setWineDetail((prev) => ({ ...prev, ...u }))}
-              errors={step3Errors} />
-          )}
-          {category === 'COGNAC' && (
-            <CognacDetailSection value={cognacDetail}
-              onChange={(u) => setCognacDetail((prev) => ({ ...prev, ...u }))}
-              errors={step3Errors} />
-          )}
-          {!['WHISKY','WINE','COGNAC'].includes(category) && (
-            <p className="text-sm text-neutral-400 py-4 text-center">
-              이 카테고리는 추가 상세 정보가 없습니다.
-            </p>
-          )}
-
-          {saveError && (
-            <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{saveError}</p>
-          )}
-
-          <div className="flex justify-between pt-2">
-            <Button variant="secondary" onClick={() => setStep(2)}>← 이전</Button>
-            <Button onClick={handleSubmit} isLoading={isSaving}>
-              {isEdit ? '변경사항 저장' : '등록'}
-            </Button>
-          </div>
+      {/* 하단 고정 액션바 */}
+      <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/90 backdrop-blur border-t border-neutral-200">
+        <div className="max-w-3xl lg:max-w-6xl mx-auto px-6 py-3 flex justify-end gap-2">
+          <Button variant="secondary"
+            onClick={() => navigate(isEdit ? `/admin/spirits/${spiritId}` : '/admin/spirits')}>
+            취소
+          </Button>
+          <Button onClick={handleSubmit} isLoading={isSaving}>
+            {isEdit ? '변경사항 저장' : '등록'}
+          </Button>
         </div>
-      )}
+      </div>
 
-      {/* 카테고리 변경 경고 모달 */}
+      {/* 카테고리 변경 경고 모달 (수정 모드) */}
       <Modal
         open={showCatModal}
         onClose={() => { setShowCatModal(false); setPendingCat(null) }}

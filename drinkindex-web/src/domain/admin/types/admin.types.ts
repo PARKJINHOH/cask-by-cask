@@ -1,7 +1,7 @@
 import type {
   SpiritCategory, SpiritStatus,
   SpiritCommonDetailResponse, WhiskyDetailResponse, WineDetailResponse,
-  CognacDetailResponse,
+  CognacDetailResponse, OtherDetailResponse,
 } from '@/domain/spirit/types/spirit.types'
 
 // ── 폼용 Detail Request 타입 ─────────────────────────────────
@@ -57,6 +57,13 @@ export interface CognacDetailRequest {
   cru?: string | null
   isFineChampagne?: boolean | null
   blendDetail?: string | null
+}
+
+export interface OtherDetailRequest {
+  otherType?: string | null
+  mainIngredient?: string | null
+  productionMethod?: string | null
+  notes?: string | null
 }
 
 // ── Users ──────────────────────────────────────────────────────
@@ -259,6 +266,7 @@ export interface AdminSpiritDetail {
   whiskyDetail: WhiskyDetailResponse | null
   wineDetail: WineDetailResponse | null
   cognacDetail: CognacDetailResponse | null
+  otherDetail: OtherDetailResponse | null
 }
 
 export interface UpdateSpiritPayload {
@@ -277,6 +285,7 @@ export interface UpdateSpiritPayload {
   whiskyDetail?: WhiskyDetailRequest
   wineDetail?: WineDetailRequest
   cognacDetail?: CognacDetailRequest
+  otherDetail?: OtherDetailRequest
 }
 
 export interface CreateSpiritPayload {
@@ -295,6 +304,7 @@ export interface CreateSpiritPayload {
   whiskyDetail?: WhiskyDetailRequest
   wineDetail?: WineDetailRequest
   cognacDetail?: CognacDetailRequest
+  otherDetail?: OtherDetailRequest
 }
 
 // ── Register Requests ──────────────────────────────────────────

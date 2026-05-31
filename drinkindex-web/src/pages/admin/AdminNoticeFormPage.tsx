@@ -12,6 +12,7 @@ import { NOTICE_CATEGORY_LABELS } from '@/domain/notice/types/notice.types'
 import type { NoticeCategory } from '@/domain/notice/types/notice.types'
 import HtmlEditorField from '@/shared/components/HtmlEditorField'
 import Button from '@/shared/components/Button'
+import AdminPageHeader from '@/shared/components/AdminPageHeader'
 import Toast from '@/shared/components/Toast'
 import { useToast } from '@/shared/hooks/useToast'
 import { draftApi } from '@/shared/api/draftApi'
@@ -171,21 +172,15 @@ export default function AdminNoticeFormPage() {
       />
 
       {/* 헤더 */}
-      <div className="flex items-center gap-3 mb-8">
-        <button
-          type="button"
-          onClick={() => navigate('/admin/notices')}
-          className="text-neutral-400 hover:text-neutral-600 transition-colors"
-          aria-label="목록으로"
-        >
-          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M19 12H5M12 19l-7-7 7-7" />
-          </svg>
-        </button>
-        <h1 className="text-xl font-bold text-neutral-900">
-          {isEdit ? '공지 수정' : '공지 작성'}
-        </h1>
-      </div>
+      <AdminPageHeader
+        breadcrumbs={[
+          { label: '공지사항', to: '/admin/notices' },
+          { label: isEdit ? '공지 수정' : '공지 작성' },
+        ]}
+        backTo="/admin/notices"
+        backLabel="공지 목록"
+        title={isEdit ? '공지 수정' : '공지 작성'}
+      />
 
       <form
         onSubmit={(e) => e.preventDefault()}
