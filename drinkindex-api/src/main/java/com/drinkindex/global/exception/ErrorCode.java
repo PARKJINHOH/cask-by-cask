@@ -33,6 +33,8 @@ public enum ErrorCode {
     PROFILE_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_015", "프로필 이미지를 찾을 수 없습니다."),
     ACCOUNT_INACTIVE(HttpStatus.FORBIDDEN, "USER_016", "비활성화된 계정입니다."),
     ACCOUNT_SUSPENDED(HttpStatus.FORBIDDEN, "USER_017", "계정이 정지되었습니다."),
+    ACCOUNT_DORMANT(HttpStatus.FORBIDDEN, "USER_018", "휴면 계정입니다. 이메일 인증 후 휴면을 해제해주세요."),
+    ACCOUNT_LOCKED(HttpStatus.TOO_MANY_REQUESTS, "USER_019", "비밀번호를 여러 번 틀려 계정이 잠겼습니다. 잠시 후 다시 시도해주세요."),
 
     // Spirit
     SPIRIT_NOT_FOUND(HttpStatus.NOT_FOUND, "SPIRIT_001", "술 정보를 찾을 수 없습니다."),

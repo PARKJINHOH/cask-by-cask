@@ -19,6 +19,8 @@ export interface UserInfo {
   nicknameFixed?: boolean
   profileImageUrl?: string | null
   allowedMenus?: AdminMenuKey[]
+  passwordChangeRequired?: boolean
+  mustChangePassword?: boolean
 }
 
 export interface TokenResponse {
@@ -39,6 +41,14 @@ export interface AttendanceResult {
 
 export interface LoginResponse extends TokenResponse {
   attendance: AttendanceResult
+  passwordChangeRequired: boolean
+  mustChangePassword: boolean
+}
+
+export interface ReactivateRequest {
+  email: string
+  password: string
+  code: string
 }
 
 export interface LoginRequest {

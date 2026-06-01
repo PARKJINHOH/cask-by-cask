@@ -36,7 +36,11 @@ public record UserResponse(
         @Schema(description = "이메일 수신 동의 여부")
         Boolean emailSubscribed,
         @Schema(description = "허용된 관리자 메뉴 (DISTILLERY 역할 전용)")
-        List<AdminMenuKey> allowedMenus
+        List<AdminMenuKey> allowedMenus,
+        @Schema(description = "비밀번호 변경 권고 대상 여부 (90일 이상 미변경)")
+        boolean passwordChangeRequired,
+        @Schema(description = "비밀번호 변경 강제 여부 (임시 비밀번호 발급 후)")
+        boolean mustChangePassword
 ) {
     public static UserResponse from(User user) {
         return new UserResponse(
@@ -53,7 +57,9 @@ public record UserResponse(
                 user.getProfileImageUrl(),
                 user.getProfileImageChangedAt(),
                 user.getEmailSubscribed(),
-                user.getRoleType() != null ? List.copyOf(user.getRoleType().getAllowedMenus()) : List.of()
+                user.getRoleType() != null ? List.copyOf(user.getRoleType().getAllowedMenus()) : List.of(),
+                user.isPasswordChangeRequired(),
+                Boolean.TRUE.equals(user.getMustChangePassword())
         );
     }
 }

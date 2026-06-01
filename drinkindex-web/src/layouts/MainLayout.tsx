@@ -11,6 +11,7 @@ import { useToast } from '@/shared/hooks/useToast'
 import { useLatestNotice } from '@/domain/notice/hooks/useNotices'
 import NotificationBell from '@/domain/notification/components/NotificationBell'
 import MessagePopup from '@/domain/message/components/MessagePopup'
+import ForcePasswordChangeModal from '@/domain/user/components/ForcePasswordChangeModal'
 import LevelIcon from '@/shared/components/icons/LevelIcon'
 import AdminIcon from '@/shared/components/icons/AdminIcon'
 import DistilleryIcon from '@/shared/components/icons/DistilleryIcon'
@@ -44,6 +45,53 @@ function AttendanceToastHandler() {
   }, [pendingAttendanceToast]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return <Toast toasts={toasts} onRemove={removeToast} />
+}
+
+// ── 비밀번호 변경 권고 배너 ──────────────────────────────────
+// 90일 이상 비밀번호 미변경 시 노출. 세션 단위로 닫기 가능(강제 아님).
+const PW_REMINDER_DISMISS_KEY = 'pw:reminder:dismissed'
+
+function PasswordChangeBanner() {
+  const { t } = useTranslation()
+  const { isLoggedIn } = useAuthStore()
+  const { data: profile } = useMe()
+  const [dismissed, setDismissed] = useState(
+    () => sessionStorage.getItem(PW_REMINDER_DISMISS_KEY) === '1',
+  )
+
+  if (!isLoggedIn || !profile?.passwordChangeRequired || dismissed) return null
+
+  const handleDismiss = () => {
+    sessionStorage.setItem(PW_REMINDER_DISMISS_KEY, '1')
+    setDismissed(true)
+  }
+
+  return (
+    <div className="bg-amber-50 border-b border-amber-200">
+      <div className="max-w-7xl mx-auto px-4 py-2 flex items-center gap-3 text-sm">
+        <svg className="w-4 h-4 text-amber-600 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
+        </svg>
+        <p className="flex-1 text-amber-900 leading-snug">{t('pwReminder.message')}</p>
+        <Link
+          to="/mypage"
+          className="flex-shrink-0 font-semibold text-amber-800 underline hover:text-amber-900"
+        >
+          {t('pwReminder.action')}
+        </Link>
+        <button
+          type="button"
+          onClick={handleDismiss}
+          aria-label={t('pwReminder.dismiss')}
+          className="flex-shrink-0 text-amber-500 hover:text-amber-700"
+        >
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  )
 }
 
 // ── GNB (글로벌 내비게이션 바) ────────────────────────────────
@@ -452,6 +500,9 @@ export default function MainLayout() {
       {/* GNB */}
       <GNB />
 
+      {/* 비밀번호 변경 권고 배너 */}
+      <PasswordChangeBanner />
+
       {/* 본문 */}
       <main className="flex-1 pb-16 lg:pb-0">
         <Outlet />
@@ -507,6 +558,9 @@ export default function MainLayout() {
 
       {/* 쪽지 보내기 플로팅 팝업 */}
       {isLoggedIn && <MessagePopup />}
+
+      {/* 임시 비밀번호 강제 변경 모달 (필요 시 자동 노출) */}
+      <ForcePasswordChangeModal />
     </div>
   )
 }

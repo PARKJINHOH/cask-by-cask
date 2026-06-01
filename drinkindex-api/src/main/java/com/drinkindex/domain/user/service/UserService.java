@@ -7,7 +7,6 @@ import com.drinkindex.domain.user.dto.UpdatePasswordRequest;
 import com.drinkindex.domain.user.dto.UserResponse;
 import com.drinkindex.domain.user.entity.User;
 import com.drinkindex.domain.user.repository.UserRepository;
-import com.drinkindex.global.auth.jwt.RefreshTokenRepository;
 import com.drinkindex.global.email.EmailSender;
 import com.drinkindex.global.exception.CustomException;
 import com.drinkindex.global.exception.ErrorCode;
@@ -45,11 +44,11 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final RefreshTokenRepository refreshTokenRepository;
     private final EmailSender emailSender;
     private final StringRedisTemplate redisTemplate;
     private final FileStorageService fileStorageService;
     private final NicknameBadWordValidator nicknameBadWordValidator;
+    private final AccountHardDeleteService accountHardDeleteService;
 
     @Transactional(readOnly = true)
     public UserResponse getMe(Long userId) {
@@ -112,6 +111,8 @@ public class UserService {
         User user = findUser(userId);
         String tempPassword = generateTempPassword();
         user.updatePassword(passwordEncoder.encode(tempPassword));
+        // 임시 비밀번호 로그인 후 즉시 변경 강제 (updatePassword가 플래그를 끄므로 이후에 설정)
+        user.requirePasswordChange();
 
         redisTemplate.opsForValue().set(cooldownKey, "1", RESET_PW_COOLDOWN_TTL);
 
@@ -129,14 +130,14 @@ public class UserService {
         return UserResponse.from(user);
     }
 
+    /**
+     * 회원 탈퇴 — 개인정보 파기(영구 삭제).
+     * 게시글·리뷰·댓글은 공용 "탈퇴한사용자" 계정으로 재귀속 보존하고, 그 외 개인 데이터와
+     * 계정(users) 행은 물리 삭제한다. 동일 이메일로 재가입 시 기존 데이터와 연결되지 않는다.
+     */
     @Transactional
     public void deleteMe(Long userId) {
-        User user = findUser(userId);
-        if (user.getProfileImageUrl() != null) {
-            deleteStoredProfileImage(user.getProfileImageUrl());
-        }
-        user.softDelete();
-        refreshTokenRepository.deleteByUserId(userId);
+        accountHardDeleteService.hardDelete(userId);
     }
 
     @Transactional

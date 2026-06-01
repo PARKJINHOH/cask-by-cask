@@ -428,13 +428,26 @@ function EmailSubscriptionSection() {
 
 // ── 회원 탈퇴 ───────────────────────────────────────────────
 
+const DELETE_CONFIRM_WORD = '삭제'
+
 function DangerZone() {
   const [modalOpen, setModalOpen] = useState(false)
+  const [confirmText, setConfirmText] = useState('')
   const [error, setError]         = useState('')
   const navigate  = useNavigate()
   const deleteMe  = useDeleteMe()
 
+  const canDelete = confirmText.trim() === DELETE_CONFIRM_WORD
+
+  const closeModal = () => {
+    if (deleteMe.isPending) return
+    setModalOpen(false)
+    setConfirmText('')
+    setError('')
+  }
+
   const handleConfirm = async () => {
+    if (!canDelete) return
     setError('')
     try {
       await deleteMe.mutateAsync()
@@ -448,7 +461,7 @@ function DangerZone() {
     <section className="p-5 bg-white rounded-xl border border-red-100 space-y-3">
       <h3 className="text-sm font-semibold text-red-700">위험 구역</h3>
       <p className="text-xs text-neutral-500 leading-relaxed">
-        회원을 탈퇴하면 모든 리뷰, 댓글, 위시리스트 데이터가 삭제되며 복구할 수 없습니다.
+        회원을 탈퇴하면 계정과 개인정보가 <strong>영구적으로 파기</strong>되며 복구할 수 없습니다.
       </p>
       <Button
         variant="danger"
@@ -460,22 +473,42 @@ function DangerZone() {
 
       <Modal
         open={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={closeModal}
         title="정말 탈퇴하시겠습니까?"
         size="sm"
         closeOnOverlay={!deleteMe.isPending}
       >
         <div className="space-y-4">
-          <p className="text-sm text-neutral-600 leading-relaxed">
-            탈퇴 후에는 모든 데이터(리뷰, 댓글, 위시리스트)가 <strong>영구적으로 삭제</strong>되며,
-            이 작업은 되돌릴 수 없습니다.
-          </p>
+          <div className="rounded-lg bg-red-50 border border-red-200 p-3 space-y-2">
+            <p className="text-sm font-semibold text-red-700">⚠ 이 작업은 되돌릴 수 없습니다.</p>
+            <ul className="text-xs text-red-700/90 leading-relaxed list-disc pl-4 space-y-1">
+              <li>계정과 개인정보(이메일·프로필 등)가 <strong>영구 파기</strong>됩니다.</li>
+              <li>쪽지·위시리스트·보틀·임시저장 등 개인 데이터가 삭제됩니다.</li>
+              <li>작성하신 게시글·리뷰·댓글은 <strong>‘탈퇴한사용자’</strong> 명의로 남습니다.</li>
+              <li>같은 이메일로 다시 가입해도 기존 데이터와 연결되지 않습니다.</li>
+            </ul>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs text-neutral-600">
+              계속하려면 아래에 <strong className="text-red-600">{DELETE_CONFIRM_WORD}</strong>를 입력해주세요.
+            </label>
+            <Input
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              placeholder={DELETE_CONFIRM_WORD}
+              maxLength={10}
+              autoComplete="off"
+              disabled={deleteMe.isPending}
+            />
+          </div>
+
           {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="flex gap-2 justify-end pt-1">
             <Button
               variant="secondary"
               size="sm"
-              onClick={() => setModalOpen(false)}
+              onClick={closeModal}
               disabled={deleteMe.isPending}
             >
               취소
@@ -484,6 +517,7 @@ function DangerZone() {
               variant="danger"
               size="sm"
               isLoading={deleteMe.isPending}
+              disabled={!canDelete}
               onClick={handleConfirm}
             >
               탈퇴 확인

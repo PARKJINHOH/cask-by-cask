@@ -42,7 +42,7 @@ class AuthControllerTest {
     @DisplayName("POST /api/auth/signup — 201 Created, 응답 바디 확인")
     void signup_success() throws Exception {
         SignupRequest request = new SignupRequest("test@example.com", "Password1!", "tester", true, true, false);
-        UserResponse response = new UserResponse(1L, "test@example.com", "tester", Role.MEMBER, null, null, null, null, null, null, null, null, null, List.of());
+        UserResponse response = new UserResponse(1L, "test@example.com", "tester", Role.MEMBER, null, null, null, null, null, null, null, null, null, List.of(), false, false);
 
         given(authService.signup(any())).willReturn(response);
 
@@ -89,7 +89,7 @@ class AuthControllerTest {
     @DisplayName("POST /api/auth/login — 200 OK, 토큰 반환")
     void login_success() throws Exception {
         LoginRequest request = new LoginRequest("test@example.com", "password123");
-        LoginResponse response = LoginResponse.of(TokenResponse.of("access_token", "refresh_token"), null);
+        LoginResponse response = LoginResponse.of(TokenResponse.of("access_token", "refresh_token"), null, false, false);
 
         given(authService.login(any())).willReturn(response);
 

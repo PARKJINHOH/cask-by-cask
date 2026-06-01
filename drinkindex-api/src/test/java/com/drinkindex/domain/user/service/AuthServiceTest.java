@@ -4,6 +4,7 @@ import com.drinkindex.domain.nicknamebadword.service.NicknameBadWordValidator;
 import com.drinkindex.domain.score.dto.AttendanceResult;
 import com.drinkindex.domain.score.service.AttendanceService;
 import com.drinkindex.domain.user.dto.*;
+import com.drinkindex.domain.legal.repository.LegalDocumentRepository;
 import com.drinkindex.global.email.EmailVerificationService;
 import com.drinkindex.domain.user.entity.User;
 import com.drinkindex.domain.user.entity.enums.Role;
@@ -40,6 +41,8 @@ class AuthServiceTest {
     @Mock private AttendanceService attendanceService;
     @Mock private EmailVerificationService emailVerificationService;
     @Mock private NicknameBadWordValidator nicknameBadWordValidator;
+    @Mock private LegalDocumentRepository legalDocumentRepository;
+    @Mock private LoginAttemptService loginAttemptService;
 
     // ───────────────────── signup ─────────────────────
 

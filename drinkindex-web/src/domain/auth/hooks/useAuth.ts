@@ -1,15 +1,14 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '../store/authStore'
 import { authApi } from '../api/authApi'
-import type { LoginRequest, SignupRequest } from '../types/auth.types'
+import type { LoginRequest, LoginResponse, ReactivateRequest, SignupRequest } from '../types/auth.types'
 
 export function useAuth() {
   const { setTokens, setUser, setPendingAttendanceToast, logout: logoutStore } = useAuthStore()
   const qc = useQueryClient()
 
-  const login = async (data: LoginRequest) => {
-    const res = await authApi.login(data)
-    const loginData = res.data.data!
+  // 토큰 적재 + 출석 토스트 + 프로필 로드 (login / reactivate 공통)
+  const establishSession = async (loginData: LoginResponse) => {
     setTokens(loginData.accessToken, loginData.refreshToken)
 
     // 출석 결과 저장 — MainLayout의 AttendanceToastHandler가 소비 후 제거
@@ -25,6 +24,17 @@ export function useAuth() {
     qc.invalidateQueries({ queryKey: ['messages'] })
   }
 
+  const login = async (data: LoginRequest) => {
+    const res = await authApi.login(data)
+    await establishSession(res.data.data!)
+  }
+
+  // 휴면 계정 해제 후 로그인
+  const reactivate = async (data: ReactivateRequest) => {
+    const res = await authApi.reactivate(data)
+    await establishSession(res.data.data!)
+  }
+
   const signup = (data: SignupRequest) => authApi.signup(data)
 
   const logout = async () => {
@@ -35,5 +45,5 @@ export function useAuth() {
     }
   }
 
-  return { login, signup, logout }
+  return { login, reactivate, signup, logout }
 }

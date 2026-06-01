@@ -21,6 +21,10 @@ public record AdminUserResponse(
         Role role,
         @Schema(description = "계정 활성화 여부")
         Boolean isActive,
+        @Schema(description = "휴면 계정 여부")
+        Boolean dormant,
+        @Schema(description = "마지막 로그인 일시 (null이면 로그인 이력 없음)")
+        LocalDateTime lastLoginAt,
         @Schema(description = "담당 증류소 ID (DISTILLERY 역할인 경우)")
         Long distilleryId,
         @Schema(description = "담당 증류소 한글명 (DISTILLERY 역할인 경우)")
@@ -47,6 +51,8 @@ public record AdminUserResponse(
                 user.getNickname(),
                 user.getRole(),
                 user.getIsActive(),
+                user.getDormant(),
+                user.getLastLoginAt(),
                 user.getDistillery() != null ? user.getDistillery().getId() : null,
                 user.getDistillery() != null ? user.getDistillery().getNameKo() : null,
                 user.getCreatedAt(),

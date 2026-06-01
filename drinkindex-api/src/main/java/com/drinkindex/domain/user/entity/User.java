@@ -103,6 +103,28 @@ public class User extends BaseTimeEntity {
     @Column(length = 500)
     private String suspendReason;
 
+    /** 마지막 비밀번호 변경 시각 (90일 변경 권고 정책 기준) */
+    @Column
+    private LocalDateTime passwordChangedAt;
+
+    /** 마지막 로그인 시각 (휴면 전환 정책 기준) */
+    @Column
+    private LocalDateTime lastLoginAt;
+
+    /** 휴면 계정 여부 (365일 미접속 시 전환) */
+    @Builder.Default
+    @Column(nullable = false)
+    private Boolean dormant = false;
+
+    /** 휴면 전환 시각 */
+    @Column
+    private LocalDateTime dormantAt;
+
+    /** 임시 비밀번호 발급 후 즉시 변경 강제 여부 */
+    @Builder.Default
+    @Column(nullable = false)
+    private Boolean mustChangePassword = false;
+
     @Builder.Default
     @Column(nullable = false)
     private Integer maturingPower = 0;
@@ -145,6 +167,37 @@ public class User extends BaseTimeEntity {
 
     public void updatePassword(String encodedPassword) {
         this.password = encodedPassword;
+        this.passwordChangedAt = LocalDateTime.now();
+        this.mustChangePassword = false;
+    }
+
+    /** 임시 비밀번호 발급 — 다음 로그인 시 비밀번호 변경 강제 */
+    public void requirePasswordChange() {
+        this.mustChangePassword = true;
+    }
+
+    /** 로그인 성공 시 마지막 로그인 시각 갱신 */
+    public void recordLogin() {
+        this.lastLoginAt = LocalDateTime.now();
+    }
+
+    /** 휴면 전환 */
+    public void markDormant() {
+        this.dormant = true;
+        this.dormantAt = LocalDateTime.now();
+    }
+
+    /** 휴면 해제 (이메일 재인증 후) */
+    public void reactivate() {
+        this.dormant = false;
+        this.dormantAt = null;
+        this.lastLoginAt = LocalDateTime.now();
+    }
+
+    /** 90일 이상 비밀번호 미변경 — 변경 권고 대상 여부 */
+    public boolean isPasswordChangeRequired() {
+        return com.drinkindex.domain.user.policy.AccountPolicy
+                .isPasswordChangeRequired(this.passwordChangedAt, getCreatedAt());
     }
 
     public void softDelete() {

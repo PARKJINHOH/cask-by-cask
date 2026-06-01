@@ -56,4 +56,26 @@ public interface UserRepository extends JpaRepository<User, Long>, UserQueryRepo
 
     @Query(value = "SELECT email FROM users WHERE id = :id", nativeQuery = true)
     Optional<String> findEmailById(@Param("id") Long id);
+
+    /**
+     * 휴면 전환 대상 조회 — 활성·비휴면 계정 중 마지막 로그인(없으면 가입일)이 기준 시각 이전인 사용자.
+     * (@SQLRestriction 으로 탈퇴 계정은 이미 제외됨)
+     */
+    @Query("SELECT u FROM User u WHERE u.dormant = false AND u.isActive = true AND ("
+            + "(u.lastLoginAt IS NOT NULL AND u.lastLoginAt < :cutoff) "
+            + "OR (u.lastLoginAt IS NULL AND u.createdAt < :cutoff))")
+    List<User> findDormantCandidates(@Param("cutoff") LocalDateTime cutoff);
+
+    /**
+     * 휴면 전환 사전 통지 대상 — 마지막 활동(로그인 없으면 가입일)이 [start, end) 구간에 든
+     * 활성·비휴면 계정. 구간 폭이 1일이라 각 계정에 1회만 매칭된다.
+     */
+    @Query("SELECT u FROM User u WHERE u.dormant = false AND u.isActive = true "
+            + "AND COALESCE(u.lastLoginAt, u.createdAt) >= :start "
+            + "AND COALESCE(u.lastLoginAt, u.createdAt) < :end")
+    List<User> findDormantNoticeTargets(@Param("start") LocalDateTime start,
+                                        @Param("end") LocalDateTime end);
+
+    /** 자동 탈퇴 처리 대상 — 휴면 전환 후 기준 시각 이전인 계정 */
+    List<User> findByDormantTrueAndDormantAtBefore(LocalDateTime cutoff);
 }

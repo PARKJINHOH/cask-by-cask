@@ -12,6 +12,8 @@ export interface UserProfile {
   profileImageUrl?: string | null
   profileImageChangedAt?: string | null
   emailSubscribed?: boolean
+  passwordChangeRequired?: boolean
+  mustChangePassword?: boolean
 }
 
 export interface UpdateNicknameRequest {

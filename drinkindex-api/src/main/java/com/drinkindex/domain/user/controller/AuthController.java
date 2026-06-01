@@ -39,6 +39,11 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success(authService.refresh(request)));
     }
 
+    @PostMapping("/reactivate")
+    public ResponseEntity<ApiResponse<LoginResponse>> reactivate(@Valid @RequestBody ReactivateRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(authService.reactivate(request)));
+    }
+
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> logout(@AuthenticationPrincipal CustomUserDetails userDetails) {
         authService.logout(userDetails);

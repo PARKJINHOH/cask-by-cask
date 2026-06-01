@@ -6,8 +6,10 @@ import { useNavigate, useLocation, Link, Navigate } from 'react-router-dom'
 import type { AxiosError } from 'axios'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { useAuth } from '@/domain/auth/hooks/useAuth'
+import { authApi } from '@/domain/auth/api/authApi'
 import Button from '@/shared/components/Button'
 import Input from '@/shared/components/Input'
+import Modal from '@/shared/components/Modal'
 import SeoMeta from '@/shared/components/SeoMeta'
 import type { ApiResponse } from '@/shared/types/common.types'
 
@@ -75,6 +77,25 @@ function InactiveBanner() {
   )
 }
 
+function LockedBanner() {
+  return (
+    <div role="alert" className="bg-danger-50 border border-danger-200 rounded-lg overflow-hidden">
+      <div className="flex items-center gap-2 px-3 py-2 bg-danger-100 border-b border-danger-200">
+        <svg className="w-4 h-4 text-danger-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
+        </svg>
+        <p className="text-sm font-semibold text-danger-700">계정이 일시적으로 잠겼습니다</p>
+      </div>
+      <div className="px-3 py-2.5">
+        <p className="text-sm text-danger-700 leading-relaxed">
+          비밀번호를 5회 이상 잘못 입력하여 계정이 잠겼습니다.
+          약 10분 후 다시 시도하거나, 비밀번호가 기억나지 않으면 임시 비밀번호 발급을 이용해주세요.
+        </p>
+      </div>
+    </div>
+  )
+}
+
 function SuspensionBanner({ detail }: { detail: SuspensionDetail }) {
   const until = new Date(detail.suspendedUntil).toLocaleDateString('ko-KR', {
     year: 'numeric', month: 'long', day: 'numeric',
@@ -103,6 +124,116 @@ function SuspensionBanner({ detail }: { detail: SuspensionDetail }) {
   )
 }
 
+// ── 휴면 계정 해제 모달 ─────────────────────────────────────
+function DormantReactivateModal({
+  email,
+  password,
+  onClose,
+  onSuccess,
+}: {
+  email: string
+  password: string
+  onClose: () => void
+  onSuccess: (from: string) => void
+}) {
+  const { reactivate } = useAuth()
+  const [code, setCode] = useState('')
+  const [codeSent, setCodeSent] = useState(false)
+  const [sending, setSending] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+  const [info, setInfo] = useState('')
+
+  const handleSendCode = async () => {
+    setError('')
+    setInfo('')
+    setSending(true)
+    try {
+      await authApi.sendVerificationCode(email)
+      setCodeSent(true)
+      setInfo('인증 코드를 이메일로 발송했습니다. (5분 내 입력)')
+    } catch (err) {
+      const msg = (err as AxiosError<ApiResponse<unknown>>)?.response?.data?.message
+      setError(msg ?? '인증 코드 발송에 실패했습니다. 잠시 후 다시 시도해주세요.')
+    } finally {
+      setSending(false)
+    }
+  }
+
+  const handleReactivate = async () => {
+    setError('')
+    setSubmitting(true)
+    try {
+      await reactivate({ email, password, code })
+      onSuccess('/')
+    } catch (err) {
+      const msg = (err as AxiosError<ApiResponse<unknown>>)?.response?.data?.message
+      setError(msg ?? '휴면 해제에 실패했습니다. 인증 코드를 확인해주세요.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <Modal open onClose={onClose} title="휴면 계정 해제" size="sm" closeOnOverlay={!submitting}>
+      <div className="space-y-4">
+        <p className="text-sm text-neutral-600 leading-relaxed">
+          장기간 미접속으로 <strong>휴면 상태</strong>로 전환된 계정입니다.
+          본인 확인을 위해 이메일 인증 후 휴면을 해제해주세요.
+        </p>
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-neutral-400 w-12 shrink-0">이메일</span>
+          <span className="font-medium text-neutral-800 truncate">{email}</span>
+        </div>
+
+        {!codeSent ? (
+          <Button fullWidth isLoading={sending} onClick={handleSendCode}>
+            인증 코드 발송
+          </Button>
+        ) : (
+          <div className="space-y-3">
+            <Input
+              label="인증 코드"
+              placeholder="6자리 코드 입력"
+              inputMode="numeric"
+              maxLength={6}
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+            />
+            <button
+              type="button"
+              onClick={handleSendCode}
+              disabled={sending}
+              className="text-xs text-primary-700 hover:underline disabled:opacity-50"
+            >
+              코드 재발송
+            </button>
+          </div>
+        )}
+
+        {info && <p className="text-sm text-green-600">{info}</p>}
+        {error && <p className="text-sm text-danger-600">{error}</p>}
+
+        {codeSent && (
+          <div className="flex gap-2 justify-end pt-1">
+            <Button variant="secondary" size="sm" onClick={onClose} disabled={submitting}>
+              취소
+            </Button>
+            <Button
+              size="sm"
+              isLoading={submitting}
+              disabled={code.length < 6}
+              onClick={handleReactivate}
+            >
+              휴면 해제하고 로그인
+            </Button>
+          </div>
+        )}
+      </div>
+    </Modal>
+  )
+}
+
 // ── Page ───────────────────────────────────────────────────
 export default function LoginPage() {
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
@@ -112,6 +243,8 @@ export default function LoginPage() {
   const [suspensionDetail, setSuspensionDetail] = useState<SuspensionDetail | null>(null)
   const [showInactive, setShowInactive]         = useState(false)
   const [showUnverified, setShowUnverified]     = useState(false)
+  const [showLocked, setShowLocked]             = useState(false)
+  const [dormantCreds, setDormantCreds]         = useState<{ email: string; password: string } | null>(null)
 
   const {
     register,
@@ -135,6 +268,8 @@ export default function LoginPage() {
     setSuspensionDetail(null)
     setShowInactive(false)
     setShowUnverified(false)
+    setShowLocked(false)
+    setDormantCreds(null)
     try {
       await login(data)
       startTransition(() => {
@@ -149,10 +284,23 @@ export default function LoginPage() {
         setShowInactive(true)
       } else if (code === 'USER_017' && res?.data) {
         setSuspensionDetail(res.data)
+      } else if (code === 'USER_018') {
+        // 휴면 계정 — 이메일 재인증 모달로 해제 유도
+        setDormantCreds({ email: data.email, password: data.password })
+      } else if (code === 'USER_019') {
+        // 로그인 실패 누적으로 계정 잠금
+        setShowLocked(true)
       } else {
         setError('root', { message: '이메일 또는 비밀번호가 올바르지 않습니다.' })
       }
     }
+  }
+
+  const handleReactivateSuccess = (to: string) => {
+    setDormantCreds(null)
+    startTransition(() => {
+      navigate(to, { replace: true })
+    })
   }
 
   return (
@@ -214,6 +362,7 @@ export default function LoginPage() {
           {errors.root?.message && <ErrorBanner message={errors.root.message} />}
           {showUnverified && <UnverifiedBanner />}
           {showInactive && <InactiveBanner />}
+          {showLocked && <LockedBanner />}
           {suspensionDetail && <SuspensionBanner detail={suspensionDetail} />}
 
           <Button type="submit" isLoading={isSubmitting} fullWidth className="!mt-6">
@@ -229,6 +378,15 @@ export default function LoginPage() {
           </Link>
         </p>
       </div>
+
+      {dormantCreds && (
+        <DormantReactivateModal
+          email={dormantCreds.email}
+          password={dormantCreds.password}
+          onClose={() => setDormantCreds(null)}
+          onSuccess={handleReactivateSuccess}
+        />
+      )}
     </div>
   )
 }

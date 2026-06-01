@@ -3,6 +3,25 @@
     "name": "DrinkIndex",
     "tagline": "Whisky · Cognac · Wine Community"
   },
+  "pwReminder": {
+    "message": "It has been over 90 days since you changed your password. Please update it to keep your account secure.",
+    "action": "Change password",
+    "dismiss": "Dismiss"
+  },
+  "forcePw": {
+    "title": "Password change required",
+    "desc": "You signed in with a temporary password. For your security, you must set a new password to continue using the service.",
+    "current": "Current password (temporary)",
+    "new": "New password",
+    "confirm": "Confirm new password",
+    "hint": "At least 7 chars with letters, numbers & symbols",
+    "submit": "Change password",
+    "success": "Your password has been changed.",
+    "error": "Failed to change password.",
+    "currentError": "Please enter your current password.",
+    "newError": "Use at least 7 characters including letters, numbers and symbols.",
+    "confirmError": "New passwords do not match."
+  },
   "nav": {
     "home": "Home",
     "search": "Search",

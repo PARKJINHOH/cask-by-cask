@@ -1,6 +1,6 @@
 import axiosInstance from '@/shared/api/axiosInstance'
 import type { ApiResponse } from '@/shared/types/common.types'
-import type { LoginRequest, LoginResponse, SignupRequest, UserInfo, VerifyEmailRequest, CheckAvailableResponse } from '../types/auth.types'
+import type { LoginRequest, LoginResponse, SignupRequest, UserInfo, VerifyEmailRequest, CheckAvailableResponse, ReactivateRequest } from '../types/auth.types'
 
 export const authApi = {
   login: (data: LoginRequest) =>
@@ -8,6 +8,9 @@ export const authApi = {
 
   signup: (data: SignupRequest) =>
     axiosInstance.post<ApiResponse<UserInfo>>('/api/auth/signup', data),
+
+  reactivate: (data: ReactivateRequest) =>
+    axiosInstance.post<ApiResponse<LoginResponse>>('/api/auth/reactivate', data),
 
   logout: () =>
     axiosInstance.post<ApiResponse<null>>('/api/auth/logout'),
