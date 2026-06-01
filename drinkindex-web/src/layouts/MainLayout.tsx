@@ -111,6 +111,7 @@ function GNB() {
 
   const menus: GNBItem[] = [
     { key: 'spirits', label: t('nav.spirits'), to: '/spirits' },
+    { key: 'calendar', label: t('menu.calendar'), to: '/calendar' },
     {
       key: 'request',
       label: t('menu.request'),
@@ -119,7 +120,6 @@ function GNB() {
         { key: 'requestDistillery', label: t('menu.requestDistillery'), to: '/request/distillery' },
       ],
     },
-    { key: 'calendar', label: t('menu.calendar'), to: '/calendar' },
     { key: 'notice', label: t('menu.notice'), to: '/notices' },
     { key: 'faq', label: t('menu.faq'), to: '/faq' },
     {
@@ -144,16 +144,24 @@ function GNB() {
         <ul className="flex items-center gap-1">
           {menus.map(menu => {
             if ('to' in menu) {
-              const isNotice  = menu.key === 'notice'
-              const isSpirits = menu.key === 'spirits'
+              const isNotice   = menu.key === 'notice'
+              const isSpirits  = menu.key === 'spirits'
+              const isCalendar = menu.key === 'calendar'
               return (
-                <li key={menu.key} className={isSpirits ? 'mr-1' : ''}>
+                <li
+                  key={menu.key}
+                  className={`flex items-center ${isSpirits ? 'mr-1' : ''} ${isCalendar ? 'gap-2 mr-1' : ''}`}
+                >
                   <Link
                     to={menu.to}
-                    className={isSpirits
-                      ? 'inline-flex items-center px-3.5 py-1.5 text-sm font-semibold rounded-lg\
+                    className={
+                      isSpirits
+                        ? 'inline-flex items-center px-3.5 py-1.5 text-sm font-semibold rounded-lg\
  bg-primary-800 text-white hover:bg-primary-900 transition-colors'
-                      : `${itemCls(false)} relative`
+                        : isCalendar
+                        ? 'inline-flex items-center px-3.5 py-1.5 text-sm font-medium rounded-lg\
+ border border-neutral-300 text-neutral-600 hover:text-primary-800 hover:border-primary-300 transition-colors'
+                        : `${itemCls(false)} relative`
                     }
                   >
                     {menu.label}
@@ -164,6 +172,9 @@ function GNB() {
                       />
                     )}
                   </Link>
+                  {isCalendar && (
+                    <span className="h-4 w-px bg-neutral-200" aria-hidden="true" />
+                  )}
                 </li>
               )
             }
