@@ -19,9 +19,9 @@ export const REGION_SUGGESTIONS: Record<string, RegionSuggestion[]> = {
   // ── 스코틀랜드 (스카치 위스키 5대 생산지) ────────────────
   'GB-SCT': [
     { nameKo: '스페이사이드', nameEn: 'Speyside' },
-    { nameKo: '하이랜드', nameEn: 'Highlands' },
+    { nameKo: '하이랜드', nameEn: 'Highland' },
     { nameKo: '아일라', nameEn: 'Islay' },
-    { nameKo: '로우랜드', nameEn: 'Lowlands' },
+    { nameKo: '로우랜드', nameEn: 'Lowland' },
     { nameKo: '캠벨타운', nameEn: 'Campbeltown' },
     { nameKo: '아일랜드 (섬)', nameEn: 'Islands' },
   ],

@@ -25,6 +25,6 @@ CREATE TABLE IF NOT EXISTS calendar_events (
     CONSTRAINT fk_calendar_event_created_by FOREIGN KEY (created_by_id) REFERENCES users (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE INDEX idx_event_start_date ON calendar_events (start_date);
-CREATE INDEX idx_event_end_date   ON calendar_events (end_date);
-CREATE INDEX idx_event_is_visible ON calendar_events (is_visible);
+CREATE INDEX IF NOT EXISTS idx_event_start_date ON calendar_events (start_date);
+CREATE INDEX IF NOT EXISTS idx_event_end_date   ON calendar_events (end_date);
+CREATE INDEX IF NOT EXISTS idx_event_is_visible ON calendar_events (is_visible);

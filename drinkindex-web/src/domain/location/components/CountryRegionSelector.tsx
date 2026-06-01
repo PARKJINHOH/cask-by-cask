@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ISO3166_COUNTRIES } from '../data/iso3166Countries';
-import { REGION_SUGGESTIONS } from '../data/regionSuggestions';
+import { REGION_SUGGESTIONS, type RegionSuggestion } from '../data/regionSuggestions';
 
 interface Props {
   countryCode: string | null;
@@ -28,20 +28,20 @@ export default function CountryRegionSelector({
   const regions = countryCode ? (REGION_SUGGESTIONS[countryCode] ?? []) : [];
   const hasRegions = regions.length > 0;
 
+  // 저장된 지역 값(한국어/영어 어느 쪽이든)을 목록 항목과 매칭 (대소문자·공백 무시)
+  const norm = (s: string) => s.trim().toLowerCase();
+  const findRegion = (list: RegionSuggestion[], value: string) =>
+    value
+      ? list.find((r) => norm(r.nameKo) === norm(value) || norm(r.nameEn) === norm(value))
+      : undefined;
+
   // 편집 진입 시 regionNameKo 가 목록에 없으면 직접입력 모드로 시작
   const [isCustomInput, setIsCustomInput] = useState(() => {
     if (!regionNameKo || !countryCode) return false;
     const initial = REGION_SUGGESTIONS[countryCode] ?? [];
     if (initial.length === 0) return false;
-    return !initial.some((r) => r.nameKo === regionNameKo);
+    return !findRegion(initial, regionNameKo);
   });
-
-  // 국가가 바뀌면 직접입력 모드 초기화 (첫 렌더는 건너뜀)
-  const isFirstRender = useRef(true);
-  useEffect(() => {
-    if (isFirstRender.current) { isFirstRender.current = false; return; }
-    setIsCustomInput(false);
-  }, [countryCode]);
 
   const display = (nameKo: string, nameEn: string) =>
     i18n.language === 'ko' ? nameKo : nameEn;
@@ -59,10 +59,12 @@ export default function CountryRegionSelector({
       )
     : ISO3166_COUNTRIES;
 
+  // 국가를 바꾸면 직접입력 모드를 해제하고 지역 값도 초기화 (국가 변경 경로는 이 두 핸들러뿐)
   const handleSelect = (code: string) => {
     const c = ISO3166_COUNTRIES.find((x) => x.code === code)!;
     onCountryChange(code, c.nameKo, c.nameEn);
     onRegionChange('', '');
+    setIsCustomInput(false);
     setQuery('');
     setOpen(false);
   };
@@ -70,6 +72,7 @@ export default function CountryRegionSelector({
   const handleClear = () => {
     onCountryChange(null, '', '');
     onRegionChange('', '');
+    setIsCustomInput(false);
     setQuery('');
     setOpen(false);
   };
@@ -135,10 +138,12 @@ export default function CountryRegionSelector({
     }
 
     // 사전 정의 목록 select + 직접 입력 옵션
+    // 저장값이 영어(nameEn)로 들어와도 매칭되도록 정규화한 nameKo 를 select value 로 사용
+    const matched = findRegion(regions, regionNameKo);
     return (
       <select
         className={cls}
-        value={regionNameKo}
+        value={matched ? matched.nameKo : ''}
         onChange={(e) => {
           if (e.target.value === CUSTOM_VALUE) {
             setIsCustomInput(true);

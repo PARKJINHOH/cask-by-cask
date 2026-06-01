@@ -193,12 +193,25 @@ public class AuthService {
         Long userId = jwtProvider.extractUserId(incomingToken);
         Role role = jwtProvider.extractRole(incomingToken);
 
+        // [보안] Access Token 을 재발급에 사용하는 것을 차단 (Redis 대조와 이중 방어)
+        if (!jwtProvider.isRefreshToken(incomingToken)) {
+            throw new CustomException(ErrorCode.INVALID_TOKEN);
+        }
+
         // Redis에 저장된 토큰과 대조
         String savedToken = refreshTokenRepository.findByUserId(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.REFRESH_TOKEN_NOT_FOUND));
 
         if (!savedToken.equals(incomingToken)) {
             throw new CustomException(ErrorCode.INVALID_TOKEN);
+        }
+
+        // 계정이 삭제(탈퇴)되었거나 비활성화된 경우 — 재발급 거부 후 남은 토큰 정리.
+        // (재발급을 막아야 프론트가 401 → refresh 실패 → 강제 로그아웃 흐름을 탄다)
+        User user = userRepository.findById(userId).orElse(null);
+        if (user == null || Boolean.FALSE.equals(user.getIsActive())) {
+            refreshTokenRepository.deleteByUserId(userId);
+            throw new CustomException(user == null ? ErrorCode.USER_NOT_FOUND : ErrorCode.ACCOUNT_INACTIVE);
         }
 
         // Rotation: 기존 삭제 후 신규 발급

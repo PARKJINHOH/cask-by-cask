@@ -143,7 +143,10 @@ class AuthServiceTest {
 
         given(jwtProvider.extractUserId("old_refresh")).willReturn(1L);
         given(jwtProvider.extractRole("old_refresh")).willReturn(Role.MEMBER);
+        given(jwtProvider.isRefreshToken("old_refresh")).willReturn(true);
         given(refreshTokenRepository.findByUserId(1L)).willReturn(Optional.of("old_refresh"));
+        given(userRepository.findById(1L)).willReturn(Optional.of(
+                User.builder().email("test@example.com").password("hashed").nickname("tester").role(Role.MEMBER).build()));
         given(jwtProvider.generateAccessToken(1L, Role.MEMBER)).willReturn("new_access");
         given(jwtProvider.generateRefreshToken(1L, Role.MEMBER)).willReturn("new_refresh");
         given(jwtProvider.getRefreshTokenExpiry()).willReturn(604_800_000L);
@@ -163,6 +166,7 @@ class AuthServiceTest {
 
         given(jwtProvider.extractUserId("orphan_refresh")).willReturn(1L);
         given(jwtProvider.extractRole("orphan_refresh")).willReturn(Role.MEMBER);
+        given(jwtProvider.isRefreshToken("orphan_refresh")).willReturn(true);
         given(refreshTokenRepository.findByUserId(1L)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> authService.refresh(request))
@@ -178,12 +182,69 @@ class AuthServiceTest {
 
         given(jwtProvider.extractUserId("incoming_token")).willReturn(1L);
         given(jwtProvider.extractRole("incoming_token")).willReturn(Role.MEMBER);
+        given(jwtProvider.isRefreshToken("incoming_token")).willReturn(true);
         given(refreshTokenRepository.findByUserId(1L)).willReturn(Optional.of("different_token"));
 
         assertThatThrownBy(() -> authService.refresh(request))
                 .isInstanceOf(CustomException.class)
                 .satisfies(e -> assertThat(((CustomException) e).getErrorCode())
                         .isEqualTo(ErrorCode.INVALID_TOKEN));
+    }
+
+    @Test
+    @DisplayName("Refresh Token 갱신 실패 — Access Token 을 재발급에 사용")
+    void refresh_fail_accessTokenUsed() {
+        RefreshRequest request = new RefreshRequest("access_token");
+
+        given(jwtProvider.extractUserId("access_token")).willReturn(1L);
+        given(jwtProvider.extractRole("access_token")).willReturn(Role.MEMBER);
+        given(jwtProvider.isRefreshToken("access_token")).willReturn(false);
+
+        assertThatThrownBy(() -> authService.refresh(request))
+                .isInstanceOf(CustomException.class)
+                .satisfies(e -> assertThat(((CustomException) e).getErrorCode())
+                        .isEqualTo(ErrorCode.INVALID_TOKEN));
+        then(refreshTokenRepository).should(never()).save(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Refresh Token 갱신 실패 — 계정 삭제(탈퇴)됨, 남은 토큰 정리")
+    void refresh_fail_userDeleted() {
+        RefreshRequest request = new RefreshRequest("valid_refresh");
+
+        given(jwtProvider.extractUserId("valid_refresh")).willReturn(1L);
+        given(jwtProvider.extractRole("valid_refresh")).willReturn(Role.MEMBER);
+        given(jwtProvider.isRefreshToken("valid_refresh")).willReturn(true);
+        given(refreshTokenRepository.findByUserId(1L)).willReturn(Optional.of("valid_refresh"));
+        given(userRepository.findById(1L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> authService.refresh(request))
+                .isInstanceOf(CustomException.class)
+                .satisfies(e -> assertThat(((CustomException) e).getErrorCode())
+                        .isEqualTo(ErrorCode.USER_NOT_FOUND));
+        then(refreshTokenRepository).should().deleteByUserId(1L);
+        then(refreshTokenRepository).should(never()).save(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Refresh Token 갱신 실패 — 비활성화된 계정, 남은 토큰 정리")
+    void refresh_fail_userInactive() {
+        RefreshRequest request = new RefreshRequest("valid_refresh");
+        User inactive = User.builder().email("test@example.com").password("hashed").nickname("tester").role(Role.MEMBER).build();
+        inactive.deactivate();
+
+        given(jwtProvider.extractUserId("valid_refresh")).willReturn(1L);
+        given(jwtProvider.extractRole("valid_refresh")).willReturn(Role.MEMBER);
+        given(jwtProvider.isRefreshToken("valid_refresh")).willReturn(true);
+        given(refreshTokenRepository.findByUserId(1L)).willReturn(Optional.of("valid_refresh"));
+        given(userRepository.findById(1L)).willReturn(Optional.of(inactive));
+
+        assertThatThrownBy(() -> authService.refresh(request))
+                .isInstanceOf(CustomException.class)
+                .satisfies(e -> assertThat(((CustomException) e).getErrorCode())
+                        .isEqualTo(ErrorCode.ACCOUNT_INACTIVE));
+        then(refreshTokenRepository).should().deleteByUserId(1L);
+        then(refreshTokenRepository).should(never()).save(any(), any(), any());
     }
 
     // ───────────────────── logout ─────────────────────

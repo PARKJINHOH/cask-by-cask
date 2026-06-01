@@ -1,4 +1,4 @@
-﻿import { useState, useRef } from 'react'
+﻿import { useState, useRef, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import Button from '@/shared/components/Button'
 import Spinner from '@/shared/components/Spinner'
@@ -8,6 +8,7 @@ import {
   useCreateDistillery,
   useUpdateDistillery,
   useDeleteDistillery,
+  type DistilleryFilters,
 } from '@/domain/admin/hooks/useAdminDistillery'
 import type { Distillery, CreateDistilleryPayload, UpdateDistilleryPayload } from '@/domain/distillery/types/distillery.types'
 import CountryRegionSelector from '@/domain/location/components/CountryRegionSelector'
@@ -158,21 +159,37 @@ function DistilleryForm({ initial, onSave, onCancel, isPending }: DistilleryForm
   )
 }
 
+const EMPTY_FILTERS: DistilleryFilters = { nameKo: '', nameEn: '', country: '', foundedYear: '' }
+
 export default function AdminDistilleryPage() {
-  const [keyword, setKeyword] = useState('')
+  const [filterInput, setFilterInput] = useState<DistilleryFilters>(EMPTY_FILTERS)
+  const [appliedFilters, setAppliedFilters] = useState<DistilleryFilters>(EMPTY_FILTERS)
   const [page, setPage] = useState(0)
-  const searchRef = useRef<HTMLInputElement>(null)
   const [showCreate, setShowCreate] = useState(false)
   const [editTarget, setEditTarget] = useState<Distillery | null>(null)
+  const editFormRef = useRef<HTMLDivElement>(null)
 
-  const { data, isLoading } = useAdminDistilleries(keyword, page)
+  const { data, isLoading } = useAdminDistilleries(appliedFilters, page)
   const create = useCreateDistillery()
   const update = useUpdateDistillery()
   const remove = useDeleteDistillery()
 
+  // 수정 영역이 열리면 해당 위치로 스크롤
+  useEffect(() => {
+    if (editTarget) {
+      editFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [editTarget])
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    setKeyword(searchRef.current?.value.trim() ?? '')
+    setAppliedFilters(filterInput)
+    setPage(0)
+  }
+
+  const handleResetFilters = () => {
+    setFilterInput(EMPTY_FILTERS)
+    setAppliedFilters(EMPTY_FILTERS)
     setPage(0)
   }
 
@@ -219,14 +236,54 @@ export default function AdminDistilleryPage() {
         </Button>
       </div>
 
-      <form onSubmit={handleSearch} className="flex gap-2 p-4 bg-white rounded-xl shadow-sm">
-        <input
-          ref={searchRef}
-          placeholder="증류소명 검색... (한글/영어)"
-          className="flex-1 px-3 py-2 text-sm border border-neutral-200 rounded-lg
-            focus:outline-none focus:ring-2 focus:ring-primary-400"
-        />
-        <Button type="submit" size="sm" variant="secondary">검색</Button>
+      <form onSubmit={handleSearch} className="p-4 bg-white rounded-xl shadow-sm space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="space-y-1">
+            <label className="block text-xs font-medium text-neutral-600">한국어명</label>
+            <input
+              value={filterInput.nameKo}
+              onChange={(e) => setFilterInput((f) => ({ ...f, nameKo: e.target.value }))}
+              placeholder="한국어명 검색"
+              className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg
+                focus:outline-none focus:ring-2 focus:ring-primary-400"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="block text-xs font-medium text-neutral-600">영어명</label>
+            <input
+              value={filterInput.nameEn}
+              onChange={(e) => setFilterInput((f) => ({ ...f, nameEn: e.target.value }))}
+              placeholder="영어명 검색"
+              className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg
+                focus:outline-none focus:ring-2 focus:ring-primary-400"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="block text-xs font-medium text-neutral-600">국가</label>
+            <input
+              value={filterInput.country}
+              onChange={(e) => setFilterInput((f) => ({ ...f, country: e.target.value }))}
+              placeholder="국가 검색 (예: 스코틀랜드)"
+              className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg
+                focus:outline-none focus:ring-2 focus:ring-primary-400"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="block text-xs font-medium text-neutral-600">설립연도</label>
+            <input
+              value={filterInput.foundedYear}
+              onChange={(e) => setFilterInput((f) => ({ ...f, foundedYear: e.target.value }))}
+              type="number"
+              placeholder="예) 1824"
+              className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg
+                focus:outline-none focus:ring-2 focus:ring-primary-400"
+            />
+          </div>
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button type="button" size="sm" variant="ghost" onClick={handleResetFilters}>초기화</Button>
+          <Button type="submit" size="sm" variant="secondary">검색</Button>
+        </div>
       </form>
 
       {showCreate && (
@@ -241,11 +298,12 @@ export default function AdminDistilleryPage() {
       )}
 
       {editTarget && (
-        <div className="bg-white rounded-xl shadow-sm p-5 border border-amber-100">
+        <div ref={editFormRef} className="bg-white rounded-xl shadow-sm p-5 border border-amber-100 scroll-mt-4">
           <h2 className="text-sm font-semibold text-neutral-700 mb-4">
             증류소 수정 — {editTarget.nameKo}
           </h2>
           <DistilleryForm
+            key={editTarget.id}
             initial={editTarget}
             onSave={handleUpdate}
             onCancel={() => setEditTarget(null)}

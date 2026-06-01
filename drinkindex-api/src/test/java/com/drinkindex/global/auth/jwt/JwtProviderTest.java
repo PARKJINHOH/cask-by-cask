@@ -87,6 +87,24 @@ class JwtProviderTest {
     }
 
     @Test
+    @DisplayName("토큰 용도 구분 — Access Token 은 isAccessToken=true, isRefreshToken=false")
+    void accessTokenTypeClaim() {
+        String token = jwtProvider.generateAccessToken(1L, Role.MEMBER);
+
+        assertThat(jwtProvider.isAccessToken(token)).isTrue();
+        assertThat(jwtProvider.isRefreshToken(token)).isFalse();
+    }
+
+    @Test
+    @DisplayName("토큰 용도 구분 — Refresh Token 은 isRefreshToken=true, isAccessToken=false")
+    void refreshTokenTypeClaim() {
+        String token = jwtProvider.generateRefreshToken(1L, Role.MEMBER);
+
+        assertThat(jwtProvider.isRefreshToken(token)).isTrue();
+        assertThat(jwtProvider.isAccessToken(token)).isFalse();
+    }
+
+    @Test
     @DisplayName("getRefreshTokenExpiry 는 설정값 반환")
     void getRefreshTokenExpiry() {
         assertThat(jwtProvider.getRefreshTokenExpiry()).isEqualTo(REFRESH_EXPIRY);

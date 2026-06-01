@@ -37,6 +37,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (StringUtils.hasText(token) && jwtProvider.isTokenValid(token)) {
             try {
+                // [보안] Refresh Token 을 Access Token 처럼 사용하는 것을 차단.
+                // (Refresh Token 은 7일 만료 → 유출 시 장기 인증 우회에 악용될 수 있음)
+                if (!jwtProvider.isAccessToken(token)) {
+                    log.warn("JWT 인증 거부 — Access Token 이 아님 (Refresh Token 오용 가능성)");
+                    SecurityContextHolder.clearContext();
+                    sendUnauthorized(response, "AUTH_001", "인증이 필요합니다.");
+                    return;
+                }
+
                 Long userId = jwtProvider.extractUserId(token);
                 UserDetails userDetails = customUserDetailsService.loadUserById(userId);
 

@@ -29,6 +29,11 @@ import java.util.Date;
 @Component
 public class JwtProvider {
 
+    // [보안] 토큰 용도 구분 클레임 — Refresh Token 을 Access Token 으로 오용하는 것을 차단.
+    private static final String CLAIM_TYPE = "type";
+    private static final String TYPE_ACCESS = "access";
+    private static final String TYPE_REFRESH = "refresh";
+
     private final SecretKey primaryKey;
     private final SecretKey previousKey;   // nullable — 회전 중에만 설정
     private final long accessTokenExpiry;
@@ -53,11 +58,29 @@ public class JwtProvider {
     }
 
     public String generateAccessToken(Long userId, Role role) {
-        return buildToken(userId, role, accessTokenExpiry);
+        return buildToken(userId, role, accessTokenExpiry, TYPE_ACCESS);
     }
 
     public String generateRefreshToken(Long userId, Role role) {
-        return buildToken(userId, role, refreshTokenExpiry);
+        return buildToken(userId, role, refreshTokenExpiry, TYPE_REFRESH);
+    }
+
+    /**
+     * 토큰이 Access Token 용도인지 확인 (API 인증 필터용).
+     * 레거시 토큰(type 클레임 미포함)은 호환을 위해 허용 — Refresh Token TTL(7일) 경과 후 자연 소멸.
+     */
+    public boolean isAccessToken(String token) {
+        String type = parseClaims(token).get(CLAIM_TYPE, String.class);
+        return type == null || TYPE_ACCESS.equals(type);
+    }
+
+    /**
+     * 토큰이 Refresh Token 용도인지 확인 (재발급 엔드포인트용).
+     * 레거시 토큰(type 클레임 미포함)은 호환을 위해 허용.
+     */
+    public boolean isRefreshToken(String token) {
+        String type = parseClaims(token).get(CLAIM_TYPE, String.class);
+        return type == null || TYPE_REFRESH.equals(type);
     }
 
     public Long extractUserId(String token) {
@@ -81,11 +104,12 @@ public class JwtProvider {
         return refreshTokenExpiry;
     }
 
-    private String buildToken(Long userId, Role role, long expiry) {
+    private String buildToken(Long userId, Role role, long expiry, String type) {
         Date now = new Date();
         return Jwts.builder()
                 .subject(String.valueOf(userId))
                 .claim("role", role.name())
+                .claim(CLAIM_TYPE, type)
                 .issuedAt(now)
                 .expiration(new Date(now.getTime() + expiry))
                 .signWith(primaryKey, Jwts.SIG.HS256)

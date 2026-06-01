@@ -3,7 +3,16 @@ import type { ApiResponse, PageResponse } from '@/shared/types/common.types'
 import type { Distillery, CreateDistilleryPayload, UpdateDistilleryPayload } from '@/domain/distillery/types/distillery.types'
 
 export const adminDistilleryApi = {
-  list: (params: { keyword?: string; country?: string; page?: number; size?: number }) =>
+  list: (params: {
+    keyword?: string
+    nameKo?: string
+    nameEn?: string
+    country?: string
+    foundedYear?: number
+    page?: number
+    size?: number
+    sort?: string
+  }) =>
     axiosInstance.get<ApiResponse<PageResponse<Distillery>>>('/api/distilleries', { params }),
 
   create: (data: CreateDistilleryPayload) =>

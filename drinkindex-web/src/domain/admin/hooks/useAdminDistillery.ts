@@ -2,11 +2,28 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { adminDistilleryApi } from '../api/adminDistilleryApi'
 import type { CreateDistilleryPayload, UpdateDistilleryPayload } from '@/domain/distillery/types/distillery.types'
 
-export function useAdminDistilleries(keyword: string, page: number) {
+export interface DistilleryFilters {
+  nameKo?: string
+  nameEn?: string
+  country?: string
+  foundedYear?: string
+}
+
+export function useAdminDistilleries(filters: DistilleryFilters, page: number) {
   return useQuery({
-    queryKey: ['admin-distilleries', keyword, page],
+    queryKey: ['admin-distilleries', filters, page],
     queryFn: () =>
-      adminDistilleryApi.list({ keyword, page, size: 20 }).then((r) => r.data.data!),
+      adminDistilleryApi
+        .list({
+          nameKo: filters.nameKo?.trim() || undefined,
+          nameEn: filters.nameEn?.trim() || undefined,
+          country: filters.country?.trim() || undefined,
+          foundedYear: filters.foundedYear?.trim() ? Number(filters.foundedYear) : undefined,
+          page,
+          size: 20,
+          sort: 'id,desc',
+        })
+        .then((r) => r.data.data!),
   })
 }
 

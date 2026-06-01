@@ -36,10 +36,13 @@ public class DistilleryService {
     // ── 공개 조회 ──────────────────────────────────────────────
 
     @Transactional(readOnly = true)
-    public Page<DistilleryResponse> search(String keyword, String country, Pageable pageable) {
+    public Page<DistilleryResponse> search(
+            String keyword, String nameKo, String nameEn, String country, Integer foundedYear, Pageable pageable) {
         String keywordParam = StringUtils.hasText(keyword) ? keyword.trim() : null;
+        String nameKoParam = StringUtils.hasText(nameKo) ? nameKo.trim() : null;
+        String nameEnParam = StringUtils.hasText(nameEn) ? nameEn.trim() : null;
         String countryParam = StringUtils.hasText(country) ? country.trim() : null;
-        return distilleryRepository.search(keywordParam, countryParam, pageable)
+        return distilleryRepository.search(keywordParam, nameKoParam, nameEnParam, countryParam, foundedYear, pageable)
                 .map(DistilleryResponse::from);
     }
 
