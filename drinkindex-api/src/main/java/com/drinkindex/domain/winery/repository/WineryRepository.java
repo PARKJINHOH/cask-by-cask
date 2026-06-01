@@ -14,11 +14,17 @@ public interface WineryRepository extends JpaRepository<Winery, Long> {
             WHERE (:keyword IS NULL
                    OR LOWER(w.nameKo) LIKE LOWER(CONCAT('%', :keyword, '%'))
                    OR LOWER(w.nameEn) LIKE LOWER(CONCAT('%', :keyword, '%')))
-              AND (:country IS NULL OR w.country = :country)
+              AND (:nameKo IS NULL OR LOWER(w.nameKo) LIKE LOWER(CONCAT('%', :nameKo, '%')))
+              AND (:nameEn IS NULL OR LOWER(w.nameEn) LIKE LOWER(CONCAT('%', :nameEn, '%')))
+              AND (:country IS NULL OR LOWER(w.country) LIKE LOWER(CONCAT('%', :country, '%')))
+              AND (:foundedYear IS NULL OR w.foundedYear = :foundedYear)
             """)
     Page<Winery> search(
             @Param("keyword") String keyword,
+            @Param("nameKo") String nameKo,
+            @Param("nameEn") String nameEn,
             @Param("country") String country,
+            @Param("foundedYear") Integer foundedYear,
             Pageable pageable
     );
 }

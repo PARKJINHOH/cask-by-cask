@@ -20,9 +20,13 @@ public class WineryController {
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<WineryResponse>>> search(
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String nameKo,
+            @RequestParam(required = false) String nameEn,
             @RequestParam(required = false) String country,
+            @RequestParam(required = false) Integer foundedYear,
             @PageableDefault(size = 20, sort = "nameKo") Pageable pageable) {
-        return ResponseEntity.ok(ApiResponse.success(PageResponse.from(wineryService.search(keyword, country, pageable))));
+        return ResponseEntity.ok(ApiResponse.success(PageResponse.from(
+                wineryService.search(keyword, nameKo, nameEn, country, foundedYear, pageable))));
     }
 
     @GetMapping("/{id}")

@@ -3,7 +3,16 @@ import type { ApiResponse, PageResponse } from '@/shared/types/common.types'
 import type { CognacHouse, CreateCognacHousePayload, UpdateCognacHousePayload } from '@/domain/cognachouse/types/cognachouse.types'
 
 export const adminCognacHouseApi = {
-  list: (params: { keyword?: string; country?: string; page?: number; size?: number }) =>
+  list: (params: {
+    keyword?: string
+    nameKo?: string
+    nameEn?: string
+    country?: string
+    foundedYear?: number
+    page?: number
+    size?: number
+    sort?: string
+  }) =>
     axiosInstance.get<ApiResponse<PageResponse<CognacHouse>>>('/api/cognac-houses', { params }),
 
   create: (data: CreateCognacHousePayload) =>

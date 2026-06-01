@@ -5,6 +5,5 @@ public enum AdminMenuKey {
     SPIRITS,
     DISTILLERIES,
     WINERIES,
-    COGNAC_HOUSES,
-    COGNAC_APPELLATIONS
+    COGNAC_HOUSES
 }

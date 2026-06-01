@@ -72,7 +72,6 @@ const navEntries: NavEntry[] = [
       { path: '/admin/distilleries',        label: '증류소 관리',      exact: true, menuKey: 'DISTILLERIES' },
       { path: '/admin/wineries',            label: '와이너리 관리',    exact: true, menuKey: 'WINERIES' },
       { path: '/admin/cognac-houses',       label: '꼬냑 하우스 관리', exact: true, menuKey: 'COGNAC_HOUSES' },
-      { path: '/admin/cognac-appellations', label: '세부 산지 관리',   exact: true, subItem: true, menuKey: 'COGNAC_APPELLATIONS' },
     ],
   },
   {

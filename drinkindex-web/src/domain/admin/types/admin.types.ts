@@ -84,7 +84,6 @@ export type AdminMenuKey =
   | 'DISTILLERIES'
   | 'WINERIES'
   | 'COGNAC_HOUSES'
-  | 'COGNAC_APPELLATIONS'
 
 export const ADMIN_MENU_KEY_LABELS: Record<AdminMenuKey, string> = {
   SPIRIT_REQUESTS: '등록 요청',
@@ -92,7 +91,6 @@ export const ADMIN_MENU_KEY_LABELS: Record<AdminMenuKey, string> = {
   DISTILLERIES: '증류소 관리',
   WINERIES: '와이너리 관리',
   COGNAC_HOUSES: '꼬냑 하우스 관리',
-  COGNAC_APPELLATIONS: '세부 산지 관리',
 }
 
 export const ALL_ADMIN_MENU_KEYS: AdminMenuKey[] = [
@@ -101,7 +99,6 @@ export const ALL_ADMIN_MENU_KEYS: AdminMenuKey[] = [
   'DISTILLERIES',
   'WINERIES',
   'COGNAC_HOUSES',
-  'COGNAC_APPELLATIONS',
 ]
 
 // ── RoleType ───────────────────────────────────────────────────

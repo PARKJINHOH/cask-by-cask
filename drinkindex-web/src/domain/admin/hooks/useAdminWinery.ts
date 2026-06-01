@@ -2,11 +2,28 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { adminWineryApi } from '../api/adminWineryApi'
 import type { CreateWineryPayload, UpdateWineryPayload } from '@/domain/winery/types/winery.types'
 
-export function useAdminWineries(keyword: string, page: number) {
+export interface WineryFilters {
+  nameKo?: string
+  nameEn?: string
+  country?: string
+  foundedYear?: string
+}
+
+export function useAdminWineries(filters: WineryFilters, page: number) {
   return useQuery({
-    queryKey: ['admin-wineries', keyword, page],
+    queryKey: ['admin-wineries', filters, page],
     queryFn: () =>
-      adminWineryApi.list({ keyword, page, size: 20 }).then((r) => r.data.data!),
+      adminWineryApi
+        .list({
+          nameKo: filters.nameKo?.trim() || undefined,
+          nameEn: filters.nameEn?.trim() || undefined,
+          country: filters.country?.trim() || undefined,
+          foundedYear: filters.foundedYear?.trim() ? Number(filters.foundedYear) : undefined,
+          page,
+          size: 20,
+          sort: 'id,desc',
+        })
+        .then((r) => r.data.data!),
   })
 }
 

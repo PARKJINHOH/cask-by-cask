@@ -56,9 +56,6 @@ public enum ErrorCode {
     // CognacHouse
     COGNAC_HOUSE_NOT_FOUND(HttpStatus.NOT_FOUND, "COGNAC_HOUSE_001", "꼬냑 하우스 정보를 찾을 수 없습니다."),
 
-    // CognacAppellation
-    COGNAC_APPELLATION_NOT_FOUND(HttpStatus.NOT_FOUND, "COGNAC_APPELLATION_001", "꼬냑 세부 산지 정보를 찾을 수 없습니다."),
-
     // Review
     REVIEW_NOT_FOUND(HttpStatus.NOT_FOUND, "REVIEW_001", "리뷰를 찾을 수 없습니다."),
     DUPLICATE_REVIEW(HttpStatus.CONFLICT, "REVIEW_002", "이미 해당 술에 리뷰를 작성하셨습니다."),

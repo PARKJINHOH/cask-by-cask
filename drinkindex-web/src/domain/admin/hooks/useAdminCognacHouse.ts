@@ -2,11 +2,28 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { adminCognacHouseApi } from '../api/adminCognacHouseApi'
 import type { CreateCognacHousePayload, UpdateCognacHousePayload } from '@/domain/cognachouse/types/cognachouse.types'
 
-export function useAdminCognacHouses(keyword: string, page: number) {
+export interface CognacHouseFilters {
+  nameKo?: string
+  nameEn?: string
+  country?: string
+  foundedYear?: string
+}
+
+export function useAdminCognacHouses(filters: CognacHouseFilters, page: number) {
   return useQuery({
-    queryKey: ['admin-cognac-houses', keyword, page],
+    queryKey: ['admin-cognac-houses', filters, page],
     queryFn: () =>
-      adminCognacHouseApi.list({ keyword, page, size: 20 }).then((r) => r.data.data!),
+      adminCognacHouseApi
+        .list({
+          nameKo: filters.nameKo?.trim() || undefined,
+          nameEn: filters.nameEn?.trim() || undefined,
+          country: filters.country?.trim() || undefined,
+          foundedYear: filters.foundedYear?.trim() ? Number(filters.foundedYear) : undefined,
+          page,
+          size: 20,
+          sort: 'id,desc',
+        })
+        .then((r) => r.data.data!),
   })
 }
 

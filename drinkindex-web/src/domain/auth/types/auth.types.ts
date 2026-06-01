@@ -6,7 +6,6 @@ export type AdminMenuKey =
   | 'DISTILLERIES'
   | 'WINERIES'
   | 'COGNAC_HOUSES'
-  | 'COGNAC_APPELLATIONS'
 
 export interface UserInfo {
   id: number

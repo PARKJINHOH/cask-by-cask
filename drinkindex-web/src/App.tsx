@@ -36,7 +36,6 @@ import AdminDistilleryPage from '@/pages/admin/AdminDistilleryPage'
 import AdminDistilleryRequestPage from '@/pages/admin/AdminDistilleryRequestPage'
 import AdminWineryPage from '@/pages/admin/AdminWineryPage'
 import AdminCognacHousePage from '@/pages/admin/AdminCognacHousePage'
-import AdminCognacAppellationPage from '@/pages/admin/AdminCognacAppellationPage'
 import AdminReportPage from '@/pages/admin/AdminReportPage'
 import AdminNoticeListPage from '@/pages/admin/AdminNoticeListPage'
 import AdminNoticeFormPage from '@/pages/admin/AdminNoticeFormPage'
@@ -134,7 +133,6 @@ export default function App() {
               <Route path="distilleries/requests" element={<AdminDistilleryRequestPage />} />
               <Route path="wineries" element={<AdminWineryPage />} />
               <Route path="cognac-houses" element={<AdminCognacHousePage />} />
-              <Route path="cognac-appellations" element={<AdminCognacAppellationPage />} />
               <Route path="reports" element={<AdminReportPage />} />
               <Route path="notices" element={<AdminNoticeListPage />} />
               <Route path="notices/new" element={<AdminNoticeFormPage />} />

@@ -67,7 +67,6 @@ const MENU_TREE: MenuTreeGroup[] = [
       { label: '증류소 관리', menuKey: 'DISTILLERIES' },
       { label: '와이너리 관리', menuKey: 'WINERIES' },
       { label: '꼬냑 하우스 관리', menuKey: 'COGNAC_HOUSES' },
-      { label: '세부 산지 관리', menuKey: 'COGNAC_APPELLATIONS', subItem: true },
     ],
   },
   {

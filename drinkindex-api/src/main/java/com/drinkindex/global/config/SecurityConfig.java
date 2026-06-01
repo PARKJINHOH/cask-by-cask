@@ -145,7 +145,6 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/distilleries/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "PARTNER")
                         .requestMatchers("/api/admin/wineries/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "PARTNER")
                         .requestMatchers("/api/admin/cognac-houses/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "PARTNER")
-                        .requestMatchers("/api/admin/cognac-appellations/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "PARTNER")
                         .requestMatchers("/api/admin/**").hasAnyRole("SUPER_ADMIN", "ADMIN")
                         .anyRequest().authenticated()
                 )
