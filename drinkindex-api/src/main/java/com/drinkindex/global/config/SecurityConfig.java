@@ -110,6 +110,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/notices/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/popups/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/banners/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/events/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/byob").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/byob/{id:[0-9]+}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/posts").permitAll()

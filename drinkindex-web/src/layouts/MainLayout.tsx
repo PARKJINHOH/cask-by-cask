@@ -119,6 +119,7 @@ function GNB() {
         { key: 'requestDistillery', label: t('menu.requestDistillery'), to: '/request/distillery' },
       ],
     },
+    { key: 'calendar', label: t('menu.calendar'), to: '/calendar' },
     { key: 'notice', label: t('menu.notice'), to: '/notices' },
     { key: 'faq', label: t('menu.faq'), to: '/faq' },
     {

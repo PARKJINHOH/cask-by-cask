@@ -33,6 +33,7 @@ const navEntries: NavEntry[] = [
     items: [
       { path: '/admin/notices',  label: '공지사항' },
       { path: '/admin/banners',  label: '배너',     exact: true },
+      { path: '/admin/events',   label: '이벤트 달력', exact: true },
       { path: '/admin/popups',   label: '팝업',     exact: true },
       { path: '/admin/legal',    label: '약관 관리', exact: true },
       { path: '/admin/faq',      label: 'FAQ 관리',  exact: true },

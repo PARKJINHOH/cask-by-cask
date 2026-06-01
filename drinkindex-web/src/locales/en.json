@@ -62,7 +62,30 @@
     "communityNews": "News",
     "communityBoard": "Free Board",
     "communityByob": "BYOB Gatherings",
+    "calendar": "Events",
     "faq": "FAQ"
+  },
+  "calendar": {
+    "title": "Event Calendar",
+    "subtitle": "See product releases, festivals, and event periods at a glance.",
+    "yearMonth": "{{year}}. {{month}}",
+    "today": "Today",
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month",
+    "detailTitle": "Event Details",
+    "openLink": "Learn more",
+    "upcoming": "Upcoming Events",
+    "upcomingEmpty": "No upcoming events.",
+    "ongoing": "Ongoing",
+    "weekday": {
+      "sun": "Sun", "mon": "Mon", "tue": "Tue", "wed": "Wed", "thu": "Thu", "fri": "Fri", "sat": "Sat"
+    },
+    "category": {
+      "release": "Release",
+      "festival": "Festival",
+      "event": "Event",
+      "etc": "Other"
+    }
   },
   "spiritRequest": {
     "title": "Spirit Registration Request",

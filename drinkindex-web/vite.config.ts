@@ -78,6 +78,14 @@ export default defineConfig({
         target: 'http://localhost:8080',
         changeOrigin: true,
       },
+      '/api/events': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+      '/api/admin/events': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
       '/api/score-history': {
         target: 'http://localhost:8080',
         changeOrigin: true,

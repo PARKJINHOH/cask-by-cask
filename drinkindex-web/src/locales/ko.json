@@ -62,7 +62,30 @@
     "communityNews": "소식",
     "communityBoard": "자유게시판",
     "communityByob": "BYOB 모임",
+    "calendar": "이벤트 달력",
     "faq": "FAQ"
+  },
+  "calendar": {
+    "title": "이벤트 달력",
+    "subtitle": "신제품 출시일, 주류 페스티벌, 이벤트 기간을 한눈에 확인하세요.",
+    "yearMonth": "{{year}}년 {{month}}월",
+    "today": "오늘",
+    "prevMonth": "이전 달",
+    "nextMonth": "다음 달",
+    "detailTitle": "이벤트 정보",
+    "openLink": "자세히 보기",
+    "upcoming": "다가오는 이벤트",
+    "upcomingEmpty": "예정된 이벤트가 없습니다.",
+    "ongoing": "진행 중",
+    "weekday": {
+      "sun": "일", "mon": "월", "tue": "화", "wed": "수", "thu": "목", "fri": "금", "sat": "토"
+    },
+    "category": {
+      "release": "출시",
+      "festival": "페스티벌",
+      "event": "이벤트",
+      "etc": "기타"
+    }
   },
   "spiritRequest": {
     "title": "술 등록 요청",

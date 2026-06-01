@@ -63,6 +63,8 @@ import AdminEmailHistoryPage from '@/pages/admin/AdminEmailHistoryPage'
 import ReviewFormPage from '@/pages/ReviewFormPage'
 import InquiryPage from '@/pages/InquiryPage'
 import FaqPage from '@/pages/FaqPage'
+import EventCalendarPage from '@/pages/EventCalendarPage'
+import AdminEventCalendarPage from '@/pages/admin/AdminEventCalendarPage'
 import AdminInquiryPage from '@/pages/admin/AdminInquiryPage'
 import AdminRolePage from '@/pages/admin/AdminRolePage'
 import AdminLogPage from '@/pages/admin/AdminLogPage'
@@ -90,6 +92,7 @@ export default function App() {
             <Route path="privacy" element={<PrivacyPage />} />
             <Route path="inquiry" element={<InquiryPage />} />
             <Route path="faq" element={<FaqPage />} />
+            <Route path="calendar" element={<EventCalendarPage />} />
             {/* 커뮤니티 */}
             <Route path="community/all" element={<AllBoardPage />} />
             <Route path="community/notice" element={<NoticeBoardPage />} />
@@ -143,6 +146,7 @@ export default function App() {
               <Route path="banners" element={<AdminBannerListPage />} />
               <Route path="banners/new" element={<AdminBannerFormPage />} />
               <Route path="banners/:id/edit" element={<AdminBannerFormPage />} />
+              <Route path="events" element={<AdminEventCalendarPage />} />
               <Route path="community/post-reports" element={<AdminPostReportPage />} />
               <Route path="community/bad-words" element={<AdminBadWordPage />} />
               <Route path="community/emojis" element={<AdminEmojiPage />} />

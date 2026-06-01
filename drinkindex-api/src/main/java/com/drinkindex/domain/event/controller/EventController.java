@@ -1,0 +1,44 @@
+package com.drinkindex.domain.event.controller;
+
+import com.drinkindex.domain.event.dto.EventResponse;
+import com.drinkindex.domain.event.service.CalendarEventService;
+import com.drinkindex.global.response.ApiResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
+import java.util.List;
+
+// 비회원 포함 전체 허용 (SecurityConfig: GET /api/events/** permitAll)
+@RestController
+@RequestMapping("/api/events")
+@RequiredArgsConstructor
+public class EventController {
+
+    private final CalendarEventService calendarEventService;
+
+    /** 특정 연·월의 이벤트 달력 조회. 미지정 시 현재 연·월. */
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<EventResponse>>> getEvents(
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month
+    ) {
+        LocalDate now = LocalDate.now();
+        int y = year != null ? year : now.getYear();
+        int m = month != null ? month : now.getMonthValue();
+        return ResponseEntity.ok(
+                ApiResponse.success(calendarEventService.getVisibleEventsByMonth(y, m))
+        );
+    }
+
+    /** 오늘 기준 진행 중 + 다가오는 이벤트 목록(사이드바용). */
+    @GetMapping("/upcoming")
+    public ResponseEntity<ApiResponse<List<EventResponse>>> getUpcoming(
+            @RequestParam(defaultValue = "10") int limit
+    ) {
+        return ResponseEntity.ok(
+                ApiResponse.success(calendarEventService.getUpcomingEvents(limit))
+        );
+    }
+}

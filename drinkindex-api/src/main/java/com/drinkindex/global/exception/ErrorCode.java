@@ -196,6 +196,9 @@ public enum ErrorCode {
     BYOB_HOST_COMMENT_MUST_REPLY(HttpStatus.BAD_REQUEST, "BYOB_013", "주최자는 기존 댓글에 답글만 작성할 수 있습니다."),
     BYOB_PARTICIPANT_CANNOT_REPLY(HttpStatus.BAD_REQUEST, "BYOB_014", "참여자는 답글을 작성할 수 없습니다."),
 
+    // Event (이벤트 달력)
+    EVENT_NOT_FOUND(HttpStatus.NOT_FOUND, "EVENT_001", "이벤트를 찾을 수 없습니다."),
+
     // Draft (임시저장)
     DRAFT_NOT_FOUND(HttpStatus.NOT_FOUND, "DRAFT_001", "임시저장을 찾을 수 없습니다."),
     DRAFT_ACCESS_DENIED(HttpStatus.FORBIDDEN, "DRAFT_002", "본인의 임시저장만 접근할 수 있습니다."),
