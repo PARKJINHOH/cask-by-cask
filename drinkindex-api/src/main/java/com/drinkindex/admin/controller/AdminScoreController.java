@@ -28,11 +28,24 @@ public class AdminScoreController {
         return ResponseEntity.ok(ApiResponse.success(adminScoreService.getAllScoreConfigs()));
     }
 
+    @PostMapping("/score-config")
+    public ResponseEntity<ApiResponse<ScoreConfigResponse>> createScoreConfig(
+            @Valid @RequestBody CreateScoreConfigRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(adminScoreService.createScoreConfig(request)));
+    }
+
     @PatchMapping("/score-config/{id}")
     public ResponseEntity<ApiResponse<ScoreConfigResponse>> updateScoreConfig(
             @PathVariable Long id,
             @RequestBody UpdateScoreConfigRequest request) {
         return ResponseEntity.ok(ApiResponse.success(adminScoreService.updateScoreConfig(id, request)));
+    }
+
+    @DeleteMapping("/score-config/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteScoreConfig(@PathVariable Long id) {
+        adminScoreService.deleteScoreConfig(id);
+        return ResponseEntity.ok(ApiResponse.success());
     }
 
     // ─── 레벨 설정 ──────────────────────────────────────────────────────────

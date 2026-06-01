@@ -2,7 +2,7 @@ package com.drinkindex.domain.spirit.service;
 
 import com.drinkindex.domain.distillery.entity.Distillery;
 import com.drinkindex.domain.distillery.repository.DistilleryRepository;
-import com.drinkindex.domain.score.entity.enums.ScoreActionType;
+import com.drinkindex.domain.score.constant.ScoreActions;
 import com.drinkindex.domain.score.service.ScoreService;
 import com.drinkindex.domain.community.entity.enums.NotificationType;
 import com.drinkindex.domain.community.service.NotificationService;
@@ -201,7 +201,7 @@ public class SpiritService {
         SpiritRegisterRequest saved = registerRequestRepository.save(request);
 
         // [숙성력] 술 등록 요청 점수 지급
-        scoreService.award(userId, ScoreActionType.SPIRIT_REQUEST, "SPIRIT_REQUEST", saved.getId());
+        scoreService.award(userId, ScoreActions.SPIRIT_REQUEST, "SPIRIT_REQUEST", saved.getId());
 
         return toRegisterResponse(saved, body.nameKo(), body.nameEn(), body.category());
     }
@@ -323,7 +323,7 @@ public class SpiritService {
         req.approve(admin);
 
         // [숙성력] 술 등록 요청 승인 — 요청자(관리자 아님)에게 지급
-        scoreService.award(req.getUser().getId(), ScoreActionType.SPIRIT_REQUEST_APPROVED, "SPIRIT_REQUEST", requestId);
+        scoreService.award(req.getUser().getId(), ScoreActions.SPIRIT_REQUEST_APPROVED, "SPIRIT_REQUEST", requestId);
 
         notificationService.send(
                 req.getUser(),

@@ -151,6 +151,7 @@ public enum ErrorCode {
     SCORE_CONFIG_NOT_FOUND(HttpStatus.NOT_FOUND, "SCORE_001", "점수 설정을 찾을 수 없습니다."),
     LEVEL_CONFIG_NOT_FOUND(HttpStatus.NOT_FOUND, "SCORE_002", "레벨 설정을 찾을 수 없습니다."),
     CANNOT_DELETE_BASE_LEVEL(HttpStatus.BAD_REQUEST, "SCORE_003", "기본 레벨은 삭제할 수 없습니다."),
+    SCORE_CONFIG_DUPLICATE(HttpStatus.CONFLICT, "SCORE_004", "이미 등록된 액션의 점수 설정입니다."),
 
     // Legal
     LEGAL_DOCUMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "LEGAL_001", "등록된 법적 문서를 찾을 수 없습니다."),

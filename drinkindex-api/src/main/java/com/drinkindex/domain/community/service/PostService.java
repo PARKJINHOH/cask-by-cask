@@ -10,7 +10,7 @@ import com.drinkindex.domain.community.entity.enums.NotificationType;
 import com.drinkindex.domain.community.entity.enums.PostStatus;
 import com.drinkindex.domain.community.entity.enums.ReportStatus;
 import com.drinkindex.domain.community.repository.*;
-import com.drinkindex.domain.score.entity.enums.ScoreActionType;
+import com.drinkindex.domain.score.constant.ScoreActions;
 import com.drinkindex.domain.score.service.ScoreService;
 import com.drinkindex.domain.user.entity.User;
 import com.drinkindex.domain.user.entity.enums.Role;
@@ -217,7 +217,7 @@ public class PostService {
 
         // [숙성력] 게시글 삭제 점수 차감 (본인 삭제 시만, 관리자 삭제 제외)
         if (authorId.equals(userId)) {
-            scoreService.deduct(authorId, ScoreActionType.POST_DELETE, "POST", postId);
+            scoreService.deduct(authorId, ScoreActions.POST_DELETE, "POST", postId);
         }
     }
 
@@ -249,7 +249,7 @@ public class PostService {
 
         // [숙성력] 신고 잠금 차감 — 이번 신고로 잠금 상태가 된 경우만, 작성자에게 차감
         if (!wasLockedBefore && PostStatus.LOCKED.equals(post.getStatus())) {
-            scoreService.deduct(post.getAuthor().getId(), ScoreActionType.POST_LOCKED, "POST", postId);
+            scoreService.deduct(post.getAuthor().getId(), ScoreActions.POST_LOCKED, "POST", postId);
         }
     }
 
@@ -284,7 +284,7 @@ public class PostService {
 
         // [숙성력] 추천 받음 — 게시글 작성자에게 (신규 추천, 자기 게시글 제외)
         if (newLikeAdded[0] && !post.getAuthor().getId().equals(userId)) {
-            scoreService.award(post.getAuthor().getId(), ScoreActionType.POST_LIKED, "POST", postId);
+            scoreService.award(post.getAuthor().getId(), ScoreActions.POST_LIKED, "POST", postId);
         }
 
         // 추천 알림 임계치 체크
@@ -403,19 +403,19 @@ public class PostService {
     // Private
     // ═══════════════════════════════════════════
 
-    private ScoreActionType resolvePostActionType(Post post) {
+    private String resolvePostActionType(Post post) {
         if (BoardType.NOTICE.equals(post.getBoardType())) {
-            return ScoreActionType.POST_WRITE_NOTICE;
+            return ScoreActions.POST_WRITE_NOTICE;
         }
         if (post.getPrefix() == null) {
-            return ScoreActionType.POST_WRITE_GENERAL;
+            return ScoreActions.POST_WRITE_GENERAL;
         }
         return switch (post.getPrefix().getName()) {
-            case "질문" -> ScoreActionType.POST_WRITE_QUESTION;
-            case "리뷰" -> ScoreActionType.POST_WRITE_REVIEW;
-            case "나눔" -> ScoreActionType.POST_WRITE_SHARING;
-            case "증류소투어" -> ScoreActionType.POST_WRITE_DISTILLERY_TOUR;
-            default -> ScoreActionType.POST_WRITE_GENERAL;
+            case "질문" -> ScoreActions.POST_WRITE_QUESTION;
+            case "리뷰" -> ScoreActions.POST_WRITE_REVIEW;
+            case "나눔" -> ScoreActions.POST_WRITE_SHARING;
+            case "증류소투어" -> ScoreActions.POST_WRITE_DISTILLERY_TOUR;
+            default -> ScoreActions.POST_WRITE_GENERAL;
         };
     }
 

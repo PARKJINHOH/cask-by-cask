@@ -1,6 +1,11 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { adminScoreApi, type ScoreConfigAdmin, type UpdateScoreConfigRequest } from '@/domain/admin/api/adminScoreApi'
+import {
+  adminScoreApi,
+  type ScoreConfigAdmin,
+  type CreateScoreConfigRequest,
+  type UpdateScoreConfigRequest,
+} from '@/domain/admin/api/adminScoreApi'
 import { ACTION_ICONS } from '@/domain/score/types/score.types'
 
 const ACTION_LABELS: Record<string, string> = {
@@ -24,8 +29,11 @@ const ACTION_LABELS: Record<string, string> = {
   ADMIN_ADJUST:               '관리자 수동 조정 (기준값)',
 }
 
+const ALL_ACTION_TYPES = Object.keys(ACTION_LABELS)
+
 export default function AdminScorePage() {
   const [editingId, setEditingId] = useState<number | null>(null)
+  const [adding, setAdding] = useState(false)
   const queryClient = useQueryClient()
 
   const { data: configs = [], isLoading } = useQuery({
@@ -33,20 +41,49 @@ export default function AdminScorePage() {
     queryFn: () => adminScoreApi.getScoreConfigs().then((r) => r.data.data ?? []),
   })
 
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['admin-score-config'] })
+
+  const createMutation = useMutation({
+    mutationFn: (data: CreateScoreConfigRequest) => adminScoreApi.createScoreConfig(data),
+    onSuccess: () => {
+      invalidate()
+      setAdding(false)
+    },
+  })
+
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: UpdateScoreConfigRequest }) =>
       adminScoreApi.updateScoreConfig(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-score-config'] })
+      invalidate()
       setEditingId(null)
     },
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => adminScoreApi.deleteScoreConfig(id),
+    onSuccess: invalidate,
+  })
+
+  // 액션 키는 자유 문자열. 이미 등록된 키는 중복 추가 불가(클라이언트 1차 검증).
+  const existingKeys = configs.map((c) => c.actionType)
+  // 입력 자동완성용: 아직 설정되지 않은 시스템 액션 키 추천
+  const suggestedKeys = ALL_ACTION_TYPES.filter((t) => !existingKeys.includes(t))
+
   return (
     <div className="p-6 space-y-5">
-      <div>
-        <h1 className="text-xl font-bold text-neutral-900">점수 설정</h1>
-        <p className="text-sm text-neutral-500 mt-0.5">각 액션별 숙성력 지급·차감 점수를 설정합니다.</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-neutral-900">점수 설정</h1>
+          <p className="text-sm text-neutral-500 mt-0.5">각 액션별 숙성력 지급·차감 점수를 설정합니다.</p>
+        </div>
+        <button
+          onClick={() => setAdding(true)}
+          disabled={adding}
+          className="shrink-0 h-9 px-3.5 text-sm font-medium rounded-md bg-primary-800 text-white hover:bg-primary-900 transition-colors disabled:opacity-40"
+        >
+          + 점수 추가
+        </button>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
@@ -60,10 +97,19 @@ export default function AdminScorePage() {
                 <th className="text-center px-4 py-3 text-neutral-500 font-medium w-24">점수</th>
                 <th className="text-center px-4 py-3 text-neutral-500 font-medium w-32">일일 한도</th>
                 <th className="text-center px-4 py-3 text-neutral-500 font-medium w-20">상태</th>
-                <th className="text-right px-4 py-3 text-neutral-500 font-medium w-20">수정</th>
+                <th className="text-right px-4 py-3 text-neutral-500 font-medium w-32">관리</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100">
+              {adding && (
+                <AddRow
+                  existingKeys={existingKeys}
+                  suggestedKeys={suggestedKeys}
+                  onSave={(data) => createMutation.mutate(data)}
+                  onCancel={() => setAdding(false)}
+                  isPending={createMutation.isPending}
+                />
+              )}
               {configs.map((cfg) =>
                 editingId === cfg.id ? (
                   <EditRow
@@ -78,6 +124,13 @@ export default function AdminScorePage() {
                     key={cfg.id}
                     cfg={cfg}
                     onEdit={() => setEditingId(cfg.id)}
+                    onDelete={() => {
+                      const label = ACTION_LABELS[cfg.actionType] ?? cfg.actionType
+                      if (window.confirm(`'${label}' 점수 설정을 삭제할까요?\n삭제 시 해당 액션은 숙성력을 지급/차감하지 않습니다.`)) {
+                        deleteMutation.mutate(cfg.id)
+                      }
+                    }}
+                    isDeleting={deleteMutation.isPending}
                   />
                 )
               )}
@@ -89,7 +142,17 @@ export default function AdminScorePage() {
   )
 }
 
-function ViewRow({ cfg, onEdit }: { cfg: ScoreConfigAdmin; onEdit: () => void }) {
+function ViewRow({
+  cfg,
+  onEdit,
+  onDelete,
+  isDeleting,
+}: {
+  cfg: ScoreConfigAdmin
+  onEdit: () => void
+  onDelete: () => void
+  isDeleting: boolean
+}) {
   const icon = ACTION_ICONS[cfg.actionType] ?? '•'
   const label = ACTION_LABELS[cfg.actionType] ?? cfg.actionType
 
@@ -117,12 +180,21 @@ function ViewRow({ cfg, onEdit }: { cfg: ScoreConfigAdmin; onEdit: () => void })
         </span>
       </td>
       <td className="px-4 py-3 text-right">
-        <button
-          onClick={onEdit}
-          className="h-7 px-2.5 text-xs font-medium rounded-md border border-neutral-300 bg-white text-neutral-600 hover:bg-neutral-50 transition-colors"
-        >
-          수정
-        </button>
+        <div className="flex items-center gap-1 justify-end">
+          <button
+            onClick={onEdit}
+            className="h-7 px-2.5 text-xs font-medium rounded-md border border-neutral-300 bg-white text-neutral-600 hover:bg-neutral-50 transition-colors"
+          >
+            수정
+          </button>
+          <button
+            onClick={onDelete}
+            disabled={isDeleting}
+            className="h-7 px-2.5 text-xs font-medium rounded-md border border-red-200 bg-white text-red-600 hover:bg-red-50 transition-colors disabled:opacity-40"
+          >
+            삭제
+          </button>
+        </div>
       </td>
     </tr>
   )
@@ -192,6 +264,119 @@ function EditRow({
             className="h-7 px-2.5 text-xs font-medium rounded-md bg-primary-800 text-white hover:bg-primary-900 transition-colors disabled:opacity-40"
           >
             저장
+          </button>
+          <button
+            onClick={onCancel}
+            className="h-7 px-2.5 text-xs font-medium rounded-md border border-neutral-300 bg-white text-neutral-600 hover:bg-neutral-50 transition-colors"
+          >
+            취소
+          </button>
+        </div>
+      </td>
+    </tr>
+  )
+}
+
+function AddRow({
+  existingKeys,
+  suggestedKeys,
+  onSave,
+  onCancel,
+  isPending,
+}: {
+  existingKeys: string[]
+  suggestedKeys: string[]
+  onSave: (data: CreateScoreConfigRequest) => void
+  onCancel: () => void
+  isPending: boolean
+}) {
+  const [actionType,  setActionType]  = useState('')
+  const [description, setDescription] = useState('')
+  const [score,       setScore]       = useState('0')
+  const [dailyLimit,  setDailyLimit]  = useState('')
+  const [isActive,    setIsActive]    = useState(true)
+
+  const trimmedKey = actionType.trim()
+  const isDuplicate = trimmedKey !== '' && existingKeys.includes(trimmedKey)
+  const canSave = trimmedKey !== '' && !isDuplicate
+
+  const handleSave = () => {
+    if (!canSave) return
+    onSave({
+      actionType: trimmedKey,
+      score: Number(score),
+      dailyLimit: dailyLimit.trim() ? Number(dailyLimit) : null,
+      isActive,
+      description: description.trim() || (ACTION_LABELS[trimmedKey] ?? trimmedKey),
+    })
+  }
+
+  return (
+    <tr className="bg-primary-50/50 align-top">
+      <td className="px-4 py-3">
+        <div className="space-y-1.5">
+          <input
+            list="score-action-suggestions"
+            value={actionType}
+            onChange={(e) => setActionType(e.target.value)}
+            placeholder="액션 키 (예: EVENT_2026)"
+            maxLength={50}
+            autoFocus
+            className="w-full max-w-[18rem] px-2 py-1 text-sm border border-neutral-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-400 placeholder:text-neutral-300"
+          />
+          <datalist id="score-action-suggestions">
+            {suggestedKeys.map((t) => (
+              <option key={t} value={t}>
+                {ACTION_LABELS[t] ?? t}
+              </option>
+            ))}
+          </datalist>
+          <input
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="설명 (선택)"
+            maxLength={200}
+            className="w-full max-w-[18rem] px-2 py-1 text-xs border border-neutral-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-400 placeholder:text-neutral-300"
+          />
+          {isDuplicate && (
+            <p className="text-xs text-red-500">이미 등록된 액션 키입니다.</p>
+          )}
+        </div>
+      </td>
+      <td className="px-4 py-3">
+        <input
+          type="number"
+          value={score}
+          onChange={(e) => setScore(e.target.value)}
+          className="w-20 px-2 py-1 text-sm text-center border border-neutral-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-400"
+        />
+      </td>
+      <td className="px-4 py-3">
+        <input
+          type="number"
+          value={dailyLimit}
+          onChange={(e) => setDailyLimit(e.target.value)}
+          placeholder="없음"
+          min={0}
+          className="w-20 px-2 py-1 text-sm text-center border border-neutral-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-400 placeholder:text-neutral-300"
+        />
+      </td>
+      <td className="px-4 py-3 text-center">
+        <input
+          type="checkbox"
+          checked={isActive}
+          onChange={(e) => setIsActive(e.target.checked)}
+          className="w-4 h-4 accent-primary-800"
+        />
+      </td>
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-1 justify-end">
+          <button
+            onClick={handleSave}
+            disabled={isPending || !canSave}
+            className="h-7 px-2.5 text-xs font-medium rounded-md bg-primary-800 text-white hover:bg-primary-900 transition-colors disabled:opacity-40"
+          >
+            추가
           </button>
           <button
             onClick={onCancel}

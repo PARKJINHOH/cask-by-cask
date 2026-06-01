@@ -6,7 +6,7 @@ import com.drinkindex.domain.review.dto.UpdateReviewRequest;
 import com.drinkindex.domain.review.entity.Review;
 import com.drinkindex.domain.review.entity.enums.ReviewSort;
 import com.drinkindex.domain.review.repository.ReviewRepository;
-import com.drinkindex.domain.score.entity.enums.ScoreActionType;
+import com.drinkindex.domain.score.constant.ScoreActions;
 import com.drinkindex.domain.score.service.ScoreService;
 import com.drinkindex.domain.spirit.entity.Spirit;
 import com.drinkindex.domain.spirit.entity.enums.SpiritStatus;
@@ -89,7 +89,7 @@ public class ReviewService {
         recalculateAvgScore(spiritId);
 
         // [숙성력] 술 상세 리뷰 작성 점수 지급
-        scoreService.award(userId, ScoreActionType.SPIRIT_REVIEW_WRITE, "SPIRIT_REVIEW", saved.getId());
+        scoreService.award(userId, ScoreActions.SPIRIT_REVIEW_WRITE, "SPIRIT_REVIEW", saved.getId());
 
         return ReviewResponse.from(saved);
     }

@@ -1,6 +1,5 @@
 package com.drinkindex.domain.score.entity;
 
-import com.drinkindex.domain.score.entity.enums.ScoreActionType;
 import com.drinkindex.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
@@ -17,9 +16,9 @@ public class ScoreConfig extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Enumerated(EnumType.STRING)
+    // 자유 문자열 액션 키. 시스템 액션은 ScoreActions 상수, 관리자가 임의 키 추가 가능.
     @Column(nullable = false, unique = true, length = 50)
-    private ScoreActionType actionType;
+    private String actionType;
 
     @Column(nullable = false)
     private Integer score;

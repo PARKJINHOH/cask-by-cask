@@ -1,13 +1,12 @@
 package com.drinkindex.domain.score.dto;
 
 import com.drinkindex.domain.score.entity.ScoreConfig;
-import com.drinkindex.domain.score.entity.enums.ScoreActionType;
 
 import java.time.LocalDateTime;
 
 public record ScoreConfigResponse(
         Long id,
-        ScoreActionType actionType,
+        String actionType,
         Integer score,
         Integer dailyLimit,
         Boolean isActive,

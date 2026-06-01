@@ -37,11 +37,34 @@ public class AdminScoreService {
     }
 
     @Transactional
+    public ScoreConfigResponse createScoreConfig(CreateScoreConfigRequest request) {
+        String actionType = request.actionType().trim();
+        if (scoreConfigRepository.existsByActionType(actionType)) {
+            throw new CustomException(ErrorCode.SCORE_CONFIG_DUPLICATE);
+        }
+        ScoreConfig config = ScoreConfig.builder()
+                .actionType(actionType)
+                .score(request.score())
+                .dailyLimit(request.dailyLimit())
+                .isActive(request.isActive() == null ? Boolean.TRUE : request.isActive())
+                .description(request.description())
+                .build();
+        return ScoreConfigResponse.from(scoreConfigRepository.save(config));
+    }
+
+    @Transactional
     public ScoreConfigResponse updateScoreConfig(Long id, UpdateScoreConfigRequest request) {
         ScoreConfig config = scoreConfigRepository.findById(id)
                 .orElseThrow(() -> new CustomException(ErrorCode.SCORE_CONFIG_NOT_FOUND));
         config.update(request.score(), request.dailyLimit(), request.isActive(), request.description());
         return ScoreConfigResponse.from(config);
+    }
+
+    @Transactional
+    public void deleteScoreConfig(Long id) {
+        ScoreConfig config = scoreConfigRepository.findById(id)
+                .orElseThrow(() -> new CustomException(ErrorCode.SCORE_CONFIG_NOT_FOUND));
+        scoreConfigRepository.delete(config);
     }
 
     // ─── 레벨 설정 ──────────────────────────────────────────────────────────

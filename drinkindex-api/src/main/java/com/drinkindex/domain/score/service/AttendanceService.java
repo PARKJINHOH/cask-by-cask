@@ -2,7 +2,7 @@ package com.drinkindex.domain.score.service;
 
 import com.drinkindex.domain.score.dto.AttendanceResult;
 import com.drinkindex.domain.score.entity.AttendanceLog;
-import com.drinkindex.domain.score.entity.enums.ScoreActionType;
+import com.drinkindex.domain.score.constant.ScoreActions;
 import com.drinkindex.domain.score.entity.enums.StreakBonus;
 import com.drinkindex.domain.score.repository.AttendanceLogRepository;
 import com.drinkindex.domain.user.entity.User;
@@ -49,16 +49,16 @@ public class AttendanceService {
         user.updateAttendance(today, streakCount);
 
         // 기본 출석 점수
-        scoreService.award(userId, ScoreActionType.ATTENDANCE, "ATTENDANCE", null);
+        scoreService.award(userId, ScoreActions.ATTENDANCE, "ATTENDANCE", null);
 
         // 연속 출석 보너스 (30 먼저 체크 후 7 체크 — 중복 방지)
         StreakBonus bonusAwarded = StreakBonus.NONE;
         if (streakCount % 30 == 0) {
-            scoreService.award(userId, ScoreActionType.ATTENDANCE_STREAK_30, "ATTENDANCE", null);
+            scoreService.award(userId, ScoreActions.ATTENDANCE_STREAK_30, "ATTENDANCE", null);
             log.updateBonus(StreakBonus.STREAK_30);
             bonusAwarded = StreakBonus.STREAK_30;
         } else if (streakCount % 7 == 0) {
-            scoreService.award(userId, ScoreActionType.ATTENDANCE_STREAK_7, "ATTENDANCE", null);
+            scoreService.award(userId, ScoreActions.ATTENDANCE_STREAK_7, "ATTENDANCE", null);
             log.updateBonus(StreakBonus.STREAK_7);
             bonusAwarded = StreakBonus.STREAK_7;
         }

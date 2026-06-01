@@ -1,6 +1,5 @@
 package com.drinkindex.domain.score.entity;
 
-import com.drinkindex.domain.score.entity.enums.ScoreActionType;
 import com.drinkindex.domain.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
@@ -33,9 +32,9 @@ public class ScoreHistory {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Enumerated(EnumType.STRING)
+    // 자유 문자열 액션 키 (지급 시점의 스냅샷)
     @Column(nullable = false, length = 50)
-    private ScoreActionType actionType;
+    private String actionType;
 
     // 실제 지급/차감된 점수 (설정값의 스냅샷)
     @Column(nullable = false)

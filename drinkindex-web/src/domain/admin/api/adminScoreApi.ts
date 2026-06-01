@@ -14,6 +14,14 @@ export interface ScoreConfigAdmin {
   updatedAt: string
 }
 
+export interface CreateScoreConfigRequest {
+  actionType: string
+  score: number
+  dailyLimit?: number | null
+  isActive?: boolean
+  description?: string
+}
+
 export interface UpdateScoreConfigRequest {
   score?: number
   dailyLimit?: number | null
@@ -57,8 +65,14 @@ export const adminScoreApi = {
   getScoreConfigs: () =>
     axiosInstance.get<ApiResponse<ScoreConfigAdmin[]>>('/api/admin/score-config'),
 
+  createScoreConfig: (data: CreateScoreConfigRequest) =>
+    axiosInstance.post<ApiResponse<ScoreConfigAdmin>>('/api/admin/score-config', data),
+
   updateScoreConfig: (id: number, data: UpdateScoreConfigRequest) =>
     axiosInstance.patch<ApiResponse<ScoreConfigAdmin>>(`/api/admin/score-config/${id}`, data),
+
+  deleteScoreConfig: (id: number) =>
+    axiosInstance.delete<ApiResponse<null>>(`/api/admin/score-config/${id}`),
 
   // 레벨 설정
   getLevelConfigs: () =>

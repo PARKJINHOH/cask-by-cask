@@ -2,10 +2,10 @@ package com.drinkindex.domain.score.service;
 
 import com.drinkindex.domain.community.entity.enums.NotificationType;
 import com.drinkindex.domain.community.service.NotificationService;
+import com.drinkindex.domain.score.constant.ScoreActions;
 import com.drinkindex.domain.score.entity.MemberLevelConfig;
 import com.drinkindex.domain.score.entity.ScoreConfig;
 import com.drinkindex.domain.score.entity.ScoreHistory;
-import com.drinkindex.domain.score.entity.enums.ScoreActionType;
 import com.drinkindex.domain.score.repository.MemberLevelConfigRepository;
 import com.drinkindex.domain.score.repository.ScoreConfigRepository;
 import com.drinkindex.domain.score.repository.ScoreHistoryRepository;
@@ -31,12 +31,12 @@ public class ScoreService {
     private final NotificationService notificationService;
 
     @Transactional
-    public void award(Long userId, ScoreActionType actionType, String referenceType, Long referenceId) {
+    public void award(Long userId, String actionType, String referenceType, Long referenceId) {
         applyScore(userId, actionType, referenceType, referenceId, null);
     }
 
     @Transactional
-    public void deduct(Long userId, ScoreActionType actionType, String referenceType, Long referenceId) {
+    public void deduct(Long userId, String actionType, String referenceType, Long referenceId) {
         applyScore(userId, actionType, referenceType, referenceId, null);
     }
 
@@ -51,7 +51,7 @@ public class ScoreService {
 
         ScoreHistory history = ScoreHistory.builder()
                 .user(user)
-                .actionType(ScoreActionType.ADMIN_ADJUST)
+                .actionType(ScoreActions.ADMIN_ADJUST)
                 .score(amount)
                 .balanceAfter(user.getMaturingPower())
                 .description(description)
@@ -59,7 +59,7 @@ public class ScoreService {
         scoreHistoryRepository.save(history);
     }
 
-    private void applyScore(Long userId, ScoreActionType actionType,
+    private void applyScore(Long userId, String actionType,
                             String referenceType, Long referenceId, String customDescription) {
         // config가 없으면 스킵 (미등록 액션 = 점수 미부여, 로그인 등 핵심 흐름 중단 방지)
         ScoreConfig config = scoreConfigRepository.findByActionType(actionType).orElse(null);
@@ -87,7 +87,7 @@ public class ScoreService {
 
         String description = customDescription != null
                 ? customDescription
-                : buildDescription(actionType, actualScore);
+                : buildDescription(config, actualScore);
 
         ScoreHistory history = ScoreHistory.builder()
                 .user(user)
@@ -135,28 +135,13 @@ public class ScoreService {
                 .orElse("Lv." + level);
     }
 
-    private String buildDescription(ScoreActionType actionType, int actualScore) {
-        String action = switch (actionType) {
-            case POST_WRITE_GENERAL -> "자유게시판 일반 글쓰기";
-            case POST_WRITE_QUESTION -> "자유게시판 질문 글쓰기";
-            case POST_WRITE_REVIEW -> "자유게시판 리뷰 글쓰기";
-            case POST_WRITE_SHARING -> "자유게시판 나눔 글쓰기";
-            case POST_WRITE_DISTILLERY_TOUR -> "자유게시판 증류소투어 글쓰기";
-            case POST_WRITE_NOTICE -> "소식 게시판 글쓰기";
-            case POST_DELETE -> "게시글 삭제";
-            case POST_LOCKED -> "신고 잠금";
-            case POST_LIKED -> "추천 받음";
-            case COMMENT_WRITE -> "댓글 작성";
-            case SPIRIT_REVIEW_WRITE -> "술 상세 리뷰 작성";
-            case SPIRIT_REQUEST -> "술 등록 요청";
-            case SPIRIT_REQUEST_APPROVED -> "술 등록 승인";
-            case WISHLIST_ADD -> "위시리스트 추가";
-            case ATTENDANCE -> "출석 체크";
-            case ATTENDANCE_STREAK_7 -> "7일 연속 출석 보너스";
-            case ATTENDANCE_STREAK_30 -> "30일 연속 출석 보너스";
-            case ADMIN_ADJUST -> "관리자 조정";
-        };
+    // 액션 키가 자유 문자열이므로, 설명은 관리자가 설정한 config.description 을 사용.
+    // 설명이 비어 있으면 액션 키 자체를 노출한다.
+    private String buildDescription(ScoreConfig config, int actualScore) {
+        String base = (config.getDescription() != null && !config.getDescription().isBlank())
+                ? config.getDescription()
+                : config.getActionType();
         String sign = actualScore >= 0 ? "+" : "";
-        return action + " " + sign + actualScore;
+        return base + " " + sign + actualScore;
     }
 }

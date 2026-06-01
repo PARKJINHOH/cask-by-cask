@@ -1,7 +1,6 @@
 package com.drinkindex.domain.score.repository;
 
 import com.drinkindex.domain.score.entity.ScoreHistory;
-import com.drinkindex.domain.score.entity.enums.ScoreActionType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -19,7 +18,7 @@ public interface ScoreHistoryRepository extends JpaRepository<ScoreHistory, Long
            "AND FUNCTION('DATE', sh.createdAt) = :today")
     Integer sumTodayScoreByUserAndAction(
             @Param("userId") Long userId,
-            @Param("actionType") ScoreActionType actionType,
+            @Param("actionType") String actionType,
             @Param("today") LocalDate today);
 
     Page<ScoreHistory> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
