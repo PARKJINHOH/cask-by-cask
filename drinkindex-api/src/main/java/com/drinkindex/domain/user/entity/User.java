@@ -1,7 +1,7 @@
 package com.drinkindex.domain.user.entity;
 
 import com.drinkindex.domain.community.entity.enums.BoardType;
-import com.drinkindex.domain.distillery.entity.Distillery;
+import com.drinkindex.domain.producer.entity.Producer;
 import com.drinkindex.domain.user.entity.enums.Role;
 import com.drinkindex.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
@@ -46,8 +46,8 @@ public class User extends BaseTimeEntity {
     private Role role;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "distillery_id")
-    private Distillery distillery;
+    @JoinColumn(name = "producer_id")
+    private Producer producer;
 
     @Builder.Default
     @Column(nullable = false)
@@ -205,8 +205,8 @@ public class User extends BaseTimeEntity {
         this.isActive = false;
     }
 
-    public void assignDistillery(Distillery distillery) {
-        this.distillery = distillery;
+    public void assignProducer(Producer producer) {
+        this.producer = producer;
     }
 
     public void deactivate() {
@@ -222,9 +222,9 @@ public class User extends BaseTimeEntity {
         this.suspendReason = reason;
     }
 
-    public void changeRole(Role role, Distillery distillery, RoleType roleType) {
+    public void changeRole(Role role, Producer producer, RoleType roleType) {
         this.role = role;
-        this.distillery = distillery;
+        this.producer = producer;
         this.roleType = roleType;
     }
 

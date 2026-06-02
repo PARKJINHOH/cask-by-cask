@@ -9,7 +9,7 @@ public record RankingResponse(
         Integer maturingPower,
         long weeklyScore,
         long monthlyScore,
-        String distilleryLogoUrl   // DISTILLERY 역할인 경우에만 사용 (현재는 null)
+        String producerLogoUrl   // DISTILLERY 역할인 경우에만 사용 (현재는 null)
 ) {
     public static RankingResponse of(int rank, RankingProjection p) {
         return new RankingResponse(

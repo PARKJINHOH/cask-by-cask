@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useAdminSpiritDetail } from '@/domain/admin/hooks/useAdminSpirits'
 import { adminSpiritApi } from '@/domain/admin/api/adminSpiritApi'
 import { ISO3166_COUNTRIES } from '@/domain/location/data/iso3166Countries'
-import AdminDistillerySelector from '@/domain/distillery/components/AdminDistillerySelector'
+import AdminProducerSelector from '@/domain/producer/components/AdminProducerSelector'
+import { CATEGORY_TO_PRODUCER_TYPE } from '@/domain/producer/types/producer.types'
 import CountryRegionSelector from '@/domain/location/components/CountryRegionSelector'
 import Button from '@/shared/components/Button'
 import Modal from '@/shared/components/Modal'
@@ -73,8 +74,8 @@ export default function AdminSpiritFormPage() {
   // ── 기본 정보 ────────────────────────────────────────────────
   const [nameKo, setNameKo] = useState('')
   const [nameEn, setNameEn] = useState('')
-  const [distilleryId, setDistilleryId] = useState<number | null>(null)
-  const [distilleryName, setDistilleryName] = useState('')
+  const [producerId, setProducerId] = useState<number | null>(null)
+  const [producerName, setProducerName] = useState('')
   const [bottler, setBottler] = useState('')
   const [bottledYear, setBottledYear] = useState('')
   const [vintageYear, setVintageYear] = useState('')
@@ -102,8 +103,8 @@ export default function AdminSpiritFormPage() {
     setCategory(spirit.category)
     setNameKo(spirit.nameKo)
     setNameEn(spirit.nameEn)
-    setDistilleryId(spirit.distilleryId)
-    setDistilleryName(spirit.distilleryNameKo ?? '')
+    setProducerId(spirit.producerId)
+    setProducerName(spirit.producerNameKo ?? '')
     setBottler(spirit.bottler ?? '')
     setBottledYear(spirit.bottledYear?.toString() ?? '')
     setVintageYear(spirit.vintageYear?.toString() ?? '')
@@ -327,7 +328,7 @@ export default function AdminSpiritFormPage() {
       const common = buildCommonPayload()
       const base = {
         nameKo, nameEn, category,
-        distilleryId: distilleryId ?? null,
+        producerId: producerId ?? null,
         bottler: bottler || null,
         bottledYear: category !== 'WINE' && bottledYear ? Number(bottledYear) : null,
         vintageYear: category === 'WINE' && vintageYear ? Number(vintageYear) : null,
@@ -463,8 +464,9 @@ export default function AdminSpiritFormPage() {
 
             <div>
               <label className={LABEL}>{producerLabel}</label>
-              <AdminDistillerySelector value={distilleryId} defaultName={distilleryName}
-                onChange={(id) => setDistilleryId(id ?? null)} />
+              <AdminProducerSelector value={producerId} defaultName={producerName}
+                onChange={(id) => setProducerId(id ?? null)}
+                type={category ? CATEGORY_TO_PRODUCER_TYPE[category] : undefined} />
             </div>
 
             <div>

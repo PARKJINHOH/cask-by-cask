@@ -70,7 +70,7 @@ export default function UserContextMenu({ nickname, userId, children, disabled }
           style={{ top: pos.top, left: pos.left }}
         >
           <button
-            className="flex items-center gap-2 px-4 py-2 text-sm text-neutral-700 hover:bg-gray-50 w-full text-left"
+            className="flex items-center gap-2 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 w-full text-left"
             onClick={() => {
               setOpen(false)
               navigate(`/community/all?authorId=${userId}&authorNickname=${encodeURIComponent(nickname)}`)
@@ -79,7 +79,7 @@ export default function UserContextMenu({ nickname, userId, children, disabled }
             📋 사용자 게시글 보기
           </button>
           <button
-            className="flex items-center gap-2 px-4 py-2 text-sm text-neutral-700 hover:bg-gray-50 w-full text-left"
+            className="flex items-center gap-2 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 w-full text-left"
             onClick={() => {
               setOpen(false)
               navigate(`/community/all?commentAuthorId=${userId}&authorNickname=${encodeURIComponent(nickname)}`)
@@ -89,9 +89,9 @@ export default function UserContextMenu({ nickname, userId, children, disabled }
           </button>
           {isLoggedIn && (
             <>
-              <div className="border-t border-gray-100 my-1" />
+              <div className="border-t border-neutral-100 my-1" />
               <button
-                className="flex items-center gap-2 px-4 py-2 text-sm text-neutral-700 hover:bg-gray-50 w-full text-left"
+                className="flex items-center gap-2 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 w-full text-left"
                 onClick={() => {
                   setOpen(false)
                   openPopup(nickname)

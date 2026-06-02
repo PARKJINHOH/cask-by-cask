@@ -25,7 +25,7 @@ export function BottleCollectionTab() {
     if (confirm(t('collection.deleteConfirm', { name }))) deleteMut.mutate(b.id);
   };
 
-  if (isLoading) return <div className="py-8 text-center text-gray-400">{t('common.loading')}</div>;
+  if (isLoading) return <div className="py-8 text-center text-neutral-400">{t('common.loading')}</div>;
 
   return (
     <div className="space-y-3">

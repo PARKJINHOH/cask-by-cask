@@ -3,6 +3,10 @@ package com.drinkindex.domain.spirit.dto;
 import com.drinkindex.domain.spirit.entity.SpiritRegisterRequest;
 import com.drinkindex.domain.spirit.entity.enums.RequestStatus;
 import com.drinkindex.domain.spirit.entity.enums.SpiritCategory;
+import com.drinkindex.domain.spirit.entity.enums.WhiskyStyle;
+import com.drinkindex.domain.spirit.entity.enums.WineType;
+import com.drinkindex.domain.spirit.entity.enums.CognacGrade;
+import com.drinkindex.domain.spirit.entity.enums.OtherSpiritType;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -15,8 +19,8 @@ public record SpiritRegisterRequestDetailResponse(
         String nameKo,
         String nameEn,
         SpiritCategory category,
-        Long distilleryId,
-        String distilleryNameKo,
+        Long producerId,
+        String producerNameKo,
         String bottler,
         Integer bottledYear,
         Integer vintageYear,
@@ -24,6 +28,10 @@ public record SpiritRegisterRequestDetailResponse(
         Integer volumeMl,
         String country,
         String region,
+        WhiskyStyle whiskyStyle,
+        WineType wineType,
+        CognacGrade cognacGrade,
+        OtherSpiritType otherType,
         List<String> imageUrls,
         RequestStatus status,
         String rejectReason,
@@ -33,7 +41,7 @@ public record SpiritRegisterRequestDetailResponse(
     public static SpiritRegisterRequestDetailResponse of(
             SpiritRegisterRequest req,
             SpiritRegisterRequestBody body,
-            String distilleryNameKo) {
+            String producerNameKo) {
         return new SpiritRegisterRequestDetailResponse(
                 req.getId(),
                 req.getUser().getId(),
@@ -41,8 +49,8 @@ public record SpiritRegisterRequestDetailResponse(
                 body.nameKo(),
                 body.nameEn(),
                 body.category(),
-                body.distilleryId(),
-                distilleryNameKo,
+                body.producerId(),
+                producerNameKo,
                 body.bottler(),
                 body.bottledYear(),
                 body.vintageYear(),
@@ -50,6 +58,10 @@ public record SpiritRegisterRequestDetailResponse(
                 body.volumeMl(),
                 body.country(),
                 body.region(),
+                body.whiskyStyle(),
+                body.wineType(),
+                body.cognacGrade(),
+                body.otherType(),
                 body.imageUrls() != null ? body.imageUrls() : List.of(),
                 req.getStatus(),
                 req.getRejectReason(),

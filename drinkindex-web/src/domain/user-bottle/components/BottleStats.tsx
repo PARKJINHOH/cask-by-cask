@@ -4,7 +4,7 @@ import type { BottleStats as IBottleStats } from '../types/userBottle.types';
 export function BottleStats({ stats }: { stats: IBottleStats }) {
   const { t } = useTranslation();
   return (
-    <div className="flex flex-wrap gap-3 px-4 py-3 bg-amber-50 rounded-lg text-sm text-gray-700">
+    <div className="flex flex-wrap gap-3 px-4 py-3 bg-amber-50 rounded-lg text-sm text-neutral-700">
       <span className="font-semibold">
         {t('collection.stats.totalBottles', { count: stats.totalCount })}
       </span>
@@ -14,7 +14,7 @@ export function BottleStats({ stats }: { stats: IBottleStats }) {
       <span className="text-green-600">
         {t('collection.stats.opened', { count: stats.openedCount })}
       </span>
-      <span className="text-gray-500">
+      <span className="text-neutral-500">
         {t('collection.stats.unopened', { count: stats.unopenedCount })}
       </span>
       {stats.categoryStats.map(cs => (

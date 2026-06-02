@@ -46,7 +46,7 @@ public enum ErrorCode {
     INVALID_GRAPE_PERCENTAGE(HttpStatus.BAD_REQUEST, "SPIRIT_007", "포도 품종 비율 합계는 100%를 초과할 수 없습니다."),
     INVALID_DATE_FORMAT(HttpStatus.BAD_REQUEST, "SPIRIT_008", "날짜 형식이 올바르지 않습니다 (YYYY 또는 YYYY-MM)."),
 
-    // Distillery
+    // Producer
     DISTILLERY_NOT_FOUND(HttpStatus.NOT_FOUND, "DISTILLERY_001", "증류소 정보를 찾을 수 없습니다."),
     DISTILLERY_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "DISTILLERY_002", "증류소 등록 요청을 찾을 수 없습니다."),
 

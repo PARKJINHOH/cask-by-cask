@@ -13,7 +13,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * spirit/distillery/cognac_house/winery의 country 영문 표기를 한국어 표준 표기로 정규화.
+ * spirit/producer/cognac_house/winery의 country 영문 표기를 한국어 표준 표기로 정규화.
  * 멱등(idempotent) — 매 부팅 시 실행해도 안전하며, 변경 row가 0이면 NOOP.
  */
 @Slf4j
@@ -55,7 +55,8 @@ public class CountryNormalizeRunner implements ApplicationRunner {
         return m;
     }
 
-    private static final String[] TABLES = { "spirit", "distillery", "cognac_house", "winery" };
+    // winery / cognac_house 테이블은 producer(type 컬럼)로 통합되어 제거됨
+    private static final String[] TABLES = { "spirit", "producer" };
 
     @Override
     @Transactional

@@ -20,11 +20,11 @@ public record SpiritDetailResponse(
         @Schema(description = "카테고리")
         SpiritCategory category,
         @Schema(description = "증류소 ID")
-        Long distilleryId,
+        Long producerId,
         @Schema(description = "증류소 한글명")
-        String distilleryNameKo,
+        String producerNameKo,
         @Schema(description = "증류소 영문명")
-        String distilleryNameEn,
+        String producerNameEn,
         @Schema(description = "병입업체명")
         String bottler,
         @Schema(description = "병입 연도")
@@ -82,9 +82,9 @@ public record SpiritDetailResponse(
                 spirit.getNameKo(),
                 spirit.getNameEn(),
                 spirit.getCategory(),
-                spirit.getDistillery() != null ? spirit.getDistillery().getId() : null,
-                spirit.getDistillery() != null ? spirit.getDistillery().getNameKo() : null,
-                spirit.getDistillery() != null ? spirit.getDistillery().getNameEn() : null,
+                spirit.getProducer() != null ? spirit.getProducer().getId() : null,
+                spirit.getProducer() != null ? spirit.getProducer().getNameKo() : null,
+                spirit.getProducer() != null ? spirit.getProducer().getNameEn() : null,
                 spirit.getBottler(),
                 spirit.getBottledYear(),
                 spirit.getVintageYear(),

@@ -37,10 +37,10 @@ public class SpiritQueryRepositoryImpl implements SpiritQueryRepository {
         BooleanBuilder predicate = buildPredicate(condition, spirit);
         OrderSpecifier<?> order = buildOrder(condition.sort(), spirit);
 
-        // ── 1. 데이터 조회 (distillery fetch join + 서브타입 조건부 join) ─
+        // ── 1. 데이터 조회 (producer fetch join + 서브타입 조건부 join) ─
         JPAQuery<Spirit> dataQuery = queryFactory
                 .selectFrom(spirit)
-                .leftJoin(spirit.distillery).fetchJoin();
+                .leftJoin(spirit.producer).fetchJoin();
         applySubTypeJoin(dataQuery, condition, spirit);
         List<Spirit> spirits = dataQuery
                 .where(predicate)
@@ -111,6 +111,9 @@ public class SpiritQueryRepositoryImpl implements SpiritQueryRepository {
         }
         if (StringUtils.hasText(cond.region())) {
             builder.and(spirit.region.eq(cond.region()));
+        }
+        if (cond.producerId() != null) {
+            builder.and(spirit.producer.id.eq(cond.producerId()));
         }
         if (cond.minAbv() != null) {
             builder.and(spirit.abv.isNotNull().and(spirit.abv.goe(cond.minAbv())));

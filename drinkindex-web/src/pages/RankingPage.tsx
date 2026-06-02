@@ -6,7 +6,7 @@ import type { RankingItem, RankingPeriod } from '@/domain/ranking/types/ranking.
 import { getLevelInfo } from '@/domain/score/types/score.types'
 import LevelIcon from '@/shared/components/icons/LevelIcon'
 import AdminIcon from '@/shared/components/icons/AdminIcon'
-import DistilleryIcon from '@/shared/components/icons/DistilleryIcon'
+import ProducerIcon from '@/shared/components/icons/ProducerIcon'
 import Spinner from '@/shared/components/Spinner'
 import Pagination from '@/shared/components/Pagination'
 import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
@@ -37,7 +37,7 @@ function periodLabel(period: RankingPeriod): string {
 
 function RankIcon({ item }: { item: RankingItem }) {
   if (item.role === 'ADMIN') return <AdminIcon size={22} />
-  if (item.role === 'DISTILLERY') return <DistilleryIcon logoUrl={item.distilleryLogoUrl ?? undefined} size={22} />
+  if (item.role === 'DISTILLERY') return <ProducerIcon logoUrl={item.producerLogoUrl ?? undefined} size={22} />
   return <LevelIcon level={item.currentLevel} size={22} />
 }
 

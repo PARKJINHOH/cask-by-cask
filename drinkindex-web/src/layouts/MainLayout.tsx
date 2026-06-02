@@ -14,7 +14,7 @@ import MessagePopup from '@/domain/message/components/MessagePopup'
 import ForcePasswordChangeModal from '@/domain/user/components/ForcePasswordChangeModal'
 import LevelIcon from '@/shared/components/icons/LevelIcon'
 import AdminIcon from '@/shared/components/icons/AdminIcon'
-import DistilleryIcon from '@/shared/components/icons/DistilleryIcon'
+import ProducerIcon from '@/shared/components/icons/ProducerIcon'
 
 const SEEN_KEY = 'notice:lastSeenId'
 
@@ -117,7 +117,7 @@ function GNB() {
       label: t('menu.request'),
       children: [
         { key: 'requestSpirit',     label: t('menu.requestSpirit'),     to: '/request/spirit' },
-        { key: 'requestDistillery', label: t('menu.requestDistillery'), to: '/request/distillery' },
+        { key: 'requestProducer', label: t('menu.requestProducer'), to: '/request/producer' },
       ],
     },
     { key: 'notice', label: t('menu.notice'), to: '/notices' },
@@ -402,7 +402,7 @@ function UserDropdown() {
           )}
           {(user?.role === 'PARTNER' || user?.role === 'SUPER_ADMIN') && (
             <span className="absolute -bottom-1 -left-1 bg-white rounded-full ring-1 ring-white flex items-center justify-center">
-              <DistilleryIcon size={13} />
+              <ProducerIcon size={13} />
             </span>
           )}
         </span>

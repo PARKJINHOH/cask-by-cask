@@ -1,6 +1,6 @@
 package com.drinkindex.domain.user.repository;
 
-import com.drinkindex.domain.distillery.entity.QDistillery;
+import com.drinkindex.domain.producer.entity.QProducer;
 import com.drinkindex.domain.user.dto.UserSearchCondition;
 import com.drinkindex.domain.user.entity.QUser;
 import com.drinkindex.domain.user.entity.User;
@@ -22,13 +22,13 @@ public class UserQueryRepositoryImpl implements UserQueryRepository {
     @Override
     public Page<User> searchUsers(UserSearchCondition condition, Pageable pageable) {
         QUser user = QUser.user;
-        QDistillery distillery = QDistillery.distillery;
+        QProducer producer = QProducer.producer;
 
         BooleanBuilder predicate = buildPredicate(condition, user);
 
         List<User> users = queryFactory
                 .selectFrom(user)
-                .leftJoin(user.distillery, distillery).fetchJoin()
+                .leftJoin(user.producer, producer).fetchJoin()
                 .where(predicate)
                 .orderBy(user.createdAt.desc())
                 .offset(pageable.getOffset())

@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import type { UseFormRegister, UseFormSetValue, UseFormWatch } from 'react-hook-form'
-import DistillerySelector from '@/domain/distillery/components/DistillerySelector'
-import AdminDistillerySelector from '@/domain/distillery/components/AdminDistillerySelector'
+import ProducerSelector from '@/domain/producer/components/ProducerSelector'
+import AdminProducerSelector from '@/domain/producer/components/AdminProducerSelector'
 import CountryRegionSelector from '@/domain/location/components/CountryRegionSelector'
 import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
+import { CATEGORY_TO_PRODUCER_TYPE, PRODUCER_TYPE_LABEL } from '@/domain/producer/types/producer.types'
 
 type FieldKey =
-  | 'distilleryId'
+  | 'producerId'
   | 'countryRegion'
   | 'bottler'
   | 'bottledYear'
@@ -15,7 +16,7 @@ type FieldKey =
   | 'volumeMl'
 
 const FIELD_DEFS: Array<{ key: FieldKey; label: string; group: string }> = [
-  { key: 'distilleryId',  label: '증류소',     group: '생산 정보' },
+  { key: 'producerId',  label: '증류소',     group: '생산 정보' },
   { key: 'countryRegion', label: '국가 / 지역', group: '생산 정보' },
   { key: 'bottler',       label: '병입업체명',  group: '병입 정보' },
   { key: 'bottledYear',   label: '병입년도',    group: '병입 정보' },
@@ -35,7 +36,7 @@ const CATEGORY_HIDDEN: Partial<Record<string, FieldKey[]>> = {
 }
 
 interface InitialValues {
-  distilleryId?: number | null
+  producerId?: number | null
   country?: string | null
   region?: string | null
   bottler?: string | null
@@ -57,7 +58,7 @@ interface Props {
   regionNameKo: string
   onCountryChange: (code: string | null, nameKo: string) => void
   onRegionChange: (nameKo: string) => void
-  defaultDistilleryName?: string
+  defaultProducerName?: string
   initialValues?: InitialValues
   dataReady?: boolean
   category?: SpiritCategory
@@ -84,7 +85,7 @@ export default function SpiritOptionalFields({
   regionNameKo,
   onCountryChange,
   onRegionChange,
-  defaultDistilleryName,
+  defaultProducerName,
   initialValues = {},
   dataReady = true,
   category,
@@ -94,7 +95,8 @@ export default function SpiritOptionalFields({
   fieldErrors = {},
   adminSelector = false,
 }: Props) {
-  const producerLabel = category === 'WINE' ? '양조장' : '증류소'
+  const producerType = category ? CATEGORY_TO_PRODUCER_TYPE[category] : undefined
+  const producerLabel = producerType ? PRODUCER_TYPE_LABEL[producerType].ko : '생산자'
   const [activeFields, setActiveFields] = useState<Set<FieldKey>>(new Set())
   const [didInit, setDidInit] = useState(false)
 
@@ -102,7 +104,7 @@ export default function SpiritOptionalFields({
   useEffect(() => {
     if (!dataReady || didInit) return
     const active = new Set<FieldKey>()
-    if (initialValues.distilleryId != null)            active.add('distilleryId')
+    if (initialValues.producerId != null)            active.add('producerId')
     if (initialValues.country || initialValues.region) active.add('countryRegion')
     if (initialValues.bottler)                         active.add('bottler')
     if (initialValues.bottledYear != null)             active.add('bottledYear')
@@ -171,7 +173,7 @@ export default function SpiritOptionalFields({
 
   const removeField = (key: FieldKey) => {
     setActiveFields(prev => { const s = new Set(prev); s.delete(key); return s })
-    if (key === 'distilleryId')  setValue('distilleryId', undefined)
+    if (key === 'producerId')  setValue('producerId', undefined)
     if (key === 'countryRegion') { onCountryChange(null, ''); onRegionChange('') }
     if (key === 'bottler')       setValue('bottler', undefined)
     if (key === 'bottledYear')   setValue('bottledYear', undefined)
@@ -204,7 +206,7 @@ export default function SpiritOptionalFields({
           <div key={key} className="space-y-1.5">
             <div className="flex items-center justify-between">
               <label className="block text-xs font-medium text-neutral-600">
-                {key === 'distilleryId' ? producerLabel : label}
+                {key === 'producerId' ? producerLabel : label}
                 {isRequired && <span className="text-red-400 ml-0.5">*</span>}
               </label>
               {!isPinned && (
@@ -218,18 +220,20 @@ export default function SpiritOptionalFields({
               )}
             </div>
 
-            {key === 'distilleryId' && (
+            {key === 'producerId' && (
               adminSelector ? (
-                <AdminDistillerySelector
-                  value={watch('distilleryId') ?? null}
-                  defaultName={defaultDistilleryName}
-                  onChange={(id) => setValue('distilleryId', id ?? undefined)}
+                <AdminProducerSelector
+                  value={watch('producerId') ?? null}
+                  defaultName={defaultProducerName}
+                  onChange={(id) => setValue('producerId', id ?? undefined)}
+                  type={producerType}
                 />
               ) : (
-                <DistillerySelector
-                  value={watch('distilleryId') ?? null}
-                  defaultName={defaultDistilleryName}
-                  onChange={(id) => setValue('distilleryId', id ?? undefined)}
+                <ProducerSelector
+                  value={watch('producerId') ?? null}
+                  defaultName={defaultProducerName}
+                  onChange={(id) => setValue('producerId', id ?? undefined)}
+                  type={producerType}
                 />
               )
             )}
@@ -311,7 +315,7 @@ export default function SpiritOptionalFields({
                       hover:bg-amber-50 hover:border-amber-300 hover:text-amber-700
                       transition-colors"
                   >
-                    + {key === 'distilleryId' ? producerLabel : label}
+                    + {key === 'producerId' ? producerLabel : label}
                   </button>
                 ))}
               </div>

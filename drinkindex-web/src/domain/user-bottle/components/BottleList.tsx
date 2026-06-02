@@ -19,7 +19,7 @@ export function BottleList({ bottles, view, editable, onEdit, onDelete, onToggle
 
   if (bottles.length === 0) {
     return (
-      <div className="py-16 text-center text-gray-400">
+      <div className="py-16 text-center text-neutral-400">
         <p className="font-medium">{t('collection.empty')}</p>
         <p className="text-sm mt-1">{t('collection.emptyDesc')}</p>
       </div>

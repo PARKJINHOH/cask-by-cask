@@ -55,7 +55,7 @@ const CATEGORY_META: Record<SpiritCategory | '', {
               keywordsEn: 'spirit review, whisky catalog, wine catalog, cognac catalog, drinkindex' },
   WHISKY:   { titleKo: '위스키',       titleEn: 'Whisky',
               descKo: '싱글 몰트, 블렌디드, 버번까지. 증류소·지역별 위스키 정보와 사용자 평점을 한 곳에서.',
-              descEn: 'Single malt, blended, bourbon and more. Explore whisky by distillery and region with user ratings.',
+              descEn: 'Single malt, blended, bourbon and more. Explore whisky by producer and region with user ratings.',
               keywordsKo: '위스키, 싱글 몰트, 블렌디드 위스키, 버번, 스카치, 아이리시 위스키, 위스키 리뷰',
               keywordsEn: 'whisky, single malt, blended whisky, bourbon, scotch, irish whiskey, whisky review' },
   COGNAC:   { titleKo: '꼬냑',         titleEn: 'Cognac',
@@ -161,8 +161,13 @@ function FilterPanel(p: FilterPanelProps) {
       {/* 초기화 */}
       <button
         onClick={p.onReset}
-        className="w-full text-sm text-neutral-400 hover:text-danger-600 transition-colors text-center"
+        className="w-full inline-flex items-center justify-center gap-1.5 py-2 text-sm font-medium
+          text-neutral-500 border border-neutral-200 rounded-lg
+          hover:border-danger-300 hover:text-danger-600 hover:bg-danger-50/40 transition-colors"
       >
+        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M3 2v6h6" /><path d="M3 13a9 9 0 1 0 3-7.7L3 8" />
+        </svg>
         {t('spirit.filter.reset')}
       </button>
     </div>
@@ -492,10 +497,18 @@ export default function SpiritListPage() {
 
       <div className="flex gap-6">
         {/* PC 좌측 고정 필터 패널 */}
-        <aside className="hidden lg:block w-64 flex-shrink-0">
-          <div className="sticky top-20 bg-white rounded-2xl border border-neutral-100 p-5
+        <aside className="hidden lg:block w-72 flex-shrink-0">
+          <div className="sticky top-20 bg-white rounded-2xl border border-neutral-100
             max-h-[calc(100vh-6rem)] overflow-y-auto">
-            <FilterPanel {...filterProps} />
+            <div className="flex items-center gap-2 px-5 pt-5 pb-3 border-b border-neutral-100 sticky top-0 bg-white z-10">
+              <svg className="w-4 h-4 text-primary-800" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="4" y1="6" x2="20" y2="6" /><line x1="8" y1="12" x2="20" y2="12" /><line x1="12" y1="18" x2="20" y2="18" />
+              </svg>
+              <h2 className="text-sm font-bold text-neutral-900">{t('spirit.filter.title')}</h2>
+            </div>
+            <div className="p-5">
+              <FilterPanel {...filterProps} />
+            </div>
           </div>
         </aside>
 
@@ -542,11 +555,11 @@ export default function SpiritListPage() {
             />
           ) : (
             <div
-              className={`flex flex-col gap-2
+              className={`grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 lg:gap-4
                 transition-opacity ${isFetching ? 'opacity-70 pointer-events-none' : ''}`}
             >
               {data.content.map((spirit) => (
-                <SpiritCard key={spirit.id} spirit={spirit} listView />
+                <SpiritCard key={spirit.id} spirit={spirit} />
               ))}
             </div>
           )}

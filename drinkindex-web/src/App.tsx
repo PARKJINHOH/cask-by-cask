@@ -15,7 +15,7 @@ import SignupPage from '@/pages/SignupPage'
 import MyPage from '@/pages/MyPage'
 import RankingPage from '@/pages/RankingPage'
 import SpiritRequestPage from '@/pages/SpiritRequestPage'
-import DistilleryRequestPage from '@/pages/DistilleryRequestPage'
+import ProducerRequestPage from '@/pages/ProducerRequestPage'
 import AllBoardPage from '@/pages/community/AllBoardPage'
 import NoticeBoardPage from '@/pages/community/NoticeBoardPage'
 import FreeBoardPage from '@/pages/community/FreeBoardPage'
@@ -32,10 +32,8 @@ import AdminSpiritDetailPage from '@/pages/admin/AdminSpiritDetailPage'
 import AdminSpiritFormPage from '@/pages/admin/AdminSpiritFormPage'
 import AdminRequestPage from '@/pages/admin/AdminRequestPage'
 import AdminRequestDetailPage from '@/pages/admin/AdminRequestDetailPage'
-import AdminDistilleryPage from '@/pages/admin/AdminDistilleryPage'
-import AdminDistilleryRequestPage from '@/pages/admin/AdminDistilleryRequestPage'
-import AdminWineryPage from '@/pages/admin/AdminWineryPage'
-import AdminCognacHousePage from '@/pages/admin/AdminCognacHousePage'
+import AdminProducerPage from '@/pages/admin/AdminProducerPage'
+import AdminProducerRequestPage from '@/pages/admin/AdminProducerRequestPage'
 import AdminReportPage from '@/pages/admin/AdminReportPage'
 import AdminNoticeListPage from '@/pages/admin/AdminNoticeListPage'
 import AdminNoticeFormPage from '@/pages/admin/AdminNoticeFormPage'
@@ -71,6 +69,7 @@ import AdminDashboardPage from '@/pages/admin/AdminDashboardPage'
 import AdminFaqPage from '@/pages/admin/AdminFaqPage'
 import AdminFaqFormPage from '@/pages/admin/AdminFaqFormPage'
 import UserBottlePublicPage from '@/pages/UserBottlePublicPage'
+import ProducerDetailPage from '@/pages/ProducerDetailPage'
 
 export default function App() {
   return (
@@ -102,6 +101,7 @@ export default function App() {
             {/* 공개 읽기용 (비회원 접근 가능) */}
             <Route path="notifications" element={<NotificationsPage />} />
             <Route path="users/:userId/bottles" element={<UserBottlePublicPage />} />
+            <Route path="producers/:id" element={<ProducerDetailPage />} />
             <Route element={<PrivateRoute />}>
               <Route path="spirits/:id/review/write" element={<ReviewFormPage />} />
               <Route path="spirits/:id/review/:reviewId/edit" element={<ReviewFormPage />} />
@@ -111,7 +111,7 @@ export default function App() {
               <Route path="community/byob/:id/edit" element={<ByobFormPage />} />
 <Route path="mypage" element={<MyPage />} />
               <Route path="request/spirit" element={<SpiritRequestPage />} />
-              <Route path="request/distillery" element={<DistilleryRequestPage />} />
+              <Route path="request/producer" element={<ProducerRequestPage />} />
             </Route>
             {/* MainLayout 안의 catch-all 404 — 헤더/푸터 유지 */}
             <Route path="*" element={<NotFoundPage />} />
@@ -129,10 +129,8 @@ export default function App() {
               <Route path="spirits/:id/edit" element={<AdminSpiritFormPage />} />
               <Route path="spirits/requests" element={<AdminRequestPage />} />
               <Route path="spirits/requests/:id" element={<AdminRequestDetailPage />} />
-              <Route path="distilleries" element={<AdminDistilleryPage />} />
-              <Route path="distilleries/requests" element={<AdminDistilleryRequestPage />} />
-              <Route path="wineries" element={<AdminWineryPage />} />
-              <Route path="cognac-houses" element={<AdminCognacHousePage />} />
+              <Route path="producers" element={<AdminProducerPage />} />
+              <Route path="producers/requests" element={<AdminProducerRequestPage />} />
               <Route path="reports" element={<AdminReportPage />} />
               <Route path="notices" element={<AdminNoticeListPage />} />
               <Route path="notices/new" element={<AdminNoticeFormPage />} />

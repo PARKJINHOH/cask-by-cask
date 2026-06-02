@@ -1,5 +1,5 @@
 ﻿import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useSpiritDetail } from '@/domain/spirit/hooks/useSpiritDetail'
 import { localizeCountry } from '@/shared/utils/countryName'
@@ -18,6 +18,7 @@ import WishlistButtons from '@/domain/wishlist/components/WishlistButtons'
 import SeoMeta, { buildCanonical, SITE_URL } from '@/shared/components/SeoMeta'
 import { DEFAULT_OG_IMAGE } from '@/shared/config/site'
 import type { SpiritDetail, SpiritImage } from '@/domain/spirit/types/spirit.types'
+import { CATEGORY_TO_PRODUCER_TYPE, PRODUCER_TYPE_LABEL } from '@/domain/producer/types/producer.types'
 
 type Tab = 'reviews' | 'community'
 
@@ -130,6 +131,7 @@ function SpiritDetailSections({ spirit, isEn }: { spirit: SpiritDetail; isEn: bo
               <DI label={isEn ? 'Finish Cask' : '피니시 캐스크'}
                 value={CASK_LABEL[whisky.finishCaskType] ?? whisky.finishCaskType} />
             )}
+            <DI label={isEn ? 'Finish Detail' : '피니시 상세'} value={whisky.finishCaskDetail} />
             <DI label={isEn ? 'Phenol (ppm)' : '피트 강도'}
               value={whisky.phenolPpm != null ? `${whisky.phenolPpm} ppm` : null} />
             <DI label={isEn ? 'Cask No.' : '캐스크 번호'} value={whisky.caskNo} />
@@ -152,6 +154,10 @@ function SpiritDetailSections({ spirit, isEn }: { spirit: SpiritDetail; isEn: bo
             <DI label={isEn ? 'Type' : '종류'} value={wine.wineType} />
             <DI label={isEn ? 'Vintage' : '빈티지'} value={wine.vintage} />
             <DI label={isEn ? 'Appellation' : '원산지'} value={wine.appellationDesignation} />
+            <DI label={isEn ? 'Soil' : '토양'} value={wine.soilType} />
+            <DI label={isEn ? 'Altitude' : '고도'} value={wine.altitudeM != null ? `${wine.altitudeM}m` : null} />
+            <DI label={isEn ? 'Harvest' : '수확 방법'} value={wine.harvestMethod} />
+            <DI label={isEn ? 'Fermentation' : '발효 용기'} value={wine.fermentationVessel} />
             <DI label={isEn ? 'Certification' : '인증'} value={wine.certification !== 'NONE' ? wine.certification : null} />
             <DI label={isEn ? 'Oak Aged' : '오크 숙성'}
               value={wine.isOakAged != null ? (wine.isOakAged ? (isEn ? 'Yes' : '예') : (isEn ? 'No' : '아니요')) : null} />
@@ -343,8 +349,8 @@ export default function SpiritDetailPage() {
 
   const primaryName   = isEn ? (spirit.nameEn || spirit.nameKo) : spirit.nameKo
   const secondaryName = isEn ? spirit.nameKo : spirit.nameEn
-  const primaryDistillery   = isEn ? (spirit.distilleryNameEn || spirit.distilleryNameKo) : spirit.distilleryNameKo
-  const secondaryDistillery = isEn ? spirit.distilleryNameKo : spirit.distilleryNameEn
+  const primaryProducer   = isEn ? (spirit.producerNameEn || spirit.producerNameKo) : spirit.producerNameKo
+  const secondaryProducer = isEn ? spirit.producerNameKo : spirit.producerNameEn
   const countryLabel = localizeCountry(spirit.country, i18n.language)
   const regionLabel  = localizeRegion(spirit.region, i18n.language)
 
@@ -371,18 +377,18 @@ export default function SpiritDetailPage() {
     name: primaryName,
     alternateName: secondaryName || undefined,
     description: isEn
-      ? `${primaryName} — ${primaryDistillery || ''} ${countryLabel ? `· ${countryLabel}` : ''} · DrinkIndex tasting notes & user reviews.`
-      : `${primaryName} — ${primaryDistillery || ''} ${countryLabel ? `· ${countryLabel}` : ''} · DrinkIndex 테이스팅 노트와 사용자 리뷰.`,
+      ? `${primaryName} — ${primaryProducer || ''} ${countryLabel ? `· ${countryLabel}` : ''} · DrinkIndex tasting notes & user reviews.`
+      : `${primaryName} — ${primaryProducer || ''} ${countryLabel ? `· ${countryLabel}` : ''} · DrinkIndex 테이스팅 노트와 사용자 리뷰.`,
     image: heroImage,
-    brand: primaryDistillery ? {
+    brand: primaryProducer ? {
       '@type': 'Brand',
-      name: primaryDistillery,
-      ...(secondaryDistillery ? { alternateName: secondaryDistillery } : {}),
+      name: primaryProducer,
+      ...(secondaryProducer ? { alternateName: secondaryProducer } : {}),
     } : undefined,
-    manufacturer: primaryDistillery ? {
+    manufacturer: primaryProducer ? {
       '@type': 'Organization',
-      name: primaryDistillery,
-      ...(secondaryDistillery ? { alternateName: secondaryDistillery } : {}),
+      name: primaryProducer,
+      ...(secondaryProducer ? { alternateName: secondaryProducer } : {}),
       address: spirit.country ? {
         '@type': 'PostalAddress',
         addressCountry: spirit.country,
@@ -413,8 +419,8 @@ export default function SpiritDetailPage() {
       <SeoMeta
         title={primaryName}
         description={isEn
-          ? `${primaryName} tasting notes, ratings and reviews. ${primaryDistillery || ''} ${countryLabel || ''}`.trim()
-          : `${primaryName} 테이스팅 노트와 사용자 리뷰. ${primaryDistillery || ''} ${countryLabel || ''}`.trim()}
+          ? `${primaryName} tasting notes, ratings and reviews. ${primaryProducer || ''} ${countryLabel || ''}`.trim()
+          : `${primaryName} 테이스팅 노트와 사용자 리뷰. ${primaryProducer || ''} ${countryLabel || ''}`.trim()}
         canonical={canonicalUrl}
         ogType="product"
         ogImage={heroImage}
@@ -461,10 +467,30 @@ export default function SpiritDetailPage() {
                 {primaryName}
               </h1>
               <p className="text-sm text-neutral-500 mt-0.5">{secondaryName}</p>
-              {primaryDistillery && (
-                <p className="text-sm text-neutral-400 mt-1">
-                  {primaryDistillery}
-                  {secondaryDistillery ? ` · ${secondaryDistillery}` : ''}
+              {primaryProducer && (
+                <p className="text-sm text-neutral-400 mt-1 flex items-center gap-1.5 flex-wrap">
+                  <svg className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M2 20h20M4 20V8l6 4V8l6 4V8l4 3v9" />
+                  </svg>
+                  {spirit.producerId ? (
+                    <Link to={`/producers/${spirit.producerId}`}
+                      className="text-neutral-500 hover:text-primary-800 hover:underline transition-colors">
+                      {primaryProducer}
+                      {secondaryProducer ? ` · ${secondaryProducer}` : ''}
+                    </Link>
+                  ) : (
+                    <span>
+                      {primaryProducer}
+                      {secondaryProducer ? ` · ${secondaryProducer}` : ''}
+                    </span>
+                  )}
+                  <span className="inline-flex items-center text-[11px] font-medium text-amber-700
+                    bg-amber-50 border border-amber-100 rounded-full px-1.5 py-0.5">
+                    {isEn
+                      ? PRODUCER_TYPE_LABEL[CATEGORY_TO_PRODUCER_TYPE[spirit.category]].en
+                      : PRODUCER_TYPE_LABEL[CATEGORY_TO_PRODUCER_TYPE[spirit.category]].ko}
+                  </span>
                 </p>
               )}
             </div>

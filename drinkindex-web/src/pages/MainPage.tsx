@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
@@ -8,112 +8,299 @@ import { useBanners } from '@/domain/banner/hooks/useBanners'
 import { usePopups } from '@/domain/popup/hooks/usePopups'
 import { useNotices } from '@/domain/notice/hooks/useNotices'
 import { useRanking } from '@/domain/ranking/hooks/useRanking'
+import { usePosts } from '@/domain/community/hooks/usePosts'
+import { useByobList } from '@/domain/byob/hooks/useByob'
 import { PopupViewer } from '@/domain/popup/components/PopupViewer'
 import BannerSlider from '@/domain/banner/components/BannerSlider'
 import SpiritCard from '@/shared/components/SpiritCard'
 import LevelIcon from '@/shared/components/icons/LevelIcon'
+import { formatBoardDate } from '@/shared/utils/format'
 import type { SpiritListItem } from '@/domain/spirit/types/spirit.types'
 import type { NoticeListItem } from '@/domain/notice/types/notice.types'
 import type { RankingPeriod } from '@/domain/ranking/types/ranking.types'
+import type { PostListItem } from '@/domain/community/types/community.types'
+import type { ByobListItem } from '@/domain/byob/types/byob.types'
 
 // ── 카테고리 메뉴 데이터 ─────────────────────────────────────────
 const CATEGORY_MENU = [
   {
     key: 'WHISKY',
-    icon: '🥃',
     image: '/images/whisky-category.png',
     imageWebp: '/images/whisky-category.webp',
     subtitle: 'Single Malt · Blended · Bourbon',
-    accent: 'from-amber-950/80 via-amber-900/50 to-transparent',
+    dot: 'bg-amber-500',
+    grad: 'from-amber-900 via-amber-800 to-stone-900',
   },
   {
     key: 'COGNAC',
-    icon: '🍾',
     image: '/images/cognac-category.png',
     imageWebp: '/images/cognac-category.webp',
     subtitle: 'VS · VSOP · XO · Hors d\'Âge',
-    accent: 'from-stone-950/80 via-amber-900/50 to-transparent',
+    dot: 'bg-stone-500',
+    grad: 'from-stone-800 via-amber-900 to-stone-900',
   },
   {
     key: 'WINE',
-    icon: '🍷',
     image: '/images/wine-category.png',
     imageWebp: '/images/wine-category.webp',
     subtitle: 'Red · White · Rosé · Sparkling',
-    accent: 'from-rose-950/85 via-rose-900/60 to-transparent',
+    dot: 'bg-rose-500',
+    grad: 'from-rose-950 via-rose-900 to-stone-900',
   },
   {
     key: 'OTHER',
-    icon: '🫗',
     image: '/images/etc-category.png',
     imageWebp: '/images/etc-category.webp',
     subtitle: 'Rum · Gin · Tequila · Vodka',
-    accent: 'from-neutral-950/85 via-neutral-800/60 to-transparent',
+    dot: 'bg-neutral-400',
+    grad: 'from-neutral-800 via-neutral-700 to-stone-800',
   },
 ] as const
 
-// ── 카테고리 카드 내부 (모바일/데스크탑 공용) ────────────────────
-type CatItem = typeof CATEGORY_MENU[number]
-function CategoryCardInner({
-  cat,
-  idx,
-  t,
-  expanded,
-}: {
-  cat: CatItem
-  idx: number
-  t: (key: string) => string
-  expanded: boolean
-}) {
+// ── 카테고리 퀵 칩 바 (배너 하단) ────────────────────────────────
+function CategoryQuickBar() {
+  const { t } = useTranslation()
   return (
-    <>
-      {cat.image ? (
-        <picture>
-          <source srcSet={cat.imageWebp} type="image/webp" />
-          <img
-            src={cat.image}
-            alt={t(`spirit.category.${cat.key}`)}
-            className="absolute inset-0 w-full h-full object-cover
-              transition-transform duration-500 group-hover:scale-105"
-            loading="lazy"
-          />
-        </picture>
-      ) : (
+    <div className="bg-white border-b border-neutral-200">
+      <div className="max-w-7xl mx-auto px-4">
         <div
-          className={[
-            'absolute inset-0',
-            idx === 2
-              ? 'bg-gradient-to-br from-rose-950 via-red-900 to-rose-950'
-              : 'bg-gradient-to-br from-neutral-800 via-slate-700 to-neutral-900',
-          ].join(' ')}
-        />
-      )}
+          className="flex items-center gap-0 overflow-x-auto"
+          style={{ scrollbarWidth: 'none' }}
+        >
+          <Link
+            to="/spirits"
+            className="px-4 py-3.5 text-sm font-bold text-primary-800 border-b-2 border-primary-600
+              whitespace-nowrap inline-flex items-center gap-2 flex-shrink-0"
+          >
+            {t('menu.communityAll')}
+          </Link>
+          {CATEGORY_MENU.map((cat) => (
+            <Link
+              key={cat.key}
+              to={`/spirits?category=${cat.key}`}
+              className="px-4 py-3.5 text-sm text-neutral-500 hover:text-primary-800 border-b-2
+                border-transparent whitespace-nowrap inline-flex items-center gap-2 flex-shrink-0
+                transition-colors"
+            >
+              <span className={`w-2 h-2 rounded-full ${cat.dot}`} />
+              {t(`spirit.category.${cat.key}`)}
+            </Link>
+          ))}
 
-      <div className={`absolute inset-0 bg-gradient-to-t ${cat.accent}`} />
-      <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors duration-300" />
-
-      <div className="absolute inset-0 flex flex-col justify-between p-4 lg:p-5">
-        <span className="text-white/90 text-sm lg:text-base font-bold tracking-wide drop-shadow-lg">
-          {t(`spirit.category.${cat.key}`)}
-        </span>
-        <div>
-          {cat.subtitle && (
-            <p className={`text-white/60 text-xs lg:text-sm mb-1 drop-shadow
-              transition-opacity duration-300
-              ${expanded ? 'opacity-100' : 'opacity-0'}`}>
-              {cat.subtitle}
-            </p>
-          )}
-          <div className="flex items-center gap-1.5">
-            {!cat.image && <span className="text-lg">{(cat as { icon: string }).icon}</span>}
-            <span className="text-white/80 text-xs font-medium group-hover:text-white
-              transition-colors drop-shadow">
-              {t('home.menu.explore')} →
-            </span>
-          </div>
+          <Link
+            to="/calendar"
+            className="hidden lg:inline-flex items-center gap-1.5 ml-auto px-3 py-2 text-xs
+              text-primary-800 hover:text-primary-900 font-medium whitespace-nowrap flex-shrink-0
+              transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+            </svg>
+            {t('menu.calendar')}
+          </Link>
         </div>
       </div>
-    </>
+    </div>
+  )
+}
+
+// ── 섹션 헤더 ────────────────────────────────────────────────────
+function SectionHeader({
+  title,
+  link,
+  linkLabel,
+  badge,
+}: {
+  title: string
+  link: string
+  linkLabel: string
+  badge?: boolean
+}) {
+  return (
+    <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center gap-2">
+        {badge && <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />}
+        <h2 className="text-base font-bold text-neutral-900 tracking-tight">{title}</h2>
+      </div>
+      <Link
+        to={link}
+        className="text-xs text-primary-800 hover:text-primary-900 font-medium
+          flex items-center gap-0.5 transition-colors"
+      >
+        {linkLabel}
+        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <polyline points="9 18 15 12 9 6" />
+        </svg>
+      </Link>
+    </div>
+  )
+}
+
+// ── 술 카드 가로 스크롤 행 ────────────────────────────────────────
+function SpiritCardRow({ spirits }: { spirits: SpiritListItem[] }) {
+  return (
+    <div
+      className="flex gap-3 overflow-x-auto pb-1 -mx-4 px-4
+        lg:mx-0 lg:px-0 lg:grid lg:grid-cols-5 lg:overflow-visible lg:pb-0"
+      style={{ scrollbarWidth: 'none' }}
+    >
+      {spirits.slice(0, 10).map((spirit) => (
+        <div key={spirit.id} className="flex-shrink-0 w-36 sm:w-40 lg:w-auto">
+          <SpiritCard spirit={spirit} />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ── 커뮤니티 게시글 행 ────────────────────────────────────────────
+function PostRow({ post, boardPath }: { post: PostListItem; boardPath: string }) {
+  const label = post.prefix?.name ?? (boardPath === 'notice' ? '소식' : '자유')
+  const labelColor = post.prefix?.colorHex
+  return (
+    <Link
+      to={`/community/${boardPath}/${post.id}`}
+      className="flex items-center gap-3 px-4 py-3.5 border-b border-neutral-50 last:border-b-0
+        hover:bg-primary-50/40 transition-colors group"
+    >
+      <span
+        className="flex-shrink-0 text-xs font-medium px-1.5 py-0.5 rounded w-12 text-center
+          bg-neutral-50 text-neutral-500 truncate"
+        style={labelColor ? { color: labelColor } : undefined}
+      >
+        {label}
+      </span>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm text-neutral-800 group-hover:text-primary-800 line-clamp-1 transition-colors">
+          {post.title}
+          {post.commentCount > 0 && (
+            <span className="text-primary-500 text-xs ml-1">[{post.commentCount}]</span>
+          )}
+        </p>
+      </div>
+      <div className="flex-shrink-0 flex items-center gap-3 text-xs text-neutral-400">
+        <span className="hidden sm:inline max-w-[90px] truncate">{post.authorNickname}</span>
+        {post.likeCount > 0 && (
+          <span className="hidden sm:flex items-center gap-0.5">
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+              <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3z" />
+            </svg>
+            {post.likeCount}
+          </span>
+        )}
+        <span>{formatBoardDate(post.createdAt)}</span>
+      </div>
+    </Link>
+  )
+}
+
+function ByobRow({ item }: { item: ByobListItem }) {
+  const statusMap: Record<string, { label: string; cls: string }> = {
+    OPEN: { label: '모집중', cls: 'text-green-700' },
+    CLOSED: { label: '마감', cls: 'text-yellow-700' },
+    CANCELLED: { label: '취소', cls: 'text-neutral-400' },
+  }
+  const status = statusMap[item.status]
+  return (
+    <Link
+      to={`/community/byob/${item.id}`}
+      className="flex items-center gap-3 px-4 py-3.5 border-b border-neutral-50 last:border-b-0
+        hover:bg-primary-50/40 transition-colors group"
+    >
+      <span className="flex-shrink-0 text-xs font-bold px-1.5 py-0.5 rounded w-12 text-center
+        bg-orange-50 text-orange-700">
+        BYOB
+      </span>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm text-neutral-800 group-hover:text-primary-800 line-clamp-1 transition-colors">
+          {item.title}
+          {status && <span className={`text-xs ml-1.5 font-medium ${status.cls}`}>{status.label}</span>}
+        </p>
+      </div>
+      <div className="flex-shrink-0 flex items-center gap-3 text-xs text-neutral-400">
+        <span className="hidden sm:inline max-w-[90px] truncate">{item.location}</span>
+        <span className="tabular-nums">{item.approvedCount}/{item.maxParticipants}</span>
+        <span>{formatBoardDate(item.createdAt)}</span>
+      </div>
+    </Link>
+  )
+}
+
+// ── 커뮤니티 최신글 섹션 ──────────────────────────────────────────
+type CommunityTab = 'free' | 'news' | 'byob'
+
+function CommunityLatestSection() {
+  const { t } = useTranslation()
+  const [tab, setTab] = useState<CommunityTab>('free')
+
+  const { data: freeData } = usePosts({ boardType: 'FREE', sort: 'LATEST', page: 0, size: 6 })
+  const { data: newsData } = usePosts({ boardType: 'NOTICE', sort: 'LATEST', page: 0, size: 6 })
+  const { data: byobData } = useByobList({ page: 0, size: 6 })
+
+  const freePosts = freeData?.content ?? []
+  const newsPosts = newsData?.content ?? []
+  const byobItems = byobData?.content ?? []
+
+  const tabs: { key: CommunityTab; label: string; to: string }[] = [
+    { key: 'free', label: t('home.community.free'), to: '/community/free' },
+    { key: 'news', label: t('home.community.news'), to: '/community/notice' },
+    { key: 'byob', label: t('home.community.byob'), to: '/community/byob' },
+  ]
+
+  const moreLink = tabs.find((x) => x.key === tab)!.to
+  const isEmpty =
+    (tab === 'free' && freePosts.length === 0) ||
+    (tab === 'news' && newsPosts.length === 0) ||
+    (tab === 'byob' && byobItems.length === 0)
+
+  return (
+    <section>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-base font-bold text-neutral-900 tracking-tight">
+          {t('home.community.title')}
+        </h2>
+        <div className="flex items-center gap-1">
+          {tabs.map((x) => (
+            <button
+              key={x.key}
+              onClick={() => setTab(x.key)}
+              className={`text-xs px-3 py-1 rounded-full font-medium transition-colors ${
+                tab === x.key
+                  ? 'bg-primary-800 text-white'
+                  : 'text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100'
+              }`}
+            >
+              {x.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-neutral-100 overflow-hidden">
+        {isEmpty ? (
+          <p className="text-sm text-neutral-400 py-10 text-center">{t('home.community.empty')}</p>
+        ) : tab === 'free' ? (
+          freePosts.map((p) => <PostRow key={p.id} post={p} boardPath="free" />)
+        ) : tab === 'news' ? (
+          newsPosts.map((p) => <PostRow key={p.id} post={p} boardPath="notice" />)
+        ) : (
+          byobItems.map((b) => <ByobRow key={b.id} item={b} />)
+        )}
+      </div>
+
+      <div className="mt-3 text-center">
+        <Link
+          to={moreLink}
+          className="inline-flex items-center gap-1.5 text-xs text-neutral-500 hover:text-primary-800
+            font-medium transition-colors py-2 px-4 rounded-lg hover:bg-primary-50"
+        >
+          {t('home.community.more')}
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </Link>
+      </div>
+    </section>
   )
 }
 
@@ -127,26 +314,24 @@ function RankingWidget() {
   const MEDAL: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' }
 
   return (
-    <div className="bg-white rounded-2xl border border-neutral-100 px-4 lg:px-5 py-4 h-full flex flex-col">
-      {/* 헤더 */}
+    <div className="bg-white rounded-xl border border-neutral-100 p-4">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-base font-bold text-neutral-900 tracking-tight">
+        <h3 className="text-sm font-bold text-neutral-900 tracking-tight">
           {t('home.sections.ranking')}
-        </h2>
+        </h3>
         <Link
           to="/ranking"
-          className="text-sm text-primary-800 hover:text-primary-900 font-medium
+          className="text-xs text-primary-800 hover:text-primary-900 font-medium
             flex items-center gap-0.5 transition-colors"
         >
           {t('home.sections.viewAll')}
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <polyline points="9 18 15 12 9 6" />
           </svg>
         </Link>
       </div>
 
-      {/* 기간 탭 */}
-      <div className="flex gap-1 mb-3">
+      <div className="flex gap-1 mb-4">
         {(['WEEKLY', 'ALL'] as RankingPeriod[]).map((p) => (
           <button
             key={p}
@@ -162,31 +347,23 @@ function RankingWidget() {
         ))}
       </div>
 
-      {/* 랭킹 목록 */}
-      <div className="flex-1 space-y-2">
+      <div className="space-y-2.5">
         {top5.length === 0 ? (
-          <p className="text-sm text-neutral-400 py-4 text-center">데이터가 없습니다.</p>
+          <p className="text-sm text-neutral-400 py-4 text-center">{t('home.community.empty')}</p>
         ) : (
           top5.map((item) => {
             const score = period === 'WEEKLY' ? item.weeklyScore : item.maturingPower
             return (
-              <div
-                key={item.userId}
-                className="flex items-center gap-2.5 py-1.5"
-              >
-                {/* 순위 */}
-                <span className="w-6 text-center text-sm leading-none flex-shrink-0">
+              <div key={item.userId} className="flex items-center gap-2.5">
+                <span className="w-5 text-center text-sm leading-none flex-shrink-0">
                   {MEDAL[item.rank] ?? (
                     <span className="text-xs font-bold text-neutral-400">{item.rank}</span>
                   )}
                 </span>
-                {/* 레벨 아이콘 */}
                 <LevelIcon level={item.currentLevel} size={20} />
-                {/* 닉네임 */}
                 <span className="flex-1 text-sm text-neutral-800 truncate font-medium">
                   {item.nickname}
                 </span>
-                {/* 점수 */}
                 <span className="text-xs font-semibold text-amber-600 tabular-nums flex-shrink-0">
                   {score.toLocaleString()}p
                 </span>
@@ -199,84 +376,177 @@ function RankingWidget() {
   )
 }
 
-// ── 섹션 헤더 ────────────────────────────────────────────────────
-function SectionHeader({
-  title,
-  link,
-  linkLabel,
-}: {
-  title: string
-  link: string
-  linkLabel: string
-}) {
+// ── 공지사항 위젯 ────────────────────────────────────────────────
+function NoticeWidget({ notices }: { notices: NoticeListItem[] }) {
+  const { t } = useTranslation()
+  if (notices.length === 0) return null
   return (
-    <div className="flex items-center justify-between mb-5">
-      <h2 className="text-lg font-bold text-neutral-900 tracking-tight">{title}</h2>
-      <Link
-        to={link}
-        className="text-sm text-primary-800 hover:text-primary-900 font-medium
-          flex items-center gap-0.5 transition-colors"
-      >
-        {linkLabel}
-        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <polyline points="9 18 15 12 9 6" />
-        </svg>
-      </Link>
+    <div className="bg-white rounded-xl border border-neutral-100 p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-bold text-neutral-900 tracking-tight">
+          {t('home.sections.notices')}
+        </h3>
+        <Link
+          to="/notices"
+          className="text-xs text-primary-800 hover:text-primary-900 font-medium
+            flex items-center gap-0.5 transition-colors"
+        >
+          {t('home.sections.viewAll')}
+          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </Link>
+      </div>
+      <div>
+        {notices.slice(0, 4).map((notice) => (
+          <Link
+            key={notice.id}
+            to={`/notices/${notice.id}`}
+            className="flex items-center justify-between py-2.5 border-b border-neutral-50
+              last:border-b-0 hover:text-primary-800 transition-colors group"
+          >
+            <div className="flex items-center gap-1.5 min-w-0 flex-1">
+              {notice.isPinned && (
+                <span className="flex-shrink-0 text-xs font-semibold text-amber-600 bg-amber-50
+                  px-1.5 py-0.5 rounded">
+                  공지
+                </span>
+              )}
+              <span className="text-sm text-neutral-700 group-hover:text-primary-800
+                line-clamp-1 transition-colors">
+                {notice.title}
+              </span>
+            </div>
+            <span className="text-xs text-neutral-400 ml-2 flex-shrink-0">
+              {new Date(notice.createdAt).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' })}
+            </span>
+          </Link>
+        ))}
+      </div>
     </div>
   )
 }
 
-// ── 술 카드 가로 스크롤 행 ────────────────────────────────────────
-function SpiritCardRow({ spirits }: { spirits: SpiritListItem[] }) {
-  return (
-    <div
-      className="flex gap-3 overflow-x-auto pb-1 -mx-4 px-4
-        lg:mx-0 lg:px-0 lg:grid lg:grid-cols-4 lg:overflow-visible lg:pb-0"
-      style={{ scrollbarWidth: 'none' }}
-    >
-      {spirits.slice(0, 8).map((spirit) => (
-        <div key={spirit.id} className="flex-shrink-0 w-36 sm:w-40 lg:w-auto">
-          <SpiritCard spirit={spirit} />
-        </div>
-      ))}
-    </div>
-  )
-}
-
-// ── 공지사항 아이템 ──────────────────────────────────────────────
-function NoticeRow({ notice }: { notice: NoticeListItem }) {
+// ── 이벤트 캘린더 카드 ───────────────────────────────────────────
+function EventCard() {
+  const { t } = useTranslation()
   return (
     <Link
-      to={`/notices/${notice.id}`}
-      className="flex items-center justify-between py-3.5 border-b border-neutral-100
-        last:border-b-0 hover:text-primary-800 transition-colors group"
+      to="/calendar"
+      className="block bg-gradient-to-br from-amber-800 to-stone-800 rounded-xl p-4
+        hover:from-amber-700 hover:to-stone-700 transition-colors group"
     >
-      <div className="flex items-center gap-2 min-w-0 flex-1">
-        {notice.isPinned && (
-          <span className="flex-shrink-0 text-xs font-semibold text-amber-600 bg-amber-50
-            px-1.5 py-0.5 rounded">
-            공지
-          </span>
-        )}
-        <span className="text-sm text-neutral-700 group-hover:text-primary-800
-          line-clamp-1 transition-colors">
-          {notice.title}
-        </span>
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-lg bg-white/15 flex items-center justify-center flex-shrink-0">
+          <svg className="w-5 h-5 text-amber-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+          </svg>
+        </div>
+        <div className="min-w-0">
+          <p className="text-xs text-amber-200/80 font-medium mb-0.5">{t('home.eventCard.label')}</p>
+          <p className="text-sm font-bold text-white truncate">{t('home.eventCard.title')}</p>
+        </div>
+        <svg className="w-4 h-4 text-white/60 group-hover:text-white transition-colors ml-auto flex-shrink-0"
+          fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+          <polyline points="9 18 15 12 9 6" />
+        </svg>
       </div>
-      <span className="text-xs text-neutral-400 ml-3 flex-shrink-0">
-        {new Date(notice.createdAt).toLocaleDateString('ko-KR', {
-          month: '2-digit',
-          day: '2-digit',
-        })}
-      </span>
     </Link>
+  )
+}
+
+// ── 바로가기 위젯 ────────────────────────────────────────────────
+function ShortcutsWidget() {
+  const { t } = useTranslation()
+  const items = [
+    {
+      to: '/ranking', label: t('home.shortcuts.ranking'),
+      icon: <path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />,
+    },
+    {
+      to: '/community/all', label: t('home.shortcuts.community'),
+      icon: <><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></>,
+    },
+    {
+      to: '/spirits', label: t('home.shortcuts.review'),
+      icon: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />,
+    },
+    {
+      to: '/spirits', label: t('home.shortcuts.search'),
+      icon: <><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></>,
+    },
+  ]
+  return (
+    <div className="bg-white rounded-xl border border-neutral-100 p-4">
+      <h3 className="text-sm font-bold text-neutral-900 mb-3 tracking-tight">{t('home.shortcuts.title')}</h3>
+      <div className="grid grid-cols-2 gap-2">
+        {items.map((it, i) => (
+          <Link
+            key={i}
+            to={it.to}
+            className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-neutral-50 hover:bg-primary-50
+              hover:text-primary-800 text-neutral-600 text-xs font-medium transition-colors"
+          >
+            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+              {it.icon}
+            </svg>
+            {it.label}
+          </Link>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── 하단 카테고리 타일 ───────────────────────────────────────────
+function CategoryTiles() {
+  const { t } = useTranslation()
+  return (
+    <section className="max-w-7xl mx-auto px-4 pb-12">
+      <div className="mb-4">
+        <h2 className="text-base font-bold text-neutral-900 tracking-tight">
+          {t('home.categoryExplore')}
+        </h2>
+      </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {CATEGORY_MENU.map((cat) => (
+          <Link
+            key={cat.key}
+            to={`/spirits?category=${cat.key}`}
+            className="group relative overflow-hidden rounded-2xl h-28 lg:h-32 block"
+          >
+            <div className={`absolute inset-0 bg-gradient-to-br ${cat.grad}`} />
+            <picture>
+              <source srcSet={cat.imageWebp} type="image/webp" />
+              <img
+                src={cat.image}
+                alt={t(`spirit.category.${cat.key}`)}
+                className="absolute inset-0 w-full h-full object-cover opacity-80
+                  group-hover:scale-105 transition-transform duration-500"
+                loading="lazy"
+              />
+            </picture>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/55 to-transparent" />
+            <div className="relative z-10 h-full flex flex-col justify-end p-4">
+              <p className="text-white/60 text-xs mb-1 line-clamp-1">{cat.subtitle}</p>
+              <div className="flex items-center justify-between">
+                <span className="text-white font-bold text-sm">{t(`spirit.category.${cat.key}`)}</span>
+                <span className="text-white/70 text-xs group-hover:text-white transition-colors">
+                  {t('home.menu.explore')} →
+                </span>
+              </div>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </section>
   )
 }
 
 // ── 메인 페이지 ──────────────────────────────────────────────────
 export default function MainPage() {
-  const { t, i18n } = useTranslation()
-  const [hoveredCat, setHoveredCat] = useState<string | null>(null)
+  const { i18n } = useTranslation()
+  const { t } = useTranslation()
 
   const bannerLanguage = (i18n.language.toUpperCase() === 'EN' ? 'EN' : 'KO') as 'KO' | 'EN'
   const { data: banners = [] } = useBanners(bannerLanguage)
@@ -287,31 +557,30 @@ export default function MainPage() {
     if (popups.length > 0) setIsPopupOpen(true)
   }, [popups.length])
 
-  const { data: recentData } = useQuery({
-    queryKey: ['home', 'recent'],
-    queryFn: () => spiritApi.search({ sort: 'LATEST', size: 8 }).then((r) => r.data.data!),
+  const { data: popularData } = useQuery({
+    queryKey: ['home', 'popular'],
+    queryFn: () => spiritApi.search({ sort: 'REVIEW_COUNT_DESC', size: 10 }).then((r) => r.data.data!),
     staleTime: 60_000,
   })
 
   const { data: topRatedData } = useQuery({
     queryKey: ['home', 'topRated'],
-    queryFn: () => spiritApi.search({ sort: 'SCORE_DESC', size: 8 }).then((r) => r.data.data!),
+    queryFn: () => spiritApi.search({ sort: 'SCORE_DESC', size: 10 }).then((r) => r.data.data!),
     staleTime: 60_000,
   })
 
-  const { data: popularData } = useQuery({
-    queryKey: ['home', 'popular'],
-    queryFn: () =>
-      spiritApi.search({ sort: 'REVIEW_COUNT_DESC', size: 8 }).then((r) => r.data.data!),
+  const { data: recentData } = useQuery({
+    queryKey: ['home', 'recent'],
+    queryFn: () => spiritApi.search({ sort: 'LATEST', size: 10 }).then((r) => r.data.data!),
     staleTime: 60_000,
   })
 
   const { data: noticesData } = useNotices({ page: 0, size: 5 })
 
-  const recentSpirits  = recentData?.content   ?? []
-  const topRated       = topRatedData?.content ?? []
-  const popular        = popularData?.content  ?? []
-  const notices        = noticesData?.content  ?? []
+  const popular  = popularData?.content  ?? []
+  const topRated = topRatedData?.content ?? []
+  const recent   = recentData?.content   ?? []
+  const notices  = noticesData?.content  ?? []
 
   const isEn = i18n.language === 'en'
 
@@ -327,134 +596,77 @@ export default function MainPage() {
         canonical={buildCanonical('/')}
         locale={isEn ? 'en_US' : 'ko_KR'}
         keywords={isEn
-          ? 'whisky review, single malt, bourbon, cognac rating, wine community, distillery, drinkindex'
+          ? 'whisky review, single malt, bourbon, cognac rating, wine community, producer, drinkindex'
           : '위스키 리뷰, 위스키 추천, 싱글 몰트, 버번, 꼬냑 등급, 와인 빈티지, 주류 리뷰, 드링크인덱스'}
       />
 
-      {/* ── 메인 배너 슬라이더 ─────────────────────────────────── */}
+      {/* 메인 배너 슬라이더 (관리자 이미지, 슬림) */}
       {banners.length > 0 && <BannerSlider banners={banners} />}
 
-      <div className="max-w-7xl mx-auto px-4 py-8 lg:py-10 space-y-14">
+      {/* 카테고리 퀵 칩 바 */}
+      <CategoryQuickBar />
 
-        {/* ── 주류 아카이브 카테고리 ────────────────────────────────── */}
-        <section>
-          <div className="mb-5">
-            <h2 className="text-xl lg:text-2xl font-bold text-neutral-900 tracking-tight">
-              {t('home.menu.title')}
-            </h2>
-            <p className="text-sm text-neutral-500 mt-1.5">{t('home.menu.subtitle')}</p>
-          </div>
+      {/* 본문: 2열 (주 콘텐츠 + 사이드바) */}
+      <div className="max-w-7xl mx-auto px-4 py-6 lg:py-8">
+        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-7">
 
-          {/* ── 모바일: 2×2 균등 그리드 ─────────────────────────────── */}
-          <div className="grid grid-cols-2 gap-3 lg:hidden">
-            {CATEGORY_MENU.map((cat, idx) => (
-              <Link
-                key={cat.key}
-                to={`/spirits?category=${cat.key}`}
-                className="group relative overflow-hidden rounded-2xl h-40"
-              >
-                <CategoryCardInner cat={cat} idx={idx} t={t} expanded={false} />
-              </Link>
-            ))}
-          </div>
+          {/* 주 콘텐츠 */}
+          <div className="space-y-10 min-w-0">
+            {/* 커뮤니티 최신글 */}
+            <CommunityLatestSection />
 
-          {/* ── 데스크탑: flex hover 확장 ──────────────────────────────── */}
-          <div className="hidden lg:flex gap-4 h-80">
-            {CATEGORY_MENU.map((cat, idx) => (
-              <Link
-                key={cat.key}
-                to={`/spirits?category=${cat.key}`}
-                onMouseEnter={() => setHoveredCat(cat.key)}
-                onMouseLeave={() => setHoveredCat(null)}
-                style={{
-                  flex: hoveredCat === cat.key ? '2 1 0%' : '1 1 0%',
-                  transition: 'flex 0.4s cubic-bezier(0.4,0,0.2,1)',
-                }}
-                className="group relative overflow-hidden rounded-2xl"
-              >
-                <CategoryCardInner
-                  cat={cat}
-                  idx={idx}
-                  t={t}
-                  expanded={hoveredCat === cat.key}
+            {/* 이번 주 인기 */}
+            {popular.length > 0 && (
+              <section>
+                <SectionHeader
+                  title={t('home.sections.weeklyPopular')}
+                  link="/spirits?sort=REVIEW_COUNT_DESC"
+                  linkLabel={t('home.sections.viewAll')}
+                  badge
                 />
-              </Link>
-            ))}
+                <SpiritCardRow spirits={popular} />
+              </section>
+            )}
+
+            {/* 평점 높은 술 */}
+            {topRated.length > 0 && (
+              <section>
+                <SectionHeader
+                  title={t('home.sections.topRated')}
+                  link="/spirits?sort=SCORE_DESC"
+                  linkLabel={t('home.sections.viewAll')}
+                />
+                <SpiritCardRow spirits={topRated} />
+              </section>
+            )}
+
+            {/* 최근 등록 */}
+            {recent.length > 0 && (
+              <section>
+                <SectionHeader
+                  title={t('home.sections.recent')}
+                  link="/spirits?sort=LATEST"
+                  linkLabel={t('home.sections.viewAll')}
+                />
+                <SpiritCardRow spirits={recent} />
+              </section>
+            )}
           </div>
-        </section>
 
-        {/* ── 최근 등록된 술 ────────────────────────────────────── */}
-        {recentSpirits.length > 0 && (
-          <section>
-            <SectionHeader
-              title={t('home.sections.recent')}
-              link="/spirits?sort=LATEST"
-              linkLabel={t('home.sections.viewAll')}
-            />
-            <SpiritCardRow spirits={recentSpirits} />
-          </section>
-        )}
-
-        {/* ── 평점 높은 술 ──────────────────────────────────────── */}
-        {topRated.length > 0 && (
-          <section>
-            <SectionHeader
-              title={t('home.sections.topRated')}
-              link="/spirits?sort=SCORE_DESC"
-              linkLabel={t('home.sections.viewAll')}
-            />
-            <SpiritCardRow spirits={topRated} />
-          </section>
-        )}
-
-        {/* ── 인기 술 ────────────────────────────────────────────── */}
-        {popular.length > 0 && (
-          <section>
-            <SectionHeader
-              title={t('home.sections.popular')}
-              link="/spirits?sort=REVIEW_COUNT_DESC"
-              linkLabel={t('home.sections.viewAll')}
-            />
-            <SpiritCardRow spirits={popular} />
-          </section>
-        )}
-
-        {/* ── 랭킹 + 공지사항 (2열) ────────────────────────────── */}
-        <section className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
-          {/* 랭킹 위젯 (40%) */}
-          <div className="lg:col-span-2">
+          {/* 사이드바 */}
+          <aside className="mt-10 lg:mt-0 space-y-5">
             <RankingWidget />
-          </div>
-
-          {/* 공지사항 (60%) */}
-          {notices.length > 0 && (
-            <div className="lg:col-span-3">
-              <div className="flex items-center justify-between mb-5">
-                <h2 className="text-base font-bold text-neutral-900 tracking-tight">
-                  {t('home.sections.notices')}
-                </h2>
-                <Link
-                  to="/notices"
-                  className="text-sm text-primary-800 hover:text-primary-900 font-medium
-                    flex items-center gap-0.5 transition-colors"
-                >
-                  {t('home.sections.viewAll')}
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <polyline points="9 18 15 12 9 6" />
-                  </svg>
-                </Link>
-              </div>
-              <div className="bg-white rounded-2xl border border-neutral-100 px-4 lg:px-5">
-                {notices.map((notice) => (
-                  <NoticeRow key={notice.id} notice={notice} />
-                ))}
-              </div>
-            </div>
-          )}
-        </section>
+            <NoticeWidget notices={notices} />
+            <EventCard />
+            <ShortcutsWidget />
+          </aside>
+        </div>
       </div>
 
-      {/* ── 팝업 뷰어 ──────────────────────────────────────────── */}
+      {/* 하단 카테고리 타일 */}
+      <CategoryTiles />
+
+      {/* 팝업 뷰어 */}
       {isPopupOpen && popups.length > 0 && (
         <PopupViewer popups={popups} onClose={() => setIsPopupOpen(false)} />
       )}

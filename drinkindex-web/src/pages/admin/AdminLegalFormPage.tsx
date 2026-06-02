@@ -178,7 +178,7 @@ export default function AdminLegalFormPage() {
             </label>
             <input
               {...register('version')}
-              placeholder="예: v1.0, 2025-01-01"
+              placeholder="예: v1.0, 2026-01-01"
               maxLength={50}
               className="w-full h-10 px-3 text-sm border border-neutral-300 rounded-lg
                 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"

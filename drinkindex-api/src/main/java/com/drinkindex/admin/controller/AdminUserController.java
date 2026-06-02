@@ -3,7 +3,7 @@ package com.drinkindex.admin.controller;
 import com.drinkindex.admin.service.AdminUserService;
 import com.drinkindex.domain.user.dto.AdminUserResponse;
 import com.drinkindex.domain.user.dto.ChangeRoleRequest;
-import com.drinkindex.domain.user.dto.CreateDistilleryManagerRequest;
+import com.drinkindex.domain.user.dto.CreateProducerManagerRequest;
 import com.drinkindex.domain.user.dto.SuspendUserRequest;
 import com.drinkindex.domain.user.dto.UpdateBoardPermissionsRequest;
 import com.drinkindex.domain.user.entity.enums.Role;
@@ -41,11 +41,11 @@ public class AdminUserController {
         return ResponseEntity.ok(ApiResponse.success(adminUserService.getUser(id)));
     }
 
-    @PostMapping("/distillery-manager")
-    public ResponseEntity<ApiResponse<AdminUserResponse>> createDistilleryManager(
-            @Valid @RequestBody CreateDistilleryManagerRequest request) {
+    @PostMapping("/producer-manager")
+    public ResponseEntity<ApiResponse<AdminUserResponse>> createProducerManager(
+            @Valid @RequestBody CreateProducerManagerRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(
-                adminUserService.createDistilleryManager(request)));
+                adminUserService.createProducerManager(request)));
     }
 
     @PatchMapping("/{id}/role")

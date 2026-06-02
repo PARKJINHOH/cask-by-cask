@@ -25,7 +25,7 @@ export function BottleFilterBar({ category, status, view, onCategoryChange, onSt
             className={`px-3 py-1 rounded-full text-sm transition-colors ${
               (c === 'ALL' && !category) || c === category
                 ? 'bg-amber-500 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
             }`}>
             {c === 'ALL' ? t('collection.filter.all') : t(`collection.filter.${c}`)}
           </button>
@@ -34,7 +34,7 @@ export function BottleFilterBar({ category, status, view, onCategoryChange, onSt
       <div className="flex items-center gap-2 ml-auto">
         <select value={status ?? 'ALL'}
           onChange={e => onStatusChange(e.target.value === 'ALL' ? undefined : e.target.value as BottleStatus)}
-          className="text-sm border border-gray-300 rounded px-2 py-1">
+          className="text-sm border border-neutral-300 rounded px-2 py-1">
           {STATUSES.map(s => (
             <option key={s} value={s}>
               {s === 'ALL' ? t('collection.filter.all') : t(`collection.status.${s}`)}
@@ -44,7 +44,7 @@ export function BottleFilterBar({ category, status, view, onCategoryChange, onSt
         <div className="hidden md:flex gap-1">
           {(['table', 'card'] as const).map(v => (
             <button key={v} onClick={() => onViewChange(v)}
-              className={`px-2 py-1 text-sm rounded ${view === v ? 'bg-amber-500 text-white' : 'bg-gray-100'}`}>
+              className={`px-2 py-1 text-sm rounded ${view === v ? 'bg-amber-500 text-white' : 'bg-neutral-100'}`}>
               {v === 'table' ? '≡' : '⊞'}
             </button>
           ))}

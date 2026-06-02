@@ -43,7 +43,7 @@ public interface SpiritRepository extends JpaRepository<Spirit, Long>, SpiritQue
     /** 상세 조회용 — 모든 서브 테이블 LEFT JOIN FETCH (N+1 방지) */
     @Query("""
             SELECT DISTINCT s FROM Spirit s
-            LEFT JOIN FETCH s.distillery
+            LEFT JOIN FETCH s.producer
             LEFT JOIN FETCH s.commonDetail
             LEFT JOIN FETCH s.whiskyDetail
             LEFT JOIN FETCH s.wineDetail

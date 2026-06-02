@@ -9,7 +9,7 @@ export interface RankingItem {
   maturingPower: number
   weeklyScore: number
   monthlyScore: number
-  distilleryLogoUrl: string | null
+  producerLogoUrl: string | null
 }
 
 export interface MyRankItem {

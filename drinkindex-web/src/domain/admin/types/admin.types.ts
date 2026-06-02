@@ -2,6 +2,7 @@ import type {
   SpiritCategory, SpiritStatus,
   SpiritCommonDetailResponse, WhiskyDetailResponse, WineDetailResponse,
   CognacDetailResponse, OtherDetailResponse,
+  WhiskyStyle, WineType, CognacGrade, OtherSpiritType,
 } from '@/domain/spirit/types/spirit.types'
 
 // ── 폼용 Detail Request 타입 ─────────────────────────────────
@@ -137,8 +138,8 @@ export interface AdminUser {
   nickname: string
   role: AdminUserRole
   isActive: boolean
-  distilleryId: number | null
-  distilleryNameKo: string | null
+  producerId: number | null
+  producerNameKo: string | null
   createdAt: string
   suspendedUntil: string | null
   suspendReason: string | null
@@ -201,7 +202,7 @@ export interface AdminLogSearchParams {
 export interface ChangeRoleRequest {
   role: AdminUserRole
   roleTypeId?: number | null
-  distilleryId?: number | null
+  producerId?: number | null
 }
 
 export interface SuspendUserRequest {
@@ -243,9 +244,9 @@ export interface AdminSpiritDetail {
   nameKo: string
   nameEn: string
   category: SpiritCategory
-  distilleryId: number | null
-  distilleryNameKo: string | null
-  distilleryNameEn: string | null
+  producerId: number | null
+  producerNameKo: string | null
+  producerNameEn: string | null
   bottler: string | null
   bottledYear: number | null
   vintageYear: number | null
@@ -270,7 +271,7 @@ export interface UpdateSpiritPayload {
   nameKo?: string
   nameEn?: string
   category?: SpiritCategory
-  distilleryId?: number | null
+  producerId?: number | null
   bottler?: string | null
   bottledYear?: number | null
   vintageYear?: number | null
@@ -289,7 +290,7 @@ export interface CreateSpiritPayload {
   nameKo: string
   nameEn: string
   category: SpiritCategory
-  distilleryId?: number | null
+  producerId?: number | null
   bottler?: string | null
   bottledYear?: number | null
   vintageYear?: number | null
@@ -314,8 +315,8 @@ export interface SpiritRegisterRequestDetail {
   nameKo: string
   nameEn: string
   category: SpiritCategory
-  distilleryId: number | null
-  distilleryNameKo: string | null
+  producerId: number | null
+  producerNameKo: string | null
   bottler: string | null
   bottledYear: number | null
   vintageYear: number | null
@@ -323,6 +324,10 @@ export interface SpiritRegisterRequestDetail {
   volumeMl: number | null
   country: string | null
   region: string | null
+  whiskyStyle: WhiskyStyle | null
+  wineType: WineType | null
+  cognacGrade: CognacGrade | null
+  otherType: OtherSpiritType | null
   imageUrls: string[]
   status: RequestStatus
   rejectReason: string | null
@@ -334,7 +339,7 @@ export interface UpdateRequestBody {
   nameKo: string
   nameEn: string
   category: SpiritCategory
-  distilleryId?: number | null
+  producerId?: number | null
   bottler?: string | null
   bottledYear?: number | null
   vintageYear?: number | null

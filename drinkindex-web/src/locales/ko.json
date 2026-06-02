@@ -45,18 +45,39 @@
       "recent": "최근 등록된 술",
       "topRated": "평점 높은 술",
       "popular": "인기 술",
+      "weeklyPopular": "이번 주 인기",
       "notices": "공지사항",
       "ranking": "숙성력 랭킹",
       "viewAll": "전체보기",
       "weekly": "주간",
       "allTime": "전체"
-    }
+    },
+    "community": {
+      "title": "커뮤니티 최신글",
+      "free": "자유",
+      "news": "소식",
+      "byob": "BYOB",
+      "more": "게시글 더보기",
+      "empty": "아직 게시글이 없습니다."
+    },
+    "shortcuts": {
+      "title": "바로가기",
+      "ranking": "랭킹",
+      "community": "커뮤니티",
+      "review": "리뷰 작성",
+      "search": "술 검색"
+    },
+    "eventCard": {
+      "label": "이번 주 이벤트",
+      "title": "시음회 · 출시 일정 보기"
+    },
+    "categoryExplore": "카테고리별 탐색"
   },
   "menu": {
     "notice": "공지사항",
     "request": "요청",
     "requestSpirit": "술 등록하기",
-    "requestDistillery": "증류소 등록하기",
+    "requestProducer": "생산자 등록하기",
     "community": "커뮤니티",
     "communityAll": "전체",
     "communityNews": "소식",
@@ -94,16 +115,25 @@
       "nameKo": "한국어 이름",
       "nameEn": "영어 이름",
       "category": "카테고리",
+      "categoryPlaceholder": "카테고리 선택",
       "abv": "도수 (%)",
       "country": "국가",
       "region": "지역",
       "bottler": "병입업체명",
       "bottledYear": "병입년도",
       "vintageYear": "빈티지",
-      "distillery": "증류소",
+      "producer": "생산자",
       "volumeMl": "용량 (ml)",
       "submit": "등록 요청하기",
-      "success": "등록 요청이 완료되었습니다."
+      "success": "등록 요청이 완료되었습니다.",
+      "requiredSection": "필수 정보",
+      "optionalSection": "추가 정보 (선택)",
+      "requiredNote": "* 표시는 필수 입력 항목입니다. 정확한 등록을 위해 도수·용량을 함께 입력해주세요.",
+      "errNameKo": "한국어 이름을 입력해주세요.",
+      "errNameEn": "영어 이름을 입력해주세요.",
+      "errCategory": "카테고리를 선택해주세요.",
+      "errAbv": "도수를 입력해주세요. (0~100)",
+      "errVolume": "용량(ml)을 입력해주세요."
     },
     "myRequests": {
       "title": "내 요청 목록",
@@ -118,16 +148,30 @@
       "reviewedAt": "처리일"
     }
   },
-  "distilleryRequest": {
-    "title": "증류소 등록 요청",
-    "subtitle": "DB에 없는 증류소를 요청해주세요. 관리자 검토 후 등록됩니다.",
+  "producerDetail": {
+    "notFound": "생산자를 찾을 수 없습니다.",
+    "back": "목록으로",
+    "founded": "설립",
+    "website": "웹사이트",
+    "otherSpirits": "이 생산자의 술",
+    "empty": "등록된 술이 없습니다."
+  },
+  "producerRequest": {
+    "title": "생산자 등록 요청",
+    "subtitle": "DB에 없는 생산자(증류소·와이너리·꼬냑하우스)를 요청해주세요. 관리자 검토 후 등록됩니다.",
     "form": {
+      "type": "생산자 종류",
       "nameKo": "한국어 이름",
       "nameEn": "영어 이름",
       "country": "국가",
       "region": "지역 (선택)",
       "submit": "등록 요청하기",
-      "success": "등록 요청이 완료되었습니다."
+      "success": "등록 요청이 완료되었습니다.",
+      "requiredSection": "필수 정보",
+      "requiredNote": "* 표시는 필수 입력 항목입니다.",
+      "errNameKo": "한국어 이름을 입력해주세요.",
+      "errNameEn": "영어 이름을 입력해주세요.",
+      "errCountry": "국가를 선택해주세요."
     },
     "myRequests": {
       "title": "내 요청 목록",
@@ -242,7 +286,7 @@
       "reset": "필터 초기화"
     },
     "detail": {
-      "distillery": "증류소",
+      "producer": "생산자",
       "category": "카테고리",
       "country": "원산지",
       "region": "지역",

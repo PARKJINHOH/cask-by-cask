@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import type { UserRole } from '@/domain/auth/types/auth.types'
 import LevelIcon from './icons/LevelIcon'
 import AdminIcon from './icons/AdminIcon'
-import DistilleryIcon from './icons/DistilleryIcon'
+import ProducerIcon from './icons/ProducerIcon'
 import UserContextMenu from './UserContextMenu'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 
@@ -24,7 +24,7 @@ export interface UserBadgeUser {
   role: UserRole
   currentLevel?: number
   maturingPower?: number
-  distilleryLogoUrl?: string
+  producerLogoUrl?: string
   nicknameFixed?: boolean | null
   profileImageUrl?: string | null
 }
@@ -111,7 +111,7 @@ export default function UserBadge({
     <span className="flex items-center justify-center w-full h-full">
       {user.role === 'ADMIN' && <AdminIcon size={ICON_IN_AVATAR[size]} />}
       {user.role === 'PARTNER' && (
-        <DistilleryIcon logoUrl={user.distilleryLogoUrl} size={ICON_IN_AVATAR[size]} />
+        <ProducerIcon logoUrl={user.producerLogoUrl} size={ICON_IN_AVATAR[size]} />
       )}
       {user.role === 'MEMBER' && <LevelIcon level={level} size={ICON_IN_AVATAR[size]} />}
     </span>

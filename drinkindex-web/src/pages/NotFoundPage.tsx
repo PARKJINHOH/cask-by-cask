@@ -12,10 +12,10 @@ export default function NotFoundPage() {
         <div className="text-7xl sm:text-8xl font-bold text-amber-600 mb-4 tracking-tight">
           404
         </div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-3">
+        <h1 className="text-2xl sm:text-3xl font-bold text-neutral-800 mb-3">
           {t('errors.notFound.title')}
         </h1>
-        <p className="text-gray-600 mb-8 leading-relaxed">
+        <p className="text-neutral-600 mb-8 leading-relaxed">
           {t('errors.notFound.description')}
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -27,7 +27,7 @@ export default function NotFoundPage() {
           </Link>
           <button
             onClick={() => window.history.back()}
-            className="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors"
+            className="px-6 py-3 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-medium rounded-lg transition-colors"
           >
             {t('errors.notFound.goBack')}
           </button>

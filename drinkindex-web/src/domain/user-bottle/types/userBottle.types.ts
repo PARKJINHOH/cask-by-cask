@@ -36,6 +36,8 @@ export interface BottleListResponse {
   totalPages: number;
   totalElements: number;
   currentPage: number;
+  /** 공개 보틀 조회 시 소유자 닉네임 (내 보틀 조회 시 null) */
+  ownerNickname?: string | null;
 }
 
 export interface UserBottleRequest {

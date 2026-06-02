@@ -68,6 +68,36 @@ public class SpiritDetailService {
         }
     }
 
+    // ── 등록 요청 승인 시: 신청자 카테고리 핵심값만으로 상세 행 생성 ──
+    // 신청자가 요청 시 고른 핵심값(스타일/와인종류/등급/주종)을 승인된 주류 상세에 자동 반영.
+    // 이미 상세 행이 있거나 값이 없으면 건너뜀. 관리자는 이후 주류 수정에서 보완 가능.
+    public void saveCategoryCore(Spirit spirit,
+                                 WhiskyStyle whiskyStyle, WineType wineType,
+                                 CognacGrade cognacGrade, OtherSpiritType otherType) {
+        switch (spirit.getCategory()) {
+            case WHISKY -> {
+                if (whiskyStyle != null && whiskyDetailRepo.findById(spirit.getId()).isEmpty())
+                    whiskyDetailRepo.save(SpiritWhiskyDetail.builder()
+                        .spirit(spirit).style(whiskyStyle).build());
+            }
+            case WINE -> {
+                if (wineType != null && wineDetailRepo.findById(spirit.getId()).isEmpty())
+                    wineDetailRepo.save(SpiritWineDetail.builder()
+                        .spirit(spirit).wineType(wineType).build());
+            }
+            case COGNAC -> {
+                if (cognacGrade != null && cognacDetailRepo.findById(spirit.getId()).isEmpty())
+                    cognacDetailRepo.save(SpiritCognacDetail.builder()
+                        .spirit(spirit).grade(cognacGrade).build());
+            }
+            case OTHER -> {
+                if (otherType != null && otherDetailRepo.findById(spirit.getId()).isEmpty())
+                    otherDetailRepo.save(SpiritOtherDetail.builder()
+                        .spirit(spirit).otherType(otherType).build());
+            }
+        }
+    }
+
     // ── 카테고리 상세 수정 ─────────────────────────────────────
 
     /**

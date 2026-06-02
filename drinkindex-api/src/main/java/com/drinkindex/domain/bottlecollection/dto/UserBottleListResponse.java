@@ -7,5 +7,6 @@ public record UserBottleListResponse(
     BottleStatsDto stats,
     int totalPages,
     long totalElements,
-    int currentPage
+    int currentPage,
+    String ownerNickname
 ) {}

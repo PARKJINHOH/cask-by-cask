@@ -23,9 +23,9 @@ export interface SpiritImage {
 }
 
 export interface SpiritDetail extends SpiritListItem {
-  distilleryId: number | null
-  distilleryNameKo: string | null
-  distilleryNameEn: string | null
+  producerId: number | null
+  producerNameKo: string | null
+  producerNameEn: string | null
   bottler: string | null
   bottledYear: number | null
   vintageYear: number | null
@@ -123,6 +123,7 @@ export interface SpiritSearchParams {
   cognacGrade?: CognacGrade[]
   country?: string
   region?: string
+  producerId?: number
   minAbv?: number
   maxAbv?: number
   minScore?: number

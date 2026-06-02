@@ -65,7 +65,7 @@ export default function BannerSlider({ banners }: BannerSliderProps) {
           <div
             key={b.id}
             className={[
-              'w-full flex-shrink-0 aspect-[3/4] lg:aspect-[21/5] relative',
+              'w-full flex-shrink-0 h-[120px] lg:h-[180px] relative',
               b.linkUrl ? 'cursor-pointer' : 'cursor-default',
             ].join(' ')}
             onClick={b === banner ? handleBannerClick : undefined}
