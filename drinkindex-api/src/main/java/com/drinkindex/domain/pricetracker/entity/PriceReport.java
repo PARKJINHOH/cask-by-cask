@@ -86,6 +86,10 @@ public class PriceReport extends BaseTimeEntity {
 
     @Builder.Default
     @Column(nullable = false)
+    private Boolean isVerified = false;  // 인증 사진 첨부 후 관리자 확인 배지
+
+    @Builder.Default
+    @Column(nullable = false)
     private Integer reportCount = 0;     // 신고 수
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -155,6 +159,10 @@ public class PriceReport extends BaseTimeEntity {
         this.description = description;
         this.isAnonymous = isAnonymous;
         this.autoFlagged = autoFlagged;
+    }
+
+    public void verify() {
+        this.isVerified = true;
     }
 
     public void softDelete() {

@@ -49,7 +49,21 @@ public class PriceAlert extends BaseTimeEntity {
         this.isActive = false;
     }
 
+    public void reactivate() {
+        this.isActive = true;
+    }
+
+    public void toggleActive() {
+        this.isActive = !this.isActive;
+    }
+
     public void markNotified() {
         this.lastNotifiedAt = LocalDateTime.now();
+    }
+
+    // 24시간 내 중복 발동 방지
+    public boolean isTriggeredRecently() {
+        return lastNotifiedAt != null &&
+                lastNotifiedAt.isAfter(LocalDateTime.now().minusHours(24));
     }
 }
