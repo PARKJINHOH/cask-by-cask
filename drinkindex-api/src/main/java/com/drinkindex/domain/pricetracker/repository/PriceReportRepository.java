@@ -2,10 +2,17 @@ package com.drinkindex.domain.pricetracker.repository;
 
 import com.drinkindex.domain.pricetracker.entity.PriceReport;
 import com.drinkindex.domain.pricetracker.entity.Store;
+import com.drinkindex.domain.pricetracker.entity.enums.PriceCurrency;
+import com.drinkindex.domain.pricetracker.entity.enums.PriceReportStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
+import java.math.BigDecimal;
+import java.util.List;
 
 public interface PriceReportRepository extends JpaRepository<PriceReport, Long> {
 
@@ -14,4 +21,49 @@ public interface PriceReportRepository extends JpaRepository<PriceReport, Long> 
     void updateStoreReference(
             @Param("suggestedStore") Store suggestedStore,
             @Param("targetStore") Store targetStore);
+
+    @Modifying
+    @Query("UPDATE PriceReport p SET p.reportCount = p.reportCount + 1 WHERE p.id = :id")
+    void incrementReportCount(@Param("id") Long id);
+
+    // ±30% 자동 플래그 판별용 — 동일 spirit+store의 최근 APPROVED 실구매가
+    @Query("""
+            SELECT p.actualPrice FROM PriceReport p
+            WHERE p.spirit.id = :spiritId
+            AND p.store.id = :storeId
+            AND p.status = :status
+            AND p.currency = :currency
+            AND p.actualPrice IS NOT NULL
+            ORDER BY p.createdAt DESC
+            """)
+    List<BigDecimal> findRecentApprovedActualPrices(
+            @Param("spiritId") Long spiritId,
+            @Param("storeId") Long storeId,
+            @Param("status") PriceReportStatus status,
+            @Param("currency") PriceCurrency currency,
+            Pageable pageable);
+
+    // 관리자 목록 — autoFlagged 우선 정렬
+    @Query("""
+            SELECT p FROM PriceReport p
+            WHERE (:status IS NULL OR p.status = :status)
+            AND (:isFlagged IS NULL OR p.autoFlagged = :isFlagged)
+            ORDER BY p.autoFlagged DESC, p.createdAt ASC
+            """)
+    Page<PriceReport> findAllForAdmin(
+            @Param("status") PriceReportStatus status,
+            @Param("isFlagged") Boolean isFlagged,
+            Pageable pageable);
+
+    // 본인 등록 목록
+    @Query("""
+            SELECT p FROM PriceReport p
+            WHERE p.reporter.id = :reporterId
+            AND (:status IS NULL OR p.status = :status)
+            ORDER BY p.createdAt DESC
+            """)
+    Page<PriceReport> findByReporter(
+            @Param("reporterId") Long reporterId,
+            @Param("status") PriceReportStatus status,
+            Pageable pageable);
 }

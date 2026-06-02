@@ -10,7 +10,10 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "price_report_reports")
+@Table(name = "price_report_reports", uniqueConstraints = {
+        @UniqueConstraint(name = "uq_price_report_report_user",
+                columnNames = {"price_report_id", "reporter_id"})
+})
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Builder
@@ -25,16 +28,17 @@ public class PriceReportReport extends BaseTimeEntity {
     @JoinColumn(name = "price_report_id", nullable = false)
     private PriceReport priceReport;
 
+    // 로그인 회원만 신고 가능. 신고자 정보는 관리자에게만 노출.
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "reporter_id")
-    private User reporter; // null = 익명
+    @JoinColumn(name = "reporter_id", nullable = false)
+    private User reporter;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private PriceReportReportReason reason;
 
     @Column(length = 500)
-    private String description;
+    private String reasonDetail;
 
     @Enumerated(EnumType.STRING)
     @Builder.Default

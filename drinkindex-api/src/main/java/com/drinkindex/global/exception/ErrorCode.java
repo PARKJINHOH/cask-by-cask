@@ -182,6 +182,13 @@ public enum ErrorCode {
     STORE_NOT_FOUND(HttpStatus.NOT_FOUND, "STORE_001", "매장 정보를 찾을 수 없습니다."),
     STORE_ALREADY_APPROVED(HttpStatus.BAD_REQUEST, "STORE_002", "이미 승인된 매장입니다."),
 
+    // Price Report
+    PRICE_REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "PRICE_001", "가격 등록 정보를 찾을 수 없습니다."),
+    PRICE_REPORT_ACCESS_DENIED(HttpStatus.FORBIDDEN, "PRICE_002", "가격 등록 접근 권한이 없습니다."),
+    PRICE_REPORT_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "PRICE_003", "이미지를 찾을 수 없거나 접근 권한이 없습니다."),
+    DUPLICATE_PRICE_REPORT_REPORT(HttpStatus.BAD_REQUEST, "PRICE_004", "이미 신고한 가격 등록입니다."),
+    EXCHANGE_RATE_REQUIRED(HttpStatus.BAD_REQUEST, "PRICE_005", "면세점 USD 등록 시 환율이 필요합니다."),
+
     // BYOB
     BYOB_NOT_FOUND(HttpStatus.NOT_FOUND, "BYOB_001", "BYOB 모임을 찾을 수 없습니다."),
     BYOB_ACCESS_DENIED(HttpStatus.FORBIDDEN, "BYOB_002", "BYOB 모임 접근 권한이 없습니다."),

@@ -125,6 +125,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/series/{id:[0-9]+}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/post-prefixes").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/ranking").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/price-reports/{id:[0-9]+}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/users/*/bottles").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/score-history/level-config").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/legal/**").permitAll()

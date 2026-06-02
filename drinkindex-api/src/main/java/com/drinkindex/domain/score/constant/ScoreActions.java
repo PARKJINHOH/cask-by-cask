@@ -33,4 +33,5 @@ public final class ScoreActions {
     public static final String ATTENDANCE_STREAK_7        = "ATTENDANCE_STREAK_7";
     public static final String ATTENDANCE_STREAK_30       = "ATTENDANCE_STREAK_30";
     public static final String ADMIN_ADJUST               = "ADMIN_ADJUST";
+    public static final String PRICE_REGISTER             = "PRICE_REGISTER";
 }

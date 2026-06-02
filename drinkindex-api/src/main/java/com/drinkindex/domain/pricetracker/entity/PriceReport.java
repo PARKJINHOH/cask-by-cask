@@ -62,7 +62,7 @@ public class PriceReport extends BaseTimeEntity {
     private BigDecimal paybackAmount;    // 페이백
 
     @Column(precision = 12, scale = 0)
-    private BigDecimal actualPrice;      // 실구매가 = salePrice - paybackAmount (자동계산)
+    private BigDecimal actualPrice;      // 실구매가 (서비스 계산 후 저장)
 
     @Column(precision = 10, scale = 4)
     private BigDecimal exchangeRateSnapshot; // 면세 USD 등록 시 환율 스냅샷
@@ -71,7 +71,10 @@ public class PriceReport extends BaseTimeEntity {
     private LocalDate purchasedAt;
 
     @Column(length = 500)
-    private String memo;
+    private String description;
+
+    @Column(length = 255)
+    private String suggestedStoreName;   // 자동완성에 없는 매장명 직접 입력
 
     @Builder.Default
     @Column(nullable = false)
@@ -79,11 +82,11 @@ public class PriceReport extends BaseTimeEntity {
 
     @Builder.Default
     @Column(nullable = false)
-    private Boolean isPublic = true;     // 사진 공개 여부 (사용자 화면 적용)
+    private Boolean autoFlagged = false; // ±30% 이상 차이 시 자동 플래그
 
     @Builder.Default
     @Column(nullable = false)
-    private Boolean autoFlagged = false; // ±30% 이상 차이 시 자동 플래그
+    private Integer reportCount = 0;     // 신고 수
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "approved_by_id")
@@ -92,24 +95,24 @@ public class PriceReport extends BaseTimeEntity {
     @Column
     private LocalDateTime approvedAt;
 
+    @Column(length = 500)
+    private String rejectReason;
+
+    @Column
+    private LocalDateTime rejectedAt;
+
     @Column
     private LocalDateTime deletedAt;
 
+    // 이미지는 별도 Repository로 관리 (업로드→임시저장→연결 패턴)
+    @OneToMany(mappedBy = "priceReport", fetch = FetchType.LAZY)
     @Builder.Default
-    @OneToMany(mappedBy = "priceReport", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PriceReportImage> images = new ArrayList<>();
 
-    @Builder.Default
+    // 면세점 할인 항목은 항상 부모와 함께 관리
     @OneToMany(mappedBy = "priceReport", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<PriceDiscountItem> discountItems = new ArrayList<>();
-
-    @PrePersist
-    @PreUpdate
-    private void calculateActualPrice() {
-        if (salePrice != null && paybackAmount != null) {
-            this.actualPrice = salePrice.subtract(paybackAmount);
-        }
-    }
 
     public void approve(User admin) {
         this.status = PriceReportStatus.APPROVED;
@@ -117,19 +120,44 @@ public class PriceReport extends BaseTimeEntity {
         this.approvedAt = LocalDateTime.now();
     }
 
-    public void reject() {
+    public void reject(String rejectReason) {
         this.status = PriceReportStatus.REJECTED;
+        this.rejectReason = rejectReason;
+        this.rejectedAt = LocalDateTime.now();
+    }
+
+    public void updateStore(Store store) {
+        this.store = store;
+    }
+
+    public void resetToPending() {
+        this.status = PriceReportStatus.PENDING;
+        this.approvedAt = null;
+        this.approvedBy = null;
+        this.rejectReason = null;
+        this.rejectedAt = null;
+    }
+
+    public void update(Store store, String suggestedStoreName, PriceCurrency currency,
+                       BigDecimal price, BigDecimal salePrice, BigDecimal paybackAmount,
+                       BigDecimal actualPrice, BigDecimal exchangeRateSnapshot,
+                       LocalDate purchasedAt, String description, Boolean isAnonymous,
+                       boolean autoFlagged) {
+        this.store = store;
+        this.suggestedStoreName = suggestedStoreName;
+        this.currency = currency;
+        this.price = price;
+        this.salePrice = salePrice;
+        this.paybackAmount = paybackAmount;
+        this.actualPrice = actualPrice;
+        this.exchangeRateSnapshot = exchangeRateSnapshot;
+        this.purchasedAt = purchasedAt;
+        this.description = description;
+        this.isAnonymous = isAnonymous;
+        this.autoFlagged = autoFlagged;
     }
 
     public void softDelete() {
         this.deletedAt = LocalDateTime.now();
-    }
-
-    public void markAutoFlagged() {
-        this.autoFlagged = true;
-    }
-
-    public void togglePublic(boolean isPublic) {
-        this.isPublic = isPublic;
     }
 }
