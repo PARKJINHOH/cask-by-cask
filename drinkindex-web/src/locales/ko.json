@@ -829,5 +829,92 @@
       "retry": "다시 시도",
       "goHome": "홈으로 이동"
     }
+  },
+  "price": {
+    "tab": "가격",
+    "tracker": "가격 트래커",
+    "trackerDesc": "위스키·와인·꼬냑 실구매가를 비교하세요",
+    "registerBtn": "가격 등록",
+    "chart": {
+      "domestic": "국내",
+      "dutyfree": "면세",
+      "period": { "1M": "1개월", "3M": "3개월", "6M": "6개월", "1Y": "1년", "ALL": "전체" },
+      "minPrice": "최저 실구매가",
+      "maxPrice": "최고 정가",
+      "avgSale": "평균 행사가",
+      "storeCount": "매장 수",
+      "noData": "등록된 가격 데이터가 없습니다.",
+      "clickHint": "차트를 클릭하면 매장별 상세를 볼 수 있어요"
+    },
+    "panel": {
+      "title": "매장별 상세",
+      "bestPrice": "최저가",
+      "verified": "인증",
+      "anonymous": "익명",
+      "unknownStore": "직접 등록",
+      "showMore": "상세 보기",
+      "hideMore": "접기",
+      "description": "가격 설명",
+      "purchasedAt": "구매일",
+      "discountBreakdown": "할인 내역",
+      "basePrice": "기본가",
+      "finalPrice": "체감가",
+      "images": "인증 사진",
+      "emptyHint": "차트에서 날짜를 클릭하면\n매장별 가격을 볼 수 있어요"
+    },
+    "report": {
+      "title": "신고",
+      "reason": {
+        "FALSE_PRICE": "허위 가격",
+        "DUPLICATE": "중복 등록",
+        "BAD_IMAGE": "부적절한 이미지",
+        "OTHER": "기타"
+      },
+      "detail": "상세 사유 입력",
+      "submit": "신고 접수",
+      "notice": "작성자는 신고자를 알 수 없습니다",
+      "success": "신고가 접수되었습니다"
+    },
+    "alert": {
+      "title": "가격 알림",
+      "set": "알림 설정",
+      "targetPrice": "목표 가격 (KRW)",
+      "toggle": "알림 켜기/끄기",
+      "delete": "알림 삭제",
+      "myAlerts": "내 가격 알림",
+      "noAlerts": "설정된 가격 알림이 없습니다",
+      "success": "가격 알림이 설정되었습니다",
+      "dutyfreeNote": "면세 가격은 환율 근사치로 인해 KRW 알림 비교에서 제외됩니다"
+    },
+    "register": {
+      "title": "가격 등록",
+      "spirit": "술",
+      "spiritPlaceholder": "술 이름을 검색하세요",
+      "store": "매장",
+      "storePlaceholder": "매장 이름을 검색하세요",
+      "suggestStore": "직접 입력",
+      "currency": "통화",
+      "isAnonymous": "익명으로 등록 (숙성력 미지급)",
+      "regularPrice": "정가",
+      "salePrice": "행사가",
+      "payback": "페이백",
+      "finalPrice": "실구매가",
+      "exchangeRate": "환율 (원/USD)",
+      "purchasedAt": "구매일",
+      "description": "가격 설명",
+      "descPlaceholder": "구매 경위, 할인 정보 등을 자유롭게 입력해주세요",
+      "images": "인증 사진 (최대 3장)",
+      "uploadImage": "사진 추가",
+      "submit": "가격 등록 신청",
+      "success": "가격이 등록되었습니다. 관리자 승인 후 차트에 반영됩니다.",
+      "discountItems": "할인 항목",
+      "addDiscount": "할인 항목 추가",
+      "discountType": {
+        "PAYMENT": "결제 수단 할인",
+        "BUNDLE": "묶음 할인",
+        "COUPON": "쿠폰",
+        "OTHER": "기타"
+      }
+    }
   }
 }

@@ -71,6 +71,9 @@ import AdminDashboardPage from '@/pages/admin/AdminDashboardPage'
 import AdminFaqPage from '@/pages/admin/AdminFaqPage'
 import AdminFaqFormPage from '@/pages/admin/AdminFaqFormPage'
 import UserBottlePublicPage from '@/pages/UserBottlePublicPage'
+import PriceTrackerPage from '@/pages/PriceTrackerPage'
+import SpiritPriceDetailPage from '@/pages/SpiritPriceDetailPage'
+import PriceRegisterPage from '@/pages/PriceRegisterPage'
 
 export default function App() {
   return (
@@ -102,7 +105,10 @@ export default function App() {
             {/* 공개 읽기용 (비회원 접근 가능) */}
             <Route path="notifications" element={<NotificationsPage />} />
             <Route path="users/:userId/bottles" element={<UserBottlePublicPage />} />
+            <Route path="price-tracker" element={<PriceTrackerPage />} />
+            <Route path="price-tracker/spirits/:id" element={<SpiritPriceDetailPage />} />
             <Route element={<PrivateRoute />}>
+              <Route path="price-tracker/register" element={<PriceRegisterPage />} />
               <Route path="spirits/:id/review/write" element={<ReviewFormPage />} />
               <Route path="spirits/:id/review/:reviewId/edit" element={<ReviewFormPage />} />
               <Route path="community/:boardType/write" element={<PostFormPage />} />

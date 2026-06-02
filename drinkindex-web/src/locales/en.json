@@ -829,5 +829,92 @@
       "retry": "Retry",
       "goHome": "Go home"
     }
+  },
+  "price": {
+    "tab": "Price",
+    "tracker": "Price Tracker",
+    "trackerDesc": "Compare actual purchase prices for whisky, cognac & wine",
+    "registerBtn": "Register Price",
+    "chart": {
+      "domestic": "Domestic",
+      "dutyfree": "Duty-Free",
+      "period": { "1M": "1 Month", "3M": "3 Months", "6M": "6 Months", "1Y": "1 Year", "ALL": "All" },
+      "minPrice": "Min Final Price",
+      "maxPrice": "Max List Price",
+      "avgSale": "Avg Sale Price",
+      "storeCount": "Stores",
+      "noData": "No price data available.",
+      "clickHint": "Click on the chart to see store details"
+    },
+    "panel": {
+      "title": "Store Details",
+      "bestPrice": "Best",
+      "verified": "Verified",
+      "anonymous": "Anonymous",
+      "unknownStore": "User Submitted",
+      "showMore": "Show Details",
+      "hideMore": "Collapse",
+      "description": "Description",
+      "purchasedAt": "Purchase Date",
+      "discountBreakdown": "Discount Breakdown",
+      "basePrice": "Base Price",
+      "finalPrice": "Final Price",
+      "images": "Verified Photos",
+      "emptyHint": "Click a date on the chart\nto see store prices"
+    },
+    "report": {
+      "title": "Report",
+      "reason": {
+        "FALSE_PRICE": "Incorrect Price",
+        "DUPLICATE": "Duplicate",
+        "BAD_IMAGE": "Inappropriate Image",
+        "OTHER": "Other"
+      },
+      "detail": "Additional Details",
+      "submit": "Submit Report",
+      "notice": "The author will not know who reported this",
+      "success": "Report submitted successfully"
+    },
+    "alert": {
+      "title": "Price Alert",
+      "set": "Set Alert",
+      "targetPrice": "Target Price (KRW)",
+      "toggle": "Toggle Alert",
+      "delete": "Delete Alert",
+      "myAlerts": "My Price Alerts",
+      "noAlerts": "No price alerts set",
+      "success": "Price alert set successfully",
+      "dutyfreeNote": "Duty-free prices are excluded from KRW alerts (approximate exchange rate)"
+    },
+    "register": {
+      "title": "Register Price",
+      "spirit": "Spirit",
+      "spiritPlaceholder": "Search spirit name",
+      "store": "Store",
+      "storePlaceholder": "Search store name",
+      "suggestStore": "Type manually",
+      "currency": "Currency",
+      "isAnonymous": "Post anonymously (no points awarded)",
+      "regularPrice": "List Price",
+      "salePrice": "Sale Price",
+      "payback": "Payback",
+      "finalPrice": "Final Price",
+      "exchangeRate": "Exchange Rate (KRW/USD)",
+      "purchasedAt": "Purchase Date",
+      "description": "Description",
+      "descPlaceholder": "Share purchase details, discounts, etc.",
+      "images": "Verified Photos (max 3)",
+      "uploadImage": "Add Photo",
+      "submit": "Submit Price",
+      "success": "Price submitted! It will appear on the chart after admin review.",
+      "discountItems": "Discount Items",
+      "addDiscount": "Add Discount",
+      "discountType": {
+        "PAYMENT": "Payment Method",
+        "BUNDLE": "Bundle",
+        "COUPON": "Coupon",
+        "OTHER": "Other"
+      }
+    }
   }
 }

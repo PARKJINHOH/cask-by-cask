@@ -18,8 +18,13 @@ import WishlistButtons from '@/domain/wishlist/components/WishlistButtons'
 import SeoMeta, { buildCanonical, SITE_URL } from '@/shared/components/SeoMeta'
 import { DEFAULT_OG_IMAGE } from '@/shared/config/site'
 import type { SpiritDetail, SpiritImage } from '@/domain/spirit/types/spirit.types'
+import PriceRangeChart from '@/domain/pricetracker/components/PriceRangeChart'
+import StoreDetailPanel from '@/domain/pricetracker/components/StoreDetailPanel'
+import { usePriceChart, usePriceChartDetail } from '@/domain/pricetracker/hooks/usePriceChart'
+import { useState as useStateForPrice } from 'react'
+import type { StoreType } from '@/domain/pricetracker/types/pricetracker.types'
 
-type Tab = 'reviews' | 'community'
+type Tab = 'reviews' | 'community' | 'price'
 
 // ── 카테고리 상세 섹션 ─────────────────────────────────────
 
@@ -287,11 +292,36 @@ function Gallery({
   )
 }
 
+function PriceTabContent({ spiritId }: { spiritId: number }) {
+  const [storeType, setStoreType] = useStateForPrice<StoreType>('DOMESTIC')
+  const [period, setPeriod] = useStateForPrice('3M')
+  const [selectedDate, setSelectedDate] = useStateForPrice<string | null>(null)
+  const { data: chartData, isLoading: chartLoading } = usePriceChart(spiritId, storeType, period)
+  const { data: details, isLoading: detailLoading } = usePriceChartDetail(spiritId, selectedDate, storeType)
+  return (
+    <div className="flex flex-col lg:flex-row gap-4">
+      <div className="flex-1 min-w-0 bg-white rounded-2xl border border-neutral-200 p-4">
+        <PriceRangeChart
+          data={chartData ?? undefined} isLoading={chartLoading}
+          period={period} onPeriodChange={setPeriod}
+          storeType={storeType} onStoreTypeChange={setStoreType}
+          onPointClick={(date) => setSelectedDate(date)}
+          selectedDate={selectedDate}
+        />
+      </div>
+      <div className="lg:w-72 bg-white rounded-2xl border border-neutral-200 min-h-[300px]">
+        <StoreDetailPanel details={details ?? undefined} isLoading={detailLoading} selectedDate={selectedDate} />
+      </div>
+    </div>
+  )
+}
+
 function TabBar({ active, onChange }: { active: Tab; onChange: (t: Tab) => void }) {
   const { t } = useTranslation()
   const tabs: { id: Tab; label: string }[] = [
     { id: 'reviews',   label: t('review.tab') },
     { id: 'community', label: t('comment.tab') },
+    { id: 'price',     label: t('price.tab') },
   ]
   return (
     <div role="tablist" className="flex border-b border-neutral-200 gap-6">
@@ -494,8 +524,10 @@ export default function SpiritDetailPage() {
         <div role="tabpanel">
           {activeTab === 'reviews' ? (
             <ReviewList spiritId={spiritId} onNeedLogin={() => setLoginModal(true)} />
-          ) : (
+          ) : activeTab === 'community' ? (
             <CommentList spiritId={spiritId} onNeedLogin={() => setLoginModal(true)} />
+          ) : (
+            <PriceTabContent spiritId={spiritId} />
           )}
         </div>
         </div>

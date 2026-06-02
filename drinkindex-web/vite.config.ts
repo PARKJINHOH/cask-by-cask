@@ -102,6 +102,18 @@ export default defineConfig({
         target: 'http://localhost:8080',
         changeOrigin: true,
       },
+      '/api/price-reports': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+      '/api/price-alerts': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+      '/api/stores': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
     },
   },
 })
