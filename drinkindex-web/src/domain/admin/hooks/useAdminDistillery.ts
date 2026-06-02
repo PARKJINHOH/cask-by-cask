@@ -9,9 +9,9 @@ export interface DistilleryFilters {
   foundedYear?: string
 }
 
-export function useAdminDistilleries(filters: DistilleryFilters, page: number) {
+export function useAdminDistilleries(filters: DistilleryFilters, page: number, sort = 'id,desc') {
   return useQuery({
-    queryKey: ['admin-distilleries', filters, page],
+    queryKey: ['admin-distilleries', filters, page, sort],
     queryFn: () =>
       adminDistilleryApi
         .list({
@@ -21,7 +21,7 @@ export function useAdminDistilleries(filters: DistilleryFilters, page: number) {
           foundedYear: filters.foundedYear?.trim() ? Number(filters.foundedYear) : undefined,
           page,
           size: 20,
-          sort: 'id,desc',
+          sort,
         })
         .then((r) => r.data.data!),
   })

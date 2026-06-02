@@ -9,9 +9,9 @@ export interface CognacHouseFilters {
   foundedYear?: string
 }
 
-export function useAdminCognacHouses(filters: CognacHouseFilters, page: number) {
+export function useAdminCognacHouses(filters: CognacHouseFilters, page: number, sort = 'id,desc') {
   return useQuery({
-    queryKey: ['admin-cognac-houses', filters, page],
+    queryKey: ['admin-cognac-houses', filters, page, sort],
     queryFn: () =>
       adminCognacHouseApi
         .list({
@@ -21,7 +21,7 @@ export function useAdminCognacHouses(filters: CognacHouseFilters, page: number) 
           foundedYear: filters.foundedYear?.trim() ? Number(filters.foundedYear) : undefined,
           page,
           size: 20,
-          sort: 'id,desc',
+          sort,
         })
         .then((r) => r.data.data!),
   })

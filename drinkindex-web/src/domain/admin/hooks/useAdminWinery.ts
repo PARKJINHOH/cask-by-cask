@@ -9,9 +9,9 @@ export interface WineryFilters {
   foundedYear?: string
 }
 
-export function useAdminWineries(filters: WineryFilters, page: number) {
+export function useAdminWineries(filters: WineryFilters, page: number, sort = 'id,desc') {
   return useQuery({
-    queryKey: ['admin-wineries', filters, page],
+    queryKey: ['admin-wineries', filters, page, sort],
     queryFn: () =>
       adminWineryApi
         .list({
@@ -21,7 +21,7 @@ export function useAdminWineries(filters: WineryFilters, page: number) {
           foundedYear: filters.foundedYear?.trim() ? Number(filters.foundedYear) : undefined,
           page,
           size: 20,
-          sort: 'id,desc',
+          sort,
         })
         .then((r) => r.data.data!),
   })

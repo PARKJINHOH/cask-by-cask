@@ -158,17 +158,40 @@ function CognacHouseForm({ initial, onSave, onCancel, isPending }: CognacHouseFo
   )
 }
 
+type SortState = { field: string; dir: 'asc' | 'desc' }
+
+function SortArrows({ active, dir }: { active: boolean; dir: 'asc' | 'desc' }) {
+  return (
+    <span className="inline-flex flex-col ml-1 gap-[1px] align-middle">
+      <svg width="7" height="4" viewBox="0 0 7 4" fill="currentColor"
+        className={active && dir === 'asc' ? 'text-primary-600' : 'text-neutral-300'}>
+        <path d="M3.5 0L7 4H0L3.5 0Z"/>
+      </svg>
+      <svg width="7" height="4" viewBox="0 0 7 4" fill="currentColor"
+        className={active && dir === 'desc' ? 'text-primary-600' : 'text-neutral-300'}>
+        <path d="M3.5 4L0 0H7L3.5 4Z"/>
+      </svg>
+    </span>
+  )
+}
+
 const EMPTY_FILTERS: CognacHouseFilters = { nameKo: '', nameEn: '', country: '', foundedYear: '' }
 
 export default function AdminCognacHousePage() {
   const [filterInput, setFilterInput] = useState<CognacHouseFilters>(EMPTY_FILTERS)
   const [appliedFilters, setAppliedFilters] = useState<CognacHouseFilters>(EMPTY_FILTERS)
   const [page, setPage] = useState(0)
+  const [sort, setSort] = useState<SortState>({ field: 'id', dir: 'desc' })
   const [showCreate, setShowCreate] = useState(false)
   const [editTarget, setEditTarget] = useState<CognacHouse | null>(null)
   const editFormRef = useRef<HTMLDivElement>(null)
 
-  const { data, isLoading } = useAdminCognacHouses(appliedFilters, page)
+  const { data, isLoading } = useAdminCognacHouses(appliedFilters, page, `${sort.field},${sort.dir}`)
+
+  const handleSort = (field: string) => {
+    setSort(prev => prev.field === field ? { field, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { field, dir: 'asc' })
+    setPage(0)
+  }
   const create = useCreateCognacHouse()
   const update = useUpdateCognacHouse()
   const remove = useDeleteCognacHouse()
@@ -322,11 +345,19 @@ export default function AdminCognacHousePage() {
               <thead className="bg-neutral-50 border-b border-neutral-200">
                 <tr>
                   <th className="text-left px-4 py-3 text-neutral-500 font-medium w-16">ID</th>
-                  <th className="text-left px-4 py-3 text-neutral-500 font-medium">한국어명</th>
-                  <th className="text-left px-4 py-3 text-neutral-500 font-medium">영어명</th>
-                  <th className="text-left px-4 py-3 text-neutral-500 font-medium">국가</th>
+                  <th className="text-left px-4 py-3 text-neutral-500 font-medium cursor-pointer select-none hover:text-neutral-700" onClick={() => handleSort('nameKo')}>
+                    <span className="inline-flex items-center">한국어명<SortArrows active={sort.field === 'nameKo'} dir={sort.dir} /></span>
+                  </th>
+                  <th className="text-left px-4 py-3 text-neutral-500 font-medium cursor-pointer select-none hover:text-neutral-700" onClick={() => handleSort('nameEn')}>
+                    <span className="inline-flex items-center">영어명<SortArrows active={sort.field === 'nameEn'} dir={sort.dir} /></span>
+                  </th>
+                  <th className="text-left px-4 py-3 text-neutral-500 font-medium cursor-pointer select-none hover:text-neutral-700" onClick={() => handleSort('country')}>
+                    <span className="inline-flex items-center">국가<SortArrows active={sort.field === 'country'} dir={sort.dir} /></span>
+                  </th>
                   <th className="text-left px-4 py-3 text-neutral-500 font-medium">지역</th>
-                  <th className="text-left px-4 py-3 text-neutral-500 font-medium">설립연도</th>
+                  <th className="text-left px-4 py-3 text-neutral-500 font-medium cursor-pointer select-none hover:text-neutral-700" onClick={() => handleSort('foundedYear')}>
+                    <span className="inline-flex items-center">설립연도<SortArrows active={sort.field === 'foundedYear'} dir={sort.dir} /></span>
+                  </th>
                   <th className="text-left px-4 py-3 text-neutral-500 font-medium">웹사이트</th>
                   <th className="text-right px-4 py-3 text-neutral-500 font-medium">액션</th>
                 </tr>
