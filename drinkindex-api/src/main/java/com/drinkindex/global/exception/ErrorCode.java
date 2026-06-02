@@ -178,6 +178,10 @@ public enum ErrorCode {
     ROLE_TYPE_IN_USE(HttpStatus.CONFLICT, "ROLE_002", "해당 역할을 사용 중인 계정이 있어 삭제할 수 없습니다."),
     DUPLICATE_VALUE(HttpStatus.CONFLICT, "ROLE_003", "이미 존재하는 값입니다."),
 
+    // Store (Price Tracker)
+    STORE_NOT_FOUND(HttpStatus.NOT_FOUND, "STORE_001", "매장 정보를 찾을 수 없습니다."),
+    STORE_ALREADY_APPROVED(HttpStatus.BAD_REQUEST, "STORE_002", "이미 승인된 매장입니다."),
+
     // BYOB
     BYOB_NOT_FOUND(HttpStatus.NOT_FOUND, "BYOB_001", "BYOB 모임을 찾을 수 없습니다."),
     BYOB_ACCESS_DENIED(HttpStatus.FORBIDDEN, "BYOB_002", "BYOB 모임 접근 권한이 없습니다."),
