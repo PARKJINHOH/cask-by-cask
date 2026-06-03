@@ -11,20 +11,24 @@ import MaturingPowerSection from '@/domain/score/components/MaturingPowerSection
 import MessagesTab from '@/domain/message/components/MessagesTab'
 import ByobHistoryTab from '@/domain/byob/components/ByobHistoryTab'
 import { BottleCollectionTab } from '@/domain/user-bottle/components/BottleCollectionTab'
+import MyPriceReportsTab from '@/domain/pricetracker/components/MyPriceReportsTab'
+import MyPriceAlertsTab from '@/domain/pricetracker/components/MyPriceAlertsTab'
 import LevelIcon from '@/shared/components/icons/LevelIcon'
 import SeoMeta from '@/shared/components/SeoMeta'
 import { useMessageList } from '@/domain/message/hooks/useMessages'
 
-type Tab = 'maturing' | 'reviews' | 'wishlist' | 'byob' | 'collection' | 'messages' | 'settings'
+type Tab = 'maturing' | 'reviews' | 'wishlist' | 'byob' | 'collection' | 'priceReports' | 'priceAlerts' | 'messages' | 'settings'
 
 const ALL_TABS: { value: Tab; labelKey: string; adminHidden?: boolean }[] = [
-  { value: 'maturing',   labelKey: 'mypage.maturingTab',    adminHidden: true },
-  { value: 'reviews',    labelKey: 'mypage.reviewsTab' },
-  { value: 'wishlist',   labelKey: 'mypage.wishlistTab' },
-  { value: 'byob',       labelKey: 'mypage.byobTab' },
-  { value: 'collection', labelKey: 'mypage.collectionTab' },
-  { value: 'messages',   labelKey: 'mypage.messagesTab' },
-  { value: 'settings',   labelKey: 'mypage.settingsTab' },
+  { value: 'maturing',     labelKey: 'mypage.maturingTab',    adminHidden: true },
+  { value: 'reviews',      labelKey: 'mypage.reviewsTab' },
+  { value: 'wishlist',     labelKey: 'mypage.wishlistTab' },
+  { value: 'byob',         labelKey: 'mypage.byobTab' },
+  { value: 'collection',   labelKey: 'mypage.collectionTab' },
+  { value: 'priceReports', labelKey: 'mypage.priceReportsTab' },
+  { value: 'priceAlerts',  labelKey: 'mypage.priceAlertsTab' },
+  { value: 'messages',     labelKey: 'mypage.messagesTab' },
+  { value: 'settings',     labelKey: 'mypage.settingsTab' },
 ]
 
 const ROLE_LABEL: Record<string, string> = {
@@ -163,6 +167,8 @@ export default function MyPage() {
       {tab === 'wishlist'  && <MyFavorites />}
       {tab === 'byob'        && <ByobHistoryTab />}
       {tab === 'collection'  && <BottleCollectionTab />}
+      {tab === 'priceReports' && <MyPriceReportsTab />}
+      {tab === 'priceAlerts'  && <MyPriceAlertsTab />}
       {tab === 'messages'    && <MessagesTab initialMessageId={messageIdParam} />}
       {tab === 'settings'  && <AccountSettings />}
     </div>

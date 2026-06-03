@@ -3,10 +3,11 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useSpiritDetail } from '@/domain/spirit/hooks/useSpiritDetail'
 import Spinner from '@/shared/components/Spinner'
-import { usePriceChart, usePriceChartDetail, useUpsertPriceAlert, useMyPriceAlerts, useDeletePriceAlert } from '@/domain/pricetracker/hooks/usePriceChart'
+import { usePriceChart, usePriceChartDetail } from '@/domain/pricetracker/hooks/usePriceChart'
 import PriceRangeChart from '@/domain/pricetracker/components/PriceRangeChart'
 import StoreDetailPanel from '@/domain/pricetracker/components/StoreDetailPanel'
-import { useAuthStore } from '@/domain/auth/store/authStore'
+import PriceAlertInline from '@/domain/pricetracker/components/PriceAlertInline'
+import PriceAlertBanner from '@/domain/pricetracker/components/PriceAlertBanner'
 import type { StoreType } from '@/domain/pricetracker/types/pricetracker.types'
 
 export default function SpiritPriceDetailPage() {
@@ -15,36 +16,20 @@ export default function SpiritPriceDetailPage() {
   const { t, i18n } = useTranslation()
   const isEn = i18n.language === 'en'
   const spiritId = Number(id)
-  const { isLoggedIn } = useAuthStore()
 
   const [storeType, setStoreType] = useState<StoreType>('DOMESTIC')
   const [period, setPeriod] = useState('3M')
   const [region] = useState('')
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
-  const [alertPrice, setAlertPrice] = useState('')
-  const [showAlertForm, setShowAlertForm] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false) // mobile
 
   const { data: spirit, isLoading: spiritLoading } = useSpiritDetail(spiritId)
   const { data: chartData, isLoading: chartLoading } = usePriceChart(spiritId, storeType, period, region || undefined)
   const { data: pointDetails, isLoading: detailLoading } = usePriceChartDetail(spiritId, selectedDate, storeType)
-  const { data: myAlerts } = useMyPriceAlerts()
-  const upsertAlert = useUpsertPriceAlert()
-  const deleteAlert = useDeletePriceAlert()
-
-  const existingAlert = myAlerts?.find((a) => a.spiritId === spiritId)
 
   const handlePointClick = (date: string) => {
     setSelectedDate(date)
     setPanelOpen(true)
-  }
-
-  const handleAlertSubmit = () => {
-    const price = Number(alertPrice.replace(/,/g, ''))
-    if (!price || price <= 0) return
-    upsertAlert.mutate({ spiritId, targetPrice: price })
-    setShowAlertForm(false)
-    setAlertPrice('')
   }
 
   if (spiritLoading) return <Spinner fullscreen />
@@ -54,8 +39,11 @@ export default function SpiritPriceDetailPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
+      {/* PRICE_ALERT 발동 배너 */}
+      <PriceAlertBanner spiritId={spiritId} />
+
       {/* 헤더 */}
-      <div className="flex items-start justify-between gap-4 mb-6">
+      <div className="flex items-start justify-between gap-4 mb-4">
         <div>
           <button
             onClick={() => navigate(-1)}
@@ -66,54 +54,17 @@ export default function SpiritPriceDetailPage() {
           <h1 className="text-xl font-bold text-neutral-900">{primaryName}</h1>
           {subName && <p className="text-sm text-neutral-400 mt-0.5">{subName}</p>}
         </div>
-        <div className="flex gap-2 shrink-0">
-          {isLoggedIn && (
-            <div className="space-y-2">
-              {existingAlert ? (
-                <div className="text-right">
-                  <p className="text-xs text-neutral-500 mb-1">
-                    {t('price.alert.title')}: {existingAlert.targetPriceKrw.toLocaleString()}원
-                  </p>
-                  <button
-                    onClick={() => deleteAlert.mutate(existingAlert.id)}
-                    className="text-xs text-red-400 hover:text-red-600"
-                  >
-                    {t('price.alert.delete')}
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setShowAlertForm((v) => !v)}
-                  className="px-3 py-1.5 rounded-lg border border-[#185FA5] text-[#185FA5] text-xs font-medium hover:bg-blue-50 transition-colors"
-                >
-                  🔔 {t('price.alert.set')}
-                </button>
-              )}
-              {showAlertForm && (
-                <div className="flex gap-2 items-center">
-                  <input
-                    value={alertPrice}
-                    onChange={(e) => setAlertPrice(e.target.value)}
-                    placeholder={t('price.alert.targetPrice')}
-                    className="w-28 border border-neutral-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-300"
-                  />
-                  <button
-                    onClick={handleAlertSubmit}
-                    className="px-2 py-1 bg-[#185FA5] text-white rounded text-xs"
-                  >
-                    {t('common.save', '저장')}
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-          <Link
-            to="/price-tracker/register"
-            className="px-3 py-1.5 rounded-lg bg-[#185FA5] text-white text-xs font-medium hover:bg-[#1552a0] transition-colors"
-          >
-            + {t('price.registerBtn')}
-          </Link>
-        </div>
+        <Link
+          to={`/price-tracker/register?spiritId=${spiritId}`}
+          className="shrink-0 px-3 py-1.5 rounded-lg bg-[#185FA5] text-white text-xs font-medium hover:bg-[#1552a0] transition-colors"
+        >
+          + {t('price.registerBtn')}
+        </Link>
+      </div>
+
+      {/* 목표가 알림 인라인 */}
+      <div className="mb-6">
+        <PriceAlertInline spiritId={spiritId} />
       </div>
 
       {/* PC: 차트(좌) + 패널(우) */}

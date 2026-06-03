@@ -74,6 +74,15 @@ const navEntries: NavEntry[] = [
   },
   {
     type: 'group',
+    groupLabel: '가격 트래커',
+    groupIcon: '💰',
+    items: [
+      { path: '/admin/price-reports', label: '가격 등록 승인', exact: true },
+      { path: '/admin/stores',        label: '매장 관리',      exact: true },
+    ],
+  },
+  {
+    type: 'group',
     groupLabel: '숙성력',
     groupIcon: '🏅',
     items: [

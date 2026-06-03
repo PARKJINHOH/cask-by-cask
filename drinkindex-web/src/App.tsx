@@ -72,6 +72,8 @@ import UserBottlePublicPage from '@/pages/UserBottlePublicPage'
 import PriceTrackerPage from '@/pages/PriceTrackerPage'
 import SpiritPriceDetailPage from '@/pages/SpiritPriceDetailPage'
 import PriceRegisterPage from '@/pages/PriceRegisterPage'
+import AdminPriceReportPage from '@/pages/admin/AdminPriceReportPage'
+import AdminStorePage from '@/pages/admin/AdminStorePage'
 import ProducerDetailPage from '@/pages/ProducerDetailPage'
 
 export default function App() {
@@ -153,6 +155,8 @@ export default function App() {
               <Route path="community/bad-words" element={<AdminBadWordPage />} />
               <Route path="community/emojis" element={<AdminEmojiPage />} />
               <Route path="community/prefixes" element={<AdminPrefixPage />} />
+              <Route path="price-reports" element={<AdminPriceReportPage />} />
+              <Route path="stores" element={<AdminStorePage />} />
               <Route path="score/points" element={<AdminScorePage />} />
               <Route path="score/levels" element={<AdminLevelPage />} />
               <Route path="legal" element={<AdminLegalListPage />} />

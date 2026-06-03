@@ -1,13 +1,14 @@
-import { useState, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useMemo, useRef, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { spiritApi } from '@/domain/spirit/api/spiritApi'
+import { useSpiritDetail } from '@/domain/spirit/hooks/useSpiritDetail'
 import { priceTrackerApi } from '@/domain/pricetracker/api/priceTrackerApi'
 import type {
   StoreType,
-  PriceCurrency,
   DiscountType,
+  DutyFreeChannel,
   DiscountItemInput,
   StoreSearchResult,
   PriceReportImageUpload,
@@ -15,39 +16,54 @@ import type {
 import type { SpiritListItem } from '@/domain/spirit/types/spirit.types'
 
 const DISCOUNT_TYPES: DiscountType[] = ['PAYMENT', 'BUNDLE', 'COUPON', 'OTHER']
+const DUTYFREE_CHANNELS: DutyFreeChannel[] = ['AIRPORT', 'CITY', 'INFLIGHT', 'ONLINE']
+
+const krw = new Intl.NumberFormat('ko-KR')
 
 export default function PriceRegisterPage() {
   const { t, i18n } = useTranslation()
   const isEn = i18n.language === 'en'
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
 
-  // Spirit 검색
+  // ── 대상 술 (spiritId 쿼리파라미터 고정 or 검색) ──────────
+  const fixedSpiritId = Number(searchParams.get('spiritId')) || 0
+  const { data: fixedSpirit } = useSpiritDetail(fixedSpiritId)
   const [spiritKeyword, setSpiritKeyword] = useState('')
-  const [selectedSpirit, setSelectedSpirit] = useState<SpiritListItem | null>(null)
+  const [pickedSpirit, setPickedSpirit] = useState<SpiritListItem | null>(null)
   const [spiritOpen, setSpiritOpen] = useState(false)
+  const selectedSpirit: SpiritListItem | null = fixedSpirit ?? pickedSpirit
 
-  // Store 검색
+  // ── 매장 ─────────────────────────────────────────────
   const [storeType, setStoreType] = useState<StoreType>('DOMESTIC')
   const [storeKeyword, setStoreKeyword] = useState('')
   const [selectedStore, setSelectedStore] = useState<StoreSearchResult | null>(null)
-  const [suggestedStoreName, setSuggestedStoreName] = useState('')
-  const [storeOpen, setStoreOpen] = useState(false)
   const [useSuggest, setUseSuggest] = useState(false)
+  const [suggestedStoreName, setSuggestedStoreName] = useState('')
+  const [channel, setChannel] = useState<DutyFreeChannel>('AIRPORT')
+  const [storeOpen, setStoreOpen] = useState(false)
 
-  // 가격
-  const [currency, setCurrency] = useState<PriceCurrency>('KRW')
+  const isDutyFree = storeType === 'DUTYFREE'
+  const currency = isDutyFree ? 'USD' : 'KRW'
+  const moneyUnit = isDutyFree ? '$' : '원'
+
+  // ── 가격 (국내) ──────────────────────────────────────
   const [regularPrice, setRegularPrice] = useState('')
   const [salePrice, setSalePrice] = useState('')
   const [payback, setPayback] = useState('')
+  const [actualOverride, setActualOverride] = useState('') // 비어있으면 자동계산
+
+  // ── 가격 (면세) ──────────────────────────────────────
+  const [basePrice, setBasePrice] = useState('')
+  const [discountItems, setDiscountItems] = useState<DiscountItemInput[]>([])
   const [exchangeRate, setExchangeRate] = useState('')
+
+  // ── 공통 ─────────────────────────────────────────────
   const [purchasedAt, setPurchasedAt] = useState('')
   const [description, setDescription] = useState('')
-  const [isAnonymous, setIsAnonymous] = useState(false)
+  const [authorMode, setAuthorMode] = useState<'NICKNAME' | 'ANONYMOUS'>('NICKNAME')
 
-  // 면세 할인 항목
-  const [discountItems, setDiscountItems] = useState<DiscountItemInput[]>([])
-
-  // 이미지
+  // ── 이미지 ───────────────────────────────────────────
   const [images, setImages] = useState<PriceReportImageUpload[]>([])
   const [imagePublicFlags, setImagePublicFlags] = useState<boolean[]>([])
   const [uploading, setUploading] = useState(false)
@@ -56,16 +72,15 @@ export default function PriceRegisterPage() {
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
 
-  // Spirit 자동완성
+  // ── 자동완성 쿼리 ────────────────────────────────────
   const { data: spiritResults } = useQuery({
     queryKey: ['spiritSearch-register', spiritKeyword],
     queryFn: () => spiritApi.search({ keyword: spiritKeyword, page: 0, size: 8 }),
     select: (res) => res.data.data?.content ?? [],
-    enabled: spiritKeyword.length >= 1 && spiritOpen,
+    enabled: spiritKeyword.length >= 1 && spiritOpen && !fixedSpirit,
     staleTime: 30_000,
   })
 
-  // Store 자동완성
   const { data: storeResults } = useQuery({
     queryKey: ['storeSearch', storeKeyword, storeType],
     queryFn: () => priceTrackerApi.searchStores(storeKeyword, storeType),
@@ -74,6 +89,22 @@ export default function PriceRegisterPage() {
     staleTime: 30_000,
   })
 
+  // ── 자동 계산 ────────────────────────────────────────
+  const computedActual = useMemo(() => {
+    const s = Number(salePrice) || 0
+    const p = Number(payback) || 0
+    return s ? Math.max(s - p, 0) : 0
+  }, [salePrice, payback])
+  const actualPrice = actualOverride !== '' ? Number(actualOverride) : computedActual
+
+  const discountSum = useMemo(
+    () => discountItems.reduce((acc, d) => acc + (Number(d.amount) || 0), 0),
+    [discountItems],
+  )
+  const feelPrice = Math.max((Number(basePrice) || 0) - discountSum, 0) // 면세 체감가 (USD)
+  const krwPreview = feelPrice && Number(exchangeRate) ? Math.round(feelPrice * Number(exchangeRate)) : 0
+
+  // ── 핸들러 ───────────────────────────────────────────
   const handleImageUpload = async (file: File) => {
     if (images.length >= 3) return
     setUploading(true)
@@ -87,43 +118,45 @@ export default function PriceRegisterPage() {
       setUploading(false)
     }
   }
-
   const removeImage = (idx: number) => {
-    setImages((prev) => prev.filter((_, i) => i !== idx) as typeof prev)
+    setImages((prev) => prev.filter((_, i) => i !== idx))
     setImagePublicFlags((prev) => prev.filter((_, i) => i !== idx))
   }
 
   const addDiscountItem = () =>
-    setDiscountItems((prev) => [
-      ...prev,
-      { discountType: 'PAYMENT', label: '', amount: 0, sortOrder: prev.length },
-    ])
+    setDiscountItems((prev) => [...prev, { discountType: 'PAYMENT', label: '', amount: 0, sortOrder: prev.length }])
+  const removeDiscountItem = (idx: number) => setDiscountItems((prev) => prev.filter((_, i) => i !== idx))
+  const patchDiscount = (idx: number, patch: Partial<DiscountItemInput>) =>
+    setDiscountItems((prev) => prev.map((d, i) => (i === idx ? { ...d, ...patch } : d)))
 
-  const removeDiscountItem = (idx: number) =>
-    setDiscountItems((prev) => prev.filter((_, i) => i !== idx))
-
-  const isDutyFree = storeType === 'DUTYFREE'
-  const needsExchangeRate = isDutyFree && currency === 'USD'
+  // ── 유효성 ───────────────────────────────────────────
+  const canSubmit = useMemo(() => {
+    if (!selectedSpirit) return false
+    if (isDutyFree) return !!basePrice && !!exchangeRate
+    return !!salePrice
+  }, [selectedSpirit, isDutyFree, basePrice, exchangeRate, salePrice])
 
   const handleSubmit = async () => {
-    if (!selectedSpirit) return
+    if (!selectedSpirit || !canSubmit) return
     setSubmitting(true)
     try {
       await priceTrackerApi.createPriceReport({
         spiritId: selectedSpirit.id,
         storeId: selectedStore?.id ?? null,
-        suggestedStoreName: useSuggest ? suggestedStoreName : null,
+        suggestedStoreName: useSuggest ? suggestedStoreName || null : null,
+        dutyfreeChannel: isDutyFree && useSuggest ? channel : null,
         currency,
-        isAnonymous,
-        regularPrice: regularPrice ? Number(regularPrice) : null,
-        salePrice: salePrice ? Number(salePrice) : null,
-        paybackAmount: payback ? Number(payback) : null,
-        exchangeRate: exchangeRate ? Number(exchangeRate) : null,
+        isAnonymous: authorMode === 'ANONYMOUS',
+        regularPrice: !isDutyFree && regularPrice ? Number(regularPrice) : null,
+        salePrice: isDutyFree ? Number(basePrice) : Number(salePrice),
+        paybackAmount: !isDutyFree && payback ? Number(payback) : null,
+        finalPrice: isDutyFree ? feelPrice : actualPrice,
+        exchangeRate: isDutyFree && exchangeRate ? Number(exchangeRate) : null,
         purchasedAt: purchasedAt || null,
         description: description || null,
         imageIds: images.map((i) => i.id),
         imagePublicFlags,
-        discountItems: discountItems.length ? discountItems : undefined,
+        discountItems: isDutyFree && discountItems.length ? discountItems : undefined,
       })
       setDone(true)
     } finally {
@@ -137,10 +170,10 @@ export default function PriceRegisterPage() {
         <p className="text-4xl mb-4">🎉</p>
         <p className="text-lg font-semibold text-neutral-800 mb-2">{t('price.register.success')}</p>
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => navigate('/mypage?tab=priceReports')}
           className="mt-6 px-6 py-2 bg-[#185FA5] text-white rounded-xl text-sm"
         >
-          {t('common.back', '돌아가기')}
+          {t('price.register.goMyPage')}
         </button>
       </div>
     )
@@ -154,62 +187,98 @@ export default function PriceRegisterPage() {
       <h1 className="text-xl font-bold text-neutral-900 mb-6">{t('price.register.title')}</h1>
 
       <div className="space-y-6">
-        {/* 술 선택 */}
+        {/* 1. 대상 술 */}
         <Section label={t('price.register.spirit')}>
-          <div className="relative">
-            <input
-              value={selectedSpirit ? (isEn ? (selectedSpirit.nameEn || selectedSpirit.nameKo) : selectedSpirit.nameKo) : spiritKeyword}
-              onChange={(e) => { setSpiritKeyword(e.target.value); setSelectedSpirit(null); setSpiritOpen(true) }}
-              onFocus={() => setSpiritOpen(true)}
-              placeholder={t('price.register.spiritPlaceholder')}
-              className="w-full border border-neutral-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-            />
-            {spiritOpen && spiritResults && spiritResults.length > 0 && !selectedSpirit && (
-              <ul className="absolute z-10 w-full bg-white border border-neutral-200 rounded-xl mt-1 shadow-lg max-h-52 overflow-y-auto">
-                {spiritResults.map((s) => (
-                  <li key={s.id}>
-                    <button
-                      onClick={() => { setSelectedSpirit(s); setSpiritOpen(false); setSpiritKeyword('') }}
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-neutral-50"
-                    >
-                      <span className="font-medium">{isEn ? (s.nameEn || s.nameKo) : s.nameKo}</span>
-                      {s.nameEn && <span className="text-neutral-400 ml-2 text-xs">{isEn ? s.nameKo : s.nameEn}</span>}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          {fixedSpirit ? (
+            <div className="flex items-center gap-3 border border-neutral-200 rounded-xl px-3 py-2.5 bg-neutral-50">
+              {fixedSpirit.primaryImageUrl ? (
+                <img src={fixedSpirit.primaryImageUrl} alt="" className="w-10 h-10 rounded-lg object-cover" />
+              ) : (
+                <div className="w-10 h-10 rounded-lg bg-neutral-100 flex items-center justify-center">🥃</div>
+              )}
+              <div className="min-w-0">
+                <p className="font-semibold text-neutral-900 truncate">
+                  {isEn ? fixedSpirit.nameEn || fixedSpirit.nameKo : fixedSpirit.nameKo}
+                </p>
+                <p className="text-xs text-neutral-400 truncate">
+                  {isEn ? fixedSpirit.nameKo : fixedSpirit.nameEn}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="relative">
+              <input
+                value={pickedSpirit ? (isEn ? pickedSpirit.nameEn || pickedSpirit.nameKo : pickedSpirit.nameKo) : spiritKeyword}
+                onChange={(e) => { setSpiritKeyword(e.target.value); setPickedSpirit(null); setSpiritOpen(true) }}
+                onFocus={() => setSpiritOpen(true)}
+                placeholder={t('price.register.spiritPlaceholder')}
+                className="w-full border border-neutral-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+              />
+              {spiritOpen && spiritResults && spiritResults.length > 0 && !pickedSpirit && (
+                <ul className="absolute z-10 w-full bg-white border border-neutral-200 rounded-xl mt-1 shadow-lg max-h-52 overflow-y-auto">
+                  {spiritResults.map((s) => (
+                    <li key={s.id}>
+                      <button
+                        onClick={() => { setPickedSpirit(s); setSpiritOpen(false); setSpiritKeyword('') }}
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-neutral-50"
+                      >
+                        <span className="font-medium">{isEn ? s.nameEn || s.nameKo : s.nameKo}</span>
+                        {s.nameEn && <span className="text-neutral-400 ml-2 text-xs">{isEn ? s.nameKo : s.nameEn}</span>}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
         </Section>
 
-        {/* 국내/면세 + 매장 */}
+        {/* 2. 매장 */}
         <Section label={t('price.register.store')}>
           <div className="flex gap-2 mb-2">
-            {(['DOMESTIC', 'DUTYFREE'] as const).map((t_) => (
+            {(['DOMESTIC', 'DUTYFREE'] as const).map((tp) => (
               <button
-                key={t_}
-                onClick={() => { setStoreType(t_); setSelectedStore(null); setUseSuggest(false) }}
+                key={tp}
+                onClick={() => { setStoreType(tp); setSelectedStore(null); setUseSuggest(false) }}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                  storeType === t_ ? 'bg-[#185FA5] text-white border-[#185FA5]' : 'text-neutral-500 border-neutral-200'
+                  storeType === tp ? 'bg-[#185FA5] text-white border-[#185FA5]' : 'text-neutral-500 border-neutral-200'
                 }`}
               >
-                {t_ === 'DOMESTIC' ? t('price.chart.domestic') : t('price.chart.dutyfree')}
+                {tp === 'DOMESTIC' ? t('price.chart.domestic') : t('price.chart.dutyfree')}
               </button>
             ))}
             <button
               onClick={() => { setUseSuggest((v) => !v); setSelectedStore(null) }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+              className={`ml-auto px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                 useSuggest ? 'bg-neutral-700 text-white border-neutral-700' : 'text-neutral-400 border-neutral-200'
               }`}
             >
               {t('price.register.suggestStore')}
             </button>
           </div>
+
+          {/* 면세 채널 */}
+          {isDutyFree && (
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {DUTYFREE_CHANNELS.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setChannel(c)}
+                  className={`px-2.5 py-1 rounded-lg text-xs border transition-colors ${
+                    channel === c ? 'bg-blue-50 text-[#185FA5] border-[#185FA5]' : 'text-neutral-400 border-neutral-200'
+                  }`}
+                >
+                  {t(`price.register.channel.${c}`)}
+                </button>
+              ))}
+            </div>
+          )}
+
           {useSuggest ? (
             <input
               value={suggestedStoreName}
               onChange={(e) => setSuggestedStoreName(e.target.value)}
-              placeholder={t('price.register.storePlaceholder')}
+              placeholder={isDutyFree ? t('price.register.brandPlaceholder') : t('price.register.storePlaceholder')}
               className="w-full border border-neutral-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
             />
           ) : (
@@ -239,89 +308,80 @@ export default function PriceRegisterPage() {
           )}
         </Section>
 
-        {/* 통화 */}
-        <Section label={t('price.register.currency')}>
-          <div className="flex gap-2">
-            {(['KRW', 'USD'] as const).map((c) => (
-              <button
-                key={c}
-                onClick={() => setCurrency(c)}
-                className={`px-4 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
-                  currency === c ? 'bg-[#185FA5] text-white border-[#185FA5]' : 'text-neutral-500 border-neutral-200'
-                }`}
-              >
-                {c}
-              </button>
-            ))}
-          </div>
-        </Section>
-
-        {/* 가격 */}
-        <Section label={t('price.chart.maxPrice')}>
-          <div className="grid grid-cols-2 gap-3">
-            <LabeledInput label={t('price.register.regularPrice')} value={regularPrice} onChange={setRegularPrice} suffix="원" />
-            <LabeledInput label={t('price.register.salePrice')} value={salePrice} onChange={setSalePrice} suffix="원" />
-            <LabeledInput label={t('price.register.payback')} value={payback} onChange={setPayback} suffix="원" />
-            {needsExchangeRate && (
-              <LabeledInput label={t('price.register.exchangeRate')} value={exchangeRate} onChange={setExchangeRate} suffix="원/USD" required />
-            )}
-          </div>
-        </Section>
-
-        {/* 면세 할인 항목 */}
-        {isDutyFree && (
-          <Section label={t('price.register.discountItems')}>
-            <div className="space-y-2">
-              {discountItems.map((item, idx) => (
-                <div key={idx} className="flex gap-2 items-start">
-                  <select
-                    value={item.discountType}
-                    onChange={(e) =>
-                      setDiscountItems((prev) =>
-                        prev.map((d, i) => i === idx ? { ...d, discountType: e.target.value as DiscountType } : d)
-                      )
-                    }
-                    className="border border-neutral-200 rounded-lg px-2 py-1.5 text-xs"
-                  >
-                    {DISCOUNT_TYPES.map((dt) => (
-                      <option key={dt} value={dt}>{t(`price.register.discountType.${dt}`)}</option>
-                    ))}
-                  </select>
-                  <input
-                    placeholder={t('price.register.discountItems')}
-                    value={item.label}
-                    onChange={(e) =>
-                      setDiscountItems((prev) =>
-                        prev.map((d, i) => i === idx ? { ...d, label: e.target.value } : d)
-                      )
-                    }
-                    className="flex-1 border border-neutral-200 rounded-lg px-2 py-1.5 text-xs"
-                  />
-                  <input
-                    type="number"
-                    placeholder="금액"
-                    value={item.amount || ''}
-                    onChange={(e) =>
-                      setDiscountItems((prev) =>
-                        prev.map((d, i) => i === idx ? { ...d, amount: Number(e.target.value) } : d)
-                      )
-                    }
-                    className="w-24 border border-neutral-200 rounded-lg px-2 py-1.5 text-xs"
-                  />
-                  <button onClick={() => removeDiscountItem(idx)} className="text-neutral-300 hover:text-red-400 text-lg leading-none">×</button>
-                </div>
-              ))}
-              <button
-                onClick={addDiscountItem}
-                className="text-xs text-[#185FA5] hover:text-blue-700 font-medium"
-              >
-                + {t('price.register.addDiscount')}
-              </button>
+        {/* 3. 가격 */}
+        <Section label={`${t('price.register.priceSection')} (${currency})`}>
+          {!isDutyFree ? (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <LabeledInput label={t('price.register.regularPrice')} value={regularPrice} onChange={setRegularPrice} suffix={moneyUnit} />
+                <LabeledInput label={t('price.register.salePrice')} value={salePrice} onChange={setSalePrice} suffix={moneyUnit} required />
+                <LabeledInput label={t('price.register.payback')} value={payback} onChange={setPayback} suffix={moneyUnit} />
+                <LabeledInput
+                  label={t('price.register.finalPrice')}
+                  value={actualOverride !== '' ? actualOverride : (computedActual ? String(computedActual) : '')}
+                  onChange={setActualOverride}
+                  suffix={moneyUnit}
+                  hint={t('price.register.autoCalc')}
+                />
+              </div>
             </div>
-          </Section>
-        )}
+          ) : (
+            <div className="space-y-3">
+              <LabeledInput label={t('price.register.basePrice')} value={basePrice} onChange={setBasePrice} suffix="$" required />
 
-        {/* 구매일 + 설명 */}
+              {/* 할인 조건 */}
+              <div>
+                <p className="text-xs text-neutral-400 mb-1.5">{t('price.register.discountItems')}</p>
+                <div className="space-y-2">
+                  {discountItems.map((item, idx) => (
+                    <div key={idx} className="flex gap-2 items-start">
+                      <select
+                        value={item.discountType}
+                        onChange={(e) => patchDiscount(idx, { discountType: e.target.value as DiscountType })}
+                        className="border border-neutral-200 rounded-lg px-2 py-1.5 text-xs"
+                      >
+                        {DISCOUNT_TYPES.map((dt) => (
+                          <option key={dt} value={dt}>{t(`price.register.discountType.${dt}`)}</option>
+                        ))}
+                      </select>
+                      <input
+                        placeholder={t('price.register.discountLabel')}
+                        value={item.label}
+                        onChange={(e) => patchDiscount(idx, { label: e.target.value })}
+                        className="flex-1 border border-neutral-200 rounded-lg px-2 py-1.5 text-xs"
+                      />
+                      <input
+                        type="number"
+                        placeholder="$"
+                        value={item.amount || ''}
+                        onChange={(e) => patchDiscount(idx, { amount: Number(e.target.value) })}
+                        className="w-20 border border-neutral-200 rounded-lg px-2 py-1.5 text-xs"
+                      />
+                      <button onClick={() => removeDiscountItem(idx)} className="text-neutral-300 hover:text-red-400 text-lg leading-none">×</button>
+                    </div>
+                  ))}
+                  <button onClick={addDiscountItem} className="text-xs text-[#185FA5] hover:text-blue-700 font-medium">
+                    + {t('price.register.addDiscount')}
+                  </button>
+                </div>
+              </div>
+
+              {/* 체감가 + 환율 */}
+              <div className="rounded-xl bg-blue-50/60 border border-blue-100 px-3 py-2.5 flex items-center justify-between">
+                <span className="text-xs text-neutral-500">{t('price.register.feelPrice')}</span>
+                <span className="text-sm font-bold text-[#185FA5]">$ {feelPrice.toLocaleString()}</span>
+              </div>
+              <LabeledInput label={t('price.register.exchangeRate')} value={exchangeRate} onChange={setExchangeRate} suffix="원/USD" required />
+              {krwPreview > 0 && (
+                <p className="text-xs text-neutral-500 text-right">
+                  {t('price.register.krwPreview')}: <span className="font-semibold text-neutral-700">≈ {krw.format(krwPreview)}원</span>
+                </p>
+              )}
+            </div>
+          )}
+        </Section>
+
+        {/* 4. 구매일 */}
         <Section label={t('price.register.purchasedAt')}>
           <input
             type="date"
@@ -331,18 +391,24 @@ export default function PriceRegisterPage() {
           />
         </Section>
 
+        {/* 설명 */}
         <Section label={t('price.register.description')}>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder={t('price.register.descPlaceholder')}
             rows={3}
+            maxLength={500}
             className="w-full border border-neutral-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 resize-none"
           />
         </Section>
 
-        {/* 이미지 */}
+        {/* 인증 사진 */}
         <Section label={t('price.register.images')}>
+          <div className="mb-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800 font-medium flex gap-1.5">
+            <span>⚠️</span>
+            <span>{t('price.register.privacyWarning')}</span>
+          </div>
           <div className="flex gap-3 flex-wrap">
             {images.map((img, idx) => (
               <div key={img.id} className="relative">
@@ -354,10 +420,10 @@ export default function PriceRegisterPage() {
                   ×
                 </button>
                 <button
-                  onClick={() => setImagePublicFlags((prev) => prev.map((f, i) => i === idx ? !f : f))}
+                  onClick={() => setImagePublicFlags((prev) => prev.map((f, i) => (i === idx ? !f : f)))}
                   className={`mt-1 block w-full text-center text-[10px] rounded ${imagePublicFlags[idx] ? 'text-blue-600' : 'text-neutral-400'}`}
                 >
-                  {imagePublicFlags[idx] ? '공개' : '비공개'}
+                  {imagePublicFlags[idx] ? t('price.register.public') : t('price.register.private')}
                 </button>
               </div>
             ))}
@@ -367,7 +433,7 @@ export default function PriceRegisterPage() {
                 disabled={uploading}
                 className="w-20 h-20 rounded-xl border-2 border-dashed border-neutral-200 hover:border-blue-300 flex flex-col items-center justify-center text-neutral-300 hover:text-blue-400 transition-colors"
               >
-                {uploading ? '...' : <><span className="text-2xl">+</span><span className="text-[10px] mt-0.5">{t('price.register.uploadImage')}</span></>}
+                {uploading ? '...' : (<><span className="text-2xl">+</span><span className="text-[10px] mt-0.5">{t('price.register.uploadImage')}</span></>)}
               </button>
             )}
           </div>
@@ -380,21 +446,30 @@ export default function PriceRegisterPage() {
           />
         </Section>
 
-        {/* 익명 */}
-        <label className="flex items-center gap-3 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={isAnonymous}
-            onChange={(e) => setIsAnonymous(e.target.checked)}
-            className="w-4 h-4 rounded accent-[#185FA5]"
-          />
-          <span className="text-sm text-neutral-700">{t('price.register.isAnonymous')}</span>
-        </label>
+        {/* 5. 작성자 표시 */}
+        <Section label={t('price.register.author')}>
+          <div className="flex gap-2">
+            {(['NICKNAME', 'ANONYMOUS'] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => setAuthorMode(m)}
+                className={`flex-1 px-3 py-2 rounded-xl text-sm font-medium border transition-colors ${
+                  authorMode === m ? 'bg-[#185FA5] text-white border-[#185FA5]' : 'text-neutral-500 border-neutral-200'
+                }`}
+              >
+                {m === 'NICKNAME' ? t('price.register.authorNickname') : t('price.register.authorAnonymous')}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-neutral-400 mt-2">
+            {authorMode === 'NICKNAME' ? t('price.register.pointsNotice') : t('price.register.anonymousNotice')}
+          </p>
+        </Section>
 
         {/* 제출 */}
         <button
           onClick={handleSubmit}
-          disabled={!selectedSpirit || submitting}
+          disabled={!canSubmit || submitting}
           className="w-full py-3 bg-[#185FA5] text-white rounded-xl font-semibold text-sm hover:bg-[#1552a0] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {submitting ? '...' : t('price.register.submit')}
@@ -419,26 +494,30 @@ function LabeledInput({
   onChange,
   suffix,
   required,
+  hint,
 }: {
   label: string
   value: string
   onChange: (v: string) => void
   suffix?: string
   required?: boolean
+  hint?: string
 }) {
   return (
     <div>
       <label className="text-xs text-neutral-400 block mb-1">
-        {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+        {label}
+        {required && <span className="text-red-500 ml-0.5">*</span>}
+        {hint && <span className="text-neutral-300 ml-1">· {hint}</span>}
       </label>
       <div className="flex items-center border border-neutral-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-blue-200">
         <input
           type="number"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="flex-1 px-3 py-2 text-sm focus:outline-none"
+          className="flex-1 px-3 py-2 text-sm focus:outline-none min-w-0"
         />
-        {suffix && <span className="pr-3 text-xs text-neutral-400">{suffix}</span>}
+        {suffix && <span className="pr-3 text-xs text-neutral-400 shrink-0">{suffix}</span>}
       </div>
     </div>
   )

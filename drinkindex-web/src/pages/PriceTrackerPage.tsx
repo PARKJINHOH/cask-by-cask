@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { spiritApi } from '@/domain/spirit/api/spiritApi'
 import PriceSparkline from '@/domain/pricetracker/components/PriceSparkline'
+import PriceAlertBanner from '@/domain/pricetracker/components/PriceAlertBanner'
 import type { SpiritListItem } from '@/domain/spirit/types/spirit.types'
 import type { StoreType } from '@/domain/pricetracker/types/pricetracker.types'
 import { usePriceChart } from '@/domain/pricetracker/hooks/usePriceChart'
@@ -92,6 +93,9 @@ export default function PriceTrackerPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
+      {/* PRICE_ALERT 발동 배너 */}
+      <PriceAlertBanner />
+
       {/* 헤더 */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-neutral-900">{t('price.tracker')}</h1>

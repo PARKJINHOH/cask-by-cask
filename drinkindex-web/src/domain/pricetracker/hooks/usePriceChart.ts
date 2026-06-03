@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { priceTrackerApi } from '../api/priceTrackerApi'
-import type { StoreType } from '../types/pricetracker.types'
+import type { PriceReportStatus, StoreType } from '../types/pricetracker.types'
 
 export function usePriceChart(
   spiritId: number,
@@ -61,5 +61,22 @@ export function useTogglePriceAlert() {
   return useMutation({
     mutationFn: (id: number) => priceTrackerApi.toggleAlert(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['priceAlerts'] }),
+  })
+}
+
+export function useMyPriceReports(status: PriceReportStatus | undefined, page: number) {
+  return useQuery({
+    queryKey: ['priceReports', 'my', status, page],
+    queryFn: () => priceTrackerApi.getMyReports(status, page),
+    select: (res) => res.data.data,
+    staleTime: 30_000,
+  })
+}
+
+export function useDeleteMyPriceReport() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => priceTrackerApi.deletePriceReport(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['priceReports', 'my'] }),
   })
 }

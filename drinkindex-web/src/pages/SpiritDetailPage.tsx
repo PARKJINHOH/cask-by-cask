@@ -20,6 +20,8 @@ import { DEFAULT_OG_IMAGE } from '@/shared/config/site'
 import type { SpiritDetail, SpiritImage } from '@/domain/spirit/types/spirit.types'
 import PriceRangeChart from '@/domain/pricetracker/components/PriceRangeChart'
 import StoreDetailPanel from '@/domain/pricetracker/components/StoreDetailPanel'
+import PriceAlertInline from '@/domain/pricetracker/components/PriceAlertInline'
+import PriceAlertBanner from '@/domain/pricetracker/components/PriceAlertBanner'
 import { usePriceChart, usePriceChartDetail } from '@/domain/pricetracker/hooks/usePriceChart'
 import { useState as useStateForPrice } from 'react'
 import type { StoreType } from '@/domain/pricetracker/types/pricetracker.types'
@@ -299,24 +301,41 @@ function Gallery({
 }
 
 function PriceTabContent({ spiritId }: { spiritId: number }) {
+  const { t } = useTranslation()
   const [storeType, setStoreType] = useStateForPrice<StoreType>('DOMESTIC')
   const [period, setPeriod] = useStateForPrice('3M')
   const [selectedDate, setSelectedDate] = useStateForPrice<string | null>(null)
   const { data: chartData, isLoading: chartLoading } = usePriceChart(spiritId, storeType, period)
   const { data: details, isLoading: detailLoading } = usePriceChartDetail(spiritId, selectedDate, storeType)
   return (
-    <div className="flex flex-col lg:flex-row gap-4">
-      <div className="flex-1 min-w-0 bg-white rounded-2xl border border-neutral-200 p-4">
-        <PriceRangeChart
-          data={chartData ?? undefined} isLoading={chartLoading}
-          period={period} onPeriodChange={setPeriod}
-          storeType={storeType} onStoreTypeChange={setStoreType}
-          onPointClick={(date) => setSelectedDate(date)}
-          selectedDate={selectedDate}
-        />
+    <div className="space-y-4">
+      {/* PRICE_ALERT 발동 배너 + 목표가 알림 인라인 */}
+      <PriceAlertBanner spiritId={spiritId} />
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex-1 min-w-[240px]">
+          <PriceAlertInline spiritId={spiritId} />
+        </div>
+        <Link
+          to={`/price-tracker/register?spiritId=${spiritId}`}
+          className="shrink-0 px-3 py-1.5 rounded-lg bg-[#185FA5] text-white text-xs font-medium hover:bg-[#1552a0] transition-colors"
+        >
+          + {t('price.registerBtn')}
+        </Link>
       </div>
-      <div className="lg:w-72 bg-white rounded-2xl border border-neutral-200 min-h-[300px]">
-        <StoreDetailPanel details={details ?? undefined} isLoading={detailLoading} selectedDate={selectedDate} />
+
+      <div className="flex flex-col lg:flex-row gap-4">
+        <div className="flex-1 min-w-0 bg-white rounded-2xl border border-neutral-200 p-4">
+          <PriceRangeChart
+            data={chartData ?? undefined} isLoading={chartLoading}
+            period={period} onPeriodChange={setPeriod}
+            storeType={storeType} onStoreTypeChange={setStoreType}
+            onPointClick={(date) => setSelectedDate(date)}
+            selectedDate={selectedDate}
+          />
+        </div>
+        <div className="lg:w-72 bg-white rounded-2xl border border-neutral-200 min-h-[300px]">
+          <StoreDetailPanel details={details ?? undefined} isLoading={detailLoading} selectedDate={selectedDate} />
+        </div>
       </div>
     </div>
   )

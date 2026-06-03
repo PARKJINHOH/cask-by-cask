@@ -3,6 +3,7 @@ package com.drinkindex.domain.pricetracker.dto.response;
 import com.drinkindex.domain.pricetracker.entity.PriceDiscountItem;
 import com.drinkindex.domain.pricetracker.entity.PriceReport;
 import com.drinkindex.domain.pricetracker.entity.PriceReportImage;
+import com.drinkindex.domain.pricetracker.entity.enums.DutyFreeChannel;
 import com.drinkindex.domain.pricetracker.entity.enums.PriceCurrency;
 import com.drinkindex.domain.pricetracker.entity.enums.PriceReportStatus;
 
@@ -18,6 +19,7 @@ public record AdminPriceReportResponse(
         Long storeId,
         String storeName,
         String suggestedStoreName,
+        DutyFreeChannel suggestedDutyfreeChannel,
         PriceReportStatus status,
         PriceCurrency currency,
         BigDecimal regularPrice,
@@ -48,6 +50,7 @@ public record AdminPriceReportResponse(
                 report.getStore() != null ? report.getStore().getId() : null,
                 report.getStore() != null ? report.getStore().getDisplayName() : null,
                 report.getSuggestedStoreName(),
+                report.getSuggestedDutyfreeChannel(),
                 report.getStatus(),
                 report.getCurrency(),
                 report.getPrice(),

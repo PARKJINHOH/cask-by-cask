@@ -1,5 +1,6 @@
 package com.drinkindex.domain.pricetracker.dto.request;
 
+import com.drinkindex.domain.pricetracker.entity.enums.DutyFreeChannel;
 import com.drinkindex.domain.pricetracker.entity.enums.PriceCurrency;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -13,6 +14,7 @@ public record CreatePriceReportRequest(
         @NotNull Long spiritId,
         Long storeId,                           // 자동완성 선택 매장 (nullable)
         @Size(max = 255) String suggestedStoreName, // 직접 입력 매장명 (nullable)
+        DutyFreeChannel dutyfreeChannel,        // 면세 매장 제안 시 채널 (nullable)
         @NotNull PriceCurrency currency,
         @NotNull Boolean isAnonymous,
         BigDecimal regularPrice,                // 정가

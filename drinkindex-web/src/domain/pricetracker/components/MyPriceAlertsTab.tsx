@@ -1,0 +1,48 @@
+import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import Spinner from '@/shared/components/Spinner'
+import { useMyPriceAlerts, useDeletePriceAlert, useTogglePriceAlert } from '../hooks/usePriceChart'
+
+const krw = new Intl.NumberFormat('ko-KR')
+
+export default function MyPriceAlertsTab() {
+  const { t, i18n } = useTranslation()
+  const isEn = i18n.language === 'en'
+  const { data: alerts, isLoading } = useMyPriceAlerts()
+  const toggle = useTogglePriceAlert()
+  const del = useDeletePriceAlert()
+
+  if (isLoading) return <div className="flex justify-center py-16"><Spinner /></div>
+  if (!alerts || alerts.length === 0) {
+    return <div className="text-center py-16 text-neutral-400 text-sm">{t('price.alert.noAlerts')}</div>
+  }
+
+  return (
+    <ul className="space-y-2">
+      {alerts.map((a) => (
+        <li key={a.id} className="bg-white rounded-xl border border-neutral-200 p-4 flex items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <Link to={`/price-tracker/spirits/${a.spiritId}`} className="font-semibold text-neutral-900 truncate hover:text-[#185FA5] block">
+              {isEn ? a.spiritNameEn || a.spiritNameKo : a.spiritNameKo}
+            </Link>
+            <p className="text-xs text-neutral-500 mt-0.5">
+              {t('price.alert.activeNotice', { price: krw.format(a.targetPriceKrw) })}
+              {a.lastNotifiedAt && <span className="ml-2 text-amber-600">🎯 {t('price.alert.triggered')}</span>}
+            </p>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            <button
+              onClick={() => toggle.mutate(a.id)}
+              className={`text-xs font-medium ${a.isActive ? 'text-[#185FA5]' : 'text-neutral-400'}`}
+            >
+              {a.isActive ? t('price.alert.on') : t('price.alert.off')}
+            </button>
+            <button onClick={() => del.mutate(a.id)} className="text-xs text-neutral-400 hover:text-red-500">
+              {t('common.delete', '삭제')}
+            </button>
+          </div>
+        </li>
+      ))}
+    </ul>
+  )
+}

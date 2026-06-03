@@ -1,5 +1,6 @@
 package com.drinkindex.domain.pricetracker.entity;
 
+import com.drinkindex.domain.pricetracker.entity.enums.DutyFreeChannel;
 import com.drinkindex.domain.pricetracker.entity.enums.PriceCurrency;
 import com.drinkindex.domain.pricetracker.entity.enums.PriceReportStatus;
 import com.drinkindex.domain.spirit.entity.Spirit;
@@ -76,6 +77,10 @@ public class PriceReport extends BaseTimeEntity {
     @Column(length = 255)
     private String suggestedStoreName;   // 자동완성에 없는 매장명 직접 입력
 
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private DutyFreeChannel suggestedDutyfreeChannel; // 면세 매장 제안 시 사용자가 고른 채널 (매장 매핑/생성 참고용)
+
     @Builder.Default
     @Column(nullable = false)
     private Boolean isAnonymous = false;
@@ -142,13 +147,15 @@ public class PriceReport extends BaseTimeEntity {
         this.rejectedAt = null;
     }
 
-    public void update(Store store, String suggestedStoreName, PriceCurrency currency,
+    public void update(Store store, String suggestedStoreName, DutyFreeChannel suggestedDutyfreeChannel,
+                       PriceCurrency currency,
                        BigDecimal price, BigDecimal salePrice, BigDecimal paybackAmount,
                        BigDecimal actualPrice, BigDecimal exchangeRateSnapshot,
                        LocalDate purchasedAt, String description, Boolean isAnonymous,
                        boolean autoFlagged) {
         this.store = store;
         this.suggestedStoreName = suggestedStoreName;
+        this.suggestedDutyfreeChannel = suggestedDutyfreeChannel;
         this.currency = currency;
         this.price = price;
         this.salePrice = salePrice;

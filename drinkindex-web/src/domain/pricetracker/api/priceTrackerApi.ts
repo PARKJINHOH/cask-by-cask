@@ -1,11 +1,13 @@
 import axiosInstance from '@/shared/api/axiosInstance'
-import type { ApiResponse } from '@/shared/types/common.types'
+import type { ApiResponse, PageResponse } from '@/shared/types/common.types'
 import type {
   ChartResponse,
   CreatePriceReportRequest,
   PriceAlertResponse,
   PriceReportChartDetail,
   PriceReportImageUpload,
+  PriceReportStatus,
+  PriceReportSummary,
   StoreSearchResult,
   StoreType,
 } from '../types/pricetracker.types'
@@ -36,6 +38,15 @@ export const priceTrackerApi = {
 
   createPriceReport: (data: CreatePriceReportRequest) =>
     axiosInstance.post<ApiResponse<unknown>>('/api/price-reports', data),
+
+  // ── 내 가격 등록 ──────────────────────────────────
+  getMyReports: (status: PriceReportStatus | undefined, page: number) =>
+    axiosInstance.get<ApiResponse<PageResponse<PriceReportSummary>>>('/api/price-reports/my', {
+      params: { status, page, size: 20 },
+    }),
+
+  deletePriceReport: (id: number) =>
+    axiosInstance.delete<ApiResponse<void>>(`/api/price-reports/${id}`),
 
   // ── 신고 ─────────────────────────────────────────
   reportPriceReport: (

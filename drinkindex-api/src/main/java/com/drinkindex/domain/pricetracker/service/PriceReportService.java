@@ -96,6 +96,7 @@ public class PriceReportService {
                 .store(store)
                 .reporter(reporter)
                 .suggestedStoreName(request.suggestedStoreName())
+                .suggestedDutyfreeChannel(request.dutyfreeChannel())
                 .currency(request.currency())
                 .price(request.regularPrice())
                 .salePrice(request.salePrice())
@@ -173,7 +174,7 @@ public class PriceReportService {
             }
         }
 
-        report.update(store, request.suggestedStoreName(), request.currency(),
+        report.update(store, request.suggestedStoreName(), request.dutyfreeChannel(), request.currency(),
                 request.regularPrice(), request.salePrice(), request.paybackAmount(),
                 actualPrice, request.exchangeRate(), request.purchasedAt(),
                 request.description(), request.isAnonymous(), autoFlagged);
