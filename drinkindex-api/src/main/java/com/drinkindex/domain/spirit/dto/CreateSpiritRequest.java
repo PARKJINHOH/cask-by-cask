@@ -22,7 +22,7 @@ public record CreateSpiritRequest(
         @NotNull(message = "카테고리는 필수입니다.") SpiritCategory category,
 
         @Schema(description = "증류소 ID (선택)")
-        Long distilleryId,
+        Long producerId,
 
         @Schema(description = "병입업체명 (독립 병입인 경우)")
         String bottler,

@@ -68,10 +68,8 @@ const navEntries: NavEntry[] = [
     groupLabel: '제조사',
     groupIcon: '🏭',
     items: [
-      { path: '/admin/distilleries/requests', label: '증류소 등록 요청', exact: true },
-      { path: '/admin/distilleries',        label: '증류소 관리',      exact: true, menuKey: 'DISTILLERIES' },
-      { path: '/admin/wineries',            label: '와이너리 관리',    exact: true, menuKey: 'WINERIES' },
-      { path: '/admin/cognac-houses',       label: '꼬냑 하우스 관리', exact: true, menuKey: 'COGNAC_HOUSES' },
+      { path: '/admin/producers/requests', label: '생산자 등록 요청', exact: true },
+      { path: '/admin/producers',        label: '생산자 관리',      exact: true, menuKey: 'DISTILLERIES' },
     ],
   },
   {

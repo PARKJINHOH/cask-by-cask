@@ -45,18 +45,39 @@
       "recent": "Recently Added",
       "topRated": "Top Rated",
       "popular": "Most Popular",
+      "weeklyPopular": "Trending This Week",
       "notices": "Notices",
       "ranking": "Aging Power Ranking",
       "viewAll": "View All",
       "weekly": "Weekly",
       "allTime": "All Time"
-    }
+    },
+    "community": {
+      "title": "Latest from Community",
+      "free": "Free",
+      "news": "News",
+      "byob": "BYOB",
+      "more": "View more posts",
+      "empty": "No posts yet."
+    },
+    "shortcuts": {
+      "title": "Quick Links",
+      "ranking": "Ranking",
+      "community": "Community",
+      "review": "Write Review",
+      "search": "Search"
+    },
+    "eventCard": {
+      "label": "This Week's Events",
+      "title": "Tastings & Releases"
+    },
+    "categoryExplore": "Explore by Category"
   },
   "menu": {
     "notice": "Notice",
     "request": "Request",
     "requestSpirit": "Register Spirit",
-    "requestDistillery": "Register Distillery",
+    "requestProducer": "Register Producer",
     "community": "Community",
     "communityAll": "All",
     "communityNews": "News",
@@ -94,16 +115,25 @@
       "nameKo": "Korean Name",
       "nameEn": "English Name",
       "category": "Category",
+      "categoryPlaceholder": "Select category",
       "abv": "ABV (%)",
       "country": "Country",
       "region": "Region",
       "bottler": "Bottler",
       "bottledYear": "Bottled Year",
       "vintageYear": "Vintage Year",
-      "distillery": "Distillery",
+      "producer": "Producer",
       "volumeMl": "Volume (ml)",
       "submit": "Submit Request",
-      "success": "Your request has been submitted successfully."
+      "success": "Your request has been submitted successfully.",
+      "requiredSection": "Required",
+      "optionalSection": "Additional info (optional)",
+      "requiredNote": "* marks required fields. Please include ABV and volume for accurate registration.",
+      "errNameKo": "Please enter the Korean name.",
+      "errNameEn": "Please enter the English name.",
+      "errCategory": "Please select a category.",
+      "errAbv": "Please enter ABV (0–100).",
+      "errVolume": "Please enter the volume (ml)."
     },
     "myRequests": {
       "title": "My Requests",
@@ -118,16 +148,30 @@
       "reviewedAt": "Reviewed"
     }
   },
-  "distilleryRequest": {
-    "title": "Distillery Registration Request",
-    "subtitle": "Request a distillery not in our database. It will be reviewed by an admin.",
+  "producerDetail": {
+    "notFound": "Producer not found.",
+    "back": "Back to list",
+    "founded": "Founded",
+    "website": "Website",
+    "otherSpirits": "Spirits from this producer",
+    "empty": "No spirits registered yet."
+  },
+  "producerRequest": {
+    "title": "Producer Registration Request",
+    "subtitle": "Request a producer not in our database. It will be reviewed by an admin.",
     "form": {
+      "type": "Producer Type",
       "nameKo": "Korean Name",
       "nameEn": "English Name",
       "country": "Country",
       "region": "Region (optional)",
       "submit": "Submit Request",
-      "success": "Your request has been submitted."
+      "success": "Your request has been submitted.",
+      "requiredSection": "Required",
+      "requiredNote": "* marks required fields.",
+      "errNameKo": "Please enter the Korean name.",
+      "errNameEn": "Please enter the English name.",
+      "errCountry": "Please select a country."
     },
     "myRequests": {
       "title": "My Requests",
@@ -242,7 +286,7 @@
       "reset": "Reset Filters"
     },
     "detail": {
-      "distillery": "Distillery",
+      "producer": "Producer",
       "category": "Category",
       "country": "Country",
       "region": "Region",
@@ -441,7 +485,7 @@
       "role": {
         "ADMIN": "Admin",
         "MEMBER": "Member",
-        "DISTILLERY": "Distillery"
+        "DISTILLERY": "Producer"
       },
       "joinDate": "Joined",
       "active": "Status",

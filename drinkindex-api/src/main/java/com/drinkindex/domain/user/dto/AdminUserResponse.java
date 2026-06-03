@@ -26,9 +26,9 @@ public record AdminUserResponse(
         @Schema(description = "마지막 로그인 일시 (null이면 로그인 이력 없음)")
         LocalDateTime lastLoginAt,
         @Schema(description = "담당 증류소 ID (DISTILLERY 역할인 경우)")
-        Long distilleryId,
+        Long producerId,
         @Schema(description = "담당 증류소 한글명 (DISTILLERY 역할인 경우)")
-        String distilleryNameKo,
+        String producerNameKo,
         @Schema(description = "가입 일시")
         LocalDateTime createdAt,
         @Schema(description = "징계 종료 일시 (null이면 징계 없음)")
@@ -53,8 +53,8 @@ public record AdminUserResponse(
                 user.getIsActive(),
                 user.getDormant(),
                 user.getLastLoginAt(),
-                user.getDistillery() != null ? user.getDistillery().getId() : null,
-                user.getDistillery() != null ? user.getDistillery().getNameKo() : null,
+                user.getProducer() != null ? user.getProducer().getId() : null,
+                user.getProducer() != null ? user.getProducer().getNameKo() : null,
                 user.getCreatedAt(),
                 user.getSuspendedUntil(),
                 user.getSuspendReason(),

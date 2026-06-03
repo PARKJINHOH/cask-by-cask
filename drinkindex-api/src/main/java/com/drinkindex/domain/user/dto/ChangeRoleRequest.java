@@ -10,5 +10,5 @@ public record ChangeRoleRequest(
         @Schema(description = "역할 타입 ID (ADMIN/PARTNER 역할 시 선택)")
         Long roleTypeId,
         @Schema(description = "담당 증류소 ID (PARTNER 역할 시 선택)")
-        Long distilleryId
+        Long producerId
 ) {}

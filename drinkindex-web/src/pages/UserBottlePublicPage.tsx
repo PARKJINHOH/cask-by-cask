@@ -15,12 +15,12 @@ export default function UserBottlePublicPage() {
 
   const { data, isLoading } = usePublicBottles(Number(userId), category);
 
-  if (isLoading) return <div className="py-8 text-center text-gray-400">{t('common.loading')}</div>;
+  if (isLoading) return <div className="py-8 text-center text-neutral-400">{t('common.loading')}</div>;
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 space-y-4">
-      <h1 className="text-xl font-bold text-gray-900">
-        {t('collection.publicPage.title', { nickname: `#${userId}` })}
+      <h1 className="text-xl font-bold text-neutral-900">
+        {t('collection.publicPage.title', { nickname: data?.ownerNickname ?? `#${userId}` })}
       </h1>
       {data?.stats && <BottleStats stats={data.stats} />}
       <BottleFilterBar

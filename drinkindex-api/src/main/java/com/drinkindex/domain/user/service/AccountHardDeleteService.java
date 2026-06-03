@@ -81,7 +81,7 @@ public class AccountHardDeleteService {
         exec("UPDATE legal_documents SET author_id = NULL WHERE author_id = :uid", userId);
         exec("UPDATE spirit SET registered_by_id = NULL WHERE registered_by_id = :uid", userId);
         exec("UPDATE spirit_register_request SET reviewed_by_id = NULL WHERE reviewed_by_id = :uid", userId);
-        exec("UPDATE distillery_register_request SET reviewed_by_id = NULL WHERE reviewed_by_id = :uid", userId);
+        exec("UPDATE producer_register_request SET reviewed_by_id = NULL WHERE reviewed_by_id = :uid", userId);
 
         // ── 3) 개인 데이터 물리 삭제 (자식 → 부모 순) ───────────────────────
         // BYOB (본인 참여/댓글 + 본인이 주최한 모임 통째로)
@@ -112,7 +112,7 @@ public class AccountHardDeleteService {
         exec("DELETE FROM user_blocks WHERE blocker_id = :uid OR blocked_id = :uid", userId);
         // 본인이 신청한 등록 요청
         exec("DELETE FROM spirit_register_request WHERE user_id = :uid", userId);
-        exec("DELETE FROM distillery_register_request WHERE user_id = :uid", userId);
+        exec("DELETE FROM producer_register_request WHERE user_id = :uid", userId);
         // 권한 컬렉션
         exec("DELETE FROM user_board_permissions WHERE user_id = :uid", userId);
 

@@ -3,11 +3,11 @@ package com.drinkindex.admin.service;
 import com.drinkindex.domain.admin.entity.enums.AdminLogTargetType;
 import com.drinkindex.domain.admin.entity.enums.AdminLogType;
 import com.drinkindex.domain.community.entity.enums.BoardType;
-import com.drinkindex.domain.distillery.entity.Distillery;
-import com.drinkindex.domain.distillery.repository.DistilleryRepository;
+import com.drinkindex.domain.producer.entity.Producer;
+import com.drinkindex.domain.producer.repository.ProducerRepository;
 import com.drinkindex.domain.user.dto.AdminUserResponse;
 import com.drinkindex.domain.user.dto.ChangeRoleRequest;
-import com.drinkindex.domain.user.dto.CreateDistilleryManagerRequest;
+import com.drinkindex.domain.user.dto.CreateProducerManagerRequest;
 import com.drinkindex.domain.user.dto.SuspendUserRequest;
 import com.drinkindex.domain.user.dto.UpdateBoardPermissionsRequest;
 import com.drinkindex.domain.user.dto.UserSearchCondition;
@@ -44,7 +44,7 @@ public class AdminUserService {
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy년 MM월 dd일");
 
     private final UserRepository userRepository;
-    private final DistilleryRepository distilleryRepository;
+    private final ProducerRepository producerRepository;
     private final RoleTypeRepository roleTypeRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailSender emailSender;
@@ -85,9 +85,9 @@ public class AdminUserService {
 
         String oldRoleName = buildRoleName(target);
 
-        Distillery distillery = null;
-        if (request.distilleryId() != null) {
-            distillery = distilleryRepository.findById(request.distilleryId())
+        Producer producer = null;
+        if (request.producerId() != null) {
+            producer = producerRepository.findById(request.producerId())
                     .orElseThrow(() -> new CustomException(ErrorCode.DISTILLERY_NOT_FOUND));
         }
 
@@ -97,7 +97,7 @@ public class AdminUserService {
                     .orElseThrow(() -> new CustomException(ErrorCode.ROLE_TYPE_NOT_FOUND));
         }
 
-        target.changeRole(request.role(), distillery, roleType);
+        target.changeRole(request.role(), producer, roleType);
 
         String newRoleName = buildRoleName(target);
         adminLogService.record(actor, AdminLogType.ROLE_CHANGE,
@@ -185,21 +185,21 @@ public class AdminUserService {
     // ── 증류소 담당자 계정 생성 ────────────────────────────
 
     @Transactional
-    public AdminUserResponse createDistilleryManager(CreateDistilleryManagerRequest request) {
+    public AdminUserResponse createProducerManager(CreateProducerManagerRequest request) {
         if (userRepository.existsByEmail(request.email())) {
             throw new CustomException(ErrorCode.DUPLICATE_EMAIL);
         }
         if (userRepository.existsByNickname(request.nickname())) {
             throw new CustomException(ErrorCode.DUPLICATE_NICKNAME);
         }
-        Distillery distillery = distilleryRepository.findById(request.distilleryId())
+        Producer producer = producerRepository.findById(request.producerId())
                 .orElseThrow(() -> new CustomException(ErrorCode.DISTILLERY_NOT_FOUND));
         User user = User.builder()
                 .email(request.email())
                 .password(passwordEncoder.encode(request.password()))
                 .nickname(request.nickname())
                 .role(Role.PARTNER)
-                .distillery(distillery)
+                .producer(producer)
                 .build();
         return AdminUserResponse.from(userRepository.save(user));
     }

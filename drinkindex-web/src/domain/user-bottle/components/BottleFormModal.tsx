@@ -84,22 +84,22 @@ export function BottleFormModal({ open, onClose, editing }: Props) {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-white flex items-center justify-between px-5 py-4 border-b z-10">
-          <h2 className="font-bold text-gray-900 text-base">
+          <h2 className="font-bold text-neutral-900 text-base">
             {editing ? t('collection.form.title.edit') : t('collection.form.title.add')}
           </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
+          <button onClick={onClose} className="text-neutral-400 hover:text-neutral-600 text-xl leading-none">✕</button>
         </div>
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           {/* 품명 */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('collection.form.spiritName')}</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">{t('collection.form.spiritName')}</label>
             <input type="text"
               value={selectedSpirit ? `${selectedSpirit.nameKo}${selectedSpirit.nameEn ? ` (${selectedSpirit.nameEn})` : ''}` : spiritQuery}
               onChange={e => { setSpiritQuery(e.target.value); setSelectedSpirit(null); }}
               placeholder={t('collection.form.spiritSearch')}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-400 focus:border-transparent" />
+              className="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-400 focus:border-transparent" />
             {spiritOptions.length > 0 && !selectedSpirit && (
-              <ul className="mt-1 border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+              <ul className="mt-1 border border-neutral-200 rounded-lg overflow-hidden shadow-sm">
                 {spiritOptions.map(s => (
                   <li key={s.id}>
                     <button type="button"
@@ -115,57 +115,57 @@ export function BottleFormModal({ open, onClose, editing }: Props) {
 
           {/* 종류 */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('collection.form.category')}</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">{t('collection.form.category')}</label>
             <select value={form.category}
               onChange={e => setForm(f => ({ ...f, category: e.target.value as SpiritCategory }))}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+              className="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm">
               {CATEGORIES.map(c => <option key={c} value={c}>{t(`collection.filter.${c}`)}</option>)}
             </select>
           </div>
 
           {/* 구매일 */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('collection.form.purchaseDate')}</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">{t('collection.form.purchaseDate')}</label>
             <input type="date" required value={form.purchaseDate}
               onChange={e => setForm(f => ({ ...f, purchaseDate: e.target.value }))}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+              className="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm" />
           </div>
 
           {/* 금액 */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('collection.form.price')}</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">{t('collection.form.price')}</label>
             <input type="number" min="0" value={form.price}
               onChange={e => setForm(f => ({ ...f, price: parseInt(e.target.value) || 0 }))}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+              className="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm" />
           </div>
 
           {/* 매장 */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('collection.form.store')}</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">{t('collection.form.store')}</label>
             <input type="text" required value={form.store}
               onChange={e => setForm(f => ({ ...f, store: e.target.value }))}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+              className="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm" />
           </div>
 
           {/* 배치 / 병입년도 */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t('collection.form.batch')}</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">{t('collection.form.batch')}</label>
               <input type="text" value={form.batch ?? ''}
                 onChange={e => setForm(f => ({ ...f, batch: e.target.value || undefined }))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+                className="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t('collection.form.bottlingYear')}</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">{t('collection.form.bottlingYear')}</label>
               <input type="text" value={form.bottlingYear ?? ''} placeholder="2022.02"
                 onChange={e => setForm(f => ({ ...f, bottlingYear: e.target.value || undefined }))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+                className="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm" />
             </div>
           </div>
 
           {/* 상태 */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">{t('collection.form.status')}</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-2">{t('collection.form.status')}</label>
             <div className="flex gap-4">
               {(['UNOPENED', 'OPENED'] as BottleStatus[]).map(s => (
                 <label key={s} className="flex items-center gap-2 cursor-pointer">
@@ -181,18 +181,18 @@ export function BottleFormModal({ open, onClose, editing }: Props) {
           {/* 공개 여부 */}
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-700">{t('collection.form.isPublic')}</p>
-              <p className="text-xs text-gray-400">{t('collection.form.isPublicDesc')}</p>
+              <p className="text-sm font-medium text-neutral-700">{t('collection.form.isPublic')}</p>
+              <p className="text-xs text-neutral-400">{t('collection.form.isPublicDesc')}</p>
             </div>
             <button type="button" onClick={() => setForm(f => ({ ...f, isPublic: !f.isPublic }))}
-              className={`relative inline-flex w-11 h-6 rounded-full transition-colors ${form.isPublic ? 'bg-amber-500' : 'bg-gray-300'}`}>
+              className={`relative inline-flex w-11 h-6 rounded-full transition-colors ${form.isPublic ? 'bg-amber-500' : 'bg-neutral-300'}`}>
               <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${form.isPublic ? 'translate-x-5' : ''}`} />
             </button>
           </div>
 
           {/* 이미지 */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('collection.form.images')}</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">{t('collection.form.images')}</label>
             <input type="file" accept="image/jpeg,image/png" multiple
               onChange={e => {
                 const alreadyUploaded = editing?.imageUrls.length ?? 0;
@@ -200,9 +200,9 @@ export function BottleFormModal({ open, onClose, editing }: Props) {
                 const files = Array.from(e.target.files ?? []).slice(0, remaining);
                 setPendingImages(files);
               }}
-              className="w-full text-sm text-gray-500 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-sm file:bg-amber-50 file:text-amber-700" />
+              className="w-full text-sm text-neutral-500 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-sm file:bg-amber-50 file:text-amber-700" />
             {pendingImages.length > 0 && (
-              <p className="text-xs text-gray-400 mt-1">{t('collection.form.imageSelected', { count: pendingImages.length })}</p>
+              <p className="text-xs text-neutral-400 mt-1">{t('collection.form.imageSelected', { count: pendingImages.length })}</p>
             )}
             {editing && editing.imageUrls.length > 0 && (
               <div className="flex gap-2 mt-2">
@@ -215,15 +215,15 @@ export function BottleFormModal({ open, onClose, editing }: Props) {
 
           {/* 메모 */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('collection.form.memo')}</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">{t('collection.form.memo')}</label>
             <textarea value={form.memo ?? ''} rows={2}
               onChange={e => setForm(f => ({ ...f, memo: e.target.value || undefined }))}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none" />
+              className="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm resize-none" />
           </div>
 
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose}
-              className="flex-1 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
+              className="flex-1 py-2 border border-neutral-300 rounded-lg text-sm text-neutral-600 hover:bg-neutral-50">
               {t('collection.form.cancel')}
             </button>
             <button type="submit" disabled={isPending}

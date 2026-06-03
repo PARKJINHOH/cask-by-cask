@@ -26,6 +26,8 @@ public record SpiritSearchCondition(
         String country,
         @Schema(description = "지역 필터 (null이면 전체)")
         String region,
+        @Schema(description = "생산자 ID 필터 (null이면 전체)")
+        Long producerId,
         @Schema(description = "최소 알코올 도수")
         BigDecimal minAbv,
         @Schema(description = "최대 알코올 도수")

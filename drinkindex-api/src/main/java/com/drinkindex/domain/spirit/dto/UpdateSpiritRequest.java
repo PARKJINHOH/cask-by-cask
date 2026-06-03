@@ -20,7 +20,7 @@ public record UpdateSpiritRequest(
         SpiritCategory category,
 
         @Schema(description = "증류소 ID (null이면 변경 안 함)")
-        Long distilleryId,
+        Long producerId,
 
         @Schema(description = "병입업체명 (null이면 변경 안 함)")
         String bottler,

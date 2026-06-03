@@ -40,6 +40,7 @@ public class SpiritController {
             @RequestParam(required = false) List<CognacGrade> cognacGrade,
             @RequestParam(required = false) String country,
             @RequestParam(required = false) String region,
+            @RequestParam(required = false) Long producerId,
             @RequestParam(required = false) BigDecimal minAbv,
             @RequestParam(required = false) BigDecimal maxAbv,
             @RequestParam(required = false) BigDecimal minScore,
@@ -49,7 +50,7 @@ public class SpiritController {
 
         SpiritSearchCondition condition = new SpiritSearchCondition(
                 keyword, category, whiskyStyle, wineType, cognacGrade,
-                country, region, minAbv, maxAbv, minScore, maxScore,
+                country, region, producerId, minAbv, maxAbv, minScore, maxScore,
                 SpiritStatus.ACTIVE, sort);
 
         return ResponseEntity.ok(ApiResponse.success(

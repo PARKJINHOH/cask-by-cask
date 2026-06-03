@@ -76,7 +76,7 @@ export default function MyPage() {
   const profileImageUrl = profile?.profileImageUrl ?? authUser?.profileImageUrl
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
+    <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
       <SeoMeta title="마이페이지" description="DrinkIndex 마이페이지." noindex />
       {/* Profile card */}
       <div className="bg-white rounded-2xl p-6 shadow-sm flex items-center gap-5">

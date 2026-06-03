@@ -1,7 +1,7 @@
 package com.drinkindex.domain.spirit.service;
 
-import com.drinkindex.domain.distillery.entity.Distillery;
-import com.drinkindex.domain.distillery.repository.DistilleryRepository;
+import com.drinkindex.domain.producer.entity.Producer;
+import com.drinkindex.domain.producer.repository.ProducerRepository;
 import com.drinkindex.domain.score.constant.ScoreActions;
 import com.drinkindex.domain.score.service.ScoreService;
 import com.drinkindex.domain.community.entity.enums.NotificationType;
@@ -56,7 +56,7 @@ public class SpiritService {
     private final SpiritRepository spiritRepository;
     private final SpiritImageRepository spiritImageRepository;
     private final SpiritRegisterRequestRepository registerRequestRepository;
-    private final DistilleryRepository distilleryRepository;
+    private final ProducerRepository producerRepository;
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
     private final SpiritDetailService spiritDetailService;
@@ -103,21 +103,21 @@ public class SpiritService {
     @Transactional
     public SpiritDetailResponse createSpirit(CreateSpiritRequest request, Long userId) {
         User registeredBy = getUser(userId);
-        Distillery distillery = resolveDistillery(request.distilleryId());
+        Producer producer = resolveProducer(request.producerId());
 
-        // PARTNER는 distilleryId 미입력 시 자신의 증류소 자동 사용
-        if (registeredBy.getRole() == Role.PARTNER && distillery == null
-                && registeredBy.getDistillery() != null) {
-            distillery = registeredBy.getDistillery();
+        // PARTNER는 producerId 미입력 시 자신의 증류소 자동 사용
+        if (registeredBy.getRole() == Role.PARTNER && producer == null
+                && registeredBy.getProducer() != null) {
+            producer = registeredBy.getProducer();
         }
 
-        verifyDistilleryAccess(registeredBy, distillery);
+        verifyProducerAccess(registeredBy, producer);
 
         Spirit spirit = Spirit.builder()
                 .nameKo(request.nameKo())
                 .nameEn(request.nameEn())
                 .category(request.category())
-                .distillery(distillery)
+                .producer(producer)
                 .bottler(request.bottler())
                 .bottledYear(request.bottledYear())
                 .vintageYear(request.vintageYear())
@@ -142,11 +142,11 @@ public class SpiritService {
         Spirit spirit = getSpirit(id);
         User user = getUser(userId);
 
-        verifyDistilleryAccess(user, spirit.getDistillery());
+        verifyProducerAccess(user, spirit.getProducer());
 
-        Distillery distillery = request.distilleryId() != null
-                ? resolveDistillery(request.distilleryId())
-                : spirit.getDistillery();
+        Producer producer = request.producerId() != null
+                ? resolveProducer(request.producerId())
+                : spirit.getProducer();
 
         SpiritCategory prevCategory = spirit.getCategory();
 
@@ -154,7 +154,7 @@ public class SpiritService {
                 request.nameKo() != null ? request.nameKo() : spirit.getNameKo(),
                 request.nameEn() != null ? request.nameEn() : spirit.getNameEn(),
                 request.category() != null ? request.category() : spirit.getCategory(),
-                distillery,
+                producer,
                 request.bottler() != null ? request.bottler() : spirit.getBottler(),
                 request.bottledYear() != null ? request.bottledYear() : spirit.getBottledYear(),
                 request.vintageYear() != null ? request.vintageYear() : spirit.getVintageYear(),
@@ -227,7 +227,7 @@ public class SpiritService {
     public SpiritRegisterRequestDetailResponse getRegisterRequestDetail(Long requestId) {
         SpiritRegisterRequest req = getRegisterRequest(requestId);
         SpiritRegisterRequestBody body = parseSpiritData(req.getSpiritData());
-        return SpiritRegisterRequestDetailResponse.of(req, body, resolveDistilleryName(body.distilleryId()));
+        return SpiritRegisterRequestDetailResponse.of(req, body, resolveProducerName(body.producerId()));
     }
 
     @Transactional
@@ -239,13 +239,15 @@ public class SpiritService {
         // 이미지 URL은 별도 엔드포인트로만 관리 — 필드 수정 시 기존 이미지 보존
         SpiritRegisterRequestBody merged = new SpiritRegisterRequestBody(
                 body.nameKo(), body.nameEn(), body.category(),
-                body.distilleryId(), body.bottler(), body.bottledYear(), body.vintageYear(),
+                body.producerId(), body.bottler(), body.bottledYear(), body.vintageYear(),
                 body.abv(), body.volumeMl(), body.country(), body.region(),
+                // 카테고리 핵심값은 신청자 입력 — 관리자 수정 폼에 없으므로 기존값 보존
+                existing.whiskyStyle(), existing.wineType(), existing.cognacGrade(), existing.otherType(),
                 existing.imageUrls()
         );
 
         req.updateSpiritData(serialize(merged));
-        return SpiritRegisterRequestDetailResponse.of(req, merged, resolveDistilleryName(merged.distilleryId()));
+        return SpiritRegisterRequestDetailResponse.of(req, merged, resolveProducerName(merged.producerId()));
     }
 
     @Transactional
@@ -262,7 +264,7 @@ public class SpiritService {
 
         SpiritRegisterRequestBody updated = withImageUrls(body, imageUrls);
         req.updateSpiritData(serialize(updated));
-        return SpiritRegisterRequestDetailResponse.of(req, updated, resolveDistilleryName(updated.distilleryId()));
+        return SpiritRegisterRequestDetailResponse.of(req, updated, resolveProducerName(updated.producerId()));
     }
 
     @Transactional
@@ -275,7 +277,7 @@ public class SpiritService {
 
         SpiritRegisterRequestBody updated = withImageUrls(body, imageUrls);
         req.updateSpiritData(serialize(updated));
-        return SpiritRegisterRequestDetailResponse.of(req, updated, resolveDistilleryName(updated.distilleryId()));
+        return SpiritRegisterRequestDetailResponse.of(req, updated, resolveProducerName(updated.producerId()));
     }
 
     @Transactional
@@ -284,13 +286,13 @@ public class SpiritService {
         User admin = getUser(adminId);
 
         SpiritRegisterRequestBody body = parseSpiritData(req.getSpiritData());
-        Distillery distillery = resolveDistillery(body.distilleryId());
+        Producer producer = resolveProducer(body.producerId());
 
         Spirit spirit = Spirit.builder()
                 .nameKo(body.nameKo())
                 .nameEn(body.nameEn())
                 .category(body.category())
-                .distillery(distillery)
+                .producer(producer)
                 .bottler(body.bottler())
                 .bottledYear(body.bottledYear())
                 .vintageYear(body.vintageYear())
@@ -303,6 +305,10 @@ public class SpiritService {
                 .build();
 
         Spirit saved = spiritRepository.save(spirit);
+
+        // 신청자가 요청 시 입력한 카테고리 핵심값을 상세에 자동 반영
+        spiritDetailService.saveCategoryCore(saved,
+                body.whiskyStyle(), body.wineType(), body.cognacGrade(), body.otherType());
 
         List<SpiritImage> images = List.of();
         if (body.imageUrls() != null) {
@@ -369,24 +375,24 @@ public class SpiritService {
                 .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_REQUEST_NOT_FOUND));
     }
 
-    private Distillery resolveDistillery(Long distilleryId) {
-        if (distilleryId == null) return null;
-        return distilleryRepository.findById(distilleryId)
+    private Producer resolveProducer(Long producerId) {
+        if (producerId == null) return null;
+        return producerRepository.findById(producerId)
                 .orElseThrow(() -> new CustomException(ErrorCode.DISTILLERY_NOT_FOUND));
     }
 
-    private String resolveDistilleryName(Long distilleryId) {
-        if (distilleryId == null) return null;
-        return distilleryRepository.findById(distilleryId)
-                .map(Distillery::getNameKo)
+    private String resolveProducerName(Long producerId) {
+        if (producerId == null) return null;
+        return producerRepository.findById(producerId)
+                .map(Producer::getNameKo)
                 .orElse(null);
     }
 
-    private void verifyDistilleryAccess(User user, Distillery distillery) {
+    private void verifyProducerAccess(User user, Producer producer) {
         if (user.getRole() != Role.PARTNER) return;
-        if (distillery == null
-                || user.getDistillery() == null
-                || !user.getDistillery().getId().equals(distillery.getId())) {
+        if (producer == null
+                || user.getProducer() == null
+                || !user.getProducer().getId().equals(producer.getId())) {
             throw new CustomException(ErrorCode.SPIRIT_ACCESS_DENIED);
         }
     }
@@ -410,8 +416,9 @@ public class SpiritService {
     private SpiritRegisterRequestBody withImageUrls(SpiritRegisterRequestBody body, List<String> imageUrls) {
         return new SpiritRegisterRequestBody(
                 body.nameKo(), body.nameEn(), body.category(),
-                body.distilleryId(), body.bottler(), body.bottledYear(), body.vintageYear(),
+                body.producerId(), body.bottler(), body.bottledYear(), body.vintageYear(),
                 body.abv(), body.volumeMl(), body.country(), body.region(),
+                body.whiskyStyle(), body.wineType(), body.cognacGrade(), body.otherType(),
                 imageUrls
         );
     }

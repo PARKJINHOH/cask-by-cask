@@ -161,7 +161,7 @@ export default function AdminSpiritDetailPage() {
     setValue('nameKo', spirit.nameKo)
     setValue('nameEn', spirit.nameEn)
     setValue('category', spirit.category)
-    setValue('distilleryId', spirit.distilleryId ?? undefined)
+    setValue('producerId', spirit.producerId ?? undefined)
     setValue('bottler', spirit.bottler ?? undefined)
     setValue('bottledYear', spirit.bottledYear ?? undefined)
     setValue('vintageYear', spirit.vintageYear ?? undefined)
@@ -291,7 +291,7 @@ export default function AdminSpiritDetailPage() {
               regionNameKo={regionNameKo}
               onCountryChange={(code, nameKo) => { setCountryCode(code); setCountryNameKo(nameKo) }}
               onRegionChange={(nameKo) => setRegionNameKo(nameKo)}
-              defaultDistilleryName={spirit.distilleryNameKo ?? undefined}
+              defaultProducerName={spirit.producerNameKo ?? undefined}
               initialValues={spirit}
               dataReady={initialized}
               category={watch('category') as SpiritCategory}

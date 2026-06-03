@@ -27,7 +27,7 @@ public class AdminSpiritController {
     private final SpiritImageService spiritImageService;
 
     // ── 술 CRUD ─────────────────────────────────────────────
-    // PARTNER 포함 접근 가능 (verifyDistilleryAccess 로 세부 제어)
+    // PARTNER 포함 접근 가능 (verifyProducerAccess 로 세부 제어)
 
     @PostMapping
     public ResponseEntity<ApiResponse<SpiritDetailResponse>> create(

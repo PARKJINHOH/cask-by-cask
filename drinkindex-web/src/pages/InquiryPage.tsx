@@ -104,7 +104,7 @@ export default function InquiryPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-10">
+    <div className="max-w-3xl mx-auto px-4 py-10">
       <SeoMeta title={t('inquiry.title')} description={t('inquiry.subtitle')} noindex />
       {/* 헤더 */}
       <div className="mb-8">
@@ -113,26 +113,45 @@ export default function InquiryPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
-        {/* 문의 유형 */}
-        <div>
-          <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-            {t('inquiry.form.category')} <span className="text-red-500">*</span>
-          </label>
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value as InquiryCategory)}
-            className={`w-full px-3 py-2.5 text-sm border rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-primary-400 transition-colors ${
-              errors.category ? 'border-red-400' : 'border-neutral-200'
-            }`}
-          >
-            <option value="">{t('inquiry.form.categoryPlaceholder')}</option>
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {t(`inquiry.category.${c}`)}
-              </option>
-            ))}
-          </select>
-          {errors.category && <p className="mt-1 text-xs text-red-500">{errors.category}</p>}
+        {/* 문의 유형 + 이메일 (PC 2열) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 mb-1.5">
+              {t('inquiry.form.category')} <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value as InquiryCategory)}
+              className={`w-full px-3 py-2.5 text-sm border rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-primary-400 transition-colors ${
+                errors.category ? 'border-red-400' : 'border-neutral-200'
+              }`}
+            >
+              <option value="">{t('inquiry.form.categoryPlaceholder')}</option>
+              {CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {t(`inquiry.category.${c}`)}
+                </option>
+              ))}
+            </select>
+            {errors.category && <p className="mt-1 text-xs text-red-500">{errors.category}</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 mb-1.5">
+              {t('inquiry.form.senderEmail')} <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="email"
+              value={senderEmail}
+              onChange={(e) => setSenderEmail(e.target.value)}
+              maxLength={200}
+              placeholder="이메일 입력"
+              className={`w-full px-3 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400 transition-colors ${
+                errors.senderEmail ? 'border-red-400' : 'border-neutral-200'
+              }`}
+            />
+            {errors.senderEmail && <p className="mt-1 text-xs text-red-500">{errors.senderEmail}</p>}
+          </div>
         </div>
 
         {/* 제목 */}
@@ -151,24 +170,6 @@ export default function InquiryPage() {
             }`}
           />
           {errors.title && <p className="mt-1 text-xs text-red-500">{errors.title}</p>}
-        </div>
-
-        {/* 이메일 */}
-        <div>
-          <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-            {t('inquiry.form.senderEmail')} <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="email"
-            value={senderEmail}
-            onChange={(e) => setSenderEmail(e.target.value)}
-            maxLength={200}
-            placeholder="이메일 입력"
-            className={`w-full px-3 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400 transition-colors ${
-              errors.senderEmail ? 'border-red-400' : 'border-neutral-200'
-            }`}
-          />
-          {errors.senderEmail && <p className="mt-1 text-xs text-red-500">{errors.senderEmail}</p>}
         </div>
 
         {/* 내용 */}

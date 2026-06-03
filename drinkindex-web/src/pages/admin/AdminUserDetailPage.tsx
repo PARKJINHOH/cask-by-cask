@@ -6,7 +6,7 @@ import Badge from '@/shared/components/Badge'
 import Button from '@/shared/components/Button'
 import Spinner from '@/shared/components/Spinner'
 import Modal from '@/shared/components/Modal'
-import AdminDistillerySelector from '@/domain/distillery/components/AdminDistillerySelector'
+import AdminProducerSelector from '@/domain/producer/components/AdminProducerSelector'
 import {
   useAdminUser,
   useChangeRole,
@@ -159,7 +159,7 @@ const CHANGEABLE_ROLES: AdminUserRole[] = ['MEMBER', 'ADMIN', 'MODERATOR', 'PART
 function RoleChangeModal({ user, onClose }: { user: AdminUser; onClose: () => void }) {
   const [role, setRole]           = useState<AdminUserRole>(user.role === 'SUPER_ADMIN' ? 'ADMIN' : user.role)
   const [roleTypeId, setRoleTypeId] = useState<number | null>(user.roleTypeId ?? null)
-  const [distilleryId, setDistilleryId] = useState<number | null>(user.distilleryId ?? null)
+  const [producerId, setProducerId] = useState<number | null>(user.producerId ?? null)
   const [error, setError]         = useState('')
   const changeRole = useChangeRole()
   const { data: roleTypes = [] } = useAdminRoleTypes()
@@ -173,7 +173,7 @@ function RoleChangeModal({ user, onClose }: { user: AdminUser; onClose: () => vo
     try {
       await changeRole.mutateAsync({
         id: user.id,
-        data: { role, roleTypeId: roleTypeId ?? undefined, distilleryId: role === 'PARTNER' ? distilleryId : null },
+        data: { role, roleTypeId: roleTypeId ?? undefined, producerId: role === 'PARTNER' ? producerId : null },
       })
       onClose()
     } catch (err: unknown) {
@@ -224,7 +224,7 @@ function RoleChangeModal({ user, onClose }: { user: AdminUser; onClose: () => vo
         {role === 'PARTNER' && (
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-1.5">담당 증류소 (선택)</label>
-            <AdminDistillerySelector value={distilleryId} defaultName={user.distilleryNameKo ?? undefined} onChange={setDistilleryId} />
+            <AdminProducerSelector value={producerId} defaultName={user.producerNameKo ?? undefined} onChange={setProducerId} />
           </div>
         )}
         {error && <p className="text-sm text-red-600">{error}</p>}
@@ -487,13 +487,13 @@ export default function AdminUserDetailPage() {
                       {user.roleTypeName}
                     </span>
                   )}
-                  {user.distilleryNameKo && (
+                  {user.producerNameKo && (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md
                       bg-amber-50 border border-amber-200 text-amber-700 text-[11px] font-medium">
                       <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                         <path d="M3 21h18M6 21V7l6-4 6 4v14M9 21v-6h6v6" />
                       </svg>
-                      {user.distilleryNameKo}
+                      {user.producerNameKo}
                     </span>
                   )}
                 </div>

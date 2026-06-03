@@ -31,6 +31,22 @@ const STATUS_LABEL: Record<string, string> = {
   PENDING: '대기 중', APPROVED: '승인됨', REJECTED: '반려됨',
 }
 
+// 신청자가 요청 시 입력한 카테고리 핵심값 라벨
+const WHISKY_STYLE_LABEL: Record<string, string> = {
+  SINGLE_MALT: '싱글 몰트', BLENDED_MALT: '블렌디드 몰트', BLENDED_WHISKY: '블렌디드 위스키',
+  BOURBON: '버번', RYE: '라이', CORN: '콘', GRAIN: '그레인', POT_STILL: '팟 스틸',
+}
+const WINE_TYPE_LABEL: Record<string, string> = {
+  RED: '레드', WHITE: '화이트', ROSE: '로제', SPARKLING: '스파클링', DESSERT: '디저트', ORANGE: '오렌지',
+}
+const COGNAC_GRADE_LABEL: Record<string, string> = {
+  VS: 'VS', NAPOLEON: '나폴레옹', VSOP: 'VSOP', XO: 'XO', XXO: 'XXO', HORS_DAGE: "Hors d'Âge",
+}
+const OTHER_TYPE_LABEL: Record<string, string> = {
+  RUM: '럼', GIN: '진', VODKA: '보드카', TEQUILA: '데킬라', MEZCAL: '메스칼', BRANDY: '브랜디',
+  LIQUEUR: '리큐르', SAKE: '사케', SOJU: '소주', BAIJIU: '바이주', ABSINTHE: '압생트', BEER: '맥주', OTHER: '기타',
+}
+
 // ── 필드 행 ─────────────────────────────────────────────────────
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
@@ -139,7 +155,7 @@ export default function AdminRequestDetailPage() {
     setValue('nameKo', req.nameKo)
     setValue('nameEn', req.nameEn)
     setValue('category', req.category)
-    setValue('distilleryId', req.distilleryId ?? undefined)
+    setValue('producerId', req.producerId ?? undefined)
     setValue('bottler', req.bottler ?? undefined)
     setValue('bottledYear', req.bottledYear ?? undefined)
     setValue('vintageYear', req.vintageYear ?? undefined)
@@ -223,6 +239,19 @@ export default function AdminRequestDetailPage() {
       <div className="bg-white rounded-xl shadow-sm p-5">
         <Row label="신청자">{req.requesterNickname}</Row>
         <Row label="신청일">{formatDate(req.createdAt)}</Row>
+        {/* 신청자가 요청 시 입력한 카테고리 핵심값 (등록 참고용) */}
+        {req.category === 'WHISKY' && req.whiskyStyle && (
+          <Row label="스타일(신청)"><span className="text-amber-700">{WHISKY_STYLE_LABEL[req.whiskyStyle] ?? req.whiskyStyle}</span></Row>
+        )}
+        {req.category === 'WINE' && req.wineType && (
+          <Row label="와인 종류(신청)"><span className="text-amber-700">{WINE_TYPE_LABEL[req.wineType] ?? req.wineType}</span></Row>
+        )}
+        {req.category === 'COGNAC' && req.cognacGrade && (
+          <Row label="등급(신청)"><span className="text-amber-700">{COGNAC_GRADE_LABEL[req.cognacGrade] ?? req.cognacGrade}</span></Row>
+        )}
+        {req.category === 'OTHER' && req.otherType && (
+          <Row label="주종(신청)"><span className="text-amber-700">{OTHER_TYPE_LABEL[req.otherType] ?? req.otherType}</span></Row>
+        )}
         {req.reviewedAt && <Row label="처리일">{formatDate(req.reviewedAt)}</Row>}
         {req.rejectReason && (
           <Row label="반려 사유">
@@ -315,7 +344,7 @@ export default function AdminRequestDetailPage() {
               regionNameKo={regionNameKo}
               onCountryChange={(code, nameKo) => { setCountryCode(code); setCountryNameKo(nameKo) }}
               onRegionChange={(nameKo) => setRegionNameKo(nameKo)}
-              defaultDistilleryName={req.distilleryNameKo ?? undefined}
+              defaultProducerName={req.producerNameKo ?? undefined}
               initialValues={req}
               dataReady={initialized}
               category={watch('category') as SpiritCategory}

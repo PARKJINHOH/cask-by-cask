@@ -1,6 +1,6 @@
 package com.drinkindex.domain.spirit.entity;
 
-import com.drinkindex.domain.distillery.entity.Distillery;
+import com.drinkindex.domain.producer.entity.Producer;
 import com.drinkindex.domain.spirit.entity.enums.SpiritCategory;
 import com.drinkindex.domain.spirit.entity.enums.SpiritStatus;
 import com.drinkindex.domain.user.entity.User;
@@ -19,7 +19,7 @@ import java.math.BigDecimal;
         indexes = {
                 @Index(name = "idx_spirit_category", columnList = "category"),
                 @Index(name = "idx_spirit_status", columnList = "status"),
-                @Index(name = "idx_spirit_distillery_id", columnList = "distillery_id")
+                @Index(name = "idx_spirit_producer_id", columnList = "producer_id")
         }
 )
 @Getter
@@ -43,8 +43,8 @@ public class Spirit extends BaseTimeEntity {
     private SpiritCategory category;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "distillery_id")
-    private Distillery distillery;
+    @JoinColumn(name = "producer_id")
+    private Producer producer;
 
     @Column(length = 200)
     private String bottler;
@@ -99,13 +99,13 @@ public class Spirit extends BaseTimeEntity {
     private SpiritOtherDetail otherDetail;
 
     public void update(String nameKo, String nameEn, SpiritCategory category,
-                       Distillery distillery, String bottler, Integer bottledYear,
+                       Producer producer, String bottler, Integer bottledYear,
                        Integer vintageYear, BigDecimal abv, Integer volumeMl,
                        String country, String region) {
         this.nameKo = nameKo;
         this.nameEn = nameEn;
         this.category = category;
-        this.distillery = distillery;
+        this.producer = producer;
         this.bottler = bottler;
         this.bottledYear = bottledYear;
         this.vintageYear = vintageYear;

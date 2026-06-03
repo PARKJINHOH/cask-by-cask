@@ -1,7 +1,7 @@
 package com.drinkindex.domain.spirit.repository;
 
-import com.drinkindex.domain.distillery.entity.Distillery;
-import com.drinkindex.domain.distillery.repository.DistilleryRepository;
+import com.drinkindex.domain.producer.entity.Producer;
+import com.drinkindex.domain.producer.repository.ProducerRepository;
 import com.drinkindex.domain.spirit.dto.SpiritListResponse;
 import com.drinkindex.domain.spirit.dto.SpiritSearchCondition;
 import com.drinkindex.domain.spirit.entity.Spirit;
@@ -35,21 +35,21 @@ class SpiritQueryRepositoryTest {
     private SpiritRepository spiritRepository;
 
     @Autowired
-    private DistilleryRepository distilleryRepository;
+    private ProducerRepository producerRepository;
 
-    private Distillery distillery;
+    private Producer producer;
     private PageRequest page;
 
     @BeforeEach
     void setUp() {
-        distillery = distilleryRepository.save(Distillery.builder()
+        producer = producerRepository.save(Producer.builder()
                 .nameKo("글렌피딕").nameEn("Glenfiddich")
                 .country("Scotland").region("Speyside").build());
 
         spiritRepository.save(spirit("글렌피딕 12년", "Glenfiddich 12", SpiritCategory.WHISKY,
-                "Scotland", new BigDecimal("40.0"), new BigDecimal("88.0"), 150, distillery));
+                "Scotland", new BigDecimal("40.0"), new BigDecimal("88.0"), 150, producer));
         spiritRepository.save(spirit("글렌피딕 18년", "Glenfiddich 18", SpiritCategory.WHISKY,
-                "Scotland", new BigDecimal("43.0"), new BigDecimal("92.0"), 250, distillery));
+                "Scotland", new BigDecimal("43.0"), new BigDecimal("92.0"), 250, producer));
         spiritRepository.save(spirit("헤네시 VSOP", "Hennessy VSOP", SpiritCategory.COGNAC,
                 "France", new BigDecimal("40.0"), new BigDecimal("85.0"), 80, null));
         spiritRepository.save(spirit("기타 스피릿", "Other Spirit", SpiritCategory.OTHER,
@@ -165,7 +165,7 @@ class SpiritQueryRepositoryTest {
     void searchWithDefaultStatus() {
         SpiritSearchCondition cond = new SpiritSearchCondition(
                 null, null, null, null, null, null, null,
-                null, null, null, null, null, null);
+                null, null, null, null, null, null, null);
         assertThat(cond.status()).isEqualTo(SpiritStatus.ACTIVE);
         Page<SpiritListResponse> result = spiritRepository.search(cond, page);
         assertThat(result.getTotalElements()).isEqualTo(4);
@@ -193,10 +193,10 @@ class SpiritQueryRepositoryTest {
 
     private Spirit spirit(String nameKo, String nameEn, SpiritCategory category,
                           String country, BigDecimal abv, BigDecimal avgScore,
-                          int reviewCount, Distillery distillery) {
+                          int reviewCount, Producer producer) {
         Spirit s = Spirit.builder()
                 .nameKo(nameKo).nameEn(nameEn).category(category)
-                .country(country).abv(abv).distillery(distillery).build();
+                .country(country).abv(abv).producer(producer).build();
         s.approve();
         s.updateAvgScore(avgScore, reviewCount);
         return s;
@@ -224,7 +224,7 @@ class SpiritQueryRepositoryTest {
         SpiritSearchCondition build() {
             return new SpiritSearchCondition(
                     keyword, category, null, null, null,
-                    country, null, minAbv, maxAbv,
+                    country, null, null, minAbv, maxAbv,
                     minScore, maxScore, SpiritStatus.ACTIVE, sort);
         }
     }

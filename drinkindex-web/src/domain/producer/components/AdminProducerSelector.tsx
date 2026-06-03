@@ -1,0 +1,204 @@
+import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
+import { useAllProducers } from '../hooks/useProducer'
+import type { Producer, ProducerType } from '../types/producer.types'
+
+interface Props {
+  value: number | null
+  defaultName?: string
+  onChange: (id: number | null) => void
+  placeholder?: string
+  /** 지정 시 해당 타입 생산자만 표시 (카테고리 게이팅) */
+  type?: ProducerType
+}
+
+interface DropdownPos {
+  top: number
+  left: number
+  width: number
+}
+
+export default function AdminProducerSelector({
+  value,
+  defaultName,
+  onChange,
+  placeholder = '생산자 선택...',
+  type,
+}: Props) {
+  const [open, setOpen]       = useState(false)
+  const [search, setSearch]   = useState('')
+  const [pos, setPos]         = useState<DropdownPos | null>(null)
+  const triggerRef            = useRef<HTMLButtonElement>(null)
+  const searchRef             = useRef<HTMLInputElement>(null)
+
+  const { data: all = [], isLoading } = useAllProducers(type)
+
+  const selected    = value ? (all.find((d) => d.id === value) ?? null) : null
+  const displayName = selected?.nameKo ?? defaultName ?? ''
+
+  const filtered = search.trim()
+    ? all.filter(
+        (d) =>
+          d.nameKo.toLowerCase().includes(search.toLowerCase()) ||
+          d.nameEn.toLowerCase().includes(search.toLowerCase()),
+      )
+    : all
+
+  // 드롭다운 열릴 때 트리거 위치 계산 (fixed 포지셔닝용)
+  const openDropdown = () => {
+    if (!triggerRef.current) return
+    const rect = triggerRef.current.getBoundingClientRect()
+    setPos({
+      top:   rect.bottom + window.scrollY + 4,
+      left:  rect.left   + window.scrollX,
+      width: rect.width,
+    })
+    setOpen(true)
+  }
+
+  // 스크롤/리사이즈 시 위치 재계산
+  useEffect(() => {
+    if (!open) return
+    const recalc = () => {
+      if (!triggerRef.current) return
+      const rect = triggerRef.current.getBoundingClientRect()
+      setPos({
+        top:   rect.bottom + window.scrollY + 4,
+        left:  rect.left   + window.scrollX,
+        width: rect.width,
+      })
+    }
+    window.addEventListener('scroll', recalc, true)
+    window.addEventListener('resize', recalc)
+    return () => {
+      window.removeEventListener('scroll', recalc, true)
+      window.removeEventListener('resize', recalc)
+    }
+  }, [open])
+
+  // 외부 클릭 시 닫기
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Node
+      if (triggerRef.current?.contains(target)) return
+      // 드롭다운 포털 내부 클릭은 무시 (data-adsel 속성으로 식별)
+      const portal = document.getElementById('admin-producer-selector-portal')
+      if (portal?.contains(target)) return
+      setOpen(false)
+      setSearch('')
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  // 열릴 때 검색 input 포커스
+  useEffect(() => {
+    if (open) setTimeout(() => searchRef.current?.focus(), 50)
+  }, [open])
+
+  const handleSelect = (d: Producer) => {
+    onChange(d.id)
+    setOpen(false)
+    setSearch('')
+  }
+
+  const handleClear = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    onChange(null)
+    setOpen(false)
+    setSearch('')
+  }
+
+  const dropdown = open && pos ? (
+    <div
+      id="admin-producer-selector-portal"
+      style={{
+        position: 'fixed',
+        top:      pos.top  - window.scrollY,
+        left:     pos.left - window.scrollX,
+        width:    pos.width,
+        zIndex:   9999,
+      }}
+      className="bg-white rounded-xl shadow-lg border border-neutral-100 flex flex-col max-h-64"
+    >
+      {/* 검색 */}
+      <div className="p-2 border-b border-neutral-100 shrink-0">
+        <input
+          ref={searchRef}
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="이름으로 검색..."
+          className="w-full px-2.5 py-1.5 text-sm border border-neutral-200 rounded-lg
+            focus:outline-none focus:ring-2 focus:ring-primary-400"
+        />
+      </div>
+      {/* 목록 */}
+      <ul className="overflow-y-auto flex-1">
+        {filtered.length === 0 ? (
+          <li className="px-4 py-3 text-sm text-neutral-400 text-center">
+            검색 결과 없음
+          </li>
+        ) : (
+          filtered.map((d) => (
+            <li key={d.id}>
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => handleSelect(d)}
+                className={`w-full text-left px-4 py-2.5 text-sm hover:bg-neutral-50 transition-colors ${
+                  d.id === value ? 'bg-amber-50 text-amber-700 font-medium' : ''
+                }`}
+              >
+                <span className="font-medium">{d.nameKo}</span>
+                <span className="ml-2 text-xs text-neutral-400">
+                  {d.nameEn} · {d.country}
+                </span>
+              </button>
+            </li>
+          ))
+        )}
+      </ul>
+    </div>
+  ) : null
+
+  return (
+    <div className="relative">
+      {/* 트리거 버튼 */}
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={() => (open ? (setOpen(false), setSearch('')) : openDropdown())}
+        className="w-full flex items-center justify-between px-3 py-2 text-sm border border-neutral-200 rounded-lg
+          bg-white focus:outline-none focus:ring-2 focus:ring-primary-400 transition-colors text-left"
+      >
+        <span className={displayName ? 'text-neutral-900' : 'text-neutral-400'}>
+          {isLoading ? '불러오는 중...' : (displayName || placeholder)}
+        </span>
+        <div className="flex items-center gap-1 shrink-0">
+          {value !== null && (
+            <span
+              role="button"
+              onClick={handleClear}
+              className="text-neutral-400 hover:text-neutral-600 transition-colors p-0.5"
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </span>
+          )}
+          <svg
+            className={`w-4 h-4 text-neutral-400 transition-transform ${open ? 'rotate-180' : ''}`}
+            viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </div>
+      </button>
+
+      {/* 드롭다운을 document.body에 포털로 렌더링 (modal overflow-hidden 우회) */}
+      {createPortal(dropdown, document.body)}
+    </div>
+  )
+}

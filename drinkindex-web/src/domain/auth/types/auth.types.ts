@@ -14,7 +14,7 @@ export interface UserInfo {
   role: UserRole
   currentLevel?: number
   maturingPower?: number
-  distilleryLogoUrl?: string
+  producerLogoUrl?: string
   nicknameFixed?: boolean
   profileImageUrl?: string | null
   allowedMenus?: AdminMenuKey[]
