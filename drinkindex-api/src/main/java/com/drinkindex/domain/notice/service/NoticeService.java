@@ -46,6 +46,7 @@ public class NoticeService {
     private final FileStorageService fileStorageService;
     private final NoticeImageValidator noticeImageValidator;
     private final HtmlSanitizer htmlSanitizer;
+    private final NoticeViewCountService noticeViewCountService;
 
     // ═══════════════════════════════════════════
     // 공개 API
@@ -74,13 +75,13 @@ public class NoticeService {
     }
 
     @Transactional
-    public NoticeDetailResponse getPublishedNoticeDetail(Long noticeId, Long userId) {
+    public NoticeDetailResponse getPublishedNoticeDetail(Long noticeId, Long userId, String clientIp) {
         // [보안] isPublished=true 조건으로 미발행 공지 직접 접근 차단
         Notice notice = noticeRepository.findByIdAndIsPublishedTrue(noticeId)
                 .orElseThrow(() -> new CustomException(ErrorCode.NOTICE_NOT_FOUND));
 
-        // [동시성] DB 레벨 UPDATE — 애플리케이션 레벨 갱신보다 race condition에 안전
-        noticeRepository.incrementViewCount(noticeId);
+        // [패치 7] 게시글과 동일한 Redis TTL(1시간) 중복 방지 — 키 없을 때만 viewCount UPDATE
+        noticeViewCountService.tryIncrementViewCount(noticeId, userId, clientIp);
 
         boolean isRecommended = userId != null
                 && noticeRecommendRepository.existsByNoticeIdAndUserId(noticeId, userId);

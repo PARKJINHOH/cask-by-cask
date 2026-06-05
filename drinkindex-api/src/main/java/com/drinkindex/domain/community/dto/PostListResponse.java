@@ -25,6 +25,10 @@ public class PostListResponse {
     private final int likeCount;
     private final int commentCount;
     private final boolean hasPoll;
+    // [패치 9] 소식 게시판 증류소 태그 (없으면 null)
+    private final Long distilleryTagId;
+    private final String distilleryTagNameKo;
+    private final String distilleryTagNameEn;
     private final LocalDateTime createdAt;
 
     private PostListResponse(Post post) {
@@ -45,6 +49,10 @@ public class PostListResponse {
         this.likeCount     = post.getLikeCount();
         this.commentCount  = post.getCommentCount();
         this.hasPoll       = post.getPoll() != null;
+        // [패치 9] 소식 게시판 증류소 태그
+        this.distilleryTagId     = post.getDistilleryTag() != null ? post.getDistilleryTag().getId() : null;
+        this.distilleryTagNameKo = post.getDistilleryTag() != null ? post.getDistilleryTag().getNameKo() : null;
+        this.distilleryTagNameEn = post.getDistilleryTag() != null ? post.getDistilleryTag().getNameEn() : null;
         this.createdAt     = post.getCreatedAt();
     }
 

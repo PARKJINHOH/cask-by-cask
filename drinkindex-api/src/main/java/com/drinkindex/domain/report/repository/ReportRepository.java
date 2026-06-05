@@ -37,6 +37,9 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
 
     long countByStatus(ReportStatus status);
 
+    // [패치 12] 모더레이션 대시보드 — 대상 유형별 미처리 신고 수 (예: 술 댓글 COMMENT)
+    long countByTargetTypeAndStatus(ReportTargetType targetType, ReportStatus status);
+
     @Query("SELECT r.status, COUNT(r) FROM Report r GROUP BY r.status")
     List<Object[]> findStatusStats();
 }

@@ -45,4 +45,10 @@ public class AdminDashboardController {
     public ResponseEntity<ApiResponse<List<DashboardReportStatResponse>>> getReportStats() {
         return ResponseEntity.ok(ApiResponse.success(adminDashboardService.getReportStats()));
     }
+
+    // [패치 12] 통합 모더레이션 대시보드 — 처리 대기 큐 집계
+    @GetMapping("/pending-counts")
+    public ResponseEntity<ApiResponse<DashboardPendingCountsResponse>> getPendingCounts() {
+        return ResponseEntity.ok(ApiResponse.success(adminDashboardService.getPendingCounts()));
+    }
 }

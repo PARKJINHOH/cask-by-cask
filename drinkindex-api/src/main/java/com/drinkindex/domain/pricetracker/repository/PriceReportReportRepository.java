@@ -14,6 +14,9 @@ public interface PriceReportReportRepository extends JpaRepository<PriceReportRe
 
     long countByPriceReportIdAndStatus(Long priceReportId, PriceReportReportStatus status);
 
+    // [패치 12] 모더레이션 대시보드 — 미처리 가격 신고 수
+    long countByStatus(PriceReportReportStatus status);
+
     @Query("""
             SELECT r FROM PriceReportReport r
             WHERE (:status IS NULL OR r.status = :status)

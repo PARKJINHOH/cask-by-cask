@@ -108,6 +108,12 @@ public class AdminScoreService {
         memberLevelConfigRepository.delete(config);
     }
 
+    // [패치 11] 레벨 구간 변경 후 전체 회원 재계산 (수동 실행)
+    @Transactional
+    public int recalculateAllLevels() {
+        return scoreService.recalculateAllMemberLevels();
+    }
+
     // ─── 점수 이력 ──────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)

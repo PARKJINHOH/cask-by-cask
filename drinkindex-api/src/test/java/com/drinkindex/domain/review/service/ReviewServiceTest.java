@@ -15,6 +15,7 @@ import com.drinkindex.domain.user.entity.enums.Role;
 import com.drinkindex.domain.user.repository.UserRepository;
 import com.drinkindex.global.exception.CustomException;
 import com.drinkindex.global.exception.ErrorCode;
+import com.drinkindex.global.util.BadWordFilter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -40,6 +41,7 @@ class ReviewServiceTest {
     @Mock private SpiritRepository spiritRepository;
     @Mock private UserRepository userRepository;
     @Mock private ScoreService scoreService;
+    @Mock private BadWordFilter badWordFilter; // [패치 5] 리뷰 욕설 필터 의존성
 
     @InjectMocks
     private ReviewService reviewService;

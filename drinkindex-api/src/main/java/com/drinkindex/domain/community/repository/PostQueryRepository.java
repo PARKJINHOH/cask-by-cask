@@ -10,8 +10,9 @@ import org.springframework.data.domain.Pageable;
 
 public interface PostQueryRepository {
 
+    // [패치 9] distilleryTagId 추가 — 소식 게시판 증류소 태그 필터
     Page<Post> findPosts(BoardType boardType, Long prefixId, String keyword, PostSort sort,
-                         Long authorId, Long commentAuthorId, Pageable pageable);
+                         Long authorId, Long commentAuthorId, Long distilleryTagId, Pageable pageable);
 
     Page<Post> findBestPosts(BoardType boardType, int minLikeCount, Pageable pageable);
 

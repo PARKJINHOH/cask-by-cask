@@ -1,10 +1,11 @@
 package com.drinkindex.domain.community.service;
 
+import com.drinkindex.domain.comment.repository.CommentRepository;
 import com.drinkindex.domain.community.dto.*;
 import com.drinkindex.domain.community.entity.CommentEmojiReaction;
 import com.drinkindex.domain.community.entity.CommunityEmoji;
 import com.drinkindex.domain.community.entity.EmojiGroup;
-import com.drinkindex.domain.community.entity.PostComment;
+import com.drinkindex.domain.community.entity.enums.EmojiTargetType;
 import com.drinkindex.domain.community.repository.CommentEmojiReactionRepository;
 import com.drinkindex.domain.community.repository.CommunityEmojiRepository;
 import com.drinkindex.domain.community.repository.EmojiGroupRepository;
@@ -35,6 +36,8 @@ public class EmojiService {
     private final EmojiGroupRepository groupRepository;
     private final CommentEmojiReactionRepository reactionRepository;
     private final PostCommentRepository commentRepository;
+    // [패치 13] 술 상세 커뮤니티 댓글 존재 검증용
+    private final CommentRepository spiritCommentRepository;
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
     private final NoticeImageValidator imageValidator;
@@ -50,30 +53,49 @@ public class EmojiService {
                 .collect(Collectors.toList());
     }
 
+    // [패치 13] 게시판 댓글 이모지 반응 토글 (POST_COMMENT)
     @Transactional
     public EmojiReactionToggleResponse toggleReaction(Long commentId, Long emojiId, Long userId) {
-        PostComment comment = commentRepository.findById(commentId)
-                .orElseThrow(() -> new CustomException(ErrorCode.COMMENT_NOT_FOUND));
+        return toggleReaction(EmojiTargetType.POST_COMMENT, commentId, emojiId, userId);
+    }
+
+    // [패치 13] 다형성 이모지 반응 토글 — POST_COMMENT / SPIRIT_COMMENT 공통 처리
+    @Transactional
+    public EmojiReactionToggleResponse toggleReaction(EmojiTargetType targetType, Long targetId,
+                                                      Long emojiId, Long userId) {
+        validateTargetExists(targetType, targetId);
+
         CommunityEmoji emoji = emojiRepository.findById(emojiId)
                 .orElseThrow(() -> new CustomException(ErrorCode.EMOJI_NOT_FOUND));
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
-        reactionRepository.findByCommentIdAndEmojiIdAndUserId(commentId, emojiId, userId)
+        reactionRepository.findByTargetTypeAndTargetIdAndEmojiIdAndUserId(targetType, targetId, emojiId, userId)
                 .ifPresentOrElse(
                         reactionRepository::delete,
                         () -> {
                             CommentEmojiReaction reaction = CommentEmojiReaction.builder()
-                                    .comment(comment).emoji(emoji).user(user).build();
+                                    .targetType(targetType).targetId(targetId)
+                                    .emoji(emoji).user(user).build();
                             reactionRepository.save(reaction);
                         }
                 );
 
-        long count = reactionRepository.countByCommentIdAndEmojiId(commentId, emojiId);
+        long count = reactionRepository.countByTargetTypeAndTargetIdAndEmojiId(targetType, targetId, emojiId);
         boolean isMyReaction = reactionRepository
-                .findByCommentIdAndEmojiIdAndUserId(commentId, emojiId, userId).isPresent();
+                .findByTargetTypeAndTargetIdAndEmojiIdAndUserId(targetType, targetId, emojiId, userId).isPresent();
 
         return new EmojiReactionToggleResponse(emojiId, count, isMyReaction);
+    }
+
+    private void validateTargetExists(EmojiTargetType targetType, Long targetId) {
+        boolean exists = switch (targetType) {
+            case POST_COMMENT -> commentRepository.existsById(targetId);
+            case SPIRIT_COMMENT -> spiritCommentRepository.existsById(targetId);
+        };
+        if (!exists) {
+            throw new CustomException(ErrorCode.COMMENT_NOT_FOUND);
+        }
     }
 
     // ═══════════════════════════════════════════

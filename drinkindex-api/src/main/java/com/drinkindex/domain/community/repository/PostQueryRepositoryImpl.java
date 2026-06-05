@@ -28,7 +28,8 @@ public class PostQueryRepositoryImpl implements PostQueryRepository {
 
     @Override
     public Page<Post> findPosts(BoardType boardType, Long prefixId, String keyword,
-                                PostSort sort, Long authorId, Long commentAuthorId, Pageable pageable) {
+                                PostSort sort, Long authorId, Long commentAuthorId,
+                                Long distilleryTagId, Pageable pageable) {
         QPost post = QPost.post;
 
         BooleanBuilder predicate = new BooleanBuilder();
@@ -53,6 +54,10 @@ public class PostQueryRepositoryImpl implements PostQueryRepository {
             predicate.and(post.author.id.eq(authorId));
             predicate.and(post.isAnonymous.isFalse());
         }
+        // [패치 9] 소식 게시판 증류소 태그 필터
+        if (distilleryTagId != null) {
+            predicate.and(post.distilleryTag.id.eq(distilleryTagId));
+        }
         if (commentAuthorId != null) {
             QPostComment comment = QPostComment.postComment;
             predicate.and(JPAExpressions.selectOne()
@@ -69,6 +74,7 @@ public class PostQueryRepositoryImpl implements PostQueryRepository {
                 .selectFrom(post)
                 .leftJoin(post.prefix).fetchJoin()
                 .leftJoin(post.author).fetchJoin()
+                .leftJoin(post.distilleryTag).fetchJoin() // [패치 9] 증류소 태그 N+1 방지
                 .where(predicate)
                 .orderBy(primary, post.createdAt.desc())
                 .offset(pageable.getOffset())

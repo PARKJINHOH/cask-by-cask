@@ -2,6 +2,7 @@ package com.drinkindex.domain.community.entity;
 
 import com.drinkindex.domain.community.entity.enums.BoardType;
 import com.drinkindex.domain.community.entity.enums.PostStatus;
+import com.drinkindex.domain.producer.entity.Producer;
 import com.drinkindex.domain.user.entity.User;
 import com.drinkindex.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
@@ -86,6 +87,11 @@ public class Post extends BaseTimeEntity {
     @JoinColumn(name = "series_id")
     private Series series;
 
+    // [패치 9] 소식 게시판(NOTICE) 증류소 태그 — DISTILLERY(PARTNER) 작성 시 본인 담당 증류소, ADMIN은 임의/없음
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "distillery_tag_id")
+    private Producer distilleryTag;
+
     private Integer seriesOrder;
 
     @OneToOne(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
@@ -103,7 +109,8 @@ public class Post extends BaseTimeEntity {
 
     public void incrementReportCount() {
         this.reportCount++;
-        if (this.reportCount >= 5) {
+        // [패치 6] 하드코딩 5 → ReportConstants.POST_LOCK_THRESHOLD
+        if (this.reportCount >= com.drinkindex.global.constants.ReportConstants.POST_LOCK_THRESHOLD) {
             this.status = PostStatus.LOCKED;
         }
     }

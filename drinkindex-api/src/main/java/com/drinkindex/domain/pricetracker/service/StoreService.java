@@ -9,6 +9,7 @@ import com.drinkindex.domain.user.entity.User;
 import com.drinkindex.domain.user.repository.UserRepository;
 import com.drinkindex.global.exception.CustomException;
 import com.drinkindex.global.exception.ErrorCode;
+import com.drinkindex.global.util.BadWordFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -22,6 +23,7 @@ public class StoreService {
 
     private final StoreRepository storeRepository;
     private final UserRepository userRepository;
+    private final BadWordFilter badWordFilter;
 
     @Transactional(readOnly = true)
     public List<StoreSearchResponse> searchStores(String keyword, StoreType storeType, int limit) {
@@ -35,6 +37,9 @@ public class StoreService {
 
     @Transactional
     public StoreSearchResponse suggestStore(Long userId, SuggestStoreRequest request) {
+        // [패치 5] 매장 제안 시 매장명 욕설 필터 (악의적 매장명 방지)
+        badWordFilter.validate(request.displayName());
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 

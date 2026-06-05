@@ -136,6 +136,8 @@ public enum ErrorCode {
     DELETED_POST_NOT_FOUND(HttpStatus.NOT_FOUND, "POST_010", "삭제된 게시글을 찾을 수 없습니다."),
     DUPLICATE_REPORT(HttpStatus.CONFLICT, "POST_011", "이미 신고한 게시글입니다."),
     POST_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "POST_012", "게시글 이미지를 찾을 수 없습니다."),
+    // [패치 9] 증류소 담당자는 본인 담당 증류소만 태그 가능
+    POST_DISTILLERY_TAG_FORBIDDEN(HttpStatus.FORBIDDEN, "POST_015", "본인이 담당하는 증류소만 태그할 수 있습니다."),
 
     // Community - BadWord
     BAD_WORD_DETECTED(HttpStatus.BAD_REQUEST, "BAD_WORD_DETECTED", "욕설이 포함되어 있습니다."),
@@ -188,6 +190,8 @@ public enum ErrorCode {
     PRICE_REPORT_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "PRICE_003", "이미지를 찾을 수 없거나 접근 권한이 없습니다."),
     DUPLICATE_PRICE_REPORT_REPORT(HttpStatus.BAD_REQUEST, "PRICE_004", "이미 신고한 가격 등록입니다."),
     EXCHANGE_RATE_REQUIRED(HttpStatus.BAD_REQUEST, "PRICE_005", "면세점 USD 등록 시 환율이 필요합니다."),
+    // [패치 10] 매장 미확정 가격은 승인 불가 — 표준 매장 매핑 또는 신규 매장 승인 필요
+    STORE_RESOLUTION_REQUIRED(HttpStatus.BAD_REQUEST, "PRICE_006", "매장을 확정해야 가격을 승인할 수 있습니다. 표준 매장을 매핑하거나 신규 매장을 승인하세요."),
 
     // BYOB
     BYOB_NOT_FOUND(HttpStatus.NOT_FOUND, "BYOB_001", "BYOB 모임을 찾을 수 없습니다."),

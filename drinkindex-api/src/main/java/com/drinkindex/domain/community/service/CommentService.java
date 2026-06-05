@@ -68,11 +68,13 @@ public class CommentService {
         childrenMap.values().forEach(children ->
                 children.forEach(c -> allCommentIds.add(c.getId())));
 
-        // 이모지 반응 일괄 로드
+        // [패치 13] 이모지 반응 일괄 로드 (다형성: POST_COMMENT 대상)
         Map<Long, List<CommentEmojiReaction>> reactionMap = new HashMap<>();
         if (!allCommentIds.isEmpty()) {
-            reactionRepository.findByCommentIdIn(allCommentIds).forEach(r ->
-                    reactionMap.computeIfAbsent(r.getComment().getId(), k -> new ArrayList<>()).add(r));
+            reactionRepository.findByTargetTypeAndTargetIdIn(
+                            com.drinkindex.domain.community.entity.enums.EmojiTargetType.POST_COMMENT, allCommentIds)
+                    .forEach(r ->
+                            reactionMap.computeIfAbsent(r.getTargetId(), k -> new ArrayList<>()).add(r));
         }
 
         // 차단 사용자 집합 (로그인 시)

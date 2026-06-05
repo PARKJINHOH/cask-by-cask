@@ -30,4 +30,7 @@ public class CreatePostRequest {
     private PollRequest poll;
 
     private Long seriesId;
+
+    // [패치 9] 소식 게시판 증류소 태그 (선택). PARTNER는 본인 담당 증류소만, ADMIN은 임의/생략 가능.
+    private Long distilleryTagId;
 }

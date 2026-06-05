@@ -7,6 +7,9 @@ import com.drinkindex.domain.comment.entity.CommentLike;
 import com.drinkindex.domain.comment.entity.CommunityComment;
 import com.drinkindex.domain.comment.repository.CommentLikeRepository;
 import com.drinkindex.domain.comment.repository.CommentRepository;
+import com.drinkindex.domain.community.repository.CommentEmojiReactionRepository;
+import com.drinkindex.domain.community.service.EmojiService;
+import com.drinkindex.global.util.BadWordFilter;
 import com.drinkindex.domain.spirit.entity.Spirit;
 import com.drinkindex.domain.spirit.entity.enums.SpiritCategory;
 import com.drinkindex.domain.spirit.entity.enums.SpiritStatus;
@@ -41,6 +44,9 @@ class CommentServiceTest {
     @Mock private CommentLikeRepository commentLikeRepository;
     @Mock private SpiritRepository spiritRepository;
     @Mock private UserRepository userRepository;
+    @Mock private BadWordFilter badWordFilter;                            // [패치 5] 욕설 필터
+    @Mock private CommentEmojiReactionRepository reactionRepository;      // [패치 13] 이모지 반응
+    @Mock private EmojiService emojiService;                              // [패치 13] 이모지 반응 토글
 
     @InjectMocks
     private CommentService commentService;

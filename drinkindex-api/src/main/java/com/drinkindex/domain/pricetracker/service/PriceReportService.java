@@ -18,6 +18,7 @@ import com.drinkindex.domain.user.repository.UserRepository;
 import com.drinkindex.global.exception.CustomException;
 import com.drinkindex.global.exception.ErrorCode;
 import com.drinkindex.global.response.PageResponse;
+import com.drinkindex.global.util.BadWordFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -39,6 +40,7 @@ public class PriceReportService {
     private final StoreRepository storeRepository;
     private final SpiritRepository spiritRepository;
     private final UserRepository userRepository;
+    private final BadWordFilter badWordFilter;
 
     @Transactional(readOnly = true)
     public PriceReportResponse getPriceReport(Long id, Long callerId, boolean isAdmin) {
@@ -65,6 +67,9 @@ public class PriceReportService {
 
     @Transactional
     public PriceReportResponse createPriceReport(Long userId, CreatePriceReportRequest request) {
+        // [패치 5] 가격 설명 + 제안 매장명 욕설 필터 (기존 누락 영역, 악의적 매장명 방지)
+        badWordFilter.validate(request.description(), request.suggestedStoreName());
+
         Spirit spirit = spiritRepository.findById(request.spiritId())
                 .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_NOT_FOUND));
 
@@ -135,6 +140,9 @@ public class PriceReportService {
                 .orElseThrow(() -> new CustomException(ErrorCode.PRICE_REPORT_NOT_FOUND));
 
         validateOwner(report, userId);
+
+        // [패치 5] 가격 수정 시에도 설명 + 제안 매장명 욕설 필터
+        badWordFilter.validate(request.description(), request.suggestedStoreName());
 
         Store store = null;
         if (request.storeId() != null) {

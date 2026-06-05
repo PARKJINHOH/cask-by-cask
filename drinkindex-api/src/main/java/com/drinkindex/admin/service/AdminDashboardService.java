@@ -3,6 +3,12 @@ package com.drinkindex.admin.service;
 import com.drinkindex.domain.admin.dto.*;
 import com.drinkindex.domain.community.entity.enums.ReportStatus;
 import com.drinkindex.domain.community.repository.PostReportRepository;
+import com.drinkindex.domain.pricetracker.entity.enums.PriceReportReportStatus;
+import com.drinkindex.domain.pricetracker.entity.enums.PriceReportStatus;
+import com.drinkindex.domain.pricetracker.repository.PriceReportReportRepository;
+import com.drinkindex.domain.pricetracker.repository.PriceReportRepository;
+import com.drinkindex.domain.pricetracker.repository.StoreRepository;
+import com.drinkindex.domain.report.entity.enums.ReportTargetType;
 import com.drinkindex.domain.report.repository.ReportRepository;
 import com.drinkindex.domain.spirit.entity.enums.RequestStatus;
 import com.drinkindex.domain.spirit.repository.SpiritRegisterRequestRepository;
@@ -29,6 +35,10 @@ public class AdminDashboardService {
     private final ReportRepository reportRepository;
     private final PostReportRepository postReportRepository;
     private final SpiritRegisterRequestRepository spiritRegisterRequestRepository;
+    // [패치 12] 가격 트래커 모더레이션 큐 집계용
+    private final PriceReportRepository priceReportRepository;
+    private final PriceReportReportRepository priceReportReportRepository;
+    private final StoreRepository storeRepository;
 
     public DashboardKpisResponse getKpis() {
         long totalUsers = userRepository.countByIsActiveTrue();
@@ -43,6 +53,24 @@ public class AdminDashboardService {
         long pendingRequests = spiritRegisterRequestRepository.countByStatus(RequestStatus.PENDING);
 
         return new DashboardKpisResponse(totalUsers, todayNewUsers, pendingReports, pendingRequests);
+    }
+
+    // [패치 12] 통합 모더레이션 대시보드 — 처리 대기 큐 집계
+    public DashboardPendingCountsResponse getPendingCounts() {
+        long spiritRegisterRequests = spiritRegisterRequestRepository.countByStatus(RequestStatus.PENDING);
+        long priceReports = priceReportRepository.countByStatus(PriceReportStatus.PENDING);
+        long flaggedPriceReports = priceReportRepository.countByStatusAndAutoFlaggedTrue(PriceReportStatus.PENDING);
+        long storeSuggestions = storeRepository.countByIsApprovedFalse();
+        long postReports = postReportRepository.countByStatus(ReportStatus.PENDING);
+        long commentReports = reportRepository.countByTargetTypeAndStatus(
+                ReportTargetType.COMMENT, com.drinkindex.domain.report.entity.enums.ReportStatus.PENDING);
+        long priceReportReports = priceReportReportRepository.countByStatus(PriceReportReportStatus.PENDING);
+        // 공지는 관리자가 직접 등록하므로 별도 승인 대기 큐 없음 → 0
+        long noticeRegisterRequests = 0L;
+
+        return DashboardPendingCountsResponse.of(
+                spiritRegisterRequests, priceReports, flaggedPriceReports, storeSuggestions,
+                postReports, commentReports, priceReportReports, noticeRegisterRequests);
     }
 
     public List<DashboardDailyStatResponse> getUserTrend(int period) {

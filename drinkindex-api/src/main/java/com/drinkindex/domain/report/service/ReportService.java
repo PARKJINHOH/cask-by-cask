@@ -15,6 +15,7 @@ import com.drinkindex.domain.spirit.entity.SpiritImage;
 import com.drinkindex.domain.spirit.repository.SpiritImageRepository;
 import com.drinkindex.domain.user.entity.User;
 import com.drinkindex.domain.user.repository.UserRepository;
+import com.drinkindex.global.constants.ReportConstants;
 import com.drinkindex.global.exception.CustomException;
 import com.drinkindex.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -28,8 +29,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class ReportService {
-
-    private static final int AUTO_HIDE_THRESHOLD = 3;
 
     private final ReportRepository reportRepository;
     private final ReviewRepository reviewRepository;
@@ -95,7 +94,13 @@ public class ReportService {
         long pendingCount = reportRepository.countByTargetTypeAndTargetIdAndStatus(
                 targetType, targetId, ReportStatus.PENDING);
 
-        if (pendingCount < AUTO_HIDE_THRESHOLD) return;
+        // [패치 6] 신고 임계치를 대상 유형별 상수로 분리 (술 리뷰·댓글 = 3)
+        int threshold = switch (targetType) {
+            case REVIEW -> ReportConstants.SPIRIT_REVIEW_HIDE_THRESHOLD;
+            case COMMENT -> ReportConstants.SPIRIT_COMMENT_HIDE_THRESHOLD;
+            case IMAGE -> ReportConstants.SPIRIT_REVIEW_HIDE_THRESHOLD;
+        };
+        if (pendingCount < threshold) return;
 
         switch (targetType) {
             case REVIEW -> reviewRepository.findById(targetId).ifPresent(review -> {

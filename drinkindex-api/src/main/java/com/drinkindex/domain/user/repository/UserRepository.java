@@ -5,6 +5,7 @@ import com.drinkindex.domain.community.entity.UserBlock;
 import com.drinkindex.domain.user.entity.RoleType;
 import com.drinkindex.domain.user.entity.User;
 import com.drinkindex.domain.user.entity.enums.Role;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -25,6 +26,9 @@ public interface UserRepository extends JpaRepository<User, Long>, UserQueryRepo
     boolean existsByNicknameAndIdNot(String nickname, Long id);
 
     boolean existsByRole(Role role);
+
+    // [패치 11] 레벨 전체 재계산 배치 — MEMBER만 페이징 조회 (deleted_at IS NULL은 @SQLRestriction 적용)
+    Page<User> findByRole(Role role, Pageable pageable);
 
     boolean existsByRoleType(RoleType roleType);
 

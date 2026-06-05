@@ -15,6 +15,7 @@ import com.drinkindex.domain.user.entity.User;
 import com.drinkindex.domain.user.repository.UserRepository;
 import com.drinkindex.global.exception.CustomException;
 import com.drinkindex.global.exception.ErrorCode;
+import com.drinkindex.global.util.BadWordFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -34,6 +35,7 @@ public class ReviewService {
     private final SpiritRepository spiritRepository;
     private final UserRepository userRepository;
     private final ScoreService scoreService;
+    private final BadWordFilter badWordFilter;
 
     // ── 조회 ──────────────────────────────────────────────
 
@@ -70,6 +72,9 @@ public class ReviewService {
             throw new CustomException(ErrorCode.DUPLICATE_REVIEW);
         }
 
+        // [패치 5] 리뷰 코멘트 욕설 필터 (기존 누락 영역)
+        badWordFilter.validate(request.comment());
+
         Review review = Review.builder()
                 .spirit(spirit)
                 .user(user)
@@ -102,6 +107,11 @@ public class ReviewService {
         Review review = getReview(spiritId, reviewId);
         checkOwnership(review, userId);
 
+        // [패치 5] 리뷰 수정 시 코멘트 욕설 필터 (기존 누락 영역)
+        if (request.comment() != null) {
+            badWordFilter.validate(request.comment());
+        }
+
         review.update(
                 request.noseScore()            != null ? request.noseScore()            : review.getNoseScore(),
                 request.tasteScore()           != null ? request.tasteScore()           : review.getTasteScore(),
@@ -131,6 +141,10 @@ public class ReviewService {
 
         review.softDelete();
         recalculateAvgScore(spiritId);
+
+        // [패치 1] 리뷰 삭제 시에도 지급액 차감 (기존: 차감 없음 → 파밍 가능했음).
+        //          원래 지급액만큼만 회수, 익명·관리자였다면 0이라 자동 스킵.
+        scoreService.deductByReference(userId, ScoreActions.SPIRIT_REVIEW_WRITE, "SPIRIT_REVIEW", reviewId);
     }
 
     // ── avgScore 재계산 ────────────────────────────────────

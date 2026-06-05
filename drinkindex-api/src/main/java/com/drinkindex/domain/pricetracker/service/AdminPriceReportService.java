@@ -9,6 +9,7 @@ import com.drinkindex.domain.pricetracker.entity.PriceReport;
 import com.drinkindex.domain.pricetracker.entity.PriceReportImage;
 import com.drinkindex.domain.pricetracker.entity.PriceReportReport;
 import com.drinkindex.domain.pricetracker.entity.Store;
+import com.drinkindex.domain.pricetracker.entity.enums.PriceCurrency;
 import com.drinkindex.domain.pricetracker.entity.enums.PriceReportReportStatus;
 import com.drinkindex.domain.pricetracker.entity.enums.PriceReportStatus;
 import com.drinkindex.domain.pricetracker.entity.enums.StoreType;
@@ -63,11 +64,22 @@ public class AdminPriceReportService {
         User admin = userRepository.findById(adminId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
-        // 기타 제안 매장 → 표준 매장 매핑
+        // [패치 10] 매장 승인 + 가격 승인 통합 처리.
+        //   ① request.storeId 제공 → 표준 매장 매핑 (미승인 매장이면 이 자리에서 신규 승인)
+        //   ② 미제공 → 기존 store 사용. 단, 매장이 확정(승인)되지 않으면 가격 APPROVED 불가.
         if (request != null && request.storeId() != null) {
             Store store = storeRepository.findById(request.storeId())
                     .orElseThrow(() -> new CustomException(ErrorCode.STORE_NOT_FOUND));
+            if (Boolean.FALSE.equals(store.getIsApproved())) {
+                store.approve(admin); // 신규 매장 승인
+            }
             report.updateStore(store);
+        }
+
+        // [패치 10] 매장 확정 없이는 가격 APPROVED 불가
+        Store resolvedStore = report.getStore();
+        if (resolvedStore == null || Boolean.FALSE.equals(resolvedStore.getIsApproved())) {
+            throw new CustomException(ErrorCode.STORE_RESOLUTION_REQUIRED);
         }
 
         // 인증 사진 있으면 isVerified=true
@@ -86,10 +98,12 @@ public class AdminPriceReportService {
                     ScoreActions.PRICE_REGISTER, "PRICE_REPORT", saved.getId());
         }
 
-        // 가격 알림 트리거 — 면세 가격은 KRW 비교 제외
-        boolean isDutyFree = saved.getStore() != null
-                && saved.getStore().getStoreType() == StoreType.DUTYFREE;
-        if (!isDutyFree) {
+        // [패치 8] 면세(USD) 가격은 환율 변동으로 근사치라 KRW 목표가 알림 비교에서 제외.
+        //          국내 매장(DOMESTIC) + 통화 KRW 인 경우에만 알림 비교 대상.
+        boolean isDomesticKrw = saved.getStore() != null
+                && saved.getStore().getStoreType() == StoreType.DOMESTIC
+                && saved.getCurrency() == PriceCurrency.KRW;
+        if (isDomesticKrw) {
             priceAlertService.checkAndNotifyAlerts(
                     saved.getSpirit().getId(), saved.getActualPrice(), saved.getId());
         }

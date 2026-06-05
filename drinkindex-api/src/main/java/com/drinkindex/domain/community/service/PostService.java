@@ -10,6 +10,8 @@ import com.drinkindex.domain.community.entity.enums.NotificationType;
 import com.drinkindex.domain.community.entity.enums.PostStatus;
 import com.drinkindex.domain.community.entity.enums.ReportStatus;
 import com.drinkindex.domain.community.repository.*;
+import com.drinkindex.domain.producer.entity.Producer;
+import com.drinkindex.domain.producer.repository.ProducerRepository;
 import com.drinkindex.domain.score.constant.ScoreActions;
 import com.drinkindex.domain.score.service.ScoreService;
 import com.drinkindex.domain.user.entity.User;
@@ -52,6 +54,7 @@ public class PostService {
     private final HtmlSanitizer htmlSanitizer;
     private final ScoreService scoreService;
     private final AdminLogService adminLogService;
+    private final ProducerRepository producerRepository;
 
     // ═══════════════════════════════════════════
     // 조회
@@ -61,9 +64,11 @@ public class PostService {
     public Page<PostListResponse> getPosts(BoardType boardType, Long prefixId,
                                            String keyword, PostSort sort,
                                            Long authorId, Long commentAuthorId,
+                                           Long distilleryTagId,
                                            int page, int size) {
+        // [패치 9] distilleryTagId — 소식 게시판 증류소 태그 필터
         return postRepository.findPosts(boardType, prefixId, keyword, sort,
-                        authorId, commentAuthorId, PageRequest.of(page, size))
+                        authorId, commentAuthorId, distilleryTagId, PageRequest.of(page, size))
                 .map(PostListResponse::from);
     }
 
@@ -137,12 +142,17 @@ public class PostService {
         boolean anonymous = BoardType.FREE.equals(request.getBoardType())
                 && Boolean.TRUE.equals(request.getIsAnonymous());
 
+        // [패치 9] 소식 게시판(NOTICE) 증류소 태그 검증/해석
+        Producer distilleryTag = resolveDistilleryTag(request.getBoardType(),
+                request.getDistilleryTagId(), author);
+
         // 5. Post 저장
         Post.PostBuilder postBuilder = Post.builder()
                 .boardType(request.getBoardType())
                 .prefix(prefix)
                 .author(author)
                 .isAnonymous(anonymous)
+                .distilleryTag(distilleryTag)
                 .title(request.getTitle())
                 .content(request.getContent())
                 .contentSanitized(sanitized);
@@ -165,8 +175,12 @@ public class PostService {
         // 7. 이미지 URL 동기화
         postImageService.syncImageUsage(post, request.getContent());
 
-        // [숙성력] 게시글 말머리/게시판에 따라 액션타입 결정 후 점수 지급
-        scoreService.award(userId, resolvePostActionType(post), "POST", post.getId());
+        // [패치 2] 익명 게시글은 점수 미지급 (익명 = 점수 없음 전역 통일).
+        //          비익명이라도 ScoreService 내부에서 MEMBER 외(관리자·증류소)는 자동 제외됨([패치 3]).
+        if (!post.getIsAnonymous()) {
+            // [숙성력] 게시글 말머리/게시판에 따라 액션타입 결정 후 점수 지급
+            scoreService.award(userId, resolvePostActionType(post), "POST", post.getId());
+        }
 
         return PostDetailResponse.builder(post, true).build();
     }
@@ -213,11 +227,14 @@ public class PostService {
             throw new CustomException(ErrorCode.POST_ACCESS_DENIED);
         }
         Long authorId = post.getAuthor().getId();
+        // [패치 1] 차감 전에 원래 지급에 쓰인 액션 타입을 확보 (이동 후엔 prefix 등 접근 불가할 수 있음)
+        String originalAction = resolvePostActionType(post);
         postMoveService.moveToDeleted(post, userId, null);
 
-        // [숙성력] 게시글 삭제 점수 차감 (본인 삭제 시만, 관리자 삭제 제외)
+        // [패치 1] 본인 삭제 시 고정값(-5)이 아니라 "원래 지급액만큼" 차감 (score_history 추적 기반).
+        //          익명 글이었다면 지급 0 → 차감 0으로 자동 처리, 관리자 삭제는 제외.
         if (authorId.equals(userId)) {
-            scoreService.deduct(authorId, ScoreActions.POST_DELETE, "POST", postId);
+            scoreService.deductByReference(authorId, originalAction, "POST", postId);
         }
     }
 
@@ -427,6 +444,37 @@ public class PostService {
     private User findUser(Long id) {
         return userRepository.findById(id)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+    }
+
+    // [패치 9] 소식 게시판 증류소 태그 해석.
+    //   - NOTICE 게시판이 아니면 태그 무시(null)
+    //   - PARTNER(증류소 담당): 본인 담당 증류소만 태그 가능. (지정 없으면 본인 담당 증류소 자동 태그)
+    //   - ADMIN/SUPER_ADMIN: 임의 증류소 태그 가능 or 태그 없음
+    private Producer resolveDistilleryTag(BoardType boardType, Long distilleryTagId, User author) {
+        if (!BoardType.NOTICE.equals(boardType)) {
+            return null; // 소식 게시판 외에는 증류소 태그 없음
+        }
+
+        Role role = author.getRole();
+
+        if (Role.PARTNER.equals(role)) {
+            Producer own = author.getProducer();
+            if (own == null) {
+                throw new CustomException(ErrorCode.POST_DISTILLERY_TAG_FORBIDDEN);
+            }
+            // 지정이 없으면 본인 담당 증류소로 자동 태그, 지정 시 본인 담당과 일치해야 함
+            if (distilleryTagId != null && !distilleryTagId.equals(own.getId())) {
+                throw new CustomException(ErrorCode.POST_DISTILLERY_TAG_FORBIDDEN);
+            }
+            return own;
+        }
+
+        // ADMIN/SUPER_ADMIN: 임의 증류소 태그 가능, 미지정이면 없음
+        if (distilleryTagId == null) {
+            return null;
+        }
+        return producerRepository.findById(distilleryTagId)
+                .orElseThrow(() -> new CustomException(ErrorCode.DISTILLERY_NOT_FOUND));
     }
 
     private void validateBoardPermission(BoardType boardType, Role role) {

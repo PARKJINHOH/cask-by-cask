@@ -65,7 +65,8 @@ public class PostComment extends BaseTimeEntity {
 
     public void incrementReportCount() {
         this.reportCount++;
-        if (this.reportCount >= 3) {
+        // [패치 6] 게시판 댓글은 완화 — 하드코딩 3 → ReportConstants.COMMENT_HIDE_THRESHOLD(5)
+        if (this.reportCount >= com.drinkindex.global.constants.ReportConstants.COMMENT_HIDE_THRESHOLD) {
             this.isHidden = true;
         }
     }

@@ -43,12 +43,13 @@ public class PostController {
             @RequestParam(required = false) PostSort sort,
             @RequestParam(required = false) Long authorId,
             @RequestParam(required = false) Long commentAuthorId,
+            @RequestParam(required = false) Long distilleryTagId, // [패치 9] 소식 게시판 증류소 태그 필터
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
         return ResponseEntity.ok(ApiResponse.success(
                 PageResponse.from(postService.getPosts(boardType, prefixId, keyword, sort,
-                        authorId, commentAuthorId, page, size))));
+                        authorId, commentAuthorId, distilleryTagId, page, size))));
     }
 
     @GetMapping("/best")

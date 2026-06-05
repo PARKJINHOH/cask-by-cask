@@ -8,6 +8,7 @@ import com.drinkindex.domain.notice.service.NoticeService;
 import com.drinkindex.global.auth.security.CustomUserDetails;
 import com.drinkindex.global.response.ApiResponse;
 import com.drinkindex.global.response.PageResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -45,12 +46,24 @@ public class NoticeController {
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<NoticeDetailResponse>> getPublishedNoticeDetail(
             @PathVariable Long id,
-            @AuthenticationPrincipal CustomUserDetails userDetails
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            HttpServletRequest request
     ) {
         Long userId = userDetails != null ? userDetails.getUserId() : null;
+        // [패치 7] 비회원은 IP 기반으로 조회수 중복 방지
+        String clientIp = resolveClientIp(request);
         return ResponseEntity.ok(
-                ApiResponse.success(noticeService.getPublishedNoticeDetail(id, userId))
+                ApiResponse.success(noticeService.getPublishedNoticeDetail(id, userId, clientIp))
         );
+    }
+
+    // [패치 7] 게시글 컨트롤러와 동일한 클라이언트 IP 해석 (프록시 X-Forwarded-For 우선)
+    private String resolveClientIp(HttpServletRequest request) {
+        String xForwardedFor = request.getHeader("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isBlank()) {
+            return xForwardedFor.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
     }
 
     /**

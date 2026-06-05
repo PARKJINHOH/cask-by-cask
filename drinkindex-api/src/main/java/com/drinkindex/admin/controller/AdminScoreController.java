@@ -75,6 +75,13 @@ public class AdminScoreController {
         return ResponseEntity.ok(ApiResponse.success());
     }
 
+    // [패치 11] 레벨 구간 변경 후 전체 회원 재계산 (수동 실행 버튼).
+    //           응답: 레벨이 실제로 변경된 회원 수
+    @PostMapping("/level-config/recalculate")
+    public ResponseEntity<ApiResponse<Integer>> recalculateLevels() {
+        return ResponseEntity.ok(ApiResponse.success(adminScoreService.recalculateAllLevels()));
+    }
+
     // ─── 점수 이력 조회 ──────────────────────────────────────────────────────
 
     @GetMapping("/score-history")

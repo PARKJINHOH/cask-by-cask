@@ -21,6 +21,21 @@ public interface ScoreHistoryRepository extends JpaRepository<ScoreHistory, Long
             @Param("actionType") String actionType,
             @Param("today") LocalDate today);
 
+    // [패치 1] 동일 reference 재지급 방지 — 이미 지급(score > 0)된 이력 존재 여부
+    boolean existsByUserIdAndActionTypeAndReferenceTypeAndReferenceIdAndScoreGreaterThan(
+            Long userId, String actionType, String referenceType, Long referenceId, int score);
+
+    // [패치 1] 특정 reference로 지급된 점수 합산 (차감 시 "원래 지급액" 계산용)
+    @Query("SELECT COALESCE(SUM(sh.score), 0) FROM ScoreHistory sh " +
+           "WHERE sh.user.id = :userId AND sh.actionType = :actionType " +
+           "AND sh.referenceType = :referenceType AND sh.referenceId = :referenceId " +
+           "AND sh.score > 0")
+    Integer sumAwardedScoreByReference(
+            @Param("userId") Long userId,
+            @Param("actionType") String actionType,
+            @Param("referenceType") String referenceType,
+            @Param("referenceId") Long referenceId);
+
     Page<ScoreHistory> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
 
     // 사용자 본인 이력 필터링 — 적립(score > 0) / 차감(score < 0)

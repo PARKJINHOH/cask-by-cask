@@ -12,6 +12,9 @@ import java.util.List;
 
 public interface StoreRepository extends JpaRepository<Store, Long> {
 
+    // [패치 12] 모더레이션 대시보드 — 미승인 매장 제안 수
+    long countByIsApprovedFalse();
+
     @Query("""
             SELECT DISTINCT s FROM Store s
             LEFT JOIN s.aliases a

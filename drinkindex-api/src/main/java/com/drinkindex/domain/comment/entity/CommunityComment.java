@@ -87,7 +87,8 @@ public class CommunityComment extends BaseTimeEntity {
 
     public void incrementReportCount() {
         this.reportCount++;
-        if (this.reportCount >= 3) {
+        // [패치 6] 하드코딩 3 → ReportConstants.SPIRIT_COMMENT_HIDE_THRESHOLD
+        if (this.reportCount >= com.drinkindex.global.constants.ReportConstants.SPIRIT_COMMENT_HIDE_THRESHOLD) {
             this.isHidden = true;
         }
     }
