@@ -71,3 +71,22 @@ export interface VerifyEmailRequest {
 export interface CheckAvailableResponse {
   available: boolean
 }
+
+export interface FindEmailRequest {
+  nickname: string
+}
+
+export interface FindEmailResponse {
+  maskedEmail: string
+}
+
+export interface PasswordResetVerifyRequest {
+  email: string
+  code: string
+}
+
+export interface PasswordResetConfirmRequest {
+  email: string
+  code: string
+  newPassword: string
+}

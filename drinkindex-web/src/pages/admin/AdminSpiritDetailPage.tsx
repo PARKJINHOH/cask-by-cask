@@ -1,6 +1,5 @@
-﻿import { useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
 import Badge from '@/shared/components/Badge'
 import Button from '@/shared/components/Button'
 import Spinner from '@/shared/components/Spinner'
@@ -15,22 +14,13 @@ import {
   useDeleteSpiritImage,
   useSetPrimarySpiritImage,
 } from '@/domain/admin/hooks/useAdminSpirits'
-import type { AdminSpiritImageItem, UpdateSpiritPayload } from '@/domain/admin/types/admin.types'
-import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
-import SpiritOptionalFields from '@/domain/admin/components/SpiritOptionalFields'
-import { ISO3166_COUNTRIES } from '@/domain/location/data/iso3166Countries'
+import type { AdminSpiritImageItem } from '@/domain/admin/types/admin.types'
+import SpiritFormFields, { useSpiritForm, CARD } from '@/domain/admin/components/SpiritFormFields'
 
 // ── 상수 ────────────────────────────────────────────────────────
-
-const CATEGORIES: SpiritCategory[] = ['WHISKY', 'COGNAC', 'WINE', 'OTHER']
-const CATEGORY_LABEL: Record<string, string> = {
-  WHISKY: '위스키', COGNAC: '꼬냑', WINE: '와인', OTHER: '기타',
-}
 const STATUS_LABEL: Record<string, string> = {
   ACTIVE: '공개', HIDDEN: '숨김', PENDING: '대기',
 }
-
-// ── 공통 행 ─────────────────────────────────────────────────────
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -42,7 +32,6 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 }
 
 // ── 이미지 섹션 ──────────────────────────────────────────────────
-
 function SpiritImageSection({ spiritId, images }: { spiritId: number; images: AdminSpiritImageItem[] }) {
   const fileRef = useRef<HTMLInputElement>(null)
   const upload = useUploadSpiritImage()
@@ -60,7 +49,7 @@ function SpiritImageSection({ spiritId, images }: { spiritId: number; images: Ad
   }
 
   return (
-    <div className="space-y-3">
+    <div className={CARD}>
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-neutral-700">이미지</h3>
         <Button
@@ -138,7 +127,6 @@ function SpiritImageSection({ spiritId, images }: { spiritId: number; images: Ad
 }
 
 // ── 메인 페이지 ────────────────────────────────────────────────
-
 export default function AdminSpiritDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -148,36 +136,24 @@ export default function AdminSpiritDetailPage() {
   const updateSpirit = useUpdateSpirit()
   const deleteSpirit = useDeleteSpirit()
 
+  const form = useSpiritForm()
+
   const [savedMsg, setSavedMsg] = useState('')
   const [saveError, setSaveError] = useState('')
-  const [countryCode, setCountryCode] = useState<string | null>(null)
-  const [countryNameKo, setCountryNameKo] = useState('')
-  const [regionNameKo, setRegionNameKo] = useState('')
-
-  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<UpdateSpiritPayload>()
-
   const [initialized, setInitialized] = useState(false)
+
+  // 기존 데이터 → 폼 프리필 (한 번만)
   if (spirit && !initialized) {
-    setValue('nameKo', spirit.nameKo)
-    setValue('nameEn', spirit.nameEn)
-    setValue('category', spirit.category)
-    setValue('producerId', spirit.producerId ?? undefined)
-    setValue('bottler', spirit.bottler ?? undefined)
-    setValue('bottledYear', spirit.bottledYear ?? undefined)
-    setValue('vintageYear', spirit.vintageYear ?? undefined)
-    setValue('abv', spirit.abv ?? undefined)
-    setValue('volumeMl', spirit.volumeMl ?? undefined)
-    const matched = ISO3166_COUNTRIES.find((c) => c.nameKo === spirit.country)
-    setCountryCode(matched?.code ?? null)
-    setCountryNameKo(spirit.country ?? '')
-    setRegionNameKo(spirit.region ?? '')
+    form.prefillFromSpirit(spirit)
     setInitialized(true)
   }
 
-  const onSave = (data: UpdateSpiritPayload) => {
+  const handleSave = () => {
+    if (!form.validate()) { window.scrollTo({ top: 0, behavior: 'smooth' }); return }
     setSaveError('')
+    // 카테고리는 고정 — buildPayload의 category 값은 변경되지 않음
     updateSpirit.mutate(
-      { id: spiritId, data: { ...data, country: countryNameKo || null, region: regionNameKo || null } },
+      { id: spiritId, data: form.buildPayload() },
       {
         onSuccess: () => {
           setSavedMsg('저장되었습니다.')
@@ -207,7 +183,7 @@ export default function AdminSpiritDetailPage() {
   }
 
   return (
-    <div className="p-6 max-w-3xl space-y-6">
+    <div className="p-6 mx-auto space-y-6 pb-28 max-w-3xl lg:max-w-6xl">
       {/* 헤더 */}
       <AdminPageHeader
         breadcrumbs={[
@@ -229,97 +205,21 @@ export default function AdminSpiritDetailPage() {
         <Row label="수정일">{formatDate(spirit.updatedAt)}</Row>
       </div>
 
-      {/* 수정 링크 */}
-      <div className="bg-white rounded-xl shadow-sm p-5">
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-neutral-500">
-            카테고리 상세 정보(위스키/와인 등)를 포함한 전체 수정은 아래 버튼을 사용하세요.
-          </p>
-          <Button size="sm" onClick={() => navigate(`/admin/spirits/${spiritId}/edit`)}>
-            상세 수정 (3단계 폼)
-          </Button>
-        </div>
-      </div>
+      {/* 공유 폼 (카테고리 고정, 좌측 하단에 이미지 카드 주입) */}
+      <SpiritFormFields
+        form={form}
+        categoryLocked
+        imageSlot={<SpiritImageSection spiritId={spiritId} images={spirit.images} />}
+      />
 
-      {/* 수정 폼 (기본 정보 빠른 수정) */}
-      <form onSubmit={handleSubmit(onSave)} noValidate>
-        <div className="bg-white rounded-xl shadow-sm p-5 space-y-5">
-          <h2 className="text-sm font-semibold text-neutral-700 border-b border-neutral-100 pb-3">
-            기본 정보 수정
-          </h2>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="block text-xs font-medium text-neutral-600">영어 이름 *</label>
-              <input
-                {...register('nameEn', { required: true })}
-                className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none
-                  focus:ring-2 focus:ring-primary-400 ${errors.nameEn ? 'border-red-400' : 'border-neutral-200'}`}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="block text-xs font-medium text-neutral-600">한국어 이름 *</label>
-              <input
-                {...register('nameKo', { required: true })}
-                className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none
-                  focus:ring-2 focus:ring-primary-400 ${errors.nameKo ? 'border-red-400' : 'border-neutral-200'}`}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="block text-xs font-medium text-neutral-600">카테고리 *</label>
-            <select
-              {...register('category', { required: true })}
-              className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg
-                focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
-            >
-              {CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>{CATEGORY_LABEL[cat]}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="border-t border-neutral-100 pt-4">
-            <p className="text-xs font-medium text-neutral-500 mb-4">선택 옵션</p>
-            <SpiritOptionalFields
-              register={register}
-              setValue={setValue}
-              watch={watch}
-              countryCode={countryCode}
-              countryNameKo={countryNameKo}
-              regionNameKo={regionNameKo}
-              onCountryChange={(code, nameKo) => { setCountryCode(code); setCountryNameKo(nameKo) }}
-              onRegionChange={(nameKo) => setRegionNameKo(nameKo)}
-              defaultProducerName={spirit.producerNameKo ?? undefined}
-              initialValues={spirit}
-              dataReady={initialized}
-              category={watch('category') as SpiritCategory}
-            />
-          </div>
-
-          {savedMsg && (
-            <p className="text-sm text-green-600 bg-green-50 rounded-lg px-3 py-2">{savedMsg}</p>
-          )}
-          {saveError && <p className="text-sm text-red-600">{saveError}</p>}
-
-          <div className="flex justify-end">
-            <Button type="submit" size="sm" isLoading={updateSpirit.isPending}>
-              변경사항 저장
-            </Button>
-          </div>
-        </div>
-      </form>
-
-      {/* 이미지 */}
-      <div className="bg-white rounded-xl shadow-sm p-5">
-        <SpiritImageSection spiritId={spiritId} images={spirit.images} />
-      </div>
+      {savedMsg && (
+        <p className="text-sm text-green-600 bg-green-50 rounded-lg px-3 py-2">{savedMsg}</p>
+      )}
+      {saveError && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{saveError}</p>}
 
       {/* 관리 액션 */}
       <div className="bg-white rounded-xl shadow-sm p-5">
-        <h2 className="text-sm font-semibold text-neutral-700 mb-4">관리</h2>
-        <div className="flex justify-end">
+        <div className="flex items-center justify-between">
           <Button
             variant="danger"
             size="sm"
@@ -328,6 +228,14 @@ export default function AdminSpiritDetailPage() {
           >
             숨김 처리
           </Button>
+        </div>
+      </div>
+
+      {/* 하단 고정 액션바 */}
+      <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/90 backdrop-blur border-t border-neutral-200">
+        <div className="max-w-3xl lg:max-w-6xl mx-auto px-6 py-3 flex justify-end gap-2">
+          <Button variant="secondary" onClick={() => navigate('/admin/spirits')}>목록으로</Button>
+          <Button onClick={handleSave} isLoading={updateSpirit.isPending}>변경사항 저장</Button>
         </div>
       </div>
     </div>

@@ -185,6 +185,63 @@ public class AuthService {
         );
     }
 
+    /**
+     * 아이디(가입 이메일) 찾기 — 닉네임으로 계정을 조회해 마스킹된 이메일을 반환한다.
+     * 이메일 전체를 노출하지 않아 열거(enumeration) 위험을 낮춘다.
+     */
+    public FindEmailResponse findEmailByNickname(String nickname) {
+        User user = userRepository.findByNicknameAndNotDeleted(nickname)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        return new FindEmailResponse(maskEmail(user.getEmail()));
+    }
+
+    /**
+     * 비밀번호 재설정 코드 발송 — 가입된 이메일에만 실제 발송하되,
+     * 응답은 계정 존재 여부와 무관하게 항상 성공 처리해 계정 열거를 차단한다.
+     */
+    @Transactional(readOnly = true)
+    public void sendPasswordResetCode(String email) {
+        if (userRepository.existsByEmail(email)) {
+            emailVerificationService.sendPasswordResetCode(email);
+        }
+    }
+
+    /** 비밀번호 재설정 코드 검증 (코드 소모 없이 유효성만 확인). */
+    public void verifyPasswordResetCode(String email, String code) {
+        emailVerificationService.verifyPasswordResetCode(email, code, false);
+    }
+
+    /**
+     * 비밀번호 재설정 확정 — 코드 검증·소모 후 새 비밀번호로 교체.
+     * 잠금/실패 카운트를 초기화하고 기존 세션(refresh token)을 무효화한다.
+     */
+    @Transactional
+    public void resetPassword(String email, String code, String newPassword) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+        // 코드 검증 + 소모 (재사용 차단)
+        emailVerificationService.verifyPasswordResetCode(email, code, true);
+
+        user.updatePassword(passwordEncoder.encode(newPassword));
+
+        // 무차별 대입 잠금 해제 + 기존 세션 강제 만료 (탈취 대비)
+        loginAttemptService.reset(email);
+        refreshTokenRepository.deleteByUserId(user.getId());
+    }
+
+    /** 이메일 로컬파트 앞 2자만 남기고 마스킹. (예: drinkindex@gmail.com → dr***@gmail.com) */
+    private String maskEmail(String email) {
+        int at = email.indexOf('@');
+        if (at <= 0) {
+            return "***";
+        }
+        String local = email.substring(0, at);
+        String domain = email.substring(at);
+        String visible = local.length() >= 2 ? local.substring(0, 2) : local.substring(0, 1);
+        return visible + "***" + domain;
+    }
+
     @Transactional
     public TokenResponse refresh(RefreshRequest request) {
         String incomingToken = request.refreshToken();

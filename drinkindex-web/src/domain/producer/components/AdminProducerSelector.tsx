@@ -3,6 +3,12 @@ import { createPortal } from 'react-dom'
 import { useAllProducers } from '../hooks/useProducer'
 import type { Producer, ProducerType } from '../types/producer.types'
 
+export interface NewProducerInput {
+  nameKo: string
+  nameEn: string
+  country: string
+}
+
 interface Props {
   value: number | null
   defaultName?: string
@@ -10,6 +16,12 @@ interface Props {
   placeholder?: string
   /** 지정 시 해당 타입 생산자만 표시 (카테고리 게이팅) */
   type?: ProducerType
+  /**
+   * 지정 시 "목록에 없는 생산자 직접 등록" 미니폼 노출 (기타 카테고리 전용).
+   * 생성된 생산자 id를 반환하면 즉시 선택.
+   */
+  onCreateNew?: (data: NewProducerInput) => Promise<number | null>
+  defaultCountry?: string
 }
 
 interface DropdownPos {
@@ -24,6 +36,8 @@ export default function AdminProducerSelector({
   onChange,
   placeholder = '생산자 선택...',
   type,
+  onCreateNew,
+  defaultCountry,
 }: Props) {
   const [open, setOpen]       = useState(false)
   const [search, setSearch]   = useState('')
@@ -31,10 +45,20 @@ export default function AdminProducerSelector({
   const triggerRef            = useRef<HTMLButtonElement>(null)
   const searchRef             = useRef<HTMLInputElement>(null)
 
+  // ── 신규 생산자 직접 등록 (기타 카테고리) ─────────────────────
+  const allowCreate = !!onCreateNew && type === 'OTHER'
+  const [creating, setCreating]     = useState(false)
+  const [newKo, setNewKo]           = useState('')
+  const [newEn, setNewEn]           = useState('')
+  const [newCountry, setNewCountry] = useState('')
+  const [createErr, setCreateErr]   = useState('')
+  const [saving, setSaving]         = useState(false)
+  const [createdName, setCreatedName] = useState('')
+
   const { data: all = [], isLoading } = useAllProducers(type)
 
   const selected    = value ? (all.find((d) => d.id === value) ?? null) : null
-  const displayName = selected?.nameKo ?? defaultName ?? ''
+  const displayName = selected?.nameKo || createdName || defaultName || ''
 
   const filtered = search.trim()
     ? all.filter(
@@ -106,9 +130,53 @@ export default function AdminProducerSelector({
   const handleClear = (e: React.MouseEvent) => {
     e.stopPropagation()
     onChange(null)
+    setCreatedName('')
     setOpen(false)
     setSearch('')
   }
+
+  // 드롭다운이 닫히면 직접 등록 폼 상태 초기화
+  useEffect(() => {
+    if (!open) {
+      setCreating(false)
+      setCreateErr('')
+    }
+  }, [open])
+
+  const startCreate = () => {
+    setNewKo(search.trim())
+    setNewEn('')
+    setNewCountry(defaultCountry ?? '')
+    setCreateErr('')
+    setCreating(true)
+  }
+
+  const submitCreate = async () => {
+    if (!onCreateNew) return
+    const ko = newKo.trim(), en = newEn.trim(), country = newCountry.trim()
+    if (!ko || !en || !country) {
+      setCreateErr('한글명·영문명·국가를 모두 입력해주세요.')
+      return
+    }
+    setSaving(true)
+    setCreateErr('')
+    try {
+      const newId = await onCreateNew({ nameKo: ko, nameEn: en, country })
+      if (newId != null) {
+        onChange(newId)
+        setCreatedName(ko)
+      }
+      setCreating(false)
+      setOpen(false)
+      setSearch('')
+    } catch {
+      setCreateErr('생산자 등록에 실패했습니다. 입력값을 확인해주세요.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const NEW_INPUT = 'w-full px-2.5 py-1.5 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400'
 
   const dropdown = open && pos ? (
     <div
@@ -160,6 +228,42 @@ export default function AdminProducerSelector({
           ))
         )}
       </ul>
+
+      {/* 목록에 없는 생산자 직접 등록 (기타 카테고리) */}
+      {allowCreate && (
+        <div className="border-t border-neutral-100 shrink-0">
+          {!creating ? (
+            <button
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={startCreate}
+              className="w-full text-left px-4 py-2.5 text-sm font-medium text-amber-700 hover:bg-amber-50 transition-colors"
+            >
+              + 목록에 없는 생산자 직접 등록
+            </button>
+          ) : (
+            <div className="p-2 space-y-2">
+              <input value={newKo} onChange={(e) => setNewKo(e.target.value)} maxLength={200}
+                placeholder="한글 이름 · 예) 산토리" className={NEW_INPUT} />
+              <input value={newEn} onChange={(e) => setNewEn(e.target.value)} maxLength={200}
+                placeholder="영문 이름 · 예) Suntory" className={NEW_INPUT} />
+              <input value={newCountry} onChange={(e) => setNewCountry(e.target.value)} maxLength={100}
+                placeholder="국가 · 예) 일본" className={NEW_INPUT} />
+              {createErr && <p className="text-xs text-red-500">{createErr}</p>}
+              <div className="flex gap-2">
+                <button type="button" onClick={submitCreate} disabled={saving}
+                  className="flex-1 py-1.5 text-sm font-semibold rounded-lg bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-60 transition-colors">
+                  {saving ? '등록 중...' : '등록'}
+                </button>
+                <button type="button" onClick={() => setCreating(false)} disabled={saving}
+                  className="px-3 py-1.5 text-sm font-semibold rounded-lg border border-neutral-200 text-neutral-600 hover:bg-neutral-50 transition-colors">
+                  취소
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   ) : null
 

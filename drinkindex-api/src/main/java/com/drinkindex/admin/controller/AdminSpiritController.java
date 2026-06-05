@@ -87,7 +87,7 @@ public class AdminSpiritController {
 
     @GetMapping("/requests")
     public ResponseEntity<ApiResponse<PageResponse<SpiritRegisterRequestResponse>>> getRequests(
-            @RequestParam(defaultValue = "PENDING") RequestStatus status,
+            @RequestParam(required = false) RequestStatus status,
             @PageableDefault(size = 20) Pageable pageable) {
         return ResponseEntity.ok(ApiResponse.success(
                 PageResponse.from(spiritService.getRegisterRequests(status, pageable))
@@ -138,6 +138,18 @@ public class AdminSpiritController {
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.ok(ApiResponse.success(
                 spiritService.approveRegisterRequest(id, userDetails.getUserId())
+        ));
+    }
+
+    // 등록 요청 상세 화면(= 새 술 등록과 동일 폼)에서 관리자가 보완한 전체 상세로 승인
+    @PostMapping("/requests/{id}/approve")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
+    public ResponseEntity<ApiResponse<SpiritDetailResponse>> approveRequestWithDetail(
+            @PathVariable Long id,
+            @Valid @RequestBody CreateSpiritRequest detail,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(ApiResponse.success(
+                spiritService.approveRegisterRequestWithDetail(id, detail, userDetails.getUserId())
         ));
     }
 

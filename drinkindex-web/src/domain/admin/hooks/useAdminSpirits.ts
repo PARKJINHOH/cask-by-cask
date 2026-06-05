@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { adminSpiritApi } from '../api/adminSpiritApi'
 import type { UpdateSpiritPayload, CreateSpiritPayload, UpdateRequestBody } from '../types/admin.types'
+// CreateSpiritPayload 재사용 (등록 요청 상세 승인 시 전체 상세 전송)
 import type { SpiritCategory, SpiritStatus } from '@/domain/spirit/types/spirit.types'
 
 interface SpiritListParams {
@@ -94,7 +95,9 @@ export function useAdminRequests(status: string, page: number) {
   return useQuery({
     queryKey: ['admin-requests', status, page],
     queryFn: () =>
-      adminSpiritApi.listRequests({ status, page, size: 20 }).then((res) => res.data.data!),
+      adminSpiritApi
+        .listRequests({ status: status === 'ALL' ? undefined : status, page, size: 20 })
+        .then((res) => res.data.data!),
   })
 }
 
@@ -145,6 +148,19 @@ export function useApproveRequest() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-requests'] })
       queryClient.invalidateQueries({ queryKey: ['admin-request-detail'] })
+    },
+  })
+}
+
+export function useApproveRequestWithDetail() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: CreateSpiritPayload }) =>
+      adminSpiritApi.approveRequestWithDetail(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-requests'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-request-detail'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-spirits'] })
     },
   })
 }

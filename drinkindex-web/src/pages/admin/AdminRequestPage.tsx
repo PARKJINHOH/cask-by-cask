@@ -12,7 +12,17 @@ const CATEGORY_LABEL: Record<string, string> = {
   WHISKY: '위스키', COGNAC: '꼬냑', WINE: '와인', OTHER: '기타',
 }
 
+// 테이블 상태 뱃지 라벨
 const STATUS_OPTIONS: Array<{ value: RequestStatus; label: string }> = [
+  { value: 'PENDING',  label: '대기 중' },
+  { value: 'APPROVED', label: '승인됨' },
+  { value: 'REJECTED', label: '반려됨' },
+]
+
+// 상태 필터 탭 (전체 포함)
+type StatusFilter = RequestStatus | 'ALL'
+const STATUS_FILTERS: Array<{ value: StatusFilter; label: string }> = [
+  { value: 'ALL',      label: '전체' },
   { value: 'PENDING',  label: '대기 중' },
   { value: 'APPROVED', label: '승인됨' },
   { value: 'REJECTED', label: '반려됨' },
@@ -22,7 +32,7 @@ const STATUS_OPTIONS: Array<{ value: RequestStatus; label: string }> = [
 
 export default function AdminRequestPage() {
   const navigate = useNavigate()
-  const [status, setStatus] = useState<RequestStatus>('PENDING')
+  const [status, setStatus] = useState<StatusFilter>('PENDING')
   const [page, setPage]     = useState(0)
 
   const { data, isLoading } = useAdminRequests(status, page)
@@ -41,7 +51,7 @@ export default function AdminRequestPage() {
         <div>
           <label className="block text-sm font-medium text-neutral-700 mb-1">상태</label>
           <div className="flex gap-1.5">
-            {STATUS_OPTIONS.map(({ value, label }) => (
+            {STATUS_FILTERS.map(({ value, label }) => (
               <button
                 key={value}
                 onClick={() => { setStatus(value); setPage(0) }}

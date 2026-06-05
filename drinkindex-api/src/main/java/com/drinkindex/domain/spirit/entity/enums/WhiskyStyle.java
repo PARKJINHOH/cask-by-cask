@@ -8,5 +8,6 @@ public enum WhiskyStyle {
     RYE,
     CORN,
     GRAIN,
-    POT_STILL
+    POT_STILL,
+    OTHER
 }

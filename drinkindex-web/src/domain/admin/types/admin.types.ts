@@ -23,6 +23,7 @@ export interface GrapeVarietyRequest { name: string; percentage: number | null }
 
 export interface WhiskyDetailRequest {
   style?: string | null
+  styleOther?: string | null
   bottlingType?: string | null
   caskType?: string | null
   maturationStyle?: string | null
@@ -321,11 +322,19 @@ export interface SpiritRegisterRequestDetail {
   volumeMl: number | null
   country: string | null
   region: string | null
+  ageStatement: number | null
+  isNas: boolean | null
+  distilledDate: string | null
+  bottledDate: string | null
+  releaseDate: string | null
   whiskyStyle: WhiskyStyle | null
+  whiskyStyleOther: string | null
+  caskNo: string | null
   wineType: WineType | null
   cognacGrade: CognacGrade | null
   otherType: OtherSpiritType | null
   imageUrls: string[]
+  note: string | null
   status: RequestStatus
   rejectReason: string | null
   createdAt: string

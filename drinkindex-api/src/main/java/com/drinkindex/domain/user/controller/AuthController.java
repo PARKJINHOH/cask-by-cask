@@ -73,4 +73,31 @@ public class AuthController {
         authService.verifyEmail(request.email(), request.code());
         return ResponseEntity.ok(ApiResponse.success());
     }
+
+    /** 아이디(가입 이메일) 찾기 — 닉네임으로 마스킹된 이메일 조회 */
+    @PostMapping("/find-email")
+    public ResponseEntity<ApiResponse<FindEmailResponse>> findEmail(@Valid @RequestBody FindEmailRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(authService.findEmailByNickname(request.nickname())));
+    }
+
+    /** 비밀번호 재설정 — 인증 코드 발송 (계정 존재 여부와 무관하게 성공 응답) */
+    @PostMapping("/password-reset/send-code")
+    public ResponseEntity<ApiResponse<Void>> sendPasswordResetCode(@Valid @RequestBody SendVerificationRequest request) {
+        authService.sendPasswordResetCode(request.email());
+        return ResponseEntity.ok(ApiResponse.success());
+    }
+
+    /** 비밀번호 재설정 — 코드 검증 (소모하지 않음) */
+    @PostMapping("/password-reset/verify-code")
+    public ResponseEntity<ApiResponse<Void>> verifyPasswordResetCode(@Valid @RequestBody PasswordResetVerifyRequest request) {
+        authService.verifyPasswordResetCode(request.email(), request.code());
+        return ResponseEntity.ok(ApiResponse.success());
+    }
+
+    /** 비밀번호 재설정 — 새 비밀번호 확정 */
+    @PostMapping("/password-reset/confirm")
+    public ResponseEntity<ApiResponse<Void>> confirmPasswordReset(@Valid @RequestBody PasswordResetConfirmRequest request) {
+        authService.resetPassword(request.email(), request.code(), request.newPassword());
+        return ResponseEntity.ok(ApiResponse.success());
+    }
 }

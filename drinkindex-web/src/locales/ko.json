@@ -3,6 +3,23 @@
     "name": "DrinkIndex",
     "tagline": "위스키·와인·꼬냑 커뮤니티"
   },
+  "producerSelector": {
+    "placeholder": "생산자 선택...",
+    "searchPlaceholder": "이름으로 검색...",
+    "noResult": "검색 결과가 없습니다.",
+    "typeToSearch": "이름을 입력해 검색하세요.",
+    "createNew": "+ 목록에 없는 생산자 직접 등록",
+    "newNameKo": "한글 이름",
+    "newNameEn": "영문 이름",
+    "newCountry": "국가",
+    "newNameKoPh": "예) 산토리",
+    "newNameEnPh": "예) Suntory",
+    "newCountryPh": "예) 일본",
+    "createSubmit": "등록 요청",
+    "createCancel": "취소",
+    "createRequired": "한글명·영문명·국가를 모두 입력해주세요.",
+    "createPending": "생산자 등록 요청이 접수되었습니다. 관리자 승인 후 목록에서 선택할 수 있습니다."
+  },
   "pwReminder": {
     "message": "비밀번호를 변경한 지 90일이 지났습니다. 안전을 위해 비밀번호를 변경해주세요.",
     "action": "비밀번호 변경",
@@ -116,14 +133,21 @@
       "nameEn": "영어 이름",
       "category": "카테고리",
       "categoryPlaceholder": "카테고리 선택",
-      "abv": "도수 (%)",
+      "abv": "알코올 도수",
       "country": "국가",
       "region": "지역",
       "bottler": "병입업체명",
+      "caskNo": "캐스크 번호",
       "bottledYear": "병입년도",
       "vintageYear": "빈티지",
       "producer": "생산자",
-      "volumeMl": "용량 (ml)",
+      "producerByCategory": {
+        "WHISKY": "증류소",
+        "COGNAC": "증류소",
+        "WINE": "양조장",
+        "OTHER": "생산자"
+      },
+      "volumeMl": "용량",
       "submit": "등록 요청하기",
       "success": "등록 요청이 완료되었습니다.",
       "requiredSection": "필수 정보",
@@ -133,7 +157,44 @@
       "errNameEn": "영어 이름을 입력해주세요.",
       "errCategory": "카테고리를 선택해주세요.",
       "errAbv": "도수를 입력해주세요. (0~100)",
-      "errVolume": "용량(ml)을 입력해주세요."
+      "errVolume": "용량(ml)을 입력해주세요.",
+      "errDateFormat": "형식: YYYY 또는 YYYY-MM",
+      "categoryStep": "카테고리 선택",
+      "categoryStepHint": "등록할 술의 종류를 먼저 선택해주세요.",
+      "basicStep": "기본 정보",
+      "basicStepHint": "필수",
+      "detailStep": "추가 정보",
+      "detailStepHint": "선택",
+      "selectCategoryFirst": "카테고리를 먼저 선택하면 입력 항목이 표시됩니다.",
+      "categoryCore": {
+        "WHISKY": "위스키 스타일",
+        "WINE": "와인 종류",
+        "COGNAC": "꼬냑 등급",
+        "OTHER": "주종"
+      },
+      "categoryCorePlaceholder": "선택해주세요",
+      "errCategoryCore": "세부 종류를 선택해주세요.",
+      "whiskyStyleOther": "스타일 직접 입력",
+      "whiskyStyleOtherPlaceholder": "예) 라이트 위스키, 싱글 그레인 등",
+      "errWhiskyStyleOther": "스타일을 직접 입력해주세요.",
+      "selectNone": "선택 안 함",
+      "ageStatement": "숙성 연수",
+      "nas": "NAS (숙성 연수 미표기)",
+      "nasHint": "(NAS 선택 시 저장되지 않습니다)",
+      "agePlaceholder": "예) 12",
+      "distilledDate": "증류 연월",
+      "bottledDate": "병입 연월",
+      "releaseDate": "출시일",
+      "producerCountryRegion": "생산자 / 국가 · 지역",
+      "note": "기타 문구",
+      "notePlaceholder": "예) 신규 출시 제품입니다. / 빈티지라 외부 사이트에 정보가 없습니다.",
+      "noteHint": "관리자에게 전달할 참고 사항이 있으면 자유롭게 적어주세요. (최대 500자)",
+      "submitEdit": "수정 완료",
+      "editMode": "요청 수정 중",
+      "editModeHint": "수정 후 '수정 완료'를 누르면 다시 검토 대기 상태가 됩니다.",
+      "cancelEdit": "수정 취소",
+      "editSuccess": "요청이 수정되었습니다.",
+      "loadError": "요청 정보를 불러오지 못했습니다."
     },
     "myRequests": {
       "title": "내 요청 목록",
@@ -145,7 +206,11 @@
       },
       "rejectReason": "반려 사유",
       "requestedAt": "신청일",
-      "reviewedAt": "처리일"
+      "reviewedAt": "처리일",
+      "edit": "수정",
+      "delete": "삭제",
+      "deleteConfirm": "이 등록 요청을 삭제하시겠습니까?",
+      "lockedHint": "승인된 요청은 수정·삭제할 수 없습니다."
     }
   },
   "producerDetail": {
@@ -267,7 +332,8 @@
       "RYE":            "라이",
       "CORN":           "콘",
       "GRAIN":          "그레인",
-      "POT_STILL":      "팟 스틸"
+      "POT_STILL":      "팟 스틸",
+      "OTHER":          "기타"
     },
     "wineType": {
       "RED":       "레드",
@@ -284,6 +350,21 @@
       "XO":        "XO",
       "XXO":       "XXO",
       "HORS_DAGE": "Hors d'Age"
+    },
+    "otherType": {
+      "RUM":      "럼",
+      "GIN":      "진",
+      "VODKA":    "보드카",
+      "TEQUILA":  "데킬라",
+      "MEZCAL":   "메스칼",
+      "BRANDY":   "브랜디",
+      "LIQUEUR":  "리큐르",
+      "SAKE":     "사케",
+      "SOJU":     "소주",
+      "BAIJIU":   "바이주",
+      "ABSINTHE": "압생트",
+      "BEER":     "맥주",
+      "OTHER":    "기타"
     },
     "noResult": {
       "title": "검색 결과가 없습니다.",

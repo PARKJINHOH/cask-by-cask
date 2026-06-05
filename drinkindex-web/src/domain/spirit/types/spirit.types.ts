@@ -44,7 +44,7 @@ export interface SpiritDetail extends SpiritListItem {
 }
 
 // ── 카테고리 상세 Enum 타입 ────────────────────────────────────
-export type WhiskyStyle = 'SINGLE_MALT' | 'BLENDED_MALT' | 'BLENDED_WHISKY' | 'BOURBON' | 'RYE' | 'CORN' | 'GRAIN' | 'POT_STILL'
+export type WhiskyStyle = 'SINGLE_MALT' | 'BLENDED_MALT' | 'BLENDED_WHISKY' | 'BOURBON' | 'RYE' | 'CORN' | 'GRAIN' | 'POT_STILL' | 'OTHER'
 export type BottlingType = 'OB' | 'IB'
 export type WhiskyCaskType = 'EX_BOURBON' | 'EX_SHERRY' | 'EX_PORT' | 'EX_WINE' | 'NEW_OAK' | 'EX_RUM' | 'EX_MADEIRA' | 'EX_SAUTERNES' | 'EX_COGNAC' | 'MIZUNARA' | 'OTHER'
 export type MaturationStyle = 'FULL_MATURATION' | 'FINISH'
@@ -71,6 +71,7 @@ export interface SpiritCommonDetailResponse {
 
 export interface WhiskyDetailResponse {
   style: WhiskyStyle | null
+  styleOther: string | null
   bottlingType: BottlingType | null
   caskType: WhiskyCaskType | null
   maturationStyle: MaturationStyle | null

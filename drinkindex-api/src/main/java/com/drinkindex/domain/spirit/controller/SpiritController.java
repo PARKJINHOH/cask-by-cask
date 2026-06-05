@@ -91,4 +91,32 @@ public class SpiritController {
         return ResponseEntity.ok(ApiResponse.success(
                 spiritService.getMyRegisterRequests(userDetails.getUserId())));
     }
+
+    @GetMapping("/requests/me/{id}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<SpiritRegisterRequestDetailResponse>> getMyRequestDetail(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(ApiResponse.success(
+                spiritService.getMyRegisterRequestDetail(id, userDetails.getUserId())));
+    }
+
+    @PutMapping("/requests/{id}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<SpiritRegisterRequestResponse>> updateMyRequest(
+            @PathVariable Long id,
+            @Valid @RequestBody SpiritRegisterRequestBody body,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(ApiResponse.success(
+                spiritService.updateMyRegisterRequest(id, body, userDetails.getUserId())));
+    }
+
+    @DeleteMapping("/requests/{id}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<Void>> deleteMyRequest(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        spiritService.deleteMyRegisterRequest(id, userDetails.getUserId());
+        return ResponseEntity.ok(ApiResponse.success());
+    }
 }

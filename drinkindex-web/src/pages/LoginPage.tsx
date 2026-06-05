@@ -89,7 +89,11 @@ function LockedBanner() {
       <div className="px-3 py-2.5">
         <p className="text-sm text-danger-700 leading-relaxed">
           비밀번호를 5회 이상 잘못 입력하여 계정이 잠겼습니다.
-          약 10분 후 다시 시도하거나, 비밀번호가 기억나지 않으면 임시 비밀번호 발급을 이용해주세요.
+          약 10분 후 다시 시도하거나, 비밀번호가 기억나지 않으면{' '}
+          <Link to="/account-recovery?tab=password" className="font-semibold underline">
+            비밀번호 재설정
+          </Link>
+          을 이용해주세요.
         </p>
       </div>
     </div>
@@ -256,10 +260,11 @@ export default function LoginPage() {
     defaultValues: { email: '', password: '' },
   })
 
-  const state = location.state as { from?: { pathname: string }; signupSuccess?: boolean; verifySuccess?: boolean } | null
+  const state = location.state as { from?: { pathname: string }; signupSuccess?: boolean; verifySuccess?: boolean; passwordResetSuccess?: boolean } | null
   const from = state?.from?.pathname ?? '/'
   const signupSuccess  = !!state?.signupSuccess
   const verifySuccess  = !!state?.verifySuccess
+  const passwordResetSuccess = !!state?.passwordResetSuccess
 
   // 이미 로그인된 사용자는 이전 페이지 또는 홈으로
   if (isLoggedIn) return <Navigate to={from} replace />
@@ -327,6 +332,16 @@ export default function LoginPage() {
           </div>
         )}
 
+        {/* 비밀번호 재설정 완료 안내 */}
+        {passwordResetSuccess && (
+          <div className="mb-4 flex items-center gap-2 px-3 py-2.5 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+            <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5l-3.5-3.5 1.41-1.41L10 13.67l6.59-6.59L18 8.5l-8 8z"/>
+            </svg>
+            비밀번호가 변경되었습니다. 새 비밀번호로 로그인해주세요.
+          </div>
+        )}
+
         {/* 회원가입 완료 안내 (하위 호환) */}
         {signupSuccess && !verifySuccess && (
           <div className="mb-4 flex items-center gap-2 px-3 py-2.5 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
@@ -369,6 +384,17 @@ export default function LoginPage() {
             로그인
           </Button>
         </form>
+
+        {/* 계정 찾기 */}
+        <div className="mt-4 flex items-center justify-center gap-3 text-xs text-neutral-500">
+          <Link to="/account-recovery?tab=email" className="hover:text-primary-800 hover:underline">
+            아이디 찾기
+          </Link>
+          <span className="text-neutral-300">|</span>
+          <Link to="/account-recovery?tab=password" className="hover:text-primary-800 hover:underline">
+            비밀번호 찾기
+          </Link>
+        </div>
 
         {/* Footer */}
         <p className="mt-6 text-center text-sm text-neutral-500">

@@ -85,6 +85,10 @@ export const adminSpiritApi = {
   approveRequest: (id: number) =>
     axiosInstance.patch<ApiResponse<null>>(`/api/admin/spirits/requests/${id}/approve`),
 
+  // 등록 요청 상세 화면(= 새 술 등록 폼)에서 관리자가 완성한 전체 상세로 승인
+  approveRequestWithDetail: (id: number, data: CreateSpiritPayload) =>
+    axiosInstance.post<ApiResponse<AdminSpiritDetail>>(`/api/admin/spirits/requests/${id}/approve`, data),
+
   rejectRequest: (id: number, rejectReason: string) =>
     axiosInstance.patch<ApiResponse<null>>(`/api/admin/spirits/requests/${id}/reject`, {
       rejectReason,

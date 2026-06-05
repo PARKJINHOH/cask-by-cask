@@ -64,4 +64,12 @@ public class SpiritRegisterRequest extends BaseTimeEntity {
     public void updateSpiritData(String spiritData) {
         this.spiritData = spiritData;
     }
+
+    /** 신청자가 수정 후 재제출 — 반려 건은 다시 검토 대기로 전환 */
+    public void resubmit() {
+        this.status = RequestStatus.PENDING;
+        this.rejectReason = null;
+        this.reviewedBy = null;
+        this.reviewedAt = null;
+    }
 }

@@ -68,6 +68,7 @@ function SpiritDetailSections({ spirit, isEn }: { spirit: SpiritDetail; isEn: bo
     BLENDED_MALT: isEn ? 'Blended Malt' : '블렌디드 몰트',
     BLENDED_WHISKY: isEn ? 'Blended Whisky' : '블렌디드 위스키',
     BOURBON: 'Bourbon', RYE: 'Rye', CORN: 'Corn', GRAIN: 'Grain', POT_STILL: 'Pot Still',
+    OTHER: isEn ? 'Other' : '기타',
   }
   const CASK_LABEL: Record<string, string> = {
     EX_BOURBON: 'Ex-Bourbon', EX_SHERRY: 'Ex-Sherry', EX_PORT: 'Ex-Port',
@@ -124,7 +125,9 @@ function SpiritDetailSections({ spirit, isEn }: { spirit: SpiritDetail; isEn: bo
           <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Whisky</h3>
           <DetailGrid>
             <DI label={isEn ? 'Style' : '스타일'}
-              value={whisky.style ? WHISKY_STYLE_LABEL[whisky.style] ?? whisky.style : null} />
+              value={whisky.style === 'OTHER'
+                ? (whisky.styleOther || WHISKY_STYLE_LABEL.OTHER || whisky.style)
+                : whisky.style ? WHISKY_STYLE_LABEL[whisky.style] ?? whisky.style : null} />
             <DI label={isEn ? 'Bottling' : '병입'} value={whisky.bottlingType} />
             <DI label={isEn ? 'Cask' : '캐스크'}
               value={whisky.caskType ? CASK_LABEL[whisky.caskType] ?? whisky.caskType : null} />

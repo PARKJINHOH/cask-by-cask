@@ -72,13 +72,17 @@ public class SpiritDetailService {
     // 신청자가 요청 시 고른 핵심값(스타일/와인종류/등급/주종)을 승인된 주류 상세에 자동 반영.
     // 이미 상세 행이 있거나 값이 없으면 건너뜀. 관리자는 이후 주류 수정에서 보완 가능.
     public void saveCategoryCore(Spirit spirit,
-                                 WhiskyStyle whiskyStyle, WineType wineType,
+                                 WhiskyStyle whiskyStyle, String whiskyStyleOther,
+                                 WineType wineType,
                                  CognacGrade cognacGrade, OtherSpiritType otherType) {
         switch (spirit.getCategory()) {
             case WHISKY -> {
-                if (whiskyStyle != null && whiskyDetailRepo.findById(spirit.getId()).isEmpty())
+                if (whiskyStyle != null && whiskyDetailRepo.findById(spirit.getId()).isEmpty()) {
+                    Map<String, Object> extra = new LinkedHashMap<>();
+                    extra.put("styleOther", whiskyStyle == WhiskyStyle.OTHER ? whiskyStyleOther : null);
                     whiskyDetailRepo.save(SpiritWhiskyDetail.builder()
-                        .spirit(spirit).style(whiskyStyle).build());
+                        .spirit(spirit).style(whiskyStyle).extraData(serialize(extra)).build());
+                }
             }
             case WINE -> {
                 if (wineType != null && wineDetailRepo.findById(spirit.getId()).isEmpty())
@@ -134,6 +138,8 @@ public class SpiritDetailService {
         Map<String, Object> extra = new LinkedHashMap<>();
         extra.put("caskNo", req.caskNo());
         extra.put("finishCaskDetail", req.finishCaskDetail());
+        // 스타일 직접 입력은 style=OTHER 일 때만 보존
+        extra.put("styleOther", req.style() == WhiskyStyle.OTHER ? req.styleOther() : null);
         String extraJson = serialize(extra);
 
         WhiskyCaskType finishCask = matStyle == MaturationStyle.FINISH ? req.finishCaskType() : null;
@@ -282,7 +288,7 @@ public class SpiritDetailService {
         if (detail == null) return null;
         Map<String, Object> extra = parseExtra(detail.getExtraData());
         return new WhiskyDetailResponse(
-                detail.getStyle(), detail.getBottlingType(),
+                detail.getStyle(), str(extra, "styleOther"), detail.getBottlingType(),
                 detail.getCaskType(), detail.getMaturationStyle(), detail.getFinishCaskType(),
                 detail.getIsNonChillFiltered(), detail.getIsNaturalColour(),
                 detail.getIsSingleCask(), detail.getIsCaskStrength(), detail.getIsPeated(),

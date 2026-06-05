@@ -1,6 +1,6 @@
 import axiosInstance from '@/shared/api/axiosInstance'
 import type { ApiResponse } from '@/shared/types/common.types'
-import type { LoginRequest, LoginResponse, SignupRequest, UserInfo, VerifyEmailRequest, CheckAvailableResponse, ReactivateRequest } from '../types/auth.types'
+import type { LoginRequest, LoginResponse, SignupRequest, UserInfo, VerifyEmailRequest, CheckAvailableResponse, ReactivateRequest, FindEmailResponse, PasswordResetVerifyRequest, PasswordResetConfirmRequest } from '../types/auth.types'
 
 export const authApi = {
   login: (data: LoginRequest) =>
@@ -29,4 +29,16 @@ export const authApi = {
 
   verifyEmail: (data: VerifyEmailRequest) =>
     axiosInstance.post<ApiResponse<null>>('/api/auth/verify-email', data),
+
+  findEmail: (nickname: string) =>
+    axiosInstance.post<ApiResponse<FindEmailResponse>>('/api/auth/find-email', { nickname }),
+
+  sendPasswordResetCode: (email: string) =>
+    axiosInstance.post<ApiResponse<null>>('/api/auth/password-reset/send-code', { email }),
+
+  verifyPasswordResetCode: (data: PasswordResetVerifyRequest) =>
+    axiosInstance.post<ApiResponse<null>>('/api/auth/password-reset/verify-code', data),
+
+  confirmPasswordReset: (data: PasswordResetConfirmRequest) =>
+    axiosInstance.post<ApiResponse<null>>('/api/auth/password-reset/confirm', data),
 }

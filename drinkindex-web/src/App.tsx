@@ -12,6 +12,7 @@ import NoticePage from '@/pages/NoticePage'
 import NoticeDetailPage from '@/pages/NoticeDetailPage'
 import LoginPage from '@/pages/LoginPage'
 import SignupPage from '@/pages/SignupPage'
+import AccountRecoveryPage from '@/pages/AccountRecoveryPage'
 import MyPage from '@/pages/MyPage'
 import RankingPage from '@/pages/RankingPage'
 import SpiritRequestPage from '@/pages/SpiritRequestPage'
@@ -91,6 +92,7 @@ export default function App() {
             <Route path="ranking" element={<RankingPage />} />
             <Route path="login" element={<LoginPage />} />
             <Route path="signup" element={<SignupPage />} />
+            <Route path="account-recovery" element={<AccountRecoveryPage />} />
             <Route path="terms" element={<TermsPage />} />
             <Route path="privacy" element={<PrivacyPage />} />
             <Route path="inquiry" element={<InquiryPage />} />
@@ -134,7 +136,6 @@ export default function App() {
               <Route path="spirits" element={<AdminSpiritPage />} />
               <Route path="spirits/new" element={<AdminSpiritFormPage />} />
               <Route path="spirits/:id" element={<AdminSpiritDetailPage />} />
-              <Route path="spirits/:id/edit" element={<AdminSpiritFormPage />} />
               <Route path="spirits/requests" element={<AdminRequestPage />} />
               <Route path="spirits/requests/:id" element={<AdminRequestDetailPage />} />
               <Route path="producers" element={<AdminProducerPage />} />

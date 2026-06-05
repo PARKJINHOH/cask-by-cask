@@ -11,6 +11,10 @@ public record WhiskyDetailRequest(
         @Schema(description = "위스키 스타일 (SINGLE_MALT, BLENDED_MALT 등)")
         WhiskyStyle style,
 
+        @Schema(description = "위스키 스타일 직접 입력 (style=OTHER 일 때만 유효)")
+        @Size(max = 100, message = "스타일 직접 입력은 100자 이하여야 합니다.")
+        String styleOther,
+
         @Schema(description = "병입 구분 (OB=증류소 직접, IB=독립 병입사)")
         BottlingType bottlingType,
 

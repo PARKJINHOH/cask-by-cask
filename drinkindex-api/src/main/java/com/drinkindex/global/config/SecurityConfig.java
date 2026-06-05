@@ -142,6 +142,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/auth/send-verification").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/verify-email").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/reactivate").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/find-email").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/password-reset/**").permitAll()
                         .requestMatchers("/api/admin/role-types/**").hasAnyRole("SUPER_ADMIN", "ADMIN")
                         .requestMatchers("/api/admin/logs/**").hasAnyRole("SUPER_ADMIN", "ADMIN")
                         .requestMatchers("/api/admin/spirits/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "PARTNER")

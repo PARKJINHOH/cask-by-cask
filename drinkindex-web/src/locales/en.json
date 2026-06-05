@@ -3,6 +3,23 @@
     "name": "DrinkIndex",
     "tagline": "Whisky · Cognac · Wine Community"
   },
+  "producerSelector": {
+    "placeholder": "Select producer...",
+    "searchPlaceholder": "Search by name...",
+    "noResult": "No results found.",
+    "typeToSearch": "Type a name to search.",
+    "createNew": "+ Register a producer not in the list",
+    "newNameKo": "Korean name",
+    "newNameEn": "English name",
+    "newCountry": "Country",
+    "newNameKoPh": "e.g. Suntory",
+    "newNameEnPh": "e.g. Suntory",
+    "newCountryPh": "e.g. Japan",
+    "createSubmit": "Submit",
+    "createCancel": "Cancel",
+    "createRequired": "Please enter Korean name, English name, and country.",
+    "createPending": "Your producer registration request has been submitted. It will be selectable after admin approval."
+  },
   "pwReminder": {
     "message": "It has been over 90 days since you changed your password. Please update it to keep your account secure.",
     "action": "Change password",
@@ -116,14 +133,21 @@
       "nameEn": "English Name",
       "category": "Category",
       "categoryPlaceholder": "Select category",
-      "abv": "ABV (%)",
+      "abv": "ABV",
       "country": "Country",
       "region": "Region",
       "bottler": "Bottler",
+      "caskNo": "Cask No.",
       "bottledYear": "Bottled Year",
       "vintageYear": "Vintage Year",
       "producer": "Producer",
-      "volumeMl": "Volume (ml)",
+      "producerByCategory": {
+        "WHISKY": "Distillery",
+        "COGNAC": "Distillery",
+        "WINE": "Winery",
+        "OTHER": "Producer"
+      },
+      "volumeMl": "Volume",
       "submit": "Submit Request",
       "success": "Your request has been submitted successfully.",
       "requiredSection": "Required",
@@ -133,7 +157,44 @@
       "errNameEn": "Please enter the English name.",
       "errCategory": "Please select a category.",
       "errAbv": "Please enter ABV (0–100).",
-      "errVolume": "Please enter the volume (ml)."
+      "errVolume": "Please enter the volume (ml).",
+      "errDateFormat": "Format: YYYY or YYYY-MM",
+      "categoryStep": "Select Category",
+      "categoryStepHint": "Choose the type of spirit first.",
+      "basicStep": "Basic Info",
+      "basicStepHint": "required",
+      "detailStep": "Additional Info",
+      "detailStepHint": "optional",
+      "selectCategoryFirst": "Select a category to reveal the input fields.",
+      "categoryCore": {
+        "WHISKY": "Whisky Style",
+        "WINE": "Wine Type",
+        "COGNAC": "Cognac Grade",
+        "OTHER": "Spirit Type"
+      },
+      "categoryCorePlaceholder": "Please select",
+      "errCategoryCore": "Please select a sub-type.",
+      "whiskyStyleOther": "Custom style",
+      "whiskyStyleOtherPlaceholder": "e.g. Light Whisky, Single Grain",
+      "errWhiskyStyleOther": "Please enter the style.",
+      "selectNone": "None",
+      "ageStatement": "Age Statement",
+      "nas": "NAS (No Age Statement)",
+      "nasHint": "(Not saved when NAS is checked)",
+      "agePlaceholder": "e.g. 12",
+      "distilledDate": "Distilled (Year/Month)",
+      "bottledDate": "Bottled (Year/Month)",
+      "releaseDate": "Release Date",
+      "producerCountryRegion": "Producer / Country · Region",
+      "note": "Additional notes",
+      "notePlaceholder": "e.g. Newly released product. / Vintage item — no info on external sites.",
+      "noteHint": "Add any notes for the administrator here. (max 500 characters)",
+      "submitEdit": "Save Changes",
+      "editMode": "Editing request",
+      "editModeHint": "After saving, the request will return to pending review.",
+      "cancelEdit": "Cancel Edit",
+      "editSuccess": "Your request has been updated.",
+      "loadError": "Failed to load the request."
     },
     "myRequests": {
       "title": "My Requests",
@@ -145,7 +206,11 @@
       },
       "rejectReason": "Rejection Reason",
       "requestedAt": "Requested",
-      "reviewedAt": "Reviewed"
+      "reviewedAt": "Reviewed",
+      "edit": "Edit",
+      "delete": "Delete",
+      "deleteConfirm": "Delete this registration request?",
+      "lockedHint": "Approved requests cannot be edited or deleted."
     }
   },
   "producerDetail": {
@@ -267,7 +332,8 @@
       "RYE":            "Rye",
       "CORN":           "Corn",
       "GRAIN":          "Grain",
-      "POT_STILL":      "Pot Still"
+      "POT_STILL":      "Pot Still",
+      "OTHER":          "Other"
     },
     "wineType": {
       "RED":       "Red",
@@ -284,6 +350,21 @@
       "XO":        "XO",
       "XXO":       "XXO",
       "HORS_DAGE": "Hors d'Age"
+    },
+    "otherType": {
+      "RUM":      "Rum",
+      "GIN":      "Gin",
+      "VODKA":    "Vodka",
+      "TEQUILA":  "Tequila",
+      "MEZCAL":   "Mezcal",
+      "BRANDY":   "Brandy",
+      "LIQUEUR":  "Liqueur",
+      "SAKE":     "Sake",
+      "SOJU":     "Soju",
+      "BAIJIU":   "Baijiu",
+      "ABSINTHE": "Absinthe",
+      "BEER":     "Beer",
+      "OTHER":    "Other"
     },
     "noResult": {
       "title": "No results found.",

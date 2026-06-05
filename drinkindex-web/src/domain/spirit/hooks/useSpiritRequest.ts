@@ -21,3 +21,24 @@ export function useSubmitRequest() {
     },
   })
 }
+
+export function useUpdateMyRequest() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: SpiritRegisterRequestForm }) =>
+      spiritRequestApi.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['spirit-requests', 'me'] })
+    },
+  })
+}
+
+export function useDeleteMyRequest() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => spiritRequestApi.remove(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['spirit-requests', 'me'] })
+    },
+  })
+}

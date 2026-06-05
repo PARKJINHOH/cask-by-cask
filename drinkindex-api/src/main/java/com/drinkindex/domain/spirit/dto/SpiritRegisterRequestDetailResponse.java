@@ -9,6 +9,7 @@ import com.drinkindex.domain.spirit.entity.enums.CognacGrade;
 import com.drinkindex.domain.spirit.entity.enums.OtherSpiritType;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -28,11 +29,19 @@ public record SpiritRegisterRequestDetailResponse(
         Integer volumeMl,
         String country,
         String region,
+        Integer ageStatement,
+        Boolean isNas,
+        String distilledDate,
+        String bottledDate,
+        LocalDate releaseDate,
         WhiskyStyle whiskyStyle,
+        String whiskyStyleOther,
+        String caskNo,
         WineType wineType,
         CognacGrade cognacGrade,
         OtherSpiritType otherType,
         List<String> imageUrls,
+        String note,
         RequestStatus status,
         String rejectReason,
         LocalDateTime createdAt,
@@ -58,11 +67,19 @@ public record SpiritRegisterRequestDetailResponse(
                 body.volumeMl(),
                 body.country(),
                 body.region(),
+                body.ageStatement(),
+                body.isNas(),
+                body.distilledDate(),
+                body.bottledDate(),
+                body.releaseDate(),
                 body.whiskyStyle(),
+                body.whiskyStyleOther(),
+                body.caskNo(),
                 body.wineType(),
                 body.cognacGrade(),
                 body.otherType(),
                 body.imageUrls() != null ? body.imageUrls() : List.of(),
+                body.note(),
                 req.getStatus(),
                 req.getRejectReason(),
                 req.getCreatedAt(),

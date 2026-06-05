@@ -1,6 +1,5 @@
-﻿import { useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
 import Badge from '@/shared/components/Badge'
 import Button from '@/shared/components/Button'
 import Spinner from '@/shared/components/Spinner'
@@ -8,46 +7,17 @@ import AdminPageHeader from '@/shared/components/AdminPageHeader'
 import { formatDate } from '@/shared/utils/format'
 import {
   useAdminRequestDetail,
-  useUpdateRequest,
   useUploadRequestImage,
   useRemoveRequestImage,
-  useApproveRequest,
+  useApproveRequestWithDetail,
   useRejectRequest,
 } from '@/domain/admin/hooks/useAdminSpirits'
-import type { UpdateRequestBody } from '@/domain/admin/types/admin.types'
-import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
-
-const INPUT_CLS = 'w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400'
-import SpiritOptionalFields from '@/domain/admin/components/SpiritOptionalFields'
-import { ISO3166_COUNTRIES } from '@/domain/location/data/iso3166Countries'
+import SpiritFormFields, { useSpiritForm, CARD } from '@/domain/admin/components/SpiritFormFields'
 
 // ── 상수 ────────────────────────────────────────────────────────
-
-const CATEGORIES: SpiritCategory[] = ['WHISKY', 'COGNAC', 'WINE', 'OTHER']
-const CATEGORY_LABEL: Record<string, string> = {
-  WHISKY: '위스키', COGNAC: '꼬냑', WINE: '와인', OTHER: '기타',
-}
 const STATUS_LABEL: Record<string, string> = {
   PENDING: '대기 중', APPROVED: '승인됨', REJECTED: '반려됨',
 }
-
-// 신청자가 요청 시 입력한 카테고리 핵심값 라벨
-const WHISKY_STYLE_LABEL: Record<string, string> = {
-  SINGLE_MALT: '싱글 몰트', BLENDED_MALT: '블렌디드 몰트', BLENDED_WHISKY: '블렌디드 위스키',
-  BOURBON: '버번', RYE: '라이', CORN: '콘', GRAIN: '그레인', POT_STILL: '팟 스틸',
-}
-const WINE_TYPE_LABEL: Record<string, string> = {
-  RED: '레드', WHITE: '화이트', ROSE: '로제', SPARKLING: '스파클링', DESSERT: '디저트', ORANGE: '오렌지',
-}
-const COGNAC_GRADE_LABEL: Record<string, string> = {
-  VS: 'VS', NAPOLEON: '나폴레옹', VSOP: 'VSOP', XO: 'XO', XXO: 'XXO', HORS_DAGE: "Hors d'Âge",
-}
-const OTHER_TYPE_LABEL: Record<string, string> = {
-  RUM: '럼', GIN: '진', VODKA: '보드카', TEQUILA: '데킬라', MEZCAL: '메스칼', BRANDY: '브랜디',
-  LIQUEUR: '리큐르', SAKE: '사케', SOJU: '소주', BAIJIU: '바이주', ABSINTHE: '압생트', BEER: '맥주', OTHER: '기타',
-}
-
-// ── 필드 행 ─────────────────────────────────────────────────────
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -59,13 +29,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 }
 
 // ── 이미지 섹션 ──────────────────────────────────────────────────
-
-interface ImageSectionProps {
-  requestId: number
-  imageUrls: string[]
-}
-
-function ImageSection({ requestId, imageUrls }: ImageSectionProps) {
+function ImageSection({ requestId, imageUrls }: { requestId: number; imageUrls: string[] }) {
   const fileRef = useRef<HTMLInputElement>(null)
   const upload = useUploadRequestImage()
   const remove = useRemoveRequestImage()
@@ -76,33 +40,20 @@ function ImageSection({ requestId, imageUrls }: ImageSectionProps) {
     upload.mutate({ id: requestId, file })
     e.target.value = ''
   }
-
   const handleRemove = (url: string) => {
     if (!confirm('이미지를 삭제하시겠습니까?')) return
     remove.mutate({ id: requestId, imageUrl: url })
   }
 
   return (
-    <div className="space-y-3">
+    <div className={CARD}>
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-neutral-700">이미지</h3>
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => fileRef.current?.click()}
-          isLoading={upload.isPending}
-        >
+        <Button variant="secondary" size="sm" onClick={() => fileRef.current?.click()} isLoading={upload.isPending}>
           + 이미지 추가
         </Button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/jpeg,image/png"
-          className="hidden"
-          onChange={handleFileChange}
-        />
+        <input ref={fileRef} type="file" accept="image/jpeg,image/png" className="hidden" onChange={handleFileChange} />
       </div>
-
       {imageUrls.length === 0 ? (
         <p className="text-xs text-neutral-400">등록된 이미지가 없습니다.</p>
       ) : (
@@ -127,66 +78,34 @@ function ImageSection({ requestId, imageUrls }: ImageSectionProps) {
 }
 
 // ── 메인 페이지 ────────────────────────────────────────────────
-
 export default function AdminRequestDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const requestId = Number(id)
 
   const { data: req, isLoading } = useAdminRequestDetail(requestId)
-  const updateRequest = useUpdateRequest()
-  const approve = useApproveRequest()
+  const approve = useApproveRequestWithDetail()
   const reject = useRejectRequest()
 
+  const form = useSpiritForm()
+
+  const [actionError, setActionError] = useState('')
   const [rejectMode, setRejectMode] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
-  const [actionError, setActionError] = useState('')
-  const [savedMsg, setSavedMsg] = useState('')
-
-  const [countryCode, setCountryCode] = useState<string | null>(null)
-  const [countryNameKo, setCountryNameKo] = useState('')
-  const [regionNameKo, setRegionNameKo] = useState('')
-
-  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<UpdateRequestBody>()
-
-  // 데이터 로드 후 폼 초기화 (req가 바뀔 때만)
   const [initialized, setInitialized] = useState(false)
+
+  // 신청 데이터 → 폼 프리필 (한 번만)
   if (req && !initialized) {
-    setValue('nameKo', req.nameKo)
-    setValue('nameEn', req.nameEn)
-    setValue('category', req.category)
-    setValue('producerId', req.producerId ?? undefined)
-    setValue('bottler', req.bottler ?? undefined)
-    setValue('bottledYear', req.bottledYear ?? undefined)
-    setValue('vintageYear', req.vintageYear ?? undefined)
-    setValue('abv', req.abv ?? undefined)
-    setValue('volumeMl', req.volumeMl ?? undefined)
-    const matched = ISO3166_COUNTRIES.find((c) => c.nameKo === req.country)
-    setCountryCode(matched?.code ?? null)
-    setCountryNameKo(req.country ?? '')
-    setRegionNameKo(req.region ?? '')
+    form.prefillFromRequest(req)
     setInitialized(true)
   }
 
-  const onSave = (data: UpdateRequestBody) => {
-    setActionError('')
-    updateRequest.mutate(
-      { id: requestId, data: { ...data, country: countryNameKo || null, region: regionNameKo || null } },
-      {
-        onSuccess: () => {
-          setSavedMsg('저장되었습니다.')
-          setTimeout(() => setSavedMsg(''), 3000)
-        },
-        onError: () => setActionError('저장 중 오류가 발생했습니다.'),
-      },
-    )
-  }
-
   const handleApprove = async () => {
+    if (!form.validate()) { window.scrollTo({ top: 0, behavior: 'smooth' }); return }
     setActionError('')
     try {
-      await approve.mutateAsync(requestId)
-      navigate('/admin/spirits/requests')
+      const res = await approve.mutateAsync({ id: requestId, data: form.buildPayload() })
+      navigate(`/admin/spirits/${res.data.data?.id ?? ''}`)
     } catch {
       setActionError('승인 처리 중 오류가 발생했습니다.')
     }
@@ -204,25 +123,16 @@ export default function AdminRequestDetailPage() {
   }
 
   if (isLoading) {
-    return (
-      <div className="flex justify-center items-center py-40">
-        <Spinner size="lg" className="text-primary-800" />
-      </div>
-    )
+    return <div className="flex justify-center items-center py-40"><Spinner size="lg" className="text-primary-800" /></div>
   }
-
   if (!req) {
-    return (
-      <div className="p-6">
-        <p className="text-neutral-500">요청 데이터를 찾을 수 없습니다.</p>
-      </div>
-    )
+    return <div className="p-6"><p className="text-neutral-500">요청 데이터를 찾을 수 없습니다.</p></div>
   }
 
   const isPending = req.status === 'PENDING'
 
   return (
-    <div className="p-6 max-w-3xl space-y-6">
+    <div className="p-6 mx-auto space-y-6 pb-28 max-w-3xl lg:max-w-6xl">
       {/* 헤더 */}
       <AdminPageHeader
         breadcrumbs={[
@@ -235,179 +145,52 @@ export default function AdminRequestDetailPage() {
         badge={<Badge variant={req.status} size="md">{STATUS_LABEL[req.status]}</Badge>}
       />
 
-      {/* 요청 메타 정보 */}
+      {/* 신청자 / 신청일 영역 */}
       <div className="bg-white rounded-xl shadow-sm p-5">
         <Row label="신청자">{req.requesterNickname}</Row>
         <Row label="신청일">{formatDate(req.createdAt)}</Row>
-        {/* 신청자가 요청 시 입력한 카테고리 핵심값 (등록 참고용) */}
-        {req.category === 'WHISKY' && req.whiskyStyle && (
-          <Row label="스타일(신청)"><span className="text-amber-700">{WHISKY_STYLE_LABEL[req.whiskyStyle] ?? req.whiskyStyle}</span></Row>
-        )}
-        {req.category === 'WINE' && req.wineType && (
-          <Row label="와인 종류(신청)"><span className="text-amber-700">{WINE_TYPE_LABEL[req.wineType] ?? req.wineType}</span></Row>
-        )}
-        {req.category === 'COGNAC' && req.cognacGrade && (
-          <Row label="등급(신청)"><span className="text-amber-700">{COGNAC_GRADE_LABEL[req.cognacGrade] ?? req.cognacGrade}</span></Row>
-        )}
-        {req.category === 'OTHER' && req.otherType && (
-          <Row label="주종(신청)"><span className="text-amber-700">{OTHER_TYPE_LABEL[req.otherType] ?? req.otherType}</span></Row>
+        {req.note && (
+          <Row label="기타 문구"><span className="whitespace-pre-wrap text-neutral-700">{req.note}</span></Row>
         )}
         {req.reviewedAt && <Row label="처리일">{formatDate(req.reviewedAt)}</Row>}
         {req.rejectReason && (
-          <Row label="반려 사유">
-            <span className="text-red-600">{req.rejectReason}</span>
-          </Row>
+          <Row label="반려 사유"><span className="text-red-600">{req.rejectReason}</span></Row>
         )}
       </div>
 
-      {/* 수정 폼 */}
-      <form onSubmit={handleSubmit(onSave)} noValidate>
-        <div className="bg-white rounded-xl shadow-sm p-5 space-y-5">
-          <h2 className="text-sm font-semibold text-neutral-700 border-b border-neutral-100 pb-3">기본 정보 수정</h2>
+      {/* 공유 폼 (좌측 하단에 이미지 카드 주입) */}
+      <SpiritFormFields
+        form={form}
+        imageSlot={<ImageSection requestId={requestId} imageUrls={req.imageUrls} />}
+      />
 
-          {/* nameEn / nameKo */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="block text-xs font-medium text-neutral-600">영어 이름 *</label>
-              <input
-                {...register('nameEn', { required: true })}
-                className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none
-                  focus:ring-2 focus:ring-primary-400 ${errors.nameEn ? 'border-red-400' : 'border-neutral-200'}`}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="block text-xs font-medium text-neutral-600">한국어 이름 *</label>
-              <input
-                {...register('nameKo', { required: true })}
-                className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none
-                  focus:ring-2 focus:ring-primary-400 ${errors.nameKo ? 'border-red-400' : 'border-neutral-200'}`}
-              />
-            </div>
-          </div>
+      {actionError && (
+        <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{actionError}</p>
+      )}
 
-          {/* category */}
-          <div className="space-y-1.5">
-            <label className="block text-xs font-medium text-neutral-600">카테고리 *</label>
-            <select
-              {...register('category', { required: true })}
-              className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg
-                focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
-            >
-              {CATEGORIES.map(cat => (
-                <option key={cat} value={cat}>{CATEGORY_LABEL[cat]}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* 필수 정보 */}
-          <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-4 space-y-4">
-            <p className="text-xs font-semibold text-amber-700">필수 정보</p>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="block text-xs font-medium text-neutral-600">
-                  도수 (%) <span className="text-red-400">*</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type="number" step="0.1" min="0" max="100"
-                    {...register('abv', { valueAsNumber: true })}
-                    className={`${INPUT_CLS} pr-8`}
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">%</span>
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <label className="block text-xs font-medium text-neutral-600">
-                  용량 (ml) <span className="text-red-400">*</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type="number" step="1" min="1"
-                    {...register('volumeMl', { valueAsNumber: true })}
-                    className={`${INPUT_CLS} pr-10`}
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">ml</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* 선택 옵션 */}
-          <div className="border-t border-neutral-100 pt-4">
-            <p className="text-xs font-medium text-neutral-500 mb-4">선택 옵션</p>
-            <SpiritOptionalFields
-              register={register}
-              setValue={setValue}
-              watch={watch}
-              countryCode={countryCode}
-              countryNameKo={countryNameKo}
-              regionNameKo={regionNameKo}
-              onCountryChange={(code, nameKo) => { setCountryCode(code); setCountryNameKo(nameKo) }}
-              onRegionChange={(nameKo) => setRegionNameKo(nameKo)}
-              defaultProducerName={req.producerNameKo ?? undefined}
-              initialValues={req}
-              dataReady={initialized}
-              category={watch('category') as SpiritCategory}
-              hiddenFields={['abv', 'volumeMl']}
-            />
-          </div>
-
-          {savedMsg && (
-            <p className="text-sm text-green-600 bg-green-50 rounded-lg px-3 py-2">{savedMsg}</p>
-          )}
-
-          <div className="flex justify-end">
-            <Button type="submit" size="sm" isLoading={updateRequest.isPending}>
-              변경사항 저장
-            </Button>
+      {/* 반려 입력 (PENDING 시) */}
+      {isPending && rejectMode && (
+        <div className="bg-white rounded-xl shadow-sm p-5 space-y-3">
+          <label className="block text-sm font-medium text-neutral-700">반려 사유</label>
+          <textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} rows={3} maxLength={500}
+            placeholder="반려 사유를 입력하세요..."
+            className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg resize-none
+              focus:outline-none focus:ring-2 focus:ring-primary-400" />
+          <p className="text-xs text-neutral-400 text-right">{rejectReason.length}/500</p>
+          <div className="flex gap-2 justify-end">
+            <Button variant="ghost" size="sm" onClick={() => { setRejectMode(false); setRejectReason('') }}>취소</Button>
+            <Button variant="danger" size="sm" onClick={handleReject} isLoading={reject.isPending}>반려 확인</Button>
           </div>
         </div>
-      </form>
+      )}
 
-      {/* 이미지 */}
-      <div className="bg-white rounded-xl shadow-sm p-5">
-        <ImageSection requestId={requestId} imageUrls={req.imageUrls} />
-      </div>
-
-      {/* 승인 / 반려 */}
-      {isPending && (
-        <div className="bg-white rounded-xl shadow-sm p-5 space-y-4">
-          <h2 className="text-sm font-semibold text-neutral-700">처리</h2>
-
-          {rejectMode ? (
-            <div className="space-y-3">
-              <label className="block text-sm font-medium text-neutral-700">반려 사유</label>
-              <textarea
-                value={rejectReason}
-                onChange={(e) => setRejectReason(e.target.value)}
-                rows={3}
-                maxLength={500}
-                placeholder="반려 사유를 입력하세요..."
-                className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg resize-none
-                  focus:outline-none focus:ring-2 focus:ring-primary-400"
-              />
-              <p className="text-xs text-neutral-400 text-right">{rejectReason.length}/500</p>
-              <div className="flex gap-2 justify-end">
-                <Button variant="ghost" size="sm" onClick={() => { setRejectMode(false); setRejectReason('') }}>
-                  취소
-                </Button>
-                <Button variant="danger" size="sm" onClick={handleReject} isLoading={reject.isPending}>
-                  반려 확인
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="flex gap-2 justify-end">
-              <Button variant="danger" size="sm" onClick={() => setRejectMode(true)}>
-                반려
-              </Button>
-              <Button size="sm" onClick={handleApprove} isLoading={approve.isPending}>
-                승인
-              </Button>
-            </div>
-          )}
-
-          {actionError && <p className="text-sm text-red-600">{actionError}</p>}
+      {/* 하단 고정 액션바 */}
+      {isPending && !rejectMode && (
+        <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/90 backdrop-blur border-t border-neutral-200">
+          <div className="max-w-3xl lg:max-w-6xl mx-auto px-6 py-3 flex justify-end gap-2">
+            <Button variant="danger" onClick={() => setRejectMode(true)}>반려</Button>
+            <Button onClick={handleApprove} isLoading={approve.isPending}>승인 및 등록</Button>
+          </div>
         </div>
       )}
     </div>

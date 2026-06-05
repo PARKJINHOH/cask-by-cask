@@ -21,6 +21,7 @@ import com.drinkindex.domain.user.entity.enums.Role;
 import com.drinkindex.domain.user.repository.UserRepository;
 import com.drinkindex.global.exception.CustomException;
 import com.drinkindex.global.exception.ErrorCode;
+import com.drinkindex.global.util.BadWordFilter;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -62,6 +63,7 @@ public class SpiritService {
     private final SpiritDetailService spiritDetailService;
     private final ScoreService scoreService;
     private final NotificationService notificationService;
+    private final BadWordFilter badWordFilter;
 
     // ── 공개 조회 ──────────────────────────────────────────
 
@@ -186,6 +188,12 @@ public class SpiritService {
             SpiritRegisterRequestBody body, Long userId) {
         User user = getUser(userId);
 
+        // 카테고리 핵심값 필수 (신청자 제출 경로)
+        if (!body.hasCategoryCore()) throw new CustomException(ErrorCode.INVALID_INPUT);
+
+        // 욕설 필터 — 신청자가 입력한 기타 문구 검사
+        badWordFilter.validate(body.note());
+
         String spiritData;
         try {
             spiritData = objectMapper.writeValueAsString(body);
@@ -214,13 +222,70 @@ public class SpiritService {
                 .toList();
     }
 
+    /** 본인 요청 상세 (수정 폼 프리필용) */
+    @Transactional(readOnly = true)
+    public SpiritRegisterRequestDetailResponse getMyRegisterRequestDetail(Long requestId, Long userId) {
+        SpiritRegisterRequest req = getRegisterRequest(requestId);
+        verifyRequestOwner(req, userId);
+        SpiritRegisterRequestBody body = parseSpiritData(req.getSpiritData());
+        return SpiritRegisterRequestDetailResponse.of(req, body, resolveProducerName(body.producerId()));
+    }
+
+    /** 본인 요청 수정 — 검토 중(PENDING)·반려(REJECTED)만 가능. 반려 건은 재검토(PENDING) 전환. */
+    @Transactional
+    public SpiritRegisterRequestResponse updateMyRegisterRequest(
+            Long requestId, SpiritRegisterRequestBody body, Long userId) {
+        SpiritRegisterRequest req = getRegisterRequest(requestId);
+        verifyRequestOwner(req, userId);
+        if (req.getStatus() == RequestStatus.APPROVED) {
+            throw new CustomException(ErrorCode.SPIRIT_REQUEST_NOT_EDITABLE);
+        }
+
+        // 카테고리 핵심값 필수 (신청자 수정 경로)
+        if (!body.hasCategoryCore()) throw new CustomException(ErrorCode.INVALID_INPUT);
+
+        badWordFilter.validate(body.note());
+
+        // 이미지 URL은 별도 엔드포인트로만 관리 — 필드 수정 시 기존 이미지 보존
+        SpiritRegisterRequestBody existing = parseSpiritData(req.getSpiritData());
+        SpiritRegisterRequestBody merged = withImageUrls(body, existing.imageUrls());
+
+        req.updateSpiritData(serialize(merged));
+        req.resubmit(); // 반려 건이면 PENDING 으로 복귀, 반려 사유 초기화
+
+        return toRegisterResponse(req, merged.nameKo(), merged.nameEn(), merged.category());
+    }
+
+    /** 본인 요청 삭제 — 승인 건 제외. 지급된 등록 점수 회수. */
+    @Transactional
+    public void deleteMyRegisterRequest(Long requestId, Long userId) {
+        SpiritRegisterRequest req = getRegisterRequest(requestId);
+        verifyRequestOwner(req, userId);
+        if (req.getStatus() == RequestStatus.APPROVED) {
+            throw new CustomException(ErrorCode.SPIRIT_REQUEST_NOT_EDITABLE);
+        }
+
+        // [숙성력] 등록 시 지급된 점수 회수 (지급 이력 기반, 익명·관리자면 자동 스킵)
+        scoreService.deductByReference(userId, ScoreActions.SPIRIT_REQUEST, "SPIRIT_REQUEST", requestId);
+
+        registerRequestRepository.delete(req);
+    }
+
+    private void verifyRequestOwner(SpiritRegisterRequest req, Long userId) {
+        if (!req.getUser().getId().equals(userId)) {
+            throw new CustomException(ErrorCode.SPIRIT_REQUEST_ACCESS_DENIED);
+        }
+    }
+
     // ── 관리자 — 등록 요청 처리 ─────────────────────────────
 
     @Transactional(readOnly = true)
     public Page<SpiritRegisterRequestResponse> getRegisterRequests(
             RequestStatus status, Pageable pageable) {
-        return registerRequestRepository.findByStatus(status, pageable)
-                .map(this::parseRegisterResponse);
+        Page<SpiritRegisterRequest> page = (status == null)
+                ? registerRequestRepository.findAll(pageable)
+                : registerRequestRepository.findByStatus(status, pageable);
+        return page.map(this::parseRegisterResponse);
     }
 
     @Transactional(readOnly = true)
@@ -241,9 +306,13 @@ public class SpiritService {
                 body.nameKo(), body.nameEn(), body.category(),
                 body.producerId(), body.bottler(), body.bottledYear(), body.vintageYear(),
                 body.abv(), body.volumeMl(), body.country(), body.region(),
-                // 카테고리 핵심값은 신청자 입력 — 관리자 수정 폼에 없으므로 기존값 보존
-                existing.whiskyStyle(), existing.wineType(), existing.cognacGrade(), existing.otherType(),
-                existing.imageUrls()
+                // 신청자 입력 상세값(숙성/연월/카테고리 핵심값)은 관리자 수정 폼에 없으므로 기존값 보존
+                existing.ageStatement(), existing.isNas(), existing.distilledDate(),
+                existing.bottledDate(), existing.releaseDate(),
+                existing.whiskyStyle(), existing.whiskyStyleOther(), existing.caskNo(),
+                existing.wineType(), existing.cognacGrade(), existing.otherType(),
+                existing.imageUrls(),
+                existing.note()
         );
 
         req.updateSpiritData(serialize(merged));
@@ -306,9 +375,17 @@ public class SpiritService {
 
         Spirit saved = spiritRepository.save(spirit);
 
+        // 신청자가 요청 시 입력한 공통 상세값(숙성/증류·병입 연월/출시일/도수/용량)을 자동 반영
+        spiritDetailService.saveCommonDetail(saved, new SpiritCommonDetailRequest(
+                body.isNas(), body.ageStatement(),
+                body.distilledDate(), body.bottledDate(), body.releaseDate(),
+                body.volumeMl(), body.abv(),
+                null, null, null));
+
         // 신청자가 요청 시 입력한 카테고리 핵심값을 상세에 자동 반영
         spiritDetailService.saveCategoryCore(saved,
-                body.whiskyStyle(), body.wineType(), body.cognacGrade(), body.otherType());
+                body.whiskyStyle(), body.whiskyStyleOther(),
+                body.wineType(), body.cognacGrade(), body.otherType());
 
         List<SpiritImage> images = List.of();
         if (body.imageUrls() != null) {
@@ -335,6 +412,71 @@ public class SpiritService {
                 req.getUser(),
                 NotificationType.REQUEST_APPROVED,
                 "술 등록 요청 '" + body.nameKo() + "'이(가) 승인되었습니다.",
+                "SPIRIT",
+                saved.getId()
+        );
+
+        return SpiritDetailResponse.of(saved,
+                images.stream().map(SpiritImageResponse::from).toList());
+    }
+
+    /**
+     * 관리자가 등록 요청 상세 화면(= 새 술 등록과 동일 폼)에서 세부 정보를 완성해 승인.
+     * 신청자가 제출한 기본값을 관리자가 보완한 전체 상세(detail)로 술을 생성한다.
+     */
+    @Transactional
+    public SpiritDetailResponse approveRegisterRequestWithDetail(
+            Long requestId, CreateSpiritRequest detail, Long adminId) {
+        SpiritRegisterRequest req = getRegisterRequest(requestId);
+        if (req.getStatus() == RequestStatus.APPROVED) {
+            throw new CustomException(ErrorCode.SPIRIT_REQUEST_NOT_EDITABLE);
+        }
+        User admin = getUser(adminId);
+
+        Producer producer = resolveProducer(detail.producerId());
+
+        Spirit spirit = Spirit.builder()
+                .nameKo(detail.nameKo())
+                .nameEn(detail.nameEn())
+                .category(detail.category())
+                .producer(producer)
+                .bottler(detail.bottler())
+                .bottledYear(detail.bottledYear())
+                .vintageYear(detail.vintageYear())
+                .abv(detail.abv())
+                .volumeMl(detail.volumeMl())
+                .country(detail.country())
+                .region(detail.region())
+                .status(SpiritStatus.ACTIVE)
+                .registeredBy(req.getUser())
+                .build();
+
+        Spirit saved = spiritRepository.save(spirit);
+
+        spiritDetailService.saveCommonDetail(saved, detail.commonDetail());
+        spiritDetailService.saveCategoryDetail(saved, detail);
+
+        // 신청 시 첨부된 이미지 승계
+        SpiritRegisterRequestBody body = parseSpiritData(req.getSpiritData());
+        List<SpiritImage> images = List.of();
+        if (body.imageUrls() != null && !body.imageUrls().isEmpty()) {
+            images = body.imageUrls().stream()
+                    .map(url -> SpiritImage.builder()
+                            .spirit(saved).imageUrl(url).isPrimary(false).sortOrder(0).build())
+                    .toList();
+            images.get(0).markAsPrimary();
+            spiritImageRepository.saveAll(images);
+        }
+
+        req.approve(admin);
+
+        // [숙성력] 술 등록 요청 승인 — 요청자에게 지급
+        scoreService.award(req.getUser().getId(), ScoreActions.SPIRIT_REQUEST_APPROVED, "SPIRIT_REQUEST", requestId);
+
+        notificationService.send(
+                req.getUser(),
+                NotificationType.REQUEST_APPROVED,
+                "술 등록 요청 '" + detail.nameKo() + "'이(가) 승인되었습니다.",
                 "SPIRIT",
                 saved.getId()
         );
@@ -418,8 +560,12 @@ public class SpiritService {
                 body.nameKo(), body.nameEn(), body.category(),
                 body.producerId(), body.bottler(), body.bottledYear(), body.vintageYear(),
                 body.abv(), body.volumeMl(), body.country(), body.region(),
-                body.whiskyStyle(), body.wineType(), body.cognacGrade(), body.otherType(),
-                imageUrls
+                body.ageStatement(), body.isNas(), body.distilledDate(),
+                body.bottledDate(), body.releaseDate(),
+                body.whiskyStyle(), body.whiskyStyleOther(), body.caskNo(),
+                body.wineType(), body.cognacGrade(), body.otherType(),
+                imageUrls,
+                body.note()
         );
     }
 
