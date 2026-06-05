@@ -1,3 +1,8 @@
+-- [클린 베이스라인 변환] 생산자 통합(producer.type) 반영.
+--   원본 시드는 type 컬럼이 없어, INSERT 동안만 type 기본값을 'COGNAC_HOUSE' 으로 지정한 뒤
+--   삽입 종료 후 기본값을 제거한다. (엔티티상 producer.type 은 기본값 없는 NOT NULL)
+ALTER TABLE producer ALTER COLUMN type SET DEFAULT 'COGNAC_HOUSE';
+
 -- =============================================================================
 -- DrinkIndex 기초데이터 — 꼬냑 하우스 / 메종 (Cognac House seed)
 -- =============================================================================
@@ -15,7 +20,7 @@
 --   - 모든 생산자는 프랑스 꼬냑 지역 소재(country='프랑스').
 -- =============================================================================
 
-INSERT INTO cognac_house
+INSERT INTO producer
     (name_ko, name_en, country, region, website, founded_year, description_ko, description_en, created_at, updated_at)
 VALUES
 -- ===================== 대형 메종 (Major houses) =====================
@@ -121,3 +126,6 @@ VALUES
  '프티트 샹파뉴의 그로어 가문. 빈티지 꼬냑과 진하고 풍미 가득한 스타일로 잘 알려져 있다.',
  'A Petite Champagne grower family well known for vintage-dated Cognacs and a rich, full-flavoured style.',
  NOW(6), NOW(6));
+
+
+ALTER TABLE producer ALTER COLUMN type DROP DEFAULT;

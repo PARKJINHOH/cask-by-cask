@@ -1,3 +1,8 @@
+-- [클린 베이스라인 변환] 생산자 통합(producer.type) 반영.
+--   원본 시드는 type 컬럼이 없어, INSERT 동안만 type 기본값을 'DISTILLERY' 으로 지정한 뒤
+--   삽입 종료 후 기본값을 제거한다. (엔티티상 producer.type 은 기본값 없는 NOT NULL)
+ALTER TABLE producer ALTER COLUMN type SET DEFAULT 'DISTILLERY';
+
 -- =============================================================================
 -- DrinkIndex 기초데이터 — 위스키 증류소 (Distillery seed)
 -- =============================================================================
@@ -15,7 +20,7 @@
 --     각 국가/지역 그룹 안에서 가동 중 → 폐쇄 순으로 배치했습니다. (추후 status 컬럼이 필요하면 V3 로 추가 권장)
 -- =============================================================================
 
-INSERT INTO distillery
+INSERT INTO producer
     (name_ko, name_en, country, region, website, founded_year, description_ko, description_en, created_at, updated_at)
 VALUES
 -- =========================== 스코틀랜드 — Speyside ===========================
@@ -673,3 +678,6 @@ VALUES
  '쓰리 십스·베인스 등을 생산하는 남아공의 대표 증류소. 아프리카 위스키의 중심지로 꼽힌다.',
  'South Africa''s flagship distillery producing Three Ships and Bain''s, regarded as the home of African whisky.',
  NOW(6), NOW(6));
+
+
+ALTER TABLE producer ALTER COLUMN type DROP DEFAULT;

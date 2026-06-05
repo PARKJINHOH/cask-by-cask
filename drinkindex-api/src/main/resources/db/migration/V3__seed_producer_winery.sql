@@ -1,3 +1,8 @@
+-- [클린 베이스라인 변환] 생산자 통합(producer.type) 반영.
+--   원본 시드는 type 컬럼이 없어, INSERT 동안만 type 기본값을 'WINERY' 으로 지정한 뒤
+--   삽입 종료 후 기본값을 제거한다. (엔티티상 producer.type 은 기본값 없는 NOT NULL)
+ALTER TABLE producer ALTER COLUMN type SET DEFAULT 'WINERY';
+
 -- =============================================================================
 -- DrinkIndex 기초데이터 — 와이너리 / 와인·꼬냑 생산자 (Winery seed)
 -- =============================================================================
@@ -20,7 +25,7 @@
 --     (와인업계는 위스키 증류소처럼 ''폐쇄''가 드물어, 폐업보다는 부활/소유권 변경 사례가 많습니다.)
 -- =============================================================================
 
-INSERT INTO winery
+INSERT INTO producer
     (name_ko, name_en, country, region, website, founded_year, description_ko, description_en, created_at, updated_at)
 VALUES
 -- ===================== 프랑스 — 보르도 (Bordeaux) =====================
@@ -738,3 +743,6 @@ VALUES
  '8000년 와인 발상지 조지아의 현대적 대표 와이너리. 전통 크베브리(토기) 양조와 토착 품종 사페라비로 유명하다.',
  'A leading modern winery in Georgia, the 8,000-year cradle of wine, known for traditional qvevri (clay vessel) winemaking and the native Saperavi.',
  NOW(6), NOW(6));
+
+
+ALTER TABLE producer ALTER COLUMN type DROP DEFAULT;

@@ -30,9 +30,21 @@ function EyeOff() {
 const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ label, error, hint, type = 'text', className = '', id, ...props }, ref) => {
     const [showPassword, setShowPassword] = useState(false)
+    const [isFocused, setIsFocused] = useState(false)
+    const [capsLock, setCapsLock] = useState(false)
+    const [isComposing, setIsComposing] = useState(false)
+
     const isPassword = type === 'password'
     const inputId = id ?? (label ? `input-${label.replace(/\s+/g, '-').toLowerCase()}` : undefined)
     const resolvedType = isPassword ? (showPassword ? 'text' : 'password') : type
+
+    const {
+      onKeyDown, onKeyUp, onFocus, onBlur,
+      onCompositionStart, onCompositionEnd,
+      ...restProps
+    } = props
+
+    const showWarning = isPassword && isFocused && (capsLock || isComposing)
 
     return (
       <div className="space-y-1">
@@ -64,8 +76,60 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             ]
               .filter(Boolean)
               .join(' ')}
-            {...props}
+            onFocus={(e) => {
+              setIsFocused(true)
+              onFocus?.(e)
+            }}
+            onBlur={(e) => {
+              setIsFocused(false)
+              setIsComposing(false)
+              onBlur?.(e)
+            }}
+            onKeyDown={(e) => {
+              if (isPassword) setCapsLock(e.getModifierState('CapsLock'))
+              onKeyDown?.(e)
+            }}
+            onKeyUp={(e) => {
+              if (isPassword) setCapsLock(e.getModifierState('CapsLock'))
+              onKeyUp?.(e)
+            }}
+            onCompositionStart={(e) => {
+              if (isPassword) setIsComposing(true)
+              onCompositionStart?.(e)
+            }}
+            onCompositionEnd={(e) => {
+              if (isPassword) setIsComposing(false)
+              onCompositionEnd?.(e)
+            }}
+            {...restProps}
           />
+
+          {/* CapsLock / 한글 입력 경고 말풍선 */}
+          {showWarning && (
+            <div className="absolute left-0 top-full mt-2 z-50 bg-white rounded-lg shadow-md border border-neutral-200 px-3 py-2 min-w-max">
+              <div className="absolute -top-[6px] left-3 w-3 h-3 bg-white border-l border-t border-neutral-200 rotate-45" />
+              <div className="space-y-1">
+                {capsLock && (
+                  <p className="flex items-center gap-1.5 text-xs text-amber-600">
+                    <svg className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="none"
+                      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="17 11 12 6 7 11" />
+                      <polyline points="17 18 12 13 7 18" />
+                    </svg>
+                    CapsLock이 켜져 있습니다
+                  </p>
+                )}
+                {isComposing && (
+                  <p className="flex items-center gap-1.5 text-xs text-red-500">
+                    <svg className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                    </svg>
+                    한글은 비밀번호에 사용할 수 없습니다
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
 
           {isPassword && (
             <button
