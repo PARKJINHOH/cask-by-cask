@@ -3,9 +3,8 @@ export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'MODERATOR' | 'MEMBER' | 'PARTN
 export type AdminMenuKey =
   | 'SPIRIT_REQUESTS'
   | 'SPIRITS'
-  | 'DISTILLERIES'
-  | 'WINERIES'
-  | 'COGNAC_HOUSES'
+  | 'PRODUCER_REQUESTS'
+  | 'PRODUCERS'
 
 export interface UserInfo {
   id: number

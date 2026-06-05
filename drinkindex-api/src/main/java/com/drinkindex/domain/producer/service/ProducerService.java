@@ -140,6 +140,10 @@ public class ProducerService {
                 .nameEn(body.nameEn())
                 .country(body.country())
                 .region(body.region())
+                .website(body.website())
+                .foundedYear(body.foundedYear())
+                .descriptionKo(body.descriptionKo())
+                .descriptionEn(body.descriptionEn())
                 .build();
 
         Producer saved = producerRepository.save(producer);
@@ -216,7 +220,11 @@ public class ProducerService {
                 req.getStatus(),
                 req.getRejectReason(),
                 req.getCreatedAt(),
-                req.getReviewedAt()
+                req.getReviewedAt(),
+                body.website(),
+                body.foundedYear(),
+                body.descriptionKo(),
+                body.descriptionEn()
         );
     }
 }

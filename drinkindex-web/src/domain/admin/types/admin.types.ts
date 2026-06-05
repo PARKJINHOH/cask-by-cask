@@ -82,24 +82,21 @@ export const ALL_BOARD_TYPES: BoardType[] = ['FREE']
 export type AdminMenuKey =
   | 'SPIRIT_REQUESTS'
   | 'SPIRITS'
-  | 'DISTILLERIES'
-  | 'WINERIES'
-  | 'COGNAC_HOUSES'
+  | 'PRODUCER_REQUESTS'
+  | 'PRODUCERS'
 
 export const ADMIN_MENU_KEY_LABELS: Record<AdminMenuKey, string> = {
   SPIRIT_REQUESTS: '등록 요청',
   SPIRITS: '주류 관리',
-  DISTILLERIES: '증류소 관리',
-  WINERIES: '와이너리 관리',
-  COGNAC_HOUSES: '꼬냑 하우스 관리',
+  PRODUCER_REQUESTS: '생산자 등록 요청',
+  PRODUCERS: '생산자 관리',
 }
 
 export const ALL_ADMIN_MENU_KEYS: AdminMenuKey[] = [
   'SPIRIT_REQUESTS',
   'SPIRITS',
-  'DISTILLERIES',
-  'WINERIES',
-  'COGNAC_HOUSES',
+  'PRODUCER_REQUESTS',
+  'PRODUCERS',
 ]
 
 // ── RoleType ───────────────────────────────────────────────────

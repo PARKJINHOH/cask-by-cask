@@ -7,6 +7,10 @@ export interface ProducerRegisterRequestForm {
   nameEn: string
   country: string
   region?: string
+  website?: string
+  foundedYear?: number | ''
+  descriptionKo?: string
+  descriptionEn?: string
 }
 
 export interface MyProducerRequest {
@@ -19,4 +23,8 @@ export interface MyProducerRequest {
   rejectReason: string | null
   createdAt: string
   reviewedAt: string | null
+  website?: string | null
+  foundedYear?: number | null
+  descriptionKo?: string | null
+  descriptionEn?: string | null
 }

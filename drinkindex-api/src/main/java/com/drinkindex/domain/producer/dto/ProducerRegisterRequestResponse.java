@@ -14,5 +14,9 @@ public record ProducerRegisterRequestResponse(
         RequestStatus status,
         String rejectReason,
         LocalDateTime createdAt,
-        LocalDateTime reviewedAt
+        LocalDateTime reviewedAt,
+        String website,
+        Integer foundedYear,
+        String descriptionKo,
+        String descriptionEn
 ) {}

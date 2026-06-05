@@ -65,13 +65,53 @@ export default function AdminScorePage() {
     onSuccess: invalidate,
   })
 
-  // 액션 키는 자유 문자열. 이미 등록된 키는 중복 추가 불가(클라이언트 1차 검증).
   const existingKeys = configs.map((c) => c.actionType)
-  // 입력 자동완성용: 아직 설정되지 않은 시스템 액션 키 추천
   const suggestedKeys = ALL_ACTION_TYPES.filter((t) => !existingKeys.includes(t))
 
+  // 시스템 액션(코드에 이벤트 트리거 존재) / 커스텀 액션(수동 등록) 분리
+  const systemConfigs = configs.filter((c) => ALL_ACTION_TYPES.includes(c.actionType))
+  const customConfigs = configs.filter((c) => !ALL_ACTION_TYPES.includes(c.actionType))
+
+  const makeRowProps = (cfg: ScoreConfigAdmin) => ({
+    cfg,
+    onEdit: () => setEditingId(cfg.id),
+    onDelete: () => {
+      const label = ACTION_LABELS[cfg.actionType] ?? cfg.actionType
+      if (window.confirm(`'${label}' 점수 설정을 삭제할까요?\n삭제 시 해당 액션은 숙성력을 지급/차감하지 않습니다.`)) {
+        deleteMutation.mutate(cfg.id)
+      }
+    },
+    isDeleting: deleteMutation.isPending,
+  })
+
+  const renderRow = (cfg: ScoreConfigAdmin) =>
+    editingId === cfg.id ? (
+      <EditRow
+        key={cfg.id}
+        cfg={cfg}
+        existingKeys={existingKeys.filter((k) => k !== cfg.actionType)}
+        onSave={(data) => updateMutation.mutate({ id: cfg.id, data })}
+        onCancel={() => setEditingId(null)}
+        isPending={updateMutation.isPending}
+      />
+    ) : (
+      <ViewRow key={cfg.id} {...makeRowProps(cfg)} />
+    )
+
+  const tableHead = (
+    <thead className="bg-neutral-50 border-b border-neutral-200">
+      <tr>
+        <th className="text-left px-4 py-3 text-neutral-500 font-medium">액션</th>
+        <th className="text-center px-4 py-3 text-neutral-500 font-medium w-24">점수</th>
+        <th className="text-center px-4 py-3 text-neutral-500 font-medium w-32">일일 한도</th>
+        <th className="text-center px-4 py-3 text-neutral-500 font-medium w-20">상태</th>
+        <th className="text-right px-4 py-3 text-neutral-500 font-medium w-32">관리</th>
+      </tr>
+    </thead>
+  )
+
   return (
-    <div className="p-6 space-y-5">
+    <div className="p-6 space-y-6">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-neutral-900">점수 설정</h1>
@@ -86,58 +126,56 @@ export default function AdminScorePage() {
         </button>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        {isLoading ? (
-          <div className="py-16 text-center text-neutral-400 text-sm">불러오는 중...</div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-neutral-50 border-b border-neutral-200">
-              <tr>
-                <th className="text-left px-4 py-3 text-neutral-500 font-medium">액션</th>
-                <th className="text-center px-4 py-3 text-neutral-500 font-medium w-24">점수</th>
-                <th className="text-center px-4 py-3 text-neutral-500 font-medium w-32">일일 한도</th>
-                <th className="text-center px-4 py-3 text-neutral-500 font-medium w-20">상태</th>
-                <th className="text-right px-4 py-3 text-neutral-500 font-medium w-32">관리</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-100">
-              {adding && (
-                <AddRow
-                  existingKeys={existingKeys}
-                  suggestedKeys={suggestedKeys}
-                  onSave={(data) => createMutation.mutate(data)}
-                  onCancel={() => setAdding(false)}
-                  isPending={createMutation.isPending}
-                />
-              )}
-              {configs.map((cfg) =>
-                editingId === cfg.id ? (
-                  <EditRow
-                    key={cfg.id}
-                    cfg={cfg}
-                    onSave={(data) => updateMutation.mutate({ id: cfg.id, data })}
-                    onCancel={() => setEditingId(null)}
-                    isPending={updateMutation.isPending}
-                  />
-                ) : (
-                  <ViewRow
-                    key={cfg.id}
-                    cfg={cfg}
-                    onEdit={() => setEditingId(cfg.id)}
-                    onDelete={() => {
-                      const label = ACTION_LABELS[cfg.actionType] ?? cfg.actionType
-                      if (window.confirm(`'${label}' 점수 설정을 삭제할까요?\n삭제 시 해당 액션은 숙성력을 지급/차감하지 않습니다.`)) {
-                        deleteMutation.mutate(cfg.id)
-                      }
-                    }}
-                    isDeleting={deleteMutation.isPending}
-                  />
-                )
-              )}
-            </tbody>
-          </table>
-        )}
-      </div>
+      {isLoading ? (
+        <div className="py-16 text-center text-neutral-400 text-sm">불러오는 중...</div>
+      ) : (
+        <>
+          {/* 커스텀 이벤트 액션 영역 — 점수 추가로 등록된 비시스템 키 */}
+          {(adding || customConfigs.length > 0) && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50/40 overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-amber-200 flex items-center gap-2">
+                <span className="text-xs font-semibold text-amber-700 uppercase tracking-wide">이벤트 / 커스텀 액션</span>
+                <span className="text-xs text-amber-600">코드 연결 없이는 실제 지급되지 않습니다.</span>
+              </div>
+              <table className="w-full text-sm">
+                {tableHead}
+                <tbody className="divide-y divide-amber-100">
+                  {adding && (
+                    <AddRow
+                      existingKeys={existingKeys}
+                      suggestedKeys={suggestedKeys}
+                      onSave={(data) => createMutation.mutate(data)}
+                      onCancel={() => setAdding(false)}
+                      isPending={createMutation.isPending}
+                    />
+                  )}
+                  {customConfigs.map(renderRow)}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* 시스템 액션 영역 */}
+          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div className="px-4 py-2.5 border-b border-neutral-200">
+              <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">시스템 액션</span>
+            </div>
+            <table className="w-full text-sm">
+              {tableHead}
+              <tbody className="divide-y divide-neutral-100">
+                {systemConfigs.map(renderRow)}
+                {systemConfigs.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="py-10 text-center text-neutral-400 text-sm">
+                      등록된 시스템 액션 점수 설정이 없습니다.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -161,7 +199,12 @@ function ViewRow({
       <td className="px-4 py-3">
         <div className="flex items-center gap-2">
           <span className="text-base leading-none">{icon}</span>
-          <span className="text-neutral-700">{label}</span>
+          <div>
+            <span className="text-neutral-700">{label}</span>
+            {cfg.description && cfg.description !== label && (
+              <p className="text-xs text-neutral-400 mt-0.5">{cfg.description}</p>
+            )}
+          </div>
         </div>
       </td>
       <td className="px-4 py-3 text-center">
@@ -202,21 +245,35 @@ function ViewRow({
 
 function EditRow({
   cfg,
+  existingKeys,
   onSave,
   onCancel,
   isPending,
 }: {
   cfg: ScoreConfigAdmin
+  existingKeys: string[]
   onSave: (data: UpdateScoreConfigRequest) => void
   onCancel: () => void
   isPending: boolean
 }) {
-  const [score,      setScore]      = useState(String(cfg.score))
-  const [dailyLimit, setDailyLimit] = useState(cfg.dailyLimit != null ? String(cfg.dailyLimit) : '')
-  const [isActive,   setIsActive]   = useState(cfg.isActive)
+  const [actionType,  setActionType]  = useState(cfg.actionType)
+  const [description, setDescription] = useState(cfg.description ?? '')
+  const [score,       setScore]       = useState(String(cfg.score))
+  const [dailyLimit,  setDailyLimit]  = useState(cfg.dailyLimit != null ? String(cfg.dailyLimit) : '')
+  const [isActive,    setIsActive]    = useState(cfg.isActive)
+
+  const trimmedKey   = actionType.trim()
+  const isDuplicate  = trimmedKey !== '' && existingKeys.includes(trimmedKey)
+  const canSave      = trimmedKey !== '' && !isDuplicate
+
+  // datalist: 아직 사용되지 않은 시스템 키 + 현재 편집 중인 키
+  const suggestedKeys = ALL_ACTION_TYPES.filter((t) => !existingKeys.includes(t))
 
   const handleSave = () => {
+    if (!canSave) return
     onSave({
+      actionType: trimmedKey,
+      description: description.trim() || undefined,
       score: Number(score),
       dailyLimit: dailyLimit.trim() ? Number(dailyLimit) : null,
       isActive,
@@ -224,11 +281,34 @@ function EditRow({
   }
 
   return (
-    <tr className="bg-amber-50/40">
+    <tr className="bg-amber-50/40 align-top">
       <td className="px-4 py-3">
-        <span className="text-sm text-neutral-600">
-          {ACTION_ICONS[cfg.actionType] ?? '•'} {ACTION_LABELS[cfg.actionType] ?? cfg.actionType}
-        </span>
+        <div className="space-y-1.5">
+          <input
+            list="edit-action-suggestions"
+            value={actionType}
+            onChange={(e) => setActionType(e.target.value)}
+            placeholder="액션 키"
+            maxLength={50}
+            autoFocus
+            className="w-full max-w-[18rem] px-2 py-1 text-sm border border-neutral-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-400"
+          />
+          <datalist id="edit-action-suggestions">
+            {suggestedKeys.map((t) => (
+              <option key={t} value={t}>{ACTION_LABELS[t] ?? t}</option>
+            ))}
+          </datalist>
+          <input
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="설명 (선택)"
+            maxLength={200}
+            className="w-full max-w-[18rem] px-2 py-1 text-xs border border-neutral-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-400 placeholder:text-neutral-300"
+          />
+          {isDuplicate && (
+            <p className="text-xs text-red-500">이미 등록된 액션 키입니다.</p>
+          )}
+        </div>
       </td>
       <td className="px-4 py-3">
         <input
@@ -260,7 +340,7 @@ function EditRow({
         <div className="flex items-center gap-1 justify-end">
           <button
             onClick={handleSave}
-            disabled={isPending}
+            disabled={isPending || !canSave}
             className="h-7 px-2.5 text-xs font-medium rounded-md bg-primary-800 text-white hover:bg-primary-900 transition-colors disabled:opacity-40"
           >
             저장
@@ -294,7 +374,7 @@ function AddRow({
   const [description, setDescription] = useState('')
   const [score,       setScore]       = useState('0')
   const [dailyLimit,  setDailyLimit]  = useState('')
-  const [isActive,    setIsActive]    = useState(true)
+  const [isActive,    setIsActive]    = useState(false)
 
   const trimmedKey = actionType.trim()
   const isDuplicate = trimmedKey !== '' && existingKeys.includes(trimmedKey)

@@ -168,10 +168,15 @@
       "submit": "Submit Request",
       "success": "Your request has been submitted.",
       "requiredSection": "Required",
+      "optionalSection": "Additional Info (optional)",
       "requiredNote": "* marks required fields.",
       "errNameKo": "Please enter the Korean name.",
       "errNameEn": "Please enter the English name.",
-      "errCountry": "Please select a country."
+      "errCountry": "Please select a country.",
+      "website": "Official Website",
+      "foundedYear": "Founded Year",
+      "descriptionKo": "Description (Korean)",
+      "descriptionEn": "Description (English)"
     },
     "myRequests": {
       "title": "My Requests",

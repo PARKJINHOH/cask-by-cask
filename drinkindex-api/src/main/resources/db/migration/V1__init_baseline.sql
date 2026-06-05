@@ -722,7 +722,7 @@
 
     create table role_type_allowed_menus (
         role_type_id bigint not null,
-        menu_key enum ('COGNAC_HOUSES','DISTILLERIES','SPIRITS','SPIRIT_REQUESTS','WINERIES')
+        menu_key enum ('PRODUCER_REQUESTS','PRODUCERS','SPIRITS','SPIRIT_REQUESTS')
     ) engine=InnoDB default charset=utf8mb4 collate=utf8mb4_unicode_ci;
 
     create table role_types (

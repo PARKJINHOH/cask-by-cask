@@ -64,9 +64,8 @@ const MENU_TREE: MenuTreeGroup[] = [
   {
     groupLabel: '제조사',
     items: [
-      { label: '증류소 관리', menuKey: 'DISTILLERIES' },
-      { label: '와이너리 관리', menuKey: 'WINERIES' },
-      { label: '꼬냑 하우스 관리', menuKey: 'COGNAC_HOUSES' },
+      { label: '생산자 등록 요청', menuKey: 'PRODUCER_REQUESTS' },
+      { label: '생산자 관리', menuKey: 'PRODUCERS' },
     ],
   },
   {

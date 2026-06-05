@@ -57,53 +57,6 @@ const CATEGORY_MENU = [
   },
 ] as const
 
-// ── 카테고리 퀵 칩 바 (배너 하단) ────────────────────────────────
-function CategoryQuickBar() {
-  const { t } = useTranslation()
-  return (
-    <div className="bg-white border-b border-neutral-200">
-      <div className="max-w-7xl mx-auto px-4">
-        <div
-          className="flex items-center gap-0 overflow-x-auto"
-          style={{ scrollbarWidth: 'none' }}
-        >
-          <Link
-            to="/spirits"
-            className="px-4 py-3.5 text-sm font-bold text-primary-800 border-b-2 border-primary-600
-              whitespace-nowrap inline-flex items-center gap-2 flex-shrink-0"
-          >
-            {t('menu.communityAll')}
-          </Link>
-          {CATEGORY_MENU.map((cat) => (
-            <Link
-              key={cat.key}
-              to={`/spirits?category=${cat.key}`}
-              className="px-4 py-3.5 text-sm text-neutral-500 hover:text-primary-800 border-b-2
-                border-transparent whitespace-nowrap inline-flex items-center gap-2 flex-shrink-0
-                transition-colors"
-            >
-              <span className={`w-2 h-2 rounded-full ${cat.dot}`} />
-              {t(`spirit.category.${cat.key}`)}
-            </Link>
-          ))}
-
-          <Link
-            to="/calendar"
-            className="hidden lg:inline-flex items-center gap-1.5 ml-auto px-3 py-2 text-xs
-              text-primary-800 hover:text-primary-900 font-medium whitespace-nowrap flex-shrink-0
-              transition-colors"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
-            </svg>
-            {t('menu.calendar')}
-          </Link>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // ── 섹션 헤더 ────────────────────────────────────────────────────
 function SectionHeader({
   title,
@@ -602,9 +555,6 @@ export default function MainPage() {
 
       {/* 메인 배너 슬라이더 (관리자 이미지, 슬림) */}
       {banners.length > 0 && <BannerSlider banners={banners} />}
-
-      {/* 카테고리 퀵 칩 바 */}
-      <CategoryQuickBar />
 
       {/* 본문: 2열 (주 콘텐츠 + 사이드바) */}
       <div className="max-w-7xl mx-auto px-4 py-6 lg:py-8">

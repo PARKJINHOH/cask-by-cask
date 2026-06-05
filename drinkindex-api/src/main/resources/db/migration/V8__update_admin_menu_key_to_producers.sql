@@ -1,0 +1,10 @@
+-- AdminMenuKey: DISTILLERIES / WINERIES / COGNAC_HOUSES → PRODUCERS / PRODUCER_REQUESTS 통합
+-- 기존 데이터를 PRODUCERS로 마이그레이션한 뒤 enum 재정의
+
+UPDATE role_type_allowed_menus
+SET menu_key = 'PRODUCERS'
+WHERE menu_key IN ('DISTILLERIES', 'WINERIES', 'COGNAC_HOUSES');
+
+ALTER TABLE role_type_allowed_menus
+    MODIFY COLUMN menu_key
+        ENUM('PRODUCER_REQUESTS','PRODUCERS','SPIRITS','SPIRIT_REQUESTS') NOT NULL;

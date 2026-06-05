@@ -30,7 +30,7 @@ VALUES
     ('POST_DELETE',                -5, NULL, 1, '게시글 삭제 차감',                  NOW(6), NOW(6)),
     ('POST_LOCKED',                -10,NULL, 1, '신고 잠금 차감',                    NOW(6), NOW(6)),
     ('POST_LIKED',                 2,  NULL, 1, '추천 받음',                        NOW(6), NOW(6)),
-    ('COMMENT_WRITE',              1,  20,   1, '댓글 작성 (일일 최대 20점)',         NOW(6), NOW(6)),
+    ('COMMENT_WRITE',              1,  NULL, 1, '댓글 작성',                        NOW(6), NOW(6)),
     ('SPIRIT_REVIEW_WRITE',        20, NULL, 1, '술 상세 리뷰 작성',                 NOW(6), NOW(6)),
     ('SPIRIT_REQUEST',             10, NULL, 1, '술 등록 요청',                     NOW(6), NOW(6)),
     ('SPIRIT_REQUEST_APPROVED',    30, NULL, 1, '술 등록 요청 승인',                 NOW(6), NOW(6)),

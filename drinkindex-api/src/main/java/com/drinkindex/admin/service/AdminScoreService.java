@@ -56,7 +56,12 @@ public class AdminScoreService {
     public ScoreConfigResponse updateScoreConfig(Long id, UpdateScoreConfigRequest request) {
         ScoreConfig config = scoreConfigRepository.findById(id)
                 .orElseThrow(() -> new CustomException(ErrorCode.SCORE_CONFIG_NOT_FOUND));
-        config.update(request.score(), request.dailyLimit(), request.isActive(), request.description());
+        if (request.actionType() != null && !request.actionType().isBlank()
+                && !request.actionType().trim().equals(config.getActionType())
+                && scoreConfigRepository.existsByActionType(request.actionType().trim())) {
+            throw new CustomException(ErrorCode.SCORE_CONFIG_DUPLICATE);
+        }
+        config.update(request.actionType(), request.score(), request.dailyLimit(), request.isActive(), request.description());
         return ScoreConfigResponse.from(config);
     }
 

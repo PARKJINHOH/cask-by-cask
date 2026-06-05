@@ -168,10 +168,15 @@
       "submit": "등록 요청하기",
       "success": "등록 요청이 완료되었습니다.",
       "requiredSection": "필수 정보",
+      "optionalSection": "추가 정보 (선택)",
       "requiredNote": "* 표시는 필수 입력 항목입니다.",
       "errNameKo": "한국어 이름을 입력해주세요.",
       "errNameEn": "영어 이름을 입력해주세요.",
-      "errCountry": "국가를 선택해주세요."
+      "errCountry": "국가를 선택해주세요.",
+      "website": "공식 웹사이트",
+      "foundedYear": "설립연도",
+      "descriptionKo": "소개 (한국어)",
+      "descriptionEn": "소개 (영어)"
     },
     "myRequests": {
       "title": "내 요청 목록",

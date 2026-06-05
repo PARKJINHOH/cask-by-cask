@@ -68,8 +68,8 @@ const navEntries: NavEntry[] = [
     groupLabel: '제조사',
     groupIcon: '🏭',
     items: [
-      { path: '/admin/producers/requests', label: '생산자 등록 요청', exact: true },
-      { path: '/admin/producers',        label: '생산자 관리',      exact: true, menuKey: 'DISTILLERIES' },
+      { path: '/admin/producers/requests', label: '생산자 등록 요청', exact: true, menuKey: 'PRODUCER_REQUESTS' },
+      { path: '/admin/producers',          label: '생산자 관리',      exact: true, menuKey: 'PRODUCERS' },
     ],
   },
   {

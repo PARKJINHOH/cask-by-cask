@@ -111,7 +111,6 @@ function GNB() {
 
   const menus: GNBItem[] = [
     { key: 'spirits', label: t('nav.spirits'), to: '/spirits' },
-    { key: 'calendar', label: t('menu.calendar'), to: '/calendar' },
     {
       key: 'request',
       label: t('menu.request'),
@@ -144,23 +143,18 @@ function GNB() {
         <ul className="flex items-center gap-1">
           {menus.map(menu => {
             if ('to' in menu) {
-              const isNotice   = menu.key === 'notice'
-              const isSpirits  = menu.key === 'spirits'
-              const isCalendar = menu.key === 'calendar'
+              const isNotice  = menu.key === 'notice'
+              const isSpirits = menu.key === 'spirits'
               return (
                 <li
                   key={menu.key}
-                  className={`flex items-center ${isSpirits ? 'mr-1' : ''} ${isCalendar ? 'gap-2 mr-1' : ''}`}
+                  className={`flex items-center ${isSpirits ? 'mr-1' : ''}`}
                 >
                   <Link
                     to={menu.to}
                     className={
                       isSpirits
-                        ? 'inline-flex items-center px-3.5 py-1.5 text-sm font-semibold rounded-lg\
- bg-primary-800 text-white hover:bg-primary-900 transition-colors'
-                        : isCalendar
-                        ? 'inline-flex items-center px-3.5 py-1.5 text-sm font-medium rounded-lg\
- border border-neutral-300 text-neutral-600 hover:text-primary-800 hover:border-primary-300 transition-colors'
+                        ? 'inline-flex items-center px-3.5 py-1.5 text-sm font-semibold rounded-lg bg-primary-800 text-white hover:bg-primary-900 transition-colors'
                         : `${itemCls(false)} relative`
                     }
                   >
@@ -172,9 +166,6 @@ function GNB() {
                       />
                     )}
                   </Link>
-                  {isCalendar && (
-                    <span className="h-4 w-px bg-neutral-200" aria-hidden="true" />
-                  )}
                 </li>
               )
             }
@@ -230,6 +221,18 @@ function GNB() {
               </li>
             )
           })}
+          <li className="ml-auto flex-shrink-0">
+            <Link
+              to="/calendar"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg
+                border border-neutral-300 text-neutral-600 hover:text-primary-800 hover:border-primary-300 transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+              </svg>
+              {t('menu.calendar')}
+            </Link>
+          </li>
         </ul>
       </div>
     </nav>

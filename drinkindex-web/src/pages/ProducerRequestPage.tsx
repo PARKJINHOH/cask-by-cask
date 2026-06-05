@@ -88,6 +88,10 @@ export default function ProducerRequestPage() {
       ...data,
       country: countryNameKo,
       region: regionNameKo || undefined,
+      website: data.website || undefined,
+      foundedYear: data.foundedYear ? Number(data.foundedYear) : undefined,
+      descriptionKo: data.descriptionKo || undefined,
+      descriptionEn: data.descriptionEn || undefined,
     }
     submitRequest(payload, {
       onSuccess: () => {
@@ -173,6 +177,61 @@ export default function ProducerRequestPage() {
               </div>
 
               <p className="text-xs text-amber-700/80">{t('producerRequest.form.requiredNote')}</p>
+            </div>
+
+            {/* ── 선택 정보 ─────────────────────────────────── */}
+            <div className="rounded-xl border border-neutral-200 bg-neutral-50/40 p-4 sm:p-5 space-y-4">
+              <div className="flex items-center gap-2">
+                <span className="w-1.5 h-4 rounded-full bg-neutral-400" />
+                <h2 className="text-sm font-bold text-neutral-600">{t('producerRequest.form.optionalSection')}</h2>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-neutral-700">{t('producerRequest.form.website')}</label>
+                  <input
+                    {...register('website')}
+                    type="url"
+                    placeholder="https://example.com"
+                    maxLength={500}
+                    className={`${FIELD_CLS} bg-white border-neutral-200`}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-neutral-700">{t('producerRequest.form.foundedYear')}</label>
+                  <input
+                    {...register('foundedYear', { min: 1500, max: new Date().getFullYear() })}
+                    type="number"
+                    placeholder="예) 1824"
+                    min={1500}
+                    max={new Date().getFullYear()}
+                    className={`${FIELD_CLS} bg-white border-neutral-200`}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-neutral-700">{t('producerRequest.form.descriptionKo')}</label>
+                <textarea
+                  {...register('descriptionKo')}
+                  rows={3}
+                  maxLength={2000}
+                  placeholder="생산자 소개를 입력해주세요."
+                  className={`${FIELD_CLS} bg-white border-neutral-200 resize-none`}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-neutral-700">{t('producerRequest.form.descriptionEn')}</label>
+                <textarea
+                  {...register('descriptionEn')}
+                  rows={3}
+                  maxLength={2000}
+                  placeholder="Enter producer description."
+                  className={`${FIELD_CLS} bg-white border-neutral-200 resize-none`}
+                />
+              </div>
             </div>
 
             {successMsg && (

@@ -34,7 +34,8 @@ public class ScoreConfig extends BaseTimeEntity {
     @Column(length = 200)
     private String description;
 
-    public void update(Integer score, Integer dailyLimit, Boolean isActive, String description) {
+    public void update(String actionType, Integer score, Integer dailyLimit, Boolean isActive, String description) {
+        if (actionType != null && !actionType.isBlank()) this.actionType = actionType;
         if (score != null) this.score = score;
         if (dailyLimit != null) this.dailyLimit = dailyLimit;
         if (isActive != null) this.isActive = isActive;

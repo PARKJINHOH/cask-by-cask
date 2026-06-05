@@ -23,6 +23,7 @@ export interface CreateScoreConfigRequest {
 }
 
 export interface UpdateScoreConfigRequest {
+  actionType?: string
   score?: number
   dailyLimit?: number | null
   isActive?: boolean
