@@ -67,7 +67,9 @@ function SpiritDetailSections({ spirit, isEn }: { spirit: SpiritDetail; isEn: bo
     SINGLE_MALT: isEn ? 'Single Malt' : '싱글 몰트',
     BLENDED_MALT: isEn ? 'Blended Malt' : '블렌디드 몰트',
     BLENDED_WHISKY: isEn ? 'Blended Whisky' : '블렌디드 위스키',
-    BOURBON: 'Bourbon', RYE: 'Rye', CORN: 'Corn', GRAIN: 'Grain', POT_STILL: 'Pot Still',
+    BOURBON: 'Bourbon', TENNESSEE: isEn ? 'Tennessee' : '테네시', RYE: 'Rye',
+    POT_STILL: isEn ? 'Single Pot Still' : '싱글 팟 스틸',
+    GRAIN_CORN: isEn ? 'Grain / Corn' : '그레인 / 콘',
     OTHER: isEn ? 'Other' : '기타',
   }
   const CASK_LABEL: Record<string, string> = {

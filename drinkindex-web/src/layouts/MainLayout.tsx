@@ -272,17 +272,24 @@ function LangToggle() {
     i18n.changeLanguage(next)
   }
 
+  const isEn = i18n.language === 'en'
+
   return (
     <button
       onClick={toggle}
-      aria-label="언어 전환"
-      className="flex items-center gap-1 px-3.5 py-1.5 rounded-lg text-sm font-semibold
+      aria-label={isEn ? 'Switch to Korean' : '영어로 전환'}
+      title={isEn ? 'Switch to Korean' : '영어로 전환'}
+      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold
         border border-neutral-300 text-neutral-500 hover:border-primary-400
         hover:text-primary-800 transition-all duration-150 select-none"
     >
-      <span className={i18n.language === 'ko' ? 'text-primary-800' : 'text-neutral-400'}>KO</span>
-      <span className="text-neutral-300">/</span>
-      <span className={i18n.language === 'en' ? 'text-primary-800' : 'text-neutral-400'}>EN</span>
+      <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"
+        strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10" />
+        <line x1="2" y1="12" x2="22" y2="12" />
+        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+      </svg>
+      <span>{isEn ? 'EN' : 'KO'}</span>
     </button>
   )
 }

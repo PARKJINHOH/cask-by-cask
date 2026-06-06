@@ -386,8 +386,8 @@ function EventCard() {
   return (
     <Link
       to="/calendar"
-      className="block bg-gradient-to-br from-amber-800 to-stone-800 rounded-xl p-4
-        hover:from-amber-700 hover:to-stone-700 transition-colors group"
+      className="block bg-amber-800 rounded-xl p-4
+        hover:bg-amber-700 transition-colors group"
     >
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-lg bg-white/15 flex items-center justify-center flex-shrink-0">

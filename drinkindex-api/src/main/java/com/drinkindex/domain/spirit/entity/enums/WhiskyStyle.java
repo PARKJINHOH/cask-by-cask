@@ -5,9 +5,9 @@ public enum WhiskyStyle {
     BLENDED_MALT,
     BLENDED_WHISKY,
     BOURBON,
+    TENNESSEE,
     RYE,
-    CORN,
-    GRAIN,
     POT_STILL,
+    GRAIN_CORN,
     OTHER
 }

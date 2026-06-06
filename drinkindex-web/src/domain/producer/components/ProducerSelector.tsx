@@ -12,7 +12,8 @@ export interface NewProducerInput {
 interface Props {
   value: number | null
   defaultName?: string
-  onChange: (id: number | null) => void
+  /** 선택된 생산자 객체를 함께 전달 (국가·지역 자동 채움 등). 직접 등록/해제 시엔 undefined/null. */
+  onChange: (id: number | null, producer?: Producer | null) => void
   placeholder?: string
   /** 지정 시 해당 타입 생산자만 표시 (카테고리 게이팅) */
   type?: ProducerType
@@ -72,7 +73,7 @@ export default function ProducerSelector({ value, defaultName, onChange, placeho
   }, [open])
 
   const handleSelect = (d: Producer) => {
-    onChange(d.id)
+    onChange(d.id, d)
     setOpen(false)
     setSearch('')
   }

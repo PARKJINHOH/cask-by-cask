@@ -468,10 +468,11 @@ export default function SpiritFormFields({ form, categoryLocked, onCategorySelec
               <AdminProducerSelector value={form.producerId} defaultName={form.producerName}
                 onChange={(id, producer) => {
                   form.setProducerId(id ?? null)
-                  // 생산자에 국가가 있으면 자동으로 국가 선택 (없으면 기존 값 유지)
+                  // 생산자에 국가/지역이 있으면 자동으로 채움 (없으면 기존 값 유지)
                   if (producer?.country) {
                     const code = ISO3166_COUNTRIES.find((c) => c.nameKo === producer.country)?.code ?? null
                     form.setCountryValue(code, producer.country)
+                    form.setRegion(producer.region ?? '')
                   }
                 }}
                 type={CATEGORY_TO_PRODUCER_TYPE[category]}

@@ -329,11 +329,22 @@
       "BLENDED_MALT":   "블렌디드 몰트",
       "BLENDED_WHISKY": "블렌디드",
       "BOURBON":        "버번",
+      "TENNESSEE":      "테네시",
       "RYE":            "라이",
-      "CORN":           "콘",
-      "GRAIN":          "그레인",
-      "POT_STILL":      "팟 스틸",
+      "POT_STILL":      "싱글 팟 스틸",
+      "GRAIN_CORN":     "그레인 / 콘",
       "OTHER":          "기타"
+    },
+    "whiskyStyleExample": {
+      "SINGLE_MALT":    "맥캘란 / 발베니 / 글렌피딕",
+      "BLENDED_MALT":   "조니워커 그린 / 몽키숄더",
+      "BLENDED_WHISKY": "발렌타인 / 조니워커 / 시바스리갈",
+      "BOURBON":        "와일드터키 / 버팔로트레이스",
+      "TENNESSEE":      "잭다니엘스",
+      "RYE":            "호밀 위스키 / 불릿 라이",
+      "POT_STILL":      "아이리시 / 레드브레스트",
+      "GRAIN_CORN":     "곡물 위스키 / 헤이그클럽",
+      "OTHER":          ""
     },
     "wineType": {
       "RED":       "레드",

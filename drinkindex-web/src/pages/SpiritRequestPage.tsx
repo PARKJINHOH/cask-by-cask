@@ -21,7 +21,7 @@ const CATEGORY_CARDS: Array<[SpiritCategory, string]> = [
 
 // 카테고리 핵심값 선택지 (신청자 입력 — 관리자 등록 참고용). 라벨은 spirit.* 번역키 사용
 const CATEGORY_CORE_OPTS: Record<SpiritCategory, { field: keyof SpiritRegisterRequestForm; ns: string; values: string[] }> = {
-  WHISKY: { field: 'whiskyStyle', ns: 'spirit.whiskyStyle', values: ['SINGLE_MALT', 'BLENDED_MALT', 'BLENDED_WHISKY', 'BOURBON', 'RYE', 'CORN', 'GRAIN', 'POT_STILL', 'OTHER'] },
+  WHISKY: { field: 'whiskyStyle', ns: 'spirit.whiskyStyle', values: ['SINGLE_MALT', 'BLENDED_MALT', 'BLENDED_WHISKY', 'BOURBON', 'TENNESSEE', 'RYE', 'POT_STILL', 'GRAIN_CORN', 'OTHER'] },
   WINE:   { field: 'wineType',    ns: 'spirit.wineType',    values: ['RED', 'WHITE', 'ROSE', 'SPARKLING', 'DESSERT', 'ORANGE', 'FORTIFIED'] },
   COGNAC: { field: 'cognacGrade', ns: 'spirit.cognacGrade', values: ['VS', 'NAPOLEON', 'VSOP', 'XO', 'XXO', 'HORS_DAGE'] },
   OTHER:  { field: 'otherType',   ns: 'spirit.otherType',   values: ['RUM', 'GIN', 'VODKA', 'TEQUILA', 'MEZCAL', 'BRANDY', 'LIQUEUR', 'SAKE', 'SOJU', 'BAIJIU', 'ABSINTHE', 'BEER', 'OTHER'] },
@@ -372,9 +372,13 @@ export default function SpiritRequestPage() {
                         className={`${FIELD_CLS} bg-white ${coreError ? 'border-red-400' : 'border-neutral-200'}`}
                       >
                         <option value="">{t('spiritRequest.form.categoryCorePlaceholder')}</option>
-                        {core.values.map((v) => (
-                          <option key={v} value={v}>{t(`${core.ns}.${v}`)}</option>
-                        ))}
+                        {core.values.map((v) => {
+                          // 위스키 스타일은 대표 브랜드 예시를 라벨에 함께 노출 (선택 가이드)
+                          const ex = selectedCategory === 'WHISKY' ? t(`spirit.whiskyStyleExample.${v}`, { defaultValue: '' }) : ''
+                          return (
+                            <option key={v} value={v}>{t(`${core.ns}.${v}`)}{ex ? ` (${ex})` : ''}</option>
+                          )
+                        })}
                       </select>
                       {coreError && <p className="mt-1 text-xs text-red-500">{t('spiritRequest.form.errCategoryCore')}</p>}
                       {/* 위스키 스타일 '기타' → 직접 입력 */}
@@ -451,7 +455,16 @@ export default function SpiritRequestPage() {
                   <ProducerSelector
                     value={producerId}
                     defaultName={producerName}
-                    onChange={setProducerId}
+                    onChange={(id, producer) => {
+                      setProducerId(id ?? null)
+                      // 생산자에 등록된 국가/지역이 있으면 자동으로 채움 (없으면 기존 값 유지)
+                      if (producer?.country) {
+                        const code = ISO3166_COUNTRIES.find((c) => c.nameKo === producer.country)?.code ?? null
+                        setCountryCode(code)
+                        setCountryNameKo(producer.country)
+                        setRegionNameKo(producer.region ?? '')
+                      }
+                    }}
                     type={selectedCategory ? CATEGORY_TO_PRODUCER_TYPE[selectedCategory] : undefined}
                     onCreateNew={handleCreateProducer}
                     defaultCountry={countryNameKo}

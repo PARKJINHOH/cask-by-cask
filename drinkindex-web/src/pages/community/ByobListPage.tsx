@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useByobList } from '@/domain/byob/hooks/useByob'
 import ByobCard from '@/domain/byob/components/ByobCard'
-import ByobStatusBadge from '@/domain/byob/components/ByobStatusBadge'
 import Pagination from '@/shared/components/Pagination'
 import SeoMeta from '@/shared/components/SeoMeta'
 import { useAuthStore } from '@/domain/auth/store/authStore'
@@ -14,6 +13,22 @@ const PAGE_SIZE = 12
 type StatusFilter = 'ALL' | ByobStatus
 
 const FILTER_OPTIONS: StatusFilter[] = ['ALL', 'OPEN', 'CLOSED', 'CANCELLED']
+
+// 자유게시판 말머리 필터와 동일 구조: 버튼 자체에 테두리(테두리가 제일 바깥)
+const STATUS_LABEL_KEY: Record<ByobStatus, string> = {
+  OPEN:      'byob.statusOpen',
+  CLOSED:    'byob.statusClosed',
+  CANCELLED: 'byob.statusCancelled',
+}
+const STATUS_FILTER_STYLE: Record<ByobStatus, { on: string; off: string }> = {
+  OPEN:      { on: 'border-green-400 bg-green-50 text-green-700',     off: 'border-green-400 text-green-700 bg-white hover:bg-green-50' },
+  CLOSED:    { on: 'border-yellow-400 bg-yellow-50 text-yellow-700',  off: 'border-yellow-400 text-yellow-700 bg-white hover:bg-yellow-50' },
+  CANCELLED: { on: 'border-neutral-400 bg-neutral-100 text-neutral-600', off: 'border-neutral-300 text-neutral-500 bg-white hover:bg-neutral-50' },
+}
+const ALL_FILTER_STYLE = {
+  on:  'border-primary-500 bg-primary-50 text-primary-900',
+  off: 'border-neutral-200 text-neutral-600 bg-white hover:border-neutral-300',
+}
 
 export default function ByobListPage() {
   const { t } = useTranslation()
@@ -57,22 +72,23 @@ export default function ByobListPage() {
         )}
       </div>
 
-      {/* 상태 필터 */}
+      {/* 상태 필터 — 자유게시판 말머리 필터와 동일하게 버튼 테두리가 제일 바깥 */}
       <div className="flex flex-wrap gap-2 mb-6">
-        {FILTER_OPTIONS.map((opt) => (
-          <button
-            key={opt}
-            onClick={() => { setStatus(opt); setPage(0) }}
-            className={[
-              'px-3 py-1.5 text-xs font-medium rounded-full transition-colors',
-              status === opt
-                ? 'bg-primary-50 text-primary-900'
-                : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200',
-            ].join(' ')}
-          >
-            {opt === 'ALL' ? t('byob.statusAll') : <ByobStatusBadge status={opt as ByobStatus} size="sm" />}
-          </button>
-        ))}
+        {FILTER_OPTIONS.map((opt) => {
+          const active = status === opt
+          const style = opt === 'ALL'
+            ? (active ? ALL_FILTER_STYLE.on : ALL_FILTER_STYLE.off)
+            : (active ? STATUS_FILTER_STYLE[opt].on : STATUS_FILTER_STYLE[opt].off)
+          return (
+            <button
+              key={opt}
+              onClick={() => { setStatus(opt); setPage(0) }}
+              className={['px-3 py-1.5 text-xs font-medium rounded-full border transition-colors', style].join(' ')}
+            >
+              {opt === 'ALL' ? t('byob.statusAll') : t(STATUS_LABEL_KEY[opt])}
+            </button>
+          )
+        })}
       </div>
 
       {isLoading ? (

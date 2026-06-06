@@ -329,11 +329,22 @@
       "BLENDED_MALT":   "Blended Malt",
       "BLENDED_WHISKY": "Blended",
       "BOURBON":        "Bourbon",
+      "TENNESSEE":      "Tennessee",
       "RYE":            "Rye",
-      "CORN":           "Corn",
-      "GRAIN":          "Grain",
-      "POT_STILL":      "Pot Still",
+      "POT_STILL":      "Single Pot Still",
+      "GRAIN_CORN":     "Grain / Corn",
       "OTHER":          "Other"
+    },
+    "whiskyStyleExample": {
+      "SINGLE_MALT":    "Macallan / Balvenie / Glenfiddich",
+      "BLENDED_MALT":   "Johnnie Walker Green / Monkey Shoulder",
+      "BLENDED_WHISKY": "Ballantine's / Johnnie Walker / Chivas Regal",
+      "BOURBON":        "Wild Turkey / Buffalo Trace",
+      "TENNESSEE":      "Jack Daniel's",
+      "RYE":            "Rye Whiskey / Bulleit Rye",
+      "POT_STILL":      "Irish / Redbreast",
+      "GRAIN_CORN":     "Grain Whisky / Haig Club",
+      "OTHER":          ""
     },
     "wineType": {
       "RED":       "Red",

@@ -21,8 +21,9 @@ const SEL = `${INPUT}`
 const LABEL = 'block text-xs font-medium text-neutral-600 mb-1.5'
 
 const WHISKY_STYLES = [
-  ['SINGLE_MALT','싱글 몰트'],['BLENDED_MALT','블렌디드 몰트'],['BLENDED_WHISKY','블렌디드 위스키'],
-  ['BOURBON','버번'],['RYE','라이'],['CORN','콘'],['GRAIN','그레인'],['POT_STILL','팟 스틸'],['OTHER','기타'],
+  ['SINGLE_MALT','싱글 몰트'],['BLENDED_MALT','블렌디드 몰트'],['BLENDED_WHISKY','블렌디드'],
+  ['BOURBON','버번'],['TENNESSEE','테네시'],['RYE','라이'],['POT_STILL','싱글 팟 스틸'],
+  ['GRAIN_CORN','그레인 / 콘'],['OTHER','기타'],
 ]
 const CASK_TYPES = [
   ['EX_BOURBON','버번 캐스크'],['EX_SHERRY','셰리 캐스크'],['EX_PORT','포트 캐스크'],
