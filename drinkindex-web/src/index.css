@@ -173,3 +173,17 @@
     box-shadow: 0 0 0 3px rgb(146 64 14 / 0.25);
   }
 }
+
+/* ── 모션 축소 설정 존중 (접근성) ──────────────────────────────
+   사용자가 OS에서 '동작 줄이기'를 켠 경우 애니메이션·전환을 사실상 제거.
+   Tailwind 레이어보다 우선하도록 최상위 미디어 쿼리로 선언. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

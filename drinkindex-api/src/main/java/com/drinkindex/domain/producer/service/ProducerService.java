@@ -67,6 +67,7 @@ public class ProducerService {
                 .foundedYear(request.foundedYear())
                 .descriptionKo(request.descriptionKo())
                 .descriptionEn(request.descriptionEn())
+                .searchKeywords(request.searchKeywords())
                 .build();
         return ProducerResponse.from(producerRepository.save(producer));
     }
@@ -83,7 +84,8 @@ public class ProducerService {
                 request.website()       != null ? request.website()       : producer.getWebsite(),
                 request.foundedYear()   != null ? request.foundedYear()   : producer.getFoundedYear(),
                 request.descriptionKo() != null ? request.descriptionKo() : producer.getDescriptionKo(),
-                request.descriptionEn() != null ? request.descriptionEn() : producer.getDescriptionEn()
+                request.descriptionEn() != null ? request.descriptionEn() : producer.getDescriptionEn(),
+                request.searchKeywords() != null ? request.searchKeywords() : producer.getSearchKeywords()
         );
         return ProducerResponse.from(producer);
     }

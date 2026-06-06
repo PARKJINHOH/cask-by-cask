@@ -22,7 +22,7 @@ const INPUT = 'w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg foc
 const LABEL = 'block text-xs font-medium text-neutral-600 mb-1.5'
 
 const WINE_TYPES = [
-  ['RED','레드'],['WHITE','화이트'],['ROSE','로제'],['SPARKLING','스파클링'],['DESSERT','디저트'],['ORANGE','오렌지'],
+  ['RED','레드'],['WHITE','화이트'],['ROSE','로제'],['SPARKLING','스파클링'],['DESSERT','디저트'],['ORANGE','오렌지'],['FORTIFIED','주정강화'],
 ]
 const CERTIFICATIONS = [['NONE','없음'],['ORGANIC','Organic'],['BIODYNAMIC','Biodynamic'],['SUSTAINABLE','Sustainable']]
 const HARVEST_METHODS = ['Hand-picked', 'Machine-harvested']
@@ -47,6 +47,9 @@ export default function WineDetailSection({ value, onChange, errors }: Props) {
                 {l}
                 {v === 'ORANGE' && (
                   <InfoTooltip text="청포도를 껍질째 발효한 와인. 탄닌과 산미가 강합니다." />
+                )}
+                {v === 'FORTIFIED' && (
+                  <InfoTooltip text="발효 중·후 증류주를 더해 도수를 높인 와인. 포트·셰리·마데이라 등." />
                 )}
               </label>
             ))}

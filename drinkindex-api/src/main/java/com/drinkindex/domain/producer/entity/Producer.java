@@ -45,8 +45,13 @@ public class Producer extends BaseTimeEntity {
     @Column(columnDefinition = "TEXT")
     private String descriptionEn;
 
+    /** 검색 별칭 — 한글 음차 표기 변형 등 (예: 카뮈 ↔ 까뮤). 공백/콤마로 구분, 표시엔 미사용. */
+    @Column(length = 300)
+    private String searchKeywords;
+
     public void update(ProducerType type, String nameKo, String nameEn, String country, String region,
-                       String website, Integer foundedYear, String descriptionKo, String descriptionEn) {
+                       String website, Integer foundedYear, String descriptionKo, String descriptionEn,
+                       String searchKeywords) {
         this.type = type;
         this.nameKo = nameKo;
         this.nameEn = nameEn;
@@ -56,5 +61,6 @@ public class Producer extends BaseTimeEntity {
         this.foundedYear = foundedYear;
         this.descriptionKo = descriptionKo;
         this.descriptionEn = descriptionEn;
+        this.searchKeywords = searchKeywords;
     }
 }

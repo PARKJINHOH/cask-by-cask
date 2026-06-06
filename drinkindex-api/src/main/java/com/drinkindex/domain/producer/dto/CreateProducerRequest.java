@@ -39,5 +39,9 @@ public record CreateProducerRequest(
         String descriptionKo,
 
         @Schema(description = "영문 소개 (선택)")
-        String descriptionEn
+        String descriptionEn,
+
+        @Schema(description = "검색 별칭 (선택) — 한글 음차 변형 등, 공백/콤마 구분")
+        @Size(max = 300, message = "검색 별칭은 300자 이하로 입력해주세요.")
+        String searchKeywords
 ) {}

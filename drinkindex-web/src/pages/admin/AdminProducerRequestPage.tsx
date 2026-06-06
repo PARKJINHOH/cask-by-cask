@@ -94,13 +94,13 @@ export default function AdminProducerRequestPage() {
   const { data, isLoading } = useAdminProducerRequests(status, page)
 
   const handleApprove = (req: MyProducerRequest) => {
-    if (!confirm(`'${req.nameKo}'를 승인하시겠습니까? 증류소 DB에 자동 등록됩니다.`)) return
+    if (!confirm(`'${req.nameKo}'를 승인하시겠습니까? 생산자 DB에 자동 등록됩니다.`)) return
     approve.mutate(req.id)
   }
 
   return (
     <div className="p-6 space-y-5">
-      <h1 className="text-xl font-bold text-neutral-900">증류소 등록 요청</h1>
+      <h1 className="text-xl font-bold text-neutral-900">생산자 등록 요청</h1>
 
       <div className="flex items-end gap-3 p-4 bg-white rounded-xl shadow-sm">
         <div>

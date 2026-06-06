@@ -39,6 +39,15 @@ export const PRODUCER_LABEL: Record<SpiritCategory, string> = {
 }
 export const DATE_RE = /^\d{4}(-\d{2})?$/
 
+// 카테고리별 입력 예시 placeholder (이름/병입업체)
+const PLACEHOLDERS: Record<SpiritCategory, { nameEn: string; nameKo: string; bottler: string }> = {
+  WHISKY: { nameEn: 'Balvenie 12Y DoubleWood', nameKo: '예) 발베니 12년 더블우드', bottler: '예) Gordon & MacPhail' },
+  COGNAC: { nameEn: 'Rémy Martin XO',          nameKo: '예) 레미 마르탱 XO',       bottler: '예) 메종 직병입' },
+  WINE:   { nameEn: 'Château Margaux 2016',    nameKo: '예) 샤토 마고 2016',       bottler: '예) 도멘 직병입' },
+  OTHER:  { nameEn: 'Bombay Sapphire',         nameKo: '예) 봄베이 사파이어',       bottler: '예) 병입업체명' },
+}
+const DEFAULT_PLACEHOLDER = { nameEn: 'Balvenie 12Y DoubleWood', nameKo: '예) 발베니 12년 더블우드', bottler: '' }
+
 export const CARD = 'bg-white rounded-2xl shadow-sm p-6 space-y-5'
 const INPUT = 'w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400'
 const LABEL = 'block text-xs font-medium text-neutral-600 mb-1.5'
@@ -224,18 +233,25 @@ export function useSpiritForm() {
   }
 
   // ── 페이로드 빌드 (단일 정의) ──
-  const buildCommonPayload = () => ({
-    isNas: commonDetail.isNas,
-    ageStatement: commonDetail.isNas ? null : (commonDetail.ageStatement ?? null),
-    distilledDate: commonDetail.distilledDate || null,
-    bottledDate: commonDetail.bottledDate || null,
-    releaseDate: commonDetail.releaseDate || null,
-    volumeMl: commonDetail.volumeMl ? Number(commonDetail.volumeMl) : null,
-    abv: commonDetail.abv ? Number(commonDetail.abv) : null,
-    bottleNo: commonDetail.bottleNo || null,
-    batchNo: commonDetail.batchNo || null,
-    totalBottles: commonDetail.totalBottles ? Number(commonDetail.totalBottles) : null,
-  })
+  // 카테고리별 정리: 와인은 빈티지 중심(NAS/숙성년수/증류·병입연월/병·배치 메타 제외),
+  //                  꼬냑은 등급 중심(NAS/숙성년수/증류연월 제외)
+  const buildCommonPayload = () => {
+    const isWine = category === 'WINE'
+    const isCognac = category === 'COGNAC'
+    const dropAging = isWine || isCognac
+    return {
+      isNas: dropAging ? false : commonDetail.isNas,
+      ageStatement: dropAging || commonDetail.isNas ? null : (commonDetail.ageStatement ?? null),
+      distilledDate: dropAging ? null : (commonDetail.distilledDate || null),
+      bottledDate: isWine ? null : (commonDetail.bottledDate || null),
+      releaseDate: commonDetail.releaseDate || null,
+      volumeMl: commonDetail.volumeMl ? Number(commonDetail.volumeMl) : null,
+      abv: commonDetail.abv ? Number(commonDetail.abv) : null,
+      bottleNo: isWine ? null : (commonDetail.bottleNo || null),
+      batchNo: isWine ? null : (commonDetail.batchNo || null),
+      totalBottles: isWine ? null : (commonDetail.totalBottles ? Number(commonDetail.totalBottles) : null),
+    }
+  }
 
   const buildCategoryPayload = () => {
     switch (category) {
@@ -346,6 +362,7 @@ export default function SpiritFormFields({ form, categoryLocked, onCategorySelec
   const { category, errors } = form
   const handleCategory = onCategorySelect ?? form.selectCategory
   const producerLabel = category ? PRODUCER_LABEL[category] : '증류소'
+  const ph = category ? PLACEHOLDERS[category] : DEFAULT_PLACEHOLDER
   const queryClient = useQueryClient()
 
   // 기타 카테고리 — 목록에 없는 생산자 즉시 직접 생성 후 선택
@@ -395,14 +412,14 @@ export default function SpiritFormFields({ form, categoryLocked, onCategorySelec
             <div>
               <label className={LABEL}>영어 이름 <span className="text-red-400">*</span></label>
               <input value={form.nameEn} onChange={(e) => form.setNameEn(e.target.value)} maxLength={200}
-                placeholder="Balvenie 12Y DoubleWood"
+                placeholder={ph.nameEn}
                 className={`${INPUT} ${errors.nameEn ? 'border-red-400' : ''}`} />
               {errors.nameEn && <p className="text-xs text-red-500 mt-1">{errors.nameEn}</p>}
             </div>
             <div>
               <label className={LABEL}>한국어 이름 <span className="text-red-400">*</span></label>
               <input value={form.nameKo} onChange={(e) => form.setNameKo(e.target.value)} maxLength={200}
-                placeholder="예) 발베니 12년 더블우드"
+                placeholder={ph.nameKo}
                 className={`${INPUT} ${errors.nameKo ? 'border-red-400' : ''}`} />
               {errors.nameKo && <p className="text-xs text-red-500 mt-1">{errors.nameKo}</p>}
             </div>
@@ -449,7 +466,14 @@ export default function SpiritFormFields({ form, categoryLocked, onCategorySelec
             <div>
               <label className={LABEL}>{producerLabel}</label>
               <AdminProducerSelector value={form.producerId} defaultName={form.producerName}
-                onChange={(id) => form.setProducerId(id ?? null)}
+                onChange={(id, producer) => {
+                  form.setProducerId(id ?? null)
+                  // 생산자에 국가가 있으면 자동으로 국가 선택 (없으면 기존 값 유지)
+                  if (producer?.country) {
+                    const code = ISO3166_COUNTRIES.find((c) => c.nameKo === producer.country)?.code ?? null
+                    form.setCountryValue(code, producer.country)
+                  }
+                }}
                 type={CATEGORY_TO_PRODUCER_TYPE[category]}
                 onCreateNew={handleCreateProducer}
                 defaultCountry={ISO3166_COUNTRIES.find((c) => c.code === form.countryCode)?.nameKo ?? ''} />
@@ -465,7 +489,8 @@ export default function SpiritFormFields({ form, categoryLocked, onCategorySelec
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className={LABEL}>병입업체</label>
-                <input value={form.bottler} onChange={(e) => form.setBottler(e.target.value)} maxLength={200} className={INPUT} />
+                <input value={form.bottler} onChange={(e) => form.setBottler(e.target.value)} maxLength={200}
+                  placeholder={ph.bottler} className={INPUT} />
               </div>
               {category === 'WINE' ? (
                 <div>
@@ -517,6 +542,7 @@ export default function SpiritFormFields({ form, categoryLocked, onCategorySelec
                 value={form.commonDetail}
                 onChange={form.updateCommon}
                 dateErrors={{ distilledDate: errors.distilledDate, bottledDate: errors.bottledDate }}
+                category={category}
               />
             </div>
           </>

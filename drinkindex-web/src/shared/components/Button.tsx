@@ -26,7 +26,8 @@ const variantClasses: Record<Variant, string> = {
 
 const sizeClasses: Record<Size, string> = {
   sm: 'h-8 px-3 text-xs gap-1.5 rounded-md',
-  md: 'h-9 px-4 text-sm gap-2 rounded-lg',
+  // 모바일에선 터치 최소치(44px) 확보, sm(≥640px) 데스크톱에선 기존 밀집 높이(36px)
+  md: 'h-11 sm:h-9 px-4 text-sm gap-2 rounded-lg',
   lg: 'h-11 px-5 text-sm gap-2 rounded-lg',
 }
 

@@ -19,7 +19,14 @@ function PlaceholderImage() {
       className="w-full h-full flex flex-col items-center justify-center bg-neutral-50 text-neutral-300"
       aria-hidden="true"
     >
-      <span className="text-3xl">🥃</span>
+      <svg
+        className="w-10 h-10" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+      >
+        <path d="M10 2h4" />
+        <path d="M10.5 2v4.2a3 3 0 0 1-.45 1.58L9 9.6A4 4 0 0 0 8.5 11.6V19a3 3 0 0 0 3 3h1a3 3 0 0 0 3-3v-7.4a4 4 0 0 0-.5-2l-1.05-1.82A3 3 0 0 1 13.5 6.2V2" />
+        <path d="M8.5 13h7" />
+      </svg>
     </div>
   )
 }

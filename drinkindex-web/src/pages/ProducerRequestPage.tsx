@@ -4,12 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { useMyProducerRequests, useSubmitProducerRequest } from '@/domain/producer/hooks/useProducerRequest'
 import type { ProducerRegisterRequestForm, MyProducerRequest } from '@/domain/producer/types/producerRequest.types'
 import type { RequestStatus } from '@/domain/spirit/types/spiritRequest.types'
-import type { ProducerType } from '@/domain/producer/types/producer.types'
-import { PRODUCER_TYPE_LABEL } from '@/domain/producer/types/producer.types'
 import CountryRegionSelector from '@/domain/location/components/CountryRegionSelector'
 import SeoMeta from '@/shared/components/SeoMeta'
-
-const PRODUCER_TYPES: ProducerType[] = ['DISTILLERY', 'WINERY', 'COGNAC_HOUSE', 'OTHER']
 
 const STATUS_STYLE: Record<RequestStatus, string> = {
   PENDING:  'bg-amber-50 text-amber-700',
@@ -65,13 +61,14 @@ function RequestCard({ item }: { item: MyProducerRequest }) {
 }
 
 export default function ProducerRequestPage() {
-  const { t, i18n } = useTranslation()
-  const isEn = i18n.language === 'en'
+  const { t } = useTranslation()
   const [successMsg, setSuccessMsg] = useState('')
   const [countryCode, setCountryCode] = useState<string | null>(null)
   const [countryNameKo, setCountryNameKo] = useState('')
   const [regionNameKo, setRegionNameKo] = useState('')
   const [countryError, setCountryError] = useState(false)
+  // 목록에 없는 국가 → 직접 입력 모드
+  const [customCountry, setCustomCountry] = useState(false)
   const { data: myRequests = [], isLoading } = useMyProducerRequests()
   const { mutate: submitRequest, isPending } = useSubmitProducerRequest()
 
@@ -86,6 +83,7 @@ export default function ProducerRequestPage() {
     if (!countryNameKo) { setCountryError(true); return }
     const payload: ProducerRegisterRequestForm = {
       ...data,
+      type: 'OTHER', // 생산자 종류는 '생산자'로 통일 (관리자가 승인 시 분류)
       country: countryNameKo,
       region: regionNameKo || undefined,
       website: data.website || undefined,
@@ -100,6 +98,7 @@ export default function ProducerRequestPage() {
         setCountryNameKo('')
         setRegionNameKo('')
         setCountryError(false)
+        setCustomCountry(false)
         setSuccessMsg(t('producerRequest.form.success'))
         setTimeout(() => setSuccessMsg(''), 4000)
       },
@@ -124,21 +123,6 @@ export default function ProducerRequestPage() {
               <div className="flex items-center gap-2">
                 <span className="w-1.5 h-4 rounded-full bg-amber-500" />
                 <h2 className="text-sm font-bold text-amber-800">{t('producerRequest.form.requiredSection')}</h2>
-              </div>
-
-              <div className="space-y-1.5">
-                <ReqLabel>{t('producerRequest.form.type')}</ReqLabel>
-                <select
-                  {...register('type', { required: true })}
-                  defaultValue="DISTILLERY"
-                  className={`${FIELD_CLS} bg-white border-neutral-200`}
-                >
-                  {PRODUCER_TYPES.map((tp) => (
-                    <option key={tp} value={tp}>
-                      {isEn ? PRODUCER_TYPE_LABEL[tp].en : PRODUCER_TYPE_LABEL[tp].ko}
-                    </option>
-                  ))}
-                </select>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -167,12 +151,43 @@ export default function ProducerRequestPage() {
 
               <div className="space-y-1.5">
                 <ReqLabel>{t('producerRequest.form.country')}</ReqLabel>
-                <CountryRegionSelector
-                  countryCode={countryCode}
-                  regionNameKo={regionNameKo}
-                  onCountryChange={(code, nameKo) => { setCountryCode(code); setCountryNameKo(nameKo); if (nameKo) setCountryError(false) }}
-                  onRegionChange={(nameKo) => setRegionNameKo(nameKo)}
-                />
+                {customCountry ? (
+                  <div className="flex gap-2">
+                    <input
+                      value={countryNameKo}
+                      onChange={(e) => { setCountryNameKo(e.target.value); if (e.target.value) setCountryError(false) }}
+                      placeholder="국가 직접 입력 (예: 조지아)"
+                      maxLength={100}
+                      className={`${FIELD_CLS} bg-white ${countryError ? 'border-red-400' : 'border-neutral-200'}`}
+                    />
+                    <input
+                      value={regionNameKo}
+                      onChange={(e) => setRegionNameKo(e.target.value)}
+                      placeholder="지역 (선택)"
+                      maxLength={100}
+                      className={`${FIELD_CLS} bg-white border-neutral-200`}
+                    />
+                  </div>
+                ) : (
+                  <CountryRegionSelector
+                    countryCode={countryCode}
+                    regionNameKo={regionNameKo}
+                    onCountryChange={(code, nameKo) => { setCountryCode(code); setCountryNameKo(nameKo); if (nameKo) setCountryError(false) }}
+                    onRegionChange={(nameKo) => setRegionNameKo(nameKo)}
+                  />
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !customCountry
+                    setCustomCountry(next)
+                    // 모드 전환 시 국가/지역 값 초기화 (혼선 방지)
+                    setCountryCode(null); setCountryNameKo(''); setRegionNameKo(''); setCountryError(false)
+                  }}
+                  className="text-xs text-primary-700 hover:text-primary-900 hover:underline"
+                >
+                  {customCountry ? '↩ 목록에서 국가 선택' : '찾는 국가가 없나요? 직접 입력'}
+                </button>
                 {countryError && <p className="text-xs text-red-500">{t('producerRequest.form.errCountry')}</p>}
               </div>
 

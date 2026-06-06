@@ -22,7 +22,7 @@ const CATEGORY_CARDS: Array<[SpiritCategory, string]> = [
 // 카테고리 핵심값 선택지 (신청자 입력 — 관리자 등록 참고용). 라벨은 spirit.* 번역키 사용
 const CATEGORY_CORE_OPTS: Record<SpiritCategory, { field: keyof SpiritRegisterRequestForm; ns: string; values: string[] }> = {
   WHISKY: { field: 'whiskyStyle', ns: 'spirit.whiskyStyle', values: ['SINGLE_MALT', 'BLENDED_MALT', 'BLENDED_WHISKY', 'BOURBON', 'RYE', 'CORN', 'GRAIN', 'POT_STILL', 'OTHER'] },
-  WINE:   { field: 'wineType',    ns: 'spirit.wineType',    values: ['RED', 'WHITE', 'ROSE', 'SPARKLING', 'DESSERT', 'ORANGE'] },
+  WINE:   { field: 'wineType',    ns: 'spirit.wineType',    values: ['RED', 'WHITE', 'ROSE', 'SPARKLING', 'DESSERT', 'ORANGE', 'FORTIFIED'] },
   COGNAC: { field: 'cognacGrade', ns: 'spirit.cognacGrade', values: ['VS', 'NAPOLEON', 'VSOP', 'XO', 'XXO', 'HORS_DAGE'] },
   OTHER:  { field: 'otherType',   ns: 'spirit.otherType',   values: ['RUM', 'GIN', 'VODKA', 'TEQUILA', 'MEZCAL', 'BRANDY', 'LIQUEUR', 'SAKE', 'SOJU', 'BAIJIU', 'ABSINTHE', 'BEER', 'OTHER'] },
 }

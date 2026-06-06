@@ -8,6 +8,7 @@ import com.drinkindex.domain.spirit.entity.QSpiritImage;
 import com.drinkindex.domain.spirit.entity.QSpiritWhiskyDetail;
 import com.drinkindex.domain.spirit.entity.QSpiritWineDetail;
 import com.drinkindex.domain.spirit.entity.Spirit;
+import com.drinkindex.domain.producer.entity.QProducer;
 import com.drinkindex.domain.spirit.entity.enums.SpiritSort;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.OrderSpecifier;
@@ -33,14 +34,17 @@ public class SpiritQueryRepositoryImpl implements SpiritQueryRepository {
     public Page<SpiritListResponse> search(SpiritSearchCondition condition, Pageable pageable) {
         QSpirit spirit = QSpirit.spirit;
         QSpiritImage image = QSpiritImage.spiritImage;
+        QProducer producer = QProducer.producer;
 
-        BooleanBuilder predicate = buildPredicate(condition, spirit);
+        BooleanBuilder predicate = buildPredicate(condition, spirit, producer);
         OrderSpecifier<?> order = buildOrder(condition.sort(), spirit);
+        boolean hasKeyword = StringUtils.hasText(condition.keyword());
 
         // ── 1. 데이터 조회 (producer fetch join + 서브타입 조건부 join) ─
+        //  키워드 검색 시 생산자명/검색별칭(예: 카뮈↔까뮤)도 매칭하도록 producer 를 alias join
         JPAQuery<Spirit> dataQuery = queryFactory
                 .selectFrom(spirit)
-                .leftJoin(spirit.producer).fetchJoin();
+                .leftJoin(spirit.producer, producer).fetchJoin();
         applySubTypeJoin(dataQuery, condition, spirit);
         List<Spirit> spirits = dataQuery
                 .where(predicate)
@@ -51,6 +55,9 @@ public class SpiritQueryRepositoryImpl implements SpiritQueryRepository {
 
         // ── 2. COUNT 분리 쿼리 ─────────────────────────────────
         JPAQuery<Long> countQuery = queryFactory.select(spirit.count()).from(spirit);
+        if (hasKeyword) {
+            countQuery.leftJoin(spirit.producer, producer);
+        }
         applySubTypeJoin(countQuery, condition, spirit);
         Long total = countQuery.where(predicate).fetchOne();
 
@@ -84,14 +91,18 @@ public class SpiritQueryRepositoryImpl implements SpiritQueryRepository {
 
     // ── 동적 조건 빌더 ─────────────────────────────────────────
 
-    private BooleanBuilder buildPredicate(SpiritSearchCondition cond, QSpirit spirit) {
+    private BooleanBuilder buildPredicate(SpiritSearchCondition cond, QSpirit spirit, QProducer producer) {
         BooleanBuilder builder = new BooleanBuilder();
         builder.and(spirit.status.eq(cond.status()));
 
         if (StringUtils.hasText(cond.keyword())) {
+            // 술 이름 + 생산자명/검색별칭(한글 음차 변형 등)까지 매칭
             builder.and(
                     spirit.nameKo.containsIgnoreCase(cond.keyword())
                             .or(spirit.nameEn.containsIgnoreCase(cond.keyword()))
+                            .or(producer.nameKo.containsIgnoreCase(cond.keyword()))
+                            .or(producer.nameEn.containsIgnoreCase(cond.keyword()))
+                            .or(producer.searchKeywords.containsIgnoreCase(cond.keyword()))
             );
         }
         if (cond.category() != null) {

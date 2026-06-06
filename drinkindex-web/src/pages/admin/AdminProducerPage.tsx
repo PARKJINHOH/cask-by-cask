@@ -27,6 +27,7 @@ interface FormValues {
   foundedYear?: number | ''
   descriptionKo?: string
   descriptionEn?: string
+  searchKeywords?: string
 }
 
 interface ProducerFormProps {
@@ -55,6 +56,7 @@ function ProducerForm({ initial, onSave, onCancel, isPending }: ProducerFormProp
       foundedYear: initial.foundedYear ?? '',
       descriptionKo: initial.descriptionKo ?? '',
       descriptionEn: initial.descriptionEn ?? '',
+      searchKeywords: initial.searchKeywords ?? '',
     } : undefined,
   })
 
@@ -125,6 +127,16 @@ function ProducerForm({ initial, onSave, onCancel, isPending }: ProducerFormProp
             type="url"
             placeholder="https://example.com"
             maxLength={500}
+            className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none
+              focus:ring-2 focus:ring-primary-400"
+          />
+        </div>
+        <div className="space-y-1 sm:col-span-2">
+          <label className="block text-xs font-medium text-neutral-600">검색 별칭</label>
+          <input
+            {...register('searchKeywords')}
+            maxLength={300}
+            placeholder="한글 음차 변형 등 (예: 까뮤 까뮈). 표시엔 미사용, 검색에만 사용"
             className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none
               focus:ring-2 focus:ring-primary-400"
           />
@@ -245,6 +257,7 @@ export default function AdminProducerPage() {
       foundedYear: form.foundedYear ? Number(form.foundedYear) : undefined,
       descriptionKo: form.descriptionKo || undefined,
       descriptionEn: form.descriptionEn || undefined,
+      searchKeywords: form.searchKeywords || undefined,
     }
     create.mutate(payload, { onSuccess: () => setShowCreate(false) })
   }
@@ -261,6 +274,7 @@ export default function AdminProducerPage() {
       foundedYear: form.foundedYear ? Number(form.foundedYear) : null,
       descriptionKo: form.descriptionKo || null,
       descriptionEn: form.descriptionEn || null,
+      searchKeywords: form.searchKeywords || null,
     }
     update.mutate({ id: editTarget.id, data: payload }, { onSuccess: () => setEditTarget(null) })
   }

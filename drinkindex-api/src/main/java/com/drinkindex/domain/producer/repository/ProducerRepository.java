@@ -14,7 +14,8 @@ public interface ProducerRepository extends JpaRepository<Producer, Long> {
             SELECT d FROM Producer d
             WHERE (:keyword IS NULL
                    OR LOWER(d.nameKo) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                   OR LOWER(d.nameEn) LIKE LOWER(CONCAT('%', :keyword, '%')))
+                   OR LOWER(d.nameEn) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                   OR LOWER(d.searchKeywords) LIKE LOWER(CONCAT('%', :keyword, '%')))
               AND (:nameKo IS NULL OR LOWER(d.nameKo) LIKE LOWER(CONCAT('%', :nameKo, '%')))
               AND (:nameEn IS NULL OR LOWER(d.nameEn) LIKE LOWER(CONCAT('%', :nameEn, '%')))
               AND (:country IS NULL OR LOWER(d.country) LIKE LOWER(CONCAT('%', :country, '%')))

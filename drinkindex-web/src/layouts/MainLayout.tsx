@@ -104,6 +104,24 @@ type GNBItem =
 function GNB() {
   const { t } = useTranslation()
   const [open, setOpen] = useState<string | null>(null)
+  const navRef = useRef<HTMLElement>(null)
+
+  // 드롭다운: 외부 클릭 / ESC 로 닫기 (터치·키보드 접근성)
+  useEffect(() => {
+    if (!open) return
+    const onDocClick = (e: MouseEvent) => {
+      if (navRef.current && !navRef.current.contains(e.target as Node)) setOpen(null)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(null)
+    }
+    document.addEventListener('mousedown', onDocClick)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDocClick)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
 
   const { data: latestNotice } = useLatestNotice()
   const lastSeenId = Number(localStorage.getItem(SEEN_KEY) ?? 0)
@@ -120,7 +138,6 @@ function GNB() {
       ],
     },
     { key: 'notice', label: t('menu.notice'), to: '/notices' },
-    { key: 'faq', label: t('menu.faq'), to: '/faq' },
     {
       key: 'community',
       label: t('menu.community'),
@@ -138,7 +155,7 @@ function GNB() {
     ${active ? 'text-primary-800' : 'text-neutral-600 hover:text-primary-800'}`
 
   return (
-    <nav className="bg-white border-b border-neutral-100">
+    <nav ref={navRef} className="bg-white border-b border-neutral-100">
       <div className="max-w-7xl mx-auto px-4">
         <ul className="flex items-center gap-1">
           {menus.map(menu => {
@@ -178,7 +195,12 @@ function GNB() {
                 onMouseEnter={() => setOpen(menu.key)}
                 onMouseLeave={() => setOpen(null)}
               >
-                <button className={itemCls(isOpen)}>
+                <button
+                  className={itemCls(isOpen)}
+                  onClick={() => setOpen(isOpen ? null : menu.key)}
+                  aria-haspopup="true"
+                  aria-expanded={isOpen}
+                >
                   {menu.label}
                   <svg
                     className={`w-3.5 h-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`}
@@ -519,7 +541,7 @@ export default function MainLayout() {
       <PasswordChangeBanner />
 
       {/* 본문 */}
-      <main className="flex-1 pb-16 lg:pb-0">
+      <main className="flex-1 pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">
         <Outlet />
       </main>
 

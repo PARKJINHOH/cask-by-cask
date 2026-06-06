@@ -57,6 +57,9 @@ export default function BottomNav() {
   const isHome    = location.pathname === '/'
   const isSpirits = location.pathname.startsWith('/spirits')
   const isMypage  = location.pathname.startsWith('/mypage')
+  const currentTab = new URLSearchParams(location.search).get('tab')
+  const isWishlist   = isMypage && currentTab === 'wishlist'
+  const isMypageMain = isMypage && currentTab !== 'wishlist'
 
   const tabs = [
     {
@@ -73,21 +76,22 @@ export default function BottomNav() {
     },
     {
       label:  t('wishlist.tab'),
-      icon:   <HeartIcon active={isMypage} />,
-      active: isMypage,
-      onClick: () => navigate(isLoggedIn ? '/mypage' : '/login'),
+      icon:   <HeartIcon active={isWishlist} />,
+      active: isWishlist,
+      onClick: () => navigate(isLoggedIn ? '/mypage?tab=wishlist' : '/login'),
     },
     {
       label:  t('nav.mypage'),
-      icon:   <PersonIcon active={isMypage} />,
-      active: isMypage,
+      icon:   <PersonIcon active={isMypageMain} />,
+      active: isMypageMain,
       onClick: () => navigate(isLoggedIn ? '/mypage' : '/login'),
     },
   ]
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-neutral-200 lg:hidden"
+      className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-neutral-200 lg:hidden
+        pb-[env(safe-area-inset-bottom)]"
       aria-label="하단 탭 네비게이션"
     >
       <div className="grid grid-cols-4 h-16">

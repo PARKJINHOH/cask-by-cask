@@ -29,6 +29,8 @@ export interface Producer {
   foundedYear: number | null
   descriptionKo: string | null
   descriptionEn: string | null
+  /** 검색 별칭 (한글 음차 변형 등). 표시엔 미사용, 검색에만 사용 */
+  searchKeywords: string | null
 }
 
 export interface CreateProducerPayload {
@@ -41,6 +43,7 @@ export interface CreateProducerPayload {
   foundedYear?: number
   descriptionKo?: string
   descriptionEn?: string
+  searchKeywords?: string
 }
 
 export interface UpdateProducerPayload {
@@ -53,4 +56,5 @@ export interface UpdateProducerPayload {
   foundedYear?: number | null
   descriptionKo?: string | null
   descriptionEn?: string | null
+  searchKeywords?: string | null
 }

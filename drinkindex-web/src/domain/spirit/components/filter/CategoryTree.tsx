@@ -7,7 +7,7 @@ const WHISKY_STYLES: WhiskyStyle[] = [
   'SINGLE_MALT', 'BLENDED_MALT', 'BLENDED_WHISKY',
   'BOURBON', 'RYE', 'CORN', 'GRAIN', 'POT_STILL',
 ]
-const WINE_TYPES: WineType[] = ['RED', 'WHITE', 'ROSE', 'SPARKLING', 'DESSERT', 'ORANGE']
+const WINE_TYPES: WineType[] = ['RED', 'WHITE', 'ROSE', 'SPARKLING', 'DESSERT', 'ORANGE', 'FORTIFIED']
 const COGNAC_GRADES: CognacGrade[] = ['VS', 'NAPOLEON', 'VSOP', 'XO', 'XXO', 'HORS_DAGE']
 
 const CATEGORIES: SpiritCategory[] = ['WHISKY', 'COGNAC', 'WINE', 'OTHER']

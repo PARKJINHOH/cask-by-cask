@@ -341,7 +341,8 @@
       "ROSE":      "Rosé",
       "SPARKLING": "Sparkling",
       "DESSERT":   "Dessert",
-      "ORANGE":    "Orange"
+      "ORANGE":    "Orange",
+      "FORTIFIED": "Fortified"
     },
     "cognacGrade": {
       "VS":        "VS",

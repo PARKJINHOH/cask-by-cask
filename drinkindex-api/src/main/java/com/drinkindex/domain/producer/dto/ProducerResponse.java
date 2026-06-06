@@ -24,7 +24,9 @@ public record ProducerResponse(
         @Schema(description = "한글 소개")
         String descriptionKo,
         @Schema(description = "영문 소개")
-        String descriptionEn
+        String descriptionEn,
+        @Schema(description = "검색 별칭 (한글 음차 변형 등)")
+        String searchKeywords
 ) {
     public static ProducerResponse from(Producer producer) {
         return new ProducerResponse(
@@ -37,7 +39,8 @@ public record ProducerResponse(
                 producer.getWebsite(),
                 producer.getFoundedYear(),
                 producer.getDescriptionKo(),
-                producer.getDescriptionEn()
+                producer.getDescriptionEn(),
+                producer.getSearchKeywords()
         );
     }
 }

@@ -134,11 +134,12 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           {isPassword && (
             <button
               type="button"
-              tabIndex={-1}
               onClick={() => setShowPassword((v) => !v)}
               aria-label={showPassword ? '비밀번호 숨기기' : '비밀번호 보기'}
+              aria-pressed={showPassword}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400
-                hover:text-neutral-600 transition-colors rounded p-0.5"
+                hover:text-neutral-600 transition-colors rounded p-0.5
+                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400"
             >
               {showPassword ? <EyeOff /> : <EyeOpen />}
             </button>
