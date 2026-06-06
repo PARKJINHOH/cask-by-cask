@@ -71,19 +71,13 @@ public class SitemapService {
             id -> siteUrl + "/spirits/" + id,
             "weekly", "0.8");
 
-        // ── 동적: notices ──
-        try {
-            appendQueryResults(sb,
-                "SELECT n.id, n.updatedAt FROM Notice n WHERE n.isHidden = false ORDER BY n.id",
-                id -> siteUrl + "/notices/" + id,
-                "monthly", "0.6");
-        } catch (Exception e) {
-            // isHidden 필드가 없거나 다른 이름이면 fallback
-            appendQueryResults(sb,
-                "SELECT n.id, n.updatedAt FROM Notice n ORDER BY n.id",
-                id -> siteUrl + "/notices/" + id,
-                "monthly", "0.6");
-        }
+        // ── 동적: notices (공개 = 게시됨 & 미삭제) ──
+        // 주의: Notice 엔티티 필드는 isPublished / deletedAt 이다. 존재하지 않는 필드(isHidden)로 쿼리하면
+        // @Transactional(readOnly=true) 안에서 잡힌 예외가 트랜잭션을 rollback-only 로 만들어 커밋 시 500 발생.
+        appendQueryResults(sb,
+            "SELECT n.id, n.updatedAt FROM Notice n WHERE n.isPublished = true AND n.deletedAt IS NULL ORDER BY n.id",
+            id -> siteUrl + "/notices/" + id,
+            "monthly", "0.6");
 
         // ── 동적: posts (board_type 별 URL) ──
         try {
