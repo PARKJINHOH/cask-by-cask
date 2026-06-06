@@ -51,6 +51,7 @@ public enum ErrorCode {
     // Producer
     DISTILLERY_NOT_FOUND(HttpStatus.NOT_FOUND, "DISTILLERY_001", "증류소 정보를 찾을 수 없습니다."),
     DISTILLERY_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "DISTILLERY_002", "증류소 등록 요청을 찾을 수 없습니다."),
+    DISTILLERY_REQUEST_NOT_EDITABLE(HttpStatus.BAD_REQUEST, "DISTILLERY_003", "이미 처리된 등록 요청입니다."),
 
     // Winery
     WINERY_NOT_FOUND(HttpStatus.NOT_FOUND, "WINERY_001", "와이너리 정보를 찾을 수 없습니다."),

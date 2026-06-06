@@ -131,6 +131,9 @@ public class ProducerService {
     @Transactional
     public ProducerResponse approveProducerRequest(Long requestId, Long adminId) {
         ProducerRegisterRequest req = getProducerRequest(requestId);
+        if (req.getStatus() == RequestStatus.APPROVED) {
+            throw new CustomException(ErrorCode.DISTILLERY_REQUEST_NOT_EDITABLE);
+        }
         User admin = getUser(adminId);
         ProducerRegisterRequestBody body = parseData(req.getProducerData());
 
