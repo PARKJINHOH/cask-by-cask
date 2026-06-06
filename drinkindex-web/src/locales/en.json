@@ -137,7 +137,7 @@
       "country": "Country",
       "region": "Region",
       "bottler": "Bottler",
-      "caskNo": "Cask No.",
+      "caskNo": "Single Cask No.",
       "bottledYear": "Bottled Year",
       "vintageYear": "Vintage Year",
       "producer": "Producer",

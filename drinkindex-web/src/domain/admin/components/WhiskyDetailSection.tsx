@@ -176,9 +176,9 @@ export default function WhiskyDetailSection({ value, onChange, errors }: Props) 
         />
       </div>
 
-      {/* 캐스크 번호 */}
+      {/* 싱글 캐스크 번호 */}
       <div>
-        <label className={LABEL}>캐스크 번호</label>
+        <label className={LABEL}>싱글 캐스크 번호</label>
         <input type="text" value={value.caskNo} maxLength={100}
           onChange={(e) => onChange({ caskNo: e.target.value })} className={INPUT} />
       </div>

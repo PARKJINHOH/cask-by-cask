@@ -131,16 +131,6 @@ public class AdminSpiritController {
 
     // ── 등록 요청 — 승인/거절 (ADMIN 이상만) ──────────────────
 
-    @PatchMapping("/requests/{id}/approve")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
-    public ResponseEntity<ApiResponse<SpiritDetailResponse>> approveRequest(
-            @PathVariable Long id,
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
-        return ResponseEntity.ok(ApiResponse.success(
-                spiritService.approveRegisterRequest(id, userDetails.getUserId())
-        ));
-    }
-
     // 등록 요청 상세 화면(= 새 술 등록과 동일 폼)에서 관리자가 보완한 전체 상세로 승인
     @PostMapping("/requests/{id}/approve")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")

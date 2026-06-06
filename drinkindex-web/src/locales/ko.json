@@ -137,7 +137,7 @@
       "country": "국가",
       "region": "지역",
       "bottler": "병입업체명",
-      "caskNo": "캐스크 번호",
+      "caskNo": "싱글 캐스크 번호",
       "bottledYear": "병입년도",
       "vintageYear": "빈티지",
       "producer": "생산자",

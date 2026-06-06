@@ -141,17 +141,6 @@ export function useRemoveRequestImage() {
   })
 }
 
-export function useApproveRequest() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (id: number) => adminSpiritApi.approveRequest(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-requests'] })
-      queryClient.invalidateQueries({ queryKey: ['admin-request-detail'] })
-    },
-  })
-}
-
 export function useApproveRequestWithDetail() {
   const queryClient = useQueryClient()
   return useMutation({
