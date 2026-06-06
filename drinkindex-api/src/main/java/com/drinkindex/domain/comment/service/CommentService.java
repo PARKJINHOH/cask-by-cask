@@ -211,7 +211,7 @@ public class CommentService {
 
     private void checkOwnershipOrAdmin(CommunityComment comment, Long userId, Role role) {
         boolean isOwner = comment.getUser().getId().equals(userId);
-        boolean isAdmin = role == Role.ADMIN;
+        boolean isAdmin = role == Role.ADMIN || role == Role.SUPER_ADMIN;
         if (!isOwner && !isAdmin) {
             throw new CustomException(ErrorCode.COMMENT_ACCESS_DENIED);
         }
