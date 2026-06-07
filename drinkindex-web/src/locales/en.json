@@ -95,6 +95,7 @@
     "request": "Request",
     "requestSpirit": "Register Spirit",
     "requestProducer": "Register Producer",
+    "requestFeedback": "Feedback",
     "community": "Community",
     "communityAll": "All",
     "communityNews": "News",
@@ -131,6 +132,18 @@
     "form": {
       "nameKo": "Korean Name",
       "nameEn": "English Name",
+      "nameKoPlaceholder": {
+        "WHISKY": "e.g. 발베니 12년 더블우드",
+        "COGNAC": "e.g. 헤네시 XO",
+        "WINE": "e.g. 샤또 마고 2015",
+        "OTHER": "e.g. 바카디 카르타 블랑카"
+      },
+      "nameEnPlaceholder": {
+        "WHISKY": "Balvenie 12Y DoubleWood",
+        "COGNAC": "Hennessy XO",
+        "WINE": "Château Margaux 2015",
+        "OTHER": "Bacardi Carta Blanca"
+      },
       "category": "Category",
       "categoryPlaceholder": "Select category",
       "abv": "ABV",
@@ -505,7 +518,17 @@
     "priceReportsTab": "My Price Reports",
     "priceAlertsTab": "My Price Alerts",
     "messagesTab": "Messages",
+    "blocksTab": "Blocked",
     "settingsTab": "Account Settings",
+    "blocks": {
+      "title": "Blocked Users",
+      "desc": "Posts and comments from blocked users are hidden from your lists.",
+      "empty": "You haven't blocked anyone.",
+      "unblock": "Unblock",
+      "blockedAt": "Blocked {{date}}",
+      "unblockConfirm": "Unblock {{nickname}}?",
+      "unblockSuccess": "User unblocked."
+    },
     "joinDate": "Joined",
     "profileImage": {
       "section": "Profile Image",
@@ -652,6 +675,10 @@
     "all": "All Posts",
     "best": "Best",
     "event": "Events",
+    "noticeBadge": "Notice",
+    "pinAsNotice": "Pin as notice",
+    "unpinNotice": "Unpin",
+    "pinAsNoticeHelp": "Pins this post to the top of this board. It won't appear on other boards.",
     "write": "Write",
     "searchPlaceholder": "Search title or content",
     "title": "Title",
@@ -782,6 +809,69 @@
       "PENDING": "Pending",
       "IN_PROGRESS": "In Progress",
       "RESOLVED": "Resolved"
+    }
+  },
+  "feedback": {
+    "title": "Feedback",
+    "subtitle": "Report bugs, suggest improvements, or request features and track their progress. Only you and our team can see your submissions.",
+    "new": "New Request",
+    "myRequests": "My Requests",
+    "allRequests": "All Requests",
+    "empty": "You haven't submitted any feedback yet.",
+    "emptyAdmin": "No feedback submitted yet.",
+    "backToList": "Back to list",
+    "progress": "Progress",
+    "reporter": "Reporter",
+    "createdAt": "Created",
+    "resolvedAt": "Resolved",
+    "filterAll": "All statuses",
+    "type": {
+      "BUG": "Bug",
+      "IMPROVEMENT": "Improvement",
+      "FEATURE": "Feature",
+      "ETC": "Other"
+    },
+    "status": {
+      "RECEIVED": "Received",
+      "CONFIRMED": "Confirmed",
+      "IN_PROGRESS": "In Progress",
+      "RESOLVED": "Resolved",
+      "REJECTED": "Rejected",
+      "ON_HOLD": "On Hold"
+    },
+    "form": {
+      "type": "Type",
+      "typePlaceholder": "Select a type",
+      "title": "Title",
+      "titlePlaceholder": "Enter a title",
+      "content": "Details",
+      "contentPlaceholder": "For bugs, include steps to reproduce; for improvements/requests, describe the desired behavior (max 5,000 characters)",
+      "images": "Attachments",
+      "imagesHint": "Up to 3 images, 2MB each (JPG, PNG, WEBP, GIF)",
+      "addImage": "Add Image",
+      "submit": "Submit",
+      "submitting": "Submitting...",
+      "editTitle": "Edit Feedback",
+      "update": "Update",
+      "updating": "Updating...",
+      "cancel": "Cancel",
+      "error": "Something went wrong. Please try again."
+    },
+    "detail": {
+      "comments": "Comments",
+      "commentPlaceholder": "Write a comment",
+      "addComment": "Post Comment",
+      "noComments": "No comments yet.",
+      "me": "Me",
+      "opTeam": "Team",
+      "edit": "Edit",
+      "delete": "Delete",
+      "deleteConfirm": "Delete this feedback? This cannot be undone.",
+      "manageTitle": "Management",
+      "statusLabel": "Status",
+      "save": "Save",
+      "saving": "Saving...",
+      "saved": "Saved."
     }
   },
   "footer": {

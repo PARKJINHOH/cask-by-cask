@@ -4,7 +4,7 @@ import { useAuthStore } from '@/domain/auth/store/authStore'
 import { useRanking, useMyRank } from '@/domain/ranking/hooks/useRanking'
 import type { RankingItem, RankingPeriod } from '@/domain/ranking/types/ranking.types'
 import { getLevelInfo } from '@/domain/score/types/score.types'
-import LevelIcon from '@/shared/components/icons/LevelIcon'
+import LevelBadge from '@/shared/components/LevelBadge'
 import AdminIcon from '@/shared/components/icons/AdminIcon'
 import ProducerIcon from '@/shared/components/icons/ProducerIcon'
 import Spinner from '@/shared/components/Spinner'
@@ -38,7 +38,7 @@ function periodLabel(period: RankingPeriod): string {
 function RankIcon({ item }: { item: RankingItem }) {
   if (item.role === 'ADMIN') return <AdminIcon size={22} />
   if (item.role === 'DISTILLERY') return <ProducerIcon logoUrl={item.producerLogoUrl ?? undefined} size={22} />
-  return <LevelIcon level={item.currentLevel} size={22} />
+  return <LevelBadge level={item.currentLevel} size={22} />
 }
 
 // ── 순위 메달 ─────────────────────────────────────────────────

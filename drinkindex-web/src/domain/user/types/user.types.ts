@@ -16,6 +16,17 @@ export interface UserProfile {
   mustChangePassword?: boolean
 }
 
+export interface BlockedUser {
+  userId: number
+  nickname: string
+  role: string
+  currentLevel?: number
+  maturingPower?: number
+  nicknameFixed?: boolean
+  profileImageUrl?: string | null
+  blockedAt: string
+}
+
 export interface UpdateNicknameRequest {
   nickname: string
 }

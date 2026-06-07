@@ -161,15 +161,6 @@ export default function NoticePage() {
                         to={`/notices/${notice.id}`}
                         className="flex items-center gap-2 group"
                       >
-                        {notice.isPinned && (
-                          <svg
-                            className="w-3.5 h-3.5 text-amber-500 flex-shrink-0"
-                            viewBox="0 0 24 24"
-                            fill="currentColor"
-                          >
-                            <path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5v6l1 1 1-1v-6h5v-2l-2-2z" />
-                          </svg>
-                        )}
                         <span className="font-medium text-neutral-800 group-hover:text-primary-800 transition-colors truncate">
                           {notice.title}
                         </span>
@@ -203,15 +194,6 @@ export default function NoticePage() {
                 <div className="flex items-center gap-2 mb-1.5">
                   <CategoryChip category={notice.category} />
                   <RecommendBadge count={notice.recommendCount} />
-                  {notice.isPinned && (
-                    <svg
-                      className="w-3.5 h-3.5 text-amber-500"
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
-                    >
-                      <path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5v6l1 1 1-1v-6h5v-2l-2-2z" />
-                    </svg>
-                  )}
                 </div>
                 <p className="text-sm font-medium text-neutral-800 line-clamp-2">{notice.title}</p>
                 <div className="flex items-center gap-3 mt-1.5 text-xs text-neutral-400">

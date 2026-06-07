@@ -3,6 +3,9 @@
 @theme {
   --font-sans: 'Pretendard', sans-serif;
 
+  /* 페이지/헤더/푸터 공통 캔버스 배경 (near-white 중성 그레이 — 카드 흰색과 은은히 대비) */
+  --color-canvas: #F7F8FA;
+
   --color-primary-50:  #fffbeb;
   --color-primary-100: #fef3c7;
   --color-primary-200: #fde68a;
@@ -41,6 +44,7 @@
   }
   body {
     @apply text-neutral-900 antialiased;
+    background-color: var(--color-canvas);
   }
 }
 
@@ -172,6 +176,14 @@
     border-color: #78350f;
     box-shadow: 0 0 0 3px rgb(146 64 14 / 0.25);
   }
+}
+
+/* ── 레벨 뱃지 샤이머 (최고 티어 광채) ─────────────────────────
+   칩 내부를 빛이 한 번 훑고 잠시 멈췄다가 반복. overflow-hidden 으로 클립.
+   prefers-reduced-motion 시 아래 미디어 쿼리가 사실상 정지시킴. */
+@keyframes levelShimmer {
+  0%        { transform: translateX(-160%) skewX(-16deg); }
+  55%, 100% { transform: translateX(260%)  skewX(-16deg); }
 }
 
 /* ── 모션 축소 설정 존중 (접근성) ──────────────────────────────

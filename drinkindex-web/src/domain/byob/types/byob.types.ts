@@ -15,6 +15,7 @@ export interface ByobListItem {
   approvedCount: number
   status: ByobStatus
   linkedFreePostId: number | null
+  isPinned: boolean
   createdAt: string
 }
 
@@ -37,6 +38,7 @@ export interface ByobDetail {
   pendingCount: number
   status: ByobStatus
   linkedFreePostId: number | null
+  isPinned: boolean
   myParticipant: ByobParticipant | null
   createdAt: string
   updatedAt: string
@@ -91,6 +93,10 @@ export interface UpdateByobPayload {
   recruitEndAt: string
   maxParticipants: number
   hostBottles: string[]
+}
+
+export interface ByobPinUpdatePayload {
+  isPinned: boolean
 }
 
 export interface ApplyByobPayload {

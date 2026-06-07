@@ -7,6 +7,7 @@ import type {
   RemoveParticipantPayload,
   RejectParticipantPayload,
   ByobStatusUpdatePayload,
+  ByobPinUpdatePayload,
 } from '../types/byob.types'
 
 export function useByobList(params: { status?: string; page?: number; size?: number }) {
@@ -81,6 +82,11 @@ export function useByobActions(byobId: number) {
     onSuccess: invalidate,
   })
 
+  const updatePinMutation = useMutation({
+    mutationFn: (payload: ByobPinUpdatePayload) => byobApi.updatePin(byobId, payload),
+    onSuccess: invalidate,
+  })
+
   const deleteMutation = useMutation({
     mutationFn: () => byobApi.delete(byobId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['byob', 'list'] }),
@@ -137,6 +143,7 @@ export function useByobActions(byobId: number) {
     createMutation,
     updateMutation,
     updateStatusMutation,
+    updatePinMutation,
     deleteMutation,
     applyMutation,
     cancelApplyMutation,

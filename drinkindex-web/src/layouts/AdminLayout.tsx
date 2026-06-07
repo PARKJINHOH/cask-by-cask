@@ -149,7 +149,7 @@ export default function AdminLayout() {
   }
 
   return (
-    <div className="h-screen bg-neutral-50 flex overflow-hidden">
+    <div className="h-screen bg-canvas flex overflow-hidden">
       {/* 사이드바 */}
       <aside className="w-56 bg-white border-r border-neutral-200 flex flex-col flex-shrink-0">
         {/* 헤더 */}

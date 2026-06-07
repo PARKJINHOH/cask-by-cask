@@ -8,6 +8,17 @@ export function formatDateTime(dateStr: string): string {
   return `${y}-${mo}-${da} ${h}:${mi}`
 }
 
+/** 네이버 카페 스타일 작성시간: yyyy.mm.dd hh:mm */
+export function formatDotDateTime(dateStr: string): string {
+  const d = new Date(dateStr)
+  const y = d.getFullYear()
+  const mo = String(d.getMonth() + 1).padStart(2, '0')
+  const da = String(d.getDate()).padStart(2, '0')
+  const h = String(d.getHours()).padStart(2, '0')
+  const mi = String(d.getMinutes()).padStart(2, '0')
+  return `${y}.${mo}.${da} ${h}:${mi}`
+}
+
 export function formatBoardDate(dateStr: string): string {
   const d = new Date(dateStr)
   const now = new Date()

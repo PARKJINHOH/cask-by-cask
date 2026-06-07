@@ -16,7 +16,9 @@ import java.util.List;
         name = "posts",
         indexes = {
                 @Index(name = "idx_post_board_type", columnList = "board_type"),
-                @Index(name = "idx_post_status",     columnList = "status")
+                @Index(name = "idx_post_status",     columnList = "status"),
+                // 게시판별 공지(고정글) 상단 정렬용
+                @Index(name = "idx_post_board_pinned", columnList = "board_type, is_pinned")
         }
 )
 @Getter
@@ -83,6 +85,12 @@ public class Post extends BaseTimeEntity {
     @Column(nullable = false)
     private Boolean isHidden = false;
 
+    // 게시판별 공지(고정글) 여부. 전체 공지사항(Notice)과 별개로, 작성된 게시판 안에서만 상단 고정.
+    // 관리자/파트너만 설정 가능 (서비스 레이어에서 권한 검증).
+    @Builder.Default
+    @Column(nullable = false)
+    private Boolean isPinned = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "series_id")
     private Series series;
@@ -119,6 +127,7 @@ public class Post extends BaseTimeEntity {
     public void unlock()        { this.status = PostStatus.ACTIVE; }
     public void hide()          { this.isHidden = true; }
     public void restore()       { this.isHidden = false; }
+    public void changePinned(boolean pinned) { this.isPinned = pinned; }
 
     public void update(String title, String content, String contentSanitized, PostPrefix prefix) {
         this.title = title;

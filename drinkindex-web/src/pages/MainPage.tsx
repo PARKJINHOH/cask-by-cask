@@ -6,14 +6,14 @@ import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 import { spiritApi } from '@/domain/spirit/api/spiritApi'
 import { useBanners } from '@/domain/banner/hooks/useBanners'
 import { usePopups } from '@/domain/popup/hooks/usePopups'
-import { useNotices } from '@/domain/notice/hooks/useNotices'
+import { useNotices, usePinnedNotices } from '@/domain/notice/hooks/useNotices'
 import { useRanking } from '@/domain/ranking/hooks/useRanking'
 import { usePosts } from '@/domain/community/hooks/usePosts'
 import { useByobList } from '@/domain/byob/hooks/useByob'
 import { PopupViewer } from '@/domain/popup/components/PopupViewer'
 import BannerSlider from '@/domain/banner/components/BannerSlider'
 import SpiritCard from '@/shared/components/SpiritCard'
-import LevelIcon from '@/shared/components/icons/LevelIcon'
+import LevelBadge from '@/shared/components/LevelBadge'
 import { formatBoardDate } from '@/shared/utils/format'
 import type { SpiritListItem } from '@/domain/spirit/types/spirit.types'
 import type { NoticeListItem } from '@/domain/notice/types/notice.types'
@@ -113,8 +113,10 @@ function PostRow({ post, boardPath }: { post: PostListItem; boardPath: string })
   return (
     <Link
       to={`/community/${boardPath}/${post.id}`}
-      className="flex items-center gap-3 px-4 py-3.5 border-b border-neutral-50 last:border-b-0
-        hover:bg-primary-50/40 transition-colors group"
+      className={[
+        'flex items-center gap-3 px-4 py-3.5 border-b border-neutral-50 last:border-b-0 transition-colors group',
+        post.isPinned ? 'bg-amber-50/50 hover:bg-amber-50' : 'hover:bg-primary-50/40',
+      ].join(' ')}
     >
       <span
         className="flex-shrink-0 text-xs font-medium px-1.5 py-0.5 rounded w-12 text-center
@@ -147,6 +149,33 @@ function PostRow({ post, boardPath }: { post: PostListItem; boardPath: string })
   )
 }
 
+// ── 상단노출 공지 행 (커뮤니티 최신글 상단 고정) ──────────────────
+function NoticePostRow({ notice }: { notice: NoticeListItem }) {
+  const { t } = useTranslation()
+  return (
+    <Link
+      to={`/notices/${notice.id}`}
+      className="flex items-center gap-3 px-4 py-3.5 border-b border-neutral-50 last:border-b-0
+        bg-amber-50/40 hover:bg-amber-50 transition-colors group"
+    >
+      <span
+        className="flex-shrink-0 text-xs font-semibold px-1.5 py-0.5 rounded w-12 text-center
+          bg-amber-100 text-amber-700"
+      >
+        {t('board.noticeBadge')}
+      </span>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-neutral-800 group-hover:text-primary-800 line-clamp-1 transition-colors">
+          {notice.title}
+        </p>
+      </div>
+      <div className="flex-shrink-0 flex items-center gap-3 text-xs text-neutral-400">
+        <span>{formatBoardDate(notice.createdAt)}</span>
+      </div>
+    </Link>
+  )
+}
+
 function ByobRow({ item }: { item: ByobListItem }) {
   const statusMap: Record<string, { label: string; cls: string }> = {
     OPEN: { label: '모집중', cls: 'text-green-700' },
@@ -157,8 +186,10 @@ function ByobRow({ item }: { item: ByobListItem }) {
   return (
     <Link
       to={`/community/byob/${item.id}`}
-      className="flex items-center gap-3 px-4 py-3.5 border-b border-neutral-50 last:border-b-0
-        hover:bg-primary-50/40 transition-colors group"
+      className={[
+        'flex items-center gap-3 px-4 py-3.5 border-b border-neutral-50 last:border-b-0 transition-colors group',
+        item.isPinned ? 'bg-amber-50/50 hover:bg-amber-50' : 'hover:bg-primary-50/40',
+      ].join(' ')}
     >
       <span className="flex-shrink-0 text-xs font-bold px-1.5 py-0.5 rounded w-12 text-center
         bg-orange-50 text-orange-700">
@@ -189,6 +220,7 @@ function CommunityLatestSection() {
   const { data: freeData } = usePosts({ boardType: 'FREE', sort: 'LATEST', page: 0, size: 6 })
   const { data: newsData } = usePosts({ boardType: 'NOTICE', sort: 'LATEST', page: 0, size: 6 })
   const { data: byobData } = useByobList({ page: 0, size: 6 })
+  const { data: pinnedNotices = [] } = usePinnedNotices()
 
   const freePosts = freeData?.content ?? []
   const newsPosts = newsData?.content ?? []
@@ -201,9 +233,10 @@ function CommunityLatestSection() {
   ]
 
   const moreLink = tabs.find((x) => x.key === tab)!.to
+  // 자유/소식 탭은 상단노출 공지를 함께 노출하므로 공지가 있으면 빈 상태가 아님
   const isEmpty =
-    (tab === 'free' && freePosts.length === 0) ||
-    (tab === 'news' && newsPosts.length === 0) ||
+    (tab === 'free' && freePosts.length === 0 && pinnedNotices.length === 0) ||
+    (tab === 'news' && newsPosts.length === 0 && pinnedNotices.length === 0) ||
     (tab === 'byob' && byobItems.length === 0)
 
   return (
@@ -233,9 +266,15 @@ function CommunityLatestSection() {
         {isEmpty ? (
           <p className="text-sm text-neutral-400 py-10 text-center">{t('home.community.empty')}</p>
         ) : tab === 'free' ? (
-          freePosts.map((p) => <PostRow key={p.id} post={p} boardPath="free" />)
+          <>
+            {pinnedNotices.map((n) => <NoticePostRow key={`notice-${n.id}`} notice={n} />)}
+            {freePosts.map((p) => <PostRow key={p.id} post={p} boardPath="free" />)}
+          </>
         ) : tab === 'news' ? (
-          newsPosts.map((p) => <PostRow key={p.id} post={p} boardPath="notice" />)
+          <>
+            {pinnedNotices.map((n) => <NoticePostRow key={`notice-${n.id}`} notice={n} />)}
+            {newsPosts.map((p) => <PostRow key={p.id} post={p} boardPath="notice" />)}
+          </>
         ) : (
           byobItems.map((b) => <ByobRow key={b.id} item={b} />)
         )}
@@ -313,7 +352,7 @@ function RankingWidget() {
                     <span className="text-xs font-bold text-neutral-400">{item.rank}</span>
                   )}
                 </span>
-                <LevelIcon level={item.currentLevel} size={20} />
+                <LevelBadge level={item.currentLevel} size={22} />
                 <span className="flex-1 text-sm text-neutral-800 truncate font-medium">
                   {item.nickname}
                 </span>

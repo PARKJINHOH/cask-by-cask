@@ -13,6 +13,7 @@ export interface PostListItem {
   prefix: PostPrefix | null
   title: string
   isLocked: boolean
+  isPinned: boolean     // 게시판 공지(고정글)
   authorNickname: string
   authorId?: number | null
   authorRole?: string   // null if anonymous
@@ -67,6 +68,7 @@ export interface PostDetail {
   prefix: PostPrefix | null
   title: string
   isLocked: boolean
+  isPinned: boolean     // 게시판 공지(고정글)
   contentSanitized: string | null
   authorNickname: string
   authorId: number | null
@@ -181,6 +183,7 @@ export interface CreatePostPayload {
   title: string
   content: string
   isAnonymous?: boolean
+  isPinned?: boolean
   poll?: PollPayload
   seriesId?: number
 }
@@ -189,4 +192,5 @@ export interface UpdatePostPayload {
   prefixId?: number | null
   title?: string
   content?: string
+  isPinned?: boolean
 }

@@ -99,3 +99,25 @@ export function useUpdateEmailSubscription() {
     },
   })
 }
+
+export function useBlockedUsers() {
+  const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
+  return useQuery({
+    queryKey: ['blockedUsers'],
+    queryFn: () => userApi.getBlockedUsers().then((res) => res.data.data ?? []),
+    enabled: isLoggedIn,
+  })
+}
+
+export function useUnblockUser() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (userId: number) => userApi.unblockUser(userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['blockedUsers'] })
+      // 차단 해제 시 목록/댓글에 다시 노출되도록 갱신
+      queryClient.invalidateQueries({ queryKey: ['posts'] })
+      queryClient.invalidateQueries({ queryKey: ['comments'] })
+    },
+  })
+}

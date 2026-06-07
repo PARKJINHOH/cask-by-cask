@@ -283,7 +283,7 @@ export default function SpiritRequestPage() {
 
       {/* Page title */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-neutral-900">{t('spiritRequest.title')}</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900">{t('spiritRequest.title')}</h1>
         <p className="mt-1 text-sm text-neutral-500">{t('spiritRequest.subtitle')}</p>
       </div>
 
@@ -346,7 +346,7 @@ export default function SpiritRequestPage() {
                       {...register('nameKo', { required: true, maxLength: 200 })}
                       maxLength={200}
                       className={`${FIELD_CLS} ${errors.nameKo ? 'border-red-400' : 'border-neutral-200'}`}
-                      placeholder="예) 발베니 12년 더블우드"
+                      placeholder={t(`spiritRequest.form.nameKoPlaceholder.${selectedCategory}`)}
                     />
                     {errors.nameKo && <p className="mt-1 text-xs text-red-500">{t('spiritRequest.form.errNameKo')}</p>}
                   </div>
@@ -356,7 +356,7 @@ export default function SpiritRequestPage() {
                       {...register('nameEn', { required: true, maxLength: 200 })}
                       maxLength={200}
                       className={`${FIELD_CLS} ${errors.nameEn ? 'border-red-400' : 'border-neutral-200'}`}
-                      placeholder="Balvenie 12Y DoubleWood"
+                      placeholder={t(`spiritRequest.form.nameEnPlaceholder.${selectedCategory}`)}
                     />
                     {errors.nameEn && <p className="mt-1 text-xs text-red-500">{t('spiritRequest.form.errNameEn')}</p>}
                   </div>

@@ -64,20 +64,28 @@ public class PostService {
     public Page<PostListResponse> getPosts(BoardType boardType, Long prefixId,
                                            String keyword, PostSort sort,
                                            Long authorId, Long commentAuthorId,
-                                           Long distilleryTagId,
+                                           Long distilleryTagId, Long userId,
                                            int page, int size) {
         // [패치 9] distilleryTagId — 소식 게시판 증류소 태그 필터
+        // 차단한 사용자의 글은 목록에서 제외
+        List<Long> blockedIds = blockedAuthorIds(userId);
         return postRepository.findPosts(boardType, prefixId, keyword, sort,
-                        authorId, commentAuthorId, distilleryTagId, PageRequest.of(page, size))
+                        authorId, commentAuthorId, distilleryTagId, blockedIds, PageRequest.of(page, size))
                 .map(PostListResponse::from);
     }
 
     private static final int BEST_MIN_LIKE_COUNT = 5;
 
     @Transactional(readOnly = true)
-    public Page<PostListResponse> getBestPosts(BoardType boardType, int page, int size) {
-        return postRepository.findBestPosts(boardType, BEST_MIN_LIKE_COUNT, PageRequest.of(page, size))
+    public Page<PostListResponse> getBestPosts(BoardType boardType, Long userId, int page, int size) {
+        List<Long> blockedIds = blockedAuthorIds(userId);
+        return postRepository.findBestPosts(boardType, BEST_MIN_LIKE_COUNT, blockedIds, PageRequest.of(page, size))
                 .map(PostListResponse::from);
+    }
+
+    /** 로그인 사용자가 차단한 작성자 ID 목록 (비로그인 시 빈 리스트) */
+    private List<Long> blockedAuthorIds(Long userId) {
+        return userId == null ? List.of() : userBlockRepository.findBlockedIdsByBlockerId(userId);
     }
 
     @Transactional
@@ -147,11 +155,15 @@ public class PostService {
                 request.getDistilleryTagId(), author);
 
         // 5. Post 저장
+        // 게시판 공지(고정글): 관리자/파트너만 설정 가능, 그 외 요청은 무시
+        boolean pinned = canPinPost(author.getRole()) && Boolean.TRUE.equals(request.getIsPinned());
+
         Post.PostBuilder postBuilder = Post.builder()
                 .boardType(request.getBoardType())
                 .prefix(prefix)
                 .author(author)
                 .isAnonymous(anonymous)
+                .isPinned(pinned)
                 .distilleryTag(distilleryTag)
                 .title(request.getTitle())
                 .content(request.getContent())
@@ -194,6 +206,11 @@ public class PostService {
         Post post = findPost(postId);
         if (!post.getAuthor().getId().equals(userId)) {
             throw new CustomException(ErrorCode.POST_ACCESS_DENIED);
+        }
+
+        // 게시판 공지(고정글) 토글 — 관리자/파트너 작성자만 유효 (null이면 변경 안 함)
+        if (request.getIsPinned() != null && canPinPost(post.getAuthor().getRole())) {
+            post.changePinned(request.getIsPinned());
         }
 
         String newTitle   = request.getTitle()   != null ? request.getTitle()   : post.getTitle();
@@ -475,6 +492,11 @@ public class PostService {
         }
         return producerRepository.findById(distilleryTagId)
                 .orElseThrow(() -> new CustomException(ErrorCode.DISTILLERY_NOT_FOUND));
+    }
+
+    // 게시판 공지(고정글) 설정 권한: 최고관리자/관리자/파트너
+    private boolean canPinPost(Role role) {
+        return role == Role.SUPER_ADMIN || role == Role.ADMIN || role == Role.PARTNER;
     }
 
     private void validateBoardPermission(BoardType boardType, Role role) {

@@ -9,15 +9,17 @@ import MyFavorites from '@/domain/wishlist/components/MyFavorites'
 import AccountSettings from '@/domain/user/components/AccountSettings'
 import MaturingPowerSection from '@/domain/score/components/MaturingPowerSection'
 import MessagesTab from '@/domain/message/components/MessagesTab'
+import BlockedUsersTab from '@/domain/user/components/BlockedUsersTab'
 import ByobHistoryTab from '@/domain/byob/components/ByobHistoryTab'
 import { BottleCollectionTab } from '@/domain/user-bottle/components/BottleCollectionTab'
 import MyPriceReportsTab from '@/domain/pricetracker/components/MyPriceReportsTab'
 import MyPriceAlertsTab from '@/domain/pricetracker/components/MyPriceAlertsTab'
-import LevelIcon from '@/shared/components/icons/LevelIcon'
+import LevelBadge from '@/shared/components/LevelBadge'
+import DefaultAvatar from '@/shared/components/DefaultAvatar'
 import SeoMeta from '@/shared/components/SeoMeta'
 import { useMessageList } from '@/domain/message/hooks/useMessages'
 
-type Tab = 'maturing' | 'reviews' | 'wishlist' | 'byob' | 'collection' | 'priceReports' | 'priceAlerts' | 'messages' | 'settings'
+type Tab = 'maturing' | 'reviews' | 'wishlist' | 'byob' | 'collection' | 'priceReports' | 'priceAlerts' | 'messages' | 'blocks' | 'settings'
 
 const ALL_TABS: { value: Tab; labelKey: string; adminHidden?: boolean }[] = [
   { value: 'maturing',     labelKey: 'mypage.maturingTab',    adminHidden: true },
@@ -28,6 +30,7 @@ const ALL_TABS: { value: Tab; labelKey: string; adminHidden?: boolean }[] = [
   { value: 'priceReports', labelKey: 'mypage.priceReportsTab' },
   { value: 'priceAlerts',  labelKey: 'mypage.priceAlertsTab' },
   { value: 'messages',     labelKey: 'mypage.messagesTab' },
+  { value: 'blocks',       labelKey: 'mypage.blocksTab' },
   { value: 'settings',     labelKey: 'mypage.settingsTab' },
 ]
 
@@ -78,6 +81,7 @@ export default function MyPage() {
   const maturingPower   = profile?.maturingPower ?? 0
   const isFixed         = profile?.nicknameFixed === true
   const profileImageUrl = profile?.profileImageUrl ?? authUser?.profileImageUrl
+  const avatarSeed      = String(profile?.id ?? authUser?.id ?? nickname ?? '?')
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
@@ -97,13 +101,13 @@ export default function MyPage() {
               {profileImageUrl ? (
                 <img src={profileImageUrl} alt={nickname} className="w-full h-full object-cover" />
               ) : (
-                nickname ? nickname[0].toUpperCase() : '?'
+                <DefaultAvatar seed={avatarSeed} px={30} />
               )}
             </div>
           </div>
           {role === 'MEMBER' && (
             <div className="absolute -bottom-1 -right-1">
-              <LevelIcon level={currentLevel} size={20} />
+              <LevelBadge level={currentLevel} size={22} />
             </div>
           )}
         </div>
@@ -170,6 +174,7 @@ export default function MyPage() {
       {tab === 'priceReports' && <MyPriceReportsTab />}
       {tab === 'priceAlerts'  && <MyPriceAlertsTab />}
       {tab === 'messages'    && <MessagesTab initialMessageId={messageIdParam} />}
+      {tab === 'blocks'      && <BlockedUsersTab />}
       {tab === 'settings'  && <AccountSettings />}
     </div>
   )

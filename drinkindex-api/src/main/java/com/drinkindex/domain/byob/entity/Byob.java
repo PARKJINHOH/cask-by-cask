@@ -15,7 +15,8 @@ import java.util.List;
     name = "byobs",
     indexes = {
         @Index(name = "idx_byob_status", columnList = "status"),
-        @Index(name = "idx_byob_host",   columnList = "host_id")
+        @Index(name = "idx_byob_host",   columnList = "host_id"),
+        @Index(name = "idx_byob_pinned", columnList = "is_pinned")
     }
 )
 @Getter
@@ -79,6 +80,11 @@ public class Byob extends BaseTimeEntity {
     @Column
     private Long linkedFreePostId;
 
+    // BYOB 게시판 공지(고정글) 여부. 관리자/파트너만 설정 가능 (서비스 레이어 검증).
+    @Builder.Default
+    @Column(nullable = false)
+    private Boolean isPinned = false;
+
     public void update(String title, String content, String location, String address,
                        LocalDateTime eventAt, LocalDateTime recruitStartAt,
                        LocalDateTime recruitEndAt, int maxParticipants,
@@ -117,5 +123,9 @@ public class Byob extends BaseTimeEntity {
 
     public void setLinkedFreePostId(Long linkedFreePostId) {
         this.linkedFreePostId = linkedFreePostId;
+    }
+
+    public void changePinned(boolean pinned) {
+        this.isPinned = pinned;
     }
 }

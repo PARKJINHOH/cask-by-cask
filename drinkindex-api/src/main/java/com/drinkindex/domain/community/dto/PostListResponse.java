@@ -14,6 +14,7 @@ public class PostListResponse {
     private final PrefixInfo prefix;
     private final String title;
     private final boolean isLocked;
+    private final boolean isPinned;       // 게시판 공지(고정글)
     private final String authorNickname;
     private final String authorRole;           // null if anonymous
     private final Integer authorLevel;         // null if anonymous
@@ -37,6 +38,7 @@ public class PostListResponse {
         this.prefix        = post.getPrefix() != null ? PrefixInfo.from(post.getPrefix()) : null;
         this.title         = post.getTitle();
         this.isLocked      = post.getStatus() != null && post.getStatus().name().equals("LOCKED");
+        this.isPinned      = Boolean.TRUE.equals(post.getIsPinned());
         boolean anon       = Boolean.TRUE.equals(post.getIsAnonymous());
         this.authorNickname      = anon ? "익명" : post.getAuthor().getNickname();
         this.authorRole          = anon ? null : post.getAuthor().getRole().name();

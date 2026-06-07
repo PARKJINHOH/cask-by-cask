@@ -13,6 +13,10 @@ import SeoMeta from '@/shared/components/SeoMeta'
 import { draftApi } from '@/shared/api/draftApi'
 import DraftSavedNotice from '@/shared/components/DraftSavedNotice'
 import DraftListModal from '@/shared/components/DraftListModal'
+import { useAuthStore } from '@/domain/auth/store/authStore'
+
+// 게시판 공지(고정글) 설정 가능 역할
+const PIN_ROLES = ['SUPER_ADMIN', 'ADMIN', 'PARTNER']
 
 const MAX_TITLE = 300
 const MAX_POLL_OPTIONS = 10
@@ -28,6 +32,8 @@ export default function PostFormPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { toasts, showToast, removeToast } = useToast()
+  const { user } = useAuthStore()
+  const canPin = PIN_ROLES.includes(user?.role ?? '')
 
   const { data: existingPost } = usePostDetail(postId ?? 0)
   const { data: prefixes = [] } = usePostPrefixes(boardType)
@@ -41,6 +47,7 @@ export default function PostFormPage() {
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [isAnonymous, setIsAnonymous] = useState(false)
+  const [isPinned, setIsPinned] = useState(false)
   const [pollEnabled, setPollEnabled] = useState(false)
   const [pollQuestion, setPollQuestion] = useState('')
   const [pollMultiple, setPollMultiple] = useState(false)
@@ -62,6 +69,7 @@ export default function PostFormPage() {
       setPrefixId(existingPost.prefix?.id ?? '')
       setTitle(existingPost.title)
       setContent(existingPost.contentSanitized ?? '')
+      setIsPinned(existingPost.isPinned)
     }
   }, [existingPost, isEdit])
 
@@ -126,6 +134,7 @@ export default function PostFormPage() {
           prefixId: prefixId !== '' ? prefixId : undefined,
           title,
           content,
+          ...(canPin ? { isPinned } : {}),
         })
       }
       const validOptions = pollOptions.filter((o) => o.trim())
@@ -135,6 +144,7 @@ export default function PostFormPage() {
         title,
         content,
         isAnonymous: boardType === 'FREE' ? isAnonymous : false,
+        ...(canPin ? { isPinned } : {}),
         poll: pollEnabled && pollQuestion.trim() && validOptions.length >= 2 ? {
           question: pollQuestion.trim(),
           isMultipleChoice: pollMultiple,
@@ -253,6 +263,22 @@ export default function PostFormPage() {
                 <span className="absolute left-1/2 -translate-x-1/2 top-full border-4 border-transparent border-t-neutral-800" />
               </div>
             </div>
+          </div>
+        )}
+
+        {/* 게시판 공지(고정글) — 관리자/파트너만 */}
+        {canPin && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+            <label className="flex items-center gap-3 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={isPinned}
+                onChange={(e) => setIsPinned(e.target.checked)}
+                className="w-4 h-4 rounded border-neutral-300 accent-amber-600 focus:ring-amber-400"
+              />
+              <span className="text-sm font-medium text-neutral-800">{t('board.pinAsNotice')}</span>
+            </label>
+            <p className="text-xs text-neutral-500 mt-1 ml-7">{t('board.pinAsNoticeHelp')}</p>
           </div>
         )}
 

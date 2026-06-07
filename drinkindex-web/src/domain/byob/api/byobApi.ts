@@ -11,6 +11,7 @@ import type {
   RemoveParticipantPayload,
   RejectParticipantPayload,
   ByobStatusUpdatePayload,
+  ByobPinUpdatePayload,
   ByobMyHosted,
   ByobMyJoined,
 } from '../types/byob.types'
@@ -30,6 +31,9 @@ export const byobApi = {
 
   updateStatus: (id: number, payload: ByobStatusUpdatePayload) =>
     axiosInstance.patch<ApiResponse<null>>(`/api/byob/${id}/status`, payload),
+
+  updatePin: (id: number, payload: ByobPinUpdatePayload) =>
+    axiosInstance.patch<ApiResponse<null>>(`/api/byob/${id}/pin`, payload),
 
   delete: (id: number) =>
     axiosInstance.delete<ApiResponse<null>>(`/api/byob/${id}`),

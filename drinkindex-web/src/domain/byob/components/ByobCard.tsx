@@ -18,8 +18,12 @@ export default function ByobCard({ byob }: Props) {
   return (
     <Link
       to={`/community/byob/${byob.id}`}
-      className="block bg-white border border-neutral-200 rounded-2xl p-5 hover:border-primary-300
-        hover:shadow-sm transition-all duration-150"
+      className={[
+        'block border rounded-2xl p-5 hover:shadow-sm transition-all duration-150',
+        byob.isPinned
+          ? 'bg-amber-50/60 border-amber-200 hover:border-amber-300'
+          : 'bg-white border-neutral-200 hover:border-primary-300',
+      ].join(' ')}
     >
       <div className="flex items-center justify-between mb-3">
         <ByobStatusBadge status={byob.status} size="sm" />

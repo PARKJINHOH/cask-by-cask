@@ -10,10 +10,10 @@ import org.springframework.data.repository.query.Param;
 
 public interface ByobRepository extends JpaRepository<Byob, Long> {
 
-    @Query("SELECT b FROM Byob b JOIN FETCH b.host WHERE (:status IS NULL OR b.status = :status) ORDER BY b.createdAt DESC")
+    @Query("SELECT b FROM Byob b JOIN FETCH b.host WHERE (:status IS NULL OR b.status = :status) ORDER BY b.isPinned DESC, b.createdAt DESC")
     Page<Byob> findAllByStatus(@Param("status") ByobStatus status, Pageable pageable);
 
-    @Query("SELECT b FROM Byob b JOIN FETCH b.host ORDER BY b.createdAt DESC")
+    @Query("SELECT b FROM Byob b JOIN FETCH b.host ORDER BY b.isPinned DESC, b.createdAt DESC")
     Page<Byob> findAllOrderByCreatedAtDesc(Pageable pageable);
 
     Page<Byob> findByHostIdOrderByCreatedAtDesc(Long hostId, Pageable pageable);

@@ -31,6 +31,7 @@ public class ByobDetailResponse {
     private int pendingCount;
     private ByobStatus status;
     private Long linkedFreePostId;
+    private boolean isPinned;
     private ByobParticipantResponse myParticipant;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -55,6 +56,7 @@ public class ByobDetailResponse {
                 .pendingCount(byob.getPendingCount())
                 .status(byob.getStatus())
                 .linkedFreePostId(byob.getLinkedFreePostId())
+                .isPinned(Boolean.TRUE.equals(byob.getIsPinned()))
                 .myParticipant(myParticipant)
                 .createdAt(byob.getCreatedAt())
                 .updatedAt(byob.getUpdatedAt())

@@ -45,21 +45,25 @@ public class PostController {
             @RequestParam(required = false) Long commentAuthorId,
             @RequestParam(required = false) Long distilleryTagId, // [패치 9] 소식 게시판 증류소 태그 필터
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
+            @RequestParam(defaultValue = "20") int size,
+            @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
+        Long userId = userDetails != null ? userDetails.getUserId() : null;
         return ResponseEntity.ok(ApiResponse.success(
                 PageResponse.from(postService.getPosts(boardType, prefixId, keyword, sort,
-                        authorId, commentAuthorId, distilleryTagId, page, size))));
+                        authorId, commentAuthorId, distilleryTagId, userId, page, size))));
     }
 
     @GetMapping("/best")
     public ResponseEntity<ApiResponse<PageResponse<PostListResponse>>> getBestPosts(
             @RequestParam BoardType boardType,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
+            @RequestParam(defaultValue = "20") int size,
+            @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
+        Long userId = userDetails != null ? userDetails.getUserId() : null;
         return ResponseEntity.ok(ApiResponse.success(
-                PageResponse.from(postService.getBestPosts(boardType, page, size))));
+                PageResponse.from(postService.getBestPosts(boardType, userId, page, size))));
     }
 
     // ─── 상세 ───────────────────────────────────

@@ -26,6 +26,9 @@ public class CreatePostRequest {
 
     private Boolean isAnonymous = false;
 
+    // 게시판 공지(고정글)로 등록. 관리자/파트너만 유효 (서비스에서 권한 검증, 그 외 무시).
+    private Boolean isPinned = false;
+
     @Valid
     private PollRequest poll;
 

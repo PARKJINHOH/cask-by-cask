@@ -47,18 +47,29 @@ public class CommentService {
     @Transactional(readOnly = true)
     public Page<PostCommentResponse> getComments(Long postId, Long userId, int page, int size) {
         PageRequest pageRequest = PageRequest.of(page, size, Sort.by("createdAt").ascending());
-        Page<PostComment> roots = commentRepository
-                .findByPostIdAndParentIsNullAndIsHiddenFalse(postId, pageRequest);
+
+        // 차단한 사용자의 댓글은 목록에서 완전히 제외
+        List<Long> blockedIds = userId == null
+                ? List.of()
+                : userBlockRepository.findBlockedIdsByBlockerId(userId);
+        boolean hasBlocks = !blockedIds.isEmpty();
+
+        Page<PostComment> roots = hasBlocks
+                ? commentRepository.findByPostIdAndParentIsNullAndIsHiddenFalseAndAuthorIdNotIn(
+                        postId, blockedIds, pageRequest)
+                : commentRepository.findByPostIdAndParentIsNullAndIsHiddenFalse(postId, pageRequest);
 
         // 루트 댓글 ID 수집
         List<Long> rootIds = roots.stream().map(PostComment::getId).collect(Collectors.toList());
 
-        // 대댓글 일괄 로드
+        // 대댓글 일괄 로드 (차단 작성자 제외)
         Map<Long, List<PostComment>> childrenMap = new HashMap<>();
         if (!rootIds.isEmpty()) {
             rootIds.forEach(rootId -> {
-                List<PostComment> children = commentRepository
-                        .findByParentIdAndIsHiddenFalseOrderByCreatedAtAsc(rootId);
+                List<PostComment> children = hasBlocks
+                        ? commentRepository.findByParentIdAndIsHiddenFalseAndAuthorIdNotInOrderByCreatedAtAsc(
+                                rootId, blockedIds)
+                        : commentRepository.findByParentIdAndIsHiddenFalseOrderByCreatedAtAsc(rootId);
                 childrenMap.put(rootId, children);
             });
         }
@@ -75,13 +86,6 @@ public class CommentService {
                             com.drinkindex.domain.community.entity.enums.EmojiTargetType.POST_COMMENT, allCommentIds)
                     .forEach(r ->
                             reactionMap.computeIfAbsent(r.getTargetId(), k -> new ArrayList<>()).add(r));
-        }
-
-        // 차단 사용자 집합 (로그인 시)
-        Set<Long> blockedIds = new HashSet<>();
-        if (userId != null) {
-            // 현재 유저가 차단한 사람들의 ID는 UserBlock에서 blocker=currentUser
-            // UserBlockRepository에 findBlockedIdsByBlockerId 가 없으므로 단순 체크는 서비스에서 처리
         }
 
         return roots.map(root -> toResponse(root, childrenMap.getOrDefault(root.getId(), List.of()),

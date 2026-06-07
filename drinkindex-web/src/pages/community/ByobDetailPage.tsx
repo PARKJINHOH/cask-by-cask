@@ -105,7 +105,7 @@ export default function ByobDetailPage() {
   const { user, isLoggedIn } = useAuthStore()
 
   const { data: byob, isLoading } = useByobDetail(byobId)
-  const { applyMutation, cancelApplyMutation, updateStatusMutation, deleteMutation } = useByobActions(byobId)
+  const { applyMutation, cancelApplyMutation, updateStatusMutation, updatePinMutation, deleteMutation } = useByobActions(byobId)
 
   const [applyStep, setApplyStep] = useState<'idle' | 'form'>('idle')
   const [bottleList, setBottleList] = useState<string[]>([])
@@ -128,6 +128,8 @@ export default function ByobDetailPage() {
     && byob.approvedCount < byob.maxParticipants
   const canCancelApply = hasApplied && myParticipant?.status === 'PENDING'
   const canEdit = isHost && byob.approvedCount === 0
+  // 공지(고정글) 토글: 주최자 본인이면서 최고관리자/관리자/파트너. 승인자 존재와 무관.
+  const canPin = isHost && ['SUPER_ADMIN', 'ADMIN', 'PARTNER'].includes(user?.role ?? '')
 
   const handleApply = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -158,6 +160,10 @@ export default function ByobDetailPage() {
     if (!window.confirm(t('byob.confirmStatusChange', { status: STATUS_LABEL_KO[newStatus] }))) return
     await updateStatusMutation.mutateAsync({ status: newStatus })
     setShowStatusMenu(false)
+  }
+
+  const handlePinToggle = async () => {
+    await updatePinMutation.mutateAsync({ isPinned: !byob.isPinned })
   }
 
   return (
@@ -213,6 +219,17 @@ export default function ByobDetailPage() {
                       </div>
                     )}
                   </div>
+                  {canPin && (
+                    <button onClick={handlePinToggle} disabled={updatePinMutation.isPending}
+                      className={[
+                        'px-3 py-1.5 text-xs font-medium border rounded-lg transition-colors disabled:opacity-50',
+                        byob.isPinned
+                          ? 'border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100'
+                          : 'border-neutral-200 text-neutral-600 hover:bg-neutral-50',
+                      ].join(' ')}>
+                      {byob.isPinned ? t('board.unpinNotice') : t('board.pinAsNotice')}
+                    </button>
+                  )}
                   {canEdit && (
                     <>
                       <Link to={`/community/byob/${byobId}/edit`}

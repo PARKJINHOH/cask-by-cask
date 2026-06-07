@@ -1,22 +1,14 @@
 import { useRef, useState, useCallback } from 'react'
+import type { ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import type { UserRole } from '@/domain/auth/types/auth.types'
-import LevelIcon from './icons/LevelIcon'
+import LevelBadge from './LevelBadge'
 import AdminIcon from './icons/AdminIcon'
 import ProducerIcon from './icons/ProducerIcon'
 import UserContextMenu from './UserContextMenu'
+import DefaultAvatar from './DefaultAvatar'
 import { useAuthStore } from '@/domain/auth/store/authStore'
-
-const LEVEL_NAMES: Record<number, string> = {
-  1: '몰트', 2: '스피릿', 3: '스카치', 4: '12yo',
-  5: '15yo', 6: '18yo', 7: 'CS', 8: '21yo',
-  9: '30yo', 10: '40yo', 11: '50yo',
-}
-
-function getLevelName(level?: number): string {
-  if (!level) return ''
-  return LEVEL_NAMES[level] ?? `Lv.${level}`
-}
+import { getLevelInfo } from '@/domain/score/types/score.types'
 
 export interface UserBadgeUser {
   id?: number
@@ -29,12 +21,26 @@ export interface UserBadgeUser {
   profileImageUrl?: string | null
 }
 
+type BadgeSize = 'sm' | 'md' | 'lg' | 'xl'
+
 interface Props {
   user: UserBadgeUser
-  size?: 'sm' | 'md' | 'lg'
+  size?: BadgeSize
+  /** 아바타(프로필 이미지)만 텍스트와 독립적으로 키우고 싶을 때 사용. 미지정 시 size 를 따름 */
+  avatarSize?: BadgeSize
   showName?: boolean
   showScore?: boolean
   scoreBelow?: boolean
+  /** 아바타(프로필 이미지) 노출 여부. false 면 닉네임+레벨만 표시(목록용) */
+  showAvatar?: boolean
+  /** 닉네임 옆에 레벨 이름(등급명) 텍스트 노출 (상세용) */
+  showLevelName?: boolean
+  /** 닉네임·레벨이름 텍스트 클래스 오버라이드 (미지정 시 size 기준) */
+  nameClassName?: string
+  /** 닉네임 옆 레벨 아이콘 크기(px) 오버라이드 (미지정 시 size 기준) */
+  levelIconSize?: number
+  /** 닉네임 아래에 추가로 표시할 둘째 줄(상세용: 작성시간·조회 등) */
+  subLine?: ReactNode
   className?: string
 }
 
@@ -42,9 +48,10 @@ const AVATAR_CLS: Record<string, string> = {
   sm: 'w-5 h-5',
   md: 'w-6 h-6',
   lg: 'w-8 h-8',
+  xl: 'w-11 h-11',
 }
-const ICON_IN_AVATAR: Record<string, number> = { sm: 12, md: 14, lg: 18 }
-const ICON_AFTER_NAME: Record<string, number> = { sm: 11, md: 13, lg: 15 }
+const ICON_IN_AVATAR: Record<string, number> = { sm: 12, md: 14, lg: 18, xl: 24 }
+const ICON_AFTER_NAME: Record<string, number> = { sm: 11, md: 13, lg: 15, xl: 16 }
 
 // 포털 오버레이 크기 (px)
 const OVERLAY_SIZE = 80
@@ -53,26 +60,45 @@ const TEXT_CLS: Record<string, string> = {
   sm: 'text-xs',
   md: 'text-sm',
   lg: 'text-base font-semibold',
+  xl: 'text-base font-semibold',
 }
 const SCORE_CLS: Record<string, string> = {
   sm: 'text-[10px]',
   md: 'text-xs',
   lg: 'text-sm',
+  xl: 'text-sm',
 }
 
 export default function UserBadge({
   user,
   size = 'md',
+  avatarSize,
   showName = true,
   showScore = false,
   scoreBelow = false,
+  showAvatar = true,
+  showLevelName = false,
+  nameClassName,
+  levelIconSize,
+  subLine,
   className = '',
 }: Props) {
+  const avSize = avatarSize ?? size
+  const twoLine = scoreBelow || !!subLine
+  const nameCls = nameClassName ?? TEXT_CLS[size]
   const currentUser = useAuthStore((s) => s.user)
   const level = user.currentLevel ?? 1
-  const levelName = getLevelName(level)
+  const levelName = getLevelInfo(level).name
   const isFixed = Boolean(user.nicknameFixed)
-  const hasPhoto = Boolean(user.profileImageUrl)
+  const isSuperAdmin = user.role === 'SUPER_ADMIN'
+  // 최고관리자는 아바타(프로필 이미지/기본 원)를 노출하지 않는다.
+  const hasPhoto = Boolean(user.profileImageUrl) && !isSuperAdmin
+  const showAvatarFinal = showAvatar && !isSuperAdmin
+  // 최고관리자는 닉네임 대신 "최고관리자" 로 통일 표기 (별도 배지 없음).
+  const displayName = isSuperAdmin ? '최고관리자' : user.nickname
+
+  // 프로필 사진이 없는 회원 → 사용자별 고정 랜덤(색·아이콘) 기본 아바타
+  const seed = (user.id != null ? String(user.id) : user.nickname) || '?'
 
   const tooltip =
     user.role === 'ADMIN'
@@ -107,18 +133,19 @@ export default function UserBadge({
       decoding="async"
       className="w-full h-full object-cover"
     />
+  ) : user.role === 'MEMBER' ? (
+    <DefaultAvatar seed={seed} px={ICON_IN_AVATAR[avSize]} />
   ) : (
     <span className="flex items-center justify-center w-full h-full">
-      {user.role === 'ADMIN' && <AdminIcon size={ICON_IN_AVATAR[size]} />}
+      {user.role === 'ADMIN' && <AdminIcon size={ICON_IN_AVATAR[avSize]} />}
       {user.role === 'PARTNER' && (
-        <ProducerIcon logoUrl={user.producerLogoUrl} size={ICON_IN_AVATAR[size]} />
+        <ProducerIcon logoUrl={user.producerLogoUrl} size={ICON_IN_AVATAR[avSize]} />
       )}
-      {user.role === 'MEMBER' && <LevelIcon level={level} size={ICON_IN_AVATAR[size]} />}
     </span>
   )
 
   // ─── 아바타 원 ───────────────────────────────────────────────
-  const avatarBase = `${AVATAR_CLS[size]} rounded-full overflow-hidden flex items-center justify-center bg-neutral-100 flex-shrink-0 cursor-default`
+  const avatarBase = `${AVATAR_CLS[avSize]} rounded-full overflow-hidden flex items-center justify-center bg-neutral-100 flex-shrink-0 cursor-default`
   const avatarEl = isFixed ? (
     <span
       ref={avatarRef}
@@ -134,7 +161,7 @@ export default function UserBadge({
       ref={avatarRef}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className={avatarBase}
+      className={`${avatarBase} ring-1 ring-inset ring-neutral-800`}
     >
       {avatarInner}
     </span>
@@ -147,12 +174,12 @@ export default function UserBadge({
   )
 
   return (
-    <span className={`relative inline-flex ${scoreBelow ? 'items-start' : 'items-center'} gap-1 ${className}`}>
-      {/* 아바타 — 툴팁 없음, hover 시 포털 오버레이 표시 */}
-      {avatarEl}
+    <span className={`relative inline-flex ${twoLine ? 'items-center gap-2' : 'items-center gap-1'} ${className}`}>
+      {/* 아바타 — 툴팁 없음, hover 시 포털 오버레이 표시 (최고관리자는 미노출) */}
+      {showAvatarFinal && avatarEl}
 
       {/* 포털 오버레이: body에 렌더링 → overflow:hidden 영향 없음 */}
-      {overlayPos && hasPhoto && createPortal(
+      {showAvatarFinal && overlayPos && hasPhoto && createPortal(
         <span
           className="pointer-events-none fixed -translate-y-1/2 rounded-full overflow-hidden
             border-2 border-white shadow-xl ring-1 ring-neutral-200 z-[9999]"
@@ -164,15 +191,19 @@ export default function UserBadge({
       )}
 
       {/* 닉네임·레벨·배지 묶음 — 이 영역 hover 시에만 툴팁 표시 */}
-      <span className={`group inline-flex gap-1 ${scoreBelow ? 'flex-col' : 'items-center'}`}>
+      <span className={`group inline-flex ${twoLine ? 'flex-col gap-0.5' : 'items-center gap-1'}`}>
         {/* 닉네임 행 */}
         <span className="inline-flex items-center gap-1">
           {showName && (
             <span
               className={[
-                TEXT_CLS[size],
+                nameCls,
                 'font-medium truncate max-w-[120px]',
-                user.role === 'ADMIN' ? 'text-blue-700' : 'text-neutral-800',
+                user.role === 'ADMIN'
+                  ? 'text-blue-700'
+                  : isSuperAdmin
+                    ? 'text-rose-700'
+                    : 'text-neutral-800',
               ].join(' ')}
             >
               {user.id ? (
@@ -181,16 +212,22 @@ export default function UserBadge({
                   userId={user.id}
                   disabled={user.id === currentUser?.id}
                 >
-                  <span className="hover:underline">{user.nickname}</span>
+                  <span className="hover:underline">{displayName}</span>
                 </UserContextMenu>
               ) : (
-                user.nickname
+                displayName
               )}
             </span>
           )}
 
-          {showName && user.role === 'MEMBER' && hasPhoto && (
-            <LevelIcon level={level} size={ICON_AFTER_NAME[size]} />
+          {showName && showLevelName && user.role === 'MEMBER' && (
+            <span className={`${nameCls} text-neutral-500 font-normal flex-shrink-0`}>
+              {levelName}
+            </span>
+          )}
+
+          {showName && user.role === 'MEMBER' && (
+            <LevelBadge level={level} size={levelIconSize ?? ICON_AFTER_NAME[size]} />
           )}
 
           {user.role === 'ADMIN' && (
@@ -216,8 +253,15 @@ export default function UserBadge({
         {/* 숙성력 두 번째 줄 */}
         {scoreBelowEl}
 
-        {/* 툴팁 — 닉네임·레벨 영역 hover 시만 */}
-        {user.role !== 'ADMIN' && (
+        {/* 커스텀 둘째 줄(상세: 레벨이름·Lv·작성시간 등) */}
+        {!scoreBelow && subLine && (
+          <span className={`${SCORE_CLS[size]} text-neutral-500 leading-tight`}>
+            {subLine}
+          </span>
+        )}
+
+        {/* 툴팁 — 닉네임·레벨 영역 hover 시만 (관리자/최고관리자 제외) */}
+        {user.role !== 'ADMIN' && !isSuperAdmin && (
           <span
             className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5
               px-2 py-1 text-xs bg-neutral-800 text-white rounded-lg whitespace-nowrap

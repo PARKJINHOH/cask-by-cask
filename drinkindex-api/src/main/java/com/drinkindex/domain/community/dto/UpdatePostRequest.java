@@ -14,4 +14,7 @@ public class UpdatePostRequest {
     private String title;
 
     private String content;
+
+    // 게시판 공지(고정글) 토글. null이면 변경 안 함. 관리자/파트너만 유효.
+    private Boolean isPinned;
 }

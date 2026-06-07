@@ -2,6 +2,7 @@
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { usePosts, useBestPosts, usePostPrefixes } from '@/domain/community/hooks/usePosts'
+import { usePinnedNotices } from '@/domain/notice/hooks/useNotices'
 import type { BoardType, PostSort } from '@/domain/community/types/community.types'
 import type { UserRole } from '@/domain/auth/types/auth.types'
 import Pagination from '@/shared/components/Pagination'
@@ -80,6 +81,19 @@ export default function BoardListPage({ boardType, title }: Props) {
   const query    = !isAll && tabParam === 'best' ? bestPostsQuery : allPostsQuery
   const posts    = query.data?.content ?? []
   const totalPages = query.data?.totalPages ?? 0
+
+  // ── 상단노출 공지 ─────────────────────────────────────────
+  // 전체/소식/자유 게시판 모두 기본 탐색 상태(첫 페이지·전체글 탭·필터/검색 없음)일 때만
+  // 목록 최상단에 고정 노출. 검색·정렬·페이징 시에는 노출하지 않아 결과 정확도를 유지.
+  const { data: pinnedNotices = [] } = usePinnedNotices()
+  const showPinnedNotices =
+    tabParam === 'all' &&
+    pageParam === 0 &&
+    !keywordParam &&
+    !prefixParam &&
+    !authorIdParam &&
+    !commentAuthorIdParam &&
+    pinnedNotices.length > 0
 
   // 전체: 글쓰기 불가. NOTICE: ADMIN·SUPER_ADMIN·PARTNER만 글쓰기 가능
   const canWrite = !isAll && isLoggedIn && (
@@ -265,7 +279,7 @@ export default function BoardListPage({ boardType, title }: Props) {
       {/* 게시글 목록 */}
       {query.isLoading ? (
         <div className="py-20 text-center text-neutral-400 text-sm">{t('common.loading')}</div>
-      ) : posts.length === 0 ? (
+      ) : posts.length === 0 && !showPinnedNotices ? (
         <div className="py-20 text-center text-neutral-400 text-sm">{t('board.noPost')}</div>
       ) : (
         <>
@@ -276,18 +290,47 @@ export default function BoardListPage({ boardType, title }: Props) {
                 <tr className="bg-neutral-50 border-b border-neutral-100">
                   <th className="text-center px-4 py-3 font-medium text-neutral-500 w-28">{t('board.prefix')}</th>
                   <th className="text-center px-4 py-3 font-medium text-neutral-500">{t('board.title')}</th>
-                  <th className="text-center px-4 py-3 font-medium text-neutral-500 w-24">닉네임</th>
+                  <th className="text-center px-4 py-3 font-medium text-neutral-500 w-32">닉네임</th>
                   <th className="text-center px-4 py-3 font-medium text-neutral-500 w-16">{t('board.likes')}</th>
                   <th className="text-center px-4 py-3 font-medium text-neutral-500 w-16">{t('board.views')}</th>
                   <th className="text-center px-4 py-3 font-medium text-neutral-500 w-24">작성일</th>
                 </tr>
               </thead>
               <tbody>
+                {showPinnedNotices && pinnedNotices.map((notice) => (
+                  <tr
+                    key={`notice-${notice.id}`}
+                    onClick={() => navigate(`/notices/${notice.id}`)}
+                    className="group/row border-b border-neutral-50 bg-amber-50/40 hover:bg-amber-50 transition-colors cursor-pointer"
+                  >
+                    <td className="px-4 py-3 text-center">
+                      <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
+                        {t('board.noticeBadge')}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-[15px] font-semibold text-neutral-800 group-hover/row:text-primary-800 transition-colors truncate">
+                        {notice.title}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <span className="text-xs font-medium text-rose-700">최고관리자</span>
+                    </td>
+                    <td className="px-4 py-3 text-center"><div className="flex justify-center"><RecommendBadge count={notice.recommendCount} /></div></td>
+                    <td className="px-4 py-3 text-center text-neutral-500 text-xs">{notice.viewCount.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-center text-neutral-400 text-xs">
+                      {formatBoardDate(notice.createdAt)}
+                    </td>
+                  </tr>
+                ))}
                 {posts.map((post) => (
                   <tr
                     key={post.id}
                     onClick={() => navigate(getPostHref(post))}
-                    className="group/row border-b border-neutral-50 hover:bg-neutral-50 transition-colors cursor-pointer"
+                    className={[
+                      'group/row border-b border-neutral-50 transition-colors cursor-pointer',
+                      post.isPinned ? 'bg-amber-50/50 hover:bg-amber-50' : 'hover:bg-neutral-50',
+                    ].join(' ')}
                   >
                     <td className="px-4 py-3 text-center">
                       {post.prefix && (
@@ -305,7 +348,7 @@ export default function BoardListPage({ boardType, title }: Props) {
                       <div className="flex items-center gap-2">
                         {post.isLocked && <span className="text-neutral-400">🔒</span>}
                         <span className={[
-                          'font-medium group-hover/row:text-primary-800 transition-colors truncate',
+                          'text-[15px] font-medium group-hover/row:text-primary-800 transition-colors truncate',
                           post.isLocked ? 'text-red-600' : 'text-neutral-800',
                         ].join(' ')}>
                           {post.title}
@@ -336,6 +379,8 @@ export default function BoardListPage({ boardType, title }: Props) {
                         <UserBadge
                           user={{ id: post.authorId ?? undefined, nickname: post.authorNickname, role: post.authorRole as UserRole, currentLevel: post.authorLevel, maturingPower: post.authorMaturingPower ?? undefined, nicknameFixed: post.authorNicknameFixed, profileImageUrl: post.authorProfileImageUrl }}
                           size="sm"
+                          showAvatar={false}
+                          levelIconSize={14}
                         />
                       ) : (
                         <span className="text-neutral-500 text-xs">{post.authorNickname}</span>
@@ -354,11 +399,37 @@ export default function BoardListPage({ boardType, title }: Props) {
 
           {/* 모바일 카드 */}
           <div className="sm:hidden space-y-2">
+            {showPinnedNotices && pinnedNotices.map((notice) => (
+              <Link
+                key={`notice-${notice.id}`}
+                to={`/notices/${notice.id}`}
+                className="block bg-amber-50/60 border border-amber-200 rounded-xl px-4 py-3.5 hover:border-amber-300 transition-colors"
+              >
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
+                    {t('board.noticeBadge')}
+                  </span>
+                </div>
+                <p className="text-[15px] font-semibold text-neutral-800 line-clamp-1">
+                  {notice.title}
+                </p>
+                <div className="flex items-center gap-3 mt-1.5 text-xs text-neutral-400">
+                  <RecommendBadge count={notice.recommendCount} />
+                  <span>조회 {notice.viewCount.toLocaleString()}</span>
+                  <span>{formatBoardDate(notice.createdAt)}</span>
+                </div>
+              </Link>
+            ))}
             {posts.map((post) => (
               <Link
                 key={post.id}
                 to={getPostHref(post)}
-                className="block bg-white border border-neutral-200 rounded-xl px-4 py-3.5 hover:border-neutral-300 transition-colors"
+                className={[
+                  'block border rounded-xl px-4 py-3.5 transition-colors',
+                  post.isPinned
+                    ? 'bg-amber-50/60 border-amber-200 hover:border-amber-300'
+                    : 'bg-white border-neutral-200 hover:border-neutral-300',
+                ].join(' ')}
               >
                 <div className="flex items-center gap-2 mb-1.5">
                   {post.prefix && (
@@ -380,7 +451,7 @@ export default function BoardListPage({ boardType, title }: Props) {
                   )}
                 </div>
                 <p className={[
-                  'text-sm font-medium line-clamp-1',
+                  'text-[15px] font-medium line-clamp-1',
                   post.isLocked ? 'text-red-600' : 'text-neutral-800',
                 ].join(' ')}>
                   {post.title}
@@ -390,6 +461,8 @@ export default function BoardListPage({ boardType, title }: Props) {
                     <UserBadge
                       user={{ nickname: post.authorNickname, role: post.authorRole as UserRole, currentLevel: post.authorLevel, maturingPower: post.authorMaturingPower ?? undefined, nicknameFixed: post.authorNicknameFixed, profileImageUrl: post.authorProfileImageUrl }}
                       size="sm"
+                      showAvatar={false}
+                      levelIconSize={14}
                     />
                   ) : (
                     <span>{post.authorNickname}</span>

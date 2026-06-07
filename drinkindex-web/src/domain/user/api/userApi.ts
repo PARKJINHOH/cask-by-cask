@@ -1,6 +1,6 @@
 import axiosInstance from '@/shared/api/axiosInstance'
 import type { ApiResponse } from '@/shared/types/common.types'
-import type { UpdateNicknameRequest, UpdatePasswordRequest, UserProfile } from '../types/user.types'
+import type { BlockedUser, UpdateNicknameRequest, UpdatePasswordRequest, UserProfile } from '../types/user.types'
 
 export const userApi = {
   getMe: () =>
@@ -34,4 +34,11 @@ export const userApi = {
 
   updateEmailSubscription: (emailSubscribed: boolean) =>
     axiosInstance.patch<ApiResponse<UserProfile>>('/api/users/me/email-subscription', { emailSubscribed }),
+
+  // ── 차단 ──────────────────────────────────────────────────
+  getBlockedUsers: () =>
+    axiosInstance.get<ApiResponse<BlockedUser[]>>('/api/users/me/blocks'),
+
+  unblockUser: (userId: number) =>
+    axiosInstance.delete<ApiResponse<null>>(`/api/users/${userId}/block`),
 }

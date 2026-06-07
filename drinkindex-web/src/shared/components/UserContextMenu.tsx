@@ -1,7 +1,10 @@
 import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { useMessageStore } from '@/domain/message/store/messageStore'
+import { communityApi } from '@/domain/community/api/communityApi'
+import { useToast } from '@/shared/hooks/useToast'
 
 interface Props {
   nickname: string
@@ -13,7 +16,20 @@ interface Props {
 export default function UserContextMenu({ nickname, userId, children, disabled }: Props) {
   const { isLoggedIn } = useAuthStore()
   const { openPopup } = useMessageStore()
+  const { showToast } = useToast()
+  const qc = useQueryClient()
   const navigate = useNavigate()
+
+  const blockMutation = useMutation({
+    mutationFn: () => communityApi.toggleBlock(userId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['post'] })
+      qc.invalidateQueries({ queryKey: ['posts'] })
+      qc.invalidateQueries({ queryKey: ['comments'] })
+      qc.invalidateQueries({ queryKey: ['blockedUsers'] })
+      showToast('해당 사용자를 차단했습니다. 게시글·댓글이 목록에서 숨겨집니다.', 'success')
+    },
+  })
   const [open, setOpen] = useState(false)
   const [pos, setPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 })
   const triggerRef = useRef<HTMLSpanElement>(null)
@@ -25,7 +41,7 @@ export default function UserContextMenu({ nickname, userId, children, disabled }
 
     const rect = triggerRef.current.getBoundingClientRect()
     const menuWidth = 180
-    const menuHeight = isLoggedIn ? 130 : 90
+    const menuHeight = isLoggedIn ? 175 : 90
 
     let left = rect.right + 4
     let top = rect.top
@@ -66,38 +82,49 @@ export default function UserContextMenu({ nickname, userId, children, disabled }
       {open && (
         <div
           ref={menuRef}
-          className="fixed z-[9999] bg-white border border-neutral-200 rounded-lg shadow-lg py-1 min-w-[160px]"
+          className="fixed z-[9999] flex flex-col bg-white border border-neutral-200 rounded-lg shadow-lg py-1 w-max min-w-[160px]"
           style={{ top: pos.top, left: pos.left }}
         >
           <button
-            className="flex items-center gap-2 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 w-full text-left"
+            className="px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 w-full text-left whitespace-nowrap"
             onClick={() => {
               setOpen(false)
               navigate(`/community/all?authorId=${userId}&authorNickname=${encodeURIComponent(nickname)}`)
             }}
           >
-            📋 사용자 게시글 보기
+            사용자 게시글 보기
           </button>
           <button
-            className="flex items-center gap-2 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 w-full text-left"
+            className="px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 w-full text-left whitespace-nowrap"
             onClick={() => {
               setOpen(false)
               navigate(`/community/all?commentAuthorId=${userId}&authorNickname=${encodeURIComponent(nickname)}`)
             }}
           >
-            💬 사용자 댓글 보기
+            사용자 댓글 보기
           </button>
           {isLoggedIn && (
             <>
               <div className="border-t border-neutral-100 my-1" />
               <button
-                className="flex items-center gap-2 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 w-full text-left"
+                className="px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 w-full text-left whitespace-nowrap"
                 onClick={() => {
                   setOpen(false)
                   openPopup(nickname)
                 }}
               >
-                ✉ 쪽지 보내기
+                쪽지 보내기
+              </button>
+              <button
+                className="px-4 py-2 text-sm text-red-600 hover:bg-red-50 w-full text-left whitespace-nowrap"
+                onClick={() => {
+                  setOpen(false)
+                  if (window.confirm('이 사용자를 차단할까요?\n차단하면 이 사용자의 게시글·댓글 내용이 가려집니다.')) {
+                    blockMutation.mutate()
+                  }
+                }}
+              >
+                사용자 차단
               </button>
             </>
           )}

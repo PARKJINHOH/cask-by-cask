@@ -29,10 +29,14 @@ public class PostQueryRepositoryImpl implements PostQueryRepository {
     @Override
     public Page<Post> findPosts(BoardType boardType, Long prefixId, String keyword,
                                 PostSort sort, Long authorId, Long commentAuthorId,
-                                Long distilleryTagId, Pageable pageable) {
+                                Long distilleryTagId, List<Long> excludeAuthorIds,
+                                Pageable pageable) {
         QPost post = QPost.post;
 
         BooleanBuilder predicate = new BooleanBuilder();
+        if (excludeAuthorIds != null && !excludeAuthorIds.isEmpty()) {
+            predicate.and(post.author.id.notIn(excludeAuthorIds));
+        }
         if (boardType != null) {
             predicate.and(post.boardType.eq(boardType));
         } else {
@@ -76,7 +80,8 @@ public class PostQueryRepositoryImpl implements PostQueryRepository {
                 .leftJoin(post.author).fetchJoin()
                 .leftJoin(post.distilleryTag).fetchJoin() // [패치 9] 증류소 태그 N+1 방지
                 .where(predicate)
-                .orderBy(primary, post.createdAt.desc())
+                // 게시판 공지(고정글) 우선 → 선택 정렬 → 최신순. "전체" 합본에서도 동일 적용.
+                .orderBy(post.isPinned.desc(), primary, post.createdAt.desc())
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();
@@ -91,13 +96,17 @@ public class PostQueryRepositoryImpl implements PostQueryRepository {
     }
 
     @Override
-    public Page<Post> findBestPosts(BoardType boardType, int minLikeCount, Pageable pageable) {
+    public Page<Post> findBestPosts(BoardType boardType, int minLikeCount,
+                                    List<Long> excludeAuthorIds, Pageable pageable) {
         QPost post = QPost.post;
 
         BooleanBuilder predicate = new BooleanBuilder();
         predicate.and(post.boardType.eq(boardType));
         predicate.and(post.status.eq(PostStatus.ACTIVE));
         predicate.and(post.likeCount.goe(minLikeCount));
+        if (excludeAuthorIds != null && !excludeAuthorIds.isEmpty()) {
+            predicate.and(post.author.id.notIn(excludeAuthorIds));
+        }
 
         List<Post> posts = queryFactory
                 .selectFrom(post)

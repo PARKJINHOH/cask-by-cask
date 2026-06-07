@@ -1,6 +1,6 @@
 import { useRef, useCallback } from 'react'
 import type { UserProfile } from '@/domain/user/types/user.types'
-import LevelIcon from '@/shared/components/icons/LevelIcon'
+import LevelBadge from '@/shared/components/LevelBadge'
 import Spinner from '@/shared/components/Spinner'
 import EmptyState from '@/shared/components/EmptyState'
 import { formatDate } from '@/shared/utils/format'
@@ -43,7 +43,7 @@ function LevelCard({ profile }: { profile: UserProfile }) {
     <div className="bg-white rounded-2xl p-5 shadow-sm border border-neutral-100">
       <div className="flex items-center gap-4">
         <div className="flex-shrink-0">
-          <LevelIcon level={currentLevel} size={52} />
+          <LevelBadge level={currentLevel} size={52} />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-2">
@@ -123,9 +123,9 @@ function LevelMapCard({ currentLevel }: { maturingPower: number; currentLevel: n
                     : 'bg-white border-neutral-100',
                 ].join(' ')}
               >
-                <LevelIcon
+                <LevelBadge
                   level={lv.level}
-                  size={isCurrent ? 28 : 22}
+                  size={isCurrent ? 30 : 24}
                 />
                 <span className={[
                   'text-[10px] font-bold leading-none',

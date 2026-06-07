@@ -17,6 +17,7 @@ public class PostDetailResponse {
     private final PrefixInfo prefix;
     private final String title;
     private final boolean isLocked;
+    private final boolean isPinned;         // 게시판 공지(고정글)
     private final String contentSanitized; // null if LOCKED and not admin
     private final String authorNickname;
     private final Long authorId;               // null if isAnonymous
@@ -44,6 +45,7 @@ public class PostDetailResponse {
         this.prefix           = b.prefix;
         this.title            = b.title;
         this.isLocked         = b.isLocked;
+        this.isPinned         = b.isPinned;
         this.contentSanitized = b.contentSanitized;
         this.authorNickname      = b.authorNickname;
         this.authorId            = b.authorId;
@@ -74,6 +76,7 @@ public class PostDetailResponse {
                 .prefix(post.getPrefix() != null ? PrefixInfo.from(post.getPrefix()) : null)
                 .title(post.getTitle())
                 .isLocked(locked)
+                .isPinned(Boolean.TRUE.equals(post.getIsPinned()))
                 .contentSanitized(showContent ? post.getContentSanitized() : null)
                 .authorNickname(Boolean.TRUE.equals(post.getIsAnonymous()) ? "익명" : post.getAuthor().getNickname())
                 .authorId(Boolean.TRUE.equals(post.getIsAnonymous()) ? null : post.getAuthor().getId())
@@ -98,6 +101,7 @@ public class PostDetailResponse {
         private PrefixInfo prefix;
         private String title;
         private boolean isLocked;
+        private boolean isPinned;
         private String contentSanitized;
         private String authorNickname;
         private Long authorId;
@@ -124,6 +128,7 @@ public class PostDetailResponse {
         public Builder prefix(PrefixInfo p)               { this.prefix = p; return this; }
         public Builder title(String t)                    { this.title = t; return this; }
         public Builder isLocked(boolean l)                { this.isLocked = l; return this; }
+        public Builder isPinned(boolean p)                { this.isPinned = p; return this; }
         public Builder contentSanitized(String c)         { this.contentSanitized = c; return this; }
         public Builder authorNickname(String n)           { this.authorNickname = n; return this; }
         public Builder authorId(Long id)                  { this.authorId = id; return this; }

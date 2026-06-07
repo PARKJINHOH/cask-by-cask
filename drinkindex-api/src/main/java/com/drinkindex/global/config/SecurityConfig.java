@@ -136,6 +136,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/faq").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/inquiries").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/inquiries/images/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/feedbacks/images/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/signup").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/refresh").permitAll()
@@ -153,6 +154,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/wineries/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "PARTNER")
                         .requestMatchers("/api/admin/cognac-houses/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "PARTNER")
                         .requestMatchers("/api/admin/**").hasAnyRole("SUPER_ADMIN", "ADMIN")
+                        // 개선·문의 상태/진척률 변경은 관리자(SUPER_ADMIN·ADMIN)만 — 그 외 엔드포인트는 로그인만 필요
+                        .requestMatchers(HttpMethod.PATCH, "/api/feedbacks/*/status").hasAnyRole("SUPER_ADMIN", "ADMIN")
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(exception -> exception

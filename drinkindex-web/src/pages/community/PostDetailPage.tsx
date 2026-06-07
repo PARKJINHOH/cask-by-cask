@@ -12,6 +12,7 @@ import { useAuthStore } from '@/domain/auth/store/authStore'
 import { useToast } from '@/shared/hooks/useToast'
 import type { UserRole } from '@/domain/auth/types/auth.types'
 import UserBadge from '@/shared/components/UserBadge'
+import { formatDotDateTime } from '@/shared/utils/format'
 import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 import { SITE_URL } from '@/shared/config/site'
 import { buildBreadcrumbSchema } from '@/shared/utils/seoSchema'
@@ -194,7 +195,7 @@ export default function PostDetailPage() {
 
           {/* 제목 + 스크랩/공유 아이콘 */}
           <div className="flex items-start gap-2 mb-3">
-            <h1 className={['flex-1 text-xl sm:text-2xl font-bold', isLocked ? 'text-red-600' : 'text-neutral-900'].join(' ')}>
+            <h1 className={['flex-1 text-2xl sm:text-3xl font-bold', isLocked ? 'text-red-600' : 'text-neutral-900'].join(' ')}>
               {post.title}
             </h1>
             <div className="flex items-center gap-1 mt-0.5 flex-shrink-0">
@@ -228,14 +229,21 @@ export default function PostDetailPage() {
               {post.authorRole ? (
                 <UserBadge
                   user={{ id: post.authorId ?? undefined, nickname: post.authorNickname, role: post.authorRole as UserRole, currentLevel: post.authorLevel, maturingPower: post.authorMaturingPower ?? undefined, nicknameFixed: post.authorNicknameFixed, profileImageUrl: post.authorProfileImageUrl }}
-                  size="sm"
-                  scoreBelow
+                  size="md"
+                  avatarSize="xl"
+                  showLevelName
+                  nameClassName="text-[15px]"
+                  levelIconSize={16}
+                  subLine={`${formatDotDateTime(post.createdAt)} · 조회 ${post.viewCount.toLocaleString()}`}
                 />
               ) : (
-                <span className="font-medium">{post.authorNickname}</span>
+                <span className="flex flex-col leading-tight">
+                  <span className="font-medium text-neutral-700">{post.authorNickname}</span>
+                  <span className="text-xs text-neutral-500">
+                    {formatDotDateTime(post.createdAt)} · 조회 {post.viewCount.toLocaleString()}
+                  </span>
+                </span>
               )}
-              <span>{new Date(post.createdAt).toLocaleString('ko-KR')}</span>
-              <span>조회 {post.viewCount.toLocaleString()}</span>
             </div>
 
             {/* 우측: 신고 + 작성자 액션 */}
@@ -320,16 +328,6 @@ export default function PostDetailPage() {
               </svg>
               {t('post.like')} {post.likeCount > 0 && <span className="font-bold">{post.likeCount}</span>}
             </button>
-
-            {/* 차단 버튼 */}
-            {isLoggedIn && !isMyPost && post.authorId && (
-              <button
-                onClick={handleBlock}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-full border border-neutral-200 text-sm text-neutral-400 hover:border-neutral-300 transition-colors"
-              >
-                {post.isBlocked ? t('post.unblock') : t('post.blockUser')}
-              </button>
-            )}
           </div>
         )}
       </article>

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useByobComments, useByobActions } from '../hooks/useByob'
 import type { ByobComment } from '../types/byob.types'
+import DefaultAvatar from '@/shared/components/DefaultAvatar'
 
 interface CommentItemProps {
   comment: ByobComment
@@ -17,9 +18,8 @@ function CommentItem({ comment, myUserId, hostUserId, onReply, onDelete }: Comme
   return (
     <div className="space-y-2">
       <div className="flex items-start gap-2.5">
-        <div className="w-7 h-7 rounded-full bg-primary-100 flex items-center justify-center
-          text-xs font-bold text-primary-800 flex-shrink-0">
-          {comment.authorNickname[0]?.toUpperCase()}
+        <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0">
+          <DefaultAvatar seed={String(comment.authorUserId)} px={16} />
         </div>
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-0.5">
@@ -57,9 +57,8 @@ function CommentItem({ comment, myUserId, hostUserId, onReply, onDelete }: Comme
 
       {comment.replies?.map((reply) => (
         <div key={reply.id} className="ml-9 flex items-start gap-2.5">
-          <div className="w-6 h-6 rounded-full bg-neutral-100 flex items-center justify-center
-            text-xs font-bold text-neutral-600 flex-shrink-0">
-            {reply.authorNickname[0]?.toUpperCase()}
+          <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0">
+            <DefaultAvatar seed={String(reply.authorUserId)} px={14} />
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-0.5">

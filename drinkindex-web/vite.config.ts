@@ -70,6 +70,10 @@ export default defineConfig({
         target: 'http://localhost:8080',
         changeOrigin: true,
       },
+      '/api/feedbacks/images': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
       '/api/faq': {
         target: 'http://localhost:8080',
         changeOrigin: true,

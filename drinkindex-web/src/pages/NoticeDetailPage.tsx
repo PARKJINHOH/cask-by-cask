@@ -106,14 +106,6 @@ export default function NoticeDetailPage() {
           <Badge variant={CATEGORY_BADGE_VARIANT[notice.category]}>
             {NOTICE_CATEGORY_LABELS[notice.category]}
           </Badge>
-          {notice.isPinned && (
-            <span className="inline-flex items-center gap-1 text-xs text-amber-600 font-medium">
-              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5v6l1 1 1-1v-6h5v-2l-2-2z" />
-              </svg>
-              고정
-            </span>
-          )}
         </div>
         <h1 className="text-2xl font-bold text-neutral-900 leading-snug mb-3">
           {notice.title}

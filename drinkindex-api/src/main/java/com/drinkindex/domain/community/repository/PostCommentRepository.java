@@ -16,9 +16,17 @@ public interface PostCommentRepository extends JpaRepository<PostComment, Long> 
     Page<PostComment> findByPostIdAndParentIsNullAndIsHiddenFalse(
             Long postId, Pageable pageable);
 
+    // 차단 작성자 제외 버전 (로그인 + 차단 목록 존재 시)
+    Page<PostComment> findByPostIdAndParentIsNullAndIsHiddenFalseAndAuthorIdNotIn(
+            Long postId, List<Long> authorIds, Pageable pageable);
+
     // 부모 댓글의 대댓글 목록 (삭제 포함, 숨김 제외)
     List<PostComment> findByParentIdAndIsHiddenFalseOrderByCreatedAtAsc(
             Long parentId);
+
+    // 차단 작성자 제외 버전
+    List<PostComment> findByParentIdAndIsHiddenFalseAndAuthorIdNotInOrderByCreatedAtAsc(
+            Long parentId, List<Long> authorIds);
 
     // 게시글 삭제 시 댓글의 post FK를 null로 처리 (댓글 레코드 자체는 유지)
     @Modifying

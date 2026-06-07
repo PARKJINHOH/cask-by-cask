@@ -24,6 +24,7 @@ public class ByobListResponse {
     private int approvedCount;
     private ByobStatus status;
     private Long linkedFreePostId;
+    private boolean isPinned;
     private LocalDateTime createdAt;
 
     public static ByobListResponse from(Byob byob) {
@@ -41,6 +42,7 @@ public class ByobListResponse {
                 .approvedCount(byob.getApprovedCount())
                 .status(byob.getStatus())
                 .linkedFreePostId(byob.getLinkedFreePostId())
+                .isPinned(Boolean.TRUE.equals(byob.getIsPinned()))
                 .createdAt(byob.getCreatedAt())
                 .build();
     }

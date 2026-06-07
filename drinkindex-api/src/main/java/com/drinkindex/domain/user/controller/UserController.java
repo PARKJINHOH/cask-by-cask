@@ -1,5 +1,6 @@
 package com.drinkindex.domain.user.controller;
 
+import com.drinkindex.domain.community.dto.BlockedUserResponse;
 import com.drinkindex.domain.community.dto.UserMentionResponse;
 import com.drinkindex.domain.community.entity.UserBlock;
 import com.drinkindex.domain.community.repository.UserBlockRepository;
@@ -152,6 +153,32 @@ public class UserController {
                                     UserBlock.builder().blocker(blocker).blocked(blocked).build());
                         }
                 );
+        return ResponseEntity.ok(ApiResponse.success());
+    }
+
+    // ─── 내가 차단한 사용자 목록 ───────────────────────────────
+    @GetMapping("/me/blocks")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<List<BlockedUserResponse>>> getMyBlocks(
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        List<BlockedUserResponse> result = userBlockRepository
+                .findByBlockerIdWithBlocked(userDetails.getUserId())
+                .stream()
+                .map(BlockedUserResponse::from)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    // ─── 차단 해제 ─────────────────────────────────────────────
+    @DeleteMapping("/{userId}/block")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<Void>> unblock(
+            @PathVariable Long userId,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        userBlockRepository.findByBlockerIdAndBlockedId(userDetails.getUserId(), userId)
+                .ifPresent(userBlockRepository::delete);
         return ResponseEntity.ok(ApiResponse.success());
     }
 

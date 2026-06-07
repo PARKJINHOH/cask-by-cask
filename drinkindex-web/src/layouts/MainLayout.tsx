@@ -12,7 +12,8 @@ import { useLatestNotice } from '@/domain/notice/hooks/useNotices'
 import NotificationBell from '@/domain/notification/components/NotificationBell'
 import MessagePopup from '@/domain/message/components/MessagePopup'
 import ForcePasswordChangeModal from '@/domain/user/components/ForcePasswordChangeModal'
-import LevelIcon from '@/shared/components/icons/LevelIcon'
+import LevelBadge from '@/shared/components/LevelBadge'
+import DefaultAvatar from '@/shared/components/DefaultAvatar'
 import AdminIcon from '@/shared/components/icons/AdminIcon'
 import ProducerIcon from '@/shared/components/icons/ProducerIcon'
 
@@ -135,6 +136,7 @@ function GNB() {
       children: [
         { key: 'requestSpirit',     label: t('menu.requestSpirit'),     to: '/request/spirit' },
         { key: 'requestProducer', label: t('menu.requestProducer'), to: '/request/producer' },
+        { key: 'requestFeedback', label: t('menu.requestFeedback'), to: '/request/feedback' },
       ],
     },
     { key: 'notice', label: t('menu.notice'), to: '/notices' },
@@ -155,7 +157,7 @@ function GNB() {
     ${active ? 'text-primary-800' : 'text-neutral-600 hover:text-primary-800'}`
 
   return (
-    <nav ref={navRef} className="bg-white border-b border-neutral-100">
+    <nav ref={navRef} className="bg-canvas border-b border-neutral-100">
       <div className="max-w-7xl mx-auto px-4">
         <ul className="flex items-center gap-1">
           {menus.map(menu => {
@@ -343,6 +345,7 @@ function UserDropdown() {
   const { data: profile } = useMe()
   const isFixed = profile?.nicknameFixed === true
   const profileImageUrl = profile?.profileImageUrl ?? user?.profileImageUrl
+  const avatarSeed = String(user?.id ?? user?.nickname ?? '?')
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -411,7 +414,7 @@ function UserDropdown() {
                 justify-center text-xs font-bold select-none ring-[1.5px] ring-white overflow-hidden">
                 {profileImageUrl
                   ? <img src={profileImageUrl} alt="" className="w-full h-full object-cover" />
-                  : (user?.nickname?.[0]?.toUpperCase() ?? '?')}
+                  : <DefaultAvatar seed={avatarSeed} px={16} />}
               </span>
             </span>
           ) : (
@@ -419,12 +422,7 @@ function UserDropdown() {
               justify-center text-xs font-bold select-none overflow-hidden">
               {profileImageUrl
                 ? <img src={profileImageUrl} alt="" className="w-full h-full object-cover" />
-                : (user?.nickname?.[0]?.toUpperCase() ?? '?')}
-            </span>
-          )}
-          {user?.role === 'MEMBER' && (
-            <span className="absolute -bottom-1 -left-1 bg-white rounded-full ring-1 ring-white flex items-center justify-center">
-              <LevelIcon level={user.currentLevel ?? 1} size={13} />
+                : <DefaultAvatar seed={avatarSeed} px={16} />}
             </span>
           )}
           {user?.role === 'ADMIN' && (
@@ -439,7 +437,12 @@ function UserDropdown() {
           )}
         </span>
         <span className="hidden sm:flex flex-col items-start leading-none">
-          <span className="max-w-[120px] truncate text-sm font-medium text-neutral-800">{user?.nickname}</span>
+          <span className="flex items-center gap-1">
+            <span className="max-w-[120px] truncate text-sm font-medium text-neutral-800">{user?.nickname}</span>
+            {user?.role === 'MEMBER' && (
+              <LevelBadge level={user.currentLevel ?? 1} size={16} />
+            )}
+          </span>
           {user?.role === 'MEMBER' && user?.currentLevel != null && (
             <span className="text-[10px] text-amber-500 font-semibold mt-0.5">
               {t('nav.maturingPower', { level: user.currentLevel, power: (user.maturingPower ?? 0).toLocaleString() })}
@@ -517,9 +520,9 @@ export default function MainLayout() {
   const { isLoggedIn } = useAuthStore()
 
   return (
-    <div className="min-h-screen bg-neutral-50 flex flex-col">
+    <div className="min-h-screen bg-canvas flex flex-col">
       {/* 헤더 */}
-      <header className="bg-white border-b border-neutral-200 sticky top-0 z-40">
+      <header className="bg-canvas border-b border-neutral-200 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center gap-4">
           {/* 로고 */}
           <Link to="/" className="flex items-center gap-2 flex-shrink-0">
@@ -553,7 +556,7 @@ export default function MainLayout() {
       </main>
 
       {/* 푸터 (PC only) */}
-      <footer className="hidden lg:block bg-white border-t border-neutral-200 py-6">
+      <footer className="hidden lg:block bg-canvas border-t border-neutral-200 py-6">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex justify-center items-start gap-16 mb-5">
             {/* 로고 + 태그라인 */}

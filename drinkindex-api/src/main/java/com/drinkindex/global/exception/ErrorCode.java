@@ -220,6 +220,15 @@ public enum ErrorCode {
     DRAFT_ACCESS_DENIED(HttpStatus.FORBIDDEN, "DRAFT_002", "본인의 임시저장만 접근할 수 있습니다."),
     DRAFT_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "DRAFT_003", "임시저장은 최대 10개까지 저장할 수 있습니다. 기존 임시저장을 삭제 후 다시 시도해주세요."),
 
+    // Feedback (개선·문의 — 이슈 트래커형, 이메일 문의(Inquiry)와 별개)
+    FEEDBACK_NOT_FOUND(HttpStatus.NOT_FOUND, "FEEDBACK_001", "개선·문의 글을 찾을 수 없습니다."),
+    FEEDBACK_FORBIDDEN(HttpStatus.FORBIDDEN, "FEEDBACK_002", "본인 또는 관리자만 접근할 수 있습니다."),
+    FEEDBACK_NOT_EDITABLE(HttpStatus.BAD_REQUEST, "FEEDBACK_003", "접수 상태에서만 수정/삭제할 수 있습니다."),
+    FEEDBACK_TOO_MANY_IMAGES(HttpStatus.BAD_REQUEST, "FEEDBACK_004", "이미지는 최대 3개까지 첨부할 수 있습니다."),
+    FEEDBACK_IMAGE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "FEEDBACK_005", "이미지 파일 크기는 2MB를 초과할 수 없습니다."),
+    FEEDBACK_TOTAL_IMAGE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "FEEDBACK_006", "첨부 이미지 총 크기는 6MB를 초과할 수 없습니다."),
+    FEEDBACK_INVALID_IMAGE_FORMAT(HttpStatus.BAD_REQUEST, "FEEDBACK_007", "JPG, PNG, WEBP, GIF 형식의 이미지만 첨부할 수 있습니다."),
+
     // Common
     NOT_FOUND(HttpStatus.NOT_FOUND, "COMMON_001", "리소스를 찾을 수 없습니다."),
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "COMMON_002", "입력값이 올바르지 않습니다."),

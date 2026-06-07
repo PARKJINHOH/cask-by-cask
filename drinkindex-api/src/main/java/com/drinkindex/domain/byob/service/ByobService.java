@@ -18,6 +18,7 @@ import com.drinkindex.domain.community.repository.PostRepository;
 import com.drinkindex.domain.community.service.MessageService;
 import com.drinkindex.domain.community.service.NotificationService;
 import com.drinkindex.domain.user.entity.User;
+import com.drinkindex.domain.user.entity.enums.Role;
 import com.drinkindex.domain.user.repository.UserRepository;
 import com.drinkindex.global.exception.CustomException;
 import com.drinkindex.global.exception.ErrorCode;
@@ -148,6 +149,20 @@ public class ByobService {
         ByobParticipantResponse myParticipant = participantRepository.findByByobIdAndUserId(byobId, userId)
                 .map(ByobParticipantResponse::from).orElse(null);
         return ByobDetailResponse.from(byob, myParticipant);
+    }
+
+    // ── 공지(고정글) 토글 ─────────────────────────────────────────
+    // 게시글과 달리 수정 폼과 분리된 전용 동작 — 승인 참여자 존재 여부와 무관하게 토글 가능.
+    // 권한: 주최자 본인이면서 최고관리자/관리자/파트너.
+
+    @Transactional
+    public void changePin(Long byobId, Long userId, boolean pinned) {
+        Byob byob = findByob(byobId);
+        checkHost(byob, userId);
+        if (!canPin(byob.getHost().getRole())) {
+            throw new CustomException(ErrorCode.FORBIDDEN);
+        }
+        byob.changePinned(pinned);
     }
 
     // ── 상태 변경 ─────────────────────────────────────────────────
@@ -470,5 +485,10 @@ public class ByobService {
         if (!byob.getHost().getId().equals(userId)) {
             throw new CustomException(ErrorCode.FORBIDDEN);
         }
+    }
+
+    // BYOB 게시판 공지(고정글) 설정 권한: 최고관리자/관리자/파트너
+    private boolean canPin(Role role) {
+        return role == Role.SUPER_ADMIN || role == Role.ADMIN || role == Role.PARTNER;
     }
 }

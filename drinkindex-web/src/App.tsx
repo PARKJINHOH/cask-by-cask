@@ -17,6 +17,9 @@ import MyPage from '@/pages/MyPage'
 import RankingPage from '@/pages/RankingPage'
 import SpiritRequestPage from '@/pages/SpiritRequestPage'
 import ProducerRequestPage from '@/pages/ProducerRequestPage'
+import FeedbackListPage from '@/pages/FeedbackListPage'
+import FeedbackFormPage from '@/pages/FeedbackFormPage'
+import FeedbackDetailPage from '@/pages/FeedbackDetailPage'
 import AllBoardPage from '@/pages/community/AllBoardPage'
 import NoticeBoardPage from '@/pages/community/NoticeBoardPage'
 import FreeBoardPage from '@/pages/community/FreeBoardPage'
@@ -122,6 +125,10 @@ export default function App() {
 <Route path="mypage" element={<MyPage />} />
               <Route path="request/spirit" element={<SpiritRequestPage />} />
               <Route path="request/producer" element={<ProducerRequestPage />} />
+              <Route path="request/feedback" element={<FeedbackListPage />} />
+              <Route path="request/feedback/new" element={<FeedbackFormPage />} />
+              <Route path="request/feedback/:id" element={<FeedbackDetailPage />} />
+              <Route path="request/feedback/:id/edit" element={<FeedbackFormPage />} />
             </Route>
             {/* MainLayout 안의 catch-all 404 — 헤더/푸터 유지 */}
             <Route path="*" element={<NotFoundPage />} />

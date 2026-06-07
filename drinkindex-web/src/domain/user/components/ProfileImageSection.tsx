@@ -2,6 +2,7 @@
 import { useTranslation } from 'react-i18next'
 import { useMe, useUploadProfileImage, useDeleteProfileImage } from '../hooks/useUser'
 import Button from '@/shared/components/Button'
+import DefaultAvatar from '@/shared/components/DefaultAvatar'
 
 const PROFILE_IMAGE_LOCK_DAYS = 30
 const MAX_FILE_SIZE = 2 * 1024 * 1024 // 2MB
@@ -111,6 +112,7 @@ export default function ProfileImageSection() {
 
   const currentImageUrl = profile?.profileImageUrl
   const nickname = profile?.nickname ?? ''
+  const avatarSeed = String(profile?.id ?? nickname ?? '?')
   const isUploading = uploadMutation.isPending
   const isDeleting = deleteMutation.isPending
 
@@ -132,7 +134,7 @@ export default function ProfileImageSection() {
               className="w-full h-full object-cover"
             />
           ) : (
-            nickname ? nickname[0].toUpperCase() : '?'
+            <DefaultAvatar seed={avatarSeed} px={42} />
           )}
         </div>
 

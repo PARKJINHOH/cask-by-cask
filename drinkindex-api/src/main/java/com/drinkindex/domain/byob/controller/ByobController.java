@@ -66,6 +66,19 @@ public class ByobController {
         return ResponseEntity.ok(ApiResponse.success(byobService.update(id, userDetails.getUserId(), request)));
     }
 
+    // ── 공지(고정글) 토글 ─────────────────────────────────────────
+
+    @PatchMapping("/{id}/pin")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<Void>> changePin(
+            @PathVariable Long id,
+            @Valid @RequestBody ChangeByobPinRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        byobService.changePin(id, userDetails.getUserId(), request.getIsPinned());
+        return ResponseEntity.ok(ApiResponse.success());
+    }
+
     // ── 상태 변경 ─────────────────────────────────────────────────
 
     @PatchMapping("/{id}/status")
