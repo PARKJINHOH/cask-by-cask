@@ -100,6 +100,17 @@ export function useUpdateEmailSubscription() {
   })
 }
 
+export function useVerifyAdult() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (birthDate: string) => userApi.verifyAdult(birthDate),
+    onSuccess: (res) => {
+      const profile = res.data.data!
+      queryClient.setQueryData(['me'], profile)
+    },
+  })
+}
+
 export function useBlockedUsers() {
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
   return useQuery({

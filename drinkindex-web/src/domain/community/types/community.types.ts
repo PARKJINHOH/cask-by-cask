@@ -14,6 +14,7 @@ export interface PostListItem {
   title: string
   isLocked: boolean
   isPinned: boolean     // 게시판 공지(고정글)
+  adultOnly: boolean    // 성인 전용(주류 나눔 등) — 제목 19 아이콘
   authorNickname: string
   authorId?: number | null
   authorRole?: string   // null if anonymous
@@ -69,6 +70,7 @@ export interface PostDetail {
   title: string
   isLocked: boolean
   isPinned: boolean     // 게시판 공지(고정글)
+  adultOnly: boolean    // 성인 전용(주류 나눔 등) — 제목 19 아이콘
   contentSanitized: string | null
   authorNickname: string
   authorId: number | null
@@ -146,6 +148,8 @@ export interface PostCommentItem {
   createdAt: string
   isMyComment: boolean
   isDeleted: boolean
+  isSecret: boolean
+  isSecretMasked: boolean // 비밀댓글이지만 열람 권한이 없어 마스킹됨
 }
 
 export interface CommunityEmoji {
@@ -184,6 +188,7 @@ export interface CreatePostPayload {
   content: string
   isAnonymous?: boolean
   isPinned?: boolean
+  adultOnly?: boolean
   poll?: PollPayload
   seriesId?: number
 }
@@ -193,4 +198,5 @@ export interface UpdatePostPayload {
   title?: string
   content?: string
   isPinned?: boolean
+  adultOnly?: boolean
 }

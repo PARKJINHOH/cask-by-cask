@@ -2,6 +2,7 @@ package com.drinkindex.domain.user.entity;
 
 import com.drinkindex.domain.community.entity.enums.BoardType;
 import com.drinkindex.domain.producer.entity.Producer;
+import com.drinkindex.domain.user.entity.enums.AdultVerifyMethod;
 import com.drinkindex.domain.user.entity.enums.Role;
 import com.drinkindex.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
@@ -125,6 +126,29 @@ public class User extends BaseTimeEntity {
     @Column(nullable = false)
     private Boolean mustChangePassword = false;
 
+    // ── 성인(연령) 인증 ─────────────────────────────────────────
+    /** 성인인증 완료 여부 (만 19세 이상 확인) */
+    @Builder.Default
+    @Column(nullable = false)
+    private Boolean adultVerified = false;
+
+    /** 성인인증 완료 시각 */
+    @Column
+    private LocalDateTime adultVerifiedAt;
+
+    /** 성인인증 방식 (SELF=자가선언, MOBILE/SOCIAL=추후 확장) */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private AdultVerifyMethod adultVerifyMethod;
+
+    /** 연령확인용 생년월일 (만나이 계산·법적 증빙) */
+    @Column
+    private LocalDate adultBirthDate;
+
+    /** 성인인증 재인증 만료 시각 (현재 정책: 재인증 없음 → null 고정. 추후 정책 활성화 대비 필드) */
+    @Column
+    private LocalDateTime adultVerifyExpiresAt;
+
     @Builder.Default
     @Column(nullable = false)
     private Integer maturingPower = 0;
@@ -198,6 +222,26 @@ public class User extends BaseTimeEntity {
     public boolean isPasswordChangeRequired() {
         return com.drinkindex.domain.user.policy.AccountPolicy
                 .isPasswordChangeRequired(this.passwordChangedAt, getCreatedAt());
+    }
+
+    /**
+     * 성인인증 처리. 만나이 검증은 호출 측(서비스)에서 선행하며, 여기서는 상태만 확정한다.
+     * @param birthDate 인증에 사용한 생년월일 (null 허용 — 외부 인증기관이 DOB를 제공하지 않는 경우 대비)
+     * @param method    인증 방식
+     */
+    public void verifyAdult(LocalDate birthDate, AdultVerifyMethod method) {
+        this.adultVerified = true;
+        this.adultVerifiedAt = LocalDateTime.now();
+        this.adultVerifyMethod = method;
+        this.adultBirthDate = birthDate;
+        // 현재 정책: 재인증 없음 → 만료 시각 미설정. 추후 정책 활성화 시 여기서 expiresAt 부여.
+        this.adultVerifyExpiresAt = null;
+    }
+
+    /** 유효한 성인인증 보유 여부 (만료 정책 반영 — 현재는 만료 NULL이라 플래그만 평가) */
+    public boolean isAdultVerified() {
+        return com.drinkindex.domain.user.policy.AccountPolicy
+                .isAdultVerificationValid(this.adultVerified, this.adultVerifyExpiresAt);
     }
 
     public void softDelete() {

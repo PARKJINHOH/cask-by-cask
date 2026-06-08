@@ -14,4 +14,6 @@ public class CreateCommentRequest {
     private Long parentId;
 
     private Long mentionedUserId;
+
+    private Boolean isSecret = false;
 }

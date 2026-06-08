@@ -91,6 +91,11 @@ public class Post extends BaseTimeEntity {
     @Column(nullable = false)
     private Boolean isPinned = false;
 
+    // 성인 전용 글(주류 나눔 등). true면 작성·수정·열람에 성인인증 필요(서비스 레이어 검증) + 제목 19 아이콘.
+    @Builder.Default
+    @Column(nullable = false)
+    private Boolean adultOnly = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "series_id")
     private Series series;
@@ -129,11 +134,12 @@ public class Post extends BaseTimeEntity {
     public void restore()       { this.isHidden = false; }
     public void changePinned(boolean pinned) { this.isPinned = pinned; }
 
-    public void update(String title, String content, String contentSanitized, PostPrefix prefix) {
+    public void update(String title, String content, String contentSanitized, PostPrefix prefix, boolean adultOnly) {
         this.title = title;
         this.content = content;
         this.contentSanitized = contentSanitized;
         this.prefix = prefix;
+        this.adultOnly = adultOnly;
     }
 
     public void assignToSeries(Series series, Integer order) {

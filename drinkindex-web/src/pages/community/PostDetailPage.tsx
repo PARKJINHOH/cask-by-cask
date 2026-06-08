@@ -12,6 +12,7 @@ import { useAuthStore } from '@/domain/auth/store/authStore'
 import { useToast } from '@/shared/hooks/useToast'
 import type { UserRole } from '@/domain/auth/types/auth.types'
 import UserBadge from '@/shared/components/UserBadge'
+import AdultBadge from '@/shared/components/AdultBadge'
 import { formatDotDateTime } from '@/shared/utils/format'
 import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 import { SITE_URL } from '@/shared/config/site'
@@ -33,7 +34,7 @@ export default function PostDetailPage() {
     }
   }, [qc])
 
-  const { data: post, isLoading, isError } = usePostDetail(postId)
+  const { data: post, isLoading, isError, error } = usePostDetail(postId)
   const { likeMutation, scrapMutation, reportMutation, deleteMutation, blockMutation } = usePostActions(postId)
 
   const [reportReason, setReportReason] = useState('')
@@ -56,6 +57,46 @@ export default function PostDetailPage() {
     return (
       <div className="max-w-3xl mx-auto px-4 py-20 text-center text-neutral-400 text-sm">
         {t('common.loading')}
+      </div>
+    )
+  }
+
+  // 나눔(주류) 게시글 — 성인인증 미완료 시 접근 차단 + 인증 경로 안내
+  const errorCode = (error as { response?: { data?: { code?: string } } })?.response?.data?.code
+  if (errorCode === 'USER_023') {
+    return (
+      <div className="max-w-md mx-auto px-4 py-20 text-center">
+        <div className="mx-auto w-14 h-14 flex items-center justify-center rounded-full bg-amber-100 text-amber-600 mb-5">
+          <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+        </div>
+        <h1 className="text-lg font-bold text-neutral-900 mb-2">{t('post.adultGate.viewTitle')}</h1>
+        <p className="text-sm text-neutral-500 leading-relaxed mb-1">{t('post.adultGate.viewDesc')}</p>
+        <p className="text-xs text-neutral-400 mb-6">{t('post.adultGate.path')}</p>
+        <div className="flex items-center justify-center gap-3">
+          <Link
+            to={`/community/${boardPath}`}
+            className="px-5 py-2.5 text-sm font-medium border border-neutral-200 rounded-xl text-neutral-600 hover:bg-neutral-50 transition-colors"
+          >
+            {boardPath === 'notice' ? t('board.notice') : t('board.free')}
+          </Link>
+          {isLoggedIn ? (
+            <Link
+              to="/mypage?tab=settings"
+              className="px-6 py-2.5 text-sm font-medium rounded-xl bg-amber-600 text-white hover:bg-amber-700 transition-colors"
+            >
+              {t('post.adultGate.goVerify')}
+            </Link>
+          ) : (
+            <Link
+              to="/login"
+              className="px-6 py-2.5 text-sm font-medium rounded-xl bg-primary-800 text-white hover:bg-primary-900 transition-colors"
+            >
+              {t('nav.login')}
+            </Link>
+          )}
+        </div>
       </div>
     )
   }
@@ -196,6 +237,7 @@ export default function PostDetailPage() {
           {/* 제목 + 스크랩/공유 아이콘 */}
           <div className="flex items-start gap-2 mb-3">
             <h1 className={['flex-1 text-2xl sm:text-3xl font-bold', isLocked ? 'text-red-600' : 'text-neutral-900'].join(' ')}>
+              {post.adultOnly && <AdultBadge className="mr-1.5 w-6 h-6 text-xs align-middle" />}
               {post.title}
             </h1>
             <div className="flex items-center gap-1 mt-0.5 flex-shrink-0">

@@ -35,6 +35,10 @@ public enum ErrorCode {
     ACCOUNT_SUSPENDED(HttpStatus.FORBIDDEN, "USER_017", "계정이 정지되었습니다."),
     ACCOUNT_DORMANT(HttpStatus.FORBIDDEN, "USER_018", "휴면 계정입니다. 이메일 인증 후 휴면을 해제해주세요."),
     ACCOUNT_LOCKED(HttpStatus.TOO_MANY_REQUESTS, "USER_019", "비밀번호를 여러 번 틀려 계정이 잠겼습니다. 잠시 후 다시 시도해주세요."),
+    ALREADY_ADULT_VERIFIED(HttpStatus.CONFLICT, "USER_020", "이미 성인인증이 완료된 계정입니다."),
+    ADULT_VERIFY_UNDERAGE(HttpStatus.BAD_REQUEST, "USER_021", "만 19세 미만은 성인인증을 완료할 수 없습니다."),
+    INVALID_BIRTH_DATE(HttpStatus.BAD_REQUEST, "USER_022", "생년월일이 올바르지 않습니다."),
+    ADULT_VERIFICATION_REQUIRED(HttpStatus.FORBIDDEN, "USER_023", "성인인증이 필요한 기능입니다."),
 
     // Spirit
     SPIRIT_NOT_FOUND(HttpStatus.NOT_FOUND, "SPIRIT_001", "술 정보를 찾을 수 없습니다."),

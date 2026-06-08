@@ -14,6 +14,8 @@ export interface UserProfile {
   emailSubscribed?: boolean
   passwordChangeRequired?: boolean
   mustChangePassword?: boolean
+  adultVerified?: boolean
+  adultVerifiedAt?: string | null
 }
 
 export interface BlockedUser {

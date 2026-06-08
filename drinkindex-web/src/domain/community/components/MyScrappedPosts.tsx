@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import Spinner from '@/shared/components/Spinner'
 import EmptyState from '@/shared/components/EmptyState'
 import Pagination from '@/shared/components/Pagination'
+import AdultBadge from '@/shared/components/AdultBadge'
 import { useMyScrappedPosts, useUnscrapPost } from '../hooks/usePosts'
 import type { PostListItem } from '../types/community.types'
 
@@ -66,6 +67,7 @@ export default function MyScrappedPosts() {
                 'text-sm font-medium line-clamp-1',
                 post.isLocked ? 'text-red-600' : 'text-neutral-800',
               ].join(' ')}>
+                {post.adultOnly && <AdultBadge className="mr-1 align-middle" />}
                 {post.title}
               </p>
               <div className="flex items-center gap-3 mt-1 text-xs text-neutral-400">

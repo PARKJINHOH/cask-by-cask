@@ -18,6 +18,7 @@ public class PostDetailResponse {
     private final String title;
     private final boolean isLocked;
     private final boolean isPinned;         // 게시판 공지(고정글)
+    private final boolean adultOnly;        // 성인 전용(주류 나눔 등) — 제목 19 아이콘
     private final String contentSanitized; // null if LOCKED and not admin
     private final String authorNickname;
     private final Long authorId;               // null if isAnonymous
@@ -46,6 +47,7 @@ public class PostDetailResponse {
         this.title            = b.title;
         this.isLocked         = b.isLocked;
         this.isPinned         = b.isPinned;
+        this.adultOnly        = b.adultOnly;
         this.contentSanitized = b.contentSanitized;
         this.authorNickname      = b.authorNickname;
         this.authorId            = b.authorId;
@@ -77,6 +79,7 @@ public class PostDetailResponse {
                 .title(post.getTitle())
                 .isLocked(locked)
                 .isPinned(Boolean.TRUE.equals(post.getIsPinned()))
+                .adultOnly(Boolean.TRUE.equals(post.getAdultOnly()))
                 .contentSanitized(showContent ? post.getContentSanitized() : null)
                 .authorNickname(Boolean.TRUE.equals(post.getIsAnonymous()) ? "익명" : post.getAuthor().getNickname())
                 .authorId(Boolean.TRUE.equals(post.getIsAnonymous()) ? null : post.getAuthor().getId())
@@ -102,6 +105,7 @@ public class PostDetailResponse {
         private String title;
         private boolean isLocked;
         private boolean isPinned;
+        private boolean adultOnly;
         private String contentSanitized;
         private String authorNickname;
         private Long authorId;
@@ -129,6 +133,7 @@ public class PostDetailResponse {
         public Builder title(String t)                    { this.title = t; return this; }
         public Builder isLocked(boolean l)                { this.isLocked = l; return this; }
         public Builder isPinned(boolean p)                { this.isPinned = p; return this; }
+        public Builder adultOnly(boolean a)               { this.adultOnly = a; return this; }
         public Builder contentSanitized(String c)         { this.contentSanitized = c; return this; }
         public Builder authorNickname(String n)           { this.authorNickname = n; return this; }
         public Builder authorId(Long id)                  { this.authorId = id; return this; }

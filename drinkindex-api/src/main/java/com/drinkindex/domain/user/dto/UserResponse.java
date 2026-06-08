@@ -40,7 +40,11 @@ public record UserResponse(
         @Schema(description = "비밀번호 변경 권고 대상 여부 (90일 이상 미변경)")
         boolean passwordChangeRequired,
         @Schema(description = "비밀번호 변경 강제 여부 (임시 비밀번호 발급 후)")
-        boolean mustChangePassword
+        boolean mustChangePassword,
+        @Schema(description = "성인인증 완료 여부 (만 19세 이상)")
+        boolean adultVerified,
+        @Schema(description = "성인인증 완료 일시 (null이면 미인증)")
+        LocalDateTime adultVerifiedAt
 ) {
     public static UserResponse from(User user) {
         return new UserResponse(
@@ -59,7 +63,9 @@ public record UserResponse(
                 user.getEmailSubscribed(),
                 user.getRoleType() != null ? List.copyOf(user.getRoleType().getAllowedMenus()) : List.of(),
                 user.isPasswordChangeRequired(),
-                Boolean.TRUE.equals(user.getMustChangePassword())
+                Boolean.TRUE.equals(user.getMustChangePassword()),
+                user.isAdultVerified(),
+                user.getAdultVerifiedAt()
         );
     }
 }

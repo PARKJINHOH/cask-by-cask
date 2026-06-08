@@ -6,6 +6,7 @@ import { usePostPrefixes } from '@/domain/community/hooks/usePosts'
 import { usePostDetail } from '@/domain/community/hooks/usePostDetail'
 import { communityApi } from '@/domain/community/api/communityApi'
 import PostEditor from '@/domain/community/components/PostEditor'
+import AdultBadge from '@/shared/components/AdultBadge'
 import type { BoardType } from '@/domain/community/types/community.types'
 import { useToast } from '@/shared/hooks/useToast'
 import Toast from '@/shared/components/Toast'
@@ -14,9 +15,13 @@ import { draftApi } from '@/shared/api/draftApi'
 import DraftSavedNotice from '@/shared/components/DraftSavedNotice'
 import DraftListModal from '@/shared/components/DraftListModal'
 import { useAuthStore } from '@/domain/auth/store/authStore'
+import { useMe } from '@/domain/user/hooks/useUser'
 
 // 게시판 공지(고정글) 설정 가능 역할
 const PIN_ROLES = ['SUPER_ADMIN', 'ADMIN', 'PARTNER']
+
+// 성인인증이 필요한 자유게시판 말머리 — 주류 나눔 탭
+const SHARING_PREFIX_NAME = '나눔'
 
 const MAX_TITLE = 300
 const MAX_POLL_OPTIONS = 10
@@ -34,6 +39,7 @@ export default function PostFormPage() {
   const { toasts, showToast, removeToast } = useToast()
   const { user } = useAuthStore()
   const canPin = PIN_ROLES.includes(user?.role ?? '')
+  const { data: me } = useMe()
 
   const { data: existingPost } = usePostDetail(postId ?? 0)
   const { data: prefixes = [] } = usePostPrefixes(boardType)
@@ -48,6 +54,7 @@ export default function PostFormPage() {
   const [content, setContent] = useState('')
   const [isAnonymous, setIsAnonymous] = useState(false)
   const [isPinned, setIsPinned] = useState(false)
+  const [adultOnly, setAdultOnly] = useState(false)
   const [pollEnabled, setPollEnabled] = useState(false)
   const [pollQuestion, setPollQuestion] = useState('')
   const [pollMultiple, setPollMultiple] = useState(false)
@@ -70,6 +77,7 @@ export default function PostFormPage() {
       setTitle(existingPost.title)
       setContent(existingPost.contentSanitized ?? '')
       setIsPinned(existingPost.isPinned)
+      setAdultOnly(existingPost.adultOnly ?? false)
     }
   }, [existingPost, isEdit])
 
@@ -134,6 +142,7 @@ export default function PostFormPage() {
           prefixId: prefixId !== '' ? prefixId : undefined,
           title,
           content,
+          adultOnly: isSharingSelected ? adultOnly : false,
           ...(canPin ? { isPinned } : {}),
         })
       }
@@ -144,6 +153,7 @@ export default function PostFormPage() {
         title,
         content,
         isAnonymous: boardType === 'FREE' ? isAnonymous : false,
+        adultOnly: isSharingSelected ? adultOnly : false,
         ...(canPin ? { isPinned } : {}),
         poll: pollEnabled && pollQuestion.trim() && validOptions.length >= 2 ? {
           question: pollQuestion.trim(),
@@ -165,14 +175,26 @@ export default function PostFormPage() {
       const data = (err as { response?: { data?: { code?: string; detectedWords?: string[] } } })?.response?.data
       if (data?.code === 'BAD_WORD_DETECTED') {
         showToast(`욕설이 포함되어 있습니다: ${data.detectedWords?.join(', ')}`, 'error')
+      } else if (data?.code === 'USER_023') {
+        showToast(t('post.adultGate.writeToast'), 'error')
       } else {
         showToast(t('common.error'), 'error')
       }
     },
   })
 
+  // 나눔 말머리에서만 '성인 전용' 체크박스 노출. 다른 말머리로 바꾸면 자동 해제.
+  const selectedPrefixName = prefixes.find((p) => p.id === prefixId)?.name
+  const isSharingSelected = selectedPrefixName === SHARING_PREFIX_NAME
+  useEffect(() => {
+    if (!isSharingSelected && adultOnly) setAdultOnly(false)
+  }, [isSharingSelected, adultOnly])
+
+  // 성인 전용(주류) 글은 작성·수정 시 성인인증 필요
+  const needsAdultVerify = adultOnly && me?.adultVerified !== true
+
   const canSubmit = title.trim().length > 0 && content.trim().length > 0 &&
-    prefixId !== '' &&
+    prefixId !== '' && !needsAdultVerify &&
     (!pollEnabled || (pollQuestion.trim() && pollOptions.filter((o) => o.trim()).length >= 2))
 
   const addPollOption = () => {
@@ -241,6 +263,30 @@ export default function PostFormPage() {
                 {p.name}
               </button>
             ))}
+          </div>
+        )}
+
+        {/* 나눔 안내 — 주류 나눔은 성인인증 오픈 후 제공 예정 (성인전용 체크박스는 추후 오픈) */}
+        {isSharingSelected && (
+          <p className="flex items-center gap-1.5 text-xs text-neutral-500">
+            <AdultBadge className="w-4 h-4 text-[9px]" />
+            {t('board.adultOnlySoon')}
+          </p>
+        )}
+
+        {/* 성인 전용 글 — 미인증 시 작성 차단 + 인증 경로 안내 */}
+        {needsAdultVerify && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2">
+            <p className="text-sm font-semibold text-amber-800">{t('post.adultGate.writeTitle')}</p>
+            <p className="text-xs text-amber-700 leading-relaxed">{t('post.adultGate.writeDesc')}</p>
+            <p className="text-xs text-amber-700">{t('post.adultGate.path')}</p>
+            <Link
+              to="/mypage?tab=settings"
+              className="inline-flex items-center gap-1.5 mt-1 px-4 py-2 text-sm font-medium rounded-lg
+                bg-amber-600 text-white hover:bg-amber-700 transition-colors"
+            >
+              {t('post.adultGate.goVerify')}
+            </Link>
           </div>
         )}
 

@@ -36,6 +36,8 @@ export default function CommunityCommentItem({ comment, postId, isLoggedIn, dept
   const { t } = useTranslation()
   const [isEditing, setIsEditing] = useState(false)
   const emojiComment = isEmojiOnly(comment.content)
+  // 본인 또는 형제 대댓글이 비밀댓글이면 이후 답글도 강제로 비밀댓글
+  const forcedSecret = comment.isSecret || comment.children.some((c) => c.isSecret)
   const [isReplying, setIsReplying] = useState(false)
   const [showReport, setShowReport] = useState(false)
   const deleteMutation = useDeleteComment(postId)
@@ -51,6 +53,27 @@ export default function CommunityCommentItem({ comment, postId, isLoggedIn, dept
       {comment.isDeleted ? (
         <div className="py-3">
           <p className="text-xs text-neutral-400 italic">삭제된 댓글입니다.</p>
+          {comment.children.length > 0 && (
+            <div className="mt-1 space-y-0">
+              {comment.children.map((child) => (
+                <CommunityCommentItem
+                  key={child.id}
+                  comment={child}
+                  postId={postId}
+                  isLoggedIn={isLoggedIn}
+                  depth={depth + 1}
+                  onLoginNeeded={onLoginNeeded}
+                  onBadWord={onBadWord}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      ) : comment.isSecretMasked ? (
+        <div className="py-3">
+          <p className="text-xs text-neutral-400 italic flex items-center gap-1">
+            <span aria-hidden="true">🔒</span>{t('comment.secretPlaceholder')}
+          </p>
           {comment.children.length > 0 && (
             <div className="mt-1 space-y-0">
               {comment.children.map((child) => (
@@ -95,6 +118,11 @@ export default function CommunityCommentItem({ comment, postId, isLoggedIn, dept
             <span className="text-xs text-neutral-400">
               {new Date(comment.createdAt).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
             </span>
+            {comment.isSecret && (
+              <span className="inline-flex items-center gap-0.5 text-[10px] leading-none px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-500">
+                <span aria-hidden="true">🔒</span>{t('comment.secretBadge')}
+              </span>
+            )}
           </div>
 
           {/* 본문 */}
@@ -156,6 +184,7 @@ export default function CommunityCommentItem({ comment, postId, isLoggedIn, dept
                 postId={postId}
                 parentId={comment.id}
                 parentNickname={comment.authorNickname ?? undefined}
+                forcedSecret={forcedSecret}
                 onSuccess={() => setIsReplying(false)}
                 onCancel={() => setIsReplying(false)}
                 onBadWord={onBadWord}
@@ -178,8 +207,8 @@ export default function CommunityCommentItem({ comment, postId, isLoggedIn, dept
         </div>
       )}
 
-      {/* 대댓글 (삭제된 댓글은 isDeleted 블록 내부에서 렌더링) */}
-      {!comment.isDeleted && comment.children.length > 0 && (
+      {/* 대댓글 (삭제·마스킹된 댓글은 각 블록 내부에서 렌더링) */}
+      {!comment.isDeleted && !comment.isSecretMasked && comment.children.length > 0 && (
         <div className="space-y-0 mt-1">
           {comment.children.map((child) => (
             <CommunityCommentItem

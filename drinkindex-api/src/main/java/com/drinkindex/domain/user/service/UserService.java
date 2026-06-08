@@ -1,11 +1,14 @@
 package com.drinkindex.domain.user.service;
 
 import com.drinkindex.domain.nicknamebadword.service.NicknameBadWordValidator;
+import com.drinkindex.domain.user.dto.AdultVerificationRequest;
 import com.drinkindex.domain.user.dto.UpdateEmailSubscriptionRequest;
 import com.drinkindex.domain.user.dto.UpdateNicknameRequest;
 import com.drinkindex.domain.user.dto.UpdatePasswordRequest;
 import com.drinkindex.domain.user.dto.UserResponse;
 import com.drinkindex.domain.user.entity.User;
+import com.drinkindex.domain.user.entity.enums.AdultVerifyMethod;
+import com.drinkindex.domain.user.policy.AccountPolicy;
 import com.drinkindex.domain.user.repository.UserRepository;
 import com.drinkindex.global.email.EmailSender;
 import com.drinkindex.global.exception.CustomException;
@@ -21,6 +24,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.security.SecureRandom;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Set;
 
@@ -121,6 +125,31 @@ public class UserService {
             "[DrinkIndex] 임시 비밀번호 안내",
             buildTempPasswordBody(user.getNickname(), tempPassword)
         );
+    }
+
+    /**
+     * 자가 선언형 성인인증. 클라이언트가 보낸 생년월일을 신뢰하지 않고 서버에서 만 나이를 재계산한다.
+     * 추후 PASS·소셜 로그인 연동 시 별도 메서드(method=MOBILE/SOCIAL)로 분기하되, 인증 확정은
+     * 동일하게 {@code User.verifyAdult(...)} 로 수렴한다.
+     */
+    @Transactional
+    public UserResponse verifyAdult(Long userId, AdultVerificationRequest request) {
+        User user = findUser(userId);
+
+        if (user.isAdultVerified()) {
+            throw new CustomException(ErrorCode.ALREADY_ADULT_VERIFIED);
+        }
+
+        LocalDate birthDate = request.birthDate();
+        if (birthDate == null || birthDate.isAfter(LocalDate.now())) {
+            throw new CustomException(ErrorCode.INVALID_BIRTH_DATE);
+        }
+        if (!AccountPolicy.isAdult(birthDate)) {
+            throw new CustomException(ErrorCode.ADULT_VERIFY_UNDERAGE);
+        }
+
+        user.verifyAdult(birthDate, AdultVerifyMethod.SELF);
+        return UserResponse.from(user);
     }
 
     @Transactional

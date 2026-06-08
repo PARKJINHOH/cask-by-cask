@@ -6,6 +6,7 @@ import com.drinkindex.domain.community.entity.UserBlock;
 import com.drinkindex.domain.community.repository.UserBlockRepository;
 import com.drinkindex.domain.review.dto.ReviewResponse;
 import com.drinkindex.domain.review.service.ReviewService;
+import com.drinkindex.domain.user.dto.AdultVerificationRequest;
 import com.drinkindex.domain.user.dto.UpdateEmailSubscriptionRequest;
 import com.drinkindex.domain.user.dto.UpdateNicknameRequest;
 import com.drinkindex.domain.user.dto.UpdatePasswordRequest;
@@ -93,6 +94,14 @@ public class UserController {
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.ok(
                 ApiResponse.success(userService.deleteProfileImage(userDetails.getUserId())));
+    }
+
+    @PostMapping("/me/adult-verification")
+    public ResponseEntity<ApiResponse<UserResponse>> verifyAdult(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody AdultVerificationRequest request) {
+        return ResponseEntity.ok(
+                ApiResponse.success(userService.verifyAdult(userDetails.getUserId(), request)));
     }
 
     @PatchMapping("/me/email-subscription")

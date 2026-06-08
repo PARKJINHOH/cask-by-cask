@@ -91,6 +91,18 @@ public class PostService {
     @Transactional
     public PostDetailResponse getPost(Long postId, Long userId, boolean isAdmin, String clientIp) {
         Post post = findPost(postId);
+
+        // 성인 전용 글(주류 나눔 등) 상세는 성인인증자만 열람 가능. 관리자·작성자 본인은 예외.
+        if (Boolean.TRUE.equals(post.getAdultOnly()) && !isAdmin) {
+            boolean isAuthor = userId != null && post.getAuthor().getId().equals(userId);
+            if (!isAuthor) {
+                User viewer = userId != null ? userRepository.findById(userId).orElse(null) : null;
+                if (viewer == null || !viewer.isAdultVerified()) {
+                    throw new CustomException(ErrorCode.ADULT_VERIFICATION_REQUIRED);
+                }
+            }
+        }
+
         boolean locked = PostStatus.LOCKED.equals(post.getStatus());
         boolean showContent = !locked || isAdmin;
 
@@ -136,6 +148,10 @@ public class PostService {
                     .orElseThrow(() -> new CustomException(ErrorCode.POST_PREFIX_NOT_FOUND));
         }
 
+        // 성인 전용 글(주류 나눔 등) 작성은 성인인증 필수
+        boolean adultOnly = Boolean.TRUE.equals(request.getAdultOnly());
+        requireAdultVerified(author, adultOnly);
+
         // 4. 시리즈 소속 확인
         Series series = null;
         if (request.getSeriesId() != null) {
@@ -164,6 +180,7 @@ public class PostService {
                 .author(author)
                 .isAnonymous(anonymous)
                 .isPinned(pinned)
+                .adultOnly(adultOnly)
                 .distilleryTag(distilleryTag)
                 .title(request.getTitle())
                 .content(request.getContent())
@@ -225,7 +242,13 @@ public class PostService {
                     .orElseThrow(() -> new CustomException(ErrorCode.POST_PREFIX_NOT_FOUND));
         }
 
-        post.update(newTitle, newContent, sanitized, prefix);
+        // 성인 전용으로 변경/유지 시 성인인증 필수 (null이면 기존 값 유지)
+        boolean newAdultOnly = request.getAdultOnly() != null
+                ? request.getAdultOnly()
+                : Boolean.TRUE.equals(post.getAdultOnly());
+        requireAdultVerified(findUser(userId), newAdultOnly);
+
+        post.update(newTitle, newContent, sanitized, prefix, newAdultOnly);
         postImageService.syncImageUsage(post, newContent);
 
         return PostDetailResponse.builder(post, true).build();
@@ -436,6 +459,13 @@ public class PostService {
     // ═══════════════════════════════════════════
     // Private
     // ═══════════════════════════════════════════
+
+    /** 성인 전용 글의 작성·수정은 성인인증을 요구한다. */
+    private void requireAdultVerified(User user, boolean adultOnly) {
+        if (adultOnly && !user.isAdultVerified()) {
+            throw new CustomException(ErrorCode.ADULT_VERIFICATION_REQUIRED);
+        }
+    }
 
     private String resolvePostActionType(Post post) {
         if (BoardType.NOTICE.equals(post.getBoardType())) {

@@ -45,7 +45,7 @@ public class CommentService {
     // ═══════════════════════════════════════════
 
     @Transactional(readOnly = true)
-    public Page<PostCommentResponse> getComments(Long postId, Long userId, int page, int size) {
+    public Page<PostCommentResponse> getComments(Long postId, Long userId, Role currentRole, int page, int size) {
         PageRequest pageRequest = PageRequest.of(page, size, Sort.by("createdAt").ascending());
 
         // 차단한 사용자의 댓글은 목록에서 완전히 제외
@@ -89,7 +89,7 @@ public class CommentService {
         }
 
         return roots.map(root -> toResponse(root, childrenMap.getOrDefault(root.getId(), List.of()),
-                reactionMap, userId));
+                reactionMap, userId, currentRole));
     }
 
     // ═══════════════════════════════════════════
@@ -105,6 +105,7 @@ public class CommentService {
         User author = findUser(userId);
 
         PostComment parent = null;
+        boolean cascadeSecret = false;
         if (request.getParentId() != null) {
             parent = commentRepository.findById(request.getParentId())
                     .orElseThrow(() -> new CustomException(ErrorCode.COMMENT_NOT_FOUND));
@@ -116,6 +117,10 @@ public class CommentService {
             if (parent.getParent() != null) {
                 throw new CustomException(ErrorCode.NESTED_REPLY_NOT_ALLOWED);
             }
+            // 비밀댓글 캐스케이딩: 부모가 비밀이거나, 형제 대댓글 중 비밀댓글이 하나라도 있으면
+            // 이후 모든 대댓글은 강제로 비밀댓글 (서버 강제 — 클라이언트 선택값보다 우선)
+            cascadeSecret = Boolean.TRUE.equals(parent.getIsSecret())
+                    || commentRepository.existsByParentIdAndIsSecretTrue(parent.getId());
         }
 
         boolean isPostAuthorAnonymous = Boolean.TRUE.equals(post.getIsAnonymous())
@@ -128,6 +133,7 @@ public class CommentService {
                 .content(request.getContent())
                 .mentionedUserId(request.getMentionedUserId())
                 .isAnonymous(isPostAuthorAnonymous)
+                .isSecret(cascadeSecret || Boolean.TRUE.equals(request.getIsSecret()))
                 .build();
 
         PostComment saved = commentRepository.save(comment);
@@ -139,7 +145,8 @@ public class CommentService {
         // 알림 발송 (비동기)
         sendCommentNotifications(saved, post, parent, request.getMentionedUserId(), userId);
 
-        return toResponse(saved, List.of(), Map.of(), userId);
+        // 본인이 작성한 댓글이므로 role과 무관하게 항상 열람 가능 (canViewSecret 작성자 본인 분기)
+        return toResponse(saved, List.of(), Map.of(), userId, null);
     }
 
     // ═══════════════════════════════════════════
@@ -157,7 +164,8 @@ public class CommentService {
         }
         comment.updateContent(request.getContent());
 
-        return toResponse(comment, List.of(), Map.of(), userId);
+        // 본인이 작성한 댓글이므로 role과 무관하게 항상 열람 가능 (canViewSecret 작성자 본인 분기)
+        return toResponse(comment, List.of(), Map.of(), userId, null);
     }
 
     // ═══════════════════════════════════════════
@@ -216,12 +224,12 @@ public class CommentService {
 
     private PostCommentResponse toResponse(PostComment comment, List<PostComment> children,
                                            Map<Long, List<CommentEmojiReaction>> reactionMap,
-                                           Long currentUserId) {
+                                           Long currentUserId, Role currentRole) {
         boolean deleted = comment.isDeleted();
 
         if (deleted) {
             List<PostCommentResponse> childResponses = children.stream()
-                    .map(child -> toResponse(child, List.of(), reactionMap, currentUserId))
+                    .map(child -> toResponse(child, List.of(), reactionMap, currentUserId, currentRole))
                     .collect(Collectors.toList());
             return PostCommentResponse.builder()
                     .id(comment.getId())
@@ -234,6 +242,8 @@ public class CommentService {
                     .createdAt(comment.getCreatedAt())
                     .isMyComment(false)
                     .isDeleted(true)
+                    .isSecret(comment.getIsSecret())
+                    .isSecretMasked(false)
                     .build();
         }
 
@@ -242,17 +252,25 @@ public class CommentService {
                 && userBlockRepository.existsByBlockerIdAndBlockedId(
                         currentUserId, comment.getAuthor().getId());
 
+        // 비밀댓글: 작성자 본인 + 게시글 작성자 + 최고관리자만 열람 가능, 그 외에는 마스킹
+        boolean secretMasked = !blocked
+                && Boolean.TRUE.equals(comment.getIsSecret())
+                && !canViewSecret(comment, currentUserId, currentRole);
+
         boolean anon = Boolean.TRUE.equals(comment.getIsAnonymous());
-        String authorNickname = blocked ? null : (anon ? "익명" : comment.getAuthor().getNickname());
-        String authorRole            = blocked || anon ? null : comment.getAuthor().getRole().name();
-        Integer authorLevel          = blocked || anon ? null : comment.getAuthor().getCurrentLevel();
-        Integer authorMaturingPower  = blocked || anon ? null : comment.getAuthor().getMaturingPower();
-        Boolean authorNicknameFixed  = blocked || anon ? null : comment.getAuthor().getNicknameFixed();
-        String authorProfileImageUrl = blocked || anon ? null : comment.getAuthor().getProfileImageUrl();
-        String content = blocked ? "차단한 사용자의 댓글입니다" : comment.getContent();
+        boolean maskAuthor = blocked || secretMasked || anon;
+        String authorNickname = (blocked || secretMasked) ? null : (anon ? "익명" : comment.getAuthor().getNickname());
+        String authorRole            = maskAuthor ? null : comment.getAuthor().getRole().name();
+        Integer authorLevel          = maskAuthor ? null : comment.getAuthor().getCurrentLevel();
+        Integer authorMaturingPower  = maskAuthor ? null : comment.getAuthor().getMaturingPower();
+        Boolean authorNicknameFixed  = maskAuthor ? null : comment.getAuthor().getNicknameFixed();
+        String authorProfileImageUrl = maskAuthor ? null : comment.getAuthor().getProfileImageUrl();
+        String content = blocked ? "차단한 사용자의 댓글입니다"
+                : secretMasked ? "비밀 댓글입니다"
+                : comment.getContent();
 
         String mentionedNickname = null;
-        if (!blocked && comment.getMentionedUserId() != null) {
+        if (!blocked && !secretMasked && comment.getMentionedUserId() != null) {
             mentionedNickname = userRepository.findById(comment.getMentionedUserId())
                     .map(User::getNickname).orElse(null);
         }
@@ -261,10 +279,10 @@ public class CommentService {
                 buildEmojiReactionSummaries(reactionMap.getOrDefault(comment.getId(), List.of()), currentUserId);
 
         List<PostCommentResponse> childResponses = children.stream()
-                .map(child -> toResponse(child, List.of(), reactionMap, currentUserId))
+                .map(child -> toResponse(child, List.of(), reactionMap, currentUserId, currentRole))
                 .collect(Collectors.toList());
 
-        Long authorId = (blocked || anon) ? null : comment.getAuthor().getId();
+        Long authorId = (blocked || secretMasked || anon) ? null : comment.getAuthor().getId();
 
         return PostCommentResponse.builder()
                 .id(comment.getId())
@@ -282,7 +300,17 @@ public class CommentService {
                 .createdAt(comment.getCreatedAt())
                 .isMyComment(currentUserId != null && comment.getAuthor().getId().equals(currentUserId))
                 .isDeleted(false)
+                .isSecret(comment.getIsSecret())
+                .isSecretMasked(secretMasked)
                 .build();
+    }
+
+    // 비밀댓글 열람 권한: 댓글 작성자 본인 + 게시글 작성자(글쓴이) + 최고관리자(SUPER_ADMIN)
+    private boolean canViewSecret(PostComment comment, Long currentUserId, Role currentRole) {
+        if (currentUserId == null) return false;
+        if (comment.getAuthor().getId().equals(currentUserId)) return true;
+        if (comment.getPost() != null && comment.getPost().getAuthor().getId().equals(currentUserId)) return true;
+        return currentRole == Role.SUPER_ADMIN;
     }
 
     private List<EmojiReactionSummary> buildEmojiReactionSummaries(

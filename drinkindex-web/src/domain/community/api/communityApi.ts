@@ -105,7 +105,7 @@ export const communityApi = {
   getComments: (postId: number, params: { page?: number; size?: number }) =>
     axiosInstance.get<ApiResponse<PageResponse<PostCommentItem>>>(`/api/posts/${postId}/comments`, { params }),
 
-  createComment: (postId: number, data: { content: string; parentId?: number; mentionedUserId?: number }) =>
+  createComment: (postId: number, data: { content: string; parentId?: number; mentionedUserId?: number; isSecret?: boolean }) =>
     axiosInstance.post<ApiResponse<PostCommentItem>>(`/api/posts/${postId}/comments`, data),
 
   updateComment: (postId: number, commentId: number, data: { content: string }) =>

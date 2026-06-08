@@ -496,7 +496,11 @@
     "reportTitle": "Report Reason (Optional)",
     "reportSubmit": "Submit Report",
     "reportError": "An error occurred. Please try again.",
-    "reportPlaceholder": "Please describe the reason for reporting..."
+    "reportPlaceholder": "Please describe the reason for reporting...",
+    "secretCheckbox": "Post as secret comment",
+    "secretCascadeNotice": "This thread has become a secret conversation, so replies will also be registered as secret comments automatically.",
+    "secretBadge": "Secret",
+    "secretPlaceholder": "This is a secret comment."
   },
   "wishlist": {
     "removeConfirm": "Remove \"{{name}}\" from favorites?",
@@ -567,6 +571,18 @@
       "confirmDesc": "Setting a fixed nickname will permanently lock \"{{nickname}}\". This action cannot be undone.",
       "confirmBtn": "Confirm",
       "success": "Your nickname has been fixed permanently."
+    },
+    "adult": {
+      "section": "Age Verification",
+      "verifiedBadge": "Verified",
+      "verifiedDesc": "Your age has been verified.",
+      "desc": "Some alcohol-related features (e.g. sharing) require age verification. We confirm whether you are 19 or older.",
+      "birthDateLabel": "Date of birth",
+      "confirmLabel": "I confirm that I am 19 years of age or older and that the information provided is true.",
+      "submit": "Verify Age",
+      "underageError": "Users under 19 cannot complete age verification.",
+      "failed": "Age verification failed. Please try again later.",
+      "legalNotice": "This is a self-declared verification. Use by anyone under 19 is restricted by applicable law. Your date of birth is stored solely for age-verification purposes."
     },
     "password": {
       "section": "Change Password",
@@ -688,6 +704,9 @@
     "locked": "This post has been locked due to reports",
     "lockedContent": "This post is locked due to accumulated reports.",
     "anonymous": "Anonymous",
+    "adultOnly": "Adults only (alcohol sharing)",
+    "adultOnlyHelp": "Check this for sharing actual alcohol (vials, bottles, etc.). Only age-verified members (19+) can write or view it. Do not check for empty bottles, glasses, or accessories.",
+    "adultOnlySoon": "Only empty bottles, glasses, and accessories can be shared. Alcohol sharing will be available after age verification is introduced.",
     "noPost": "No posts found.",
     "views": "Views",
     "likes": "Likes",
@@ -700,6 +719,15 @@
     "periodAll": "All Time"
   },
   "post": {
+    "adultGate": {
+      "writeTitle": "Age verification required",
+      "writeDesc": "Posts marked “Adults only (alcohol sharing)” can only be written by members who have completed age verification (19+).",
+      "viewTitle": "This post requires age verification",
+      "viewDesc": "Posts marked “Adults only (alcohol sharing)” can only be viewed by members who have completed age verification (19+).",
+      "path": "Verification path: My Page > Account Settings > Age Verification",
+      "goVerify": "Go to Age Verification",
+      "writeToast": "Please complete age verification to write a Sharing post. Verify under My Page > Account Settings."
+    },
     "like": "Like",
     "selfLikeDisabled": "You cannot like your own post.",
     "dislike": "Dislike",

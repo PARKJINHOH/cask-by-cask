@@ -29,6 +29,9 @@ public class CreatePostRequest {
     // 게시판 공지(고정글)로 등록. 관리자/파트너만 유효 (서비스에서 권한 검증, 그 외 무시).
     private Boolean isPinned = false;
 
+    // 성인 전용(주류 나눔 등). true면 작성 시 성인인증 필요.
+    private Boolean adultOnly = false;
+
     @Valid
     private PollRequest poll;
 

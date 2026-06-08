@@ -8,6 +8,7 @@ import type { UserRole } from '@/domain/auth/types/auth.types'
 import Pagination from '@/shared/components/Pagination'
 import UserBadge from '@/shared/components/UserBadge'
 import RecommendBadge from '@/shared/components/RecommendBadge'
+import AdultBadge from '@/shared/components/AdultBadge'
 import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { formatBoardDate } from '@/shared/utils/format'
@@ -347,6 +348,7 @@ export default function BoardListPage({ boardType, title }: Props) {
                     <td className="px-4 py-3" title={post.isLocked ? t('board.locked') : undefined}>
                       <div className="flex items-center gap-2">
                         {post.isLocked && <span className="text-neutral-400">🔒</span>}
+                        {post.adultOnly && <AdultBadge />}
                         <span className={[
                           'text-[15px] font-medium group-hover/row:text-primary-800 transition-colors truncate',
                           post.isLocked ? 'text-red-600' : 'text-neutral-800',
@@ -454,6 +456,7 @@ export default function BoardListPage({ boardType, title }: Props) {
                   'text-[15px] font-medium line-clamp-1',
                   post.isLocked ? 'text-red-600' : 'text-neutral-800',
                 ].join(' ')}>
+                  {post.adultOnly && <AdultBadge className="mr-1 align-middle" />}
                   {post.title}
                 </p>
                 <div className="flex items-center gap-3 mt-1.5 text-xs text-neutral-400">

@@ -12,6 +12,7 @@ interface Props {
   parentId?: number
   parentNickname?: string
   editingComment?: PostCommentItem
+  forcedSecret?: boolean // 부모/형제 대댓글이 비밀댓글이라 강제로 비밀댓글이 되는 경우
   onSuccess: () => void
   onCancel?: () => void
   onBadWord?: (words: string[]) => void
@@ -24,12 +25,14 @@ export default function CommunityCommentForm({
   parentId,
   parentNickname,
   editingComment,
+  forcedSecret = false,
   onSuccess,
   onCancel,
   onBadWord,
 }: Props) {
   const { t } = useTranslation()
   const [content, setContent] = useState(editingComment?.content ?? '')
+  const [isSecret, setIsSecret] = useState(forcedSecret)
   const [mentionedUserId, setMentionedUserId] = useState<number | null>(null)
   const [mentionQuery, setMentionQuery] = useState('')
   const [mentionStart, setMentionStart] = useState<number | null>(null)
@@ -41,6 +44,11 @@ export default function CommunityCommentForm({
   const createMutation = useCreateComment(postId)
   const updateMutation = useUpdateComment(postId)
   const isPending = createMutation.isPending || updateMutation.isPending
+
+  // 부모/형제 대댓글이 비밀댓글이면 자동으로 비밀댓글 강제 적용
+  useEffect(() => {
+    if (forcedSecret) setIsSecret(true)
+  }, [forcedSecret])
 
   // @멘션 검색 (디바운스)
   const [debouncedQuery, setDebouncedQuery] = useState('')
@@ -96,6 +104,7 @@ export default function CommunityCommentForm({
         content: insert,
         parentId,
         mentionedUserId: undefined,
+        isSecret,
       })
       onSuccess()
     } catch (err: unknown) {
@@ -106,7 +115,7 @@ export default function CommunityCommentForm({
         setError(t('comment.saveError'))
       }
     }
-  }, [createMutation, parentId, onSuccess, onBadWord, t])
+  }, [createMutation, parentId, isSecret, onSuccess, onBadWord, t])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -120,10 +129,12 @@ export default function CommunityCommentForm({
           content,
           parentId,
           mentionedUserId: mentionedUserId ?? undefined,
+          isSecret,
         })
       }
       setContent('')
       setMentionedUserId(null)
+      setIsSecret(forcedSecret)
       onSuccess()
     } catch (err: unknown) {
       const data = (err as { response?: { data?: { code?: string; detectedWords?: string[] } } })?.response?.data
@@ -176,6 +187,25 @@ export default function CommunityCommentForm({
           </div>
         )}
       </div>
+
+      {/* 비밀댓글 체크박스 */}
+      {!editingComment && (
+        <div>
+          <label className={`inline-flex items-center gap-1.5 text-xs select-none w-fit ${forcedSecret ? 'text-neutral-400 cursor-not-allowed' : 'text-neutral-500 cursor-pointer'}`}>
+            <input
+              type="checkbox"
+              checked={isSecret}
+              disabled={forcedSecret}
+              onChange={(e) => setIsSecret(e.target.checked)}
+              className="w-3.5 h-3.5 accent-primary-500"
+            />
+            <span>🔒 {t('comment.secretCheckbox')}</span>
+          </label>
+          {forcedSecret && (
+            <p className="mt-0.5 pl-5 text-[11px] text-neutral-400">{t('comment.secretCascadeNotice')}</p>
+          )}
+        </div>
+      )}
 
       {error && <p className="text-xs text-red-500">{error}</p>}
 

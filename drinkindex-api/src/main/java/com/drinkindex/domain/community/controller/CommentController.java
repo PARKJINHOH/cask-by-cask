@@ -5,6 +5,7 @@ import com.drinkindex.domain.community.dto.PostCommentResponse;
 import com.drinkindex.domain.community.dto.UpdateCommentRequest;
 import com.drinkindex.domain.community.service.CommentService;
 import com.drinkindex.domain.user.entity.User;
+import com.drinkindex.domain.user.entity.enums.Role;
 import com.drinkindex.domain.user.repository.UserRepository;
 import com.drinkindex.global.auth.security.CustomUserDetails;
 import com.drinkindex.global.response.ApiResponse;
@@ -32,8 +33,9 @@ public class CommentController {
             @RequestParam(defaultValue = "30") int size
     ) {
         Long userId = userDetails != null ? userDetails.getUserId() : null;
+        Role currentRole = userDetails != null ? userDetails.getRole() : null;
         return ResponseEntity.ok(ApiResponse.success(
-                PageResponse.from(commentService.getComments(postId, userId, page, size))));
+                PageResponse.from(commentService.getComments(postId, userId, currentRole, page, size))));
     }
 
     @PostMapping

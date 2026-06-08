@@ -28,6 +28,9 @@ public interface PostCommentRepository extends JpaRepository<PostComment, Long> 
     List<PostComment> findByParentIdAndIsHiddenFalseAndAuthorIdNotInOrderByCreatedAtAsc(
             Long parentId, List<Long> authorIds);
 
+    // 비밀댓글 캐스케이딩: 같은 부모를 가진 형제 대댓글 중 비밀댓글이 이미 존재하는지 확인
+    boolean existsByParentIdAndIsSecretTrue(Long parentId);
+
     // 게시글 삭제 시 댓글의 post FK를 null로 처리 (댓글 레코드 자체는 유지)
     @Modifying
     @Query("UPDATE PostComment c SET c.post = null WHERE c.post.id = :postId")

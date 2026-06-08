@@ -17,4 +17,7 @@ public class UpdatePostRequest {
 
     // 게시판 공지(고정글) 토글. null이면 변경 안 함. 관리자/파트너만 유효.
     private Boolean isPinned;
+
+    // 성인 전용 토글. null이면 변경 안 함. true로 변경/유지 시 성인인증 필요.
+    private Boolean adultOnly;
 }

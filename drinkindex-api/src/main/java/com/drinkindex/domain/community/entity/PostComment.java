@@ -49,6 +49,11 @@ public class PostComment extends BaseTimeEntity {
     @Column(nullable = false)
     private Boolean isAnonymous = false;
 
+    // 비밀댓글: 작성자 본인 + 게시글 작성자 + 최고관리자만 열람 가능 (서비스 레이어 마스킹)
+    @Builder.Default
+    @Column(nullable = false)
+    private Boolean isSecret = false;
+
     @Builder.Default
     @Column(nullable = false)
     private Boolean isHidden = false;

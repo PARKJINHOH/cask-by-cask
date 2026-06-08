@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import Input from '@/shared/components/Input'
 import Button from '@/shared/components/Button'
 import Modal from '@/shared/components/Modal'
-import { useUpdateNickname, useUpdatePassword, useDeleteMe, useResetPassword, useFixNickname, useMe, useUpdateEmailSubscription } from '../hooks/useUser'
+import { useUpdateNickname, useUpdatePassword, useDeleteMe, useResetPassword, useFixNickname, useMe, useUpdateEmailSubscription, useVerifyAdult } from '../hooks/useUser'
 import ProfileImageSection from './ProfileImageSection'
 
 // ── 닉네임 폼 ───────────────────────────────────────────────
@@ -426,6 +426,112 @@ function EmailSubscriptionSection() {
   )
 }
 
+// ── 성인(연령) 인증 ─────────────────────────────────────────
+
+function AdultVerificationSection() {
+  const { t } = useTranslation()
+  const { data: profile } = useMe()
+  const verifyAdult = useVerifyAdult()
+  const [birthDate, setBirthDate] = useState('')
+  const [agreed, setAgreed] = useState(false)
+  const [error, setError] = useState('')
+
+  const isVerified = profile?.adultVerified === true
+  const verifiedAt = profile?.adultVerifiedAt
+  // 만 19세 이상 입력만 허용하기 위한 최대 선택 가능일(오늘 - 19년) 및 합리적 최소일
+  const today = new Date()
+  const maxDate = new Date(today.getFullYear() - 19, today.getMonth(), today.getDate())
+    .toISOString()
+    .slice(0, 10)
+  const minDate = '1900-01-01'
+
+  const canSubmit = !!birthDate && agreed && !verifyAdult.isPending
+
+  const handleSubmit = async () => {
+    setError('')
+    if (!birthDate || !agreed) return
+    try {
+      await verifyAdult.mutateAsync(birthDate)
+    } catch (err: unknown) {
+      const apiErr = (err as { response?: { data?: { code?: string; message?: string } } })?.response?.data
+      if (apiErr?.code === 'USER_021') {
+        setError(t('mypage.adult.underageError'))
+      } else {
+        setError(apiErr?.message ?? t('mypage.adult.failed'))
+      }
+    }
+  }
+
+  return (
+    <section className="p-5 bg-white rounded-xl border border-neutral-100 space-y-3">
+      <div className="flex items-center gap-2">
+        <h3 className="text-sm font-semibold text-neutral-800">{t('mypage.adult.section')}</h3>
+        {isVerified && (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold
+            bg-gradient-to-r from-amber-400 to-orange-500 text-white">
+            {t('mypage.adult.verifiedBadge')}
+          </span>
+        )}
+      </div>
+
+      {isVerified ? (
+        <p className="text-sm text-neutral-600">
+          {t('mypage.adult.verifiedDesc')}
+          {verifiedAt && (
+            <span className="text-neutral-400 ml-1">
+              ({new Date(verifiedAt).toLocaleDateString()})
+            </span>
+          )}
+        </p>
+      ) : (
+        <div className="space-y-3">
+          <p className="text-xs text-neutral-500 leading-relaxed">{t('mypage.adult.desc')}</p>
+
+          <div className="space-y-1.5">
+            <label className="text-xs text-neutral-600">{t('mypage.adult.birthDateLabel')}</label>
+            <input
+              type="date"
+              value={birthDate}
+              min={minDate}
+              max={maxDate}
+              onChange={(e) => setBirthDate(e.target.value)}
+              className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm
+                focus:outline-none focus:ring-2 focus:ring-primary-400"
+            />
+          </div>
+
+          <label className="flex items-start gap-2 text-xs text-neutral-600 leading-relaxed cursor-pointer">
+            <input
+              type="checkbox"
+              checked={agreed}
+              onChange={(e) => setAgreed(e.target.checked)}
+              className="mt-0.5 accent-primary-700"
+            />
+            <span>{t('mypage.adult.confirmLabel')}</span>
+          </label>
+
+          {error && <p className="text-sm text-red-600">{error}</p>}
+
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              isLoading={verifyAdult.isPending}
+              disabled={!canSubmit}
+              onClick={handleSubmit}
+            >
+              {t('mypage.adult.submit')}
+            </Button>
+          </div>
+
+          <p className="text-[11px] leading-relaxed text-neutral-500 bg-neutral-50 border border-neutral-200 rounded-md px-2 py-1.5">
+            {t('mypage.adult.legalNotice')}
+          </p>
+        </div>
+      )}
+    </section>
+  )
+}
+
 // ── 회원 탈퇴 ───────────────────────────────────────────────
 
 const DELETE_CONFIRM_WORD = '삭제'
@@ -531,12 +637,17 @@ function DangerZone() {
 
 // ── 메인 컴포넌트 ────────────────────────────────────────────
 
+// 성인 인증 기능 오픈 여부. 사업자 인증·이용자 증가 후 true로 전환하면 바로 노출됨.
+// (백엔드/DB·게이팅 로직은 유지, UI만 숨김)
+const ADULT_VERIFICATION_ENABLED = false
+
 export default function AccountSettings() {
   return (
     <div className="space-y-4">
       <ProfileImageSection />
       <NicknameSection />
       <FixedNicknameSection />
+      {ADULT_VERIFICATION_ENABLED && <AdultVerificationSection />}
       <PasswordSection />
       <TempPasswordSection />
       <EmailSubscriptionSection />

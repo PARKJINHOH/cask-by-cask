@@ -15,7 +15,7 @@ export function useComments(postId: number, page = 0, size = 30) {
 export function useCreateComment(postId: number) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (data: { content: string; parentId?: number; mentionedUserId?: number }) =>
+    mutationFn: (data: { content: string; parentId?: number; mentionedUserId?: number; isSecret?: boolean }) =>
       communityApi.createComment(postId, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: COMMENT_KEY(postId) })

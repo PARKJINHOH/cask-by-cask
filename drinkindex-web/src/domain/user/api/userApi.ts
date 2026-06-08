@@ -35,6 +35,9 @@ export const userApi = {
   updateEmailSubscription: (emailSubscribed: boolean) =>
     axiosInstance.patch<ApiResponse<UserProfile>>('/api/users/me/email-subscription', { emailSubscribed }),
 
+  verifyAdult: (birthDate: string) =>
+    axiosInstance.post<ApiResponse<UserProfile>>('/api/users/me/adult-verification', { birthDate }),
+
   // ── 차단 ──────────────────────────────────────────────────
   getBlockedUsers: () =>
     axiosInstance.get<ApiResponse<BlockedUser[]>>('/api/users/me/blocks'),

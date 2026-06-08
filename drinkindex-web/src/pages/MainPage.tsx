@@ -14,6 +14,7 @@ import { PopupViewer } from '@/domain/popup/components/PopupViewer'
 import BannerSlider from '@/domain/banner/components/BannerSlider'
 import SpiritCard from '@/shared/components/SpiritCard'
 import LevelBadge from '@/shared/components/LevelBadge'
+import AdultBadge from '@/shared/components/AdultBadge'
 import { formatBoardDate } from '@/shared/utils/format'
 import type { SpiritListItem } from '@/domain/spirit/types/spirit.types'
 import type { NoticeListItem } from '@/domain/notice/types/notice.types'
@@ -127,6 +128,7 @@ function PostRow({ post, boardPath }: { post: PostListItem; boardPath: string })
       </span>
       <div className="flex-1 min-w-0">
         <p className="text-sm text-neutral-800 group-hover:text-primary-800 line-clamp-1 transition-colors">
+          {post.adultOnly && <AdultBadge className="mr-1 w-4 h-4 text-[9px] align-middle" />}
           {post.title}
           {post.commentCount > 0 && (
             <span className="text-primary-500 text-xs ml-1">[{post.commentCount}]</span>
