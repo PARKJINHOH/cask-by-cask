@@ -61,7 +61,7 @@ function Row({
   highlight?: boolean
 }) {
   return (
-    <div className={`flex justify-between gap-4 ${highlight ? 'text-[#185FA5] font-bold' : 'text-neutral-600'}`}>
+    <div className={`flex justify-between gap-4 ${highlight ? 'text-primary-700 font-bold' : 'text-neutral-600'}`}>
       <span>{label}</span>
       <span>{value}</span>
     </div>
@@ -108,7 +108,7 @@ export default function PriceRangeChart({
               onClick={() => onStoreTypeChange(t_)}
               className={`px-4 py-1.5 font-medium transition-colors ${
                 storeType === t_
-                  ? 'bg-[#185FA5] text-white'
+                  ? 'bg-primary-700 text-white'
                   : 'text-neutral-500 hover:bg-neutral-50'
               }`}
             >
@@ -125,7 +125,7 @@ export default function PriceRangeChart({
               onClick={() => onPeriodChange(p)}
               className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                 period === p
-                  ? 'bg-[#185FA5] text-white'
+                  ? 'bg-primary-700 text-white'
                   : 'text-neutral-500 hover:bg-neutral-100'
               }`}
             >
@@ -190,7 +190,7 @@ export default function PriceRangeChart({
               {/* 밴드 상단 fill (minFinalPrice ~ maxPrice) */}
               <Area
                 dataKey="bandSize"
-                fill="#378ADD"
+                fill="#f59e0b"
                 fillOpacity={0.15}
                 stroke="none"
                 stackId="band"
@@ -199,7 +199,7 @@ export default function PriceRangeChart({
               {/* 최저 실구매가 라인 */}
               <Line
                 dataKey="minFinalPrice"
-                stroke="#185FA5"
+                stroke="#b45309"
                 strokeWidth={2}
                 dot={(props: any) => {
                   const isSelected = props.payload.date === selectedDate
@@ -209,13 +209,13 @@ export default function PriceRangeChart({
                       cx={props.cx}
                       cy={props.cy}
                       r={isSelected ? 6 : 4}
-                      fill={isSelected ? '#fff' : '#185FA5'}
-                      stroke="#185FA5"
+                      fill={isSelected ? '#fff' : '#b45309'}
+                      stroke="#b45309"
                       strokeWidth={isSelected ? 2 : 0}
                     />
                   )
                 }}
-                activeDot={{ r: 6, fill: '#185FA5', strokeWidth: 2, stroke: '#fff' }}
+                activeDot={{ r: 6, fill: '#b45309', strokeWidth: 2, stroke: '#fff' }}
                 connectNulls
               />
             </ComposedChart>

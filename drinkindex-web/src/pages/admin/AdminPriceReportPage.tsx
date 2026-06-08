@@ -185,7 +185,7 @@ function ReportCard({ report: r }: { report: AdminPriceReport }) {
               onChange={(e) => { setMapKeyword(e.target.value); setMappedStore(null); setMapOpen(true) }}
               onFocus={() => setMapOpen(true)}
               placeholder="표준 매장 검색 (미선택 시 제안 매장명 그대로 유지)"
-              className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white"
+              className="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-200 bg-white"
             />
             {mapOpen && storeResults && storeResults.length > 0 && !mappedStore && (
               <ul className="absolute z-10 w-full bg-white border border-neutral-200 rounded-lg mt-1 shadow-lg max-h-40 overflow-y-auto">
@@ -210,7 +210,7 @@ function ReportCard({ report: r }: { report: AdminPriceReport }) {
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
               placeholder="반려 사유 입력"
-              className="flex-1 border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-200"
+              className="flex-1 border border-neutral-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-200"
             />
             <button onClick={handleReject} disabled={reject.isPending} className="px-3 py-2 text-sm font-medium rounded-lg bg-red-500 text-white hover:bg-red-600 disabled:opacity-50">확인</button>
             <button onClick={() => setRejecting(false)} className="px-3 py-2 text-sm text-neutral-500">취소</button>
@@ -234,7 +234,7 @@ function ReportCard({ report: r }: { report: AdminPriceReport }) {
 function PriceField({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
   return (
     <span className="text-neutral-500">
-      {label} <span className={strong ? 'font-bold text-[#185FA5]' : 'font-medium text-neutral-800'}>{value}</span>
+      {label} <span className={strong ? 'font-bold text-primary-700' : 'font-medium text-neutral-800'}>{value}</span>
     </span>
   )
 }

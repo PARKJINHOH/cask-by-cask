@@ -170,7 +170,7 @@ export default function CommunityCommentForm({
           maxLength={MAX_LENGTH}
           rows={editingComment ? 3 : 2}
           placeholder={t('comment.placeholder')}
-          className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent placeholder:text-neutral-400"
+          className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent placeholder:text-neutral-400"
         />
         {mentionQuery.length > 0 && mentionUsers.length > 0 && (
           <div className="absolute z-10 top-full mt-1 w-48 bg-white border border-neutral-200 rounded-lg shadow-lg overflow-hidden">

@@ -152,7 +152,7 @@ export default function ByobCommentSection({ byobId, myUserId, hostUserId, isHos
           onChange={(e) => setContent(e.target.value.slice(0, 200))}
           rows={3}
           placeholder={isHost ? t('byob.hostCommentPlaceholder') : t('byob.commentPlaceholder')}
-          className="w-full px-3 py-2 border border-neutral-200 rounded-lg text-sm resize-none
+          className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm resize-none
             focus:outline-none focus:ring-2 focus:ring-primary-300"
         />
         <div className="flex items-center justify-between">

@@ -36,15 +36,15 @@ export default function PriceAlertInline({ spiritId }: { spiritId: number }) {
   // 설정됨 (편집 모드 아님)
   if (existing && !editing) {
     return (
-      <div className="flex flex-wrap items-center gap-2 rounded-lg bg-blue-50/70 border border-blue-100 px-3 py-2 text-sm">
-        <span className="text-[#185FA5]">🔔</span>
+      <div className="flex flex-wrap items-center gap-2 rounded-lg bg-primary-50/70 border border-primary-100 px-3 py-2 text-sm">
+        <span className="text-primary-700">🔔</span>
         <span className="text-neutral-700">
           {t('price.alert.activeNotice', { price: krw.format(existing.targetPriceKrw) })}
         </span>
         <div className="ml-auto flex items-center gap-2">
           <button
             onClick={() => { setEditing(true); setValue(String(existing.targetPriceKrw)) }}
-            className="text-xs text-[#185FA5] hover:underline"
+            className="text-xs text-primary-700 hover:underline"
           >
             {t('common.edit', '수정')}
           </button>
@@ -63,7 +63,7 @@ export default function PriceAlertInline({ spiritId }: { spiritId: number }) {
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-lg bg-neutral-50 border border-neutral-200 px-3 py-2">
       <span className="text-sm text-neutral-600 whitespace-nowrap">🔔 {t('price.alert.inlineLabel')}</span>
-      <div className="flex items-center border border-neutral-200 rounded-lg overflow-hidden bg-white focus-within:ring-2 focus-within:ring-blue-200">
+      <div className="flex items-center border border-neutral-300 rounded-lg overflow-hidden bg-white focus-within:ring-2 focus-within:ring-primary-200">
         <input
           value={value}
           onChange={(e) => setValue(e.target.value)}
@@ -77,7 +77,7 @@ export default function PriceAlertInline({ spiritId }: { spiritId: number }) {
       <button
         onClick={submit}
         disabled={upsert.isPending}
-        className="px-3 py-1.5 bg-[#185FA5] text-white rounded-lg text-xs font-medium hover:bg-[#1552a0] transition-colors disabled:opacity-50"
+        className="px-3 py-1.5 bg-primary-700 text-white rounded-lg text-xs font-medium hover:bg-primary-800 transition-colors disabled:opacity-50"
       >
         {t('price.alert.setBtn')}
       </button>

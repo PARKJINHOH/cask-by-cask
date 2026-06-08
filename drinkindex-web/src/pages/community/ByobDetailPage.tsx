@@ -57,7 +57,7 @@ function BottlesInput({ bottles, onChange }: BottlesInputProps) {
           placeholder={t('byob.bottlePlaceholder')}
           maxLength={80}
           disabled={bottles.length >= 10}
-          className="flex-1 px-3 py-2 border border-neutral-200 rounded-lg text-sm
+          className="flex-1 px-3 py-2 border border-neutral-300 rounded-lg text-sm
             focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-400
             disabled:bg-neutral-50 disabled:text-neutral-400"
         />
@@ -412,7 +412,7 @@ export default function ByobDetailPage() {
                     rows={2}
                     placeholder={t('byob.memoPlaceholder')}
                     maxLength={200}
-                    className="w-full px-3 py-2 border border-neutral-200 rounded-lg text-sm resize-none
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm resize-none
                       focus:outline-none focus:ring-2 focus:ring-primary-300"
                   />
                   <p className="mt-0.5 text-xs text-neutral-400 flex items-center gap-1">

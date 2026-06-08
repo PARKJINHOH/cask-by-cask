@@ -77,7 +77,7 @@ export default function CommentForm({
         maxLength={1000}
         rows={editingComment ? 3 : 2}
         placeholder={resolvedPlaceholder}
-        className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg resize-none
+        className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg resize-none
           focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent
           placeholder:text-neutral-400"
       />

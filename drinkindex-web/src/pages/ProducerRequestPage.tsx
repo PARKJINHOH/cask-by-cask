@@ -6,6 +6,7 @@ import type { ProducerRegisterRequestForm, MyProducerRequest } from '@/domain/pr
 import type { RequestStatus } from '@/domain/spirit/types/spiritRequest.types'
 import CountryRegionSelector from '@/domain/location/components/CountryRegionSelector'
 import SeoMeta from '@/shared/components/SeoMeta'
+import Breadcrumb from '@/shared/components/Breadcrumb'
 
 const STATUS_STYLE: Record<RequestStatus, string> = {
   PENDING:  'bg-amber-50 text-amber-700',
@@ -109,6 +110,14 @@ export default function ProducerRequestPage() {
     <div className="max-w-6xl mx-auto px-4 py-8">
       <SeoMeta title={t('producerRequest.title')} description={t('producerRequest.subtitle')} noindex />
 
+      <Breadcrumb
+        className="mb-2"
+        items={[
+          { label: t('menu.request') },
+          { label: t('menu.requestProducer'), to: '/request/producer' },
+        ]}
+      />
+
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-neutral-900">{t('producerRequest.title')}</h1>
         <p className="mt-1 text-sm text-neutral-500">{t('producerRequest.subtitle')}</p>
@@ -131,7 +140,7 @@ export default function ProducerRequestPage() {
                   <input
                     {...register('nameKo', { required: true, maxLength: 200 })}
                     maxLength={200}
-                    className={`${FIELD_CLS} bg-white ${errors.nameKo ? 'border-red-400' : 'border-neutral-200'}`}
+                    className={`${FIELD_CLS} bg-white ${errors.nameKo ? 'border-red-400' : 'border-neutral-300'}`}
                     placeholder="예) 글렌피딕 증류소"
                   />
                   {errors.nameKo && <p className="text-xs text-red-500">{t('producerRequest.form.errNameKo')}</p>}
@@ -142,7 +151,7 @@ export default function ProducerRequestPage() {
                   <input
                     {...register('nameEn', { required: true, maxLength: 200 })}
                     maxLength={200}
-                    className={`${FIELD_CLS} bg-white ${errors.nameEn ? 'border-red-400' : 'border-neutral-200'}`}
+                    className={`${FIELD_CLS} bg-white ${errors.nameEn ? 'border-red-400' : 'border-neutral-300'}`}
                     placeholder="Glenfiddich Producer"
                   />
                   {errors.nameEn && <p className="text-xs text-red-500">{t('producerRequest.form.errNameEn')}</p>}
@@ -158,14 +167,14 @@ export default function ProducerRequestPage() {
                       onChange={(e) => { setCountryNameKo(e.target.value); if (e.target.value) setCountryError(false) }}
                       placeholder="국가 직접 입력 (예: 조지아)"
                       maxLength={100}
-                      className={`${FIELD_CLS} bg-white ${countryError ? 'border-red-400' : 'border-neutral-200'}`}
+                      className={`${FIELD_CLS} bg-white ${countryError ? 'border-red-400' : 'border-neutral-300'}`}
                     />
                     <input
                       value={regionNameKo}
                       onChange={(e) => setRegionNameKo(e.target.value)}
                       placeholder="지역 (선택)"
                       maxLength={100}
-                      className={`${FIELD_CLS} bg-white border-neutral-200`}
+                      className={`${FIELD_CLS} bg-white border-neutral-300`}
                     />
                   </div>
                 ) : (
@@ -209,7 +218,7 @@ export default function ProducerRequestPage() {
                     type="url"
                     placeholder="https://example.com"
                     maxLength={500}
-                    className={`${FIELD_CLS} bg-white border-neutral-200`}
+                    className={`${FIELD_CLS} bg-white border-neutral-300`}
                   />
                 </div>
 
@@ -221,7 +230,7 @@ export default function ProducerRequestPage() {
                     placeholder="예) 1824"
                     min={1500}
                     max={new Date().getFullYear()}
-                    className={`${FIELD_CLS} bg-white border-neutral-200`}
+                    className={`${FIELD_CLS} bg-white border-neutral-300`}
                   />
                 </div>
               </div>
@@ -233,7 +242,7 @@ export default function ProducerRequestPage() {
                   rows={3}
                   maxLength={2000}
                   placeholder="생산자 소개를 입력해주세요."
-                  className={`${FIELD_CLS} bg-white border-neutral-200 resize-none`}
+                  className={`${FIELD_CLS} bg-white border-neutral-300 resize-none`}
                 />
               </div>
 
@@ -244,7 +253,7 @@ export default function ProducerRequestPage() {
                   rows={3}
                   maxLength={2000}
                   placeholder="Enter producer description."
-                  className={`${FIELD_CLS} bg-white border-neutral-200 resize-none`}
+                  className={`${FIELD_CLS} bg-white border-neutral-300 resize-none`}
                 />
               </div>
             </div>

@@ -394,7 +394,7 @@ export default function PostDetailPage() {
               value={reportReason}
               onChange={(e) => setReportReason(e.target.value)}
               rows={3}
-              className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-300 resize-none"
+              className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-300 resize-none"
               placeholder={t('comment.reportPlaceholder')}
             />
             <div className="flex gap-2 mt-4">

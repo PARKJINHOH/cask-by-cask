@@ -409,7 +409,10 @@
       "avgScore": "Avg. Score",
       "reviewCount": "Reviews",
       "notFound": "Spirit not found.",
-      "backToList": "Back to list"
+      "backToList": "Back to list",
+      "reportError": "Report Error",
+      "reportErrorTitle": "[Data Error] {{name}}",
+      "reportErrorBody": "▸ Spirit ID: {{id}}\n▸ Spirit name: {{name}}\n\nPlease tell us which field is incorrect and the correct information.\n"
     },
     "status": {
       "ACTIVE": "Active",

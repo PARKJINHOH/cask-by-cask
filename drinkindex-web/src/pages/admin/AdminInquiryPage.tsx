@@ -302,7 +302,7 @@ export default function AdminInquiryPage() {
                         placeholder={detail.replyBody
                           ? '재답변 내용을 입력하세요...'
                           : `${detail.senderEmail} 으로 발송될 답변 내용을 입력하세요...`}
-                        className="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl
+                        className="w-full px-3 py-2.5 text-sm border border-neutral-300 rounded-xl
                           focus:outline-none focus:ring-2 focus:ring-primary-400 resize-none"
                       />
                       <div className="flex items-center justify-between mt-2">
@@ -342,7 +342,7 @@ export default function AdminInquiryPage() {
                     onChange={(e) => setNoteInput(e.target.value)}
                     rows={3}
                     placeholder="내부 메모를 입력하세요..."
-                    className="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl
+                    className="w-full px-3 py-2.5 text-sm border border-neutral-300 rounded-xl
                       focus:outline-none focus:ring-2 focus:ring-primary-400 resize-none"
                   />
                   <button

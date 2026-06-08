@@ -56,7 +56,7 @@ export default function SpiritPriceDetailPage() {
         </div>
         <Link
           to={`/price-tracker/register?spiritId=${spiritId}`}
-          className="shrink-0 px-3 py-1.5 rounded-lg bg-[#185FA5] text-white text-xs font-medium hover:bg-[#1552a0] transition-colors"
+          className="shrink-0 px-3 py-1.5 rounded-lg bg-primary-700 text-white text-xs font-medium hover:bg-primary-800 transition-colors"
         >
           + {t('price.registerBtn')}
         </Link>

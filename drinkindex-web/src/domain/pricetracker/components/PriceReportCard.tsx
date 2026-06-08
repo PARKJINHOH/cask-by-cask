@@ -55,7 +55,7 @@ export default function PriceReportCard({ detail, isBest }: Props) {
                 </span>
               )}
               {detail.isVerified && (
-                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded text-[10px] font-bold">
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-emerald-50 text-emerald-600 rounded text-[10px] font-bold">
                   ✓ {t('price.panel.verified')}
                 </span>
               )}
@@ -68,7 +68,7 @@ export default function PriceReportCard({ detail, isBest }: Props) {
 
           <div className="text-right shrink-0">
             {detail.finalPrice != null && (
-              <p className="text-lg font-bold text-[#185FA5]">
+              <p className="text-lg font-bold text-primary-700">
                 {fmt.format(detail.finalPrice)}
                 <span className="text-xs font-normal ml-0.5">원</span>
               </p>
@@ -117,7 +117,7 @@ export default function PriceReportCard({ detail, isBest }: Props) {
                   <button
                     key={i}
                     onClick={() => setLightboxIdx(i)}
-                    className="w-16 h-16 rounded-lg overflow-hidden border border-neutral-200 hover:ring-2 hover:ring-[#185FA5] transition"
+                    className="w-16 h-16 rounded-lg overflow-hidden border border-neutral-200 hover:ring-2 hover:ring-primary-700 transition"
                   >
                     <img src={url} alt="" className="w-full h-full object-cover" />
                   </button>
@@ -165,7 +165,7 @@ export default function PriceReportCard({ detail, isBest }: Props) {
                       value={reasonDetail}
                       onChange={(e) => setReasonDetail(e.target.value)}
                       placeholder={t('price.report.detail')}
-                      className="w-full text-xs border border-neutral-200 rounded p-2 resize-none h-16 focus:outline-none focus:ring-1 focus:ring-red-300"
+                      className="w-full text-xs border border-neutral-300 rounded p-2 resize-none h-16 focus:outline-none focus:ring-1 focus:ring-red-300"
                     />
                   )}
                   <div className="flex gap-2">
@@ -243,7 +243,7 @@ function DiscountBreakdown({
         </div>
       ))}
       {finalPrice != null && (
-        <div className="flex justify-between font-bold text-[#185FA5] border-t border-neutral-100 pt-1.5">
+        <div className="flex justify-between font-bold text-primary-700 border-t border-neutral-100 pt-1.5">
           <span>{t('price.panel.finalPrice')}</span>
           <span>{fmt.format(finalPrice)}원</span>
         </div>

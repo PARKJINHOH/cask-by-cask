@@ -119,7 +119,7 @@ export default function ByobParticipantPanel({ byobId }: Props) {
               onChange={(e) => setRejectedReason(e.target.value)}
               rows={3}
               placeholder={t('byob.rejectReasonPlaceholder')}
-              className="w-full mt-3 px-3 py-2 border border-neutral-200 rounded-lg text-sm resize-none
+              className="w-full mt-3 px-3 py-2 border border-neutral-300 rounded-lg text-sm resize-none
                 focus:outline-none focus:ring-2 focus:ring-primary-300"
             />
             <div className="flex gap-2 mt-4">
@@ -154,7 +154,7 @@ export default function ByobParticipantPanel({ byobId }: Props) {
               onChange={(e) => setRemovedReason(e.target.value)}
               rows={3}
               placeholder={t('byob.removeReasonPlaceholder')}
-              className="w-full mt-3 px-3 py-2 border border-neutral-200 rounded-lg text-sm resize-none
+              className="w-full mt-3 px-3 py-2 border border-neutral-300 rounded-lg text-sm resize-none
                 focus:outline-none focus:ring-2 focus:ring-primary-300"
             />
             <div className="flex gap-2 mt-4">

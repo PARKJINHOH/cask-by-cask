@@ -57,7 +57,7 @@ export default function AdminBadWordPage() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="금지어 입력..."
-          className="flex-1 px-3 py-2 text-sm border border-neutral-200 rounded-lg
+          className="flex-1 px-3 py-2 text-sm border border-neutral-300 rounded-lg
             focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent"
         />
         <button

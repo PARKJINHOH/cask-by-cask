@@ -229,7 +229,7 @@ function PrefixForm({
               onChange={(e) => setName(e.target.value)}
               placeholder="일반, 이벤트, 질문..."
               maxLength={20}
-              className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400"
+              className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400"
               autoFocus
             />
           </div>
@@ -243,7 +243,7 @@ function PrefixForm({
                 type="color"
                 value={colorHex || '#000000'}
                 onChange={(e) => setColorHex(e.target.value)}
-                className="w-9 h-9 rounded border border-neutral-200 cursor-pointer p-0.5"
+                className="w-9 h-9 rounded border border-neutral-300 cursor-pointer p-0.5"
               />
               <input
                 type="text"
@@ -251,7 +251,7 @@ function PrefixForm({
                 onChange={(e) => setColorHex(e.target.value)}
                 placeholder="#f59e0b"
                 maxLength={7}
-                className="flex-1 px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 font-mono"
+                className="flex-1 px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 font-mono"
               />
               {colorHex && (
                 <button
@@ -272,7 +272,7 @@ function PrefixForm({
               value={sortOrder}
               onChange={(e) => setSortOrder(e.target.value)}
               min={0}
-              className="w-24 px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400"
+              className="w-24 px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400"
             />
           </div>
         </div>

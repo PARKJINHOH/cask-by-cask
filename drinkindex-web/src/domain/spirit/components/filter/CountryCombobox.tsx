@@ -78,7 +78,7 @@ export default function CountryCombobox({ category, value, onChange }: CountryCo
           value={keyword}
           onChange={(e) => setKeyword(e.target.value)}
           placeholder={t('spirit.filter.countrySearch')}
-          className="w-full pl-8 pr-2 py-1.5 text-xs border border-neutral-200 rounded-md
+          className="w-full pl-8 pr-2 py-1.5 text-xs border border-neutral-300 rounded-md
             focus:outline-none focus:ring-1 focus:ring-primary-400 bg-white"
         />
       </div>

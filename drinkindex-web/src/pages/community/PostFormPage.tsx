@@ -11,6 +11,7 @@ import type { BoardType } from '@/domain/community/types/community.types'
 import { useToast } from '@/shared/hooks/useToast'
 import Toast from '@/shared/components/Toast'
 import SeoMeta from '@/shared/components/SeoMeta'
+import Breadcrumb from '@/shared/components/Breadcrumb'
 import { draftApi } from '@/shared/api/draftApi'
 import DraftSavedNotice from '@/shared/components/DraftSavedNotice'
 import DraftListModal from '@/shared/components/DraftListModal'
@@ -216,6 +217,17 @@ export default function PostFormPage() {
         onError={(msg) => showToast(msg, 'error')}
       />
 
+      <Breadcrumb
+        className="mb-2"
+        items={[
+          { label: t('menu.community'), to: '/community/all' },
+          {
+            label: boardType === 'NOTICE' ? t('menu.communityNews') : t('menu.communityBoard'),
+            to: `/community/${boardPath}`,
+          },
+        ]}
+      />
+
       <div className="flex items-center gap-3 mb-6">
         <Link to={`/community/${boardPath}`} className="text-neutral-400 hover:text-neutral-600">
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -235,7 +247,7 @@ export default function PostFormPage() {
             value={title}
             onChange={(e) => setTitle(e.target.value.slice(0, MAX_TITLE))}
             placeholder="제목을 입력하세요"
-            className="w-full px-4 py-3 text-base border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-300 pr-16"
+            className="w-full px-4 py-3 text-base border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-300 pr-16"
           />
           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-400 tabular-nums">
             {title.length}/{MAX_TITLE}
@@ -398,7 +410,7 @@ export default function PostFormPage() {
                   value={pollQuestion}
                   onChange={(e) => setPollQuestion(e.target.value)}
                   placeholder="투표 질문을 입력하세요"
-                  className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-300"
+                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-300"
                 />
                 <div className="flex items-center gap-6">
                   {[false, true].map((multi) => (
@@ -416,7 +428,7 @@ export default function PostFormPage() {
                         type="text" value={opt}
                         onChange={(e) => setPollOptions((p) => p.map((o, idx) => idx === i ? e.target.value : o))}
                         placeholder={`선택지 ${i + 1}`}
-                        className="flex-1 px-3 py-1.5 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-300"
+                        className="flex-1 px-3 py-1.5 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-300"
                       />
                       {pollOptions.length > 2 && (
                         <button type="button" onClick={() => removePollOption(i)}
@@ -436,7 +448,7 @@ export default function PostFormPage() {
                 <div>
                   <label className="block text-xs text-neutral-500 mb-1">종료일시 (선택)</label>
                   <input type="datetime-local" value={pollEndsAt} onChange={(e) => setPollEndsAt(e.target.value)}
-                    className="px-3 py-1.5 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-300" />
+                    className="px-3 py-1.5 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-300" />
                 </div>
               </div>
             )}

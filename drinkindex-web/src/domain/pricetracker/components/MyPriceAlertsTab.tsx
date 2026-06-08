@@ -22,7 +22,7 @@ export default function MyPriceAlertsTab() {
       {alerts.map((a) => (
         <li key={a.id} className="bg-white rounded-xl border border-neutral-200 p-4 flex items-center gap-3">
           <div className="min-w-0 flex-1">
-            <Link to={`/price-tracker/spirits/${a.spiritId}`} className="font-semibold text-neutral-900 truncate hover:text-[#185FA5] block">
+            <Link to={`/price-tracker/spirits/${a.spiritId}`} className="font-semibold text-neutral-900 truncate hover:text-primary-700 block">
               {isEn ? a.spiritNameEn || a.spiritNameKo : a.spiritNameKo}
             </Link>
             <p className="text-xs text-neutral-500 mt-0.5">
@@ -33,7 +33,7 @@ export default function MyPriceAlertsTab() {
           <div className="flex items-center gap-3 shrink-0">
             <button
               onClick={() => toggle.mutate(a.id)}
-              className={`text-xs font-medium ${a.isActive ? 'text-[#185FA5]' : 'text-neutral-400'}`}
+              className={`text-xs font-medium ${a.isActive ? 'text-primary-700' : 'text-neutral-400'}`}
             >
               {a.isActive ? t('price.alert.on') : t('price.alert.off')}
             </button>

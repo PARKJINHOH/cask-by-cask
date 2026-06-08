@@ -200,7 +200,7 @@ export default function AdminProducerSelector({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="이름으로 검색..."
-          className="w-full px-2.5 py-1.5 text-sm border border-neutral-200 rounded-lg
+          className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg
             focus:outline-none focus:ring-2 focus:ring-primary-400"
         />
       </div>

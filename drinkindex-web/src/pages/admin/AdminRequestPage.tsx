@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Badge from '@/shared/components/Badge'
-import Button from '@/shared/components/Button'
 import Spinner from '@/shared/components/Spinner'
 import Pagination from '@/shared/components/Pagination'
 import { formatDate } from '@/shared/utils/format'
@@ -39,12 +38,7 @@ export default function AdminRequestPage() {
 
   return (
     <div className="p-6 space-y-5">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-neutral-900">등록 요청</h1>
-        <Button size="sm" onClick={() => navigate('/admin/spirits/new')}>
-          + 술 직접 등록
-        </Button>
-      </div>
+      <h1 className="text-xl font-bold text-neutral-900">등록 요청</h1>
 
       {/* 필터 */}
       <div className="flex items-end gap-3 p-4 bg-white rounded-xl shadow-sm">

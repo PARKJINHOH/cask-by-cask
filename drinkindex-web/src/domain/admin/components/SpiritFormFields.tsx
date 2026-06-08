@@ -410,18 +410,18 @@ export default function SpiritFormFields({ form, categoryLocked, onCategorySelec
           {/* 이름 */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className={LABEL}>영어 이름 <span className="text-red-400">*</span></label>
-              <input value={form.nameEn} onChange={(e) => form.setNameEn(e.target.value)} maxLength={200}
-                placeholder={ph.nameEn}
-                className={`${INPUT} ${errors.nameEn ? 'border-red-400' : ''}`} />
-              {errors.nameEn && <p className="text-xs text-red-500 mt-1">{errors.nameEn}</p>}
-            </div>
-            <div>
               <label className={LABEL}>한국어 이름 <span className="text-red-400">*</span></label>
               <input value={form.nameKo} onChange={(e) => form.setNameKo(e.target.value)} maxLength={200}
                 placeholder={ph.nameKo}
                 className={`${INPUT} ${errors.nameKo ? 'border-red-400' : ''}`} />
               {errors.nameKo && <p className="text-xs text-red-500 mt-1">{errors.nameKo}</p>}
+            </div>
+            <div>
+              <label className={LABEL}>영어 이름 <span className="text-red-400">*</span></label>
+              <input value={form.nameEn} onChange={(e) => form.setNameEn(e.target.value)} maxLength={200}
+                placeholder={ph.nameEn}
+                className={`${INPUT} ${errors.nameEn ? 'border-red-400' : ''}`} />
+              {errors.nameEn && <p className="text-xs text-red-500 mt-1">{errors.nameEn}</p>}
             </div>
           </div>
 

@@ -82,7 +82,7 @@ function ProducerForm({ initial, onSave, onCancel, isPending }: ProducerFormProp
           <select
             {...register('type', { required: true })}
             defaultValue={initial?.type ?? 'DISTILLERY'}
-            className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg bg-white
+            className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg bg-white
               focus:outline-none focus:ring-2 focus:ring-primary-400"
           >
             {PRODUCER_TYPES.map((tp) => (
@@ -96,7 +96,7 @@ function ProducerForm({ initial, onSave, onCancel, isPending }: ProducerFormProp
             {...register('nameKo', { required: true, maxLength: 200 })}
             maxLength={200}
             className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none
-              focus:ring-2 focus:ring-primary-400 ${errors.nameKo ? 'border-red-400' : 'border-neutral-200'}`}
+              focus:ring-2 focus:ring-primary-400 ${errors.nameKo ? 'border-red-400' : 'border-neutral-300'}`}
           />
         </div>
         <div className="space-y-1">
@@ -105,7 +105,7 @@ function ProducerForm({ initial, onSave, onCancel, isPending }: ProducerFormProp
             {...register('nameEn', { required: true, maxLength: 200 })}
             maxLength={200}
             className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none
-              focus:ring-2 focus:ring-primary-400 ${errors.nameEn ? 'border-red-400' : 'border-neutral-200'}`}
+              focus:ring-2 focus:ring-primary-400 ${errors.nameEn ? 'border-red-400' : 'border-neutral-300'}`}
           />
         </div>
         <div className="space-y-1">
@@ -116,7 +116,7 @@ function ProducerForm({ initial, onSave, onCancel, isPending }: ProducerFormProp
             placeholder="예) 1824"
             min={1500}
             max={new Date().getFullYear()}
-            className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none
+            className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none
               focus:ring-2 focus:ring-primary-400"
           />
         </div>
@@ -127,7 +127,7 @@ function ProducerForm({ initial, onSave, onCancel, isPending }: ProducerFormProp
             type="url"
             placeholder="https://example.com"
             maxLength={500}
-            className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none
+            className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none
               focus:ring-2 focus:ring-primary-400"
           />
         </div>
@@ -137,7 +137,7 @@ function ProducerForm({ initial, onSave, onCancel, isPending }: ProducerFormProp
             {...register('searchKeywords')}
             maxLength={300}
             placeholder="한글 음차 변형 등 (예: 까뮤 까뮈). 표시엔 미사용, 검색에만 사용"
-            className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none
+            className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none
               focus:ring-2 focus:ring-primary-400"
           />
         </div>
@@ -162,7 +162,7 @@ function ProducerForm({ initial, onSave, onCancel, isPending }: ProducerFormProp
             rows={3}
             placeholder="증류소 소개를 입력하세요."
             maxLength={2000}
-            className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none
+            className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none
               focus:ring-2 focus:ring-primary-400 resize-none"
           />
         </div>
@@ -173,7 +173,7 @@ function ProducerForm({ initial, onSave, onCancel, isPending }: ProducerFormProp
             rows={3}
             placeholder="Enter producer description."
             maxLength={2000}
-            className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none
+            className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none
               focus:ring-2 focus:ring-primary-400 resize-none"
           />
         </div>
@@ -300,7 +300,7 @@ export default function AdminProducerPage() {
             <select
               value={filterInput.type ?? ''}
               onChange={(e) => setFilterInput((f) => ({ ...f, type: e.target.value as ProducerType | '' }))}
-              className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg bg-white
+              className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg bg-white
                 focus:outline-none focus:ring-2 focus:ring-primary-400"
             >
               <option value="">전체</option>
@@ -315,7 +315,7 @@ export default function AdminProducerPage() {
               value={filterInput.nameKo}
               onChange={(e) => setFilterInput((f) => ({ ...f, nameKo: e.target.value }))}
               placeholder="한국어명 검색"
-              className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg
+              className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg
                 focus:outline-none focus:ring-2 focus:ring-primary-400"
             />
           </div>
@@ -325,7 +325,7 @@ export default function AdminProducerPage() {
               value={filterInput.nameEn}
               onChange={(e) => setFilterInput((f) => ({ ...f, nameEn: e.target.value }))}
               placeholder="영어명 검색"
-              className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg
+              className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg
                 focus:outline-none focus:ring-2 focus:ring-primary-400"
             />
           </div>
@@ -335,7 +335,7 @@ export default function AdminProducerPage() {
               value={filterInput.country}
               onChange={(e) => setFilterInput((f) => ({ ...f, country: e.target.value }))}
               placeholder="국가 검색 (예: 스코틀랜드)"
-              className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg
+              className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg
                 focus:outline-none focus:ring-2 focus:ring-primary-400"
             />
           </div>
@@ -346,7 +346,7 @@ export default function AdminProducerPage() {
               onChange={(e) => setFilterInput((f) => ({ ...f, foundedYear: e.target.value }))}
               type="number"
               placeholder="예) 1824"
-              className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg
+              className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg
                 focus:outline-none focus:ring-2 focus:ring-primary-400"
             />
           </div>

@@ -296,7 +296,7 @@ export default function ReviewScoreSection({
               placeholder={notePlaceholder}
               maxLength={200}
               rows={9}
-              className="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl resize-none
+              className="w-full px-3 py-2.5 text-sm border border-neutral-300 rounded-xl resize-none
                 focus:outline-none focus:ring-2 focus:ring-primary-400
                 placeholder:text-neutral-300 leading-relaxed"
             />

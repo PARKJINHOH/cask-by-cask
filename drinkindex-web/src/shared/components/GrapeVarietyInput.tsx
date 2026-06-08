@@ -31,7 +31,7 @@ export default function GrapeVarietyInput({ value, onChange }: Props) {
             onChange={(e) => update(idx, 'name', e.target.value)}
             placeholder="품종명 (예: Cabernet Sauvignon)"
             maxLength={100}
-            className="flex-1 px-3 py-2 text-sm border border-neutral-200 rounded-lg
+            className="flex-1 px-3 py-2 text-sm border border-neutral-300 rounded-lg
               focus:outline-none focus:ring-2 focus:ring-primary-400"
           />
           <div className="relative flex items-center">
@@ -42,7 +42,7 @@ export default function GrapeVarietyInput({ value, onChange }: Props) {
               value={row.percentage}
               onChange={(e) => update(idx, 'percentage', e.target.value)}
               placeholder="비율"
-              className="w-20 px-3 py-2 text-sm border border-neutral-200 rounded-lg
+              className="w-20 px-3 py-2 text-sm border border-neutral-300 rounded-lg
                 focus:outline-none focus:ring-2 focus:ring-primary-400 pr-7"
             />
             <span className="absolute right-2.5 text-xs text-neutral-400 pointer-events-none">%</span>

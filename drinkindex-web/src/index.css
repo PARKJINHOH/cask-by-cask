@@ -46,6 +46,15 @@
     @apply text-neutral-900 antialiased;
     background-color: var(--color-canvas);
   }
+
+  /* 폼 입력 요소 공통 기본값 — 캔버스(#F7F8FA) 위에서 또렷이 보이도록 흰 배경.
+     의도적으로 다른 배경을 쓰는 입력(예: 헤더 검색창 bg-neutral-50)은
+     유틸리티 클래스가 우선하므로 영향받지 않음. */
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='color']),
+  textarea,
+  select {
+    background-color: #fff;
+  }
 }
 
 @layer components {

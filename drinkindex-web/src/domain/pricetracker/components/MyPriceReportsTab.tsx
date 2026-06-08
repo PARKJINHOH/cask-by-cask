@@ -61,7 +61,7 @@ export default function MyPriceReportsTab() {
               <li key={r.id} className="bg-white rounded-xl border border-neutral-200 p-4 flex items-center gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <Link to={`/price-tracker/spirits/${r.spiritId}`} className="font-semibold text-neutral-900 truncate hover:text-[#185FA5]">
+                    <Link to={`/price-tracker/spirits/${r.spiritId}`} className="font-semibold text-neutral-900 truncate hover:text-primary-700">
                       {r.spiritNameKo}
                     </Link>
                     <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLE[r.status]}`}>
@@ -75,7 +75,7 @@ export default function MyPriceReportsTab() {
                 </div>
                 <div className="text-right shrink-0">
                   {r.actualPrice != null && (
-                    <p className="text-sm font-bold text-[#185FA5]">
+                    <p className="text-sm font-bold text-primary-700">
                       {r.currency === 'USD' ? `$ ${r.actualPrice.toLocaleString()}` : `${krw.format(r.actualPrice)}원`}
                     </p>
                   )}

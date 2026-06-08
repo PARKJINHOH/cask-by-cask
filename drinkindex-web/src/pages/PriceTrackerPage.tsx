@@ -33,7 +33,7 @@ function SpiritCard({ spirit, storeType }: SpiritCardProps) {
   return (
     <button
       onClick={() => navigate(`/price-tracker/spirits/${spirit.id}`)}
-      className="bg-white rounded-2xl border border-neutral-200 p-4 hover:border-[#185FA5] hover:shadow-md transition-all text-left group"
+      className="bg-white rounded-2xl border border-neutral-200 p-4 hover:border-primary-700 hover:shadow-md transition-all text-left group"
     >
       <div className="flex gap-3">
         {spirit.primaryImageUrl ? (
@@ -48,12 +48,12 @@ function SpiritCard({ spirit, storeType }: SpiritCardProps) {
           </div>
         )}
         <div className="flex-1 min-w-0">
-          <p className="font-semibold text-neutral-900 truncate group-hover:text-[#185FA5] transition-colors">
+          <p className="font-semibold text-neutral-900 truncate group-hover:text-primary-700 transition-colors">
             {primaryName}
           </p>
           {subName && <p className="text-xs text-neutral-400 truncate">{subName}</p>}
           {minPrice != null && minPrice !== Infinity ? (
-            <p className="text-sm font-bold text-[#185FA5] mt-1">
+            <p className="text-sm font-bold text-primary-700 mt-1">
               {fmt.format(minPrice)}
               <span className="text-xs font-normal ml-0.5">원~</span>
             </p>
@@ -112,7 +112,7 @@ export default function PriceTrackerPage() {
               onClick={() => setStoreType(t_)}
               className={`px-5 py-2 font-medium transition-colors ${
                 storeType === t_
-                  ? 'bg-[#185FA5] text-white'
+                  ? 'bg-primary-700 text-white'
                   : 'text-neutral-500 hover:bg-neutral-50'
               }`}
             >
@@ -128,17 +128,17 @@ export default function PriceTrackerPage() {
             onChange={(e) => setInputVal(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             placeholder={t('price.register.spiritPlaceholder')}
-            className="flex-1 border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+            className="flex-1 border border-neutral-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-200"
           />
           <button
             onClick={handleSearch}
-            className="px-4 py-2 bg-[#185FA5] text-white rounded-lg text-sm font-medium hover:bg-[#1552a0] transition-colors"
+            className="px-4 py-2 bg-primary-700 text-white rounded-lg text-sm font-medium hover:bg-primary-800 transition-colors"
           >
             {t('nav.search', '검색')}
           </button>
           <button
             onClick={() => navigate('/price-tracker/register')}
-            className="px-4 py-2 border border-[#185FA5] text-[#185FA5] rounded-lg text-sm font-medium hover:bg-blue-50 transition-colors"
+            className="px-4 py-2 border border-primary-700 text-primary-700 rounded-lg text-sm font-medium hover:bg-primary-50 transition-colors"
           >
             + {t('price.registerBtn')}
           </button>

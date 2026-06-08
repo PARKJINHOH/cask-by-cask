@@ -175,7 +175,7 @@ export default function MessagePopup() {
               rows={4}
               maxLength={100}
               placeholder={t('messages.contentPlaceholder')}
-              className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 resize-none"
+              className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 resize-none"
             />
             <p className={['text-xs text-right mt-0.5', content.length >= 100 ? 'text-red-500' : 'text-neutral-400'].join(' ')}>
               {content.length} / 100

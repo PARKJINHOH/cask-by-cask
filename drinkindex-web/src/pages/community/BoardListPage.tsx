@@ -261,14 +261,14 @@ export default function BoardListPage({ boardType, title }: Props) {
             value={keywordInput}
             onChange={(e) => setKeywordInput(e.target.value)}
             placeholder={t('board.searchPlaceholder')}
-            className="w-full pl-9 pr-4 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-400"
+            className="w-full pl-9 pr-4 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-400"
           />
         </div>
         {!isAll && (tabParam === 'all' || tabParam === 'event') && (
           <select
             value={sortParam}
             onChange={(e) => setParam('sort', e.target.value)}
-            className="px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-300 bg-white"
+            className="px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-300 bg-white"
           >
             {SORT_OPTIONS.map(({ value, labelKey }) => (
               <option key={value} value={value}>{t(labelKey)}</option>

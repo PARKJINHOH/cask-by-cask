@@ -345,7 +345,7 @@ function LevelAddForm({
                 onChange={(e) => set(e.target.value)}
                 placeholder={placeholder}
                 min={min}
-                className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400"
+                className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400"
               />
             </div>
           ))}

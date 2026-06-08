@@ -220,7 +220,7 @@ export default function PostEditor({ value, onChange, placeholder, onImageError 
   const charCount = editor?.storage.characterCount?.characters() ?? 0
 
   return (
-    <div className="border border-neutral-200 rounded-xl overflow-hidden bg-white focus-within:ring-2 focus-within:ring-primary-300 focus-within:border-primary-400">
+    <div className="border border-neutral-300 rounded-xl overflow-hidden bg-white focus-within:ring-2 focus-within:ring-primary-300 focus-within:border-primary-400">
       {editor && <PostEditorToolbar editor={editor} />}
 
       {/* 이미지 업로드 진행률 */}

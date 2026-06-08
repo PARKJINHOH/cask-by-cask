@@ -22,7 +22,7 @@ export default function PriceSparkline({ spiritId, storeType = 'DOMESTIC' }: Pro
       <LineChart data={sparkData} margin={{ top: 4, right: 2, left: 2, bottom: 4 }}>
         <Line
           dataKey="v"
-          stroke="#185FA5"
+          stroke="#b45309"
           strokeWidth={1.5}
           dot={false}
           connectNulls

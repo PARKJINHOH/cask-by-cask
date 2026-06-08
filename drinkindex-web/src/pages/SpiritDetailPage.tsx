@@ -31,29 +31,51 @@ type Tab = 'reviews' | 'community' | 'price'
 
 // ── 카테고리 상세 섹션 ─────────────────────────────────────
 
-function Badge2({ children }: { children: React.ReactNode }) {
+function Badge2({ children, detail }: { children: React.ReactNode; detail?: string }) {
+  const [open, setOpen] = useState(false)
+  if (!detail) {
+    return (
+      <span className="inline-block px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600 text-xs font-medium mr-1 mb-1">
+        {children}
+      </span>
+    )
+  }
   return (
-    <span className="inline-block px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600 text-xs font-medium mr-1 mb-1">
-      {children}
+    <span className="group relative inline-block mr-1 mb-1">
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); setOpen((o) => !o) }}
+        className="px-2 py-0.5 rounded-full border border-amber-200 bg-amber-50/60 text-amber-700 text-xs font-medium
+          hover:bg-amber-100 hover:border-amber-300 transition-colors cursor-help"
+      >
+        {children}
+      </button>
+      <span className={`absolute left-0 bottom-full mb-1.5 z-50 w-max max-w-[240px] rounded-lg bg-neutral-800
+        text-white text-[11px] px-3 py-2 shadow-xl leading-relaxed pointer-events-none whitespace-normal
+        ${open ? 'block' : 'hidden group-hover:block'}`}>
+        {detail}
+      </span>
     </span>
   )
 }
 
 function DetailGrid({ children }: { children: React.ReactNode }) {
-  return <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">{children}</dl>
+  // 세로 리스트형: 라벨 좌 · 값 우. 데스크톱은 2열로 나눠 스크롤 길이 절감.
+  return <dl className="grid grid-cols-1 sm:grid-cols-2 sm:gap-x-12">{children}</dl>
 }
 
 function DI({ label, value }: { label: string; value: React.ReactNode }) {
   if (value === null || value === undefined || value === '') return null
   return (
-    <div>
-      <dt className="text-xs text-neutral-400 mb-0.5">{label}</dt>
-      <dd className="text-sm font-medium text-neutral-900">{value}</dd>
+    <div className="flex items-center justify-between gap-4 py-3 border-b border-neutral-100">
+      <dt className="text-[13px] text-neutral-400 flex-shrink-0">{label}</dt>
+      <dd className="text-[14px] font-semibold text-neutral-900 text-right">{value}</dd>
     </div>
   )
 }
 
 function SpiritDetailSections({ spirit, isEn }: { spirit: SpiritDetail; isEn: boolean }) {
+  const { t } = useTranslation()
   const cd = spirit.commonDetail
   const whisky = spirit.whiskyDetail
   const wine = spirit.wineDetail
@@ -71,6 +93,10 @@ function SpiritDetailSections({ spirit, isEn }: { spirit: SpiritDetail; isEn: bo
     POT_STILL: isEn ? 'Single Pot Still' : '싱글 팟 스틸',
     GRAIN_CORN: isEn ? 'Grain / Corn' : '그레인 / 콘',
     OTHER: isEn ? 'Other' : '기타',
+  }
+  const BOTTLING_LABEL: Record<string, string> = {
+    OB: isEn ? 'Official Bottling (Distillery)' : 'Official Bottling (증류소)',
+    IB: isEn ? 'Independent Bottling' : 'Independent Bottling (독립 병입)',
   }
   const CASK_LABEL: Record<string, string> = {
     EX_BOURBON: 'Ex-Bourbon', EX_SHERRY: 'Ex-Sherry', EX_PORT: 'Ex-Port',
@@ -91,161 +117,279 @@ function SpiritDetailSections({ spirit, isEn }: { spirit: SpiritDetail; isEn: bo
     SAKE: isEn ? 'Sake' : '사케', SOJU: isEn ? 'Soju' : '소주', BAIJIU: isEn ? 'Baijiu' : '바이주',
     ABSINTHE: isEn ? 'Absinthe' : '압생트', BEER: isEn ? 'Beer' : '맥주', OTHER: isEn ? 'Other' : '기타',
   }
+  const reportName = isEn ? (spirit.nameEn || spirit.nameKo) : spirit.nameKo
+  const reportHref = `/request/feedback/new?type=ETC`
+    + `&title=${encodeURIComponent(t('spirit.detail.reportErrorTitle', { name: reportName }))}`
+    + `&content=${encodeURIComponent(t('spirit.detail.reportErrorBody', { name: reportName, id: spirit.id }))}`
+
   return (
-    <div className="bg-white rounded-2xl shadow-sm p-6 space-y-6">
-      <h2 className="text-base font-bold text-neutral-900 border-b border-neutral-100 pb-3">
-        {isEn ? 'Detailed Information' : '상세 정보'}
-      </h2>
+    <div className="bg-white rounded-3xl shadow-[0_8px_40px_-12px_rgba(17,24,39,0.12)] ring-1 ring-neutral-100 p-6 lg:p-8">
+      <div className="flex items-center justify-between gap-3 pb-4 mb-6 border-b border-neutral-100">
+        <h2 className="text-[16px] font-bold text-neutral-900">
+          {isEn ? 'Detailed Information' : '상세 정보'}
+        </h2>
+        <Link
+          to={reportHref}
+          className="inline-flex items-center gap-1.5 flex-shrink-0 rounded-lg border border-neutral-200
+            px-3 py-1.5 text-[12px] font-semibold text-neutral-500 hover:border-red-300
+            hover:text-red-600 hover:bg-red-50 transition-colors"
+        >
+          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
+            <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+          {t('spirit.detail.reportError')}
+        </Link>
+      </div>
 
-      {/* 공통 상세 */}
-      {cd && (
-        <div className="space-y-3">
-          <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">
-            {isEn ? 'Common' : '공통'}
-          </h3>
-          <DetailGrid>
-            <DI label={isEn ? 'Age Statement' : '숙성 연수'}
-              value={cd.isNas
-                ? <span className="px-2 py-0.5 rounded bg-neutral-800 text-white text-xs font-bold">NAS</span>
-                : (cd.ageStatement != null ? `${cd.ageStatement}년` : null)} />
-            <DI label={isEn ? 'Distilled' : '증류 연월'} value={cd.distilledDate} />
-            <DI label={isEn ? 'Bottled' : '병입 연월'} value={cd.bottledDate} />
-            <DI label={isEn ? 'Release Date' : '출시일'} value={cd.releaseDate} />
-            <DI label={isEn ? 'Volume' : '용량'} value={cd.volumeMl ? `${cd.volumeMl}ml` : null} />
-            <DI label={isEn ? 'ABV' : '도수'} value={cd.abv != null ? `${cd.abv}%` : null} />
-            <DI label={isEn ? 'Bottle No.' : '병 번호'} value={cd.bottleNo} />
-            <DI label={isEn ? 'Batch No.' : '배치 번호'} value={cd.batchNo} />
-            <DI label={isEn ? 'Total Bottles' : '총 병 수'}
-              value={cd.totalBottles != null ? cd.totalBottles.toLocaleString() : null} />
-          </DetailGrid>
-        </div>
-      )}
-
-      {/* 위스키 상세 */}
-      {whisky && (
-        <div className="space-y-3">
-          <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Whisky</h3>
-          <DetailGrid>
-            <DI label={isEn ? 'Style' : '스타일'}
-              value={whisky.style === 'OTHER'
-                ? (whisky.styleOther || WHISKY_STYLE_LABEL.OTHER || whisky.style)
-                : whisky.style ? WHISKY_STYLE_LABEL[whisky.style] ?? whisky.style : null} />
-            <DI label={isEn ? 'Bottling' : '병입'} value={whisky.bottlingType} />
-            <DI label={isEn ? 'Cask' : '캐스크'}
-              value={whisky.caskType ? CASK_LABEL[whisky.caskType] ?? whisky.caskType : null} />
-            <DI label={isEn ? 'Maturation' : '숙성 방식'}
-              value={whisky.maturationStyle === 'FINISH'
-                ? (isEn ? 'Finish' : '피니시')
-                : whisky.maturationStyle === 'FULL_MATURATION'
-                ? (isEn ? 'Full Maturation' : '풀 머추레이션')
-                : null} />
-            {whisky.finishCaskType && (
-              <DI label={isEn ? 'Finish Cask' : '피니시 캐스크'}
-                value={CASK_LABEL[whisky.finishCaskType] ?? whisky.finishCaskType} />
-            )}
-            <DI label={isEn ? 'Finish Detail' : '피니시 상세'} value={whisky.finishCaskDetail} />
-            <DI label={isEn ? 'Phenol (ppm)' : '피트 강도'}
-              value={whisky.phenolPpm != null ? `${whisky.phenolPpm} ppm` : null} />
-            <DI label={isEn ? 'Single Cask No.' : '싱글 캐스크 번호'} value={whisky.caskNo} />
-          </DetailGrid>
-          <div className="flex flex-wrap gap-1 mt-2">
-            {whisky.isNonChillFiltered && <Badge2>NCF</Badge2>}
-            {whisky.isNaturalColour && <Badge2>{isEn ? 'Natural Colour' : '천연 색상'}</Badge2>}
-            {whisky.isSingleCask && <Badge2>Single Cask</Badge2>}
-            {whisky.isCaskStrength && <Badge2>Cask Strength</Badge2>}
-            {whisky.isPeated && <Badge2>Peated</Badge2>}
+      <div className="space-y-8">
+        {/* 공통 상세 */}
+        {cd && (
+          <div>
+            <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest mb-2">
+              {isEn ? 'Common' : '공통'}
+            </p>
+            <DetailGrid>
+              <DI label={isEn ? 'Age Statement' : '숙성 연수'}
+                value={cd.isNas
+                  ? <span className="px-2 py-0.5 rounded bg-neutral-800 text-white text-xs font-bold">NAS</span>
+                  : (cd.ageStatement != null
+                    ? (isEn ? `${cd.ageStatement} Year${cd.ageStatement === 1 ? '' : 's'}` : `${cd.ageStatement}년`)
+                    : null)} />
+              <DI label={isEn ? 'Distilled' : '증류 연월'} value={cd.distilledDate} />
+              <DI label={isEn ? 'Bottled' : '병입 연월'} value={cd.bottledDate} />
+              <DI label={isEn ? 'Release Date' : '출시일'} value={cd.releaseDate} />
+              <DI label={isEn ? 'Volume' : '용량'} value={cd.volumeMl ? `${cd.volumeMl}ml` : null} />
+              <DI label={isEn ? 'ABV' : '도수'} value={cd.abv != null ? `${cd.abv}%` : null} />
+              <DI label={isEn ? 'Bottle No.' : '병 번호'} value={cd.bottleNo} />
+              <DI label={isEn ? 'Batch No.' : '배치 번호'} value={cd.batchNo} />
+              <DI label={isEn ? 'Total Bottles' : '총 병 수'}
+                value={cd.totalBottles != null ? cd.totalBottles.toLocaleString() : null} />
+            </DetailGrid>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* 와인 상세 */}
-      {wine && (
-        <div className="space-y-3">
-          <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Wine</h3>
-          <DetailGrid>
-            <DI label={isEn ? 'Type' : '종류'} value={wine.wineType} />
-            <DI label={isEn ? 'Vintage' : '빈티지'} value={wine.vintage} />
-            <DI label={isEn ? 'Appellation' : '원산지'} value={wine.appellationDesignation} />
-            <DI label={isEn ? 'Soil' : '토양'} value={wine.soilType} />
-            <DI label={isEn ? 'Altitude' : '고도'} value={wine.altitudeM != null ? `${wine.altitudeM}m` : null} />
-            <DI label={isEn ? 'Harvest' : '수확 방법'} value={wine.harvestMethod} />
-            <DI label={isEn ? 'Fermentation' : '발효 용기'} value={wine.fermentationVessel} />
-            <DI label={isEn ? 'Certification' : '인증'} value={wine.certification !== 'NONE' ? wine.certification : null} />
-            <DI label={isEn ? 'Oak Aged' : '오크 숙성'}
-              value={wine.isOakAged != null ? (wine.isOakAged ? (isEn ? 'Yes' : '예') : (isEn ? 'No' : '아니요')) : null} />
-            {wine.oakType && <DI label={isEn ? 'Oak' : '오크'} value={wine.oakType} />}
-            {wine.oakAgedMonths && (
-              <DI label={isEn ? 'Oak Months' : '오크 숙성'} value={`${wine.oakAgedMonths}${isEn ? ' mo.' : '개월'}`} />
-            )}
-            <DI label={isEn ? 'Natural Wine' : '내추럴 와인'}
-              value={wine.isNaturalWine ? (isEn ? 'Yes' : '예') : null} />
-          </DetailGrid>
-          {wine.grapeVarieties && wine.grapeVarieties.length > 0 && (
-            <div>
-              <p className="text-xs text-neutral-400 mb-1.5">{isEn ? 'Grape Varieties' : '포도 품종'}</p>
-              <div className="flex flex-wrap">
-                {wine.grapeVarieties.map((g, i) => (
-                  <Badge2 key={i}>{g.name}{g.percentage ? ` ${g.percentage}%` : ''}</Badge2>
-                ))}
-              </div>
+        {/* 위스키 상세 */}
+        {whisky && (
+          <div>
+            <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest mb-2">Whisky</p>
+            <DetailGrid>
+              <DI label={isEn ? 'Style' : '스타일'}
+                value={whisky.style === 'OTHER'
+                  ? (whisky.styleOther || WHISKY_STYLE_LABEL.OTHER || whisky.style)
+                  : whisky.style ? WHISKY_STYLE_LABEL[whisky.style] ?? whisky.style : null} />
+              <DI label={isEn ? 'Bottling' : '병입'}
+                value={whisky.bottlingType ? BOTTLING_LABEL[whisky.bottlingType] ?? whisky.bottlingType : null} />
+              <DI label={isEn ? 'Cask' : '캐스크'}
+                value={whisky.caskType ? CASK_LABEL[whisky.caskType] ?? whisky.caskType : null} />
+              <DI label={isEn ? 'Maturation' : '숙성 방식'}
+                value={whisky.maturationStyle === 'FINISH'
+                  ? (isEn ? 'Finish' : '피니시')
+                  : whisky.maturationStyle === 'FULL_MATURATION'
+                  ? (isEn ? 'Full Maturation' : '풀 머추레이션')
+                  : null} />
+              {whisky.finishCaskType && (
+                <DI label={isEn ? 'Finish Cask' : '피니시 캐스크'}
+                  value={CASK_LABEL[whisky.finishCaskType] ?? whisky.finishCaskType} />
+              )}
+              <DI label={isEn ? 'Finish Detail' : '피니시 상세'} value={whisky.finishCaskDetail} />
+              <DI label={isEn ? 'Phenol (ppm)' : '피트 강도'}
+                value={whisky.phenolPpm != null ? `${whisky.phenolPpm} ppm` : null} />
+              <DI label={isEn ? 'Single Cask No.' : '싱글 캐스크 번호'} value={whisky.caskNo} />
+            </DetailGrid>
+            <div className="flex flex-wrap gap-1.5 mt-4">
+              {whisky.isNonChillFiltered && (
+                <Badge2 detail="Non-Chill Filtered (저온 여과 생략)">NCF</Badge2>
+              )}
+              {whisky.isNaturalColour && (
+                <Badge2 detail="Natural Colour (캐러멜 색소 무첨가)">Natural Colour</Badge2>
+              )}
+              {whisky.isSingleCask && (
+                <Badge2 detail="Single Cask (단일 캐스크)">Single Cask</Badge2>
+              )}
+              {whisky.isCaskStrength && (
+                <Badge2 detail="Cask Strength (원액 그대로)">Cask Strength</Badge2>
+              )}
+              {whisky.isPeated && (
+                <Badge2 detail="Peated (피트 사용)">Peated</Badge2>
+              )}
             </div>
-          )}
-        </div>
-      )}
+          </div>
+        )}
 
-      {/* 꼬냑 상세 */}
-      {cognac && (
-        <div className="space-y-3">
-          <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Cognac</h3>
-          <div className="flex items-center gap-4">
-            {cognac.grade && (
-              <span className="px-4 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-lg font-bold">
-                {GRADE_LABEL[cognac.grade] ?? cognac.grade}
-              </span>
-            )}
-            {cognac.cru && (
-              <div>
-                <p className="text-xs text-neutral-400">{isEn ? 'Cru' : '크뤼'}</p>
-                <p className="text-sm font-medium text-neutral-900">{CRU_LABEL[cognac.cru] ?? cognac.cru}</p>
+        {/* 와인 상세 */}
+        {wine && (
+          <div>
+            <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest mb-2">Wine</p>
+            <DetailGrid>
+              <DI label={isEn ? 'Type' : '종류'} value={wine.wineType} />
+              <DI label={isEn ? 'Vintage' : '빈티지'} value={wine.vintage} />
+              <DI label={isEn ? 'Appellation' : '원산지 명칭'} value={wine.appellationDesignation} />
+              <DI label={isEn ? 'Soil' : '토양'} value={wine.soilType} />
+              <DI label={isEn ? 'Altitude' : '고도'} value={wine.altitudeM != null ? `${wine.altitudeM}m` : null} />
+              <DI label={isEn ? 'Harvest' : '수확 방법'} value={wine.harvestMethod} />
+              <DI label={isEn ? 'Fermentation' : '발효 용기'} value={wine.fermentationVessel} />
+              <DI label={isEn ? 'Certification' : '인증'} value={wine.certification !== 'NONE' ? wine.certification : null} />
+              <DI label={isEn ? 'Oak Aged' : '오크 숙성'}
+                value={wine.isOakAged != null ? (wine.isOakAged ? (isEn ? 'Yes' : '예') : (isEn ? 'No' : '아니요')) : null} />
+              {wine.oakType && <DI label={isEn ? 'Oak' : '오크'} value={wine.oakType} />}
+              {wine.oakAgedMonths && (
+                <DI label={isEn ? 'Oak Months' : '오크 숙성'} value={`${wine.oakAgedMonths}${isEn ? ' mo.' : '개월'}`} />
+              )}
+              <DI label={isEn ? 'Natural Wine' : '내추럴 와인'}
+                value={wine.isNaturalWine ? (isEn ? 'Yes' : '예') : null} />
+            </DetailGrid>
+            {wine.grapeVarieties && wine.grapeVarieties.length > 0 && (
+              <div className="mt-4">
+                <p className="text-[11px] text-neutral-400 mb-1.5">{isEn ? 'Grape Varieties' : '포도 품종'}</p>
+                <div className="flex flex-wrap">
+                  {wine.grapeVarieties.map((g, i) => (
+                    <Badge2 key={i}>{g.name}{g.percentage ? ` ${g.percentage}%` : ''}</Badge2>
+                  ))}
+                </div>
               </div>
             )}
-            {cognac.isFineChampagne && <Badge2>Fine Champagne</Badge2>}
           </div>
-          {cognac.blendDetail && (
-            <p className="text-sm text-neutral-600 leading-relaxed">{cognac.blendDetail}</p>
-          )}
-        </div>
-      )}
+        )}
 
-      {/* 기타 상세 */}
-      {other && (
-        <div className="space-y-3">
-          <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">
-            {isEn ? 'Other' : '기타'}
-          </h3>
-          <DetailGrid>
-            <DI label={isEn ? 'Type' : '주종'}
-              value={other.otherType ? OTHER_TYPE_LABEL[other.otherType] ?? other.otherType : null} />
-            <DI label={isEn ? 'Main Ingredient' : '주원료'} value={other.mainIngredient} />
-            <DI label={isEn ? 'Production' : '제조 방식'} value={other.productionMethod} />
-          </DetailGrid>
-          {other.notes && (
-            <p className="text-sm text-neutral-600 leading-relaxed">{other.notes}</p>
-          )}
-        </div>
-      )}
+        {/* 꼬냑 상세 */}
+        {cognac && (
+          <div>
+            <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest mb-2">Cognac</p>
+            <div className="flex items-center gap-4 flex-wrap">
+              {cognac.grade && (
+                <span className="px-4 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-lg font-bold">
+                  {GRADE_LABEL[cognac.grade] ?? cognac.grade}
+                </span>
+              )}
+              {cognac.cru && (
+                <div>
+                  <p className="text-xs text-neutral-400">{isEn ? 'Cru' : '크뤼'}</p>
+                  <p className="text-sm font-medium text-neutral-900">{CRU_LABEL[cognac.cru] ?? cognac.cru}</p>
+                </div>
+              )}
+              {cognac.isFineChampagne && (
+                <Badge2 detail="Fine Champagne (Grande + Petite Champagne 블렌드, Grande 50% 이상)">
+                  Fine Champagne
+                </Badge2>
+              )}
+            </div>
+            {cognac.blendDetail && (
+              <p className="text-sm text-neutral-600 leading-relaxed mt-3">{cognac.blendDetail}</p>
+            )}
+          </div>
+        )}
 
+        {/* 기타 상세 */}
+        {other && (
+          <div>
+            <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest mb-2">
+              {isEn ? 'Other' : '기타'}
+            </p>
+            <DetailGrid>
+              <DI label={isEn ? 'Type' : '주종'}
+                value={other.otherType ? OTHER_TYPE_LABEL[other.otherType] ?? other.otherType : null} />
+              <DI label={isEn ? 'Main Ingredient' : '주원료'} value={other.mainIngredient} />
+              <DI label={isEn ? 'Production' : '제조 방식'} value={other.productionMethod} />
+            </DetailGrid>
+            {other.notes && (
+              <p className="text-sm text-neutral-600 leading-relaxed mt-3">{other.notes}</p>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
 
 // ── Sub-components ────────────────────────────────────────
 
-function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
+// ── 핵심 스펙 strip (도수·용량·국가/지역·숙성연수) ──────────────
+const SPEC_ICON = {
+  abv: (
+    <svg className="w-[15px] h-[15px]" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.8" strokeLinecap="round">
+      <circle cx="7" cy="7" r="2.5" /><circle cx="17" cy="17" r="2.5" />
+      <line x1="18.5" y1="5.5" x2="5.5" y2="18.5" />
+    </svg>
+  ),
+  volume: (
+    <svg className="w-[15px] h-[15px]" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2.7l5.2 5.7a7.4 7.4 0 11-10.4 0z" />
+    </svg>
+  ),
+  origin: (
+    <svg className="w-[15px] h-[15px]" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 21.5S5 16 5 10.2A7 7 0 0119 10.2C19 16 12 21.5 12 21.5z" />
+      <circle cx="12" cy="10" r="2.4" />
+    </svg>
+  ),
+  age: (
+    <svg className="w-[15px] h-[15px]" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="8.2" /><path d="M12 7.5V12l3 2" />
+    </svg>
+  ),
+}
+
+function SpecCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: React.ReactNode }) {
   return (
-    <div>
-      <dt className="text-xs text-neutral-400 mb-0.5">{label}</dt>
-      <dd className="text-sm font-medium text-neutral-900">{value}</dd>
+    <div className="flex items-center gap-2 rounded-xl bg-neutral-50 ring-1 ring-neutral-100 px-3 py-2.5">
+      <div className="w-7 h-7 rounded-lg bg-white ring-1 ring-neutral-200 flex items-center justify-center
+        text-primary-600 flex-shrink-0">
+        {icon}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[11px] text-neutral-400 leading-none">{label}</p>
+        <p className="text-[13px] sm:text-[14px] font-bold text-neutral-900 mt-1 leading-snug break-keep">{value}</p>
+      </div>
+    </div>
+  )
+}
+
+function CoreSpecStrip({
+  spirit, countryLabel, regionLabel, isEn,
+}: {
+  spirit: SpiritDetail
+  countryLabel: string
+  regionLabel: string
+  isEn: boolean
+}) {
+  const { t } = useTranslation()
+  const cd = spirit.commonDetail
+  const ageValue = cd?.isNas
+    ? 'NAS'
+    : (cd?.ageStatement != null ? (isEn ? `${cd.ageStatement}yr` : `${cd.ageStatement}년`) : null)
+  const originValue: React.ReactNode = spirit.country
+    ? (
+      <>
+        {countryLabel}
+        {regionLabel && (
+          <span className="block text-[11px] sm:text-[12px] font-medium text-neutral-500 leading-snug">
+            {regionLabel}
+          </span>
+        )}
+      </>
+    )
+    : null
+
+  const specs = [
+    spirit.abv != null ? { k: 'abv',    icon: SPEC_ICON.abv,    label: t('spirit.detail.abv'),    value: `${spirit.abv}%` } : null,
+    spirit.volumeMl    ? { k: 'volume', icon: SPEC_ICON.volume, label: t('spirit.detail.volume'), value: `${spirit.volumeMl}ml` } : null,
+    originValue        ? { k: 'origin', icon: SPEC_ICON.origin, label: isEn ? 'Origin' : '국가 · 지역', value: originValue } : null,
+    ageValue           ? { k: 'age',    icon: SPEC_ICON.age,    label: isEn ? 'Age' : '숙성 연수', value: ageValue } : null,
+  ].filter(Boolean) as { k: string; icon: React.ReactNode; label: string; value: React.ReactNode }[]
+
+  if (specs.length === 0) return null
+
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+      {specs.map((s) => (
+        <SpecCard key={s.k} icon={s.icon} label={s.label} value={s.value} />
+      ))}
     </div>
   )
 }
@@ -264,14 +408,14 @@ function Gallery({
     <div className="space-y-3">
       <div
         onClick={() => current && onImageClick(selectedIdx)}
-        className={`aspect-square rounded-xl overflow-hidden bg-neutral-100 relative group ${
+        className={`aspect-[3/4] rounded-2xl overflow-hidden ring-1 ring-neutral-100 bg-gradient-to-b from-amber-50 to-amber-100/50 relative group ${
           current ? 'cursor-zoom-in' : ''
         }`}
       >
         {current ? (
           <>
             <img key={current.id} src={current.imageUrl} alt={nameKo}
-              className="w-full h-full object-cover"
+              className="absolute inset-0 w-full h-full object-contain p-4"
               loading="eager" fetchPriority="high" decoding="async" />
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-colors
               flex items-center justify-center">
@@ -283,20 +427,26 @@ function Gallery({
                 <line x1="8" y1="11" x2="14" y2="11" />
               </svg>
             </div>
+            {images.length > 1 && (
+              <span className="absolute bottom-3 right-3 text-[11px] font-medium text-neutral-500
+                bg-white/85 backdrop-blur rounded-full px-2 py-0.5 ring-1 ring-black/5">
+                {selectedIdx + 1} / {images.length}
+              </span>
+            )}
           </>
         ) : (
           <div className="w-full h-full flex items-center justify-center text-5xl">🥃</div>
         )}
       </div>
       {images.length > 1 && (
-        <div className="flex gap-2 overflow-x-hidden pb-1">
+        <div className="grid grid-cols-4 gap-2">
           {images.map((img, i) => (
             <button key={img.id} onClick={() => onSelect(i)}
-              className={`w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 border-2 transition-colors ${
-                i === selectedIdx ? 'border-primary-500' : 'border-transparent hover:border-neutral-300'
+              className={`aspect-square rounded-xl overflow-hidden bg-neutral-50 ring-2 transition-all ${
+                i === selectedIdx ? 'ring-primary-500' : 'ring-neutral-200 hover:ring-neutral-300'
               }`}>
               <img src={img.imageUrl} alt={`${nameKo} ${i + 1}`}
-                loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                loading="lazy" decoding="async" className="w-full h-full object-contain p-1.5" />
             </button>
           ))}
         </div>
@@ -322,7 +472,7 @@ function PriceTabContent({ spiritId }: { spiritId: number }) {
         </div>
         <Link
           to={`/price-tracker/register?spiritId=${spiritId}`}
-          className="shrink-0 px-3 py-1.5 rounded-lg bg-[#185FA5] text-white text-xs font-medium hover:bg-[#1552a0] transition-colors"
+          className="shrink-0 px-3 py-1.5 rounded-lg bg-primary-700 text-white text-xs font-medium hover:bg-primary-800 transition-colors"
         >
           + {t('price.registerBtn')}
         </Link>
@@ -493,10 +643,10 @@ export default function SpiritDetailPage() {
       </button>
 
       {/* Header card */}
-      <div className="bg-white rounded-2xl shadow-sm mb-6 overflow-hidden">
+      <div className="bg-white rounded-3xl shadow-[0_8px_40px_-12px_rgba(17,24,39,0.12)] ring-1 ring-neutral-100 mb-6 overflow-hidden">
         <div className="md:flex">
           {/* Gallery */}
-          <div className="md:w-72 flex-shrink-0 p-4 md:border-r border-neutral-100">
+          <div className="md:w-80 flex-shrink-0 p-5 md:border-r border-neutral-100">
             <Gallery
               images={spirit.images}
               nameKo={primaryName}
@@ -507,7 +657,7 @@ export default function SpiritDetailPage() {
           </div>
 
           {/* Info */}
-          <div className="flex-1 p-6 flex flex-col gap-5 min-w-0 relative">
+          <div className="flex-1 p-5 md:p-6 flex flex-col gap-4 min-w-0 relative">
             {/* Favorites button — top right */}
             <div className="absolute top-4 right-4">
               <WishlistButtons spiritId={spiritId} onNeedLogin={() => setLoginModal(true)} />
@@ -517,10 +667,12 @@ export default function SpiritDetailPage() {
               <Badge variant={spirit.category} size="sm" className="mb-2">
                 {t(`spirit.category.${spirit.category}`)}
               </Badge>
-              <h1 className="text-2xl font-bold text-neutral-900 leading-tight">
+              <h1 className="text-[26px] md:text-[30px] font-bold text-neutral-900 leading-tight tracking-tight">
                 {primaryName}
               </h1>
-              <p className="text-sm text-neutral-500 mt-0.5">{secondaryName}</p>
+              {secondaryName && (
+                <p className="text-[15px] text-neutral-400 mt-1">{secondaryName}</p>
+              )}
               {primaryProducer && (
                 <p className="text-sm text-neutral-400 mt-1 flex items-center gap-1.5 flex-wrap">
                   <svg className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" viewBox="0 0 24 24"
@@ -549,17 +701,25 @@ export default function SpiritDetailPage() {
               )}
             </div>
 
-            <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
-              {spirit.country     && <InfoRow label={t('spirit.detail.country')}     value={countryLabel} />}
-              {spirit.abv != null  && <InfoRow label={t('spirit.detail.abv')}         value={`${spirit.abv}%`} />}
-              {spirit.volumeMl    && <InfoRow label={t('spirit.detail.volume')}       value={`${spirit.volumeMl}ml`} />}
-              {spirit.region      && <InfoRow label={t('spirit.detail.region')}       value={regionLabel} />}
-              {spirit.bottler     && <InfoRow label={t('spirit.detail.bottler')}      value={spirit.bottler} />}
-              {spirit.bottledYear && <InfoRow label={t('spirit.detail.bottledYear')}  value={spirit.bottledYear} />}
-              {spirit.vintageYear && <InfoRow label={t('spirit.detail.vintageYear')}  value={spirit.vintageYear} />}
-            </dl>
-
             <StarScore score={spirit.avgScore} reviewCount={spirit.reviewCount} size="lg" showBar />
+
+            {/* 핵심 스펙 — 도수 · 용량 · 국가/지역 · 숙성연수 */}
+            <CoreSpecStrip spirit={spirit} countryLabel={countryLabel} regionLabel={regionLabel} isEn={isEn} />
+
+            {/* 보조 메타 — 병입자 · 병입년도 · 빈티지 */}
+            {(spirit.bottler || spirit.bottledYear || spirit.vintageYear) && (
+              <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-[12px] text-neutral-400 -mt-1">
+                {spirit.bottler && (
+                  <span>{t('spirit.detail.bottler')} <b className="text-neutral-600 font-semibold">{spirit.bottler}</b></span>
+                )}
+                {spirit.bottledYear && (
+                  <span>{t('spirit.detail.bottledYear')} <b className="text-neutral-600 font-semibold">{spirit.bottledYear}</b></span>
+                )}
+                {spirit.vintageYear && (
+                  <span>{t('spirit.detail.vintageYear')} <b className="text-neutral-600 font-semibold">{spirit.vintageYear}</b></span>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

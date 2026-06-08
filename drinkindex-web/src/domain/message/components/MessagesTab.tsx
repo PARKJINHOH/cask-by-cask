@@ -176,7 +176,7 @@ function ThreadPanel({
           rows={3}
           maxLength={100}
           placeholder="답장을 입력하세요..."
-          className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary-400"
+          className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary-400"
         />
         <div className="flex items-center justify-between mt-1">
           <span className={['text-xs', replyText.length >= 100 ? 'text-red-500' : 'text-neutral-400'].join(' ')}>

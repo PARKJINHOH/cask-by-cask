@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SeoMeta from '@/shared/components/SeoMeta'
+import Breadcrumb from '@/shared/components/Breadcrumb'
 import {
   useCreateFeedback,
   useFeedbackDetail,
@@ -22,6 +23,7 @@ export default function FeedbackFormPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { id } = useParams()
+  const [searchParams] = useSearchParams()
   const isEdit = !!id
   const feedbackId = Number(id)
 
@@ -29,9 +31,13 @@ export default function FeedbackFormPage() {
   const createMutation = useCreateFeedback()
   const updateMutation = useUpdateFeedback(feedbackId)
 
-  const [type, setType] = useState<FeedbackType | ''>('')
-  const [title, setTitle] = useState('')
-  const [content, setContent] = useState('')
+  // 신규 작성 시 쿼리스트링 프리필 (예: 술 상세 → 정보 오류 신고)
+  const presetType = searchParams.get('type')
+  const [type, setType] = useState<FeedbackType | ''>(
+    !isEdit && FEEDBACK_TYPES.includes(presetType as FeedbackType) ? (presetType as FeedbackType) : '',
+  )
+  const [title, setTitle] = useState(isEdit ? '' : (searchParams.get('title') ?? ''))
+  const [content, setContent] = useState(isEdit ? '' : (searchParams.get('content') ?? ''))
   const [images, setImages] = useState<ImagePreview[]>([])
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitError, setSubmitError] = useState('')
@@ -103,6 +109,14 @@ export default function FeedbackFormPage() {
     <div className="max-w-3xl mx-auto px-4 py-10">
       <SeoMeta title={isEdit ? t('feedback.form.editTitle') : t('feedback.new')} noindex />
 
+      <Breadcrumb
+        className="mb-2"
+        items={[
+          { label: t('menu.request') },
+          { label: t('menu.requestFeedback'), to: '/request/feedback' },
+        ]}
+      />
+
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-neutral-900">
           {isEdit ? t('feedback.form.editTitle') : t('feedback.new')}
@@ -119,7 +133,7 @@ export default function FeedbackFormPage() {
             value={type}
             onChange={(e) => setType(e.target.value as FeedbackType)}
             className={`w-full px-3 py-2.5 text-sm border rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-primary-400 transition-colors ${
-              errors.type ? 'border-red-400' : 'border-neutral-200'
+              errors.type ? 'border-red-400' : 'border-neutral-300'
             }`}
           >
             <option value="">{t('feedback.form.typePlaceholder')}</option>
@@ -144,7 +158,7 @@ export default function FeedbackFormPage() {
             maxLength={200}
             placeholder={t('feedback.form.titlePlaceholder')}
             className={`w-full px-3 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400 transition-colors ${
-              errors.title ? 'border-red-400' : 'border-neutral-200'
+              errors.title ? 'border-red-400' : 'border-neutral-300'
             }`}
           />
           {errors.title && <p className="mt-1 text-xs text-red-500">{errors.title}</p>}
@@ -162,7 +176,7 @@ export default function FeedbackFormPage() {
             rows={8}
             placeholder={t('feedback.form.contentPlaceholder')}
             className={`w-full px-3 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400 transition-colors resize-none ${
-              errors.content ? 'border-red-400' : 'border-neutral-200'
+              errors.content ? 'border-red-400' : 'border-neutral-300'
             }`}
           />
           <div className="flex justify-between mt-1">

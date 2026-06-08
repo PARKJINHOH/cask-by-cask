@@ -62,7 +62,7 @@ function RejectModal({ open, request, onClose }: RejectModalProps) {
                 onChange={(e) => setReason(e.target.value)}
                 rows={3}
                 placeholder="반려 사유를 입력하세요 (요청자에게 알림으로 전달됩니다)"
-                className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg
+                className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg
                   focus:outline-none focus:ring-2 focus:ring-primary-400 resize-none"
               />
               <div className="flex justify-end gap-2">

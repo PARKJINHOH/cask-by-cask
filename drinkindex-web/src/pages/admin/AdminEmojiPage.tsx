@@ -529,7 +529,7 @@ function EmojiForm({
               value={label}
               onChange={(e) => setLabel(e.target.value)}
               placeholder="좋아요, 웃음..."
-              className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400"
+              className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400"
             />
           </div>
 
@@ -539,7 +539,7 @@ function EmojiForm({
             <select
               value={groupId ?? ''}
               onChange={(e) => setGroupId(e.target.value ? Number(e.target.value) : null)}
-              className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
+              className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
             >
               <option value="">그룹 없음</option>
               {groups.map((g) => (
@@ -558,7 +558,7 @@ function EmojiForm({
               value={unicode}
               onChange={(e) => { setUnicode(e.target.value); if (e.target.value) { setImageUrl(''); setPreview(null) } }}
               placeholder="👍"
-              className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400"
+              className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400"
             />
           </div>
 
@@ -667,7 +667,7 @@ function GroupForm({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="네이버 이모지, 다음 이모지..."
-            className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400"
+            className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400"
             autoFocus
           />
         </div>

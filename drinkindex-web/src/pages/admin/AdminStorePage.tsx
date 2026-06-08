@@ -72,7 +72,7 @@ export default function AdminStorePage() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && (setKeyword(input.trim()), setPage(0))}
             placeholder="매장명 검색"
-            className="border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+            className="border border-neutral-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
           />
           <button onClick={() => { setKeyword(input.trim()); setPage(0) }} className="px-3 py-2 text-sm rounded-lg border border-neutral-200 hover:bg-neutral-50">검색</button>
         </div>
@@ -200,7 +200,7 @@ function MergeRow({ suggestedId, onDone }: { suggestedId: number; onDone: () => 
           onChange={(e) => { setKeyword(e.target.value); setTarget(null); setOpen(true) }}
           onFocus={() => setOpen(true)}
           placeholder="대상 매장 검색"
-          className="w-full border border-neutral-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+          className="w-full border border-neutral-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
         />
         {open && results && results.length > 0 && !target && (
           <ul className="absolute z-10 w-full bg-white border border-neutral-200 rounded-lg mt-1 shadow-lg max-h-40 overflow-y-auto">
@@ -242,7 +242,7 @@ function AliasPanel({ store, onClose }: { store: AdminStore; onClose: () => void
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && add()}
           placeholder="별칭 추가"
-          className="flex-1 border border-neutral-200 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+          className="flex-1 border border-neutral-300 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
         />
         <button onClick={add} disabled={addAlias.isPending} className="px-3 py-1.5 text-xs font-medium rounded-lg bg-primary-800 text-white disabled:opacity-50">추가</button>
       </div>
@@ -287,7 +287,7 @@ function CreateStoreForm({ onDone }: { onDone: () => void }) {
   return (
     <div className="p-4 bg-white rounded-xl shadow-sm flex flex-wrap items-end gap-3">
       <Field label="매장명">
-        <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" />
+        <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="border border-neutral-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" />
       </Field>
       <Field label="유형">
         <div className="flex gap-1">
@@ -300,7 +300,7 @@ function CreateStoreForm({ onDone }: { onDone: () => void }) {
       </Field>
       {storeType === 'DUTYFREE' && (
         <Field label="채널">
-          <select value={dutyfreeChannel} onChange={(e) => setDutyfreeChannel(e.target.value as DutyFreeChannel)} className="border border-neutral-200 rounded-lg px-3 py-2 text-sm">
+          <select value={dutyfreeChannel} onChange={(e) => setDutyfreeChannel(e.target.value as DutyFreeChannel)} className="border border-neutral-300 rounded-lg px-3 py-2 text-sm">
             {(Object.keys(CHANNEL_LABEL) as DutyFreeChannel[]).map((c) => (
               <option key={c} value={c}>{CHANNEL_LABEL[c]}</option>
             ))}
@@ -308,7 +308,7 @@ function CreateStoreForm({ onDone }: { onDone: () => void }) {
         </Field>
       )}
       <Field label="지역(선택)">
-        <input value={region} onChange={(e) => setRegion(e.target.value)} className="border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" />
+        <input value={region} onChange={(e) => setRegion(e.target.value)} className="border border-neutral-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" />
       </Field>
       <button onClick={submit} disabled={create.isPending || !displayName.trim()} className="px-4 py-2 text-sm font-medium rounded-lg bg-primary-800 text-white disabled:opacity-50">등록</button>
       <button onClick={onDone} className="px-3 py-2 text-sm text-neutral-500">취소</button>

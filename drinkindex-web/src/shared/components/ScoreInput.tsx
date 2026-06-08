@@ -75,7 +75,7 @@ export default function ScoreInput({
           value={value}
           onChange={handleNumber}
           disabled={disabled}
-          className="w-20 text-center text-xl font-bold py-1.5 px-1 rounded-xl border border-neutral-200
+          className="w-20 text-center text-xl font-bold py-1.5 px-1 rounded-xl border border-neutral-300
             focus:outline-none focus:ring-2 focus:ring-primary-400 tabular-nums bg-white
             [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none
             [&::-webkit-inner-spin-button]:appearance-none"
@@ -176,7 +176,7 @@ export default function ScoreInput({
             placeholder={notePlaceholder}
             maxLength={200}
             rows={2}
-            className="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl resize-y
+            className="w-full px-3 py-2.5 text-sm border border-neutral-300 rounded-xl resize-y
               focus:outline-none focus:ring-2 focus:ring-primary-400
               placeholder:text-neutral-300 leading-relaxed min-h-[4rem]"
           />

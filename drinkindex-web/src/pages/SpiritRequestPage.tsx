@@ -13,11 +13,10 @@ import { CATEGORY_TO_PRODUCER_TYPE } from '@/domain/producer/types/producer.type
 import CountryRegionSelector from '@/domain/location/components/CountryRegionSelector'
 import { ISO3166_COUNTRIES } from '@/domain/location/data/iso3166Countries'
 import SeoMeta from '@/shared/components/SeoMeta'
+import Breadcrumb from '@/shared/components/Breadcrumb'
 
 // 카테고리 선택 카드 (관리자 등록 폼과 동일한 UX)
-const CATEGORY_CARDS: Array<[SpiritCategory, string]> = [
-  ['WHISKY', '🥃'], ['COGNAC', '🍇'], ['WINE', '🍷'], ['OTHER', '🍸'],
-]
+const CATEGORY_CARDS: SpiritCategory[] = ['WHISKY', 'COGNAC', 'WINE', 'OTHER']
 
 // 카테고리 핵심값 선택지 (신청자 입력 — 관리자 등록 참고용). 라벨은 spirit.* 번역키 사용
 const CATEGORY_CORE_OPTS: Record<SpiritCategory, { field: keyof SpiritRegisterRequestForm; ns: string; values: string[] }> = {
@@ -281,6 +280,14 @@ export default function SpiritRequestPage() {
     <div className="max-w-6xl mx-auto px-4 py-8">
       <SeoMeta title={t('spiritRequest.title')} description={t('spiritRequest.subtitle')} noindex />
 
+      <Breadcrumb
+        className="mb-2"
+        items={[
+          { label: t('menu.request') },
+          { label: t('menu.requestSpirit'), to: '/request/spirit' },
+        ]}
+      />
+
       {/* Page title */}
       <div className="mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900">{t('spiritRequest.title')}</h1>
@@ -310,18 +317,17 @@ export default function SpiritRequestPage() {
             <SectionTitle step={1} title={t('spiritRequest.form.categoryStep')} hint={t('spiritRequest.form.categoryStepHint')} />
             <input type="hidden" {...register('category', { required: true })} />
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {CATEGORY_CARDS.map(([cat, emoji]) => (
+              {CATEGORY_CARDS.map((cat) => (
                 <button
                   key={cat}
                   type="button"
                   onClick={() => handleSelectCategory(cat)}
-                  className={`py-4 rounded-xl border-2 text-sm font-semibold transition-all flex flex-col items-center gap-1.5 ${
+                  className={`h-12 rounded-xl border-2 text-sm font-semibold transition-all flex items-center justify-center ${
                     selectedCategory === cat
                       ? 'border-amber-500 bg-amber-50 text-amber-700'
                       : 'border-neutral-200 text-neutral-600 hover:border-amber-300 hover:bg-amber-50/50'
                   }`}
                 >
-                  <span className="text-2xl leading-none">{emoji}</span>
                   {t(`spirit.category.${cat}`)}
                 </button>
               ))}
@@ -345,7 +351,7 @@ export default function SpiritRequestPage() {
                     <input
                       {...register('nameKo', { required: true, maxLength: 200 })}
                       maxLength={200}
-                      className={`${FIELD_CLS} ${errors.nameKo ? 'border-red-400' : 'border-neutral-200'}`}
+                      className={`${FIELD_CLS} ${errors.nameKo ? 'border-red-400' : 'border-neutral-300'}`}
                       placeholder={t(`spiritRequest.form.nameKoPlaceholder.${selectedCategory}`)}
                     />
                     {errors.nameKo && <p className="mt-1 text-xs text-red-500">{t('spiritRequest.form.errNameKo')}</p>}
@@ -355,7 +361,7 @@ export default function SpiritRequestPage() {
                     <input
                       {...register('nameEn', { required: true, maxLength: 200 })}
                       maxLength={200}
-                      className={`${FIELD_CLS} ${errors.nameEn ? 'border-red-400' : 'border-neutral-200'}`}
+                      className={`${FIELD_CLS} ${errors.nameEn ? 'border-red-400' : 'border-neutral-300'}`}
                       placeholder={t(`spiritRequest.form.nameEnPlaceholder.${selectedCategory}`)}
                     />
                     {errors.nameEn && <p className="mt-1 text-xs text-red-500">{t('spiritRequest.form.errNameEn')}</p>}
@@ -369,7 +375,7 @@ export default function SpiritRequestPage() {
                       <ReqLabel>{t(`spiritRequest.form.categoryCore.${selectedCategory}`)}</ReqLabel>
                       <select
                         {...register(core.field, { required: true })}
-                        className={`${FIELD_CLS} bg-white ${coreError ? 'border-red-400' : 'border-neutral-200'}`}
+                        className={`${FIELD_CLS} bg-white ${coreError ? 'border-red-400' : 'border-neutral-300'}`}
                       >
                         <option value="">{t('spiritRequest.form.categoryCorePlaceholder')}</option>
                         {core.values.map((v) => {
@@ -391,7 +397,7 @@ export default function SpiritRequestPage() {
                             })}
                             maxLength={100}
                             placeholder={t('spiritRequest.form.whiskyStyleOtherPlaceholder')}
-                            className={`${FIELD_CLS} ${errors.whiskyStyleOther ? 'border-red-400' : 'border-neutral-200'}`}
+                            className={`${FIELD_CLS} ${errors.whiskyStyleOther ? 'border-red-400' : 'border-neutral-300'}`}
                           />
                           {errors.whiskyStyleOther && <p className="mt-1 text-xs text-red-500">{t('spiritRequest.form.errWhiskyStyleOther')}</p>}
                         </div>
@@ -403,7 +409,7 @@ export default function SpiritRequestPage() {
                         <input
                           type="number" min="1800" max="2100"
                           {...register('vintageYear')}
-                          className={`${FIELD_CLS} border-neutral-200`}
+                          className={`${FIELD_CLS} border-neutral-300`}
                           placeholder="2010"
                         />
                       </div>
@@ -421,7 +427,7 @@ export default function SpiritRequestPage() {
                         <input
                           type="number" step="0.1" min="0" max="100"
                           {...register('abv', { required: true })}
-                          className={`${FIELD_CLS} bg-white pr-8 ${errors.abv ? 'border-red-400' : 'border-neutral-200'}`}
+                          className={`${FIELD_CLS} bg-white pr-8 ${errors.abv ? 'border-red-400' : 'border-neutral-300'}`}
                           placeholder="43.0"
                         />
                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">%</span>
@@ -434,7 +440,7 @@ export default function SpiritRequestPage() {
                         <input
                           type="number" min="1"
                           {...register('volumeMl', { required: true })}
-                          className={`${FIELD_CLS} bg-white pr-10 ${errors.volumeMl ? 'border-red-400' : 'border-neutral-200'}`}
+                          className={`${FIELD_CLS} bg-white pr-10 ${errors.volumeMl ? 'border-red-400' : 'border-neutral-300'}`}
                           placeholder="700"
                         />
                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">ml</span>
@@ -488,7 +494,7 @@ export default function SpiritRequestPage() {
                     <input
                       {...register('caskNo', { maxLength: 100 })}
                       maxLength={100}
-                      className={`${FIELD_CLS} border-neutral-200`}
+                      className={`${FIELD_CLS} border-neutral-300`}
                     />
                   </div>
                 )}
@@ -508,7 +514,7 @@ export default function SpiritRequestPage() {
                     {...register('ageStatement')}
                     disabled={isNas}
                     placeholder={t('spiritRequest.form.agePlaceholder')}
-                    className={`${FIELD_CLS} ${isNas ? 'opacity-40 cursor-not-allowed bg-neutral-50 border-neutral-200' : 'border-neutral-200'}`}
+                    className={`${FIELD_CLS} ${isNas ? 'opacity-40 cursor-not-allowed bg-neutral-50 border-neutral-300' : 'border-neutral-300'}`}
                   />
                 </div>
 
@@ -521,7 +527,7 @@ export default function SpiritRequestPage() {
                       {...register('distilledDate', { validate: (v) => !v || DATE_RE.test(v) })}
                       maxLength={7}
                       placeholder="YYYY / YYYY-MM"
-                      className={`${FIELD_CLS} ${errors.distilledDate ? 'border-red-400' : 'border-neutral-200'}`}
+                      className={`${FIELD_CLS} ${errors.distilledDate ? 'border-red-400' : 'border-neutral-300'}`}
                     />
                     {errors.distilledDate && <p className="mt-1 text-xs text-red-500">{t('spiritRequest.form.errDateFormat')}</p>}
                   </div>
@@ -532,7 +538,7 @@ export default function SpiritRequestPage() {
                       {...register('bottledDate', { validate: (v) => !v || DATE_RE.test(v) })}
                       maxLength={7}
                       placeholder="YYYY / YYYY-MM"
-                      className={`${FIELD_CLS} ${errors.bottledDate ? 'border-red-400' : 'border-neutral-200'}`}
+                      className={`${FIELD_CLS} ${errors.bottledDate ? 'border-red-400' : 'border-neutral-300'}`}
                     />
                     {errors.bottledDate && <p className="mt-1 text-xs text-red-500">{t('spiritRequest.form.errDateFormat')}</p>}
                   </div>
@@ -540,7 +546,7 @@ export default function SpiritRequestPage() {
 
                 <div>
                   <label className={LABEL_CLS}>{t('spiritRequest.form.releaseDate')}</label>
-                  <input type="date" {...register('releaseDate')} className={`${FIELD_CLS} border-neutral-200`} />
+                  <input type="date" {...register('releaseDate')} className={`${FIELD_CLS} border-neutral-300`} />
                 </div>
 
                 {/* 기타 문구 */}
@@ -550,7 +556,7 @@ export default function SpiritRequestPage() {
                     {...register('note', { maxLength: 500 })}
                     maxLength={500}
                     rows={3}
-                    className={`${FIELD_CLS} border-neutral-200 resize-none`}
+                    className={`${FIELD_CLS} border-neutral-300 resize-none`}
                     placeholder={t('spiritRequest.form.notePlaceholder')}
                   />
                   <p className="mt-1 text-xs text-neutral-400">{t('spiritRequest.form.noteHint')}</p>

@@ -123,7 +123,7 @@ export default function InquiryPage() {
               value={category}
               onChange={(e) => setCategory(e.target.value as InquiryCategory)}
               className={`w-full px-3 py-2.5 text-sm border rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-primary-400 transition-colors ${
-                errors.category ? 'border-red-400' : 'border-neutral-200'
+                errors.category ? 'border-red-400' : 'border-neutral-300'
               }`}
             >
               <option value="">{t('inquiry.form.categoryPlaceholder')}</option>
@@ -147,7 +147,7 @@ export default function InquiryPage() {
               maxLength={200}
               placeholder="이메일 입력"
               className={`w-full px-3 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400 transition-colors ${
-                errors.senderEmail ? 'border-red-400' : 'border-neutral-200'
+                errors.senderEmail ? 'border-red-400' : 'border-neutral-300'
               }`}
             />
             {errors.senderEmail && <p className="mt-1 text-xs text-red-500">{errors.senderEmail}</p>}
@@ -166,7 +166,7 @@ export default function InquiryPage() {
             maxLength={200}
             placeholder={t('inquiry.form.titlePlaceholder')}
             className={`w-full px-3 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400 transition-colors ${
-              errors.title ? 'border-red-400' : 'border-neutral-200'
+              errors.title ? 'border-red-400' : 'border-neutral-300'
             }`}
           />
           {errors.title && <p className="mt-1 text-xs text-red-500">{errors.title}</p>}
@@ -184,7 +184,7 @@ export default function InquiryPage() {
             rows={8}
             placeholder={t('inquiry.form.bodyPlaceholder')}
             className={`w-full px-3 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400 transition-colors resize-none ${
-              errors.body ? 'border-red-400' : 'border-neutral-200'
+              errors.body ? 'border-red-400' : 'border-neutral-300'
             }`}
           />
           <div className="flex justify-between mt-1">

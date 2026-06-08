@@ -171,7 +171,7 @@ export default function PriceRegisterPage() {
         <p className="text-lg font-semibold text-neutral-800 mb-2">{t('price.register.success')}</p>
         <button
           onClick={() => navigate('/mypage?tab=priceReports')}
-          className="mt-6 px-6 py-2 bg-[#185FA5] text-white rounded-xl text-sm"
+          className="mt-6 px-6 py-2 bg-primary-700 text-white rounded-xl text-sm"
         >
           {t('price.register.goMyPage')}
         </button>
@@ -212,7 +212,7 @@ export default function PriceRegisterPage() {
                 onChange={(e) => { setSpiritKeyword(e.target.value); setPickedSpirit(null); setSpiritOpen(true) }}
                 onFocus={() => setSpiritOpen(true)}
                 placeholder={t('price.register.spiritPlaceholder')}
-                className="w-full border border-neutral-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                className="w-full border border-neutral-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-200"
               />
               {spiritOpen && spiritResults && spiritResults.length > 0 && !pickedSpirit && (
                 <ul className="absolute z-10 w-full bg-white border border-neutral-200 rounded-xl mt-1 shadow-lg max-h-52 overflow-y-auto">
@@ -241,7 +241,7 @@ export default function PriceRegisterPage() {
                 key={tp}
                 onClick={() => { setStoreType(tp); setSelectedStore(null); setUseSuggest(false) }}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                  storeType === tp ? 'bg-[#185FA5] text-white border-[#185FA5]' : 'text-neutral-500 border-neutral-200'
+                  storeType === tp ? 'bg-primary-700 text-white border-primary-700' : 'text-neutral-500 border-neutral-200'
                 }`}
               >
                 {tp === 'DOMESTIC' ? t('price.chart.domestic') : t('price.chart.dutyfree')}
@@ -265,7 +265,7 @@ export default function PriceRegisterPage() {
                   key={c}
                   onClick={() => setChannel(c)}
                   className={`px-2.5 py-1 rounded-lg text-xs border transition-colors ${
-                    channel === c ? 'bg-blue-50 text-[#185FA5] border-[#185FA5]' : 'text-neutral-400 border-neutral-200'
+                    channel === c ? 'bg-primary-50 text-primary-700 border-primary-700' : 'text-neutral-400 border-neutral-200'
                   }`}
                 >
                   {t(`price.register.channel.${c}`)}
@@ -279,7 +279,7 @@ export default function PriceRegisterPage() {
               value={suggestedStoreName}
               onChange={(e) => setSuggestedStoreName(e.target.value)}
               placeholder={isDutyFree ? t('price.register.brandPlaceholder') : t('price.register.storePlaceholder')}
-              className="w-full border border-neutral-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+              className="w-full border border-neutral-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-200"
             />
           ) : (
             <div className="relative">
@@ -288,7 +288,7 @@ export default function PriceRegisterPage() {
                 onChange={(e) => { setStoreKeyword(e.target.value); setSelectedStore(null); setStoreOpen(true) }}
                 onFocus={() => setStoreOpen(true)}
                 placeholder={t('price.register.storePlaceholder')}
-                className="w-full border border-neutral-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                className="w-full border border-neutral-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-200"
               />
               {storeOpen && storeResults && storeResults.length > 0 && !selectedStore && (
                 <ul className="absolute z-10 w-full bg-white border border-neutral-200 rounded-xl mt-1 shadow-lg max-h-48 overflow-y-auto">
@@ -338,7 +338,7 @@ export default function PriceRegisterPage() {
                       <select
                         value={item.discountType}
                         onChange={(e) => patchDiscount(idx, { discountType: e.target.value as DiscountType })}
-                        className="border border-neutral-200 rounded-lg px-2 py-1.5 text-xs"
+                        className="border border-neutral-300 rounded-lg px-2 py-1.5 text-xs"
                       >
                         {DISCOUNT_TYPES.map((dt) => (
                           <option key={dt} value={dt}>{t(`price.register.discountType.${dt}`)}</option>
@@ -348,28 +348,28 @@ export default function PriceRegisterPage() {
                         placeholder={t('price.register.discountLabel')}
                         value={item.label}
                         onChange={(e) => patchDiscount(idx, { label: e.target.value })}
-                        className="flex-1 border border-neutral-200 rounded-lg px-2 py-1.5 text-xs"
+                        className="flex-1 border border-neutral-300 rounded-lg px-2 py-1.5 text-xs"
                       />
                       <input
                         type="number"
                         placeholder="$"
                         value={item.amount || ''}
                         onChange={(e) => patchDiscount(idx, { amount: Number(e.target.value) })}
-                        className="w-20 border border-neutral-200 rounded-lg px-2 py-1.5 text-xs"
+                        className="w-20 border border-neutral-300 rounded-lg px-2 py-1.5 text-xs"
                       />
                       <button onClick={() => removeDiscountItem(idx)} className="text-neutral-300 hover:text-red-400 text-lg leading-none">×</button>
                     </div>
                   ))}
-                  <button onClick={addDiscountItem} className="text-xs text-[#185FA5] hover:text-blue-700 font-medium">
+                  <button onClick={addDiscountItem} className="text-xs text-primary-700 hover:text-primary-800 font-medium">
                     + {t('price.register.addDiscount')}
                   </button>
                 </div>
               </div>
 
               {/* 체감가 + 환율 */}
-              <div className="rounded-xl bg-blue-50/60 border border-blue-100 px-3 py-2.5 flex items-center justify-between">
+              <div className="rounded-xl bg-primary-50/60 border border-primary-100 px-3 py-2.5 flex items-center justify-between">
                 <span className="text-xs text-neutral-500">{t('price.register.feelPrice')}</span>
-                <span className="text-sm font-bold text-[#185FA5]">$ {feelPrice.toLocaleString()}</span>
+                <span className="text-sm font-bold text-primary-700">$ {feelPrice.toLocaleString()}</span>
               </div>
               <LabeledInput label={t('price.register.exchangeRate')} value={exchangeRate} onChange={setExchangeRate} suffix="원/USD" required />
               {krwPreview > 0 && (
@@ -387,7 +387,7 @@ export default function PriceRegisterPage() {
             type="date"
             value={purchasedAt}
             onChange={(e) => setPurchasedAt(e.target.value)}
-            className="border border-neutral-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+            className="border border-neutral-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-200"
           />
         </Section>
 
@@ -399,7 +399,7 @@ export default function PriceRegisterPage() {
             placeholder={t('price.register.descPlaceholder')}
             rows={3}
             maxLength={500}
-            className="w-full border border-neutral-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 resize-none"
+            className="w-full border border-neutral-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-200 resize-none"
           />
         </Section>
 
@@ -421,7 +421,7 @@ export default function PriceRegisterPage() {
                 </button>
                 <button
                   onClick={() => setImagePublicFlags((prev) => prev.map((f, i) => (i === idx ? !f : f)))}
-                  className={`mt-1 block w-full text-center text-[10px] rounded ${imagePublicFlags[idx] ? 'text-blue-600' : 'text-neutral-400'}`}
+                  className={`mt-1 block w-full text-center text-[10px] rounded ${imagePublicFlags[idx] ? 'text-primary-700' : 'text-neutral-400'}`}
                 >
                   {imagePublicFlags[idx] ? t('price.register.public') : t('price.register.private')}
                 </button>
@@ -431,7 +431,7 @@ export default function PriceRegisterPage() {
               <button
                 onClick={() => fileRef.current?.click()}
                 disabled={uploading}
-                className="w-20 h-20 rounded-xl border-2 border-dashed border-neutral-200 hover:border-blue-300 flex flex-col items-center justify-center text-neutral-300 hover:text-blue-400 transition-colors"
+                className="w-20 h-20 rounded-xl border-2 border-dashed border-neutral-200 hover:border-primary-300 flex flex-col items-center justify-center text-neutral-300 hover:text-primary-400 transition-colors"
               >
                 {uploading ? '...' : (<><span className="text-2xl">+</span><span className="text-[10px] mt-0.5">{t('price.register.uploadImage')}</span></>)}
               </button>
@@ -454,7 +454,7 @@ export default function PriceRegisterPage() {
                 key={m}
                 onClick={() => setAuthorMode(m)}
                 className={`flex-1 px-3 py-2 rounded-xl text-sm font-medium border transition-colors ${
-                  authorMode === m ? 'bg-[#185FA5] text-white border-[#185FA5]' : 'text-neutral-500 border-neutral-200'
+                  authorMode === m ? 'bg-primary-700 text-white border-primary-700' : 'text-neutral-500 border-neutral-200'
                 }`}
               >
                 {m === 'NICKNAME' ? t('price.register.authorNickname') : t('price.register.authorAnonymous')}
@@ -470,7 +470,7 @@ export default function PriceRegisterPage() {
         <button
           onClick={handleSubmit}
           disabled={!canSubmit || submitting}
-          className="w-full py-3 bg-[#185FA5] text-white rounded-xl font-semibold text-sm hover:bg-[#1552a0] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full py-3 bg-primary-700 text-white rounded-xl font-semibold text-sm hover:bg-primary-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {submitting ? '...' : t('price.register.submit')}
         </button>
@@ -510,7 +510,7 @@ function LabeledInput({
         {required && <span className="text-red-500 ml-0.5">*</span>}
         {hint && <span className="text-neutral-300 ml-1">· {hint}</span>}
       </label>
-      <div className="flex items-center border border-neutral-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-blue-200">
+      <div className="flex items-center bg-white border border-neutral-300 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-primary-200">
         <input
           type="number"
           value={value}

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useByobDetail, useByobActions } from '@/domain/byob/hooks/useByob'
 import PostEditor from '@/domain/community/components/PostEditor'
 import SeoMeta from '@/shared/components/SeoMeta'
+import Breadcrumb from '@/shared/components/Breadcrumb'
 
 function toLocalDatetimeValue(iso: string) {
   if (!iso) return ''
@@ -60,7 +61,7 @@ function HostBottlesInput({ bottles, onChange }: HostBottlesInputProps) {
           onKeyDown={handleKeyDown}
           placeholder={t('byob.bottleInputPlaceholder')}
           maxLength={100}
-          className="flex-1 px-3 py-2 border border-neutral-200 rounded-lg text-sm
+          className="flex-1 px-3 py-2 border border-neutral-300 rounded-lg text-sm
             focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-400"
         />
         <button
@@ -194,6 +195,14 @@ export default function ByobFormPage() {
     <div className="max-w-5xl mx-auto px-4 py-8">
       <SeoMeta title={isEdit ? t('byob.edit') : t('byob.write')} noindex />
 
+      <Breadcrumb
+        className="mb-2"
+        items={[
+          { label: t('menu.community'), to: '/community/all' },
+          { label: t('menu.communityByob'), to: '/community/byob' },
+        ]}
+      />
+
       <h1 className="text-2xl font-bold text-neutral-900 mb-6">
         {isEdit ? t('byob.edit') : t('byob.write')}
       </h1>
@@ -290,7 +299,7 @@ export default function ByobFormPage() {
               </label>
               <input type="number" value={maxParticipants}
                 onChange={(e) => setMaxParticipants(Math.max(2, Math.min(100, Number(e.target.value))))}
-                min={2} max={100} className="w-32 px-3 py-2 border border-neutral-200 rounded-lg text-sm
+                min={2} max={100} className="w-32 px-3 py-2 border border-neutral-300 rounded-lg text-sm
                   focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-400" />
             </div>
 

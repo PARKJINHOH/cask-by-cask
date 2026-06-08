@@ -38,8 +38,8 @@ export default function NasToggle({ isNas, ageStatement, onNasChange, onAgeChang
           placeholder="예: 12"
           className={`${INPUT_CLS} ${
             isNas
-              ? 'opacity-40 cursor-not-allowed bg-neutral-50 border-neutral-200'
-              : 'border-neutral-200'
+              ? 'opacity-40 cursor-not-allowed bg-neutral-50 border-neutral-300'
+              : 'border-neutral-300'
           }`}
         />
       </div>
