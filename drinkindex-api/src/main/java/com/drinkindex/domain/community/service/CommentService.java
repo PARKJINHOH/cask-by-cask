@@ -139,7 +139,7 @@ public class CommentService {
         PostComment saved = commentRepository.save(comment);
         postRepository.incrementCommentCount(postId);
 
-        // [숙성력] 댓글 작성 점수 지급 (일일 한도 적용)
+        // [레벨] 댓글 작성 점수 지급 (일일 한도 적용)
         scoreService.award(userId, ScoreActions.COMMENT_WRITE, "COMMENT", saved.getId());
 
         // 알림 발송 (비동기)

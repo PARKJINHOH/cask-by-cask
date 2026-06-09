@@ -55,7 +55,7 @@ public class ScoreService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
-        // [패치 3] MEMBER만 숙성력 집계 대상 — 관리자·증류소는 차감도 스킵
+        // [패치 3] MEMBER만 레벨 집계 대상 — 관리자·증류소는 차감도 스킵
         if (!isScoreEligible(user)) return;
 
         Integer awarded = scoreHistoryRepository.sumAwardedScoreByReference(
@@ -83,7 +83,7 @@ public class ScoreService {
         User user = userRepository.findById(targetUserId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
-        // [패치 3] 관리자·증류소 담당자는 숙성력 미집계 — 수동 조정 대상에서도 제외
+        // [패치 3] 관리자·증류소 담당자는 레벨 미집계 — 수동 조정 대상에서도 제외
         if (!isScoreEligible(user)) return;
 
         user.addMaturingPower(amount);
@@ -109,7 +109,7 @@ public class ScoreService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
-        // [패치 3] MEMBER만 숙성력 집계 대상 — SUPER_ADMIN·ADMIN·MODERATOR·증류소(PARTNER) 적립/차감 모두 스킵
+        // [패치 3] MEMBER만 레벨 집계 대상 — SUPER_ADMIN·ADMIN·MODERATOR·증류소(PARTNER) 적립/차감 모두 스킵
         if (!isScoreEligible(user)) return;
 
         int actualScore = config.getScore();
@@ -151,7 +151,7 @@ public class ScoreService {
         scoreHistoryRepository.save(history);
     }
 
-    // [패치 3] MEMBER만 숙성력(점수·레벨·랭킹) 집계 대상.
+    // [패치 3] MEMBER만 점수·레벨·랭킹 집계 대상.
     // 관리자(SUPER_ADMIN/ADMIN/MODERATOR)·증류소 담당자(PARTNER)는 제외 → 고정 아이콘 표시.
     private boolean isScoreEligible(User user) {
         return user.getRole() == Role.MEMBER;
@@ -201,15 +201,17 @@ public class ScoreService {
         if (!isScoreEligible(user)) return;
         int newLevel = calculateLevel(user.getMaturingPower());
         if (newLevel != user.getCurrentLevel()) {
-            String levelName = getLevelName(newLevel);
+            boolean levelUp = newLevel > user.getCurrentLevel();
             user.updateLevel(newLevel);
-            notificationService.send(
-                    user,
-                    NotificationType.SYSTEM,
-                    "Lv." + newLevel + " " + levelName + "으로 레벨업!",
-                    "LEVEL_UP",
-                    null
-            );
+            if (levelUp) {
+                notificationService.send(
+                        user,
+                        NotificationType.SYSTEM,
+                        "Lv." + newLevel + " 달성! 레벨업 🎉",
+                        "LEVEL_UP",
+                        null
+                );
+            }
         }
     }
 
@@ -221,15 +223,6 @@ public class ScoreService {
                 .findFirst()
                 .map(MemberLevelConfig::getLevel)
                 .orElse(1);
-    }
-
-    private String getLevelName(int level) {
-        return memberLevelConfigRepository.findAllByIsActiveTrueOrderByMinScoreDesc()
-                .stream()
-                .filter(c -> c.getLevel() == level)
-                .findFirst()
-                .map(MemberLevelConfig::getName)
-                .orElse("Lv." + level);
     }
 
     // 액션 키가 자유 문자열이므로, 설명은 관리자가 설정한 config.description 을 사용.

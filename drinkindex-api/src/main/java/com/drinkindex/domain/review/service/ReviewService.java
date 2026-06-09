@@ -93,7 +93,7 @@ public class ReviewService {
         Review saved = reviewRepository.save(review);
         recalculateAvgScore(spiritId);
 
-        // [숙성력] 술 상세 리뷰 작성 점수 지급
+        // [레벨] 술 상세 리뷰 작성 점수 지급
         scoreService.award(userId, ScoreActions.SPIRIT_REVIEW_WRITE, "SPIRIT_REVIEW", saved.getId());
 
         return ReviewResponse.from(saved);

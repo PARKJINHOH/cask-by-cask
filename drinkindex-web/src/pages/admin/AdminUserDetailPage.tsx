@@ -69,7 +69,7 @@ const MENU_TREE: MenuTreeGroup[] = [
     ],
   },
   {
-    groupLabel: '숙성력',
+    groupLabel: '레벨',
     items: [
       { label: '점수 설정', menuKey: null },
       { label: '레벨 설정', menuKey: null },

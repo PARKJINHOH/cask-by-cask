@@ -105,7 +105,7 @@ export default function UserBadge({
       ? '관리자'
       : user.role === 'PARTNER'
         ? '증류소 담당자'
-        : `Lv.${level} ${levelName} · 숙성력 ${(user.maturingPower ?? 0).toLocaleString()}`
+        : `Lv.${level}`
 
   // ─── 포털 오버레이 (position:fixed → 어떤 overflow도 뚫음) ──
   const avatarRef = useRef<HTMLSpanElement>(null)
@@ -169,7 +169,7 @@ export default function UserBadge({
 
   const scoreBelowEl = scoreBelow && user.role === 'MEMBER' && (
     <span className={`${SCORE_CLS[size]} text-amber-600 font-medium leading-none`}>
-      숙성력 Lv.{level} ({(user.maturingPower ?? 0).toLocaleString()}p)
+      Lv.{level}
     </span>
   )
 
@@ -245,12 +245,12 @@ export default function UserBadge({
 
           {showScore && !scoreBelow && user.role === 'MEMBER' && (
             <span className={`${SCORE_CLS[size]} text-amber-600 font-medium`}>
-              {(user.maturingPower ?? 0).toLocaleString()}
+              Lv.{level}
             </span>
           )}
         </span>
 
-        {/* 숙성력 두 번째 줄 */}
+        {/* 레벨 두 번째 줄 */}
         {scoreBelowEl}
 
         {/* 커스텀 둘째 줄(상세: 레벨이름·Lv·작성시간 등) */}

@@ -113,6 +113,53 @@ public class AdminScoreService {
         memberLevelConfigRepository.delete(config);
     }
 
+    /**
+     * 공식 자동생성 — 기존 레벨 구간 전체를 지우고 baseScore/growthRate 곡선으로 1~maxLevel 재생성.
+     * 이름은 "N레벨", 임계값은 단조 증가 보장. 생성 후 전체 회원 레벨을 재계산한다.
+     * (프론트 generateLevels 와 동일 공식)
+     */
+    @Transactional
+    public List<LevelConfigResponse> generateLevelConfigs(GenerateLevelConfigRequest request) {
+        int maxLevel = request.maxLevel();
+        int baseScore = request.baseScore();
+        double growth = request.growthRate();
+
+        memberLevelConfigRepository.deleteAllInBatch();
+
+        long prev = -1;
+        List<MemberLevelConfig> configs = new java.util.ArrayList<>(maxLevel);
+        for (int level = 1; level <= maxLevel; level++) {
+            double raw = level == 1 ? 0 : baseScore * (Math.pow(growth, level - 1) - 1);
+            long minScore = niceRound(raw);
+            if (minScore <= prev) {
+                minScore = prev + (prev < 100 ? 5 : prev < 1000 ? 10 : prev < 10000 ? 100 : 1000);
+            }
+            prev = minScore;
+            configs.add(MemberLevelConfig.builder()
+                    .level(level)
+                    .name(level + "레벨")
+                    .minScore((int) Math.min(minScore, Integer.MAX_VALUE))
+                    .isActive(true)
+                    .build());
+        }
+        memberLevelConfigRepository.saveAll(configs);
+
+        // 구간이 바뀌었으니 전체 회원 currentLevel 재계산
+        scoreService.recalculateAllMemberLevels();
+
+        return memberLevelConfigRepository.findAllByOrderByLevelAsc()
+                .stream()
+                .map(LevelConfigResponse::from)
+                .toList();
+    }
+
+    /** 읽기 좋은 자리수로 반올림 (프론트 niceRound 와 동일) */
+    private long niceRound(double v) {
+        if (v <= 0) return 0;
+        long step = v < 100 ? 5 : v < 1000 ? 10 : v < 10000 ? 100 : v < 100000 ? 1000 : v < 1000000 ? 10000 : 50000;
+        return Math.round(v / step) * step;
+    }
+
     // [패치 11] 레벨 구간 변경 후 전체 회원 재계산 (수동 실행)
     @Transactional
     public int recalculateAllLevels() {

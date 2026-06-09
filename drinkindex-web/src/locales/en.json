@@ -50,7 +50,7 @@
     "mypage": "My Page",
     "admin": "Admin",
     "more": "More",
-    "maturingPower": "Aging Lv.{{level}} ({{power}}p)"
+    "maturingPower": "Lv.{{level}}"
   },
   "home": {
     "menu": {
@@ -64,7 +64,7 @@
       "popular": "Most Popular",
       "weeklyPopular": "Trending This Week",
       "notices": "Notices",
-      "ranking": "Aging Power Ranking",
+      "ranking": "Level Ranking",
       "viewAll": "View All",
       "weekly": "Weekly",
       "allTime": "All Time"
@@ -517,7 +517,7 @@
   },
   "mypage": {
     "title": "My Page",
-    "maturingTab": "Aging Power",
+    "maturingTab": "Level",
     "reviewsTab": "My Reviews",
     "wishlistTab": "Favorites",
     "byobTab": "BYOB History",
@@ -1201,8 +1201,8 @@
       "author": "Author Display",
       "authorNickname": "Nickname",
       "authorAnonymous": "Anonymous",
-      "pointsNotice": "Register with your nickname to earn 30 maturing points (on approval)",
-      "anonymousNotice": "No maturing points are awarded for anonymous reports",
+      "pointsNotice": "Register with your nickname to earn 30 level points (on approval)",
+      "anonymousNotice": "No level points are awarded for anonymous reports",
       "goMyPage": "Go to My Page",
       "submit": "Submit Price",
       "success": "Submitted! It will appear on the chart after admin review.",

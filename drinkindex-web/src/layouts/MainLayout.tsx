@@ -28,17 +28,17 @@ function AttendanceToastHandler() {
   useEffect(() => {
     if (!pendingAttendanceToast) return
 
-    const { streakCount, bonusAwarded, totalMaturingPower } = pendingAttendanceToast
+    const { streakCount, bonusAwarded } = pendingAttendanceToast
 
     showToast(
-      `🥃 출석 체크! ${streakCount}일 연속 · 총 ${totalMaturingPower.toLocaleString()} 숙성력`,
+      `🥃 출석 체크! ${streakCount}일 연속`,
       'success',
     )
 
     if (bonusAwarded === 'STREAK_30') {
       setTimeout(() => showToast('🏆 30일 연속 출석 달성! 특별 보너스 지급', 'success'), 600)
     } else if (bonusAwarded === 'STREAK_7') {
-      setTimeout(() => showToast('🎉 7일 연속 출석 보너스! 추가 숙성력 지급', 'success'), 600)
+      setTimeout(() => showToast('🎉 7일 연속 출석 보너스 지급!', 'success'), 600)
     }
 
     // 소비 완료 → 초기화 (재표시 방지)

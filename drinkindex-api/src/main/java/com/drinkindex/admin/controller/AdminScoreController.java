@@ -75,6 +75,13 @@ public class AdminScoreController {
         return ResponseEntity.ok(ApiResponse.success());
     }
 
+    // 공식 자동생성 — baseScore/growthRate 곡선으로 1~maxLevel 레벨 구간을 전면 재생성.
+    @PostMapping("/level-config/generate")
+    public ResponseEntity<ApiResponse<List<LevelConfigResponse>>> generateLevelConfigs(
+            @Valid @RequestBody GenerateLevelConfigRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(adminScoreService.generateLevelConfigs(request)));
+    }
+
     // [패치 11] 레벨 구간 변경 후 전체 회원 재계산 (수동 실행 버튼).
     //           응답: 레벨이 실제로 변경된 회원 수
     @PostMapping("/level-config/recalculate")

@@ -78,7 +78,6 @@ export default function MyPage() {
   const email           = profile?.email        ?? authUser?.email     ?? ''
   const createdAt       = profile?.createdAt
   const currentLevel    = profile?.currentLevel ?? 1
-  const maturingPower   = profile?.maturingPower ?? 0
   const isFixed         = profile?.nicknameFixed === true
   const profileImageUrl = profile?.profileImageUrl ?? authUser?.profileImageUrl
   const avatarSeed      = String(profile?.id ?? authUser?.id ?? nickname ?? '?')
@@ -130,7 +129,7 @@ export default function MyPage() {
             </span>
             {role === 'MEMBER' && (
               <span className="text-xs text-amber-600 font-semibold">
-                숙성력 Lv.{currentLevel} ({maturingPower.toLocaleString()}p)
+                Lv.{currentLevel}
               </span>
             )}
             {createdAt && (

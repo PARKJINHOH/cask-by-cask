@@ -92,7 +92,7 @@ public class AdminPriceReportService {
         report.approve(admin);
         PriceReport saved = priceReportRepository.save(report);
 
-        // 비익명만 숙성력 점수 지급
+        // 비익명만 레벨 점수 지급
         if (!saved.getIsAnonymous() && saved.getReporter() != null) {
             scoreService.award(saved.getReporter().getId(),
                     ScoreActions.PRICE_REGISTER, "PRICE_REPORT", saved.getId());

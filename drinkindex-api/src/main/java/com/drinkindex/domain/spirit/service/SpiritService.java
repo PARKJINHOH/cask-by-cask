@@ -208,7 +208,7 @@ public class SpiritService {
 
         SpiritRegisterRequest saved = registerRequestRepository.save(request);
 
-        // [숙성력] 술 등록 요청 점수 지급
+        // [레벨] 술 등록 요청 점수 지급
         scoreService.award(userId, ScoreActions.SPIRIT_REQUEST, "SPIRIT_REQUEST", saved.getId());
 
         return toRegisterResponse(saved, body.nameKo(), body.nameEn(), body.category());
@@ -265,7 +265,7 @@ public class SpiritService {
             throw new CustomException(ErrorCode.SPIRIT_REQUEST_NOT_EDITABLE);
         }
 
-        // [숙성력] 등록 시 지급된 점수 회수 (지급 이력 기반, 익명·관리자면 자동 스킵)
+        // [레벨] 등록 시 지급된 점수 회수 (지급 이력 기반, 익명·관리자면 자동 스킵)
         scoreService.deductByReference(userId, ScoreActions.SPIRIT_REQUEST, "SPIRIT_REQUEST", requestId);
 
         registerRequestRepository.delete(req);
@@ -399,7 +399,7 @@ public class SpiritService {
 
         req.approve(admin);
 
-        // [숙성력] 술 등록 요청 승인 — 요청자에게 지급
+        // [레벨] 술 등록 요청 승인 — 요청자에게 지급
         scoreService.award(req.getUser().getId(), ScoreActions.SPIRIT_REQUEST_APPROVED, "SPIRIT_REQUEST", requestId);
 
         notificationService.send(

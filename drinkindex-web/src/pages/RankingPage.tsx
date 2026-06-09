@@ -3,7 +3,6 @@ import { useSearchParams } from 'react-router-dom'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { useRanking, useMyRank } from '@/domain/ranking/hooks/useRanking'
 import type { RankingItem, RankingPeriod } from '@/domain/ranking/types/ranking.types'
-import { getLevelInfo } from '@/domain/score/types/score.types'
 import LevelBadge from '@/shared/components/LevelBadge'
 import AdminIcon from '@/shared/components/icons/AdminIcon'
 import ProducerIcon from '@/shared/components/icons/ProducerIcon'
@@ -30,7 +29,7 @@ function periodScore(item: RankingItem, period: RankingPeriod): number {
 function periodLabel(period: RankingPeriod): string {
   if (period === 'WEEKLY')  return '주간 점수'
   if (period === 'MONTHLY') return '월간 점수'
-  return '숙성력'
+  return '레벨 점수'
 }
 
 // ── 유저 아이콘 ───────────────────────────────────────────────
@@ -107,8 +106,6 @@ function RankRow({
   period: RankingPeriod
   isMe: boolean
 }) {
-  const levelName = item.role === 'MEMBER' ? getLevelInfo(item.currentLevel).name : ''
-
   return (
     <tr
       className={`border-b border-neutral-50 last:border-0 transition-colors ${
@@ -135,16 +132,9 @@ function RankRow({
       <td className="py-3 px-2 hidden sm:table-cell">
         {item.role === 'MEMBER' && (
           <span className="text-xs text-neutral-500">
-            Lv.{item.currentLevel} {levelName}
+            Lv.{item.currentLevel}
           </span>
         )}
-      </td>
-
-      {/* 숙성력 */}
-      <td className="py-3 px-2 text-right hidden sm:table-cell">
-        <span className="text-xs text-neutral-500 tabular-nums">
-          {item.maturingPower.toLocaleString()}
-        </span>
       </td>
 
       {/* 기간 점수 */}
@@ -220,16 +210,16 @@ export default function RankingPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 pb-24 lg:pb-16 space-y-5">
       <SeoMeta
-        title="숙성력 랭킹"
-        description="DrinkIndex 사용자 활동 점수 랭킹. 주간·월간·전체 기간별 리뷰와 활동에 따른 숙성력 순위를 확인하세요."
+        title="레벨 랭킹"
+        description="DrinkIndex 사용자 활동 점수 랭킹. 주간·월간·전체 기간별 리뷰와 활동에 따른 레벨 순위를 확인하세요."
         canonical={buildCanonical('/ranking')}
-        keywords="DrinkIndex 랭킹, 숙성력, 위스키 리뷰 랭킹, 사용자 활동 점수"
+        keywords="DrinkIndex 랭킹, 레벨, 위스키 리뷰 랭킹, 사용자 활동 점수"
       />
 
       {/* 헤더 */}
       <div className="text-center space-y-1">
-        <h1 className="text-2xl font-extrabold text-neutral-900">🏆 숙성력 랭킹</h1>
-        <p className="text-sm text-neutral-500">활발히 활동해서 나만의 숙성력을 쌓아보세요!</p>
+        <h1 className="text-2xl font-extrabold text-neutral-900">🏆 레벨 랭킹</h1>
+        <p className="text-sm text-neutral-500">활발히 활동해서 나만의 레벨을 올려보세요!</p>
       </div>
 
       {/* 기간 탭 */}
@@ -273,7 +263,6 @@ export default function RankingPage() {
                     <th className="py-2.5 pl-4 pr-2 text-xs text-neutral-400 font-medium text-center w-12">순위</th>
                     <th className="py-2.5 px-2 text-xs text-neutral-400 font-medium text-left">닉네임</th>
                     <th className="py-2.5 px-2 text-xs text-neutral-400 font-medium text-left hidden sm:table-cell">레벨</th>
-                    <th className="py-2.5 px-2 text-xs text-neutral-400 font-medium text-right hidden sm:table-cell">숙성력</th>
                     <th className="py-2.5 pr-4 text-xs text-neutral-400 font-medium text-right">{periodLabel(period)}</th>
                   </tr>
                 </thead>

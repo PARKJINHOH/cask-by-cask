@@ -207,7 +207,7 @@ public class PostService {
         // [패치 2] 익명 게시글은 점수 미지급 (익명 = 점수 없음 전역 통일).
         //          비익명이라도 ScoreService 내부에서 MEMBER 외(관리자·증류소)는 자동 제외됨([패치 3]).
         if (!post.getIsAnonymous()) {
-            // [숙성력] 게시글 말머리/게시판에 따라 액션타입 결정 후 점수 지급
+            // [레벨] 게시글 말머리/게시판에 따라 액션타입 결정 후 점수 지급
             scoreService.award(userId, resolvePostActionType(post), "POST", post.getId());
         }
 
@@ -304,7 +304,7 @@ public class PostService {
         boolean wasLockedBefore = PostStatus.LOCKED.equals(post.getStatus());
         post.incrementReportCount();
 
-        // [숙성력] 신고 잠금 차감 — 이번 신고로 잠금 상태가 된 경우만, 작성자에게 차감
+        // [레벨] 신고 잠금 차감 — 이번 신고로 잠금 상태가 된 경우만, 작성자에게 차감
         if (!wasLockedBefore && PostStatus.LOCKED.equals(post.getStatus())) {
             scoreService.deduct(post.getAuthor().getId(), ScoreActions.POST_LOCKED, "POST", postId);
         }
@@ -339,7 +339,7 @@ public class PostService {
                 }
         );
 
-        // [숙성력] 추천 받음 — 게시글 작성자에게 (신규 추천, 자기 게시글 제외)
+        // [레벨] 추천 받음 — 게시글 작성자에게 (신규 추천, 자기 게시글 제외)
         if (newLikeAdded[0] && !post.getAuthor().getId().equals(userId)) {
             scoreService.award(post.getAuthor().getId(), ScoreActions.POST_LIKED, "POST", postId);
         }

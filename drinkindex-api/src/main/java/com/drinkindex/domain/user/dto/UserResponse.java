@@ -19,9 +19,9 @@ public record UserResponse(
         Role role,
         @Schema(description = "가입 일시")
         LocalDateTime createdAt,
-        @Schema(description = "현재 숙성력 총합")
+        @Schema(description = "현재 레벨 점수 총합(내부용)")
         Integer maturingPower,
-        @Schema(description = "현재 레벨 (1~11)")
+        @Schema(description = "현재 레벨 (1~100)")
         Integer currentLevel,
         @Schema(description = "현재 연속 출석 일수")
         Integer consecutiveAttendance,

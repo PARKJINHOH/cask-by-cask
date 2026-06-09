@@ -61,7 +61,7 @@ public class WishlistService {
                     .build();
             wishlistRepository.save(wishlist);
 
-            // [숙성력] 위시리스트 추가 시 지급. 제거 시 차감 없음.
+            // [레벨] 위시리스트 추가 시 지급. 제거 시 차감 없음.
             scoreService.award(userId, ScoreActions.WISHLIST_ADD, "WISHLIST", request.spiritId());
         }
     }

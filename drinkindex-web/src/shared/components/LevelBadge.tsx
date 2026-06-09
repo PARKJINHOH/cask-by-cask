@@ -1,103 +1,142 @@
+import { useId } from 'react'
+
 /**
- * LevelBadge — 숫자 중심의 "메달형" 레벨 뱃지.
+ * LevelBadge — "위스키 글라스(플루이드 웨이브)" 레벨 뱃지.
  *
- * 핵심 컨셉: "심플한 원형 메달 + 숫자 + 레벨이 오를수록 임팩트 상승".
- *   - 숫자(레벨)가 항상 메달 한가운데에 또렷이 보인다.
- *   - 임팩트는 '정의된 최고 레벨(maxLevel)에 얼마나 가까운가'로 결정(0~5 티어).
- *     → 관리자가 레벨 개수를 몇 개로 정의하든, 항상 최고 레벨이 가장 화려하게 보인다.
+ * 컨셉: 둥근 사각 토큰 안에 술이 차오르는 메타포.
+ *   - 숫자(레벨)가 항상 한가운데에 굵게, 또렷하게 보인다. (paint-order 로 외곽 헤일로)
+ *   - 10레벨마다 밴드(band)가 바뀌며 액체 색과 채움 높이가 올라간다. (총 100레벨 = 10밴드)
+ *   - band = floor((level-1)/10) → 0~9. 색상 램프는 스톤→브론즈→앰버→실버→골드
+ *     →에메랄드→사파이어→아메시스트→루비→프리즘(91~100, 무지개+샤이머).
  *
- * 티어별 연출 — 과장 없이 '색의 깊이 + 테두리 링 + 광택'으로만 차별화. (이모지/장식 없음)
- *   t0  무채색 플랫 메달                         (시작 레벨)
- *   t1  앰버 틴트 + 얇은 테두리
- *   t2  솔리드 앰버 + 굵은 테두리
- *   t3  앰버 그라데이션 + 골드 림(테) 1겹
- *   t4  진한 그라데이션 + 흰 간격 + 딥골드 림 (2겹 느낌)
- *   t5  프리미엄 그라데이션 + 두꺼운 딥골드 림 + 은은한 샤이머  (최고 레벨)
- *
- * 링/샤이머는 size 에 비례해 두께가 정해져 작은 아바타~큰 카드 어디서나 자연스럽다.
- * (작은 아바타처럼 overflow-hidden 컨테이너 안에서는 바깥 링이 클립되어 깔끔한 코인으로만 보임)
+ * 작은 아바타(16px)부터 큰 카드(96px)까지 viewBox 로 자연스럽게 스케일된다.
  */
 
 interface LevelBadgeProps {
   level: number
-  /** 정의된 최고 레벨 — 임팩트(티어) 산정 기준. 미지정 시 20 */
-  maxLevel?: number
-  /** 픽셀 크기(정원). 기본 40 */
+  /** 픽셀 크기(정사각). 기본 40 */
   size?: number
+  /** (구버전 호환용 — 현재 밴드는 절대 레벨 기준이라 무시됨) */
+  maxLevel?: number
   className?: string
 }
 
-const DEFAULT_MAX_LEVEL = 20
+type Band = { base: string; deep: string; ring: string; prism?: boolean }
 
-/** 레벨 → 임팩트 티어(0~5). 최고 레벨에 가까울수록 커진다. */
-export function levelTier(level: number, maxLevel: number = DEFAULT_MAX_LEVEL): number {
-  if (maxLevel <= 1) return 5
-  const r = (Math.max(1, level) - 1) / (maxLevel - 1) // 0~1
-  if (r <= 0) return 0
-  if (r <= 0.2) return 1
-  if (r <= 0.4) return 2
-  if (r <= 0.6) return 3
-  if (r <= 0.85) return 4
-  return 5
+// 10밴드 색 램프 (design-5-cask 와 동일)
+const BANDS: Band[] = [
+  { base: '#94a3b8', deep: '#475569', ring: '#cbd5e1' }, // 1–10  스톤
+  { base: '#cd8b50', deep: '#8a5223', ring: '#e3ab74' }, // 11–20 브론즈
+  { base: '#f59e0b', deep: '#b45309', ring: '#fcd34d' }, // 21–30 앰버
+  { base: '#cbd5e1', deep: '#64748b', ring: '#f1f5f9' }, // 31–40 실버
+  { base: '#fbbf24', deep: '#a16207', ring: '#fde68a' }, // 41–50 골드
+  { base: '#34d399', deep: '#047857', ring: '#6ee7b7' }, // 51–60 에메랄드
+  { base: '#60a5fa', deep: '#1d4ed8', ring: '#93c5fd' }, // 61–70 사파이어
+  { base: '#a78bfa', deep: '#6d28d9', ring: '#c4b5fd' }, // 71–80 아메시스트
+  { base: '#fb7185', deep: '#be123c', ring: '#fda4af' }, // 81–90 루비
+  { base: '#f472b6', deep: '#6366f1', ring: '#ffffff', prism: true }, // 91–100 프리즘
+]
+
+export const BAND_LABELS = ['스톤', '브론즈', '앰버', '실버', '골드', '에메랄드', '사파이어', '아메시스트', '루비', '프리즘']
+
+/** 레벨 → 밴드 인덱스(0~9) */
+export function bandOf(level: number): number {
+  return Math.min(9, Math.max(0, Math.floor((Math.max(1, level) - 1) / 10)))
 }
 
-const TIER_BOX: Record<number, string> = {
-  0: 'bg-neutral-100 text-neutral-400 ring-1 ring-inset ring-neutral-200',
-  1: 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-300',
-  2: 'bg-amber-100 text-amber-800 ring-2 ring-inset ring-amber-400',
-  3: 'bg-gradient-to-br from-amber-300 to-amber-500 text-white',
-  4: 'bg-gradient-to-br from-amber-400 to-amber-600 text-white',
-  5: 'bg-gradient-to-br from-amber-500 via-amber-500 to-orange-600 text-white',
-}
+export default function LevelBadge({ level, size = 40, className = '' }: LevelBadgeProps) {
+  const uid = useId().replace(/:/g, '')
+  const bi = bandOf(level)
+  const b = BANDS[bi]
 
-/**
- * 고티어 메달의 '림(테)'은 box-shadow 로 그린다 — 원을 따라 동심원으로 둘러진다.
- * u = 링 단위 두께(size 비례). 작은 뱃지에서도 비율이 유지된다.
- */
-function tierRim(tier: number, u: number): string | undefined {
-  if (tier === 3) return `0 0 0 ${u}px rgba(251,191,36,0.9)`
-  if (tier === 4) return `0 0 0 ${u}px #ffffff, 0 0 0 ${u * 2}px rgba(217,119,6,0.95)`
-  if (tier === 5)
-    return `0 0 0 ${u}px #ffffff, 0 0 0 ${u * 2}px rgba(180,83,9,1), 0 0 0 ${Math.round(u * 2.7)}px rgba(255,255,255,0.55)`
-  return undefined
-}
+  // 채움 높이: 밴드가 오를수록 액체가 차오른다 (내부 y 6~88)
+  const ratio = (bi + 1) / 10
+  const top = 88 - ratio * 82
+  const amp = 4.5
+  const liquidPath =
+    `M6 ${top} C 24 ${top - amp}, 38 ${top + amp}, 50 ${top} ` +
+    `S 80 ${top - amp}, 94 ${top} L94 94 L6 94 Z`
 
-export default function LevelBadge({
-  level,
-  maxLevel = DEFAULT_MAX_LEVEL,
-  size = 40,
-  className = '',
-}: LevelBadgeProps) {
-  const tier = levelTier(level, maxLevel)
   const digits = String(level).length
-  const fontSize = Math.max(9, Math.round(size * (digits >= 2 ? 0.44 : 0.52)))
-  const u = Math.max(1, Math.round(size * 0.055)) // 링 단위 두께
-  const showShimmer = tier >= 5 && size >= 26 // 너무 작으면 샤이머 생략
+  const fontSize = digits >= 3 ? 40 : digits === 2 ? 50 : 58
+  const ringW = 2.5 + bi * 0.25
 
   return (
-    <span
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 100 100"
       role="img"
       aria-label={`레벨 ${level}`}
-      className={`relative inline-grid place-items-center overflow-hidden rounded-full font-extrabold tabular-nums leading-none select-none align-middle ${TIER_BOX[tier]} ${className}`}
-      style={{ width: size, height: size, boxShadow: tierRim(tier, u), fontSize }}
+      className={className}
+      style={{ display: 'inline-block', verticalAlign: 'middle', flexShrink: 0 }}
     >
-      {/* 상단 글로시 하이라이트 — 메달의 입체감. 고티어일수록 또렷 */}
-      {tier >= 2 && (
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 top-0 h-1/2 rounded-t-full bg-gradient-to-b from-white/35 to-transparent"
-        />
-      )}
+      <defs>
+        <clipPath id={`clip${uid}`}>
+          <rect x="6" y="6" width="88" height="88" rx="26" />
+        </clipPath>
+        <linearGradient id={`bg${uid}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#1b212b" />
+          <stop offset="1" stopColor="#0a0d12" />
+        </linearGradient>
+        {b.prism ? (
+          <linearGradient id={`lq${uid}`} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor="#f472b6" />
+            <stop offset=".5" stopColor="#a78bfa" />
+            <stop offset="1" stopColor="#38bdf8" />
+          </linearGradient>
+        ) : (
+          <linearGradient id={`lq${uid}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor={b.base} />
+            <stop offset="1" stopColor={b.deep} />
+          </linearGradient>
+        )}
+      </defs>
 
-      {/* 샤이머 — 최고 티어에서만 은은한 광채 (reduced-motion 시 전역 CSS가 무효화) */}
-      {showShimmer && (
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute top-0 bottom-0 left-0 w-1/2 bg-gradient-to-r from-transparent via-white/45 to-transparent motion-safe:animate-[levelShimmer_2.8s_ease-in-out_infinite]"
-        />
-      )}
+      {/* 빈 글라스(어두운 배경) */}
+      <rect x="6" y="6" width="88" height="88" rx="26" fill={`url(#bg${uid})`} />
 
-      <span className="relative">{level}</span>
-    </span>
+      {/* 액체 + 표면 하이라이트 */}
+      <g clipPath={`url(#clip${uid})`}>
+        <path d={liquidPath} fill={`url(#lq${uid})`} />
+        <path
+          d={`M6 ${top} C 24 ${top - amp}, 38 ${top + amp}, 50 ${top} S 80 ${top - amp}, 94 ${top}`}
+          fill="none"
+          stroke="#ffffff"
+          strokeOpacity="0.45"
+          strokeWidth="2"
+        />
+        {b.prism && (
+          <rect
+            x="6" y="6" width="88" height="88"
+            fill="#ffffff" opacity="0.12"
+            className="motion-safe:animate-[levelShimmer_2.8s_ease-in-out_infinite]"
+          />
+        )}
+        {/* 유리 좌측 세로 광택 */}
+        <rect x="20" y="14" width="6" height="72" rx="3" fill="#ffffff" opacity="0.12" />
+      </g>
+
+      {/* 테두리 */}
+      <rect x="6" y="6" width="88" height="88" rx="26" fill="none" stroke={b.ring} strokeWidth={ringW} />
+
+      {/* 숫자 — 굵게, 정중앙, 외곽 헤일로로 어떤 색 위에서도 가독 */}
+      <text
+        x="50" y="50"
+        textAnchor="middle"
+        dominantBaseline="central"
+        fontFamily="system-ui, -apple-system, 'Segoe UI', sans-serif"
+        fontWeight="900"
+        fontSize={fontSize}
+        fill="#ffffff"
+        paintOrder="stroke"
+        stroke="#0b0d12"
+        strokeOpacity="0.5"
+        strokeWidth={fontSize * 0.1}
+        strokeLinejoin="round"
+      >
+        {level}
+      </text>
+    </svg>
   )
 }

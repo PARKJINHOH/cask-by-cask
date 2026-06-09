@@ -50,7 +50,7 @@
     "mypage": "마이페이지",
     "admin": "관리자",
     "more": "더보기",
-    "maturingPower": "숙성력 Lv.{{level}} ({{power}}p)"
+    "maturingPower": "Lv.{{level}}"
   },
   "home": {
     "menu": {
@@ -64,7 +64,7 @@
       "popular": "인기 술",
       "weeklyPopular": "이번 주 인기",
       "notices": "공지사항",
-      "ranking": "숙성력 랭킹",
+      "ranking": "레벨 랭킹",
       "viewAll": "전체보기",
       "weekly": "주간",
       "allTime": "전체"
@@ -507,7 +507,7 @@
   },
   "mypage": {
     "title": "마이페이지",
-    "maturingTab": "숙성력",
+    "maturingTab": "레벨",
     "reviewsTab": "내 리뷰",
     "wishlistTab": "즐겨찾기",
     "byobTab": "BYOB 이력",
@@ -1180,7 +1180,7 @@
       "suggestStore": "기타(직접 입력)",
       "currency": "통화",
       "priceSection": "가격",
-      "isAnonymous": "익명으로 등록 (숙성력 미지급)",
+      "isAnonymous": "익명으로 등록 (레벨 미반영)",
       "regularPrice": "정가",
       "salePrice": "행사가",
       "payback": "페이백",
@@ -1201,8 +1201,8 @@
       "author": "작성자 표시",
       "authorNickname": "닉네임",
       "authorAnonymous": "익명",
-      "pointsNotice": "닉네임으로 등록하면 숙성력 30점이 적립됩니다 (승인 시)",
-      "anonymousNotice": "익명으로 등록하면 숙성력 점수가 지급되지 않습니다",
+      "pointsNotice": "닉네임으로 등록하면 레벨 점수 30점이 적립됩니다 (승인 시)",
+      "anonymousNotice": "익명으로 등록하면 레벨 점수가 지급되지 않습니다",
       "goMyPage": "마이페이지로 이동",
       "submit": "가격 등록 신청",
       "success": "등록 완료. 관리자 승인 후 차트에 반영됩니다.",

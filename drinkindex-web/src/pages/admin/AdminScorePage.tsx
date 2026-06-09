@@ -77,7 +77,7 @@ export default function AdminScorePage() {
     onEdit: () => setEditingId(cfg.id),
     onDelete: () => {
       const label = ACTION_LABELS[cfg.actionType] ?? cfg.actionType
-      if (window.confirm(`'${label}' 점수 설정을 삭제할까요?\n삭제 시 해당 액션은 숙성력을 지급/차감하지 않습니다.`)) {
+      if (window.confirm(`'${label}' 점수 설정을 삭제할까요?\n삭제 시 해당 액션은 레벨 점수를 지급/차감하지 않습니다.`)) {
         deleteMutation.mutate(cfg.id)
       }
     },
@@ -115,7 +115,7 @@ export default function AdminScorePage() {
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-neutral-900">점수 설정</h1>
-          <p className="text-sm text-neutral-500 mt-0.5">각 액션별 숙성력 지급·차감 점수를 설정합니다.</p>
+          <p className="text-sm text-neutral-500 mt-0.5">각 액션별 레벨 점수 지급·차감을 설정합니다.</p>
         </div>
         <button
           onClick={() => setAdding(true)}

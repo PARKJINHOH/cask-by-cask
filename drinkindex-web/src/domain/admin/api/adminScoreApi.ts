@@ -53,6 +53,12 @@ export interface UpdateLevelConfigRequest {
   isActive?: boolean
 }
 
+export interface GenerateLevelConfigRequest {
+  maxLevel: number
+  baseScore: number
+  growthRate: number
+}
+
 // ── 수동 점수 조정 ────────────────────────────────────────────
 
 export interface AdminAdjustRequest {
@@ -87,6 +93,14 @@ export const adminScoreApi = {
 
   deleteLevelConfig: (id: number) =>
     axiosInstance.delete<ApiResponse<null>>(`/api/admin/level-config/${id}`),
+
+  // 공식 자동생성 — 기존 레벨 구간 전체를 곡선으로 재생성
+  generateLevelConfigs: (data: GenerateLevelConfigRequest) =>
+    axiosInstance.post<ApiResponse<LevelConfigAdmin[]>>('/api/admin/level-config/generate', data),
+
+  // 전체 회원 레벨 재계산 (구간 변경 후 수동 실행)
+  recalculateLevels: () =>
+    axiosInstance.post<ApiResponse<number>>('/api/admin/level-config/recalculate'),
 
   // 점수 이력 조회
   getScoreHistory: (userId: number, page = 0, size = 30) =>

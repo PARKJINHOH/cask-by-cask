@@ -1,14 +1,12 @@
 import { useRef, useCallback } from 'react'
 import type { UserProfile } from '@/domain/user/types/user.types'
-import LevelBadge from '@/shared/components/LevelBadge'
+import LevelBadge, { BAND_LABELS, bandOf } from '@/shared/components/LevelBadge'
 import Spinner from '@/shared/components/Spinner'
 import EmptyState from '@/shared/components/EmptyState'
 import { formatDate } from '@/shared/utils/format'
 import { useInfiniteScoreHistory, useLevelConfigs } from '../hooks/useScoreHistory'
 import {
   MAX_LEVEL,
-  getLevelInfo,
-  getNextLevelInfo,
   calcProgress,
   ACTION_ICONS,
   LEVELS,
@@ -34,29 +32,27 @@ function ProgressBar({ pct }: { pct: number }) {
 function LevelCard({ profile }: { profile: UserProfile }) {
   const currentLevel = profile.currentLevel ?? 1
   const maturingPower = profile.maturingPower ?? 0
-  const curInfo = getLevelInfo(currentLevel)
-  const nextInfo = getNextLevelInfo(currentLevel)
   const pct = calcProgress(maturingPower, currentLevel)
   const isMax = currentLevel >= MAX_LEVEL
+  const bandName = BAND_LABELS[bandOf(currentLevel)]
 
   return (
     <div className="bg-white rounded-2xl p-5 shadow-sm border border-neutral-100">
       <div className="flex items-center gap-4">
         <div className="flex-shrink-0">
-          <LevelBadge level={currentLevel} size={52} />
+          <LevelBadge level={currentLevel} size={56} />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-2">
-            <span className="text-xl font-bold text-neutral-900">
+            <span className="text-2xl font-extrabold text-neutral-900">
               Lv.{currentLevel}
             </span>
-            <span className="text-base font-semibold text-amber-700">
-              {curInfo.name}
+            <span className="text-sm font-semibold text-amber-700">
+              {bandName}
             </span>
           </div>
-          <p className="text-2xl font-extrabold text-amber-600 tabular-nums mt-0.5">
-            {maturingPower.toLocaleString()}
-            <span className="text-sm font-medium text-neutral-400 ml-1">숙성력</span>
+          <p className="text-xs text-neutral-400 mt-1">
+            {isMax ? '최고 레벨 달성' : `다음 레벨까지 ${100 - pct}%`}
           </p>
         </div>
       </div>
@@ -71,22 +67,12 @@ function LevelCard({ profile }: { profile: UserProfile }) {
           </>
         ) : (
           <>
-            <div className="flex justify-between text-xs text-neutral-500">
-              <span>다음 레벨까지</span>
-              <span className="tabular-nums">
-                {maturingPower.toLocaleString()} / {nextInfo!.minScore.toLocaleString()}
-              </span>
-            </div>
             <ProgressBar pct={pct} />
             <p className="text-xs text-neutral-500 text-right">
-              <span className="font-semibold text-amber-700">
-                Lv.{currentLevel + 1} {nextInfo!.name}
-              </span>
-              까지{' '}
-              <span className="font-semibold text-neutral-700 tabular-nums">
-                {(nextInfo!.minScore - maturingPower).toLocaleString()}
-              </span>{' '}
-              숙성력 남음
+              <span className="font-semibold text-amber-700">Lv.{currentLevel + 1}</span>
+              {' '}까지{' '}
+              <span className="font-semibold text-neutral-700 tabular-nums">{100 - pct}%</span>
+              {' '}남음
             </p>
           </>
         )}
@@ -97,52 +83,45 @@ function LevelCard({ profile }: { profile: UserProfile }) {
 
 // ── 레벨 맵 카드 ─────────────────────────────────────────────
 
-function LevelMapCard({ currentLevel }: { maturingPower: number; currentLevel: number }) {
+function LevelMapCard({ currentLevel }: { currentLevel: number }) {
   const { data: levels } = useLevelConfigs()
-  const displayLevels: LevelInfo[] = levels && levels.length > 0 ? levels : LEVELS
+  const all: LevelInfo[] = levels && levels.length > 0 ? levels : LEVELS
+  const maxLv = all.length
+
+  // 100레벨 전체 대신 현재 레벨 주변만 보여준다 (앞 2 ~ 뒤 3, 총 6칸).
+  const start = Math.max(1, Math.min(currentLevel - 2, maxLv - 5))
+  const window = all.filter((lv) => lv.level >= start && lv.level <= start + 5)
 
   return (
     <div className="bg-white rounded-2xl px-4 py-4 shadow-sm border border-neutral-100">
       <p className="text-xs font-semibold text-neutral-500 mb-3">레벨 현황</p>
-      <div className="overflow-x-auto -mx-1 px-1">
-        <div className="flex gap-2 min-w-max pb-1">
-          {displayLevels.map((lv) => {
-            const isPast    = lv.level < currentLevel
-            const isCurrent = lv.level === currentLevel
-            const isFuture  = lv.level > currentLevel
+      <div className="flex gap-2 justify-between">
+        {window.map((lv) => {
+          const isPast    = lv.level < currentLevel
+          const isCurrent = lv.level === currentLevel
 
-            return (
-              <div
-                key={lv.level}
-                className={[
-                  'flex flex-col items-center gap-1 px-2.5 py-2 rounded-xl border transition-colors flex-shrink-0',
-                  isCurrent
-                    ? 'bg-amber-50 border-amber-400 shadow-sm'
-                    : isPast
-                    ? 'bg-neutral-50 border-neutral-200'
-                    : 'bg-white border-neutral-100',
-                ].join(' ')}
-              >
-                <LevelBadge
-                  level={lv.level}
-                  size={isCurrent ? 30 : 24}
-                />
-                <span className={[
-                  'text-[10px] font-bold leading-none',
-                  isCurrent ? 'text-amber-700' : isPast ? 'text-neutral-500' : 'text-neutral-300',
-                ].join(' ')}>
-                  {lv.name}
-                </span>
-                <span className={[
-                  'text-[9px] leading-none tabular-nums',
-                  isCurrent ? 'text-amber-500' : isFuture ? 'text-neutral-300' : 'text-neutral-400',
-                ].join(' ')}>
-                  {lv.minScore.toLocaleString()}
-                </span>
-              </div>
-            )
-          })}
-        </div>
+          return (
+            <div
+              key={lv.level}
+              className={[
+                'flex flex-col items-center gap-1.5 px-2 py-2 rounded-xl border transition-colors flex-1',
+                isCurrent
+                  ? 'bg-amber-50 border-amber-400 shadow-sm'
+                  : isPast
+                  ? 'bg-neutral-50 border-neutral-200'
+                  : 'bg-white border-neutral-100',
+              ].join(' ')}
+            >
+              <LevelBadge level={lv.level} size={isCurrent ? 34 : 26} />
+              <span className={[
+                'text-[10px] font-bold leading-none tabular-nums',
+                isCurrent ? 'text-amber-700' : isPast ? 'text-neutral-500' : 'text-neutral-300',
+              ].join(' ')}>
+                Lv.{lv.level}
+              </span>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
@@ -307,7 +286,7 @@ function ScoreHistoryList() {
           <div className="py-8">
             <EmptyState
               title="점수 이력이 없습니다."
-              description="글쓰기, 댓글, 출석 등 다양한 활동으로 숙성력을 쌓아보세요!"
+              description="글쓰기, 댓글, 출석 등 다양한 활동으로 레벨을 올려보세요!"
             />
           </div>
         ) : (
@@ -330,13 +309,12 @@ function ScoreHistoryList() {
 // ── 메인 export ───────────────────────────────────────────────
 
 export default function MaturingPowerSection({ profile }: { profile: UserProfile }) {
-  const currentLevel  = profile.currentLevel ?? 1
-  const maturingPower = profile.maturingPower ?? 0
+  const currentLevel = profile.currentLevel ?? 1
 
   return (
     <div className="space-y-4">
       <LevelCard profile={profile} />
-      <LevelMapCard maturingPower={maturingPower} currentLevel={currentLevel} />
+      <LevelMapCard currentLevel={currentLevel} />
       <AttendanceCard profile={profile} />
       <ScoreHistoryList />
     </div>

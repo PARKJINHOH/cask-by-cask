@@ -83,7 +83,7 @@ const navEntries: NavEntry[] = [
   },
   {
     type: 'group',
-    groupLabel: '숙성력',
+    groupLabel: '레벨',
     groupIcon: '🏅',
     items: [
       { path: '/admin/score/points', label: '점수 설정', exact: true },
