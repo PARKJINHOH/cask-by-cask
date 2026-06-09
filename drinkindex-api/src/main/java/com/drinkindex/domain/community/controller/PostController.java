@@ -1,9 +1,11 @@
 package com.drinkindex.domain.community.controller;
 
 import com.drinkindex.domain.community.dto.*;
+import com.drinkindex.domain.community.entity.PostVideo;
 import com.drinkindex.domain.community.entity.enums.BoardType;
 import com.drinkindex.domain.community.service.PostImageService;
 import com.drinkindex.domain.community.service.PostService;
+import com.drinkindex.domain.community.service.PostVideoService;
 import com.drinkindex.domain.user.entity.User;
 import com.drinkindex.domain.user.repository.UserRepository;
 import com.drinkindex.global.auth.security.CustomUserDetails;
@@ -15,14 +17,19 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.annotation.Profile;
+import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
+
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/posts")
@@ -31,6 +38,7 @@ public class PostController {
 
     private final PostService postService;
     private final PostImageService postImageService;
+    private final PostVideoService postVideoService;
     private final UserRepository userRepository;
 
     // ─── 목록 ───────────────────────────────────
@@ -81,6 +89,7 @@ public class PostController {
                 "script-src 'self'; " +
                 "style-src 'self' 'unsafe-inline'; " +
                 "img-src 'self' data: blob:; " +
+                "media-src 'self'; " +
                 "font-src 'self'; " +
                 "frame-src https://www.youtube.com https://player.vimeo.com; " +
                 "frame-ancestors 'none'; " +
@@ -215,9 +224,86 @@ public class PostController {
                 postImageService.upload(file, userDetails.getUserId())));
     }
 
+    // ─── 동영상 업로드 ──────────────────────────────────
+
+    @PostMapping("/videos")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<PostVideoUploadResponse>> uploadVideo(
+            @RequestParam("video") MultipartFile file,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                postVideoService.upload(file, userDetails.getUserId())));
+    }
+
+    // 동영상 스트리밍 — Range 헤더 기반 HTTP 206 Partial Content (seek 지원)
+    @GetMapping("/videos/{savedFileName}")
+    public ResponseEntity<StreamingResponseBody> serveVideo(
+            @PathVariable String savedFileName,
+            @RequestHeader HttpHeaders headers
+    ) {
+        if (savedFileName.contains("..") || savedFileName.contains("/") || savedFileName.contains("\\")) {
+            throw new CustomException(ErrorCode.INVALID_FILE_PATH);
+        }
+
+        PostVideo video    = postVideoService.loadForStream(savedFileName);
+        Path      filePath = postVideoService.resolveVideoPath(video);
+        Resource  resource = new FileSystemResource(filePath);
+        long      fileLength;
+        try {
+            fileLength = resource.contentLength();
+        } catch (IOException e) {
+            throw new CustomException(ErrorCode.POST_VIDEO_NOT_FOUND);
+        }
+
+        MediaType mimeType = MediaType.parseMediaType(video.getMimeType());
+        List<HttpRange> ranges = headers.getRange();
+
+        if (ranges.isEmpty()) {
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.ACCEPT_RANGES, "bytes")
+                    .contentLength(fileLength)
+                    .contentType(mimeType)
+                    .body(out -> {
+                        try (FileInputStream fis = new FileInputStream(filePath.toFile())) {
+                            fis.transferTo(out);
+                        }
+                    });
+        }
+
+        HttpRange range       = ranges.get(0);
+        long      start       = range.getRangeStart(fileLength);
+        long      end         = range.getRangeEnd(fileLength);
+        long      contentLength = end - start + 1;
+
+        return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT)
+                .header(HttpHeaders.ACCEPT_RANGES, "bytes")
+                .header(HttpHeaders.CONTENT_RANGE, "bytes " + start + "-" + end + "/" + fileLength)
+                .contentLength(contentLength)
+                .contentType(mimeType)
+                .body(out -> {
+                    try (FileInputStream fis = new FileInputStream(filePath.toFile())) {
+                        long skipped = 0;
+                        while (skipped < start) {
+                            long n = fis.skip(start - skipped);
+                            if (n <= 0) break;
+                            skipped += n;
+                        }
+                        byte[] buf = new byte[8192];
+                        long remaining = contentLength;
+                        int read;
+                        while (remaining > 0
+                                && (read = fis.read(buf, 0, (int) Math.min(buf.length, remaining))) != -1) {
+                            out.write(buf, 0, read);
+                            remaining -= read;
+                        }
+                    }
+                });
+    }
+
     // local 프로파일 전용 이미지 서빙
     @GetMapping("/images/{savedFileName}")
-    @Profile("local")
+    @org.springframework.context.annotation.Profile("local")
     public ResponseEntity<Resource> serveImage(@PathVariable String savedFileName) {
         // [보안] Path Traversal 방어
         if (savedFileName.contains("..") || savedFileName.contains("/") || savedFileName.contains("\\")) {

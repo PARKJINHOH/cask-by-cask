@@ -68,9 +68,14 @@ public class HtmlSanitizer {
                 //   <div data-video-embed><iframe src="..."></iframe></div> 를 삽입함.
                 //   iframe src 는 sanitize() 후처리에서 영상 플랫폼 호스트만 허용(그 외 제거).
                 .addTags("div", "iframe")
-                .addAttributes("div", "data-video-embed", "class")
+                .addAttributes("div", "data-video-embed", "data-uploaded-video", "class")
                 .addAttributes("iframe", "src", "class", "allow", "allowfullscreen", "frameborder")
-                .addProtocols("iframe", "src", "http", "https");
+                .addProtocols("iframe", "src", "http", "https")
+                // 업로드 동영상: TipTap UploadedVideo 노드가
+                //   <div data-uploaded-video><video src="/api/posts/videos/..." controls></video></div> 를 삽입함.
+                //   src 는 /api/posts/videos/ 로 시작하는 상대경로만 허용 (후처리로 검증).
+                .addTags("video")
+                .addAttributes("video", "src", "controls", "type", "preload", "class");
     }
 
     // [보안] 법적 문서(약관·개인정보처리방침)용 Safelist.
@@ -129,7 +134,8 @@ public class HtmlSanitizer {
             return "";
         }
         String cleaned = Jsoup.clean(rawHtml, NOTICE_SAFELIST);
-        return stripUnsafeIframes(cleaned);
+        cleaned = stripUnsafeIframes(cleaned);
+        return stripUnsafeVideoSrc(cleaned);
     }
 
     /**
@@ -163,6 +169,23 @@ public class HtmlSanitizer {
         }
         String cleaned = Jsoup.clean(rawHtml, LEGAL_SAFELIST);
         return stripUnsafeIframes(cleaned);
+    }
+
+    // [보안] 업로드 동영상 src 가 /api/posts/videos/ 로 시작하지 않으면 제거.
+    //   API 직접 호출로 외부 동영상 URL 을 주입하는 공격 차단.
+    private String stripUnsafeVideoSrc(String html) {
+        if (!html.contains("<video")) {
+            return html;
+        }
+        Document doc = Jsoup.parseBodyFragment(html);
+        doc.outputSettings().prettyPrint(false);
+        for (Element video : doc.select("video")) {
+            String src = video.attr("src");
+            if (!src.startsWith("/api/posts/videos/")) {
+                video.remove();
+            }
+        }
+        return doc.body().html();
     }
 
     /**

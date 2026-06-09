@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useState } from 'react'
+﻿import { useCallback, useEffect, useRef, useState } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import type { Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
@@ -13,6 +13,7 @@ import DOMPurify from 'dompurify'
 import { communityApi } from '../api/communityApi'
 import { ResizableImage } from '@/shared/tiptap/ResizableImage'
 import { VideoEmbed, toEmbedUrl, handleVideoEnter } from '@/shared/tiptap/VideoEmbed'
+import { UploadedVideo } from '@/shared/tiptap/UploadedVideo'
 import EditorColorPicker from '@/shared/tiptap/EditorColorPicker'
 import EditorHighlightPicker from '@/shared/tiptap/EditorHighlightPicker'
 import '@/shared/tiptap/editor-image.css'
@@ -40,7 +41,7 @@ function Divider() {
   return <div className="w-px h-5 bg-neutral-200 mx-0.5" />
 }
 
-function PostEditorToolbar({ editor }: { editor: Editor }) {
+function PostEditorToolbar({ editor, onVideoUpload }: { editor: Editor; onVideoUpload: () => void }) {
   const insertVideo = () => {
     const url = window.prompt('YouTube 또는 Vimeo URL을 입력하세요')
     if (!url) return
@@ -102,6 +103,12 @@ function PostEditorToolbar({ editor }: { editor: Editor }) {
           <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       </ToolbarBtn>
+      <ToolbarBtn onClick={onVideoUpload} title="동영상 업로드 (MP4/WebM, 50MB 이하)">
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.723v6.554a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 12v-1m0 0V9m0 2H9m3 0h3" />
+        </svg>
+      </ToolbarBtn>
     </div>
   )
 }
@@ -114,17 +121,21 @@ interface Props {
   onChange: (html: string) => void
   placeholder?: string
   onImageError?: (msg: string) => void
+  onVideoError?: (msg: string) => void
 }
 
-export default function PostEditor({ value, onChange, placeholder, onImageError }: Props) {
-  // 이미지 업로드 진행률 (null = 업로드 중 아님)
+export default function PostEditor({ value, onChange, placeholder, onImageError, onVideoError }: Props) {
+  // 이미지/동영상 업로드 진행률 (null = 업로드 중 아님)
   const [uploadProgress, setUploadProgress] = useState<number | null>(null)
+  const [uploadLabel, setUploadLabel] = useState<'이미지' | '동영상'>('이미지')
+  const videoInputRef = useRef<HTMLInputElement>(null)
 
   const handleUpload = useCallback(async (file: File): Promise<string | null> => {
     if (file.size > 5 * 1024 * 1024) {
       onImageError?.('이미지 크기는 5MB 이하여야 합니다.')
       return null
     }
+    setUploadLabel('이미지')
     setUploadProgress(0)
     try {
       const res = await communityApi.uploadPostImage(file, setUploadProgress)
@@ -150,12 +161,13 @@ export default function PostEditor({ value, onChange, placeholder, onImageError 
       Placeholder.configure({ placeholder: placeholder ?? '내용을 입력하세요...' }),
       CharacterCount.configure({ limit: MAX_CHARS }),
       VideoEmbed,
+      UploadedVideo,
     ],
     content: value,
     onUpdate({ editor: e }) {
       const clean = DOMPurify.sanitize(e.getHTML(), {
-        ALLOWED_TAGS: ['p','br','span','mark','strong','em','u','s','code','pre','blockquote','h1','h2','h3','h4','ul','ol','li','a','img','div','iframe'],
-        ALLOWED_ATTR: ['href','src','alt','class','rel','target','style','width','height','data-color','data-video-embed','allowfullscreen','allow','frameborder'],
+        ALLOWED_TAGS: ['p','br','span','mark','strong','em','u','s','code','pre','blockquote','h1','h2','h3','h4','ul','ol','li','a','img','div','iframe','video'],
+        ALLOWED_ATTR: ['href','src','alt','class','rel','target','style','width','height','data-color','data-video-embed','data-uploaded-video','allowfullscreen','allow','frameborder','controls','preload','type'],
         FORCE_BODY: true,
       })
       onChange(clean)
@@ -217,17 +229,63 @@ export default function PostEditor({ value, onChange, placeholder, onImageError 
     }
   }, [editor, value])
 
+  const handleVideoUpload = useCallback(async (file: File) => {
+    const allowedTypes = ['video/mp4', 'video/webm']
+    if (!allowedTypes.includes(file.type)) {
+      onVideoError?.('MP4 또는 WebM 형식의 동영상만 업로드할 수 있습니다.')
+      return
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      onVideoError?.('동영상 크기는 50MB 이하여야 합니다.')
+      return
+    }
+    setUploadLabel('동영상')
+    setUploadProgress(0)
+    try {
+      const res = await communityApi.uploadPostVideo(file, setUploadProgress)
+      const data = res.data.data
+      if (data && editor) {
+        editor.chain().focus().insertContent({
+          type: 'uploadedVideo',
+          attrs: { src: data.videoUrl, mimeType: data.mimeType },
+        }).run()
+      }
+    } catch {
+      onVideoError?.('동영상 업로드 중 오류가 발생했습니다.')
+    } finally {
+      setUploadProgress(null)
+      if (videoInputRef.current) videoInputRef.current.value = ''
+    }
+  }, [onVideoError, editor])
+
   const charCount = editor?.storage.characterCount?.characters() ?? 0
 
   return (
     <div className="border border-neutral-300 rounded-xl overflow-hidden bg-white focus-within:ring-2 focus-within:ring-primary-300 focus-within:border-primary-400">
-      {editor && <PostEditorToolbar editor={editor} />}
+      {/* 동영상 파일 선택 input (숨김) */}
+      <input
+        ref={videoInputRef}
+        type="file"
+        accept="video/mp4,video/webm,.mp4,.webm"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          if (file) handleVideoUpload(file)
+        }}
+      />
 
-      {/* 이미지 업로드 진행률 */}
+      {editor && (
+        <PostEditorToolbar
+          editor={editor}
+          onVideoUpload={() => videoInputRef.current?.click()}
+        />
+      )}
+
+      {/* 업로드 진행률 */}
       {uploadProgress !== null && (
         <div className="px-4 py-2 border-b border-neutral-100 bg-primary-50/60">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-medium text-primary-800">이미지 업로드 중...</span>
+            <span className="text-xs font-medium text-primary-800">{uploadLabel} 업로드 중...</span>
             <span className="text-xs text-primary-800 tabular-nums">{uploadProgress}%</span>
           </div>
           <div className="h-1.5 w-full rounded-full bg-primary-100 overflow-hidden">

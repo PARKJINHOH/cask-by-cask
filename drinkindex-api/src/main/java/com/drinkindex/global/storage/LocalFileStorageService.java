@@ -16,7 +16,7 @@ import java.nio.file.*;
 
 @Slf4j
 @Service
-@Profile({"local", "test"})
+@Profile({"local", "dev", "prod", "test"})
 public class LocalFileStorageService implements FileStorageService {
 
     private final Path basePath;

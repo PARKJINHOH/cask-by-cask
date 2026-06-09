@@ -143,6 +143,9 @@ public enum ErrorCode {
     DELETED_POST_NOT_FOUND(HttpStatus.NOT_FOUND, "POST_010", "삭제된 게시글을 찾을 수 없습니다."),
     DUPLICATE_REPORT(HttpStatus.CONFLICT, "POST_011", "이미 신고한 게시글입니다."),
     POST_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "POST_012", "게시글 이미지를 찾을 수 없습니다."),
+    POST_VIDEO_INVALID_FORMAT(HttpStatus.BAD_REQUEST, "POST_016", "MP4 또는 WebM 형식의 동영상만 업로드할 수 있습니다."),
+    POST_VIDEO_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "POST_017", "동영상 파일 크기는 50MB를 초과할 수 없습니다."),
+    POST_VIDEO_NOT_FOUND(HttpStatus.NOT_FOUND, "POST_018", "동영상을 찾을 수 없습니다."),
     // [패치 9] 증류소 담당자는 본인 담당 증류소만 태그 가능
     POST_DISTILLERY_TAG_FORBIDDEN(HttpStatus.FORBIDDEN, "POST_015", "본인이 담당하는 증류소만 태그할 수 있습니다."),
 

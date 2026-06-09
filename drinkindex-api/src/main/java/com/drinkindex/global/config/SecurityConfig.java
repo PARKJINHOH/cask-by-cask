@@ -119,6 +119,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/posts/best").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/posts/{id:[0-9]+}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/posts/images/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/posts/videos/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/posts/{postId:[0-9]+}/comments").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/emojis").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/emojis/images/**").permitAll()

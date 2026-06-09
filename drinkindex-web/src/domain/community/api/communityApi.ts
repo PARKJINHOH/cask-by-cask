@@ -101,6 +101,19 @@ export const communityApi = {
     )
   },
 
+  uploadPostVideo: (file: File, onProgress?: (percent: number) => void) => {
+    const form = new FormData()
+    form.append('video', file)
+    return axiosInstance.post<ApiResponse<{ id: number; videoUrl: string; originalFileName: string; mimeType: string }>>(
+      '/api/posts/videos', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (e) => {
+          if (onProgress && e.total) onProgress(Math.round((e.loaded / e.total) * 100))
+        },
+      },
+    )
+  },
+
   // ── 댓글 ─────────────────────────────────────────────────────
   getComments: (postId: number, params: { page?: number; size?: number }) =>
     axiosInstance.get<ApiResponse<PageResponse<PostCommentItem>>>(`/api/posts/${postId}/comments`, { params }),

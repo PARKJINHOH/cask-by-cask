@@ -28,8 +28,8 @@ spring:
 
   servlet:
     multipart:
-      max-file-size: 10MB
-      max-request-size: 10MB
+      max-file-size: 51MB        # 동영상 50MB + 여유
+      max-request-size: 52MB
 
 jwt:
   secret: ${JWT_SECRET}

@@ -4,10 +4,10 @@ import DOMPurify from 'dompurify'
 //   (서버 HtmlSanitizer 가 1차로 호스트 검증하지만, 클라이언트에서도 동일 정책으로 2중 방어)
 const ALLOWED_IFRAME_HOSTS = ['www.youtube.com', 'www.youtube-nocookie.com', 'player.vimeo.com']
 
-// 모듈 로드 시 1회 등록 — 허용 호스트가 아닌 iframe 은 제거
+// 모듈 로드 시 1회 등록 — iframe/video src 를 후처리로 검증
 DOMPurify.addHook('uponSanitizeElement', (node, data) => {
+  const el = node as Element
   if (data.tagName === 'iframe') {
-    const el = node as Element
     let ok = false
     try {
       ok = ALLOWED_IFRAME_HOSTS.includes(new URL(el.getAttribute('src') ?? '').host)
@@ -15,6 +15,11 @@ DOMPurify.addHook('uponSanitizeElement', (node, data) => {
       ok = false
     }
     if (!ok) el.remove()
+  }
+  // 업로드 동영상: /api/posts/videos/ 로 시작하지 않으면 제거
+  if (data.tagName === 'video') {
+    const src = el.getAttribute('src') ?? ''
+    if (!src.startsWith('/api/posts/videos/')) el.remove()
   }
 })
 
@@ -35,8 +40,10 @@ export function sanitizeHtml(dirty: string): string {
       'ul', 'ol', 'li',
       // 링크·미디어
       'a', 'img',
-      // 영상 임베드 (호스트는 위 훅에서 youtube/vimeo 만 허용)
+      // YouTube/Vimeo 임베드 (호스트는 위 훅에서 검증)
       'iframe',
+      // 업로드 동영상 (src 는 위 훅에서 /api/posts/videos/ 만 허용)
+      'video',
       // 테이블
       'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td',
     ],
@@ -48,8 +55,10 @@ export function sanitizeHtml(dirty: string): string {
       'colspan', 'rowspan', 'scope',
       // 글자 배경색(highlight)
       'data-color',
-      // 영상 임베드 iframe
+      // YouTube/Vimeo 임베드 iframe
       'allow', 'allowfullscreen', 'frameborder', 'data-video-embed',
+      // 업로드 동영상 video
+      'controls', 'preload', 'type', 'data-uploaded-video',
     ],
     FORBID_TAGS: ['script', 'object', 'embed', 'form', 'input', 'style'],
     // on* 이벤트 핸들러 전체 차단

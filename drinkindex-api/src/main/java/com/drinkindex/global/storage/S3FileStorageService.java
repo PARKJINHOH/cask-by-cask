@@ -6,7 +6,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 // 추후 S3 연동 시 활성화. software.amazon.awssdk:s3 의존성 추가 후 구현.
 @Service
-@Profile({"dev", "prod"})
+@Profile("s3")  // 추후 S3 전환 시 활성화 (현재 OCI 로컬 스토리지 사용)
 public class S3FileStorageService implements FileStorageService {
 
     @Override

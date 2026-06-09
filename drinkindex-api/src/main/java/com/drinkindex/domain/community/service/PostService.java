@@ -47,6 +47,7 @@ public class PostService {
     private final UserRepository userRepository;
     private final PollRepository pollRepository;
     private final PostImageService postImageService;
+    private final PostVideoService postVideoService;
     private final PostMoveService postMoveService;
     private final PostViewCountService postViewCountService;
     private final NotificationService notificationService;
@@ -201,8 +202,9 @@ public class PostService {
             savePoll(post, request.getPoll());
         }
 
-        // 7. 이미지 URL 동기화
+        // 7. 이미지/동영상 URL 동기화
         postImageService.syncImageUsage(post, request.getContent());
+        postVideoService.syncVideoUsage(post, request.getContent());
 
         // [패치 2] 익명 게시글은 점수 미지급 (익명 = 점수 없음 전역 통일).
         //          비익명이라도 ScoreService 내부에서 MEMBER 외(관리자·증류소)는 자동 제외됨([패치 3]).
@@ -250,6 +252,7 @@ public class PostService {
 
         post.update(newTitle, newContent, sanitized, prefix, newAdultOnly);
         postImageService.syncImageUsage(post, newContent);
+        postVideoService.syncVideoUsage(post, newContent);
 
         return PostDetailResponse.builder(post, true).build();
     }
