@@ -66,6 +66,8 @@ export default function RichTextEditor({
   const videoInputRef = useRef<HTMLInputElement>(null)
   const imageInputRef = useRef<HTMLInputElement>(null)
   const lastEmitted = useRef(value)
+  // editorProps(드래그/붙여넣기) 클로저에서 최신 다중 업로드 핸들러를 참조하기 위한 ref.
+  const uploadAndInsertImagesRef = useRef<(files: File[]) => void>(() => {})
 
   const handleImageUpload = useCallback(async (file: File): Promise<string | null> => {
     if (!uploadImage) return null
@@ -177,12 +179,21 @@ export default function RichTextEditor({
       for (let i = 0; i < images.length; i++) {
         if (images.length > 1) setBatchProgress({ current: i + 1, total: images.length })
         const url = await handleImageUpload(images[i])
-        if (url) editor.chain().focus().setImage({ src: url }).run()
+        if (!url) continue
+        editor.chain().focus().setImage({ src: url }).run()
+        // setImage 직후 삽입된 이미지가 NodeSelection 으로 선택돼,
+        // 다음 setImage 가 이 이미지를 덮어쓴다. 커서를 이미지 뒤로 옮겨 이어 붙인다.
+        const after = editor.state.selection.to
+        editor.commands.setTextSelection(after)
       }
     } finally {
       setBatchProgress(null)
     }
   }, [uploadImage, editor, handleImageUpload])
+
+  useEffect(() => {
+    uploadAndInsertImagesRef.current = uploadAndInsertImages
+  }, [uploadAndInsertImages])
 
   const handleVideoFile = useCallback(async (file: File) => {
     if (!uploadVideo) return
@@ -272,7 +283,10 @@ export default function RichTextEditor({
       {uploadProgress !== null && (
         <div className="px-4 py-2 border-b border-neutral-100 bg-primary-50/60">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-medium text-primary-800">{uploadLabel} 업로드 중...</span>
+            <span className="text-xs font-medium text-primary-800">
+              {uploadLabel} 업로드 중...
+              {batchProgress && ` (${batchProgress.current}/${batchProgress.total})`}
+            </span>
             <span className="text-xs text-primary-800 tabular-nums">{uploadProgress}%</span>
           </div>
           <div className="h-1.5 w-full rounded-full bg-primary-100 overflow-hidden">
