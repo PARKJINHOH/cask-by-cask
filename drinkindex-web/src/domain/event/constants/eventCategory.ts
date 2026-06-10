@@ -17,7 +17,7 @@ export interface CategoryMeta {
 
 export const CATEGORY_META: Record<EventCategory, CategoryMeta> = {
   RELEASE: {
-    bar: 'bg-amber-500 text-white',
+    bar: 'bg-amber-600 text-white',
     chip: 'bg-amber-100 text-amber-800',
     dot: 'bg-amber-500',
     labelKey: 'calendar.category.release',

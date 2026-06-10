@@ -150,7 +150,7 @@ function ThreadPanel({
                 className={[
                   'max-w-[80%] rounded-xl px-3 py-2 text-sm whitespace-pre-wrap break-words',
                   isMine
-                    ? 'bg-primary-500 text-white rounded-br-sm'
+                    ? 'bg-primary-700 text-white rounded-br-sm'
                     : 'bg-neutral-100 text-neutral-800 rounded-bl-sm',
                 ].join(' ')}
               >

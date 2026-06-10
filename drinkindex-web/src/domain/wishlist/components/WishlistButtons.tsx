@@ -31,8 +31,8 @@ export default function WishlistButtons({ spiritId, onNeedLogin }: WishlistButto
         'w-10 h-10 flex items-center justify-center rounded-full border-2 transition-colors',
         'disabled:opacity-60 disabled:cursor-not-allowed',
         active
-          ? 'bg-amber-500 border-amber-500 text-white'
-          : 'bg-white border-neutral-200 text-neutral-400 hover:border-amber-400 hover:text-amber-500',
+          ? 'bg-amber-600 border-amber-600 text-white'
+          : 'bg-white border-neutral-200 text-neutral-400 hover:border-amber-500 hover:text-amber-600',
       ].join(' ')}
     >
       <svg className="w-5 h-5" viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

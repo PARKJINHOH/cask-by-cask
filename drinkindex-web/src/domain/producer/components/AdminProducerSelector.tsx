@@ -254,7 +254,7 @@ export default function AdminProducerSelector({
               {createErr && <p className="text-xs text-red-500">{createErr}</p>}
               <div className="flex gap-2">
                 <button type="button" onClick={submitCreate} disabled={saving}
-                  className="flex-1 py-1.5 text-sm font-semibold rounded-lg bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-60 transition-colors">
+                  className="flex-1 py-1.5 text-sm font-semibold rounded-lg bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-60 transition-colors">
                   {saving ? '등록 중...' : '등록'}
                 </button>
                 <button type="button" onClick={() => setCreating(false)} disabled={saving}

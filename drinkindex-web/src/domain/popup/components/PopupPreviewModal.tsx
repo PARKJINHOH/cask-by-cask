@@ -35,7 +35,7 @@ export default function PopupPreviewModal({ isOpen, onClose, popupData }: Props)
       />
 
       {/* 미리보기 배너 */}
-      <div className="relative z-10 mb-3 px-4 py-2 bg-amber-500 text-white text-sm font-medium
+      <div className="relative z-10 mb-3 px-4 py-2 bg-amber-600 text-white text-sm font-medium
         rounded-lg flex items-center gap-2 shadow-lg">
         <span>👁</span>
         <span>미리보기 모드 — 실제 노출 화면입니다</span>

@@ -286,7 +286,7 @@ export default function BoardListPage({ boardType, title }: Props) {
         <>
           {/* PC 테이블 */}
           <div className="hidden sm:block bg-white border border-neutral-200 rounded-xl overflow-hidden">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm table-fixed">
               <thead>
                 <tr className="bg-neutral-50 border-b border-neutral-100">
                   <th className="text-center px-4 py-3 font-medium text-neutral-500 w-28">{t('board.prefix')}</th>
@@ -310,7 +310,7 @@ export default function BoardListPage({ boardType, title }: Props) {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="text-[15px] font-semibold text-neutral-800 group-hover/row:text-primary-800 transition-colors truncate">
+                      <span className="block text-[15px] font-semibold text-neutral-800 group-hover/row:text-primary-800 transition-colors truncate">
                         {notice.title}
                       </span>
                     </td>
@@ -345,12 +345,12 @@ export default function BoardListPage({ boardType, title }: Props) {
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3" title={post.isLocked ? t('board.locked') : undefined}>
-                      <div className="flex items-center gap-2">
+                    <td className="px-4 py-3 overflow-hidden" title={post.isLocked ? t('board.locked') : undefined}>
+                      <div className="flex items-center gap-2 min-w-0">
                         {post.isLocked && <span className="text-neutral-400">🔒</span>}
                         {post.adultOnly && <AdultBadge />}
                         <span className={[
-                          'text-[15px] font-medium group-hover/row:text-primary-800 transition-colors truncate',
+                          'flex-1 min-w-0 text-[15px] font-medium group-hover/row:text-primary-800 transition-colors truncate',
                           post.isLocked ? 'text-red-600' : 'text-neutral-800',
                         ].join(' ')}>
                           {post.title}

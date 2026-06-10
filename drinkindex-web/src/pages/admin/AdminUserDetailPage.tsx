@@ -276,7 +276,7 @@ function SuspendModal({ user, onClose }: { user: AdminUser; onClose: () => void 
             {[1, 3, 7, 14, 30].map((d) => (
               <button key={d} type="button" onClick={() => setDays(d)}
                 className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
-                  days === d ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-neutral-600 border-neutral-200 hover:border-amber-400'
+                  days === d ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-neutral-600 border-neutral-200 hover:border-amber-500'
                 }`}>
                 {d}일
               </button>

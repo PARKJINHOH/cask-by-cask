@@ -31,7 +31,7 @@ export default function RecommendBadge({ count, className = '' }: RecommendBadge
   let style: React.CSSProperties | undefined
 
   if (count >= 20) {
-    tone = 'bg-amber-500 text-white'
+    tone = 'bg-amber-600 text-white'
     style = SPECIAL_BORDER
   } else if (count >= 10) {
     tone = 'bg-amber-200 text-amber-900'

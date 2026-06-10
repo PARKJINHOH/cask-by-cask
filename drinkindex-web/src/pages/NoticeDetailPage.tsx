@@ -133,7 +133,7 @@ export default function NoticeDetailPage() {
             'inline-flex items-center gap-2 px-6 py-2.5 rounded-full border text-sm font-semibold transition-colors',
             'disabled:opacity-60',
             notice.isRecommended
-              ? 'bg-amber-500 border-amber-500 text-white hover:bg-amber-600'
+              ? 'bg-amber-600 border-amber-600 text-white hover:bg-amber-700'
               : 'bg-white border-neutral-300 text-neutral-600 hover:border-amber-400 hover:text-amber-700',
           ].join(' ')}
         >

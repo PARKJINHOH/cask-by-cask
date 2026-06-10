@@ -97,7 +97,7 @@ export default function PostPollWidget({ postId, pollSummary }: Props) {
             >
               {pollData.isMultipleChoice && (
                 <span className={['inline-block w-4 h-4 border rounded mr-2 text-center leading-4 text-xs flex-shrink-0',
-                  isChecked ? 'bg-primary-500 border-primary-500 text-white' : 'border-neutral-300'
+                  isChecked ? 'bg-primary-600 border-primary-600 text-white' : 'border-neutral-300'
                 ].join(' ')}>
                   {isChecked ? '✓' : ''}
                 </span>

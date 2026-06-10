@@ -82,7 +82,7 @@ function SpiritImageSection({ spiritId, images }: { spiritId: number; images: Ad
             >
               <img src={img.imageUrl} alt="" className="w-full h-full object-cover" />
               {img.isPrimary && (
-                <span className="absolute top-1 left-1 bg-amber-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-semibold">
+                <span className="absolute top-1 left-1 bg-amber-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-semibold">
                   대표
                 </span>
               )}
@@ -92,8 +92,8 @@ function SpiritImageSection({ spiritId, images }: { spiritId: number; images: Ad
                   <button
                     onClick={(e) => { e.stopPropagation(); setPrimary.mutate({ id: spiritId, imageId: img.id }) }}
                     disabled={setPrimary.isPending}
-                    className="text-white text-xs font-semibold px-2 py-1 bg-amber-500/80 rounded
-                      hover:bg-amber-500 disabled:opacity-50"
+                    className="text-white text-xs font-semibold px-2 py-1 bg-amber-600/90 rounded
+                      hover:bg-amber-700 disabled:opacity-50"
                   >
                     대표 설정
                   </button>

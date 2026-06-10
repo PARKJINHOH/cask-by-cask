@@ -227,7 +227,7 @@ export function BottleFormModal({ open, onClose, editing }: Props) {
               {t('collection.form.cancel')}
             </button>
             <button type="submit" disabled={isPending}
-              className="flex-1 py-2 bg-amber-500 text-white rounded-lg text-sm hover:bg-amber-600 disabled:opacity-50">
+              className="flex-1 py-2 bg-amber-600 text-white rounded-lg text-sm hover:bg-amber-700 disabled:opacity-50">
               {t('collection.form.save')}
             </button>
           </div>

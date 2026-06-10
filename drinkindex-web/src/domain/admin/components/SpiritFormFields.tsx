@@ -55,7 +55,7 @@ const LABEL = 'block text-xs font-medium text-neutral-600 mb-1.5'
 export function SectionTitle({ step, title, hint }: { step: number; title: string; hint?: string }) {
   return (
     <div className="flex items-center gap-2.5">
-      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-500 text-white text-xs font-bold
+      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-600 text-white text-xs font-bold
         flex items-center justify-center">{step}</span>
       <h2 className="text-sm font-bold text-neutral-800">{title}</h2>
       {hint && <span className="text-xs text-neutral-400">{hint}</span>}
