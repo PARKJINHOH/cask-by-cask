@@ -114,6 +114,63 @@
   .notice-content em { @apply italic; }
   .notice-content u { @apply underline underline-offset-2; }
   .notice-content s { @apply line-through text-neutral-400; }
+  .notice-content hr { @apply border-0 border-t border-neutral-200 my-6; }
+
+  /* ── 체크리스트(TaskList) — 편집/읽기 공통 ─────────────────── */
+  .notice-content ul[data-type='taskList'] {
+    list-style: none;
+    padding-left: 0.25rem;
+    margin-bottom: 1rem;
+  }
+  .notice-content ul[data-type='taskList'] li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  .notice-content ul[data-type='taskList'] li > div { flex: 1 1 auto; }
+  .notice-content ul[data-type='taskList'] li > div > p { margin: 0; }
+
+  /* 읽기 화면 전용: input 이 sanitize 로 제거되므로 data-checked 로 체크 글리프 표시.
+     편집기(.di-richtext)는 실제 체크박스를 쓰므로 제외. */
+  .notice-content:not(.di-richtext) ul[data-type='taskList'] li > span:empty { display: none; }
+  .notice-content:not(.di-richtext) ul[data-type='taskList'] li::before {
+    content: '☐';
+    font-size: 1.05em;
+    line-height: 1.6;
+    color: var(--color-neutral-500);
+  }
+  .notice-content:not(.di-richtext) ul[data-type='taskList'] li[data-checked='true']::before {
+    content: '☑';
+    color: var(--color-primary-600);
+  }
+  .notice-content:not(.di-richtext) ul[data-type='taskList'] li[data-checked='true'] {
+    color: var(--color-neutral-400);
+  }
+
+  /* ── 본문 내 술 카드 임베드(칩) — 편집/읽기 공통 ──────────────── */
+  .notice-content .di-spirit-embed {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0.02rem 0.55rem;
+    margin: 0 0.1rem;
+    border: 1px solid var(--color-primary-200);
+    background: var(--color-primary-50);
+    color: var(--color-primary-800);
+    border-radius: 9999px;
+    font-size: 0.92em;
+    font-weight: 600;
+    line-height: 1.7;
+    text-decoration: none;
+    white-space: nowrap;
+    vertical-align: baseline;
+    cursor: pointer;
+    transition: background-color 0.12s;
+  }
+  .notice-content .di-spirit-embed:hover {
+    background: var(--color-primary-100);
+    text-decoration: none;
+  }
 
   /* ── 영상 임베드(YouTube/Vimeo) ──────────────────────────────
      Tailwind 임의값 클래스 purge 여부와 무관하게 16:9 비율로 표시되도록

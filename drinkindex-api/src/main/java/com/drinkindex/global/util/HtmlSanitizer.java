@@ -31,7 +31,7 @@ public class HtmlSanitizer {
     private static Safelist buildNoticeSafelist() {
         return new Safelist()
                 // 텍스트 서식
-                .addTags("p", "br", "strong", "em", "u", "s", "code", "pre", "blockquote")
+                .addTags("p", "br", "strong", "em", "u", "s", "code", "pre", "blockquote", "hr")
                 // 제목
                 .addTags("h1", "h2", "h3", "h4")
                 // 글자 색상: TipTap TextStyle/Color 확장이 <span style="color:..."> 를 삽입함.
@@ -47,14 +47,21 @@ public class HtmlSanitizer {
                 .addAttributes("h2", "style")
                 .addAttributes("h3", "style")
                 .addAttributes("h4", "style")
-                // 목록
+                // 목록 + 체크리스트(TipTap TaskList: ul[data-type], li[data-type][data-checked])
                 .addTags("ul", "ol", "li")
+                .addAttributes("ul", "data-type")
+                .addAttributes("li", "data-type", "data-checked")
                 // 링크: addProtocols에 javascript: 미포함 → href javascript: 프로토콜 명시적 차단
                 .addTags("a")
                 .addAttributes("a", "href", "target", "rel")
                 .addProtocols("a", "href", "http", "https", "mailto")
                 // target="_blank" 여부와 무관하게 rel="noopener noreferrer" 강제 추가 (탭 하이재킹 방지)
                 .addEnforcedAttribute("a", "rel", "noopener noreferrer")
+                // 본문 내 술 카드 임베드: TipTap SpiritEmbed 노드가
+                //   <a class="di-spirit-embed" data-spirit-id="..." ...>🥃 이름</a> 를 삽입함.
+                //   href 는 저장하지 않으며, 읽기 화면이 data-spirit-id 로 이동을 위임함.
+                .addAttributes("a", "class", "data-spirit-id", "data-spirit-name",
+                        "data-spirit-name-en", "data-spirit-category")
                 // 이미지: 업로드 엔드포인트 전용. 로컬 프로파일에서 /api/notices/images/... 형태의
                 // 상대 경로 URL을 사용하므로 프로토콜 제한을 두지 않음.
                 // data: URI 악용은 업로드 시 Magic Bytes 검증 + 클라이언트 DOMPurify로 방어.
@@ -87,14 +94,17 @@ public class HtmlSanitizer {
                 // 구조적 태그
                 .addTags("div", "article", "section", "header", "footer", "main", "span")
                 // 텍스트 서식
-                .addTags("p", "br", "strong", "em", "u", "s", "code", "pre", "blockquote")
+                .addTags("p", "br", "strong", "em", "u", "s", "code", "pre", "blockquote", "hr")
                 // 제목
                 .addTags("h1", "h2", "h3", "h4", "h5", "h6")
-                // 목록
+                // 목록 + 체크리스트
                 .addTags("ul", "ol", "li")
-                // 링크
+                .addAttributes("ul", "data-type")
+                .addAttributes("li", "data-type", "data-checked")
+                // 링크 + 술 카드 임베드
                 .addTags("a")
-                .addAttributes("a", "href", "target", "rel")
+                .addAttributes("a", "href", "target", "rel", "class",
+                        "data-spirit-id", "data-spirit-name", "data-spirit-name-en", "data-spirit-category")
                 .addProtocols("a", "href", "http", "https", "mailto")
                 .addEnforcedAttribute("a", "rel", "noopener noreferrer")
                 // 테이블

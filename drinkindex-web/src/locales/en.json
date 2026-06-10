@@ -3,6 +3,11 @@
     "name": "DrinkIndex",
     "tagline": "Whisky · Cognac · Wine Community"
   },
+  "editor": {
+    "spiritSearchPlaceholder": "Search a spirit to insert",
+    "spiritSearchHint": "Type a spirit name to search.",
+    "spiritNoResult": "No results found."
+  },
   "producerSelector": {
     "placeholder": "Select producer...",
     "searchPlaceholder": "Search by name...",

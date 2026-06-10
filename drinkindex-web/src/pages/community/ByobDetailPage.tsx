@@ -6,7 +6,7 @@ import ByobStatusBadge from '@/domain/byob/components/ByobStatusBadge'
 import ByobParticipantPanel from '@/domain/byob/components/ByobParticipantPanel'
 import ByobCommentSection from '@/domain/byob/components/ByobCommentSection'
 import SeoMeta from '@/shared/components/SeoMeta'
-import { sanitizeHtml } from '@/shared/utils/sanitize'
+import RichContent from '@/shared/components/RichContent'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import type { ByobStatus, ApplyByobPayload } from '@/domain/byob/types/byob.types'
 
@@ -317,9 +317,9 @@ export default function ByobDetailPage() {
 
             {/* 모임 소개 */}
             {byob.content?.trim().startsWith('<') ? (
-              <div
+              <RichContent
                 className="prose prose-base max-w-none text-neutral-800 leading-relaxed border-t border-neutral-100 pt-4 notice-content"
-                dangerouslySetInnerHTML={{ __html: sanitizeHtml(byob.content) }}
+                html={byob.content}
               />
             ) : (
               <div className="text-base text-neutral-800 whitespace-pre-wrap leading-relaxed border-t border-neutral-100 pt-4">

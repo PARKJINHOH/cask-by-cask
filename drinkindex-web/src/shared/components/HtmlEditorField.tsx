@@ -52,9 +52,11 @@ export default function HtmlEditorField({
   useEffect(() => {
     if (hasAutoDetected.current || !value) return
     hasAutoDetected.current = true
-    // 영상 임베드 div 를 먼저 제거한 뒤 구조적 태그 존재 여부만 검사
+    // 영상 임베드 div 를 먼저 제거한 뒤 구조적(레이아웃) 태그 존재 여부만 검사.
+    // 체크리스트(TaskList)는 속성 없는 <div> 를 만들므로, 속성이 있는 <div ...> 만
+    // raw HTML(레이아웃)로 간주해 오탐(자동 HTML 모드 전환)을 막는다.
     const withoutEmbeds = value.replace(/<div[^>]*data-video-embed[\s\S]*?<\/div>/gi, '')
-    if (/<div|<article|<section|<header|<footer|<main/i.test(withoutEmbeds)) {
+    if (/<div\s[^>]*>|<article|<section|<header|<footer|<main/i.test(withoutEmbeds)) {
       setIsHtmlMode(true)
       setHtmlModeEverUsed(true)
     }

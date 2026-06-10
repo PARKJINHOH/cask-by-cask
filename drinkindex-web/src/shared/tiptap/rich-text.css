@@ -1,0 +1,71 @@
+/* 공용 RichTextEditor 의 편집 영역(ProseMirror) 전용 스타일.
+   타이포그래피(제목/목록/표/인용 등)는 .notice-content 규칙을 공유한다.
+   여기서는 편집기 고유 동작(최소 높이, 플레이스홀더, 셀 선택, 노드 선택)만 정의. */
+
+.di-richtext {
+  max-height: 640px;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.di-richtext .ProseMirror {
+  outline: none;
+  min-height: 220px;
+  padding: 1rem;
+  cursor: text;
+}
+.di-richtext .ProseMirror:focus {
+  outline: none;
+}
+
+/* Placeholder */
+.di-richtext .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: #9ca3af;
+  pointer-events: none;
+  float: left;
+  height: 0;
+}
+
+/* 표 편집 보조 — 셀 선택 / 열 리사이즈 핸들 */
+.di-richtext .ProseMirror table {
+  table-layout: fixed;
+}
+.di-richtext .ProseMirror td,
+.di-richtext .ProseMirror th {
+  position: relative;
+  min-width: 60px;
+}
+.di-richtext .ProseMirror .selectedCell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(146, 64, 14, 0.1);
+  pointer-events: none;
+}
+.di-richtext .ProseMirror .column-resize-handle {
+  position: absolute;
+  right: -1px;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background-color: var(--color-primary-400);
+  pointer-events: none;
+}
+
+/* 체크리스트 — 편집기에서는 실제 체크박스(input) 노출 */
+.di-richtext .ProseMirror ul[data-type='taskList'] li > label {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 0.3rem;
+  user-select: none;
+}
+.di-richtext .ProseMirror ul[data-type='taskList'] li > label input {
+  cursor: pointer;
+}
+
+/* 술 임베드 칩 — 노드 선택 시 강조 */
+.di-richtext .ProseMirror a.di-spirit-embed.ProseMirror-selectednode {
+  outline: 2px solid var(--color-primary-400);
+  outline-offset: 1px;
+}

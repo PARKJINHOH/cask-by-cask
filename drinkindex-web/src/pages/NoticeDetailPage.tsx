@@ -3,7 +3,7 @@ import { Link, useParams, useNavigate } from 'react-router-dom'
 import { useNoticeDetail, useToggleNoticeRecommend } from '@/domain/notice/hooks/useNoticeDetail'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { NOTICE_CATEGORY_LABELS } from '@/domain/notice/types/notice.types'
-import { sanitizeHtml } from '@/shared/utils/sanitize'
+import RichContent from '@/shared/components/RichContent'
 import { stripHtmlForMeta } from '@/shared/utils/seoText'
 import Badge from '@/shared/components/Badge'
 import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
@@ -120,10 +120,7 @@ export default function NoticeDetailPage() {
 
       {/* 본문 */}
       {/* [보안] contentSanitized를 sanitizeHtml()로 한 번 더 정제 후 렌더링 */}
-      <div
-        className="notice-content"
-        dangerouslySetInnerHTML={{ __html: sanitizeHtml(notice.contentSanitized) }}
-      />
+      <RichContent className="notice-content" html={notice.contentSanitized} />
 
       {/* 추천 버튼 */}
       <div className="mt-10 flex justify-center">

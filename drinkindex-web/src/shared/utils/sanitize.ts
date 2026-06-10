@@ -33,10 +33,10 @@ export function sanitizeHtml(dirty: string): string {
       // 구조
       'div', 'article', 'section', 'header', 'footer', 'main', 'span',
       // 텍스트
-      'p', 'br', 'strong', 'em', 'u', 's', 'mark', 'code', 'pre', 'blockquote',
+      'p', 'br', 'strong', 'em', 'u', 's', 'mark', 'code', 'pre', 'blockquote', 'hr',
       // 제목
       'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-      // 목록
+      // 목록 / 체크리스트
       'ul', 'ol', 'li',
       // 링크·미디어
       'a', 'img',
@@ -55,6 +55,9 @@ export function sanitizeHtml(dirty: string): string {
       'colspan', 'rowspan', 'scope',
       // 글자 배경색(highlight)
       'data-color',
+      // 체크리스트(TaskList) / 술 임베드 칩
+      'data-type', 'data-checked',
+      'data-spirit-id', 'data-spirit-name', 'data-spirit-name-en', 'data-spirit-category',
       // YouTube/Vimeo 임베드 iframe
       'allow', 'allowfullscreen', 'frameborder', 'data-video-embed',
       // 업로드 동영상 video

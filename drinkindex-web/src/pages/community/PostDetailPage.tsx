@@ -6,7 +6,7 @@ import { usePostDetail, usePostActions } from '@/domain/community/hooks/usePostD
 import PostPollWidget from '@/domain/community/components/PostPollWidget'
 import PostSeriesNav from '@/domain/community/components/PostSeriesNav'
 import CommentSection from '@/domain/community/components/CommentSection'
-import { sanitizeHtml } from '@/shared/utils/sanitize'
+import RichContent from '@/shared/components/RichContent'
 import { stripHtmlForMeta } from '@/shared/utils/seoText'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { useToast } from '@/shared/hooks/useToast'
@@ -333,9 +333,9 @@ export default function PostDetailPage() {
             {t('post.blocked')}
           </div>
         ) : (
-          <div
+          <RichContent
             className="prose prose-sm sm:prose max-w-none notice-content"
-            dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.contentSanitized ?? '') }}
+            html={post.contentSanitized ?? ''}
           />
         )}
 

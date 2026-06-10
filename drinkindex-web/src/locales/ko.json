@@ -3,6 +3,11 @@
     "name": "DrinkIndex",
     "tagline": "위스키·와인·꼬냑 커뮤니티"
   },
+  "editor": {
+    "spiritSearchPlaceholder": "삽입할 술 이름을 검색하세요",
+    "spiritSearchHint": "술 이름을 입력하면 검색됩니다.",
+    "spiritNoResult": "검색 결과가 없습니다."
+  },
   "producerSelector": {
     "placeholder": "생산자 선택...",
     "searchPlaceholder": "이름으로 검색...",
