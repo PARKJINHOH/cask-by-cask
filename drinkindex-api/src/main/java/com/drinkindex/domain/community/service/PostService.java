@@ -265,7 +265,7 @@ public class PostService {
     public void deletePost(Long postId, Long userId) {
         Post post = findPost(postId);
         User user = findUser(userId);
-        boolean isAdmin = Role.ADMIN.equals(user.getRole());
+        boolean isAdmin = Role.SUPER_ADMIN.equals(user.getRole()) || Role.ADMIN.equals(user.getRole());
         if (!post.getAuthor().getId().equals(userId) && !isAdmin) {
             throw new CustomException(ErrorCode.POST_ACCESS_DENIED);
         }
@@ -534,6 +534,7 @@ public class PostService {
 
     private void validateBoardPermission(BoardType boardType, Role role) {
         if (BoardType.NOTICE.equals(boardType)
+                && !Role.SUPER_ADMIN.equals(role)
                 && !Role.ADMIN.equals(role)
                 && !Role.PARTNER.equals(role)) {
             throw new CustomException(ErrorCode.POST_NOTICE_FORBIDDEN);

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import Spinner from '@/shared/components/Spinner'
+import EmptyState from '@/shared/components/EmptyState'
 import Pagination from '@/shared/components/Pagination'
 import { useMyPriceReports, useDeleteMyPriceReport } from '../hooks/usePriceChart'
 import type { PriceReportStatus } from '../types/pricetracker.types'
@@ -53,7 +54,11 @@ export default function MyPriceReportsTab() {
       {isLoading ? (
         <div className="flex justify-center py-16"><Spinner /></div>
       ) : !data || data.empty ? (
-        <div className="text-center py-16 text-neutral-400 text-sm">{t('price.my.noReports')}</div>
+        <EmptyState
+          title={t('price.my.noReports')}
+          description={t('price.my.noReportsDesc')}
+          className="border border-neutral-200 rounded-2xl bg-white"
+        />
       ) : (
         <>
           <ul className="space-y-2">

@@ -48,6 +48,7 @@ public class PostImageService {
                 .fileSize(file.getSize())
                 .mimeType(result.mimeType())
                 .imageUrl(result.imageUrl())
+                .subPath(subPath)
                 .uploadedBy(uploader)
                 .build();
 
@@ -55,10 +56,12 @@ public class PostImageService {
     }
 
     // local 프로파일 전용 서빙
-    public Resource loadAsResource(String savedFileName) {
-        PostImage image = postImageRepository.findBySavedFileName(savedFileName)
+    public PostImage findBySavedFileName(String savedFileName) {
+        return postImageRepository.findBySavedFileName(savedFileName)
                 .orElseThrow(() -> new CustomException(ErrorCode.POST_IMAGE_NOT_FOUND));
-        String subPath = extractSubPath(image.getImageUrl(), savedFileName);
+    }
+
+    public Resource loadAsResource(String savedFileName, String subPath) {
         return fileStorageService.loadAsResource(savedFileName, subPath);
     }
 
@@ -81,13 +84,5 @@ public class PostImageService {
         usedUrls.forEach(url ->
                 postImageRepository.findByImageUrl(url).ifPresent(img -> img.linkPost(post))
         );
-    }
-
-    private String extractSubPath(String imageUrl, String savedFileName) {
-        if (imageUrl != null && imageUrl.contains("/api/")) {
-            String[] parts = imageUrl.split("/api/")[1].split("/");
-            return parts[0];
-        }
-        return "posts";
     }
 }

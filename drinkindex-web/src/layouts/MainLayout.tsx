@@ -338,7 +338,7 @@ function HeaderSearch() {
 
 function UserDropdown() {
   const { t } = useTranslation()
-  const { user, isLoggedIn } = useAuthStore()
+  const { user, isLoggedIn, setUser } = useAuthStore()
   const { logout } = useAuth()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
@@ -347,6 +347,14 @@ function UserDropdown() {
   const isFixed = profile?.nicknameFixed === true
   const profileImageUrl = profile?.profileImageUrl ?? user?.profileImageUrl
   const avatarSeed = String(user?.id ?? user?.nickname ?? '?')
+
+  // 레벨업/숙성력 변동이 authStore(헤더 표시용)에 즉시 반영되도록 동기화
+  useEffect(() => {
+    if (!profile || !user) return
+    if (profile.currentLevel !== user.currentLevel || profile.maturingPower !== user.maturingPower) {
+      setUser({ ...user, currentLevel: profile.currentLevel, maturingPower: profile.maturingPower })
+    }
+  }, [profile, user, setUser])
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {

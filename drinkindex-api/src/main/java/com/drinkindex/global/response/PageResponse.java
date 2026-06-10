@@ -10,7 +10,8 @@ public record PageResponse<T>(
         int size,
         long totalElements,
         int totalPages,
-        boolean last
+        boolean last,
+        boolean empty
 ) {
     public static <T> PageResponse<T> from(Page<T> page) {
         return new PageResponse<>(
@@ -19,7 +20,8 @@ public record PageResponse<T>(
                 page.getSize(),
                 page.getTotalElements(),
                 page.getTotalPages(),
-                page.isLast()
+                page.isLast(),
+                page.isEmpty()
         );
     }
 }

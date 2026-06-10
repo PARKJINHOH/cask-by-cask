@@ -38,6 +38,10 @@ public class PostImage extends BaseTimeEntity {
     @Column(nullable = false, length = 500)
     private String imageUrl;
 
+    // 파일 실제 저장 경로 (basePath 하위, 예: "posts/202506"). 서빙·삭제 시 경로 복원용.
+    @Column(nullable = false, length = 200)
+    private String subPath;
+
     @Builder.Default
     @Column(nullable = false)
     private Boolean isUsed = false;

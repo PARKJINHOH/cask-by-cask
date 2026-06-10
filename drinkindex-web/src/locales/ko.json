@@ -522,6 +522,32 @@
     "messagesTab": "쪽지",
     "blocksTab": "차단 목록",
     "settingsTab": "계정 설정",
+    "reviews": {
+      "empty": "작성한 리뷰가 없습니다.",
+      "emptyDesc": "술 상세 페이지에서 첫 번째 리뷰를 작성해보세요!"
+    },
+    "scraps": {
+      "empty": "스크랩한 게시글이 없습니다.",
+      "emptyDesc": "게시글 상세 페이지에서 책갈피 아이콘을 눌러 스크랩할 수 있어요."
+    },
+    "settingsGroups": {
+      "profile": {
+        "title": "프로필",
+        "desc": "닉네임, 프로필 사진 등 기본 정보를 관리합니다."
+      },
+      "security": {
+        "title": "계정 보안",
+        "desc": "비밀번호 변경 및 재발급"
+      },
+      "notifications": {
+        "title": "알림 설정",
+        "desc": "이메일 수신 여부를 설정합니다."
+      },
+      "danger": {
+        "title": "위험 구역",
+        "desc": "계정 삭제 등 되돌릴 수 없는 작업"
+      }
+    },
     "blocks": {
       "title": "차단한 사용자",
       "desc": "차단한 사용자의 게시글과 댓글은 목록에서 보이지 않습니다.",
@@ -945,6 +971,7 @@
     "write": "모임 등록",
     "edit": "모임 수정",
     "noPost": "등록된 모임이 없습니다.",
+    "noPostDesc": "BYOB 모임을 등록하거나 참여해보세요!",
     "participants": "참여자",
     "participantsCount": "{{count}}/{{max}}명",
     "location": "장소",
@@ -987,6 +1014,7 @@
     "noComment": "아직 댓글이 없습니다.",
     "deletePost": "모임 삭제",
     "confirmDelete": "모임을 삭제하시겠습니까? 되돌릴 수 없습니다.",
+    "confirmDeleteWithLinked": "모임을 삭제하시겠습니까? 자유게시판에 연동된 게시글도 함께 삭제되며, 되돌릴 수 없습니다.",
     "cannotEditHasParticipant": "승인된 참여자가 있으면 수정/삭제할 수 없습니다.",
     "cannotApplyFull": "정원이 초과되었습니다.",
     "cannotApplyNotOpen": "모집중인 모임에만 신청할 수 있습니다.",
@@ -1152,6 +1180,7 @@
     },
     "my": {
       "noReports": "등록한 가격이 없습니다",
+      "noReportsDesc": "구매한 술의 가격을 등록해보세요!",
       "deleteConfirm": "이 가격 등록을 삭제하시겠습니까?"
     },
     "alert": {
@@ -1163,6 +1192,7 @@
       "delete": "알림 삭제",
       "myAlerts": "내 가격 알림",
       "noAlerts": "설정된 가격 알림이 없습니다",
+      "noAlertsDesc": "원하는 가격에 도달하면 알려드릴게요. 술 상세 페이지에서 목표가를 설정해보세요!",
       "success": "가격 알림이 설정되었습니다",
       "dutyfreeNote": "면세 가격은 환율 근사치로 인해 KRW 알림 비교에서 제외됩니다",
       "loginRequired": "로그인 후 목표가 알림을 설정할 수 있습니다",

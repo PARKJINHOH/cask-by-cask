@@ -1,5 +1,6 @@
 ﻿import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import Spinner from '@/shared/components/Spinner'
 import EmptyState from '@/shared/components/EmptyState'
 import Pagination from '@/shared/components/Pagination'
@@ -12,6 +13,7 @@ function boardPathOf(boardType: PostListItem['boardType']): string {
 }
 
 export default function MyScrappedPosts() {
+  const { t } = useTranslation()
   const [page, setPage] = useState(0)
   const { data, isLoading } = useMyScrappedPosts(page, 20)
   const unscrapMutation = useUnscrapPost()
@@ -32,8 +34,9 @@ export default function MyScrappedPosts() {
   if (!data || data.empty) {
     return (
       <EmptyState
-        title="스크랩한 게시글이 없습니다"
-        description="게시글 상세 페이지에서 책갈피 아이콘을 눌러 스크랩할 수 있어요."
+        title={t('mypage.scraps.empty')}
+        description={t('mypage.scraps.emptyDesc')}
+        className="border border-neutral-200 rounded-2xl bg-white"
       />
     )
   }

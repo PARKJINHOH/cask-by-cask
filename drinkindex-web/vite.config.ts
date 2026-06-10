@@ -76,6 +76,10 @@ export default defineConfig({
         target: 'http://localhost:8080',
         changeOrigin: true,
       },
+      '/api/posts/images': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
       '/api/posts/videos': {
         target: 'http://localhost:8080',
         changeOrigin: true,

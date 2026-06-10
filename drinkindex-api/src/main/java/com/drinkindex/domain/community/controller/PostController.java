@@ -1,6 +1,7 @@
 package com.drinkindex.domain.community.controller;
 
 import com.drinkindex.domain.community.dto.*;
+import com.drinkindex.domain.community.entity.PostImage;
 import com.drinkindex.domain.community.entity.PostVideo;
 import com.drinkindex.domain.community.entity.enums.BoardType;
 import com.drinkindex.domain.community.service.PostImageService;
@@ -309,8 +310,9 @@ public class PostController {
         if (savedFileName.contains("..") || savedFileName.contains("/") || savedFileName.contains("\\")) {
             throw new CustomException(ErrorCode.INVALID_FILE_PATH);
         }
-        Resource resource = postImageService.loadAsResource(savedFileName);
-        return ResponseEntity.ok().contentType(MediaType.IMAGE_JPEG).body(resource);
+        PostImage image = postImageService.findBySavedFileName(savedFileName);
+        Resource resource = postImageService.loadAsResource(savedFileName, image.getSubPath());
+        return ResponseEntity.ok().contentType(MediaType.parseMediaType(image.getMimeType())).body(resource);
     }
 
     // ─── Private ────────────────────────────────

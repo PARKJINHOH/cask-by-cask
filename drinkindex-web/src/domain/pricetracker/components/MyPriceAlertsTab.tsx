@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import Spinner from '@/shared/components/Spinner'
+import EmptyState from '@/shared/components/EmptyState'
 import { useMyPriceAlerts, useDeletePriceAlert, useTogglePriceAlert } from '../hooks/usePriceChart'
 
 const krw = new Intl.NumberFormat('ko-KR')
@@ -14,7 +15,13 @@ export default function MyPriceAlertsTab() {
 
   if (isLoading) return <div className="flex justify-center py-16"><Spinner /></div>
   if (!alerts || alerts.length === 0) {
-    return <div className="text-center py-16 text-neutral-400 text-sm">{t('price.alert.noAlerts')}</div>
+    return (
+      <EmptyState
+        title={t('price.alert.noAlerts')}
+        description={t('price.alert.noAlertsDesc')}
+        className="border border-neutral-200 rounded-2xl bg-white"
+      />
+    )
   }
 
   return (

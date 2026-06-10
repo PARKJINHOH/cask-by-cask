@@ -117,10 +117,10 @@ export default function ProfileImageSection() {
   const isDeleting = deleteMutation.isPending
 
   return (
-    <section className="bg-white rounded-2xl p-6 shadow-sm space-y-4">
-      <h2 className="text-base font-semibold text-neutral-900">
+    <div className="p-5 space-y-4">
+      <h3 className="text-sm font-semibold text-neutral-800">
         {t('mypage.profileImage.section')}
-      </h2>
+      </h3>
 
       <div className="flex items-center gap-5">
         {/* 현재 이미지 or 기본 아바타 */}
@@ -260,6 +260,6 @@ export default function ProfileImageSection() {
           </div>
         </div>
       )}
-    </section>
+    </div>
   )
 }

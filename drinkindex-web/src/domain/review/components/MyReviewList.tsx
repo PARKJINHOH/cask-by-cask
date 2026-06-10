@@ -1,5 +1,6 @@
 ﻿import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import Spinner from '@/shared/components/Spinner'
 import EmptyState from '@/shared/components/EmptyState'
 import Pagination from '@/shared/components/Pagination'
@@ -29,6 +30,7 @@ function ScoreBar({ label, value }: { label: string; value: number }) {
 }
 
 export default function MyReviewList() {
+  const { t } = useTranslation()
   const [page, setPage]                     = useState(0)
   const [editingReview, setEditingReview]   = useState<ReviewItem | null>(null)
 
@@ -48,8 +50,9 @@ export default function MyReviewList() {
         </div>
       ) : !data || data.empty ? (
         <EmptyState
-          title="작성한 리뷰가 없습니다."
-          description="술 상세 페이지에서 첫 번째 리뷰를 작성해보세요!"
+          title={t('mypage.reviews.empty')}
+          description={t('mypage.reviews.emptyDesc')}
+          className="border border-neutral-200 rounded-2xl bg-white"
         />
       ) : (
         <>

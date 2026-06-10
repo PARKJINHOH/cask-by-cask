@@ -43,4 +43,8 @@ public interface PostRepository extends JpaRepository<Post, Long>, PostQueryRepo
     @Modifying
     @Query("UPDATE Post p SET p.commentCount = p.commentCount - 1 WHERE p.id = :id AND p.commentCount > 0")
     void decrementCommentCount(@Param("id") Long id);
+
+    // 미디어 고아 정리 — 게시글 본문에 해당 파일명이 박혀 있는지 (사용 중 여부 교차검증)
+    @Query("SELECT COUNT(p) > 0 FROM Post p WHERE p.content LIKE CONCAT('%', :fragment, '%')")
+    boolean existsByContentContaining(@Param("fragment") String fragment);
 }

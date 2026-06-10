@@ -2,6 +2,8 @@ package com.drinkindex.domain.draft.repository;
 
 import com.drinkindex.domain.draft.entity.ContentDraft;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -16,4 +18,8 @@ public interface ContentDraftRepository extends JpaRepository<ContentDraft, Long
 
     // 단건 조회 + 소유 검증
     Optional<ContentDraft> findByIdAndUserId(Long id, Long userId);
+
+    // 미디어 고아 정리 — 임시저장 본문에 해당 파일명이 박혀 있는지 (사용 중 여부 교차검증)
+    @Query("SELECT COUNT(d) > 0 FROM ContentDraft d WHERE d.content LIKE CONCAT('%', :fragment, '%')")
+    boolean existsByContentContaining(@Param("fragment") String fragment);
 }

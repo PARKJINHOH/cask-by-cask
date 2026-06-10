@@ -60,6 +60,8 @@ export default function RichTextEditor({
 }: Props) {
   const [uploadProgress, setUploadProgress] = useState<number | null>(null)
   const [uploadLabel, setUploadLabel] = useState<'이미지' | '동영상'>('이미지')
+  // 여러 장 동시 업로드 시 진행 위치(예: 2/5). 단일 업로드면 null.
+  const [batchProgress, setBatchProgress] = useState<{ current: number; total: number } | null>(null)
   const [spiritOpen, setSpiritOpen] = useState(false)
   const videoInputRef = useRef<HTMLInputElement>(null)
   const imageInputRef = useRef<HTMLInputElement>(null)
@@ -124,22 +126,19 @@ export default function RichTextEditor({
         return false
       },
       handleDrop(_view, event) {
-        const file = event.dataTransfer?.files?.[0]
-        if (!file?.type.startsWith('image/') || !uploadImage) return false
+        const files = Array.from(event.dataTransfer?.files ?? [])
+        const imgFiles = files.filter((f) => f.type.startsWith('image/'))
+        if (imgFiles.length === 0 || !uploadImage) return false
         event.preventDefault()
-        handleImageUpload(file).then((url) => {
-          if (url && editor) editor.chain().focus().setImage({ src: url }).run()
-        })
+        uploadAndInsertImagesRef.current(imgFiles)
         return true
       },
       handlePaste(view, event) {
-        // 이미지 파일 붙여넣기 (클립보드 이미지)
-        const imgFile = Array.from(event.clipboardData?.files ?? []).find((f) => f.type.startsWith('image/'))
-        if (imgFile && uploadImage) {
+        // 이미지 파일 붙여넣기 (클립보드 이미지) — 여러 장 지원
+        const imgFiles = Array.from(event.clipboardData?.files ?? []).filter((f) => f.type.startsWith('image/'))
+        if (imgFiles.length > 0 && uploadImage) {
           event.preventDefault()
-          handleImageUpload(imgFile).then((url) => {
-            if (url && editor) editor.chain().focus().setImage({ src: url }).run()
-          })
+          uploadAndInsertImagesRef.current(imgFiles)
           return true
         }
         // YouTube/Vimeo URL 붙여넣기 → 임베드
@@ -167,6 +166,23 @@ export default function RichTextEditor({
       lastEmitted.current = value
     }
   }, [editor, value])
+
+  // 이미지 파일 여러 장을 순차 업로드하며 성공한 것부터 에디터에 삽입한다.
+  // (파일 선택 / 드래그 / 붙여넣기 공용)
+  const uploadAndInsertImages = useCallback(async (files: File[]) => {
+    if (!uploadImage || !editor) return
+    const images = files.filter((f) => f.type.startsWith('image/'))
+    if (images.length === 0) return
+    try {
+      for (let i = 0; i < images.length; i++) {
+        if (images.length > 1) setBatchProgress({ current: i + 1, total: images.length })
+        const url = await handleImageUpload(images[i])
+        if (url) editor.chain().focus().setImage({ src: url }).run()
+      }
+    } finally {
+      setBatchProgress(null)
+    }
+  }, [uploadImage, editor, handleImageUpload])
 
   const handleVideoFile = useCallback(async (file: File) => {
     if (!uploadVideo) return
@@ -220,13 +236,12 @@ export default function RichTextEditor({
           ref={imageInputRef}
           type="file"
           accept="image/jpeg,image/png,image/gif,image/webp"
+          multiple
           className="hidden"
           onChange={(e) => {
-            const file = e.target.files?.[0]
+            const files = Array.from(e.target.files ?? [])
             e.target.value = ''
-            if (file) handleImageUpload(file).then((url) => {
-              if (url && editor) editor.chain().focus().setImage({ src: url }).run()
-            })
+            if (files.length) uploadAndInsertImages(files)
           }}
         />
       )}

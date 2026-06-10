@@ -3,6 +3,7 @@ package com.drinkindex.domain.community.repository;
 import com.drinkindex.domain.community.entity.PostVideo;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -13,4 +14,7 @@ public interface PostVideoRepository extends JpaRepository<PostVideo, Long> {
     List<PostVideo> findByPostId(Long postId);
 
     Optional<PostVideo> findByVideoUrl(String videoUrl);
+
+    // 고아 정리 후보: 미연결(is_used=false) + 업로드 후 유예기간 경과
+    List<PostVideo> findByIsUsedFalseAndCreatedAtBefore(LocalDateTime cutoff);
 }

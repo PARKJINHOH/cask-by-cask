@@ -1,4 +1,4 @@
-﻿import { useState, useMemo } from 'react'
+﻿import { useState, useMemo, type ReactNode } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -9,6 +9,80 @@ import Button from '@/shared/components/Button'
 import Modal from '@/shared/components/Modal'
 import { useUpdateNickname, useUpdatePassword, useDeleteMe, useResetPassword, useFixNickname, useMe, useUpdateEmailSubscription, useVerifyAdult } from '../hooks/useUser'
 import ProfileImageSection from './ProfileImageSection'
+
+// ── 설정 그룹 카드 ───────────────────────────────────────────
+
+const ICON_CLS = 'w-5 h-5'
+
+function UserGroupIcon() {
+  return (
+    <svg className={ICON_CLS} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="8" r="3.5" />
+      <path d="M5 20c0-3.314 3.134-6 7-6s7 2.686 7 6" />
+    </svg>
+  )
+}
+
+function LockIcon() {
+  return (
+    <svg className={ICON_CLS} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="5" y="11" width="14" height="9" rx="2" />
+      <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+    </svg>
+  )
+}
+
+function BellIcon() {
+  return (
+    <svg className={ICON_CLS} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M6 9a6 6 0 0 1 12 0c0 4 1.5 5.5 1.5 5.5h-15S6 13 6 9Z" />
+      <path d="M10.5 18a1.7 1.7 0 0 0 3 0" />
+    </svg>
+  )
+}
+
+function WarningIcon() {
+  return (
+    <svg className={ICON_CLS} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 9v4" />
+      <path d="M10.29 3.86 1.82 18a1.5 1.5 0 0 0 1.29 2.25h17.78A1.5 1.5 0 0 0 22.18 18L13.71 3.86a1.5 1.5 0 0 0-2.42 0Z" />
+      <path d="M12 17h.01" />
+    </svg>
+  )
+}
+
+interface SettingsGroupProps {
+  icon: ReactNode
+  title: string
+  description?: string
+  tone?: 'default' | 'danger'
+  children: ReactNode
+}
+
+function SettingsGroup({ icon, title, description, tone = 'default', children }: SettingsGroupProps) {
+  const isDanger = tone === 'danger'
+  return (
+    <section className={`bg-white rounded-2xl border overflow-hidden ${isDanger ? 'border-red-100' : 'border-neutral-100'}`}>
+      <div className={`flex items-center gap-3 px-5 py-4 border-b ${isDanger ? 'border-red-100 bg-red-50/50' : 'border-neutral-100 bg-neutral-50/60'}`}>
+        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0
+          ${isDanger ? 'bg-red-100 text-red-600' : 'bg-primary-50 text-primary-700'}`}>
+          {icon}
+        </div>
+        <div className="min-w-0">
+          <h2 className={`text-sm font-bold ${isDanger ? 'text-red-700' : 'text-neutral-900'}`}>{title}</h2>
+          {description && <p className="text-xs text-neutral-400 mt-0.5">{description}</p>}
+        </div>
+      </div>
+      <div className="divide-y divide-neutral-100">
+        {children}
+      </div>
+    </section>
+  )
+}
 
 // ── 닉네임 폼 ───────────────────────────────────────────────
 
@@ -70,7 +144,7 @@ function NicknameSection() {
   }
 
   return (
-    <section className="p-5 bg-white rounded-xl border border-neutral-100 space-y-4">
+    <div className="p-5 space-y-4">
       <div className="flex items-center gap-2">
         <h3 className="text-sm font-semibold text-neutral-800">{t('mypage.nickname.section')}</h3>
         {isFixed && (
@@ -120,7 +194,7 @@ function NicknameSection() {
           </Button>
         </div>
       </form>
-    </section>
+    </div>
   )
 }
 
@@ -151,7 +225,7 @@ function FixedNicknameSection() {
   }
 
   return (
-    <section className="p-5 bg-white rounded-xl border border-amber-100 space-y-3">
+    <div className="p-5 space-y-3">
       <div className="flex items-center gap-2">
         <h3 className="text-sm font-semibold text-neutral-800">{t('mypage.fixNickname.section')}</h3>
         {isFixed && (
@@ -217,7 +291,7 @@ function FixedNicknameSection() {
           </div>
         </div>
       </Modal>
-    </section>
+    </div>
   )
 }
 
@@ -276,7 +350,7 @@ function PasswordSection() {
   }
 
   return (
-    <section className="p-5 bg-white rounded-xl border border-neutral-100 space-y-4">
+    <div className="p-5 space-y-4">
       <h3 className="text-sm font-semibold text-neutral-800">{t('mypage.password.section')}</h3>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
         <Input
@@ -315,7 +389,7 @@ function PasswordSection() {
           </Button>
         </div>
       </form>
-    </section>
+    </div>
   )
 }
 
@@ -342,7 +416,7 @@ function TempPasswordSection() {
   }
 
   return (
-    <section className="p-5 bg-white rounded-xl border border-neutral-100 space-y-3">
+    <div className="p-5 space-y-3">
       <h3 className="text-sm font-semibold text-neutral-800">{t('mypage.password.resetSection')}</h3>
       <p className="text-xs text-neutral-500 leading-relaxed">{t('mypage.password.resetDesc')}</p>
       {status === 'success' && (
@@ -359,7 +433,7 @@ function TempPasswordSection() {
       >
         {t('mypage.password.resetBtn')}
       </Button>
-    </section>
+    </div>
   )
 }
 
@@ -385,7 +459,7 @@ function EmailSubscriptionSection() {
   }
 
   return (
-    <section className="p-5 bg-white rounded-xl border border-neutral-100 space-y-3">
+    <div className="p-5 space-y-3">
       <div>
         <h3 className="text-sm font-semibold text-neutral-800">이메일 수신 동의</h3>
         <p className="text-xs text-neutral-500 mt-0.5">새소식, 이벤트, 프로모션 안내 이메일을 받습니다.</p>
@@ -422,7 +496,7 @@ function EmailSubscriptionSection() {
           {current ? '이메일 수신에 동의했습니다.' : '이메일 수신을 거부했습니다.'}
         </p>
       )}
-    </section>
+    </div>
   )
 }
 
@@ -463,7 +537,7 @@ function AdultVerificationSection() {
   }
 
   return (
-    <section className="p-5 bg-white rounded-xl border border-neutral-100 space-y-3">
+    <div className="p-5 space-y-3">
       <div className="flex items-center gap-2">
         <h3 className="text-sm font-semibold text-neutral-800">{t('mypage.adult.section')}</h3>
         {isVerified && (
@@ -528,7 +602,7 @@ function AdultVerificationSection() {
           </p>
         </div>
       )}
-    </section>
+    </div>
   )
 }
 
@@ -564,8 +638,7 @@ function DangerZone() {
   }
 
   return (
-    <section className="p-5 bg-white rounded-xl border border-red-100 space-y-3">
-      <h3 className="text-sm font-semibold text-red-700">위험 구역</h3>
+    <div className="p-5 space-y-3">
       <p className="text-xs text-neutral-500 leading-relaxed">
         회원을 탈퇴하면 계정과 개인정보가 <strong>영구적으로 파기</strong>되며 복구할 수 없습니다.
       </p>
@@ -631,7 +704,7 @@ function DangerZone() {
           </div>
         </div>
       </Modal>
-    </section>
+    </div>
   )
 }
 
@@ -642,16 +715,46 @@ function DangerZone() {
 const ADULT_VERIFICATION_ENABLED = false
 
 export default function AccountSettings() {
+  const { t } = useTranslation()
+
   return (
-    <div className="space-y-4">
-      <ProfileImageSection />
-      <NicknameSection />
-      <FixedNicknameSection />
-      {ADULT_VERIFICATION_ENABLED && <AdultVerificationSection />}
-      <PasswordSection />
-      <TempPasswordSection />
-      <EmailSubscriptionSection />
-      <DangerZone />
+    <div className="space-y-5">
+      <SettingsGroup
+        icon={<UserGroupIcon />}
+        title={t('mypage.settingsGroups.profile.title')}
+        description={t('mypage.settingsGroups.profile.desc')}
+      >
+        <ProfileImageSection />
+        <NicknameSection />
+        <FixedNicknameSection />
+        {ADULT_VERIFICATION_ENABLED && <AdultVerificationSection />}
+      </SettingsGroup>
+
+      <SettingsGroup
+        icon={<LockIcon />}
+        title={t('mypage.settingsGroups.security.title')}
+        description={t('mypage.settingsGroups.security.desc')}
+      >
+        <PasswordSection />
+        <TempPasswordSection />
+      </SettingsGroup>
+
+      <SettingsGroup
+        icon={<BellIcon />}
+        title={t('mypage.settingsGroups.notifications.title')}
+        description={t('mypage.settingsGroups.notifications.desc')}
+      >
+        <EmailSubscriptionSection />
+      </SettingsGroup>
+
+      <SettingsGroup
+        icon={<WarningIcon />}
+        title={t('mypage.settingsGroups.danger.title')}
+        description={t('mypage.settingsGroups.danger.desc')}
+        tone="danger"
+      >
+        <DangerZone />
+      </SettingsGroup>
     </div>
   )
 }

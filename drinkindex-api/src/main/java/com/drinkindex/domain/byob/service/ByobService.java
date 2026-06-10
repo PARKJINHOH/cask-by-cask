@@ -17,6 +17,7 @@ import com.drinkindex.domain.community.repository.PostPrefixRepository;
 import com.drinkindex.domain.community.repository.PostRepository;
 import com.drinkindex.domain.community.service.MessageService;
 import com.drinkindex.domain.community.service.NotificationService;
+import com.drinkindex.domain.community.service.PostMoveService;
 import com.drinkindex.domain.user.entity.User;
 import com.drinkindex.domain.user.entity.enums.Role;
 import com.drinkindex.domain.user.repository.UserRepository;
@@ -48,6 +49,7 @@ public class ByobService {
     private final HtmlSanitizer htmlSanitizer;
     private final MessageService messageService;
     private final NotificationService notificationService;
+    private final PostMoveService postMoveService;
 
     // ── 목록 ──────────────────────────────────────────────────────
 
@@ -231,6 +233,12 @@ public class ByobService {
         checkHost(byob, userId);
         if (byob.getApprovedCount() > 0) {
             throw new CustomException(ErrorCode.BYOB_HAS_APPROVED_PARTICIPANT);
+        }
+        // 자유게시판에 노출(미러)된 연동 게시글이 있으면 함께 삭제 (이미지/동영상도 함께 정리)
+        if (byob.getLinkedFreePostId() != null) {
+            postRepository.findById(byob.getLinkedFreePostId())
+                    .ifPresent(post -> postMoveService.moveToDeleted(
+                            post, userId, "BYOB 모임 삭제로 인한 연동 게시글 자동 삭제"));
         }
         byobRepository.delete(byob);
     }

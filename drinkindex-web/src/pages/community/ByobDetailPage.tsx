@@ -151,7 +151,8 @@ export default function ByobDetailPage() {
   }
 
   const handleDelete = async () => {
-    if (!window.confirm(t('byob.confirmDelete'))) return
+    const confirmKey = byob.linkedFreePostId ? 'byob.confirmDeleteWithLinked' : 'byob.confirmDelete'
+    if (!window.confirm(t(confirmKey))) return
     await deleteMutation.mutateAsync()
     navigate('/community/byob')
   }

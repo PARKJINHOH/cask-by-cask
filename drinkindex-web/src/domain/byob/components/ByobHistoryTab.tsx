@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import EmptyState from '@/shared/components/EmptyState'
 import { useByobMyHosted, useByobMyJoined } from '../hooks/useByob'
 import ByobStatusBadge from './ByobStatusBadge'
 import type { ParticipantStatus } from '../types/byob.types'
@@ -52,7 +53,11 @@ export default function ByobHistoryTab() {
 
       {sub === 'hosted' && (
         hostedItems.length === 0 ? (
-          <p className="text-sm text-neutral-400 py-8 text-center">{t('byob.noPost')}</p>
+          <EmptyState
+            title={t('byob.noPost')}
+            description={t('byob.noPostDesc')}
+            className="border border-neutral-200 rounded-2xl bg-white"
+          />
         ) : (
           <div className="space-y-3">
             {hostedItems.map((item) => (
@@ -81,7 +86,11 @@ export default function ByobHistoryTab() {
 
       {sub === 'joined' && (
         joinedItems.length === 0 ? (
-          <p className="text-sm text-neutral-400 py-8 text-center">{t('byob.noPost')}</p>
+          <EmptyState
+            title={t('byob.noPost')}
+            description={t('byob.noPostDesc')}
+            className="border border-neutral-200 rounded-2xl bg-white"
+          />
         ) : (
           <div className="space-y-3">
             {joinedItems.map((item) => (

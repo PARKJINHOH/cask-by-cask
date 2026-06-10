@@ -532,6 +532,32 @@
     "messagesTab": "Messages",
     "blocksTab": "Blocked",
     "settingsTab": "Account Settings",
+    "reviews": {
+      "empty": "No reviews yet.",
+      "emptyDesc": "Write your first review from a spirit's detail page!"
+    },
+    "scraps": {
+      "empty": "No scrapped posts.",
+      "emptyDesc": "Tap the bookmark icon on a post's detail page to scrap it."
+    },
+    "settingsGroups": {
+      "profile": {
+        "title": "Profile",
+        "desc": "Manage your nickname, profile photo, and basic info."
+      },
+      "security": {
+        "title": "Account Security",
+        "desc": "Change or reset your password"
+      },
+      "notifications": {
+        "title": "Notifications",
+        "desc": "Manage your email subscription preferences."
+      },
+      "danger": {
+        "title": "Danger Zone",
+        "desc": "Irreversible actions like account deletion"
+      }
+    },
     "blocks": {
       "title": "Blocked Users",
       "desc": "Posts and comments from blocked users are hidden from your lists.",
@@ -945,6 +971,7 @@
     "write": "New Gathering",
     "edit": "Edit Gathering",
     "noPost": "No gatherings found.",
+    "noPostDesc": "Host or join a BYOB gathering!",
     "participants": "Participants",
     "participantsCount": "{{count}}/{{max}}",
     "location": "Location",
@@ -987,6 +1014,7 @@
     "noComment": "No comments yet.",
     "deletePost": "Delete Gathering",
     "confirmDelete": "Delete this gathering? This cannot be undone.",
+    "confirmDeleteWithLinked": "Delete this gathering? The linked free-board post will also be deleted. This cannot be undone.",
     "cannotEditHasParticipant": "Cannot edit/delete with approved participants.",
     "cannotApplyFull": "This gathering is full.",
     "cannotApplyNotOpen": "Can only apply to open gatherings.",
@@ -1152,6 +1180,7 @@
     },
     "my": {
       "noReports": "No price reports yet",
+      "noReportsDesc": "Report a price for a spirit you purchased!",
       "deleteConfirm": "Delete this price report?"
     },
     "alert": {
@@ -1163,6 +1192,7 @@
       "delete": "Delete Alert",
       "myAlerts": "My Price Alerts",
       "noAlerts": "No price alerts set",
+      "noAlertsDesc": "We'll notify you when the price drops. Set a target price from a spirit's detail page!",
       "success": "Price alert set successfully",
       "dutyfreeNote": "Duty-free prices are excluded from KRW alerts (approximate exchange rate)",
       "loginRequired": "Log in to set a target-price alert",

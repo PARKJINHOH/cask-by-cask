@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import EmptyState from '@/shared/components/EmptyState';
 import type { UserBottle } from '../types/userBottle.types';
 import { BottleTable } from './BottleTable';
 import { BottleCard } from './BottleCard';
@@ -19,10 +20,11 @@ export function BottleList({ bottles, view, editable, onEdit, onDelete, onToggle
 
   if (bottles.length === 0) {
     return (
-      <div className="py-16 text-center text-neutral-400">
-        <p className="font-medium">{t('collection.empty')}</p>
-        <p className="text-sm mt-1">{t('collection.emptyDesc')}</p>
-      </div>
+      <EmptyState
+        title={t('collection.empty')}
+        description={t('collection.emptyDesc')}
+        className="border border-neutral-200 rounded-2xl bg-white"
+      />
     );
   }
 

@@ -17,4 +17,9 @@ public interface ByobRepository extends JpaRepository<Byob, Long> {
     Page<Byob> findAllOrderByCreatedAtDesc(Pageable pageable);
 
     Page<Byob> findByHostIdOrderByCreatedAtDesc(Long hostId, Pageable pageable);
+
+    // 미디어 고아 정리 — BYOB 본문에 해당 파일명이 박혀 있는지 (사용 중 여부 교차검증).
+    //   BYOB 는 syncImageUsage 를 거치지 않아 본문 이미지가 is_used=false 로 남으므로 반드시 교차검증 필요.
+    @Query("SELECT COUNT(b) > 0 FROM Byob b WHERE b.content LIKE CONCAT('%', :fragment, '%')")
+    boolean existsByContentContaining(@Param("fragment") String fragment);
 }

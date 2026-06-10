@@ -29,6 +29,7 @@ export default function MyWishlist() {
         <EmptyState
           title={t('wishlist.noItem')}
           description={t('wishlist.noItemDesc')}
+          className="border border-neutral-200 rounded-2xl bg-white"
         />
       ) : (
         <>

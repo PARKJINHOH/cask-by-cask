@@ -176,7 +176,7 @@ public class CommentService {
     public void deleteComment(Long postId, Long commentId, Long userId) {
         PostComment comment = findComment(commentId, postId);
         User user = findUser(userId);
-        boolean isAdmin = Role.ADMIN.equals(user.getRole());
+        boolean isAdmin = Role.SUPER_ADMIN.equals(user.getRole()) || Role.ADMIN.equals(user.getRole());
 
         if (!comment.getAuthor().getId().equals(userId) && !isAdmin) {
             throw new CustomException(ErrorCode.COMMENT_ACCESS_DENIED);

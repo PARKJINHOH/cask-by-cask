@@ -3,6 +3,7 @@ package com.drinkindex.domain.community.service;
 import com.drinkindex.domain.community.entity.DeletedPost;
 import com.drinkindex.domain.community.entity.Post;
 import com.drinkindex.domain.community.entity.PostImage;
+import com.drinkindex.domain.community.entity.PostVideo;
 import com.drinkindex.domain.community.entity.enums.PostStatus;
 import com.drinkindex.domain.community.repository.DeletedPostRepository;
 import com.drinkindex.domain.community.repository.PostCommentRepository;
@@ -11,6 +12,7 @@ import com.drinkindex.domain.community.repository.PostLikeRepository;
 import com.drinkindex.domain.community.repository.PostReportRepository;
 import com.drinkindex.domain.community.repository.PostRepository;
 import com.drinkindex.domain.community.repository.PostScrapRepository;
+import com.drinkindex.domain.community.repository.PostVideoRepository;
 import com.drinkindex.global.storage.FileStorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +31,7 @@ public class PostMoveService {
     private final PostRepository postRepository;
     private final PostCommentRepository postCommentRepository;
     private final PostImageRepository postImageRepository;
+    private final PostVideoRepository postVideoRepository;
     private final PostScrapRepository postScrapRepository;
     private final PostLikeRepository postLikeRepository;
     private final PostReportRepository postReportRepository;
@@ -66,32 +69,30 @@ public class PostMoveService {
         postLikeRepository.deleteAllByPostId(post.getId());
         postReportRepository.deleteAllByPostId(post.getId());
 
-        // 3. 연결 이미지 파일 물리 삭제
+        // 3. 연결 이미지 파일 물리 삭제 (저장된 subPath 사용)
         List<PostImage> images = postImageRepository.findByPostId(post.getId());
         images.forEach(img -> {
             try {
-                // subPath = "posts/YYYYMM" 형태로 savedFileName의 업로드 경로를 추론
-                String subPath = extractSubPath(img.getImageUrl(), img.getSavedFileName());
-                fileStorageService.delete(img.getSavedFileName(), subPath);
+                fileStorageService.delete(img.getSavedFileName(), img.getSubPath());
             } catch (Exception e) {
                 log.warn("이미지 파일 삭제 실패 (무시): {}", img.getSavedFileName(), e);
             }
         });
 
+        // 3-1. 연결 동영상 파일 물리 삭제 + 레코드 삭제.
+        //   PostVideo 는 Post 와 cascade 관계가 아니므로(FK ON DELETE SET NULL) 명시적으로 정리한다.
+        //   Post 삭제 전에 post_id 로 조회해야 함(삭제 후엔 SET NULL 로 연결이 끊김).
+        List<PostVideo> videos = postVideoRepository.findByPostId(post.getId());
+        videos.forEach(video -> {
+            try {
+                fileStorageService.delete(video.getSavedFileName(), video.getSubPath());
+            } catch (Exception e) {
+                log.warn("동영상 파일 삭제 실패 (무시): {}", video.getSavedFileName(), e);
+            }
+        });
+        postVideoRepository.deleteAll(videos);
+
         // 4. Post 레코드 삭제 (cascade로 PostImage, Poll, PollOption 함께 삭제)
         postRepository.delete(post);
-    }
-
-    // imageUrl에서 subPath 추출: /api/posts/images/{savedFileName} → posts
-    private String extractSubPath(String imageUrl, String savedFileName) {
-        // URL 패턴: /api/posts/images/{savedFileName}
-        // subPath는 FileStorageService에서 업로드 시 사용한 값이 필요하지만
-        // PostImage에 subPath 컬럼이 없으므로 URL에서 도메인 세그먼트로 추론
-        if (imageUrl != null && imageUrl.contains("/api/")) {
-            String[] parts = imageUrl.split("/api/")[1].split("/");
-            // parts[0] = domain (예: "posts"), parts[1] = "images", parts[2] = savedFileName
-            return parts[0];
-        }
-        return "posts";
     }
 }
