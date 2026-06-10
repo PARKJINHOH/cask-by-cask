@@ -2,6 +2,7 @@ package com.drinkindex.domain.user.repository;
 
 import com.drinkindex.domain.admin.dto.DailyCountProjection;
 import com.drinkindex.domain.community.entity.UserBlock;
+import com.drinkindex.domain.user.dto.AuthUserView;
 import com.drinkindex.domain.user.entity.RoleType;
 import com.drinkindex.domain.user.entity.User;
 import com.drinkindex.domain.user.entity.enums.Role;
@@ -18,6 +19,14 @@ import java.util.Optional;
 public interface UserRepository extends JpaRepository<User, Long>, UserQueryRepository {
 
     Optional<User> findByEmail(String email);
+
+    /**
+     * 인증 필터 전용 경량 조회 — EAGER 연관(roleType·boardPermissions) 로딩 없이 단일 SELECT.
+     * (@SQLRestriction("deleted_at IS NULL") 이 적용되어 탈퇴 계정은 findById 와 동일하게 제외된다)
+     */
+    @Query("SELECT new com.drinkindex.domain.user.dto.AuthUserView(u.id, u.email, u.password, u.role, u.isActive) "
+            + "FROM User u WHERE u.id = :id")
+    Optional<AuthUserView> findAuthViewById(@Param("id") Long id);
 
     boolean existsByEmail(String email);
 

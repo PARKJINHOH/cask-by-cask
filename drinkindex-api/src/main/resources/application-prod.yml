@@ -29,6 +29,10 @@ spring:
 app:
   email:
     from: drinkindex.cs@gmail.com
+  auth:
+    refresh-cookie:
+      secure: true
+      same-site: Strict
 
 cors:
   allowed-origins: https://drinkindex.pinner.dev

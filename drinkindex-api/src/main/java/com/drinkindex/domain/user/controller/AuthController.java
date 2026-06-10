@@ -2,13 +2,18 @@ package com.drinkindex.domain.user.controller;
 
 import com.drinkindex.domain.user.dto.*;
 import com.drinkindex.domain.user.service.AuthService;
+import com.drinkindex.global.auth.RefreshTokenCookieProvider;
 import com.drinkindex.global.auth.security.CustomUserDetails;
+import com.drinkindex.global.exception.CustomException;
+import com.drinkindex.global.exception.ErrorCode;
 import com.drinkindex.global.response.ApiResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -22,6 +27,7 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final RefreshTokenCookieProvider refreshTokenCookieProvider;
 
     @PostMapping("/signup")
     public ResponseEntity<ApiResponse<UserResponse>> signup(@Valid @RequestBody SignupRequest request) {
@@ -31,23 +37,39 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request) {
-        return ResponseEntity.ok(ApiResponse.success(authService.login(request)));
+        AuthLoginResult result = authService.login(request);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, refreshTokenCookieProvider.create(result.refreshToken()).toString())
+                .body(ApiResponse.success(result.body()));
     }
 
+    /** 토큰 재발급 — refresh 토큰은 httpOnly 쿠키에서 읽고, 회전된 쿠키를 다시 내려준다. */
     @PostMapping("/refresh")
-    public ResponseEntity<ApiResponse<TokenResponse>> refresh(@Valid @RequestBody RefreshRequest request) {
-        return ResponseEntity.ok(ApiResponse.success(authService.refresh(request)));
+    public ResponseEntity<ApiResponse<AccessTokenResponse>> refresh(HttpServletRequest request) {
+        String refreshToken = refreshTokenCookieProvider.resolve(request);
+        if (refreshToken == null) {
+            throw new CustomException(ErrorCode.REFRESH_TOKEN_NOT_FOUND);
+        }
+        AuthRefreshResult result = authService.refresh(refreshToken);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, refreshTokenCookieProvider.create(result.refreshToken()).toString())
+                .body(ApiResponse.success(AccessTokenResponse.of(result.accessToken())));
     }
 
     @PostMapping("/reactivate")
     public ResponseEntity<ApiResponse<LoginResponse>> reactivate(@Valid @RequestBody ReactivateRequest request) {
-        return ResponseEntity.ok(ApiResponse.success(authService.reactivate(request)));
+        AuthLoginResult result = authService.reactivate(request);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, refreshTokenCookieProvider.create(result.refreshToken()).toString())
+                .body(ApiResponse.success(result.body()));
     }
 
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> logout(@AuthenticationPrincipal CustomUserDetails userDetails) {
         authService.logout(userDetails);
-        return ResponseEntity.ok(ApiResponse.success());
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, refreshTokenCookieProvider.clear().toString())
+                .body(ApiResponse.success());
     }
 
     @GetMapping("/check-email")

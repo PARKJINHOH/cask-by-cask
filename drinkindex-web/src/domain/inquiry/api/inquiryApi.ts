@@ -38,10 +38,6 @@ export const getAdminInquiryDetail = async (id: number): Promise<InquiryDetailRe
   return data.data!
 }
 
-export const updateInquiryStatus = async (id: number, status: InquiryStatus): Promise<void> => {
-  await axiosInstance.patch(`/api/admin/inquiries/${id}/status`, { status })
-}
-
 export const updateInquiryNote = async (id: number, note: string): Promise<void> => {
   await axiosInstance.patch(`/api/admin/inquiries/${id}/note`, { note })
 }

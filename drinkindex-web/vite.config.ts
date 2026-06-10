@@ -17,7 +17,9 @@ export default defineConfig({
       output: {
         manualChunks: (id: string) => {
           if (!id.includes('node_modules')) return
-          if (id.includes('@tiptap'))                return 'vendor-tiptap'
+          // TipTap 본체 + ProseMirror 코어는 에디터 전용 → 에디터가 있는 라우트에서만 로드.
+          // (prosemirror-* 는 @tiptap 네임스페이스가 아니라 catch-all vendor 로 새던 것을 분리)
+          if (id.includes('@tiptap') || id.includes('prosemirror')) return 'vendor-tiptap'
           if (id.includes('react-router'))           return 'vendor-router'
           if (id.includes('@tanstack'))              return 'vendor-query'
           if (id.includes('i18next'))                return 'vendor-i18n'

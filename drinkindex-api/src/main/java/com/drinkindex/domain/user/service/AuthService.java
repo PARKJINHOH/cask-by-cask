@@ -85,7 +85,7 @@ public class AuthService {
     }
 
     @Transactional
-    public LoginResponse login(LoginRequest request) {
+    public AuthLoginResult login(LoginRequest request) {
         // 무차별 대입 방어 — 연속 실패로 잠긴 계정은 비밀번호 검증 전 차단
         if (loginAttemptService.isLocked(request.email())) {
             throw new CustomException(ErrorCode.ACCOUNT_LOCKED);
@@ -119,16 +119,14 @@ public class AuthService {
 
         loginAttemptService.reset(request.email());
         user.recordLogin();
-        TokenResponse tokens = issueTokens(user.getId(), user.getRole());
-        return LoginResponse.of(tokens, attendanceService.checkAttendance(user.getId()),
-                user.isPasswordChangeRequired(), Boolean.TRUE.equals(user.getMustChangePassword()));
+        return buildLoginResult(user);
     }
 
     /**
      * 휴면 계정 해제 — 비밀번호 검증 + 이메일 인증코드 확인 후 휴면을 풀고 즉시 로그인 처리.
      */
     @Transactional
-    public LoginResponse reactivate(ReactivateRequest request) {
+    public AuthLoginResult reactivate(ReactivateRequest request) {
         if (loginAttemptService.isLocked(request.email())) {
             throw new CustomException(ErrorCode.ACCOUNT_LOCKED);
         }
@@ -155,9 +153,18 @@ public class AuthService {
 
         loginAttemptService.reset(request.email());
         user.reactivate();
+        return buildLoginResult(user);
+    }
+
+    /** 토큰 발급 + 로그인 응답 바디 구성 (login/reactivate 공통). refresh 토큰은 캐리어로 분리. */
+    private AuthLoginResult buildLoginResult(User user) {
         TokenResponse tokens = issueTokens(user.getId(), user.getRole());
-        return LoginResponse.of(tokens, attendanceService.checkAttendance(user.getId()),
-                user.isPasswordChangeRequired(), Boolean.TRUE.equals(user.getMustChangePassword()));
+        LoginResponse body = LoginResponse.of(
+                tokens.accessToken(),
+                attendanceService.checkAttendance(user.getId()),
+                user.isPasswordChangeRequired(),
+                Boolean.TRUE.equals(user.getMustChangePassword()));
+        return new AuthLoginResult(body, tokens.refreshToken());
     }
 
     public CheckAvailableResponse checkEmail(String email) {
@@ -243,9 +250,7 @@ public class AuthService {
     }
 
     @Transactional
-    public TokenResponse refresh(RefreshRequest request) {
-        String incomingToken = request.refreshToken();
-
+    public AuthRefreshResult refresh(String incomingToken) {
         // 토큰 서명·만료 검증 (이상 시 CustomException 발생)
         Long userId = jwtProvider.extractUserId(incomingToken);
         Role role = jwtProvider.extractRole(incomingToken);
@@ -273,7 +278,8 @@ public class AuthService {
 
         // Rotation: 기존 삭제 후 신규 발급
         refreshTokenRepository.deleteByUserId(userId);
-        return issueTokens(userId, role);
+        TokenResponse tokens = issueTokens(userId, role);
+        return new AuthRefreshResult(tokens.accessToken(), tokens.refreshToken());
     }
 
     @Transactional

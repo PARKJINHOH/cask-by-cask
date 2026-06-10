@@ -58,6 +58,14 @@ app:
     from: drinkindex.cs@gmail.com
     verification-required: true
     inquiry-to: drinkindex.cs@gmail.com
+  auth:
+    # Refresh Token httpOnly 쿠키 설정 — 기본값은 local(http) 기준.
+    # dev/prod 에서는 secure=true, same-site=Strict 로 override.
+    refresh-cookie:
+      name: refresh_token
+      secure: false
+      same-site: Lax
+      path: /api/auth
 
 decorator:
   datasource:

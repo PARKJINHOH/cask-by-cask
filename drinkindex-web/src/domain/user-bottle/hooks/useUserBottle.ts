@@ -62,11 +62,3 @@ export function useUploadBottleImage() {
   });
 }
 
-export function useDeleteBottleImage() {
-  const invalidate = useInvalidateMyBottles();
-  return useMutation({
-    mutationFn: ({ bottleId, imageId }: { bottleId: number; imageId: number }) =>
-      userBottleApi.deleteImage(bottleId, imageId),
-    onSuccess: invalidate,
-  });
-}

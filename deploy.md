@@ -1,6 +1,43 @@
 # DrinkIndex 배포 가이드
 
+---
+
+## ✅ 배포 전 Todo List (운영 반영 전 반드시 확인)
+
+> 코드로 처리할 수 없는 **운영 환경 설정/확인** 항목. 배포 직전에 하나씩 체크.
+
+- [ ] **(A-2) 운영 `.env.prod` 시크릿 강도 점검**
+  - [ ] `JWT_SECRET` — HS256 이므로 **최소 32바이트(256bit) 랜덤**. 생성: `openssl rand -base64 48`
+  - [ ] `ADMIN_PASSWORD` / `DB_PASSWORD` / `REDIS_PASSWORD` / `GMAIL_APP_PASSWORD` — 추측 불가한 강한 값
+  - [ ] `SLACK_WEBHOOK_URL` (에러 알림) 설정 여부
+  - [ ] (키 회전 시) `JWT_SECRET_PREVIOUS` 운용 절차 숙지 — `JwtProvider` 주석 참고
+
+- [ ] **(A-3) 도메인 / CORS 정합 확인**
+  - [ ] `application-prod.yml` 의 `cors.allowed-origins` 가 **실제 서비스 도메인과 정확히 일치** (apex/www 변형 포함)
+  - [ ] 불일치 시 전 API 가 CORS 차단됨 — `seo.site-url` 도 동일 도메인인지 같이 확인
+
+- [ ] **(B-2) Cloudflare 설정** (Cloudflare 사용 확정)
+  - [ ] `drinkindex-web/nginx/default.conf.template` 상단 `set_real_ip_from` Cloudflare IP 대역이 최신인지 확인 — 출처: https://www.cloudflare.com/ips/ (보통 안정적이나 추가될 수 있음)
+  - [ ] Cloudflare SSL/TLS 모드 = **Full (strict)** 권장, 오리진은 80만 listen(컨테이너) 구성과 일치
+  - [ ] Cloudflare가 `CF-Connecting-IP` 를 전달하는지 확인 (rate-limit IP 키가 이 헤더 기반)
+  - [ ] (선택) Cloudflare WAF / Bot Fight Mode, `/api/auth/*` 추가 Rate Limit Rule
+
+- [ ] **(B-4) 업로드 파일 백업 정책**
+  - [ ] 현재 업로드는 **서버 로컬 디스크**(`storage.local.base-path: ./uploads`)에 저장 → 인스턴스 장애 시 유실 위험
+  - [ ] `uploads/` 정기 백업(cron + 외부 스토리지/Object Storage 복사) 또는 Oracle Block Volume 스냅샷 스케줄 구성
+  - [ ] 장기적으로 `S3FileStorageService`(현재 스텁) 활성화해 외부 오브젝트 스토리지로 이전 검토
+
+- [ ] **(A-1) 프론트 SEO prerender 활성화** — 상세 절차는 아래 [프론트 SEO prerender 배포](#프론트-seo-prerender-배포) 참고
+
+- [ ] **(인증) refresh 토큰 httpOnly 쿠키 전환 반영** (이번 배포에 포함됨)
+  - [ ] **기존 로그인 사용자는 1회 재로그인 필요** — 배포 전 세션엔 httpOnly 쿠키가 없어, access 토큰 만료 시 refresh 가 한 번 실패하며 자동 로그아웃→재로그인됨(정상 동작, 데이터 영향 없음)
+  - [ ] Cloudflare 가 `Set-Cookie` 응답 헤더를 **그대로 통과**시키는지 확인 (기본 통과. "Cache Everything" 류 규칙이 `/api/*` 에 걸려 있지 않은지 점검 — POST/인증은 캐시 금지)
+  - [ ] dev/prod 는 HTTPS 라 `Secure` 쿠키 정상. 쿠키 설정값은 `application-{env}.yml` 의 `app.auth.refresh-cookie.*` (prod: secure=true, same-site=Strict)
+
+---
+
 ## 목차
+- [프론트 SEO prerender 배포](#프론트-seo-prerender-배포)
 - [Flyway 개요](#flyway-개요)
 - [환경별 동작 방식](#환경별-동작-방식)
 - [마이그레이션 파일 작성 규칙](#마이그레이션-파일-작성-규칙)
@@ -9,6 +46,101 @@
 - [케이스별 SQL 예시](#케이스별-sql-예시)
 - [주의사항 및 자주 하는 실수](#주의사항-및-자주-하는-실수)
 - [문제 해결](#문제-해결)
+
+---
+
+## 프론트 SEO prerender 배포
+
+### 왜 필요한가
+SPA(Vite/React)는 최초 응답이 빈 셸 HTML 이라, 일부 크롤러/미리보기 봇은 JS 실행 전 본문·메타·JSON-LD 를 못 봅니다.
+`scripts/prerender.mjs` 가 **빌드 후 주요 정적 라우트를 puppeteer(headless Chromium)로 렌더해 `dist/<route>/index.html` 스냅샷**으로 저장하면, nginx 가 크롤러에게 완성된 HTML(JSON-LD/메타 포함)을 바로 줍니다.
+
+> **현재 상태**: `deploy/deploy-web.sh prod` 가 prerender 를 실행하도록 설정되어 있습니다.
+> 단, **서버에 Chromium 이 없으면 이 단계는 경고 후 건너뜁니다(배포 자체는 정상, SEO 만 저하).**
+> 아래 1회 설정을 마쳐야 prerender 가 실제로 동작합니다.
+
+### 1회 설정 — Ubuntu 서버에 Chromium 설치
+
+puppeteer 가 헤드리스 Chromium 을 띄우려면 시스템 라이브러리 + Chromium 바이너리가 필요합니다.
+**방법 A(권장: 시스템 Chromium)** — 가볍고 apt 로 업데이트 관리됨:
+
+```bash
+# 1) 시스템 Chromium 설치 (Ubuntu 22.04+)
+sudo apt-get update
+sudo apt-get install -y chromium-browser
+
+#   ※ snap 기반이라 경로가 다르면 chromium 패키지로 시도:
+#   sudo apt-get install -y chromium
+
+# 2) 설치 경로 확인 (PUPPETEER_EXECUTABLE_PATH 에 넣을 값)
+which chromium-browser || which chromium
+#   예: /usr/bin/chromium-browser
+
+# 3) 배포 유저 환경에 영구 등록 (puppeteer 가 자체 다운로드 대신 이 바이너리 사용)
+echo 'export PUPPETEER_SKIP_DOWNLOAD=true' >> ~/.bashrc
+echo 'export PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser' >> ~/.bashrc
+source ~/.bashrc
+```
+
+> `prerender.mjs` 는 `puppeteer.launch({ headless:'new', args:['--no-sandbox','--disable-setuid-sandbox'] })`
+> 로 실행되며, `PUPPETEER_EXECUTABLE_PATH` 가 있으면 puppeteer 가 그 바이너리를 사용합니다.
+
+**방법 B(puppeteer 내장 Chromium)** — apt Chromium 이 안 맞을 때:
+
+```bash
+# puppeteer 가 빌드 시 자체 Chromium 을 다운로드/사용 (PUPPETEER_SKIP_DOWNLOAD 미설정 상태)
+cd drinkindex-web
+npx puppeteer browsers install chrome
+# 헤드리스 구동에 필요한 공유 라이브러리 (없으면 launch 시 'error while loading shared libraries')
+sudo apt-get install -y \
+  libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 \
+  libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libasound2 libpangocairo-1.0-0
+```
+
+### 배포 시 사용법
+
+설정을 마쳤다면 평소대로 배포하면 prerender 가 자동 포함됩니다:
+
+```bash
+./deploy/deploy-web.sh prod
+# [web:prod] Building SPA...
+# [web:prod] Prerendering SEO snapshots...
+# [prerender] ✓ /spirits            → dist/spirits/index.html (xx kB, xxxms)
+# [web:prod] ✅ Prerender complete.
+# [web:prod] Syncing dist → /var/www/drinkindex-prod ...
+```
+
+개별 명령으로 쪼개 쓰려면:
+
+```bash
+cd drinkindex-web
+npm run build:no-prerender   # dist 생성 (prerender 제외)
+npm run prerender            # 기존 dist 에 스냅샷만 덧입힘 (vite build 불필요)
+# 또는 한 번에:
+npm run build                # tsc + vite build + prerender
+```
+
+### 검증
+
+```bash
+# 스냅샷 파일이 생성됐는지
+ls -la /var/www/drinkindex-prod/spirits/index.html
+
+# 배포 후 크롤러 관점에서 본문/JSON-LD 가 박혀 있는지 (JS 미실행 상태)
+curl -s https://<도메인>/spirits | grep -o 'application/ld+json' | head
+```
+
+### 문제 해결
+
+| 증상 | 원인 / 해결 |
+|---|---|
+| `Could not find Chromium` / `Failed to launch the browser process` | Chromium 미설치 또는 경로 불일치 → 방법 A의 `PUPPETEER_EXECUTABLE_PATH` 확인 |
+| `error while loading shared libraries: libnss3.so` | 헤드리스 의존 라이브러리 누락 → 방법 B의 `apt-get install` 라이브러리 설치 |
+| prerender 단계만 실패하고 배포는 성공 | 의도된 graceful degrade — SEO 만 저하. 위 설정 점검 후 재배포 |
+| dev 에서 prerender 안 함 | 정상 — dev 는 `ROBOTS_NOINDEX=on`(색인 차단)이라 의도적으로 건너뜀 |
+
+> **인프라 대안**: 위 운영이 번거로우면, Cloudflare 단에서 크롤러(User-Agent)만 별도 prerender 서비스로 보내거나,
+> 추후 SSR(Next.js 등) 전환을 검토할 수 있습니다. 현재 규모에서는 빌드 시 prerender 로 충분합니다.
 
 ---
 

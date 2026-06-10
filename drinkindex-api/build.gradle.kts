@@ -40,6 +40,10 @@ dependencies {
     // Redis
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
 
+    // Cache (Caffeine) — 인증 hot-path 사용자 조회 단TTL 캐싱
+    implementation("org.springframework.boot:spring-boot-starter-cache")
+    implementation("com.github.ben-manes.caffeine:caffeine")
+
     // Validation
     implementation("org.springframework.boot:spring-boot-starter-validation")
 

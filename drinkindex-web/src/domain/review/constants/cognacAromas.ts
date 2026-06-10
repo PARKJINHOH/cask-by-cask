@@ -99,7 +99,3 @@ export const COGNAC_AROMA_CATEGORIES: AromaCategory[] = [
     ],
   },
 ]
-
-export const COGNAC_AROMA_MAP = new Map<string, import('./whiskyAromas').AromaItem>(
-  COGNAC_AROMA_CATEGORIES.flatMap((c) => c.items).map((item) => [item.id, item]),
-)

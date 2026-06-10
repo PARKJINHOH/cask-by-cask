@@ -130,17 +130,25 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     /**
-     * Cloudflare/Nginx 뒤에 있는 경우 X-Forwarded-For 첫 IP, 없으면 remoteAddr.
+     * 클라이언트 IP 추출.
+     *
+     * [보안] 신뢰 헤더 우선순위 — Nginx 가 직접 주입하는 헤더만 신뢰한다.
+     *   1) CF-Connecting-IP : Nginx 가 $remote_addr(=real_ip 모듈이 복원한 실제 IP)로 설정. 모든 /api 경로에 주입됨.
+     *   2) X-Real-IP        : Nginx /api/ 블록이 $remote_addr 로 설정.
+     *   3) remoteAddr       : 프록시 없는 로컬 개발 환경 fallback.
+     *
+     * ※ X-Forwarded-For 는 사용하지 않는다.
+     *   Nginx 가 proxy_add_x_forwarded_for 로 클라이언트가 보낸 값을 그대로 앞에 이어붙이므로,
+     *   "첫 IP" 는 클라이언트가 위조할 수 있다. 이를 rate-limit 키로 쓰면 IP 기반 버킷이 우회된다.
      */
     private String extractIp(HttpServletRequest request) {
-        String xff = request.getHeader("X-Forwarded-For");
-        if (StringUtils.hasText(xff)) {
-            int comma = xff.indexOf(',');
-            return (comma > 0 ? xff.substring(0, comma) : xff).trim();
-        }
         String cfIp = request.getHeader("CF-Connecting-IP");
         if (StringUtils.hasText(cfIp)) {
             return cfIp.trim();
+        }
+        String realIp = request.getHeader("X-Real-IP");
+        if (StringUtils.hasText(realIp)) {
+            return realIp.trim();
         }
         return request.getRemoteAddr();
     }

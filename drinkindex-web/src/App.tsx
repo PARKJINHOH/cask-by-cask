@@ -1,84 +1,87 @@
+import { lazy } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from '@/shared/api/queryClient'
 import ErrorBoundary from '@/shared/components/ErrorBoundary'
-import NotFoundPage from '@/pages/NotFoundPage'
+// 레이아웃·라우트 가드는 항상 필요하므로 eager 로드. 페이지는 모두 route 단위 코드 스플리팅.
 import MainLayout from '@/layouts/MainLayout'
 import AdminLayout from '@/layouts/AdminLayout'
-import MainPage from '@/pages/MainPage'
-import SpiritListPage from '@/pages/SpiritListPage'
-import SpiritDetailPage from '@/pages/SpiritDetailPage'
-import NoticePage from '@/pages/NoticePage'
-import NoticeDetailPage from '@/pages/NoticeDetailPage'
-import LoginPage from '@/pages/LoginPage'
-import SignupPage from '@/pages/SignupPage'
-import AccountRecoveryPage from '@/pages/AccountRecoveryPage'
-import MyPage from '@/pages/MyPage'
-import RankingPage from '@/pages/RankingPage'
-import SpiritRequestPage from '@/pages/SpiritRequestPage'
-import ProducerRequestPage from '@/pages/ProducerRequestPage'
-import FeedbackListPage from '@/pages/FeedbackListPage'
-import FeedbackFormPage from '@/pages/FeedbackFormPage'
-import FeedbackDetailPage from '@/pages/FeedbackDetailPage'
-import AllBoardPage from '@/pages/community/AllBoardPage'
-import NoticeBoardPage from '@/pages/community/NoticeBoardPage'
-import FreeBoardPage from '@/pages/community/FreeBoardPage'
-import PostDetailPage from '@/pages/community/PostDetailPage'
-import PostFormPage from '@/pages/community/PostFormPage'
-import ByobListPage from '@/pages/community/ByobListPage'
-import ByobDetailPage from '@/pages/community/ByobDetailPage'
-import ByobFormPage from '@/pages/community/ByobFormPage'
-import NotificationsPage from '@/pages/NotificationsPage'
-import AdminUserPage from '@/pages/admin/AdminUserPage'
-import AdminUserDetailPage from '@/pages/admin/AdminUserDetailPage'
-import AdminSpiritPage from '@/pages/admin/AdminSpiritPage'
-import AdminSpiritDetailPage from '@/pages/admin/AdminSpiritDetailPage'
-import AdminSpiritFormPage from '@/pages/admin/AdminSpiritFormPage'
-import AdminRequestPage from '@/pages/admin/AdminRequestPage'
-import AdminRequestDetailPage from '@/pages/admin/AdminRequestDetailPage'
-import AdminProducerPage from '@/pages/admin/AdminProducerPage'
-import AdminProducerRequestPage from '@/pages/admin/AdminProducerRequestPage'
-import AdminReportPage from '@/pages/admin/AdminReportPage'
-import AdminNoticeListPage from '@/pages/admin/AdminNoticeListPage'
-import AdminNoticeFormPage from '@/pages/admin/AdminNoticeFormPage'
-import AdminNoticePreviewPage from '@/pages/admin/AdminNoticePreviewPage'
-import AdminPopupListPage from '@/pages/admin/AdminPopupListPage'
-import AdminPopupFormPage from '@/pages/admin/AdminPopupFormPage'
-import AdminBannerListPage from '@/pages/admin/AdminBannerListPage'
-import AdminBannerFormPage from '@/pages/admin/AdminBannerFormPage'
-import AdminPostReportPage from '@/pages/admin/AdminPostReportPage'
-import AdminBadWordPage from '@/pages/admin/AdminBadWordPage'
-import AdminNicknameBadWordPage from '@/pages/admin/AdminNicknameBadWordPage'
-import AdminEmojiPage from '@/pages/admin/AdminEmojiPage'
-import AdminPrefixPage from '@/pages/admin/AdminPrefixPage'
-import AdminScorePage from '@/pages/admin/AdminScorePage'
-import AdminLevelPage from '@/pages/admin/AdminLevelPage'
 import PrivateRoute from '@/shared/components/PrivateRoute'
 import AdminRoute from '@/shared/components/AdminRoute'
-import TermsPage from '@/pages/legal/TermsPage'
-import PrivacyPage from '@/pages/legal/PrivacyPage'
-import AdminLegalListPage from '@/pages/admin/AdminLegalListPage'
-import AdminLegalFormPage from '@/pages/admin/AdminLegalFormPage'
-import AdminEmailPage from '@/pages/admin/AdminEmailPage'
-import AdminEmailHistoryPage from '@/pages/admin/AdminEmailHistoryPage'
-import ReviewFormPage from '@/pages/ReviewFormPage'
-import InquiryPage from '@/pages/InquiryPage'
-import FaqPage from '@/pages/FaqPage'
-import EventCalendarPage from '@/pages/EventCalendarPage'
-import AdminEventCalendarPage from '@/pages/admin/AdminEventCalendarPage'
-import AdminInquiryPage from '@/pages/admin/AdminInquiryPage'
-import AdminRolePage from '@/pages/admin/AdminRolePage'
-import AdminLogPage from '@/pages/admin/AdminLogPage'
-import AdminDashboardPage from '@/pages/admin/AdminDashboardPage'
-import AdminFaqPage from '@/pages/admin/AdminFaqPage'
-import AdminFaqFormPage from '@/pages/admin/AdminFaqFormPage'
-import UserBottlePublicPage from '@/pages/UserBottlePublicPage'
-import PriceTrackerPage from '@/pages/PriceTrackerPage'
-import SpiritPriceDetailPage from '@/pages/SpiritPriceDetailPage'
-import PriceRegisterPage from '@/pages/PriceRegisterPage'
-import AdminPriceReportPage from '@/pages/admin/AdminPriceReportPage'
-import AdminStorePage from '@/pages/admin/AdminStorePage'
-import ProducerDetailPage from '@/pages/ProducerDetailPage'
+
+const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
+const MainPage = lazy(() => import('@/pages/MainPage'))
+const SpiritListPage = lazy(() => import('@/pages/SpiritListPage'))
+const SpiritDetailPage = lazy(() => import('@/pages/SpiritDetailPage'))
+const NoticePage = lazy(() => import('@/pages/NoticePage'))
+const NoticeDetailPage = lazy(() => import('@/pages/NoticeDetailPage'))
+const LoginPage = lazy(() => import('@/pages/LoginPage'))
+const SignupPage = lazy(() => import('@/pages/SignupPage'))
+const AccountRecoveryPage = lazy(() => import('@/pages/AccountRecoveryPage'))
+const MyPage = lazy(() => import('@/pages/MyPage'))
+const RankingPage = lazy(() => import('@/pages/RankingPage'))
+const SpiritRequestPage = lazy(() => import('@/pages/SpiritRequestPage'))
+const ProducerRequestPage = lazy(() => import('@/pages/ProducerRequestPage'))
+const FeedbackListPage = lazy(() => import('@/pages/FeedbackListPage'))
+const FeedbackFormPage = lazy(() => import('@/pages/FeedbackFormPage'))
+const FeedbackDetailPage = lazy(() => import('@/pages/FeedbackDetailPage'))
+const AllBoardPage = lazy(() => import('@/pages/community/AllBoardPage'))
+const NoticeBoardPage = lazy(() => import('@/pages/community/NoticeBoardPage'))
+const FreeBoardPage = lazy(() => import('@/pages/community/FreeBoardPage'))
+const PostDetailPage = lazy(() => import('@/pages/community/PostDetailPage'))
+const PostFormPage = lazy(() => import('@/pages/community/PostFormPage'))
+const ByobListPage = lazy(() => import('@/pages/community/ByobListPage'))
+const ByobDetailPage = lazy(() => import('@/pages/community/ByobDetailPage'))
+const ByobFormPage = lazy(() => import('@/pages/community/ByobFormPage'))
+const NotificationsPage = lazy(() => import('@/pages/NotificationsPage'))
+const AdminUserPage = lazy(() => import('@/pages/admin/AdminUserPage'))
+const AdminUserDetailPage = lazy(() => import('@/pages/admin/AdminUserDetailPage'))
+const AdminSpiritPage = lazy(() => import('@/pages/admin/AdminSpiritPage'))
+const AdminSpiritDetailPage = lazy(() => import('@/pages/admin/AdminSpiritDetailPage'))
+const AdminSpiritFormPage = lazy(() => import('@/pages/admin/AdminSpiritFormPage'))
+const AdminRequestPage = lazy(() => import('@/pages/admin/AdminRequestPage'))
+const AdminRequestDetailPage = lazy(() => import('@/pages/admin/AdminRequestDetailPage'))
+const AdminProducerPage = lazy(() => import('@/pages/admin/AdminProducerPage'))
+const AdminProducerRequestPage = lazy(() => import('@/pages/admin/AdminProducerRequestPage'))
+const AdminReportPage = lazy(() => import('@/pages/admin/AdminReportPage'))
+const AdminNoticeListPage = lazy(() => import('@/pages/admin/AdminNoticeListPage'))
+const AdminNoticeFormPage = lazy(() => import('@/pages/admin/AdminNoticeFormPage'))
+const AdminNoticePreviewPage = lazy(() => import('@/pages/admin/AdminNoticePreviewPage'))
+const AdminPopupListPage = lazy(() => import('@/pages/admin/AdminPopupListPage'))
+const AdminPopupFormPage = lazy(() => import('@/pages/admin/AdminPopupFormPage'))
+const AdminBannerListPage = lazy(() => import('@/pages/admin/AdminBannerListPage'))
+const AdminBannerFormPage = lazy(() => import('@/pages/admin/AdminBannerFormPage'))
+const AdminPostReportPage = lazy(() => import('@/pages/admin/AdminPostReportPage'))
+const AdminBadWordPage = lazy(() => import('@/pages/admin/AdminBadWordPage'))
+const AdminNicknameBadWordPage = lazy(() => import('@/pages/admin/AdminNicknameBadWordPage'))
+const AdminEmojiPage = lazy(() => import('@/pages/admin/AdminEmojiPage'))
+const AdminPrefixPage = lazy(() => import('@/pages/admin/AdminPrefixPage'))
+const AdminScorePage = lazy(() => import('@/pages/admin/AdminScorePage'))
+const AdminLevelPage = lazy(() => import('@/pages/admin/AdminLevelPage'))
+const TermsPage = lazy(() => import('@/pages/legal/TermsPage'))
+const PrivacyPage = lazy(() => import('@/pages/legal/PrivacyPage'))
+const AdminLegalListPage = lazy(() => import('@/pages/admin/AdminLegalListPage'))
+const AdminLegalFormPage = lazy(() => import('@/pages/admin/AdminLegalFormPage'))
+const AdminEmailPage = lazy(() => import('@/pages/admin/AdminEmailPage'))
+const AdminEmailHistoryPage = lazy(() => import('@/pages/admin/AdminEmailHistoryPage'))
+const ReviewFormPage = lazy(() => import('@/pages/ReviewFormPage'))
+const InquiryPage = lazy(() => import('@/pages/InquiryPage'))
+const FaqPage = lazy(() => import('@/pages/FaqPage'))
+const EventCalendarPage = lazy(() => import('@/pages/EventCalendarPage'))
+const AdminEventCalendarPage = lazy(() => import('@/pages/admin/AdminEventCalendarPage'))
+const AdminInquiryPage = lazy(() => import('@/pages/admin/AdminInquiryPage'))
+const AdminRolePage = lazy(() => import('@/pages/admin/AdminRolePage'))
+const AdminLogPage = lazy(() => import('@/pages/admin/AdminLogPage'))
+const AdminDashboardPage = lazy(() => import('@/pages/admin/AdminDashboardPage'))
+const AdminFaqPage = lazy(() => import('@/pages/admin/AdminFaqPage'))
+const AdminFaqFormPage = lazy(() => import('@/pages/admin/AdminFaqFormPage'))
+const UserBottlePublicPage = lazy(() => import('@/pages/UserBottlePublicPage'))
+const PriceTrackerPage = lazy(() => import('@/pages/PriceTrackerPage'))
+const SpiritPriceDetailPage = lazy(() => import('@/pages/SpiritPriceDetailPage'))
+const PriceRegisterPage = lazy(() => import('@/pages/PriceRegisterPage'))
+const AdminPriceReportPage = lazy(() => import('@/pages/admin/AdminPriceReportPage'))
+const AdminStorePage = lazy(() => import('@/pages/admin/AdminStorePage'))
+const ProducerDetailPage = lazy(() => import('@/pages/ProducerDetailPage'))
 
 export default function App() {
   return (

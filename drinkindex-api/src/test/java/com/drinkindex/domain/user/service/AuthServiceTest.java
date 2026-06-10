@@ -97,11 +97,12 @@ class AuthServiceTest {
         given(jwtProvider.getRefreshTokenExpiry()).willReturn(604_800_000L);
         given(attendanceService.checkAttendance(any())).willReturn(AttendanceResult.ofAlreadyChecked());
 
-        LoginResponse response = authService.login(request);
+        AuthLoginResult result = authService.login(request);
 
-        assertThat(response.accessToken()).isEqualTo("access_token");
-        assertThat(response.refreshToken()).isEqualTo("refresh_token");
-        assertThat(response.tokenType()).isEqualTo("Bearer");
+        assertThat(result.body().accessToken()).isEqualTo("access_token");
+        // refresh 토큰은 바디가 아닌 캐리어(→ httpOnly 쿠키)로 전달
+        assertThat(result.refreshToken()).isEqualTo("refresh_token");
+        assertThat(result.body().tokenType()).isEqualTo("Bearer");
         then(refreshTokenRepository).should().save(any(), eq("refresh_token"), any());
     }
 
@@ -139,8 +140,6 @@ class AuthServiceTest {
     @Test
     @DisplayName("Refresh Token 갱신 성공 — Rotation 적용")
     void refresh_success() {
-        RefreshRequest request = new RefreshRequest("old_refresh");
-
         given(jwtProvider.extractUserId("old_refresh")).willReturn(1L);
         given(jwtProvider.extractRole("old_refresh")).willReturn(Role.MEMBER);
         given(jwtProvider.isRefreshToken("old_refresh")).willReturn(true);
@@ -151,10 +150,10 @@ class AuthServiceTest {
         given(jwtProvider.generateRefreshToken(1L, Role.MEMBER)).willReturn("new_refresh");
         given(jwtProvider.getRefreshTokenExpiry()).willReturn(604_800_000L);
 
-        TokenResponse response = authService.refresh(request);
+        AuthRefreshResult result = authService.refresh("old_refresh");
 
-        assertThat(response.accessToken()).isEqualTo("new_access");
-        assertThat(response.refreshToken()).isEqualTo("new_refresh");
+        assertThat(result.accessToken()).isEqualTo("new_access");
+        assertThat(result.refreshToken()).isEqualTo("new_refresh");
         then(refreshTokenRepository).should().deleteByUserId(1L);
         then(refreshTokenRepository).should().save(eq(1L), eq("new_refresh"), any());
     }
@@ -162,14 +161,12 @@ class AuthServiceTest {
     @Test
     @DisplayName("Refresh Token 갱신 실패 — Redis에 토큰 없음")
     void refresh_fail_tokenNotFound() {
-        RefreshRequest request = new RefreshRequest("orphan_refresh");
-
         given(jwtProvider.extractUserId("orphan_refresh")).willReturn(1L);
         given(jwtProvider.extractRole("orphan_refresh")).willReturn(Role.MEMBER);
         given(jwtProvider.isRefreshToken("orphan_refresh")).willReturn(true);
         given(refreshTokenRepository.findByUserId(1L)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> authService.refresh(request))
+        assertThatThrownBy(() -> authService.refresh("orphan_refresh"))
                 .isInstanceOf(CustomException.class)
                 .satisfies(e -> assertThat(((CustomException) e).getErrorCode())
                         .isEqualTo(ErrorCode.REFRESH_TOKEN_NOT_FOUND));
@@ -178,14 +175,12 @@ class AuthServiceTest {
     @Test
     @DisplayName("Refresh Token 갱신 실패 — Redis 토큰과 불일치")
     void refresh_fail_tokenMismatch() {
-        RefreshRequest request = new RefreshRequest("incoming_token");
-
         given(jwtProvider.extractUserId("incoming_token")).willReturn(1L);
         given(jwtProvider.extractRole("incoming_token")).willReturn(Role.MEMBER);
         given(jwtProvider.isRefreshToken("incoming_token")).willReturn(true);
         given(refreshTokenRepository.findByUserId(1L)).willReturn(Optional.of("different_token"));
 
-        assertThatThrownBy(() -> authService.refresh(request))
+        assertThatThrownBy(() -> authService.refresh("incoming_token"))
                 .isInstanceOf(CustomException.class)
                 .satisfies(e -> assertThat(((CustomException) e).getErrorCode())
                         .isEqualTo(ErrorCode.INVALID_TOKEN));
@@ -194,13 +189,11 @@ class AuthServiceTest {
     @Test
     @DisplayName("Refresh Token 갱신 실패 — Access Token 을 재발급에 사용")
     void refresh_fail_accessTokenUsed() {
-        RefreshRequest request = new RefreshRequest("access_token");
-
         given(jwtProvider.extractUserId("access_token")).willReturn(1L);
         given(jwtProvider.extractRole("access_token")).willReturn(Role.MEMBER);
         given(jwtProvider.isRefreshToken("access_token")).willReturn(false);
 
-        assertThatThrownBy(() -> authService.refresh(request))
+        assertThatThrownBy(() -> authService.refresh("access_token"))
                 .isInstanceOf(CustomException.class)
                 .satisfies(e -> assertThat(((CustomException) e).getErrorCode())
                         .isEqualTo(ErrorCode.INVALID_TOKEN));
@@ -210,15 +203,13 @@ class AuthServiceTest {
     @Test
     @DisplayName("Refresh Token 갱신 실패 — 계정 삭제(탈퇴)됨, 남은 토큰 정리")
     void refresh_fail_userDeleted() {
-        RefreshRequest request = new RefreshRequest("valid_refresh");
-
         given(jwtProvider.extractUserId("valid_refresh")).willReturn(1L);
         given(jwtProvider.extractRole("valid_refresh")).willReturn(Role.MEMBER);
         given(jwtProvider.isRefreshToken("valid_refresh")).willReturn(true);
         given(refreshTokenRepository.findByUserId(1L)).willReturn(Optional.of("valid_refresh"));
         given(userRepository.findById(1L)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> authService.refresh(request))
+        assertThatThrownBy(() -> authService.refresh("valid_refresh"))
                 .isInstanceOf(CustomException.class)
                 .satisfies(e -> assertThat(((CustomException) e).getErrorCode())
                         .isEqualTo(ErrorCode.USER_NOT_FOUND));
@@ -229,7 +220,6 @@ class AuthServiceTest {
     @Test
     @DisplayName("Refresh Token 갱신 실패 — 비활성화된 계정, 남은 토큰 정리")
     void refresh_fail_userInactive() {
-        RefreshRequest request = new RefreshRequest("valid_refresh");
         User inactive = User.builder().email("test@example.com").password("hashed").nickname("tester").role(Role.MEMBER).build();
         inactive.deactivate();
 
@@ -239,7 +229,7 @@ class AuthServiceTest {
         given(refreshTokenRepository.findByUserId(1L)).willReturn(Optional.of("valid_refresh"));
         given(userRepository.findById(1L)).willReturn(Optional.of(inactive));
 
-        assertThatThrownBy(() -> authService.refresh(request))
+        assertThatThrownBy(() -> authService.refresh("valid_refresh"))
                 .isInstanceOf(CustomException.class)
                 .satisfies(e -> assertThat(((CustomException) e).getErrorCode())
                         .isEqualTo(ErrorCode.ACCOUNT_INACTIVE));

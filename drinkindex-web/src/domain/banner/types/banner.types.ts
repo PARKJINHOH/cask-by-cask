@@ -90,12 +90,3 @@ export interface UpdateBannerPayload {
   startAt?: string | null
   endAt?: string | null
 }
-
-export interface BannerPreviewData {
-  bannerType: BannerType
-  content?: string | null
-  pcImageUrl?: string | null
-  moImageUrl?: string | null
-  linkUrl?: string | null
-  linkTargetBlank?: boolean
-}

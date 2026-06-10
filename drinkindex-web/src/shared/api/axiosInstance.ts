@@ -11,6 +11,9 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
   headers: { 'Content-Type': 'application/json' },
+  // refresh 토큰 httpOnly 쿠키 송수신을 위해 자격증명 포함.
+  // (쿠키 Path=/api/auth 이므로 실제로 쿠키가 실리는 요청은 인증 엔드포인트뿐)
+  withCredentials: true,
 })
 
 // ── 요청 인터셉터: accessToken 자동 첨부 ─────────────────────
@@ -54,23 +57,25 @@ axiosInstance.interceptors.response.use(
       })
     }
 
-    original._retry = true
-    isRefreshing = true
+    const { isLoggedIn, setAccessToken, logout } = useAuthStore.getState()
 
-    const { refreshToken, setTokens, logout } = useAuthStore.getState()
-
-    if (!refreshToken) {
-      // 미인증 상태에서 보호된 엔드포인트 접근 — 강제 리다이렉트 없이 거부만 처리
+    if (!isLoggedIn) {
+      // 미인증 상태에서 보호된 엔드포인트 접근 — refresh 시도 없이 거부만 처리
       return Promise.reject(error)
     }
 
+    original._retry = true
+    isRefreshing = true
+
     try {
+      // refresh 토큰은 httpOnly 쿠키로 자동 전송됨 → 바디 없이 호출(withCredentials).
       const { data } = await axios.post<ApiResponse<TokenResponse>>(
         `${API_BASE_URL}/api/auth/refresh`,
-        { refreshToken },
+        {},
+        { withCredentials: true },
       )
-      const { accessToken: newAccess, refreshToken: newRefresh } = data.data!
-      setTokens(newAccess, newRefresh)
+      const { accessToken: newAccess } = data.data!
+      setAccessToken(newAccess)
       processQueue(null, newAccess)
       original.headers.Authorization = `Bearer ${newAccess}`
       return axiosInstance(original)

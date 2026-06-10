@@ -1,10 +1,12 @@
 package com.drinkindex.global.auth.security;
 
+import com.drinkindex.domain.user.dto.AuthUserView;
 import com.drinkindex.domain.user.entity.User;
 import com.drinkindex.domain.user.repository.UserRepository;
 import com.drinkindex.global.exception.CustomException;
 import com.drinkindex.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -25,11 +27,24 @@ public class CustomUserDetailsService implements UserDetailsService {
         return toUserDetails(user);
     }
 
+    /**
+     * JWT 인증 필터 hot-path — 요청당 1회 호출.
+     *   - EAGER 연관을 끌어오지 않는 경량 프로젝션(findAuthViewById) 사용
+     *   - 결과를 60초 캐싱(authUser)해 동일 사용자의 연속 요청에서 DB 조회 생략
+     *     (권한·활성여부 변경 시 AuthUserCache.evict 로 즉시 무효화, 누락 시 TTL 로 자동 만료)
+     */
+    @Cacheable(cacheNames = AuthUserCache.CACHE_NAME, key = "#userId")
     @Transactional(readOnly = true)
     public UserDetails loadUserById(Long userId) {
-        User user = userRepository.findById(userId)
+        AuthUserView view = userRepository.findAuthViewById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-        return toUserDetails(user);
+        return new CustomUserDetails(
+                view.id(),
+                view.email(),
+                view.password(),
+                view.role(),
+                view.active()
+        );
     }
 
     private CustomUserDetails toUserDetails(User user) {

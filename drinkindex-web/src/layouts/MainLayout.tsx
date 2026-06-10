@@ -1,5 +1,6 @@
-﻿import { useState, useRef, useEffect } from 'react'
+﻿import { useState, useRef, useEffect, Suspense } from 'react'
 import { Outlet, Link, useNavigate } from 'react-router-dom'
+import RouteFallback from '@/shared/components/RouteFallback'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { useAuth } from '@/domain/auth/hooks/useAuth'
@@ -552,7 +553,9 @@ export default function MainLayout() {
 
       {/* 본문 */}
       <main className="flex-1 pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">
-        <Outlet />
+        <Suspense fallback={<RouteFallback />}>
+          <Outlet />
+        </Suspense>
       </main>
 
       {/* 푸터 (PC only) */}

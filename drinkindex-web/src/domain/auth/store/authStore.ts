@@ -3,8 +3,8 @@ import { persist } from 'zustand/middleware'
 import type { AttendanceResult, UserInfo } from '../types/auth.types'
 
 interface AuthState {
+  // accessToken 만 JS 가 보유(헤더용). refresh 토큰은 httpOnly 쿠키에만 존재 → JS 접근 불가.
   accessToken: string | null
-  refreshToken: string | null
   user: UserInfo | null
   isLoggedIn: boolean
   // 로그인 후 출석 토스트 표시용 — localStorage에 저장하지 않음
@@ -12,7 +12,7 @@ interface AuthState {
 }
 
 interface AuthActions {
-  setTokens: (accessToken: string, refreshToken: string) => void
+  setAccessToken: (accessToken: string) => void
   setUser: (user: UserInfo) => void
   logout: () => void
   setPendingAttendanceToast: (result: AttendanceResult | null) => void
@@ -22,20 +22,18 @@ export const useAuthStore = create<AuthState & AuthActions>()(
   persist(
     (set) => ({
       accessToken: null,
-      refreshToken: null,
       user: null,
       isLoggedIn: false,
       pendingAttendanceToast: null,
 
-      setTokens: (accessToken, refreshToken) =>
-        set({ accessToken, refreshToken, isLoggedIn: true }),
+      setAccessToken: (accessToken) =>
+        set({ accessToken, isLoggedIn: true }),
 
       setUser: (user) => set({ user }),
 
       logout: () =>
         set({
           accessToken: null,
-          refreshToken: null,
           user: null,
           isLoggedIn: false,
           pendingAttendanceToast: null,
@@ -49,7 +47,6 @@ export const useAuthStore = create<AuthState & AuthActions>()(
       // pendingAttendanceToast는 비영구 상태 — 제외
       partialize: (state) => ({
         accessToken: state.accessToken,
-        refreshToken: state.refreshToken,
         user: state.user,
         isLoggedIn: state.isLoggedIn,
       }),

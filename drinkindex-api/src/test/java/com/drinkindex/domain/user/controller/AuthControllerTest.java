@@ -3,9 +3,11 @@ package com.drinkindex.domain.user.controller;
 import com.drinkindex.domain.user.dto.*;
 import com.drinkindex.domain.user.entity.enums.Role;
 import com.drinkindex.domain.user.service.AuthService;
+import com.drinkindex.global.auth.RefreshTokenCookieProvider;
 import com.drinkindex.global.auth.jwt.JwtProvider;
 import com.drinkindex.global.auth.security.CustomUserDetailsService;
 import com.drinkindex.global.config.SecurityConfig;
+import org.springframework.http.ResponseCookie;
 import com.drinkindex.global.exception.CustomException;
 import com.drinkindex.global.exception.ErrorCode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -35,6 +37,7 @@ class AuthControllerTest {
     @MockitoBean AuthService authService;
     @MockitoBean JwtProvider jwtProvider;
     @MockitoBean CustomUserDetailsService customUserDetailsService;
+    @MockitoBean RefreshTokenCookieProvider refreshTokenCookieProvider;
 
     // ───────────────────── signup ─────────────────────
 
@@ -42,7 +45,7 @@ class AuthControllerTest {
     @DisplayName("POST /api/auth/signup — 201 Created, 응답 바디 확인")
     void signup_success() throws Exception {
         SignupRequest request = new SignupRequest("test@example.com", "Password1!", "tester", true, true, false);
-        UserResponse response = new UserResponse(1L, "test@example.com", "tester", Role.MEMBER, null, null, null, null, null, null, null, null, null, List.of(), false, false);
+        UserResponse response = new UserResponse(1L, "test@example.com", "tester", Role.MEMBER, null, null, null, null, null, null, null, null, null, List.of(), false, false, false, null);
 
         given(authService.signup(any())).willReturn(response);
 
@@ -86,12 +89,15 @@ class AuthControllerTest {
     // ───────────────────── login ─────────────────────
 
     @Test
-    @DisplayName("POST /api/auth/login — 200 OK, 토큰 반환")
+    @DisplayName("POST /api/auth/login — 200 OK, access 토큰은 바디 / refresh 는 httpOnly 쿠키")
     void login_success() throws Exception {
         LoginRequest request = new LoginRequest("test@example.com", "password123");
-        LoginResponse response = LoginResponse.of(TokenResponse.of("access_token", "refresh_token"), null, false, false);
+        LoginResponse body = LoginResponse.of("access_token", null, false, false);
 
-        given(authService.login(any())).willReturn(response);
+        given(authService.login(any())).willReturn(new AuthLoginResult(body, "refresh_token"));
+        given(refreshTokenCookieProvider.create(any())).willReturn(
+                ResponseCookie.from("refresh_token", "refresh_token")
+                        .httpOnly(true).path("/api/auth").build());
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -99,8 +105,10 @@ class AuthControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.accessToken").value("access_token"))
-                .andExpect(jsonPath("$.data.refreshToken").value("refresh_token"))
-                .andExpect(jsonPath("$.data.tokenType").value("Bearer"));
+                .andExpect(jsonPath("$.data.tokenType").value("Bearer"))
+                // refresh 토큰은 바디에 없고 Set-Cookie(HttpOnly)로만 전달
+                .andExpect(jsonPath("$.data.refreshToken").doesNotExist())
+                .andExpect(header().string("Set-Cookie", org.hamcrest.Matchers.containsString("HttpOnly")));
     }
 
     @Test
@@ -121,31 +129,28 @@ class AuthControllerTest {
     // ───────────────────── refresh ─────────────────────
 
     @Test
-    @DisplayName("POST /api/auth/refresh — 200 OK, 새 토큰 반환")
+    @DisplayName("POST /api/auth/refresh — 쿠키의 refresh 로 200 OK, 새 access 반환 + 쿠키 회전")
     void refresh_success() throws Exception {
-        RefreshRequest request = new RefreshRequest("old_refresh_token");
-        TokenResponse response = TokenResponse.of("new_access", "new_refresh");
+        given(refreshTokenCookieProvider.resolve(any())).willReturn("old_refresh_token");
+        given(authService.refresh(any())).willReturn(new AuthRefreshResult("new_access", "new_refresh"));
+        given(refreshTokenCookieProvider.create(any())).willReturn(
+                ResponseCookie.from("refresh_token", "new_refresh")
+                        .httpOnly(true).path("/api/auth").build());
 
-        given(authService.refresh(any())).willReturn(response);
-
-        mockMvc.perform(post("/api/auth/refresh")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(post("/api/auth/refresh"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.accessToken").value("new_access"))
-                .andExpect(jsonPath("$.data.refreshToken").value("new_refresh"));
+                .andExpect(jsonPath("$.data.tokenType").value("Bearer"))
+                .andExpect(jsonPath("$.data.refreshToken").doesNotExist())
+                .andExpect(header().string("Set-Cookie", org.hamcrest.Matchers.containsString("HttpOnly")));
     }
 
     @Test
-    @DisplayName("POST /api/auth/refresh — Redis 토큰 없을 시 401")
-    void refresh_fail_tokenNotFound() throws Exception {
-        RefreshRequest request = new RefreshRequest("orphan_token");
+    @DisplayName("POST /api/auth/refresh — refresh 쿠키 없으면 401")
+    void refresh_fail_noCookie() throws Exception {
+        given(refreshTokenCookieProvider.resolve(any())).willReturn(null);
 
-        given(authService.refresh(any())).willThrow(new CustomException(ErrorCode.REFRESH_TOKEN_NOT_FOUND));
-
-        mockMvc.perform(post("/api/auth/refresh")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(post("/api/auth/refresh"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("AUTH_005"));
     }

@@ -21,9 +21,9 @@ export interface UserInfo {
   mustChangePassword?: boolean
 }
 
+// refresh 토큰은 httpOnly 쿠키로만 전달되므로 JS 가 다루는 응답에는 포함되지 않는다.
 export interface TokenResponse {
   accessToken: string
-  refreshToken: string
   tokenType: string
 }
 
@@ -70,10 +70,6 @@ export interface VerifyEmailRequest {
 
 export interface CheckAvailableResponse {
   available: boolean
-}
-
-export interface FindEmailRequest {
-  nickname: string
 }
 
 export interface FindEmailResponse {

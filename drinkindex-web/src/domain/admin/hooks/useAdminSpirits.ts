@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { adminSpiritApi } from '../api/adminSpiritApi'
-import type { UpdateSpiritPayload, CreateSpiritPayload, UpdateRequestBody } from '../types/admin.types'
+import type { UpdateSpiritPayload, CreateSpiritPayload } from '../types/admin.types'
 // CreateSpiritPayload 재사용 (등록 요청 상세 승인 시 전체 상세 전송)
 import type { SpiritCategory, SpiritStatus } from '@/domain/spirit/types/spirit.types'
 
@@ -16,16 +16,6 @@ export function useAdminSpirits(params: SpiritListParams) {
     queryKey: ['admin-spirits', params],
     queryFn: () =>
       adminSpiritApi.list({ ...params, size: 20 }).then((res) => res.data.data!),
-  })
-}
-
-export function useCreateSpirit() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (data: CreateSpiritPayload) => adminSpiritApi.create(data),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin-spirits'] })
-    },
   })
 }
 
@@ -105,17 +95,6 @@ export function useAdminRequestDetail(id: number) {
   return useQuery({
     queryKey: ['admin-request-detail', id],
     queryFn: () => adminSpiritApi.getRequestDetail(id).then((res) => res.data.data!),
-  })
-}
-
-export function useUpdateRequest() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: UpdateRequestBody }) =>
-      adminSpiritApi.updateRequest(id, data),
-    onSuccess: (_data, { id }) => {
-      qc.invalidateQueries({ queryKey: ['admin-request-detail', id] })
-    },
   })
 }
 

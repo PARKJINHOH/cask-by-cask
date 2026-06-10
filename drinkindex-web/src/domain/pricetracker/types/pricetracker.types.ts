@@ -5,7 +5,6 @@ export type PriceReportReportReason = 'FALSE_PRICE' | 'DUPLICATE' | 'BAD_IMAGE' 
 export type DiscountType = 'PAYMENT' | 'BUNDLE' | 'COUPON' | 'OTHER'
 export type DutyFreeChannel = 'AIRPORT' | 'CITY' | 'INFLIGHT' | 'ONLINE'
 export type PriceReportStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
-export type PriceReportReportStatus = 'PENDING' | 'RESOLVED' | 'DISMISSED'
 
 export interface ChartPoint {
   date: string

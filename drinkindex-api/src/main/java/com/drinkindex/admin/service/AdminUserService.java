@@ -16,6 +16,7 @@ import com.drinkindex.domain.user.entity.User;
 import com.drinkindex.domain.user.entity.enums.Role;
 import com.drinkindex.domain.user.repository.RoleTypeRepository;
 import com.drinkindex.domain.user.repository.UserRepository;
+import com.drinkindex.global.auth.security.AuthUserCache;
 import com.drinkindex.global.email.EmailSender;
 import com.drinkindex.global.exception.CustomException;
 import com.drinkindex.global.exception.ErrorCode;
@@ -49,6 +50,7 @@ public class AdminUserService {
     private final PasswordEncoder passwordEncoder;
     private final EmailSender emailSender;
     private final AdminLogService adminLogService;
+    private final AuthUserCache authUserCache;
 
     // ── 회원 목록 ──────────────────────────────────────────
 
@@ -105,6 +107,7 @@ public class AdminUserService {
                 String.format("[%s] 역할 변경: %s → %s", target.getNickname(), oldRoleName, newRoleName),
                 String.format("{\"oldRole\":\"%s\",\"newRole\":\"%s\"}", oldRoleName, newRoleName));
 
+        authUserCache.evict(target.getId());   // 권한 변경 즉시 반영
         return AdminUserResponse.from(target);
     }
 
@@ -133,6 +136,7 @@ public class AdminUserService {
         User target = findUser(id);
         checkCanModify(actor, target);
         target.deactivate();
+        authUserCache.evict(target.getId());   // 비활성화 즉시 반영 (로그인된 세션 차단)
     }
 
     @Transactional
@@ -141,6 +145,7 @@ public class AdminUserService {
         User target = findUser(id);
         checkCanModify(actor, target);
         target.activate();
+        authUserCache.evict(target.getId());   // 재활성화 즉시 반영
     }
 
     @Transactional
@@ -154,6 +159,7 @@ public class AdminUserService {
                 String.format("[%s] 계정 삭제", target.getNickname()),
                 String.format("{\"email\":\"%s\",\"role\":\"%s\"}", target.getEmail(), target.getRole()));
 
+        authUserCache.evict(target.getId());   // 삭제 즉시 반영
         userRepository.delete(target);
     }
 
