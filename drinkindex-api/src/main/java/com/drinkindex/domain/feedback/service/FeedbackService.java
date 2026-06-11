@@ -6,6 +6,8 @@ import com.drinkindex.domain.feedback.entity.FeedbackComment;
 import com.drinkindex.domain.feedback.entity.enums.FeedbackStatus;
 import com.drinkindex.domain.feedback.repository.FeedbackCommentRepository;
 import com.drinkindex.domain.feedback.repository.FeedbackRepository;
+import com.drinkindex.domain.score.constant.ScoreActions;
+import com.drinkindex.domain.score.service.ScoreService;
 import com.drinkindex.domain.user.entity.User;
 import com.drinkindex.domain.user.entity.enums.Role;
 import com.drinkindex.domain.user.repository.UserRepository;
@@ -39,6 +41,7 @@ public class FeedbackService {
     private final FeedbackCommentRepository feedbackCommentRepository;
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
+    private final ScoreService scoreService;
 
     private static final Set<String> ALLOWED_EXTENSIONS = Set.of("jpg", "jpeg", "png", "webp", "gif");
     private static final long MAX_FILE_SIZE = 2 * 1024 * 1024L;
@@ -61,27 +64,34 @@ public class FeedbackService {
                 .title(request.title())
                 .content(request.content())
                 .imageUrls(imageUrlsStr)
+                .isPublic(request.isPublic() == null || request.isPublic())
                 .build();
 
-        return feedbackRepository.save(feedback).getId();
+        Long id = feedbackRepository.save(feedback).getId();
+        scoreService.award(userId, ScoreActions.FEEDBACK_WRITE, "FEEDBACK", id);
+        return id;
     }
 
     // ─── 목록 ───────────────────────────────────
 
     @Transactional(readOnly = true)
-    public Page<FeedbackListResponse> list(Long userId, Role role, FeedbackStatus status, int page) {
+    public Page<FeedbackListResponse> list(Long userId, Role role, FeedbackStatus status, boolean mine, int page) {
         boolean isAdmin = isAdmin(role);
         Pageable pageable = PageRequest.of(page, PAGE_SIZE, Sort.by("createdAt").descending());
 
         Page<Feedback> result;
-        if (isAdmin) {
+        if (isAdmin && !mine) {
             result = (status != null)
                     ? feedbackRepository.findByStatus(status, pageable)
                     : feedbackRepository.findAll(pageable);
-        } else {
+        } else if (mine) {
             result = (status != null)
                     ? feedbackRepository.findByAuthorIdAndStatus(userId, status, pageable)
                     : feedbackRepository.findByAuthorId(userId, pageable);
+        } else {
+            result = (status != null)
+                    ? feedbackRepository.findVisibleByStatus(userId, status, pageable)
+                    : feedbackRepository.findVisible(userId, pageable);
         }
         return result.map(f -> FeedbackListResponse.from(f, isAdmin));
     }
@@ -91,7 +101,7 @@ public class FeedbackService {
     @Transactional(readOnly = true)
     public FeedbackDetailResponse detail(Long userId, Role role, Long id) {
         boolean isAdmin = isAdmin(role);
-        Feedback feedback = findAccessible(id, userId, isAdmin);
+        Feedback feedback = findVisible(id, userId, isAdmin);
         List<FeedbackComment> comments = feedbackCommentRepository.findByFeedbackIdOrderByCreatedAtAsc(id);
         return FeedbackDetailResponse.from(feedback, comments, userId, isAdmin);
     }
@@ -107,7 +117,7 @@ public class FeedbackService {
         if (!feedback.isEditable()) {
             throw new CustomException(ErrorCode.FEEDBACK_NOT_EDITABLE);
         }
-        feedback.updateContent(request.type(), request.title(), request.content());
+        feedback.updateContent(request.type(), request.title(), request.content(), request.isPublic());
     }
 
     // ─── 삭제 (작성자 본인, 접수 상태에서만) ───────
@@ -133,7 +143,11 @@ public class FeedbackService {
     public void changeStatus(Role role, Long id, UpdateFeedbackStatusRequest request) {
         requireAdmin(role);
         Feedback feedback = findById(id);
+        boolean wasResolved = feedback.getStatus() == FeedbackStatus.RESOLVED;
         feedback.changeStatus(request.status(), request.progress());
+        if (request.status() == FeedbackStatus.RESOLVED && !wasResolved) {
+            scoreService.award(feedback.getAuthor().getId(), ScoreActions.FEEDBACK_RESOLVED, "FEEDBACK", id);
+        }
     }
 
     // ─── 댓글 (작성자 또는 관리자) ─────────────────
@@ -172,10 +186,19 @@ public class FeedbackService {
                 .orElseThrow(() -> new CustomException(ErrorCode.FEEDBACK_NOT_FOUND));
     }
 
-    /** 작성자 본인 또는 관리자만 접근 허용. 그 외 FORBIDDEN. */
+    /** 작성자 본인 또는 관리자만 접근 허용. 그 외 FORBIDDEN. (댓글 작성 등) */
     private Feedback findAccessible(Long id, Long userId, boolean isAdmin) {
         Feedback feedback = findById(id);
         if (!isAdmin && !feedback.isOwnedBy(userId)) {
+            throw new CustomException(ErrorCode.FEEDBACK_FORBIDDEN);
+        }
+        return feedback;
+    }
+
+    /** 작성자 본인·관리자 또는 공개글이면 접근 허용. 그 외 FORBIDDEN. (상세 조회) */
+    private Feedback findVisible(Long id, Long userId, boolean isAdmin) {
+        Feedback feedback = findById(id);
+        if (!feedback.isVisibleTo(userId, isAdmin)) {
             throw new CustomException(ErrorCode.FEEDBACK_FORBIDDEN);
         }
         return feedback;

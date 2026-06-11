@@ -25,10 +25,10 @@ export default function RegionChips({ category, country, value, onChange }: Regi
 
   return (
     <div>
-      <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-2">
+      <h3 className="text-sm font-bold text-neutral-900 mb-2">
         {t('spirit.filter.region')}
       </h3>
-      <div className="flex flex-wrap gap-1">
+      <div className="flex flex-wrap gap-1.5">
         {regions.map((r) => {
           const active = value === r.region
           return (
@@ -36,11 +36,11 @@ export default function RegionChips({ category, country, value, onChange }: Regi
               key={r.region}
               type="button"
               onClick={() => onChange(active ? '' : r.region)}
-              className={`px-2 py-0.5 text-xs rounded-full border transition-colors
+              className={`px-2.5 py-1 text-xs font-medium rounded-full border transition-colors
                 inline-flex items-center gap-1
                 ${active
                   ? 'bg-primary-800 text-white border-primary-800'
-                  : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-400'}`}
+                  : 'bg-white text-neutral-600 border-neutral-200 hover:border-primary-300'}`}
             >
               <span>{r.region}</span>
               <span className={active ? 'text-primary-100' : 'text-neutral-400'}>

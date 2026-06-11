@@ -34,4 +34,6 @@ public final class ScoreActions {
     public static final String ATTENDANCE_STREAK_30       = "ATTENDANCE_STREAK_30";
     public static final String ADMIN_ADJUST               = "ADMIN_ADJUST";
     public static final String PRICE_REGISTER             = "PRICE_REGISTER";
+    public static final String FEEDBACK_WRITE             = "FEEDBACK_WRITE";
+    public static final String FEEDBACK_RESOLVED          = "FEEDBACK_RESOLVED";
 }

@@ -76,7 +76,12 @@ export default function FeedbackDetailPage() {
         <div className="flex items-center gap-2 flex-wrap">
           <TypeChip type={detail.type} />
           <StatusBadge status={detail.status} />
-          {isAdmin && detail.authorNickname && (
+          {!detail.isPublic && (
+            <span className="inline-block px-2 py-0.5 text-xs font-medium rounded-md border bg-neutral-50 text-neutral-500 border-neutral-200">
+              {t('feedback.visibility.private')}
+            </span>
+          )}
+          {detail.authorNickname && (
             <span className="text-xs text-neutral-400">
               · {t('feedback.reporter')}: {detail.authorNickname}
             </span>
@@ -216,26 +221,28 @@ export default function FeedbackDetailPage() {
           </ul>
         )}
 
-        {/* 댓글 입력 */}
-        <form onSubmit={handleAddComment} className="mt-4">
-          <textarea
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            maxLength={5000}
-            rows={3}
-            placeholder={t('feedback.detail.commentPlaceholder')}
-            className="w-full px-3 py-2.5 text-sm border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400 resize-none"
-          />
-          <div className="flex justify-end mt-2">
-            <button
-              type="submit"
-              disabled={addCommentMutation.isPending || !comment.trim()}
-              className="px-4 py-2 bg-primary-800 text-white text-sm font-semibold rounded-lg hover:bg-primary-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {t('feedback.detail.addComment')}
-            </button>
-          </div>
-        </form>
+        {/* 댓글 입력 — 작성자 본인 또는 관리자만 */}
+        {(detail.isOwner || isAdmin) && (
+          <form onSubmit={handleAddComment} className="mt-4">
+            <textarea
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              maxLength={5000}
+              rows={3}
+              placeholder={t('feedback.detail.commentPlaceholder')}
+              className="w-full px-3 py-2.5 text-sm border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400 resize-none"
+            />
+            <div className="flex justify-end mt-2">
+              <button
+                type="submit"
+                disabled={addCommentMutation.isPending || !comment.trim()}
+                className="px-4 py-2 bg-primary-800 text-white text-sm font-semibold rounded-lg hover:bg-primary-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {t('feedback.detail.addComment')}
+              </button>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   )

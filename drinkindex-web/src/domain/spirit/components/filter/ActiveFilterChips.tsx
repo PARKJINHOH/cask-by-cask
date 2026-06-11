@@ -92,32 +92,38 @@ export default function ActiveFilterChips({ state, onClear, onClearAll }: Active
   if (chips.length === 0) return null
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5 mb-3 py-2 px-3 bg-neutral-50/70 rounded-lg">
-      <span className="text-xs text-neutral-500 mr-1">
-        {t('spirit.filter.activeTitle')}:
+    <div className="mb-4 flex flex-wrap items-center gap-2 bg-neutral-50/70 border border-neutral-200
+      rounded-lg px-3 py-2.5">
+      <span className="text-xs font-medium text-neutral-500 mr-1">
+        {t('spirit.filter.activeTitle')}
       </span>
-      {chips.map((chip) => (
-        <button
-          key={chip.key}
-          type="button"
-          onClick={chip.onRemove}
-          className="inline-flex items-center gap-1 px-2 py-0.5 bg-white border border-neutral-200
-            rounded-full text-xs text-neutral-700 hover:border-danger-300 hover:text-danger-600
-            transition-colors group"
-        >
-          <span>{chip.label}</span>
-          <svg className="w-3 h-3 text-neutral-400 group-hover:text-danger-500"
-            viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd"
-              d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-              clipRule="evenodd"/>
-          </svg>
-        </button>
-      ))}
+      <div className="flex flex-wrap gap-1.5">
+        {chips.map((chip) => (
+          <span
+            key={chip.key}
+            className="inline-flex items-center gap-1 pl-2.5 pr-1.5 py-1 rounded-full bg-white
+              border border-neutral-200 text-xs font-medium text-neutral-700"
+          >
+            {chip.label}
+            <button
+              type="button"
+              onClick={chip.onRemove}
+              aria-label={chip.label}
+              className="w-4 h-4 rounded-full flex items-center justify-center text-neutral-400
+                hover:bg-neutral-100 hover:text-danger-600 transition-colors"
+            >
+              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 6 6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </span>
+        ))}
+      </div>
       <button
         type="button"
         onClick={onClearAll}
-        className="ml-1 text-xs text-neutral-500 hover:text-danger-600 underline-offset-2
+        className="ml-auto text-xs font-medium text-danger-600 hover:text-danger-700
           hover:underline transition-colors"
       >
         {t('spirit.filter.resetAll')}

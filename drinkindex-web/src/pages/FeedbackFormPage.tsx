@@ -38,6 +38,7 @@ export default function FeedbackFormPage() {
   )
   const [title, setTitle] = useState(isEdit ? '' : (searchParams.get('title') ?? ''))
   const [content, setContent] = useState(isEdit ? '' : (searchParams.get('content') ?? ''))
+  const [isPublic, setIsPublic] = useState(true)
   const [images, setImages] = useState<ImagePreview[]>([])
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitError, setSubmitError] = useState('')
@@ -49,6 +50,7 @@ export default function FeedbackFormPage() {
       setType(detail.type)
       setTitle(detail.title)
       setContent(detail.content)
+      setIsPublic(detail.isPublic)
     }
   }, [isEdit, detail])
 
@@ -90,11 +92,11 @@ export default function FeedbackFormPage() {
     setSubmitError('')
     try {
       if (isEdit) {
-        await updateMutation.mutateAsync({ type: type as FeedbackType, title, content })
+        await updateMutation.mutateAsync({ type: type as FeedbackType, title, content, isPublic })
         navigate(`/request/feedback/${feedbackId}`)
       } else {
         const newId = await createMutation.mutateAsync({
-          data: { type: type as FeedbackType, title, content },
+          data: { type: type as FeedbackType, title, content, isPublic },
           images: images.map((i) => i.file),
         })
         images.forEach((i) => URL.revokeObjectURL(i.url))
@@ -183,6 +185,21 @@ export default function FeedbackFormPage() {
             {errors.content ? <p className="text-xs text-red-500">{errors.content}</p> : <span />}
             <p className="text-xs text-neutral-400">{content.length} / 5,000</p>
           </div>
+        </div>
+
+        {/* 공개 여부 */}
+        <div className="flex items-start gap-3 p-3 bg-neutral-50 border border-neutral-200 rounded-xl">
+          <input
+            id="feedback-private"
+            type="checkbox"
+            checked={!isPublic}
+            onChange={(e) => setIsPublic(!e.target.checked)}
+            className="mt-0.5 w-4 h-4 accent-primary-700"
+          />
+          <label htmlFor="feedback-private" className="text-sm text-neutral-700 cursor-pointer">
+            <span className="font-medium">{t('feedback.form.isPrivate')}</span>
+            <p className="mt-0.5 text-xs text-neutral-400">{t('feedback.form.isPrivateHint')}</p>
+          </label>
         </div>
 
         {/* 이미지 첨부 — 신규 작성 시에만 */}

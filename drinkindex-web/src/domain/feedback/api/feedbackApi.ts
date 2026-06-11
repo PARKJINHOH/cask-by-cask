@@ -26,6 +26,7 @@ export const createFeedback = async (
 
 export const getFeedbacks = async (params: {
   status?: FeedbackStatus
+  mine?: boolean
   page?: number
 }): Promise<PageResponse<FeedbackListItem>> => {
   const { data } = await axiosInstance.get<ApiResponse<PageResponse<FeedbackListItem>>>(

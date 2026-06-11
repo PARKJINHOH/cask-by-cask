@@ -15,10 +15,12 @@ export default function FeedbackListPage() {
   const isAdmin = role === 'SUPER_ADMIN' || role === 'ADMIN'
 
   const [status, setStatus] = useState<FeedbackStatus | ''>('')
+  const [mine, setMine] = useState(false)
   const [page, setPage] = useState(0)
 
   const { data, isLoading } = useFeedbackList({
     status: status || undefined,
+    mine,
     page,
   })
 
@@ -43,11 +45,28 @@ export default function FeedbackListPage() {
         </Link>
       </div>
 
+      {/* 탭 */}
+      <div className="flex items-center gap-1 mb-4">
+        <button
+          onClick={() => { setMine(false); setPage(0) }}
+          className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+            !mine ? 'bg-primary-800 text-white' : 'text-neutral-500 hover:bg-neutral-100'
+          }`}
+        >
+          {t('feedback.tabAll')}
+        </button>
+        <button
+          onClick={() => { setMine(true); setPage(0) }}
+          className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+            mine ? 'bg-primary-800 text-white' : 'text-neutral-500 hover:bg-neutral-100'
+          }`}
+        >
+          {t('feedback.tabMine')}
+        </button>
+      </div>
+
       {/* 필터 */}
       <div className="flex items-center gap-2 mb-4">
-        <span className="text-xs font-medium text-neutral-500">
-          {isAdmin ? t('feedback.allRequests') : t('feedback.myRequests')}
-        </span>
         <select
           value={status}
           onChange={(e) => {
@@ -85,10 +104,15 @@ export default function FeedbackListPage() {
               <div className="flex items-center gap-2 flex-wrap">
                 <TypeChip type={f.type} />
                 <StatusBadge status={f.status} />
+                {!f.isPublic && (
+                  <span className="inline-block px-2 py-0.5 text-xs font-medium rounded-md border bg-neutral-50 text-neutral-500 border-neutral-200">
+                    {t('feedback.visibility.private')}
+                  </span>
+                )}
                 {f.hasImages && (
                   <span className="text-xs text-neutral-400" aria-label="image">📎</span>
                 )}
-                {isAdmin && f.authorNickname && (
+                {f.authorNickname && (
                   <span className="text-xs text-neutral-400">· {f.authorNickname}</span>
                 )}
                 <span className="ml-auto text-xs text-neutral-400">{formatBoardDate(f.createdAt)}</span>

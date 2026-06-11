@@ -339,7 +339,7 @@ export default function ByobFormPage() {
           </div>
 
           {/* ── 오른쪽: 주최자 바틀 목록 (PC only) ── */}
-          <div className="hidden lg:block sticky top-24">
+          <div className="hidden lg:block sticky top-32">
             <HostBottlesInput bottles={hostBottles} onChange={setHostBottles} />
           </div>
 

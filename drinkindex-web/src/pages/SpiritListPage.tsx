@@ -1,6 +1,6 @@
-﻿import { useState, useEffect, useCallback, Fragment } from 'react'
+﻿import { useState, useEffect, useCallback, useLayoutEffect, useRef, Fragment } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation, Trans } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { Dialog, Transition, TransitionChild, DialogPanel, DialogTitle } from '@headlessui/react'
 import { spiritApi } from '@/domain/spirit/api/spiritApi'
@@ -20,28 +20,6 @@ import ActiveFilterChips, {
 } from '@/domain/spirit/components/filter/ActiveFilterChips'
 import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 import { buildBreadcrumbSchema, buildItemListSchema } from '@/shared/utils/seoSchema'
-
-// ── 카테고리별 정의문 (AEO/SEO) ──────────────────────────────
-// SpiritCategory 페이지 진입 시 카탈로그 상단에 간략한 정의 박스를 노출.
-// AI 검색이 사이트를 "위스키/꼬냑/와인 정보" 출처로 인식하게 하기 위함.
-const CATEGORY_INTRO: Partial<Record<SpiritCategory, { ko: string; en: string }>> = {
-  WHISKY: {
-    ko: '위스키 (Whisky) 는 보리·밀·옥수수·호밀 등 곡물을 발효·증류한 뒤 오크통에서 숙성시킨 증류주입니다. 원산지·곡물·증류 방식에 따라 스카치, 버번, 아이리시, 재패니즈, 라이 위스키 등으로 나뉘며, DrinkIndex 에서는 싱글 몰트·블렌디드·캐스크 타입·피티드 여부·연수 등 세부 정보로 탐색할 수 있습니다.',
-    en: 'Whisky is a distilled spirit made from fermented grains (barley, wheat, corn, rye) and aged in oak casks. Browse Scotch, Bourbon, Irish, Japanese, and Rye whisky on DrinkIndex with detailed filters by style, cask, peat and age.',
-  },
-  COGNAC: {
-    ko: '꼬냑 (Cognac) 은 프랑스 꼬냑 지방에서 백포도를 증류해 만든 브랜디로, 원산지 명칭 보호 (AOC) 를 받습니다. 등급은 VS·VSOP·나폴레옹·XO·XXO 순으로 숙성 연수가 늘어나며, 그랑드 샹파뉴 등 6개 크뤼 (Cru) 로 토양이 구분됩니다.',
-    en: 'Cognac is a brandy from the Cognac region of France, protected by AOC. Graded VS, VSOP, Napoléon, XO, XXO by minimum aging, and classified by six crus (Grande Champagne, Petite Champagne, Borderies, Fins Bois, Bons Bois, Bois Ordinaires).',
-  },
-  WINE: {
-    ko: '와인 (Wine) 은 포도를 발효시켜 만든 양조주입니다. 색·발효 방식에 따라 레드·화이트·로제·스파클링·디저트·오렌지 와인으로 나뉘며, 빈티지 (수확 연도), 포도 품종, 아펠라시옹 (원산지) 등이 풍미에 결정적 영향을 미칩니다.',
-    en: 'Wine is fermented from grapes and classified as red, white, rosé, sparkling, dessert or orange. Vintage, grape varieties, and appellation are the key factors shaping flavor.',
-  },
-  OTHER: {
-    ko: '럼 (Rum), 데킬라 (Tequila), 진 (Gin), 보드카 (Vodka) 등 위스키·와인·꼬냑 외의 다양한 증류주·양조주를 포함합니다.',
-    en: 'Other spirits including rum, tequila, gin, vodka and more — outside of whisky, wine and cognac categories.',
-  },
-}
 
 // ── SEO 카테고리별 메타 ─────────────────────────────────────────
 const CATEGORY_META: Record<SpiritCategory | '', {
@@ -104,7 +82,8 @@ function FilterPanel(p: FilterPanelProps) {
   const { t } = useTranslation()
 
   return (
-    <div className="space-y-6">
+    // 섹션 사이 구분선: 첫 섹션(카테고리) 제외, 이후 모든 섹션 상단에 border-t + 여백
+    <div className="space-y-5 [&>*+*]:pt-4 [&>*+*]:border-t [&>*+*]:border-neutral-100">
       <CategoryTree
         category={p.category}
         whiskyStyle={p.whiskyStyle}
@@ -131,7 +110,7 @@ function FilterPanel(p: FilterPanelProps) {
 
       {/* 도수 */}
       <div>
-        <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-3">
+        <h3 className="text-sm font-bold text-neutral-900 mb-3">
           {t('spirit.filter.abv')}
         </h3>
         <RangeSlider
@@ -146,7 +125,7 @@ function FilterPanel(p: FilterPanelProps) {
 
       {/* 평균 점수 */}
       <div>
-        <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-3">
+        <h3 className="text-sm font-bold text-neutral-900 mb-3">
           {t('spirit.filter.score')}
         </h3>
         <RangeSlider
@@ -159,17 +138,19 @@ function FilterPanel(p: FilterPanelProps) {
       </div>
 
       {/* 초기화 */}
-      <button
-        onClick={p.onReset}
-        className="w-full inline-flex items-center justify-center gap-1.5 py-2 text-sm font-medium
-          text-neutral-500 border border-neutral-200 rounded-lg
-          hover:border-danger-300 hover:text-danger-600 hover:bg-danger-50/40 transition-colors"
-      >
-        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M3 2v6h6" /><path d="M3 13a9 9 0 1 0 3-7.7L3 8" />
-        </svg>
-        {t('spirit.filter.reset')}
-      </button>
+      <div>
+        <button
+          onClick={p.onReset}
+          className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 text-sm font-semibold
+            text-neutral-600 border border-neutral-200 rounded-xl
+            hover:border-danger-200 hover:text-danger-600 hover:bg-danger-50/40 transition-colors"
+        >
+          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M3 2v6h6" /><path d="M3 13a9 9 0 1 0 3-7.7L3 8" />
+          </svg>
+          {t('spirit.filter.reset')}
+        </button>
+      </div>
     </div>
   )
 }
@@ -235,6 +216,79 @@ export default function SpiritListPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [drawerOpen, setDrawerOpen] = useState(false)
 
+  // PC 좌측 필터 패널 — 본문(목록)과 완전히 독립된 스크롤 영역.
+  // row(relative) 안에서 absolute 로 배치하고, 스크롤에 따라 top 을 직접 계산해
+  // "뷰포트 상단에서 chromeTop 만큼 떨어진 위치에 고정"되다가 row 하단(=footer 직전)에서 멈추도록 함
+  // → fixed 와 달리 footer 를 침범하지 않음.
+  const rowRef = useRef<HTMLDivElement>(null)
+  const filterContentRef = useRef<HTMLDivElement>(null)
+  const [chromeTop, setChromeTop] = useState(0) // 헤더+GNB 높이 + 여백
+  // 패널 높이 = min(필터 내용의 실제 높이, 뷰포트에서 사용 가능한 높이).
+  // - 필터가 적용 안 된 기본 상태처럼 내용이 짧으면 그 높이만큼만 차지(스크롤바 없음)
+  // - 내용이 길어 화면을 넘으면 뷰포트 높이로 제한하고 패널 내부에서만 스크롤
+  // spacer 의 min-height 로도 사용해 본문(row) 높이를 패널 높이만큼 확보 → footer 침범 방지.
+  const [panelHeight, setPanelHeight] = useState<number | null>(null)
+  const [panelTop, setPanelTop] = useState(0)
+
+  // 헤더 + GNB(둘 다 sticky) 높이 측정 → 패널의 viewport 기준 top 오프셋
+  useLayoutEffect(() => {
+    const update = () => {
+      const header = document.querySelector('header')
+      const nav = document.querySelector('nav')
+      const chromeHeight = (header?.getBoundingClientRect().height ?? 0)
+        + (nav?.getBoundingClientRect().height ?? 0)
+      setChromeTop(chromeHeight + 24)
+    }
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [])
+
+  // 필터 내용의 실제 높이 → panelHeight
+  useLayoutEffect(() => {
+    const PANEL_PADDING_Y = 32 // p-4 (1rem) * 2
+    const update = () => {
+      const content = filterContentRef.current
+      if (!content) return
+      const contentHeight = content.getBoundingClientRect().height + PANEL_PADDING_Y
+      const viewportMax = window.innerHeight - chromeTop - 24
+      setPanelHeight(Math.min(contentHeight, viewportMax))
+    }
+    update()
+    window.addEventListener('resize', update)
+    const ro = new ResizeObserver(update)
+    if (filterContentRef.current) ro.observe(filterContentRef.current)
+    return () => {
+      window.removeEventListener('resize', update)
+      ro.disconnect()
+    }
+  }, [chromeTop])
+
+  // 스크롤 위치에 따라 패널의 top(row 기준 absolute) 계산
+  // - 0 ~ (rowHeight - panelHeight) 범위로 clamp → row 상단에서 시작해 row 하단(footer 직전)에서 멈춤
+  useLayoutEffect(() => {
+    if (panelHeight == null) return
+    const update = () => {
+      const row = rowRef.current
+      if (!row) return
+      const rect = row.getBoundingClientRect()
+      const rowTopDoc = rect.top + window.scrollY
+      const desired = window.scrollY + chromeTop - rowTopDoc
+      const max = Math.max(rect.height - panelHeight, 0)
+      setPanelTop(Math.min(Math.max(desired, 0), max))
+    }
+    update()
+    window.addEventListener('scroll', update, { passive: true })
+    window.addEventListener('resize', update)
+    const ro = new ResizeObserver(update)
+    if (rowRef.current) ro.observe(rowRef.current)
+    return () => {
+      window.removeEventListener('scroll', update)
+      window.removeEventListener('resize', update)
+      ro.disconnect()
+    }
+  }, [panelHeight, chromeTop])
+
   // URL에서 필터 값 읽기
   const category    = (searchParams.get('category') as SpiritCategory) ?? ''
   const whiskyStyle = searchParams.getAll('whiskyStyle') as WhiskyStyle[]
@@ -249,20 +303,18 @@ export default function SpiritListPage() {
   const urlMinScore = parseFloat(searchParams.get('minScore') ?? '0')
   const urlMaxScore = parseFloat(searchParams.get('maxScore') ?? '100')
 
-  // 키워드 (debounce)
+  // 키워드 (Enter 또는 검색 버튼 클릭 시에만 검색)
   const [keywordInput, setKeywordInput] = useState(searchParams.get('keyword') ?? '')
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev)
-        keywordInput ? next.set('keyword', keywordInput) : next.delete('keyword')
-        next.set('page', '0')
-        return next
-      }, { replace: true })
-    }, 350)
-    return () => clearTimeout(timer)
-  }, [keywordInput]) // eslint-disable-line
+  const submitKeyword = (e: React.FormEvent) => {
+    e.preventDefault()
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      keywordInput ? next.set('keyword', keywordInput) : next.delete('keyword')
+      next.set('page', '0')
+      return next
+    }, { replace: true })
+  }
 
   // 슬라이더 로컬 상태 (포인터업 시에만 URL 업데이트)
   const [abvRange,   setAbvRange]   = useState<[number, number]>([urlMinAbv, urlMaxAbv])
@@ -398,6 +450,14 @@ export default function SpiritListPage() {
     minScore: urlMinScore, maxScore: urlMaxScore,
   }
 
+  // 모바일 필터 버튼 배지용 활성 필터 개수
+  const activeFilterCount =
+    (category ? 1 : 0)
+    + whiskyStyle.length + wineType.length + cognacGrade.length
+    + (country ? 1 : 0) + (region ? 1 : 0)
+    + (urlMinAbv > 0 || urlMaxAbv < 100 ? 1 : 0)
+    + (urlMinScore > 0 || urlMaxScore < 100 ? 1 : 0)
+
   // ── SEO 메타 계산 ────────────────────────────────────────
   const isEn = i18n.language === 'en'
   const meta = CATEGORY_META[category] ?? CATEGORY_META['']
@@ -452,65 +512,30 @@ export default function SpiritListPage() {
         jsonLd={seoJsonLd}
       />
 
-      {/* 카테고리 정의문 — 1페이지 + 키워드 없는 상태에서만 노출 (AEO/SEO) */}
-      {category && CATEGORY_INTRO[category] && page === 0 && !keyword && (
-        <section className="mb-6 px-4 py-3 bg-neutral-50 border border-neutral-100 rounded-xl">
-          <h2 className="sr-only">
-            {isEn ? `About ${meta.titleEn}` : `${meta.titleKo} 소개`}
-          </h2>
-          <p className="text-xs sm:text-sm text-neutral-600 leading-relaxed">
-            {isEn ? CATEGORY_INTRO[category]!.en : CATEGORY_INTRO[category]!.ko}
-          </p>
-        </section>
-      )}
-
-      {/* 검색 + 모바일 필터 버튼 (모바일 전용 — PC는 헤더 검색 사용) */}
-      <div className="flex gap-2 mb-5 lg:hidden">
-        <div className="relative flex-1">
-          <svg
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400"
-            viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-          >
-            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-          </svg>
-          <input
-            type="search"
-            value={keywordInput}
-            onChange={(e) => setKeywordInput(e.target.value)}
-            placeholder={t('spirit.search.placeholder')}
-            className="w-full pl-10 pr-4 py-2.5 border border-neutral-300 rounded-xl text-sm
-              focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
-          />
-        </div>
-        <button
-          onClick={() => setDrawerOpen(true)}
-          className="flex items-center gap-1.5 px-4 py-2.5 border border-neutral-200
-            rounded-xl text-sm text-neutral-600 hover:bg-neutral-50 transition-colors bg-white"
+      <div ref={rowRef} className="flex gap-6 relative">
+        {/* PC 좌측 필터 패널 — 본문(목록)과 완전히 독립된 스크롤 영역.
+            spacer 로 자리만 차지(min-height 로 패널 높이만큼 확보 → footer 침범 방지),
+            실제 패널은 row(relative) 기준 absolute 로 배치하고 스크롤에 맞춰 top 을 계산해
+            "뷰포트 상단에 고정된 것처럼" 보이다가 row 하단(=footer 직전)에서 멈춤.
+            overscroll-contain 으로 사이드바 스크롤이 목록(페이지)으로 전파되지 않음(그 반대도 동일).
+            패널 높이 = min(필터 내용 실제 높이, 뷰포트 가용 높이) — 필터 미적용 등으로
+            내용이 짧으면 스크롤바 없이 내용 높이만큼만 차지. */}
+        <aside
+          className="hidden lg:block w-72 flex-shrink-0"
+          style={panelHeight != null ? { minHeight: panelHeight } : undefined}
+        />
+        <div
+          className="hidden lg:block absolute left-0 w-72 z-10 bg-white rounded-2xl border border-neutral-200 p-4
+            overflow-y-auto overscroll-contain"
+          style={{
+            top: panelTop,
+            height: panelHeight ?? 'auto',
+          }}
         >
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="20" y2="12"/>
-            <line x1="12" y1="18" x2="20" y2="18"/>
-          </svg>
-          {t('spirit.filter.title')}
-        </button>
-      </div>
-
-      <div className="flex gap-6">
-        {/* PC 좌측 고정 필터 패널 */}
-        <aside className="hidden lg:block w-72 flex-shrink-0">
-          <div className="sticky top-20 bg-white rounded-2xl border border-neutral-100
-            max-h-[calc(100vh-6rem)] overflow-y-auto">
-            <div className="flex items-center gap-2 px-5 pt-5 pb-3 border-b border-neutral-100 sticky top-0 bg-white z-10">
-              <svg className="w-4 h-4 text-primary-800" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="4" y1="6" x2="20" y2="6" /><line x1="8" y1="12" x2="20" y2="12" /><line x1="12" y1="18" x2="20" y2="18" />
-              </svg>
-              <h2 className="text-sm font-bold text-neutral-900">{t('spirit.filter.title')}</h2>
-            </div>
-            <div className="p-5">
-              <FilterPanel {...filterProps} />
-            </div>
+          <div ref={filterContentRef}>
+            <FilterPanel {...filterProps} />
           </div>
-        </aside>
+        </div>
 
         {/* 메인 영역 */}
         <div className="flex-1 min-w-0">
@@ -521,25 +546,50 @@ export default function SpiritListPage() {
             onClearAll={handleReset}
           />
 
-          {/* 정렬 + 건수 */}
-          <div className="flex items-center justify-between mb-4">
+          {/* 정렬 + 건수 + 모바일 필터 버튼 */}
+          <div className="flex items-center justify-between gap-2 mb-4">
             <p className="text-sm text-neutral-500">
-              {data
-                ? t('spirit.count', { count: data.totalElements })
-                : ''}
+              {data && (
+                <Trans
+                  i18nKey="spirit.count"
+                  values={{ n: data.totalElements }}
+                  components={[<span className="font-semibold text-neutral-900" />]}
+                />
+              )}
             </p>
-            <select
-              value={sort}
-              onChange={(e) => setParam({ sort: e.target.value })}
-              className="text-sm border border-neutral-300 rounded-lg px-3 py-1.5 bg-white
-                focus:outline-none focus:ring-2 focus:ring-primary-400 text-neutral-700"
-            >
-              {SORT_VALUES.map((v) => (
-                <option key={v} value={v}>
-                  {t(`spirit.sort.${v}`)}
-                </option>
-              ))}
-            </select>
+            <div className="flex items-center gap-2">
+              {/* 모바일 필터 버튼 (PC는 좌측 패널 사용) */}
+              <button
+                onClick={() => setDrawerOpen(true)}
+                className="lg:hidden relative flex items-center gap-1.5 px-3.5 py-1.5 border border-neutral-300
+                  rounded-lg text-sm text-neutral-700 hover:bg-neutral-50 transition-colors bg-white"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="20" y2="12"/>
+                  <line x1="12" y1="18" x2="20" y2="18"/>
+                </svg>
+                {t('spirit.filter.title')}
+                {activeFilterCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[1.1rem] h-[1.1rem] px-1
+                    rounded-full bg-primary-600 text-white text-[10px] font-bold
+                    flex items-center justify-center">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
+              <select
+                value={sort}
+                onChange={(e) => setParam({ sort: e.target.value })}
+                className="text-sm border border-neutral-300 rounded-lg px-3 py-1.5 bg-white
+                  focus:outline-none focus:ring-2 focus:ring-primary-400 text-neutral-700"
+              >
+                {SORT_VALUES.map((v) => (
+                  <option key={v} value={v}>
+                    {t(`spirit.sort.${v}`)}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* 목록 */}
@@ -575,8 +625,27 @@ export default function SpiritListPage() {
         </div>
       </div>
 
-      {/* 모바일 필터 드로어 */}
+      {/* 모바일 필터 드로어 (PC 헤더 검색이 모바일엔 없으므로 키워드 검색을 여기 포함) */}
       <FilterDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)}>
+        <form onSubmit={submitKeyword} className="relative mb-5">
+          <input
+            type="search"
+            value={keywordInput}
+            onChange={(e) => setKeywordInput(e.target.value)}
+            placeholder={t('spirit.search.placeholder')}
+            className="w-full pl-4 pr-10 py-2.5 border border-neutral-300 rounded-xl text-sm
+              focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
+          />
+          <button
+            type="submit"
+            aria-label={t('nav.search')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-primary-600 transition-colors"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+          </button>
+        </form>
         <FilterPanel {...filterProps} />
       </FilterDrawer>
 

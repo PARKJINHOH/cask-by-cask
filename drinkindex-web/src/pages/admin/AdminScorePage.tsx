@@ -27,6 +27,8 @@ const ACTION_LABELS: Record<string, string> = {
   ATTENDANCE_STREAK_7:        '7일 연속 출석 보너스',
   ATTENDANCE_STREAK_30:       '30일 연속 출석 보너스',
   ADMIN_ADJUST:               '관리자 수동 조정 (기준값)',
+  FEEDBACK_WRITE:             '개선·문의 작성',
+  FEEDBACK_RESOLVED:          '개선·문의 해결 보너스',
 }
 
 const ALL_ACTION_TYPES = Object.keys(ACTION_LABELS)

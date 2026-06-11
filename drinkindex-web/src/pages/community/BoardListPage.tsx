@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from 'react'
+﻿import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { usePosts, useBestPosts, usePostPrefixes } from '@/domain/community/hooks/usePosts'
@@ -53,7 +53,6 @@ export default function BoardListPage({ boardType, title }: Props) {
   const authorNicknameParam = searchParams.get('authorNickname') ?? ''
 
   const [keywordInput, setKeywordInput] = useState(keywordParam)
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   // ── 데이터 ────────────────────────────────────────────────
   // "전체" 게시판은 말머리 필터를 노출하지 않으므로 prefix 호출도 생략
@@ -113,14 +112,11 @@ export default function BoardListPage({ boardType, title }: Props) {
     setSearchParams(next, { replace: true })
   }
 
-  // 키워드 디바운스
-  useEffect(() => {
-    clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => {
-      setParam('keyword', keywordInput || null)
-    }, 350)
-    return () => clearTimeout(debounceRef.current)
-  }, [keywordInput])
+  // 키워드 검색 (Enter 또는 검색 버튼 클릭 시에만)
+  const submitKeyword = (e: React.FormEvent) => {
+    e.preventDefault()
+    setParam('keyword', keywordInput || null)
+  }
 
   const setTab = (tab: Tab) => {
     const next = new URLSearchParams(searchParams)
@@ -252,18 +248,24 @@ export default function BoardListPage({ boardType, title }: Props) {
 
       {/* 검색 + 정렬 */}
       <div className="flex gap-3 mb-5">
-        <div className="flex-1 relative">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
-          </svg>
+        <form onSubmit={submitKeyword} className="flex-1 relative">
           <input
             type="text"
             value={keywordInput}
             onChange={(e) => setKeywordInput(e.target.value)}
             placeholder={t('board.searchPlaceholder')}
-            className="w-full pl-9 pr-4 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-400"
+            className="w-full pl-4 pr-10 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-400"
           />
-        </div>
+          <button
+            type="submit"
+            aria-label={t('nav.search')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-primary-600 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+            </svg>
+          </button>
+        </form>
         {!isAll && (tabParam === 'all' || tabParam === 'event') && (
           <select
             value={sortParam}

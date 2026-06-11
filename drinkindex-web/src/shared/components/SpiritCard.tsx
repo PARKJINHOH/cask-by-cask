@@ -117,65 +117,98 @@ export default function SpiritCard({ spirit, className = '', listView = false }:
     )
   }
 
+  // 메타 라인: "국가 · 도수%" — 값이 있는 항목만 노출
+  const metaParts: string[] = []
+  if (spirit.country) metaParts.push(countryLabel)
+  if (spirit.abv != null) metaParts.push(`${spirit.abv}%`)
+
   return (
-    <Link
-      to={`/spirits/${spirit.id}`}
-      className={`group block focus-visible:outline-none focus-visible:ring-2
-        focus-visible:ring-primary-500 focus-visible:ring-offset-2 rounded-2xl ${className}`}
-      aria-label={primaryName}
-    >
-      <article className="bg-white rounded-2xl shadow-sm overflow-hidden
+    <article
+      className={`group relative bg-white rounded-2xl shadow-sm overflow-hidden
         transition-all duration-300 ease-out
-        group-hover:shadow-xl group-hover:-translate-y-1
-        group-active:-translate-y-0.5 group-active:shadow-lg
-        motion-reduce:group-hover:translate-y-0 motion-reduce:group-active:translate-y-0">
-        {/* Image */}
-        <div className="aspect-square overflow-hidden bg-neutral-100">
-          {spirit.primaryImageUrl ? (
-            <img
-              src={spirit.primaryImageUrl}
-              alt={primaryName}
-              loading="lazy"
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            />
-          ) : (
-            <PlaceholderImage />
+        hover:shadow-xl hover:-translate-y-1 motion-reduce:hover:translate-y-0 ${className}`}
+    >
+      {/* 이미지 */}
+      <div className="relative aspect-[3/4] overflow-hidden bg-neutral-100">
+        {spirit.primaryImageUrl ? (
+          <img
+            src={spirit.primaryImageUrl}
+            alt={primaryName}
+            loading="lazy"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          />
+        ) : (
+          <PlaceholderImage />
+        )}
+
+        {/* 카테고리 오버레이 (좌상단) — 클릭 통과 */}
+        <span className="absolute top-2 left-2 z-20 px-2 py-0.5 rounded-md text-[11px] font-semibold
+          bg-black/45 text-white backdrop-blur-sm pointer-events-none">
+          {t(`spirit.category.${spirit.category}`)}
+        </span>
+
+        {/* 확대 버튼 (우상단) — 이 버튼만 라이트박스, 나머지 영역은 상세보기 */}
+        {spirit.primaryImageUrl && (
+          <button
+            type="button"
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLightboxOpen(true) }}
+            aria-label={t('spirit.zoomImage')}
+            className="absolute top-2 right-2 z-20 w-8 h-8 rounded-full bg-white/85 backdrop-blur-sm
+              text-neutral-700 shadow-sm flex items-center justify-center
+              hover:bg-white hover:text-neutral-900 transition-colors
+              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
+              <path d="M11 8v6M8 11h6" />
+            </svg>
+          </button>
+        )}
+      </div>
+
+      {/* 정보 */}
+      <div className="px-2.5 py-2">
+        {/* 이름 + 점수 (한 줄) */}
+        <div className="flex items-start justify-between gap-1.5">
+          <h3 className="text-sm font-semibold text-neutral-900 line-clamp-1 leading-tight min-w-0">
+            {primaryName}
+          </h3>
+          {spirit.avgScore != null && (
+            <span className="flex-shrink-0 text-xs font-bold" style={{ color: scoreColor(spirit.avgScore) }}>
+              ★ {spirit.avgScore.toFixed(1)}
+            </span>
           )}
         </div>
 
-        {/* Info */}
-        <div className="p-3 space-y-1.5">
-          <Badge variant={spirit.category} size="sm">
-            {t(`spirit.category.${spirit.category}`)}
-          </Badge>
+        <p className="text-xs text-neutral-400 line-clamp-1 mb-1">{secondaryName}</p>
 
-          <div>
-            <h3 className="text-sm font-semibold text-neutral-900 line-clamp-1 leading-snug">
-              {primaryName}
-            </h3>
-            <p className="text-xs text-neutral-400 line-clamp-1">{secondaryName}</p>
-          </div>
-
-          <div className="flex items-center justify-between pt-0.5">
-            {spirit.country && (
-              <span className="text-xs text-neutral-400">{countryLabel}</span>
-            )}
-
-            <div className="flex items-center gap-2 ml-auto">
-              {spirit.avgScore != null && (
-                <span className="text-xs font-bold" style={{ color: scoreColor(spirit.avgScore) }}>
-                  ★ {spirit.avgScore.toFixed(1)}
-                </span>
-              )}
-              {spirit.reviewCount > 0 && (
-                <span className="text-xs text-neutral-400">
-                  {spirit.reviewCount.toLocaleString()}
-                </span>
-              )}
-            </div>
-          </div>
+        {/* 국가 · 도수 + 리뷰수 */}
+        <div className="flex items-center justify-between gap-1.5 text-xs text-neutral-500">
+          <span className="line-clamp-1 min-w-0">{metaParts.join(' · ')}</span>
+          {spirit.reviewCount > 0 && (
+            <span className="flex-shrink-0 text-neutral-400">
+              {t('review.count', { n: spirit.reviewCount.toLocaleString() })}
+            </span>
+          )}
         </div>
-      </article>
-    </Link>
+      </div>
+
+      {/* 카드 전체를 덮는 상세 링크(stretched link) — 확대 버튼(z-20)보다 아래(z-10) */}
+      <Link
+        to={`/spirits/${spirit.id}`}
+        className="absolute inset-0 z-10 rounded-2xl focus-visible:outline-none
+          focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500"
+        aria-label={primaryName}
+      />
+
+      {spirit.primaryImageUrl && (
+        <ImageLightbox
+          images={[spirit.primaryImageUrl]}
+          open={lightboxOpen}
+          onClose={() => setLightboxOpen(false)}
+        />
+      )}
+    </article>
   )
 }

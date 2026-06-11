@@ -26,6 +26,7 @@ export interface FeedbackListItem {
   progress: number
   commentCount: number
   hasImages: boolean
+  isPublic: boolean
   authorNickname: string | null
   createdAt: string
   updatedAt: string
@@ -50,6 +51,8 @@ export interface FeedbackDetail {
   progress: number
   commentCount: number
   editable: boolean
+  isOwner: boolean
+  isPublic: boolean
   authorNickname: string | null
   resolvedAt: string | null
   createdAt: string
@@ -61,12 +64,14 @@ export interface CreateFeedbackData {
   type: FeedbackType
   title: string
   content: string
+  isPublic: boolean
 }
 
 export interface UpdateFeedbackData {
   type: FeedbackType
   title: string
   content: string
+  isPublic: boolean
 }
 
 export interface UpdateFeedbackStatusData {

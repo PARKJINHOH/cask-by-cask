@@ -1,4 +1,4 @@
-﻿import { useTranslation } from 'react-i18next'
+import { useTranslation } from 'react-i18next'
 import type {
   SpiritCategory, WhiskyStyle, WineType, CognacGrade,
 } from '@/domain/spirit/types/spirit.types'
@@ -37,40 +37,37 @@ export default function CategoryTree(p: CategoryTreeProps) {
 
   return (
     <div>
-      <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-2">
+      <h3 className="text-sm font-bold text-neutral-900 mb-2">
         {t('spirit.filter.category')}
       </h3>
-      <ul className="space-y-1">
+      <div className="space-y-1">
         {CATEGORIES.map((cat) => {
           const isExpanded = p.category === cat
+          const hasSub = cat !== 'OTHER'
           return (
-            <li key={cat}>
+            <div key={cat} className={`rounded-xl ${isExpanded ? 'bg-primary-50' : ''}`}>
               <button
                 type="button"
                 onClick={() => handleCategoryClick(cat)}
-                className={`w-full flex items-center justify-between px-2 py-1.5 rounded-md text-sm
-                  transition-colors group
-                  ${isExpanded
-                    ? 'bg-primary-50 text-primary-900 font-medium'
-                    : 'text-neutral-700 hover:bg-neutral-50'}`}
                 aria-expanded={isExpanded}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm
+                  font-medium transition-colors
+                  ${isExpanded ? 'text-primary-900' : 'text-neutral-700 hover:bg-neutral-50'}`}
               >
-                <span className="flex items-center gap-2">
+                <span>{t(`spirit.category.${cat}`)}</span>
+                {hasSub && (
                   <svg
-                    className={`w-3.5 h-3.5 transition-transform ${isExpanded ? 'rotate-90' : ''}
-                      text-neutral-400 group-hover:text-neutral-600`}
-                    viewBox="0 0 20 20" fill="currentColor"
+                    className={`w-4 h-4 text-neutral-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                    viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                    strokeLinecap="round" strokeLinejoin="round"
                   >
-                    <path fillRule="evenodd"
-                      d="M7.293 4.293a1 1 0 011.414 0L14 9.586l-5.293 5.293a1 1 0 01-1.414-1.414L11.172 9.586 7.293 5.707a1 1 0 010-1.414z"
-                      clipRule="evenodd"/>
+                    <path d="m6 9 6 6 6-6" />
                   </svg>
-                  {t(`spirit.category.${cat}`)}
-                </span>
+                )}
               </button>
 
               {isExpanded && cat === 'WHISKY' && (
-                <SubList
+                <SubChips
                   values={WHISKY_STYLES}
                   current={p.whiskyStyle}
                   onToggle={(v) => p.onWhiskyStyle(toggle(p.whiskyStyle, v))}
@@ -78,7 +75,7 @@ export default function CategoryTree(p: CategoryTreeProps) {
                 />
               )}
               {isExpanded && cat === 'WINE' && (
-                <SubList
+                <SubChips
                   values={WINE_TYPES}
                   current={p.wineType}
                   onToggle={(v) => p.onWineType(toggle(p.wineType, v))}
@@ -86,53 +83,49 @@ export default function CategoryTree(p: CategoryTreeProps) {
                 />
               )}
               {isExpanded && cat === 'COGNAC' && (
-                <SubList
+                <SubChips
                   values={COGNAC_GRADES}
                   current={p.cognacGrade}
                   onToggle={(v) => p.onCognacGrade(toggle(p.cognacGrade, v))}
                   labelKey="spirit.cognacGrade"
                 />
               )}
-            </li>
+            </div>
           )
         })}
-      </ul>
+      </div>
     </div>
   )
 }
 
-interface SubListProps<T extends string> {
+interface SubChipsProps<T extends string> {
   values: T[]
   current: T[]
   onToggle: (v: T) => void
   labelKey: string
 }
 
-function SubList<T extends string>({ values, current, onToggle, labelKey }: SubListProps<T>) {
+function SubChips<T extends string>({ values, current, onToggle, labelKey }: SubChipsProps<T>) {
   const { t } = useTranslation()
   return (
-    <ul className="mt-1 ml-5 space-y-0.5 border-l border-neutral-200 pl-2">
+    <div className="px-3 pb-3 pt-1 flex flex-wrap gap-1.5">
       {values.map((v) => {
-        const checked = current.includes(v)
+        const active = current.includes(v)
         return (
-          <li key={v}>
-            <label className="flex items-center gap-2 px-2 py-1 rounded-md cursor-pointer
-              hover:bg-neutral-50 group">
-              <input
-                type="checkbox"
-                className="w-3.5 h-3.5 rounded border-neutral-300 text-primary-800
-                  focus:ring-primary-400 focus:ring-offset-0"
-                checked={checked}
-                onChange={() => onToggle(v)}
-              />
-              <span className={`text-sm ${checked
-                ? 'text-primary-900 font-medium' : 'text-neutral-600 group-hover:text-neutral-900'}`}>
-                {t(`${labelKey}.${v}`)}
-              </span>
-            </label>
-          </li>
+          <button
+            key={v}
+            type="button"
+            onClick={() => onToggle(v)}
+            aria-pressed={active}
+            className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors
+              ${active
+                ? 'bg-primary-800 border-primary-800 text-white'
+                : 'bg-white border-neutral-200 text-neutral-600 hover:border-primary-300'}`}
+          >
+            {t(`${labelKey}.${v}`)}
+          </button>
         )
       })}
-    </ul>
+    </div>
   )
 }

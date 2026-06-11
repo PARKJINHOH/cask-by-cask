@@ -64,6 +64,11 @@ public class Feedback extends BaseTimeEntity {
     @Column(nullable = false)
     private Integer commentCount = 0;
 
+    // 공개 여부 — 기본 공개(전체 회원 열람 가능). 비공개는 작성자+관리자만 열람(기존 동작).
+    @Builder.Default
+    @Column(name = "is_public", nullable = false)
+    private Boolean isPublic = true;
+
     private LocalDateTime resolvedAt;
 
     // ─── 도메인 메서드 ───────────────────────────
@@ -76,11 +81,19 @@ public class Feedback extends BaseTimeEntity {
         return status == FeedbackStatus.RECEIVED;
     }
 
+    /** 공개글이거나 작성자 본인 또는 관리자면 열람 가능. */
+    public boolean isVisibleTo(Long userId, boolean isAdmin) {
+        return isAdmin || isOwnedBy(userId) || Boolean.TRUE.equals(isPublic);
+    }
+
     /** 작성자 본문 수정 (접수 상태에서만 호출). */
-    public void updateContent(FeedbackType type, String title, String content) {
+    public void updateContent(FeedbackType type, String title, String content, Boolean isPublic) {
         this.type = type;
         this.title = title;
         this.content = content;
+        if (isPublic != null) {
+            this.isPublic = isPublic;
+        }
     }
 
     /** 관리자 상태/진척률 변경. progress 가 null 이면 상태 기본 제안값 사용(그것도 null 이면 유지). */

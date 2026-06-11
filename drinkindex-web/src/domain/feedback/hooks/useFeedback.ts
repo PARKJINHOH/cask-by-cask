@@ -15,7 +15,7 @@ import type {
   UpdateFeedbackStatusData,
 } from '../types/feedback.types'
 
-export function useFeedbackList(params: { status?: FeedbackStatus; page?: number }) {
+export function useFeedbackList(params: { status?: FeedbackStatus; mine?: boolean; page?: number }) {
   return useQuery({
     queryKey: ['feedback', 'list', params],
     queryFn: () => getFeedbacks(params),

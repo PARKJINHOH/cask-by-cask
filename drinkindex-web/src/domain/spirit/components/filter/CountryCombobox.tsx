@@ -41,29 +41,9 @@ export default function CountryCombobox({ category, value, onChange }: CountryCo
 
   return (
     <div>
-      <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-2">
+      <h3 className="text-sm font-bold text-neutral-900 mb-2">
         {t('spirit.filter.country')}
       </h3>
-
-      {/* 빠른 칩 */}
-      <div className="flex flex-wrap gap-1 mb-2">
-        {QUICK_PICKS.map((c) => {
-          const active = value === c
-          return (
-            <button
-              key={c}
-              type="button"
-              onClick={() => onChange(active ? '' : c)}
-              className={`px-2 py-0.5 text-xs rounded-full border transition-colors
-                ${active
-                  ? 'bg-primary-800 text-white border-primary-800'
-                  : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-400'}`}
-            >
-              {localizeCountry(c, i18n.language)}
-            </button>
-          )
-        })}
-      </div>
 
       {/* 검색 입력 */}
       <div className="relative mb-2">
@@ -83,17 +63,25 @@ export default function CountryCombobox({ category, value, onChange }: CountryCo
         />
       </div>
 
-      {/* "모든 국가" 옵션 */}
-      <button
-        type="button"
-        onClick={() => onChange('')}
-        className={`w-full text-left text-sm px-2 py-1 rounded-md transition-colors
-          ${value === ''
-            ? 'bg-primary-50 text-primary-900 font-medium'
-            : 'text-neutral-600 hover:bg-neutral-50'}`}
-      >
-        {t('spirit.filter.countryAll')}
-      </button>
+      {/* 주요 국가 빠른 칩 */}
+      <div className="flex flex-wrap gap-1.5 mb-2">
+        {QUICK_PICKS.map((c) => {
+          const active = value === c
+          return (
+            <button
+              key={c}
+              type="button"
+              onClick={() => onChange(active ? '' : c)}
+              className={`px-2.5 py-1 text-xs font-medium rounded-full border transition-colors
+                ${active
+                  ? 'bg-primary-800 text-white border-primary-800'
+                  : 'bg-white text-neutral-600 border-neutral-200 hover:border-primary-300'}`}
+            >
+              {localizeCountry(c, i18n.language)}
+            </button>
+          )
+        })}
+      </div>
 
       {/* 국가 목록 */}
       <ul className="space-y-0.5 mt-1 max-h-72 overflow-y-auto">
@@ -110,14 +98,14 @@ export default function CountryCombobox({ category, value, onChange }: CountryCo
               <button
                 type="button"
                 onClick={() => onChange(active ? '' : s.country)}
-                className={`w-full flex items-center justify-between gap-2 px-2 py-1 rounded-md
-                  text-sm transition-colors
+                className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg
+                  text-xs transition-colors
                   ${active
-                    ? 'bg-primary-50 text-primary-900 font-medium'
-                    : 'text-neutral-700 hover:bg-neutral-50'}`}
+                    ? 'bg-primary-50 text-primary-900 font-semibold'
+                    : 'text-neutral-600 hover:bg-neutral-50'}`}
               >
                 <span className="truncate">{localizeCountry(s.country, i18n.language)}</span>
-                <span className={`text-xs flex-shrink-0
+                <span className={`flex-shrink-0
                   ${active ? 'text-primary-800' : 'text-neutral-400'}`}>
                   {s.count}
                 </span>

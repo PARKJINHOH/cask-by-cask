@@ -305,7 +305,8 @@
     "search": {
       "placeholder": "Search whisky, cognac, wine..."
     },
-    "count": "{{count}} spirits",
+    "zoomImage": "Enlarge image",
+    "count": "<0>{{n}}</0> spirits",
     "category": {
       "whisky": "Whisky",
       "cognac": "Cognac",
@@ -330,7 +331,6 @@
       "subType": "Sub-type",
       "country": "Country",
       "countrySearch": "Search country...",
-      "countryAll": "All countries",
       "showMore": "Show more",
       "showLess": "Show less",
       "region": "Region",
@@ -875,10 +875,12 @@
   },
   "feedback": {
     "title": "Feedback",
-    "subtitle": "Report bugs, suggest improvements, or request features and track their progress. Only you and our team can see your submissions.",
+    "subtitle": "Report bugs, suggest improvements, or request features and track their progress. Public posts can be seen by other members; private posts are visible only to you and our team.",
     "new": "New Request",
     "myRequests": "My Requests",
     "allRequests": "All Requests",
+    "tabAll": "All",
+    "tabMine": "My Requests",
     "empty": "You haven't submitted any feedback yet.",
     "emptyAdmin": "No feedback submitted yet.",
     "backToList": "Back to list",
@@ -887,6 +889,10 @@
     "createdAt": "Created",
     "resolvedAt": "Resolved",
     "filterAll": "All statuses",
+    "visibility": {
+      "public": "Public",
+      "private": "Private"
+    },
     "type": {
       "BUG": "Bug",
       "IMPROVEMENT": "Improvement",
@@ -911,6 +917,8 @@
       "images": "Attachments",
       "imagesHint": "Up to 3 images, 2MB each (JPG, PNG, WEBP, GIF)",
       "addImage": "Add Image",
+      "isPrivate": "Make this private",
+      "isPrivateHint": "Private posts are only visible to you and our team. Public is the default.",
       "submit": "Submit",
       "submitting": "Submitting...",
       "editTitle": "Edit Feedback",

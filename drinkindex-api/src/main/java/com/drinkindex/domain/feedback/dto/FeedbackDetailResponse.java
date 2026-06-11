@@ -13,7 +13,8 @@ import java.util.List;
 /**
  * 상세 응답.
  * - editable: 조회자가 작성자 본인이며 접수(RECEIVED) 상태일 때만 true.
- * - authorNickname: 관리자 조회 시에만 채워짐.
+ * - isOwner: 조회자가 작성자 본인인지 여부 (댓글 작성 폼 노출 등에 사용).
+ * - authorNickname: 관리자 조회이거나 공개글일 때만 채워짐.
  * - comments: 댓글 스레드 전체.
  */
 public record FeedbackDetailResponse(
@@ -26,6 +27,8 @@ public record FeedbackDetailResponse(
         int progress,
         int commentCount,
         boolean editable,
+        boolean isOwner,
+        boolean isPublic,
         String authorNickname,
         LocalDateTime resolvedAt,
         LocalDateTime createdAt,
@@ -46,6 +49,9 @@ public record FeedbackDetailResponse(
                 .map(c -> FeedbackCommentResponse.from(c, viewerId, viewerIsAdmin))
                 .toList();
 
+        boolean isOwner = f.isOwnedBy(viewerId);
+        boolean showNickname = viewerIsAdmin || Boolean.TRUE.equals(f.getIsPublic());
+
         return new FeedbackDetailResponse(
                 f.getId(),
                 f.getType(),
@@ -55,8 +61,10 @@ public record FeedbackDetailResponse(
                 f.getStatus(),
                 f.getProgress(),
                 f.getCommentCount(),
-                f.isOwnedBy(viewerId) && f.isEditable(),
-                viewerIsAdmin ? f.getAuthor().getNickname() : null,
+                isOwner && f.isEditable(),
+                isOwner,
+                Boolean.TRUE.equals(f.getIsPublic()),
+                showNickname ? f.getAuthor().getNickname() : null,
                 f.getResolvedAt(),
                 f.getCreatedAt(),
                 f.getUpdatedAt(),

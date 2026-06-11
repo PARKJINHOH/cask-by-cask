@@ -49,9 +49,12 @@ public class PostQueryRepositoryImpl implements PostQueryRepository {
             predicate.and(post.prefix.id.eq(prefixId));
         }
         if (StringUtils.hasText(keyword)) {
+            // [버그수정] contentSanitized 는 @Lob(LONGTEXT) 컬럼 — containsIgnoreCase()가
+            // 생성하는 lower() 함수를 CLOB 타입에 적용하면 Hibernate 6에서 쿼리 변환 오류 발생.
+            // utf8mb4_unicode_ci collation은 대소문자 구분이 없으므로 lower() 없는 contains()로 대체.
             predicate.and(
                 post.title.containsIgnoreCase(keyword)
-                    .or(post.contentSanitized.containsIgnoreCase(keyword))
+                    .or(post.contentSanitized.contains(keyword))
             );
         }
         if (authorId != null) {

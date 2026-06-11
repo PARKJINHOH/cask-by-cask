@@ -42,11 +42,12 @@ public class FeedbackController {
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<FeedbackListResponse>>> list(
             @RequestParam(required = false) FeedbackStatus status,
+            @RequestParam(defaultValue = "false") boolean mine,
             @RequestParam(defaultValue = "0") int page,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         return ResponseEntity.ok(ApiResponse.success(PageResponse.from(
-                feedbackService.list(userDetails.getUserId(), userDetails.getRole(), status, page))));
+                feedbackService.list(userDetails.getUserId(), userDetails.getRole(), status, mine, page))));
     }
 
     @GetMapping("/{id}")

@@ -155,13 +155,13 @@ function GNB() {
   ]
 
   const itemCls = (active: boolean) =>
-    `inline-flex items-center gap-1 px-3 py-2.5 text-sm font-medium transition-colors
+    `inline-flex items-center gap-1 px-3 py-3 text-sm font-medium transition-colors
     ${active ? 'text-primary-800' : 'text-neutral-600 hover:text-primary-800'}`
 
   return (
-    <nav ref={navRef} className="bg-canvas border-b border-neutral-100">
+    <nav ref={navRef} className="bg-canvas border-b-2 border-neutral-200 sticky top-16 z-30">
       <div className="max-w-7xl mx-auto px-4">
-        <ul className="flex items-center gap-1">
+        <ul className="flex items-center gap-1 py-1">
           {menus.map(menu => {
             if ('to' in menu) {
               const isNotice  = menu.key === 'notice'
@@ -175,7 +175,7 @@ function GNB() {
                     to={menu.to}
                     className={
                       isSpirits
-                        ? 'inline-flex items-center px-3.5 py-1.5 text-sm font-semibold rounded-lg bg-primary-800 text-white hover:bg-primary-900 transition-colors'
+                        ? 'inline-flex items-center px-3.5 py-2 text-sm font-semibold rounded-lg bg-primary-800 text-white hover:bg-primary-900 transition-colors'
                         : `${itemCls(false)} relative`
                     }
                   >
@@ -250,7 +250,7 @@ function GNB() {
           <li className="ml-auto flex-shrink-0">
             <Link
               to="/calendar"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg
                 border border-neutral-300 text-neutral-600 hover:text-primary-800 hover:border-primary-300 transition-colors"
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
@@ -315,21 +315,24 @@ function HeaderSearch() {
   return (
     <form onSubmit={handleSubmit} className="hidden lg:flex flex-1 max-w-md mx-6">
       <div className="relative w-full">
-        <svg
-          className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none"
-          viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-        >
-          <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-        </svg>
         <input
           type="search"
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder={t('spirit.search.placeholder')}
-          className="w-full pl-10 pr-4 py-2 text-sm border border-neutral-300 rounded-xl bg-neutral-50
+          className="w-full pl-4 pr-10 py-2 text-sm border border-neutral-300 rounded-xl bg-neutral-50
             focus:outline-none focus:ring-2 focus:ring-primary-400 focus:bg-white focus:border-transparent
             transition-colors placeholder:text-neutral-400"
         />
+        <button
+          type="submit"
+          aria-label={t('nav.search')}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-primary-600 transition-colors"
+        >
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+        </button>
       </div>
     </form>
   )
