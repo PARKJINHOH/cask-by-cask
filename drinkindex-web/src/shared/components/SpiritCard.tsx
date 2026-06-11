@@ -42,8 +42,9 @@ export default function SpiritCard({ spirit, className = '', listView = false }:
   if (listView) {
     return (
       <div className={className}>
-        <article className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200
-          flex items-center gap-3 p-3">
+        <article className="bg-white rounded-xl shadow-sm flex items-center gap-3 p-3
+          transition-all duration-200 ease-out
+          hover:shadow-md hover:-translate-y-0.5 motion-reduce:hover:translate-y-0">
 
           {/* 썸네일 — 클릭 시 라이트박스 */}
           {spirit.primaryImageUrl ? (
@@ -124,7 +125,10 @@ export default function SpiritCard({ spirit, className = '', listView = false }:
       aria-label={primaryName}
     >
       <article className="bg-white rounded-2xl shadow-sm overflow-hidden
-        hover:shadow-md transition-shadow duration-200">
+        transition-all duration-300 ease-out
+        group-hover:shadow-xl group-hover:-translate-y-1
+        group-active:-translate-y-0.5 group-active:shadow-lg
+        motion-reduce:group-hover:translate-y-0 motion-reduce:group-active:translate-y-0">
         {/* Image */}
         <div className="aspect-square overflow-hidden bg-neutral-100">
           {spirit.primaryImageUrl ? (

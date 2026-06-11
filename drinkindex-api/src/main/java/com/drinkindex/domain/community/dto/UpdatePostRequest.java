@@ -10,7 +10,7 @@ public class UpdatePostRequest {
 
     private Long prefixId;
 
-    @Size(max = 300, message = "제목은 300자 이내여야 합니다.")
+    @Size(max = 50, message = "제목은 50자 이내여야 합니다.")
     private String title;
 
     private String content;

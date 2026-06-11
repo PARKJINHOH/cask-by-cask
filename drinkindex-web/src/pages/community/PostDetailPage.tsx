@@ -1,4 +1,5 @@
 ﻿import { useState, useCallback, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -178,15 +179,19 @@ export default function PostDetailPage() {
         ]}
       />
 
-      {/* 링크 복사 상단 슬라이드 배너 */}
-      <div
-        className={[
-          'fixed top-0 left-0 right-0 z-50 flex items-center justify-center py-3 text-sm font-medium text-white bg-neutral-800 shadow-md transition-transform duration-300',
-          copyBanner ? 'translate-y-0' : '-translate-y-full',
-        ].join(' ')}
-      >
-        🔗 링크가 복사되었습니다.
-      </div>
+      {/* 링크 복사 상단 슬라이드 배너 — RouteTransition(.route-enter)의 transform 으로
+          생기는 fixed containing-block 부작용을 피하기 위해 body 에 portal 렌더링 */}
+      {createPortal(
+        <div
+          className={[
+            'fixed top-0 left-0 right-0 z-50 flex items-center justify-center py-3 text-sm font-medium text-white bg-neutral-800 shadow-md transition-transform duration-300',
+            copyBanner ? 'translate-y-0' : '-translate-y-full',
+          ].join(' ')}
+        >
+          🔗 링크가 복사되었습니다.
+        </div>,
+        document.body
+      )}
 
       {/* 뒤로가기 */}
       <Link

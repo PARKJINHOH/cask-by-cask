@@ -24,7 +24,7 @@ const PIN_ROLES = ['SUPER_ADMIN', 'ADMIN', 'PARTNER']
 // 성인인증이 필요한 자유게시판 말머리 — 주류 나눔 탭
 const SHARING_PREFIX_NAME = '나눔'
 
-const MAX_TITLE = 300
+const MAX_TITLE = 50
 const MAX_POLL_OPTIONS = 10
 
 export default function PostFormPage() {

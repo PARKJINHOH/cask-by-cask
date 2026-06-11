@@ -18,7 +18,7 @@ public class CreatePostRequest {
     private Long prefixId;
 
     @NotBlank(message = "제목을 입력해주세요.")
-    @Size(max = 300, message = "제목은 300자 이내여야 합니다.")
+    @Size(max = 50, message = "제목은 50자 이내여야 합니다.")
     private String title;
 
     @NotBlank(message = "내용을 입력해주세요.")

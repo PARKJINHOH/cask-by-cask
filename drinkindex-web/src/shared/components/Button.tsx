@@ -13,13 +13,13 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<Variant, string> = {
   primary:
-    'bg-primary-800 text-white hover:bg-primary-900 active:bg-primary-900 ' +
+    'bg-primary-800 text-white shadow-sm hover:bg-primary-900 hover:shadow-md active:bg-primary-900 ' +
     'disabled:bg-neutral-200 disabled:text-neutral-400',
   secondary:
-    'bg-white text-neutral-700 border border-neutral-300 ' +
-    'hover:bg-neutral-50 active:bg-neutral-100 disabled:opacity-50',
+    'bg-white text-neutral-700 border border-neutral-300 shadow-xs ' +
+    'hover:bg-neutral-50 hover:border-neutral-400 hover:shadow-sm active:bg-neutral-100 disabled:opacity-50',
   danger:
-    'bg-danger-600 text-white hover:bg-danger-700 active:bg-danger-800 ' +
+    'bg-danger-600 text-white shadow-sm hover:bg-danger-700 hover:shadow-md active:bg-danger-800 ' +
     'disabled:bg-neutral-200 disabled:text-neutral-400',
   ghost:
     'text-neutral-600 hover:bg-neutral-100 active:bg-neutral-200 disabled:opacity-40',
@@ -47,9 +47,13 @@ export default function Button({
       disabled={disabled || isLoading}
       aria-busy={isLoading}
       className={[
-        'inline-flex items-center justify-center font-medium transition-colors select-none',
+        'inline-flex items-center justify-center font-medium select-none',
+        // 색·그림자·변형을 함께 부드럽게 전환 + 누름 시 살짝 눌리는 촉감(press feedback)
+        'transition-[transform,background-color,border-color,box-shadow,color,opacity] duration-150 ease-out',
+        'active:scale-[0.97] motion-reduce:active:scale-100',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2',
-        'disabled:cursor-not-allowed',
+        // 비활성 시 인터랙션 효과(그림자/누름) 제거
+        'disabled:cursor-not-allowed disabled:shadow-none disabled:active:scale-100',
         variantClasses[variant],
         sizeClasses[size],
         fullWidth ? 'w-full' : '',

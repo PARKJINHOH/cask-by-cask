@@ -1,6 +1,7 @@
 ﻿import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
 import { useEffect, Suspense } from 'react'
 import RouteFallback from '@/shared/components/RouteFallback'
+import RouteTransition from '@/shared/components/RouteTransition'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/domain/auth/hooks/useAuth'
 import { useAuthStore } from '@/domain/auth/store/authStore'
@@ -257,7 +258,9 @@ export default function AdminLayout() {
       {/* 컨텐츠 */}
       <div className="flex-1 overflow-auto">
         <Suspense fallback={<RouteFallback />}>
-          <Outlet />
+          <RouteTransition>
+            <Outlet />
+          </RouteTransition>
         </Suspense>
       </div>
     </div>
