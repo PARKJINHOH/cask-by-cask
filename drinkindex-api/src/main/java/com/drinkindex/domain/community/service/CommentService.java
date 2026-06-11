@@ -6,6 +6,7 @@ import com.drinkindex.domain.admin.entity.enums.AdminLogType;
 import com.drinkindex.domain.community.dto.*;
 import com.drinkindex.domain.community.entity.*;
 import com.drinkindex.domain.community.entity.enums.NotificationType;
+import com.drinkindex.domain.community.entity.enums.ReportStatus;
 import com.drinkindex.domain.community.repository.*;
 import com.drinkindex.domain.score.constant.ScoreActions;
 import com.drinkindex.domain.score.service.ScoreService;
@@ -31,6 +32,7 @@ import java.util.stream.Stream;
 public class CommentService {
 
     private final PostCommentRepository commentRepository;
+    private final PostReportRepository postReportRepository;
     private final PostRepository postRepository;
     private final UserRepository userRepository;
     private final UserBlockRepository userBlockRepository;
@@ -55,9 +57,9 @@ public class CommentService {
         boolean hasBlocks = !blockedIds.isEmpty();
 
         Page<PostComment> roots = hasBlocks
-                ? commentRepository.findByPostIdAndParentIsNullAndIsHiddenFalseAndAuthorIdNotIn(
+                ? commentRepository.findByPostIdAndParentIsNullAndAuthorIdNotIn(
                         postId, blockedIds, pageRequest)
-                : commentRepository.findByPostIdAndParentIsNullAndIsHiddenFalse(postId, pageRequest);
+                : commentRepository.findByPostIdAndParentIsNull(postId, pageRequest);
 
         // 루트 댓글 ID 수집
         List<Long> rootIds = roots.stream().map(PostComment::getId).collect(Collectors.toList());
@@ -67,9 +69,9 @@ public class CommentService {
         if (!rootIds.isEmpty()) {
             rootIds.forEach(rootId -> {
                 List<PostComment> children = hasBlocks
-                        ? commentRepository.findByParentIdAndIsHiddenFalseAndAuthorIdNotInOrderByCreatedAtAsc(
+                        ? commentRepository.findByParentIdAndAuthorIdNotInOrderByCreatedAtAsc(
                                 rootId, blockedIds)
-                        : commentRepository.findByParentIdAndIsHiddenFalseOrderByCreatedAtAsc(rootId);
+                        : commentRepository.findByParentIdOrderByCreatedAtAsc(rootId);
                 childrenMap.put(rootId, children);
             });
         }
@@ -188,12 +190,44 @@ public class CommentService {
         }
     }
 
+    // ═══════════════════════════════════════════
+    // 댓글 신고
+    // ═══════════════════════════════════════════
+
+    @Transactional
+    public void reportComment(Long postId, Long commentId, PostReportRequest request, Long userId) {
+        PostComment comment = findComment(commentId, postId);
+        if (comment.isDeleted()) {
+            throw new CustomException(ErrorCode.COMMENT_NOT_FOUND);
+        }
+        if (comment.getAuthor().getId().equals(userId)) {
+            throw new CustomException(ErrorCode.SELF_REPORT_NOT_ALLOWED);
+        }
+        if (postReportRepository.existsByCommentIdAndReporterId(commentId, userId)) {
+            throw new CustomException(ErrorCode.DUPLICATE_REPORT);
+        }
+
+        User reporter = findUser(userId);
+        PostReport report = PostReport.builder()
+                .comment(comment)
+                .reporter(reporter)
+                .reason(request.getReason())
+                .build();
+        postReportRepository.save(report);
+
+        // 신고 누적 시 자동 숨김(임계치 ReportConstants.COMMENT_HIDE_THRESHOLD)
+        comment.incrementReportCount();
+    }
+
     @Transactional
     public void hideComment(Long commentId, User actor) {
         PostComment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new CustomException(ErrorCode.COMMENT_NOT_FOUND));
         checkModeratorPermission(actor, comment);
         comment.setHidden(true);
+        // 숨김 = 신고 인정 → 해당 댓글의 미처리 신고 처리완료(배지에서 제외)
+        postReportRepository.findByCommentIdAndStatus(commentId, ReportStatus.PENDING)
+                .forEach(PostReport::resolve);
         adminLogService.record(actor, AdminLogType.CONTENT_HIDE,
                 AdminLogTargetType.COMMENT, commentId,
                 String.format("댓글 숨김 (ID: %d)", commentId), null);
@@ -205,9 +239,36 @@ public class CommentService {
                 .orElseThrow(() -> new CustomException(ErrorCode.COMMENT_NOT_FOUND));
         checkModeratorPermission(actor, comment);
         comment.setHidden(false);
+        // 숨김 복구 = 신고 기각 → 해당 댓글의 미처리 신고 기각 처리(배지에서 제외)
+        postReportRepository.findByCommentIdAndStatus(commentId, ReportStatus.PENDING)
+                .forEach(PostReport::dismiss);
         adminLogService.record(actor, AdminLogType.CONTENT_RESTORE,
                 AdminLogTargetType.COMMENT, commentId,
                 String.format("댓글 숨김 복구 (ID: %d)", commentId), null);
+    }
+
+    // 관리자 수동 신고 횟수 조정
+    @Transactional
+    public void updateReportCount(Long commentId, int count) {
+        PostComment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new CustomException(ErrorCode.COMMENT_NOT_FOUND));
+        comment.updateReportCount(count);
+    }
+
+    // 관리자/모더레이터의 댓글 삭제 (신고 처리용) — soft delete + 미처리 신고 처리완료
+    @Transactional
+    public void adminDeleteComment(Long commentId, User actor) {
+        PostComment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new CustomException(ErrorCode.COMMENT_NOT_FOUND));
+        checkModeratorPermission(actor, comment);
+        if (!comment.isDeleted()) {
+            comment.softDelete();
+            if (comment.getPost() != null) {
+                postRepository.decrementCommentCount(comment.getPost().getId());
+            }
+        }
+        postReportRepository.findByCommentIdAndStatus(commentId, ReportStatus.PENDING)
+                .forEach(PostReport::resolve);
     }
 
     private void checkModeratorPermission(User actor, PostComment comment) {
@@ -242,6 +303,29 @@ public class CommentService {
                     .createdAt(comment.getCreatedAt())
                     .isMyComment(false)
                     .isDeleted(true)
+                    .isHidden(false)
+                    .isSecret(comment.getIsSecret())
+                    .isSecretMasked(false)
+                    .build();
+        }
+
+        // 숨김 처리된 댓글: 내용 마스킹 + "숨김 처리된 댓글입니다" 표시. 대댓글은 유지.
+        if (Boolean.TRUE.equals(comment.getIsHidden())) {
+            List<PostCommentResponse> childResponses = children.stream()
+                    .map(child -> toResponse(child, List.of(), reactionMap, currentUserId, currentRole))
+                    .collect(Collectors.toList());
+            return PostCommentResponse.builder()
+                    .id(comment.getId())
+                    .authorNickname(null)
+                    .authorNicknameFixed(null)
+                    .content("숨김 처리된 댓글입니다.")
+                    .mentionedUserNickname(null)
+                    .emojiReactions(List.of())
+                    .children(childResponses)
+                    .createdAt(comment.getCreatedAt())
+                    .isMyComment(false)
+                    .isDeleted(false)
+                    .isHidden(true)
                     .isSecret(comment.getIsSecret())
                     .isSecretMasked(false)
                     .build();
@@ -300,6 +384,7 @@ public class CommentService {
                 .createdAt(comment.getCreatedAt())
                 .isMyComment(currentUserId != null && comment.getAuthor().getId().equals(currentUserId))
                 .isDeleted(false)
+                .isHidden(false)
                 .isSecret(comment.getIsSecret())
                 .isSecretMasked(secretMasked)
                 .build();

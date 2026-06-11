@@ -108,7 +108,8 @@ export default function BoardListPage({ boardType, title }: Props) {
     const next = new URLSearchParams(searchParams)
     if (value !== null) next.set(key, value)
     else next.delete(key)
-    next.set('page', '0')
+    // 필터(검색·말머리·정렬) 변경 시에만 1페이지로 리셋. 페이지 이동 자체는 그대로 반영.
+    if (key !== 'page') next.set('page', '0')
     setSearchParams(next, { replace: true })
   }
 
@@ -291,12 +292,12 @@ export default function BoardListPage({ boardType, title }: Props) {
             <table className="w-full text-sm table-fixed">
               <thead>
                 <tr className="bg-neutral-50 border-b border-neutral-100">
-                  <th className="text-center px-4 py-3 font-medium text-neutral-500 w-28">{t('board.prefix')}</th>
-                  <th className="text-center px-4 py-3 font-medium text-neutral-500">{t('board.title')}</th>
-                  <th className="text-center px-4 py-3 font-medium text-neutral-500 w-32">닉네임</th>
-                  <th className="text-center px-4 py-3 font-medium text-neutral-500 w-16">{t('board.likes')}</th>
-                  <th className="text-center px-4 py-3 font-medium text-neutral-500 w-16">{t('board.views')}</th>
-                  <th className="text-center px-4 py-3 font-medium text-neutral-500 w-24">작성일</th>
+                  <th className="text-center px-4 py-2.5 font-medium text-neutral-500 w-28">{t('board.prefix')}</th>
+                  <th className="text-center px-4 py-2.5 font-medium text-neutral-500">{t('board.title')}</th>
+                  <th className="text-center px-4 py-2.5 font-medium text-neutral-500 w-32">닉네임</th>
+                  <th className="text-center px-4 py-2.5 font-medium text-neutral-500 w-16">{t('board.likes')}</th>
+                  <th className="text-center px-4 py-2.5 font-medium text-neutral-500 w-16">{t('board.views')}</th>
+                  <th className="text-center px-4 py-2.5 font-medium text-neutral-500 w-24">작성일</th>
                 </tr>
               </thead>
               <tbody>
@@ -304,24 +305,24 @@ export default function BoardListPage({ boardType, title }: Props) {
                   <tr
                     key={`notice-${notice.id}`}
                     onClick={() => navigate(`/notices/${notice.id}`)}
-                    className="group/row border-b border-neutral-50 bg-amber-50/40 hover:bg-amber-50 transition-colors cursor-pointer"
+                    className="group/row border-b border-neutral-200 bg-amber-50/40 hover:bg-amber-50 transition-colors cursor-pointer"
                   >
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-4 py-2 text-center">
                       <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
                         {t('board.noticeBadge')}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-2">
                       <span className="block text-[15px] font-semibold text-neutral-800 group-hover/row:text-primary-800 transition-colors truncate">
                         {notice.title}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-4 py-2 text-center">
                       <span className="text-xs font-medium text-rose-700">최고관리자</span>
                     </td>
-                    <td className="px-4 py-3 text-center"><div className="flex justify-center"><RecommendBadge count={notice.recommendCount} /></div></td>
-                    <td className="px-4 py-3 text-center text-neutral-500 text-xs">{notice.viewCount.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-center text-neutral-400 text-xs">
+                    <td className="px-4 py-2 text-center"><div className="flex justify-center"><RecommendBadge count={notice.recommendCount} /></div></td>
+                    <td className="px-4 py-2 text-center text-neutral-500 text-xs">{notice.viewCount.toLocaleString()}</td>
+                    <td className="px-4 py-2 text-center text-neutral-400 text-xs">
                       {formatBoardDate(notice.createdAt)}
                     </td>
                   </tr>
@@ -331,11 +332,11 @@ export default function BoardListPage({ boardType, title }: Props) {
                     key={post.id}
                     onClick={() => navigate(getPostHref(post))}
                     className={[
-                      'group/row border-b border-neutral-50 transition-colors cursor-pointer',
+                      'group/row border-b border-neutral-200 transition-colors cursor-pointer',
                       post.isPinned ? 'bg-amber-50/50 hover:bg-amber-50' : 'hover:bg-neutral-50',
                     ].join(' ')}
                   >
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-4 py-2 text-center">
                       {post.prefix && (
                         <span
                           className="inline-block text-xs font-medium px-2 py-0.5 rounded-full border bg-neutral-50"
@@ -347,7 +348,7 @@ export default function BoardListPage({ boardType, title }: Props) {
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 overflow-hidden" title={post.isLocked ? t('board.locked') : undefined}>
+                    <td className="px-4 py-2 overflow-hidden" title={post.isLocked ? t('board.locked') : undefined}>
                       <div className="flex items-center gap-2 min-w-0">
                         {post.isLocked && <span className="text-neutral-400">🔒</span>}
                         {post.adultOnly && <AdultBadge />}
@@ -378,7 +379,7 @@ export default function BoardListPage({ boardType, title }: Props) {
                         {post.hasPoll && <span className="text-xs text-neutral-400 flex-shrink-0">📊</span>}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-4 py-2 text-center">
                       {post.authorRole ? (
                         <UserBadge
                           user={{ id: post.authorId ?? undefined, nickname: post.authorNickname, role: post.authorRole as UserRole, currentLevel: post.authorLevel, maturingPower: post.authorMaturingPower ?? undefined, nicknameFixed: post.authorNicknameFixed, profileImageUrl: post.authorProfileImageUrl }}
@@ -390,9 +391,9 @@ export default function BoardListPage({ boardType, title }: Props) {
                         <span className="text-neutral-500 text-xs">{post.authorNickname}</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-center"><div className="flex justify-center"><RecommendBadge count={post.likeCount} /></div></td>
-                    <td className="px-4 py-3 text-center text-neutral-500 text-xs">{post.viewCount.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-center text-neutral-400 text-xs">
+                    <td className="px-4 py-2 text-center"><div className="flex justify-center"><RecommendBadge count={post.likeCount} /></div></td>
+                    <td className="px-4 py-2 text-center text-neutral-500 text-xs">{post.viewCount.toLocaleString()}</td>
+                    <td className="px-4 py-2 text-center text-neutral-400 text-xs">
                       {formatBoardDate(post.createdAt)}
                     </td>
                   </tr>

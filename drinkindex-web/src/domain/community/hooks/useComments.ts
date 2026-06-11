@@ -43,3 +43,12 @@ export function useDeleteComment(postId: number) {
     },
   })
 }
+
+export function useReportComment(postId: number) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ commentId, reason }: { commentId: number; reason?: string }) =>
+      communityApi.reportComment(postId, commentId, reason),
+    onSuccess: () => qc.invalidateQueries({ queryKey: COMMENT_KEY(postId) }),
+  })
+}

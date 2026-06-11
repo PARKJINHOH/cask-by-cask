@@ -18,9 +18,15 @@ public interface PostReportRepository extends JpaRepository<PostReport, Long> {
 
     boolean existsByPostIdAndReporterId(Long postId, Long reporterId);
 
+    boolean existsByCommentIdAndReporterId(Long commentId, Long reporterId);
+
     Page<PostReport> findByStatusOrderByCreatedAtDesc(ReportStatus status, Pageable pageable);
 
     long countByStatus(ReportStatus status);
+
+    List<PostReport> findByPostIdAndStatus(Long postId, ReportStatus status);
+
+    List<PostReport> findByCommentIdAndStatus(Long commentId, ReportStatus status);
 
     @Query("SELECT r.status, COUNT(r) FROM PostReport r GROUP BY r.status")
     List<Object[]> findStatusStats();

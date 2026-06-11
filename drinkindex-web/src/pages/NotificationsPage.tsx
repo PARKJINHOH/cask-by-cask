@@ -1,7 +1,7 @@
-﻿import { useRef, useEffect, useState } from 'react'
+﻿import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useInfiniteNotifications } from '@/domain/notification/hooks/useNotifications'
+import { useNotificationsPage } from '@/domain/notification/hooks/useNotifications'
 import { useMarkNotificationRead } from '@/domain/notification/hooks/useNotificationPolling'
 import type { NotificationItem, NotificationType } from '@/domain/notification/types/notification.types'
 import SeoMeta from '@/shared/components/SeoMeta'
@@ -64,25 +64,17 @@ export default function NotificationsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [tab, setTab] = useState<Tab>('')
-  const observerRef = useRef<HTMLDivElement>(null)
+  const [page, setPage] = useState(0)
   const { markRead, markAllRead } = useMarkNotificationRead()
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
-    useInfiniteNotifications(tab as NotificationType || undefined)
+  const { data, isLoading } = useNotificationsPage((tab as NotificationType) || undefined, page)
 
-  const items = data?.pages.flatMap((p) => p.content) ?? []
+  const items = data?.content ?? []
 
-  // 무한 스크롤 트리거
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) fetchNextPage()
-      },
-      { threshold: 0.1 },
-    )
-    if (observerRef.current) observer.observe(observerRef.current)
-    return () => observer.disconnect()
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage])
+  const changeTab = (key: Tab) => {
+    setTab(key)
+    setPage(0)
+  }
 
   const handleClick = async (item: NotificationItem) => {
     if (!item.isRead) await markRead(item.id)
@@ -109,7 +101,7 @@ export default function NotificationsPage() {
         {TABS.map(({ key, labelKey }) => (
           <button
             key={key}
-            onClick={() => setTab(key)}
+            onClick={() => changeTab(key)}
             className={[
               'flex-shrink-0 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors',
               tab === key
@@ -155,10 +147,30 @@ export default function NotificationsPage() {
         </div>
       )}
 
-      {/* 무한 스크롤 트리거 */}
-      <div ref={observerRef} className="h-10 flex items-center justify-center">
-        {isFetchingNextPage && <span className="text-xs text-neutral-400">로딩 중...</span>}
-      </div>
+      {/* 페이지네이션 */}
+      {data && data.totalPages > 1 && (
+        <div className="flex justify-center items-center gap-2 mt-8">
+          <button
+            disabled={data.page === 0}
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            className="px-3 py-1.5 text-sm border border-neutral-200 rounded-lg disabled:opacity-40
+              hover:bg-neutral-50 transition-colors"
+          >
+            ←
+          </button>
+          <span className="text-sm text-neutral-500">
+            {data.page + 1} / {data.totalPages}
+          </span>
+          <button
+            disabled={data.last}
+            onClick={() => setPage((p) => p + 1)}
+            className="px-3 py-1.5 text-sm border border-neutral-200 rounded-lg disabled:opacity-40
+              hover:bg-neutral-50 transition-colors"
+          >
+            →
+          </button>
+        </div>
+      )}
     </div>
   )
 }

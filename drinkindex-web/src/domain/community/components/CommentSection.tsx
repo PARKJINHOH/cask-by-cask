@@ -1,10 +1,10 @@
-﻿import { useNavigate } from 'react-router-dom'
+﻿import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useComments } from '../hooks/useComments'
 import CommunityCommentItem from './CommunityCommentItem'
 import CommunityCommentForm from './CommunityCommentForm'
 import Pagination from '@/shared/components/Pagination'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useToast } from '@/shared/hooks/useToast'
 import Toast from '@/shared/components/Toast'
 import { useAuthStore } from '@/domain/auth/store/authStore'
@@ -25,6 +25,20 @@ export default function CommentSection({ postId }: Props) {
   const { data, isLoading } = useComments(postId, page, SIZE)
   const comments = data?.content ?? []
   const totalPages = data?.totalPages ?? 0
+
+  // 관리자 신고 페이지 등에서 ?comment={id} 로 진입 시 해당 댓글로 스크롤 + 잠깐 강조
+  const [searchParams] = useSearchParams()
+  const targetCommentId = searchParams.get('comment')
+  useEffect(() => {
+    if (!targetCommentId || isLoading) return
+    const el = document.getElementById(`comment-${targetCommentId}`)
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    el.style.transition = 'background-color 0.6s ease'
+    el.style.backgroundColor = 'rgba(251, 191, 36, 0.18)' // amber-400/18%
+    const timer = setTimeout(() => { el.style.backgroundColor = '' }, 2600)
+    return () => clearTimeout(timer)
+  }, [targetCommentId, isLoading, data])
 
   const handleBadWord = (words: string[]) => {
     showToast(`욕설이 포함되어 있습니다: ${words.join(', ')}`, 'error')

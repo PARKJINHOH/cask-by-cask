@@ -25,6 +25,7 @@ public class PostCommentResponse {
     private final LocalDateTime createdAt;
     private final Boolean isMyComment;
     private final Boolean isDeleted;
+    private final Boolean isHidden; // true: 신고/관리자에 의해 숨김 처리됨 (내용 마스킹)
     private final Boolean isSecret;
     private final Boolean isSecretMasked; // true: 비밀댓글이지만 열람 권한이 없어 마스킹됨
 }

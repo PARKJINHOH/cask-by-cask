@@ -74,6 +74,13 @@ public class ReportService {
                 .map(report -> ReportResponse.of(report, fetchTargetContent(report)));
     }
 
+    // ── 미처리(PENDING) 신고 수 ─────────────────────────────
+
+    @Transactional(readOnly = true)
+    public long countPending() {
+        return reportRepository.countByStatus(ReportStatus.PENDING);
+    }
+
     // ── 관리자 처리 ────────────────────────────────────────
 
     @Transactional

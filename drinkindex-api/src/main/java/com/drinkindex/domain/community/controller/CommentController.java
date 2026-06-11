@@ -2,6 +2,7 @@ package com.drinkindex.domain.community.controller;
 
 import com.drinkindex.domain.community.dto.CreateCommentRequest;
 import com.drinkindex.domain.community.dto.PostCommentResponse;
+import com.drinkindex.domain.community.dto.PostReportRequest;
 import com.drinkindex.domain.community.dto.UpdateCommentRequest;
 import com.drinkindex.domain.community.service.CommentService;
 import com.drinkindex.domain.user.entity.User;
@@ -69,6 +70,18 @@ public class CommentController {
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         commentService.deleteComment(postId, commentId, userDetails.getUserId());
+        return ResponseEntity.ok(ApiResponse.success());
+    }
+
+    @PostMapping("/{commentId}/reports")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<Void>> reportComment(
+            @PathVariable Long postId,
+            @PathVariable Long commentId,
+            @RequestBody PostReportRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        commentService.reportComment(postId, commentId, request, userDetails.getUserId());
         return ResponseEntity.ok(ApiResponse.success());
     }
 

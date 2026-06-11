@@ -69,6 +69,7 @@ export interface PostDetail {
   prefix: PostPrefix | null
   title: string
   isLocked: boolean
+  isHidden: boolean     // 관리자/모더레이터 숨김 처리
   isPinned: boolean     // 게시판 공지(고정글)
   adultOnly: boolean    // 성인 전용(주류 나눔 등) — 제목 19 아이콘
   contentSanitized: string | null
@@ -148,6 +149,7 @@ export interface PostCommentItem {
   createdAt: string
   isMyComment: boolean
   isDeleted: boolean
+  isHidden: boolean // 신고/관리자에 의해 숨김 처리됨
   isSecret: boolean
   isSecretMasked: boolean // 비밀댓글이지만 열람 권한이 없어 마스킹됨
 }

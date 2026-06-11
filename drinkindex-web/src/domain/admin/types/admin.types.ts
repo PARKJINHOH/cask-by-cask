@@ -385,10 +385,22 @@ export interface AdminReport {
 // ── Community Admin ────────────────────────────────────────────
 export type PostReportAdminStatus = 'PENDING' | 'RESOLVED' | 'DISMISSED'
 
+export type PostReportTargetType = 'POST' | 'COMMENT'
+
 export interface PostReportAdmin {
   id: number
+  targetType: PostReportTargetType
   postId: number | null
   postTitle: string | null
+  boardType: 'NOTICE' | 'FREE' | null
+  postLocked: boolean | null
+  postHidden: boolean | null
+  postReportCount: number | null
+  commentId: number | null
+  commentContent: string | null
+  commentHidden: boolean | null
+  commentDeleted: boolean | null
+  commentReportCount: number | null
   reporterNickname: string
   reason: string | null
   status: PostReportAdminStatus

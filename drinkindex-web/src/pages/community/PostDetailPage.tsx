@@ -329,7 +329,11 @@ export default function PostDetailPage() {
         <hr className="border-neutral-200 mb-6" />
 
         {/* 본문 */}
-        {isLocked && !post.contentSanitized ? (
+        {post.isHidden && !post.contentSanitized ? (
+          <div className="py-12 px-6 bg-neutral-100 rounded-xl text-center text-neutral-500 text-sm border border-neutral-200">
+            🚫 {t('post.hiddenNotice')}
+          </div>
+        ) : isLocked && !post.contentSanitized ? (
           <div className="py-12 px-6 bg-neutral-100 rounded-xl text-center text-neutral-500 text-sm border border-neutral-200">
             🔒 {t('post.lockedNotice')}
           </div>

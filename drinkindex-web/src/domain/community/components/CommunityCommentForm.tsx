@@ -170,7 +170,7 @@ export default function CommunityCommentForm({
           maxLength={MAX_LENGTH}
           rows={editingComment ? 3 : 2}
           placeholder={t('comment.placeholder')}
-          className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent placeholder:text-neutral-400"
+          className="w-full px-3.5 py-2.5 text-sm border border-neutral-300 rounded-xl resize-y min-h-[60px] max-h-[400px] focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent placeholder:text-neutral-400 transition-shadow"
         />
         {mentionQuery.length > 0 && mentionUsers.length > 0 && (
           <div className="absolute z-10 top-full mt-1 w-48 bg-white border border-neutral-200 rounded-lg shadow-lg overflow-hidden">
@@ -220,8 +220,15 @@ export default function CommunityCommentForm({
             <button
               type="button"
               onClick={() => setShowEmojiPicker((v) => !v)}
-              className="text-xs text-neutral-400 hover:text-neutral-600 px-2 py-0.5 rounded border border-neutral-200 hover:border-neutral-300 transition-colors"
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium
+                text-neutral-500 hover:bg-primary-50 hover:text-primary-700 active:scale-95 transition-all"
             >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+                <line x1="9" y1="9" x2="9.01" y2="9" />
+                <line x1="15" y1="9" x2="15.01" y2="9" />
+              </svg>
               이모지
             </button>
             {showEmojiPicker && (

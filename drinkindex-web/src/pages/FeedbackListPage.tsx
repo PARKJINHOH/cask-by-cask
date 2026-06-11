@@ -135,7 +135,7 @@ export default function FeedbackListPage() {
       {data && data.totalPages > 1 && (
         <div className="flex justify-center items-center gap-2 mt-8">
           <button
-            disabled={data.first}
+            disabled={data.page === 0}
             onClick={() => setPage((p) => Math.max(0, p - 1))}
             className="px-3 py-1.5 text-sm border border-neutral-200 rounded-lg disabled:opacity-40
               hover:bg-neutral-50 transition-colors"
@@ -143,7 +143,7 @@ export default function FeedbackListPage() {
             ←
           </button>
           <span className="text-sm text-neutral-500">
-            {data.number + 1} / {data.totalPages}
+            {data.page + 1} / {data.totalPages}
           </span>
           <button
             disabled={data.last}

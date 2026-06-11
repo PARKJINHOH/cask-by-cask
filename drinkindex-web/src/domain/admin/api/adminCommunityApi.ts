@@ -8,6 +8,9 @@ export const adminCommunityApi = {
   getPostReports: (params: { status?: PostReportAdminStatus; page?: number; size?: number }) =>
     axiosInstance.get<ApiResponse<PageResponse<PostReportAdmin>>>('/api/admin/posts/reports', { params }),
 
+  getPostReportPendingCount: () =>
+    axiosInstance.get<ApiResponse<number>>('/api/admin/posts/reports/pending-count'),
+
   deletePost: (id: number, deleteReason?: string) =>
     axiosInstance.delete<ApiResponse<null>>(`/api/admin/posts/${id}`, {
       data: deleteReason ? { deleteReason } : undefined,
@@ -15,6 +18,28 @@ export const adminCommunityApi = {
 
   unlockPost: (id: number) =>
     axiosInstance.patch<ApiResponse<null>>(`/api/admin/posts/${id}/unlock`),
+
+  hidePost: (id: number) =>
+    axiosInstance.patch<ApiResponse<null>>(`/api/admin/posts/${id}/hide`),
+
+  // 게시글 숨김해제 — 자동 잠금 + 수동 숨김 모두 해제
+  restorePost: (id: number) =>
+    axiosInstance.patch<ApiResponse<null>>(`/api/admin/posts/${id}/restore-hide`),
+
+  updatePostReportCount: (id: number, count: number) =>
+    axiosInstance.patch<ApiResponse<null>>(`/api/admin/posts/${id}/report-count`, { count }),
+
+  hideComment: (commentId: number) =>
+    axiosInstance.patch<ApiResponse<null>>(`/api/admin/posts/comments/${commentId}/hide`),
+
+  restoreComment: (commentId: number) =>
+    axiosInstance.patch<ApiResponse<null>>(`/api/admin/posts/comments/${commentId}/restore-hide`),
+
+  deleteComment: (commentId: number) =>
+    axiosInstance.delete<ApiResponse<null>>(`/api/admin/posts/comments/${commentId}`),
+
+  updateCommentReportCount: (commentId: number, count: number) =>
+    axiosInstance.patch<ApiResponse<null>>(`/api/admin/posts/comments/${commentId}/report-count`, { count }),
 
   // ── 욕설 필터 ────────────────────────────────────────────────
   getBadWords: (params: { page?: number; size?: number }) =>

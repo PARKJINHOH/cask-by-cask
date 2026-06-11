@@ -127,6 +127,9 @@ export const communityApi = {
   deleteComment: (postId: number, commentId: number) =>
     axiosInstance.delete<ApiResponse<null>>(`/api/posts/${postId}/comments/${commentId}`),
 
+  reportComment: (postId: number, commentId: number, reason?: string) =>
+    axiosInstance.post<ApiResponse<null>>(`/api/posts/${postId}/comments/${commentId}/reports`, { reason }),
+
   // ── 이모지 ───────────────────────────────────────────────────
   getEmojis: () =>
     axiosInstance.get<ApiResponse<CommunityEmoji[]>>('/api/emojis'),

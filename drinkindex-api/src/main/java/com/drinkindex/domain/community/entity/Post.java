@@ -134,6 +134,9 @@ public class Post extends BaseTimeEntity {
     public void restore()       { this.isHidden = false; }
     public void changePinned(boolean pinned) { this.isPinned = pinned; }
 
+    // 관리자 수동 신고 횟수 조정 (허위신고 정정 등). 상태(잠금)는 변경하지 않음 — 잠금/해제는 별도 버튼.
+    public void updateReportCount(int count) { this.reportCount = Math.max(0, count); }
+
     public void update(String title, String content, String contentSanitized, PostPrefix prefix, boolean adultOnly) {
         this.title = title;
         this.content = content;

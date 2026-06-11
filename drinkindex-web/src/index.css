@@ -58,6 +58,21 @@
   select {
     background-color: #fff;
   }
+
+  /* 클릭 가능한 컨트롤은 손모양 커서.
+     Tailwind preflight 는 <button> 에 cursor:pointer 를 주지 않으므로 전역으로 보강한다.
+     - 비활성(disabled / aria-disabled)은 not-allowed 로 구분
+     - 개별 컴포넌트가 지정한 cursor-* 유틸리티는 utilities 레이어가 우선하므로 그대로 적용 */
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  label[for],
+  summary {
+    cursor: pointer;
+  }
+  button:disabled,
+  [role='button'][aria-disabled='true'] {
+    cursor: not-allowed;
+  }
 }
 
 @layer components {

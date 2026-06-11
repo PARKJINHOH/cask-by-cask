@@ -22,7 +22,7 @@ export function useInfiniteScoreHistory(type: ScoreHistoryFilterType) {
         .then((res) => res.data.data!),
     initialPageParam: 0,
     getNextPageParam: (lastPage) =>
-      lastPage.last ? undefined : lastPage.number + 1,
+      lastPage.last ? undefined : lastPage.page + 1,
     enabled: isLoggedIn,
   })
 }

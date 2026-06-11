@@ -504,11 +504,13 @@
     "reportTitle": "Report Reason (Optional)",
     "reportSubmit": "Submit Report",
     "reportError": "An error occurred. Please try again.",
+    "reportSuccess": "Your report has been submitted.",
     "reportPlaceholder": "Please describe the reason for reporting...",
     "secretCheckbox": "Post as secret comment",
     "secretCascadeNotice": "This thread has become a secret conversation, so replies will also be registered as secret comments automatically.",
     "secretBadge": "Secret",
-    "secretPlaceholder": "This is a secret comment."
+    "secretPlaceholder": "This is a secret comment.",
+    "hiddenPlaceholder": "This comment has been hidden."
   },
   "wishlist": {
     "removeConfirm": "Remove \"{{name}}\" from favorites?",
@@ -791,7 +793,8 @@
     "seriesNext": "Next",
     "commentSection": "Comments",
     "loginToComment": "Log in to leave a comment",
-    "lockedNotice": "This post is locked and cannot be viewed."
+    "lockedNotice": "This post is locked and cannot be viewed.",
+    "hiddenNotice": "This post has been hidden by an administrator and cannot be viewed."
   },
   "notification": {
     "title": "Notifications",

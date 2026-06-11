@@ -17,6 +17,7 @@ public class PostDetailResponse {
     private final PrefixInfo prefix;
     private final String title;
     private final boolean isLocked;
+    private final boolean isHidden;         // 관리자/모더레이터가 숨김 처리 (비관리자 내용 마스킹)
     private final boolean isPinned;         // 게시판 공지(고정글)
     private final boolean adultOnly;        // 성인 전용(주류 나눔 등) — 제목 19 아이콘
     private final String contentSanitized; // null if LOCKED and not admin
@@ -46,6 +47,7 @@ public class PostDetailResponse {
         this.prefix           = b.prefix;
         this.title            = b.title;
         this.isLocked         = b.isLocked;
+        this.isHidden         = b.isHidden;
         this.isPinned         = b.isPinned;
         this.adultOnly        = b.adultOnly;
         this.contentSanitized = b.contentSanitized;
@@ -104,6 +106,7 @@ public class PostDetailResponse {
         private PrefixInfo prefix;
         private String title;
         private boolean isLocked;
+        private boolean isHidden;
         private boolean isPinned;
         private boolean adultOnly;
         private String contentSanitized;
@@ -132,6 +135,7 @@ public class PostDetailResponse {
         public Builder prefix(PrefixInfo p)               { this.prefix = p; return this; }
         public Builder title(String t)                    { this.title = t; return this; }
         public Builder isLocked(boolean l)                { this.isLocked = l; return this; }
+        public Builder isHidden(boolean h)                { this.isHidden = h; return this; }
         public Builder isPinned(boolean p)                { this.isPinned = p; return this; }
         public Builder adultOnly(boolean a)               { this.adultOnly = a; return this; }
         public Builder contentSanitized(String c)         { this.contentSanitized = c; return this; }

@@ -44,6 +44,7 @@ public class PostQueryRepositoryImpl implements PostQueryRepository {
             predicate.and(post.boardType.in(BoardType.NOTICE, BoardType.FREE));
         }
         predicate.and(post.status.ne(PostStatus.DELETED));
+        predicate.and(post.isHidden.isFalse()); // 숨김 처리된 게시글은 공개 목록에서 제외
 
         if (prefixId != null) {
             predicate.and(post.prefix.id.eq(prefixId));
@@ -106,6 +107,7 @@ public class PostQueryRepositoryImpl implements PostQueryRepository {
         BooleanBuilder predicate = new BooleanBuilder();
         predicate.and(post.boardType.eq(boardType));
         predicate.and(post.status.eq(PostStatus.ACTIVE));
+        predicate.and(post.isHidden.isFalse()); // 숨김 처리된 게시글 제외
         predicate.and(post.likeCount.goe(minLikeCount));
         if (excludeAuthorIds != null && !excludeAuthorIds.isEmpty()) {
             predicate.and(post.author.id.notIn(excludeAuthorIds));
@@ -142,6 +144,7 @@ public class PostQueryRepositoryImpl implements PostQueryRepository {
         List<PostReport> reports = queryFactory
                 .selectFrom(report)
                 .leftJoin(report.post).fetchJoin()
+                .leftJoin(report.comment).fetchJoin()
                 .leftJoin(report.reporter).fetchJoin()
                 .where(predicate)
                 .orderBy(report.createdAt.desc())

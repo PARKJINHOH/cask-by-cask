@@ -6,6 +6,13 @@ import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/domain/auth/hooks/useAuth'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { getInquiryPendingCount } from '@/domain/inquiry/api/inquiryApi'
+import { adminReportApi } from '@/domain/admin/api/adminReportApi'
+import { adminCommunityApi } from '@/domain/admin/api/adminCommunityApi'
+import {
+  REPORT_PENDING_COUNT_KEY,
+  POST_REPORT_PENDING_COUNT_KEY,
+  INQUIRY_PENDING_COUNT_KEY,
+} from '@/domain/admin/constants/queryKeys'
 import type { AdminMenuKey } from '@/domain/auth/types/auth.types'
 
 interface NavItem {
@@ -122,11 +129,35 @@ export default function AdminLayout() {
   const allowedMenus: AdminMenuKey[] = user?.allowedMenus ?? []
 
   const { data: inquiryPendingCount = 0 } = useQuery({
-    queryKey: ['admin', 'inquiry-pending-count'],
+    queryKey: INQUIRY_PENDING_COUNT_KEY,
     queryFn: getInquiryPendingCount,
     refetchInterval: 60_000,
     enabled: isAdmin,
   })
+
+  const { data: reportPendingCount = 0 } = useQuery({
+    queryKey: REPORT_PENDING_COUNT_KEY,
+    queryFn: () => adminReportApi.pendingCount().then((r) => r.data.data ?? 0),
+    refetchInterval: 60_000,
+    enabled: isAdmin,
+  })
+
+  const { data: postReportPendingCount = 0 } = useQuery({
+    queryKey: POST_REPORT_PENDING_COUNT_KEY,
+    queryFn: () => adminCommunityApi.getPostReportPendingCount().then((r) => r.data.data ?? 0),
+    refetchInterval: 60_000,
+    enabled: isAdmin,
+  })
+
+  // 메뉴 경로별 미처리 배지 카운트
+  const badgeCountFor = (path: string): number => {
+    switch (path) {
+      case '/admin/inquiries':              return inquiryPendingCount
+      case '/admin/reports':                return reportPendingCount
+      case '/admin/community/post-reports': return postReportPendingCount
+      default:                              return 0
+    }
+  }
 
   // DISTILLERY 사용자가 허용되지 않은 페이지에 직접 접근 시 첫 번째 허용 메뉴로 이동
   useEffect(() => {
@@ -208,7 +239,7 @@ export default function AdminLayout() {
                     const active = item.exact
                       ? location.pathname === item.path
                       : location.pathname.startsWith(item.path)
-                    const isInquiryMenu = item.path === '/admin/inquiries'
+                    const badgeCount = badgeCountFor(item.path)
                     return (
                       <Link
                         key={item.path}
@@ -222,9 +253,9 @@ export default function AdminLayout() {
                       >
                         {item.subItem && <span className="text-neutral-300 text-xs">└</span>}
                         {item.label}
-                        {isInquiryMenu && inquiryPendingCount > 0 && (
+                        {badgeCount > 0 && (
                           <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center leading-none">
-                            {inquiryPendingCount > 99 ? '99+' : inquiryPendingCount}
+                            {badgeCount > 99 ? '99+' : badgeCount}
                           </span>
                         )}
                       </Link>

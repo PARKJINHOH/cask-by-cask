@@ -136,12 +136,14 @@ public class PostService {
         }
 
         boolean locked = PostStatus.LOCKED.equals(post.getStatus());
-        boolean showContent = !locked || isAdmin;
+        boolean hidden = Boolean.TRUE.equals(post.getIsHidden());
+        boolean showContent = (!locked && !hidden) || isAdmin;
 
         // 조회수 +1 (Redis 중복 방지)
         postViewCountService.tryIncrementViewCount(postId, userId, clientIp);
 
-        PostDetailResponse.Builder builder = PostDetailResponse.builder(post, showContent);
+        PostDetailResponse.Builder builder = PostDetailResponse.builder(post, showContent)
+                .isHidden(hidden);
 
         if (userId != null) {
             boolean mine = post.getAuthor().getId().equals(userId);
@@ -456,6 +458,9 @@ public class PostService {
     @Transactional
     public void unlockPost(Long postId) {
         findPost(postId).unlock();
+        // 잠금해제 = 신고를 검토 후 정상 게시글로 판단 → 미처리 신고 기각 처리(배지에서 제외)
+        postReportRepository.findByPostIdAndStatus(postId, ReportStatus.PENDING)
+                .forEach(PostReport::dismiss);
     }
 
     @Transactional
@@ -463,6 +468,9 @@ public class PostService {
         Post post = findPost(postId);
         checkModeratorPermission(actor, post.getBoardType());
         post.hide();
+        // 숨김 = 신고 인정 → 미처리 신고 처리완료(배지에서 제외)
+        postReportRepository.findByPostIdAndStatus(postId, ReportStatus.PENDING)
+                .forEach(PostReport::resolve);
         adminLogService.record(actor, AdminLogType.CONTENT_HIDE,
                 AdminLogTargetType.POST, postId,
                 String.format("게시글 숨김 (게시판: %s, 제목: %s)", post.getBoardType(), post.getTitle()),
@@ -480,6 +488,22 @@ public class PostService {
                 null);
     }
 
+    // 게시글 공개 복구 — 자동 잠금(LOCKED)과 수동 숨김(isHidden)을 모두 해제 (사용자에게 "숨김해제" 단일 액션)
+    @Transactional
+    public void unhidePost(Long postId, User actor) {
+        Post post = findPost(postId);
+        checkModeratorPermission(actor, post.getBoardType());
+        post.unlock();   // LOCKED → ACTIVE
+        post.restore();  // isHidden → false
+        // 검토 후 정상 게시글로 판단 → 미처리 신고 기각
+        postReportRepository.findByPostIdAndStatus(postId, ReportStatus.PENDING)
+                .forEach(PostReport::dismiss);
+        adminLogService.record(actor, AdminLogType.CONTENT_RESTORE,
+                AdminLogTargetType.POST, postId,
+                String.format("게시글 숨김/잠금 해제 (게시판: %s, 제목: %s)", post.getBoardType(), post.getTitle()),
+                null);
+    }
+
     private void checkModeratorPermission(User actor, BoardType boardType) {
         if (actor.getRole() == Role.SUPER_ADMIN || actor.getRole() == Role.ADMIN) return;
         if (actor.getRole() == Role.MODERATOR && actor.getBoardPermissions().contains(boardType)) return;
@@ -490,6 +514,18 @@ public class PostService {
     public Page<PostReportAdminResponse> getReports(ReportStatus status, int page, int size) {
         return postRepository.findReports(status, PageRequest.of(page, size))
                 .map(PostReportAdminResponse::from);
+    }
+
+    // 미처리(PENDING) 신고 수 — 게시글 + 댓글 신고 합산 (관리자 사이드바 배지용)
+    @Transactional(readOnly = true)
+    public long countPendingReports() {
+        return postReportRepository.countByStatus(ReportStatus.PENDING);
+    }
+
+    // 관리자 수동 신고 횟수 조정
+    @Transactional
+    public void updateReportCount(Long postId, int count) {
+        findPost(postId).updateReportCount(count);
     }
 
     // ═══════════════════════════════════════════

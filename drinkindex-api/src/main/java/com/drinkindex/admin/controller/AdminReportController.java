@@ -28,6 +28,11 @@ public class AdminReportController {
                 PageResponse.from(reportService.getReports(status, targetType, pageable))));
     }
 
+    @GetMapping("/pending-count")
+    public ResponseEntity<ApiResponse<Long>> pendingCount() {
+        return ResponseEntity.ok(ApiResponse.success(reportService.countPending()));
+    }
+
     @PatchMapping("/{id}/resolve")
     public ResponseEntity<ApiResponse<Void>> resolve(@PathVariable Long id) {
         reportService.resolveReport(id);

@@ -11,6 +11,9 @@ export const adminReportApi = {
   }) =>
     axiosInstance.get<ApiResponse<PageResponse<AdminReport>>>('/api/admin/reports', { params }),
 
+  pendingCount: () =>
+    axiosInstance.get<ApiResponse<number>>('/api/admin/reports/pending-count'),
+
   resolve: (id: number) =>
     axiosInstance.patch<ApiResponse<null>>(`/api/admin/reports/${id}/resolve`),
 

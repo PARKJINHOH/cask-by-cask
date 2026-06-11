@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { adminReportApi } from '../api/adminReportApi'
+import { REPORT_PENDING_COUNT_KEY } from '../constants/queryKeys'
 import type { ReportStatus, ReportTargetType } from '../types/admin.types'
 
 interface ReportListParams {
@@ -22,6 +23,7 @@ export function useResolveReport() {
     mutationFn: (id: number) => adminReportApi.resolve(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-reports'] })
+      queryClient.invalidateQueries({ queryKey: REPORT_PENDING_COUNT_KEY })
     },
   })
 }
@@ -32,6 +34,7 @@ export function useDismissReport() {
     mutationFn: (id: number) => adminReportApi.dismiss(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-reports'] })
+      queryClient.invalidateQueries({ queryKey: REPORT_PENDING_COUNT_KEY })
     },
   })
 }

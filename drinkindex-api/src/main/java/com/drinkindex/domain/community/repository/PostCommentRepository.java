@@ -18,20 +18,20 @@ public interface PostCommentRepository extends JpaRepository<PostComment, Long> 
            "WHERE c.id IN :ids AND c.post IS NOT NULL")
     List<Object[]> findPostInfoByIdIn(@Param("ids") Collection<Long> ids);
 
-    // 게시글 루트 댓글 목록 (삭제 포함, 숨김 제외) — 삭제 댓글은 "삭제된 댓글" 표시
-    Page<PostComment> findByPostIdAndParentIsNullAndIsHiddenFalse(
+    // 게시글 루트 댓글 목록 (삭제·숨김 포함) — 삭제/숨김 댓글은 플레이스홀더로 표시
+    Page<PostComment> findByPostIdAndParentIsNull(
             Long postId, Pageable pageable);
 
     // 차단 작성자 제외 버전 (로그인 + 차단 목록 존재 시)
-    Page<PostComment> findByPostIdAndParentIsNullAndIsHiddenFalseAndAuthorIdNotIn(
+    Page<PostComment> findByPostIdAndParentIsNullAndAuthorIdNotIn(
             Long postId, List<Long> authorIds, Pageable pageable);
 
-    // 부모 댓글의 대댓글 목록 (삭제 포함, 숨김 제외)
-    List<PostComment> findByParentIdAndIsHiddenFalseOrderByCreatedAtAsc(
+    // 부모 댓글의 대댓글 목록 (삭제·숨김 포함)
+    List<PostComment> findByParentIdOrderByCreatedAtAsc(
             Long parentId);
 
     // 차단 작성자 제외 버전
-    List<PostComment> findByParentIdAndIsHiddenFalseAndAuthorIdNotInOrderByCreatedAtAsc(
+    List<PostComment> findByParentIdAndAuthorIdNotInOrderByCreatedAtAsc(
             Long parentId, List<Long> authorIds);
 
     // 비밀댓글 캐스케이딩: 같은 부모를 가진 형제 대댓글 중 비밀댓글이 이미 존재하는지 확인

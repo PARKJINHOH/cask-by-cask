@@ -78,5 +78,8 @@ public class PostComment extends BaseTimeEntity {
 
     public void setHidden(Boolean isHidden)  { this.isHidden = isHidden; }
 
+    // 관리자 수동 신고 횟수 조정. 숨김 상태는 변경하지 않음 — 숨김/해제는 별도 버튼.
+    public void updateReportCount(int count) { this.reportCount = Math.max(0, count); }
+
     public void updateContent(String content) { this.content = content; }
 }
