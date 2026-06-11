@@ -77,6 +77,37 @@ public class PostService {
 
     private static final int BEST_MIN_LIKE_COUNT = 5;
 
+    // 미디어 첨부 정책 (소규모 서버 디스크 보호 — 서버 증설 시 프론트 RichTextEditor 상수와 함께 상향):
+    //   이미지 개당 10MB(NoticeImageValidator)·최대 20장, 동영상 개당 50MB(PostVideoValidator)·최대 2개,
+    //   이미지+동영상 합계 100MB. 업로드는 파일당 개별 요청이므로 장수·합계는 저장 시점에 검증한다.
+    private static final int  MAX_IMAGES_PER_POST = 20;
+    private static final int  MAX_VIDEOS_PER_POST = 2;
+    private static final long MAX_MEDIA_TOTAL_BYTES_PER_POST = 100L * 1024 * 1024;
+
+    private void validateMediaPolicy(String htmlContent) {
+        if (htmlContent == null) return;
+        var doc = Jsoup.parse(htmlContent);
+
+        var images = doc.select("img[src]");
+        if (images.size() > MAX_IMAGES_PER_POST) {
+            throw new CustomException(ErrorCode.POST_IMAGE_COUNT_EXCEEDED);
+        }
+        var videos = doc.select("video[src]");
+        if (videos.size() > MAX_VIDEOS_PER_POST) {
+            throw new CustomException(ErrorCode.POST_VIDEO_COUNT_EXCEEDED);
+        }
+
+        var imageUrls = images.stream().map(el -> el.attr("src"))
+                .filter(src -> !src.isBlank()).collect(Collectors.toSet());
+        var videoUrls = videos.stream().map(el -> el.attr("src"))
+                .filter(src -> !src.isBlank()).collect(Collectors.toSet());
+        long totalBytes = postImageService.totalFileSize(imageUrls)
+                + postVideoService.totalFileSize(videoUrls);
+        if (totalBytes > MAX_MEDIA_TOTAL_BYTES_PER_POST) {
+            throw new CustomException(ErrorCode.POST_MEDIA_SIZE_EXCEEDED);
+        }
+    }
+
     @Transactional(readOnly = true)
     public Page<PostListResponse> getBestPosts(BoardType boardType, Long userId, int page, int size) {
         List<Long> blockedIds = blockedAuthorIds(userId);
@@ -141,6 +172,7 @@ public class PostService {
 
         // 2. HTML Sanitize
         String sanitized = htmlSanitizer.sanitize(request.getContent());
+        validateMediaPolicy(sanitized);
 
         // 3. 말머리 조회
         PostPrefix prefix = null;
@@ -237,6 +269,7 @@ public class PostService {
 
         badWordFilter.validate(newTitle, Jsoup.parse(newContent).text());
         String sanitized = htmlSanitizer.sanitize(newContent);
+        validateMediaPolicy(sanitized);
 
         PostPrefix prefix = post.getPrefix();
         if (request.getPrefixId() != null) {

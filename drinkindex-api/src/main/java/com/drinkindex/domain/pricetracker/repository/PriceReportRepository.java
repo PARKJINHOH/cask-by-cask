@@ -13,9 +13,14 @@ import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 
 public interface PriceReportRepository extends JpaRepository<PriceReport, Long> {
+
+    // [점수이력 링크] 가격제보 id → 술 id 배치 조회 (행: [reportId, spiritId])
+    @Query("SELECT pr.id, pr.spirit.id FROM PriceReport pr WHERE pr.id IN :ids")
+    List<Object[]> findIdAndSpiritIdByIdIn(@Param("ids") Collection<Long> ids);
 
     // [패치 12] 모더레이션 대시보드 — 대기 가격 등록 수 / 플래그된 대기 가격 수
     long countByStatus(PriceReportStatus status);

@@ -14,9 +14,15 @@ public record ScoreHistoryResponse(
         String referenceType,
         Long referenceId,
         String description,
+        // 점수를 획득/차감한 출처로 이동하는 프론트 경로. 매핑 불가 항목은 null.
+        String linkUrl,
         LocalDateTime createdAt
 ) {
     public static ScoreHistoryResponse from(ScoreHistory history) {
+        return from(history, null);
+    }
+
+    public static ScoreHistoryResponse from(ScoreHistory history, String linkUrl) {
         return new ScoreHistoryResponse(
                 history.getId(),
                 history.getUser().getId(),
@@ -27,6 +33,7 @@ public record ScoreHistoryResponse(
                 history.getReferenceType(),
                 history.getReferenceId(),
                 history.getDescription(),
+                linkUrl,
                 history.getCreatedAt()
         );
     }

@@ -1,4 +1,5 @@
 import { useRef, useCallback } from 'react'
+import { Link } from 'react-router-dom'
 import type { UserProfile } from '@/domain/user/types/user.types'
 import LevelBadge, { BAND_LABELS, bandOf } from '@/shared/components/LevelBadge'
 import Spinner from '@/shared/components/Spinner'
@@ -197,15 +198,27 @@ function AttendanceCard({ profile }: { profile: UserProfile }) {
 function HistoryItem({
   item,
 }: {
-  item: { id: number; actionType: string; score: number; description: string | null; createdAt: string }
+  item: {
+    id: number
+    actionType: string
+    score: number
+    description: string | null
+    linkUrl: string | null
+    createdAt: string
+  }
 }) {
   const isPositive = item.score >= 0
   const icon = ACTION_ICONS[item.actionType] ?? '•'
+  const hasLink = !!item.linkUrl
 
-  return (
-    <div className="flex items-center gap-3 py-3 border-b border-neutral-50 last:border-0">
+  const inner = (
+    <>
       <span className="text-lg leading-none w-6 text-center flex-shrink-0">{icon}</span>
-      <p className="flex-1 text-sm text-neutral-700 min-w-0 truncate">
+      <p
+        className={`flex-1 text-sm min-w-0 truncate ${
+          hasLink ? 'text-neutral-700 group-hover:text-amber-700' : 'text-neutral-700'
+        }`}
+      >
         {item.description ?? item.actionType}
       </p>
       <span
@@ -218,6 +231,23 @@ function HistoryItem({
       <span className="text-xs text-neutral-400 flex-shrink-0 w-20 text-right">
         {formatDate(item.createdAt)}
       </span>
+    </>
+  )
+
+  if (hasLink) {
+    return (
+      <Link
+        to={item.linkUrl!}
+        className="group flex items-center gap-3 py-3 border-b border-neutral-50 last:border-0 -mx-2 px-2 rounded-lg hover:bg-amber-50/40 transition-colors"
+      >
+        {inner}
+      </Link>
+    )
+  }
+
+  return (
+    <div className="flex items-center gap-3 py-3 border-b border-neutral-50 last:border-0">
+      {inner}
     </div>
   )
 }

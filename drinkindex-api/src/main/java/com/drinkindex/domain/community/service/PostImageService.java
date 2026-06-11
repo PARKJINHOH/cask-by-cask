@@ -55,6 +55,15 @@ public class PostImageService {
         return PostImageUploadResponse.from(postImageRepository.save(image));
     }
 
+    // 본문에 사용된 이미지 URL 들의 파일 크기 합 (미디어 용량 정책 검증용)
+    @Transactional(readOnly = true)
+    public long totalFileSize(Set<String> imageUrls) {
+        if (imageUrls.isEmpty()) return 0L;
+        return postImageRepository.findByImageUrlIn(imageUrls).stream()
+                .mapToLong(PostImage::getFileSize)
+                .sum();
+    }
+
     // local 프로파일 전용 서빙
     public PostImage findBySavedFileName(String savedFileName) {
         return postImageRepository.findBySavedFileName(savedFileName)

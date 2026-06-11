@@ -146,6 +146,9 @@ public enum ErrorCode {
     POST_VIDEO_INVALID_FORMAT(HttpStatus.BAD_REQUEST, "POST_016", "MP4 또는 WebM 형식의 동영상만 업로드할 수 있습니다."),
     POST_VIDEO_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "POST_017", "동영상 파일 크기는 50MB를 초과할 수 없습니다."),
     POST_VIDEO_NOT_FOUND(HttpStatus.NOT_FOUND, "POST_018", "동영상을 찾을 수 없습니다."),
+    POST_IMAGE_COUNT_EXCEEDED(HttpStatus.BAD_REQUEST, "POST_019", "이미지는 게시글당 최대 20장까지 첨부할 수 있습니다."),
+    POST_VIDEO_COUNT_EXCEEDED(HttpStatus.BAD_REQUEST, "POST_020", "동영상은 게시글당 최대 2개까지 첨부할 수 있습니다."),
+    POST_MEDIA_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "POST_021", "이미지·동영상 합계 용량은 게시글당 100MB를 초과할 수 없습니다."),
     // [패치 9] 증류소 담당자는 본인 담당 증류소만 태그 가능
     POST_DISTILLERY_TAG_FORBIDDEN(HttpStatus.FORBIDDEN, "POST_015", "본인이 담당하는 증류소만 태그할 수 있습니다."),
 

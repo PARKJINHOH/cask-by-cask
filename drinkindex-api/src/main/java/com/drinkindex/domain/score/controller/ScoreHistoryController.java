@@ -2,8 +2,10 @@ package com.drinkindex.domain.score.controller;
 
 import com.drinkindex.domain.score.dto.LevelConfigResponse;
 import com.drinkindex.domain.score.dto.ScoreHistoryResponse;
+import com.drinkindex.domain.score.entity.ScoreHistory;
 import com.drinkindex.domain.score.repository.MemberLevelConfigRepository;
 import com.drinkindex.domain.score.repository.ScoreHistoryRepository;
+import com.drinkindex.domain.score.service.ScoreHistoryLinkResolver;
 import com.drinkindex.global.auth.security.CustomUserDetails;
 import com.drinkindex.global.response.ApiResponse;
 import com.drinkindex.global.response.PageResponse;
@@ -20,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
@@ -29,6 +32,7 @@ public class ScoreHistoryController {
 
     private final ScoreHistoryRepository scoreHistoryRepository;
     private final MemberLevelConfigRepository memberLevelConfigRepository;
+    private final ScoreHistoryLinkResolver linkResolver;
 
     /**
      * 본인 점수 이력 조회.
@@ -48,20 +52,22 @@ public class ScoreHistoryController {
         Long userId = userDetails.getUserId();
         PageRequest pageable = PageRequest.of(page, size);
 
-        Page<ScoreHistoryResponse> result = switch (type != null ? type.toUpperCase() : "") {
+        Page<ScoreHistory> historyPage = switch (type != null ? type.toUpperCase() : "") {
             case "EARN" ->
                 scoreHistoryRepository
-                    .findByUserIdAndScoreGreaterThanOrderByCreatedAtDesc(userId, 0, pageable)
-                    .map(ScoreHistoryResponse::from);
+                    .findByUserIdAndScoreGreaterThanOrderByCreatedAtDesc(userId, 0, pageable);
             case "DEDUCT" ->
                 scoreHistoryRepository
-                    .findByUserIdAndScoreLessThanOrderByCreatedAtDesc(userId, 0, pageable)
-                    .map(ScoreHistoryResponse::from);
+                    .findByUserIdAndScoreLessThanOrderByCreatedAtDesc(userId, 0, pageable);
             default ->
                 scoreHistoryRepository
-                    .findByUserIdOrderByCreatedAtDesc(userId, pageable)
-                    .map(ScoreHistoryResponse::from);
+                    .findByUserIdOrderByCreatedAtDesc(userId, pageable);
         };
+
+        // 출처 링크를 한 페이지 단위로 배치 해석 (N+1 회피)
+        Map<Long, String> links = linkResolver.resolveLinks(historyPage.getContent());
+        Page<ScoreHistoryResponse> result = historyPage
+                .map(h -> ScoreHistoryResponse.from(h, links.get(h.getId())));
 
         return ResponseEntity.ok(ApiResponse.success(PageResponse.from(result)));
     }

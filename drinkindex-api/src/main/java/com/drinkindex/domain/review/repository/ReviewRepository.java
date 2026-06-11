@@ -9,10 +9,15 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
 public interface ReviewRepository extends JpaRepository<Review, Long> {
+
+    // [점수이력 링크] 리뷰 id → 술 id 배치 조회 (행: [reviewId, spiritId])
+    @Query("SELECT r.id, r.spirit.id FROM Review r WHERE r.id IN :ids")
+    List<Object[]> findIdAndSpiritIdByIdIn(@Param("ids") Collection<Long> ids);
 
     @Query(value = """
             SELECT r FROM Review r

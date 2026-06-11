@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useEditor, EditorContent } from '@tiptap/react'
+import { useEditor, EditorContent, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
 import Link from '@tiptap/extension-link'
@@ -38,6 +38,29 @@ const ALLOWED_ATTR = [
   'allowfullscreen', 'allow', 'frameborder', 'controls', 'preload', 'type',
 ]
 
+// 미디어 업로드 정책 — 백엔드(PostService.validateMediaPolicy / NoticeImageValidator / PostVideoValidator)와
+// 동기화 유지. 소규모 서버 디스크 보호용 한도로, 서버 증설 시 양쪽을 함께 상향한다.
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024 // 이미지 개당 10MB
+const MAX_IMAGE_COUNT = 20 // 문서(게시글)당 이미지 최대 장수
+const MAX_VIDEO_SIZE = 50 * 1024 * 1024 // 동영상 개당 50MB
+const MAX_VIDEO_COUNT = 2 // 문서(게시글)당 동영상 최대 개수
+const MAX_MEDIA_TOTAL = 100 * 1024 * 1024 // 이미지+동영상 합계 100MB
+
+// 문서 내 업로드 미디어 현황 집계. 합계 용량(knownBytes)은 이 세션에서 업로드한 파일 크기만
+// 합산하는 최선 추정치(수정 모드에서 기존 미디어 크기는 알 수 없음) — 최종 검증은 저장 시 백엔드가 수행.
+function collectMediaUsage(editor: Editor, sizes: Map<string, number>) {
+  let imageCount = 0
+  let videoCount = 0
+  let knownBytes = 0
+  editor.state.doc.descendants((node) => {
+    if (node.type.name !== 'image' && node.type.name !== 'uploadedVideo') return
+    if (node.type.name === 'image') imageCount++
+    else videoCount++
+    knownBytes += sizes.get(node.attrs.src as string) ?? 0
+  })
+  return { imageCount, videoCount, knownBytes }
+}
+
 interface Props {
   value: string
   onChange: (html: string) => void
@@ -68,11 +91,13 @@ export default function RichTextEditor({
   const lastEmitted = useRef(value)
   // editorProps(드래그/붙여넣기) 클로저에서 최신 다중 업로드 핸들러를 참조하기 위한 ref.
   const uploadAndInsertImagesRef = useRef<(files: File[]) => void>(() => {})
+  // 이 세션에서 업로드한 미디어 URL → 파일 크기. 합계 100MB 사전 검증용.
+  const mediaSizesRef = useRef(new Map<string, number>())
 
   const handleImageUpload = useCallback(async (file: File): Promise<string | null> => {
     if (!uploadImage) return null
-    if (file.size > 5 * 1024 * 1024) {
-      onImageError?.('이미지 크기는 5MB 이하여야 합니다.')
+    if (file.size > MAX_IMAGE_SIZE) {
+      onImageError?.('이미지 크기는 10MB 이하여야 합니다.')
       return null
     }
     setUploadLabel('이미지')
@@ -173,13 +198,28 @@ export default function RichTextEditor({
   // (파일 선택 / 드래그 / 붙여넣기 공용)
   const uploadAndInsertImages = useCallback(async (files: File[]) => {
     if (!uploadImage || !editor) return
-    const images = files.filter((f) => f.type.startsWith('image/'))
+    let images = files.filter((f) => f.type.startsWith('image/'))
     if (images.length === 0) return
+    // 문서 내 기존 이미지 + 새 파일 합계가 장수 한도를 넘으면 초과분은 업로드하지 않는다.
+    const usage = collectMediaUsage(editor, mediaSizesRef.current)
+    const remaining = MAX_IMAGE_COUNT - usage.imageCount
+    if (images.length > remaining) {
+      onImageError?.(`이미지는 최대 ${MAX_IMAGE_COUNT}장까지 첨부할 수 있습니다.`)
+      if (remaining <= 0) return
+      images = images.slice(0, remaining)
+    }
+    let budget = MAX_MEDIA_TOTAL - usage.knownBytes
     try {
       for (let i = 0; i < images.length; i++) {
+        if (images[i].size > budget) {
+          onImageError?.('이미지·동영상 합계 용량은 100MB를 초과할 수 없습니다.')
+          break
+        }
         if (images.length > 1) setBatchProgress({ current: i + 1, total: images.length })
         const url = await handleImageUpload(images[i])
         if (!url) continue
+        mediaSizesRef.current.set(url, images[i].size)
+        budget -= images[i].size
         editor.chain().focus().setImage({ src: url }).run()
         // setImage 직후 삽입된 이미지가 NodeSelection 으로 선택돼,
         // 다음 setImage 가 이 이미지를 덮어쓴다. 커서를 이미지 뒤로 옮겨 이어 붙인다.
@@ -189,20 +229,29 @@ export default function RichTextEditor({
     } finally {
       setBatchProgress(null)
     }
-  }, [uploadImage, editor, handleImageUpload])
+  }, [uploadImage, editor, handleImageUpload, onImageError])
 
   useEffect(() => {
     uploadAndInsertImagesRef.current = uploadAndInsertImages
   }, [uploadAndInsertImages])
 
   const handleVideoFile = useCallback(async (file: File) => {
-    if (!uploadVideo) return
+    if (!uploadVideo || !editor) return
     if (!['video/mp4', 'video/webm'].includes(file.type)) {
       onVideoError?.('MP4 또는 WebM 형식의 동영상만 업로드할 수 있습니다.')
       return
     }
-    if (file.size > 50 * 1024 * 1024) {
+    if (file.size > MAX_VIDEO_SIZE) {
       onVideoError?.('동영상 크기는 50MB 이하여야 합니다.')
+      return
+    }
+    const usage = collectMediaUsage(editor, mediaSizesRef.current)
+    if (usage.videoCount >= MAX_VIDEO_COUNT) {
+      onVideoError?.(`동영상은 최대 ${MAX_VIDEO_COUNT}개까지 첨부할 수 있습니다.`)
+      return
+    }
+    if (file.size > MAX_MEDIA_TOTAL - usage.knownBytes) {
+      onVideoError?.('이미지·동영상 합계 용량은 100MB를 초과할 수 없습니다.')
       return
     }
     setUploadLabel('동영상')
@@ -210,6 +259,7 @@ export default function RichTextEditor({
     try {
       const data = await uploadVideo(file, setUploadProgress)
       if (data && editor) {
+        mediaSizesRef.current.set(data.videoUrl, file.size)
         editor.chain().focus().insertContent({
           type: 'uploadedVideo',
           attrs: { src: data.videoUrl, mimeType: data.mimeType },

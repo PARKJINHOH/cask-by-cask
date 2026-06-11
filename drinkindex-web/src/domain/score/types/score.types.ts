@@ -6,6 +6,8 @@ export interface ScoreHistoryItem {
   score: number
   balanceAfter: number
   description: string | null
+  // 점수를 획득/차감한 출처 페이지 경로 (게시글·댓글·리뷰·술 등). 매핑 불가 시 null.
+  linkUrl: string | null
   createdAt: string
 }
 

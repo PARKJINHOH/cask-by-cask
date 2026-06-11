@@ -6,10 +6,15 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
 public interface PostRepository extends JpaRepository<Post, Long>, PostQueryRepository {
+
+    // [점수이력 링크] 게시글 id → boardType 배치 조회 (행: [id, boardType])
+    @Query("SELECT p.id, p.boardType FROM Post p WHERE p.id IN :ids")
+    List<Object[]> findIdAndBoardTypeByIdIn(@Param("ids") Collection<Long> ids);
 
     List<Post> findBySeriesIdOrderBySeriesOrderAsc(Long seriesId);
 

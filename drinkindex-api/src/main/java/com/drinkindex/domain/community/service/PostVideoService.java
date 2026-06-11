@@ -60,6 +60,15 @@ public class PostVideoService {
         return PostVideoUploadResponse.from(videoRepository.save(video));
     }
 
+    // 본문에 사용된 동영상 URL 들의 파일 크기 합 (미디어 용량 정책 검증용)
+    @Transactional(readOnly = true)
+    public long totalFileSize(Set<String> videoUrls) {
+        if (videoUrls.isEmpty()) return 0L;
+        return videoRepository.findByVideoUrlIn(videoUrls).stream()
+                .mapToLong(PostVideo::getFileSize)
+                .sum();
+    }
+
     public PostVideo loadForStream(String savedFileName) {
         return videoRepository.findBySavedFileName(savedFileName)
                 .orElseThrow(() -> new CustomException(ErrorCode.POST_VIDEO_NOT_FOUND));

@@ -8,9 +8,15 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 
 public interface PostCommentRepository extends JpaRepository<PostComment, Long> {
+
+    // [점수이력 링크] 댓글 id → 소속 게시글 id/boardType 배치 조회 (행: [commentId, postId, boardType])
+    @Query("SELECT c.id, c.post.id, c.post.boardType FROM PostComment c " +
+           "WHERE c.id IN :ids AND c.post IS NOT NULL")
+    List<Object[]> findPostInfoByIdIn(@Param("ids") Collection<Long> ids);
 
     // 게시글 루트 댓글 목록 (삭제 포함, 숨김 제외) — 삭제 댓글은 "삭제된 댓글" 표시
     Page<PostComment> findByPostIdAndParentIsNullAndIsHiddenFalse(
