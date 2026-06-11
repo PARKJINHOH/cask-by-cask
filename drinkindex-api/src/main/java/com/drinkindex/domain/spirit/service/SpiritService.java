@@ -39,8 +39,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -98,6 +100,26 @@ public class SpiritService {
                 .toList();
 
         return spiritDetailService.buildFullDetailResponse(spirit, images);
+    }
+
+    /** 같은 이름(한글/영문)의 다른 배치·병입 제품 목록 — 술 상세 화면용 */
+    @Transactional(readOnly = true)
+    public List<SpiritVariantResponse> getSpiritVariants(Long id) {
+        Spirit spirit = spiritRepository.findByIdAndStatus(id, SpiritStatus.ACTIVE)
+                .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_NOT_FOUND));
+
+        List<Spirit> variants = spiritRepository.findActiveVariantsByName(
+                id, spirit.getNameKo(), spirit.getNameEn());
+        if (variants.isEmpty()) return List.of();
+
+        List<Long> variantIds = variants.stream().map(Spirit::getId).toList();
+        Map<Long, String> primaryImageMap = spiritImageRepository
+                .findBySpiritIdInAndIsPrimaryTrue(variantIds).stream()
+                .collect(Collectors.toMap(img -> img.getSpirit().getId(), SpiritImage::getImageUrl));
+
+        return variants.stream()
+                .map(v -> SpiritVariantResponse.of(v, primaryImageMap.get(v.getId())))
+                .toList();
     }
 
     // ── 관리자 CRUD ─────────────────────────────────────────

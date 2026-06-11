@@ -1,6 +1,6 @@
-﻿import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useForm, Controller } from 'react-hook-form'
+import { useForm, useController, Controller } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useAdminBannerDetail, useCreateBanner, useUpdateBanner } from '@/domain/banner/hooks/useAdminBanners'
@@ -8,11 +8,18 @@ import { bannerApi } from '@/domain/banner/api/bannerApi'
 import HtmlEditorField from '@/shared/components/HtmlEditorField'
 import { sanitizeHtml } from '@/shared/utils/sanitize'
 import type { UploadedBannerImage, BannerType } from '@/domain/banner/types/banner.types'
-import Button from '@/shared/components/Button'
 import AdminPageHeader from '@/shared/components/AdminPageHeader'
 import Toast from '@/shared/components/Toast'
 import { useToast } from '@/shared/hooks/useToast'
+import {
+  toInputDt, toApiDt, promoSuperRefine,
+  FormSection, PromoImageDropzone,
+  AdminTitleField, PromoTypeField, PromoLanguageField,
+  PromoLinkUrlField, NewTabCheckbox, PromoScheduleFields,
+  TwoColumnFormLayout, PromoFormActions, PromoFormLoading,
+} from '@/domain/admin/components/PromoFormKit'
 
+// ─── Zod 스키마 (공통 규칙은 promoSuperRefine) ────────
 const schema = z
   .object({
     adminTitle:      z.string().min(1, '관리자 제목을 입력하세요').max(200),
@@ -26,200 +33,14 @@ const schema = z
     startAt:         z.string().optional(),
     endAt:           z.string().optional(),
   })
-  .superRefine((data, ctx) => {
-    if (data.bannerType === 'HTML') {
-      const text = data.content?.replace(/<[^>]*>/g, '').trim() ?? ''
-      if (!text) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: '배너 내용을 입력하세요', path: ['content'] })
-      }
-    }
-    if (data.linkUrl?.trim() && !/^https?:\/\/.+/.test(data.linkUrl)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: '올바른 URL 형식이어야 합니다 (https://...)',
-        path: ['linkUrl'],
-      })
-    }
-    if (!data.isAlwaysVisible && data.startAt && data.endAt && data.endAt < data.startAt) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: '종료일시는 시작일시 이후여야 합니다',
-        path: ['endAt'],
-      })
-    }
-    // 노출 ON: 상시 노출 또는 게시 기간(시작·종료) 둘 중 하나는 필수
-    if (data.isVisible && !data.isAlwaysVisible) {
-      if (!data.startAt) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: '노출하려면 상시 노출을 체크하거나 시작일시를 입력하세요',
-          path: ['startAt'],
-        })
-      }
-      if (!data.endAt) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: '노출하려면 상시 노출을 체크하거나 종료일시를 입력하세요',
-          path: ['endAt'],
-        })
-      }
-    }
-  })
+  .superRefine((data, ctx) =>
+    promoSuperRefine(data, ctx, {
+      isHtml: data.bannerType === 'HTML',
+      contentRequiredMessage: '배너 내용을 입력하세요',
+    }),
+  )
 
 type FormValues = z.infer<typeof schema>
-
-const toInputDt = (iso: string | null | undefined) => (iso ? iso.substring(0, 16) : '')
-const toApiDt   = (input: string | undefined)       => (input ? `${input}:00` : null)
-
-const MAX_IMAGE_SIZE = 10 * 1024 * 1024
-const ALLOWED_EXTS   = ['jpg', 'jpeg', 'png', 'gif', 'webp']
-
-interface ImageDropzoneProps {
-  label: string
-  hint?: string
-  uploadedImage: UploadedBannerImage | null
-  existingImageUrl: string | null
-  onUpload: (file: File) => Promise<void>
-  onRemove: () => void
-  isUploading: boolean
-  error?: string
-  required?: boolean
-}
-
-function ImageDropzone({
-  label, hint, uploadedImage, existingImageUrl, onUpload, onRemove, isUploading, error, required,
-}: ImageDropzoneProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const [isDragging, setIsDragging] = useState(false)
-
-  const displayUrl = uploadedImage?.imageUrl ?? existingImageUrl
-
-  const handleFile = (file: File) => {
-    const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
-    if (!ALLOWED_EXTS.includes(ext)) {
-      alert('JPG, PNG, GIF, WEBP 형식만 업로드 가능합니다.')
-      return
-    }
-    if (file.size > MAX_IMAGE_SIZE) {
-      alert('이미지 크기는 10MB 이하여야 합니다.')
-      return
-    }
-    onUpload(file)
-  }
-
-  return (
-    <div>
-      <p className="text-sm font-medium text-neutral-700 mb-2">
-        {label}
-        {required && <span className="text-red-500 ml-0.5">*</span>}
-        {hint && <span className="ml-1 text-xs font-normal text-neutral-400">{hint}</span>}
-      </p>
-
-      {displayUrl ? (
-        <div className="relative inline-block">
-          <img src={displayUrl} alt="배너 미리보기" className="max-h-40 rounded-lg border border-neutral-200 block" />
-          <button
-            type="button"
-            onClick={onRemove}
-            className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-500 text-white text-xs
-              flex items-center justify-center hover:bg-red-600 transition-colors shadow"
-          >
-            ×
-          </button>
-          {uploadedImage && (
-            <p className="mt-1 text-xs text-neutral-500">{uploadedImage.originalFileName}</p>
-          )}
-        </div>
-      ) : (
-        <div
-          onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
-          onDragLeave={() => setIsDragging(false)}
-          onDrop={(e) => {
-            e.preventDefault(); setIsDragging(false)
-            const f = e.dataTransfer.files[0]; if (f) handleFile(f)
-          }}
-          onClick={() => fileInputRef.current?.click()}
-          className={[
-            'flex flex-col items-center justify-center h-36 rounded-lg border-2 border-dashed',
-            'cursor-pointer transition-colors',
-            isDragging ? 'border-primary-400 bg-primary-50' : 'border-neutral-300 hover:border-neutral-400 bg-neutral-50',
-            error ? 'border-red-400' : '',
-          ].join(' ')}
-        >
-          {isUploading ? (
-            <p className="text-sm text-neutral-500">업로드 중...</p>
-          ) : (
-            <>
-              <svg className="w-7 h-7 text-neutral-400 mb-1.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <rect x="3" y="3" width="18" height="18" rx="2" />
-                <circle cx="8.5" cy="8.5" r="1.5" />
-                <polyline points="21 15 16 10 5 21" />
-              </svg>
-              <p className="text-sm text-neutral-500">드래그하거나 클릭하여 업로드</p>
-              <p className="text-xs text-neutral-400 mt-1">JPG · PNG · GIF · WEBP, 최대 10MB</p>
-            </>
-          )}
-        </div>
-      )}
-
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
-      <input
-        ref={fileInputRef}
-        type="file"
-        className="sr-only"
-        accept="image/jpeg,image/png,image/gif,image/webp"
-        onChange={(e) => {
-          const file = e.target.files?.[0]
-          e.target.value = ''
-          if (file) handleFile(file)
-        }}
-      />
-    </div>
-  )
-}
-
-function ToggleSwitch({ checked, onChange, label, description }: {
-  checked: boolean; onChange: (v: boolean) => void; label: string; description?: string
-}) {
-  return (
-    <div className="flex items-center justify-between px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-lg">
-      <div>
-        <p className="text-sm font-medium text-neutral-700">{label}</p>
-        {description && <p className="text-xs text-neutral-400 mt-0.5">{description}</p>}
-      </div>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        onClick={() => onChange(!checked)}
-        className={[
-          'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent',
-          'transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
-          checked ? 'bg-primary-800' : 'bg-neutral-300',
-        ].join(' ')}
-      >
-        <span
-          className={[
-            'pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow',
-            'transform transition-transform duration-200',
-            checked ? 'translate-x-5' : 'translate-x-0',
-          ].join(' ')}
-        />
-      </button>
-    </div>
-  )
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="bg-white border border-neutral-200 rounded-xl p-6 space-y-4">
-      <h2 className="text-base font-semibold text-neutral-800 border-b border-neutral-100 pb-3">
-        {title}
-      </h2>
-      {children}
-    </div>
-  )
-}
 
 function BannerPreview({
   bannerType,
@@ -381,12 +202,13 @@ export default function AdminBannerFormPage() {
     setUploadedMoImage(null)
   }, [existing, reset])
 
-  const bannerType      = watch('bannerType')
-  const isAlwaysVisible = watch('isAlwaysVisible')
-  const isVisible       = watch('isVisible')
-  const content         = watch('content')
-  const linkUrl         = watch('linkUrl')
-  const startAt         = watch('startAt')
+  const bannerType = watch('bannerType')
+  const content    = watch('content')
+  const linkUrl    = watch('linkUrl')
+  const startAt    = watch('startAt')
+
+  const { field: visibleField } = useController({ name: 'isVisible', control })
+  const { field: alwaysVisibleField } = useController({ name: 'isAlwaysVisible', control })
 
   const pcPreviewUrl = uploadedPcImage?.imageUrl ?? existingPcImageUrl
   const moPreviewUrl = uploadedMoImage?.imageUrl ?? existingMoImageUrl
@@ -497,11 +319,7 @@ export default function AdminBannerFormPage() {
   const isPending = createMutation.isPending || updateMutation.isPending
 
   if (isEdit && isLoading) {
-    return (
-      <div className="p-8 flex items-center justify-center min-h-64">
-        <div className="text-neutral-400 text-sm">불러오는 중...</div>
-      </div>
-    )
+    return <PromoFormLoading />
   }
 
   return (
@@ -519,274 +337,148 @@ export default function AdminBannerFormPage() {
       />
 
       <form onSubmit={(e) => e.preventDefault()} className="space-y-5">
-        <div className="space-y-5 lg:space-y-0 lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-6 lg:items-start">
-          {/* ── 좌측: 입력 ── */}
-          <div className="space-y-5">
-
-        {/* 기본 설정 */}
-        <Section title="기본 설정">
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-              관리자 제목 <span className="text-red-500">*</span>
-              <span className="ml-1 text-xs font-normal text-neutral-400">(사용자에게 노출되지 않습니다)</span>
-            </label>
-            <input
-              {...register('adminTitle')}
-              placeholder="배너 식별용 내부 제목"
-              maxLength={200}
-              className="w-full h-10 px-3 text-sm border border-neutral-300 rounded-lg
-                focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-            />
-            {errors.adminTitle && <p className="mt-1 text-xs text-red-600">{errors.adminTitle.message}</p>}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-2">
-              배너 타입 <span className="text-red-500">*</span>
-              {isEdit && <span className="ml-1 text-xs font-normal text-neutral-400">(수정 불가)</span>}
-            </label>
-            <div className="flex gap-3">
-              {(['IMAGE', 'HTML'] as const).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  disabled={isEdit}
-                  onClick={() => !isEdit && handleTypeChange(t)}
-                  className={[
-                    'flex-1 py-3 rounded-xl border-2 text-sm font-medium transition-all',
-                    isEdit ? 'cursor-default opacity-75' : 'cursor-pointer',
-                    bannerType === t
-                      ? 'border-primary-500 bg-primary-50 text-primary-900'
-                      : 'border-neutral-200 text-neutral-500 hover:border-neutral-300',
-                  ].join(' ')}
-                >
-                  {t === 'IMAGE' ? '🖼 이미지형' : '📝 HTML형'}
-                  <p className="text-xs font-normal mt-0.5 opacity-70">
-                    {t === 'IMAGE' ? '클릭 가능한 이미지 배너' : 'TipTap 리치 텍스트'}
-                  </p>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-2">
-              언어 <span className="text-red-500">*</span>
-              {isEdit && <span className="ml-1 text-xs font-normal text-neutral-400">(수정 불가)</span>}
-            </label>
-            <div className="flex gap-3">
-              {(['KO', 'EN'] as const).map((l) => (
-                <label
-                  key={l}
-                  className={[
-                    'flex items-center gap-2 px-4 py-2.5 rounded-lg border cursor-pointer transition-all',
-                    isEdit ? 'cursor-default opacity-75' : '',
-                    watch('language') === l
-                      ? 'border-primary-500 bg-primary-50 text-primary-900'
-                      : 'border-neutral-200 text-neutral-600',
-                  ].join(' ')}
-                >
-                  <Controller
-                    name="language"
-                    control={control}
-                    render={({ field }) => (
-                      <input
-                        type="radio"
-                        checked={field.value === l}
-                        onChange={() => !isEdit && field.onChange(l)}
-                        disabled={isEdit}
-                        className="accent-primary-800"
-                      />
-                    )}
-                  />
-                  <span className="text-sm font-medium">{l === 'KO' ? '🇰🇷 한국어' : '🇺🇸 English'}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-        </Section>
-
-        {/* 콘텐츠 */}
-        <Section title="콘텐츠">
-          {bannerType === 'IMAGE' ? (
-            <div className="space-y-5">
-              {/* PC 이미지 */}
-              <ImageDropzone
-                label="PC 이미지"
-                hint="(권장 비율 21:5 — 가로형 와이드)"
-                required
-                uploadedImage={uploadedPcImage}
-                existingImageUrl={existingPcImageUrl}
-                onUpload={handlePcUpload}
-                onRemove={() => { setUploadedPcImage(null); setExistingPcImageUrl(null); setPcImageError(undefined) }}
-                isUploading={isPcUploading}
-                error={pcImageError}
-              />
-
-              {/* 구분선 */}
-              <div className="border-t border-neutral-100" />
-
-              {/* MO 이미지 */}
-              <ImageDropzone
-                label="모바일 이미지"
-                hint="(권장 비율 4:3 — 미등록 시 PC 이미지로 대체)"
-                uploadedImage={uploadedMoImage}
-                existingImageUrl={existingMoImageUrl}
-                onUpload={handleMoUpload}
-                onRemove={() => { setUploadedMoImage(null); setExistingMoImageUrl(null); setMoImageError(undefined) }}
-                isUploading={isMoUploading}
-                error={moImageError}
-              />
-
-              {/* 링크 */}
-              <div className="border-t border-neutral-100 pt-1">
-                <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-                  링크 URL <span className="text-xs font-normal text-neutral-400">(선택)</span>
-                </label>
-                <input
-                  {...register('linkUrl')}
-                  placeholder="https://example.com"
-                  className="w-full h-10 px-3 text-sm border border-neutral-300 rounded-lg
-                    focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+        <TwoColumnFormLayout
+          left={
+            <>
+              {/* 기본 설정 */}
+              <FormSection title="기본 설정">
+                <AdminTitleField
+                  inputProps={register('adminTitle')}
+                  placeholder="배너 식별용 내부 제목"
+                  error={errors.adminTitle?.message}
                 />
-                {errors.linkUrl && <p className="mt-1 text-xs text-red-600">{errors.linkUrl.message}</p>}
-              </div>
-              <label className="flex items-center gap-2 cursor-pointer select-none">
+
+                <PromoTypeField
+                  label="배너 타입"
+                  isEdit={isEdit}
+                  value={bannerType}
+                  onChange={handleTypeChange}
+                />
+
                 <Controller
-                  name="linkTargetBlank"
+                  name="language"
                   control={control}
                   render={({ field }) => (
-                    <input
-                      type="checkbox"
-                      checked={field.value}
-                      onChange={field.onChange}
-                      className="w-4 h-4 accent-primary-800 rounded"
-                    />
+                    <PromoLanguageField isEdit={isEdit} value={field.value} onChange={field.onChange} />
                   )}
                 />
-                <span className="text-sm text-neutral-700">새 탭에서 열기</span>
-              </label>
-            </div>
-          ) : (
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-                내용 <span className="text-red-500">*</span>
-              </label>
-              <Controller
-                name="content"
-                control={control}
-                render={({ field }) => (
-                  <HtmlEditorField
-                    value={field.value ?? ''}
-                    onChange={field.onChange}
-                    onImageUploadError={(msg) => showToast(msg, 'error')}
-                    placeholder="배너 내용을 입력하세요..."
-                  />
+              </FormSection>
+
+              {/* 콘텐츠 */}
+              <FormSection title="콘텐츠">
+                {bannerType === 'IMAGE' ? (
+                  <div className="space-y-5">
+                    {/* PC 이미지 */}
+                    <PromoImageDropzone
+                      label="PC 이미지"
+                      hint="(권장 비율 21:5 — 가로형 와이드)"
+                      required
+                      alt="배너 미리보기"
+                      heightClass="h-36"
+                      previewClass="max-h-40"
+                      dropText="드래그하거나 클릭하여 업로드"
+                      uploadedImage={uploadedPcImage}
+                      existingImageUrl={existingPcImageUrl}
+                      onUpload={handlePcUpload}
+                      onRemove={() => { setUploadedPcImage(null); setExistingPcImageUrl(null); setPcImageError(undefined) }}
+                      isUploading={isPcUploading}
+                      error={pcImageError}
+                    />
+
+                    {/* 구분선 */}
+                    <div className="border-t border-neutral-100" />
+
+                    {/* MO 이미지 */}
+                    <PromoImageDropzone
+                      label="모바일 이미지"
+                      hint="(권장 비율 4:3 — 미등록 시 PC 이미지로 대체)"
+                      alt="배너 미리보기"
+                      heightClass="h-36"
+                      previewClass="max-h-40"
+                      dropText="드래그하거나 클릭하여 업로드"
+                      uploadedImage={uploadedMoImage}
+                      existingImageUrl={existingMoImageUrl}
+                      onUpload={handleMoUpload}
+                      onRemove={() => { setUploadedMoImage(null); setExistingMoImageUrl(null); setMoImageError(undefined) }}
+                      isUploading={isMoUploading}
+                      error={moImageError}
+                    />
+
+                    {/* 링크 */}
+                    <div className="border-t border-neutral-100 pt-1">
+                      <PromoLinkUrlField inputProps={register('linkUrl')} error={errors.linkUrl?.message} />
+                    </div>
+                    <Controller
+                      name="linkTargetBlank"
+                      control={control}
+                      render={({ field }) => (
+                        <NewTabCheckbox checked={field.value} onChange={field.onChange} />
+                      )}
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1.5">
+                      내용 <span className="text-red-500">*</span>
+                    </label>
+                    <Controller
+                      name="content"
+                      control={control}
+                      render={({ field }) => (
+                        <HtmlEditorField
+                          value={field.value ?? ''}
+                          onChange={field.onChange}
+                          onImageUploadError={(msg) => showToast(msg, 'error')}
+                          placeholder="배너 내용을 입력하세요..."
+                        />
+                      )}
+                    />
+                    {errors.content && <p className="mt-1 text-xs text-red-600">{errors.content.message}</p>}
+                  </div>
                 )}
-              />
-              {errors.content && <p className="mt-1 text-xs text-red-600">{errors.content.message}</p>}
-            </div>
-          )}
-        </Section>
-
-          </div>
-
-          {/* ── 우측: 미리보기 · 노출 설정 (PC에서 우측 고정) ── */}
-          <div className="space-y-5 lg:sticky lg:top-6">
-
-        {/* 미리보기 */}
-        <Section title="미리보기">
-          <BannerPreview
-            bannerType={bannerType}
-            pcImageUrl={pcPreviewUrl}
-            moImageUrl={moPreviewUrl}
-            content={content}
-            linkUrl={linkUrl || undefined}
-          />
-        </Section>
-
-        {/* 노출 설정 */}
-        <Section title="노출 설정">
-          <Controller
-            name="isVisible"
-            control={control}
-            render={({ field }) => (
-              <ToggleSwitch
-                checked={field.value}
-                onChange={field.onChange}
-                label="배너 노출"
-                description={isVisible ? '사용자에게 배너가 노출됩니다.' : '저장만 되고 노출되지 않습니다.'}
-              />
-            )}
-          />
-          {/* 노출 ON일 때만 상시 노출 / 게시 기간 설정 표시 */}
-          {isVisible && (
-            <div className="space-y-3">
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <Controller
-                  name="isAlwaysVisible"
-                  control={control}
-                  render={({ field }) => (
-                    <input
-                      type="checkbox"
-                      checked={field.value}
-                      onChange={field.onChange}
-                      className="w-4 h-4 accent-primary-800 rounded"
-                    />
-                  )}
+              </FormSection>
+            </>
+          }
+          right={
+            <>
+              {/* 미리보기 */}
+              <FormSection title="미리보기">
+                <BannerPreview
+                  bannerType={bannerType}
+                  pcImageUrl={pcPreviewUrl}
+                  moImageUrl={moPreviewUrl}
+                  content={content}
+                  linkUrl={linkUrl || undefined}
                 />
-                <span className="text-sm font-medium text-neutral-700">상시 노출</span>
-                <span className="text-xs text-neutral-400">(기간 설정 무시)</span>
-              </label>
+              </FormSection>
 
-              {!isAlwaysVisible && (
-                <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-                  노출하려면 <strong>상시 노출</strong>을 체크하거나 <strong>시작일시·종료일시</strong>를 모두 입력해야 합니다.
-                </p>
-              )}
-
-              <div className={`grid grid-cols-2 gap-3 ${isAlwaysVisible ? 'opacity-40 pointer-events-none' : ''}`}>
-                <div>
-                  <label className="block text-xs font-medium text-neutral-500 mb-1">시작일시</label>
-                  <input
-                    type="datetime-local"
-                    {...register('startAt')}
-                    disabled={isAlwaysVisible}
-                    className="w-full h-9 px-2 text-sm border border-neutral-300 rounded-lg
-                      focus:ring-2 focus:ring-primary-500 outline-none disabled:bg-neutral-100"
-                  />
-                  {errors.startAt && <p className="mt-1 text-xs text-red-600">{errors.startAt.message}</p>}
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-neutral-500 mb-1">종료일시</label>
-                  <input
-                    type="datetime-local"
-                    {...register('endAt')}
-                    min={startAt || undefined}
-                    disabled={isAlwaysVisible}
-                    className="w-full h-9 px-2 text-sm border border-neutral-300 rounded-lg
-                      focus:ring-2 focus:ring-primary-500 outline-none disabled:bg-neutral-100"
-                  />
-                  {errors.endAt && <p className="mt-1 text-xs text-red-600">{errors.endAt.message}</p>}
-                </div>
-              </div>
-            </div>
-          )}
-        </Section>
-
-          </div>
-        </div>
+              {/* 노출 설정 */}
+              <FormSection title="노출 설정">
+                <PromoScheduleFields
+                  visibleLabel="배너 노출"
+                  visibleOnDescription="사용자에게 배너가 노출됩니다."
+                  visibleOffDescription="저장만 되고 노출되지 않습니다."
+                  isVisible={visibleField.value}
+                  onVisibleChange={visibleField.onChange}
+                  isAlwaysVisible={alwaysVisibleField.value}
+                  onAlwaysVisibleChange={alwaysVisibleField.onChange}
+                  startAtProps={register('startAt')}
+                  endAtProps={register('endAt')}
+                  startAt={startAt}
+                  startAtError={errors.startAt?.message}
+                  endAtError={errors.endAt?.message}
+                />
+              </FormSection>
+            </>
+          }
+        />
 
         {/* 액션 */}
-        <div className="flex items-center gap-3 pt-1">
-          <Button variant="secondary" onClick={() => navigate('/admin/banners')} disabled={isPending}>
-            취소
-          </Button>
-          <div className="flex-1" />
-          <Button variant="primary" isLoading={isPending} onClick={handleSubmit(onSubmit)}>
-            저장
-          </Button>
-        </div>
+        <PromoFormActions
+          onCancel={() => navigate('/admin/banners')}
+          onSave={handleSubmit(onSubmit)}
+          isPending={isPending}
+        />
       </form>
     </div>
   )

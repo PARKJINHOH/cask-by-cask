@@ -43,6 +43,24 @@ export interface SpiritDetail extends SpiritListItem {
   otherDetail: OtherDetailResponse | null
 }
 
+/** 같은 이름의 다른 배치·병입 제품 (술 상세 "다른 배치 · 병입" 목록) */
+export interface SpiritVariant {
+  id: number
+  nameKo: string
+  nameEn: string
+  category: SpiritCategory
+  bottledYear: number | null
+  vintageYear: number | null
+  abv: number | null
+  volumeMl: number | null
+  batchNo: string | null
+  bottleNo: string | null
+  bottledDate: string | null
+  avgScore: number | null
+  reviewCount: number
+  primaryImageUrl: string | null
+}
+
 // ── 카테고리 상세 Enum 타입 ────────────────────────────────────
 export type WhiskyStyle = 'SINGLE_MALT' | 'BLENDED_MALT' | 'BLENDED_WHISKY' | 'BOURBON' | 'TENNESSEE' | 'RYE' | 'POT_STILL' | 'GRAIN_CORN' | 'OTHER'
 export type BottlingType = 'OB' | 'IB'

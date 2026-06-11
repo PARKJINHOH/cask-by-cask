@@ -75,6 +75,12 @@ public class SpiritController {
         return ResponseEntity.ok(ApiResponse.success(spiritService.getSpiritDetail(id)));
     }
 
+    /** 같은 이름의 다른 배치·병입 제품 목록 */
+    @GetMapping("/{id}/variants")
+    public ResponseEntity<ApiResponse<List<SpiritVariantResponse>>> getVariants(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(spiritService.getSpiritVariants(id)));
+    }
+
     @PostMapping("/requests")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<SpiritRegisterRequestResponse>> submitRequest(

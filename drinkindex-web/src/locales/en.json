@@ -417,7 +417,11 @@
       "backToList": "Back to list",
       "reportError": "Report Error",
       "reportErrorTitle": "[Data Error] {{name}}",
-      "reportErrorBody": "▸ Spirit ID: {{id}}\n▸ Spirit name: {{name}}\n\nPlease tell us which field is incorrect and the correct information.\n"
+      "reportErrorBody": "▸ Spirit ID: {{id}}\n▸ Spirit name: {{name}}\n\nPlease tell us which field is incorrect and the correct information.\n",
+      "variantsTitle": "Other Batches & Bottlings",
+      "variantsHint": "Other bottlings registered under the same name",
+      "variantsBatch": "Batch",
+      "variantsBottled": "Bottled"
     },
     "status": {
       "ACTIVE": "Active",

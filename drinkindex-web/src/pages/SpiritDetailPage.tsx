@@ -1,7 +1,7 @@
-﻿import { useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useSpiritDetail } from '@/domain/spirit/hooks/useSpiritDetail'
+import { useSpiritDetail, useSpiritVariants } from '@/domain/spirit/hooks/useSpiritDetail'
 import { localizeCountry } from '@/shared/utils/countryName'
 import { localizeRegion } from '@/shared/utils/regionName'
 import Badge from '@/shared/components/Badge'
@@ -17,7 +17,7 @@ import CommentList from '@/domain/comment/components/CommentList'
 import WishlistButtons from '@/domain/wishlist/components/WishlistButtons'
 import SeoMeta, { buildCanonical, SITE_URL } from '@/shared/components/SeoMeta'
 import { DEFAULT_OG_IMAGE } from '@/shared/config/site'
-import type { SpiritDetail, SpiritImage } from '@/domain/spirit/types/spirit.types'
+import type { SpiritDetail, SpiritImage, SpiritVariant } from '@/domain/spirit/types/spirit.types'
 import PriceRangeChart from '@/domain/pricetracker/components/PriceRangeChart'
 import StoreDetailPanel from '@/domain/pricetracker/components/StoreDetailPanel'
 import PriceAlertInline from '@/domain/pricetracker/components/PriceAlertInline'
@@ -519,6 +519,78 @@ function TabBar({ active, onChange }: { active: Tab; onChange: (t: Tab) => void 
   )
 }
 
+// ── 같은 이름의 다른 배치 · 병입 목록 (PC: 우측 사이드 / 모바일: 헤더 아래) ──
+function VariantsPanel({ variants, isEn }: { variants: SpiritVariant[]; isEn: boolean }) {
+  const { t } = useTranslation()
+  if (variants.length === 0) return null
+  return (
+    <div className="bg-white rounded-3xl shadow-[0_8px_40px_-12px_rgba(17,24,39,0.12)] ring-1 ring-neutral-100 p-5">
+      <div className="flex items-center gap-2 mb-1">
+        <h2 className="text-[15px] font-bold text-neutral-900">{t('spirit.detail.variantsTitle')}</h2>
+        <span className="text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-100
+          rounded-full px-1.5 py-0.5">
+          {variants.length}
+        </span>
+      </div>
+      <p className="text-[11px] text-neutral-400 mb-2">{t('spirit.detail.variantsHint')}</p>
+      <ul className="divide-y divide-neutral-100">
+        {variants.map((v) => {
+          const name = isEn ? (v.nameEn || v.nameKo) : v.nameKo
+          const chips = [
+            v.batchNo ? `${t('spirit.detail.variantsBatch')} ${v.batchNo}` : null,
+            v.bottledDate
+              ? `${t('spirit.detail.variantsBottled')} ${v.bottledDate}`
+              : (v.bottledYear ? `${t('spirit.detail.variantsBottled')} ${v.bottledYear}` : null),
+            v.vintageYear ? `${t('spirit.detail.vintageYear')} ${v.vintageYear}` : null,
+            v.abv != null ? `${v.abv}%` : null,
+            v.volumeMl ? `${v.volumeMl}ml` : null,
+          ].filter(Boolean) as string[]
+          return (
+            <li key={v.id}>
+              <Link to={`/spirits/${v.id}`} className="flex items-center gap-3 py-2.5 group">
+                <div className="w-10 h-[52px] rounded-lg overflow-hidden bg-gradient-to-b from-amber-50
+                  to-amber-100/50 ring-1 ring-neutral-100 flex-shrink-0 flex items-center justify-center">
+                  {v.primaryImageUrl ? (
+                    <img src={v.primaryImageUrl} alt={name} loading="lazy" decoding="async"
+                      className="w-full h-full object-contain p-0.5" />
+                  ) : (
+                    <span className="text-lg">🥃</span>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-semibold text-neutral-900 truncate
+                    group-hover:text-primary-800 transition-colors">
+                    {name}
+                  </p>
+                  {chips.length > 0 && (
+                    <p className="text-[11px] text-neutral-400 truncate mt-0.5">{chips.join(' · ')}</p>
+                  )}
+                  <p className="text-[11px] mt-0.5">
+                    {v.avgScore != null ? (
+                      <>
+                        <b className="text-amber-700">{Number(v.avgScore).toFixed(1)}</b>
+                        <span className="text-neutral-400">
+                          {' '}/ 100 · {t('review.scoreCount', { n: v.reviewCount })}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-neutral-300">{t('review.noScore')}</span>
+                    )}
+                  </p>
+                </div>
+                <svg className="w-4 h-4 text-neutral-300 group-hover:text-primary-800 flex-shrink-0
+                  transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="9,6 15,12 9,18" />
+                </svg>
+              </Link>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
+
 // ── Main Page ─────────────────────────────────────────────
 
 export default function SpiritDetailPage() {
@@ -536,6 +608,16 @@ export default function SpiritDetailPage() {
   const { data: spirit, isLoading } = useSpiritDetail(spiritId)
   // SEO Review 스키마용 — 첫 페이지 (ReviewList 와 동일 queryKey 라 캐시 공유)
   const { data: reviewsPage } = useReviews(spiritId, 0)
+  // 같은 이름의 다른 배치·병입 제품 목록
+  const { data: variants = [] } = useSpiritVariants(spiritId)
+  const hasVariants = variants.length > 0
+
+  // 변형(다른 배치) 간 이동 시 갤러리·탭 상태 초기화
+  useEffect(() => {
+    setSelectedImg(0)
+    setActiveTab('reviews')
+    setLightboxIdx(-1)
+  }, [spiritId])
 
   if (isLoading) return <Spinner fullscreen />
 
@@ -619,7 +701,7 @@ export default function SpiritDetailPage() {
   ])
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-6">
+    <div className={`${hasVariants ? 'max-w-6xl' : 'max-w-5xl'} mx-auto px-4 py-6`}>
       <SeoMeta
         title={primaryName}
         description={isEn
@@ -642,6 +724,8 @@ export default function SpiritDetailPage() {
         {t('common.back')}
       </button>
 
+      <div className={hasVariants ? 'lg:flex lg:items-start lg:gap-6' : ''}>
+      <div className="flex-1 min-w-0">
       {/* Header card */}
       <div className="bg-white rounded-3xl shadow-[0_8px_40px_-12px_rgba(17,24,39,0.12)] ring-1 ring-neutral-100 mb-6 overflow-hidden">
         <div className="md:flex">
@@ -724,6 +808,13 @@ export default function SpiritDetailPage() {
         </div>
       </div>
 
+      {/* 모바일: 같은 이름의 다른 배치 목록 — 헤더 카드 아래 */}
+      {hasVariants && (
+        <div className="lg:hidden mb-6">
+          <VariantsPanel variants={variants} isEn={isEn} />
+        </div>
+      )}
+
       {/* 카테고리 상세 정보 + Tabs */}
       <div className="space-y-6">
         <SpiritDetailSections spirit={spirit} isEn={isEn} />
@@ -741,6 +832,16 @@ export default function SpiritDetailPage() {
           )}
         </div>
         </div>
+      </div>
+      </div>
+
+      {/* PC: 같은 이름의 다른 배치 목록 — 우측 사이드 */}
+      {hasVariants && (
+        <aside className="hidden lg:block w-[300px] flex-shrink-0 lg:sticky lg:top-24
+          lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
+          <VariantsPanel variants={variants} isEn={isEn} />
+        </aside>
+      )}
       </div>
 
       <ImageLightbox
