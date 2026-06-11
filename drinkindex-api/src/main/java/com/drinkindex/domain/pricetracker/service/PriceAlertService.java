@@ -34,8 +34,7 @@ public class PriceAlertService {
     public PriceAlertResponse upsertPriceAlert(Long userId, UpsertPriceAlertRequest request) {
         Spirit spirit = spiritRepository.findById(request.spiritId())
                 .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_NOT_FOUND));
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User user = userRepository.getByIdOrThrow(userId);
 
         // 술 1개당 1개 — 있으면 목표가 갱신 + 활성화
         PriceAlert alert = priceAlertRepository

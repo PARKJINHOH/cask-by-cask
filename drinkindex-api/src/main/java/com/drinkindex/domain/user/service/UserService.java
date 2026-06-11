@@ -235,8 +235,7 @@ public class UserService {
     }
 
     private User findUser(Long userId) {
-        return userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        return userRepository.getByIdOrThrow(userId);
     }
 
     private String generateTempPassword() {

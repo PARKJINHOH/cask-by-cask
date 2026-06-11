@@ -14,13 +14,13 @@ import com.drinkindex.domain.user.repository.UserRepository;
 import com.drinkindex.global.exception.CustomException;
 import com.drinkindex.global.exception.ErrorCode;
 import com.drinkindex.global.storage.FileStorageService;
-import com.drinkindex.global.storage.ImageUploadResult;
+import com.drinkindex.global.storage.ValidatedImageUploader;
+import com.drinkindex.global.storage.ValidatedImageUploader.StoredImage;
+import com.drinkindex.global.util.HtmlImageUrlExtractor;
 import com.drinkindex.global.util.HtmlSanitizer;
-import com.drinkindex.global.util.NoticeImageValidator;
 import com.querydsl.core.BooleanBuilder;
 import com.drinkindex.domain.notice.entity.QNotice;
 import lombok.RequiredArgsConstructor;
-import org.jsoup.Jsoup;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -29,8 +29,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.time.YearMonth;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -44,7 +42,7 @@ public class NoticeService {
     private final NoticeRecommendRepository noticeRecommendRepository;
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
-    private final NoticeImageValidator noticeImageValidator;
+    private final ValidatedImageUploader validatedImageUploader;
     private final HtmlSanitizer htmlSanitizer;
     private final NoticeViewCountService noticeViewCountService;
 
@@ -110,8 +108,7 @@ public class NoticeService {
                 })
                 .orElseGet(() -> {
                     // 미추천 → 추천
-                    User user = userRepository.findById(userId)
-                            .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+                    User user = userRepository.getByIdOrThrow(userId);
                     noticeRecommendRepository.save(
                             NoticeRecommend.builder().notice(notice).user(user).build());
                     notice.increaseRecommendCount();
@@ -158,8 +155,7 @@ public class NoticeService {
         //   프론트 DOMPurify만으로는 불충분 — API 직접 호출 시 우회 가능.
         String contentSanitized = htmlSanitizer.sanitizeLegal(request.getContent());
 
-        User author = userRepository.findById(authorId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User author = userRepository.getByIdOrThrow(authorId);
 
         Notice notice = Notice.builder()
                 .title(request.getTitle())
@@ -227,27 +223,19 @@ public class NoticeService {
 
     @Transactional
     public NoticeImageResponse uploadImage(MultipartFile file, Long uploaderId) {
-        // [보안] 4단계 검증: 크기 → 확장자 → Magic Bytes → UUID 파일명 생성
-        String mimeType = noticeImageValidator.validate(file);
-        String originalSavedFileName = noticeImageValidator.generateSavedFileName(file.getOriginalFilename());
+        // [보안] 4단계 검증 + 연월별 디렉토리 저장 (공통 흐름)
+        StoredImage stored = validatedImageUploader.upload(file, "notices");
 
-        // 연월별 디렉토리 분리 (예: notices/202506)
-        String subPath = "notices/" + YearMonth.now().format(DateTimeFormatter.ofPattern("yyyyMM"));
-
-        // 원본 보관 + WebP 변환본 동시 저장. JPG/PNG 는 .webp 가 서빙됨.
-        ImageUploadResult result = fileStorageService.uploadImage(file, originalSavedFileName, subPath, mimeType);
-
-        User uploader = userRepository.findById(uploaderId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User uploader = userRepository.getByIdOrThrow(uploaderId);
 
         // notice=null, isUsed=false: 공지 저장 전 임시 상태
         NoticeImage noticeImage = NoticeImage.builder()
                 .originalFileName(file.getOriginalFilename())
-                .savedFileName(result.savedFileName())
-                .subPath(subPath)
+                .savedFileName(stored.savedFileName())
+                .subPath(stored.subPath())
                 .fileSize(file.getSize())
-                .mimeType(result.mimeType())
-                .imageUrl(result.imageUrl())
+                .mimeType(stored.mimeType())
+                .imageUrl(stored.imageUrl())
                 .uploadedBy(uploader)
                 .build();
 
@@ -278,10 +266,7 @@ public class NoticeService {
      * - 이전에 연결됐으나 새 본문에서 제거된 이미지 → isUsed=false
      */
     private void syncImageUsage(Notice notice, String htmlContent) {
-        Set<String> usedImageUrls = Jsoup.parse(htmlContent).select("img[src]").stream()
-                .map(el -> el.attr("src"))
-                .filter(src -> !src.isBlank())
-                .collect(Collectors.toSet());
+        Set<String> usedImageUrls = HtmlImageUrlExtractor.extract(htmlContent);
 
         // 기존 연결 이미지 중 새 본문에 없는 것 → 연결 해제
         noticeImageRepository.findByNoticeId(notice.getId()).forEach(img -> {

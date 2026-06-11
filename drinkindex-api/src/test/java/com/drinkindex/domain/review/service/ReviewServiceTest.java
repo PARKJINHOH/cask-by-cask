@@ -76,7 +76,7 @@ class ReviewServiceTest {
 
         given(spiritRepository.findByIdAndStatus(1L, SpiritStatus.ACTIVE))
                 .willReturn(Optional.of(spirit));
-        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(userRepository.getByIdOrThrow(1L)).willReturn(user);
         given(reviewRepository.existsBySpiritIdAndUserId(1L, 1L)).willReturn(false);
 
         Review savedReview = buildReview(spirit, user, 90, 85, 88, "훌륭합니다", new BigDecimal("87.7"));
@@ -100,7 +100,7 @@ class ReviewServiceTest {
 
         given(spiritRepository.findByIdAndStatus(1L, SpiritStatus.ACTIVE))
                 .willReturn(Optional.of(spirit));
-        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(userRepository.getByIdOrThrow(1L)).willReturn(user);
         given(reviewRepository.existsBySpiritIdAndUserId(1L, 1L)).willReturn(false);
 
         Review savedReview = buildReview(spirit, user, 80, 80, 80, null, new BigDecimal("80.0"));
@@ -124,7 +124,7 @@ class ReviewServiceTest {
 
         given(spiritRepository.findByIdAndStatus(1L, SpiritStatus.ACTIVE))
                 .willReturn(Optional.of(spirit));
-        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(userRepository.getByIdOrThrow(1L)).willReturn(user);
         given(reviewRepository.existsBySpiritIdAndUserId(1L, 1L)).willReturn(true);
 
         assertThatThrownBy(() -> reviewService.createReview(1L, 1L, request))
@@ -140,7 +140,7 @@ class ReviewServiceTest {
 
         given(spiritRepository.findByIdAndStatus(1L, SpiritStatus.ACTIVE))
                 .willReturn(Optional.of(spirit));
-        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(userRepository.getByIdOrThrow(1L)).willReturn(user);
         // SQLRestriction으로 인해 soft delete된 리뷰는 existsBy에서 제외됨
         given(reviewRepository.existsBySpiritIdAndUserId(1L, 1L)).willReturn(false);
 

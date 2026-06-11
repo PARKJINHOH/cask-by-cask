@@ -67,8 +67,7 @@ public class EmojiService {
 
         CommunityEmoji emoji = emojiRepository.findById(emojiId)
                 .orElseThrow(() -> new CustomException(ErrorCode.EMOJI_NOT_FOUND));
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User user = userRepository.getByIdOrThrow(userId);
 
         reactionRepository.findByTargetTypeAndTargetIdAndEmojiIdAndUserId(targetType, targetId, emojiId, userId)
                 .ifPresentOrElse(

@@ -154,10 +154,8 @@ public class UserController {
                 .ifPresentOrElse(
                         userBlockRepository::delete,
                         () -> {
-                            User blocker = userRepository.findById(blockerId)
-                                    .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-                            User blocked = userRepository.findById(userId)
-                                    .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+                            User blocker = userRepository.getByIdOrThrow(blockerId);
+                            User blocked = userRepository.getByIdOrThrow(userId);
                             userBlockRepository.save(
                                     UserBlock.builder().blocker(blocker).blocked(blocked).build());
                         }

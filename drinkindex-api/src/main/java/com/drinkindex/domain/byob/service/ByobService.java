@@ -480,8 +480,7 @@ public class ByobService {
     }
 
     private User findUser(Long id) {
-        return userRepository.findById(id)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        return userRepository.getByIdOrThrow(id);
     }
 
     private ByobParticipant findParticipant(Long id) {

@@ -75,8 +75,7 @@ public class CalendarEventService {
 
     @Transactional
     public AdminEventResponse createEvent(CreateEventRequest request, Long creatorId) {
-        User creator = userRepository.findById(creatorId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User creator = userRepository.getByIdOrThrow(creatorId);
 
         CalendarEvent event = CalendarEvent.builder()
                 .title(request.getTitle())

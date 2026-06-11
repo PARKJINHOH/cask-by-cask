@@ -31,8 +31,7 @@ public class UserBottleService {
 
     @Transactional
     public UserBottleResponse createBottle(Long userId, UserBottleRequest req) {
-        var user = userRepository.findById(userId)
-            .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        var user = userRepository.getByIdOrThrow(userId);
         Spirit spirit = resolveSpirit(req.spiritId());
 
         UserBottle bottle = UserBottle.builder()
@@ -55,8 +54,7 @@ public class UserBottleService {
 
     public UserBottleListResponse getPublicBottles(Long userId, SpiritCategory category, Pageable pageable) {
         // 공개 페이지 제목에 표시할 보틀 소유자 닉네임 (존재하지 않으면 404)
-        String ownerNickname = userRepository.findById(userId)
-            .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND))
+        String ownerNickname = userRepository.getByIdOrThrow(userId)
             .getNickname();
         Page<UserBottle> page = userBottleQueryRepository.findPublicByUser(userId, category, pageable);
         long total = page.getTotalElements();

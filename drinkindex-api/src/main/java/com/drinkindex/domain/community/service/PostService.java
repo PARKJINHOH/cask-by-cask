@@ -561,8 +561,7 @@ public class PostService {
     }
 
     private User findUser(Long id) {
-        return userRepository.findById(id)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        return userRepository.getByIdOrThrow(id);
     }
 
     // [패치 9] 소식 게시판 증류소 태그 해석.

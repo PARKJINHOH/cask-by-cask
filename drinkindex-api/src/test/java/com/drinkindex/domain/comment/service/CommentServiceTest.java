@@ -79,7 +79,7 @@ class CommentServiceTest {
     void createComment_parentComment_success() {
         given(spiritRepository.findByIdAndStatus(1L, SpiritStatus.ACTIVE))
                 .willReturn(Optional.of(spirit));
-        given(userRepository.findById(1L)).willReturn(Optional.of(owner));
+        given(userRepository.getByIdOrThrow(1L)).willReturn(owner);
 
         CommunityComment saved = buildComment(1L, spirit, owner, null, "좋은 위스키입니다");
         given(commentRepository.save(any())).willReturn(saved);
@@ -98,7 +98,7 @@ class CommentServiceTest {
 
         given(spiritRepository.findByIdAndStatus(1L, SpiritStatus.ACTIVE))
                 .willReturn(Optional.of(spirit));
-        given(userRepository.findById(2L)).willReturn(Optional.of(other));
+        given(userRepository.getByIdOrThrow(2L)).willReturn(other);
         given(commentRepository.findByIdAndSpiritId(10L, 1L))
                 .willReturn(Optional.of(parent));
 
@@ -119,7 +119,7 @@ class CommentServiceTest {
 
         given(spiritRepository.findByIdAndStatus(1L, SpiritStatus.ACTIVE))
                 .willReturn(Optional.of(spirit));
-        given(userRepository.findById(2L)).willReturn(Optional.of(other));
+        given(userRepository.getByIdOrThrow(2L)).willReturn(other);
         given(commentRepository.findByIdAndSpiritId(11L, 1L))
                 .willReturn(Optional.of(parent));
 
@@ -135,7 +135,7 @@ class CommentServiceTest {
     void createComment_wrongSpiritParent_throwsNotFound() {
         given(spiritRepository.findByIdAndStatus(1L, SpiritStatus.ACTIVE))
                 .willReturn(Optional.of(spirit));
-        given(userRepository.findById(1L)).willReturn(Optional.of(owner));
+        given(userRepository.getByIdOrThrow(1L)).willReturn(owner);
         given(commentRepository.findByIdAndSpiritId(99L, 1L))
                 .willReturn(Optional.empty());
 
@@ -231,7 +231,7 @@ class CommentServiceTest {
         CommunityComment comment = buildComment(10L, spirit, owner, null, "내용");
 
         given(commentRepository.findById(10L)).willReturn(Optional.of(comment));
-        given(userRepository.findById(2L)).willReturn(Optional.of(other));
+        given(userRepository.getByIdOrThrow(2L)).willReturn(other);
         given(commentLikeRepository.existsByCommentIdAndUserId(10L, 2L)).willReturn(false);
         given(commentLikeRepository.save(any())).willReturn(
                 CommentLike.builder().comment(comment).user(other).build());
@@ -249,7 +249,7 @@ class CommentServiceTest {
         ReflectionTestUtils.setField(comment, "likeCount", 3);
 
         given(commentRepository.findById(10L)).willReturn(Optional.of(comment));
-        given(userRepository.findById(2L)).willReturn(Optional.of(other));
+        given(userRepository.getByIdOrThrow(2L)).willReturn(other);
         given(commentLikeRepository.existsByCommentIdAndUserId(10L, 2L)).willReturn(true);
 
         commentService.toggleLike(10L, 2L);

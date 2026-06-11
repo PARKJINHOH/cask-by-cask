@@ -53,8 +53,7 @@ public class FeedbackService {
 
     @Transactional
     public Long create(Long userId, FeedbackCreateRequest request, List<MultipartFile> images) {
-        User author = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User author = userRepository.getByIdOrThrow(userId);
 
         String imageUrlsStr = uploadImages(images);
 
@@ -156,8 +155,7 @@ public class FeedbackService {
     public void addComment(Long userId, Role role, Long id, FeedbackCommentRequest request) {
         boolean isAdmin = isAdmin(role);
         Feedback feedback = findAccessible(id, userId, isAdmin);
-        User author = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User author = userRepository.getByIdOrThrow(userId);
 
         FeedbackComment comment = FeedbackComment.builder()
                 .feedback(feedback)

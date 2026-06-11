@@ -12,8 +12,6 @@ import com.drinkindex.domain.score.repository.ScoreHistoryRepository;
 import com.drinkindex.domain.user.entity.User;
 import com.drinkindex.domain.user.entity.enums.Role;
 import com.drinkindex.domain.user.repository.UserRepository;
-import com.drinkindex.global.exception.CustomException;
-import com.drinkindex.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -52,8 +50,7 @@ public class ScoreService {
     @Transactional
     public void deductByReference(Long userId, String originalAction,
                                   String referenceType, Long referenceId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User user = userRepository.getByIdOrThrow(userId);
 
         // [패치 3] MEMBER만 레벨 집계 대상 — 관리자·증류소는 차감도 스킵
         if (!isScoreEligible(user)) return;
@@ -80,8 +77,7 @@ public class ScoreService {
 
     @Transactional
     public void adminAdjust(Long targetUserId, Integer amount, String description, Long adminId) {
-        User user = userRepository.findById(targetUserId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User user = userRepository.getByIdOrThrow(targetUserId);
 
         // [패치 3] 관리자·증류소 담당자는 레벨 미집계 — 수동 조정 대상에서도 제외
         if (!isScoreEligible(user)) return;
@@ -106,8 +102,7 @@ public class ScoreService {
         ScoreConfig config = scoreConfigRepository.findByActionType(actionType).orElse(null);
         if (config == null || !config.getIsActive()) return;
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User user = userRepository.getByIdOrThrow(userId);
 
         // [패치 3] MEMBER만 레벨 집계 대상 — SUPER_ADMIN·ADMIN·MODERATOR·증류소(PARTNER) 적립/차감 모두 스킵
         if (!isScoreEligible(user)) return;

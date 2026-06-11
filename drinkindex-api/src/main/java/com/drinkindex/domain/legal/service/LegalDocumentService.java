@@ -65,8 +65,7 @@ public class LegalDocumentService {
 
     @Transactional
     public LegalDocumentResponse create(CreateLegalDocumentRequest request, Long authorId) {
-        User author = userRepository.findById(authorId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User author = userRepository.getByIdOrThrow(authorId);
 
         String sanitized = htmlSanitizer.sanitizeLegal(request.content());
 

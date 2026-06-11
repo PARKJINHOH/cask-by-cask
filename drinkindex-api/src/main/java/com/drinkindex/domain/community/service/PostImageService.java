@@ -9,19 +9,16 @@ import com.drinkindex.domain.user.repository.UserRepository;
 import com.drinkindex.global.exception.CustomException;
 import com.drinkindex.global.exception.ErrorCode;
 import com.drinkindex.global.storage.FileStorageService;
-import com.drinkindex.global.storage.ImageUploadResult;
-import com.drinkindex.global.util.NoticeImageValidator;
+import com.drinkindex.global.storage.ValidatedImageUploader;
+import com.drinkindex.global.storage.ValidatedImageUploader.StoredImage;
+import com.drinkindex.global.util.HtmlImageUrlExtractor;
 import lombok.RequiredArgsConstructor;
-import org.jsoup.Jsoup;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.time.YearMonth;
-import java.time.format.DateTimeFormatter;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -30,25 +27,22 @@ public class PostImageService {
     private final PostImageRepository postImageRepository;
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
-    private final NoticeImageValidator noticeImageValidator;
+    private final ValidatedImageUploader validatedImageUploader;
 
     @Transactional
     public PostImageUploadResponse upload(MultipartFile file, Long uploaderId) {
-        String mimeType = noticeImageValidator.validate(file);
-        String originalSavedFileName = noticeImageValidator.generateSavedFileName(file.getOriginalFilename());
-        String subPath = "posts/" + YearMonth.now().format(DateTimeFormatter.ofPattern("yyyyMM"));
-        ImageUploadResult result = fileStorageService.uploadImage(file, originalSavedFileName, subPath, mimeType);
+        // [보안] 4단계 검증 + 연월별 디렉토리 저장 (공통 흐름)
+        StoredImage stored = validatedImageUploader.upload(file, "posts");
 
-        User uploader = userRepository.findById(uploaderId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User uploader = userRepository.getByIdOrThrow(uploaderId);
 
         PostImage image = PostImage.builder()
                 .originalFileName(file.getOriginalFilename())
-                .savedFileName(result.savedFileName())
+                .savedFileName(stored.savedFileName())
                 .fileSize(file.getSize())
-                .mimeType(result.mimeType())
-                .imageUrl(result.imageUrl())
-                .subPath(subPath)
+                .mimeType(stored.mimeType())
+                .imageUrl(stored.imageUrl())
+                .subPath(stored.subPath())
                 .uploadedBy(uploader)
                 .build();
 
@@ -77,10 +71,7 @@ public class PostImageService {
     // 게시글 저장/수정 후 content의 img[src] URL을 파싱하여 PostImage 연결
     @Transactional
     public void syncImageUsage(Post post, String htmlContent) {
-        Set<String> usedUrls = Jsoup.parse(htmlContent).select("img[src]").stream()
-                .map(el -> el.attr("src"))
-                .filter(src -> !src.isBlank())
-                .collect(Collectors.toSet());
+        Set<String> usedUrls = HtmlImageUrlExtractor.extract(htmlContent);
 
         // 기존 연결 해제
         postImageRepository.findByPostId(post.getId()).forEach(img -> {

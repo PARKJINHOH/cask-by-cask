@@ -7,8 +7,6 @@ import com.drinkindex.domain.pricetracker.entity.enums.StoreType;
 import com.drinkindex.domain.pricetracker.repository.StoreRepository;
 import com.drinkindex.domain.user.entity.User;
 import com.drinkindex.domain.user.repository.UserRepository;
-import com.drinkindex.global.exception.CustomException;
-import com.drinkindex.global.exception.ErrorCode;
 import com.drinkindex.global.util.BadWordFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -40,8 +38,7 @@ public class StoreService {
         // [패치 5] 매장 제안 시 매장명 욕설 필터 (악의적 매장명 방지)
         badWordFilter.validate(request.displayName());
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User user = userRepository.getByIdOrThrow(userId);
 
         Store store = Store.builder()
                 .displayName(request.displayName())

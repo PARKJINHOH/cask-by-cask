@@ -7,8 +7,6 @@ import com.drinkindex.domain.score.entity.enums.RankingPeriod;
 import com.drinkindex.domain.score.repository.RankingRepository;
 import com.drinkindex.domain.user.entity.User;
 import com.drinkindex.domain.user.repository.UserRepository;
-import com.drinkindex.global.exception.CustomException;
-import com.drinkindex.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -54,8 +52,7 @@ public class RankingService {
 
     @Transactional(readOnly = true)
     public MyRankResponse getMyRank(Long userId, RankingPeriod period) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User user = userRepository.getByIdOrThrow(userId);
 
         LocalDateTime weekStart = getWeekStart();
         LocalDateTime monthStart = getMonthStart();

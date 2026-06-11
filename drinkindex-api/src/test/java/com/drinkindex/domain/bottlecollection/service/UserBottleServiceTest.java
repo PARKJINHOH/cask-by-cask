@@ -41,7 +41,7 @@ class UserBottleServiceTest {
     @DisplayName("바틀 등록 - 자유 텍스트 이름으로 등록 성공")
     void createBottle_freeText_success() {
         User user = mock(User.class);
-        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(userRepository.getByIdOrThrow(1L)).willReturn(user);
 
         UserBottleRequest req = new UserBottleRequest(
             null, "글렌드로낙 18년", SpiritCategory.WHISKY,

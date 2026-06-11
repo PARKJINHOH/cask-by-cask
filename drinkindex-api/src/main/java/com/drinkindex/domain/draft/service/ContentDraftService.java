@@ -47,8 +47,7 @@ public class ContentDraftService {
             throw new CustomException(ErrorCode.DRAFT_LIMIT_EXCEEDED);
         }
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User user = userRepository.getByIdOrThrow(userId);
         ContentDraft saved = contentDraftRepository.save(ContentDraft.builder()
                 .user(user)
                 .draftKey(request.getDraftKey())

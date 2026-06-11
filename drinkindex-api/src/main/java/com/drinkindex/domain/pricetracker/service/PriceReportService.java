@@ -93,8 +93,7 @@ public class PriceReportService {
                 store != null ? store.getId() : null,
                 request.currency(), actualPrice);
 
-        User reporter = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User reporter = userRepository.getByIdOrThrow(userId);
 
         PriceReport report = PriceReport.builder()
                 .spirit(spirit)
@@ -229,8 +228,7 @@ public class PriceReportService {
             throw new CustomException(ErrorCode.DUPLICATE_PRICE_REPORT_REPORT);
         }
 
-        User reporter = userRepository.findById(reporterId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User reporter = userRepository.getByIdOrThrow(reporterId);
 
         PriceReportReport report = PriceReportReport.builder()
                 .priceReport(priceReport)

@@ -6,6 +6,8 @@ import com.drinkindex.domain.user.dto.AuthUserView;
 import com.drinkindex.domain.user.entity.RoleType;
 import com.drinkindex.domain.user.entity.User;
 import com.drinkindex.domain.user.entity.enums.Role;
+import com.drinkindex.global.exception.CustomException;
+import com.drinkindex.global.exception.ErrorCode;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -17,6 +19,12 @@ import java.util.List;
 import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long>, UserQueryRepository {
+
+    /** ID 조회 공통 헬퍼 — 없으면 USER_NOT_FOUND. 서비스 전반의 findById().orElseThrow() 보일러플레이트 제거용 */
+    default User getByIdOrThrow(Long id) {
+        return findById(id)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+    }
 
     Optional<User> findByEmail(String email);
 

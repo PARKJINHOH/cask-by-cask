@@ -61,8 +61,7 @@ public class AdminPriceReportService {
         PriceReport report = priceReportRepository.findById(id)
                 .orElseThrow(() -> new CustomException(ErrorCode.PRICE_REPORT_NOT_FOUND));
 
-        User admin = userRepository.findById(adminId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User admin = userRepository.getByIdOrThrow(adminId);
 
         // [패치 10] 매장 승인 + 가격 승인 통합 처리.
         //   ① request.storeId 제공 → 표준 매장 매핑 (미승인 매장이면 이 자리에서 신규 승인)
@@ -140,8 +139,7 @@ public class AdminPriceReportService {
     public void resolveReport(Long reportId, Long adminId) {
         PriceReportReport report = priceReportReportRepository.findById(reportId)
                 .orElseThrow(() -> new CustomException(ErrorCode.PRICE_REPORT_NOT_FOUND));
-        User admin = userRepository.findById(adminId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User admin = userRepository.getByIdOrThrow(adminId);
         report.resolve(admin);
         priceReportReportRepository.save(report);
     }
@@ -150,8 +148,7 @@ public class AdminPriceReportService {
     public void dismissReport(Long reportId, Long adminId) {
         PriceReportReport report = priceReportReportRepository.findById(reportId)
                 .orElseThrow(() -> new CustomException(ErrorCode.PRICE_REPORT_NOT_FOUND));
-        User admin = userRepository.findById(adminId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User admin = userRepository.getByIdOrThrow(adminId);
         report.dismiss(admin);
         priceReportReportRepository.save(report);
     }

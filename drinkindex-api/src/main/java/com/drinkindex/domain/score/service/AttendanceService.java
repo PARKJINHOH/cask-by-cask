@@ -7,8 +7,6 @@ import com.drinkindex.domain.score.entity.enums.StreakBonus;
 import com.drinkindex.domain.score.repository.AttendanceLogRepository;
 import com.drinkindex.domain.user.entity.User;
 import com.drinkindex.domain.user.repository.UserRepository;
-import com.drinkindex.global.exception.CustomException;
-import com.drinkindex.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,8 +29,7 @@ public class AttendanceService {
             return AttendanceResult.ofAlreadyChecked();
         }
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User user = userRepository.getByIdOrThrow(userId);
 
         LocalDate yesterday = today.minusDays(1);
         int streakCount = yesterday.equals(user.getLastAttendanceDate())

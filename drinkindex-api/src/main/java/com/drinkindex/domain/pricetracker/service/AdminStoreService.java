@@ -65,8 +65,7 @@ public class AdminStoreService {
         if (store.getIsApproved()) {
             throw new CustomException(ErrorCode.STORE_ALREADY_APPROVED);
         }
-        User admin = userRepository.findById(adminId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User admin = userRepository.getByIdOrThrow(adminId);
         store.approve(admin);
         return StoreResponse.from(storeRepository.save(store));
     }

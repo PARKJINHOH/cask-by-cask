@@ -44,8 +44,7 @@ public class PostVideoService {
 
         fileStorageService.upload(file, savedFileName, subPath);
 
-        User uploader = userRepository.findById(uploaderId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User uploader = userRepository.getByIdOrThrow(uploaderId);
 
         PostVideo video = PostVideo.builder()
                 .originalFileName(file.getOriginalFilename())

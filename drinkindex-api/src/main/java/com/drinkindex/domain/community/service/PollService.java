@@ -73,8 +73,7 @@ public class PollService {
             throw new CustomException(ErrorCode.INVALID_VOTE);
         }
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User user = userRepository.getByIdOrThrow(userId);
 
         // 5. 투표 저장 + voteCount 증가
         for (Long optionId : request.getOptionIds()) {

@@ -14,12 +14,12 @@ import com.drinkindex.domain.user.repository.UserRepository;
 import com.drinkindex.global.exception.CustomException;
 import com.drinkindex.global.exception.ErrorCode;
 import com.drinkindex.global.storage.FileStorageService;
-import com.drinkindex.global.storage.ImageUploadResult;
+import com.drinkindex.global.storage.ValidatedImageUploader;
+import com.drinkindex.global.storage.ValidatedImageUploader.StoredImage;
+import com.drinkindex.global.util.HtmlImageUrlExtractor;
 import com.drinkindex.global.util.HtmlSanitizer;
-import com.drinkindex.global.util.NoticeImageValidator;
 import com.drinkindex.global.util.PopupImageRateLimiter;
 import lombok.RequiredArgsConstructor;
-import org.jsoup.Jsoup;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -28,8 +28,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
-import java.time.YearMonth;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -42,7 +40,7 @@ public class PopupService {
     private final PopupImageRepository popupImageRepository;
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
-    private final NoticeImageValidator noticeImageValidator;
+    private final ValidatedImageUploader validatedImageUploader;
     private final HtmlSanitizer htmlSanitizer;
     private final PopupImageRateLimiter popupImageRateLimiter;
 
@@ -84,8 +82,7 @@ public class PopupService {
 
     @Transactional
     public AdminPopupDetailResponse createPopup(CreatePopupRequest request, Long creatorId) {
-        User creator = userRepository.findById(creatorId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User creator = userRepository.getByIdOrThrow(creatorId);
 
         // isAlwaysVisible=true → startAt/endAt 강제 null
         LocalDateTime startAt = Boolean.TRUE.equals(request.getIsAlwaysVisible()) ? null : request.getStartAt();
@@ -203,24 +200,19 @@ public class PopupService {
             throw new CustomException(ErrorCode.POPUP_IMAGE_RATE_LIMIT_EXCEEDED);
         }
 
-        // [보안] 4단계 검증 재사용: 크기 → 확장자 → Magic Bytes → UUID 파일명
-        String mimeType = noticeImageValidator.validate(file);
-        String originalSavedFileName = noticeImageValidator.generateSavedFileName(file.getOriginalFilename());
+        // [보안] 4단계 검증 + 연월별 디렉토리 저장 (공통 흐름)
+        StoredImage stored = validatedImageUploader.upload(file, "popups");
 
-        String subPath = "popups/" + YearMonth.now().format(DateTimeFormatter.ofPattern("yyyyMM"));
-        ImageUploadResult result = fileStorageService.uploadImage(file, originalSavedFileName, subPath, mimeType);
-
-        User uploader = userRepository.findById(uploaderId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User uploader = userRepository.getByIdOrThrow(uploaderId);
 
         PopupImage popupImage = PopupImage.builder()
                 .imageType(imageType)
                 .originalFileName(file.getOriginalFilename())
-                .savedFileName(result.savedFileName())
-                .subPath(subPath)
+                .savedFileName(stored.savedFileName())
+                .subPath(stored.subPath())
                 .fileSize(file.getSize())
-                .mimeType(result.mimeType())
-                .imageUrl(result.imageUrl())
+                .mimeType(stored.mimeType())
+                .imageUrl(stored.imageUrl())
                 .uploadedBy(uploader)
                 .build();
 
@@ -265,10 +257,7 @@ public class PopupService {
      */
     private void syncImageUsage(Popup popup, PopupType popupType, String htmlContent, Long popupImageId) {
         if (PopupType.HTML.equals(popupType) && htmlContent != null) {
-            Set<String> usedUrls = Jsoup.parse(htmlContent).select("img[src]").stream()
-                    .map(el -> el.attr("src"))
-                    .filter(src -> !src.isBlank())
-                    .collect(Collectors.toSet());
+            Set<String> usedUrls = HtmlImageUrlExtractor.extract(htmlContent);
 
             popupImageRepository.findByPopupId(popup.getId()).forEach(img -> {
                 if (!usedUrls.contains(img.getImageUrl())) {
