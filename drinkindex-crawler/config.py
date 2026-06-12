@@ -75,8 +75,31 @@ class Settings:
         self.dcinside_targets = [t for t in data.get("dcinside", []) if not str(t.get("board_id", "")).startswith("_")]
         self.naver_cafe_targets = data.get("naver_cafe", [])
 
+    def validate(self) -> None:
+        """필수 설정 누락 시 ValueError(메시지에 누락 키 전부 나열) — fail fast."""
+        missing: list[str] = []
+
+        # AI 분석은 어떤 모드에서도 필요
+        if not self.openai_api_key:
+            missing.append("OPENAI_API_KEY")
+
+        # 백엔드 업로드 관련 값은 실제 업로드(=DRY_RUN 아님)일 때만 필수
+        if not self.dry_run:
+            if not self.api_url:
+                missing.append("DRINKINDEX_API_URL")
+            if not self.internal_key:
+                missing.append("DRINKINDEX_INTERNAL_KEY")
+
+        # 네이버 카페 타깃이 있는데 쿠키가 없으면 수집 불가
+        if self.naver_cafe_targets and not self.naver_cookie:
+            missing.append("NAVER_NID_AUT/NAVER_NID_SES (네이버 카페 타깃 존재)")
+
+        if missing:
+            raise ValueError("필수 환경설정 누락: " + ", ".join(missing) + " — .env 를 확인하라")
+
 
 def load_settings() -> Settings:
     s = Settings()
     s.load_targets()
+    s.validate()
     return s

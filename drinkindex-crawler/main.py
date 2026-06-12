@@ -161,4 +161,9 @@ def run() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(run())
+    try:
+        sys.exit(run())
+    except ValueError as e:
+        # 필수 환경설정 누락 등 — 로깅 설정 이전에 날 수 있어 stderr 로 직접 출력
+        print(f"[config error] {e}", file=sys.stderr)
+        sys.exit(2)
