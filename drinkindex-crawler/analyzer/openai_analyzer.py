@@ -22,12 +22,12 @@ class OpenAIAnalyzer:
         self.model = model
         self.client = OpenAI(api_key=api_key, base_url=base_url or None)
 
-    def analyze(self, detail: PostDetail, image_data_urls: list[str]) -> AnalysisResult:
-        user_text = build_user_text(
-            title=detail.raw.title,
-            board_name=detail.raw.board_name,
-            content=detail.content_text,
-        )
+    def analyze(self, detail: PostDetail, image_data_urls: list[str]) -> AnalysisResult | None:
+        """게시글(텍스트+이미지)을 분석해 AnalysisResult 반환. API/파싱 실패 시 None.
+
+        is_deal/confidence_score 기준의 채택 게이팅은 호출부(main)가 담당한다.
+        """
+        user_text = build_user_text(title=detail.raw.title, content=detail.content_text)
 
         content_parts: list[dict] = [{"type": "text", "text": user_text}]
         for data_url in image_data_urls:
@@ -36,21 +36,26 @@ class OpenAIAnalyzer:
                 "image_url": {"url": data_url, "detail": "low"},
             })
 
-        resp = self.client.chat.completions.create(
-            model=self.model,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": content_parts},
-            ],
-            response_format={"type": "json_object"},
-            temperature=0.1,
-            max_tokens=700,
-        )
-        raw_content = resp.choices[0].message.content or "{}"
+        try:
+            resp = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": content_parts},
+                ],
+                response_format={"type": "json_object"},
+                temperature=0.1,
+                max_tokens=700,
+            )
+        except Exception as e:  # noqa: BLE001
+            log.error("OpenAI 호출 실패 %s: %s", detail.raw.key, e)
+            return None
+
+        raw_content = resp.choices[0].message.content or ""
         try:
             data = json.loads(raw_content)
         except json.JSONDecodeError:
-            log.warning("모델 JSON 파싱 실패, 원문=%s", raw_content[:200])
-            data = {}
+            log.warning("모델 JSON 파싱 실패 %s, 원문=%s", detail.raw.key, raw_content[:200])
+            return None
 
         return AnalysisResult.from_model_json(data)

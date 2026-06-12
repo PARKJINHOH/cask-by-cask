@@ -239,6 +239,10 @@ public enum ErrorCode {
     FEEDBACK_TOTAL_IMAGE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "FEEDBACK_006", "첨부 이미지 총 크기는 6MB를 초과할 수 없습니다."),
     FEEDBACK_INVALID_IMAGE_FORMAT(HttpStatus.BAD_REQUEST, "FEEDBACK_007", "JPG, PNG, WEBP, GIF 형식의 이미지만 첨부할 수 있습니다."),
 
+    // Deal (주류 핫딜 자동수집)
+    DEAL_NOT_FOUND(HttpStatus.NOT_FOUND, "DEAL_001", "핫딜을 찾을 수 없습니다."),
+    DEAL_ALREADY_EXISTS(HttpStatus.CONFLICT, "DEAL_002", "이미 수집된 핫딜입니다."),
+
     // Common
     NOT_FOUND(HttpStatus.NOT_FOUND, "COMMON_001", "리소스를 찾을 수 없습니다."),
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "COMMON_002", "입력값이 올바르지 않습니다."),

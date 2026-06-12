@@ -88,6 +88,7 @@ const navEntries: NavEntry[] = [
     items: [
       { path: '/admin/price-reports', label: '가격 등록 승인', exact: true },
       { path: '/admin/stores',        label: '매장 관리',      exact: true },
+      { path: '/admin/deals',         label: '핫딜 검토',      exact: true },
     ],
   },
   {

@@ -8,7 +8,7 @@ OpenAI 로 분석하고, DrinkIndex 백엔드의 관리자 검토 큐로 보내�
 ```
 스크래퍼(디시·네이버카페) → 제목 1차 키워드 필터 → 중복(SQLite) 제외
  → 본문/이미지 수집 → 이미지 임시저장·base64·즉시삭제 → OpenAI 분석
- → confidence 통과분만 백엔드 업로드(is_visible=false, PENDING) → 관리자 검토
+ → is_deal & confidence_score 통과분만 백엔드 업로드(is_visible=false, PENDING) → 관리자 검토
 ```
 
 ## 디렉토리
@@ -38,7 +38,9 @@ python3 main.py
 
 ## 백엔드가 구현해야 할 수신 API (크롤러만 구현됨)
 `uploader/api_uploader.py` 상단 주석에 계약을 명시했다. 요약:
-- `POST /api/internal/hotdeals` · 헤더 `X-Internal-Api-Key`
-- 2xx 접수 / 409 중복(멱등). 저장 시 `is_visible=false, status=PENDING`.
+- `POST /api/internal/deals` · 헤더 `X-Internal-Key`
+- 2xx 접수 / 409 중복(멱등, sourceUrl 기준). 저장 시 `is_visible=false, status=PENDING`.
+- 요청 본문(flat): `sourceUrl, sourceSite, drinkName, drinkCategory, originalPrice, dealPrice,
+  discountRate, currency, seller, dealCondition, expiryInfo, confidenceScore, summaryKo, crawledAt`
 
 자세한 배포 절차는 **[DEPLOY.md](./DEPLOY.md)** 참고.

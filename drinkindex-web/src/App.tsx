@@ -70,6 +70,8 @@ const FaqPage = lazy(() => import('@/pages/FaqPage'))
 const EventCalendarPage = lazy(() => import('@/pages/EventCalendarPage'))
 const AdminEventCalendarPage = lazy(() => import('@/pages/admin/AdminEventCalendarPage'))
 const AdminInquiryPage = lazy(() => import('@/pages/admin/AdminInquiryPage'))
+const AdminDealListPage = lazy(() => import('@/pages/admin/AdminDealListPage'))
+const AdminDealDetailPage = lazy(() => import('@/pages/admin/AdminDealDetailPage'))
 const AdminRolePage = lazy(() => import('@/pages/admin/AdminRolePage'))
 const AdminLogPage = lazy(() => import('@/pages/admin/AdminLogPage'))
 const AdminDashboardPage = lazy(() => import('@/pages/admin/AdminDashboardPage'))
@@ -168,6 +170,8 @@ export default function App() {
               <Route path="community/prefixes" element={<AdminPrefixPage />} />
               <Route path="price-reports" element={<AdminPriceReportPage />} />
               <Route path="stores" element={<AdminStorePage />} />
+              <Route path="deals" element={<AdminDealListPage />} />
+              <Route path="deals/:id" element={<AdminDealDetailPage />} />
               <Route path="score/points" element={<AdminScorePage />} />
               <Route path="score/levels" element={<AdminLevelPage />} />
               <Route path="legal" element={<AdminLegalListPage />} />

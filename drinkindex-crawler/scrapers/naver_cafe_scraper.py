@@ -15,7 +15,7 @@ from bs4 import BeautifulSoup
 
 from logger import get_logger
 from models import PostDetail, RawPost
-from scrapers.base_scraper import BaseScraper
+from scrapers.base_scraper import MAX_CONTENT_CHARS, MAX_IMAGES, BaseScraper
 
 log = get_logger("naver_cafe")
 
@@ -72,10 +72,13 @@ class NaverCafeScraper(BaseScraper):
         posts: dict[str, RawPost] = {}
         for page in range(1, pages + 1):
             url = _LIST_URL.format(club=club, menu=menu, page=page)
+            resp = self._get(url)
+            if resp is None:
+                continue
             try:
-                data = self._get(url).json()
-            except Exception as e:  # noqa: BLE001
-                log.warning("[cafe:%s] 목록 실패 p%s: %s", club, page, e)
+                data = resp.json()
+            except ValueError as e:
+                log.warning("[cafe:%s] 목록 JSON 파싱 실패 p%s: %s", club, page, e)
                 continue
 
             article_list = _dig(
@@ -118,7 +121,13 @@ class NaverCafeScraper(BaseScraper):
 
     def fetch_detail(self, post: RawPost) -> PostDetail:
         url = _VIEW_API.format(club=post.board_id, article=post.post_id)
-        data = self._get(url, headers={"Referer": post.url}).json()
+        resp = self._get(url, headers={"Referer": post.url})
+        if resp is None:
+            return PostDetail(raw=post, content_text="", image_urls=[])
+        try:
+            data = resp.json()
+        except ValueError:
+            return PostDetail(raw=post, content_text="", image_urls=[])
 
         content_html = _dig(
             data,
@@ -129,7 +138,7 @@ class NaverCafeScraper(BaseScraper):
         ) or ""
 
         soup = BeautifulSoup(content_html, "html.parser")
-        text = soup.get_text("\n", strip=True)
+        text = soup.get_text("\n", strip=True)[:MAX_CONTENT_CHARS]
 
         image_urls: list[str] = []
         for img in soup.select("img"):
@@ -139,6 +148,6 @@ class NaverCafeScraper(BaseScraper):
             if src.startswith("http") and "pstatic.net" in src:
                 # 썸네일 리사이즈 쿼리 제거(원본 우선)
                 image_urls.append(src.split("?")[0])
-        image_urls = list(dict.fromkeys(image_urls))
+        image_urls = list(dict.fromkeys(image_urls))[:MAX_IMAGES]
 
         return PostDetail(raw=post, content_text=text, image_urls=image_urls)

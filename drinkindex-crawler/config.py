@@ -47,7 +47,8 @@ class Settings:
     # 필터/튜닝
     deal_keywords: list[str] = field(default_factory=lambda: _csv("DEAL_KEYWORDS"))
     exclude_keywords: list[str] = field(default_factory=lambda: _csv("EXCLUDE_KEYWORDS"))
-    min_confidence: float = float(os.getenv("MIN_CONFIDENCE", "0.55"))
+    # AI confidence_score(1~10)가 이 값 이상일 때만 업로드 채택
+    min_confidence_score: int = int(os.getenv("MIN_CONFIDENCE_SCORE", "5"))
     max_images_per_post: int = int(os.getenv("MAX_IMAGES_PER_POST", "3"))
     max_new_posts_per_run: int = int(os.getenv("MAX_NEW_POSTS_PER_RUN", "40"))
     # 중복방지 DB 보존 기간(일) — 이보다 오래된 기록은 매 실행 시 정리

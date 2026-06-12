@@ -7,7 +7,7 @@ DS220+ (DSM 7, Intel Celeron J4025 / x86_64) 기준. 크롤러를 20분마다 �
 ## 0. 사전 준비 체크리스트
 - [ ] DSM 7.x 관리자 계정
 - [ ] OpenAI API 키 (`sk-...`)
-- [ ] 백엔드(Oracle Cloud) 가 `/api/internal/hotdeals` 수신 API + `X-Internal-Api-Key` 검증을 구현했는지
+- [ ] 백엔드(Oracle Cloud)에 `DRINKINDEX_INTERNAL_KEY` 설정(크롤러와 동일값) — 수신 API/관리자 화면은 구현 완료(§12)
 - [ ] 네이버 카페 로그인 쿠키(NID_AUT/NID_SES), 수집할 카페의 `club_id`/`menu_id`
 - [ ] 수집할 디시 갤러리 `board_id`
 
@@ -73,6 +73,7 @@ vi .env      # 또는 File Station 텍스트 에디터
 | `DRINKINDEX_API_URL` | 예) `https://api.drinkindex.com` |
 | `DRINKINDEX_INTERNAL_KEY` | **백엔드와 동일한** 시크릿(긴 랜덤 문자열) |
 | `NAVER_NID_AUT`, `NAVER_NID_SES` | 네이버 로그인 쿠키 (아래 6번) |
+| `OPENAI_MODEL` | 분석 모델. 기본 `gpt-4o-mini`, 필요 시 `gpt-4o` 등으로 교체 |
 | 경로 4종 | 기본값 그대로면 OK (`/volume1/drinkindex/...`) |
 
 > 우선 `DRY_RUN=true` 로 두고 분석만 확인한 뒤, 정상 동작하면 `false` 로 바꾼다.
@@ -81,6 +82,23 @@ vi .env      # 또는 File Station 텍스트 에디터
 ```bash
 openssl rand -hex 32   # 출력값을 .env 와 백엔드 양쪽에 동일하게 사용
 ```
+
+### 운영 중 바뀔 수 있는 값 (개발 단계라 자주 변동)
+대부분은 **코드 수정 없이 `.env` / `targets.json` 만** 고치면 된다.
+
+| 바뀌는 것 | 어디서 바꾸나 | 코드 수정? |
+|---|---|---|
+| OpenAI 모델 | `.env` `OPENAI_MODEL` (gpt-4o-mini→gpt-4o 등) | ❌ env |
+| OpenAI 호환 게이트웨이 | `.env` `OPENAI_BASE_URL` | ❌ env |
+| 백엔드 도메인/주소 | `.env` `DRINKINDEX_API_URL` | ❌ env |
+| 시놀로지 경로(db/temp/log/targets) | `.env` `SQLITE_DB_PATH`/`IMAGE_TEMP_DIR`/`LOG_PATH`/`TARGETS_PATH` | ❌ env |
+| 수집 대상(갤러리·카페) | `targets.json` | ❌ json |
+| 키워드/임계값/딜레이 | `.env` `DEAL_KEYWORDS`/`MIN_CONFIDENCE_SCORE`/`REQUEST_DELAY_SEC` 등 | ❌ env |
+| **크롤 대상 사이트 도메인**(gall.dcinside.com / apis.naver.com) | `scrapers/dcinside_scraper.py`·`scrapers/naver_cafe_scraper.py` 상단 URL 상수 | ✅ 코드 |
+| 코드 폴더 위치/이름 | 어디 둬도 됨(`run.sh` 가 자기 위치 자동 탐지). cron 명령의 경로만 맞추면 됨 | — |
+
+> 즉 도메인이 바뀌면(디시/네이버가 주소 변경) 해당 스크래퍼 파일 상단 URL 상수만 고친다.
+> 그 외 운영값(모델·경로·대상·키워드)은 전부 env/json 으로 무중단 조정된다.
 
 ---
 
@@ -102,8 +120,9 @@ openssl rand -hex 32   # 출력값을 .env 와 백엔드 양쪽에 동일하게 
 ---
 
 ## 7. 디시 갤러리 `board_id` 찾기
-갤러리 URL 의 `id=` 값. 예) `https://gall.dcinside.com/board/lists/?id=whiskey` → `whiskey`.
-마이너 갤러리도 모바일 경로(`m.dcinside.com/board/<id>`)는 동일하게 동작한다.
+갤러리 URL 의 `id=` 값. 예) `https://gall.dcinside.com/board/lists/?id=whisky` → `whisky`.
+마이너 갤러리(`/mgallery/board/lists/?id=alcohol`)는 `targets.json` 에서 `"minor": true` 로 표시한다.
+(스크래퍼는 데스크톱 `gall.dcinside.com` 을 파싱한다.)
 
 ---
 
@@ -137,10 +156,15 @@ tail -n 50 /volume1/drinkindex/logs/crawler.log
 2. **DSM → 제어판 → 작업 스케줄러 → 생성 → 예약된 작업 → 사용자 정의 스크립트**.
 3. **일반**: 작업명 `drinkindex-crawler`, 사용자 `root`(또는 폴더 접근 가능한 계정).
 4. **일정**: 매일 / 반복 간격 **20분** (DSM 7 은 분 단위 반복 지원: "다음 시간 간격으로 실행" → 20분).
-5. **작업 설정 → 사용자 정의 스크립트**:
+5. **작업 설정 → 사용자 정의 스크립트** (권장 — `flock` 중복실행 방지 + venv 자동 활성화):
    ```bash
    bash /volume1/drinkindex/drinkindex-crawler/run.sh
    ```
+   - 폴더를 다른 곳(예: `/volume1/drinkindex/crawler`)에 뒀다면 이 경로만 맞추면 된다.
+   - `run.sh` 없이 직접 실행하려면(중복방지·venv 직접 처리 필요):
+     ```bash
+     cd /volume1/drinkindex/drinkindex-crawler && .venv/bin/python3 main.py >> /volume1/drinkindex/logs/crawler.log 2>&1
+     ```
 6. 저장 → 작업 선택 → **실행** 으로 즉시 1회 테스트 → 로그 확인.
 
 > `run.sh` 가 `flock` 으로 중복 실행을 막으므로, 한 회차가 20분을 넘겨도 다음 회차와 겹치지 않는다.
@@ -151,7 +175,7 @@ tail -n 50 /volume1/drinkindex/logs/crawler.log
 | 증상 | 점검 |
 |---|---|
 | 카페 수집 0건 | NID 쿠키 만료 → 6번 재발급. `club_id/menu_id` 확인 |
-| 디시 수집 0건 | 모바일 마크업 변경 가능 → 셀렉터(`.subjectin` 등) 갱신 |
+| 디시 수집 0건 | 데스크톱 마크업/도메인 변경 가능 → `dcinside_scraper.py` 셀렉터(`.gall_tit`/`.write_div`)·URL 상수 점검. 차단 시 `.env` `DCINSIDE_COOKIE` 투입 |
 | `업로드 실패 401/403` | `DRINKINDEX_INTERNAL_KEY` 가 백엔드와 일치하는지 |
 | OpenAI 비용 급증 | `MAX_NEW_POSTS_PER_RUN`, `MAX_IMAGES_PER_POST` 낮추기 |
 | 같은 글 재분석 | `seen_posts.db` 가 유지되는지(경로/권한) 확인 |
@@ -160,17 +184,24 @@ tail -n 50 /volume1/drinkindex/logs/crawler.log
 
 ### 보안
 - `.env`, `targets.json`, `*.db` 는 절대 git 에 올리지 않는다(`.gitignore` 처리됨).
-- 내부 API 는 `X-Internal-Api-Key` 외에 **백엔드 방화벽/시큐리티에서 `/api/internal/**` 를
+- 내부 API 는 `X-Internal-Key` 외에 **백엔드 방화벽/시큐리티에서 `/api/internal/**` 를
   시놀로지 고정 IP 로만 허용**하면 더 안전하다.
 - 이미지는 분석 직후 로컬에서 삭제되며 서버에 보관하지 않는다(원격 URL 만 전달).
 
 ---
 
-## 12. 백엔드 측 할 일 (이 크롤러와 별개, 다음 작업)
-`drinkindex-api` 에 추가 필요:
-1. `domain/hotdeal` (Entity/Repository/Service/DTO) + Flyway `V{n}__hotdeal.sql`
-   (`is_visible`, `status` PENDING/APPROVED/REJECTED, `source_post_id` UNIQUE 등)
-2. `POST /api/internal/hotdeals` 컨트롤러 + `X-Internal-Api-Key` 검증 필터(또는 시큐리티 룰)
-   - 요청 JSON 형식은 `uploader/api_uploader.py` 의 `build_payload()` 와 일치
-   - `source_post_id` 중복 시 409 반환(멱등)
-3. 관리자 검토 화면(목록/상세/승인·반려) — 프론트 `drinkindex-web/admin`
+## 12. 백엔드/프론트 (구현 완료 — STEP 12~16)
+`drinkindex-api` / `drinkindex-web` 에 이미 구현됨:
+1. `domain/deal` — `DealPost` 엔티티 + `DealPostRepository` + Flyway `V25__create_deal_posts.sql`
+   (`is_visible`, `status` PENDING/APPROVED/REJECTED, `source_url` UNIQUE 등 전체 필드)
+2. `POST /api/internal/deals` (`DealIngestController`) + `InternalKeyAuthFilter`(`X-Internal-Key`)
+   - 요청 JSON(flat)은 크롤러 `build_payload()` 와 일치, `source_url` 중복 시 409(멱등)
+3. 관리자 API `/api/admin/deals` (목록/상세/승인/반려/수정) + 화면 `/admin/deals`(목록·상세)
+
+### ⚠️ 백엔드에도 환경변수 필요
+백엔드 실행 환경(Oracle Cloud)에 **크롤러와 동일한** 키를 설정해야 한다:
+```
+DRINKINDEX_INTERNAL_KEY=<크롤러 .env 와 같은 값>
+```
+미설정 시 `/api/internal/**` 은 전부 401(안전 기본값). `application.yml`:
+`drinkindex.internal-api-key: ${DRINKINDEX_INTERNAL_KEY:}`

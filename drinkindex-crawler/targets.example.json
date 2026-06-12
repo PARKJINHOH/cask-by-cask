@@ -1,8 +1,8 @@
 {
   "_comment": "수집 대상 정의. 실제 운영값은 targets.json 으로 복사해 수정한다(=.gitignore 처리됨). board_id/clubId/menuId 획득 방법은 DEPLOY.md 참고.",
   "dcinside": [
-    { "board_id": "whiskey", "name": "위스키 갤러리", "list_pages": 2, "minor": false },
-    { "board_id": "wine", "name": "와인 갤러리", "list_pages": 1, "minor": false }
+    { "board_id": "whisky", "name": "위스키 갤러리", "list_pages": 2, "minor": false },
+    { "board_id": "alcohol", "name": "주류 마이너 갤러리", "list_pages": 2, "minor": true }
   ],
   "naver_cafe": [
     {

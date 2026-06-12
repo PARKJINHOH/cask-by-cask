@@ -1,5 +1,6 @@
 package com.drinkindex.global.config;
 
+import com.drinkindex.global.auth.internal.InternalKeyAuthFilter;
 import com.drinkindex.global.auth.jwt.JwtAuthenticationFilter;
 import com.drinkindex.global.auth.jwt.JwtProvider;
 import com.drinkindex.global.auth.security.CustomUserDetailsService;
@@ -40,6 +41,9 @@ public class SecurityConfig {
 
     @Value("${cors.allowed-origins}")
     private String allowedOriginsRaw;
+
+    @Value("${drinkindex.internal-api-key:}")
+    private String internalApiKey;
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
@@ -97,6 +101,8 @@ public class SecurityConfig {
                 //   코드 리뷰 시 이 주석을 체크포인트로 활용할 것.
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        // 내부 크롤러 수신 API: Spring 인증은 통과시키고 InternalKeyAuthFilter 가 X-Internal-Key 로 게이팅.
+                        .requestMatchers("/api/internal/**").permitAll()
                         // Actuator: management.server.port=8081 로 분리 노출, 외부 차단.
                         // 8080 으로 들어온 /actuator/** 요청도 함께 permitAll 처리 (필터 통과만, 실제 노출은 management 포트만).
                         .requestMatchers("/actuator/**").permitAll()
@@ -175,7 +181,9 @@ public class SecurityConfig {
                             );
                         })
                 )
-                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+                // 내부 API 키 검증을 JWT 필터보다 앞단에 배치 — /api/internal/** 은 여기서 가려진다.
+                .addFilterBefore(new InternalKeyAuthFilter(internalApiKey), JwtAuthenticationFilter.class);
 
         // JWT 인증 직후에 RateLimit 적용 — 인증된 요청은 userId, 비인증은 IP 기반.
         if (rateLimitFilter != null) {

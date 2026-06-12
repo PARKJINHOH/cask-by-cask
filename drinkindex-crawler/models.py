@@ -34,21 +34,25 @@ class PostDetail:
     image_urls: list[str] = field(default_factory=list)
 
 
+_CATEGORIES = {"WHISKY", "COGNAC", "WINE", "TEQUILA", "RUM", "BEER", "SOJU", "OTHER"}
+_CURRENCIES = {"KRW", "USD", "EUR"}
+
+
 @dataclass
 class AnalysisResult:
-    """OpenAI 분석 결과(정규화)."""
-    is_hotdeal: bool
-    is_alcohol: bool
-    confidence: float                 # 0.0 ~ 1.0
-    category: str                     # WHISKY | WINE | COGNAC | OTHER | UNKNOWN
-    product_name: Optional[str]
-    price: Optional[int]              # KRW
+    """OpenAI 분석 결과(정규화). 필드는 백엔드 /api/internal/deals 계약과 1:1 대응."""
+    is_deal: bool
+    drink_name: Optional[str]
+    drink_category: str               # WHISKY|COGNAC|WINE|TEQUILA|RUM|BEER|SOJU|OTHER
     original_price: Optional[int]
-    discount_rate: Optional[int]      # %
-    vendor: Optional[str]             # 판매처(마트/온라인몰 등) — 면세/쇼핑몰 자동수집은 아님
-    deal_score: Optional[int]         # 0~100, AI가 본 '핫딜 매력도'
-    summary: str                      # 한 줄 요약
-    reason: str                       # 핫딜/비핫딜 판단 근거
+    deal_price: Optional[int]
+    discount_rate: Optional[float]    # 0.0 ~ 1.0
+    currency: str                     # KRW|USD|EUR
+    seller: Optional[str]             # 판매처명
+    deal_condition: Optional[str]     # 조건 설명
+    expiry_info: Optional[str]        # 기간 정보
+    confidence_score: int             # 1 ~ 10
+    summary_ko: str                   # 한국어 요약 1~2줄
     raw: dict = field(default_factory=dict)   # 모델 원응답(디버그용)
 
     @classmethod
@@ -62,18 +66,39 @@ class AnalysisResult:
             except (TypeError, ValueError):
                 return None
 
+        def _float(v):
+            try:
+                if v is None or v == "":
+                    return None
+                f = float(v)
+                return max(0.0, min(1.0, f))   # 0.0~1.0 클램프
+            except (TypeError, ValueError):
+                return None
+
+        category = str(data.get("drink_category", "OTHER") or "OTHER").upper()
+        if category not in _CATEGORIES:
+            category = "OTHER"
+        currency = str(data.get("currency", "KRW") or "KRW").upper()
+        if currency not in _CURRENCIES:
+            currency = "KRW"
+        try:
+            score = int(round(float(data.get("confidence_score", 0) or 0)))
+        except (TypeError, ValueError):
+            score = 0
+        score = max(0, min(10, score))
+
         return cls(
-            is_hotdeal=bool(data.get("is_hotdeal", False)),
-            is_alcohol=bool(data.get("is_alcohol", False)),
-            confidence=max(0.0, min(1.0, float(data.get("confidence", 0) or 0))),
-            category=str(data.get("category", "UNKNOWN") or "UNKNOWN").upper(),
-            product_name=(data.get("product_name") or None),
-            price=_int(data.get("price")),
+            is_deal=bool(data.get("is_deal", False)),
+            drink_name=(data.get("drink_name") or None),
+            drink_category=category,
             original_price=_int(data.get("original_price")),
-            discount_rate=_int(data.get("discount_rate")),
-            vendor=(data.get("vendor") or None),
-            deal_score=_int(data.get("deal_score")),
-            summary=str(data.get("summary", "") or ""),
-            reason=str(data.get("reason", "") or ""),
+            deal_price=_int(data.get("deal_price")),
+            discount_rate=_float(data.get("discount_rate")),
+            currency=currency,
+            seller=(data.get("seller") or None),
+            deal_condition=(data.get("deal_condition") or None),
+            expiry_info=(data.get("expiry_info") or None),
+            confidence_score=score,
+            summary_ko=str(data.get("summary_ko", "") or ""),
             raw=data,
         )

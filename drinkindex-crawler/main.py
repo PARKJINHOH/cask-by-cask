@@ -101,9 +101,8 @@ def run() -> int:
             log.info("이번 실행 분석 상한(%d) 도달 — 나머지는 다음 실행", settings.max_new_posts_per_run)
             break
 
-        # 1) 제목 1차 필터
-        ok, reason = kw.passes(post.title)
-        if not ok:
+        # 1) 제목 1차 키워드 필터 (가격 여부는 AI 가 판단하므로 키워드만 본다)
+        if not kw.passes({"title": post.title, "content": ""}):
             stats["filtered"] += 1
             continue
 
@@ -127,16 +126,20 @@ def run() -> int:
                 result = analyzer.analyze(detail, data_urls)
             finally:
                 images.cleanup(image_dir)
+
+            if result is None:   # API/파싱 실패 → 마킹 안 함(일시적 장애일 수 있어 다음 실행에 재시도)
+                stats["error"] += 1
+                continue
+
             stats["analyzed"] += 1
             log.info(
-                "분석 %s | hotdeal=%s conf=%.2f cat=%s price=%s | %s",
-                post.key, result.is_hotdeal, result.confidence,
-                result.category, result.price, result.summary[:60],
+                "분석 %s | deal=%s score=%d cat=%s dealPrice=%s | %s",
+                post.key, result.is_deal, result.confidence_score,
+                result.drink_category, result.deal_price, result.summary_ko[:60],
             )
 
-            # 6) 업로드 판정
-            is_deal = result.is_hotdeal and result.is_alcohol
-            if not is_deal or result.confidence < settings.min_confidence:
+            # 6) 업로드 판정: 핫딜이면서 confidence_score 기준 충족분만 채택
+            if not result.is_deal or result.confidence_score < settings.min_confidence_score:
                 store.mark(post.key, post.site, post.url, "SKIPPED")
                 stats["skipped"] += 1
                 continue
@@ -150,12 +153,12 @@ def run() -> int:
                 store.mark(post.key, post.site, post.url, "UPLOADED")
                 stats["uploaded"] += 1
             else:
-                store.mark(post.key, post.site, post.url, "ERROR")
+                # 업로드 실패(백엔드 일시 다운 등) → 마킹 안 함, 다음 실행에 재시도
                 stats["error"] += 1
 
         except Exception as e:  # noqa: BLE001
+            # 처리 중 예외 → 마킹 안 함, 다음 실행에 재시도
             log.exception("게시글 처리 실패 %s: %s", post.key, e)
-            store.mark(post.key, post.site, post.url, "ERROR")
             stats["error"] += 1
 
     store.close()

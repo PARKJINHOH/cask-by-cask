@@ -71,6 +71,11 @@ decorator:
   datasource:
     enabled: false
 
+drinkindex:
+  # 크롤러(drinkindex-crawler) 내부 수신 API(/api/internal/**) 인증 키.
+  # 크롤러 .env 의 DRINKINDEX_INTERNAL_KEY 와 동일해야 함. 미설정 시 내부 API 는 전부 401.
+  internal-api-key: ${DRINKINDEX_INTERNAL_KEY:}
+
 rate-limit:
   enabled: true
 
