@@ -52,7 +52,7 @@ export default function SpiritCard({ spirit, className = '', listView = false }:
               type="button"
               onClick={() => setLightboxOpen(true)}
               aria-label={primaryName}
-              className="w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden bg-neutral-100
+              className="w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden bg-white
                 cursor-zoom-in focus-visible:outline-none focus-visible:ring-2
                 focus-visible:ring-primary-500 focus-visible:ring-offset-1"
             >
@@ -64,7 +64,7 @@ export default function SpiritCard({ spirit, className = '', listView = false }:
               />
             </button>
           ) : (
-            <div className="w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden bg-neutral-100">
+            <div className="w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden bg-white">
               <PlaceholderImage />
             </div>
           )}
@@ -129,7 +129,7 @@ export default function SpiritCard({ spirit, className = '', listView = false }:
         hover:shadow-xl hover:-translate-y-1 motion-reduce:hover:translate-y-0 ${className}`}
     >
       {/* 이미지 */}
-      <div className="relative aspect-[3/4] overflow-hidden bg-neutral-100">
+      <div className="relative aspect-[3/4] overflow-hidden bg-white">
         {spirit.primaryImageUrl ? (
           <img
             src={spirit.primaryImageUrl}

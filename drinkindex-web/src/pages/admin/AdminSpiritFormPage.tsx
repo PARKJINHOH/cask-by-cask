@@ -34,7 +34,7 @@ export default function AdminSpiritFormPage() {
   }
 
   return (
-    <div className="p-6 mx-auto space-y-6 pb-28 max-w-3xl lg:max-w-6xl">
+    <div className="p-6 mx-auto space-y-6 pb-28 max-w-3xl lg:max-w-6xl xl:max-w-7xl">
       <AdminPageHeader
         breadcrumbs={[
           { label: '주류 관리', to: '/admin/spirits' },
@@ -53,7 +53,7 @@ export default function AdminSpiritFormPage() {
 
       {/* 하단 고정 액션바 */}
       <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/90 backdrop-blur border-t border-neutral-200">
-        <div className="max-w-3xl lg:max-w-6xl mx-auto px-6 py-3 flex justify-end gap-2">
+        <div className="max-w-3xl lg:max-w-6xl xl:max-w-7xl mx-auto px-6 py-3 flex justify-end gap-2">
           <Button variant="secondary" onClick={() => navigate('/admin/spirits')}>취소</Button>
           <Button onClick={handleSubmit} isLoading={isSaving}>등록</Button>
         </div>

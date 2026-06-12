@@ -20,6 +20,8 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/admin/spirits")
 @RequiredArgsConstructor
@@ -87,6 +89,30 @@ public class AdminSpiritController {
         return ResponseEntity.ok(ApiResponse.success());
     }
 
+    // ── 연관 술(다른 배치·병입) 수동 관리 ─────────────────────
+    // 자동(이름) 연결에 더해 관리자가 수동 추가/제거. 양방향.
+
+    @GetMapping("/{id}/variants")
+    public ResponseEntity<ApiResponse<List<AdminSpiritVariantResponse>>> getVariants(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(spiritService.getSpiritVariantsForAdmin(id)));
+    }
+
+    @PostMapping("/{id}/variants/{targetId}")
+    public ResponseEntity<ApiResponse<List<AdminSpiritVariantResponse>>> addVariant(
+            @PathVariable Long id,
+            @PathVariable Long targetId) {
+        spiritService.addVariantLink(id, targetId);
+        return ResponseEntity.ok(ApiResponse.success(spiritService.getSpiritVariantsForAdmin(id)));
+    }
+
+    @DeleteMapping("/{id}/variants/{targetId}")
+    public ResponseEntity<ApiResponse<List<AdminSpiritVariantResponse>>> removeVariant(
+            @PathVariable Long id,
+            @PathVariable Long targetId) {
+        spiritService.removeVariantLink(id, targetId);
+        return ResponseEntity.ok(ApiResponse.success(spiritService.getSpiritVariantsForAdmin(id)));
+    }
+
     // ── 이미지 관리 ──────────────────────────────────────────
 
     @PostMapping("/{id}/images")
@@ -112,6 +138,15 @@ public class AdminSpiritController {
             @PathVariable Long imageId) {
         return ResponseEntity.ok(ApiResponse.success(
                 spiritImageService.setPrimaryImage(id, imageId)
+        ));
+    }
+
+    @PatchMapping("/{id}/images/reorder")
+    public ResponseEntity<ApiResponse<List<SpiritImageResponse>>> reorderImages(
+            @PathVariable Long id,
+            @Valid @RequestBody SpiritImageReorderRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(
+                spiritImageService.reorderImages(id, request.imageIds())
         ));
     }
 

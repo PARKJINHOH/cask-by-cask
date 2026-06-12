@@ -132,7 +132,7 @@ export default function AdminRequestDetailPage() {
   const isPending = req.status === 'PENDING'
 
   return (
-    <div className="p-6 mx-auto space-y-6 pb-28 max-w-3xl lg:max-w-6xl">
+    <div className="p-6 mx-auto space-y-6 pb-28 max-w-3xl lg:max-w-6xl xl:max-w-7xl">
       {/* 헤더 */}
       <AdminPageHeader
         breadcrumbs={[
@@ -187,7 +187,7 @@ export default function AdminRequestDetailPage() {
       {/* 하단 고정 액션바 */}
       {isPending && !rejectMode && (
         <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/90 backdrop-blur border-t border-neutral-200">
-          <div className="max-w-3xl lg:max-w-6xl mx-auto px-6 py-3 flex justify-end gap-2">
+          <div className="max-w-3xl lg:max-w-6xl xl:max-w-7xl mx-auto px-6 py-3 flex justify-end gap-2">
             <Button variant="danger" onClick={() => setRejectMode(true)}>반려</Button>
             <Button onClick={handleApprove} isLoading={approve.isPending}>승인 및 등록</Button>
           </div>

@@ -43,4 +43,8 @@ public class SpiritImage extends BaseTimeEntity {
     public void unmarkAsPrimary() {
         this.isPrimary = false;
     }
+
+    public void updateSortOrder(int sortOrder) {
+        this.sortOrder = sortOrder;
+    }
 }

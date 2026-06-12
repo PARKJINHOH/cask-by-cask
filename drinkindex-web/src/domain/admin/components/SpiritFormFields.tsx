@@ -52,11 +52,9 @@ export const CARD = 'bg-white rounded-2xl shadow-sm p-6 space-y-5'
 const INPUT = 'w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400'
 const LABEL = 'block text-xs font-medium text-neutral-600 mb-1.5'
 
-export function SectionTitle({ step, title, hint }: { step: number; title: string; hint?: string }) {
+export function SectionTitle({ title, hint }: { title: string; hint?: string }) {
   return (
     <div className="flex items-center gap-2.5">
-      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-600 text-white text-xs font-bold
-        flex items-center justify-center">{step}</span>
       <h2 className="text-sm font-bold text-neutral-800">{title}</h2>
       {hint && <span className="text-xs text-neutral-400">{hint}</span>}
     </div>
@@ -373,11 +371,11 @@ export default function SpiritFormFields({ form, categoryLocked, onCategorySelec
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-      {/* ═══ 좌측: ① 기본 / ② 생산·병입 ═══ */}
-      <div className="space-y-6">
+    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
+      {/* ═══ 좌측: ① 기본 / ② 생산·병입 / ④ 공통 상세 + 이미지 ═══ */}
+      <div className="lg:col-span-2 space-y-6">
         <div className={CARD}>
-          <SectionTitle step={1} title="카테고리 & 기본 정보" />
+          <SectionTitle title="카테고리 & 기본 정보" />
 
           {/* 카테고리 */}
           <div>
@@ -462,7 +460,7 @@ export default function SpiritFormFields({ form, categoryLocked, onCategorySelec
         {/* ② 생산 / 병입 */}
         {category && (
           <div className={CARD}>
-            <SectionTitle step={2} title="생산 / 병입 정보" hint="선택" />
+            <SectionTitle title="생산 / 병입 정보" hint="선택" />
             <div>
               <label className={LABEL}>{producerLabel}</label>
               <AdminProducerSelector value={form.producerId} defaultName={form.producerName}
@@ -510,43 +508,44 @@ export default function SpiritFormFields({ form, categoryLocked, onCategorySelec
           </div>
         )}
 
+        {/* ④ 공통 상세 정보 */}
+        {category && (
+          <div className={CARD}>
+            <SectionTitle title="공통 상세 정보" hint="선택" />
+            <SpiritCommonDetailSection
+              value={form.commonDetail}
+              onChange={form.updateCommon}
+              dateErrors={{ distilledDate: errors.distilledDate, bottledDate: errors.bottledDate }}
+              category={category}
+            />
+          </div>
+        )}
+
         {imageSlot}
       </div>
 
-      {/* ═══ 우측: ③ 카테고리 상세 / ④ 공통 상세 ═══ */}
-      <div className="space-y-6">
+      {/* ═══ 우측: ③ 카테고리 상세 (넓게) ═══ */}
+      <div className="lg:col-span-3 space-y-6">
         {!category ? (
           <div className="rounded-2xl border-2 border-dashed border-neutral-200 bg-neutral-50/50 py-12 text-center">
             <p className="text-sm text-neutral-400">카테고리를 먼저 선택하면 상세 입력 항목이 표시됩니다.</p>
           </div>
         ) : (
-          <>
-            <div className={CARD}>
-              <SectionTitle step={3} title={`${CATEGORY_LABEL[category]} 상세`} />
-              {category === 'WHISKY' && (
-                <WhiskyDetailSection value={form.whiskyDetail} onChange={form.updateWhisky} errors={errors} />
-              )}
-              {category === 'WINE' && (
-                <WineDetailSection value={form.wineDetail} onChange={form.updateWine} errors={errors} />
-              )}
-              {category === 'COGNAC' && (
-                <CognacDetailSection value={form.cognacDetail} onChange={form.updateCognac} errors={errors} />
-              )}
-              {category === 'OTHER' && (
-                <OtherDetailSection value={form.otherDetail} onChange={form.updateOther} errors={errors} />
-              )}
-            </div>
-
-            <div className={CARD}>
-              <SectionTitle step={4} title="공통 상세 정보" hint="선택" />
-              <SpiritCommonDetailSection
-                value={form.commonDetail}
-                onChange={form.updateCommon}
-                dateErrors={{ distilledDate: errors.distilledDate, bottledDate: errors.bottledDate }}
-                category={category}
-              />
-            </div>
-          </>
+          <div className={CARD}>
+            <SectionTitle title={`${CATEGORY_LABEL[category]} 상세`} />
+            {category === 'WHISKY' && (
+              <WhiskyDetailSection value={form.whiskyDetail} onChange={form.updateWhisky} errors={errors} />
+            )}
+            {category === 'WINE' && (
+              <WineDetailSection value={form.wineDetail} onChange={form.updateWine} errors={errors} />
+            )}
+            {category === 'COGNAC' && (
+              <CognacDetailSection value={form.cognacDetail} onChange={form.updateCognac} errors={errors} />
+            )}
+            {category === 'OTHER' && (
+              <OtherDetailSection value={form.otherDetail} onChange={form.updateOther} errors={errors} />
+            )}
+          </div>
         )}
       </div>
     </div>

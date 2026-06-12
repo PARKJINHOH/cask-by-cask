@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import Badge from '@/shared/components/Badge'
 import Button from '@/shared/components/Button'
@@ -14,8 +14,13 @@ import {
   useUploadSpiritImage,
   useDeleteSpiritImage,
   useSetPrimarySpiritImage,
+  useReorderSpiritImages,
+  useAdminSpiritVariants,
+  useAddSpiritVariant,
+  useRemoveSpiritVariant,
 } from '@/domain/admin/hooks/useAdminSpirits'
-import type { AdminSpiritImageItem } from '@/domain/admin/types/admin.types'
+import { adminSpiritApi } from '@/domain/admin/api/adminSpiritApi'
+import type { AdminSpiritImageItem, AdminSpiritItem } from '@/domain/admin/types/admin.types'
 import SpiritFormFields, { useSpiritForm, CARD } from '@/domain/admin/components/SpiritFormFields'
 import Toast from '@/shared/components/Toast'
 import { useToast } from '@/shared/hooks/useToast'
@@ -40,15 +45,34 @@ function SpiritImageSection({ spiritId, images }: { spiritId: number; images: Ad
   const upload = useUploadSpiritImage()
   const deleteImg = useDeleteSpiritImage()
   const setPrimary = useSetPrimarySpiritImage()
+  const reorder = useReorderSpiritImages()
   const [lightboxIndex, setLightboxIndex] = useState(-1)
+  const [order, setOrder] = useState(images)
+  const dragIndexRef = useRef<number | null>(null)
 
-  const imageUrls = images.map((img) => img.imageUrl)
+  useEffect(() => {
+    setOrder(images)
+  }, [images])
+
+  const imageUrls = order.map((img) => img.imageUrl)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
     upload.mutate({ id: spiritId, file })
     e.target.value = ''
+  }
+
+  const handleDrop = (dropIdx: number) => {
+    const dragIdx = dragIndexRef.current
+    dragIndexRef.current = null
+    if (dragIdx === null || dragIdx === dropIdx) return
+
+    const next = [...order]
+    const [moved] = next.splice(dragIdx, 1)
+    next.splice(dropIdx, 0, moved)
+    setOrder(next)
+    reorder.mutate({ id: spiritId, imageIds: next.map((img) => img.id) })
   }
 
   return (
@@ -72,18 +96,31 @@ function SpiritImageSection({ spiritId, images }: { spiritId: number; images: Ad
         />
       </div>
 
-      {images.length === 0 ? (
+      {order.length === 0 ? (
         <p className="text-xs text-neutral-400">등록된 이미지가 없습니다.</p>
       ) : (
+        <>
+        <div className="space-y-0.5">
+          <p className="text-xs text-neutral-400">이미지를 드래그하여 순서를 변경할 수 있습니다. 맨 왼쪽(1번)이 대표 이미지입니다.</p>
+          <p className="text-xs text-neutral-400">좌측 상단에 체커보드 패턴이 보이면 해당 부분이 투명 처리된 이미지입니다.</p>
+        </div>
         <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
-          {images.map((img, idx) => (
+          {order.map((img, idx) => (
             <div
               key={img.id}
+              draggable
+              onDragStart={() => { dragIndexRef.current = idx }}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => { e.preventDefault(); handleDrop(idx) }}
               onClick={() => setLightboxIndex(idx)}
               className="relative group aspect-square rounded-xl overflow-hidden border border-neutral-200
-                cursor-zoom-in"
+                bg-white cursor-grab active:cursor-grabbing"
             >
-              <img src={img.imageUrl} alt="" className="w-full h-full object-cover" />
+              <div className="absolute top-0 left-0 w-1/3 h-1/3 checker-corner" />
+              <img src={img.imageUrl} alt="" className="relative w-full h-full object-cover pointer-events-none" />
+              <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full font-semibold">
+                {idx + 1}
+              </span>
               {img.isPrimary && (
                 <span className="absolute top-1 left-1 bg-amber-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-semibold">
                   대표
@@ -120,6 +157,7 @@ function SpiritImageSection({ spiritId, images }: { spiritId: number; images: Ad
             </div>
           ))}
         </div>
+        </>
       )}
 
       <ImageLightbox
@@ -128,6 +166,184 @@ function SpiritImageSection({ spiritId, images }: { spiritId: number; images: Ad
         open={lightboxIndex >= 0}
         onClose={() => setLightboxIndex(-1)}
       />
+    </div>
+  )
+}
+
+// ── 연관 술(다른 배치·병입) 섹션 — 이미지 아래, 가로 영역 ───────────
+function SpiritVariantsSection({ spiritId }: { spiritId: number }) {
+  const { data: variants = [], isLoading } = useAdminSpiritVariants(spiritId)
+  const addVariant = useAddSpiritVariant()
+  const removeVariant = useRemoveSpiritVariant()
+
+  const [keyword, setKeyword] = useState('')
+  const [results, setResults] = useState<AdminSpiritItem[]>([])
+  const [searching, setSearching] = useState(false)
+  const [open, setOpen] = useState(false)
+  const boxRef = useRef<HTMLDivElement>(null)
+
+  const linkedIds = new Set(variants.map((v) => v.id))
+
+  // 디바운스 검색 (관리자 술 목록 재사용)
+  useEffect(() => {
+    const q = keyword.trim()
+    if (q.length < 1) { setResults([]); setSearching(false); return }
+    setSearching(true)
+    const timer = setTimeout(async () => {
+      try {
+        const res = await adminSpiritApi.list({ keyword: q, page: 0, size: 8 })
+        setResults(res.data.data?.content ?? [])
+      } catch {
+        setResults([])
+      } finally {
+        setSearching(false)
+      }
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [keyword])
+
+  // 바깥 클릭 시 드롭다운 닫기
+  useEffect(() => {
+    const onDown = (e: MouseEvent) => {
+      if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [])
+
+  const handleAdd = (target: AdminSpiritItem) => {
+    addVariant.mutate(
+      { id: spiritId, targetId: target.id },
+      { onSuccess: () => { setKeyword(''); setResults([]); setOpen(false) } },
+    )
+  }
+
+  const handleRemove = (targetId: number) => {
+    removeVariant.mutate({ id: spiritId, targetId })
+  }
+
+  return (
+    <div className={CARD}>
+      <div>
+        <h3 className="text-sm font-semibold text-neutral-700">연관 술 (다른 배치·병입)</h3>
+        <p className="mt-0.5 text-xs text-neutral-400">
+          이름이 같으면 자동 연결됩니다. 아래 검색으로 다른 술을 직접 추가하거나, ✕ 로 제거할 수 있어요. (연결은 양방향)
+        </p>
+      </div>
+
+      {/* 검색 추가 */}
+      <div ref={boxRef} className="relative">
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-neutral-200 bg-white focus-within:border-amber-400">
+          <svg className="w-4 h-4 text-neutral-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          <input
+            type="text"
+            value={keyword}
+            onChange={(e) => { setKeyword(e.target.value); setOpen(true) }}
+            onFocus={() => setOpen(true)}
+            placeholder="연관시킬 술 이름 검색…"
+            className="flex-1 text-sm outline-none bg-transparent"
+          />
+        </div>
+
+        {open && keyword.trim() && (
+          <div className="absolute z-20 mt-1 w-full max-h-72 overflow-y-auto rounded-lg border border-neutral-200 bg-white shadow-lg">
+            {searching && (
+              <div className="py-6 text-center text-sm text-neutral-400">검색 중…</div>
+            )}
+            {!searching && results.length === 0 && (
+              <div className="py-6 text-center text-sm text-neutral-400">검색 결과가 없습니다.</div>
+            )}
+            {!searching && results.map((s) => {
+              const isSelf = s.id === spiritId
+              const isLinked = linkedIds.has(s.id)
+              const disabled = isSelf || isLinked || addVariant.isPending
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => handleAdd(s)}
+                  className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-neutral-50 transition-colors
+                    border-b border-neutral-50 last:border-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {s.primaryImageUrl ? (
+                    <img src={s.primaryImageUrl} alt="" className="w-9 h-9 rounded object-cover bg-neutral-100 shrink-0" />
+                  ) : (
+                    <span className="w-9 h-9 rounded bg-neutral-100 flex items-center justify-center text-base shrink-0">🍶</span>
+                  )}
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium text-neutral-800 truncate">{s.nameKo}</span>
+                    {s.nameEn && <span className="block text-xs text-neutral-400 truncate">{s.nameEn}</span>}
+                  </span>
+                  {isSelf ? (
+                    <span className="text-[11px] text-neutral-400 shrink-0">현재 술</span>
+                  ) : isLinked ? (
+                    <span className="text-[11px] text-amber-600 shrink-0">연결됨</span>
+                  ) : (
+                    <span className="text-[11px] text-neutral-400 shrink-0">+ 추가</span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* 연결된 술 가로 목록 */}
+      {isLoading ? (
+        <div className="py-6 flex justify-center"><Spinner size="sm" className="text-primary-800" /></div>
+      ) : variants.length === 0 ? (
+        <p className="text-xs text-neutral-400">연결된 술이 없습니다.</p>
+      ) : (
+        <div className="flex gap-3 overflow-x-auto pb-2">
+          {variants.map((v) => (
+            <div
+              key={v.id}
+              className="relative shrink-0 w-36 rounded-xl border border-neutral-200 bg-white overflow-hidden"
+            >
+              {/* 제거 */}
+              <button
+                type="button"
+                onClick={() => handleRemove(v.id)}
+                disabled={removeVariant.isPending}
+                className="absolute top-1 right-1 z-10 w-6 h-6 flex items-center justify-center rounded-full
+                  bg-red-500/80 text-white text-sm leading-none hover:bg-red-500 disabled:opacity-50"
+                aria-label="연관 술 제거"
+              >
+                ✕
+              </button>
+
+              <div className="aspect-square bg-neutral-100">
+                {v.primaryImageUrl ? (
+                  <img src={v.primaryImageUrl} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-2xl text-neutral-300">🍶</div>
+                )}
+              </div>
+
+              <div className="p-2 space-y-1">
+                <p className="text-xs font-semibold text-neutral-800 leading-tight line-clamp-2">{v.nameKo}</p>
+                {v.bottledDate && <p className="text-[11px] text-neutral-400">병입 {v.bottledDate}</p>}
+                <div className="flex flex-wrap items-center gap-1 pt-0.5">
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${
+                    v.origin === 'MANUAL' ? 'bg-amber-100 text-amber-700' : 'bg-neutral-100 text-neutral-500'
+                  }`}>
+                    {v.origin === 'MANUAL' ? '수동' : '자동'}
+                  </span>
+                  {v.status !== 'ACTIVE' && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold bg-red-100 text-red-600">
+                      {STATUS_LABEL[v.status] ?? v.status}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -199,7 +415,7 @@ export default function AdminSpiritDetailPage() {
   }
 
   return (
-    <div className="p-6 mx-auto space-y-6 pb-28 max-w-3xl lg:max-w-6xl">
+    <div className="p-6 mx-auto space-y-6 pb-28 max-w-3xl lg:max-w-6xl xl:max-w-7xl">
       {/* 헤더 */}
       <AdminPageHeader
         breadcrumbs={[
@@ -224,6 +440,9 @@ export default function AdminSpiritDetailPage() {
       {/* 이미지 (메타 정보 아래 · 술 정보 위, 가로 전체) */}
       <SpiritImageSection spiritId={spiritId} images={spirit.images} />
 
+      {/* 연관 술 (이미지 아래, 가로 영역) */}
+      <SpiritVariantsSection spiritId={spiritId} />
+
       {/* 공유 폼 (카테고리 고정) */}
       <SpiritFormFields form={form} categoryLocked />
 
@@ -232,7 +451,7 @@ export default function AdminSpiritDetailPage() {
 
       {/* 하단 고정 액션바 */}
       <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/90 backdrop-blur border-t border-neutral-200">
-        <div className="max-w-3xl lg:max-w-6xl mx-auto px-6 py-3 flex items-center justify-end gap-2">
+        <div className="max-w-3xl lg:max-w-6xl xl:max-w-7xl mx-auto px-6 py-3 flex items-center justify-end gap-2">
           <Button variant="secondary" onClick={() => navigate('/admin/spirits')}>목록으로</Button>
           {spirit.status === 'HIDDEN' ? (
             <Button

@@ -22,14 +22,14 @@ export interface LevelInfo {
 
 // 레벨 임계값 공식 — 100레벨 체계. (DB member_level_config 가 단일 소스이며, 아래는 미로딩 시 fallback)
 // 이름은 레벨 번호 그 자체("N레벨"). 임계값은 시작점수·증가율 기반의 부드러운 지수 곡선.
-// 관리자 레벨설정 화면의 기본 생성값과 동일한 공식이므로, V21 시드와도 일치한다.
+// 관리자 레벨설정 화면의 기본 생성값과 동일한 공식이므로, V28 시드와도 일치한다.
 export interface LevelFormula {
   maxLevel: number
   baseScore: number
   growthRate: number
 }
 
-export const DEFAULT_LEVEL_FORMULA: LevelFormula = { maxLevel: 100, baseScore: 50, growthRate: 1.12 }
+export const DEFAULT_LEVEL_FORMULA: LevelFormula = { maxLevel: 100, baseScore: 40, growthRate: 1.07 }
 
 /** 읽기 좋은 자리수로 반올림 (단계가 커질수록 거친 단위) */
 function niceRound(v: number): number {
@@ -94,4 +94,7 @@ export const ACTION_ICONS: Record<string, string> = {
   ATTENDANCE_STREAK_7:      '🎉',
   ATTENDANCE_STREAK_30:     '🏆',
   ADMIN_ADJUST:             '⚙️',
+  PRICE_REGISTER:           '💰',
+  FEEDBACK_WRITE:           '💡',
+  FEEDBACK_RESOLVED:        '✔️',
 }

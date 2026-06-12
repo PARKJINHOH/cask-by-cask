@@ -10,6 +10,8 @@ public interface SpiritImageRepository extends JpaRepository<SpiritImage, Long> 
 
     List<SpiritImage> findBySpiritId(Long spiritId);
 
+    List<SpiritImage> findBySpiritIdOrderBySortOrderAscIdAsc(Long spiritId);
+
     Optional<SpiritImage> findBySpiritIdAndIsPrimaryTrue(Long spiritId);
 
     List<SpiritImage> findBySpiritIdInAndIsPrimaryTrue(List<Long> spiritIds);

@@ -21,8 +21,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -76,14 +79,54 @@ public class SpiritImageService {
             throw new CustomException(ErrorCode.SPIRIT_NOT_FOUND);
         }
 
-        SpiritImage target = spiritImageRepository.findByIdAndSpiritId(imageId, spiritId)
+        List<SpiritImage> images = spiritImageRepository.findBySpiritIdOrderBySortOrderAscIdAsc(spiritId);
+        SpiritImage target = images.stream()
+                .filter(image -> image.getId().equals(imageId))
+                .findFirst()
                 .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_IMAGE_NOT_FOUND));
 
-        spiritImageRepository.findBySpiritIdAndIsPrimaryTrue(spiritId)
-                .ifPresent(SpiritImage::unmarkAsPrimary);
-
+        images.forEach(SpiritImage::unmarkAsPrimary);
         target.markAsPrimary();
+
+        // 대표 이미지가 항상 첫 번째로 표시되도록 정렬 순서 재배치
+        target.updateSortOrder(0);
+        int order = 1;
+        for (SpiritImage image : images) {
+            if (image.getId().equals(imageId)) continue;
+            image.updateSortOrder(order++);
+        }
+
         return SpiritImageResponse.from(target);
+    }
+
+    @Transactional
+    public List<SpiritImageResponse> reorderImages(Long spiritId, List<Long> imageIds) {
+        if (!spiritRepository.existsById(spiritId)) {
+            throw new CustomException(ErrorCode.SPIRIT_NOT_FOUND);
+        }
+
+        List<SpiritImage> images = spiritImageRepository.findBySpiritId(spiritId);
+        Map<Long, SpiritImage> imagesById = images.stream()
+                .collect(Collectors.toMap(SpiritImage::getId, Function.identity()));
+
+        if (imageIds.size() != images.size() || !imagesById.keySet().containsAll(imageIds)) {
+            throw new CustomException(ErrorCode.SPIRIT_IMAGE_NOT_FOUND);
+        }
+
+        for (int i = 0; i < imageIds.size(); i++) {
+            SpiritImage image = imagesById.get(imageIds.get(i));
+            image.updateSortOrder(i);
+            if (i == 0) {
+                image.markAsPrimary();
+            } else {
+                image.unmarkAsPrimary();
+            }
+        }
+
+        return spiritImageRepository.findBySpiritIdOrderBySortOrderAscIdAsc(spiritId)
+                .stream()
+                .map(SpiritImageResponse::from)
+                .toList();
     }
 
     private void validateImageFile(MultipartFile file) {

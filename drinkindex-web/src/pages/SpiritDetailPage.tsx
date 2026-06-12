@@ -500,7 +500,7 @@ function Gallery({
         <div className="grid grid-cols-4 gap-2">
           {images.map((img, i) => (
             <button key={img.id} onClick={() => onSelect(i)}
-              className={`aspect-square rounded-xl overflow-hidden bg-neutral-50 ring-2 transition-all ${
+              className={`aspect-square rounded-xl overflow-hidden bg-white ring-2 transition-all ${
                 i === selectedIdx ? 'ring-primary-500' : 'ring-neutral-200 hover:ring-neutral-300'
               }`}>
               <img src={img.imageUrl} alt={`${nameKo} ${i + 1}`}

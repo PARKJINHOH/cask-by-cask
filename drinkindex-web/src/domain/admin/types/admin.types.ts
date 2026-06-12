@@ -237,6 +237,23 @@ export interface AdminSpiritImageItem {
   sortOrder: number
 }
 
+/** 관리자 연관 술(다른 배치·병입) 목록 항목 — origin: 이름 자동(AUTO) / 수동 추가(MANUAL) */
+export interface AdminSpiritVariant {
+  id: number
+  nameKo: string
+  nameEn: string
+  category: SpiritCategory
+  bottledYear: number | null
+  vintageYear: number | null
+  abv: number | null
+  volumeMl: number | null
+  batchNo: string | null
+  bottledDate: string | null
+  primaryImageUrl: string | null
+  status: SpiritStatus
+  origin: 'AUTO' | 'MANUAL'
+}
+
 export interface AdminSpiritDetail {
   id: number
   nameKo: string

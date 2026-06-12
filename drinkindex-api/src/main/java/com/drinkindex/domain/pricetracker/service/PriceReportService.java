@@ -11,6 +11,8 @@ import com.drinkindex.domain.pricetracker.entity.enums.PriceCurrency;
 import com.drinkindex.domain.pricetracker.entity.enums.PriceReportStatus;
 import com.drinkindex.domain.pricetracker.entity.enums.StoreType;
 import com.drinkindex.domain.pricetracker.repository.*;
+import com.drinkindex.domain.score.constant.ScoreActions;
+import com.drinkindex.domain.score.service.ScoreService;
 import com.drinkindex.domain.spirit.entity.Spirit;
 import com.drinkindex.domain.spirit.repository.SpiritRepository;
 import com.drinkindex.domain.user.entity.User;
@@ -41,6 +43,7 @@ public class PriceReportService {
     private final SpiritRepository spiritRepository;
     private final UserRepository userRepository;
     private final BadWordFilter badWordFilter;
+    private final ScoreService scoreService;
 
     @Transactional(readOnly = true)
     public PriceReportResponse getPriceReport(Long id, Long callerId, boolean isAdmin) {
@@ -203,6 +206,12 @@ public class PriceReportService {
 
         report.softDelete();
         priceReportRepository.save(report);
+
+        // 승인되어 지급된 점수가 있다면 회수 (지급 이력 기반, 미지급이면 자동 스킵)
+        if (report.getReporter() != null) {
+            scoreService.deductByReference(report.getReporter().getId(),
+                    ScoreActions.PRICE_REGISTER, "PRICE_REPORT", report.getId());
+        }
     }
 
     @Transactional(readOnly = true)

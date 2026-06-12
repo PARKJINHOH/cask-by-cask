@@ -263,7 +263,7 @@ export default function ImageLightbox({ images, initialIndex = 0, open, onClose 
                 {/* 줌/팬 스테이지 — touch-action: none 으로 브라우저 기본 제스처 차단 */}
                 <div
                   ref={stageRef}
-                  className="relative flex items-center justify-center overflow-hidden rounded-lg select-none"
+                  className="relative flex items-center justify-center overflow-hidden rounded-lg select-none bg-white"
                   style={{ touchAction: 'none' }}
                   onWheel={onWheel}
                   onDoubleClick={onDoubleClick}
@@ -310,7 +310,7 @@ export default function ImageLightbox({ images, initialIndex = 0, open, onClose 
                       <button
                         key={i}
                         onClick={() => goTo(i)}
-                        className={`flex-shrink-0 w-12 h-12 rounded-md overflow-hidden border-2 transition-all ${
+                        className={`flex-shrink-0 w-12 h-12 rounded-md overflow-hidden border-2 bg-white transition-all ${
                           i === current
                             ? 'border-white'
                             : 'border-transparent opacity-40 hover:opacity-70'

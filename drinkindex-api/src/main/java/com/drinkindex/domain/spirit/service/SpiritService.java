@@ -10,12 +10,15 @@ import com.drinkindex.domain.spirit.dto.*;
 import com.drinkindex.domain.spirit.entity.Spirit;
 import com.drinkindex.domain.spirit.entity.SpiritImage;
 import com.drinkindex.domain.spirit.entity.SpiritRegisterRequest;
+import com.drinkindex.domain.spirit.entity.SpiritVariantLink;
 import com.drinkindex.domain.spirit.entity.enums.RequestStatus;
 import com.drinkindex.domain.spirit.entity.enums.SpiritCategory;
 import com.drinkindex.domain.spirit.entity.enums.SpiritStatus;
+import com.drinkindex.domain.spirit.entity.enums.VariantLinkType;
 import com.drinkindex.domain.spirit.repository.SpiritImageRepository;
 import com.drinkindex.domain.spirit.repository.SpiritRegisterRequestRepository;
 import com.drinkindex.domain.spirit.repository.SpiritRepository;
+import com.drinkindex.domain.spirit.repository.SpiritVariantLinkRepository;
 import com.drinkindex.domain.user.entity.User;
 import com.drinkindex.domain.user.entity.enums.Role;
 import com.drinkindex.domain.user.repository.UserRepository;
@@ -38,8 +41,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -58,6 +63,7 @@ public class SpiritService {
 
     private final SpiritRepository spiritRepository;
     private final SpiritImageRepository spiritImageRepository;
+    private final SpiritVariantLinkRepository variantLinkRepository;
     private final SpiritRegisterRequestRepository registerRequestRepository;
     private final ProducerRepository producerRepository;
     private final UserRepository userRepository;
@@ -94,7 +100,7 @@ public class SpiritService {
         Spirit spirit = spiritRepository.findByIdWithAllDetails(id, SpiritStatus.ACTIVE)
                 .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_NOT_FOUND));
 
-        List<SpiritImageResponse> images = spiritImageRepository.findBySpiritId(id)
+        List<SpiritImageResponse> images = spiritImageRepository.findBySpiritIdOrderBySortOrderAscIdAsc(id)
                 .stream()
                 .map(SpiritImageResponse::from)
                 .toList();
@@ -108,7 +114,7 @@ public class SpiritService {
         Spirit spirit = spiritRepository.findByIdWithAllDetails(id, null)
                 .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_NOT_FOUND));
 
-        List<SpiritImageResponse> images = spiritImageRepository.findBySpiritId(id)
+        List<SpiritImageResponse> images = spiritImageRepository.findBySpiritIdOrderBySortOrderAscIdAsc(id)
                 .stream()
                 .map(SpiritImageResponse::from)
                 .toList();
@@ -116,24 +122,122 @@ public class SpiritService {
         return spiritDetailService.buildFullDetailResponse(spirit, images);
     }
 
-    /** 같은 이름(한글/영문)의 다른 배치·병입 제품 목록 — 술 상세 화면용 */
+    /**
+     * 같은 이름(한글/영문)의 다른 배치·병입 제품 목록 — 사용자 상세 화면용.
+     * 자동(이름) 매치에 관리자 수동 오버라이드를 적용: (자동 ∪ MANUAL) − EXCLUDED. ACTIVE 만 노출.
+     */
     @Transactional(readOnly = true)
     public List<SpiritVariantResponse> getSpiritVariants(Long id) {
         Spirit spirit = spiritRepository.findByIdAndStatus(id, SpiritStatus.ACTIVE)
                 .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_NOT_FOUND));
 
-        List<Spirit> variants = spiritRepository.findActiveVariantsByName(
-                id, spirit.getNameKo(), spirit.getNameEn());
+        Map<Long, Spirit> variants = resolveVariants(spirit, true);
         if (variants.isEmpty()) return List.of();
 
-        List<Long> variantIds = variants.stream().map(Spirit::getId).toList();
-        Map<Long, String> primaryImageMap = spiritImageRepository
-                .findBySpiritIdInAndIsPrimaryTrue(variantIds).stream()
-                .collect(Collectors.toMap(img -> img.getSpirit().getId(), SpiritImage::getImageUrl));
-
-        return variants.stream()
+        Map<Long, String> primaryImageMap = primaryImageMap(variants.keySet());
+        return variants.values().stream()
                 .map(v -> SpiritVariantResponse.of(v, primaryImageMap.get(v.getId())))
                 .toList();
+    }
+
+    /** 관리자용 연관 술 목록 — 상태 무관(MANUAL 은 HIDDEN 도 포함), 각 항목에 출처(AUTO/MANUAL) 표시. */
+    @Transactional(readOnly = true)
+    public List<AdminSpiritVariantResponse> getSpiritVariantsForAdmin(Long id) {
+        Spirit spirit = spiritRepository.findById(id)
+                .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_NOT_FOUND));
+
+        Set<Long> autoIds = spiritRepository
+                .findActiveVariantsByName(id, spirit.getNameKo(), spirit.getNameEn())
+                .stream().map(Spirit::getId).collect(Collectors.toSet());
+
+        Map<Long, Spirit> variants = resolveVariants(spirit, false);
+        if (variants.isEmpty()) return List.of();
+
+        Map<Long, String> primaryImageMap = primaryImageMap(variants.keySet());
+        return variants.values().stream()
+                .map(v -> AdminSpiritVariantResponse.of(
+                        v,
+                        primaryImageMap.get(v.getId()),
+                        autoIds.contains(v.getId()) ? "AUTO" : "MANUAL"))
+                .toList();
+    }
+
+    /** 관리자: 연관 술 수동 추가(양방향). 이미 EXCLUDED 였으면 MANUAL 로 복원. */
+    @Transactional
+    public void addVariantLink(Long id, Long targetId) {
+        if (id.equals(targetId)) {
+            throw new CustomException(ErrorCode.SPIRIT_VARIANT_SELF_NOT_ALLOWED);
+        }
+        if (!spiritRepository.existsById(id) || !spiritRepository.existsById(targetId)) {
+            throw new CustomException(ErrorCode.SPIRIT_NOT_FOUND);
+        }
+        upsertLink(id, targetId, VariantLinkType.MANUAL);
+    }
+
+    /**
+     * 관리자: 연관 술 제거(양방향).
+     * 대상이 이름 자동 매치이면 EXCLUDED 로 숨김, 순수 수동이었으면 링크 자체 삭제.
+     */
+    @Transactional
+    public void removeVariantLink(Long id, Long targetId) {
+        Spirit spirit = spiritRepository.findById(id)
+                .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_NOT_FOUND));
+
+        boolean isAuto = spiritRepository
+                .findActiveVariantsByName(id, spirit.getNameKo(), spirit.getNameEn())
+                .stream().anyMatch(s -> s.getId().equals(targetId));
+
+        if (isAuto) {
+            upsertLink(id, targetId, VariantLinkType.EXCLUDED);
+        } else {
+            findLink(id, targetId).ifPresent(variantLinkRepository::delete);
+        }
+    }
+
+    // ── 연관 술 내부 헬퍼 ─────────────────────────────────────
+
+    /** (자동 ∪ MANUAL) − EXCLUDED 를 적용한 연관 술 맵(삽입 순서 유지). activeManualOnly=true 면 MANUAL 도 ACTIVE 만 포함. */
+    private Map<Long, Spirit> resolveVariants(Spirit spirit, boolean activeManualOnly) {
+        Long id = spirit.getId();
+        List<Spirit> auto = spiritRepository.findActiveVariantsByName(
+                id, spirit.getNameKo(), spirit.getNameEn());
+
+        List<SpiritVariantLink> links = variantLinkRepository.findAllInvolving(id);
+        Set<Long> excluded = partnerIds(links, id, VariantLinkType.EXCLUDED);
+        Set<Long> manual = partnerIds(links, id, VariantLinkType.MANUAL);
+
+        LinkedHashMap<Long, Spirit> map = new LinkedHashMap<>();
+        auto.forEach(s -> map.put(s.getId(), s));
+        if (!manual.isEmpty()) {
+            spiritRepository.findAllById(manual).stream()
+                    .filter(s -> !activeManualOnly || s.getStatus() == SpiritStatus.ACTIVE)
+                    .forEach(s -> map.putIfAbsent(s.getId(), s));
+        }
+        excluded.forEach(map::remove);
+        map.remove(id); // 안전장치
+        return map;
+    }
+
+    private Set<Long> partnerIds(List<SpiritVariantLink> links, Long id, VariantLinkType type) {
+        return links.stream()
+                .filter(l -> l.getLinkType() == type)
+                .map(l -> l.partnerOf(id))
+                .collect(Collectors.toSet());
+    }
+
+    private Map<Long, String> primaryImageMap(Set<Long> spiritIds) {
+        return spiritImageRepository.findBySpiritIdInAndIsPrimaryTrue(new ArrayList<>(spiritIds)).stream()
+                .collect(Collectors.toMap(img -> img.getSpirit().getId(), SpiritImage::getImageUrl));
+    }
+
+    private Optional<SpiritVariantLink> findLink(Long a, Long b) {
+        return variantLinkRepository.findBySpiritIdAndRelatedSpiritId(Math.min(a, b), Math.max(a, b));
+    }
+
+    private void upsertLink(Long id, Long targetId, VariantLinkType type) {
+        findLink(id, targetId).ifPresentOrElse(
+                link -> link.changeType(type),
+                () -> variantLinkRepository.save(SpiritVariantLink.of(id, targetId, type)));
     }
 
     // ── 관리자 CRUD ─────────────────────────────────────────
@@ -205,7 +309,7 @@ public class SpiritService {
         spiritDetailService.saveCommonDetail(spirit, request.commonDetail());
         spiritDetailService.updateCategoryDetail(spirit, prevCategory, request);
 
-        List<SpiritImageResponse> images = spiritImageRepository.findBySpiritId(id)
+        List<SpiritImageResponse> images = spiritImageRepository.findBySpiritIdOrderBySortOrderAscIdAsc(id)
                 .stream().map(SpiritImageResponse::from).toList();
 
         return SpiritDetailResponse.of(spirit, images);

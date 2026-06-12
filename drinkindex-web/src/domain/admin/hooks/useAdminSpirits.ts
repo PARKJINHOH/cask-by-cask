@@ -93,6 +93,48 @@ export function useSetPrimarySpiritImage() {
   })
 }
 
+export function useReorderSpiritImages() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, imageIds }: { id: number; imageIds: number[] }) =>
+      adminSpiritApi.reorderImages(id, imageIds),
+    onSuccess: (_data, { id }) => {
+      qc.invalidateQueries({ queryKey: ['admin-spirit-detail', id] })
+    },
+  })
+}
+
+// ── 연관 술(다른 배치·병입) 수동 관리 ──
+export function useAdminSpiritVariants(id: number) {
+  return useQuery({
+    queryKey: ['admin-spirit-variants', id],
+    queryFn: () => adminSpiritApi.getVariants(id).then((res) => res.data.data ?? []),
+    enabled: !isNaN(id),
+  })
+}
+
+export function useAddSpiritVariant() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, targetId }: { id: number; targetId: number }) =>
+      adminSpiritApi.addVariant(id, targetId),
+    onSuccess: (_data, { id }) => {
+      qc.invalidateQueries({ queryKey: ['admin-spirit-variants', id] })
+    },
+  })
+}
+
+export function useRemoveSpiritVariant() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, targetId }: { id: number; targetId: number }) =>
+      adminSpiritApi.removeVariant(id, targetId),
+    onSuccess: (_data, { id }) => {
+      qc.invalidateQueries({ queryKey: ['admin-spirit-variants', id] })
+    },
+  })
+}
+
 export function useAdminRequests(status: string, page: number) {
   return useQuery({
     queryKey: ['admin-requests', status, page],

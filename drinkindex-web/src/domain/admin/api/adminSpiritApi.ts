@@ -3,6 +3,8 @@ import type { ApiResponse, PageResponse } from '@/shared/types/common.types'
 import type {
   AdminSpiritItem,
   AdminSpiritDetail,
+  AdminSpiritImageItem,
+  AdminSpiritVariant,
   SpiritRegisterRequest,
   SpiritRegisterRequestDetail,
   UpdateSpiritPayload,
@@ -51,6 +53,19 @@ export const adminSpiritApi = {
 
   setPrimaryImage: (id: number, imageId: number) =>
     axiosInstance.patch<ApiResponse<null>>(`/api/admin/spirits/${id}/images/${imageId}/primary`),
+
+  reorderImages: (id: number, imageIds: number[]) =>
+    axiosInstance.patch<ApiResponse<AdminSpiritImageItem[]>>(`/api/admin/spirits/${id}/images/reorder`, { imageIds }),
+
+  // ── 연관 술(다른 배치·병입) 수동 관리 ──
+  getVariants: (id: number) =>
+    axiosInstance.get<ApiResponse<AdminSpiritVariant[]>>(`/api/admin/spirits/${id}/variants`),
+
+  addVariant: (id: number, targetId: number) =>
+    axiosInstance.post<ApiResponse<AdminSpiritVariant[]>>(`/api/admin/spirits/${id}/variants/${targetId}`),
+
+  removeVariant: (id: number, targetId: number) =>
+    axiosInstance.delete<ApiResponse<AdminSpiritVariant[]>>(`/api/admin/spirits/${id}/variants/${targetId}`),
 
   listRequests: (params: { status?: string; page?: number; size?: number }) =>
     axiosInstance.get<ApiResponse<PageResponse<SpiritRegisterRequest>>>(
