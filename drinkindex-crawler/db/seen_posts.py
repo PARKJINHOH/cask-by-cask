@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 import sqlite3
-from datetime import datetime, timezone
 from pathlib import Path
 
 from logger import get_logger
@@ -22,6 +21,8 @@ class SeenPostStore:
         self._init_schema()
 
     def _init_schema(self) -> None:
+        # post_key = "site:board:postid" — URL 변형(쿼리/모바일·데스크톱)에 흔들리지 않는
+        # 안정적 중복키. created_at 은 SQLite 기본값(UTC)으로 채운다.
         self.conn.execute(
             """
             CREATE TABLE IF NOT EXISTS seen_posts (
@@ -29,26 +30,41 @@ class SeenPostStore:
                 site       TEXT NOT NULL,
                 url        TEXT,
                 status     TEXT NOT NULL,         -- ANALYZED | UPLOADED | SKIPPED | ERROR
-                first_seen TEXT NOT NULL
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
             """
         )
         self.conn.commit()
 
-    def is_seen(self, post_key: str) -> bool:
+    def exists(self, post_key: str) -> bool:
         cur = self.conn.execute("SELECT 1 FROM seen_posts WHERE post_key = ?", (post_key,))
         return cur.fetchone() is not None
 
     def mark(self, post_key: str, site: str, url: str, status: str) -> None:
+        # 최초 INSERT 시 created_at 은 DEFAULT 로 채워지고,
+        # 재방문(status 갱신) 시에는 created_at 을 보존한다(=최초 관측시각 유지).
         self.conn.execute(
             """
-            INSERT INTO seen_posts (post_key, site, url, status, first_seen)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO seen_posts (post_key, site, url, status)
+            VALUES (?, ?, ?, ?)
             ON CONFLICT(post_key) DO UPDATE SET status = excluded.status
             """,
-            (post_key, site, url, status, datetime.now(timezone.utc).isoformat()),
+            (post_key, site, url, status),
         )
         self.conn.commit()
+
+    def cleanup_old(self, days: int = 7) -> int:
+        """days일 이상 된 레코드 삭제 → DB 무한 증가 방지. 삭제 건수 반환.
+
+        최근 목록(list_pages 1~2)에는 오래된 글이 다시 뜨지 않고, 설령 재분석돼도
+        백엔드가 source_post_id 로 409(멱등) 처리하므로 안전하다.
+        """
+        cur = self.conn.execute(
+            "DELETE FROM seen_posts WHERE created_at < datetime('now', ?)",
+            (f"-{int(days)} days",),
+        )
+        self.conn.commit()
+        return cur.rowcount
 
     def close(self) -> None:
         try:

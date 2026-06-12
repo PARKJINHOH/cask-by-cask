@@ -50,6 +50,8 @@ class Settings:
     min_confidence: float = float(os.getenv("MIN_CONFIDENCE", "0.55"))
     max_images_per_post: int = int(os.getenv("MAX_IMAGES_PER_POST", "3"))
     max_new_posts_per_run: int = int(os.getenv("MAX_NEW_POSTS_PER_RUN", "40"))
+    # 중복방지 DB 보존 기간(일) — 이보다 오래된 기록은 매 실행 시 정리
+    seen_retention_days: int = int(os.getenv("SEEN_RETENTION_DAYS", "7"))
     request_delay_sec: float = float(os.getenv("REQUEST_DELAY_SEC", "1.2"))
     http_timeout_sec: int = int(os.getenv("HTTP_TIMEOUT_SEC", "15"))
     dry_run: bool = field(default_factory=lambda: _bool("DRY_RUN", False))

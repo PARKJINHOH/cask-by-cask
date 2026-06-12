@@ -76,6 +76,9 @@ def run() -> int:
         return 1
 
     store = SeenPostStore(settings.db_path)
+    purged = store.cleanup_old(days=settings.seen_retention_days)
+    if purged:
+        log.info("오래된 중복기록 %d건 정리(보존 %d일)", purged, settings.seen_retention_days)
     kw = KeywordFilter(settings.deal_keywords, settings.exclude_keywords)
     images = ImageHandler(
         settings.image_temp_dir, timeout=settings.http_timeout_sec,
@@ -105,7 +108,7 @@ def run() -> int:
             continue
 
         # 2) 중복 제외
-        if store.is_seen(post.key):
+        if store.exists(post.key):
             stats["seen"] += 1
             continue
 
