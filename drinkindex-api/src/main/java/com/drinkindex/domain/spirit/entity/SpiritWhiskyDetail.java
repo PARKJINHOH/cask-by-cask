@@ -29,20 +29,6 @@ public class SpiritWhiskyDetail {
     @Column(length = 5)
     private BottlingType bottlingType;
 
-    @Enumerated(EnumType.STRING)
-    @Column(length = 20)
-    private WhiskyCaskType caskType;
-
-    /** FULL_MATURATION=단일 캐스크 전체 숙성, FINISH=주 숙성 후 이동 */
-    @Enumerated(EnumType.STRING)
-    @Column(length = 20)
-    private MaturationStyle maturationStyle;
-
-    /** maturationStyle=FINISH 일 때만 유효 */
-    @Enumerated(EnumType.STRING)
-    @Column(length = 20)
-    private WhiskyCaskType finishCaskType;
-
     /** Non-Chill Filtered: 저온 여과 생략 → 풍미 보존 */
     @Column
     private Boolean isNonChillFiltered;
@@ -67,20 +53,16 @@ public class SpiritWhiskyDetail {
     @Column
     private Integer phenolPpm;
 
-    /** JSON: { "caskNo": "", "finishCaskDetail": "" } */
+    /** JSON: { "styleOther": "", "caskNo": "", "caskTypes": ["EX_SHERRY", ...], "caskTypeOther": "" } */
     @Column(columnDefinition = "TEXT")
     private String extraData;
 
-    public void update(WhiskyStyle style, BottlingType bottlingType, WhiskyCaskType caskType,
-                       MaturationStyle maturationStyle, WhiskyCaskType finishCaskType,
+    public void update(WhiskyStyle style, BottlingType bottlingType,
                        Boolean isNonChillFiltered, Boolean isNaturalColour,
                        Boolean isSingleCask, Boolean isCaskStrength,
                        Boolean isPeated, Integer phenolPpm, String extraData) {
         this.style               = style;
         this.bottlingType        = bottlingType;
-        this.caskType            = caskType;
-        this.maturationStyle     = maturationStyle;
-        this.finishCaskType      = finishCaskType;
         this.isNonChillFiltered  = isNonChillFiltered;
         this.isNaturalColour     = isNaturalColour;
         this.isSingleCask        = isSingleCask;

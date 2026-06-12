@@ -116,38 +116,42 @@ export default function SpiritCommonDetailSection({ value, onChange, dateErrors,
           />
         </Field>
 
-        {/* 병 번호 · 배치 번호 · 총 병 수 — 와인 제외 */}
+        {/* 배치 번호 — 출시일 우측에 위치 (와인 제외) */}
         {showBottleMeta && (
-          <>
-            <Field label="병 번호">
+          <Field label="배치 번호">
+            <input
+              type="text"
+              value={value.batchNo}
+              onChange={(e) => onChange({ batchNo: e.target.value })}
+              maxLength={100}
+              className={INPUT}
+            />
+          </Field>
+        )}
+
+        {/* 병 번호 / 총 병 수 — 한 칸에 나란히 (와인 제외) */}
+        {showBottleMeta && (
+          <div className="space-y-1.5 sm:col-span-2">
+            <label className={LABEL}>병 번호 / 총 병 수</label>
+            <div className="flex items-center gap-2">
               <input
                 type="text"
                 value={value.bottleNo}
                 onChange={(e) => onChange({ bottleNo: e.target.value })}
                 maxLength={50}
+                placeholder="병 번호"
                 className={INPUT}
               />
-            </Field>
-
-            <Field label="배치 번호">
-              <input
-                type="text"
-                value={value.batchNo}
-                onChange={(e) => onChange({ batchNo: e.target.value })}
-                maxLength={100}
-                className={INPUT}
-              />
-            </Field>
-
-            <Field label="총 병 수">
+              <span className="text-neutral-400 flex-shrink-0">/</span>
               <input
                 type="number" min={1}
                 value={value.totalBottles}
                 onChange={(e) => onChange({ totalBottles: e.target.value })}
+                placeholder="총 병 수"
                 className={INPUT}
               />
-            </Field>
-          </>
+            </div>
+          </div>
         )}
       </div>
     </div>

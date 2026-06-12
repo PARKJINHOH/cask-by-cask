@@ -93,7 +93,9 @@ public class SpiritQueryRepositoryImpl implements SpiritQueryRepository {
 
     private BooleanBuilder buildPredicate(SpiritSearchCondition cond, QSpirit spirit, QProducer producer) {
         BooleanBuilder builder = new BooleanBuilder();
-        builder.and(spirit.status.eq(cond.status()));
+        if (cond.status() != null) {
+            builder.and(spirit.status.eq(cond.status()));
+        }
 
         if (StringUtils.hasText(cond.keyword())) {
             // 술 이름 + 생산자명/검색별칭(한글 음차 변형 등)까지 매칭

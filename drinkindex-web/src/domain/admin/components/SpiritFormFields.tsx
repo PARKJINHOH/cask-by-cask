@@ -130,11 +130,11 @@ export function useSpiritForm() {
       const w = s.whiskyDetail
       setWhiskyDetail({
         style: w.style ?? '', styleOther: w.styleOther ?? '', bottlingType: w.bottlingType ?? '',
-        caskType: w.caskType ?? '', maturationStyle: w.maturationStyle ?? '', finishCaskType: w.finishCaskType ?? '',
+        caskTypes: w.caskTypes ?? [], caskFinishes: w.caskFinishes ?? [], caskTypeOther: w.caskTypeOther ?? '',
         isNonChillFiltered: w.isNonChillFiltered ?? false, isNaturalColour: w.isNaturalColour ?? false,
         isSingleCask: w.isSingleCask ?? false, isCaskStrength: w.isCaskStrength ?? false,
         isPeated: w.isPeated ?? false, phenolPpm: w.phenolPpm?.toString() ?? '',
-        caskNo: w.caskNo ?? '', finishCaskDetail: w.finishCaskDetail ?? '',
+        caskNo: w.caskNo ?? '', notes: w.notes ?? '',
       })
     }
     if (s.wineDetail) {
@@ -188,7 +188,7 @@ export function useSpiritForm() {
       abv: r.abv?.toString() ?? '',
     })
     if (r.category === 'WHISKY') {
-      setWhiskyDetail({ ...DEFAULT_WHISKY, style: r.whiskyStyle ?? '', styleOther: r.whiskyStyleOther ?? '', caskNo: r.caskNo ?? '' })
+      setWhiskyDetail({ ...DEFAULT_WHISKY, style: r.whiskyStyle ?? '', styleOther: r.whiskyStyleOther ?? '', caskNo: r.caskNo ?? '', notes: r.whiskyNotes ?? '' })
     } else if (r.category === 'WINE') {
       setWineDetail({ ...DEFAULT_WINE, wineType: r.wineType ?? '', vintage: r.vintageYear?.toString() ?? '' })
     } else if (r.category === 'COGNAC') {
@@ -260,9 +260,9 @@ export function useSpiritForm() {
           style: whiskyDetail.style || null,
           styleOther: whiskyDetail.style === 'OTHER' ? (whiskyDetail.styleOther || null) : null,
           bottlingType: whiskyDetail.bottlingType || null,
-          caskType: whiskyDetail.caskType || null,
-          maturationStyle: whiskyDetail.maturationStyle || null,
-          finishCaskType: whiskyDetail.maturationStyle === 'FINISH' ? (whiskyDetail.finishCaskType || null) : null,
+          caskTypes: whiskyDetail.caskTypes,
+          caskFinishes: whiskyDetail.caskFinishes.filter((c) => whiskyDetail.caskTypes.includes(c)),
+          caskTypeOther: whiskyDetail.caskTypes.includes('OTHER') ? (whiskyDetail.caskTypeOther || null) : null,
           isNonChillFiltered: whiskyDetail.isNonChillFiltered || null,
           isNaturalColour: whiskyDetail.isNaturalColour || null,
           isSingleCask: whiskyDetail.isSingleCask || null,
@@ -270,7 +270,7 @@ export function useSpiritForm() {
           isPeated: whiskyDetail.isPeated || null,
           phenolPpm: whiskyDetail.isPeated && whiskyDetail.phenolPpm ? Number(whiskyDetail.phenolPpm) : null,
           caskNo: whiskyDetail.caskNo || null,
-          finishCaskDetail: whiskyDetail.maturationStyle === 'FINISH' ? (whiskyDetail.finishCaskDetail || null) : null,
+          notes: whiskyDetail.notes || null,
         },
       }
       case 'WINE': return {

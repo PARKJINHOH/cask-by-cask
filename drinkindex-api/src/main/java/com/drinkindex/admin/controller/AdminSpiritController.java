@@ -2,6 +2,8 @@ package com.drinkindex.admin.controller;
 
 import com.drinkindex.domain.spirit.dto.*;
 import com.drinkindex.domain.spirit.entity.enums.RequestStatus;
+import com.drinkindex.domain.spirit.entity.enums.SpiritCategory;
+import com.drinkindex.domain.spirit.entity.enums.SpiritStatus;
 import com.drinkindex.domain.spirit.service.SpiritImageService;
 import com.drinkindex.domain.spirit.service.SpiritService;
 import com.drinkindex.global.auth.security.CustomUserDetails;
@@ -29,6 +31,29 @@ public class AdminSpiritController {
     // ── 술 CRUD ─────────────────────────────────────────────
     // PARTNER 포함 접근 가능 (verifyProducerAccess 로 세부 제어)
 
+    // 관리자 술 목록 — status 미지정(전체) 시 ACTIVE/HIDDEN/PENDING 모두 조회
+    @GetMapping
+    public ResponseEntity<ApiResponse<PageResponse<SpiritListResponse>>> list(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) SpiritCategory category,
+            @RequestParam(required = false) SpiritStatus status,
+            @PageableDefault(size = 20) Pageable pageable) {
+        SpiritSearchCondition condition = new SpiritSearchCondition(
+                keyword, category, null, null, null,
+                null, null, null, null, null, null, null,
+                status, null);
+        return ResponseEntity.ok(ApiResponse.success(
+                PageResponse.from(spiritService.searchSpirits(condition, pageable))));
+    }
+
+    // 관리자 술 상세 — 상태(ACTIVE/HIDDEN/PENDING) 무관 조회
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<SpiritDetailResponse>> getDetail(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(
+                spiritService.getSpiritDetailForAdmin(id)
+        ));
+    }
+
     @PostMapping
     public ResponseEntity<ApiResponse<SpiritDetailResponse>> create(
             @Valid @RequestBody CreateSpiritRequest request,
@@ -52,6 +77,13 @@ public class AdminSpiritController {
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
         spiritService.deleteSpirit(id);
+        return ResponseEntity.ok(ApiResponse.success());
+    }
+
+    @PatchMapping("/{id}/restore")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> restore(@PathVariable Long id) {
+        spiritService.restoreSpirit(id);
         return ResponseEntity.ok(ApiResponse.success());
     }
 

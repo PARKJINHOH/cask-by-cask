@@ -36,13 +36,12 @@ public record SpiritSearchCondition(
         BigDecimal minScore,
         @Schema(description = "최대 평균 점수")
         BigDecimal maxScore,
-        @Schema(description = "공개 상태 필터 (기본값: ACTIVE)")
+        @Schema(description = "공개 상태 필터 (null이면 전체 — 관리자 전용)")
         SpiritStatus status,
         @Schema(description = "정렬 기준 (기본값: LATEST)")
         SpiritSort sort
 ) {
     public SpiritSearchCondition {
-        if (status == null) status = SpiritStatus.ACTIVE;
         if (sort == null) sort = SpiritSort.LATEST;
     }
 

@@ -161,14 +161,14 @@ class SpiritQueryRepositoryTest {
     }
 
     @Test
-    @DisplayName("status 파라미터 미지정 시 ACTIVE 기본 적용")
-    void searchWithDefaultStatus() {
+    @DisplayName("status 파라미터 미지정(null) 시 전체 상태 반환 — 관리자 전용")
+    void searchWithNullStatus_returnsAllStatuses() {
         SpiritSearchCondition cond = new SpiritSearchCondition(
                 null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null);
-        assertThat(cond.status()).isEqualTo(SpiritStatus.ACTIVE);
+        assertThat(cond.status()).isNull();
         Page<SpiritListResponse> result = spiritRepository.search(cond, page);
-        assertThat(result.getTotalElements()).isEqualTo(4);
+        assertThat(result.getTotalElements()).isEqualTo(5);
     }
 
     @Test

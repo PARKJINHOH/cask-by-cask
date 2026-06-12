@@ -10,12 +10,15 @@ import {
   useAdminSpiritDetail,
   useUpdateSpirit,
   useDeleteSpirit,
+  useRestoreSpirit,
   useUploadSpiritImage,
   useDeleteSpiritImage,
   useSetPrimarySpiritImage,
 } from '@/domain/admin/hooks/useAdminSpirits'
 import type { AdminSpiritImageItem } from '@/domain/admin/types/admin.types'
 import SpiritFormFields, { useSpiritForm, CARD } from '@/domain/admin/components/SpiritFormFields'
+import Toast from '@/shared/components/Toast'
+import { useToast } from '@/shared/hooks/useToast'
 
 // ── 상수 ────────────────────────────────────────────────────────
 const STATUS_LABEL: Record<string, string> = {
@@ -72,7 +75,7 @@ function SpiritImageSection({ spiritId, images }: { spiritId: number; images: Ad
       {images.length === 0 ? (
         <p className="text-xs text-neutral-400">등록된 이미지가 없습니다.</p>
       ) : (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
           {images.map((img, idx) => (
             <div
               key={img.id}
@@ -86,9 +89,24 @@ function SpiritImageSection({ spiritId, images }: { spiritId: number; images: Ad
                   대표
                 </span>
               )}
-              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100
-                transition-opacity flex flex-col items-center justify-center gap-1.5">
-                {!img.isPrimary && (
+              {/* 삭제 — 우측 상단 */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (confirm('이미지를 삭제하시겠습니까?'))
+                    deleteImg.mutate({ id: spiritId, imageId: img.id })
+                }}
+                disabled={deleteImg.isPending}
+                className="absolute top-1 right-1 z-10 w-6 h-6 flex items-center justify-center rounded-full
+                  bg-red-500/80 text-white text-sm leading-none opacity-0 group-hover:opacity-100
+                  transition-opacity hover:bg-red-500 disabled:opacity-50"
+                aria-label="이미지 삭제"
+              >
+                ✕
+              </button>
+              {!img.isPrimary && (
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100
+                  transition-opacity flex items-center justify-center">
                   <button
                     onClick={(e) => { e.stopPropagation(); setPrimary.mutate({ id: spiritId, imageId: img.id }) }}
                     disabled={setPrimary.isPending}
@@ -97,20 +115,8 @@ function SpiritImageSection({ spiritId, images }: { spiritId: number; images: Ad
                   >
                     대표 설정
                   </button>
-                )}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    if (confirm('이미지를 삭제하시겠습니까?'))
-                      deleteImg.mutate({ id: spiritId, imageId: img.id })
-                  }}
-                  disabled={deleteImg.isPending}
-                  className="text-white text-xs font-semibold px-2 py-1 bg-red-500/80 rounded
-                    hover:bg-red-500 disabled:opacity-50"
-                >
-                  삭제
-                </button>
-              </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -135,11 +141,11 @@ export default function AdminSpiritDetailPage() {
   const { data: spirit, isLoading } = useAdminSpiritDetail(spiritId)
   const updateSpirit = useUpdateSpirit()
   const deleteSpirit = useDeleteSpirit()
+  const restoreSpirit = useRestoreSpirit()
 
   const form = useSpiritForm()
 
-  const [savedMsg, setSavedMsg] = useState('')
-  const [saveError, setSaveError] = useState('')
+  const { toasts, showToast, removeToast } = useToast()
   const [initialized, setInitialized] = useState(false)
 
   // 기존 데이터 → 폼 프리필 (한 번만)
@@ -150,24 +156,34 @@ export default function AdminSpiritDetailPage() {
 
   const handleSave = () => {
     if (!form.validate()) { window.scrollTo({ top: 0, behavior: 'smooth' }); return }
-    setSaveError('')
     // 카테고리는 고정 — buildPayload의 category 값은 변경되지 않음
     updateSpirit.mutate(
       { id: spiritId, data: form.buildPayload() },
       {
-        onSuccess: () => {
-          setSavedMsg('저장되었습니다.')
-          setTimeout(() => setSavedMsg(''), 3000)
-        },
-        onError: () => setSaveError('저장 중 오류가 발생했습니다.'),
+        onSuccess: () => showToast('저장되었습니다.', 'success'),
+        onError: () => showToast('저장 중 오류가 발생했습니다.', 'error'),
       },
     )
   }
 
   const handleDelete = async () => {
     if (!spirit || !confirm(`"${spirit.nameKo}"을(를) 숨김 처리하시겠습니까?`)) return
-    await deleteSpirit.mutateAsync(spiritId)
-    navigate('/admin/spirits')
+    try {
+      await deleteSpirit.mutateAsync(spiritId)
+      navigate('/admin/spirits')
+    } catch {
+      showToast('숨김 처리 중 오류가 발생했습니다.', 'error')
+    }
+  }
+
+  const handleRestore = async () => {
+    if (!spirit || !confirm(`"${spirit.nameKo}"의 숨김을 해제하시겠습니까?`)) return
+    try {
+      await restoreSpirit.mutateAsync(spiritId)
+      showToast('숨김이 해제되었습니다.', 'success')
+    } catch {
+      showToast('숨김 해제 중 오류가 발생했습니다.', 'error')
+    }
   }
 
   if (isLoading) {
@@ -205,36 +221,36 @@ export default function AdminSpiritDetailPage() {
         <Row label="수정일">{formatDate(spirit.updatedAt)}</Row>
       </div>
 
-      {/* 공유 폼 (카테고리 고정, 좌측 하단에 이미지 카드 주입) */}
-      <SpiritFormFields
-        form={form}
-        categoryLocked
-        imageSlot={<SpiritImageSection spiritId={spiritId} images={spirit.images} />}
-      />
+      {/* 이미지 (메타 정보 아래 · 술 정보 위, 가로 전체) */}
+      <SpiritImageSection spiritId={spiritId} images={spirit.images} />
 
-      {savedMsg && (
-        <p className="text-sm text-green-600 bg-green-50 rounded-lg px-3 py-2">{savedMsg}</p>
-      )}
-      {saveError && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{saveError}</p>}
+      {/* 공유 폼 (카테고리 고정) */}
+      <SpiritFormFields form={form} categoryLocked />
 
-      {/* 관리 액션 */}
-      <div className="bg-white rounded-xl shadow-sm p-5">
-        <div className="flex items-center justify-between">
-          <Button
-            variant="danger"
-            size="sm"
-            onClick={handleDelete}
-            isLoading={deleteSpirit.isPending}
-          >
-            숨김 처리
-          </Button>
-        </div>
-      </div>
+      {/* 저장/삭제 알림 — 상단 중앙 토스트 */}
+      <Toast toasts={toasts} onRemove={removeToast} position="top-center" />
 
       {/* 하단 고정 액션바 */}
       <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/90 backdrop-blur border-t border-neutral-200">
-        <div className="max-w-3xl lg:max-w-6xl mx-auto px-6 py-3 flex justify-end gap-2">
+        <div className="max-w-3xl lg:max-w-6xl mx-auto px-6 py-3 flex items-center justify-end gap-2">
           <Button variant="secondary" onClick={() => navigate('/admin/spirits')}>목록으로</Button>
+          {spirit.status === 'HIDDEN' ? (
+            <Button
+              variant="secondary"
+              onClick={handleRestore}
+              isLoading={restoreSpirit.isPending}
+            >
+              숨김 해제
+            </Button>
+          ) : (
+            <Button
+              variant="danger"
+              onClick={handleDelete}
+              isLoading={deleteSpirit.isPending}
+            >
+              숨김 처리
+            </Button>
+          )}
           <Button onClick={handleSave} isLoading={updateSpirit.isPending}>변경사항 저장</Button>
         </div>
       </div>

@@ -64,8 +64,11 @@ export interface SpiritVariant {
 // ── 카테고리 상세 Enum 타입 ────────────────────────────────────
 export type WhiskyStyle = 'SINGLE_MALT' | 'BLENDED_MALT' | 'BLENDED_WHISKY' | 'BOURBON' | 'TENNESSEE' | 'RYE' | 'POT_STILL' | 'GRAIN_CORN' | 'OTHER'
 export type BottlingType = 'OB' | 'IB'
-export type WhiskyCaskType = 'EX_BOURBON' | 'EX_SHERRY' | 'EX_PORT' | 'EX_WINE' | 'NEW_OAK' | 'EX_RUM' | 'EX_MADEIRA' | 'EX_SAUTERNES' | 'EX_COGNAC' | 'MIZUNARA' | 'OTHER'
-export type MaturationStyle = 'FULL_MATURATION' | 'FINISH'
+export type WhiskyCaskType =
+  | 'EX_BOURBON' | 'EX_SHERRY' | 'EX_FINO' | 'EX_MANZANILLA' | 'EX_AMONTILLADO' | 'EX_OLOROSO' | 'EX_PALO_CORTADO' | 'EX_PX'
+  | 'EX_PORT' | 'EX_MADEIRA' | 'EX_SAUTERNES' | 'EX_MARSALA' | 'EX_MALAGA' | 'EX_TOKAJI' | 'EX_VERMOUTH' | 'EX_WINE' | 'VINO_BARRIQUE'
+  | 'EX_RUM' | 'EX_COGNAC' | 'EX_BRANDY' | 'EX_CALVADOS' | 'EX_ARMAGNAC' | 'EX_MEZCAL_TEQUILA'
+  | 'NEW_OAK' | 'VIRGIN_OAK' | 'FRENCH_OAK' | 'CHINKAPIN' | 'MIZUNARA' | 'EX_UMESHU' | 'TEAK_WOOD' | 'PEATED_CASK' | 'OTHER'
 export type WineType = 'RED' | 'WHITE' | 'ROSE' | 'SPARKLING' | 'DESSERT' | 'ORANGE' | 'FORTIFIED'
 export type WineCertification = 'ORGANIC' | 'BIODYNAMIC' | 'SUSTAINABLE' | 'NONE'
 export type CognacGrade = 'VS' | 'NAPOLEON' | 'VSOP' | 'XO' | 'XXO' | 'HORS_DAGE'
@@ -91,9 +94,9 @@ export interface WhiskyDetailResponse {
   style: WhiskyStyle | null
   styleOther: string | null
   bottlingType: BottlingType | null
-  caskType: WhiskyCaskType | null
-  maturationStyle: MaturationStyle | null
-  finishCaskType: WhiskyCaskType | null
+  caskTypes: WhiskyCaskType[] | null
+  caskFinishes: WhiskyCaskType[] | null
+  caskTypeOther: string | null
   isNonChillFiltered: boolean | null
   isNaturalColour: boolean | null
   isSingleCask: boolean | null
@@ -101,7 +104,7 @@ export interface WhiskyDetailResponse {
   isPeated: boolean | null
   phenolPpm: number | null
   caskNo: string | null
-  finishCaskDetail: string | null
+  notes: string | null
 }
 
 export interface WineDetailResponse {

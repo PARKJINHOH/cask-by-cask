@@ -102,6 +102,20 @@ public class SpiritService {
         return spiritDetailService.buildFullDetailResponse(spirit, images);
     }
 
+    /** 관리자 상세 조회 — 상태(ACTIVE/HIDDEN/PENDING) 무관 */
+    @Transactional(readOnly = true)
+    public SpiritDetailResponse getSpiritDetailForAdmin(Long id) {
+        Spirit spirit = spiritRepository.findByIdWithAllDetails(id, null)
+                .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_NOT_FOUND));
+
+        List<SpiritImageResponse> images = spiritImageRepository.findBySpiritId(id)
+                .stream()
+                .map(SpiritImageResponse::from)
+                .toList();
+
+        return spiritDetailService.buildFullDetailResponse(spirit, images);
+    }
+
     /** 같은 이름(한글/영문)의 다른 배치·병입 제품 목록 — 술 상세 화면용 */
     @Transactional(readOnly = true)
     public List<SpiritVariantResponse> getSpiritVariants(Long id) {
@@ -201,6 +215,12 @@ public class SpiritService {
     public void deleteSpirit(Long id) {
         Spirit spirit = getSpirit(id);
         spirit.hide();
+    }
+
+    @Transactional
+    public void restoreSpirit(Long id) {
+        Spirit spirit = getSpirit(id);
+        spirit.activate();
     }
 
     // ── 사용자 등록 요청 ────────────────────────────────────
@@ -331,7 +351,7 @@ public class SpiritService {
                 // 신청자 입력 상세값(숙성/연월/카테고리 핵심값)은 관리자 수정 폼에 없으므로 기존값 보존
                 existing.ageStatement(), existing.isNas(), existing.distilledDate(),
                 existing.bottledDate(), existing.releaseDate(),
-                existing.whiskyStyle(), existing.whiskyStyleOther(), existing.caskNo(),
+                existing.whiskyStyle(), existing.whiskyStyleOther(), existing.caskNo(), existing.whiskyNotes(),
                 existing.wineType(), existing.cognacGrade(), existing.otherType(),
                 existing.imageUrls(),
                 existing.note()
@@ -512,7 +532,7 @@ public class SpiritService {
                 body.abv(), body.volumeMl(), body.country(), body.region(),
                 body.ageStatement(), body.isNas(), body.distilledDate(),
                 body.bottledDate(), body.releaseDate(),
-                body.whiskyStyle(), body.whiskyStyleOther(), body.caskNo(),
+                body.whiskyStyle(), body.whiskyStyleOther(), body.caskNo(), body.whiskyNotes(),
                 body.wineType(), body.cognacGrade(), body.otherType(),
                 imageUrls,
                 body.note()

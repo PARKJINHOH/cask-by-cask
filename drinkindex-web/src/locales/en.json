@@ -156,6 +156,8 @@
       "region": "Region",
       "bottler": "Bottler",
       "caskNo": "Single Cask No.",
+      "whiskyNotes": "Notes",
+      "whiskyNotesPlaceholder": "e.g. Released 2021–2022, PX 50% Port 20%",
       "bottledYear": "Bottled Year",
       "vintageYear": "Vintage Year",
       "producer": "Producer",

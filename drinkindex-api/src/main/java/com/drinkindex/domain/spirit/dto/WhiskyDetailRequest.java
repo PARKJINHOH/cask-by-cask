@@ -6,6 +6,8 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 
+import java.util.List;
+
 public record WhiskyDetailRequest(
 
         @Schema(description = "위스키 스타일 (SINGLE_MALT, BLENDED_MALT 등)")
@@ -18,14 +20,15 @@ public record WhiskyDetailRequest(
         @Schema(description = "병입 구분 (OB=증류소 직접, IB=독립 병입사)")
         BottlingType bottlingType,
 
-        @Schema(description = "캐스크 종류")
-        WhiskyCaskType caskType,
+        @Schema(description = "사용된 캐스크 종류 (복수 선택 가능)")
+        List<WhiskyCaskType> caskTypes,
 
-        @Schema(description = "숙성 방식 (FULL_MATURATION=단일 캐스크, FINISH=이중 숙성)")
-        MaturationStyle maturationStyle,
+        @Schema(description = "피니시(추가 숙성) 캐스크 종류 — caskTypes 의 부분집합")
+        List<WhiskyCaskType> caskFinishes,
 
-        @Schema(description = "피니시 캐스크 종류 (maturationStyle=FINISH 일 때만 유효)")
-        WhiskyCaskType finishCaskType,
+        @Schema(description = "캐스크 직접 입력 (caskTypes 에 OTHER 포함 시만 유효)")
+        @Size(max = 200, message = "캐스크 직접 입력은 200자 이하여야 합니다.")
+        String caskTypeOther,
 
         @Schema(description = "Non-Chill Filtered 여부 (저온 여과 생략 → 풍미 보존)")
         Boolean isNonChillFiltered,
@@ -51,8 +54,8 @@ public record WhiskyDetailRequest(
         @Size(max = 100, message = "캐스크 번호는 100자 이하여야 합니다.")
         String caskNo,
 
-        @Schema(description = "피니시 캐스크 추가 설명")
-        @Size(max = 200, message = "피니시 캐스크 설명은 200자 이하여야 합니다.")
-        String finishCaskDetail
+        @Schema(description = "기타 정보 (참고용 자유 입력)")
+        @Size(max = 500, message = "기타 정보는 500자 이하여야 합니다.")
+        String notes
 
 ) {}

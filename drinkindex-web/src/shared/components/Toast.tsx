@@ -1,8 +1,11 @@
 import type { Toast as ToastItem } from '@/shared/hooks/useToast'
 
+type ToastPosition = 'bottom-right' | 'top-center'
+
 interface Props {
   toasts: ToastItem[]
   onRemove: (id: string) => void
+  position?: ToastPosition
 }
 
 const variantClasses: Record<ToastItem['type'], string> = {
@@ -11,12 +14,22 @@ const variantClasses: Record<ToastItem['type'], string> = {
   info: 'bg-neutral-800 text-white',
 }
 
-export default function Toast({ toasts, onRemove }: Props) {
+const containerClasses: Record<ToastPosition, string> = {
+  'bottom-right': 'bottom-6 right-6 items-end',
+  'top-center': 'top-6 left-1/2 -translate-x-1/2 items-center',
+}
+
+const animClasses: Record<ToastPosition, string> = {
+  'bottom-right': 'slide-in-from-bottom-2',
+  'top-center': 'slide-in-from-top-2',
+}
+
+export default function Toast({ toasts, onRemove, position = 'bottom-right' }: Props) {
   if (toasts.length === 0) return null
 
   return (
     <div
-      className="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none"
+      className={`fixed z-50 flex flex-col gap-2 pointer-events-none ${containerClasses[position]}`}
       aria-live="polite"
       aria-atomic="false"
     >
@@ -25,7 +38,7 @@ export default function Toast({ toasts, onRemove }: Props) {
           key={toast.id}
           role={toast.type === 'error' ? 'alert' : 'status'}
           className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium
-            pointer-events-auto animate-in slide-in-from-bottom-2 fade-in duration-200
+            pointer-events-auto animate-in fade-in duration-200 ${animClasses[position]}
             ${variantClasses[toast.type]}`}
         >
           <span className="flex-1">{toast.message}</span>

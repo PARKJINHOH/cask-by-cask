@@ -74,6 +74,30 @@ function DI({ label, value }: { label: string; value: React.ReactNode }) {
   )
 }
 
+// 멀티값 필드(캐스크 등): 콤마 문자열 대신 개별 칩으로 표시 → 이름 중간 줄바꿈 방지
+function DIChips({ label, items }: { label: string; items: { text: string; accent?: boolean }[] }) {
+  if (!items || items.length === 0) return null
+  return (
+    <div className="flex items-start justify-between gap-4 py-3 border-b border-neutral-100">
+      <dt className="text-[13px] text-neutral-400 flex-shrink-0 pt-1">{label}</dt>
+      <dd className="flex flex-wrap justify-end gap-1.5">
+        {items.map((it, i) => (
+          <span
+            key={i}
+            className={`inline-flex items-center rounded-md px-2 py-0.5 text-[12.5px] font-medium break-keep ${
+              it.accent
+                ? 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200'
+                : 'bg-neutral-100 text-neutral-700'
+            }`}
+          >
+            {it.text}
+          </span>
+        ))}
+      </dd>
+    </div>
+  )
+}
+
 function SpiritDetailSections({ spirit, isEn }: { spirit: SpiritDetail; isEn: boolean }) {
   const { t } = useTranslation()
   const cd = spirit.commonDetail
@@ -98,10 +122,44 @@ function SpiritDetailSections({ spirit, isEn }: { spirit: SpiritDetail; isEn: bo
     OB: isEn ? 'Official Bottling (Distillery)' : 'Official Bottling (증류소)',
     IB: isEn ? 'Independent Bottling' : 'Independent Bottling (독립 병입)',
   }
-  const CASK_LABEL: Record<string, string> = {
-    EX_BOURBON: 'Ex-Bourbon', EX_SHERRY: 'Ex-Sherry', EX_PORT: 'Ex-Port',
-    EX_WINE: 'Ex-Wine', NEW_OAK: 'New Oak', EX_RUM: 'Ex-Rum', EX_MADEIRA: 'Ex-Madeira',
-    EX_SAUTERNES: 'Ex-Sauternes', EX_COGNAC: 'Ex-Cognac', MIZUNARA: 'Mizunara', OTHER: isEn ? 'Other' : '기타',
+  // 캐스크 풀네임 (ko/en). KO 모드는 한글, EN 모드는 Full Name 표기.
+  const CASK_LABEL: Record<string, { ko: string; en: string }> = {
+    EX_BOURBON:        { ko: '버번 캐스크',              en: 'Ex-Bourbon Cask' },
+    EX_SHERRY:         { ko: '셰리 캐스크',              en: 'Ex-Sherry Cask' },
+    EX_FINO:           { ko: '피노 셰리 캐스크',         en: 'Ex-Fino Sherry Cask' },
+    EX_MANZANILLA:     { ko: '만자니야 셰리 캐스크',     en: 'Ex-Manzanilla Sherry Cask' },
+    EX_AMONTILLADO:    { ko: '아몬티야도 셰리 캐스크',   en: 'Ex-Amontillado Sherry Cask' },
+    EX_OLOROSO:        { ko: '올로로소 셰리 캐스크',     en: 'Ex-Oloroso Sherry Cask' },
+    EX_PALO_CORTADO:   { ko: '팔로 코르타도 셰리 캐스크', en: 'Ex-Palo Cortado Sherry Cask' },
+    EX_PX:             { ko: 'PX(페드로 히메네스) 셰리 캐스크', en: 'Ex-PX (Pedro Ximénez) Sherry Cask' },
+    EX_PORT:           { ko: '포트 와인 캐스크',         en: 'Ex-Port Wine Cask' },
+    EX_MADEIRA:        { ko: '마데이라 와인 캐스크',     en: 'Ex-Madeira Wine Cask' },
+    EX_SAUTERNES:      { ko: '소테른 와인 캐스크',       en: 'Ex-Sauternes Wine Cask' },
+    EX_MARSALA:        { ko: '마르살라 와인 캐스크',     en: 'Ex-Marsala Wine Cask' },
+    EX_MALAGA:         { ko: '말라가 와인 캐스크',       en: 'Ex-Málaga Wine Cask' },
+    EX_TOKAJI:         { ko: '토카이 와인 캐스크',       en: 'Ex-Tokaji Wine Cask' },
+    EX_VERMOUTH:       { ko: '베르무트 캐스크',          en: 'Ex-Vermouth Cask' },
+    EX_WINE:           { ko: '와인 캐스크',              en: 'Ex-Wine Cask' },
+    VINO_BARRIQUE:     { ko: '비노 바리끄',              en: 'Vino Barrique' },
+    EX_RUM:            { ko: '럼 캐스크',                en: 'Ex-Rum Cask' },
+    EX_COGNAC:         { ko: '꼬냑 캐스크',              en: 'Ex-Cognac Cask' },
+    EX_BRANDY:         { ko: '브랜디 캐스크',            en: 'Ex-Brandy Cask' },
+    EX_CALVADOS:       { ko: '칼바도스 캐스크',          en: 'Ex-Calvados Cask' },
+    EX_ARMAGNAC:       { ko: '아르마냑 캐스크',          en: 'Ex-Armagnac Cask' },
+    EX_MEZCAL_TEQUILA: { ko: '메스칼/데킬라 캐스크',     en: 'Ex-Mezcal/Tequila Cask' },
+    NEW_OAK:           { ko: '뉴 오크',                  en: 'New Oak' },
+    VIRGIN_OAK:        { ko: '버진 오크',                en: 'Virgin Oak' },
+    FRENCH_OAK:        { ko: '프렌치 오크',              en: 'French Oak' },
+    CHINKAPIN:         { ko: '친카핀 오크',              en: 'Chinkapin Oak' },
+    MIZUNARA:          { ko: '미즈나라 (일본 오크)',     en: 'Mizunara (Japanese Oak)' },
+    EX_UMESHU:         { ko: '매실주(우메슈) 캐스크',    en: 'Ex-Umeshu Cask' },
+    TEAK_WOOD:         { ko: '티크우드',                 en: 'Teak Wood' },
+    PEATED_CASK:       { ko: '피티드 캐스크',            en: 'Peated Cask' },
+    OTHER:             { ko: '기타',                     en: 'Other' },
+  }
+  const caskLabel = (c: string) => {
+    const l = CASK_LABEL[c]
+    return l ? (isEn ? l.en : l.ko) : c
   }
   const GRADE_LABEL: Record<string, string> = {
     VS: 'VS', NAPOLEON: 'Napoléon', VSOP: 'VSOP', XO: 'XO', XXO: 'XXO', HORS_DAGE: "Hors d'Age",
@@ -181,19 +239,13 @@ function SpiritDetailSections({ spirit, isEn }: { spirit: SpiritDetail; isEn: bo
                   : whisky.style ? WHISKY_STYLE_LABEL[whisky.style] ?? whisky.style : null} />
               <DI label={isEn ? 'Bottling' : '병입'}
                 value={whisky.bottlingType ? BOTTLING_LABEL[whisky.bottlingType] ?? whisky.bottlingType : null} />
-              <DI label={isEn ? 'Cask' : '캐스크'}
-                value={whisky.caskType ? CASK_LABEL[whisky.caskType] ?? whisky.caskType : null} />
-              <DI label={isEn ? 'Maturation' : '숙성 방식'}
-                value={whisky.maturationStyle === 'FINISH'
-                  ? (isEn ? 'Finish' : '피니시')
-                  : whisky.maturationStyle === 'FULL_MATURATION'
-                  ? (isEn ? 'Full Maturation' : '풀 머추레이션')
-                  : null} />
-              {whisky.finishCaskType && (
-                <DI label={isEn ? 'Finish Cask' : '피니시 캐스크'}
-                  value={CASK_LABEL[whisky.finishCaskType] ?? whisky.finishCaskType} />
-              )}
-              <DI label={isEn ? 'Finish Detail' : '피니시 상세'} value={whisky.finishCaskDetail} />
+              <DIChips label={isEn ? 'Cask' : '캐스크'}
+                items={(whisky.caskTypes ?? []).map((c) => {
+                  const base = c === 'OTHER' ? (whisky.caskTypeOther || caskLabel('OTHER')) : caskLabel(c)
+                  // 피니시(추가 숙성) 캐스크는 색으로 구분 + 끝에 표시
+                  const isFinish = whisky.caskFinishes?.includes(c) ?? false
+                  return { text: isFinish ? `${base} ${isEn ? '(Finish)' : '(피니시)'}` : base, accent: isFinish }
+                })} />
               <DI label={isEn ? 'Phenol (ppm)' : '피트 강도'}
                 value={whisky.phenolPpm != null ? `${whisky.phenolPpm} ppm` : null} />
               <DI label={isEn ? 'Single Cask No.' : '싱글 캐스크 번호'} value={whisky.caskNo} />
@@ -215,6 +267,12 @@ function SpiritDetailSections({ spirit, isEn }: { spirit: SpiritDetail; isEn: bo
                 <Badge2 detail="Peated (피트 사용)">Peated</Badge2>
               )}
             </div>
+            {whisky.notes && (
+              <div className="mt-4">
+                <p className="text-[13px] text-neutral-400 mb-1">{isEn ? 'Notes' : '기타 정보'}</p>
+                <p className="text-[14px] text-neutral-800 whitespace-pre-wrap leading-relaxed">{whisky.notes}</p>
+              </div>
+            )}
           </div>
         )}
 
@@ -408,7 +466,7 @@ function Gallery({
     <div className="space-y-3">
       <div
         onClick={() => current && onImageClick(selectedIdx)}
-        className={`aspect-[3/4] rounded-2xl overflow-hidden ring-1 ring-neutral-100 bg-gradient-to-b from-amber-50 to-amber-100/50 relative group ${
+        className={`aspect-[3/4] rounded-2xl overflow-hidden ring-1 ring-neutral-100 bg-white relative group ${
           current ? 'cursor-zoom-in' : ''
         }`}
       >

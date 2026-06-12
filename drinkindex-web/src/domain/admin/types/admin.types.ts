@@ -25,9 +25,9 @@ export interface WhiskyDetailRequest {
   style?: string | null
   styleOther?: string | null
   bottlingType?: string | null
-  caskType?: string | null
-  maturationStyle?: string | null
-  finishCaskType?: string | null
+  caskTypes?: string[] | null
+  caskFinishes?: string[] | null
+  caskTypeOther?: string | null
   isNonChillFiltered?: boolean | null
   isNaturalColour?: boolean | null
   isSingleCask?: boolean | null
@@ -35,7 +35,7 @@ export interface WhiskyDetailRequest {
   isPeated?: boolean | null
   phenolPpm?: number | null
   caskNo?: string | null
-  finishCaskDetail?: string | null
+  notes?: string | null
 }
 
 export interface WineDetailRequest {
@@ -330,6 +330,7 @@ export interface SpiritRegisterRequestDetail {
   whiskyStyle: WhiskyStyle | null
   whiskyStyleOther: string | null
   caskNo: string | null
+  whiskyNotes: string | null
   wineType: WineType | null
   cognacGrade: CognacGrade | null
   otherType: OtherSpiritType | null

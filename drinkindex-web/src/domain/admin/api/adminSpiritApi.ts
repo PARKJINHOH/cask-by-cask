@@ -22,16 +22,19 @@ export const adminSpiritApi = {
     page?: number
     size?: number
   }) =>
-    axiosInstance.get<ApiResponse<PageResponse<AdminSpiritItem>>>('/api/spirits', { params }),
+    axiosInstance.get<ApiResponse<PageResponse<AdminSpiritItem>>>('/api/admin/spirits', { params }),
 
   getById: (id: number) =>
-    axiosInstance.get<ApiResponse<AdminSpiritDetail>>(`/api/spirits/${id}`),
+    axiosInstance.get<ApiResponse<AdminSpiritDetail>>(`/api/admin/spirits/${id}`),
 
   update: (id: number, data: UpdateSpiritPayload) =>
     axiosInstance.patch<ApiResponse<AdminSpiritDetail>>(`/api/admin/spirits/${id}`, data),
 
   delete: (id: number) =>
     axiosInstance.delete<ApiResponse<null>>(`/api/admin/spirits/${id}`),
+
+  restore: (id: number) =>
+    axiosInstance.patch<ApiResponse<null>>(`/api/admin/spirits/${id}/restore`),
 
   uploadImage: (id: number, file: File) => {
     const form = new FormData()

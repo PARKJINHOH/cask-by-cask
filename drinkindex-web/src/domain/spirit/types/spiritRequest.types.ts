@@ -26,6 +26,7 @@ export interface SpiritRegisterRequestForm {
   whiskyStyle?: WhiskyStyle | null
   whiskyStyleOther?: string   // whiskyStyle=OTHER 일 때 직접 입력
   caskNo?: string             // 캐스크 번호 (위스키, 선택)
+  whiskyNotes?: string        // 기타 정보 (위스키, 참고용 자유 입력)
   wineType?: WineType | null
   cognacGrade?: CognacGrade | null
   otherType?: OtherSpiritType | null

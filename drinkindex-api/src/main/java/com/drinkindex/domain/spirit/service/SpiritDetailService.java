@@ -133,20 +133,27 @@ public class SpiritDetailService {
         if (req == null) return;
 
         boolean isPeated = Boolean.TRUE.equals(req.isPeated());
-        MaturationStyle matStyle = req.maturationStyle();
+
+        // 사용된 캐스크 (복수). OTHER 포함 시에만 직접 입력값 보존.
+        List<WhiskyCaskType> caskTypes = req.caskTypes() != null ? req.caskTypes() : List.of();
+        boolean hasOther = caskTypes.contains(WhiskyCaskType.OTHER);
+        // 피니시 캐스크 — caskTypes 의 부분집합만 보존(선택 해제된 캐스크의 피니시 표시는 무의미).
+        List<WhiskyCaskType> caskFinishes = (req.caskFinishes() != null ? req.caskFinishes() : List.<WhiskyCaskType>of())
+                .stream().filter(caskTypes::contains).toList();
 
         Map<String, Object> extra = new LinkedHashMap<>();
         extra.put("caskNo", req.caskNo());
-        extra.put("finishCaskDetail", req.finishCaskDetail());
+        extra.put("caskTypes", caskTypes.stream().map(Enum::name).toList());
+        extra.put("caskFinishes", caskFinishes.stream().map(Enum::name).toList());
+        extra.put("caskTypeOther", hasOther ? req.caskTypeOther() : null);
+        extra.put("notes", req.notes());
         // 스타일 직접 입력은 style=OTHER 일 때만 보존
         extra.put("styleOther", req.style() == WhiskyStyle.OTHER ? req.styleOther() : null);
         String extraJson = serialize(extra);
 
-        WhiskyCaskType finishCask = matStyle == MaturationStyle.FINISH ? req.finishCaskType() : null;
-
         whiskyDetailRepo.findById(spirit.getId()).ifPresentOrElse(
             existing -> existing.update(
-                req.style(), req.bottlingType(), req.caskType(), matStyle, finishCask,
+                req.style(), req.bottlingType(),
                 req.isNonChillFiltered(), req.isNaturalColour(), req.isSingleCask(),
                 req.isCaskStrength(), req.isPeated(), isPeated ? req.phenolPpm() : null,
                 extraJson),
@@ -154,9 +161,6 @@ public class SpiritDetailService {
                 .spirit(spirit)
                 .style(req.style())
                 .bottlingType(req.bottlingType())
-                .caskType(req.caskType())
-                .maturationStyle(matStyle)
-                .finishCaskType(finishCask)
                 .isNonChillFiltered(req.isNonChillFiltered())
                 .isNaturalColour(req.isNaturalColour())
                 .isSingleCask(req.isSingleCask())
@@ -289,12 +293,25 @@ public class SpiritDetailService {
         Map<String, Object> extra = parseExtra(detail.getExtraData());
         return new WhiskyDetailResponse(
                 detail.getStyle(), str(extra, "styleOther"), detail.getBottlingType(),
-                detail.getCaskType(), detail.getMaturationStyle(), detail.getFinishCaskType(),
+                caskTypes(extra, "caskTypes"), caskTypes(extra, "caskFinishes"), str(extra, "caskTypeOther"),
                 detail.getIsNonChillFiltered(), detail.getIsNaturalColour(),
                 detail.getIsSingleCask(), detail.getIsCaskStrength(), detail.getIsPeated(),
                 detail.getPhenolPpm(),
-                str(extra, "caskNo"), str(extra, "finishCaskDetail")
+                str(extra, "caskNo"), str(extra, "notes")
         );
+    }
+
+    /** extraData[key] (문자열 배열) → WhiskyCaskType 목록. 알 수 없는 값은 무시. */
+    private List<WhiskyCaskType> caskTypes(Map<String, Object> extra, String key) {
+        if (extra == null || !(extra.get(key) instanceof List<?> list)) return List.of();
+        return list.stream()
+                .filter(x -> x instanceof String)
+                .map(x -> {
+                    try { return WhiskyCaskType.valueOf((String) x); }
+                    catch (IllegalArgumentException e) { return null; }
+                })
+                .filter(Objects::nonNull)
+                .toList();
     }
 
     private WineDetailResponse buildWineDetailResponse(SpiritWineDetail detail) {

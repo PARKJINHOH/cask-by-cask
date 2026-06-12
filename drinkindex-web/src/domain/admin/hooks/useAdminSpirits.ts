@@ -34,8 +34,20 @@ export function useDeleteSpirit() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (id: number) => adminSpiritApi.delete(id),
-    onSuccess: () => {
+    onSuccess: (_data, id) => {
       queryClient.invalidateQueries({ queryKey: ['admin-spirits'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-spirit-detail', id] })
+    },
+  })
+}
+
+export function useRestoreSpirit() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => adminSpiritApi.restore(id),
+    onSuccess: (_data, id) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-spirits'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-spirit-detail', id] })
     },
   })
 }

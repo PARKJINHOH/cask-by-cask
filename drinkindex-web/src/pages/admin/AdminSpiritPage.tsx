@@ -17,7 +17,8 @@ const CATEGORY_LABEL: Record<SpiritCategory, string> = {
 
 const CATEGORIES: SpiritCategory[] = ['WHISKY', 'COGNAC', 'WINE', 'OTHER']
 
-const STATUS_OPTIONS: Array<{ value: SpiritStatus; label: string }> = [
+const STATUS_OPTIONS: Array<{ value: SpiritStatus | ''; label: string }> = [
+  { value: '',        label: '전체' },
   { value: 'ACTIVE',  label: '공개' },
   { value: 'HIDDEN',  label: '숨김' },
   { value: 'PENDING', label: '대기' },
@@ -29,14 +30,14 @@ export default function AdminSpiritPage() {
   const navigate = useNavigate()
   const [keyword, setKeyword]   = useState('')
   const [category, setCategory] = useState<SpiritCategory | ''>('')
-  const [status, setStatus]     = useState<SpiritStatus>('ACTIVE')
+  const [status, setStatus]     = useState<SpiritStatus | ''>('')
   const [page, setPage]         = useState(0)
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
 
   const { data, isLoading } = useAdminSpirits({
     keyword: keyword.trim() || undefined,
     category: category || undefined,
-    status,
+    status: status || undefined,
     page,
   })
 
@@ -80,7 +81,7 @@ export default function AdminSpiritPage() {
           <label className="block text-sm font-medium text-neutral-700 mb-1">상태</label>
           <select
             value={status}
-            onChange={(e) => { setStatus(e.target.value as SpiritStatus); setPage(0) }}
+            onChange={(e) => { setStatus(e.target.value as SpiritStatus | ''); setPage(0) }}
             className="h-9 px-3 text-sm border border-neutral-300 rounded-lg bg-white
               focus:outline-none focus:ring-2 focus:ring-primary-400"
           >

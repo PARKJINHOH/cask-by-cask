@@ -156,6 +156,8 @@
       "region": "지역",
       "bottler": "병입업체명",
       "caskNo": "싱글 캐스크 번호",
+      "whiskyNotes": "기타 정보",
+      "whiskyNotesPlaceholder": "예) 2021~2022 출시 제품, PX 50% 포트 20%",
       "bottledYear": "병입년도",
       "vintageYear": "빈티지",
       "producer": "생산자",

@@ -3,6 +3,8 @@ package com.drinkindex.domain.spirit.dto;
 import com.drinkindex.domain.spirit.entity.enums.*;
 import io.swagger.v3.oas.annotations.media.Schema;
 
+import java.util.List;
+
 public record WhiskyDetailResponse(
 
         @Schema(description = "위스키 스타일")
@@ -14,14 +16,14 @@ public record WhiskyDetailResponse(
         @Schema(description = "병입 구분 (OB/IB)")
         BottlingType bottlingType,
 
-        @Schema(description = "주 캐스크 종류")
-        WhiskyCaskType caskType,
+        @Schema(description = "사용된 캐스크 종류 (복수)")
+        List<WhiskyCaskType> caskTypes,
 
-        @Schema(description = "숙성 방식")
-        MaturationStyle maturationStyle,
+        @Schema(description = "피니시(추가 숙성) 캐스크 종류 — caskTypes 의 부분집합")
+        List<WhiskyCaskType> caskFinishes,
 
-        @Schema(description = "피니시 캐스크 종류")
-        WhiskyCaskType finishCaskType,
+        @Schema(description = "캐스크 직접 입력 (caskTypes 에 OTHER 포함 시)")
+        String caskTypeOther,
 
         @Schema(description = "Non-Chill Filtered 여부")
         Boolean isNonChillFiltered,
@@ -44,7 +46,7 @@ public record WhiskyDetailResponse(
         @Schema(description = "캐스크 번호")
         String caskNo,
 
-        @Schema(description = "피니시 캐스크 추가 설명")
-        String finishCaskDetail
+        @Schema(description = "기타 정보 (참고용 자유 입력)")
+        String notes
 
 ) {}

@@ -54,7 +54,7 @@ public interface SpiritRepository extends JpaRepository<Spirit, Long>, SpiritQue
                                           @Param("nameKo") String nameKo,
                                           @Param("nameEn") String nameEn);
 
-    /** 상세 조회용 — 모든 서브 테이블 LEFT JOIN FETCH (N+1 방지) */
+    /** 상세 조회용 — 모든 서브 테이블 LEFT JOIN FETCH (N+1 방지). status가 null이면 상태 무관(관리자 전용) */
     @Query("""
             SELECT DISTINCT s FROM Spirit s
             LEFT JOIN FETCH s.producer
@@ -63,7 +63,7 @@ public interface SpiritRepository extends JpaRepository<Spirit, Long>, SpiritQue
             LEFT JOIN FETCH s.wineDetail
             LEFT JOIN FETCH s.cognacDetail
             LEFT JOIN FETCH s.otherDetail
-            WHERE s.id = :id AND s.status = :status
+            WHERE s.id = :id AND (:status IS NULL OR s.status = :status)
             """)
     Optional<Spirit> findByIdWithAllDetails(@Param("id") Long id,
                                             @Param("status") SpiritStatus status);

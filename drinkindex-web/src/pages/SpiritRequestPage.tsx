@@ -205,6 +205,7 @@ export default function SpiritRequestPage() {
     whiskyStyle: data.whiskyStyle || undefined,
     whiskyStyleOther: data.whiskyStyle === 'OTHER' ? (data.whiskyStyleOther?.trim() || undefined) : undefined,
     caskNo: data.category === 'WHISKY' ? (data.caskNo?.trim() || undefined) : undefined,
+    whiskyNotes: data.category === 'WHISKY' ? (data.whiskyNotes?.trim() || undefined) : undefined,
     wineType:    data.wineType    || undefined,
     cognacGrade: data.cognacGrade || undefined,
     otherType:   data.otherType   || undefined,
@@ -248,7 +249,7 @@ export default function SpiritRequestPage() {
         distilledDate: d.distilledDate ?? undefined, bottledDate: d.bottledDate ?? undefined,
         releaseDate: d.releaseDate ?? undefined,
         whiskyStyle: d.whiskyStyle ?? undefined, whiskyStyleOther: d.whiskyStyleOther ?? undefined,
-        caskNo: d.caskNo ?? undefined,
+        caskNo: d.caskNo ?? undefined, whiskyNotes: d.whiskyNotes ?? undefined,
         wineType: d.wineType ?? undefined, cognacGrade: d.cognacGrade ?? undefined,
         otherType: d.otherType ?? undefined, vintageYear: d.vintageYear ?? undefined,
         note: d.note ?? undefined,
@@ -495,6 +496,20 @@ export default function SpiritRequestPage() {
                       {...register('caskNo', { maxLength: 100 })}
                       maxLength={100}
                       className={`${FIELD_CLS} border-neutral-300`}
+                    />
+                  </div>
+                )}
+
+                {/* 기타 정보 (위스키 전용, 참고용 자유 입력) */}
+                {selectedCategory === 'WHISKY' && (
+                  <div>
+                    <label className={LABEL_CLS}>{t('spiritRequest.form.whiskyNotes')}</label>
+                    <textarea
+                      {...register('whiskyNotes', { maxLength: 500 })}
+                      maxLength={500}
+                      rows={2}
+                      placeholder={t('spiritRequest.form.whiskyNotesPlaceholder')}
+                      className={`${FIELD_CLS} border-neutral-300 resize-none`}
                     />
                   </div>
                 )}

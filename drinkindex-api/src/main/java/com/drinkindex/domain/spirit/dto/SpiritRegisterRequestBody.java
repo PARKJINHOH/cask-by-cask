@@ -62,6 +62,9 @@ public record SpiritRegisterRequestBody(
         @Schema(description = "캐스크 번호 (선택, 위스키)")
         @Size(max = 100, message = "캐스크 번호는 100자 이하여야 합니다.")
         String caskNo,
+        @Schema(description = "기타 정보 (선택, 위스키 참고용 자유 입력)")
+        @Size(max = 500, message = "기타 정보는 500자 이하여야 합니다.")
+        String whiskyNotes,
         @Schema(description = "와인 종류 (필수, 신청자 입력)")
         WineType wineType,
         @Schema(description = "꼬냑 등급 (필수, 신청자 입력)")
