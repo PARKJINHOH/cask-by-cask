@@ -118,11 +118,15 @@ def run() -> int:
             scraper = detail_scrapers[post.site]
             detail = scraper.fetch_detail(post)
 
-            # 4) 이미지 임시저장 → base64 → 즉시 삭제
-            data_urls = images.to_data_urls(detail.image_urls, referer=post.url)
-
-            # 5) AI 분석
-            result = analyzer.analyze(detail, data_urls)
+            # 4) 이미지 임시 디렉토리 다운로드 → base64 인코딩 → 분석 직후 디렉토리 삭제
+            post_hash = ImageHandler.make_post_hash(post.url)
+            image_dir = images.download(detail.image_urls, post_hash, referer=post.url)
+            try:
+                data_urls = images.encode_dir(image_dir)
+                # 5) AI 분석
+                result = analyzer.analyze(detail, data_urls)
+            finally:
+                images.cleanup(image_dir)
             stats["analyzed"] += 1
             log.info(
                 "분석 %s | hotdeal=%s conf=%.2f cat=%s price=%s | %s",
