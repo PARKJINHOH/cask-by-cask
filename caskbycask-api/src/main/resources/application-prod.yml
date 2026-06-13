@@ -35,10 +35,10 @@ app:
       same-site: Strict
 
 cors:
-  allowed-origins: https://caskbycask.pinner.dev
+  allowed-origins: https://caskbycask.net
 
 seo:
-  site-url: https://caskbycask.pinner.dev
+  site-url: https://caskbycask.net
 
 logging:
   file:

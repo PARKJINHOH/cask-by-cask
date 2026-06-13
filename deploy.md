@@ -1,5 +1,8 @@
 # CaskByCask 배포 가이드
 
+> **배포 파이프라인(서버 구조 / GitHub Actions 수동 배포 / 롤백)** 은 [deploy/DEPLOY-PIPELINE.md](deploy/DEPLOY-PIPELINE.md) 참고.
+> 이 문서는 **Flyway 마이그레이션 / SEO prerender / 운영 SQL 절차** 를 다룬다.
+
 ---
 
 ## ✅ 배포 전 Todo List (운영 반영 전 반드시 확인)
@@ -23,8 +26,8 @@
   - [ ] (선택) Cloudflare WAF / Bot Fight Mode, `/api/auth/*` 추가 Rate Limit Rule
 
 - [ ] **(B-4) 업로드 파일 백업 정책**
-  - [ ] 현재 업로드는 **서버 로컬 디스크**(`storage.local.base-path: ./uploads`)에 저장 → 인스턴스 장애 시 유실 위험
-  - [ ] `uploads/` 정기 백업(cron + 외부 스토리지/Object Storage 복사) 또는 Oracle Block Volume 스냅샷 스케줄 구성
+  - [ ] 운영 업로드는 **서버 로컬 디스크 `/app/upload`** (배포와 무관한 영속 경로, nginx 가 `/uploads/` 로 직접 서빙)에 저장 → 인스턴스 장애 시 유실 위험
+  - [ ] `/app/upload` 정기 백업(cron + 외부 스토리지/Object Storage 복사) 또는 Oracle Block Volume 스냅샷 스케줄 구성
   - [ ] 장기적으로 `S3FileStorageService`(현재 스텁) 활성화해 외부 오브젝트 스토리지로 이전 검토
 
 - [ ] **(A-1) 프론트 SEO prerender 활성화** — 상세 절차는 아래 [프론트 SEO prerender 배포](#프론트-seo-prerender-배포) 참고
@@ -55,11 +58,14 @@
 SPA(Vite/React)는 최초 응답이 빈 셸 HTML 이라, 일부 크롤러/미리보기 봇은 JS 실행 전 본문·메타·JSON-LD 를 못 봅니다.
 `scripts/prerender.mjs` 가 **빌드 후 주요 정적 라우트를 puppeteer(headless Chromium)로 렌더해 `dist/<route>/index.html` 스냅샷**으로 저장하면, nginx 가 크롤러에게 완성된 HTML(JSON-LD/메타 포함)을 바로 줍니다.
 
-> **현재 상태**: `deploy/deploy-web.sh prod` 가 prerender 를 실행하도록 설정되어 있습니다.
-> 단, **서버에 Chromium 이 없으면 이 단계는 경고 후 건너뜁니다(배포 자체는 정상, SEO 만 저하).**
-> 아래 1회 설정을 마쳐야 prerender 가 실제로 동작합니다.
+> **현재 상태**: prerender 는 **GitHub Actions(`build-web` 잡)에서 실행**됩니다.
+> 워크플로가 `npx puppeteer browsers install chrome` 로 Chromium 을 설치한 뒤 `npm run build`(= tsc + vite build + prerender)를 수행하고,
+> 완성된 `dist/`(스냅샷 포함)만 서버 `/app/vite/dist` 로 전송합니다.
+> **따라서 운영 서버에는 Chromium 이 필요 없습니다.** 아래 "서버에 Chromium 설치" 절은 서버에서 직접 prerender 를 돌리던 구(舊) 방식의 참고용입니다.
 
-### 1회 설정 — Ubuntu 서버에 Chromium 설치
+### (구 방식 참고) Ubuntu 서버에 Chromium 설치
+
+> 현재 파이프라인에선 불필요. 서버에서 수동으로 prerender 를 돌릴 때만 참고.
 
 puppeteer 가 헤드리스 Chromium 을 띄우려면 시스템 라이브러리 + Chromium 바이너리가 필요합니다.
 **방법 A(권장: 시스템 Chromium)** — 가볍고 apt 로 업데이트 관리됨:
@@ -99,18 +105,8 @@ sudo apt-get install -y \
 
 ### 배포 시 사용법
 
-설정을 마쳤다면 평소대로 배포하면 prerender 가 자동 포함됩니다:
-
-```bash
-./deploy/deploy-web.sh prod
-# [web:prod] Building SPA...
-# [web:prod] Prerendering SEO snapshots...
-# [prerender] ✓ /spirits            → dist/spirits/index.html (xx kB, xxxms)
-# [web:prod] ✅ Prerender complete.
-# [web:prod] Syncing dist → /var/www/caskbycask-prod ...
-```
-
-개별 명령으로 쪼개 쓰려면:
+평소 배포는 **GitHub Actions "Deploy (manual)"** 실행만으로 prerender 까지 자동 수행됩니다
+(상세: [deploy/DEPLOY-PIPELINE.md](deploy/DEPLOY-PIPELINE.md)). 로컬에서 직접 빌드/검증하려면:
 
 ```bash
 cd caskbycask-web
@@ -123,11 +119,11 @@ npm run build                # tsc + vite build + prerender
 ### 검증
 
 ```bash
-# 스냅샷 파일이 생성됐는지
-ls -la /var/www/caskbycask-prod/spirits/index.html
+# 스냅샷 파일이 생성됐는지 (서버)
+ls -la /app/vite/dist/spirits/index.html
 
 # 배포 후 크롤러 관점에서 본문/JSON-LD 가 박혀 있는지 (JS 미실행 상태)
-curl -s https://<도메인>/spirits | grep -o 'application/ld+json' | head
+curl -s https://caskbycask.net/spirits | grep -o 'application/ld+json' | head
 ```
 
 ### 문제 해결

@@ -1,0 +1,131 @@
+name: Deploy (manual)
+
+# 수동 배포 전용 — Actions 탭에서 "Run workflow" 클릭으로 실행.
+# 빌드는 GitHub 호스팅 러너(x86)에서 수행하고, 산출물(app.jar / dist)만 서버로 전송한다.
+# 산출물은 아키텍처 중립이라 서버가 aarch64여도 문제없다.
+#
+# 필요한 Secrets (앱 환경변수 아님 — SSH 접속 정보만):
+#   SSH_HOST   서버 공인 IP (또는 Cloudflare 미프록시 직결 주소)
+#   SSH_USER   배포 유저 (예: ubuntu)
+#   SSH_KEY    배포용 SSH 개인키 (전체 내용)
+#   SSH_PORT   (선택) SSH 포트, 미설정 시 22
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "배포할 브랜치/태그 (기본: master)"
+        required: false
+        default: master
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  build-api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build bootJar (no tests)
+        working-directory: caskbycask-api
+        run: |
+          chmod +x gradlew
+          ./gradlew clean bootJar -x test --no-daemon
+      - name: Pick jar
+        working-directory: caskbycask-api
+        run: |
+          JAR=$(ls -t build/libs/*.jar | grep -v plain | head -1)
+          echo "Picked: $JAR"
+          cp "$JAR" build/libs/app.jar
+      - uses: actions/upload-artifact@v4
+        with:
+          name: api-jar
+          path: caskbycask-api/build/libs/app.jar
+          retention-days: 5
+
+  build-web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: caskbycask-web/package-lock.json
+      - name: Install deps
+        working-directory: caskbycask-web
+        run: npm ci
+      - name: Ensure Chromium for prerender
+        working-directory: caskbycask-web
+        run: npx puppeteer browsers install chrome
+      - name: Build (tsc + vite + prerender)
+        working-directory: caskbycask-web
+        run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: caskbycask-web/dist
+          retention-days: 5
+
+  deploy:
+    needs: [build-api, build-web]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: api-jar
+          path: artifacts/api
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: artifacts/web/dist
+      - name: Setup SSH
+        env:
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -p "${SSH_PORT:-22}" -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+      - name: Transfer artifacts + scripts
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+        run: |
+          PORT="${SSH_PORT:-22}"
+          SSH="ssh -i ~/.ssh/id_deploy -p $PORT $SSH_USER@$SSH_HOST"
+          $SSH 'mkdir -p /app/spring-boot /app/vite /app/scripts && rm -rf /app/vite/dist.new && mkdir -p /app/vite/dist.new'
+          # 백엔드 jar → staging
+          scp -i ~/.ssh/id_deploy -P $PORT artifacts/api/app.jar "$SSH_USER@$SSH_HOST:/app/spring-boot/app.jar.new"
+          # 프론트 dist → staging (rsync로 정확히 동기화)
+          rsync -az --delete -e "ssh -i ~/.ssh/id_deploy -p $PORT" artifacts/web/dist/ "$SSH_USER@$SSH_HOST:/app/vite/dist.new/"
+          # 서버 배포 스크립트 갱신
+          scp -i ~/.ssh/id_deploy -P $PORT deploy/server/deploy-api.sh deploy/server/deploy-web.sh "$SSH_USER@$SSH_HOST:/app/scripts/"
+          $SSH 'chmod +x /app/scripts/deploy-api.sh /app/scripts/deploy-web.sh'
+      - name: Swap & restart (with health check + rollback)
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+        run: |
+          PORT="${SSH_PORT:-22}"
+          SSH="ssh -i ~/.ssh/id_deploy -p $PORT $SSH_USER@$SSH_HOST"
+          # 프론트 먼저(무중단), 백엔드는 health check + 실패 시 롤백
+          $SSH 'bash /app/scripts/deploy-web.sh'
+          $SSH 'bash /app/scripts/deploy-api.sh'

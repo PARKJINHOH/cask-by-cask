@@ -1,6 +1,6 @@
 # 도메인 변경 시 체크리스트
 
-현재 도메인: `caskbycask.pinner.dev` (운영), `drink-dev.pinner.dev` (개발)
+현재 도메인: `caskbycask.net` (운영), `drink-dev.pinner.dev` (개발)
 
 도메인이 변경될 경우 아래 항목을 순서대로 처리합니다.
 
@@ -76,15 +76,11 @@ Sitemap: https://<새 운영 도메인>/sitemap.xml
 
 ## 3. nginx 설정
 
-### 3-1. deploy/nginx/caskbycask-prod.conf
+### 3-1. deploy/nginx/caskbycask.conf
 ```nginx
-server_name <새 운영 도메인>;
+server_name <새 운영 도메인> www.<새 운영 도메인>;
 ```
-
-### 3-2. deploy/nginx/caskbycask-dev.conf
-```nginx
-server_name <새 개발 도메인>;
-```
+> SSL 인증서 경로(`/etc/nginx/ssl/<도메인>.pem|key`)도 도메인에 맞춰 갱신.
 
 ---
 
