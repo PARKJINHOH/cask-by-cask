@@ -210,23 +210,26 @@ V12__drop_old_notification_table.sql  ← 테이블 삭제
 
 ---
 
-## 운영 서버 최초 배포
+## 운영 서버 최초 배포 (빈 DB → Flyway 자동 구성)
 
-이 프로젝트는 이미 운영 중입니다. 아래는 참고용 기록입니다.
+`V1__init_baseline.sql` 이 현재 엔티티 전체 스키마(클린 베이스라인)이고, 이후 `V2`~`V{n}` 이
+스키마 변경 + seed 를 이어붙인다. 따라서 **빈 `caskbycask_prod` DB 에 앱을 처음 기동하면
+Flyway 가 V1 부터 끝까지 순서대로 적용해 스키마와 기초데이터를 한 번에 구성**한다.
+별도의 `ddl-auto=create` 덤프 작업은 필요 없다.
 
-### 최초 배포 시 했던 절차 (V1 baseline 방식)
+1. 빈 DB/계정 생성 (`deploy/server/setup-server.md` 4단계 참고). prod 의 `ddl-auto` 는 `none` 그대로 둔다.
+2. 첫 배포로 app.jar 기동 → Flyway 가 `flyway_schema_history` 를 만들고 V1~V{n} 을 자동 실행.
+3. 로그에 `Successfully applied N migrations` 가 보이면 완료.
 
-1. `application-prod.yml`의 `ddl-auto`를 임시로 `create`로 변경
-2. 운영 DB에 앱 한 번 기동 → JPA가 모든 테이블 자동 생성
-3. 앱 종료 후 `ddl-auto: none`으로 원복
-4. `baseline-on-migrate: true` 설정 덕분에 Flyway가 현재 상태를 V0(baseline)으로 마킹
-5. 이후 모든 변경은 V2, V3... 순서로 추가
+```
+[prod] Migrating schema `caskbycask_prod` to version "1 - init baseline"
+[prod] ... (V2 ~ V{n})
+[prod] Successfully applied N migrations to schema `caskbycask_prod`
+```
 
-> `V1__init_baseline.sql`은 현재 placeholder 상태입니다.
-> 운영 DB를 새로 구성해야 할 때는 현재 스키마를 dump 떠서 V1에 채워넣으면 됩니다.
-> ```bash
-> mysqldump --no-data --skip-comments caskbycask_prod > V1__init_baseline.sql
-> ```
+> 과거(레거시)에는 `ddl-auto=create` 로 JPA 가 테이블을 만들게 한 뒤 baseline 으로 마킹하는
+> 방식을 썼으나, 지금은 V1 이 전체 스키마를 소유하므로 그 절차는 불필요하다.
+> 엔티티로부터 V1 을 다시 떠야 할 때의 절차는 아래 [운영 DB를 새로 구성해야 할 때](#운영-db를-새로-구성해야-할-때) 참고.
 
 ---
 

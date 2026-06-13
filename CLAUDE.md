@@ -30,7 +30,7 @@
 ## 인프라/배포 (개인 운영 커뮤니티 — 사업자 없음)
 - **서버: Oracle Cloud Infrastructure, 대한민국 춘천 리전** (현재). 이용자 증가 시 추후 AWS 전환 가능.
 - 파일 저장: 현재 Oracle Cloud 인스턴스 내 디스크에 직접 저장(서버 로컬, `storage.local.base-path: ./uploads`) → 같은 서버가 직접 서빙. `S3FileStorageService`는 추후 외부 오브젝트 스토리지 연동용 빈 스텁(미사용).
-- 이메일: Gmail SMTP (Google, caskbycask.cs@gmail.com). `AwsSesEmailSender`는 비활성(`app.email.provider: smtp`).
+- 이메일: Gmail SMTP (Google, drinkindex.cs@gmail.com). `AwsSesEmailSender`는 비활성(`app.email.provider: smtp`).
 - 개인정보 보호책임자 / 서비스 운영자: 박진호
 - ※ 약관·개인정보 처리방침에 위 인프라(국내 보관 등)가 반영됨 — 인프라 변경 시 `LegalDocumentTemplate.java` + `defaultTemplates.ts` 동기 수정 필요.
 

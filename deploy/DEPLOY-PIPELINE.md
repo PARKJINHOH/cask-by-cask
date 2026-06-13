@@ -8,7 +8,7 @@
 ## 1. 개요
 
 ```
-master push (코드만)
+main push (코드만)
    │   ← 사용자가 Actions 탭에서 "Run workflow" 클릭 (수동)
    ▼
 GitHub Actions (ubuntu-latest, x86)
@@ -39,7 +39,7 @@ GitHub Actions (ubuntu-latest, x86)
 │  ├─ dist.new/                ← 배포 중 staging
 │  └─ dist_<타임스탬프>/        ← 직전 백업 1개
 ├─ upload/                     ← 영속 (이미지·동영상) — 배포와 무관, 절대 삭제 안 함
-├─ db_backup/                  ← 영속 (DB 덤프, 일배치 gzip / 30일 보관)
+├─ db_backup/                  ← 영속 (DB 덤프, 일배치 gzip / 3일 보관)
 ├─ logs/                       ← jar 로그 (logback) — 매일 자정 롤오버→gzip(archived/) / 30일 보관
 │  ├─ caskbycask-api.log       ← 현재 로그 (uncompressed)
 │  ├─ caskbycask-api-error.log ← ERROR 전용
@@ -72,23 +72,26 @@ systemd: /etc/systemd/system/caskbycask-api.service (app 127.0.0.1:8080, actuato
 
 방화벽은 **2군데** 다 열어야 함:
 1. **Oracle 콘솔 Security List(Ingress)**: 443(권장: Cloudflare 대역만), 80, 22(내 IP)
-2. **인스턴스 iptables**: `setup-server.sh` 가 80/443 ACCEPT + `netfilter-persistent save`
+2. **인스턴스 iptables**: 80/443 ACCEPT + `netfilter-persistent save` ([setup-server.md](server/setup-server.md) 10단계)
 
 ---
 
 ## 4. 최초 1회 셋업
 
-```bash
-# 서버에서 (코드를 한 번 클론하거나 setup 스크립트만 복사)
-sudo bash deploy/server/setup-server.sh
-```
-스크립트가 끝에 출력하는 **[수동] 단계**를 마저 진행:
-1. `mysql_secure_installation` + `caskbycask_prod` DB / `caskbycask` 계정 생성
-2. Redis `requirepass` 설정
-3. `/app/env/api.env` 작성 (`deploy/env/api.env.example` 복사 후 값 채우고 chmod 600)
-4. Cloudflare Origin Cert 를 `/etc/nginx/ssl/` 에 배치 → `nginx -t && systemctl reload nginx`
-5. Oracle Security List + Cloudflare DNS(A, Proxied) + SSL/TLS Full(strict)
-6. 첫 배포(아래) 후 `sudo systemctl enable --now caskbycask-api`
+서버에서 **명령어를 직접 한 줄씩 입력**하며 진행한다 (자동 스크립트 미사용).
+전체 단계는 **[server/setup-server.md](server/setup-server.md)** 참고. 요약:
+
+1. 패키지 설치(JRE21/nginx/mariadb/redis/rsync/iptables-persistent)
+2. `/app` 디렉토리 구조 + `chown -R ubuntu:ubuntu`
+3. MariaDB/Redis 127.0.0.1 바인딩
+4. `mysql_secure_installation` + `caskbycask_prod` DB / `caskbycask` 계정 생성
+5. Redis `requirepass` 설정
+6. `/app/env/api.env` 작성 (`deploy/env/api.env.example` 복사 후 값 채우고 chmod 600)
+7. systemd 유닛 + nginx 설정 + Cloudflare Origin Cert 배치 → `nginx -t && systemctl reload nginx`
+8. 배포 유저 무암호 sudo + iptables 80/443
+9. DB 백업 스크립트 + cron 등록
+10. Oracle Security List + Cloudflare DNS(A, Proxied) + SSL/TLS Full(strict)
+11. 첫 배포(아래) 후 `sudo systemctl enable --now caskbycask-api`
 
 ---
 
@@ -107,7 +110,7 @@ sudo bash deploy/server/setup-server.sh
 
 ## 6. 평소 배포 (수동)
 
-1. 코드 `master` 에 push
+1. 코드 `main` 에 push
 2. GitHub → **Actions → "Deploy (manual)" → Run workflow** (사용자 적은 시간대 권장)
 3. build-api / build-web 병렬 빌드 → deploy 잡이 전송 + 교체
 4. `deploy-api.sh` 가 readiness 헬스체크까지 통과해야 성공 처리 (실패 시 자동 롤백)
@@ -150,8 +153,8 @@ rm -rf dist && mv dist_<타임스탬프> dist
 ### DB 백업
 - `/app/scripts/backup-db.sh` 가 **매일 03:00(cron)** 실행:
   - `caskbycask_prod` 를 mariadb-dump(단일 트랜잭션) → gzip → `/app/db_backup/`
-  - **30일 초과 자동 삭제**, 실패/성공 시 Slack 알림(설정 시)
-- cron 은 `setup-server.sh` 가 배포 유저에 등록. 수동 실행: `/app/scripts/backup-db.sh`
+  - **3일 초과 자동 삭제**, 실패/성공 시 Slack 알림(설정 시)
+- cron 은 셋업 시 배포 유저 crontab 에 등록([setup-server.md](server/setup-server.md) 11단계). 수동 실행: `/app/scripts/backup-db.sh`
 - 복원: `gunzip < /app/db_backup/<파일>.sql.gz | mariadb -u caskbycask -p caskbycask_prod`
 
 > ⚠️ DB 백업은 같은 디스크에 쌓이므로, 인스턴스 장애 대비 **외부 복사**(Oracle Object Storage / Block Volume 스냅샷)를 별도 권장. `upload/` 도 동일.

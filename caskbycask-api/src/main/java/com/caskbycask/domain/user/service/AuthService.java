@@ -237,7 +237,7 @@ public class AuthService {
         refreshTokenRepository.deleteByUserId(user.getId());
     }
 
-    /** 이메일 로컬파트 앞 2자만 남기고 마스킹. (예: caskbycask@gmail.com → dr***@gmail.com) */
+    /** 이메일 로컬파트 앞 2자만 남기고 마스킹. (예: drinkindex@gmail.com → dr***@gmail.com) */
     private String maskEmail(String email) {
         int at = email.indexOf('@');
         if (at <= 0) {
