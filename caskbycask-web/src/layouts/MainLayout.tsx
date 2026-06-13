@@ -538,9 +538,12 @@ export default function MainLayout() {
       <header className="bg-canvas border-b border-neutral-200 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center gap-4">
           {/* 로고 */}
-          <Link to="/" className="flex items-center gap-2 flex-shrink-0">
-            <img src="/logo.png" alt="CaskByCask" className="h-8 w-auto" />
-            <span className="text-xl font-bold text-primary-800 tracking-tight">CaskByCask</span>
+          <Link to="/" className="flex items-center gap-2 flex-shrink-0 -my-2">
+            <img src="/logo.png" alt="CaskByCask" className="h-15 w-auto" />
+            <span className="flex flex-col leading-none">
+              <span className="text-[18px] font-semibold text-primary-600 tracking-tight">캐바캐</span>
+              <span className="text-xl font-bold text-primary-800 tracking-tight">CaskByCask</span>
+            </span>
           </Link>
 
           {/* 언어 토글 */}

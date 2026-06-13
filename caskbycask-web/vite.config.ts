@@ -43,96 +43,14 @@ export default defineConfig({
     chunkSizeWarningLimit: 800,
   },
   server: {
+    // /api 와 /uploads 는 전부 백엔드(8080)로 프록시.
+    // (경로를 하나씩 나열하면 새 엔드포인트가 추가될 때마다 누락돼 404 나므로 catch-all 로 통일)
     proxy: {
       '/uploads': {
         target: 'http://localhost:8080',
         changeOrigin: true,
       },
-      '/api/notices/images': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-      },
-      '/api/popups/images': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-      },
-      '/api/banners/images': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-      },
-      '/api/emojis/images': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-      },
-      '/api/profiles/images': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-      },
-      '/api/inquiries/images': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-      },
-      '/api/feedbacks/images': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-      },
-      '/api/posts/images': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-      },
-      '/api/posts/videos': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-      },
-      '/api/faq': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-      },
-      '/api/byob': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-      },
-      '/api/events': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-      },
-      '/api/admin/events': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-      },
-      '/api/score-history': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-      },
-      '/api/ranking': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-      },
-      '/api/bottles': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-      },
-      '/api/users': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-      },
-      '/api/price-reports': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-      },
-      '/api/price-alerts': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-      },
-      '/api/stores': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-      },
-      '/api/admin/price-reports': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-      },
-      '/api/admin/stores': {
+      '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true,
       },
