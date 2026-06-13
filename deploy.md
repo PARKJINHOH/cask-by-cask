@@ -1,4 +1,4 @@
-# DrinkIndex 배포 가이드
+# CaskByCask 배포 가이드
 
 ---
 
@@ -17,7 +17,7 @@
   - [ ] 불일치 시 전 API 가 CORS 차단됨 — `seo.site-url` 도 동일 도메인인지 같이 확인
 
 - [ ] **(B-2) Cloudflare 설정** (Cloudflare 사용 확정)
-  - [ ] `drinkindex-web/nginx/default.conf.template` 상단 `set_real_ip_from` Cloudflare IP 대역이 최신인지 확인 — 출처: https://www.cloudflare.com/ips/ (보통 안정적이나 추가될 수 있음)
+  - [ ] `caskbycask-web/nginx/default.conf.template` 상단 `set_real_ip_from` Cloudflare IP 대역이 최신인지 확인 — 출처: https://www.cloudflare.com/ips/ (보통 안정적이나 추가될 수 있음)
   - [ ] Cloudflare SSL/TLS 모드 = **Full (strict)** 권장, 오리진은 80만 listen(컨테이너) 구성과 일치
   - [ ] Cloudflare가 `CF-Connecting-IP` 를 전달하는지 확인 (rate-limit IP 키가 이 헤더 기반)
   - [ ] (선택) Cloudflare WAF / Bot Fight Mode, `/api/auth/*` 추가 Rate Limit Rule
@@ -89,7 +89,7 @@ source ~/.bashrc
 
 ```bash
 # puppeteer 가 빌드 시 자체 Chromium 을 다운로드/사용 (PUPPETEER_SKIP_DOWNLOAD 미설정 상태)
-cd drinkindex-web
+cd caskbycask-web
 npx puppeteer browsers install chrome
 # 헤드리스 구동에 필요한 공유 라이브러리 (없으면 launch 시 'error while loading shared libraries')
 sudo apt-get install -y \
@@ -107,13 +107,13 @@ sudo apt-get install -y \
 # [web:prod] Prerendering SEO snapshots...
 # [prerender] ✓ /spirits            → dist/spirits/index.html (xx kB, xxxms)
 # [web:prod] ✅ Prerender complete.
-# [web:prod] Syncing dist → /var/www/drinkindex-prod ...
+# [web:prod] Syncing dist → /var/www/caskbycask-prod ...
 ```
 
 개별 명령으로 쪼개 쓰려면:
 
 ```bash
-cd drinkindex-web
+cd caskbycask-web
 npm run build:no-prerender   # dist 생성 (prerender 제외)
 npm run prerender            # 기존 dist 에 스냅샷만 덧입힘 (vite build 불필요)
 # 또는 한 번에:
@@ -124,7 +124,7 @@ npm run build                # tsc + vite build + prerender
 
 ```bash
 # 스냅샷 파일이 생성됐는지
-ls -la /var/www/drinkindex-prod/spirits/index.html
+ls -la /var/www/caskbycask-prod/spirits/index.html
 
 # 배포 후 크롤러 관점에서 본문/JSON-LD 가 박혀 있는지 (JS 미실행 상태)
 curl -s https://<도메인>/spirits | grep -o 'application/ld+json' | head
@@ -190,7 +190,7 @@ Flyway는 DB 스키마 변경 이력을 버전으로 관리하는 마이그레�
 
 ### 파일 위치
 ```
-drinkindex-api/src/main/resources/db/migration/
+caskbycask-api/src/main/resources/db/migration/
 ```
 
 ### 파일명 형식
@@ -229,7 +229,7 @@ V12__drop_old_notification_table.sql  ← 테이블 삭제
 > `V1__init_baseline.sql`은 현재 placeholder 상태입니다.
 > 운영 DB를 새로 구성해야 할 때는 현재 스키마를 dump 떠서 V1에 채워넣으면 됩니다.
 > ```bash
-> mysqldump --no-data --skip-comments drinkindex_prod > V1__init_baseline.sql
+> mysqldump --no-data --skip-comments caskbycask_prod > V1__init_baseline.sql
 > ```
 
 ---
@@ -262,8 +262,8 @@ ALTER TABLE users
 앱을 재기동하면 Flyway가 V10을 자동 실행합니다. 로그로 확인합니다.
 
 ```
-Migrating schema `drinkindex` to version "10 - add user profile image"
-Successfully applied 1 migration to schema `drinkindex`
+Migrating schema `caskbycask` to version "10 - add user profile image"
+Successfully applied 1 migration to schema `caskbycask`
 ```
 
 ### Step 4. 운영 배포
@@ -272,7 +272,7 @@ Successfully applied 1 migration to schema `drinkindex`
 운영 서버에서 앱이 재기동되면 Flyway가 V10을 자동 실행합니다.
 
 ```
-[prod] Migrating schema `drinkindex_prod` to version "10 - add user profile image"
+[prod] Migrating schema `caskbycask_prod` to version "10 - add user profile image"
 [prod] Successfully applied 1 migration
 ```
 
@@ -454,8 +454,8 @@ DELETE FROM flyway_schema_history WHERE version = '10' AND success = 0;
 
 ```bash
 # 스키마만 dump (데이터 제외)
-mysqldump --no-data --skip-comments -u {user} -p drinkindex_prod \
-  > drinkindex-api/src/main/resources/db/migration/V1__init_baseline.sql
+mysqldump --no-data --skip-comments -u {user} -p caskbycask_prod \
+  > caskbycask-api/src/main/resources/db/migration/V1__init_baseline.sql
 ```
 
 이후 새 DB에서 앱을 기동하면 V1부터 순서대로 전체 마이그레이션이 실행됩니다.

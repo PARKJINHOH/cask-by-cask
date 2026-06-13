@@ -7,7 +7,7 @@ DS220+ (DSM 7, Intel Celeron J4025 / x86_64) 기준. 크롤러를 20분마다 �
 ## 0. 사전 준비 체크리스트
 - [ ] DSM 7.x 관리자 계정
 - [ ] OpenAI API 키 (`sk-...`)
-- [ ] 백엔드(Oracle Cloud)에 `DRINKINDEX_INTERNAL_KEY` 설정(크롤러와 동일값) — 수신 API/관리자 화면은 구현 완료(§12)
+- [ ] 백엔드(Oracle Cloud)에 `CASKBYCASK_INTERNAL_KEY` 설정(크롤러와 동일값) — 수신 API/관리자 화면은 구현 완료(§12)
 - [ ] 네이버 카페 로그인 쿠키(NID_AUT/NID_SES), 수집할 카페의 `club_id`/`menu_id`
 - [ ] 수집할 디시 갤러리 `board_id`
 
@@ -26,31 +26,31 @@ DS220+ (DSM 7, Intel Celeron J4025 / x86_64) 기준. 크롤러를 20분마다 �
 ---
 
 ## 2. 디렉토리 구성
-`.env.example` 의 기본 경로(`/volume1/drinkindex/...`)와 맞춘다.
+`.env.example` 의 기본 경로(`/volume1/caskbycask/...`)와 맞춘다.
 ```bash
-mkdir -p /volume1/drinkindex/{logs,temp}
-cd /volume1/drinkindex
+mkdir -p /volume1/caskbycask/{logs,temp}
+cd /volume1/caskbycask
 ```
-> File Station 으로 공유폴더 `drinkindex` 를 먼저 만들어도 된다.
+> File Station 으로 공유폴더 `caskbycask` 를 먼저 만들어도 된다.
 
 ---
 
 ## 3. 코드 업로드
 **방법 A — git (NAS 에 git 패키지 설치 시):**
 ```bash
-cd /volume1/drinkindex
+cd /volume1/caskbycask
 git clone <repo-url> repo
-cp -r repo/drinkindex-crawler /volume1/drinkindex/drinkindex-crawler
+cp -r repo/caskbycask-crawler /volume1/caskbycask/caskbycask-crawler
 ```
 **방법 B — File Station 수동 업로드:**
-PC 의 `drinkindex-crawler/` 폴더를 통째로 `/volume1/drinkindex/drinkindex-crawler` 로 올린다.
+PC 의 `caskbycask-crawler/` 폴더를 통째로 `/volume1/caskbycask/caskbycask-crawler` 로 올린다.
 (`.venv`, `__pycache__`, `.env`, `targets.json`, `*.db`, `logs/` 는 올리지 않는다 — `.gitignore` 참고)
 
 ---
 
 ## 4. 가상환경 + 의존성
 ```bash
-cd /volume1/drinkindex/drinkindex-crawler
+cd /volume1/caskbycask/caskbycask-crawler
 python3 -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip
@@ -70,11 +70,11 @@ vi .env      # 또는 File Station 텍스트 에디터
 | 키 | 설명 |
 |---|---|
 | `OPENAI_API_KEY` | OpenAI 키 |
-| `DRINKINDEX_API_URL` | 예) `https://api.drinkindex.com` |
-| `DRINKINDEX_INTERNAL_KEY` | **백엔드와 동일한** 시크릿(긴 랜덤 문자열) |
+| `CASKBYCASK_API_URL` | 예) `https://api.caskbycask.com` |
+| `CASKBYCASK_INTERNAL_KEY` | **백엔드와 동일한** 시크릿(긴 랜덤 문자열) |
 | `NAVER_NID_AUT`, `NAVER_NID_SES` | 네이버 로그인 쿠키 (아래 6번) |
 | `OPENAI_MODEL` | 분석 모델. 기본 `gpt-4o-mini`, 필요 시 `gpt-4o` 등으로 교체 |
-| 경로 4종 | 기본값 그대로면 OK (`/volume1/drinkindex/...`) |
+| 경로 4종 | 기본값 그대로면 OK (`/volume1/caskbycask/...`) |
 
 > 우선 `DRY_RUN=true` 로 두고 분석만 확인한 뒤, 정상 동작하면 `false` 로 바꾼다.
 
@@ -90,7 +90,7 @@ openssl rand -hex 32   # 출력값을 .env 와 백엔드 양쪽에 동일하게 
 |---|---|---|
 | OpenAI 모델 | `.env` `OPENAI_MODEL` (gpt-4o-mini→gpt-4o 등) | ❌ env |
 | OpenAI 호환 게이트웨이 | `.env` `OPENAI_BASE_URL` | ❌ env |
-| 백엔드 도메인/주소 | `.env` `DRINKINDEX_API_URL` | ❌ env |
+| 백엔드 도메인/주소 | `.env` `CASKBYCASK_API_URL` | ❌ env |
 | 시놀로지 경로(db/temp/log/targets) | `.env` `SQLITE_DB_PATH`/`IMAGE_TEMP_DIR`/`LOG_PATH`/`TARGETS_PATH` | ❌ env |
 | 수집 대상(갤러리·카페) | `targets.json` | ❌ json |
 | 키워드/임계값/딜레이 | `.env` `DEAL_KEYWORDS`/`MIN_CONFIDENCE_SCORE`/`REQUEST_DELAY_SEC` 등 | ❌ env |
@@ -137,10 +137,10 @@ vi targets.json
 
 ## 9. 수동 1회 실행 (검증)
 ```bash
-cd /volume1/drinkindex/drinkindex-crawler
+cd /volume1/caskbycask/caskbycask-crawler
 source .venv/bin/activate
 python3 main.py
-tail -n 50 /volume1/drinkindex/logs/crawler.log
+tail -n 50 /volume1/caskbycask/logs/crawler.log
 ```
 종료 로그의 `후보/신규/분석/업로드/스킵/오류` 카운트로 동작을 확인한다.
 - 디시 목록이 0건이면 마크업 변경 가능성 → `scrapers/dcinside_scraper.py` 셀렉터 점검.
@@ -151,19 +151,19 @@ tail -n 50 /volume1/drinkindex/logs/crawler.log
 ## 10. 작업 스케줄러 등록 (20분마다)
 1. `run.sh` 실행권한:
    ```bash
-   chmod +x /volume1/drinkindex/drinkindex-crawler/run.sh
+   chmod +x /volume1/caskbycask/caskbycask-crawler/run.sh
    ```
 2. **DSM → 제어판 → 작업 스케줄러 → 생성 → 예약된 작업 → 사용자 정의 스크립트**.
-3. **일반**: 작업명 `drinkindex-crawler`, 사용자 `root`(또는 폴더 접근 가능한 계정).
+3. **일반**: 작업명 `caskbycask-crawler`, 사용자 `root`(또는 폴더 접근 가능한 계정).
 4. **일정**: 매일 / 반복 간격 **20분** (DSM 7 은 분 단위 반복 지원: "다음 시간 간격으로 실행" → 20분).
 5. **작업 설정 → 사용자 정의 스크립트** (권장 — `flock` 중복실행 방지 + venv 자동 활성화):
    ```bash
-   bash /volume1/drinkindex/drinkindex-crawler/run.sh
+   bash /volume1/caskbycask/caskbycask-crawler/run.sh
    ```
-   - 폴더를 다른 곳(예: `/volume1/drinkindex/crawler`)에 뒀다면 이 경로만 맞추면 된다.
+   - 폴더를 다른 곳(예: `/volume1/caskbycask/crawler`)에 뒀다면 이 경로만 맞추면 된다.
    - `run.sh` 없이 직접 실행하려면(중복방지·venv 직접 처리 필요):
      ```bash
-     cd /volume1/drinkindex/drinkindex-crawler && .venv/bin/python3 main.py >> /volume1/drinkindex/logs/crawler.log 2>&1
+     cd /volume1/caskbycask/caskbycask-crawler && .venv/bin/python3 main.py >> /volume1/caskbycask/logs/crawler.log 2>&1
      ```
 6. 저장 → 작업 선택 → **실행** 으로 즉시 1회 테스트 → 로그 확인.
 
@@ -176,11 +176,11 @@ tail -n 50 /volume1/drinkindex/logs/crawler.log
 |---|---|
 | 카페 수집 0건 | NID 쿠키 만료 → 6번 재발급. `club_id/menu_id` 확인 |
 | 디시 수집 0건 | 데스크톱 마크업/도메인 변경 가능 → `dcinside_scraper.py` 셀렉터(`.gall_tit`/`.write_div`)·URL 상수 점검. 차단 시 `.env` `DCINSIDE_COOKIE` 투입 |
-| `업로드 실패 401/403` | `DRINKINDEX_INTERNAL_KEY` 가 백엔드와 일치하는지 |
+| `업로드 실패 401/403` | `CASKBYCASK_INTERNAL_KEY` 가 백엔드와 일치하는지 |
 | OpenAI 비용 급증 | `MAX_NEW_POSTS_PER_RUN`, `MAX_IMAGES_PER_POST` 낮추기 |
 | 같은 글 재분석 | `seen_posts.db` 가 유지되는지(경로/권한) 확인 |
 | 차단/429 | `REQUEST_DELAY_SEC` 상향(예: 2.0~3.0) |
-| 로그 위치 | `/volume1/drinkindex/logs/crawler.log` (5MB×5 회전) |
+| 로그 위치 | `/volume1/caskbycask/logs/crawler.log` (5MB×5 회전) |
 
 ### 보안
 - `.env`, `targets.json`, `*.db` 는 절대 git 에 올리지 않는다(`.gitignore` 처리됨).
@@ -191,7 +191,7 @@ tail -n 50 /volume1/drinkindex/logs/crawler.log
 ---
 
 ## 12. 백엔드/프론트 (구현 완료 — STEP 12~16)
-`drinkindex-api` / `drinkindex-web` 에 이미 구현됨:
+`caskbycask-api` / `caskbycask-web` 에 이미 구현됨:
 1. `domain/deal` — `DealPost` 엔티티 + `DealPostRepository` + Flyway `V25__create_deal_posts.sql`
    (`is_visible`, `status` PENDING/APPROVED/REJECTED, `source_url` UNIQUE 등 전체 필드)
 2. `POST /api/internal/deals` (`DealIngestController`) + `InternalKeyAuthFilter`(`X-Internal-Key`)
@@ -201,7 +201,7 @@ tail -n 50 /volume1/drinkindex/logs/crawler.log
 ### ⚠️ 백엔드에도 환경변수 필요
 백엔드 실행 환경(Oracle Cloud)에 **크롤러와 동일한** 키를 설정해야 한다:
 ```
-DRINKINDEX_INTERNAL_KEY=<크롤러 .env 와 같은 값>
+CASKBYCASK_INTERNAL_KEY=<크롤러 .env 와 같은 값>
 ```
 미설정 시 `/api/internal/**` 은 전부 401(안전 기본값). `application.yml`:
-`drinkindex.internal-api-key: ${DRINKINDEX_INTERNAL_KEY:}`
+`caskbycask.internal-api-key: ${CASKBYCASK_INTERNAL_KEY:}`

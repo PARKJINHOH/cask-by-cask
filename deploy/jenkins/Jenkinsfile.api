@@ -1,18 +1,18 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// DrinkIndex 백엔드 배포 파이프라인 (Docker 미사용 / systemd)
+// CaskByCask 백엔드 배포 파이프라인 (Docker 미사용 / systemd)
 //
 // 브랜치 = 환경 매핑 (이 Jenkinsfile 이 체크아웃한 브랜치로 환경을 자동 판별):
-//   · develop  → dev  프로파일 → drinkindex-dev-api  (8092/8093)
-//   · main     → prod 프로파일 → drinkindex-prod-api (8094/8095)
+//   · develop  → dev  프로파일 → caskbycask-dev-api  (8092/8093)
+//   · main     → prod 프로파일 → caskbycask-prod-api (8094/8095)
 //
 // Jenkins Job 구성 (Pipeline script from SCM, Script Path: deploy/jenkins/Jenkinsfile.api):
-//   · drinkindex-api-dev   : Branch */develop, 자동 트리거(웹훅/폴링)
-//   · drinkindex-api-prod  : Branch */main,    트리거 없음(수동 Build Now)
-//   (path filter 로 drinkindex-api/** + deploy/** 변경 시만 폴링되게 분리)
+//   · caskbycask-api-dev   : Branch */develop, 자동 트리거(웹훅/폴링)
+//   · caskbycask-api-prod  : Branch */main,    트리거 없음(수동 Build Now)
+//   (path filter 로 caskbycask-api/** + deploy/** 변경 시만 폴링되게 분리)
 //
 // Credentials (환경별 Secret file, ID 규칙 고정 — 코드가 직접 참조):
-//   · drinkindex-dev-env   (Secret file) = /etc/drinkindex/dev.env  내용 전체
-//   · drinkindex-prod-env  (Secret file) = /etc/drinkindex/prod.env 내용 전체
+//   · caskbycask-dev-env   (Secret file) = /etc/caskbycask/dev.env  내용 전체
+//   · caskbycask-prod-env  (Secret file) = /etc/caskbycask/prod.env 내용 전체
 //
 // Jenkins 실행 유저가 systemctl / env 설치를 무암호 sudo 가능해야 함 (런북 13-2 참고).
 // ─────────────────────────────────────────────────────────────────────────────
@@ -38,9 +38,9 @@ pipeline {
 
         stage('Sync EnvironmentFile') {
             steps {
-                // /etc/drinkindex 는 런북에서 그룹 쓰기로 생성 → sudo 불필요
-                withCredentials([file(credentialsId: "drinkindex-${env.DEPLOY_ENV}-env", variable: 'ENVFILE')]) {
-                    sh 'install -m 600 "$ENVFILE" /etc/drinkindex/${DEPLOY_ENV}.env'
+                // /etc/caskbycask 는 런북에서 그룹 쓰기로 생성 → sudo 불필요
+                withCredentials([file(credentialsId: "caskbycask-${env.DEPLOY_ENV}-env", variable: 'ENVFILE')]) {
+                    sh 'install -m 600 "$ENVFILE" /etc/caskbycask/${DEPLOY_ENV}.env'
                 }
             }
         }
@@ -53,7 +53,7 @@ pipeline {
     }
 
     post {
-        failure { echo "❌ 백엔드 배포 실패 (${env.DEPLOY_ENV}) — journalctl -u drinkindex-${env.DEPLOY_ENV}-api 확인" }
+        failure { echo "❌ 백엔드 배포 실패 (${env.DEPLOY_ENV}) — journalctl -u caskbycask-${env.DEPLOY_ENV}-api 확인" }
         success { echo "✅ 백엔드 배포 성공 (${env.DEPLOY_ENV})" }
     }
 }

@@ -1,4 +1,4 @@
--- 주류 핫딜 자동수집 — 크롤러(drinkindex-crawler)가 AI 분석 결과를 적재하는 관리자 검토 큐.
+-- 주류 핫딜 자동수집 — 크롤러(caskbycask-crawler)가 AI 분석 결과를 적재하는 관리자 검토 큐.
 -- POST /api/internal/deals 로 수신 → is_visible=false, status=PENDING.
 -- 관리자가 승인하면 is_visible=true / APPROVED 로 전환되어 노출.
 

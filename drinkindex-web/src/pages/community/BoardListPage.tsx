@@ -130,10 +130,10 @@ export default function BoardListPage({ boardType, title }: Props) {
     ? '전체 게시판'
     : boardType === 'NOTICE' ? '소식 게시판' : '자유게시판'
   const seoDesc = isAll
-    ? 'DrinkIndex 커뮤니티 전체 게시판 — 소식과 자유게시판 글을 한 곳에서.'
+    ? 'CaskByCask 커뮤니티 전체 게시판 — 소식과 자유게시판 글을 한 곳에서.'
     : boardType === 'NOTICE'
-      ? 'DrinkIndex 소식 게시판 — 위스키·와인·꼬냑 관련 소식과 이벤트 게시글.'
-      : 'DrinkIndex 자유게시판 — 위스키, 와인, 꼬냑 등 주류에 대한 자유로운 의견과 정보 공유.'
+      ? 'CaskByCask 소식 게시판 — 위스키·와인·꼬냑 관련 소식과 이벤트 게시글.'
+      : 'CaskByCask 자유게시판 — 위스키, 와인, 꼬냑 등 주류에 대한 자유로운 의견과 정보 공유.'
   const seoNoindex = !!keywordParam || pageParam > 0 || tabParam !== 'all'
     || !!authorIdParam || !!commentAuthorIdParam
 

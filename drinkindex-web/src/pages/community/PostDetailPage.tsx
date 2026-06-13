@@ -145,7 +145,7 @@ export default function PostDetailPage() {
   }
 
   const seoDescription = stripHtmlForMeta(post.contentSanitized ?? '', 160)
-    || `DrinkIndex 커뮤니티 게시글 — ${post.title}`
+    || `CaskByCask 커뮤니티 게시글 — ${post.title}`
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
@@ -166,7 +166,7 @@ export default function PostDetailPage() {
               : undefined,
             publisher: {
               '@type': 'Organization',
-              name: 'DrinkIndex',
+              name: 'CaskByCask',
               logo: { '@type': 'ImageObject', url: `${SITE_URL}/logo.png` },
             },
           },

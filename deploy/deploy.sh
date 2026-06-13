@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-# DrinkIndex 배포 스크립트
+# CaskByCask 배포 스크립트
 #
 # 사용법:
 #   ./deploy/deploy.sh dev      # 개발 환경 배포 (drink-dev.pinner.dev)
@@ -9,8 +9,8 @@
 # 사전 조건:
 #   - 프로젝트 루트에 .env.dev 또는 .env.prod 가 존재
 #   - 호스트에 MariaDB 와 Redis 가 설치되어 있고 컨테이너에서 접근 가능
-#       · drinkindex_dev / drinkindex_prod 스키마 존재
-#       · drink_index 사용자가 docker bridge 에서 접속 가능
+#       · caskbycask_dev / caskbycask_prod 스키마 존재
+#       · caskbycask 사용자가 docker bridge 에서 접속 가능
 #   - docker, docker compose v2 설치
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail

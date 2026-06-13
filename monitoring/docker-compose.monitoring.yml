@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# DrinkIndex Monitoring Stack
+# CaskByCask Monitoring Stack
 #   - Prometheus  : 메트릭 수집/저장
 #   - Grafana     : 대시보드
 #   - Alertmanager: 알림 라우팅 (Slack)
@@ -10,7 +10,7 @@
 #     -f docker-compose.yml -f docker-compose.prod.yml \
 #     -f monitoring/docker-compose.monitoring.yml up -d
 #
-# 모든 모니터링 서비스는 `drinkindex` 네트워크 공유 → API actuator(:8081) 접근 가능.
+# 모든 모니터링 서비스는 `caskbycask` 네트워크 공유 → API actuator(:8081) 접근 가능.
 # 외부 노출은 grafana 만 (127.0.0.1:3000 — SSH 터널/Cloudflare Zero Trust 권장).
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -31,7 +31,7 @@ services:
       - --web.console.libraries=/usr/share/prometheus/console_libraries
       - --web.console.templates=/usr/share/prometheus/consoles
     networks:
-      - drinkindex
+      - caskbycask
     restart: unless-stopped
     logging:
       driver: "json-file"
@@ -56,7 +56,7 @@ services:
       # 127.0.0.1 만 바인딩 — Cloudflare Tunnel 또는 SSH 터널로 접근
       - "127.0.0.1:3000:3000"
     networks:
-      - drinkindex
+      - caskbycask
     depends_on:
       - prometheus
     restart: unless-stopped
@@ -76,9 +76,9 @@ services:
       - --storage.path=/alertmanager
     environment:
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL}
-      SLACK_CHANNEL: ${SLACK_CHANNEL:-#drinkindex-alerts}
+      SLACK_CHANNEL: ${SLACK_CHANNEL:-#caskbycask-alerts}
     networks:
-      - drinkindex
+      - caskbycask
     restart: unless-stopped
     logging:
       driver: "json-file"
@@ -98,7 +98,7 @@ services:
       - --path.rootfs=/rootfs
       - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)
     networks:
-      - drinkindex
+      - caskbycask
     restart: unless-stopped
 
   mariadb-exporter:
@@ -110,7 +110,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
-      - drinkindex
+      - caskbycask
     depends_on:
       - prometheus
     restart: unless-stopped
@@ -124,7 +124,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
-      - drinkindex
+      - caskbycask
     depends_on:
       - prometheus
     restart: unless-stopped
@@ -135,7 +135,7 @@ volumes:
   alertmanager_data:
 
 networks:
-  drinkindex:
+  caskbycask:
     external: true
-    # base compose 의 'name: drinkindex' 로 프로젝트명이 고정됨 → 네트워크명도 고정
-    name: drinkindex_drinkindex
+    # base compose 의 'name: caskbycask' 로 프로젝트명이 고정됨 → 네트워크명도 고정
+    name: caskbycask_caskbycask

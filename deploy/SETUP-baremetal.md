@@ -1,4 +1,4 @@
-# DrinkIndex 베어메탈 배포 셋업 (Docker 미사용)
+# CaskByCask 베어메탈 배포 셋업 (Docker 미사용)
 
 새 Ubuntu 서버에 이 문서만 따라 하면 dev 환경을 올릴 수 있습니다.
 구조: **Cloudflare(SSL) → NPM(:80/443) → 네이티브 nginx(:8090) → SPA 정적 + /api → systemd 백엔드(127.0.0.1:8092) → 호스트 MariaDB/Redis**
@@ -18,8 +18,8 @@
 ## 0. 변수 (본인 값으로)
 
 ```bash
-APP_DIR=/home/ubuntu/app/drink-index     # 코드 클론 위치
-REPO=https://github.com/PARKJINHOH/drink-index.git
+APP_DIR=/home/ubuntu/app/caskbycask     # 코드 클론 위치
+REPO=https://github.com/PARKJINHOH/caskbycask.git
 DEPLOY_USER=ubuntu
 ```
 
@@ -78,10 +78,10 @@ DB/Redis 는 이미 호스트에 설치되어 있다고 가정. 스키마와 권
 
 ```bash
 sudo mariadb <<'SQL'
-CREATE DATABASE IF NOT EXISTS drinkindex_local CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE DATABASE IF NOT EXISTS drinkindex_dev   CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-GRANT ALL ON drinkindex_local.* TO 'drink_index'@'%' IDENTIFIED BY 'CHANGE_ME_DB_PWD';
-GRANT ALL ON drinkindex_dev.*   TO 'drink_index'@'%';
+CREATE DATABASE IF NOT EXISTS caskbycask_local CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS caskbycask_dev   CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+GRANT ALL ON caskbycask_local.* TO 'caskbycask'@'%' IDENTIFIED BY 'CHANGE_ME_DB_PWD';
+GRANT ALL ON caskbycask_dev.*   TO 'caskbycask'@'%';
 FLUSH PRIVILEGES;
 SQL
 ```
@@ -96,10 +96,10 @@ SQL
 
 ```bash
 # 백엔드 jar / 프론트 정적파일 / 업로드 / 로그 / env — 배포 유저 소유로
-sudo mkdir -p /opt/drinkindex-dev/api /var/www/drinkindex-dev \
-             /var/drinkindex/uploads /var/drinkindex/logs/dev /etc/drinkindex
-sudo chown -R $DEPLOY_USER:$DEPLOY_USER /opt/drinkindex-dev /var/www/drinkindex-dev \
-             /var/drinkindex /etc/drinkindex
+sudo mkdir -p /opt/caskbycask-dev/api /var/www/caskbycask-dev \
+             /var/caskbycask/uploads /var/caskbycask/logs/dev /etc/caskbycask
+sudo chown -R $DEPLOY_USER:$DEPLOY_USER /opt/caskbycask-dev /var/www/caskbycask-dev \
+             /var/caskbycask /etc/caskbycask
 ```
 
 ---
@@ -117,9 +117,9 @@ chmod +x deploy/*.sh
 ## 5. EnvironmentFile 작성
 
 ```bash
-cp deploy/env/dev.env.example /etc/drinkindex/dev.env
-nano /etc/drinkindex/dev.env      # CHANGE_ME 채우기 (특히 JWT_SECRET, DB/Redis 비번)
-chmod 600 /etc/drinkindex/dev.env
+cp deploy/env/dev.env.example /etc/caskbycask/dev.env
+nano /etc/caskbycask/dev.env      # CHANGE_ME 채우기 (특히 JWT_SECRET, DB/Redis 비번)
+chmod 600 /etc/caskbycask/dev.env
 ```
 - `JWT_SECRET` 은 반드시 `openssl rand -base64 48` 값 (짧으면 기동 실패).
 
@@ -128,9 +128,9 @@ chmod 600 /etc/drinkindex/dev.env
 ## 6. systemd 백엔드 서비스 등록
 
 ```bash
-sudo cp deploy/systemd/drinkindex-dev-api.service /etc/systemd/system/
+sudo cp deploy/systemd/caskbycask-dev-api.service /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable drinkindex-dev-api      # 부팅 시 자동 기동 (start 는 7번 첫 배포에서)
+sudo systemctl enable caskbycask-dev-api      # 부팅 시 자동 기동 (start 는 7번 첫 배포에서)
 ```
 
 ---
@@ -138,8 +138,8 @@ sudo systemctl enable drinkindex-dev-api      # 부팅 시 자동 기동 (start 
 ## 7. 네이티브 nginx 사이트 등록
 
 ```bash
-sudo cp deploy/nginx/drinkindex-dev.conf /etc/nginx/sites-available/
-sudo ln -sf /etc/nginx/sites-available/drinkindex-dev.conf /etc/nginx/sites-enabled/
+sudo cp deploy/nginx/caskbycask-dev.conf /etc/nginx/sites-available/
+sudo ln -sf /etc/nginx/sites-available/caskbycask-dev.conf /etc/nginx/sites-enabled/
 sudo rm -f /etc/nginx/sites-enabled/default    # 80 점유 default 제거 (NPM 충돌 방지)
 sudo nginx -t && sudo systemctl reload nginx
 ```
@@ -150,10 +150,10 @@ sudo nginx -t && sudo systemctl reload nginx
 
 `deploy-api.sh` 는 systemctl 만 sudo 가 필요합니다 (나머지는 ubuntu 소유 디렉터리라 불필요).
 ```bash
-sudo visudo -f /etc/sudoers.d/drinkindex
+sudo visudo -f /etc/sudoers.d/caskbycask
 ```
 ```
-ubuntu ALL=(root) NOPASSWD: /bin/systemctl start drinkindex-dev-api, /bin/systemctl stop drinkindex-dev-api, /bin/systemctl restart drinkindex-dev-api, /bin/systemctl status drinkindex-dev-api
+ubuntu ALL=(root) NOPASSWD: /bin/systemctl start caskbycask-dev-api, /bin/systemctl stop caskbycask-dev-api, /bin/systemctl restart caskbycask-dev-api, /bin/systemctl status caskbycask-dev-api
 ```
 
 ---
@@ -163,11 +163,11 @@ ubuntu ALL=(root) NOPASSWD: /bin/systemctl start drinkindex-dev-api, /bin/system
 ```bash
 cd $APP_DIR
 ./deploy/deploy-api.sh dev      # gradle bootJar → jar 배치 → systemd 기동 → 헬스체크
-./deploy/deploy-web.sh dev      # npm build → /var/www/drinkindex-dev 동기화
+./deploy/deploy-web.sh dev      # npm build → /var/www/caskbycask-dev 동기화
 ```
 확인:
 ```bash
-systemctl status drinkindex-dev-api
+systemctl status caskbycask-dev-api
 curl -fsS http://127.0.0.1:8093/actuator/health/readiness   # {"status":"UP"}
 curl -I   http://127.0.0.1:8090/healthz                      # 200 ok
 ```
@@ -241,36 +241,36 @@ sudo -u jenkins bash -lc 'java -version; node -v; npm -v; git --version'
 
 **(a) 배포 디렉터리 쓰기** — `ubuntu` 와 `jenkins` 가 공유하도록 그룹 권한 부여:
 ```bash
-sudo groupadd -f drinkindex
-sudo usermod -aG drinkindex ubuntu
-sudo usermod -aG drinkindex jenkins
+sudo groupadd -f caskbycask
+sudo usermod -aG caskbycask ubuntu
+sudo usermod -aG caskbycask jenkins
 
 # 3번에서 만든 디렉터리들을 그룹 소유 + 그룹쓰기 + setgid(하위 파일도 그룹 상속)
-sudo chgrp -R drinkindex /opt/drinkindex-dev /var/www/drinkindex-dev /var/drinkindex /etc/drinkindex
-sudo chmod -R g+w        /opt/drinkindex-dev /var/www/drinkindex-dev /var/drinkindex /etc/drinkindex
-sudo find /opt/drinkindex-dev /var/www/drinkindex-dev /var/drinkindex /etc/drinkindex -type d -exec chmod g+s {} \;
+sudo chgrp -R caskbycask /opt/caskbycask-dev /var/www/caskbycask-dev /var/caskbycask /etc/caskbycask
+sudo chmod -R g+w        /opt/caskbycask-dev /var/www/caskbycask-dev /var/caskbycask /etc/caskbycask
+sudo find /opt/caskbycask-dev /var/www/caskbycask-dev /var/caskbycask /etc/caskbycask -type d -exec chmod g+s {} \;
 ```
-> 그룹 추가는 새 로그인 세션부터 적용된다. 적용 확인: `sudo -u jenkins id` 출력에 `drinkindex` 가 보여야 함.
+> 그룹 추가는 새 로그인 세션부터 적용된다. 적용 확인: `sudo -u jenkins id` 출력에 `caskbycask` 가 보여야 함.
 > 안 보이면 `sudo systemctl restart jenkins` (Jenkins 데몬 세션 재생성).
-> prod 까지 쓸 거면 14번에서 만드는 `/opt/drinkindex-prod`, `/var/www/drinkindex-prod` 에도 위 3줄을 동일하게 적용한다(14-2 에 포함).
+> prod 까지 쓸 거면 14번에서 만드는 `/opt/caskbycask-prod`, `/var/www/caskbycask-prod` 에도 위 3줄을 동일하게 적용한다(14-2 에 포함).
 
 **(b) systemctl 무암호 sudo** — `jenkins` 항목 추가 (dev/prod 두 서비스 모두):
 ```bash
-sudo visudo -f /etc/sudoers.d/drinkindex
+sudo visudo -f /etc/sudoers.d/caskbycask
 ```
 ```
 # dev
-ubuntu  ALL=(root) NOPASSWD: /bin/systemctl start drinkindex-dev-api, /bin/systemctl stop drinkindex-dev-api, /bin/systemctl restart drinkindex-dev-api, /bin/systemctl status drinkindex-dev-api
-jenkins ALL=(root) NOPASSWD: /bin/systemctl start drinkindex-dev-api, /bin/systemctl stop drinkindex-dev-api, /bin/systemctl restart drinkindex-dev-api, /bin/systemctl status drinkindex-dev-api
+ubuntu  ALL=(root) NOPASSWD: /bin/systemctl start caskbycask-dev-api, /bin/systemctl stop caskbycask-dev-api, /bin/systemctl restart caskbycask-dev-api, /bin/systemctl status caskbycask-dev-api
+jenkins ALL=(root) NOPASSWD: /bin/systemctl start caskbycask-dev-api, /bin/systemctl stop caskbycask-dev-api, /bin/systemctl restart caskbycask-dev-api, /bin/systemctl status caskbycask-dev-api
 # prod (14번에서 prod 환경을 올릴 거면 같이 추가)
-ubuntu  ALL=(root) NOPASSWD: /bin/systemctl start drinkindex-prod-api, /bin/systemctl stop drinkindex-prod-api, /bin/systemctl restart drinkindex-prod-api, /bin/systemctl status drinkindex-prod-api
-jenkins ALL=(root) NOPASSWD: /bin/systemctl start drinkindex-prod-api, /bin/systemctl stop drinkindex-prod-api, /bin/systemctl restart drinkindex-prod-api, /bin/systemctl status drinkindex-prod-api
+ubuntu  ALL=(root) NOPASSWD: /bin/systemctl start caskbycask-prod-api, /bin/systemctl stop caskbycask-prod-api, /bin/systemctl restart caskbycask-prod-api, /bin/systemctl status caskbycask-prod-api
+jenkins ALL=(root) NOPASSWD: /bin/systemctl start caskbycask-prod-api, /bin/systemctl stop caskbycask-prod-api, /bin/systemctl restart caskbycask-prod-api, /bin/systemctl status caskbycask-prod-api
 ```
 > 경로 주의: `which systemctl` 가 `/usr/bin/systemctl` 이면 위 `/bin/systemctl` 을 그 경로로 바꿔라(심볼릭 링크라 보통 둘 다 동작하지만 sudoers 는 정확한 경로 매칭).
 
 확인:
 ```bash
-sudo -u jenkins sudo -n systemctl status drinkindex-dev-api   # 비번 안 묻고 상태 출력되면 OK
+sudo -u jenkins sudo -n systemctl status caskbycask-dev-api   # 비번 안 묻고 상태 출력되면 OK
 ```
 
 ---
@@ -283,11 +283,11 @@ sudo -u jenkins sudo -n systemctl status drinkindex-dev-api   # 비번 안 묻�
 
 | # | Kind | ID | 내용 / ID 규칙 |
 |---|------|-----|------|
-| ① | **Secret file** | `drinkindex-dev-env` | 로컬 `/etc/drinkindex/dev.env` 파일 업로드. **ID 고정 필수** — `Jenkinsfile.api` 가 `credentialsId: "drinkindex-${DEPLOY_ENV}-env"` 로 코드에서 직접 참조하므로 dev 환경은 정확히 이 문자열이어야 함 |
-| ② | **Secret file** | `drinkindex-prod-env` | 로컬 `/etc/drinkindex/prod.env` 파일 업로드. 마찬가지로 prod 환경 배포 시 `drinkindex-prod-env` 로 참조됨 → **ID 고정 필수** |
-| ③ | Username with password (또는 SSH key) | `github-drinkindex` | 레포가 **private** 일 때만. ID 는 **임의로 지어도 됨**(코드가 참조 안 함) — Job 의 SCM 설정 드롭다운에서 고르기만 하면 된다. public 레포면 생략 |
+| ① | **Secret file** | `caskbycask-dev-env` | 로컬 `/etc/caskbycask/dev.env` 파일 업로드. **ID 고정 필수** — `Jenkinsfile.api` 가 `credentialsId: "caskbycask-${DEPLOY_ENV}-env"` 로 코드에서 직접 참조하므로 dev 환경은 정확히 이 문자열이어야 함 |
+| ② | **Secret file** | `caskbycask-prod-env` | 로컬 `/etc/caskbycask/prod.env` 파일 업로드. 마찬가지로 prod 환경 배포 시 `caskbycask-prod-env` 로 참조됨 → **ID 고정 필수** |
+| ③ | Username with password (또는 SSH key) | `github-caskbycask` | 레포가 **private** 일 때만. ID 는 **임의로 지어도 됨**(코드가 참조 안 함) — Job 의 SCM 설정 드롭다운에서 고르기만 하면 된다. public 레포면 생략 |
 
-> 정리: **①②(Secret file)의 ID 는 Jenkinsfile 코드가 부르므로 `drinkindex-<env>-env` 규칙을 반드시 지켜야 하고**, ③(git 인증)의 ID 는 UI 에서만 쓰여서 자유롭게 정해도 된다. 앞서 본 "ID 가 정확히 …여야 함" 주석은 ③이 아니라 **①②(env Secret file)** 에 대한 설명이다.
+> 정리: **①②(Secret file)의 ID 는 Jenkinsfile 코드가 부르므로 `caskbycask-<env>-env` 규칙을 반드시 지켜야 하고**, ③(git 인증)의 ID 는 UI 에서만 쓰여서 자유롭게 정해도 된다. 앞서 본 "ID 가 정확히 …여야 함" 주석은 ③이 아니라 **①②(env Secret file)** 에 대한 설명이다.
 >
 > prod 환경을 아직 안 올렸으면 ②는 14번에서 `prod.env` 작성 후 등록해도 된다. (dev 만 먼저 자동화 → prod 나중에)
 
@@ -314,27 +314,27 @@ sudo -u jenkins sudo -n systemctl status drinkindex-dev-api   # 비번 안 묻�
 
 | Job 이름 | Branch | Script Path | 트리거 |
 |----------|--------|-------------|--------|
-| `drinkindex-api-dev`  | `*/develop` | `deploy/jenkins/Jenkinsfile.api` | 자동 |
-| `drinkindex-web-dev`  | `*/develop` | `deploy/jenkins/Jenkinsfile.web` | 자동 |
-| `drinkindex-api-prod` | `*/main`    | `deploy/jenkins/Jenkinsfile.api` | 수동 |
-| `drinkindex-web-prod` | `*/main`    | `deploy/jenkins/Jenkinsfile.web` | 수동 |
+| `caskbycask-api-dev`  | `*/develop` | `deploy/jenkins/Jenkinsfile.api` | 자동 |
+| `caskbycask-web-dev`  | `*/develop` | `deploy/jenkins/Jenkinsfile.web` | 자동 |
+| `caskbycask-api-prod` | `*/main`    | `deploy/jenkins/Jenkinsfile.api` | 수동 |
+| `caskbycask-web-prod` | `*/main`    | `deploy/jenkins/Jenkinsfile.web` | 수동 |
 
 각 Job **Configure → Pipeline** 섹션 공통:
 - Definition: `Pipeline script from SCM`
 - SCM: `Git`
-- Repository URL: `https://github.com/PARKJINHOH/drink-index.git`
-- Credentials: private 면 `github-drinkindex`, public 이면 `- none -`
+- Repository URL: `https://github.com/PARKJINHOH/caskbycask.git`
+- Credentials: private 면 `github-caskbycask`, public 이면 `- none -`
 - **Branches to build**: 위 표의 브랜치 (`*/develop` 또는 `*/main`)
 - **Script Path**: 위 표의 경로
 - **Additional Behaviours → Add → "Polling ignores commits in certain paths"** → *Included Regions* (api/web 분리):
   - **api Job** (dev/prod 둘 다):
     ```
-    drinkindex-api/.*
+    caskbycask-api/.*
     deploy/.*
     ```
   - **web Job** (dev/prod 둘 다):
     ```
-    drinkindex-web/.*
+    caskbycask-web/.*
     deploy/.*
     ```
   → FE 만 고친 push 는 web Job 만, BE 만 고친 push 는 api Job 만. (`deploy/` 변경은 양쪽 다 — 의도된 동작)
@@ -373,11 +373,11 @@ H/2 * * * *
 ### 13-6. 첫 배포 검증
 
 **dev (develop → 자동):**
-1. `drinkindex-api-dev` Job 화면에서 **Build Now** 수동 1회 → Console Output 에 `Branch 'origin/develop' → DEPLOY_ENV=dev` 와 `✅ 배포 성공 (dev)` 확인.
+1. `caskbycask-api-dev` Job 화면에서 **Build Now** 수동 1회 → Console Output 에 `Branch 'origin/develop' → DEPLOY_ENV=dev` 와 `✅ 배포 성공 (dev)` 확인.
 2. 실제 흐름: `develop` 에 코드 한 줄 수정 → `git push origin develop` → `*-dev` Job 이 자동 시작되는지 확인.
 3. 반영 확인:
    ```bash
-   systemctl status drinkindex-dev-api
+   systemctl status caskbycask-dev-api
    curl -fsS http://127.0.0.1:8093/actuator/health/readiness   # {"status":"UP"}
    curl -I   https://drink-dev.pinner.dev                       # 200
    ```
@@ -388,32 +388,32 @@ H/2 * * * *
    git checkout main && git merge --no-ff develop && git push origin main
    ```
    (이 push 로는 **자동 배포 안 됨** — prod Job 에 트리거가 없음)
-2. `drinkindex-api-prod` Job 에서 **Build Now** → Console 에 `Branch 'origin/main' → DEPLOY_ENV=prod` 확인. 이어서 `drinkindex-web-prod` 도 실행.
+2. `caskbycask-api-prod` Job 에서 **Build Now** → Console 에 `Branch 'origin/main' → DEPLOY_ENV=prod` 확인. 이어서 `caskbycask-web-prod` 도 실행.
 3. 반영 확인:
    ```bash
-   systemctl status drinkindex-prod-api
+   systemctl status caskbycask-prod-api
    curl -fsS http://127.0.0.1:8095/actuator/health/readiness   # {"status":"UP"}
-   curl -I   https://drinkindex.net                            # 200
+   curl -I   https://caskbycask.net                            # 200
    ```
 
 ---
 
 ### 13-7. Jenkins 트러블슈팅
 
-- **`Permission denied` (jar 복사 / rsync / env install)** → 13-2(a) 그룹·쓰기권한 미적용. `sudo -u jenkins id` 에 `drinkindex` 그룹 확인 후 `sudo systemctl restart jenkins`.
+- **`Permission denied` (jar 복사 / rsync / env install)** → 13-2(a) 그룹·쓰기권한 미적용. `sudo -u jenkins id` 에 `caskbycask` 그룹 확인 후 `sudo systemctl restart jenkins`.
 - **`sudo: a password is required`** → 13-2(b) sudoers 에 `jenkins` 행 누락 또는 경로(`/bin/systemctl`) 불일치(`which systemctl` 확인 — 배포판에 따라 `/usr/bin/systemctl`).
 - **`./gradlew: JAVA_HOME` / `java: command not found`** → 13-1 의 JDK 21 미노출. `sudo -u jenkins bash -lc 'java -version'`.
 - **`npm: command not found`** → 13-1 의 Node 미노출(특히 nvm). 시스템 전역 Node 또는 NodeJS 플러그인.
 - **Webhook 눌렀는데 빌드 안 됨** → GitHub *Recent Deliveries* 상태코드 확인(`200` 아니면 URL/방화벽 문제). Included Regions 가 너무 좁아 변경 경로가 제외됐는지도 확인.
 - **둘 다(api+web) 매번 같이 돌음** → Included Regions 미설정 또는 오타. push 가 `deploy/` 를 건드리면 양쪽 다 도는 건 정상.
-- **빌드 자체 실패** → Console Output + `journalctl -u drinkindex-dev-api -n 50`.
+- **빌드 자체 실패** → Console Output + `journalctl -u caskbycask-dev-api -n 50`.
 
 ---
 
 ## 14. prod 환경 추가 (같은 서버, 다른 포트)
 
 dev 가 안정화된 뒤, **같은 서버에 포트만 분리**해서 prod 를 올린다.
-prod 도메인은 `drinkindex.net` (백엔드 prod 프로파일 CORS 에 고정). 포트: API `8094` / mgmt `8095` / nginx `8091`.
+prod 도메인은 `caskbycask.net` (백엔드 prod 프로파일 CORS 에 고정). 포트: API `8094` / mgmt `8095` / nginx `8091`.
 
 > 0~12 의 dev 절차를 prod 이름·포트로 한 번 더 한다고 보면 된다. JDK/Node/nginx/그룹 등 공통 패키지는 이미 깔려 있으니 prod 전용 자원만 추가한다.
 
@@ -422,8 +422,8 @@ prod 도메인은 `drinkindex.net` (백엔드 prod 프로파일 CORS 에 고정)
 2번에서 dev/local 만 만들었으니 prod DB 를 추가:
 ```bash
 sudo mariadb <<'SQL'
-CREATE DATABASE IF NOT EXISTS drinkindex_prod CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-GRANT ALL ON drinkindex_prod.* TO 'drink_index'@'%';
+CREATE DATABASE IF NOT EXISTS caskbycask_prod CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+GRANT ALL ON caskbycask_prod.* TO 'caskbycask'@'%';
 FLUSH PRIVILEGES;
 SQL
 ```
@@ -432,38 +432,38 @@ SQL
 ### 14-2. prod 디렉터리 + 그룹 권한
 
 ```bash
-sudo mkdir -p /opt/drinkindex-prod/api /var/www/drinkindex-prod /var/drinkindex/logs/prod
-# 13-2(a) 의 drinkindex 그룹 공유 권한을 prod 자원에도 동일 적용
-sudo chgrp -R drinkindex /opt/drinkindex-prod /var/www/drinkindex-prod /var/drinkindex/logs/prod
-sudo chmod -R g+w        /opt/drinkindex-prod /var/www/drinkindex-prod /var/drinkindex/logs/prod
-sudo find /opt/drinkindex-prod /var/www/drinkindex-prod -type d -exec chmod g+s {} \;
+sudo mkdir -p /opt/caskbycask-prod/api /var/www/caskbycask-prod /var/caskbycask/logs/prod
+# 13-2(a) 의 caskbycask 그룹 공유 권한을 prod 자원에도 동일 적용
+sudo chgrp -R caskbycask /opt/caskbycask-prod /var/www/caskbycask-prod /var/caskbycask/logs/prod
+sudo chmod -R g+w        /opt/caskbycask-prod /var/www/caskbycask-prod /var/caskbycask/logs/prod
+sudo find /opt/caskbycask-prod /var/www/caskbycask-prod -type d -exec chmod g+s {} \;
 ```
-> 업로드(`/var/drinkindex/uploads`)는 dev 와 공유한다. 분리하고 싶으면 prod.env 의 `UPLOAD_PATH` 를 `/var/drinkindex/uploads-prod` 로 바꾸고 그 디렉터리도 위와 같이 생성·권한 부여.
+> 업로드(`/var/caskbycask/uploads`)는 dev 와 공유한다. 분리하고 싶으면 prod.env 의 `UPLOAD_PATH` 를 `/var/caskbycask/uploads-prod` 로 바꾸고 그 디렉터리도 위와 같이 생성·권한 부여.
 
 ### 14-3. prod EnvironmentFile
 
 ```bash
-cp deploy/env/prod.env.example /etc/drinkindex/prod.env
-nano /etc/drinkindex/prod.env      # CHANGE_ME 채우기 (JWT_SECRET 은 dev 와 다른 값 권장)
-chmod 600 /etc/drinkindex/prod.env
+cp deploy/env/prod.env.example /etc/caskbycask/prod.env
+nano /etc/caskbycask/prod.env      # CHANGE_ME 채우기 (JWT_SECRET 은 dev 와 다른 값 권장)
+chmod 600 /etc/caskbycask/prod.env
 ```
 - 포트(`SERVER_PORT=8094`, `MANAGEMENT_SERVER_PORT=8095`)는 그대로 둔다 — 이 값이 yml 의 기본 포트를 덮어쓴다.
-- 이 파일 내용을 **Jenkins Credentials(Secret file, ID `drinkindex-prod-env`)** 로도 등록(13-3 ②).
+- 이 파일 내용을 **Jenkins Credentials(Secret file, ID `caskbycask-prod-env`)** 로도 등록(13-3 ②).
 
 ### 14-4. prod systemd 서비스
 
 ```bash
-sudo cp deploy/systemd/drinkindex-prod-api.service /etc/systemd/system/
+sudo cp deploy/systemd/caskbycask-prod-api.service /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable drinkindex-prod-api
+sudo systemctl enable caskbycask-prod-api
 ```
 sudoers 는 13-2(b) 에서 prod 행까지 이미 추가했다(안 했으면 지금 추가).
 
 ### 14-5. prod nginx 사이트
 
 ```bash
-sudo cp deploy/nginx/drinkindex-prod.conf /etc/nginx/sites-available/
-sudo ln -sf /etc/nginx/sites-available/drinkindex-prod.conf /etc/nginx/sites-enabled/
+sudo cp deploy/nginx/caskbycask-prod.conf /etc/nginx/sites-available/
+sudo ln -sf /etc/nginx/sites-available/caskbycask-prod.conf /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
@@ -482,9 +482,9 @@ curl -I   http://127.0.0.1:8091/healthz                      # 200
 
 ### 14-7. prod NPM Proxy Host + Cloudflare DNS
 
-- **NPM**: Proxy Hosts → Add → Domain `drinkindex.net` (+ `www.drinkindex.net`), Scheme `http`, Forward Port **8091**, Block Common Exploits 켜기, SSL 발급.
+- **NPM**: Proxy Hosts → Add → Domain `caskbycask.net` (+ `www.caskbycask.net`), Scheme `http`, Forward Port **8091**, Block Common Exploits 켜기, SSL 발급.
 - **Cloudflare**: A 레코드 `@`(및 `www`) → 서버 Public IP, proxy 켬(주황), SSL/TLS **Full**.
-- 검증: `curl -I https://drinkindex.net` → 200.
+- 검증: `curl -I https://caskbycask.net` → 200.
 
 이후부터는 prod 배포도 **`develop`→`main` 병합 후 `*-prod` Job `Build Now`** (13-6) 수동 버튼으로 수행된다.
 
@@ -498,16 +498,16 @@ curl -I   http://127.0.0.1:8091/healthz                      # 200
 ./deploy/deploy-web.sh dev          # dev 프론트 / prod 는 deploy-web.sh prod
 
 # 로그
-journalctl -u drinkindex-dev-api -f                  # prod: drinkindex-prod-api
-tail -f /var/drinkindex/logs/dev/drinkindex-api.log  # prod: .../logs/prod/...
+journalctl -u caskbycask-dev-api -f                  # prod: caskbycask-prod-api
+tail -f /var/caskbycask/logs/dev/caskbycask-api.log  # prod: .../logs/prod/...
 
 # 백엔드 재시작 / 상태
-sudo systemctl restart drinkindex-dev-api            # prod: drinkindex-prod-api
-systemctl status drinkindex-dev-api
+sudo systemctl restart caskbycask-dev-api            # prod: caskbycask-prod-api
+systemctl status caskbycask-dev-api
 
 # 롤백 (이전 jar 보관해 두었다면)
-cp /opt/drinkindex-dev/api/app.jar.bak /opt/drinkindex-dev/api/app.jar
-sudo systemctl restart drinkindex-dev-api
+cp /opt/caskbycask-dev/api/app.jar.bak /opt/caskbycask-dev/api/app.jar
+sudo systemctl restart caskbycask-dev-api
 ```
 
 > 일상 배포는 Jenkins 가 대신한다(13번): **dev = `develop` push 시 자동**, **prod = `develop`→`main` 병합 후 prod Job `Build Now` 수동**. 위 명령은 Jenkins 가 죽었거나 긴급 수동 배포·롤백할 때 쓴다.

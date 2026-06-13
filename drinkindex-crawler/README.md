@@ -1,7 +1,7 @@
-# DrinkIndex 핫딜 수집 크롤러 (drinkindex-crawler)
+# CaskByCask 핫딜 수집 크롤러 (caskbycask-crawler)
 
 주류(위스키·와인·꼬냑) 커뮤니티의 할인/특가 게시글을 자동 수집해
-OpenAI 로 분석하고, DrinkIndex 백엔드의 관리자 검토 큐로 보내는 파이썬 크롤러.
+OpenAI 로 분석하고, CaskByCask 백엔드의 관리자 검토 큐로 보내는 파이썬 크롤러.
 **시놀로지 DS220+ 에서 작업 스케줄러로 20분마다 실행**한다.
 
 ## 파이프라인

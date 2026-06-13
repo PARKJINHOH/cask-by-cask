@@ -1,17 +1,17 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// DrinkIndex 프론트엔드 배포 파이프라인 (Docker 미사용 / 정적파일)
+// CaskByCask 프론트엔드 배포 파이프라인 (Docker 미사용 / 정적파일)
 //
 // 브랜치 = 환경 매핑 (이 Jenkinsfile 이 체크아웃한 브랜치로 환경을 자동 판별):
-//   · develop  → dev   → /var/www/drinkindex-dev   (nginx 8090)
-//   · main     → prod  → /var/www/drinkindex-prod  (nginx 8091)
+//   · develop  → dev   → /var/www/caskbycask-dev   (nginx 8090)
+//   · main     → prod  → /var/www/caskbycask-prod  (nginx 8091)
 //
 // Jenkins Job 구성 (Pipeline script from SCM, Script Path: deploy/jenkins/Jenkinsfile.web):
-//   · drinkindex-web-dev   : Branch */develop, 자동 트리거(웹훅/폴링)
-//   · drinkindex-web-prod  : Branch */main,    트리거 없음(수동 Build Now)
-//   (path filter 로 drinkindex-web/** + deploy/** 변경 시만 폴링되게 분리)
+//   · caskbycask-web-dev   : Branch */develop, 자동 트리거(웹훅/폴링)
+//   · caskbycask-web-prod  : Branch */main,    트리거 없음(수동 Build Now)
+//   (path filter 로 caskbycask-web/** + deploy/** 변경 시만 폴링되게 분리)
 //
 // 시크릿 불필요 (VITE_API_BASE_URL 비움 → 상대경로 /api 사용).
-// Jenkins 실행 유저가 rsync 대상(/var/www/drinkindex-<env>) 쓰기 가능해야 함.
+// Jenkins 실행 유저가 rsync 대상(/var/www/caskbycask-<env>) 쓰기 가능해야 함.
 // ─────────────────────────────────────────────────────────────────────────────
 pipeline {
     agent any

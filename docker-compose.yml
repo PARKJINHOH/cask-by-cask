@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# DrinkIndex — base compose (공통 정의)
+# CaskByCask — base compose (공통 정의)
 #
 # DB/Redis 는 호스트(Oracle Cloud)에 설치된 것을 그대로 사용 — 컨테이너로 띄우지 않음.
 # api 컨테이너에서 호스트 서비스로 붙기 위해 extra_hosts 로 host.docker.internal 매핑.
@@ -13,15 +13,15 @@
 # 또는 deploy/deploy.sh dev|prod 스크립트 사용.
 # ─────────────────────────────────────────────────────────────────────────────
 
-# 프로젝트명 고정 — 클론 디렉터리명(drink-index 등)에 상관없이 항상 동일한
-# 네트워크/볼륨 이름을 갖도록 함 (network: drinkindex_drinkindex, volume: drinkindex_uploads ...)
-name: drinkindex
+# 프로젝트명 고정 — 클론 디렉터리명(caskbycask 등)에 상관없이 항상 동일한
+# 네트워크/볼륨 이름을 갖도록 함 (network: caskbycask_caskbycask, volume: caskbycask_uploads ...)
+name: caskbycask
 
 services:
   api:
     build:
-      context: ./drinkindex-api
-    image: drinkindex/api:${IMAGE_TAG:-latest}
+      context: ./caskbycask-api
+    image: caskbycask/api:${IMAGE_TAG:-latest}
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
       # DB (호스트 MariaDB)
@@ -45,24 +45,24 @@ services:
       GMAIL_USERNAME: ${GMAIL_USERNAME}
       GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD}
       # Storage / Logs
-      UPLOAD_PATH: /var/drinkindex/uploads
-      LOG_PATH: /var/drinkindex/logs
+      UPLOAD_PATH: /var/caskbycask/uploads
+      LOG_PATH: /var/caskbycask/logs
       # Actuator (docker network 내부에서 prometheus 접근)
       MANAGEMENT_HOST: 0.0.0.0
     volumes:
-      - uploads:/var/drinkindex/uploads
-      - logs:/var/drinkindex/logs
+      - uploads:/var/caskbycask/uploads
+      - logs:/var/caskbycask/logs
     extra_hosts:
       # 호스트의 MariaDB/Redis 접속용. Linux 에서는 명시가 필요 (Docker Desktop 은 자동).
       - "host.docker.internal:host-gateway"
     restart: unless-stopped
     networks:
-      - drinkindex
+      - caskbycask
 
   web:
     build:
-      context: ./drinkindex-web
-    image: drinkindex/web:${IMAGE_TAG:-latest}
+      context: ./caskbycask-web
+    image: caskbycask/web:${IMAGE_TAG:-latest}
     environment:
       API_HOST: api
       API_PORT: 8080
@@ -71,12 +71,12 @@ services:
       - api
     restart: unless-stopped
     networks:
-      - drinkindex
+      - caskbycask
 
 volumes:
   uploads:
   logs:
 
 networks:
-  drinkindex:
+  caskbycask:
     driver: bridge

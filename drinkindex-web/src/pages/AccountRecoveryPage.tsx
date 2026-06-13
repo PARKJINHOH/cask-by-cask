@@ -269,13 +269,13 @@ export default function AccountRecoveryPage() {
 
   return (
     <div className="min-h-[calc(100vh-9rem)] flex items-center justify-center px-4 py-12">
-      <SeoMeta title="계정 찾기" description="DrinkIndex 아이디·비밀번호 찾기 페이지." noindex />
+      <SeoMeta title="계정 찾기" description="CaskByCask 아이디·비밀번호 찾기 페이지." noindex />
       <div className="w-full max-w-sm">
 
         {/* Branding */}
         <div className="text-center mb-8">
           <Link to="/" className="inline-block text-2xl font-bold text-primary-800 tracking-tight">
-            DrinkIndex
+            CaskByCask
           </Link>
           <h1 className="mt-3 text-xl font-semibold text-neutral-900">계정 찾기</h1>
           <p className="mt-1 text-sm text-neutral-500">아이디 또는 비밀번호를 찾아보세요</p>

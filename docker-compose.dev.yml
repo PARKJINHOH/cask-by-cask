@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# DrinkIndex — dev override (Oracle Cloud, drink-dev.pinner.dev)
+# CaskByCask — dev override (Oracle Cloud, drink-dev.pinner.dev)
 # Cloudflare(프록시 / SSL 종료) → Compute Instance(80) → nginx(web) → api/uploads
 # DB/Redis 는 호스트의 것을 사용 (base compose 의 extra_hosts 로 매핑됨).
 # ─────────────────────────────────────────────────────────────────────────────

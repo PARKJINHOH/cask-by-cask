@@ -10,7 +10,7 @@ export default function TermsPage() {
     <div className="min-h-[calc(100vh-9rem)] px-4 py-12">
       <SeoMeta
         title="이용약관"
-        description="DrinkIndex 서비스 이용약관."
+        description="CaskByCask 서비스 이용약관."
         canonical={buildCanonical('/terms')}
       />
       <div className="w-full max-w-2xl mx-auto">

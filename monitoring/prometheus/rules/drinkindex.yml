@@ -1,18 +1,18 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# DrinkIndex Alert Rules — Prometheus
+# CaskByCask Alert Rules — Prometheus
 # ─────────────────────────────────────────────────────────────────────────────
 groups:
-  - name: drinkindex-availability
+  - name: caskbycask-availability
     interval: 30s
     rules:
       - alert: ApiDown
-        expr: up{job="drinkindex-api"} == 0
+        expr: up{job="caskbycask-api"} == 0
         for: 2m
         labels:
           severity: critical
           service: api
         annotations:
-          summary: "DrinkIndex API 다운"
+          summary: "CaskByCask API 다운"
           description: "API 컨테이너가 2분 이상 응답하지 않습니다."
 
       - alert: MariaDBDown
@@ -35,14 +35,14 @@ groups:
           summary: "Redis 다운"
           description: "Redis exporter 가 2분 이상 응답하지 않습니다."
 
-  - name: drinkindex-performance
+  - name: caskbycask-performance
     interval: 30s
     rules:
       - alert: ApiHighErrorRate
         expr: |
-          sum(rate(http_server_requests_seconds_count{job="drinkindex-api",status=~"5.."}[5m]))
+          sum(rate(http_server_requests_seconds_count{job="caskbycask-api",status=~"5.."}[5m]))
             /
-          sum(rate(http_server_requests_seconds_count{job="drinkindex-api"}[5m])) > 0.05
+          sum(rate(http_server_requests_seconds_count{job="caskbycask-api"}[5m])) > 0.05
         for: 5m
         labels:
           severity: warning
@@ -54,7 +54,7 @@ groups:
       - alert: ApiHighLatency
         expr: |
           histogram_quantile(0.95,
-            sum by (le) (rate(http_server_requests_seconds_bucket{job="drinkindex-api"}[5m]))
+            sum by (le) (rate(http_server_requests_seconds_bucket{job="caskbycask-api"}[5m]))
           ) > 2
         for: 5m
         labels:
@@ -66,8 +66,8 @@ groups:
 
       - alert: JvmMemoryPressure
         expr: |
-          (sum by (instance) (jvm_memory_used_bytes{job="drinkindex-api",area="heap"})
-           / sum by (instance) (jvm_memory_max_bytes{job="drinkindex-api",area="heap"})) > 0.90
+          (sum by (instance) (jvm_memory_used_bytes{job="caskbycask-api",area="heap"})
+           / sum by (instance) (jvm_memory_max_bytes{job="caskbycask-api",area="heap"})) > 0.90
         for: 10m
         labels:
           severity: warning
@@ -76,7 +76,7 @@ groups:
           summary: "JVM heap 사용률 90% 초과"
           description: "heap 사용률 = {{ $value | humanizePercentage }}"
 
-  - name: drinkindex-host
+  - name: caskbycask-host
     interval: 30s
     rules:
       - alert: HostDiskFilling

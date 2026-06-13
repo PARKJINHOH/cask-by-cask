@@ -1,16 +1,16 @@
-# DrinkIndex API (prod) — systemd 유닛
+# CaskByCask API (prod) — systemd 유닛
 # 설치:
-#   sudo cp deploy/systemd/drinkindex-prod-api.service /etc/systemd/system/
+#   sudo cp deploy/systemd/caskbycask-prod-api.service /etc/systemd/system/
 #   sudo systemctl daemon-reload
-#   sudo systemctl enable --now drinkindex-prod-api
+#   sudo systemctl enable --now caskbycask-prod-api
 #
-# 로그:  journalctl -u drinkindex-prod-api -f
-# 상태:  systemctl status drinkindex-prod-api
+# 로그:  journalctl -u caskbycask-prod-api -f
+# 상태:  systemctl status caskbycask-prod-api
 #
-# ※ dev 유닛(drinkindex-dev-api)과 동시에 같은 서버에서 동작 → 포트/경로/EnvironmentFile 분리.
+# ※ dev 유닛(caskbycask-dev-api)과 동시에 같은 서버에서 동작 → 포트/경로/EnvironmentFile 분리.
 
 [Unit]
-Description=DrinkIndex API (prod)
+Description=CaskByCask API (prod)
 After=network-online.target mariadb.service redis-server.service
 Wants=network-online.target
 
@@ -20,10 +20,10 @@ User=ubuntu
 Group=ubuntu
 
 # 환경변수 (DB/Redis/JWT/Admin 등) — Jenkins 또는 수동으로 생성
-EnvironmentFile=/etc/drinkindex/prod.env
+EnvironmentFile=/etc/caskbycask/prod.env
 
-WorkingDirectory=/opt/drinkindex-prod/api
-ExecStart=/usr/bin/java -XX:MaxRAMPercentage=75.0 -XX:+UseG1GC -Djava.security.egd=file:/dev/./urandom -jar /opt/drinkindex-prod/api/app.jar
+WorkingDirectory=/opt/caskbycask-prod/api
+ExecStart=/usr/bin/java -XX:MaxRAMPercentage=75.0 -XX:+UseG1GC -Djava.security.egd=file:/dev/./urandom -jar /opt/caskbycask-prod/api/app.jar
 
 # bootJar 종료 시그널(SIGTERM) 정상 종료 코드
 SuccessExitStatus=143

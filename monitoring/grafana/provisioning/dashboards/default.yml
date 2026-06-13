@@ -1,6 +1,6 @@
 apiVersion: 1
 providers:
-  - name: 'DrinkIndex Default'
+  - name: 'CaskByCask Default'
     orgId: 1
     folder: ''
     type: file

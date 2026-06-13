@@ -100,7 +100,7 @@ export default function BannerSlider({ banners }: BannerSliderProps) {
               ) : (
                 <div className="w-full h-full bg-gradient-to-r from-amber-900 to-amber-700
                   flex items-center justify-center">
-                  <span className="text-white text-3xl font-bold tracking-tight">DrinkIndex</span>
+                  <span className="text-white text-3xl font-bold tracking-tight">CaskByCask</span>
                 </div>
               )
             ) : (

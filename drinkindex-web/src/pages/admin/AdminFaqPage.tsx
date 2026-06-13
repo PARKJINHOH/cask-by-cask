@@ -37,7 +37,7 @@ const LANG_TABS: { label: string; value: FaqLanguage }[] = [
 const CATEGORY_ORDER: FaqCategory[] = ['SERVICE', 'WHISKY', 'COGNAC', 'WINE']
 
 const CATEGORY_LABELS: Record<FaqCategory, string> = {
-  SERVICE: 'DrinkIndex 이용 안내',
+  SERVICE: 'CaskByCask 이용 안내',
   WHISKY: '위스키',
   COGNAC: '꼬냑',
   WINE: '와인',

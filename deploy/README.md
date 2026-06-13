@@ -1,16 +1,16 @@
-# DrinkIndex 배포 가이드
+# CaskByCask 배포 가이드
 
 ## 디렉토리 구조
 
 ```
-drink-index/
+caskbycask/
 ├── docker-compose.yml         # 공통 서비스 정의
 ├── docker-compose.dev.yml     # NAS 개발 환경 오버라이드
 ├── docker-compose.prod.yml    # Oracle Cloud 운영 오버라이드
 ├── .env.dev.example           # dev 환경변수 템플릿
 ├── .env.prod.example          # prod 환경변수 템플릿
-├── drinkindex-api/Dockerfile  # 백엔드 (Spring Boot)
-├── drinkindex-web/Dockerfile  # 프론트엔드 (Vite + Nginx)
+├── caskbycask-api/Dockerfile  # 백엔드 (Spring Boot)
+├── caskbycask-web/Dockerfile  # 프론트엔드 (Vite + Nginx)
 └── deploy/
     ├── deploy.sh              # 배포 (빌드 + 기동 + 헬스체크)
     ├── maintenance.sh         # 점검 모드 on/off
@@ -29,13 +29,13 @@ cp .env.prod.example .env.prod
 
 ### 2. DB baseline 스키마 준비
 
-Flyway 가 운영 DB 의 스키마를 자동 생성하도록, `drinkindex-api/src/main/resources/db/migration/V1__init_baseline.sql` 을
+Flyway 가 운영 DB 의 스키마를 자동 생성하도록, `caskbycask-api/src/main/resources/db/migration/V1__init_baseline.sql` 을
 실제 스키마 dump 로 교체 후 commit:
 
 ```bash
 mariadb-dump -h $DEV_DB_HOST -u $DB_USERNAME -p \
     --no-data --skip-comments --skip-add-drop-table \
-    drinkindex_dev > drinkindex-api/src/main/resources/db/migration/V1__init_baseline.sql
+    caskbycask_dev > caskbycask-api/src/main/resources/db/migration/V1__init_baseline.sql
 git add . && git commit -m "feat: V1 baseline schema for Flyway"
 ```
 
@@ -53,7 +53,7 @@ git add . && git commit -m "feat: V1 baseline schema for Flyway"
 
 ### 4. Cloudflare DNS / SSL
 
-- `drinkindex.net` A 레코드 → Oracle Cloud Public IP
+- `caskbycask.net` A 레코드 → Oracle Cloud Public IP
 - Cloudflare SSL 모드: **Full (Strict)** 권장 (서버에 자체 인증서 필요)
 - Cloudflare SSL 모드: **Full** 도 가능 (자체 서명 인증서) — 운영 초기에는 이걸로 시작
 - Cloudflare 보안: Bot Fight Mode, Security Level: Medium
@@ -79,7 +79,7 @@ git add . && git commit -m "feat: V1 baseline schema for Flyway"
 
 자동 (crontab):
 ```cron
-0 3 * * * /home/ubuntu/app/drink-index/deploy/backup.sh prod >> /var/log/drinkindex-backup.log 2>&1
+0 3 * * * /home/ubuntu/app/caskbycask/deploy/backup.sh prod >> /var/log/caskbycask-backup.log 2>&1
 ```
 
 보관 정책:
@@ -133,7 +133,7 @@ docker compose --env-file .env.prod -f docker-compose.yml -f docker-compose.prod
 
 ### Flyway validation 실패
 ```
-docker compose exec api ls -la /var/drinkindex/logs
+docker compose exec api ls -la /var/caskbycask/logs
 docker logs di-prod-api | grep -i flyway
 ```
 체크섬 불일치는 운영 DB 에 적용된 V*.sql 을 변경한 경우. 절대 적용된 마이그레이션은 수정 금지.
@@ -146,6 +146,6 @@ redis-cli -a $REDIS_PASSWORD del rl:login:ip:xxx.xxx.xxx.xxx
 ```
 
 ### 로그 위치
-- API 컨테이너 내부: `/var/drinkindex/logs/drinkindex-api.log`
-- Docker volume: `docker volume inspect drinkindex_logs`
+- API 컨테이너 내부: `/var/caskbycask/logs/caskbycask-api.log`
+- Docker volume: `docker volume inspect caskbycask_logs`
 - 호스트 마운트로 변경하려면 `docker-compose.{env}.yml` 에 bind mount 추가

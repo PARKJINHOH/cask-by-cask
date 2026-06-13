@@ -8,7 +8,7 @@ import { useToast } from '@/shared/hooks/useToast'
 import Toast from '@/shared/components/Toast'
 
 const CATEGORY_OPTIONS: { value: FaqCategory; labelKo: string; labelEn: string }[] = [
-  { value: 'SERVICE', labelKo: 'DrinkIndex 이용 안내', labelEn: 'About DrinkIndex' },
+  { value: 'SERVICE', labelKo: 'CaskByCask 이용 안내', labelEn: 'About CaskByCask' },
   { value: 'WHISKY',  labelKo: '위스키',               labelEn: 'Whisky' },
   { value: 'COGNAC',  labelKo: '꼬냑',                 labelEn: 'Cognac' },
   { value: 'WINE',    labelKo: '와인',                  labelEn: 'Wine' },

@@ -539,8 +539,8 @@ export default function MainLayout() {
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center gap-4">
           {/* 로고 */}
           <Link to="/" className="flex items-center gap-2 flex-shrink-0">
-            <img src="/logo.png" alt="DrinkIndex" className="h-8 w-auto" />
-            <span className="text-xl font-bold text-primary-800 tracking-tight">DrinkIndex</span>
+            <img src="/logo.png" alt="CaskByCask" className="h-8 w-auto" />
+            <span className="text-xl font-bold text-primary-800 tracking-tight">CaskByCask</span>
           </Link>
 
           {/* 언어 토글 */}
@@ -579,7 +579,7 @@ export default function MainLayout() {
             {/* 로고 + 태그라인 */}
             <div>
               <Link to="/" className="inline-block text-sm font-bold text-primary-800 tracking-tight mb-1">
-                DrinkIndex
+                CaskByCask
               </Link>
               <p className="text-xs text-neutral-400">{t('app.tagline')}</p>
             </div>
@@ -608,7 +608,7 @@ export default function MainLayout() {
           </div>
 
           <div className="border-t border-neutral-100 pt-4 text-center">
-            <p className="text-xs text-neutral-400">© 2026 DrinkIndex. All rights reserved.</p>
+            <p className="text-xs text-neutral-400">© 2026 CaskByCask. All rights reserved.</p>
             <p className="text-xs text-neutral-400">지나친 음주는 뇌졸중, 기억력 손상이나 치매를 유발합니다.</p>
           </div>
         </div>

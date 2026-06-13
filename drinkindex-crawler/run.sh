@@ -2,12 +2,12 @@
 # 시놀로지 작업 스케줄러가 호출하는 래퍼.
 # - flock 으로 중복 실행 방지(이전 실행이 길어져도 겹치지 않음)
 # - venv 활성화 후 main.py 실행
-# 작업 스케줄러 등록 예: bash /volume1/drinkindex/drinkindex-crawler/run.sh
+# 작업 스케줄러 등록 예: bash /volume1/caskbycask/caskbycask-crawler/run.sh
 
 set -euo pipefail
 
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LOCK_FILE="/tmp/drinkindex-crawler.lock"
+LOCK_FILE="/tmp/caskbycask-crawler.lock"
 
 cd "$APP_DIR"
 

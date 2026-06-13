@@ -1,1 +1,1 @@
-rootProject.name = "drinkindex-api"
+rootProject.name = "caskbycask-api"

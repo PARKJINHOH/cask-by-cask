@@ -1,9 +1,9 @@
-# DrinkIndex — Claude Code 컨텍스트
+# CaskByCask — Claude Code 컨텍스트
 - 해당 프로젝트는 아직 오픈전이며, 개발중인 상태여서 /resource하위에 .sql에서 수정이 필요하면 수정해도 괜찮습니다.
 
 ## 프로젝트
 위스키·꼬냑·와인 리뷰 커뮤니티 플랫폼.
-백엔드(drinkindex-api)와 프론트엔드(drinkindex-web) 두 프로젝트로 구성.
+백엔드(caskbycask-api)와 프론트엔드(caskbycask-web) 두 프로젝트로 구성.
 
 ## 핵심 원칙
 - 빠르게보다 정확하게: 각 Step 완료 후 검증 체크리스트 통과 확인 후 진행
@@ -11,7 +11,7 @@
 - 아키텍처: 백엔드·프론트엔드 모두 DDD 구조
 - 최고관리자는 랭킹, 점수획득, 점수차감, 출석체크 등 관련된건 X.
 
-## 백엔드 (drinkindex-api)
+## 백엔드 (caskbycask-api)
 - Java 21 / Spring Boot 3.5.x / Gradle Kotlin DSL
 - Spring Security + JWT (Stateless, Redis Refresh Token)
 - Spring Data JPA + QueryDSL (jakarta)
@@ -30,11 +30,11 @@
 ## 인프라/배포 (개인 운영 커뮤니티 — 사업자 없음)
 - **서버: Oracle Cloud Infrastructure, 대한민국 춘천 리전** (현재). 이용자 증가 시 추후 AWS 전환 가능.
 - 파일 저장: 현재 Oracle Cloud 인스턴스 내 디스크에 직접 저장(서버 로컬, `storage.local.base-path: ./uploads`) → 같은 서버가 직접 서빙. `S3FileStorageService`는 추후 외부 오브젝트 스토리지 연동용 빈 스텁(미사용).
-- 이메일: Gmail SMTP (Google, drinkindex.cs@gmail.com). `AwsSesEmailSender`는 비활성(`app.email.provider: smtp`).
+- 이메일: Gmail SMTP (Google, caskbycask.cs@gmail.com). `AwsSesEmailSender`는 비활성(`app.email.provider: smtp`).
 - 개인정보 보호책임자 / 서비스 운영자: 박진호
 - ※ 약관·개인정보 처리방침에 위 인프라(국내 보관 등)가 반영됨 — 인프라 변경 시 `LegalDocumentTemplate.java` + `defaultTemplates.ts` 동기 수정 필요.
 
-## 프론트엔드 (drinkindex-web)
+## 프론트엔드 (caskbycask-web)
 - React + TypeScript + Vite
 - Zustand (authStore, 각 도메인 store)
 - React Query (서버 상태)
@@ -68,7 +68,7 @@
 **한 곳을 고치면 등록·수정·요청승인 세 화면에 자동 반영**되어야 한다. 절대 화면별로 복붙하지 말 것.
 
 ### 단일 소스 파일
-- `drinkindex-web/src/domain/admin/components/SpiritFormFields.tsx`
+- `caskbycask-web/src/domain/admin/components/SpiritFormFields.tsx`
   - `useSpiritForm()` 훅 — 폼 상태 + `validate()` + `buildPayload()` + `prefillFromSpirit()` / `prefillFromRequest()`
   - `<SpiritFormFields>` 컴포넌트 — 4섹션 UI(① 기본 ② 생산·병입 ③ 카테고리 상세 ④ 공통 상세)
   - 공용 상수(`CATEGORIES`, `CATEGORY_LABEL`, `PRODUCER_LABEL`, `DATE_RE`, `CARD`, `SectionTitle`)도 여기서 export
@@ -97,7 +97,7 @@
 # 주류 핫딜 자동 수집 시스템 구현
 
 ## 프로젝트 개요
-주류 커뮤니티 플랫폼(DrinkIndex)의 핫딜 자동 수집 파이프라인을 구현한다.
+주류 커뮤니티 플랫폼(CaskByCask)의 핫딜 자동 수집 파이프라인을 구현한다.
 시놀로지 DS220+에서 20분마다 실행되는 Python 크롤러가 주류 관련 할인 게시글을 수집하고,
 OpenAI GPT-4o-mini로 분석 후 Spring Boot 웹앱의 관리자 검토 큐에 등록한다.
 

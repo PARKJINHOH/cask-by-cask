@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# DrinkIndex API — Multi-stage build
+# CaskByCask API — Multi-stage build
 # ─────────────────────────────────────────────────────────────────────────────
 # Build stage: Gradle wrapper 로 bootJar 생성
 FROM eclipse-temurin:21-jdk-alpine AS builder
@@ -23,8 +23,8 @@ WORKDIR /app
 
 # 헬스체크용 wget — alpine 기본 패키지에 포함되어 별도 설치 불필요
 RUN addgroup -S app && adduser -S -G app app && \
-    mkdir -p /var/drinkindex/uploads /var/drinkindex/logs && \
-    chown -R app:app /var/drinkindex /app
+    mkdir -p /var/caskbycask/uploads /var/caskbycask/logs && \
+    chown -R app:app /var/caskbycask /app
 
 COPY --from=builder --chown=app:app /workspace/build/libs/*.jar /app/app.jar
 

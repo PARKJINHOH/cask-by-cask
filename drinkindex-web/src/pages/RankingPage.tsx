@@ -211,9 +211,9 @@ export default function RankingPage() {
     <div className="max-w-3xl mx-auto px-4 py-8 pb-24 lg:pb-16 space-y-5">
       <SeoMeta
         title="레벨 랭킹"
-        description="DrinkIndex 사용자 활동 점수 랭킹. 주간·월간·전체 기간별 리뷰와 활동에 따른 레벨 순위를 확인하세요."
+        description="CaskByCask 사용자 활동 점수 랭킹. 주간·월간·전체 기간별 리뷰와 활동에 따른 레벨 순위를 확인하세요."
         canonical={buildCanonical('/ranking')}
-        keywords="DrinkIndex 랭킹, 레벨, 위스키 리뷰 랭킹, 사용자 활동 점수"
+        keywords="CaskByCask 랭킹, 레벨, 위스키 리뷰 랭킹, 사용자 활동 점수"
       />
 
       {/* 헤더 */}

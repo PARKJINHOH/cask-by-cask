@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# DrinkIndex Web — Multi-stage build (Vite SPA → Nginx)
+# CaskByCask Web — Multi-stage build (Vite SPA → Nginx)
 # ─────────────────────────────────────────────────────────────────────────────
 FROM node:20-alpine AS builder
 WORKDIR /workspace

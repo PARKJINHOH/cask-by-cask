@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# DrinkIndex Web — Nginx config (envsubst template)
+# CaskByCask Web — Nginx config (envsubst template)
 #
 # 환경변수 (docker-compose env_file 로 주입):
 #   API_HOST           — 백엔드 호스트 (compose 내부망 service 명, 예: api)

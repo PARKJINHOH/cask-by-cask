@@ -4,7 +4,7 @@
 ALTER TABLE producer ALTER COLUMN type SET DEFAULT 'COGNAC_HOUSE';
 
 -- =============================================================================
--- DrinkIndex 기초데이터 — 꼬냑 하우스 / 메종 (Cognac House seed)
+-- CaskByCask 기초데이터 — 꼬냑 하우스 / 메종 (Cognac House seed)
 -- =============================================================================
 -- 작성 기준일: 2026-05-30
 -- 범위: 프랑스 꼬냑(Cognac) 지역의 주요 생산자

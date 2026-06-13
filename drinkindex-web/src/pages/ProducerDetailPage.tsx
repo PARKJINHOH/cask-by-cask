@@ -52,8 +52,8 @@ export default function ProducerDetailPage() {
       <SeoMeta
         title={primaryName}
         description={isEn
-          ? `${primaryName} — ${typeLabel} in ${countryLabel}. Spirits and reviews on DrinkIndex.`
-          : `${primaryName} — ${countryLabel} ${typeLabel}. DrinkIndex에서 이 생산자의 술과 리뷰를 확인하세요.`}
+          ? `${primaryName} — ${typeLabel} in ${countryLabel}. Spirits and reviews on CaskByCask.`
+          : `${primaryName} — ${countryLabel} ${typeLabel}. CaskByCask에서 이 생산자의 술과 리뷰를 확인하세요.`}
         canonical={buildCanonical(`/producers/${producer.id}`)}
         locale={isEn ? 'en_US' : 'ko_KR'}
       />

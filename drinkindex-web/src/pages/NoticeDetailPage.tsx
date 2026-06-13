@@ -67,7 +67,7 @@ export default function NoticeDetailPage() {
       <SeoMeta
         title={notice.title}
         description={stripHtmlForMeta(notice.contentSanitized, 160)
-          || `DrinkIndex 공지사항 — ${notice.title}`}
+          || `CaskByCask 공지사항 — ${notice.title}`}
         canonical={buildCanonical(`/notices/${notice.id}`)}
         ogType="article"
         jsonLd={[
@@ -76,10 +76,10 @@ export default function NoticeDetailPage() {
             headline: notice.title,
             datePublished: notice.createdAt,
             dateModified: notice.updatedAt ?? notice.createdAt,
-            author: { '@type': 'Organization', name: 'DrinkIndex' },
+            author: { '@type': 'Organization', name: 'CaskByCask' },
             publisher: {
               '@type': 'Organization',
-              name: 'DrinkIndex',
+              name: 'CaskByCask',
               logo: { '@type': 'ImageObject', url: `${SITE_URL}/logo.png` },
             },
           },

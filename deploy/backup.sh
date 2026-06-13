@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-# DrinkIndex DB 백업 (GFS: Grandfather-Father-Son)
+# CaskByCask DB 백업 (GFS: Grandfather-Father-Son)
 #
 # 사용법:
 #   ./deploy/backup.sh dev|prod
 #
 # 동작:
-#   1. 호스트의 MariaDB 에서 mariadb-dump 실행 (drink_index 사용자 사용)
-#   2. gzip 압축 후 /var/drinkindex/backups/ 에 저장
+#   1. 호스트의 MariaDB 에서 mariadb-dump 실행 (caskbycask 사용자 사용)
+#   2. gzip 압축 후 /var/caskbycask/backups/ 에 저장
 #   3. Oracle Object Storage 업로드 (OCI CLI 필요, 옵션)
 #   4. 보관 정책: 일간 7개 + 주간 4개 + 월간 6개
 #   5. Slack 알림 (성공/실패) — SLACK_WEBHOOK_URL env var 가 있을 때만
@@ -18,7 +18,7 @@
 #   - .env.${ENV} 에 DB_USERNAME / DB_PASSWORD 설정
 #
 # Cron 예시 (매일 03:00 KST):
-#   0 3 * * * /home/ubuntu/app/drink-index/deploy/backup.sh prod >> /var/log/drinkindex-backup.log 2>&1
+#   0 3 * * * /home/ubuntu/app/caskbycask/deploy/backup.sh prod >> /var/log/caskbycask-backup.log 2>&1
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
@@ -43,15 +43,15 @@ set -a
 source "$ENV_FILE"
 set +a
 
-BACKUP_DIR="${BACKUP_DIR:-/var/drinkindex/backups/${ENV}}"
+BACKUP_DIR="${BACKUP_DIR:-/var/caskbycask/backups/${ENV}}"
 mkdir -p "$BACKUP_DIR/daily" "$BACKUP_DIR/weekly" "$BACKUP_DIR/monthly"
 
 NOW=$(date +'%Y%m%d_%H%M%S')
 DAY_OF_WEEK=$(date +'%u')  # 1=Mon ... 7=Sun
 DAY_OF_MONTH=$(date +'%d')
 
-DAILY_FILE="$BACKUP_DIR/daily/drinkindex_${ENV}_${NOW}.sql.gz"
-DB_NAME="drinkindex_${ENV}"
+DAILY_FILE="$BACKUP_DIR/daily/caskbycask_${ENV}_${NOW}.sql.gz"
+DB_NAME="caskbycask_${ENV}"
 
 log()  { printf "\033[1;36m[backup:%s]\033[0m %s\n" "$ENV" "$*"; }
 err()  { printf "\033[1;31m[backup:%s]\033[0m %s\n" "$ENV" "$*" >&2; }
@@ -83,11 +83,11 @@ log "Daily backup created: $DAILY_FILE ($SIZE)"
 
 # ── 2. 주간/월간 사본 (일요일=주간, 1일=월간) ──
 if [[ "$DAY_OF_WEEK" == "7" ]]; then
-    cp "$DAILY_FILE" "$BACKUP_DIR/weekly/drinkindex_${ENV}_W_${NOW}.sql.gz"
+    cp "$DAILY_FILE" "$BACKUP_DIR/weekly/caskbycask_${ENV}_W_${NOW}.sql.gz"
     log "Weekly snapshot created."
 fi
 if [[ "$DAY_OF_MONTH" == "01" ]]; then
-    cp "$DAILY_FILE" "$BACKUP_DIR/monthly/drinkindex_${ENV}_M_${NOW}.sql.gz"
+    cp "$DAILY_FILE" "$BACKUP_DIR/monthly/caskbycask_${ENV}_M_${NOW}.sql.gz"
     log "Monthly snapshot created."
 fi
 
@@ -102,7 +102,7 @@ if command -v oci >/dev/null 2>&1 && [[ -n "${OCI_BUCKET:-}" ]]; then
     if oci os object put \
             --bucket-name "$OCI_BUCKET" \
             --file "$DAILY_FILE" \
-            --name "drinkindex-backups/${ENV}/daily/$(basename "$DAILY_FILE")" \
+            --name "caskbycask-backups/${ENV}/daily/$(basename "$DAILY_FILE")" \
             --force >/dev/null; then
         log "Object Storage upload OK."
     else

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-# DrinkIndex 점검 모드 토글
+# CaskByCask 점검 모드 토글
 #
 # 사용법:
 #   ./deploy/maintenance.sh dev|prod  on        # 점검 페이지 503 표시

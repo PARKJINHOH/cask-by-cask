@@ -1,6 +1,6 @@
 spring:
   application:
-    name: drinkindex-api
+    name: caskbycask-api
   profiles:
     active: local
 
@@ -55,9 +55,9 @@ admin:
 app:
   email:
     provider: smtp
-    from: drinkindex.cs@gmail.com
+    from: caskbycask.cs@gmail.com
     verification-required: true
-    inquiry-to: drinkindex.cs@gmail.com
+    inquiry-to: caskbycask.cs@gmail.com
   auth:
     # Refresh Token httpOnly 쿠키 설정 — 기본값은 local(http) 기준.
     # dev/prod 에서는 secure=true, same-site=Strict 로 override.
@@ -71,17 +71,17 @@ decorator:
   datasource:
     enabled: false
 
-drinkindex:
-  # 크롤러(drinkindex-crawler) 내부 수신 API(/api/internal/**) 인증 키.
-  # 크롤러 .env 의 DRINKINDEX_INTERNAL_KEY 와 동일해야 함. 미설정 시 내부 API 는 전부 401.
-  internal-api-key: ${DRINKINDEX_INTERNAL_KEY:}
+caskbycask:
+  # 크롤러(caskbycask-crawler) 내부 수신 API(/api/internal/**) 인증 키.
+  # 크롤러 .env 의 CASKBYCASK_INTERNAL_KEY 와 동일해야 함. 미설정 시 내부 API 는 전부 401.
+  internal-api-key: ${CASKBYCASK_INTERNAL_KEY:}
 
 rate-limit:
   enabled: true
 
 # SEO 메타 — sitemap.xml 의 base URL
 seo:
-  site-url: https://drinkindex.pinner.dev
+  site-url: https://caskbycask.pinner.dev
 
 # Actuator: Prometheus/Health 만 노출
 # server.port / server.address 는 프로파일별로 설정 (local: 메인과 동일 포트 / dev,prod: 별도 포트 + localhost 바인딩)

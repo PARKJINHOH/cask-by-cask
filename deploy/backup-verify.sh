@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-# DrinkIndex 백업 무결성 검증
+# CaskByCask 백업 무결성 검증
 #
 # 동작:
 #   1. 최신 daily 백업 파일 선택
@@ -9,7 +9,7 @@
 #   4. 결과 Slack 알림
 #
 # 권장 cron (매주 월요일 04:00):
-#   0 4 * * 1 /home/ubuntu/app/drink-index/deploy/backup-verify.sh prod >> /var/log/drinkindex-backup-verify.log 2>&1
+#   0 4 * * 1 /home/ubuntu/app/caskbycask/deploy/backup-verify.sh prod >> /var/log/caskbycask-backup-verify.log 2>&1
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
@@ -29,7 +29,7 @@ set -a
 source "$ENV_FILE"
 set +a
 
-BACKUP_DIR="${BACKUP_DIR:-/var/drinkindex/backups/${ENV}}"
+BACKUP_DIR="${BACKUP_DIR:-/var/caskbycask/backups/${ENV}}"
 LATEST=$(ls -t "$BACKUP_DIR/daily"/*.sql.gz 2>/dev/null | head -1 || true)
 
 if [[ -z "$LATEST" ]]; then

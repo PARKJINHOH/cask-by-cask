@@ -4,7 +4,7 @@
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
 
     <!--
-        DrinkIndex 로깅 정책
+        CaskByCask 로깅 정책
         - 로그 디렉토리: ${LOG_PATH} env var (기본값 ./logs)
         - 일별 + 사이즈 롤링: 매일 자정 또는 100MB 초과 시 새 파일
         - 일반 로그: 30일 보관, 총 10GB 캡
@@ -18,11 +18,11 @@
     <springProperty scope="context" name="LOG_PATH"
                     source="logging.file.path" defaultValue="./logs"/>
     <springProperty scope="context" name="APP_NAME"
-                    source="spring.application.name" defaultValue="drinkindex-api"/>
+                    source="spring.application.name" defaultValue="caskbycask-api"/>
     <springProperty scope="context" name="SLACK_WEBHOOK_URL"
                     source="slack.webhook-url" defaultValue=""/>
     <springProperty scope="context" name="SLACK_CHANNEL"
-                    source="slack.channel" defaultValue="#drinkindex-alerts"/>
+                    source="slack.channel" defaultValue="#caskbycask-alerts"/>
 
     <property name="CONSOLE_PATTERN"
               value="%d{yyyy-MM-dd HH:mm:ss.SSS} %clr(%-5level) [%thread] %clr(%logger{36}){cyan} - %msg%n"/>
@@ -92,7 +92,7 @@
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
         </root>
-        <logger name="com.drinkindex" level="DEBUG"/>
+        <logger name="com.caskbycask" level="DEBUG"/>
     </springProfile>
 
     <springProfile name="dev">
@@ -101,11 +101,11 @@
             <appender-ref ref="ASYNC_FILE_ALL"/>
             <appender-ref ref="ASYNC_FILE_ERROR"/>
         </root>
-        <logger name="com.drinkindex" level="INFO"/>
+        <logger name="com.caskbycask" level="INFO"/>
     </springProfile>
 
     <springProfile name="prod">
-        <appender name="SLACK" class="com.drinkindex.global.logging.SlackErrorAppender">
+        <appender name="SLACK" class="com.caskbycask.global.logging.SlackErrorAppender">
             <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
                 <level>ERROR</level>
             </filter>
@@ -121,7 +121,7 @@
             <appender-ref ref="ASYNC_FILE_ERROR"/>
             <appender-ref ref="SLACK"/>
         </root>
-        <logger name="com.drinkindex" level="INFO"/>
+        <logger name="com.caskbycask" level="INFO"/>
     </springProfile>
 
 </configuration>

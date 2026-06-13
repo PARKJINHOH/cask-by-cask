@@ -12,7 +12,7 @@
       "title": "API Up",
       "datasource": "Prometheus",
       "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
-      "targets": [{ "expr": "up{job=\"drinkindex-api\"}", "refId": "A" }],
+      "targets": [{ "expr": "up{job=\"caskbycask-api\"}", "refId": "A" }],
       "fieldConfig": {
         "defaults": {
           "mappings": [
@@ -42,7 +42,7 @@
       "datasource": "Prometheus",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
       "targets": [
-        { "expr": "sum by (uri) (rate(http_server_requests_seconds_count{job=\"drinkindex-api\"}[1m]))", "refId": "A", "legendFormat": "{{uri}}" }
+        { "expr": "sum by (uri) (rate(http_server_requests_seconds_count{job=\"caskbycask-api\"}[1m]))", "refId": "A", "legendFormat": "{{uri}}" }
       ]
     },
     {
@@ -51,7 +51,7 @@
       "datasource": "Prometheus",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
       "targets": [
-        { "expr": "sum(rate(http_server_requests_seconds_count{job=\"drinkindex-api\",status=~\"5..\"}[5m]))", "refId": "A", "legendFormat": "5xx/s" }
+        { "expr": "sum(rate(http_server_requests_seconds_count{job=\"caskbycask-api\",status=~\"5..\"}[5m]))", "refId": "A", "legendFormat": "5xx/s" }
       ]
     },
     {
@@ -60,8 +60,8 @@
       "datasource": "Prometheus",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
       "targets": [
-        { "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{job=\"drinkindex-api\"}[5m])))", "refId": "A", "legendFormat": "P95" },
-        { "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_requests_seconds_bucket{job=\"drinkindex-api\"}[5m])))", "refId": "B", "legendFormat": "P99" }
+        { "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{job=\"caskbycask-api\"}[5m])))", "refId": "A", "legendFormat": "P95" },
+        { "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_requests_seconds_bucket{job=\"caskbycask-api\"}[5m])))", "refId": "B", "legendFormat": "P99" }
       ]
     },
     {
@@ -70,7 +70,7 @@
       "datasource": "Prometheus",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
       "targets": [
-        { "expr": "sum(jvm_memory_used_bytes{job=\"drinkindex-api\",area=\"heap\"}) / sum(jvm_memory_max_bytes{job=\"drinkindex-api\",area=\"heap\"})", "refId": "A", "legendFormat": "heap %" }
+        { "expr": "sum(jvm_memory_used_bytes{job=\"caskbycask-api\",area=\"heap\"}) / sum(jvm_memory_max_bytes{job=\"caskbycask-api\",area=\"heap\"})", "refId": "A", "legendFormat": "heap %" }
       ]
     },
     {
@@ -115,12 +115,12 @@
   ],
   "refresh": "30s",
   "schemaVersion": 39,
-  "tags": ["drinkindex"],
+  "tags": ["caskbycask"],
   "templating": { "list": [] },
   "time": { "from": "now-1h", "to": "now" },
   "timezone": "Asia/Seoul",
-  "title": "DrinkIndex Overview",
-  "uid": "drinkindex-overview",
+  "title": "CaskByCask Overview",
+  "uid": "caskbycask-overview",
   "version": 1,
   "weekStart": ""
 }

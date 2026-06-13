@@ -414,13 +414,13 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-[calc(100vh-9rem)] flex items-center justify-center px-4 py-12">
-      <SeoMeta title="회원가입" description="DrinkIndex 회원가입 페이지." noindex />
+      <SeoMeta title="회원가입" description="CaskByCask 회원가입 페이지." noindex />
       <div className="w-full max-w-sm">
 
         {/* Branding */}
         <div className="text-center mb-8">
           <Link to="/" className="inline-block text-2xl font-bold text-primary-800 tracking-tight">
-            DrinkIndex
+            CaskByCask
           </Link>
           <h1 className="mt-3 text-xl font-semibold text-neutral-900">회원가입</h1>
           <p className="mt-1 text-sm text-neutral-500">무료로 가입하고 리뷰를 남겨보세요</p>

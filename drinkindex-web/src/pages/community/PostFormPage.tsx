@@ -207,7 +207,7 @@ export default function PostFormPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
-      <SeoMeta title={isEdit ? '게시글 수정' : '게시글 작성'} description="DrinkIndex 커뮤니티 게시글 작성." noindex />
+      <SeoMeta title={isEdit ? '게시글 수정' : '게시글 작성'} description="CaskByCask 커뮤니티 게시글 작성." noindex />
       <Toast toasts={toasts} onRemove={removeToast} />
       <DraftListModal
         open={draftListOpen}

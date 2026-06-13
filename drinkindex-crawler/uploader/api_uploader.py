@@ -1,8 +1,8 @@
-"""분석 결과를 DrinkIndex 백엔드(Spring Boot) 내부 API 로 업로드.
+"""분석 결과를 CaskByCask 백엔드(Spring Boot) 내부 API 로 업로드.
 
 ── 백엔드가 구현해야 할 수신 계약 (이 크롤러가 보내는 요청) ─────────────
-  POST  {DRINKINDEX_API_URL}/api/internal/deals
-  Header: X-Internal-Key: {DRINKINDEX_INTERNAL_KEY}
+  POST  {CASKBYCASK_API_URL}/api/internal/deals
+  Header: X-Internal-Key: {CASKBYCASK_INTERNAL_KEY}
           Content-Type: application/json
   Body  : 아래 build_payload() 가 만드는 flat JSON
   응답  : 2xx = 정상 접수, 409 = 이미 등록된 sourceUrl(멱등, 정상취급)

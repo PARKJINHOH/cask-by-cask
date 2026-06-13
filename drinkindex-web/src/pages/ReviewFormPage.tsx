@@ -158,7 +158,7 @@ export default function ReviewFormPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
-      <SeoMeta title={`${primaryName ?? ''} 리뷰 작성`} description="DrinkIndex 리뷰 작성 페이지." noindex />
+      <SeoMeta title={`${primaryName ?? ''} 리뷰 작성`} description="CaskByCask 리뷰 작성 페이지." noindex />
       {/* 뒤로가기 */}
       <button
         onClick={handleCancel}

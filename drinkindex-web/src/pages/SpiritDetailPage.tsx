@@ -722,8 +722,8 @@ export default function SpiritDetailPage() {
     name: primaryName,
     alternateName: secondaryName || undefined,
     description: isEn
-      ? `${primaryName} — ${primaryProducer || ''} ${countryLabel ? `· ${countryLabel}` : ''} · DrinkIndex tasting notes & user reviews.`
-      : `${primaryName} — ${primaryProducer || ''} ${countryLabel ? `· ${countryLabel}` : ''} · DrinkIndex 테이스팅 노트와 사용자 리뷰.`,
+      ? `${primaryName} — ${primaryProducer || ''} ${countryLabel ? `· ${countryLabel}` : ''} · CaskByCask tasting notes & user reviews.`
+      : `${primaryName} — ${primaryProducer || ''} ${countryLabel ? `· ${countryLabel}` : ''} · CaskByCask 테이스팅 노트와 사용자 리뷰.`,
     image: heroImage,
     brand: primaryProducer ? {
       '@type': 'Brand',

@@ -188,7 +188,7 @@ export default function AdminLayout() {
       <aside className="w-56 bg-white border-r border-neutral-200 flex flex-col flex-shrink-0">
         {/* 헤더 */}
         <div className="p-5 border-b border-neutral-100">
-          <Link to="/" className="text-lg font-bold text-primary-800">DrinkIndex</Link>
+          <Link to="/" className="text-lg font-bold text-primary-800">CaskByCask</Link>
           <p className="text-xs text-neutral-400 mt-0.5">
             {isSuperAdmin ? '최고관리자 콘솔' : isAdmin ? '관리자 콘솔' : '파트너 콘솔'}
           </p>

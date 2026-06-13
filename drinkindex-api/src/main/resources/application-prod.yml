@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: jdbc:mariadb://${DB_HOST}:3306/drinkindex_prod?useUnicode=true&characterEncoding=utf8mb4&serverTimezone=Asia/Seoul
+    url: jdbc:mariadb://${DB_HOST}:3306/caskbycask_prod?useUnicode=true&characterEncoding=utf8mb4&serverTimezone=Asia/Seoul
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: org.mariadb.jdbc.Driver
@@ -19,7 +19,7 @@ spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username: drinkindex.cs@gmail.com
+    username: caskbycask.cs@gmail.com
     password: ${GMAIL_APP_PASSWORD}
     properties:
       mail.smtp.auth: true
@@ -28,24 +28,24 @@ spring:
 
 app:
   email:
-    from: drinkindex.cs@gmail.com
+    from: caskbycask.cs@gmail.com
   auth:
     refresh-cookie:
       secure: true
       same-site: Strict
 
 cors:
-  allowed-origins: https://drinkindex.pinner.dev
+  allowed-origins: https://caskbycask.pinner.dev
 
 seo:
-  site-url: https://drinkindex.pinner.dev
+  site-url: https://caskbycask.pinner.dev
 
 logging:
   file:
     path: ./logs
   level:
     root: WARN
-    com.drinkindex: INFO
+    com.caskbycask: INFO
 
 springdoc:
   api-docs:
@@ -55,7 +55,7 @@ springdoc:
 
 slack:
   webhook-url: ${SLACK_WEBHOOK_URL}
-  channel: ${SLACK_CHANNEL:#drinkindex-alerts}
+  channel: ${SLACK_CHANNEL:#caskbycask-alerts}
 
 # Actuator 를 별도 포트로 분리 + localhost 바인딩 (docker network 내부만)
 management:

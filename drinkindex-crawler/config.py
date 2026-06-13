@@ -29,8 +29,8 @@ class Settings:
     openai_base_url: str = os.getenv("OPENAI_BASE_URL", "").strip()
 
     # 백엔드
-    api_url: str = os.getenv("DRINKINDEX_API_URL", "").rstrip("/")
-    internal_key: str = os.getenv("DRINKINDEX_INTERNAL_KEY", "")
+    api_url: str = os.getenv("CASKBYCASK_API_URL", "").rstrip("/")
+    internal_key: str = os.getenv("CASKBYCASK_INTERNAL_KEY", "")
 
     # 경로
     db_path: str = os.getenv("SQLITE_DB_PATH", "./seen_posts.db")
@@ -89,9 +89,9 @@ class Settings:
         # 백엔드 업로드 관련 값은 실제 업로드(=DRY_RUN 아님)일 때만 필수
         if not self.dry_run:
             if not self.api_url:
-                missing.append("DRINKINDEX_API_URL")
+                missing.append("CASKBYCASK_API_URL")
             if not self.internal_key:
-                missing.append("DRINKINDEX_INTERNAL_KEY")
+                missing.append("CASKBYCASK_INTERNAL_KEY")
 
         # 네이버 카페 타깃이 있는데 쿠키가 없으면 수집 불가
         if self.naver_cafe_targets and not self.naver_cookie:

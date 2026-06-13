@@ -10,7 +10,7 @@ export default function PrivacyPage() {
     <div className="min-h-[calc(100vh-9rem)] px-4 py-12">
       <SeoMeta
         title="개인정보 처리방침"
-        description="DrinkIndex 개인정보 처리방침. 수집·이용·보관 정책."
+        description="CaskByCask 개인정보 처리방침. 수집·이용·보관 정책."
         canonical={buildCanonical('/privacy')}
       />
       <div className="w-full max-w-2xl mx-auto">

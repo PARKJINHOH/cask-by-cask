@@ -51,7 +51,7 @@ export default function FaqPage() {
     <div className="max-w-3xl mx-auto px-4 py-8">
       <SeoMeta
         title="자주 묻는 질문 (FAQ)"
-        description="위스키, 와인, 꼬냑 등 주류에 대한 자주 묻는 질문 — NAS, 캐스크 타입, 피티드, VSOP/XO 등급, 빈티지 등 핵심 용어 정리. DrinkIndex FAQ."
+        description="위스키, 와인, 꼬냑 등 주류에 대한 자주 묻는 질문 — NAS, 캐스크 타입, 피티드, VSOP/XO 등급, 빈티지 등 핵심 용어 정리. CaskByCask FAQ."
         canonical={buildCanonical('/faq')}
         keywords="위스키 FAQ, 꼬냑 FAQ, 와인 FAQ, NAS, VSOP, XO, 캐스크, 피티드, 빈티지, whisky FAQ, cognac grade, single malt, bourbon"
         jsonLd={[breadcrumbJsonLd]}
@@ -61,7 +61,7 @@ export default function FaqPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-neutral-900">자주 묻는 질문</h1>
         <p className="mt-1 text-sm text-neutral-500">
-          위스키 · 와인 · 꼬냑 등 주류 기본 용어와 DrinkIndex 사용법.
+          위스키 · 와인 · 꼬냑 등 주류 기본 용어와 CaskByCask 사용법.
         </p>
       </div>
 

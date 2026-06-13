@@ -13,17 +13,17 @@
 *.iml
 
 # ─── Backend (Gradle) ───
-drinkindex-api/build/
-drinkindex-api/.gradle/
-drinkindex-api/out/
-drinkindex-api/bin/
-drinkindex-api/.idea/
+caskbycask-api/build/
+caskbycask-api/.gradle/
+caskbycask-api/out/
+caskbycask-api/bin/
+caskbycask-api/.idea/
 
 # ─── Frontend (Vite / Node) ───
-drinkindex-web/node_modules/
-drinkindex-web/dist/
-drinkindex-web/.vite/
-drinkindex-web/build/
+caskbycask-web/node_modules/
+caskbycask-web/dist/
+caskbycask-web/.vite/
+caskbycask-web/build/
 
 # ─── 로그 / 업로드 (로컬 개발) ───
 logs/

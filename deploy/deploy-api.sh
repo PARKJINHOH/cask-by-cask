@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-# DrinkIndex 백엔드 배포 (Docker 미사용 / systemd)
+# CaskByCask 백엔드 배포 (Docker 미사용 / systemd)
 #
 # 사용법:  ./deploy/deploy-api.sh dev
 #
 # 동작:
 #   1. Gradle bootJar 빌드 (테스트 제외)
-#   2. jar 를 /opt/drinkindex-<env>/api/app.jar 로 교체
+#   2. jar 를 /opt/caskbycask-<env>/api/app.jar 로 교체
 #   3. systemd 서비스 재시작
 #   4. actuator readiness 헬스체크
 #
 # 사전 조건:
-#   - JDK 21, systemd 유닛(drinkindex-<env>-api) 설치, /etc/drinkindex/<env>.env 존재
+#   - JDK 21, systemd 유닛(caskbycask-<env>-api) 설치, /etc/caskbycask/<env>.env 존재
 #   - 배포 유저가 systemctl 무암호 sudo 가능 (또는 root 실행)
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
@@ -25,8 +25,8 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-SERVICE="drinkindex-${ENV}-api"
-TARGET_DIR="/opt/drinkindex-${ENV}/api"
+SERVICE="caskbycask-${ENV}-api"
+TARGET_DIR="/opt/caskbycask-${ENV}/api"
 # 헬스체크용 management 포트 — EnvironmentFile 의 MANAGEMENT_SERVER_PORT 와 일치해야 함.
 # (dev=8093, prod=8095. MGMT_PORT 환경변수로 강제 override 가능)
 if [[ -z "${MGMT_PORT:-}" ]]; then
@@ -41,7 +41,7 @@ err() { printf "\033[1;31m[api:%s]\033[0m %s\n" "$ENV" "$*" >&2; }
 
 # ── 1. 빌드 ──
 log "Building bootJar..."
-cd "$ROOT_DIR/drinkindex-api"
+cd "$ROOT_DIR/caskbycask-api"
 chmod +x gradlew
 ./gradlew --no-daemon clean bootJar -x test
 

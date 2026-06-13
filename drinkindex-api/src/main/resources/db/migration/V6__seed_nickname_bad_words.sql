@@ -159,7 +159,7 @@ INSERT IGNORE INTO nickname_bad_words (word, is_active, created_at, updated_at) 
 
 -- ===== 서비스 브랜드 사칭 =====
 ('드링크인덱스', 1, NOW(), NOW()),
-('drinkindex',   1, NOW(), NOW()),
+('caskbycask',   1, NOW(), NOW()),
 
 -- ===== 기타 사기 / 광고 유도 =====
 ('텔레그램', 1, NOW(), NOW()),

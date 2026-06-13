@@ -65,7 +65,7 @@ async function renderRoute(browser, baseUrl, route) {
   page.setDefaultNavigationTimeout(NAV_TIMEOUT_MS)
   // 봇처럼 동작 — desktop UA + 한국어
   await page.setUserAgent(
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) DrinkIndexPrerender/1.0',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) CaskByCaskPrerender/1.0',
   )
   await page.setExtraHTTPHeaders({ 'Accept-Language': 'ko-KR,ko;q=0.9' })
 
