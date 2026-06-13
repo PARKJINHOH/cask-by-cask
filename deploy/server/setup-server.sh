@@ -30,12 +30,13 @@ apt-get update
 apt-get install -y \
     openjdk-21-jre-headless \
     nginx \
-    mariadb-server \
+    mariadb-server mariadb-client \
     redis-server \
     rsync curl iptables-persistent
 
 say "2) /app 디렉토리 구조 + 권한"
-mkdir -p /app/spring-boot/logs /app/vite /app/upload /app/db_backup /app/env /app/scripts
+#   logs: jar 로그(logback) / db_backup: DB 덤프 / upload: 사용자 파일 (모두 배포와 무관한 영속 경로)
+mkdir -p /app/spring-boot /app/vite /app/upload /app/db_backup /app/env /app/scripts /app/logs
 chown -R "$DEPLOY_USER":"$DEPLOY_USER" /app
 chmod 755 /app
 
@@ -68,6 +69,14 @@ say "7) 방화벽 — 80/443 인바운드 오픈 (인스턴스 iptables)"
 iptables -C INPUT -p tcp --dport 80  -j ACCEPT 2>/dev/null || iptables -I INPUT 6 -p tcp --dport 80  -j ACCEPT
 iptables -C INPUT -p tcp --dport 443 -j ACCEPT 2>/dev/null || iptables -I INPUT 6 -p tcp --dport 443 -j ACCEPT
 netfilter-persistent save
+
+say "8) DB 백업 — 스크립트 배치 + 일배치 cron (매일 03:00, 30일 보관)"
+cp "$REPO_DIR/deploy/server/backup-db.sh" /app/scripts/backup-db.sh
+chmod +x /app/scripts/backup-db.sh
+chown "$DEPLOY_USER":"$DEPLOY_USER" /app/scripts/backup-db.sh
+CRON_LINE="0 3 * * * /app/scripts/backup-db.sh >> /app/logs/backup-db.log 2>&1"
+( crontab -u "$DEPLOY_USER" -l 2>/dev/null | grep -v 'backup-db.sh'; echo "$CRON_LINE" ) | crontab -u "$DEPLOY_USER" -
+echo " → cron 등록됨: $CRON_LINE"
 
 say "✅ 자동 셋업 완료 — 아래 [수동] 단계를 마저 진행하세요"
 echo

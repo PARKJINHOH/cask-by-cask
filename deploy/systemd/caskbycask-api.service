@@ -31,7 +31,7 @@ RestartSec=5
 # 보안 하드닝
 NoNewPrivileges=true
 ProtectSystem=full
-ReadWritePaths=/app/upload /app/spring-boot
+ReadWritePaths=/app/upload /app/logs /app/spring-boot
 
 [Install]
 WantedBy=multi-user.target

@@ -39,12 +39,17 @@ GitHub Actions (ubuntu-latest, x86)
 │  ├─ dist.new/                ← 배포 중 staging
 │  └─ dist_<타임스탬프>/        ← 직전 백업 1개
 ├─ upload/                     ← 영속 (이미지·동영상) — 배포와 무관, 절대 삭제 안 함
-├─ db_backup/                  ← 영속 (DB 덤프)
+├─ db_backup/                  ← 영속 (DB 덤프, 일배치 gzip / 30일 보관)
+├─ logs/                       ← jar 로그 (logback) — 매일 자정 롤오버→gzip(archived/) / 30일 보관
+│  ├─ caskbycask-api.log       ← 현재 로그 (uncompressed)
+│  ├─ caskbycask-api-error.log ← ERROR 전용
+│  └─ archived/*.log.gz        ← 일별 압축 보관
 ├─ env/
 │  └─ api.env                  ← 앱 비밀값 (chmod 600, git/GitHub 에 없음)
 └─ scripts/
    ├─ deploy-api.sh            ← Actions 가 매 배포 시 갱신
-   └─ deploy-web.sh
+   ├─ deploy-web.sh
+   └─ backup-db.sh             ← DB 백업 (cron 03:00)
 
 nginx:  /etc/nginx/sites-available/caskbycask.conf  (root → /app/vite/dist)
 ssl:    /etc/nginx/ssl/caskbycask.net.{pem,key}     (Cloudflare Origin Cert)
@@ -127,3 +132,26 @@ rm -rf dist && mv dist_<타임스탬프> dist
 ```
 
 > 보관본이 1개(직전)뿐이므로 더 과거로의 롤백은 해당 커밋을 다시 빌드/배포해야 한다.
+
+---
+
+## 8. 로그 / 백업 정책
+
+### 로그
+- jar 은 systemd 가 관리하는 **서비스**로 실행된다 (`java -jar &` 같은 백그라운드 실행 아님).
+  - stdout/stderr → journald (`journalctl -u caskbycask-api -f`)
+  - 애플리케이션 로그 → **logback 이 파일로 직접 출력**: `LOG_PATH=/app/logs`
+- 정책 (logback-spring.xml, prod):
+  - 현재 로그: `/app/logs/caskbycask-api.log` (+ ERROR 전용 `caskbycask-api-error.log`)
+  - **매일 자정(또는 100MB 초과) 롤오버 → `/app/logs/archived/...log.gz` 로 gzip 압축**
+  - 보관: 일반 로그 **30일**, ERROR 로그 90일(장애 분석용). 총량 캡(10GB/5GB)
+  - → 별도 logrotate 불필요 (앱이 자체 처리)
+
+### DB 백업
+- `/app/scripts/backup-db.sh` 가 **매일 03:00(cron)** 실행:
+  - `caskbycask_prod` 를 mariadb-dump(단일 트랜잭션) → gzip → `/app/db_backup/`
+  - **30일 초과 자동 삭제**, 실패/성공 시 Slack 알림(설정 시)
+- cron 은 `setup-server.sh` 가 배포 유저에 등록. 수동 실행: `/app/scripts/backup-db.sh`
+- 복원: `gunzip < /app/db_backup/<파일>.sql.gz | mariadb -u caskbycask -p caskbycask_prod`
+
+> ⚠️ DB 백업은 같은 디스크에 쌓이므로, 인스턴스 장애 대비 **외부 복사**(Oracle Object Storage / Block Volume 스냅샷)를 별도 권장. `upload/` 도 동일.
