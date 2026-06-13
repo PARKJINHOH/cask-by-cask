@@ -1,0 +1,5 @@
+package com.caskbycask.domain.report.entity.enums;
+
+public enum ReportStatus {
+    PENDING, RESOLVED, DISMISSED
+}

@@ -1,0 +1,259 @@
+package com.caskbycask.global.exception;
+
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+
+@Getter
+@RequiredArgsConstructor
+public enum ErrorCode {
+
+    // Auth
+    UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "AUTH_001", "인증이 필요합니다."),
+    FORBIDDEN(HttpStatus.FORBIDDEN, "AUTH_002", "접근 권한이 없습니다."),
+    INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_003", "유효하지 않은 토큰입니다."),
+    EXPIRED_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_004", "만료된 토큰입니다."),
+    REFRESH_TOKEN_NOT_FOUND(HttpStatus.UNAUTHORIZED, "AUTH_005", "리프레시 토큰을 찾을 수 없습니다."),
+
+    // User
+    USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_001", "사용자를 찾을 수 없습니다."),
+    DUPLICATE_EMAIL(HttpStatus.CONFLICT, "USER_002", "이미 사용 중인 이메일입니다."),
+    DUPLICATE_NICKNAME(HttpStatus.CONFLICT, "USER_003", "이미 사용 중인 닉네임입니다."),
+    INVALID_PASSWORD(HttpStatus.BAD_REQUEST, "USER_004", "비밀번호가 올바르지 않습니다."),
+    EMAIL_NOT_VERIFIED(HttpStatus.FORBIDDEN, "USER_005", "이메일 인증이 필요합니다."),
+    INVALID_VERIFICATION_CODE(HttpStatus.BAD_REQUEST, "USER_006", "인증 코드가 올바르지 않습니다."),
+    VERIFICATION_CODE_EXPIRED(HttpStatus.BAD_REQUEST, "USER_007", "인증 코드가 만료되었습니다. 재발송 후 다시 시도해주세요."),
+    VERIFICATION_COOLDOWN(HttpStatus.TOO_MANY_REQUESTS, "USER_008", "잠시 후 다시 시도해주세요. (1분 대기)"),
+    NICKNAME_CHANGE_TOO_SOON(HttpStatus.BAD_REQUEST, "USER_009", "닉네임은 60일에 한 번만 변경할 수 있습니다."),
+    NICKNAME_FIXED(HttpStatus.BAD_REQUEST, "USER_010", "고정닉으로 설정되어 닉네임을 변경할 수 없습니다."),
+    NICKNAME_ALREADY_FIXED(HttpStatus.CONFLICT, "USER_011", "이미 고정닉으로 설정된 계정입니다."),
+    PROFILE_IMAGE_CHANGE_TOO_SOON(HttpStatus.BAD_REQUEST, "USER_012", "프로필 이미지는 30일에 한 번만 변경할 수 있습니다."),
+    PROFILE_IMAGE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "USER_013", "프로필 이미지 파일 크기는 2MB를 초과할 수 없습니다."),
+    PROFILE_IMAGE_INVALID_FORMAT(HttpStatus.BAD_REQUEST, "USER_014", "JPG, PNG, WEBP 형식의 이미지만 업로드할 수 있습니다."),
+    PROFILE_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_015", "프로필 이미지를 찾을 수 없습니다."),
+    ACCOUNT_INACTIVE(HttpStatus.FORBIDDEN, "USER_016", "비활성화된 계정입니다."),
+    ACCOUNT_SUSPENDED(HttpStatus.FORBIDDEN, "USER_017", "계정이 정지되었습니다."),
+    ACCOUNT_DORMANT(HttpStatus.FORBIDDEN, "USER_018", "휴면 계정입니다. 이메일 인증 후 휴면을 해제해주세요."),
+    ACCOUNT_LOCKED(HttpStatus.TOO_MANY_REQUESTS, "USER_019", "비밀번호를 여러 번 틀려 계정이 잠겼습니다. 잠시 후 다시 시도해주세요."),
+    ALREADY_ADULT_VERIFIED(HttpStatus.CONFLICT, "USER_020", "이미 성인인증이 완료된 계정입니다."),
+    ADULT_VERIFY_UNDERAGE(HttpStatus.BAD_REQUEST, "USER_021", "만 19세 미만은 성인인증을 완료할 수 없습니다."),
+    INVALID_BIRTH_DATE(HttpStatus.BAD_REQUEST, "USER_022", "생년월일이 올바르지 않습니다."),
+    ADULT_VERIFICATION_REQUIRED(HttpStatus.FORBIDDEN, "USER_023", "성인인증이 필요한 기능입니다."),
+
+    // Spirit
+    SPIRIT_NOT_FOUND(HttpStatus.NOT_FOUND, "SPIRIT_001", "술 정보를 찾을 수 없습니다."),
+    SPIRIT_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "SPIRIT_002", "이미지를 찾을 수 없습니다."),
+    SPIRIT_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "SPIRIT_003", "등록 요청을 찾을 수 없습니다."),
+    SPIRIT_ACCESS_DENIED(HttpStatus.FORBIDDEN, "SPIRIT_004", "해당 술에 대한 접근 권한이 없습니다."),
+    SPIRIT_REQUEST_ACCESS_DENIED(HttpStatus.FORBIDDEN, "SPIRIT_007", "본인이 등록한 요청만 수정/삭제할 수 있습니다."),
+    SPIRIT_REQUEST_NOT_EDITABLE(HttpStatus.BAD_REQUEST, "SPIRIT_008", "검토 중이거나 반려된 요청만 수정/삭제할 수 있습니다."),
+    SPIRIT_VARIANT_SELF_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "SPIRIT_009", "자기 자신은 연관 술로 추가할 수 없습니다."),
+    INVALID_IMAGE_FORMAT(HttpStatus.BAD_REQUEST, "SPIRIT_005", "JPG, PNG 형식의 이미지만 업로드할 수 있습니다."),
+    IMAGE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "SPIRIT_006", "이미지 파일 크기는 10MB를 초과할 수 없습니다."),
+    INVALID_GRAPE_PERCENTAGE(HttpStatus.BAD_REQUEST, "SPIRIT_007", "포도 품종 비율 합계는 100%를 초과할 수 없습니다."),
+    INVALID_DATE_FORMAT(HttpStatus.BAD_REQUEST, "SPIRIT_008", "날짜 형식이 올바르지 않습니다 (YYYY 또는 YYYY-MM)."),
+
+    // Producer
+    DISTILLERY_NOT_FOUND(HttpStatus.NOT_FOUND, "DISTILLERY_001", "증류소 정보를 찾을 수 없습니다."),
+    DISTILLERY_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "DISTILLERY_002", "증류소 등록 요청을 찾을 수 없습니다."),
+    DISTILLERY_REQUEST_NOT_EDITABLE(HttpStatus.BAD_REQUEST, "DISTILLERY_003", "이미 처리된 등록 요청입니다."),
+
+    // Winery
+    WINERY_NOT_FOUND(HttpStatus.NOT_FOUND, "WINERY_001", "와이너리 정보를 찾을 수 없습니다."),
+
+    // CognacHouse
+    COGNAC_HOUSE_NOT_FOUND(HttpStatus.NOT_FOUND, "COGNAC_HOUSE_001", "꼬냑 하우스 정보를 찾을 수 없습니다."),
+
+    // Review
+    REVIEW_NOT_FOUND(HttpStatus.NOT_FOUND, "REVIEW_001", "리뷰를 찾을 수 없습니다."),
+    DUPLICATE_REVIEW(HttpStatus.CONFLICT, "REVIEW_002", "이미 해당 술에 리뷰를 작성하셨습니다."),
+    REVIEW_ACCESS_DENIED(HttpStatus.FORBIDDEN, "REVIEW_003", "본인이 작성한 리뷰가 아닙니다."),
+
+    // Comment
+    COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "COMMENT_001", "댓글을 찾을 수 없습니다."),
+    NESTED_REPLY_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "COMMENT_002", "대댓글에는 답글을 작성할 수 없습니다."),
+    COMMENT_ACCESS_DENIED(HttpStatus.FORBIDDEN, "COMMENT_003", "본인이 작성한 댓글이 아닙니다."),
+
+    // Wishlist
+    WISHLIST_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "WISHLIST_001", "위시리스트 항목을 찾을 수 없습니다."),
+    WISHLIST_ACCESS_DENIED(HttpStatus.FORBIDDEN, "WISHLIST_002", "본인의 위시리스트만 삭제할 수 있습니다."),
+
+    // Bottle Collection
+    BOTTLE_NOT_FOUND(HttpStatus.NOT_FOUND, "BOTTLE_001", "바틀을 찾을 수 없습니다."),
+    BOTTLE_ACCESS_DENIED(HttpStatus.FORBIDDEN, "BOTTLE_002", "본인의 바틀만 수정/삭제할 수 있습니다."),
+    BOTTLE_IMAGE_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "BOTTLE_003", "이미지는 최대 2장까지 등록할 수 있습니다."),
+    BOTTLE_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "BOTTLE_004", "이미지를 찾을 수 없습니다."),
+
+    // Report
+    ALREADY_REPORTED(HttpStatus.CONFLICT, "REPORT_001", "이미 신고한 항목입니다."),
+    REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "REPORT_002", "신고 내역을 찾을 수 없습니다."),
+    TARGET_NOT_FOUND(HttpStatus.NOT_FOUND, "REPORT_003", "신고 대상을 찾을 수 없습니다."),
+
+    // Notice
+    NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTICE_001", "공지사항을 찾을 수 없습니다."),
+    NOTICE_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTICE_002", "공지사항 이미지를 찾을 수 없습니다."),
+    NOTICE_ACCESS_DENIED(HttpStatus.FORBIDDEN, "NOTICE_003", "공지사항 접근 권한이 없습니다."),
+    NOTICE_INVALID_IMAGE_FORMAT(HttpStatus.BAD_REQUEST, "NOTICE_004", "허용되지 않는 이미지 형식입니다. (JPG, JPEG, PNG, GIF, WEBP)"),
+    NOTICE_INVALID_IMAGE_MAGIC_BYTES(HttpStatus.BAD_REQUEST, "NOTICE_005", "이미지 파일의 실제 형식이 확장자와 일치하지 않습니다."),
+    NOTICE_IMAGE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "NOTICE_006", "이미지 파일 크기는 10MB를 초과할 수 없습니다."),
+    DELETE_USED_IMAGE(HttpStatus.BAD_REQUEST, "NOTICE_007", "공지에 사용 중인 이미지는 삭제할 수 없습니다."),
+
+    // Popup
+    POPUP_NOT_FOUND(HttpStatus.NOT_FOUND, "POPUP_001", "팝업을 찾을 수 없습니다."),
+    POPUP_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "POPUP_002", "팝업 이미지를 찾을 수 없습니다."),
+    DELETE_USED_POPUP_IMAGE(HttpStatus.BAD_REQUEST, "POPUP_003", "팝업에 사용 중인 이미지는 삭제할 수 없습니다."),
+    INVALID_POPUP_DATE_RANGE(HttpStatus.BAD_REQUEST, "POPUP_004", "종료일시는 시작일시 이후여야 합니다."),
+    POPUP_TYPE_MISMATCH(HttpStatus.BAD_REQUEST, "POPUP_005", "팝업 타입에 맞는 필드를 입력해주세요."),
+    POPUP_IMAGE_RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "POPUP_006", "이미지 업로드 횟수를 초과했습니다. 잠시 후 다시 시도해주세요."),
+
+    // Community - Poll
+    POLL_NOT_FOUND(HttpStatus.NOT_FOUND, "POLL_001", "투표를 찾을 수 없습니다."),
+    POLL_ENDED(HttpStatus.BAD_REQUEST, "POLL_002", "종료된 투표입니다."),
+    ALREADY_VOTED(HttpStatus.BAD_REQUEST, "POLL_003", "이미 투표하셨습니다."),
+    INVALID_VOTE(HttpStatus.BAD_REQUEST, "POLL_004", "투표 옵션이 올바르지 않습니다."),
+    POLL_OPTION_NOT_FOUND(HttpStatus.NOT_FOUND, "POLL_005", "투표 항목을 찾을 수 없습니다."),
+
+    // Community - Emoji
+    EMOJI_NOT_FOUND(HttpStatus.NOT_FOUND, "EMOJI_001", "이모지를 찾을 수 없습니다."),
+    DUPLICATE_EMOJI_CODE(HttpStatus.CONFLICT, "EMOJI_002", "이미 등록된 이모지 코드입니다."),
+    EMOJI_UNICODE_OR_IMAGE_REQUIRED(HttpStatus.BAD_REQUEST, "EMOJI_003", "유니코드 또는 이미지 URL 중 하나는 필수입니다."),
+    EMOJI_GROUP_NOT_FOUND(HttpStatus.NOT_FOUND, "EMOJI_004", "이모지 그룹을 찾을 수 없습니다."),
+    EMOJI_GROUP_IN_USE(HttpStatus.CONFLICT, "EMOJI_005", "해당 그룹에 속한 이모지가 있어 삭제할 수 없습니다."),
+
+    // Community - Post
+    POST_NOT_FOUND(HttpStatus.NOT_FOUND, "POST_001", "게시글을 찾을 수 없습니다."),
+    POST_ACCESS_DENIED(HttpStatus.FORBIDDEN, "POST_002", "게시글 수정/삭제 권한이 없습니다."),
+    POST_NOTICE_FORBIDDEN(HttpStatus.FORBIDDEN, "POST_003", "소식 게시판은 관리자 또는 증류소 계정만 작성할 수 있습니다."),
+    POST_LOCKED(HttpStatus.FORBIDDEN, "POST_004", "신고가 누적되어 잠긴 게시글입니다."),
+    POLL_OPTION_TOO_FEW(HttpStatus.BAD_REQUEST, "POST_005", "투표 항목은 최소 2개 이상이어야 합니다."),
+    SERIES_NOT_FOUND(HttpStatus.NOT_FOUND, "POST_006", "시리즈를 찾을 수 없습니다."),
+    SERIES_ACCESS_DENIED(HttpStatus.FORBIDDEN, "POST_007", "본인이 생성한 시리즈에만 게시글을 추가할 수 있습니다."),
+    SERIES_FORBIDDEN(HttpStatus.FORBIDDEN, "POST_013", "본인 시리즈만 수정할 수 있습니다."),
+
+    // Community - Notification
+    NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTI_001", "알림을 찾을 수 없습니다."),
+    NOTIFICATION_ACCESS_DENIED(HttpStatus.FORBIDDEN, "NOTI_002", "본인 알림에만 접근할 수 있습니다."),
+
+    // Community - Message
+    MESSAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "MSG_001", "쪽지를 찾을 수 없습니다."),
+    MESSAGE_ACCESS_DENIED(HttpStatus.FORBIDDEN, "MSG_002", "쪽지 접근 권한이 없습니다."),
+    MESSAGE_BLOCKED(HttpStatus.FORBIDDEN, "MSG_003", "차단된 사용자에게 쪽지를 보낼 수 없습니다."),
+    POST_PREFIX_NOT_FOUND(HttpStatus.NOT_FOUND, "POST_008", "말머리를 찾을 수 없습니다."),
+    SELF_REPORT_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "POST_009", "본인 게시글은 신고할 수 없습니다."),
+    SELF_LIKE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "POST_014", "본인 게시글은 추천할 수 없습니다."),
+    DELETED_POST_NOT_FOUND(HttpStatus.NOT_FOUND, "POST_010", "삭제된 게시글을 찾을 수 없습니다."),
+    DUPLICATE_REPORT(HttpStatus.CONFLICT, "POST_011", "이미 신고한 게시글입니다."),
+    POST_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "POST_012", "게시글 이미지를 찾을 수 없습니다."),
+    POST_VIDEO_INVALID_FORMAT(HttpStatus.BAD_REQUEST, "POST_016", "MP4 또는 WebM 형식의 동영상만 업로드할 수 있습니다."),
+    POST_VIDEO_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "POST_017", "동영상 파일 크기는 50MB를 초과할 수 없습니다."),
+    POST_VIDEO_NOT_FOUND(HttpStatus.NOT_FOUND, "POST_018", "동영상을 찾을 수 없습니다."),
+    POST_IMAGE_COUNT_EXCEEDED(HttpStatus.BAD_REQUEST, "POST_019", "이미지는 게시글당 최대 20장까지 첨부할 수 있습니다."),
+    POST_VIDEO_COUNT_EXCEEDED(HttpStatus.BAD_REQUEST, "POST_020", "동영상은 게시글당 최대 2개까지 첨부할 수 있습니다."),
+    POST_MEDIA_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "POST_021", "이미지·동영상 합계 용량은 게시글당 100MB를 초과할 수 없습니다."),
+    // [패치 9] 증류소 담당자는 본인 담당 증류소만 태그 가능
+    POST_DISTILLERY_TAG_FORBIDDEN(HttpStatus.FORBIDDEN, "POST_015", "본인이 담당하는 증류소만 태그할 수 있습니다."),
+
+    // Community - BadWord
+    BAD_WORD_DETECTED(HttpStatus.BAD_REQUEST, "BAD_WORD_DETECTED", "욕설이 포함되어 있습니다."),
+    BAD_WORD_NOT_FOUND(HttpStatus.NOT_FOUND, "COMMUNITY_001", "금지어를 찾을 수 없습니다."),
+    DUPLICATE_BAD_WORD(HttpStatus.CONFLICT, "COMMUNITY_002", "이미 등록된 금지어입니다."),
+
+    // Nickname BadWord
+    NICKNAME_BAD_WORD_DETECTED(HttpStatus.BAD_REQUEST, "NICKNAME_BAD_WORD_DETECTED", "닉네임에 사용할 수 없는 단어가 포함되어 있습니다."),
+    NICKNAME_BAD_WORD_NOT_FOUND(HttpStatus.NOT_FOUND, "NICKNAME_BAD_WORD_001", "닉네임 금지 단어를 찾을 수 없습니다."),
+    DUPLICATE_NICKNAME_BAD_WORD(HttpStatus.CONFLICT, "NICKNAME_BAD_WORD_002", "이미 등록된 닉네임 금지 단어입니다."),
+
+    // Score
+    SCORE_CONFIG_NOT_FOUND(HttpStatus.NOT_FOUND, "SCORE_001", "점수 설정을 찾을 수 없습니다."),
+    LEVEL_CONFIG_NOT_FOUND(HttpStatus.NOT_FOUND, "SCORE_002", "레벨 설정을 찾을 수 없습니다."),
+    CANNOT_DELETE_BASE_LEVEL(HttpStatus.BAD_REQUEST, "SCORE_003", "기본 레벨은 삭제할 수 없습니다."),
+    SCORE_CONFIG_DUPLICATE(HttpStatus.CONFLICT, "SCORE_004", "이미 등록된 액션의 점수 설정입니다."),
+
+    // Legal
+    LEGAL_DOCUMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "LEGAL_001", "등록된 법적 문서를 찾을 수 없습니다."),
+    CANNOT_DELETE_ACTIVE_LEGAL_DOCUMENT(HttpStatus.BAD_REQUEST, "LEGAL_002", "현재 활성화된 문서는 삭제할 수 없습니다. 다른 버전을 먼저 활성화해주세요."),
+
+    // Inquiry
+    INQUIRY_NOT_FOUND(HttpStatus.NOT_FOUND, "INQUIRY_001", "문의를 찾을 수 없습니다."),
+    INQUIRY_TOO_MANY_IMAGES(HttpStatus.BAD_REQUEST, "INQUIRY_002", "이미지는 최대 3개까지 첨부할 수 있습니다."),
+    INQUIRY_IMAGE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "INQUIRY_003", "이미지 파일 크기는 2MB를 초과할 수 없습니다."),
+    INQUIRY_TOTAL_IMAGE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "INQUIRY_004", "첨부 이미지 총 크기는 6MB를 초과할 수 없습니다."),
+    INQUIRY_INVALID_IMAGE_FORMAT(HttpStatus.BAD_REQUEST, "INQUIRY_005", "JPG, PNG, WEBP, GIF 형식의 이미지만 첨부할 수 있습니다."),
+
+    // Banner
+    BANNER_NOT_FOUND(HttpStatus.NOT_FOUND, "BANNER_001", "배너를 찾을 수 없습니다."),
+    BANNER_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "BANNER_002", "배너 이미지를 찾을 수 없습니다."),
+    DELETE_USED_BANNER_IMAGE(HttpStatus.BAD_REQUEST, "BANNER_003", "배너에 사용 중인 이미지는 삭제할 수 없습니다."),
+
+    // Storage
+    STORAGE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "STORAGE_001", "파일 저장 중 오류가 발생했습니다."),
+    INVALID_FILE_PATH(HttpStatus.BAD_REQUEST, "STORAGE_002", "잘못된 파일 경로입니다."),
+
+    // RoleType
+    ROLE_TYPE_NOT_FOUND(HttpStatus.NOT_FOUND, "ROLE_001", "역할 타입을 찾을 수 없습니다."),
+    ROLE_TYPE_IN_USE(HttpStatus.CONFLICT, "ROLE_002", "해당 역할을 사용 중인 계정이 있어 삭제할 수 없습니다."),
+    DUPLICATE_VALUE(HttpStatus.CONFLICT, "ROLE_003", "이미 존재하는 값입니다."),
+
+    // Store (Price Tracker)
+    STORE_NOT_FOUND(HttpStatus.NOT_FOUND, "STORE_001", "매장 정보를 찾을 수 없습니다."),
+    STORE_ALREADY_APPROVED(HttpStatus.BAD_REQUEST, "STORE_002", "이미 승인된 매장입니다."),
+
+    // Price Report
+    PRICE_REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "PRICE_001", "가격 등록 정보를 찾을 수 없습니다."),
+    PRICE_REPORT_ACCESS_DENIED(HttpStatus.FORBIDDEN, "PRICE_002", "가격 등록 접근 권한이 없습니다."),
+    PRICE_REPORT_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "PRICE_003", "이미지를 찾을 수 없거나 접근 권한이 없습니다."),
+    DUPLICATE_PRICE_REPORT_REPORT(HttpStatus.BAD_REQUEST, "PRICE_004", "이미 신고한 가격 등록입니다."),
+    EXCHANGE_RATE_REQUIRED(HttpStatus.BAD_REQUEST, "PRICE_005", "면세점 USD 등록 시 환율이 필요합니다."),
+    // [패치 10] 매장 미확정 가격은 승인 불가 — 표준 매장 매핑 또는 신규 매장 승인 필요
+    STORE_RESOLUTION_REQUIRED(HttpStatus.BAD_REQUEST, "PRICE_006", "매장을 확정해야 가격을 승인할 수 있습니다. 표준 매장을 매핑하거나 신규 매장을 승인하세요."),
+
+    // BYOB
+    BYOB_NOT_FOUND(HttpStatus.NOT_FOUND, "BYOB_001", "BYOB 모임을 찾을 수 없습니다."),
+    BYOB_ACCESS_DENIED(HttpStatus.FORBIDDEN, "BYOB_002", "BYOB 모임 접근 권한이 없습니다."),
+    BYOB_HAS_APPROVED_PARTICIPANT(HttpStatus.BAD_REQUEST, "BYOB_003", "승인된 참여자가 있어 수정/삭제할 수 없습니다."),
+    BYOB_PARTICIPANT_NOT_FOUND(HttpStatus.NOT_FOUND, "BYOB_004", "참여자 정보를 찾을 수 없습니다."),
+    BYOB_ALREADY_APPLIED(HttpStatus.CONFLICT, "BYOB_005", "이미 신청한 모임입니다."),
+    BYOB_NOT_OPEN(HttpStatus.BAD_REQUEST, "BYOB_006", "모집 중인 모임에만 신청할 수 있습니다."),
+    BYOB_FULL(HttpStatus.BAD_REQUEST, "BYOB_007", "정원이 초과되었습니다."),
+    BYOB_HOST_CANNOT_APPLY(HttpStatus.BAD_REQUEST, "BYOB_008", "주최자는 본인 모임에 신청할 수 없습니다."),
+    BYOB_CANNOT_CANCEL(HttpStatus.BAD_REQUEST, "BYOB_009", "대기 중인 신청만 취소할 수 있습니다."),
+    BYOB_INVALID_STATUS_TRANSITION(HttpStatus.BAD_REQUEST, "BYOB_010", "잘못된 상태 전환입니다."),
+    BYOB_INVALID_DATE_RANGE(HttpStatus.BAD_REQUEST, "BYOB_011", "모집 종료일은 시작일 이후여야 합니다."),
+    BYOB_COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "BYOB_012", "댓글을 찾을 수 없습니다."),
+    BYOB_HOST_COMMENT_MUST_REPLY(HttpStatus.BAD_REQUEST, "BYOB_013", "주최자는 기존 댓글에 답글만 작성할 수 있습니다."),
+    BYOB_PARTICIPANT_CANNOT_REPLY(HttpStatus.BAD_REQUEST, "BYOB_014", "참여자는 답글을 작성할 수 없습니다."),
+
+    // Event (이벤트 달력)
+    EVENT_NOT_FOUND(HttpStatus.NOT_FOUND, "EVENT_001", "이벤트를 찾을 수 없습니다."),
+
+    // Draft (임시저장)
+    DRAFT_NOT_FOUND(HttpStatus.NOT_FOUND, "DRAFT_001", "임시저장을 찾을 수 없습니다."),
+    DRAFT_ACCESS_DENIED(HttpStatus.FORBIDDEN, "DRAFT_002", "본인의 임시저장만 접근할 수 있습니다."),
+    DRAFT_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "DRAFT_003", "임시저장은 최대 10개까지 저장할 수 있습니다. 기존 임시저장을 삭제 후 다시 시도해주세요."),
+
+    // Feedback (개선·문의 — 이슈 트래커형, 이메일 문의(Inquiry)와 별개)
+    FEEDBACK_NOT_FOUND(HttpStatus.NOT_FOUND, "FEEDBACK_001", "개선·문의 글을 찾을 수 없습니다."),
+    FEEDBACK_FORBIDDEN(HttpStatus.FORBIDDEN, "FEEDBACK_002", "본인 또는 관리자만 접근할 수 있습니다."),
+    FEEDBACK_NOT_EDITABLE(HttpStatus.BAD_REQUEST, "FEEDBACK_003", "접수 상태에서만 수정/삭제할 수 있습니다."),
+    FEEDBACK_TOO_MANY_IMAGES(HttpStatus.BAD_REQUEST, "FEEDBACK_004", "이미지는 최대 3개까지 첨부할 수 있습니다."),
+    FEEDBACK_IMAGE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "FEEDBACK_005", "이미지 파일 크기는 2MB를 초과할 수 없습니다."),
+    FEEDBACK_TOTAL_IMAGE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "FEEDBACK_006", "첨부 이미지 총 크기는 6MB를 초과할 수 없습니다."),
+    FEEDBACK_INVALID_IMAGE_FORMAT(HttpStatus.BAD_REQUEST, "FEEDBACK_007", "JPG, PNG, WEBP, GIF 형식의 이미지만 첨부할 수 있습니다."),
+
+    // Deal (주류 핫딜 자동수집)
+    DEAL_NOT_FOUND(HttpStatus.NOT_FOUND, "DEAL_001", "핫딜을 찾을 수 없습니다."),
+    DEAL_ALREADY_EXISTS(HttpStatus.CONFLICT, "DEAL_002", "이미 수집된 핫딜입니다."),
+
+    // Common
+    NOT_FOUND(HttpStatus.NOT_FOUND, "COMMON_001", "리소스를 찾을 수 없습니다."),
+    INVALID_INPUT(HttpStatus.BAD_REQUEST, "COMMON_002", "입력값이 올바르지 않습니다."),
+    INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "COMMON_003", "서버 오류가 발생했습니다."),
+    CONSTRAINT_VIOLATION(HttpStatus.CONFLICT, "COMMON_004", "연관된 데이터가 있어 삭제할 수 없습니다."),
+    RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "COMMON_005", "요청이 너무 많습니다. 잠시 후 다시 시도해주세요."),
+    METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "COMMON_006", "지원하지 않는 요청 방식입니다."),
+    UNSUPPORTED_MEDIA_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "COMMON_007", "지원하지 않는 미디어 타입입니다.");
+
+    private final HttpStatus httpStatus;
+    private final String code;
+    private final String message;
+}
