@@ -23,6 +23,11 @@ EnvironmentFile=/app/env/api.env
 WorkingDirectory=/app/spring-boot
 ExecStart=/usr/bin/java -XX:MaxRAMPercentage=70.0 -XX:+UseG1GC -Djava.security.egd=file:/dev/./urandom -jar /app/spring-boot/app.jar
 
+# Slack 알림 훅 — 기동 시 / 비정상 종료 시. (정상 stop/restart 는 SERVICE_RESULT=success 라 무알림)
+# (-) 접두: 알림 스크립트가 실패해도 서비스 상태에는 영향 주지 않음
+ExecStartPost=-/app/scripts/notify-systemd.sh start
+ExecStopPost=-/app/scripts/notify-systemd.sh stop
+
 # bootJar 종료 시그널(SIGTERM) 정상 종료 코드
 SuccessExitStatus=143
 Restart=on-failure

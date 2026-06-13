@@ -9,6 +9,8 @@ name: Deploy (manual)
 #   SSH_USER   배포 유저 (예: ubuntu)
 #   SSH_KEY    배포용 SSH 개인키 (전체 내용)
 #   SSH_PORT   (선택) SSH 포트, 미설정 시 22
+#   SLACK_WEBHOOK_URL  (선택) 배포 결과 Slack 알림용. 서버 api.env 와 같은 웹훅 URL 을
+#                      repo Secret 으로도 등록. 미설정 시 알림만 조용히 건너뜀.
 
 on:
   workflow_dispatch:
@@ -115,9 +117,9 @@ jobs:
           scp -i ~/.ssh/id_deploy -P $PORT artifacts/api/app.jar "$SSH_USER@$SSH_HOST:/app/spring-boot/app.jar.new"
           # 프론트 dist → staging (rsync로 정확히 동기화)
           rsync -az --delete -e "ssh -i ~/.ssh/id_deploy -p $PORT" artifacts/web/dist/ "$SSH_USER@$SSH_HOST:/app/vite/dist.new/"
-          # 서버 배포 스크립트 갱신
-          scp -i ~/.ssh/id_deploy -P $PORT deploy/server/deploy-api.sh deploy/server/deploy-web.sh "$SSH_USER@$SSH_HOST:/app/scripts/"
-          $SSH 'chmod +x /app/scripts/deploy-api.sh /app/scripts/deploy-web.sh'
+          # 서버 운영 스크립트 일괄 갱신 (배포/종료/점검/알림 등)
+          scp -i ~/.ssh/id_deploy -P $PORT deploy/server/*.sh "$SSH_USER@$SSH_HOST:/app/scripts/"
+          $SSH 'chmod +x /app/scripts/*.sh'
       - name: Swap & restart (with health check + rollback)
         env:
           SSH_HOST: ${{ secrets.SSH_HOST }}
@@ -129,3 +131,31 @@ jobs:
           # 프론트 먼저(무중단), 백엔드는 health check + 실패 시 롤백
           $SSH 'bash /app/scripts/deploy-web.sh'
           $SSH 'bash /app/scripts/deploy-api.sh'
+
+  # 배포 결과 Slack 알림 — 빌드/배포 어느 단계가 깨졌는지 한 메시지로 요약.
+  notify:
+    needs: [build-api, build-web, deploy]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Slack (배포 결과)
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          API_RESULT: ${{ needs.build-api.result }}
+          WEB_RESULT: ${{ needs.build-web.result }}
+          DEPLOY_RESULT: ${{ needs.deploy.result }}
+          REF: ${{ github.event.inputs.ref }}
+          ACTOR: ${{ github.actor }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          [ -n "${SLACK_WEBHOOK_URL:-}" ] || { echo "SLACK_WEBHOOK_URL 미설정 — 알림 건너뜀"; exit 0; }
+          icon() { case "$1" in success) echo "✅";; failure) echo "❌";; cancelled) echo "⏹";; skipped) echo "⏭";; *) echo "❔";; esac; }
+          if [ "$API_RESULT" = success ] && [ "$WEB_RESULT" = success ] && [ "$DEPLOY_RESULT" = success ]; then
+            COLOR=good;   SUMMARY="✅ 배포 성공 (${REF:-main})"
+          else
+            COLOR=danger; SUMMARY="❌ 배포 실패 (${REF:-main})"
+          fi
+          # \n 은 JSON 문자열 안에서 그대로 개행으로 해석됨
+          BODY="백엔드 $(icon "$API_RESULT") · 프론트 $(icon "$WEB_RESULT") · 배포 $(icon "$DEPLOY_RESULT")\\n실행: ${ACTOR}\\n<${RUN_URL}|GitHub Actions 로그>"
+          payload=$(printf '{"channel":"#server-prd","username":"CaskByCask Deploy","icon_emoji":":rocket:","attachments":[{"color":"%s","title":"%s","text":"%s"}]}' "$COLOR" "$SUMMARY" "$BODY")
+          curl -fsS -X POST -H 'Content-Type: application/json; charset=utf-8' -d "$payload" "$SLACK_WEBHOOK_URL" >/dev/null
