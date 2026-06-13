@@ -29,7 +29,7 @@ const CATEGORY_META: Record<SpiritCategory | '', {
   '':       { titleKo: '주류 카탈로그',  titleEn: 'Spirit Catalog',
               descKo: '위스키, 와인, 꼬냑, 럼, 데킬라까지 — CaskByCask 의 주류 전체 카탈로그를 탐색하고 사용자 평점·리뷰를 확인하세요.',
               descEn: 'Browse the full spirit catalog — whisky, wine, cognac, rum, tequila and more. User ratings and reviews on CaskByCask.',
-              keywordsKo: '주류 리뷰, 위스키 추천, 와인 추천, 꼬냑 추천, 증류소, 드링크인덱스',
+              keywordsKo: '주류 리뷰, 위스키 추천, 와인 추천, 꼬냑 추천, 증류소, 캐스크바이캐스크',
               keywordsEn: 'spirit review, whisky catalog, wine catalog, cognac catalog, caskbycask' },
   WHISKY:   { titleKo: '위스키',       titleEn: 'Whisky',
               descKo: '싱글 몰트, 블렌디드, 버번까지. 증류소·지역별 위스키 정보와 사용자 평점을 한 곳에서.',

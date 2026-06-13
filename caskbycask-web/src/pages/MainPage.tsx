@@ -591,7 +591,7 @@ export default function MainPage() {
         locale={isEn ? 'en_US' : 'ko_KR'}
         keywords={isEn
           ? 'whisky review, single malt, bourbon, cognac rating, wine community, producer, caskbycask'
-          : '위스키 리뷰, 위스키 추천, 싱글 몰트, 버번, 꼬냑 등급, 와인 빈티지, 주류 리뷰, 드링크인덱스'}
+          : '위스키 리뷰, 위스키 추천, 싱글 몰트, 버번, 꼬냑 등급, 와인 빈티지, 주류 리뷰, 캐스크바이캐스크'}
       />
 
       {/* 메인 배너 슬라이더 (관리자 이미지, 슬림) */}

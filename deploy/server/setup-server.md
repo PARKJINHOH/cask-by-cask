@@ -19,6 +19,7 @@
 | `deploy/env/api.env.example` | `~/setup/api.env.example` | `/app/env/api.env` |
 | `deploy/systemd/caskbycask-api.service` | `~/setup/caskbycask-api.service` | `/etc/systemd/system/` |
 | `deploy/nginx/caskbycask.conf` | `~/setup/caskbycask.conf` | `/etc/nginx/sites-available/` |
+| `deploy/nginx/maintenance.html` | `~/setup/maintenance.html` | `/app/vite/maintenance.html` |
 | `deploy/server/backup-db.sh` | `~/setup/backup-db.sh` | `/app/scripts/backup-db.sh` |
 
 ```bash
@@ -198,6 +199,32 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 
+### 8-1. 서버 점검 페이지 배치
+
+점검 모드(`maintenance.sh`)가 노출할 정적 점검 페이지를 `dist` 와 **분리된** 위치(`/app/vite/maintenance.html`)에 둔다.
+(dist 와 분리해야 프론트 배포 시 `dist` 교체에 영향받지 않는다.)
+
+```bash
+sudo cp ~/setup/maintenance.html /app/vite/maintenance.html   # deploy/nginx/maintenance.html
+sudo chown ubuntu:ubuntu /app/vite/maintenance.html
+```
+
+### 8-2. 점검 우회 시크릿 설정 (관리자 본인만 점검 중 접근)
+
+`caskbycask.conf` 의 점검 블록에는 관리자 우회용 시크릿 자리표시자 `CHANGE_ME_TO_A_LONG_RANDOM_SECRET` 가 **3곳**(쿠키 검사 `if`, 발급 `location` 경로, `Set-Cookie` 값) 있다.
+**git 에 실제 값을 올리지 말고**, 서버에 배치한 conf 에서만 동일한 랜덤 문자열로 일괄 치환한다.
+
+```bash
+SECRET=$(openssl rand -hex 24)
+sudo sed -i "s/CHANGE_ME_TO_A_LONG_RANDOM_SECRET/$SECRET/g" /etc/nginx/sites-available/caskbycask.conf
+sudo nginx -t && sudo systemctl reload nginx
+echo "점검 우회 URL:  https://caskbycask.net/__cbc_unlock_$SECRET"   # ← 안전하게 보관
+```
+
+사용법:
+- **점검 중 우회**: 위 `__cbc_unlock_<시크릿>` URL 을 브라우저로 1회 방문 → `cbc_maint` 쿠키 발급(24h) → 이후 점검 중에도 정상 접근(IP 무관, Cloudflare 통과).
+- 쿠키 만료(24h) 또는 시크릿 교체 시 URL 을 다시 방문하면 된다.
+
 ---
 
 ## 9. 배포 유저 sudo (caskbycask-api 재시작 무암호)
@@ -206,11 +233,14 @@ GitHub Actions 배포가 비번 없이 서비스 재시작/로그 조회할 수 
 
 ```bash
 sudo tee /etc/sudoers.d/caskbycask-deploy > /dev/null <<'EOF'
-ubuntu ALL=(root) NOPASSWD: /usr/bin/systemctl restart caskbycask-api, /usr/bin/systemctl stop caskbycask-api, /usr/bin/systemctl start caskbycask-api, /usr/bin/journalctl -u caskbycask-api *
+ubuntu ALL=(root) NOPASSWD: /usr/bin/systemctl restart caskbycask-api, /usr/bin/systemctl stop caskbycask-api, /usr/bin/systemctl start caskbycask-api, /usr/bin/journalctl -u caskbycask-api *, /usr/bin/systemctl stop nginx, /usr/bin/systemctl start nginx, /usr/bin/systemctl reload nginx
 EOF
 sudo chmod 440 /etc/sudoers.d/caskbycask-deploy
 sudo visudo -c    # 문법 OK 인지 검증
 ```
+
+> `stop-api.sh` / `stop-web.sh`(nginx) / 점검모드 reload 가 무암호로 동작하도록 nginx stop·start·reload 도 허용한다.
+> 단, **점검 모드(`maintenance.sh`)는 플래그 파일만 토글**하므로 평상시엔 sudo·reload 가 필요 없다(아래 12 참고).
 
 ---
 
@@ -278,6 +308,34 @@ curl -s http://127.0.0.1:8081/actuator/health   # {"status":"UP"} 기대
 ```
 
 브라우저에서 `https://caskbycask.net` 접속 → SPA 로딩 + 이미지 서빙(`/uploads/...`) 확인.
+
+---
+
+## 운영 스크립트 (deploy/server/)
+
+서버에서 직접 실행하는 운영용 스크립트. (Actions 배포: `deploy-api.sh` / `deploy-web.sh`)
+
+| 스크립트 | 용도 | sudo |
+|---|---|---|
+| `stop-api.sh` | 백엔드(Spring Boot) 서비스만 **중지** (`systemctl stop caskbycask-api`) | 필요(무암호 등록됨) |
+| `stop-web.sh` | **nginx 중지** — ⚠️ 프론트 + `/api` 프록시 모두 내려감 | 필요(무암호 등록됨) |
+| `maintenance.sh on\|off\|status` | **서버 점검 모드** 토글 — 방문자에게 점검 페이지(503)/API JSON 503 노출 | 불필요 |
+
+```bash
+# 백엔드만 내리기 (점검 없이 완전 중지) → 다시 올리려면 sudo systemctl start caskbycask-api
+./stop-api.sh
+
+# 점검 모드 (권장: nginx 를 죽이지 않고 점검 페이지만 노출, 헬스체크는 200 유지)
+./maintenance.sh on        # 점검 시작
+./maintenance.sh status    # 상태 확인
+./maintenance.sh off       # 정상 복귀  ← reload 불필요, 즉시 반영
+
+# 전체 중단이 꼭 필요할 때만 (점검 페이지조차 안 뜸)
+./stop-web.sh
+```
+
+> **점검 시에는 `stop-web.sh` 대신 `maintenance.sh on` 사용을 권장**한다.
+> nginx 를 살려두므로 방문자에게 안내 페이지를 보여주고, Cloudflare/모니터링 헬스체크(`/healthz`)도 200 을 유지해 오탐을 막는다.
 
 ---
 

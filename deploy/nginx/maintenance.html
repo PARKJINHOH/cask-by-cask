@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex" />
+  <!-- 점검 종료 시 자동 복귀: 60초마다 새로고침 -->
+  <meta http-equiv="refresh" content="60" />
+  <meta name="theme-color" content="#d97706" />
+  <title>서버 점검 중 · CaskByCask</title>
+  <style>
+    :root { --amber: #d97706; --amber-light: #f59e0b; --ink: #1c1917; --muted: #78716c; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Pretendard",
+                   "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+      color: var(--ink);
+      background: radial-gradient(120% 120% at 50% 0%, #fffbeb 0%, #fef3c7 45%, #fde68a 100%);
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100%; padding: 24px; text-align: center;
+    }
+    .card {
+      max-width: 460px; width: 100%;
+      background: rgba(255, 255, 255, 0.72);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(217, 119, 6, 0.18);
+      border-radius: 24px;
+      padding: 48px 32px;
+      box-shadow: 0 20px 60px -20px rgba(120, 53, 15, 0.35);
+    }
+    .glass {
+      width: 72px; height: 72px; margin: 0 auto 24px;
+      display: block;
+    }
+    .glass .liquid { animation: sway 3.2s ease-in-out infinite; transform-origin: center; }
+    @keyframes sway {
+      0%, 100% { transform: translateX(0) rotate(0deg); }
+      50%      { transform: translateX(1.5px) rotate(1.5deg); }
+    }
+    h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.01em; margin-bottom: 10px; }
+    .en { font-size: 13px; color: var(--muted); font-weight: 600; margin-bottom: 24px; }
+    p { font-size: 15px; line-height: 1.7; color: #57534e; }
+    p .en-sub { display: block; font-size: 13px; color: var(--muted); margin-top: 8px; }
+    .divider { height: 1px; background: rgba(217, 119, 6, 0.18); margin: 28px 0 20px; }
+    .brand { font-size: 13px; font-weight: 700; color: var(--amber); letter-spacing: 0.02em; }
+    .contact { font-size: 12px; color: var(--muted); margin-top: 6px; }
+    .contact a { color: var(--amber); text-decoration: none; }
+    .dots::after {
+      content: ""; animation: dots 1.4s steps(4, end) infinite;
+    }
+    @keyframes dots {
+      0% { content: ""; } 25% { content: "."; } 50% { content: ".."; } 75% { content: "..."; }
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <!-- 자급식 SVG 위스키 잔 아이콘 (외부 리소스 의존 없음) -->
+    <svg class="glass" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M16 8h32l-3 10H19L16 8z" stroke="#d97706" stroke-width="2.5" stroke-linejoin="round"/>
+      <path class="liquid" d="M20 18h24l-2 7H22l-2-7z" fill="#f59e0b" opacity="0.85"/>
+      <path d="M32 25v23" stroke="#d97706" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M22 52h20" stroke="#d97706" stroke-width="2.5" stroke-linecap="round"/>
+    </svg>
+
+    <h1>서버 점검 중입니다<span class="dots"></span></h1>
+    <div class="en">Under Maintenance</div>
+
+    <p>
+      더 나은 서비스를 위해 잠시 점검을 진행하고 있어요.<br>
+      잠시 후 다시 찾아주시면 감사하겠습니다.
+      <span class="en-sub">We'll be back shortly. Thanks for your patience.</span>
+    </p>
+
+    <div class="divider"></div>
+    <div class="brand">CaskByCask</div>
+    <div class="contact">문의 · <a href="mailto:drinkindex.cs@gmail.com">drinkindex.cs@gmail.com</a></div>
+  </main>
+</body>
+</html>

@@ -158,6 +158,7 @@ INSERT IGNORE INTO nickname_bad_words (word, is_active, created_at, updated_at) 
 ('support', 1, NOW(), NOW()),
 
 -- ===== 서비스 브랜드 사칭 =====
+('캐스크바이캐스크', 1, NOW(), NOW()),
 ('드링크인덱스', 1, NOW(), NOW()),
 ('caskbycask',   1, NOW(), NOW()),
 
