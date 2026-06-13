@@ -113,7 +113,7 @@ function SpiritDetailSections({ spirit, isEn }: { spirit: SpiritDetail; isEn: bo
     SINGLE_MALT: isEn ? 'Single Malt' : '싱글 몰트',
     BLENDED_MALT: isEn ? 'Blended Malt' : '블렌디드 몰트',
     BLENDED_WHISKY: isEn ? 'Blended Whisky' : '블렌디드 위스키',
-    BOURBON: 'Bourbon', TENNESSEE: isEn ? 'Tennessee' : '테네시', RYE: 'Rye',
+    BOURBON: 'Bourbon', WHEATED_BOURBON: isEn ? 'Wheated Bourbon' : '밀 버번', TENNESSEE: isEn ? 'Tennessee' : '테네시', RYE: 'Rye',
     POT_STILL: isEn ? 'Single Pot Still' : '싱글 팟 스틸',
     GRAIN_CORN: isEn ? 'Grain / Corn' : '그레인 / 콘',
     OTHER: isEn ? 'Other' : '기타',
@@ -695,6 +695,7 @@ export default function SpiritDetailPage() {
   const secondaryName = isEn ? spirit.nameKo : spirit.nameEn
   const primaryProducer   = isEn ? (spirit.producerNameEn || spirit.producerNameKo) : spirit.producerNameKo
   const secondaryProducer = isEn ? spirit.producerNameKo : spirit.producerNameEn
+  const brandName = spirit.whiskyDetail?.brandName || null
   const countryLabel = localizeCountry(spirit.country, i18n.language)
   const regionLabel  = localizeRegion(spirit.region, i18n.language)
 
@@ -815,7 +816,7 @@ export default function SpiritDetailPage() {
               {secondaryName && (
                 <p className="text-[15px] text-neutral-400 mt-1">{secondaryName}</p>
               )}
-              {primaryProducer && (
+              {(primaryProducer || brandName) && (
                 <p className="text-sm text-neutral-400 mt-1 flex items-center gap-1.5 flex-wrap">
                   <svg className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" viewBox="0 0 24 24"
                     fill="none" stroke="currentColor" strokeWidth="2">
@@ -824,21 +825,29 @@ export default function SpiritDetailPage() {
                   {spirit.producerId ? (
                     <Link to={`/producers/${spirit.producerId}`}
                       className="text-neutral-500 hover:text-primary-800 hover:underline transition-colors">
-                      {primaryProducer}
-                      {secondaryProducer ? ` · ${secondaryProducer}` : ''}
+                      {brandName
+                        ? (primaryProducer
+                          ? `${brandName} (${primaryProducer}${secondaryProducer ? ` · ${secondaryProducer}` : ''})`
+                          : brandName)
+                        : `${primaryProducer}${secondaryProducer ? ` · ${secondaryProducer}` : ''}`}
                     </Link>
                   ) : (
                     <span>
-                      {primaryProducer}
-                      {secondaryProducer ? ` · ${secondaryProducer}` : ''}
+                      {brandName
+                        ? (primaryProducer
+                          ? `${brandName} (${primaryProducer}${secondaryProducer ? ` · ${secondaryProducer}` : ''})`
+                          : brandName)
+                        : `${primaryProducer}${secondaryProducer ? ` · ${secondaryProducer}` : ''}`}
                     </span>
                   )}
-                  <span className="inline-flex items-center text-[11px] font-medium text-amber-700
-                    bg-amber-50 border border-amber-100 rounded-full px-1.5 py-0.5">
-                    {isEn
-                      ? PRODUCER_TYPE_LABEL[CATEGORY_TO_PRODUCER_TYPE[spirit.category]].en
-                      : PRODUCER_TYPE_LABEL[CATEGORY_TO_PRODUCER_TYPE[spirit.category]].ko}
-                  </span>
+                  {primaryProducer && (
+                    <span className="inline-flex items-center text-[11px] font-medium text-amber-700
+                      bg-amber-50 border border-amber-100 rounded-full px-1.5 py-0.5">
+                      {isEn
+                        ? PRODUCER_TYPE_LABEL[CATEGORY_TO_PRODUCER_TYPE[spirit.category]].en
+                        : PRODUCER_TYPE_LABEL[CATEGORY_TO_PRODUCER_TYPE[spirit.category]].ko}
+                    </span>
+                  )}
                 </p>
               )}
             </div>

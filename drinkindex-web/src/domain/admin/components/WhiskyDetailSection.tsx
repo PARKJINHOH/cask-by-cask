@@ -1,7 +1,7 @@
 import InfoTooltip from '@/shared/components/InfoTooltip'
 
 export interface WhiskyDetailForm {
-  style: string; styleOther: string; bottlingType: string
+  style: string; styleOther: string; brandName: string; bottlingType: string
   caskTypes: string[]; caskFinishes: string[]; caskTypeOther: string
   isNonChillFiltered: boolean; isNaturalColour: boolean
   isSingleCask: boolean; isCaskStrength: boolean; isPeated: boolean
@@ -9,7 +9,7 @@ export interface WhiskyDetailForm {
 }
 
 export const DEFAULT_WHISKY: WhiskyDetailForm = {
-  style: '', styleOther: '', bottlingType: '',
+  style: 'SINGLE_MALT', styleOther: '', brandName: '', bottlingType: 'OB',
   caskTypes: [], caskFinishes: [], caskTypeOther: '',
   isNonChillFiltered: false, isNaturalColour: false, isSingleCask: false,
   isCaskStrength: false, isPeated: false, phenolPpm: '', caskNo: '', notes: '',
@@ -22,7 +22,7 @@ const LABEL = 'block text-xs font-medium text-neutral-600 mb-1.5'
 
 const WHISKY_STYLES = [
   ['SINGLE_MALT','싱글 몰트'],['BLENDED_MALT','블렌디드 몰트'],['BLENDED_WHISKY','블렌디드'],
-  ['BOURBON','버번'],['TENNESSEE','테네시'],['RYE','라이'],['POT_STILL','싱글 팟 스틸'],
+  ['BOURBON','버번'],['WHEATED_BOURBON','밀 버번'],['TENNESSEE','테네시'],['RYE','라이'],['POT_STILL','싱글 팟 스틸'],
   ['GRAIN_CORN','그레인 / 콘'],['OTHER','기타'],
 ]
 // 캐스크 — 유형별 그룹(비슷한 뉘앙스끼리 정렬). 한 곳만 고치면 UI 자동 반영.

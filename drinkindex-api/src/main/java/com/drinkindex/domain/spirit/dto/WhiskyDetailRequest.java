@@ -17,6 +17,10 @@ public record WhiskyDetailRequest(
         @Size(max = 100, message = "스타일 직접 입력은 100자 이하여야 합니다.")
         String styleOther,
 
+        @Schema(description = "브랜드명 (블렌디드 위스키 등 증류소와 별개의 상업적 브랜드)")
+        @Size(max = 200, message = "브랜드명은 200자 이하여야 합니다.")
+        String brandName,
+
         @Schema(description = "병입 구분 (OB=증류소 직접, IB=독립 병입사)")
         BottlingType bottlingType,
 

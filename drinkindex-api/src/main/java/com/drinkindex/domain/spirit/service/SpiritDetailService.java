@@ -149,6 +149,7 @@ public class SpiritDetailService {
         extra.put("notes", req.notes());
         // 스타일 직접 입력은 style=OTHER 일 때만 보존
         extra.put("styleOther", req.style() == WhiskyStyle.OTHER ? req.styleOther() : null);
+        extra.put("brandName", req.brandName());
         String extraJson = serialize(extra);
 
         whiskyDetailRepo.findById(spirit.getId()).ifPresentOrElse(
@@ -292,7 +293,7 @@ public class SpiritDetailService {
         if (detail == null) return null;
         Map<String, Object> extra = parseExtra(detail.getExtraData());
         return new WhiskyDetailResponse(
-                detail.getStyle(), str(extra, "styleOther"), detail.getBottlingType(),
+                detail.getStyle(), str(extra, "styleOther"), str(extra, "brandName"), detail.getBottlingType(),
                 caskTypes(extra, "caskTypes"), caskTypes(extra, "caskFinishes"), str(extra, "caskTypeOther"),
                 detail.getIsNonChillFiltered(), detail.getIsNaturalColour(),
                 detail.getIsSingleCask(), detail.getIsCaskStrength(), detail.getIsPeated(),

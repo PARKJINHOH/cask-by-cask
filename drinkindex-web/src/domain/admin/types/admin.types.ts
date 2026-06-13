@@ -24,6 +24,7 @@ export interface GrapeVarietyRequest { name: string; percentage: number | null }
 export interface WhiskyDetailRequest {
   style?: string | null
   styleOther?: string | null
+  brandName?: string | null
   bottlingType?: string | null
   caskTypes?: string[] | null
   caskFinishes?: string[] | null

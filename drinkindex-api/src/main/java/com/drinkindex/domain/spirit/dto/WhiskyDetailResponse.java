@@ -13,6 +13,9 @@ public record WhiskyDetailResponse(
         @Schema(description = "위스키 스타일 직접 입력 (style=OTHER 일 때)")
         String styleOther,
 
+        @Schema(description = "브랜드명 (블렌디드 위스키 등 증류소와 별개의 상업적 브랜드)")
+        String brandName,
+
         @Schema(description = "병입 구분 (OB/IB)")
         BottlingType bottlingType,
 

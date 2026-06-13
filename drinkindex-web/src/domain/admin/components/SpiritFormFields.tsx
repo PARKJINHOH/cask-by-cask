@@ -4,6 +4,7 @@ import AdminProducerSelector from '@/domain/producer/components/AdminProducerSel
 import { adminProducerApi } from '@/domain/admin/api/adminProducerApi'
 import { CATEGORY_TO_PRODUCER_TYPE } from '@/domain/producer/types/producer.types'
 import CountryRegionSelector from '@/domain/location/components/CountryRegionSelector'
+import InfoTooltip from '@/shared/components/InfoTooltip'
 import { ISO3166_COUNTRIES } from '@/domain/location/data/iso3166Countries'
 import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
 import type { AdminSpiritDetail, CreateSpiritPayload, SpiritRegisterRequestDetail } from '@/domain/admin/types/admin.types'
@@ -127,7 +128,7 @@ export function useSpiritForm() {
     if (s.whiskyDetail) {
       const w = s.whiskyDetail
       setWhiskyDetail({
-        style: w.style ?? '', styleOther: w.styleOther ?? '', bottlingType: w.bottlingType ?? '',
+        style: w.style ?? '', styleOther: w.styleOther ?? '', brandName: w.brandName ?? '', bottlingType: w.bottlingType ?? '',
         caskTypes: w.caskTypes ?? [], caskFinishes: w.caskFinishes ?? [], caskTypeOther: w.caskTypeOther ?? '',
         isNonChillFiltered: w.isNonChillFiltered ?? false, isNaturalColour: w.isNaturalColour ?? false,
         isSingleCask: w.isSingleCask ?? false, isCaskStrength: w.isCaskStrength ?? false,
@@ -257,6 +258,7 @@ export function useSpiritForm() {
         whiskyDetail: {
           style: whiskyDetail.style || null,
           styleOther: whiskyDetail.style === 'OTHER' ? (whiskyDetail.styleOther || null) : null,
+          brandName: whiskyDetail.brandName || null,
           bottlingType: whiskyDetail.bottlingType || null,
           caskTypes: whiskyDetail.caskTypes,
           caskFinishes: whiskyDetail.caskFinishes.filter((c) => whiskyDetail.caskTypes.includes(c)),
@@ -477,6 +479,18 @@ export default function SpiritFormFields({ form, categoryLocked, onCategorySelec
                 onCreateNew={handleCreateProducer}
                 defaultCountry={ISO3166_COUNTRIES.find((c) => c.code === form.countryCode)?.nameKo ?? ''} />
             </div>
+            {category === 'WHISKY' && (
+              <div>
+                <label className={LABEL}>
+                  브랜드명
+                  <InfoTooltip text="블렌디드 위스키 등 증류소와 별개의 상업적 브랜드명. 예) 시바스리갈, 조니워커, 발렌타인, 페이머스 그라우스" />
+                </label>
+                <input value={form.whiskyDetail.brandName}
+                  onChange={(e) => form.updateWhisky({ brandName: e.target.value })} maxLength={200}
+                  placeholder="예) Chivas Regal, Johnnie Walker, Ballantine's"
+                  className={INPUT} />
+              </div>
+            )}
             <div>
               <label className={LABEL}>국가 / 지역</label>
               <CountryRegionSelector
