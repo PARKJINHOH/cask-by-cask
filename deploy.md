@@ -20,7 +20,7 @@
   - [ ] 불일치 시 전 API 가 CORS 차단됨 — `seo.site-url` 도 동일 도메인인지 같이 확인
 
 - [ ] **(B-2) Cloudflare 설정** (Cloudflare 사용 확정)
-  - [ ] `caskbycask-web/nginx/default.conf.template` 상단 `set_real_ip_from` Cloudflare IP 대역이 최신인지 확인 — 출처: https://www.cloudflare.com/ips/ (보통 안정적이나 추가될 수 있음)
+  - [ ] `deploy/nginx/caskbycask.conf` 상단 `set_real_ip_from` Cloudflare IP 대역이 최신인지 확인 — 출처: https://www.cloudflare.com/ips/ (보통 안정적이나 추가될 수 있음)
   - [ ] Cloudflare SSL/TLS 모드 = **Full (strict)** 권장, 오리진은 80만 listen(컨테이너) 구성과 일치
   - [ ] Cloudflare가 `CF-Connecting-IP` 를 전달하는지 확인 (rate-limit IP 키가 이 헤더 기반)
   - [ ] (선택) Cloudflare WAF / Bot Fight Mode, `/api/auth/*` 추가 Rate Limit Rule

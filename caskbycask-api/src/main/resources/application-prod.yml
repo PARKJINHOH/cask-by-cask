@@ -57,7 +57,7 @@ slack:
   webhook-url: ${SLACK_WEBHOOK_URL}
   channel: ${SLACK_CHANNEL:#caskbycask-alerts}
 
-# Actuator 를 별도 포트로 분리 + localhost 바인딩 (docker network 내부만)
+# Actuator 를 별도 포트(8081)로 분리 + localhost 바인딩 (외부 비노출, nginx 에서 /actuator 차단)
 management:
   server:
     port: 8081
