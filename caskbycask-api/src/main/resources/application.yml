@@ -55,9 +55,9 @@ admin:
 app:
   email:
     provider: smtp
-    from: caskbycask.cs@gmail.com
+    from: drinkindex.cs@gmail.com
     verification-required: true
-    inquiry-to: caskbycask.cs@gmail.com
+    inquiry-to: drinkindex.cs@gmail.com
   auth:
     # Refresh Token httpOnly 쿠키 설정 — 기본값은 local(http) 기준.
     # dev/prod 에서는 secure=true, same-site=Strict 로 override.
