@@ -541,7 +541,7 @@ export default function MainLayout() {
           <Link to="/" className="flex items-center gap-2 flex-shrink-0 -my-2">
             <img src="/logo.png" alt="CaskByCask" className="h-15 w-auto" />
             <span className="flex flex-col leading-none">
-              <span className="text-[18px] font-semibold text-primary-600 tracking-tight">캐바캐</span>
+              <span className="text-[18px] font-semibold text-primary-600 tracking-tight">케바케</span>
               <span className="text-xl font-bold text-primary-800 tracking-tight">CaskByCask</span>
             </span>
           </Link>

@@ -387,7 +387,8 @@ tail -f /app/logs/caskbycask-api-error.log
 sudo nano /app/env/api.env          # SLACK_WEBHOOK_URL=https://hooks.slack.com/...
 
 # 2) systemd 알림 훅 적용 (notify-systemd.sh / slack-notify.sh 는 배포가 /app/scripts 로 전송)
-sudo cp deploy/systemd/caskbycask-api.service /etc/systemd/system/
+#    유닛 파일은 FTP 로 ~/setup/ 에 올린 뒤 복사 (운영서버엔 레포 없음)
+sudo cp ~/setup/caskbycask-api.service /etc/systemd/system/
 sudo systemctl daemon-reload && sudo systemctl restart caskbycask-api
 
 # 3) 리소스 점검 cron (매시 정각)

@@ -1,8 +1,9 @@
 # CaskByCask API (prod) — systemd 유닛 (단일 환경 / /app 구조)
-# 설치:
-#   sudo cp deploy/systemd/caskbycask-api.service /etc/systemd/system/
+# 설치: (운영서버엔 레포를 클론하지 않음 — 이 파일을 FTP 로 ~/setup/ 에 올린 뒤 진행)
+#       전체 셋업 절차는 deploy/server/setup-server.md 7·13장 참고
+#   sudo cp ~/setup/caskbycask-api.service /etc/systemd/system/
 #   sudo systemctl daemon-reload
-#   sudo systemctl enable --now caskbycask-api
+#   sudo systemctl enable --now caskbycask-api    # 단, app.jar 첫 배포 후에 기동
 #
 # 로그:  journalctl -u caskbycask-api -f
 # 상태:  systemctl status caskbycask-api
