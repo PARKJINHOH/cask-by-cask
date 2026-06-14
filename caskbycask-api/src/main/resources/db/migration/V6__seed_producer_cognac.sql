@@ -1,24 +1,11 @@
--- [클린 베이스라인 변환] 생산자 통합(producer.type) 반영.
---   원본 시드는 type 컬럼이 없어, INSERT 동안만 type 기본값을 'COGNAC_HOUSE' 으로 지정한 뒤
---   삽입 종료 후 기본값을 제거한다. (엔티티상 producer.type 은 기본값 없는 NOT NULL)
-ALTER TABLE producer ALTER COLUMN type SET DEFAULT 'COGNAC_HOUSE';
+-- =============================================================================
+-- CaskByCask 기초데이터 — 꼬냑 하우스 (Cognac house seed)
+-- =============================================================================
+-- 통합: 구 V4(메인) + 구 V14(보강) 의 꼬냑 INSERT + 구 V9 의 Camus 검색 별칭.
+-- producer.type 은 기본값 없는 NOT NULL → INSERT 동안만 'COGNAC_HOUSE' 기본값을 지정 후 해제.
+-- =============================================================================
 
--- =============================================================================
--- CaskByCask 기초데이터 — 꼬냑 하우스 / 메종 (Cognac House seed)
--- =============================================================================
--- 작성 기준일: 2026-05-30
--- 범위: 프랑스 꼬냑(Cognac) 지역의 주요 생산자
---       대형 메종(빅4 등) + 프레스티지 독립 메종 + 그랑드 샹파뉴 싱글 이스테이트(그로어)
---
--- [주의]
---   - Flyway 버전 마이그레이션입니다. 한 번 적용된 후에는 이 파일을 수정하지 마세요.
---     (체크섬 검증 실패로 기동이 막힙니다. 보정이 필요하면 V5__*.sql 로 추가하세요.)
---   - 테이블: cognac_house (winery 와 동일 컬럼 구조).
---   - region 은 꼬냑 내 끄뤼(Grande/Petite Champagne, Borderies 등) 또는 소재 마을(자르낙 등)을 표기.
---   - founded_year 는 메종 설립(또는 상호 등록) 연도 기준이며, 가문 내력이 더 오래된 경우 description 에 보충.
---   - website 가 확실치 않은 경우 추측 URL 대신 NULL 로 두었습니다.
---   - 모든 생산자는 프랑스 꼬냑 지역 소재(country='프랑스').
--- =============================================================================
+ALTER TABLE producer ALTER COLUMN type SET DEFAULT 'COGNAC_HOUSE';
 
 INSERT INTO producer
     (name_ko, name_en, country, region, website, founded_year, description_ko, description_en, created_at, updated_at)
@@ -127,5 +114,75 @@ VALUES
  'A Petite Champagne grower family well known for vintage-dated Cognacs and a rich, full-flavoured style.',
  NOW(6), NOW(6));
 
+INSERT INTO producer
+    (name_ko, name_en, country, region, website, founded_year, description_ko, description_en, created_at, updated_at)
+VALUES
+('고데', 'Godet', '프랑스', '꼬냑', 'https://www.godet.fr', 1838,
+ '라로셸에 본거지를 둔 역사적 가족 메종. 가문 내력은 16세기까지 거슬러 올라가며 섬세한 스타일로 유명하다.',
+ 'A historic family house based in La Rochelle, with roots tracing to the 16th century, known for its delicate style.',
+ NOW(6), NOW(6)),
+('라르센', 'Larsen', '프랑스', '꼬냑', 'https://www.larsencognac.com', 1926,
+ '노르웨이 출신 옌스 라르센이 세운 메종. 바이킹 배 모양 보틀로 스칸디나비아·아시아에서 큰 인기를 누린다.',
+ 'A house founded by Norwegian-born Jens Reidar Larsen, hugely popular in Scandinavia and Asia for its Viking-ship bottles.',
+ NOW(6), NOW(6)),
+('바슈-가브리엘센', 'Bache-Gabrielsen', '프랑스', '꼬냑', 'https://www.bache-gabrielsen.com', 1905,
+ '노르웨이계 가문이 세운 자르낙의 가족 메종. 보르드리 끄뤼 중심의 균형 잡힌 스타일로 정평이 나 있다.',
+ 'A Jarnac family house of Norwegian origin, esteemed for a balanced style centred on the Borderies cru.',
+ NOW(6), NOW(6)),
+('브라스타드 (티퐁)', 'Braastad (Tiffon)', '프랑스', '꼬냑', 'https://www.cognac-tiffon.com', 1875,
+ '티퐁 메종이 운영하는 브랜드. 노르웨이계 브라스타드 가문이 이끌며 자체 포도밭과 숙성고를 갖췄다.',
+ 'A brand of the Tiffon house, led by the Norwegian-descended Braastad family, with its own vineyards and cellars.',
+ NOW(6), NOW(6)),
+('드 뤼즈', 'De Luze', '프랑스', '꼬냑', 'https://www.deluze.com', 1822,
+ '보르도 무역에서 출발한 역사적 메종. 핀 샹파뉴 중심의 우아하고 향기로운 꼬냑으로 알려져 있다.',
+ 'A historic house with roots in the Bordeaux trade, known for elegant, aromatic Fine Champagne Cognac.',
+ NOW(6), NOW(6)),
+('막심 트리욜', 'Maxime Trijol', '프랑스', '꼬냑', 'https://www.maximetrijol.com', 1859,
+ '대규모 증류 설비를 갖춘 가족 생산자. 자체 증류와 폭넓은 끄뤼로 다수 브랜드에 원액을 공급한다.',
+ 'A family producer with large distillation capacity, supplying spirit to many brands through its own stills and wide range of crus.',
+ NOW(6), NOW(6)),
+('크루아제', 'Croizet', '프랑스', '꼬냑', NULL, 1805,
+ '그랑드 샹파뉴의 역사적 가족 메종. 희소한 빈티지 꼬냑으로 컬렉터들에게 잘 알려져 있다.',
+ 'A historic Grande Champagne family house, well known to collectors for its rare vintage Cognacs.',
+ NOW(6), NOW(6)),
+('샤토 드 몽티포', 'Château de Montifaud', '프랑스', '꼬냑', 'https://www.montifaud.com', 1866,
+ '프티트 샹파뉴의 명문 그로어(발레 가문). 자체 재배·증류·숙성하는 싱글 이스테이트 꼬냑으로 애호가들의 사랑을 받는다.',
+ 'A renowned Petite Champagne grower (the Vallet family), beloved by enthusiasts for single-estate Cognac grown, distilled and aged in-house.',
+ NOW(6), NOW(6)),
+('폴 지로', 'Paul Giraud', '프랑스', '꼬냑', NULL, 1937,
+ '부트빌의 그랑드 샹파뉴 그로어. 무가당·무착색에 가까운 순수하고 진한 싱글 끄뤼 꼬냑으로 유명하다.',
+ 'A Grande Champagne grower in Bouteville famed for pure, rich single-cru Cognac with little or no added sugar or colouring.',
+ NOW(6), NOW(6)),
+('발랭 테르시니에', 'Vallein Tercinier', '프랑스', '꼬냑', 'https://www.cognac-vallein-tercinier.com', 1850,
+ '5대째 이어지는 그로어 가문. 내추럴(무가당·무착색) 스타일과 ''로트'' 표기 꼬냑으로 애호가들에게 큰 인기를 누린다.',
+ 'A fifth-generation grower family with a strong enthusiast following for its natural (no sugar or colouring) style and "Lot"-numbered Cognacs.',
+ NOW(6), NOW(6)),
+('그로스페랭', 'Grosperrin', '프랑스', '꼬냑', 'https://www.grosperrin.com', 1992,
+ '오래된 빈티지·끄뤼 원액을 발굴·병입하는 것으로 유명한 전문 하우스. 희소한 고숙성 꼬냑으로 추앙받는다.',
+ 'A house famed for sourcing and bottling old vintage and single-cru eaux-de-vie, revered for rare extra-aged Cognacs.',
+ NOW(6), NOW(6)),
+('ABK6', 'ABK6', '프랑스', '꼬냑', 'https://www.abk6-cognac.com', 2010,
+ '아베카시스 가문의 싱글 이스테이트 꼬냑 브랜드. 자체 포도밭에서 일관 생산하는 현대적 스타일로 인기를 얻고 있다.',
+ 'A single-estate Cognac brand of the Abécassis family, gaining popularity for a modern style produced end-to-end from its own vineyards.',
+ NOW(6), NOW(6)),
+('뒤도뇽', 'Dudognon', '프랑스', '꼬냑', NULL, 1776,
+ '그랑드 샹파뉴의 전통 그로어 가문. 자체 재배·증류한 진하고 풍미 가득한 싱글 끄뤼 꼬냑으로 알려져 있다.',
+ 'A traditional Grande Champagne grower family, known for rich, full-flavoured single-cru Cognac grown and distilled in-house.',
+ NOW(6), NOW(6)),
+('오드리', 'Audry', '프랑스', '꼬냑', NULL, 1878,
+ '소량 생산의 프레스티지 메종. 고숙성·빈티지 꼬냑과 정교한 디캔터로 애호가들에게 잘 알려져 있다.',
+ 'A small-production prestige house well known among connoisseurs for aged, vintage Cognacs and elegant decanters.',
+ NOW(6), NOW(6)),
+('도 (부아노)', 'Deau (Boinaud)', '프랑스', '꼬냑', 'https://www.cognac-deau.com', 1846,
+ '꼬냑 최대급 자가 포도밭을 보유한 부아노 도멘의 브랜드. 싱글 이스테이트 기반의 안정적 품질로 유명하다.',
+ 'A brand of the Boinaud estate, holder of one of Cognac''s largest family-owned vineyards, known for consistent single-estate quality.',
+ NOW(6), NOW(6)),
+('장-뤽 파스케', 'Jean-Luc Pasquet', '프랑스', '꼬냑', 'https://www.jeanlucpasquet.com', 1730,
+ '그랑드 샹파뉴의 유기농 그로어 가문. 무가당·무착색의 ''내추럴'' 빈티지 꼬냑으로 애호가들에게 추앙받는다.',
+ 'An organic Grande Champagne grower family revered by enthusiasts for its natural, no-sugar, no-colouring vintage Cognacs.',
+ NOW(6), NOW(6));
+
+-- 카뮈(Camus) — 국내 통용 표기 '까뮤'로도 검색되도록 별칭 부여 (구 V9)
+UPDATE producer SET search_keywords = '까뮤 까뮈 Camus' WHERE name_en = 'Camus';
 
 ALTER TABLE producer ALTER COLUMN type DROP DEFAULT;

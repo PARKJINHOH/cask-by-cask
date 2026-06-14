@@ -1,6 +1,6 @@
 plugins {
     java
-    id("org.springframework.boot") version "3.5.14"
+    id("org.springframework.boot") version "3.5.15"
     id("io.spring.dependency-management") version "1.1.7"
 }
 
@@ -81,8 +81,8 @@ dependencies {
 
     // WebP 인코딩 (이미지 업로드 시 .webp 변환본 생성)
     // 원본 JPG/PNG 는 서버에 보관, 브라우저에는 WebP 서빙
-    implementation("com.sksamuel.scrimage:scrimage-core:4.3.0")
-    implementation("com.sksamuel.scrimage:scrimage-webp:4.3.0")
+    implementation("com.sksamuel.scrimage:scrimage-core:4.6.4")
+    implementation("com.sksamuel.scrimage:scrimage-webp:4.6.4")
 
     // SQL 로깅 (local: 파라미터 인라인 + 유저 ID)
     implementation("com.github.gavlyukovskiy:datasource-proxy-spring-boot-starter:1.12.1")
@@ -122,4 +122,6 @@ tasks.named<Delete>("clean") {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    // SchemaDumpTest 게이트 프로퍼티 전달 (-Dschema.dump=true 일 때만 베이스라인 DDL 재생성)
+    systemProperty("schema.dump", System.getProperty("schema.dump") ?: "false")
 }

@@ -29,7 +29,10 @@ public final class ImageMagicByteValidator {
     public static boolean isSupportedImage(MultipartFile file) {
         byte[] header = new byte[12];
         try (InputStream is = file.getInputStream()) {
-            int read = is.read(header, 0, 12);
+            // read() 는 데이터가 더 있어도 요청보다 적게 반환할 수 있어(InputStream 계약),
+            // 정상 PNG(8B)·WEBP(offset 8) 헤더가 짧은 read 로 0-padding 되어 거짓 거부될 수 있다.
+            // readNBytes 는 EOF 전까지 요청 길이만큼 채워주므로 이를 방지한다.
+            int read = is.readNBytes(header, 0, 12);
             if (read < 3) {
                 return false;
             }

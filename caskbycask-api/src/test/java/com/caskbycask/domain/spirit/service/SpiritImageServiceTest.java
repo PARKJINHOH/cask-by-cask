@@ -208,8 +208,9 @@ class SpiritImageServiceTest {
         ReflectionTestUtils.setField(newPrimary, "id", 11L);
 
         given(spiritRepository.existsById(1L)).willReturn(true);
-        given(spiritImageRepository.findByIdAndSpiritId(11L, 1L)).willReturn(Optional.of(newPrimary));
-        given(spiritImageRepository.findBySpiritIdAndIsPrimaryTrue(1L)).willReturn(Optional.of(oldPrimary));
+        // setPrimaryImage 는 전체 이미지를 조회해 메모리에서 대상 필터링 → 해당 메서드를 모킹
+        given(spiritImageRepository.findBySpiritIdOrderBySortOrderAscIdAsc(1L))
+                .willReturn(List.of(oldPrimary, newPrimary));
 
         SpiritImageResponse result = spiritImageService.setPrimaryImage(1L, 11L);
 
