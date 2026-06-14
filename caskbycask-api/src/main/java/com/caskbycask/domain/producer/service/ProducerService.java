@@ -130,6 +130,23 @@ public class ProducerService {
                 .map(req -> toResponse(req, parseData(req.getProducerData())));
     }
 
+    @Transactional(readOnly = true)
+    public ProducerRegisterRequestResponse getProducerRequestDetail(Long requestId) {
+        ProducerRegisterRequest req = getProducerRequest(requestId);
+        return toResponse(req, parseData(req.getProducerData()));
+    }
+
+    @Transactional
+    public ProducerRegisterRequestResponse updateProducerRequest(
+            Long requestId, ProducerRegisterRequestBody body) {
+        ProducerRegisterRequest req = getProducerRequest(requestId);
+        if (req.getStatus() != RequestStatus.PENDING) {
+            throw new CustomException(ErrorCode.DISTILLERY_REQUEST_NOT_EDITABLE);
+        }
+        req.updateProducerData(serialize(body));
+        return toResponse(req, body);
+    }
+
     @Transactional
     public ProducerResponse approveProducerRequest(Long requestId, Long adminId) {
         ProducerRegisterRequest req = getProducerRequest(requestId);
@@ -217,9 +234,12 @@ public class ProducerService {
             ProducerRegisterRequest req, ProducerRegisterRequestBody body) {
         return new ProducerRegisterRequestResponse(
                 req.getId(),
+                req.getUser().getId(),
+                req.getUser().getNickname(),
                 body.nameKo(),
                 body.nameEn(),
                 body.country(),
+                body.region(),
                 body.type(),
                 req.getStatus(),
                 req.getRejectReason(),

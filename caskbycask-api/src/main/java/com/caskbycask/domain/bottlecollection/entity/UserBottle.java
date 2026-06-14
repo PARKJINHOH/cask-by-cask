@@ -7,6 +7,7 @@ import com.caskbycask.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.BatchSize;
+import org.hibernate.annotations.Comment;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -25,51 +26,65 @@ import java.util.List;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Builder
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
+@Comment("보유 보틀(컬렉션)")
 public class UserBottle extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Comment("PK")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
+    @Comment("소유자(users.id)")
     private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "spirit_id")
+    @Comment("주류(spirit.id)")
     private Spirit spirit;
 
     @Column(name = "spirit_name_text", length = 200)
+    @Comment("주류명(직접 입력, 미등록 시)")
     private String spiritNameText;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "category", nullable = false, length = 20)
+    @Comment("카테고리 — WHISKY/WINE/COGNAC/OTHER")
     private SpiritCategory category;
 
     @Column(name = "purchase_date", nullable = false)
+    @Comment("구매 일자")
     private LocalDate purchaseDate;
 
     @Column(name = "batch", length = 100)
+    @Comment("배치")
     private String batch;
 
     @Column(name = "bottling_year", length = 100)
+    @Comment("병입 연도")
     private String bottlingYear;
 
     @Column(name = "price", nullable = false)
+    @Comment("구매 가격(원)")
     private Integer price;
 
     @Column(name = "store", nullable = false, length = 200)
+    @Comment("구매처")
     private String store;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
+    @Comment("개봉 상태 — UNOPENED/OPENED")
     private BottleStatus status;
 
     @Builder.Default
     @Column(name = "is_public", nullable = false)
+    @Comment("공개 여부")
     private Boolean isPublic = false;
 
     @Column(name = "memo", columnDefinition = "TEXT")
+    @Comment("메모")
     private String memo;
 
     @OneToMany(mappedBy = "userBottle", cascade = CascadeType.ALL, orphanRemoval = true)

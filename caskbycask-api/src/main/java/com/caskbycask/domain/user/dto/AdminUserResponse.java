@@ -4,6 +4,7 @@ import com.caskbycask.domain.community.entity.enums.BoardType;
 import com.caskbycask.domain.user.entity.User;
 import com.caskbycask.domain.user.entity.enums.AdminMenuKey;
 import com.caskbycask.domain.user.entity.enums.Role;
+import com.caskbycask.domain.user.entity.enums.SignupMethod;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDateTime;
@@ -31,6 +32,8 @@ public record AdminUserResponse(
         String producerNameKo,
         @Schema(description = "가입 일시")
         LocalDateTime createdAt,
+        @Schema(description = "가입 경로 (EMAIL, NAVER, GOOGLE)")
+        SignupMethod signupMethod,
         @Schema(description = "징계 종료 일시 (null이면 징계 없음)")
         LocalDateTime suspendedUntil,
         @Schema(description = "징계 사유")
@@ -56,6 +59,7 @@ public record AdminUserResponse(
                 user.getProducer() != null ? user.getProducer().getId() : null,
                 user.getProducer() != null ? user.getProducer().getNameKo() : null,
                 user.getCreatedAt(),
+                user.getSignupMethod(),
                 user.getSuspendedUntil(),
                 user.getSuspendReason(),
                 user.getRoleType() != null ? user.getRoleType().getId() : null,

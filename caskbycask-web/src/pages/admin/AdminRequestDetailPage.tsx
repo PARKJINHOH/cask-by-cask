@@ -33,12 +33,26 @@ function ImageSection({ requestId, imageUrls }: { requestId: number; imageUrls: 
   const fileRef = useRef<HTMLInputElement>(null)
   const upload = useUploadRequestImage()
   const remove = useRemoveRequestImage()
+  const [uploading, setUploading] = useState(false)
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    upload.mutate({ id: requestId, file })
-    e.target.value = ''
+  // 여러 장 선택 시 순차 업로드.
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target
+    const files = Array.from(input.files ?? [])
+    if (files.length === 0) return
+    setUploading(true)
+    try {
+      for (const file of files) {
+        try {
+          await upload.mutateAsync({ id: requestId, file })
+        } catch {
+          // 일부 파일 실패해도 나머지는 계속 업로드
+        }
+      }
+    } finally {
+      setUploading(false)
+      input.value = ''
+    }
   }
   const handleRemove = (url: string) => {
     if (!confirm('이미지를 삭제하시겠습니까?')) return
@@ -49,10 +63,10 @@ function ImageSection({ requestId, imageUrls }: { requestId: number; imageUrls: 
     <div className={CARD}>
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-neutral-700">이미지</h3>
-        <Button variant="secondary" size="sm" onClick={() => fileRef.current?.click()} isLoading={upload.isPending}>
+        <Button variant="secondary" size="sm" onClick={() => fileRef.current?.click()} isLoading={uploading}>
           + 이미지 추가
         </Button>
-        <input ref={fileRef} type="file" accept="image/jpeg,image/png" className="hidden" onChange={handleFileChange} />
+        <input ref={fileRef} type="file" accept="image/jpeg,image/png" multiple className="hidden" onChange={handleFileChange} />
       </div>
       {imageUrls.length === 0 ? (
         <p className="text-xs text-neutral-400">등록된 이미지가 없습니다.</p>

@@ -86,3 +86,43 @@ export interface PasswordResetConfirmRequest {
   code: string
   newPassword: string
 }
+
+// ── 소셜 로그인(OAuth2) ─────────────────────────────────────────
+export type SocialProvider = 'NAVER' | 'GOOGLE'
+
+export interface OAuthAuthorizeUrlResponse {
+  authorizeUrl: string
+}
+
+export type OAuthCallbackStatus = 'LOGIN' | 'NEEDS_SIGNUP' | 'NEEDS_LINK'
+
+export interface OAuthCallbackResponse {
+  status: OAuthCallbackStatus
+  // LOGIN
+  login: LoginResponse | null
+  // NEEDS_SIGNUP
+  signupTicket: string | null
+  email: string | null
+  emailVerified: boolean
+  suggestedNickname: string | null
+  // NEEDS_LINK
+  linkTicket: string | null
+  maskedEmail: string | null
+}
+
+export interface OAuthCodeRequest {
+  provider: string
+  code: string
+  state: string
+  redirectUri: string
+}
+
+export interface OAuthSignupRequest {
+  signupTicket: string
+  nickname: string
+  email?: string
+  emailCode?: string
+  agreedToTerms: boolean
+  agreedToPrivacy: boolean
+  emailSubscribed: boolean
+}

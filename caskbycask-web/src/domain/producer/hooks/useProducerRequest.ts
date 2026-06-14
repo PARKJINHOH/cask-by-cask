@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { adminProducerRequestApi, producerRequestApi } from '../api/producerRequestApi'
-import type { ProducerRegisterRequestForm } from '../types/producerRequest.types'
+import type { ProducerRegisterRequestForm, UpdateProducerRequestPayload } from '../types/producerRequest.types'
 
 export function useMyProducerRequests() {
   return useQuery({
@@ -32,12 +32,36 @@ export function useAdminProducerRequests(status: string, page: number) {
   })
 }
 
+export function useAdminProducerRequest(id: number) {
+  return useQuery({
+    queryKey: ['admin-producer-request', id],
+    queryFn: async () => {
+      const res = await adminProducerRequestApi.detail(id)
+      return res.data.data!
+    },
+    enabled: Number.isFinite(id),
+  })
+}
+
+export function useUpdateProducerRequest() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, body }: { id: number; body: UpdateProducerRequestPayload }) =>
+      adminProducerRequestApi.update(id, body),
+    onSuccess: (_data, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-producer-requests'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-producer-request', id] })
+    },
+  })
+}
+
 export function useApproveProducerRequest() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (id: number) => adminProducerRequestApi.approve(id),
-    onSuccess: () => {
+    onSuccess: (_data, id) => {
       queryClient.invalidateQueries({ queryKey: ['admin-producer-requests'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-producer-request', id] })
     },
   })
 }
@@ -47,8 +71,9 @@ export function useRejectProducerRequest() {
   return useMutation({
     mutationFn: ({ id, rejectReason }: { id: number; rejectReason: string }) =>
       adminProducerRequestApi.reject(id, rejectReason),
-    onSuccess: () => {
+    onSuccess: (_data, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['admin-producer-requests'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-producer-request', id] })
     },
   })
 }

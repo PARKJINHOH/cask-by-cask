@@ -7,9 +7,12 @@ import java.time.LocalDateTime;
 
 public record ProducerRegisterRequestResponse(
         Long id,
+        Long requesterId,
+        String requesterNickname,
         String nameKo,
         String nameEn,
         String country,
+        String region,
         ProducerType type,
         RequestStatus status,
         String rejectReason,

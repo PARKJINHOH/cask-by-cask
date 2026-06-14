@@ -111,6 +111,26 @@ export function useVerifyAdult() {
   })
 }
 
+// ── 소셜 연동 ───────────────────────────────────────────────
+export function useSocialAccounts() {
+  const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
+  return useQuery({
+    queryKey: ['socialAccounts'],
+    queryFn: () => userApi.getSocialAccounts().then((res) => res.data.data!),
+    enabled: isLoggedIn,
+  })
+}
+
+export function useUnlinkSocial() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (provider: string) => userApi.unlinkSocial(provider),
+    onSuccess: (res) => {
+      queryClient.setQueryData(['socialAccounts'], res.data.data!)
+    },
+  })
+}
+
 export function useBlockedUsers() {
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
   return useQuery({

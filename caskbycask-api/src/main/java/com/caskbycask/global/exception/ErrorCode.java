@@ -40,6 +40,16 @@ public enum ErrorCode {
     INVALID_BIRTH_DATE(HttpStatus.BAD_REQUEST, "USER_022", "생년월일이 올바르지 않습니다."),
     ADULT_VERIFICATION_REQUIRED(HttpStatus.FORBIDDEN, "USER_023", "성인인증이 필요한 기능입니다."),
 
+    // OAuth (소셜 로그인)
+    OAUTH_PROVIDER_ERROR(HttpStatus.BAD_GATEWAY, "OAUTH_001", "소셜 로그인 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."),
+    OAUTH_STATE_INVALID(HttpStatus.BAD_REQUEST, "OAUTH_002", "잘못된 요청입니다. 소셜 로그인을 다시 시도해주세요."),
+    OAUTH_TICKET_EXPIRED(HttpStatus.BAD_REQUEST, "OAUTH_003", "소셜 로그인 세션이 만료되었습니다. 처음부터 다시 시도해주세요."),
+    OAUTH_ALREADY_LINKED(HttpStatus.CONFLICT, "OAUTH_004", "이미 다른 계정에 연동된 소셜 계정입니다."),
+    OAUTH_LAST_LOGIN_METHOD(HttpStatus.BAD_REQUEST, "OAUTH_005", "마지막 로그인 수단은 해제할 수 없습니다. 비밀번호를 먼저 설정해주세요."),
+    OAUTH_EMAIL_REQUIRED(HttpStatus.BAD_REQUEST, "OAUTH_006", "이메일 입력과 인증이 필요합니다."),
+    OAUTH_PROVIDER_NOT_CONFIGURED(HttpStatus.SERVICE_UNAVAILABLE, "OAUTH_007", "현재 사용할 수 없는 소셜 로그인입니다."),
+    OAUTH_REDIRECT_URI_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "OAUTH_008", "허용되지 않은 리다이렉트 주소입니다."),
+
     // Spirit
     SPIRIT_NOT_FOUND(HttpStatus.NOT_FOUND, "SPIRIT_001", "술 정보를 찾을 수 없습니다."),
     SPIRIT_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "SPIRIT_002", "이미지를 찾을 수 없습니다."),

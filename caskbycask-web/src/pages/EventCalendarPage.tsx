@@ -1,12 +1,36 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useEvents, useUpcomingEvents } from '@/domain/event/hooks/useEvents'
+import { useNavigate } from 'react-router-dom'
+import { useEvents, useUpcomingEvents, useSuggestEvent } from '@/domain/event/hooks/useEvents'
 import EventCalendarGrid from '@/domain/event/components/EventCalendarGrid'
 import UpcomingEvents from '@/domain/event/components/UpcomingEvents'
 import { CATEGORY_META, CATEGORY_ORDER } from '@/domain/event/constants/eventCategory'
-import type { CalendarEvent } from '@/domain/event/types/event.types'
+import type { CalendarEvent, EventCategory } from '@/domain/event/types/event.types'
 import { parseYmd } from '@/domain/event/utils/calendar'
+import { useAuthStore } from '@/domain/auth/store/authStore'
 import Modal from '@/shared/components/Modal'
+import Button from '@/shared/components/Button'
+import DateInput from '@/shared/components/DateInput'
+import Toast from '@/shared/components/Toast'
+import { useToast } from '@/shared/hooks/useToast'
+
+interface SuggestForm {
+  title: string
+  category: EventCategory
+  startDate: string
+  endDate: string
+  linkUrl: string
+  description: string
+}
+
+const emptySuggestForm = (): SuggestForm => ({
+  title: '',
+  category: 'RELEASE',
+  startDate: '',
+  endDate: '',
+  linkUrl: '',
+  description: '',
+})
 
 function formatDate(s: string) {
   const d = parseYmd(s)
@@ -15,13 +39,61 @@ function formatDate(s: string) {
 
 export default function EventCalendarPage() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
+  const { isLoggedIn } = useAuthStore()
+  const { toasts, showToast, removeToast } = useToast()
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1) // 1~12
   const [selected, setSelected] = useState<CalendarEvent | null>(null)
 
+  const [suggestForm, setSuggestForm] = useState<SuggestForm | null>(null)
+  const [suggestError, setSuggestError] = useState<string | null>(null)
+  const suggestMutation = useSuggestEvent()
+
   const { data: events = [], isLoading } = useEvents(year, month)
   const { data: upcoming = [] } = useUpcomingEvents(10)
+
+  const openSuggest = () => {
+    if (!isLoggedIn) {
+      showToast(t('calendar.suggest.loginRequired'), 'info')
+      navigate('/login')
+      return
+    }
+    setSuggestError(null)
+    setSuggestForm(emptySuggestForm())
+  }
+
+  const patchSuggest = (p: Partial<SuggestForm>) =>
+    setSuggestForm((f) => (f ? { ...f, ...p } : f))
+
+  const handleSuggestSubmit = async () => {
+    if (!suggestForm) return
+    if (!suggestForm.title.trim()) { setSuggestError(t('calendar.suggest.errTitle')); return }
+    if (!suggestForm.startDate) { setSuggestError(t('calendar.suggest.errStartDate')); return }
+    if (suggestForm.endDate && suggestForm.endDate < suggestForm.startDate) {
+      setSuggestError(t('calendar.suggest.errDateRange')); return
+    }
+    const link = suggestForm.linkUrl.trim()
+    if (link && !/^https?:\/\/.+/i.test(link)) {
+      setSuggestError(t('calendar.suggest.errLink')); return
+    }
+    try {
+      await suggestMutation.mutateAsync({
+        title: suggestForm.title.trim(),
+        category: suggestForm.category,
+        startDate: suggestForm.startDate,
+        endDate: suggestForm.endDate || null,
+        linkUrl: suggestForm.linkUrl.trim() || null,
+        description: suggestForm.description.trim() || null,
+      })
+      setSuggestForm(null)
+      showToast(t('calendar.suggest.success'), 'success')
+    } catch (err) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      setSuggestError(msg || t('calendar.suggest.error'))
+    }
+  }
 
   const goPrev = () => {
     if (month === 1) { setYear((y) => y - 1); setMonth(12) } else setMonth((m) => m - 1)
@@ -39,10 +111,17 @@ export default function EventCalendarPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
+      <Toast toasts={toasts} onRemove={removeToast} />
+
       {/* 헤더 */}
-      <div className="mb-2">
-        <h1 className="text-2xl font-bold text-neutral-900">{t('calendar.title')}</h1>
-        <p className="text-sm text-neutral-500 mt-1">{t('calendar.subtitle')}</p>
+      <div className="mb-2 flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-neutral-900">{t('calendar.title')}</h1>
+          <p className="text-sm text-neutral-500 mt-1">{t('calendar.subtitle')}</p>
+        </div>
+        <Button onClick={openSuggest} className="shrink-0 whitespace-nowrap">
+          + {t('calendar.suggest.button')}
+        </Button>
       </div>
 
       {/* 달력 + 다가오는 이벤트 사이드바 */}
@@ -152,6 +231,127 @@ export default function EventCalendarPage() {
                 </svg>
               </a>
             )}
+          </div>
+        )}
+      </Modal>
+
+      {/* 이벤트 제보 모달 */}
+      <Modal
+        open={suggestForm != null}
+        onClose={() => setSuggestForm(null)}
+        title={t('calendar.suggest.title')}
+        size="lg"
+        footer={
+          <div className="flex items-center justify-end gap-2 w-full">
+            <Button variant="secondary" onClick={() => setSuggestForm(null)}>
+              {t('calendar.suggest.cancel')}
+            </Button>
+            <Button isLoading={suggestMutation.isPending} onClick={handleSuggestSubmit}>
+              {t('calendar.suggest.submit')}
+            </Button>
+          </div>
+        }
+      >
+        {suggestForm && (
+          <div className="space-y-4">
+            <p className="text-sm text-neutral-500">{t('calendar.suggest.subtitle')}</p>
+
+            {suggestError && (
+              <div className="px-3 py-2 rounded-lg bg-red-50 text-red-600 text-sm">{suggestError}</div>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
+                {t('calendar.suggest.name')} <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={suggestForm.title}
+                maxLength={200}
+                onChange={(e) => patchSuggest({ title: e.target.value })}
+                placeholder={t('calendar.suggest.namePlaceholder')}
+                className="w-full h-10 px-3 rounded-lg border border-neutral-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
+                {t('calendar.suggest.category')} <span className="text-red-500">*</span>
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {CATEGORY_ORDER.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => patchSuggest({ category: c })}
+                    className={[
+                      'inline-flex items-center gap-1.5 h-9 px-3 text-sm font-medium rounded-lg border transition-colors',
+                      suggestForm.category === c
+                        ? `${CATEGORY_META[c].bar} border-transparent`
+                        : 'bg-white text-neutral-600 border-neutral-300 hover:bg-neutral-50',
+                    ].join(' ')}
+                  >
+                    <span className={`w-2.5 h-2.5 rounded-sm ${suggestForm.category === c ? 'bg-white/80' : CATEGORY_META[c].dot}`} />
+                    {t(CATEGORY_META[c].labelKey)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  {t('calendar.suggest.startDate')} <span className="text-red-500">*</span>
+                </label>
+                <DateInput
+                  value={suggestForm.startDate}
+                  onChange={(e) => patchSuggest({ startDate: e.target.value })}
+                  className="w-full h-10 px-3 rounded-lg border border-neutral-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  {t('calendar.suggest.endDate')}{' '}
+                  <span className="text-neutral-400 font-normal">{t('calendar.suggest.endDateHint')}</span>
+                </label>
+                <DateInput
+                  value={suggestForm.endDate}
+                  min={suggestForm.startDate || undefined}
+                  onChange={(e) => patchSuggest({ endDate: e.target.value })}
+                  className="w-full h-10 px-3 rounded-lg border border-neutral-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
+                {t('calendar.suggest.link')}{' '}
+                <span className="text-neutral-400 font-normal">{t('calendar.suggest.linkHint')}</span>
+              </label>
+              <input
+                type="url"
+                value={suggestForm.linkUrl}
+                maxLength={500}
+                onChange={(e) => patchSuggest({ linkUrl: e.target.value })}
+                placeholder="https://..."
+                className="w-full h-10 px-3 rounded-lg border border-neutral-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
+                {t('calendar.suggest.description')}{' '}
+                <span className="text-neutral-400 font-normal">{t('calendar.suggest.descriptionHint')}</span>
+              </label>
+              <textarea
+                value={suggestForm.description}
+                maxLength={2000}
+                rows={4}
+                onChange={(e) => patchSuggest({ description: e.target.value })}
+                placeholder={t('calendar.suggest.descriptionPlaceholder')}
+                className="w-full px-3 py-2 rounded-lg border border-neutral-300 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-primary-500"
+              />
+            </div>
           </div>
         )}
       </Modal>

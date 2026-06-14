@@ -498,6 +498,10 @@ export default function AdminUserDetailPage() {
                 </div>
               </div>
               <InfoRow label="가입일" value={formatDate(user.createdAt)} />
+              <InfoRow
+                label="가입 경로"
+                value={user.signupMethod === 'NAVER' ? '네이버' : user.signupMethod === 'GOOGLE' ? '구글' : '이메일'}
+              />
             </div>
           </div>
 

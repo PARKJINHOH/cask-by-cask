@@ -5,6 +5,7 @@ import type {
   AdminCalendarEvent,
   EventPayload,
   EventCategory,
+  SuggestEventPayload,
 } from '../types/event.types'
 
 export const eventApi = {
@@ -19,7 +20,14 @@ export const eventApi = {
       params: { limit },
     }),
 
+  // 로그인 사용자 이벤트 제보 (검토 대기로 등록)
+  suggestEvent: (data: SuggestEventPayload) =>
+    axiosInstance.post<ApiResponse<null>>('/api/events/suggest', data),
+
   // ── 관리자 ────────────────────────────────────────────────
+  getEventSuggestions: () =>
+    axiosInstance.get<ApiResponse<AdminCalendarEvent[]>>('/api/admin/events/suggestions'),
+
   getAdminEvents: (params: { year: number; month: number; category?: EventCategory }) =>
     axiosInstance.get<ApiResponse<AdminCalendarEvent[]>>('/api/admin/events', { params }),
 

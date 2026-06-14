@@ -41,6 +41,12 @@ public class EventAdminController {
         );
     }
 
+    /** 사용자 제보 목록(최근 제보순, 작성자 정보 포함). */
+    @GetMapping("/suggestions")
+    public ResponseEntity<ApiResponse<List<AdminEventResponse>>> getSuggestions() {
+        return ResponseEntity.ok(ApiResponse.success(calendarEventService.getSuggestionsForAdmin()));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<AdminEventResponse>> getEventDetail(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(calendarEventService.getEventForAdmin(id)));

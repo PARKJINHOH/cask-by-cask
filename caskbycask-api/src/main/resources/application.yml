@@ -39,6 +39,20 @@ jwt:
   access-token-expiry: 3600000      # 1h  (ms)
   refresh-token-expiry: 604800000   # 7d  (ms)
 
+# 소셜 로그인(OAuth2) — 커스텀 REST 코드교환 방식.
+# client secret/암호화 키는 서버에만 둔다. redirect-uri 는 프론트 콜백 URL 화이트리스트.
+oauth:
+  # 제공자 refresh token 암호화 키 (Base64, 32바이트). 분실 시 기존 연동 토큰 복호화 불가 → 연동해지만 영향.
+  token-encryption-key: ${OAUTH_TOKEN_ENCRYPTION_KEY}
+  # 프론트 콜백 URL 화이트리스트 (콤마 구분). 기본값은 local 개발용.
+  allowed-redirect-uris: ${OAUTH_ALLOWED_REDIRECT_URIS:http://localhost:5173/oauth/callback}
+  naver:
+    client-id: ${OAUTH_NAVER_CLIENT_ID:}
+    client-secret: ${OAUTH_NAVER_CLIENT_SECRET:}
+  google:
+    client-id: ${OAUTH_GOOGLE_CLIENT_ID:}
+    client-secret: ${OAUTH_GOOGLE_CLIENT_SECRET:}
+
 upload:
   path: ./uploads
 

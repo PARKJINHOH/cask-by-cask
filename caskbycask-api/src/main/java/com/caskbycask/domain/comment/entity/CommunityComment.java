@@ -5,6 +5,7 @@ import com.caskbycask.domain.user.entity.User;
 import com.caskbycask.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.Comment;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
@@ -23,40 +24,50 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Builder
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
+@Comment("주류(시음) 댓글")
 public class CommunityComment extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Comment("PK")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "spirit_id", nullable = false)
+    @Comment("주류(spirit.id)")
     private Spirit spirit;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
+    @Comment("작성자(users.id)")
     private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id")
+    @Comment("부모 댓글(community_comment.id)")
     private CommunityComment parent;
 
     @Column(nullable = false, columnDefinition = "TEXT")
+    @Comment("댓글 내용")
     private String content;
 
     @Builder.Default
     @Column(nullable = false)
+    @Comment("좋아요 수")
     private Integer likeCount = 0;
 
     @Builder.Default
     @Column(nullable = false)
+    @Comment("숨김 여부")
     private Boolean isHidden = false;
 
     @Builder.Default
     @Column(nullable = false)
+    @Comment("신고 수")
     private Integer reportCount = 0;
 
     @Column
+    @Comment("삭제 일시(소프트삭제)")
     private LocalDateTime deletedAt;
 
     public void updateContent(String content) {

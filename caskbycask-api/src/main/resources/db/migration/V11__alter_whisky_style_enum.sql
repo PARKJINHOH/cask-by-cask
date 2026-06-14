@@ -8,7 +8,7 @@ ALTER TABLE spirit_whisky_detail
     MODIFY COLUMN style enum (
         'BLENDED_MALT','BLENDED_WHISKY','BOURBON','CORN','GRAIN','GRAIN_CORN',
         'OTHER','POT_STILL','RYE','SINGLE_MALT','TENNESSEE'
-    );
+    ) COMMENT '위스키 스타일(전이 단계)';
 
 -- 2) 기존 CORN / GRAIN 데이터를 병합 값으로 이전
 UPDATE spirit_whisky_detail
@@ -20,4 +20,4 @@ ALTER TABLE spirit_whisky_detail
     MODIFY COLUMN style enum (
         'BLENDED_MALT','BLENDED_WHISKY','BOURBON','GRAIN_CORN',
         'OTHER','POT_STILL','RYE','SINGLE_MALT','TENNESSEE'
-    );
+    ) COMMENT '위스키 스타일 — SINGLE_MALT/BLENDED_MALT/BLENDED_WHISKY/GRAIN_CORN/BOURBON/RYE/POT_STILL/TENNESSEE/OTHER';

@@ -28,8 +28,8 @@ const WHISKY_STYLES = [
 // 캐스크 — 유형별 그룹(비슷한 뉘앙스끼리 정렬). 한 곳만 고치면 UI 자동 반영.
 const CASK_GROUPS: Array<[string, Array<[string, string]>]> = [
   ['버번 · 오크', [
-    ['EX_BOURBON', '버번 캐스크'], ['VIRGIN_OAK', '버진 오크'],
-    ['NEW_OAK', '뉴 오크'], ['FRENCH_OAK', '프렌치 오크'], ['CHINKAPIN', '친카핀'],
+    ['EX_BOURBON', '버번 캐스크'], ['NEW_OAK', '뉴(버진) 오크'],
+    ['FRENCH_OAK', '프렌치 오크'], ['CHINKAPIN', '친카핀'],
   ]],
   ['셰리 캐스크', [
     ['EX_SHERRY', '셰리 캐스크'], ['EX_FINO', '피노 캐스크'], ['EX_MANZANILLA', '만자니야 캐스크'],

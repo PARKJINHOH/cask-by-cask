@@ -38,6 +38,9 @@ export function useAuth() {
 
   const signup = (data: SignupRequest) => authApi.signup(data)
 
+  // 소셜 로그인/가입 완료 응답으로 세션 수립 (콜백·소셜가입 페이지에서 사용)
+  const establishOAuthSession = (loginData: LoginResponse) => establishSession(loginData)
+
   const logout = async () => {
     try {
       await authApi.logout()
@@ -46,5 +49,5 @@ export function useAuth() {
     }
   }
 
-  return { login, reactivate, signup, logout }
+  return { login, reactivate, signup, logout, establishOAuthSession }
 }

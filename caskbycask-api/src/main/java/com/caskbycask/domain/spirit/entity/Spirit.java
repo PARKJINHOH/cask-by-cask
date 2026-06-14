@@ -7,6 +7,7 @@ import com.caskbycask.domain.user.entity.User;
 import com.caskbycask.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.Comment;
 
 import static jakarta.persistence.CascadeType.ALL;
 import static jakarta.persistence.FetchType.LAZY;
@@ -26,61 +27,78 @@ import java.math.BigDecimal;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Builder
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
+@Comment("주류(위스키/와인/꼬냑/기타)")
 public class Spirit extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Comment("PK")
     private Long id;
 
     @Column(nullable = false, length = 200)
+    @Comment("주류명(한글)")
     private String nameKo;
 
     @Column(nullable = false, length = 200)
+    @Comment("주류명(영문)")
     private String nameEn;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
+    @Comment("카테고리 — WHISKY/WINE/COGNAC/OTHER")
     private SpiritCategory category;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "producer_id")
+    @Comment("생산자(producer.id)")
     private Producer producer;
 
     @Column(length = 200)
+    @Comment("병입자")
     private String bottler;
 
     @Column
+    @Comment("병입 연도")
     private Integer bottledYear;
 
     @Column
+    @Comment("빈티지 연도")
     private Integer vintageYear;
 
     @Column(precision = 4, scale = 1)
+    @Comment("도수(%)")
     private BigDecimal abv;
 
     @Column
+    @Comment("용량(ml)")
     private Integer volumeMl;
 
     @Column(length = 100)
+    @Comment("국가")
     private String country;
 
     @Column(length = 100)
+    @Comment("지역")
     private String region;
 
     @Column(precision = 4, scale = 1)
+    @Comment("평균 평점")
     private BigDecimal avgScore;
 
     @Builder.Default
     @Column(nullable = false)
+    @Comment("리뷰 수")
     private Integer reviewCount = 0;
 
     @Enumerated(EnumType.STRING)
     @Builder.Default
     @Column(nullable = false, length = 20)
+    @Comment("상태 — ACTIVE/HIDDEN/PENDING")
     private SpiritStatus status = SpiritStatus.PENDING;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "registered_by_id")
+    @Comment("등록자(users.id)")
     private User registeredBy;
 
     @OneToOne(mappedBy = "spirit", cascade = ALL, orphanRemoval = true, fetch = LAZY)

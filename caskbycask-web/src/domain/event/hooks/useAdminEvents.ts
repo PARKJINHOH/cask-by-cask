@@ -10,11 +10,21 @@ export function useAdminEvents(params: { year: number; month: number; category?:
   })
 }
 
-/** 관리자 변경 후 공개/관리자 캐시 모두 무효화 */
+/** 사용자 제보 목록(최근 제보순) */
+export function useEventSuggestions() {
+  return useQuery({
+    queryKey: ['admin-event-suggestions'],
+    queryFn: () => eventApi.getEventSuggestions().then((r) => r.data.data ?? []),
+    retry: false,
+  })
+}
+
+/** 관리자 변경 후 공개/관리자/제보 캐시 모두 무효화 */
 function useInvalidateEvents() {
   const qc = useQueryClient()
   return () => {
     qc.invalidateQueries({ queryKey: ['admin-events'] })
+    qc.invalidateQueries({ queryKey: ['admin-event-suggestions'] })
     qc.invalidateQueries({ queryKey: ['events'] })
   }
 }

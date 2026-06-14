@@ -47,6 +47,17 @@ jwt:
   access-token-expiry: 3600000
   refresh-token-expiry: 604800000
 
+# 소셜 로그인 — 테스트용 더미 키 (Base64 32바이트). 실제 제공자 호출은 테스트에서 발생하지 않음.
+oauth:
+  token-encryption-key: dGVzdC1vYXV0aC1lbmNyeXB0aW9uLWtleS0zMmJ5dGU=
+  allowed-redirect-uris: "http://localhost:5173/oauth/callback"
+  naver:
+    client-id: ""
+    client-secret: ""
+  google:
+    client-id: ""
+    client-secret: ""
+
 # Bucket4j Redis 연결 시도 회피 — 테스트에서는 rate limit 검증 안 함
 rate-limit:
   enabled: false

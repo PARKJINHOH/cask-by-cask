@@ -18,6 +18,8 @@ const NoticeDetailPage = lazy(() => import('@/pages/NoticeDetailPage'))
 const LoginPage = lazy(() => import('@/pages/LoginPage'))
 const SignupPage = lazy(() => import('@/pages/SignupPage'))
 const AccountRecoveryPage = lazy(() => import('@/pages/AccountRecoveryPage'))
+const OAuthCallbackPage = lazy(() => import('@/pages/OAuthCallbackPage'))
+const OAuthSignupPage = lazy(() => import('@/pages/OAuthSignupPage'))
 const MyPage = lazy(() => import('@/pages/MyPage'))
 const RankingPage = lazy(() => import('@/pages/RankingPage'))
 const SpiritRequestPage = lazy(() => import('@/pages/SpiritRequestPage'))
@@ -43,6 +45,7 @@ const AdminRequestPage = lazy(() => import('@/pages/admin/AdminRequestPage'))
 const AdminRequestDetailPage = lazy(() => import('@/pages/admin/AdminRequestDetailPage'))
 const AdminProducerPage = lazy(() => import('@/pages/admin/AdminProducerPage'))
 const AdminProducerRequestPage = lazy(() => import('@/pages/admin/AdminProducerRequestPage'))
+const AdminProducerRequestDetailPage = lazy(() => import('@/pages/admin/AdminProducerRequestDetailPage'))
 const AdminReportPage = lazy(() => import('@/pages/admin/AdminReportPage'))
 const AdminNoticeListPage = lazy(() => import('@/pages/admin/AdminNoticeListPage'))
 const AdminNoticeFormPage = lazy(() => import('@/pages/admin/AdminNoticeFormPage'))
@@ -100,6 +103,8 @@ export default function App() {
             <Route path="ranking" element={<RankingPage />} />
             <Route path="login" element={<LoginPage />} />
             <Route path="signup" element={<SignupPage />} />
+            <Route path="oauth/callback" element={<OAuthCallbackPage />} />
+            <Route path="oauth/signup" element={<OAuthSignupPage />} />
             <Route path="account-recovery" element={<AccountRecoveryPage />} />
             <Route path="terms" element={<TermsPage />} />
             <Route path="privacy" element={<PrivacyPage />} />
@@ -152,6 +157,7 @@ export default function App() {
               <Route path="spirits/requests/:id" element={<AdminRequestDetailPage />} />
               <Route path="producers" element={<AdminProducerPage />} />
               <Route path="producers/requests" element={<AdminProducerRequestPage />} />
+              <Route path="producers/requests/:id" element={<AdminProducerRequestDetailPage />} />
               <Route path="reports" element={<AdminReportPage />} />
               <Route path="notices" element={<AdminNoticeListPage />} />
               <Route path="notices/new" element={<AdminNoticeFormPage />} />

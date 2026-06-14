@@ -1,4 +1,5 @@
 import { Fragment, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Dialog, Transition, TransitionChild, DialogPanel, DialogTitle } from '@headlessui/react'
 import Badge from '@/shared/components/Badge'
 import Button from '@/shared/components/Button'
@@ -86,6 +87,7 @@ function RejectModal({ open, request, onClose }: RejectModalProps) {
 }
 
 export default function AdminProducerRequestPage() {
+  const navigate = useNavigate()
   const [status, setStatus] = useState<RequestStatus>('PENDING')
   const [page, setPage] = useState(0)
   const [rejectTarget, setRejectTarget] = useState<MyProducerRequest | null>(null)
@@ -156,7 +158,15 @@ export default function AdminProducerRequestPage() {
                   data.content.map((req) => (
                     <tr key={req.id} className="hover:bg-neutral-50 transition-colors">
                       <td className="px-4 py-3 text-neutral-400 tabular-nums">{req.id}</td>
-                      <td className="px-4 py-3 font-medium text-neutral-900">{req.nameKo}</td>
+                      <td className="px-4 py-3">
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/admin/producers/requests/${req.id}`)}
+                          className="font-medium text-primary-800 hover:text-primary-900 hover:underline text-left"
+                        >
+                          {req.nameKo}
+                        </button>
+                      </td>
                       <td className="px-4 py-3 text-neutral-500">{req.nameEn}</td>
                       <td className="px-4 py-3 text-neutral-500">{req.country}</td>
                       <td className="px-4 py-3">

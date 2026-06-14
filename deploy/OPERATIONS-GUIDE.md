@@ -280,7 +280,16 @@ sudo systemctl restart caskbycask-api   # 수정 후 재시작해야 반영
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | 최초 관리자 seed |
 | `GMAIL_APP_PASSWORD` | 이메일 발송용 Gmail 앱 비번 |
 | `CASKBYCASK_INTERNAL_KEY` | 크롤러 ↔ API 내부 인증 키 (크롤러 .env 와 동일값) |
+| `OAUTH_TOKEN_ENCRYPTION_KEY` | 소셜 refresh token 암호화 키 (Base64 32B, `openssl rand -base64 32`). 분실 시 기존 연동의 자동 연결해지만 불가 |
+| `OAUTH_ALLOWED_REDIRECT_URIS` | 소셜 콜백 화이트리스트 (예: `https://caskbycask.net/oauth/callback`). 제공자 콘솔 등록값과 동일 |
+| `OAUTH_NAVER_CLIENT_ID` / `OAUTH_NAVER_CLIENT_SECRET` | 네이버 로그인 키 (네이버 개발자센터) |
+| `OAUTH_GOOGLE_CLIENT_ID` / `OAUTH_GOOGLE_CLIENT_SECRET` | 구글 로그인 키 (Google Cloud Console) |
 | `SLACK_WEBHOOK_URL` | (선택) 운영/백업 알림 |
+
+> **소셜 로그인 제공자 콘솔 설정** — 네이버/구글 모두 **승인된 redirect URI** 에 `https://caskbycask.net/oauth/callback`
+> (로컬 개발 시 `http://localhost:5173/oauth/callback`)을 등록해야 한다. 구글은 OAuth 동의 화면에 `openid`,`email`,`profile`
+> 스코프가 필요하고, refresh token 수신을 위해 앱이 `access_type=offline` + `prompt=consent` 로 인가 요청한다(코드에 반영됨).
+> 등록 redirect URI 가 `OAUTH_ALLOWED_REDIRECT_URIS` 와 다르면 콜백이 `OAUTH_008` 로 거부된다.
 
 ---
 

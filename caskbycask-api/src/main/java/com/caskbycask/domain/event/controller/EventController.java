@@ -1,10 +1,14 @@
 package com.caskbycask.domain.event.controller;
 
 import com.caskbycask.domain.event.dto.EventResponse;
+import com.caskbycask.domain.event.dto.SuggestEventRequest;
 import com.caskbycask.domain.event.service.CalendarEventService;
+import com.caskbycask.global.auth.security.CustomUserDetails;
 import com.caskbycask.global.response.ApiResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -40,5 +44,15 @@ public class EventController {
         return ResponseEntity.ok(
                 ApiResponse.success(calendarEventService.getUpcomingEvents(limit))
         );
+    }
+
+    /** 로그인 사용자의 이벤트 제보(검토 대기로 등록). 승인 시 노출 + 점수 지급. */
+    @PostMapping("/suggest")
+    public ResponseEntity<ApiResponse<Void>> suggestEvent(
+            @Valid @RequestBody SuggestEventRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        calendarEventService.suggestEvent(request, userDetails.getUserId());
+        return ResponseEntity.ok(ApiResponse.success());
     }
 }

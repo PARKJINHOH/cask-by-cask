@@ -6,6 +6,7 @@ import com.caskbycask.domain.user.entity.User;
 import com.caskbycask.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.Comment;
 
 import java.time.LocalDateTime;
 
@@ -27,48 +28,60 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Builder
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
+@Comment("개선·문의(이슈 트래커)")
 public class Feedback extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Comment("PK")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "author_id", nullable = false)
+    @Comment("작성자(users.id)")
     private User author;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
+    @Comment("유형 — BUG/FEATURE/IMPROVEMENT/ETC")
     private FeedbackType type;
 
     @Column(nullable = false, length = 200)
+    @Comment("제목")
     private String title;
 
     @Column(nullable = false, columnDefinition = "TEXT")
+    @Comment("내용")
     private String content;
 
     // 첨부 이미지 URL (콤마 구분). 비어있으면 null.
     @Column(columnDefinition = "TEXT")
+    @Comment("첨부 이미지 URL(목록)")
     private String imageUrls;
 
     @Enumerated(EnumType.STRING)
     @Builder.Default
     @Column(nullable = false, length = 20)
+    @Comment("처리 상태 — RECEIVED/CONFIRMED/IN_PROGRESS/ON_HOLD/RESOLVED/REJECTED")
     private FeedbackStatus status = FeedbackStatus.RECEIVED;
 
     @Builder.Default
     @Column(nullable = false)
+    @Comment("진척률(0~100)")
     private Integer progress = 0;
 
     @Builder.Default
     @Column(nullable = false)
+    @Comment("댓글 수")
     private Integer commentCount = 0;
 
     // 공개 여부 — 기본 공개(전체 회원 열람 가능). 비공개는 작성자+관리자만 열람(기존 동작).
     @Builder.Default
     @Column(name = "is_public", nullable = false)
+    @Comment("공개 여부")
     private Boolean isPublic = true;
 
+    @Comment("처리 완료 일시")
     private LocalDateTime resolvedAt;
 
     // ─── 도메인 메서드 ───────────────────────────

@@ -5,6 +5,7 @@ import com.caskbycask.domain.user.entity.User;
 import com.caskbycask.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.Comment;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -17,28 +18,35 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Builder
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
+@Comment("가격 알림 설정")
 public class PriceAlert extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Comment("PK")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
+    @Comment("사용자(users.id)")
     private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "spirit_id", nullable = false)
+    @Comment("주류(spirit.id)")
     private Spirit spirit;
 
     @Column(precision = 12, scale = 0)
+    @Comment("목표 가격(원)")
     private BigDecimal targetPriceKrw; // 면세 가격 제외 KRW 목표가
 
     @Builder.Default
     @Column(nullable = false)
+    @Comment("알림 활성 여부")
     private Boolean isActive = true;
 
     @Column
+    @Comment("마지막 알림 일시")
     private LocalDateTime lastNotifiedAt;
 
     public void updateTarget(BigDecimal targetPriceKrw) {

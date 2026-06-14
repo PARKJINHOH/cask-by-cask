@@ -561,7 +561,7 @@ export default function SpiritRequestPage() {
 
                 <div>
                   <label className={LABEL_CLS}>{t('spiritRequest.form.releaseDate')}</label>
-                  <input type="date" {...register('releaseDate')} className={`${FIELD_CLS} border-neutral-300`} />
+                  <input type="date" max="9999-12-31" {...register('releaseDate')} className={`${FIELD_CLS} border-neutral-300`} />
                 </div>
 
                 {/* 기타 문구 */}

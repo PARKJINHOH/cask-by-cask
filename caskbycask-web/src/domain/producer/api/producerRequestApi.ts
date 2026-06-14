@@ -1,6 +1,6 @@
 import axiosInstance from '@/shared/api/axiosInstance'
 import type { ApiResponse, PageResponse } from '@/shared/types/common.types'
-import type { ProducerRegisterRequestForm, MyProducerRequest } from '../types/producerRequest.types'
+import type { ProducerRegisterRequestForm, MyProducerRequest, UpdateProducerRequestPayload } from '../types/producerRequest.types'
 
 export const producerRequestApi = {
   submit: (data: ProducerRegisterRequestForm) =>
@@ -15,6 +15,16 @@ export const adminProducerRequestApi = {
     axiosInstance.get<ApiResponse<PageResponse<MyProducerRequest>>>(
       '/api/admin/producers/requests',
       { params: { status, page, size: 20 } },
+    ),
+
+  detail: (id: number) =>
+    axiosInstance.get<ApiResponse<MyProducerRequest>>(
+      `/api/admin/producers/requests/${id}`,
+    ),
+
+  update: (id: number, body: UpdateProducerRequestPayload) =>
+    axiosInstance.patch<ApiResponse<MyProducerRequest>>(
+      `/api/admin/producers/requests/${id}`, body,
     ),
 
   approve: (id: number) =>

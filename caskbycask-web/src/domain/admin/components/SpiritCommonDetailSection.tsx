@@ -110,6 +110,7 @@ export default function SpiritCommonDetailSection({ value, onChange, dateErrors,
         <Field label="출시일">
           <input
             type="date"
+            max="9999-12-31"
             value={value.releaseDate}
             onChange={(e) => onChange({ releaseDate: e.target.value })}
             className={INPUT}

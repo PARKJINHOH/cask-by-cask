@@ -1,6 +1,7 @@
 import axiosInstance from '@/shared/api/axiosInstance'
 import type { ApiResponse } from '@/shared/types/common.types'
-import type { BlockedUser, UpdateNicknameRequest, UpdatePasswordRequest, UserProfile } from '../types/user.types'
+import type { BlockedUser, UpdateNicknameRequest, UpdatePasswordRequest, UserProfile, SocialAccountsResponse } from '../types/user.types'
+import type { OAuthCodeRequest } from '@/domain/auth/types/auth.types'
 
 export const userApi = {
   getMe: () =>
@@ -44,4 +45,17 @@ export const userApi = {
 
   unblockUser: (userId: number) =>
     axiosInstance.delete<ApiResponse<null>>(`/api/users/${userId}/block`),
+
+  // ── 소셜 연동 ───────────────────────────────────────────────
+  getSocialAccounts: () =>
+    axiosInstance.get<ApiResponse<SocialAccountsResponse>>('/api/users/me/social'),
+
+  connectSocial: (data: OAuthCodeRequest) =>
+    axiosInstance.post<ApiResponse<SocialAccountsResponse>>('/api/users/me/social/connect', data),
+
+  linkSocial: (linkTicket: string) =>
+    axiosInstance.post<ApiResponse<SocialAccountsResponse>>('/api/users/me/social/link', { linkTicket }),
+
+  unlinkSocial: (provider: string) =>
+    axiosInstance.delete<ApiResponse<SocialAccountsResponse>>(`/api/users/me/social/${provider}`),
 }

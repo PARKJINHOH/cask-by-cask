@@ -4,6 +4,7 @@ import com.caskbycask.domain.user.entity.User;
 import com.caskbycask.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.Comment;
 
 // 공지사항 추천 (사용자별 1회). 추천 취소 시 row 삭제 + Notice.recommendCount 감소.
 @Entity
@@ -20,17 +21,21 @@ import lombok.*;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Builder
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
+@Comment("공지 추천")
 public class NoticeRecommend extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Comment("PK")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "notice_id", nullable = false)
+    @Comment("공지(notice.id)")
     private Notice notice;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
+    @Comment("사용자(users.id)")
     private User user;
 }

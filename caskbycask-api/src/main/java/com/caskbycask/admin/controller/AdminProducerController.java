@@ -56,6 +56,23 @@ public class AdminProducerController {
                 PageResponse.from(producerService.getProducerRequests(status, pageable))));
     }
 
+    @GetMapping("/requests/{id}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
+    public ResponseEntity<ApiResponse<ProducerRegisterRequestResponse>> getRequestDetail(
+            @PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(
+                producerService.getProducerRequestDetail(id)));
+    }
+
+    @PatchMapping("/requests/{id}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
+    public ResponseEntity<ApiResponse<ProducerRegisterRequestResponse>> updateRequest(
+            @PathVariable Long id,
+            @Valid @RequestBody ProducerRegisterRequestBody body) {
+        return ResponseEntity.ok(ApiResponse.success(
+                producerService.updateProducerRequest(id, body)));
+    }
+
     @PatchMapping("/requests/{id}/approve")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
     public ResponseEntity<ApiResponse<ProducerResponse>> approveRequest(

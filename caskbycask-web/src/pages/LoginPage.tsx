@@ -7,6 +7,9 @@ import type { AxiosError } from 'axios'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { useAuth } from '@/domain/auth/hooks/useAuth'
 import { authApi } from '@/domain/auth/api/authApi'
+import { userApi } from '@/domain/user/api/userApi'
+import SocialLoginButtons from '@/domain/auth/components/SocialLoginButtons'
+import { OAUTH_LINK_TICKET_KEY } from '@/domain/auth/oauth'
 import Button from '@/shared/components/Button'
 import Input from '@/shared/components/Input'
 import Modal from '@/shared/components/Modal'
@@ -260,11 +263,13 @@ export default function LoginPage() {
     defaultValues: { email: '', password: '' },
   })
 
-  const state = location.state as { from?: { pathname: string }; signupSuccess?: boolean; verifySuccess?: boolean; passwordResetSuccess?: boolean } | null
+  const state = location.state as { from?: { pathname: string }; signupSuccess?: boolean; verifySuccess?: boolean; passwordResetSuccess?: boolean; socialLinkNotice?: string } | null
   const from = state?.from?.pathname ?? '/'
   const signupSuccess  = !!state?.signupSuccess
   const verifySuccess  = !!state?.verifySuccess
   const passwordResetSuccess = !!state?.passwordResetSuccess
+  // 소셜 콜백 NEEDS_LINK → 본인확인용 로그인 안내(마스킹된 이메일)
+  const socialLinkNotice = state?.socialLinkNotice
 
   // 이미 로그인된 사용자는 이전 페이지 또는 홈으로
   if (isLoggedIn) return <Navigate to={from} replace />
@@ -277,6 +282,20 @@ export default function LoginPage() {
     setDormantCreds(null)
     try {
       await login(data)
+      // 소셜 연동 대기 티켓이 있으면 — 로그인(본인확인) 직후 현재 계정에 연동
+      const linkTicket = sessionStorage.getItem(OAUTH_LINK_TICKET_KEY)
+      if (linkTicket) {
+        sessionStorage.removeItem(OAUTH_LINK_TICKET_KEY)
+        try {
+          await userApi.linkSocial(linkTicket)
+        } catch {
+          // 이미 연동됨 등 — 마이페이지에서 현황 확인 가능하므로 무시하고 이동
+        }
+        startTransition(() => {
+          navigate('/mypage?tab=settings', { replace: true, state: { socialLinked: true } })
+        })
+        return
+      }
       startTransition(() => {
         navigate(from, { replace: true })
       })
@@ -321,6 +340,14 @@ export default function LoginPage() {
           <h1 className="mt-3 text-xl font-semibold text-neutral-900">로그인</h1>
           <p className="mt-1 text-sm text-neutral-500">계속하려면 로그인해주세요</p>
         </div>
+
+        {/* 소셜 연동 본인확인 안내 (NEEDS_LINK) */}
+        {socialLinkNotice && (
+          <div className="mb-4 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800 leading-relaxed">
+            이미 <strong>{socialLinkNotice}</strong> 로 가입된 계정이 있습니다.
+            본인 확인을 위해 기존 계정으로 로그인하면 소셜 계정이 자동으로 연동됩니다.
+          </div>
+        )}
 
         {/* 이메일 인증 완료 안내 */}
         {verifySuccess && (
@@ -384,6 +411,11 @@ export default function LoginPage() {
             로그인
           </Button>
         </form>
+
+        {/* 소셜 로그인 */}
+        <div className="mt-5">
+          <SocialLoginButtons returnTo={from} />
+        </div>
 
         {/* 계정 찾기 */}
         <div className="mt-4 flex items-center justify-center gap-3 text-xs text-neutral-500">

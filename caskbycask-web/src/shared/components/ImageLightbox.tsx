@@ -225,13 +225,13 @@ export default function ImageLightbox({ images, initialIndex = 0, open, onClose 
           <div className="fixed inset-0 bg-black/85 backdrop-blur-sm" aria-hidden="true" />
         </TransitionChild>
 
-        <div className="fixed inset-0 flex flex-col items-center justify-center p-4 overflow-hidden">
+        <div className="fixed inset-0 flex flex-col items-center justify-center p-3 overflow-hidden">
           <TransitionChild
             as={Fragment}
             enter="ease-out duration-200" enterFrom="opacity-0 scale-95" enterTo="opacity-100 scale-100"
             leave="ease-in duration-150" leaveFrom="opacity-100 scale-100" leaveTo="opacity-0 scale-95"
           >
-            <DialogPanel className="flex flex-col items-center gap-3 w-full max-w-4xl">
+            <DialogPanel className="flex flex-col items-center gap-2 w-full max-w-[95vw]">
               {/* 닫기 버튼 */}
               <div className="w-full flex justify-end">
                 <button
@@ -276,7 +276,7 @@ export default function ImageLightbox({ images, initialIndex = 0, open, onClose 
                     src={images[current]}
                     alt={`이미지 ${current + 1}`}
                     draggable={false}
-                    className="max-h-[78vh] max-w-full object-contain shadow-2xl"
+                    className={`${images.length > 1 ? 'max-h-[80vh]' : 'max-h-[88vh]'} max-w-[90vw] object-contain shadow-2xl`}
                     style={{
                       transform: `translate(${view.tx}px, ${view.ty}px) scale(${view.scale})`,
                       transition: smooth ? 'transform 0.15s ease-out' : 'none',

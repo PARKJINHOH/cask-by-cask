@@ -131,6 +131,8 @@ export interface UpdateRoleTypeRequest {
 }
 
 // ── AdminUser ──────────────────────────────────────────────────
+export type SignupMethod = 'EMAIL' | 'NAVER' | 'GOOGLE'
+
 export interface AdminUser {
   id: number
   email: string
@@ -140,6 +142,7 @@ export interface AdminUser {
   producerId: number | null
   producerNameKo: string | null
   createdAt: string
+  signupMethod: SignupMethod
   suspendedUntil: string | null
   suspendReason: string | null
   roleTypeId: number | null

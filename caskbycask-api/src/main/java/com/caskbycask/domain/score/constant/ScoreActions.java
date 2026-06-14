@@ -36,4 +36,5 @@ public final class ScoreActions {
     public static final String PRICE_REGISTER             = "PRICE_REGISTER";
     public static final String FEEDBACK_WRITE             = "FEEDBACK_WRITE";
     public static final String FEEDBACK_RESOLVED          = "FEEDBACK_RESOLVED";
+    public static final String EVENT_SUGGEST_APPROVED     = "EVENT_SUGGEST_APPROVED";
 }

@@ -1,6 +1,6 @@
 -- 개선·문의(feedback) 공개 여부.
 -- 기본값 공개(전체 회원이 목록/상세 열람 가능). 비공개는 기존과 동일하게 작성자+관리자만 열람.
-ALTER TABLE feedback ADD COLUMN is_public bit NOT NULL DEFAULT 1;
+ALTER TABLE feedback ADD COLUMN is_public bit NOT NULL DEFAULT 1 COMMENT '공개 여부';
 
 -- 개선·문의 작성/해결 점수
 INSERT IGNORE INTO score_config

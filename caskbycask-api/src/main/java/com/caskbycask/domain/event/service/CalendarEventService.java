@@ -4,9 +4,13 @@ import com.caskbycask.domain.event.dto.AdminEventResponse;
 import com.caskbycask.domain.event.dto.CreateEventRequest;
 import com.caskbycask.domain.event.dto.EventResponse;
 import com.caskbycask.domain.event.dto.UpdateEventRequest;
+import com.caskbycask.domain.event.dto.SuggestEventRequest;
 import com.caskbycask.domain.event.entity.CalendarEvent;
 import com.caskbycask.domain.event.entity.enums.EventCategory;
+import com.caskbycask.domain.event.entity.enums.EventSource;
 import com.caskbycask.domain.event.repository.CalendarEventRepository;
+import com.caskbycask.domain.score.constant.ScoreActions;
+import com.caskbycask.domain.score.service.ScoreService;
 import com.caskbycask.domain.user.entity.User;
 import com.caskbycask.domain.user.repository.UserRepository;
 import com.caskbycask.global.exception.CustomException;
@@ -27,6 +31,10 @@ public class CalendarEventService {
 
     private final CalendarEventRepository calendarEventRepository;
     private final UserRepository userRepository;
+    private final ScoreService scoreService;
+
+    /** 점수 이력 reference 타입(이벤트 제보 승인). */
+    private static final String SCORE_REF_TYPE = "CALENDAR_EVENT";
 
     // ═══════════════════════════════════════════
     // 공개 API
@@ -85,10 +93,19 @@ public class CalendarEventService {
                 .startDate(request.getStartDate())
                 .endDate(request.getEndDate())
                 .isVisible(Boolean.TRUE.equals(request.getIsVisible()))
+                .source(EventSource.ADMIN)
                 .createdBy(creator)
                 .build();
 
         return AdminEventResponse.from(calendarEventRepository.save(event));
+    }
+
+    /** 관리자 검토 대기 중인 사용자 제보 목록(최근 제보순). */
+    @Transactional(readOnly = true)
+    public List<AdminEventResponse> getSuggestionsForAdmin() {
+        return calendarEventRepository.findBySourceOrderByCreatedAtDesc(EventSource.USER).stream()
+                .map(AdminEventResponse::from)
+                .toList();
     }
 
     @Transactional
@@ -103,6 +120,7 @@ public class CalendarEventService {
                 request.getEndDate(),
                 Boolean.TRUE.equals(request.getIsVisible())
         );
+        awardIfApprovedSuggestion(event);
         return AdminEventResponse.from(event);
     }
 
@@ -113,12 +131,56 @@ public class CalendarEventService {
 
     @Transactional
     public void updateVisibility(Long eventId, Boolean isVisible) {
-        findEventById(eventId).setVisible(Boolean.TRUE.equals(isVisible));
+        CalendarEvent event = findEventById(eventId);
+        event.setVisible(Boolean.TRUE.equals(isVisible));
+        awardIfApprovedSuggestion(event);
+    }
+
+    // ═══════════════════════════════════════════
+    // 사용자 제보
+    // ═══════════════════════════════════════════
+
+    /** 로그인 사용자의 이벤트 제보 → 검토 대기(USER, isVisible=false)로 생성. */
+    @Transactional
+    public void suggestEvent(SuggestEventRequest request, Long userId) {
+        User reporter = userRepository.getByIdOrThrow(userId);
+
+        CalendarEvent event = CalendarEvent.builder()
+                .title(request.getTitle())
+                .description(request.getDescription())
+                .linkUrl(request.getLinkUrl())
+                .category(request.getCategory())
+                .startDate(request.getStartDate())
+                .endDate(request.getEndDate())
+                .isVisible(false)
+                .source(EventSource.USER)
+                .createdBy(reporter)
+                .build();
+
+        calendarEventRepository.save(event);
     }
 
     // ═══════════════════════════════════════════
     // Private
     // ═══════════════════════════════════════════
+
+    /**
+     * 사용자 제보(source=USER)가 공개로 전환되면 제보자에게 점수 지급.
+     * ScoreService 가 referenceId당 1회 지급 + MEMBER 외(관리자 등) 자동 스킵을 보장하므로
+     * 노출 토글을 반복해도 중복 지급되지 않는다.
+     */
+    private void awardIfApprovedSuggestion(CalendarEvent event) {
+        if (event.getSource() == EventSource.USER
+                && Boolean.TRUE.equals(event.getIsVisible())
+                && event.getCreatedBy() != null) {
+            scoreService.award(
+                    event.getCreatedBy().getId(),
+                    ScoreActions.EVENT_SUGGEST_APPROVED,
+                    SCORE_REF_TYPE,
+                    event.getId()
+            );
+        }
+    }
 
     private CalendarEvent findEventById(Long eventId) {
         return calendarEventRepository.findById(eventId)

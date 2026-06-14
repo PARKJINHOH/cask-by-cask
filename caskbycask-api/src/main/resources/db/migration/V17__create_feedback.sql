@@ -4,20 +4,20 @@
 -- 이메일 단방향 문의(inquiry)와는 별개 테이블.
 
 create table feedback (
-    id bigint not null auto_increment,
-    created_at datetime(6) not null,
-    updated_at datetime(6) not null,
-    resolved_at datetime(6),
-    author_id bigint not null,
-    title varchar(200) not null,
-    content TEXT not null,
-    image_urls TEXT,
-    progress integer not null,
-    comment_count integer not null,
-    type enum ('BUG','ETC','FEATURE','IMPROVEMENT') not null,
-    status enum ('CONFIRMED','IN_PROGRESS','ON_HOLD','RECEIVED','REJECTED','RESOLVED') not null,
+    id bigint not null auto_increment COMMENT 'PK',
+    created_at datetime(6) not null COMMENT '생성 일시',
+    updated_at datetime(6) not null COMMENT '수정 일시',
+    resolved_at datetime(6) COMMENT '처리 완료 일시',
+    author_id bigint not null COMMENT '작성자(users.id)',
+    title varchar(200) not null COMMENT '제목',
+    content TEXT not null COMMENT '내용',
+    image_urls TEXT COMMENT '첨부 이미지 URL(목록)',
+    progress integer not null COMMENT '진척률(0~100)',
+    comment_count integer not null COMMENT '댓글 수',
+    type enum ('BUG','ETC','FEATURE','IMPROVEMENT') not null COMMENT '유형 — BUG/FEATURE/IMPROVEMENT/ETC',
+    status enum ('CONFIRMED','IN_PROGRESS','ON_HOLD','RECEIVED','REJECTED','RESOLVED') not null COMMENT '처리 상태 — RECEIVED/CONFIRMED/IN_PROGRESS/ON_HOLD/RESOLVED/REJECTED',
     primary key (id)
-) engine=InnoDB default charset=utf8mb4 collate=utf8mb4_unicode_ci;
+) engine=InnoDB default charset=utf8mb4 collate=utf8mb4_unicode_ci COMMENT='개선·문의(이슈 트래커)';
 
 create index idx_feedback_author on feedback (author_id);
 create index idx_feedback_status on feedback (status);
@@ -29,15 +29,15 @@ alter table feedback
     references users (id);
 
 create table feedback_comment (
-    id bigint not null auto_increment,
-    created_at datetime(6) not null,
-    updated_at datetime(6) not null,
-    feedback_id bigint not null,
-    author_id bigint not null,
-    is_admin_reply bit not null,
-    content TEXT not null,
+    id bigint not null auto_increment COMMENT 'PK',
+    created_at datetime(6) not null COMMENT '생성 일시',
+    updated_at datetime(6) not null COMMENT '수정 일시',
+    feedback_id bigint not null COMMENT '개선·문의(feedback.id)',
+    author_id bigint not null COMMENT '작성자(users.id)',
+    is_admin_reply bit not null COMMENT '운영팀 답변 여부',
+    content TEXT not null COMMENT '댓글 내용',
     primary key (id)
-) engine=InnoDB default charset=utf8mb4 collate=utf8mb4_unicode_ci;
+) engine=InnoDB default charset=utf8mb4 collate=utf8mb4_unicode_ci COMMENT='개선·문의 댓글';
 
 create index idx_feedback_comment_feedback on feedback_comment (feedback_id);
 

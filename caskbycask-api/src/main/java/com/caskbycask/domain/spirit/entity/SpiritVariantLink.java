@@ -4,6 +4,7 @@ import com.caskbycask.domain.spirit.entity.enums.VariantLinkType;
 import com.caskbycask.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.Comment;
 
 /**
  * 연관 술(다른 배치·병입) 수동 오버라이드 — 한 쌍(pair)당 1행.
@@ -27,22 +28,27 @@ import lombok.*;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder
+@Comment("연관 주류 링크")
 public class SpiritVariantLink extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Comment("PK")
     private Long id;
 
     /** 정규화 쌍의 작은 술 ID */
     @Column(name = "spirit_id", nullable = false)
+    @Comment("정규화 쌍의 작은 주류(spirit.id)")
     private Long spiritId;
 
     /** 정규화 쌍의 큰 술 ID */
     @Column(name = "related_spirit_id", nullable = false)
+    @Comment("정규화 쌍의 큰 주류(spirit.id)")
     private Long relatedSpiritId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "link_type", nullable = false, length = 20)
+    @Comment("링크 유형 — MANUAL/EXCLUDED")
     private VariantLinkType linkType;
 
     public void changeType(VariantLinkType linkType) {

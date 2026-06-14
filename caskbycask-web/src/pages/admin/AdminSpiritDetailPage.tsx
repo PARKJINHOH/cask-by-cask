@@ -48,6 +48,7 @@ function SpiritImageSection({ spiritId, images }: { spiritId: number; images: Ad
   const reorder = useReorderSpiritImages()
   const [lightboxIndex, setLightboxIndex] = useState(-1)
   const [order, setOrder] = useState(images)
+  const [uploading, setUploading] = useState(false)
   const dragIndexRef = useRef<number | null>(null)
 
   useEffect(() => {
@@ -56,11 +57,24 @@ function SpiritImageSection({ spiritId, images }: { spiritId: number; images: Ad
 
   const imageUrls = order.map((img) => img.imageUrl)
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    upload.mutate({ id: spiritId, file })
-    e.target.value = ''
+  // 여러 장 선택 시 순차 업로드. (백엔드가 첫 이미지를 대표로 지정하므로 순서 보장을 위해 순차 처리)
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target
+    const files = Array.from(input.files ?? [])
+    if (files.length === 0) return
+    setUploading(true)
+    try {
+      for (const file of files) {
+        try {
+          await upload.mutateAsync({ id: spiritId, file })
+        } catch {
+          // 일부 파일 실패해도 나머지는 계속 업로드
+        }
+      }
+    } finally {
+      setUploading(false)
+      input.value = ''
+    }
   }
 
   const handleDrop = (dropIdx: number) => {
@@ -83,7 +97,7 @@ function SpiritImageSection({ spiritId, images }: { spiritId: number; images: Ad
           variant="secondary"
           size="sm"
           onClick={() => fileRef.current?.click()}
-          isLoading={upload.isPending}
+          isLoading={uploading}
         >
           + 이미지 추가
         </Button>
@@ -91,6 +105,7 @@ function SpiritImageSection({ spiritId, images }: { spiritId: number; images: Ad
           ref={fileRef}
           type="file"
           accept="image/jpeg,image/png"
+          multiple
           className="hidden"
           onChange={handleFileChange}
         />

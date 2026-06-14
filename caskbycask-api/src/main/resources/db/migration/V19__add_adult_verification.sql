@@ -2,8 +2,8 @@
 -- method 컬럼은 추후 PASS(MOBILE)·소셜 로그인(SOCIAL) 연동 확장을 위한 enum.
 -- 현재 정책상 재인증 없음 → adult_verify_expires_at 은 항상 NULL(추후 정책 활성화 대비 컬럼만 추가).
 
-ALTER TABLE users ADD COLUMN adult_verified bit NOT NULL DEFAULT 0;
-ALTER TABLE users ADD COLUMN adult_verified_at datetime NULL;
-ALTER TABLE users ADD COLUMN adult_verify_method varchar(20) NULL;
-ALTER TABLE users ADD COLUMN adult_birth_date date NULL;
-ALTER TABLE users ADD COLUMN adult_verify_expires_at datetime NULL;
+ALTER TABLE users ADD COLUMN adult_verified bit NOT NULL DEFAULT 0 COMMENT '성인인증 완료 여부';
+ALTER TABLE users ADD COLUMN adult_verified_at datetime NULL COMMENT '성인인증 완료 일시';
+ALTER TABLE users ADD COLUMN adult_verify_method varchar(20) NULL COMMENT '성인인증 방식 — SELF/MOBILE/SOCIAL';
+ALTER TABLE users ADD COLUMN adult_birth_date date NULL COMMENT '생년월일(연령확인)';
+ALTER TABLE users ADD COLUMN adult_verify_expires_at datetime NULL COMMENT '성인인증 만료 일시';

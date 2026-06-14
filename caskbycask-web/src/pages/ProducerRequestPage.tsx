@@ -26,8 +26,20 @@ function ReqLabel({ children }: { children: React.ReactNode }) {
   )
 }
 
+function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-2 py-1">
+      <span className="w-20 flex-shrink-0 text-neutral-400">{label}</span>
+      <span className="flex-1 text-neutral-700 break-words">{children}</span>
+    </div>
+  )
+}
+
 function RequestCard({ item }: { item: MyProducerRequest }) {
   const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+  const none = <span className="text-neutral-300">{t('producerRequest.myRequests.notProvided')}</span>
+
   return (
     <div className="bg-white rounded-xl border border-neutral-100 p-4 space-y-2">
       <div className="flex items-start justify-between gap-3">
@@ -55,6 +67,32 @@ function RequestCard({ item }: { item: MyProducerRequest }) {
         <div className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
           <span className="font-medium">{t('producerRequest.myRequests.rejectReason')}: </span>
           {item.rejectReason}
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="text-xs text-primary-700 hover:text-primary-900 hover:underline"
+      >
+        {open ? `↑ ${t('producerRequest.myRequests.hide')}` : `↓ ${t('producerRequest.myRequests.details')}`}
+      </button>
+
+      {open && (
+        <div className="text-xs border-t border-neutral-100 pt-2">
+          <DetailRow label={t('producerRequest.myRequests.region')}>{item.region || none}</DetailRow>
+          <DetailRow label={t('producerRequest.form.website')}>
+            {item.website
+              ? <a href={item.website} target="_blank" rel="noreferrer" className="text-primary-700 hover:underline break-all">{item.website}</a>
+              : none}
+          </DetailRow>
+          <DetailRow label={t('producerRequest.form.foundedYear')}>{item.foundedYear ?? none}</DetailRow>
+          <DetailRow label={t('producerRequest.form.descriptionKo')}>
+            {item.descriptionKo ? <span className="whitespace-pre-wrap">{item.descriptionKo}</span> : none}
+          </DetailRow>
+          <DetailRow label={t('producerRequest.form.descriptionEn')}>
+            {item.descriptionEn ? <span className="whitespace-pre-wrap">{item.descriptionEn}</span> : none}
+          </DetailRow>
         </div>
       )}
     </div>

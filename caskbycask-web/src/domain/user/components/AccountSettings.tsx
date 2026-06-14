@@ -7,8 +7,10 @@ import { useTranslation } from 'react-i18next'
 import Input from '@/shared/components/Input'
 import Button from '@/shared/components/Button'
 import Modal from '@/shared/components/Modal'
-import { useUpdateNickname, useUpdatePassword, useDeleteMe, useResetPassword, useFixNickname, useMe, useUpdateEmailSubscription, useVerifyAdult } from '../hooks/useUser'
+import { useUpdateNickname, useUpdatePassword, useDeleteMe, useResetPassword, useFixNickname, useMe, useUpdateEmailSubscription, useVerifyAdult, useSocialAccounts, useUnlinkSocial } from '../hooks/useUser'
 import ProfileImageSection from './ProfileImageSection'
+import { startOAuth } from '@/domain/auth/oauth'
+import type { SocialProvider } from '@/domain/auth/types/auth.types'
 
 // ── 설정 그룹 카드 ───────────────────────────────────────────
 
@@ -606,6 +608,123 @@ function AdultVerificationSection() {
   )
 }
 
+// ── 소셜 로그인 연동 ─────────────────────────────────────────
+
+function LinkIcon() {
+  return (
+    <svg className={ICON_CLS} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L11.5 4.5" />
+      <path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 0 0 7.07 7.07L12.5 19.5" />
+    </svg>
+  )
+}
+
+const SOCIAL_PROVIDERS: SocialProvider[] = ['NAVER', 'GOOGLE']
+
+function SocialLinkSection() {
+  const { t } = useTranslation()
+  const { data, isLoading } = useSocialAccounts()
+  const unlink = useUnlinkSocial()
+  const [busy, setBusy] = useState<SocialProvider | null>(null)
+  const [error, setError] = useState('')
+
+  const accounts = data?.accounts ?? []
+  const hasPassword = data?.hasPassword ?? true
+  const linkedCount = accounts.length
+
+  const handleConnect = async (provider: SocialProvider) => {
+    setError('')
+    setBusy(provider)
+    try {
+      // 'link' 모드 — 콜백이 현재 로그인 계정에 직접 연동 후 마이페이지로 복귀
+      await startOAuth(provider, 'link', '/mypage?tab=settings')
+    } catch {
+      setBusy(null)
+      setError(t('mypage.social.connectError'))
+    }
+  }
+
+  const handleUnlink = async (provider: SocialProvider) => {
+    setError('')
+    setBusy(provider)
+    try {
+      await unlink.mutateAsync(provider)
+    } catch (err: unknown) {
+      const apiErr = (err as { response?: { data?: { code?: string; message?: string } } })?.response?.data
+      if (apiErr?.code === 'OAUTH_005') setError(t('mypage.social.lastMethodError'))
+      else setError(apiErr?.message ?? t('mypage.social.unlinkError'))
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  return (
+    <div className="p-5 space-y-3">
+      <div>
+        <h3 className="text-sm font-semibold text-neutral-800">{t('mypage.social.section')}</h3>
+        <p className="text-xs text-neutral-500 mt-0.5">{t('mypage.social.desc')}</p>
+      </div>
+
+      {isLoading ? (
+        <p className="text-sm text-neutral-400">{t('common.loading')}</p>
+      ) : (
+        <div className="space-y-2">
+          {SOCIAL_PROVIDERS.map((provider) => {
+            const account = accounts.find((a) => a.provider === provider)
+            const connected = !!account
+            // 마지막 로그인 수단 보호: 비밀번호 없고 연동이 1개뿐이면 해제 불가
+            const isLastMethod = connected && !hasPassword && linkedCount <= 1
+            return (
+              <div key={provider}
+                className="flex items-center justify-between gap-3 rounded-lg border border-neutral-200 px-3 py-2.5">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-neutral-800">
+                    {t(`auth.social.providerName.${provider}`)}
+                  </p>
+                  {connected ? (
+                    <p className="text-xs text-neutral-400 truncate">
+                      {account?.email || t('mypage.social.connected')}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-neutral-400">{t('mypage.social.notConnected')}</p>
+                  )}
+                </div>
+                {connected ? (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    isLoading={busy === provider && unlink.isPending}
+                    disabled={isLastMethod || busy !== null}
+                    onClick={() => handleUnlink(provider)}
+                    title={isLastMethod ? t('mypage.social.lastMethodError') : undefined}
+                  >
+                    {t('mypage.social.unlink')}
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    isLoading={busy === provider}
+                    disabled={busy !== null}
+                    onClick={() => handleConnect(provider)}
+                  >
+                    {t('mypage.social.connect')}
+                  </Button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {error && <p className="text-sm text-red-600">{error}</p>}
+      <p className="text-[11px] leading-relaxed text-neutral-500 bg-neutral-50 border border-neutral-200 rounded-md px-2 py-1.5">
+        {t('mypage.social.notice')}
+      </p>
+    </div>
+  )
+}
+
 // ── 회원 탈퇴 ───────────────────────────────────────────────
 
 const DELETE_CONFIRM_WORD = '삭제'
@@ -737,6 +856,14 @@ export default function AccountSettings() {
       >
         <PasswordSection />
         <TempPasswordSection />
+      </SettingsGroup>
+
+      <SettingsGroup
+        icon={<LinkIcon />}
+        title={t('mypage.social.section')}
+        description={t('mypage.social.desc')}
+      >
+        <SocialLinkSection />
       </SettingsGroup>
 
       <SettingsGroup

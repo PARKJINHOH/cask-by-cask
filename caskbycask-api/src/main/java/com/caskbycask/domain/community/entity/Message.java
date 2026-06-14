@@ -4,6 +4,7 @@ import com.caskbycask.domain.user.entity.User;
 import com.caskbycask.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.Comment;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,22 +19,27 @@ public class Message extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Comment("PK")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sender_id", nullable = false)
+    @Comment("발신자(users.id)")
     private User sender;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "receiver_id", nullable = false)
+    @Comment("수신자(users.id)")
     private User receiver;
 
     @Builder.Default
     @Column(nullable = false)
+    @Comment("발신자 삭제 여부")
     private Boolean isDeletedBySender = false;
 
     @Builder.Default
     @Column(nullable = false)
+    @Comment("수신자 삭제 여부")
     private Boolean isDeletedByReceiver = false;
 
     @Builder.Default

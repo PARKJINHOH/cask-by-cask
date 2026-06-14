@@ -2,6 +2,7 @@ package com.caskbycask.domain.event.repository;
 
 import com.caskbycask.domain.event.entity.CalendarEvent;
 import com.caskbycask.domain.event.entity.enums.EventCategory;
+import com.caskbycask.domain.event.entity.enums.EventSource;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -54,4 +55,9 @@ public interface CalendarEventRepository extends JpaRepository<CalendarEvent, Lo
             ORDER BY e.startDate ASC, e.id ASC
             """)
     List<CalendarEvent> findUpcoming(@Param("today") LocalDate today, Pageable pageable);
+
+    /**
+     * 관리자용: 특정 출처(예: USER 제보)의 전체 이벤트를 최근 등록순으로.
+     */
+    List<CalendarEvent> findBySourceOrderByCreatedAtDesc(EventSource source);
 }

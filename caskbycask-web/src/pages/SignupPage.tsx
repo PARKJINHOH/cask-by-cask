@@ -9,6 +9,7 @@ import { authApi } from '@/domain/auth/api/authApi'
 import Button from '@/shared/components/Button'
 import Input from '@/shared/components/Input'
 import SeoMeta from '@/shared/components/SeoMeta'
+import SocialLoginButtons from '@/domain/auth/components/SocialLoginButtons'
 import type { ApiResponse } from '@/shared/types/common.types'
 import { useLegalLatest } from '@/domain/legal/hooks/useLegal'
 import { sanitizeHtml } from '@/shared/utils/sanitize'
@@ -635,6 +636,11 @@ export default function SignupPage() {
             가입하기
           </Button>
         </form>
+
+        {/* 소셜 로그인으로 가입 */}
+        <div className="mt-5">
+          <SocialLoginButtons />
+        </div>
 
         {/* Footer */}
         <p className="mt-6 text-center text-sm text-neutral-500">

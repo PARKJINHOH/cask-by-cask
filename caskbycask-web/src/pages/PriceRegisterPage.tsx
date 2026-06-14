@@ -385,6 +385,7 @@ export default function PriceRegisterPage() {
         <Section label={t('price.register.purchasedAt')}>
           <input
             type="date"
+            max="9999-12-31"
             value={purchasedAt}
             onChange={(e) => setPurchasedAt(e.target.value)}
             className="border border-neutral-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-200"

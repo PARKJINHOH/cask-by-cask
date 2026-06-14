@@ -1,10 +1,15 @@
 package com.caskbycask.domain.user.service;
 
 import com.caskbycask.domain.user.entity.User;
+import com.caskbycask.domain.user.entity.UserSocialAccount;
 import com.caskbycask.domain.user.entity.enums.Role;
+import com.caskbycask.domain.user.entity.enums.SocialProvider;
 import com.caskbycask.domain.user.policy.AccountPolicy;
 import com.caskbycask.domain.user.repository.UserRepository;
+import com.caskbycask.domain.user.repository.UserSocialAccountRepository;
 import com.caskbycask.global.auth.jwt.RefreshTokenRepository;
+import com.caskbycask.global.auth.oauth.OAuthClientRegistry;
+import com.caskbycask.global.auth.oauth.OAuthTokenCipher;
 import com.caskbycask.global.storage.FileStorageService;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -39,9 +44,12 @@ public class AccountHardDeleteService {
     private EntityManager em;
 
     private final UserRepository userRepository;
+    private final UserSocialAccountRepository socialAccountRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final FileStorageService fileStorageService;
     private final PasswordEncoder passwordEncoder;
+    private final OAuthClientRegistry oAuthClientRegistry;
+    private final OAuthTokenCipher oAuthTokenCipher;
 
     @Transactional
     public void hardDelete(Long userId) {
@@ -51,6 +59,10 @@ public class AccountHardDeleteService {
         }
         String profileImageUrl = user.getProfileImageUrl();
         Long sentinelId = getOrCreateSentinelId();
+
+        // 제공자(네이버·구글) 연결 해지 — 영속성 컨텍스트 정리 전에 토큰을 추출해 best-effort 호출.
+        // (네이버 grant_type=delete / 구글 revoke. 실패해도 탈퇴는 계속 진행)
+        revokeSocialConnections(userId);
 
         // 영속성 컨텍스트의 관리 엔티티(target/sentinel)를 분리 — 이후 네이티브 DML과 충돌 방지
         em.flush();
@@ -113,6 +125,8 @@ public class AccountHardDeleteService {
         // 본인이 신청한 등록 요청
         exec("DELETE FROM spirit_register_request WHERE user_id = :uid", userId);
         exec("DELETE FROM producer_register_request WHERE user_id = :uid", userId);
+        // 소셜 연동 매핑 (제공자 토큰 포함) 물리 삭제
+        exec("DELETE FROM user_social_account WHERE user_id = :uid", userId);
         // 권한 컬렉션
         exec("DELETE FROM user_board_permissions WHERE user_id = :uid", userId);
 
@@ -123,6 +137,22 @@ public class AccountHardDeleteService {
         // DB 정리 성공 후 프로필 이미지 파일 삭제
         if (profileImageUrl != null) {
             deleteProfileImage(profileImageUrl);
+        }
+    }
+
+    /** 제공자측 연결 해지 — 저장된 refresh token 을 복호화해 네이버 grant_type=delete / 구글 revoke 호출. */
+    private void revokeSocialConnections(Long userId) {
+        for (UserSocialAccount account : socialAccountRepository.findByUserId(userId)) {
+            try {
+                String refresh = oAuthTokenCipher.decrypt(account.getProviderRefreshTokenEnc());
+                if (refresh != null) {
+                    SocialProvider provider = account.getProvider();
+                    oAuthClientRegistry.get(provider).unlink(refresh);
+                }
+            } catch (Exception e) {
+                log.warn("탈퇴 — 소셜 연결 해지 실패(best-effort): provider={}, {}",
+                        account.getProvider(), e.getMessage());
+            }
         }
     }
 

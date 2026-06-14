@@ -7,7 +7,7 @@
 --       해당 생산자의 모든 술이 별칭으로도 검색된다.
 -- =============================================================================
 
-ALTER TABLE producer ADD COLUMN search_keywords VARCHAR(300) NULL;
+ALTER TABLE producer ADD COLUMN search_keywords VARCHAR(300) NULL COMMENT '검색 별칭(공백/콤마 구분)';
 
 -- 카뮈(Camus) — 국내 통용 표기 '까뮤'로도 검색되도록 별칭 부여
 UPDATE producer

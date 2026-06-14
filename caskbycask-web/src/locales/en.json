@@ -129,6 +129,31 @@
       "festival": "Festival",
       "event": "Event",
       "etc": "Other"
+    },
+    "suggest": {
+      "button": "Suggest Event",
+      "title": "Suggest an Event",
+      "subtitle": "Share a release, festival, or event you know about. It will appear on the calendar after review.",
+      "name": "Event name",
+      "namePlaceholder": "e.g. OO Whisky release, OO Makgeolli festival",
+      "category": "Category",
+      "startDate": "Start date",
+      "endDate": "End date",
+      "endDateHint": "(optional · single day if empty)",
+      "link": "Reference link",
+      "linkHint": "(optional)",
+      "description": "Details",
+      "descriptionHint": "(optional)",
+      "descriptionPlaceholder": "Enter the event details.",
+      "submit": "Submit",
+      "cancel": "Cancel",
+      "success": "Thanks! Your suggestion has been submitted and will appear after review.",
+      "error": "Something went wrong. Please check your input.",
+      "loginRequired": "Please log in to suggest an event.",
+      "errTitle": "Please enter an event name.",
+      "errStartDate": "Please select a start date.",
+      "errDateRange": "The end date must be on or after the start date.",
+      "errLink": "The reference link must be a valid URL starting with http:// or https://."
     }
   },
   "spiritRequest": {
@@ -273,7 +298,11 @@
       },
       "rejectReason": "Rejection Reason",
       "requestedAt": "Requested",
-      "reviewedAt": "Reviewed"
+      "reviewedAt": "Reviewed",
+      "region": "Region",
+      "details": "View details",
+      "hide": "Hide",
+      "notProvided": "Not provided"
     }
   },
   "auth": {
@@ -301,7 +330,43 @@
     },
     "loginRequired": "Login Required",
     "loginRequiredDesc": "You need to log in to use this feature.\nWould you like to go to the login page?",
-    "goToLogin": "Go to Login"
+    "goToLogin": "Go to Login",
+    "social": {
+      "divider": "or",
+      "naver": "Continue with Naver",
+      "google": "Continue with Google",
+      "providerName": {
+        "NAVER": "Naver",
+        "GOOGLE": "Google"
+      },
+      "processing": "Processing social login...",
+      "startError": "Couldn't start social login. Please try again later.",
+      "callbackError": "Social login failed. Please try again."
+    },
+    "oauthSignup": {
+      "title": "Social Sign Up",
+      "subtitle": "Complete your sign up with {{provider}}",
+      "nicknameHint": "2-8 chars, Korean/English/numbers",
+      "agreeEmail": "Agree to receive emails (optional)",
+      "sendCode": "Send code",
+      "resendCode": "Resend code",
+      "code": "Verification code",
+      "codeHint": "Enter 6-digit code",
+      "codeSent": "A verification code was sent to your email. (Enter within 5 minutes)",
+      "codeSendFailed": "Failed to send the code. Please try again.",
+      "emailInvalid": "Invalid email format.",
+      "emailTaken": "This email is already in use.",
+      "emailUnverifiedNotice": "Your social account email is unverified, so email verification is required.",
+      "nicknameInvalid": "Nickname must be 2-8 characters (Korean, English, or numbers).",
+      "nicknameTaken": "This nickname is already in use.",
+      "consentRequired": "Please agree to the required terms.",
+      "codeRequired": "Please enter the 6-digit verification code.",
+      "codeInvalid": "The verification code is incorrect.",
+      "codeExpired": "The verification code has expired. Please resend it.",
+      "ticketExpired": "Your social login session expired. Please start over.",
+      "failed": "Something went wrong during sign up. Please try again.",
+      "submit": "Complete Sign Up"
+    }
   },
   "spirit": {
     "search": {
@@ -576,6 +641,18 @@
       "blockedAt": "Blocked {{date}}",
       "unblockConfirm": "Unblock {{nickname}}?",
       "unblockSuccess": "User unblocked."
+    },
+    "social": {
+      "section": "Social Login",
+      "desc": "Link your Naver/Google account to also sign in with social login.",
+      "connected": "Connected",
+      "notConnected": "Not connected",
+      "connect": "Connect",
+      "unlink": "Disconnect",
+      "connectError": "Couldn't start linking. Please try again later.",
+      "unlinkError": "Something went wrong while disconnecting. Please try again.",
+      "lastMethodError": "You can't remove your last login method. Please set a password first.",
+      "notice": "Disconnecting also severs the connection with that social provider. Social-only accounts without a password cannot remove their last linked provider."
     },
     "joinDate": "Joined",
     "profileImage": {

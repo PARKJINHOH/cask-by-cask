@@ -1,6 +1,6 @@
 import axiosInstance from '@/shared/api/axiosInstance'
 import type { ApiResponse } from '@/shared/types/common.types'
-import type { LoginRequest, LoginResponse, SignupRequest, UserInfo, VerifyEmailRequest, CheckAvailableResponse, ReactivateRequest, FindEmailResponse, PasswordResetVerifyRequest, PasswordResetConfirmRequest } from '../types/auth.types'
+import type { LoginRequest, LoginResponse, SignupRequest, UserInfo, VerifyEmailRequest, CheckAvailableResponse, ReactivateRequest, FindEmailResponse, PasswordResetVerifyRequest, PasswordResetConfirmRequest, OAuthAuthorizeUrlResponse, OAuthCallbackResponse, OAuthCodeRequest, OAuthSignupRequest } from '../types/auth.types'
 
 export const authApi = {
   login: (data: LoginRequest) =>
@@ -41,4 +41,14 @@ export const authApi = {
 
   confirmPasswordReset: (data: PasswordResetConfirmRequest) =>
     axiosInstance.post<ApiResponse<null>>('/api/auth/password-reset/confirm', data),
+
+  // ── 소셜 로그인(OAuth2) ───────────────────────────────────────
+  getOAuthAuthorizeUrl: (provider: string, redirectUri: string) =>
+    axiosInstance.post<ApiResponse<OAuthAuthorizeUrlResponse>>('/api/auth/oauth/authorize-url', { provider, redirectUri }),
+
+  oauthCallback: (data: OAuthCodeRequest) =>
+    axiosInstance.post<ApiResponse<OAuthCallbackResponse>>('/api/auth/oauth/callback', data),
+
+  oauthSignup: (data: OAuthSignupRequest) =>
+    axiosInstance.post<ApiResponse<LoginResponse>>('/api/auth/oauth/signup', data),
 }

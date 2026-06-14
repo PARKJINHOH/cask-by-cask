@@ -24,8 +24,7 @@ public enum WhiskyCaskType {
     EX_CALVADOS,
     EX_ARMAGNAC,
     EX_MEZCAL_TEQUILA,
-    NEW_OAK,
-    VIRGIN_OAK,
+    NEW_OAK, // 뉴(버진) 오크 — 버진 오크와 동일 개념으로 통합
     FRENCH_OAK,
     CHINKAPIN,
     MIZUNARA,
