@@ -4,11 +4,12 @@ import com.caskbycask.domain.inquiry.dto.InquiryRequest;
 import com.caskbycask.domain.inquiry.entity.Inquiry;
 import com.caskbycask.domain.inquiry.entity.enums.InquiryCategory;
 import com.caskbycask.domain.inquiry.repository.InquiryRepository;
-import com.caskbycask.global.email.EmailSender;
+import com.caskbycask.global.email.AsyncEmailSender;
 import com.caskbycask.global.exception.CustomException;
 import com.caskbycask.global.exception.ErrorCode;
 import com.caskbycask.global.storage.FileStorageService;
 import com.caskbycask.global.storage.ImageUploadResult;
+import com.caskbycask.global.util.ImageMagicByteValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,7 +31,8 @@ public class InquiryService {
 
     private final InquiryRepository inquiryRepository;
     private final FileStorageService fileStorageService;
-    private final EmailSender emailSender;
+    // [성능] 문의 알림 메일은 비동기로 발송 — SMTP 지연이 문의 제출 응답을 막지 않도록.
+    private final AsyncEmailSender asyncEmailSender;
 
     @Value("${app.email.inquiry-to}")
     private String inquiryTo;
@@ -102,6 +104,10 @@ public class InquiryService {
             if (!ALLOWED_EXTENSIONS.contains(ext.toLowerCase())) {
                 throw new CustomException(ErrorCode.INQUIRY_INVALID_IMAGE_FORMAT);
             }
+            // [보안] 확장자 스푸핑 차단 — 비로그인 업로드 채널이므로 Magic Bytes 까지 검증
+            if (!ImageMagicByteValidator.isSupportedImage(image)) {
+                throw new CustomException(ErrorCode.INQUIRY_INVALID_IMAGE_FORMAT);
+            }
         }
         if (totalSize > MAX_TOTAL_SIZE) {
             throw new CustomException(ErrorCode.INQUIRY_TOTAL_IMAGE_SIZE_EXCEEDED);
@@ -132,9 +138,9 @@ public class InquiryService {
         html.append("</div>");
 
         if (!contents.isEmpty()) {
-            emailSender.sendHtmlWithAttachments(inquiryTo, subject, html.toString(), contents, filenames);
+            asyncEmailSender.sendHtmlWithAttachments(inquiryTo, subject, html.toString(), contents, filenames);
         } else {
-            emailSender.sendHtml(inquiryTo, subject, html.toString());
+            asyncEmailSender.sendHtml(inquiryTo, subject, html.toString());
         }
     }
 

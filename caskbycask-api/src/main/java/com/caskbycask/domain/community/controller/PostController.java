@@ -8,6 +8,7 @@ import com.caskbycask.domain.community.service.PostImageService;
 import com.caskbycask.domain.community.service.PostService;
 import com.caskbycask.domain.community.service.PostVideoService;
 import com.caskbycask.domain.user.entity.User;
+import com.caskbycask.domain.user.entity.enums.Role;
 import com.caskbycask.domain.user.repository.UserRepository;
 import com.caskbycask.global.auth.security.CustomUserDetails;
 import com.caskbycask.global.exception.CustomException;
@@ -99,8 +100,10 @@ public class PostController {
         );
 
         Long userId   = userDetails != null ? userDetails.getUserId() : null;
-        boolean isAdmin = userDetails != null && "ROLE_ADMIN".equals(
-                userDetails.getAuthorities().iterator().next().getAuthority());
+        // [보안] 잠금/숨김 글 열람 권한 — 역할로 직접 판정.
+        //   기존 "ROLE_ADMIN" 문자열 비교는 SUPER_ADMIN 을 일반 사용자로 취급하는 버그가 있었다.
+        Role role = userDetails != null ? userDetails.getRole() : null;
+        boolean isAdmin = role == Role.SUPER_ADMIN || role == Role.ADMIN;
         String clientIp = resolveClientIp(request);
 
         return ResponseEntity.ok(ApiResponse.success(

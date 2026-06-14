@@ -75,6 +75,8 @@ public interface UserRepository extends JpaRepository<User, Long>, UserQueryRepo
 
     List<User> findAllByEmailSubscribedTrue();
 
+    long countByEmailSubscribedTrue();
+
     @Query(value = "SELECT email FROM users WHERE id = :id", nativeQuery = true)
     Optional<String> findEmailById(@Param("id") Long id);
 

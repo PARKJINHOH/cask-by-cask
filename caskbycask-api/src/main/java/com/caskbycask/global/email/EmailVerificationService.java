@@ -24,7 +24,8 @@ public class EmailVerificationService {
     private static final String RESET_COOLDOWN_PREFIX = "email:pwreset:cooldown:";
 
     private final StringRedisTemplate redisTemplate;
-    private final EmailSender emailSender;
+    // [성능] SMTP 지연/실패가 회원가입·인증 요청을 블로킹/롤백하지 않도록 비동기 발송.
+    private final AsyncEmailSender asyncEmailSender;
 
     public void sendCode(String email) {
         if (Boolean.TRUE.equals(redisTemplate.hasKey(COOLDOWN_PREFIX + email))) {
@@ -35,7 +36,7 @@ public class EmailVerificationService {
         redisTemplate.opsForValue().set(CODE_PREFIX + email, code, CODE_TTL);
         redisTemplate.opsForValue().set(COOLDOWN_PREFIX + email, "1", COOLDOWN_TTL);
 
-        emailSender.sendHtml(
+        asyncEmailSender.sendHtml(
             email,
             "[CaskByCask] 이메일 인증 코드",
             buildHtmlBody(code)
@@ -64,7 +65,7 @@ public class EmailVerificationService {
         redisTemplate.opsForValue().set(RESET_CODE_PREFIX + email, code, CODE_TTL);
         redisTemplate.opsForValue().set(RESET_COOLDOWN_PREFIX + email, "1", COOLDOWN_TTL);
 
-        emailSender.sendHtml(
+        asyncEmailSender.sendHtml(
             email,
             "[CaskByCask] 비밀번호 재설정 인증 코드",
             buildResetHtmlBody(code)

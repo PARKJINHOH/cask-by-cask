@@ -27,8 +27,9 @@ public class StoreController {
             @RequestParam(required = false, defaultValue = "") String keyword,
             @RequestParam(required = false) StoreType storeType,
             @RequestParam(required = false, defaultValue = "10") int limit) {
+        // limit 하한 보정 — 0 이하가 들어오면 PageRequest.of 가 예외를 던지므로 [1,30] 으로 클램프
         return ResponseEntity.ok(ApiResponse.success(
-                storeService.searchStores(keyword, storeType, Math.min(limit, 30))));
+                storeService.searchStores(keyword, storeType, Math.max(1, Math.min(limit, 30)))));
     }
 
     @PostMapping("/suggest")

@@ -1,6 +1,21 @@
 import { SITE_NAME, DEFAULT_OG_IMAGE } from '@/shared/config/site'
 
 /**
+ * [보안] JSON-LD 를 <script> 안에 안전하게 직렬화한다.
+ * JSON.stringify 는 '<' / '/' 를 이스케이프하지 않으므로, 사용자 입력(게시글 제목·닉네임·
+ * 술 이름 등)에 '</script>' 가 들어가면 script 태그를 닫고 임의 스크립트가 실행될 수 있다.
+ * → HTML 위험 문자와 U+2028/2029(JS 문자열 줄바꿈)를 유니코드 이스케이프하여 breakout 차단.
+ */
+function serializeJsonLd(schema: object): string {
+  return JSON.stringify({ '@context': 'https://schema.org', ...schema })
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029')
+}
+
+/**
  * 페이지별 SEO/OG/JSON-LD 메타 설정 컴포넌트.
  *
  * React 19 의 메타 태그 자동 hoist 기능 활용 — 별도 helmet 라이브러리 불필요.
@@ -95,9 +110,7 @@ export default function SeoMeta({
         <script
           key={`ld-${idx}`}
           type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({ '@context': 'https://schema.org', ...schema }),
-          }}
+          dangerouslySetInnerHTML={{ __html: serializeJsonLd(schema) }}
         />
       ))}
     </>

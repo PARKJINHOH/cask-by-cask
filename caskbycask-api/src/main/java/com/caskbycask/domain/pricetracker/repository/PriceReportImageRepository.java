@@ -12,6 +12,9 @@ public interface PriceReportImageRepository extends JpaRepository<PriceReportIma
 
     List<PriceReportImage> findByPriceReportIdOrderBySortOrder(Long priceReportId);
 
+    // 관리자 목록 N+1 방지 — 페이지 내 여러 제보의 이미지를 한 번에 조회 후 메모리 그룹핑.
+    List<PriceReportImage> findByPriceReportIdInOrderByPriceReportIdAscSortOrderAsc(List<Long> priceReportIds);
+
     // 임시 이미지 조회 — 본인 업로드 + 미연결 상태 검증
     @Query("""
             SELECT i FROM PriceReportImage i

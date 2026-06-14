@@ -43,6 +43,10 @@ public class ReportService {
     public void createReport(Long reporterId, ReportRequest request) {
         validateTargetExists(request.targetType(), request.targetId());
 
+        // [악용 방지] 본인이 작성한 콘텐츠는 신고 불가 — 부계정 등으로 임계치를 채워 자작 콘텐츠를
+        //   자동 숨김시키는 어뷰징을 차단. (IMAGE 는 작성자 개념이 모호해 제외)
+        validateNotOwnContent(reporterId, request.targetType(), request.targetId());
+
         if (reportRepository.existsByReporterIdAndTargetTypeAndTargetId(
                 reporterId, request.targetType(), request.targetId())) {
             throw new CustomException(ErrorCode.ALREADY_REPORTED);
@@ -140,6 +144,19 @@ public class ReportService {
     }
 
     // ── Private helpers ────────────────────────────────────
+
+    private void validateNotOwnContent(Long reporterId, ReportTargetType targetType, Long targetId) {
+        Long authorId = switch (targetType) {
+            case REVIEW -> reviewRepository.findById(targetId)
+                    .map(r -> r.getUser().getId()).orElse(null);
+            case COMMENT -> commentRepository.findById(targetId)
+                    .map(c -> c.getUser().getId()).orElse(null);
+            case IMAGE -> null; // 작성자 개념 없음 — 자가신고 검사 제외
+        };
+        if (authorId != null && authorId.equals(reporterId)) {
+            throw new CustomException(ErrorCode.CANNOT_REPORT_OWN_CONTENT);
+        }
+    }
 
     private void validateTargetExists(ReportTargetType targetType, Long targetId) {
         boolean exists = switch (targetType) {

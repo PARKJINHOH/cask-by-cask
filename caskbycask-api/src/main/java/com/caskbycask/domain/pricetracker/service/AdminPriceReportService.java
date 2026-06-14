@@ -13,6 +13,7 @@ import com.caskbycask.domain.pricetracker.entity.enums.PriceCurrency;
 import com.caskbycask.domain.pricetracker.entity.enums.PriceReportReportStatus;
 import com.caskbycask.domain.pricetracker.entity.enums.PriceReportStatus;
 import com.caskbycask.domain.pricetracker.entity.enums.StoreType;
+import com.caskbycask.domain.pricetracker.repository.PriceDiscountItemRepository;
 import com.caskbycask.domain.pricetracker.repository.PriceReportImageRepository;
 import com.caskbycask.domain.pricetracker.repository.PriceReportRepository;
 import com.caskbycask.domain.pricetracker.repository.PriceReportReportRepository;
@@ -25,11 +26,14 @@ import com.caskbycask.global.exception.CustomException;
 import com.caskbycask.global.exception.ErrorCode;
 import com.caskbycask.global.response.PageResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -37,6 +41,7 @@ public class AdminPriceReportService {
 
     private final PriceReportRepository priceReportRepository;
     private final PriceReportImageRepository priceReportImageRepository;
+    private final PriceDiscountItemRepository priceDiscountItemRepository;
     private final PriceReportReportRepository priceReportReportRepository;
     private final StoreRepository storeRepository;
     private final UserRepository userRepository;
@@ -46,14 +51,24 @@ public class AdminPriceReportService {
     @Transactional(readOnly = true)
     public PageResponse<AdminPriceReportResponse> getPriceReports(
             PriceReportStatus status, Boolean isFlagged, Pageable pageable) {
-        return PageResponse.from(
-                priceReportRepository.findAllForAdmin(status, isFlagged, pageable)
-                        .map(report -> {
-                            List<PriceReportImage> images = priceReportImageRepository
-                                    .findByPriceReportIdOrderBySortOrder(report.getId());
-                            List<PriceDiscountItem> items = report.getDiscountItems();
-                            return AdminPriceReportResponse.from(report, images, items);
-                        }));
+        Page<PriceReport> page = priceReportRepository.findAllForAdmin(status, isFlagged, pageable);
+
+        // [N+1 방지] 페이지 내 제보 이미지·할인항목을 각각 단일 쿼리로 모아 메모리에서 그룹핑한다.
+        List<Long> reportIds = page.getContent().stream().map(PriceReport::getId).toList();
+        Map<Long, List<PriceReportImage>> imagesByReport = reportIds.isEmpty()
+                ? Map.of()
+                : priceReportImageRepository
+                        .findByPriceReportIdInOrderByPriceReportIdAscSortOrderAsc(reportIds).stream()
+                        .collect(Collectors.groupingBy(img -> img.getPriceReport().getId()));
+        Map<Long, List<PriceDiscountItem>> itemsByReport = reportIds.isEmpty()
+                ? Map.of()
+                : priceDiscountItemRepository.findByPriceReportIdIn(reportIds).stream()
+                        .collect(Collectors.groupingBy(item -> item.getPriceReport().getId()));
+
+        return PageResponse.from(page.map(report -> AdminPriceReportResponse.from(
+                report,
+                imagesByReport.getOrDefault(report.getId(), List.of()),
+                itemsByReport.getOrDefault(report.getId(), List.of()))));
     }
 
     @Transactional

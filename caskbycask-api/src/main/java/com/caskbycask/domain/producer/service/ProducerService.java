@@ -150,7 +150,9 @@ public class ProducerService {
     @Transactional
     public ProducerResponse approveProducerRequest(Long requestId, Long adminId) {
         ProducerRegisterRequest req = getProducerRequest(requestId);
-        if (req.getStatus() == RequestStatus.APPROVED) {
+        // [상태전이 가드] 검토 대기(PENDING)에서만 승인 가능 — 이미 반려(REJECTED)된 요청이
+        //   재승인되어 Producer 가 중복 생성되는 것을 방지.
+        if (req.getStatus() != RequestStatus.PENDING) {
             throw new CustomException(ErrorCode.DISTILLERY_REQUEST_NOT_EDITABLE);
         }
         User admin = getUser(adminId);

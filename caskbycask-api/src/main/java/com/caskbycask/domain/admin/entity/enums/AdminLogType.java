@@ -7,5 +7,7 @@ public enum AdminLogType {
     // 회원
     ROLE_CHANGE,
     ACCOUNT_SUSPEND,
-    ACCOUNT_DELETE
+    ACCOUNT_DELETE,
+    // 점수
+    SCORE_ADJUST
 }

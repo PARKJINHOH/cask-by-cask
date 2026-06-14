@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import ByobStatusBadge from './ByobStatusBadge'
@@ -11,7 +12,8 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
 }
 
-export default function ByobCard({ byob }: Props) {
+// [perf] BYOB 목록에서 반복 렌더 → byob 참조가 같으면 재렌더 skip.
+function ByobCard({ byob }: Props) {
   const { t } = useTranslation()
   const isFull = byob.approvedCount >= byob.maxParticipants
 
@@ -66,3 +68,5 @@ export default function ByobCard({ byob }: Props) {
     </Link>
   )
 }
+
+export default memo(ByobCard)

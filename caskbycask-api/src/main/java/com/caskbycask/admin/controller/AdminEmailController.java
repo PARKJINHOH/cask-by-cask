@@ -24,7 +24,7 @@ public class AdminEmailController {
     // ── 발송 ─────────────────────────────────────────────────────────
 
     @GetMapping("/subscribers/count")
-    public ResponseEntity<ApiResponse<Integer>> getSubscriberCount() {
+    public ResponseEntity<ApiResponse<Long>> getSubscriberCount() {
         return ResponseEntity.ok(ApiResponse.success(adminEmailService.countSubscribers()));
     }
 

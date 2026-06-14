@@ -17,6 +17,7 @@ import com.caskbycask.global.storage.ValidatedImageUploader;
 import com.caskbycask.global.storage.ValidatedImageUploader.StoredImage;
 import com.caskbycask.global.util.HtmlImageUrlExtractor;
 import com.caskbycask.global.util.HtmlSanitizer;
+import com.caskbycask.global.util.ImageUploadRateLimiter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -40,6 +41,7 @@ public class BannerService {
     private final FileStorageService fileStorageService;
     private final ValidatedImageUploader validatedImageUploader;
     private final HtmlSanitizer htmlSanitizer;
+    private final ImageUploadRateLimiter imageUploadRateLimiter;
 
     // ═══════════════════════════════════════════
     // 공개 API
@@ -206,6 +208,10 @@ public class BannerService {
 
     @Transactional
     public UploadedBannerImageResponse uploadImage(MultipartFile file, BannerImageType imageType, Long uploaderId) {
+        // [보안] 관리자 계정 탈취/오작동 시 디스크 고갈 방지 — 분당 업로드 횟수 제한 (popup 과 공유)
+        if (!imageUploadRateLimiter.isAllowed(uploaderId)) {
+            throw new CustomException(ErrorCode.BANNER_IMAGE_RATE_LIMIT_EXCEEDED);
+        }
         // [보안] 4단계 검증 + 연월별 디렉토리 저장 (공통 흐름)
         StoredImage stored = validatedImageUploader.upload(file, "banners");
 

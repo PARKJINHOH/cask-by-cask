@@ -34,6 +34,14 @@ public interface PostCommentRepository extends JpaRepository<PostComment, Long> 
     List<PostComment> findByParentIdAndAuthorIdNotInOrderByCreatedAtAsc(
             Long parentId, List<Long> authorIds);
 
+    // [N+1 방지] 여러 루트 댓글의 대댓글을 한 번에 조회 후 부모별로 그룹핑
+    List<PostComment> findByParentIdInOrderByParentIdAscCreatedAtAsc(
+            List<Long> parentIds);
+
+    // 차단 작성자 제외 배치 버전
+    List<PostComment> findByParentIdInAndAuthorIdNotInOrderByParentIdAscCreatedAtAsc(
+            List<Long> parentIds, List<Long> authorIds);
+
     // 비밀댓글 캐스케이딩: 같은 부모를 가진 형제 대댓글 중 비밀댓글이 이미 존재하는지 확인
     boolean existsByParentIdAndIsSecretTrue(Long parentId);
 

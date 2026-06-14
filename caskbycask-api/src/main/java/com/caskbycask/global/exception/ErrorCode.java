@@ -97,6 +97,7 @@ public enum ErrorCode {
     // Report
     ALREADY_REPORTED(HttpStatus.CONFLICT, "REPORT_001", "이미 신고한 항목입니다."),
     REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "REPORT_002", "신고 내역을 찾을 수 없습니다."),
+    CANNOT_REPORT_OWN_CONTENT(HttpStatus.BAD_REQUEST, "REPORT_003", "본인이 작성한 콘텐츠는 신고할 수 없습니다."),
     TARGET_NOT_FOUND(HttpStatus.NOT_FOUND, "REPORT_003", "신고 대상을 찾을 수 없습니다."),
 
     // Notice
@@ -182,6 +183,7 @@ public enum ErrorCode {
     // Legal
     LEGAL_DOCUMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "LEGAL_001", "등록된 법적 문서를 찾을 수 없습니다."),
     CANNOT_DELETE_ACTIVE_LEGAL_DOCUMENT(HttpStatus.BAD_REQUEST, "LEGAL_002", "현재 활성화된 문서는 삭제할 수 없습니다. 다른 버전을 먼저 활성화해주세요."),
+    CANNOT_EDIT_ACTIVE_LEGAL_DOCUMENT(HttpStatus.BAD_REQUEST, "LEGAL_003", "현재 활성화된 문서는 수정할 수 없습니다. 새 버전을 생성해 활성화해주세요."),
 
     // Inquiry
     INQUIRY_NOT_FOUND(HttpStatus.NOT_FOUND, "INQUIRY_001", "문의를 찾을 수 없습니다."),
@@ -194,6 +196,7 @@ public enum ErrorCode {
     BANNER_NOT_FOUND(HttpStatus.NOT_FOUND, "BANNER_001", "배너를 찾을 수 없습니다."),
     BANNER_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "BANNER_002", "배너 이미지를 찾을 수 없습니다."),
     DELETE_USED_BANNER_IMAGE(HttpStatus.BAD_REQUEST, "BANNER_003", "배너에 사용 중인 이미지는 삭제할 수 없습니다."),
+    BANNER_IMAGE_RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "BANNER_004", "이미지 업로드 횟수를 초과했습니다. 잠시 후 다시 시도해주세요."),
 
     // Storage
     STORAGE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "STORAGE_001", "파일 저장 중 오류가 발생했습니다."),
@@ -253,6 +256,7 @@ public enum ErrorCode {
     // Deal (주류 핫딜 자동수집)
     DEAL_NOT_FOUND(HttpStatus.NOT_FOUND, "DEAL_001", "핫딜을 찾을 수 없습니다."),
     DEAL_ALREADY_EXISTS(HttpStatus.CONFLICT, "DEAL_002", "이미 수집된 핫딜입니다."),
+    DEAL_ALREADY_PROCESSED(HttpStatus.CONFLICT, "DEAL_003", "이미 처리된 핫딜입니다. 검토 대기 상태에서만 승인/반려할 수 있습니다."),
 
     // Common
     NOT_FOUND(HttpStatus.NOT_FOUND, "COMMON_001", "리소스를 찾을 수 없습니다."),

@@ -24,10 +24,19 @@ export default class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // 배포 직후 chunk hash 변경 → 기존 SPA 가 못 받는 케이스
-    if (error.message?.match(/chunk|loading/i)) {
-      console.warn('Chunk load failed — reloading')
-      window.location.reload()
+    // 배포 직후 chunk hash 변경 → 기존 SPA 가 못 받는 케이스.
+    // 단, chunk 가 실제로 404(롤백·파일 누락)면 reload→실패→reload 무한루프에 빠진다.
+    // → 직전 재시도가 10초 이내면(=리로드했는데 또 실패) 억제하고 ServerErrorPage 로 fallback.
+    //   10초가 지난 뒤의 실패(세션 중 새 배포 등)는 정상적으로 다시 1회 리로드.
+    if (error.message?.match(/chunk|loading|dynamically imported/i)) {
+      const last = Number(sessionStorage.getItem('chunk-reload-ts') ?? 0)
+      if (Date.now() - last > 10_000) {
+        sessionStorage.setItem('chunk-reload-ts', String(Date.now()))
+        console.warn('Chunk load failed — reloading once')
+        window.location.reload()
+      } else {
+        console.error('[ErrorBoundary] Chunk load failed again after reload', error)
+      }
       return
     }
     // 운영 환경에서는 외부 에러 트래커(Sentry 등)로 전송

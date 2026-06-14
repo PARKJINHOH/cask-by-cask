@@ -1,5 +1,7 @@
 package com.caskbycask.admin.service;
 
+import com.caskbycask.domain.admin.entity.enums.AdminLogTargetType;
+import com.caskbycask.domain.admin.entity.enums.AdminLogType;
 import com.caskbycask.domain.score.dto.*;
 import com.caskbycask.domain.score.entity.MemberLevelConfig;
 import com.caskbycask.domain.score.entity.ScoreConfig;
@@ -7,6 +9,8 @@ import com.caskbycask.domain.score.repository.MemberLevelConfigRepository;
 import com.caskbycask.domain.score.repository.ScoreConfigRepository;
 import com.caskbycask.domain.score.repository.ScoreHistoryRepository;
 import com.caskbycask.domain.score.service.ScoreService;
+import com.caskbycask.domain.user.entity.User;
+import com.caskbycask.domain.user.repository.UserRepository;
 import com.caskbycask.global.exception.CustomException;
 import com.caskbycask.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +29,8 @@ public class AdminScoreService {
     private final MemberLevelConfigRepository memberLevelConfigRepository;
     private final ScoreHistoryRepository scoreHistoryRepository;
     private final ScoreService scoreService;
+    private final AdminLogService adminLogService;
+    private final UserRepository userRepository;
 
     // ─── 점수 설정 ──────────────────────────────────────────────────────────
 
@@ -180,5 +186,13 @@ public class AdminScoreService {
     @Transactional
     public void adminAdjust(AdminAdjustRequest request, Long adminId) {
         scoreService.adminAdjust(request.targetUserId(), request.amount(), request.description(), adminId);
+
+        // [감사추적] 점수 수동 조정은 정합성 이슈 시 행위자 추적이 필요 — AdminLog 에 기록.
+        User actor = userRepository.getByIdOrThrow(adminId);
+        String summary = String.format("회원 #%d 점수 수동 조정: %+d (사유: %s)",
+                request.targetUserId(), request.amount(),
+                request.description() == null ? "-" : request.description());
+        adminLogService.record(actor, AdminLogType.SCORE_ADJUST,
+                AdminLogTargetType.USER, request.targetUserId(), summary, null);
     }
 }

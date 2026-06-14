@@ -36,12 +36,24 @@ public class DealAdminService {
 
     @Transactional
     public void approve(Long id) {
-        getOrThrow(id).approve();
+        DealPost deal = getOrThrow(id);
+        requirePending(deal);
+        deal.approve();
     }
 
     @Transactional
     public void reject(Long id) {
-        getOrThrow(id).reject();
+        DealPost deal = getOrThrow(id);
+        requirePending(deal);
+        deal.reject();
+    }
+
+    // [상태전이 가드] 검토 대기(PENDING)에서만 승인/반려 가능 — 이미 반려된 핫딜이
+    //   재승인되어 노출되거나, 관리자 중복 클릭으로 상태가 뒤집히는 것을 방지.
+    private void requirePending(DealPost deal) {
+        if (deal.getStatus() != DealStatus.PENDING) {
+            throw new CustomException(ErrorCode.DEAL_ALREADY_PROCESSED);
+        }
     }
 
     @Transactional

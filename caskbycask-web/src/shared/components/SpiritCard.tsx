@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, memo } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import Badge from './Badge'
@@ -31,7 +31,9 @@ function PlaceholderImage() {
   )
 }
 
-export default function SpiritCard({ spirit, className = '', listView = false }: SpiritCardProps) {
+// [perf] 술 목록(메인 그리드·카탈로그)에서 다수 반복 렌더 → 필터/스크롤 등 부모 리렌더 시
+// spirit 참조가 같으면 재렌더를 건너뛰도록 memo. (props 는 데이터 전용이라 안전)
+function SpiritCard({ spirit, className = '', listView = false }: SpiritCardProps) {
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const { t, i18n } = useTranslation()
   const isEn = i18n.language === 'en'
@@ -212,3 +214,5 @@ export default function SpiritCard({ spirit, className = '', listView = false }:
     </article>
   )
 }
+
+export default memo(SpiritCard)

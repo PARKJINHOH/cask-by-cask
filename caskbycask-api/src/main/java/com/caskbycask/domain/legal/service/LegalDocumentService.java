@@ -51,6 +51,12 @@ public class LegalDocumentService {
     public LegalDocumentResponse update(Long id, UpdateLegalDocumentRequest request) {
         LegalDocument doc = legalDocumentRepository.findById(id)
                 .orElseThrow(() -> new CustomException(ErrorCode.LEGAL_DOCUMENT_NOT_FOUND));
+        // [법적 효력] 사용자가 동의한 시점의 약관 내용은 사후에 변경되면 안 된다.
+        //   활성(적용 중) 문서는 in-place 수정을 금지하고, 변경이 필요하면 새 버전을 만들어 활성화한다.
+        //   (가입 시 version 만 스냅샷되므로, 활성 문서의 content 가 바뀌면 동의 시점 내용을 재현할 수 없음)
+        if (Boolean.TRUE.equals(doc.getIsActive())) {
+            throw new CustomException(ErrorCode.CANNOT_EDIT_ACTIVE_LEGAL_DOCUMENT);
+        }
         String sanitized = htmlSanitizer.sanitizeLegal(request.content());
         doc.update(request.version(), request.content(), sanitized);
         return LegalDocumentResponse.from(doc);

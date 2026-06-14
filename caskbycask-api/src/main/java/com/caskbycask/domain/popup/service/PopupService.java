@@ -18,7 +18,7 @@ import com.caskbycask.global.storage.ValidatedImageUploader;
 import com.caskbycask.global.storage.ValidatedImageUploader.StoredImage;
 import com.caskbycask.global.util.HtmlImageUrlExtractor;
 import com.caskbycask.global.util.HtmlSanitizer;
-import com.caskbycask.global.util.PopupImageRateLimiter;
+import com.caskbycask.global.util.ImageUploadRateLimiter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -42,7 +42,7 @@ public class PopupService {
     private final FileStorageService fileStorageService;
     private final ValidatedImageUploader validatedImageUploader;
     private final HtmlSanitizer htmlSanitizer;
-    private final PopupImageRateLimiter popupImageRateLimiter;
+    private final ImageUploadRateLimiter imageUploadRateLimiter;
 
     // ═══════════════════════════════════════════
     // 공개 API
@@ -196,7 +196,7 @@ public class PopupService {
 
     @Transactional
     public UploadedPopupImageResponse uploadImage(MultipartFile file, PopupImageType imageType, Long uploaderId) {
-        if (!popupImageRateLimiter.isAllowed(uploaderId)) {
+        if (!imageUploadRateLimiter.isAllowed(uploaderId)) {
             throw new CustomException(ErrorCode.POPUP_IMAGE_RATE_LIMIT_EXCEEDED);
         }
 

@@ -7,6 +7,7 @@ import com.caskbycask.domain.deal.entity.enums.DealStatus;
 import com.caskbycask.domain.deal.service.DealAdminService;
 import com.caskbycask.global.response.ApiResponse;
 import com.caskbycask.global.response.PageResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -52,7 +53,7 @@ public class DealAdminController {
     @PatchMapping("/{id}")
     public ResponseEntity<ApiResponse<DealPostDetailResponse>> update(
             @PathVariable Long id,
-            @RequestBody UpdateDealRequest request
+            @Valid @RequestBody UpdateDealRequest request
     ) {
         return ResponseEntity.ok(ApiResponse.success(dealAdminService.update(id, request)));
     }

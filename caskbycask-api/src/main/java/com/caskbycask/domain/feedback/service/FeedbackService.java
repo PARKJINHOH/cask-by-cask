@@ -15,6 +15,7 @@ import com.caskbycask.global.exception.CustomException;
 import com.caskbycask.global.exception.ErrorCode;
 import com.caskbycask.global.storage.FileStorageService;
 import com.caskbycask.global.storage.ImageUploadResult;
+import com.caskbycask.global.util.ImageMagicByteValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -240,6 +241,10 @@ public class FeedbackService {
             totalSize += image.getSize();
             String ext = getExtension(image.getOriginalFilename());
             if (!ALLOWED_EXTENSIONS.contains(ext.toLowerCase())) {
+                throw new CustomException(ErrorCode.FEEDBACK_INVALID_IMAGE_FORMAT);
+            }
+            // [보안] 확장자 스푸핑 차단 — Magic Bytes 까지 검증
+            if (!ImageMagicByteValidator.isSupportedImage(image)) {
                 throw new CustomException(ErrorCode.FEEDBACK_INVALID_IMAGE_FORMAT);
             }
         }

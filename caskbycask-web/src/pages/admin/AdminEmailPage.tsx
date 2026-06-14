@@ -6,6 +6,7 @@ import Modal from '@/shared/components/Modal'
 import { adminEmailApi } from '@/domain/admin/api/adminEmailApi'
 import type { SendEmailResult, EmailTemplate } from '@/domain/admin/api/adminEmailApi'
 import { formatDate } from '@/shared/utils/format'
+import { sanitizeHtml } from '@/shared/utils/sanitize'
 
 // ── 결과 배너 ─────────────────────────────────────────────────────
 function ResultBanner({ result, onClose }: { result: SendEmailResult; onClose: () => void }) {
@@ -37,7 +38,7 @@ function PreviewModal({ subject, body, onClose }: { subject: string; body: strin
         <div
           className="px-5 py-5 text-sm prose prose-sm max-w-none overflow-y-auto"
           style={{ minHeight: '320px', maxHeight: '60vh' }}
-          dangerouslySetInnerHTML={{ __html: body || '<p style="color:#aaa">(본문 없음)</p>' }}
+          dangerouslySetInnerHTML={{ __html: body ? sanitizeHtml(body) : '<p style="color:#aaa">(본문 없음)</p>' }}
         />
       </div>
     </Modal>

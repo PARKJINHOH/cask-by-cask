@@ -24,8 +24,13 @@ public class AdminProducerController {
     private final ProducerService producerService;
 
     // ── 증류소 CRUD ──────────────────────────────────────────────
+    // [보안] SecurityConfig 의 /api/admin/producers/** 는 PARTNER 도 허용한다.
+    //   증류소 마스터데이터 자체의 생성/수정/삭제는 소유권 검증이 없으므로
+    //   PARTNER 가 타 증류소를 임의 변경하지 못하도록 메서드 레벨에서 ADMIN 이상으로 제한한다.
+    //   (PARTNER 의 자기 증류소 셀프 편집이 필요해지면 소유권 검증과 함께 별도 설계)
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
     public ResponseEntity<ApiResponse<ProducerResponse>> create(
             @Valid @RequestBody CreateProducerRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -33,6 +38,7 @@ public class AdminProducerController {
     }
 
     @PatchMapping("/{id}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
     public ResponseEntity<ApiResponse<ProducerResponse>> update(
             @PathVariable Long id,
             @Valid @RequestBody UpdateProducerRequest request) {
@@ -40,6 +46,7 @@ public class AdminProducerController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
         producerService.delete(id);
         return ResponseEntity.ok(ApiResponse.success());

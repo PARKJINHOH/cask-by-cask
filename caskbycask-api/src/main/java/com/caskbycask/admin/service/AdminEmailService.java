@@ -106,8 +106,9 @@ public class AdminEmailService {
         return new SendEmailResult(successCount, failCount, false);
     }
 
-    public int countSubscribers() {
-        return userRepository.findAllByEmailSubscribedTrue().size();
+    @Transactional(readOnly = true)
+    public long countSubscribers() {
+        return userRepository.countByEmailSubscribedTrue();
     }
 
     // ── 이력 ─────────────────────────────────────────────────────────

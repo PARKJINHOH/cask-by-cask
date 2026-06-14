@@ -64,16 +64,15 @@ public class CommentService {
         // 루트 댓글 ID 수집
         List<Long> rootIds = roots.stream().map(PostComment::getId).collect(Collectors.toList());
 
-        // 대댓글 일괄 로드 (차단 작성자 제외)
+        // [N+1 방지] 대댓글을 루트 ID 전체에 대해 단일 쿼리로 일괄 로드 후 부모별 그룹핑
         Map<Long, List<PostComment>> childrenMap = new HashMap<>();
         if (!rootIds.isEmpty()) {
-            rootIds.forEach(rootId -> {
-                List<PostComment> children = hasBlocks
-                        ? commentRepository.findByParentIdAndAuthorIdNotInOrderByCreatedAtAsc(
-                                rootId, blockedIds)
-                        : commentRepository.findByParentIdOrderByCreatedAtAsc(rootId);
-                childrenMap.put(rootId, children);
-            });
+            List<PostComment> allChildren = hasBlocks
+                    ? commentRepository.findByParentIdInAndAuthorIdNotInOrderByParentIdAscCreatedAtAsc(
+                            rootIds, blockedIds)
+                    : commentRepository.findByParentIdInOrderByParentIdAscCreatedAtAsc(rootIds);
+            allChildren.forEach(c ->
+                    childrenMap.computeIfAbsent(c.getParent().getId(), k -> new ArrayList<>()).add(c));
         }
 
         // 전체 댓글 ID (루트 + 대댓글) 수집
@@ -90,8 +89,20 @@ public class CommentService {
                             reactionMap.computeIfAbsent(r.getTargetId(), k -> new ArrayList<>()).add(r));
         }
 
+        // [N+1 방지] 멘션 대상 닉네임을 일괄 조회 (루트+대댓글 전체에서 수집)
+        Set<Long> mentionedIds = new HashSet<>();
+        roots.forEach(r -> { if (r.getMentionedUserId() != null) mentionedIds.add(r.getMentionedUserId()); });
+        childrenMap.values().forEach(children -> children.forEach(c -> {
+            if (c.getMentionedUserId() != null) mentionedIds.add(c.getMentionedUserId());
+        }));
+        Map<Long, String> mentionNicknames = mentionedIds.isEmpty()
+                ? Map.of()
+                : userRepository.findAllById(mentionedIds).stream()
+                        .collect(Collectors.toMap(User::getId, User::getNickname));
+
+        Set<Long> blockedSet = new HashSet<>(blockedIds);
         return roots.map(root -> toResponse(root, childrenMap.getOrDefault(root.getId(), List.of()),
-                reactionMap, userId, currentRole));
+                reactionMap, blockedSet, mentionNicknames, userId, currentRole));
     }
 
     // ═══════════════════════════════════════════
@@ -148,7 +159,7 @@ public class CommentService {
         sendCommentNotifications(saved, post, parent, request.getMentionedUserId(), userId);
 
         // 본인이 작성한 댓글이므로 role과 무관하게 항상 열람 가능 (canViewSecret 작성자 본인 분기)
-        return toResponse(saved, List.of(), Map.of(), userId, null);
+        return toResponseSingle(saved, userId, null);
     }
 
     // ═══════════════════════════════════════════
@@ -167,7 +178,7 @@ public class CommentService {
         comment.updateContent(request.getContent());
 
         // 본인이 작성한 댓글이므로 role과 무관하게 항상 열람 가능 (canViewSecret 작성자 본인 분기)
-        return toResponse(comment, List.of(), Map.of(), userId, null);
+        return toResponseSingle(comment, userId, null);
     }
 
     // ═══════════════════════════════════════════
@@ -283,14 +294,24 @@ public class CommentService {
     // Private 헬퍼
     // ═══════════════════════════════════════════
 
+    // 단일 댓글(작성/수정 응답) — 작성자 본인 기준이라 차단 집합은 비고, 멘션 닉네임만 단건 조회.
+    private PostCommentResponse toResponseSingle(PostComment comment, Long currentUserId, Role currentRole) {
+        Map<Long, String> mentionMap = comment.getMentionedUserId() == null
+                ? Map.of()
+                : userRepository.findById(comment.getMentionedUserId())
+                        .map(u -> Map.of(u.getId(), u.getNickname())).orElse(Map.of());
+        return toResponse(comment, List.of(), Map.of(), Set.of(), mentionMap, currentUserId, currentRole);
+    }
+
     private PostCommentResponse toResponse(PostComment comment, List<PostComment> children,
                                            Map<Long, List<CommentEmojiReaction>> reactionMap,
+                                           Set<Long> blockedSet, Map<Long, String> mentionNicknames,
                                            Long currentUserId, Role currentRole) {
         boolean deleted = comment.isDeleted();
 
         if (deleted) {
             List<PostCommentResponse> childResponses = children.stream()
-                    .map(child -> toResponse(child, List.of(), reactionMap, currentUserId, currentRole))
+                    .map(child -> toResponse(child, List.of(), reactionMap, blockedSet, mentionNicknames, currentUserId, currentRole))
                     .collect(Collectors.toList());
             return PostCommentResponse.builder()
                     .id(comment.getId())
@@ -312,7 +333,7 @@ public class CommentService {
         // 숨김 처리된 댓글: 내용 마스킹 + "숨김 처리된 댓글입니다" 표시. 대댓글은 유지.
         if (Boolean.TRUE.equals(comment.getIsHidden())) {
             List<PostCommentResponse> childResponses = children.stream()
-                    .map(child -> toResponse(child, List.of(), reactionMap, currentUserId, currentRole))
+                    .map(child -> toResponse(child, List.of(), reactionMap, blockedSet, mentionNicknames, currentUserId, currentRole))
                     .collect(Collectors.toList());
             return PostCommentResponse.builder()
                     .id(comment.getId())
@@ -333,8 +354,7 @@ public class CommentService {
 
         boolean blocked = currentUserId != null
                 && !comment.getAuthor().getId().equals(currentUserId)
-                && userBlockRepository.existsByBlockerIdAndBlockedId(
-                        currentUserId, comment.getAuthor().getId());
+                && blockedSet.contains(comment.getAuthor().getId());
 
         // 비밀댓글: 작성자 본인 + 게시글 작성자 + 최고관리자만 열람 가능, 그 외에는 마스킹
         boolean secretMasked = !blocked
@@ -355,15 +375,14 @@ public class CommentService {
 
         String mentionedNickname = null;
         if (!blocked && !secretMasked && comment.getMentionedUserId() != null) {
-            mentionedNickname = userRepository.findById(comment.getMentionedUserId())
-                    .map(User::getNickname).orElse(null);
+            mentionedNickname = mentionNicknames.get(comment.getMentionedUserId());
         }
 
         List<EmojiReactionSummary> emojiReactions =
                 buildEmojiReactionSummaries(reactionMap.getOrDefault(comment.getId(), List.of()), currentUserId);
 
         List<PostCommentResponse> childResponses = children.stream()
-                .map(child -> toResponse(child, List.of(), reactionMap, currentUserId, currentRole))
+                .map(child -> toResponse(child, List.of(), reactionMap, blockedSet, mentionNicknames, currentUserId, currentRole))
                 .collect(Collectors.toList());
 
         Long authorId = (blocked || secretMasked || anon) ? null : comment.getAuthor().getId();
@@ -432,7 +451,9 @@ public class CommentService {
                     "'" + post.getTitle() + "' 게시글에 답글이 달렸습니다.", boardTargetType, post.getId());
         }
         // 멘션된 사용자에게 MENTION 알림 → 게시글로 이동
-        if (mentionedUserId != null && !mentionedUserId.equals(authorId)) {
+        // [악용 방지] 멘션 대상이 작성자를 차단했다면 알림을 보내지 않는다(차단 관계 존중, 멘션 스팸 차단).
+        if (mentionedUserId != null && !mentionedUserId.equals(authorId)
+                && !userBlockRepository.existsByBlockerIdAndBlockedId(mentionedUserId, authorId)) {
             userRepository.findById(mentionedUserId).ifPresent(mentioned ->
                     notificationService.send(mentioned, NotificationType.MENTION,
                             "'" + post.getTitle() + "' 게시글에서 회원님이 멘션되었습니다.", boardTargetType, post.getId()));
