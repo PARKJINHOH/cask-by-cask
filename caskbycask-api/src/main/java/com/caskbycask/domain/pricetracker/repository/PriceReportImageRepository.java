@@ -7,8 +7,12 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface PriceReportImageRepository extends JpaRepository<PriceReportImage, Long> {
+
+    // local 프로파일 이미지 서빙용 — 저장 파일명으로 단건 조회
+    Optional<PriceReportImage> findBySavedFileName(String savedFileName);
 
     List<PriceReportImage> findByPriceReportIdOrderBySortOrder(Long priceReportId);
 

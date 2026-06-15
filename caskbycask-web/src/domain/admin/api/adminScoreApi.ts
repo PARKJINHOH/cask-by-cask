@@ -57,6 +57,7 @@ export interface GenerateLevelConfigRequest {
   maxLevel: number
   baseScore: number
   growthRate: number
+  earlyWeight: number
 }
 
 // ── 수동 점수 조정 ────────────────────────────────────────────

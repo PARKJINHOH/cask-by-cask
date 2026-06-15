@@ -30,22 +30,24 @@ function AromaItemGrid({ categories, selectedIds, onToggleId, isEn }: AromaItems
                   type="button"
                   onClick={() => onToggleId(item.id)}
                   className={[
-                    'flex flex-col items-center justify-center py-1.5 rounded-xl border w-[4.5rem]',
+                    'flex items-center gap-2 px-2.5 py-2 rounded-xl border w-[7.5rem] text-left',
                     'transition-all active:scale-95 touch-manipulation select-none',
                     isSelected
                       ? 'border-amber-400 bg-amber-50 ring-1 ring-amber-300'
                       : 'border-neutral-100 bg-white hover:border-amber-200 hover:bg-amber-50/30',
                   ].join(' ')}
                 >
-                  <span className="text-sm leading-none">{item.icon}</span>
-                  <span className={[
-                    'text-[10px] font-medium mt-0.5 leading-tight text-center',
-                    isSelected ? 'text-amber-700' : 'text-neutral-700',
-                  ].join(' ')}>
-                    {item.ko}
-                  </span>
-                  <span className="text-[9px] text-neutral-400 leading-tight text-center">
-                    {item.en}
+                  <span className="text-xl leading-none flex-shrink-0">{item.icon}</span>
+                  <span className="flex flex-col min-w-0">
+                    <span className={[
+                      'text-[13px] font-semibold leading-tight truncate',
+                      isSelected ? 'text-amber-700' : 'text-neutral-700',
+                    ].join(' ')}>
+                      {item.ko}
+                    </span>
+                    <span className="text-[11px] text-neutral-400 leading-tight truncate">
+                      {item.en}
+                    </span>
                   </span>
                 </button>
               )

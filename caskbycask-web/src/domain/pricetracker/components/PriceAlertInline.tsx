@@ -66,9 +66,10 @@ export default function PriceAlertInline({ spiritId }: { spiritId: number }) {
       <div className="flex items-center border border-neutral-300 rounded-lg overflow-hidden bg-white focus-within:ring-2 focus-within:ring-primary-200">
         <input
           value={value}
-          onChange={(e) => setValue(e.target.value)}
+          onChange={(e) => setValue(e.target.value.replace(/[^0-9]/g, ''))}
           onKeyDown={(e) => e.key === 'Enter' && submit()}
           inputMode="numeric"
+          pattern="[0-9]*"
           placeholder={t('price.alert.inputPlaceholder')}
           className="w-28 px-2.5 py-1.5 text-sm focus:outline-none"
         />

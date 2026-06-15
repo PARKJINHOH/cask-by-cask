@@ -133,11 +133,13 @@ function FormulaGenerator({
   const [maxLevel, setMaxLevel] = useState(String(DEFAULT_LEVEL_FORMULA.maxLevel))
   const [baseScore, setBaseScore] = useState(String(DEFAULT_LEVEL_FORMULA.baseScore))
   const [growthRate, setGrowthRate] = useState(String(DEFAULT_LEVEL_FORMULA.growthRate))
+  const [earlyWeight, setEarlyWeight] = useState(String(DEFAULT_LEVEL_FORMULA.earlyWeight))
 
   const f = {
     maxLevel: Math.max(2, Math.min(200, Number(maxLevel) || 0)),
     baseScore: Math.max(1, Number(baseScore) || 0),
     growthRate: Math.max(1.01, Number(growthRate) || 0),
+    earlyWeight: Math.max(0, Number(earlyWeight) || 0),
   }
   const preview = generateLevels(f)
   const sampleLevels = [1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].filter((n) => n <= f.maxLevel)
@@ -146,7 +148,8 @@ function FormulaGenerator({
   const fields = [
     { label: '최대 레벨', value: maxLevel, set: setMaxLevel, step: '1', hint: '2 ~ 200' },
     { label: '시작 점수(기준)', value: baseScore, set: setBaseScore, step: '1', hint: '곡선 스케일' },
-    { label: '증가율(배율)', value: growthRate, set: setGrowthRate, step: '0.01', hint: '1.01 이상' },
+    { label: '증가율(배율)', value: growthRate, set: setGrowthRate, step: '0.0001', hint: '1.01 이상' },
+    { label: '초반 가중', value: earlyWeight, set: setEarlyWeight, step: '1', hint: '클수록 초반이 가파름' },
   ]
 
   return (
@@ -154,11 +157,11 @@ function FormulaGenerator({
       <div>
         <p className="text-sm font-semibold text-neutral-700">공식 자동생성</p>
         <p className="text-xs text-neutral-500 mt-0.5">
-          입력값으로 1~최대레벨의 필요 점수를 한 번에 만듭니다. 곡선은 지수 형태(초반 빠르게, 후반 천천히)입니다.
+          입력값으로 1~최대레벨의 필요 점수를 한 번에 만듭니다. 지수 곡선에 초반 가중을 더해, 초반은 너무 빠르지 않게·후반은 가파르게 만듭니다.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {fields.map(({ label, value, set, step, hint }) => (
           <div key={label}>
             <label className="block text-xs font-medium text-neutral-600 mb-1">{label}</label>

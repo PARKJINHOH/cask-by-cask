@@ -120,7 +120,8 @@ public class AdminScoreService {
     }
 
     /**
-     * 공식 자동생성 — 기존 레벨 구간 전체를 지우고 baseScore/growthRate 곡선으로 1~maxLevel 재생성.
+     * 공식 자동생성 — 기존 레벨 구간 전체를 지우고 baseScore/growthRate/earlyWeight 곡선으로 1~maxLevel 재생성.
+     *   min_score = base × (rate^(level-1) − 1) + earlyWeight × (level-1)
      * 이름은 "N레벨", 임계값은 단조 증가 보장. 생성 후 전체 회원 레벨을 재계산한다.
      * (프론트 generateLevels 와 동일 공식)
      */
@@ -129,13 +130,15 @@ public class AdminScoreService {
         int maxLevel = request.maxLevel();
         int baseScore = request.baseScore();
         double growth = request.growthRate();
+        int earlyWeight = request.earlyWeight() == null ? 0 : request.earlyWeight();
 
         memberLevelConfigRepository.deleteAllInBatch();
 
         long prev = -1;
         List<MemberLevelConfig> configs = new java.util.ArrayList<>(maxLevel);
         for (int level = 1; level <= maxLevel; level++) {
-            double raw = level == 1 ? 0 : baseScore * (Math.pow(growth, level - 1) - 1);
+            double raw = level == 1 ? 0
+                    : baseScore * (Math.pow(growth, level - 1) - 1) + (double) earlyWeight * (level - 1);
             long minScore = niceRound(raw);
             if (minScore <= prev) {
                 minScore = prev + (prev < 100 ? 5 : prev < 1000 ? 10 : prev < 10000 ? 100 : 1000);
