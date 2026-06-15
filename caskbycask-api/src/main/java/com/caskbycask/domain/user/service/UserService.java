@@ -33,7 +33,7 @@ import java.util.Set;
 public class UserService {
 
     private static final long NICKNAME_CHANGE_DAYS = 60;
-    private static final long PROFILE_IMAGE_CHANGE_DAYS = 30;
+    private static final long PROFILE_IMAGE_CHANGE_DAYS = 1;
     private static final long PROFILE_IMAGE_MAX_BYTES = 2L * 1024 * 1024; // 2MB
     private static final Set<String> ALLOWED_MIME_TYPES =
             Set.of("image/jpeg", "image/png", "image/webp");

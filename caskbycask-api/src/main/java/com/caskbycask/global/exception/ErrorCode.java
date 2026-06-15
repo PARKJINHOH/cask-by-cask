@@ -27,7 +27,7 @@ public enum ErrorCode {
     NICKNAME_CHANGE_TOO_SOON(HttpStatus.BAD_REQUEST, "USER_009", "닉네임은 60일에 한 번만 변경할 수 있습니다."),
     NICKNAME_FIXED(HttpStatus.BAD_REQUEST, "USER_010", "고정닉으로 설정되어 닉네임을 변경할 수 없습니다."),
     NICKNAME_ALREADY_FIXED(HttpStatus.CONFLICT, "USER_011", "이미 고정닉으로 설정된 계정입니다."),
-    PROFILE_IMAGE_CHANGE_TOO_SOON(HttpStatus.BAD_REQUEST, "USER_012", "프로필 이미지는 30일에 한 번만 변경할 수 있습니다."),
+    PROFILE_IMAGE_CHANGE_TOO_SOON(HttpStatus.BAD_REQUEST, "USER_012", "프로필 이미지는 1일에 한 번만 변경할 수 있습니다."),
     PROFILE_IMAGE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "USER_013", "프로필 이미지 파일 크기는 2MB를 초과할 수 없습니다."),
     PROFILE_IMAGE_INVALID_FORMAT(HttpStatus.BAD_REQUEST, "USER_014", "JPG, PNG, WEBP 형식의 이미지만 업로드할 수 있습니다."),
     PROFILE_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_015", "프로필 이미지를 찾을 수 없습니다."),
