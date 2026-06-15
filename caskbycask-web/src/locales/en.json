@@ -1,7 +1,7 @@
 {
   "app": {
     "name": "CaskByCask",
-    "tagline": "Whisky · Cognac · Wine Community"
+    "tagline": "Whisky · Wine · Cognac Review Community"
   },
   "editor": {
     "spiritSearchPlaceholder": "Search a spirit to insert",
@@ -60,7 +60,7 @@
   "home": {
     "menu": {
       "title": "Spirit Archive",
-      "subtitle": "Explore and review whisky, cognac, and wine",
+      "subtitle": "Explore and review whisky, wine, and cognac",
       "explore": "Explore"
     },
     "sections": {
@@ -370,7 +370,7 @@
   },
   "spirit": {
     "search": {
-      "placeholder": "Search whisky, cognac, wine..."
+      "placeholder": "Search whisky, wine, cognac..."
     },
     "zoomImage": "Enlarge image",
     "count": "<0>{{n}}</0> spirits",
@@ -1227,7 +1227,7 @@
   "price": {
     "tab": "Price",
     "tracker": "Price Tracker",
-    "trackerDesc": "Compare actual purchase prices for whisky, cognac & wine",
+    "trackerDesc": "Compare actual purchase prices for whisky, wine & cognac",
     "registerBtn": "Register Price",
     "chart": {
       "domestic": "Domestic",

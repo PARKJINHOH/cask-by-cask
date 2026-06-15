@@ -118,7 +118,7 @@ public class EmailVerificationService {
                         <!-- Header -->
                         <tr><td style="background:#92400e;padding:28px 32px;text-align:center;">
                           <p style="margin:0;font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.5px;">CaskByCask</p>
-                          <p style="margin:6px 0 0;font-size:13px;color:#fde68a;">위스키·꼬냑·와인 리뷰 커뮤니티</p>
+                          <p style="margin:6px 0 0;font-size:13px;color:#fde68a;">위스키·와인·꼬냑 주류 리뷰 커뮤니티</p>
                         </td></tr>
                         <!-- Body -->
                         <tr><td style="padding:36px 32px 28px;">
@@ -159,7 +159,7 @@ public class EmailVerificationService {
                         <!-- Header -->
                         <tr><td style="background:#92400e;padding:28px 32px;text-align:center;">
                           <p style="margin:0;font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.5px;">CaskByCask</p>
-                          <p style="margin:6px 0 0;font-size:13px;color:#fde68a;">위스키·꼬냑·와인 리뷰 커뮤니티</p>
+                          <p style="margin:6px 0 0;font-size:13px;color:#fde68a;">위스키·와인·꼬냑 주류 리뷰 커뮤니티</p>
                         </td></tr>
                         <!-- Body -->
                         <tr><td style="padding:36px 32px 28px;">

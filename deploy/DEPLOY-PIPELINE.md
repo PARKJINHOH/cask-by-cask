@@ -10,11 +10,12 @@
 ```
 main push (코드만)
    │   ← 사용자가 Actions 탭에서 "Run workflow" 클릭 (수동)
+   │     target 선택: both(FE+BE) / api(백엔드만) / web(프론트만)
    ▼
-GitHub Actions (ubuntu-latest, x86)
-   ├─ build-api : gradle bootJar      → app.jar      (아키텍처 중립)
-   ├─ build-web : npm ci + vite build + prerender → dist/
-   └─ deploy    : scp/rsync 로 서버 전송 → 교체 스크립트 실행
+GitHub Actions (ubuntu-latest, x86) — 대상 잡만 실행, 나머지는 skipped
+   ├─ build-api : gradle bootJar      → app.jar      (아키텍처 중립)   [target=both|api]
+   ├─ build-web : npm ci + vite build + prerender → dist/              [target=both|web]
+   └─ deploy    : 빌드된 산출물만 scp/rsync 로 전송 → 해당 교체 스크립트 실행
    ▼
 서버 (Ubuntu 24.04 aarch64, Oracle Cloud 춘천)
    ├─ deploy-web.sh : dist 교체 (무중단에 가까움)
@@ -112,8 +113,11 @@ systemd: /etc/systemd/system/caskbycask-api.service (app 127.0.0.1:8080, actuato
 
 1. 코드 `main` 에 push
 2. GitHub → **Actions → "Deploy (manual)" → Run workflow** (사용자 적은 시간대 권장)
-3. build-api / build-web 병렬 빌드 → deploy 잡이 전송 + 교체
-4. `deploy-api.sh` 가 readiness 헬스체크까지 통과해야 성공 처리 (실패 시 자동 롤백)
+   - **`target` 선택**: `both`(FE+BE, 기본) / `api`(백엔드만) / `web`(프론트만)
+3. 선택한 대상만 빌드 → deploy 잡이 빌드된 산출물만 전송 + 교체 (나머지 잡은 `skipped`)
+4. 백엔드 배포 시 `deploy-api.sh` 가 readiness 헬스체크까지 통과해야 성공 처리 (실패 시 자동 롤백)
+
+> 프론트만 고쳤으면 `web`, 백엔드만 고쳤으면 `api` 를 선택해 불필요한 빌드·재시작을 건너뛴다.
 
 ---
 

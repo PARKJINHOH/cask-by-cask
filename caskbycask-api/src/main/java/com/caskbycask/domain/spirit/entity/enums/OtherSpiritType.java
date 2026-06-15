@@ -1,7 +1,7 @@
 package com.caskbycask.domain.spirit.entity.enums;
 
 /**
- * 위스키·꼬냑·와인 외 기타 주종.
+ * 위스키·와인·꼬냑 외 기타 주종.
  * category=OTHER 인 술의 세부 종류를 구분한다.
  */
 public enum OtherSpiritType {

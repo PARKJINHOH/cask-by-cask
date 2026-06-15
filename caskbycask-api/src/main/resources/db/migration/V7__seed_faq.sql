@@ -20,7 +20,7 @@ INSERT INTO faqs (language, category, question, answer, sort_order, is_active, c
 VALUES
 -- [SERVICE] CaskByCask 이용 안내
 ('KO', 'SERVICE', 'CaskByCask는 어떤 서비스인가요?',
- 'CaskByCask는 위스키·꼬냑·와인을 좋아하는 분들이 직접 마신 술을 기록하고 평점·리뷰를 남기며, 다른 애호가들과 의견을 나누는 리뷰 커뮤니티 플랫폼입니다. 다양한 술 정보를 검색하고 나만의 시음 기록을 쌓아갈 수 있습니다.',
+ 'CaskByCask는 위스키·와인·꼬냑을 좋아하는 분들이 직접 마신 술을 기록하고 평점·리뷰를 남기며, 다른 애호가들과 의견을 나누는 주류 리뷰 커뮤니티 플랫폼입니다. 다양한 술 정보를 검색하고 나만의 시음 기록을 쌓아갈 수 있습니다.',
  1, 1, NOW(6), NOW(6)),
 
 ('KO', 'SERVICE', '회원가입은 어떻게 하나요?',
@@ -101,7 +101,7 @@ INSERT INTO faqs (language, category, question, answer, sort_order, is_active, c
 VALUES
 -- [SERVICE] About CaskByCask
 ('EN', 'SERVICE', 'What is CaskByCask?',
- 'CaskByCask is a review community platform for whisky, cognac, and wine lovers. Members can log the drinks they have tasted, leave ratings and reviews, and share opinions with fellow enthusiasts. You can also search a wide range of drink information and build your own tasting journal.',
+ 'CaskByCask is a review community platform for whisky, wine, and cognac lovers. Members can log the drinks they have tasted, leave ratings and reviews, and share opinions with fellow enthusiasts. You can also search a wide range of drink information and build your own tasting journal.',
  1, 1, NOW(6), NOW(6)),
 
 ('EN', 'SERVICE', 'How do I sign up?',

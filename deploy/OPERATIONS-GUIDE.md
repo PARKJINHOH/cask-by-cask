@@ -1,6 +1,6 @@
 # CaskByCask 운영 가이드
 
-> 위스키·와인·꼬냑 리뷰 커뮤니티(caskbycask.net) 운영 매뉴얼.
+> 위스키·와인·꼬냑 주류 리뷰 커뮤니티(caskbycask.net) 운영 매뉴얼.
 > 배포 / 점검 / 관리자 우회 / 서버 중지 / 백업·복원 / 장애 대응을 한 곳에 정리한다.
 > 🔒 `CHANGE_ME` 로 표시된 값(서버 IP, 비밀번호 등)은 운영자가 직접 채운다. **이 문서에 실제 비밀값을 적지 말 것.**
 
@@ -69,14 +69,16 @@ systemd: /etc/systemd/system/caskbycask-api.service
 
 1. 변경 코드를 `main` 브랜치에 push
 2. GitHub → **Actions** 탭 → **"Deploy (manual)"** → **Run workflow** 클릭
+   - **`target` 드롭다운으로 배포 대상 선택** — `both`(FE+BE, 기본) / `api`(백엔드만) / `web`(프론트만)
    - `ref` 입력란 비워두면 `main` 배포 (기본값)
    - 🕐 **사용자 적은 시간대 권장**
-3. 자동 진행:
-   - `build-api` (gradle bootJar) + `build-web` (vite build + prerender) 병렬 빌드
-   - `deploy` 잡이 산출물을 서버로 전송 → 교체 스크립트 실행
-   - 프론트 먼저 교체(무중단에 가까움) → 백엔드 jar 교체 → 재시작 → **readiness 헬스체크**
-4. 헬스체크 통과 시 성공. **실패하면 자동으로 직전 버전으로 롤백.**
+3. 자동 진행 (대상에 해당하는 잡만 실행, 나머지는 `skipped`):
+   - `build-api` (gradle bootJar) · `build-web` (vite build + prerender) — 대상이면 병렬 빌드
+   - `deploy` 잡이 빌드된 산출물만 서버로 전송 → 해당 교체 스크립트 실행
+   - both 일 때: 프론트 먼저 교체(무중단에 가까움) → 백엔드 jar 교체 → 재시작 → **readiness 헬스체크**
+4. 백엔드 배포 시 헬스체크 통과해야 성공. **실패하면 자동으로 직전 버전으로 롤백.**
 5. 완료 시 **Slack `#server-prd` 로 결과 통보**(BE·FE·배포 단계별, `SLACK_WEBHOOK_URL` Secret 설정 시).
+   - 배포 안 한 쪽은 `⏭`(skipped) 로 표시 — 예: `백엔드 ⏭ · 프론트 ✅` (web 만 배포). 요약에 대상(`· web`)도 표기됨.
 
 ### 배포가 전송하는 것 / 안 하는 것
 

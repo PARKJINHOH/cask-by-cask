@@ -583,7 +583,7 @@ export default function MainPage() {
       <SeoMeta
         title={isEn
           ? 'CaskByCask — Whisky, Wine & Cognac Review Community'
-          : 'CaskByCask — 위스키 · 와인 · 꼬냑 리뷰 커뮤니티'}
+          : 'CaskByCask — 위스키 · 와인 · 꼬냑 주류 리뷰 커뮤니티'}
         description={isEn
           ? 'Discover whisky, wine, cognac, rum and tequila reviews. Single malt, bourbon, XO cognac ratings and tasting notes by real users.'
           : '위스키 추천·리뷰, 싱글 몰트, 꼬냑 등급(VS·VSOP·XO), 와인 빈티지 정보를 한 곳에서. 증류소·와이너리별 사용자 평점과 테이스팅 노트.'}

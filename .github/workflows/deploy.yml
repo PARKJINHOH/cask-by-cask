@@ -15,6 +15,14 @@ name: Deploy (manual)
 on:
   workflow_dispatch:
     inputs:
+      target:
+        description: "배포 대상 (both=FE+BE / api=백엔드만 / web=프론트만)"
+        type: choice
+        default: both
+        options:
+          - both
+          - api
+          - web
       ref:
         description: "배포할 브랜치/태그 (기본: main)"
         required: false
@@ -26,11 +34,12 @@ concurrency:
 
 jobs:
   build-api:
+    if: ${{ inputs.target == 'both' || inputs.target == 'api' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.inputs.ref }}
+          ref: ${{ inputs.ref }}
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -54,11 +63,12 @@ jobs:
           retention-days: 5
 
   build-web:
+    if: ${{ inputs.target == 'both' || inputs.target == 'web' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.inputs.ref }}
+          ref: ${{ inputs.ref }}
       - uses: actions/setup-node@v6
         with:
           node-version: "22"
@@ -81,16 +91,24 @@ jobs:
 
   deploy:
     needs: [build-api, build-web]
+    # 빌드 중 하나가 스킵돼도(=대상 아님) deploy 는 돌아야 한다.
+    # needs 가 skipped 면 기본적으로 의존 잡도 skipped 되므로 status 함수로 강제 실행.
+    if: ${{ !failure() && !cancelled() }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.inputs.ref }}
-      - uses: actions/download-artifact@v7
+          ref: ${{ inputs.ref }}
+      # 아티팩트 다운로드 — 해당 빌드가 실제로 성공했을 때만
+      - name: Download api jar
+        if: ${{ needs.build-api.result == 'success' }}
+        uses: actions/download-artifact@v7
         with:
           name: api-jar
           path: artifacts/api
-      - uses: actions/download-artifact@v7
+      - name: Download web dist
+        if: ${{ needs.build-web.result == 'success' }}
+        uses: actions/download-artifact@v7
         with:
           name: web-dist
           path: artifacts/web/dist
@@ -104,7 +122,8 @@ jobs:
           echo "$SSH_KEY" > ~/.ssh/id_deploy
           chmod 600 ~/.ssh/id_deploy
           ssh-keyscan -p "${SSH_PORT:-22}" -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
-      - name: Transfer artifacts + scripts
+      # 공통 디렉토리 + 운영 스크립트는 대상과 무관하게 항상 전송 (스크립트 자동 갱신 유지)
+      - name: Transfer scripts (always)
         env:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_USER: ${{ secrets.SSH_USER }}
@@ -112,15 +131,22 @@ jobs:
         run: |
           PORT="${SSH_PORT:-22}"
           SSH="ssh -i ~/.ssh/id_deploy -p $PORT $SSH_USER@$SSH_HOST"
-          $SSH 'mkdir -p /app/spring-boot /app/vite /app/scripts && rm -rf /app/vite/dist.new && mkdir -p /app/vite/dist.new'
-          # 백엔드 jar → staging
-          scp -i ~/.ssh/id_deploy -P $PORT artifacts/api/app.jar "$SSH_USER@$SSH_HOST:/app/spring-boot/app.jar.new"
-          # 프론트 dist → staging (rsync로 정확히 동기화)
-          rsync -az --delete -e "ssh -i ~/.ssh/id_deploy -p $PORT" artifacts/web/dist/ "$SSH_USER@$SSH_HOST:/app/vite/dist.new/"
+          $SSH 'mkdir -p /app/spring-boot /app/vite /app/scripts'
           # 서버 운영 스크립트 일괄 갱신 (배포/종료/점검/알림 등)
           scp -i ~/.ssh/id_deploy -P $PORT deploy/server/*.sh "$SSH_USER@$SSH_HOST:/app/scripts/"
           $SSH 'chmod +x /app/scripts/*.sh'
-      - name: Swap & restart (with health check + rollback)
+      - name: Transfer api jar
+        if: ${{ needs.build-api.result == 'success' }}
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+        run: |
+          PORT="${SSH_PORT:-22}"
+          # 백엔드 jar → staging
+          scp -i ~/.ssh/id_deploy -P $PORT artifacts/api/app.jar "$SSH_USER@$SSH_HOST:/app/spring-boot/app.jar.new"
+      - name: Transfer web dist
+        if: ${{ needs.build-web.result == 'success' }}
         env:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_USER: ${{ secrets.SSH_USER }}
@@ -128,9 +154,28 @@ jobs:
         run: |
           PORT="${SSH_PORT:-22}"
           SSH="ssh -i ~/.ssh/id_deploy -p $PORT $SSH_USER@$SSH_HOST"
-          # 프론트 먼저(무중단), 백엔드는 health check + 실패 시 롤백
-          $SSH 'bash /app/scripts/deploy-web.sh'
-          $SSH 'bash /app/scripts/deploy-api.sh'
+          $SSH 'rm -rf /app/vite/dist.new && mkdir -p /app/vite/dist.new'
+          # 프론트 dist → staging (rsync로 정확히 동기화)
+          rsync -az --delete -e "ssh -i ~/.ssh/id_deploy -p $PORT" artifacts/web/dist/ "$SSH_USER@$SSH_HOST:/app/vite/dist.new/"
+      # 교체 — 빌드된 쪽만. (프론트 먼저=무중단, 백엔드는 health check + 실패 시 롤백)
+      - name: Deploy web (swap)
+        if: ${{ needs.build-web.result == 'success' }}
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+        run: |
+          PORT="${SSH_PORT:-22}"
+          ssh -i ~/.ssh/id_deploy -p $PORT $SSH_USER@$SSH_HOST 'bash /app/scripts/deploy-web.sh'
+      - name: Deploy api (swap + health check + rollback)
+        if: ${{ needs.build-api.result == 'success' }}
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+        run: |
+          PORT="${SSH_PORT:-22}"
+          ssh -i ~/.ssh/id_deploy -p $PORT $SSH_USER@$SSH_HOST 'bash /app/scripts/deploy-api.sh'
 
   # 배포 결과 Slack 알림 — 빌드/배포 어느 단계가 깨졌는지 한 메시지로 요약.
   notify:
@@ -144,16 +189,22 @@ jobs:
           API_RESULT: ${{ needs.build-api.result }}
           WEB_RESULT: ${{ needs.build-web.result }}
           DEPLOY_RESULT: ${{ needs.deploy.result }}
-          REF: ${{ github.event.inputs.ref }}
+          REF: ${{ inputs.ref }}
+          TARGET: ${{ inputs.target }}
           ACTOR: ${{ github.actor }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           [ -n "${SLACK_WEBHOOK_URL:-}" ] || { echo "SLACK_WEBHOOK_URL 미설정 — 알림 건너뜀"; exit 0; }
           icon() { case "$1" in success) echo "✅";; failure) echo "❌";; cancelled) echo "⏹";; skipped) echo "⏭";; *) echo "❔";; esac; }
-          if [ "$API_RESULT" = success ] && [ "$WEB_RESULT" = success ] && [ "$DEPLOY_RESULT" = success ]; then
-            COLOR=good;   SUMMARY="✅ 배포 성공 (${REF:-main})"
+          # 대상 아닌 잡은 skipped — 정상으로 취급. failure/cancelled 만 실패로 본다.
+          fail=0
+          for r in "$API_RESULT" "$WEB_RESULT" "$DEPLOY_RESULT"; do
+            case "$r" in failure|cancelled) fail=1;; esac
+          done
+          if [ "$fail" = 0 ]; then
+            COLOR=good;   SUMMARY="✅ 배포 성공 (${REF:-main} · ${TARGET:-both})"
           else
-            COLOR=danger; SUMMARY="❌ 배포 실패 (${REF:-main})"
+            COLOR=danger; SUMMARY="❌ 배포 실패 (${REF:-main} · ${TARGET:-both})"
           fi
           # \n 은 JSON 문자열 안에서 그대로 개행으로 해석됨
           BODY="백엔드 $(icon "$API_RESULT") · 프론트 $(icon "$WEB_RESULT") · 배포 $(icon "$DEPLOY_RESULT")\\n실행: ${ACTOR}\\n<${RUN_URL}|GitHub Actions 로그>"
