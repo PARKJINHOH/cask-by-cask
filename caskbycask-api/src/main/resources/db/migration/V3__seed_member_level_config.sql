@@ -1,26 +1,11 @@
 -- =============================================================================
--- CaskByCask 기초데이터 — 회원 레벨(member_level_config) 100레벨 곡선 완만화 재정의
---                       + 누락된 PRICE_REGISTER 점수 시드 추가
+-- CaskByCask 기초데이터 — 회원 레벨(member_level_config) 100레벨 곡선
 -- =============================================================================
--- 작성 기준일: 2026-06-12
--- 범위:
---   1) 기존 base=50/rate=1.12 -> Lv.100 = 3,750,000 곡선이 실제 점수 획득 속도 대비
---      비현실적으로 가팔라(최고레벨 도달 불가 수준) 100레벨 곡선을 완만화.
---      base=40, rate=1.07 -> Lv.100 = 32,000 (활동적인 사용자 하루 15~20점 기준 약 4~6년).
---      공식/단조증가 보정 로직은 프론트 score.types.ts 의 generateLevels 와 동일.
---      [정리] member_level_config 를 다루던 기존 V15/V21 은 이 마이그레이션으로
---      완전히 대체되어 삭제했고(개발 단계 DB 중복 정리), V7 의 레벨 INSERT 도 제거함.
---      본 V28 이 member_level_config 의 유일한 시드 출처.
---   2) score_config 에 PRICE_REGISTER(가격정보 등록 승인) 시드 추가 — 기존에는
---      ScoreActions/코드에는 있었으나 시드가 없어 적립되지 않았음.
---
--- [주의]
---   - Flyway 버전 마이그레이션입니다. 적용 후 수정 금지(체크섬). 보정은 V29__*.sql 로 추가.
---   - name / min_score / is_active / score 는 관리자 화면에서 자유롭게 재생성/수정 가능.
--- -----------------------------------------------------------------------------
-
--- 1) 레벨 곡선 재시드
-DELETE FROM member_level_config;
+-- 통합: 구 V28 의 레벨 곡선 INSERT (구 V7/V15/V21 의 레벨 시드를 대체).
+--       base=40, rate=1.07 -> Lv.100 = 32,000 (활동적 사용자 하루 15~20점 기준 약 4~6년).
+--       공식/단조증가 보정은 프론트 score.types.ts 의 generateLevels 와 동일.
+-- [주의] name / min_score / is_active 는 관리자 화면에서 자유롭게 재생성·수정 가능.
+-- =============================================================================
 
 INSERT INTO member_level_config
     (level, name, min_score, is_active, created_at, updated_at)
@@ -125,11 +110,3 @@ VALUES
     (98, '98레벨', 28000, 1, NOW(6), NOW(6)),
     (99, '99레벨', 30000, 1, NOW(6), NOW(6)),
     (100, '100레벨', 32000, 1, NOW(6), NOW(6));
-
--- 2) 누락된 PRICE_REGISTER 점수 시드 추가
-INSERT IGNORE INTO score_config
-    (action_type, score, daily_limit, is_active, description, created_at, updated_at)
-VALUES
-    ('PRICE_REGISTER', 3, NULL, 1, '가격정보 등록 승인', NOW(6), NOW(6));
-
-SELECT 1;

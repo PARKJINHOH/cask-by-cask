@@ -60,8 +60,8 @@ public enum ErrorCode {
     SPIRIT_VARIANT_SELF_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "SPIRIT_009", "자기 자신은 연관 술로 추가할 수 없습니다."),
     INVALID_IMAGE_FORMAT(HttpStatus.BAD_REQUEST, "SPIRIT_005", "JPG, PNG 형식의 이미지만 업로드할 수 있습니다."),
     IMAGE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "SPIRIT_006", "이미지 파일 크기는 10MB를 초과할 수 없습니다."),
-    INVALID_GRAPE_PERCENTAGE(HttpStatus.BAD_REQUEST, "SPIRIT_007", "포도 품종 비율 합계는 100%를 초과할 수 없습니다."),
-    INVALID_DATE_FORMAT(HttpStatus.BAD_REQUEST, "SPIRIT_008", "날짜 형식이 올바르지 않습니다 (YYYY 또는 YYYY-MM)."),
+    INVALID_GRAPE_PERCENTAGE(HttpStatus.BAD_REQUEST, "SPIRIT_010", "포도 품종 비율 합계는 100%를 초과할 수 없습니다."),
+    INVALID_DATE_FORMAT(HttpStatus.BAD_REQUEST, "SPIRIT_011", "날짜 형식이 올바르지 않습니다 (YYYY 또는 YYYY-MM)."),
 
     // Producer
     DISTILLERY_NOT_FOUND(HttpStatus.NOT_FOUND, "DISTILLERY_001", "증류소 정보를 찾을 수 없습니다."),
@@ -97,7 +97,7 @@ public enum ErrorCode {
     // Report
     ALREADY_REPORTED(HttpStatus.CONFLICT, "REPORT_001", "이미 신고한 항목입니다."),
     REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "REPORT_002", "신고 내역을 찾을 수 없습니다."),
-    CANNOT_REPORT_OWN_CONTENT(HttpStatus.BAD_REQUEST, "REPORT_003", "본인이 작성한 콘텐츠는 신고할 수 없습니다."),
+    CANNOT_REPORT_OWN_CONTENT(HttpStatus.BAD_REQUEST, "REPORT_004", "본인이 작성한 콘텐츠는 신고할 수 없습니다."),
     TARGET_NOT_FOUND(HttpStatus.NOT_FOUND, "REPORT_003", "신고 대상을 찾을 수 없습니다."),
 
     // Notice
