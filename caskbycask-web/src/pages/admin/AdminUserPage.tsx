@@ -8,18 +8,13 @@ import Pagination from '@/shared/components/Pagination'
 import { formatDate } from '@/shared/utils/format'
 import { useAdminUsers } from '@/domain/admin/hooks/useAdminUsers'
 import type { AdminUser, AdminUserRole } from '@/domain/admin/types/admin.types'
+import { ROLE_LABELS } from '@/domain/admin/types/admin.types'
 
 // ── 상수 ────────────────────────────────────────────────────────
 
-const ROLE_LABEL: Record<AdminUserRole, string> = {
-  SUPER_ADMIN: '최고관리자',
-  ADMIN: '관리자',
-  MODERATOR: '모더레이터',
-  MEMBER: '회원',
-  PARTNER: '파트너',
-}
+const ROLE_LABEL = ROLE_LABELS
 
-const ROLE_OPTIONS: AdminUserRole[] = ['MEMBER', 'ADMIN', 'MODERATOR', 'PARTNER']
+const ROLE_OPTIONS: AdminUserRole[] = ['MEMBER', 'PARTNER', 'DISTILLERY_STAFF', 'IMPORTER', 'MODERATOR', 'ADMIN']
 
 function isSuspended(user: AdminUser): boolean {
   return !!user.suspendedUntil && new Date(user.suspendedUntil) > new Date()
@@ -189,12 +184,6 @@ export default function AdminUserPage() {
                           >
                             {ROLE_LABEL[user.role]}
                           </Badge>
-                          {user.roleTypeName && (
-                            <span className="inline-flex px-1.5 py-0.5 rounded-md
-                              bg-primary-50 border border-primary-100 text-primary-900 text-[11px] font-medium leading-tight">
-                              {user.roleTypeName}
-                            </span>
-                          )}
                           {user.producerNameKo && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md
                               bg-amber-50 border border-amber-200 text-amber-700 text-[11px] font-medium leading-tight">

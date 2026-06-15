@@ -11,10 +11,8 @@ import com.caskbycask.domain.user.dto.CreateProducerManagerRequest;
 import com.caskbycask.domain.user.dto.SuspendUserRequest;
 import com.caskbycask.domain.user.dto.UpdateBoardPermissionsRequest;
 import com.caskbycask.domain.user.dto.UserSearchCondition;
-import com.caskbycask.domain.user.entity.RoleType;
 import com.caskbycask.domain.user.entity.User;
 import com.caskbycask.domain.user.entity.enums.Role;
-import com.caskbycask.domain.user.repository.RoleTypeRepository;
 import com.caskbycask.domain.user.repository.UserRepository;
 import com.caskbycask.global.auth.security.AuthUserCache;
 import com.caskbycask.global.email.EmailSender;
@@ -46,7 +44,6 @@ public class AdminUserService {
 
     private final UserRepository userRepository;
     private final ProducerRepository producerRepository;
-    private final RoleTypeRepository roleTypeRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailSender emailSender;
     private final AdminLogService adminLogService;
@@ -93,13 +90,12 @@ public class AdminUserService {
                     .orElseThrow(() -> new CustomException(ErrorCode.DISTILLERY_NOT_FOUND));
         }
 
-        RoleType roleType = null;
-        if (request.roleTypeId() != null) {
-            roleType = roleTypeRepository.findById(request.roleTypeId())
-                    .orElseThrow(() -> new CustomException(ErrorCode.ROLE_TYPE_NOT_FOUND));
-        }
+        // 관리자(SUPER_ADMIN/ADMIN)는 전체 메뉴 접근 → allowedMenus 미저장. 비관리자만 체크한 메뉴 저장.
+        Set<String> allowedMenus = (request.role() == Role.ADMIN)
+                ? new HashSet<>()
+                : (request.allowedMenus() != null ? new HashSet<>(request.allowedMenus()) : new HashSet<>());
 
-        target.changeRole(request.role(), producer, roleType);
+        target.changeRole(request.role(), producer, allowedMenus, request.description());
 
         String newRoleName = buildRoleName(target);
         adminLogService.record(actor, AdminLogType.ROLE_CHANGE,
@@ -226,8 +222,7 @@ public class AdminUserService {
     // ── 헬퍼 ──────────────────────────────────────────────
 
     private String buildRoleName(User user) {
-        String base = user.getRole().name();
-        return user.getRoleType() != null ? base + "(" + user.getRoleType().getName() + ")" : base;
+        return user.getRole().name();
     }
 
     private String buildSuspensionEmail(String nickname, int days, LocalDateTime until, String reason) {

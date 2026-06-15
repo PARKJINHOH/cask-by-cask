@@ -161,12 +161,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/auth/password-reset/**").permitAll()
                         // 소셜 로그인 공개 엔드포인트 (인가 URL/콜백/신규가입). 연동·해제(/api/users/me/social/**)는 인증 필요.
                         .requestMatchers(HttpMethod.POST, "/api/auth/oauth/**").permitAll()
-                        .requestMatchers("/api/admin/role-types/**").hasAnyRole("SUPER_ADMIN", "ADMIN")
                         .requestMatchers("/api/admin/logs/**").hasAnyRole("SUPER_ADMIN", "ADMIN")
-                        .requestMatchers("/api/admin/spirits/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "PARTNER")
-                        .requestMatchers("/api/admin/producers/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "PARTNER")
-                        .requestMatchers("/api/admin/wineries/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "PARTNER")
-                        .requestMatchers("/api/admin/cognac-houses/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "PARTNER")
+                        .requestMatchers("/api/admin/spirits/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "PARTNER", "DISTILLERY_STAFF", "IMPORTER")
+                        .requestMatchers("/api/admin/producers/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "PARTNER", "DISTILLERY_STAFF", "IMPORTER")
+                        .requestMatchers("/api/admin/wineries/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "PARTNER", "DISTILLERY_STAFF", "IMPORTER")
+                        .requestMatchers("/api/admin/cognac-houses/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "PARTNER", "DISTILLERY_STAFF", "IMPORTER")
                         .requestMatchers("/api/admin/**").hasAnyRole("SUPER_ADMIN", "ADMIN")
                         // 개선·문의 상태/진척률 변경은 관리자(SUPER_ADMIN·ADMIN)만 — 그 외 엔드포인트는 로그인만 필요
                         .requestMatchers(HttpMethod.PATCH, "/api/feedbacks/*/status").hasAnyRole("SUPER_ADMIN", "ADMIN")

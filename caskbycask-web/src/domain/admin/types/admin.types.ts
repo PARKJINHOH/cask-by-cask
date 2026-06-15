@@ -70,7 +70,27 @@ export interface OtherDetailRequest {
 }
 
 // ── Users ──────────────────────────────────────────────────────
-export type AdminUserRole = 'SUPER_ADMIN' | 'ADMIN' | 'MODERATOR' | 'MEMBER' | 'PARTNER'
+export type AdminUserRole =
+  | 'SUPER_ADMIN'
+  | 'ADMIN'
+  | 'MODERATOR'
+  | 'MEMBER'
+  | 'PARTNER'
+  | 'DISTILLERY_STAFF'
+  | 'IMPORTER'
+
+/** 회원 상세 역할 Select 에 노출되는 할당 가능 역할 (SUPER_ADMIN/MODERATOR 제외) */
+export const ASSIGNABLE_ROLES: AdminUserRole[] = ['MEMBER', 'PARTNER', 'DISTILLERY_STAFF', 'IMPORTER', 'ADMIN']
+
+export const ROLE_LABELS: Record<AdminUserRole, string> = {
+  SUPER_ADMIN: '최고관리자',
+  ADMIN: '관리자',
+  MODERATOR: '모더레이터',
+  MEMBER: '회원',
+  PARTNER: '파트너',
+  DISTILLERY_STAFF: '증류소 관계자',
+  IMPORTER: '수입사',
+}
 
 export type BoardType = 'NOTICE' | 'FREE'
 
@@ -80,55 +100,6 @@ export const BOARD_TYPE_LABELS: Record<BoardType, string> = {
 }
 
 export const ALL_BOARD_TYPES: BoardType[] = ['FREE']
-
-export type AdminMenuKey =
-  | 'SPIRIT_REQUESTS'
-  | 'SPIRITS'
-  | 'PRODUCER_REQUESTS'
-  | 'PRODUCERS'
-
-export const ADMIN_MENU_KEY_LABELS: Record<AdminMenuKey, string> = {
-  SPIRIT_REQUESTS: '등록 요청',
-  SPIRITS: '주류 관리',
-  PRODUCER_REQUESTS: '생산자 등록 요청',
-  PRODUCERS: '생산자 관리',
-}
-
-export const ALL_ADMIN_MENU_KEYS: AdminMenuKey[] = [
-  'SPIRIT_REQUESTS',
-  'SPIRITS',
-  'PRODUCER_REQUESTS',
-  'PRODUCERS',
-]
-
-// ── RoleType ───────────────────────────────────────────────────
-export type RoleSystemType = 'ADMIN' | 'PARTNER'
-
-export interface RoleType {
-  id: number
-  name: string
-  description: string | null
-  systemRole: RoleSystemType
-  allowedMenus: AdminMenuKey[]
-  isActive: boolean
-  sortOrder: number
-}
-
-export interface CreateRoleTypeRequest {
-  name: string
-  description?: string
-  systemRole: RoleSystemType
-  allowedMenus: AdminMenuKey[]
-  sortOrder?: number
-}
-
-export interface UpdateRoleTypeRequest {
-  name: string
-  description?: string
-  allowedMenus: AdminMenuKey[]
-  isActive: boolean
-  sortOrder: number
-}
 
 // ── AdminUser ──────────────────────────────────────────────────
 export type SignupMethod = 'EMAIL' | 'NAVER' | 'GOOGLE'
@@ -145,9 +116,9 @@ export interface AdminUser {
   signupMethod: SignupMethod
   suspendedUntil: string | null
   suspendReason: string | null
-  roleTypeId: number | null
-  roleTypeName: string | null
-  allowedMenus: AdminMenuKey[] | null
+  description: string | null
+  /** 접근 허용 메뉴 키(라우트 path) 목록 */
+  allowedMenus: string[] | null
   boardPermissions: BoardType[] | null
 }
 
@@ -203,8 +174,9 @@ export interface AdminLogSearchParams {
 
 export interface ChangeRoleRequest {
   role: AdminUserRole
-  roleTypeId?: number | null
+  description?: string | null
   producerId?: number | null
+  allowedMenus: string[]
 }
 
 export interface SuspendUserRequest {

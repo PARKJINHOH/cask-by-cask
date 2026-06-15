@@ -2,7 +2,6 @@ package com.caskbycask.domain.user.dto;
 
 import com.caskbycask.domain.community.entity.enums.BoardType;
 import com.caskbycask.domain.user.entity.User;
-import com.caskbycask.domain.user.entity.enums.AdminMenuKey;
 import com.caskbycask.domain.user.entity.enums.Role;
 import com.caskbycask.domain.user.entity.enums.SignupMethod;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -38,12 +37,10 @@ public record AdminUserResponse(
         LocalDateTime suspendedUntil,
         @Schema(description = "징계 사유")
         String suspendReason,
-        @Schema(description = "역할 타입 ID")
-        Long roleTypeId,
-        @Schema(description = "역할 타입 이름")
-        String roleTypeName,
-        @Schema(description = "역할 타입 허용 메뉴 (PARTNER 역할 전용)")
-        Set<AdminMenuKey> allowedMenus,
+        @Schema(description = "관리자 메모(역할/권한 설명)")
+        String description,
+        @Schema(description = "접근 허용 메뉴 키(라우트 path) 목록")
+        List<String> allowedMenus,
         @Schema(description = "게시판 권한 (MODERATOR 역할 전용)")
         Set<BoardType> boardPermissions
 ) {
@@ -62,9 +59,8 @@ public record AdminUserResponse(
                 user.getSignupMethod(),
                 user.getSuspendedUntil(),
                 user.getSuspendReason(),
-                user.getRoleType() != null ? user.getRoleType().getId() : null,
-                user.getRoleType() != null ? user.getRoleType().getName() : null,
-                user.getRoleType() != null ? user.getRoleType().getAllowedMenus() : null,
+                user.getDescription(),
+                List.copyOf(user.getAllowedMenus()),
                 user.getRole() == Role.MODERATOR ? user.getBoardPermissions() : null
         );
     }

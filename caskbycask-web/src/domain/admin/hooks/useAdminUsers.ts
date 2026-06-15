@@ -32,8 +32,9 @@ export function useChangeRole() {
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: ChangeRoleRequest }) =>
       adminUserApi.changeRole(id, data),
-    onSuccess: () => {
+    onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-user', id] })
     },
   })
 }

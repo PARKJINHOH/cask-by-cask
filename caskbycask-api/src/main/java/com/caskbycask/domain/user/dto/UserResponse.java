@@ -1,7 +1,6 @@
 package com.caskbycask.domain.user.dto;
 
 import com.caskbycask.domain.user.entity.User;
-import com.caskbycask.domain.user.entity.enums.AdminMenuKey;
 import com.caskbycask.domain.user.entity.enums.Role;
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -35,8 +34,8 @@ public record UserResponse(
         LocalDateTime profileImageChangedAt,
         @Schema(description = "이메일 수신 동의 여부")
         Boolean emailSubscribed,
-        @Schema(description = "허용된 관리자 메뉴 (DISTILLERY 역할 전용)")
-        List<AdminMenuKey> allowedMenus,
+        @Schema(description = "허용된 관리자 메뉴 키(라우트 path) — 비관리자 역할 전용")
+        List<String> allowedMenus,
         @Schema(description = "비밀번호 변경 권고 대상 여부 (90일 이상 미변경)")
         boolean passwordChangeRequired,
         @Schema(description = "비밀번호 변경 강제 여부 (임시 비밀번호 발급 후)")
@@ -61,7 +60,7 @@ public record UserResponse(
                 user.getProfileImageUrl(),
                 user.getProfileImageChangedAt(),
                 user.getEmailSubscribed(),
-                user.getRoleType() != null ? List.copyOf(user.getRoleType().getAllowedMenus()) : List.of(),
+                List.copyOf(user.getAllowedMenus()),
                 user.isPasswordChangeRequired(),
                 Boolean.TRUE.equals(user.getMustChangePassword()),
                 user.isAdultVerified(),

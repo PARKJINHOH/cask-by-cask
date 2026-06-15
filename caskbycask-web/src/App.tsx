@@ -75,7 +75,6 @@ const AdminEventCalendarPage = lazy(() => import('@/pages/admin/AdminEventCalend
 const AdminInquiryPage = lazy(() => import('@/pages/admin/AdminInquiryPage'))
 const AdminDealListPage = lazy(() => import('@/pages/admin/AdminDealListPage'))
 const AdminDealDetailPage = lazy(() => import('@/pages/admin/AdminDealDetailPage'))
-const AdminRolePage = lazy(() => import('@/pages/admin/AdminRolePage'))
 const AdminLogPage = lazy(() => import('@/pages/admin/AdminLogPage'))
 const AdminDashboardPage = lazy(() => import('@/pages/admin/AdminDashboardPage'))
 const AdminFaqPage = lazy(() => import('@/pages/admin/AdminFaqPage'))
@@ -186,7 +185,6 @@ export default function App() {
               <Route path="emails/send" element={<AdminEmailPage />} />
               <Route path="emails/history" element={<AdminEmailHistoryPage />} />
               <Route path="inquiries" element={<AdminInquiryPage />} />
-              <Route path="roles" element={<AdminRolePage />} />
               <Route path="logs" element={<AdminLogPage />} />
               <Route path="faq" element={<AdminFaqPage />} />
               <Route path="faq/new" element={<AdminFaqFormPage />} />

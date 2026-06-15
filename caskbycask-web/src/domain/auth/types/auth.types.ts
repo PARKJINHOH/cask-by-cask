@@ -1,10 +1,11 @@
-export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'MODERATOR' | 'MEMBER' | 'PARTNER'
-
-export type AdminMenuKey =
-  | 'SPIRIT_REQUESTS'
-  | 'SPIRITS'
-  | 'PRODUCER_REQUESTS'
-  | 'PRODUCERS'
+export type UserRole =
+  | 'SUPER_ADMIN'
+  | 'ADMIN'
+  | 'MODERATOR'
+  | 'MEMBER'
+  | 'PARTNER'
+  | 'DISTILLERY_STAFF'
+  | 'IMPORTER'
 
 export interface UserInfo {
   id: number
@@ -16,7 +17,8 @@ export interface UserInfo {
   producerLogoUrl?: string
   nicknameFixed?: boolean
   profileImageUrl?: string | null
-  allowedMenus?: AdminMenuKey[]
+  /** 접근 허용 메뉴 키(라우트 path) — 비관리자 역할 전용 */
+  allowedMenus?: string[]
   passwordChangeRequired?: boolean
   mustChangePassword?: boolean
 }

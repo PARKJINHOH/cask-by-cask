@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { useParams, useNavigate, Navigate } from 'react-router-dom'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { formatDate } from '@/shared/utils/format'
@@ -16,223 +16,207 @@ import {
   useDeleteUser,
   useUpdateBoardPermissions,
 } from '@/domain/admin/hooks/useAdminUsers'
-import { useAdminRoleTypes } from '@/domain/admin/hooks/useAdminRoleTypes'
-import type { AdminUser, AdminUserRole, AdminMenuKey, BoardType, SuspendUserRequest } from '@/domain/admin/types/admin.types'
-import { BOARD_TYPE_LABELS, ALL_BOARD_TYPES } from '@/domain/admin/types/admin.types'
+import type { AdminUser, AdminUserRole, BoardType, SuspendUserRequest } from '@/domain/admin/types/admin.types'
+import {
+  ROLE_LABELS, ASSIGNABLE_ROLES, BOARD_TYPE_LABELS, ALL_BOARD_TYPES,
+} from '@/domain/admin/types/admin.types'
+import {
+  ADMIN_MENU_GROUPS, MEMBER_GROUP_LABEL, selectAllMenuPaths,
+} from '@/domain/admin/constants/adminMenu'
 
-// ── 메뉴 구조 정의 ────────────────────────────────────────────
+// 담당 증류소 선택이 필요한 역할
+const PRODUCER_ROLES: AdminUserRole[] = ['PARTNER', 'DISTILLERY_STAFF']
 
-interface MenuTreeItem {
-  label: string
-  menuKey: AdminMenuKey | null
-  subItem?: boolean
-}
+// ── 역할 및 메뉴 권한 카드 (인라인 편집) ─────────────────────────
 
-interface MenuTreeGroup {
-  groupLabel: string
-  items: MenuTreeItem[]
-}
-
-const MENU_TREE: MenuTreeGroup[] = [
-  {
-    groupLabel: '관리',
-    items: [
-      { label: '공지사항', menuKey: null },
-      { label: '배너', menuKey: null },
-      { label: '팝업', menuKey: null },
-      { label: '약관 관리', menuKey: null },
-    ],
-  },
-  {
-    groupLabel: '회원',
-    items: [
-      { label: '회원 관리', menuKey: null },
-      { label: '역할 관리', menuKey: null },
-      { label: '신고 관리', menuKey: null },
-      { label: '문의 관리', menuKey: null },
-      { label: '메일 발송', menuKey: null },
-      { label: '메일 이력', menuKey: null },
-    ],
-  },
-  {
-    groupLabel: '주류',
-    items: [
-      { label: '등록 요청', menuKey: 'SPIRIT_REQUESTS' },
-      { label: '주류 관리', menuKey: 'SPIRITS' },
-    ],
-  },
-  {
-    groupLabel: '제조사',
-    items: [
-      { label: '생산자 등록 요청', menuKey: 'PRODUCER_REQUESTS' },
-      { label: '생산자 관리', menuKey: 'PRODUCERS' },
-    ],
-  },
-  {
-    groupLabel: '레벨',
-    items: [
-      { label: '점수 설정', menuKey: null },
-      { label: '레벨 설정', menuKey: null },
-    ],
-  },
-  {
-    groupLabel: '커뮤니티',
-    items: [
-      { label: '게시글 신고', menuKey: null },
-      { label: '욕설 필터', menuKey: null },
-      { label: '이모지 관리', menuKey: null },
-      { label: '말머리 관리', menuKey: null },
-    ],
-  },
-]
-
-// ── 메뉴 트리 패널 (읽기 전용) ───────────────────────────────
-
-interface MenuTreePanelProps {
-  user: AdminUser
-}
-
-function MenuTreePanel({ user }: MenuTreePanelProps) {
-  const isPartner = user.role === 'PARTNER'
-  const allowedMenus: AdminMenuKey[] = user.allowedMenus ?? []
-
-  return (
-    <div className="w-72 flex-shrink-0 border-r border-neutral-200 flex flex-col">
-      <div className="px-4 py-3 border-b border-neutral-200 bg-neutral-50">
-        <p className="text-sm font-semibold text-neutral-700">메뉴 접근 권한</p>
-        <p className="text-xs text-neutral-400 mt-0.5">
-          {isPartner ? '역할 타입에 따라 자동 적용됩니다' : '관리자는 모든 메뉴에 접근 가능합니다'}
-        </p>
-      </div>
-
-      <div className="flex-1 overflow-y-auto py-2">
-        {MENU_TREE.map((group) => (
-          <div key={group.groupLabel} className="mb-0.5">
-            <div className="flex items-center gap-2 px-3 py-1.5">
-              <span className="w-3.5 h-3.5 flex-shrink-0" />
-              <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">
-                {group.groupLabel}
-              </span>
-            </div>
-            {group.items.map((item) => {
-              const isGrantable = item.menuKey !== null
-              const isChecked = !isPartner || (item.menuKey !== null && allowedMenus.includes(item.menuKey))
-              const isDimmed = isPartner && !isGrantable
-
-              return (
-                <div
-                  key={item.label}
-                  className={`flex items-center gap-2 py-1.5 ${item.subItem ? 'pl-10 pr-3' : 'pl-7 pr-3'}`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={isChecked}
-                    disabled
-                    readOnly
-                    className={`w-3.5 h-3.5 flex-shrink-0 ${isDimmed ? 'opacity-20' : 'accent-primary-800 opacity-70'}`}
-                  />
-                  <span className={`text-sm ${isDimmed ? 'text-neutral-300' : isChecked ? 'text-neutral-700' : 'text-neutral-400'}`}>
-                    {item.subItem && <span className="text-neutral-300 text-xs mr-1">└</span>}
-                    {item.label}
-                  </span>
-                  {isPartner && !isGrantable && (
-                    <span className="ml-auto text-[10px] text-neutral-300 font-medium">관리자 전용</span>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-// ── 역할 변경 모달 ─────────────────────────────────────────────
-
-const ROLE_LABEL: Record<AdminUserRole, string> = {
-  SUPER_ADMIN: '최고관리자', ADMIN: '관리자', MODERATOR: '모더레이터', MEMBER: '회원', PARTNER: '파트너'
-}
-const CHANGEABLE_ROLES: AdminUserRole[] = ['MEMBER', 'ADMIN', 'MODERATOR', 'PARTNER']
-
-function RoleChangeModal({ user, onClose }: { user: AdminUser; onClose: () => void }) {
-  const [role, setRole]           = useState<AdminUserRole>(user.role === 'SUPER_ADMIN' ? 'ADMIN' : user.role)
-  const [roleTypeId, setRoleTypeId] = useState<number | null>(user.roleTypeId ?? null)
-  const [producerId, setProducerId] = useState<number | null>(user.producerId ?? null)
-  const [error, setError]         = useState('')
+function RolePermissionCard({ user }: { user: AdminUser }) {
+  const [role, setRole]               = useState<AdminUserRole>(user.role)
+  const [description, setDescription] = useState(user.description ?? '')
+  const [producerId, setProducerId]   = useState<number | null>(user.producerId ?? null)
+  const [selectedMenus, setSelectedMenus] = useState<string[]>(user.allowedMenus ?? [])
+  const [error, setError] = useState('')
+  const [saved, setSaved] = useState(false)
   const changeRole = useChangeRole()
-  const { data: roleTypes = [] } = useAdminRoleTypes()
 
-  const filteredRoleTypes = roleTypes.filter((rt) =>
-    rt.isActive && (role === 'ADMIN' ? rt.systemRole === 'ADMIN' : rt.systemRole === 'PARTNER')
-  )
+  const isAdminRole  = role === 'ADMIN'
+  const isMemberRole = role === 'MEMBER'
+  const showProducer = PRODUCER_ROLES.includes(role)
+  const selectAllPaths = selectAllMenuPaths()
 
-  const handleSubmit = async () => {
+  // 현재 역할이 할당 가능 목록(증류소 관계자 등)에 없으면(MODERATOR 등) 현재 역할을 옵션에 추가
+  const roleOptions: AdminUserRole[] = ASSIGNABLE_ROLES.includes(user.role)
+    ? ASSIGNABLE_ROLES
+    : [user.role, ...ASSIGNABLE_ROLES]
+
+  const isItemChecked = (path: string) =>
+    isAdminRole ? true : selectedMenus.includes(path)
+
+  const allChecked = isAdminRole
+    || (selectAllPaths.length > 0 && selectAllPaths.every((p) => selectedMenus.includes(p)))
+
+  const toggleItem = (path: string) => {
+    setSelectedMenus((prev) =>
+      prev.includes(path) ? prev.filter((p) => p !== path) : [...prev, path],
+    )
+  }
+
+  const toggleAll = () => {
+    setSelectedMenus((prev) => {
+      const memberKept = prev.filter((p) => !selectAllPaths.includes(p))
+      const everyChecked = selectAllPaths.every((p) => prev.includes(p))
+      return everyChecked ? memberKept : [...memberKept, ...selectAllPaths]
+    })
+  }
+
+  const handleSave = async () => {
     setError('')
     try {
       await changeRole.mutateAsync({
         id: user.id,
-        data: { role, roleTypeId: roleTypeId ?? undefined, producerId: role === 'PARTNER' ? producerId : null },
+        data: {
+          role,
+          description: description.trim() || null,
+          producerId: showProducer ? producerId : null,
+          allowedMenus: isAdminRole || isMemberRole ? [] : selectedMenus,
+        },
       })
-      onClose()
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-      setError(msg ?? '역할 변경에 실패했습니다.')
+      setError(msg ?? '저장에 실패했습니다.')
     }
   }
 
   return (
-    <Modal open onClose={onClose} title="등급 변경" size="sm">
-      <div className="space-y-4">
-        <div>
-          <p className="text-xs text-neutral-500 mb-1">대상 회원</p>
-          <p className="text-sm font-semibold">{user.nickname}</p>
-          <p className="text-xs text-neutral-400">{user.email}</p>
-        </div>
+    <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
+      <div className="px-5 py-3 border-b border-neutral-100 bg-neutral-50">
+        <p className="text-sm font-semibold text-neutral-700">역할 및 메뉴 권한</p>
+        <p className="text-xs text-neutral-400 mt-0.5">역할을 지정하고, 접근 가능한 관리자 메뉴를 선택합니다.</p>
+      </div>
+
+      <div className="p-5 space-y-5">
+        {/* 역할 */}
         <div>
           <label className="block text-sm font-medium text-neutral-700 mb-1.5">역할</label>
-          <div className="flex gap-2 flex-wrap">
-            {CHANGEABLE_ROLES.map((r) => (
-              <button key={r} type="button" onClick={() => { setRole(r); setRoleTypeId(null) }}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
-                  role === r ? 'bg-primary-800 text-white border-primary-800' : 'bg-white text-neutral-600 border-neutral-200 hover:border-primary-400'
-                }`}>
-                {ROLE_LABEL[r]}
-              </button>
+          <select
+            value={role}
+            onChange={(e) => setRole(e.target.value as AdminUserRole)}
+            className="w-full max-w-xs h-9 px-3 text-sm border border-neutral-300 rounded-lg bg-white
+              focus:outline-none focus:ring-2 focus:ring-primary-400"
+          >
+            {roleOptions.map((r) => (
+              <option key={r} value={r}>{ROLE_LABELS[r]}</option>
             ))}
-          </div>
+          </select>
         </div>
-        {(role === 'ADMIN' || role === 'PARTNER') && (
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1.5">역할 타입 (선택)</label>
-            <select value={roleTypeId ?? ''} onChange={(e) => setRoleTypeId(e.target.value ? Number(e.target.value) : null)}
-              className="w-full h-9 px-3 text-sm border border-neutral-300 rounded-lg bg-white
-                focus:outline-none focus:ring-2 focus:ring-primary-400">
-              <option value="">— 선택 안 함 —</option>
-              {filteredRoleTypes.map((rt) => (
-                <option key={rt.id} value={rt.id}>{rt.name}</option>
-              ))}
-            </select>
-          </div>
-        )}
-        {role === 'MODERATOR' && (
-          <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
-            게시판 권한은 등급 변경 후 계정 상세에서 별도로 설정합니다.
-          </div>
-        )}
-        {role === 'PARTNER' && (
+
+        {/* 설명(메모) */}
+        <div>
+          <label className="block text-sm font-medium text-neutral-700 mb-1.5">
+            설명 <span className="ml-1 text-xs text-neutral-400 font-normal">(관리자 메모)</span>
+          </label>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            maxLength={500}
+            rows={2}
+            placeholder="역할/권한에 대한 메모를 입력하세요."
+            className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg resize-none
+              focus:outline-none focus:ring-2 focus:ring-primary-400"
+          />
+          <p className="text-right text-xs text-neutral-400 mt-0.5">{description.length}/500</p>
+        </div>
+
+        {/* 담당 증류소 */}
+        {showProducer && (
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-1.5">담당 증류소 (선택)</label>
-            <AdminProducerSelector value={producerId} defaultName={user.producerNameKo ?? undefined} onChange={setProducerId} />
+            <AdminProducerSelector
+              value={producerId}
+              defaultName={user.producerNameKo ?? undefined}
+              onChange={setProducerId}
+            />
           </div>
         )}
+
+        {/* 메뉴 접근 권한 */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-sm font-medium text-neutral-700">메뉴 접근 권한</label>
+            {isAdminRole && (
+              <span className="text-xs text-neutral-400">관리자는 모든 메뉴에 접근 가능합니다</span>
+            )}
+          </div>
+
+          {isMemberRole ? (
+            <div className="p-3 bg-neutral-50 border border-neutral-200 rounded-lg text-xs text-neutral-500">
+              회원 등급은 관리자 콘솔에 접근할 수 없습니다.
+            </div>
+          ) : (
+            <div className="border border-neutral-200 rounded-lg overflow-hidden">
+              {/* 전체 선택 */}
+              <label className="flex items-center gap-2 px-4 py-2.5 bg-neutral-50 border-b border-neutral-200 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={allChecked}
+                  disabled={isAdminRole}
+                  onChange={toggleAll}
+                  className="w-4 h-4 accent-primary-800 disabled:opacity-50"
+                />
+                <span className="text-sm font-semibold text-neutral-700">전체 선택</span>
+                <span className="text-[11px] text-neutral-400 font-normal">(회원 메뉴 그룹 제외)</span>
+              </label>
+
+              <div className="divide-y divide-neutral-100">
+                {ADMIN_MENU_GROUPS.map((group) => {
+                  const isMemberGroup = group.groupLabel === MEMBER_GROUP_LABEL
+                  return (
+                    <div key={group.groupLabel} className="px-4 py-3">
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">
+                          {group.groupLabel}
+                        </span>
+                        {isMemberGroup && (
+                          <span className="text-[10px] text-amber-600 font-medium">개별 선택</span>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                        {group.items.map((item) => (
+                          <label key={item.path} className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={isItemChecked(item.path)}
+                              disabled={isAdminRole}
+                              onChange={() => toggleItem(item.path)}
+                              className="w-3.5 h-3.5 accent-primary-800 disabled:opacity-50"
+                            />
+                            <span className="text-sm text-neutral-700">{item.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
         {error && <p className="text-sm text-red-600">{error}</p>}
-        <div className="flex gap-2 justify-end pt-1">
-          <Button variant="secondary" size="sm" onClick={onClose}>취소</Button>
-          <Button size="sm" onClick={handleSubmit} isLoading={changeRole.isPending}>저장</Button>
+
+        <div className="flex justify-end">
+          <Button
+            size="sm"
+            onClick={handleSave}
+            isLoading={changeRole.isPending}
+            className={saved ? 'bg-green-600 hover:bg-green-700' : ''}
+          >
+            {saved ? '저장됨 ✓' : '저장'}
+          </Button>
         </div>
       </div>
-    </Modal>
+    </div>
   )
 }
 
@@ -366,10 +350,6 @@ export default function AdminUserDetailPage() {
   const navigate = useNavigate()
   const currentUser = useAuthStore((s) => s.user)
 
-  // DISTILLERY 사용자는 접근 불가
-  if (currentUser?.role !== 'ADMIN' && currentUser?.role !== 'SUPER_ADMIN')
-    return <Navigate to="/admin" replace />
-
   const userId = Number(id)
   const { data: user, isLoading, refetch } = useAdminUser(userId)
 
@@ -378,13 +358,14 @@ export default function AdminUserDetailPage() {
   const updateBoardPerms    = useUpdateBoardPermissions()
   const [selectedBoards, setSelectedBoards] = useState<BoardType[]>([])
   const [boardsSaved, setBoardsSaved] = useState(false)
-
-  // 모더레이터 게시판 권한 초기화
   const [boardsInitialized, setBoardsInitialized] = useState(false)
 
-  const [roleModal, setRoleModal]       = useState(false)
   const [suspendModal, setSuspendModal] = useState(false)
   const [deleteModal, setDeleteModal]   = useState(false)
+
+  // 비관리자(파트너 등)는 회원 상세 접근 불가
+  if (currentUser?.role !== 'ADMIN' && currentUser?.role !== 'SUPER_ADMIN')
+    return <Navigate to="/admin" replace />
 
   // 모더레이터 게시판 권한 초기화
   if (user && !boardsInitialized) {
@@ -449,12 +430,8 @@ export default function AdminUserDetailPage() {
       </div>
 
       {/* 본문 */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* 왼쪽: 메뉴 트리 (읽기 전용) */}
-        <MenuTreePanel user={user} />
-
-        {/* 오른쪽: 사용자 정보 */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-6">
+        <div className="max-w-3xl mx-auto space-y-6">
 
           {/* 기본 정보 카드 */}
           <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
@@ -473,19 +450,12 @@ export default function AdminUserDetailPage() {
                       user.role === 'SUPER_ADMIN' ? 'danger'
                       : user.role === 'ADMIN' ? 'warning'
                       : user.role === 'MODERATOR' ? 'warning'
-                      : user.role === 'PARTNER' ? 'neutral'
                       : 'neutral'
                     }
                     size="sm"
                   >
-                    {ROLE_LABEL[user.role]}
+                    {ROLE_LABELS[user.role]}
                   </Badge>
-                  {user.roleTypeName && (
-                    <span className="px-2 py-0.5 rounded bg-primary-50 border border-primary-200
-                      text-primary-900 text-[11px] font-medium">
-                      {user.roleTypeName}
-                    </span>
-                  )}
                   {user.producerNameKo && (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md
                       bg-amber-50 border border-amber-200 text-amber-700 text-[11px] font-medium">
@@ -504,6 +474,11 @@ export default function AdminUserDetailPage() {
               />
             </div>
           </div>
+
+          {/* 역할 및 메뉴 권한 — SUPER_ADMIN은 편집 불가 */}
+          {user.role !== 'SUPER_ADMIN' && (
+            <RolePermissionCard key={user.id} user={user} />
+          )}
 
           {/* 계정 상태 카드 */}
           <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
@@ -575,35 +550,13 @@ export default function AdminUserDetailPage() {
             </div>
           )}
 
-          {/* PARTNER 역할 타입 안내 */}
-          {user.role === 'PARTNER' && (
-            <div className="bg-white rounded-xl border border-neutral-200 p-5">
-              <p className="text-sm font-semibold text-neutral-700 mb-1">메뉴 접근 권한</p>
-              {user.roleTypeName ? (
-                <p className="text-xs text-neutral-500">
-                  역할 타입 <strong className="text-primary-800">{user.roleTypeName}</strong>에 설정된 메뉴가 적용됩니다.
-                  메뉴를 변경하려면 <strong>역할 관리</strong> 페이지에서 역할 타입을 수정하세요.
-                </p>
-              ) : (
-                <p className="text-xs text-neutral-400">
-                  역할 타입이 지정되지 않아 접근 가능한 메뉴가 없습니다. 등급 변경에서 역할 타입을 선택하세요.
-                </p>
-              )}
-            </div>
-          )}
-
           {/* 계정 관리 — SUPER_ADMIN은 표시하지 않음 */}
-          {user.role !== 'SUPER_ADMIN' && (
+          {user.role !== 'SUPER_ADMIN' ? (
             <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
               <div className="px-5 py-3 border-b border-neutral-100 bg-neutral-50">
                 <p className="text-sm font-semibold text-neutral-700">계정 관리</p>
               </div>
               <div className="p-5 flex flex-wrap gap-2">
-                <button onClick={() => setRoleModal(true)}
-                  className="inline-flex items-center h-8 px-3.5 text-sm font-medium rounded-lg border
-                    border-neutral-300 bg-white text-neutral-600 hover:bg-neutral-50 transition-colors">
-                  등급 변경
-                </button>
                 {user.isActive && (
                   <button onClick={() => setSuspendModal(true)}
                     className="inline-flex items-center h-8 px-3.5 text-sm font-medium rounded-lg border
@@ -631,8 +584,7 @@ export default function AdminUserDetailPage() {
                 </button>
               </div>
             </div>
-          )}
-          {user.role === 'SUPER_ADMIN' && (
+          ) : (
             <div className="bg-neutral-50 rounded-xl border border-neutral-200 p-4">
               <p className="text-sm text-neutral-500">최고관리자 계정은 수정할 수 없습니다.</p>
             </div>
@@ -641,9 +593,6 @@ export default function AdminUserDetailPage() {
       </div>
 
       {/* 모달들 */}
-      {roleModal && (
-        <RoleChangeModal user={user} onClose={() => { setRoleModal(false); refetch() }} />
-      )}
       {suspendModal && (
         <SuspendModal user={user} onClose={() => { setSuspendModal(false); refetch() }} />
       )}

@@ -201,10 +201,17 @@ public class User extends BaseTimeEntity {
     @Comment("마지막 출석 일자")
     private LocalDate lastAttendanceDate;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "role_type_id")
-    @Comment("역할(role_types.id)")
-    private RoleType roleType;
+    @Column(length = 500)
+    @Comment("관리자 메모(역할/권한 설명)")
+    private String description;
+
+    /** 회원별 접근 허용 관리자 메뉴 키(라우트 path). 관리자(ADMIN/SUPER_ADMIN)는 프론트에서 전체 노출. */
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "user_menu_permissions", joinColumns = @JoinColumn(name = "user_id"))
+    @Column(name = "menu_key", length = 255)
+    @Comment("접근 허용 메뉴 키")
+    @Builder.Default
+    private Set<String> allowedMenus = new HashSet<>();
 
     /** 모더레이터 게시판 권한 (MODERATOR 역할 전용) */
     @ElementCollection(fetch = FetchType.EAGER)
@@ -310,10 +317,14 @@ public class User extends BaseTimeEntity {
         this.suspendReason = reason;
     }
 
-    public void changeRole(Role role, Producer producer, RoleType roleType) {
+    public void changeRole(Role role, Producer producer, Set<String> allowedMenus, String description) {
         this.role = role;
         this.producer = producer;
-        this.roleType = roleType;
+        this.description = description;
+        this.allowedMenus.clear();
+        if (allowedMenus != null) {
+            this.allowedMenus.addAll(allowedMenus);
+        }
     }
 
     public void addMaturingPower(int delta) {

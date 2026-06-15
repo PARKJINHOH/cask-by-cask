@@ -3,7 +3,6 @@ package com.caskbycask.domain.user.repository;
 import com.caskbycask.domain.admin.dto.DailyCountProjection;
 import com.caskbycask.domain.community.entity.UserBlock;
 import com.caskbycask.domain.user.dto.AuthUserView;
-import com.caskbycask.domain.user.entity.RoleType;
 import com.caskbycask.domain.user.entity.User;
 import com.caskbycask.domain.user.entity.enums.Role;
 import com.caskbycask.global.exception.CustomException;
@@ -46,8 +45,6 @@ public interface UserRepository extends JpaRepository<User, Long>, UserQueryRepo
 
     // [패치 11] 레벨 전체 재계산 배치 — MEMBER만 페이징 조회 (deleted_at IS NULL은 @SQLRestriction 적용)
     Page<User> findByRole(Role role, Pageable pageable);
-
-    boolean existsByRoleType(RoleType roleType);
 
     // @멘션 자동완성: nickname prefix 검색, 차단한 사용자 제외
     @Query("SELECT u FROM User u WHERE u.nickname LIKE :prefix% " +

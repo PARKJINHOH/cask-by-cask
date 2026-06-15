@@ -5,5 +5,7 @@ public enum Role {
     ADMIN,
     MODERATOR,
     MEMBER,
-    PARTNER
+    PARTNER,
+    DISTILLERY_STAFF,
+    IMPORTER
 }
