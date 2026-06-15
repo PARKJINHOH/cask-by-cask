@@ -4,7 +4,6 @@ import com.caskbycask.global.exception.CustomException;
 import com.caskbycask.global.exception.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Profile;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
@@ -20,11 +19,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
 
-// local 프로파일 전용: dev/prod 에서는 S3 URL 로 직접 접근
+// 로컬 디스크에 저장된 피드백 이미지를 서빙. LocalFileStorageService 와 동일하게 모든 프로파일에서 동작.
 @Slf4j
 @RestController
 @RequestMapping("/api/feedbacks/images")
-@Profile("local")
 public class FeedbackImageController {
 
     private static final Map<String, String> MIME_MAP = Map.of(

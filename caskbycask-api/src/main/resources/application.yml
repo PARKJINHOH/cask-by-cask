@@ -54,11 +54,14 @@ oauth:
     client-secret: ${OAUTH_GOOGLE_CLIENT_SECRET:}
 
 upload:
-  path: ./uploads
+  path: ${UPLOAD_PATH:./uploads}
 
 storage:
   local:
-    base-path: ./uploads
+    # upload.path 와 동일한 루트를 사용 (prod 는 UPLOAD_PATH=/app/upload 로 영속 디스크).
+    # 이렇게 해야 LocalFileStorageService 가 저장한 /api/{domain}/images 파일과
+    # nginx 가 /uploads 로 서빙하는 파일이 같은 디렉터리 트리에 놓인다.
+    base-path: ${UPLOAD_PATH:./uploads}
 
 admin:
   seed:

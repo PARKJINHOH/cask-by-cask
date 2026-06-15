@@ -6,7 +6,6 @@ import com.caskbycask.global.exception.CustomException;
 import com.caskbycask.global.exception.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Profile;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
@@ -19,11 +18,10 @@ import org.springframework.web.bind.annotation.RestController;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-// local 프로파일 전용: dev/prod에서는 S3 URL로 직접 접근하므로 불필요 (NoticeImageController 동일 패턴)
+// 로컬 디스크에 저장된 가격 제보 이미지를 서빙. LocalFileStorageService 와 동일하게 모든 프로파일에서 동작.
 @Slf4j
 @RestController
 @RequestMapping("/api/price-reports/images")
-@Profile("local")
 public class PriceReportImageServeController {
 
     private final Path basePath;
