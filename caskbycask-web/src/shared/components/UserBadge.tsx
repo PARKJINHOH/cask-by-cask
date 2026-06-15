@@ -91,11 +91,11 @@ export default function UserBadge({
   const levelName = getLevelInfo(level).name
   const isFixed = Boolean(user.nicknameFixed)
   const isSuperAdmin = user.role === 'SUPER_ADMIN'
-  // 최고관리자는 아바타(프로필 이미지/기본 원)를 노출하지 않는다.
+  // 운영자는 아바타(프로필 이미지/기본 원)를 노출하지 않는다.
   const hasPhoto = Boolean(user.profileImageUrl) && !isSuperAdmin
   const showAvatarFinal = showAvatar && !isSuperAdmin
-  // 최고관리자는 닉네임 대신 "최고관리자" 로 통일 표기 (별도 배지 없음).
-  const displayName = isSuperAdmin ? '최고관리자' : user.nickname
+  // 운영자는 닉네임 대신 "운영자" 로 통일 표기 (별도 배지 없음).
+  const displayName = isSuperAdmin ? '운영자' : user.nickname
 
   // 프로필 사진이 없는 회원 → 사용자별 고정 랜덤(색·아이콘) 기본 아바타
   const seed = (user.id != null ? String(user.id) : user.nickname) || '?'

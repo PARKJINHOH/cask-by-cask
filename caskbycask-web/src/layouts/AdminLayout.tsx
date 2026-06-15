@@ -86,7 +86,7 @@ export default function AdminLayout() {
         <div className="p-5 border-b border-neutral-100">
           <Link to="/" className="text-lg font-bold text-primary-800">CaskByCask</Link>
           <p className="text-xs text-neutral-400 mt-0.5">
-            {isSuperAdmin ? '최고관리자 콘솔' : isAdmin ? '관리자 콘솔' : '파트너 콘솔'}
+            {isSuperAdmin ? '운영자 콘솔' : isAdmin ? '관리자 콘솔' : '파트너 콘솔'}
           </p>
         </div>
 

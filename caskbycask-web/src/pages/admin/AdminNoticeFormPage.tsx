@@ -24,7 +24,7 @@ const DRAFT_KEY = 'NOTICE'
 const schema = z.object({
   title: z.string().min(1, '제목을 입력하세요').max(300, '제목은 300자 이하여야 합니다'),
   content: z.string().min(1, '내용을 입력하세요'),
-  category: z.enum(['GENERAL', 'UPDATE', 'EVENT', 'MAINTENANCE'] as const),
+  category: z.enum(['GENERAL', 'UPDATE', 'EVENT', 'MAINTENANCE', 'NOTICE'] as const),
   isPinned: z.boolean(),
   isPublished: z.boolean(),
 })

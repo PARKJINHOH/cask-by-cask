@@ -83,7 +83,7 @@ export type AdminUserRole =
 export const ASSIGNABLE_ROLES: AdminUserRole[] = ['MEMBER', 'PARTNER', 'DISTILLERY_STAFF', 'IMPORTER', 'ADMIN']
 
 export const ROLE_LABELS: Record<AdminUserRole, string> = {
-  SUPER_ADMIN: '최고관리자',
+  SUPER_ADMIN: '운영자',
   ADMIN: '관리자',
   MODERATOR: '모더레이터',
   MEMBER: '회원',

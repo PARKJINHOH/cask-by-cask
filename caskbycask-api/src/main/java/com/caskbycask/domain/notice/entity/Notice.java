@@ -50,7 +50,7 @@ public class Notice extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     @Builder.Default
     @Column(nullable = false, length = 20)
-    @Comment("분류 — GENERAL/EVENT/UPDATE/MAINTENANCE")
+    @Comment("분류 — GENERAL/EVENT/UPDATE/MAINTENANCE/NOTICE")
     private NoticeCategory category = NoticeCategory.GENERAL;
 
     @Builder.Default

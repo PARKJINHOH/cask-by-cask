@@ -586,7 +586,7 @@ export default function AdminUserDetailPage() {
             </div>
           ) : (
             <div className="bg-neutral-50 rounded-xl border border-neutral-200 p-4">
-              <p className="text-sm text-neutral-500">최고관리자 계정은 수정할 수 없습니다.</p>
+              <p className="text-sm text-neutral-500">운영자 계정은 수정할 수 없습니다.</p>
             </div>
           )}
         </div>

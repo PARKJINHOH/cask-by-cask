@@ -1,10 +1,11 @@
-export type NoticeCategory = 'GENERAL' | 'UPDATE' | 'EVENT' | 'MAINTENANCE'
+export type NoticeCategory = 'GENERAL' | 'UPDATE' | 'EVENT' | 'MAINTENANCE' | 'NOTICE'
 
 export const NOTICE_CATEGORY_LABELS: Record<NoticeCategory, string> = {
   GENERAL: '일반',
   UPDATE: '업데이트',
   EVENT: '이벤트',
   MAINTENANCE: '점검',
+  NOTICE: '공지',
 }
 
 export interface NoticeImageItem {

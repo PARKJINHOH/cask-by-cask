@@ -15,6 +15,7 @@ const CATEGORY_CHIP_CLASS: Record<NoticeCategory, string> = {
   UPDATE: 'bg-blue-50 text-blue-700',
   EVENT: 'bg-green-50 text-green-700',
   MAINTENANCE: 'bg-orange-50 text-orange-700',
+  NOTICE: 'bg-rose-50 text-rose-700',
 }
 
 function CategoryChip({ category }: { category: NoticeCategory }) {

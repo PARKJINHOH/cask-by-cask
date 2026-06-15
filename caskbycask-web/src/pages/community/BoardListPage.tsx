@@ -318,7 +318,7 @@ export default function BoardListPage({ boardType, title }: Props) {
                       </span>
                     </td>
                     <td className="px-4 py-2 text-center">
-                      <span className="text-xs font-medium text-rose-700">최고관리자</span>
+                      <span className="text-xs font-medium text-rose-700">운영자</span>
                     </td>
                     <td className="px-4 py-2 text-center"><div className="flex justify-center"><RecommendBadge count={notice.recommendCount} /></div></td>
                     <td className="px-4 py-2 text-center text-neutral-500 text-xs">{notice.viewCount.toLocaleString()}</td>
