@@ -593,6 +593,7 @@ export default function MainLayout() {
                 CaskByCask
               </Link>
               <p className="text-xs text-neutral-400">{t('app.tagline')}</p>
+              <p className="text-xs text-neutral-400">{t('footer.brandAlias')}</p>
             </div>
 
             {/* 탐색 */}
