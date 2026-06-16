@@ -92,52 +92,76 @@ function SectionHeader({
 
 // ── 술 카드 캐러셀 (PC: 4×1 페이지네이션 + drag, MO: 가로 터치/drag 스크롤) ───
 function SpiritCarousel({ spirits }: { spirits: SpiritListItem[] }) {
-  const PAGE_SIZE = 4
-  const [page, setPage] = useState(0)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const dragStart = useRef({ isDragging: false, startX: 0, scrollLeft: 0, moved: false, startTime: 0 })
+  const [showLeft, setShowLeft] = useState(false)
+  const [showRight, setShowRight] = useState(false)
 
-  useEffect(() => { setPage(0) }, [spirits])
-
-  const totalPages = Math.ceil(spirits.length / PAGE_SIZE)
-  const hasPrev = page > 0
-  const hasNext = page < totalPages - 1
-  const showNav = spirits.length > PAGE_SIZE
-
-  // PC drag-to-navigate
-  const pcDrag = useRef({ active: false, startX: 0 })
-  const wasDragged = useRef(false)
-
-  const onPcDown = (e: React.MouseEvent) => {
-    pcDrag.current = { active: true, startX: e.clientX }
-    wasDragged.current = false
-  }
-  const onPcMove = (e: React.MouseEvent) => {
-    if (!pcDrag.current.active) return
-    if (Math.abs(e.clientX - pcDrag.current.startX) > 8) wasDragged.current = true
-  }
-  const onPcUp = (e: React.MouseEvent) => {
-    if (!pcDrag.current.active) return
-    const dx = e.clientX - pcDrag.current.startX
-    if (dx < -60 && hasNext) setPage((p) => p + 1)
-    else if (dx > 60 && hasPrev) setPage((p) => p - 1)
-    pcDrag.current.active = false
+  const updateArrows = () => {
+    if (!containerRef.current) return
+    const { scrollLeft, scrollWidth, clientWidth } = containerRef.current
+    setShowLeft(scrollLeft > 5)
+    setShowRight(scrollLeft < scrollWidth - clientWidth - 5)
   }
 
-  // Mobile horizontal drag-scroll
-  const mobileRef = useRef<HTMLDivElement>(null)
-  const mobileDrag = useRef({ active: false, startX: 0, scrollLeft: 0 })
+  useEffect(() => {
+    // Wait a brief tick for elements to render so scrollWidth is populated correctly
+    const timer = setTimeout(updateArrows, 50)
+    window.addEventListener('resize', updateArrows)
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener('resize', updateArrows)
+    }
+  }, [spirits])
 
-  const onMoDown = (e: React.MouseEvent) => {
-    if (!mobileRef.current) return
-    mobileDrag.current = { active: true, startX: e.pageX, scrollLeft: mobileRef.current.scrollLeft }
-  }
-  const onMoMove = (e: React.MouseEvent) => {
-    if (!mobileDrag.current.active || !mobileRef.current) return
-    e.preventDefault()
-    mobileRef.current.scrollLeft = mobileDrag.current.scrollLeft - (e.pageX - mobileDrag.current.startX)
-  }
-  const onMoUp = () => { mobileDrag.current.active = false }
+  const onMouseDown = (e: React.MouseEvent) => {
+    if (!containerRef.current) return
+    if (e.button !== 0) return // Left click only
 
-  const visible = spirits.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
+    dragStart.current = {
+      isDragging: true,
+      startX: e.clientX,
+      scrollLeft: containerRef.current.scrollLeft,
+      moved: false,
+      startTime: Date.now(),
+    }
+  }
+
+  const onMouseMove = (e: React.MouseEvent) => {
+    if (!dragStart.current.isDragging || !containerRef.current) return
+    const dx = e.clientX - dragStart.current.startX
+    if (Math.abs(dx) > 15) {
+      dragStart.current.moved = true
+    }
+    if (dragStart.current.moved) {
+      e.preventDefault()
+      containerRef.current.scrollLeft = dragStart.current.scrollLeft - dx
+    }
+  }
+
+  const onMouseUp = () => {
+    dragStart.current.isDragging = false
+  }
+
+  const onMouseLeave = () => {
+    dragStart.current.isDragging = false
+  }
+
+  const onClickCapture = (e: React.MouseEvent) => {
+    const elapsed = Date.now() - dragStart.current.startTime
+    if (dragStart.current.moved && elapsed > 200) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+    dragStart.current.moved = false
+  }
+
+  const scroll = (direction: 'left' | 'right') => {
+    if (!containerRef.current) return
+    const width = containerRef.current.clientWidth
+    const offset = direction === 'left' ? -width * 0.8 : width * 0.8
+    containerRef.current.scrollBy({ left: offset, behavior: 'smooth' })
+  }
 
   const navBtn = `absolute top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white
     border border-neutral-200 shadow-md flex items-center justify-center
@@ -145,79 +169,50 @@ function SpiritCarousel({ spirits }: { spirits: SpiritListItem[] }) {
     hover:bg-primary-50 hover:text-primary-800 hover:border-primary-200 hover:shadow-lg`
 
   return (
-    <>
-      {/* PC: 4×1 single-row paginated grid */}
+    <div className="relative group/carousel">
       <div
-        className="hidden lg:block relative cursor-grab active:cursor-grabbing"
-        onMouseDown={onPcDown}
-        onMouseMove={onPcMove}
-        onMouseUp={onPcUp}
-        onMouseLeave={() => { pcDrag.current.active = false }}
-        onClickCapture={(e) => {
-          if (wasDragged.current) { e.stopPropagation(); e.preventDefault() }
-        }}
-      >
-        <div className="grid grid-cols-4 gap-3 select-none">
-          {visible.map((s) => <SpiritCard key={s.id} spirit={s} />)}
-        </div>
-
-        {showNav && (
-          <>
-            <button
-              onMouseDown={(e) => e.stopPropagation()}
-              onClick={(e) => { e.stopPropagation(); setPage((p) => p - 1) }}
-              className={`${navBtn} -left-4 text-neutral-600 ${!hasPrev ? 'opacity-0 pointer-events-none' : ''}`}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
-                <polyline points="15 18 9 12 15 6" />
-              </svg>
-            </button>
-
-            <button
-              onMouseDown={(e) => e.stopPropagation()}
-              onClick={(e) => { e.stopPropagation(); setPage((p) => p + 1) }}
-              className={`${navBtn} -right-4 text-neutral-600 ${!hasNext ? 'opacity-0 pointer-events-none' : ''}`}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
-            </button>
-
-            {totalPages > 1 && (
-              <div className="flex justify-center gap-1.5 mt-3">
-                {Array.from({ length: totalPages }).map((_, i) => (
-                  <button
-                    key={i}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onClick={(e) => { e.stopPropagation(); setPage(i) }}
-                    className={`h-1.5 rounded-full transition-all duration-200 ${
-                      i === page ? 'w-4 bg-primary-700' : 'w-1.5 bg-neutral-200 hover:bg-neutral-400'
-                    }`}
-                  />
-                ))}
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
-      {/* Mobile/sm: horizontal drag-scroll (single row) */}
-      <div
-        ref={mobileRef}
-        className="lg:hidden flex gap-3 overflow-x-auto pb-1 -mx-4 px-4 select-none"
-        style={{ scrollbarWidth: 'none', cursor: 'grab' }}
-        onMouseDown={onMoDown}
-        onMouseMove={onMoMove}
-        onMouseUp={onMoUp}
-        onMouseLeave={onMoUp}
+        ref={containerRef}
+        className="flex gap-3 overflow-x-auto pb-2.5 select-none no-scrollbar cursor-grab active:cursor-grabbing -mx-4 px-4 lg:mx-0 lg:px-0"
+        style={{ scrollbarWidth: 'none', touchAction: 'pan-y' }}
+        onMouseDown={onMouseDown}
+        onMouseMove={onMouseMove}
+        onMouseUp={onMouseUp}
+        onMouseLeave={onMouseLeave}
+        onDragStart={(e) => e.preventDefault()}
+        onClickCapture={onClickCapture}
+        onScroll={updateArrows}
       >
         {spirits.map((s) => (
-          <div key={s.id} className="flex-shrink-0 w-36 sm:w-40">
+          <div key={s.id} className="flex-shrink-0 w-36 sm:w-40 lg:w-[288px]">
             <SpiritCard spirit={s} />
           </div>
         ))}
       </div>
-    </>
+
+      {showLeft && (
+        <button
+          onClick={() => scroll('left')}
+          className={`${navBtn} -left-4 text-neutral-600 hidden lg:flex`}
+          aria-label="Previous"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+        </button>
+      )}
+
+      {showRight && (
+        <button
+          onClick={() => scroll('right')}
+          className={`${navBtn} -right-4 text-neutral-600 hidden lg:flex`}
+          aria-label="Next"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </button>
+      )}
+    </div>
   )
 }
 

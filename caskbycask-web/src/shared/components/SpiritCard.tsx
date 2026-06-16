@@ -46,7 +46,7 @@ function SpiritCard({ spirit, className = '', listView = false }: SpiritCardProp
       <div className={className}>
         <article className="bg-white rounded-xl shadow-sm flex items-center gap-3 p-3
           transition-all duration-200 ease-out
-          hover:shadow-md hover:-translate-y-0.5 motion-reduce:hover:translate-y-0">
+          hover:shadow-md">
 
           {/* 썸네일 — 클릭 시 라이트박스 */}
           {spirit.primaryImageUrl ? (
@@ -62,6 +62,7 @@ function SpiritCard({ spirit, className = '', listView = false }: SpiritCardProp
                 src={spirit.primaryImageUrl}
                 alt={primaryName}
                 loading="lazy"
+                draggable="false"
                 className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
               />
             </button>
@@ -128,7 +129,7 @@ function SpiritCard({ spirit, className = '', listView = false }: SpiritCardProp
     <article
       className={`group relative bg-white rounded-2xl shadow-sm overflow-hidden
         transition-all duration-300 ease-out
-        hover:shadow-xl hover:-translate-y-1 motion-reduce:hover:translate-y-0 ${className}`}
+        hover:shadow-xl ${className}`}
     >
       {/* 이미지 */}
       <div className="relative aspect-[3/4] overflow-hidden bg-white">
@@ -137,6 +138,7 @@ function SpiritCard({ spirit, className = '', listView = false }: SpiritCardProp
             src={spirit.primaryImageUrl}
             alt={primaryName}
             loading="lazy"
+            draggable="false"
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
         ) : (
