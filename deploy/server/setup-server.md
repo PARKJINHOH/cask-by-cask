@@ -433,9 +433,9 @@ sudo ln -sf /etc/nginx/sites-available/monitoring.conf \
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
-> SSL 인증서는 메인 사이트(`/etc/ssl/certs/cloudflare-origin.pem`)와 **같은 파일을 공유**.
+> SSL 인증서는 메인 사이트(`/etc/nginx/ssl/caskbycask.net.pem`)와 **같은 파일을 공유**.
 > 단, 인증서가 `*.caskbycask.net` 와일드카드로 발급된 경우에만 유효.
-> 확인: `openssl x509 -in /etc/ssl/certs/cloudflare-origin.pem -noout -text | grep -A2 "Subject Alt"`
+> 확인: `openssl x509 -in /etc/nginx/ssl/caskbycask.net.pem -noout -text | grep -A2 "Subject Alt"`
 > → `*.caskbycask.net` 없으면 Cloudflare 대시보드에서 와일드카드 Origin Cert 새로 발급 후 교체.
 
 ### 14-5. Cloudflare DNS 레코드 추가
