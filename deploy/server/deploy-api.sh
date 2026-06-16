@@ -48,6 +48,12 @@ for i in $(seq 1 60); do
     sleep 2
     if curl -fsS "$HEALTH_URL" 2>/dev/null | grep -q '"status":"UP"'; then
         log "✅ 배포 성공 ($TS), readiness UP (${i}회차)"
+        # nginx 기동 보장 — stop-web.sh 후 배포 시 자동 복구
+        if ! systemctl is-active --quiet nginx; then
+            log "nginx 내려가 있음 → 자동 기동"
+            sudo systemctl start nginx
+            log "✅ nginx 기동 완료"
+        fi
         exit 0
     fi
 done

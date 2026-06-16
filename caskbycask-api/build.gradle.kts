@@ -50,9 +50,8 @@ dependencies {
     // MariaDB
     runtimeOnly("org.mariadb.jdbc:mariadb-java-client")
 
-    // Flyway (DB Migration)
-    implementation("org.flywaydb:flyway-core")
-    implementation("org.flywaydb:flyway-mysql")
+    implementation("org.flywaydb:flyway-core:12.8.1")
+    implementation("org.flywaydb:flyway-mysql:12.8.1")
 
     // Rate Limiting (Bucket4j + Redis Lettuce)
     implementation("com.bucket4j:bucket4j_jdk17-core:$bucket4jVersion")

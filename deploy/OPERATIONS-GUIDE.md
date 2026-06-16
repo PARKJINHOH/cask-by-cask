@@ -174,6 +174,8 @@ sudo systemctl start nginx     # 다시 시작
 ```
 
 > ⚠️ `stop-web.sh` 는 사이트가 **완전히 응답 불가**가 된다(헬스체크 포함). 일반 점검에는 3장의 `maintenance.sh on` 을 사용하고, `stop-web.sh` 는 긴급 차단 등 꼭 필요한 경우에만 사용.
+>
+> ⛔ **`stop-web.sh` 후 GitHub Actions 배포 시 Cloudflare 521 발생 주의.** `deploy-api.sh` 헬스체크는 nginx 를 거치지 않고 `127.0.0.1:8081` 관리 포트를 직접 조회하므로 배포는 "성공"으로 끝나지만 nginx 가 내려간 채로 남는다. 배포 전 nginx 상태 반드시 확인: `systemctl is-active nginx`
 
 ### 서버 재부팅 후
 
@@ -319,7 +321,11 @@ rm -rf dist && mv dist_<타임스탬프> dist
 ## 11. 자주 쓰는 명령어 모음 (Cheat Sheet)
 
 ```bash
-# 상태 점검
+# 상태 점검 (한눈에)
+/app/scripts/status.sh          # API + Web + 리소스 요약
+/app/scripts/status.sh --log    # 위 + 최근 로그 20줄 추가 출력
+
+# 개별 상태 점검
 curl -s http://127.0.0.1:8081/actuator/health    # 백엔드 health
 curl -s https://caskbycask.net/healthz            # 사이트 health
 systemctl status caskbycask-api nginx mariadb redis-server
@@ -348,6 +354,8 @@ tail -f /app/logs/caskbycask-api-error.log
 
 | 증상 | 점검 순서 |
 |---|---|
+| **Cloudflare 521** | nginx 다운 → `sudo systemctl start nginx`. 이후 `systemctl enable caskbycask-api` 로 enable 여부도 확인 |
+| **521 — stop-web.sh 후 배포** | `stop-web.sh` 실행 후 Actions 배포 시 nginx 가 내려간 채 남음(헬스체크가 관리 포트 직접 조회라 배포는 성공 표시). `sudo systemctl start nginx` 로 복구 |
 | 사이트 502/503 | ① `systemctl status caskbycask-api` ② `journalctl -u caskbycask-api -n 100` ③ DB/Redis 살아있는지 ④ health 확인 |
 | 점검 페이지가 안 풀림 | `/app/scripts/maintenance.sh status` → `off` 실행. 플래그 파일 `/app/vite/maintenance.on` 직접 확인 |
 | 점검 우회 URL 이 안 먹힘 | conf 시크릿 3곳 일치 확인 → `nginx -t && reload`. 쿠키 24h 만료 시 URL 재방문 |
@@ -355,6 +363,7 @@ tail -f /app/logs/caskbycask-api-error.log
 | nginx reload 실패 | `sudo nginx -t` 로 문법 오류 위치 확인 후 수정 |
 | 백엔드 부팅 실패 (Flyway) | 마이그레이션/엔티티 스키마 불일치 가능 → 로그의 Flyway 메시지 확인 |
 | 디스크 부족 | `df -h` → `/app/logs/archived`, `/app/db_backup` 오래된 파일 정리. `upload/` 는 삭제 금지 |
+| 재부팅 후 Spring Boot 안 뜸 | `systemctl is-enabled caskbycask-api` → disabled 면 `sudo systemctl enable caskbycask-api` |
 
 긴급 전체 차단이 필요하면: `cd /app/scripts && ./stop-web.sh` (복구: `sudo systemctl start nginx`).
 
@@ -371,6 +380,51 @@ tail -f /app/logs/caskbycask-api-error.log
 - [ ] **분기**: 알람 생존 확인 — `/app/scripts/check-resources.sh` 수동 실행으로 Slack 도달 점검
 
 ---
+
+## 15. 모니터링 (Prometheus + Grafana)
+
+### 구성 개요
+
+| 컴포넌트 | 주소 | 외부 노출 |
+|---|---|---|
+| Prometheus | 127.0.0.1:9090 | ❌ (내부 전용) |
+| Grafana | 127.0.0.1:3000 | ✅ (`monitoring.caskbycask.net`, nginx 경유) |
+| 메트릭 엔드포인트 | 127.0.0.1:8081/actuator/prometheus | ❌ (내부 전용) |
+
+### 최초 설치 (한 번)
+
+**`deploy/server/setup-server.md` 14장** 의 단계별 절차를 따른다. (수동 설치)
+
+> nginx Basic Auth(1차) + Grafana 로그인(2차) 이중 보호.
+> 비밀번호는 비밀번호 관리자에 보관, **이 문서에 기록 금지**.
+
+### 접속
+
+- URL: `https://monitoring.caskbycask.net`
+- 계정: Grafana admin (최초 설치 시 지정한 비밀번호)
+
+### Grafana 대시보드 추천
+
+| 용도 | Dashboard ID |
+|---|---|
+| JVM 힙·GC·스레드 | 4701 |
+| Spring Boot 3.x HTTP 지표 | 17175 |
+| Caffeine 캐시 히트율 | 직접 패널 추가 — 메트릭: `cache_gets_total`, `cache_size` |
+
+### 서비스 관리
+
+```bash
+sudo systemctl status prometheus grafana-server
+sudo systemctl restart prometheus
+sudo systemctl restart grafana-server
+# Prometheus 설정 변경 후 리로드 (재시작 없이)
+sudo systemctl reload prometheus || sudo kill -HUP $(pidof prometheus)
+```
+
+### 정기 점검
+
+- [ ] **월간**: Prometheus `localhost:9090/targets` — `caskbycask-api` UP 확인
+- [ ] **월간**: Grafana 대시보드에서 메트릭 수집 gap 없는지 육안 확인
 
 ---
 
@@ -419,6 +473,20 @@ crontab -e
 
 - 비정상 종료 테스트: `sudo systemctl kill -s SIGKILL caskbycask-api` → 🚨 알림 떠야 함. `./stop-api.sh` 는 **무알림**이 정상.
 - 임계값(디스크 %, SSL 일수)은 `api.env` 로 덮어쓴다(11장 `api.env.example` 참고). 같은 항목은 6시간 쿨다운으로 도배 방지.
+
+---
+
+## 16. 알려진 구동 로그 (WARN 패턴 참고)
+
+앱 기동 시 아래 WARN 이 나오면 각 원인과 조치를 확인한다.
+
+| 로그 메시지 | 원인 | 상태 |
+|---|---|---|
+| `Flyway upgrade recommended: MariaDB 11.8 is newer...` | Flyway 버전이 MariaDB 11.8 을 공식 지원하지 않음 | ✅ `flyway-core 12.8.1` 로 해결 (2026-06-16) |
+| `BadWordFilter cache refreshed — 0 words loaded` | `bad_words` 테이블에 시드 데이터 없음 | ✅ `V12__seed_bad_words.sql` 마이그레이션으로 해결 (2026-06-16) |
+| `The cache 'authUser' is not recording statistics` | Caffeine 캐시 빌드 시 `recordStats()` 미호출 | ✅ `CacheConfig` 에 `.recordStats()` 추가 (2026-06-16) |
+
+> 위 3개 WARN 은 2026-06-16 이후 빌드부터 사라진다. 다시 나타나면 해당 코드/마이그레이션이 누락된 것.
 
 ---
 

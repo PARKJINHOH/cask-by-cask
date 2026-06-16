@@ -339,6 +339,129 @@ curl -s http://127.0.0.1:8081/actuator/health   # {"status":"UP"} 기대
 
 ---
 
+## 14. 모니터링 (Prometheus + Grafana) — 선택
+
+> Spring Boot Actuator 가 `127.0.0.1:8081/actuator/prometheus` 에 메트릭을 이미 노출 중.
+> Prometheus 가 이를 수집하고 Grafana 가 시각화한다.
+> 외부 접근은 `monitoring.caskbycask.net` nginx 역프록시 + Basic Auth 로 보호.
+
+### 14-1. Prometheus 설치
+
+```bash
+sudo apt-get install -y prometheus
+```
+
+설치 후 `/etc/prometheus/prometheus.yml` 마지막에 Spring Boot scrape job 추가:
+
+```bash
+sudo tee -a /etc/prometheus/prometheus.yml > /dev/null <<'EOF'
+
+  - job_name: 'caskbycask-api'
+    scrape_interval: 15s
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['127.0.0.1:8081']
+        labels:
+          application: 'caskbycask-api'
+EOF
+```
+
+```bash
+sudo systemctl enable --now prometheus
+```
+
+확인:
+
+```bash
+systemctl status prometheus
+curl -s http://127.0.0.1:9090/-/ready    # Prometheus is Ready
+curl -s 'http://127.0.0.1:9090/api/v1/targets' | grep caskbycask   # state":"up" 기대
+```
+
+### 14-2. Grafana 설치
+
+```bash
+sudo apt-get install -y apt-transport-https software-properties-common wget
+sudo mkdir -p /etc/apt/keyrings/
+wget -q -O - https://apt.grafana.com/gpg.key \
+  | gpg --dearmor \
+  | sudo tee /etc/apt/keyrings/grafana.gpg > /dev/null
+echo "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main" \
+  | sudo tee /etc/apt/sources.list.d/grafana.list
+sudo apt-get update -q
+sudo apt-get install -y grafana
+```
+
+`/etc/grafana/grafana.ini` 에서 reverse proxy 경로 설정:
+
+```bash
+# root_url — nginx 도메인 반영
+sudo sed -i "s|^;root_url.*|root_url = https://monitoring.caskbycask.net/|" /etc/grafana/grafana.ini
+# 초기 admin 비밀번호 (첫 접속 후 즉시 변경 권장)
+sudo sed -i "s|^;admin_password.*|admin_password = 강한_비밀번호|" /etc/grafana/grafana.ini
+```
+
+```bash
+sudo systemctl enable --now grafana-server
+```
+
+확인:
+
+```bash
+systemctl status grafana-server
+curl -s http://127.0.0.1:3000/api/health    # {"database":"ok"} 기대
+```
+
+### 14-3. nginx Basic Auth 파일 생성
+
+```bash
+sudo apt-get install -y apache2-utils
+sudo htpasswd -bc /etc/nginx/.htpasswd-monitoring cbc-admin 강한_비밀번호2
+```
+
+> Basic Auth(nginx) + Grafana 자체 로그인 이중 보호. 비밀번호는 별도 보관, 이 파일에 기록 금지.
+
+### 14-4. nginx monitoring 설정 적용
+
+레포의 `deploy/nginx/monitoring.conf` 를 서버에 수동 배치:
+
+```bash
+# FTP 또는 직접 붙여넣기로 ~/setup/monitoring.conf 에 업로드 후
+sudo cp ~/setup/monitoring.conf /etc/nginx/sites-available/monitoring.conf
+sudo ln -sf /etc/nginx/sites-available/monitoring.conf \
+             /etc/nginx/sites-enabled/monitoring.conf
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+> SSL 인증서는 메인 사이트(`/etc/ssl/certs/cloudflare-origin.pem`)와 **같은 파일을 공유**.
+> 단, 인증서가 `*.caskbycask.net` 와일드카드로 발급된 경우에만 유효.
+> 확인: `openssl x509 -in /etc/ssl/certs/cloudflare-origin.pem -noout -text | grep -A2 "Subject Alt"`
+> → `*.caskbycask.net` 없으면 Cloudflare 대시보드에서 와일드카드 Origin Cert 새로 발급 후 교체.
+
+### 14-5. Cloudflare DNS 레코드 추가
+
+| 필드 | 값 |
+|---|---|
+| 형식 | **A** |
+| 이름 | `monitoring` |
+| IPv4 | 서버 공인 IP |
+| 프록시 상태 | 프록싱됨(주황 구름) ✅ |
+
+> CNAME → `caskbycask.net` 은 피할 것. 이미 프록싱 중인 도메인을 CNAME 대상으로 쓰면 루프 위험.
+
+### 14-6. Grafana 초기 설정
+
+`https://monitoring.caskbycask.net` 접속 후:
+
+1. **Connections → Add data source → Prometheus**
+   - URL: `http://127.0.0.1:9090`
+   - Save & Test → "Successfully queried the Prometheus API" 확인
+2. **Dashboards → Import**
+   - ID `4701` — JVM (Micrometer) : 힙·GC·스레드·Caffeine 캐시 히트율
+   - ID `17175` — Spring Boot 3.x : HTTP 요청/응답/레이턴시
+
+---
+
 ## 셋업 완료 체크리스트
 
 - [ ] `/app` 및 하위 전부 `ubuntu:ubuntu` 소유 (`ls -ld /app/*`)
@@ -348,3 +471,4 @@ curl -s http://127.0.0.1:8081/actuator/health   # {"status":"UP"} 기대
 - [ ] iptables 80/443 + Oracle Security List + Cloudflare DNS/SSL
 - [ ] backup-db cron 등록 + 수동 1회 성공
 - [ ] `caskbycask-api` 기동 + actuator health UP + 사이트 정상 로딩
+- [ ] (선택) Prometheus + Grafana 기동 + `monitoring.caskbycask.net` 접속 + 대시보드 정상 표시
