@@ -3,7 +3,6 @@ package com.caskbycask.domain.spirit.service;
 import com.caskbycask.domain.spirit.dto.SpiritImageResponse;
 import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.domain.spirit.entity.SpiritImage;
-import com.caskbycask.domain.spirit.entity.enums.SpiritStatus;
 import com.caskbycask.domain.spirit.repository.SpiritImageRepository;
 import com.caskbycask.domain.spirit.repository.SpiritRepository;
 import com.caskbycask.global.exception.CustomException;
@@ -14,12 +13,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -70,7 +73,24 @@ public class SpiritImageService {
         SpiritImage image = spiritImageRepository.findByIdAndSpiritId(imageId, spiritId)
                 .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_IMAGE_NOT_FOUND));
 
+        String imageUrl = image.getImageUrl();
         spiritImageRepository.delete(image);
+        deleteFilesAfterCommit(List.of(imageUrl));
+    }
+
+    @Transactional
+    public void deleteImagesBySpiritId(Long spiritId) {
+        List<SpiritImage> images = spiritImageRepository.findBySpiritId(spiritId);
+        if (images.isEmpty()) {
+            return;
+        }
+
+        List<String> imageUrls = images.stream()
+                .map(SpiritImage::getImageUrl)
+                .toList();
+
+        spiritImageRepository.deleteAll(images);
+        deleteFilesAfterCommit(imageUrls);
     }
 
     @Transactional
@@ -184,5 +204,104 @@ public class SpiritImageService {
     private String stripExt(String name) {
         int dot = name.lastIndexOf('.');
         return dot < 0 ? name : name.substring(0, dot);
+    }
+
+    private void deleteFilesAfterCommit(Collection<String> imageUrls) {
+        Runnable deleteTask = () -> imageUrls.forEach(this::deleteStoredImageFile);
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            deleteTask.run();
+            return;
+        }
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                deleteTask.run();
+            }
+        });
+    }
+
+    private void deleteStoredImageFile(String imageUrl) {
+        String urlPath = extractUrlPath(imageUrl);
+        if (urlPath == null || !urlPath.startsWith("/uploads/")) {
+            return;
+        }
+
+        Path basePath = Paths.get(uploadPath).toAbsolutePath().normalize();
+        Path targetFile = basePath.resolve(urlPath.substring("/uploads/".length())).normalize();
+        if (!targetFile.startsWith(basePath) || targetFile.getFileName() == null) {
+            return;
+        }
+
+        deleteFileAndSiblingVariants(basePath, targetFile);
+        deleteDirectoryIfEmpty(basePath, targetFile.getParent());
+    }
+
+    private String extractUrlPath(String imageUrl) {
+        if (imageUrl == null || imageUrl.isBlank()) {
+            return null;
+        }
+
+        String value = imageUrl.trim();
+        try {
+            URI uri = URI.create(value);
+            if (uri.getScheme() != null) {
+                return uri.getPath();
+            }
+        } catch (IllegalArgumentException ignored) {
+            // Fall through and treat the value as an already-relative URL path.
+        }
+
+        int queryStart = value.indexOf('?');
+        if (queryStart >= 0) {
+            value = value.substring(0, queryStart);
+        }
+        int fragmentStart = value.indexOf('#');
+        if (fragmentStart >= 0) {
+            value = value.substring(0, fragmentStart);
+        }
+        return value;
+    }
+
+    private void deleteFileAndSiblingVariants(Path basePath, Path targetFile) {
+        try {
+            Files.deleteIfExists(targetFile);
+        } catch (IOException e) {
+            log.warn("주류 이미지 파일 삭제 실패 (무시): {}", targetFile, e);
+        }
+
+        String baseName = stripExt(targetFile.getFileName().toString());
+        Path dir = targetFile.getParent();
+        if (baseName.isBlank() || dir == null || !dir.startsWith(basePath) || !Files.isDirectory(dir)) {
+            return;
+        }
+
+        try (var stream = Files.newDirectoryStream(
+                dir,
+                path -> stripExt(path.getFileName().toString()).equals(baseName))) {
+            for (Path path : stream) {
+                Path normalized = path.normalize();
+                if (!normalized.startsWith(basePath)) {
+                    continue;
+                }
+                Files.deleteIfExists(normalized);
+            }
+        } catch (IOException e) {
+            log.warn("주류 이미지 sibling 파일 삭제 실패 (무시): base={}, dir={}", baseName, dir, e);
+        }
+    }
+
+    private void deleteDirectoryIfEmpty(Path basePath, Path dir) {
+        if (dir == null || dir.equals(basePath) || !dir.startsWith(basePath) || !Files.isDirectory(dir)) {
+            return;
+        }
+
+        try (var stream = Files.newDirectoryStream(dir)) {
+            if (!stream.iterator().hasNext()) {
+                Files.deleteIfExists(dir);
+            }
+        } catch (IOException e) {
+            log.warn("빈 주류 이미지 디렉터리 삭제 실패 (무시): {}", dir, e);
+        }
     }
 }

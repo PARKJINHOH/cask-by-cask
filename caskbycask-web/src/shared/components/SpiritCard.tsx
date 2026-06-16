@@ -11,6 +11,8 @@ export interface SpiritCardProps {
   spirit: SpiritListItem
   className?: string
   listView?: boolean
+  imageFit?: 'cover' | 'contain'
+  detailState?: { returnTo?: string }
 }
 
 function PlaceholderImage() {
@@ -33,7 +35,13 @@ function PlaceholderImage() {
 
 // [perf] 술 목록(메인 그리드·카탈로그)에서 다수 반복 렌더 → 필터/스크롤 등 부모 리렌더 시
 // spirit 참조가 같으면 재렌더를 건너뛰도록 memo. (props 는 데이터 전용이라 안전)
-function SpiritCard({ spirit, className = '', listView = false }: SpiritCardProps) {
+function SpiritCard({
+  spirit,
+  className = '',
+  listView = false,
+  imageFit = 'cover',
+  detailState,
+}: SpiritCardProps) {
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const { t, i18n } = useTranslation()
   const isEn = i18n.language === 'en'
@@ -75,6 +83,7 @@ function SpiritCard({ spirit, className = '', listView = false }: SpiritCardProp
           {/* 나머지 — 상세 페이지 이동 */}
           <Link
             to={`/spirits/${spirit.id}`}
+            state={detailState}
             className="flex-1 flex items-center gap-3 min-w-0 focus-visible:outline-none
               focus-visible:ring-2 focus-visible:ring-primary-500 rounded-lg"
             aria-label={primaryName}
@@ -124,6 +133,9 @@ function SpiritCard({ spirit, className = '', listView = false }: SpiritCardProp
   const metaParts: string[] = []
   if (spirit.country) metaParts.push(countryLabel)
   if (spirit.abv != null) metaParts.push(`${spirit.abv}%`)
+  const imageClassName = imageFit === 'contain'
+    ? 'w-full h-full object-contain transition-transform duration-300'
+    : 'w-full h-full object-cover group-hover:scale-105 transition-transform duration-300'
 
   return (
     <article
@@ -139,7 +151,7 @@ function SpiritCard({ spirit, className = '', listView = false }: SpiritCardProp
             alt={primaryName}
             loading="lazy"
             draggable="false"
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            className={imageClassName}
           />
         ) : (
           <PlaceholderImage />
@@ -201,6 +213,7 @@ function SpiritCard({ spirit, className = '', listView = false }: SpiritCardProp
       {/* 카드 전체를 덮는 상세 링크(stretched link) — 확대 버튼(z-20)보다 아래(z-10) */}
       <Link
         to={`/spirits/${spirit.id}`}
+        state={detailState}
         className="absolute inset-0 z-10 rounded-2xl focus-visible:outline-none
           focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500"
         aria-label={primaryName}

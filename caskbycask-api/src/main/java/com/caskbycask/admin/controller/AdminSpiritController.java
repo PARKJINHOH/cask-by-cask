@@ -82,6 +82,13 @@ public class AdminSpiritController {
         return ResponseEntity.ok(ApiResponse.success());
     }
 
+    @DeleteMapping("/{id}/permanent")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> permanentlyDelete(@PathVariable Long id) {
+        spiritService.permanentlyDeleteSpirit(id);
+        return ResponseEntity.ok(ApiResponse.success());
+    }
+
     @PatchMapping("/{id}/restore")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
     public ResponseEntity<ApiResponse<Void>> restore(@PathVariable Long id) {

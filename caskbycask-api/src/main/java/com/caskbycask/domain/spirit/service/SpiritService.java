@@ -69,6 +69,7 @@ public class SpiritService {
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
     private final SpiritDetailService spiritDetailService;
+    private final SpiritImageService spiritImageService;
     private final ScoreService scoreService;
     private final NotificationService notificationService;
     private final BadWordFilter badWordFilter;
@@ -325,6 +326,20 @@ public class SpiritService {
     public void restoreSpirit(Long id) {
         Spirit spirit = getSpirit(id);
         spirit.activate();
+    }
+
+    @Transactional
+    public void permanentlyDeleteSpirit(Long id) {
+        Spirit spirit = spiritRepository.findByIdWithAllDetails(id, null)
+                .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_NOT_FOUND));
+
+        List<SpiritVariantLink> links = variantLinkRepository.findAllInvolving(id);
+        if (!links.isEmpty()) {
+            variantLinkRepository.deleteAll(links);
+        }
+
+        spiritImageService.deleteImagesBySpiritId(id);
+        spiritRepository.delete(spirit);
     }
 
     // ── 사용자 등록 요청 ────────────────────────────────────

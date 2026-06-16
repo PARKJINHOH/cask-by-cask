@@ -20,6 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
@@ -174,6 +175,36 @@ class SpiritImageServiceTest {
 
         spiritImageService.deleteImage(1L, 10L);
 
+        verify(spiritImageRepository).delete(image);
+    }
+
+    @Test
+    @DisplayName("이미지 삭제 시 저장 파일과 WebP sibling 파일도 삭제")
+    void deleteImage_deletesStoredFilesAndSiblings() throws Exception {
+        Path imageDir = tempDir.resolve("spirits").resolve("1");
+        Files.createDirectories(imageDir);
+        Path original = imageDir.resolve("sample.jpg");
+        Path webp = imageDir.resolve("sample.webp");
+        Path other = imageDir.resolve("other.webp");
+        Files.writeString(original, "original");
+        Files.writeString(webp, "webp");
+        Files.writeString(other, "other");
+
+        SpiritImage image = SpiritImage.builder()
+                .spirit(spirit)
+                .imageUrl("/uploads/spirits/1/sample.webp")
+                .isPrimary(false)
+                .sortOrder(0)
+                .build();
+        ReflectionTestUtils.setField(image, "id", 10L);
+
+        given(spiritImageRepository.findByIdAndSpiritId(10L, 1L)).willReturn(Optional.of(image));
+
+        spiritImageService.deleteImage(1L, 10L);
+
+        assertThat(original).doesNotExist();
+        assertThat(webp).doesNotExist();
+        assertThat(other).exists();
         verify(spiritImageRepository).delete(image);
     }
 

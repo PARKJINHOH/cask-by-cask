@@ -1,5 +1,5 @@
 ﻿import { useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import Badge from '@/shared/components/Badge'
 import Button from '@/shared/components/Button'
 import Input from '@/shared/components/Input'
@@ -28,6 +28,7 @@ const STATUS_OPTIONS: Array<{ value: SpiritStatus | ''; label: string }> = [
 
 export default function AdminSpiritPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const [keyword, setKeyword]   = useState('')
   const [category, setCategory] = useState<SpiritCategory | ''>('')
@@ -35,6 +36,7 @@ export default function AdminSpiritPage() {
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
 
   const page = Math.max(0, parseInt(searchParams.get('page') ?? '0', 10))
+  const detailState = { returnTo: `${location.pathname}${location.search}` }
   const setPage = (p: number) =>
     setSearchParams(
       (prev) => { const n = new URLSearchParams(prev); n.set('page', String(p)); return n },
@@ -131,7 +133,7 @@ export default function AdminSpiritPage() {
                     <tr
                       key={spirit.id}
                       className="group hover:bg-neutral-50 transition-colors cursor-pointer"
-                      onClick={() => navigate(`/admin/spirits/${spirit.id}`)}
+                      onClick={() => navigate(`/admin/spirits/${spirit.id}`, { state: detailState })}
                     >
                       <td className="px-4 py-3 text-neutral-400 tabular-nums">{spirit.id}</td>
 

@@ -184,7 +184,7 @@ function SpiritCarousel({ spirits }: { spirits: SpiritListItem[] }) {
       >
         {spirits.map((s) => (
           <div key={s.id} className="flex-shrink-0 w-36 sm:w-40 lg:w-[288px]">
-            <SpiritCard spirit={s} />
+            <SpiritCard spirit={s} imageFit="contain" />
           </div>
         ))}
       </div>
@@ -755,10 +755,10 @@ export default function MainPage() {
 
           {/* 사이드바 */}
           <aside className="mt-10 lg:mt-0 space-y-5">
+            <EventCard />
             <ShortcutsWidget />
             <RankingWidget />
             <NoticeWidget notices={notices} />
-            <EventCard />
           </aside>
         </div>
       </div>

@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useSpiritDetail, useSpiritVariants } from '@/domain/spirit/hooks/useSpiritDetail'
 import { localizeCountry } from '@/shared/utils/countryName'
@@ -28,6 +28,13 @@ import type { StoreType } from '@/domain/pricetracker/types/pricetracker.types'
 import { CATEGORY_TO_PRODUCER_TYPE, PRODUCER_TYPE_LABEL } from '@/domain/producer/types/producer.types'
 
 type Tab = 'reviews' | 'community' | 'price'
+type ListReturnState = { returnTo?: string }
+
+function getSpiritListReturnTo(state: unknown) {
+  const returnTo = (state as ListReturnState | null)?.returnTo
+  if (!returnTo) return null
+  return returnTo === '/spirits' || returnTo.startsWith('/spirits?') ? returnTo : null
+}
 
 // ── 카테고리 상세 섹션 ─────────────────────────────────────
 
@@ -577,7 +584,15 @@ function TabBar({ active, onChange }: { active: Tab; onChange: (t: Tab) => void 
 }
 
 // ── 같은 이름의 다른 배치 · 병입 목록 (PC: 우측 사이드 / 모바일: 헤더 아래) ──
-function VariantsPanel({ variants, isEn }: { variants: SpiritVariant[]; isEn: boolean }) {
+function VariantsPanel({
+  variants,
+  isEn,
+  detailState,
+}: {
+  variants: SpiritVariant[]
+  isEn: boolean
+  detailState?: ListReturnState
+}) {
   const { t } = useTranslation()
   if (variants.length === 0) return null
   return (
@@ -604,7 +619,11 @@ function VariantsPanel({ variants, isEn }: { variants: SpiritVariant[]; isEn: bo
           ].filter(Boolean) as string[]
           return (
             <li key={v.id}>
-              <Link to={`/spirits/${v.id}`} className="flex items-center gap-3 py-2.5 group">
+              <Link
+                to={`/spirits/${v.id}`}
+                state={detailState}
+                className="flex items-center gap-3 py-2.5 group"
+              >
                 <div className="w-10 h-[52px] rounded-lg overflow-hidden bg-gradient-to-b from-amber-50
                   to-amber-100/50 ring-1 ring-neutral-100 flex-shrink-0 flex items-center justify-center">
                   {v.primaryImageUrl ? (
@@ -653,9 +672,19 @@ function VariantsPanel({ variants, isEn }: { variants: SpiritVariant[]; isEn: bo
 export default function SpiritDetailPage() {
   const { id }   = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
   const spiritId = Number(id)
   const { t, i18n } = useTranslation()
   const isEn = i18n.language === 'en'
+  const listReturnTo = getSpiritListReturnTo(location.state)
+  const detailState = listReturnTo ? { returnTo: listReturnTo } : undefined
+  const goBack = () => {
+    if (listReturnTo) {
+      navigate(listReturnTo)
+    } else {
+      navigate(-1)
+    }
+  }
 
   const [selectedImg, setSelectedImg]   = useState(0)
   const [activeTab, setActiveTab]       = useState<Tab>('reviews')
@@ -682,7 +711,7 @@ export default function SpiritDetailPage() {
     return (
       <div className="max-w-2xl mx-auto px-4 py-20 text-center">
         <p className="text-neutral-500 mb-4">{t('spirit.detail.notFound')}</p>
-        <button onClick={() => navigate('/spirits')}
+        <button onClick={() => navigate(listReturnTo ?? '/spirits')}
           className="text-primary-800 hover:underline text-sm">
           ← {t('spirit.detail.backToList')}
         </button>
@@ -774,7 +803,7 @@ export default function SpiritDetailPage() {
       />
 
       {/* Back */}
-      <button onClick={() => navigate(-1)}
+      <button onClick={goBack}
         className="flex items-center gap-1 text-sm text-neutral-400 hover:text-primary-800 mb-5 transition-colors">
         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <polyline points="15,18 9,12 15,6" />
@@ -877,7 +906,7 @@ export default function SpiritDetailPage() {
       {/* 모바일: 같은 이름의 다른 배치 목록 — 헤더 카드 아래 */}
       {hasVariants && (
         <div className="lg:hidden mb-6">
-          <VariantsPanel variants={variants} isEn={isEn} />
+          <VariantsPanel variants={variants} isEn={isEn} detailState={detailState} />
         </div>
       )}
 
@@ -905,7 +934,7 @@ export default function SpiritDetailPage() {
       {hasVariants && (
         <aside className="hidden lg:block w-[300px] flex-shrink-0 lg:sticky lg:top-24
           lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
-          <VariantsPanel variants={variants} isEn={isEn} />
+          <VariantsPanel variants={variants} isEn={isEn} detailState={detailState} />
         </aside>
       )}
       </div>

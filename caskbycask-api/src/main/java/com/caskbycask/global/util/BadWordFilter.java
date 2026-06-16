@@ -19,11 +19,6 @@ public class BadWordFilter {
 
     private final BadWordRepository badWordRepository;
 
-    // 초성 19개 (유니코드 가(0xAC00) 기준 초성 인덱스 순서)
-    private static final char[] CHOSUNG = {
-        'ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ','ㅆ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'
-    };
-
     // volatile: refreshCache()가 새 Set 참조를 원자적으로 교체 → 읽기 스레드가 항상 최신 Set을 봄
     private volatile Set<String> badWordSet = Collections.emptySet();
 
@@ -46,7 +41,9 @@ public class BadWordFilter {
      * 탐지 전략:
      *   1) HTML 태그 제거
      *   2) 공백 제거 후 비교 (스페이스 삽입 우회 방어)
-     *   3) 한글 초성 변환 후 비교 ("ㅅㅂ" 패턴 방어)
+     *
+     * 초성 금칙어(예: "ㅅㅂ")는 사용자가 실제 초성 문자를 입력한 경우만 잡는다.
+     * 일반 한글 문장을 초성으로 변환해 비교하면 "시트러스 보다" 같은 정상 문구도 오탐된다.
      */
     public List<String> detect(String text) {
         if (text == null || text.isBlank() || badWordSet.isEmpty()) {
@@ -55,12 +52,11 @@ public class BadWordFilter {
 
         String plain = Jsoup.parse(text).text();
         String compacted = plain.replaceAll("\\s", "").toLowerCase();
-        String initials  = extractInitials(compacted);
 
         return badWordSet.stream()
                 .filter(word -> {
-                    String w = word.toLowerCase();
-                    return compacted.contains(w) || initials.contains(w);
+                    String w = word.replaceAll("\\s", "").toLowerCase();
+                    return !w.isBlank() && compacted.contains(w);
                 })
                 .collect(Collectors.toList());
     }
@@ -79,19 +75,5 @@ public class BadWordFilter {
         if (!detected.isEmpty()) {
             throw new BadWordDetectedException(detected);
         }
-    }
-
-    // 한글 완성자를 초성 문자로 변환, 그 외 문자는 그대로 유지
-    private String extractInitials(String text) {
-        StringBuilder sb = new StringBuilder(text.length());
-        for (char c : text.toCharArray()) {
-            if (c >= 0xAC00 && c <= 0xD7A3) {
-                int choIndex = (c - 0xAC00) / (21 * 28);
-                sb.append(CHOSUNG[choIndex]);
-            } else {
-                sb.append(c);
-            }
-        }
-        return sb.toString();
     }
 }

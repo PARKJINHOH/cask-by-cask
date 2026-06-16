@@ -35,6 +35,9 @@ export const adminSpiritApi = {
   delete: (id: number) =>
     axiosInstance.delete<ApiResponse<null>>(`/api/admin/spirits/${id}`),
 
+  permanentlyDelete: (id: number) =>
+    axiosInstance.delete<ApiResponse<null>>(`/api/admin/spirits/${id}/permanent`),
+
   restore: (id: number) =>
     axiosInstance.patch<ApiResponse<null>>(`/api/admin/spirits/${id}/restore`),
 

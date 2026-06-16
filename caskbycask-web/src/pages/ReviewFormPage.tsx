@@ -11,6 +11,7 @@ import SeoMeta from '@/shared/components/SeoMeta'
 import { scoreColor } from '@/shared/utils/format'
 import { useCreateReview, useUpdateReview } from '@/domain/review/hooks/useReviews'
 import ReviewScoreSection from '@/domain/review/components/ReviewScoreSection'
+import { getReviewSaveErrorMessage } from '@/domain/review/utils/reviewErrors'
 import {
   EMPTY_AROMA_NOTES,
   parseAromaNotes,
@@ -151,6 +152,9 @@ export default function ReviewFormPage() {
 
   const isPending = createMutation.isPending || updateMutation.isPending || isSubmitting
   const serverError = createMutation.error || updateMutation.error
+  const serverErrorMessage = serverError
+    ? getReviewSaveErrorMessage(serverError, t('review.saveError'))
+    : ''
 
   if (spiritLoading) return <Spinner fullscreen />
 
@@ -298,7 +302,7 @@ export default function ReviewFormPage() {
         </div>
 
         {serverError && (
-          <p className="text-sm text-red-600">{t('review.saveError')}</p>
+          <p className="text-sm text-red-600">{serverErrorMessage}</p>
         )}
 
         <p className="text-[11px] text-neutral-400 text-center leading-relaxed px-2">

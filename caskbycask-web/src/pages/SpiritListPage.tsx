@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect, useCallback, useLayoutEffect, useRef, Fragment } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useLocation, useSearchParams } from 'react-router-dom'
 import { useTranslation, Trans } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { Dialog, Transition, TransitionChild, DialogPanel, DialogTitle } from '@headlessui/react'
@@ -213,8 +213,10 @@ function FilterDrawer({ open, onClose, children }: DrawerProps) {
 // ── 메인 페이지 ───────────────────────────────────────────────
 export default function SpiritListPage() {
   const { t, i18n } = useTranslation()
+  const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const detailState = { returnTo: `${location.pathname}${location.search}` }
 
   // PC 좌측 필터 패널 — 본문(목록)과 완전히 독립된 스크롤 영역.
   // row(relative) 안에서 absolute 로 배치하고, 스크롤에 따라 top 을 직접 계산해
@@ -609,7 +611,7 @@ export default function SpiritListPage() {
                 transition-opacity ${isFetching ? 'opacity-70 pointer-events-none' : ''}`}
             >
               {data.content.map((spirit) => (
-                <SpiritCard key={spirit.id} spirit={spirit} />
+                <SpiritCard key={spirit.id} spirit={spirit} detailState={detailState} />
               ))}
             </div>
           )}

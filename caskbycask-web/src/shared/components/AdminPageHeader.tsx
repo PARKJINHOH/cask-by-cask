@@ -12,6 +12,7 @@ interface AdminPageHeaderProps {
   breadcrumbs?: Crumb[]
   /** pill형 뒤로가기 버튼 이동 경로 (미지정 시 버튼 숨김) */
   backTo?: string
+  useBackToPath?: boolean
   /** pill형 뒤로가기 버튼 라벨 */
   backLabel?: string
   /** 페이지 제목 */
@@ -29,6 +30,7 @@ interface AdminPageHeaderProps {
 export default function AdminPageHeader({
   breadcrumbs,
   backTo,
+  useBackToPath = false,
   backLabel = '목록으로',
   title,
   badge,
@@ -61,7 +63,7 @@ export default function AdminPageHeader({
         {backTo && (
           <button
             type="button"
-            onClick={() => navigate(-1)}
+            onClick={() => (useBackToPath ? navigate(backTo) : navigate(-1))}
             className="inline-flex items-center gap-1 h-8 pl-2 pr-3 rounded-full border border-neutral-200
               bg-white text-sm text-neutral-600 shadow-sm transition-colors
               hover:border-primary-300 hover:text-primary-700 hover:bg-primary-50"

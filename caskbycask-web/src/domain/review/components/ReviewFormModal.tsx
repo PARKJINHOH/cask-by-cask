@@ -8,6 +8,7 @@ import Button from '@/shared/components/Button'
 import { scoreColor } from '@/shared/utils/format'
 import { useCreateReview, useUpdateReview } from '../hooks/useReviews'
 import ReviewScoreSection from './ReviewScoreSection'
+import { getReviewSaveErrorMessage } from '../utils/reviewErrors'
 import { EMPTY_AROMA_NOTES, parseAromaNotes, serializeAromaNotes, WHISKY_AROMA_CATEGORIES } from '../constants/whiskyAromas'
 import { WINE_AROMA_CATEGORIES } from '../constants/wineAromas'
 import { COGNAC_AROMA_CATEGORIES } from '../constants/cognacAromas'
@@ -136,6 +137,9 @@ export default function ReviewFormModal({
 
   const isPending = createMutation.isPending || updateMutation.isPending || isSubmitting
   const serverError = createMutation.error || updateMutation.error
+  const serverErrorMessage = serverError
+    ? getReviewSaveErrorMessage(serverError, t('review.saveError'))
+    : ''
 
   return (
     <Modal
@@ -262,7 +266,7 @@ export default function ReviewFormModal({
         </div>
 
         {serverError && (
-          <p className="text-sm text-red-600">{t('review.saveError')}</p>
+          <p className="text-sm text-red-600">{serverErrorMessage}</p>
         )}
 
         {/* ── 경고 문구 ── */}

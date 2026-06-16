@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import Badge from '@/shared/components/Badge'
 import Button from '@/shared/components/Button'
 import Spinner from '@/shared/components/Spinner'
@@ -10,6 +10,7 @@ import {
   useAdminSpiritDetail,
   useUpdateSpirit,
   useDeleteSpirit,
+  usePermanentlyDeleteSpirit,
   useRestoreSpirit,
   useUploadSpiritImage,
   useDeleteSpiritImage,
@@ -28,6 +29,16 @@ import { useToast } from '@/shared/hooks/useToast'
 // ── 상수 ────────────────────────────────────────────────────────
 const STATUS_LABEL: Record<string, string> = {
   ACTIVE: '공개', HIDDEN: '숨김', PENDING: '대기',
+}
+
+type ListReturnState = { returnTo?: string }
+
+function getAdminSpiritListReturnTo(state: unknown) {
+  const returnTo = (state as ListReturnState | null)?.returnTo
+  if (!returnTo) return '/admin/spirits'
+  return returnTo === '/admin/spirits' || returnTo.startsWith('/admin/spirits?')
+    ? returnTo
+    : '/admin/spirits'
 }
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
@@ -406,11 +417,15 @@ function SpiritVariantsSection({ spiritId }: { spiritId: number }) {
 export default function AdminSpiritDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
   const spiritId = Number(id)
+  const listReturnTo = getAdminSpiritListReturnTo(location.state)
+  const goList = () => navigate(listReturnTo)
 
   const { data: spirit, isLoading } = useAdminSpiritDetail(spiritId)
   const updateSpirit = useUpdateSpirit()
   const deleteSpirit = useDeleteSpirit()
+  const permanentlyDeleteSpirit = usePermanentlyDeleteSpirit()
   const restoreSpirit = useRestoreSpirit()
 
   const form = useSpiritForm()
@@ -440,7 +455,7 @@ export default function AdminSpiritDetailPage() {
     if (!spirit || !confirm(`"${spirit.nameKo}"을(를) 숨김 처리하시겠습니까?`)) return
     try {
       await deleteSpirit.mutateAsync(spiritId)
-      navigate('/admin/spirits')
+      goList()
     } catch {
       showToast('숨김 처리 중 오류가 발생했습니다.', 'error')
     }
@@ -453,6 +468,16 @@ export default function AdminSpiritDetailPage() {
       showToast('숨김이 해제되었습니다.', 'success')
     } catch {
       showToast('숨김 해제 중 오류가 발생했습니다.', 'error')
+    }
+  }
+
+  const handlePermanentDelete = async () => {
+    if (!spirit || !confirm(`"${spirit.nameKo}"을(를) 영구 삭제하시겠습니까?\n\n술 정보와 연결된 이미지가 삭제되며 복구할 수 없습니다.`)) return
+    try {
+      await permanentlyDeleteSpirit.mutateAsync(spiritId)
+      goList()
+    } catch {
+      showToast('삭제 중 오류가 발생했습니다. 연결된 리뷰/가격 제보 등이 있으면 먼저 숨김 처리를 사용하세요.', 'error')
     }
   }
 
@@ -473,10 +498,11 @@ export default function AdminSpiritDetailPage() {
       {/* 헤더 */}
       <AdminPageHeader
         breadcrumbs={[
-          { label: '주류 관리', to: '/admin/spirits' },
+          { label: '주류 관리', to: listReturnTo },
           { label: '주류 상세' },
         ]}
-        backTo="/admin/spirits"
+        backTo={listReturnTo}
+        useBackToPath
         backLabel="주류 목록"
         title="술 상세 / 수정"
         badge={<Badge variant={spirit.status} size="md">{STATUS_LABEL[spirit.status]}</Badge>}
@@ -506,7 +532,7 @@ export default function AdminSpiritDetailPage() {
       {/* 하단 고정 액션바 */}
       <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/90 backdrop-blur border-t border-neutral-200">
         <div className="max-w-3xl lg:max-w-6xl xl:max-w-7xl mx-auto px-6 py-3 flex items-center justify-end gap-2">
-          <Button variant="secondary" onClick={() => navigate('/admin/spirits')}>목록으로</Button>
+          <Button variant="secondary" onClick={goList}>목록으로</Button>
           {spirit.status === 'HIDDEN' ? (
             <Button
               variant="secondary"
@@ -517,13 +543,20 @@ export default function AdminSpiritDetailPage() {
             </Button>
           ) : (
             <Button
-              variant="danger"
+              variant="secondary"
               onClick={handleDelete}
               isLoading={deleteSpirit.isPending}
             >
               숨김 처리
             </Button>
           )}
+          <Button
+            variant="danger"
+            onClick={handlePermanentDelete}
+            isLoading={permanentlyDeleteSpirit.isPending}
+          >
+            삭제
+          </Button>
           <Button onClick={handleSave} isLoading={updateSpirit.isPending}>변경사항 저장</Button>
         </div>
       </div>
