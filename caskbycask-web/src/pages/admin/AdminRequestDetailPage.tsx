@@ -34,11 +34,9 @@ function ImageSection({ requestId, imageUrls }: { requestId: number; imageUrls: 
   const upload = useUploadRequestImage()
   const remove = useRemoveRequestImage()
   const [uploading, setUploading] = useState(false)
+  const [isDragOver, setIsDragOver] = useState(false)
 
-  // 여러 장 선택 시 순차 업로드.
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const input = e.target
-    const files = Array.from(input.files ?? [])
+  const uploadFiles = async (files: File[]) => {
     if (files.length === 0) return
     setUploading(true)
     try {
@@ -51,22 +49,64 @@ function ImageSection({ requestId, imageUrls }: { requestId: number; imageUrls: 
       }
     } finally {
       setUploading(false)
-      input.value = ''
     }
   }
+
+  // 여러 장 선택 시 순차 업로드.
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target
+    const files = Array.from(input.files ?? [])
+    await uploadFiles(files)
+    input.value = ''
+  }
+
+  const handleDragOverFiles = (e: React.DragEvent) => {
+    if (!e.dataTransfer.types.includes('Files')) return
+    e.preventDefault()
+    setIsDragOver(true)
+  }
+
+  const handleDragLeaveFiles = (e: React.DragEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsDragOver(false)
+    }
+  }
+
+  const handleDropFiles = async (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragOver(false)
+    if (!e.dataTransfer.types.includes('Files')) return
+    const allowed = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/avif'])
+    const extRe = /\.(jpe?g|png|webp|avif)$/i
+    const files = Array.from(e.dataTransfer.files).filter(
+      (f) => allowed.has(f.type) || extRe.test(f.name),
+    )
+    await uploadFiles(files)
+  }
+
   const handleRemove = (url: string) => {
     if (!confirm('이미지를 삭제하시겠습니까?')) return
     remove.mutate({ id: requestId, imageUrl: url })
   }
 
   return (
-    <div className={CARD}>
+    <div
+      className={`${CARD} relative transition-colors ${isDragOver ? 'ring-2 ring-amber-400' : ''}`}
+      onDragOver={handleDragOverFiles}
+      onDragLeave={handleDragLeaveFiles}
+      onDrop={handleDropFiles}
+    >
+      {isDragOver && (
+        <div className="absolute inset-0 rounded-2xl bg-amber-50/90 border-2 border-dashed border-amber-400 flex items-center justify-center z-20 pointer-events-none">
+          <span className="text-amber-600 font-semibold text-sm">이미지를 여기에 놓으세요</span>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-neutral-700">이미지</h3>
         <Button variant="secondary" size="sm" onClick={() => fileRef.current?.click()} isLoading={uploading}>
           + 이미지 추가
         </Button>
-        <input ref={fileRef} type="file" accept="image/jpeg,image/png" multiple className="hidden" onChange={handleFileChange} />
+        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple className="hidden" onChange={handleFileChange} />
       </div>
       {imageUrls.length === 0 ? (
         <p className="text-xs text-neutral-400">등록된 이미지가 없습니다.</p>

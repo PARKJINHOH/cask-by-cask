@@ -61,7 +61,7 @@ export default function AdminPageHeader({
         {backTo && (
           <button
             type="button"
-            onClick={() => navigate(backTo)}
+            onClick={() => navigate(-1)}
             className="inline-flex items-center gap-1 h-8 pl-2 pr-3 rounded-full border border-neutral-200
               bg-white text-sm text-neutral-600 shadow-sm transition-colors
               hover:border-primary-300 hover:text-primary-700 hover:bg-primary-50"

@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
-import { useEffect, Suspense } from 'react'
+import { useEffect, useRef, Suspense } from 'react'
 import RouteFallback from '@/shared/components/RouteFallback'
 import RouteTransition from '@/shared/components/RouteTransition'
 import { useQuery } from '@tanstack/react-query'
@@ -20,6 +20,11 @@ export default function AdminLayout() {
   const navigate = useNavigate()
   const { logout } = useAuth()
   const user = useAuthStore((s) => s.user)
+  const contentRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    contentRef.current?.scrollTo({ top: 0 })
+  }, [location.pathname])
 
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN'
   const isSuperAdmin = user?.role === 'SUPER_ADMIN'
@@ -183,7 +188,7 @@ export default function AdminLayout() {
       </aside>
 
       {/* 컨텐츠 */}
-      <div className="flex-1 overflow-auto">
+      <div ref={contentRef} className="flex-1 overflow-auto">
         <Suspense fallback={<RouteFallback />}>
           <RouteTransition>
             <Outlet />

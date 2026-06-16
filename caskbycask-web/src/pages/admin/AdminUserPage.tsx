@@ -1,5 +1,5 @@
 ﻿import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import Badge from '@/shared/components/Badge'
 import Button from '@/shared/components/Button'
 import Input from '@/shared/components/Input'
@@ -56,10 +56,17 @@ function ActiveStatusCell({ user }: { user: AdminUser }) {
 
 export default function AdminUserPage() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [keyword, setKeyword]           = useState('')
   const [roleFilter, setRoleFilter]     = useState<AdminUserRole | ''>('')
   const [activeFilter, setActiveFilter] = useState<'' | 'true' | 'false'>('')
-  const [page, setPage]                 = useState(0)
+
+  const page = Math.max(0, parseInt(searchParams.get('page') ?? '0', 10))
+  const setPage = (p: number) =>
+    setSearchParams(
+      (prev) => { const n = new URLSearchParams(prev); n.set('page', String(p)); return n },
+      { replace: true },
+    )
 
   const [queryParams, setQueryParams] = useState({
     keyword: '',

@@ -1,5 +1,5 @@
 ﻿import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import Badge from '@/shared/components/Badge'
 import Button from '@/shared/components/Button'
 import Input from '@/shared/components/Input'
@@ -28,11 +28,18 @@ const STATUS_OPTIONS: Array<{ value: SpiritStatus | ''; label: string }> = [
 
 export default function AdminSpiritPage() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [keyword, setKeyword]   = useState('')
   const [category, setCategory] = useState<SpiritCategory | ''>('')
   const [status, setStatus]     = useState<SpiritStatus | ''>('')
-  const [page, setPage]         = useState(0)
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
+
+  const page = Math.max(0, parseInt(searchParams.get('page') ?? '0', 10))
+  const setPage = (p: number) =>
+    setSearchParams(
+      (prev) => { const n = new URLSearchParams(prev); n.set('page', String(p)); return n },
+      { replace: true },
+    )
 
   const { data, isLoading } = useAdminSpirits({
     keyword: keyword.trim() || undefined,
@@ -110,19 +117,22 @@ export default function AdminSpiritPage() {
                   <th className="text-left px-4 py-3 text-neutral-500 font-medium">상태</th>
                   <th className="text-right px-4 py-3 text-neutral-500 font-medium">평점</th>
                   <th className="text-right px-4 py-3 text-neutral-500 font-medium">리뷰</th>
-                  <th className="text-right px-4 py-3 text-neutral-500 font-medium">액션</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100">
                 {!data || data.empty ? (
                   <tr>
-                    <td colSpan={8} className="px-4 py-10 text-center text-neutral-400">
+                    <td colSpan={7} className="px-4 py-10 text-center text-neutral-400">
                       데이터가 없습니다.
                     </td>
                   </tr>
                 ) : (
                   data.content.map((spirit) => (
-                    <tr key={spirit.id} className="hover:bg-neutral-50 transition-colors">
+                    <tr
+                      key={spirit.id}
+                      className="group hover:bg-neutral-50 transition-colors cursor-pointer"
+                      onClick={() => navigate(`/admin/spirits/${spirit.id}`)}
+                    >
                       <td className="px-4 py-3 text-neutral-400 tabular-nums">{spirit.id}</td>
 
                       {/* 썸네일 */}
@@ -130,7 +140,7 @@ export default function AdminSpiritPage() {
                         {spirit.primaryImageUrl ? (
                           <button
                             type="button"
-                            onClick={() => setLightboxUrl(spirit.primaryImageUrl)}
+                            onClick={(e) => { e.stopPropagation(); setLightboxUrl(spirit.primaryImageUrl) }}
                             aria-label={`${spirit.nameKo} 이미지 확대`}
                             className="w-10 h-10 rounded-lg overflow-hidden bg-neutral-100
                               cursor-zoom-in hover:ring-2 hover:ring-primary-400 transition-all
@@ -151,7 +161,9 @@ export default function AdminSpiritPage() {
                       </td>
 
                       <td className="px-4 py-3">
-                        <p className="font-medium text-neutral-900">{spirit.nameKo}</p>
+                        <p className="font-medium text-neutral-900 group-hover:text-primary-700">
+                          {spirit.nameKo}
+                        </p>
                         <p className="text-xs text-neutral-400">{spirit.nameEn}</p>
                       </td>
                       <td className="px-4 py-3">
@@ -169,18 +181,6 @@ export default function AdminSpiritPage() {
                       </td>
                       <td className="px-4 py-3 text-right text-neutral-600 tabular-nums">
                         {spirit.reviewCount}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1 justify-end">
-                          <button
-                            onClick={() => navigate(`/admin/spirits/${spirit.id}`)}
-                            className="inline-flex items-center gap-1 h-7 px-2.5 text-xs font-medium
-                              rounded-md border border-neutral-300 bg-white text-neutral-600
-                              hover:bg-neutral-50 transition-colors whitespace-nowrap"
-                          >
-                            상세보기
-                          </button>
-                        </div>
                       </td>
                     </tr>
                   ))

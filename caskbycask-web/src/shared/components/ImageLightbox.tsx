@@ -20,9 +20,11 @@ export default function ImageLightbox({ images, initialIndex = 0, open, onClose 
   const [current, setCurrent] = useState(initialIndex)
   const [view, setView] = useState<View>({ scale: 1, tx: 0, ty: 0 })
   const [smooth, setSmooth] = useState(true)
+  const [isDragging, setIsDragging] = useState(false)
 
   const stageRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<View>(view)
+  const mouseRef = useRef({ dragging: false, startX: 0, startY: 0, startTx: 0, startTy: 0 })
 
   // 제스처 추적용 ref (렌더 트리거 없이 좌표 누적)
   const g = useRef({
@@ -102,6 +104,30 @@ export default function ImageLightbox({ images, initialIndex = 0, open, onClose 
     },
     [apply],
   )
+
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
+    if (e.button !== 0 || viewRef.current.scale <= 1) return
+    e.preventDefault()
+    const m = mouseRef.current
+    m.dragging = true
+    m.startX = e.clientX
+    m.startY = e.clientY
+    m.startTx = viewRef.current.tx
+    m.startTy = viewRef.current.ty
+    setIsDragging(true)
+    setSmooth(false)
+  }, [])
+
+  const onMouseMove = useCallback((e: React.MouseEvent) => {
+    const m = mouseRef.current
+    if (!m.dragging) return
+    apply({ scale: viewRef.current.scale, tx: m.startTx + e.clientX - m.startX, ty: m.startTy + e.clientY - m.startY })
+  }, [apply])
+
+  const onMouseUp = useCallback(() => {
+    mouseRef.current.dragging = false
+    setIsDragging(false)
+  }, [])
 
   const onWheel = useCallback(
     (e: React.WheelEvent) => {
@@ -264,9 +290,13 @@ export default function ImageLightbox({ images, initialIndex = 0, open, onClose 
                 <div
                   ref={stageRef}
                   className="relative flex items-center justify-center overflow-hidden rounded-lg select-none bg-white"
-                  style={{ touchAction: 'none' }}
+                  style={{ touchAction: 'none', cursor: zoomed ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in' }}
                   onWheel={onWheel}
                   onDoubleClick={onDoubleClick}
+                  onMouseDown={onMouseDown}
+                  onMouseMove={onMouseMove}
+                  onMouseUp={onMouseUp}
+                  onMouseLeave={onMouseUp}
                   onTouchStart={onTouchStart}
                   onTouchMove={onTouchMove}
                   onTouchEnd={onTouchEnd}
@@ -280,7 +310,6 @@ export default function ImageLightbox({ images, initialIndex = 0, open, onClose 
                     style={{
                       transform: `translate(${view.tx}px, ${view.ty}px) scale(${view.scale})`,
                       transition: smooth ? 'transform 0.15s ease-out' : 'none',
-                      cursor: zoomed ? 'grab' : 'zoom-in',
                     }}
                   />
                 </div>

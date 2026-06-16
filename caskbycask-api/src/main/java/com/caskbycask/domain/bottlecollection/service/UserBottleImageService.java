@@ -25,8 +25,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class UserBottleImageService {
 
-    private static final Set<String> ALLOWED_TYPES = Set.of("image/jpeg", "image/png");
-    private static final Set<String> ALLOWED_EXTS = Set.of("jpg", "jpeg", "png");
+    private static final Set<String> ALLOWED_TYPES = Set.of("image/jpeg", "image/png", "image/webp", "image/avif");
+    private static final Set<String> ALLOWED_EXTS = Set.of("jpg", "jpeg", "png", "webp", "avif");
     private static final long MAX_SIZE = 10L * 1024 * 1024;
 
     @Value("${upload.path}")

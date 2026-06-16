@@ -193,7 +193,7 @@ export function BottleFormModal({ open, onClose, editing }: Props) {
           {/* 이미지 */}
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-1">{t('collection.form.images')}</label>
-            <input type="file" accept="image/jpeg,image/png" multiple
+            <input type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple
               onChange={e => {
                 const alreadyUploaded = editing?.imageUrls.length ?? 0;
                 const remaining = Math.max(0, 2 - alreadyUploaded);

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
@@ -90,20 +90,134 @@ function SectionHeader({
   )
 }
 
-// ── 술 카드 가로 스크롤 행 ────────────────────────────────────────
-function SpiritCardRow({ spirits }: { spirits: SpiritListItem[] }) {
+// ── 술 카드 캐러셀 (PC: 4×1 페이지네이션 + drag, MO: 가로 터치/drag 스크롤) ───
+function SpiritCarousel({ spirits }: { spirits: SpiritListItem[] }) {
+  const PAGE_SIZE = 4
+  const [page, setPage] = useState(0)
+
+  useEffect(() => { setPage(0) }, [spirits])
+
+  const totalPages = Math.ceil(spirits.length / PAGE_SIZE)
+  const hasPrev = page > 0
+  const hasNext = page < totalPages - 1
+  const showNav = spirits.length > PAGE_SIZE
+
+  // PC drag-to-navigate
+  const pcDrag = useRef({ active: false, startX: 0 })
+  const wasDragged = useRef(false)
+
+  const onPcDown = (e: React.MouseEvent) => {
+    pcDrag.current = { active: true, startX: e.clientX }
+    wasDragged.current = false
+  }
+  const onPcMove = (e: React.MouseEvent) => {
+    if (!pcDrag.current.active) return
+    if (Math.abs(e.clientX - pcDrag.current.startX) > 8) wasDragged.current = true
+  }
+  const onPcUp = (e: React.MouseEvent) => {
+    if (!pcDrag.current.active) return
+    const dx = e.clientX - pcDrag.current.startX
+    if (dx < -60 && hasNext) setPage((p) => p + 1)
+    else if (dx > 60 && hasPrev) setPage((p) => p - 1)
+    pcDrag.current.active = false
+  }
+
+  // Mobile horizontal drag-scroll
+  const mobileRef = useRef<HTMLDivElement>(null)
+  const mobileDrag = useRef({ active: false, startX: 0, scrollLeft: 0 })
+
+  const onMoDown = (e: React.MouseEvent) => {
+    if (!mobileRef.current) return
+    mobileDrag.current = { active: true, startX: e.pageX, scrollLeft: mobileRef.current.scrollLeft }
+  }
+  const onMoMove = (e: React.MouseEvent) => {
+    if (!mobileDrag.current.active || !mobileRef.current) return
+    e.preventDefault()
+    mobileRef.current.scrollLeft = mobileDrag.current.scrollLeft - (e.pageX - mobileDrag.current.startX)
+  }
+  const onMoUp = () => { mobileDrag.current.active = false }
+
+  const visible = spirits.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
+
+  const navBtn = `absolute top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white
+    border border-neutral-200 shadow-md flex items-center justify-center
+    transition-all duration-150 cursor-pointer
+    hover:bg-primary-50 hover:text-primary-800 hover:border-primary-200 hover:shadow-lg`
+
   return (
-    <div
-      className="flex gap-3 overflow-x-auto pb-1 -mx-4 px-4
-        lg:mx-0 lg:px-0 lg:grid lg:grid-cols-5 lg:overflow-visible lg:pb-0"
-      style={{ scrollbarWidth: 'none' }}
-    >
-      {spirits.slice(0, 10).map((spirit) => (
-        <div key={spirit.id} className="flex-shrink-0 w-36 sm:w-40 lg:w-auto">
-          <SpiritCard spirit={spirit} />
+    <>
+      {/* PC: 4×1 single-row paginated grid */}
+      <div
+        className="hidden lg:block relative cursor-grab active:cursor-grabbing"
+        onMouseDown={onPcDown}
+        onMouseMove={onPcMove}
+        onMouseUp={onPcUp}
+        onMouseLeave={() => { pcDrag.current.active = false }}
+        onClickCapture={(e) => {
+          if (wasDragged.current) { e.stopPropagation(); e.preventDefault() }
+        }}
+      >
+        <div className="grid grid-cols-4 gap-3 select-none">
+          {visible.map((s) => <SpiritCard key={s.id} spirit={s} />)}
         </div>
-      ))}
-    </div>
+
+        {showNav && (
+          <>
+            <button
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); setPage((p) => p - 1) }}
+              className={`${navBtn} -left-4 text-neutral-600 ${!hasPrev ? 'opacity-0 pointer-events-none' : ''}`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+            </button>
+
+            <button
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); setPage((p) => p + 1) }}
+              className={`${navBtn} -right-4 text-neutral-600 ${!hasNext ? 'opacity-0 pointer-events-none' : ''}`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </button>
+
+            {totalPages > 1 && (
+              <div className="flex justify-center gap-1.5 mt-3">
+                {Array.from({ length: totalPages }).map((_, i) => (
+                  <button
+                    key={i}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => { e.stopPropagation(); setPage(i) }}
+                    className={`h-1.5 rounded-full transition-all duration-200 ${
+                      i === page ? 'w-4 bg-primary-700' : 'w-1.5 bg-neutral-200 hover:bg-neutral-400'
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Mobile/sm: horizontal drag-scroll (single row) */}
+      <div
+        ref={mobileRef}
+        className="lg:hidden flex gap-3 overflow-x-auto pb-1 -mx-4 px-4 select-none"
+        style={{ scrollbarWidth: 'none', cursor: 'grab' }}
+        onMouseDown={onMoDown}
+        onMouseMove={onMoMove}
+        onMouseUp={onMoUp}
+        onMouseLeave={onMoUp}
+      >
+        {spirits.map((s) => (
+          <div key={s.id} className="flex-shrink-0 w-36 sm:w-40">
+            <SpiritCard spirit={s} />
+          </div>
+        ))}
+      </div>
+    </>
   )
 }
 
@@ -615,7 +729,7 @@ export default function MainPage() {
                   linkLabel={t('home.sections.viewAll')}
                   badge
                 />
-                <SpiritCardRow spirits={popular} />
+                <SpiritCarousel spirits={popular} />
               </section>
             )}
 
@@ -627,7 +741,7 @@ export default function MainPage() {
                   link="/spirits?sort=SCORE_DESC"
                   linkLabel={t('home.sections.viewAll')}
                 />
-                <SpiritCardRow spirits={topRated} />
+                <SpiritCarousel spirits={topRated} />
               </section>
             )}
 
@@ -639,17 +753,17 @@ export default function MainPage() {
                   link="/spirits?sort=LATEST"
                   linkLabel={t('home.sections.viewAll')}
                 />
-                <SpiritCardRow spirits={recent} />
+                <SpiritCarousel spirits={recent} />
               </section>
             )}
           </div>
 
           {/* 사이드바 */}
           <aside className="mt-10 lg:mt-0 space-y-5">
+            <ShortcutsWidget />
             <RankingWidget />
             <NoticeWidget notices={notices} />
             <EventCard />
-            <ShortcutsWidget />
           </aside>
         </div>
       </div>

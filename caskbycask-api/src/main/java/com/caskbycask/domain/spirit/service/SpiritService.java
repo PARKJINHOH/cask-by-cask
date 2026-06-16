@@ -54,8 +54,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class SpiritService {
 
-    private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of("image/jpeg", "image/png");
-    private static final Set<String> ALLOWED_EXTENSIONS    = Set.of("jpg", "jpeg", "png");
+    private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
+    private static final Set<String> ALLOWED_EXTENSIONS    = Set.of("jpg", "jpeg", "png", "webp");
     private static final long        MAX_FILE_SIZE          = 10L * 1024 * 1024;
 
     @Value("${upload.path}")
