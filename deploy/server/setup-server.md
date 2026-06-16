@@ -212,18 +212,31 @@ sudo chown ubuntu:ubuntu /app/vite/maintenance.html
 ### 8-2. 점검 우회 시크릿 설정 (관리자 본인만 점검 중 접근)
 
 `caskbycask.conf` 의 점검 블록에는 관리자 우회용 시크릿 자리표시자 `CHANGE_ME_TO_A_LONG_RANDOM_SECRET` 가 **3곳**(쿠키 검사 `if`, 발급 `location` 경로, `Set-Cookie` 값) 있다.
-**git 에 실제 값을 올리지 말고**, 서버에 배치한 conf 에서만 동일한 랜덤 문자열로 일괄 치환한다.
+**git 에 실제 값을 올리지 말고**, 서버에 배치한 conf 에서만 치환한다.
 
+> **별도 작업 불필요** — `./maintenance.sh on` 실행 시 자동으로 시크릿을 생성·nginx에 적용·URL을 출력한다.
+> 생성된 시크릿은 `/app/vite/.maintenance_secret` 에 저장되며, 다음 `on` 호출 시 새 시크릿으로 교체된다.
+
+```
+[maint] ✅ 점검 모드 ON — 방문자에게 점검 페이지가 노출됩니다.
+[maint] 🔑 점검 우회 URL: https://caskbycask.net/__cbc_unlock_<자동생성값>
+[maint]    이 URL 을 안전하게 보관하세요. 쿠키 만료(24h) 시 재방문하면 됩니다.
+```
+
+수동으로 시크릿만 교체해야 할 경우:
 ```bash
 SECRET=$(openssl rand -hex 24)
-sudo sed -i "s/CHANGE_ME_TO_A_LONG_RANDOM_SECRET/$SECRET/g" /etc/nginx/sites-available/caskbycask.conf
+OLD=$(cat /app/vite/.maintenance_secret)
+sudo sed -i "s/$OLD/$SECRET/g" /etc/nginx/sites-available/caskbycask.conf
 sudo nginx -t && sudo systemctl reload nginx
-echo "점검 우회 URL:  https://caskbycask.net/__cbc_unlock_$SECRET"   # ← 안전하게 보관
+echo "$SECRET" > /app/vite/.maintenance_secret && chmod 600 /app/vite/.maintenance_secret
+echo "점검 우회 URL:  https://caskbycask.net/__cbc_unlock_$SECRET"
 ```
 
 사용법:
-- **점검 중 우회**: 위 `__cbc_unlock_<시크릿>` URL 을 브라우저로 1회 방문 → `cbc_maint` 쿠키 발급(24h) → 이후 점검 중에도 정상 접근(IP 무관, Cloudflare 통과).
+- **점검 중 우회**: `__cbc_unlock_<시크릿>` URL 을 브라우저로 1회 방문 → `cbc_maint` 쿠키 발급(24h) → 이후 점검 중에도 정상 접근(IP 무관, Cloudflare 통과).
 - 쿠키 만료(24h) 또는 시크릿 교체 시 URL 을 다시 방문하면 된다.
+- 현재 우회 URL 확인: `./maintenance.sh status`
 
 ---
 

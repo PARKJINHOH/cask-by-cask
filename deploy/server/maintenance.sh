@@ -9,7 +9,7 @@
 # /healthz 헬스체크는 점검 중에도 200 을 유지한다(모니터링 오탐 방지).
 #
 # 사용법:
-#   ./maintenance.sh on       # 점검 시작 (점검 페이지 노출)
+#   ./maintenance.sh on       # 점검 시작 (점검 페이지 노출 + 우회 URL 자동 생성)
 #   ./maintenance.sh off      # 점검 종료 (정상 복귀)
 #   ./maintenance.sh status   # 현재 상태 확인
 #
@@ -21,6 +21,8 @@ set -euo pipefail
 WEB_DIR=/app/vite
 FLAG="$WEB_DIR/maintenance.on"
 PAGE="$WEB_DIR/maintenance.html"
+SECRET_FILE="$WEB_DIR/.maintenance_secret"
+NGINX_CONF="/etc/nginx/sites-available/caskbycask.conf"
 
 log()  { printf "\033[1;33m[maint]\033[0m %s\n" "$*"; }
 err()  { printf "\033[1;31m[maint]\033[0m %s\n" "$*" >&2; }
@@ -38,7 +40,29 @@ case "$1" in
     fi
     touch "$FLAG"
     ok "✅ 점검 모드 ON — 방문자에게 점검 페이지가 노출됩니다."
-    log "관리자 우회: /__cbc_unlock_<시크릿> URL 1회 방문 → 쿠키 발급(설정은 setup-server.md 8-2)"
+
+    # 우회 시크릿 생성 및 nginx 설정 자동 적용
+    NEW_SECRET=$(openssl rand -hex 24)
+    if [ -f "$SECRET_FILE" ]; then
+        OLD_SECRET=$(cat "$SECRET_FILE")
+        sudo sed -i "s/$OLD_SECRET/$NEW_SECRET/g" "$NGINX_CONF"
+    else
+        sudo sed -i "s/CHANGE_ME_TO_A_LONG_RANDOM_SECRET/$NEW_SECRET/g" "$NGINX_CONF"
+    fi
+    echo "$NEW_SECRET" > "$SECRET_FILE"
+    chmod 600 "$SECRET_FILE"
+
+    if sudo nginx -t 2>/dev/null; then
+        sudo systemctl reload nginx
+        echo ""
+        ok "🔑 점검 우회 URL: https://caskbycask.net/__cbc_unlock_$NEW_SECRET"
+        log "   이 URL 을 안전하게 보관하세요. 쿠키 만료(24h) 시 재방문하면 됩니다."
+        echo ""
+    else
+        err "nginx 설정 검증 실패 — sudo nginx -t 로 직접 확인하세요."
+        exit 1
+    fi
+
     log "종료하려면: $0 off"
     ;;
   off)
@@ -52,6 +76,11 @@ case "$1" in
   status)
     if [ -f "$FLAG" ]; then
         log "현재 상태: 🛠  점검 모드 ON  (플래그: $FLAG)"
+        if [ -f "$SECRET_FILE" ]; then
+            log "우회 URL: https://caskbycask.net/__cbc_unlock_$(cat "$SECRET_FILE")"
+        else
+            log "우회 URL: 미설정 (maintenance.sh on 으로 재시작하면 자동 생성됩니다)"
+        fi
     else
         log "현재 상태: ✅ 정상 서비스"
     fi
