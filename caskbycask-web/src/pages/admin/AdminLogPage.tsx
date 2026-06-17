@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import Badge from '@/shared/components/Badge'
 import Spinner from '@/shared/components/Spinner'
 import Pagination from '@/shared/components/Pagination'
@@ -121,8 +121,8 @@ export default function AdminLogPage() {
                 <tr>
                   <th className="text-left px-4 py-3 text-neutral-500 font-medium">처리 일시</th>
                   <th className="text-left px-4 py-3 text-neutral-500 font-medium">유형</th>
-                  <th className="text-left px-4 py-3 text-neutral-500 font-medium">처리자</th>
-                  <th className="text-left px-4 py-3 text-neutral-500 font-medium">대상</th>
+                  <th className="hidden md:table-cell text-left px-4 py-3 text-neutral-500 font-medium">처리자</th>
+                  <th className="hidden md:table-cell text-left px-4 py-3 text-neutral-500 font-medium">대상</th>
                   <th className="text-left px-4 py-3 text-neutral-500 font-medium">내용</th>
                 </tr>
               </thead>
@@ -144,10 +144,10 @@ export default function AdminLogPage() {
                           {ADMIN_LOG_TYPE_LABELS[log.logType]}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3 font-medium text-neutral-800 text-xs">
+                      <td className="hidden md:table-cell px-4 py-3 font-medium text-neutral-800 text-xs">
                         {log.actorEmail}
                       </td>
-                      <td className="px-4 py-3 text-neutral-500 text-xs">
+                      <td className="hidden md:table-cell px-4 py-3 text-neutral-500 text-xs">
                         <span className="px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600 text-[11px] font-medium mr-1">
                           {TARGET_LABELS[log.targetType]}
                         </span>

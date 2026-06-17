@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import Badge from '@/shared/components/Badge'
 import Button from '@/shared/components/Button'
@@ -112,13 +112,13 @@ export default function AdminSpiritPage() {
             <table className="w-full text-sm">
               <thead className="bg-neutral-50 border-b border-neutral-200">
                 <tr>
-                  <th className="text-left px-4 py-3 text-neutral-500 font-medium w-16">ID</th>
+                  <th className="hidden md:table-cell text-left px-4 py-3 text-neutral-500 font-medium w-16">ID</th>
                   <th className="text-left px-3 py-3 text-neutral-500 font-medium w-14">사진</th>
                   <th className="text-left px-4 py-3 text-neutral-500 font-medium">이름</th>
                   <th className="text-left px-4 py-3 text-neutral-500 font-medium">카테고리</th>
                   <th className="text-left px-4 py-3 text-neutral-500 font-medium">상태</th>
-                  <th className="text-right px-4 py-3 text-neutral-500 font-medium">평점</th>
-                  <th className="text-right px-4 py-3 text-neutral-500 font-medium">리뷰</th>
+                  <th className="hidden md:table-cell text-right px-4 py-3 text-neutral-500 font-medium">평점</th>
+                  <th className="hidden md:table-cell text-right px-4 py-3 text-neutral-500 font-medium">리뷰</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100">
@@ -135,7 +135,7 @@ export default function AdminSpiritPage() {
                       className="group hover:bg-neutral-50 transition-colors cursor-pointer"
                       onClick={() => navigate(`/admin/spirits/${spirit.id}`, { state: detailState })}
                     >
-                      <td className="px-4 py-3 text-neutral-400 tabular-nums">{spirit.id}</td>
+                      <td className="hidden md:table-cell px-4 py-3 text-neutral-400 tabular-nums">{spirit.id}</td>
 
                       {/* 썸네일 */}
                       <td className="px-3 py-2">
@@ -178,10 +178,10 @@ export default function AdminSpiritPage() {
                           {STATUS_OPTIONS.find((s) => s.value === spirit.status)?.label ?? spirit.status}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3 text-right font-medium text-primary-800 tabular-nums">
+                      <td className="hidden md:table-cell px-4 py-3 text-right font-medium text-primary-800 tabular-nums">
                         {spirit.avgScore != null ? spirit.avgScore.toFixed(1) : '-'}
                       </td>
-                      <td className="px-4 py-3 text-right text-neutral-600 tabular-nums">
+                      <td className="hidden md:table-cell px-4 py-3 text-right text-neutral-600 tabular-nums">
                         {spirit.reviewCount}
                       </td>
                     </tr>

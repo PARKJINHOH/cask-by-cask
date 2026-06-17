@@ -1,5 +1,5 @@
 # CaskByCask — Claude Code 컨텍스트
-- 운영서버 배포 전 상태인, 개발중인 웹 애플리케이션입니다.
+- 운영중인 사이트야.
 
 ## 프로젝트
 위스키·와인·꼬냑 주류 리뷰 커뮤니티 플랫폼.
@@ -92,41 +92,3 @@
 2. **타입**: `domain/admin/types/admin.types.ts` 의 `CreateSpiritPayload`/`UpdateSpiritPayload`/`AdminSpiritDetail`/`SpiritRegisterRequestDetail`(+ 해당 Request/Response DTO 타입)
 3. **백엔드**: Spirit 엔티티/세부 엔티티 + 요청·응답 DTO + 서비스 매핑 + **Flyway 마이그레이션 추가**(스키마 변경 시)
 4. 신규 필드가 사용자에게도 보여야 하면 `SpiritDetailPage`(사용자 상세) 표시 로직과 i18n 키도 추가
-
-
-
-# 주류 핫딜 자동 수집 시스템 구현
-
-## 프로젝트 개요
-주류 커뮤니티 플랫폼(CaskByCask)의 핫딜 자동 수집 파이프라인을 구현한다.
-시놀로지 DS220+에서 20분마다 실행되는 Python 크롤러가 주류 관련 할인 게시글을 수집하고,
-OpenAI GPT-4o-mini로 분석 후 Spring Boot 웹앱의 관리자 검토 큐에 등록한다.
-
----
-
-## 시스템 구성
-
-- 크롤러 실행 환경: 시놀로지 DS220+ (Python)
-- AI 분석: OpenAI GPT-4o-mini (변경 가능할 수 있게 유연하게)
-- 내부 통신: 시놀로지 → Oracle Cloud REST API (인증 문제 없게 구현시 확인하기)
-
----
-
-## 데이터 흐름 (전체)
-
-```
-[시놀로지 DS220+]
-  1. 크롤링 (네이버 까페, 디시인사이드 등)
-  2. 1차 제목 키워드(핫딜, 할인, 대박, 중박 등)
-  3. 필터 통과 시 본문 텍스트 + 이미지 임시 다운로드
-  4. OpenAI GPT-4o-mini 분석 요청 (텍스트 + 이미지 base64)
-  5. 분석 완료 후 임시 이미지 즉시 삭제
-  6. { 분석 결과 JSON + 원문 URL } → Spring Boot API 전송
-
-[Oracle Cloud - Spring Boot]
-  7. 수신 데이터 MariaDB 저장 (is_visible=false, status=PENDING)
-
-[관리자 페이지]
-  8. 분석 텍스트 확인 + 관리자가 직접 원문 URL 교차검증
-  9. 수동 노출 전환 (APPROVED) 또는 반려 (REJECTED)
-```

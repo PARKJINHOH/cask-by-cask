@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Button from '@/shared/components/Button'
 import Input from '@/shared/components/Input'
@@ -185,10 +185,10 @@ export default function AdminEmailPage() {
 
   return (
     <div className="p-6 h-full">
-      <div className="flex gap-6 items-start">
+      <div className="flex flex-col md:flex-row gap-6 items-start">
 
         {/* ── 좌측: 발송 폼 ─────────────────────────────────────── */}
-        <div className="flex-1 min-w-0 space-y-5">
+        <div className="flex-1 w-full min-w-0 space-y-5">
           {/* 헤더 */}
           <div className="flex items-end justify-between">
             <div>
@@ -282,7 +282,7 @@ export default function AdminEmailPage() {
         </div>
 
         {/* ── 우측: 템플릿 패널 ─────────────────────────────────── */}
-        <div className="w-72 shrink-0">
+        <div className="w-full md:w-72 shrink-0">
           <div className="bg-white rounded-xl shadow-sm overflow-hidden sticky top-6">
             <div className="px-4 py-3 border-b border-neutral-100">
               <h2 className="text-sm font-semibold text-neutral-800">저장된 템플릿</h2>

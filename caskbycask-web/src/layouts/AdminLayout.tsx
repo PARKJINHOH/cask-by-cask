@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
-import { useEffect, useRef, Suspense } from 'react'
+import { useEffect, useRef, Suspense, useState } from 'react'
 import RouteFallback from '@/shared/components/RouteFallback'
 import RouteTransition from '@/shared/components/RouteTransition'
 import { useQuery } from '@tanstack/react-query'
@@ -21,9 +21,11 @@ export default function AdminLayout() {
   const { logout } = useAuth()
   const user = useAuthStore((s) => s.user)
   const contentRef = useRef<HTMLDivElement>(null)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     contentRef.current?.scrollTo({ top: 0 })
+    setIsMobileMenuOpen(false)
   }, [location.pathname])
 
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN'
@@ -84,15 +86,68 @@ export default function AdminLayout() {
   }
 
   return (
-    <div className="h-screen bg-canvas flex overflow-hidden">
+    <div className="h-screen bg-canvas flex flex-col md:flex-row overflow-hidden relative">
+      {/* 모바일 상단 헤더 */}
+      <header className="flex md:hidden items-center justify-between px-4 py-3 bg-white border-b border-neutral-200 sticky top-0 z-40">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="p-1.5 rounded-lg text-neutral-600 hover:bg-neutral-100 transition-colors focus:outline-none"
+            aria-label="메뉴 열기"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          <div>
+            <Link to="/" className="text-base font-bold text-primary-800">CaskByCask</Link>
+            <span className="text-[10px] text-neutral-400 ml-1.5 px-1.5 py-0.5 bg-neutral-100 rounded-md font-medium">
+              {isSuperAdmin ? '운영자' : isAdmin ? '관리자' : '파트너'}
+            </span>
+          </div>
+        </div>
+        <button
+          onClick={handleLogout}
+          className="text-xs text-neutral-500 hover:text-neutral-700 px-2.5 py-1.5 rounded-lg border border-neutral-200 bg-neutral-50 font-medium transition-colors"
+        >
+          로그아웃
+        </button>
+      </header>
+
+      {/* 모바일 드로어 뒷배경 (오버레이) */}
+      {isMobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-40 md:hidden transition-opacity duration-300"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
       {/* 사이드바 */}
-      <aside className="w-56 bg-white border-r border-neutral-200 flex flex-col flex-shrink-0">
+      <aside
+        className={`
+          fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-neutral-200 flex flex-col flex-shrink-0
+          transition-transform duration-300 transform
+          md:relative md:translate-x-0 md:w-56 md:z-auto
+          ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+        `}
+      >
         {/* 헤더 */}
-        <div className="p-5 border-b border-neutral-100">
-          <Link to="/" className="text-lg font-bold text-primary-800">CaskByCask</Link>
-          <p className="text-xs text-neutral-400 mt-0.5">
-            {isSuperAdmin ? '운영자 콘솔' : isAdmin ? '관리자 콘솔' : '파트너 콘솔'}
-          </p>
+        <div className="p-5 border-b border-neutral-100 flex items-center justify-between">
+          <div>
+            <Link to="/" className="text-lg font-bold text-primary-800">CaskByCask</Link>
+            <p className="text-xs text-neutral-400 mt-0.5">
+              {isSuperAdmin ? '운영자 콘솔' : isAdmin ? '관리자 콘솔' : '파트너 콘솔'}
+            </p>
+          </div>
+          <button
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="md:hidden p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-50 transition-colors"
+            aria-label="메뉴 닫기"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
         {/* 네비게이션 */}
@@ -188,7 +243,7 @@ export default function AdminLayout() {
       </aside>
 
       {/* 컨텐츠 */}
-      <div ref={contentRef} className="flex-1 overflow-auto">
+      <div ref={contentRef} className="flex-1 overflow-auto w-full admin-content-area">
         <Suspense fallback={<RouteFallback />}>
           <RouteTransition>
             <Outlet />

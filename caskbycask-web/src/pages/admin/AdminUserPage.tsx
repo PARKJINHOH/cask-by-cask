@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import Badge from '@/shared/components/Badge'
 import Button from '@/shared/components/Button'
@@ -149,11 +149,11 @@ export default function AdminUserPage() {
             <table className="w-full text-sm">
               <thead className="bg-neutral-50 border-b border-neutral-200">
                 <tr>
-                  <th className="text-left px-4 py-3 text-neutral-500 font-medium w-16">ID</th>
+                  <th className="hidden md:table-cell text-left px-4 py-3 text-neutral-500 font-medium w-16">ID</th>
                   <th className="text-left px-4 py-3 text-neutral-500 font-medium">이메일</th>
                   <th className="text-left px-4 py-3 text-neutral-500 font-medium">닉네임</th>
                   <th className="text-left px-4 py-3 text-neutral-500 font-medium">등급</th>
-                  <th className="text-left px-4 py-3 text-neutral-500 font-medium">가입일</th>
+                  <th className="hidden md:table-cell text-left px-4 py-3 text-neutral-500 font-medium">가입일</th>
                   <th className="text-left px-4 py-3 text-neutral-500 font-medium">활성여부</th>
                 </tr>
               </thead>
@@ -171,7 +171,7 @@ export default function AdminUserPage() {
                       className="hover:bg-neutral-50 transition-colors cursor-pointer"
                       onClick={() => navigate(`/admin/users/${user.id}`)}
                     >
-                      <td className="px-4 py-3 text-neutral-400 tabular-nums">{user.id}</td>
+                      <td className="hidden md:table-cell px-4 py-3 text-neutral-400 tabular-nums">{user.id}</td>
                       <td className="px-4 py-3 text-neutral-600 max-w-[200px] truncate">
                         {user.email}
                       </td>
@@ -203,7 +203,7 @@ export default function AdminUserPage() {
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-neutral-500 tabular-nums text-xs">
+                      <td className="hidden md:table-cell px-4 py-3 text-neutral-500 tabular-nums text-xs">
                         {formatDate(user.createdAt)}
                       </td>
                       <td className="px-4 py-3">

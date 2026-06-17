@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAdminNoticeList, useDeleteNotice } from '@/domain/notice/hooks/useAdminNotices'
 import { NOTICE_CATEGORY_LABELS } from '@/domain/notice/types/notice.types'
@@ -109,13 +109,13 @@ export default function AdminNoticeListPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-neutral-100 bg-neutral-50">
-              <th className="text-left px-4 py-3 font-medium text-neutral-500 w-16">ID</th>
+              <th className="hidden md:table-cell text-left px-4 py-3 font-medium text-neutral-500 w-16">ID</th>
               <th className="text-left px-4 py-3 font-medium text-neutral-500">제목</th>
               <th className="text-left px-4 py-3 font-medium text-neutral-500 w-24">카테고리</th>
-              <th className="text-left px-4 py-3 font-medium text-neutral-500 w-20">고정</th>
-              <th className="text-left px-4 py-3 font-medium text-neutral-500 w-20">발행</th>
-              <th className="text-left px-4 py-3 font-medium text-neutral-500 w-24">조회수</th>
-              <th className="text-left px-4 py-3 font-medium text-neutral-500 w-36">등록일</th>
+              <th className="hidden md:table-cell text-left px-4 py-3 font-medium text-neutral-500 w-20">고정</th>
+              <th className="hidden md:table-cell text-left px-4 py-3 font-medium text-neutral-500 w-20">발행</th>
+              <th className="hidden md:table-cell text-left px-4 py-3 font-medium text-neutral-500 w-24">조회수</th>
+              <th className="hidden md:table-cell text-left px-4 py-3 font-medium text-neutral-500 w-36">등록일</th>
               <th className="px-4 py-3 w-36" />
             </tr>
           </thead>
@@ -138,7 +138,7 @@ export default function AdminNoticeListPage() {
                   key={notice.id}
                   className="border-b border-neutral-50 hover:bg-neutral-50 transition-colors"
                 >
-                  <td className="px-4 py-3 text-neutral-400">{notice.id}</td>
+                  <td className="hidden md:table-cell px-4 py-3 text-neutral-400">{notice.id}</td>
                   <td className="px-4 py-3">
                     <Link
                       to={`/admin/notices/${notice.id}`}
@@ -165,18 +165,18 @@ export default function AdminNoticeListPage() {
                   <td className="px-4 py-3 text-neutral-500">
                     {NOTICE_CATEGORY_LABELS[notice.category]}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="hidden md:table-cell px-4 py-3">
                     {notice.isPinned
                       ? <span className="text-amber-600 font-medium">Y</span>
                       : <span className="text-neutral-300">—</span>}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="hidden md:table-cell px-4 py-3">
                     {notice.isPublished
                       ? <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">발행</span>
                       : <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-neutral-100 text-neutral-500">미발행</span>}
                   </td>
-                  <td className="px-4 py-3 text-neutral-500">{notice.viewCount.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-neutral-400 text-xs">
+                  <td className="hidden md:table-cell px-4 py-3 text-neutral-500">{notice.viewCount.toLocaleString()}</td>
+                  <td className="hidden md:table-cell px-4 py-3 text-neutral-400 text-xs">
                     {new Date(notice.createdAt).toLocaleDateString('ko-KR')}
                   </td>
                   <td className="px-4 py-3">
