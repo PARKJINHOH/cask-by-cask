@@ -16,6 +16,8 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @Slf4j
 @RestControllerAdvice
@@ -74,7 +76,17 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.fail(errorCode.getCode(), errorCode.getMessage()));
     }
 
-    // 지원하지 않는 HTTP 메서드 → 405 (catch-all 이 500 으로 삼키지 않도록)
+    // Missing MVC/static resources should not be reported as server errors.
+    @ExceptionHandler({ NoHandlerFoundException.class, NoResourceFoundException.class })
+    public ResponseEntity<ApiResponse<Void>> handleNotFound(Exception e) {
+        log.warn("NotFoundException: {}", e.getMessage());
+        ErrorCode errorCode = ErrorCode.NOT_FOUND;
+        return ResponseEntity
+                .status(errorCode.getHttpStatus())
+                .body(ApiResponse.fail(errorCode.getCode(), errorCode.getMessage()));
+    }
+
+    // Unsupported HTTP methods should not fall through to the catch-all 500 handler.
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public ResponseEntity<ApiResponse<Void>> handleMethodNotSupported(HttpRequestMethodNotSupportedException e) {
         log.warn("HttpRequestMethodNotSupportedException: {}", e.getMessage());

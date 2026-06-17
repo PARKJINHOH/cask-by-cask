@@ -25,6 +25,8 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>
 
+const ADMIN_CREDENTIALS_ENABLED = import.meta.env.DEV
+
 interface SuspensionDetail {
   suspendedUntil: string
   reason: string | null
@@ -267,6 +269,8 @@ export default function LoginPage() {
   })
 
   useEffect(() => {
+    if (!ADMIN_CREDENTIALS_ENABLED) return
+
     authApi.getAdminCredentials()
       .then((res) => {
         if (res.data.success && res.data.data) {
