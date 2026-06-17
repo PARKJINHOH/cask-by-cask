@@ -4,6 +4,7 @@ import com.caskbycask.domain.spirit.entity.enums.*;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.List;
+import java.util.Map;
 
 public record WhiskyDetailResponse(
 
@@ -27,6 +28,9 @@ public record WhiskyDetailResponse(
 
         @Schema(description = "캐스크 직접 입력 (caskTypes 에 OTHER 포함 시)")
         String caskTypeOther,
+
+        @Schema(description = "캐스크 상세 세부 정보 (대분류별 세부 명칭 리스트)")
+        Map<WhiskyCaskType, List<String>> caskDetails,
 
         @Schema(description = "Non-Chill Filtered 여부")
         Boolean isNonChillFiltered,

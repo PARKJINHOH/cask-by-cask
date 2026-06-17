@@ -19,7 +19,6 @@ import { draftApi } from '@/shared/api/draftApi'
 import DraftSavedNotice from '@/shared/components/DraftSavedNotice'
 import DraftListModal from '@/shared/components/DraftListModal'
 
-const DRAFT_KEY = 'NOTICE'
 
 const schema = z.object({
   title: z.string().min(1, '제목을 입력하세요').max(300, '제목은 300자 이하여야 합니다'),

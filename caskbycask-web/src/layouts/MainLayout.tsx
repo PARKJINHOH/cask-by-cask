@@ -1,4 +1,4 @@
-﻿import { useState, useRef, useEffect, Suspense } from 'react'
+import { useState, useRef, useEffect, Suspense } from 'react'
 import { Outlet, Link, useNavigate } from 'react-router-dom'
 import RouteFallback from '@/shared/components/RouteFallback'
 import RouteTransition from '@/shared/components/RouteTransition'
@@ -155,13 +155,13 @@ function GNB() {
   ]
 
   const itemCls = (active: boolean) =>
-    `inline-flex items-center gap-1 px-3 py-3 text-sm font-medium transition-colors
+    `inline-flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-3 py-3 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap
     ${active ? 'text-primary-800' : 'text-neutral-600 hover:text-primary-800'}`
 
   return (
     <nav ref={navRef} className="bg-canvas border-b-2 border-neutral-200 sticky top-16 z-30">
-      <div className="max-w-7xl mx-auto px-4">
-        <ul className="flex items-center gap-1 py-1">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4">
+        <ul className="flex items-center gap-0.5 sm:gap-1 py-1">
           {menus.map(menu => {
             if ('to' in menu) {
               const isNotice  = menu.key === 'notice'
@@ -175,7 +175,7 @@ function GNB() {
                     to={menu.to}
                     className={
                       isSpirits
-                        ? 'inline-flex items-center px-3.5 py-2 text-sm font-semibold rounded-lg bg-primary-800 text-white hover:bg-primary-900 transition-colors'
+                        ? 'inline-flex items-center px-2 sm:px-3.5 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold rounded-lg bg-primary-800 text-white hover:bg-primary-900 transition-colors whitespace-nowrap'
                         : `${itemCls(false)} relative`
                     }
                   >
@@ -250,13 +250,13 @@ function GNB() {
           <li className="ml-auto flex-shrink-0">
             <Link
               to="/calendar"
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg
-                border border-neutral-300 text-neutral-600 hover:text-primary-800 hover:border-primary-300 transition-colors"
+              className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-lg
+                border border-neutral-300 text-neutral-600 hover:text-primary-800 hover:border-primary-300 transition-colors whitespace-nowrap"
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
               </svg>
-              {t('menu.calendar')}
+              <span className="hidden sm:inline">{t('menu.calendar')}</span>
             </Link>
           </li>
         </ul>
@@ -269,32 +269,119 @@ function GNB() {
 
 function LangToggle() {
   const { i18n } = useTranslation()
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
 
-  const toggle = () => {
-    const next = i18n.language === 'ko' ? 'en' : 'ko'
-    saveLang(next)
-    i18n.changeLanguage(next)
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const selectLang = (lang: string) => {
+    saveLang(lang)
+    i18n.changeLanguage(lang)
+    setOpen(false)
   }
 
-  const isEn = i18n.language === 'en'
+  const languages = [
+    { code: 'ko', label: '한국어 (KO)' },
+    { code: 'en', label: 'English (EN)' },
+  ]
 
   return (
-    <button
-      onClick={toggle}
-      aria-label={isEn ? 'Switch to Korean' : '영어로 전환'}
-      title={isEn ? 'Switch to Korean' : '영어로 전환'}
-      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold
-        border border-neutral-300 text-neutral-500 hover:border-primary-400
-        hover:text-primary-800 transition-all duration-150 select-none"
-    >
-      <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"
-        strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="10" />
-        <line x1="2" y1="12" x2="22" y2="12" />
-        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-      </svg>
-      <span>{isEn ? 'EN' : 'KO'}</span>
-    </button>
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-label="언어 선택 / Select Language"
+        className="flex items-center justify-center p-2 rounded-lg text-neutral-500 hover:text-primary-800 hover:bg-neutral-100 transition-all duration-150 select-none cursor-pointer"
+      >
+        <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"
+          strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10" />
+          <line x1="2" y1="12" x2="22" y2="12" />
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="absolute right-0 mt-1.5 w-32 bg-white rounded-lg shadow-lg border border-neutral-100 py-1 z-50">
+          {languages.map((lang) => (
+            <button
+              key={lang.code}
+              onClick={() => selectLang(lang.code)}
+              className={`w-full text-left px-3 py-2 text-xs font-semibold hover:bg-neutral-50 transition-colors cursor-pointer
+                ${i18n.language === lang.code ? 'text-primary-800 bg-primary-50/50' : 'text-neutral-600'}`}
+            >
+              {lang.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function GuestLangToggle() {
+  const { i18n } = useTranslation()
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const selectLang = (lang: string) => {
+    saveLang(lang)
+    i18n.changeLanguage(lang)
+    setOpen(false)
+  }
+
+  const languages = [
+    { code: 'ko', label: 'KO' },
+    { code: 'en', label: 'EN' },
+  ]
+
+  return (
+    <div ref={ref} className="relative inline-flex">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-label="언어 선택 / Select Language"
+        className="flex items-center justify-center px-2.5 py-1.5 text-neutral-500 hover:text-primary-800 hover:bg-neutral-50 rounded-l-lg border-r border-neutral-300 transition-colors select-none cursor-pointer"
+      >
+        <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"
+          strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10" />
+          <line x1="2" y1="12" x2="22" y2="12" />
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-full mt-1.5 w-24 bg-white rounded-lg shadow-lg border border-neutral-100 py-1 z-50">
+          {languages.map((lang) => (
+            <button
+              key={lang.code}
+              onClick={() => selectLang(lang.code)}
+              className={`w-full text-left px-3 py-1.5 text-xs font-semibold hover:bg-neutral-50 transition-colors cursor-pointer
+                ${i18n.language === lang.code ? 'text-primary-800 bg-primary-50/50' : 'text-neutral-600'}`}
+            >
+              {lang.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -341,7 +428,7 @@ function HeaderSearch() {
 // ── 사용자 드롭다운 ───────────────────────────────────────────
 
 function UserDropdown() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { user, isLoggedIn, setUser } = useAuthStore()
   const { logout } = useAuth()
   const navigate = useNavigate()
@@ -377,33 +464,24 @@ function UserDropdown() {
   if (!isLoggedIn) {
     return (
       <div className="flex items-center gap-2">
-        <Link
-          to="/login"
-          className="inline-flex items-center gap-1.5 text-sm font-medium px-3.5 py-1.5 rounded-lg
-            border border-neutral-300 text-neutral-700
-            hover:border-primary-400 hover:text-primary-800 hover:bg-primary-50
-            transition-all duration-150"
-        >
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
-            <polyline points="10 17 15 12 10 7" />
-            <line x1="15" y1="12" x2="3" y2="12" />
-          </svg>
-          {t('nav.login')}
-        </Link>
+        <div className="inline-flex items-center border border-neutral-300 rounded-lg bg-white">
+          <GuestLangToggle />
+          <Link
+            to="/login"
+            className="inline-flex items-center text-sm font-medium px-3.5 py-1.5 text-neutral-700
+              hover:text-primary-800 hover:bg-neutral-50 rounded-r-lg
+              transition-all duration-150 whitespace-nowrap"
+          >
+            {t('nav.login')}
+          </Link>
+        </div>
         <Link
           to="/signup"
-          className="inline-flex items-center gap-1.5 text-sm font-semibold px-3.5 py-1.5 rounded-lg
+          className="inline-flex items-center text-sm font-semibold px-3 py-1.5 sm:px-3.5 rounded-lg
             bg-primary-800 text-white shadow-sm
             hover:bg-primary-900 active:bg-primary-800
-            transition-all duration-150"
+            transition-all duration-150 whitespace-nowrap"
         >
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-            <circle cx="9" cy="7" r="4" />
-            <line x1="19" y1="8" x2="19" y2="14" />
-            <line x1="22" y1="11" x2="16" y2="11" />
-          </svg>
           {t('nav.signup')}
         </Link>
       </div>
@@ -536,17 +614,17 @@ export default function MainLayout() {
     <div className="min-h-screen bg-canvas flex flex-col">
       {/* 헤더 */}
       <header className="bg-canvas border-b border-neutral-200 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center gap-4">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 h-16 flex items-center gap-2 sm:gap-4">
           {/* 로고 */}
-          <Link to="/" className="flex items-center gap-2 flex-shrink-0 -my-2">
-            <img src="/logo.png" alt="CaskByCask" className="h-15 w-auto" />
+          <Link to="/" className="flex items-center gap-1 sm:gap-2 flex-shrink-0 -my-2">
+            <img src="/logo.png" alt="CaskByCask" className="h-10 sm:h-15 w-auto" />
             <span className="flex flex-col leading-none tracking-tight">
-              <span className="text-[24px] font-bold">
+              <span className="text-[18px] sm:text-[24px] font-bold">
                 <span className="text-primary-800">캐</span>
                 <span className="text-primary-600">바</span>
                 <span className="text-primary-800">캐</span>
               </span>
-              <span className="text-[20px] font-bold">
+              <span className="text-[14px] sm:text-[20px] font-bold">
                 <span className="text-primary-800">Cask</span>
                 <span className="text-primary-600">By</span>
                 <span className="text-primary-800">Cask</span>
@@ -554,15 +632,15 @@ export default function MainLayout() {
             </span>
           </Link>
 
-          {/* 언어 토글 */}
-          <LangToggle />
+
 
           {/* PC 검색바 */}
           <HeaderSearch />
 
           {/* 우측 액션 */}
-          <div className="flex items-center gap-2 ml-auto flex-shrink-0">
+          <div className="flex items-center gap-1 sm:gap-2 ml-auto flex-shrink-0">
             {isLoggedIn && <NotificationBell />}
+            {isLoggedIn && <LangToggle />}
             <UserDropdown />
           </div>
         </div>

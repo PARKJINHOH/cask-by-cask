@@ -173,7 +173,7 @@ function SpiritCarousel({ spirits }: { spirits: SpiritListItem[] }) {
       <div
         ref={containerRef}
         className="flex gap-3 overflow-x-auto pb-2.5 select-none no-scrollbar cursor-grab active:cursor-grabbing -mx-4 px-4 lg:mx-0 lg:px-0"
-        style={{ scrollbarWidth: 'none', touchAction: 'pan-y' }}
+        style={{ scrollbarWidth: 'none' }}
         onMouseDown={onMouseDown}
         onMouseMove={onMouseMove}
         onMouseUp={onMouseUp}

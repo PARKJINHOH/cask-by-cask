@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 
 import java.util.List;
+import java.util.Map;
 
 public record WhiskyDetailRequest(
 
@@ -33,6 +34,9 @@ public record WhiskyDetailRequest(
         @Schema(description = "캐스크 직접 입력 (caskTypes 에 OTHER 포함 시만 유효)")
         @Size(max = 200, message = "캐스크 직접 입력은 200자 이하여야 합니다.")
         String caskTypeOther,
+
+        @Schema(description = "캐스크 상세 세부 정보 (대분류별 세부 명칭 리스트)")
+        Map<WhiskyCaskType, List<String>> caskDetails,
 
         @Schema(description = "Non-Chill Filtered 여부 (저온 여과 생략 → 풍미 보존)")
         Boolean isNonChillFiltered,
