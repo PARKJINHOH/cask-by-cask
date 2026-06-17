@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { usePosts, useBestPosts, usePostPrefixes } from '@/domain/community/hooks/usePosts'
@@ -127,13 +127,13 @@ export default function BoardListPage({ boardType, title }: Props) {
   }
 
   const seoTitle = isAll
-    ? '전체 게시판'
-    : boardType === 'NOTICE' ? '소식 게시판' : '자유게시판'
+    ? t('menu.communityAll', '전체 게시판')
+    : boardType === 'NOTICE' ? t('menu.communityNews', '소식 게시판') : t('menu.communityBoard', '자유게시판')
   const seoDesc = isAll
-    ? 'CaskByCask 커뮤니티 전체 게시판 — 소식과 자유게시판 글을 한 곳에서.'
+    ? t('board.seo.allDesc', 'CaskByCask 커뮤니티 전체 게시판 — 소식과 자유게시판 글을 한 곳에서.')
     : boardType === 'NOTICE'
-      ? 'CaskByCask 소식 게시판 — 위스키·와인·꼬냑 관련 소식과 이벤트 게시글.'
-      : 'CaskByCask 자유게시판 — 위스키, 와인, 꼬냑 등 주류에 대한 자유로운 의견과 정보 공유.'
+      ? t('board.seo.noticeDesc', 'CaskByCask 소식 게시판 — 위스키·와인·꼬냑 관련 소식과 이벤트 게시글.')
+      : t('board.seo.freeDesc', 'CaskByCask 자유게시판 — 위스키, 와인, 꼬냑 등 주류에 대한 자유로운 의견과 정보 공유.')
   const seoNoindex = !!keywordParam || pageParam > 0 || tabParam !== 'all'
     || !!authorIdParam || !!commentAuthorIdParam
 
@@ -158,8 +158,8 @@ export default function BoardListPage({ boardType, title }: Props) {
         <div className="flex items-center gap-2 mb-4 px-3 py-2 bg-primary-50 border border-primary-200 rounded-lg text-sm text-primary-900">
           <span>
             {authorIdParam
-              ? `"${authorNicknameParam}"님의 게시글`
-              : `"${authorNicknameParam}"님이 댓글 단 게시글`}
+              ? t('board.filter.posts', { nickname: authorNicknameParam, defaultValue: `"${authorNicknameParam}"님의 게시글` })
+              : t('board.filter.comments', { nickname: authorNicknameParam, defaultValue: `"${authorNicknameParam}"님이 댓글 단 게시글` })}
           </span>
           <button
             onClick={() => {
@@ -241,7 +241,7 @@ export default function BoardListPage({ boardType, title }: Props) {
               ].join(' ')}
               style={p.colorHex ? { borderColor: p.colorHex, color: p.colorHex } : undefined}
             >
-              {p.name}
+              {t(`prefix.${p.name}`, p.name)}
             </button>
           ))}
         </div>
@@ -344,7 +344,7 @@ export default function BoardListPage({ boardType, title }: Props) {
                             ? { color: post.prefix.colorHex, borderColor: post.prefix.colorHex }
                             : { color: '#6b7280', borderColor: '#d1d5db' }}
                         >
-                          {post.prefix.name}
+                          {t(`prefix.${post.prefix.name}`, post.prefix.name)}
                         </span>
                       )}
                     </td>
@@ -444,14 +444,14 @@ export default function BoardListPage({ boardType, title }: Props) {
                         ? { color: post.prefix.colorHex, borderColor: post.prefix.colorHex }
                         : { color: '#6b7280', borderColor: '#d1d5db' }}
                     >
-                      {post.prefix.name}
+                      {t(`prefix.${post.prefix.name}`, post.prefix.name)}
                     </span>
                   )}
                   {post.isLocked && <span className="text-neutral-400 text-sm">🔒</span>}
                   {(post as any).byobStatus && (
                     <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-100
                       text-orange-700 border border-orange-200 inline-flex items-center">
-                      비욥
+                      {t('prefix.비욥', '비욥')}
                     </span>
                   )}
                 </div>

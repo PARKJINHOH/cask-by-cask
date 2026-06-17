@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -27,6 +27,14 @@ const SHARING_PREFIX_NAME = '나눔'
 const MAX_TITLE = 50
 const MAX_POLL_OPTIONS = 10
 
+// yyyy가 6자리로 중복 입력되는 브라우저 버그 방지
+function fixDatetimeYear(val: string) {
+  if (!val) return val
+  const dashIdx = val.indexOf('-')
+  if (dashIdx > 4) return val.slice(dashIdx - 4)
+  return val
+}
+
 export default function PostFormPage() {
   const { boardType: boardTypeParam, id } = useParams<{ boardType: string; id: string }>()
   const postId = id ? Number(id) : undefined
@@ -34,7 +42,7 @@ export default function PostFormPage() {
   const boardType = (boardTypeParam === 'notice' ? 'NOTICE' : 'FREE') as BoardType
   const boardPath = boardTypeParam ?? 'free'
 
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { toasts, showToast, removeToast } = useToast()
@@ -84,7 +92,7 @@ export default function PostFormPage() {
 
   const saveDraft = async () => {
     if (!title.trim() && !content.trim()) {
-      showToast('임시저장할 내용이 없습니다.', 'error')
+      showToast(t('post.draft.noContent', '임시저장할 내용이 없습니다.'), 'error')
       return
     }
     setIsSavingDraft(true)
@@ -99,12 +107,12 @@ export default function PostFormPage() {
       const saved = res.data.data
       if (saved?.id) setCurrentDraftId(saved.id)
       setLastSavedAt(saved?.updatedAt ?? new Date().toISOString())
-      showToast('임시저장되었습니다.', 'success')
+      showToast(t('post.draft.savedSuccess', '임시저장되었습니다.'), 'success')
     } catch (err: unknown) {
       const code = (err as { response?: { data?: { code?: string } } })?.response?.data?.code
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
       if (code === 'DRAFT_003') {
-        showToast(msg ?? '임시저장 개수가 가득 찼습니다.', 'error')
+        showToast(msg ?? t('post.draft.errorLimit', '임시저장 개수가 가득 찼습니다.'), 'error')
       } else {
         showToast(t('common.error'), 'error')
       }
@@ -125,7 +133,7 @@ export default function PostFormPage() {
         if (typeof m.isAnonymous === 'boolean') setIsAnonymous(m.isAnonymous)
       } catch { /* meta 파싱 실패 무시 */ }
     }
-    showToast('임시저장을 불러왔습니다.', 'success')
+    showToast(t('post.draft.loadedSuccess', '임시저장을 불러왔습니다.'), 'success')
   }
 
   // 신규 작성: 말머리 목록이 로드되면 "일반"을 기본 선택
@@ -175,7 +183,7 @@ export default function PostFormPage() {
     onError: (err: unknown) => {
       const data = (err as { response?: { data?: { code?: string; detectedWords?: string[] } } })?.response?.data
       if (data?.code === 'BAD_WORD_DETECTED') {
-        showToast(`욕설이 포함되어 있습니다: ${data.detectedWords?.join(', ')}`, 'error')
+        showToast(t('post.error.badWord', { words: data.detectedWords?.join(', '), defaultValue: `욕설이 포함되어 있습니다: ${data.detectedWords?.join(', ')}` }), 'error')
       } else if (data?.code === 'USER_023') {
         showToast(t('post.adultGate.writeToast'), 'error')
       } else {
@@ -246,7 +254,7 @@ export default function PostFormPage() {
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value.slice(0, MAX_TITLE))}
-            placeholder="제목을 입력하세요"
+            placeholder={t('post.placeholder.title', '제목을 입력하세요')}
             className="w-full px-4 py-3 text-base border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-300 pr-16"
           />
           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-400 tabular-nums">
@@ -272,7 +280,7 @@ export default function PostFormPage() {
                   ? { borderColor: p.colorHex, color: p.colorHex }
                   : undefined}
               >
-                {p.name}
+                {t(`prefix.${p.name}`, p.name)}
               </button>
             ))}
           </div>
@@ -317,7 +325,7 @@ export default function PostFormPage() {
             <div className="relative group">
               <span className="flex items-center justify-center w-4 h-4 rounded-full bg-neutral-200 text-neutral-500 text-xs cursor-default">?</span>
               <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-10 w-56 px-3 py-2 bg-neutral-800 text-white text-xs rounded-lg shadow-lg leading-relaxed whitespace-normal">
-                닉네임만 &apos;익명&apos;으로 표시됩니다. 게시글 내용은 그대로 공개되며, 본인은 언제든지 수정·삭제할 수 있습니다.
+                {t('board.anonymousHelp', "닉네임만 '익명'으로 표시됩니다. 게시글 내용은 그대로 공개되며, 본인은 언제든지 수정·삭제할 수 있습니다.")}
                 <span className="absolute left-1/2 -translate-x-1/2 top-full border-4 border-transparent border-t-neutral-800" />
               </div>
             </div>
@@ -345,7 +353,7 @@ export default function PostFormPage() {
           <PostEditor
             value={content}
             onChange={setContent}
-            placeholder="내용을 입력하세요. YouTube/Vimeo URL을 붙여넣으면 자동 임베드됩니다."
+            placeholder={t('post.placeholder.content', '내용을 입력하세요. YouTube/Vimeo URL을 붙여넣으면 자동 임베드됩니다.')}
             onImageError={(msg) => showToast(msg, 'error')}
           />
           {/* 임시저장 (신규 작성 시) */}
@@ -363,7 +371,7 @@ export default function PostFormPage() {
                   <polyline points="17 21 17 13 7 13 7 21" />
                   <polyline points="7 3 7 8 15 8" />
                 </svg>
-                {isSavingDraft ? '저장 중...' : '임시저장'}
+                {isSavingDraft ? t('post.draft.saving', '저장 중...') : t('post.draft.save', '임시저장')}
               </button>
               <button
                 type="button"
@@ -379,7 +387,7 @@ export default function PostFormPage() {
                   <line x1="3" y1="12" x2="3.01" y2="12" />
                   <line x1="3" y1="18" x2="3.01" y2="18" />
                 </svg>
-                임시저장목록
+                {t('post.draft.list', '임시저장목록')}
               </button>
               <DraftSavedNotice savedAt={lastSavedAt} />
             </div>
@@ -396,9 +404,9 @@ export default function PostFormPage() {
             >
               <span className="flex items-center gap-2">
                 <svg className="w-4 h-4 text-neutral-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2m0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
-                투표 {pollEnabled ? '제거' : '추가'}
+                {pollEnabled ? t('post.poll.remove', '투표 제거') : t('post.poll.add', '투표 추가')}
               </span>
               <span className="text-neutral-400 text-xs">{pollEnabled ? '▲' : '▼'}</span>
             </button>
@@ -409,7 +417,7 @@ export default function PostFormPage() {
                   type="text"
                   value={pollQuestion}
                   onChange={(e) => setPollQuestion(e.target.value)}
-                  placeholder="투표 질문을 입력하세요"
+                  placeholder={t('post.poll.questionPlaceholder', '투표 질문을 입력하세요')}
                   className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-300"
                 />
                 <div className="flex items-center gap-6">
@@ -417,7 +425,7 @@ export default function PostFormPage() {
                     <label key={String(multi)} className="flex items-center gap-2 text-sm cursor-pointer">
                       <input type="radio" checked={pollMultiple === multi} onChange={() => setPollMultiple(multi)}
                         className="text-primary-800 focus:ring-primary-400" />
-                      {multi ? '복수 선택' : '단일 선택'}
+                      {multi ? t('post.poll.multiple', '복수 선택') : t('post.poll.single', '단일 선택')}
                     </label>
                   ))}
                 </div>
@@ -427,7 +435,7 @@ export default function PostFormPage() {
                       <input
                         type="text" value={opt}
                         onChange={(e) => setPollOptions((p) => p.map((o, idx) => idx === i ? e.target.value : o))}
-                        placeholder={`선택지 ${i + 1}`}
+                        placeholder={t('post.poll.optionPlaceholder', { index: i + 1, defaultValue: `선택지 ${i + 1}` })}
                         className="flex-1 px-3 py-1.5 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-300"
                       />
                       {pollOptions.length > 2 && (
@@ -441,14 +449,20 @@ export default function PostFormPage() {
                   {pollOptions.length < MAX_POLL_OPTIONS && (
                     <button type="button" onClick={addPollOption}
                       className="text-xs text-primary-800 hover:text-primary-900 font-medium">
-                      + 선택지 추가
+                      {t('post.poll.addOption', '+ 선택지 추가')}
                     </button>
                   )}
                 </div>
                 <div>
-                  <label className="block text-xs text-neutral-500 mb-1">종료일시 (선택)</label>
-                  <input type="datetime-local" value={pollEndsAt} onChange={(e) => setPollEndsAt(e.target.value)}
-                    className="px-3 py-1.5 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-300" />
+                  <label className="block text-xs text-neutral-500 mb-1">{t('post.poll.endsAt', '종료일시 (선택)')}</label>
+                  <input
+                    type="datetime-local"
+                    value={pollEndsAt}
+                    onChange={(e) => setPollEndsAt(fixDatetimeYear(e.target.value))}
+                    max="9999-12-31T23:59"
+                    lang={i18n.language}
+                    className="px-3 py-1.5 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-300"
+                  />
                 </div>
               </div>
             )}
@@ -466,7 +480,7 @@ export default function PostFormPage() {
               onChange={(e) => setSeriesId(e.target.value !== '' ? Number(e.target.value) : '')}
               className="flex-1 text-sm bg-transparent focus:outline-none"
             >
-              <option value="">시리즈에 추가 안 함</option>
+              <option value="">{t('post.series.none', '시리즈에 추가 안 함')}</option>
               {mySeries.map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}
             </select>
           </div>
@@ -484,7 +498,7 @@ export default function PostFormPage() {
             disabled={!canSubmit || mutation.isPending}
             className="px-6 py-2.5 text-sm font-medium rounded-xl bg-primary-800 text-white hover:bg-primary-900 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
-            {mutation.isPending ? '저장 중...' : isEdit ? t('common.save') : t('board.write')}
+            {mutation.isPending ? t('common.saving', '저장 중...') : isEdit ? t('common.save') : t('board.write')}
           </button>
         </div>
       </div>

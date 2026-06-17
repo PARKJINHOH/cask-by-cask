@@ -891,7 +891,51 @@
     "commentSection": "Comments",
     "loginToComment": "Log in to leave a comment",
     "lockedNotice": "This post is locked and cannot be viewed.",
-    "hiddenNotice": "This post has been hidden by an administrator and cannot be viewed."
+    "hiddenNotice": "This post has been hidden by an administrator and cannot be viewed.",
+    "placeholder": {
+      "title": "Enter title",
+      "content": "Enter content. YouTube/Vimeo URLs will be automatically embedded."
+    },
+    "draft": {
+      "save": "Save Draft",
+      "saving": "Saving...",
+      "list": "Drafts",
+      "listTitle": "Saved Drafts",
+      "maxLimit": "You can save up to {{max}} drafts. ({{current}}/{{max}})",
+      "empty": "No saved drafts.",
+      "savedTime": "Saved · {{time}}",
+      "noContent": "There is no content to save as draft.",
+      "savedSuccess": "Draft saved successfully.",
+      "loadedSuccess": "Draft loaded successfully.",
+      "errorLimit": "Maximum number of drafts reached.",
+      "loadError": "Failed to load draft list.",
+      "loadSingleError": "Failed to load draft.",
+      "deleteError": "Failed to delete draft."
+    },
+    "poll": {
+      "vote": "Vote",
+      "ended": "Poll Ended",
+      "voted": "Voted",
+      "total": "{{count}} total votes",
+      "voteSuccess": "Your vote has been submitted.",
+      "add": "Add Poll",
+      "remove": "Remove Poll",
+      "questionPlaceholder": "Enter poll question",
+      "multiple": "Multiple Choice",
+      "single": "Single Choice",
+      "optionPlaceholder": "Option {{index}}",
+      "addOption": "+ Add Option",
+      "endsAt": "End Date & Time (Optional)"
+    },
+    "series": {
+      "label": "Series",
+      "prev": "Previous",
+      "next": "Next",
+      "none": "Do not add to series"
+    },
+    "error": {
+      "badWord": "Profanity detected: {{words}}"
+    }
   },
   "notification": {
     "title": "Notifications",
@@ -1366,5 +1410,35 @@
         "OTHER": "Other"
       }
     }
+  },
+  "notice": {
+    "empty": "No notices found.",
+    "category": {
+      "all": "All",
+      "general": "General",
+      "update": "Updates",
+      "event": "Events",
+      "maintenance": "Maintenance",
+      "notice": "Notice"
+    }
+  },
+  "location": {
+    "selectCountry": "Select Country",
+    "selectCountryFirst": "Please select a country first",
+    "selectRegion": "Select Region",
+    "regionPlaceholder": "Region (Optional)",
+    "customInput": "✏ Enter manually",
+    "customInputPlaceholder": "Enter region directly",
+    "backToList": "Back to list",
+    "searchCountry": "Search country...",
+    "noResult": "No results found"
+  },
+  "prefix": {
+    "일반": "General",
+    "나눔": "Share",
+    "질문": "Q&A",
+    "비욥": "BYOB",
+    "이벤트": "Event",
+    "공지": "Notice"
   }
 }

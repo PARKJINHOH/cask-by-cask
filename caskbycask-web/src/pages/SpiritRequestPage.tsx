@@ -131,7 +131,7 @@ const EMPTY_FORM: SpiritRegisterRequestForm = {
 }
 
 export default function SpiritRequestPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [successMsg, setSuccessMsg] = useState('')
   const [loadErr, setLoadErr] = useState('')
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -561,7 +561,7 @@ export default function SpiritRequestPage() {
 
                 <div>
                   <label className={LABEL_CLS}>{t('spiritRequest.form.releaseDate')}</label>
-                  <input type="date" max="9999-12-31" {...register('releaseDate')} className={`${FIELD_CLS} border-neutral-300`} />
+                  <input type="date" max="9999-12-31" lang={i18n.language} {...register('releaseDate')} className={`${FIELD_CLS} border-neutral-300`} />
                 </div>
 
                 {/* 기타 문구 */}

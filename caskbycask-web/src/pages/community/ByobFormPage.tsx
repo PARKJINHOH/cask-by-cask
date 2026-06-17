@@ -107,7 +107,7 @@ function HostBottlesInput({ bottles, onChange }: HostBottlesInputProps) {
 
 // ── 메인 폼 페이지 ─────────────────────────────────────────────
 export default function ByobFormPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
   const isEdit = !!id
@@ -267,6 +267,8 @@ export default function ByobFormPage() {
               <input type="datetime-local" value={eventAt}
                 onChange={(e) => setEventAt(fixDatetimeYear(e.target.value))}
                 onClick={openPicker}
+                lang={i18n.language}
+                max="9999-12-31T23:59"
                 className={`${inputCls} w-full sm:w-64 cursor-pointer`} />
             </div>
 
@@ -279,6 +281,8 @@ export default function ByobFormPage() {
                 <input type="datetime-local" value={recruitStartAt}
                   onChange={(e) => setRecruitStartAt(fixDatetimeYear(e.target.value))}
                   onClick={openPicker}
+                  lang={i18n.language}
+                  max="9999-12-31T23:59"
                   className={`${inputCls} cursor-pointer`} />
               </div>
               <div>
@@ -288,6 +292,8 @@ export default function ByobFormPage() {
                 <input type="datetime-local" value={recruitEndAt}
                   onChange={(e) => setRecruitEndAt(fixDatetimeYear(e.target.value))}
                   onClick={openPicker}
+                  lang={i18n.language}
+                  max="9999-12-31T23:59"
                   className={`${inputCls} cursor-pointer`} />
               </div>
             </div>

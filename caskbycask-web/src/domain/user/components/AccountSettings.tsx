@@ -1,4 +1,4 @@
-﻿import { useState, useMemo, type ReactNode } from 'react'
+import { useState, useMemo, type ReactNode } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -505,7 +505,7 @@ function EmailSubscriptionSection() {
 // ── 성인(연령) 인증 ─────────────────────────────────────────
 
 function AdultVerificationSection() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { data: profile } = useMe()
   const verifyAdult = useVerifyAdult()
   const [birthDate, setBirthDate] = useState('')
@@ -570,6 +570,7 @@ function AdultVerificationSection() {
               value={birthDate}
               min={minDate}
               max={maxDate}
+              lang={i18n.language}
               onChange={(e) => setBirthDate(e.target.value)}
               className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm
                 focus:outline-none focus:ring-2 focus:ring-primary-400"

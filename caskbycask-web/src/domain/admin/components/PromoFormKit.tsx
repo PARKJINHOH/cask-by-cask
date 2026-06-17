@@ -17,6 +17,13 @@ import Button from '@/shared/components/Button'
 export const toInputDt = (iso: string | null | undefined) => (iso ? iso.substring(0, 16) : '')
 export const toApiDt   = (input: string | undefined)       => (input ? `${input}:00` : null)
 
+function fixDatetimeYear(val: string) {
+  if (!val) return val
+  const dashIdx = val.indexOf('-')
+  if (dashIdx > 4) return val.slice(dashIdx - 4)
+  return val
+}
+
 // ─── 공통 Zod 정제 규칙 ───────────────────────────────
 export interface PromoRefineValues {
   content?: string
@@ -449,6 +456,11 @@ export function PromoScheduleFields({
               <input
                 type="datetime-local"
                 {...startAtProps}
+                onChange={(e) => {
+                  e.target.value = fixDatetimeYear(e.target.value)
+                  startAtProps.onChange(e)
+                }}
+                max="9999-12-31T23:59"
                 disabled={isAlwaysVisible}
                 className="w-full h-9 px-2 text-sm border border-neutral-300 rounded-lg
                   focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none
@@ -461,6 +473,11 @@ export function PromoScheduleFields({
               <input
                 type="datetime-local"
                 {...endAtProps}
+                onChange={(e) => {
+                  e.target.value = fixDatetimeYear(e.target.value)
+                  endAtProps.onChange(e)
+                }}
+                max="9999-12-31T23:59"
                 min={startAt || undefined}
                 disabled={isAlwaysVisible}
                 className="w-full h-9 px-2 text-sm border border-neutral-300 rounded-lg

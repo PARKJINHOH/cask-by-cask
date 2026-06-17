@@ -2,15 +2,21 @@ import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 import ko from '@/locales/ko.json'
 import en from '@/locales/en.json'
+import { getLocaleFromUrl, detectDefaultLang } from './locale'
 
 const LANG_KEY = 'di_lang'
-const SUPPORTED = ['ko', 'en']
 
-function detectLang(): string {
-  const saved = localStorage.getItem(LANG_KEY)
-  if (saved && SUPPORTED.includes(saved)) return saved
-  const browser = navigator.language.startsWith('ko') ? 'ko' : 'en'
-  return browser
+function getInitialLang(): string {
+  if (window.__APP_LANG__) {
+    return window.__APP_LANG__
+  }
+  
+  const { lang } = getLocaleFromUrl(window.location.pathname)
+  if (lang) {
+    return lang
+  }
+
+  return detectDefaultLang()
 }
 
 export function saveLang(lang: string) {
@@ -24,9 +30,19 @@ i18n
       ko: { translation: ko },
       en: { translation: en },
     },
-    lng: detectLang(),
+    lng: getInitialLang(),
     fallbackLng: 'ko',
     interpolation: { escapeValue: false },
   })
+
+i18n.on('languageChanged', (lng) => {
+  if (typeof document !== 'undefined') {
+    document.documentElement.setAttribute('lang', lng)
+  }
+})
+
+if (typeof document !== 'undefined') {
+  document.documentElement.setAttribute('lang', i18n.language || 'ko')
+}
 
 export default i18n

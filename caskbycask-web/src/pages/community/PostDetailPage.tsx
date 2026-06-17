@@ -1,4 +1,4 @@
-﻿import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -229,7 +229,7 @@ export default function PostDetailPage() {
                   ? { color: post.prefix.colorHex, borderColor: post.prefix.colorHex }
                   : { color: '#6b7280', borderColor: '#d1d5db' }}
               >
-                {post.prefix.name}
+                {t(`prefix.${post.prefix.name}`, post.prefix.name)}
               </span>
             )}
             {isLocked && (

@@ -1,5 +1,6 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useNotices } from '@/domain/notice/hooks/useNotices'
 import { NOTICE_CATEGORY_LABELS } from '@/domain/notice/types/notice.types'
 import type { NoticeCategory } from '@/domain/notice/types/notice.types'
@@ -19,6 +20,7 @@ const CATEGORY_CHIP_CLASS: Record<NoticeCategory, string> = {
 }
 
 function CategoryChip({ category }: { category: NoticeCategory }) {
+  const { t } = useTranslation()
   return (
     <span
       className={[
@@ -27,17 +29,17 @@ function CategoryChip({ category }: { category: NoticeCategory }) {
         CATEGORY_CHIP_CLASS[category],
       ].join(' ')}
     >
-      {NOTICE_CATEGORY_LABELS[category]}
+      {t(`notice.category.${category.toLowerCase()}`, NOTICE_CATEGORY_LABELS[category])}
     </span>
   )
 }
 
-const CATEGORY_TABS: { key: NoticeCategory | ''; label: string }[] = [
-  { key: '', label: '전체' },
-  { key: 'GENERAL', label: NOTICE_CATEGORY_LABELS.GENERAL },
-  { key: 'UPDATE', label: NOTICE_CATEGORY_LABELS.UPDATE },
-  { key: 'EVENT', label: NOTICE_CATEGORY_LABELS.EVENT },
-  { key: 'MAINTENANCE', label: NOTICE_CATEGORY_LABELS.MAINTENANCE },
+const CATEGORY_TABS: { key: NoticeCategory | ''; labelKey: string; defaultLabel: string }[] = [
+  { key: '', labelKey: 'notice.category.all', defaultLabel: '전체' },
+  { key: 'GENERAL', labelKey: 'notice.category.general', defaultLabel: '일반' },
+  { key: 'UPDATE', labelKey: 'notice.category.update', defaultLabel: '업데이트' },
+  { key: 'EVENT', labelKey: 'notice.category.event', defaultLabel: '이벤트' },
+  { key: 'MAINTENANCE', labelKey: 'notice.category.maintenance', defaultLabel: '점검' },
 ]
 
 // localStorage 미확인 공지 갱신
@@ -50,6 +52,7 @@ export default function NoticePage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const categoryParam = (searchParams.get('category') ?? '') as NoticeCategory | ''
   const [page, setPage] = useState(0)
+  const { t } = useTranslation()
 
   // 카테고리 변경 시 페이지 초기화
   const setCategory = (cat: NoticeCategory | '') => {
@@ -80,16 +83,15 @@ export default function NoticePage() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       <SeoMeta
-        title="공지사항"
-        description="CaskByCask의 새로운 소식, 업데이트, 이벤트, 점검 안내 등 공지사항을 확인하세요."
+        title={t('menu.notice', '공지사항')}
+        description={t('notice.seoDesc', 'CaskByCask의 새로운 소식, 업데이트, 이벤트, 점검 안내 등 공지사항을 확인하세요.')}
         canonical={buildCanonical('/notices')}
-        keywords="CaskByCask 공지사항, 위스키 커뮤니티 소식, 업데이트, 이벤트"
+        keywords={t('notice.seoKeywords', 'CaskByCask 공지사항, 위스키 커뮤니티 소식, 업데이트, 이벤트')}
       />
 
       {/* 페이지 헤더 */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-neutral-900">공지사항</h1>
-        <p className="text-sm text-neutral-500 mt-1">CaskByCask의 새로운 소식을 확인하세요.</p>
+        <h1 className="text-2xl font-bold text-neutral-900">{t('menu.notice', '공지사항')}</h1>
       </div>
 
       {/* 카테고리 탭 */}
@@ -109,7 +111,7 @@ export default function NoticePage() {
                   : 'border-transparent text-neutral-500 hover:text-neutral-700',
               ].join(' ')}
             >
-              {tab.label}
+              {t(tab.labelKey, tab.defaultLabel)}
             </button>
           )
         })}
@@ -117,10 +119,10 @@ export default function NoticePage() {
 
       {/* 목록 */}
       {isLoading ? (
-        <div className="py-20 text-center text-neutral-400 text-sm">불러오는 중...</div>
+        <div className="py-20 text-center text-neutral-400 text-sm">{t('common.loading', '불러오는 중...')}</div>
       ) : notices.length === 0 ? (
         <div className="py-20 text-center">
-          <p className="text-neutral-400 text-sm">공지사항이 없습니다.</p>
+          <p className="text-neutral-400 text-sm">{t('notice.empty', '공지사항이 없습니다.')}</p>
         </div>
       ) : (
         <>

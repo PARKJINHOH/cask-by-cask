@@ -1,4 +1,5 @@
 import { forwardRef, type InputHTMLAttributes } from 'react'
+import { useTranslation } from 'react-i18next'
 
 /**
  * 날짜 입력 박스. 네이티브 `<input type="date">` 기본 동작을 그대로 사용한다.
@@ -10,11 +11,13 @@ import { forwardRef, type InputHTMLAttributes } from 'react'
  */
 const DateInput = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
   function DateInput({ className = '', max = '9999-12-31', ...props }, ref) {
+    const { i18n } = useTranslation()
     return (
       <input
         ref={ref}
         type="date"
         max={max}
+        lang={i18n.language}
         className={className}
         {...props}
       />

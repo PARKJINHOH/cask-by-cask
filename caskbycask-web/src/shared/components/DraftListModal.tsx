@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { draftApi } from '@/shared/api/draftApi'
 import type { DraftListItem, DraftDetail } from '@/shared/api/draftApi'
 
@@ -13,26 +14,28 @@ interface Props {
   onError?: (message: string) => void
 }
 
-function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString('ko-KR', {
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', hour12: false,
-  })
-}
-
 // 에디터 좌측 하단 "임시저장목록" 버튼으로 여는 모달 — draftKey(작성 화면)별 임시저장 목록
 export default function DraftListModal({ open, draftKey, onClose, onLoad, onError }: Props) {
+  const { t, i18n } = useTranslation()
   const [items, setItems] = useState<DraftListItem[]>([])
   const [loading, setLoading] = useState(false)
   const [busyId, setBusyId] = useState<number | null>(null)
+
+  const formatDateTime = useCallback((iso: string): string => {
+    const locale = i18n.language === 'ko' ? 'ko-KR' : 'en-US'
+    return new Date(iso).toLocaleString(locale, {
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', hour12: false,
+    })
+  }, [i18n.language])
 
   const fetchList = useCallback(() => {
     setLoading(true)
     draftApi.list(draftKey)
       .then((res) => setItems(res.data.data ?? []))
-      .catch(() => onError?.('임시저장 목록을 불러오지 못했습니다.'))
+      .catch(() => onError?.(t('post.draft.loadError', '임시저장 목록을 불러오지 못했습니다.')))
       .finally(() => setLoading(false))
-  }, [draftKey, onError])
+  }, [draftKey, onError, t])
 
   // 열릴 때 목록 조회
   useEffect(() => {
@@ -59,7 +62,7 @@ export default function DraftListModal({ open, draftKey, onClose, onLoad, onErro
         onClose()
       }
     } catch {
-      onError?.('임시저장을 불러오지 못했습니다.')
+      onError?.(t('post.draft.loadSingleError', '임시저장을 불러오지 못했습니다.'))
     } finally {
       setBusyId(null)
     }
@@ -71,7 +74,7 @@ export default function DraftListModal({ open, draftKey, onClose, onLoad, onErro
       await draftApi.remove(id)
       setItems((prev) => prev.filter((d) => d.id !== id))
     } catch {
-      onError?.('임시저장을 삭제하지 못했습니다.')
+      onError?.(t('post.draft.deleteError', '임시저장을 삭제하지 못했습니다.'))
     } finally {
       setBusyId(null)
     }
@@ -89,16 +92,16 @@ export default function DraftListModal({ open, draftKey, onClose, onLoad, onErro
         {/* 헤더 */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-100">
           <div>
-            <h2 className="text-base font-bold text-neutral-900">임시저장 목록</h2>
+            <h2 className="text-base font-bold text-neutral-900">{t('post.draft.listTitle', '임시저장 목록')}</h2>
             <p className="text-xs text-neutral-400 mt-0.5">
-              임시저장은 최대 {MAX_DRAFTS}개까지 저장됩니다. ({items.length}/{MAX_DRAFTS})
+              {t('post.draft.maxLimit', { max: MAX_DRAFTS, current: items.length, defaultValue: `임시저장은 최대 ${MAX_DRAFTS}개까지 저장됩니다. (${items.length}/${MAX_DRAFTS})` })}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
             className="text-neutral-400 hover:text-neutral-600 transition-colors"
-            aria-label="닫기"
+            aria-label={t('common.close', '닫기')}
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M18 6L6 18M6 6l12 12" />
@@ -109,9 +112,9 @@ export default function DraftListModal({ open, draftKey, onClose, onLoad, onErro
         {/* 목록 */}
         <div className="flex-1 overflow-y-auto">
           {loading ? (
-            <div className="py-16 text-center text-sm text-neutral-400">불러오는 중...</div>
+            <div className="py-16 text-center text-sm text-neutral-400">{t('common.loading', '불러오는 중...')}</div>
           ) : items.length === 0 ? (
-            <div className="py-16 text-center text-sm text-neutral-400">임시저장된 글이 없습니다.</div>
+            <div className="py-16 text-center text-sm text-neutral-400">{t('post.draft.empty', '임시저장된 글이 없습니다.')}</div>
           ) : (
             <ul className="divide-y divide-neutral-100">
               {items.map((d) => (
@@ -119,7 +122,7 @@ export default function DraftListModal({ open, draftKey, onClose, onLoad, onErro
                   <div className="flex items-start gap-3">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-neutral-800 truncate">
-                        {d.title?.trim() || '(제목 없음)'}
+                        {d.title?.trim() || t('post.draft.noTitle', '(제목 없음)')}
                       </p>
                       {d.preview && (
                         <p className="text-xs text-neutral-500 mt-0.5 line-clamp-2">{d.preview}</p>
@@ -134,7 +137,7 @@ export default function DraftListModal({ open, draftKey, onClose, onLoad, onErro
                         className="px-3 py-1.5 text-xs font-medium rounded-lg bg-primary-800 text-white
                           hover:bg-primary-900 disabled:opacity-50 transition-colors"
                       >
-                        불러오기
+                        {t('common.load', '불러오기')}
                       </button>
                       <button
                         type="button"
@@ -144,7 +147,7 @@ export default function DraftListModal({ open, draftKey, onClose, onLoad, onErro
                           text-neutral-500 hover:bg-red-50 hover:text-red-600 hover:border-red-200
                           disabled:opacity-50 transition-colors"
                       >
-                        삭제
+                        {t('common.delete', '삭제')}
                       </button>
                     </div>
                   </div>

@@ -311,8 +311,7 @@ export default function EventCalendarPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  {t('calendar.suggest.endDate')}{' '}
-                  <span className="text-neutral-400 font-normal">{t('calendar.suggest.endDateHint')}</span>
+                  {t('calendar.suggest.endDate')}
                 </label>
                 <DateInput
                   value={suggestForm.endDate}
@@ -320,6 +319,9 @@ export default function EventCalendarPage() {
                   onChange={(e) => patchSuggest({ endDate: e.target.value })}
                   className="w-full h-10 px-3 rounded-lg border border-neutral-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
+                <p className="mt-1 text-[11px] text-neutral-400 font-normal leading-tight">
+                  {t('calendar.suggest.endDateHint')}
+                </p>
               </div>
             </div>
 

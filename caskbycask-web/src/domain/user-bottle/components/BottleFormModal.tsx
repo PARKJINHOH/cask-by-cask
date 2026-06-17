@@ -15,7 +15,7 @@ const defaultForm = (): UserBottleRequest => ({
 });
 
 export function BottleFormModal({ open, onClose, editing }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const createMut = useCreateBottle();
   const updateMut = useUpdateBottle();
   const uploadImageMut = useUploadBottleImage();
@@ -126,7 +126,7 @@ export function BottleFormModal({ open, onClose, editing }: Props) {
           {/* 구매일 */}
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-1">{t('collection.form.purchaseDate')}</label>
-            <input type="date" max="9999-12-31" required value={form.purchaseDate}
+            <input type="date" max="9999-12-31" lang={i18n.language} required value={form.purchaseDate}
               onChange={e => setForm(f => ({ ...f, purchaseDate: e.target.value }))}
               className="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm" />
           </div>

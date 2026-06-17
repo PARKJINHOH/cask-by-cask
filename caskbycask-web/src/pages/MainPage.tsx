@@ -216,9 +216,11 @@ function SpiritCarousel({ spirits }: { spirits: SpiritListItem[] }) {
   )
 }
 
-// ── 커뮤니티 게시글 행 ────────────────────────────────────────────
 function PostRow({ post, boardPath }: { post: PostListItem; boardPath: string }) {
-  const label = post.prefix?.name ?? (boardPath === 'notice' ? '소식' : '자유')
+  const { t } = useTranslation()
+  const label = post.prefix
+    ? t(`prefix.${post.prefix.name}`, post.prefix.name)
+    : (boardPath === 'notice' ? t('home.community.news', '소식') : t('home.community.free', '자유'))
   const labelColor = post.prefix?.colorHex
   return (
     <Link

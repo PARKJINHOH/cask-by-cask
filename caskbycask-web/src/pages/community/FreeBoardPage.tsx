@@ -1,5 +1,7 @@
+import { useTranslation } from 'react-i18next'
 import BoardListPage from './BoardListPage'
 
 export default function FreeBoardPage() {
-  return <BoardListPage boardType="FREE" title="자유게시판" />
+  const { t } = useTranslation()
+  return <BoardListPage boardType="FREE" title={t('menu.communityBoard', '자유게시판')} />
 }

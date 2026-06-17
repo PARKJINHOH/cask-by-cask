@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import Spinner from '@/shared/components/Spinner'
@@ -52,7 +52,7 @@ export default function MyScrappedPosts() {
             >
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-xs font-medium text-neutral-400">
-                  {post.boardType === 'NOTICE' ? '소식' : '자유'}
+                  {post.boardType === 'NOTICE' ? t('home.community.news', '소식') : t('home.community.free', '자유')}
                 </span>
                 {post.prefix && (
                   <span
@@ -61,7 +61,7 @@ export default function MyScrappedPosts() {
                       ? { color: post.prefix.colorHex, borderColor: post.prefix.colorHex }
                       : { color: '#6b7280', borderColor: '#d1d5db' }}
                   >
-                    {post.prefix.name}
+                    {t(`prefix.${post.prefix.name}`, post.prefix.name)}
                   </span>
                 )}
                 {post.isLocked && <span className="text-neutral-400 text-sm">🔒</span>}

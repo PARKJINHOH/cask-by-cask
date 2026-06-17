@@ -20,7 +20,7 @@ export default function CountryRegionSelector({
   onRegionChange,
   disabled,
 }: Props) {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -102,7 +102,7 @@ export default function CountryRegionSelector({
           value={regionNameKo}
           onChange={(e) => onRegionChange(e.target.value, e.target.value)}
           disabled={disabled || !countryCode}
-          placeholder={countryCode ? '지역 입력 (선택)' : '국가를 먼저 선택하세요'}
+          placeholder={countryCode ? t('location.regionPlaceholder') : t('location.selectCountryFirst')}
           maxLength={100}
           className={cls}
         />
@@ -118,7 +118,7 @@ export default function CountryRegionSelector({
             value={regionNameKo}
             onChange={(e) => onRegionChange(e.target.value, e.target.value)}
             disabled={disabled}
-            placeholder="지역 직접 입력"
+            placeholder={t('location.customInputPlaceholder')}
             maxLength={100}
             className={`${cls} pr-8`}
           />
@@ -129,7 +129,7 @@ export default function CountryRegionSelector({
               onRegionChange('', '');
             }}
             className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 text-xs leading-none"
-            title="목록으로 돌아가기"
+            title={t('location.backToList')}
           >
             ✕
           </button>
@@ -156,13 +156,13 @@ export default function CountryRegionSelector({
         }}
         disabled={disabled || !countryCode}
       >
-        <option value="">지역 선택</option>
+        <option value="">{t('location.selectRegion')}</option>
         {regions.map((r) => (
           <option key={r.nameKo} value={r.nameKo}>
             {display(r.nameKo, r.nameEn)}
           </option>
         ))}
-        <option value={CUSTOM_VALUE}>✏ 직접 입력</option>
+        <option value={CUSTOM_VALUE}>{t('location.customInput')}</option>
       </select>
     );
   };
@@ -176,7 +176,7 @@ export default function CountryRegionSelector({
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="국가 검색..."
+            placeholder={t('location.searchCountry')}
             disabled={disabled}
             className={cls}
           />
@@ -188,7 +188,7 @@ export default function CountryRegionSelector({
             className={`${cls} text-left flex items-center justify-between`}
           >
             <span className={selectedCountry ? 'text-neutral-900' : 'text-neutral-400'}>
-              {selectedCountry ? display(selectedCountry.nameKo, selectedCountry.nameEn) : '국가 선택'}
+              {selectedCountry ? display(selectedCountry.nameKo, selectedCountry.nameEn) : t('location.selectCountry')}
             </span>
             {selectedCountry ? (
               <span
@@ -207,7 +207,7 @@ export default function CountryRegionSelector({
         {open && (
           <ul className="absolute z-50 mt-1 w-full bg-white border border-neutral-200 rounded-lg shadow-lg max-h-52 overflow-y-auto">
             {filtered.length === 0 ? (
-              <li className="px-3 py-2 text-sm text-neutral-400">검색 결과 없음</li>
+              <li className="px-3 py-2 text-sm text-neutral-400">{t('location.noResult')}</li>
             ) : (
               filtered.map((c) => (
                 <li

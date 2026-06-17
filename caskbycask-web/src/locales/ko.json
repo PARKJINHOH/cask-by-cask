@@ -891,7 +891,51 @@
     "commentSection": "댓글",
     "loginToComment": "로그인하고 댓글을 남겨보세요",
     "lockedNotice": "신고 누적으로 잠긴 게시글입니다. 본문을 볼 수 없습니다.",
-    "hiddenNotice": "관리자가 숨김 처리한 게시글입니다. 본문을 볼 수 없습니다."
+    "hiddenNotice": "관리자가 숨김 처리한 게시글입니다. 본문을 볼 수 없습니다.",
+    "placeholder": {
+      "title": "제목을 입력하세요",
+      "content": "내용을 입력하세요. YouTube/Vimeo URL을 붙여넣으면 자동 임베드됩니다."
+    },
+    "draft": {
+      "save": "임시저장",
+      "saving": "저장 중...",
+      "list": "임시저장목록",
+      "listTitle": "임시저장 목록",
+      "maxLimit": "임시저장은 최대 {{max}}개까지 저장됩니다. ({{current}}/{{max}})",
+      "empty": "임시저장된 글이 없습니다.",
+      "savedTime": "임시저장됨 · {{time}}",
+      "noContent": "임시저장할 내용이 없습니다.",
+      "savedSuccess": "임시저장되었습니다.",
+      "loadedSuccess": "임시저장을 불러왔습니다.",
+      "errorLimit": "임시저장 개수가 가득 찼습니다.",
+      "loadError": "임시저장 목록을 불러오지 못했습니다.",
+      "loadSingleError": "임시저장을 불러오지 못했습니다.",
+      "deleteError": "임시저장을 삭제하지 못했습니다."
+    },
+    "poll": {
+      "vote": "투표하기",
+      "ended": "종료된 투표",
+      "voted": "투표 완료",
+      "total": "총 {{count}}명 참여",
+      "voteSuccess": "투표가 완료되었습니다.",
+      "add": "투표 추가",
+      "remove": "투표 제거",
+      "questionPlaceholder": "투표 질문을 입력하세요",
+      "multiple": "복수 선택",
+      "single": "단일 선택",
+      "optionPlaceholder": "선택지 {{index}}",
+      "addOption": "+ 선택지 추가",
+      "endsAt": "종료일시 (선택)"
+    },
+    "series": {
+      "label": "시리즈",
+      "prev": "이전 글",
+      "next": "다음 글",
+      "none": "시리즈에 추가 안 함"
+    },
+    "error": {
+      "badWord": "욕설이 포함되어 있습니다: {{words}}"
+    }
   },
   "notification": {
     "title": "알림",
@@ -1366,5 +1410,35 @@
         "OTHER": "기타"
       }
     }
+  },
+  "notice": {
+    "empty": "공지사항이 없습니다.",
+    "category": {
+      "all": "전체",
+      "general": "일반",
+      "update": "업데이트",
+      "event": "이벤트",
+      "maintenance": "점검",
+      "notice": "공지"
+    }
+  },
+  "location": {
+    "selectCountry": "국가 선택",
+    "selectCountryFirst": "국가를 먼저 선택하세요.",
+    "selectRegion": "지역 선택",
+    "regionPlaceholder": "지역 입력 (선택)",
+    "customInput": "✏ 직접 입력",
+    "customInputPlaceholder": "지역 직접 입력",
+    "backToList": "목록으로 돌아가기",
+    "searchCountry": "국가 검색...",
+    "noResult": "검색 결과 없음"
+  },
+  "prefix": {
+    "일반": "일반",
+    "나눔": "나눔",
+    "질문": "질문",
+    "비욥": "비욥",
+    "이벤트": "이벤트",
+    "공지": "공지"
   }
 }

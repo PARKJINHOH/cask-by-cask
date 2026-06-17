@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { useAuth } from '@/domain/auth/hooks/useAuth'
 import { useMe } from '@/domain/user/hooks/useUser'
-import { saveLang } from '@/shared/utils/i18n'
+import { changeLanguage } from '@/shared/utils/locale'
 import BottomNav from '@/shared/components/BottomNav'
 import Toast from '@/shared/components/Toast'
 import { useToast } from '@/shared/hooks/useToast'
@@ -283,8 +283,7 @@ function LangToggle() {
   }, [])
 
   const selectLang = (lang: string) => {
-    saveLang(lang)
-    i18n.changeLanguage(lang)
+    changeLanguage(lang as 'ko' | 'en')
     setOpen(false)
   }
 
@@ -342,8 +341,7 @@ function GuestLangToggle() {
   }, [])
 
   const selectLang = (lang: string) => {
-    saveLang(lang)
-    i18n.changeLanguage(lang)
+    changeLanguage(lang as 'ko' | 'en')
     setOpen(false)
   }
 
