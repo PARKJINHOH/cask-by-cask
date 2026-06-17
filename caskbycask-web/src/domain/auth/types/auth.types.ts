@@ -128,3 +128,9 @@ export interface OAuthSignupRequest {
   agreedToPrivacy: boolean
   emailSubscribed: boolean
 }
+
+export interface AdminCredentials {
+  email: string
+  password: string
+}
+

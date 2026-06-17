@@ -1,6 +1,6 @@
 import axiosInstance from '@/shared/api/axiosInstance'
 import type { ApiResponse } from '@/shared/types/common.types'
-import type { LoginRequest, LoginResponse, SignupRequest, UserInfo, VerifyEmailRequest, CheckAvailableResponse, ReactivateRequest, FindEmailResponse, PasswordResetVerifyRequest, PasswordResetConfirmRequest, OAuthAuthorizeUrlResponse, OAuthCallbackResponse, OAuthCodeRequest, OAuthSignupRequest } from '../types/auth.types'
+import type { LoginRequest, LoginResponse, SignupRequest, UserInfo, VerifyEmailRequest, CheckAvailableResponse, ReactivateRequest, FindEmailResponse, PasswordResetVerifyRequest, PasswordResetConfirmRequest, OAuthAuthorizeUrlResponse, OAuthCallbackResponse, OAuthCodeRequest, OAuthSignupRequest, AdminCredentials } from '../types/auth.types'
 
 export const authApi = {
   login: (data: LoginRequest) =>
@@ -51,4 +51,8 @@ export const authApi = {
 
   oauthSignup: (data: OAuthSignupRequest) =>
     axiosInstance.post<ApiResponse<LoginResponse>>('/api/auth/oauth/signup', data),
+
+  getAdminCredentials: () =>
+    axiosInstance.get<ApiResponse<AdminCredentials>>('/api/auth/admin-credentials'),
 }
+

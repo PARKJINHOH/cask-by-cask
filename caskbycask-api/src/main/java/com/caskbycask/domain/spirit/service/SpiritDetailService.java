@@ -146,6 +146,7 @@ public class SpiritDetailService {
         extra.put("caskTypes", caskTypes.stream().map(Enum::name).toList());
         extra.put("caskFinishes", caskFinishes.stream().map(Enum::name).toList());
         extra.put("caskTypeOther", hasOther ? req.caskTypeOther() : null);
+        extra.put("caskDetails", req.caskDetails());
         extra.put("notes", req.notes());
         // 스타일 직접 입력은 style=OTHER 일 때만 보존
         extra.put("styleOther", req.style() == WhiskyStyle.OTHER ? req.styleOther() : null);
@@ -295,6 +296,7 @@ public class SpiritDetailService {
         return new WhiskyDetailResponse(
                 detail.getStyle(), str(extra, "styleOther"), str(extra, "brandName"), detail.getBottlingType(),
                 caskTypes(extra, "caskTypes"), caskTypes(extra, "caskFinishes"), str(extra, "caskTypeOther"),
+                parseCaskDetails(extra, "caskDetails"),
                 detail.getIsNonChillFiltered(), detail.getIsNaturalColour(),
                 detail.getIsSingleCask(), detail.getIsCaskStrength(), detail.getIsPeated(),
                 detail.getPhenolPpm(),
@@ -313,6 +315,28 @@ public class SpiritDetailService {
                 })
                 .filter(Objects::nonNull)
                 .toList();
+    }
+
+    /** extraData[key] (Map) → WhiskyCaskType -> List<String> 맵 파싱. */
+    @SuppressWarnings("unchecked")
+    private Map<WhiskyCaskType, List<String>> parseCaskDetails(Map<String, Object> extra, String key) {
+        if (extra == null || !(extra.get(key) instanceof Map<?, ?> map)) return Map.of();
+        Map<WhiskyCaskType, List<String>> result = new LinkedHashMap<>();
+        for (Map.Entry<?, ?> entry : map.entrySet()) {
+            if (entry.getKey() instanceof String keyStr) {
+                try {
+                    WhiskyCaskType type = WhiskyCaskType.valueOf(keyStr);
+                    if (entry.getValue() instanceof List<?> list) {
+                        List<String> details = list.stream()
+                                .filter(x -> x instanceof String)
+                                .map(x -> (String) x)
+                                .toList();
+                        result.put(type, details);
+                    }
+                } catch (IllegalArgumentException ignored) {}
+            }
+        }
+        return result;
     }
 
     private WineDetailResponse buildWineDetailResponse(SpiritWineDetail detail) {

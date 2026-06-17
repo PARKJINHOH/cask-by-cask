@@ -62,6 +62,103 @@ export function SectionTitle({ title, hint }: { title: string; hint?: string }) 
   )
 }
 
+const LEGACY_CASK_MAP: Record<string, { parent: string; label: string }> = {
+  EX_FINO: { parent: 'EX_SHERRY', label: '피노 셰리 캐스크' },
+  EX_MANZANILLA: { parent: 'EX_SHERRY', label: '만자니야 셰리 캐스크' },
+  EX_AMONTILLADO: { parent: 'EX_SHERRY', label: '아몬티야도 셰리 캐스크' },
+  EX_OLOROSO: { parent: 'EX_SHERRY', label: '올로로소 셰리 캐스크' },
+  EX_PALO_CORTADO: { parent: 'EX_SHERRY', label: '팔로 코르타도 셰리 캐스크' },
+  EX_PX: { parent: 'EX_SHERRY', label: 'PX(페드로 히메네스) 셰리 캐스크' },
+
+  EX_MADEIRA: { parent: 'EX_PORT', label: '마데이라 와인 캐스크' },
+  EX_SAUTERNES: { parent: 'EX_PORT', label: '소테른 와인 캐스크' },
+  EX_MARSALA: { parent: 'EX_PORT', label: '마르살라 와인 캐스크' },
+  EX_MALAGA: { parent: 'EX_PORT', label: '말라가 와인 캐스크' },
+  EX_TOKAJI: { parent: 'EX_PORT', label: '토카이 와인 캐스크' },
+  EX_VERMOUTH: { parent: 'EX_PORT', label: '베르무트 캐스크' },
+
+  VINO_BARRIQUE: { parent: 'EX_WINE', label: '비노 바리끄' },
+
+  EX_BRANDY: { parent: 'EX_COGNAC', label: '브랜디 캐스크' },
+  EX_ARMAGNAC: { parent: 'EX_COGNAC', label: '아르마냑 캐스크' },
+  EX_MEZCAL_TEQUILA: { parent: 'OTHER', label: '메스칼/데킬라 캐스크' },
+  EX_UMESHU: { parent: 'OTHER', label: '매실주(우메슈) 캐스크' },
+  TEAK_WOOD: { parent: 'OTHER', label: '티크우드' },
+  PEATED_CASK: { parent: 'OTHER', label: '피티드 캐스크' },
+  FRENCH_OAK: { parent: 'NEW_OAK', label: '프렌치 오크' },
+  CHINKAPIN: { parent: 'NEW_OAK', label: '친카핀 오크' },
+}
+
+const VALID_BROAD_CATEGORIES = new Set([
+  'EX_BOURBON', 'EX_SHERRY', 'EX_WINE', 'EX_PORT', 'EX_RUM',
+  'EX_COGNAC', 'EX_CALVADOS', 'EX_BEER', 'MIZUNARA', 'NEW_OAK', 'OTHER'
+])
+
+function migrateLegacyCasks(
+  caskTypes: string[],
+  caskFinishes: string[],
+  caskDetails?: Record<string, string[]> | null
+) {
+  if (caskDetails && Object.keys(caskDetails).length > 0) {
+    return {
+      caskTypes: caskTypes.filter(c => VALID_BROAD_CATEGORIES.has(c)),
+      caskFinishes: caskFinishes.filter(c => VALID_BROAD_CATEGORIES.has(c)),
+      caskDetails
+    }
+  }
+
+  const migratedTypes: string[] = []
+  const migratedFinishes: string[] = []
+  const migratedDetails: Record<string, string[]> = {}
+
+  const addDetail = (parent: string, label: string, isFinish: boolean) => {
+    if (!migratedTypes.includes(parent)) {
+      migratedTypes.push(parent)
+    }
+    if (isFinish && !migratedFinishes.includes(parent)) {
+      migratedFinishes.push(parent)
+    }
+    if (!migratedDetails[parent]) {
+      migratedDetails[parent] = []
+    }
+    if (!migratedDetails[parent].includes(label)) {
+      migratedDetails[parent].push(label)
+    }
+  }
+
+  caskTypes.forEach((c) => {
+    const isFinish = caskFinishes.includes(c)
+    const legacy = LEGACY_CASK_MAP[c]
+    if (legacy) {
+      addDetail(legacy.parent, legacy.label, isFinish)
+    } else if (VALID_BROAD_CATEGORIES.has(c)) {
+      if (!migratedTypes.includes(c)) {
+        migratedTypes.push(c)
+      }
+      if (isFinish && !migratedFinishes.includes(c)) {
+        migratedFinishes.push(c)
+      }
+      if (!migratedDetails[c]) {
+        migratedDetails[c] = []
+      }
+    } else {
+      addDetail('OTHER', c, isFinish)
+    }
+  })
+
+  migratedTypes.forEach((c) => {
+    if (!migratedDetails[c] || migratedDetails[c].length === 0) {
+      migratedDetails[c] = ['']
+    }
+  })
+
+  return {
+    caskTypes: migratedTypes,
+    caskFinishes: migratedFinishes,
+    caskDetails: migratedDetails
+  }
+}
+
 // ── 폼 상태 훅 (상태 · 검증 · 페이로드 · 프리필 단일 정의) ───────────
 export function useSpiritForm() {
   const [category, setCategory] = useState<SpiritCategory | null>(null)
@@ -127,9 +224,13 @@ export function useSpiritForm() {
     }
     if (s.whiskyDetail) {
       const w = s.whiskyDetail
+      const migrated = migrateLegacyCasks(w.caskTypes ?? [], w.caskFinishes ?? [], w.caskDetails)
       setWhiskyDetail({
         style: w.style ?? '', styleOther: w.styleOther ?? '', brandName: w.brandName ?? '', bottlingType: w.bottlingType ?? '',
-        caskTypes: w.caskTypes ?? [], caskFinishes: w.caskFinishes ?? [], caskTypeOther: w.caskTypeOther ?? '',
+        caskTypes: migrated.caskTypes,
+        caskFinishes: migrated.caskFinishes,
+        caskDetails: migrated.caskDetails,
+        caskTypeOther: w.caskTypeOther ?? '',
         isNonChillFiltered: w.isNonChillFiltered ?? false, isNaturalColour: w.isNaturalColour ?? false,
         isSingleCask: w.isSingleCask ?? false, isCaskStrength: w.isCaskStrength ?? false,
         isPeated: w.isPeated ?? false, phenolPpm: w.phenolPpm?.toString() ?? '',
@@ -263,6 +364,12 @@ export function useSpiritForm() {
           caskTypes: whiskyDetail.caskTypes,
           caskFinishes: whiskyDetail.caskFinishes.filter((c) => whiskyDetail.caskTypes.includes(c)),
           caskTypeOther: whiskyDetail.caskTypes.includes('OTHER') ? (whiskyDetail.caskTypeOther || null) : null,
+          caskDetails: Object.fromEntries(
+            Object.entries(whiskyDetail.caskDetails || {}).map(([k, v]) => [
+              k,
+              v.filter((str) => str.trim() !== '')
+            ]).filter(([_, v]) => v.length > 0)
+          ),
           isNonChillFiltered: whiskyDetail.isNonChillFiltered || null,
           isNaturalColour: whiskyDetail.isNaturalColour || null,
           isSingleCask: whiskyDetail.isSingleCask || null,

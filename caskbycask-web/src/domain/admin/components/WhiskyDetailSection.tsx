@@ -3,6 +3,7 @@ import InfoTooltip from '@/shared/components/InfoTooltip'
 export interface WhiskyDetailForm {
   style: string; styleOther: string; brandName: string; bottlingType: string
   caskTypes: string[]; caskFinishes: string[]; caskTypeOther: string
+  caskDetails: Record<string, string[]>
   isNonChillFiltered: boolean; isNaturalColour: boolean
   isSingleCask: boolean; isCaskStrength: boolean; isPeated: boolean
   phenolPpm: string; caskNo: string; notes: string
@@ -11,6 +12,7 @@ export interface WhiskyDetailForm {
 export const DEFAULT_WHISKY: WhiskyDetailForm = {
   style: 'SINGLE_MALT', styleOther: '', brandName: '', bottlingType: 'OB',
   caskTypes: [], caskFinishes: [], caskTypeOther: '',
+  caskDetails: {},
   isNonChillFiltered: false, isNaturalColour: false, isSingleCask: false,
   isCaskStrength: false, isPeated: false, phenolPpm: '', caskNo: '', notes: '',
 }
@@ -25,52 +27,22 @@ const WHISKY_STYLES = [
   ['BOURBON','버번'],['WHEATED_BOURBON','밀 버번'],['TENNESSEE','테네시'],['RYE','라이'],['POT_STILL','싱글 팟 스틸'],
   ['GRAIN_CORN','그레인 / 콘'],['OTHER','기타'],
 ]
-// 캐스크 — 유형별 그룹(비슷한 뉘앙스끼리 정렬). 한 곳만 고치면 UI 자동 반영.
-const CASK_GROUPS: Array<[string, Array<[string, string]>]> = [
-  ['버번 · 오크', [
-    ['EX_BOURBON', '버번 캐스크'], ['NEW_OAK', '뉴(버진) 오크'],
-    ['FRENCH_OAK', '프렌치 오크'], ['CHINKAPIN', '친카핀'],
-  ]],
-  ['셰리 캐스크', [
-    ['EX_SHERRY', '셰리 캐스크'], ['EX_FINO', '피노 캐스크'], ['EX_MANZANILLA', '만자니야 캐스크'],
-    ['EX_AMONTILLADO', '아몬티야도 캐스크'], ['EX_OLOROSO', '올로로소 캐스크'],
-    ['EX_PALO_CORTADO', '팔로 코르타도 캐스크'], ['EX_PX', 'PX 캐스크'],
-  ]],
-  ['주정강화 · 디저트 와인', [
-    ['EX_PORT', '포트 캐스크'], ['EX_MADEIRA', '마데이라 캐스크'],
-    ['EX_MARSALA', '마르살라 캐스크'], ['EX_MALAGA', '말라가 캐스크'],
-    ['EX_SAUTERNES', '소테른 캐스크'], ['EX_TOKAJI', '토카이 캐스크'], ['EX_VERMOUTH', '베르무트 캐스크'],
-  ]],
-  ['와인 캐스크', [
-    ['EX_WINE', '와인 캐스크'], ['VINO_BARRIQUE', '비노 바리끄'],
-  ]],
-  ['증류주 캐스크', [
-    ['EX_RUM', '럼 캐스크'], ['EX_COGNAC', '꼬냑 캐스크'], ['EX_BRANDY', '브랜디 캐스크'],
-    ['EX_CALVADOS', '칼바도스 캐스크'], ['EX_ARMAGNAC', '아르마냑 캐스크'],
-    ['EX_MEZCAL_TEQUILA', '메스칼/데킬라 캐스크'],
-  ]],
-  ['기타 캐스크', [
-    ['MIZUNARA', '미즈나라 (일본)'], ['EX_UMESHU', '매실주(우메슈) 캐스크'],
-    ['TEAK_WOOD', '티크우드'], ['PEATED_CASK', '피티드 캐스크'], ['OTHER', '기타'],
-  ]],
+
+export const BROAD_CASK_CATEGORIES = [
+  { code: 'EX_BOURBON', label: '버번 캐스크 (Bourbon Cask)', placeholder: '예) 버진 오크, 아메리칸 오크' },
+  { code: 'EX_SHERRY', label: '셰리 캐스크 (Sherry Cask)', placeholder: '예) 올로로소, PX, 피노, 만자니야' },
+  { code: 'EX_PORT', label: '포트/주정강화 캐스크 (Fortified Wine Cask)', placeholder: '예) 포트, 마데이라, 소테른, 마르살라' },
+  { code: 'EX_WINE', label: '와인 캐스크 (Wine Cask)', placeholder: '예) 레드 와인, 샤르도네, 비노 바리끄' },
+  { code: 'EX_RUM', label: '럼 캐스크 (Rum Cask)', placeholder: '예) 다크 럼, 화이트 럼' },
+  { code: 'EX_COGNAC', label: '꼬냑 캐스크 (Cognac Cask)', placeholder: '예) 그랑 상파뉴 꼬냑' },
+  { code: 'EX_CALVADOS', label: '칼바도스 캐스크 (Calvados Cask)', placeholder: '예) 칼바도스' },
+  { code: 'EX_BEER', label: '맥주 캐스크 (Beer Cask)', placeholder: '예) 임페리얼 스타우트, IPA' },
+  { code: 'NEW_OAK', label: '버진 오크 (Virgin Oak / New Oak)', placeholder: '예) 아메리칸 버진 오크' },
+  { code: 'MIZUNARA', label: '미즈나라 캐스크 (Mizunara Cask)', placeholder: '예) 미즈나라' },
+  { code: 'OTHER', label: '기타 캐스크 (Other Casks)', placeholder: '예) 매실주 캐스크, 피티드 캐스크' },
 ]
 
 export default function WhiskyDetailSection({ value, onChange, errors }: Props) {
-  const toggleCask = (code: string, checked: boolean) => {
-    const caskTypes = checked
-      ? [...value.caskTypes, code]
-      : value.caskTypes.filter((c) => c !== code)
-    // 캐스크 선택 해제 시 해당 피니시 표시도 함께 제거
-    const caskFinishes = checked ? value.caskFinishes : value.caskFinishes.filter((c) => c !== code)
-    onChange({ caskTypes, caskFinishes })
-  }
-  const toggleFinish = (code: string, checked: boolean) => {
-    const caskFinishes = checked
-      ? [...value.caskFinishes, code]
-      : value.caskFinishes.filter((c) => c !== code)
-    onChange({ caskFinishes })
-  }
-
   return (
     <div className="space-y-5">
       {/* 필수 정보 — 스타일 */}
@@ -125,54 +97,141 @@ export default function WhiskyDetailSection({ value, onChange, errors }: Props) 
         </div>
       </div>
 
-      {/* 캐스크 — 유형별 그룹 박스. 각 캐스크 우측 '피니시'는 추가 숙성(피니시) 캐스크일 때 체크 */}
+      {/* 캐스크 — 대분류 선택 및 세부 입력 동적 구조 */}
       <div>
         <label className={LABEL}>
           캐스크
-          <InfoTooltip text="이 위스키에 사용된 캐스크를 모두 선택하세요. 여러 캐스크를 혼합하거나 반반 숙성한 경우 모두 체크합니다. 추가 숙성(피니시)에 쓰인 캐스크는 우측 '피니시'를 함께 체크하세요." />
+          <InfoTooltip text="이 위스키에 사용된 캐스크 대분류를 체크하고, 아래에 구체적인 세부 오크통 명칭을 적어주세요. + 버튼을 눌러 여러 개를 등록할 수 있습니다. 피니시(추가 숙성) 캐스크는 우측 피니시를 체크해주세요." />
         </label>
         <div className="space-y-3">
-          {CASK_GROUPS.map(([groupName, items]) => (
-            <div key={groupName} className="rounded-xl border border-neutral-200 bg-neutral-50/60 p-3.5 space-y-2.5">
-              <p className="text-xs font-semibold text-neutral-500">{groupName}</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
-                {items.map(([v, l]) => {
-                  const selected = value.caskTypes.includes(v)
-                  return (
-                    <div key={v} className="flex items-center justify-between gap-2">
-                      <label className="flex items-center gap-2 cursor-pointer text-sm select-none min-w-0">
-                        <input type="checkbox" checked={selected}
-                          onChange={(e) => toggleCask(v, e.target.checked)}
-                          className="w-4 h-4 accent-amber-500 flex-shrink-0" />
-                        <span className="truncate">{l}</span>
-                      </label>
-                      <label className={`flex items-center gap-1 text-[11px] flex-shrink-0 select-none ${
-                        selected ? 'cursor-pointer text-amber-600' : 'opacity-30 cursor-not-allowed text-neutral-400'}`}>
-                        <input type="checkbox" disabled={!selected}
-                          checked={value.caskFinishes.includes(v)}
-                          onChange={(e) => toggleFinish(v, e.target.checked)}
-                          className="w-3.5 h-3.5 accent-amber-500" />
-                        피니시
-                      </label>
+          {BROAD_CASK_CATEGORIES.map(({ code, label, placeholder }) => {
+            const isChecked = value.caskTypes.includes(code)
+            const isFinish = value.caskFinishes.includes(code)
+            const details = value.caskDetails?.[code] || []
+
+            const handleToggle = (checked: boolean) => {
+              const newCaskTypes = checked
+                ? [...value.caskTypes, code]
+                : value.caskTypes.filter((c) => c !== code)
+
+              const newCaskFinishes = checked
+                ? value.caskFinishes
+                : value.caskFinishes.filter((c) => c !== code)
+
+              const newCaskDetails = { ...value.caskDetails }
+              if (checked) {
+                if (!newCaskDetails[code] || newCaskDetails[code].length === 0) {
+                  newCaskDetails[code] = ['']
+                }
+              } else {
+                delete newCaskDetails[code]
+              }
+
+              onChange({ caskTypes: newCaskTypes, caskFinishes: newCaskFinishes, caskDetails: newCaskDetails })
+            }
+
+            const handleToggleFinish = (checked: boolean) => {
+              const newCaskFinishes = checked
+                ? [...value.caskFinishes, code]
+                : value.caskFinishes.filter((c) => c !== code)
+              onChange({ caskFinishes: newCaskFinishes })
+            }
+
+            const handleAddDetail = () => {
+              const newDetails = [...details, '']
+              onChange({
+                caskDetails: {
+                  ...value.caskDetails,
+                  [code]: newDetails
+                }
+              })
+            }
+
+            const handleUpdateDetail = (idx: number, val: string) => {
+              const newDetails = [...details]
+              newDetails[idx] = val
+              onChange({
+                caskDetails: {
+                  ...value.caskDetails,
+                  [code]: newDetails
+                }
+              })
+            }
+
+            const handleRemoveDetail = (idx: number) => {
+              const newDetails = details.filter((_, i) => i !== idx)
+              onChange({
+                caskDetails: {
+                  ...value.caskDetails,
+                  [code]: newDetails.length > 0 ? newDetails : ['']
+                }
+              })
+            }
+
+            return (
+              <div key={code} className={`rounded-xl border transition-all p-3.5 space-y-3 ${
+                isChecked
+                  ? 'border-amber-200 bg-amber-50/20 shadow-sm'
+                  : 'border-neutral-200 bg-neutral-50/40'
+              }`}>
+                {/* 대분류 헤더 영역 */}
+                <div className="flex items-center justify-between gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer text-sm font-semibold select-none min-w-0 text-neutral-800">
+                    <input type="checkbox" checked={isChecked}
+                      onChange={(e) => handleToggle(e.target.checked)}
+                      className="w-4 h-4 rounded text-amber-500 border-neutral-300 focus:ring-amber-500 accent-amber-500 flex-shrink-0" />
+                    <span className="truncate">{label}</span>
+                  </label>
+                  
+                  <label className={`flex items-center gap-1.5 text-xs font-medium flex-shrink-0 select-none transition-all ${
+                    isChecked ? 'cursor-pointer text-amber-700' : 'opacity-30 cursor-not-allowed text-neutral-400'}`}>
+                    <input type="checkbox" disabled={!isChecked}
+                      checked={isFinish}
+                      onChange={(e) => handleToggleFinish(e.target.checked)}
+                      className="w-3.5 h-3.5 rounded text-amber-500 border-neutral-300 focus:ring-amber-500 accent-amber-500" />
+                    피니시
+                  </label>
+                </div>
+
+                {/* 세부 오크통 동적 입력 (체크 시 활성화) */}
+                {isChecked && (
+                  <div className="pl-6 bg-amber-50/10 rounded-lg p-2 border-l border-amber-200/60 ml-2 space-y-2">
+                    <p className="text-[11px] text-amber-600/80 font-medium">세부 오크통 종류 명칭</p>
+                    <div className="space-y-2">
+                      {details.map((detailVal, idx) => (
+                        <div key={idx} className="flex items-center gap-2 w-full">
+                          <input type="text" value={detailVal} maxLength={100}
+                            onChange={(e) => handleUpdateDetail(idx, e.target.value)}
+                            placeholder={placeholder}
+                            className={`${INPUT} flex-grow min-w-0`} />
+                          
+                          <button type="button" onClick={() => handleRemoveDetail(idx)}
+                            className="p-2 text-neutral-400 hover:text-red-500 hover:bg-neutral-100 rounded-lg flex-shrink-0 transition-colors"
+                            title="삭제">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      ))}
                     </div>
-                  )
-                })}
+                    
+                    <button type="button" onClick={handleAddDetail}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition-colors mt-1">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                      </svg>
+                      추가
+                    </button>
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
-        {/* '기타' 선택 시 직접 입력 */}
-        {value.caskTypes.includes('OTHER') && (
-          <div className="mt-2">
-            <input type="text" value={value.caskTypeOther} maxLength={200}
-              onChange={(e) => onChange({ caskTypeOther: e.target.value })}
-              placeholder="예) 목록에 없는 캐스크 직접 입력"
-              className={INPUT} />
-          </div>
-        )}
       </div>
 
-      {/* 플래그 체크박스 */}
+      {/* 특성 체크박스 */}
       <div>
         <label className={LABEL}>특성</label>
         <div className="grid grid-cols-2 gap-2">

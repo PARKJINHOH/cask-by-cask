@@ -67,7 +67,7 @@ export type BottlingType = 'OB' | 'IB'
 export type WhiskyCaskType =
   | 'EX_BOURBON' | 'EX_SHERRY' | 'EX_FINO' | 'EX_MANZANILLA' | 'EX_AMONTILLADO' | 'EX_OLOROSO' | 'EX_PALO_CORTADO' | 'EX_PX'
   | 'EX_PORT' | 'EX_MADEIRA' | 'EX_SAUTERNES' | 'EX_MARSALA' | 'EX_MALAGA' | 'EX_TOKAJI' | 'EX_VERMOUTH' | 'EX_WINE' | 'VINO_BARRIQUE'
-  | 'EX_RUM' | 'EX_COGNAC' | 'EX_BRANDY' | 'EX_CALVADOS' | 'EX_ARMAGNAC' | 'EX_MEZCAL_TEQUILA'
+  | 'EX_RUM' | 'EX_COGNAC' | 'EX_BRANDY' | 'EX_CALVADOS' | 'EX_ARMAGNAC' | 'EX_MEZCAL_TEQUILA' | 'EX_BEER'
   | 'NEW_OAK' | 'FRENCH_OAK' | 'CHINKAPIN' | 'MIZUNARA' | 'EX_UMESHU' | 'TEAK_WOOD' | 'PEATED_CASK' | 'OTHER'
 export type WineType = 'RED' | 'WHITE' | 'ROSE' | 'SPARKLING' | 'DESSERT' | 'ORANGE' | 'FORTIFIED'
 export type WineCertification = 'ORGANIC' | 'BIODYNAMIC' | 'SUSTAINABLE' | 'NONE'
@@ -98,6 +98,7 @@ export interface WhiskyDetailResponse {
   caskTypes: WhiskyCaskType[] | null
   caskFinishes: WhiskyCaskType[] | null
   caskTypeOther: string | null
+  caskDetails: Record<WhiskyCaskType, string[]> | null
   isNonChillFiltered: boolean | null
   isNaturalColour: boolean | null
   isSingleCask: boolean | null

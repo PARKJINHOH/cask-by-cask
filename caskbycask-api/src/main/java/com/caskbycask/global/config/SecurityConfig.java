@@ -154,6 +154,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/auth/refresh").permitAll()
                         .requestMatchers(HttpMethod.GET,  "/api/auth/check-email").permitAll()
                         .requestMatchers(HttpMethod.GET,  "/api/auth/check-nickname").permitAll()
+                        .requestMatchers(HttpMethod.GET,  "/api/auth/admin-credentials").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/send-verification").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/verify-email").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/reactivate").permitAll()

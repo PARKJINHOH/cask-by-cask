@@ -29,6 +29,7 @@ export interface WhiskyDetailRequest {
   caskTypes?: string[] | null
   caskFinishes?: string[] | null
   caskTypeOther?: string | null
+  caskDetails?: Record<string, string[]> | null
   isNonChillFiltered?: boolean | null
   isNaturalColour?: boolean | null
   isSingleCask?: boolean | null

@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useForm, Controller } from 'react-hook-form'
 import { z } from 'zod'
@@ -73,6 +73,7 @@ export default function AdminNoticeFormPage() {
   }, [existing, reset])
 
   // ── 임시저장 (신규 작성 시에만) ──
+  const DRAFT_KEY = 'ADMIN_NOTICE'
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
   const [isSavingDraft, setIsSavingDraft] = useState(false)
   const [currentDraftId, setCurrentDraftId] = useState<number | undefined>(undefined)

@@ -1,4 +1,4 @@
-﻿import { useState, startTransition } from 'react'
+import { useState, useEffect, startTransition } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -7,6 +7,7 @@ import type { AxiosError } from 'axios'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { useAuth } from '@/domain/auth/hooks/useAuth'
 import { authApi } from '@/domain/auth/api/authApi'
+import type { AdminCredentials } from '@/domain/auth/types/auth.types'
 import { userApi } from '@/domain/user/api/userApi'
 import SocialLoginButtons from '@/domain/auth/components/SocialLoginButtons'
 import { OAUTH_LINK_TICKET_KEY } from '@/domain/auth/oauth'
@@ -252,16 +253,38 @@ export default function LoginPage() {
   const [showUnverified, setShowUnverified]     = useState(false)
   const [showLocked, setShowLocked]             = useState(false)
   const [dormantCreds, setDormantCreds]         = useState<{ email: string; password: string } | null>(null)
+  const [adminCreds, setAdminCreds]             = useState<AdminCredentials | null>(null)
 
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
     setError,
+    setValue,
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { email: '', password: '' },
   })
+
+  useEffect(() => {
+    authApi.getAdminCredentials()
+      .then((res) => {
+        if (res.data.success && res.data.data) {
+          setAdminCreds(res.data.data)
+        }
+      })
+      .catch(() => {
+        // Ignore. Failures are expected in prod environment where endpoint returns 404
+      })
+  }, [])
+
+  const handleAdminLogin = async () => {
+    if (!adminCreds) return
+    setValue('email', adminCreds.email)
+    setValue('password', adminCreds.password)
+    await handleSubmit(onSubmit)()
+  }
+
 
   const state = location.state as { from?: { pathname: string }; signupSuccess?: boolean; verifySuccess?: boolean; passwordResetSuccess?: boolean; socialLinkNotice?: string } | null
   const from = state?.from?.pathname ?? '/'
@@ -410,6 +433,23 @@ export default function LoginPage() {
           <Button type="submit" isLoading={isSubmitting} fullWidth className="!mt-6">
             로그인
           </Button>
+
+          {adminCreds && (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleAdminLogin}
+              fullWidth
+              disabled={isSubmitting}
+              className="!mt-2 border-primary-600/30 text-primary-800 hover:bg-primary-50/50 hover:border-primary-600 transition-colors"
+            >
+              <svg className="w-4 h-4 mr-2 text-primary-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+              관리자 자동 로그인
+            </Button>
+          )}
         </form>
 
         {/* 소셜 로그인 */}

@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback, useLayoutEffect, useRef, Fragment } from 'react'
+import { useState, useEffect, useCallback, useLayoutEffect, useRef, Fragment } from 'react'
 import { useLocation, useSearchParams } from 'react-router-dom'
 import { useTranslation, Trans } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
@@ -307,6 +307,7 @@ export default function SpiritListPage() {
 
   // 키워드 (Enter 또는 검색 버튼 클릭 시에만 검색)
   const [keywordInput, setKeywordInput] = useState(searchParams.get('keyword') ?? '')
+  const [isFocused, setIsFocused] = useState(false)
 
   const submitKeyword = (e: React.FormEvent) => {
     e.preventDefault()
@@ -627,29 +628,40 @@ export default function SpiritListPage() {
         </div>
       </div>
 
-      {/* 모바일 필터 드로어 (PC 헤더 검색이 모바일엔 없으므로 키워드 검색을 여기 포함) */}
+      {/* 모바일 필터 드로어 */}
       <FilterDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)}>
-        <form onSubmit={submitKeyword} className="relative mb-5">
+        <FilterPanel {...filterProps} />
+      </FilterDrawer>
+
+      {/* 모바일 하단 고정 검색창 (MO only, 스크롤 유지, 포커스 시 크기 변동) */}
+      <div className="lg:hidden fixed left-4 right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30 max-w-md mx-auto">
+        <form
+          onSubmit={submitKeyword}
+          className={`relative transition-all duration-300 ease-out bg-white/95 backdrop-blur-md rounded-full shadow-lg border border-neutral-200/80
+            ${isFocused ? 'ring-2 ring-primary-400/30 border-primary-500 shadow-xl -translate-y-0.5' : ''}`}
+        >
           <input
             type="search"
             value={keywordInput}
             onChange={(e) => setKeywordInput(e.target.value)}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
             placeholder={t('spirit.search.placeholder')}
-            className="w-full pl-4 pr-10 py-2.5 border border-neutral-300 rounded-xl text-sm
-              focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
+            className={`w-full pl-5 pr-12 transition-all duration-300 ease-out rounded-full bg-transparent text-neutral-800 focus:outline-none
+              ${isFocused ? 'py-2.5 h-10 text-sm' : 'py-1 h-8 text-xs'}`}
           />
           <button
             type="submit"
             aria-label={t('nav.search')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-primary-600 transition-colors"
+            className={`absolute right-4 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-primary-600 transition-colors
+              ${isFocused ? 'scale-110' : 'scale-100'}`}
           >
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
           </button>
         </form>
-        <FilterPanel {...filterProps} />
-      </FilterDrawer>
+      </div>
 
     </div>
   )

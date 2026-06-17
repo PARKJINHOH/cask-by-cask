@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useSpiritDetail, useSpiritVariants } from '@/domain/spirit/hooks/useSpiritDetail'
@@ -154,6 +154,7 @@ function SpiritDetailSections({ spirit, isEn }: { spirit: SpiritDetail; isEn: bo
     EX_CALVADOS:       { ko: '칼바도스 캐스크',          en: 'Ex-Calvados Cask' },
     EX_ARMAGNAC:       { ko: '아르마냑 캐스크',          en: 'Ex-Armagnac Cask' },
     EX_MEZCAL_TEQUILA: { ko: '메스칼/데킬라 캐스크',     en: 'Ex-Mezcal/Tequila Cask' },
+    EX_BEER:           { ko: '맥주 캐스크',              en: 'Ex-Beer Cask' },
     NEW_OAK:           { ko: '뉴(버진) 오크',            en: 'New (Virgin) Oak' },
     FRENCH_OAK:        { ko: '프렌치 오크',              en: 'French Oak' },
     CHINKAPIN:         { ko: '친카핀 오크',              en: 'Chinkapin Oak' },
@@ -247,8 +248,13 @@ function SpiritDetailSections({ spirit, isEn }: { spirit: SpiritDetail; isEn: bo
                 value={whisky.bottlingType ? BOTTLING_LABEL[whisky.bottlingType] ?? whisky.bottlingType : null} />
               <DIChips label={isEn ? 'Cask' : '캐스크'}
                 items={(whisky.caskTypes ?? []).map((c) => {
-                  const base = c === 'OTHER' ? (whisky.caskTypeOther || caskLabel('OTHER')) : caskLabel(c)
-                  // 피니시(추가 숙성) 캐스크는 색으로 구분 + 끝에 표시
+                  const label = caskLabel(c)
+                  const details = whisky.caskDetails?.[c] || []
+                  let detailsJoined = details.filter(Boolean).join(' + ')
+                  if (!detailsJoined && c === 'OTHER' && whisky.caskTypeOther) {
+                    detailsJoined = whisky.caskTypeOther
+                  }
+                  const base = detailsJoined ? `${label} (${detailsJoined})` : label
                   const isFinish = whisky.caskFinishes?.includes(c) ?? false
                   return { text: isFinish ? `${base} ${isEn ? '(Finish)' : '(피니시)'}` : base, accent: isFinish }
                 })} />

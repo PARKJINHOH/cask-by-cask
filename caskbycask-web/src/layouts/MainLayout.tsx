@@ -428,7 +428,7 @@ function HeaderSearch() {
 // ── 사용자 드롭다운 ───────────────────────────────────────────
 
 function UserDropdown() {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const { user, isLoggedIn, setUser } = useAuthStore()
   const { logout } = useAuth()
   const navigate = useNavigate()
