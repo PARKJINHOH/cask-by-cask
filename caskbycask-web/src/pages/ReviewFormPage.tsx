@@ -1,10 +1,10 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useForm, Controller } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
-import { useSpiritDetail } from '@/domain/spirit/hooks/useSpiritDetail'
+import { useSpiritDetail, useSpiritVariants } from '@/domain/spirit/hooks/useSpiritDetail'
 import Spinner from '@/shared/components/Spinner'
 import Button from '@/shared/components/Button'
 import SeoMeta from '@/shared/components/SeoMeta'
@@ -68,7 +68,27 @@ export default function ReviewFormPage() {
 
   const { data: spirit, isLoading: spiritLoading } = useSpiritDetail(spiritId)
 
-  const createMutation = useCreateReview(spiritId)
+  // 마스터 ID 결정
+  const masterId = spirit?.parentId || (spirit?.variants && spirit.variants.length > 0 ? spirit.id : null)
+  // 마스터 ID가 있을 때만 하위 에디션 목록 조회
+  const { data: variants = [] } = useSpiritVariants(masterId || 0)
+
+  // 리뷰를 실제로 등록할 대상 Spirit ID
+  const [targetSpiritId, setTargetSpiritId] = useState<number | null>(null)
+  const [variantError, setVariantError] = useState<string | null>(null)
+
+  // 초기 targetSpiritId 세팅 (spirit 로딩 완료 후)
+  useEffect(() => {
+    if (spirit) {
+      if (spirit.parentId) {
+        setTargetSpiritId(spirit.id)
+      } else if (!spirit.variants || spirit.variants.length === 0) {
+        setTargetSpiritId(spirit.id)
+      }
+    }
+  }, [spirit])
+
+  const createMutation = useCreateReview(targetSpiritId || spiritId)
   const updateMutation = useUpdateReview(spiritId)
 
   const aromaCategories = getAromaCategories(spirit?.category)
@@ -128,6 +148,11 @@ export default function ReviewFormPage() {
   const totalPreview = (nose + taste + finish) / 3
 
   const onSubmit = async (values: ReviewFormValues) => {
+    if (masterId && variants.length > 0 && !isEdit && targetSpiritId === null) {
+      setVariantError(t('review.selectEditionRequired'))
+      return
+    }
+
     const payload = {
       noseScore:             values.noseScore,
       tasteScore:            values.tasteScore,
@@ -188,6 +213,43 @@ export default function ReviewFormPage() {
         </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+
+        {/* 에디션 선택 (하위 에디션이 존재하는 경우에만 노출) */}
+        {masterId && variants.length > 0 && !isEdit && (
+          <div className="bg-amber-50/40 border border-amber-200/60 rounded-2xl p-4 space-y-2">
+            <label className="block text-xs font-bold text-neutral-700">
+              {t('review.selectEdition')} <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={targetSpiritId ?? ''}
+              onChange={(e) => {
+                const val = e.target.value
+                setTargetSpiritId(val === '' ? null : Number(val))
+                setVariantError(null)
+              }}
+              className="w-full sm:w-96 px-3 py-2 text-sm border border-neutral-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-pointer"
+            >
+              <option value="">{t('review.selectEditionPlaceholder')}</option>
+              {variants.map((v) => {
+                const typeLabel = v.variantType ? t(`spirit.variantType.${v.variantType}`) : ''
+                return (
+                  <option key={v.id} value={v.id}>
+                    [{typeLabel}] {v.variantValue || v.id} ({v.abv != null ? `${v.abv}%` : ''}{v.volumeMl ? `, ${v.volumeMl}ml` : ''})
+                  </option>
+                )
+              })}
+              <option value={spirit?.parentId ? spirit.parentId : spirit?.id}>
+                {t('review.editionUnknown')}
+              </option>
+            </select>
+            {variantError && (
+              <p className="text-xs text-red-500 mt-1">{variantError}</p>
+            )}
+            <p className="text-[11px] text-neutral-400">
+              {t('review.editionWarning')}
+            </p>
+          </div>
+        )}
 
         {/* 향 */}
         <Controller

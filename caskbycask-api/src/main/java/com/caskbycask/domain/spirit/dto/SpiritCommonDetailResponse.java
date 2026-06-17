@@ -14,6 +14,12 @@ public record SpiritCommonDetailResponse(
         @Schema(description = "숙성 연수 (isNas=true면 null)")
         Integer ageStatement,
 
+        @Schema(description = "최소 숙성 연수")
+        Integer ageStatementMin,
+
+        @Schema(description = "최대 숙성 연수")
+        Integer ageStatementMax,
+
         @Schema(description = "증류 연월 (YYYY 또는 YYYY-MM)")
         String distilledDate,
 
@@ -41,9 +47,12 @@ public record SpiritCommonDetailResponse(
 ) {
     public static SpiritCommonDetailResponse from(SpiritCommonDetail detail) {
         if (detail == null) return null;
+        boolean isNas = Boolean.TRUE.equals(detail.getIsNas());
         return new SpiritCommonDetailResponse(
                 detail.getIsNas(),
-                Boolean.TRUE.equals(detail.getIsNas()) ? null : detail.getAgeStatement(),
+                isNas ? null : detail.getAgeStatement(),
+                isNas ? null : detail.getAgeStatementMin(),
+                isNas ? null : detail.getAgeStatementMax(),
                 detail.getDistilledDate(),
                 detail.getBottledDate(),
                 detail.getReleaseDate(),

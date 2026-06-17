@@ -106,7 +106,9 @@ public class SpiritService {
                 .map(SpiritImageResponse::from)
                 .toList();
 
-        return spiritDetailService.buildFullDetailResponse(spirit, images);
+        List<SpiritVariantResponse> variants = getVariantsResponse(spirit, true);
+
+        return spiritDetailService.buildFullDetailResponse(spirit, images, variants);
     }
 
     /** 관리자 상세 조회 — 상태(ACTIVE/HIDDEN/PENDING) 무관 */
@@ -120,7 +122,9 @@ public class SpiritService {
                 .map(SpiritImageResponse::from)
                 .toList();
 
-        return spiritDetailService.buildFullDetailResponse(spirit, images);
+        List<SpiritVariantResponse> variants = getVariantsResponse(spirit, false);
+
+        return spiritDetailService.buildFullDetailResponse(spirit, images, variants);
     }
 
     /**
@@ -132,11 +136,15 @@ public class SpiritService {
         Spirit spirit = spiritRepository.findByIdAndStatus(id, SpiritStatus.ACTIVE)
                 .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_NOT_FOUND));
 
-        Map<Long, Spirit> variants = resolveVariants(spirit, true);
-        if (variants.isEmpty()) return List.of();
+        return getVariantsResponse(spirit, true);
+    }
 
-        Map<Long, String> primaryImageMap = primaryImageMap(variants.keySet());
-        return variants.values().stream()
+    private List<SpiritVariantResponse> getVariantsResponse(Spirit spirit, boolean activeOnly) {
+        Map<Long, Spirit> variantsMap = resolveVariants(spirit, activeOnly);
+        if (variantsMap.isEmpty()) return List.of();
+
+        Map<Long, String> primaryImageMap = primaryImageMap(variantsMap.keySet());
+        return variantsMap.values().stream()
                 .map(v -> SpiritVariantResponse.of(v, primaryImageMap.get(v.getId())))
                 .toList();
     }
@@ -200,22 +208,35 @@ public class SpiritService {
     /** (자동 ∪ MANUAL) − EXCLUDED 를 적용한 연관 술 맵(삽입 순서 유지). activeManualOnly=true 면 MANUAL 도 ACTIVE 만 포함. */
     private Map<Long, Spirit> resolveVariants(Spirit spirit, boolean activeManualOnly) {
         Long id = spirit.getId();
-        List<Spirit> auto = spiritRepository.findActiveVariantsByName(
-                id, spirit.getNameKo(), spirit.getNameEn());
-
-        List<SpiritVariantLink> links = variantLinkRepository.findAllInvolving(id);
-        Set<Long> excluded = partnerIds(links, id, VariantLinkType.EXCLUDED);
-        Set<Long> manual = partnerIds(links, id, VariantLinkType.MANUAL);
+        Long masterId = spirit.getParent() != null ? spirit.getParent().getId() : id;
 
         LinkedHashMap<Long, Spirit> map = new LinkedHashMap<>();
-        auto.forEach(s -> map.put(s.getId(), s));
-        if (!manual.isEmpty()) {
-            spiritRepository.findAllById(manual).stream()
-                    .filter(s -> !activeManualOnly || s.getStatus() == SpiritStatus.ACTIVE)
-                    .forEach(s -> map.putIfAbsent(s.getId(), s));
+
+        // 1. parent_id를 가진 하위 에디션들 조회 (신규 아키텍처)
+        List<Spirit> parentVariants = spiritRepository.findByParentId(masterId);
+        parentVariants.stream()
+                .filter(s -> !activeManualOnly || s.getStatus() == SpiritStatus.ACTIVE)
+                .forEach(s -> map.put(s.getId(), s));
+
+        // 2. 만약 parent_id 계층이 설정되어 있지 않은 경우, 기존 자동 이름 매칭 및 수동 링크(Fallback) 사용
+        if (map.isEmpty()) {
+            List<Spirit> auto = spiritRepository.findActiveVariantsByName(
+                    id, spirit.getNameKo(), spirit.getNameEn());
+
+            List<SpiritVariantLink> links = variantLinkRepository.findAllInvolving(id);
+            Set<Long> excluded = partnerIds(links, id, VariantLinkType.EXCLUDED);
+            Set<Long> manual = partnerIds(links, id, VariantLinkType.MANUAL);
+
+            auto.forEach(s -> map.put(s.getId(), s));
+            if (!manual.isEmpty()) {
+                spiritRepository.findAllById(manual).stream()
+                        .filter(s -> !activeManualOnly || s.getStatus() == SpiritStatus.ACTIVE)
+                        .forEach(s -> map.putIfAbsent(s.getId(), s));
+            }
+            excluded.forEach(map::remove);
         }
-        excluded.forEach(map::remove);
-        map.remove(id); // 안전장치
+
+        map.remove(id); // 자기 자신은 목록에서 제외
         return map;
     }
 
@@ -270,12 +291,48 @@ public class SpiritService {
                 .region(request.region())
                 .status(SpiritStatus.ACTIVE)
                 .registeredBy(registeredBy)
+                .variantType(request.variantType())
+                .variantValue(request.variantValue())
+                .abvMin(request.abvMin())
+                .abvMax(request.abvMax())
                 .build();
 
         Spirit saved = spiritRepository.save(spirit);
 
         spiritDetailService.saveCommonDetail(saved, request.commonDetail());
         spiritDetailService.saveCategoryDetail(saved, request);
+
+        // 하위 에디션 일괄 등록 처리
+        if (Boolean.TRUE.equals(request.isVariantSplit()) && request.variants() != null) {
+            for (CreateVariantRequest vReq : request.variants()) {
+                Spirit variant = Spirit.builder()
+                        .nameKo(saved.getNameKo())
+                        .nameEn(saved.getNameEn())
+                        .category(saved.getCategory())
+                        .producer(saved.getProducer())
+                        .bottler(saved.getBottler())
+                        .bottledYear(saved.getBottledYear())
+                        .vintageYear(saved.getVintageYear())
+                        .abv(vReq.abv())
+                        .volumeMl(vReq.volumeMl())
+                        .country(saved.getCountry())
+                        .region(saved.getRegion())
+                        .status(SpiritStatus.ACTIVE)
+                        .registeredBy(registeredBy)
+                        .parent(saved)
+                        .variantType(vReq.variantType())
+                        .variantValue(vReq.variantValue())
+                        .abvMin(vReq.abvMin())
+                        .abvMax(vReq.abvMax())
+                        .build();
+
+                Spirit savedVariant = spiritRepository.save(variant);
+                spiritDetailService.saveCommonDetail(savedVariant, vReq.commonDetail());
+                if (saved.getCategory() == SpiritCategory.WHISKY && vReq.whiskyDetail() != null) {
+                    spiritDetailService.saveWhiskyDetail(savedVariant, vReq.whiskyDetail());
+                }
+            }
+        }
 
         return SpiritDetailResponse.of(saved, List.of());
     }
@@ -304,11 +361,105 @@ public class SpiritService {
                 request.abv() != null ? request.abv() : spirit.getAbv(),
                 request.volumeMl() != null ? request.volumeMl() : spirit.getVolumeMl(),
                 request.country() != null ? request.country() : spirit.getCountry(),
-                request.region() != null ? request.region() : spirit.getRegion()
+                request.region() != null ? request.region() : spirit.getRegion(),
+                spirit.getParent(),
+                request.variantType() != null ? request.variantType() : spirit.getVariantType(),
+                request.variantValue() != null ? request.variantValue() : spirit.getVariantValue(),
+                request.abvMin() != null ? request.abvMin() : spirit.getAbvMin(),
+                request.abvMax() != null ? request.abvMax() : spirit.getAbvMax()
         );
 
         spiritDetailService.saveCommonDetail(spirit, request.commonDetail());
         spiritDetailService.updateCategoryDetail(spirit, prevCategory, request);
+
+        // 하위 에디션 수정 처리 (마스터 주류일 때만 수행)
+        if (spirit.getParent() == null) {
+            List<Spirit> existingVariants = spiritRepository.findByParentId(id);
+            if (Boolean.TRUE.equals(request.isVariantSplit()) && request.variants() != null) {
+                java.util.Set<Long> processedIds = new java.util.HashSet<>();
+
+                for (CreateVariantRequest vReq : request.variants()) {
+                    // 식별 값(variantValue) 기준으로 기존 에디션 탐색
+                    Optional<Spirit> matching = existingVariants.stream()
+                            .filter(v -> v.getVariantValue() != null && v.getVariantValue().equals(vReq.variantValue()))
+                            .findFirst();
+
+                    if (matching.isPresent()) {
+                        Spirit existing = matching.get();
+                        processedIds.add(existing.getId());
+                        // 기존 에디션 정보 업데이트
+                        existing.update(
+                                spirit.getNameKo(), spirit.getNameEn(), spirit.getCategory(),
+                                spirit.getProducer(), spirit.getBottler(), spirit.getBottledYear(),
+                                spirit.getVintageYear(), vReq.abv(), vReq.volumeMl(),
+                                spirit.getCountry(), spirit.getRegion(),
+                                spirit, vReq.variantType(), vReq.variantValue(),
+                                vReq.abvMin(), vReq.abvMax()
+                        );
+                        spiritDetailService.saveCommonDetail(existing, vReq.commonDetail());
+                        if (spirit.getCategory() == SpiritCategory.WHISKY && vReq.whiskyDetail() != null) {
+                            spiritDetailService.saveWhiskyDetail(existing, vReq.whiskyDetail());
+                        }
+                    } else {
+                        // 신규 에디션 추가
+                        Spirit variant = Spirit.builder()
+                                .nameKo(spirit.getNameKo())
+                                .nameEn(spirit.getNameEn())
+                                .category(spirit.getCategory())
+                                .producer(spirit.getProducer())
+                                .bottler(spirit.getBottler())
+                                .bottledYear(spirit.getBottledYear())
+                                .vintageYear(spirit.getVintageYear())
+                                .abv(vReq.abv())
+                                .volumeMl(vReq.volumeMl())
+                                .country(spirit.getCountry())
+                                .region(spirit.getRegion())
+                                .status(SpiritStatus.ACTIVE)
+                                .registeredBy(user)
+                                .parent(spirit)
+                                .variantType(vReq.variantType())
+                                .variantValue(vReq.variantValue())
+                                .abvMin(vReq.abvMin())
+                                .abvMax(vReq.abvMax())
+                                .build();
+
+                        Spirit savedVariant = spiritRepository.save(variant);
+                        spiritDetailService.saveCommonDetail(savedVariant, vReq.commonDetail());
+                        if (spirit.getCategory() == SpiritCategory.WHISKY && vReq.whiskyDetail() != null) {
+                            spiritDetailService.saveWhiskyDetail(savedVariant, vReq.whiskyDetail());
+                        }
+                    }
+                }
+
+                // 이번 요청 목록에 포함되지 않은 기존 에디션들은 부모 관계를 해제하고 HIDDEN 처리
+                for (Spirit existing : existingVariants) {
+                    if (!processedIds.contains(existing.getId())) {
+                        existing.update(
+                                existing.getNameKo(), existing.getNameEn(), existing.getCategory(),
+                                existing.getProducer(), existing.getBottler(), existing.getBottledYear(),
+                                existing.getVintageYear(), existing.getAbv(), existing.getVolumeMl(),
+                                existing.getCountry(), existing.getRegion(),
+                                null, existing.getVariantType(), existing.getVariantValue(),
+                                existing.getAbvMin(), existing.getAbvMax()
+                        );
+                        existing.hide();
+                    }
+                }
+            } else {
+                // isVariantSplit = false 이거나 variants 가 들어오지 않은 경우 기존 에디션 전체 연결 해제 및 숨김 처리
+                for (Spirit existing : existingVariants) {
+                    existing.update(
+                            existing.getNameKo(), existing.getNameEn(), existing.getCategory(),
+                            existing.getProducer(), existing.getBottler(), existing.getBottledYear(),
+                            existing.getVintageYear(), existing.getAbv(), existing.getVolumeMl(),
+                            existing.getCountry(), existing.getRegion(),
+                            null, existing.getVariantType(), existing.getVariantValue(),
+                            existing.getAbvMin(), existing.getAbvMax()
+                    );
+                    existing.hide();
+                }
+            }
+        }
 
         List<SpiritImageResponse> images = spiritImageRepository.findBySpiritIdOrderBySortOrderAscIdAsc(id)
                 .stream().map(SpiritImageResponse::from).toList();

@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import InfoTooltip from '@/shared/components/InfoTooltip'
 
 export interface WhiskyDetailForm {
@@ -6,7 +7,7 @@ export interface WhiskyDetailForm {
   caskDetails: Record<string, string[]>
   isNonChillFiltered: boolean; isNaturalColour: boolean
   isSingleCask: boolean; isCaskStrength: boolean; isPeated: boolean
-  phenolPpm: string; caskNo: string; notes: string
+  phenolPpm: string; phenolPpmMin: string; phenolPpmMax: string; caskNo: string; notes: string
 }
 
 export const DEFAULT_WHISKY: WhiskyDetailForm = {
@@ -14,19 +15,13 @@ export const DEFAULT_WHISKY: WhiskyDetailForm = {
   caskTypes: [], caskFinishes: [], caskTypeOther: '',
   caskDetails: {},
   isNonChillFiltered: false, isNaturalColour: false, isSingleCask: false,
-  isCaskStrength: false, isPeated: false, phenolPpm: '', caskNo: '', notes: '',
+  isCaskStrength: false, isPeated: false, phenolPpm: '', phenolPpmMin: '', phenolPpmMax: '', caskNo: '', notes: '',
 }
 
-interface Props { value: WhiskyDetailForm; onChange: (u: Partial<WhiskyDetailForm>) => void; errors?: Record<string, string> }
+interface Props { value: WhiskyDetailForm; onChange: (u: Partial<WhiskyDetailForm>) => void }
 
 const INPUT = 'w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white'
 const LABEL = 'block text-xs font-medium text-neutral-600 mb-1.5'
-
-const WHISKY_STYLES = [
-  ['SINGLE_MALT','싱글 몰트'],['BLENDED_MALT','블렌디드 몰트'],['BLENDED_WHISKY','블렌디드'],
-  ['BOURBON','버번'],['WHEATED_BOURBON','밀 버번'],['TENNESSEE','테네시'],['RYE','라이'],['POT_STILL','싱글 팟 스틸'],
-  ['GRAIN_CORN','그레인 / 콘'],['OTHER','기타'],
-]
 
 export const BROAD_CASK_CATEGORIES = [
   { code: 'EX_BOURBON', label: '버번 캐스크 (Bourbon Cask)', placeholder: '예) 버진 오크, 아메리칸 오크' },
@@ -42,61 +37,28 @@ export const BROAD_CASK_CATEGORIES = [
   { code: 'OTHER', label: '기타 캐스크 (Other Casks)', placeholder: '예) 매실주 캐스크, 피티드 캐스크' },
 ]
 
-export default function WhiskyDetailSection({ value, onChange, errors }: Props) {
+export default function WhiskyDetailSection({ value, onChange }: Props) {
+  const [isPhenolRange, setIsPhenolRange] = useState(false)
+
+  useEffect(() => {
+    if (value.phenolPpmMin !== '' || value.phenolPpmMax !== '') {
+      setIsPhenolRange(true)
+    } else {
+      setIsPhenolRange(false)
+    }
+  }, [value.phenolPpmMin, value.phenolPpmMax])
+
+  const handleRangeToggle = (checked: boolean) => {
+    setIsPhenolRange(checked)
+    if (!checked) {
+      onChange({ phenolPpmMin: '', phenolPpmMax: '' })
+    } else {
+      onChange({ phenolPpm: '' })
+    }
+  }
+
   return (
     <div className="space-y-5">
-      {/* 필수 정보 — 스타일 */}
-      <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-4 space-y-4">
-        <p className="text-xs font-semibold text-amber-700">필수 정보</p>
-        <div>
-          <label className={LABEL}>스타일 <span className="text-red-400">*</span></label>
-          <div className="flex flex-wrap gap-2">
-            {WHISKY_STYLES.map(([v, l]) => (
-              <label key={v} className="flex items-center gap-1.5 cursor-pointer text-sm select-none">
-                <input type="radio" value={v} checked={value.style === v}
-                  onChange={() => onChange({ style: v })} className="accent-amber-500" />
-                {l}
-              </label>
-            ))}
-          </div>
-          {errors?.style && <p className="text-xs text-red-500 mt-1">{errors.style}</p>}
-          {/* '기타' 선택 시 직접 입력 */}
-          {value.style === 'OTHER' && (
-            <div className="mt-2">
-              <input type="text" value={value.styleOther} maxLength={100}
-                onChange={(e) => onChange({ styleOther: e.target.value })}
-                placeholder="예) 라이트 위스키, 싱글 그레인 등"
-                className={`${INPUT} ${errors?.styleOther ? 'border-red-400' : ''}`} />
-              {errors?.styleOther && <p className="text-xs text-red-500 mt-1">{errors.styleOther}</p>}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <p className="text-xs font-semibold text-neutral-500">선택 정보</p>
-
-      {/* 병입 구분 */}
-      <div>
-        <label className={LABEL}>
-          병입 구분
-          <InfoTooltip text="OB(Official Bottling): 증류소 직접 병입 / IB(Independent Bottling): 독립 병입사 병입" />
-        </label>
-        <div className="flex gap-4">
-          {[['OB', 'OB (증류소 직접)'], ['IB', 'IB (독립 병입)']].map(([v, l]) => (
-            <label key={v} className="flex items-center gap-2 cursor-pointer text-sm">
-              <input type="radio" value={v} checked={value.bottlingType === v}
-                onChange={() => onChange({ bottlingType: v })} className="accent-amber-500" />
-              {l}
-            </label>
-          ))}
-          <label className="flex items-center gap-2 cursor-pointer text-sm">
-            <input type="radio" value="" checked={!value.bottlingType}
-              onChange={() => onChange({ bottlingType: '' })} className="accent-amber-500" />
-            미지정
-          </label>
-        </div>
-      </div>
-
       {/* 캐스크 — 대분류 선택 및 세부 입력 동적 구조 */}
       <div>
         <label className={LABEL}>
@@ -254,14 +216,44 @@ export default function WhiskyDetailSection({ value, onChange, errors }: Props) 
 
       {/* 피트 강도 */}
       <div>
-        <label className={`${LABEL} ${!value.isPeated ? 'opacity-40' : ''}`}>피트 강도 (ppm)</label>
-        <input type="number" min={0} max={300}
-          value={value.phenolPpm}
-          onChange={(e) => onChange({ phenolPpm: e.target.value })}
-          disabled={!value.isPeated}
-          placeholder="예: 55"
-          className={`${INPUT} ${!value.isPeated ? 'opacity-40 cursor-not-allowed' : ''}`}
-        />
+        <div className="flex items-center justify-between mb-1.5">
+          <label className={`${LABEL} mb-0 ${!value.isPeated ? 'opacity-40' : ''}`}>피트 강도 (ppm)</label>
+          {value.isPeated && (
+            <label className="flex items-center gap-1 text-[11px] text-neutral-500 cursor-pointer select-none">
+              <input type="checkbox" checked={isPhenolRange} onChange={(e) => handleRangeToggle(e.target.checked)} className="accent-amber-500 rounded" />
+              범위 지정
+            </label>
+          )}
+        </div>
+        {isPhenolRange && value.isPeated ? (
+          <div className="flex items-center gap-2">
+            <div className="flex-1">
+              <input type="number" min={0} max={300}
+                value={value.phenolPpmMin}
+                onChange={(e) => onChange({ phenolPpmMin: e.target.value })}
+                placeholder="최소"
+                className={INPUT}
+              />
+            </div>
+            <span className="text-neutral-400">~</span>
+            <div className="flex-1">
+              <input type="number" min={0} max={300}
+                value={value.phenolPpmMax}
+                onChange={(e) => onChange({ phenolPpmMax: e.target.value })}
+                placeholder="최대"
+                className={INPUT}
+              />
+            </div>
+          </div>
+        ) : (
+          <input type="number" min={0} max={300}
+            value={value.phenolPpm}
+            onChange={(e) => onChange({ phenolPpm: e.target.value })}
+            disabled={!value.isPeated}
+            placeholder="예: 55"
+            className={`${INPUT} ${!value.isPeated ? 'opacity-40 cursor-not-allowed' : ''}`}
+          />
+        )}
       </div>
 
       {/* 싱글 캐스크 번호 */}

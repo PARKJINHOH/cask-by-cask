@@ -490,7 +490,14 @@
       "variantsTitle": "다른 배치 · 병입",
       "variantsHint": "같은 이름으로 등록된 다른 배치·병입 제품",
       "variantsBatch": "배치",
-      "variantsBottled": "병입"
+      "variantsBottled": "병입",
+      "variantFilter": "에디션 필터:",
+      "variantAll": "전체 에디션 통합"
+    },
+    "variantType": {
+      "BATCH": "배치",
+      "RELEASE_YEAR": "연도",
+      "SINGLE_CASK": "싱글캐스크"
     },
     "status": {
       "ACTIVE": "공개",
@@ -504,6 +511,11 @@
     "count": "리뷰 {{n}}",
     "write": "리뷰 작성",
     "edit": "리뷰 수정",
+    "selectEdition": "리뷰할 에디션 선택",
+    "selectEditionPlaceholder": "-- 에디션을 선택해주세요 --",
+    "editionUnknown": "기타 / 잘 모름 (통합 제품으로 등록)",
+    "editionWarning": "* 에디션별로 도수, 맛, 오크통 정보가 다를 수 있으므로 정확한 에디션을 선택해주세요.",
+    "selectEditionRequired": "리뷰할 에디션을 선택해주세요.",
     "delete": "리뷰 삭제",
     "deleteConfirm": "리뷰를 삭제하시겠습니까?",
     "detailTitle": "리뷰 상세",

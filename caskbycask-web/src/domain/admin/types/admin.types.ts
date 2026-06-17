@@ -9,6 +9,8 @@ import type {
 export interface SpiritCommonDetailRequest {
   isNas?: boolean
   ageStatement?: number | null
+  ageStatementMin?: number | null
+  ageStatementMax?: number | null
   distilledDate?: string | null
   bottledDate?: string | null
   releaseDate?: string | null
@@ -36,8 +38,21 @@ export interface WhiskyDetailRequest {
   isCaskStrength?: boolean | null
   isPeated?: boolean | null
   phenolPpm?: number | null
+  phenolPpmMin?: number | null
+  phenolPpmMax?: number | null
   caskNo?: string | null
   notes?: string | null
+}
+
+export interface CreateVariantRequest {
+  variantType: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK'
+  variantValue: string
+  abv?: number | null
+  abvMin?: number | null
+  abvMax?: number | null
+  volumeMl?: number | null
+  commonDetail?: SpiritCommonDetailRequest
+  whiskyDetail?: WhiskyDetailRequest
 }
 
 export interface WineDetailRequest {
@@ -229,6 +244,12 @@ export interface AdminSpiritVariant {
   primaryImageUrl: string | null
   status: SpiritStatus
   origin: 'AUTO' | 'MANUAL'
+  variantType?: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE' | null
+  variantValue?: string | null
+  abvMin?: number | null
+  abvMax?: number | null
+  commonDetail?: SpiritCommonDetailResponse | null
+  whiskyDetail?: WhiskyDetailResponse | null
 }
 
 export interface AdminSpiritDetail {
@@ -252,6 +273,12 @@ export interface AdminSpiritDetail {
   images: AdminSpiritImageItem[]
   createdAt: string
   updatedAt: string
+  parentId?: number | null
+  variantType?: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE' | null
+  variantValue?: string | null
+  abvMin?: number | null
+  abvMax?: number | null
+  variants?: AdminSpiritVariant[]
   commonDetail: SpiritCommonDetailResponse | null
   whiskyDetail: WhiskyDetailResponse | null
   wineDetail: WineDetailResponse | null
@@ -271,6 +298,12 @@ export interface UpdateSpiritPayload {
   volumeMl?: number | null
   country?: string | null
   region?: string | null
+  isVariantSplit?: boolean
+  variants?: CreateVariantRequest[]
+  variantType?: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE' | null
+  variantValue?: string | null
+  abvMin?: number | null
+  abvMax?: number | null
   commonDetail?: SpiritCommonDetailRequest
   whiskyDetail?: WhiskyDetailRequest
   wineDetail?: WineDetailRequest
@@ -290,6 +323,12 @@ export interface CreateSpiritPayload {
   volumeMl?: number | null
   country?: string | null
   region?: string | null
+  isVariantSplit?: boolean
+  variants?: CreateVariantRequest[]
+  variantType?: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE' | null
+  variantValue?: string | null
+  abvMin?: number | null
+  abvMax?: number | null
   commonDetail?: SpiritCommonDetailRequest
   whiskyDetail?: WhiskyDetailRequest
   wineDetail?: WineDetailRequest

@@ -4,6 +4,7 @@ import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.domain.spirit.entity.SpiritCommonDetail;
 import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
 import com.caskbycask.domain.spirit.entity.enums.SpiritStatus;
+import com.caskbycask.domain.spirit.entity.enums.VariantType;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
@@ -38,7 +39,11 @@ public record AdminSpiritVariantResponse(
         @Schema(description = "공개 상태 (ACTIVE, HIDDEN, PENDING)")
         SpiritStatus status,
         @Schema(description = "연결 출처: AUTO(이름 자동) / MANUAL(수동 추가)")
-        String origin
+        String origin,
+        @Schema(description = "에디션 유형")
+        VariantType variantType,
+        @Schema(description = "에디션 식별 값")
+        String variantValue
 ) {
     public static AdminSpiritVariantResponse of(Spirit spirit, String primaryImageUrl, String origin) {
         SpiritCommonDetail cd = spirit.getCommonDetail();
@@ -55,7 +60,9 @@ public record AdminSpiritVariantResponse(
                 cd != null ? cd.getBottledDate() : null,
                 primaryImageUrl,
                 spirit.getStatus(),
-                origin
+                origin,
+                spirit.getVariantType(),
+                spirit.getVariantValue()
         );
     }
 }

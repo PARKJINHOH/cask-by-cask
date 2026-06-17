@@ -15,6 +15,7 @@ import { COGNAC_AROMA_CATEGORIES } from '../constants/cognacAromas'
 import type { AromaCategory, AromaNotes } from '../constants/whiskyAromas'
 import type { ReviewItem } from '../types/review.types'
 import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
+import { useSpiritDetail, useSpiritVariants } from '@/domain/spirit/hooks/useSpiritDetail'
 
 function getAromaCategories(category?: SpiritCategory): AromaCategory[] | undefined {
   if (category === 'WHISKY') return WHISKY_AROMA_CATEGORIES
@@ -60,7 +61,25 @@ export default function ReviewFormModal({
   editingReview,
 }: ReviewFormModalProps) {
   const { t } = useTranslation()
-  const createMutation = useCreateReview(spiritId)
+
+  const { data: spirit } = useSpiritDetail(spiritId)
+  const masterId = spirit?.parentId || (spirit?.variants && spirit.variants.length > 0 ? spirit.id : null)
+  const { data: variants = [] } = useSpiritVariants(masterId || 0)
+
+  const [targetSpiritId, setTargetSpiritId] = useState<number | null>(null)
+  const [variantError, setVariantError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (spirit) {
+      if (spirit.parentId) {
+        setTargetSpiritId(spirit.id)
+      } else if (!spirit.variants || spirit.variants.length === 0) {
+        setTargetSpiritId(spirit.id)
+      }
+    }
+  }, [spirit])
+
+  const createMutation = useCreateReview(targetSpiritId || spiritId)
   const updateMutation = useUpdateReview(spiritId)
 
   const aromaCategories  = getAromaCategories(spiritCategory)
@@ -114,6 +133,11 @@ export default function ReviewFormModal({
   const totalPreview = (nose + taste + finish) / 3
 
   const onSubmit = async (values: ReviewFormValues) => {
+    if (masterId && variants.length > 0 && !editingReview && targetSpiritId === null) {
+      setVariantError(t('review.selectEditionRequired'))
+      return
+    }
+
     const payload = {
       noseScore:             values.noseScore,
       tasteScore:            values.tasteScore,
@@ -150,6 +174,43 @@ export default function ReviewFormModal({
       closeOnOverlay={!isPending}
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+
+        {/* 에디션 선택 (하위 에디션이 존재하는 경우에만 노출) */}
+        {masterId && variants.length > 0 && !editingReview && (
+          <div className="bg-amber-50/40 border border-amber-200/60 rounded-2xl p-4 space-y-2 text-left">
+            <label className="block text-xs font-bold text-neutral-700">
+              {t('review.selectEdition')} <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={targetSpiritId ?? ''}
+              onChange={(e) => {
+                const val = e.target.value
+                setTargetSpiritId(val === '' ? null : Number(val))
+                setVariantError(null)
+              }}
+              className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-pointer"
+            >
+              <option value="">{t('review.selectEditionPlaceholder')}</option>
+              {variants.map((v) => {
+                const typeLabel = v.variantType ? t(`spirit.variantType.${v.variantType}`) : ''
+                return (
+                  <option key={v.id} value={v.id}>
+                    [{typeLabel}] {v.variantValue || v.id} ({v.abv != null ? `${v.abv}%` : ''}{v.volumeMl ? `, ${v.volumeMl}ml` : ''})
+                  </option>
+                )
+              })}
+              <option value={spirit?.parentId ? spirit.parentId : spirit?.id}>
+                {t('review.editionUnknown')}
+              </option>
+            </select>
+            {variantError && (
+              <p className="text-xs text-red-500 mt-1">{variantError}</p>
+            )}
+            <p className="text-[11px] text-neutral-400">
+              {t('review.editionWarning')}
+            </p>
+          </div>
+        )}
 
         {/* ── 향 ── */}
         <Controller

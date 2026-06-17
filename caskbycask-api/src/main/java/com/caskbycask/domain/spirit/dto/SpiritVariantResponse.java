@@ -3,6 +3,7 @@ package com.caskbycask.domain.spirit.dto;
 import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.domain.spirit.entity.SpiritCommonDetail;
 import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
+import com.caskbycask.domain.spirit.entity.enums.VariantType;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
@@ -39,7 +40,11 @@ public record SpiritVariantResponse(
         @Schema(description = "리뷰 수")
         Integer reviewCount,
         @Schema(description = "대표 이미지 URL")
-        String primaryImageUrl
+        String primaryImageUrl,
+        @Schema(description = "에디션 유형")
+        VariantType variantType,
+        @Schema(description = "에디션 식별 값")
+        String variantValue
 ) {
     public static SpiritVariantResponse of(Spirit spirit, String primaryImageUrl) {
         SpiritCommonDetail cd = spirit.getCommonDetail();
@@ -57,7 +62,9 @@ public record SpiritVariantResponse(
                 cd != null ? cd.getBottledDate() : null,
                 spirit.getAvgScore(),
                 spirit.getReviewCount(),
-                primaryImageUrl
+                primaryImageUrl,
+                spirit.getVariantType(),
+                spirit.getVariantValue()
         );
     }
 }

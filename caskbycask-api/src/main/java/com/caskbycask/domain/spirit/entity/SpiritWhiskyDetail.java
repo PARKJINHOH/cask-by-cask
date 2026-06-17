@@ -64,6 +64,14 @@ public class SpiritWhiskyDetail {
     @Comment("페놀 수치(ppm)")
     private Integer phenolPpm;
 
+    @Column(name = "phenol_ppm_min")
+    @Comment("최소 페놀 수치(ppm)")
+    private Integer phenolPpmMin;
+
+    @Column(name = "phenol_ppm_max")
+    @Comment("최대 페놀 수치(ppm)")
+    private Integer phenolPpmMax;
+
     /** JSON: { "styleOther": "", "caskNo": "", "caskTypes": ["EX_SHERRY", ...], "caskTypeOther": "" } */
     @Column(columnDefinition = "TEXT")
     @Comment("추가 데이터(JSON)")
@@ -72,7 +80,7 @@ public class SpiritWhiskyDetail {
     public void update(WhiskyStyle style, BottlingType bottlingType,
                        Boolean isNonChillFiltered, Boolean isNaturalColour,
                        Boolean isSingleCask, Boolean isCaskStrength,
-                       Boolean isPeated, Integer phenolPpm, String extraData) {
+                       Boolean isPeated, Integer phenolPpm, Integer phenolPpmMin, Integer phenolPpmMax, String extraData) {
         this.style               = style;
         this.bottlingType        = bottlingType;
         this.isNonChillFiltered  = isNonChillFiltered;
@@ -80,7 +88,9 @@ public class SpiritWhiskyDetail {
         this.isSingleCask        = isSingleCask;
         this.isCaskStrength      = isCaskStrength;
         this.isPeated            = isPeated;
-        this.phenolPpm           = phenolPpm;
+        this.phenolPpm           = isPeated ? phenolPpm : null;
+        this.phenolPpmMin        = isPeated ? phenolPpmMin : null;
+        this.phenolPpmMax        = isPeated ? phenolPpmMax : null;
         this.extraData           = extraData;
     }
 }

@@ -673,6 +673,48 @@ function VariantsPanel({
   )
 }
 
+// ── Variant Selector ──────────────────────────────────────
+function VariantSelector({
+  variants,
+  selectedValue,
+  onChange,
+}: {
+  variants: SpiritVariant[]
+  selectedValue: number | null
+  onChange: (id: number | null) => void
+}) {
+  const { t } = useTranslation()
+  if (variants.length === 0) return null
+
+  return (
+    <div className="flex items-center gap-2 mb-2 bg-neutral-50 border border-neutral-200/60 rounded-2xl p-3 w-fit text-left">
+      <label htmlFor="variant-filter-select" className="text-xs font-bold text-neutral-500 shrink-0">
+        {t('spirit.detail.variantFilter')}
+      </label>
+      <select
+        id="variant-filter-select"
+        value={selectedValue ?? ''}
+        onChange={(e) => {
+          const val = e.target.value
+          onChange(val === '' ? null : Number(val))
+        }}
+        className="text-xs font-semibold text-neutral-700 bg-white border border-neutral-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-pointer min-w-[180px]"
+      >
+        <option value="">{t('spirit.detail.variantAll')}</option>
+        {variants.map((v) => {
+          const typeLabel = v.variantType ? t(`spirit.variantType.${v.variantType}`) : ''
+          const label = `[${typeLabel}] ${v.variantValue || v.id} (${v.abv != null ? `${v.abv}%` : ''}${v.volumeMl ? `, ${v.volumeMl}ml` : ''})`
+          return (
+            <option key={v.id} value={v.id}>
+              {label}
+            </option>
+          )
+        })}
+      </select>
+    </div>
+  )
+}
+
 // ── Main Page ─────────────────────────────────────────────
 
 export default function SpiritDetailPage() {
@@ -696,6 +738,7 @@ export default function SpiritDetailPage() {
   const [activeTab, setActiveTab]       = useState<Tab>('reviews')
   const [loginModal, setLoginModal]     = useState(false)
   const [lightboxIdx, setLightboxIdx]   = useState(-1)
+  const [selectedVariantId, setSelectedVariantId] = useState<number | null>(null)
 
   const { data: spirit, isLoading } = useSpiritDetail(spiritId)
   // SEO Review 스키마용 — 첫 페이지 (ReviewList 와 동일 queryKey 라 캐시 공유)
@@ -709,6 +752,7 @@ export default function SpiritDetailPage() {
     setSelectedImg(0)
     setActiveTab('reviews')
     setLightboxIdx(-1)
+    setSelectedVariantId(null)
   }, [spiritId])
 
   if (isLoading) return <Spinner fullscreen />
@@ -923,13 +967,22 @@ export default function SpiritDetailPage() {
         {/* Tabs */}
         <div className="space-y-5">
         <TabBar active={activeTab} onChange={setActiveTab} />
+        
+        {(activeTab === 'reviews' || activeTab === 'price') && (
+          <VariantSelector
+            variants={variants}
+            selectedValue={selectedVariantId}
+            onChange={setSelectedVariantId}
+          />
+        )}
+
         <div role="tabpanel">
           {activeTab === 'reviews' ? (
-            <ReviewList spiritId={spiritId} onNeedLogin={() => setLoginModal(true)} />
+            <ReviewList spiritId={selectedVariantId || spiritId} onNeedLogin={() => setLoginModal(true)} />
           ) : activeTab === 'community' ? (
             <CommentList spiritId={spiritId} onNeedLogin={() => setLoginModal(true)} />
           ) : (
-            <PriceTabContent spiritId={spiritId} />
+            <PriceTabContent spiritId={selectedVariantId || spiritId} />
           )}
         </div>
         </div>

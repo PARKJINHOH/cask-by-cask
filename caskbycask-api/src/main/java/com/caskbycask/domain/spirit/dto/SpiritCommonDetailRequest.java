@@ -14,6 +14,12 @@ public record SpiritCommonDetailRequest(
         @Schema(description = "숙성 연수 (isNas=true 시 서버에서 강제 null 처리)")
         Integer ageStatement,
 
+        @Schema(description = "최소 숙성 연수")
+        Integer ageStatementMin,
+
+        @Schema(description = "최대 숙성 연수")
+        Integer ageStatementMax,
+
         @Schema(description = "증류 연월 (YYYY 또는 YYYY-MM)")
         @Pattern(regexp = "^\\d{4}(-\\d{2})?$", message = "날짜 형식이 올바르지 않습니다 (YYYY 또는 YYYY-MM).")
         String distilledDate,
@@ -48,9 +54,10 @@ public record SpiritCommonDetailRequest(
         Integer totalBottles
 
 ) {
-        /** isNas=true일 때 ageStatement가 null이어야 함 */
+        /** isNas=true일 때 ageStatement, ageStatementMin, ageStatementMax가 null이어야 함 */
         @AssertTrue(message = "NAS 체크 시 숙성 연수를 입력할 수 없습니다.")
         public boolean isAgeStatementValidForNas() {
-                return !Boolean.TRUE.equals(isNas) || ageStatement == null;
+                return !Boolean.TRUE.equals(isNas) || 
+                       (ageStatement == null && ageStatementMin == null && ageStatementMax == null);
         }
 }

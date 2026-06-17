@@ -3,6 +3,7 @@ package com.caskbycask.domain.spirit.entity;
 import com.caskbycask.domain.producer.entity.Producer;
 import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
 import com.caskbycask.domain.spirit.entity.enums.SpiritStatus;
+import com.caskbycask.domain.spirit.entity.enums.VariantType;
 import com.caskbycask.domain.user.entity.User;
 import com.caskbycask.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
@@ -13,6 +14,8 @@ import static jakarta.persistence.CascadeType.ALL;
 import static jakarta.persistence.FetchType.LAZY;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(
@@ -101,6 +104,32 @@ public class Spirit extends BaseTimeEntity {
     @Comment("등록자(users.id)")
     private User registeredBy;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_id")
+    @Comment("마스터 주류(parent_id)")
+    private Spirit parent;
+
+    @Builder.Default
+    @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Spirit> variants = new ArrayList<>();
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    @Comment("에디션 유형 — BATCH/RELEASE_YEAR/SINGLE_CASK/NONE")
+    private VariantType variantType;
+
+    @Column(length = 100)
+    @Comment("에디션 식별 값")
+    private String variantValue;
+
+    @Column(precision = 4, scale = 1)
+    @Comment("최소 도수(%)")
+    private BigDecimal abvMin;
+
+    @Column(precision = 4, scale = 1)
+    @Comment("최대 도수(%)")
+    private BigDecimal abvMax;
+
     @OneToOne(mappedBy = "spirit", cascade = ALL, orphanRemoval = true, fetch = LAZY)
     private SpiritCommonDetail commonDetail;
 
@@ -119,7 +148,9 @@ public class Spirit extends BaseTimeEntity {
     public void update(String nameKo, String nameEn, SpiritCategory category,
                        Producer producer, String bottler, Integer bottledYear,
                        Integer vintageYear, BigDecimal abv, Integer volumeMl,
-                       String country, String region) {
+                       String country, String region,
+                       Spirit parent, VariantType variantType, String variantValue,
+                       BigDecimal abvMin, BigDecimal abvMax) {
         this.nameKo = nameKo;
         this.nameEn = nameEn;
         this.category = category;
@@ -131,6 +162,16 @@ public class Spirit extends BaseTimeEntity {
         this.volumeMl = volumeMl;
         this.country = country;
         this.region = region;
+        this.parent = parent;
+        this.variantType = variantType;
+        this.variantValue = variantValue;
+        this.abvMin = abvMin;
+        this.abvMax = abvMax;
+    }
+
+    public void addVariant(Spirit variant) {
+        this.variants.add(variant);
+        variant.parent = this;
     }
 
     public void updateAvgScore(BigDecimal avgScore, int reviewCount) {

@@ -1,6 +1,7 @@
 package com.caskbycask.domain.spirit.dto;
 
 import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
+import com.caskbycask.domain.spirit.entity.enums.VariantType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
@@ -9,6 +10,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 public record CreateSpiritRequest(
 
@@ -60,6 +62,23 @@ public record CreateSpiritRequest(
         @Valid CognacDetailRequest cognacDetail,
 
         @Schema(description = "기타 상세 (category=OTHER 일 때)")
-        @Valid OtherDetailRequest otherDetail
+        @Valid OtherDetailRequest otherDetail,
 
+        @Schema(description = "하위 에디션 분리 등록 여부")
+        Boolean isVariantSplit,
+
+        @Schema(description = "하위 에디션 목록")
+        @Valid List<CreateVariantRequest> variants,
+
+        @Schema(description = "에디션 유형")
+        VariantType variantType,
+
+        @Schema(description = "에디션 식별 값")
+        String variantValue,
+
+        @Schema(description = "최소 도수")
+        BigDecimal abvMin,
+
+        @Schema(description = "최대 도수")
+        BigDecimal abvMax
 ) {}

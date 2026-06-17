@@ -3,6 +3,7 @@ package com.caskbycask.domain.spirit.dto;
 import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
 import com.caskbycask.domain.spirit.entity.enums.SpiritStatus;
+import com.caskbycask.domain.spirit.entity.enums.VariantType;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
@@ -62,12 +63,29 @@ public record SpiritDetailResponse(
         @Schema(description = "꼬냑 상세 (category=COGNAC 전용)")
         CognacDetailResponse cognacDetail,
         @Schema(description = "기타 상세 (category=OTHER 전용)")
-        OtherDetailResponse otherDetail
+        OtherDetailResponse otherDetail,
 
+        @Schema(description = "마스터 주류 ID")
+        Long parentId,
+
+        @Schema(description = "에디션 유형")
+        VariantType variantType,
+
+        @Schema(description = "에디션 식별 값")
+        String variantValue,
+
+        @Schema(description = "최소 도수")
+        BigDecimal abvMin,
+
+        @Schema(description = "최대 도수")
+        BigDecimal abvMax,
+
+        @Schema(description = "하위 에디션 목록")
+        List<SpiritVariantResponse> variants
 ) {
     /** 상세 없이 기본 정보만 반환 (등록·수정 응답) */
     public static SpiritDetailResponse of(Spirit spirit, List<SpiritImageResponse> images) {
-        return of(spirit, images, null, null, null, null, null);
+        return of(spirit, images, null, null, null, null, null, List.of());
     }
 
     /** 전체 상세 포함 응답 (GET /api/spirits/{id}) */
@@ -76,7 +94,8 @@ public record SpiritDetailResponse(
                                            WhiskyDetailResponse whiskyDetail,
                                            WineDetailResponse wineDetail,
                                            CognacDetailResponse cognacDetail,
-                                           OtherDetailResponse otherDetail) {
+                                           OtherDetailResponse otherDetail,
+                                           List<SpiritVariantResponse> variants) {
         return new SpiritDetailResponse(
                 spirit.getId(),
                 spirit.getNameKo(),
@@ -102,7 +121,13 @@ public record SpiritDetailResponse(
                 whiskyDetail,
                 wineDetail,
                 cognacDetail,
-                otherDetail
+                otherDetail,
+                spirit.getParent() != null ? spirit.getParent().getId() : null,
+                spirit.getVariantType(),
+                spirit.getVariantValue(),
+                spirit.getAbvMin(),
+                spirit.getAbvMax(),
+                variants
         );
     }
 }

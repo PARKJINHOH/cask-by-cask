@@ -36,6 +36,14 @@ public class SpiritCommonDetail {
     @Comment("숙성 연수(년)")
     private Integer ageStatement;
 
+    @Column(name = "age_statement_min")
+    @Comment("최소 숙성 연수(년)")
+    private Integer ageStatementMin;
+
+    @Column(name = "age_statement_max")
+    @Comment("최대 숙성 연수(년)")
+    private Integer ageStatementMax;
+
     /** 형식: "YYYY" or "YYYY-MM" — 연도만 아는 경우를 위해 String 사용 */
     @Column(length = 7)
     @Comment("증류 연월(YYYY-MM)")
@@ -71,19 +79,21 @@ public class SpiritCommonDetail {
     @Comment("총 병입 수량")
     private Integer totalBottles;
 
-    public void update(boolean isNas, Integer ageStatement, String distilledDate,
-                       String bottledDate, java.time.LocalDate releaseDate,
+    public void update(boolean isNas, Integer ageStatement, Integer ageStatementMin, Integer ageStatementMax,
+                       String distilledDate, String bottledDate, java.time.LocalDate releaseDate,
                        Integer volumeMl, java.math.BigDecimal abv,
                        String bottleNo, String batchNo, Integer totalBottles) {
-        this.isNas         = isNas;
-        this.ageStatement  = isNas ? null : ageStatement;
-        this.distilledDate = distilledDate;
-        this.bottledDate   = bottledDate;
-        this.releaseDate   = releaseDate;
-        this.volumeMl      = volumeMl;
-        this.abv           = abv;
-        this.bottleNo      = bottleNo;
-        this.batchNo       = batchNo;
-        this.totalBottles  = totalBottles;
+        this.isNas            = isNas;
+        this.ageStatement     = isNas ? null : ageStatement;
+        this.ageStatementMin  = isNas ? null : ageStatementMin;
+        this.ageStatementMax  = isNas ? null : ageStatementMax;
+        this.distilledDate    = distilledDate;
+        this.bottledDate      = bottledDate;
+        this.releaseDate      = releaseDate;
+        this.volumeMl         = volumeMl;
+        this.abv              = abv;
+        this.bottleNo         = bottleNo;
+        this.batchNo          = batchNo;
+        this.totalBottles     = totalBottles;
     }
 }

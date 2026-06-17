@@ -50,6 +50,12 @@ public record WhiskyDetailResponse(
         @Schema(description = "피트 강도 ppm")
         Integer phenolPpm,
 
+        @Schema(description = "최소 피트 강도 ppm")
+        Integer phenolPpmMin,
+
+        @Schema(description = "최대 피트 강도 ppm")
+        Integer phenolPpmMax,
+
         @Schema(description = "캐스크 번호")
         String caskNo,
 

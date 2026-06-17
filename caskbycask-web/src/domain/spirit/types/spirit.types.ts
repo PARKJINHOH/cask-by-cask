@@ -35,6 +35,12 @@ export interface SpiritDetail extends SpiritListItem {
   images: SpiritImage[]
   createdAt: string
   updatedAt: string
+  parentId?: number | null
+  variantType?: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE'
+  variantValue?: string | null
+  abvMin?: number | null
+  abvMax?: number | null
+  variants: SpiritVariant[]
   // 카테고리 서브 테이블
   commonDetail: SpiritCommonDetailResponse | null
   whiskyDetail: WhiskyDetailResponse | null
@@ -59,6 +65,8 @@ export interface SpiritVariant {
   avgScore: number | null
   reviewCount: number
   primaryImageUrl: string | null
+  variantType?: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE'
+  variantValue?: string | null
 }
 
 // ── 카테고리 상세 Enum 타입 ────────────────────────────────────
@@ -80,6 +88,8 @@ export interface GrapeVariety { name: string; percentage: number | null }
 export interface SpiritCommonDetailResponse {
   isNas: boolean
   ageStatement: number | null
+  ageStatementMin: number | null
+  ageStatementMax: number | null
   distilledDate: string | null
   bottledDate: string | null
   releaseDate: string | null
@@ -105,6 +115,8 @@ export interface WhiskyDetailResponse {
   isCaskStrength: boolean | null
   isPeated: boolean | null
   phenolPpm: number | null
+  phenolPpmMin: number | null
+  phenolPpmMax: number | null
   caskNo: string | null
   notes: string | null
 }

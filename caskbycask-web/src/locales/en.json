@@ -490,7 +490,14 @@
       "variantsTitle": "Other Batches & Bottlings",
       "variantsHint": "Other bottlings registered under the same name",
       "variantsBatch": "Batch",
-      "variantsBottled": "Bottled"
+      "variantsBottled": "Bottled",
+      "variantFilter": "Edition Filter:",
+      "variantAll": "All Editions"
+    },
+    "variantType": {
+      "BATCH": "Batch",
+      "RELEASE_YEAR": "Release",
+      "SINGLE_CASK": "Single Cask"
     },
     "status": {
       "ACTIVE": "Active",
@@ -504,6 +511,11 @@
     "count": "{{n}} reviews",
     "write": "Write a Review",
     "edit": "Edit Review",
+    "selectEdition": "Select Edition to Review",
+    "selectEditionPlaceholder": "-- Select an edition --",
+    "editionUnknown": "Other / Not sure (Register as unified product)",
+    "editionWarning": "* Different editions may have different ABV, taste, and cask information. Please select the correct edition.",
+    "selectEditionRequired": "Please select an edition to review.",
     "delete": "Delete Review",
     "deleteConfirm": "Delete this review?",
     "detailTitle": "Review Detail",

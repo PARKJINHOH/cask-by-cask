@@ -37,7 +37,7 @@ public class SpiritDetailService {
 
         commonDetailRepo.findById(spirit.getId()).ifPresentOrElse(
             existing -> existing.update(
-                isNas, req.ageStatement(),
+                isNas, req.ageStatement(), req.ageStatementMin(), req.ageStatementMax(),
                 req.distilledDate(), req.bottledDate(), req.releaseDate(),
                 req.volumeMl(), req.abv(),
                 req.bottleNo(), req.batchNo(), req.totalBottles()),
@@ -45,6 +45,8 @@ public class SpiritDetailService {
                 .spirit(spirit)
                 .isNas(isNas)
                 .ageStatement(isNas ? null : req.ageStatement())
+                .ageStatementMin(isNas ? null : req.ageStatementMin())
+                .ageStatementMax(isNas ? null : req.ageStatementMax())
                 .distilledDate(req.distilledDate())
                 .bottledDate(req.bottledDate())
                 .releaseDate(req.releaseDate())
@@ -129,7 +131,7 @@ public class SpiritDetailService {
 
     // ── 카테고리 상세 개별 저장 ────────────────────────────────
 
-    private void saveWhiskyDetail(Spirit spirit, WhiskyDetailRequest req) {
+    public void saveWhiskyDetail(Spirit spirit, WhiskyDetailRequest req) {
         if (req == null) return;
 
         boolean isPeated = Boolean.TRUE.equals(req.isPeated());
@@ -158,6 +160,7 @@ public class SpiritDetailService {
                 req.style(), req.bottlingType(),
                 req.isNonChillFiltered(), req.isNaturalColour(), req.isSingleCask(),
                 req.isCaskStrength(), req.isPeated(), isPeated ? req.phenolPpm() : null,
+                isPeated ? req.phenolPpmMin() : null, isPeated ? req.phenolPpmMax() : null,
                 extraJson),
             () -> whiskyDetailRepo.save(SpiritWhiskyDetail.builder()
                 .spirit(spirit)
@@ -169,6 +172,8 @@ public class SpiritDetailService {
                 .isCaskStrength(req.isCaskStrength())
                 .isPeated(req.isPeated())
                 .phenolPpm(isPeated ? req.phenolPpm() : null)
+                .phenolPpmMin(isPeated ? req.phenolPpmMin() : null)
+                .phenolPpmMax(isPeated ? req.phenolPpmMax() : null)
                 .extraData(extraJson)
                 .build())
         );
@@ -270,7 +275,8 @@ public class SpiritDetailService {
 
     @Transactional(readOnly = true)
     public SpiritDetailResponse buildFullDetailResponse(Spirit spirit,
-                                                         List<SpiritImageResponse> images) {
+                                                         List<SpiritImageResponse> images,
+                                                         List<SpiritVariantResponse> variants) {
         SpiritCommonDetailResponse commonDetail =
                 SpiritCommonDetailResponse.from(spirit.getCommonDetail());
 
@@ -287,7 +293,7 @@ public class SpiritDetailService {
         }
 
         return SpiritDetailResponse.of(spirit, images,
-                commonDetail, whiskyDetail, wineDetail, cognacDetail, otherDetail);
+                commonDetail, whiskyDetail, wineDetail, cognacDetail, otherDetail, variants);
     }
 
     private WhiskyDetailResponse buildWhiskyDetailResponse(SpiritWhiskyDetail detail) {
@@ -299,7 +305,7 @@ public class SpiritDetailService {
                 parseCaskDetails(extra, "caskDetails"),
                 detail.getIsNonChillFiltered(), detail.getIsNaturalColour(),
                 detail.getIsSingleCask(), detail.getIsCaskStrength(), detail.getIsPeated(),
-                detail.getPhenolPpm(),
+                detail.getPhenolPpm(), detail.getPhenolPpmMin(), detail.getPhenolPpmMax(),
                 str(extra, "caskNo"), str(extra, "notes")
         );
     }

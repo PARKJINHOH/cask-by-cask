@@ -40,6 +40,14 @@ public interface SpiritRepository extends JpaRepository<Spirit, Long>, SpiritQue
     List<Object[]> findRegionStats(@Param("category") SpiritCategory category,
                                    @Param("country") String country);
 
+    @Query("""
+            SELECT s FROM Spirit s
+            LEFT JOIN FETCH s.commonDetail
+            WHERE s.parent.id = :parentId
+            ORDER BY s.bottledYear DESC, s.vintageYear DESC, s.id DESC
+            """)
+    List<Spirit> findByParentId(@Param("parentId") Long parentId);
+
     /** 같은 이름(한글/영문)의 다른 배치·병입 제품 — 자기 자신 제외, ACTIVE 만 */
     @Query("""
             SELECT s FROM Spirit s
