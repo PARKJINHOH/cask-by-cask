@@ -203,14 +203,14 @@ export default function ProducerRequestPage() {
                     <input
                       value={countryNameKo}
                       onChange={(e) => { setCountryNameKo(e.target.value); if (e.target.value) setCountryError(false) }}
-                      placeholder="국가 직접 입력 (예: 조지아)"
+                      placeholder={t('producerRequest.form.customCountryPlaceholder', '국가 직접 입력 (예: 조지아)')}
                       maxLength={100}
                       className={`${FIELD_CLS} bg-white ${countryError ? 'border-red-400' : 'border-neutral-300'}`}
                     />
                     <input
                       value={regionNameKo}
                       onChange={(e) => setRegionNameKo(e.target.value)}
-                      placeholder="지역 (선택)"
+                      placeholder={t('producerRequest.form.customRegionPlaceholder', '지역 (선택)')}
                       maxLength={100}
                       className={`${FIELD_CLS} bg-white border-neutral-300`}
                     />
@@ -233,7 +233,9 @@ export default function ProducerRequestPage() {
                   }}
                   className="text-xs text-primary-700 hover:text-primary-900 hover:underline"
                 >
-                  {customCountry ? '↩ 목록에서 국가 선택' : '찾는 국가가 없나요? 직접 입력'}
+                  {customCountry
+                    ? t('producerRequest.form.selectCountryLink', '↩ 목록에서 국가 선택')
+                    : t('producerRequest.form.customCountryLink', '찾는 국가가 없나요? 직접 입력')}
                 </button>
                 {countryError && <p className="text-xs text-red-500">{t('producerRequest.form.errCountry')}</p>}
               </div>
@@ -265,7 +267,7 @@ export default function ProducerRequestPage() {
                   <input
                     {...register('foundedYear', { min: 1500, max: new Date().getFullYear() })}
                     type="number"
-                    placeholder="예) 1824"
+                    placeholder={t('producerRequest.form.foundedYearPlaceholder', '예) 1824')}
                     min={1500}
                     max={new Date().getFullYear()}
                     className={`${FIELD_CLS} bg-white border-neutral-300`}
@@ -279,7 +281,7 @@ export default function ProducerRequestPage() {
                   {...register('descriptionKo')}
                   rows={3}
                   maxLength={2000}
-                  placeholder="생산자 소개를 입력해주세요."
+                  placeholder={t('producerRequest.form.descriptionKoPlaceholder', '생산자 소개를 입력해주세요.')}
                   className={`${FIELD_CLS} bg-white border-neutral-300 resize-none`}
                 />
               </div>

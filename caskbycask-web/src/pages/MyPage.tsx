@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -41,7 +41,7 @@ const ROLE_LABEL: Record<string, string> = {
 }
 
 export default function MyPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const authUser = useAuthStore((s) => s.user)
   const { data: profile } = useMe()
   const queryClient = useQueryClient()
@@ -84,7 +84,7 @@ export default function MyPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
-      <SeoMeta title="마이페이지" description="CaskByCask 마이페이지." noindex />
+      <SeoMeta title={t('mypage.title', '마이페이지')} description={`${t('mypage.title', '마이페이지')}.`} noindex />
       {/* Profile card */}
       <div className="bg-white rounded-2xl p-6 shadow-sm flex items-center gap-5">
         {/* 레벨 아이콘 + 아바타 */}
@@ -117,7 +117,7 @@ export default function MyPage() {
             {isFixed && (
               <span className="flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-full
                 text-xs font-bold bg-gradient-to-r from-amber-400 to-orange-500 text-white">
-                고정닉
+                {t('mypage.fixedNickname', '고정닉')}
               </span>
             )}
           </div>
@@ -125,7 +125,7 @@ export default function MyPage() {
           <div className="flex items-center gap-2 mt-1.5 flex-wrap">
             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs
               font-medium bg-primary-50 text-primary-900">
-              {ROLE_LABEL[role] ?? role}
+              {t(`mypage.role.${role}`, ROLE_LABEL[role] ?? role)}
             </span>
             {role === 'MEMBER' && (
               <span className="text-xs text-amber-600 font-semibold">
@@ -134,47 +134,83 @@ export default function MyPage() {
             )}
             {createdAt && (
               <span className="text-xs text-neutral-400">
-                가입일 {new Date(createdAt).toLocaleDateString('ko-KR')}
+                {t('mypage.joinedDate', {
+                  date: new Date(createdAt).toLocaleDateString(i18n.language === 'en' ? 'en-US' : 'ko-KR'),
+                  defaultValue: `가입일 ${new Date(createdAt).toLocaleDateString('ko-KR')}`
+                })}
               </span>
             )}
           </div>
         </div>
       </div>
 
-      {/* Tab bar */}
-      <div className="flex gap-1 border-b border-neutral-200 overflow-x-auto [&::-webkit-scrollbar]:hidden">
-        {tabs.map(({ value, labelKey }) => (
-          <button
-            key={value}
-            onClick={() => setTab(value)}
-            className={`inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px
-              whitespace-nowrap flex-shrink-0 ${
-              tab === value
-                ? 'border-primary-800 text-primary-900'
-                : 'border-transparent text-neutral-500 hover:text-neutral-700'
-            }`}
-          >
-            {t(labelKey)}
-            {value === 'messages' && unreadMsgCount > 0 && (
-              <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold rounded-full bg-red-500 text-white">
-                {unreadMsgCount > 99 ? '99+' : unreadMsgCount}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+      <div className="md:grid md:grid-cols-[200px_1fr] lg:grid-cols-[240px_1fr] md:gap-6 lg:gap-8 items-start">
+        {/* Left Sidebar Menu (Desktop/Tablet) */}
+        <div className="hidden md:flex flex-col bg-white rounded-2xl p-4 shadow-sm border border-neutral-100 space-y-1">
+          {tabs.map(({ value, labelKey }) => (
+            <button
+              key={value}
+              onClick={() => setTab(value)}
+              className={`flex items-center w-full px-4 py-2.5 text-sm font-medium rounded-xl transition-all gap-3
+                ${
+                  tab === value
+                    ? 'bg-primary-50 text-primary-900 font-semibold shadow-sm'
+                    : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900'
+                }`}
+            >
+              <span className="truncate">{t(labelKey)}</span>
+              {value === 'messages' && unreadMsgCount > 0 && (
+                <span className="ml-auto inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold rounded-full bg-red-500 text-white flex-shrink-0">
+                  {unreadMsgCount > 99 ? '99+' : unreadMsgCount}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
 
-      {/* Tab panels */}
-      {tab === 'maturing'  && <MaturingPowerSection profile={profile ?? { id: 0, email, nickname, role, createdAt: '' }} />}
-      {tab === 'reviews'   && <MyReviewList />}
-      {tab === 'wishlist'  && <MyFavorites />}
-      {tab === 'byob'        && <ByobHistoryTab />}
-      {tab === 'collection'  && <BottleCollectionTab />}
-      {tab === 'priceReports' && <MyPriceReportsTab />}
-      {tab === 'priceAlerts'  && <MyPriceAlertsTab />}
-      {tab === 'messages'    && <MessagesTab initialMessageId={messageIdParam} />}
-      {tab === 'blocks'      && <BlockedUsersTab />}
-      {tab === 'settings'  && <AccountSettings />}
+        {/* Right Content Area */}
+        <div className="space-y-6">
+          {/* Top Tab Bar (Mobile only) */}
+          <div className="md:hidden flex gap-1 border-b border-neutral-200 overflow-x-auto [&::-webkit-scrollbar]:hidden">
+            {tabs.map(({ value, labelKey }) => (
+              <button
+                key={value}
+                onClick={() => setTab(value)}
+                className={`inline-flex items-center transition-colors border-b-2 -mb-px
+                  whitespace-nowrap flex-shrink-0
+                  text-xs px-2.5 py-2 gap-1
+                  sm:text-sm sm:px-3 sm:py-2.5 sm:gap-1.5
+                  ${
+                    tab === value
+                      ? 'border-primary-800 text-primary-900'
+                      : 'border-transparent text-neutral-500 hover:text-neutral-700'
+                  }`}
+              >
+                {t(labelKey)}
+                {value === 'messages' && unreadMsgCount > 0 && (
+                  <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold rounded-full bg-red-500 text-white">
+                    {unreadMsgCount > 99 ? '99+' : unreadMsgCount}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* Active Tab Panel */}
+          <div>
+            {tab === 'maturing'  && <MaturingPowerSection profile={profile ?? { id: 0, email, nickname, role, createdAt: '' }} />}
+            {tab === 'reviews'   && <MyReviewList />}
+            {tab === 'wishlist'  && <MyFavorites />}
+            {tab === 'byob'        && <ByobHistoryTab />}
+            {tab === 'collection'  && <BottleCollectionTab />}
+            {tab === 'priceReports' && <MyPriceReportsTab />}
+            {tab === 'priceAlerts'  && <MyPriceAlertsTab />}
+            {tab === 'messages'    && <MessagesTab initialMessageId={messageIdParam} />}
+            {tab === 'blocks'      && <BlockedUsersTab />}
+            {tab === 'settings'  && <AccountSettings />}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

@@ -1,7 +1,8 @@
 import { useRef, useCallback } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import type { UserProfile } from '@/domain/user/types/user.types'
-import LevelBadge, { BAND_LABELS, bandOf } from '@/shared/components/LevelBadge'
+import LevelBadge from '@/shared/components/LevelBadge'
 import Spinner from '@/shared/components/Spinner'
 import EmptyState from '@/shared/components/EmptyState'
 import { formatDate } from '@/shared/utils/format'
@@ -31,11 +32,11 @@ function ProgressBar({ pct }: { pct: number }) {
 // ── 레벨 현황 카드 ────────────────────────────────────────────
 
 function LevelCard({ profile }: { profile: UserProfile }) {
+  const { t } = useTranslation()
   const currentLevel = profile.currentLevel ?? 1
   const maturingPower = profile.maturingPower ?? 0
   const pct = calcProgress(maturingPower, currentLevel)
   const isMax = currentLevel >= MAX_LEVEL
-  const bandName = BAND_LABELS[bandOf(currentLevel)]
 
   return (
     <div className="bg-white rounded-2xl p-5 shadow-sm border border-neutral-100">
@@ -48,12 +49,9 @@ function LevelCard({ profile }: { profile: UserProfile }) {
             <span className="text-2xl font-extrabold text-neutral-900">
               Lv.{currentLevel}
             </span>
-            <span className="text-sm font-semibold text-amber-700">
-              {bandName}
-            </span>
           </div>
           <p className="text-xs text-neutral-400 mt-1">
-            {isMax ? '최고 레벨 달성' : `다음 레벨까지 ${100 - pct}%`}
+            {isMax ? t('maturing.maxLevel', '최고 레벨 달성') : t('maturing.nextLevelProgress', { percent: 100 - pct, defaultValue: `다음 레벨까지 ${100 - pct}%` })}
           </p>
         </div>
       </div>
@@ -63,7 +61,7 @@ function LevelCard({ profile }: { profile: UserProfile }) {
           <>
             <ProgressBar pct={100} />
             <p className="text-xs text-center text-amber-600 font-semibold">
-              🏆 최고 레벨 달성!
+              {t('maturing.maxLevelAward', '🏆 최고 레벨 달성!')}
             </p>
           </>
         ) : (
@@ -71,9 +69,9 @@ function LevelCard({ profile }: { profile: UserProfile }) {
             <ProgressBar pct={pct} />
             <p className="text-xs text-neutral-500 text-right">
               <span className="font-semibold text-amber-700">Lv.{currentLevel + 1}</span>
-              {' '}까지{' '}
+              {' '}{t('maturing.until', '까지')}{' '}
               <span className="font-semibold text-neutral-700 tabular-nums">{100 - pct}%</span>
-              {' '}남음
+              {' '}{t('maturing.left', '남음')}
             </p>
           </>
         )}
@@ -85,6 +83,7 @@ function LevelCard({ profile }: { profile: UserProfile }) {
 // ── 레벨 맵 카드 ─────────────────────────────────────────────
 
 function LevelMapCard({ currentLevel }: { currentLevel: number }) {
+  const { t } = useTranslation()
   const { data: levels } = useLevelConfigs()
   const all: LevelInfo[] = levels && levels.length > 0 ? levels : LEVELS
   const maxLv = all.length
@@ -95,7 +94,7 @@ function LevelMapCard({ currentLevel }: { currentLevel: number }) {
 
   return (
     <div className="bg-white rounded-2xl px-4 py-4 shadow-sm border border-neutral-100">
-      <p className="text-xs font-semibold text-neutral-500 mb-3">레벨 현황</p>
+      <p className="text-xs font-semibold text-neutral-500 mb-3">{t('maturing.levelStatus', '레벨 현황')}</p>
       <div className="flex gap-2 justify-between">
         {window.map((lv) => {
           const isPast    = lv.level < currentLevel
@@ -131,6 +130,7 @@ function LevelMapCard({ currentLevel }: { currentLevel: number }) {
 // ── 출석 현황 카드 ────────────────────────────────────────────
 
 function AttendanceCard({ profile }: { profile: UserProfile }) {
+  const { t } = useTranslation()
   const streak = profile.consecutiveAttendance ?? 0
 
   // 7일 보너스까지 남은 일수 (streak % 7 기준)
@@ -151,7 +151,7 @@ function AttendanceCard({ profile }: { profile: UserProfile }) {
               <span className="text-xl font-extrabold text-orange-500 tabular-nums mr-1">
                 {streak}
               </span>
-              일 연속 출석 중
+              {t('maturing.attendanceDays', '일 연속 출석 중')}
             </p>
           </div>
         </div>
@@ -171,21 +171,21 @@ function AttendanceCard({ profile }: { profile: UserProfile }) {
         ))}
       </div>
       <p className="text-xs text-neutral-400 mt-1 text-right">
-        7일 연속까지 {toNext7}일
+        {t('maturing.daysUntilStreak', { days: toNext7, defaultValue: `7일 연속까지 ${toNext7}일` })}
       </p>
 
       {/* 보너스 안내 */}
       <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-neutral-500">
         <div className="bg-amber-50 rounded-xl px-3 py-2 text-center">
-          <p className="font-semibold text-amber-700">🎉 7일 보너스</p>
+          <p className="font-semibold text-amber-700">{t('maturing.bonus7', '🎉 7일 보너스')}</p>
           <p className="mt-0.5 tabular-nums">
-            {toNext7 === 7 ? '오늘 달성!' : `${toNext7}일 후`}
+            {toNext7 === 7 ? t('maturing.bonusToday', '오늘 달성!') : t('maturing.bonusDaysLeft', { days: toNext7, defaultValue: `${toNext7}일 후` })}
           </p>
         </div>
         <div className="bg-amber-50 rounded-xl px-3 py-2 text-center">
-          <p className="font-semibold text-amber-700">🏆 30일 보너스</p>
+          <p className="font-semibold text-amber-700">{t('maturing.bonus30', '🏆 30일 보너스')}</p>
           <p className="mt-0.5 tabular-nums">
-            {toNext30 === 30 ? '오늘 달성!' : `${toNext30}일 후`}
+            {toNext30 === 30 ? t('maturing.bonusToday', '오늘 달성!') : t('maturing.bonusDaysLeft', { days: toNext30, defaultValue: `${toNext30}일 후` })}
           </p>
         </div>
       </div>
@@ -263,6 +263,7 @@ const FILTER_TABS: { value: ScoreHistoryFilterType; label: string }[] = [
 // ── 점수 이력 목록 ────────────────────────────────────────────
 
 function ScoreHistoryList() {
+  const { t } = useTranslation()
   const [filter, setFilter] = useState<ScoreHistoryFilterType>('ALL')
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useInfiniteScoreHistory(filter)
@@ -302,7 +303,7 @@ function ScoreHistoryList() {
                 : 'text-neutral-500 hover:text-neutral-700'
             }`}
           >
-            {label}
+            {t(`maturing.filter.${value.toLowerCase()}`, label)}
           </button>
         ))}
       </div>
@@ -315,8 +316,8 @@ function ScoreHistoryList() {
         ) : allItems.length === 0 ? (
           <div className="py-8">
             <EmptyState
-              title="점수 이력이 없습니다."
-              description="글쓰기, 댓글, 출석 등 다양한 활동으로 레벨을 올려보세요!"
+              title={t('maturing.noHistoryTitle', '점수 이력이 없습니다.')}
+              description={t('maturing.noHistoryDesc', '글쓰기, 댓글, 출석 등 다양한 활동으로 레벨을 올려보세요!')}
             />
           </div>
         ) : (

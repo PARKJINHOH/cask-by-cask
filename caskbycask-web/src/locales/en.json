@@ -286,7 +286,13 @@
       "website": "Official Website",
       "foundedYear": "Founded Year",
       "descriptionKo": "Description (Korean)",
-      "descriptionEn": "Description (English)"
+      "descriptionEn": "Description (English)",
+      "customCountryLink": "Can't find the country? Type directly",
+      "selectCountryLink": "↩ Choose country from list",
+      "customCountryPlaceholder": "Enter country (e.g. Georgia)",
+      "customRegionPlaceholder": "Region (optional)",
+      "foundedYearPlaceholder": "e.g. 1824",
+      "descriptionKoPlaceholder": "Please enter the producer description in Korean."
     },
     "myRequests": {
       "title": "My Requests",
@@ -609,16 +615,27 @@
   },
   "mypage": {
     "title": "My Page",
+    "fixedNickname": "Verified",
+    "joinedDate": "Joined {{date}}",
+    "role": {
+      "MEMBER": "Member",
+      "ADMIN": "Admin",
+      "DISTILLERY": "Distillery"
+    },
     "maturingTab": "Level",
-    "reviewsTab": "My Reviews",
+    "reviewsTab": "Reviews",
     "wishlistTab": "Favorites",
-    "byobTab": "BYOB History",
-    "collectionTab": "My Collection",
-    "priceReportsTab": "My Price Reports",
-    "priceAlertsTab": "My Price Alerts",
+    "byobTab": "BYOB",
+    "collectionTab": "Collection",
+    "priceReportsTab": "Price Reports",
+    "priceAlertsTab": "Price Alerts",
     "messagesTab": "Messages",
     "blocksTab": "Blocked",
-    "settingsTab": "Account Settings",
+    "settingsTab": "Settings",
+    "wishlist": {
+      "spirit": "Spirits",
+      "post": "Posts"
+    },
     "reviews": {
       "empty": "No reviews yet.",
       "emptyDesc": "Write your first review from a spirit's detail page!"
@@ -1433,6 +1450,28 @@
     "searchCountry": "Search country...",
     "noResult": "No results found"
   },
+  "maturing": {
+    "nextLevelProgress": "{{percent}}% to next level",
+    "maxLevel": "Max Level Reached",
+    "maxLevelAward": "🏆 Max Level Reached!",
+    "until": "to",
+    "left": "left",
+    "levelStatus": "Level Status",
+    "attendanceDays": " consecutive days",
+    "streakDays": "{{days}} consecutive attendance days",
+    "daysUntilStreak": "{{days}} days to 7-day streak",
+    "bonus7": "🎉 7-Day Bonus",
+    "bonus30": "🏆 30-Day Bonus",
+    "bonusToday": "Achieved Today!",
+    "bonusDaysLeft": "In {{days}} days",
+    "filter": {
+      "all": "All",
+      "earn": "Earned",
+      "deduct": "Deducted"
+    },
+    "noHistoryTitle": "No points history found.",
+    "noHistoryDesc": "Write posts, comments, or check in to level up!"
+  },
   "prefix": {
     "일반": "General",
     "나눔": "Share",
@@ -1440,5 +1479,30 @@
     "비욥": "BYOB",
     "이벤트": "Event",
     "공지": "Notice"
+  },
+  "ranking": {
+    "title": "Level Ranking",
+    "subtitle": "Active members rise up! Level up through review & activity.",
+    "seo": {
+      "title": "Level Ranking",
+      "desc": "CaskByCask level ranking list. View active members' ranking positions by weekly, monthly, and overall periods.",
+      "keywords": "CaskByCask ranking, level ranking, whiskey review ranking, activity score"
+    },
+    "tabs": {
+      "weekly": "Weekly",
+      "monthly": "Monthly",
+      "all": "All Time"
+    },
+    "labels": {
+      "weeklyScore": "Weekly Score",
+      "monthlyScore": "Monthly Score",
+      "levelScore": "Level Score",
+      "rank": "Rank",
+      "nickname": "Nickname",
+      "level": "Level",
+      "me": "Me",
+      "myRank": "My Rank",
+      "empty": "No ranking data available."
+    }
   }
 }

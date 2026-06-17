@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { useRanking, useMyRank } from '@/domain/ranking/hooks/useRanking'
 import type { RankingItem, RankingPeriod } from '@/domain/ranking/types/ranking.types'
@@ -12,10 +13,10 @@ import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 
 // ── 기간 탭 ───────────────────────────────────────────────────
 
-const PERIOD_TABS: { value: RankingPeriod; label: string }[] = [
-  { value: 'WEEKLY',  label: '주간' },
-  { value: 'MONTHLY', label: '월간' },
-  { value: 'ALL',     label: '전체' },
+const PERIOD_TABS: { value: RankingPeriod; labelKey: string }[] = [
+  { value: 'WEEKLY',  labelKey: 'ranking.tabs.weekly' },
+  { value: 'MONTHLY', labelKey: 'ranking.tabs.monthly' },
+  { value: 'ALL',     labelKey: 'ranking.tabs.all' },
 ]
 
 // ── 기간별 점수 표시 ──────────────────────────────────────────
@@ -26,10 +27,10 @@ function periodScore(item: RankingItem, period: RankingPeriod): number {
   return item.maturingPower
 }
 
-function periodLabel(period: RankingPeriod): string {
-  if (period === 'WEEKLY')  return '주간 점수'
-  if (period === 'MONTHLY') return '월간 점수'
-  return '레벨 점수'
+function periodLabel(period: RankingPeriod, t: any): string {
+  if (period === 'WEEKLY')  return t('ranking.labels.weeklyScore', '주간 점수')
+  if (period === 'MONTHLY') return t('ranking.labels.monthlyScore', '월간 점수')
+  return t('ranking.labels.levelScore', '레벨 점수')
 }
 
 // ── 유저 아이콘 ───────────────────────────────────────────────
@@ -106,6 +107,7 @@ function RankRow({
   period: RankingPeriod
   isMe: boolean
 }) {
+  const { t } = useTranslation()
   return (
     <tr
       className={`border-b border-neutral-50 last:border-0 transition-colors ${
@@ -123,7 +125,7 @@ function RankRow({
           <RankIcon item={item} />
           <span className={`text-sm font-medium truncate max-w-[160px] ${isMe ? 'text-amber-700' : 'text-neutral-800'}`}>
             {item.nickname}
-            {isMe && <span className="ml-1 text-xs text-amber-500">(나)</span>}
+            {isMe && <span className="ml-1 text-xs text-amber-500">({t('ranking.labels.me', '나')})</span>}
           </span>
         </div>
       </td>
@@ -150,6 +152,7 @@ function RankRow({
 // ── 내 순위 고정 바 ───────────────────────────────────────────
 
 function MyRankBar({ period }: { period: RankingPeriod }) {
+  const { t } = useTranslation()
   const { data: myRank, isLoading } = useMyRank(period)
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
 
@@ -160,7 +163,9 @@ function MyRankBar({ period }: { period: RankingPeriod }) {
       backdrop-blur-sm shadow-lg border-t border-amber-500">
       <div className="max-w-3xl mx-auto px-4 py-2.5 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <span className="text-sm text-amber-100 font-medium">내 순위</span>
+          <span className="text-sm text-amber-100 font-medium">
+            {t('ranking.labels.myRank', '내 순위')}
+          </span>
           {isLoading ? (
             <Spinner className="text-amber-200 w-4 h-4" />
           ) : myRank ? (
@@ -174,7 +179,7 @@ function MyRankBar({ period }: { period: RankingPeriod }) {
         </div>
         {myRank && (
           <div className="text-right">
-            <p className="text-xs text-amber-200">{periodLabel(period)}</p>
+            <p className="text-xs text-amber-200">{periodLabel(period, t)}</p>
             <p className="text-white font-bold tabular-nums">
               {myRank.periodScore.toLocaleString()}
             </p>
@@ -188,6 +193,7 @@ function MyRankBar({ period }: { period: RankingPeriod }) {
 // ── 메인 페이지 ───────────────────────────────────────────────
 
 export default function RankingPage() {
+  const { t } = useTranslation()
   const [searchParams, setSearchParams] = useSearchParams()
   const periodParam = (searchParams.get('period') ?? 'WEEKLY') as RankingPeriod
   const [page, setPage] = useState(0)
@@ -210,21 +216,21 @@ export default function RankingPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 pb-24 lg:pb-16 space-y-5">
       <SeoMeta
-        title="레벨 랭킹"
-        description="CaskByCask 사용자 활동 점수 랭킹. 주간·월간·전체 기간별 리뷰와 활동에 따른 레벨 순위를 확인하세요."
+        title={t('ranking.title', '레벨 랭킹')}
+        description={t('ranking.seo.desc', 'CaskByCask 사용자 활동 점수 랭킹. 주간·월간·전체 기간별 리뷰와 활동에 따른 레벨 순위를 확인하세요.')}
         canonical={buildCanonical('/ranking')}
-        keywords="CaskByCask 랭킹, 레벨, 위스키 리뷰 랭킹, 사용자 활동 점수"
+        keywords={t('ranking.seo.keywords', 'CaskByCask 랭킹, 레벨, 위스키 리뷰 랭킹, 사용자 활동 점수')}
       />
 
       {/* 헤더 */}
       <div className="text-center space-y-1">
-        <h1 className="text-2xl font-extrabold text-neutral-900">🏆 레벨 랭킹</h1>
-        <p className="text-sm text-neutral-500">활발히 활동해서 나만의 레벨을 올려보세요!</p>
+        <h1 className="text-2xl font-extrabold text-neutral-900">🏆 {t('ranking.title', '레벨 랭킹')}</h1>
+        <p className="text-sm text-neutral-500">{t('ranking.subtitle', '활발히 활동해서 나만의 레벨을 올려보세요!')}</p>
       </div>
 
       {/* 기간 탭 */}
       <div className="flex rounded-xl bg-neutral-100 p-1 gap-1">
-        {PERIOD_TABS.map(({ value, label }) => (
+        {PERIOD_TABS.map(({ value, labelKey }) => (
           <button
             key={value}
             onClick={() => setPeriod(value)}
@@ -234,7 +240,7 @@ export default function RankingPage() {
                 : 'text-neutral-500 hover:text-neutral-700'
             }`}
           >
-            {label}
+            {t(labelKey)}
           </button>
         ))}
       </div>
@@ -244,7 +250,7 @@ export default function RankingPage() {
           <Spinner className="text-amber-600" />
         </div>
       ) : !data || data.empty ? (
-        <p className="text-center text-neutral-400 py-16">랭킹 데이터가 없습니다.</p>
+        <p className="text-center text-neutral-400 py-16">{t('ranking.labels.empty', '랭킹 데이터가 없습니다.')}</p>
       ) : (
         <>
           {/* Top 3 시상대 (1페이지만) */}
@@ -260,10 +266,16 @@ export default function RankingPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-neutral-100 bg-neutral-50/70">
-                    <th className="py-2.5 pl-4 pr-2 text-xs text-neutral-400 font-medium text-center w-12">순위</th>
-                    <th className="py-2.5 px-2 text-xs text-neutral-400 font-medium text-left">닉네임</th>
-                    <th className="py-2.5 px-2 text-xs text-neutral-400 font-medium text-left hidden sm:table-cell">레벨</th>
-                    <th className="py-2.5 pr-4 text-xs text-neutral-400 font-medium text-right">{periodLabel(period)}</th>
+                    <th className="py-2.5 pl-4 pr-2 text-xs text-neutral-400 font-medium text-center w-12">
+                      {t('ranking.labels.rank', '순위')}
+                    </th>
+                    <th className="py-2.5 px-2 text-xs text-neutral-400 font-medium text-left">
+                      {t('ranking.labels.nickname', '닉네임')}
+                    </th>
+                    <th className="py-2.5 px-2 text-xs text-neutral-400 font-medium text-left hidden sm:table-cell">
+                      {t('ranking.labels.level', '레벨')}
+                    </th>
+                    <th className="py-2.5 pr-4 text-xs text-neutral-400 font-medium text-right">{periodLabel(period, t)}</th>
                   </tr>
                 </thead>
                 <tbody>

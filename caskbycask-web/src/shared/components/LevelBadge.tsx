@@ -37,8 +37,6 @@ const BANDS: Band[] = [
   { base: '#f472b6', deep: '#6366f1', ring: '#ffffff', prism: true }, // 91–100 프리즘
 ]
 
-export const BAND_LABELS = ['스톤', '브론즈', '앰버', '실버', '골드', '에메랄드', '사파이어', '아메시스트', '루비', '프리즘']
-
 /** 레벨 → 밴드 인덱스(0~9) */
 export function bandOf(level: number): number {
   return Math.min(9, Math.max(0, Math.floor((Math.max(1, level) - 1) / 10)))

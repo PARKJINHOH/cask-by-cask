@@ -1,5 +1,6 @@
-﻿import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { useMessageList, useMessageThread, useMessageActions } from '../hooks/useMessages'
 import { useMessageStore } from '../store/messageStore'
 import { useAuthStore } from '@/domain/auth/store/authStore'
@@ -71,6 +72,7 @@ function ThreadPanel({
   onDelete: () => void
   onBack: () => void
 }) {
+  const { t } = useTranslation()
   const qc = useQueryClient()
   const { data: thread, isLoading } = useMessageThread(threadId)
   const { replyMutation, deleteMutation } = useMessageActions()
@@ -95,23 +97,23 @@ function ThreadPanel({
       setReplyText('')
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status
-      if (status === 400) showToast('욕설이 포함되어 있습니다', 'error')
-      else showToast('오류가 발생했습니다.', 'error')
+      if (status === 400) showToast(t('messages.badWordError', '욕설이 포함되어 있습니다'), 'error')
+      else showToast(t('common.error', '오류가 발생했습니다.'), 'error')
     }
-  }, [replyText, threadId, replyMutation, showToast])
+  }, [replyText, threadId, replyMutation, showToast, t])
 
   const handleDelete = useCallback(async () => {
-    if (!confirm('이 쪽지를 삭제하시겠습니까?')) return
+    if (!confirm(t('messages.deleteConfirm', '이 쪽지를 삭제하시겠습니까?'))) return
     onDelete()
     try {
       await deleteMutation.mutateAsync(threadId)
     } catch {
-      showToast('삭제 중 오류가 발생했습니다.', 'error')
+      showToast(t('common.error', '삭제 중 오류가 발생했습니다.'), 'error')
     }
-  }, [threadId, deleteMutation, onDelete, showToast])
+  }, [threadId, deleteMutation, onDelete, showToast, t])
 
   if (isLoading) {
-    return <div className="flex-1 flex items-center justify-center text-sm text-neutral-400">불러오는 중...</div>
+    return <div className="flex-1 flex items-center justify-center text-sm text-neutral-400">{t('common.loading', '불러오는 중...')}</div>
   }
   if (!thread) return null
 
@@ -126,7 +128,7 @@ function ThreadPanel({
             onClick={onBack}
             className="lg:hidden text-sm text-neutral-500 hover:text-neutral-700 mr-1"
           >
-            ← 목록으로
+            {t('messages.backToList', '← 목록으로')}
           </button>
           <span className="text-sm font-semibold text-neutral-800">
             {thread.senderNickname === myNickname ? thread.receiverNickname : thread.senderNickname}
@@ -136,7 +138,7 @@ function ThreadPanel({
           onClick={handleDelete}
           className="text-xs text-red-400 hover:text-red-600 transition-colors"
         >
-          삭제
+          {t('messages.delete', '삭제')}
         </button>
       </div>
 
@@ -175,7 +177,7 @@ function ThreadPanel({
           onChange={(e) => setReplyText(e.target.value.slice(0, 100))}
           rows={3}
           maxLength={100}
-          placeholder="답장을 입력하세요..."
+          placeholder={t('messages.contentPlaceholder', '답장을 입력하세요...')}
           className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary-400"
         />
         <div className="flex items-center justify-between mt-1">
@@ -187,7 +189,7 @@ function ThreadPanel({
             disabled={!replyText.trim() || replyMutation.isPending}
             className="px-4 py-1.5 text-sm font-medium text-white bg-primary-800 rounded-lg hover:bg-primary-900 transition-colors disabled:opacity-50"
           >
-            {replyMutation.isPending ? '전송 중...' : '보내기'}
+            {replyMutation.isPending ? t('common.sending', '전송 중...') : t('messages.send', '보내기')}
           </button>
         </div>
       </div>
@@ -197,6 +199,7 @@ function ThreadPanel({
 
 // ── 메인 컴포넌트 ────────────────────────────────────────────────
 export default function MessagesTab({ initialMessageId }: Props) {
+  const { t } = useTranslation()
   const [selectedId, setSelectedId] = useState<number | null>(initialMessageId ?? null)
   const [showDetail, setShowDetail] = useState<boolean>(Boolean(initialMessageId))
   const { data, isLoading } = useMessageList('ALL')
@@ -234,7 +237,7 @@ export default function MessagesTab({ initialMessageId }: Props) {
           {/* 헤더 + 새 쪽지 버튼 */}
           <div className="flex items-center justify-between border-b border-neutral-200 px-3 py-2 flex-shrink-0">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-neutral-700">쪽지함</span>
+              <span className="text-sm font-semibold text-neutral-700">{t('messages.title', '쪽지함')}</span>
               {unreadCount > 0 && (
                 <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold rounded-full bg-red-500 text-white">
                   {unreadCount}
@@ -245,16 +248,16 @@ export default function MessagesTab({ initialMessageId }: Props) {
               onClick={() => openPopup()}
               className="text-xs text-primary-800 hover:text-primary-900 font-medium"
             >
-              + 새 쪽지
+              {t('messages.newMessageBtn', '+ 새 쪽지')}
             </button>
           </div>
 
           {/* 목록 */}
           <div className="flex-1 overflow-y-auto">
             {isLoading ? (
-              <div className="py-10 text-center text-sm text-neutral-400">불러오는 중...</div>
+              <div className="py-10 text-center text-sm text-neutral-400">{t('common.loading', '불러오는 중...')}</div>
             ) : messages.length === 0 ? (
-              <div className="py-10 text-center text-sm text-neutral-400">쪽지가 없습니다.</div>
+              <div className="py-10 text-center text-sm text-neutral-400">{t('messages.noMessages', '쪽지가 없습니다.')}</div>
             ) : (
               messages.map((msg) => (
                 <MessageListItem
@@ -280,7 +283,7 @@ export default function MessagesTab({ initialMessageId }: Props) {
             />
           ) : (
             <div className="flex-1 flex items-center justify-center text-sm text-neutral-400">
-              쪽지를 선택하세요.
+              {t('messages.selectThread', '쪽지를 선택하세요.')}
             </div>
           )}
         </div>

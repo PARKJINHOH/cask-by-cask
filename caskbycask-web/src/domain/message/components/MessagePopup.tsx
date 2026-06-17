@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMessageStore } from '../store/messageStore'
 import { useMessageActions } from '../hooks/useMessages'
@@ -70,7 +70,7 @@ export default function MessagePopup() {
     if (!r || !c) return
 
     if (user?.nickname === r) {
-      setInlineError('본인에게는 쪽지를 보낼 수 없습니다')
+      setInlineError(t('messages.selfError', '본인에게는 쪽지를 보낼 수 없습니다'))
       return
     }
 
@@ -83,10 +83,10 @@ export default function MessagePopup() {
       }, 2000)
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status
-      if (status === 403) setInlineError('쪽지를 보낼 수 없는 사용자입니다')
-      else if (status === 404) setInlineError('존재하지 않는 사용자입니다')
-      else if (status === 400) setInlineError('욕설이 포함되어 있습니다')
-      else setInlineError('오류가 발생했습니다. 다시 시도해주세요.')
+      if (status === 403) setInlineError(t('messages.blockedError', '쪽지를 보낼 수 없는 사용자입니다'))
+      else if (status === 404) setInlineError(t('messages.notFoundError', '존재하지 않는 사용자입니다'))
+      else if (status === 400) setInlineError(t('messages.badWordError', '욕설이 포함되어 있습니다'))
+      else setInlineError(t('common.error', '오류가 발생했습니다. 다시 시도해주세요.'))
     }
   }, [receiver, content, user, sendMutation, closePopup])
 
@@ -98,7 +98,7 @@ export default function MessagePopup() {
     <div className="fixed top-4 left-4 z-50 w-72 bg-white rounded-xl shadow-xl border border-neutral-200 overflow-visible">
       {/* 헤더 */}
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-neutral-100">
-        <span className="text-xs font-medium text-neutral-500">(쪽지)</span>
+        <span className="text-xs font-medium text-neutral-500">({t('messages.newMessage', '쪽지')})</span>
         <button
           onClick={closePopup}
           className="text-neutral-400 hover:text-neutral-600 text-lg leading-none"

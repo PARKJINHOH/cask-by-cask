@@ -1,21 +1,23 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import MyWishlist from './MyWishlist'
 import MyScrappedPosts from '@/domain/community/components/MyScrappedPosts'
 
 type SubTab = 'spirit' | 'post'
 
-const SUB_TABS: { value: SubTab; label: string }[] = [
-  { value: 'spirit', label: '주류' },
-  { value: 'post',   label: '게시판' },
+const SUB_TABS: { value: SubTab; labelKey: string; defaultLabel: string }[] = [
+  { value: 'spirit', labelKey: 'mypage.wishlist.spirit', defaultLabel: '주류' },
+  { value: 'post',   labelKey: 'mypage.wishlist.post',   defaultLabel: '게시판' },
 ]
 
 export default function MyFavorites() {
+  const { t } = useTranslation()
   const [subTab, setSubTab] = useState<SubTab>('spirit')
 
   return (
     <div className="space-y-4">
       <div className="flex gap-1 bg-neutral-100 rounded-lg p-1 w-fit">
-        {SUB_TABS.map(({ value, label }) => (
+        {SUB_TABS.map(({ value, labelKey, defaultLabel }) => (
           <button
             key={value}
             type="button"
@@ -27,7 +29,7 @@ export default function MyFavorites() {
                 : 'text-neutral-500 hover:text-neutral-700',
             ].join(' ')}
           >
-            {label}
+            {t(labelKey, defaultLabel)}
           </button>
         ))}
       </div>

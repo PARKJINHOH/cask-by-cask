@@ -286,7 +286,13 @@
       "website": "공식 웹사이트",
       "foundedYear": "설립연도",
       "descriptionKo": "소개 (한국어)",
-      "descriptionEn": "소개 (영어)"
+      "descriptionEn": "소개 (영어)",
+      "customCountryLink": "찾는 국가가 없나요? 직접 입력",
+      "selectCountryLink": "↩ 목록에서 국가 선택",
+      "customCountryPlaceholder": "국가 직접 입력 (예: 조지아)",
+      "customRegionPlaceholder": "지역 (선택)",
+      "foundedYearPlaceholder": "예) 1824",
+      "descriptionKoPlaceholder": "생산자 소개를 입력해주세요."
     },
     "myRequests": {
       "title": "내 요청 목록",
@@ -599,6 +605,13 @@
   },
   "mypage": {
     "title": "마이페이지",
+    "fixedNickname": "고정닉",
+    "joinedDate": "가입일 {{date}}",
+    "role": {
+      "MEMBER": "회원",
+      "ADMIN": "관리자",
+      "DISTILLERY": "증류소"
+    },
     "maturingTab": "레벨",
     "reviewsTab": "내 리뷰",
     "wishlistTab": "즐겨찾기",
@@ -609,6 +622,10 @@
     "messagesTab": "쪽지",
     "blocksTab": "차단 목록",
     "settingsTab": "계정 설정",
+    "wishlist": {
+      "spirit": "주류",
+      "post": "게시판"
+    },
     "reviews": {
       "empty": "작성한 리뷰가 없습니다.",
       "emptyDesc": "술 상세 페이지에서 첫 번째 리뷰를 작성해보세요!"
@@ -1433,6 +1450,28 @@
     "searchCountry": "국가 검색...",
     "noResult": "검색 결과 없음"
   },
+  "maturing": {
+    "nextLevelProgress": "다음 레벨까지 {{percent}}%",
+    "maxLevel": "최고 레벨 달성",
+    "maxLevelAward": "🏆 최고 레벨 달성!",
+    "until": "까지",
+    "left": "남음",
+    "levelStatus": "레벨 현황",
+    "attendanceDays": "일 연속 출석 중",
+    "streakDays": "{{days}}일 연속 출석 중",
+    "daysUntilStreak": "7일 연속까지 {{days}}일",
+    "bonus7": "🎉 7일 보너스",
+    "bonus30": "🏆 30일 보너스",
+    "bonusToday": "오늘 달성!",
+    "bonusDaysLeft": "{{days}}일 후",
+    "filter": {
+      "all": "전체",
+      "earn": "적립",
+      "deduct": "차감"
+    },
+    "noHistoryTitle": "점수 이력이 없습니다.",
+    "noHistoryDesc": "글쓰기, 댓글, 출석 등 다양한 활동으로 레벨을 올려보세요!"
+  },
   "prefix": {
     "일반": "일반",
     "나눔": "나눔",
@@ -1440,5 +1479,30 @@
     "비욥": "비욥",
     "이벤트": "이벤트",
     "공지": "공지"
+  },
+  "ranking": {
+    "title": "레벨 랭킹",
+    "subtitle": "활발히 활동해서 나만의 레벨을 올려보세요!",
+    "seo": {
+      "title": "레벨 랭킹",
+      "desc": "CaskByCask 사용자 활동 점수 랭킹. 주간·월간·전체 기간별 리뷰와 활동에 따른 레벨 순위를 확인하세요.",
+      "keywords": "CaskByCask 랭킹, 레벨, 위스키 리뷰 랭킹, 사용자 활동 점수"
+    },
+    "tabs": {
+      "weekly": "주간",
+      "monthly": "월간",
+      "all": "전체"
+    },
+    "labels": {
+      "weeklyScore": "주간 점수",
+      "monthlyScore": "월간 점수",
+      "levelScore": "레벨 점수",
+      "rank": "순위",
+      "nickname": "닉네임",
+      "level": "레벨",
+      "me": "나",
+      "myRank": "내 순위",
+      "empty": "랭킹 데이터가 없습니다."
+    }
   }
 }

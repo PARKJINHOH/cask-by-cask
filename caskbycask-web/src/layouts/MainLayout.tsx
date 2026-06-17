@@ -525,17 +525,10 @@ function UserDropdown() {
             </span>
           )}
         </span>
-        <span className="hidden sm:flex flex-col items-start leading-none">
-          <span className="flex items-center gap-1">
-            <span className="max-w-[120px] truncate text-sm font-medium text-neutral-800">{user?.nickname}</span>
-            {user?.role === 'MEMBER' && (
-              <LevelBadge level={user.currentLevel ?? 1} size={16} />
-            )}
-          </span>
-          {user?.role === 'MEMBER' && user?.currentLevel != null && (
-            <span className="text-[10px] text-amber-500 font-semibold mt-0.5">
-              {t('nav.maturingPower', { level: user.currentLevel, power: (user.maturingPower ?? 0).toLocaleString() })}
-            </span>
+        <span className="hidden sm:flex items-center gap-1">
+          <span className="max-w-[120px] truncate text-sm font-medium text-neutral-800">{user?.nickname}</span>
+          {user?.role === 'MEMBER' && (
+            <LevelBadge level={user.currentLevel ?? 1} size={16} />
           )}
         </span>
         <svg

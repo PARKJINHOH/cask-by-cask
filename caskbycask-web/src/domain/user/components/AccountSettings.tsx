@@ -442,6 +442,7 @@ function TempPasswordSection() {
 // ── 이메일 수신 동의 ─────────────────────────────────────────
 
 function EmailSubscriptionSection() {
+  const { t } = useTranslation()
   const { data: profile } = useMe()
   const updateSubscription = useUpdateEmailSubscription()
   const [optimistic, setOptimistic] = useState<boolean | null>(null)
@@ -463,15 +464,21 @@ function EmailSubscriptionSection() {
   return (
     <div className="p-5 space-y-3">
       <div>
-        <h3 className="text-sm font-semibold text-neutral-800">이메일 수신 동의</h3>
-        <p className="text-xs text-neutral-500 mt-0.5">새소식, 이벤트, 프로모션 안내 이메일을 받습니다.</p>
+        <h3 className="text-sm font-semibold text-neutral-800">
+          {t('mypage.settingsGroups.notifications.emailAgreement', '이메일 수신 동의')}
+        </h3>
+        <p className="text-xs text-neutral-500 mt-0.5">
+          {t('mypage.settingsGroups.notifications.emailDesc', '새소식, 이벤트, 프로모션 안내 이메일을 받습니다.')}
+        </p>
       </div>
 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className={`w-2 h-2 rounded-full ${current ? 'bg-green-400' : 'bg-neutral-300'}`} />
           <span className="text-sm text-neutral-700">
-            {current ? '수신 동의' : '수신 거부'}
+            {current
+              ? t('mypage.settingsGroups.notifications.optIn', '수신 동의')
+              : t('mypage.settingsGroups.notifications.optOut', '수신 거부')}
           </span>
         </div>
 
@@ -495,7 +502,9 @@ function EmailSubscriptionSection() {
 
       {updateSubscription.isSuccess && (
         <p className="text-xs text-green-600">
-          {current ? '이메일 수신에 동의했습니다.' : '이메일 수신을 거부했습니다.'}
+          {current
+            ? t('mypage.settingsGroups.notifications.agreeSuccess', '이메일 수신에 동의했습니다.')
+            : t('mypage.settingsGroups.notifications.agreeReject', '이메일 수신을 거부했습니다.')}
         </p>
       )}
     </div>
@@ -728,16 +737,16 @@ function SocialLinkSection() {
 
 // ── 회원 탈퇴 ───────────────────────────────────────────────
 
-const DELETE_CONFIRM_WORD = '삭제'
-
 function DangerZone() {
+  const { t } = useTranslation()
   const [modalOpen, setModalOpen] = useState(false)
   const [confirmText, setConfirmText] = useState('')
   const [error, setError]         = useState('')
   const navigate  = useNavigate()
   const deleteMe  = useDeleteMe()
 
-  const canDelete = confirmText.trim() === DELETE_CONFIRM_WORD
+  const confirmWord = t('mypage.settingsGroups.danger.confirmWord', '삭제')
+  const canDelete = confirmText.trim() === confirmWord
 
   const closeModal = () => {
     if (deleteMe.isPending) return
@@ -753,49 +762,54 @@ function DangerZone() {
       await deleteMe.mutateAsync()
       navigate('/', { replace: true })
     } catch {
-      setError('탈퇴 처리 중 오류가 발생했습니다. 다시 시도해주세요.')
+      setError(t('mypage.settingsGroups.danger.error', '탈퇴 처리 중 오류가 발생했습니다. 다시 시도해주세요.'))
     }
   }
 
   return (
     <div className="p-5 space-y-3">
       <p className="text-xs text-neutral-500 leading-relaxed">
-        회원을 탈퇴하면 계정과 개인정보가 <strong>영구적으로 파기</strong>되며 복구할 수 없습니다.
+        {t('mypage.settingsGroups.danger.warning', '회원을 탈퇴하면 계정과 개인정보가 영구적으로 파기되며 복구할 수 없습니다.')}
       </p>
       <Button
         variant="danger"
         size="sm"
         onClick={() => setModalOpen(true)}
       >
-        회원 탈퇴
+        {t('mypage.settingsGroups.danger.button', '회원 탈퇴')}
       </Button>
 
       <Modal
         open={modalOpen}
         onClose={closeModal}
-        title="정말 탈퇴하시겠습니까?"
+        title={t('mypage.settingsGroups.danger.modalTitle', '정말 탈퇴하시겠습니까?')}
         size="sm"
         closeOnOverlay={!deleteMe.isPending}
       >
         <div className="space-y-4">
           <div className="rounded-lg bg-red-50 border border-red-200 p-3 space-y-2">
-            <p className="text-sm font-semibold text-red-700">⚠ 이 작업은 되돌릴 수 없습니다.</p>
+            <p className="text-sm font-semibold text-red-700">
+              {t('mypage.settingsGroups.danger.modalWarningTitle', '⚠ 이 작업은 되돌릴 수 없습니다.')}
+            </p>
             <ul className="text-xs text-red-700/90 leading-relaxed list-disc pl-4 space-y-1">
-              <li>계정과 개인정보(이메일·프로필 등)가 <strong>영구 파기</strong>됩니다.</li>
-              <li>쪽지·위시리스트·보틀·임시저장 등 개인 데이터가 삭제됩니다.</li>
-              <li>작성하신 게시글·리뷰·댓글은 <strong>‘탈퇴한사용자’</strong> 명의로 남습니다.</li>
-              <li>같은 이메일로 다시 가입해도 기존 데이터와 연결되지 않습니다.</li>
+              <li>{t('mypage.settingsGroups.danger.modalWarning1', '계정과 개인정보(이메일·프로필 등)가 영구 파기됩니다.')}</li>
+              <li>{t('mypage.settingsGroups.danger.modalWarning2', '쪽지·위시리스트·보틀·임시저장 등 개인 데이터가 삭제됩니다.')}</li>
+              <li>{t('mypage.settingsGroups.danger.modalWarning3', '작성하신 게시글·리뷰·댓글은 ‘탈퇴한사용자’ 명의로 남습니다.')}</li>
+              <li>{t('mypage.settingsGroups.danger.modalWarning4', '같은 이메일로 다시 가입해도 기존 데이터와 연결되지 않습니다.')}</li>
             </ul>
           </div>
 
           <div className="space-y-1.5">
             <label className="text-xs text-neutral-600">
-              계속하려면 아래에 <strong className="text-red-600">{DELETE_CONFIRM_WORD}</strong>를 입력해주세요.
+              {t('mypage.settingsGroups.danger.confirmInstruction', {
+                word: confirmWord,
+                defaultValue: `계속하려면 아래에 ${confirmWord}를 입력해주세요.`
+              })}
             </label>
             <Input
               value={confirmText}
               onChange={(e) => setConfirmText(e.target.value)}
-              placeholder={DELETE_CONFIRM_WORD}
+              placeholder={confirmWord}
               maxLength={10}
               autoComplete="off"
               disabled={deleteMe.isPending}
@@ -810,7 +824,7 @@ function DangerZone() {
               onClick={closeModal}
               disabled={deleteMe.isPending}
             >
-              취소
+              {t('mypage.settingsGroups.danger.cancel', '취소')}
             </Button>
             <Button
               variant="danger"
@@ -819,7 +833,7 @@ function DangerZone() {
               disabled={!canDelete}
               onClick={handleConfirm}
             >
-              탈퇴 확인
+              {t('mypage.settingsGroups.danger.confirm', '탈퇴 확인')}
             </Button>
           </div>
         </div>
