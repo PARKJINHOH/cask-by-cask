@@ -78,6 +78,34 @@ class Settings:
         self.dcinside_targets = [t for t in data.get("dcinside", []) if not str(t.get("board_id", "")).startswith("_")]
         self.naver_cafe_targets = data.get("naver_cafe", [])
 
+    def load_dynamic_settings(self) -> None:
+        """백엔드 내부 API를 호출하여 동적으로 쿠키 정보를 내려받아 덮어씁니다."""
+        if not self.api_url or not self.internal_key:
+            return  # API 정보나 보안키가 세팅되지 않았다면 로컬 .env 에만 의존
+        
+        import requests
+        import sys
+        
+        url = f"{self.api_url}/api/internal/crawler-settings"
+        headers = {
+            "X-Internal-Key": self.internal_key,
+            "Accept": "application/json"
+        }
+        try:
+            resp = requests.get(url, headers=headers, timeout=self.http_timeout_sec)
+            resp.raise_for_status()
+            res_json = resp.json()
+            if res_json.get("success") and res_json.get("data"):
+                data = res_json["data"]
+                # 백엔드에 쿠키가 있을 경우에만 동적으로 덮어씀
+                if data.get("nidAut"):
+                    self.naver_nid_aut = data["nidAut"].strip()
+                if data.get("nidSes"):
+                    self.naver_nid_ses = data["nidSes"].strip()
+        except Exception as e:
+            # 백엔드 API 장애 시 즉시 중단하지 않고, 로컬 .env의 백업 쿠키로 동작하도록 Fallback 지원
+            print(f"[config warning] 백엔드 설정 로드 실패 (로컬 세션으로 작동): {e}", file=sys.stderr)
+
     def validate(self) -> None:
         """필수 설정 누락 시 ValueError(메시지에 누락 키 전부 나열) — fail fast."""
         missing: list[str] = []
@@ -104,5 +132,7 @@ class Settings:
 def load_settings() -> Settings:
     s = Settings()
     s.load_targets()
+    s.load_dynamic_settings()
     s.validate()
     return s
+

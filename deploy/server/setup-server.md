@@ -475,6 +475,62 @@ sudo nginx -t && sudo systemctl reload nginx
 
 ---
 
+## 15. 크롤러 셋업 (선택)
+
+수집 및 AI 분석용 Python 크롤러(`caskbycask-crawler`)를 동일 인스턴스에 셋업합니다.
+
+### 15-1. 가상환경 패키지 설치
+Ubuntu 24.04에는 Python 3.12가 기본 설치되어 있으므로, 가상환경 구성을 위한 패키지만 추가합니다.
+```bash
+sudo apt-get install -y python3-venv python3-pip
+```
+
+### 15-2. 디렉토리 준비 및 코드 업로드
+```bash
+sudo mkdir -p /app/caskbycask-crawler/{logs,temp}
+sudo chown -R ubuntu:ubuntu /app/caskbycask-crawler
+```
+로컬 PC의 `caskbycask-crawler/` 폴더 내 소스 파일들을 서버의 `/app/caskbycask-crawler/`로 업로드합니다. (`.venv`, `.env`, `targets.json`, `*.db`, `logs/` 등은 제외)
+
+### 15-3. 가상환경 및 라이브러리 설치
+```bash
+cd /app/caskbycask-crawler
+python3 -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+### 15-4. 환경 설정 (`.env`)
+```bash
+cp .env.example .env
+nano .env
+```
+필수 설정값 수정:
+* `CASKBYCASK_API_URL=http://127.0.0.1:8080` (백엔드가 같은 서버이므로 로컬 주소 호출)
+* `CASKBYCASK_INTERNAL_KEY` (서버 `/app/env/api.env` 의 키값과 일치)
+* 경로 4종에 대해 `/app/caskbycask-crawler/...` 설정 유지 확인
+* `OPENAI_API_KEY`, `NAVER_NID_AUT`, `NAVER_NID_SES` 기입
+
+### 15-5. 타겟 등록 및 수동 검증
+`targets.json` 작성 후 수동으로 1회 실행하여 정상적으로 수집이 수행되는지 테스트합니다.
+```bash
+cp targets.example.json targets.json
+nano targets.json
+python3 main.py
+tail -n 50 /app/caskbycask-crawler/logs/crawler.log
+```
+
+### 15-6. cron 스케줄러 등록
+20분 주기로 자동 크롤링이 작동하도록 `ubuntu` 유저의 crontab에 등록합니다. (`run.sh` 내부에서 `flock`을 통한 중복 실행 차단 처리가 되어 있어 겹치지 않습니다.)
+```bash
+chmod +x /app/caskbycask-crawler/run.sh
+( crontab -l 2>/dev/null | grep -v 'caskbycask-crawler/run.sh'; \
+  echo "*/20 * * * * /app/caskbycask-crawler/run.sh >> /app/caskbycask-crawler/logs/cron.log 2>&1" ) | crontab -
+```
+
+---
+
 ## 셋업 완료 체크리스트
 
 - [ ] `/app` 및 하위 전부 `ubuntu:ubuntu` 소유 (`ls -ld /app/*`)
@@ -485,3 +541,5 @@ sudo nginx -t && sudo systemctl reload nginx
 - [ ] backup-db cron 등록 + 수동 1회 성공
 - [ ] `caskbycask-api` 기동 + actuator health UP + 사이트 정상 로딩
 - [ ] (선택) Prometheus + Grafana 기동 + `monitoring.caskbycask.net` 접속 + 대시보드 정상 표시
+- [ ] (선택) 크롤러 패키지 설치 및 `.env`/`targets.json` 설정 + cron 20분 주기 작동 설정 완료
+

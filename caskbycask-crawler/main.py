@@ -117,9 +117,16 @@ def run() -> int:
             scraper = detail_scrapers[post.site]
             detail = scraper.fetch_detail(post)
 
+            # 권한/로그인 요구 대상글인 경우 예외 발생시키지 않고 부드럽게 PASS 후 DB 마킹
+            if detail.content_text == "[AUTH_REQUIRED]":
+                store.mark(post.key, post.site, post.url, "SKIPPED")
+                stats["skipped"] += 1
+                continue
+
             # 4) 이미지 임시 디렉토리 다운로드 → base64 인코딩 → 분석 직후 디렉토리 삭제
             post_hash = ImageHandler.make_post_hash(post.url)
             image_dir = images.download(detail.image_urls, post_hash, referer=post.url)
+
             try:
                 data_urls = images.encode_dir(image_dir)
                 # 5) AI 분석

@@ -71,8 +71,18 @@ class NaverCafeScraper(BaseScraper):
 
         posts: dict[str, RawPost] = {}
         for page in range(1, pages + 1):
-            url = _LIST_URL.format(club=club, menu=menu, page=page)
-            resp = self._get(url)
+            url = "https://apis.naver.com/cafe-web/cafe2/ArticleListV2.json"
+            params = {
+                "search.clubid": club,
+                "search.page": page,
+                "search.perPage": 20,
+                "search.queryType": "lastArticle"
+            }
+            # menu_id 가 '0'(전체글보기)이 아니거나 빈 값이 아닐 때만 파라미터에 추가 (500 오류 방지)
+            if menu and menu != "0":
+                params["search.menuid"] = menu
+
+            resp = self._get(url, params=params)
             if resp is None:
                 continue
             try:
@@ -80,6 +90,7 @@ class NaverCafeScraper(BaseScraper):
             except ValueError as e:
                 log.warning("[cafe:%s] 목록 JSON 파싱 실패 p%s: %s", club, page, e)
                 continue
+
 
             article_list = _dig(
                 data,
@@ -129,6 +140,19 @@ class NaverCafeScraper(BaseScraper):
         except ValueError:
             return PostDetail(raw=post, content_text="", image_urls=[])
 
+        # 권한 부족 및 로그인 요구 감지
+        error_code = _dig(data, ("message", "error", "code"), ("error", "code"))
+        error_msg = _dig(data, ("message", "error", "msg"), ("error", "msg"))
+        status = _dig(data, ("message", "status"), ("status",))
+
+        if status in ("401", "403") or error_code:
+            log.warning(
+                "[naver_cafe:%s] 게시글 권한 부족 또는 로그인 필요 (status=%s, code=%s, msg=%s) — PASS 처리",
+                post.post_id, status, error_code, error_msg
+            )
+            # 메인 루프에서 건너뛰고 SKIPPED 처리할 수 있도록 특수 토큰 반환
+            return PostDetail(raw=post, content_text="[AUTH_REQUIRED]", image_urls=[])
+
         content_html = _dig(
             data,
             ("message", "result", "article", "contentHtml"),
@@ -138,6 +162,7 @@ class NaverCafeScraper(BaseScraper):
         ) or ""
 
         soup = BeautifulSoup(content_html, "html.parser")
+
         text = soup.get_text("\n", strip=True)[:MAX_CONTENT_CHARS]
 
         image_urls: list[str] = []
