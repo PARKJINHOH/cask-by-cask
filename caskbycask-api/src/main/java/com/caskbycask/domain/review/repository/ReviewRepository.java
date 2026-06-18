@@ -23,11 +23,11 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
             SELECT r FROM Review r
             JOIN FETCH r.user
             JOIN FETCH r.spirit
-            WHERE r.spirit.id = :spiritId AND r.isHidden = false
+            WHERE (r.spirit.id = :spiritId OR r.spirit.parent.id = :spiritId) AND r.isHidden = false
             """,
             countQuery = """
             SELECT COUNT(r) FROM Review r
-            WHERE r.spirit.id = :spiritId AND r.isHidden = false
+            WHERE (r.spirit.id = :spiritId OR r.spirit.parent.id = :spiritId) AND r.isHidden = false
             """)
     Page<Review> findBySpiritForDisplay(@Param("spiritId") Long spiritId, Pageable pageable);
 

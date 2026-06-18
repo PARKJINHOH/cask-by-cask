@@ -671,12 +671,12 @@ export default function SpiritDetailPage() {
   // Redirect to parent if visited child variant directamente
   useEffect(() => {
     if (parentSpirit && parentSpirit.parentId != null) {
-      navigate(`/${i18n.language}/spirits/${parentSpirit.parentId}`, {
+      navigate(`/spirits/${parentSpirit.parentId}`, {
         replace: true,
         state: { activeVariantId: parentSpirit.id }
       })
     }
-  }, [parentSpirit, navigate, i18n.language])
+  }, [parentSpirit, navigate])
 
   // Initialize activeVariantId from location state or default to variant #1
   useEffect(() => {

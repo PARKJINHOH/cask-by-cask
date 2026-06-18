@@ -227,6 +227,17 @@ function ReportCard({ report: r }: { report: AdminPriceReport }) {
       {r.status === 'REJECTED' && r.rejectReason && (
         <p className="text-xs text-red-500 mt-1">반려 사유: {r.rejectReason}</p>
       )}
+      {/* 에러 메시지 표시 */}
+      {approve.isError && (
+        <p className="text-xs text-red-600 mt-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+          ⚠️ {(approve.error as any)?.response?.data?.message || '승인 처리 중 오류가 발생했습니다.'}
+        </p>
+      )}
+      {reject.isError && (
+        <p className="text-xs text-red-600 mt-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+          ⚠️ {(reject.error as any)?.response?.data?.message || '반려 처리 중 오류가 발생했습니다.'}
+        </p>
+      )}
     </div>
   )
 }
