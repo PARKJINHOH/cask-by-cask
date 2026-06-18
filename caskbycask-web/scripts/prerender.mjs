@@ -63,6 +63,17 @@ async function startStaticServer() {
 async function renderRoute(browser, baseUrl, route) {
   const page = await browser.newPage()
   page.setDefaultNavigationTimeout(NAV_TIMEOUT_MS)
+
+  // navigator.language 및 navigator.languages 를 ko-KR 로 강제 재정의
+  await page.evaluateOnNewDocument(() => {
+    Object.defineProperty(navigator, 'language', {
+      get: () => 'ko-KR',
+    });
+    Object.defineProperty(navigator, 'languages', {
+      get: () => ['ko-KR', 'ko'],
+    });
+  });
+
   // 봇처럼 동작 — desktop UA + 한국어
   await page.setUserAgent(
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) CaskByCaskPrerender/1.0',
@@ -190,7 +201,11 @@ async function main() {
 
   const browser = await puppeteer.launch({
     headless: 'new',
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--lang=ko-KR', // 브라우저 언어 기본값 한국어로 지정
+    ],
   })
 
   try {
