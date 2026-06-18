@@ -74,7 +74,18 @@ class Settings:
         path = Path(self.targets_path)
         if not path.exists():
             return
-        data = json.loads(path.read_text(encoding="utf-8"))
+        raw = path.read_text(encoding="utf-8")
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError as e:
+            line = ""
+            lines = raw.splitlines()
+            if 0 < e.lineno <= len(lines):
+                line = lines[e.lineno - 1].strip()
+            detail = f"{path}: line {e.lineno} column {e.colno}: {e.msg}"
+            if line:
+                detail += f" near `{line[:120]}`"
+            raise ValueError(f"targets.json JSON parse failed: {detail}") from e
         self.dcinside_targets = [t for t in data.get("dcinside", []) if not str(t.get("board_id", "")).startswith("_")]
         self.naver_cafe_targets = data.get("naver_cafe", [])
 

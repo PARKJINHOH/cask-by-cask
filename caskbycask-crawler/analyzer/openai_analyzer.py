@@ -7,6 +7,7 @@ OPENAI_BASE_URL 로 지정. 다른 벤더로 갈아탈 땐 analyze() 시그니�
 from __future__ import annotations
 
 import json
+import time
 
 from openai import OpenAI
 
@@ -16,11 +17,94 @@ from models import AnalysisResult, PostDetail
 
 log = get_logger("analyzer")
 
+_HIGH_DEMAND_RETRIES_PER_PHASE = 3
+_HIGH_DEMAND_RETRY_DELAY_SEC = 30
+_HIGH_DEMAND_COOLDOWN_SEC = 60
+
+
+def _is_high_demand_503(error: Exception) -> bool:
+    message = str(error).lower()
+    status_code = getattr(error, "status_code", None)
+    return (
+        (status_code == 503 or "503" in message)
+        and ("unavailable" in message or "high demand" in message)
+    )
+
 
 class OpenAIAnalyzer:
     def __init__(self, api_key: str, model: str = "gpt-4o-mini", base_url: str = ""):
         self.model = model
-        self.client = OpenAI(api_key=api_key, base_url=base_url or None)
+        self.client = OpenAI(
+            api_key=api_key,
+            base_url=base_url or "https://api.openai.com/v1",
+            max_retries=0,
+        )
+
+    def _create_completion(self, content_parts: list[dict], post_key: str):
+        first_phase_retries = _HIGH_DEMAND_RETRIES_PER_PHASE
+        second_phase_retries = _HIGH_DEMAND_RETRIES_PER_PHASE
+        cooldown_done = False
+
+        while True:
+            try:
+                return self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[
+                        {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "user", "content": content_parts},
+                    ],
+                    response_format={"type": "json_object"},
+                    temperature=0.1,
+                    max_tokens=700,
+                )
+            except Exception as e:  # noqa: BLE001
+                if not _is_high_demand_503(e):
+                    raise
+
+                if first_phase_retries > 0:
+                    retry_no = _HIGH_DEMAND_RETRIES_PER_PHASE - first_phase_retries + 1
+                    log.warning(
+                        "OpenAI/Gemini 503 high demand %s: %d초 후 재시도(%d/%d)",
+                        post_key,
+                        _HIGH_DEMAND_RETRY_DELAY_SEC,
+                        retry_no,
+                        _HIGH_DEMAND_RETRIES_PER_PHASE,
+                    )
+                    first_phase_retries -= 1
+                    time.sleep(_HIGH_DEMAND_RETRY_DELAY_SEC)
+                    continue
+
+                if not cooldown_done:
+                    log.warning(
+                        "OpenAI/Gemini 503 high demand %s: 1차 재시도 실패, %d초 후 2차 재시도 시작",
+                        post_key,
+                        _HIGH_DEMAND_COOLDOWN_SEC,
+                    )
+                    cooldown_done = True
+                    time.sleep(_HIGH_DEMAND_COOLDOWN_SEC)
+
+                if second_phase_retries > 0:
+                    retry_no = _HIGH_DEMAND_RETRIES_PER_PHASE - second_phase_retries + 1
+                    if retry_no > 1:
+                        log.warning(
+                            "OpenAI/Gemini 503 high demand %s: %d초 후 2차 재시도(%d/%d)",
+                            post_key,
+                            _HIGH_DEMAND_RETRY_DELAY_SEC,
+                            retry_no,
+                            _HIGH_DEMAND_RETRIES_PER_PHASE,
+                        )
+                        time.sleep(_HIGH_DEMAND_RETRY_DELAY_SEC)
+                    else:
+                        log.warning(
+                            "OpenAI/Gemini 503 high demand %s: 2차 재시도 시작(%d/%d)",
+                            post_key,
+                            retry_no,
+                            _HIGH_DEMAND_RETRIES_PER_PHASE,
+                        )
+                    second_phase_retries -= 1
+                    continue
+
+                raise
 
     def analyze(self, detail: PostDetail, image_data_urls: list[str]) -> AnalysisResult | None:
         """게시글(텍스트+이미지)을 분석해 AnalysisResult 반환. API/파싱 실패 시 None.
@@ -37,16 +121,7 @@ class OpenAIAnalyzer:
             })
 
         try:
-            resp = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": content_parts},
-                ],
-                response_format={"type": "json_object"},
-                temperature=0.1,
-                max_tokens=700,
-            )
+            resp = self._create_completion(content_parts, detail.raw.key)
         except Exception as e:  # noqa: BLE001
             log.error("OpenAI 호출 실패 %s: %s", detail.raw.key, e)
             return None

@@ -517,9 +517,13 @@ nano .env
 ```bash
 cp targets.example.json targets.json
 nano targets.json
+python3 -m json.tool targets.json
 python3 main.py
 tail -n 50 /app/caskbycask-crawler/logs/crawler.log
 ```
+`TypeError: Client.__init__() got an unexpected keyword argument 'proxies'`가 발생하면
+가상환경 패키지가 이전 요구사항으로 설치된 상태입니다. `requirements.txt`의 `httpx==0.27.2`
+고정값이 반영되도록 `pip install -r requirements.txt`를 다시 실행합니다.
 
 ### 15-6. cron 스케줄러 등록
 20분 주기로 자동 크롤링이 작동하도록 `ubuntu` 유저의 crontab에 등록합니다. (`run.sh` 내부에서 `flock`을 통한 중복 실행 차단 처리가 되어 있어 겹치지 않습니다.)

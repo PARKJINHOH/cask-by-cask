@@ -101,10 +101,10 @@ openssl rand -hex 32   # 출력값을 .env 와 백엔드(api.env) 양쪽에 동�
 
 ## 7. 디시 갤러리 `board_id` 찾기
 갤러리 URL 의 `id=` 값입니다.
-- **메이저 갤러리 예시**: `https://gall.dcinside.com/board/lists/?id=whisky` → `whisky` (기본 설정)
-- **마이너 갤러리 예시** (예: `https://gall.dcinside.com/mgallery/board/lists/?id=whiskey`):
+- **위스키 마이너 갤러리 예시**: `https://gall.dcinside.com/mgallery/board/lists/?id=whiskey`
   - `id=` 뒤의 **`whiskey`**가 `board_id`가 됩니다.
-  - URL 경로에 `mgallery`가 들어가 있으므로, `targets.json`에서 `"minor": true` 옵션을 켜 주어야 정상 수집됩니다.
+  - URL 경로에 `mgallery`가 들어가므로 `targets.json`에서 `"minor": true` 옵션을 켜야 합니다.
+- 메이저 갤러리는 URL 경로가 `/board/lists/`이고, `"minor": false` 를 사용합니다.
 
 
 ---
@@ -122,10 +122,19 @@ nano targets.json
 ```bash
 cd /app/caskbycask-crawler
 source .venv/bin/activate
+python3 -m json.tool targets.json
 python3 main.py
 tail -n 50 /app/caskbycask-crawler/logs/crawler.log
 ```
 종료 로그의 `후보/신규/분석/업로드/스킵/오류` 카운트가 정상적으로 기록되는지 확인합니다.
+
+`TypeError: Client.__init__() got an unexpected keyword argument 'proxies'`가 발생하면
+가상환경 패키지가 이전 요구사항으로 설치된 상태입니다. `requirements.txt`의 `httpx==0.27.2`
+고정값이 반영되도록 아래를 다시 실행합니다.
+
+```bash
+pip install -r requirements.txt
+```
 
 ---
 

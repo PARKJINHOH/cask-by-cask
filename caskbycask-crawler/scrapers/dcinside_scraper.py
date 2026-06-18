@@ -1,7 +1,7 @@
 """디시인사이드 갤러리 스크래퍼 (데스크톱 gall.dcinside.com).
 
 수집 대상(예시, targets.json 에서 조정):
-  - 위스키 갤러리       : https://gall.dcinside.com/board/lists/?id=whisky
+  - 위스키 갤러리       : https://gall.dcinside.com/mgallery/board/lists/?id=whiskey
   - 주류 마이너 갤러리  : https://gall.dcinside.com/mgallery/board/lists/?id=alcohol  (minor=true)
 
 공개 갤러리는 비로그인으로 읽히며, 차단/회원전용 대응이 필요하면 DCINSIDE_COOKIE 를 넣는다.
