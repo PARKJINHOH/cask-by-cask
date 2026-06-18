@@ -46,13 +46,22 @@ def build_payload(detail: PostDetail, analysis: AnalysisResult) -> dict:
 
 
 class ApiUploader:
-    def __init__(self, api_url: str, internal_key: str, timeout: int = 15):
+    def __init__(self, api_url: str, internal_key: str, timeout: int = 15, notifier=None):
         self.endpoint = f"{api_url}/api/internal/deals"
         self.headers = {
             "X-Internal-Key": internal_key,
             "Content-Type": "application/json",
         }
         self.timeout = timeout
+        self.notifier = notifier
+
+    def _alert_once(self, key: str, summary: str, body: str, danger: bool = False) -> None:
+        if self.notifier is None:
+            return
+        if danger:
+            self.notifier.danger_once(key, summary, body)
+        else:
+            self.notifier.warning_once(key, summary, body)
 
     def send(self, payload: dict) -> bool:
         """업로드. 실패 시 최대 3회(5초 간격) 재시도. 409(중복)는 재시도 없이 성공 처리."""
@@ -69,6 +78,11 @@ class ApiUploader:
                     time.sleep(_RETRY_INTERVAL_SEC)
                     continue
                 log.error("업로드 최종 실패 %s", source_url)
+                self._alert_once(
+                    "backend_upload_network",
+                    "크롤러 백엔드 업로드 실패",
+                    f"{self.endpoint} 네트워크 오류: {e}. source={source_url}",
+                )
                 return False
 
             if resp.status_code == 409:
@@ -77,6 +91,18 @@ class ApiUploader:
             if 200 <= resp.status_code < 300:
                 log.info("업로드 성공 %s", source_url)
                 return True
+            if resp.status_code in (401, 403):
+                log.error("업로드 인증 실패 %s: %s %s", source_url, resp.status_code, resp.text[:200])
+                self._alert_once(
+                    "backend_upload_auth",
+                    "크롤러 백엔드 API 인증 실패",
+                    (
+                        f"{self.endpoint} 응답 status={resp.status_code}. "
+                        "CASKBYCASK_INTERNAL_KEY 가 백엔드 api.env 값과 일치하는지 확인하세요."
+                    ),
+                    danger=True,
+                )
+                return False
 
             log.warning(
                 "업로드 실패(%d/%d) %s: %s %s",
@@ -86,6 +112,11 @@ class ApiUploader:
                 time.sleep(_RETRY_INTERVAL_SEC)
 
         log.error("업로드 최종 실패 %s", source_url)
+        self._alert_once(
+            f"backend_upload_status:{resp.status_code}",
+            "크롤러 백엔드 업로드 실패",
+            f"{self.endpoint} 응답 status={resp.status_code}, source={source_url}, body={resp.text[:300]}",
+        )
         return False
 
     def upload(self, detail: PostDetail, analysis: AnalysisResult) -> bool:

@@ -32,13 +32,38 @@ def _is_high_demand_503(error: Exception) -> bool:
 
 
 class OpenAIAnalyzer:
-    def __init__(self, api_key: str, model: str = "gpt-4o-mini", base_url: str = ""):
+    def __init__(self, api_key: str, model: str = "gpt-4o-mini", base_url: str = "", notifier=None):
         self.model = model
+        self.notifier = notifier
         self.client = OpenAI(
             api_key=api_key,
             base_url=base_url or "https://api.openai.com/v1",
             max_retries=0,
         )
+
+    def _alert_api_error(self, post_key: str, error: Exception) -> None:
+        if self.notifier is None:
+            return
+        status = getattr(error, "status_code", None)
+        message = str(error)
+        if status in (401, 403):
+            self.notifier.danger_once(
+                "openai_auth",
+                "크롤러 OpenAI API 인증 실패",
+                f"post={post_key}, status={status}. OPENAI_API_KEY 값을 확인하세요.",
+            )
+        elif status == 429:
+            self.notifier.warning_once(
+                "openai_rate_limit",
+                "크롤러 OpenAI API 사용량 제한",
+                f"post={post_key}, status=429. OpenAI quota/rate limit 과 실행 주기를 확인하세요.",
+            )
+        else:
+            self.notifier.warning_once(
+                f"openai_api:{status or 'unknown'}",
+                "크롤러 OpenAI 분석 실패",
+                f"post={post_key}, status={status or '-'}, error={message[:500]}",
+            )
 
     def _create_completion(self, content_parts: list[dict], post_key: str):
         first_phase_retries = _HIGH_DEMAND_RETRIES_PER_PHASE
@@ -124,6 +149,7 @@ class OpenAIAnalyzer:
             resp = self._create_completion(content_parts, detail.raw.key)
         except Exception as e:  # noqa: BLE001
             log.error("OpenAI 호출 실패 %s: %s", detail.raw.key, e)
+            self._alert_api_error(detail.raw.key, e)
             return None
 
         raw_content = resp.choices[0].message.content or ""
@@ -131,6 +157,12 @@ class OpenAIAnalyzer:
             data = json.loads(raw_content)
         except json.JSONDecodeError:
             log.warning("모델 JSON 파싱 실패 %s, 원문=%s", detail.raw.key, raw_content[:200])
+            if self.notifier is not None:
+                self.notifier.warning_once(
+                    "openai_json_parse",
+                    "크롤러 OpenAI 응답 파싱 실패",
+                    f"post={detail.raw.key}, model={self.model}, content={raw_content[:300]}",
+                )
             return None
 
         return AnalysisResult.from_model_json(data)

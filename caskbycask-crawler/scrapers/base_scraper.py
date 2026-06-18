@@ -37,10 +37,11 @@ USER_AGENTS = [
 class BaseScraper:
     site = "base"
 
-    def __init__(self, timeout: int = 10, delay: float = 1.0, cookie: str = ""):
+    def __init__(self, timeout: int = 10, delay: float = 1.0, cookie: str = "", notifier=None):
         self.timeout = timeout
         self.delay_min = max(0.0, delay)
         self.delay_max = self.delay_min + 2.0   # Step 6: 약 1~3초 무작위 간격
+        self.notifier = notifier
         self.session = requests.Session()
         self.session.headers.update({"Accept-Language": "ko-KR,ko;q=0.9,en;q=0.8"})
         if cookie:
@@ -53,6 +54,9 @@ class BaseScraper:
     def fetch_detail(self, post: RawPost) -> PostDetail:
         raise NotImplementedError
 
+    def _handle_request_error(self, url: str, error: requests.RequestException) -> None:
+        return None
+
     # ── 공용 헬퍼 ───────────────────────────────────────────────
     def _get(self, url: str, **kwargs):
         """GET 요청. 매너 딜레이 + UA 로테이션. 실패 시 None 반환(+로그)."""
@@ -64,4 +68,5 @@ class BaseScraper:
             return resp
         except requests.RequestException as e:
             log.warning("[%s] 요청 실패 %s: %s", self.site, url, e)
+            self._handle_request_error(url, e)
             return None

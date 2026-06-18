@@ -38,6 +38,12 @@ class Settings:
     log_path: str = os.getenv("LOG_PATH", "./logs/crawler.log")
     targets_path: str = os.getenv("TARGETS_PATH", "./targets.json")
 
+    # Slack 알림(선택)
+    slack_webhook_url: str = os.getenv("SLACK_WEBHOOK_URL", "").strip()
+    slack_channel: str = os.getenv("SLACK_CHANNEL", "#server-prd").strip()
+    slack_alerts_enabled: bool = field(default_factory=lambda: _bool("SLACK_ALERTS_ENABLED", True))
+    slack_max_alerts_per_run: int = int(os.getenv("SLACK_MAX_ALERTS_PER_RUN", "10"))
+
     # 네이버 인증
     naver_nid_aut: str = os.getenv("NAVER_NID_AUT", "").strip()
     naver_nid_ses: str = os.getenv("NAVER_NID_SES", "").strip()
@@ -60,6 +66,7 @@ class Settings:
     # targets.json 내용
     dcinside_targets: list[dict] = field(default_factory=list)
     naver_cafe_targets: list[dict] = field(default_factory=list)
+    runtime_warnings: list[dict[str, str]] = field(default_factory=list)
 
     @property
     def naver_cookie(self) -> str:
@@ -113,8 +120,26 @@ class Settings:
                     self.naver_nid_aut = data["nidAut"].strip()
                 if data.get("nidSes"):
                     self.naver_nid_ses = data["nidSes"].strip()
+        except requests.HTTPError as e:
+            status = e.response.status_code if e.response is not None else "?"
+            summary = "크롤러 설정 API 호출 실패"
+            hint = "백엔드 상태와 CASKBYCASK_API_URL 을 확인하세요."
+            if status in (401, 403):
+                summary = "크롤러 설정 API 인증 실패"
+                hint = "CASKBYCASK_INTERNAL_KEY 가 백엔드 api.env 값과 일치하는지 확인하세요."
+            self.runtime_warnings.append({
+                "key": "crawler_settings_api",
+                "summary": summary,
+                "body": f"{url} 응답 status={status}. 로컬 .env 쿠키로 fallback 합니다. {hint}",
+            })
+            print(f"[config warning] 백엔드 설정 로드 실패 (로컬 세션으로 작동): {e}", file=sys.stderr)
         except Exception as e:
             # 백엔드 API 장애 시 즉시 중단하지 않고, 로컬 .env의 백업 쿠키로 동작하도록 Fallback 지원
+            self.runtime_warnings.append({
+                "key": "crawler_settings_api",
+                "summary": "크롤러 설정 API 호출 실패",
+                "body": f"{url} 호출 실패: {e}. 로컬 .env 쿠키로 fallback 합니다.",
+            })
             print(f"[config warning] 백엔드 설정 로드 실패 (로컬 세션으로 작동): {e}", file=sys.stderr)
 
     def validate(self) -> None:
@@ -133,7 +158,7 @@ class Settings:
                 missing.append("CASKBYCASK_INTERNAL_KEY")
 
         # 네이버 카페 타깃이 있는데 쿠키가 없으면 수집 불가
-        if self.naver_cafe_targets and not self.naver_cookie:
+        if self.naver_cafe_targets and not (self.naver_nid_aut and self.naver_nid_ses):
             missing.append("NAVER_NID_AUT/NAVER_NID_SES (네이버 카페 타깃 존재)")
 
         if missing:

@@ -10,8 +10,10 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from urllib.parse import parse_qs, urlparse
 
 from bs4 import BeautifulSoup
+from requests import RequestException
 
 from logger import get_logger
 from models import PostDetail, RawPost
@@ -50,8 +52,8 @@ def _dig(obj, *paths):
 class NaverCafeScraper(BaseScraper):
     site = "naver_cafe"
 
-    def __init__(self, timeout: int = 15, delay: float = 1.2, cookie: str = ""):
-        super().__init__(timeout=timeout, delay=delay, cookie=cookie)
+    def __init__(self, timeout: int = 15, delay: float = 1.2, cookie: str = "", notifier=None):
+        super().__init__(timeout=timeout, delay=delay, cookie=cookie, notifier=notifier)
         # 데스크톱 UA + JSON Accept 가 cafe API 와 더 잘 맞는다
         self.session.headers.update({
             "Accept": "application/json, text/plain, */*",
@@ -59,9 +61,62 @@ class NaverCafeScraper(BaseScraper):
         })
         self._authed = bool(cookie)
 
+    def _notify_once(self, key: str, summary: str, body: str, danger: bool = False) -> None:
+        if self.notifier is None:
+            return
+        if danger:
+            self.notifier.danger_once(key, summary, body)
+        else:
+            self.notifier.warning_once(key, summary, body)
+
+    def _club_from_url(self, url: str) -> str:
+        parsed = urlparse(url)
+        query = parse_qs(parsed.query)
+        if "search.clubid" in query and query["search.clubid"]:
+            return query["search.clubid"][0]
+        parts = [p for p in parsed.path.split("/") if p]
+        if "cafes" in parts:
+            idx = parts.index("cafes")
+            if idx + 1 < len(parts):
+                return parts[idx + 1]
+        return "unknown"
+
+    def _alert_auth(self, stage: str, club: str, status=None, code=None, msg=None) -> None:
+        body = (
+            f"stage={stage}, club_id={club}, status={status or '-'}, code={code or '-'}, "
+            f"msg={msg or '-'} / NAVER_NID_AUT, NAVER_NID_SES 쿠키를 갱신하세요."
+        )
+        self._notify_once(
+            "naver_cafe_auth",
+            "크롤러 네이버 카페 인증 실패",
+            body,
+            danger=True,
+        )
+
+    def _handle_request_error(self, url: str, error: RequestException) -> None:
+        response = getattr(error, "response", None)
+        status = getattr(response, "status_code", None)
+        request = getattr(error, "request", None)
+        request_url = getattr(request, "url", url)
+        club = self._club_from_url(request_url)
+        if status in (401, 403):
+            self._alert_auth("http", club, status=status, msg=str(error))
+        elif status == 429:
+            self._notify_once(
+                "naver_cafe_rate_limited",
+                "크롤러 네이버 카페 요청 제한",
+                f"club_id={club}, status=429 / REQUEST_DELAY_SEC 상향 또는 실행 주기 조정을 검토하세요.",
+            )
+
     def fetch_list(self, target: dict) -> list[RawPost]:
         if not self._authed:
             log.error("네이버 쿠키(NID_AUT/NID_SES) 미설정 — 카페 수집 건너뜀")
+            self._notify_once(
+                "naver_cafe_missing_cookie",
+                "크롤러 네이버 카페 쿠키 없음",
+                "NAVER_NID_AUT, NAVER_NID_SES 가 비어 있어 네이버 카페 수집을 건너뜁니다.",
+                danger=True,
+            )
             return []
 
         club = str(target["club_id"])
@@ -89,6 +144,17 @@ class NaverCafeScraper(BaseScraper):
                 data = resp.json()
             except ValueError as e:
                 log.warning("[cafe:%s] 목록 JSON 파싱 실패 p%s: %s", club, page, e)
+                continue
+
+            error_code = _dig(data, ("message", "error", "code"), ("error", "code"))
+            error_msg = _dig(data, ("message", "error", "msg"), ("error", "msg"))
+            status = _dig(data, ("message", "status"), ("status",))
+            if status in ("401", "403") or error_code:
+                log.warning(
+                    "[naver_cafe:%s] 목록 권한 부족 또는 로그인 필요 (status=%s, code=%s, msg=%s)",
+                    club, status, error_code, error_msg,
+                )
+                self._alert_auth("list", club, status=status, code=error_code, msg=error_msg)
                 continue
 
 
@@ -150,6 +216,7 @@ class NaverCafeScraper(BaseScraper):
                 "[naver_cafe:%s] 게시글 권한 부족 또는 로그인 필요 (status=%s, code=%s, msg=%s) — PASS 처리",
                 post.post_id, status, error_code, error_msg
             )
+            self._alert_auth("detail", post.board_id, status=status, code=error_code, msg=error_msg)
             # 메인 루프에서 건너뛰고 SKIPPED 처리할 수 있도록 특수 토큰 반환
             return PostDetail(raw=post, content_text="[AUTH_REQUIRED]", image_urls=[])
 

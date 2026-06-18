@@ -8,7 +8,9 @@
 from __future__ import annotations
 
 import sys
+import traceback
 
+from alerts.slack_notifier import SlackNotifier
 from analyzer.openai_analyzer import OpenAIAnalyzer
 from config import load_settings
 from db.seen_posts import SeenPostStore
@@ -21,7 +23,7 @@ from storage.image_handler import ImageHandler
 from uploader.api_uploader import ApiUploader
 
 
-def collect_candidates(settings, log) -> list[RawPost]:
+def collect_candidates(settings, log, notifier: SlackNotifier) -> list[RawPost]:
     """모든 타깃의 목록을 모아 RawPost 후보 리스트로 반환."""
     candidates: list[RawPost] = []
 
@@ -36,23 +38,34 @@ def collect_candidates(settings, log) -> list[RawPost]:
                 candidates += dc.fetch_list(target)
             except Exception as e:  # noqa: BLE001
                 log.warning("dcinside 목록 실패 %s: %s", target.get("board_id"), e)
+                notifier.warning_once(
+                    "dcinside_list_error",
+                    "크롤러 디시 목록 수집 실패",
+                    f"board_id={target.get('board_id')}, error={e}",
+                )
 
     if settings.naver_cafe_targets:
         nc = NaverCafeScraper(
             timeout=settings.http_timeout_sec,
             delay=settings.request_delay_sec,
             cookie=settings.naver_cookie,
+            notifier=notifier,
         )
         for target in settings.naver_cafe_targets:
             try:
                 candidates += nc.fetch_list(target)
             except Exception as e:  # noqa: BLE001
                 log.warning("naver_cafe 목록 실패 %s: %s", target.get("club_id"), e)
+                notifier.warning_once(
+                    "naver_cafe_list_error",
+                    "크롤러 네이버 카페 목록 수집 실패",
+                    f"club_id={target.get('club_id')}, error={e}",
+                )
 
     return candidates
 
 
-def make_detail_scraper(settings):
+def make_detail_scraper(settings, notifier: SlackNotifier):
     """site → 본문 스크래퍼 인스턴스 매핑(재사용)."""
     return {
         "dcinside": DcinsideScraper(
@@ -61,18 +74,37 @@ def make_detail_scraper(settings):
         ),
         "naver_cafe": NaverCafeScraper(
             timeout=settings.http_timeout_sec, delay=settings.request_delay_sec,
-            cookie=settings.naver_cookie,
+            cookie=settings.naver_cookie, notifier=notifier,
         ),
     }
 
 
 def run() -> int:
     settings = load_settings()
+    notifier = SlackNotifier(
+        webhook_url=settings.slack_webhook_url,
+        channel=settings.slack_channel,
+        enabled=settings.slack_alerts_enabled,
+        max_per_run=settings.slack_max_alerts_per_run,
+        timeout_sec=min(settings.http_timeout_sec, 5),
+    )
     log = setup_logging(settings.log_path)
     log.info("=== 핫딜 수집 시작 (dry_run=%s) ===", settings.dry_run)
 
+    for warning in settings.runtime_warnings:
+        notifier.warning_once(
+            warning["key"],
+            warning["summary"],
+            warning["body"],
+        )
+
     if not settings.dcinside_targets and not settings.naver_cafe_targets:
         log.error("수집 대상(targets.json)이 비어 있음 — 종료")
+        notifier.danger_once(
+            "crawler_no_targets",
+            "크롤러 수집 대상 없음",
+            f"targets.json 경로={settings.targets_path}. dcinside/naver_cafe 대상이 모두 비어 있습니다.",
+        )
         return 1
 
     store = SeenPostStore(settings.db_path)
@@ -85,12 +117,12 @@ def run() -> int:
         max_images=settings.max_images_per_post,
     )
     analyzer = OpenAIAnalyzer(
-        settings.openai_api_key, settings.openai_model, settings.openai_base_url,
+        settings.openai_api_key, settings.openai_model, settings.openai_base_url, notifier=notifier,
     )
-    uploader = ApiUploader(settings.api_url, settings.internal_key, settings.http_timeout_sec)
-    detail_scrapers = make_detail_scraper(settings)
+    uploader = ApiUploader(settings.api_url, settings.internal_key, settings.http_timeout_sec, notifier=notifier)
+    detail_scrapers = make_detail_scraper(settings, notifier)
 
-    candidates = collect_candidates(settings, log)
+    candidates = collect_candidates(settings, log, notifier)
     log.info("후보 총 %d건 수집", len(candidates))
 
     stats = {"filtered": 0, "seen": 0, "analyzed": 0, "uploaded": 0, "skipped": 0, "error": 0}
@@ -166,6 +198,11 @@ def run() -> int:
         except Exception as e:  # noqa: BLE001
             # 처리 중 예외 → 마킹 안 함, 다음 실행에 재시도
             log.exception("게시글 처리 실패 %s: %s", post.key, e)
+            notifier.warning_once(
+                "post_processing_error",
+                "크롤러 게시글 처리 실패",
+                f"post={post.key}, url={post.url}, error={e}",
+            )
             stats["error"] += 1
 
     store.close()
@@ -174,6 +211,15 @@ def run() -> int:
         len(candidates), new_count, stats["filtered"], stats["seen"],
         stats["analyzed"], stats["uploaded"], stats["skipped"], stats["error"],
     )
+    if stats["error"] > 0:
+        notifier.warning_once(
+            "crawler_run_errors",
+            "크롤러 실행 오류 발생",
+            (
+                f"후보={len(candidates)}, 신규={new_count}, 분석={stats['analyzed']}, "
+                f"업로드={stats['uploaded']}, 스킵={stats['skipped']}, 오류={stats['error']}"
+            ),
+        )
     return 0
 
 
@@ -183,4 +229,18 @@ if __name__ == "__main__":
     except ValueError as e:
         # 필수 환경설정 누락 등 — 로깅 설정 이전에 날 수 있어 stderr 로 직접 출력
         print(f"[config error] {e}", file=sys.stderr)
+        SlackNotifier.from_env().danger_once(
+            "crawler_config_error",
+            "크롤러 설정 오류",
+            str(e),
+        )
         sys.exit(2)
+    except Exception as e:  # noqa: BLE001
+        print(f"[crawler fatal] {e}", file=sys.stderr)
+        traceback.print_exc()
+        SlackNotifier.from_env().danger_once(
+            "crawler_fatal_error",
+            "크롤러 치명 오류",
+            str(e),
+        )
+        sys.exit(1)

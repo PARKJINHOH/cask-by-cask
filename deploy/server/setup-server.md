@@ -511,6 +511,7 @@ nano .env
 * `CASKBYCASK_INTERNAL_KEY` (서버 `/app/env/api.env` 의 키값과 일치)
 * 경로 4종에 대해 `/app/caskbycask-crawler/...` 설정 유지 확인
 * `OPENAI_API_KEY`, `NAVER_NID_AUT`, `NAVER_NID_SES` 기입
+* (선택) `SLACK_WEBHOOK_URL`, `SLACK_CHANNEL=#server-prd` 기입 — 네이버 카페/API/OpenAI 문제 알림
 
 ### 15-5. 타겟 등록 및 수동 검증
 `targets.json` 작성 후 수동으로 1회 실행하여 정상적으로 수집이 수행되는지 테스트합니다.

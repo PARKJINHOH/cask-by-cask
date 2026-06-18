@@ -441,6 +441,7 @@ sudo systemctl reload prometheus || sudo kill -HUP $(pidof prometheus)
 | **API 비정상 종료** | 크래시·OOM·비정상 exit (`systemctl stop`/배포 재시작은 제외) | `notify-systemd.sh` (ExecStopPost) | 서버 |
 | **API 기동** | 서비스 시작(배포·장애복구) | `notify-systemd.sh` (ExecStartPost) | 서버 |
 | **디스크/SSL** | 디스크 임계 초과·SSL 만료 임박 | `check-resources.sh` | 서버(cron) |
+| **크롤러 장애** | 네이버 카페 쿠키/인증, 내부 API 토큰, OpenAI 인증·quota, 게시글 처리 오류 | `caskbycask-crawler/alerts/slack_notifier.py` | 서버(cron) |
 | ~~서비스 다운~~ ⏸️보류 | `/healthz` 무응답 = VM 통째 다운 | `synology/healthcheck.sh` | 시놀로지 |
 
 > ⏸️ **서비스 다운(외부 헬스체크)은 현재 보류.** 이 알람은 크롤러용 시놀로지 DS220+ 가 상시 켜져 있다는 전제인데, `caskbycask-crawler` 가 아직 운영에 반영되지 않았다. 크롤러를 운영에 올릴 때 함께 활성화한다(5번 절차). 그 전까지 **VM 통째 다운 감지는 공백** — 서버 내부 알람(ERROR·종료·디스크)은 VM 이 죽으면 못 뜨므로, 필요하면 임시로 UptimeRobot 등 무료 외부 모니터로 메울 수 있다.
@@ -463,7 +464,11 @@ crontab -e
 # 4) GitHub repo Secret 에 SLACK_WEBHOOK_URL 등록 (배포 결과 알림)
 #    Settings > Secrets and variables > Actions > New repository secret
 
-# 5) ⏸️ 보류 — 외부 헬스체크(synology/healthcheck.sh)는 caskbycask-crawler 를
+# 5) 크롤러 알림: /app/caskbycask-crawler/.env 에도 같은 webhook 등록
+#    SLACK_WEBHOOK_URL=https://hooks.slack.com/...
+#    SLACK_CHANNEL=#server-prd
+
+# 6) ⏸️ 보류 — 외부 헬스체크(synology/healthcheck.sh)는 caskbycask-crawler 를
 #    운영에 반영해 시놀로지가 상시 가동될 때 활성화한다. 그때:
 #      deploy/synology/healthcheck.sh 복사 → 상단 SLACK_WEBHOOK_URL 채우고
 #      DSM 작업 스케줄러에 5분 간격 등록 (스크립트 헤더 주석 참고)

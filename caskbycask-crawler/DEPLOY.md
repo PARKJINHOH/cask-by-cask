@@ -10,6 +10,7 @@ Oracle Cloud (Ubuntu 24.04 LTS, aarch64 또는 x86_64) 운영 서버 기준.
 - [ ] 백엔드(Oracle Cloud)의 `api.env`에 `CASKBYCASK_INTERNAL_KEY` 설정(크롤러와 동일값)
 - [ ] 네이버 카페 로그인 쿠키(NID_AUT/NID_SES), 수집할 카페의 `club_id`/`menu_id`
 - [ ] 수집할 디시 갤러리 `board_id`
+- [ ] (선택) Slack Incoming Webhook URL (`SLACK_WEBHOOK_URL`)
 
 ---
 
@@ -63,6 +64,8 @@ nano .env      # 또는 vi .env
 | `CASKBYCASK_INTERNAL_KEY` | **백엔드와 동일한** 시크릿(긴 랜덤 문자열) |
 | `NAVER_NID_AUT`, `NAVER_NID_SES` | 네이버 로그인 쿠키 (아래 6번) |
 | `OPENAI_MODEL` | 분석 모델. 기본 `gpt-4o-mini` |
+| `SLACK_WEBHOOK_URL` | 선택. 네이버 카페/API/OpenAI 문제를 Slack으로 알림 |
+| `SLACK_CHANNEL` | 선택. 기본 `#server-prd` |
 
 경로 설정 (Ubuntu 서버 경로에 맞춤):
 ```properties
@@ -73,6 +76,7 @@ TARGETS_PATH=/app/caskbycask-crawler/targets.json
 ```
 
 > 우선 `DRY_RUN=true` 로 두고 분석만 확인한 뒤, 정상 동작하면 `false` 로 바꾼다.
+> Slack 알림은 `SLACK_WEBHOOK_URL` 이 비어 있으면 자동 비활성화된다.
 
 ### 내부 키 생성 예
 ```bash
@@ -161,6 +165,7 @@ pip install -r requirements.txt
 | 카페 수집 0건 | NID 쿠키 만료 → 6번 재발급. `club_id/menu_id` 확인 |
 | 디시 수집 0건 | 마크업 변경 가능 → `dcinside_scraper.py` 셀렉터·URL 상수 점검 |
 | `업로드 실패 401/403` | `CASKBYCASK_INTERNAL_KEY` 가 백엔드(`api.env`)와 정확하게 일치하는지 |
+| Slack 알림이 안 옴 | `SLACK_WEBHOOK_URL` 값, Slack Incoming Webhook 앱의 채널 권한, `SLACK_ALERTS_ENABLED=true` 확인 |
 | OpenAI 비용 급증 | `MAX_NEW_POSTS_PER_RUN`, `MAX_IMAGES_PER_POST` 낮추기 |
 | 차단/429 | `REQUEST_DELAY_SEC` 상향 (예: 2.0~3.0) |
 | 로그 위치 | `/app/caskbycask-crawler/logs/crawler.log` |
