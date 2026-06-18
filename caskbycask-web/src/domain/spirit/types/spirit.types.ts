@@ -9,6 +9,8 @@ export interface SpiritListItem {
   category: SpiritCategory
   country: string | null
   abv: number | null
+  abvMin?: number | null
+  abvMax?: number | null
   avgScore: number | null
   reviewCount: number
   primaryImageUrl: string | null
@@ -38,6 +40,7 @@ export interface SpiritDetail extends SpiritListItem {
   parentId?: number | null
   variantType?: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE'
   variantValue?: string | null
+  variantValueEn?: string | null
   abvMin?: number | null
   abvMax?: number | null
   variants: SpiritVariant[]
@@ -67,6 +70,7 @@ export interface SpiritVariant {
   primaryImageUrl: string | null
   variantType?: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE'
   variantValue?: string | null
+  variantValueEn?: string | null
 }
 
 // ── 카테고리 상세 Enum 타입 ────────────────────────────────────

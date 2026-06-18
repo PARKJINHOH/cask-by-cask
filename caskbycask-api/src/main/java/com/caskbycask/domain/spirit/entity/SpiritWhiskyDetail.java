@@ -88,9 +88,9 @@ public class SpiritWhiskyDetail {
         this.isSingleCask        = isSingleCask;
         this.isCaskStrength      = isCaskStrength;
         this.isPeated            = isPeated;
-        this.phenolPpm           = isPeated ? phenolPpm : null;
-        this.phenolPpmMin        = isPeated ? phenolPpmMin : null;
-        this.phenolPpmMax        = isPeated ? phenolPpmMax : null;
+        this.phenolPpm           = Boolean.TRUE.equals(isPeated) ? phenolPpm : null;
+        this.phenolPpmMin        = Boolean.TRUE.equals(isPeated) ? phenolPpmMin : null;
+        this.phenolPpmMax        = Boolean.TRUE.equals(isPeated) ? phenolPpmMax : null;
         this.extraData           = extraData;
     }
 }

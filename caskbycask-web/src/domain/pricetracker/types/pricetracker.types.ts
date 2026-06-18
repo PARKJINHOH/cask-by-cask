@@ -1,4 +1,4 @@
-export type StoreType = 'DOMESTIC' | 'DUTYFREE'
+export type StoreType = 'DOMESTIC' | 'OVERSEAS' | 'DUTYFREE'
 export type PriceCurrency = 'KRW' | 'USD'
 export type BucketType = 'INDIVIDUAL' | 'WEEKLY'
 export type PriceReportReportReason = 'FALSE_PRICE' | 'DUPLICATE' | 'BAD_IMAGE' | 'OTHER'
@@ -43,6 +43,9 @@ export interface PriceReportChartDetail {
   publicImageUrls: string[]
   purchasedAt: string | null
   discountItems: DiscountItemDetail[]
+  isHotDeal?: boolean
+  sourceSite?: string | null
+  sourceUrl?: string | null
 }
 
 export interface StoreSearchResult {

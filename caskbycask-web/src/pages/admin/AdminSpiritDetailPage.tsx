@@ -16,12 +16,8 @@ import {
   useDeleteSpiritImage,
   useSetPrimarySpiritImage,
   useReorderSpiritImages,
-  useAdminSpiritVariants,
-  useAddSpiritVariant,
-  useRemoveSpiritVariant,
 } from '@/domain/admin/hooks/useAdminSpirits'
-import { adminSpiritApi } from '@/domain/admin/api/adminSpiritApi'
-import type { AdminSpiritImageItem, AdminSpiritItem } from '@/domain/admin/types/admin.types'
+import type { AdminSpiritImageItem } from '@/domain/admin/types/admin.types'
 import SpiritFormFields, { useSpiritForm, CARD } from '@/domain/admin/components/SpiritFormFields'
 import Toast from '@/shared/components/Toast'
 import { useToast } from '@/shared/hooks/useToast'
@@ -235,183 +231,7 @@ function SpiritImageSection({ spiritId, images }: { spiritId: number; images: Ad
   )
 }
 
-// ── 연관 술(다른 배치·병입) 섹션 — 이미지 아래, 가로 영역 ───────────
-function SpiritVariantsSection({ spiritId }: { spiritId: number }) {
-  const { data: variants = [], isLoading } = useAdminSpiritVariants(spiritId)
-  const addVariant = useAddSpiritVariant()
-  const removeVariant = useRemoveSpiritVariant()
 
-  const [keyword, setKeyword] = useState('')
-  const [results, setResults] = useState<AdminSpiritItem[]>([])
-  const [searching, setSearching] = useState(false)
-  const [open, setOpen] = useState(false)
-  const boxRef = useRef<HTMLDivElement>(null)
-
-  const linkedIds = new Set(variants.map((v) => v.id))
-
-  // 디바운스 검색 (관리자 술 목록 재사용)
-  useEffect(() => {
-    const q = keyword.trim()
-    if (q.length < 1) { setResults([]); setSearching(false); return }
-    setSearching(true)
-    const timer = setTimeout(async () => {
-      try {
-        const res = await adminSpiritApi.list({ keyword: q, page: 0, size: 8 })
-        setResults(res.data.data?.content ?? [])
-      } catch {
-        setResults([])
-      } finally {
-        setSearching(false)
-      }
-    }, 300)
-    return () => clearTimeout(timer)
-  }, [keyword])
-
-  // 바깥 클릭 시 드롭다운 닫기
-  useEffect(() => {
-    const onDown = (e: MouseEvent) => {
-      if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', onDown)
-    return () => document.removeEventListener('mousedown', onDown)
-  }, [])
-
-  const handleAdd = (target: AdminSpiritItem) => {
-    addVariant.mutate(
-      { id: spiritId, targetId: target.id },
-      { onSuccess: () => { setKeyword(''); setResults([]); setOpen(false) } },
-    )
-  }
-
-  const handleRemove = (targetId: number) => {
-    removeVariant.mutate({ id: spiritId, targetId })
-  }
-
-  return (
-    <div className={CARD}>
-      <div>
-        <h3 className="text-sm font-semibold text-neutral-700">연관 술 (다른 배치·병입)</h3>
-        <p className="mt-0.5 text-xs text-neutral-400">
-          이름이 같으면 자동 연결됩니다. 아래 검색으로 다른 술을 직접 추가하거나, ✕ 로 제거할 수 있어요. (연결은 양방향)
-        </p>
-      </div>
-
-      {/* 검색 추가 */}
-      <div ref={boxRef} className="relative">
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-neutral-200 bg-white focus-within:border-amber-400">
-          <svg className="w-4 h-4 text-neutral-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-          <input
-            type="text"
-            value={keyword}
-            onChange={(e) => { setKeyword(e.target.value); setOpen(true) }}
-            onFocus={() => setOpen(true)}
-            placeholder="연관시킬 술 이름 검색…"
-            className="flex-1 text-sm outline-none bg-transparent"
-          />
-        </div>
-
-        {open && keyword.trim() && (
-          <div className="absolute z-20 mt-1 w-full max-h-72 overflow-y-auto rounded-lg border border-neutral-200 bg-white shadow-lg">
-            {searching && (
-              <div className="py-6 text-center text-sm text-neutral-400">검색 중…</div>
-            )}
-            {!searching && results.length === 0 && (
-              <div className="py-6 text-center text-sm text-neutral-400">검색 결과가 없습니다.</div>
-            )}
-            {!searching && results.map((s) => {
-              const isSelf = s.id === spiritId
-              const isLinked = linkedIds.has(s.id)
-              const disabled = isSelf || isLinked || addVariant.isPending
-              return (
-                <button
-                  key={s.id}
-                  type="button"
-                  disabled={disabled}
-                  onClick={() => handleAdd(s)}
-                  className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-neutral-50 transition-colors
-                    border-b border-neutral-50 last:border-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {s.primaryImageUrl ? (
-                    <img src={s.primaryImageUrl} alt="" className="w-9 h-9 rounded object-cover bg-neutral-100 shrink-0" />
-                  ) : (
-                    <span className="w-9 h-9 rounded bg-neutral-100 flex items-center justify-center text-base shrink-0">🍶</span>
-                  )}
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-medium text-neutral-800 truncate">{s.nameKo}</span>
-                    {s.nameEn && <span className="block text-xs text-neutral-400 truncate">{s.nameEn}</span>}
-                  </span>
-                  {isSelf ? (
-                    <span className="text-[11px] text-neutral-400 shrink-0">현재 술</span>
-                  ) : isLinked ? (
-                    <span className="text-[11px] text-amber-600 shrink-0">연결됨</span>
-                  ) : (
-                    <span className="text-[11px] text-neutral-400 shrink-0">+ 추가</span>
-                  )}
-                </button>
-              )
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* 연결된 술 가로 목록 */}
-      {isLoading ? (
-        <div className="py-6 flex justify-center"><Spinner size="sm" className="text-primary-800" /></div>
-      ) : variants.length === 0 ? (
-        <p className="text-xs text-neutral-400">연결된 술이 없습니다.</p>
-      ) : (
-        <div className="flex gap-3 overflow-x-auto pb-2">
-          {variants.map((v) => (
-            <div
-              key={v.id}
-              className="relative shrink-0 w-36 rounded-xl border border-neutral-200 bg-white overflow-hidden"
-            >
-              {/* 제거 */}
-              <button
-                type="button"
-                onClick={() => handleRemove(v.id)}
-                disabled={removeVariant.isPending}
-                className="absolute top-1 right-1 z-10 w-6 h-6 flex items-center justify-center rounded-full
-                  bg-red-500/80 text-white text-sm leading-none hover:bg-red-500 disabled:opacity-50"
-                aria-label="연관 술 제거"
-              >
-                ✕
-              </button>
-
-              <div className="aspect-square bg-neutral-100">
-                {v.primaryImageUrl ? (
-                  <img src={v.primaryImageUrl} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-2xl text-neutral-300">🍶</div>
-                )}
-              </div>
-
-              <div className="p-2 space-y-1">
-                <p className="text-xs font-semibold text-neutral-800 leading-tight line-clamp-2">{v.nameKo}</p>
-                {v.bottledDate && <p className="text-[11px] text-neutral-400">병입 {v.bottledDate}</p>}
-                <div className="flex flex-wrap items-center gap-1 pt-0.5">
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${
-                    v.origin === 'MANUAL' ? 'bg-amber-100 text-amber-700' : 'bg-neutral-100 text-neutral-500'
-                  }`}>
-                    {v.origin === 'MANUAL' ? '수동' : '자동'}
-                  </span>
-                  {v.status !== 'ACTIVE' && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold bg-red-100 text-red-600">
-                      {STATUS_LABEL[v.status] ?? v.status}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
 
 // ── 메인 페이지 ────────────────────────────────────────────────
 export default function AdminSpiritDetailPage() {
@@ -520,8 +340,7 @@ export default function AdminSpiritDetailPage() {
       {/* 이미지 (메타 정보 아래 · 술 정보 위, 가로 전체) */}
       <SpiritImageSection spiritId={spiritId} images={spirit.images} />
 
-      {/* 연관 술 (이미지 아래, 가로 영역) */}
-      <SpiritVariantsSection spiritId={spiritId} />
+
 
       {/* 공유 폼 (카테고리 고정) */}
       <SpiritFormFields form={form} categoryLocked />

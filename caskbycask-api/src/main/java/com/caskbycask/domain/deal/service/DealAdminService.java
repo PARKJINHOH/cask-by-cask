@@ -6,6 +6,8 @@ import com.caskbycask.domain.deal.dto.UpdateDealRequest;
 import com.caskbycask.domain.deal.entity.DealPost;
 import com.caskbycask.domain.deal.entity.enums.DealStatus;
 import com.caskbycask.domain.deal.repository.DealPostRepository;
+import com.caskbycask.domain.spirit.entity.Spirit;
+import com.caskbycask.domain.spirit.repository.SpiritRepository;
 import com.caskbycask.global.exception.CustomException;
 import com.caskbycask.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -20,12 +22,16 @@ import org.springframework.transaction.annotation.Transactional;
 public class DealAdminService {
 
     private final DealPostRepository dealPostRepository;
+    private final SpiritRepository spiritRepository;
 
     @Transactional(readOnly = true)
     public Page<DealPostSummaryResponse> list(DealStatus status, int page, int size) {
-        DealStatus target = (status != null) ? status : DealStatus.PENDING;
         Pageable pageable = PageRequest.of(Math.max(0, page), Math.max(1, size));
-        return dealPostRepository.findAllByStatusOrderByCreatedAtDesc(target, pageable)
+        if (status == null) {
+            return dealPostRepository.findAllByOrderByCreatedAtDesc(pageable)
+                    .map(DealPostSummaryResponse::from);
+        }
+        return dealPostRepository.findAllByStatusOrderByCreatedAtDesc(status, pageable)
                 .map(DealPostSummaryResponse::from);
     }
 
@@ -59,10 +65,19 @@ public class DealAdminService {
     @Transactional
     public DealPostDetailResponse update(Long id, UpdateDealRequest req) {
         DealPost deal = getOrThrow(id);
+        
+        Spirit spirit = null;
+        if (req.spiritId() != null) {
+            spirit = spiritRepository.findById(req.spiritId())
+                    .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_NOT_FOUND));
+        }
+
         deal.applyAdminEdit(
                 req.drinkName(), req.drinkCategory(), req.originalPrice(), req.dealPrice(),
                 req.discountRate(), req.seller(), req.dealCondition(), req.expiryInfo(), req.summaryKo()
         );
+        deal.linkSpiritAndStoreType(spirit, req.storeType());
+        
         return DealPostDetailResponse.from(deal);
     }
 

@@ -15,7 +15,7 @@ import {
 } from '@/domain/pricetracker/hooks/useAdminPriceTracker'
 import type { AdminStore, DutyFreeChannel, StoreSearchResult, StoreType } from '@/domain/pricetracker/types/pricetracker.types'
 
-const TYPE_LABEL: Record<StoreType, string> = { DOMESTIC: '국내', DUTYFREE: '면세' }
+const TYPE_LABEL: Record<StoreType, string> = { DOMESTIC: '국내', OVERSEAS: '해외', DUTYFREE: '면세' }
 const CHANNEL_LABEL: Record<DutyFreeChannel, string> = { AIRPORT: '공항', CITY: '시내', INFLIGHT: '기내', ONLINE: '온라인' }
 const APPROVAL_FILTERS: { value: boolean | undefined; label: string }[] = [
   { value: false, label: '제안(미승인)' },
@@ -291,7 +291,7 @@ function CreateStoreForm({ onDone }: { onDone: () => void }) {
       </Field>
       <Field label="유형">
         <div className="flex gap-1">
-          {(['DOMESTIC', 'DUTYFREE'] as const).map((tp) => (
+          {(['DOMESTIC', 'OVERSEAS', 'DUTYFREE'] as const).map((tp) => (
             <button key={tp} onClick={() => setStoreType(tp)} className={`px-3 py-2 rounded-lg text-sm border ${storeType === tp ? 'bg-primary-800 text-white border-primary-800' : 'border-neutral-200 text-neutral-600'}`}>
               {TYPE_LABEL[tp]}
             </button>

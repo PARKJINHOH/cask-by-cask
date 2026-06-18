@@ -20,6 +20,10 @@ public record SpiritListResponse(
         String country,
         @Schema(description = "알코올 도수 %")
         BigDecimal abv,
+        @Schema(description = "최소 도수")
+        BigDecimal abvMin,
+        @Schema(description = "최대 도수")
+        BigDecimal abvMax,
         @Schema(description = "전체 리뷰 평균 점수")
         BigDecimal avgScore,
         @Schema(description = "리뷰 수")
@@ -37,6 +41,8 @@ public record SpiritListResponse(
                 spirit.getCategory(),
                 spirit.getCountry(),
                 spirit.getAbv(),
+                spirit.getAbvMin(),
+                spirit.getAbvMax(),
                 spirit.getAvgScore(),
                 spirit.getReviewCount(),
                 primaryImageUrl,

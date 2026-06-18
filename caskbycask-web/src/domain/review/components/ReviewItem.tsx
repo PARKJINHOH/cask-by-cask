@@ -1,37 +1,34 @@
 import { useTranslation } from 'react-i18next'
 import { formatDate, scoreColor } from '@/shared/utils/format'
-import { parseAromaNotes, WHISKY_AROMA_MAP } from '../constants/whiskyAromas'
-import { WINE_AROMA_MAP } from '../constants/wineAromas'
-import type { AromaNotes } from '../constants/whiskyAromas'
-
-/** 위스키 + 와인 통합 아로마 맵 */
-const ALL_AROMA_MAP = new Map([...WHISKY_AROMA_MAP, ...WINE_AROMA_MAP])
+import { parseAromaNotes } from '../utils/aroma'
+import type { AromaNotes } from '../utils/aroma'
 import type { ReviewItem as ReviewItemType } from '../types/review.types'
+
+function formatAromaId(id: string): string {
+  return id.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+}
 
 // ── 아로마 칩 목록 (전체 표시, 많으면 자동 줄바꿈) ──────────────────
 
 interface AromaChipsProps {
   aromaNotes: AromaNotes
-  isEn: boolean
 }
 
-function AromaChips({ aromaNotes, isEn }: AromaChipsProps) {
+function AromaChips({ aromaNotes }: AromaChipsProps) {
   const { ids, custom } = aromaNotes
   if (ids.length === 0 && custom.length === 0) return null
   return (
     <div className="flex flex-wrap gap-1.5">
       {ids.map((id) => {
-        const item = ALL_AROMA_MAP.get(id)
-        if (!item) return null
         return (
-          <span key={id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-xs text-amber-700">
-            {item.icon} {isEn ? item.en : item.ko}
+          <span key={id} className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-xs font-semibold text-amber-800">
+            {formatAromaId(id)}
           </span>
         )
       })}
       {custom.map((c) => (
-        <span key={c} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-neutral-100 border border-neutral-200 text-xs text-neutral-600">
-          ✏️ {c}
+        <span key={c} className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-neutral-100 border border-neutral-200 text-xs font-semibold text-neutral-700">
+          {c}
         </span>
       ))}
     </div>
@@ -45,10 +42,9 @@ interface ReviewSectionProps {
   score: number
   note?: string | null
   aromaNotes: AromaNotes
-  isEn: boolean
 }
 
-function ReviewSection({ label, score, note, aromaNotes, isEn }: ReviewSectionProps) {
+function ReviewSection({ label, score, note, aromaNotes }: ReviewSectionProps) {
   const color = scoreColor(score)
   return (
     <div className="space-y-2">
@@ -61,7 +57,7 @@ function ReviewSection({ label, score, note, aromaNotes, isEn }: ReviewSectionPr
       </div>
 
       {/* 아로마 칩 — 점수 바 상단 */}
-      <AromaChips aromaNotes={aromaNotes} isEn={isEn} />
+      <AromaChips aromaNotes={aromaNotes} />
 
       {/* 점수 바 */}
       <div className="h-2 rounded-full bg-neutral-100 overflow-hidden">
@@ -85,7 +81,6 @@ export interface ReviewItemProps {
 
 export default function ReviewItem({ review, currentUserId, onEdit, onDelete }: ReviewItemProps) {
   const { t, i18n } = useTranslation()
-  const isEn = i18n.language === 'en'
   const isOwner = !!currentUserId && currentUserId === review.userId
 
   const sections = [
@@ -128,7 +123,6 @@ export default function ReviewItem({ review, currentUserId, onEdit, onDelete }: 
             score={score}
             note={note}
             aromaNotes={aromaNotes}
-            isEn={isEn}
           />
         ))}
       </div>

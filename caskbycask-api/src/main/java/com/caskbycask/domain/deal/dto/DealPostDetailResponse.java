@@ -2,6 +2,7 @@ package com.caskbycask.domain.deal.dto;
 
 import com.caskbycask.domain.deal.entity.DealPost;
 import com.caskbycask.domain.deal.entity.enums.DealStatus;
+import com.caskbycask.domain.pricetracker.entity.enums.StoreType;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -26,7 +27,11 @@ public record DealPostDetailResponse(
         DealStatus status,
         LocalDateTime crawledAt,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        LocalDateTime updatedAt,
+        Long spiritId,
+        String spiritNameKo,
+        String spiritNameEn,
+        StoreType storeType
 ) {
     public static DealPostDetailResponse from(DealPost d) {
         return new DealPostDetailResponse(
@@ -48,7 +53,11 @@ public record DealPostDetailResponse(
                 d.getStatus(),
                 d.getCrawledAt(),
                 d.getCreatedAt(),
-                d.getUpdatedAt()
+                d.getUpdatedAt(),
+                d.getSpirit() != null ? d.getSpirit().getId() : null,
+                d.getSpirit() != null ? d.getSpirit().getNameKo() : null,
+                d.getSpirit() != null ? d.getSpirit().getNameEn() : null,
+                d.getStoreType()
         );
     }
 }

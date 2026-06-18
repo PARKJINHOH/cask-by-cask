@@ -47,6 +47,7 @@ export interface WhiskyDetailRequest {
 export interface CreateVariantRequest {
   variantType: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK'
   variantValue: string
+  variantValueEn?: string | null
   abv?: number | null
   abvMin?: number | null
   abvMax?: number | null
@@ -246,6 +247,7 @@ export interface AdminSpiritVariant {
   origin: 'AUTO' | 'MANUAL'
   variantType?: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE' | null
   variantValue?: string | null
+  variantValueEn?: string | null
   abvMin?: number | null
   abvMax?: number | null
   commonDetail?: SpiritCommonDetailResponse | null
@@ -276,6 +278,7 @@ export interface AdminSpiritDetail {
   parentId?: number | null
   variantType?: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE' | null
   variantValue?: string | null
+  variantValueEn?: string | null
   abvMin?: number | null
   abvMax?: number | null
   variants?: AdminSpiritVariant[]
@@ -302,6 +305,7 @@ export interface UpdateSpiritPayload {
   variants?: CreateVariantRequest[]
   variantType?: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE' | null
   variantValue?: string | null
+  variantValueEn?: string | null
   abvMin?: number | null
   abvMax?: number | null
   commonDetail?: SpiritCommonDetailRequest
@@ -327,6 +331,7 @@ export interface CreateSpiritPayload {
   variants?: CreateVariantRequest[]
   variantType?: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE' | null
   variantValue?: string | null
+  variantValueEn?: string | null
   abvMin?: number | null
   abvMax?: number | null
   commonDetail?: SpiritCommonDetailRequest

@@ -1,5 +1,7 @@
 // 주류 핫딜 자동수집 — 관리자 검토 타입. (백엔드 deal 도메인 DTO 와 1:1)
 
+import type { StoreType } from '../../pricetracker/types/pricetracker.types'
+
 export type DealStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
 
 export const DEAL_CATEGORIES = [
@@ -39,6 +41,10 @@ export interface DealPostDetail {
   crawledAt: string | null
   createdAt: string
   updatedAt: string
+  spiritId: number | null
+  spiritNameKo: string | null
+  spiritNameEn: string | null
+  storeType: StoreType
 }
 
 export interface UpdateDealRequest {
@@ -51,4 +57,6 @@ export interface UpdateDealRequest {
   dealCondition: string | null
   expiryInfo: string | null
   summaryKo: string | null
+  spiritId: number | null
+  storeType: StoreType
 }

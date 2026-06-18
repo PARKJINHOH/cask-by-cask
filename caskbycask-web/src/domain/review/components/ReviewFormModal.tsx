@@ -9,20 +9,11 @@ import { scoreColor } from '@/shared/utils/format'
 import { useCreateReview, useUpdateReview } from '../hooks/useReviews'
 import ReviewScoreSection from './ReviewScoreSection'
 import { getReviewSaveErrorMessage } from '../utils/reviewErrors'
-import { EMPTY_AROMA_NOTES, parseAromaNotes, serializeAromaNotes, WHISKY_AROMA_CATEGORIES } from '../constants/whiskyAromas'
-import { WINE_AROMA_CATEGORIES } from '../constants/wineAromas'
-import { COGNAC_AROMA_CATEGORIES } from '../constants/cognacAromas'
-import type { AromaCategory, AromaNotes } from '../constants/whiskyAromas'
+import { EMPTY_AROMA_NOTES, parseAromaNotes, serializeAromaNotes } from '../utils/aroma'
+import type { AromaNotes } from '../utils/aroma'
 import type { ReviewItem } from '../types/review.types'
 import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
 import { useSpiritDetail, useSpiritVariants } from '@/domain/spirit/hooks/useSpiritDetail'
-
-function getAromaCategories(category?: SpiritCategory): AromaCategory[] | undefined {
-  if (category === 'WHISKY') return WHISKY_AROMA_CATEGORIES
-  if (category === 'WINE')   return WINE_AROMA_CATEGORIES
-  if (category === 'COGNAC') return COGNAC_AROMA_CATEGORIES
-  return undefined
-}
 
 function getAromaWheelKey(category?: SpiritCategory): string {
   if (category === 'WHISKY') return 'review.aromaWheelWhisky'
@@ -82,7 +73,7 @@ export default function ReviewFormModal({
   const createMutation = useCreateReview(targetSpiritId || spiritId)
   const updateMutation = useUpdateReview(spiritId)
 
-  const aromaCategories  = getAromaCategories(spiritCategory)
+  const showAroma = spiritCategory === 'WHISKY' || spiritCategory === 'WINE' || spiritCategory === 'COGNAC'
   const aromaWheelTitle  = t(getAromaWheelKey(spiritCategory))
 
   const [noseAromas, setNoseAromas]     = useState<AromaNotes>(EMPTY_AROMA_NOTES)
@@ -146,9 +137,9 @@ export default function ReviewFormModal({
       tasteNote:             values.tasteNote.trim(),
       finishNote:            values.finishNote.trim(),
       comment:               values.comment?.trim() || undefined,
-      noseAromaWheelNotes:   aromaCategories ? serializeAromaNotes(noseAromas)   : undefined,
-      tasteAromaWheelNotes:  aromaCategories ? serializeAromaNotes(tasteAromas)  : undefined,
-      finishAromaWheelNotes: aromaCategories ? serializeAromaNotes(finishAromas) : undefined,
+      noseAromaWheelNotes:   showAroma ? serializeAromaNotes(noseAromas)   : undefined,
+      tasteAromaWheelNotes:  showAroma ? serializeAromaNotes(tasteAromas)  : undefined,
+      finishAromaWheelNotes: showAroma ? serializeAromaNotes(finishAromas) : undefined,
     }
     if (editingReview) {
       await updateMutation.mutateAsync({ reviewId: editingReview.id, data: payload })
@@ -170,7 +161,7 @@ export default function ReviewFormModal({
       open={open}
       onClose={onClose}
       title={editingReview ? t('review.edit') : t('review.write')}
-      size={aromaCategories ? '2xl' : 'lg'}
+      size={showAroma ? '2xl' : 'lg'}
       closeOnOverlay={!isPending}
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -226,7 +217,7 @@ export default function ReviewFormModal({
               notePlaceholder={t('review.nosePlaceholder')}
               scoreError={errors.noseScore?.message}
               noteError={errors.noseNote?.message}
-              aromaCategories={aromaCategories}
+              showAroma={showAroma}
               aromaWheelTitle={aromaWheelTitle}
               aromaNote={noseAromas}
               onAromaNoteChange={setNoseAromas}
@@ -248,7 +239,7 @@ export default function ReviewFormModal({
               notePlaceholder={t('review.tastePlaceholder')}
               scoreError={errors.tasteScore?.message}
               noteError={errors.tasteNote?.message}
-              aromaCategories={aromaCategories}
+              showAroma={showAroma}
               aromaWheelTitle={aromaWheelTitle}
               aromaNote={tasteAromas}
               onAromaNoteChange={setTasteAromas}
@@ -270,7 +261,7 @@ export default function ReviewFormModal({
               notePlaceholder={t('review.finishPlaceholder')}
               scoreError={errors.finishScore?.message}
               noteError={errors.finishNote?.message}
-              aromaCategories={aromaCategories}
+              showAroma={showAroma}
               aromaWheelTitle={aromaWheelTitle}
               aromaNote={finishAromas}
               onAromaNoteChange={setFinishAromas}

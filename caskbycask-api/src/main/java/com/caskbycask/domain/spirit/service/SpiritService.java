@@ -293,6 +293,7 @@ public class SpiritService {
                 .registeredBy(registeredBy)
                 .variantType(request.variantType())
                 .variantValue(request.variantValue())
+                .variantValueEn(request.variantValueEn())
                 .abvMin(request.abvMin())
                 .abvMax(request.abvMax())
                 .build();
@@ -322,6 +323,7 @@ public class SpiritService {
                         .parent(saved)
                         .variantType(vReq.variantType())
                         .variantValue(vReq.variantValue())
+                        .variantValueEn(vReq.variantValueEn())
                         .abvMin(vReq.abvMin())
                         .abvMax(vReq.abvMax())
                         .build();
@@ -365,6 +367,7 @@ public class SpiritService {
                 spirit.getParent(),
                 request.variantType() != null ? request.variantType() : spirit.getVariantType(),
                 request.variantValue() != null ? request.variantValue() : spirit.getVariantValue(),
+                request.variantValueEn() != null ? request.variantValueEn() : spirit.getVariantValueEn(),
                 request.abvMin() != null ? request.abvMin() : spirit.getAbvMin(),
                 request.abvMax() != null ? request.abvMax() : spirit.getAbvMax()
         );
@@ -393,7 +396,7 @@ public class SpiritService {
                                 spirit.getProducer(), spirit.getBottler(), spirit.getBottledYear(),
                                 spirit.getVintageYear(), vReq.abv(), vReq.volumeMl(),
                                 spirit.getCountry(), spirit.getRegion(),
-                                spirit, vReq.variantType(), vReq.variantValue(),
+                                spirit, vReq.variantType(), vReq.variantValue(), vReq.variantValueEn(),
                                 vReq.abvMin(), vReq.abvMax()
                         );
                         spiritDetailService.saveCommonDetail(existing, vReq.commonDetail());
@@ -419,6 +422,7 @@ public class SpiritService {
                                 .parent(spirit)
                                 .variantType(vReq.variantType())
                                 .variantValue(vReq.variantValue())
+                                .variantValueEn(vReq.variantValueEn())
                                 .abvMin(vReq.abvMin())
                                 .abvMax(vReq.abvMax())
                                 .build();
@@ -439,7 +443,7 @@ public class SpiritService {
                                 existing.getProducer(), existing.getBottler(), existing.getBottledYear(),
                                 existing.getVintageYear(), existing.getAbv(), existing.getVolumeMl(),
                                 existing.getCountry(), existing.getRegion(),
-                                null, existing.getVariantType(), existing.getVariantValue(),
+                                null, existing.getVariantType(), existing.getVariantValue(), existing.getVariantValueEn(),
                                 existing.getAbvMin(), existing.getAbvMax()
                         );
                         existing.hide();
@@ -453,7 +457,7 @@ public class SpiritService {
                             existing.getProducer(), existing.getBottler(), existing.getBottledYear(),
                             existing.getVintageYear(), existing.getAbv(), existing.getVolumeMl(),
                             existing.getCountry(), existing.getRegion(),
-                            null, existing.getVariantType(), existing.getVariantValue(),
+                            null, existing.getVariantType(), existing.getVariantValue(), existing.getVariantValueEn(),
                             existing.getAbvMin(), existing.getAbvMax()
                     );
                     existing.hide();

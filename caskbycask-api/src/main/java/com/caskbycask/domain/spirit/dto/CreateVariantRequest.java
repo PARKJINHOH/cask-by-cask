@@ -14,6 +14,9 @@ public record CreateVariantRequest(
         @Schema(description = "에디션 식별 값 (예: Batch 10)")
         String variantValue,
 
+        @Schema(description = "에디션 식별 값 (영문, 예: Batch 10)")
+        String variantValueEn,
+
         @Schema(description = "알코올 도수")
         BigDecimal abv,
 

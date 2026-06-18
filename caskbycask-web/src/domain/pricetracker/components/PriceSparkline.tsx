@@ -1,9 +1,11 @@
 import { LineChart, Line, ResponsiveContainer } from 'recharts'
 import { usePriceChart } from '../hooks/usePriceChart'
 
+import type { StoreType } from '../types/pricetracker.types'
+
 interface Props {
   spiritId: number
-  storeType?: 'DOMESTIC' | 'DUTYFREE'
+  storeType?: StoreType
 }
 
 export default function PriceSparkline({ spiritId, storeType = 'DOMESTIC' }: Props) {

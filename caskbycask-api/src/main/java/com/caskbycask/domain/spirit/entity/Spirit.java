@@ -122,6 +122,10 @@ public class Spirit extends BaseTimeEntity {
     @Comment("에디션 식별 값")
     private String variantValue;
 
+    @Column(length = 100)
+    @Comment("에디션 식별 값(영문)")
+    private String variantValueEn;
+
     @Column(precision = 4, scale = 1)
     @Comment("최소 도수(%)")
     private BigDecimal abvMin;
@@ -149,7 +153,7 @@ public class Spirit extends BaseTimeEntity {
                        Producer producer, String bottler, Integer bottledYear,
                        Integer vintageYear, BigDecimal abv, Integer volumeMl,
                        String country, String region,
-                       Spirit parent, VariantType variantType, String variantValue,
+                       Spirit parent, VariantType variantType, String variantValue, String variantValueEn,
                        BigDecimal abvMin, BigDecimal abvMax) {
         this.nameKo = nameKo;
         this.nameEn = nameEn;
@@ -165,6 +169,7 @@ public class Spirit extends BaseTimeEntity {
         this.parent = parent;
         this.variantType = variantType;
         this.variantValue = variantValue;
+        this.variantValueEn = variantValueEn;
         this.abvMin = abvMin;
         this.abvMax = abvMax;
     }

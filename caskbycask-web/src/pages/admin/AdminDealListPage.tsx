@@ -11,7 +11,8 @@ import {
   formatDiscount, formatPrice, siteLabel,
 } from '@/domain/admin/components/dealUi'
 
-const STATUS_TABS: Array<{ value: DealStatus; label: string }> = [
+const STATUS_TABS: Array<{ value: DealStatus | 'ALL'; label: string }> = [
+  { value: 'ALL', label: '전체' },
   { value: 'PENDING', label: '검토 대기' },
   { value: 'APPROVED', label: '승인' },
   { value: 'REJECTED', label: '반려' },
@@ -19,12 +20,16 @@ const STATUS_TABS: Array<{ value: DealStatus; label: string }> = [
 
 export default function AdminDealListPage() {
   const navigate = useNavigate()
-  const [status, setStatus] = useState<DealStatus>('PENDING')
+  const [status, setStatus] = useState<DealStatus | 'ALL'>('ALL')
   const [page, setPage] = useState(0)
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin', 'deals', { status, page }],
-    queryFn: () => adminDealApi.list({ status, page, size: 20 }),
+    queryFn: () => adminDealApi.list({
+      status: status === 'ALL' ? undefined : status,
+      page,
+      size: 20,
+    }),
   })
 
   return (

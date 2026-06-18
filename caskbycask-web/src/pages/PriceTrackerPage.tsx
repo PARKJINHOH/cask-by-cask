@@ -106,7 +106,7 @@ export default function PriceTrackerPage() {
       <div className="bg-white rounded-2xl border border-neutral-200 p-4 mb-6 space-y-3">
         {/* 국내/면세 탭 */}
         <div className="flex rounded-lg border border-neutral-200 overflow-hidden w-fit text-sm">
-          {(['DOMESTIC', 'DUTYFREE'] as const).map((t_) => (
+          {(['DOMESTIC', 'OVERSEAS', 'DUTYFREE'] as const).map((t_) => (
             <button
               key={t_}
               onClick={() => setStoreType(t_)}
@@ -116,7 +116,11 @@ export default function PriceTrackerPage() {
                   : 'text-neutral-500 hover:bg-neutral-50'
               }`}
             >
-              {t_ === 'DOMESTIC' ? t('price.chart.domestic') : t('price.chart.dutyfree')}
+              {t_ === 'DOMESTIC'
+                ? t('price.chart.domestic')
+                : t_ === 'OVERSEAS'
+                ? t('price.chart.overseas', '해외')
+                : t('price.chart.dutyfree')}
             </button>
           ))}
         </div>

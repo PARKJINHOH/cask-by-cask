@@ -74,6 +74,9 @@ public record UpdateSpiritRequest(
         @Schema(description = "에디션 식별 값")
         String variantValue,
 
+        @Schema(description = "에디션 식별 값(영문)")
+        String variantValueEn,
+
         @Schema(description = "최소 도수")
         BigDecimal abvMin,
 

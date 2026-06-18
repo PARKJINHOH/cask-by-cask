@@ -5,6 +5,9 @@ import Spinner from '@/shared/components/Spinner'
 import { formatDateTime } from '@/shared/utils/format'
 import { adminDealApi } from '@/domain/admin/api/adminDealApi'
 import { DEAL_CATEGORIES, type UpdateDealRequest } from '@/domain/admin/types/deal.types'
+import type { StoreType } from '@/domain/pricetracker/types/pricetracker.types'
+import { spiritApi } from '@/domain/spirit/api/spiritApi'
+import type { SpiritListItem } from '@/domain/spirit/types/spirit.types'
 import {
   ConfidenceBadge, DealStatusBadge, SourceLinkButton, formatPrice, siteLabel,
 } from '@/domain/admin/components/dealUi'
@@ -22,6 +25,29 @@ export default function AdminDealDetailPage() {
 
   const [form, setForm] = useState({ ...EMPTY_FORM })
   const [saved, setSaved] = useState(false)
+  const [spiritId, setSpiritId] = useState<number | null>(null)
+  const [spiritNameKo, setSpiritNameKo] = useState<string | null>(null)
+  const [spiritNameEn, setSpiritNameEn] = useState<string | null>(null)
+  const [storeType, setStoreType] = useState<StoreType>('DOMESTIC')
+
+  const [spiritKeyword, setSpiritKeyword] = useState('')
+  const [spiritSearchResults, setSpiritSearchResults] = useState<SpiritListItem[]>([])
+  const [searchingSpirits, setSearchingSpirits] = useState(false)
+  const [searched, setSearched] = useState(false)
+
+  const searchSpirits = async () => {
+    if (!spiritKeyword.trim()) return
+    setSearchingSpirits(true)
+    setSearched(true)
+    try {
+      const res = await spiritApi.search({ keyword: spiritKeyword.trim(), page: 0, size: 20 })
+      setSpiritSearchResults(res.data.data?.content ?? [])
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setSearchingSpirits(false)
+    }
+  }
 
   const { data: detail, isLoading } = useQuery({
     queryKey: ['admin', 'deals', id],
@@ -43,6 +69,10 @@ export default function AdminDealDetailPage() {
       expiryInfo: detail.expiryInfo ?? '',
       summaryKo: detail.summaryKo ?? '',
     })
+    setSpiritId(detail.spiritId)
+    setSpiritNameKo(detail.spiritNameKo)
+    setSpiritNameEn(detail.spiritNameEn)
+    setStoreType(detail.storeType ?? 'DOMESTIC')
   }, [detail])
 
   const buildPayload = (): UpdateDealRequest => {
@@ -57,6 +87,8 @@ export default function AdminDealDetailPage() {
       dealCondition: form.dealCondition.trim() || null,
       expiryInfo: form.expiryInfo.trim() || null,
       summaryKo: form.summaryKo.trim() || null,
+      spiritId,
+      storeType,
     }
   }
 
@@ -186,6 +218,95 @@ export default function AdminDealDetailPage() {
             <input className={inputCls} value={form.expiryInfo}
               onChange={(e) => setForm({ ...form, expiryInfo: e.target.value })} />
           </Field>
+          <Field label="판매처 유형">
+            <div className="flex gap-1.5 mt-0.5">
+              {(['DOMESTIC', 'OVERSEAS', 'DUTYFREE'] as const).map((t_) => (
+                <button
+                  type="button"
+                  key={t_}
+                  onClick={() => setStoreType(t_)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                    storeType === t_
+                      ? 'bg-primary-800 text-white border-primary-800'
+                      : 'border-neutral-200 text-neutral-600 hover:bg-neutral-50'
+                  }`}
+                >
+                  {t_ === 'DOMESTIC' ? '국내' : t_ === 'OVERSEAS' ? '해외' : '면세점'}
+                </button>
+              ))}
+            </div>
+          </Field>
+        </div>
+
+        {/* 등록된 술 연결 */}
+        <div className="border border-neutral-200 rounded-xl p-4 bg-neutral-50/50 space-y-3">
+          <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">등록된 주류 연결</p>
+          {spiritId ? (
+            <div className="flex items-center justify-between bg-white border border-neutral-200 rounded-lg p-3">
+              <div>
+                <p className="font-semibold text-neutral-800">{spiritNameKo}</p>
+                {spiritNameEn && <p className="text-xs text-neutral-400">{spiritNameEn}</p>}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSpiritId(null)
+                  setSpiritNameKo(null)
+                  setSpiritNameEn(null)
+                }}
+                className="text-xs text-red-600 hover:text-red-800 font-medium"
+              >
+                연결 해제
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <input
+                  placeholder="술 이름 검색 (한글/영어)"
+                  value={spiritKeyword}
+                  onChange={(e) => setSpiritKeyword(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && searchSpirits()}
+                  className="flex-1 px-3 py-1.5 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400"
+                />
+                <button
+                  type="button"
+                  onClick={searchSpirits}
+                  disabled={searchingSpirits}
+                  className="px-3 py-1.5 bg-neutral-800 text-white rounded-lg text-sm hover:bg-neutral-900 transition-colors disabled:opacity-40"
+                >
+                  {searchingSpirits ? '검색 중...' : '검색'}
+                </button>
+              </div>
+              {spiritSearchResults.length > 0 && (
+                <div className="max-h-40 overflow-y-auto border border-neutral-200 rounded-lg bg-white divide-y divide-neutral-100 text-sm">
+                  {spiritSearchResults.map((sp) => (
+                    <button
+                      type="button"
+                      key={sp.id}
+                      onClick={() => {
+                        setSpiritId(sp.id)
+                        setSpiritNameKo(sp.nameKo)
+                        setSpiritNameEn(sp.nameEn)
+                        setSpiritSearchResults([])
+                        setSpiritKeyword('')
+                      }}
+                      className="w-full text-left px-3 py-2 hover:bg-neutral-50 flex items-center justify-between"
+                    >
+                      <div>
+                        <span className="font-medium text-neutral-800">{sp.nameKo}</span>
+                        {sp.nameEn && <span className="text-xs text-neutral-400 ml-2">{sp.nameEn}</span>}
+                      </div>
+                      <span className="text-xs text-neutral-400">{sp.category}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {searched && spiritSearchResults.length === 0 && (
+                <p className="text-xs text-neutral-400 font-medium">검색 결과가 없습니다.</p>
+              )}
+            </div>
+          )}
         </div>
 
         <Field label="조건">

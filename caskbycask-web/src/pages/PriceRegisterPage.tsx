@@ -236,7 +236,7 @@ export default function PriceRegisterPage() {
         {/* 2. 매장 */}
         <Section label={t('price.register.store')}>
           <div className="flex gap-2 mb-2">
-            {(['DOMESTIC', 'DUTYFREE'] as const).map((tp) => (
+            {(['DOMESTIC', 'OVERSEAS', 'DUTYFREE'] as const).map((tp) => (
               <button
                 key={tp}
                 onClick={() => { setStoreType(tp); setSelectedStore(null); setUseSuggest(false) }}
@@ -244,7 +244,11 @@ export default function PriceRegisterPage() {
                   storeType === tp ? 'bg-primary-700 text-white border-primary-700' : 'text-neutral-500 border-neutral-200'
                 }`}
               >
-                {tp === 'DOMESTIC' ? t('price.chart.domestic') : t('price.chart.dutyfree')}
+                {tp === 'DOMESTIC'
+                  ? t('price.chart.domestic')
+                  : tp === 'OVERSEAS'
+                  ? t('price.chart.overseas', '해외')
+                  : t('price.chart.dutyfree')}
               </button>
             ))}
             <button

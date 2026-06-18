@@ -1,5 +1,6 @@
 package com.caskbycask.domain.pricetracker.dto.response;
 
+import com.caskbycask.domain.deal.entity.DealPost;
 import com.caskbycask.domain.pricetracker.entity.PriceDiscountItem;
 import com.caskbycask.domain.pricetracker.entity.PriceReport;
 import com.caskbycask.domain.pricetracker.entity.PriceReportImage;
@@ -22,7 +23,10 @@ public record PriceReportChartDetailResponse(
         String description,
         List<String> publicImageUrls,
         LocalDate purchasedAt,
-        List<PriceDiscountItemResponse> discountItems
+        List<PriceDiscountItemResponse> discountItems,
+        Boolean isHotDeal,
+        String sourceSite,
+        String sourceUrl
 ) {
     public static PriceReportChartDetailResponse from(PriceReport report,
                                                       List<PriceReportImage> publicImages,
@@ -44,7 +48,36 @@ public record PriceReportChartDetailResponse(
                 report.getDescription(),
                 publicImages.stream().map(PriceReportImage::getImageUrl).toList(),
                 report.getPurchasedAt(),
-                discountItems.stream().map(PriceDiscountItemResponse::from).toList()
+                discountItems.stream().map(PriceDiscountItemResponse::from).toList(),
+                false,
+                null,
+                null
+        );
+    }
+
+    public static PriceReportChartDetailResponse from(DealPost d) {
+        BigDecimal priceVal = d.getDealPrice() != null ? BigDecimal.valueOf(d.getDealPrice()) : null;
+        BigDecimal origVal = d.getOriginalPrice() != null ? BigDecimal.valueOf(d.getOriginalPrice()) : null;
+        LocalDate dateVal = d.getCrawledAt() != null ? d.getCrawledAt().toLocalDate() : d.getCreatedAt().toLocalDate();
+
+        return new PriceReportChartDetailResponse(
+                d.getId(),
+                d.getSeller(),
+                d.getDrinkName(),
+                priceVal,
+                priceVal,
+                origVal != null ? origVal : priceVal,
+                null,
+                true,
+                true,
+                "AI/크롤러",
+                d.getSummaryKo(),
+                List.of(),
+                dateVal,
+                List.of(),
+                true,
+                d.getSourceSite(),
+                d.getSourceUrl()
         );
     }
 }

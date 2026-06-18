@@ -1,6 +1,8 @@
 package com.caskbycask.domain.deal.entity;
 
 import com.caskbycask.domain.deal.entity.enums.DealStatus;
+import com.caskbycask.domain.pricetracker.entity.enums.StoreType;
+import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
@@ -92,6 +94,17 @@ public class DealPost extends BaseTimeEntity {
     @Comment("AI 요약(한글)")
     private String summaryKo;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "spirit_id")
+    @Comment("연결된 술(spirit.id)")
+    private Spirit spirit;
+
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    @Column(name = "store_type", nullable = false, length = 20)
+    @Comment("판매처 유형 — DOMESTIC/OVERSEAS/DUTYFREE")
+    private StoreType storeType = StoreType.DOMESTIC;
+
     @Builder.Default
     @Column(name = "is_visible", nullable = false)
     @Comment("노출 여부")
@@ -118,6 +131,13 @@ public class DealPost extends BaseTimeEntity {
     public void reject() {
         this.status = DealStatus.REJECTED;
         this.isVisible = false;
+    }
+
+    public void linkSpiritAndStoreType(Spirit spirit, StoreType storeType) {
+        this.spirit = spirit;
+        if (storeType != null) {
+            this.storeType = storeType;
+        }
     }
 
     /** 관리자 인라인 수정(승인 전 보정). 전달된 값으로 덮어쓴다(null 포함 — 비우기 허용). */

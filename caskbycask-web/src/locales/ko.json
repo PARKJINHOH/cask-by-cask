@@ -497,8 +497,10 @@
       "variantsHint": "같은 이름으로 등록된 다른 배치·병입 제품",
       "variantsBatch": "배치",
       "variantsBottled": "병입",
-      "variantFilter": "에디션 필터:",
-      "variantAll": "전체 에디션 통합"
+      "variantFilter": "배치/병입별 필터:",
+      "variantAll": "전체 배치/병입 통합",
+      "masterProduct": "대표 제품",
+      "variantPageSelect": "배치/병입 선택:"
     },
     "variantType": {
       "BATCH": "배치",
@@ -1305,6 +1307,7 @@
     "registerBtn": "가격 등록",
     "chart": {
       "domestic": "국내",
+      "overseas": "해외",
       "dutyfree": "면세",
       "period": { "1M": "1개월", "3M": "3개월", "6M": "6개월", "1Y": "1년", "ALL": "전체" },
       "minPrice": "최저 실구매가",

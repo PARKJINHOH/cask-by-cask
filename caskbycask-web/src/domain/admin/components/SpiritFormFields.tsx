@@ -1,4 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { DndContext, PointerSensor, useSensor, useSensors, closestCenter, type DragEndEvent } from '@dnd-kit/core'
+import { SortableContext, horizontalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { useQueryClient } from '@tanstack/react-query'
 import AdminProducerSelector from '@/domain/producer/components/AdminProducerSelector'
 import { adminProducerApi } from '@/domain/admin/api/adminProducerApi'
@@ -192,84 +195,6 @@ export function useSpiritForm() {
   const [isVariantSplit, setIsVariantSplit] = useState(false)
   const [variants, setVariants] = useState<CreateVariantRequest[]>([])
 
-  const addVariant = () => {
-    setVariants((prev) => [
-      ...prev,
-      {
-        variantType: 'BATCH',
-        variantValue: '',
-        abv: null,
-        abvMin: null,
-        abvMax: null,
-        volumeMl: null,
-        commonDetail: {
-          isNas: false,
-          ageStatement: null,
-          ageStatementMin: null,
-          ageStatementMax: null,
-          distilledDate: null,
-          bottledDate: null,
-          releaseDate: null,
-          volumeMl: null,
-          abv: null,
-          bottleNo: null,
-          batchNo: null,
-          totalBottles: null,
-        },
-        whiskyDetail: {
-          style: null,
-          styleOther: null,
-          brandName: null,
-          bottlingType: null,
-          caskTypes: [],
-          caskFinishes: [],
-          caskTypeOther: null,
-          caskDetails: {},
-          isNonChillFiltered: null,
-          isNaturalColour: null,
-          isSingleCask: category === 'WHISKY' ? (whiskyDetail.isSingleCask ?? false) : false,
-          isCaskStrength: category === 'WHISKY' ? (whiskyDetail.isCaskStrength ?? false) : false,
-          isPeated: null,
-          phenolPpm: null,
-          phenolPpmMin: null,
-          phenolPpmMax: null,
-          caskNo: null,
-          notes: null,
-        },
-      },
-    ])
-  }
-
-  const removeVariant = (index: number) => {
-    setVariants((prev) => prev.filter((_, i) => i !== index))
-  }
-
-  const updateVariant = (index: number, updates: Partial<CreateVariantRequest>) => {
-    setVariants((prev) =>
-      prev.map((v, i) => (i === index ? { ...v, ...updates } : v))
-    )
-  }
-
-  const updateVariantCommon = (index: number, updates: Partial<SpiritCommonDetailRequest>) => {
-    setVariants((prev) =>
-      prev.map((v, i) =>
-        i === index
-          ? { ...v, commonDetail: { ...v.commonDetail, ...updates } }
-          : v
-      )
-    )
-  }
-
-  const updateVariantWhisky = (index: number, updates: Partial<WhiskyDetailRequest>) => {
-    setVariants((prev) =>
-      prev.map((v, i) =>
-        i === index
-          ? { ...v, whiskyDetail: { ...v.whiskyDetail, ...updates } }
-          : v
-      )
-    )
-  }
-  
   // 마스터 도수 범위 지정을 위한 상태
   const [isAbvRange, setIsAbvRange] = useState(false)
   const [abvMin, setAbvMin] = useState('')
@@ -290,6 +215,87 @@ export function useSpiritForm() {
   const updateOther  = (u: Partial<OtherDetailForm>)  => setOtherDetail((p) => ({ ...p, ...u }))
 
   const setCountryValue = (code: string | null, nameKo: string) => { setCountryCode(code); setCountry(nameKo) }
+
+  const addVariant = () => {
+    const currentType = variants[0]?.variantType ?? 'BATCH'
+    setVariants((prev) => [
+      ...prev,
+      {
+        tempId: Math.random().toString(),
+        variantType: currentType,
+        variantValue: '',
+        variantValueEn: '',
+        abv: null,
+        abvMin: null,
+        abvMax: null,
+        volumeMl: null,
+        commonDetail: {
+          isNas: false,
+          ageStatement: null,
+          ageStatementMin: null,
+          ageStatementMax: null,
+          distilledDate: null,
+          bottledDate: null,
+          releaseDate: null,
+          volumeMl: null,
+          abv: null,
+          bottleNo: null,
+          batchNo: null,
+          totalBottles: null,
+        },
+        whiskyDetail: {
+          style: whiskyDetail.style || 'SINGLE_MALT',
+          styleOther: whiskyDetail.style === 'OTHER' ? (whiskyDetail.styleOther || '') : '',
+          brandName: whiskyDetail.brandName || '',
+          bottlingType: whiskyDetail.bottlingType || 'OB',
+          caskTypes: [],
+          caskFinishes: [],
+          caskTypeOther: '',
+          caskDetails: {},
+          isNonChillFiltered: whiskyDetail.isNonChillFiltered ?? false,
+          isNaturalColour: whiskyDetail.isNaturalColour ?? false,
+          isSingleCask: whiskyDetail.isSingleCask ?? false,
+          isCaskStrength: whiskyDetail.isCaskStrength ?? false,
+          isPeated: whiskyDetail.isPeated ?? false,
+          phenolPpm: whiskyDetail.phenolPpm ? Number(whiskyDetail.phenolPpm) : null,
+          phenolPpmMin: whiskyDetail.phenolPpmMin ? Number(whiskyDetail.phenolPpmMin) : null,
+          phenolPpmMax: whiskyDetail.phenolPpmMax ? Number(whiskyDetail.phenolPpmMax) : null,
+          caskNo: '',
+          notes: '',
+        },
+      },
+    ])
+  }
+
+  const removeVariant = (index: number) => {
+    setVariants((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const updateVariant = (index: number, updates: Partial<CreateVariantRequest>) => {
+    setVariants((prev) =>
+      prev.map((v, i) => (i === index ? { ...v, ...updates } : v))
+    )
+  }
+
+  const updateVariantCommon = (index: number, updates: Partial<SpiritCommonDetailRequest>) => {
+    setVariants((prev) =>
+      prev.map((v, i) =>
+        i === index
+          ? { ...v, commonDetail: { ...(v.commonDetail || {}), ...updates } }
+          : v
+      )
+    )
+  }
+
+  const updateVariantWhisky = (index: number, updates: Partial<WhiskyDetailRequest>) => {
+    setVariants((prev) =>
+      prev.map((v, i) =>
+        i === index
+          ? { ...v, whiskyDetail: { ...(v.whiskyDetail || {}), ...updates } }
+          : v
+      )
+    )
+  }
 
   // 카테고리 선택 (와인 ↔ 비와인 전환 시 연도 필드 정리)
   const selectCategory = (cat: SpiritCategory) => {
@@ -318,8 +324,10 @@ export function useSpiritForm() {
     setIsVariantSplit(!!(s.variants && s.variants.length > 0))
     setVariants(
       (s.variants ?? []).map((v) => ({
+        tempId: v.id ? `db-${v.id}` : Math.random().toString(),
         variantType: (v.variantType && v.variantType !== 'NONE') ? v.variantType : 'BATCH',
         variantValue: v.variantValue ?? '',
+        variantValueEn: v.variantValueEn ?? '',
         abv: v.abv,
         abvMin: v.abvMin,
         abvMax: v.abvMax,
@@ -508,8 +516,11 @@ export function useSpiritForm() {
         if (!v.variantValue.trim()) {
           errs[`variantValue_${idx}`] = '에디션 식별 값은 필수입니다.'
         }
-        if (v.abvMin && v.abvMax && Number(v.abvMin) > Number(v.abvMax)) {
-          errs[`variantAbvMin_${idx}`] = '최소 도수가 최대 도수보다 큽니다.'
+        if (v.commonDetail?.distilledDate && !DATE_RE.test(v.commonDetail.distilledDate)) {
+          errs[`variantDistilledDate_${idx}`] = '형식: YYYY 또는 YYYY-MM'
+        }
+        if (v.commonDetail?.bottledDate && !DATE_RE.test(v.commonDetail.bottledDate)) {
+          errs[`variantBottledDate_${idx}`] = '형식: YYYY 또는 YYYY-MM'
         }
       })
     }
@@ -558,11 +569,11 @@ export function useSpiritForm() {
                 v.filter((str) => str.trim() !== '')
               ]).filter(([_, v]) => v.length > 0)
           ),
-          isNonChillFiltered: whiskyDetail.isNonChillFiltered || null,
-          isNaturalColour: whiskyDetail.isNaturalColour || null,
-          isSingleCask: whiskyDetail.isSingleCask || null,
-          isCaskStrength: whiskyDetail.isCaskStrength || null,
-          isPeated: whiskyDetail.isPeated || null,
+          isNonChillFiltered: whiskyDetail.isNonChillFiltered ?? null,
+          isNaturalColour: whiskyDetail.isNaturalColour ?? null,
+          isSingleCask: whiskyDetail.isSingleCask ?? null,
+          isCaskStrength: whiskyDetail.isCaskStrength ?? null,
+          isPeated: whiskyDetail.isPeated ?? null,
           phenolPpm: whiskyDetail.isPeated && whiskyDetail.phenolPpm ? Number(whiskyDetail.phenolPpm) : null,
           phenolPpmMin: whiskyDetail.isPeated && whiskyDetail.phenolPpmMin ? Number(whiskyDetail.phenolPpmMin) : null,
           phenolPpmMax: whiskyDetail.isPeated && whiskyDetail.phenolPpmMax ? Number(whiskyDetail.phenolPpmMax) : null,
@@ -574,8 +585,8 @@ export function useSpiritForm() {
         wineDetail: {
           wineType: wineDetail.wineType || null,
           vintage: wineDetail.vintage ? Number(wineDetail.vintage) : null,
-          isOakAged: wineDetail.isOakAged || null,
-          isNaturalWine: wineDetail.isNaturalWine || null,
+          isOakAged: wineDetail.isOakAged ?? null,
+          isNaturalWine: wineDetail.isNaturalWine ?? null,
           certification: wineDetail.certification || null,
           grapeVarieties: wineDetail.grapeVarieties.filter((g) => g.name).map((g) => ({
             name: g.name, percentage: g.percentage ? Number(g.percentage) : null,
@@ -593,7 +604,7 @@ export function useSpiritForm() {
         cognacDetail: {
           grade: cognacDetail.grade || null,
           cru: cognacDetail.cru || null,
-          isFineChampagne: cognacDetail.isFineChampagne || null,
+          isFineChampagne: cognacDetail.isFineChampagne ?? null,
           blendDetail: cognacDetail.blendDetail || null,
         },
       }
@@ -606,6 +617,55 @@ export function useSpiritForm() {
         },
       }
       default: return {}
+    }
+  }
+
+  const cleanWhiskyDetail = (w?: WhiskyDetailRequest): WhiskyDetailRequest | null => {
+    if (!w) return null
+    const style = w.style || null
+    const caskTypes = w.caskTypes || []
+    return {
+      style,
+      styleOther: style === 'OTHER' ? (w.styleOther || null) : null,
+      brandName: w.brandName || null,
+      bottlingType: w.bottlingType || null,
+      caskTypes,
+      caskFinishes: (w.caskFinishes || []).filter((c) => caskTypes.includes(c)),
+      caskTypeOther: caskTypes.includes('OTHER') ? (w.caskTypeOther || null) : null,
+      caskDetails: Object.fromEntries(
+        Object.entries(w.caskDetails || {}).map(([k, v]) => [
+          k,
+          v.filter((str) => str.trim() !== '')
+        ]).filter(([_, v]) => v.length > 0)
+      ),
+      isNonChillFiltered: w.isNonChillFiltered ?? null,
+      isNaturalColour: w.isNaturalColour ?? null,
+      isSingleCask: w.isSingleCask ?? null,
+      isCaskStrength: w.isCaskStrength ?? null,
+      isPeated: w.isPeated ?? null,
+      phenolPpm: w.isPeated && w.phenolPpm ? Number(w.phenolPpm) : null,
+      phenolPpmMin: w.isPeated && w.phenolPpmMin ? Number(w.phenolPpmMin) : null,
+      phenolPpmMax: w.isPeated && w.phenolPpmMax ? Number(w.phenolPpmMax) : null,
+      caskNo: w.caskNo || null,
+      notes: w.notes || null,
+    }
+  }
+
+  const cleanVariantCommonDetail = (cd?: SpiritCommonDetailRequest): SpiritCommonDetailRequest | undefined => {
+    if (!cd) return undefined
+    return {
+      isNas: cd.isNas ?? false,
+      ageStatement: cd.isNas ? null : (cd.ageStatement ?? null),
+      ageStatementMin: cd.isNas ? null : (cd.ageStatementMin ?? null),
+      ageStatementMax: cd.isNas ? null : (cd.ageStatementMax ?? null),
+      distilledDate: cd.distilledDate || null,
+      bottledDate: cd.bottledDate || null,
+      releaseDate: cd.releaseDate || null,
+      bottleNo: cd.bottleNo || null,
+      batchNo: cd.batchNo || null,
+      totalBottles: cd.totalBottles ?? null,
+      abv: null,
+      volumeMl: null,
     }
   }
 
@@ -624,7 +684,14 @@ export function useSpiritForm() {
       region: region || null,
       commonDetail: common,
       isVariantSplit,
-      variants: isVariantSplit ? variants : [],
+      variants: isVariantSplit ? variants.map(v => ({
+        ...v,
+        variantValueEn: v.variantValueEn || null,
+        variantValue: v.variantValue.trim(),
+        volumeMl: common.volumeMl,
+        commonDetail: cleanVariantCommonDetail(v.commonDetail),
+        whiskyDetail: category === 'WHISKY' ? (cleanWhiskyDetail(v.whiskyDetail) || undefined) : undefined,
+      })) : [],
       variantType: 'NONE',
       variantValue: null,
       abvMin: isAbvRange ? (abvMin ? Number(abvMin) : null) : null,
@@ -653,6 +720,129 @@ export function useSpiritForm() {
 
 export type SpiritFormApi = ReturnType<typeof useSpiritForm>
 
+function AutoResizeTextarea({
+  value,
+  onChange,
+  placeholder,
+  className,
+  maxLength,
+}: {
+  value: string
+  onChange: (v: string) => void
+  placeholder?: string
+  className?: string
+  maxLength?: number
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    if (ref.current) {
+      ref.current.style.height = 'auto'
+      ref.current.style.height = `${ref.current.scrollHeight}px`
+    }
+  }, [value])
+
+  return (
+    <textarea
+      ref={ref}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className={`${className} resize-none overflow-hidden min-h-[38px] py-2`}
+      rows={1}
+      maxLength={maxLength}
+    />
+  )
+}
+
+function NumberSvg({ num, active }: { num: number; active: boolean }) {
+  return (
+    <svg
+      className={`w-4 h-4 flex-shrink-0 transition-colors ${
+        active ? 'text-amber-600' : 'text-neutral-400 hover:text-amber-500'
+      }`}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <circle cx="12" cy="12" r="9.5" stroke="currentColor" strokeWidth={2} fill="none" />
+      <text
+        x="12"
+        y="15.5"
+        fontSize="10"
+        fontWeight="800"
+        fontFamily="Inter, system-ui, sans-serif"
+        textAnchor="middle"
+        fill="currentColor"
+      >
+        {num}
+      </text>
+    </svg>
+  )
+}
+
+interface SortableTabProps {
+  id: string
+  index: number
+  variant: any
+  isActive: boolean
+  onClick: () => void
+  onRemove: () => void
+}
+
+function SortableTab({
+  id,
+  index,
+  variant,
+  isActive,
+  onClick,
+  onRemove,
+}: SortableTabProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+    zIndex: isDragging ? 50 : 'auto',
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      onClick={onClick}
+      className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all flex items-center gap-1.5 cursor-grab active:cursor-grabbing select-none ${
+        isActive
+          ? 'border-amber-500 bg-amber-50 text-amber-700 shadow-sm'
+          : 'border-neutral-200 bg-white text-neutral-500 hover:border-amber-300 hover:bg-amber-50/50'
+      }`}
+    >
+      <NumberSvg num={index + 1} active={isActive} />
+      <span>{variant.variantValue || '새 에디션'}</span>
+      <span
+        onClick={(e) => {
+          e.stopPropagation()
+          onRemove()
+        }}
+        className="hover:text-red-500 hover:bg-neutral-200/60 p-0.5 rounded transition-colors ml-1 cursor-pointer"
+        title="에디션 삭제"
+      >
+        ✕
+      </span>
+    </div>
+  )
+}
+
 // ── 폼 UI (4섹션: 기본 / 생산·병입 / 카테고리 상세 / 공통 상세) ───────
 interface SpiritFormFieldsProps {
   form: SpiritFormApi
@@ -670,6 +860,44 @@ export default function SpiritFormFields({ form, categoryLocked, onCategorySelec
   const producerLabel = category ? PRODUCER_LABEL[category] : '증류소'
   const ph = category ? PLACEHOLDERS[category] : DEFAULT_PLACEHOLDER
   const queryClient = useQueryClient()
+
+  const [activeVariantIdx, setActiveVariantIdx] = useState(0)
+
+  const pointerSensor = useSensor(PointerSensor, {
+    activationConstraint: {
+      distance: 8,
+    },
+  })
+  const sensors = useSensors(pointerSensor)
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    const oldIndex = form.variants.findIndex((v, idx) => ((v as any).tempId || `temp-${idx}`) === active.id)
+    const newIndex = form.variants.findIndex((v, idx) => ((v as any).tempId || `temp-${idx}`) === over.id)
+
+    if (oldIndex !== -1 && newIndex !== -1) {
+      const nextVariants = arrayMove(form.variants, oldIndex, newIndex)
+      form.setVariants(nextVariants)
+      
+      if (activeVariantIdx === oldIndex) {
+        setActiveVariantIdx(newIndex)
+      } else if (activeVariantIdx > oldIndex && activeVariantIdx <= newIndex) {
+        setActiveVariantIdx(activeVariantIdx - 1)
+      } else if (activeVariantIdx < oldIndex && activeVariantIdx >= newIndex) {
+        setActiveVariantIdx(activeVariantIdx + 1)
+      }
+    }
+  }
+
+  useEffect(() => {
+    if (form.variants.length === 0) {
+      setActiveVariantIdx(0)
+    } else if (activeVariantIdx >= form.variants.length) {
+      setActiveVariantIdx(form.variants.length - 1)
+    }
+  }, [form.variants.length, activeVariantIdx])
 
   // 기타 카테고리 — 목록에 없는 생산자 즉시 직접 생성 후 선택
   const handleCreateProducer = async (data: { nameKo: string; nameEn: string; country: string }) => {
@@ -716,19 +944,113 @@ export default function SpiritFormFields({ form, categoryLocked, onCategorySelec
           <div className="space-y-4">
             <div>
               <label className={LABEL}>한국어 이름 <span className="text-red-400">*</span></label>
-              <input value={form.nameKo} onChange={(e) => form.setNameKo(e.target.value)} maxLength={200}
+              <AutoResizeTextarea value={form.nameKo} onChange={form.setNameKo} maxLength={200}
                 placeholder={ph.nameKo}
                 className={`${INPUT} ${errors.nameKo ? 'border-red-400' : ''}`} />
               {errors.nameKo && <p className="text-xs text-red-500 mt-1">{errors.nameKo}</p>}
             </div>
             <div>
               <label className={LABEL}>영어 이름 <span className="text-red-400">*</span></label>
-              <input value={form.nameEn} onChange={(e) => form.setNameEn(e.target.value)} maxLength={200}
+              <AutoResizeTextarea value={form.nameEn} onChange={form.setNameEn} maxLength={200}
                 placeholder={ph.nameEn}
                 className={`${INPUT} ${errors.nameEn ? 'border-red-400' : ''}`} />
               {errors.nameEn && <p className="text-xs text-red-500 mt-1">{errors.nameEn}</p>}
             </div>
           </div>
+
+          {/* 에디션 유형 */}
+          {category === 'WHISKY' && (
+            <div>
+              <label className={LABEL}>에디션 유형</label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {[
+                  ['NONE', '정규'],
+                  ['BATCH', '배치'],
+                  ['SINGLE_CASK', '싱글 캐스크'],
+                  ['RELEASE_YEAR', '출시 연도'],
+                ].map(([val, label]) => {
+                  const isSelected = val === 'NONE'
+                    ? !form.isVariantSplit
+                    : (form.isVariantSplit && form.variants.length > 0 && form.variants[0]?.variantType === val)
+                  return (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => {
+                        if (val === 'NONE') {
+                          form.setIsVariantSplit(false)
+                          form.setVariants([])
+                        } else {
+                          form.setIsVariantSplit(true)
+                          form.setVariants((prev) => {
+                            if (prev.length === 0) {
+                              return [{
+                                tempId: Math.random().toString(),
+                                variantType: val as any,
+                                variantValue: '',
+                                variantValueEn: '',
+                                abv: null,
+                                abvMin: null,
+                                abvMax: null,
+                                volumeMl: null,
+                                commonDetail: {
+                                  isNas: false,
+                                  ageStatement: null,
+                                  ageStatementMin: null,
+                                  ageStatementMax: null,
+                                  distilledDate: null,
+                                  bottledDate: null,
+                                  releaseDate: null,
+                                  volumeMl: null,
+                                  abv: null,
+                                  bottleNo: null,
+                                  batchNo: null,
+                                  totalBottles: null,
+                                },
+                                whiskyDetail: {
+                                  style: null,
+                                  styleOther: null,
+                                  brandName: null,
+                                  bottlingType: null,
+                                  caskTypes: [],
+                                  caskFinishes: [],
+                                  caskTypeOther: null,
+                                  caskDetails: {},
+                                  isNonChillFiltered: null,
+                                  isNaturalColour: null,
+                                  isSingleCask: null,
+                                  isCaskStrength: null,
+                                  isPeated: null,
+                                  phenolPpm: null,
+                                  phenolPpmMin: null,
+                                  phenolPpmMax: null,
+                                  caskNo: null,
+                                  notes: null,
+                                },
+                              }]
+                            } else {
+                              return prev.map(v => ({
+                                tempId: (v as any).tempId || Math.random().toString(),
+                                ...v,
+                                variantType: val as any
+                              }))
+                            }
+                          })
+                        }
+                      }}
+                      className={`py-2 rounded-lg border text-xs font-semibold transition-all ${
+                        isSelected
+                          ? 'border-amber-500 bg-amber-50 text-amber-700'
+                          : 'border-neutral-200 text-neutral-500 hover:border-amber-300 hover:bg-amber-50/50'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
           {/* 필수 규격 */}
           <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-4 space-y-4">
@@ -906,10 +1228,9 @@ export default function SpiritFormFields({ form, categoryLocked, onCategorySelec
           </div>
         )}
 
-        {/* ④ 공통 상세 정보 */}
-        {category && (
+        {/* ④ 공통 상세 정보 (위스키 제외 카테고리만 카드 형태로 타이틀 없이 렌더링) */}
+        {category && category !== 'WHISKY' && (
           <div className={CARD}>
-            <SectionTitle title="공통 상세 정보" hint="선택" />
             <SpiritCommonDetailSection
               value={form.commonDetail}
               onChange={form.updateCommon}
@@ -931,78 +1252,144 @@ export default function SpiritFormFields({ form, categoryLocked, onCategorySelec
         ) : (
           <>
             {/* 하위 에디션 설정 카드 */}
-            {category && (
+            {category && form.isVariantSplit && (
               <div className={CARD}>
-                <div className="flex items-center justify-between">
-                  <SectionTitle title="하위 에디션 분리 등록" hint="배치 / 싱글 캐스크 / 연도별 정보 분화" />
-                  <label className="flex items-center gap-2 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={form.isVariantSplit}
-                      onChange={(e) => {
-                        form.setIsVariantSplit(e.target.checked)
-                        if (e.target.checked && form.variants.length === 0) {
-                          form.addVariant()
-                        }
-                      }}
-                      className="w-4 h-4 accent-amber-500 cursor-pointer rounded"
-                    />
-                    <span className="text-xs font-semibold text-neutral-600">활성화</span>
-                  </label>
+                <SectionTitle title="하위 에디션 목록" hint="각 에디션별 개별 정보 입력" />
+                
+                {/* 탭 바 */}
+                <div className="flex flex-wrap items-center gap-1.5 border-b border-neutral-200 pb-3 mb-4">
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <SortableContext
+                      items={form.variants.map((v, idx) => (v as any).tempId || `temp-${idx}`)}
+                      strategy={horizontalListSortingStrategy}
+                    >
+                      {form.variants.map((v, idx) => (
+                        <SortableTab
+                          key={(v as any).tempId || `temp-${idx}`}
+                          id={(v as any).tempId || `temp-${idx}`}
+                          index={idx}
+                          variant={v}
+                          isActive={activeVariantIdx === idx}
+                          onClick={() => setActiveVariantIdx(idx)}
+                          onRemove={() => form.removeVariant(idx)}
+                        />
+                      ))}
+                    </SortableContext>
+                  </DndContext>
+                  
+                  <button
+                    type="button"
+                    onClick={() => {
+                      form.addVariant()
+                      setActiveVariantIdx(form.variants.length)
+                    }}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-dashed border-neutral-300 hover:border-amber-400 text-neutral-500 hover:text-amber-700 flex items-center gap-1 transition-all bg-white cursor-pointer"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                    </svg>
+                    에디션 추가
+                  </button>
                 </div>
 
-                {form.isVariantSplit && (
-                  <div className="space-y-4 pt-2 border-t border-neutral-100">
-                    {form.variants.map((v, idx) => (
-                      <VariantItemCard
-                        key={idx}
-                        index={idx}
-                        variant={v}
-                        category={category}
-                        errors={errors}
-                        onUpdate={(updates) => form.updateVariant(idx, updates)}
-                        onUpdateCommon={(updates) => form.updateVariantCommon(idx, updates)}
-                        onUpdateWhisky={(updates) => form.updateVariantWhisky(idx, updates)}
-                        onRemove={() => form.removeVariant(idx)}
-                      />
-                    ))}
-
-                    <button
-                      type="button"
-                      onClick={form.addVariant}
-                      className="w-full py-3 border-2 border-dashed border-neutral-200 hover:border-amber-400 hover:bg-amber-50/20 text-neutral-500 hover:text-amber-700 text-sm font-semibold rounded-xl flex items-center justify-center gap-2 transition-all"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                      </svg>
-                      에디션 추가
-                    </button>
+                {/* 활성화된 에디션 정보 및 상세 */}
+                {form.variants.length > 0 && form.variants[activeVariantIdx] ? (
+                  <VariantItemCard
+                    index={activeVariantIdx}
+                    variant={form.variants[activeVariantIdx]}
+                    category={category}
+                    errors={errors}
+                    onUpdate={(updates) => form.updateVariant(activeVariantIdx, updates)}
+                    onUpdateCommon={(updates) => form.updateVariantCommon(activeVariantIdx, updates)}
+                    onUpdateWhisky={(updates) => form.updateVariantWhisky(activeVariantIdx, updates)}
+                  />
+                ) : (
+                  <div className="text-center py-8 text-neutral-400 text-sm">
+                    등록된 에디션이 없습니다. 상단의 '+ 에디션 추가' 버튼을 눌러 에디션을 등록해주세요.
                   </div>
                 )}
               </div>
             )}
 
             {/* 카테고리별 상세 카드 */}
-            <div className={CARD}>
-              <SectionTitle title={`${CATEGORY_LABEL[category]} 상세`} />
-              {category === 'WHISKY' && (
-                <WhiskyDetailSection value={form.whiskyDetail} onChange={form.updateWhisky} />
-              )}
-              {category === 'WINE' && (
-                <WineDetailSection value={form.wineDetail} onChange={form.updateWine} errors={errors} />
-              )}
-              {category === 'COGNAC' && (
-                <CognacDetailSection value={form.cognacDetail} onChange={form.updateCognac} errors={errors} />
-              )}
-              {category === 'OTHER' && (
-                <OtherDetailSection value={form.otherDetail} onChange={form.updateOther} errors={errors} />
-              )}
-            </div>
+            {(!form.isVariantSplit || category !== 'WHISKY') && (
+              <div className={CARD}>
+                <SectionTitle title={`${CATEGORY_LABEL[category]} 상세`} />
+                {category === 'WHISKY' && (
+                  <div className="space-y-6">
+                    <SpiritCommonDetailSection
+                      value={form.commonDetail}
+                      onChange={form.updateCommon}
+                      dateErrors={{ distilledDate: errors.distilledDate, bottledDate: errors.bottledDate }}
+                      category={category}
+                    />
+                    <div className="pt-5 border-t border-neutral-200">
+                      <WhiskyDetailSection value={form.whiskyDetail} onChange={form.updateWhisky} />
+                    </div>
+                  </div>
+                )}
+                {category === 'WINE' && (
+                  <WineDetailSection value={form.wineDetail} onChange={form.updateWine} errors={errors} />
+                )}
+                {category === 'COGNAC' && (
+                  <CognacDetailSection value={form.cognacDetail} onChange={form.updateCognac} errors={errors} />
+                )}
+                {category === 'OTHER' && (
+                  <OtherDetailSection value={form.otherDetail} onChange={form.updateOther} errors={errors} />
+                )}
+              </div>
+            )}
           </>
         )}
       </div>
     </div>
   )
+}
+
+function toWhiskyDetailForm(detail?: WhiskyDetailRequest): WhiskyDetailForm {
+  if (!detail) return DEFAULT_WHISKY
+  return {
+    style: detail.style ?? '',
+    styleOther: detail.styleOther ?? '',
+    brandName: detail.brandName ?? '',
+    bottlingType: detail.bottlingType ?? '',
+    caskTypes: detail.caskTypes ?? [],
+    caskFinishes: detail.caskFinishes ?? [],
+    caskTypeOther: detail.caskTypeOther ?? '',
+    caskDetails: detail.caskDetails ?? {},
+    isNonChillFiltered: !!detail.isNonChillFiltered,
+    isNaturalColour: !!detail.isNaturalColour,
+    isSingleCask: !!detail.isSingleCask,
+    isCaskStrength: !!detail.isCaskStrength,
+    isPeated: !!detail.isPeated,
+    phenolPpm: detail.phenolPpm?.toString() ?? '',
+    phenolPpmMin: detail.phenolPpmMin?.toString() ?? '',
+    phenolPpmMax: detail.phenolPpmMax?.toString() ?? '',
+    caskNo: detail.caskNo ?? '',
+    notes: detail.notes ?? '',
+  }
+}
+
+function toCommonDetailForm(detail?: SpiritCommonDetailRequest): CommonDetailForm {
+  if (!detail) return DEFAULT_COMMON_DETAIL
+  return {
+    isNas: !!detail.isNas,
+    ageStatement: detail.ageStatement ?? null,
+    ageStatementMin: detail.ageStatementMin ?? null,
+    ageStatementMax: detail.ageStatementMax ?? null,
+    distilledDate: detail.distilledDate ?? '',
+    bottledDate: detail.bottledDate ?? '',
+    releaseDate: detail.releaseDate ?? '',
+    volumeMl: detail.volumeMl?.toString() ?? '',
+    abv: detail.abv?.toString() ?? '',
+    bottleNo: detail.bottleNo ?? '',
+    batchNo: detail.batchNo ?? '',
+    totalBottles: detail.totalBottles?.toString() ?? '',
+  }
 }
 
 interface VariantItemCardProps {
@@ -1013,7 +1400,6 @@ interface VariantItemCardProps {
   onUpdate: (updates: Partial<CreateVariantRequest>) => void
   onUpdateCommon: (updates: Partial<SpiritCommonDetailRequest>) => void
   onUpdateWhisky: (updates: Partial<WhiskyDetailRequest>) => void
-  onRemove: () => void
 }
 
 function VariantItemCard({
@@ -1024,281 +1410,148 @@ function VariantItemCard({
   onUpdate,
   onUpdateCommon,
   onUpdateWhisky,
-  onRemove,
 }: VariantItemCardProps) {
-  const [isAbvRange, setIsAbvRange] = useState(variant.abvMin != null || variant.abvMax != null)
-  const [isOpen, setIsOpen] = useState(true)
+  const whiskyFormValue = toWhiskyDetailForm(variant.whiskyDetail)
 
-  const handleAbvRangeToggle = (checked: boolean) => {
-    setIsAbvRange(checked)
-    if (!checked) {
-      onUpdate({ abvMin: null, abvMax: null })
-    } else {
-      onUpdate({ abv: null })
+  const handleWhiskyChange = (u: Partial<WhiskyDetailForm>) => {
+    const converted: Partial<WhiskyDetailRequest> = {}
+    if (u.style !== undefined) converted.style = u.style || null
+    if (u.styleOther !== undefined) converted.styleOther = u.styleOther || null
+    if (u.brandName !== undefined) converted.brandName = u.brandName || null
+    if (u.bottlingType !== undefined) converted.bottlingType = u.bottlingType || null
+    if (u.caskTypes !== undefined) converted.caskTypes = u.caskTypes
+    if (u.caskFinishes !== undefined) converted.caskFinishes = u.caskFinishes
+    if (u.caskTypeOther !== undefined) converted.caskTypeOther = u.caskTypeOther || null
+    if (u.caskDetails !== undefined) converted.caskDetails = u.caskDetails
+    if (u.isNonChillFiltered !== undefined) converted.isNonChillFiltered = u.isNonChillFiltered
+    if (u.isNaturalColour !== undefined) converted.isNaturalColour = u.isNaturalColour
+    if (u.isSingleCask !== undefined) converted.isSingleCask = u.isSingleCask
+    if (u.isCaskStrength !== undefined) converted.isCaskStrength = u.isCaskStrength
+    if (u.isPeated !== undefined) {
+      converted.isPeated = u.isPeated
+      if (!u.isPeated) {
+        converted.phenolPpm = null
+        converted.phenolPpmMin = null
+        converted.phenolPpmMax = null
+      }
     }
+    if (u.phenolPpm !== undefined) {
+      converted.phenolPpm = u.phenolPpm === '' ? null : Number(u.phenolPpm)
+    }
+    if (u.phenolPpmMin !== undefined) {
+      converted.phenolPpmMin = u.phenolPpmMin === '' ? null : Number(u.phenolPpmMin)
+    }
+    if (u.phenolPpmMax !== undefined) {
+      converted.phenolPpmMax = u.phenolPpmMax === '' ? null : Number(u.phenolPpmMax)
+    }
+    if (u.caskNo !== undefined) converted.caskNo = u.caskNo || null
+    if (u.notes !== undefined) converted.notes = u.notes || null
+
+    onUpdateWhisky(converted)
+  }
+
+  const handleCommonChange = (u: Partial<CommonDetailForm>) => {
+    const converted: Partial<SpiritCommonDetailRequest> = {}
+    if (u.isNas !== undefined) converted.isNas = u.isNas
+    if (u.ageStatement !== undefined) converted.ageStatement = u.ageStatement
+    if (u.ageStatementMin !== undefined) converted.ageStatementMin = u.ageStatementMin
+    if (u.ageStatementMax !== undefined) converted.ageStatementMax = u.ageStatementMax
+    if (u.distilledDate !== undefined) converted.distilledDate = u.distilledDate || null
+    if (u.bottledDate !== undefined) converted.bottledDate = u.bottledDate || null
+    if (u.releaseDate !== undefined) converted.releaseDate = u.releaseDate || null
+    if (u.bottleNo !== undefined) converted.bottleNo = u.bottleNo || null
+    if (u.batchNo !== undefined) converted.batchNo = u.batchNo || null
+    if (u.totalBottles !== undefined) {
+      converted.totalBottles = u.totalBottles === '' ? null : Number(u.totalBottles)
+    }
+    onUpdateCommon(converted)
   }
 
   return (
-    <div className="bg-neutral-50 rounded-xl border border-neutral-200 shadow-sm overflow-hidden text-left">
-      <div className="flex items-center justify-between px-4 py-3 bg-neutral-100/60 border-b border-neutral-200">
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-bold text-neutral-600 bg-neutral-200 px-2.5 py-0.5 rounded-full">
-            #{index + 1}
-          </span>
-          <span className="text-sm font-bold text-neutral-800">
-            {variant.variantValue ? `${variant.variantValue}` : '새 에디션'}
-          </span>
+    <div className="bg-neutral-50/50 rounded-2xl border border-neutral-200/80 p-5 space-y-6 text-left">
+      {/* 에디션 기본 정보 */}
+      <div className="space-y-4">
+        <h4 className="text-xs font-bold text-neutral-600 uppercase tracking-wider">에디션 기본 정보</h4>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-[11px] font-semibold text-neutral-500 mb-1">식별 값(한글) <span className="text-red-400">*</span></label>
+            <input
+              type="text"
+              value={variant.variantValue}
+              onChange={(e) => onUpdate({ variantValue: e.target.value })}
+              placeholder={
+                variant.variantType === 'BATCH'
+                  ? '예) 배치 11'
+                  : variant.variantType === 'RELEASE_YEAR'
+                  ? '예) 2024 릴리즈'
+                  : '예) 캐스크 #1234'
+              }
+              className={`w-full px-2.5 py-1.5 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white ${
+                errors[`variantValue_${index}`] ? 'border-red-400' : ''
+              }`}
+            />
+            {errors[`variantValue_${index}`] && (
+              <p className="text-[10px] text-red-500 mt-1">{errors[`variantValue_${index}`]}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-semibold text-neutral-500 mb-1">식별 값(영문)</label>
+            <input
+              type="text"
+              value={variant.variantValueEn ?? ''}
+              onChange={(e) => onUpdate({ variantValueEn: e.target.value })}
+              placeholder={
+                variant.variantType === 'BATCH'
+                  ? '예) Batch 11'
+                  : variant.variantType === 'RELEASE_YEAR'
+                  ? '예) 2024 Release'
+                  : '예) Cask #1234'
+              }
+              className="w-full px-2.5 py-1.5 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
+            />
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setIsOpen(!isOpen)}
-            className="p-1.5 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-200/50 rounded-lg transition-colors"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className={`h-4 w-4 transform transition-transform ${isOpen ? 'rotate-180' : ''}`}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            onClick={onRemove}
-            className="p-1.5 text-neutral-400 hover:text-red-500 hover:bg-neutral-200/50 rounded-lg transition-colors"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-          </button>
+
+        <div>
+          <label className="block text-[11px] font-semibold text-neutral-500 mb-1">알코올 도수</label>
+          <div className="relative max-w-[200px]">
+            <input
+              type="number"
+              step="0.1"
+              min="0"
+              max="100"
+              value={variant.abv ?? ''}
+              onChange={(e) => onUpdate({ abv: e.target.value === '' ? null : Number(e.target.value) })}
+              placeholder="예) 46.3"
+              className="w-full px-2.5 py-1.5 pr-6 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
+            />
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-neutral-400 pointer-events-none">%</span>
+          </div>
         </div>
       </div>
 
-      {isOpen && (
-        <div className="p-4 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-[11px] font-semibold text-neutral-500 mb-1">에디션 유형 <span className="text-red-400">*</span></label>
-              <select
-                value={variant.variantType}
-                onChange={(e) => onUpdate({ variantType: e.target.value as any })}
-                className="w-full px-2.5 py-1.5 text-xs border border-neutral-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-400"
-              >
-                <option value="BATCH">배치 (BATCH)</option>
-                <option value="RELEASE_YEAR">출시 연도 (RELEASE_YEAR)</option>
-                <option value="SINGLE_CASK">싱글 캐스크 (SINGLE_CASK)</option>
-              </select>
-            </div>
-
-            <div className="sm:col-span-2">
-              <label className="block text-[11px] font-semibold text-neutral-500 mb-1">식별 값 <span className="text-red-400">*</span></label>
-              <input
-                type="text"
-                value={variant.variantValue}
-                onChange={(e) => onUpdate({ variantValue: e.target.value })}
-                placeholder={
-                  variant.variantType === 'BATCH'
-                    ? '예) Batch 11'
-                    : variant.variantType === 'RELEASE_YEAR'
-                    ? '예) 2024 Release'
-                    : '예) Cask #1234'
-                }
-                className={`w-full px-2.5 py-1.5 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white ${
-                  errors[`variantValue_${index}`] ? 'border-red-400' : ''
-                }`}
-              />
-              {errors[`variantValue_${index}`] && (
-                <p className="text-[10px] text-red-500 mt-1">{errors[`variantValue_${index}`]}</p>
-              )}
-            </div>
+      {category === 'WHISKY' && (
+        <div className="pt-5 border-t border-neutral-200 space-y-6">
+          <div>
+            <h4 className="text-xs font-bold text-neutral-600 uppercase tracking-wider mb-4">에디션 위스키 상세</h4>
+            <SpiritCommonDetailSection
+              value={toCommonDetailForm(variant.commonDetail)}
+              onChange={handleCommonChange}
+              dateErrors={{
+                distilledDate: errors[`variantDistilledDate_${index}`],
+                bottledDate: errors[`variantBottledDate_${index}`]
+              }}
+              category={category}
+            />
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block text-[11px] font-semibold text-neutral-500 mb-0">알코올 도수</label>
-                <label className="flex items-center gap-1 text-[10px] text-neutral-500 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={isAbvRange}
-                    onChange={(e) => handleAbvRangeToggle(e.target.checked)}
-                    className="accent-amber-500 rounded"
-                  />
-                  범위 지정
-                </label>
-              </div>
-              {isAbvRange ? (
-                <div className="flex items-center gap-2">
-                  <div className="relative flex-1">
-                    <input
-                      type="number"
-                      step="0.1"
-                      min="0"
-                      max="100"
-                      value={variant.abvMin ?? ''}
-                      onChange={(e) => onUpdate({ abvMin: e.target.value === '' ? null : Number(e.target.value) })}
-                      placeholder="최소"
-                      className={`w-full px-2.5 py-1.5 pr-6 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white ${
-                        errors[`variantAbvMin_${index}`] ? 'border-red-400' : ''
-                      }`}
-                    />
-                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-neutral-400 pointer-events-none">%</span>
-                  </div>
-                  <span className="text-neutral-400">~</span>
-                  <div className="relative flex-1">
-                    <input
-                      type="number"
-                      step="0.1"
-                      min="0"
-                      max="100"
-                      value={variant.abvMax ?? ''}
-                      onChange={(e) => onUpdate({ abvMax: e.target.value === '' ? null : Number(e.target.value) })}
-                      placeholder="최대"
-                      className="w-full px-2.5 py-1.5 pr-6 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
-                    />
-                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-neutral-400 pointer-events-none">%</span>
-                  </div>
-                </div>
-              ) : (
-                <div className="relative">
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    max="100"
-                    value={variant.abv ?? ''}
-                    onChange={(e) => onUpdate({ abv: e.target.value === '' ? null : Number(e.target.value) })}
-                    placeholder="예) 46.3"
-                    className="w-full px-2.5 py-1.5 pr-6 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
-                  />
-                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-neutral-400 pointer-events-none">%</span>
-                </div>
-              )}
-              {errors[`variantAbvMin_${index}`] && (
-                <p className="text-[10px] text-red-500 mt-1">{errors[`variantAbvMin_${index}`]}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-semibold text-neutral-500 mb-1">용량 (ml)</label>
-              <div className="relative">
-                <input
-                  type="number"
-                  min="1"
-                  max="100000"
-                  value={variant.volumeMl ?? ''}
-                  onChange={(e) => onUpdate({ volumeMl: e.target.value === '' ? null : Number(e.target.value) })}
-                  placeholder="예) 700"
-                  className="w-full px-2.5 py-1.5 pr-8 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
-                />
-                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-neutral-400 pointer-events-none">ml</span>
-              </div>
-            </div>
+          <div className="pt-5 border-t border-neutral-200">
+            <WhiskyDetailSection
+              value={whiskyFormValue}
+              onChange={handleWhiskyChange}
+            />
           </div>
-
-          {category === 'WHISKY' && (
-            <div className="pt-3 border-t border-neutral-200 space-y-3">
-              <div className="flex items-center gap-1">
-                <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">위스키 하위 에디션 특화 설정 (선택)</p>
-                <InfoTooltip text="위스키 기본 정보의 설정값(싱글 캐스크, 캐스크 스트렝스)을 기본적으로 상속받아 세팅합니다. 이 에디션만 다른 특성을 가진 경우 개별적으로 변경할 수 있습니다." />
-              </div>
-              
-              <div className="flex gap-4">
-                <label className="flex items-center gap-1.5 cursor-pointer text-xs select-none">
-                  <input
-                    type="checkbox"
-                    checked={!!variant.whiskyDetail?.isSingleCask}
-                    onChange={(e) => onUpdateWhisky({ isSingleCask: e.target.checked })}
-                    className="w-3.5 h-3.5 accent-amber-500"
-                  />
-                  싱글 캐스크
-                </label>
-                <label className="flex items-center gap-1.5 cursor-pointer text-xs select-none">
-                  <input
-                    type="checkbox"
-                    checked={!!variant.whiskyDetail?.isCaskStrength}
-                    onChange={(e) => onUpdateWhisky({ isCaskStrength: e.target.checked })}
-                    className="w-3.5 h-3.5 accent-amber-500"
-                  />
-                  캐스크 스트렝스
-                </label>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[10px] font-semibold text-neutral-500 mb-1">캐스크 번호 (caskNo)</label>
-                  <input
-                    type="text"
-                    value={variant.whiskyDetail?.caskNo ?? ''}
-                    onChange={(e) => onUpdateWhisky({ caskNo: e.target.value })}
-                    placeholder="예) #1042"
-                    className="w-full px-2.5 py-1.5 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-semibold text-neutral-500 mb-1">배치 번호 (batchNo)</label>
-                  <input
-                    type="text"
-                    value={variant.commonDetail?.batchNo ?? ''}
-                    onChange={(e) => onUpdateCommon({ batchNo: e.target.value })}
-                    placeholder="예) Batch 11"
-                    className="w-full px-2.5 py-1.5 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[10px] font-semibold text-neutral-500 mb-1">증류 연월</label>
-                  <input
-                    type="text"
-                    value={variant.commonDetail?.distilledDate ?? ''}
-                    onChange={(e) => onUpdateCommon({ distilledDate: e.target.value })}
-                    placeholder="YYYY 또는 YYYY-MM"
-                    maxLength={7}
-                    className="w-full px-2.5 py-1.5 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-semibold text-neutral-500 mb-1">병입 연월</label>
-                  <input
-                    type="text"
-                    value={variant.commonDetail?.bottledDate ?? ''}
-                    onChange={(e) => onUpdateCommon({ bottledDate: e.target.value })}
-                    placeholder="YYYY 또는 YYYY-MM"
-                    maxLength={7}
-                    className="w-full px-2.5 py-1.5 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="sm:col-span-2">
-                  <label className="block text-[10px] font-semibold text-neutral-500 mb-1">병 번호 / 총 병 수</label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={variant.commonDetail?.bottleNo ?? ''}
-                      onChange={(e) => onUpdateCommon({ bottleNo: e.target.value })}
-                      placeholder="병 번호"
-                      className="w-full px-2.5 py-1.5 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
-                    />
-                    <span className="text-neutral-400">/</span>
-                    <input
-                      type="number"
-                      value={variant.commonDetail?.totalBottles ?? ''}
-                      onChange={(e) => onUpdateCommon({ totalBottles: e.target.value === '' ? null : Number(e.target.value) })}
-                      placeholder="총 병 수"
-                      className="w-full px-2.5 py-1.5 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       )}
     </div>

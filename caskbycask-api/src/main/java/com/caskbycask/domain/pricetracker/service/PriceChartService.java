@@ -10,6 +10,9 @@ import com.caskbycask.domain.pricetracker.entity.enums.BucketType;
 import com.caskbycask.domain.pricetracker.entity.enums.PriceCurrency;
 import com.caskbycask.domain.pricetracker.entity.enums.PriceReportStatus;
 import com.caskbycask.domain.pricetracker.entity.enums.StoreType;
+import com.caskbycask.domain.deal.entity.DealPost;
+import com.caskbycask.domain.deal.repository.DealPostRepository;
+import com.caskbycask.domain.deal.entity.enums.DealStatus;
 import com.caskbycask.domain.pricetracker.repository.PriceReportImageRepository;
 import com.caskbycask.domain.pricetracker.repository.PriceReportRepository;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +34,7 @@ public class PriceChartService {
 
     private final PriceReportRepository priceReportRepository;
     private final PriceReportImageRepository priceReportImageRepository;
+    private final DealPostRepository dealPostRepository;
 
     @Transactional(readOnly = true)
     public ChartResponse getChart(Long spiritId, StoreType storeType, String period, String region) {
@@ -45,14 +49,43 @@ public class PriceChartService {
                         || (r.getStore() != null && region.equals(r.getStore().getRegion())))
                 .toList();
 
-        // 면세 탭 = USD, 국내 탭 = KRW
+        List<DealPost> deals = dealPostRepository.findAllBySpiritIdAndStatusAndIsVisibleTrue(spiritId, DealStatus.APPROVED);
+        deals = deals.stream()
+                .filter(d -> startDate == null || !effectiveDate(d).isBefore(startDate))
+                .filter(d -> d.getStoreType() == storeType)
+                .toList();
+
+        List<TempPrice> tempPrices = new ArrayList<>();
+        for (PriceReport r : reports) {
+            tempPrices.add(new TempPrice(
+                    effectiveDate(r),
+                    r.getActualPrice(),
+                    resolveMaxPrice(r),
+                    r.getSalePrice(),
+                    r.getId(),
+                    r.getStore() != null ? r.getStore().getId() : null
+            ));
+        }
+        for (DealPost d : deals) {
+            BigDecimal priceVal = d.getDealPrice() != null ? BigDecimal.valueOf(d.getDealPrice()) : null;
+            BigDecimal origVal = d.getOriginalPrice() != null ? BigDecimal.valueOf(d.getOriginalPrice()) : null;
+            tempPrices.add(new TempPrice(
+                    effectiveDate(d),
+                    priceVal,
+                    origVal != null ? origVal : priceVal,
+                    priceVal,
+                    null,
+                    null
+            ));
+        }
+
         PriceCurrency currency = (storeType == StoreType.DUTYFREE) ? PriceCurrency.USD : PriceCurrency.KRW;
 
-        BucketType bucketType = reports.size() <= 30 ? BucketType.INDIVIDUAL : BucketType.WEEKLY;
+        BucketType bucketType = tempPrices.size() <= 30 ? BucketType.INDIVIDUAL : BucketType.WEEKLY;
 
         List<ChartPoint> points = bucketType == BucketType.INDIVIDUAL
-                ? buildIndividualPoints(reports)
-                : buildWeeklyPoints(reports);
+                ? buildIndividualPoints(tempPrices)
+                : buildWeeklyPoints(tempPrices);
 
         return new ChartResponse(bucketType, currency, points);
     }
@@ -60,26 +93,47 @@ public class PriceChartService {
     @Transactional(readOnly = true)
     public List<PriceReportChartDetailResponse> getChartPointDetails(
             Long spiritId, LocalDate pointDate, StoreType storeType) {
-        // 해당 날짜가 속한 주(week) 전체 범위 조회
         LocalDate weekStart = pointDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
         LocalDate weekEnd = weekStart.plusDays(6);
 
         List<PriceReport> reports = priceReportRepository.findApprovedForChartDetail(
                 spiritId, PriceReportStatus.APPROVED, weekStart, weekEnd);
 
-        return reports.stream()
+        List<DealPost> deals = dealPostRepository.findAllBySpiritIdAndStatusAndIsVisibleTrue(spiritId, DealStatus.APPROVED);
+        List<DealPost> weekDeals = deals.stream()
+                .filter(d -> {
+                    LocalDate dDate = effectiveDate(d);
+                    return !dDate.isBefore(weekStart) && !dDate.isAfter(weekEnd);
+                })
+                .filter(d -> d.getStoreType() == storeType)
+                .toList();
+
+        Stream<PriceReportChartDetailResponse> reportResponses = reports.stream()
                 .filter(r -> matchesStoreType(r, storeType))
                 .map(r -> {
                     List<PriceReportImage> publicImages = priceReportImageRepository
                             .findByPriceReportIdAndIsPublicTrueOrderBySortOrder(r.getId());
                     return PriceReportChartDetailResponse.from(r, publicImages, r.getDiscountItems());
-                })
-                // 실구매가 오름차순
+                });
+
+        Stream<PriceReportChartDetailResponse> dealResponses = weekDeals.stream()
+                .map(PriceReportChartDetailResponse::from);
+
+        return Stream.concat(reportResponses, dealResponses)
                 .sorted(Comparator.comparing(
                         PriceReportChartDetailResponse::finalPrice,
                         Comparator.nullsLast(Comparator.naturalOrder())))
                 .toList();
     }
+
+    private record TempPrice(
+            LocalDate date,
+            BigDecimal finalPrice,
+            BigDecimal maxPrice,
+            BigDecimal salePrice,
+            Long reportId,
+            Long storeId
+    ) {}
 
     // ═══════════════════════════════════════════
     // Private
@@ -105,60 +159,61 @@ public class PriceChartService {
         return r.getStore() != null && r.getStore().getStoreType() == storeType;
     }
 
-    private List<ChartPoint> buildIndividualPoints(List<PriceReport> reports) {
-        return reports.stream()
-                .map(r -> new ChartPoint(
-                        effectiveDate(r),
-                        r.getActualPrice(),
-                        resolveMaxPrice(r),
-                        r.getSalePrice(),
+    private List<ChartPoint> buildIndividualPoints(List<TempPrice> tempPrices) {
+        return tempPrices.stream()
+                .map(t -> new ChartPoint(
+                        t.date(),
+                        t.finalPrice(),
+                        t.maxPrice(),
+                        t.salePrice(),
                         1,
-                        List.of(r.getId())
+                        t.reportId() != null ? List.of(t.reportId()) : Collections.emptyList()
                 ))
                 .sorted(Comparator.comparing(ChartPoint::date, Comparator.nullsLast(Comparator.naturalOrder())))
                 .toList();
     }
 
-    private List<ChartPoint> buildWeeklyPoints(List<PriceReport> reports) {
-        // 주(week) 시작일(Monday) 기준으로 그룹핑
-        Map<LocalDate, List<PriceReport>> byWeek = reports.stream()
-                .collect(Collectors.groupingBy(r ->
-                        effectiveDate(r).with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))));
+    private List<ChartPoint> buildWeeklyPoints(List<TempPrice> tempPrices) {
+        Map<LocalDate, List<TempPrice>> byWeek = tempPrices.stream()
+                .collect(Collectors.groupingBy(t ->
+                        t.date().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))));
 
         return byWeek.entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())
                 .map(entry -> {
-                    List<PriceReport> week = entry.getValue();
+                    List<TempPrice> week = entry.getValue();
 
                     BigDecimal minFinalPrice = week.stream()
-                            .map(PriceReport::getActualPrice)
+                            .map(TempPrice::finalPrice)
                             .filter(Objects::nonNull)
                             .min(Comparator.naturalOrder())
                             .orElse(null);
 
                     BigDecimal maxPrice = week.stream()
-                            .map(this::resolveMaxPrice)
+                            .map(TempPrice::maxPrice)
                             .filter(Objects::nonNull)
                             .max(Comparator.naturalOrder())
                             .orElse(null);
 
-                    long saleCount = week.stream().filter(r -> r.getSalePrice() != null).count();
+                    long saleCount = week.stream().filter(t -> t.salePrice() != null).count();
                     BigDecimal avgSalePrice = saleCount > 0
                             ? week.stream()
-                            .map(PriceReport::getSalePrice)
+                            .map(TempPrice::salePrice)
                             .filter(Objects::nonNull)
                             .reduce(BigDecimal.ZERO, BigDecimal::add)
                             .divide(BigDecimal.valueOf(saleCount), RoundingMode.HALF_UP)
                             : null;
 
                     long storeCount = week.stream()
-                            .map(PriceReport::getStore)
+                            .map(TempPrice::storeId)
                             .filter(Objects::nonNull)
-                            .map(s -> s.getId())
                             .distinct()
                             .count();
 
-                    List<Long> reportIds = week.stream().map(PriceReport::getId).toList();
+                    List<Long> reportIds = week.stream()
+                            .map(TempPrice::reportId)
+                            .filter(Objects::nonNull)
+                            .toList();
 
                     return new ChartPoint(entry.getKey(), minFinalPrice, maxPrice,
                             avgSalePrice, (int) storeCount, reportIds);
@@ -168,6 +223,10 @@ public class PriceChartService {
 
     private LocalDate effectiveDate(PriceReport r) {
         return r.getPurchasedAt() != null ? r.getPurchasedAt() : r.getCreatedAt().toLocalDate();
+    }
+
+    private LocalDate effectiveDate(DealPost d) {
+        return d.getCrawledAt() != null ? d.getCrawledAt().toLocalDate() : d.getCreatedAt().toLocalDate();
     }
 
     private BigDecimal resolveMaxPrice(PriceReport r) {

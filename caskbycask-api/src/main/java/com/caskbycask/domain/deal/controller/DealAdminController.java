@@ -25,7 +25,7 @@ public class DealAdminController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<DealPostSummaryResponse>>> list(
-            @RequestParam(defaultValue = "PENDING") DealStatus status,
+            @RequestParam(required = false) DealStatus status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {

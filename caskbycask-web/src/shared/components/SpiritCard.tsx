@@ -87,6 +87,7 @@ function SpiritCard({
             className="flex-1 flex items-center gap-3 min-w-0 focus-visible:outline-none
               focus-visible:ring-2 focus-visible:ring-primary-500 rounded-lg"
             aria-label={primaryName}
+            title={secondaryName ? `${primaryName} (${secondaryName})` : primaryName}
           >
             <div className="flex-1 min-w-0 space-y-0.5">
               <div className="flex items-center gap-2">
@@ -97,10 +98,10 @@ function SpiritCard({
                   <span className="text-xs text-neutral-400">{countryLabel}</span>
                 )}
               </div>
-              <h3 className="text-sm font-semibold text-neutral-900 line-clamp-1 leading-snug">
+              <h3 className="text-sm font-semibold text-neutral-900 line-clamp-1 leading-snug" title={primaryName}>
                 {primaryName}
               </h3>
-              <p className="text-xs text-neutral-400 line-clamp-1">{secondaryName}</p>
+              <p className="text-xs text-neutral-400 line-clamp-1" title={secondaryName || undefined}>{secondaryName}</p>
             </div>
 
             <div className="flex-shrink-0 flex flex-col items-end gap-1 pr-1">
@@ -132,7 +133,10 @@ function SpiritCard({
   // 메타 라인: "국가 · 도수%" — 값이 있는 항목만 노출
   const metaParts: string[] = []
   if (spirit.country) metaParts.push(countryLabel)
-  if (spirit.abv != null) metaParts.push(`${spirit.abv}%`)
+  if (spirit.abv != null || spirit.abvMin != null) {
+    const showRange = spirit.abvMin != null && spirit.abvMax != null && spirit.abvMin !== spirit.abvMax
+    metaParts.push(showRange ? `${spirit.abvMin}%~${spirit.abvMax}%` : `${spirit.abv ?? spirit.abvMin}%`)
+  }
   const imageClassName = imageFit === 'contain'
     ? 'w-full h-full object-contain transition-transform duration-300'
     : 'w-full h-full object-cover group-hover:scale-105 transition-transform duration-300'
@@ -187,7 +191,7 @@ function SpiritCard({
       <div className="px-2.5 py-2">
         {/* 이름 + 점수 (한 줄) */}
         <div className="flex items-start justify-between gap-1.5">
-          <h3 className="text-sm font-semibold text-neutral-900 line-clamp-1 leading-tight min-w-0">
+          <h3 className="text-sm font-semibold text-neutral-900 line-clamp-1 leading-tight min-w-0" title={primaryName}>
             {primaryName}
           </h3>
           {spirit.avgScore != null && (
@@ -197,7 +201,7 @@ function SpiritCard({
           )}
         </div>
 
-        <p className="text-xs text-neutral-400 line-clamp-1 mb-1">{secondaryName}</p>
+        <p className="text-xs text-neutral-400 line-clamp-1 mb-1" title={secondaryName || undefined}>{secondaryName}</p>
 
         {/* 국가 · 도수 + 리뷰수 */}
         <div className="flex items-center justify-between gap-1.5 text-xs text-neutral-500">
@@ -217,6 +221,7 @@ function SpiritCard({
         className="absolute inset-0 z-10 rounded-2xl focus-visible:outline-none
           focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500"
         aria-label={primaryName}
+        title={secondaryName ? `${primaryName} (${secondaryName})` : primaryName}
       />
 
       {spirit.primaryImageUrl && (

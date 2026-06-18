@@ -74,6 +74,9 @@ public record SpiritDetailResponse(
         @Schema(description = "에디션 식별 값")
         String variantValue,
 
+        @Schema(description = "에디션 식별 값(영문)")
+        String variantValueEn,
+
         @Schema(description = "최소 도수")
         BigDecimal abvMin,
 
@@ -125,6 +128,7 @@ public record SpiritDetailResponse(
                 spirit.getParent() != null ? spirit.getParent().getId() : null,
                 spirit.getVariantType(),
                 spirit.getVariantValue(),
+                spirit.getVariantValueEn(),
                 spirit.getAbvMin(),
                 spirit.getAbvMax(),
                 variants

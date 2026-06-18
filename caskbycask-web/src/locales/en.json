@@ -497,8 +497,10 @@
       "variantsHint": "Other bottlings registered under the same name",
       "variantsBatch": "Batch",
       "variantsBottled": "Bottled",
-      "variantFilter": "Edition Filter:",
-      "variantAll": "All Editions"
+      "variantFilter": "Batch/Bottling Filter:",
+      "variantAll": "All Batches/Bottlings Combined",
+      "masterProduct": "Representative Product",
+      "variantPageSelect": "Select Batch/Bottling:"
     },
     "variantType": {
       "BATCH": "Batch",
@@ -1305,6 +1307,7 @@
     "registerBtn": "Register Price",
     "chart": {
       "domestic": "Domestic",
+      "overseas": "Overseas",
       "dutyfree": "Duty-Free",
       "period": { "1M": "1 Month", "3M": "3 Months", "6M": "6 Months", "1Y": "1 Year", "ALL": "All" },
       "minPrice": "Min Final Price",

@@ -97,6 +97,9 @@ public class SpiritQueryRepositoryImpl implements SpiritQueryRepository {
             builder.and(spirit.status.eq(cond.status()));
         }
 
+        // 하위 에디션(자식 스피릿)은 카탈로그에서 제외
+        builder.and(spirit.parent.isNull());
+
         if (StringUtils.hasText(cond.keyword())) {
             // 술 이름 + 생산자명/검색별칭(한글 음차 변형 등)까지 매칭
             builder.and(

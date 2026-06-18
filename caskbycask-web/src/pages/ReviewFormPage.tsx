@@ -16,20 +16,10 @@ import {
   EMPTY_AROMA_NOTES,
   parseAromaNotes,
   serializeAromaNotes,
-  WHISKY_AROMA_CATEGORIES,
-} from '@/domain/review/constants/whiskyAromas'
-import { WINE_AROMA_CATEGORIES } from '@/domain/review/constants/wineAromas'
-import { COGNAC_AROMA_CATEGORIES } from '@/domain/review/constants/cognacAromas'
-import type { AromaCategory, AromaNotes } from '@/domain/review/constants/whiskyAromas'
+} from '@/domain/review/utils/aroma'
+import type { AromaNotes } from '@/domain/review/utils/aroma'
 import type { ReviewItem } from '@/domain/review/types/review.types'
 import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
-
-function getAromaCategories(category?: SpiritCategory): AromaCategory[] | undefined {
-  if (category === 'WHISKY') return WHISKY_AROMA_CATEGORIES
-  if (category === 'WINE') return WINE_AROMA_CATEGORIES
-  if (category === 'COGNAC') return COGNAC_AROMA_CATEGORIES
-  return undefined
-}
 
 function getAromaWheelKey(category?: SpiritCategory): string {
   if (category === 'WHISKY') return 'review.aromaWheelWhisky'
@@ -91,7 +81,7 @@ export default function ReviewFormPage() {
   const createMutation = useCreateReview(targetSpiritId || spiritId)
   const updateMutation = useUpdateReview(spiritId)
 
-  const aromaCategories = getAromaCategories(spirit?.category)
+  const showAroma = spirit?.category === 'WHISKY' || spirit?.category === 'WINE' || spirit?.category === 'COGNAC'
   const aromaWheelTitle = t(getAromaWheelKey(spirit?.category))
 
   const [noseAromas, setNoseAromas]     = useState<AromaNotes>(EMPTY_AROMA_NOTES)
@@ -161,9 +151,9 @@ export default function ReviewFormPage() {
       tasteNote:             values.tasteNote.trim(),
       finishNote:            values.finishNote.trim(),
       comment:               values.comment?.trim() || undefined,
-      noseAromaWheelNotes:   aromaCategories ? serializeAromaNotes(noseAromas)   : undefined,
-      tasteAromaWheelNotes:  aromaCategories ? serializeAromaNotes(tasteAromas)  : undefined,
-      finishAromaWheelNotes: aromaCategories ? serializeAromaNotes(finishAromas) : undefined,
+      noseAromaWheelNotes:   showAroma ? serializeAromaNotes(noseAromas)   : undefined,
+      tasteAromaWheelNotes:  showAroma ? serializeAromaNotes(tasteAromas)  : undefined,
+      finishAromaWheelNotes: showAroma ? serializeAromaNotes(finishAromas) : undefined,
     }
     if (isEdit && editingReview) {
       await updateMutation.mutateAsync({ reviewId: editingReview.id, data: payload })
@@ -265,7 +255,7 @@ export default function ReviewFormPage() {
               notePlaceholder={t('review.nosePlaceholder')}
               scoreError={errors.noseScore?.message}
               noteError={errors.noseNote?.message}
-              aromaCategories={aromaCategories}
+              showAroma={showAroma}
               aromaWheelTitle={aromaWheelTitle}
               aromaNote={noseAromas}
               onAromaNoteChange={setNoseAromas}
@@ -287,7 +277,7 @@ export default function ReviewFormPage() {
               notePlaceholder={t('review.tastePlaceholder')}
               scoreError={errors.tasteScore?.message}
               noteError={errors.tasteNote?.message}
-              aromaCategories={aromaCategories}
+              showAroma={showAroma}
               aromaWheelTitle={aromaWheelTitle}
               aromaNote={tasteAromas}
               onAromaNoteChange={setTasteAromas}
@@ -309,7 +299,7 @@ export default function ReviewFormPage() {
               notePlaceholder={t('review.finishPlaceholder')}
               scoreError={errors.finishScore?.message}
               noteError={errors.finishNote?.message}
-              aromaCategories={aromaCategories}
+              showAroma={showAroma}
               aromaWheelTitle={aromaWheelTitle}
               aromaNote={finishAromas}
               onAromaNoteChange={setFinishAromas}

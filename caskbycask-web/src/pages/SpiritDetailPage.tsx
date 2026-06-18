@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useSpiritDetail, useSpiritVariants } from '@/domain/spirit/hooks/useSpiritDetail'
+import { useSpiritDetail } from '@/domain/spirit/hooks/useSpiritDetail'
 import { localizeCountry } from '@/shared/utils/countryName'
 import { localizeRegion } from '@/shared/utils/regionName'
 import Badge from '@/shared/components/Badge'
@@ -447,7 +447,14 @@ function CoreSpecStrip({
     : null
 
   const specs = [
-    spirit.abv != null ? { k: 'abv',    icon: SPEC_ICON.abv,    label: t('spirit.detail.abv'),    value: `${spirit.abv}%` } : null,
+    (spirit.abv != null || spirit.abvMin != null) ? {
+      k: 'abv',
+      icon: SPEC_ICON.abv,
+      label: t('spirit.detail.abv'),
+      value: (spirit.abvMin != null && spirit.abvMax != null && spirit.abvMin !== spirit.abvMax)
+        ? `${spirit.abvMin}%~${spirit.abvMax}%`
+        : `${spirit.abv ?? spirit.abvMin}%`
+    } : null,
     spirit.volumeMl    ? { k: 'volume', icon: SPEC_ICON.volume, label: t('spirit.detail.volume'), value: `${spirit.volumeMl}ml` } : null,
     originValue        ? { k: 'origin', icon: SPEC_ICON.origin, label: isEn ? 'Origin' : '국가 · 지역', value: originValue } : null,
     ageValue           ? { k: 'age',    icon: SPEC_ICON.age,    label: isEn ? 'Age' : '숙성 연수', value: ageValue } : null,
@@ -456,7 +463,7 @@ function CoreSpecStrip({
   if (specs.length === 0) return null
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+    <div className="grid grid-cols-2 gap-2.5">
       {specs.map((s) => (
         <SpecCard key={s.k} icon={s.icon} label={s.label} value={s.value} />
       ))}
@@ -589,89 +596,6 @@ function TabBar({ active, onChange }: { active: Tab; onChange: (t: Tab) => void 
   )
 }
 
-// ── 같은 이름의 다른 배치 · 병입 목록 (PC: 우측 사이드 / 모바일: 헤더 아래) ──
-function VariantsPanel({
-  variants,
-  isEn,
-  detailState,
-}: {
-  variants: SpiritVariant[]
-  isEn: boolean
-  detailState?: ListReturnState
-}) {
-  const { t } = useTranslation()
-  if (variants.length === 0) return null
-  return (
-    <div className="bg-white rounded-3xl shadow-[0_8px_40px_-12px_rgba(17,24,39,0.12)] ring-1 ring-neutral-100 p-5">
-      <div className="flex items-center gap-2 mb-1">
-        <h2 className="text-[15px] font-bold text-neutral-900">{t('spirit.detail.variantsTitle')}</h2>
-        <span className="text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-100
-          rounded-full px-1.5 py-0.5">
-          {variants.length}
-        </span>
-      </div>
-      <p className="text-[11px] text-neutral-400 mb-2">{t('spirit.detail.variantsHint')}</p>
-      <ul className="divide-y divide-neutral-100">
-        {variants.map((v) => {
-          const name = isEn ? (v.nameEn || v.nameKo) : v.nameKo
-          const chips = [
-            v.batchNo ? `${t('spirit.detail.variantsBatch')} ${v.batchNo}` : null,
-            v.bottledDate
-              ? `${t('spirit.detail.variantsBottled')} ${v.bottledDate}`
-              : (v.bottledYear ? `${t('spirit.detail.variantsBottled')} ${v.bottledYear}` : null),
-            v.vintageYear ? `${t('spirit.detail.vintageYear')} ${v.vintageYear}` : null,
-            v.abv != null ? `${v.abv}%` : null,
-            v.volumeMl ? `${v.volumeMl}ml` : null,
-          ].filter(Boolean) as string[]
-          return (
-            <li key={v.id}>
-              <Link
-                to={`/spirits/${v.id}`}
-                state={detailState}
-                className="flex items-center gap-3 py-2.5 group"
-              >
-                <div className="w-10 h-[52px] rounded-lg overflow-hidden bg-gradient-to-b from-amber-50
-                  to-amber-100/50 ring-1 ring-neutral-100 flex-shrink-0 flex items-center justify-center">
-                  {v.primaryImageUrl ? (
-                    <img src={v.primaryImageUrl} alt={name} loading="lazy" decoding="async"
-                      className="w-full h-full object-contain p-0.5" />
-                  ) : (
-                    <span className="text-lg">🥃</span>
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[13px] font-semibold text-neutral-900 truncate
-                    group-hover:text-primary-800 transition-colors">
-                    {name}
-                  </p>
-                  {chips.length > 0 && (
-                    <p className="text-[11px] text-neutral-400 truncate mt-0.5">{chips.join(' · ')}</p>
-                  )}
-                  <p className="text-[11px] mt-0.5">
-                    {v.avgScore != null ? (
-                      <>
-                        <b className="text-amber-700">{Number(v.avgScore).toFixed(1)}</b>
-                        <span className="text-neutral-400">
-                          {' '}/ 100 · {t('review.scoreCount', { n: v.reviewCount })}
-                        </span>
-                      </>
-                    ) : (
-                      <span className="text-neutral-300">{t('review.noScore')}</span>
-                    )}
-                  </p>
-                </div>
-                <svg className="w-4 h-4 text-neutral-300 group-hover:text-primary-800 flex-shrink-0
-                  transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <polyline points="9,6 15,12 9,18" />
-                </svg>
-              </Link>
-            </li>
-          )
-        })}
-      </ul>
-    </div>
-  )
-}
 
 // ── Variant Selector ──────────────────────────────────────
 function VariantSelector({
@@ -683,7 +607,8 @@ function VariantSelector({
   selectedValue: number | null
   onChange: (id: number | null) => void
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const isEn = i18n.language === 'en'
   if (variants.length === 0) return null
 
   return (
@@ -702,8 +627,9 @@ function VariantSelector({
       >
         <option value="">{t('spirit.detail.variantAll')}</option>
         {variants.map((v) => {
-          const typeLabel = v.variantType ? t(`spirit.variantType.${v.variantType}`) : ''
-          const label = `[${typeLabel}] ${v.variantValue || v.id} (${v.abv != null ? `${v.abv}%` : ''}${v.volumeMl ? `, ${v.volumeMl}ml` : ''})`
+          const valText = isEn ? (v.variantValueEn || v.variantValue) : v.variantValue
+          const abvText = v.abv != null ? ` (${v.abv}%)` : ''
+          const label = `${valText || v.id}${abvText}`
           return (
             <option key={v.id} value={v.id}>
               {label}
@@ -725,7 +651,6 @@ export default function SpiritDetailPage() {
   const { t, i18n } = useTranslation()
   const isEn = i18n.language === 'en'
   const listReturnTo = getSpiritListReturnTo(location.state)
-  const detailState = listReturnTo ? { returnTo: listReturnTo } : undefined
   const goBack = () => {
     if (listReturnTo) {
       navigate(listReturnTo)
@@ -740,12 +665,60 @@ export default function SpiritDetailPage() {
   const [lightboxIdx, setLightboxIdx]   = useState(-1)
   const [selectedVariantId, setSelectedVariantId] = useState<number | null>(null)
 
-  const { data: spirit, isLoading } = useSpiritDetail(spiritId)
+  const { data: parentSpirit, isLoading: isParentLoading } = useSpiritDetail(spiritId)
+  const [activeVariantId, setActiveVariantId] = useState<number | null>(null)
+
+  // Redirect to parent if visited child variant directamente
+  useEffect(() => {
+    if (parentSpirit && parentSpirit.parentId != null) {
+      navigate(`/${i18n.language}/spirits/${parentSpirit.parentId}`, {
+        replace: true,
+        state: { activeVariantId: parentSpirit.id }
+      })
+    }
+  }, [parentSpirit, navigate, i18n.language])
+
+  // Initialize activeVariantId from location state or default to variant #1
+  useEffect(() => {
+    if (parentSpirit) {
+      const isSplit = parentSpirit.parentId != null || (parentSpirit.variants && parentSpirit.variants.length > 0)
+      if (isSplit) {
+        const stateVariantId = (location.state as any)?.activeVariantId
+        const sortedVariants = [...(parentSpirit.variants ?? [])].sort((a, b) => a.id - b.id)
+        const defaultVariantId = sortedVariants[0]?.id || null
+        setActiveVariantId(stateVariantId || defaultVariantId)
+      } else {
+        setActiveVariantId(null)
+      }
+    }
+  }, [parentSpirit, location.state])
+
+  const currentDisplayId = activeVariantId || spiritId
+  const { data: spirit, isLoading: isDisplayLoading } = useSpiritDetail(currentDisplayId)
+  const isLoading = isParentLoading || isDisplayLoading
+
   // SEO Review 스키마용 — 첫 페이지 (ReviewList 와 동일 queryKey 라 캐시 공유)
-  const { data: reviewsPage } = useReviews(spiritId, 0)
-  // 같은 이름의 다른 배치·병입 제품 목록
-  const { data: variants = [] } = useSpiritVariants(spiritId)
-  const hasVariants = variants.length > 0
+  const { data: reviewsPage } = useReviews(currentDisplayId, 0)
+
+  const isVariantSplitGroup = parentSpirit ? (parentSpirit.parentId != null || (parentSpirit.variants && parentSpirit.variants.length > 0)) : false
+  const hasVariants = isVariantSplitGroup
+
+  const variantsList = useMemo(() => {
+    if (!parentSpirit) return []
+    return [...(parentSpirit.variants ?? [])].sort((a, b) => a.id - b.id)
+  }, [parentSpirit])
+
+  const groupOptions = useMemo(() => {
+    return variantsList.map((v) => {
+      const valText = isEn ? (v.variantValueEn || v.variantValue) : v.variantValue
+      const abvText = v.abv != null ? ` (${v.abv}%)` : ''
+      const label = `${valText || v.id}${abvText}`
+      return {
+        id: v.id,
+        label
+      }
+    })
+  }, [variantsList, isEn])
 
   // 변형(다른 배치) 간 이동 시 갤러리·탭 상태 초기화
   useEffect(() => {
@@ -753,7 +726,7 @@ export default function SpiritDetailPage() {
     setActiveTab('reviews')
     setLightboxIdx(-1)
     setSelectedVariantId(null)
-  }, [spiritId])
+  }, [spiritId, activeVariantId])
 
   if (isLoading) return <Spinner fullscreen />
 
@@ -932,6 +905,31 @@ export default function SpiritDetailPage() {
 
             <StarScore score={spirit.avgScore} reviewCount={spirit.reviewCount} size="lg" showBar />
 
+            {/* 배치/병입 페이지 이동 셀렉터 */}
+            {isVariantSplitGroup && groupOptions.length > 0 && (
+              <div className="flex items-center justify-between bg-neutral-50/50 border border-neutral-200/50 rounded-2xl px-3.5 py-2.5 -mb-1">
+                <span className="text-xs font-bold text-neutral-500 flex items-center gap-1.5">
+                  <svg className="w-4 h-4 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                  </svg>
+                  {t('spirit.detail.variantPageSelect')}
+                </span>
+                <select
+                  value={activeVariantId ?? ''}
+                  onChange={(e) => {
+                    setActiveVariantId(Number(e.target.value))
+                  }}
+                  className="text-xs font-semibold text-neutral-700 bg-white border border-neutral-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-pointer min-w-[200px] shadow-sm hover:border-neutral-300 transition-colors"
+                >
+                  {groupOptions.map((opt) => (
+                    <option key={opt.id} value={opt.id}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {/* 핵심 스펙 — 도수 · 용량 · 국가/지역 · 숙성연수 */}
             <CoreSpecStrip spirit={spirit} countryLabel={countryLabel} regionLabel={regionLabel} isEn={isEn} />
 
@@ -953,12 +951,7 @@ export default function SpiritDetailPage() {
         </div>
       </div>
 
-      {/* 모바일: 같은 이름의 다른 배치 목록 — 헤더 카드 아래 */}
-      {hasVariants && (
-        <div className="lg:hidden mb-6">
-          <VariantsPanel variants={variants} isEn={isEn} detailState={detailState} />
-        </div>
-      )}
+
 
       {/* 카테고리 상세 정보 + Tabs */}
       <div className="space-y-6">
@@ -970,7 +963,7 @@ export default function SpiritDetailPage() {
         
         {(activeTab === 'reviews' || activeTab === 'price') && (
           <VariantSelector
-            variants={variants}
+            variants={variantsList}
             selectedValue={selectedVariantId}
             onChange={setSelectedVariantId}
           />
@@ -989,13 +982,7 @@ export default function SpiritDetailPage() {
       </div>
       </div>
 
-      {/* PC: 같은 이름의 다른 배치 목록 — 우측 사이드 */}
-      {hasVariants && (
-        <aside className="hidden lg:block w-[300px] flex-shrink-0 lg:sticky lg:top-24
-          lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
-          <VariantsPanel variants={variants} isEn={isEn} detailState={detailState} />
-        </aside>
-      )}
+
       </div>
 
       <ImageLightbox

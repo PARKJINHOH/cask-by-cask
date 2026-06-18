@@ -3,7 +3,7 @@ import {
   CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
 import { useTranslation } from 'react-i18next'
-import type { ChartResponse } from '../types/pricetracker.types'
+import type { ChartResponse, StoreType } from '../types/pricetracker.types'
 
 const PERIODS = ['1M', '3M', '6M', '1Y', 'ALL'] as const
 
@@ -12,8 +12,8 @@ interface Props {
   isLoading: boolean
   period: string
   onPeriodChange: (p: string) => void
-  storeType: 'DOMESTIC' | 'DUTYFREE'
-  onStoreTypeChange: (t: 'DOMESTIC' | 'DUTYFREE') => void
+  storeType: StoreType
+  onStoreTypeChange: (t: StoreType) => void
   onPointClick: (date: string, reportIds: number[]) => void
   selectedDate: string | null
 }
@@ -102,7 +102,7 @@ export default function PriceRangeChart({
       <div className="flex flex-wrap items-center justify-between gap-3">
         {/* 국내/면세 탭 */}
         <div className="flex rounded-lg border border-neutral-200 overflow-hidden text-sm">
-          {(['DOMESTIC', 'DUTYFREE'] as const).map((t_) => (
+          {(['DOMESTIC', 'OVERSEAS', 'DUTYFREE'] as const).map((t_) => (
             <button
               key={t_}
               onClick={() => onStoreTypeChange(t_)}
@@ -112,7 +112,11 @@ export default function PriceRangeChart({
                   : 'text-neutral-500 hover:bg-neutral-50'
               }`}
             >
-              {t_ === 'DOMESTIC' ? t('price.chart.domestic') : t('price.chart.dutyfree')}
+              {t_ === 'DOMESTIC'
+                ? t('price.chart.domestic')
+                : t_ === 'OVERSEAS'
+                ? t('price.chart.overseas', '해외')
+                : t('price.chart.dutyfree')}
             </button>
           ))}
         </div>
