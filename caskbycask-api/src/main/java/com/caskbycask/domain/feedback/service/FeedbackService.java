@@ -15,6 +15,7 @@ import com.caskbycask.global.exception.CustomException;
 import com.caskbycask.global.exception.ErrorCode;
 import com.caskbycask.global.storage.FileStorageService;
 import com.caskbycask.global.storage.ImageUploadResult;
+import com.caskbycask.global.util.HtmlSanitizer;
 import com.caskbycask.global.util.ImageMagicByteValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -43,6 +44,7 @@ public class FeedbackService {
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
     private final ScoreService scoreService;
+    private final HtmlSanitizer htmlSanitizer;
 
     private static final Set<String> ALLOWED_EXTENSIONS = Set.of("jpg", "jpeg", "png", "webp", "gif");
     private static final long MAX_FILE_SIZE = 2 * 1024 * 1024L;
@@ -62,7 +64,7 @@ public class FeedbackService {
                 .author(author)
                 .type(request.type())
                 .title(request.title())
-                .content(request.content())
+                .content(htmlSanitizer.sanitize(request.content()))
                 .imageUrls(imageUrlsStr)
                 .isPublic(request.isPublic() == null || request.isPublic())
                 .build();
@@ -117,7 +119,8 @@ public class FeedbackService {
         if (!feedback.isEditable()) {
             throw new CustomException(ErrorCode.FEEDBACK_NOT_EDITABLE);
         }
-        feedback.updateContent(request.type(), request.title(), request.content(), request.isPublic());
+        feedback.updateContent(request.type(), request.title(),
+                htmlSanitizer.sanitize(request.content()), request.isPublic());
     }
 
     // ─── 삭제 (작성자 본인, 접수 상태에서만) ───────

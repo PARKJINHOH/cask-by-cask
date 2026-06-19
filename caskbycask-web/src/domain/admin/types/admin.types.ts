@@ -70,6 +70,10 @@ export interface WineDetailRequest {
   fermentationVessel?: string | null
   oakType?: string | null
   oakAgedMonths?: number | null
+  sweetness?: string | null
+  body?: string | null
+  acidity?: string | null
+  tannin?: string | null
 }
 
 export interface CognacDetailRequest {
@@ -77,6 +81,10 @@ export interface CognacDetailRequest {
   cru?: string | null
   isFineChampagne?: boolean | null
   blendDetail?: string | null
+  vintageYear?: number | null
+  ageYears?: number | null
+  oakType?: string | null
+  caskFinish?: string | null
 }
 
 export interface OtherDetailRequest {
@@ -84,6 +92,9 @@ export interface OtherDetailRequest {
   mainIngredient?: string | null
   productionMethod?: string | null
   notes?: string | null
+  styleClassification?: string | null
+  caskType?: string | null
+  originDesignation?: string | null
 }
 
 // ── Users ──────────────────────────────────────────────────────
@@ -374,6 +385,9 @@ export interface SpiritRegisterRequestDetail {
   otherType: OtherSpiritType | null
   imageUrls: string[]
   note: string | null
+  variantType: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE' | null
+  variantValue: string | null
+  variantValueEn: string | null
   status: RequestStatus
   rejectReason: string | null
   createdAt: string

@@ -3,12 +3,21 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SeoMeta from '@/shared/components/SeoMeta'
 import Breadcrumb from '@/shared/components/Breadcrumb'
+import PostEditor from '@/domain/community/components/PostEditor'
+import Toast from '@/shared/components/Toast'
+import { useToast } from '@/shared/hooks/useToast'
 import {
   useCreateFeedback,
   useFeedbackDetail,
   useUpdateFeedback,
 } from '@/domain/feedback/hooks/useFeedback'
 import { FEEDBACK_TYPES, type FeedbackType } from '@/domain/feedback/types/feedback.types'
+
+// 리치 에디터 본문이 비었는지 판정 — 태그만 있고 텍스트·미디어가 없으면 빈 것으로 본다.
+const isContentEmpty = (html: string) => {
+  const text = html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim()
+  return text.length === 0 && !/<(img|video|iframe)/i.test(html)
+}
 
 const MAX_IMAGES = 3
 const MAX_FILE_SIZE = 2 * 1024 * 1024
@@ -22,6 +31,7 @@ interface ImagePreview {
 export default function FeedbackFormPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const { toasts, showToast, removeToast } = useToast()
   const { id } = useParams()
   const [searchParams] = useSearchParams()
   const isEdit = !!id
@@ -60,7 +70,7 @@ export default function FeedbackFormPage() {
     const errs: Record<string, string> = {}
     if (!type) errs.type = t('feedback.form.typePlaceholder')
     if (!title.trim()) errs.title = t('common.required')
-    if (!content.trim()) errs.content = t('common.required')
+    if (isContentEmpty(content)) errs.content = t('common.required')
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
@@ -110,6 +120,7 @@ export default function FeedbackFormPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-10">
       <SeoMeta title={isEdit ? t('feedback.form.editTitle') : t('feedback.new')} noindex />
+      <Toast toasts={toasts} onRemove={removeToast} />
 
       <Breadcrumb
         className="mb-2"
@@ -171,20 +182,14 @@ export default function FeedbackFormPage() {
           <label className="block text-sm font-medium text-neutral-700 mb-1.5">
             {t('feedback.form.content')} <span className="text-red-500">*</span>
           </label>
-          <textarea
+          <PostEditor
             value={content}
-            onChange={(e) => setContent(e.target.value)}
-            maxLength={5000}
-            rows={8}
+            onChange={setContent}
             placeholder={t('feedback.form.contentPlaceholder')}
-            className={`w-full px-3 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400 transition-colors resize-none ${
-              errors.content ? 'border-red-400' : 'border-neutral-300'
-            }`}
+            onImageError={(msg) => showToast(msg, 'error')}
+            onVideoError={(msg) => showToast(msg, 'error')}
           />
-          <div className="flex justify-between mt-1">
-            {errors.content ? <p className="text-xs text-red-500">{errors.content}</p> : <span />}
-            <p className="text-xs text-neutral-400">{content.length} / 5,000</p>
-          </div>
+          {errors.content && <p className="mt-1 text-xs text-red-500">{errors.content}</p>}
         </div>
 
         {/* 공개 여부 */}

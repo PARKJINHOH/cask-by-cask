@@ -2,6 +2,7 @@ package com.caskbycask.domain.pricetracker.controller;
 
 import com.caskbycask.domain.pricetracker.dto.response.ChartResponse;
 import com.caskbycask.domain.pricetracker.dto.response.PriceReportChartDetailResponse;
+import com.caskbycask.domain.pricetracker.entity.enums.BucketType;
 import com.caskbycask.domain.pricetracker.entity.enums.StoreType;
 import com.caskbycask.domain.pricetracker.service.PriceChartService;
 import com.caskbycask.global.response.ApiResponse;
@@ -34,8 +35,9 @@ public class PriceChartController {
     public ResponseEntity<ApiResponse<List<PriceReportChartDetailResponse>>> getChartPointDetails(
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate pointDate,
             @RequestParam Long spiritId,
-            @RequestParam(required = false) StoreType storeType) {
+            @RequestParam(required = false) StoreType storeType,
+            @RequestParam(required = false) BucketType bucketType) {
         return ResponseEntity.ok(ApiResponse.success(
-                priceChartService.getChartPointDetails(spiritId, pointDate, storeType)));
+                priceChartService.getChartPointDetails(spiritId, pointDate, storeType, bucketType)));
     }
 }

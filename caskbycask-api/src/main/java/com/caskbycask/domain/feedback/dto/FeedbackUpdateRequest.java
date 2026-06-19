@@ -8,6 +8,6 @@ import jakarta.validation.constraints.Size;
 public record FeedbackUpdateRequest(
         @NotNull FeedbackType type,
         @NotBlank @Size(max = 200) String title,
-        @NotBlank @Size(max = 5000) String content,
+        @NotBlank @Size(max = 100000) String content,
         Boolean isPublic
 ) {}

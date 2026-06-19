@@ -8,7 +8,13 @@ import org.hibernate.annotations.Comment;
 @Entity
 @Table(
         name = "spirit_wine_detail",
-        indexes = @Index(name = "idx_wine_vintage", columnList = "vintage")
+        indexes = {
+                @Index(name = "idx_wine_vintage", columnList = "vintage"),
+                @Index(name = "idx_wine_sweetness", columnList = "sweetness"),
+                @Index(name = "idx_wine_body", columnList = "body"),
+                @Index(name = "idx_wine_acidity", columnList = "acidity"),
+                @Index(name = "idx_wine_tannin", columnList = "tannin")
+        }
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -51,6 +57,27 @@ public class SpiritWineDetail {
     @Comment("인증 — NONE/ORGANIC/BIODYNAMIC/SUSTAINABLE")
     private WineCertification certification;
 
+    // ── 관능(맛) 지표 — 검색/필터 대상이라 전용 컬럼 + 인덱스 ──
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    @Comment("당도 — DRY/OFF_DRY/MEDIUM/SWEET")
+    private WineSweetness sweetness;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    @Comment("바디 — LIGHT/MEDIUM/FULL")
+    private WineBody body;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    @Comment("산도 — LOW/MEDIUM/HIGH")
+    private WineIntensity acidity;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    @Comment("타닌 — LOW/MEDIUM/HIGH")
+    private WineIntensity tannin;
+
     /**
      * JSON: {
      *   "grapeVarieties": [{"name":"Cabernet Sauvignon","percentage":70}],
@@ -68,12 +95,18 @@ public class SpiritWineDetail {
     private String extraData;
 
     public void update(WineType wineType, Integer vintage, Boolean isOakAged,
-                       Boolean isNaturalWine, WineCertification certification, String extraData) {
+                       Boolean isNaturalWine, WineCertification certification,
+                       WineSweetness sweetness, WineBody body,
+                       WineIntensity acidity, WineIntensity tannin, String extraData) {
         this.wineType      = wineType;
         this.vintage       = vintage;
         this.isOakAged     = isOakAged;
         this.isNaturalWine = isNaturalWine;
         this.certification = certification;
+        this.sweetness     = sweetness;
+        this.body          = body;
+        this.acidity       = acidity;
+        this.tannin        = tannin;
         this.extraData     = extraData;
     }
 }

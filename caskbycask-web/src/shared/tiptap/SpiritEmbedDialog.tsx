@@ -66,6 +66,9 @@ export default function SpiritEmbedDialog({ open, onClose, onSelect }: Props) {
       name: s.nameKo,
       nameEn: s.nameEn || s.nameKo,
       category: s.category,
+      thumbnailUrl: s.primaryImageUrl ?? null,
+      abv: s.abv ?? null,
+      reviewCount: s.reviewCount ?? 0,
     })
     onClose()
   }

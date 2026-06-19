@@ -15,7 +15,8 @@ export function useMyRequests() {
 export function useSubmitRequest() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (data: SpiritRegisterRequestForm) => spiritRequestApi.submit(data),
+    mutationFn: ({ data, images }: { data: SpiritRegisterRequestForm; images: File[] }) =>
+      spiritRequestApi.submit(data, images),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['spirit-requests', 'me'] })
     },
@@ -25,8 +26,8 @@ export function useSubmitRequest() {
 export function useUpdateMyRequest() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: SpiritRegisterRequestForm }) =>
-      spiritRequestApi.update(id, data),
+    mutationFn: ({ id, data, images }: { id: number; data: SpiritRegisterRequestForm; images: File[] }) =>
+      spiritRequestApi.update(id, data, images),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['spirit-requests', 'me'] })
     },

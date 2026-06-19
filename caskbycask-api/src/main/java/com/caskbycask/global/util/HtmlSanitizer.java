@@ -61,7 +61,8 @@ public class HtmlSanitizer {
                 //   <a class="di-spirit-embed" data-spirit-id="..." ...>🥃 이름</a> 를 삽입함.
                 //   href 는 저장하지 않으며, 읽기 화면이 data-spirit-id 로 이동을 위임함.
                 .addAttributes("a", "class", "data-spirit-id", "data-spirit-name",
-                        "data-spirit-name-en", "data-spirit-category")
+                        "data-spirit-name-en", "data-spirit-category",
+                        "data-spirit-thumbnail", "data-spirit-abv", "data-spirit-review-count")
                 // 이미지: 업로드 엔드포인트 전용. 로컬 프로파일에서 /api/notices/images/... 형태의
                 // 상대 경로 URL을 사용하므로 프로토콜 제한을 두지 않음.
                 // data: URI 악용은 업로드 시 Magic Bytes 검증 + 클라이언트 DOMPurify로 방어.
@@ -104,7 +105,8 @@ public class HtmlSanitizer {
                 // 링크 + 술 카드 임베드
                 .addTags("a")
                 .addAttributes("a", "href", "target", "rel", "class",
-                        "data-spirit-id", "data-spirit-name", "data-spirit-name-en", "data-spirit-category")
+                        "data-spirit-id", "data-spirit-name", "data-spirit-name-en", "data-spirit-category",
+                        "data-spirit-thumbnail", "data-spirit-abv", "data-spirit-review-count")
                 .addProtocols("a", "href", "http", "https", "mailto")
                 .addEnforcedAttribute("a", "rel", "noopener noreferrer")
                 // 테이블

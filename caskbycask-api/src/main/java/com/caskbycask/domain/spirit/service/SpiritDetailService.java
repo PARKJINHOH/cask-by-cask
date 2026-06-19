@@ -206,12 +206,14 @@ public class SpiritDetailService {
         extra.put("fermentationVessel", req.fermentationVessel());
         extra.put("oakType", isOakAged ? req.oakType() : null);
         extra.put("oakAgedMonths", isOakAged ? req.oakAgedMonths() : null);
+        // 관능(맛) 지표는 전용 컬럼으로 저장 (검색/필터 대상) — extraData 에는 넣지 않음
         String extraJson = serialize(extra);
 
         wineDetailRepo.findById(spirit.getId()).ifPresentOrElse(
             existing -> existing.update(
                 req.wineType(), req.vintage(), req.isOakAged(), req.isNaturalWine(),
-                req.certification(), extraJson),
+                req.certification(), req.sweetness(), req.body(), req.acidity(), req.tannin(),
+                extraJson),
             () -> wineDetailRepo.save(SpiritWineDetail.builder()
                 .spirit(spirit)
                 .wineType(req.wineType())
@@ -219,6 +221,10 @@ public class SpiritDetailService {
                 .isOakAged(req.isOakAged())
                 .isNaturalWine(req.isNaturalWine())
                 .certification(req.certification())
+                .sweetness(req.sweetness())
+                .body(req.body())
+                .acidity(req.acidity())
+                .tannin(req.tannin())
                 .extraData(extraJson)
                 .build())
         );
@@ -229,6 +235,10 @@ public class SpiritDetailService {
 
         Map<String, Object> extra = new LinkedHashMap<>();
         extra.put("blendDetail", req.blendDetail());
+        extra.put("vintageYear", req.vintageYear());
+        extra.put("ageYears", req.ageYears());
+        extra.put("oakType", req.oakType());
+        extra.put("caskFinish", req.caskFinish());
         String extraJson = serialize(extra);
 
         cognacDetailRepo.findById(spirit.getId()).ifPresentOrElse(
@@ -250,6 +260,9 @@ public class SpiritDetailService {
         extra.put("mainIngredient", req.mainIngredient());
         extra.put("productionMethod", req.productionMethod());
         extra.put("notes", req.notes());
+        extra.put("styleClassification", req.styleClassification());
+        extra.put("caskType", req.caskType());
+        extra.put("originDesignation", req.originDesignation());
         String extraJson = serialize(extra);
 
         otherDetailRepo.findById(spirit.getId()).ifPresentOrElse(
@@ -369,7 +382,9 @@ public class SpiritDetailService {
                 str(extra, "appellationDesignation"), str(extra, "soilType"),
                 num(extra, "altitudeM"), str(extra, "harvestMethod"),
                 str(extra, "fermentationVessel"), str(extra, "oakType"),
-                num(extra, "oakAgedMonths")
+                num(extra, "oakAgedMonths"),
+                detail.getSweetness(), detail.getBody(),
+                detail.getAcidity(), detail.getTannin()
         );
     }
 
@@ -378,7 +393,9 @@ public class SpiritDetailService {
         Map<String, Object> extra = parseExtra(detail.getExtraData());
         return new CognacDetailResponse(
                 detail.getGrade(), detail.getCru(), detail.getIsFineChampagne(),
-                str(extra, "blendDetail")
+                str(extra, "blendDetail"),
+                num(extra, "vintageYear"), num(extra, "ageYears"),
+                str(extra, "oakType"), str(extra, "caskFinish")
         );
     }
 
@@ -389,7 +406,10 @@ public class SpiritDetailService {
                 detail.getOtherType(),
                 str(extra, "mainIngredient"),
                 str(extra, "productionMethod"),
-                str(extra, "notes")
+                str(extra, "notes"),
+                str(extra, "styleClassification"),
+                str(extra, "caskType"),
+                str(extra, "originDesignation")
         );
     }
 

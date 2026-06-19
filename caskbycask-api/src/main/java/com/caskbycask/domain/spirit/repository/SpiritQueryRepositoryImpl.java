@@ -79,7 +79,7 @@ public class SpiritQueryRepositoryImpl implements SpiritQueryRepository {
             QSpiritWhiskyDetail whisky = QSpiritWhiskyDetail.spiritWhiskyDetail;
             query.leftJoin(spirit.whiskyDetail, whisky);
         }
-        if (cond.hasWineType()) {
+        if (cond.hasWineType() || cond.hasWineSensory()) {
             QSpiritWineDetail wine = QSpiritWineDetail.spiritWineDetail;
             query.leftJoin(spirit.wineDetail, wine);
         }
@@ -118,6 +118,18 @@ public class SpiritQueryRepositoryImpl implements SpiritQueryRepository {
         }
         if (cond.hasWineType()) {
             builder.and(QSpiritWineDetail.spiritWineDetail.wineType.in(cond.wineTypes()));
+        }
+        if (cond.hasWineSweetness()) {
+            builder.and(QSpiritWineDetail.spiritWineDetail.sweetness.in(cond.wineSweetness()));
+        }
+        if (cond.hasWineBody()) {
+            builder.and(QSpiritWineDetail.spiritWineDetail.body.in(cond.wineBody()));
+        }
+        if (cond.hasWineAcidity()) {
+            builder.and(QSpiritWineDetail.spiritWineDetail.acidity.in(cond.wineAcidity()));
+        }
+        if (cond.hasWineTannin()) {
+            builder.and(QSpiritWineDetail.spiritWineDetail.tannin.in(cond.wineTannin()));
         }
         if (cond.hasCognacGrade()) {
             builder.and(QSpiritCognacDetail.spiritCognacDetail.grade.in(cond.cognacGrades()));

@@ -43,7 +43,8 @@ public class AdminSpiritController {
         SpiritSearchCondition condition = new SpiritSearchCondition(
                 keyword, category, null, null, null,
                 null, null, null, null, null, null, null,
-                status, null);
+                status, null,
+                null, null, null, null);
         return ResponseEntity.ok(ApiResponse.success(
                 PageResponse.from(spiritService.searchSpirits(condition, pageable))));
     }

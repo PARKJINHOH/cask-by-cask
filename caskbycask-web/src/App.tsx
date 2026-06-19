@@ -63,6 +63,7 @@ const AdminScorePage = lazy(() => import('@/pages/admin/AdminScorePage'))
 const AdminLevelPage = lazy(() => import('@/pages/admin/AdminLevelPage'))
 const TermsPage = lazy(() => import('@/pages/legal/TermsPage'))
 const PrivacyPage = lazy(() => import('@/pages/legal/PrivacyPage'))
+const OperationPolicyPage = lazy(() => import('@/pages/legal/OperationPolicyPage'))
 const AdminLegalListPage = lazy(() => import('@/pages/admin/AdminLegalListPage'))
 const AdminLegalFormPage = lazy(() => import('@/pages/admin/AdminLegalFormPage'))
 const AdminEmailPage = lazy(() => import('@/pages/admin/AdminEmailPage'))
@@ -107,6 +108,7 @@ export default function App() {
             <Route path="account-recovery" element={<AccountRecoveryPage />} />
             <Route path="terms" element={<TermsPage />} />
             <Route path="privacy" element={<PrivacyPage />} />
+            <Route path="operation-policy" element={<OperationPolicyPage />} />
             <Route path="inquiry" element={<InquiryPage />} />
             <Route path="faq" element={<FaqPage />} />
             <Route path="calendar" element={<EventCalendarPage />} />

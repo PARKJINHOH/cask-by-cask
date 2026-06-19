@@ -5,9 +5,12 @@ import com.caskbycask.domain.spirit.entity.enums.WhiskyStyle;
 import com.caskbycask.domain.spirit.entity.enums.WineType;
 import com.caskbycask.domain.spirit.entity.enums.CognacGrade;
 import com.caskbycask.domain.spirit.entity.enums.OtherSpiritType;
+import com.caskbycask.domain.spirit.entity.enums.VariantType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -19,28 +22,39 @@ import java.util.List;
 
 public record SpiritRegisterRequestBody(
         @Schema(description = "한글 제품명")
-        @NotBlank(message = "한글 이름은 필수입니다.") String nameKo,
+        @NotBlank(message = "한글 이름은 필수입니다.")
+        @Size(max = 200, message = "한글 이름은 200자 이하여야 합니다.") String nameKo,
         @Schema(description = "영문 제품명")
-        @NotBlank(message = "영문 이름은 필수입니다.") String nameEn,
+        @NotBlank(message = "영문 이름은 필수입니다.")
+        @Size(max = 200, message = "영문 이름은 200자 이하여야 합니다.") String nameEn,
         @Schema(description = "카테고리 (WHISKY, COGNAC, WINE 등)")
         @NotNull(message = "카테고리는 필수입니다.") SpiritCategory category,
         @Schema(description = "증류소 ID (선택)")
         Long producerId,
         @Schema(description = "병입업체명 (선택)")
+        @Size(max = 200, message = "병입업체명은 200자 이하여야 합니다.")
         String bottler,
         @Schema(description = "병입 연도 (선택)")
+        @Min(value = 1800, message = "병입 연도는 1800년 이후여야 합니다.")
+        @Max(value = 2100, message = "병입 연도는 2100년 이하여야 합니다.")
         Integer bottledYear,
         @Schema(description = "빈티지 연도 (선택)")
+        @Min(value = 1800, message = "빈티지 연도는 1800년 이후여야 합니다.")
+        @Max(value = 2100, message = "빈티지 연도는 2100년 이하여야 합니다.")
         Integer vintageYear,
         @Schema(description = "알코올 도수 % (0.0~100.0)")
         @DecimalMin(value = "0.0", message = "도수는 0.0 이상이어야 합니다.")
         @DecimalMax(value = "100.0", message = "도수는 100.0 이하이어야 합니다.")
         BigDecimal abv,
         @Schema(description = "용량 ml (선택)")
+        @Min(value = 1, message = "용량은 1ml 이상이어야 합니다.")
+        @Max(value = 100000, message = "용량은 100000ml 이하여야 합니다.")
         Integer volumeMl,
         @Schema(description = "생산 국가 (선택)")
+        @Size(max = 100, message = "생산 국가는 100자 이하여야 합니다.")
         String country,
         @Schema(description = "생산 지역 (선택)")
+        @Size(max = 100, message = "생산 지역은 100자 이하여야 합니다.")
         String region,
         @Schema(description = "숙성 연수 (선택, isNas=true 시 무시)")
         Integer ageStatement,
@@ -75,7 +89,15 @@ public record SpiritRegisterRequestBody(
         List<String> imageUrls,
         @Schema(description = "관리자에게 전달할 기타 문구 (선택, 최대 500자)")
         @Size(max = 500, message = "기타 문구는 500자 이하로 입력해주세요.")
-        String note
+        String note,
+        @Schema(description = "에디션 유형 (선택, 위스키 — NONE/BATCH/RELEASE_YEAR/SINGLE_CASK)")
+        VariantType variantType,
+        @Schema(description = "에디션 값 (선택, 위스키 — 예: Batch 11, 2023)")
+        @Size(max = 100, message = "에디션 값은 100자 이하여야 합니다.")
+        String variantValue,
+        @Schema(description = "에디션 값 영문 (선택, 위스키)")
+        @Size(max = 100, message = "에디션 값(영문)은 100자 이하여야 합니다.")
+        String variantValueEn
 ) {
         /**
          * 카테고리별 핵심값(스타일/종류/등급/주종) 필수 여부.

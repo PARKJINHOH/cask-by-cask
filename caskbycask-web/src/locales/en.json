@@ -164,15 +164,15 @@
       "nameEn": "English Name",
       "nameKoPlaceholder": {
         "WHISKY": "e.g. 발베니 12년 더블우드",
-        "COGNAC": "e.g. 헤네시 XO",
-        "WINE": "e.g. 샤또 마고 2015",
-        "OTHER": "e.g. 바카디 카르타 블랑카"
+        "COGNAC": "e.g. 레미 마르탱 XO",
+        "WINE": "e.g. 샤토 마고 2016",
+        "OTHER": "e.g. 봄베이 사파이어"
       },
       "nameEnPlaceholder": {
         "WHISKY": "Balvenie 12Y DoubleWood",
-        "COGNAC": "Hennessy XO",
-        "WINE": "Château Margaux 2015",
-        "OTHER": "Bacardi Carta Blanca"
+        "COGNAC": "Rémy Martin XO",
+        "WINE": "Château Margaux 2016",
+        "OTHER": "Bombay Sapphire"
       },
       "category": "Category",
       "categoryPlaceholder": "Select category",
@@ -239,7 +239,29 @@
       "editModeHint": "After saving, the request will return to pending review.",
       "cancelEdit": "Cancel Edit",
       "editSuccess": "Your request has been updated.",
-      "loadError": "Failed to load the request."
+      "loadError": "Failed to load the request.",
+      "editionType": {
+        "label": "Edition Type",
+        "hint": "Select if this product is distinguished by batch, single cask, or release year. (Whisky)",
+        "NONE": "Standard (none)",
+        "BATCH": "Batch",
+        "SINGLE_CASK": "Single Cask",
+        "RELEASE_YEAR": "Release Year"
+      },
+      "editionValue": "Edition Value",
+      "editionValuePlaceholder": {
+        "BATCH": "e.g. Batch 11",
+        "SINGLE_CASK": "e.g. #1234",
+        "RELEASE_YEAR": "e.g. 2023"
+      },
+      "errEditionValue": "Please enter the edition value.",
+      "editionValueEn": "Edition Value (EN)",
+      "editionValueEnPlaceholder": "e.g. Batch 11",
+      "images": {
+        "label": "Photos",
+        "hint": "Up to 3 photos. Attached photos become the spirit's images upon approval.",
+        "add": "Add Photo"
+      }
     },
     "myRequests": {
       "title": "My Requests",
@@ -413,7 +435,11 @@
       "resetAll": "Clear all",
       "apply": "Apply",
       "all": "All",
-      "activeTitle": "Active filters"
+      "activeTitle": "Active filters",
+      "sweetness": "Sweetness",
+      "body": "Body",
+      "acidity": "Acidity",
+      "tannin": "Tannin"
     },
     "whiskyStyle": {
       "SINGLE_MALT":    "Single Malt",
@@ -470,6 +496,28 @@
       "ABSINTHE": "Absinthe",
       "BEER":     "Beer",
       "OTHER":    "Other"
+    },
+    "wineSweetness": {
+      "DRY":     "Dry",
+      "OFF_DRY": "Off-dry",
+      "MEDIUM":  "Medium",
+      "SWEET":   "Sweet"
+    },
+    "wineBody": {
+      "LIGHT":  "Light",
+      "MEDIUM": "Medium",
+      "FULL":   "Full"
+    },
+    "wineIntensity": {
+      "LOW":    "Low",
+      "MEDIUM": "Medium",
+      "HIGH":   "High"
+    },
+    "wineCertification": {
+      "ORGANIC":     "Organic",
+      "BIODYNAMIC":  "Biodynamic",
+      "SUSTAINABLE": "Sustainable",
+      "NONE":        "None"
     },
     "noResult": {
       "title": "No results found.",
@@ -915,6 +963,10 @@
       "title": "Enter title",
       "content": "Enter content. YouTube/Vimeo URLs will be automatically embedded."
     },
+    "writeGuideline": {
+      "text": "Posts containing obscene content, defamation, copyright infringement, profanity, spam, exposure of personal information, false information, or unauthorized advertising are subject to penalty and may be moved or hidden without prior notice.",
+      "linkText": "View Community Guidelines"
+    },
     "draft": {
       "save": "Save Draft",
       "saving": "Saving...",
@@ -1112,6 +1164,7 @@
     "inquiry": "Contact Us",
     "terms": "Terms of Service",
     "privacy": "Privacy Policy",
+    "operationPolicy": "Community Guidelines",
     "explore": "Explore",
     "info": "Info"
   },
@@ -1311,7 +1364,7 @@
       "dutyfree": "Duty-Free",
       "period": { "1M": "1 Month", "3M": "3 Months", "6M": "6 Months", "1Y": "1 Year", "ALL": "All" },
       "minPrice": "Min Final Price",
-      "maxPrice": "Max List Price",
+      "maxPrice": "List Price",
       "avgSale": "Avg Sale Price",
       "storeCount": "Stores",
       "noData": "No price data available.",

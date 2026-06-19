@@ -182,6 +182,10 @@ function SpiritDetailSections({ spirit, isEn }: { spirit: SpiritDetail; isEn: bo
     SAKE: isEn ? 'Sake' : '사케', SOJU: isEn ? 'Soju' : '소주', BAIJIU: isEn ? 'Baijiu' : '바이주',
     ABSINTHE: isEn ? 'Absinthe' : '압생트', BEER: isEn ? 'Beer' : '맥주', OTHER: isEn ? 'Other' : '기타',
   }
+  // 꼬냑 오크 라벨 (상세 전용 — 필터 없음). 관능 값은 spirit.wine* 번역키 사용.
+  const COGNAC_OAK_LABEL: Record<string, string> = {
+    LIMOUSIN: 'Limousin', TRONCAIS: 'Tronçais', ALLIER: 'Allier', OTHER: isEn ? 'Other' : '기타',
+  }
   const reportName = isEn ? (spirit.nameEn || spirit.nameKo) : spirit.nameKo
   const reportHref = `/request/feedback/new?type=ETC`
     + `&title=${encodeURIComponent(t('spirit.detail.reportErrorTitle', { name: reportName }))}`
@@ -293,14 +297,14 @@ function SpiritDetailSections({ spirit, isEn }: { spirit: SpiritDetail; isEn: bo
           <div>
             <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest mb-2">Wine</p>
             <DetailGrid>
-              <DI label={isEn ? 'Type' : '종류'} value={wine.wineType} />
+              <DI label={isEn ? 'Type' : '종류'} value={wine.wineType ? t(`spirit.wineType.${wine.wineType}`) : null} />
               <DI label={isEn ? 'Vintage' : '빈티지'} value={wine.vintage} />
               <DI label={isEn ? 'Appellation' : '원산지 명칭'} value={wine.appellationDesignation} />
               <DI label={isEn ? 'Soil' : '토양'} value={wine.soilType} />
               <DI label={isEn ? 'Altitude' : '고도'} value={wine.altitudeM != null ? `${wine.altitudeM}m` : null} />
               <DI label={isEn ? 'Harvest' : '수확 방법'} value={wine.harvestMethod} />
               <DI label={isEn ? 'Fermentation' : '발효 용기'} value={wine.fermentationVessel} />
-              <DI label={isEn ? 'Certification' : '인증'} value={wine.certification !== 'NONE' ? wine.certification : null} />
+              <DI label={isEn ? 'Certification' : '인증'} value={wine.certification && wine.certification !== 'NONE' ? t(`spirit.wineCertification.${wine.certification}`) : null} />
               <DI label={isEn ? 'Oak Aged' : '오크 숙성'}
                 value={wine.isOakAged != null ? (wine.isOakAged ? (isEn ? 'Yes' : '예') : (isEn ? 'No' : '아니요')) : null} />
               {wine.oakType && <DI label={isEn ? 'Oak' : '오크'} value={wine.oakType} />}
@@ -309,6 +313,10 @@ function SpiritDetailSections({ spirit, isEn }: { spirit: SpiritDetail; isEn: bo
               )}
               <DI label={isEn ? 'Natural Wine' : '내추럴 와인'}
                 value={wine.isNaturalWine ? (isEn ? 'Yes' : '예') : null} />
+              <DI label={isEn ? 'Sweetness' : '당도'} value={wine.sweetness ? t(`spirit.wineSweetness.${wine.sweetness}`) : null} />
+              <DI label={isEn ? 'Body' : '바디'} value={wine.body ? t(`spirit.wineBody.${wine.body}`) : null} />
+              <DI label={isEn ? 'Acidity' : '산도'} value={wine.acidity ? t(`spirit.wineIntensity.${wine.acidity}`) : null} />
+              <DI label={isEn ? 'Tannin' : '타닌'} value={wine.tannin ? t(`spirit.wineIntensity.${wine.tannin}`) : null} />
             </DetailGrid>
             {wine.grapeVarieties && wine.grapeVarieties.length > 0 && (
               <div className="mt-4">
@@ -345,6 +353,14 @@ function SpiritDetailSections({ spirit, isEn }: { spirit: SpiritDetail; isEn: bo
                 </Badge2>
               )}
             </div>
+            <div className="mt-3">
+              <DetailGrid>
+                <DI label={isEn ? 'Vintage' : '빈티지'} value={cognac.vintageYear} />
+                <DI label={isEn ? 'Age' : '숙성연수'} value={cognac.ageYears != null ? `${cognac.ageYears}${isEn ? ' yr' : '년'}` : null} />
+                <DI label={isEn ? 'Oak' : '오크'} value={cognac.oakType ? (COGNAC_OAK_LABEL[cognac.oakType] ?? cognac.oakType) : null} />
+                <DI label={isEn ? 'Cask Finish' : '캐스크 피니시'} value={cognac.caskFinish} />
+              </DetailGrid>
+            </div>
             {cognac.blendDetail && (
               <p className="text-sm text-neutral-600 leading-relaxed mt-3">{cognac.blendDetail}</p>
             )}
@@ -360,6 +376,9 @@ function SpiritDetailSections({ spirit, isEn }: { spirit: SpiritDetail; isEn: bo
             <DetailGrid>
               <DI label={isEn ? 'Type' : '주종'}
                 value={other.otherType ? OTHER_TYPE_LABEL[other.otherType] ?? other.otherType : null} />
+              <DI label={isEn ? 'Style' : '세부 스타일'} value={other.styleClassification} />
+              <DI label={isEn ? 'Cask' : '캐스크'} value={other.caskType} />
+              <DI label={isEn ? 'Origin' : '원산지'} value={other.originDesignation} />
               <DI label={isEn ? 'Main Ingredient' : '주원료'} value={other.mainIngredient} />
               <DI label={isEn ? 'Production' : '제조 방식'} value={other.productionMethod} />
             </DetailGrid>
@@ -538,7 +557,7 @@ function PriceTabContent({ spiritId }: { spiritId: number }) {
   const [period, setPeriod] = useStateForPrice('3M')
   const [selectedDate, setSelectedDate] = useStateForPrice<string | null>(null)
   const { data: chartData, isLoading: chartLoading } = usePriceChart(spiritId, storeType, period)
-  const { data: details, isLoading: detailLoading } = usePriceChartDetail(spiritId, selectedDate, storeType)
+  const { data: details, isLoading: detailLoading } = usePriceChartDetail(spiritId, selectedDate, storeType, chartData?.bucketType)
   return (
     <div className="space-y-4">
       {/* PRICE_ALERT 발동 배너 + 목표가 알림 인라인 */}

@@ -44,6 +44,18 @@ public record WineDetailResponse(
         String oakType,
 
         @Schema(description = "오크 숙성 개월 수")
-        Integer oakAgedMonths
+        Integer oakAgedMonths,
+
+        @Schema(description = "당도 (DRY, OFF_DRY, MEDIUM, SWEET)")
+        WineSweetness sweetness,
+
+        @Schema(description = "바디 (LIGHT, MEDIUM, FULL)")
+        WineBody body,
+
+        @Schema(description = "산도 (LOW, MEDIUM, HIGH)")
+        WineIntensity acidity,
+
+        @Schema(description = "타닌 (LOW, MEDIUM, HIGH)")
+        WineIntensity tannin
 
 ) {}

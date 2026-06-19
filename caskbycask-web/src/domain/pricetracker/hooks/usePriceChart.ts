@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { priceTrackerApi } from '../api/priceTrackerApi'
-import type { PriceReportStatus, StoreType } from '../types/pricetracker.types'
+import type { BucketType, PriceReportStatus, StoreType } from '../types/pricetracker.types'
 
 export function usePriceChart(
   spiritId: number,
@@ -21,10 +21,11 @@ export function usePriceChartDetail(
   spiritId: number,
   pointDate: string | null,
   storeType: StoreType,
+  bucketType?: BucketType,
 ) {
   return useQuery({
-    queryKey: ['priceChartDetail', spiritId, pointDate, storeType],
-    queryFn: () => priceTrackerApi.getChartDetails(spiritId, pointDate!, storeType),
+    queryKey: ['priceChartDetail', spiritId, pointDate, storeType, bucketType],
+    queryFn: () => priceTrackerApi.getChartDetails(spiritId, pointDate!, storeType, bucketType),
     select: (res) => res.data.data,
     enabled: !!spiritId && !!pointDate,
     staleTime: 5 * 60 * 1000,

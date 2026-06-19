@@ -2,10 +2,20 @@ import InfoTooltip from '@/shared/components/InfoTooltip'
 
 export interface CognacDetailForm {
   grade: string; cru: string; isFineChampagne: boolean; blendDetail: string
+  vintageYear: string; ageYears: string; oakType: string; caskFinish: string
 }
 export const DEFAULT_COGNAC: CognacDetailForm = {
   grade: '', cru: '', isFineChampagne: false, blendDetail: '',
+  vintageYear: '', ageYears: '', oakType: '', caskFinish: '',
 }
+
+// 프렌치 오크 숲(원산지) — 꼬냑 숙성에 주로 쓰임
+const OAK_TYPES: Array<[string, string]> = [
+  ['LIMOUSIN', 'Limousin (리무쟁)'],
+  ['TRONCAIS', 'Tronçais (트롱세)'],
+  ['ALLIER', 'Allier (알리에)'],
+  ['OTHER', '기타'],
+]
 
 interface Props { value: CognacDetailForm; onChange: (u: Partial<CognacDetailForm>) => void; errors?: Record<string, string> }
 
@@ -78,6 +88,54 @@ export default function CognacDetailSection({ value, onChange, errors }: Props) 
           onChange={(e) => onChange({ isFineChampagne: e.target.checked })} className="w-4 h-4 accent-amber-500" />
         Fine Champagne (Grande + Petite Champagne 블렌드, Grande 50% 이상)
       </label>
+
+      {/* 빈티지 / 선언 숙성연수 */}
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className={LABEL}>
+            빈티지 연도
+            <InfoTooltip text="단일 연도 증류 원액으로 만든 빈티지 꼬냑일 때만. 일반 꼬냑은 비워두세요." />
+          </label>
+          <input type="number" min={1800} max={new Date().getFullYear()}
+            value={value.vintageYear} onChange={(e) => onChange({ vintageYear: e.target.value })}
+            className={INPUT} />
+        </div>
+        <div>
+          <label className={LABEL}>
+            선언 숙성연수
+            <InfoTooltip text="라벨에 표기된 숙성 연수(예: 20년). 표기가 없으면 비워두세요." />
+          </label>
+          <div className="relative">
+            <input type="number" min={0} max={100}
+              value={value.ageYears} onChange={(e) => onChange({ ageYears: e.target.value })}
+              className={`${INPUT} pr-8`} />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">년</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 오크(우드) 종류 */}
+      <div>
+        <label className={LABEL}>
+          오크(우드) 종류
+          <InfoTooltip text="숙성에 사용한 프렌치 오크 숲. 리무쟁=강한 타닌, 트롱세=섬세함." />
+        </label>
+        <select value={value.oakType} onChange={(e) => onChange({ oakType: e.target.value })} className={INPUT}>
+          <option value="">선택 안 함</option>
+          {OAK_TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+        </select>
+      </div>
+
+      {/* 캐스크 피니시 / 추가 숙성 */}
+      <div>
+        <label className={LABEL}>
+          캐스크 피니시 / 추가 숙성
+          <InfoTooltip text="다른 캐스크에서 추가 숙성한 경우. 예: 포트 캐스크 피니시." />
+        </label>
+        <input type="text" value={value.caskFinish} maxLength={200}
+          onChange={(e) => onChange({ caskFinish: e.target.value })}
+          placeholder="예: 포트 캐스크 피니시" className={INPUT} />
+      </div>
 
       {/* 블렌드 설명 */}
       <div>

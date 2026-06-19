@@ -34,6 +34,7 @@ const ALLOWED_ATTR = [
   'colspan', 'rowspan', 'scope', 'data-color',
   'data-type', 'data-checked',
   'data-spirit-id', 'data-spirit-name', 'data-spirit-name-en', 'data-spirit-category',
+  'data-spirit-thumbnail', 'data-spirit-abv', 'data-spirit-review-count',
   'data-video-embed', 'data-uploaded-video',
   'allowfullscreen', 'allow', 'frameborder', 'controls', 'preload', 'type',
 ]

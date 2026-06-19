@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import type {
   SpiritCategory, WhiskyStyle, WineType, CognacGrade,
+  WineSweetness, WineBody, WineIntensity,
 } from '@/domain/spirit/types/spirit.types'
 
 const WHISKY_STYLES: WhiskyStyle[] = [
@@ -8,6 +9,9 @@ const WHISKY_STYLES: WhiskyStyle[] = [
   'BOURBON', 'WHEATED_BOURBON', 'TENNESSEE', 'RYE', 'POT_STILL', 'GRAIN_CORN',
 ]
 const WINE_TYPES: WineType[] = ['RED', 'WHITE', 'ROSE', 'SPARKLING', 'DESSERT', 'ORANGE', 'FORTIFIED']
+const WINE_SWEETNESS: WineSweetness[] = ['DRY', 'OFF_DRY', 'MEDIUM', 'SWEET']
+const WINE_BODY: WineBody[] = ['LIGHT', 'MEDIUM', 'FULL']
+const WINE_LEVELS: WineIntensity[] = ['LOW', 'MEDIUM', 'HIGH']
 const COGNAC_GRADES: CognacGrade[] = ['VS', 'NAPOLEON', 'VSOP', 'XO', 'XXO', 'HORS_DAGE']
 
 const CATEGORIES: SpiritCategory[] = ['WHISKY', 'COGNAC', 'WINE', 'OTHER']
@@ -17,10 +21,18 @@ export interface CategoryTreeProps {
   whiskyStyle:  WhiskyStyle[]
   wineType:     WineType[]
   cognacGrade:  CognacGrade[]
+  wineSweetness: WineSweetness[]
+  wineBody:     WineBody[]
+  wineAcidity:  WineIntensity[]
+  wineTannin:   WineIntensity[]
   onCategory:   (v: SpiritCategory | '') => void
   onWhiskyStyle: (v: WhiskyStyle[]) => void
   onWineType:   (v: WineType[]) => void
   onCognacGrade: (v: CognacGrade[]) => void
+  onWineSweetness: (v: WineSweetness[]) => void
+  onWineBody:   (v: WineBody[]) => void
+  onWineAcidity: (v: WineIntensity[]) => void
+  onWineTannin: (v: WineIntensity[]) => void
 }
 
 function toggle<T>(arr: T[], v: T): T[] {
@@ -75,12 +87,39 @@ export default function CategoryTree(p: CategoryTreeProps) {
                 />
               )}
               {isExpanded && cat === 'WINE' && (
-                <SubChips
-                  values={WINE_TYPES}
-                  current={p.wineType}
-                  onToggle={(v) => p.onWineType(toggle(p.wineType, v))}
-                  labelKey="spirit.wineType"
-                />
+                <>
+                  <SubChips
+                    values={WINE_TYPES}
+                    current={p.wineType}
+                    onToggle={(v) => p.onWineType(toggle(p.wineType, v))}
+                    labelKey="spirit.wineType"
+                  />
+                  {/* 관능(맛) 지표 필터 — 그룹 라벨과 함께 */}
+                  <LabeledChips
+                    title={t('spirit.filter.sweetness')}
+                    values={WINE_SWEETNESS} current={p.wineSweetness}
+                    onToggle={(v) => p.onWineSweetness(toggle(p.wineSweetness, v))}
+                    labelKey="spirit.wineSweetness"
+                  />
+                  <LabeledChips
+                    title={t('spirit.filter.body')}
+                    values={WINE_BODY} current={p.wineBody}
+                    onToggle={(v) => p.onWineBody(toggle(p.wineBody, v))}
+                    labelKey="spirit.wineBody"
+                  />
+                  <LabeledChips
+                    title={t('spirit.filter.acidity')}
+                    values={WINE_LEVELS} current={p.wineAcidity}
+                    onToggle={(v) => p.onWineAcidity(toggle(p.wineAcidity, v))}
+                    labelKey="spirit.wineIntensity"
+                  />
+                  <LabeledChips
+                    title={t('spirit.filter.tannin')}
+                    values={WINE_LEVELS} current={p.wineTannin}
+                    onToggle={(v) => p.onWineTannin(toggle(p.wineTannin, v))}
+                    labelKey="spirit.wineIntensity"
+                  />
+                </>
               )}
               {isExpanded && cat === 'COGNAC' && (
                 <SubChips
@@ -105,10 +144,20 @@ interface SubChipsProps<T extends string> {
   labelKey: string
 }
 
-function SubChips<T extends string>({ values, current, onToggle, labelKey }: SubChipsProps<T>) {
+// 그룹 라벨이 붙은 칩 묶음 (관능 지표용)
+function LabeledChips<T extends string>({ title, ...rest }: SubChipsProps<T> & { title: string }) {
+  return (
+    <div className="px-3 pt-1">
+      <p className="text-[11px] font-semibold text-neutral-400 mb-1">{title}</p>
+      <SubChips {...rest} dense />
+    </div>
+  )
+}
+
+function SubChips<T extends string>({ values, current, onToggle, labelKey, dense }: SubChipsProps<T> & { dense?: boolean }) {
   const { t } = useTranslation()
   return (
-    <div className="px-3 pb-3 pt-1 flex flex-wrap gap-1.5">
+    <div className={`${dense ? 'pb-2' : 'px-3 pb-3 pt-1'} flex flex-wrap gap-1.5`}>
       {values.map((v) => {
         const active = current.includes(v)
         return (

@@ -392,6 +392,12 @@ export default function PostFormPage() {
               <DraftSavedNotice savedAt={lastSavedAt} />
             </div>
           )}
+          <p className="mt-2 text-[11px] text-neutral-400 leading-relaxed">
+            {t('post.writeGuideline.text')}{' '}
+            <Link to="/operation-policy" className="underline hover:text-neutral-600">
+              {t('post.writeGuideline.linkText')}
+            </Link>
+          </p>
         </div>
 
         {/* 투표 */}

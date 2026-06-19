@@ -419,6 +419,8 @@ export function useSpiritForm() {
         altitudeM: w.altitudeM?.toString() ?? '', harvestMethod: w.harvestMethod ?? '',
         fermentationVessel: w.fermentationVessel ?? '', oakType: w.oakType ?? '',
         oakAgedMonths: w.oakAgedMonths?.toString() ?? '',
+        sweetness: w.sweetness ?? '', body: w.body ?? '',
+        acidity: w.acidity ?? '', tannin: w.tannin ?? '',
       })
     }
     if (s.cognacDetail) {
@@ -426,6 +428,8 @@ export function useSpiritForm() {
       setCognacDetail({
         grade: c.grade ?? '', cru: c.cru ?? '',
         isFineChampagne: c.isFineChampagne ?? false, blendDetail: c.blendDetail ?? '',
+        vintageYear: c.vintageYear?.toString() ?? '', ageYears: c.ageYears?.toString() ?? '',
+        oakType: c.oakType ?? '', caskFinish: c.caskFinish ?? '',
       })
     }
     if (s.otherDetail) {
@@ -433,6 +437,8 @@ export function useSpiritForm() {
       setOtherDetail({
         otherType: o.otherType ?? '', mainIngredient: o.mainIngredient ?? '',
         productionMethod: o.productionMethod ?? '', notes: o.notes ?? '',
+        styleClassification: o.styleClassification ?? '', caskType: o.caskType ?? '',
+        originDesignation: o.originDesignation ?? '',
       })
     }
   }
@@ -467,6 +473,43 @@ export function useSpiritForm() {
       setCognacDetail({ ...DEFAULT_COGNAC, grade: r.cognacGrade ?? '' })
     } else if (r.category === 'OTHER') {
       setOtherDetail({ ...DEFAULT_OTHER, otherType: r.otherType ?? '' })
+    }
+
+    // 신청자가 선택한 에디션(위스키 단일 에디션) → 하위 에디션 1개로 seed. 관리자가 보완/추가 가능.
+    const splitType = r.variantType && r.variantType !== 'NONE' ? r.variantType : null
+    if (r.category === 'WHISKY' && splitType && r.variantValue) {
+      const seed: CreateVariantRequest = {
+        variantType: splitType,
+        variantValue: r.variantValue,
+        variantValueEn: r.variantValueEn ?? '',
+        abv: r.abv ?? null,
+        abvMin: null,
+        abvMax: null,
+        volumeMl: r.volumeMl ?? null,
+        commonDetail: {
+          isNas: r.isNas ?? false, ageStatement: r.ageStatement ?? null,
+          ageStatementMin: null, ageStatementMax: null,
+          distilledDate: r.distilledDate ?? null, bottledDate: r.bottledDate ?? null,
+          releaseDate: r.releaseDate ?? null, volumeMl: r.volumeMl ?? null, abv: r.abv ?? null,
+          bottleNo: null, batchNo: null, totalBottles: null,
+        },
+        whiskyDetail: {
+          style: r.whiskyStyle || 'SINGLE_MALT', styleOther: r.whiskyStyleOther ?? '',
+          brandName: '', bottlingType: 'OB', caskTypes: [], caskFinishes: [],
+          caskTypeOther: '', caskDetails: {},
+          isNonChillFiltered: false, isNaturalColour: false,
+          isSingleCask: splitType === 'SINGLE_CASK', isCaskStrength: false, isPeated: false,
+          phenolPpm: null, phenolPpmMin: null, phenolPpmMax: null,
+          caskNo: r.caskNo ?? '', notes: r.whiskyNotes ?? '',
+        },
+      }
+      // tempId 는 런타임 식별자 — 타입에는 없고 (v as any).tempId 로 읽음(기존 컨벤션)
+      ;(seed as any).tempId = Math.random().toString()
+      setIsVariantSplit(true)
+      setVariants([seed])
+    } else {
+      setIsVariantSplit(false)
+      setVariants([])
     }
   }
 
@@ -598,6 +641,10 @@ export function useSpiritForm() {
           fermentationVessel: wineDetail.fermentationVessel || null,
           oakType: wineDetail.isOakAged ? (wineDetail.oakType || null) : null,
           oakAgedMonths: wineDetail.isOakAged && wineDetail.oakAgedMonths ? Number(wineDetail.oakAgedMonths) : null,
+          sweetness: wineDetail.sweetness || null,
+          body: wineDetail.body || null,
+          acidity: wineDetail.acidity || null,
+          tannin: wineDetail.tannin || null,
         },
       }
       case 'COGNAC': return {
@@ -606,6 +653,10 @@ export function useSpiritForm() {
           cru: cognacDetail.cru || null,
           isFineChampagne: cognacDetail.isFineChampagne ?? null,
           blendDetail: cognacDetail.blendDetail || null,
+          vintageYear: cognacDetail.vintageYear ? Number(cognacDetail.vintageYear) : null,
+          ageYears: cognacDetail.ageYears ? Number(cognacDetail.ageYears) : null,
+          oakType: cognacDetail.oakType || null,
+          caskFinish: cognacDetail.caskFinish || null,
         },
       }
       case 'OTHER': return {
@@ -614,6 +665,9 @@ export function useSpiritForm() {
           mainIngredient: otherDetail.mainIngredient || null,
           productionMethod: otherDetail.productionMethod || null,
           notes: otherDetail.notes || null,
+          styleClassification: otherDetail.styleClassification || null,
+          caskType: otherDetail.caskType || null,
+          originDesignation: otherDetail.originDesignation || null,
         },
       }
       default: return {}

@@ -165,7 +165,8 @@ class SpiritQueryRepositoryTest {
     void searchWithNullStatus_returnsAllStatuses() {
         SpiritSearchCondition cond = new SpiritSearchCondition(
                 null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null,
+                null, null, null, null);
         assertThat(cond.status()).isNull();
         Page<SpiritListResponse> result = spiritRepository.search(cond, page);
         assertThat(result.getTotalElements()).isEqualTo(5);
@@ -225,7 +226,8 @@ class SpiritQueryRepositoryTest {
             return new SpiritSearchCondition(
                     keyword, category, null, null, null,
                     country, null, null, minAbv, maxAbv,
-                    minScore, maxScore, SpiritStatus.ACTIVE, sort);
+                    minScore, maxScore, SpiritStatus.ACTIVE, sort,
+                    null, null, null, null);
         }
     }
 }

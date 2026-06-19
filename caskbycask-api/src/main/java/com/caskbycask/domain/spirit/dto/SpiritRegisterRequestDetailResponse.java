@@ -7,6 +7,7 @@ import com.caskbycask.domain.spirit.entity.enums.WhiskyStyle;
 import com.caskbycask.domain.spirit.entity.enums.WineType;
 import com.caskbycask.domain.spirit.entity.enums.CognacGrade;
 import com.caskbycask.domain.spirit.entity.enums.OtherSpiritType;
+import com.caskbycask.domain.spirit.entity.enums.VariantType;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -43,6 +44,9 @@ public record SpiritRegisterRequestDetailResponse(
         OtherSpiritType otherType,
         List<String> imageUrls,
         String note,
+        VariantType variantType,
+        String variantValue,
+        String variantValueEn,
         RequestStatus status,
         String rejectReason,
         LocalDateTime createdAt,
@@ -82,6 +86,9 @@ public record SpiritRegisterRequestDetailResponse(
                 body.otherType(),
                 body.imageUrls() != null ? body.imageUrls() : List.of(),
                 body.note(),
+                body.variantType(),
+                body.variantValue(),
+                body.variantValueEn(),
                 req.getStatus(),
                 req.getRejectReason(),
                 req.getCreatedAt(),

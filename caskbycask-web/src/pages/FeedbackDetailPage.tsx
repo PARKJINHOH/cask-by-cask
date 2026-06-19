@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SeoMeta from '@/shared/components/SeoMeta'
+import RichContent from '@/shared/components/RichContent'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import {
   useAddFeedbackComment,
@@ -101,10 +102,17 @@ export default function FeedbackDetailPage() {
           <ProgressBar status={detail.status} progress={detail.progress} />
         </div>
 
-        {/* 본문 */}
-        <p className="mt-5 text-sm text-neutral-700 leading-relaxed whitespace-pre-wrap">
-          {detail.content}
-        </p>
+        {/* 본문 — 리치 에디터 도입 이전 평문(태그 없음) 글은 줄바꿈 보존 위해 평문 렌더링 */}
+        {/<\/?(p|br|div|h[1-4]|ul|ol|li|img|video|iframe|table|blockquote|pre|strong|em|span|mark|a)\b/i.test(detail.content) ? (
+          <RichContent
+            className="mt-5 prose prose-sm max-w-none notice-content text-neutral-700"
+            html={detail.content}
+          />
+        ) : (
+          <p className="mt-5 text-sm text-neutral-700 leading-relaxed whitespace-pre-wrap">
+            {detail.content}
+          </p>
+        )}
 
         {/* 첨부 이미지 */}
         {detail.imageUrls.length > 0 && (

@@ -12,7 +12,7 @@ import Modal from '@/shared/components/Modal'
 import { useToast } from '@/shared/hooks/useToast'
 import Toast from '@/shared/components/Toast'
 
-const TABS: LegalDocumentType[] = ['TERMS', 'PRIVACY_POLICY']
+const TABS: LegalDocumentType[] = ['TERMS', 'PRIVACY_POLICY', 'OPERATION_POLICY']
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })

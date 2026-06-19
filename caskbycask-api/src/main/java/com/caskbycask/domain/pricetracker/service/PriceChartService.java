@@ -2,7 +2,6 @@ package com.caskbycask.domain.pricetracker.service;
 
 import com.caskbycask.domain.pricetracker.dto.response.ChartPoint;
 import com.caskbycask.domain.pricetracker.dto.response.ChartResponse;
-import com.caskbycask.domain.pricetracker.dto.response.PriceDiscountItemResponse;
 import com.caskbycask.domain.pricetracker.dto.response.PriceReportChartDetailResponse;
 import com.caskbycask.domain.pricetracker.entity.PriceReport;
 import com.caskbycask.domain.pricetracker.entity.PriceReportImage;
@@ -23,10 +22,10 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.temporal.TemporalAdjusters;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -52,87 +51,86 @@ public class PriceChartService {
         List<DealPost> deals = dealPostRepository.findAllBySpiritIdAndStatusAndIsVisibleTrue(spiritId, DealStatus.APPROVED);
         deals = deals.stream()
                 .filter(d -> startDate == null || !effectiveDate(d).isBefore(startDate))
-                .filter(d -> d.getStoreType() == storeType)
+                .filter(d -> storeType == null || d.getStoreType() == storeType)
                 .toList();
 
-        List<TempPrice> tempPrices = new ArrayList<>();
-        for (PriceReport r : reports) {
-            tempPrices.add(new TempPrice(
-                    effectiveDate(r),
-                    r.getActualPrice(),
-                    resolveMaxPrice(r),
-                    r.getSalePrice(),
-                    r.getId(),
-                    r.getStore() != null ? r.getStore().getId() : null
-            ));
-        }
-        for (DealPost d : deals) {
-            BigDecimal priceVal = d.getDealPrice() != null ? BigDecimal.valueOf(d.getDealPrice()) : null;
-            BigDecimal origVal = d.getOriginalPrice() != null ? BigDecimal.valueOf(d.getOriginalPrice()) : null;
-            tempPrices.add(new TempPrice(
-                    effectiveDate(d),
-                    priceVal,
-                    origVal != null ? origVal : priceVal,
-                    priceVal,
-                    null,
-                    null
-            ));
-        }
+        List<TempPrice> tempPrices = buildTempPrices(reports, deals);
+        List<DailyPrice> dailyPrices = buildDailyPrices(tempPrices);
 
         PriceCurrency currency = (storeType == StoreType.DUTYFREE) ? PriceCurrency.USD : PriceCurrency.KRW;
 
-        BucketType bucketType = tempPrices.size() <= 30 ? BucketType.INDIVIDUAL : BucketType.WEEKLY;
+        BucketType bucketType = dailyPrices.size() <= 30 ? BucketType.INDIVIDUAL : BucketType.WEEKLY;
 
         List<ChartPoint> points = bucketType == BucketType.INDIVIDUAL
-                ? buildIndividualPoints(tempPrices)
-                : buildWeeklyPoints(tempPrices);
+                ? buildIndividualPoints(dailyPrices)
+                : buildWeeklyPoints(dailyPrices);
 
         return new ChartResponse(bucketType, currency, points);
     }
 
     @Transactional(readOnly = true)
     public List<PriceReportChartDetailResponse> getChartPointDetails(
-            Long spiritId, LocalDate pointDate, StoreType storeType) {
-        LocalDate weekStart = pointDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-        LocalDate weekEnd = weekStart.plusDays(6);
+            Long spiritId, LocalDate pointDate, StoreType storeType, BucketType bucketType) {
+        boolean weekly = bucketType == BucketType.WEEKLY;
+        LocalDate rangeStart = weekly
+                ? pointDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+                : pointDate;
+        LocalDate rangeEnd = weekly ? rangeStart.plusDays(6) : pointDate;
 
         List<PriceReport> reports = priceReportRepository.findApprovedForChartDetail(
-                spiritId, PriceReportStatus.APPROVED, weekStart, weekEnd);
+                spiritId, PriceReportStatus.APPROVED, rangeStart, rangeEnd);
 
         List<DealPost> deals = dealPostRepository.findAllBySpiritIdAndStatusAndIsVisibleTrue(spiritId, DealStatus.APPROVED);
-        List<DealPost> weekDeals = deals.stream()
+        List<DealPost> rangeDeals = deals.stream()
                 .filter(d -> {
                     LocalDate dDate = effectiveDate(d);
-                    return !dDate.isBefore(weekStart) && !dDate.isAfter(weekEnd);
+                    return !dDate.isBefore(rangeStart) && !dDate.isAfter(rangeEnd);
                 })
-                .filter(d -> d.getStoreType() == storeType)
+                .filter(d -> storeType == null || d.getStoreType() == storeType)
                 .toList();
 
-        Stream<PriceReportChartDetailResponse> reportResponses = reports.stream()
-                .filter(r -> matchesStoreType(r, storeType))
-                .map(r -> {
-                    List<PriceReportImage> publicImages = priceReportImageRepository
-                            .findByPriceReportIdAndIsPublicTrueOrderBySortOrder(r.getId());
-                    return PriceReportChartDetailResponse.from(r, publicImages, r.getDiscountItems());
-                });
+        List<TempPrice> tempPrices = buildTempPrices(
+                reports.stream().filter(r -> matchesStoreType(r, storeType)).toList(),
+                rangeDeals
+        );
 
-        Stream<PriceReportChartDetailResponse> dealResponses = weekDeals.stream()
-                .map(PriceReportChartDetailResponse::from);
-
-        return Stream.concat(reportResponses, dealResponses)
-                .sorted(Comparator.comparing(
-                        PriceReportChartDetailResponse::finalPrice,
-                        Comparator.nullsLast(Comparator.naturalOrder())))
+        return buildDailyPrices(tempPrices).stream()
+                .map(DailyPrice::lowestSource)
+                .sorted(Comparator
+                        .comparing(TempPrice::date, Comparator.nullsLast(Comparator.naturalOrder()))
+                        .thenComparing(TempPrice::finalPrice, Comparator.nullsLast(Comparator.naturalOrder())))
+                .map(this::toDetailResponse)
                 .toList();
     }
 
     private record TempPrice(
             LocalDate date,
             BigDecimal finalPrice,
-            BigDecimal maxPrice,
+            BigDecimal regularPriceCandidate,
             BigDecimal salePrice,
             Long reportId,
-            Long storeId
+            String storeKey,
+            int reliability,
+            LocalDateTime observedAt,
+            PriceReport report,
+            DealPost deal
+    ) {}
+
+    private record DailyPrice(
+            LocalDate date,
+            BigDecimal minFinalPrice,
+            BigDecimal regularPrice,
+            BigDecimal avgSalePrice,
+            int storeCount,
+            List<Long> reportIds,
+            TempPrice lowestSource
+    ) {}
+
+    private record RegularPriceCandidate(
+            BigDecimal price,
+            int count,
+            int maxReliability,
+            LocalDateTime latestObservedAt
     ) {}
 
     // ═══════════════════════════════════════════
@@ -159,63 +157,136 @@ public class PriceChartService {
         return r.getStore() != null && r.getStore().getStoreType() == storeType;
     }
 
-    private List<ChartPoint> buildIndividualPoints(List<TempPrice> tempPrices) {
-        return tempPrices.stream()
-                .map(t -> new ChartPoint(
-                        t.date(),
-                        t.finalPrice(),
-                        t.maxPrice(),
-                        t.salePrice(),
-                        1,
-                        t.reportId() != null ? List.of(t.reportId()) : Collections.emptyList()
-                ))
-                .sorted(Comparator.comparing(ChartPoint::date, Comparator.nullsLast(Comparator.naturalOrder())))
-                .toList();
+    private List<TempPrice> buildTempPrices(List<PriceReport> reports, List<DealPost> deals) {
+        List<TempPrice> tempPrices = new ArrayList<>();
+        for (PriceReport r : reports) {
+            tempPrices.add(new TempPrice(
+                    effectiveDate(r),
+                    r.getActualPrice(),
+                    r.getPrice(),
+                    r.getSalePrice(),
+                    r.getId(),
+                    r.getStore() != null ? "store:" + r.getStore().getId() : "suggested:" + nullToBlank(r.getSuggestedStoreName()),
+                    reliability(r),
+                    r.getCreatedAt(),
+                    r,
+                    null
+            ));
+        }
+        for (DealPost d : deals) {
+            BigDecimal priceVal = d.getDealPrice() != null ? BigDecimal.valueOf(d.getDealPrice()) : null;
+            BigDecimal origVal = d.getOriginalPrice() != null ? BigDecimal.valueOf(d.getOriginalPrice()) : null;
+            tempPrices.add(new TempPrice(
+                    effectiveDate(d),
+                    priceVal,
+                    origVal,
+                    priceVal,
+                    null,
+                    "deal:" + nullToBlank(d.getSeller()),
+                    reliability(d),
+                    observedAt(d),
+                    null,
+                    d
+            ));
+        }
+        return tempPrices;
     }
 
-    private List<ChartPoint> buildWeeklyPoints(List<TempPrice> tempPrices) {
-        Map<LocalDate, List<TempPrice>> byWeek = tempPrices.stream()
-                .collect(Collectors.groupingBy(t ->
-                        t.date().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))));
+    private List<DailyPrice> buildDailyPrices(List<TempPrice> tempPrices) {
+        Map<LocalDate, List<TempPrice>> byDate = tempPrices.stream()
+                .filter(t -> t.date() != null)
+                .collect(Collectors.groupingBy(TempPrice::date));
 
-        return byWeek.entrySet().stream()
+        return byDate.entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())
                 .map(entry -> {
-                    List<TempPrice> week = entry.getValue();
+                    List<TempPrice> day = entry.getValue();
+                    TempPrice lowest = day.stream()
+                            .filter(t -> t.finalPrice() != null)
+                            .min(Comparator
+                                    .comparing(TempPrice::finalPrice)
+                                    .thenComparing(TempPrice::observedAt, Comparator.nullsLast(Comparator.reverseOrder())))
+                            .orElse(day.get(0));
 
-                    BigDecimal minFinalPrice = week.stream()
-                            .map(TempPrice::finalPrice)
-                            .filter(Objects::nonNull)
-                            .min(Comparator.naturalOrder())
-                            .orElse(null);
+                    BigDecimal minFinalPrice = lowest.finalPrice();
+                    BigDecimal regularPrice = resolveDailyRegularPrice(day, minFinalPrice);
 
-                    BigDecimal maxPrice = week.stream()
-                            .map(TempPrice::maxPrice)
-                            .filter(Objects::nonNull)
-                            .max(Comparator.naturalOrder())
-                            .orElse(null);
-
-                    long saleCount = week.stream().filter(t -> t.salePrice() != null).count();
+                    long saleCount = day.stream().filter(t -> t.salePrice() != null).count();
                     BigDecimal avgSalePrice = saleCount > 0
-                            ? week.stream()
+                            ? day.stream()
                             .map(TempPrice::salePrice)
                             .filter(Objects::nonNull)
                             .reduce(BigDecimal.ZERO, BigDecimal::add)
                             .divide(BigDecimal.valueOf(saleCount), RoundingMode.HALF_UP)
                             : null;
 
-                    long storeCount = week.stream()
-                            .map(TempPrice::storeId)
-                            .filter(Objects::nonNull)
+                    int storeCount = (int) day.stream()
+                            .map(TempPrice::storeKey)
+                            .filter(s -> s != null && !s.isBlank())
                             .distinct()
                             .count();
 
-                    List<Long> reportIds = week.stream()
+                    List<Long> reportIds = day.stream()
                             .map(TempPrice::reportId)
                             .filter(Objects::nonNull)
+                            .distinct()
                             .toList();
 
-                    return new ChartPoint(entry.getKey(), minFinalPrice, maxPrice,
+                    return new DailyPrice(entry.getKey(), minFinalPrice, regularPrice,
+                            avgSalePrice, storeCount, reportIds, lowest);
+                })
+                .toList();
+    }
+
+    private List<ChartPoint> buildIndividualPoints(List<DailyPrice> dailyPrices) {
+        return dailyPrices.stream()
+                .map(d -> new ChartPoint(
+                        d.date(),
+                        d.minFinalPrice(),
+                        d.regularPrice(),
+                        d.avgSalePrice(),
+                        d.storeCount(),
+                        d.reportIds()
+                ))
+                .sorted(Comparator.comparing(ChartPoint::date, Comparator.nullsLast(Comparator.naturalOrder())))
+                .toList();
+    }
+
+    private List<ChartPoint> buildWeeklyPoints(List<DailyPrice> dailyPrices) {
+        Map<LocalDate, List<DailyPrice>> byWeek = dailyPrices.stream()
+                .collect(Collectors.groupingBy(d ->
+                        d.date().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))));
+
+        return byWeek.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .map(entry -> {
+                    List<DailyPrice> week = entry.getValue();
+
+                    BigDecimal minFinalPrice = week.stream()
+                            .map(DailyPrice::minFinalPrice)
+                            .filter(Objects::nonNull)
+                            .min(Comparator.naturalOrder())
+                            .orElse(null);
+
+                    BigDecimal regularPrice = resolveWeeklyRegularPrice(week, minFinalPrice);
+
+                    long saleCount = week.stream().filter(d -> d.avgSalePrice() != null).count();
+                    BigDecimal avgSalePrice = saleCount > 0
+                            ? week.stream()
+                            .map(DailyPrice::avgSalePrice)
+                            .filter(Objects::nonNull)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add)
+                            .divide(BigDecimal.valueOf(saleCount), RoundingMode.HALF_UP)
+                            : null;
+
+                    int storeCount = week.stream().mapToInt(DailyPrice::storeCount).sum();
+
+                    List<Long> reportIds = week.stream()
+                            .flatMap(d -> d.reportIds().stream())
+                            .distinct()
+                            .toList();
+
+                    return new ChartPoint(entry.getKey(), minFinalPrice, regularPrice,
                             avgSalePrice, (int) storeCount, reportIds);
                 })
                 .toList();
@@ -229,10 +300,70 @@ public class PriceChartService {
         return d.getCrawledAt() != null ? d.getCrawledAt().toLocalDate() : d.getCreatedAt().toLocalDate();
     }
 
-    private BigDecimal resolveMaxPrice(PriceReport r) {
-        return Stream.of(r.getPrice(), r.getSalePrice(), r.getActualPrice())
-                .filter(Objects::nonNull)
+    private BigDecimal resolveDailyRegularPrice(List<TempPrice> day, BigDecimal minFinalPrice) {
+        List<RegularPriceCandidate> candidates = day.stream()
+                .filter(t -> isValidRegularCandidate(t.regularPriceCandidate(), minFinalPrice))
+                .collect(Collectors.groupingBy(TempPrice::regularPriceCandidate))
+                .entrySet().stream()
+                .map(entry -> new RegularPriceCandidate(
+                        entry.getKey(),
+                        entry.getValue().size(),
+                        entry.getValue().stream().mapToInt(TempPrice::reliability).max().orElse(0),
+                        entry.getValue().stream()
+                                .map(TempPrice::observedAt)
+                                .filter(Objects::nonNull)
+                                .max(Comparator.naturalOrder())
+                                .orElse(LocalDateTime.MIN)
+                ))
+                .toList();
+
+        return candidates.stream()
+                .max(Comparator
+                        .comparingInt(RegularPriceCandidate::count)
+                        .thenComparingInt(RegularPriceCandidate::maxReliability)
+                        .thenComparing(RegularPriceCandidate::latestObservedAt))
+                .map(RegularPriceCandidate::price)
+                .orElse(minFinalPrice);
+    }
+
+    private BigDecimal resolveWeeklyRegularPrice(List<DailyPrice> week, BigDecimal minFinalPrice) {
+        return week.stream()
+                .map(DailyPrice::regularPrice)
+                .filter(p -> isValidRegularCandidate(p, minFinalPrice))
                 .max(Comparator.naturalOrder())
-                .orElse(null);
+                .orElse(minFinalPrice);
+    }
+
+    private boolean isValidRegularCandidate(BigDecimal regularPrice, BigDecimal minFinalPrice) {
+        if (regularPrice == null || regularPrice.compareTo(BigDecimal.ZERO) <= 0) return false;
+        if (minFinalPrice == null || minFinalPrice.compareTo(BigDecimal.ZERO) <= 0) return true;
+        if (regularPrice.compareTo(minFinalPrice) < 0) return false;
+        return regularPrice.compareTo(minFinalPrice.multiply(BigDecimal.valueOf(3))) <= 0;
+    }
+
+    private PriceReportChartDetailResponse toDetailResponse(TempPrice source) {
+        if (source.report() != null) {
+            List<PriceReportImage> publicImages = priceReportImageRepository
+                    .findByPriceReportIdAndIsPublicTrueOrderBySortOrder(source.report().getId());
+            return PriceReportChartDetailResponse.from(source.report(), publicImages, source.report().getDiscountItems());
+        }
+        return PriceReportChartDetailResponse.from(source.deal());
+    }
+
+    private int reliability(PriceReport report) {
+        if (Boolean.TRUE.equals(report.getIsVerified())) return 10;
+        return 8;
+    }
+
+    private int reliability(DealPost deal) {
+        return deal.getConfidenceScore() != null ? deal.getConfidenceScore() : 5;
+    }
+
+    private LocalDateTime observedAt(DealPost deal) {
+        return deal.getCrawledAt() != null ? deal.getCrawledAt() : deal.getCreatedAt();
+    }
+
+    private String nullToBlank(String value) {
+        return value == null ? "" : value.trim();
     }
 }

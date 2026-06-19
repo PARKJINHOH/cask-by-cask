@@ -1,8 +1,9 @@
-export type LegalDocumentType = 'TERMS' | 'PRIVACY_POLICY'
+export type LegalDocumentType = 'TERMS' | 'PRIVACY_POLICY' | 'OPERATION_POLICY'
 
 export const LEGAL_TYPE_LABELS: Record<LegalDocumentType, string> = {
   TERMS: '이용약관',
   PRIVACY_POLICY: '개인정보 처리방침',
+  OPERATION_POLICY: '커뮤니티 운영정책',
 }
 
 export interface LegalDocumentListItem {

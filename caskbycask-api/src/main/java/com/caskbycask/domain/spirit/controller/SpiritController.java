@@ -6,6 +6,9 @@ import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
 import com.caskbycask.domain.spirit.entity.enums.SpiritSort;
 import com.caskbycask.domain.spirit.entity.enums.SpiritStatus;
 import com.caskbycask.domain.spirit.entity.enums.WhiskyStyle;
+import com.caskbycask.domain.spirit.entity.enums.WineBody;
+import com.caskbycask.domain.spirit.entity.enums.WineIntensity;
+import com.caskbycask.domain.spirit.entity.enums.WineSweetness;
 import com.caskbycask.domain.spirit.entity.enums.WineType;
 import com.caskbycask.domain.spirit.service.SpiritService;
 import com.caskbycask.global.auth.security.CustomUserDetails;
@@ -20,6 +23,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -46,12 +50,17 @@ public class SpiritController {
             @RequestParam(required = false) BigDecimal minScore,
             @RequestParam(required = false) BigDecimal maxScore,
             @RequestParam(required = false) SpiritSort sort,
+            @RequestParam(required = false) List<WineSweetness> wineSweetness,
+            @RequestParam(required = false) List<WineBody> wineBody,
+            @RequestParam(required = false) List<WineIntensity> wineAcidity,
+            @RequestParam(required = false) List<WineIntensity> wineTannin,
             @PageableDefault(size = 20) Pageable pageable) {
 
         SpiritSearchCondition condition = new SpiritSearchCondition(
                 keyword, category, whiskyStyle, wineType, cognacGrade,
                 country, region, producerId, minAbv, maxAbv, minScore, maxScore,
-                SpiritStatus.ACTIVE, sort);
+                SpiritStatus.ACTIVE, sort,
+                wineSweetness, wineBody, wineAcidity, wineTannin);
 
         return ResponseEntity.ok(ApiResponse.success(
                 PageResponse.from(spiritService.searchSpirits(condition, pageable))));
@@ -81,13 +90,14 @@ public class SpiritController {
         return ResponseEntity.ok(ApiResponse.success(spiritService.getSpiritVariants(id)));
     }
 
-    @PostMapping("/requests")
+    @PostMapping(value = "/requests", consumes = "multipart/form-data")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<SpiritRegisterRequestResponse>> submitRequest(
-            @Valid @RequestBody SpiritRegisterRequestBody body,
+            @Valid @RequestPart("data") SpiritRegisterRequestBody body,
+            @RequestPart(value = "images", required = false) List<MultipartFile> images,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(
-                spiritService.submitRegisterRequest(body, userDetails.getUserId())));
+                spiritService.submitRegisterRequest(body, images, userDetails.getUserId())));
     }
 
     @GetMapping("/requests/me")
@@ -107,14 +117,15 @@ public class SpiritController {
                 spiritService.getMyRegisterRequestDetail(id, userDetails.getUserId())));
     }
 
-    @PutMapping("/requests/{id}")
+    @PutMapping(value = "/requests/{id}", consumes = "multipart/form-data")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<SpiritRegisterRequestResponse>> updateMyRequest(
             @PathVariable Long id,
-            @Valid @RequestBody SpiritRegisterRequestBody body,
+            @Valid @RequestPart("data") SpiritRegisterRequestBody body,
+            @RequestPart(value = "images", required = false) List<MultipartFile> images,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.ok(ApiResponse.success(
-                spiritService.updateMyRegisterRequest(id, body, userDetails.getUserId())));
+                spiritService.updateMyRegisterRequest(id, body, images, userDetails.getUserId())));
     }
 
     @DeleteMapping("/requests/{id}")

@@ -18,7 +18,7 @@ import Toast from '@/shared/components/Toast'
 import { useToast } from '@/shared/hooks/useToast'
 
 const schema = z.object({
-  type: z.enum(['TERMS', 'PRIVACY_POLICY'] as const),
+  type: z.enum(['TERMS', 'PRIVACY_POLICY', 'OPERATION_POLICY'] as const),
   version: z.string().min(1, '버전을 입력하세요').max(50, '버전은 50자 이하여야 합니다'),
   content: z.string().min(1, '내용을 입력하세요'),
 })
@@ -28,6 +28,7 @@ type FormValues = z.infer<typeof schema>
 const TYPE_OPTIONS: { value: LegalDocumentType; label: string }[] = [
   { value: 'TERMS', label: LEGAL_TYPE_LABELS.TERMS },
   { value: 'PRIVACY_POLICY', label: LEGAL_TYPE_LABELS.PRIVACY_POLICY },
+  { value: 'OPERATION_POLICY', label: LEGAL_TYPE_LABELS.OPERATION_POLICY },
 ]
 
 export default function AdminLegalFormPage() {

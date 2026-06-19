@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import {
@@ -27,6 +27,10 @@ const CATEGORY_CORE_OPTS: Record<SpiritCategory, { field: keyof SpiritRegisterRe
 }
 
 const DATE_RE = /^\d{4}(-\d{2})?$/
+
+// 에디션 유형 (위스키 전용 — 관리자 폼과 동일). NONE = 정규(에디션 없음)
+const EDITION_TYPES = ['NONE', 'BATCH', 'SINGLE_CASK', 'RELEASE_YEAR'] as const
+const MAX_IMAGES = 3
 
 const STATUS_STYLE: Record<RequestStatus, string> = {
   PENDING:  'bg-amber-50 text-amber-700',
@@ -140,6 +144,9 @@ export default function SpiritRequestPage() {
   const [countryCode, setCountryCode] = useState<string | null>(null)
   const [countryNameKo, setCountryNameKo] = useState('')
   const [regionNameKo, setRegionNameKo] = useState('')
+  // 이미지 — 신규 첨부 파일 + 유지할 기존 URL(수정 시)
+  const [newImages, setNewImages] = useState<File[]>([])
+  const [keptImageUrls, setKeptImageUrls] = useState<string[]>([])
   const { data: myRequests = [], isLoading } = useMyRequests()
   const { mutate: submitRequest, isPending: isSubmitting } = useSubmitRequest()
   const { mutate: updateRequest, isPending: isUpdating } = useUpdateMyRequest()
@@ -167,6 +174,22 @@ export default function SpiritRequestPage() {
   const selectedCategory = watch('category')
   const isNas = watch('isNas')
   const whiskyStyle = watch('whiskyStyle')
+  const variantType = watch('variantType')
+
+  // 신규 첨부 이미지 미리보기 (object URL — 정리 포함)
+  const newImagePreviews = useMemo(() => newImages.map((f) => URL.createObjectURL(f)), [newImages])
+  useEffect(() => () => { newImagePreviews.forEach((u) => URL.revokeObjectURL(u)) }, [newImagePreviews])
+  const totalImages = keptImageUrls.length + newImages.length
+
+  const handleAddImages = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? [])
+    e.target.value = ''
+    if (files.length === 0) return
+    const room = Math.max(0, MAX_IMAGES - totalImages)
+    setNewImages((prev) => [...prev, ...files.slice(0, room)])
+  }
+  const removeNewImage = (idx: number) => setNewImages((prev) => prev.filter((_, i) => i !== idx))
+  const removeKeptImage = (url: string) => setKeptImageUrls((prev) => prev.filter((u) => u !== url))
 
   const resetAll = () => {
     reset(EMPTY_FORM)
@@ -175,6 +198,8 @@ export default function SpiritRequestPage() {
     setCountryCode(null)
     setCountryNameKo('')
     setRegionNameKo('')
+    setNewImages([])
+    setKeptImageUrls([])
     setEditingId(null)
   }
 
@@ -187,6 +212,10 @@ export default function SpiritRequestPage() {
     setValue('cognacGrade', undefined)
     setValue('otherType', undefined)
     setValue('vintageYear', undefined)
+    // 에디션은 위스키 전용 — 카테고리 변경 시 초기화
+    setValue('variantType', undefined)
+    setValue('variantValue', undefined)
+    setValue('variantValueEn', undefined)
   }
 
   const buildPayload = (data: SpiritRegisterRequestForm): SpiritRegisterRequestForm => ({
@@ -211,12 +240,20 @@ export default function SpiritRequestPage() {
     otherType:   data.otherType   || undefined,
     bottledYear: undefined,
     note:        data.note?.trim() || undefined,
+    // 에디션 (위스키 전용). 정규(NONE)이면 값 미전송
+    variantType: data.category === 'WHISKY' ? (data.variantType || 'NONE') : undefined,
+    variantValue: data.category === 'WHISKY' && data.variantType && data.variantType !== 'NONE'
+      ? (data.variantValue?.trim() || undefined) : undefined,
+    variantValueEn: data.category === 'WHISKY' && data.variantType && data.variantType !== 'NONE'
+      ? (data.variantValueEn?.trim() || undefined) : undefined,
+    // 유지할 기존 이미지 URL (신규 파일은 multipart 별도 전송)
+    imageUrls: keptImageUrls,
   })
 
   const onSubmit = (data: SpiritRegisterRequestForm) => {
     const payload = buildPayload(data)
     if (editingId != null) {
-      updateRequest({ id: editingId, data: payload }, {
+      updateRequest({ id: editingId, data: payload, images: newImages }, {
         onSuccess: () => {
           resetAll()
           window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -225,7 +262,7 @@ export default function SpiritRequestPage() {
         },
       })
     } else {
-      submitRequest(payload, {
+      submitRequest({ data: payload, images: newImages }, {
         onSuccess: () => {
           resetAll()
           setSuccessMsg(t('spiritRequest.form.success'))
@@ -252,6 +289,8 @@ export default function SpiritRequestPage() {
         caskNo: d.caskNo ?? undefined, whiskyNotes: d.whiskyNotes ?? undefined,
         wineType: d.wineType ?? undefined, cognacGrade: d.cognacGrade ?? undefined,
         otherType: d.otherType ?? undefined, vintageYear: d.vintageYear ?? undefined,
+        variantType: d.variantType ?? undefined, variantValue: d.variantValue ?? undefined,
+        variantValueEn: d.variantValueEn ?? undefined,
         note: d.note ?? undefined,
       })
       setProducerId(d.producerId ?? null)
@@ -260,6 +299,8 @@ export default function SpiritRequestPage() {
       setCountryCode(matched?.code ?? null)
       setCountryNameKo(d.country ?? '')
       setRegionNameKo(d.region ?? '')
+      setKeptImageUrls(d.imageUrls ?? [])
+      setNewImages([])
       setEditingId(id)
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch {
@@ -418,6 +459,52 @@ export default function SpiritRequestPage() {
                   </div>
                 )}
 
+                {/* 에디션 유형 (위스키 전용) — 관리자 등록 폼과 동일 개념, 단일 에디션으로 심플 입력 */}
+                {selectedCategory === 'WHISKY' && (
+                  <div className="rounded-xl border border-neutral-200 bg-neutral-50/40 p-4 space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className={LABEL_CLS}>{t('spiritRequest.form.editionType.label')}</label>
+                        <select
+                          {...register('variantType')}
+                          className={`${FIELD_CLS} bg-white border-neutral-300`}
+                        >
+                          {EDITION_TYPES.map((v) => (
+                            <option key={v} value={v}>{t(`spiritRequest.form.editionType.${v}`)}</option>
+                          ))}
+                        </select>
+                      </div>
+                      {variantType && variantType !== 'NONE' && (
+                        <div>
+                          <ReqLabel>{t('spiritRequest.form.editionValue')}</ReqLabel>
+                          <input
+                            {...register('variantValue', {
+                              validate: (v) => !!v?.trim(),
+                              maxLength: 100,
+                            })}
+                            maxLength={100}
+                            placeholder={t(`spiritRequest.form.editionValuePlaceholder.${variantType}`)}
+                            className={`${FIELD_CLS} ${errors.variantValue ? 'border-red-400' : 'border-neutral-300'}`}
+                          />
+                          {errors.variantValue && <p className="mt-1 text-xs text-red-500">{t('spiritRequest.form.errEditionValue')}</p>}
+                        </div>
+                      )}
+                    </div>
+                    {variantType && variantType !== 'NONE' && (
+                      <div>
+                        <label className={LABEL_CLS}>{t('spiritRequest.form.editionValueEn')}</label>
+                        <input
+                          {...register('variantValueEn', { maxLength: 100 })}
+                          maxLength={100}
+                          placeholder={t('spiritRequest.form.editionValueEnPlaceholder')}
+                          className={`${FIELD_CLS} border-neutral-300`}
+                        />
+                      </div>
+                    )}
+                    <p className="text-xs text-neutral-400">{t('spiritRequest.form.editionType.hint')}</p>
+                  </div>
+                )}
+
                 {/* 필수 규격 — 도수 / 용량 */}
                 <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-4 space-y-3">
                   <p className="text-xs font-semibold text-amber-700">{t('spiritRequest.form.requiredSection')}</p>
@@ -456,6 +543,47 @@ export default function SpiritRequestPage() {
               {/* ── 3. 추가 정보 (선택) ──────────────────────── */}
               <section className="bg-white rounded-2xl shadow-sm p-5 sm:p-6 space-y-5">
                 <SectionTitle step={3} title={t('spiritRequest.form.detailStep')} hint={t('spiritRequest.form.detailStepHint')} />
+
+                {/* 사진 첨부 (최대 3장) — 승인 시 주류 이미지로 등록 */}
+                <div>
+                  <label className={LABEL_CLS}>{t('spiritRequest.form.images.label')}</label>
+                  <p className="text-xs text-neutral-400 mb-2">{t('spiritRequest.form.images.hint')}</p>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                    {keptImageUrls.map((url) => (
+                      <div key={url} className="relative aspect-square rounded-xl overflow-hidden border border-neutral-200">
+                        <img src={url} alt="" className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removeKeptImage(url)}
+                          aria-label={t('common.delete')}
+                          className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white text-sm leading-none
+                            flex items-center justify-center hover:bg-black/80 transition-colors"
+                        >×</button>
+                      </div>
+                    ))}
+                    {newImagePreviews.map((url, i) => (
+                      <div key={url} className="relative aspect-square rounded-xl overflow-hidden border border-neutral-200">
+                        <img src={url} alt="" className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removeNewImage(i)}
+                          aria-label={t('common.delete')}
+                          className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white text-sm leading-none
+                            flex items-center justify-center hover:bg-black/80 transition-colors"
+                        >×</button>
+                      </div>
+                    ))}
+                    {totalImages < MAX_IMAGES && (
+                      <label className="aspect-square rounded-xl border-2 border-dashed border-neutral-300 flex flex-col
+                        items-center justify-center cursor-pointer text-neutral-400 hover:border-amber-400
+                        hover:bg-amber-50/40 hover:text-amber-500 transition-colors">
+                        <span className="text-2xl leading-none">+</span>
+                        <span className="text-xs mt-1">{t('spiritRequest.form.images.add')}</span>
+                        <input type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={handleAddImages} />
+                      </label>
+                    )}
+                  </div>
+                </div>
 
                 <div>
                   <label className={LABEL_CLS}>{t(`spiritRequest.form.producerByCategory.${selectedCategory}`)}</label>

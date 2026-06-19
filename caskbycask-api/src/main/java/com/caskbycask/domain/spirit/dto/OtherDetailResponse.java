@@ -15,6 +15,15 @@ public record OtherDetailResponse(
         String productionMethod,
 
         @Schema(description = "추가 설명 / 비고")
-        String notes
+        String notes,
+
+        @Schema(description = "세부 스타일/분류")
+        String styleClassification,
+
+        @Schema(description = "캐스크/우드 종류")
+        String caskType,
+
+        @Schema(description = "원산지 명칭/규정")
+        String originDesignation
 
 ) {}

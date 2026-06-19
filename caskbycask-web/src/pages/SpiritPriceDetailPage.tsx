@@ -8,7 +8,7 @@ import PriceRangeChart from '@/domain/pricetracker/components/PriceRangeChart'
 import StoreDetailPanel from '@/domain/pricetracker/components/StoreDetailPanel'
 import PriceAlertInline from '@/domain/pricetracker/components/PriceAlertInline'
 import PriceAlertBanner from '@/domain/pricetracker/components/PriceAlertBanner'
-import type { StoreType } from '@/domain/pricetracker/types/pricetracker.types'
+import type { BucketType, StoreType } from '@/domain/pricetracker/types/pricetracker.types'
 
 export default function SpiritPriceDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -21,14 +21,18 @@ export default function SpiritPriceDetailPage() {
   const [period, setPeriod] = useState('3M')
   const [region] = useState('')
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const [selectedBucketType, setSelectedBucketType] = useState<BucketType | undefined>(undefined)
   const [panelOpen, setPanelOpen] = useState(false) // mobile
 
   const { data: spirit, isLoading: spiritLoading } = useSpiritDetail(spiritId)
   const { data: chartData, isLoading: chartLoading } = usePriceChart(spiritId, storeType, period, region || undefined)
-  const { data: pointDetails, isLoading: detailLoading } = usePriceChartDetail(spiritId, selectedDate, storeType)
+  const { data: pointDetails, isLoading: detailLoading } = usePriceChartDetail(
+    spiritId, selectedDate, storeType, selectedBucketType,
+  )
 
-  const handlePointClick = (date: string) => {
+  const handlePointClick = (date: string, bucketType: BucketType) => {
     setSelectedDate(date)
+    setSelectedBucketType(bucketType)
     setPanelOpen(true)
   }
 
@@ -78,7 +82,7 @@ export default function SpiritPriceDetailPage() {
             onPeriodChange={setPeriod}
             storeType={storeType}
             onStoreTypeChange={setStoreType}
-            onPointClick={(date) => handlePointClick(date)}
+            onPointClick={(date, _reportIds, bucketType) => handlePointClick(date, bucketType)}
             selectedDate={selectedDate}
           />
         </div>

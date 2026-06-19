@@ -57,6 +57,7 @@ public class SpiritService {
     private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
     private static final Set<String> ALLOWED_EXTENSIONS    = Set.of("jpg", "jpeg", "png", "webp");
     private static final long        MAX_FILE_SIZE          = 10L * 1024 * 1024;
+    private static final int         MAX_REQUEST_IMAGES     = 3;
 
     @Value("${upload.path}")
     private String uploadPath;
@@ -501,7 +502,7 @@ public class SpiritService {
 
     @Transactional
     public SpiritRegisterRequestResponse submitRegisterRequest(
-            SpiritRegisterRequestBody body, Long userId) {
+            SpiritRegisterRequestBody body, List<MultipartFile> images, Long userId) {
         User user = getUser(userId);
 
         // 카테고리 핵심값 필수 (신청자 제출 경로)
@@ -510,19 +511,27 @@ public class SpiritService {
         // 욕설 필터 — 신청자가 입력한 기타 문구 검사
         badWordFilter.validate(body.note());
 
-        String spiritData;
-        try {
-            spiritData = objectMapper.writeValueAsString(body);
-        } catch (JsonProcessingException e) {
-            throw new CustomException(ErrorCode.INVALID_INPUT);
-        }
+        List<MultipartFile> validImages = filterValidImages(images);
+        int keptCount = body.imageUrls() != null ? body.imageUrls().size() : 0;
+        if (keptCount + validImages.size() > MAX_REQUEST_IMAGES)
+            throw new CustomException(ErrorCode.SPIRIT_REQUEST_TOO_MANY_IMAGES);
+        validImages.forEach(this::validateImageFile);
 
+        // 먼저 저장하여 requestId 확보 (이미지 저장 경로에 필요)
         SpiritRegisterRequest request = SpiritRegisterRequest.builder()
                 .user(user)
-                .spiritData(spiritData)
+                .spiritData(serialize(body))
                 .build();
-
         SpiritRegisterRequest saved = registerRequestRepository.save(request);
+
+        if (!validImages.isEmpty()) {
+            List<String> imageUrls = new ArrayList<>(body.imageUrls() != null ? body.imageUrls() : List.of());
+            for (MultipartFile file : validImages) {
+                String filename = UUID.randomUUID() + "." + getExtension(file.getOriginalFilename());
+                imageUrls.add(saveRequestFile(saved.getId(), filename, file));
+            }
+            saved.updateSpiritData(serialize(withImageUrls(body, imageUrls)));
+        }
 
         // [레벨] 술 등록 요청 점수 지급
         scoreService.award(userId, ScoreActions.SPIRIT_REQUEST, "SPIRIT_REQUEST", saved.getId());
@@ -550,7 +559,7 @@ public class SpiritService {
     /** 본인 요청 수정 — 검토 중(PENDING)·반려(REJECTED)만 가능. 반려 건은 재검토(PENDING) 전환. */
     @Transactional
     public SpiritRegisterRequestResponse updateMyRegisterRequest(
-            Long requestId, SpiritRegisterRequestBody body, Long userId) {
+            Long requestId, SpiritRegisterRequestBody body, List<MultipartFile> images, Long userId) {
         SpiritRegisterRequest req = getRegisterRequest(requestId);
         verifyRequestOwner(req, userId);
         if (req.getStatus() == RequestStatus.APPROVED) {
@@ -562,9 +571,18 @@ public class SpiritService {
 
         badWordFilter.validate(body.note());
 
-        // 이미지 URL은 별도 엔드포인트로만 관리 — 필드 수정 시 기존 이미지 보존
-        SpiritRegisterRequestBody existing = parseSpiritData(req.getSpiritData());
-        SpiritRegisterRequestBody merged = withImageUrls(body, existing.imageUrls());
+        // 이미지 = 클라이언트가 유지한 기존 URL(body.imageUrls) + 신규 업로드, 최대 3장
+        List<MultipartFile> validImages = filterValidImages(images);
+        List<String> imageUrls = new ArrayList<>(body.imageUrls() != null ? body.imageUrls() : List.of());
+        if (imageUrls.size() + validImages.size() > MAX_REQUEST_IMAGES)
+            throw new CustomException(ErrorCode.SPIRIT_REQUEST_TOO_MANY_IMAGES);
+        validImages.forEach(this::validateImageFile);
+        for (MultipartFile file : validImages) {
+            String filename = UUID.randomUUID() + "." + getExtension(file.getOriginalFilename());
+            imageUrls.add(saveRequestFile(requestId, filename, file));
+        }
+
+        SpiritRegisterRequestBody merged = withImageUrls(body, imageUrls);
 
         req.updateSpiritData(serialize(merged));
         req.resubmit(); // 반려 건이면 PENDING 으로 복귀, 반려 사유 초기화
@@ -628,7 +646,9 @@ public class SpiritService {
                 existing.whiskyStyle(), existing.whiskyStyleOther(), existing.caskNo(), existing.whiskyNotes(),
                 existing.wineType(), existing.cognacGrade(), existing.otherType(),
                 existing.imageUrls(),
-                existing.note()
+                existing.note(),
+                // 신청자 입력 에디션 정보도 관리자 수정 폼에 없으므로 기존값 보존
+                existing.variantType(), existing.variantValue(), existing.variantValueEn()
         );
 
         req.updateSpiritData(serialize(merged));
@@ -694,12 +714,50 @@ public class SpiritService {
                 .region(detail.region())
                 .status(SpiritStatus.ACTIVE)
                 .registeredBy(req.getUser())
+                .variantType(detail.variantType())
+                .variantValue(detail.variantValue())
+                .variantValueEn(detail.variantValueEn())
+                .abvMin(detail.abvMin())
+                .abvMax(detail.abvMax())
                 .build();
 
         Spirit saved = spiritRepository.save(spirit);
 
         spiritDetailService.saveCommonDetail(saved, detail.commonDetail());
         spiritDetailService.saveCategoryDetail(saved, detail);
+
+        // 하위 에디션 일괄 등록 처리 (createSpirit 와 동일)
+        if (Boolean.TRUE.equals(detail.isVariantSplit()) && detail.variants() != null) {
+            for (CreateVariantRequest vReq : detail.variants()) {
+                Spirit variant = Spirit.builder()
+                        .nameKo(saved.getNameKo())
+                        .nameEn(saved.getNameEn())
+                        .category(saved.getCategory())
+                        .producer(saved.getProducer())
+                        .bottler(saved.getBottler())
+                        .bottledYear(saved.getBottledYear())
+                        .vintageYear(saved.getVintageYear())
+                        .abv(vReq.abv())
+                        .volumeMl(vReq.volumeMl())
+                        .country(saved.getCountry())
+                        .region(saved.getRegion())
+                        .status(SpiritStatus.ACTIVE)
+                        .registeredBy(req.getUser())
+                        .parent(saved)
+                        .variantType(vReq.variantType())
+                        .variantValue(vReq.variantValue())
+                        .variantValueEn(vReq.variantValueEn())
+                        .abvMin(vReq.abvMin())
+                        .abvMax(vReq.abvMax())
+                        .build();
+
+                Spirit savedVariant = spiritRepository.save(variant);
+                spiritDetailService.saveCommonDetail(savedVariant, vReq.commonDetail());
+                if (saved.getCategory() == SpiritCategory.WHISKY && vReq.whiskyDetail() != null) {
+                    spiritDetailService.saveWhiskyDetail(savedVariant, vReq.whiskyDetail());
+                }
+            }
+        }
 
         // 신청 시 첨부된 이미지 승계
         SpiritRegisterRequestBody body = parseSpiritData(req.getSpiritData());
@@ -809,7 +867,8 @@ public class SpiritService {
                 body.whiskyStyle(), body.whiskyStyleOther(), body.caskNo(), body.whiskyNotes(),
                 body.wineType(), body.cognacGrade(), body.otherType(),
                 imageUrls,
-                body.note()
+                body.note(),
+                body.variantType(), body.variantValue(), body.variantValueEn()
         );
     }
 
@@ -833,6 +892,11 @@ public class SpiritService {
     }
 
     // ── 요청 이미지 업로드 ───────────────────────────────────
+
+    private List<MultipartFile> filterValidImages(List<MultipartFile> images) {
+        if (images == null) return List.of();
+        return images.stream().filter(f -> f != null && !f.isEmpty()).toList();
+    }
 
     private void validateImageFile(MultipartFile file) {
         if (file == null || file.isEmpty()) throw new CustomException(ErrorCode.INVALID_IMAGE_FORMAT);

@@ -3,7 +3,7 @@ import {
   CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
 import { useTranslation } from 'react-i18next'
-import type { ChartResponse, StoreType } from '../types/pricetracker.types'
+import type { BucketType, ChartResponse, StoreType } from '../types/pricetracker.types'
 
 const PERIODS = ['1M', '3M', '6M', '1Y', 'ALL'] as const
 
@@ -14,7 +14,7 @@ interface Props {
   onPeriodChange: (p: string) => void
   storeType: StoreType
   onStoreTypeChange: (t: StoreType) => void
-  onPointClick: (date: string, reportIds: number[]) => void
+  onPointClick: (date: string, reportIds: number[], bucketType: BucketType) => void
   selectedDate: string | null
 }
 
@@ -158,7 +158,7 @@ export default function PriceRangeChart({
               onClick={(payload: any) => {
                 if (payload?.activePayload?.[0]) {
                   const pt = payload.activePayload[0].payload
-                  onPointClick(pt.date, pt.reportIds)
+                  onPointClick(pt.date, pt.reportIds, data?.bucketType ?? 'INDIVIDUAL')
                 }
               }}
               style={{ cursor: 'pointer' }}

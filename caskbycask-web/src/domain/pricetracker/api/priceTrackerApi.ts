@@ -19,10 +19,10 @@ export const priceTrackerApi = {
       params: { spiritId, storeType, period, region: region || undefined },
     }),
 
-  getChartDetails: (spiritId: number, pointDate: string, storeType: StoreType) =>
+  getChartDetails: (spiritId: number, pointDate: string, storeType: StoreType, bucketType?: string) =>
     axiosInstance.get<ApiResponse<PriceReportChartDetail[]>>(
       `/api/price-reports/chart/${pointDate}/details`,
-      { params: { spiritId, storeType } },
+      { params: { spiritId, storeType, bucketType } },
     ),
 
   // ── 가격 등록 ────────────────────────────────────

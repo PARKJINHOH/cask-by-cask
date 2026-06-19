@@ -6,6 +6,7 @@ import { Dialog, Transition, TransitionChild, DialogPanel, DialogTitle } from '@
 import { spiritApi } from '@/domain/spirit/api/spiritApi'
 import type {
   SpiritCategory, SpiritSort, WhiskyStyle, WineType, CognacGrade,
+  WineSweetness, WineBody, WineIntensity,
 } from '@/domain/spirit/types/spirit.types'
 import SpiritCard from '@/shared/components/SpiritCard'
 import Spinner from '@/shared/components/Spinner'
@@ -61,6 +62,10 @@ interface FilterPanelProps {
   whiskyStyle:  WhiskyStyle[]
   wineType:     WineType[]
   cognacGrade:  CognacGrade[]
+  wineSweetness: WineSweetness[]
+  wineBody:     WineBody[]
+  wineAcidity:  WineIntensity[]
+  wineTannin:   WineIntensity[]
   country:      string
   region:       string
   abvRange:     [number, number]
@@ -69,6 +74,10 @@ interface FilterPanelProps {
   onWhiskyStyle: (v: WhiskyStyle[]) => void
   onWineType:   (v: WineType[]) => void
   onCognacGrade: (v: CognacGrade[]) => void
+  onWineSweetness: (v: WineSweetness[]) => void
+  onWineBody:   (v: WineBody[]) => void
+  onWineAcidity: (v: WineIntensity[]) => void
+  onWineTannin: (v: WineIntensity[]) => void
   onCountry:    (v: string) => void
   onRegion:     (v: string) => void
   onAbv:        (v: [number, number]) => void
@@ -89,10 +98,18 @@ function FilterPanel(p: FilterPanelProps) {
         whiskyStyle={p.whiskyStyle}
         wineType={p.wineType}
         cognacGrade={p.cognacGrade}
+        wineSweetness={p.wineSweetness}
+        wineBody={p.wineBody}
+        wineAcidity={p.wineAcidity}
+        wineTannin={p.wineTannin}
         onCategory={p.onCategory}
         onWhiskyStyle={p.onWhiskyStyle}
         onWineType={p.onWineType}
         onCognacGrade={p.onCognacGrade}
+        onWineSweetness={p.onWineSweetness}
+        onWineBody={p.onWineBody}
+        onWineAcidity={p.onWineAcidity}
+        onWineTannin={p.onWineTannin}
       />
 
       <CountryCombobox
@@ -296,6 +313,10 @@ export default function SpiritListPage() {
   const whiskyStyle = searchParams.getAll('whiskyStyle') as WhiskyStyle[]
   const wineType    = searchParams.getAll('wineType') as WineType[]
   const cognacGrade = searchParams.getAll('cognacGrade') as CognacGrade[]
+  const wineSweetness = searchParams.getAll('wineSweetness') as WineSweetness[]
+  const wineBody    = searchParams.getAll('wineBody') as WineBody[]
+  const wineAcidity = searchParams.getAll('wineAcidity') as WineIntensity[]
+  const wineTannin  = searchParams.getAll('wineTannin') as WineIntensity[]
   const country     = searchParams.get('country') ?? ''
   const region      = searchParams.get('region')  ?? ''
   const sort        = (searchParams.get('sort') as SpiritSort) ?? 'LATEST'
@@ -364,6 +385,7 @@ export default function SpiritListPage() {
     setParam({
       category: v,
       whiskyStyle: [], wineType: [], cognacGrade: [],
+      wineSweetness: [], wineBody: [], wineAcidity: [], wineTannin: [],
       region: null,
     })
   }
@@ -394,6 +416,14 @@ export default function SpiritListPage() {
       setParam({ wineType: value ? wineType.filter((v) => v !== value) : [] })
     } else if (key === 'cognacGrade') {
       setParam({ cognacGrade: value ? cognacGrade.filter((v) => v !== value) : [] })
+    } else if (key === 'wineSweetness') {
+      setParam({ wineSweetness: value ? wineSweetness.filter((v) => v !== value) : [] })
+    } else if (key === 'wineBody') {
+      setParam({ wineBody: value ? wineBody.filter((v) => v !== value) : [] })
+    } else if (key === 'wineAcidity') {
+      setParam({ wineAcidity: value ? wineAcidity.filter((v) => v !== value) : [] })
+    } else if (key === 'wineTannin') {
+      setParam({ wineTannin: value ? wineTannin.filter((v) => v !== value) : [] })
     } else if (key === 'minAbv' || key === 'maxAbv'
             || key === 'minScore' || key === 'maxScore') {
       // ActiveFilterState 타입상 키지만 abv/score 묶음으로만 클리어됨 — 무시
@@ -407,6 +437,7 @@ export default function SpiritListPage() {
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ['spirits', {
       keyword, category, whiskyStyle, wineType, cognacGrade,
+      wineSweetness, wineBody, wineAcidity, wineTannin,
       country, region, sort, page,
       minAbv: urlMinAbv, maxAbv: urlMaxAbv, minScore: urlMinScore, maxScore: urlMaxScore,
     }],
@@ -417,6 +448,10 @@ export default function SpiritListPage() {
         whiskyStyle: whiskyStyle.length > 0 ? whiskyStyle : undefined,
         wineType:    wineType.length > 0    ? wineType    : undefined,
         cognacGrade: cognacGrade.length > 0 ? cognacGrade : undefined,
+        wineSweetness: wineSweetness.length > 0 ? wineSweetness : undefined,
+        wineBody:    wineBody.length > 0    ? wineBody    : undefined,
+        wineAcidity: wineAcidity.length > 0 ? wineAcidity : undefined,
+        wineTannin:  wineTannin.length > 0  ? wineTannin  : undefined,
         country:     country     || undefined,
         region:      region      || undefined,
         sort,
@@ -432,11 +467,16 @@ export default function SpiritListPage() {
 
   const filterProps: FilterPanelProps = {
     category, whiskyStyle, wineType, cognacGrade,
+    wineSweetness, wineBody, wineAcidity, wineTannin,
     country, region, abvRange, scoreRange,
     onCategory:    handleCategoryChange,
     onWhiskyStyle: (v) => setParam({ whiskyStyle: v }),
     onWineType:    (v) => setParam({ wineType: v }),
     onCognacGrade: (v) => setParam({ cognacGrade: v }),
+    onWineSweetness: (v) => setParam({ wineSweetness: v }),
+    onWineBody:    (v) => setParam({ wineBody: v }),
+    onWineAcidity: (v) => setParam({ wineAcidity: v }),
+    onWineTannin:  (v) => setParam({ wineTannin: v }),
     onCountry:     handleCountryChange,
     onRegion:      (v) => setParam({ region: v }),
     onAbv:         setAbvRange,
@@ -448,6 +488,7 @@ export default function SpiritListPage() {
 
   const activeState: ActiveFilterState = {
     category, whiskyStyle, wineType, cognacGrade,
+    wineSweetness, wineBody, wineAcidity, wineTannin,
     country, region,
     minAbv: urlMinAbv, maxAbv: urlMaxAbv,
     minScore: urlMinScore, maxScore: urlMaxScore,
@@ -457,6 +498,7 @@ export default function SpiritListPage() {
   const activeFilterCount =
     (category ? 1 : 0)
     + whiskyStyle.length + wineType.length + cognacGrade.length
+    + wineSweetness.length + wineBody.length + wineAcidity.length + wineTannin.length
     + (country ? 1 : 0) + (region ? 1 : 0)
     + (urlMinAbv > 0 || urlMaxAbv < 100 ? 1 : 0)
     + (urlMinScore > 0 || urlMaxScore < 100 ? 1 : 0)

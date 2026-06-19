@@ -164,15 +164,15 @@
       "nameEn": "영어 이름",
       "nameKoPlaceholder": {
         "WHISKY": "예) 발베니 12년 더블우드",
-        "COGNAC": "예) 헤네시 XO",
-        "WINE": "예) 샤또 마고 2015",
-        "OTHER": "예) 바카디 카르타 블랑카"
+        "COGNAC": "예) 레미 마르탱 XO",
+        "WINE": "예) 샤토 마고 2016",
+        "OTHER": "예) 봄베이 사파이어"
       },
       "nameEnPlaceholder": {
         "WHISKY": "Balvenie 12Y DoubleWood",
-        "COGNAC": "Hennessy XO",
-        "WINE": "Château Margaux 2015",
-        "OTHER": "Bacardi Carta Blanca"
+        "COGNAC": "Rémy Martin XO",
+        "WINE": "Château Margaux 2016",
+        "OTHER": "Bombay Sapphire"
       },
       "category": "카테고리",
       "categoryPlaceholder": "카테고리 선택",
@@ -239,7 +239,29 @@
       "editModeHint": "수정 후 '수정 완료'를 누르면 다시 검토 대기 상태가 됩니다.",
       "cancelEdit": "수정 취소",
       "editSuccess": "요청이 수정되었습니다.",
-      "loadError": "요청 정보를 불러오지 못했습니다."
+      "loadError": "요청 정보를 불러오지 못했습니다.",
+      "editionType": {
+        "label": "에디션 유형",
+        "hint": "배치·싱글캐스크·출시 연도별로 구분되는 제품이면 선택해주세요. (위스키)",
+        "NONE": "정규 (구분 없음)",
+        "BATCH": "배치",
+        "SINGLE_CASK": "싱글 캐스크",
+        "RELEASE_YEAR": "출시 연도"
+      },
+      "editionValue": "에디션 값",
+      "editionValuePlaceholder": {
+        "BATCH": "예) Batch 11",
+        "SINGLE_CASK": "예) #1234",
+        "RELEASE_YEAR": "예) 2023"
+      },
+      "errEditionValue": "에디션 값을 입력해주세요.",
+      "editionValueEn": "에디션 값 (영문)",
+      "editionValueEnPlaceholder": "예) Batch 11",
+      "images": {
+        "label": "사진 첨부",
+        "hint": "최대 3장까지 첨부할 수 있어요. 첨부한 사진은 승인 시 주류 이미지로 등록됩니다.",
+        "add": "사진 추가"
+      }
     },
     "myRequests": {
       "title": "내 요청 목록",
@@ -413,7 +435,11 @@
       "resetAll": "모두 지우기",
       "apply": "적용하기",
       "all": "전체",
-      "activeTitle": "적용된 필터"
+      "activeTitle": "적용된 필터",
+      "sweetness": "당도",
+      "body": "바디",
+      "acidity": "산도",
+      "tannin": "타닌"
     },
     "whiskyStyle": {
       "SINGLE_MALT":    "싱글 몰트",
@@ -470,6 +496,28 @@
       "ABSINTHE": "압생트",
       "BEER":     "맥주",
       "OTHER":    "기타"
+    },
+    "wineSweetness": {
+      "DRY":     "드라이",
+      "OFF_DRY": "오프드라이",
+      "MEDIUM":  "미디엄",
+      "SWEET":   "스위트"
+    },
+    "wineBody": {
+      "LIGHT":  "라이트",
+      "MEDIUM": "미디엄",
+      "FULL":   "풀바디"
+    },
+    "wineIntensity": {
+      "LOW":    "낮음",
+      "MEDIUM": "중간",
+      "HIGH":   "높음"
+    },
+    "wineCertification": {
+      "ORGANIC":     "Organic",
+      "BIODYNAMIC":  "Biodynamic",
+      "SUSTAINABLE": "Sustainable",
+      "NONE":        "없음"
     },
     "noResult": {
       "title": "검색 결과가 없습니다.",
@@ -915,6 +963,10 @@
       "title": "제목을 입력하세요",
       "content": "내용을 입력하세요. YouTube/Vimeo URL을 붙여넣으면 자동 임베드됩니다."
     },
+    "writeGuideline": {
+      "text": "음란물, 비방, 저작권 침해, 욕설, 도배, 개인정보 노출, 허위사실 유포, 무단 광고성 게시물은 제재 대상이며 사전 통보 없이 이동·비공개 처리될 수 있습니다.",
+      "linkText": "커뮤니티 운영정책 보기"
+    },
     "draft": {
       "save": "임시저장",
       "saving": "저장 중...",
@@ -1112,6 +1164,7 @@
     "inquiry": "문의하기",
     "terms": "이용약관",
     "privacy": "개인정보 처리방침",
+    "operationPolicy": "운영정책",
     "explore": "탐색",
     "info": "정보"
   },
@@ -1311,7 +1364,7 @@
       "dutyfree": "면세",
       "period": { "1M": "1개월", "3M": "3개월", "6M": "6개월", "1Y": "1년", "ALL": "전체" },
       "minPrice": "최저 실구매가",
-      "maxPrice": "최고 정가",
+      "maxPrice": "정가",
       "avgSale": "평균 행사가",
       "storeCount": "매장 수",
       "noData": "등록된 가격 데이터가 없습니다.",

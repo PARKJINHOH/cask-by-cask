@@ -34,6 +34,7 @@ public class LegalDocumentSeeder implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         seedIfMissing(LegalDocumentType.TERMS, LegalDocumentTemplate.TERMS_HTML);
         seedIfMissing(LegalDocumentType.PRIVACY_POLICY, LegalDocumentTemplate.PRIVACY_HTML);
+        seedIfMissing(LegalDocumentType.OPERATION_POLICY, LegalDocumentTemplate.OPERATION_POLICY_HTML);
     }
 
     private void seedIfMissing(LegalDocumentType type, String html) {

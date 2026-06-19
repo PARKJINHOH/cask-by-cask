@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { localizeCountry } from '@/shared/utils/countryName'
 import type {
   SpiritCategory, WhiskyStyle, WineType, CognacGrade,
+  WineSweetness, WineBody, WineIntensity,
 } from '@/domain/spirit/types/spirit.types'
 
 export interface ActiveFilterState {
@@ -9,6 +10,10 @@ export interface ActiveFilterState {
   whiskyStyle: WhiskyStyle[]
   wineType:    WineType[]
   cognacGrade: CognacGrade[]
+  wineSweetness: WineSweetness[]
+  wineBody:    WineBody[]
+  wineAcidity: WineIntensity[]
+  wineTannin:  WineIntensity[]
   country:     string
   region:      string
   minAbv:      number
@@ -58,6 +63,34 @@ export default function ActiveFilterChips({ state, onClear, onClearAll }: Active
       key: `cognacGrade:${v}`,
       label: t(`spirit.cognacGrade.${v}`),
       onRemove: () => onClear('cognacGrade', v),
+    })
+  })
+  state.wineSweetness.forEach((v) => {
+    chips.push({
+      key: `wineSweetness:${v}`,
+      label: `${t('spirit.filter.sweetness')}: ${t(`spirit.wineSweetness.${v}`)}`,
+      onRemove: () => onClear('wineSweetness', v),
+    })
+  })
+  state.wineBody.forEach((v) => {
+    chips.push({
+      key: `wineBody:${v}`,
+      label: `${t('spirit.filter.body')}: ${t(`spirit.wineBody.${v}`)}`,
+      onRemove: () => onClear('wineBody', v),
+    })
+  })
+  state.wineAcidity.forEach((v) => {
+    chips.push({
+      key: `wineAcidity:${v}`,
+      label: `${t('spirit.filter.acidity')}: ${t(`spirit.wineIntensity.${v}`)}`,
+      onRemove: () => onClear('wineAcidity', v),
+    })
+  })
+  state.wineTannin.forEach((v) => {
+    chips.push({
+      key: `wineTannin:${v}`,
+      label: `${t('spirit.filter.tannin')}: ${t(`spirit.wineIntensity.${v}`)}`,
+      onRemove: () => onClear('wineTannin', v),
     })
   })
   if (state.country) {

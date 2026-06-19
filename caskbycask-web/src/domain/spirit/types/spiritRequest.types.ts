@@ -4,6 +4,9 @@ import type {
 
 export type RequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
 
+// 에디션 유형 (위스키 — 관리자 폼과 동일). NONE = 정규(에디션 없음)
+export type RequestVariantType = 'NONE' | 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK'
+
 export interface SpiritRegisterRequestForm {
   nameKo: string
   nameEn: string
@@ -30,6 +33,12 @@ export interface SpiritRegisterRequestForm {
   wineType?: WineType | null
   cognacGrade?: CognacGrade | null
   otherType?: OtherSpiritType | null
+  // 에디션 유형 (위스키 전용, 선택 — 관리자 등록 폼 참고용)
+  variantType?: RequestVariantType | null
+  variantValue?: string | null      // 에디션 값 (예: Batch 11, 2023)
+  variantValueEn?: string | null     // 에디션 값 영문
+  // 유지할 기존 이미지 URL 목록 (수정 시 전송 — 신규 파일은 multipart 별도)
+  imageUrls?: string[]
   // 관리자에게 전달할 기타 문구 (선택)
   note?: string
 }

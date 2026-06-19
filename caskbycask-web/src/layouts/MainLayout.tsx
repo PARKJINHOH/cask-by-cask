@@ -683,6 +683,7 @@ export default function MainLayout() {
               <ul className="space-y-1.5">
                 <li><a href="/terms" className="text-xs text-neutral-500 hover:text-primary-800 transition-colors">{t('footer.terms')}</a></li>
                 <li><a href="/privacy" className="text-xs text-neutral-500 hover:text-neutral-700 transition-colors">{t('footer.privacy')}</a></li>
+                <li><a href="/operation-policy" className="text-xs text-neutral-500 hover:text-neutral-700 transition-colors">{t('footer.operationPolicy')}</a></li>
                 <li><Link to="/inquiry" className="text-xs text-neutral-500 hover:text-neutral-700 transition-colors">{t('footer.inquiry')}</Link></li>
               </ul>
             </div>

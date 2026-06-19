@@ -5,6 +5,9 @@ import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
 import com.caskbycask.domain.spirit.entity.enums.SpiritSort;
 import com.caskbycask.domain.spirit.entity.enums.SpiritStatus;
 import com.caskbycask.domain.spirit.entity.enums.WhiskyStyle;
+import com.caskbycask.domain.spirit.entity.enums.WineBody;
+import com.caskbycask.domain.spirit.entity.enums.WineIntensity;
+import com.caskbycask.domain.spirit.entity.enums.WineSweetness;
 import com.caskbycask.domain.spirit.entity.enums.WineType;
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -39,7 +42,15 @@ public record SpiritSearchCondition(
         @Schema(description = "공개 상태 필터 (null이면 전체 — 관리자 전용)")
         SpiritStatus status,
         @Schema(description = "정렬 기준 (기본값: LATEST)")
-        SpiritSort sort
+        SpiritSort sort,
+        @Schema(description = "와인 당도 목록 (category=WINE일 때만 의미, OR 조건)")
+        List<WineSweetness> wineSweetness,
+        @Schema(description = "와인 바디 목록 (category=WINE일 때만 의미, OR 조건)")
+        List<WineBody> wineBody,
+        @Schema(description = "와인 산도 목록 (category=WINE일 때만 의미, OR 조건)")
+        List<WineIntensity> wineAcidity,
+        @Schema(description = "와인 타닌 목록 (category=WINE일 때만 의미, OR 조건)")
+        List<WineIntensity> wineTannin
 ) {
     public SpiritSearchCondition {
         if (sort == null) sort = SpiritSort.LATEST;
@@ -48,4 +59,10 @@ public record SpiritSearchCondition(
     public boolean hasWhiskyStyle()  { return whiskyStyles != null && !whiskyStyles.isEmpty(); }
     public boolean hasWineType()     { return wineTypes != null && !wineTypes.isEmpty(); }
     public boolean hasCognacGrade()  { return cognacGrades != null && !cognacGrades.isEmpty(); }
+    public boolean hasWineSweetness(){ return wineSweetness != null && !wineSweetness.isEmpty(); }
+    public boolean hasWineBody()     { return wineBody != null && !wineBody.isEmpty(); }
+    public boolean hasWineAcidity()  { return wineAcidity != null && !wineAcidity.isEmpty(); }
+    public boolean hasWineTannin()   { return wineTannin != null && !wineTannin.isEmpty(); }
+    /** 와인 관능(맛) 필터가 하나라도 있는지 */
+    public boolean hasWineSensory()  { return hasWineSweetness() || hasWineBody() || hasWineAcidity() || hasWineTannin(); }
 }

@@ -83,6 +83,9 @@ export type WhiskyCaskType =
   | 'NEW_OAK' | 'FRENCH_OAK' | 'CHINKAPIN' | 'MIZUNARA' | 'EX_UMESHU' | 'TEAK_WOOD' | 'PEATED_CASK' | 'OTHER'
 export type WineType = 'RED' | 'WHITE' | 'ROSE' | 'SPARKLING' | 'DESSERT' | 'ORANGE' | 'FORTIFIED'
 export type WineCertification = 'ORGANIC' | 'BIODYNAMIC' | 'SUSTAINABLE' | 'NONE'
+export type WineSweetness = 'DRY' | 'OFF_DRY' | 'MEDIUM' | 'SWEET'
+export type WineBody = 'LIGHT' | 'MEDIUM' | 'FULL'
+export type WineIntensity = 'LOW' | 'MEDIUM' | 'HIGH'
 export type CognacGrade = 'VS' | 'NAPOLEON' | 'VSOP' | 'XO' | 'XXO' | 'HORS_DAGE'
 export type CognacCru = 'GRANDE_CHAMPAGNE' | 'PETITE_CHAMPAGNE' | 'BORDERIES' | 'FINS_BOIS' | 'BONS_BOIS'
 export type OtherSpiritType = 'RUM' | 'GIN' | 'VODKA' | 'TEQUILA' | 'MEZCAL' | 'BRANDY' | 'LIQUEUR' | 'SAKE' | 'SOJU' | 'BAIJIU' | 'ABSINTHE' | 'BEER' | 'OTHER'
@@ -139,6 +142,10 @@ export interface WineDetailResponse {
   fermentationVessel: string | null
   oakType: string | null
   oakAgedMonths: number | null
+  sweetness: WineSweetness | null
+  body: WineBody | null
+  acidity: WineIntensity | null
+  tannin: WineIntensity | null
 }
 
 export interface CognacDetailResponse {
@@ -146,6 +153,10 @@ export interface CognacDetailResponse {
   cru: CognacCru | null
   isFineChampagne: boolean | null
   blendDetail: string | null
+  vintageYear: number | null
+  ageYears: number | null
+  oakType: string | null
+  caskFinish: string | null
 }
 
 export interface OtherDetailResponse {
@@ -153,6 +164,9 @@ export interface OtherDetailResponse {
   mainIngredient: string | null
   productionMethod: string | null
   notes: string | null
+  styleClassification: string | null
+  caskType: string | null
+  originDesignation: string | null
 }
 
 export interface SpiritSearchParams {
@@ -160,6 +174,10 @@ export interface SpiritSearchParams {
   category?: SpiritCategory
   whiskyStyle?: WhiskyStyle[]
   wineType?: WineType[]
+  wineSweetness?: WineSweetness[]
+  wineBody?: WineBody[]
+  wineAcidity?: WineIntensity[]
+  wineTannin?: WineIntensity[]
   cognacGrade?: CognacGrade[]
   country?: string
   region?: string

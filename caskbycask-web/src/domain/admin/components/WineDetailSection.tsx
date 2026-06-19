@@ -7,6 +7,8 @@ export interface WineDetailForm {
   certification: string; grapeVarieties: GrapeVarietyRow[]
   appellationDesignation: string; soilType: string; altitudeM: string
   harvestMethod: string; fermentationVessel: string; oakType: string; oakAgedMonths: string
+  // 관능(맛) 지표
+  sweetness: string; body: string; acidity: string; tannin: string
 }
 
 export const DEFAULT_WINE: WineDetailForm = {
@@ -14,6 +16,7 @@ export const DEFAULT_WINE: WineDetailForm = {
   certification: '', grapeVarieties: [], appellationDesignation: '',
   soilType: '', altitudeM: '', harvestMethod: '', fermentationVessel: '',
   oakType: '', oakAgedMonths: '',
+  sweetness: '', body: '', acidity: '', tannin: '',
 }
 
 interface Props { value: WineDetailForm; onChange: (u: Partial<WineDetailForm>) => void; errors?: Record<string, string> }
@@ -28,6 +31,30 @@ const CERTIFICATIONS = [['NONE','없음'],['ORGANIC','Organic'],['BIODYNAMIC','B
 const HARVEST_METHODS = ['Hand-picked', 'Machine-harvested']
 const FERMENTATION_VESSELS = ['Stainless Steel', 'Concrete', 'Oak Vat', 'Amphora']
 const OAK_TYPES = ['French Oak', 'American Oak', 'Hungarian Oak']
+
+// 관능(맛) 지표 — 선택식. 초보도 라벨로 직관적으로 고를 수 있게.
+const SWEETNESS = [['DRY','드라이'],['OFF_DRY','오프드라이'],['MEDIUM','미디엄'],['SWEET','스위트']]
+const BODY      = [['LIGHT','라이트'],['MEDIUM','미디엄'],['FULL','풀바디']]
+const LEVEL     = [['LOW','낮음'],['MEDIUM','중간'],['HIGH','높음']]
+
+// 한 줄짜리 세그먼트 라디오 (미지정 포함)
+function Segment({ label, hint, options, value, onChange }: {
+  label: string; hint?: string; options: string[][]; value: string; onChange: (v: string) => void
+}) {
+  return (
+    <div>
+      <label className={LABEL}>{label}{hint && <span className="ml-1 font-normal text-neutral-400">{hint}</span>}</label>
+      <div className="flex flex-wrap gap-2">
+        {options.map(([v, l]) => (
+          <button key={v} type="button" onClick={() => onChange(value === v ? '' : v)}
+            className={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${
+              value === v ? 'border-amber-500 bg-amber-50 text-amber-700 font-medium' : 'border-neutral-200 text-neutral-600 hover:border-amber-300'
+            }`}>{l}</button>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 export default function WineDetailSection({ value, onChange, errors }: Props) {
   return (
@@ -64,6 +91,15 @@ export default function WineDetailSection({ value, onChange, errors }: Props) {
       </div>
 
       <p className="text-xs font-semibold text-neutral-500">선택 정보</p>
+
+      {/* 관능(맛) 지표 — 가장 직관적인 정보. 라벨 뒷면·리뷰·판매처 설명에서 확인 가능. */}
+      <div className="rounded-xl border border-neutral-200 bg-neutral-50/40 p-4 space-y-4">
+        <p className="text-xs font-semibold text-neutral-600">맛 (관능) <span className="font-normal text-neutral-400">아는 만큼만 선택 · 다시 누르면 해제</span></p>
+        <Segment label="당도" options={SWEETNESS} value={value.sweetness} onChange={(v) => onChange({ sweetness: v })} />
+        <Segment label="바디" hint="입안 무게감" options={BODY} value={value.body} onChange={(v) => onChange({ body: v })} />
+        <Segment label="산도" options={LEVEL} value={value.acidity} onChange={(v) => onChange({ acidity: v })} />
+        <Segment label="타닌" hint="주로 레드" options={LEVEL} value={value.tannin} onChange={(v) => onChange({ tannin: v })} />
+      </div>
 
       {/* 빈티지 */}
       <div>
