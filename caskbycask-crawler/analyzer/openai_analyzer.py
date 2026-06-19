@@ -156,13 +156,9 @@ class OpenAIAnalyzer:
         try:
             data = json.loads(raw_content)
         except json.JSONDecodeError:
+            # 게시글/이미지 품질 문제로 모델이 JSON 외 응답을 줄 수 있음(콘텐츠성 실패).
+            # 시스템 장애가 아니므로 Slack 알람은 보내지 않고 로그만 남긴다 → 다음 실행에 재시도.
             log.warning("모델 JSON 파싱 실패 %s, 원문=%s", detail.raw.key, raw_content[:200])
-            if self.notifier is not None:
-                self.notifier.warning_once(
-                    "openai_json_parse",
-                    "크롤러 OpenAI 응답 파싱 실패",
-                    f"post={detail.raw.key}, model={self.model}, content={raw_content[:300]}",
-                )
             return None
 
         return AnalysisResult.from_model_json(data)

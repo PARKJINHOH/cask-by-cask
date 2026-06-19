@@ -211,15 +211,8 @@ def run() -> int:
         len(candidates), new_count, stats["filtered"], stats["seen"],
         stats["analyzed"], stats["uploaded"], stats["skipped"], stats["error"],
     )
-    if stats["error"] > 0:
-        notifier.warning_once(
-            "crawler_run_errors",
-            "크롤러 실행 오류 발생",
-            (
-                f"후보={len(candidates)}, 신규={new_count}, 분석={stats['analyzed']}, "
-                f"업로드={stats['uploaded']}, 스킵={stats['skipped']}, 오류={stats['error']}"
-            ),
-        )
+    # 콘텐츠성/일시 실패(파싱 실패·업로드 일시 다운 등)까지 합산하는 요약 알람은 노이즈가 커서 제거.
+    # 카운트는 위 종료 로그에 남으며, 사람 개입이 필요한 시스템 에러는 각 지점에서 개별 알람으로 보낸다.
     return 0
 
 
