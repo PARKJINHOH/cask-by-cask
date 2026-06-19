@@ -44,7 +44,7 @@ public interface SpiritRepository extends JpaRepository<Spirit, Long>, SpiritQue
             SELECT s FROM Spirit s
             LEFT JOIN FETCH s.commonDetail
             WHERE s.parent.id = :parentId
-            ORDER BY s.bottledYear DESC, s.vintageYear DESC, s.id DESC
+            ORDER BY COALESCE(s.displayOrder, 999999) ASC, s.id ASC
             """)
     List<Spirit> findByParentId(@Param("parentId") Long parentId);
 

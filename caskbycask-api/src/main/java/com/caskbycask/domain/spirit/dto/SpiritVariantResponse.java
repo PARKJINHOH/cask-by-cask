@@ -46,9 +46,16 @@ public record SpiritVariantResponse(
         @Schema(description = "에디션 식별 값")
         String variantValue,
         @Schema(description = "에디션 식별 값(영문)")
-        String variantValueEn
+        String variantValueEn,
+        @Schema(description = "공통 상세 정보 (관리자 수정 폼 프리필용)")
+        SpiritCommonDetailResponse commonDetail,
+        @Schema(description = "위스키 상세 (관리자 수정 폼 프리필용, category=WHISKY 전용)")
+        WhiskyDetailResponse whiskyDetail
 ) {
-    public static SpiritVariantResponse of(Spirit spirit, String primaryImageUrl) {
+    /** 위스키 상세까지 포함한 전체 응답 (관리자 상세 화면 — 에디션 수정 폼 프리필) */
+    public static SpiritVariantResponse of(Spirit spirit, String primaryImageUrl,
+                                           SpiritCommonDetailResponse commonDetail,
+                                           WhiskyDetailResponse whiskyDetail) {
         SpiritCommonDetail cd = spirit.getCommonDetail();
         return new SpiritVariantResponse(
                 spirit.getId(),
@@ -67,7 +74,9 @@ public record SpiritVariantResponse(
                 primaryImageUrl,
                 spirit.getVariantType(),
                 spirit.getVariantValue(),
-                spirit.getVariantValueEn()
+                spirit.getVariantValueEn(),
+                commonDetail,
+                whiskyDetail
         );
     }
 }

@@ -126,6 +126,10 @@ public class Spirit extends BaseTimeEntity {
     @Comment("에디션 식별 값(영문)")
     private String variantValueEn;
 
+    @Column
+    @Comment("하위 에디션 표시 순서 (마스터 기준 0부터, 마스터/일반 술은 null)")
+    private Integer displayOrder;
+
     @Column(precision = 4, scale = 1)
     @Comment("최소 도수(%)")
     private BigDecimal abvMin;
@@ -172,6 +176,11 @@ public class Spirit extends BaseTimeEntity {
         this.variantValueEn = variantValueEn;
         this.abvMin = abvMin;
         this.abvMax = abvMax;
+    }
+
+    /** 하위 에디션 표시 순서 지정 (마스터 화면에서의 목록 순서 보존용) */
+    public void assignDisplayOrder(Integer order) {
+        this.displayOrder = order;
     }
 
     public void addVariant(Spirit variant) {

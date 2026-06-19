@@ -314,6 +314,14 @@ public class SpiritDetailService {
                 commonDetail, whiskyDetail, wineDetail, cognacDetail, otherDetail, variants);
     }
 
+    /** 하위 에디션의 위스키 상세 응답 빌드 (WHISKY 카테고리일 때만, 아니면 null). 연관 술 목록 프리필용. */
+    @Transactional(readOnly = true)
+    public WhiskyDetailResponse buildVariantWhiskyDetail(Spirit spirit) {
+        return spirit.getCategory() == SpiritCategory.WHISKY
+                ? buildWhiskyDetailResponse(spirit.getWhiskyDetail())
+                : null;
+    }
+
     private WhiskyDetailResponse buildWhiskyDetailResponse(SpiritWhiskyDetail detail) {
         if (detail == null) return null;
         Map<String, Object> extra = parseExtra(detail.getExtraData());

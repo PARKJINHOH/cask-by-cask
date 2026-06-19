@@ -148,7 +148,11 @@ public class SpiritService {
 
         Map<Long, String> primaryImageMap = primaryImageMap(variantsMap.keySet());
         return variantsMap.values().stream()
-                .map(v -> SpiritVariantResponse.of(v, primaryImageMap.get(v.getId())))
+                .map(v -> SpiritVariantResponse.of(
+                        v,
+                        primaryImageMap.get(v.getId()),
+                        SpiritCommonDetailResponse.from(v.getCommonDetail()),
+                        spiritDetailService.buildVariantWhiskyDetail(v)))
                 .toList();
     }
 
@@ -308,7 +312,9 @@ public class SpiritService {
 
         // 하위 에디션 일괄 등록 처리
         if (Boolean.TRUE.equals(request.isVariantSplit()) && request.variants() != null) {
-            for (CreateVariantRequest vReq : request.variants()) {
+            List<CreateVariantRequest> variants = request.variants();
+            for (int i = 0; i < variants.size(); i++) {
+                CreateVariantRequest vReq = variants.get(i);
                 Spirit variant = Spirit.builder()
                         .nameKo(saved.getNameKo())
                         .nameEn(saved.getNameEn())
@@ -329,6 +335,7 @@ public class SpiritService {
                         .variantValueEn(vReq.variantValueEn())
                         .abvMin(vReq.abvMin())
                         .abvMax(vReq.abvMax())
+                        .displayOrder(i)
                         .build();
 
                 Spirit savedVariant = spiritRepository.save(variant);
@@ -385,7 +392,9 @@ public class SpiritService {
             if (Boolean.TRUE.equals(request.isVariantSplit()) && request.variants() != null) {
                 java.util.Set<Long> processedIds = new java.util.HashSet<>();
 
-                for (CreateVariantRequest vReq : request.variants()) {
+                List<CreateVariantRequest> variants = request.variants();
+                for (int i = 0; i < variants.size(); i++) {
+                    CreateVariantRequest vReq = variants.get(i);
                     // 식별 값(variantValue) 기준으로 기존 에디션 탐색
                     Optional<Spirit> matching = existingVariants.stream()
                             .filter(v -> v.getVariantValue() != null && v.getVariantValue().equals(vReq.variantValue()))
@@ -403,6 +412,7 @@ public class SpiritService {
                                 spirit, vReq.variantType(), vReq.variantValue(), vReq.variantValueEn(),
                                 vReq.abvMin(), vReq.abvMax()
                         );
+                        existing.assignDisplayOrder(i);
                         spiritDetailService.saveCommonDetail(existing, vReq.commonDetail());
                         if (spirit.getCategory() == SpiritCategory.WHISKY && vReq.whiskyDetail() != null) {
                             spiritDetailService.saveWhiskyDetail(existing, vReq.whiskyDetail());
@@ -429,6 +439,7 @@ public class SpiritService {
                                 .variantValueEn(vReq.variantValueEn())
                                 .abvMin(vReq.abvMin())
                                 .abvMax(vReq.abvMax())
+                                .displayOrder(i)
                                 .build();
 
                         Spirit savedVariant = spiritRepository.save(variant);
@@ -732,7 +743,9 @@ public class SpiritService {
 
         // 하위 에디션 일괄 등록 처리 (createSpirit 와 동일)
         if (Boolean.TRUE.equals(detail.isVariantSplit()) && detail.variants() != null) {
-            for (CreateVariantRequest vReq : detail.variants()) {
+            List<CreateVariantRequest> variants = detail.variants();
+            for (int i = 0; i < variants.size(); i++) {
+                CreateVariantRequest vReq = variants.get(i);
                 Spirit variant = Spirit.builder()
                         .nameKo(saved.getNameKo())
                         .nameEn(saved.getNameEn())
@@ -753,6 +766,7 @@ public class SpiritService {
                         .variantValueEn(vReq.variantValueEn())
                         .abvMin(vReq.abvMin())
                         .abvMax(vReq.abvMax())
+                        .displayOrder(i)
                         .build();
 
                 Spirit savedVariant = spiritRepository.save(variant);
