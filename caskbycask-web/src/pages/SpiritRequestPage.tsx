@@ -14,6 +14,7 @@ import CountryRegionSelector from '@/domain/location/components/CountryRegionSel
 import { ISO3166_COUNTRIES } from '@/domain/location/data/iso3166Countries'
 import SeoMeta from '@/shared/components/SeoMeta'
 import Breadcrumb from '@/shared/components/Breadcrumb'
+import { formatYearMonth } from '@/shared/utils/yearMonth'
 
 // 카테고리 선택 카드 (관리자 등록 폼과 동일한 UX)
 const CATEGORY_CARDS: SpiritCategory[] = ['WHISKY', 'COGNAC', 'WINE', 'OTHER']
@@ -227,6 +228,7 @@ export default function SpiritRequestPage() {
     vintageYear: data.vintageYear != null && !isNaN(Number(data.vintageYear)) ? Number(data.vintageYear) : null,
     volumeMl:    data.volumeMl    != null && !isNaN(Number(data.volumeMl))    ? Number(data.volumeMl)    : null,
     ageStatement: data.isNas ? null : (data.ageStatement != null && !isNaN(Number(data.ageStatement)) ? Number(data.ageStatement) : null),
+    ageStatementMonths: data.isNas ? null : (data.ageStatementMonths != null && String(data.ageStatementMonths).trim() !== '' && !isNaN(Number(data.ageStatementMonths)) ? Number(data.ageStatementMonths) : null),
     isNas: data.isNas || undefined,
     distilledDate: data.distilledDate?.trim() || undefined,
     bottledDate:   data.bottledDate?.trim()   || undefined,
@@ -282,7 +284,7 @@ export default function SpiritRequestPage() {
       reset({
         nameKo: d.nameKo, nameEn: d.nameEn, category: d.category,
         abv: d.abv ?? undefined, volumeMl: d.volumeMl ?? undefined,
-        ageStatement: d.ageStatement ?? undefined, isNas: d.isNas ?? undefined,
+        ageStatement: d.ageStatement ?? undefined, ageStatementMonths: d.ageStatementMonths ?? undefined, isNas: d.isNas ?? undefined,
         distilledDate: d.distilledDate ?? undefined, bottledDate: d.bottledDate ?? undefined,
         releaseDate: d.releaseDate ?? undefined,
         whiskyStyle: d.whiskyStyle ?? undefined, whiskyStyleOther: d.whiskyStyleOther ?? undefined,
@@ -652,13 +654,28 @@ export default function SpiritRequestPage() {
                     {t('spiritRequest.form.ageStatement')}
                     {isNas && <span className="ml-1.5 font-normal text-neutral-400">{t('spiritRequest.form.nasHint')}</span>}
                   </label>
-                  <input
-                    type="number" min="1" max="100" step="1"
-                    {...register('ageStatement')}
-                    disabled={isNas}
-                    placeholder={t('spiritRequest.form.agePlaceholder')}
-                    className={`${FIELD_CLS} ${isNas ? 'opacity-40 cursor-not-allowed bg-neutral-50 border-neutral-300' : 'border-neutral-300'}`}
-                  />
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <input
+                        type="number" min="0" max="100" step="1"
+                        {...register('ageStatement')}
+                        disabled={isNas}
+                        placeholder={t('spiritRequest.form.agePlaceholder')}
+                        className={`${FIELD_CLS} pr-7 ${isNas ? 'opacity-40 cursor-not-allowed bg-neutral-50 border-neutral-300' : 'border-neutral-300'}`}
+                      />
+                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">{t('spiritRequest.form.ageYearUnit')}</span>
+                    </div>
+                    <div className="relative flex-1">
+                      <input
+                        type="number" min="0" max="11" step="1"
+                        {...register('ageStatementMonths')}
+                        disabled={isNas}
+                        placeholder={t('spiritRequest.form.ageMonthPlaceholder')}
+                        className={`${FIELD_CLS} pr-9 ${isNas ? 'opacity-40 cursor-not-allowed bg-neutral-50 border-neutral-300' : 'border-neutral-300'}`}
+                      />
+                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">{t('spiritRequest.form.ageMonthUnit')}</span>
+                    </div>
+                  </div>
                 </div>
 
                 {/* 증류 / 병입 연월 */}
@@ -668,6 +685,7 @@ export default function SpiritRequestPage() {
                     <input
                       type="text"
                       {...register('distilledDate', { validate: (v) => !v || DATE_RE.test(v) })}
+                      onChange={(e) => setValue('distilledDate', formatYearMonth(e.target.value), { shouldValidate: true })}
                       maxLength={7}
                       placeholder="YYYY / YYYY-MM"
                       className={`${FIELD_CLS} ${errors.distilledDate ? 'border-red-400' : 'border-neutral-300'}`}
@@ -679,6 +697,7 @@ export default function SpiritRequestPage() {
                     <input
                       type="text"
                       {...register('bottledDate', { validate: (v) => !v || DATE_RE.test(v) })}
+                      onChange={(e) => setValue('bottledDate', formatYearMonth(e.target.value), { shouldValidate: true })}
                       maxLength={7}
                       placeholder="YYYY / YYYY-MM"
                       className={`${FIELD_CLS} ${errors.bottledDate ? 'border-red-400' : 'border-neutral-300'}`}

@@ -95,6 +95,7 @@ export interface GrapeVariety { name: string; percentage: number | null }
 export interface SpiritCommonDetailResponse {
   isNas: boolean
   ageStatement: number | null
+  ageStatementMonths: number | null
   ageStatementMin: number | null
   ageStatementMax: number | null
   distilledDate: string | null

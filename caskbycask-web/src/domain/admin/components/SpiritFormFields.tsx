@@ -336,6 +336,7 @@ export function useSpiritForm() {
         commonDetail: v.commonDetail ? {
           isNas: v.commonDetail.isNas,
           ageStatement: v.commonDetail.ageStatement,
+          ageStatementMonths: v.commonDetail.ageStatementMonths,
           ageStatementMin: v.commonDetail.ageStatementMin,
           ageStatementMax: v.commonDetail.ageStatementMax,
           distilledDate: v.commonDetail.distilledDate,
@@ -384,7 +385,7 @@ export function useSpiritForm() {
     if (s.commonDetail) {
       const cd = s.commonDetail
       setCommonDetail({
-        isNas: cd.isNas, ageStatement: cd.ageStatement,
+        isNas: cd.isNas, ageStatement: cd.ageStatement, ageStatementMonths: cd.ageStatementMonths,
         ageStatementMin: cd.ageStatementMin, ageStatementMax: cd.ageStatementMax,
         distilledDate: cd.distilledDate ?? '', bottledDate: cd.bottledDate ?? '',
         releaseDate: cd.releaseDate ?? '', volumeMl: cd.volumeMl?.toString() ?? '',
@@ -460,6 +461,7 @@ export function useSpiritForm() {
     setCommonDetail({
       ...DEFAULT_COMMON_DETAIL,
       isNas: r.isNas ?? false, ageStatement: r.ageStatement ?? null,
+      ageStatementMonths: r.ageStatementMonths ?? null,
       ageStatementMin: null, ageStatementMax: null,
       distilledDate: r.distilledDate ?? '', bottledDate: r.bottledDate ?? '',
       releaseDate: r.releaseDate ?? '', volumeMl: r.volumeMl?.toString() ?? '',
@@ -488,6 +490,7 @@ export function useSpiritForm() {
         volumeMl: r.volumeMl ?? null,
         commonDetail: {
           isNas: r.isNas ?? false, ageStatement: r.ageStatement ?? null,
+          ageStatementMonths: r.ageStatementMonths ?? null,
           ageStatementMin: null, ageStatementMax: null,
           distilledDate: r.distilledDate ?? null, bottledDate: r.bottledDate ?? null,
           releaseDate: r.releaseDate ?? null, volumeMl: r.volumeMl ?? null, abv: r.abv ?? null,
@@ -582,6 +585,7 @@ export function useSpiritForm() {
     return {
       isNas: dropAging ? false : commonDetail.isNas,
       ageStatement: dropAging || commonDetail.isNas ? null : (commonDetail.ageStatement ?? null),
+      ageStatementMonths: dropAging || commonDetail.isNas ? null : (commonDetail.ageStatementMonths ?? null),
       ageStatementMin: dropAging || commonDetail.isNas ? null : (commonDetail.ageStatementMin ?? null),
       ageStatementMax: dropAging || commonDetail.isNas ? null : (commonDetail.ageStatementMax ?? null),
       distilledDate: dropAging ? null : (commonDetail.distilledDate || null),
@@ -710,6 +714,7 @@ export function useSpiritForm() {
     return {
       isNas: cd.isNas ?? false,
       ageStatement: cd.isNas ? null : (cd.ageStatement ?? null),
+      ageStatementMonths: cd.isNas ? null : (cd.ageStatementMonths ?? null),
       ageStatementMin: cd.isNas ? null : (cd.ageStatementMin ?? null),
       ageStatementMax: cd.isNas ? null : (cd.ageStatementMax ?? null),
       distilledDate: cd.distilledDate || null,
@@ -1433,6 +1438,7 @@ function toCommonDetailForm(detail?: SpiritCommonDetailRequest): CommonDetailFor
   return {
     isNas: !!detail.isNas,
     ageStatement: detail.ageStatement ?? null,
+    ageStatementMonths: detail.ageStatementMonths ?? null,
     ageStatementMin: detail.ageStatementMin ?? null,
     ageStatementMax: detail.ageStatementMax ?? null,
     distilledDate: detail.distilledDate ?? '',
@@ -1508,6 +1514,7 @@ function VariantItemCard({
     const converted: Partial<SpiritCommonDetailRequest> = {}
     if (u.isNas !== undefined) converted.isNas = u.isNas
     if (u.ageStatement !== undefined) converted.ageStatement = u.ageStatement
+    if (u.ageStatementMonths !== undefined) converted.ageStatementMonths = u.ageStatementMonths
     if (u.ageStatementMin !== undefined) converted.ageStatementMin = u.ageStatementMin
     if (u.ageStatementMax !== undefined) converted.ageStatementMax = u.ageStatementMax
     if (u.distilledDate !== undefined) converted.distilledDate = u.distilledDate || null

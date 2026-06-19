@@ -1,9 +1,11 @@
 import NasToggle from '@/shared/components/NasToggle'
+import { formatYearMonth } from '@/shared/utils/yearMonth'
 import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
 
 export interface CommonDetailForm {
   isNas: boolean
   ageStatement: number | null
+  ageStatementMonths: number | null
   ageStatementMin: number | null
   ageStatementMax: number | null
   distilledDate: string
@@ -17,7 +19,7 @@ export interface CommonDetailForm {
 }
 
 export const DEFAULT_COMMON_DETAIL: CommonDetailForm = {
-  isNas: false, ageStatement: null, ageStatementMin: null, ageStatementMax: null, distilledDate: '', bottledDate: '',
+  isNas: false, ageStatement: null, ageStatementMonths: null, ageStatementMin: null, ageStatementMax: null, distilledDate: '', bottledDate: '',
   releaseDate: '', volumeMl: '', abv: '', bottleNo: '', batchNo: '', totalBottles: '',
 }
 
@@ -60,10 +62,12 @@ export default function SpiritCommonDetailSection({ value, onChange, dateErrors,
         <NasToggle
           isNas={value.isNas}
           ageStatement={value.ageStatement}
+          ageStatementMonths={value.ageStatementMonths}
           ageStatementMin={value.ageStatementMin}
           ageStatementMax={value.ageStatementMax}
           onNasChange={(v) => onChange({ isNas: v })}
           onAgeChange={(v) => onChange({ ageStatement: v })}
+          onMonthsChange={(v) => onChange({ ageStatementMonths: v })}
           onMinChange={(v) => onChange({ ageStatementMin: v })}
           onMaxChange={(v) => onChange({ ageStatementMax: v })}
         />
@@ -83,7 +87,7 @@ export default function SpiritCommonDetailSection({ value, onChange, dateErrors,
             <input
               type="text"
               value={value.distilledDate}
-              onChange={(e) => onChange({ distilledDate: e.target.value })}
+              onChange={(e) => onChange({ distilledDate: formatYearMonth(e.target.value) })}
               placeholder="YYYY 또는 YYYY-MM"
               maxLength={7}
               className={`${INPUT} ${dateErrors?.distilledDate ? 'border-red-400' : ''}`}
@@ -101,7 +105,7 @@ export default function SpiritCommonDetailSection({ value, onChange, dateErrors,
             <input
               type="text"
               value={value.bottledDate}
-              onChange={(e) => onChange({ bottledDate: e.target.value })}
+              onChange={(e) => onChange({ bottledDate: formatYearMonth(e.target.value) })}
               placeholder="YYYY 또는 YYYY-MM"
               maxLength={7}
               className={`${INPUT} ${dateErrors?.bottledDate ? 'border-red-400' : ''}`}

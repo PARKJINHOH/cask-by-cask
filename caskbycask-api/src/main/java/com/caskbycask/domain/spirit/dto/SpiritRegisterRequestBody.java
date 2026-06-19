@@ -58,6 +58,10 @@ public record SpiritRegisterRequestBody(
         String region,
         @Schema(description = "숙성 연수 (선택, isNas=true 시 무시)")
         Integer ageStatement,
+        @Schema(description = "숙성 개월 (선택, 0~11, isNas=true 시 무시)")
+        @Min(value = 0, message = "숙성 개월은 0 이상이어야 합니다.")
+        @Max(value = 11, message = "숙성 개월은 11 이하여야 합니다.")
+        Integer ageStatementMonths,
         @Schema(description = "NAS(숙성 연수 미표기) 여부 (선택)")
         Boolean isNas,
         @Schema(description = "증류 연월 (선택, YYYY 또는 YYYY-MM)")

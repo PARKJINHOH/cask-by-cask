@@ -9,6 +9,7 @@ import type {
 export interface SpiritCommonDetailRequest {
   isNas?: boolean
   ageStatement?: number | null
+  ageStatementMonths?: number | null
   ageStatementMin?: number | null
   ageStatementMax?: number | null
   distilledDate?: string | null
@@ -372,6 +373,7 @@ export interface SpiritRegisterRequestDetail {
   country: string | null
   region: string | null
   ageStatement: number | null
+  ageStatementMonths: number | null
   isNas: boolean | null
   distilledDate: string | null
   bottledDate: string | null

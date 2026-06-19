@@ -14,6 +14,9 @@ public record SpiritCommonDetailResponse(
         @Schema(description = "숙성 연수 (isNas=true면 null)")
         Integer ageStatement,
 
+        @Schema(description = "숙성 개월 (0~11, isNas=true면 null)")
+        Integer ageStatementMonths,
+
         @Schema(description = "최소 숙성 연수")
         Integer ageStatementMin,
 
@@ -51,6 +54,7 @@ public record SpiritCommonDetailResponse(
         return new SpiritCommonDetailResponse(
                 detail.getIsNas(),
                 isNas ? null : detail.getAgeStatement(),
+                isNas ? null : detail.getAgeStatementMonths(),
                 isNas ? null : detail.getAgeStatementMin(),
                 isNas ? null : detail.getAgeStatementMax(),
                 detail.getDistilledDate(),

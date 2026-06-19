@@ -28,6 +28,24 @@ import type { StoreType } from '@/domain/pricetracker/types/pricetracker.types'
 import { CATEGORY_TO_PRODUCER_TYPE, PRODUCER_TYPE_LABEL } from '@/domain/producer/types/producer.types'
 
 type Tab = 'reviews' | 'community' | 'price'
+
+// 숙성 연수(년/월) 표시. 둘 다 없으면 null. short=true → 축약(yr/년) 표기.
+function formatAge(
+  years: number | null | undefined,
+  months: number | null | undefined,
+  isEn: boolean,
+  short = false,
+): string | null {
+  if (years == null && !months) return null
+  const parts: string[] = []
+  if (years != null) {
+    parts.push(isEn ? (short ? `${years}yr` : `${years} Year${years === 1 ? '' : 's'}`) : `${years}년`)
+  }
+  if (months) {
+    parts.push(isEn ? (short ? `${months}mo` : `${months} Month${months === 1 ? '' : 's'}`) : `${months}개월`)
+  }
+  return parts.join(' ')
+}
 type ListReturnState = { returnTo?: string }
 
 function getSpiritListReturnTo(state: unknown) {
@@ -223,9 +241,7 @@ function SpiritDetailSections({ spirit, isEn }: { spirit: SpiritDetail; isEn: bo
               <DI label={isEn ? 'Age Statement' : '숙성 연수'}
                 value={cd.isNas
                   ? <span className="px-2 py-0.5 rounded bg-neutral-800 text-white text-xs font-bold">NAS</span>
-                  : (cd.ageStatement != null
-                    ? (isEn ? `${cd.ageStatement} Year${cd.ageStatement === 1 ? '' : 's'}` : `${cd.ageStatement}년`)
-                    : null)} />
+                  : formatAge(cd.ageStatement, cd.ageStatementMonths, isEn)} />
               <DI label={isEn ? 'Distilled' : '증류 연월'} value={cd.distilledDate} />
               <DI label={isEn ? 'Bottled' : '병입 연월'} value={cd.bottledDate} />
               <DI label={isEn ? 'Release Date' : '출시일'} value={cd.releaseDate} />
@@ -451,7 +467,7 @@ function CoreSpecStrip({
   const cd = spirit.commonDetail
   const ageValue = cd?.isNas
     ? 'NAS'
-    : (cd?.ageStatement != null ? (isEn ? `${cd.ageStatement}yr` : `${cd.ageStatement}년`) : null)
+    : formatAge(cd?.ageStatement, cd?.ageStatementMonths, isEn, true)
   const originValue: React.ReactNode = spirit.country
     ? (
       <>

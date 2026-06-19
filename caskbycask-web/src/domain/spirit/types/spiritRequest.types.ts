@@ -21,6 +21,7 @@ export interface SpiritRegisterRequestForm {
   volumeMl?: number | null
   // 공통 상세 (신청자 입력 — 관리자 등록 참고용)
   ageStatement?: number | null
+  ageStatementMonths?: number | null
   isNas?: boolean
   distilledDate?: string   // YYYY 또는 YYYY-MM
   bottledDate?: string     // YYYY 또는 YYYY-MM

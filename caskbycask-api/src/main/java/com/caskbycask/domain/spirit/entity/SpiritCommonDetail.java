@@ -36,6 +36,10 @@ public class SpiritCommonDetail {
     @Comment("숙성 연수(년)")
     private Integer ageStatement;
 
+    @Column(name = "age_statement_months")
+    @Comment("숙성 개월(0~11) — 단일 연수의 추가 개월")
+    private Integer ageStatementMonths;
+
     @Column(name = "age_statement_min")
     @Comment("최소 숙성 연수(년)")
     private Integer ageStatementMin;
@@ -79,14 +83,16 @@ public class SpiritCommonDetail {
     @Comment("총 병입 수량")
     private Integer totalBottles;
 
-    public void update(boolean isNas, Integer ageStatement, Integer ageStatementMin, Integer ageStatementMax,
+    public void update(boolean isNas, Integer ageStatement, Integer ageStatementMonths,
+                       Integer ageStatementMin, Integer ageStatementMax,
                        String distilledDate, String bottledDate, java.time.LocalDate releaseDate,
                        Integer volumeMl, java.math.BigDecimal abv,
                        String bottleNo, String batchNo, Integer totalBottles) {
-        this.isNas            = isNas;
-        this.ageStatement     = isNas ? null : ageStatement;
-        this.ageStatementMin  = isNas ? null : ageStatementMin;
-        this.ageStatementMax  = isNas ? null : ageStatementMax;
+        this.isNas             = isNas;
+        this.ageStatement      = isNas ? null : ageStatement;
+        this.ageStatementMonths = isNas ? null : ageStatementMonths;
+        this.ageStatementMin   = isNas ? null : ageStatementMin;
+        this.ageStatementMax   = isNas ? null : ageStatementMax;
         this.distilledDate    = distilledDate;
         this.bottledDate      = bottledDate;
         this.releaseDate      = releaseDate;

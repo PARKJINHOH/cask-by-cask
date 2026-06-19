@@ -641,7 +641,7 @@ public class SpiritService {
                 body.producerId(), body.bottler(), body.bottledYear(), body.vintageYear(),
                 body.abv(), body.volumeMl(), body.country(), body.region(),
                 // 신청자 입력 상세값(숙성/연월/카테고리 핵심값)은 관리자 수정 폼에 없으므로 기존값 보존
-                existing.ageStatement(), existing.isNas(), existing.distilledDate(),
+                existing.ageStatement(), existing.ageStatementMonths(), existing.isNas(), existing.distilledDate(),
                 existing.bottledDate(), existing.releaseDate(),
                 existing.whiskyStyle(), existing.whiskyStyleOther(), existing.caskNo(), existing.whiskyNotes(),
                 existing.wineType(), existing.cognacGrade(), existing.otherType(),
@@ -862,7 +862,7 @@ public class SpiritService {
                 body.nameKo(), body.nameEn(), body.category(),
                 body.producerId(), body.bottler(), body.bottledYear(), body.vintageYear(),
                 body.abv(), body.volumeMl(), body.country(), body.region(),
-                body.ageStatement(), body.isNas(), body.distilledDate(),
+                body.ageStatement(), body.ageStatementMonths(), body.isNas(), body.distilledDate(),
                 body.bottledDate(), body.releaseDate(),
                 body.whiskyStyle(), body.whiskyStyleOther(), body.caskNo(), body.whiskyNotes(),
                 body.wineType(), body.cognacGrade(), body.otherType(),

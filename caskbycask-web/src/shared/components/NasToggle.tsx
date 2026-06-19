@@ -3,10 +3,12 @@ import { useState, useEffect } from 'react'
 interface Props {
   isNas: boolean
   ageStatement: number | null
+  ageStatementMonths?: number | null
   ageStatementMin: number | null
   ageStatementMax: number | null
   onNasChange: (isNas: boolean) => void
   onAgeChange: (age: number | null) => void
+  onMonthsChange?: (months: number | null) => void
   onMinChange: (min: number | null) => void
   onMaxChange: (max: number | null) => void
 }
@@ -16,10 +18,12 @@ const INPUT_CLS = 'w-full px-3 py-2 text-sm border rounded-lg focus:outline-none
 export default function NasToggle({
   isNas,
   ageStatement,
+  ageStatementMonths,
   ageStatementMin,
   ageStatementMax,
   onNasChange,
   onAgeChange,
+  onMonthsChange,
   onMinChange,
   onMaxChange,
 }: Props) {
@@ -41,8 +45,9 @@ export default function NasToggle({
       onMinChange(null)
       onMaxChange(null)
     } else {
-      // 범위 지정 설정 시 단일 값 초기화
+      // 범위 지정 설정 시 단일 값(년/월) 초기화 — 월은 단일 값 전용
       onAgeChange(null)
+      onMonthsChange?.(null)
     }
   }
 
@@ -57,6 +62,7 @@ export default function NasToggle({
               onNasChange(e.target.checked)
               if (e.target.checked) {
                 onAgeChange(null)
+                onMonthsChange?.(null)
                 onMinChange(null)
                 onMaxChange(null)
               }
@@ -81,7 +87,7 @@ export default function NasToggle({
 
       <div className="space-y-1.5">
         <label className="block text-xs font-medium text-neutral-600">
-          숙성 연수 (년)
+          숙성 연수 (년{!isRange && ', 월'})
           {isNas && (
             <span className="ml-1.5 text-neutral-400 font-normal">(NAS 선택 시 저장되지 않음)</span>
           )}
@@ -116,21 +122,44 @@ export default function NasToggle({
             </div>
           </div>
         ) : (
-          <input
-            type="number"
-            min={1}
-            max={100}
-            step={1}
-            value={ageStatement ?? ''}
-            onChange={(e) => onAgeChange(e.target.value === '' ? null : Number(e.target.value))}
-            disabled={isNas}
-            placeholder="예: 12"
-            className={`${INPUT_CLS} ${
-              isNas
-                ? 'opacity-40 cursor-not-allowed bg-neutral-50 border-neutral-300'
-                : 'border-neutral-300'
-            }`}
-          />
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <input
+                type="number"
+                min={0}
+                max={100}
+                step={1}
+                value={ageStatement ?? ''}
+                onChange={(e) => onAgeChange(e.target.value === '' ? null : Number(e.target.value))}
+                disabled={isNas}
+                placeholder="예: 12"
+                className={`${INPUT_CLS} pr-7 ${
+                  isNas
+                    ? 'opacity-40 cursor-not-allowed bg-neutral-50 border-neutral-300'
+                    : 'border-neutral-300'
+                }`}
+              />
+              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">년</span>
+            </div>
+            <div className="relative flex-1">
+              <input
+                type="number"
+                min={0}
+                max={11}
+                step={1}
+                value={ageStatementMonths ?? ''}
+                onChange={(e) => onMonthsChange?.(e.target.value === '' ? null : Number(e.target.value))}
+                disabled={isNas}
+                placeholder="예: 6"
+                className={`${INPUT_CLS} pr-9 ${
+                  isNas
+                    ? 'opacity-40 cursor-not-allowed bg-neutral-50 border-neutral-300'
+                    : 'border-neutral-300'
+                }`}
+              />
+              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">개월</span>
+            </div>
+          </div>
         )}
       </div>
     </div>
