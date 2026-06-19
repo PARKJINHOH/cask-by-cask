@@ -64,6 +64,10 @@ nano .env      # 또는 vi .env
 | `CASKBYCASK_INTERNAL_KEY` | **백엔드와 동일한** 시크릿(긴 랜덤 문자열) |
 | `NAVER_NID_AUT`, `NAVER_NID_SES` | 네이버 로그인 쿠키 (아래 6번) |
 | `OPENAI_MODEL` | 분석 모델. 기본 `gpt-4o-mini` |
+| `OPENAI_REQUEST_INTERVAL_SEC` | AI API 호출 시작 간격. 무료 티어 보호용 기본 `5`초 |
+| `MAX_AI_ANALYSIS_PER_RUN` | 1회 실행에서 AI 분석까지 진행할 최대 건수. 초과분은 DB 대기열로 이월 |
+| `DUPLICATE_LOOKBACK_HOURS` | 같은 딜 fingerprint 를 비교할 최근 시간 범위. 기본 `72`시간 |
+| `DUPLICATE_JACCARD_THRESHOLD`, `DUPLICATE_NGRAM_THRESHOLD` | 로컬 제목 유사도 기준. 기본 `0.58`, `0.62` |
 | `SLACK_WEBHOOK_URL` | 선택. 네이버 카페/API/OpenAI 문제를 Slack으로 알림 |
 | `SLACK_CHANNEL` | 선택. 기본 `#server-prd` |
 
@@ -167,7 +171,9 @@ pip install -r requirements.txt
 | `업로드 실패 401/403` | `CASKBYCASK_INTERNAL_KEY` 가 백엔드(`api.env`)와 정확하게 일치하는지 |
 | Slack 알림이 안 옴 | `SLACK_WEBHOOK_URL` 값, Slack Incoming Webhook 앱의 채널 권한, `SLACK_ALERTS_ENABLED=true` 확인 |
 | OpenAI 비용 급증 | `MAX_NEW_POSTS_PER_RUN`, `MAX_IMAGES_PER_POST` 낮추기 |
-| 차단/429 | `REQUEST_DELAY_SEC` 상향 (예: 2.0~3.0) |
+| 같은 딜이 여러 건 올라옴 | `DUPLICATE_LOOKBACK_HOURS` 상향 또는 `DUPLICATE_JACCARD_THRESHOLD`, `DUPLICATE_NGRAM_THRESHOLD` 하향 |
+| OpenAI/Gemini 429 | `OPENAI_REQUEST_INTERVAL_SEC` 확인 또는 상향 (기본 5초) |
+| 크롤링 차단/429 | `REQUEST_DELAY_SEC` 상향 (예: 2.0~3.0) |
 | 로그 위치 | `/app/caskbycask-crawler/logs/crawler.log` |
 
 ### 보안

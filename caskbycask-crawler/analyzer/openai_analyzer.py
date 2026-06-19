@@ -32,9 +32,18 @@ def _is_high_demand_503(error: Exception) -> bool:
 
 
 class OpenAIAnalyzer:
-    def __init__(self, api_key: str, model: str = "gpt-4o-mini", base_url: str = "", notifier=None):
+    def __init__(
+        self,
+        api_key: str,
+        model: str = "gpt-4o-mini",
+        base_url: str = "",
+        notifier=None,
+        request_interval_sec: float = 5.0,
+    ):
         self.model = model
         self.notifier = notifier
+        self.request_interval_sec = max(0.0, request_interval_sec)
+        self._last_request_started_at = 0.0
         self.client = OpenAI(
             api_key=api_key,
             base_url=base_url or "https://api.openai.com/v1",
@@ -65,6 +74,18 @@ class OpenAIAnalyzer:
                 f"post={post_key}, status={status or '-'}, error={message[:500]}",
             )
 
+    def _wait_for_rate_limit(self, post_key: str) -> None:
+        if self.request_interval_sec <= 0:
+            return
+
+        elapsed = time.monotonic() - self._last_request_started_at
+        wait_sec = self.request_interval_sec - elapsed
+        if wait_sec > 0:
+            log.info("OpenAI/Gemini rate limit %s: %.1f초 대기", post_key, wait_sec)
+            time.sleep(wait_sec)
+
+        self._last_request_started_at = time.monotonic()
+
     def _create_completion(self, content_parts: list[dict], post_key: str):
         first_phase_retries = _HIGH_DEMAND_RETRIES_PER_PHASE
         second_phase_retries = _HIGH_DEMAND_RETRIES_PER_PHASE
@@ -72,6 +93,7 @@ class OpenAIAnalyzer:
 
         while True:
             try:
+                self._wait_for_rate_limit(post_key)
                 return self.client.chat.completions.create(
                     model=self.model,
                     messages=[
@@ -159,6 +181,13 @@ class OpenAIAnalyzer:
             # 게시글/이미지 품질 문제로 모델이 JSON 외 응답을 줄 수 있음(콘텐츠성 실패).
             # 시스템 장애가 아니므로 Slack 알람은 보내지 않고 로그만 남긴다 → 다음 실행에 재시도.
             log.warning("모델 JSON 파싱 실패 %s, 원문=%s", detail.raw.key, raw_content[:200])
+            return None
+
+        # 모델이 객체 대신 배열(예: [{...}])을 줄 때가 있음 → 첫 항목으로 보정.
+        if isinstance(data, list):
+            data = data[0] if data and isinstance(data[0], dict) else {}
+        if not isinstance(data, dict):
+            log.warning("모델 응답이 객체가 아님 %s, 원문=%s", detail.raw.key, raw_content[:200])
             return None
 
         return AnalysisResult.from_model_json(data)

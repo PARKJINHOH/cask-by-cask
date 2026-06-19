@@ -13,6 +13,7 @@ import re
 # Step 5 기본 키워드 (config.DEAL_KEYWORDS 로 덮어쓸 수 있음)
 DEFAULT_KEYWORDS = [
     "할인", "특가", "핫딜", "세일", "이벤트", "%", "한정", "최저가",
+    "구매", "구입", "영입", "특파원", "입고",
     "sale", "deal", "discount", "limited",
 ]
 

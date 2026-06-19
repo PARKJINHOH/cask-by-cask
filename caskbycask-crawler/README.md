@@ -6,8 +6,9 @@ OpenAI 로 분석하고, CaskByCask 백엔드의 관리자 검토 큐로 보내�
 
 ## 파이프라인
 ```
-스크래퍼(디시·네이버카페) → 제목 1차 키워드 필터 → 중복(SQLite) 제외
- → 본문/이미지 수집 → 이미지 임시저장·base64·즉시삭제 → OpenAI 분석
+스크래퍼(디시·네이버카페) → 제목 1차 키워드 필터 → pending 대기열 저장
+ → 최근 딜 fingerprint 중복 제외 → 본문/이미지 수집 → 이미지 임시저장·base64·즉시삭제 → OpenAI 분석
+ → AI 정규화 fingerprint 중복 제외
  → is_deal & confidence_score 통과분만 백엔드 업로드(is_visible=false, PENDING) → 관리자 검토
 ```
 
@@ -20,11 +21,12 @@ OpenAI 로 분석하고, CaskByCask 백엔드의 관리자 검토 큐로 보내�
 | `logger.py` | 회전 파일 + 콘솔 로깅 |
 | `alerts/slack_notifier.py` | 네이버 카페/API/OpenAI 등 운영 문제 Slack 알림 |
 | `scrapers/` | `base_scraper` + `dcinside_scraper` + `naver_cafe_scraper` |
-| `filters/keyword_filter.py` | 제목 할인 키워드 1차 필터 |
+| `filters/keyword_filter.py` | 제목 할인/구매 키워드 1차 필터 |
+| `filters/deal_deduplicator.py` | 제목·AI 결과 기반 딜 단위 중복 판정 |
 | `analyzer/` | `prompts.py`(프롬프트) + `openai_analyzer.py` |
 | `storage/image_handler.py` | 이미지 임시 다운로드→압축→base64→삭제 |
 | `uploader/api_uploader.py` | 백엔드 내부 API 업로드 (+수신 계약 명세) |
-| `db/seen_posts.py` | 중복 방지 SQLite 스토어 |
+| `db/seen_posts.py` | 게시글 중복, 분석 대기열, 딜 fingerprint SQLite 스토어 |
 
 ## 빠른 시작 (로컬 테스트)
 ```bash
