@@ -7,7 +7,9 @@ export interface CommonDetailForm {
   ageStatement: number | null
   ageStatementMonths: number | null
   ageStatementMin: number | null
+  ageStatementMinMonths: number | null
   ageStatementMax: number | null
+  ageStatementMaxMonths: number | null
   distilledDate: string
   bottledDate: string
   releaseDate: string
@@ -19,7 +21,9 @@ export interface CommonDetailForm {
 }
 
 export const DEFAULT_COMMON_DETAIL: CommonDetailForm = {
-  isNas: false, ageStatement: null, ageStatementMonths: null, ageStatementMin: null, ageStatementMax: null, distilledDate: '', bottledDate: '',
+  isNas: false, ageStatement: null, ageStatementMonths: null,
+  ageStatementMin: null, ageStatementMinMonths: null, ageStatementMax: null, ageStatementMaxMonths: null,
+  distilledDate: '', bottledDate: '',
   releaseDate: '', volumeMl: '', abv: '', bottleNo: '', batchNo: '', totalBottles: '',
 }
 
@@ -64,12 +68,16 @@ export default function SpiritCommonDetailSection({ value, onChange, dateErrors,
           ageStatement={value.ageStatement}
           ageStatementMonths={value.ageStatementMonths}
           ageStatementMin={value.ageStatementMin}
+          ageStatementMinMonths={value.ageStatementMinMonths}
           ageStatementMax={value.ageStatementMax}
+          ageStatementMaxMonths={value.ageStatementMaxMonths}
           onNasChange={(v) => onChange({ isNas: v })}
           onAgeChange={(v) => onChange({ ageStatement: v })}
           onMonthsChange={(v) => onChange({ ageStatementMonths: v })}
           onMinChange={(v) => onChange({ ageStatementMin: v })}
+          onMinMonthsChange={(v) => onChange({ ageStatementMinMonths: v })}
           onMaxChange={(v) => onChange({ ageStatementMax: v })}
+          onMaxMonthsChange={(v) => onChange({ ageStatementMaxMonths: v })}
         />
       )}
 

@@ -38,7 +38,8 @@ public class SpiritDetailService {
         commonDetailRepo.findById(spirit.getId()).ifPresentOrElse(
             existing -> existing.update(
                 isNas, req.ageStatement(), req.ageStatementMonths(),
-                req.ageStatementMin(), req.ageStatementMax(),
+                req.ageStatementMin(), req.ageStatementMinMonths(),
+                req.ageStatementMax(), req.ageStatementMaxMonths(),
                 req.distilledDate(), req.bottledDate(), req.releaseDate(),
                 req.volumeMl(), req.abv(),
                 req.bottleNo(), req.batchNo(), req.totalBottles()),
@@ -48,7 +49,9 @@ public class SpiritDetailService {
                 .ageStatement(isNas ? null : req.ageStatement())
                 .ageStatementMonths(isNas ? null : req.ageStatementMonths())
                 .ageStatementMin(isNas ? null : req.ageStatementMin())
+                .ageStatementMinMonths(isNas ? null : req.ageStatementMinMonths())
                 .ageStatementMax(isNas ? null : req.ageStatementMax())
+                .ageStatementMaxMonths(isNas ? null : req.ageStatementMaxMonths())
                 .distilledDate(req.distilledDate())
                 .bottledDate(req.bottledDate())
                 .releaseDate(req.releaseDate())

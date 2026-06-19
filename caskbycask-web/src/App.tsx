@@ -23,6 +23,7 @@ const OAuthSignupPage = lazy(() => import('@/pages/OAuthSignupPage'))
 const MyPage = lazy(() => import('@/pages/MyPage'))
 const RankingPage = lazy(() => import('@/pages/RankingPage'))
 const SpiritRequestPage = lazy(() => import('@/pages/SpiritRequestPage'))
+const MySpiritRequestsPage = lazy(() => import('@/pages/MySpiritRequestsPage'))
 const ProducerRequestPage = lazy(() => import('@/pages/ProducerRequestPage'))
 const FeedbackListPage = lazy(() => import('@/pages/FeedbackListPage'))
 const FeedbackFormPage = lazy(() => import('@/pages/FeedbackFormPage'))
@@ -135,6 +136,7 @@ export default function App() {
               <Route path="community/byob/:id/edit" element={<ByobFormPage />} />
 <Route path="mypage" element={<MyPage />} />
               <Route path="request/spirit" element={<SpiritRequestPage />} />
+              <Route path="request/spirit/my" element={<MySpiritRequestsPage />} />
               <Route path="request/producer" element={<ProducerRequestPage />} />
               <Route path="request/feedback" element={<FeedbackListPage />} />
               <Route path="request/feedback/new" element={<FeedbackFormPage />} />

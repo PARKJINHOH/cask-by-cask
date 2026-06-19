@@ -785,8 +785,14 @@ export default function SpiritDetailPage() {
   const countryLabel = localizeCountry(spirit.country, i18n.language)
   const regionLabel  = localizeRegion(spirit.region, i18n.language)
 
+  // 에디션(자식 variant)은 자체 이미지가 없고 이미지는 마스터(부모)에만 저장된다.
+  // 표시용 갤러리 이미지는 본인 것을 우선하되, 없으면 마스터 이미지로 폴백한다.
+  const galleryImages = (spirit.images && spirit.images.length > 0)
+    ? spirit.images
+    : (parentSpirit?.images ?? [])
+
   const canonicalUrl = buildCanonical(`/spirits/${spirit.id}`)
-  const rawImage = spirit.primaryImageUrl || spirit.images?.[0]?.imageUrl
+  const rawImage = spirit.primaryImageUrl || galleryImages[0]?.imageUrl
   const heroImage = rawImage
     ? (rawImage.startsWith('http') ? rawImage : `${SITE_URL}${rawImage}`)
     : DEFAULT_OG_IMAGE
@@ -877,7 +883,7 @@ export default function SpiritDetailPage() {
           {/* Gallery */}
           <div className="md:w-80 flex-shrink-0 p-5 md:border-r border-neutral-100">
             <Gallery
-              images={spirit.images}
+              images={galleryImages}
               nameKo={primaryName}
               selectedIdx={selectedImg}
               onSelect={setSelectedImg}
@@ -1021,7 +1027,7 @@ export default function SpiritDetailPage() {
       </div>
 
       <ImageLightbox
-        images={spirit.images.map((img) => img.imageUrl)}
+        images={galleryImages.map((img) => img.imageUrl)}
         initialIndex={lightboxIdx >= 0 ? lightboxIdx : 0}
         open={lightboxIdx >= 0}
         onClose={() => setLightboxIdx(-1)}

@@ -1,16 +1,21 @@
 import { useState, useEffect } from 'react'
+import { sanitizeAgeYearMonth, parseAgeYearMonth, formatAgeYearMonth } from '@/shared/utils/yearMonth'
 
 interface Props {
   isNas: boolean
   ageStatement: number | null
   ageStatementMonths?: number | null
   ageStatementMin: number | null
+  ageStatementMinMonths?: number | null
   ageStatementMax: number | null
+  ageStatementMaxMonths?: number | null
   onNasChange: (isNas: boolean) => void
   onAgeChange: (age: number | null) => void
   onMonthsChange?: (months: number | null) => void
   onMinChange: (min: number | null) => void
+  onMinMonthsChange?: (months: number | null) => void
   onMaxChange: (max: number | null) => void
+  onMaxMonthsChange?: (months: number | null) => void
 }
 
 const INPUT_CLS = 'w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white'
@@ -20,14 +25,21 @@ export default function NasToggle({
   ageStatement,
   ageStatementMonths,
   ageStatementMin,
+  ageStatementMinMonths,
   ageStatementMax,
+  ageStatementMaxMonths,
   onNasChange,
   onAgeChange,
   onMonthsChange,
   onMinChange,
+  onMinMonthsChange,
   onMaxChange,
+  onMaxMonthsChange,
 }: Props) {
   const [isRange, setIsRange] = useState(false)
+  const [ageText, setAgeText] = useState(formatAgeYearMonth(ageStatement, ageStatementMonths ?? null))
+  const [minText, setMinText] = useState(formatAgeYearMonth(ageStatementMin, ageStatementMinMonths ?? null))
+  const [maxText, setMaxText] = useState(formatAgeYearMonth(ageStatementMax, ageStatementMaxMonths ?? null))
 
   // 프리필 또는 외부 상태 변화 감지
   useEffect(() => {
@@ -38,17 +50,68 @@ export default function NasToggle({
     }
   }, [ageStatementMin, ageStatementMax])
 
+  // 외부에서 값이 바뀐 경우(프리필 등)에만 입력 텍스트를 다시 동기화 — 타이핑 중 하이픈이 지워지지 않도록 함
+  useEffect(() => {
+    const parsed = parseAgeYearMonth(ageText)
+    if (parsed.years !== ageStatement || parsed.months !== (ageStatementMonths ?? null)) {
+      setAgeText(formatAgeYearMonth(ageStatement, ageStatementMonths ?? null))
+    }
+  }, [ageStatement, ageStatementMonths]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const parsed = parseAgeYearMonth(minText)
+    if (parsed.years !== ageStatementMin || parsed.months !== (ageStatementMinMonths ?? null)) {
+      setMinText(formatAgeYearMonth(ageStatementMin, ageStatementMinMonths ?? null))
+    }
+  }, [ageStatementMin, ageStatementMinMonths]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const parsed = parseAgeYearMonth(maxText)
+    if (parsed.years !== ageStatementMax || parsed.months !== (ageStatementMaxMonths ?? null)) {
+      setMaxText(formatAgeYearMonth(ageStatementMax, ageStatementMaxMonths ?? null))
+    }
+  }, [ageStatementMax, ageStatementMaxMonths]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleRangeToggle = (checked: boolean) => {
     setIsRange(checked)
     if (!checked) {
       // 범위 지정 해제 시 min/max 초기화
       onMinChange(null)
+      onMinMonthsChange?.(null)
       onMaxChange(null)
+      onMaxMonthsChange?.(null)
+      setMinText('')
+      setMaxText('')
     } else {
-      // 범위 지정 설정 시 단일 값(년/월) 초기화 — 월은 단일 값 전용
+      // 범위 지정 설정 시 단일 값(년/월) 초기화
       onAgeChange(null)
       onMonthsChange?.(null)
+      setAgeText('')
     }
+  }
+
+  const handleAgeTextChange = (raw: string) => {
+    const sanitized = sanitizeAgeYearMonth(raw)
+    setAgeText(sanitized)
+    const { years, months } = parseAgeYearMonth(sanitized)
+    onAgeChange(years)
+    onMonthsChange?.(months)
+  }
+
+  const handleMinTextChange = (raw: string) => {
+    const sanitized = sanitizeAgeYearMonth(raw)
+    setMinText(sanitized)
+    const { years, months } = parseAgeYearMonth(sanitized)
+    onMinChange(years)
+    onMinMonthsChange?.(months)
+  }
+
+  const handleMaxTextChange = (raw: string) => {
+    const sanitized = sanitizeAgeYearMonth(raw)
+    setMaxText(sanitized)
+    const { years, months } = parseAgeYearMonth(sanitized)
+    onMaxChange(years)
+    onMaxMonthsChange?.(months)
   }
 
   return (
@@ -64,7 +127,12 @@ export default function NasToggle({
                 onAgeChange(null)
                 onMonthsChange?.(null)
                 onMinChange(null)
+                onMinMonthsChange?.(null)
                 onMaxChange(null)
+                onMaxMonthsChange?.(null)
+                setAgeText('')
+                setMinText('')
+                setMaxText('')
               }
             }}
             className="w-4 h-4 accent-amber-500 cursor-pointer"
@@ -87,7 +155,7 @@ export default function NasToggle({
 
       <div className="space-y-1.5">
         <label className="block text-xs font-medium text-neutral-600">
-          숙성 연수 (년{!isRange && ', 월'})
+          숙성 연수 (년 또는 년-개월)
           {isNas && (
             <span className="ml-1.5 text-neutral-400 font-normal">(NAS 선택 시 저장되지 않음)</span>
           )}
@@ -97,69 +165,40 @@ export default function NasToggle({
           <div className="flex items-center gap-2">
             <div className="flex-1">
               <input
-                type="number"
-                min={1}
-                max={100}
-                step={1}
-                value={ageStatementMin ?? ''}
-                onChange={(e) => onMinChange(e.target.value === '' ? null : Number(e.target.value))}
-                placeholder="최소"
+                type="text"
+                value={minText}
+                onChange={(e) => handleMinTextChange(e.target.value)}
+                placeholder="최소 (예: 12 또는 12-06)"
+                maxLength={5}
                 className={`${INPUT_CLS} border-neutral-300`}
               />
             </div>
             <span className="text-neutral-400">~</span>
             <div className="flex-1">
               <input
-                type="number"
-                min={1}
-                max={100}
-                step={1}
-                value={ageStatementMax ?? ''}
-                onChange={(e) => onMaxChange(e.target.value === '' ? null : Number(e.target.value))}
-                placeholder="최대"
+                type="text"
+                value={maxText}
+                onChange={(e) => handleMaxTextChange(e.target.value)}
+                placeholder="최대 (예: 12 또는 12-06)"
+                maxLength={5}
                 className={`${INPUT_CLS} border-neutral-300`}
               />
             </div>
           </div>
         ) : (
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
-              <input
-                type="number"
-                min={0}
-                max={100}
-                step={1}
-                value={ageStatement ?? ''}
-                onChange={(e) => onAgeChange(e.target.value === '' ? null : Number(e.target.value))}
-                disabled={isNas}
-                placeholder="예: 12"
-                className={`${INPUT_CLS} pr-7 ${
-                  isNas
-                    ? 'opacity-40 cursor-not-allowed bg-neutral-50 border-neutral-300'
-                    : 'border-neutral-300'
-                }`}
-              />
-              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">년</span>
-            </div>
-            <div className="relative flex-1">
-              <input
-                type="number"
-                min={0}
-                max={11}
-                step={1}
-                value={ageStatementMonths ?? ''}
-                onChange={(e) => onMonthsChange?.(e.target.value === '' ? null : Number(e.target.value))}
-                disabled={isNas}
-                placeholder="예: 6"
-                className={`${INPUT_CLS} pr-9 ${
-                  isNas
-                    ? 'opacity-40 cursor-not-allowed bg-neutral-50 border-neutral-300'
-                    : 'border-neutral-300'
-                }`}
-              />
-              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">개월</span>
-            </div>
-          </div>
+          <input
+            type="text"
+            value={ageText}
+            onChange={(e) => handleAgeTextChange(e.target.value)}
+            disabled={isNas}
+            placeholder="예: 12 또는 12-06"
+            maxLength={5}
+            className={`${INPUT_CLS} ${
+              isNas
+                ? 'opacity-40 cursor-not-allowed bg-neutral-50 border-neutral-300'
+                : 'border-neutral-300'
+            }`}
+          />
         )}
       </div>
     </div>

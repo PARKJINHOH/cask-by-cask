@@ -20,8 +20,14 @@ public record SpiritCommonDetailResponse(
         @Schema(description = "최소 숙성 연수")
         Integer ageStatementMin,
 
+        @Schema(description = "범위 최소 숙성 개월 (0~11)")
+        Integer ageStatementMinMonths,
+
         @Schema(description = "최대 숙성 연수")
         Integer ageStatementMax,
+
+        @Schema(description = "범위 최대 숙성 개월 (0~11)")
+        Integer ageStatementMaxMonths,
 
         @Schema(description = "증류 연월 (YYYY 또는 YYYY-MM)")
         String distilledDate,
@@ -56,7 +62,9 @@ public record SpiritCommonDetailResponse(
                 isNas ? null : detail.getAgeStatement(),
                 isNas ? null : detail.getAgeStatementMonths(),
                 isNas ? null : detail.getAgeStatementMin(),
+                isNas ? null : detail.getAgeStatementMinMonths(),
                 isNas ? null : detail.getAgeStatementMax(),
+                isNas ? null : detail.getAgeStatementMaxMonths(),
                 detail.getDistilledDate(),
                 detail.getBottledDate(),
                 detail.getReleaseDate(),

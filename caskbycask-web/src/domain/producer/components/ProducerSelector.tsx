@@ -1,29 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAllProducers } from '../hooks/useProducer'
-import type { Producer, ProducerType } from '../types/producer.types'
+import type { Producer, ProducerSelectorProps as Props } from '../types/producer.types'
 
-export interface NewProducerInput {
-  nameKo: string
-  nameEn: string
-  country: string
-}
-
-interface Props {
-  value: number | null
-  defaultName?: string
-  /** 선택된 생산자 객체를 함께 전달 (국가·지역 자동 채움 등). 직접 등록/해제 시엔 undefined/null. */
-  onChange: (id: number | null, producer?: Producer | null) => void
-  placeholder?: string
-  /** 지정 시 해당 타입 생산자만 표시 (카테고리 게이팅) */
-  type?: ProducerType
-  /**
-   * 지정 시 "목록에 없는 생산자 직접 등록" 미니폼 노출 (기타 카테고리 전용).
-   * 반환값이 number면 즉시 선택, null이면 선택 없이 닫힘(예: 승인 대기 요청).
-   */
-  onCreateNew?: (data: NewProducerInput) => Promise<number | null>
-  defaultCountry?: string
-}
+export type { NewProducerInput } from '../types/producer.types'
 
 export default function ProducerSelector({ value, defaultName, onChange, placeholder, type, onCreateNew, defaultCountry }: Props) {
   const { t } = useTranslation()

@@ -97,7 +97,9 @@ export interface SpiritCommonDetailResponse {
   ageStatement: number | null
   ageStatementMonths: number | null
   ageStatementMin: number | null
+  ageStatementMinMonths: number | null
   ageStatementMax: number | null
+  ageStatementMaxMonths: number | null
   distilledDate: string | null
   bottledDate: string | null
   releaseDate: string | null

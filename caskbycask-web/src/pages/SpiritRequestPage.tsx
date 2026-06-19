@@ -1,181 +1,59 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
-import {
-  useMyRequests, useSubmitRequest, useUpdateMyRequest, useDeleteMyRequest,
-} from '@/domain/spirit/hooks/useSpiritRequest'
+import { Link, useSearchParams } from 'react-router-dom'
+import { useSubmitRequest, useUpdateMyRequest } from '@/domain/spirit/hooks/useSpiritRequest'
 import { spiritRequestApi } from '@/domain/spirit/api/spiritRequestApi'
-import type { SpiritRegisterRequestForm, MySpiritRequest, RequestStatus } from '@/domain/spirit/types/spiritRequest.types'
-import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
 import ProducerSelector from '@/domain/producer/components/ProducerSelector'
 import { useSubmitProducerRequest } from '@/domain/producer/hooks/useProducerRequest'
-import { CATEGORY_TO_PRODUCER_TYPE } from '@/domain/producer/types/producer.types'
-import CountryRegionSelector from '@/domain/location/components/CountryRegionSelector'
-import { ISO3166_COUNTRIES } from '@/domain/location/data/iso3166Countries'
+import type { NewProducerInput } from '@/domain/producer/types/producer.types'
 import SeoMeta from '@/shared/components/SeoMeta'
 import Breadcrumb from '@/shared/components/Breadcrumb'
-import { formatYearMonth } from '@/shared/utils/yearMonth'
+import SpiritFormFields, { useSpiritForm, CARD, SectionTitle } from '@/domain/admin/components/SpiritFormFields'
+import { toSpiritRequestForm, toPrefillDetail } from '@/domain/admin/components/spiritFormAdapters'
 
-// 카테고리 선택 카드 (관리자 등록 폼과 동일한 UX)
-const CATEGORY_CARDS: SpiritCategory[] = ['WHISKY', 'COGNAC', 'WINE', 'OTHER']
+// ══════════════════════════════════════════════════════════════════
+//  사용자 술 등록 요청 — 관리자 등록 폼(SpiritFormFields/useSpiritForm)을
+//  그대로 재사용한다(단일 소스). 관리자와의 유일한 기능 차이는 에디션
+//  개수(관리자 N개 / 사용자 1개, allowMultipleVariants=false)와 제출 채널
+//  (평탄화 DTO + 멀티파트 이미지, spiritFormAdapters.ts가 형태를 변환)뿐이다.
+//  술 데이터 항목을 추가·변경할 때는 SpiritFormFields.tsx만 수정하면
+//  관리자 3화면 + 이 화면까지 전부 반영된다.
+//  내 요청 목록은 별도 화면(MySpiritRequestsPage, /request/spirit/my)에서
+//  게시글 목록 형태로 관리 — 이 화면은 ?edit=<id> 쿼리로 수정 모드만 진입.
+// ══════════════════════════════════════════════════════════════════
 
-// 카테고리 핵심값 선택지 (신청자 입력 — 관리자 등록 참고용). 라벨은 spirit.* 번역키 사용
-const CATEGORY_CORE_OPTS: Record<SpiritCategory, { field: keyof SpiritRegisterRequestForm; ns: string; values: string[] }> = {
-  WHISKY: { field: 'whiskyStyle', ns: 'spirit.whiskyStyle', values: ['SINGLE_MALT', 'BLENDED_MALT', 'BLENDED_WHISKY', 'BOURBON', 'WHEATED_BOURBON', 'TENNESSEE', 'RYE', 'POT_STILL', 'GRAIN_CORN', 'OTHER'] },
-  WINE:   { field: 'wineType',    ns: 'spirit.wineType',    values: ['RED', 'WHITE', 'ROSE', 'SPARKLING', 'DESSERT', 'ORANGE', 'FORTIFIED'] },
-  COGNAC: { field: 'cognacGrade', ns: 'spirit.cognacGrade', values: ['VS', 'NAPOLEON', 'VSOP', 'XO', 'XXO', 'HORS_DAGE'] },
-  OTHER:  { field: 'otherType',   ns: 'spirit.otherType',   values: ['RUM', 'GIN', 'VODKA', 'TEQUILA', 'MEZCAL', 'BRANDY', 'LIQUEUR', 'SAKE', 'SOJU', 'BAIJIU', 'ABSINTHE', 'BEER', 'OTHER'] },
-}
-
-const DATE_RE = /^\d{4}(-\d{2})?$/
-
-// 에디션 유형 (위스키 전용 — 관리자 폼과 동일). NONE = 정규(에디션 없음)
-const EDITION_TYPES = ['NONE', 'BATCH', 'SINGLE_CASK', 'RELEASE_YEAR'] as const
 const MAX_IMAGES = 3
-
-const STATUS_STYLE: Record<RequestStatus, string> = {
-  PENDING:  'bg-amber-50 text-amber-700',
-  APPROVED: 'bg-green-50 text-green-700',
-  REJECTED: 'bg-red-50 text-red-700',
-}
 
 const FIELD_CLS =
   'w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 transition-colors'
 const LABEL_CLS = 'block text-xs font-medium text-neutral-600 mb-1.5'
 
-// ── 섹션 타이틀 (단계 배지 + 제목) ───────────────────────────────
-function SectionTitle({ step, title, hint }: { step: number; title: string; hint?: string }) {
-  return (
-    <div className="flex items-center gap-2.5">
-      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-600 text-white text-xs font-bold
-        flex items-center justify-center">{step}</span>
-      <h2 className="text-sm font-bold text-neutral-800">{title}</h2>
-      {hint && <span className="text-xs text-neutral-400">{hint}</span>}
-    </div>
-  )
-}
-
-// ── 필수 라벨 ────────────────────────────────────────────────────
-function ReqLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <label className={LABEL_CLS}>
-      {children}<span className="ml-1 text-red-500">*</span>
-    </label>
-  )
-}
-
-function RequestCard({ item, onEdit, onDelete, busy }: {
-  item: MySpiritRequest
-  onEdit: (id: number) => void
-  onDelete: (id: number) => void
-  busy: boolean
-}) {
-  const { t } = useTranslation()
-  const locked = item.status === 'APPROVED'
-  return (
-    <div className="bg-white rounded-xl border border-neutral-100 p-4 space-y-2">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="font-semibold text-neutral-800 truncate">{item.nameKo}</p>
-          <p className="text-sm text-neutral-500 truncate">{item.nameEn}</p>
-        </div>
-        <span className={`flex-shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_STYLE[item.status]}`}>
-          {t(`spiritRequest.myRequests.status.${item.status}`)}
-        </span>
-      </div>
-
-      <div className="flex items-center gap-2 text-xs text-neutral-400 flex-wrap">
-        <span>{t(`spirit.category.${item.category}`)}</span>
-        <span>·</span>
-        <span>{t('spiritRequest.myRequests.requestedAt')}: {new Date(item.createdAt).toLocaleDateString()}</span>
-        {item.reviewedAt && (
-          <>
-            <span>·</span>
-            <span>{t('spiritRequest.myRequests.reviewedAt')}: {new Date(item.reviewedAt).toLocaleDateString()}</span>
-          </>
-        )}
-      </div>
-
-      {item.status === 'REJECTED' && item.rejectReason && (
-        <div className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
-          <span className="font-medium">{t('spiritRequest.myRequests.rejectReason')}: </span>
-          {item.rejectReason}
-        </div>
-      )}
-
-      {locked ? (
-        <p className="text-xs text-neutral-300">{t('spiritRequest.myRequests.lockedHint')}</p>
-      ) : (
-        <div className="flex justify-end gap-2 pt-1">
-          <button
-            type="button"
-            onClick={() => onEdit(item.id)}
-            disabled={busy}
-            className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-neutral-200
-              text-neutral-600 hover:bg-neutral-50 disabled:opacity-50 transition-colors"
-          >
-            {t('spiritRequest.myRequests.edit')}
-          </button>
-          <button
-            type="button"
-            onClick={() => onDelete(item.id)}
-            disabled={busy}
-            className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-red-200
-              text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors"
-          >
-            {t('spiritRequest.myRequests.delete')}
-          </button>
-        </div>
-      )}
-    </div>
-  )
-}
-
-const EMPTY_FORM: SpiritRegisterRequestForm = {
-  nameKo: '', nameEn: '', category: '' as SpiritCategory,
-}
-
 export default function SpiritRequestPage() {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
+  const form = useSpiritForm()
+
   const [successMsg, setSuccessMsg] = useState('')
   const [loadErr, setLoadErr] = useState('')
   const [editingId, setEditingId] = useState<number | null>(null)
-  const [producerId, setProducerId] = useState<number | null>(null)
-  const [producerName, setProducerName] = useState('')
-  const [countryCode, setCountryCode] = useState<string | null>(null)
-  const [countryNameKo, setCountryNameKo] = useState('')
-  const [regionNameKo, setRegionNameKo] = useState('')
   // 이미지 — 신규 첨부 파일 + 유지할 기존 URL(수정 시)
   const [newImages, setNewImages] = useState<File[]>([])
   const [keptImageUrls, setKeptImageUrls] = useState<string[]>([])
-  const { data: myRequests = [], isLoading } = useMyRequests()
+  // 관리자에게 전달할 비고 (술 데이터가 아닌 제출 채널 전용 필드 — useSpiritForm 밖에서 관리)
+  const [note, setNote] = useState('')
+
+  const [searchParams] = useSearchParams()
   const { mutate: submitRequest, isPending: isSubmitting } = useSubmitRequest()
   const { mutate: updateRequest, isPending: isUpdating } = useUpdateMyRequest()
-  const { mutate: deleteRequest, isPending: isDeleting } = useDeleteMyRequest()
   const { mutateAsync: submitProducerRequest } = useSubmitProducerRequest()
   const isPending = isSubmitting || isUpdating
 
   // 기타 카테고리 — 목록에 없는 생산자 직접 등록 → 생산자 등록요청 큐로 전송 (승인 후 사용)
-  const handleCreateProducer = async (data: { nameKo: string; nameEn: string; country: string }) => {
+  const handleCreateProducer = async (data: NewProducerInput) => {
     await submitProducerRequest({ type: 'OTHER', ...data })
     setSuccessMsg(t('producerSelector.createPending'))
     setTimeout(() => setSuccessMsg(''), 5000)
     return null
   }
-
-  const {
-    register,
-    handleSubmit,
-    reset,
-    watch,
-    setValue,
-    formState: { errors },
-  } = useForm<SpiritRegisterRequestForm>({ defaultValues: EMPTY_FORM, shouldUnregister: true })
-
-  const selectedCategory = watch('category')
-  const isNas = watch('isNas')
-  const whiskyStyle = watch('whiskyStyle')
-  const variantType = watch('variantType')
 
   // 신규 첨부 이미지 미리보기 (object URL — 정리 포함)
   const newImagePreviews = useMemo(() => newImages.map((f) => URL.createObjectURL(f)), [newImages])
@@ -193,67 +71,23 @@ export default function SpiritRequestPage() {
   const removeKeptImage = (url: string) => setKeptImageUrls((prev) => prev.filter((u) => u !== url))
 
   const resetAll = () => {
-    reset(EMPTY_FORM)
-    setProducerId(null)
-    setProducerName('')
-    setCountryCode(null)
-    setCountryNameKo('')
-    setRegionNameKo('')
+    form.reset()
     setNewImages([])
     setKeptImageUrls([])
+    setNote('')
     setEditingId(null)
   }
 
-  // 카테고리 선택 (카드) — 다른 카테고리 핵심값 초기화
-  const handleSelectCategory = (cat: SpiritCategory) => {
-    setValue('category', cat, { shouldValidate: true })
-    setValue('whiskyStyle', undefined)
-    setValue('whiskyStyleOther', undefined)
-    setValue('wineType', undefined)
-    setValue('cognacGrade', undefined)
-    setValue('otherType', undefined)
-    setValue('vintageYear', undefined)
-    // 에디션은 위스키 전용 — 카테고리 변경 시 초기화
-    setValue('variantType', undefined)
-    setValue('variantValue', undefined)
-    setValue('variantValueEn', undefined)
-  }
-
-  const buildPayload = (data: SpiritRegisterRequestForm): SpiritRegisterRequestForm => ({
-    ...data,
-    producerId,
-    country: countryNameKo || undefined,
-    region: regionNameKo || undefined,
-    abv:         data.abv         != null && !isNaN(Number(data.abv))         ? Number(data.abv)         : null,
-    vintageYear: data.vintageYear != null && !isNaN(Number(data.vintageYear)) ? Number(data.vintageYear) : null,
-    volumeMl:    data.volumeMl    != null && !isNaN(Number(data.volumeMl))    ? Number(data.volumeMl)    : null,
-    ageStatement: data.isNas ? null : (data.ageStatement != null && !isNaN(Number(data.ageStatement)) ? Number(data.ageStatement) : null),
-    ageStatementMonths: data.isNas ? null : (data.ageStatementMonths != null && String(data.ageStatementMonths).trim() !== '' && !isNaN(Number(data.ageStatementMonths)) ? Number(data.ageStatementMonths) : null),
-    isNas: data.isNas || undefined,
-    distilledDate: data.distilledDate?.trim() || undefined,
-    bottledDate:   data.bottledDate?.trim()   || undefined,
-    releaseDate:   data.releaseDate || undefined,
-    whiskyStyle: data.whiskyStyle || undefined,
-    whiskyStyleOther: data.whiskyStyle === 'OTHER' ? (data.whiskyStyleOther?.trim() || undefined) : undefined,
-    caskNo: data.category === 'WHISKY' ? (data.caskNo?.trim() || undefined) : undefined,
-    whiskyNotes: data.category === 'WHISKY' ? (data.whiskyNotes?.trim() || undefined) : undefined,
-    wineType:    data.wineType    || undefined,
-    cognacGrade: data.cognacGrade || undefined,
-    otherType:   data.otherType   || undefined,
-    bottledYear: undefined,
-    note:        data.note?.trim() || undefined,
-    // 에디션 (위스키 전용). 정규(NONE)이면 값 미전송
-    variantType: data.category === 'WHISKY' ? (data.variantType || 'NONE') : undefined,
-    variantValue: data.category === 'WHISKY' && data.variantType && data.variantType !== 'NONE'
-      ? (data.variantValue?.trim() || undefined) : undefined,
-    variantValueEn: data.category === 'WHISKY' && data.variantType && data.variantType !== 'NONE'
-      ? (data.variantValueEn?.trim() || undefined) : undefined,
-    // 유지할 기존 이미지 URL (신규 파일은 multipart 별도 전송)
-    imageUrls: keptImageUrls,
-  })
-
-  const onSubmit = (data: SpiritRegisterRequestForm) => {
-    const payload = buildPayload(data)
+  const onSubmit = () => {
+    if (!form.validate()) {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
+    const payload = {
+      ...toSpiritRequestForm(form.buildPayload()),
+      imageUrls: keptImageUrls,
+      note: note.trim() || undefined,
+    }
     if (editingId != null) {
       updateRequest({ id: editingId, data: payload, images: newImages }, {
         onSuccess: () => {
@@ -281,28 +115,10 @@ export default function SpiritRequestPage() {
       const res = await spiritRequestApi.myRequestDetail(id)
       const d = res.data.data
       if (!d) throw new Error('no data')
-      reset({
-        nameKo: d.nameKo, nameEn: d.nameEn, category: d.category,
-        abv: d.abv ?? undefined, volumeMl: d.volumeMl ?? undefined,
-        ageStatement: d.ageStatement ?? undefined, ageStatementMonths: d.ageStatementMonths ?? undefined, isNas: d.isNas ?? undefined,
-        distilledDate: d.distilledDate ?? undefined, bottledDate: d.bottledDate ?? undefined,
-        releaseDate: d.releaseDate ?? undefined,
-        whiskyStyle: d.whiskyStyle ?? undefined, whiskyStyleOther: d.whiskyStyleOther ?? undefined,
-        caskNo: d.caskNo ?? undefined, whiskyNotes: d.whiskyNotes ?? undefined,
-        wineType: d.wineType ?? undefined, cognacGrade: d.cognacGrade ?? undefined,
-        otherType: d.otherType ?? undefined, vintageYear: d.vintageYear ?? undefined,
-        variantType: d.variantType ?? undefined, variantValue: d.variantValue ?? undefined,
-        variantValueEn: d.variantValueEn ?? undefined,
-        note: d.note ?? undefined,
-      })
-      setProducerId(d.producerId ?? null)
-      setProducerName(d.producerNameKo ?? '')
-      const matched = ISO3166_COUNTRIES.find((c) => c.nameKo === d.country)
-      setCountryCode(matched?.code ?? null)
-      setCountryNameKo(d.country ?? '')
-      setRegionNameKo(d.region ?? '')
+      form.prefillFromRequest(toPrefillDetail(d))
       setKeptImageUrls(d.imageUrls ?? [])
       setNewImages([])
+      setNote(d.note ?? '')
       setEditingId(id)
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch {
@@ -310,18 +126,15 @@ export default function SpiritRequestPage() {
     }
   }
 
-  const handleDelete = (id: number) => {
-    if (!confirm(t('spiritRequest.myRequests.deleteConfirm'))) return
-    deleteRequest(id, {
-      onSuccess: () => { if (editingId === id) resetAll() },
-    })
-  }
-
-  const core = selectedCategory ? CATEGORY_CORE_OPTS[selectedCategory] : null
-  const coreError = core ? errors[core.field] : undefined
+  // ?edit=<id> 쿼리로 진입 시 자동으로 수정 모드 로드 (내 요청 목록 페이지에서 진입)
+  useEffect(() => {
+    const editParam = searchParams.get('edit')
+    if (editParam) handleEdit(Number(editParam))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
+    <div className="max-w-3xl lg:max-w-6xl xl:max-w-7xl mx-auto px-4 py-8">
       <SeoMeta title={t('spiritRequest.title')} description={t('spiritRequest.subtitle')} noindex />
 
       <Breadcrumb
@@ -333,14 +146,21 @@ export default function SpiritRequestPage() {
       />
 
       {/* Page title */}
-      <div className="mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900">{t('spiritRequest.title')}</h1>
-        <p className="mt-1 text-sm text-neutral-500">{t('spiritRequest.subtitle')}</p>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900">{t('spiritRequest.title')}</h1>
+          <p className="mt-1 text-sm text-neutral-500">{t('spiritRequest.subtitle')}</p>
+        </div>
+        <Link
+          to="/request/spirit/my"
+          className="flex-shrink-0 text-sm font-medium px-3 py-2 rounded-lg border border-neutral-200
+            text-neutral-600 hover:bg-neutral-50 transition-colors whitespace-nowrap"
+        >
+          {t('spiritRequest.myRequests.viewList')}
+        </Link>
       </div>
 
-      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-6 lg:items-start">
-        {/* ── 폼 ──────────────────────────────────────────── */}
-        <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-6">
+      <form onSubmit={(e) => { e.preventDefault(); onSubmit() }} noValidate className="space-y-6">
 
           {/* 수정 모드 배너 */}
           {editingId != null && (
@@ -356,200 +176,17 @@ export default function SpiritRequestPage() {
             </div>
           )}
 
-          {/* ── 1. 카테고리 선택 ───────────────────────────── */}
-          <section className="bg-white rounded-2xl shadow-sm p-5 sm:p-6 space-y-4">
-            <SectionTitle step={1} title={t('spiritRequest.form.categoryStep')} hint={t('spiritRequest.form.categoryStepHint')} />
-            <input type="hidden" {...register('category', { required: true })} />
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {CATEGORY_CARDS.map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => handleSelectCategory(cat)}
-                  className={`h-12 rounded-xl border-2 text-sm font-semibold transition-all flex items-center justify-center ${
-                    selectedCategory === cat
-                      ? 'border-amber-500 bg-amber-50 text-amber-700'
-                      : 'border-neutral-200 text-neutral-600 hover:border-amber-300 hover:bg-amber-50/50'
-                  }`}
-                >
-                  {t(`spirit.category.${cat}`)}
-                </button>
-              ))}
-            </div>
-            {errors.category && <p className="text-xs text-red-500">{t('spiritRequest.form.errCategory')}</p>}
-          </section>
-
-          {!selectedCategory ? (
-            <div className="rounded-2xl border-2 border-dashed border-neutral-200 bg-neutral-50/50 py-12 text-center">
-              <p className="text-sm text-neutral-400">{t('spiritRequest.form.selectCategoryFirst')}</p>
-            </div>
-          ) : (
-            <>
-              {/* ── 2. 기본 정보 (필수) ──────────────────────── */}
-              <section className="bg-white rounded-2xl shadow-sm p-5 sm:p-6 space-y-5">
-                <SectionTitle step={2} title={t('spiritRequest.form.basicStep')} hint={t('spiritRequest.form.basicStepHint')} />
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <ReqLabel>{t('spiritRequest.form.nameKo')}</ReqLabel>
-                    <input
-                      {...register('nameKo', { required: true, maxLength: 200 })}
-                      maxLength={200}
-                      className={`${FIELD_CLS} ${errors.nameKo ? 'border-red-400' : 'border-neutral-300'}`}
-                      placeholder={t(`spiritRequest.form.nameKoPlaceholder.${selectedCategory}`)}
-                    />
-                    {errors.nameKo && <p className="mt-1 text-xs text-red-500">{t('spiritRequest.form.errNameKo')}</p>}
-                  </div>
-                  <div>
-                    <ReqLabel>{t('spiritRequest.form.nameEn')}</ReqLabel>
-                    <input
-                      {...register('nameEn', { required: true, maxLength: 200 })}
-                      maxLength={200}
-                      className={`${FIELD_CLS} ${errors.nameEn ? 'border-red-400' : 'border-neutral-300'}`}
-                      placeholder={t(`spiritRequest.form.nameEnPlaceholder.${selectedCategory}`)}
-                    />
-                    {errors.nameEn && <p className="mt-1 text-xs text-red-500">{t('spiritRequest.form.errNameEn')}</p>}
-                  </div>
-                </div>
-
-                {/* 카테고리 핵심값 (필수) + (와인) 빈티지 */}
-                {core && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <ReqLabel>{t(`spiritRequest.form.categoryCore.${selectedCategory}`)}</ReqLabel>
-                      <select
-                        {...register(core.field, { required: true })}
-                        className={`${FIELD_CLS} bg-white ${coreError ? 'border-red-400' : 'border-neutral-300'}`}
-                      >
-                        <option value="">{t('spiritRequest.form.categoryCorePlaceholder')}</option>
-                        {core.values.map((v) => {
-                          // 위스키 스타일은 대표 브랜드 예시를 라벨에 함께 노출 (선택 가이드)
-                          const ex = selectedCategory === 'WHISKY' ? t(`spirit.whiskyStyleExample.${v}`, { defaultValue: '' }) : ''
-                          return (
-                            <option key={v} value={v}>{t(`${core.ns}.${v}`)}{ex ? ` (${ex})` : ''}</option>
-                          )
-                        })}
-                      </select>
-                      {coreError && <p className="mt-1 text-xs text-red-500">{t('spiritRequest.form.errCategoryCore')}</p>}
-                      {/* 위스키 스타일 '기타' → 직접 입력 */}
-                      {selectedCategory === 'WHISKY' && whiskyStyle === 'OTHER' && (
-                        <div className="mt-2">
-                          <input
-                            {...register('whiskyStyleOther', {
-                              validate: (v) => whiskyStyle !== 'OTHER' || !!v?.trim(),
-                              maxLength: 100,
-                            })}
-                            maxLength={100}
-                            placeholder={t('spiritRequest.form.whiskyStyleOtherPlaceholder')}
-                            className={`${FIELD_CLS} ${errors.whiskyStyleOther ? 'border-red-400' : 'border-neutral-300'}`}
-                          />
-                          {errors.whiskyStyleOther && <p className="mt-1 text-xs text-red-500">{t('spiritRequest.form.errWhiskyStyleOther')}</p>}
-                        </div>
-                      )}
-                    </div>
-                    {selectedCategory === 'WINE' && (
-                      <div>
-                        <label className={LABEL_CLS}>{t('spiritRequest.form.vintageYear')}</label>
-                        <input
-                          type="number" min="1800" max="2100"
-                          {...register('vintageYear')}
-                          className={`${FIELD_CLS} border-neutral-300`}
-                          placeholder="2010"
-                        />
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* 에디션 유형 (위스키 전용) — 관리자 등록 폼과 동일 개념, 단일 에디션으로 심플 입력 */}
-                {selectedCategory === 'WHISKY' && (
-                  <div className="rounded-xl border border-neutral-200 bg-neutral-50/40 p-4 space-y-3">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className={LABEL_CLS}>{t('spiritRequest.form.editionType.label')}</label>
-                        <select
-                          {...register('variantType')}
-                          className={`${FIELD_CLS} bg-white border-neutral-300`}
-                        >
-                          {EDITION_TYPES.map((v) => (
-                            <option key={v} value={v}>{t(`spiritRequest.form.editionType.${v}`)}</option>
-                          ))}
-                        </select>
-                      </div>
-                      {variantType && variantType !== 'NONE' && (
-                        <div>
-                          <ReqLabel>{t('spiritRequest.form.editionValue')}</ReqLabel>
-                          <input
-                            {...register('variantValue', {
-                              validate: (v) => !!v?.trim(),
-                              maxLength: 100,
-                            })}
-                            maxLength={100}
-                            placeholder={t(`spiritRequest.form.editionValuePlaceholder.${variantType}`)}
-                            className={`${FIELD_CLS} ${errors.variantValue ? 'border-red-400' : 'border-neutral-300'}`}
-                          />
-                          {errors.variantValue && <p className="mt-1 text-xs text-red-500">{t('spiritRequest.form.errEditionValue')}</p>}
-                        </div>
-                      )}
-                    </div>
-                    {variantType && variantType !== 'NONE' && (
-                      <div>
-                        <label className={LABEL_CLS}>{t('spiritRequest.form.editionValueEn')}</label>
-                        <input
-                          {...register('variantValueEn', { maxLength: 100 })}
-                          maxLength={100}
-                          placeholder={t('spiritRequest.form.editionValueEnPlaceholder')}
-                          className={`${FIELD_CLS} border-neutral-300`}
-                        />
-                      </div>
-                    )}
-                    <p className="text-xs text-neutral-400">{t('spiritRequest.form.editionType.hint')}</p>
-                  </div>
-                )}
-
-                {/* 필수 규격 — 도수 / 용량 */}
-                <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-4 space-y-3">
-                  <p className="text-xs font-semibold text-amber-700">{t('spiritRequest.form.requiredSection')}</p>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <ReqLabel>{t('spiritRequest.form.abv')}</ReqLabel>
-                      <div className="relative">
-                        <input
-                          type="number" step="0.1" min="0" max="100"
-                          {...register('abv', { required: true })}
-                          className={`${FIELD_CLS} bg-white pr-8 ${errors.abv ? 'border-red-400' : 'border-neutral-300'}`}
-                          placeholder="43.0"
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">%</span>
-                      </div>
-                      {errors.abv && <p className="mt-1 text-xs text-red-500">{t('spiritRequest.form.errAbv')}</p>}
-                    </div>
-                    <div>
-                      <ReqLabel>{t('spiritRequest.form.volumeMl')}</ReqLabel>
-                      <div className="relative">
-                        <input
-                          type="number" min="1"
-                          {...register('volumeMl', { required: true })}
-                          className={`${FIELD_CLS} bg-white pr-10 ${errors.volumeMl ? 'border-red-400' : 'border-neutral-300'}`}
-                          placeholder="700"
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">ml</span>
-                      </div>
-                      {errors.volumeMl && <p className="mt-1 text-xs text-red-500">{t('spiritRequest.form.errVolume')}</p>}
-                    </div>
-                  </div>
-                  <p className="text-xs text-amber-700/80">{t('spiritRequest.form.requiredNote')}</p>
-                </div>
-              </section>
-
-              {/* ── 3. 추가 정보 (선택) ──────────────────────── */}
-              <section className="bg-white rounded-2xl shadow-sm p-5 sm:p-6 space-y-5">
-                <SectionTitle step={3} title={t('spiritRequest.form.detailStep')} hint={t('spiritRequest.form.detailStepHint')} />
-
+          <SpiritFormFields
+            form={form}
+            allowMultipleVariants={false}
+            producerSelector={ProducerSelector}
+            onCreateProducer={handleCreateProducer}
+            bottomSlot={
+              <div className="space-y-6">
                 {/* 사진 첨부 (최대 3장) — 승인 시 주류 이미지로 등록 */}
-                <div>
-                  <label className={LABEL_CLS}>{t('spiritRequest.form.images.label')}</label>
-                  <p className="text-xs text-neutral-400 mb-2">{t('spiritRequest.form.images.hint')}</p>
+                <div className={CARD}>
+                  <SectionTitle title={t('spiritRequest.form.images.label')} />
+                  <p className="text-xs text-neutral-400">{t('spiritRequest.form.images.hint')}</p>
                   <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
                     {keptImageUrls.map((url) => (
                       <div key={url} className="relative aspect-square rounded-xl overflow-hidden border border-neutral-200">
@@ -587,145 +224,22 @@ export default function SpiritRequestPage() {
                   </div>
                 </div>
 
-                <div>
-                  <label className={LABEL_CLS}>{t(`spiritRequest.form.producerByCategory.${selectedCategory}`)}</label>
-                  <ProducerSelector
-                    value={producerId}
-                    defaultName={producerName}
-                    onChange={(id, producer) => {
-                      setProducerId(id ?? null)
-                      // 생산자에 등록된 국가/지역이 있으면 자동으로 채움 (없으면 기존 값 유지)
-                      if (producer?.country) {
-                        const code = ISO3166_COUNTRIES.find((c) => c.nameKo === producer.country)?.code ?? null
-                        setCountryCode(code)
-                        setCountryNameKo(producer.country)
-                        setRegionNameKo(producer.region ?? '')
-                      }
-                    }}
-                    type={selectedCategory ? CATEGORY_TO_PRODUCER_TYPE[selectedCategory] : undefined}
-                    onCreateNew={handleCreateProducer}
-                    defaultCountry={countryNameKo}
-                  />
-                </div>
-
-                <div>
-                  <label className={LABEL_CLS}>{t('spiritRequest.form.country')} / {t('spiritRequest.form.region')}</label>
-                  <CountryRegionSelector
-                    countryCode={countryCode}
-                    regionNameKo={regionNameKo}
-                    onCountryChange={(code, nameKo) => { setCountryCode(code); setCountryNameKo(nameKo) }}
-                    onRegionChange={(nameKo) => setRegionNameKo(nameKo)}
-                  />
-                </div>
-
-                {/* 캐스크 번호 (위스키 전용) */}
-                {selectedCategory === 'WHISKY' && (
-                  <div>
-                    <label className={LABEL_CLS}>{t('spiritRequest.form.caskNo')}</label>
-                    <input
-                      {...register('caskNo', { maxLength: 100 })}
-                      maxLength={100}
-                      className={`${FIELD_CLS} border-neutral-300`}
-                    />
-                  </div>
-                )}
-
-                {/* 기타 정보 (위스키 전용, 참고용 자유 입력) */}
-                {selectedCategory === 'WHISKY' && (
-                  <div>
-                    <label className={LABEL_CLS}>{t('spiritRequest.form.whiskyNotes')}</label>
-                    <textarea
-                      {...register('whiskyNotes', { maxLength: 500 })}
-                      maxLength={500}
-                      rows={2}
-                      placeholder={t('spiritRequest.form.whiskyNotesPlaceholder')}
-                      className={`${FIELD_CLS} border-neutral-300 resize-none`}
-                    />
-                  </div>
-                )}
-
-                {/* 숙성 연수 + NAS */}
-                <div>
-                  <label className="flex items-center gap-2 cursor-pointer select-none mb-2">
-                    <input type="checkbox" {...register('isNas')} className="w-4 h-4 accent-amber-500 cursor-pointer" />
-                    <span className="text-sm font-medium text-neutral-700">{t('spiritRequest.form.nas')}</span>
-                  </label>
-                  <label className={LABEL_CLS}>
-                    {t('spiritRequest.form.ageStatement')}
-                    {isNas && <span className="ml-1.5 font-normal text-neutral-400">{t('spiritRequest.form.nasHint')}</span>}
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <div className="relative flex-1">
-                      <input
-                        type="number" min="0" max="100" step="1"
-                        {...register('ageStatement')}
-                        disabled={isNas}
-                        placeholder={t('spiritRequest.form.agePlaceholder')}
-                        className={`${FIELD_CLS} pr-7 ${isNas ? 'opacity-40 cursor-not-allowed bg-neutral-50 border-neutral-300' : 'border-neutral-300'}`}
-                      />
-                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">{t('spiritRequest.form.ageYearUnit')}</span>
-                    </div>
-                    <div className="relative flex-1">
-                      <input
-                        type="number" min="0" max="11" step="1"
-                        {...register('ageStatementMonths')}
-                        disabled={isNas}
-                        placeholder={t('spiritRequest.form.ageMonthPlaceholder')}
-                        className={`${FIELD_CLS} pr-9 ${isNas ? 'opacity-40 cursor-not-allowed bg-neutral-50 border-neutral-300' : 'border-neutral-300'}`}
-                      />
-                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">{t('spiritRequest.form.ageMonthUnit')}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 증류 / 병입 연월 */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className={LABEL_CLS}>{t('spiritRequest.form.distilledDate')}</label>
-                    <input
-                      type="text"
-                      {...register('distilledDate', { validate: (v) => !v || DATE_RE.test(v) })}
-                      onChange={(e) => setValue('distilledDate', formatYearMonth(e.target.value), { shouldValidate: true })}
-                      maxLength={7}
-                      placeholder="YYYY / YYYY-MM"
-                      className={`${FIELD_CLS} ${errors.distilledDate ? 'border-red-400' : 'border-neutral-300'}`}
-                    />
-                    {errors.distilledDate && <p className="mt-1 text-xs text-red-500">{t('spiritRequest.form.errDateFormat')}</p>}
-                  </div>
-                  <div>
-                    <label className={LABEL_CLS}>{t('spiritRequest.form.bottledDate')}</label>
-                    <input
-                      type="text"
-                      {...register('bottledDate', { validate: (v) => !v || DATE_RE.test(v) })}
-                      onChange={(e) => setValue('bottledDate', formatYearMonth(e.target.value), { shouldValidate: true })}
-                      maxLength={7}
-                      placeholder="YYYY / YYYY-MM"
-                      className={`${FIELD_CLS} ${errors.bottledDate ? 'border-red-400' : 'border-neutral-300'}`}
-                    />
-                    {errors.bottledDate && <p className="mt-1 text-xs text-red-500">{t('spiritRequest.form.errDateFormat')}</p>}
-                  </div>
-                </div>
-
-                <div>
-                  <label className={LABEL_CLS}>{t('spiritRequest.form.releaseDate')}</label>
-                  <input type="date" max="9999-12-31" lang={i18n.language} {...register('releaseDate')} className={`${FIELD_CLS} border-neutral-300`} />
-                </div>
-
-                {/* 기타 문구 */}
-                <div>
-                  <label className={LABEL_CLS}>{t('spiritRequest.form.note')}</label>
+                {/* 비고 */}
+                <div className={CARD}>
+                  <SectionTitle title={t('spiritRequest.form.note')} />
                   <textarea
-                    {...register('note', { maxLength: 500 })}
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
                     maxLength={500}
                     rows={3}
                     className={`${FIELD_CLS} border-neutral-300 resize-none`}
                     placeholder={t('spiritRequest.form.notePlaceholder')}
                   />
-                  <p className="mt-1 text-xs text-neutral-400">{t('spiritRequest.form.noteHint')}</p>
+                  <p className={LABEL_CLS}>{t('spiritRequest.form.noteHint')}</p>
                 </div>
-              </section>
-            </>
-          )}
+              </div>
+            }
+          />
 
           {successMsg && (
             <div className="text-sm text-green-700 bg-green-50 rounded-lg px-4 py-3">{successMsg}</div>
@@ -744,33 +258,7 @@ export default function SpiritRequestPage() {
               : editingId != null ? t('spiritRequest.form.submitEdit')
               : t('spiritRequest.form.submit')}
           </button>
-        </form>
-
-        {/* ── 내 요청 목록 (PC 사이드바 / 모바일 하단) ──────── */}
-        <aside className="mt-8 lg:mt-0 space-y-4">
-          <h2 className="text-lg font-bold text-neutral-800">{t('spiritRequest.myRequests.title')}</h2>
-
-          {isLoading ? (
-            <p className="text-sm text-neutral-400">{t('common.loading')}</p>
-          ) : myRequests.length === 0 ? (
-            <div className="bg-white rounded-xl border border-dashed border-neutral-200 p-6 text-center">
-              <p className="text-sm text-neutral-400">{t('spiritRequest.myRequests.empty')}</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {myRequests.map(item => (
-                <RequestCard
-                  key={item.id}
-                  item={item}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                  busy={isDeleting || isPending}
-                />
-              ))}
-            </div>
-          )}
-        </aside>
-      </div>
+      </form>
     </div>
   )
 }

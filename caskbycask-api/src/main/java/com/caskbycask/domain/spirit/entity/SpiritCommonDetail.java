@@ -44,9 +44,17 @@ public class SpiritCommonDetail {
     @Comment("최소 숙성 연수(년)")
     private Integer ageStatementMin;
 
+    @Column(name = "age_statement_min_months")
+    @Comment("범위 최소 숙성 개월(0~11)")
+    private Integer ageStatementMinMonths;
+
     @Column(name = "age_statement_max")
     @Comment("최대 숙성 연수(년)")
     private Integer ageStatementMax;
+
+    @Column(name = "age_statement_max_months")
+    @Comment("범위 최대 숙성 개월(0~11)")
+    private Integer ageStatementMaxMonths;
 
     /** 형식: "YYYY" or "YYYY-MM" — 연도만 아는 경우를 위해 String 사용 */
     @Column(length = 7)
@@ -84,7 +92,8 @@ public class SpiritCommonDetail {
     private Integer totalBottles;
 
     public void update(boolean isNas, Integer ageStatement, Integer ageStatementMonths,
-                       Integer ageStatementMin, Integer ageStatementMax,
+                       Integer ageStatementMin, Integer ageStatementMinMonths,
+                       Integer ageStatementMax, Integer ageStatementMaxMonths,
                        String distilledDate, String bottledDate, java.time.LocalDate releaseDate,
                        Integer volumeMl, java.math.BigDecimal abv,
                        String bottleNo, String batchNo, Integer totalBottles) {
@@ -92,7 +101,9 @@ public class SpiritCommonDetail {
         this.ageStatement      = isNas ? null : ageStatement;
         this.ageStatementMonths = isNas ? null : ageStatementMonths;
         this.ageStatementMin   = isNas ? null : ageStatementMin;
+        this.ageStatementMinMonths = isNas ? null : ageStatementMinMonths;
         this.ageStatementMax   = isNas ? null : ageStatementMax;
+        this.ageStatementMaxMonths = isNas ? null : ageStatementMaxMonths;
         this.distilledDate    = distilledDate;
         this.bottledDate      = bottledDate;
         this.releaseDate      = releaseDate;

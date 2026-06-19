@@ -252,14 +252,52 @@
         "RELEASE_YEAR": "출시 연도"
       },
       "editionValue": "에디션 값",
+      "editionValueLabel": {
+        "BATCH": "배치(릴리즈)",
+        "SINGLE_CASK": "캐스크 번호",
+        "RELEASE_YEAR": "출시 연도"
+      },
       "editionValuePlaceholder": {
-        "BATCH": "예) Batch 11",
-        "SINGLE_CASK": "예) #1234",
+        "BATCH": "예) 배치11",
+        "SINGLE_CASK": "예) FI150504001A",
         "RELEASE_YEAR": "예) 2023"
       },
       "errEditionValue": "에디션 값을 입력해주세요.",
       "editionValueEn": "에디션 값 (영문)",
-      "editionValueEnPlaceholder": "예) Batch 11",
+      "editionValueEnLabel": {
+        "BATCH": "배치(릴리즈) (영문)",
+        "SINGLE_CASK": "캐스크 번호 (영문)",
+        "RELEASE_YEAR": "출시 연도 (영문)"
+      },
+      "editionValueEnPlaceholder": {
+        "BATCH": "예) Batch11",
+        "SINGLE_CASK": "예) FI150504001A",
+        "RELEASE_YEAR": "예) 2023"
+      },
+      "errEditionValueEn": "에디션 값(영문)을 입력해주세요.",
+      "whiskyDetail": {
+        "caskLabel": "캐스크",
+        "caskHint": "사용된 캐스크 종류를 체크하고, 아래에 구체적인 세부 명칭을 적어주세요. (선택)",
+        "finish": "피니시",
+        "detailHint": "세부 오크통 종류 명칭",
+        "addDetail": "추가",
+        "featuresLabel": "특성",
+        "feature": {
+          "isNonChillFiltered": "Non-Chill Filtered (저온 여과 생략)",
+          "isNaturalColour": "Natural Colour (캐러멜 색소 무첨가)",
+          "isSingleCask": "Single Cask (단일 캐스크)",
+          "isCaskStrength": "Cask Strength (원액 그대로)",
+          "isPeated": "Peated (피트 사용)"
+        },
+        "phenolLabel": "피트 강도 (ppm)",
+        "rangeToggle": "범위 지정",
+        "min": "최소",
+        "max": "최대",
+        "caskNoLabel": "싱글 캐스크 번호",
+        "caskNoPlaceholder": "예) 카발란 FI150504001A",
+        "notesLabel": "기타 정보",
+        "notesPlaceholder": "예) 2021~2022 출시 제품, PX 50% 포트 20%"
+      },
       "images": {
         "label": "사진 첨부",
         "hint": "최대 3장까지 첨부할 수 있어요. 첨부한 사진은 승인 시 주류 이미지로 등록됩니다.",
@@ -280,7 +318,13 @@
       "edit": "수정",
       "delete": "삭제",
       "deleteConfirm": "이 등록 요청을 삭제하시겠습니까?",
-      "lockedHint": "승인된 요청은 수정·삭제할 수 없습니다."
+      "lockedHint": "승인된 요청은 수정·삭제할 수 없습니다.",
+      "colStatus": "상태",
+      "colName": "이름",
+      "colCategory": "카테고리",
+      "colActions": "관리",
+      "viewList": "내 요청 목록 보기",
+      "newRequest": "새 요청 작성"
     }
   },
   "producerDetail": {

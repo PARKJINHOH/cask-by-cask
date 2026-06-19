@@ -6,6 +6,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import AdminProducerSelector from '@/domain/producer/components/AdminProducerSelector'
 import { adminProducerApi } from '@/domain/admin/api/adminProducerApi'
 import { CATEGORY_TO_PRODUCER_TYPE } from '@/domain/producer/types/producer.types'
+import type { ProducerSelectorProps, NewProducerInput } from '@/domain/producer/types/producer.types'
 import CountryRegionSelector from '@/domain/location/components/CountryRegionSelector'
 import InfoTooltip from '@/shared/components/InfoTooltip'
 import { ISO3166_COUNTRIES } from '@/domain/location/data/iso3166Countries'
@@ -297,6 +298,32 @@ export function useSpiritForm() {
     )
   }
 
+  // 폼 전체 초기화 (등록 후 같은 페이지에서 새 입력을 받는 화면용 — 사용자 등록 요청 화면)
+  const reset = () => {
+    setCategory(null)
+    setNameKo('')
+    setNameEn('')
+    setProducerId(null)
+    setProducerName('')
+    setBottler('')
+    setBottledYear('')
+    setVintageYear('')
+    setCountryCode(null)
+    setCountry('')
+    setRegion('')
+    setIsVariantSplit(false)
+    setVariants([])
+    setIsAbvRange(false)
+    setAbvMin('')
+    setAbvMax('')
+    setCommonDetail(DEFAULT_COMMON_DETAIL)
+    setWhiskyDetail(DEFAULT_WHISKY)
+    setWineDetail(DEFAULT_WINE)
+    setCognacDetail(DEFAULT_COGNAC)
+    setOtherDetail(DEFAULT_OTHER)
+    setErrors({})
+  }
+
   // 카테고리 선택 (와인 ↔ 비와인 전환 시 연도 필드 정리)
   const selectCategory = (cat: SpiritCategory) => {
     if (cat === category) return
@@ -338,7 +365,9 @@ export function useSpiritForm() {
           ageStatement: v.commonDetail.ageStatement,
           ageStatementMonths: v.commonDetail.ageStatementMonths,
           ageStatementMin: v.commonDetail.ageStatementMin,
+          ageStatementMinMonths: v.commonDetail.ageStatementMinMonths,
           ageStatementMax: v.commonDetail.ageStatementMax,
+          ageStatementMaxMonths: v.commonDetail.ageStatementMaxMonths,
           distilledDate: v.commonDetail.distilledDate,
           bottledDate: v.commonDetail.bottledDate,
           releaseDate: v.commonDetail.releaseDate,
@@ -386,7 +415,8 @@ export function useSpiritForm() {
       const cd = s.commonDetail
       setCommonDetail({
         isNas: cd.isNas, ageStatement: cd.ageStatement, ageStatementMonths: cd.ageStatementMonths,
-        ageStatementMin: cd.ageStatementMin, ageStatementMax: cd.ageStatementMax,
+        ageStatementMin: cd.ageStatementMin, ageStatementMinMonths: cd.ageStatementMinMonths,
+        ageStatementMax: cd.ageStatementMax, ageStatementMaxMonths: cd.ageStatementMaxMonths,
         distilledDate: cd.distilledDate ?? '', bottledDate: cd.bottledDate ?? '',
         releaseDate: cd.releaseDate ?? '', volumeMl: cd.volumeMl?.toString() ?? '',
         abv: cd.abv?.toString() ?? '', bottleNo: cd.bottleNo ?? '',
@@ -462,19 +492,71 @@ export function useSpiritForm() {
       ...DEFAULT_COMMON_DETAIL,
       isNas: r.isNas ?? false, ageStatement: r.ageStatement ?? null,
       ageStatementMonths: r.ageStatementMonths ?? null,
-      ageStatementMin: null, ageStatementMax: null,
+      ageStatementMin: r.ageStatementMin ?? null, ageStatementMinMonths: r.ageStatementMinMonths ?? null,
+      ageStatementMax: r.ageStatementMax ?? null, ageStatementMaxMonths: r.ageStatementMaxMonths ?? null,
       distilledDate: r.distilledDate ?? '', bottledDate: r.bottledDate ?? '',
       releaseDate: r.releaseDate ?? '', volumeMl: r.volumeMl?.toString() ?? '',
       abv: r.abv?.toString() ?? '',
+      bottleNo: r.bottleNo ?? '', batchNo: r.batchNo ?? '', totalBottles: r.totalBottles?.toString() ?? '',
     })
+
+    // 도수 범위 지정 프리필
+    if (r.abvMin != null || r.abvMax != null) {
+      setIsAbvRange(true)
+      setAbvMin(r.abvMin?.toString() ?? '')
+      setAbvMax(r.abvMax?.toString() ?? '')
+    } else {
+      setIsAbvRange(false)
+      setAbvMin('')
+      setAbvMax('')
+    }
+
     if (r.category === 'WHISKY') {
-      setWhiskyDetail({ ...DEFAULT_WHISKY, style: r.whiskyStyle ?? '', styleOther: r.whiskyStyleOther ?? '', caskNo: r.caskNo ?? '', notes: r.whiskyNotes ?? '' })
+      setWhiskyDetail({
+        ...DEFAULT_WHISKY,
+        style: r.whiskyStyle ?? '', styleOther: r.whiskyStyleOther ?? '',
+        brandName: r.brandName ?? '', bottlingType: r.bottlingType ?? '',
+        caskNo: r.caskNo ?? '', notes: r.whiskyNotes ?? '',
+        caskTypes: r.caskTypes ?? [], caskFinishes: r.caskFinishes ?? [], caskTypeOther: r.caskTypeOther ?? '',
+        caskDetails: r.caskDetails ?? {},
+        isNonChillFiltered: r.isNonChillFiltered ?? false, isNaturalColour: r.isNaturalColour ?? false,
+        isSingleCask: r.isSingleCask ?? false, isCaskStrength: r.isCaskStrength ?? false, isPeated: r.isPeated ?? false,
+        phenolPpm: r.phenolPpm?.toString() ?? '', phenolPpmMin: r.phenolPpmMin?.toString() ?? '', phenolPpmMax: r.phenolPpmMax?.toString() ?? '',
+      })
     } else if (r.category === 'WINE') {
-      setWineDetail({ ...DEFAULT_WINE, wineType: r.wineType ?? '', vintage: r.vintageYear?.toString() ?? '' })
+      const w = r.wineDetail
+      setWineDetail({
+        ...DEFAULT_WINE,
+        wineType: r.wineType ?? w?.wineType ?? '',
+        vintage: (w?.vintage ?? r.vintageYear)?.toString() ?? '',
+        isOakAged: w?.isOakAged ?? false, isNaturalWine: w?.isNaturalWine ?? false,
+        certification: w?.certification ?? '',
+        grapeVarieties: (w?.grapeVarieties ?? []).map((g) => ({ name: g.name, percentage: g.percentage?.toString() ?? '' })),
+        appellationDesignation: w?.appellationDesignation ?? '', soilType: w?.soilType ?? '',
+        altitudeM: w?.altitudeM?.toString() ?? '', harvestMethod: w?.harvestMethod ?? '',
+        fermentationVessel: w?.fermentationVessel ?? '', oakType: w?.oakType ?? '',
+        oakAgedMonths: w?.oakAgedMonths?.toString() ?? '',
+        sweetness: w?.sweetness ?? '', body: w?.body ?? '',
+        acidity: w?.acidity ?? '', tannin: w?.tannin ?? '',
+      })
     } else if (r.category === 'COGNAC') {
-      setCognacDetail({ ...DEFAULT_COGNAC, grade: r.cognacGrade ?? '' })
+      const c = r.cognacDetail
+      setCognacDetail({
+        ...DEFAULT_COGNAC,
+        grade: r.cognacGrade ?? c?.grade ?? '', cru: c?.cru ?? '',
+        isFineChampagne: c?.isFineChampagne ?? false, blendDetail: c?.blendDetail ?? '',
+        vintageYear: c?.vintageYear?.toString() ?? '', ageYears: c?.ageYears?.toString() ?? '',
+        oakType: c?.oakType ?? '', caskFinish: c?.caskFinish ?? '',
+      })
     } else if (r.category === 'OTHER') {
-      setOtherDetail({ ...DEFAULT_OTHER, otherType: r.otherType ?? '' })
+      const o = r.otherDetail
+      setOtherDetail({
+        ...DEFAULT_OTHER,
+        otherType: r.otherType ?? o?.otherType ?? '', mainIngredient: o?.mainIngredient ?? '',
+        productionMethod: o?.productionMethod ?? '', notes: o?.notes ?? '',
+        styleClassification: o?.styleClassification ?? '', caskType: o?.caskType ?? '',
+        originDesignation: o?.originDesignation ?? '',
+      })
     }
 
     // 신청자가 선택한 에디션(위스키 단일 에디션) → 하위 에디션 1개로 seed. 관리자가 보완/추가 가능.
@@ -498,11 +580,13 @@ export function useSpiritForm() {
         },
         whiskyDetail: {
           style: r.whiskyStyle || 'SINGLE_MALT', styleOther: r.whiskyStyleOther ?? '',
-          brandName: '', bottlingType: 'OB', caskTypes: [], caskFinishes: [],
-          caskTypeOther: '', caskDetails: {},
-          isNonChillFiltered: false, isNaturalColour: false,
-          isSingleCask: splitType === 'SINGLE_CASK', isCaskStrength: false, isPeated: false,
-          phenolPpm: null, phenolPpmMin: null, phenolPpmMax: null,
+          brandName: r.brandName ?? '', bottlingType: r.bottlingType || 'OB',
+          caskTypes: r.caskTypes ?? [], caskFinishes: r.caskFinishes ?? [],
+          caskTypeOther: r.caskTypeOther ?? '', caskDetails: r.caskDetails ?? {},
+          isNonChillFiltered: r.isNonChillFiltered ?? false, isNaturalColour: r.isNaturalColour ?? false,
+          isSingleCask: splitType === 'SINGLE_CASK' || (r.isSingleCask ?? false), isCaskStrength: r.isCaskStrength ?? false,
+          isPeated: r.isPeated ?? false,
+          phenolPpm: r.phenolPpm ?? null, phenolPpmMin: r.phenolPpmMin ?? null, phenolPpmMax: r.phenolPpmMax ?? null,
           caskNo: r.caskNo ?? '', notes: r.whiskyNotes ?? '',
         },
       }
@@ -587,7 +671,9 @@ export function useSpiritForm() {
       ageStatement: dropAging || commonDetail.isNas ? null : (commonDetail.ageStatement ?? null),
       ageStatementMonths: dropAging || commonDetail.isNas ? null : (commonDetail.ageStatementMonths ?? null),
       ageStatementMin: dropAging || commonDetail.isNas ? null : (commonDetail.ageStatementMin ?? null),
+      ageStatementMinMonths: dropAging || commonDetail.isNas ? null : (commonDetail.ageStatementMinMonths ?? null),
       ageStatementMax: dropAging || commonDetail.isNas ? null : (commonDetail.ageStatementMax ?? null),
+      ageStatementMaxMonths: dropAging || commonDetail.isNas ? null : (commonDetail.ageStatementMaxMonths ?? null),
       distilledDate: dropAging ? null : (commonDetail.distilledDate || null),
       bottledDate: isWine ? null : (commonDetail.bottledDate || null),
       releaseDate: commonDetail.releaseDate || null,
@@ -716,7 +802,9 @@ export function useSpiritForm() {
       ageStatement: cd.isNas ? null : (cd.ageStatement ?? null),
       ageStatementMonths: cd.isNas ? null : (cd.ageStatementMonths ?? null),
       ageStatementMin: cd.isNas ? null : (cd.ageStatementMin ?? null),
+      ageStatementMinMonths: cd.isNas ? null : (cd.ageStatementMinMonths ?? null),
       ageStatementMax: cd.isNas ? null : (cd.ageStatementMax ?? null),
+      ageStatementMaxMonths: cd.isNas ? null : (cd.ageStatementMaxMonths ?? null),
       distilledDate: cd.distilledDate || null,
       bottledDate: cd.bottledDate || null,
       releaseDate: cd.releaseDate || null,
@@ -773,7 +861,7 @@ export function useSpiritForm() {
     cognacDetail, updateCognac, otherDetail, updateOther,
     errors, setErrors,
     prefillFromSpirit, prefillFromRequest,
-    validate, buildPayload,
+    validate, buildPayload, reset,
   }
 }
 
@@ -911,9 +999,20 @@ interface SpiritFormFieldsProps {
   onCategorySelect?: (cat: SpiritCategory) => void
   /** 좌측 컬럼 하단에 끼워 넣을 슬롯 (이미지 관리 카드 등) */
   imageSlot?: React.ReactNode
+  /** false면 하위 에디션을 1개까지만 허용 — "에디션 추가" 버튼/탭 바를 숨김 (사용자 등록 요청 화면용). 미지정 시 true(관리자 동작 동일) */
+  allowMultipleVariants?: boolean
+  /** 생산자 선택 컴포넌트 교체 (미지정 시 AdminProducerSelector) */
+  producerSelector?: React.ComponentType<ProducerSelectorProps>
+  /** 생산자 직접 등록 콜백 교체 (미지정 시 관리자 즉시 생성) */
+  onCreateProducer?: (data: NewProducerInput) => Promise<number | null>
+  /** 4개 섹션 뒤에 끼워 넣을 슬롯 (이미지 첨부/비고 입력 등 — 사용자 등록 요청 화면용) */
+  bottomSlot?: React.ReactNode
 }
 
-export default function SpiritFormFields({ form, categoryLocked, onCategorySelect, imageSlot }: SpiritFormFieldsProps) {
+export default function SpiritFormFields({
+  form, categoryLocked, onCategorySelect, imageSlot,
+  allowMultipleVariants = true, producerSelector, onCreateProducer, bottomSlot,
+}: SpiritFormFieldsProps) {
   const { category, errors } = form
   const handleCategory = onCategorySelect ?? form.selectCategory
   const producerLabel = category ? PRODUCER_LABEL[category] : '증류소'
@@ -958,12 +1057,15 @@ export default function SpiritFormFields({ form, categoryLocked, onCategorySelec
     }
   }, [form.variants.length, activeVariantIdx])
 
-  // 기타 카테고리 — 목록에 없는 생산자 즉시 직접 생성 후 선택
-  const handleCreateProducer = async (data: { nameKo: string; nameEn: string; country: string }) => {
+  // 기타 카테고리 — 목록에 없는 생산자 즉시 직접 생성 후 선택 (관리자 기본 동작)
+  const handleCreateProducer = async (data: NewProducerInput) => {
     const res = await adminProducerApi.create({ type: 'OTHER', ...data })
     await queryClient.invalidateQueries({ queryKey: ['producers'] })
     return res.data.data?.id ?? null
   }
+
+  const ProducerSelectorComp = producerSelector ?? AdminProducerSelector
+  const handleCreateProducerFinal = onCreateProducer ?? handleCreateProducer
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
@@ -1230,7 +1332,7 @@ export default function SpiritFormFields({ form, categoryLocked, onCategorySelec
             <SectionTitle title="생산 / 병입 정보" hint="선택" />
             <div>
               <label className={LABEL}>{producerLabel}</label>
-              <AdminProducerSelector value={form.producerId} defaultName={form.producerName}
+              <ProducerSelectorComp value={form.producerId} defaultName={form.producerName}
                 onChange={(id, producer) => {
                   form.setProducerId(id ?? null)
                   // 생산자에 국가/지역이 있으면 자동으로 채움 (없으면 기존 값 유지)
@@ -1241,7 +1343,7 @@ export default function SpiritFormFields({ form, categoryLocked, onCategorySelec
                   }
                 }}
                 type={CATEGORY_TO_PRODUCER_TYPE[category]}
-                onCreateNew={handleCreateProducer}
+                onCreateNew={handleCreateProducerFinal}
                 defaultCountry={ISO3166_COUNTRIES.find((c) => c.code === form.countryCode)?.nameKo ?? ''} />
             </div>
             {category === 'WHISKY' && (
@@ -1314,46 +1416,48 @@ export default function SpiritFormFields({ form, categoryLocked, onCategorySelec
             {category && form.isVariantSplit && (
               <div className={CARD}>
                 <SectionTitle title="하위 에디션 목록" hint="각 에디션별 개별 정보 입력" />
-                
-                {/* 탭 바 */}
-                <div className="flex flex-wrap items-center gap-1.5 border-b border-neutral-200 pb-3 mb-4">
-                  <DndContext
-                    sensors={sensors}
-                    collisionDetection={closestCenter}
-                    onDragEnd={handleDragEnd}
-                  >
-                    <SortableContext
-                      items={form.variants.map((v, idx) => (v as any).tempId || `temp-${idx}`)}
-                      strategy={horizontalListSortingStrategy}
+
+                {/* 탭 바 (다중 에디션 허용 시에만 노출 — 사용자 등록 요청 화면은 1개로 고정) */}
+                {allowMultipleVariants && (
+                  <div className="flex flex-wrap items-center gap-1.5 border-b border-neutral-200 pb-3 mb-4">
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={handleDragEnd}
                     >
-                      {form.variants.map((v, idx) => (
-                        <SortableTab
-                          key={(v as any).tempId || `temp-${idx}`}
-                          id={(v as any).tempId || `temp-${idx}`}
-                          index={idx}
-                          variant={v}
-                          isActive={activeVariantIdx === idx}
-                          onClick={() => setActiveVariantIdx(idx)}
-                          onRemove={() => form.removeVariant(idx)}
-                        />
-                      ))}
-                    </SortableContext>
-                  </DndContext>
-                  
-                  <button
-                    type="button"
-                    onClick={() => {
-                      form.addVariant()
-                      setActiveVariantIdx(form.variants.length)
-                    }}
-                    className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-dashed border-neutral-300 hover:border-amber-400 text-neutral-500 hover:text-amber-700 flex items-center gap-1 transition-all bg-white cursor-pointer"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                    </svg>
-                    에디션 추가
-                  </button>
-                </div>
+                      <SortableContext
+                        items={form.variants.map((v, idx) => (v as any).tempId || `temp-${idx}`)}
+                        strategy={horizontalListSortingStrategy}
+                      >
+                        {form.variants.map((v, idx) => (
+                          <SortableTab
+                            key={(v as any).tempId || `temp-${idx}`}
+                            id={(v as any).tempId || `temp-${idx}`}
+                            index={idx}
+                            variant={v}
+                            isActive={activeVariantIdx === idx}
+                            onClick={() => setActiveVariantIdx(idx)}
+                            onRemove={() => form.removeVariant(idx)}
+                          />
+                        ))}
+                      </SortableContext>
+                    </DndContext>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        form.addVariant()
+                        setActiveVariantIdx(form.variants.length)
+                      }}
+                      className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-dashed border-neutral-300 hover:border-amber-400 text-neutral-500 hover:text-amber-700 flex items-center gap-1 transition-all bg-white cursor-pointer"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                      </svg>
+                      에디션 추가
+                    </button>
+                  </div>
+                )}
 
                 {/* 활성화된 에디션 정보 및 상세 */}
                 {form.variants.length > 0 && form.variants[activeVariantIdx] ? (
@@ -1405,6 +1509,8 @@ export default function SpiritFormFields({ form, categoryLocked, onCategorySelec
           </>
         )}
       </div>
+
+      {bottomSlot && <div className="lg:col-span-5">{bottomSlot}</div>}
     </div>
   )
 }
@@ -1440,7 +1546,9 @@ function toCommonDetailForm(detail?: SpiritCommonDetailRequest): CommonDetailFor
     ageStatement: detail.ageStatement ?? null,
     ageStatementMonths: detail.ageStatementMonths ?? null,
     ageStatementMin: detail.ageStatementMin ?? null,
+    ageStatementMinMonths: detail.ageStatementMinMonths ?? null,
     ageStatementMax: detail.ageStatementMax ?? null,
+    ageStatementMaxMonths: detail.ageStatementMaxMonths ?? null,
     distilledDate: detail.distilledDate ?? '',
     bottledDate: detail.bottledDate ?? '',
     releaseDate: detail.releaseDate ?? '',
@@ -1516,7 +1624,9 @@ function VariantItemCard({
     if (u.ageStatement !== undefined) converted.ageStatement = u.ageStatement
     if (u.ageStatementMonths !== undefined) converted.ageStatementMonths = u.ageStatementMonths
     if (u.ageStatementMin !== undefined) converted.ageStatementMin = u.ageStatementMin
+    if (u.ageStatementMinMonths !== undefined) converted.ageStatementMinMonths = u.ageStatementMinMonths
     if (u.ageStatementMax !== undefined) converted.ageStatementMax = u.ageStatementMax
+    if (u.ageStatementMaxMonths !== undefined) converted.ageStatementMaxMonths = u.ageStatementMaxMonths
     if (u.distilledDate !== undefined) converted.distilledDate = u.distilledDate || null
     if (u.bottledDate !== undefined) converted.bottledDate = u.bottledDate || null
     if (u.releaseDate !== undefined) converted.releaseDate = u.releaseDate || null

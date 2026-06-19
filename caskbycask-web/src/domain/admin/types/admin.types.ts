@@ -11,7 +11,9 @@ export interface SpiritCommonDetailRequest {
   ageStatement?: number | null
   ageStatementMonths?: number | null
   ageStatementMin?: number | null
+  ageStatementMinMonths?: number | null
   ageStatementMax?: number | null
+  ageStatementMaxMonths?: number | null
   distilledDate?: string | null
   bottledDate?: string | null
   releaseDate?: string | null
@@ -370,21 +372,47 @@ export interface SpiritRegisterRequestDetail {
   vintageYear: number | null
   abv: number | null
   volumeMl: number | null
+  abvMin: number | null
+  abvMax: number | null
   country: string | null
   region: string | null
   ageStatement: number | null
   ageStatementMonths: number | null
+  ageStatementMin: number | null
+  ageStatementMinMonths: number | null
+  ageStatementMax: number | null
+  ageStatementMaxMonths: number | null
   isNas: boolean | null
   distilledDate: string | null
   bottledDate: string | null
   releaseDate: string | null
+  bottleNo: string | null
+  batchNo: string | null
+  totalBottles: number | null
   whiskyStyle: WhiskyStyle | null
   whiskyStyleOther: string | null
+  brandName: string | null
+  bottlingType: string | null
   caskNo: string | null
   whiskyNotes: string | null
+  caskTypes: string[] | null
+  caskFinishes: string[] | null
+  caskTypeOther: string | null
+  caskDetails: Record<string, string[]> | null
+  isNonChillFiltered: boolean | null
+  isNaturalColour: boolean | null
+  isSingleCask: boolean | null
+  isCaskStrength: boolean | null
+  isPeated: boolean | null
+  phenolPpm: number | null
+  phenolPpmMin: number | null
+  phenolPpmMax: number | null
   wineType: WineType | null
   cognacGrade: CognacGrade | null
   otherType: OtherSpiritType | null
+  wineDetail: WineDetailRequest | null
+  cognacDetail: CognacDetailRequest | null
+  otherDetail: OtherDetailRequest | null
   imageUrls: string[]
   note: string | null
   variantType: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE' | null

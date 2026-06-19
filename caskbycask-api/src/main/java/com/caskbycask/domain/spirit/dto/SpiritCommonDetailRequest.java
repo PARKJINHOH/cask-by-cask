@@ -22,8 +22,18 @@ public record SpiritCommonDetailRequest(
         @Schema(description = "최소 숙성 연수")
         Integer ageStatementMin,
 
+        @Schema(description = "범위 최소 숙성 개월 (0~11)")
+        @Min(value = 0, message = "숙성 개월은 0 이상이어야 합니다.")
+        @Max(value = 11, message = "숙성 개월은 11 이하여야 합니다.")
+        Integer ageStatementMinMonths,
+
         @Schema(description = "최대 숙성 연수")
         Integer ageStatementMax,
+
+        @Schema(description = "범위 최대 숙성 개월 (0~11)")
+        @Min(value = 0, message = "숙성 개월은 0 이상이어야 합니다.")
+        @Max(value = 11, message = "숙성 개월은 11 이하여야 합니다.")
+        Integer ageStatementMaxMonths,
 
         @Schema(description = "증류 연월 (YYYY 또는 YYYY-MM)")
         @Pattern(regexp = "^\\d{4}(-\\d{2})?$", message = "날짜 형식이 올바르지 않습니다 (YYYY 또는 YYYY-MM).")
@@ -64,6 +74,7 @@ public record SpiritCommonDetailRequest(
         public boolean isAgeStatementValidForNas() {
                 return !Boolean.TRUE.equals(isNas) ||
                        (ageStatement == null && ageStatementMonths == null
-                        && ageStatementMin == null && ageStatementMax == null);
+                        && ageStatementMin == null && ageStatementMinMonths == null
+                        && ageStatementMax == null && ageStatementMaxMonths == null);
         }
 }

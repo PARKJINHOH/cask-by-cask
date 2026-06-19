@@ -26,7 +26,9 @@ import com.caskbycask.global.exception.CustomException;
 import com.caskbycask.global.exception.ErrorCode;
 import com.caskbycask.global.util.BadWordFilter;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -369,8 +371,9 @@ public class SpiritService {
                 request.variantType() != null ? request.variantType() : spirit.getVariantType(),
                 request.variantValue() != null ? request.variantValue() : spirit.getVariantValue(),
                 request.variantValueEn() != null ? request.variantValueEn() : spirit.getVariantValueEn(),
-                request.abvMin() != null ? request.abvMin() : spirit.getAbvMin(),
-                request.abvMax() != null ? request.abvMax() : spirit.getAbvMax()
+                // 도수 범위 지정 해제 시 null 로 명시 전송됨 — fallback 없이 그대로 반영해야 해제가 반영됨
+                request.abvMin(),
+                request.abvMax()
         );
 
         spiritDetailService.saveCommonDetail(spirit, request.commonDetail());
@@ -635,24 +638,25 @@ public class SpiritService {
         SpiritRegisterRequest req = getRegisterRequest(requestId);
         SpiritRegisterRequestBody existing = parseSpiritData(req.getSpiritData());
 
-        // 이미지 URL은 별도 엔드포인트로만 관리 — 필드 수정 시 기존 이미지 보존
-        SpiritRegisterRequestBody merged = new SpiritRegisterRequestBody(
-                body.nameKo(), body.nameEn(), body.category(),
-                body.producerId(), body.bottler(), body.bottledYear(), body.vintageYear(),
-                body.abv(), body.volumeMl(), body.country(), body.region(),
-                // 신청자 입력 상세값(숙성/연월/카테고리 핵심값)은 관리자 수정 폼에 없으므로 기존값 보존
-                existing.ageStatement(), existing.ageStatementMonths(), existing.isNas(), existing.distilledDate(),
-                existing.bottledDate(), existing.releaseDate(),
-                existing.whiskyStyle(), existing.whiskyStyleOther(), existing.caskNo(), existing.whiskyNotes(),
-                existing.wineType(), existing.cognacGrade(), existing.otherType(),
-                existing.imageUrls(),
-                existing.note(),
-                // 신청자 입력 에디션 정보도 관리자 수정 폼에 없으므로 기존값 보존
-                existing.variantType(), existing.variantValue(), existing.variantValueEn()
-        );
+        // 관리자 수정 폼은 기본 필드만 전송 — 신청자 입력 상세값(숙성/연월/카테고리 핵심값/이미지/에디션 등)은
+        // 기존값을 그대로 보존한다. 필드 추가에 영향받지 않도록 JSON 트리에서 기본 필드만 덮어쓴다.
+        ObjectNode merged = objectMapper.valueToTree(existing);
+        ObjectNode incoming = objectMapper.valueToTree(body);
+        for (String f : List.of("nameKo", "nameEn", "category", "producerId", "bottler",
+                "bottledYear", "vintageYear", "abv", "volumeMl", "country", "region")) {
+            JsonNode v = incoming.get(f);
+            if (v != null) merged.set(f, v);
+            else merged.putNull(f);
+        }
+        SpiritRegisterRequestBody mergedBody;
+        try {
+            mergedBody = objectMapper.treeToValue(merged, SpiritRegisterRequestBody.class);
+        } catch (JsonProcessingException e) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
 
-        req.updateSpiritData(serialize(merged));
-        return SpiritRegisterRequestDetailResponse.of(req, merged, resolveProducerName(merged.producerId()));
+        req.updateSpiritData(serialize(mergedBody));
+        return SpiritRegisterRequestDetailResponse.of(req, mergedBody, resolveProducerName(mergedBody.producerId()));
     }
 
     @Transactional
@@ -857,19 +861,18 @@ public class SpiritService {
         }
     }
 
+    /**
+     * imageUrls 만 교체한 사본을 만든다. 필드 추가에 영향받지 않도록 JSON 트리로 처리
+     * (positional record 생성자 나열 금지 — 술 데이터 필드는 SpiritRegisterRequestBody 한 곳에서만 관리).
+     */
     private SpiritRegisterRequestBody withImageUrls(SpiritRegisterRequestBody body, List<String> imageUrls) {
-        return new SpiritRegisterRequestBody(
-                body.nameKo(), body.nameEn(), body.category(),
-                body.producerId(), body.bottler(), body.bottledYear(), body.vintageYear(),
-                body.abv(), body.volumeMl(), body.country(), body.region(),
-                body.ageStatement(), body.ageStatementMonths(), body.isNas(), body.distilledDate(),
-                body.bottledDate(), body.releaseDate(),
-                body.whiskyStyle(), body.whiskyStyleOther(), body.caskNo(), body.whiskyNotes(),
-                body.wineType(), body.cognacGrade(), body.otherType(),
-                imageUrls,
-                body.note(),
-                body.variantType(), body.variantValue(), body.variantValueEn()
-        );
+        ObjectNode node = objectMapper.valueToTree(body);
+        node.set("imageUrls", objectMapper.valueToTree(imageUrls));
+        try {
+            return objectMapper.treeToValue(node, SpiritRegisterRequestBody.class);
+        } catch (JsonProcessingException e) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
     }
 
     private SpiritRegisterRequestResponse parseRegisterResponse(SpiritRegisterRequest req) {

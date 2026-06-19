@@ -252,14 +252,52 @@
         "RELEASE_YEAR": "Release Year"
       },
       "editionValue": "Edition Value",
+      "editionValueLabel": {
+        "BATCH": "Batch (Release)",
+        "SINGLE_CASK": "Cask No",
+        "RELEASE_YEAR": "Vintage"
+      },
       "editionValuePlaceholder": {
-        "BATCH": "e.g. Batch 11",
-        "SINGLE_CASK": "e.g. #1234",
+        "BATCH": "e.g. 11",
+        "SINGLE_CASK": "e.g. 1234",
         "RELEASE_YEAR": "e.g. 2023"
       },
       "errEditionValue": "Please enter the edition value.",
       "editionValueEn": "Edition Value (EN)",
-      "editionValueEnPlaceholder": "e.g. Batch 11",
+      "editionValueEnLabel": {
+        "BATCH": "Batch (Release) (EN)",
+        "SINGLE_CASK": "Cask No (EN)",
+        "RELEASE_YEAR": "Vintage (EN)"
+      },
+      "editionValueEnPlaceholder": {
+        "BATCH": "e.g. 11 (Release)",
+        "SINGLE_CASK": "e.g. #1234",
+        "RELEASE_YEAR": "e.g. 2023"
+      },
+      "errEditionValueEn": "Please enter the edition value (EN).",
+      "whiskyDetail": {
+        "caskLabel": "Cask",
+        "caskHint": "Check the cask types used, and add specific sub-type names below. (Optional)",
+        "finish": "Finish",
+        "detailHint": "Specific cask sub-type name",
+        "addDetail": "Add",
+        "featuresLabel": "Characteristics",
+        "feature": {
+          "isNonChillFiltered": "Non-Chill Filtered",
+          "isNaturalColour": "Natural Colour",
+          "isSingleCask": "Single Cask",
+          "isCaskStrength": "Cask Strength",
+          "isPeated": "Peated"
+        },
+        "phenolLabel": "Peat Level (ppm)",
+        "rangeToggle": "Specify range",
+        "min": "Min",
+        "max": "Max",
+        "caskNoLabel": "Single Cask No.",
+        "caskNoPlaceholder": "e.g. Kavalan FI150504001A",
+        "notesLabel": "Other Info",
+        "notesPlaceholder": "e.g. Released 2021-2022, PX 50% Port 20%"
+      },
       "images": {
         "label": "Photos",
         "hint": "Up to 3 photos. Attached photos become the spirit's images upon approval.",
@@ -280,7 +318,13 @@
       "edit": "Edit",
       "delete": "Delete",
       "deleteConfirm": "Delete this registration request?",
-      "lockedHint": "Approved requests cannot be edited or deleted."
+      "lockedHint": "Approved requests cannot be edited or deleted.",
+      "colStatus": "Status",
+      "colName": "Name",
+      "colCategory": "Category",
+      "colActions": "Actions",
+      "viewList": "View My Requests",
+      "newRequest": "New Request"
     }
   },
   "producerDetail": {
