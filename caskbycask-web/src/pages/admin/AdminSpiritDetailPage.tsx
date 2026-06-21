@@ -5,6 +5,8 @@ import Button from '@/shared/components/Button'
 import Spinner from '@/shared/components/Spinner'
 import AdminPageHeader from '@/shared/components/AdminPageHeader'
 import ImageLightbox from '@/shared/components/ImageLightbox'
+import ImageEditorModal from '@/shared/components/ImageEditorModal'
+import { adminSpiritApi } from '@/domain/admin/api/adminSpiritApi'
 import { formatDate } from '@/shared/utils/format'
 import {
   useAdminSpiritDetail,
@@ -58,6 +60,45 @@ function SpiritImageSection({ spiritId, images }: { spiritId: number; images: Ad
   const [uploading, setUploading] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
   const dragIndexRef = useRef<number | null>(null)
+  const [editingImage, setEditingImage] = useState<AdminSpiritImageItem | null>(null)
+
+  const handleEditSave = async (file: File) => {
+    if (!editingImage) return
+    setUploading(true)
+    try {
+      const oldImageId = editingImage.id
+      const wasPrimary = editingImage.isPrimary
+      const oldIds = new Set(images.map((img) => img.id))
+
+      // 1. 새 이미지 업로드
+      await upload.mutateAsync({ id: spiritId, file })
+
+      // 2. 최신 이미지 목록에서 새로 추가된 이미지 검색
+      const res = await adminSpiritApi.getById(spiritId)
+      const newImages = res.data.data?.images ?? []
+      const newImage = newImages.find((img) => !oldIds.has(img.id))
+
+      if (newImage) {
+        // 3. 기존 순서 유지하며 기존 이미지 ID를 새 이미지 ID로 대체
+        const nextOrderIds = order.map((img) => (img.id === oldImageId ? newImage.id : img.id))
+        await reorder.mutateAsync({ id: spiritId, imageIds: nextOrderIds })
+
+        // 4. 대표 이미지였을 경우 대표 설정 이관
+        if (wasPrimary) {
+          await setPrimary.mutateAsync({ id: spiritId, imageId: newImage.id })
+        }
+      }
+
+      // 5. 기존 이미지 삭제
+      await deleteImg.mutateAsync({ id: spiritId, imageId: oldImageId })
+      setEditingImage(null)
+    } catch (err) {
+      console.error(err)
+      alert('이미지 편집 저장 중 오류가 발생했습니다.')
+    } finally {
+      setUploading(false)
+    }
+  }
 
   useEffect(() => {
     setOrder(images)
@@ -187,6 +228,22 @@ function SpiritImageSection({ spiritId, images }: { spiritId: number; images: Ad
                   대표
                 </span>
               )}
+              {/* 편집 — 우측 상단 X버튼 왼쪽 */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setEditingImage(img)
+                }}
+                className="absolute top-1 right-8 z-10 w-6 h-6 flex items-center justify-center rounded-full
+                  bg-amber-600/80 text-white text-xs leading-none opacity-0 group-hover:opacity-100
+                  transition-opacity hover:bg-amber-600"
+                aria-label="이미지 편집"
+                title="이미지 편집"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                </svg>
+              </button>
               {/* 삭제 — 우측 상단 */}
               <button
                 onClick={(e) => {
@@ -227,6 +284,16 @@ function SpiritImageSection({ spiritId, images }: { spiritId: number; images: Ad
         open={lightboxIndex >= 0}
         onClose={() => setLightboxIndex(-1)}
       />
+
+      {editingImage && (
+        <ImageEditorModal
+          open={!!editingImage}
+          onClose={() => setEditingImage(null)}
+          imageSrc={editingImage.imageUrl}
+          onSave={handleEditSave}
+          isSaving={uploading}
+        />
+      )}
     </div>
   )
 }
