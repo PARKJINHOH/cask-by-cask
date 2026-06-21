@@ -98,7 +98,7 @@ export default function App() {
           <Route element={<MainLayout />}>
             <Route index element={<MainPage />} />
             <Route path="spirits" element={<SpiritListPage />} />
-            <Route path="spirits/:id" element={<SpiritDetailPage />} />
+            <Route path="spirits/:id/:slug?" element={<SpiritDetailPage />} />
             <Route path="notices" element={<NoticePage />} />
             <Route path="notices/:id" element={<NoticeDetailPage />} />
             <Route path="ranking" element={<RankingPage />} />

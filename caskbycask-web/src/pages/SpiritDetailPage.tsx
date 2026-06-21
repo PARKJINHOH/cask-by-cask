@@ -805,7 +805,7 @@ export default function SpiritDetailPage() {
   const { id }   = useParams<{ id: string }>()
   const navigate = useNavigate()
   const location = useLocation()
-  const spiritId = Number(id)
+  const spiritId = parseInt(id || '', 10)
   const { t, i18n } = useTranslation()
   const isEn = i18n.language === 'en'
   const listReturnTo = getSpiritListReturnTo(location.state)

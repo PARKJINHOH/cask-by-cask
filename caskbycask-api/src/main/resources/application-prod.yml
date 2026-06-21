@@ -39,6 +39,7 @@ cors:
 
 seo:
   site-url: https://caskbycask.net
+  index-path: /app/vite/dist/index.html
 
 logging:
   file:
