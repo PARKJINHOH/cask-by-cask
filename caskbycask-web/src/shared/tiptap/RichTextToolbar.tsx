@@ -164,7 +164,7 @@ export default function RichTextToolbar({
     : '줄간격'
 
   return (
-    <div className="border-b border-neutral-200 bg-neutral-50">
+    <div className="rich-text-toolbar border-b border-neutral-200 bg-neutral-50">
       {/* 1행: 사진 / 동영상 / 링크 / 술카드 | 글꼴 관련 */}
       <div className="flex flex-wrap items-center gap-0.5 p-2 pb-1">
         {onImageUpload && (

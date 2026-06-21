@@ -214,7 +214,7 @@ export default function PostFormPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
+    <div className="max-w-4xl mx-auto px-4 py-8">
       <SeoMeta title={isEdit ? '게시글 수정' : '게시글 작성'} description="CaskByCask 커뮤니티 게시글 작성." noindex />
       <Toast toasts={toasts} onRemove={removeToast} />
       <DraftListModal
@@ -271,7 +271,7 @@ export default function PostFormPage() {
                 type="button"
                 onClick={() => setPrefixId(prefixId === p.id ? '' : p.id)}
                 className={[
-                  'px-4 py-1.5 text-sm font-medium rounded-full border transition-colors',
+                  'px-3 py-1 text-xs font-medium rounded-full border transition-colors',
                   prefixId === p.id
                     ? 'bg-primary-800 text-white border-primary-800'
                     : 'border-neutral-300 text-neutral-600 hover:border-neutral-400',

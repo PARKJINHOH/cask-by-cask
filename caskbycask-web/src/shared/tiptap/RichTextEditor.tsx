@@ -147,6 +147,23 @@ export default function RichTextEditor({
       onChange(clean)
     },
     editorProps: {
+      handleDOMEvents: {
+        dragover(view: any, event: any) {
+          const scrollContainer = view.dom.parentElement
+          if (scrollContainer && event.clientY) {
+            const rect = scrollContainer.getBoundingClientRect()
+            const topDist = event.clientY - rect.top
+            const bottomDist = rect.bottom - event.clientY
+            const threshold = 200
+            if (topDist < threshold && topDist > 0) {
+              scrollContainer.scrollTop -= 2
+            } else if (bottomDist < threshold && bottomDist > 0) {
+              scrollContainer.scrollTop += 2
+            }
+          }
+          return false
+        }
+      },
       handleKeyDown(_view, event) {
         if (event.key === 'Enter' && !event.shiftKey && editor) {
           if (handleVideoEnter(editor)) return true
@@ -291,7 +308,23 @@ export default function RichTextEditor({
   const isNearLimit = charCount > maxChars * 0.9
 
   return (
-    <div className="border border-neutral-300 rounded-xl overflow-hidden bg-white focus-within:ring-2 focus-within:ring-primary-300 focus-within:border-primary-400">
+    <div
+      onClick={(e) => {
+        const target = e.target as HTMLElement
+        // 툴바, 버튼, 입력필드, 셀렉트박스 및 술 카드 다이얼로그 내부 클릭 시에는 포커스 동작 무시
+        if (
+          target.closest('.rich-text-toolbar') ||
+          target.closest('button') ||
+          target.closest('input') ||
+          target.closest('select') ||
+          target.closest('.di-spirit-embed-dialog')
+        ) {
+          return
+        }
+        editor?.commands.focus()
+      }}
+      className="border border-neutral-300 rounded-xl overflow-hidden bg-white focus-within:ring-2 focus-within:ring-primary-300 focus-within:border-primary-400"
+    >
       {/* 숨김 파일 input */}
       {uploadImage && (
         <input

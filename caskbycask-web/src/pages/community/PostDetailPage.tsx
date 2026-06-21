@@ -148,7 +148,7 @@ export default function PostDetailPage() {
     || `CaskByCask 커뮤니티 게시글 — ${post.title}`
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
+    <div className="max-w-4xl mx-auto px-4 py-8">
       <SeoMeta
         title={post.title}
         description={seoDescription}
