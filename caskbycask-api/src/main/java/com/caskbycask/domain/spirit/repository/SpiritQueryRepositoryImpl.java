@@ -5,6 +5,7 @@ import com.caskbycask.domain.spirit.dto.SpiritSearchCondition;
 import com.caskbycask.domain.spirit.entity.QSpirit;
 import com.caskbycask.domain.spirit.entity.QSpiritCognacDetail;
 import com.caskbycask.domain.spirit.entity.QSpiritImage;
+import com.caskbycask.domain.spirit.entity.QSpiritOtherDetail;
 import com.caskbycask.domain.spirit.entity.QSpiritWhiskyDetail;
 import com.caskbycask.domain.spirit.entity.QSpiritWineDetail;
 import com.caskbycask.domain.spirit.entity.Spirit;
@@ -32,6 +33,15 @@ public class SpiritQueryRepositoryImpl implements SpiritQueryRepository {
 
     @Override
     public Page<SpiritListResponse> search(SpiritSearchCondition condition, Pageable pageable) {
+        return search(condition, pageable, false);
+    }
+
+    @Override
+    public Page<SpiritListResponse> searchForAdmin(SpiritSearchCondition condition, Pageable pageable) {
+        return search(condition, pageable, true);
+    }
+
+    private Page<SpiritListResponse> search(SpiritSearchCondition condition, Pageable pageable, boolean includeStyle) {
         QSpirit spirit = QSpirit.spirit;
         QSpiritImage image = QSpiritImage.spiritImage;
         QProducer producer = QProducer.producer;
@@ -45,7 +55,11 @@ public class SpiritQueryRepositoryImpl implements SpiritQueryRepository {
         JPAQuery<Spirit> dataQuery = queryFactory
                 .selectFrom(spirit)
                 .leftJoin(spirit.producer, producer).fetchJoin();
-        applySubTypeJoin(dataQuery, condition, spirit);
+        if (includeStyle) {
+            applyStyleFetchJoin(dataQuery, spirit);
+        } else {
+            applySubTypeJoin(dataQuery, condition, spirit);
+        }
         List<Spirit> spirits = dataQuery
                 .where(predicate)
                 .orderBy(order)
@@ -66,10 +80,19 @@ public class SpiritQueryRepositoryImpl implements SpiritQueryRepository {
 
         // ── 4. DTO 변환 ────────────────────────────────────────
         List<SpiritListResponse> content = spirits.stream()
-                .map(s -> SpiritListResponse.of(s, primaryImages.get(s.getId())))
+                .map(s -> includeStyle
+                        ? SpiritListResponse.ofWithStyle(s, primaryImages.get(s.getId()))
+                        : SpiritListResponse.of(s, primaryImages.get(s.getId())))
                 .toList();
 
         return new PageImpl<>(content, pageable, total != null ? total : 0L);
+    }
+
+    private void applyStyleFetchJoin(JPAQuery<Spirit> query, QSpirit spirit) {
+        query.leftJoin(spirit.whiskyDetail, QSpiritWhiskyDetail.spiritWhiskyDetail).fetchJoin();
+        query.leftJoin(spirit.wineDetail, QSpiritWineDetail.spiritWineDetail).fetchJoin();
+        query.leftJoin(spirit.cognacDetail, QSpiritCognacDetail.spiritCognacDetail).fetchJoin();
+        query.leftJoin(spirit.otherDetail, QSpiritOtherDetail.spiritOtherDetail).fetchJoin();
     }
 
     // ── 서브타입 join (필터가 있을 때만 join 추가, fetch join은 사용하지 않음) ──

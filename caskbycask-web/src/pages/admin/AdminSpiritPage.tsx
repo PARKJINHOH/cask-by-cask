@@ -24,6 +24,61 @@ const STATUS_OPTIONS: Array<{ value: SpiritStatus | ''; label: string }> = [
   { value: 'PENDING', label: '대기' },
 ]
 
+const STYLE_LABELS: Record<SpiritCategory, Record<string, string>> = {
+  WHISKY: {
+    SINGLE_MALT: '싱글 몰트',
+    BLENDED_MALT: '블렌디드 몰트',
+    BLENDED_WHISKY: '블렌디드',
+    BOURBON: '버번',
+    WHEATED_BOURBON: '밀 버번',
+    TENNESSEE: '테네시',
+    RYE: '라이',
+    POT_STILL: '싱글 팟 스틸',
+    GRAIN_CORN: '그레인 / 콘',
+    OTHER: '기타',
+  },
+  WINE: {
+    RED: '레드',
+    WHITE: '화이트',
+    ROSE: '로제',
+    SPARKLING: '스파클링',
+    DESSERT: '디저트',
+    ORANGE: '오렌지',
+    FORTIFIED: '주정강화',
+  },
+  COGNAC: {
+    VS: 'VS',
+    NAPOLEON: 'Napoléon',
+    VSOP: 'VSOP',
+    XO: 'XO',
+    XXO: 'XXO',
+    HORS_DAGE: "Hors d'Age",
+  },
+  OTHER: {
+    RUM: '럼',
+    GIN: '진',
+    VODKA: '보드카',
+    TEQUILA: '데킬라',
+    MEZCAL: '메스칼',
+    BRANDY: '브랜디',
+    LIQUEUR: '리큐르',
+    SAKE: '사케',
+    SOJU: '소주',
+    BAIJIU: '바이주',
+    ABSINTHE: '압생트',
+    BEER: '맥주',
+    OTHER: '기타',
+  },
+}
+
+function getStyleLabel(spirit: { category: SpiritCategory; style?: string | null; styleOther?: string | null }) {
+  if (!spirit.style) return null
+  if (spirit.category === 'WHISKY' && spirit.style === 'OTHER' && spirit.styleOther) {
+    return spirit.styleOther
+  }
+  return STYLE_LABELS[spirit.category]?.[spirit.style] ?? spirit.style
+}
+
 // ── 메인 페이지 ────────────────────────────────────────────────
 
 export default function AdminSpiritPage() {
@@ -112,7 +167,7 @@ export default function AdminSpiritPage() {
             <table className="w-full text-sm">
               <thead className="bg-neutral-50 border-b border-neutral-200">
                 <tr>
-                  <th className="hidden md:table-cell text-left px-4 py-3 text-neutral-500 font-medium w-16">ID</th>
+                  <th className="hidden md:table-cell text-left px-4 py-3 text-neutral-500 font-medium w-44">ID</th>
                   <th className="text-left px-3 py-3 text-neutral-500 font-medium w-14">사진</th>
                   <th className="text-left px-4 py-3 text-neutral-500 font-medium">이름</th>
                   <th className="text-left px-4 py-3 text-neutral-500 font-medium">카테고리</th>
@@ -129,13 +184,28 @@ export default function AdminSpiritPage() {
                     </td>
                   </tr>
                 ) : (
-                  data.content.map((spirit) => (
+                  data.content.map((spirit) => {
+                    const styleLabel = getStyleLabel(spirit)
+                    return (
                     <tr
                       key={spirit.id}
                       className="group hover:bg-neutral-50 transition-colors cursor-pointer"
                       onClick={() => navigate(`/admin/spirits/${spirit.id}`, { state: detailState })}
                     >
-                      <td className="hidden md:table-cell px-4 py-3 text-neutral-400 tabular-nums">{spirit.id}</td>
+                      <td className="hidden md:table-cell px-4 py-3">
+                        <div className="flex items-center gap-2 whitespace-nowrap">
+                          <span className="text-neutral-400 tabular-nums">{spirit.id}</span>
+                          {styleLabel && (
+                            <span
+                              className="inline-flex max-w-28 items-center truncate rounded-md bg-neutral-100 px-1.5 py-0.5
+                                text-[11px] font-medium text-neutral-600"
+                              title={styleLabel}
+                            >
+                              {styleLabel}
+                            </span>
+                          )}
+                        </div>
+                      </td>
 
                       {/* 썸네일 */}
                       <td className="px-3 py-2">
@@ -185,7 +255,8 @@ export default function AdminSpiritPage() {
                         {spirit.reviewCount}
                       </td>
                     </tr>
-                  ))
+                    )
+                  })
                 )}
               </tbody>
             </table>

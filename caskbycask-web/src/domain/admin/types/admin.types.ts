@@ -234,6 +234,8 @@ export interface AdminSpiritItem {
   avgScore: number | null
   reviewCount: number
   primaryImageUrl: string | null
+  style?: string | null
+  styleOther?: string | null
   status: SpiritStatus
 }
 

@@ -86,6 +86,12 @@ public class SpiritService {
     }
 
     @Transactional(readOnly = true)
+    public Page<SpiritListResponse> searchSpiritsForAdmin(SpiritSearchCondition condition,
+                                                          Pageable pageable) {
+        return spiritRepository.searchForAdmin(condition, pageable);
+    }
+
+    @Transactional(readOnly = true)
     public List<CountryStatsResponse> getCountryStats(SpiritCategory category) {
         return spiritRepository.findCountryStats(category).stream()
                 .map(row -> new CountryStatsResponse((String) row[0], (Long) row[1]))

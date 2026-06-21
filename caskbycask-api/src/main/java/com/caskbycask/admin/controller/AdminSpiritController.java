@@ -46,7 +46,7 @@ public class AdminSpiritController {
                 status, null,
                 null, null, null, null);
         return ResponseEntity.ok(ApiResponse.success(
-                PageResponse.from(spiritService.searchSpirits(condition, pageable))));
+                PageResponse.from(spiritService.searchSpiritsForAdmin(condition, pageable))));
     }
 
     // 관리자 술 상세 — 상태(ACTIVE/HIDDEN/PENDING) 무관 조회

@@ -8,4 +8,6 @@ import org.springframework.data.domain.Pageable;
 public interface SpiritQueryRepository {
 
     Page<SpiritListResponse> search(SpiritSearchCondition condition, Pageable pageable);
+
+    Page<SpiritListResponse> searchForAdmin(SpiritSearchCondition condition, Pageable pageable);
 }
