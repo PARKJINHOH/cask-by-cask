@@ -69,12 +69,12 @@ public interface PriceReportRepository extends JpaRepository<PriceReport, Long> 
             SELECT p FROM PriceReport p
             JOIN FETCH p.spirit
             LEFT JOIN FETCH p.store
-            WHERE p.spirit.id = :spiritId
+            WHERE p.spirit.id IN :spiritIds
             AND p.status = :status
             ORDER BY p.purchasedAt ASC
             """)
     List<PriceReport> findApprovedForChart(
-            @Param("spiritId") Long spiritId,
+            @Param("spiritIds") Collection<Long> spiritIds,
             @Param("status") PriceReportStatus status);
 
     // 차트 점 클릭 상세 — 해당 주(week) 범위
@@ -82,12 +82,12 @@ public interface PriceReportRepository extends JpaRepository<PriceReport, Long> 
             SELECT p FROM PriceReport p
             JOIN FETCH p.spirit
             LEFT JOIN FETCH p.store
-            WHERE p.spirit.id = :spiritId
+            WHERE p.spirit.id IN :spiritIds
             AND p.status = :status
             ORDER BY p.actualPrice ASC
             """)
     List<PriceReport> findApprovedForChartDetail(
-            @Param("spiritId") Long spiritId,
+            @Param("spiritIds") Collection<Long> spiritIds,
             @Param("status") PriceReportStatus status);
 
     // 본인 등록 목록

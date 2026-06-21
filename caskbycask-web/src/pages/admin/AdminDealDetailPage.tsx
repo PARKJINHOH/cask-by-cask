@@ -4,10 +4,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import Spinner from '@/shared/components/Spinner'
 import { formatDateTime } from '@/shared/utils/format'
 import { adminDealApi } from '@/domain/admin/api/adminDealApi'
-import { DEAL_CATEGORIES, type UpdateDealRequest } from '@/domain/admin/types/deal.types'
+import { DEAL_CATEGORIES, type DealPostDetail, type UpdateDealRequest } from '@/domain/admin/types/deal.types'
 import type { StoreType } from '@/domain/pricetracker/types/pricetracker.types'
 import { spiritApi } from '@/domain/spirit/api/spiritApi'
-import type { SpiritListItem } from '@/domain/spirit/types/spirit.types'
+import type { SpiritDetail, SpiritListItem, SpiritVariant } from '@/domain/spirit/types/spirit.types'
 import {
   ConfidenceBadge, DealStatusBadge, SourceLinkButton, formatPrice, siteLabel,
 } from '@/domain/admin/components/dealUi'
@@ -15,6 +15,19 @@ import {
 const EMPTY_FORM = {
   drinkName: '', drinkCategory: '', originalPrice: '', dealPrice: '',
   discountPercent: '', seller: '', dealCondition: '', expiryInfo: '', summaryKo: '',
+}
+
+type SpiritConnectionOption = {
+  id: number
+  nameKo: string
+  nameEn: string | null
+  category: string
+  variantLabel: string | null
+}
+
+type SpiritConnectionPicker = {
+  title: string
+  options: SpiritConnectionOption[]
 }
 
 export default function AdminDealDetailPage() {
@@ -27,12 +40,15 @@ export default function AdminDealDetailPage() {
   const [spiritId, setSpiritId] = useState<number | null>(null)
   const [spiritNameKo, setSpiritNameKo] = useState<string | null>(null)
   const [spiritNameEn, setSpiritNameEn] = useState<string | null>(null)
+  const [spiritVariantLabel, setSpiritVariantLabel] = useState<string | null>(null)
   const [storeType, setStoreType] = useState<StoreType>('DOMESTIC')
 
   const [spiritKeyword, setSpiritKeyword] = useState('')
   const [spiritSearchResults, setSpiritSearchResults] = useState<SpiritListItem[]>([])
   const [searchingSpirits, setSearchingSpirits] = useState(false)
   const [spiritSearchError, setSpiritSearchError] = useState(false)
+  const [variantPicker, setVariantPicker] = useState<SpiritConnectionPicker | null>(null)
+  const [loadingVariantSpiritId, setLoadingVariantSpiritId] = useState<number | null>(null)
 
   const { data: detail, isLoading } = useQuery({
     queryKey: ['admin', 'deals', id],
@@ -57,6 +73,7 @@ export default function AdminDealDetailPage() {
     setSpiritId(detail.spiritId)
     setSpiritNameKo(detail.spiritNameKo)
     setSpiritNameEn(detail.spiritNameEn)
+    setSpiritVariantLabel(buildDealSpiritVariantLabel(detail))
     setStoreType(detail.storeType ?? 'DOMESTIC')
   }, [detail])
 
@@ -65,6 +82,7 @@ export default function AdminDealDetailPage() {
     const keyword = spiritKeyword.trim()
 
     setSpiritSearchError(false)
+    setVariantPicker(null)
     if (spiritId || keyword.length === 0) {
       setSpiritSearchResults([])
       setSearchingSpirits(false)
@@ -126,6 +144,56 @@ export default function AdminDealDetailPage() {
 
   const goList = () => navigate('/admin/deals')
   const invalidateDealQueries = () => qc.invalidateQueries({ queryKey: ['admin', 'deals'] })
+
+  const connectSpirit = (option: SpiritConnectionOption) => {
+    setSpiritId(option.id)
+    setSpiritNameKo(option.nameKo)
+    setSpiritNameEn(option.nameEn)
+    setSpiritVariantLabel(option.variantLabel)
+    setSpiritSearchResults([])
+    setSpiritKeyword('')
+    setVariantPicker(null)
+  }
+
+  const openSpiritConnectionPicker = async (spirit: SpiritListItem) => {
+    setLoadingVariantSpiritId(spirit.id)
+    setSpiritSearchError(false)
+    try {
+      const [detailRes, variantsRes] = await Promise.all([
+        spiritApi.getDetail(spirit.id),
+        spiritApi.getVariants(spirit.id),
+      ])
+      const spiritDetail = detailRes.data.data!
+      const variantOptions = (variantsRes.data.data ?? []).map(toConnectionOption)
+
+      if (variantOptions.length === 0) {
+        connectSpirit(toConnectionOption(spiritDetail))
+        return
+      }
+
+      const options = spiritDetail.parentId
+        ? [
+            toConnectionOption(spiritDetail),
+            ...variantOptions.filter((option) => option.id !== spiritDetail.id),
+          ].sort((a, b) => a.id - b.id)
+        : variantOptions
+
+      if (options.length === 1) {
+        connectSpirit(options[0])
+        return
+      }
+
+      setVariantPicker({
+        title: spiritDetail.nameKo,
+        options,
+      })
+    } catch (e) {
+      console.error(e)
+      setSpiritSearchError(true)
+    } finally {
+      setLoadingVariantSpiritId(null)
+    }
+  }
 
   const approveMut = useMutation({
     mutationFn: () => adminDealApi.approve(id, buildPayload()),
@@ -318,6 +386,7 @@ export default function AdminDealDetailPage() {
               <div>
                 <p className="font-semibold text-neutral-800">{spiritNameKo}</p>
                 {spiritNameEn && <p className="text-xs text-neutral-400">{spiritNameEn}</p>}
+                {spiritVariantLabel && <p className="text-xs text-primary-700 mt-1">{spiritVariantLabel}</p>}
               </div>
               <button
                 type="button"
@@ -325,6 +394,7 @@ export default function AdminDealDetailPage() {
                   setSpiritId(null)
                   setSpiritNameKo(null)
                   setSpiritNameEn(null)
+                  setSpiritVariantLabel(null)
                 }}
                 className="text-xs text-red-600 hover:text-red-800 font-medium"
               >
@@ -351,22 +421,42 @@ export default function AdminDealDetailPage() {
                     <button
                       type="button"
                       key={sp.id}
-                      onClick={() => {
-                        setSpiritId(sp.id)
-                        setSpiritNameKo(sp.nameKo)
-                        setSpiritNameEn(sp.nameEn)
-                        setSpiritSearchResults([])
-                        setSpiritKeyword('')
-                      }}
+                      onClick={() => openSpiritConnectionPicker(sp)}
+                      disabled={loadingVariantSpiritId === sp.id}
                       className="w-full text-left px-3 py-2 hover:bg-neutral-50 flex items-center justify-between gap-3"
                     >
                       <div className="min-w-0">
                         <span className="font-medium text-neutral-800">{sp.nameKo}</span>
                         {sp.nameEn && <span className="text-xs text-neutral-400 ml-2">{sp.nameEn}</span>}
                       </div>
-                      <span className="text-xs text-neutral-400 shrink-0">{sp.category}</span>
+                      <span className="text-xs text-neutral-400 shrink-0">
+                        {loadingVariantSpiritId === sp.id ? '확인 중...' : sp.category}
+                      </span>
                     </button>
                   ))}
+                </div>
+              )}
+              {variantPicker && (
+                <div className="border border-primary-100 rounded-lg bg-white p-3 space-y-2">
+                  <p className="text-xs font-semibold text-neutral-500">
+                    {variantPicker.title} 배치/병입 선택
+                  </p>
+                  <div className="max-h-44 overflow-y-auto divide-y divide-neutral-100">
+                    {variantPicker.options.map((option) => (
+                      <button
+                        type="button"
+                        key={option.id}
+                        onClick={() => connectSpirit(option)}
+                        className="w-full text-left py-2 hover:bg-neutral-50 rounded-md px-2"
+                      >
+                        <p className="text-sm font-medium text-neutral-800">{option.nameKo}</p>
+                        {option.nameEn && <p className="text-xs text-neutral-400">{option.nameEn}</p>}
+                        <p className="text-xs text-primary-700 mt-0.5">
+                          {option.variantLabel ?? `ID ${option.id}`}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
               {!searchingSpirits && spiritKeyword.trim() !== '' && spiritSearchResults.length === 0 && !spiritSearchError && (
@@ -432,6 +522,63 @@ export default function AdminDealDetailPage() {
 
 const inputCls =
   'w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400'
+
+function toConnectionOption(spirit: SpiritDetail | SpiritVariant): SpiritConnectionOption {
+  const commonDetail = 'commonDetail' in spirit ? spirit.commonDetail : null
+  const batchNo = 'batchNo' in spirit ? spirit.batchNo : commonDetail?.batchNo
+  const bottledDate = 'bottledDate' in spirit ? spirit.bottledDate : commonDetail?.bottledDate
+  return {
+    id: spirit.id,
+    nameKo: spirit.nameKo,
+    nameEn: spirit.nameEn,
+    category: spirit.category,
+    variantLabel: composeVariantLabel({
+      variantValue: spirit.variantValue,
+      variantValueEn: spirit.variantValueEn,
+      batchNo,
+      bottledDate,
+      bottledYear: spirit.bottledYear,
+      abv: spirit.abv,
+      volumeMl: spirit.volumeMl,
+    }),
+  }
+}
+
+function buildDealSpiritVariantLabel(detail: DealPostDetail): string | null {
+  return composeVariantLabel({
+    variantValue: detail.spiritVariantValue,
+    variantValueEn: detail.spiritVariantValueEn,
+    batchNo: detail.spiritBatchNo,
+    bottledDate: detail.spiritBottledDate,
+  })
+}
+
+function composeVariantLabel({
+  variantValue,
+  variantValueEn,
+  batchNo,
+  bottledDate,
+  bottledYear,
+  abv,
+  volumeMl,
+}: {
+  variantValue?: string | null
+  variantValueEn?: string | null
+  batchNo?: string | null
+  bottledDate?: string | null
+  bottledYear?: number | null
+  abv?: number | null
+  volumeMl?: number | null
+}) {
+  const parts = [
+    variantValue || variantValueEn || (batchNo ? `Batch ${batchNo}` : null),
+    bottledDate ? `병입 ${bottledDate}` : bottledYear ? `${bottledYear} 병입` : null,
+    abv != null ? `${abv}%` : null,
+    volumeMl != null ? `${volumeMl}ml` : null,
+  ].filter(Boolean)
+
+  return parts.length > 0 ? parts.join(' · ') : null
+}
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (

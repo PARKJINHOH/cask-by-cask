@@ -31,9 +31,15 @@ public record DealPostDetailResponse(
         Long spiritId,
         String spiritNameKo,
         String spiritNameEn,
+        String spiritVariantValue,
+        String spiritVariantValueEn,
+        String spiritBatchNo,
+        String spiritBottledDate,
         StoreType storeType
 ) {
     public static DealPostDetailResponse from(DealPost d) {
+        var spirit = d.getSpirit();
+        var commonDetail = spirit != null ? spirit.getCommonDetail() : null;
         return new DealPostDetailResponse(
                 d.getId(),
                 d.getSourceUrl(),
@@ -54,9 +60,13 @@ public record DealPostDetailResponse(
                 d.getCrawledAt(),
                 d.getCreatedAt(),
                 d.getUpdatedAt(),
-                d.getSpirit() != null ? d.getSpirit().getId() : null,
-                d.getSpirit() != null ? d.getSpirit().getNameKo() : null,
-                d.getSpirit() != null ? d.getSpirit().getNameEn() : null,
+                spirit != null ? spirit.getId() : null,
+                spirit != null ? spirit.getNameKo() : null,
+                spirit != null ? spirit.getNameEn() : null,
+                spirit != null ? spirit.getVariantValue() : null,
+                spirit != null ? spirit.getVariantValueEn() : null,
+                commonDetail != null ? commonDetail.getBatchNo() : null,
+                commonDetail != null ? commonDetail.getBottledDate() : null,
                 d.getStoreType()
         );
     }

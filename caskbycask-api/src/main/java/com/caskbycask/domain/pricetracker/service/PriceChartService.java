@@ -2,6 +2,7 @@ package com.caskbycask.domain.pricetracker.service;
 
 import com.caskbycask.domain.pricetracker.dto.response.ChartPoint;
 import com.caskbycask.domain.pricetracker.dto.response.ChartResponse;
+import com.caskbycask.domain.pricetracker.dto.response.ChartSeries;
 import com.caskbycask.domain.pricetracker.dto.response.PriceReportChartDetailResponse;
 import com.caskbycask.domain.pricetracker.entity.PriceReport;
 import com.caskbycask.domain.pricetracker.entity.PriceReportImage;
@@ -37,10 +38,20 @@ public class PriceChartService {
 
     @Transactional(readOnly = true)
     public ChartResponse getChart(Long spiritId, StoreType storeType, String period, String region) {
+        return getChart(List.of(spiritId), storeType, period, region);
+    }
+
+    @Transactional(readOnly = true)
+    public ChartResponse getChart(List<Long> spiritIds, StoreType storeType, String period, String region) {
+        List<Long> targetSpiritIds = normalizeSpiritIds(spiritIds);
+        PriceCurrency currency = (storeType == StoreType.DUTYFREE) ? PriceCurrency.USD : PriceCurrency.KRW;
+        if (targetSpiritIds.isEmpty()) {
+            return new ChartResponse(BucketType.INDIVIDUAL, currency, List.of(), List.of());
+        }
         LocalDate startDate = computeStartDate(period);
 
         List<PriceReport> reports = priceReportRepository.findApprovedForChart(
-                spiritId, PriceReportStatus.APPROVED);
+                targetSpiritIds, PriceReportStatus.APPROVED);
 
         reports = reports.stream()
                 .filter(r -> startDate == null || !effectiveDate(r).isBefore(startDate))
@@ -49,7 +60,7 @@ public class PriceChartService {
                         || (r.getStore() != null && region.equals(r.getStore().getRegion())))
                 .toList();
 
-        List<DealPost> deals = dealPostRepository.findAllBySpiritIdAndStatusAndIsVisibleTrue(spiritId, DealStatus.APPROVED);
+        List<DealPost> deals = dealPostRepository.findAllBySpiritIdInAndStatusAndIsVisibleTrue(targetSpiritIds, DealStatus.APPROVED);
         deals = deals.stream()
                 .filter(d -> startDate == null || !effectiveDate(d).isBefore(startDate))
                 .filter(d -> storeType == null || d.getStoreType() == storeType)
@@ -58,20 +69,39 @@ public class PriceChartService {
         List<TempPrice> tempPrices = buildTempPrices(reports, deals);
         List<DailyPrice> dailyPrices = buildDailyPrices(tempPrices);
 
-        PriceCurrency currency = (storeType == StoreType.DUTYFREE) ? PriceCurrency.USD : PriceCurrency.KRW;
-
         BucketType bucketType = dailyPrices.size() <= 30 ? BucketType.INDIVIDUAL : BucketType.WEEKLY;
 
         List<ChartPoint> points = bucketType == BucketType.INDIVIDUAL
                 ? buildIndividualPoints(dailyPrices)
                 : buildWeeklyPoints(dailyPrices);
 
-        return new ChartResponse(bucketType, currency, points);
+        List<ChartSeries> series = targetSpiritIds.stream()
+                .map(targetId -> {
+                    List<DailyPrice> seriesDailyPrices = buildDailyPrices(tempPrices.stream()
+                            .filter(t -> Objects.equals(t.spiritId(), targetId))
+                            .toList());
+                    List<ChartPoint> seriesPoints = bucketType == BucketType.INDIVIDUAL
+                            ? buildIndividualPoints(seriesDailyPrices)
+                            : buildWeeklyPoints(seriesDailyPrices);
+                    return new ChartSeries(targetId, seriesPoints);
+                })
+                .filter(s -> !s.points().isEmpty())
+                .toList();
+
+        return new ChartResponse(bucketType, currency, points, series);
     }
 
     @Transactional(readOnly = true)
     public List<PriceReportChartDetailResponse> getChartPointDetails(
             Long spiritId, LocalDate pointDate, StoreType storeType, BucketType bucketType) {
+        return getChartPointDetails(List.of(spiritId), pointDate, storeType, bucketType);
+    }
+
+    @Transactional(readOnly = true)
+    public List<PriceReportChartDetailResponse> getChartPointDetails(
+            List<Long> spiritIds, LocalDate pointDate, StoreType storeType, BucketType bucketType) {
+        List<Long> targetSpiritIds = normalizeSpiritIds(spiritIds);
+        if (targetSpiritIds.isEmpty()) return List.of();
         boolean weekly = bucketType == BucketType.WEEKLY;
         LocalDate rangeStart = weekly
                 ? pointDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
@@ -79,7 +109,7 @@ public class PriceChartService {
         LocalDate rangeEnd = weekly ? rangeStart.plusDays(6) : pointDate;
 
         List<PriceReport> reports = priceReportRepository.findApprovedForChartDetail(
-                spiritId, PriceReportStatus.APPROVED);
+                targetSpiritIds, PriceReportStatus.APPROVED);
         reports = reports.stream()
                 .filter(r -> {
                     LocalDate rDate = effectiveDate(r);
@@ -87,7 +117,7 @@ public class PriceChartService {
                 })
                 .toList();
 
-        List<DealPost> deals = dealPostRepository.findAllBySpiritIdAndStatusAndIsVisibleTrue(spiritId, DealStatus.APPROVED);
+        List<DealPost> deals = dealPostRepository.findAllBySpiritIdInAndStatusAndIsVisibleTrue(targetSpiritIds, DealStatus.APPROVED);
         List<DealPost> rangeDeals = deals.stream()
                 .filter(d -> {
                     LocalDate dDate = effectiveDate(d);
@@ -111,6 +141,7 @@ public class PriceChartService {
     }
 
     private record TempPrice(
+            Long spiritId,
             LocalDate date,
             BigDecimal finalPrice,
             BigDecimal regularPriceCandidate,
@@ -144,6 +175,14 @@ public class PriceChartService {
     // Private
     // ═══════════════════════════════════════════
 
+    private List<Long> normalizeSpiritIds(List<Long> spiritIds) {
+        if (spiritIds == null) return List.of();
+        return spiritIds.stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+    }
+
     private LocalDate computeStartDate(String period) {
         if (period == null) return LocalDate.now().minusMonths(3);
         return switch (period.toUpperCase()) {
@@ -168,6 +207,7 @@ public class PriceChartService {
         List<TempPrice> tempPrices = new ArrayList<>();
         for (PriceReport r : reports) {
             tempPrices.add(new TempPrice(
+                    r.getSpirit().getId(),
                     effectiveDate(r),
                     r.getActualPrice(),
                     r.getPrice(),
@@ -184,6 +224,7 @@ public class PriceChartService {
             BigDecimal priceVal = d.getDealPrice() != null ? BigDecimal.valueOf(d.getDealPrice()) : null;
             BigDecimal origVal = d.getOriginalPrice() != null ? BigDecimal.valueOf(d.getOriginalPrice()) : null;
             tempPrices.add(new TempPrice(
+                    d.getSpirit() != null ? d.getSpirit().getId() : null,
                     effectiveDate(d),
                     priceVal,
                     origVal,

@@ -629,23 +629,85 @@ function Gallery({
   )
 }
 
-function PriceTabContent({ spiritId }: { spiritId: number }) {
-  const { t } = useTranslation()
+function formatVariantSelectLabel(variant: SpiritVariant, isEn: boolean) {
+  const valText = isEn ? (variant.variantValueEn || variant.variantValue) : variant.variantValue
+  const batchText = variant.batchNo ? `Batch ${variant.batchNo}` : null
+  const bottledText = variant.bottledDate || (variant.bottledYear ? String(variant.bottledYear) : null)
+  const main = valText || batchText || bottledText || String(variant.id)
+  const specs = [
+    variant.abv != null ? `${variant.abv}%` : null,
+    variant.volumeMl != null ? `${variant.volumeMl}ml` : null,
+  ].filter(Boolean)
+  return specs.length > 0 ? `${main} (${specs.join(', ')})` : main
+}
+
+function PriceTabContent({
+  spiritId,
+  activeVariantId,
+  selectedVariantId,
+  variants,
+}: {
+  spiritId: number
+  activeVariantId: number | null
+  selectedVariantId: number | null
+  variants: SpiritVariant[]
+}) {
+  const { t, i18n } = useTranslation()
+  const isEn = i18n.language === 'en'
   const [storeType, setStoreType] = useStateForPrice<StoreType>('DOMESTIC')
   const [period, setPeriod] = useStateForPrice('3M')
   const [selectedDate, setSelectedDate] = useStateForPrice<string | null>(null)
-  const { data: chartData, isLoading: chartLoading } = usePriceChart(spiritId, storeType, period)
-  const { data: details, isLoading: detailLoading } = usePriceChartDetail(spiritId, selectedDate, storeType, chartData?.bucketType)
+
+  const variantLabelMap = useMemo(() => {
+    const labels = variants.reduce<Record<number, string>>((acc, variant) => {
+      acc[variant.id] = formatVariantSelectLabel(variant, isEn)
+      return acc
+    }, {})
+    labels[spiritId] = t('spirit.detail.masterProduct', '대표/통합')
+    return labels
+  }, [variants, isEn, spiritId, t])
+
+  const integratedVariantIds = variants.length > 0 ? [spiritId, ...variants.map((variant) => variant.id)] : []
+  const isIntegratedVariantChart = selectedVariantId == null && integratedVariantIds.length > 0
+  const chartSpiritIds = isIntegratedVariantChart
+    ? integratedVariantIds
+    : [selectedVariantId ?? activeVariantId ?? spiritId]
+  const primaryChartSpiritId = chartSpiritIds[0] ?? spiritId
+  const actionSpiritId = selectedVariantId ?? activeVariantId ?? spiritId
+
+  useEffect(() => {
+    setSelectedDate(null)
+  }, [storeType, period, selectedVariantId, activeVariantId])
+
+  const { data: chartData, isLoading: chartLoading } = usePriceChart(
+    primaryChartSpiritId,
+    storeType,
+    period,
+    undefined,
+    isIntegratedVariantChart ? chartSpiritIds : undefined,
+  )
+  const { data: rawDetails, isLoading: detailLoading } = usePriceChartDetail(
+    primaryChartSpiritId,
+    selectedDate,
+    storeType,
+    chartData?.bucketType,
+    isIntegratedVariantChart ? chartSpiritIds : undefined,
+  )
+  const details = rawDetails?.map((detail) => ({
+    ...detail,
+    variantLabel: detail.spiritId != null ? variantLabelMap[detail.spiritId] : undefined,
+  }))
+
   return (
     <div className="space-y-4">
       {/* PRICE_ALERT 발동 배너 + 목표가 알림 인라인 */}
-      <PriceAlertBanner spiritId={spiritId} />
+      <PriceAlertBanner spiritId={actionSpiritId} />
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex-1 min-w-[240px]">
-          <PriceAlertInline spiritId={spiritId} />
+          <PriceAlertInline spiritId={actionSpiritId} />
         </div>
         <Link
-          to={`/price-tracker/register?spiritId=${spiritId}`}
+          to={`/price-tracker/register?spiritId=${actionSpiritId}`}
           className="shrink-0 px-3 py-1.5 rounded-lg bg-primary-700 text-white text-xs font-medium hover:bg-primary-800 transition-colors"
         >
           + {t('price.registerBtn')}
@@ -660,6 +722,7 @@ function PriceTabContent({ spiritId }: { spiritId: number }) {
             storeType={storeType} onStoreTypeChange={setStoreType}
             onPointClick={(date) => setSelectedDate(date)}
             selectedDate={selectedDate}
+            seriesLabels={variantLabelMap}
           />
         </div>
         <div className="lg:w-72 bg-white rounded-2xl border border-neutral-200 min-h-[300px]">
@@ -724,9 +787,7 @@ function VariantSelector({
       >
         <option value="">{t('spirit.detail.variantAll')}</option>
         {variants.map((v) => {
-          const valText = isEn ? (v.variantValueEn || v.variantValue) : v.variantValue
-          const abvText = v.abv != null ? ` (${v.abv}%)` : ''
-          const label = `${valText || v.id}${abvText}`
+          const label = formatVariantSelectLabel(v, isEn)
           return (
             <option key={v.id} value={v.id}>
               {label}
@@ -807,12 +868,9 @@ export default function SpiritDetailPage() {
 
   const groupOptions = useMemo(() => {
     return variantsList.map((v) => {
-      const valText = isEn ? (v.variantValueEn || v.variantValue) : v.variantValue
-      const abvText = v.abv != null ? ` (${v.abv}%)` : ''
-      const label = `${valText || v.id}${abvText}`
       return {
         id: v.id,
-        label
+        label: formatVariantSelectLabel(v, isEn),
       }
     })
   }, [variantsList, isEn])
@@ -1078,7 +1136,12 @@ export default function SpiritDetailPage() {
           ) : activeTab === 'community' ? (
             <CommentList spiritId={spiritId} onNeedLogin={() => setLoginModal(true)} />
           ) : (
-            <PriceTabContent spiritId={selectedVariantId || spiritId} />
+            <PriceTabContent
+              spiritId={spiritId}
+              activeVariantId={activeVariantId}
+              selectedVariantId={selectedVariantId}
+              variants={variantsList}
+            />
           )}
         </div>
         </div>

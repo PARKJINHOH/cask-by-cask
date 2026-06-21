@@ -15,10 +15,16 @@ export interface ChartPoint {
   reportIds: number[]
 }
 
+export interface ChartSeries {
+  spiritId: number
+  points: ChartPoint[]
+}
+
 export interface ChartResponse {
   bucketType: BucketType
   currency: PriceCurrency
   points: ChartPoint[]
+  series: ChartSeries[]
 }
 
 export interface DiscountItemDetail {
@@ -30,6 +36,7 @@ export interface DiscountItemDetail {
 
 export interface PriceReportChartDetail {
   reportId: number
+  spiritId: number | null
   storeName: string | null
   suggestedStoreName: string | null
   finalPrice: number | null
@@ -44,6 +51,7 @@ export interface PriceReportChartDetail {
   purchasedAt: string | null
   discountItems: DiscountItemDetail[]
   isHotDeal?: boolean
+  variantLabel?: string | null
   sourceSite?: string | null
   sourceUrl?: string | null
 }

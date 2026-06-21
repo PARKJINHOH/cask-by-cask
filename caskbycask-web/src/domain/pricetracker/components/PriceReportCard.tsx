@@ -71,6 +71,9 @@ export default function PriceReportCard({ detail, isBest }: Props) {
               <span>{reporterLabel}</span>
               {detail.purchasedAt && <span>· {detail.purchasedAt}</span>}
             </div>
+            {detail.variantLabel && (
+              <p className="mt-1 text-xs font-medium text-primary-700">{detail.variantLabel}</p>
+            )}
           </div>
 
           <div className="text-right shrink-0">

@@ -7,10 +7,11 @@ export function usePriceChart(
   storeType: StoreType,
   period: string,
   region?: string,
+  spiritIds?: number[],
 ) {
   return useQuery({
-    queryKey: ['priceChart', spiritId, storeType, period, region],
-    queryFn: () => priceTrackerApi.getChart(spiritId, storeType, period, region),
+    queryKey: ['priceChart', spiritId, storeType, period, region, spiritIds],
+    queryFn: () => priceTrackerApi.getChart(spiritId, storeType, period, region, spiritIds),
     select: (res) => res.data.data,
     enabled: !!spiritId,
     staleTime: 5 * 60 * 1000,
@@ -22,10 +23,11 @@ export function usePriceChartDetail(
   pointDate: string | null,
   storeType: StoreType,
   bucketType?: BucketType,
+  spiritIds?: number[],
 ) {
   return useQuery({
-    queryKey: ['priceChartDetail', spiritId, pointDate, storeType, bucketType],
-    queryFn: () => priceTrackerApi.getChartDetails(spiritId, pointDate!, storeType, bucketType),
+    queryKey: ['priceChartDetail', spiritId, pointDate, storeType, bucketType, spiritIds],
+    queryFn: () => priceTrackerApi.getChartDetails(spiritId, pointDate!, storeType, bucketType, spiritIds),
     select: (res) => res.data.data,
     enabled: !!spiritId && !!pointDate,
     staleTime: 5 * 60 * 1000,

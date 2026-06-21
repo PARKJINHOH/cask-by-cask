@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 @RestController
@@ -24,20 +25,33 @@ public class PriceChartController {
     @GetMapping
     public ResponseEntity<ApiResponse<ChartResponse>> getChart(
             @RequestParam Long spiritId,
+            @RequestParam(required = false) List<Long> spiritIds,
             @RequestParam(required = false) StoreType storeType,
             @RequestParam(required = false, defaultValue = "3M") String period,
             @RequestParam(required = false) String region) {
         return ResponseEntity.ok(ApiResponse.success(
-                priceChartService.getChart(spiritId, storeType, period, region)));
+                priceChartService.getChart(resolveSpiritIds(spiritId, spiritIds), storeType, period, region)));
     }
 
     @GetMapping("/{pointDate}/details")
     public ResponseEntity<ApiResponse<List<PriceReportChartDetailResponse>>> getChartPointDetails(
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate pointDate,
             @RequestParam Long spiritId,
+            @RequestParam(required = false) List<Long> spiritIds,
             @RequestParam(required = false) StoreType storeType,
             @RequestParam(required = false) BucketType bucketType) {
         return ResponseEntity.ok(ApiResponse.success(
-                priceChartService.getChartPointDetails(spiritId, pointDate, storeType, bucketType)));
+                priceChartService.getChartPointDetails(resolveSpiritIds(spiritId, spiritIds), pointDate, storeType, bucketType)));
+    }
+
+    private List<Long> resolveSpiritIds(Long spiritId, List<Long> spiritIds) {
+        if (spiritIds == null || spiritIds.isEmpty()) {
+            return List.of(spiritId);
+        }
+        List<Long> ids = new ArrayList<>(spiritIds);
+        if (!ids.contains(spiritId)) {
+            ids.add(0, spiritId);
+        }
+        return ids;
     }
 }

@@ -44,6 +44,10 @@ export interface DealPostDetail {
   spiritId: number | null
   spiritNameKo: string | null
   spiritNameEn: string | null
+  spiritVariantValue: string | null
+  spiritVariantValueEn: string | null
+  spiritBatchNo: string | null
+  spiritBottledDate: string | null
   storeType: StoreType
 }
 

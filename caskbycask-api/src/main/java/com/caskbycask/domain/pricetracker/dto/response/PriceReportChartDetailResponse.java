@@ -11,6 +11,7 @@ import java.util.List;
 
 public record PriceReportChartDetailResponse(
         Long reportId,
+        Long spiritId,
         String storeName,
         String suggestedStoreName,
         BigDecimal finalPrice,
@@ -36,6 +37,7 @@ public record PriceReportChartDetailResponse(
 
         return new PriceReportChartDetailResponse(
                 report.getId(),
+                report.getSpirit().getId(),
                 report.getStore() != null ? report.getStore().getDisplayName() : null,
                 report.getSuggestedStoreName(),
                 report.getActualPrice(),
@@ -62,6 +64,7 @@ public record PriceReportChartDetailResponse(
 
         return new PriceReportChartDetailResponse(
                 d.getId(),
+                d.getSpirit() != null ? d.getSpirit().getId() : null,
                 d.getSeller(),
                 d.getDrinkName(),
                 priceVal,

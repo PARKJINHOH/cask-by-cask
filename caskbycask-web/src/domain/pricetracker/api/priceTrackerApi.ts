@@ -12,17 +12,33 @@ import type {
   StoreType,
 } from '../types/pricetracker.types'
 
+function serializeParams(params: Record<string, unknown>): string {
+  const usp = new URLSearchParams()
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === '') return
+    if (Array.isArray(value)) {
+      value.forEach((v) => {
+        if (v !== undefined && v !== null && v !== '') usp.append(key, String(v))
+      })
+    } else {
+      usp.append(key, String(value))
+    }
+  })
+  return usp.toString()
+}
+
 export const priceTrackerApi = {
   // ── 차트 ────────────────────────────────────────
-  getChart: (spiritId: number, storeType: StoreType, period: string, region?: string) =>
+  getChart: (spiritId: number, storeType: StoreType, period: string, region?: string, spiritIds?: number[]) =>
     axiosInstance.get<ApiResponse<ChartResponse>>('/api/price-reports/chart', {
-      params: { spiritId, storeType, period, region: region || undefined },
+      params: { spiritId, spiritIds, storeType, period, region: region || undefined },
+      paramsSerializer: serializeParams,
     }),
 
-  getChartDetails: (spiritId: number, pointDate: string, storeType: StoreType, bucketType?: string) =>
+  getChartDetails: (spiritId: number, pointDate: string, storeType: StoreType, bucketType?: string, spiritIds?: number[]) =>
     axiosInstance.get<ApiResponse<PriceReportChartDetail[]>>(
       `/api/price-reports/chart/${pointDate}/details`,
-      { params: { spiritId, storeType, bucketType } },
+      { params: { spiritId, spiritIds, storeType, bucketType }, paramsSerializer: serializeParams },
     ),
 
   // ── 가격 등록 ────────────────────────────────────
