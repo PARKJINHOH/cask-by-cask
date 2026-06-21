@@ -13,7 +13,7 @@ import java.io.IOException;
 @Component
 public class WebpConversionService {
 
-    private static final int DEFAULT_QUALITY = 95; // 0~100, 80=균형, 75 이상 권장
+    private static final int DEFAULT_QUALITY = 85; // 0~100, 80=균형, 75 이상 권장
     private final WebpWriter writer = WebpWriter.DEFAULT.withQ(DEFAULT_QUALITY);
 
     public boolean isConvertibleMime(String mimeType) {

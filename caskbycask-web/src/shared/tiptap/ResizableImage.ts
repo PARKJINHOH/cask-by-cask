@@ -43,6 +43,39 @@ export const ResizableImage = Image.extend({
       if (currentNode.attrs.width) img.setAttribute('width', currentNode.attrs.width)
       frame.appendChild(img)
 
+      // 이미지 더블클릭 (데스크톱) / 더블탭 (모바일) 시 편집 이벤트 발생
+      const dispatchImageEdit = () => {
+        const pos = getPos()
+        if (typeof pos === 'number') {
+          const event = new CustomEvent('image-edit-request', {
+            detail: {
+              src: img.src,
+              pos: pos,
+            },
+            bubbles: true,
+          })
+          editor.view.dom.dispatchEvent(event)
+        }
+      }
+
+      img.addEventListener('dblclick', (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        dispatchImageEdit()
+      })
+
+      let lastTap = 0
+      img.addEventListener('touchend', (e) => {
+        const currentTime = new Date().getTime()
+        const tapLength = currentTime - lastTap
+        if (tapLength < 300 && tapLength > 0) {
+          e.preventDefault()
+          e.stopPropagation()
+          dispatchImageEdit()
+        }
+        lastTap = currentTime
+      })
+
       // 정렬(TextAlign이 image에 적용된 경우) 반영
       const applyAlign = () => {
         const align = (currentNode.attrs as Record<string, unknown>).textAlign as string | undefined

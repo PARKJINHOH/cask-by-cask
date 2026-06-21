@@ -20,6 +20,7 @@ import { UploadedVideo } from './UploadedVideo'
 import { SpiritEmbed, type SpiritEmbedAttrs } from './SpiritEmbed'
 import RichTextToolbar from './RichTextToolbar'
 import SpiritEmbedDialog from './SpiritEmbedDialog'
+import ImageEditorModal from '../components/ImageEditorModal'
 import './rich-text.css'
 import './editor-image.css'
 
@@ -94,6 +95,12 @@ export default function RichTextEditor({
   const uploadAndInsertImagesRef = useRef<(files: File[]) => void>(() => {})
   // 이 세션에서 업로드한 미디어 URL → 파일 크기. 합계 100MB 사전 검증용.
   const mediaSizesRef = useRef(new Map<string, number>())
+
+  // 이미지 편집 모달 상태
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [editImageSrc, setEditImageSrc] = useState('')
+  const [editImagePos, setEditImagePos] = useState<number | null>(null)
+  const [isEditingSaving, setIsEditingSaving] = useState(false)
 
   const handleImageUpload = useCallback(async (file: File): Promise<string | null> => {
     if (!uploadImage) return null
@@ -211,6 +218,57 @@ export default function RichTextEditor({
       lastEmitted.current = value
     }
   }, [editor, value])
+
+  // 이미지 편집 요청 이벤트 리스너 등록
+  useEffect(() => {
+    if (!editor) return
+
+    const handleEditRequest = (e: Event) => {
+      const customEvent = e as CustomEvent<{ src: string; pos: number }>
+      const { src, pos } = customEvent.detail
+      setEditImageSrc(src)
+      setEditImagePos(pos)
+      setEditModalOpen(true)
+    }
+
+    const editorDom = editor.view.dom
+    editorDom.addEventListener('image-edit-request', handleEditRequest)
+
+    return () => {
+      editorDom.removeEventListener('image-edit-request', handleEditRequest)
+    }
+  }, [editor])
+
+  const handleSaveEditedImage = useCallback(async (file: File) => {
+    if (!uploadImage || !editor || editImagePos === null) return
+    setIsEditingSaving(true)
+    try {
+      const newUrl = await uploadImage(file)
+      if (!newUrl) {
+        onImageError?.('편집된 이미지 업로드에 실패했습니다.')
+        return
+      }
+
+      mediaSizesRef.current.set(newUrl, file.size)
+
+      const state = editor.state
+      const node = state.doc.nodeAt(editImagePos)
+      if (node && node.type.name === 'image') {
+        editor.view.dispatch(
+          state.tr.setNodeMarkup(editImagePos, undefined, {
+            ...node.attrs,
+            src: newUrl,
+          })
+        )
+      }
+      setEditModalOpen(false)
+    } catch (err) {
+      onImageError?.('편집된 이미지 저장 중 오류가 발생했습니다.')
+      console.error(err)
+    } finally {
+      setIsEditingSaving(false)
+    }
+  }, [uploadImage, editor, editImagePos, onImageError])
 
   // 이미지 파일 여러 장을 순차 업로드하며 성공한 것부터 에디터에 삽입한다.
   // (파일 선택 / 드래그 / 붙여넣기 공용)
@@ -387,6 +445,16 @@ export default function RichTextEditor({
 
       {enableSpiritEmbed && (
         <SpiritEmbedDialog open={spiritOpen} onClose={() => setSpiritOpen(false)} onSelect={handleSpiritSelect} />
+      )}
+
+      {uploadImage && (
+        <ImageEditorModal
+          open={editModalOpen}
+          onClose={() => setEditModalOpen(false)}
+          imageSrc={editImageSrc}
+          onSave={handleSaveEditedImage}
+          isSaving={isEditingSaving}
+        />
       )}
     </div>
   )

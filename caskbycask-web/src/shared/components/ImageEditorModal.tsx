@@ -1,0 +1,922 @@
+import { Fragment, useState, useEffect, useRef } from 'react'
+import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from '@headlessui/react'
+
+interface ImageEditorModalProps {
+  open: boolean
+  onClose: () => void
+  imageSrc: string
+  onSave: (editedFile: File) => Promise<void>
+  isSaving: boolean
+}
+
+type EditMode = 'paint' | 'crop'
+type PaintType = 'mosaic' | 'blur'
+
+interface CropBox {
+  x: number // 0 ~ 1
+  y: number // 0 ~ 1
+  w: number // 0 ~ 1
+  h: number // 0 ~ 1
+}
+
+export default function ImageEditorModal({
+  open,
+  onClose,
+  imageSrc,
+  onSave,
+  isSaving,
+}: ImageEditorModalProps) {
+  const [mode, setMode] = useState<EditMode>('paint')
+  const [paintType, setPaintType] = useState<PaintType>('mosaic')
+  const [brushSize, setBrushSize] = useState<number>(30)
+
+  // Canvas refs
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const mosaicCanvasRef = useRef<HTMLCanvasElement>(document.createElement('canvas'))
+  const blurCanvasRef = useRef<HTMLCanvasElement>(document.createElement('canvas'))
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  // Drawing state
+  const isDrawingRef = useRef(false)
+  const lastPosRef = useRef({ x: 0, y: 0 })
+
+  // History state
+  const [history, setHistory] = useState<ImageData[]>([])
+  const [historyIndex, setHistoryIndex] = useState<number>(-1)
+
+  // Crop Box state
+  const [cropBox, setCropBox] = useState<CropBox>({ x: 0.1, y: 0.1, w: 0.8, h: 0.8 })
+
+  // Canvas scale state for dynamic brush cursor size
+  const [canvasScale, setCanvasScale] = useState<number>(1)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const updateScale = () => {
+      const rect = canvas.getBoundingClientRect()
+      if (rect.width > 0 && canvas.width > 0) {
+        setCanvasScale(rect.width / canvas.width)
+      }
+    }
+
+    // Update on load
+    updateScale()
+
+    const observer = new ResizeObserver(() => {
+      updateScale()
+    })
+    observer.observe(canvas)
+
+    window.addEventListener('resize', updateScale)
+
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', updateScale)
+    }
+  }, [historyIndex, mode, open])
+
+  // Helper: push state to history
+  const pushState = () => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+    
+    const nextHistory = history.slice(0, historyIndex + 1)
+    nextHistory.push(imgData)
+    setHistory(nextHistory)
+    setHistoryIndex(nextHistory.length - 1)
+  }
+
+  // Pre-generate mosaic and blur canvases
+  const regenerateEffects = () => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const w = canvas.width
+    const h = canvas.height
+
+    // 1. Mosaic Effect
+    const mCanvas = mosaicCanvasRef.current
+    mCanvas.width = w
+    mCanvas.height = h
+    const mCtx = mCanvas.getContext('2d')!
+
+    const scale = 0.04 // Mosaic pixelation factor
+    const sw = Math.max(1, Math.round(w * scale))
+    const sh = Math.max(1, Math.round(h * scale))
+
+    const tempCanvas = document.createElement('canvas')
+    tempCanvas.width = sw
+    tempCanvas.height = sh
+    const tCtx = tempCanvas.getContext('2d')!
+    tCtx.drawImage(canvas, 0, 0, sw, sh)
+
+    mCtx.imageSmoothingEnabled = false
+    mCtx.drawImage(tempCanvas, 0, 0, sw, sh, 0, 0, w, h)
+
+    // 2. Blur Effect
+    const bCanvas = blurCanvasRef.current
+    bCanvas.width = w
+    bCanvas.height = h
+    const bCtx = bCanvas.getContext('2d')!
+    if ('filter' in (bCtx as any)) {
+      (bCtx as any).filter = 'blur(16px)'
+      bCtx.drawImage(canvas, 0, 0)
+    } else {
+      // Fallback: scale down and scale up with smoothing
+      const bScale = 0.1
+      const bw = Math.max(1, Math.round(w * bScale))
+      const bh = Math.max(1, Math.round(h * bScale))
+      const bTemp = document.createElement('canvas')
+      bTemp.width = bw
+      bTemp.height = bh
+      const btCtx = bTemp.getContext('2d')!
+      btCtx.imageSmoothingEnabled = true
+      btCtx.drawImage(canvas, 0, 0, bw, bh)
+
+      bCtx.imageSmoothingEnabled = true
+      bCtx.drawImage(bTemp, 0, 0, bw, bh, 0, 0, w, h)
+    }
+  }
+
+  // Load image on mount/src change
+  useEffect(() => {
+    if (!open || !imageSrc) return
+
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => {
+      const canvas = canvasRef.current
+      if (!canvas) return
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return
+
+      canvas.width = img.naturalWidth
+      canvas.height = img.naturalHeight
+      ctx.drawImage(img, 0, 0)
+
+      regenerateEffects()
+
+      // Set initial history state
+      const initialData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+      setHistory([initialData])
+      setHistoryIndex(0)
+    }
+    img.src = imageSrc
+    setMode('paint') // Reset mode
+  }, [open, imageSrc])
+
+  // Canvas drawing event handlers (Unified touch/mouse)
+  const getCanvasCoords = (clientX: number, clientY: number): { x: number; y: number } | null => {
+    const canvas = canvasRef.current
+    if (!canvas) return null
+    const rect = canvas.getBoundingClientRect()
+    const x = (clientX - rect.left) * (canvas.width / rect.width)
+    const y = (clientY - rect.top) * (canvas.height / rect.height)
+    return { x, y }
+  }
+
+  const startDrawing = (clientX: number, clientY: number) => {
+    if (mode !== 'paint') return
+    const coords = getCanvasCoords(clientX, clientY)
+    if (!coords) return
+
+    pushState() // Save history before drawing
+    isDrawingRef.current = true
+    lastPosRef.current = coords
+
+    // Draw single dot on click/tap
+    drawDot(coords.x, coords.y)
+  }
+
+  const drawDot = (x: number, y: number) => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    const effectCanvas = paintType === 'mosaic' ? mosaicCanvasRef.current : blurCanvasRef.current
+    const pattern = ctx.createPattern(effectCanvas, 'no-repeat')
+    if (pattern) {
+      ctx.save()
+      ctx.fillStyle = pattern
+      ctx.beginPath()
+      ctx.arc(x, y, brushSize / 2, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.restore()
+    }
+  }
+
+  const drawStroke = (x: number, y: number) => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    const effectCanvas = paintType === 'mosaic' ? mosaicCanvasRef.current : blurCanvasRef.current
+    const pattern = ctx.createPattern(effectCanvas, 'no-repeat')
+    if (pattern) {
+      ctx.save()
+      ctx.strokeStyle = pattern
+      ctx.lineWidth = brushSize
+      ctx.lineCap = 'round'
+      ctx.lineJoin = 'round'
+      ctx.beginPath()
+      ctx.moveTo(lastPosRef.current.x, lastPosRef.current.y)
+      ctx.lineTo(x, y)
+      ctx.stroke()
+      ctx.restore()
+    }
+
+    lastPosRef.current = { x, y }
+  }
+
+  const handleDrawingMove = (clientX: number, clientY: number) => {
+    if (!isDrawingRef.current) return
+    const coords = getCanvasCoords(clientX, clientY)
+    if (!coords) return
+    drawStroke(coords.x, coords.y)
+  }
+
+  const endDrawing = () => {
+    if (isDrawingRef.current) {
+      isDrawingRef.current = false
+      // Push the finished stroke to history and update effects
+      regenerateEffects()
+      // Overwrite the current history state with the updated canvas
+      const canvas = canvasRef.current
+      if (canvas) {
+        const ctx = canvas.getContext('2d')!
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+        setHistory((prev) => {
+          const next = [...prev]
+          next[historyIndex] = imgData
+          return next
+        })
+      }
+    }
+  }
+
+  // Rotation: 90 degrees clockwise
+  const handleRotate = () => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    pushState()
+
+    const tempCanvas = document.createElement('canvas')
+    tempCanvas.width = canvas.height
+    tempCanvas.height = canvas.width
+    const tempCtx = tempCanvas.getContext('2d')!
+
+    tempCtx.translate(tempCanvas.width / 2, tempCanvas.height / 2)
+    tempCtx.rotate((90 * Math.PI) / 180)
+    tempCtx.drawImage(canvas, -canvas.width / 2, -canvas.height / 2)
+
+    canvas.width = tempCanvas.width
+    canvas.height = tempCanvas.height
+    ctx.drawImage(tempCanvas, 0, 0)
+
+    regenerateEffects()
+
+    // Overwrite the updated rotation back into history
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+    setHistory((prev) => {
+      const next = [...prev]
+      next[historyIndex + 1] = imgData
+      return next
+    })
+    setHistoryIndex((prev) => prev + 1)
+  }
+
+  // Apply Crop
+  const handleApplyCrop = () => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    pushState()
+
+    const cropX = Math.round(cropBox.x * canvas.width)
+    const cropY = Math.round(cropBox.y * canvas.height)
+    const cropW = Math.round(cropBox.w * canvas.width)
+    const cropH = Math.round(cropBox.h * canvas.height)
+
+    if (cropW <= 10 || cropH <= 10) return // Avoid zero/tiny crops
+
+    const tempCanvas = document.createElement('canvas')
+    tempCanvas.width = cropW
+    tempCanvas.height = cropH
+    const tempCtx = tempCanvas.getContext('2d')!
+    tempCtx.drawImage(canvas, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH)
+
+    canvas.width = cropW
+    canvas.height = cropH
+    ctx.drawImage(tempCanvas, 0, 0)
+
+    regenerateEffects()
+
+    // Overwrite crop state back into history
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+    setHistory((prev) => {
+      const next = [...prev]
+      next[historyIndex + 1] = imgData
+      return next
+    })
+    setHistoryIndex((prev) => prev + 1)
+
+    // Reset crop box
+    setCropBox({ x: 0.1, y: 0.1, w: 0.8, h: 0.8 })
+    setMode('paint')
+  }
+
+  // Undo/Redo logic
+  const handleUndo = () => {
+    if (historyIndex <= 0) return
+    const prevIndex = historyIndex - 1
+    setHistoryIndex(prevIndex)
+    restoreHistoryState(prevIndex)
+  }
+
+  const handleRedo = () => {
+    if (historyIndex >= history.length - 1) return
+    const nextIndex = historyIndex + 1
+    setHistoryIndex(nextIndex)
+    restoreHistoryState(nextIndex)
+  }
+
+  const restoreHistoryState = (index: number) => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    const imgData = history[index]
+    if (!imgData) return
+
+    canvas.width = imgData.width
+    canvas.height = imgData.height
+    ctx.putImageData(imgData, 0, 0)
+
+    regenerateEffects()
+  }
+
+  // Crop Dragging handlers (Unified mouse/touch)
+  const handleCropBoxDragStart = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
+
+    const startX = clientX
+    const startY = clientY
+    const startBox = { ...cropBox }
+
+    const container = containerRef.current
+    if (!container) return
+    const rect = container.getBoundingClientRect()
+
+    const onMove = (moveEvent: MouseEvent | TouchEvent) => {
+      const currentX = 'touches' in moveEvent ? moveEvent.touches[0].clientX : moveEvent.clientX
+      const currentY = 'touches' in moveEvent ? moveEvent.touches[0].clientY : moveEvent.clientY
+
+      const dx = (currentX - startX) / rect.width
+      const dy = (currentY - startY) / rect.height
+
+      let nextX = startBox.x + dx
+      let nextY = startBox.y + dy
+
+      nextX = Math.max(0, Math.min(1 - startBox.w, nextX))
+      nextY = Math.max(0, Math.min(1 - startBox.h, nextY))
+
+      setCropBox((prev) => ({ ...prev, x: nextX, y: nextY }))
+    }
+
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+      document.removeEventListener('touchmove', onMove)
+      document.removeEventListener('touchend', onUp)
+    }
+
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+    document.addEventListener('touchmove', onMove, { passive: false })
+    document.addEventListener('touchend', onUp)
+  }
+
+  const handleHandleDragStart = (e: React.MouseEvent | React.TouchEvent, handle: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
+
+    const startX = clientX
+    const startY = clientY
+    const startBox = { ...cropBox }
+
+    const container = containerRef.current
+    if (!container) return
+    const rect = container.getBoundingClientRect()
+
+    const onMove = (moveEvent: MouseEvent | TouchEvent) => {
+      const currentX = 'touches' in moveEvent ? moveEvent.touches[0].clientX : moveEvent.clientX
+      const currentY = 'touches' in moveEvent ? moveEvent.touches[0].clientY : moveEvent.clientY
+
+      const dx = (currentX - startX) / rect.width
+      const dy = (currentY - startY) / rect.height
+
+      let x = startBox.x
+      let y = startBox.y
+      let w = startBox.w
+      let h = startBox.h
+
+      const minSize = 0.08
+
+      if (handle.includes('e')) {
+        w = Math.max(minSize, Math.min(1 - x, startBox.w + dx))
+      }
+      if (handle.includes('w')) {
+        const newX = Math.max(0, Math.min(startBox.x + startBox.w - minSize, startBox.x + dx))
+        w = startBox.w + (startBox.x - newX)
+        x = newX
+      }
+      if (handle.includes('s')) {
+        h = Math.max(minSize, Math.min(1 - y, startBox.h + dy))
+      }
+      if (handle.includes('n')) {
+        const newY = Math.max(0, Math.min(startBox.y + startBox.h - minSize, startBox.y + dy))
+        h = startBox.h + (startBox.y - newY)
+        y = newY
+      }
+
+      setCropBox({ x, y, w, h })
+    }
+
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+      document.removeEventListener('touchmove', onMove)
+      document.removeEventListener('touchend', onUp)
+    }
+
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+    document.addEventListener('touchmove', onMove, { passive: false })
+    document.addEventListener('touchend', onUp)
+  }
+
+  // Dynamic cursor style representing current brush size
+  const getCursorStyle = () => {
+    if (mode !== 'paint') return 'default'
+    const visualSize = Math.max(10, Math.round(brushSize * canvasScale))
+    if (visualSize > 120) {
+      return 'crosshair'
+    }
+    const half = visualSize / 2
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${visualSize}" height="${visualSize}" viewBox="0 0 ${visualSize} ${visualSize}"><circle cx="${half}" cy="${half}" r="${half - 1.5}" fill="rgba(255, 255, 255, 0.2)" stroke="white" stroke-width="1"/><circle cx="${half}" cy="${half}" r="${half - 0.5}" fill="none" stroke="black" stroke-width="0.75"/></svg>`
+    return `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}") ${half} ${half}, crosshair`
+  }
+
+  // Handle Save
+  const handleSaveClick = () => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    canvas.toBlob((blob) => {
+      if (!blob) return
+      const file = new File([blob], 'edited_image.png', { type: 'image/png' })
+      onSave(file)
+    }, 'image/png')
+  }
+
+  return (
+    <Transition appear show={open} as={Fragment}>
+      <Dialog as="div" className="relative z-50" onClose={() => {}}>
+        <TransitionChild
+          as={Fragment}
+          enter="ease-out duration-200"
+          enterFrom="opacity-0"
+          enterTo="opacity-100"
+          leave="ease-in duration-150"
+          leaveFrom="opacity-100"
+          leaveTo="opacity-0"
+        >
+          <div className="fixed inset-0 bg-neutral-950/90 backdrop-blur-[4px]" aria-hidden="true" />
+        </TransitionChild>
+
+        <div className="fixed inset-0 overflow-y-auto flex items-center justify-center p-4">
+          <TransitionChild
+            as={Fragment}
+            enter="ease-out duration-200"
+            enterFrom="opacity-0 scale-95"
+            enterTo="opacity-100 scale-100"
+            leave="ease-in duration-150"
+            leaveFrom="opacity-100 scale-100"
+            leaveTo="opacity-0 scale-95"
+          >
+            <DialogPanel className="w-full max-w-5xl bg-neutral-900 text-neutral-100 rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[90vh] md:h-[85vh]">
+              
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-800 bg-neutral-900/50 backdrop-blur">
+                <DialogTitle className="text-base font-semibold text-neutral-100">
+                  이미지 편집
+                </DialogTitle>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleUndo}
+                    disabled={historyIndex <= 0}
+                    className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 disabled:opacity-30 transition-all duration-150"
+                    title="실행 취소"
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={handleRedo}
+                    disabled={historyIndex >= history.length - 1}
+                    className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 disabled:opacity-30 transition-all duration-150"
+                    title="다시 실행"
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 10H11a8 8 0 00-8 8v2m18-8l-6 6m6-6l-6-6" />
+                    </svg>
+                  </button>
+                  <div className="h-4 w-px bg-neutral-800 mx-1" />
+                  <button
+                    onClick={onClose}
+                    className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 transition-all duration-150"
+                    title="닫기"
+                  >
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              {/* Main Content Area */}
+              <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+                
+                {/* Left Sidebar Toolbar (for Desktop/Large screens) */}
+                <div className="hidden md:flex flex-col gap-6 w-60 border-r border-neutral-800 p-6 bg-neutral-900/30">
+                  <div className="space-y-4">
+                    <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">도구 선택</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => setMode('paint')}
+                        className={`flex flex-col items-center justify-center py-3 rounded-xl border text-xs gap-1.5 transition-all duration-150 ${
+                          mode === 'paint'
+                            ? 'bg-primary-600 border-primary-500 text-white font-medium shadow-lg shadow-primary-900/20'
+                            : 'bg-neutral-800/50 border-neutral-700 hover:bg-neutral-800 text-neutral-300'
+                        }`}
+                      >
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                        브러시
+                      </button>
+                      <button
+                        onClick={() => setMode('crop')}
+                        className={`flex flex-col items-center justify-center py-3 rounded-xl border text-xs gap-1.5 transition-all duration-150 ${
+                          mode === 'crop'
+                            ? 'bg-primary-600 border-primary-500 text-white font-medium shadow-lg shadow-primary-900/20'
+                            : 'bg-neutral-800/50 border-neutral-700 hover:bg-neutral-800 text-neutral-300'
+                        }`}
+                      >
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M8 2v14a2 2 0 002 2h14M18 22V10a2 2 0 00-2-2H2" />
+                        </svg>
+                        자르기
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="h-px bg-neutral-800" />
+
+                  {/* Mode Specific Controls */}
+                  <div className="flex-1 space-y-5">
+                    {mode === 'paint' && (
+                      <>
+                        <div className="space-y-3">
+                          <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">효과 타입</span>
+                          <div className="flex rounded-lg overflow-hidden bg-neutral-800 p-1 border border-neutral-700">
+                            <button
+                              onClick={() => setPaintType('mosaic')}
+                              className={`flex-1 py-1.5 text-xs rounded-md transition-all duration-150 ${
+                                paintType === 'mosaic' ? 'bg-neutral-700 text-white font-medium' : 'text-neutral-400 hover:text-neutral-200'
+                              }`}
+                            >
+                              모자이크
+                            </button>
+                            <button
+                              onClick={() => setPaintType('blur')}
+                              className={`flex-1 py-1.5 text-xs rounded-md transition-all duration-150 ${
+                                paintType === 'blur' ? 'bg-neutral-700 text-white font-medium' : 'text-neutral-400 hover:text-neutral-200'
+                              }`}
+                            >
+                              블러
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">브러시 크기</span>
+                            <span className="text-xs font-mono text-neutral-300">{brushSize}px</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="10"
+                            max="100"
+                            value={brushSize}
+                            onChange={(e) => setBrushSize(Number(e.target.value))}
+                            className="w-full h-1 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-primary-500"
+                          />
+                          <div className="flex justify-center items-center h-16 bg-neutral-950/40 rounded-xl border border-neutral-800/60">
+                            <div
+                              className="bg-neutral-100 rounded-full opacity-60 transition-all duration-75"
+                              style={{ width: `${brushSize}px`, height: `${brushSize}px` }}
+                            />
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    {mode === 'crop' && (
+                      <div className="space-y-4">
+                        <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">자르기 옵션</span>
+                        <p className="text-xs text-neutral-400 leading-relaxed">
+                          영역 모서리나 테두리를 드래그하여 조절한 뒤 아래 버튼을 클릭하세요.
+                        </p>
+                        <button
+                          onClick={handleApplyCrop}
+                          className="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 active:bg-amber-700 text-white text-xs font-semibold shadow-lg shadow-amber-950/20 transition-all duration-150"
+                        >
+                          선택 영역 자르기
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="h-px bg-neutral-800" />
+
+                  {/* Generic Controls (Rotate) */}
+                  <div className="space-y-3">
+                    <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">기타 작업</span>
+                    <button
+                      onClick={handleRotate}
+                      className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-neutral-700 bg-neutral-800/40 hover:bg-neutral-800 text-neutral-200 text-xs font-medium transition-all duration-150"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89M9 11l3-3 3 3" />
+                      </svg>
+                      90° 회전
+                    </button>
+                  </div>
+
+                </div>
+
+                {/* Canvas Viewport (Center) */}
+                <div className="flex-1 flex items-center justify-center p-6 bg-neutral-950/20 overflow-hidden relative">
+                  <div
+                    ref={containerRef}
+                    className="relative inline-block overflow-hidden max-w-full max-h-full border border-neutral-800 rounded-lg shadow-xl"
+                  >
+                    <canvas
+                      ref={canvasRef}
+                      className="block max-w-full max-h-[50vh] md:max-h-[60vh] h-auto w-auto object-contain select-none bg-neutral-900"
+                      onMouseDown={(e) => startDrawing(e.clientX, e.clientY)}
+                      onMouseMove={(e) => handleDrawingMove(e.clientX, e.clientY)}
+                      onMouseUp={endDrawing}
+                      onMouseLeave={endDrawing}
+                      onTouchStart={(e) => {
+                        const touch = e.touches[0]
+                        startDrawing(touch.clientX, touch.clientY)
+                      }}
+                      onTouchMove={(e) => {
+                        const touch = e.touches[0]
+                        handleDrawingMove(touch.clientX, touch.clientY)
+                      }}
+                      onTouchEnd={endDrawing}
+                      style={{
+                        touchAction: mode === 'paint' ? 'none' : 'auto',
+                        cursor: getCursorStyle(),
+                      }}
+                    />
+
+                    {/* Crop Overlay */}
+                    {mode === 'crop' && (
+                      <div className="absolute inset-0 select-none overflow-hidden bg-transparent">
+                        <div
+                          className="absolute border-2 border-white shadow-[0_0_0_9999px_rgba(0,0,0,0.6)] cursor-move transition-shadow"
+                          style={{
+                            left: `${cropBox.x * 100}%`,
+                            top: `${cropBox.y * 100}%`,
+                            width: `${cropBox.w * 100}%`,
+                            height: `${cropBox.h * 100}%`,
+                          }}
+                          onMouseDown={handleCropBoxDragStart}
+                          onTouchStart={handleCropBoxDragStart}
+                        >
+                          {/* Grid Lines */}
+                          <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 pointer-events-none">
+                            <div className="border-r border-dashed border-white/30 border-b border-white/30" />
+                            <div className="border-r border-dashed border-white/30 border-b border-white/30" />
+                            <div className="border-b border-white/30" />
+                            <div className="border-r border-dashed border-white/30 border-b border-white/30" />
+                            <div className="border-r border-dashed border-white/30 border-b border-white/30" />
+                            <div className="border-b border-white/30" />
+                            <div className="border-r border-dashed border-white/30" />
+                            <div className="border-r border-dashed border-white/30" />
+                            <div />
+                          </div>
+
+                          {/* Handles */}
+                          {/* NW */}
+                          <div
+                            className="absolute -top-1.5 -left-1.5 w-4 h-4 bg-white border border-neutral-900 rounded-sm cursor-nwse-resize z-10 flex items-center justify-center active:scale-125 transition-transform"
+                            onMouseDown={(e) => handleHandleDragStart(e, 'nw')}
+                            onTouchStart={(e) => handleHandleDragStart(e, 'nw')}
+                          />
+                          {/* NE */}
+                          <div
+                            className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-white border border-neutral-900 rounded-sm cursor-nesw-resize z-10 flex items-center justify-center active:scale-125 transition-transform"
+                            onMouseDown={(e) => handleHandleDragStart(e, 'ne')}
+                            onTouchStart={(e) => handleHandleDragStart(e, 'ne')}
+                          />
+                          {/* SW */}
+                          <div
+                            className="absolute -bottom-1.5 -left-1.5 w-4 h-4 bg-white border border-neutral-900 rounded-sm cursor-nesw-resize z-10 flex items-center justify-center active:scale-125 transition-transform"
+                            onMouseDown={(e) => handleHandleDragStart(e, 'sw')}
+                            onTouchStart={(e) => handleHandleDragStart(e, 'sw')}
+                          />
+                          {/* SE */}
+                          <div
+                            className="absolute -bottom-1.5 -right-1.5 w-4 h-4 bg-white border border-neutral-900 rounded-sm cursor-nwse-resize z-10 flex items-center justify-center active:scale-125 transition-transform"
+                            onMouseDown={(e) => handleHandleDragStart(e, 'se')}
+                            onTouchStart={(e) => handleHandleDragStart(e, 'se')}
+                          />
+                          {/* N */}
+                          <div
+                            className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-6 h-3 bg-white border border-neutral-900 rounded-sm cursor-ns-resize z-10 active:scale-110 transition-transform"
+                            onMouseDown={(e) => handleHandleDragStart(e, 'n')}
+                            onTouchStart={(e) => handleHandleDragStart(e, 'n')}
+                          />
+                          {/* S */}
+                          <div
+                            className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-6 h-3 bg-white border border-neutral-900 rounded-sm cursor-ns-resize z-10 active:scale-110 transition-transform"
+                            onMouseDown={(e) => handleHandleDragStart(e, 's')}
+                            onTouchStart={(e) => handleHandleDragStart(e, 's')}
+                          />
+                          {/* W */}
+                          <div
+                            className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-3 h-6 bg-white border border-neutral-900 rounded-sm cursor-ew-resize z-10 active:scale-110 transition-transform"
+                            onMouseDown={(e) => handleHandleDragStart(e, 'w')}
+                            onTouchStart={(e) => handleHandleDragStart(e, 'w')}
+                          />
+                          {/* E */}
+                          <div
+                            className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-3 h-6 bg-white border border-neutral-900 rounded-sm cursor-ew-resize z-10 active:scale-110 transition-transform"
+                            onMouseDown={(e) => handleHandleDragStart(e, 'e')}
+                            onTouchStart={(e) => handleHandleDragStart(e, 'e')}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Bottom Toolbar for Mobile (Hidden on Desktop) */}
+                <div className="flex md:hidden flex-col border-t border-neutral-800 bg-neutral-900/60 p-4 gap-4">
+                  
+                  {/* Tool Swapper */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setMode('paint')}
+                      className={`flex-1 py-2 px-3 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 ${
+                        mode === 'paint' ? 'bg-primary-600 border-primary-500 text-white' : 'bg-neutral-800 border-neutral-700 text-neutral-300'
+                      }`}
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                      브러시
+                    </button>
+                    <button
+                      onClick={() => setMode('crop')}
+                      className={`flex-1 py-2 px-3 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 ${
+                        mode === 'crop' ? 'bg-primary-600 border-primary-500 text-white' : 'bg-neutral-800 border-neutral-700 text-neutral-300'
+                      }`}
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 2v14a2 2 0 002 2h14M18 22V10a2 2 0 00-2-2H2" />
+                      </svg>
+                      자르기
+                    </button>
+                    <button
+                      onClick={handleRotate}
+                      className="py-2 px-3 rounded-lg border border-neutral-700 bg-neutral-800 text-neutral-300 text-xs font-semibold flex items-center justify-center"
+                      title="회전"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89M9 11l3-3 3 3" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Mode Specific settings for Mobile */}
+                  {mode === 'paint' && (
+                    <div className="flex items-center gap-3">
+                      {/* Selector */}
+                      <div className="flex rounded-lg overflow-hidden bg-neutral-800 p-0.5 border border-neutral-700 shrink-0">
+                        <button
+                          onClick={() => setPaintType('mosaic')}
+                          className={`px-3 py-1.5 text-xs rounded-md ${
+                            paintType === 'mosaic' ? 'bg-neutral-700 text-white font-medium' : 'text-neutral-400'
+                          }`}
+                        >
+                          모자이크
+                        </button>
+                        <button
+                          onClick={() => setPaintType('blur')}
+                          className={`px-3 py-1.5 text-xs rounded-md ${
+                            paintType === 'blur' ? 'bg-neutral-700 text-white font-medium' : 'text-neutral-400'
+                          }`}
+                        >
+                          블러
+                        </button>
+                      </div>
+                      {/* Slider */}
+                      <div className="flex-1 flex items-center gap-2">
+                        <input
+                          type="range"
+                          min="10"
+                          max="80"
+                          value={brushSize}
+                          onChange={(e) => setBrushSize(Number(e.target.value))}
+                          className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-primary-500"
+                        />
+                        <span className="text-[10px] font-mono text-neutral-400 shrink-0">{brushSize}px</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {mode === 'crop' && (
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-xs text-neutral-400">자르려는 영역을 조절 후 오른쪽 버튼을 눌러주세요.</span>
+                      <button
+                        onClick={handleApplyCrop}
+                        className="py-1.5 px-4 bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold rounded-lg shrink-0 shadow-lg shadow-amber-950/20"
+                      >
+                        자르기 적용
+                      </button>
+                    </div>
+                  )}
+
+                </div>
+
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-4 border-t border-neutral-800 flex items-center justify-end gap-3 bg-neutral-900/80">
+                <button
+                  onClick={onClose}
+                  disabled={isSaving}
+                  className="px-5 py-2.5 rounded-xl border border-neutral-700 hover:bg-neutral-800 text-neutral-200 text-xs font-medium transition-all duration-150 disabled:opacity-50"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleSaveClick}
+                  disabled={isSaving}
+                  className="px-5 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-500 active:bg-primary-700 disabled:bg-primary-700 text-white text-xs font-semibold shadow-lg shadow-primary-900/20 flex items-center gap-2 transition-all duration-150"
+                >
+                  {isSaving ? (
+                    <>
+                      <svg className="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      저장 중...
+                    </>
+                  ) : (
+                    '적용하기'
+                  )}
+                </button>
+              </div>
+
+            </DialogPanel>
+          </TransitionChild>
+        </div>
+      </Dialog>
+    </Transition>
+  )
+}
