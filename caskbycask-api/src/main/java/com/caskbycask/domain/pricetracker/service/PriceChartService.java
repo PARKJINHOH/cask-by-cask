@@ -40,9 +40,10 @@ public class PriceChartService {
         LocalDate startDate = computeStartDate(period);
 
         List<PriceReport> reports = priceReportRepository.findApprovedForChart(
-                spiritId, PriceReportStatus.APPROVED, startDate);
+                spiritId, PriceReportStatus.APPROVED);
 
         reports = reports.stream()
+                .filter(r -> startDate == null || !effectiveDate(r).isBefore(startDate))
                 .filter(r -> matchesStoreType(r, storeType))
                 .filter(r -> region == null || region.isBlank()
                         || (r.getStore() != null && region.equals(r.getStore().getRegion())))
@@ -78,7 +79,13 @@ public class PriceChartService {
         LocalDate rangeEnd = weekly ? rangeStart.plusDays(6) : pointDate;
 
         List<PriceReport> reports = priceReportRepository.findApprovedForChartDetail(
-                spiritId, PriceReportStatus.APPROVED, rangeStart, rangeEnd);
+                spiritId, PriceReportStatus.APPROVED);
+        reports = reports.stream()
+                .filter(r -> {
+                    LocalDate rDate = effectiveDate(r);
+                    return !rDate.isBefore(rangeStart) && !rDate.isAfter(rangeEnd);
+                })
+                .toList();
 
         List<DealPost> deals = dealPostRepository.findAllBySpiritIdAndStatusAndIsVisibleTrue(spiritId, DealStatus.APPROVED);
         List<DealPost> rangeDeals = deals.stream()
@@ -94,8 +101,8 @@ public class PriceChartService {
                 rangeDeals
         );
 
-        return buildDailyPrices(tempPrices).stream()
-                .map(DailyPrice::lowestSource)
+        return tempPrices.stream()
+                .filter(t -> t.date() != null)
                 .sorted(Comparator
                         .comparing(TempPrice::date, Comparator.nullsLast(Comparator.naturalOrder()))
                         .thenComparing(TempPrice::finalPrice, Comparator.nullsLast(Comparator.naturalOrder())))

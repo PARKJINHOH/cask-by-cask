@@ -41,10 +41,14 @@ public class DealAdminService {
     }
 
     @Transactional
-    public void approve(Long id) {
+    public DealPostDetailResponse approve(Long id, UpdateDealRequest req) {
         DealPost deal = getOrThrow(id);
         requirePending(deal);
+        if (req != null) {
+            applyUpdate(deal, req);
+        }
         deal.approve();
+        return DealPostDetailResponse.from(deal);
     }
 
     @Transactional
@@ -65,7 +69,17 @@ public class DealAdminService {
     @Transactional
     public DealPostDetailResponse update(Long id, UpdateDealRequest req) {
         DealPost deal = getOrThrow(id);
-        
+        applyUpdate(deal, req);
+        return DealPostDetailResponse.from(deal);
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        DealPost deal = getOrThrow(id);
+        dealPostRepository.delete(deal);
+    }
+
+    private void applyUpdate(DealPost deal, UpdateDealRequest req) {
         Spirit spirit = null;
         if (req.spiritId() != null) {
             spirit = spiritRepository.findById(req.spiritId())
@@ -77,8 +91,6 @@ public class DealAdminService {
                 req.discountRate(), req.seller(), req.dealCondition(), req.expiryInfo(), req.summaryKo()
         );
         deal.linkSpiritAndStoreType(spirit, req.storeType());
-        
-        return DealPostDetailResponse.from(deal);
     }
 
     private DealPost getOrThrow(Long id) {

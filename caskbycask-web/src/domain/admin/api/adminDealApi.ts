@@ -15,11 +15,19 @@ export const adminDealApi = {
     return res.data.data!
   },
 
-  approve: (id: number) =>
-    axiosInstance.patch<ApiResponse<null>>(`/api/admin/deals/${id}/approve`),
+  approve: async (id: number, data?: UpdateDealRequest) => {
+    const res = await axiosInstance.patch<ApiResponse<DealPostDetail>>(
+      `/api/admin/deals/${id}/approve`,
+      data,
+    )
+    return res.data.data!
+  },
 
   reject: (id: number) =>
     axiosInstance.patch<ApiResponse<null>>(`/api/admin/deals/${id}/reject`),
+
+  delete: (id: number) =>
+    axiosInstance.delete<ApiResponse<void>>(`/api/admin/deals/${id}`),
 
   update: async (id: number, data: UpdateDealRequest) => {
     const res = await axiosInstance.patch<ApiResponse<DealPostDetail>>(`/api/admin/deals/${id}`, data)

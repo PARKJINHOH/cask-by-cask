@@ -24,7 +24,6 @@ export default function AdminDealDetailPage() {
   const qc = useQueryClient()
 
   const [form, setForm] = useState({ ...EMPTY_FORM })
-  const [saved, setSaved] = useState(false)
   const [spiritId, setSpiritId] = useState<number | null>(null)
   const [spiritNameKo, setSpiritNameKo] = useState<string | null>(null)
   const [spiritNameEn, setSpiritNameEn] = useState<string | null>(null)
@@ -33,21 +32,7 @@ export default function AdminDealDetailPage() {
   const [spiritKeyword, setSpiritKeyword] = useState('')
   const [spiritSearchResults, setSpiritSearchResults] = useState<SpiritListItem[]>([])
   const [searchingSpirits, setSearchingSpirits] = useState(false)
-  const [searched, setSearched] = useState(false)
-
-  const searchSpirits = async () => {
-    if (!spiritKeyword.trim()) return
-    setSearchingSpirits(true)
-    setSearched(true)
-    try {
-      const res = await spiritApi.search({ keyword: spiritKeyword.trim(), page: 0, size: 20 })
-      setSpiritSearchResults(res.data.data?.content ?? [])
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setSearchingSpirits(false)
-    }
-  }
+  const [spiritSearchError, setSpiritSearchError] = useState(false)
 
   const { data: detail, isLoading } = useQuery({
     queryKey: ['admin', 'deals', id],
@@ -75,14 +60,61 @@ export default function AdminDealDetailPage() {
     setStoreType(detail.storeType ?? 'DOMESTIC')
   }, [detail])
 
+  useEffect(() => {
+    let ignore = false
+    const keyword = spiritKeyword.trim()
+
+    setSpiritSearchError(false)
+    if (spiritId || keyword.length === 0) {
+      setSpiritSearchResults([])
+      setSearchingSpirits(false)
+      return () => {
+        ignore = true
+      }
+    }
+
+    setSearchingSpirits(true)
+    const timer = window.setTimeout(async () => {
+      try {
+        const res = await spiritApi.search({ keyword, page: 0, size: 20 })
+        if (!ignore) {
+          setSpiritSearchResults(res.data.data?.content ?? [])
+        }
+      } catch (e) {
+        console.error(e)
+        if (!ignore) {
+          setSpiritSearchResults([])
+          setSpiritSearchError(true)
+        }
+      } finally {
+        if (!ignore) {
+          setSearchingSpirits(false)
+        }
+      }
+    }, 250)
+
+    return () => {
+      ignore = true
+      window.clearTimeout(timer)
+    }
+  }, [spiritKeyword, spiritId])
+
   const buildPayload = (): UpdateDealRequest => {
-    const toInt = (s: string) => (s.trim() === '' ? null : Number(s))
+    const toInt = (s: string) => {
+      if (s.trim() === '') return null
+      const value = Number(s)
+      return Number.isFinite(value) ? value : null
+    }
+    const discountRateValue = form.discountPercent.trim() === ''
+      ? null
+      : Number(form.discountPercent) / 100
+
     return {
       drinkName: form.drinkName.trim() || null,
       drinkCategory: form.drinkCategory || null,
       originalPrice: toInt(form.originalPrice),
       dealPrice: toInt(form.dealPrice),
-      discountRate: form.discountPercent.trim() === '' ? null : Number(form.discountPercent) / 100,
+      discountRate: discountRateValue != null && Number.isFinite(discountRateValue) ? discountRateValue : null,
       seller: form.seller.trim() || null,
       dealCondition: form.dealCondition.trim() || null,
       expiryInfo: form.expiryInfo.trim() || null,
@@ -93,34 +125,47 @@ export default function AdminDealDetailPage() {
   }
 
   const goList = () => navigate('/admin/deals')
+  const invalidateDealQueries = () => qc.invalidateQueries({ queryKey: ['admin', 'deals'] })
 
   const approveMut = useMutation({
-    mutationFn: () => adminDealApi.approve(id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin', 'deals'] }); goList() },
+    mutationFn: () => adminDealApi.approve(id, buildPayload()),
+    onSuccess: () => {
+      invalidateDealQueries()
+      goList()
+    },
   })
   const rejectMut = useMutation({
     mutationFn: () => adminDealApi.reject(id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin', 'deals'] }); goList() },
+    onSuccess: () => {
+      invalidateDealQueries()
+      goList()
+    },
   })
-  const saveMut = useMutation({
-    mutationFn: () => adminDealApi.update(id, buildPayload()),
-    onSuccess: (updated) => {
-      qc.setQueryData(['admin', 'deals', id], updated)
-      qc.invalidateQueries({ queryKey: ['admin', 'deals'], exact: false })
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
+  const deleteMut = useMutation({
+    mutationFn: () => adminDealApi.delete(id),
+    onSuccess: () => {
+      invalidateDealQueries()
+      goList()
     },
   })
 
-  const busy = approveMut.isPending || rejectMut.isPending || saveMut.isPending
+  const busy = approveMut.isPending || rejectMut.isPending || deleteMut.isPending
 
   const onApprove = () => {
-    if (!window.confirm('이 핫딜을 승인하고 사용자에게 노출하시겠습니까?')) return
+    if (!spiritId) {
+      window.alert('노출하려면 등록된 주류를 먼저 연결해주세요.')
+      return
+    }
+    if (!window.confirm('현재 수정 내용을 저장하고 사용자에게 노출하시겠습니까?')) return
     approveMut.mutate()
   }
   const onReject = () => {
-    if (!window.confirm('이 핫딜을 반려하시겠습니까? (노출되지 않습니다)')) return
+    if (!window.confirm('이 핫딜을 반려하시겠습니까? 반려된 핫딜은 노출되지 않습니다.')) return
     rejectMut.mutate()
+  }
+  const onDelete = () => {
+    if (!window.confirm('이 핫딜을 삭제하시겠습니까? 삭제 후에는 목록에서 사라집니다.')) return
+    deleteMut.mutate()
   }
 
   if (isLoading) {
@@ -134,16 +179,15 @@ export default function AdminDealDetailPage() {
     return (
       <div className="p-6">
         <p className="text-neutral-500">핫딜을 찾을 수 없습니다.</p>
-        <button onClick={goList} className="mt-3 text-sm text-primary-700 hover:underline">← 목록으로</button>
+        <button onClick={goList} className="mt-3 text-sm text-primary-700 hover:underline">목록으로</button>
       </div>
     )
   }
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-5">
-      {/* 헤더 */}
       <div className="flex items-center justify-between gap-3">
-        <button onClick={goList} className="text-sm text-neutral-500 hover:text-neutral-800">← 목록</button>
+        <button onClick={goList} className="text-sm text-neutral-500 hover:text-neutral-800">목록</button>
         <div className="flex items-center gap-2">
           <DealStatusBadge status={detail.status} />
           {detail.isVisible && (
@@ -154,24 +198,26 @@ export default function AdminDealDetailPage() {
         </div>
       </div>
 
-      {/* 수집 메타 + 원문 */}
       <div className="bg-neutral-50 rounded-xl p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
         <Meta label="출처" value={siteLabel(detail.sourceSite)} />
-        <Meta label="수집일시" value={detail.crawledAt ? formatDateTime(detail.crawledAt) : '-'} />
+        <Meta label="수집 일시" value={detail.crawledAt ? formatDateTime(detail.crawledAt) : '-'} />
         <Meta label="신뢰도"><ConfidenceBadge score={detail.confidenceScore} /></Meta>
         <div>
           <p className="text-xs text-neutral-500 mb-1">원문</p>
           <div className="flex items-center gap-2">
             <SourceLinkButton url={detail.sourceUrl} />
-            <a href={detail.sourceUrl} target="_blank" rel="noopener noreferrer"
-              className="text-xs text-primary-700 hover:underline truncate max-w-[140px]">
-              교차검증 열기
+            <a
+              href={detail.sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-primary-700 hover:underline truncate max-w-[140px]"
+            >
+              새 창에서 열기
             </a>
           </div>
         </div>
       </div>
 
-      {/* AI 분석 요약 */}
       {detail.summaryKo && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
           <p className="text-xs font-semibold text-amber-700 mb-1">AI 분석 요약</p>
@@ -179,44 +225,71 @@ export default function AdminDealDetailPage() {
         </div>
       )}
 
-      {/* 편집 폼 */}
       <div className="bg-white rounded-xl shadow-sm p-5 space-y-4">
-        <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">AI 분석 결과 (수정 가능)</p>
+        <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">
+          AI 분석 결과 및 노출 정보
+        </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="주류명">
-            <input className={inputCls} value={form.drinkName}
-              onChange={(e) => setForm({ ...form, drinkName: e.target.value })} />
+            <input
+              className={inputCls}
+              value={form.drinkName}
+              onChange={(e) => setForm({ ...form, drinkName: e.target.value })}
+            />
           </Field>
           <Field label="카테고리">
-            <select className={inputCls} value={form.drinkCategory}
-              onChange={(e) => setForm({ ...form, drinkCategory: e.target.value })}>
-              <option value="">(미지정)</option>
+            <select
+              className={inputCls}
+              value={form.drinkCategory}
+              onChange={(e) => setForm({ ...form, drinkCategory: e.target.value })}
+            >
+              <option value="">미지정</option>
               {DEAL_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </Field>
           <Field label="정상가">
-            <input type="number" className={inputCls} value={form.originalPrice}
-              onChange={(e) => setForm({ ...form, originalPrice: e.target.value })} />
+            <input
+              type="number"
+              className={inputCls}
+              value={form.originalPrice}
+              onChange={(e) => setForm({ ...form, originalPrice: e.target.value })}
+            />
           </Field>
           <Field label="할인가">
-            <input type="number" className={inputCls} value={form.dealPrice}
-              onChange={(e) => setForm({ ...form, dealPrice: e.target.value })} />
+            <input
+              type="number"
+              className={inputCls}
+              value={form.dealPrice}
+              onChange={(e) => setForm({ ...form, dealPrice: e.target.value })}
+            />
           </Field>
           <Field label="할인율 (%)">
-            <input type="number" min={0} max={100} className={inputCls} value={form.discountPercent}
-              onChange={(e) => setForm({ ...form, discountPercent: e.target.value })} />
+            <input
+              type="number"
+              min={0}
+              max={100}
+              className={inputCls}
+              value={form.discountPercent}
+              onChange={(e) => setForm({ ...form, discountPercent: e.target.value })}
+            />
           </Field>
           <Field label={`통화 (${detail.currency ?? 'KRW'})`}>
             <input className={`${inputCls} bg-neutral-50 text-neutral-400`} value={detail.currency ?? 'KRW'} disabled />
           </Field>
           <Field label="판매처">
-            <input className={inputCls} value={form.seller}
-              onChange={(e) => setForm({ ...form, seller: e.target.value })} />
+            <input
+              className={inputCls}
+              value={form.seller}
+              onChange={(e) => setForm({ ...form, seller: e.target.value })}
+            />
           </Field>
           <Field label="기간 정보">
-            <input className={inputCls} value={form.expiryInfo}
-              onChange={(e) => setForm({ ...form, expiryInfo: e.target.value })} />
+            <input
+              className={inputCls}
+              value={form.expiryInfo}
+              onChange={(e) => setForm({ ...form, expiryInfo: e.target.value })}
+            />
           </Field>
           <Field label="판매처 유형">
             <div className="flex gap-1.5 mt-0.5">
@@ -231,14 +304,13 @@ export default function AdminDealDetailPage() {
                       : 'border-neutral-200 text-neutral-600 hover:bg-neutral-50'
                   }`}
                 >
-                  {t_ === 'DOMESTIC' ? '국내' : t_ === 'OVERSEAS' ? '해외' : '면세점'}
+                  {t_ === 'DOMESTIC' ? '국내' : t_ === 'OVERSEAS' ? '해외' : '면세'}
                 </button>
               ))}
             </div>
           </Field>
         </div>
 
-        {/* 등록된 술 연결 */}
         <div className="border border-neutral-200 rounded-xl p-4 bg-neutral-50/50 space-y-3">
           <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">등록된 주류 연결</p>
           {spiritId ? (
@@ -261,25 +333,20 @@ export default function AdminDealDetailPage() {
             </div>
           ) : (
             <div className="space-y-2">
-              <div className="flex gap-2">
-                <input
-                  placeholder="술 이름 검색 (한글/영어)"
-                  value={spiritKeyword}
-                  onChange={(e) => setSpiritKeyword(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && searchSpirits()}
-                  className="flex-1 px-3 py-1.5 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400"
-                />
-                <button
-                  type="button"
-                  onClick={searchSpirits}
-                  disabled={searchingSpirits}
-                  className="px-3 py-1.5 bg-neutral-800 text-white rounded-lg text-sm hover:bg-neutral-900 transition-colors disabled:opacity-40"
-                >
-                  {searchingSpirits ? '검색 중...' : '검색'}
-                </button>
-              </div>
+              <input
+                placeholder="주류명 검색 (한글/영문)"
+                value={spiritKeyword}
+                onChange={(e) => setSpiritKeyword(e.target.value)}
+                className="w-full px-3 py-1.5 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400"
+              />
+              {searchingSpirits && (
+                <p className="text-xs text-neutral-400 font-medium">검색 중...</p>
+              )}
+              {spiritSearchError && (
+                <p className="text-xs text-red-500 font-medium">검색에 실패했습니다. 다시 입력해주세요.</p>
+              )}
               {spiritSearchResults.length > 0 && (
-                <div className="max-h-40 overflow-y-auto border border-neutral-200 rounded-lg bg-white divide-y divide-neutral-100 text-sm">
+                <div className="max-h-44 overflow-y-auto border border-neutral-200 rounded-lg bg-white divide-y divide-neutral-100 text-sm">
                   {spiritSearchResults.map((sp) => (
                     <button
                       type="button"
@@ -291,18 +358,18 @@ export default function AdminDealDetailPage() {
                         setSpiritSearchResults([])
                         setSpiritKeyword('')
                       }}
-                      className="w-full text-left px-3 py-2 hover:bg-neutral-50 flex items-center justify-between"
+                      className="w-full text-left px-3 py-2 hover:bg-neutral-50 flex items-center justify-between gap-3"
                     >
-                      <div>
+                      <div className="min-w-0">
                         <span className="font-medium text-neutral-800">{sp.nameKo}</span>
                         {sp.nameEn && <span className="text-xs text-neutral-400 ml-2">{sp.nameEn}</span>}
                       </div>
-                      <span className="text-xs text-neutral-400">{sp.category}</span>
+                      <span className="text-xs text-neutral-400 shrink-0">{sp.category}</span>
                     </button>
                   ))}
                 </div>
               )}
-              {searched && spiritSearchResults.length === 0 && (
+              {!searchingSpirits && spiritKeyword.trim() !== '' && spiritSearchResults.length === 0 && !spiritSearchError && (
                 <p className="text-xs text-neutral-400 font-medium">검색 결과가 없습니다.</p>
               )}
             </div>
@@ -310,50 +377,54 @@ export default function AdminDealDetailPage() {
         </div>
 
         <Field label="조건">
-          <textarea rows={2} className={inputCls} value={form.dealCondition}
-            onChange={(e) => setForm({ ...form, dealCondition: e.target.value })} />
+          <textarea
+            rows={2}
+            className={inputCls}
+            value={form.dealCondition}
+            onChange={(e) => setForm({ ...form, dealCondition: e.target.value })}
+          />
         </Field>
-        <Field label="요약 (summaryKo)">
-          <textarea rows={3} className={inputCls} value={form.summaryKo}
-            onChange={(e) => setForm({ ...form, summaryKo: e.target.value })} />
+        <Field label="요약">
+          <textarea
+            rows={3}
+            className={inputCls}
+            value={form.summaryKo}
+            onChange={(e) => setForm({ ...form, summaryKo: e.target.value })}
+          />
         </Field>
 
         <p className="text-xs text-neutral-400">
           현재 할인가 미리보기: {formatPrice(form.dealPrice.trim() === '' ? null : Number(form.dealPrice), detail.currency)}
         </p>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => saveMut.mutate()}
-            disabled={busy}
-            className="px-4 py-2 text-sm font-medium bg-neutral-800 text-white rounded-lg
-              hover:bg-neutral-900 transition-colors disabled:opacity-40"
-          >
-            {saveMut.isPending ? '저장 중...' : '수정 저장'}
-          </button>
-          {saved && <span className="text-sm text-green-600">저장되었습니다.</span>}
-          {saveMut.isError && <span className="text-sm text-red-500">저장 실패. 다시 시도해주세요.</span>}
-        </div>
       </div>
 
-      {/* 승인/반려 액션 */}
-      <div className="flex flex-wrap items-center justify-end gap-2 bg-white rounded-xl shadow-sm p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 bg-white rounded-xl shadow-sm p-4">
         <button
-          onClick={onReject}
+          onClick={onDelete}
           disabled={busy}
-          className="px-4 py-2 text-sm font-medium border border-red-300 text-red-600 rounded-lg
-            hover:bg-red-50 transition-colors disabled:opacity-40"
+          className="px-4 py-2 text-sm font-medium border border-neutral-300 text-neutral-600 rounded-lg
+            hover:bg-neutral-50 transition-colors disabled:opacity-40"
         >
-          {rejectMut.isPending ? '처리 중...' : '반려'}
+          {deleteMut.isPending ? '삭제 중...' : '삭제'}
         </button>
-        <button
-          onClick={onApprove}
-          disabled={busy}
-          className="px-5 py-2 text-sm font-medium bg-primary-800 text-white rounded-lg
-            hover:bg-primary-900 transition-colors disabled:opacity-40"
-        >
-          {approveMut.isPending ? '처리 중...' : '승인 후 노출'}
-        </button>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <button
+            onClick={onReject}
+            disabled={busy}
+            className="px-4 py-2 text-sm font-medium border border-red-300 text-red-600 rounded-lg
+              hover:bg-red-50 transition-colors disabled:opacity-40"
+          >
+            {rejectMut.isPending ? '처리 중...' : '반려'}
+          </button>
+          <button
+            onClick={onApprove}
+            disabled={busy}
+            className="px-5 py-2 text-sm font-medium bg-primary-800 text-white rounded-lg
+              hover:bg-primary-900 transition-colors disabled:opacity-40"
+          >
+            {approveMut.isPending ? '처리 중...' : '승인 후 노출'}
+          </button>
+        </div>
       </div>
     </div>
   )

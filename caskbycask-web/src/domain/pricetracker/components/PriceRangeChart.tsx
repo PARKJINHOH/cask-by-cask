@@ -1,6 +1,6 @@
 import {
   ComposedChart, Area, Line, XAxis, YAxis,
-  CartesianGrid, Tooltip, ResponsiveContainer,
+  CartesianGrid, Tooltip, ResponsiveContainer, LabelList,
 } from 'recharts'
 import { useTranslation } from 'react-i18next'
 import type { BucketType, ChartResponse, StoreType } from '../types/pricetracker.types'
@@ -95,6 +95,10 @@ export default function PriceRangeChart({
     })) ?? []
 
   const isEmpty = !isLoading && chartData.length === 0
+  const handlePointClick = (point: any) => {
+    if (!point?.date) return
+    onPointClick(point.date, point.reportIds ?? [], data?.bucketType ?? 'INDIVIDUAL')
+  }
 
   return (
     <div className="space-y-3">
@@ -157,8 +161,7 @@ export default function PriceRangeChart({
               margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
               onClick={(payload: any) => {
                 if (payload?.activePayload?.[0]) {
-                  const pt = payload.activePayload[0].payload
-                  onPointClick(pt.date, pt.reportIds, data?.bucketType ?? 'INDIVIDUAL')
+                  handlePointClick(payload.activePayload[0].payload)
                 }
               }}
               style={{ cursor: 'pointer' }}
@@ -216,12 +219,30 @@ export default function PriceRangeChart({
                       fill={isSelected ? '#fff' : '#b45309'}
                       stroke="#b45309"
                       strokeWidth={isSelected ? 2 : 0}
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => handlePointClick(props.payload)}
                     />
                   )
                 }}
                 activeDot={{ r: 6, fill: '#b45309', strokeWidth: 2, stroke: '#fff' }}
                 connectNulls
-              />
+              >
+                {chartData.length <= 3 && (
+                  <LabelList
+                    dataKey="minFinalPrice"
+                    position="top"
+                    formatter={(value) => {
+                      if (typeof value === 'number') return `${fmt.format(value)}원`
+                      if (typeof value === 'string' && value.trim() !== '') {
+                        const numericValue = Number(value)
+                        return Number.isFinite(numericValue) ? `${fmt.format(numericValue)}원` : ''
+                      }
+                      return ''
+                    }}
+                    style={{ fontSize: 11, fill: '#92400e', fontWeight: 700 }}
+                  />
+                )}
+              </Line>
             </ComposedChart>
           </ResponsiveContainer>
           <p className="text-center text-xs text-neutral-400 mt-1">

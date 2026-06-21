@@ -46,6 +46,71 @@ function formatAge(
   }
   return parts.join(' ')
 }
+
+type AgeDisplaySource = {
+  isNas?: boolean | null
+  ageStatement?: number | null
+  ageStatementMonths?: number | null
+  ageStatementMin?: number | null
+  ageStatementMinMonths?: number | null
+  ageStatementMax?: number | null
+  ageStatementMaxMonths?: number | null
+}
+
+function formatAgeRange(
+  minYears: number | null | undefined,
+  minMonths: number | null | undefined,
+  maxYears: number | null | undefined,
+  maxMonths: number | null | undefined,
+  isEn: boolean,
+  short = false,
+): string | null {
+  const min = formatAge(minYears, minMonths, isEn, short)
+  const max = formatAge(maxYears, maxMonths, isEn, short)
+  if (min && max) return min === max ? min : `${min} ~ ${max}`
+  if (min) return short ? `${min}+` : isEn ? `${min} or older` : `${min} 이상`
+  if (max) return short ? `~${max}` : isEn ? `Up to ${max}` : `${max} 이하`
+  return null
+}
+
+function formatAgeStatement(
+  detail: AgeDisplaySource | null | undefined,
+  isEn: boolean,
+  short = false,
+): string | null {
+  if (!detail) return null
+  if (detail.isNas) return 'NAS'
+  return formatAgeRange(
+    detail.ageStatementMin,
+    detail.ageStatementMinMonths,
+    detail.ageStatementMax,
+    detail.ageStatementMaxMonths,
+    isEn,
+    short,
+  ) ?? formatAge(detail.ageStatement, detail.ageStatementMonths, isEn, short)
+}
+
+function formatAbv(
+  abv: number | null | undefined,
+  min: number | null | undefined,
+  max: number | null | undefined,
+): string | null {
+  if (min != null && max != null) return min === max ? `${min}%` : `${min}%~${max}%`
+  if (min != null) return `${min}%`
+  if (max != null) return `${max}%`
+  return abv != null ? `${abv}%` : null
+}
+
+function formatPhenolPpm(
+  ppm: number | null | undefined,
+  min: number | null | undefined,
+  max: number | null | undefined,
+): string | null {
+  if (min != null && max != null) return min === max ? `${min} ppm` : `${min}~${max} ppm`
+  if (min != null) return `${min}+ ppm`
+  if (max != null) return `~${max} ppm`
+  return ppm != null ? `${ppm} ppm` : null
+}
 type ListReturnState = { returnTo?: string }
 
 function getSpiritListReturnTo(state: unknown) {
@@ -241,12 +306,12 @@ function SpiritDetailSections({ spirit, isEn }: { spirit: SpiritDetail; isEn: bo
               <DI label={isEn ? 'Age Statement' : '숙성 연수'}
                 value={cd.isNas
                   ? <span className="px-2 py-0.5 rounded bg-neutral-800 text-white text-xs font-bold">NAS</span>
-                  : formatAge(cd.ageStatement, cd.ageStatementMonths, isEn)} />
+                  : formatAgeStatement(cd, isEn)} />
               <DI label={isEn ? 'Distilled' : '증류 연월'} value={cd.distilledDate} />
               <DI label={isEn ? 'Bottled' : '병입 연월'} value={cd.bottledDate} />
               <DI label={isEn ? 'Release Date' : '출시일'} value={cd.releaseDate} />
               <DI label={isEn ? 'Volume' : '용량'} value={cd.volumeMl ? `${cd.volumeMl}ml` : null} />
-              <DI label={isEn ? 'ABV' : '도수'} value={cd.abv != null ? `${cd.abv}%` : null} />
+              <DI label={isEn ? 'ABV' : '도수'} value={formatAbv(spirit.abv ?? cd.abv, spirit.abvMin, spirit.abvMax)} />
               <DI label={isEn ? 'Bottle No.' : '병 번호'} value={cd.bottleNo} />
               <DI label={isEn ? 'Batch No.' : '배치 번호'} value={cd.batchNo} />
               <DI label={isEn ? 'Total Bottles' : '총 병 수'}
@@ -279,12 +344,12 @@ function SpiritDetailSections({ spirit, isEn }: { spirit: SpiritDetail; isEn: bo
                   return { text: isFinish ? `${base} ${isEn ? '(Finish)' : '(피니시)'}` : base, accent: isFinish }
                 })} />
               <DI label={isEn ? 'Phenol (ppm)' : '피트 강도'}
-                value={whisky.phenolPpm != null ? `${whisky.phenolPpm} ppm` : null} />
+                value={formatPhenolPpm(whisky.phenolPpm, whisky.phenolPpmMin, whisky.phenolPpmMax)} />
               <DI label={isEn ? 'Single Cask No.' : '싱글 캐스크 번호'} value={whisky.caskNo} />
             </DetailGrid>
             <div className="flex flex-wrap gap-1.5 mt-4">
               {whisky.isNonChillFiltered && (
-                <Badge2 detail="Non-Chill Filtered (저온 여과 생략)">NCF</Badge2>
+                <Badge2 detail="Non-Chill Filtered (저온 여과 생략)">Non-Chill Filtered</Badge2>
               )}
               {whisky.isNaturalColour && (
                 <Badge2 detail="Natural Colour (캐러멜 색소 무첨가)">Natural Colour</Badge2>
@@ -465,9 +530,8 @@ function CoreSpecStrip({
 }) {
   const { t } = useTranslation()
   const cd = spirit.commonDetail
-  const ageValue = cd?.isNas
-    ? 'NAS'
-    : formatAge(cd?.ageStatement, cd?.ageStatementMonths, isEn, true)
+  const ageValue = formatAgeStatement(cd, isEn, true)
+  const abvValue = formatAbv(spirit.abv, spirit.abvMin, spirit.abvMax)
   const originValue: React.ReactNode = spirit.country
     ? (
       <>
@@ -482,13 +546,11 @@ function CoreSpecStrip({
     : null
 
   const specs = [
-    (spirit.abv != null || spirit.abvMin != null) ? {
+    abvValue ? {
       k: 'abv',
       icon: SPEC_ICON.abv,
       label: t('spirit.detail.abv'),
-      value: (spirit.abvMin != null && spirit.abvMax != null && spirit.abvMin !== spirit.abvMax)
-        ? `${spirit.abvMin}%~${spirit.abvMax}%`
-        : `${spirit.abv ?? spirit.abvMin}%`
+      value: abvValue
     } : null,
     spirit.volumeMl    ? { k: 'volume', icon: SPEC_ICON.volume, label: t('spirit.detail.volume'), value: `${spirit.volumeMl}ml` } : null,
     originValue        ? { k: 'origin', icon: SPEC_ICON.origin, label: isEn ? 'Origin' : '국가 · 지역', value: originValue } : null,

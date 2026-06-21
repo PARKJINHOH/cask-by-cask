@@ -49,7 +49,11 @@ export default function StoreDetailPanel({ details, isLoading, selectedDate, onC
           </div>
         ) : (
           details.map((detail, i) => (
-            <PriceReportCard key={detail.reportId} detail={detail} isBest={i === 0} />
+            <PriceReportCard
+              key={`${detail.isHotDeal ? 'deal' : 'report'}-${detail.reportId}`}
+              detail={detail}
+              isBest={i === 0}
+            />
           ))
         )}
       </div>

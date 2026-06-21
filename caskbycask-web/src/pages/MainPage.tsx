@@ -662,12 +662,6 @@ export default function MainPage() {
     if (popups.length > 0) setIsPopupOpen(true)
   }, [popups.length])
 
-  const { data: popularData } = useQuery({
-    queryKey: ['home', 'popular'],
-    queryFn: () => spiritApi.search({ sort: 'REVIEW_COUNT_DESC', size: 10 }).then((r) => r.data.data!),
-    staleTime: 60_000,
-  })
-
   const { data: topRatedData } = useQuery({
     queryKey: ['home', 'topRated'],
     queryFn: () => spiritApi.search({ sort: 'SCORE_DESC', size: 10 }).then((r) => r.data.data!),
@@ -682,7 +676,6 @@ export default function MainPage() {
 
   const { data: noticesData } = useNotices({ page: 0, size: 5 })
 
-  const popular  = popularData?.content  ?? []
   const topRated = topRatedData?.content ?? []
   const recent   = recentData?.content   ?? []
   const notices  = noticesData?.content  ?? []
@@ -717,16 +710,15 @@ export default function MainPage() {
             {/* 커뮤니티 최신글 */}
             <CommunityLatestSection />
 
-            {/* 이번 주 인기 */}
-            {popular.length > 0 && (
+            {/* 최근 등록 */}
+            {recent.length > 0 && (
               <section>
                 <SectionHeader
-                  title={t('home.sections.weeklyPopular')}
-                  link="/spirits?sort=REVIEW_COUNT_DESC"
+                  title={t('home.sections.recent')}
+                  link="/spirits?sort=LATEST"
                   linkLabel={t('home.sections.viewAll')}
-                  badge
                 />
-                <SpiritCarousel spirits={popular} />
+                <SpiritCarousel spirits={recent} />
               </section>
             )}
 
@@ -742,17 +734,6 @@ export default function MainPage() {
               </section>
             )}
 
-            {/* 최근 등록 */}
-            {recent.length > 0 && (
-              <section>
-                <SectionHeader
-                  title={t('home.sections.recent')}
-                  link="/spirits?sort=LATEST"
-                  linkLabel={t('home.sections.viewAll')}
-                />
-                <SpiritCarousel spirits={recent} />
-              </section>
-            )}
           </div>
 
           {/* 사이드바 */}

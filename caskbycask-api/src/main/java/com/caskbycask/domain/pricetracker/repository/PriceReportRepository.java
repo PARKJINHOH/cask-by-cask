@@ -12,7 +12,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 
@@ -72,13 +71,11 @@ public interface PriceReportRepository extends JpaRepository<PriceReport, Long> 
             LEFT JOIN FETCH p.store
             WHERE p.spirit.id = :spiritId
             AND p.status = :status
-            AND (:startDate IS NULL OR p.purchasedAt >= :startDate)
             ORDER BY p.purchasedAt ASC
             """)
     List<PriceReport> findApprovedForChart(
             @Param("spiritId") Long spiritId,
-            @Param("status") PriceReportStatus status,
-            @Param("startDate") LocalDate startDate);
+            @Param("status") PriceReportStatus status);
 
     // 차트 점 클릭 상세 — 해당 주(week) 범위
     @Query("""
@@ -87,14 +84,11 @@ public interface PriceReportRepository extends JpaRepository<PriceReport, Long> 
             LEFT JOIN FETCH p.store
             WHERE p.spirit.id = :spiritId
             AND p.status = :status
-            AND p.purchasedAt BETWEEN :weekStart AND :weekEnd
             ORDER BY p.actualPrice ASC
             """)
     List<PriceReport> findApprovedForChartDetail(
             @Param("spiritId") Long spiritId,
-            @Param("status") PriceReportStatus status,
-            @Param("weekStart") LocalDate weekStart,
-            @Param("weekEnd") LocalDate weekEnd);
+            @Param("status") PriceReportStatus status);
 
     // 본인 등록 목록
     @Query("""

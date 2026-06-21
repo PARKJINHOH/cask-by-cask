@@ -39,9 +39,11 @@ public class DealAdminController {
     }
 
     @PatchMapping("/{id}/approve")
-    public ResponseEntity<ApiResponse<Void>> approve(@PathVariable Long id) {
-        dealAdminService.approve(id);
-        return ResponseEntity.ok(ApiResponse.success(null));
+    public ResponseEntity<ApiResponse<DealPostDetailResponse>> approve(
+            @PathVariable Long id,
+            @Valid @RequestBody(required = false) UpdateDealRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(dealAdminService.approve(id, request)));
     }
 
     @PatchMapping("/{id}/reject")
@@ -56,5 +58,11 @@ public class DealAdminController {
             @Valid @RequestBody UpdateDealRequest request
     ) {
         return ResponseEntity.ok(ApiResponse.success(dealAdminService.update(id, request)));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
+        dealAdminService.delete(id);
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 }
