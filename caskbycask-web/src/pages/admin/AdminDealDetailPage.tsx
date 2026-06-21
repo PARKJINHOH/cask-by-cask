@@ -216,14 +216,35 @@ export default function AdminDealDetailPage() {
       goList()
     },
   })
+  const updateMut = useMutation({
+    mutationFn: () => adminDealApi.update(id, buildPayload()),
+    onSuccess: () => {
+      invalidateDealQueries()
+      goList()
+    },
+  })
 
-  const busy = approveMut.isPending || rejectMut.isPending || deleteMut.isPending
+  const busy = approveMut.isPending || rejectMut.isPending || deleteMut.isPending || updateMut.isPending
 
+  const validatePrices = (): boolean => {
+    const dp = Number(form.dealPrice)
+    const op = Number(form.originalPrice)
+    if (!Number.isFinite(op) || op <= 0) {
+      window.alert('정상가는 0보다 큰 금액을 입력해주세요.')
+      return false
+    }
+    if (!Number.isFinite(dp) || dp <= 0) {
+      window.alert('할인가는 0보다 큰 금액을 입력해주세요.')
+      return false
+    }
+    return true
+  }
   const onApprove = () => {
     if (!spiritId) {
       window.alert('노출하려면 등록된 주류를 먼저 연결해주세요.')
       return
     }
+    if (!validatePrices()) return
     if (!window.confirm('현재 수정 내용을 저장하고 사용자에게 노출하시겠습니까?')) return
     approveMut.mutate()
   }
@@ -234,6 +255,15 @@ export default function AdminDealDetailPage() {
   const onDelete = () => {
     if (!window.confirm('이 핫딜을 삭제하시겠습니까? 삭제 후에는 목록에서 사라집니다.')) return
     deleteMut.mutate()
+  }
+  const onUpdate = () => {
+    if (!spiritId) {
+      window.alert('수정하려면 등록된 주류를 먼저 연결해주세요.')
+      return
+    }
+    if (!validatePrices()) return
+    if (!window.confirm('현재 수정 내용을 저장하시겠습니까?')) return
+    updateMut.mutate()
   }
 
   if (isLoading) {
@@ -316,7 +346,7 @@ export default function AdminDealDetailPage() {
               {DEAL_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </Field>
-          <Field label="정상가">
+          <Field label="정상가" required>
             <input
               type="number"
               className={inputCls}
@@ -324,7 +354,7 @@ export default function AdminDealDetailPage() {
               onChange={(e) => setForm({ ...form, originalPrice: e.target.value })}
             />
           </Field>
-          <Field label="할인가">
+          <Field label="할인가" required>
             <input
               type="number"
               className={inputCls}
@@ -498,22 +528,35 @@ export default function AdminDealDetailPage() {
           {deleteMut.isPending ? '삭제 중...' : '삭제'}
         </button>
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <button
-            onClick={onReject}
-            disabled={busy}
-            className="px-4 py-2 text-sm font-medium border border-red-300 text-red-600 rounded-lg
-              hover:bg-red-50 transition-colors disabled:opacity-40"
-          >
-            {rejectMut.isPending ? '처리 중...' : '반려'}
-          </button>
-          <button
-            onClick={onApprove}
-            disabled={busy}
-            className="px-5 py-2 text-sm font-medium bg-primary-800 text-white rounded-lg
-              hover:bg-primary-900 transition-colors disabled:opacity-40"
-          >
-            {approveMut.isPending ? '처리 중...' : '승인 후 노출'}
-          </button>
+          {detail.status === 'PENDING' && (
+            <button
+              onClick={onReject}
+              disabled={busy}
+              className="px-4 py-2 text-sm font-medium border border-red-300 text-red-600 rounded-lg
+                hover:bg-red-50 transition-colors disabled:opacity-40"
+            >
+              {rejectMut.isPending ? '처리 중...' : '반려'}
+            </button>
+          )}
+          {detail.status === 'APPROVED' ? (
+            <button
+              onClick={onUpdate}
+              disabled={busy}
+              className="px-5 py-2 text-sm font-medium bg-primary-800 text-white rounded-lg
+                hover:bg-primary-900 transition-colors disabled:opacity-40"
+            >
+              {updateMut.isPending ? '수정 중...' : '수정'}
+            </button>
+          ) : (
+            <button
+              onClick={onApprove}
+              disabled={busy}
+              className="px-5 py-2 text-sm font-medium bg-primary-800 text-white rounded-lg
+                hover:bg-primary-900 transition-colors disabled:opacity-40"
+            >
+              {approveMut.isPending ? '처리 중...' : '승인 후 노출'}
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -580,10 +623,13 @@ function composeVariantLabel({
   return parts.length > 0 ? parts.join(' · ') : null
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+function Field({ label, children, required }: { label: string; children: ReactNode; required?: boolean }) {
   return (
     <label className="block">
-      <span className="block text-xs font-medium text-neutral-500 mb-1">{label}</span>
+      <span className="block text-xs font-medium text-neutral-500 mb-1">
+        {label}
+        {required && <span className="text-red-500 ml-0.5">*</span>}
+      </span>
       {children}
     </label>
   )

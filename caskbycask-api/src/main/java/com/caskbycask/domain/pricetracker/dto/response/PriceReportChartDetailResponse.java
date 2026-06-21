@@ -58,7 +58,10 @@ public record PriceReportChartDetailResponse(
     }
 
     public static PriceReportChartDetailResponse from(DealPost d) {
-        BigDecimal priceVal = d.getDealPrice() != null ? BigDecimal.valueOf(d.getDealPrice()) : null;
+        Integer rawDealPrice = d.getDealPrice();
+        Integer rawOrigPrice = d.getOriginalPrice();
+        Integer finalPriceVal = (rawDealPrice != null && rawDealPrice > 0) ? rawDealPrice : rawOrigPrice;
+        BigDecimal priceVal = finalPriceVal != null ? BigDecimal.valueOf(finalPriceVal) : null;
         BigDecimal origVal = d.getOriginalPrice() != null ? BigDecimal.valueOf(d.getOriginalPrice()) : null;
         LocalDate dateVal = d.getCrawledAt() != null ? d.getCrawledAt().toLocalDate() : d.getCreatedAt().toLocalDate();
 

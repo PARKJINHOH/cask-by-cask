@@ -27,8 +27,11 @@ interface Props {
 }
 
 const fmt = new Intl.NumberFormat('ko-KR')
-const fmtPrice = (v: number) =>
-  v >= 10000 ? `${Math.round(v / 1000)}천` : fmt.format(v)
+const fmtPrice = (v: number) => {
+  if (v >= 10000) return `${Math.round(v / 10000)}만`
+  if (v >= 1000) return `${Math.round(v / 1000)}천`
+  return fmt.format(v)
+}
 
 function CustomTooltip({
   active,
@@ -223,10 +226,14 @@ export default function PriceRangeChart({
           <ResponsiveContainer width="100%" height={260}>
             <ComposedChart
               data={chartData}
-              margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+              margin={{ top: 20, right: 8, left: 0, bottom: 0 }}
               onClick={(payload: any) => {
                 if (payload?.activePayload?.[0]) {
                   handlePointClick(payload.activePayload[0].payload)
+                } else if (payload?.activeTooltipIndex != null && chartData[payload.activeTooltipIndex]) {
+                  handlePointClick(chartData[payload.activeTooltipIndex])
+                } else if (chartData.length === 1) {
+                  handlePointClick(chartData[0])
                 }
               }}
               style={{ cursor: 'pointer' }}
@@ -248,6 +255,10 @@ export default function PriceRangeChart({
                 tickLine={false}
                 axisLine={false}
                 width={52}
+                domain={[
+                  (dataMin: number) => Math.floor(dataMin * 0.95),
+                  (dataMax: number) => Math.ceil(dataMax * 1.08),
+                ]}
               />
               <Tooltip content={<CustomTooltip seriesMeta={isMultiSeries ? seriesMeta : undefined} />} />
 
@@ -272,6 +283,11 @@ export default function PriceRangeChart({
                     dataKey="minFinalPrice"
                     stroke="#b45309"
                     strokeWidth={2}
+                    onClick={(props: any) => {
+                      if (props?.payload) {
+                        handlePointClick(props.payload)
+                      }
+                    }}
                     dot={(props: any) => {
                       const isSelected = props.payload.date === selectedDate
                       return (
@@ -284,11 +300,26 @@ export default function PriceRangeChart({
                           stroke="#b45309"
                           strokeWidth={isSelected ? 2 : 0}
                           style={{ cursor: 'pointer' }}
-                          onClick={() => handlePointClick(props.payload)}
+                          onClick={(e) => { e.stopPropagation(); handlePointClick(props.payload) }}
                         />
                       )
                     }}
-                    activeDot={{ r: 6, fill: '#b45309', strokeWidth: 2, stroke: '#fff' }}
+                    activeDot={(props: any) => (
+                      <circle
+                        key={props.key}
+                        cx={props.cx}
+                        cy={props.cy}
+                        r={6}
+                        fill="#b45309"
+                        strokeWidth={2}
+                        stroke="#fff"
+                        style={{ cursor: 'pointer' }}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handlePointClick(props.payload)
+                        }}
+                      />
+                    )}
                     connectNulls
                   >
                     {chartData.length <= 3 && (
@@ -315,6 +346,11 @@ export default function PriceRangeChart({
                   dataKey={meta.key}
                   stroke={meta.color}
                   strokeWidth={2}
+                  onClick={(props: any) => {
+                    if (props?.payload) {
+                      handlePointClick(props.payload)
+                    }
+                  }}
                   dot={(props: any) => {
                     if (props.value == null) return <g key={props.key} />
                     const isSelected = props.payload.date === selectedDate
@@ -328,11 +364,26 @@ export default function PriceRangeChart({
                         stroke={meta.color}
                         strokeWidth={isSelected ? 2 : 0}
                         style={{ cursor: 'pointer' }}
-                        onClick={() => handlePointClick(props.payload)}
+                        onClick={(e) => { e.stopPropagation(); handlePointClick(props.payload) }}
                       />
                     )
                   }}
-                  activeDot={{ r: 6, fill: meta.color, strokeWidth: 2, stroke: '#fff' }}
+                  activeDot={(props: any) => (
+                    <circle
+                      key={props.key}
+                      cx={props.cx}
+                      cy={props.cy}
+                      r={6}
+                      fill={meta.color}
+                      strokeWidth={2}
+                      stroke="#fff"
+                      style={{ cursor: 'pointer' }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handlePointClick(props.payload)
+                      }}
+                    />
+                  )}
                   connectNulls
                 />
               ))}

@@ -62,6 +62,7 @@ public class PriceChartService {
 
         List<DealPost> deals = dealPostRepository.findAllBySpiritIdInAndStatusAndIsVisibleTrue(targetSpiritIds, DealStatus.APPROVED);
         deals = deals.stream()
+                .filter(d -> (d.getDealPrice() != null && d.getDealPrice() > 0) || (d.getOriginalPrice() != null && d.getOriginalPrice() > 0))
                 .filter(d -> startDate == null || !effectiveDate(d).isBefore(startDate))
                 .filter(d -> storeType == null || d.getStoreType() == storeType)
                 .toList();
@@ -119,6 +120,7 @@ public class PriceChartService {
 
         List<DealPost> deals = dealPostRepository.findAllBySpiritIdInAndStatusAndIsVisibleTrue(targetSpiritIds, DealStatus.APPROVED);
         List<DealPost> rangeDeals = deals.stream()
+                .filter(d -> (d.getDealPrice() != null && d.getDealPrice() > 0) || (d.getOriginalPrice() != null && d.getOriginalPrice() > 0))
                 .filter(d -> {
                     LocalDate dDate = effectiveDate(d);
                     return !dDate.isBefore(rangeStart) && !dDate.isAfter(rangeEnd);
@@ -221,7 +223,10 @@ public class PriceChartService {
             ));
         }
         for (DealPost d : deals) {
-            BigDecimal priceVal = d.getDealPrice() != null ? BigDecimal.valueOf(d.getDealPrice()) : null;
+            Integer rawDealPrice = d.getDealPrice();
+            Integer rawOrigPrice = d.getOriginalPrice();
+            Integer finalPriceVal = (rawDealPrice != null && rawDealPrice > 0) ? rawDealPrice : rawOrigPrice;
+            BigDecimal priceVal = finalPriceVal != null ? BigDecimal.valueOf(finalPriceVal) : null;
             BigDecimal origVal = d.getOriginalPrice() != null ? BigDecimal.valueOf(d.getOriginalPrice()) : null;
             tempPrices.add(new TempPrice(
                     d.getSpirit() != null ? d.getSpirit().getId() : null,
