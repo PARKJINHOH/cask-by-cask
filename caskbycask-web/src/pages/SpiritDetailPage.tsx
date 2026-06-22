@@ -149,9 +149,10 @@ function Badge2({ children, detail }: { children: React.ReactNode; detail?: stri
   )
 }
 
-function DetailGrid({ children }: { children: React.ReactNode }) {
-  // 세로 리스트형: 라벨 좌 · 값 우. 데스크톱은 2열로 나눠 스크롤 길이 절감.
-  return <dl className="grid grid-cols-1 sm:grid-cols-2 sm:gap-x-12">{children}</dl>
+function DetailGrid({ children, cols = 2 }: { children: React.ReactNode; cols?: number }) {
+  // 세로 리스트형: 라벨 좌 · 값 우. 데스크톱은 cols열로 나눠 스크롤 길이 절감.
+  const gridColsClass = cols === 3 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'
+  return <dl className={`grid grid-cols-1 ${gridColsClass} sm:gap-x-12`}>{children}</dl>
 }
 
 function DI({ label, value }: { label: string; value: React.ReactNode }) {
@@ -165,24 +166,13 @@ function DI({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 // 멀티값 필드(캐스크 등): 콤마 문자열 대신 개별 칩으로 표시 → 이름 중간 줄바꿈 방지
-function DIChips({ label, items }: { label: string; items: { text: string; accent?: boolean }[] }) {
-  if (!items || items.length === 0) return null
+function DIChips({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
+  if (!children) return null
   return (
-    <div className="flex items-start justify-between gap-4 py-3 border-b border-neutral-100">
+    <div className={`flex items-start justify-start gap-4 py-3 border-b border-neutral-100 ${className ?? ''}`}>
       <dt className="text-[13px] text-neutral-400 flex-shrink-0 pt-1">{label}</dt>
-      <dd className="flex flex-wrap justify-end gap-1.5">
-        {items.map((it, i) => (
-          <span
-            key={i}
-            className={`inline-flex items-center rounded-md px-2 py-0.5 text-[12.5px] font-medium break-keep ${
-              it.accent
-                ? 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200'
-                : 'bg-neutral-100 text-neutral-700'
-            }`}
-          >
-            {it.text}
-          </span>
-        ))}
+      <dd className="flex flex-wrap justify-start gap-2 items-center">
+        {children}
       </dd>
     </div>
   )
@@ -302,7 +292,7 @@ function SpiritDetailSections({ spirit, isEn }: { spirit: SpiritDetail; isEn: bo
             <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest mb-2">
               {isEn ? 'Common' : '공통'}
             </p>
-            <DetailGrid>
+            <DetailGrid cols={3}>
               <DI label={isEn ? 'Age Statement' : '숙성 연수'}
                 value={cd.isNas
                   ? <span className="px-2 py-0.5 rounded bg-neutral-800 text-white text-xs font-bold">NAS</span>
@@ -331,18 +321,42 @@ function SpiritDetailSections({ spirit, isEn }: { spirit: SpiritDetail; isEn: bo
                   : whisky.style ? WHISKY_STYLE_LABEL[whisky.style] ?? whisky.style : null} />
               <DI label={isEn ? 'Bottling' : '병입'}
                 value={whisky.bottlingType ? BOTTLING_LABEL[whisky.bottlingType] ?? whisky.bottlingType : null} />
-              <DIChips label={isEn ? 'Cask' : '캐스크'}
-                items={(whisky.caskTypes ?? []).map((c) => {
+              <DIChips label={isEn ? 'Cask' : '캐스크'} className="sm:col-span-2">
+                {(whisky.caskTypes ?? []).map((c) => {
                   const label = caskLabel(c)
                   const details = whisky.caskDetails?.[c] || []
-                  let detailsJoined = details.filter(Boolean).join(' + ')
-                  if (!detailsJoined && c === 'OTHER' && whisky.caskTypeOther) {
-                    detailsJoined = whisky.caskTypeOther
+                  let smallCats = details.filter(Boolean)
+                  if (smallCats.length === 0 && c === 'OTHER' && whisky.caskTypeOther) {
+                    smallCats = [whisky.caskTypeOther]
                   }
-                  const base = detailsJoined ? `${label} (${detailsJoined})` : label
                   const isFinish = whisky.caskFinishes?.includes(c) ?? false
-                  return { text: isFinish ? `${base} ${isEn ? '(Finish)' : '(피니시)'}` : base, accent: isFinish }
-                })} />
+                  const colorClass = 'bg-indigo-50/70 text-indigo-700 border border-indigo-200/50 rounded px-1 py-0 text-[11px] font-semibold break-keep'
+
+                  return (
+                    <div key={c} className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[12.5px] font-medium break-keep flex-wrap ${
+                      isFinish
+                        ? 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200'
+                        : 'bg-neutral-100 text-neutral-700'
+                    }`}>
+                      <span>{label} {isFinish && (isEn ? '(Finish)' : '(피니시)')}</span>
+                      {smallCats.length > 0 && (
+                        <div className="flex items-center gap-1 flex-wrap pl-1">
+                          {smallCats.map((sc, idx) => {
+                            return (
+                              <span key={idx} className="flex items-center gap-1">
+                                {idx > 0 && <span className="text-neutral-400 text-[11px] font-semibold px-0.5">+</span>}
+                                <span className={colorClass}>
+                                  {sc}
+                                </span>
+                              </span>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </DIChips>
               <DI label={isEn ? 'Phenol (ppm)' : '피트 강도'}
                 value={formatPhenolPpm(whisky.phenolPpm, whisky.phenolPpmMin, whisky.phenolPpmMax)} />
               <DI label={isEn ? 'Single Cask No.' : '싱글 캐스크 번호'} value={whisky.caskNo} />
