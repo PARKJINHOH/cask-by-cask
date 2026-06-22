@@ -93,7 +93,9 @@ jobs:
         with:
           name: web-dist
           path: caskbycask-web/.next/standalone
+          include-hidden-files: true
           retention-days: 5
+
 
   deploy:
     needs: [build-api, build-web]
