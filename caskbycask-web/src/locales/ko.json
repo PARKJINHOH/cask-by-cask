@@ -610,6 +610,9 @@
   },
   "review": {
     "title": "리뷰",
+    "userReviewsTitle": "{{nickname}} 님의 리뷰",
+    "nthReview": "{{index}}번째 리뷰",
+    "userReviewsEmpty": "작성한 리뷰가 없습니다.",
     "tab": "리뷰",
     "count": "리뷰 {{n}}",
     "write": "리뷰 작성",

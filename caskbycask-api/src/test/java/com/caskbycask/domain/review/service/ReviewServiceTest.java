@@ -26,6 +26,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -77,13 +78,13 @@ class ReviewServiceTest {
         given(spiritRepository.findByIdAndStatus(1L, SpiritStatus.ACTIVE))
                 .willReturn(Optional.of(spirit));
         given(userRepository.getByIdOrThrow(1L)).willReturn(user);
-        given(reviewRepository.existsBySpiritIdAndUserId(1L, 1L)).willReturn(false);
 
         Review savedReview = buildReview(spirit, user, 90, 85, 88, "훌륭합니다", new BigDecimal("87.7"));
         given(reviewRepository.save(any())).willReturn(savedReview);
+        given(reviewRepository.findReviewsByUserAndMasterSpirit(1L, 1L)).willReturn(List.of(savedReview));
 
-        given(reviewRepository.findAvgScoreBySpiritId(1L)).willReturn(Optional.of(87.7));
-        given(reviewRepository.countActiveBySpiritId(1L)).willReturn(1L);
+        given(reviewRepository.findAvgScoreForMasterSpirit(1L)).willReturn(Optional.of(87.7));
+        given(reviewRepository.countActiveForMasterSpirit(1L)).willReturn(1L);
         given(spiritRepository.findById(1L)).willReturn(Optional.of(spirit));
 
         ReviewResponse response = reviewService.createReview(1L, 1L, request);
@@ -101,13 +102,13 @@ class ReviewServiceTest {
         given(spiritRepository.findByIdAndStatus(1L, SpiritStatus.ACTIVE))
                 .willReturn(Optional.of(spirit));
         given(userRepository.getByIdOrThrow(1L)).willReturn(user);
-        given(reviewRepository.existsBySpiritIdAndUserId(1L, 1L)).willReturn(false);
 
         Review savedReview = buildReview(spirit, user, 80, 80, 80, null, new BigDecimal("80.0"));
         given(reviewRepository.save(any())).willReturn(savedReview);
+        given(reviewRepository.findReviewsByUserAndMasterSpirit(1L, 1L)).willReturn(List.of(savedReview));
 
-        given(reviewRepository.findAvgScoreBySpiritId(1L)).willReturn(Optional.of(80.0));
-        given(reviewRepository.countActiveBySpiritId(1L)).willReturn(3L);
+        given(reviewRepository.findAvgScoreForMasterSpirit(1L)).willReturn(Optional.of(80.0));
+        given(reviewRepository.countActiveForMasterSpirit(1L)).willReturn(3L);
         given(spiritRepository.findById(1L)).willReturn(Optional.of(spirit));
 
         reviewService.createReview(1L, 1L, request);
@@ -115,23 +116,7 @@ class ReviewServiceTest {
         assertThat(spirit.getReviewCount()).isEqualTo(3);
     }
 
-    // ── 중복 리뷰 방지 ─────────────────────────────────────
-
-    @Test
-    @DisplayName("같은 술에 중복 리뷰 작성 시 DUPLICATE_REVIEW 예외")
-    void createReview_duplicate_throwsDuplicateReview() {
-        ReviewRequest request = new ReviewRequest(new BigDecimal("90"), new BigDecimal("85"), new BigDecimal("88"), null, null, null, "중복", null, null, null);
-
-        given(spiritRepository.findByIdAndStatus(1L, SpiritStatus.ACTIVE))
-                .willReturn(Optional.of(spirit));
-        given(userRepository.getByIdOrThrow(1L)).willReturn(user);
-        given(reviewRepository.existsBySpiritIdAndUserId(1L, 1L)).willReturn(true);
-
-        assertThatThrownBy(() -> reviewService.createReview(1L, 1L, request))
-                .isInstanceOf(CustomException.class)
-                .extracting("errorCode")
-                .isEqualTo(ErrorCode.DUPLICATE_REVIEW);
-    }
+    // ── 중복 리뷰 방지 제거 ─────────────────────────────────
 
     @Test
     @DisplayName("soft delete된 리뷰 제외 후 재작성 가능 (중복 아님)")
@@ -141,13 +126,12 @@ class ReviewServiceTest {
         given(spiritRepository.findByIdAndStatus(1L, SpiritStatus.ACTIVE))
                 .willReturn(Optional.of(spirit));
         given(userRepository.getByIdOrThrow(1L)).willReturn(user);
-        // SQLRestriction으로 인해 soft delete된 리뷰는 existsBy에서 제외됨
-        given(reviewRepository.existsBySpiritIdAndUserId(1L, 1L)).willReturn(false);
 
         Review savedReview = buildReview(spirit, user, 70, 70, 70, "재작성", new BigDecimal("70.0"));
         given(reviewRepository.save(any())).willReturn(savedReview);
-        given(reviewRepository.findAvgScoreBySpiritId(1L)).willReturn(Optional.of(70.0));
-        given(reviewRepository.countActiveBySpiritId(1L)).willReturn(1L);
+        given(reviewRepository.findReviewsByUserAndMasterSpirit(1L, 1L)).willReturn(List.of(savedReview));
+        given(reviewRepository.findAvgScoreForMasterSpirit(1L)).willReturn(Optional.of(70.0));
+        given(reviewRepository.countActiveForMasterSpirit(1L)).willReturn(1L);
         given(spiritRepository.findById(1L)).willReturn(Optional.of(spirit));
 
         ReviewResponse response = reviewService.createReview(1L, 1L, request);
@@ -168,8 +152,8 @@ class ReviewServiceTest {
         given(reviewRepository.findByIdAndSpiritId(10L, 1L)).willReturn(Optional.of(review));
         given(spiritRepository.findById(1L)).willReturn(Optional.of(spirit));
         // 삭제 후 avgScore 없음 (리뷰가 0개)
-        given(reviewRepository.findAvgScoreBySpiritId(1L)).willReturn(Optional.empty());
-        given(reviewRepository.countActiveBySpiritId(1L)).willReturn(0L);
+        given(reviewRepository.findAvgScoreForMasterSpirit(1L)).willReturn(Optional.empty());
+        given(reviewRepository.countActiveForMasterSpirit(1L)).willReturn(0L);
 
         reviewService.deleteReview(1L, 10L, 1L);
 
@@ -188,8 +172,8 @@ class ReviewServiceTest {
 
         given(reviewRepository.findByIdAndSpiritId(10L, 1L)).willReturn(Optional.of(review));
         given(spiritRepository.findById(1L)).willReturn(Optional.of(spirit));
-        given(reviewRepository.findAvgScoreBySpiritId(1L)).willReturn(Optional.of(82.0));
-        given(reviewRepository.countActiveBySpiritId(1L)).willReturn(1L);
+        given(reviewRepository.findAvgScoreForMasterSpirit(1L)).willReturn(Optional.of(82.0));
+        given(reviewRepository.countActiveForMasterSpirit(1L)).willReturn(1L);
 
         reviewService.deleteReview(1L, 10L, 1L);
 

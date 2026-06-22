@@ -23,4 +23,7 @@ export const reviewApi = {
 
   getMyReviews: (params?: { page?: number; size?: number }) =>
     axiosInstance.get<ApiResponse<PageResponse<ReviewItem>>>('/api/users/me/reviews', { params }),
+
+  getUserReviews: (userId: number, params?: { page?: number; size?: number }) =>
+    axiosInstance.get<ApiResponse<PageResponse<ReviewItem>>>(`/api/users/${userId}/reviews`, { params }),
 }

@@ -33,6 +33,32 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 
     boolean existsBySpiritIdAndUserId(Long spiritId, Long userId);
 
+    @Query("""
+            SELECT r FROM Review r
+            WHERE r.user.id = :userId
+              AND (r.spirit.id = :masterSpiritId OR r.spirit.parent.id = :masterSpiritId)
+              AND r.isHidden = false
+            ORDER BY r.createdAt ASC, r.id ASC
+            """)
+    List<Review> findReviewsByUserAndMasterSpirit(
+            @Param("userId") Long userId,
+            @Param("masterSpiritId") Long masterSpiritId
+    );
+
+    @Query("""
+            SELECT AVG(r.totalScore) FROM Review r
+            WHERE (r.spirit.id = :spiritId OR r.spirit.parent.id = :spiritId)
+              AND r.isHidden = false
+            """)
+    Optional<Double> findAvgScoreForMasterSpirit(@Param("spiritId") Long spiritId);
+
+    @Query("""
+            SELECT COUNT(r) FROM Review r
+            WHERE (r.spirit.id = :spiritId OR r.spirit.parent.id = :spiritId)
+              AND r.isHidden = false
+            """)
+    long countActiveForMasterSpirit(@Param("spiritId") Long spiritId);
+
     Optional<Review> findByIdAndSpiritId(Long id, Long spiritId);
 
     @Query(value = """

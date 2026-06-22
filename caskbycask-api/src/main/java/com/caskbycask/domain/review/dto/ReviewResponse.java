@@ -1,6 +1,7 @@
 package com.caskbycask.domain.review.dto;
 
 import com.caskbycask.domain.review.entity.Review;
+import com.caskbycask.domain.user.entity.enums.Role;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
@@ -42,9 +43,23 @@ public record ReviewResponse(
         @Schema(description = "피니시 아로마 휠")
         String finishAromaWheelNotes,
         @Schema(description = "작성 일시")
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        @Schema(description = "작성자 레벨")
+        Integer userLevel,
+        @Schema(description = "작성자 프로필 이미지 URL")
+        String userProfileImageUrl,
+        @Schema(description = "작성자 역할")
+        Role userRole,
+        @Schema(description = "동일 주류에 대한 사용자 리뷰 번호 (1부터 시작)")
+        Integer userReviewIndex,
+        @Schema(description = "동일 주류에 대한 사용자 총 리뷰 수")
+        Integer userReviewCount
 ) {
     public static ReviewResponse from(Review review) {
+        return from(review, null, null);
+    }
+
+    public static ReviewResponse from(Review review, Integer userReviewIndex, Integer userReviewCount) {
         return new ReviewResponse(
                 review.getId(),
                 review.getUser().getId(),
@@ -63,7 +78,12 @@ public record ReviewResponse(
                 review.getNoseAromaWheelNotes(),
                 review.getTasteAromaWheelNotes(),
                 review.getFinishAromaWheelNotes(),
-                review.getCreatedAt()
+                review.getCreatedAt(),
+                review.getUser().getCurrentLevel(),
+                review.getUser().getProfileImageUrl(),
+                review.getUser().getRole(),
+                userReviewIndex,
+                userReviewCount
         );
     }
 }

@@ -7,7 +7,6 @@ import AdminIcon from './icons/AdminIcon'
 import ProducerIcon from './icons/ProducerIcon'
 import UserContextMenu from './UserContextMenu'
 import DefaultAvatar from './DefaultAvatar'
-import { useAuthStore } from '@/domain/auth/store/authStore'
 import { getLevelInfo } from '@/domain/score/types/score.types'
 
 export interface UserBadgeUser {
@@ -42,6 +41,8 @@ interface Props {
   /** 닉네임 아래에 추가로 표시할 둘째 줄(상세용: 작성시간·조회 등) */
   subLine?: ReactNode
   className?: string
+  onlyReviews?: boolean
+  disableNicknameHover?: boolean
 }
 
 const AVATAR_CLS: Record<string, string> = {
@@ -82,11 +83,12 @@ export default function UserBadge({
   levelIconSize,
   subLine,
   className = '',
+  onlyReviews,
+  disableNicknameHover,
 }: Props) {
   const avSize = avatarSize ?? size
   const twoLine = scoreBelow || !!subLine
   const nameCls = nameClassName ?? TEXT_CLS[size]
-  const currentUser = useAuthStore((s) => s.user)
   const level = user.currentLevel ?? 1
   const levelName = getLevelInfo(level).name
   const isFixed = Boolean(user.nicknameFixed)
@@ -106,6 +108,8 @@ export default function UserBadge({
       : user.role === 'PARTNER'
         ? '증류소 담당자'
         : `Lv.${level}`
+
+  const showTooltip = !disableNicknameHover && user.role !== 'ADMIN' && !isSuperAdmin
 
   // ─── 포털 오버레이 (position:fixed → 어떤 overflow도 뚫음) ──
   const avatarRef = useRef<HTMLSpanElement>(null)
@@ -191,7 +195,7 @@ export default function UserBadge({
       )}
 
       {/* 닉네임·레벨·배지 묶음 — 이 영역 hover 시에만 툴팁 표시 */}
-      <span className={`group inline-flex ${twoLine ? 'flex-col gap-0.5' : 'items-center gap-1'}`}>
+      <span className={`${showTooltip ? 'group' : ''} inline-flex ${twoLine ? 'flex-col gap-0.5' : 'items-center gap-1'}`}>
         {/* 닉네임 행 */}
         <span className="inline-flex items-center gap-1">
           {showName && (
@@ -210,9 +214,9 @@ export default function UserBadge({
                 <UserContextMenu
                   nickname={user.nickname}
                   userId={user.id}
-                  disabled={user.id === currentUser?.id}
+                  onlyReviews={onlyReviews}
                 >
-                  <span className="hover:underline">{displayName}</span>
+                  <span className={disableNicknameHover ? '' : 'hover:underline'}>{displayName}</span>
                 </UserContextMenu>
               ) : (
                 displayName
@@ -261,7 +265,7 @@ export default function UserBadge({
         )}
 
         {/* 툴팁 — 닉네임·레벨 영역 hover 시만 (관리자/최고관리자 제외) */}
-        {user.role !== 'ADMIN' && !isSuperAdmin && (
+        {showTooltip && (
           <span
             className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5
               px-2 py-1 text-xs bg-neutral-800 text-white rounded-lg whitespace-nowrap

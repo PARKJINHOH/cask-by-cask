@@ -17,6 +17,11 @@ export interface ReviewItem {
   tasteAromaWheelNotes: string | null
   finishAromaWheelNotes: string | null
   createdAt: string
+  userLevel?: number
+  userProfileImageUrl?: string | null
+  userRole?: string
+  userReviewIndex?: number
+  userReviewCount?: number
 }
 
 export interface CreateReviewRequest {

@@ -26,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -47,7 +48,7 @@ public class ReviewService {
         };
         Pageable sorted = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), dataSort);
         return reviewRepository.findBySpiritForDisplay(spiritId, sorted)
-                .map(ReviewResponse::from);
+                .map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
@@ -56,7 +57,7 @@ public class ReviewService {
                 pageable.getPageNumber(), pageable.getPageSize(),
                 Sort.by(Sort.Direction.DESC, "createdAt"));
         return reviewRepository.findByUserIdWithUser(userId, sorted)
-                .map(ReviewResponse::from);
+                .map(this::toResponse);
     }
 
     // ── 작성 ──────────────────────────────────────────────
@@ -67,10 +68,6 @@ public class ReviewService {
                 .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_NOT_FOUND));
 
         User user = getUser(userId);
-
-        if (reviewRepository.existsBySpiritIdAndUserId(spiritId, userId)) {
-            throw new CustomException(ErrorCode.DUPLICATE_REVIEW);
-        }
 
         // [패치 5] 리뷰 코멘트 욕설 필터 (기존 누락 영역)
         badWordFilter.validate(request.comment());
@@ -96,7 +93,7 @@ public class ReviewService {
         // [레벨] 술 상세 리뷰 작성 점수 지급
         scoreService.award(userId, ScoreActions.SPIRIT_REVIEW_WRITE, "SPIRIT_REVIEW", saved.getId());
 
-        return ReviewResponse.from(saved);
+        return toResponse(saved);
     }
 
     // ── 수정 ──────────────────────────────────────────────
@@ -129,7 +126,7 @@ public class ReviewService {
         reviewRepository.flush();
         recalculateAvgScore(spiritId);
 
-        return ReviewResponse.from(review);
+        return toResponse(review);
     }
 
     // ── 삭제 ──────────────────────────────────────────────
@@ -153,15 +150,63 @@ public class ReviewService {
         Spirit spirit = spiritRepository.findById(spiritId)
                 .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_NOT_FOUND));
 
-        BigDecimal avg = reviewRepository.findAvgScoreBySpiritId(spiritId)
-                .map(d -> BigDecimal.valueOf(d).setScale(1, RoundingMode.HALF_UP))
-                .orElse(null);
+        recalculateSingleSpirit(spirit);
 
-        int count = (int) reviewRepository.countActiveBySpiritId(spiritId);
+        if (spirit.getParent() != null) {
+            recalculateSingleSpirit(spirit.getParent());
+        }
+    }
+
+    private void recalculateSingleSpirit(Spirit spirit) {
+        Long id = spirit.getId();
+        boolean isMaster = spirit.getParent() == null;
+
+        BigDecimal avg;
+        int count;
+
+        if (isMaster) {
+            avg = reviewRepository.findAvgScoreForMasterSpirit(id)
+                    .map(d -> BigDecimal.valueOf(d).setScale(1, RoundingMode.HALF_UP))
+                    .orElse(null);
+            count = (int) reviewRepository.countActiveForMasterSpirit(id);
+        } else {
+            avg = reviewRepository.findAvgScoreBySpiritId(id)
+                    .map(d -> BigDecimal.valueOf(d).setScale(1, RoundingMode.HALF_UP))
+                    .orElse(null);
+            count = (int) reviewRepository.countActiveBySpiritId(id);
+        }
+
         spirit.updateAvgScore(avg, count);
     }
 
     // ── Private helpers ────────────────────────────────────
+
+    private ReviewResponse toResponse(Review review) {
+        Long userId = review.getUser().getId();
+        Long spiritId = review.getSpirit().getId();
+        Long masterSpiritId = review.getSpirit().getParent() != null ?
+                review.getSpirit().getParent().getId() : spiritId;
+
+        List<Review> userReviews = reviewRepository.findReviewsByUserAndMasterSpirit(userId, masterSpiritId);
+        int count = userReviews.size();
+        int index = 0;
+
+        if (review.getId() != null) {
+            for (int i = 0; i < count; i++) {
+                if (review.getId().equals(userReviews.get(i).getId())) {
+                    index = i + 1;
+                    break;
+                }
+            }
+        }
+
+        if (index == 0) {
+            count = count + 1;
+            index = count;
+        }
+
+        return ReviewResponse.from(review, index, count);
+    }
 
     private Review getReview(Long spiritId, Long reviewId) {
         return reviewRepository.findByIdAndSpiritId(reviewId, spiritId)

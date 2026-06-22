@@ -11,10 +11,12 @@ interface Props {
   userId: number
   children: ReactNode
   disabled?: boolean
+  onlyReviews?: boolean
 }
 
-export default function UserContextMenu({ nickname, userId, children, disabled }: Props) {
-  const { isLoggedIn } = useAuthStore()
+export default function UserContextMenu({ nickname, userId, children, disabled, onlyReviews }: Props) {
+  const { isLoggedIn, user: currentUser } = useAuthStore()
+  const isMe = currentUser?.id === userId
   const { openPopup } = useMessageStore()
   const { showToast } = useToast()
   const qc = useQueryClient()
@@ -41,7 +43,8 @@ export default function UserContextMenu({ nickname, userId, children, disabled }
 
     const rect = triggerRef.current.getBoundingClientRect()
     const menuWidth = 180
-    const menuHeight = isLoggedIn ? 175 : 90
+    const showSelfActions = isLoggedIn && !isMe
+    const menuHeight = onlyReviews ? 44 : (showSelfActions ? 175 : 90)
 
     let left = rect.right + 4
     let top = rect.top
@@ -55,7 +58,7 @@ export default function UserContextMenu({ nickname, userId, children, disabled }
 
     setPos({ top, left })
     setOpen((v) => !v)
-  }, [isLoggedIn])
+  }, [isLoggedIn, isMe, onlyReviews])
 
   useEffect(() => {
     if (!open) return
@@ -85,47 +88,70 @@ export default function UserContextMenu({ nickname, userId, children, disabled }
           className="fixed z-[9999] flex flex-col bg-white border border-neutral-200 rounded-lg shadow-lg py-1 w-max min-w-[160px]"
           style={{ top: pos.top, left: pos.left }}
         >
-          <button
-            className="px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 w-full text-left whitespace-nowrap"
-            onClick={() => {
-              setOpen(false)
-              navigate(`/community/all?authorId=${userId}&authorNickname=${encodeURIComponent(nickname)}`)
-            }}
-          >
-            사용자 게시글 보기
-          </button>
-          <button
-            className="px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 w-full text-left whitespace-nowrap"
-            onClick={() => {
-              setOpen(false)
-              navigate(`/community/all?commentAuthorId=${userId}&authorNickname=${encodeURIComponent(nickname)}`)
-            }}
-          >
-            사용자 댓글 보기
-          </button>
-          {isLoggedIn && (
+          {onlyReviews ? (
+            <button
+              className="px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 w-full text-left whitespace-nowrap"
+              onClick={() => {
+                setOpen(false)
+                navigate(`/users/${userId}/reviews?nickname=${encodeURIComponent(nickname)}`)
+              }}
+            >
+              작성 리뷰 보기
+            </button>
+          ) : (
             <>
-              <div className="border-t border-neutral-100 my-1" />
               <button
                 className="px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 w-full text-left whitespace-nowrap"
                 onClick={() => {
                   setOpen(false)
-                  openPopup(nickname)
+                  navigate(`/community/all?authorId=${userId}&authorNickname=${encodeURIComponent(nickname)}`)
                 }}
               >
-                쪽지 보내기
+                사용자 게시글 보기
               </button>
               <button
-                className="px-4 py-2 text-sm text-red-600 hover:bg-red-50 w-full text-left whitespace-nowrap"
+                className="px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 w-full text-left whitespace-nowrap"
                 onClick={() => {
                   setOpen(false)
-                  if (window.confirm('이 사용자를 차단할까요?\n차단하면 이 사용자의 게시글·댓글 내용이 가려집니다.')) {
-                    blockMutation.mutate()
-                  }
+                  navigate(`/community/all?commentAuthorId=${userId}&authorNickname=${encodeURIComponent(nickname)}`)
                 }}
               >
-                사용자 차단
+                사용자 댓글 보기
               </button>
+              <button
+                className="px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 w-full text-left whitespace-nowrap"
+                onClick={() => {
+                  setOpen(false)
+                  navigate(`/users/${userId}/reviews?nickname=${encodeURIComponent(nickname)}`)
+                }}
+              >
+                작성 리뷰 보기
+              </button>
+              {isLoggedIn && !isMe && (
+                <>
+                  <div className="border-t border-neutral-100 my-1" />
+                  <button
+                    className="px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 w-full text-left whitespace-nowrap"
+                    onClick={() => {
+                      setOpen(false)
+                      openPopup(nickname)
+                    }}
+                  >
+                    쪽지 보내기
+                  </button>
+                  <button
+                    className="px-4 py-2 text-sm text-red-600 hover:bg-red-50 w-full text-left whitespace-nowrap"
+                    onClick={() => {
+                      setOpen(false)
+                      if (window.confirm('이 사용자를 차단할까요?\n차단하면 이 사용자의 게시글·댓글 내용이 가려집니다.')) {
+                        blockMutation.mutate()
+                      }
+                    }}
+                  >
+                    사용자 차단
+                  </button>
+                </>
+              )}
             </>
           )}
         </div>

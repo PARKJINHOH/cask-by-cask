@@ -82,6 +82,7 @@ const AdminDashboardPage = lazy(() => import('@/views-spa/admin/AdminDashboardPa
 const AdminFaqPage = lazy(() => import('@/views-spa/admin/AdminFaqPage'))
 const AdminFaqFormPage = lazy(() => import('@/views-spa/admin/AdminFaqFormPage'))
 const UserBottlePublicPage = lazy(() => import('@/views-spa/UserBottlePublicPage'))
+const UserReviewsPage = lazy(() => import('@/views-spa/UserReviewsPage'))
 const PriceTrackerPage = lazy(() => import('@/views-spa/PriceTrackerPage'))
 const SpiritPriceDetailPage = lazy(() => import('@/views-spa/SpiritPriceDetailPage'))
 const PriceRegisterPage = lazy(() => import('@/views-spa/PriceRegisterPage'))
@@ -123,6 +124,7 @@ export default function App() {
             {/* 공개 읽기용 (비회원 접근 가능) */}
             <Route path="notifications" element={<NotificationsPage />} />
             <Route path="users/:userId/bottles" element={<UserBottlePublicPage />} />
+            <Route path="users/:userId/reviews" element={<UserReviewsPage />} />
             <Route path="producers/:id" element={<ProducerDetailPage />} />
             <Route path="price-tracker" element={<PriceTrackerPage />} />
             <Route path="price-tracker/spirits/:id" element={<SpiritPriceDetailPage />} />

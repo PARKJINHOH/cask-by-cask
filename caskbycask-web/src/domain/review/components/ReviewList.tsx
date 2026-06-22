@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/domain/auth/store/authStore'
@@ -20,15 +20,9 @@ export default function ReviewList({ spiritId, onNeedLogin }: ReviewListProps) {
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
   const [page, setPage]               = useState(0)
-  const [hasReviewed, setHasReviewed] = useState(false)
 
   const { data, isLoading } = useReviews(spiritId, page)
   const deleteMutation      = useDeleteReview(spiritId)
-
-  useEffect(() => {
-    if (!user || !data) return
-    if (data.content.some((r) => r.userId === user.id)) setHasReviewed(true)
-  }, [data, user])
 
   const handleWriteClick = () => {
     if (!user) { onNeedLogin(); return }
@@ -42,13 +36,12 @@ export default function ReviewList({ spiritId, onNeedLogin }: ReviewListProps) {
   const handleDelete = async (reviewId: number) => {
     if (!confirm(t('review.deleteConfirm'))) return
     await deleteMutation.mutateAsync(reviewId)
-    setHasReviewed(false)
   }
 
   return (
     <div className="space-y-4">
       {/* Write button */}
-      {user && !hasReviewed && (
+      {user && (
         <div className="flex justify-end">
           <Button size="sm" onClick={handleWriteClick}>
             {t('review.write')}

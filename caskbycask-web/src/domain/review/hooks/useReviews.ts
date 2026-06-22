@@ -67,3 +67,11 @@ export function useDeleteMyReview() {
     },
   })
 }
+
+export function useUserReviews(userId: number, page = 0) {
+  return useQuery({
+    queryKey: ['user-reviews', userId, page],
+    queryFn: () => reviewApi.getUserReviews(userId, { page, size: 100 }).then((res) => res.data.data!),
+    enabled: !!userId,
+  })
+}

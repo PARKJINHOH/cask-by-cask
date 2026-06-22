@@ -196,4 +196,12 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success(
                 PageResponse.from(reviewService.getMyReviews(userDetails.getUserId(), pageable))));
     }
+
+    @GetMapping("/{userId}/reviews")
+    public ResponseEntity<ApiResponse<PageResponse<ReviewResponse>>> getUserReviews(
+            @PathVariable Long userId,
+            @PageableDefault(size = 10) Pageable pageable) {
+        return ResponseEntity.ok(ApiResponse.success(
+                PageResponse.from(reviewService.getMyReviews(userId, pageable))));
+    }
 }

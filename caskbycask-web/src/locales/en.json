@@ -610,6 +610,9 @@
   },
   "review": {
     "title": "Reviews",
+    "userReviewsTitle": "{{nickname}}'s Reviews",
+    "nthReview": "Review #{{index}}",
+    "userReviewsEmpty": "No reviews written yet.",
     "tab": "Reviews",
     "count": "{{n}} reviews",
     "write": "Write a Review",
