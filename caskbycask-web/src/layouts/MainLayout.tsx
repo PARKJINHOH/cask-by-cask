@@ -670,6 +670,7 @@ export default function MainLayout() {
               <p className="text-xs font-bold text-neutral-700 mb-2">{t('footer.explore')}</p>
               <ul className="space-y-1.5">
                 <li><Link to="/spirits" className="text-xs text-neutral-500 hover:text-primary-800 transition-colors">{t('nav.spirits')}</Link></li>
+                <li><Link to="/ranking" className="text-xs text-neutral-500 hover:text-primary-800 transition-colors">{t('ranking.title')}</Link></li>
                 <li><Link to="/community/free" className="text-xs text-neutral-500 hover:text-primary-800 transition-colors">{t('menu.communityBoard')}</Link></li>
                 <li><Link to="/notices" className="text-xs text-neutral-500 hover:text-primary-800 transition-colors">{t('menu.notice')}</Link></li>
                 <li><Link to="/request/spirit" className="text-xs text-neutral-500 hover:text-primary-800 transition-colors">{t('menu.requestSpirit')}</Link></li>
