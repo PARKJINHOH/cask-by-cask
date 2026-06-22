@@ -14,6 +14,19 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <head>
+        {/* Google tag (gtag.js) */}
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-879K3LVK58"></script>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+
+              gtag('config', 'G-879K3LVK58');
+            `,
+          }}
+        />
         {/* Pretendard 폰트 웹폰트 적용 */}
         <link
           rel="stylesheet"
