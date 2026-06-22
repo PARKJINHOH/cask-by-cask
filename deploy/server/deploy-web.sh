@@ -42,11 +42,34 @@ sudo systemctl restart caskbycask-web
 
 # 6) 서비스 헬스 체크 (정상 구동 여부 검증)
 log "Next.js 서비스 헬스체크 중..."
-sleep 3
-if curl -s --fail http://127.0.0.1:3000/healthz >/dev/null; then
+HEALTH_SUCCESS=false
+for i in $(seq 1 15); do
+    sleep 1
+    if curl -s --fail http://127.0.0.1:3000/healthz >/dev/null; then
+        HEALTH_SUCCESS=true
+        break
+    fi
+done
+
+if [ "$HEALTH_SUCCESS" = "true" ]; then
     log "✅ 프론트 배포 완료 ($TS)"
 else
     err "❌ Next.js 서비스 구동 실패! 롤백을 수행합니다..."
+    
+    # 디버깅 정보 출력
+    err "── 서비스 로그 (journalctl) ──"
+    sudo journalctl -u caskbycask-web -n 50 --no-pager || true
+    
+    err "── 포트 3000/4000 상태 확인 ──"
+    if command -v ss >/dev/null 2>&1; then
+        ss -tln | grep -E '3000|4000' || true
+    elif command -v netstat >/dev/null 2>&1; then
+        netstat -an | grep -E '3000|4000' || true
+    fi
+    
+    err "── 포트 3000 응답 테스트 ──"
+    curl -I http://127.0.0.1:3000/ || true
+    
     # 롤백 처리
     rm -rf "$CUR"
     if [ -d "$WEB_DIR/dist_$TS" ]; then
@@ -58,3 +81,4 @@ else
     fi
     exit 1
 fi
+
