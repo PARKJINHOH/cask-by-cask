@@ -393,7 +393,7 @@ tail -f /app/logs/caskbycask-api-error.log
 | 컴포넌트 | 주소 | 외부 노출 |
 |---|---|---|
 | Prometheus | 127.0.0.1:9090 | ❌ (내부 전용) |
-| Grafana | 127.0.0.1:3000 | ✅ (`monitoring.caskbycask.net`, nginx 경유) |
+| Grafana | 127.0.0.1:4000 | ✅ (`monitoring.caskbycask.net`, nginx 경유) |
 | 메트릭 엔드포인트 | 127.0.0.1:8081/actuator/prometheus | ❌ (내부 전용) |
 
 ### 최초 설치 (한 번)

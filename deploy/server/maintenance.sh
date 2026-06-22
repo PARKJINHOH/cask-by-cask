@@ -13,7 +13,7 @@
 #   ./maintenance.sh off      # 점검 종료 (정상 복귀)
 #   ./maintenance.sh status   # 현재 상태 확인
 #
-# 사전 조건: 점검 페이지가 /app/vite/maintenance.html 에 설치되어 있어야 한다.
+# 사전 조건: 점검 페이지가 /app/next/maintenance.html 에 설치되어 있어야 한다.
 #            (setup-server.md 8-1 참고 — 배포(dist 교체)에 영향받지 않도록 dist 와 분리 보관)
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail

@@ -206,12 +206,12 @@ sudo systemctl reload nginx
 
 ### 8-1. 서버 점검 페이지 배치
 
-점검 모드(`maintenance.sh`)가 노출할 정적 점검 페이지를 `dist` 와 **분리된** 위치(`/app/vite/maintenance.html`)에 둔다.
+점검 모드(`maintenance.sh`)가 노출할 정적 점검 페이지를 `dist` 와 **분리된** 위치(`/app/next/maintenance.html`)에 둔다.
 (dist 와 분리해야 프론트 배포 시 `dist` 교체에 영향받지 않는다.)
 
 ```bash
-sudo cp ~/setup/maintenance.html /app/vite/maintenance.html   # deploy/nginx/maintenance.html
-sudo chown ubuntu:ubuntu /app/vite/maintenance.html
+sudo cp ~/setup/maintenance.html /app/next/maintenance.html   # deploy/nginx/maintenance.html
+sudo chown ubuntu:ubuntu /app/next/maintenance.html
 ```
 
 ### 8-2. 점검 우회 시크릿 설정 (관리자 본인만 점검 중 접근)
@@ -220,7 +220,7 @@ sudo chown ubuntu:ubuntu /app/vite/maintenance.html
 **git 에 실제 값을 올리지 말고**, 서버에 배치한 conf 에서만 치환한다.
 
 > **별도 작업 불필요** — `./maintenance.sh on` 실행 시 자동으로 시크릿을 생성·nginx에 적용·URL을 출력한다.
-> 생성된 시크릿은 `/app/vite/.maintenance_secret` 에 저장되며, 다음 `on` 호출 시 새 시크릿으로 교체된다.
+> 생성된 시크릿은 `/app/next/.maintenance_secret` 에 저장되며, 다음 `on` 호출 시 새 시크릿으로 교체된다.
 
 ```
 [maint] ✅ 점검 모드 ON — 방문자에게 점검 페이지가 노출됩니다.
@@ -231,10 +231,10 @@ sudo chown ubuntu:ubuntu /app/vite/maintenance.html
 수동으로 시크릿만 교체해야 할 경우:
 ```bash
 SECRET=$(openssl rand -hex 24)
-OLD=$(cat /app/vite/.maintenance_secret)
+OLD=$(cat /app/next/.maintenance_secret)
 sudo sed -i "s/$OLD/$SECRET/g" /etc/nginx/sites-available/caskbycask.conf
 sudo nginx -t && sudo systemctl reload nginx
-echo "$SECRET" > /app/vite/.maintenance_secret && chmod 600 /app/vite/.maintenance_secret
+echo "$SECRET" > /app/next/.maintenance_secret && chmod 600 /app/next/.maintenance_secret
 echo "점검 우회 URL:  https://caskbycask.net/__cbc_unlock_$SECRET"
 ```
 
@@ -415,13 +415,15 @@ sudo apt-get update -q
 sudo apt-get install -y grafana
 ```
 
-`/etc/grafana/grafana.ini` 에서 reverse proxy 경로 설정:
+`/etc/grafana/grafana.ini` 에서 reverse proxy 경로 및 포트(충돌 방지용) 설정:
 
 ```bash
 # root_url — nginx 도메인 반영
 sudo sed -i "s|^;root_url.*|root_url = https://monitoring.caskbycask.net/|" /etc/grafana/grafana.ini
 # 초기 admin 비밀번호 (첫 접속 후 즉시 변경 권장)
 sudo sed -i "s|^;admin_password.*|admin_password = 강한_비밀번호|" /etc/grafana/grafana.ini
+# 포트 충돌 방지 (Next.js 3000 사용하므로 4000으로 설정)
+sudo sed -i "s|^;http_port = 3000|http_port = 4000|" /etc/grafana/grafana.ini
 ```
 
 ```bash
@@ -432,7 +434,7 @@ sudo systemctl enable --now grafana-server
 
 ```bash
 systemctl status grafana-server
-curl -s http://127.0.0.1:3000/api/health    # {"database":"ok"} 기대
+curl -s http://127.0.0.1:4000/api/health    # {"database":"ok"} 기대
 ```
 
 ### 14-3. nginx Basic Auth 파일 생성

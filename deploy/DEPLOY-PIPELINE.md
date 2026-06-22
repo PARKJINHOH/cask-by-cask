@@ -14,7 +14,7 @@ main push (코드만)
    ▼
 GitHub Actions (ubuntu-latest, x86) — 대상 잡만 실행, 나머지는 skipped
    ├─ build-api : gradle bootJar      → app.jar      (아키텍처 중립)   [target=both|api]
-   ├─ build-web : npm ci + vite build + prerender → dist/              [target=both|web]
+   ├─ build-web : npm ci + npm run build (standalone) → .next/standalone [target=both|web]
    └─ deploy    : 빌드된 산출물만 scp/rsync 로 전송 → 해당 교체 스크립트 실행
    ▼
 서버 (Ubuntu 24.04 aarch64, Oracle Cloud 춘천)
@@ -35,8 +35,8 @@ GitHub Actions (ubuntu-latest, x86) — 대상 잡만 실행, 나머지는 skipp
 │  ├─ app.jar                  ← 운영 (systemd 가 실행)
 │  ├─ app.jar.new              ← 배포 중 staging (Actions 전송)
 │  └─ app.jar_<타임스탬프>      ← 직전 백업 1개 (다음 배포 때 삭제)
-├─ vite/
-│  ├─ dist/                    ← 운영 (nginx root)
+├─ next/
+│  ├─ dist/                    ← 운영 (.next/standalone 및 public 등, nginx root)
 │  ├─ dist.new/                ← 배포 중 staging
 │  └─ dist_<타임스탬프>/        ← 직전 백업 1개
 ├─ upload/                     ← 영속 (이미지·동영상) — 배포와 무관, 절대 삭제 안 함
@@ -52,7 +52,7 @@ GitHub Actions (ubuntu-latest, x86) — 대상 잡만 실행, 나머지는 skipp
    ├─ deploy-web.sh
    └─ backup-db.sh             ← DB 백업 (cron 03:00)
 
-nginx:  /etc/nginx/sites-available/caskbycask.conf  (root → /app/vite/dist)
+nginx:  /etc/nginx/sites-available/caskbycask.conf  (root → /app/next/dist)
 ssl:    /etc/nginx/ssl/caskbycask.net.{pem,key}     (Cloudflare Origin Cert)
 systemd: /etc/systemd/system/caskbycask-api.service (app 127.0.0.1:8080, actuator 8081)
 ```
@@ -134,7 +134,7 @@ mv app.jar_<타임스탬프> app.jar          # 직전 백업으로 복귀
 sudo systemctl start caskbycask-api
 
 # 프론트
-cd /app/vite
+cd /app/next
 rm -rf dist && mv dist_<타임스탬프> dist
 ```
 

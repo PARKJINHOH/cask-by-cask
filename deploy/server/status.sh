@@ -12,11 +12,13 @@ SHOW_LOG=false
 [[ "${1:-}" == "--log" ]] && SHOW_LOG=true
 
 API_SERVICE=caskbycask-api
+WEB_SERVICE=caskbycask-web
 NGINX_SERVICE=nginx
 HEALTH_URL=http://127.0.0.1:8081/actuator/health/readiness
+WEB_HEALTH_URL=http://127.0.0.1:3000/healthz
 FRONT_URL=http://127.0.0.1:80
 APP_JAR=/app/spring-boot/app.jar
-DIST_DIR=/app/vite/dist
+DIST_DIR=/app/next/dist
 LOG_LINES=20
 
 # ── 색상 ──────────────────────────────────────────────────────────────────────
@@ -103,14 +105,23 @@ if $SHOW_LOG; then
         | sed 's/^/  /'
 fi
 
-# ── 2) Web / nginx ────────────────────────────────────────────────────────────
-section "Web  ($NGINX_SERVICE + /app/vite/dist)"
+# ── 2) Web / Next.js / Nginx ──────────────────────────────────────────────────
+section "Web / Next.js / Nginx"
 
+# Next.js systemd 서비스 상태
+web_state=$(svc_state "$WEB_SERVICE")
+case "$web_state" in
+  active)  ok   "Next.js systemd: active (running)" ;;
+  failed)  fail "Next.js systemd: failed" ;;
+  *)       fail "Next.js systemd: $web_state" ;;
+esac
+
+# Nginx systemd 서비스 상태
 nginx_state=$(svc_state "$NGINX_SERVICE")
 case "$nginx_state" in
-  active)  ok   "systemd: active (running)" ;;
-  failed)  fail "systemd: failed" ;;
-  *)       fail "systemd: $nginx_state" ;;
+  active)  ok   "Nginx systemd: active (running)" ;;
+  failed)  fail "Nginx systemd: failed" ;;
+  *)       fail "Nginx systemd: $nginx_state" ;;
 esac
 
 # dist 디렉토리
@@ -122,6 +133,14 @@ else
     warn "dist 없음: $DIST_DIR"
 fi
 
+# Next.js 헬스체크 (3000포트)
+web_health_code=$(http_code "$WEB_HEALTH_URL")
+if [ "$web_health_code" = "200" ]; then
+    ok "Next.js 헬스체크: OK  ($WEB_HEALTH_URL)"
+else
+    fail "Next.js 헬스체크: 실패 (HTTP $web_health_code)  ($WEB_HEALTH_URL)"
+fi
+
 # nginx 설정 검증
 nginx_check=$(sudo nginx -t 2>&1 || true)
 if echo "$nginx_check" | grep -q "syntax is ok"; then
@@ -131,16 +150,18 @@ else
     echo "$nginx_check" | sed 's/^/    /'
 fi
 
-# HTTP 응답
+# HTTP 응답 (외부포트 80)
 front_code=$(http_code "$FRONT_URL")
 if [ "$front_code" = "200" ] || [ "$front_code" = "301" ] || [ "$front_code" = "302" ]; then
-    ok "HTTP $front_code  ($FRONT_URL)"
+    ok "외부 HTTP $front_code  ($FRONT_URL)"
 else
-    fail "HTTP $front_code  ($FRONT_URL)"
+    fail "외부 HTTP $front_code  ($FRONT_URL)"
 fi
 
 # 로그
 if $SHOW_LOG; then
+    printf "\n${C_GRAY}  ── Next.js 최근 로그 (journalctl -u $WEB_SERVICE -n $LOG_LINES) ──${C_RESET}\n"
+    journalctl -u "$WEB_SERVICE" -n "$LOG_LINES" --no-pager -o short-monotonic 2>/dev/null | sed 's/^/  /'
     printf "\n${C_GRAY}  ── nginx 최근 에러 로그 (tail -n $LOG_LINES) ──${C_RESET}\n"
     NGINX_ERR_LOG=$(nginx -V 2>&1 | grep -oP '(?<=--error-log-path=)\S+' 2>/dev/null || echo "/var/log/nginx/error.log")
     tail -n "$LOG_LINES" "$NGINX_ERR_LOG" 2>/dev/null | sed 's/^/  /' || info "(로그 없음)"
@@ -174,8 +195,10 @@ divider
 
 ALL_OK=true
 [[ "$api_state" != "active" ]]   && ALL_OK=false
+[[ "$web_state" != "active" ]]   && ALL_OK=false
 [[ "$nginx_state" != "active" ]] && ALL_OK=false
 echo "$health_json" | grep -q '"status":"UP"' || ALL_OK=false
+[[ "$web_health_code" != "200" ]] && ALL_OK=false
 
 if $ALL_OK; then
     printf "${C_GREEN}${C_BOLD}  ✔ 모든 서비스 정상${C_RESET}\n\n"

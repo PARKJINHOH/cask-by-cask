@@ -114,28 +114,22 @@ URL 수가 50,000 개를 초과하면 sitemap index 로 분할해야 합니다 (
 
 ---
 
-## 8. Prerender (정적 라우트 HTML 스냅샷)
+## 8. SSR & SSG (Next.js 서버 및 정적 렌더링)
 
-`caskbycask-web/scripts/prerender.mjs` 가 build 시 정적 라우트들의 HTML 스냅샷을 dist/<route>/index.html 로 생성합니다.
+Next.js 빌드(`npm run build`) 시, 프로젝트 구조에 맞춰 정적 페이지(SSG)와 동적 페이지(SSR/ISR)가 자동으로 분류되어 생성됩니다.
 
-### 대상 라우트
-```
-/, /spirits, /notices, /ranking, /faq,
-/terms, /privacy, /community/free, /community/notice
-```
+### 대상 및 렌더링 방식
+- **정적 페이지 (SSG/Static)**: `/notices`, `/ranking`, `/faq`, `/terms`, `/privacy` 등은 빌드 시 정적 HTML로 생성되어 즉시 서빙됩니다.
+- **동적 페이지 (SSR/ISR)**: `/spirits/[id]`, `/community/[category]/[id]` 등 핵심 SEO가 필요한 페이지는 서버 측(Node.js)에서 동적으로 HTML을 생성하여 검색엔진 봇 및 클라이언트에 즉시 완전한 메타태그와 본문을 반환합니다.
 
 ### nginx 동작
-`try_files $uri $uri/ /index.html;` 가 `/spirits` 요청 시:
-1. `dist/spirits` 파일 없음
-2. `dist/spirits/` 디렉토리 있음 → `dist/spirits/index.html` (prerender 결과) 응답
-3. 없으면 fallback `dist/index.html`
+`location /` 블록이 3000번 포트의 Next.js Node 서버로 프록시 패스(`proxy_pass http://127.0.0.1:3000`)하고, `/_next/static/` 경로는 nginx가 `/app/next/dist/.next/static/`에서 직접 정적 자원을 서빙합니다.
 
-→ 검색봇은 JS 실행 없이도 head 메타 + JSON-LD 를 즉시 받습니다.
+→ 검색봇은 JS 실행 없이도 서버가 렌더링한 완전한 head 메타 + JSON-LD 구조화 데이터를 즉시 받게 됩니다.
 
-### 트러블슈팅
-- 빌드 중 prerender 실패: puppeteer 가 Chrome 다운로드를 못 했을 가능성. `npx puppeteer browsers install chrome` 으로 강제 설치.
-- prerender 만 다시 실행: `npm run prerender` (vite build 안 한 채로 dist 만 있으면 동작)
-- prerender 건너뛰고 빌드만: `npm run build:no-prerender`
+### 트러블슈팅 및 검증
+- **빌드 검증**: 로컬 빌드 시 터미널 로그에서 각 라우트별 렌더링 타입(○ Static, λ SSR)이 정상적으로 설계와 일치하는지 확인합니다.
+- **standalone 구동 검증**: 서버의 systemd 서비스 `caskbycask-web`이 정상 작동 중인지 확인합니다 (`systemctl status caskbycask-web`).
 
 ---
 
