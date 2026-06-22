@@ -14,7 +14,7 @@ import {
 
 const EMPTY_FORM = {
   drinkName: '', drinkCategory: '', originalPrice: '', dealPrice: '',
-  discountPercent: '', seller: '', dealCondition: '', expiryInfo: '', summaryKo: '',
+  discountPercent: '', seller: '', dealCondition: '', expiryInfo: '', summaryKo: '', currency: '',
 }
 
 type SpiritConnectionOption = {
@@ -69,6 +69,7 @@ export default function AdminDealDetailPage() {
       dealCondition: detail.dealCondition ?? '',
       expiryInfo: detail.expiryInfo ?? '',
       summaryKo: detail.summaryKo ?? '',
+      currency: detail.currency ?? 'KRW',
     })
     setSpiritId(detail.spiritId)
     setSpiritNameKo(detail.spiritNameKo)
@@ -133,6 +134,7 @@ export default function AdminDealDetailPage() {
       originalPrice: toInt(form.originalPrice),
       dealPrice: toInt(form.dealPrice),
       discountRate: discountRateValue != null && Number.isFinite(discountRateValue) ? discountRateValue : null,
+      currency: form.currency || 'KRW',
       seller: form.seller.trim() || null,
       dealCondition: form.dealCondition.trim() || null,
       expiryInfo: form.expiryInfo.trim() || null,
@@ -202,13 +204,6 @@ export default function AdminDealDetailPage() {
       goList()
     },
   })
-  const rejectMut = useMutation({
-    mutationFn: () => adminDealApi.reject(id),
-    onSuccess: () => {
-      invalidateDealQueries()
-      goList()
-    },
-  })
   const deleteMut = useMutation({
     mutationFn: () => adminDealApi.delete(id),
     onSuccess: () => {
@@ -224,7 +219,7 @@ export default function AdminDealDetailPage() {
     },
   })
 
-  const busy = approveMut.isPending || rejectMut.isPending || deleteMut.isPending || updateMut.isPending
+  const busy = approveMut.isPending || deleteMut.isPending || updateMut.isPending
 
   const validatePrices = (): boolean => {
     const dp = Number(form.dealPrice)
@@ -248,10 +243,7 @@ export default function AdminDealDetailPage() {
     if (!window.confirm('현재 수정 내용을 저장하고 사용자에게 노출하시겠습니까?')) return
     approveMut.mutate()
   }
-  const onReject = () => {
-    if (!window.confirm('이 핫딜을 반려하시겠습니까? 반려된 핫딜은 노출되지 않습니다.')) return
-    rejectMut.mutate()
-  }
+
   const onDelete = () => {
     if (!window.confirm('이 핫딜을 삭제하시겠습니까? 삭제 후에는 목록에서 사라집니다.')) return
     deleteMut.mutate()
@@ -372,8 +364,19 @@ export default function AdminDealDetailPage() {
               onChange={(e) => setForm({ ...form, discountPercent: e.target.value })}
             />
           </Field>
-          <Field label={`통화 (${detail.currency ?? 'KRW'})`}>
-            <input className={`${inputCls} bg-neutral-50 text-neutral-400`} value={detail.currency ?? 'KRW'} disabled />
+          <Field label="통화" required>
+            <select
+              className={inputCls}
+              value={form.currency}
+              onChange={(e) => setForm({ ...form, currency: e.target.value })}
+            >
+              <option value="KRW">원화 (KRW)</option>
+              <option value="USD">달러 (USD)</option>
+              <option value="JPY">엔화 (JPY)</option>
+              <option value="TWD">대만 달러 (TWD)</option>
+              <option value="HKD">홍콩 달러 (HKD)</option>
+              <option value="SGD">싱가포르 달러 (SGD)</option>
+            </select>
           </Field>
           <Field label="판매처">
             <input
@@ -514,7 +517,7 @@ export default function AdminDealDetailPage() {
         </Field>
 
         <p className="text-xs text-neutral-400">
-          현재 할인가 미리보기: {formatPrice(form.dealPrice.trim() === '' ? null : Number(form.dealPrice), detail.currency)}
+          현재 할인가 미리보기: {formatPrice(form.dealPrice.trim() === '' ? null : Number(form.dealPrice), form.currency)}
         </p>
       </div>
 
@@ -528,16 +531,6 @@ export default function AdminDealDetailPage() {
           {deleteMut.isPending ? '삭제 중...' : '삭제'}
         </button>
         <div className="flex flex-wrap items-center justify-end gap-2">
-          {detail.status === 'PENDING' && (
-            <button
-              onClick={onReject}
-              disabled={busy}
-              className="px-4 py-2 text-sm font-medium border border-red-300 text-red-600 rounded-lg
-                hover:bg-red-50 transition-colors disabled:opacity-40"
-            >
-              {rejectMut.isPending ? '처리 중...' : '반려'}
-            </button>
-          )}
           {detail.status === 'APPROVED' ? (
             <button
               onClick={onUpdate}

@@ -142,13 +142,14 @@ public class DealPost extends BaseTimeEntity {
 
     /** 관리자 인라인 수정(승인 전 보정). 전달된 값으로 덮어쓴다(null 포함 — 비우기 허용). */
     public void applyAdminEdit(String drinkName, String drinkCategory, Integer originalPrice,
-                               Integer dealPrice, BigDecimal discountRate, String seller,
+                               Integer dealPrice, BigDecimal discountRate, String currency, String seller,
                                String dealCondition, String expiryInfo, String summaryKo) {
         this.drinkName = drinkName;
         this.drinkCategory = drinkCategory;
         this.originalPrice = originalPrice;
         this.dealPrice = dealPrice;
         this.discountRate = discountRate;
+        this.currency = currency;
         this.seller = seller;
         this.dealCondition = dealCondition;
         this.expiryInfo = expiryInfo;

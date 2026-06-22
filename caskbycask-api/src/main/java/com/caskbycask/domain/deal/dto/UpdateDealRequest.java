@@ -12,6 +12,7 @@ public record UpdateDealRequest(
         Integer originalPrice,
         Integer dealPrice,
         BigDecimal discountRate,
+        @Size(max = 10) String currency,
         @Size(max = 200) String seller,
         @Size(max = 500) String dealCondition,
         @Size(max = 200) String expiryInfo,

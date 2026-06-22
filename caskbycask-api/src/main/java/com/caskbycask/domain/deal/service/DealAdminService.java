@@ -51,14 +51,9 @@ public class DealAdminService {
         return DealPostDetailResponse.from(deal);
     }
 
-    @Transactional
-    public void reject(Long id) {
-        DealPost deal = getOrThrow(id);
-        requirePending(deal);
-        deal.reject();
-    }
 
-    // [상태전이 가드] 검토 대기(PENDING)에서만 승인/반려 가능 — 이미 반려된 핫딜이
+
+    // [상태전이 가드] 검토 대기(PENDING)에서만 승인 가능 — 이미 처리된 핫딜이
     //   재승인되어 노출되거나, 관리자 중복 클릭으로 상태가 뒤집히는 것을 방지.
     private void requirePending(DealPost deal) {
         if (deal.getStatus() != DealStatus.PENDING) {
@@ -79,6 +74,14 @@ public class DealAdminService {
         dealPostRepository.delete(deal);
     }
 
+    @Transactional
+    public void deleteBulk(java.util.List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return;
+        }
+        dealPostRepository.deleteAllByIdInBatch(ids);
+    }
+
     private void applyUpdate(DealPost deal, UpdateDealRequest req) {
         Spirit spirit = null;
         if (req.spiritId() != null) {
@@ -88,13 +91,12 @@ public class DealAdminService {
 
         deal.applyAdminEdit(
                 req.drinkName(), req.drinkCategory(), req.originalPrice(), req.dealPrice(),
-                req.discountRate(), req.seller(), req.dealCondition(), req.expiryInfo(), req.summaryKo()
+                req.discountRate(), req.currency(), req.seller(), req.dealCondition(), req.expiryInfo(), req.summaryKo()
         );
         deal.linkSpiritAndStoreType(spirit, req.storeType());
     }
 
     private DealPost getOrThrow(Long id) {
-        return dealPostRepository.findById(id)
                 .orElseThrow(() -> new CustomException(ErrorCode.DEAL_NOT_FOUND));
     }
 }

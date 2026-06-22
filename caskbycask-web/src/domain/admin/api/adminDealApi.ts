@@ -23,8 +23,10 @@ export const adminDealApi = {
     return res.data.data!
   },
 
-  reject: (id: number) =>
-    axiosInstance.patch<ApiResponse<null>>(`/api/admin/deals/${id}/reject`),
+  deleteBulk: (ids: number[]) =>
+    axiosInstance.delete<ApiResponse<void>>('/api/admin/deals', {
+      params: { ids: ids.join(',') },
+    }),
 
   delete: (id: number) =>
     axiosInstance.delete<ApiResponse<void>>(`/api/admin/deals/${id}`),

@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Spinner from '@/shared/components/Spinner'
 import Pagination from '@/shared/components/Pagination'
 import { formatDateTime } from '@/shared/utils/format'
@@ -15,13 +15,18 @@ const STATUS_TABS: Array<{ value: DealStatus | 'ALL'; label: string }> = [
   { value: 'ALL', label: '전체' },
   { value: 'PENDING', label: '검토 대기' },
   { value: 'APPROVED', label: '승인' },
-  { value: 'REJECTED', label: '반려' },
 ]
 
 export default function AdminDealListPage() {
   const navigate = useNavigate()
+  const qc = useQueryClient()
   const [status, setStatus] = useState<DealStatus | 'ALL'>('ALL')
   const [page, setPage] = useState(0)
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
+
+  useEffect(() => {
+    setSelectedIds([])
+  }, [status, page])
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin', 'deals', { status, page }],
@@ -31,6 +36,15 @@ export default function AdminDealListPage() {
       size: 20,
     }),
   })
+
+  const deleteBulkMut = useMutation({
+    mutationFn: (ids: number[]) => adminDealApi.deleteBulk(ids),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'deals'] })
+      setSelectedIds([])
+    },
+  })
+  const isDeleting = deleteBulkMut.isPending
 
   return (
     <div className="p-6 space-y-5">
@@ -68,6 +82,20 @@ export default function AdminDealListPage() {
             <table className="w-full text-sm">
               <thead className="bg-neutral-50 border-b border-neutral-200">
                 <tr>
+                  <th className="px-3 py-3 w-10 text-center">
+                    <input
+                      type="checkbox"
+                      checked={data && data.content.length > 0 && selectedIds.length === data.content.length}
+                      onChange={(e) => {
+                        if (e.target.checked && data) {
+                          setSelectedIds(data.content.map((item) => item.id))
+                        } else {
+                          setSelectedIds([])
+                        }
+                      }}
+                      className="rounded border-neutral-300 text-primary-800 focus:ring-primary-800 cursor-pointer"
+                    />
+                  </th>
                   <th className="text-left px-3 py-3 text-neutral-500 font-medium w-32 whitespace-nowrap">수집일시</th>
                   <th className="text-left px-3 py-3 text-neutral-500 font-medium w-28">출처</th>
                   <th className="text-left px-4 py-3 text-neutral-500 font-medium">주류명</th>
@@ -82,7 +110,7 @@ export default function AdminDealListPage() {
               <tbody className="divide-y divide-neutral-100">
                 {!data || data.empty ? (
                   <tr>
-                    <td colSpan={9} className="px-4 py-10 text-center text-neutral-400">
+                    <td colSpan={10} className="px-4 py-10 text-center text-neutral-400">
                       데이터가 없습니다.
                     </td>
                   </tr>
@@ -93,6 +121,20 @@ export default function AdminDealListPage() {
                       onClick={() => navigate(`/admin/deals/${item.id}`)}
                       className="hover:bg-neutral-50 transition-colors cursor-pointer"
                     >
+                      <td className="px-3 py-3 w-10 text-center" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(item.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedIds((prev) => [...prev, item.id])
+                            } else {
+                              setSelectedIds((prev) => prev.filter((id) => id !== item.id))
+                            }
+                          }}
+                          className="rounded border-neutral-300 text-primary-800 focus:ring-primary-800 cursor-pointer"
+                        />
+                      </td>
                       <td className="px-3 py-3 text-neutral-500 text-xs tabular-nums whitespace-nowrap">
                         {item.crawledAt ? formatDateTime(item.crawledAt) : '-'}
                       </td>
@@ -123,9 +165,31 @@ export default function AdminDealListPage() {
             </table>
           </div>
 
-          {data && data.totalPages > 1 && (
-            <Pagination currentPage={page} totalPages={data.totalPages} onPageChange={setPage} />
-          )}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mt-4">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={selectedIds.length === 0 || isDeleting}
+                onClick={() => {
+                  if (window.confirm(`선택한 ${selectedIds.length}개의 핫딜을 삭제하시겠습니까? 삭제 후에는 목록에서 사라집니다.`)) {
+                    deleteBulkMut.mutate(selectedIds)
+                  }
+                }}
+                className="px-3.5 py-2 text-xs font-semibold bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-40"
+              >
+                {isDeleting ? '삭제 중...' : '선택 삭제'}
+              </button>
+              {selectedIds.length > 0 && (
+                <span className="text-xs text-neutral-500 font-medium">
+                  {selectedIds.length}개 선택됨
+                </span>
+              )}
+            </div>
+
+            {data && data.totalPages > 1 && (
+              <Pagination currentPage={page} totalPages={data.totalPages} onPageChange={setPage} />
+            )}
+          </div>
         </>
       )}
     </div>

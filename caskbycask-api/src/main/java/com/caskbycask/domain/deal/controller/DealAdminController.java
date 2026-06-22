@@ -46,12 +46,6 @@ public class DealAdminController {
         return ResponseEntity.ok(ApiResponse.success(dealAdminService.approve(id, request)));
     }
 
-    @PatchMapping("/{id}/reject")
-    public ResponseEntity<ApiResponse<Void>> reject(@PathVariable Long id) {
-        dealAdminService.reject(id);
-        return ResponseEntity.ok(ApiResponse.success(null));
-    }
-
     @PatchMapping("/{id}")
     public ResponseEntity<ApiResponse<DealPostDetailResponse>> update(
             @PathVariable Long id,
@@ -63,6 +57,12 @@ public class DealAdminController {
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
         dealAdminService.delete(id);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    @DeleteMapping
+    public ResponseEntity<ApiResponse<Void>> deleteBulk(@RequestParam java.util.List<Long> ids) {
+        dealAdminService.deleteBulk(ids);
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 }

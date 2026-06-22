@@ -57,6 +57,7 @@ export interface UpdateDealRequest {
   originalPrice: number | null
   dealPrice: number | null
   discountRate: number | null
+  currency: string | null
   seller: string | null
   dealCondition: string | null
   expiryInfo: string | null
