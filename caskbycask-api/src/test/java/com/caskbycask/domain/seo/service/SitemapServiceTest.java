@@ -41,10 +41,14 @@ class SitemapServiceTest {
 
         String xml = sitemapService.generateSitemap();
 
-        assertThat(xml).contains("https://caskbycask.net/spirits?category=WHISKY");
-        assertThat(xml).contains("https://caskbycask.net/spirits?category=COGNAC");
-        assertThat(xml).contains("https://caskbycask.net/spirits?category=WINE");
-        assertThat(xml).contains("https://caskbycask.net/spirits?category=OTHER");
+        assertThat(xml).contains("https://caskbycask.net/ko/spirits?category=WHISKY");
+        assertThat(xml).contains("https://caskbycask.net/en/spirits?category=WHISKY");
+        assertThat(xml).contains("https://caskbycask.net/ko/spirits?category=COGNAC");
+        assertThat(xml).contains("https://caskbycask.net/en/spirits?category=COGNAC");
+        assertThat(xml).contains("https://caskbycask.net/ko/spirits?category=WINE");
+        assertThat(xml).contains("https://caskbycask.net/en/spirits?category=WINE");
+        assertThat(xml).contains("https://caskbycask.net/ko/spirits?category=OTHER");
+        assertThat(xml).contains("https://caskbycask.net/en/spirits?category=OTHER");
     }
 
     @Test

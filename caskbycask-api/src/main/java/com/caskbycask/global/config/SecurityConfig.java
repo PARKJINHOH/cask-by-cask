@@ -108,6 +108,7 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/**").permitAll()
                         // SEO: sitemap.xml — 검색엔진 크롤러용
                         .requestMatchers(HttpMethod.GET, "/sitemap.xml").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/spirits/{id:\\d+}", "/spirits/{id:\\d+}-*", "/ko/spirits/{id:\\d+}", "/ko/spirits/{id:\\d+}-*", "/en/spirits/{id:\\d+}", "/en/spirits/{id:\\d+}-*").permitAll()
                         .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/notices/images/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/popups/images/**").permitAll()

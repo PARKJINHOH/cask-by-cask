@@ -77,16 +77,22 @@ jobs:
       - name: Install deps
         working-directory: caskbycask-web
         run: npm ci
-      - name: Ensure Chromium for prerender
+      - name: Build (Next.js Standalone Build)
         working-directory: caskbycask-web
-        run: npx puppeteer browsers install chrome
-      - name: Build (tsc + vite + prerender)
+        run: |
+          npm run build
+      - name: Copy static & public to standalone
         working-directory: caskbycask-web
-        run: npm run build
+        run: |
+          mkdir -p .next/standalone/.next/static
+          cp -r .next/static/. .next/standalone/.next/static/
+          if [ -d "public" ]; then
+            cp -r public .next/standalone/
+          fi
       - uses: actions/upload-artifact@v7
         with:
           name: web-dist
-          path: caskbycask-web/dist
+          path: caskbycask-web/.next/standalone
           retention-days: 5
 
   deploy:
@@ -131,7 +137,7 @@ jobs:
         run: |
           PORT="${SSH_PORT:-22}"
           SSH="ssh -i ~/.ssh/id_deploy -p $PORT $SSH_USER@$SSH_HOST"
-          $SSH 'mkdir -p /app/spring-boot /app/vite /app/scripts'
+          $SSH 'mkdir -p /app/spring-boot /app/next /app/scripts'
           # 서버 운영 스크립트 일괄 갱신 (배포/종료/점검/알림 등)
           scp -i ~/.ssh/id_deploy -P $PORT deploy/server/*.sh "$SSH_USER@$SSH_HOST:/app/scripts/"
           $SSH 'chmod +x /app/scripts/*.sh'
@@ -154,9 +160,9 @@ jobs:
         run: |
           PORT="${SSH_PORT:-22}"
           SSH="ssh -i ~/.ssh/id_deploy -p $PORT $SSH_USER@$SSH_HOST"
-          $SSH 'rm -rf /app/vite/dist.new && mkdir -p /app/vite/dist.new'
+          $SSH 'rm -rf /app/next/dist.new && mkdir -p /app/next/dist.new'
           # 프론트 dist → staging (rsync로 정확히 동기화)
-          rsync -az --delete -e "ssh -i ~/.ssh/id_deploy -p $PORT" artifacts/web/dist/ "$SSH_USER@$SSH_HOST:/app/vite/dist.new/"
+          rsync -az --delete -e "ssh -i ~/.ssh/id_deploy -p $PORT" artifacts/web/dist/ "$SSH_USER@$SSH_HOST:/app/next/dist.new/"
       # 교체 — 빌드된 쪽만. (프론트 먼저=무중단, 백엔드는 health check + 실패 시 롤백)
       - name: Deploy web (swap)
         if: ${{ needs.build-web.result == 'success' }}

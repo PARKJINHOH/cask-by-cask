@@ -37,8 +37,8 @@ ssh -p CHANGE_ME_SSH_PORT CHANGE_ME_SSH_USER@CHANGE_ME_SERVER_IP
 ```
 /app/
 ├─ spring-boot/        백엔드 jar (운영 app.jar + 직전 백업 1개)
-├─ vite/
-│  ├─ dist/            프론트 운영본 (nginx root)
+├─ next/
+│  ├─ dist/            프론트 운영본 (Next.js standalone Node 서버 구동)
 │  ├─ maintenance.html 점검 페이지 (dist 와 분리 → 배포에 안 지워짐)
 │  └─ maintenance.on   점검 플래그 (있으면 점검 모드) ← maintenance.sh 가 토글
 ├─ upload/             업로드 이미지·동영상 (영속, 절대 삭제 금지)
@@ -49,6 +49,7 @@ ssh -p CHANGE_ME_SSH_PORT CHANGE_ME_SSH_USER@CHANGE_ME_SERVER_IP
 
 nginx:   /etc/nginx/sites-available/caskbycask.conf
 systemd: /etc/systemd/system/caskbycask-api.service
+         /etc/systemd/system/caskbycask-web.service
 ```
 
 | 대상 | 포트 | 외부 노출 |
@@ -73,9 +74,9 @@ systemd: /etc/systemd/system/caskbycask-api.service
    - `ref` 입력란 비워두면 `main` 배포 (기본값)
    - 🕐 **사용자 적은 시간대 권장**
 3. 자동 진행 (대상에 해당하는 잡만 실행, 나머지는 `skipped`):
-   - `build-api` (gradle bootJar) · `build-web` (vite build + prerender) — 대상이면 병렬 빌드
+   - `build-api` (gradle bootJar) · `build-web` (Next.js Standalone Build) — 대상이면 병렬 빌드
    - `deploy` 잡이 빌드된 산출물만 서버로 전송 → 해당 교체 스크립트 실행
-   - both 일 때: 프론트 먼저 교체(무중단에 가까움) → 백엔드 jar 교체 → 재시작 → **readiness 헬스체크**
+   - both 일 때: 프론트 먼저 교체(Next.js 서비스 재시작) → 백엔드 jar 교체 → 재시작 → **readiness 헬스체크**
 4. 백엔드 배포 시 헬스체크 통과해야 성공. **실패하면 자동으로 직전 버전으로 롤백.**
 5. 완료 시 **Slack `#server-prd` 로 결과 통보**(BE·FE·배포 단계별, `SLACK_WEBHOOK_URL` Secret 설정 시).
    - 배포 안 한 쪽은 `⏭`(skipped) 로 표시 — 예: `백엔드 ⏭ · 프론트 ✅` (web 만 배포). 요약에 대상(`· web`)도 표기됨.
@@ -120,7 +121,7 @@ cd /app/scripts
 
 - **점검 중 동작**: 일반 방문자(SPA) → 점검 페이지 / API 호출 → `{"success":false,"code":"SERVER_MAINTENANCE",...}` 503
 - 점검 페이지는 60초마다 자동 새로고침 → 점검 종료 시 방문자 화면이 자동 복귀
-- 점검 페이지 문구·디자인 수정: `deploy/nginx/maintenance.html` → 서버 `/app/vite/maintenance.html` 교체
+- 점검 페이지 문구·디자인 수정: `deploy/nginx/maintenance.html` → 서버 `/app/next/maintenance.html` 교체
 
 > 💡 **점검 시 `stop-web.sh`(nginx 중지)보다 `maintenance.sh on` 을 권장.** nginx 를 살려두므로 안내 페이지가 뜨고 헬스체크도 정상 유지된다.
 
@@ -254,8 +255,8 @@ sudo cp ~/setup/caskbycask.conf /etc/nginx/sites-available/caskbycask.conf
 # ↑ 4장의 우회 시크릿(sed) 다시 적용 필요 (덮어썼으므로)
 
 # 점검 페이지 교체
-sudo cp ~/setup/maintenance.html /app/vite/maintenance.html
-sudo chown CHANGE_ME_SSH_USER:CHANGE_ME_SSH_USER /app/vite/maintenance.html
+sudo cp ~/setup/maintenance.html /app/next/maintenance.html
+sudo chown CHANGE_ME_SSH_USER:CHANGE_ME_SSH_USER /app/next/maintenance.html
 
 # 검증 후 reload (항상 nginx -t 먼저!)
 sudo nginx -t && sudo systemctl reload nginx
@@ -310,8 +311,9 @@ mv app.jar_<타임스탬프> app.jar       # 직전 백업으로 복귀
 sudo systemctl start caskbycask-api
 
 # 프론트
-cd /app/vite
+cd /app/next
 rm -rf dist && mv dist_<타임스탬프> dist
+sudo systemctl restart caskbycask-web
 ```
 
 > 보관본은 직전 1개뿐. 더 과거로 가려면 해당 커밋을 다시 빌드/배포해야 한다.
@@ -327,18 +329,21 @@ rm -rf dist && mv dist_<타임스탬프> dist
 
 # 개별 상태 점검
 curl -s http://127.0.0.1:8081/actuator/health    # 백엔드 health
-curl -s https://caskbycask.net/healthz            # 사이트 health
-systemctl status caskbycask-api nginx mariadb redis-server
+curl -s http://127.0.0.1:3000/healthz             # 프론트엔드 health
+curl -s https://caskbycask.net/healthz            # 사이트 외부 health
+systemctl status caskbycask-api caskbycask-web nginx mariadb redis-server
 
 # 점검 모드
 /app/scripts/maintenance.sh on|off|status
 
 # 서비스 제어
 sudo systemctl restart caskbycask-api    # 백엔드 재시작
+sudo systemctl restart caskbycask-web    # 프론트엔드 재시작
 sudo systemctl reload nginx              # nginx 무중단 리로드 (설정 변경 시)
 
 # 로그
 journalctl -u caskbycask-api -f
+journalctl -u caskbycask-web -f
 tail -f /app/logs/caskbycask-api-error.log
 
 # DB 백업
@@ -356,14 +361,14 @@ tail -f /app/logs/caskbycask-api-error.log
 |---|---|
 | **Cloudflare 521** | nginx 다운 → `sudo systemctl start nginx`. 이후 `systemctl enable caskbycask-api` 로 enable 여부도 확인 |
 | **521 — stop-web.sh 후 배포** | `stop-web.sh` 실행 후 Actions 배포 시 nginx 가 내려간 채 남음(헬스체크가 관리 포트 직접 조회라 배포는 성공 표시). `sudo systemctl start nginx` 로 복구 |
-| 사이트 502/503 | ① `systemctl status caskbycask-api` ② `journalctl -u caskbycask-api -n 100` ③ DB/Redis 살아있는지 ④ health 확인 |
-| 점검 페이지가 안 풀림 | `/app/scripts/maintenance.sh status` → `off` 실행. 플래그 파일 `/app/vite/maintenance.on` 직접 확인 |
+| 사이트 502/503 | ① `systemctl status caskbycask-api caskbycask-web` ② `journalctl -u caskbycask-web -n 100` ③ DB/Redis/Next.js 살아있는지 ④ healthz 확인 |
+| 점검 페이지가 안 풀림 | `/app/scripts/maintenance.sh status` → `off` 실행. 플래그 파일 `/app/next/maintenance.on` 직접 확인 |
 | 점검 우회 URL 이 안 먹힘 | conf 시크릿 3곳 일치 확인 → `nginx -t && reload`. 쿠키 24h 만료 시 URL 재방문 |
 | 배포 실패 | Actions 로그 확인. 헬스체크 실패면 자동 롤백됨 → `journalctl` 로 원인 분석 후 재배포 |
 | nginx reload 실패 | `sudo nginx -t` 로 문법 오류 위치 확인 후 수정 |
 | 백엔드 부팅 실패 (Flyway) | 마이그레이션/엔티티 스키마 불일치 가능 → 로그의 Flyway 메시지 확인 |
 | 디스크 부족 | `df -h` → `/app/logs/archived`, `/app/db_backup` 오래된 파일 정리. `upload/` 는 삭제 금지 |
-| 재부팅 후 Spring Boot 안 뜸 | `systemctl is-enabled caskbycask-api` → disabled 면 `sudo systemctl enable caskbycask-api` |
+| 재부팅 후 서비스 안 뜸 | `systemctl is-enabled caskbycask-api caskbycask-web` → disabled 면 `sudo systemctl enable caskbycask-api caskbycask-web` |
 
 긴급 전체 차단이 필요하면: `cd /app/scripts && ./stop-web.sh` (복구: `sudo systemctl start nginx`).
 

@@ -7,6 +7,9 @@ import { getLocaleFromUrl, detectDefaultLang } from './locale'
 const LANG_KEY = 'di_lang'
 
 function getInitialLang(): string {
+  if (typeof window === 'undefined') {
+    return 'ko'
+  }
   if (window.__APP_LANG__) {
     return window.__APP_LANG__
   }

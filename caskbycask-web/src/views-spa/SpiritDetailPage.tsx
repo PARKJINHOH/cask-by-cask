@@ -819,7 +819,7 @@ export default function SpiritDetailPage() {
   const { id }   = useParams<{ id: string }>()
   const navigate = useNavigate()
   const location = useLocation()
-  const spiritId = Number(id)
+  const spiritId = parseInt(id || '', 10)
   const { t, i18n } = useTranslation()
   const isEn = i18n.language === 'en'
   const listReturnTo = getSpiritListReturnTo(location.state)
@@ -948,8 +948,8 @@ export default function SpiritDetailPage() {
     name: primaryName,
     alternateName: secondaryName || undefined,
     description: isEn
-      ? `${primaryName} — ${primaryProducer || ''} ${countryLabel ? `· ${countryLabel}` : ''} · CaskByCask tasting notes & user reviews.`
-      : `${primaryName} — ${primaryProducer || ''} ${countryLabel ? `· ${countryLabel}` : ''} · CaskByCask 테이스팅 노트와 사용자 리뷰.`,
+      ? `${primaryName} — ${primaryProducer || ''} ${countryLabel ? `· ${countryLabel}` : ''} · Liquor specifications, tasting notes & user reviews on CaskByCask.`
+      : `${primaryName} — ${primaryProducer || ''} ${countryLabel ? `· ${countryLabel}` : ''} · 원산지, 도수 등 상세 주류 정보와 테이스팅 노트 및 사용자 리뷰.`,
     image: heroImage,
     brand: primaryProducer ? {
       '@type': 'Brand',
@@ -990,8 +990,8 @@ export default function SpiritDetailPage() {
       <SeoMeta
         title={primaryName}
         description={isEn
-          ? `${primaryName} tasting notes, ratings and reviews. ${primaryProducer || ''} ${countryLabel || ''}`.trim()
-          : `${primaryName} 테이스팅 노트와 사용자 리뷰. ${primaryProducer || ''} ${countryLabel || ''}`.trim()}
+          ? `${primaryName} specs, tasting notes, ratings and reviews. ${primaryProducer || ''} ${countryLabel || ''}`.trim()
+          : `${primaryName} 상세 주류 정보, 테이스팅 노트 및 평점 리뷰. ${primaryProducer || ''} ${countryLabel || ''}`.trim()}
         canonical={canonicalUrl}
         ogType="product"
         ogImage={heroImage}

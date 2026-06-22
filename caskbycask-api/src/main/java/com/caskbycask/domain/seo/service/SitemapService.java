@@ -48,36 +48,62 @@ public class SitemapService {
         sb.append("<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n");
 
         // ── 정적 페이지 ──
-        appendUrl(sb, siteUrl + "/",                       null, "daily",  "1.0");
-        appendUrl(sb, siteUrl + "/spirits",                null, "daily",  "0.9");
+        appendMultilingualUrl(sb, "/",                       null, "daily",  "1.0");
+        appendMultilingualUrl(sb, "/spirits",                null, "daily",  "0.9");
 
         // ── 카테고리 필터 페이지 ──
-        appendUrl(sb, siteUrl + "/spirits?category=WHISKY",  null, "daily",  "0.8");
-        appendUrl(sb, siteUrl + "/spirits?category=COGNAC",  null, "daily",  "0.8");
-        appendUrl(sb, siteUrl + "/spirits?category=WINE",    null, "daily",  "0.8");
-        appendUrl(sb, siteUrl + "/spirits?category=OTHER",   null, "daily",  "0.7");
+        appendMultilingualUrl(sb, "/spirits?category=WHISKY",  null, "daily",  "0.8");
+        appendMultilingualUrl(sb, "/spirits?category=COGNAC",  null, "daily",  "0.8");
+        appendMultilingualUrl(sb, "/spirits?category=WINE",    null, "daily",  "0.8");
+        appendMultilingualUrl(sb, "/spirits?category=OTHER",   null, "daily",  "0.7");
 
-        appendUrl(sb, siteUrl + "/notices",                null, "daily",  "0.7");
-        appendUrl(sb, siteUrl + "/community/free",         null, "hourly", "0.8");
-        appendUrl(sb, siteUrl + "/community/notice",       null, "daily",  "0.7");
-        appendUrl(sb, siteUrl + "/ranking",                null, "weekly", "0.5");
-        appendUrl(sb, siteUrl + "/faq",                    null, "monthly", "0.6");
-        appendUrl(sb, siteUrl + "/terms",                  null, "yearly", "0.2");
-        appendUrl(sb, siteUrl + "/privacy",                null, "yearly", "0.2");
+        appendMultilingualUrl(sb, "/notices",                null, "daily",  "0.7");
+        appendMultilingualUrl(sb, "/community/free",         null, "hourly", "0.8");
+        appendMultilingualUrl(sb, "/community/notice",       null, "daily",  "0.7");
+        appendMultilingualUrl(sb, "/ranking",                null, "weekly", "0.5");
+        appendMultilingualUrl(sb, "/faq",                    null, "monthly", "0.6");
+        appendMultilingualUrl(sb, "/terms",                  null, "yearly", "0.2");
+        appendMultilingualUrl(sb, "/privacy",                null, "yearly", "0.2");
 
         // ── 동적: spirits ──
-        appendQueryResults(sb,
-            "SELECT s.id, s.updatedAt FROM Spirit s ORDER BY s.id",
-            id -> siteUrl + "/spirits/" + id,
-            "weekly", "0.8");
+        try {
+            @SuppressWarnings("unchecked")
+            List<Object[]> spirits = em.createQuery(
+                    "SELECT s.id, s.updatedAt, s.nameEn, s.nameKo FROM Spirit s ORDER BY s.id"
+            ).getResultList();
+            for (Object[] row : spirits) {
+                Long id = (Long) row[0];
+                LocalDateTime updated = (LocalDateTime) row[1];
+                String nameEn = (String) row[2];
+                String nameKo = (String) row[3];
+
+                String slugKo = slugify(nameKo);
+                String slugEn = slugify(nameEn);
+
+                String pathKo = "/ko/spirits/" + id + (slugKo.isEmpty() ? "" : "-" + slugKo);
+                String pathEn = "/en/spirits/" + id + (slugEn.isEmpty() ? "" : "-" + slugEn);
+
+                appendUrl(sb, siteUrl + pathKo, updated, "weekly", "0.8");
+                appendUrl(sb, siteUrl + pathEn, updated, "weekly", "0.8");
+            }
+        } catch (Exception e) {
+            log.warn("Spirit sitemap entries skipped: {}", e.getMessage());
+        }
 
         // ── 동적: notices (공개 = 게시됨 & 미삭제) ──
-        // 주의: Notice 엔티티 필드는 isPublished / deletedAt 이다. 존재하지 않는 필드(isHidden)로 쿼리하면
-        // @Transactional(readOnly=true) 안에서 잡힌 예외가 트랜잭션을 rollback-only 로 만들어 커밋 시 500 발생.
-        appendQueryResults(sb,
-            "SELECT n.id, n.updatedAt FROM Notice n WHERE n.isPublished = true AND n.deletedAt IS NULL ORDER BY n.id",
-            id -> siteUrl + "/notices/" + id,
-            "monthly", "0.6");
+        try {
+            @SuppressWarnings("unchecked")
+            List<Object[]> notices = em.createQuery(
+                    "SELECT n.id, n.updatedAt FROM Notice n WHERE n.isPublished = true AND n.deletedAt IS NULL ORDER BY n.id"
+            ).getResultList();
+            for (Object[] row : notices) {
+                Long id = (Long) row[0];
+                LocalDateTime updated = (LocalDateTime) row[1];
+                appendMultilingualUrl(sb, "/notices/" + id, updated, "monthly", "0.6");
+            }
+        } catch (Exception e) {
+            log.warn("Notice sitemap entries skipped: {}", e.getMessage());
+        }
 
         // ── 동적: posts (board_type 별 URL) ──
         try {
@@ -90,7 +116,7 @@ public class SitemapService {
                 LocalDateTime updated = (LocalDateTime) row[1];
                 Object boardType = row[2];
                 String slug = boardType == null ? "free" : boardType.toString().toLowerCase();
-                appendUrl(sb, siteUrl + "/community/" + slug + "/" + id, updated, "weekly", "0.6");
+                appendMultilingualUrl(sb, "/community/" + slug + "/" + id, updated, "weekly", "0.6");
             }
         } catch (Exception e) {
             log.warn("Post sitemap entries skipped: {}", e.getMessage());
@@ -100,22 +126,11 @@ public class SitemapService {
         return sb.toString();
     }
 
-    @FunctionalInterface
-    private interface UrlBuilder { String build(Long id); }
-
-    @SuppressWarnings("unchecked")
-    private void appendQueryResults(StringBuilder sb, String jpql, UrlBuilder urlBuilder,
-                                    String changefreq, String priority) {
-        try {
-            List<Object[]> rows = em.createQuery(jpql).getResultList();
-            for (Object[] row : rows) {
-                Long id = (Long) row[0];
-                LocalDateTime updated = row.length > 1 ? (LocalDateTime) row[1] : null;
-                appendUrl(sb, urlBuilder.build(id), updated, changefreq, priority);
-            }
-        } catch (Exception e) {
-            log.warn("Sitemap query skipped — {}: {}", jpql, e.getMessage());
-        }
+    private void appendMultilingualUrl(StringBuilder sb, String path, LocalDateTime lastmod,
+                                       String changefreq, String priority) {
+        String cleanPath = path.startsWith("/") ? path : "/" + path;
+        appendUrl(sb, siteUrl + "/ko" + (cleanPath.equals("/") ? "/" : cleanPath), lastmod, changefreq, priority);
+        appendUrl(sb, siteUrl + "/en" + (cleanPath.equals("/") ? "/" : cleanPath), lastmod, changefreq, priority);
     }
 
     private void appendUrl(StringBuilder sb, String loc, LocalDateTime lastmod,
@@ -138,5 +153,16 @@ public class SitemapService {
                 .replace(">", "&gt;")
                 .replace("\"", "&quot;")
                 .replace("'", "&apos;");
+    }
+
+    private String slugify(String name) {
+        if (name == null || name.trim().isEmpty()) {
+            return "";
+        }
+        String slug = name.toLowerCase().trim();
+        slug = slug.replaceAll("[^a-z0-9\\uAC00-\\uD7A3\\u1100-\\u11FF\\u3130-\\u318F]+", "-");
+        slug = slug.replaceAll("-+", "-");
+        slug = slug.replaceAll("^-|-$", "");
+        return slug;
     }
 }

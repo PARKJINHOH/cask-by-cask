@@ -612,16 +612,16 @@ export default function MainPage() {
     <div>
       <SeoMeta
         title={isEn
-          ? 'CaskByCask — Whisky, Wine & Cognac Review Community'
-          : 'CaskByCask — 위스키 · 와인 · 꼬냑 주류 리뷰 커뮤니티'}
+          ? 'CaskByCask — Detailed Liquor Info, Reviews & Community'
+          : 'CaskByCask — 주류 정보, 리뷰, 커뮤니티'}
         description={isEn
-          ? 'Discover whisky, wine, cognac, rum and tequila reviews. Single malt, bourbon, XO cognac ratings and tasting notes by real users.'
-          : '위스키 추천·리뷰, 싱글 몰트, 꼬냑 등급(VS·VSOP·XO), 와인 빈티지 정보를 한 곳에서. 증류소·와이너리별 사용자 평점과 테이스팅 노트.'}
+          ? 'Explore detailed specifications, user ratings, and reviews of global spirits (whisky, wine, cognac, rum, tequila) and join our community.'
+          : '전 세계 위스키, 와인, 꼬냑 등의 상세한 주류 정보와 평점 리뷰를 제공하고 소통하는 주류 전문 정보 커뮤니티 플랫폼입니다.'}
         canonical={buildCanonical('/')}
         locale={isEn ? 'en_US' : 'ko_KR'}
         keywords={isEn
-          ? 'whisky review, single malt, bourbon, cognac rating, wine community, producer, caskbycask'
-          : '위스키 리뷰, 위스키 추천, 싱글 몰트, 버번, 꼬냑 등급, 와인 빈티지, 주류 리뷰, 캐스크바이캐스크, 캐바캐'}
+          ? 'whisky specs, wine reviews, cognac ratings, liquor directory, community, caskbycask'
+          : '주류 정보, 위스키 리뷰, 와인 평점, 꼬냑 등급, 주류 커뮤니티, 캐스크바이캐스크, 캐바캐'}
       />
 
       {/* 메인 배너 슬라이더 (관리자 이미지, 슬림) */}

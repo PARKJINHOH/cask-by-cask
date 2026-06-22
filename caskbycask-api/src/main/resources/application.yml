@@ -96,9 +96,10 @@ caskbycask:
 rate-limit:
   enabled: true
 
-# SEO 메타 — sitemap.xml 의 base URL
+# SEO 메타 — sitemap.xml 의 base URL 및 index.html 파일 경로
 seo:
   site-url: https://caskbycask.net
+  index-path: ${SEO_INDEX_PATH:../caskbycask-web/dist/index.html}
 
 # Actuator: Prometheus/Health 만 노출
 # server.port / server.address 는 프로파일별로 설정 (local: 메인과 동일 포트 / dev,prod: 별도 포트 + localhost 바인딩)
