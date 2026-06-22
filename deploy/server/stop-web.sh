@@ -1,20 +1,19 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-# CaskByCask 프론트 종료 (서버에서 실행) — nginx 중지
+# CaskByCask 프론트 종료 (서버에서 실행) — Next.js 서비스 중지
 #
-# 웹(vite dist)은 별도 프로세스가 없고 nginx 가 /app/vite/dist 를 정적 서빙한다.
-# 따라서 "웹 종료" = nginx 중지.
+# 웹(Next.js)은 systemd 서비스 `caskbycask-web`로 구동됩니다.
+# 따라서 "웹 종료" = caskbycask-web 서비스 중지.
 #
-# ⚠️ 주의: nginx 는 프론트뿐 아니라 /api 리버스 프록시도 담당한다.
-#          nginx 를 내리면 백엔드 API 도 외부에서 접근 불가가 된다.
+# Nginx는 프록시 역할을 수행하므로 백엔드 API 및 점검 페이지를 위해 계속 실행됩니다.
 #
-# 사전 조건: 배포 유저가 `systemctl stop nginx` 무암호 sudo 가능해야 함
+# 사전 조건: 배포 유저가 `systemctl stop caskbycask-web` 무암호 sudo 가능해야 함
 #            (없으면 setup-server.md 의 sudoers 에 추가 필요)
-# 참고: 다시 기동하려면 `sudo systemctl start nginx`
+# 참고: 다시 기동하려면 `sudo systemctl start caskbycask-web`
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
-SERVICE=nginx
+SERVICE=caskbycask-web
 
 log() { printf "\033[1;35m[web]\033[0m %s\n" "$*"; }
 err() { printf "\033[1;31m[web]\033[0m %s\n" "$*" >&2; }
@@ -24,7 +23,7 @@ if ! systemctl is-active --quiet "$SERVICE"; then
     exit 0
 fi
 
-log "서비스 중지: $SERVICE (프론트 + /api 프록시 모두 내려감)"
+log "서비스 중지: $SERVICE (프론트엔드 서비스 중지)"
 sudo systemctl stop "$SERVICE"
 
 # 중지 확인 (최대 30초)

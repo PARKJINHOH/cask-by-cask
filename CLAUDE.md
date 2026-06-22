@@ -36,7 +36,7 @@
 - ※ **운영 문서 동기화**: 배포 방법(`.github/workflows/deploy.yml`)·서버 구성·systemd 유닛(`deploy/systemd/*`)·운영 스크립트(`deploy/server/*.sh`)·환경변수(`deploy/env/api.env.example`)·알람을 변경하면 **반드시 `deploy/OPERATIONS-GUIDE.md` 의 해당 절(배포/Secrets/스크립트/알람/Cheat Sheet)도 함께 갱신**한다. 코드와 운영 매뉴얼이 어긋나지 않게 한 PR 안에서 같이 수정할 것.
 
 ## 프론트엔드 (caskbycask-web)
-- React + TypeScript + Vite
+- React + TypeScript + Next.js
 - Zustand (authStore, 각 도메인 store)
 - React Query (서버 상태)
 - Axios (인터셉터: 자동 토큰 갱신)
@@ -45,7 +45,6 @@
 - PC, 모바일 반응형 고려해서 구현
 - PC에서는 화면을 보다 넓게 사용하는 UI/UX로 구현.
 - node = "C:\Program Files\nodejs"
-- API가 추가되면 Localhost에서 테스트가 가능하도록 vite.config.ts에 api URL 추가하기.
 
 ## 다국어(i18n) 개발 원칙
 - **모든 UI 문자열은 반드시 `t()` 번역키 사용** — 하드코딩 한글/영어 금지 (관리자 페이지 제외)

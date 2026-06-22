@@ -9,7 +9,7 @@ WorkingDirectory=/app/next/dist
 # Next.js standalone server 구동에 필요한 환경변수 주입
 Environment=PORT=3000
 Environment=NODE_ENV=production
-Environment=NEXT_PUBLIC_API_URL=http://localhost:8080
+Environment=INTERNAL_API_URL=http://localhost:8080
 # systemd를 통해 node server.js를 직접 구동하여 백그라운드 프로세스 영속 관리
 ExecStart=/usr/bin/node server.js
 Restart=always

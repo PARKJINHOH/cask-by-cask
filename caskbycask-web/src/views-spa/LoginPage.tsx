@@ -25,7 +25,7 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>
 
-const ADMIN_CREDENTIALS_ENABLED = (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'development') || (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV)
+const ADMIN_CREDENTIALS_ENABLED = typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'development'
 
 interface SuspensionDetail {
   suspendedUntil: string
