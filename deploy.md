@@ -30,7 +30,7 @@
   - [ ] `/app/upload` 정기 백업(cron + 외부 스토리지/Object Storage 복사) 또는 Oracle Block Volume 스냅샷 스케줄 구성
   - [ ] 장기적으로 `S3FileStorageService`(현재 스텁) 활성화해 외부 오브젝트 스토리지로 이전 검토
 
-- [ ] **(A-1) 프론트 SEO prerender 활성화** — 상세 절차는 아래 [프론트 SEO prerender 배포](#프론트-seo-prerender-배포) 참고
+- [ ] **(A-1) 프론트 Next.js 헬스체크 및 포트(3000) 바인딩 상태 확인** — 상세 절차는 아래 [프론트 Next.js SSR 배포 검증](#프론트-nextjs-ssr-배포-검증) 참고
 
 - [ ] **(인증) refresh 토큰 httpOnly 쿠키 전환 반영** (이번 배포에 포함됨)
   - [ ] **기존 로그인 사용자는 1회 재로그인 필요** — 배포 전 세션엔 httpOnly 쿠키가 없어, access 토큰 만료 시 refresh 가 한 번 실패하며 자동 로그아웃→재로그인됨(정상 동작, 데이터 영향 없음)
@@ -40,7 +40,7 @@
 ---
 
 ## 목차
-- [프론트 SEO prerender 배포](#프론트-seo-prerender-배포)
+- [프론트 Next.js SSR 배포 검증](#프론트-nextjs-ssr-배포-검증)
 - [Flyway 개요](#flyway-개요)
 - [환경별 동작 방식](#환경별-동작-방식)
 - [마이그레이션 파일 작성 규칙](#마이그레이션-파일-작성-규칙)
@@ -52,91 +52,44 @@
 
 ---
 
-## 프론트 SEO prerender 배포
+## 프론트 Next.js SSR 배포 검증
 
 ### 왜 필요한가
-SPA(Vite/React)는 최초 응답이 빈 셸 HTML 이라, 일부 크롤러/미리보기 봇은 JS 실행 전 본문·메타·JSON-LD 를 못 봅니다.
-`scripts/prerender.mjs` 가 **빌드 후 주요 정적 라우트를 puppeteer(headless Chromium)로 렌더해 `dist/<route>/index.html` 스냅샷**으로 저장하면, nginx 가 크롤러에게 완성된 HTML(JSON-LD/메타 포함)을 바로 줍니다.
-
-> **현재 상태**: prerender 는 **GitHub Actions(`build-web` 잡)에서 실행**됩니다.
-> 워크플로가 `npx puppeteer browsers install chrome` 로 Chromium 을 설치한 뒤 `npm run build`(= tsc + vite build + prerender)를 수행하고,
-> 완성된 `dist/`(스냅샷 포함)만 서버 `/app/vite/dist` 로 전송합니다.
-> **따라서 운영 서버에는 Chromium 이 필요 없습니다.** 아래 "서버에 Chromium 설치" 절은 서버에서 직접 prerender 를 돌리던 구(舊) 방식의 참고용입니다.
-
-### (구 방식 참고) Ubuntu 서버에 Chromium 설치
-
-> 현재 파이프라인에선 불필요. 서버에서 수동으로 prerender 를 돌릴 때만 참고.
-
-puppeteer 가 헤드리스 Chromium 을 띄우려면 시스템 라이브러리 + Chromium 바이너리가 필요합니다.
-**방법 A(권장: 시스템 Chromium)** — 가볍고 apt 로 업데이트 관리됨:
-
-```bash
-# 1) 시스템 Chromium 설치 (Ubuntu 22.04+)
-sudo apt-get update
-sudo apt-get install -y chromium-browser
-
-#   ※ snap 기반이라 경로가 다르면 chromium 패키지로 시도:
-#   sudo apt-get install -y chromium
-
-# 2) 설치 경로 확인 (PUPPETEER_EXECUTABLE_PATH 에 넣을 값)
-which chromium-browser || which chromium
-#   예: /usr/bin/chromium-browser
-
-# 3) 배포 유저 환경에 영구 등록 (puppeteer 가 자체 다운로드 대신 이 바이너리 사용)
-echo 'export PUPPETEER_SKIP_DOWNLOAD=true' >> ~/.bashrc
-echo 'export PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser' >> ~/.bashrc
-source ~/.bashrc
-```
-
-> `prerender.mjs` 는 `puppeteer.launch({ headless:'new', args:['--no-sandbox','--disable-setuid-sandbox'] })`
-> 로 실행되며, `PUPPETEER_EXECUTABLE_PATH` 가 있으면 puppeteer 가 그 바이너리를 사용합니다.
-
-**방법 B(puppeteer 내장 Chromium)** — apt Chromium 이 안 맞을 때:
-
-```bash
-# puppeteer 가 빌드 시 자체 Chromium 을 다운로드/사용 (PUPPETEER_SKIP_DOWNLOAD 미설정 상태)
-cd caskbycask-web
-npx puppeteer browsers install chrome
-# 헤드리스 구동에 필요한 공유 라이브러리 (없으면 launch 시 'error while loading shared libraries')
-sudo apt-get install -y \
-  libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 \
-  libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libasound2 libpangocairo-1.0-0
-```
+기존 SPA(Vite/React) 환경은 최초 HTML 응답이 빈 셸 구조라 검색엔진 봇 및 소셜 미리보기 봇이 페이지의 구체적인 제목, 이미지, 그리고 구조화된 데이터(JSON-LD)를 크롤링하지 못하는 SEO 제약이 있었습니다.
+마이그레이션된 Next.js 환경은 핵심 페이지(주류 목록, 주류 상세, 커뮤니티/BYOB 게시글 상세)를 서버 측에서 HTML을 직접 생성하는 SSR/ISR 방식으로 렌더링하므로, 검색 봇에 완전한 SEO 데이터와 메타태그를 즉시 반환하여 검색 노출 순위 향상을 도모합니다.
 
 ### 배포 시 사용법
-
-평소 배포는 **GitHub Actions "Deploy (manual)"** 실행만으로 prerender 까지 자동 수행됩니다
-(상세: [deploy/DEPLOY-PIPELINE.md](deploy/DEPLOY-PIPELINE.md)). 로컬에서 직접 빌드/검증하려면:
+배포는 **GitHub Actions "Deploy (manual)"** 워크플로우 실행을 통해 빌드 및 서버 반영이 자동으로 이행됩니다.
+로컬에서 직접 빌드/검증하려면:
 
 ```bash
 cd caskbycask-web
-npm run build:no-prerender   # dist 생성 (prerender 제외)
-npm run prerender            # 기존 dist 에 스냅샷만 덧입힘 (vite build 불필요)
-# 또는 한 번에:
-npm run build                # tsc + vite build + prerender
+npm run build      # Next.js standalone 빌드 (.next/standalone 생성)
+npm run start      # 로컬 프로덕션 실행 (포트 3000)
 ```
 
-### 검증
+### 검증 방법
+배포 후, 터미널 curl 명령어를 사용해 실제 검색엔진 봇의 시점으로 HTML 응답에 완전한 본문과 구조화된 데이터(JSON-LD)가 포함되어 있는지 검증합니다.
 
 ```bash
-# 스냅샷 파일이 생성됐는지 (서버)
-ls -la /app/vite/dist/spirits/index.html
+# 1) Next.js 3000 포트 또는 nginx 도메인을 대상으로 curl 요청 테스트 (Title, Description 태그 검증)
+curl -s https://caskbycask.net/spirits/1 | grep -o "<title>[^<]*</title>"
+curl -s https://caskbycask.net/spirits/1 | grep -o 'meta name="description" content="[^"]*"'
 
-# 배포 후 크롤러 관점에서 본문/JSON-LD 가 박혀 있는지 (JS 미실행 상태)
-curl -s https://caskbycask.net/spirits | grep -o 'application/ld+json' | head
+# 2) JSON-LD 구조화 스키마가 정상적으로 헤더에 이스케이프되어 수록되었는지 확인
+curl -s https://caskbycask.net/spirits/1 | grep -o 'application/ld+json'
+
+# 3) 커뮤니티 게시글 상세의 DiscussionForumPosting 스키마 확인
+curl -s https://caskbycask.net/community/free/1 | grep -o 'DiscussionForumPosting'
 ```
 
 ### 문제 해결
 
 | 증상 | 원인 / 해결 |
 |---|---|
-| `Could not find Chromium` / `Failed to launch the browser process` | Chromium 미설치 또는 경로 불일치 → 방법 A의 `PUPPETEER_EXECUTABLE_PATH` 확인 |
-| `error while loading shared libraries: libnss3.so` | 헤드리스 의존 라이브러리 누락 → 방법 B의 `apt-get install` 라이브러리 설치 |
-| prerender 단계만 실패하고 배포는 성공 | 의도된 graceful degrade — SEO 만 저하. 위 설정 점검 후 재배포 |
-| dev 에서 prerender 안 함 | 정상 — dev 는 `ROBOTS_NOINDEX=on`(색인 차단)이라 의도적으로 건너뜀 |
-
-> **인프라 대안**: 위 운영이 번거로우면, Cloudflare 단에서 크롤러(User-Agent)만 별도 prerender 서비스로 보내거나,
-> 추후 SSR(Next.js 등) 전환을 검토할 수 있습니다. 현재 규모에서는 빌드 시 prerender 로 충분합니다.
+| `Connection refused` (3000포트 접근 불가) | Next.js Node 서버가 떠 있지 않거나 systemd 서비스(`caskbycask-web`)가 에러로 종료됨 → `systemctl status caskbycask-web` 및 `journalctl -u caskbycask-web`로 로그 분석 |
+| Nginx 502 Bad Gateway | Nginx의 upstream 설정(포트 3000)과 Next.js standalone 구동 포트가 불일치함 → `/etc/nginx/sites-available/caskbycask.conf` 및 systemd 서비스의 Environment=PORT=3000 설정 검토 |
+| Hydration Error / Console 크래시 | SSR 서버에서 렌더링된 트리와 클라이언트의 Hydration 트리가 일치하지 않음 → `app/[[...path]]/page.tsx`에 `ssr: false` dynamic import 가 올바르게 꽂혔는지 점검 |
 
 ---
 

@@ -20,11 +20,14 @@ caskbycask-api/out/
 caskbycask-api/bin/
 caskbycask-api/.idea/
 
-# ─── Frontend (Vite / Node) ───
+# ─── Frontend (Next.js / Node) ───
 caskbycask-web/node_modules/
 caskbycask-web/dist/
 caskbycask-web/.vite/
 caskbycask-web/build/
+caskbycask-web/.next/
+caskbycask-web/out/
+caskbycask-web/*.tsbuildinfo
 
 # ─── 로그 / 업로드 (로컬 개발) ───
 logs/

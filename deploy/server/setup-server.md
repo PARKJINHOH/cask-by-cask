@@ -18,8 +18,9 @@
 |---|---|---|
 | `deploy/env/api.env.example` | `~/setup/api.env.example` | `/app/env/api.env` |
 | `deploy/systemd/caskbycask-api.service` | `~/setup/caskbycask-api.service` | `/etc/systemd/system/` |
+| `deploy/systemd/caskbycask-web.service` | `~/setup/caskbycask-web.service` | `/etc/systemd/system/` |
 | `deploy/nginx/caskbycask.conf` | `~/setup/caskbycask.conf` | `/etc/nginx/sites-available/` |
-| `deploy/nginx/maintenance.html` | `~/setup/maintenance.html` | `/app/vite/maintenance.html` |
+| `deploy/nginx/maintenance.html` | `~/setup/maintenance.html` | `/app/next/maintenance.html` |
 | `deploy/server/backup-db.sh` | `~/setup/backup-db.sh` | `/app/scripts/backup-db.sh` |
 
 ```bash
@@ -46,8 +47,11 @@ uname -m        # aarch64 확인
 
 ```bash
 sudo apt-get update
+# Node.js 22 LTS (Next.js 16 구동용) 저장소 추가 및 패키지 설치
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
     openjdk-21-jre-headless \
+    nodejs \
     nginx \
     mariadb-server mariadb-client \
     redis-server \
@@ -70,7 +74,7 @@ redis-server --version
 > logs: jar 로그(logback) / db_backup: DB 덤프 / upload: 사용자 파일 — 모두 **배포와 무관한 영속 경로**.
 
 ```bash
-sudo mkdir -p /app/spring-boot /app/vite /app/upload /app/db_backup /app/env /app/scripts /app/logs
+sudo mkdir -p /app/spring-boot /app/next /app/upload /app/db_backup /app/env /app/scripts /app/logs
 sudo chown -R ubuntu:ubuntu /app    # ★ 소유권을 ubuntu 로 — root 소유 아님 (업로드/서빙 권한 문제 방지)
 sudo chmod 755 /app
 ```
@@ -167,10 +171,11 @@ sudo chmod 600 /app/env/api.env   # ★ 배포/실행 유저만 읽기
 
 ```bash
 sudo cp ~/setup/caskbycask-api.service /etc/systemd/system/
+sudo cp ~/setup/caskbycask-web.service /etc/systemd/system/
 sudo systemctl daemon-reload
 ```
 
-> 아직 `enable --now` 하지 않는다. **app.jar 배치(첫 배포) 후** 마지막 단계에서 기동.
+> 아직 `enable --now` 하지 않는다. **app.jar 및 Next.js dist 배치(첫 배포) 후** 마지막 단계에서 기동.
 
 ---
 
@@ -240,13 +245,13 @@ echo "점검 우회 URL:  https://caskbycask.net/__cbc_unlock_$SECRET"
 
 ---
 
-## 9. 배포 유저 sudo (caskbycask-api 재시작 무암호)
+## 9. 배포 유저 sudo (caskbycask-api 및 web 재시작 무암호)
 
 GitHub Actions 배포가 비번 없이 서비스 재시작/로그 조회할 수 있게 허용:
 
 ```bash
 sudo tee /etc/sudoers.d/caskbycask-deploy > /dev/null <<'EOF'
-ubuntu ALL=(root) NOPASSWD: /usr/bin/systemctl restart caskbycask-api, /usr/bin/systemctl stop caskbycask-api, /usr/bin/systemctl start caskbycask-api, /usr/bin/journalctl -u caskbycask-api *, /usr/bin/systemctl stop nginx, /usr/bin/systemctl start nginx, /usr/bin/systemctl reload nginx
+ubuntu ALL=(root) NOPASSWD: /usr/bin/systemctl restart caskbycask-api, /usr/bin/systemctl stop caskbycask-api, /usr/bin/systemctl start caskbycask-api, /usr/bin/journalctl -u caskbycask-api *, /usr/bin/systemctl restart caskbycask-web, /usr/bin/systemctl stop caskbycask-web, /usr/bin/systemctl start caskbycask-web, /usr/bin/journalctl -u caskbycask-web *, /usr/bin/systemctl stop nginx, /usr/bin/systemctl start nginx, /usr/bin/systemctl reload nginx
 EOF
 sudo chmod 440 /etc/sudoers.d/caskbycask-deploy
 sudo visudo -c    # 문법 OK 인지 검증
@@ -304,23 +309,28 @@ ls -l /app/db_backup/
 ## 13. 첫 배포 + 서비스 기동
 
 1. GitHub → **Actions → "Deploy (manual)" → Run workflow** 실행
-   → `app.jar` 가 `/app/spring-boot/`, `dist` 가 `/app/vite/dist` 로 전송됨
-2. jar 도착 확인 후 서비스 기동:
+   → `app.jar` 가 `/app/spring-boot/`, Next.js 빌드본이 `/app/next/dist` 로 전송됨
+2. 파일 전송 확인 후 서비스 기동:
 
 ```bash
 ls -l /app/spring-boot/app.jar          # 전송됐는지
+ls -l /app/next/dist/server.js          # Next.js standalone 확인
 sudo systemctl enable --now caskbycask-api
+sudo systemctl enable --now caskbycask-web
 ```
 
 확인:
 
 ```bash
 systemctl status caskbycask-api
-journalctl -u caskbycask-api -f          # 부팅 로그 (Flyway 마이그레이션 → 8080 기동)
+systemctl status caskbycask-web
+journalctl -u caskbycask-api -f          # API 부팅 로그
+journalctl -u caskbycask-web -f          # Next.js 부팅 로그
 curl -s http://127.0.0.1:8081/actuator/health   # {"status":"UP"} 기대
+curl -s http://127.0.0.1:3000/healthz            # "ok" 기대
 ```
 
-브라우저에서 `https://caskbycask.net` 접속 → SPA 로딩 + 이미지 서빙(`/uploads/...`) 확인.
+브라우저에서 `https://caskbycask.net` 접속 → SPA 로딩 + SSR 페이지 및 이미지 서빙(`/uploads/...`) 확인.
 
 ---
 

@@ -51,11 +51,14 @@ export function getLocaleFromUrl(pathname: string): { lang: 'ko' | 'en' | null; 
  * 3. 기본값 'ko'
  */
 export function detectDefaultLang(): 'ko' | 'en' {
+  if (typeof window === 'undefined') {
+    return 'ko'
+  }
   const saved = localStorage.getItem(LANG_KEY)
   if (saved && SUPPORTED_LANGS.includes(saved)) {
     return saved as 'ko' | 'en'
   }
-  const browser = navigator.language.startsWith('ko') ? 'ko' : 'en'
+  const browser = (typeof navigator !== 'undefined' && navigator.language.startsWith('ko')) ? 'ko' : 'en'
   return browser as 'ko' | 'en'
 }
 
@@ -63,6 +66,9 @@ export function detectDefaultLang(): 'ko' | 'en' {
  * 현재 페이지의 URL을 적절한 언어 서브패스가 포함된 경로로 전환하여 리다이렉트합니다.
  */
 export function redirectToLocale(): boolean {
+  if (typeof window === 'undefined') {
+    return false
+  }
   const { pathname, search, hash } = window.location
 
   // 예외 대상 경로는 리다이렉트하지 않음
@@ -111,9 +117,11 @@ export function changeLanguage(newLang: 'ko' | 'en'): void {
 }
 
 // 모듈이 처음 임포트되는 시점에 즉시 실행하여 리다이렉션 처리 및 전역 변수 초기화
-const hasRedirected = redirectToLocale()
-if (!hasRedirected) {
-  const { lang, basename } = getLocaleFromUrl(window.location.pathname)
-  window.__APP_BASENAME__ = basename
-  window.__APP_LANG__ = lang || detectDefaultLang()
+if (typeof window !== 'undefined') {
+  const hasRedirected = redirectToLocale()
+  if (!hasRedirected) {
+    const { lang, basename } = getLocaleFromUrl(window.location.pathname)
+    window.__APP_BASENAME__ = basename
+    window.__APP_LANG__ = lang || detectDefaultLang()
+  }
 }

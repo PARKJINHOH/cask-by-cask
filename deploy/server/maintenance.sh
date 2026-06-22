@@ -18,7 +18,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
-WEB_DIR=/app/vite
+WEB_DIR=/app/next
 FLAG="$WEB_DIR/maintenance.on"
 PAGE="$WEB_DIR/maintenance.html"
 SECRET_FILE="$WEB_DIR/.maintenance_secret"

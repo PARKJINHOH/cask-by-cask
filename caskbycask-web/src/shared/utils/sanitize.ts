@@ -4,30 +4,35 @@ import DOMPurify from 'dompurify'
 //   (서버 HtmlSanitizer 가 1차로 호스트 검증하지만, 클라이언트에서도 동일 정책으로 2중 방어)
 const ALLOWED_IFRAME_HOSTS = ['www.youtube.com', 'www.youtube-nocookie.com', 'player.vimeo.com']
 
-// 모듈 로드 시 1회 등록 — iframe/video src 를 후처리로 검증
-DOMPurify.addHook('uponSanitizeElement', (node, data) => {
-  const el = node as Element
-  if (data.tagName === 'iframe') {
-    let ok = false
-    try {
-      ok = ALLOWED_IFRAME_HOSTS.includes(new URL(el.getAttribute('src') ?? '').host)
-    } catch {
-      ok = false
+// 브라우저 환경에서만 훅을 1회 등록합니다. (SSR 환경에서의 TypeError 방지)
+if (typeof window !== 'undefined' && DOMPurify && typeof DOMPurify.addHook === 'function') {
+  DOMPurify.addHook('uponSanitizeElement', (node, data) => {
+    const el = node as Element
+    if (data.tagName === 'iframe') {
+      let ok = false
+      try {
+        ok = ALLOWED_IFRAME_HOSTS.includes(new URL(el.getAttribute('src') ?? '').host)
+      } catch {
+        ok = false
+      }
+      if (!ok) el.remove()
     }
-    if (!ok) el.remove()
-  }
-  // 업로드 동영상: /api/posts/videos/ 로 시작하지 않으면 제거
-  if (data.tagName === 'video') {
-    const src = el.getAttribute('src') ?? ''
-    if (!src.startsWith('/api/posts/videos/')) el.remove()
-  }
-})
+    // 업로드 동영상: /api/posts/videos/ 로 시작하지 않으면 제거
+    if (data.tagName === 'video') {
+      const src = el.getAttribute('src') ?? ''
+      if (!src.startsWith('/api/posts/videos/')) el.remove()
+    }
+  })
+}
 
 // [보안] XSS 방어 2중 구조:
 //   1차: 서버 jsoup sanitize (저장 시) — div/class/구조 태그 허용, script/on* 차단
 //   2차: 클라이언트 DOMPurify (렌더링 시) — 서버 통과 후 최종 방어
 //   API 응답의 contentSanitized를 반드시 이 함수를 통해 렌더링.
 export function sanitizeHtml(dirty: string): string {
+  if (typeof window === 'undefined') {
+    return dirty
+  }
   return DOMPurify.sanitize(dirty, {
     ALLOWED_TAGS: [
       // 구조
