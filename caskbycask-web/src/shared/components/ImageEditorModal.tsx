@@ -46,6 +46,52 @@ export default function ImageEditorModal({
 
   // Crop Box state
   const [cropBox, setCropBox] = useState<CropBox>({ x: 0.1, y: 0.1, w: 0.8, h: 0.8 })
+  // Crop Ratio state
+  const [cropRatio, setCropRatio] = useState<string>('free')
+
+  const getRatioVal = (ratioStr: string): number | null => {
+    if (ratioStr === 'free') return null
+    const parts = ratioStr.split(':')
+    const rWidth = parseFloat(parts[0])
+    const rHeight = parseFloat(parts[1])
+    if (isNaN(rWidth) || isNaN(rHeight)) return null
+    return rWidth / rHeight
+  }
+
+  const getInitialCropBoxForRatio = (ratioStr: string): CropBox => {
+    const canvas = canvasRef.current
+    if (!canvas) return { x: 0.1, y: 0.1, w: 0.8, h: 0.8 }
+
+    if (ratioStr === 'free') {
+      return { x: 0.1, y: 0.1, w: 0.8, h: 0.8 }
+    }
+
+    const ratioVal = getRatioVal(ratioStr)
+    if (!ratioVal) return { x: 0.1, y: 0.1, w: 0.8, h: 0.8 }
+
+    const R = ratioVal
+    const A_canvas = canvas.width / canvas.height
+
+    if (R >= A_canvas) {
+      const w = 0.8
+      const h = (w * A_canvas) / R
+      return {
+        x: (1 - w) / 2,
+        y: (1 - h) / 2,
+        w,
+        h,
+      }
+    } else {
+      const h = 0.8
+      const w = (h * R) / A_canvas
+      return {
+        x: (1 - w) / 2,
+        y: (1 - h) / 2,
+        w,
+        h,
+      }
+    }
+  }
 
   // Canvas scale state for dynamic brush cursor size
   const [canvasScale, setCanvasScale] = useState<number>(1)
@@ -167,6 +213,7 @@ export default function ImageEditorModal({
     }
     img.src = imageSrc
     setMode('paint') // Reset mode
+    setCropRatio('free') // Reset crop ratio
   }, [open, imageSrc])
 
   // Canvas drawing event handlers (Unified touch/mouse)
@@ -332,6 +379,7 @@ export default function ImageEditorModal({
     setHistoryIndex((prev) => prev + 1)
 
     // Reset crop box
+    setCropRatio('free')
     setCropBox({ x: 0.1, y: 0.1, w: 0.8, h: 0.8 })
     setMode('paint')
   }
@@ -438,21 +486,72 @@ export default function ImageEditorModal({
 
       const minSize = 0.08
 
-      if (handle.includes('e')) {
-        w = Math.max(minSize, Math.min(1 - x, startBox.w + dx))
-      }
-      if (handle.includes('w')) {
-        const newX = Math.max(0, Math.min(startBox.x + startBox.w - minSize, startBox.x + dx))
-        w = startBox.w + (startBox.x - newX)
-        x = newX
-      }
-      if (handle.includes('s')) {
-        h = Math.max(minSize, Math.min(1 - y, startBox.h + dy))
-      }
-      if (handle.includes('n')) {
-        const newY = Math.max(0, Math.min(startBox.y + startBox.h - minSize, startBox.y + dy))
-        h = startBox.h + (startBox.y - newY)
-        y = newY
+      const canvas = canvasRef.current
+      const ratioVal = getRatioVal(cropRatio)
+
+      if (canvas && ratioVal !== null) {
+        const A_canvas = canvas.width / canvas.height
+        const r_rel = ratioVal / A_canvas
+        if (handle === 'e' || handle === 's' || handle === 'se') {
+          let dw = 0
+          if (handle === 'e') {
+            dw = dx
+          } else if (handle === 's') {
+            dw = dy * r_rel
+          } else {
+            dw = Math.abs(dx) > Math.abs(dy * r_rel) ? dx : dy * r_rel
+          }
+          const maxW = Math.min(1 - startBox.x, (1 - startBox.y) * r_rel)
+          w = Math.max(minSize, Math.min(maxW, startBox.w + dw))
+          h = w / r_rel
+        } else if (handle === 'w' || handle === 'n' || handle === 'nw') {
+          let dw = 0
+          if (handle === 'w') {
+            dw = -dx
+          } else if (handle === 'n') {
+            dw = -dy * r_rel
+          } else {
+            dw = Math.abs(dx) > Math.abs(dy * r_rel) ? -dx : -dy * r_rel
+          }
+          const right = startBox.x + startBox.w
+          const bottom = startBox.y + startBox.h
+          const maxW = Math.min(right, bottom * r_rel)
+          w = Math.max(minSize, Math.min(maxW, startBox.w + dw))
+          h = w / r_rel
+          x = right - w
+          y = bottom - h
+        } else if (handle === 'ne') {
+          const dw = Math.abs(dx) > Math.abs(dy * r_rel) ? dx : -dy * r_rel
+          const bottom = startBox.y + startBox.h
+          const maxW = Math.min(1 - startBox.x, bottom * r_rel)
+          w = Math.max(minSize, Math.min(maxW, startBox.w + dw))
+          h = w / r_rel
+          y = bottom - h
+        } else if (handle === 'sw') {
+          const dw = Math.abs(dx) > Math.abs(dy * r_rel) ? -dx : dy * r_rel
+          const right = startBox.x + startBox.w
+          const maxW = Math.min(right, (1 - startBox.y) * r_rel)
+          w = Math.max(minSize, Math.min(maxW, startBox.w + dw))
+          h = w / r_rel
+          x = right - w
+        }
+      } else {
+        if (handle.includes('e')) {
+          w = Math.max(minSize, Math.min(1 - x, startBox.w + dx))
+        }
+        if (handle.includes('w')) {
+          const newX = Math.max(0, Math.min(startBox.x + startBox.w - minSize, startBox.x + dx))
+          w = startBox.w + (startBox.x - newX)
+          x = newX
+        }
+        if (handle.includes('s')) {
+          h = Math.max(minSize, Math.min(1 - y, startBox.h + dy))
+        }
+        if (handle.includes('n')) {
+          const newY = Math.max(0, Math.min(startBox.y + startBox.h - minSize, startBox.y + dy))
+          h = startBox.h + (startBox.y - newY)
+          y = newY
+        }
       }
 
       setCropBox({ x, y, w, h })
@@ -652,16 +751,48 @@ export default function ImageEditorModal({
 
                     {mode === 'crop' && (
                       <div className="space-y-4">
-                        <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">자르기 옵션</span>
-                        <p className="text-xs text-neutral-400 leading-relaxed">
-                          영역 모서리나 테두리를 드래그하여 조절한 뒤 아래 버튼을 클릭하세요.
-                        </p>
-                        <button
-                          onClick={handleApplyCrop}
-                          className="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 active:bg-amber-700 text-white text-xs font-semibold shadow-lg shadow-amber-950/20 transition-all duration-150"
-                        >
-                          선택 영역 자르기
-                        </button>
+                        <div className="space-y-2">
+                          <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">자르기 비율</span>
+                          <div className="grid grid-cols-2 gap-2">
+                            {[
+                              { label: '자유', value: 'free' },
+                              { label: '1:1', value: '1:1' },
+                              { label: '16:9', value: '16:9' },
+                              { label: '4:3', value: '4:3' },
+                              { label: '3:2', value: '3:2' },
+                            ].map((opt) => (
+                              <button
+                                key={opt.value}
+                                onClick={() => {
+                                  setCropRatio(opt.value)
+                                  setCropBox(getInitialCropBoxForRatio(opt.value))
+                                }}
+                                className={`py-2 px-3 text-xs rounded-xl border transition-all duration-150 ${
+                                  cropRatio === opt.value
+                                    ? 'bg-neutral-700 border-neutral-600 text-white font-medium shadow-md shadow-neutral-950/20'
+                                    : 'bg-neutral-800/50 border-neutral-700 hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200'
+                                }`}
+                              >
+                                {opt.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="h-px bg-neutral-800" />
+
+                        <div className="space-y-3">
+                          <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">자르기 실행</span>
+                          <p className="text-xs text-neutral-400 leading-relaxed">
+                            영역 모서리나 테두리를 드래그하여 조절한 뒤 아래 버튼을 클릭하세요.
+                          </p>
+                          <button
+                            onClick={handleApplyCrop}
+                            className="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 active:bg-amber-700 text-white text-xs font-semibold shadow-lg shadow-amber-950/20 transition-all duration-150"
+                          >
+                            선택 영역 자르기
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -870,14 +1001,42 @@ export default function ImageEditorModal({
                   )}
 
                   {mode === 'crop' && (
-                    <div className="flex items-center justify-between gap-4">
-                      <span className="text-xs text-neutral-400">자르려는 영역을 조절 후 오른쪽 버튼을 눌러주세요.</span>
-                      <button
-                        onClick={handleApplyCrop}
-                        className="py-1.5 px-4 bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold rounded-lg shrink-0 shadow-lg shadow-amber-950/20"
-                      >
-                        자르기 적용
-                      </button>
+                    <div className="flex flex-col gap-3">
+                      {/* Crop Ratio Selector (horizontal scroll) */}
+                      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+                        {[
+                          { label: '자유', value: 'free' },
+                          { label: '1:1', value: '1:1' },
+                          { label: '16:9', value: '16:9' },
+                          { label: '4:3', value: '4:3' },
+                          { label: '3:2', value: '3:2' },
+                        ].map((opt) => (
+                          <button
+                            key={opt.value}
+                            onClick={() => {
+                              setCropRatio(opt.value)
+                              setCropBox(getInitialCropBoxForRatio(opt.value))
+                            }}
+                            className={`py-1.5 px-3 text-xs rounded-lg border transition-all duration-150 shrink-0 ${
+                              cropRatio === opt.value
+                                ? 'bg-neutral-700 border-neutral-600 text-white font-medium shadow-md shadow-neutral-950/20'
+                                : 'bg-neutral-800/50 border-neutral-700 hover:bg-neutral-800 text-neutral-400'
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="text-[11px] text-neutral-400">자르려는 영역을 조절 후 오른쪽 버튼을 눌러주세요.</span>
+                        <button
+                          onClick={handleApplyCrop}
+                          className="py-1.5 px-4 bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold rounded-lg shrink-0 shadow-lg shadow-amber-950/20"
+                        >
+                          자르기 적용
+                        </button>
+                      </div>
                     </div>
                   )}
 
