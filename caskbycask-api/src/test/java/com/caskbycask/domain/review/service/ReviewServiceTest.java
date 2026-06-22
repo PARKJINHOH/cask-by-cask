@@ -149,7 +149,7 @@ class ReviewServiceTest {
 
         spirit.updateAvgScore(new BigDecimal("87.7"), 1);
 
-        given(reviewRepository.findByIdAndSpiritId(10L, 1L)).willReturn(Optional.of(review));
+        given(reviewRepository.findById(10L)).willReturn(Optional.of(review));
         given(spiritRepository.findById(1L)).willReturn(Optional.of(spirit));
         // 삭제 후 avgScore 없음 (리뷰가 0개)
         given(reviewRepository.findAvgScoreForMasterSpirit(1L)).willReturn(Optional.empty());
@@ -170,7 +170,7 @@ class ReviewServiceTest {
 
         spirit.updateAvgScore(new BigDecimal("85.0"), 2);
 
-        given(reviewRepository.findByIdAndSpiritId(10L, 1L)).willReturn(Optional.of(review));
+        given(reviewRepository.findById(10L)).willReturn(Optional.of(review));
         given(spiritRepository.findById(1L)).willReturn(Optional.of(spirit));
         given(reviewRepository.findAvgScoreForMasterSpirit(1L)).willReturn(Optional.of(82.0));
         given(reviewRepository.countActiveForMasterSpirit(1L)).willReturn(1L);
@@ -196,7 +196,7 @@ class ReviewServiceTest {
         Review review = buildReview(spirit, otherUser, 80, 80, 80, null, new BigDecimal("80.0"));
         ReflectionTestUtils.setField(review, "id", 10L);
 
-        given(reviewRepository.findByIdAndSpiritId(10L, 1L)).willReturn(Optional.of(review));
+        given(reviewRepository.findById(10L)).willReturn(Optional.of(review));
 
         UpdateReviewRequest request = new UpdateReviewRequest(new BigDecimal("90"), null, null, null, null, null, null, null, null, null);
 
@@ -219,7 +219,7 @@ class ReviewServiceTest {
         Review review = buildReview(spirit, otherUser, 80, 80, 80, null, new BigDecimal("80.0"));
         ReflectionTestUtils.setField(review, "id", 10L);
 
-        given(reviewRepository.findByIdAndSpiritId(10L, 1L)).willReturn(Optional.of(review));
+        given(reviewRepository.findById(10L)).willReturn(Optional.of(review));
 
         assertThatThrownBy(() -> reviewService.deleteReview(1L, 10L, 1L))
                 .isInstanceOf(CustomException.class)

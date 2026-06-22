@@ -124,7 +124,7 @@ public class ReviewService {
 
         // flush to trigger @PreUpdate → totalScore 재계산
         reviewRepository.flush();
-        recalculateAvgScore(spiritId);
+        recalculateAvgScore(review.getSpirit().getId());
 
         return toResponse(review);
     }
@@ -137,7 +137,7 @@ public class ReviewService {
         checkOwnership(review, userId);
 
         review.softDelete();
-        recalculateAvgScore(spiritId);
+        recalculateAvgScore(review.getSpirit().getId());
 
         // [패치 1] 리뷰 삭제 시에도 지급액 차감 (기존: 차감 없음 → 파밍 가능했음).
         //          원래 지급액만큼만 회수, 익명·관리자였다면 0이라 자동 스킵.
@@ -209,8 +209,18 @@ public class ReviewService {
     }
 
     private Review getReview(Long spiritId, Long reviewId) {
-        return reviewRepository.findByIdAndSpiritId(reviewId, spiritId)
+        Review review = reviewRepository.findById(reviewId)
                 .orElseThrow(() -> new CustomException(ErrorCode.REVIEW_NOT_FOUND));
+
+        Long actualSpiritId = review.getSpirit().getId();
+        Long parentSpiritId = review.getSpirit().getParent() != null ?
+                review.getSpirit().getParent().getId() : null;
+
+        if (!actualSpiritId.equals(spiritId) && !spiritId.equals(parentSpiritId)) {
+            throw new CustomException(ErrorCode.REVIEW_NOT_FOUND);
+        }
+
+        return review;
     }
 
     private User getUser(Long userId) {

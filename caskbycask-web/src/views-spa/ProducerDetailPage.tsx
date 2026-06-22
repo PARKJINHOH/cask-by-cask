@@ -124,7 +124,7 @@ export default function ProducerDetailPage() {
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 lg:gap-4">
             {spirits.map((s) => (
-              <SpiritCard key={s.id} spirit={s} />
+              <SpiritCard key={s.id} spirit={s} imageFit="contain" />
             ))}
           </div>
         )}

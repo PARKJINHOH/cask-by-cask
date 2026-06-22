@@ -654,7 +654,7 @@ export default function SpiritListPage() {
                 transition-opacity ${isFetching ? 'opacity-70 pointer-events-none' : ''}`}
             >
               {data.content.map((spirit) => (
-                <SpiritCard key={spirit.id} spirit={spirit} detailState={detailState} />
+                <SpiritCard key={spirit.id} spirit={spirit} detailState={detailState} imageFit="contain" />
               ))}
             </div>
           )}

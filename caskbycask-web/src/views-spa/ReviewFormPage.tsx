@@ -67,6 +67,11 @@ export default function ReviewFormPage() {
   const [targetSpiritId, setTargetSpiritId] = useState<number | null>(null)
   const [variantError, setVariantError] = useState<string | null>(null)
 
+  // 페이지 진입 시 최상단으로 스크롤 이동
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [])
+
   // 초기 targetSpiritId 세팅 (spirit 로딩 완료 후)
   useEffect(() => {
     if (spirit) {
