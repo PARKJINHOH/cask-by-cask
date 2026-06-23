@@ -26,7 +26,7 @@ export default function PriceReportCard({ detail, isBest }: Props) {
   const displayName =
     detail.storeName ?? detail.suggestedStoreName ?? t('price.panel.unknownStore', '직접 등록')
   const reporterLabel = detail.isHotDeal
-    ? (detail.reporterNickname ?? 'AI/크롤러')
+    ? (detail.reporterNickname ?? '수집')
     : detail.isAnonymous
     ? t('price.panel.anonymous')
     : (detail.reporterNickname ?? t('price.panel.anonymous'))
@@ -53,12 +53,12 @@ export default function PriceReportCard({ detail, isBest }: Props) {
               <span className="font-semibold text-neutral-900 truncate">{displayName}</span>
               {detail.isHotDeal && (
                 <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-red-100 text-red-700 rounded text-[10px] font-bold">
-                  🔥 핫딜
+                  핫딜
                 </span>
               )}
               {isBest && (
                 <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded text-[10px] font-bold">
-                  🏆 {t('price.panel.bestPrice')}
+                  {t('price.panel.bestPrice')}
                 </span>
               )}
               {detail.isVerified && (
@@ -97,16 +97,7 @@ export default function PriceReportCard({ detail, isBest }: Props) {
         >
           {expanded ? t('price.panel.hideMore') : t('price.panel.showMore')}
         </button>
-        {detail.isHotDeal && detail.sourceUrl && (
-          <a
-            href={detail.sourceUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="ml-3 inline-flex items-center gap-0.5 text-xs text-primary-700 hover:underline font-medium"
-          >
-            원문 보기 ↗
-          </a>
-        )}
+
       </div>
 
       {/* 펼침 콘텐츠 */}
