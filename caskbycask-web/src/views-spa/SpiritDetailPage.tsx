@@ -865,7 +865,16 @@ export default function SpiritDetailPage() {
     }
   }, [parentSpirit, location.state])
 
-  const currentDisplayId = activeVariantId || spiritId
+  const defaultVariantId = useMemo(() => {
+    if (!parentSpirit) return null
+    const isSplit = parentSpirit.parentId != null || (parentSpirit.variants && parentSpirit.variants.length > 0)
+    if (!isSplit) return null
+    const stateVariantId = (location.state as any)?.activeVariantId
+    const sortedVariants = [...(parentSpirit.variants ?? [])].sort((a, b) => a.id - b.id)
+    return stateVariantId || sortedVariants[0]?.id || null
+  }, [parentSpirit, location.state])
+
+  const currentDisplayId = activeVariantId || defaultVariantId || spiritId
   const { data: spirit, isLoading: isDisplayLoading } = useSpiritDetail(currentDisplayId)
   const isLoading = isParentLoading || isDisplayLoading
 
