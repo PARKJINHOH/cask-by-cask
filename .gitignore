@@ -28,6 +28,7 @@ caskbycask-web/build/
 caskbycask-web/.next/
 caskbycask-web/out/
 caskbycask-web/*.tsbuildinfo
+caskbycask-web/next-env.d.ts
 
 # ─── 로그 / 업로드 (로컬 개발) ───
 logs/

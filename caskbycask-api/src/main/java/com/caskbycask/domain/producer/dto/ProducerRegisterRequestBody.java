@@ -6,10 +6,10 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public record ProducerRegisterRequestBody(
-        @NotBlank String nameKo,
-        @NotBlank String nameEn,
-        @NotBlank String country,
-        String region,
+        @NotBlank @Size(max = 200) String nameKo,
+        @NotBlank @Size(max = 200) String nameEn,
+        @NotBlank @Size(max = 100) String country,
+        @Size(max = 100) String region,
         ProducerType type,
 
         @Schema(description = "공식 웹사이트 URL (선택)")

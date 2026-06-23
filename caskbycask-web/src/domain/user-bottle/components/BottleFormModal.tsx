@@ -97,6 +97,7 @@ export function BottleFormModal({ open, onClose, editing }: Props) {
               value={selectedSpirit ? `${selectedSpirit.nameKo}${selectedSpirit.nameEn ? ` (${selectedSpirit.nameEn})` : ''}` : spiritQuery}
               onChange={e => { setSpiritQuery(e.target.value); setSelectedSpirit(null); }}
               placeholder={t('collection.form.spiritSearch')}
+              maxLength={200}
               className="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-400 focus:border-transparent" />
             {spiritOptions.length > 0 && !selectedSpirit && (
               <ul className="mt-1 border border-neutral-200 rounded-lg overflow-hidden shadow-sm">
@@ -144,6 +145,7 @@ export function BottleFormModal({ open, onClose, editing }: Props) {
             <label className="block text-sm font-medium text-neutral-700 mb-1">{t('collection.form.store')}</label>
             <input type="text" required value={form.store}
               onChange={e => setForm(f => ({ ...f, store: e.target.value }))}
+              maxLength={200}
               className="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm" />
           </div>
 
@@ -153,12 +155,14 @@ export function BottleFormModal({ open, onClose, editing }: Props) {
               <label className="block text-sm font-medium text-neutral-700 mb-1">{t('collection.form.batch')}</label>
               <input type="text" value={form.batch ?? ''}
                 onChange={e => setForm(f => ({ ...f, batch: e.target.value || undefined }))}
+                maxLength={100}
                 className="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm" />
             </div>
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1">{t('collection.form.bottlingYear')}</label>
               <input type="text" value={form.bottlingYear ?? ''} placeholder="2022.02"
                 onChange={e => setForm(f => ({ ...f, bottlingYear: e.target.value || undefined }))}
+                maxLength={100}
                 className="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm" />
             </div>
           </div>

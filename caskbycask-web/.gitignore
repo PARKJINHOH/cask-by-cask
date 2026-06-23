@@ -15,6 +15,7 @@ out
 .env
 .env.local
 .env.production
+next-env.d.ts
 
 # Editor
 .vscode
