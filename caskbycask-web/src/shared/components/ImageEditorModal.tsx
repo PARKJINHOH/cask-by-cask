@@ -9,7 +9,7 @@ interface ImageEditorModalProps {
   isSaving: boolean
 }
 
-type EditMode = 'paint' | 'crop'
+type EditMode = 'paint' | 'crop' | 'rotate' | 'resize'
 type PaintType = 'mosaic' | 'blur'
 
 interface CropBox {
@@ -48,9 +48,26 @@ export default function ImageEditorModal({
   const [cropBox, setCropBox] = useState<CropBox>({ x: 0.1, y: 0.1, w: 0.8, h: 0.8 })
   // Crop Ratio state
   const [cropRatio, setCropRatio] = useState<string>('free')
+  const [customRatioW, setCustomRatioW] = useState<string>('1')
+  const [customRatioH, setCustomRatioH] = useState<string>('1')
+
+  // Rotation / Tilt state
+  const tiltBaseCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const [tiltAngle, setTiltAngle] = useState<number>(0)
+
+  // Resize resolution state
+  const [resizeW, setResizeW] = useState<string>('')
+  const [resizeH, setResizeH] = useState<string>('')
+  const [keepAspectRatio, setKeepAspectRatio] = useState<boolean>(true)
 
   const getRatioVal = (ratioStr: string): number | null => {
     if (ratioStr === 'free') return null
+    if (ratioStr === 'custom') {
+      const w = parseFloat(customRatioW)
+      const h = parseFloat(customRatioH)
+      if (isNaN(w) || isNaN(h) || w <= 0 || h <= 0) return null
+      return w / h
+    }
     const parts = ratioStr.split(':')
     const rWidth = parseFloat(parts[0])
     const rHeight = parseFloat(parts[1])
@@ -58,7 +75,7 @@ export default function ImageEditorModal({
     return rWidth / rHeight
   }
 
-  const getInitialCropBoxForRatio = (ratioStr: string): CropBox => {
+  const getInitialCropBoxForRatio = (ratioStr: string, customW?: string, customH?: string): CropBox => {
     const canvas = canvasRef.current
     if (!canvas) return { x: 0.1, y: 0.1, w: 0.8, h: 0.8 }
 
@@ -66,7 +83,17 @@ export default function ImageEditorModal({
       return { x: 0.1, y: 0.1, w: 0.8, h: 0.8 }
     }
 
-    const ratioVal = getRatioVal(ratioStr)
+    let ratioVal: number | null = null
+    if (ratioStr === 'custom') {
+      const w = parseFloat(customW ?? customRatioW)
+      const h = parseFloat(customH ?? customRatioH)
+      if (!isNaN(w) && !isNaN(h) && w > 0 && h > 0) {
+        ratioVal = w / h
+      }
+    } else {
+      ratioVal = getRatioVal(ratioStr)
+    }
+
     if (!ratioVal) return { x: 0.1, y: 0.1, w: 0.8, h: 0.8 }
 
     const R = ratioVal
@@ -214,7 +241,178 @@ export default function ImageEditorModal({
     img.src = imageSrc
     setMode('paint') // Reset mode
     setCropRatio('free') // Reset crop ratio
+    setTiltAngle(0)
+    tiltBaseCanvasRef.current = null
   }, [open, imageSrc])
+
+  const handleCustomRatioChange = (w: string, h: string) => {
+    setCustomRatioW(w)
+    setCustomRatioH(h)
+    setCropRatio('custom')
+    setCropBox(getInitialCropBoxForRatio('custom', w, h))
+  }
+
+  const initTiltBase = () => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const baseCanvas = document.createElement('canvas')
+    baseCanvas.width = canvas.width
+    baseCanvas.height = canvas.height
+    const baseCtx = baseCanvas.getContext('2d')
+    if (baseCtx) {
+      baseCtx.drawImage(canvas, 0, 0)
+      tiltBaseCanvasRef.current = baseCanvas
+    }
+  }
+
+  const applyTiltAngle = (angleDegrees: number) => {
+    const canvas = canvasRef.current
+    const baseCanvas = tiltBaseCanvasRef.current
+    if (!canvas || !baseCanvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    const angleRad = (angleDegrees * Math.PI) / 180
+    const cos = Math.abs(Math.cos(angleRad))
+    const sin = Math.abs(Math.sin(angleRad))
+    const w = baseCanvas.width
+    const h = baseCanvas.height
+    const newWidth = Math.round(w * cos + h * sin)
+    const newHeight = Math.round(w * sin + h * cos)
+
+    canvas.width = newWidth
+    canvas.height = newHeight
+
+    ctx.clearRect(0, 0, newWidth, newHeight)
+    ctx.save()
+    ctx.translate(newWidth / 2, newHeight / 2)
+    ctx.rotate(angleRad)
+    ctx.drawImage(baseCanvas, -w / 2, -h / 2)
+    ctx.restore()
+
+    regenerateEffects()
+  }
+
+  const restorePreTilt = () => {
+    const canvas = canvasRef.current
+    const baseCanvas = tiltBaseCanvasRef.current
+    if (canvas && baseCanvas) {
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        canvas.width = baseCanvas.width
+        canvas.height = baseCanvas.height
+        ctx.drawImage(baseCanvas, 0, 0)
+        regenerateEffects()
+      }
+    }
+  }
+
+  const handleApplyTilt = () => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+    setHistory((prev) => {
+      const next = prev.slice(0, historyIndex + 1)
+      next.push(imgData)
+      return next
+    })
+    setHistoryIndex((prev) => prev + 1)
+
+    initTiltBase()
+    setTiltAngle(0)
+  }
+
+  const handleTiltSliderChange = (angle: number) => {
+    setTiltAngle(angle)
+    applyTiltAngle(angle)
+  }
+
+  const handleModeChange = (newMode: EditMode) => {
+    if (mode === 'rotate' && tiltAngle !== 0) {
+      restorePreTilt()
+    }
+    setMode(newMode)
+  }
+
+  // Manage rotation & tilt base canvas state
+  useEffect(() => {
+    if (mode === 'rotate') {
+      initTiltBase()
+      setTiltAngle(0)
+    } else {
+      tiltBaseCanvasRef.current = null
+    }
+  }, [mode])
+
+  // Sync resize dimensions when canvas changes or mode changes
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (canvas) {
+      setResizeW(canvas.width.toString())
+      setResizeH(canvas.height.toString())
+    }
+  }, [historyIndex, mode, open])
+
+  const handleResizeWChange = (val: string) => {
+    setResizeW(val)
+    const canvas = canvasRef.current
+    if (!canvas || !keepAspectRatio) return
+    const w = parseFloat(val)
+    if (isNaN(w) || w <= 0) return
+    const ratio = canvas.width / canvas.height
+    setResizeH(Math.round(w / ratio).toString())
+  }
+
+  const handleResizeHChange = (val: string) => {
+    setResizeH(val)
+    const canvas = canvasRef.current
+    if (!canvas || !keepAspectRatio) return
+    const h = parseFloat(val)
+    if (isNaN(h) || h <= 0) return
+    const ratio = canvas.width / canvas.height
+    setResizeW(Math.round(h * ratio).toString())
+  }
+
+  const handleApplyResize = () => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    const targetW = Math.round(parseFloat(resizeW))
+    const targetH = Math.round(parseFloat(resizeH))
+
+    if (isNaN(targetW) || isNaN(targetH) || targetW <= 0 || targetH <= 0) return
+
+    pushState()
+
+    const tempCanvas = document.createElement('canvas')
+    tempCanvas.width = targetW
+    tempCanvas.height = targetH
+    const tempCtx = tempCanvas.getContext('2d')!
+    tempCtx.imageSmoothingEnabled = true
+    tempCtx.imageSmoothingQuality = 'high'
+    tempCtx.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, targetW, targetH)
+
+    canvas.width = targetW
+    canvas.height = targetH
+    ctx.imageSmoothingEnabled = true
+    ctx.imageSmoothingQuality = 'high'
+    ctx.drawImage(tempCanvas, 0, 0)
+
+    regenerateEffects()
+
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+    setHistory((prev) => {
+      const next = [...prev]
+      next[historyIndex + 1] = imgData
+      return next
+    })
+    setHistoryIndex((prev) => prev + 1)
+  }
 
   // Canvas drawing event handlers (Unified touch/mouse)
   const getCanvasCoords = (clientX: number, clientY: number): { x: number; y: number } | null => {
@@ -339,6 +537,12 @@ export default function ImageEditorModal({
       return next
     })
     setHistoryIndex((prev) => prev + 1)
+
+    // If we're in rotate mode, re-init the tilt base and angle!
+    if (mode === 'rotate') {
+      initTiltBase()
+      setTiltAngle(0)
+    }
   }
 
   // Apply Crop
@@ -670,7 +874,7 @@ export default function ImageEditorModal({
                     <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">도구 선택</span>
                     <div className="grid grid-cols-2 gap-2">
                       <button
-                        onClick={() => setMode('paint')}
+                        onClick={() => handleModeChange('paint')}
                         className={`flex flex-col items-center justify-center py-3 rounded-xl border text-xs gap-1.5 transition-all duration-150 ${
                           mode === 'paint'
                             ? 'bg-primary-600 border-primary-500 text-white font-medium shadow-lg shadow-primary-900/20'
@@ -683,7 +887,7 @@ export default function ImageEditorModal({
                         브러시
                       </button>
                       <button
-                        onClick={() => setMode('crop')}
+                        onClick={() => handleModeChange('crop')}
                         className={`flex flex-col items-center justify-center py-3 rounded-xl border text-xs gap-1.5 transition-all duration-150 ${
                           mode === 'crop'
                             ? 'bg-primary-600 border-primary-500 text-white font-medium shadow-lg shadow-primary-900/20'
@@ -695,13 +899,39 @@ export default function ImageEditorModal({
                         </svg>
                         자르기
                       </button>
+                      <button
+                        onClick={() => handleModeChange('rotate')}
+                        className={`flex flex-col items-center justify-center py-3 rounded-xl border text-xs gap-1.5 transition-all duration-150 ${
+                          mode === 'rotate'
+                            ? 'bg-primary-600 border-primary-500 text-white font-medium shadow-lg shadow-primary-900/20'
+                            : 'bg-neutral-800/50 border-neutral-700 hover:bg-neutral-800 text-neutral-300'
+                        }`}
+                      >
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89M9 11l3-3 3 3" />
+                        </svg>
+                        기울기/회전
+                      </button>
+                      <button
+                        onClick={() => handleModeChange('resize')}
+                        className={`flex flex-col items-center justify-center py-3 rounded-xl border text-xs gap-1.5 transition-all duration-150 ${
+                          mode === 'resize'
+                            ? 'bg-primary-600 border-primary-500 text-white font-medium shadow-lg shadow-primary-900/20'
+                            : 'bg-neutral-800/50 border-neutral-700 hover:bg-neutral-800 text-neutral-300'
+                        }`}
+                      >
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
+                        </svg>
+                        해상도
+                      </button>
                     </div>
                   </div>
 
                   <div className="h-px bg-neutral-800" />
 
                   {/* Mode Specific Controls */}
-                  <div className="flex-1 space-y-5">
+                  <div className="flex-1 space-y-5 overflow-y-auto pr-1">
                     {mode === 'paint' && (
                       <>
                         <div className="space-y-3">
@@ -757,9 +987,9 @@ export default function ImageEditorModal({
                             {[
                               { label: '자유', value: 'free' },
                               { label: '1:1', value: '1:1' },
-                              { label: '16:9', value: '16:9' },
-                              { label: '4:3', value: '4:3' },
-                              { label: '3:2', value: '3:2' },
+                              { label: '9:16', value: '9:16' },
+                              { label: '3:4', value: '3:4' },
+                              { label: '입력', value: 'custom' },
                             ].map((opt) => (
                               <button
                                 key={opt.value}
@@ -777,6 +1007,32 @@ export default function ImageEditorModal({
                               </button>
                             ))}
                           </div>
+
+                          {cropRatio === 'custom' && (
+                            <div className="flex items-center gap-2 mt-2 p-2 bg-neutral-950/40 rounded-xl border border-neutral-800">
+                              <div className="flex-1 flex flex-col gap-1">
+                                <label className="text-[10px] text-neutral-400 font-medium">가로 비율</label>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  value={customRatioW}
+                                  onChange={(e) => handleCustomRatioChange(e.target.value, customRatioH)}
+                                  className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-2 py-1 text-xs text-white focus:outline-none focus:border-primary-500"
+                                />
+                              </div>
+                              <span className="text-neutral-500 self-end mb-1.5">:</span>
+                              <div className="flex-1 flex flex-col gap-1">
+                                <label className="text-[10px] text-neutral-400 font-medium">세로 비율</label>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  value={customRatioH}
+                                  onChange={(e) => handleCustomRatioChange(customRatioW, e.target.value)}
+                                  className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-2 py-1 text-xs text-white focus:outline-none focus:border-primary-500"
+                                />
+                              </div>
+                            </div>
+                          )}
                         </div>
 
                         <div className="h-px bg-neutral-800" />
@@ -795,26 +1051,108 @@ export default function ImageEditorModal({
                         </div>
                       </div>
                     )}
-                  </div>
 
-                  <div className="h-px bg-neutral-800" />
+                    {mode === 'rotate' && (
+                      <div className="space-y-4">
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">기울기 조절</span>
+                            <span className="text-xs font-mono text-neutral-300">{tiltAngle}°</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="-45"
+                            max="45"
+                            value={tiltAngle}
+                            onChange={(e) => handleTiltSliderChange(Number(e.target.value))}
+                            className="w-full h-1 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-primary-500"
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleTiltSliderChange(0)}
+                              disabled={tiltAngle === 0}
+                              className="flex-1 py-1.5 text-xs rounded-lg border border-neutral-700 bg-neutral-800/40 hover:bg-neutral-800 text-neutral-300 disabled:opacity-30 disabled:hover:bg-transparent transition-all duration-150"
+                            >
+                              기울기 초기화
+                            </button>
+                            <button
+                              onClick={handleApplyTilt}
+                              disabled={tiltAngle === 0}
+                              className="flex-1 py-1.5 text-xs rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold disabled:opacity-30 transition-all duration-150"
+                            >
+                              기울기 적용
+                            </button>
+                          </div>
+                        </div>
 
-                  {/* Generic Controls (Rotate) */}
-                  <div className="space-y-3">
-                    <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">기타 작업</span>
-                    <button
-                      onClick={handleRotate}
-                      className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-neutral-700 bg-neutral-800/40 hover:bg-neutral-800 text-neutral-200 text-xs font-medium transition-all duration-150"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89M9 11l3-3 3 3" />
-                      </svg>
-                      90° 회전
-                    </button>
+                        <div className="h-px bg-neutral-800" />
+
+                        <div className="space-y-3">
+                          <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">90도 회전</span>
+                          <button
+                            onClick={handleRotate}
+                            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-neutral-700 bg-neutral-800/40 hover:bg-neutral-800 text-neutral-200 text-xs font-medium transition-all duration-150"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89M9 11l3-3 3 3" />
+                            </svg>
+                            90° 시계방향 회전
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {mode === 'resize' && (
+                      <div className="space-y-4">
+                        <div className="space-y-3">
+                          <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">해상도 변경</span>
+                          <div className="flex items-center gap-2 p-2 bg-neutral-950/40 rounded-xl border border-neutral-800">
+                            <div className="flex-1 flex flex-col gap-1">
+                              <label className="text-[10px] text-neutral-400 font-medium">가로 (px)</label>
+                              <input
+                                type="number"
+                                min="1"
+                                value={resizeW}
+                                onChange={(e) => handleResizeWChange(e.target.value)}
+                                className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-primary-500"
+                              />
+                            </div>
+                            <span className="text-neutral-500 self-end mb-2">×</span>
+                            <div className="flex-1 flex flex-col gap-1">
+                              <label className="text-[10px] text-neutral-400 font-medium">세로 (px)</label>
+                              <input
+                                type="number"
+                                min="1"
+                                value={resizeH}
+                                onChange={(e) => handleResizeHChange(e.target.value)}
+                                className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-primary-500"
+                              />
+                            </div>
+                          </div>
+
+                          <label className="flex items-center gap-2 cursor-pointer select-none text-xs text-neutral-300">
+                            <input
+                              type="checkbox"
+                              checked={keepAspectRatio}
+                              onChange={(e) => setKeepAspectRatio(e.target.checked)}
+                              className="rounded border-neutral-700 bg-neutral-800 text-primary-600 focus:ring-primary-500/30 font-sans"
+                            />
+                            가로세로 비율 유지
+                          </label>
+                        </div>
+
+                        <button
+                          onClick={handleApplyResize}
+                          className="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold shadow-lg shadow-amber-950/20 transition-all duration-150"
+                        >
+                          해상도 변경 적용
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                 </div>
-
+                
                 {/* Canvas Viewport (Center) */}
                 <div className="flex-1 flex items-center justify-center p-6 bg-neutral-950/20 overflow-hidden relative">
                   <div
@@ -931,7 +1269,7 @@ export default function ImageEditorModal({
                   {/* Tool Swapper */}
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => setMode('paint')}
+                      onClick={() => handleModeChange('paint')}
                       className={`flex-1 py-2 px-3 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 ${
                         mode === 'paint' ? 'bg-primary-600 border-primary-500 text-white' : 'bg-neutral-800 border-neutral-700 text-neutral-300'
                       }`}
@@ -942,7 +1280,7 @@ export default function ImageEditorModal({
                       브러시
                     </button>
                     <button
-                      onClick={() => setMode('crop')}
+                      onClick={() => handleModeChange('crop')}
                       className={`flex-1 py-2 px-3 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 ${
                         mode === 'crop' ? 'bg-primary-600 border-primary-500 text-white' : 'bg-neutral-800 border-neutral-700 text-neutral-300'
                       }`}
@@ -953,13 +1291,26 @@ export default function ImageEditorModal({
                       자르기
                     </button>
                     <button
-                      onClick={handleRotate}
-                      className="py-2 px-3 rounded-lg border border-neutral-700 bg-neutral-800 text-neutral-300 text-xs font-semibold flex items-center justify-center"
-                      title="회전"
+                      onClick={() => handleModeChange('rotate')}
+                      className={`flex-1 py-2 px-3 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 ${
+                        mode === 'rotate' ? 'bg-primary-600 border-primary-500 text-white' : 'bg-neutral-800 border-neutral-700 text-neutral-300'
+                      }`}
                     >
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89M9 11l3-3 3 3" />
                       </svg>
+                      기울기/회전
+                    </button>
+                    <button
+                      onClick={() => handleModeChange('resize')}
+                      className={`flex-1 py-2 px-3 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 ${
+                        mode === 'resize' ? 'bg-primary-600 border-primary-500 text-white' : 'bg-neutral-800 border-neutral-700 text-neutral-300'
+                      }`}
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
+                      </svg>
+                      해상도
                     </button>
                   </div>
 
@@ -1007,9 +1358,9 @@ export default function ImageEditorModal({
                         {[
                           { label: '자유', value: 'free' },
                           { label: '1:1', value: '1:1' },
-                          { label: '16:9', value: '16:9' },
-                          { label: '4:3', value: '4:3' },
-                          { label: '3:2', value: '3:2' },
+                          { label: '9:16', value: '9:16' },
+                          { label: '3:4', value: '3:4' },
+                          { label: '입력', value: 'custom' },
                         ].map((opt) => (
                           <button
                             key={opt.value}
@@ -1028,6 +1379,32 @@ export default function ImageEditorModal({
                         ))}
                       </div>
 
+                      {cropRatio === 'custom' && (
+                        <div className="flex items-center gap-2 p-1.5 bg-neutral-950/40 rounded-lg border border-neutral-800">
+                          <div className="flex-1 flex items-center gap-1">
+                            <span className="text-[10px] text-neutral-400 whitespace-nowrap">가로비율</span>
+                            <input
+                              type="number"
+                              min="1"
+                              value={customRatioW}
+                              onChange={(e) => handleCustomRatioChange(e.target.value, customRatioH)}
+                              className="w-full bg-neutral-800 border border-neutral-700 rounded-md px-1.5 py-0.5 text-xs text-white"
+                            />
+                          </div>
+                          <span className="text-neutral-500">:</span>
+                          <div className="flex-1 flex items-center gap-1">
+                            <span className="text-[10px] text-neutral-400 whitespace-nowrap">세로비율</span>
+                            <input
+                              type="number"
+                              min="1"
+                              value={customRatioH}
+                              onChange={(e) => handleCustomRatioChange(customRatioW, e.target.value)}
+                              className="w-full bg-neutral-800 border border-neutral-700 rounded-md px-1.5 py-0.5 text-xs text-white"
+                            />
+                          </div>
+                        </div>
+                      )}
+
                       <div className="flex items-center justify-between gap-4">
                         <span className="text-[11px] text-neutral-400">자르려는 영역을 조절 후 오른쪽 버튼을 눌러주세요.</span>
                         <button
@@ -1037,6 +1414,95 @@ export default function ImageEditorModal({
                           자르기 적용
                         </button>
                       </div>
+                    </div>
+                  )}
+
+                  {mode === 'rotate' && (
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-semibold text-neutral-400 shrink-0">기울기 조절</span>
+                        <input
+                          type="range"
+                          min="-45"
+                          max="45"
+                          value={tiltAngle}
+                          onChange={(e) => handleTiltSliderChange(Number(e.target.value))}
+                          className="flex-1 h-1 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-primary-500"
+                        />
+                        <span className="text-xs font-mono text-neutral-300 w-10 text-right">{tiltAngle}°</span>
+                      </div>
+                      
+                      <div className="flex items-center justify-between gap-2">
+                        <button
+                          onClick={handleRotate}
+                          className="flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg border border-neutral-700 bg-neutral-800/40 text-neutral-300 text-xs font-medium"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89M9 11l3-3 3 3" />
+                          </svg>
+                          90° 회전
+                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleTiltSliderChange(0)}
+                            disabled={tiltAngle === 0}
+                            className="px-3 py-1.5 text-xs rounded-lg border border-neutral-700 bg-neutral-800/40 text-neutral-300 disabled:opacity-30"
+                          >
+                            초기화
+                          </button>
+                          <button
+                            onClick={handleApplyTilt}
+                            disabled={tiltAngle === 0}
+                            className="px-4 py-1.5 text-xs rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold disabled:opacity-30"
+                          >
+                            기울기 적용
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {mode === 'resize' && (
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-center gap-2 p-1.5 bg-neutral-950/40 rounded-lg border border-neutral-800">
+                        <div className="flex-1 flex items-center gap-1.5">
+                          <span className="text-[10px] text-neutral-400">가로</span>
+                          <input
+                            type="number"
+                            min="1"
+                            value={resizeW}
+                            onChange={(e) => handleResizeWChange(e.target.value)}
+                            className="w-full bg-neutral-800 border border-neutral-700 rounded-md px-1.5 py-0.5 text-xs text-white"
+                          />
+                        </div>
+                        <span className="text-neutral-500">×</span>
+                        <div className="flex-1 flex items-center gap-1.5">
+                          <span className="text-[10px] text-neutral-400">세로</span>
+                          <input
+                            type="number"
+                            min="1"
+                            value={resizeH}
+                            onChange={(e) => handleResizeHChange(e.target.value)}
+                            className="w-full bg-neutral-800 border border-neutral-700 rounded-md px-1.5 py-0.5 text-xs text-white"
+                          />
+                        </div>
+                        <label className="flex items-center gap-1 cursor-pointer select-none text-[10px] text-neutral-300 whitespace-nowrap ml-1">
+                          <input
+                            type="checkbox"
+                            checked={keepAspectRatio}
+                            onChange={(e) => setKeepAspectRatio(e.target.checked)}
+                            className="rounded border-neutral-700 bg-neutral-800 text-primary-600 focus:ring-primary-500/30"
+                          />
+                          비율 유지
+                        </label>
+                      </div>
+
+                      <button
+                        onClick={handleApplyResize}
+                        className="w-full py-1.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold rounded-lg shadow-lg shadow-amber-950/20"
+                      >
+                        해상도 적용
+                      </button>
                     </div>
                   )}
 
