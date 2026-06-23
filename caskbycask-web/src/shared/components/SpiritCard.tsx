@@ -81,10 +81,10 @@ function SpiritCard({
               </div>
             )}
 
-            {/* 조회수 (우하단) — 클릭 통과 */}
+            {/* 조회수 (우상단) — 클릭 통과 */}
             {spirit.viewCount !== undefined && spirit.viewCount > 0 && (
-              <span className="absolute bottom-1 right-1 z-20 px-1 py-0.5 rounded text-[8px] font-medium
-                bg-black/45 text-white backdrop-blur-sm pointer-events-none flex items-center gap-0.5">
+              <span className="absolute top-1 right-1 z-20 px-1 py-0.5 rounded text-[8px] font-medium
+                bg-black/25 text-white backdrop-blur-sm pointer-events-none flex items-center gap-0.5">
                 <svg className="w-2 h-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                   <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
@@ -200,11 +200,12 @@ function SpiritCard({
           </button>
         )}
 
-        {/* 조회수 (우하단) — 클릭 통과 */}
+        {/* 조회수 (우상단, 확대 버튼 존재 시 왼쪽 배치) — 클릭 통과 */}
         {spirit.viewCount !== undefined && spirit.viewCount > 0 && (
-          <span className="absolute bottom-2 right-2 z-20 px-1.5 py-0.5 rounded text-[10px] font-medium
-            bg-black/45 text-white backdrop-blur-sm pointer-events-none flex items-center gap-1">
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+          <span className={`absolute top-2 z-20 px-1 py-0.5 rounded text-[8px] font-medium
+            bg-black/25 text-white backdrop-blur-sm pointer-events-none flex items-center gap-0.5
+            ${spirit.primaryImageUrl ? 'right-11' : 'right-2'}`}>
+            <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
             </svg>
