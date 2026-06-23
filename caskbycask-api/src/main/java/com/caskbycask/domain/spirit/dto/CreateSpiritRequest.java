@@ -1,6 +1,7 @@
 package com.caskbycask.domain.spirit.dto;
 
 import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
+import com.caskbycask.domain.spirit.entity.enums.SpiritStatus;
 import com.caskbycask.domain.spirit.entity.enums.VariantType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
@@ -103,5 +104,8 @@ public record CreateSpiritRequest(
         @Schema(description = "최대 도수")
         @DecimalMin(value = "0.0", message = "최대 도수는 0.0 이상이어야 합니다.")
         @DecimalMax(value = "100.0", message = "최대 도수는 100.0 이하이어야 합니다.")
-        BigDecimal abvMax
+        BigDecimal abvMax,
+
+        @Schema(description = "노출 상태 (ACTIVE, HIDDEN, PENDING)")
+        SpiritStatus status
 ) {}

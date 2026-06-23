@@ -335,6 +335,7 @@ export interface CreateSpiritPayload {
   nameKo: string
   nameEn: string
   category: SpiritCategory
+  status?: SpiritStatus
   producerId?: number | null
   bottler?: string | null
   bottledYear?: number | null

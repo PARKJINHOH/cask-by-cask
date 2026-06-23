@@ -4,6 +4,7 @@ import { adminSpiritApi } from '@/domain/admin/api/adminSpiritApi'
 import Button from '@/shared/components/Button'
 import AdminPageHeader from '@/shared/components/AdminPageHeader'
 import SpiritFormFields, { useSpiritForm, CARD, SectionTitle } from '@/domain/admin/components/SpiritFormFields'
+import type { SpiritStatus } from '@/domain/spirit/types/spirit.types'
 
 // ── 새 술 등록 (관리자 직접 등록) ───────────────────────────────────
 // 폼 필드·검증·페이로드는 SpiritFormFields(단일 소스)에서 정의.
@@ -17,6 +18,7 @@ export default function AdminSpiritFormPage() {
   const form = useSpiritForm()
 
   const [isSaving, setIsSaving] = useState(false)
+  const [saveType, setSaveType] = useState<SpiritStatus | null>(null)
   const [saveError, setSaveError] = useState('')
 
   // 등록 시 함께 저장할 이미지(선택만 해둠 — '등록' 클릭 전에는 서버에 저장되지 않음)
@@ -33,16 +35,20 @@ export default function AdminSpiritFormPage() {
   }
   const removeImage = (idx: number) => setImages((prev) => prev.filter((_, i) => i !== idx))
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (status: SpiritStatus) => {
     if (!form.validate()) {
       window.scrollTo({ top: 0, behavior: 'smooth' })
       return
     }
+    setSaveType(status)
     setIsSaving(true)
     setSaveError('')
     let newId: number | undefined
     try {
-      const res = await adminSpiritApi.create(form.buildPayload())
+      const res = await adminSpiritApi.create({
+        ...form.buildPayload(),
+        status,
+      })
       newId = res.data.data?.id
       // 술 생성 직후 이미지 업로드 (첫 이미지가 대표로 설정됨)
       for (const file of images) {
@@ -56,6 +62,7 @@ export default function AdminSpiritFormPage() {
       } else {
         setSaveError('저장 중 오류가 발생했습니다.')
         setIsSaving(false)
+        setSaveType(null)
       }
     }
   }
@@ -119,8 +126,22 @@ export default function AdminSpiritFormPage() {
       {/* 하단 고정 액션바 */}
       <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/90 backdrop-blur border-t border-neutral-200">
         <div className="max-w-3xl lg:max-w-6xl xl:max-w-7xl mx-auto px-6 py-3 flex justify-end gap-2">
-          <Button variant="secondary" onClick={() => navigate('/admin/spirits')}>취소</Button>
-          <Button onClick={handleSubmit} isLoading={isSaving}>등록</Button>
+          <Button variant="secondary" onClick={() => navigate('/admin/spirits')} disabled={isSaving}>취소</Button>
+          <Button
+            variant="secondary"
+            onClick={() => handleSubmit('HIDDEN')}
+            isLoading={isSaving && saveType === 'HIDDEN'}
+            disabled={isSaving && saveType !== 'HIDDEN'}
+          >
+            비공개 등록
+          </Button>
+          <Button
+            onClick={() => handleSubmit('ACTIVE')}
+            isLoading={isSaving && saveType === 'ACTIVE'}
+            disabled={isSaving && saveType !== 'ACTIVE'}
+          >
+            등록
+          </Button>
         </div>
       </div>
     </div>

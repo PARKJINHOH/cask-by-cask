@@ -81,16 +81,22 @@ function SpiritImageSection({ spiritId, images }: { spiritId: number; images: Ad
       if (newImage) {
         // 3. 기존 순서 유지하며 기존 이미지 ID를 새 이미지 ID로 대체
         const nextOrderIds = order.map((img) => (img.id === oldImageId ? newImage.id : img.id))
+
+        // 4. 기존 이미지 삭제 (백엔드 reorder 시점에 이미지 목록 정합성 검증 통과를 위함)
+        await deleteImg.mutateAsync({ id: spiritId, imageId: oldImageId })
+
+        // 5. 순서 재정렬
         await reorder.mutateAsync({ id: spiritId, imageIds: nextOrderIds })
 
-        // 4. 대표 이미지였을 경우 대표 설정 이관
+        // 6. 대표 이미지였을 경우 대표 설정 이관
         if (wasPrimary) {
           await setPrimary.mutateAsync({ id: spiritId, imageId: newImage.id })
         }
+      } else {
+        // 새 이미지를 찾지 못했더라도 기존 이미지 삭제 진행 (기존 흐름과 동일)
+        await deleteImg.mutateAsync({ id: spiritId, imageId: oldImageId })
       }
 
-      // 5. 기존 이미지 삭제
-      await deleteImg.mutateAsync({ id: spiritId, imageId: oldImageId })
       setEditingImage(null)
     } catch (err) {
       console.error(err)
