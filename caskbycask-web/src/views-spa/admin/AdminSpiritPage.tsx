@@ -173,13 +173,14 @@ export default function AdminSpiritPage() {
                   <th className="text-left px-4 py-3 text-neutral-500 font-medium">카테고리</th>
                   <th className="text-left px-4 py-3 text-neutral-500 font-medium">상태</th>
                   <th className="hidden md:table-cell text-right px-4 py-3 text-neutral-500 font-medium">평점</th>
+                  <th className="hidden md:table-cell text-right px-4 py-3 text-neutral-500 font-medium">조회수</th>
                   <th className="hidden md:table-cell text-right px-4 py-3 text-neutral-500 font-medium">리뷰</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100">
                 {!data || data.empty ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-10 text-center text-neutral-400">
+                    <td colSpan={8} className="px-4 py-10 text-center text-neutral-400">
                       데이터가 없습니다.
                     </td>
                   </tr>
@@ -250,6 +251,9 @@ export default function AdminSpiritPage() {
                       </td>
                       <td className="hidden md:table-cell px-4 py-3 text-right font-medium text-primary-800 tabular-nums">
                         {spirit.avgScore != null ? spirit.avgScore.toFixed(1) : '-'}
+                      </td>
+                      <td className="hidden md:table-cell px-4 py-3 text-right text-neutral-600 tabular-nums">
+                        {spirit.viewCount ?? 0}
                       </td>
                       <td className="hidden md:table-cell px-4 py-3 text-right text-neutral-600 tabular-nums">
                         {spirit.reviewCount}

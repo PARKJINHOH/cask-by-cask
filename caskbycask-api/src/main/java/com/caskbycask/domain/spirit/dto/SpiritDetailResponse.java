@@ -83,6 +83,9 @@ public record SpiritDetailResponse(
         @Schema(description = "최대 도수")
         BigDecimal abvMax,
 
+        @Schema(description = "조회수")
+        Integer viewCount,
+
         @Schema(description = "하위 에디션 목록")
         List<SpiritVariantResponse> variants
 ) {
@@ -131,6 +134,7 @@ public record SpiritDetailResponse(
                 spirit.getVariantValueEn(),
                 spirit.getAbvMin(),
                 spirit.getAbvMax(),
+                spirit.getViewCount(),
                 variants
         );
     }

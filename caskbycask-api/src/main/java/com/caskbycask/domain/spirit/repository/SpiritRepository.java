@@ -4,6 +4,7 @@ import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
 import com.caskbycask.domain.spirit.entity.enums.SpiritStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -75,4 +76,8 @@ public interface SpiritRepository extends JpaRepository<Spirit, Long>, SpiritQue
             """)
     Optional<Spirit> findByIdWithAllDetails(@Param("id") Long id,
                                             @Param("status") SpiritStatus status);
+
+    @Modifying
+    @Query("UPDATE Spirit s SET s.viewCount = s.viewCount + 1 WHERE s.id = :id")
+    void incrementViewCount(@Param("id") Long id);
 }

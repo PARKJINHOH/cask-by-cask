@@ -42,6 +42,8 @@ public record SpiritListResponse(
         String style,
         @Schema(description = "스타일 직접 입력값")
         String styleOther,
+        @Schema(description = "조회수")
+        Integer viewCount,
         @Schema(description = "공개 상태 (ACTIVE, HIDDEN, PENDING)")
         SpiritStatus status
 ) {
@@ -62,6 +64,7 @@ public record SpiritListResponse(
                 primaryImageUrl,
                 null,
                 null,
+                spirit.getViewCount(),
                 spirit.getStatus()
         );
     }
@@ -81,6 +84,7 @@ public record SpiritListResponse(
                 primaryImageUrl,
                 styleCode(spirit),
                 styleOther(spirit),
+                spirit.getViewCount(),
                 spirit.getStatus()
         );
     }

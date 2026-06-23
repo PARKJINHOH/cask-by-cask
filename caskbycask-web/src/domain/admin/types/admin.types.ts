@@ -236,6 +236,7 @@ export interface AdminSpiritItem {
   primaryImageUrl: string | null
   style?: string | null
   styleOther?: string | null
+  viewCount?: number
   status: SpiritStatus
 }
 
@@ -287,6 +288,7 @@ export interface AdminSpiritDetail {
   region: string | null
   avgScore: number | null
   reviewCount: number
+  viewCount?: number
   status: SpiritStatus
   images: AdminSpiritImageItem[]
   createdAt: string

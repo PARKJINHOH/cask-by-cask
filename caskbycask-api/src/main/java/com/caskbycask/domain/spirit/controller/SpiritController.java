@@ -11,9 +11,11 @@ import com.caskbycask.domain.spirit.entity.enums.WineIntensity;
 import com.caskbycask.domain.spirit.entity.enums.WineSweetness;
 import com.caskbycask.domain.spirit.entity.enums.WineType;
 import com.caskbycask.domain.spirit.service.SpiritService;
+import com.caskbycask.domain.spirit.service.SpiritViewCountService;
 import com.caskbycask.global.auth.security.CustomUserDetails;
 import com.caskbycask.global.response.ApiResponse;
 import com.caskbycask.global.response.PageResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -34,6 +36,7 @@ import java.util.List;
 public class SpiritController {
 
     private final SpiritService spiritService;
+    private final SpiritViewCountService spiritViewCountService;
 
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<SpiritListResponse>>> search(
@@ -80,7 +83,12 @@ public class SpiritController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<SpiritDetailResponse>> getDetail(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<SpiritDetailResponse>> getDetail(
+            @PathVariable Long id,
+            HttpServletRequest request
+    ) {
+        String clientIp = resolveClientIp(request);
+        spiritViewCountService.tryIncrementViewCount(id, clientIp);
         return ResponseEntity.ok(ApiResponse.success(spiritService.getSpiritDetail(id)));
     }
 
@@ -135,5 +143,13 @@ public class SpiritController {
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         spiritService.deleteMyRegisterRequest(id, userDetails.getUserId());
         return ResponseEntity.ok(ApiResponse.success());
+    }
+
+    private String resolveClientIp(HttpServletRequest request) {
+        String xForwardedFor = request.getHeader("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isBlank()) {
+            return xForwardedFor.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
     }
 }

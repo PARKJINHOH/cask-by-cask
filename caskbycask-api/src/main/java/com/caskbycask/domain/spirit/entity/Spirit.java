@@ -93,6 +93,11 @@ public class Spirit extends BaseTimeEntity {
     @Comment("리뷰 수")
     private Integer reviewCount = 0;
 
+    @Builder.Default
+    @Column(nullable = false)
+    @Comment("조회수")
+    private Integer viewCount = 0;
+
     @Enumerated(EnumType.STRING)
     @Builder.Default
     @Column(nullable = false, length = 20)
