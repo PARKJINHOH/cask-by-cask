@@ -169,7 +169,7 @@ export default function MyPage() {
         </div>
 
         {/* Right Content Area */}
-        <div className="space-y-6">
+        <div className="space-y-6 min-w-0">
           {/* Top Tab Bar (Mobile only) */}
           <div className="md:hidden flex gap-1 border-b border-neutral-200 overflow-x-auto [&::-webkit-scrollbar]:hidden">
             {tabs.map(({ value, labelKey }) => (

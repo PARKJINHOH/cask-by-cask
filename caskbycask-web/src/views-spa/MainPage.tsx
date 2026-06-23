@@ -180,7 +180,7 @@ function SpiritCarousel({ spirits }: { spirits: SpiritListItem[] }) {
         onScroll={updateArrows}
       >
         {spirits.map((s) => (
-          <div key={s.id} className="flex-shrink-0 w-36 sm:w-40 lg:w-[288px]">
+          <div key={s.id} className="flex-shrink-0 w-36 sm:w-40 lg:w-[250px]">
             <SpiritCard spirit={s} imageFit="contain" />
           </div>
         ))}

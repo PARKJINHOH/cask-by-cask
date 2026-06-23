@@ -95,7 +95,6 @@ class AuthServiceTest {
         given(jwtProvider.generateAccessToken(any(), eq(Role.MEMBER))).willReturn("access_token");
         given(jwtProvider.generateRefreshToken(any(), eq(Role.MEMBER))).willReturn("refresh_token");
         given(jwtProvider.getRefreshTokenExpiry()).willReturn(604_800_000L);
-        given(attendanceService.checkAttendance(any())).willReturn(AttendanceResult.ofAlreadyChecked());
 
         AuthLoginResult result = authService.login(request);
 

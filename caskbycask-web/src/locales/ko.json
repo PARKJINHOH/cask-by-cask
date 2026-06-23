@@ -1570,6 +1570,11 @@
     "bonus30": "🏆 30일 보너스",
     "bonusToday": "오늘 달성!",
     "bonusDaysLeft": "{{days}}일 후",
+    "attendanceTitle": "출석 현황",
+    "attendanceButton": "출석체크 하기",
+    "attendanceCompleted": "오늘 출석 완료",
+    "overviewContributions": "지난 1년간 {{count}}회 출석",
+    "currentStreak": "현재 {{days}}일 연속 출석 중",
     "filter": {
       "all": "전체",
       "earn": "적립",

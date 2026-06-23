@@ -1,6 +1,7 @@
 import axiosInstance from '@/shared/api/axiosInstance'
 import type { ApiResponse, PageResponse } from '@/shared/types/common.types'
 import type { ScoreHistoryFilterType, ScoreHistoryItem, LevelInfo } from '../types/score.types'
+import type { AttendanceResult } from '@/domain/auth/types/auth.types'
 
 export const scoreApi = {
   getMyHistory: (params: {
@@ -18,4 +19,13 @@ export const scoreApi = {
 
   getLevelConfigs: () =>
     axiosInstance.get<ApiResponse<LevelInfo[]>>('/api/score-history/level-config'),
+
+  checkAttendance: () =>
+    axiosInstance.post<ApiResponse<AttendanceResult>>('/api/attendance'),
+
+  getTodayAttendanceStatus: () =>
+    axiosInstance.get<ApiResponse<boolean>>('/api/attendance/today'),
+
+  getAttendanceHistory: () =>
+    axiosInstance.get<ApiResponse<string[]>>('/api/attendance/history'),
 }

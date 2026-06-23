@@ -97,6 +97,7 @@ public class DealAdminService {
     }
 
     private DealPost getOrThrow(Long id) {
+        return dealPostRepository.findById(id)
                 .orElseThrow(() -> new CustomException(ErrorCode.DEAL_NOT_FOUND));
     }
 }

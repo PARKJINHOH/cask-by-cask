@@ -15,6 +15,7 @@ import {
 } from '../types/score.types'
 import type { ScoreHistoryFilterType, LevelInfo } from '../types/score.types'
 import { useState } from 'react'
+import AttendanceGrass from './AttendanceGrass'
 
 // ── 진행 바 컴포넌트 ──────────────────────────────────────────
 
@@ -127,71 +128,7 @@ function LevelMapCard({ currentLevel }: { currentLevel: number }) {
   )
 }
 
-// ── 출석 현황 카드 ────────────────────────────────────────────
 
-function AttendanceCard({ profile }: { profile: UserProfile }) {
-  const { t } = useTranslation()
-  const streak = profile.consecutiveAttendance ?? 0
-
-  // 7일 보너스까지 남은 일수 (streak % 7 기준)
-  const toNext7 = streak === 0 ? 7 : 7 - (streak % 7)
-  // 30일 보너스까지 남은 일수
-  const toNext30 = streak === 0 ? 30 : 30 - (streak % 30)
-
-  // 7칸 마커: 현재 streak의 7일 사이클 내 위치
-  const filledDots = streak % 7 === 0 && streak > 0 ? 7 : streak % 7
-
-  return (
-    <div className="bg-white rounded-2xl p-5 shadow-sm border border-neutral-100">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-2xl leading-none">🔥</span>
-          <div>
-            <p className="text-sm font-semibold text-neutral-800">
-              <span className="text-xl font-extrabold text-orange-500 tabular-nums mr-1">
-                {streak}
-              </span>
-              {t('maturing.attendanceDays', '일 연속 출석 중')}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* 7칸 출석 마커 */}
-      <div className="flex gap-2 mt-3">
-        {Array.from({ length: 7 }, (_, i) => (
-          <div
-            key={i}
-            className={`flex-1 h-2.5 rounded-full transition-colors ${
-              i < filledDots
-                ? 'bg-orange-400'
-                : 'bg-neutral-100'
-            }`}
-          />
-        ))}
-      </div>
-      <p className="text-xs text-neutral-400 mt-1 text-right">
-        {t('maturing.daysUntilStreak', { days: toNext7, defaultValue: `7일 연속까지 ${toNext7}일` })}
-      </p>
-
-      {/* 보너스 안내 */}
-      <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-neutral-500">
-        <div className="bg-amber-50 rounded-xl px-3 py-2 text-center">
-          <p className="font-semibold text-amber-700">{t('maturing.bonus7', '🎉 7일 보너스')}</p>
-          <p className="mt-0.5 tabular-nums">
-            {toNext7 === 7 ? t('maturing.bonusToday', '오늘 달성!') : t('maturing.bonusDaysLeft', { days: toNext7, defaultValue: `${toNext7}일 후` })}
-          </p>
-        </div>
-        <div className="bg-amber-50 rounded-xl px-3 py-2 text-center">
-          <p className="font-semibold text-amber-700">{t('maturing.bonus30', '🏆 30일 보너스')}</p>
-          <p className="mt-0.5 tabular-nums">
-            {toNext30 === 30 ? t('maturing.bonusToday', '오늘 달성!') : t('maturing.bonusDaysLeft', { days: toNext30, defaultValue: `${toNext30}일 후` })}
-          </p>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 // ── 점수 이력 아이템 ──────────────────────────────────────────
 
@@ -346,7 +283,7 @@ export default function MaturingPowerSection({ profile }: { profile: UserProfile
     <div className="space-y-4">
       <LevelCard profile={profile} />
       <LevelMapCard currentLevel={currentLevel} />
-      <AttendanceCard profile={profile} />
+      <AttendanceGrass streakCount={profile.consecutiveAttendance} />
       <ScoreHistoryList />
     </div>
   )

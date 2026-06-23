@@ -1570,6 +1570,11 @@
     "bonus30": "🏆 30-Day Bonus",
     "bonusToday": "Achieved Today!",
     "bonusDaysLeft": "In {{days}} days",
+    "attendanceTitle": "Attendance",
+    "attendanceButton": "Check Attendance",
+    "attendanceCompleted": "Attended Today",
+    "overviewContributions": "Overview {{count}} contributions in the last year",
+    "currentStreak": "Current streak: {{days}} days",
     "filter": {
       "all": "All",
       "earn": "Earned",

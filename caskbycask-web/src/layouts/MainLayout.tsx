@@ -18,6 +18,7 @@ import LevelBadge from '@/shared/components/LevelBadge'
 import DefaultAvatar from '@/shared/components/DefaultAvatar'
 import AdminIcon from '@/shared/components/icons/AdminIcon'
 import ProducerIcon from '@/shared/components/icons/ProducerIcon'
+import AttendanceButton from '@/domain/score/components/AttendanceButton'
 
 const SEEN_KEY = 'notice:lastSeenId'
 
@@ -630,6 +631,7 @@ export default function MainLayout() {
 
           {/* 우측 액션 */}
           <div className="flex items-center gap-1 sm:gap-2 ml-auto flex-shrink-0">
+            {isLoggedIn && <AttendanceButton />}
             {isLoggedIn && <NotificationBell />}
             {isLoggedIn && <LangToggle />}
             <UserDropdown />

@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -20,6 +21,20 @@ public class AttendanceService {
     private final AttendanceLogRepository attendanceLogRepository;
     private final UserRepository userRepository;
     private final ScoreService scoreService;
+
+    @Transactional(readOnly = true)
+    public boolean isAttendedToday(Long userId) {
+        return attendanceLogRepository.existsByUserIdAndAttendanceDate(userId, LocalDate.now());
+    }
+
+    @Transactional(readOnly = true)
+    public List<LocalDate> getAttendanceHistoryInLastYear(Long userId) {
+        LocalDate oneYearAgo = LocalDate.now().minusYears(1);
+        return attendanceLogRepository.findAllByUserIdAndAttendanceDateGreaterThanEqual(userId, oneYearAgo)
+                .stream()
+                .map(AttendanceLog::getAttendanceDate)
+                .toList();
+    }
 
     @Transactional
     public AttendanceResult checkAttendance(Long userId) {

@@ -111,7 +111,7 @@ public class OAuthService {
         TokenResponse tokens = issueTokens(user.getId(), user.getRole());
         LoginResponse body = LoginResponse.of(
                 tokens.accessToken(),
-                attendanceService.checkAttendance(user.getId()),
+                null,
                 user.isPasswordChangeRequired(),
                 Boolean.TRUE.equals(user.getMustChangePassword()));
         return new OAuthCallbackResult(OAuthCallbackResponse.login(body), tokens.refreshToken());
@@ -177,7 +177,7 @@ public class OAuthService {
         TokenResponse tokens = issueTokens(user.getId(), user.getRole());
         LoginResponse body = LoginResponse.of(
                 tokens.accessToken(),
-                attendanceService.checkAttendance(user.getId()),
+                null,
                 false,
                 false);
         return new AuthLoginResult(body, tokens.refreshToken());
