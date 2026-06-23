@@ -2,6 +2,7 @@ package com.caskbycask.domain.seo.controller;
 
 import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.domain.spirit.entity.SpiritImage;
+import com.caskbycask.domain.spirit.entity.enums.VariantType;
 import com.caskbycask.domain.spirit.repository.SpiritImageRepository;
 import com.caskbycask.domain.spirit.repository.SpiritRepository;
 import jakarta.servlet.http.HttpServletRequest;
@@ -69,6 +70,23 @@ public class SeoPageController {
         // 3. Extract metadata
         String nameKo = spirit.getNameKo();
         String nameEn = spirit.getNameEn();
+        if (spirit.getVariantType() != null && spirit.getVariantType() != VariantType.NONE) {
+            if (spirit.getVariantValue() != null && !spirit.getVariantValue().trim().isEmpty()) {
+                nameKo = nameKo + " " + spirit.getVariantValue().trim();
+            }
+            String valEn = spirit.getVariantValueEn() != null && !spirit.getVariantValueEn().trim().isEmpty()
+                    ? spirit.getVariantValueEn().trim()
+                    : (spirit.getVariantValue() != null ? spirit.getVariantValue().trim() : "");
+            if (nameEn != null && !nameEn.trim().isEmpty()) {
+                if (!valEn.isEmpty()) {
+                    nameEn = nameEn + " " + valEn;
+                }
+            } else {
+                if (!valEn.isEmpty()) {
+                    nameEn = valEn;
+                }
+            }
+        }
         String primaryName = isEn ? (nameEn != null && !nameEn.isEmpty() ? nameEn : nameKo) : nameKo;
         String secondaryName = isEn ? nameKo : nameEn;
 

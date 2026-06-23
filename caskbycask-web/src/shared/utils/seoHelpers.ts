@@ -164,15 +164,30 @@ export async function getSpiritDetailMetadata(id: string, lang: 'ko' | 'en' | nu
       }
     }
 
-    const title = spirit.nameEn 
-      ? `${spirit.nameKo} (${spirit.nameEn}) 주류 정보 & 리뷰 (Specs & Reviews) — CaskByCask` 
-      : `${spirit.nameKo} 주류 정보 & 리뷰 (Specs & Reviews) — CaskByCask`
+    const hasEdition = spirit.variantType && spirit.variantType !== 'NONE'
+    let nameKo = spirit.nameKo
+    let nameEn = spirit.nameEn
+    if (hasEdition) {
+      if (spirit.variantValue && spirit.variantValue.trim()) {
+        nameKo = `${spirit.nameKo} ${spirit.variantValue.trim()}`
+      }
+      const valEn = spirit.variantValueEn || spirit.variantValue
+      if (valEn && valEn.trim()) {
+        nameEn = spirit.nameEn 
+          ? `${spirit.nameEn} ${valEn.trim()}` 
+          : valEn.trim()
+      }
+    }
+
+    const title = nameEn 
+      ? `${nameKo} (${nameEn}) 주류 정보 & 리뷰 (Specs & Reviews) — CaskByCask` 
+      : `${nameKo} 주류 정보 & 리뷰 (Specs & Reviews) — CaskByCask`
       
     const abv = spirit.abv ? `도수 ${spirit.abv}%` : ''
     const abvEn = spirit.abv ? `ABV ${spirit.abv}%` : ''
     const age = spirit.commonDetail?.ageStatement ? `${spirit.commonDetail.ageStatement}년 숙성` : ''
     const ageEn = spirit.commonDetail?.ageStatement ? `${spirit.commonDetail.ageStatement}yo` : ''
-    const description = `${spirit.nameKo}의 원산지, ${abv}, ${age} 캐스크 정보 등 상세한 주류 정보와 함께 테이스팅 노트 및 평점(${spirit.scoreAvg ?? 0}점) 리뷰를 만나보세요. Discover detailed specs (${abvEn}, ${ageEn}), tasting notes, and ratings for ${spirit.nameEn || spirit.nameKo} on CaskByCask.`
+    const description = `${nameKo}의 원산지, ${abv}, ${age} 캐스크 정보 등 상세한 주류 정보와 함께 테이스팅 노트 및 평점(${spirit.scoreAvg ?? 0}점) 리뷰를 만나보세요. Discover detailed specs (${abvEn}, ${ageEn}), tasting notes, and ratings for ${nameEn || nameKo} on CaskByCask.`
     
     const canonical = `https://caskbycask.net${prefix}/spirits/${id}`
     const ogImage = spirit.imageUrl || 'https://caskbycask.net/og-image.png'
