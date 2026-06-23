@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.caskbycask.domain.spirit.entity.enums.VariantType;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -69,13 +70,34 @@ public class SitemapService {
         try {
             @SuppressWarnings("unchecked")
             List<Object[]> spirits = em.createQuery(
-                    "SELECT s.id, s.updatedAt, s.nameEn, s.nameKo FROM Spirit s ORDER BY s.id"
+                    "SELECT s.id, s.updatedAt, s.nameEn, s.nameKo, s.variantType, s.variantValue, s.variantValueEn FROM Spirit s ORDER BY s.id"
             ).getResultList();
             for (Object[] row : spirits) {
                 Long id = (Long) row[0];
                 LocalDateTime updated = (LocalDateTime) row[1];
                 String nameEn = (String) row[2];
                 String nameKo = (String) row[3];
+                VariantType variantType = (VariantType) row[4];
+                String variantValue = (String) row[5];
+                String variantValueEn = (String) row[6];
+
+                if (variantType != null && variantType != VariantType.NONE) {
+                    if (variantValue != null && !variantValue.trim().isEmpty()) {
+                        nameKo = nameKo + " " + variantValue.trim();
+                    }
+                    String valEn = variantValueEn != null && !variantValueEn.trim().isEmpty()
+                            ? variantValueEn.trim()
+                            : (variantValue != null ? variantValue.trim() : "");
+                    if (nameEn != null && !nameEn.trim().isEmpty()) {
+                        if (!valEn.isEmpty()) {
+                            nameEn = nameEn + " " + valEn;
+                        }
+                    } else {
+                        if (!valEn.isEmpty()) {
+                            nameEn = valEn;
+                        }
+                    }
+                }
 
                 String slugKo = slugify(nameKo);
                 String slugEn = slugify(nameEn);
