@@ -5,7 +5,7 @@
 CaskByCask는 주류(위스키·와인·꼬냑·기타) 정보와 사용자 리뷰를 중심으로 한 커뮤니티 서비스입니다.
 주류 정보·리뷰, 게시판·BYOB 커뮤니티, 가격 추적, 랭킹·점수 시스템, 핫딜 자동 수집, 관리자 시스템을 제공합니다.
 
-> ⚠️ 현재 **운영서버 배포 전, 개발 중** 단계입니다. (개인 운영 커뮤니티 — 사업자 없음)
+> 🟢 현재 **운영 서버 배포 완료 및 서비스 운영 중**입니다. (공식 주소: [caskbycask.net](https://caskbycask.net))
 
 ---
 
@@ -16,7 +16,7 @@ CaskByCask는 주류(위스키·와인·꼬냑·기타) 정보와 사용자 리�
 | 디렉토리 | 역할 | 스택 |
 |---|---|---|
 | [`caskbycask-api`](./caskbycask-api) | 백엔드 REST API | Java 21 / Spring Boot 3.5 |
-| [`caskbycask-web`](./caskbycask-web) | 프론트엔드 SPA | React 19 / TypeScript / Vite |
+| [`caskbycask-web`](./caskbycask-web) | 프론트엔드 Web App | React 19 / Next.js 16 / TypeScript |
 | [`caskbycask-crawler`](./caskbycask-crawler) | 핫딜 자동 수집 크롤러 | Python / OpenAI |
 | [`deploy`](./deploy) | 배포 스크립트·운영 문서·nginx·systemd | GitHub Actions |
 
@@ -34,14 +34,14 @@ CaskByCask는 주류(위스키·와인·꼬냑·기타) 정보와 사용자 리�
 - SpringDoc OpenAPI (Swagger UI — local/dev 한정)
 
 ### 프론트엔드 (`caskbycask-web`)
-- React 19 / TypeScript / Vite 8
+- React 19 / Next.js 16 (Standalone) / TypeScript
 - Tailwind CSS v4 (primary: amber)
 - Zustand (auth 등 전역 상태) · TanStack React Query (서버 상태)
 - React Hook Form + Zod (폼·검증)
 - TipTap (리치 텍스트 에디터)
 - react-i18next (ko 기본 / en 지원)
 - Axios (인터셉터 기반 자동 토큰 갱신)
-- 정적 프리렌더링(Puppeteer)으로 SEO 최적화
+- Next.js SSR/ISR 및 JSON-LD 기반 SEO 최적화
 
 ### 크롤러 (`caskbycask-crawler`)
 - Python 3.8+ · OpenAI GPT-4o-mini (분석)
@@ -52,10 +52,10 @@ CaskByCask는 주류(위스키·와인·꼬냑·기타) 정보와 사용자 리�
 ## 아키텍처 / 데이터 흐름
 
 ```
-[사용자] ─ HTTPS ─ [Cloudflare] ─ [nginx] ─┬─ 정적(dist) → caskbycask-web (React SPA)
-                                            │
-                                            └─ /api → Spring Boot (caskbycask-api) ─┬─ MariaDB
-                                                                                    └─ Redis
+[사용자] ─ HTTPS ─ [Cloudflare] ─ [nginx] ─┬─ / (SSR/정적) → Next.js (caskbycask-web:3000)
+                                            ├─ /uploads → 로컬 디스크 (/app/upload)
+                                            └─ /api → Spring Boot (caskbycask-api:8080) ─┬─ MariaDB
+                                                                                         └─ Redis
 
 [시놀로지 NAS] caskbycask-crawler ── 20분 주기 크롤링 → OpenAI 분석
         └─ POST /api/internal/deals (X-Internal-Key) → 관리자 검토 큐 (status=PENDING, is_visible=false)
@@ -112,8 +112,8 @@ npm install
 npm run dev
 ```
 
-- Vite 개발 서버 포트 **5173**
-- `/api`, `/uploads` 요청은 `http://localhost:8080`(백엔드)으로 프록시됩니다.
+- Next.js 개발 서버 포트 **3000**
+- `/api`, `/uploads` 요청은 `http://localhost:8080`(백엔드)으로 프록시(Next.js Rewrite)됩니다.
 
 ### 크롤러
 별도 가이드를 참조하세요 → [`caskbycask-crawler/README.md`](./caskbycask-crawler/README.md)
@@ -131,8 +131,8 @@ cd caskbycask-api
 ### 프론트엔드
 ```bash
 cd caskbycask-web
-npm run build              # tsc → vite build → 정적 HTML 프리렌더링(prerender.mjs)
-npm run build:no-prerender # 프리렌더링 생략 빌드
+npm run build      # Next.js standalone 빌드 (.next/standalone 생성)
+npm run start      # 로컬 프로덕션 실행 (포트 3000)
 ```
 
 ---
@@ -161,7 +161,7 @@ DB 스키마는 **Flyway가 소유**합니다(클린 베이스라인). `V1__init
 ## 배포 / 인프라
 
 - **서버**: Oracle Cloud Infrastructure (대한민국 춘천 리전), Ubuntu (aarch64)
-- **네트워크**: Cloudflare(프록시·SSL) → nginx → Spring Boot / 정적 dist
+- **네트워크**: Cloudflare(프록시·SSL) → nginx → Spring Boot / Next.js Node 서버 (SSR/정적)
 - **배포**: GitHub Actions 수동 트리거(`workflow_dispatch`, 대상 `both`/`api`/`web`)
   - x86 러너에서 빌드 → 서버로 전송 → 무중단 swap + readiness health check + 실패 시 자동 rollback
 
@@ -174,7 +174,8 @@ DB 스키마는 **Flyway가 소유**합니다(클린 베이스라인). `V1__init
 ## 프로젝트 문서
 
 - [`CLAUDE.md`](./CLAUDE.md) — 개발 컨텍스트 및 규칙(아키텍처 원칙, i18n, 술 데이터 단일 소스 등)
-- [`deploy/DEPLOY-PIPELINE.md`](./deploy/DEPLOY-PIPELINE.md) — 배포 파이프라인
-- [`deploy/OPERATIONS-GUIDE.md`](./deploy/OPERATIONS-GUIDE.md) — 운영 가이드
+- [`deploy.md`](./deploy.md) — Flyway 마이그레이션 및 운영 가이드
+- [`deploy/DEPLOY-PIPELINE.md`](./deploy/DEPLOY-PIPELINE.md) — 배포 파이프라인 개요
+- [`deploy/OPERATIONS-GUIDE.md`](./deploy/OPERATIONS-GUIDE.md) — 운영 가이드(배포/점검/백업/복원)
 - [`deploy/SEO.md`](./deploy/SEO.md) — SEO 설정
 - [`caskbycask-crawler/README.md`](./caskbycask-crawler/README.md) — 핫딜 크롤러 가이드
