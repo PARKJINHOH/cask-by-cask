@@ -66,10 +66,6 @@ jobs:
           ENDPOINT: "https://${{ secrets.OCI_NAMESPACE }}.compat.objectstorage.ap-chuncheon-1.oraclecloud.com"
           BUCKET: ${{ secrets.OCI_BUCKET }}
         run: |
-          # 디버깅: Secrets 주입 여부 확인 (글자 수 출력)
-          echo "Debug - ACCESS_KEY_ID length: ${#AWS_ACCESS_KEY_ID}"
-          echo "Debug - SECRET_ACCESS_KEY length: ${#AWS_SECRET_ACCESS_KEY}"
-          
           # AWS CLI S3 설정 (Multipart 업로드 차단, v4 서명 및 경로 스타일 강제, 페이로드 서명 비활성화)
           aws configure set default.s3.multipart_threshold 512MB
           aws configure set default.s3.multipart_chunksize 512MB
@@ -132,10 +128,6 @@ jobs:
           ENDPOINT: "https://${{ secrets.OCI_NAMESPACE }}.compat.objectstorage.ap-chuncheon-1.oraclecloud.com"
           BUCKET: ${{ secrets.OCI_BUCKET }}
         run: |
-          # 디버깅: Secrets 주입 여부 확인 (글자 수 출력)
-          echo "Debug - ACCESS_KEY_ID length: ${#AWS_ACCESS_KEY_ID}"
-          echo "Debug - SECRET_ACCESS_KEY length: ${#AWS_SECRET_ACCESS_KEY}"
-          
           # AWS CLI S3 설정 (Multipart 업로드 차단, v4 서명 및 경로 스타일 강제, 페이로드 서명 비활성화)
           aws configure set default.s3.multipart_threshold 512MB
           aws configure set default.s3.multipart_chunksize 512MB

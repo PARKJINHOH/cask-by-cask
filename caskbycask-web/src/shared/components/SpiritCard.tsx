@@ -175,11 +175,21 @@ function SpiritCard({
           <PlaceholderImage />
         )}
 
-        {/* 카테고리 오버레이 (좌상단) — 클릭 통과 */}
-        <span className="absolute top-2 left-2 z-20 px-2 py-0.5 rounded-md text-[11px] font-semibold
-          bg-black/45 text-white backdrop-blur-sm pointer-events-none">
-          {t(`spirit.category.${spirit.category}`)}
-        </span>
+        {/* 카테고리 & 조회수 오버레이 (좌상단) — 클릭 통과 */}
+        <div className="absolute top-2 left-2 z-20 flex flex-col items-start gap-1 pointer-events-none">
+          <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-black/45 text-white backdrop-blur-sm">
+            {t(`spirit.category.${spirit.category}`)}
+          </span>
+          {spirit.viewCount !== undefined && spirit.viewCount > 0 && (
+            <span className="px-1 py-0.5 rounded text-[8px] font-medium bg-black/25 text-white backdrop-blur-sm flex items-center gap-0.5">
+              <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              {spirit.viewCount.toLocaleString()}
+            </span>
+          )}
+        </div>
 
         {/* 확대 버튼 (우상단) — 이 버튼만 라이트박스, 나머지 영역은 상세보기 */}
         {spirit.primaryImageUrl && (
@@ -198,19 +208,6 @@ function SpiritCard({
               <path d="M11 8v6M8 11h6" />
             </svg>
           </button>
-        )}
-
-        {/* 조회수 (우상단, 확대 버튼 존재 시 왼쪽 배치) — 클릭 통과 */}
-        {spirit.viewCount !== undefined && spirit.viewCount > 0 && (
-          <span className={`absolute top-2 z-20 px-1 py-0.5 rounded text-[8px] font-medium
-            bg-black/25 text-white backdrop-blur-sm pointer-events-none flex items-center gap-0.5
-            ${spirit.primaryImageUrl ? 'right-11' : 'right-2'}`}>
-            <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-            </svg>
-            {spirit.viewCount.toLocaleString()}
-          </span>
         )}
       </div>
 
