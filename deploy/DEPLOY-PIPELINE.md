@@ -13,15 +13,17 @@ main push (코드만)
    │     target 선택: both(FE+BE) / api(백엔드만) / web(프론트만)
    ▼
 GitHub Actions (ubuntu-latest, x86) — 대상 잡만 실행, 나머지는 skipped
-   ├─ build-api : gradle bootJar      → app.jar      (아키텍처 중립)   [target=both|api]
-   ├─ build-web : npm ci + npm run build (standalone) → .next/standalone [target=both|web]
-   └─ deploy    : 빌드된 산출물만 scp/rsync 로 전송 → 해당 교체 스크립트 실행
+   ├─ build-api : gradle bootJar      → app.jar      ➔ Oracle Object Storage 업로드
+   ├─ build-web : npm ci + npm run build (standalone) → dist ➔ dist.tar.gz ➔ Oracle Object Storage 업로드
+   └─ deploy    : Object Storage에서 최신 아티팩트 다운로드 ➔ scp/rsync 로 서버 전송 ➔ 해당 교체 스크립트 실행
    ▼
 서버 (Ubuntu 24.04 aarch64, Oracle Cloud 춘천)
    ├─ deploy-web.sh : dist 교체 (무중단에 가까움)
    └─ deploy-api.sh : jar 교체 → 재시작 → 헬스체크 → 실패 시 롤백
 ```
 
+- **아티팩트 저장소**: Github Private Repo의 아티팩트 저장 공간 한계(Artifact storage quota) 문제를 해결하기 위해, 빌드된 아티팩트를 **Oracle Object Storage(S3 호환 API)**에 업로드하여 임시 보관합니다.
+- **버킷 용량 관리**: 10GB 무료 버킷의 공간 효율성을 위해, `api`와 `web` 빌드 산출물은 **각각 최신 3개씩만 유지**하고 이전 파일은 자동 정리(cleanup)합니다.
 - 서버는 **빌드하지 않는다** (Gradle/Node/소스 없음). JRE + nginx 만 있으면 됨.
 - 서버가 aarch64여도 산출물(jar=바이트코드, dist=정적파일)은 아키텍처 무관 → x86 러너 빌드본 그대로 동작.
 
@@ -57,7 +59,9 @@ ssl:    /etc/nginx/ssl/caskbycask.net.{pem,key}     (Cloudflare Origin Cert)
 systemd: /etc/systemd/system/caskbycask-api.service (app 127.0.0.1:8080, actuator 8081)
 ```
 
-**버전 보관 정책:** 항상 `current + previous` 2개만 유지. 새 배포 시 가장 오래된 백업 삭제 → 직전 운영본 백업 → 신규 운영.
+**버전 보관 정책:** 
+- **운영 서버**: 항상 `current + previous` 2개만 유지. 새 배포 시 가장 오래된 백업 삭제 → 직전 운영본 백업 → 신규 운영.
+- **Oracle Object Storage**: 빌드 이력 관리를 위해 `api/` 및 `web/` 경로 각각 **최신 아티팩트 3개만 보관**하고 이전 아티팩트는 업로드 직후 자동 삭제 처리.
 
 ---
 
@@ -96,14 +100,18 @@ systemd: /etc/systemd/system/caskbycask-api.service (app 127.0.0.1:8080, actuato
 
 ---
 
-## 5. GitHub Secrets (앱 환경변수 아님 — SSH 접속만)
+## 5. GitHub Secrets (배포 및 OCI 연동 정보)
 
 | Secret | 설명 |
 |---|---|
-| `SSH_HOST` | 서버 공인 IP |
+| `SSH_HOST` | 서버 공인 IP (또는 Cloudflare 미프록시 직결 주소) |
 | `SSH_USER` | 배포 유저 (예: `ubuntu`) |
 | `SSH_KEY` | 배포용 SSH 개인키 전체 |
 | `SSH_PORT` | (선택) SSH 포트, 미설정 시 22 |
+| `OCI_S3_ACCESS_KEY_ID` | Oracle Object Storage S3 호환 Access Key ID |
+| `OCI_S3_SECRET_ACCESS_KEY` | Oracle Object Storage S3 호환 Secret Access Key |
+| `OCI_NAMESPACE` | Oracle Cloud Object Storage Namespace |
+| `OCI_BUCKET` | 아티팩트를 보관할 버킷 이름 (예: `caskbycask-artifacts`) |
 
 > DB 비번/JWT/OpenAI 등 **앱 비밀값은 GitHub 에 두지 않는다.** 서버 `/app/env/api.env` 에만 존재.
 

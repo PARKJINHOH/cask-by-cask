@@ -56,11 +56,31 @@ jobs:
           JAR=$(ls -t build/libs/*.jar | grep -v plain | head -1)
           echo "Picked: $JAR"
           cp "$JAR" build/libs/app.jar
-      - uses: actions/upload-artifact@v7
-        with:
-          name: api-jar
-          path: caskbycask-api/build/libs/app.jar
-          retention-days: 5
+      - name: Upload to Oracle Object Storage & Cleanup
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.OCI_S3_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.OCI_S3_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: "ap-chuncheon-1"
+          ENDPOINT: "https://${{ secrets.OCI_NAMESPACE }}.compat.objectstorage.ap-chuncheon-1.oraclecloud.com"
+          BUCKET: ${{ secrets.OCI_BUCKET }}
+        run: |
+          # 1. 파일 업로드
+          aws s3 cp caskbycask-api/build/libs/app.jar "s3://$BUCKET/api/app-${{ github.run_id }}-${{ github.run_attempt }}.jar" --endpoint-url "$ENDPOINT"
+          
+          # 2. 최신 3개만 유지하고 이전 아티팩트 정리
+          KEYS=$(aws s3api list-objects-v2 --bucket "$BUCKET" --prefix "api/" --endpoint-url "$ENDPOINT" --query "sort_by(Contents, &LastModified)[].Key" --output text 2>/dev/null || echo "")
+          if [ -n "$KEYS" ] && [ "$KEYS" != "None" ]; then
+            read -ra key_array <<< "$KEYS"
+            total=${#key_array[@]}
+            if [ "$total" -gt 3 ]; then
+              delete_count=$((total - 3))
+              for ((i=0; i<delete_count; i++)); do
+                key="${key_array[i]}"
+                echo "Deleting old API artifact: $key"
+                aws s3api delete-object --bucket "$BUCKET" --key "$key" --endpoint-url "$ENDPOINT"
+              done
+            fi
+          fi
 
   build-web:
     if: ${{ inputs.target == 'both' || inputs.target == 'web' }}
@@ -89,12 +109,34 @@ jobs:
           if [ -d "public" ]; then
             cp -r public .next/standalone/
           fi
-      - uses: actions/upload-artifact@v7
-        with:
-          name: web-dist
-          path: caskbycask-web/.next/standalone
-          include-hidden-files: true
-          retention-days: 5
+      - name: Compress & Upload to Oracle Object Storage & Cleanup
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.OCI_S3_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.OCI_S3_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: "ap-chuncheon-1"
+          ENDPOINT: "https://${{ secrets.OCI_NAMESPACE }}.compat.objectstorage.ap-chuncheon-1.oraclecloud.com"
+          BUCKET: ${{ secrets.OCI_BUCKET }}
+        run: |
+          # 1. tar.gz로 압축
+          tar -czf web-dist.tar.gz -C caskbycask-web/.next/standalone .
+          
+          # 2. 파일 업로드
+          aws s3 cp web-dist.tar.gz "s3://$BUCKET/web/web-dist-${{ github.run_id }}-${{ github.run_attempt }}.tar.gz" --endpoint-url "$ENDPOINT"
+          
+          # 3. 최신 3개만 유지하고 이전 아티팩트 정리
+          KEYS=$(aws s3api list-objects-v2 --bucket "$BUCKET" --prefix "web/" --endpoint-url "$ENDPOINT" --query "sort_by(Contents, &LastModified)[].Key" --output text 2>/dev/null || echo "")
+          if [ -n "$KEYS" ] && [ "$KEYS" != "None" ]; then
+            read -ra key_array <<< "$KEYS"
+            total=${#key_array[@]}
+            if [ "$total" -gt 3 ]; then
+              delete_count=$((total - 3))
+              for ((i=0; i<delete_count; i++)); do
+                key="${key_array[i]}"
+                echo "Deleting old WEB artifact: $key"
+                aws s3api delete-object --bucket "$BUCKET" --key "$key" --endpoint-url "$ENDPOINT"
+              done
+            fi
+          fi
 
 
   deploy:
@@ -110,16 +152,33 @@ jobs:
       # 아티팩트 다운로드 — 해당 빌드가 실제로 성공했을 때만
       - name: Download api jar
         if: ${{ needs.build-api.result == 'success' }}
-        uses: actions/download-artifact@v7
-        with:
-          name: api-jar
-          path: artifacts/api
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.OCI_S3_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.OCI_S3_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: "ap-chuncheon-1"
+          ENDPOINT: "https://${{ secrets.OCI_NAMESPACE }}.compat.objectstorage.ap-chuncheon-1.oraclecloud.com"
+          BUCKET: ${{ secrets.OCI_BUCKET }}
+        run: |
+          mkdir -p artifacts/api
+          KEY=$(aws s3api list-objects-v2 --bucket "$BUCKET" --prefix "api/" --endpoint-url "$ENDPOINT" --query "sort_by(Contents, &LastModified)[-1].Key" --output text)
+          echo "Downloading API artifact: $KEY"
+          aws s3 cp "s3://$BUCKET/$KEY" artifacts/api/app.jar --endpoint-url "$ENDPOINT"
       - name: Download web dist
         if: ${{ needs.build-web.result == 'success' }}
-        uses: actions/download-artifact@v7
-        with:
-          name: web-dist
-          path: artifacts/web/dist
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.OCI_S3_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.OCI_S3_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: "ap-chuncheon-1"
+          ENDPOINT: "https://${{ secrets.OCI_NAMESPACE }}.compat.objectstorage.ap-chuncheon-1.oraclecloud.com"
+          BUCKET: ${{ secrets.OCI_BUCKET }}
+        run: |
+          mkdir -p artifacts/web
+          KEY=$(aws s3api list-objects-v2 --bucket "$BUCKET" --prefix "web/" --endpoint-url "$ENDPOINT" --query "sort_by(Contents, &LastModified)[-1].Key" --output text)
+          echo "Downloading WEB artifact: $KEY"
+          aws s3 cp "s3://$BUCKET/$KEY" artifacts/web/web-dist.tar.gz --endpoint-url "$ENDPOINT"
+          mkdir -p artifacts/web/dist
+          tar -xzf artifacts/web/web-dist.tar.gz -C artifacts/web/dist
+          rm -f artifacts/web/web-dist.tar.gz
       - name: Setup SSH
         env:
           SSH_KEY: ${{ secrets.SSH_KEY }}
