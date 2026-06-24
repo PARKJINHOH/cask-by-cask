@@ -9,18 +9,20 @@ import type {
   UploadedBannerImage,
   BannerLanguage,
   BannerImageType,
+  BannerPosition,
 } from '../types/banner.types'
 
 export const bannerApi = {
   // ── 공개 ──────────────────────────────────────────────────
-  getBanners: (language: BannerLanguage) =>
+  getBanners: (language: BannerLanguage, position: BannerPosition = 'MAIN') =>
     axiosInstance.get<ApiResponse<BannerResponse[]>>('/api/banners', {
-      params: { language },
+      params: { language, position },
     }),
 
   // ── 관리자 ────────────────────────────────────────────────
   getAdminBanners: (params: {
     language?: BannerLanguage
+    position?: BannerPosition
     isVisible?: boolean
     page?: number
     size?: number

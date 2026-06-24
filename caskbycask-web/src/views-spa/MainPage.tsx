@@ -580,7 +580,8 @@ export default function MainPage() {
   const { t } = useTranslation()
 
   const bannerLanguage = (i18n.language.toUpperCase() === 'EN' ? 'EN' : 'KO') as 'KO' | 'EN'
-  const { data: banners = [] } = useBanners(bannerLanguage)
+  const { data: banners = [] } = useBanners(bannerLanguage, 'MAIN')
+  const { data: sideBanners = [] } = useBanners(bannerLanguage, 'SIDE')
 
   const { data: popups = [] } = usePopups(bannerLanguage)
   const [isPopupOpen, setIsPopupOpen] = useState(false)
@@ -624,15 +625,15 @@ export default function MainPage() {
           : '주류 정보, 위스키 리뷰, 와인 평점, 꼬냑 등급, 주류 커뮤니티, 캐스크바이캐스크, 캐바캐'}
       />
 
-      {/* 메인 배너 슬라이더 (관리자 이미지, 슬림) */}
-      {banners.length > 0 && <BannerSlider banners={banners} />}
-
       {/* 본문: 2열 (주 콘텐츠 + 사이드바) */}
       <div className="max-w-7xl mx-auto px-4 py-6 lg:py-8">
         <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-7">
 
           {/* 주 콘텐츠 */}
           <div className="space-y-10 min-w-0">
+            {/* 메인 배너 슬라이더 (주 콘텐츠 영역으로 이동, 21:9 비율) */}
+            {banners.length > 0 && <BannerSlider banners={banners} aspectClass="aspect-[21/9]" />}
+
             {/* 커뮤니티 최신글 */}
             <CommunityLatestSection />
 
@@ -667,6 +668,42 @@ export default function MainPage() {
             <EventCard />
             <ShortcutsWidget />
             <NoticeWidget notices={notices} />
+
+            {/* 사이드바 배너 */}
+            {sideBanners.length > 0 && (
+              <div className="space-y-4">
+                {sideBanners.map((banner) => {
+                  const img = banner.pcImage
+                  if (!img) return null
+                  return (
+                    <div key={banner.id} className="relative overflow-hidden rounded-xl border border-neutral-100 bg-white shadow-sm">
+                      {banner.linkUrl ? (
+                        <a
+                          href={banner.linkUrl}
+                          target={banner.linkTargetBlank ? '_blank' : '_self'}
+                          rel={banner.linkTargetBlank ? 'noopener noreferrer' : undefined}
+                          className="block aspect-[16/9] w-full relative group overflow-hidden"
+                        >
+                          <img
+                            src={img.imageUrl}
+                            alt={banner.contentSanitized || 'side banner'}
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          />
+                        </a>
+                      ) : (
+                        <div className="aspect-[16/9] w-full">
+                          <img
+                            src={img.imageUrl}
+                            alt={banner.contentSanitized || 'side banner'}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </aside>
         </div>
       </div>

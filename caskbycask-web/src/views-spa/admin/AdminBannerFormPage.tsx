@@ -7,10 +7,12 @@ import { useAdminBannerDetail, useCreateBanner, useUpdateBanner } from '@/domain
 import { bannerApi } from '@/domain/banner/api/bannerApi'
 import HtmlEditorField from '@/shared/components/HtmlEditorField'
 import { sanitizeHtml } from '@/shared/utils/sanitize'
-import type { UploadedBannerImage, BannerType } from '@/domain/banner/types/banner.types'
+import type { UploadedBannerImage, BannerType, BannerPosition } from '@/domain/banner/types/banner.types'
 import AdminPageHeader from '@/shared/components/AdminPageHeader'
 import Toast from '@/shared/components/Toast'
 import { useToast } from '@/shared/hooks/useToast'
+import ImageEditorModal from '@/shared/components/ImageEditorModal'
+import RealMainPreviewModal from '@/domain/banner/components/RealMainPreviewModal'
 import {
   toInputDt, toApiDt, promoSuperRefine,
   FormSection, PromoImageDropzone,
@@ -24,6 +26,7 @@ const schema = z
   .object({
     adminTitle:      z.string().min(1, '관리자 제목을 입력하세요').max(200),
     bannerType:      z.enum(['IMAGE', 'HTML'] as const),
+    position:        z.enum(['MAIN', 'SIDE'] as const),
     language:        z.enum(['KO', 'EN'] as const),
     content:         z.string().optional(),
     linkUrl:         z.string().optional(),
@@ -33,30 +36,38 @@ const schema = z
     startAt:         z.string().optional(),
     endAt:           z.string().optional(),
   })
-  .superRefine((data, ctx) =>
+  .superRefine((data, ctx) => {
+    if (data.position === 'SIDE' && data.bannerType === 'HTML') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: '사이드 배너는 HTML 형식을 사용할 수 없습니다.',
+        path: ['bannerType'],
+      })
+    }
     promoSuperRefine(data, ctx, {
       isHtml: data.bannerType === 'HTML',
       contentRequiredMessage: '배너 내용을 입력하세요',
-    }),
-  )
+    })
+  })
 
 type FormValues = z.infer<typeof schema>
 
 function BannerPreview({
   bannerType,
+  position,
   pcImageUrl,
-  moImageUrl,
   content,
   linkUrl,
 }: {
   bannerType: BannerType
+  position: BannerPosition
   pcImageUrl: string | null
-  moImageUrl: string | null
   content?: string
   linkUrl?: string
 }) {
-  const mobileUrl = moImageUrl ?? pcImageUrl
-  const isMobileFallback = !moImageUrl && !!pcImageUrl
+  const isMain = position === 'MAIN'
+  const aspectClass = isMain ? 'aspect-[21/9]' : 'aspect-[16/9]'
+  const ratioLabel = isMain ? '21:9 비율' : '16:9 비율'
 
   const renderImageSlot = (imageUrl: string | null, label: string) => {
     if (bannerType === 'HTML') {
@@ -96,11 +107,10 @@ function BannerPreview({
 
   return (
     <div className="space-y-5">
-      {/* PC 미리보기 */}
       <div>
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-xs font-semibold text-neutral-600">💻 PC</span>
-          <span className="text-xs text-neutral-400">· 21:5 비율</span>
+        <div className="flex items-center gap-2 mb-2 select-none">
+          <span className="text-xs font-semibold text-neutral-600">🖼 배너 미리보기</span>
+          <span className="text-xs text-neutral-400">· {ratioLabel}</span>
           {linkUrl && (
             <span className="ml-auto text-xs text-primary-800 flex items-center gap-1">
               <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -111,35 +121,9 @@ function BannerPreview({
             </span>
           )}
         </div>
-        <div className="w-full aspect-[21/5] rounded-lg overflow-hidden bg-neutral-800 border border-neutral-200 relative">
-          {renderImageSlot(pcImageUrl, 'PC')}
+        <div className={['w-full rounded-lg overflow-hidden bg-neutral-800 border border-neutral-200 relative', aspectClass].join(' ')}>
+          {renderImageSlot(pcImageUrl, '배너')}
           <div className="absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-black/25 to-transparent pointer-events-none" />
-        </div>
-      </div>
-
-      {/* MO 미리보기 */}
-      <div className="flex items-start gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-xs font-semibold text-neutral-600">📱 모바일</span>
-            <span className="text-xs text-neutral-400">· 3:4 비율</span>
-            {isMobileFallback && (
-              <span className="text-xs text-amber-500">· PC 이미지로 대체</span>
-            )}
-          </div>
-          <div
-            className="overflow-hidden rounded-lg bg-neutral-800 border border-neutral-200 relative"
-            style={{ width: 160, aspectRatio: '3/4' }}
-          >
-            {renderImageSlot(mobileUrl, '모바일')}
-            <div className="absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-black/25 to-transparent pointer-events-none" />
-          </div>
-        </div>
-        <div className="pt-6 text-xs text-neutral-400 leading-relaxed">
-          <p>· 모바일 이미지 미등록 시</p>
-          <p className="ml-2">PC 이미지로 자동 대체됩니다.</p>
-          <p className="mt-2">· 실제 노출 크기와 비율이</p>
-          <p className="ml-2">다를 수 있습니다.</p>
         </div>
       </div>
     </div>
@@ -166,8 +150,17 @@ export default function AdminBannerFormPage() {
   // MO 이미지 상태
   const [uploadedMoImage,    setUploadedMoImage]    = useState<UploadedBannerImage | null>(null)
   const [existingMoImageUrl, setExistingMoImageUrl] = useState<string | null>(null)
-  const [isMoUploading,      setIsMoUploading]      = useState(false)
-  const [moImageError,       setMoImageError]       = useState<string | undefined>()
+
+  // 로컬 파일 편집을 위한 임시 상태
+  const [editingLocalFile, setEditingLocalFile] = useState<{
+    file: File
+    imageType: 'PC' | 'MO'
+    objectUrl: string
+    isExisting?: boolean
+  } | null>(null)
+
+  // 메인페이지 가상 미리보기 모달 상태
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
 
   const {
     register, handleSubmit, control, reset, watch, setValue,
@@ -175,7 +168,7 @@ export default function AdminBannerFormPage() {
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      adminTitle: '', bannerType: 'IMAGE', language: 'KO',
+      adminTitle: '', bannerType: 'IMAGE', position: 'MAIN', language: 'KO',
       content: '', linkUrl: '', linkTargetBlank: true,
       isVisible: false, isAlwaysVisible: false,
       startAt: '', endAt: '',
@@ -187,6 +180,7 @@ export default function AdminBannerFormPage() {
     reset({
       adminTitle:      existing.adminTitle,
       bannerType:      existing.bannerType,
+      position:        existing.position,
       language:        existing.language,
       content:         existing.content ?? '',
       linkUrl:         existing.linkUrl ?? '',
@@ -203,6 +197,7 @@ export default function AdminBannerFormPage() {
   }, [existing, reset])
 
   const bannerType = watch('bannerType')
+  const position   = watch('position')
   const content    = watch('content')
   const linkUrl    = watch('linkUrl')
   const startAt    = watch('startAt')
@@ -223,32 +218,28 @@ export default function AdminBannerFormPage() {
     setValue('content', '')
     setValue('linkUrl', '')
     setUploadedPcImage(null); setExistingPcImageUrl(null); setPcImageError(undefined)
-    setUploadedMoImage(null); setExistingMoImageUrl(null); setMoImageError(undefined)
+    setUploadedMoImage(null); setExistingMoImageUrl(null);
   }
 
-  const handlePcUpload = async (file: File) => {
-    setIsPcUploading(true); setPcImageError(undefined)
+  const handlePcUpload = (file: File) => {
+    const objectUrl = URL.createObjectURL(file)
+    setEditingLocalFile({ file, imageType: 'PC', objectUrl })
+  }
+
+  const handlePcEdit = async () => {
+    const url = pcPreviewUrl
+    if (!url) return
+    setIsPcUploading(true)
     try {
-      const res = await bannerApi.uploadBannerImage(file, 'PC')
-      setUploadedPcImage(res.data.data!)
+      const res = await fetch(url)
+      const blob = await res.blob()
+      const file = new File([blob], uploadedPcImage?.originalFileName ?? existing?.pcImage?.originalFileName ?? 'pc-image.jpg', { type: blob.type })
+      const objectUrl = URL.createObjectURL(file)
+      setEditingLocalFile({ file, imageType: 'PC', objectUrl, isExisting: true })
     } catch {
-      const msg = 'PC 이미지 업로드 중 오류가 발생했습니다.'
-      setPcImageError(msg); showToast(msg, 'error')
+      showToast('이미지 데이터를 불러오는 중 오류가 발생했습니다.', 'error')
     } finally {
       setIsPcUploading(false)
-    }
-  }
-
-  const handleMoUpload = async (file: File) => {
-    setIsMoUploading(true); setMoImageError(undefined)
-    try {
-      const res = await bannerApi.uploadBannerImage(file, 'MO')
-      setUploadedMoImage(res.data.data!)
-    } catch {
-      const msg = '모바일 이미지 업로드 중 오류가 발생했습니다.'
-      setMoImageError(msg); showToast(msg, 'error')
-    } finally {
-      setIsMoUploading(false)
     }
   }
 
@@ -267,13 +258,11 @@ export default function AdminBannerFormPage() {
 
     try {
       if (isEdit && bannerId != null) {
-        // MO 이미지가 기존에 있었는데 제거된 경우
-        const moRemoved = existingMoImageUrl === null && !uploadedMoImage && existing?.moImage != null
-
         await updateMutation.mutateAsync({
           id: bannerId,
           data: {
             adminTitle:      values.adminTitle,
+            position:        values.position,
             isVisible:       values.isVisible,
             isAlwaysVisible: values.isAlwaysVisible,
             startAt:         startAtApi,
@@ -282,8 +271,6 @@ export default function AdminBannerFormPage() {
               ? { content: values.content }
               : {
                   ...(uploadedPcImage ? { bannerPcImageId: uploadedPcImage.id } : {}),
-                  ...(uploadedMoImage ? { bannerMoImageId: uploadedMoImage.id } : {}),
-                  ...(moRemoved       ? { removeMoImage: true } : {}),
                   linkUrl:         values.linkUrl || null,
                   linkTargetBlank: values.linkTargetBlank,
                 }),
@@ -293,6 +280,7 @@ export default function AdminBannerFormPage() {
         await createMutation.mutateAsync({
           adminTitle:      values.adminTitle,
           bannerType:      values.bannerType,
+          position:        values.position,
           language:        values.language,
           isVisible:       values.isVisible,
           sortOrder:       0,
@@ -303,7 +291,6 @@ export default function AdminBannerFormPage() {
             ? { content: values.content }
             : {
                 bannerPcImageId: uploadedPcImage!.id,
-                ...(uploadedMoImage ? { bannerMoImageId: uploadedMoImage.id } : {}),
                 linkUrl:         values.linkUrl || null,
                 linkTargetBlank: values.linkTargetBlank,
               }),
@@ -348,9 +335,44 @@ export default function AdminBannerFormPage() {
                   error={errors.adminTitle?.message}
                 />
 
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    배너 노출 위치 <span className="text-red-500">*</span>
+                  </label>
+                  <div className="flex gap-3">
+                    {(['MAIN', 'SIDE'] as const).map((pos) => (
+                      <label
+                        key={pos}
+                        className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border cursor-pointer transition-all ${
+                          watch('position') === pos
+                            ? 'border-primary-500 bg-primary-50 text-primary-900 font-semibold'
+                            : 'border-neutral-200 text-neutral-600 hover:bg-neutral-50'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          value={pos}
+                          checked={watch('position') === pos}
+                          onChange={() => {
+                            setValue('position', pos)
+                            if (pos === 'SIDE') {
+                              setValue('bannerType', 'IMAGE') // 사이드는 이미지 고정
+                              setUploadedMoImage(null)
+                              setExistingMoImageUrl(null)
+                            }
+                          }}
+                          disabled={isEdit}
+                          className="accent-primary-800"
+                        />
+                        <span>{pos === 'MAIN' ? '🔝 메인 상단 배너' : '➡️ 사이드바 배너'}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
                 <PromoTypeField
                   label="배너 타입"
-                  isEdit={isEdit}
+                  isEdit={isEdit || position === 'SIDE'}
                   value={bannerType}
                   onChange={handleTypeChange}
                 />
@@ -368,10 +390,10 @@ export default function AdminBannerFormPage() {
               <FormSection title="콘텐츠">
                 {bannerType === 'IMAGE' ? (
                   <div className="space-y-5">
-                    {/* PC 이미지 */}
+                    {/* 배너 이미지 */}
                     <PromoImageDropzone
-                      label="PC 이미지"
-                      hint="(권장 비율 21:5 — 가로형 와이드)"
+                      label="배너 이미지"
+                      hint={position === 'MAIN' ? '(권장 비율 21:9)' : '(권장 비율 16:9)'}
                       required
                       alt="배너 미리보기"
                       heightClass="h-36"
@@ -380,28 +402,10 @@ export default function AdminBannerFormPage() {
                       uploadedImage={uploadedPcImage}
                       existingImageUrl={existingPcImageUrl}
                       onUpload={handlePcUpload}
+                      onEdit={handlePcEdit}
                       onRemove={() => { setUploadedPcImage(null); setExistingPcImageUrl(null); setPcImageError(undefined) }}
                       isUploading={isPcUploading}
                       error={pcImageError}
-                    />
-
-                    {/* 구분선 */}
-                    <div className="border-t border-neutral-100" />
-
-                    {/* MO 이미지 */}
-                    <PromoImageDropzone
-                      label="모바일 이미지"
-                      hint="(권장 비율 4:3 — 미등록 시 PC 이미지로 대체)"
-                      alt="배너 미리보기"
-                      heightClass="h-36"
-                      previewClass="max-h-40"
-                      dropText="드래그하거나 클릭하여 업로드"
-                      uploadedImage={uploadedMoImage}
-                      existingImageUrl={existingMoImageUrl}
-                      onUpload={handleMoUpload}
-                      onRemove={() => { setUploadedMoImage(null); setExistingMoImageUrl(null); setMoImageError(undefined) }}
-                      isUploading={isMoUploading}
-                      error={moImageError}
                     />
 
                     {/* 링크 */}
@@ -445,8 +449,8 @@ export default function AdminBannerFormPage() {
               <FormSection title="미리보기">
                 <BannerPreview
                   bannerType={bannerType}
+                  position={position}
                   pcImageUrl={pcPreviewUrl}
-                  moImageUrl={moPreviewUrl}
                   content={content}
                   linkUrl={linkUrl || undefined}
                 />
@@ -477,9 +481,65 @@ export default function AdminBannerFormPage() {
         <PromoFormActions
           onCancel={() => navigate('/admin/banners')}
           onSave={handleSubmit(onSubmit)}
+          onPreview={() => setIsPreviewOpen(true)}
           isPending={isPending}
         />
       </form>
+
+      {/* 로컬 파일 편집을 위한 모달 */}
+      {editingLocalFile && (
+        <ImageEditorModal
+          open={!!editingLocalFile}
+          onClose={() => {
+            if (editingLocalFile.objectUrl) {
+              URL.revokeObjectURL(editingLocalFile.objectUrl)
+            }
+            setEditingLocalFile(null)
+          }}
+          imageSrc={editingLocalFile.objectUrl}
+          fixedRatio={position === 'MAIN' ? '21:9' : '16:9'}
+          isSaving={isPcUploading}
+          onSave={async (editedFile) => {
+            const type = editingLocalFile.imageType
+            if (type === 'PC') {
+              setIsPcUploading(true)
+              setPcImageError(undefined)
+              try {
+                const res = await bannerApi.uploadBannerImage(editedFile, 'PC')
+                setUploadedPcImage(res.data.data!)
+                setExistingPcImageUrl(null)
+              } catch {
+                setPcImageError('PC 이미지 업로드 중 오류가 발생했습니다.')
+                showToast('PC 이미지 업로드 중 오류가 발생했습니다.', 'error')
+              } finally {
+                setIsPcUploading(false)
+              }
+            } else {
+              try {
+                const res = await bannerApi.uploadBannerImage(editedFile, 'MO')
+                setUploadedMoImage(res.data.data!)
+                setExistingMoImageUrl(null)
+              } catch {
+                showToast('모바일 이미지 업로드 중 오류가 발생했습니다.', 'error')
+              }
+            }
+            URL.revokeObjectURL(editingLocalFile.objectUrl)
+            setEditingLocalFile(null)
+          }}
+        />
+      )}
+
+      {/* 가상 메인페이지 미리보기 모달 */}
+      <RealMainPreviewModal
+        open={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        position={position}
+        bannerType={bannerType}
+        pcImageUrl={pcPreviewUrl}
+        moImageUrl={moPreviewUrl}
+        content={content}
+        linkUrl={linkUrl}
+      />
     </div>
   )
 }

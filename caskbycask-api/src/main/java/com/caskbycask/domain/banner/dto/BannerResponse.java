@@ -3,11 +3,13 @@ package com.caskbycask.domain.banner.dto;
 import com.caskbycask.domain.banner.entity.Banner;
 import com.caskbycask.domain.banner.entity.BannerImage;
 import com.caskbycask.domain.banner.entity.enums.BannerLanguage;
+import com.caskbycask.domain.banner.entity.enums.BannerPosition;
 import com.caskbycask.domain.banner.entity.enums.BannerType;
 
 public record BannerResponse(
         Long id,
         BannerType bannerType,
+        BannerPosition position,
         BannerLanguage language,
         // [보안] XSS: HTML형만 포함. content 원본 절대 미반환.
         String contentSanitized,
@@ -27,6 +29,7 @@ public record BannerResponse(
         return new BannerResponse(
                 banner.getId(),
                 banner.getBannerType(),
+                banner.getPosition(),
                 banner.getLanguage(),
                 BannerType.HTML.equals(banner.getBannerType()) ? banner.getContentSanitized() : null,
                 pcImage != null ? BannerImageInfo.from(pcImage) : null,

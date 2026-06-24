@@ -290,6 +290,7 @@ interface PromoImageDropzoneProps {
   error?: string
   /** 확장자·크기 외 추가 검증 — 에러 메시지를 반환하면 alert 후 업로드 중단 */
   validateFile?: (file: File) => Promise<string | null>
+  onEdit?: () => void
 }
 
 export function PromoImageDropzone({
@@ -298,7 +299,7 @@ export function PromoImageDropzone({
   previewClass = 'max-h-64',
   dropText = '이미지를 드래그하거나 클릭하여 업로드',
   dropHints = ['JPG · PNG · GIF · WEBP, 최대 10MB'],
-  uploadedImage, existingImageUrl, onUpload, onRemove, isUploading, error, validateFile,
+  uploadedImage, existingImageUrl, onUpload, onRemove, isUploading, error, validateFile, onEdit,
 }: PromoImageDropzoneProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -346,6 +347,19 @@ export function PromoImageDropzone({
           >
             ×
           </button>
+          {onEdit && (
+            <button
+              type="button"
+              onClick={onEdit}
+              className="absolute bottom-2 right-2 p-1.5 rounded-lg bg-black/60 text-white
+                hover:bg-black/80 transition-colors shadow flex items-center justify-center"
+              title="이미지 편집"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+              </svg>
+            </button>
+          )}
           {uploadedImage && (
             <p className="mt-1 text-xs text-neutral-500">{uploadedImage.originalFileName}</p>
           )}
@@ -504,8 +518,8 @@ export function TwoColumnFormLayout({ left, right }: { left: ReactNode; right: R
 }
 
 // ─── 액션 버튼 (취소/저장) ────────────────────────────
-export function PromoFormActions({ onCancel, onSave, isPending }: {
-  onCancel: () => void; onSave: () => void; isPending: boolean
+export function PromoFormActions({ onCancel, onSave, onPreview, isPending }: {
+  onCancel: () => void; onSave: () => void; onPreview?: () => void; isPending: boolean
 }) {
   return (
     <div className="flex items-center gap-3 pt-1">
@@ -513,6 +527,11 @@ export function PromoFormActions({ onCancel, onSave, isPending }: {
         취소
       </Button>
       <div className="flex-1" />
+      {onPreview && (
+        <Button variant="secondary" onClick={onPreview} disabled={isPending}>
+          미리보기
+        </Button>
+      )}
       <Button variant="primary" isLoading={isPending} onClick={onSave}>
         저장
       </Button>

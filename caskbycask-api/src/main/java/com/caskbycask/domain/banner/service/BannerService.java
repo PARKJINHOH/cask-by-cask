@@ -5,6 +5,7 @@ import com.caskbycask.domain.banner.entity.Banner;
 import com.caskbycask.domain.banner.entity.BannerImage;
 import com.caskbycask.domain.banner.entity.enums.BannerImageType;
 import com.caskbycask.domain.banner.entity.enums.BannerLanguage;
+import com.caskbycask.domain.banner.entity.enums.BannerPosition;
 import com.caskbycask.domain.banner.entity.enums.BannerType;
 import com.caskbycask.domain.banner.repository.BannerImageRepository;
 import com.caskbycask.domain.banner.repository.BannerRepository;
@@ -48,9 +49,9 @@ public class BannerService {
     // ═══════════════════════════════════════════
 
     @Transactional(readOnly = true)
-    public List<BannerResponse> getActiveBanners(BannerLanguage language) {
+    public List<BannerResponse> getActiveBanners(BannerPosition position, BannerLanguage language) {
         Pageable limit10 = PageRequest.of(0, 10);
-        List<Banner> banners = bannerRepository.findActiveBanners(language, LocalDateTime.now(), limit10);
+        List<Banner> banners = bannerRepository.findActiveBanners(position, language, LocalDateTime.now(), limit10);
 
         return banners.stream()
                 .map(banner -> {
@@ -66,10 +67,10 @@ public class BannerService {
     // ═══════════════════════════════════════════
 
     @Transactional(readOnly = true)
-    public Page<AdminBannerListResponse> getAllBannersForAdmin(BannerLanguage language, Boolean isVisible,
+    public Page<AdminBannerListResponse> getAllBannersForAdmin(BannerLanguage language, BannerPosition position, Boolean isVisible,
                                                                int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        return bannerRepository.findAllForAdmin(language, isVisible, pageable)
+        return bannerRepository.findAllForAdmin(language, position, isVisible, pageable)
                 .map(AdminBannerListResponse::from);
     }
 
@@ -97,6 +98,7 @@ public class BannerService {
         Banner banner = Banner.builder()
                 .adminTitle(request.getAdminTitle())
                 .bannerType(request.getBannerType())
+                .position(request.getPosition())
                 .language(request.getLanguage())
                 .content(request.getContent())
                 .contentSanitized(contentSanitized)
@@ -130,6 +132,9 @@ public class BannerService {
     public AdminBannerDetailResponse updateBanner(Long bannerId, UpdateBannerRequest request) {
         Banner banner = findBannerById(bannerId);
 
+        BannerPosition newPosition = request.getPosition() != null
+                ? request.getPosition() : banner.getPosition();
+
         Boolean newIsAlwaysVisible = request.getIsAlwaysVisible() != null
                 ? request.getIsAlwaysVisible() : banner.getIsAlwaysVisible();
 
@@ -145,6 +150,7 @@ public class BannerService {
 
         banner.update(
                 request.getAdminTitle()      != null ? request.getAdminTitle()      : banner.getAdminTitle(),
+                newPosition,
                 newContent, newContentSanitized,
                 request.getLinkUrl()         != null ? request.getLinkUrl()         : banner.getLinkUrl(),
                 request.getLinkTargetBlank() != null ? request.getLinkTargetBlank() : banner.getLinkTargetBlank(),

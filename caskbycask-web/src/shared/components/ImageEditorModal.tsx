@@ -7,6 +7,7 @@ interface ImageEditorModalProps {
   imageSrc: string
   onSave: (editedFile: File) => Promise<void>
   isSaving: boolean
+  fixedRatio?: string
 }
 
 type EditMode = 'paint' | 'crop' | 'rotate' | 'resize'
@@ -25,6 +26,7 @@ export default function ImageEditorModal({
   imageSrc,
   onSave,
   isSaving,
+  fixedRatio,
 }: ImageEditorModalProps) {
   const [mode, setMode] = useState<EditMode>('paint')
   const [paintType, setPaintType] = useState<PaintType>('mosaic')
@@ -237,13 +239,21 @@ export default function ImageEditorModal({
       const initialData = ctx.getImageData(0, 0, canvas.width, canvas.height)
       setHistory([initialData])
       setHistoryIndex(0)
+
+      if (fixedRatio) {
+        setCropBox(getInitialCropBoxForRatio(fixedRatio))
+      }
     }
     img.src = imageSrc
     setMode('paint') // Reset mode
-    setCropRatio('free') // Reset crop ratio
+    if (fixedRatio) {
+      setCropRatio(fixedRatio)
+    } else {
+      setCropRatio('free')
+    }
     setTiltAngle(0)
     tiltBaseCanvasRef.current = null
-  }, [open, imageSrc])
+  }, [open, imageSrc, fixedRatio])
 
   const handleCustomRatioChange = (w: string, h: string) => {
     setCustomRatioW(w)
@@ -983,30 +993,39 @@ export default function ImageEditorModal({
                       <div className="space-y-4">
                         <div className="space-y-2">
                           <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">자르기 비율</span>
-                          <div className="grid grid-cols-2 gap-2">
-                            {[
-                              { label: '자유', value: 'free' },
-                              { label: '1:1', value: '1:1' },
-                              { label: '9:16', value: '9:16' },
-                              { label: '3:4', value: '3:4' },
-                              { label: '입력', value: 'custom' },
-                            ].map((opt) => (
-                              <button
-                                key={opt.value}
-                                onClick={() => {
-                                  setCropRatio(opt.value)
-                                  setCropBox(getInitialCropBoxForRatio(opt.value))
-                                }}
-                                className={`py-2 px-3 text-xs rounded-xl border transition-all duration-150 ${
-                                  cropRatio === opt.value
-                                    ? 'bg-neutral-700 border-neutral-600 text-white font-medium shadow-md shadow-neutral-950/20'
-                                    : 'bg-neutral-800/50 border-neutral-700 hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200'
-                                }`}
-                              >
-                                {opt.label}
-                              </button>
-                            ))}
-                          </div>
+                          {fixedRatio ? (
+                            <div className="text-xs text-neutral-300 bg-neutral-800 p-3 rounded-xl border border-neutral-700 font-medium">
+                              비율이 {fixedRatio}로 고정되어 편집됩니다.
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-2 gap-2">
+                              {[
+                                { label: '자유', value: 'free' },
+                                { label: '1:1', value: '1:1' },
+                                { label: '21:5', value: '21:5' },
+                                { label: '16:9', value: '16:9' },
+                                { label: '4:3', value: '4:3' },
+                                { label: '3:4', value: '3:4' },
+                                { label: '9:16', value: '9:16' },
+                                { label: '입력', value: 'custom' },
+                              ].map((opt) => (
+                                <button
+                                  key={opt.value}
+                                  onClick={() => {
+                                    setCropRatio(opt.value)
+                                    setCropBox(getInitialCropBoxForRatio(opt.value))
+                                  }}
+                                  className={`py-2 px-3 text-xs rounded-xl border transition-all duration-150 ${
+                                    cropRatio === opt.value
+                                      ? 'bg-neutral-700 border-neutral-600 text-white font-medium shadow-md shadow-neutral-950/20'
+                                      : 'bg-neutral-800/50 border-neutral-700 hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200'
+                                  }`}
+                                >
+                                  {opt.label}
+                                </button>
+                              ))}
+                            </div>
+                          )}
 
                           {cropRatio === 'custom' && (
                             <div className="flex items-center gap-2 mt-2 p-2 bg-neutral-950/40 rounded-xl border border-neutral-800">

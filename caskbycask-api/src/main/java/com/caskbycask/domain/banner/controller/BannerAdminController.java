@@ -3,6 +3,7 @@ package com.caskbycask.domain.banner.controller;
 import com.caskbycask.domain.banner.dto.*;
 import com.caskbycask.domain.banner.entity.enums.BannerImageType;
 import com.caskbycask.domain.banner.entity.enums.BannerLanguage;
+import com.caskbycask.domain.banner.entity.enums.BannerPosition;
 import com.caskbycask.domain.banner.service.BannerService;
 import com.caskbycask.global.auth.security.CustomUserDetails;
 import com.caskbycask.global.response.ApiResponse;
@@ -30,12 +31,13 @@ public class BannerAdminController {
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<AdminBannerListResponse>>> getAllBanners(
             @RequestParam(required = false) BannerLanguage language,
+            @RequestParam(required = false) BannerPosition position,
             @RequestParam(required = false) Boolean isVisible,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
         return ResponseEntity.ok(
-                ApiResponse.success(PageResponse.from(bannerService.getAllBannersForAdmin(language, isVisible, page, size)))
+                ApiResponse.success(PageResponse.from(bannerService.getAllBannersForAdmin(language, position, isVisible, page, size)))
         );
     }
 

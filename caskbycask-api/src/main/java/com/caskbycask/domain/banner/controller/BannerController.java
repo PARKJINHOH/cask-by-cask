@@ -2,6 +2,7 @@ package com.caskbycask.domain.banner.controller;
 
 import com.caskbycask.domain.banner.dto.BannerResponse;
 import com.caskbycask.domain.banner.entity.enums.BannerLanguage;
+import com.caskbycask.domain.banner.entity.enums.BannerPosition;
 import com.caskbycask.domain.banner.service.BannerService;
 import com.caskbycask.global.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
@@ -20,10 +21,11 @@ public class BannerController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<BannerResponse>>> getActiveBanners(
+            @RequestParam(defaultValue = "MAIN") BannerPosition position,
             @RequestParam(defaultValue = "KO") BannerLanguage language
     ) {
         return ResponseEntity.ok(
-                ApiResponse.success(bannerService.getActiveBanners(language))
+                ApiResponse.success(bannerService.getActiveBanners(position, language))
         );
     }
 }

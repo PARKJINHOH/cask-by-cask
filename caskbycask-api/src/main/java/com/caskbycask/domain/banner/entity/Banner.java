@@ -1,6 +1,7 @@
 package com.caskbycask.domain.banner.entity;
 
 import com.caskbycask.domain.banner.entity.enums.BannerLanguage;
+import com.caskbycask.domain.banner.entity.enums.BannerPosition;
 import com.caskbycask.domain.banner.entity.enums.BannerType;
 import com.caskbycask.domain.user.entity.User;
 import com.caskbycask.global.entity.BaseTimeEntity;
@@ -16,14 +17,15 @@ import java.time.LocalDateTime;
         indexes = {
                 @Index(name = "idx_banner_sort_order",   columnList = "sort_order"),
                 @Index(name = "idx_banner_is_visible",   columnList = "is_visible"),
-                @Index(name = "idx_banner_language",     columnList = "language")
+                @Index(name = "idx_banner_language",     columnList = "language"),
+                @Index(name = "idx_banner_position",     columnList = "position")
         }
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Builder
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Comment("메인 배너")
+@Comment("메인/사이드 배너")
 public class Banner extends BaseTimeEntity {
 
     @Id
@@ -39,6 +41,12 @@ public class Banner extends BaseTimeEntity {
     @Column(nullable = false, length = 10)
     @Comment("배너 유형 — HTML/IMAGE")
     private BannerType bannerType;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10)
+    @Comment("배너 위치 — MAIN/SIDE")
+    @Builder.Default
+    private BannerPosition position = BannerPosition.MAIN;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 5)
@@ -89,11 +97,12 @@ public class Banner extends BaseTimeEntity {
     @Comment("작성 관리자(users.id)")
     private User createdBy;
 
-    public void update(String adminTitle, String content, String contentSanitized,
+    public void update(String adminTitle, BannerPosition position, String content, String contentSanitized,
                        String linkUrl, Boolean linkTargetBlank, Boolean isVisible,
                        Integer sortOrder, Boolean isAlwaysVisible,
                        LocalDateTime startAt, LocalDateTime endAt) {
         this.adminTitle = adminTitle;
+        this.position = position;
         this.content = content;
         this.contentSanitized = contentSanitized;
         this.linkUrl = linkUrl;

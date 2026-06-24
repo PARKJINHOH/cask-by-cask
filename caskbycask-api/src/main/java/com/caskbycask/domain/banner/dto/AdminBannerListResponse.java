@@ -2,6 +2,7 @@ package com.caskbycask.domain.banner.dto;
 
 import com.caskbycask.domain.banner.entity.Banner;
 import com.caskbycask.domain.banner.entity.enums.BannerLanguage;
+import com.caskbycask.domain.banner.entity.enums.BannerPosition;
 import com.caskbycask.domain.banner.entity.enums.BannerType;
 
 import java.time.LocalDateTime;
@@ -10,6 +11,7 @@ public record AdminBannerListResponse(
         Long id,
         String adminTitle,
         BannerType bannerType,
+        BannerPosition position,
         BannerLanguage language,
         Boolean isVisible,
         Integer sortOrder,
@@ -23,6 +25,7 @@ public record AdminBannerListResponse(
                 banner.getId(),
                 banner.getAdminTitle(),
                 banner.getBannerType(),
+                banner.getPosition(),
                 banner.getLanguage(),
                 banner.getIsVisible(),
                 banner.getSortOrder(),

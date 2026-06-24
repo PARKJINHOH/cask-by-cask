@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   DndContext,
@@ -101,6 +101,13 @@ function BannerRowCells({ banner, localVisibility, onToggleVisibility, onEdit, o
   return (
     <>
       <td className="px-4 py-3 w-16 text-neutral-500 font-medium">{banner.language}</td>
+      <td className="px-4 py-3 w-24">
+        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${
+          banner.position === 'MAIN' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
+        }`}>
+          {banner.position === 'MAIN' ? '메인' : '사이드'}
+        </span>
+      </td>
       <td className="px-4 py-3 font-medium text-neutral-800">
         <button
           type="button"
@@ -216,6 +223,7 @@ const TABLE_HEAD = (
     <tr className="border-b border-neutral-100 bg-neutral-50">
       <th className="w-10 px-3 py-3" />
       <th className="text-left px-4 py-3 font-medium text-neutral-500 w-16">언어</th>
+      <th className="text-left px-4 py-3 font-medium text-neutral-500 w-24">위치</th>
       <th className="text-left px-4 py-3 font-medium text-neutral-500">관리자 제목</th>
       <th className="text-left px-4 py-3 font-medium text-neutral-500 w-20">타입</th>
       <th className="text-left px-4 py-3 font-medium text-neutral-500 w-20">노출</th>
@@ -389,7 +397,7 @@ export default function AdminBannerListPage() {
                   <tbody>
                     {orderedVisible.length === 0 ? (
                       <tr>
-                        <td colSpan={9} className="px-4 py-10 text-center text-neutral-400">
+                        <td colSpan={10} className="px-4 py-10 text-center text-neutral-400">
                           노출 중인 배너가 없습니다.
                         </td>
                       </tr>
@@ -423,7 +431,7 @@ export default function AdminBannerListPage() {
                 <tbody>
                   {hiddenBanners.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="px-4 py-10 text-center text-neutral-400">
+                      <td colSpan={10} className="px-4 py-10 text-center text-neutral-400">
                         대기 중인 배너가 없습니다.
                       </td>
                     </tr>

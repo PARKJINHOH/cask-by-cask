@@ -4,9 +4,10 @@ import type { BannerResponse } from '../types/banner.types'
 
 interface BannerSliderProps {
   banners: BannerResponse[]
+  aspectClass?: string
 }
 
-export default function BannerSlider({ banners }: BannerSliderProps) {
+export default function BannerSlider({ banners, aspectClass = 'aspect-[16/9]' }: BannerSliderProps) {
   const [current, setCurrent] = useState(0)
   const [isHoverPaused, setIsHoverPaused] = useState(false)
   const [isManualPaused, setIsManualPaused] = useState(false)
@@ -50,7 +51,10 @@ export default function BannerSlider({ banners }: BannerSliderProps) {
 
   return (
     <div
-      className="relative w-full overflow-hidden bg-neutral-900 select-none"
+      className={[
+        'relative w-full overflow-hidden bg-neutral-900 select-none rounded-xl border border-neutral-200/80',
+        aspectClass,
+      ].join(' ')}
       onMouseEnter={() => setIsHoverPaused(true)}
       onMouseLeave={() => setIsHoverPaused(false)}
       onTouchStart={handleTouchStart}
@@ -58,14 +62,15 @@ export default function BannerSlider({ banners }: BannerSliderProps) {
     >
       {/* 슬라이드 트랙 */}
       <div
-        className="flex transition-transform duration-500 ease-in-out"
+        className="flex transition-transform duration-500 ease-in-out h-full"
         style={{ transform: `translateX(-${current * 100}%)` }}
       >
         {banners.map((b, idx) => (
           <div
             key={b.id}
             className={[
-              'w-full flex-shrink-0 h-[120px] lg:h-[180px] relative',
+              'w-full flex-shrink-0 h-full relative',
+              aspectClass,
               b.linkUrl ? 'cursor-pointer' : 'cursor-default',
             ].join(' ')}
             onClick={b === banner ? handleBannerClick : undefined}
@@ -75,28 +80,15 @@ export default function BannerSlider({ banners }: BannerSliderProps) {
           >
             {b.bannerType === 'IMAGE' ? (
               (b.pcImage || b.moImage) ? (
-                <>
-                  {/* PC: pcImage. 없으면 moImage 폴백. 첫 슬라이드만 LCP 우선. */}
-                  <img
-                    src={(b.pcImage ?? b.moImage)!.imageUrl}
-                    alt="배너"
-                    className="hidden lg:block w-full h-full object-cover"
-                    draggable={false}
-                    loading={idx === 0 ? 'eager' : 'lazy'}
-                    fetchPriority={idx === 0 ? 'high' : 'auto'}
-                    decoding="async"
-                  />
-                  {/* MO: moImage. 없으면 pcImage 폴백 */}
-                  <img
-                    src={(b.moImage ?? b.pcImage)!.imageUrl}
-                    alt="배너"
-                    className="block lg:hidden w-full h-full object-cover"
-                    draggable={false}
-                    loading={idx === 0 ? 'eager' : 'lazy'}
-                    fetchPriority={idx === 0 ? 'high' : 'auto'}
-                    decoding="async"
-                  />
-                </>
+                <img
+                  src={(b.pcImage ?? b.moImage)!.imageUrl}
+                  alt="배너"
+                  className="w-full h-full object-cover"
+                  draggable={false}
+                  loading={idx === 0 ? 'eager' : 'lazy'}
+                  fetchPriority={idx === 0 ? 'high' : 'auto'}
+                  decoding="async"
+                />
               ) : (
                 <div className="w-full h-full bg-gradient-to-r from-amber-900 to-amber-700
                   flex items-center justify-center">

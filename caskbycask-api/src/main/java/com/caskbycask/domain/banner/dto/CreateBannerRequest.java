@@ -1,6 +1,7 @@
 package com.caskbycask.domain.banner.dto;
 
 import com.caskbycask.domain.banner.entity.enums.BannerLanguage;
+import com.caskbycask.domain.banner.entity.enums.BannerPosition;
 import com.caskbycask.domain.banner.entity.enums.BannerType;
 import jakarta.validation.constraints.*;
 import lombok.Getter;
@@ -19,6 +20,9 @@ public class CreateBannerRequest {
 
     @NotNull(message = "배너 타입은 필수입니다.")
     private BannerType bannerType;
+
+    @NotNull(message = "배너 위치는 필수입니다.")
+    private BannerPosition position;
 
     @NotNull(message = "언어는 필수입니다.")
     private BannerLanguage language;
@@ -58,6 +62,22 @@ public class CreateBannerRequest {
     private boolean isPcImageIdValidForType() {
         if (BannerType.IMAGE.equals(bannerType)) {
             return bannerPcImageId != null;
+        }
+        return true;
+    }
+
+    @AssertTrue(message = "사이드 배너는 HTML 타입을 사용할 수 없습니다.")
+    private boolean isSideBannerTypeValid() {
+        if (BannerPosition.SIDE.equals(position)) {
+            return BannerType.IMAGE.equals(bannerType);
+        }
+        return true;
+    }
+
+    @AssertTrue(message = "사이드 배너는 모바일 이미지를 등록할 수 없습니다. (하나의 이미지만 허용)")
+    private boolean isSideBannerMoImageValid() {
+        if (BannerPosition.SIDE.equals(position)) {
+            return bannerMoImageId == null;
         }
         return true;
     }

@@ -1,6 +1,7 @@
 export type BannerType = 'IMAGE' | 'HTML'
 export type BannerLanguage = 'KO' | 'EN'
 export type BannerImageType = 'PC' | 'MO'
+export type BannerPosition = 'MAIN' | 'SIDE'
 
 export interface BannerImageInfo {
   imageUrl: string
@@ -10,6 +11,7 @@ export interface BannerImageInfo {
 export interface BannerResponse {
   id: number
   bannerType: BannerType
+  position: BannerPosition
   language: BannerLanguage
   contentSanitized: string | null
   pcImage: BannerImageInfo | null
@@ -23,6 +25,7 @@ export interface AdminBannerListItem {
   id: number
   adminTitle: string
   bannerType: BannerType
+  position: BannerPosition
   language: BannerLanguage
   isVisible: boolean
   sortOrder: number
@@ -36,6 +39,7 @@ export interface AdminBannerDetail {
   id: number
   adminTitle: string
   bannerType: BannerType
+  position: BannerPosition
   language: BannerLanguage
   content: string | null
   contentSanitized: string | null
@@ -64,6 +68,7 @@ export interface UploadedBannerImage {
 export interface CreateBannerPayload {
   adminTitle: string
   bannerType: BannerType
+  position: BannerPosition
   language: BannerLanguage
   content?: string | null
   bannerPcImageId?: number | null
@@ -80,6 +85,7 @@ export interface CreateBannerPayload {
 export interface UpdateBannerPayload {
   adminTitle?: string
   content?: string | null
+  position?: BannerPosition
   bannerPcImageId?: number | null
   bannerMoImageId?: number | null
   removeMoImage?: boolean
@@ -90,3 +96,4 @@ export interface UpdateBannerPayload {
   startAt?: string | null
   endAt?: string | null
 }
+
