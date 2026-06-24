@@ -1,0 +1,8 @@
+# CaskByCask 검색 동의어 사전
+# 한글 음차 표기 변형 및 유사어 매핑 (쉼표로 구분하여 상호 치환)
+
+카뮈, 까뮤, camus
+맥캘란, 맥칼란, macallan
+글렌알라키, 알라키, glenallachie
+발렌타인, 발렌타인스, ballantines
+조니워커, 조니 워커, johnnie walker

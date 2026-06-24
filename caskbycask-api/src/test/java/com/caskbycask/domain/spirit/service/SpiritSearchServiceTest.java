@@ -77,6 +77,26 @@ class SpiritSearchServiceTest {
                 .build();
         spiritRepository.save(targetSpirit);
 
+        // 크라이겔라키 13년 등록
+        Producer craigellachieProducer = Producer.builder()
+                .nameKo("크라이겔라키 증류소")
+                .nameEn("Craigellachie Distillery")
+                .country("스코틀랜드")
+                .region("스페이사이드")
+                .searchKeywords("크라이겔라키, craigellachie")
+                .build();
+        producerRepository.save(craigellachieProducer);
+
+        Spirit craigellachie = Spirit.builder()
+                .nameKo("크라이겔라키 13년")
+                .nameEn("Craigellachie 13 Years Old")
+                .category(SpiritCategory.WHISKY)
+                .producer(craigellachieProducer)
+                .abv(new BigDecimal("46.0"))
+                .status(SpiritStatus.ACTIVE)
+                .build();
+        spiritRepository.save(craigellachie);
+
         // 3. 인덱스 동기화 강제 수행
         spiritRepository.flush();
     }
@@ -100,6 +120,7 @@ class SpiritSearchServiceTest {
         );
 
         for (String keyword : keywords) {
+            System.out.println(">>> Testing keyword: [" + keyword + "]");
             // when
             SpiritSearchCondition condition = new SpiritSearchCondition(
                     keyword, null, null, null, null,
@@ -116,7 +137,32 @@ class SpiritSearchServiceTest {
                     .as("검색어 '" + keyword + "'에 대한 검색 결과가 존재해야 합니다.")
                     .isNotEmpty();
             assertThat(result.getContent().get(0).nameKo())
+                    .as("검색어 '" + keyword + "'의 첫번째 결과는 '글렌알라키 12년' 이어야 합니다.")
                     .isEqualTo("글렌알라키 12년");
         }
+    }
+
+    @Test
+    @DisplayName("알라키 검색 시 크라이겔라키 13년은 검색결과에 포함되지 않고 글렌알라키 12년만 포함되어야 한다")
+    void searchAlachyShouldNotMatchCraigellachie() throws Exception {
+        // given
+        String keyword = "알라키";
+        SpiritSearchCondition condition = new SpiritSearchCondition(
+                keyword, null, null, null, null,
+                null, null, null, null, null, null, null,
+                SpiritStatus.ACTIVE, null,
+                null, null, null, null
+        );
+
+        // when
+        Page<SpiritListResponse> result = spiritService.searchSpirits(condition, PageRequest.of(0, 10));
+
+        // then
+        List<String> names = result.getContent().stream()
+                .map(SpiritListResponse::nameKo)
+                .toList();
+
+        assertThat(names).contains("글렌알라키 12년");
+        assertThat(names).doesNotContain("크라이겔라키 13년");
     }
 }

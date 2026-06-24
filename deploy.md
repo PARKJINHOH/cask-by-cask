@@ -418,11 +418,16 @@ mysqldump --no-data --skip-comments -u {user} -p caskbycask_prod \
 
 서비스 규모가 확장되어 컨테이너(Docker) 기반 배포 환경으로 전환하거나, 무중단 배포 및 부하 분산을 위해 API 서버를 이중화(Active-Active)하는 경우 소스코드 및 아키텍처 상 다음 사항들을 주의 깊게 설계하고 조치해야 합니다.
 
-### 1. 검색 엔진 백엔드 (Embedded Lucene 락 충돌)
-- **현 상태**: 로컬 파일 시스템(`lucene/indexes`)에 인덱스를 직접 생성하고 쓰는 **Embedded Lucene** 방식을 사용 중입니다.
-- **이중화 시 문제점**: 2개 이상의 API 인스턴스가 하나의 공유 파일 경로를 마운트하여 사용할 경우, Lucene의 쓰기 락 파일(`write.lock`) 충돌로 인해 `LockObtainFailedException`이 발생하며 두 번째 서버부터 기동되지 않습니다.
+### 1. 검색 엔진 백엔드 (Embedded Lucene 및 사용자 사전 관리)
+- **현 상태**: 로컬 파일 시스템(`lucene/indexes`)에 인덱스를 직접 생성하는 **Embedded Lucene** 방식과, 고유명사 형태소 분석을 보정하기 위한 **사용자 사전 파일(`userdict.txt`)**을 사용 중입니다.
+- **이중화 및 Docker 전환 시 문제점**: 
+  - **락 충돌**: 2개 이상의 API 인스턴스가 하나의 공유 파일 경로를 마운트할 경우, Lucene의 쓰기 락 파일(`write.lock`) 충돌로 인해 `LockObtainFailedException`이 발생하며 두 번째 서버가 기동되지 않습니다.
+  - **사용자 사전 및 동의어 사전 관리**: `userdict.txt` 및 `synonyms.txt`는 jar 파일 내부에 패키징되므로, 이중화 환경에서 특정 서버만 사전이 다르면 형태소 분석 및 동의어 치환 결과가 불일치하여 검색 결과에 차이가 발생할 수 있습니다.
+  - **인덱스 유실 및 재빌드 병목**: Docker 컨테이너 재생성 시 `/app/spring-boot/lucene` 경로를 볼륨 마운트하지 않으면 모든 인덱스가 유실됩니다. 기동 시점의 `MassIndexer`가 매번 수만 건의 RDBMS 데이터를 스캔하여 인덱스를 처음부터 다시 빌드하면서 상당한 CPU 및 디스크 I/O 병목을 유발합니다.
 - **해결 방안**: 
-  - `application.yml`의 `spring.jpa.properties.hibernate.search` 설정을 **Elasticsearch 백엔드로 전환**하고 외부의 공유 Elasticsearch 클러스터를 바라보도록 이중화 설정을 해야 합니다.
+  - **Elasticsearch 전환**: 다중 WAS 구성 시 `application.yml` 설정을 통해 **Elasticsearch 백엔드로 전환**하고, 모든 WAS가 외부의 공유 Elasticsearch 클러스터를 바라보도록 해야 합니다.
+  - **볼륨 마운트 필수**: Docker 전환 시 인덱스가 휘발되지 않도록 `/app/spring-boot/lucene` 경로를 Host 디렉토리에 반드시 **볼륨 마운트**해야 합니다.
+  - **사전 동기화 및 재인덱싱**: 새로운 위스키 브랜드나 한글 키워드, 혹은 동의어가 추가되어 `userdict.txt`나 `synonyms.txt`를 업데이트할 경우, **모든 WAS 인스턴스를 재빌드 및 재배포**해야 하며, 배포 완료 후 어드민 API 등을 통해 **Lucene 인덱스 재인덱싱(Reindex)을 수행**하여 과거 데이터에도 새 형태소 분석 및 동의어 규칙이 적용되도록 처리해야 합니다.
 
 ### 2. 로컬 파일 저장소 (Uploader 파일 불일치)
 - **현 상태**: 사용자가 업로드한 이미지 및 미디어 파일은 로컬 스토리지 서비스([LocalFileStorageService.java](file:///c:/Users/JINHOH_PC/Desktop/workspace/cask-by-cask/caskbycask-api/src/main/java/com/caskbycask/global/storage/LocalFileStorageService.java))를 통해 로컬 경로(`/app/upload`)에 저장됩니다.

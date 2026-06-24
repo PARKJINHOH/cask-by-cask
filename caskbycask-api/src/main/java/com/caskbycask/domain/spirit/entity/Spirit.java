@@ -45,13 +45,13 @@ public class Spirit extends BaseTimeEntity {
     @Column(nullable = false, length = 200)
     @Comment("주류명(한글)")
     @FullTextField(analyzer = "korean_search")
-    @FullTextField(name = "nameKo_ngram", analyzer = "ngram_search")
+    @FullTextField(name = "nameKo_ngram", analyzer = "ngram_search", searchAnalyzer = "korean_search")
     private String nameKo;
 
     @Column(nullable = false, length = 200)
     @Comment("주류명(영문)")
-    @FullTextField(analyzer = "korean_search")
-    @FullTextField(name = "nameEn_ngram", analyzer = "ngram_search")
+    @FullTextField(analyzer = "english_search")
+    @FullTextField(name = "nameEn_ngram", analyzer = "ngram_search", searchAnalyzer = "english_search")
     private String nameEn;
 
     @Enumerated(EnumType.STRING)

@@ -32,13 +32,13 @@ public class Producer extends BaseTimeEntity {
     @Column(nullable = false, length = 200)
     @Comment("생산자명(한글)")
     @FullTextField(analyzer = "korean_search")
-    @FullTextField(name = "nameKo_ngram", analyzer = "ngram_search")
+    @FullTextField(name = "nameKo_ngram", analyzer = "ngram_search", searchAnalyzer = "korean_search")
     private String nameKo;
 
     @Column(nullable = false, length = 200)
     @Comment("생산자명(영문)")
-    @FullTextField(analyzer = "korean_search")
-    @FullTextField(name = "nameEn_ngram", analyzer = "ngram_search")
+    @FullTextField(analyzer = "english_search")
+    @FullTextField(name = "nameEn_ngram", analyzer = "ngram_search", searchAnalyzer = "english_search")
     private String nameEn;
 
     @Column(nullable = false, length = 100)
