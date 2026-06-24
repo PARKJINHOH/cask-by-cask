@@ -64,6 +64,11 @@ jobs:
           ENDPOINT: "https://${{ secrets.OCI_NAMESPACE }}.compat.objectstorage.ap-chuncheon-1.oraclecloud.com"
           BUCKET: ${{ secrets.OCI_BUCKET }}
         run: |
+          # AWS CLI S3 설정 (Multipart 업로드 차단 및 v4 서명 강제)
+          aws configure set default.s3.multipart_threshold 512MB
+          aws configure set default.s3.multipart_chunksize 512MB
+          aws configure set default.s3.signature_version s3v4
+          
           # 1. 파일 업로드
           aws s3 cp caskbycask-api/build/libs/app.jar "s3://$BUCKET/api/app-${{ github.run_id }}-${{ github.run_attempt }}.jar" --endpoint-url "$ENDPOINT" --region ap-chuncheon-1
           
@@ -117,6 +122,11 @@ jobs:
           ENDPOINT: "https://${{ secrets.OCI_NAMESPACE }}.compat.objectstorage.ap-chuncheon-1.oraclecloud.com"
           BUCKET: ${{ secrets.OCI_BUCKET }}
         run: |
+          # AWS CLI S3 설정 (Multipart 업로드 차단 및 v4 서명 강제)
+          aws configure set default.s3.multipart_threshold 512MB
+          aws configure set default.s3.multipart_chunksize 512MB
+          aws configure set default.s3.signature_version s3v4
+          
           # 1. tar.gz로 압축
           tar -czf web-dist.tar.gz -C caskbycask-web/.next/standalone .
           
