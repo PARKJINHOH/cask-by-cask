@@ -3,6 +3,7 @@ import type { ApiResponse, PageResponse } from '@/shared/types/common.types'
 import type {
   CountryStats, RegionStats,
   SpiritCategory, SpiritDetail, SpiritListItem, SpiritSearchParams, SpiritVariant,
+  SpiritAutocompleteItem,
 } from '../types/spirit.types'
 
 // Spring `@RequestParam List<T>` 는 `?k=v1&k=v2` 형식만 바인딩.
@@ -45,4 +46,11 @@ export const spiritApi = {
     axiosInstance.get<ApiResponse<RegionStats[]>>('/api/spirits/regions', {
       params: { category, country },
     }),
+
+  autocomplete: (keyword: string, signal?: AbortSignal) =>
+    axiosInstance.get<ApiResponse<SpiritAutocompleteItem[]>>('/api/spirits/autocomplete', {
+      params: { keyword },
+      signal,
+    }),
 }
+

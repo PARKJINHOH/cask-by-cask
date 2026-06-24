@@ -2,6 +2,14 @@ export type SpiritCategory = 'WHISKY' | 'COGNAC' | 'WINE' | 'OTHER'
 export type SpiritStatus  = 'ACTIVE' | 'HIDDEN' | 'PENDING'
 export type SpiritSort    = 'LATEST' | 'SCORE_DESC' | 'REVIEW_COUNT_DESC'
 
+export interface SpiritAutocompleteItem {
+  id: number
+  nameKo: string
+  nameEn: string
+  category: SpiritCategory
+  imageUrl: string | null
+}
+
 export interface SpiritListItem {
   id: number
   nameKo: string

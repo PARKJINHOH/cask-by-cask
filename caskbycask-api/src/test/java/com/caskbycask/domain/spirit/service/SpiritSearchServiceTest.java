@@ -157,11 +157,34 @@ class SpiritSearchServiceTest {
         // when
         Page<SpiritListResponse> result = spiritService.searchSpirits(condition, PageRequest.of(0, 10));
 
-        // then
         List<String> names = result.getContent().stream()
                 .map(SpiritListResponse::nameKo)
                 .toList();
 
+        assertThat(names).contains("글렌알라키 12년");
+        assertThat(names).doesNotContain("크라이겔라키 13년");
+    }
+
+    @Test
+    @DisplayName("자동완성 검색 시 2글자 미만은 빈 결과를 내고, 알라키 입력 시 글렌알라키만 조회되어야 한다")
+    void autocompleteTest() {
+        // given
+        String tooShort = "알";
+        String matchKeyword = "알라키";
+
+        // when
+        List<com.caskbycask.domain.spirit.dto.SpiritAutocompleteResponse> shortResult = 
+            spiritSearchService.autocompleteSpirits(tooShort);
+        List<com.caskbycask.domain.spirit.dto.SpiritAutocompleteResponse> matchResult = 
+            spiritSearchService.autocompleteSpirits(matchKeyword);
+
+        // then
+        assertThat(shortResult).isEmpty();
+        assertThat(matchResult).isNotEmpty();
+        
+        List<String> names = matchResult.stream()
+                .map(com.caskbycask.domain.spirit.dto.SpiritAutocompleteResponse::nameKo)
+                .toList();
         assertThat(names).contains("글렌알라키 12년");
         assertThat(names).doesNotContain("크라이겔라키 13년");
     }

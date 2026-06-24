@@ -1,14 +1,17 @@
 import { useState, useEffect, useCallback, useLayoutEffect, useRef, Fragment } from 'react'
-import { useLocation, useSearchParams } from 'react-router-dom'
+import { useLocation, useSearchParams, useNavigate } from 'react-router-dom'
+
 import { useTranslation, Trans } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { Dialog, Transition, TransitionChild, DialogPanel, DialogTitle } from '@headlessui/react'
 import { spiritApi } from '@/domain/spirit/api/spiritApi'
 import type {
   SpiritCategory, SpiritSort, WhiskyStyle, WineType, CognacGrade,
-  WineSweetness, WineBody, WineIntensity,
+  WineSweetness, WineBody, WineIntensity, SpiritAutocompleteItem,
 } from '@/domain/spirit/types/spirit.types'
+import axios from 'axios'
 import SpiritCard from '@/shared/components/SpiritCard'
+
 import Spinner from '@/shared/components/Spinner'
 import Pagination from '@/shared/components/Pagination'
 import EmptyState from '@/shared/components/EmptyState'
@@ -231,7 +234,9 @@ function FilterDrawer({ open, onClose, children }: DrawerProps) {
 export default function SpiritListPage() {
   const { t, i18n } = useTranslation()
   const location = useLocation()
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
+
   const [drawerOpen, setDrawerOpen] = useState(false)
   const detailState = { returnTo: `${location.pathname}${location.search}` }
 
@@ -329,16 +334,85 @@ export default function SpiritListPage() {
   // 키워드 (Enter 또는 검색 버튼 클릭 시에만 검색)
   const [keywordInput, setKeywordInput] = useState(searchParams.get('keyword') ?? '')
   const [isFocused, setIsFocused] = useState(false)
+  const [results, setResults] = useState<SpiritAutocompleteItem[]>([])
+  const [isOpen, setIsOpen] = useState(false)
+  const [isAutocompleteLoading, setIsAutocompleteLoading] = useState(false)
+
+  const cacheRef = useRef<Map<string, SpiritAutocompleteItem[]>>(new Map())
+  const abortControllerRef = useRef<AbortController | null>(null)
+  const debounceTimeoutRef = useRef<number | NodeJS.Timeout | null>(null)
+
+  const handleKeywordChange = (val: string) => {
+    setKeywordInput(val)
+
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current as number)
+    }
+
+    const kw = val.trim()
+    if (kw.length < 2) {
+      setResults([])
+      setIsOpen(false)
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+      return
+    }
+
+    debounceTimeoutRef.current = setTimeout(async () => {
+      // 1. 로컬 메모리 캐시 체크
+      if (cacheRef.current.has(kw)) {
+        setResults(cacheRef.current.get(kw) || [])
+        setIsOpen(true)
+        return
+      }
+
+      // 2. 이전 API 요청 취소 (AbortController)
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+
+      const controller = new AbortController()
+      abortControllerRef.current = controller
+      setIsAutocompleteLoading(true)
+
+      try {
+        const res = await spiritApi.autocomplete(kw, controller.signal)
+        const items = res.data.data ?? []
+        cacheRef.current.set(kw, items)
+        setResults(items)
+        setIsOpen(true)
+      } catch (err: any) {
+        if (err.name !== 'CanceledError' && err.name !== 'AbortError' && !axios.isCancel(err)) {
+          console.error('Failed to autocomplete spirits:', err)
+        }
+      } finally {
+        if (abortControllerRef.current === controller) {
+          setIsAutocompleteLoading(false)
+        }
+      }
+    }, 250)
+  }
+
 
   const submitKeyword = (e: React.FormEvent) => {
     e.preventDefault()
+    const kw = keywordInput.trim()
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev)
-      keywordInput ? next.set('keyword', keywordInput) : next.delete('keyword')
+      kw ? next.set('keyword', kw) : next.delete('keyword')
       next.set('page', '0')
       return next
     }, { replace: true })
+    setIsOpen(false)
   }
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current as number)
+      if (abortControllerRef.current) abortControllerRef.current.abort()
+    }
+  }, [])
 
   // 슬라이더 로컬 상태 (포인터업 시에만 URL 업데이트)
   const [abvRange,   setAbvRange]   = useState<[number, number]>([urlMinAbv, urlMaxAbv])
@@ -377,8 +451,11 @@ export default function SpiritListPage() {
     setAbvRange([0, 100])
     setScoreRange([0, 100])
     setKeywordInput('')
+    setResults([])
+    setIsOpen(false)
     setSearchParams({}, { replace: true })
   }
+
 
   // 카테고리 변경 시 region도 클리어 (다른 카테고리에서 의미 없음)
   const handleCategoryChange = (v: SpiritCategory | '') => {
@@ -682,12 +759,74 @@ export default function SpiritListPage() {
           className={`relative transition-all duration-300 ease-out bg-white/95 backdrop-blur-md rounded-full shadow-lg border border-neutral-200/80
             ${isFocused ? 'ring-2 ring-primary-400/30 border-primary-500 shadow-xl -translate-y-0.5' : ''}`}
         >
+          {/* 모바일 자동완성 글래스모피즘 드롭다운 (위로 솟아오름) */}
+          {isOpen && (results.length > 0 || isAutocompleteLoading) && (
+            <div
+              className="absolute bottom-full left-0 right-0 mb-2.5 z-50 bg-white/90 backdrop-blur-md border border-neutral-200/80 rounded-2xl shadow-xl overflow-hidden max-h-60 overflow-y-auto"
+              onMouseDown={(e) => e.preventDefault()}
+            >
+              {isAutocompleteLoading && results.length === 0 ? (
+                <div className="p-3 text-center text-xs text-neutral-500">
+                  {t('spirit.search.loading', '검색 중...')}
+                </div>
+              ) : results.length > 0 ? (
+                <ul className="py-1">
+                  {results.map((item) => (
+                    <li key={item.id}>
+                      <button
+                        type="button"
+
+                        onClick={() => {
+                          navigate(`/spirits/${item.id}`)
+                          setKeywordInput(item.nameKo)
+                          setIsOpen(false)
+                        }}
+                        className="w-full text-left px-3.5 py-2 flex items-center gap-3 hover:bg-neutral-50/50 transition-colors"
+                      >
+                        {item.imageUrl ? (
+                          <img
+                            src={item.imageUrl}
+                            alt={item.nameKo}
+                            className="w-8 h-8 object-contain rounded bg-white flex-shrink-0 border border-neutral-100"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 rounded bg-neutral-100/50 flex items-center justify-center text-neutral-400 flex-shrink-0 text-[8px]">
+                            No Image
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-semibold text-neutral-800 truncate">
+                            {item.nameKo}
+                          </div>
+                          <div className="text-[10px] text-neutral-400 truncate">
+                            {item.nameEn}
+                          </div>
+                        </div>
+                        <span className="text-[9px] font-semibold bg-primary-50 text-primary-800 px-1.5 py-0.5 rounded-full flex-shrink-0">
+                          {t(`category.${item.category.toLowerCase()}`, item.category)}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          )}
+
           <input
             type="search"
             value={keywordInput}
-            onChange={(e) => setKeywordInput(e.target.value)}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
+            onChange={(e) => handleKeywordChange(e.target.value)}
+            onFocus={() => {
+              setIsFocused(true)
+              if (keywordInput.trim().length >= 2) {
+                setIsOpen(true)
+              }
+            }}
+            onBlur={() => {
+              setIsFocused(false)
+              setTimeout(() => setIsOpen(false), 200)
+            }}
             placeholder={t('spirit.search.placeholder')}
             className={`w-full pl-5 pr-12 transition-all duration-300 ease-out rounded-full bg-transparent text-neutral-800 focus:outline-none
               ${isFocused ? 'py-2.5 h-10 text-sm' : 'py-1 h-8 text-xs'}`}
@@ -704,6 +843,7 @@ export default function SpiritListPage() {
           </button>
         </form>
       </div>
+
 
     </div>
   )

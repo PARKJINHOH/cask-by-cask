@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, Suspense } from 'react'
-import { Outlet, Link, useNavigate } from 'react-router-dom'
+import { Outlet, Link, useNavigate, useSearchParams } from 'react-router-dom'
+
 import RouteFallback from '@/shared/components/RouteFallback'
 import RouteTransition from '@/shared/components/RouteTransition'
 import { useTranslation } from 'react-i18next'
@@ -19,6 +20,10 @@ import DefaultAvatar from '@/shared/components/DefaultAvatar'
 import AdminIcon from '@/shared/components/icons/AdminIcon'
 import ProducerIcon from '@/shared/components/icons/ProducerIcon'
 import AttendanceButton from '@/domain/score/components/AttendanceButton'
+import axios from 'axios'
+import { spiritApi } from '@/domain/spirit/api/spiritApi'
+import type { SpiritAutocompleteItem } from '@/domain/spirit/types/spirit.types'
+
 
 const SEEN_KEY = 'notice:lastSeenId'
 
@@ -389,22 +394,120 @@ function GuestLangToggle() {
 function HeaderSearch() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [value, setValue] = useState('')
+  const [results, setResults] = useState<SpiritAutocompleteItem[]>([])
+  const [isOpen, setIsOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+
+  const cacheRef = useRef<Map<string, SpiritAutocompleteItem[]>>(new Map())
+  const abortControllerRef = useRef<AbortController | null>(null)
+  const debounceTimeoutRef = useRef<number | NodeJS.Timeout | null>(null)
+
+  const keywordParam = searchParams.get('keyword') ?? ''
+
+  // URL의 keyword가 바뀌면 검색어 입력창 상태와 동기화 (네이버 검색 방식)
+  useEffect(() => {
+    setValue(keywordParam)
+  }, [keywordParam])
+
+  const handleSearchRedirect = (kw: string) => {
+    navigate(kw ? `/spirits?keyword=${encodeURIComponent(kw)}` : '/spirits')
+    setIsOpen(false)
+  }
+
+  const handleItemClick = (item: SpiritAutocompleteItem) => {
+    navigate(`/spirits/${item.id}`)
+    setValue(item.nameKo)
+    setIsOpen(false)
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    const kw = value.trim()
-    navigate(kw ? `/spirits?keyword=${encodeURIComponent(kw)}` : '/spirits')
-    setValue('')
+    handleSearchRedirect(value.trim())
   }
 
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value
+    setValue(val)
+
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current as number)
+    }
+
+    const kw = val.trim()
+    if (kw.length < 2) {
+      setResults([])
+      setIsOpen(false)
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+      return
+    }
+
+    debounceTimeoutRef.current = setTimeout(async () => {
+      // 1. 로컬 메모리 캐시 체크
+      if (cacheRef.current.has(kw)) {
+        setResults(cacheRef.current.get(kw) || [])
+        setIsOpen(true)
+        return
+      }
+
+      // 2. 이전 API 요청 취소 (AbortController)
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+
+      const controller = new AbortController()
+      abortControllerRef.current = controller
+      setIsLoading(true)
+
+      try {
+        const res = await spiritApi.autocomplete(kw, controller.signal)
+        const items = res.data.data ?? []
+        cacheRef.current.set(kw, items)
+        setResults(items)
+        setIsOpen(true)
+      } catch (err: any) {
+        if (err.name !== 'CanceledError' && err.name !== 'AbortError' && !axios.isCancel(err)) {
+          console.error('Failed to autocomplete spirits:', err)
+        }
+      } finally {
+        if (abortControllerRef.current === controller) {
+          setIsLoading(false)
+        }
+      }
+    }, 250)
+  }
+
+  const handleFocus = () => {
+    if (value.trim().length >= 2) {
+      setIsOpen(true)
+    }
+  }
+
+  const handleBlur = () => {
+    setTimeout(() => {
+      setIsOpen(false)
+    }, 200)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current as number)
+      if (abortControllerRef.current) abortControllerRef.current.abort()
+    }
+  }, [])
+
   return (
-    <form onSubmit={handleSubmit} className="hidden lg:flex flex-1 max-w-md mx-6">
+    <form onSubmit={handleSubmit} className="hidden lg:flex flex-1 max-w-md mx-6 relative">
       <div className="relative w-full">
         <input
           type="search"
           value={value}
-          onChange={(e) => setValue(e.target.value)}
+          onChange={handleChange}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
           placeholder={t('spirit.search.placeholder')}
           className="w-full pl-4 pr-10 py-2 text-sm border border-neutral-300 rounded-xl bg-neutral-50
             focus:outline-none focus:ring-2 focus:ring-primary-400 focus:bg-white focus:border-transparent
@@ -420,9 +523,60 @@ function HeaderSearch() {
           </svg>
         </button>
       </div>
+
+      {/* 자동완성 글래스모피즘 드롭다운 */}
+      {isOpen && (results.length > 0 || isLoading) && (
+        <div
+          className="absolute top-full left-0 right-0 mt-2 z-50 bg-white/90 backdrop-blur-md border border-neutral-200/80 rounded-2xl shadow-xl overflow-hidden max-h-96 overflow-y-auto"
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          {isLoading && results.length === 0 ? (
+            <div className="p-4 text-center text-sm text-neutral-500">
+              {t('spirit.search.loading', '검색 중...')}
+            </div>
+          ) : results.length > 0 ? (
+            <ul className="py-2">
+              {results.map((item) => (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    onClick={() => handleItemClick(item)}
+
+                    className="w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-neutral-50/50 transition-colors"
+                  >
+                    {item.imageUrl ? (
+                      <img
+                        src={item.imageUrl}
+                        alt={item.nameKo}
+                        className="w-10 h-10 object-contain rounded bg-white flex-shrink-0 border border-neutral-100"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded bg-neutral-100/50 flex items-center justify-center text-neutral-400 flex-shrink-0 text-[10px]">
+                        No Image
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-semibold text-neutral-800 truncate">
+                        {item.nameKo}
+                      </div>
+                      <div className="text-xs text-neutral-400 truncate">
+                        {item.nameEn}
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-semibold bg-primary-50 text-primary-800 px-2 py-0.5 rounded-full flex-shrink-0">
+                      {t(`category.${item.category.toLowerCase()}`, item.category)}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      )}
     </form>
   )
 }
+
 
 // ── 사용자 드롭다운 ───────────────────────────────────────────
 

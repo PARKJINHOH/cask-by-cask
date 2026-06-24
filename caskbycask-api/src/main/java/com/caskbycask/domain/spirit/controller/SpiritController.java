@@ -38,6 +38,13 @@ public class SpiritController {
     private final SpiritService spiritService;
     private final SpiritViewCountService spiritViewCountService;
 
+    @GetMapping("/autocomplete")
+    public ResponseEntity<ApiResponse<List<SpiritAutocompleteResponse>>> autocomplete(
+            @RequestParam(required = false) String keyword) {
+        List<SpiritAutocompleteResponse> result = spiritService.autocomplete(keyword);
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<SpiritListResponse>>> search(
             @RequestParam(required = false) String keyword,

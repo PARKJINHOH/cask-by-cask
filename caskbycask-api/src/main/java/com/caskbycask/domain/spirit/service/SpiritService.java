@@ -81,6 +81,11 @@ public class SpiritService {
     // ── 공개 조회 ──────────────────────────────────────────
 
     @Transactional(readOnly = true)
+    public List<SpiritAutocompleteResponse> autocomplete(String keyword) {
+        return spiritSearchService.autocompleteSpirits(keyword);
+    }
+
+    @Transactional(readOnly = true)
     public Page<SpiritListResponse> searchSpirits(SpiritSearchCondition condition,
                                                    Pageable pageable) {
         if (org.springframework.util.StringUtils.hasText(condition.keyword())) {

@@ -115,6 +115,10 @@ public class RateLimitConfig {
                         pp.matcher(HttpMethod.GET, "/api/spirits"),
                         120, Duration.ofMinutes(1), RateLimitRule.KeyType.IP_OR_USER),
                 new RateLimitRule(
+                        "spirit-autocomplete",
+                        pp.matcher(HttpMethod.GET, "/api/spirits/autocomplete"),
+                        60, Duration.ofMinutes(1), RateLimitRule.KeyType.IP_OR_USER),
+                new RateLimitRule(
                         "default-api",
                         pp.matcher("/api/**"),
                         300, Duration.ofMinutes(1), RateLimitRule.KeyType.IP_OR_USER)
