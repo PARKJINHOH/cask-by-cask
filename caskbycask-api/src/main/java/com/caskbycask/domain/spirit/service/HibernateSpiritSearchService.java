@@ -15,6 +15,8 @@ import org.hibernate.search.engine.search.sort.dsl.SearchSortFactory;
 import org.hibernate.search.mapper.orm.Search;
 import org.hibernate.search.mapper.orm.session.SearchSession;
 import org.springframework.data.domain.Page;
+
+
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -52,23 +54,66 @@ public class HibernateSpiritSearchService implements SpiritSearchService {
 
                     // 2. 키워드 검색 (글렌알라키 12년 등 다양한 패턴 매칭)
                     if (StringUtils.hasText(condition.keyword())) {
-                        b.must(f.bool(kb -> {
-                            // 한글명 형태소 및 ngram 검색
-                            kb.should(f.match().field("nameKo").matching(condition.keyword()).boost(2.0f));
-                            kb.should(f.match().field("nameKo_ngram").matching(condition.keyword()).boost(1.0f));
+                        String[] tokens = condition.keyword().trim().split("\\s+");
+                        if (tokens.length > 0) {
+                            b.must(f.bool(kb -> {
+                                // 한글명 형태소 및 ngram 검색
+                                kb.should(f.bool(sub -> {
+                                    for (String token : tokens) {
+                                        sub.must(f.match().field("nameKo").matching(token).boost(2.0f));
+                                    }
+                                }));
+                                kb.should(f.bool(sub -> {
+                                    for (String token : tokens) {
+                                        sub.must(f.match().field("nameKo_ngram").matching(token).boost(1.0f));
+                                    }
+                                }));
 
-                            // 영문명 형태소 및 ngram 검색
-                            kb.should(f.match().field("nameEn").matching(condition.keyword()).boost(1.5f));
-                            kb.should(f.match().field("nameEn_ngram").matching(condition.keyword()).boost(0.8f));
+                                // 영문명 형태소 및 ngram 검색
+                                kb.should(f.bool(sub -> {
+                                    for (String token : tokens) {
+                                        sub.must(f.match().field("nameEn").matching(token).boost(1.5f));
+                                    }
+                                }));
+                                kb.should(f.bool(sub -> {
+                                    for (String token : tokens) {
+                                        sub.must(f.match().field("nameEn_ngram").matching(token).boost(0.8f));
+                                    }
+                                }));
 
-                            // 생산자 정보 매칭
-                            kb.should(f.match().field("producer.nameKo").matching(condition.keyword()).boost(1.5f));
-                            kb.should(f.match().field("producer.nameKo_ngram").matching(condition.keyword()).boost(0.8f));
-                            kb.should(f.match().field("producer.nameEn").matching(condition.keyword()).boost(1.0f));
-                            kb.should(f.match().field("producer.nameEn_ngram").matching(condition.keyword()).boost(0.5f));
-                            kb.should(f.match().field("producer.searchKeywords").matching(condition.keyword()).boost(1.2f));
-                        }));
+                                // 생산자 정보 매칭
+                                kb.should(f.bool(sub -> {
+                                    for (String token : tokens) {
+                                        sub.must(f.match().field("producer.nameKo").matching(token).boost(1.5f));
+                                    }
+                                }));
+                                kb.should(f.bool(sub -> {
+                                    for (String token : tokens) {
+                                        sub.must(f.match().field("producer.nameKo_ngram").matching(token).boost(0.8f));
+                                    }
+                                }));
+                                kb.should(f.bool(sub -> {
+                                    for (String token : tokens) {
+                                        sub.must(f.match().field("producer.nameEn").matching(token).boost(1.0f));
+                                    }
+                                }));
+                                kb.should(f.bool(sub -> {
+                                    for (String token : tokens) {
+                                        sub.must(f.match().field("producer.nameEn_ngram").matching(token).boost(0.5f));
+                                    }
+                                }));
+                                kb.should(f.bool(sub -> {
+                                    for (String token : tokens) {
+                                        sub.must(f.match().field("producer.searchKeywords").matching(token).boost(1.2f));
+                                    }
+                                }));
+
+                            }));
+                        }
                     }
+
+
+
 
                     // 3. 카테고리 필터
                     if (condition.category() != null) {
@@ -193,17 +238,60 @@ public class HibernateSpiritSearchService implements SpiritSearchService {
                 .where(f -> f.bool(b -> {
                     b.must(f.match().field("status").matching(SpiritStatus.ACTIVE));
                     b.must(f.match().field("hasParent").matching(false));
-                    b.must(f.bool(kb -> {
-                        kb.should(f.match().field("nameKo").matching(cleanKeyword).boost(2.0f));
-                        kb.should(f.match().field("nameKo_ngram").matching(cleanKeyword).boost(1.0f));
-                        kb.should(f.match().field("nameEn").matching(cleanKeyword).boost(1.5f));
-                        kb.should(f.match().field("nameEn_ngram").matching(cleanKeyword).boost(0.8f));
-                        kb.should(f.match().field("producer.nameKo").matching(cleanKeyword).boost(1.5f));
-                        kb.should(f.match().field("producer.nameKo_ngram").matching(cleanKeyword).boost(0.8f));
-                        kb.should(f.match().field("producer.nameEn").matching(cleanKeyword).boost(1.0f));
-                        kb.should(f.match().field("producer.nameEn_ngram").matching(cleanKeyword).boost(0.5f));
-                        kb.should(f.match().field("producer.searchKeywords").matching(cleanKeyword).boost(1.2f));
-                    }));
+                    String[] tokens = cleanKeyword.split("\\s+");
+                    if (tokens.length > 0) {
+                        b.must(f.bool(kb -> {
+                            kb.should(f.bool(sub -> {
+                                for (String token : tokens) {
+                                    sub.must(f.match().field("nameKo").matching(token).boost(2.0f));
+                                }
+                            }));
+                            kb.should(f.bool(sub -> {
+                                for (String token : tokens) {
+                                    sub.must(f.match().field("nameKo_ngram").matching(token).boost(1.0f));
+                                }
+                            }));
+                            kb.should(f.bool(sub -> {
+                                for (String token : tokens) {
+                                    sub.must(f.match().field("nameEn").matching(token).boost(1.5f));
+                                }
+                            }));
+                            kb.should(f.bool(sub -> {
+                                for (String token : tokens) {
+                                    sub.must(f.match().field("nameEn_ngram").matching(token).boost(0.8f));
+                                }
+                            }));
+                            kb.should(f.bool(sub -> {
+                                for (String token : tokens) {
+                                    sub.must(f.match().field("producer.nameKo").matching(token).boost(1.5f));
+                                }
+                            }));
+                            kb.should(f.bool(sub -> {
+                                for (String token : tokens) {
+                                    sub.must(f.match().field("producer.nameKo_ngram").matching(token).boost(0.8f));
+                                }
+                            }));
+                            kb.should(f.bool(sub -> {
+                                for (String token : tokens) {
+                                    sub.must(f.match().field("producer.nameEn").matching(token).boost(1.0f));
+                                }
+                            }));
+                            kb.should(f.bool(sub -> {
+                                for (String token : tokens) {
+                                    sub.must(f.match().field("producer.nameEn_ngram").matching(token).boost(0.5f));
+                                }
+                            }));
+                            kb.should(f.bool(sub -> {
+                                for (String token : tokens) {
+                                    sub.must(f.match().field("producer.searchKeywords").matching(token).boost(1.2f));
+                                }
+                            }));
+                        }));
+
+
+
+                    }
+
                 }))
                 .fetch(0, 10);
 
