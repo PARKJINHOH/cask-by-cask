@@ -61,6 +61,8 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.OCI_S3_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.OCI_S3_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: "ap-chuncheon-1"
+          AWS_REQUEST_CHECKSUM_CALCULATION: "when_required"
+          AWS_RESPONSE_CHECKSUM_VALIDATION: "when_required"
           ENDPOINT: "https://${{ secrets.OCI_NAMESPACE }}.compat.objectstorage.ap-chuncheon-1.oraclecloud.com"
           BUCKET: ${{ secrets.OCI_BUCKET }}
         run: |
@@ -68,11 +70,12 @@ jobs:
           echo "Debug - ACCESS_KEY_ID length: ${#AWS_ACCESS_KEY_ID}"
           echo "Debug - SECRET_ACCESS_KEY length: ${#AWS_SECRET_ACCESS_KEY}"
           
-          # AWS CLI S3 설정 (Multipart 업로드 차단, v4 서명 및 경로 스타일 강제)
+          # AWS CLI S3 설정 (Multipart 업로드 차단, v4 서명 및 경로 스타일 강제, 페이로드 서명 비활성화)
           aws configure set default.s3.multipart_threshold 512MB
           aws configure set default.s3.multipart_chunksize 512MB
           aws configure set default.s3.signature_version s3v4
           aws configure set default.s3.addressing_style path
+          aws configure set default.s3.payload_signing false
           
           # 1. 파일 업로드
           aws s3 cp caskbycask-api/build/libs/app.jar "s3://$BUCKET/api/app-${{ github.run_id }}-${{ github.run_attempt }}.jar" --endpoint-url "$ENDPOINT" --region ap-chuncheon-1
@@ -124,6 +127,8 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.OCI_S3_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.OCI_S3_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: "ap-chuncheon-1"
+          AWS_REQUEST_CHECKSUM_CALCULATION: "when_required"
+          AWS_RESPONSE_CHECKSUM_VALIDATION: "when_required"
           ENDPOINT: "https://${{ secrets.OCI_NAMESPACE }}.compat.objectstorage.ap-chuncheon-1.oraclecloud.com"
           BUCKET: ${{ secrets.OCI_BUCKET }}
         run: |
@@ -131,11 +136,12 @@ jobs:
           echo "Debug - ACCESS_KEY_ID length: ${#AWS_ACCESS_KEY_ID}"
           echo "Debug - SECRET_ACCESS_KEY length: ${#AWS_SECRET_ACCESS_KEY}"
           
-          # AWS CLI S3 설정 (Multipart 업로드 차단, v4 서명 및 경로 스타일 강제)
+          # AWS CLI S3 설정 (Multipart 업로드 차단, v4 서명 및 경로 스타일 강제, 페이로드 서명 비활성화)
           aws configure set default.s3.multipart_threshold 512MB
           aws configure set default.s3.multipart_chunksize 512MB
           aws configure set default.s3.signature_version s3v4
           aws configure set default.s3.addressing_style path
+          aws configure set default.s3.payload_signing false
           
           # 1. tar.gz로 압축
           tar -czf web-dist.tar.gz -C caskbycask-web/.next/standalone .
@@ -176,14 +182,17 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.OCI_S3_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.OCI_S3_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: "ap-chuncheon-1"
+          AWS_REQUEST_CHECKSUM_CALCULATION: "when_required"
+          AWS_RESPONSE_CHECKSUM_VALIDATION: "when_required"
           ENDPOINT: "https://${{ secrets.OCI_NAMESPACE }}.compat.objectstorage.ap-chuncheon-1.oraclecloud.com"
           BUCKET: ${{ secrets.OCI_BUCKET }}
         run: |
-          # AWS CLI S3 설정 (Multipart 업로드 차단, v4 서명 및 경로 스타일 강제)
+          # AWS CLI S3 설정 (Multipart 업로드 차단, v4 서명 및 경로 스타일 강제, 페이로드 서명 비활성화)
           aws configure set default.s3.multipart_threshold 512MB
           aws configure set default.s3.multipart_chunksize 512MB
           aws configure set default.s3.signature_version s3v4
           aws configure set default.s3.addressing_style path
+          aws configure set default.s3.payload_signing false
           
           mkdir -p artifacts/api
           KEY=$(aws s3api list-objects-v2 --bucket "$BUCKET" --prefix "api/" --endpoint-url "$ENDPOINT" --region ap-chuncheon-1 --query "sort_by(Contents, &LastModified)[-1].Key" --output text)
@@ -195,14 +204,17 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.OCI_S3_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.OCI_S3_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: "ap-chuncheon-1"
+          AWS_REQUEST_CHECKSUM_CALCULATION: "when_required"
+          AWS_RESPONSE_CHECKSUM_VALIDATION: "when_required"
           ENDPOINT: "https://${{ secrets.OCI_NAMESPACE }}.compat.objectstorage.ap-chuncheon-1.oraclecloud.com"
           BUCKET: ${{ secrets.OCI_BUCKET }}
         run: |
-          # AWS CLI S3 설정 (Multipart 업로드 차단, v4 서명 및 경로 스타일 강제)
+          # AWS CLI S3 설정 (Multipart 업로드 차단, v4 서명 및 경로 스타일 강제, 페이로드 서명 비활성화)
           aws configure set default.s3.multipart_threshold 512MB
           aws configure set default.s3.multipart_chunksize 512MB
           aws configure set default.s3.signature_version s3v4
           aws configure set default.s3.addressing_style path
+          aws configure set default.s3.payload_signing false
           
           mkdir -p artifacts/web
           KEY=$(aws s3api list-objects-v2 --bucket "$BUCKET" --prefix "web/" --endpoint-url "$ENDPOINT" --region ap-chuncheon-1 --query "sort_by(Contents, &LastModified)[-1].Key" --output text)
