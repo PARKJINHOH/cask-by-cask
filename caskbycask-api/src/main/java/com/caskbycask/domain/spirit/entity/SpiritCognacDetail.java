@@ -30,6 +30,7 @@ public class SpiritCognacDetail {
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
     @Comment("등급 — VS/VSOP/NAPOLEON/XO/XXO/HORS_DAGE")
+    @org.hibernate.search.mapper.pojo.mapping.definition.annotation.KeywordField
     private CognacGrade grade;
 
     /**

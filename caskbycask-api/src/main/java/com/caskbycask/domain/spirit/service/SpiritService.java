@@ -76,18 +76,35 @@ public class SpiritService {
     private final ScoreService scoreService;
     private final NotificationService notificationService;
     private final BadWordFilter badWordFilter;
+    private final SpiritSearchService spiritSearchService;
 
     // ── 공개 조회 ──────────────────────────────────────────
 
     @Transactional(readOnly = true)
     public Page<SpiritListResponse> searchSpirits(SpiritSearchCondition condition,
                                                    Pageable pageable) {
+        if (org.springframework.util.StringUtils.hasText(condition.keyword())) {
+            Page<Long> idPage = spiritSearchService.searchSpiritIds(condition, pageable);
+            if (idPage.isEmpty()) {
+                return Page.empty(pageable);
+            }
+            List<SpiritListResponse> content = spiritRepository.findListByIds(idPage.getContent(), false);
+            return new org.springframework.data.domain.PageImpl<>(content, pageable, idPage.getTotalElements());
+        }
         return spiritRepository.search(condition, pageable);
     }
 
     @Transactional(readOnly = true)
     public Page<SpiritListResponse> searchSpiritsForAdmin(SpiritSearchCondition condition,
                                                           Pageable pageable) {
+        if (org.springframework.util.StringUtils.hasText(condition.keyword())) {
+            Page<Long> idPage = spiritSearchService.searchSpiritIds(condition, pageable);
+            if (idPage.isEmpty()) {
+                return Page.empty(pageable);
+            }
+            List<SpiritListResponse> content = spiritRepository.findListByIds(idPage.getContent(), true);
+            return new org.springframework.data.domain.PageImpl<>(content, pageable, idPage.getTotalElements());
+        }
         return spiritRepository.searchForAdmin(condition, pageable);
     }
 

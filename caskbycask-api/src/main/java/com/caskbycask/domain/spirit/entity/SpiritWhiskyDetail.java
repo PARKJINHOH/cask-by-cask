@@ -26,6 +26,7 @@ public class SpiritWhiskyDetail {
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
     @Comment("위스키 스타일 — SINGLE_MALT/BLENDED_MALT/BLENDED_WHISKY/GRAIN_CORN/BOURBON/WHEATED_BOURBON/RYE/POT_STILL/TENNESSEE/OTHER")
+    @org.hibernate.search.mapper.pojo.mapping.definition.annotation.KeywordField
     private WhiskyStyle style;
 
     /** OB=Official Bottling, IB=Independent Bottling */

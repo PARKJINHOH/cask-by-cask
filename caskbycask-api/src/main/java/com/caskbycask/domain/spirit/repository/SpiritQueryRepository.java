@@ -10,4 +10,6 @@ public interface SpiritQueryRepository {
     Page<SpiritListResponse> search(SpiritSearchCondition condition, Pageable pageable);
 
     Page<SpiritListResponse> searchForAdmin(SpiritSearchCondition condition, Pageable pageable);
+
+    java.util.List<SpiritListResponse> findListByIds(java.util.List<Long> ids, boolean includeStyle);
 }

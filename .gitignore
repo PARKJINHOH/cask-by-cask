@@ -34,6 +34,8 @@ caskbycask-web/next-env.d.ts
 logs/
 *.log
 uploads/
+lucene/
+caskbycask-api/lucene/
 
 # ─── OS ───
 .DS_Store

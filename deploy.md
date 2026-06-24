@@ -411,3 +411,39 @@ mysqldump --no-data --skip-comments -u {user} -p caskbycask_prod \
 ```
 
 이후 새 DB에서 앱을 기동하면 V1부터 순서대로 전체 마이그레이션이 실행됩니다.
+
+---
+
+## ⚠️ Docker 전환 및 서버 이중화(Horizontal Scaling) 시 주의사항
+
+서비스 규모가 확장되어 컨테이너(Docker) 기반 배포 환경으로 전환하거나, 무중단 배포 및 부하 분산을 위해 API 서버를 이중화(Active-Active)하는 경우 소스코드 및 아키텍처 상 다음 사항들을 주의 깊게 설계하고 조치해야 합니다.
+
+### 1. 검색 엔진 백엔드 (Embedded Lucene 락 충돌)
+- **현 상태**: 로컬 파일 시스템(`lucene/indexes`)에 인덱스를 직접 생성하고 쓰는 **Embedded Lucene** 방식을 사용 중입니다.
+- **이중화 시 문제점**: 2개 이상의 API 인스턴스가 하나의 공유 파일 경로를 마운트하여 사용할 경우, Lucene의 쓰기 락 파일(`write.lock`) 충돌로 인해 `LockObtainFailedException`이 발생하며 두 번째 서버부터 기동되지 않습니다.
+- **해결 방안**: 
+  - `application.yml`의 `spring.jpa.properties.hibernate.search` 설정을 **Elasticsearch 백엔드로 전환**하고 외부의 공유 Elasticsearch 클러스터를 바라보도록 이중화 설정을 해야 합니다.
+
+### 2. 로컬 파일 저장소 (Uploader 파일 불일치)
+- **현 상태**: 사용자가 업로드한 이미지 및 미디어 파일은 로컬 스토리지 서비스([LocalFileStorageService.java](file:///c:/Users/JINHOH_PC/Desktop/workspace/cask-by-cask/caskbycask-api/src/main/java/com/caskbycask/global/storage/LocalFileStorageService.java))를 통해 로컬 경로(`/app/upload`)에 저장됩니다.
+- **이중화 시 문제점**: 로드 밸런서에 의해 요청이 분산될 경우, 1번 서버에서 업로드한 이미지 파일이 2번 서버에는 존재하지 않아 이미지 조회 시 `404 Not Found`가 발생합니다.
+- **해결 방안**:
+  - AWS S3, Oracle Object Storage 등 외부의 오브젝트 스토리지를 연동하도록 소스코드 내의 `S3FileStorageService` 스텁을 활성화하거나, `/app/upload` 경로를 NFS(공유 네트워크 스토리지)로 공유해야 합니다.
+  - Docker 전환 시 반드시 `/app/upload` 경로가 영속 볼륨(Persistent Volume)으로 보존되도록 마운트해야 컨테이너 재생성 시 업로드 파일 유실을 막을 수 있습니다.
+
+### 3. 분산 환경 스케줄러 중복 실행 (`@Scheduled` 배치)
+- **현 상태**: 미디어 정리([MediaCleanupBatch.java](file:///c:/Users/JINHOH_PC/Desktop/workspace/cask-by-cask/caskbycask-api/src/main/java/com/caskbycask/domain/community/batch/MediaCleanupBatch.java)), 미사용 토큰/알림 정리 등 다양한 배치 로직이 주기적으로 실행되고 있습니다.
+- **이중화 시 문제점**: 여러 API 서버가 기동 중일 때, 정해진 스케줄(예: 새벽 3~4시)에 모든 인스턴스에서 동시에 배치를 실행합니다. 이는 DB 락 경합(DB Lock Contention), 데이터 중복 처리, CPU 자원 낭비를 유발합니다.
+- **해결 방안**:
+  - **ShedLock**과 같은 분산 락 라이브러리를 도입하여 DB/Redis를 통해 1개의 인스턴스만 배치를 획득해 실행하도록 수정해야 합니다.
+  - 또는, 특정 프로파일(`@Profile("scheduler")`)을 지정하여 배치 스케줄링 전용 단일 인스턴스(Worker)에서만 배치가 실행되도록 격리해야 합니다.
+
+### 4. 로컬 인메모리 캐시 동기화 지연 (Caffeine Cache)
+- **현 상태**: API 호출 최소화를 위해 사용자 정보 캐싱([CacheConfig.java](file:///c:/Users/JINHOH_PC/Desktop/workspace/cask-by-cask/caskbycask-api/src/main/java/com/caskbycask/global/config/CacheConfig.java))에 로컬 인메모리 캐시인 **Caffeine**을 사용 중입니다.
+- **이중화 시 문제점**: 1번 서버에서 사용자의 상태(탈퇴, 차단 등)가 변경되어 로컬 캐시를 무효화(Evict)해도, 2번 서버의 로컬 캐시에는 기존 정보가 최대 60초간 유지되는 일시적인 데이터 정합성 불일치가 발생할 수 있습니다.
+- **해결 방안**:
+  - 캐시 만료 시간(TTL)을 더 극단적으로 단축(예: 10초 이하)하거나, 캐시 저장소를 이미 세팅되어 있는 공유 **Redis** 기반 캐시로 마이그레이션 해야 합니다.
+
+### 5. Docker 컨테이너 전환 시 네트워크 설정
+- **Actuator 포트 분리**: 현재 `management.server.port=8081` 및 `address=127.0.0.1`로 설정되어 외부 접근을 방어하고 있습니다. 컨테이너 환경에서는 프로메테우스 수집기 등이 타겟 컨테이너 내부 8081 포트에 도커 내부 네트워크를 통해 접근할 수 있도록 포트 바인딩 및 네트워크 브릿지를 적절히 설계해야 합니다.
+- **사용자 IP 추적 (Rate Limit)**: Nginx가 프록시 환경에서 사용자 실제 IP(`X-Forwarded-For`, `CF-Connecting-IP`)를 유실하지 않고 컨테이너 내부 WAS로 정확히 전달(헤더 위임 설정)해야 Cloudflare 기반의 Rate Limiter가 정상 작동합니다.

@@ -35,6 +35,7 @@ public class SpiritWineDetail {
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
     @Comment("와인 유형 — RED/WHITE/ROSE/SPARKLING/DESSERT/ORANGE")
+    @org.hibernate.search.mapper.pojo.mapping.definition.annotation.KeywordField
     private WineType wineType;
 
     /** 포도 수확 연도 — 와인의 핵심 식별자 */
@@ -61,21 +62,25 @@ public class SpiritWineDetail {
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
     @Comment("당도 — DRY/OFF_DRY/MEDIUM/SWEET")
+    @org.hibernate.search.mapper.pojo.mapping.definition.annotation.KeywordField
     private WineSweetness sweetness;
 
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
     @Comment("바디 — LIGHT/MEDIUM/FULL")
+    @org.hibernate.search.mapper.pojo.mapping.definition.annotation.KeywordField
     private WineBody body;
 
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
     @Comment("산도 — LOW/MEDIUM/HIGH")
+    @org.hibernate.search.mapper.pojo.mapping.definition.annotation.KeywordField
     private WineIntensity acidity;
 
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
     @Comment("타닌 — LOW/MEDIUM/HIGH")
+    @org.hibernate.search.mapper.pojo.mapping.definition.annotation.KeywordField
     private WineIntensity tannin;
 
     /**

@@ -9,6 +9,9 @@ import com.caskbycask.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.Comment;
+import org.hibernate.search.mapper.pojo.mapping.definition.annotation.*;
+import org.hibernate.search.mapper.pojo.automaticindexing.ReindexOnUpdate;
+import org.hibernate.search.engine.backend.types.Sortable;
 
 import static jakarta.persistence.CascadeType.ALL;
 import static jakarta.persistence.FetchType.LAZY;
@@ -31,6 +34,7 @@ import java.util.List;
 @Builder
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Comment("주류(위스키/와인/꼬냑/기타)")
+@Indexed
 public class Spirit extends BaseTimeEntity {
 
     @Id
@@ -40,20 +44,27 @@ public class Spirit extends BaseTimeEntity {
 
     @Column(nullable = false, length = 200)
     @Comment("주류명(한글)")
+    @FullTextField(analyzer = "korean_search")
+    @FullTextField(name = "nameKo_ngram", analyzer = "ngram_search")
     private String nameKo;
 
     @Column(nullable = false, length = 200)
     @Comment("주류명(영문)")
+    @FullTextField(analyzer = "korean_search")
+    @FullTextField(name = "nameEn_ngram", analyzer = "ngram_search")
     private String nameEn;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Comment("카테고리 — WHISKY/WINE/COGNAC/OTHER")
+    @KeywordField
     private SpiritCategory category;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "producer_id")
     @Comment("생산자(producer.id)")
+    @IndexedEmbedded
+    @IndexingDependency(reindexOnUpdate = ReindexOnUpdate.SHALLOW)
     private Producer producer;
 
     @Column(length = 200)
@@ -70,6 +81,7 @@ public class Spirit extends BaseTimeEntity {
 
     @Column(precision = 4, scale = 1)
     @Comment("도수(%)")
+    @GenericField
     private BigDecimal abv;
 
     @Column
@@ -78,19 +90,23 @@ public class Spirit extends BaseTimeEntity {
 
     @Column(length = 100)
     @Comment("국가")
+    @KeywordField
     private String country;
 
     @Column(length = 100)
     @Comment("지역")
+    @KeywordField
     private String region;
 
     @Column(precision = 4, scale = 1)
     @Comment("평균 평점")
+    @GenericField(sortable = Sortable.YES)
     private BigDecimal avgScore;
 
     @Builder.Default
     @Column(nullable = false)
     @Comment("리뷰 수")
+    @GenericField(sortable = Sortable.YES)
     private Integer reviewCount = 0;
 
     @Builder.Default
@@ -102,6 +118,7 @@ public class Spirit extends BaseTimeEntity {
     @Builder.Default
     @Column(nullable = false, length = 20)
     @Comment("상태 — ACTIVE/HIDDEN/PENDING")
+    @KeywordField
     private SpiritStatus status = SpiritStatus.PENDING;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -147,13 +164,26 @@ public class Spirit extends BaseTimeEntity {
     private SpiritCommonDetail commonDetail;
 
     @OneToOne(mappedBy = "spirit", cascade = ALL, orphanRemoval = true, fetch = LAZY)
+    @IndexedEmbedded
+    @IndexingDependency(reindexOnUpdate = ReindexOnUpdate.SHALLOW)
     private SpiritWhiskyDetail whiskyDetail;
 
     @OneToOne(mappedBy = "spirit", cascade = ALL, orphanRemoval = true, fetch = LAZY)
+    @IndexedEmbedded
+    @IndexingDependency(reindexOnUpdate = ReindexOnUpdate.SHALLOW)
     private SpiritWineDetail wineDetail;
 
     @OneToOne(mappedBy = "spirit", cascade = ALL, orphanRemoval = true, fetch = LAZY)
+    @IndexedEmbedded
+    @IndexingDependency(reindexOnUpdate = ReindexOnUpdate.SHALLOW)
     private SpiritCognacDetail cognacDetail;
+
+    @Transient
+    @GenericField(name = "hasParent")
+    @IndexingDependency(derivedFrom = @ObjectPath(@PropertyValue(propertyName = "parent")))
+    public boolean isHasParent() {
+        return parent != null;
+    }
 
     @OneToOne(mappedBy = "spirit", cascade = ALL, orphanRemoval = true, fetch = LAZY)
     private SpiritOtherDetail otherDetail;

@@ -12,6 +12,10 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.H2Dialect
+        search:
+          automatic_indexing:
+            synchronization:
+              strategy: sync
 
   data:
     redis:

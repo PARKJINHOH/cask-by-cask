@@ -210,4 +210,44 @@ public class SpiritQueryRepositoryImpl implements SpiritQueryRepository {
                 t -> t.get(image.imageUrl)
         ));
     }
+
+    @Override
+    public List<SpiritListResponse> findListByIds(List<Long> ids, boolean includeStyle) {
+        if (ids.isEmpty()) return List.of();
+
+        QSpirit spirit = QSpirit.spirit;
+        QSpiritImage image = QSpiritImage.spiritImage;
+        QProducer producer = QProducer.producer;
+
+        // 1. Entity 조회 (Fetch Join)
+        JPAQuery<Spirit> query = queryFactory
+                .selectFrom(spirit)
+                .leftJoin(spirit.producer, producer).fetchJoin();
+
+        if (includeStyle) {
+            applyStyleFetchJoin(query, spirit);
+        }
+
+        List<Spirit> spirits = query
+                .where(spirit.id.in(ids))
+                .fetch();
+
+        // 2. 검색 엔진 순서(ids)대로 결과 재정렬
+        Map<Long, Spirit> spiritMap = spirits.stream()
+                .collect(Collectors.toMap(Spirit::getId, s -> s));
+        List<Spirit> sortedSpirits = ids.stream()
+                .map(spiritMap::get)
+                .filter(java.util.Objects::nonNull)
+                .toList();
+
+        // 3. 대표 이미지 배치 조회
+        Map<Long, String> primaryImages = fetchPrimaryImages(sortedSpirits, image);
+
+        // 4. DTO 변환
+        return sortedSpirits.stream()
+                .map(s -> includeStyle
+                        ? SpiritListResponse.ofWithStyle(s, primaryImages.get(s.getId()))
+                        : SpiritListResponse.of(s, primaryImages.get(s.getId())))
+                .toList();
+    }
 }

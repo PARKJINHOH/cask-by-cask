@@ -100,6 +100,11 @@ dependencies {
     testRuntimeOnly("com.h2database:h2")
     testCompileOnly("org.projectlombok:lombok")
     testAnnotationProcessor("org.projectlombok:lombok")
+
+    // Hibernate Search (Embedded Lucene) & Nori 한글 분석기
+    implementation("org.hibernate.search:hibernate-search-mapper-orm:7.1.0.Final")
+    implementation("org.hibernate.search:hibernate-search-backend-lucene:7.1.0.Final")
+    implementation("org.apache.lucene:lucene-analysis-nori:9.11.1")
 }
 
 // QueryDSL Q클래스 생성 경로

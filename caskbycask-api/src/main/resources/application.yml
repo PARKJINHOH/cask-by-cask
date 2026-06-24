@@ -13,6 +13,14 @@ spring:
     properties:
       hibernate:
         format_sql: false
+        search:
+          backend:
+            type: lucene
+            directory:
+              type: local-filesystem
+              root: ${HIBERNATE_SEARCH_INDEX_PATH:./lucene/indexes}
+            analysis:
+              configurer: class:com.caskbycask.global.config.search.CustomLuceneAnalysisConfigurer
 
   flyway:
     enabled: true
