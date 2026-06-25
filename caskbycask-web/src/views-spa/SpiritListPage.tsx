@@ -24,6 +24,7 @@ import ActiveFilterChips, {
 } from '@/domain/spirit/components/filter/ActiveFilterChips'
 import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 import { buildBreadcrumbSchema, buildItemListSchema } from '@/shared/utils/seoSchema'
+import { getSpiritListDisplayNames } from '@/domain/spirit/utils/spiritDisplayName'
 
 // ── SEO 카테고리별 메타 ─────────────────────────────────────────
 const CATEGORY_META: Record<SpiritCategory | '', {
@@ -606,10 +607,13 @@ export default function SpiritListPage() {
   )
 
   const seoItemList = buildItemListSchema(
-    (data?.content ?? []).slice(0, 20).map((s) => ({
-      name: isEn ? (s.nameEn || s.nameKo) : s.nameKo,
-      path: `/spirits/${s.id}`,
-    })),
+    (data?.content ?? []).slice(0, 20).map((s) => {
+      const displayName = getSpiritListDisplayNames(s)
+      return {
+        name: isEn ? (displayName.nameEn || displayName.nameKo) : displayName.nameKo,
+        path: `/spirits/${s.id}`,
+      }
+    }),
   )
 
   const seoJsonLd = [
@@ -771,43 +775,46 @@ export default function SpiritListPage() {
                 </div>
               ) : results.length > 0 ? (
                 <ul className="py-1">
-                  {results.map((item) => (
-                    <li key={item.id}>
-                      <button
-                        type="button"
+                  {results.map((item) => {
+                    const displayName = getSpiritListDisplayNames(item)
+                    return (
+                      <li key={item.id}>
+                        <button
+                          type="button"
 
-                        onClick={() => {
-                          navigate(`/spirits/${item.id}`)
-                          setKeywordInput(item.nameKo)
-                          setIsOpen(false)
-                        }}
-                        className="w-full text-left px-3.5 py-2 flex items-center gap-3 hover:bg-neutral-50/50 transition-colors"
-                      >
-                        {item.imageUrl ? (
-                          <img
-                            src={item.imageUrl}
-                            alt={item.nameKo}
-                            className="w-8 h-8 object-contain rounded bg-white flex-shrink-0 border border-neutral-100"
-                          />
-                        ) : (
-                          <div className="w-8 h-8 rounded bg-neutral-100/50 flex items-center justify-center text-neutral-400 flex-shrink-0 text-[8px]">
-                            No Image
+                          onClick={() => {
+                            navigate(`/spirits/${item.id}`)
+                            setKeywordInput(displayName.nameKo)
+                            setIsOpen(false)
+                          }}
+                          className="w-full text-left px-3.5 py-2 flex items-center gap-3 hover:bg-neutral-50/50 transition-colors"
+                        >
+                          {item.imageUrl ? (
+                            <img
+                              src={item.imageUrl}
+                              alt={displayName.nameKo}
+                              className="w-8 h-8 object-contain rounded bg-white flex-shrink-0 border border-neutral-100"
+                            />
+                          ) : (
+                            <div className="w-8 h-8 rounded bg-neutral-100/50 flex items-center justify-center text-neutral-400 flex-shrink-0 text-[8px]">
+                              No Image
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-semibold text-neutral-800 truncate">
+                              {displayName.nameKo}
+                            </div>
+                            <div className="text-[10px] text-neutral-400 truncate">
+                              {displayName.nameEn}
+                            </div>
                           </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs font-semibold text-neutral-800 truncate">
-                            {item.nameKo}
-                          </div>
-                          <div className="text-[10px] text-neutral-400 truncate">
-                            {item.nameEn}
-                          </div>
-                        </div>
-                        <span className="text-[9px] font-semibold bg-primary-50 text-primary-800 px-1.5 py-0.5 rounded-full flex-shrink-0">
-                          {t(`category.${item.category.toLowerCase()}`, item.category)}
-                        </span>
-                      </button>
-                    </li>
-                  ))}
+                          <span className="text-[9px] font-semibold bg-primary-50 text-primary-800 px-1.5 py-0.5 rounded-full flex-shrink-0">
+                            {t(`category.${item.category.toLowerCase()}`, item.category)}
+                          </span>
+                        </button>
+                      </li>
+                    )
+                  })}
                 </ul>
               ) : null}
             </div>

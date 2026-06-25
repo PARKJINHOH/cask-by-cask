@@ -97,6 +97,7 @@ export function toSpiritRequestForm(payload: CreateSpiritPayload): SpiritRegiste
     variantType: (variant?.variantType ?? 'NONE') as RequestVariantType,
     variantValue: variant?.variantValue || null,
     variantValueEn: variant?.variantValueEn || null,
+    seriesIdentifier: variant?.seriesIdentifier || null,
   }
 }
 
@@ -164,6 +165,7 @@ export function toPrefillDetail(d: MySpiritRequestDetail): SpiritRegisterRequest
     variantType: d.variantType ?? null,
     variantValue: d.variantValue ?? null,
     variantValueEn: d.variantValueEn ?? null,
+    seriesIdentifier: d.seriesIdentifier ?? null,
     status: d.status,
     rejectReason: null,
     createdAt: '',

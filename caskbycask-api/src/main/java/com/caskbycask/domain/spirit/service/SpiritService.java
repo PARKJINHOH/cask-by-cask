@@ -15,6 +15,7 @@ import com.caskbycask.domain.spirit.entity.enums.RequestStatus;
 import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
 import com.caskbycask.domain.spirit.entity.enums.SpiritStatus;
 import com.caskbycask.domain.spirit.entity.enums.VariantLinkType;
+import com.caskbycask.domain.spirit.entity.enums.VariantType;
 import com.caskbycask.domain.spirit.repository.SpiritImageRepository;
 import com.caskbycask.domain.spirit.repository.SpiritRegisterRequestRepository;
 import com.caskbycask.domain.spirit.repository.SpiritRepository;
@@ -36,6 +37,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -311,6 +313,8 @@ public class SpiritService {
         }
 
         verifyProducerAccess(registeredBy, producer);
+        validateEditionSeriesIdentifier(request);
+        String seriesIdentifier = resolveSeriesIdentifier(request);
 
         Spirit spirit = Spirit.builder()
                 .nameKo(request.nameKo())
@@ -329,6 +333,7 @@ public class SpiritService {
                 .variantType(request.variantType())
                 .variantValue(request.variantValue())
                 .variantValueEn(request.variantValueEn())
+                .seriesIdentifier(seriesIdentifier)
                 .abvMin(request.abvMin())
                 .abvMax(request.abvMax())
                 .volumeMlMin(request.volumeMlMin())
@@ -363,6 +368,7 @@ public class SpiritService {
                         .variantType(vReq.variantType())
                         .variantValue(vReq.variantValue())
                         .variantValueEn(vReq.variantValueEn())
+                        .seriesIdentifier(normalizeSeriesIdentifier(vReq.seriesIdentifier()))
                         .abvMin(vReq.abvMin())
                         .abvMax(vReq.abvMax())
                         .volumeMlMin(vReq.volumeMlMin())
@@ -393,6 +399,8 @@ public class SpiritService {
                 : spirit.getProducer();
 
         SpiritCategory prevCategory = spirit.getCategory();
+        validateEditionSeriesIdentifier(request, spirit);
+        String seriesIdentifier = resolveSeriesIdentifier(request, spirit);
 
         spirit.update(
                 request.nameKo() != null ? request.nameKo() : spirit.getNameKo(),
@@ -410,6 +418,7 @@ public class SpiritService {
                 request.variantType() != null ? request.variantType() : spirit.getVariantType(),
                 request.variantValue() != null ? request.variantValue() : spirit.getVariantValue(),
                 request.variantValueEn() != null ? request.variantValueEn() : spirit.getVariantValueEn(),
+                seriesIdentifier,
                 // 도수 범위 지정 해제 시 null 로 명시 전송됨 — fallback 없이 그대로 반영해야 해제가 반영됨
                 request.abvMin(),
                 request.abvMax(),
@@ -444,6 +453,7 @@ public class SpiritService {
                                 spirit.getVintageYear(), vReq.abv(), vReq.volumeMl(),
                                 spirit.getCountry(), spirit.getRegion(),
                                 spirit, vReq.variantType(), vReq.variantValue(), vReq.variantValueEn(),
+                                normalizeSeriesIdentifier(vReq.seriesIdentifier()),
                                 vReq.abvMin(), vReq.abvMax(), vReq.volumeMlMin(), vReq.volumeMlMax()
                         );
                         existing.assignDisplayOrder(i);
@@ -471,6 +481,7 @@ public class SpiritService {
                                 .variantType(vReq.variantType())
                                 .variantValue(vReq.variantValue())
                                 .variantValueEn(vReq.variantValueEn())
+                                .seriesIdentifier(normalizeSeriesIdentifier(vReq.seriesIdentifier()))
                                 .abvMin(vReq.abvMin())
                                 .abvMax(vReq.abvMax())
                                 .volumeMlMin(vReq.volumeMlMin())
@@ -495,6 +506,7 @@ public class SpiritService {
                                 existing.getVintageYear(), existing.getAbv(), existing.getVolumeMl(),
                                 existing.getCountry(), existing.getRegion(),
                                 null, existing.getVariantType(), existing.getVariantValue(), existing.getVariantValueEn(),
+                                existing.getSeriesIdentifier(),
                                 existing.getAbvMin(), existing.getAbvMax(),
                                 existing.getVolumeMlMin(), existing.getVolumeMlMax()
                         );
@@ -510,6 +522,7 @@ public class SpiritService {
                             existing.getVintageYear(), existing.getAbv(), existing.getVolumeMl(),
                             existing.getCountry(), existing.getRegion(),
                             null, existing.getVariantType(), existing.getVariantValue(), existing.getVariantValueEn(),
+                            existing.getSeriesIdentifier(),
                             existing.getAbvMin(), existing.getAbvMax(),
                             existing.getVolumeMlMin(), existing.getVolumeMlMax()
                     );
@@ -559,6 +572,7 @@ public class SpiritService {
 
         // 카테고리 핵심값 필수 (신청자 제출 경로)
         if (!body.hasCategoryCore()) throw new CustomException(ErrorCode.INVALID_INPUT);
+        validateEditionSeriesIdentifier(body);
 
         // 욕설 필터 — 신청자가 입력한 기타 문구 검사
         badWordFilter.validate(body.note());
@@ -620,6 +634,7 @@ public class SpiritService {
 
         // 카테고리 핵심값 필수 (신청자 수정 경로)
         if (!body.hasCategoryCore()) throw new CustomException(ErrorCode.INVALID_INPUT);
+        validateEditionSeriesIdentifier(body);
 
         badWordFilter.validate(body.note());
 
@@ -753,6 +768,8 @@ public class SpiritService {
         User admin = getUser(adminId);
 
         Producer producer = resolveProducer(detail.producerId());
+        validateEditionSeriesIdentifier(detail);
+        String seriesIdentifier = resolveSeriesIdentifier(detail);
 
         Spirit spirit = Spirit.builder()
                 .nameKo(detail.nameKo())
@@ -771,6 +788,7 @@ public class SpiritService {
                 .variantType(detail.variantType())
                 .variantValue(detail.variantValue())
                 .variantValueEn(detail.variantValueEn())
+                .seriesIdentifier(seriesIdentifier)
                 .abvMin(detail.abvMin())
                 .abvMax(detail.abvMax())
                 .volumeMlMin(detail.volumeMlMin())
@@ -805,6 +823,7 @@ public class SpiritService {
                         .variantType(vReq.variantType())
                         .variantValue(vReq.variantValue())
                         .variantValueEn(vReq.variantValueEn())
+                        .seriesIdentifier(normalizeSeriesIdentifier(vReq.seriesIdentifier()))
                         .abvMin(vReq.abvMin())
                         .abvMax(vReq.abvMax())
                         .volumeMlMin(vReq.volumeMlMin())
@@ -865,6 +884,65 @@ public class SpiritService {
     }
 
     // ── Private helpers ─────────────────────────────────────
+
+    private void validateEditionSeriesIdentifier(CreateSpiritRequest request) {
+        validateEditionSeriesIdentifier(request.variantType(), resolveSeriesIdentifier(request));
+        validateVariantSeriesIdentifiers(request.variants());
+    }
+
+    private void validateEditionSeriesIdentifier(UpdateSpiritRequest request, Spirit spirit) {
+        VariantType variantType = request.variantType() != null
+                ? request.variantType()
+                : spirit.getVariantType();
+        validateEditionSeriesIdentifier(variantType, resolveSeriesIdentifier(request, spirit));
+        validateVariantSeriesIdentifiers(request.variants());
+    }
+
+    private void validateEditionSeriesIdentifier(SpiritRegisterRequestBody body) {
+        validateEditionSeriesIdentifier(body.variantType(), body.seriesIdentifier());
+    }
+
+    private void validateVariantSeriesIdentifiers(List<CreateVariantRequest> variants) {
+        if (variants == null) return;
+        variants.forEach(v -> validateEditionSeriesIdentifier(v.variantType(), v.seriesIdentifier()));
+    }
+
+    private void validateEditionSeriesIdentifier(VariantType variantType, String seriesIdentifier) {
+        if (variantType != null
+                && variantType != VariantType.NONE
+                && !StringUtils.hasText(seriesIdentifier)) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+    }
+
+    private String resolveSeriesIdentifier(CreateSpiritRequest request) {
+        String direct = normalizeSeriesIdentifier(request.seriesIdentifier());
+        if (direct != null) return direct;
+        if (Boolean.TRUE.equals(request.isVariantSplit()) && request.variants() != null && !request.variants().isEmpty()) {
+            return normalizeSeriesIdentifier(request.variants().get(0).seriesIdentifier());
+        }
+        return null;
+    }
+
+    private String resolveSeriesIdentifier(UpdateSpiritRequest request, Spirit spirit) {
+        VariantType requestedVariantType = request.variantType() != null
+                ? request.variantType()
+                : spirit.getVariantType();
+        if (Boolean.FALSE.equals(request.isVariantSplit()) && requestedVariantType == VariantType.NONE) {
+            return null;
+        }
+        if (request.seriesIdentifier() != null) {
+            return normalizeSeriesIdentifier(request.seriesIdentifier());
+        }
+        if (Boolean.TRUE.equals(request.isVariantSplit()) && request.variants() != null && !request.variants().isEmpty()) {
+            return normalizeSeriesIdentifier(request.variants().get(0).seriesIdentifier());
+        }
+        return spirit.getSeriesIdentifier();
+    }
+
+    private String normalizeSeriesIdentifier(String value) {
+        return StringUtils.hasText(value) ? value.trim() : null;
+    }
 
     private Spirit getSpirit(Long id) {
         return spiritRepository.findById(id)

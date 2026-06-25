@@ -51,6 +51,7 @@ export interface CreateVariantRequest {
   variantType: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK'
   variantValue: string
   variantValueEn?: string | null
+  seriesIdentifier: string
   abv?: number | null
   abvMin?: number | null
   abvMax?: number | null
@@ -230,6 +231,7 @@ export interface AdminSpiritItem {
   id: number
   nameKo: string
   nameEn: string
+  seriesIdentifier?: string | null
   category: SpiritCategory
   country: string | null
   abv: number | null
@@ -267,6 +269,7 @@ export interface AdminSpiritVariant {
   variantType?: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE' | null
   variantValue?: string | null
   variantValueEn?: string | null
+  seriesIdentifier?: string | null
   abvMin?: number | null
   abvMax?: number | null
   volumeMlMin?: number | null
@@ -301,6 +304,7 @@ export interface AdminSpiritDetail {
   variantType?: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE' | null
   variantValue?: string | null
   variantValueEn?: string | null
+  seriesIdentifier?: string | null
   abvMin?: number | null
   abvMax?: number | null
   volumeMlMin?: number | null
@@ -330,6 +334,7 @@ export interface UpdateSpiritPayload {
   variantType?: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE' | null
   variantValue?: string | null
   variantValueEn?: string | null
+  seriesIdentifier?: string | null
   abvMin?: number | null
   abvMax?: number | null
   volumeMlMin?: number | null
@@ -359,6 +364,7 @@ export interface CreateSpiritPayload {
   variantType?: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE' | null
   variantValue?: string | null
   variantValueEn?: string | null
+  seriesIdentifier?: string | null
   abvMin?: number | null
   abvMax?: number | null
   volumeMlMin?: number | null
@@ -435,6 +441,7 @@ export interface SpiritRegisterRequestDetail {
   variantType: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE' | null
   variantValue: string | null
   variantValueEn: string | null
+  seriesIdentifier: string | null
   status: RequestStatus
   rejectReason: string | null
   createdAt: string

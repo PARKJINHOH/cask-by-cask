@@ -81,6 +81,17 @@ public class HibernateSpiritSearchService implements SpiritSearchService {
                                     }
                                 }));
 
+                                kb.should(f.bool(sub -> {
+                                    for (String token : tokens) {
+                                        sub.must(f.match().field("seriesIdentifier").matching(token).boost(1.2f));
+                                    }
+                                }));
+                                kb.should(f.bool(sub -> {
+                                    for (String token : tokens) {
+                                        sub.must(f.match().field("seriesIdentifier_ngram").matching(token).boost(0.7f));
+                                    }
+                                }));
+
                                 // 생산자 정보 매칭
                                 kb.should(f.bool(sub -> {
                                     for (String token : tokens) {
@@ -263,6 +274,16 @@ public class HibernateSpiritSearchService implements SpiritSearchService {
                             }));
                             kb.should(f.bool(sub -> {
                                 for (String token : tokens) {
+                                    sub.must(f.match().field("seriesIdentifier").matching(token).boost(1.2f));
+                                }
+                            }));
+                            kb.should(f.bool(sub -> {
+                                for (String token : tokens) {
+                                    sub.must(f.match().field("seriesIdentifier_ngram").matching(token).boost(0.7f));
+                                }
+                            }));
+                            kb.should(f.bool(sub -> {
+                                for (String token : tokens) {
                                     sub.must(f.match().field("producer.nameKo").matching(token).boost(1.5f));
                                 }
                             }));
@@ -303,7 +324,7 @@ public class HibernateSpiritSearchService implements SpiritSearchService {
         // 3. DB 경량 쿼리 수행 (JPQL 생성자 프로젝션 활용)
         List<SpiritAutocompleteResponse> autocompleteList = entityManager.createQuery(
                 "select new com.caskbycask.domain.spirit.dto.SpiritAutocompleteResponse(" +
-                "s.id, s.nameKo, s.nameEn, s.category, " +
+                "s.id, s.nameKo, s.nameEn, s.seriesIdentifier, s.category, " +
                 "(select max(si.imageUrl) from SpiritImage si where si.spirit.id = s.id and si.sortOrder = 0) " +
                 ") from Spirit s where s.id in :ids", SpiritAutocompleteResponse.class)
                 .setParameter("ids", ids)

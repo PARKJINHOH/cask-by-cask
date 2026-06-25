@@ -148,6 +148,12 @@ public class Spirit extends BaseTimeEntity {
     @Comment("에디션 식별 값(영문)")
     private String variantValueEn;
 
+    @Column(length = 100)
+    @Comment("에디션 목록 표시에 사용할 시리즈 식별자")
+    @FullTextField(analyzer = "korean_search")
+    @FullTextField(name = "seriesIdentifier_ngram", analyzer = "ngram_search", searchAnalyzer = "korean_search")
+    private String seriesIdentifier;
+
     @Column
     @Comment("하위 에디션 표시 순서 (마스터 기준 0부터, 마스터/일반 술은 null)")
     private Integer displayOrder;
@@ -201,6 +207,7 @@ public class Spirit extends BaseTimeEntity {
                        Integer vintageYear, BigDecimal abv, Integer volumeMl,
                        String country, String region,
                        Spirit parent, VariantType variantType, String variantValue, String variantValueEn,
+                       String seriesIdentifier,
                        BigDecimal abvMin, BigDecimal abvMax,
                        Integer volumeMlMin, Integer volumeMlMax) {
         this.nameKo = nameKo;
@@ -218,6 +225,7 @@ public class Spirit extends BaseTimeEntity {
         this.variantType = variantType;
         this.variantValue = variantValue;
         this.variantValueEn = variantValueEn;
+        this.seriesIdentifier = seriesIdentifier;
         this.abvMin = abvMin;
         this.abvMax = abvMax;
         this.volumeMlMin = volumeMlMin;

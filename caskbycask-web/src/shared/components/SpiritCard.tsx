@@ -6,6 +6,7 @@ import ImageLightbox from './ImageLightbox'
 import { scoreColor } from '@/shared/utils/format'
 import { localizeCountry } from '@/shared/utils/countryName'
 import type { SpiritListItem } from '@/domain/spirit/types/spirit.types'
+import { getLocalizedSpiritListNames } from '@/domain/spirit/utils/spiritDisplayName'
 
 export interface SpiritCardProps {
   spirit: SpiritListItem
@@ -44,9 +45,7 @@ function SpiritCard({
 }: SpiritCardProps) {
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const { t, i18n } = useTranslation()
-  const isEn = i18n.language === 'en'
-  const primaryName   = isEn ? (spirit.nameEn || spirit.nameKo) : spirit.nameKo
-  const secondaryName = isEn ? spirit.nameKo : spirit.nameEn
+  const { primaryName, secondaryName } = getLocalizedSpiritListNames(spirit, i18n.language)
   const countryLabel  = localizeCountry(spirit.country, i18n.language)
 
   if (listView) {

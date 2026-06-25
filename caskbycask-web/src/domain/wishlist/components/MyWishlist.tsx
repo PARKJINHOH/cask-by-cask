@@ -5,10 +5,10 @@ import Spinner from '@/shared/components/Spinner'
 import EmptyState from '@/shared/components/EmptyState'
 import Pagination from '@/shared/components/Pagination'
 import { useMyWishlist, useRemoveWishlist } from '../hooks/useWishlist'
+import { getLocalizedSpiritListNames } from '@/domain/spirit/utils/spiritDisplayName'
 
 export default function MyWishlist() {
   const { t, i18n } = useTranslation()
-  const isEn = i18n.language === 'en'
   const [page, setPage] = useState(0)
 
   const { data, isLoading } = useMyWishlist('COLLECTION', page)
@@ -34,10 +34,12 @@ export default function MyWishlist() {
       ) : (
         <>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {data.content.map((item) => (
+            {data.content.map((item) => {
+              const spiritNames = getLocalizedSpiritListNames(item.spirit, i18n.language)
+              return (
               <div key={item.id} className="relative group">
                 <button
-                  onClick={() => handleRemove(item.id, isEn ? (item.spirit.nameEn || item.spirit.nameKo) : item.spirit.nameKo)}
+                  onClick={() => handleRemove(item.id, spiritNames.primaryName)}
                   aria-label={t('wishlist.removeAria')}
                   disabled={removeMutation.isPending}
                   className="absolute top-2 right-2 z-10 w-6 h-6 rounded-full
@@ -59,7 +61,7 @@ export default function MyWishlist() {
                       {item.spirit.primaryImageUrl ? (
                         <img
                           src={item.spirit.primaryImageUrl}
-                          alt={isEn ? (item.spirit.nameEn || item.spirit.nameKo) : item.spirit.nameKo}
+                          alt={spiritNames.primaryName}
                           loading="lazy"
                           className="w-full h-full object-cover group-hover:scale-105
                             transition-transform duration-300"
@@ -76,10 +78,10 @@ export default function MyWishlist() {
                         {t(`spirit.category.${item.spirit.category}`)}
                       </p>
                       <p className="text-sm font-semibold text-neutral-900 line-clamp-1 leading-snug">
-                        {isEn ? (item.spirit.nameEn || item.spirit.nameKo) : item.spirit.nameKo}
+                        {spiritNames.primaryName}
                       </p>
                       <p className="text-xs text-neutral-400 line-clamp-1">
-                        {isEn ? item.spirit.nameKo : item.spirit.nameEn}
+                        {spiritNames.secondaryName}
                       </p>
                       {item.spirit.avgScore != null && (
                         <p className="text-xs font-bold text-primary-800 pt-0.5">
@@ -90,7 +92,8 @@ export default function MyWishlist() {
                   </article>
                 </Link>
               </div>
-            ))}
+              )
+            })}
           </div>
 
           <Pagination

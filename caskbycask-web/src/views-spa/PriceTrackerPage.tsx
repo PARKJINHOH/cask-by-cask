@@ -8,6 +8,7 @@ import PriceAlertBanner from '@/domain/pricetracker/components/PriceAlertBanner'
 import type { SpiritListItem } from '@/domain/spirit/types/spirit.types'
 import type { StoreType } from '@/domain/pricetracker/types/pricetracker.types'
 import { usePriceChart } from '@/domain/pricetracker/hooks/usePriceChart'
+import { getLocalizedSpiritListNames } from '@/domain/spirit/utils/spiritDisplayName'
 
 const fmt = new Intl.NumberFormat('ko-KR')
 
@@ -19,7 +20,6 @@ interface SpiritCardProps {
 function SpiritCard({ spirit, storeType }: SpiritCardProps) {
   const navigate = useNavigate()
   const { i18n } = useTranslation()
-  const isEn = i18n.language === 'en'
   const { data: chartData } = usePriceChart(spirit.id, storeType, '3M')
 
   const minPrice = chartData?.points
@@ -27,8 +27,8 @@ function SpiritCard({ spirit, storeType }: SpiritCardProps) {
     .filter((v): v is number => v != null)
     .reduce((a, b) => Math.min(a, b), Infinity)
 
-  const primaryName = isEn ? (spirit.nameEn || spirit.nameKo) : spirit.nameKo
-  const subName = isEn ? spirit.nameKo : (spirit.nameEn || undefined)
+  const { primaryName, secondaryName } = getLocalizedSpiritListNames(spirit, i18n.language)
+  const subName = secondaryName || undefined
 
   return (
     <button

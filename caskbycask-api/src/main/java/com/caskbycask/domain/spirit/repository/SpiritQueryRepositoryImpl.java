@@ -128,6 +128,7 @@ public class SpiritQueryRepositoryImpl implements SpiritQueryRepository {
             builder.and(
                     spirit.nameKo.containsIgnoreCase(cond.keyword())
                             .or(spirit.nameEn.containsIgnoreCase(cond.keyword()))
+                            .or(spirit.seriesIdentifier.containsIgnoreCase(cond.keyword()))
                             .or(producer.nameKo.containsIgnoreCase(cond.keyword()))
                             .or(producer.nameEn.containsIgnoreCase(cond.keyword()))
                             .or(producer.searchKeywords.containsIgnoreCase(cond.keyword()))

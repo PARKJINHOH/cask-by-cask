@@ -184,7 +184,10 @@ public record SpiritRegisterRequestBody(
         String variantValue,
         @Schema(description = "에디션 값 영문 (선택, 위스키)")
         @Size(max = 100, message = "에디션 값(영문)은 100자 이하여야 합니다.")
-        String variantValueEn
+        String variantValueEn,
+        @Schema(description = "에디션 목록 표시용 시리즈 식별자")
+        @Size(max = 100, message = "시리즈 식별자는 100자 이하여야 합니다.")
+        String seriesIdentifier
 ) {
         /**
          * 카테고리별 핵심값(스타일/종류/등급/주종) 필수 여부.

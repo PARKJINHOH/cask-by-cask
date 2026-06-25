@@ -224,6 +224,7 @@ export function useSpiritForm() {
 
   const addVariant = () => {
     const currentType = variants[0]?.variantType ?? 'BATCH'
+    const currentSeriesIdentifier = variants[0]?.seriesIdentifier ?? ''
     setVariants((prev) => [
       ...prev,
       {
@@ -231,6 +232,7 @@ export function useSpiritForm() {
         variantType: currentType,
         variantValue: '',
         variantValueEn: '',
+        seriesIdentifier: currentSeriesIdentifier,
         abv: null,
         abvMin: null,
         abvMax: null,
@@ -363,6 +365,7 @@ export function useSpiritForm() {
         variantType: (v.variantType && v.variantType !== 'NONE') ? v.variantType : 'BATCH',
         variantValue: v.variantValue ?? '',
         variantValueEn: v.variantValueEn ?? '',
+        seriesIdentifier: v.seriesIdentifier ?? s.seriesIdentifier ?? '',
         abv: v.abv,
         abvMin: v.abvMin,
         abvMax: v.abvMax,
@@ -603,6 +606,7 @@ export function useSpiritForm() {
         variantType: splitType,
         variantValue: r.variantValue,
         variantValueEn: r.variantValueEn ?? '',
+        seriesIdentifier: r.seriesIdentifier ?? '',
         abv: r.abv ?? null,
         abvMin: null,
         abvMax: null,
@@ -693,6 +697,9 @@ export function useSpiritForm() {
       variants.forEach((v, idx) => {
         if (!v.variantValue.trim()) {
           errs[`variantValue_${idx}`] = '에디션 식별 값은 필수입니다.'
+        }
+        if (!v.seriesIdentifier.trim()) {
+          errs[`seriesIdentifier_${idx}`] = '시리즈 식별자는 필수입니다.'
         }
         if (v.commonDetail?.distilledDate && !DATE_RE.test(v.commonDetail.distilledDate)) {
           errs[`variantDistilledDate_${idx}`] = '형식: YYYY 또는 YYYY-MM'
@@ -879,10 +886,12 @@ export function useSpiritForm() {
       region: region || null,
       commonDetail: common,
       isVariantSplit,
+      seriesIdentifier: isVariantSplit ? (variants[0]?.seriesIdentifier.trim() || null) : null,
       variants: isVariantSplit ? variants.map(v => ({
         ...v,
         variantValueEn: v.variantValueEn || null,
         variantValue: v.variantValue.trim(),
+        seriesIdentifier: v.seriesIdentifier.trim(),
         volumeMl: v.volumeMl ? Number(v.volumeMl) : common.volumeMl,
         volumeMlMin: v.volumeMlMin ? Number(v.volumeMlMin) : null,
         volumeMlMax: v.volumeMlMax ? Number(v.volumeMlMax) : null,
@@ -891,6 +900,7 @@ export function useSpiritForm() {
       })) : [],
       variantType: 'NONE',
       variantValue: null,
+      variantValueEn: null,
       abvMin: isAbvRange ? (abvMin ? Number(abvMin) : null) : null,
       abvMax: isAbvRange ? (abvMax ? Number(abvMax) : null) : null,
       volumeMlMin: isVolumeMlRange ? (volumeMlMin ? Number(volumeMlMin) : null) : null,
@@ -1203,6 +1213,7 @@ export default function SpiritFormFields({
                                 variantType: val as any,
                                 variantValue: '',
                                 variantValueEn: '',
+                                seriesIdentifier: '',
                                 abv: null,
                                 abvMin: null,
                                 abvMax: null,
@@ -1733,7 +1744,29 @@ function VariantItemCard({
       <div className="space-y-4">
         <h4 className="text-xs font-bold text-neutral-600 uppercase tracking-wider">에디션 기본 정보</h4>
         
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-[11px] font-semibold text-neutral-500 mb-1">시리즈 식별자 <span className="text-red-400">*</span></label>
+            <input
+              type="text"
+              value={variant.seriesIdentifier}
+              onChange={(e) => onUpdate({ seriesIdentifier: e.target.value })}
+              placeholder={
+                variant.variantType === 'BATCH'
+                  ? '예) .1 시리즈'
+                  : variant.variantType === 'RELEASE_YEAR'
+                  ? '예) 2024 릴리즈'
+                  : '예) 싱글 캐스크'
+              }
+              className={`w-full px-2.5 py-1.5 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white ${
+                errors[`seriesIdentifier_${index}`] ? 'border-red-400' : ''
+              }`}
+            />
+            {errors[`seriesIdentifier_${index}`] && (
+              <p className="text-[10px] text-red-500 mt-1">{errors[`seriesIdentifier_${index}`]}</p>
+            )}
+          </div>
+
           <div>
             <label className="block text-[11px] font-semibold text-neutral-500 mb-1">식별 값(한글) <span className="text-red-400">*</span></label>
             <input

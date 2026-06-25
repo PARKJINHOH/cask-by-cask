@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { spiritApi } from '@/domain/spirit/api/spiritApi'
 import type { SpiritListItem } from '@/domain/spirit/types/spirit.types'
+import { getLocalizedSpiritListNames, getSpiritListDisplayNames } from '@/domain/spirit/utils/spiritDisplayName'
 import { SPIRIT_CATEGORY_EMOJI, type SpiritEmbedAttrs } from './SpiritEmbed'
 
 interface Props {
@@ -13,7 +14,6 @@ interface Props {
 // 본문에 삽입할 술을 검색·선택하는 모달.
 export default function SpiritEmbedDialog({ open, onClose, onSelect }: Props) {
   const { t, i18n } = useTranslation()
-  const isEn = i18n.language === 'en'
   const [keyword, setKeyword] = useState('')
   const [results, setResults] = useState<SpiritListItem[]>([])
   const [loading, setLoading] = useState(false)
@@ -61,10 +61,11 @@ export default function SpiritEmbedDialog({ open, onClose, onSelect }: Props) {
   if (!open) return null
 
   const pick = (s: SpiritListItem) => {
+    const displayName = getSpiritListDisplayNames(s)
     onSelect({
       id: String(s.id),
-      name: s.nameKo,
-      nameEn: s.nameEn || s.nameKo,
+      name: displayName.nameKo,
+      nameEn: displayName.nameEn || displayName.nameKo,
       category: s.category,
       thumbnailUrl: s.primaryImageUrl ?? null,
       abv: s.abv ?? null,
@@ -117,8 +118,7 @@ export default function SpiritEmbedDialog({ open, onClose, onSelect }: Props) {
             <div className="py-10 text-center text-sm text-neutral-400">{t('editor.spiritSearchHint')}</div>
           )}
           {results.map((s) => {
-            const main = isEn ? (s.nameEn || s.nameKo) : s.nameKo
-            const sub = isEn ? s.nameKo : (s.nameEn || '')
+            const { primaryName, secondaryName } = getLocalizedSpiritListNames(s, i18n.language)
             return (
               <button
                 key={s.id}
@@ -138,8 +138,8 @@ export default function SpiritEmbedDialog({ open, onClose, onSelect }: Props) {
                   </span>
                 )}
                 <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-medium text-neutral-800 truncate">{main}</span>
-                  {sub && <span className="block text-xs text-neutral-400 truncate">{sub}</span>}
+                  <span className="block text-sm font-medium text-neutral-800 truncate">{primaryName}</span>
+                  {secondaryName && <span className="block text-xs text-neutral-400 truncate">{secondaryName}</span>}
                 </span>
                 {s.avgScore != null && (
                   <span className="text-xs text-amber-600 font-semibold tabular-nums shrink-0">

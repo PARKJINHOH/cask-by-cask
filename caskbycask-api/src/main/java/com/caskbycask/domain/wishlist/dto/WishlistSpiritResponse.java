@@ -13,6 +13,8 @@ public record WishlistSpiritResponse(
         String nameKo,
         @Schema(description = "영문 제품명")
         String nameEn,
+        @Schema(description = "Edition list display series identifier")
+        String seriesIdentifier,
         @Schema(description = "카테고리")
         SpiritCategory category,
         @Schema(description = "대표 이미지 URL")
@@ -25,6 +27,7 @@ public record WishlistSpiritResponse(
                 spirit.getId(),
                 spirit.getNameKo(),
                 spirit.getNameEn(),
+                spirit.getSeriesIdentifier(),
                 spirit.getCategory(),
                 primaryImageUrl,
                 spirit.getAvgScore()

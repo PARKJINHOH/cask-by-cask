@@ -8,6 +8,7 @@ public record SpiritAutocompleteResponse(
         Long id,
         String nameKo,
         String nameEn,
+        String seriesIdentifier,
         SpiritCategory category,
         String imageUrl
 ) {}

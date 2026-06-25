@@ -14,6 +14,7 @@ import type {
   PriceReportImageUpload,
 } from '@/domain/pricetracker/types/pricetracker.types'
 import type { SpiritListItem } from '@/domain/spirit/types/spirit.types'
+import { getLocalizedSpiritListNames } from '@/domain/spirit/utils/spiritDisplayName'
 
 const DISCOUNT_TYPES: DiscountType[] = ['PAYMENT', 'BUNDLE', 'COUPON', 'OTHER']
 const DUTYFREE_CHANNELS: DutyFreeChannel[] = ['AIRPORT', 'CITY', 'INFLIGHT', 'ONLINE']
@@ -22,7 +23,6 @@ const krw = new Intl.NumberFormat('ko-KR')
 
 export default function PriceRegisterPage() {
   const { t, i18n } = useTranslation()
-  const isEn = i18n.language === 'en'
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
@@ -33,6 +33,8 @@ export default function PriceRegisterPage() {
   const [pickedSpirit, setPickedSpirit] = useState<SpiritListItem | null>(null)
   const [spiritOpen, setSpiritOpen] = useState(false)
   const selectedSpirit: SpiritListItem | null = fixedSpirit ?? pickedSpirit
+  const fixedSpiritNames = fixedSpirit ? getLocalizedSpiritListNames(fixedSpirit, i18n.language) : null
+  const pickedSpiritNames = pickedSpirit ? getLocalizedSpiritListNames(pickedSpirit, i18n.language) : null
 
   // ── 매장 ─────────────────────────────────────────────
   const [storeType, setStoreType] = useState<StoreType>('DOMESTIC')
@@ -198,17 +200,17 @@ export default function PriceRegisterPage() {
               )}
               <div className="min-w-0">
                 <p className="font-semibold text-neutral-900 truncate">
-                  {isEn ? fixedSpirit.nameEn || fixedSpirit.nameKo : fixedSpirit.nameKo}
+                  {fixedSpiritNames?.primaryName}
                 </p>
                 <p className="text-xs text-neutral-400 truncate">
-                  {isEn ? fixedSpirit.nameKo : fixedSpirit.nameEn}
+                  {fixedSpiritNames?.secondaryName}
                 </p>
               </div>
             </div>
           ) : (
             <div className="relative">
               <input
-                value={pickedSpirit ? (isEn ? pickedSpirit.nameEn || pickedSpirit.nameKo : pickedSpirit.nameKo) : spiritKeyword}
+                value={pickedSpirit ? (pickedSpiritNames?.primaryName ?? '') : spiritKeyword}
                 onChange={(e) => { setSpiritKeyword(e.target.value); setPickedSpirit(null); setSpiritOpen(true) }}
                 onFocus={() => setSpiritOpen(true)}
                 placeholder={t('price.register.spiritPlaceholder')}
@@ -216,17 +218,20 @@ export default function PriceRegisterPage() {
               />
               {spiritOpen && spiritResults && spiritResults.length > 0 && !pickedSpirit && (
                 <ul className="absolute z-10 w-full bg-white border border-neutral-200 rounded-xl mt-1 shadow-lg max-h-52 overflow-y-auto">
-                  {spiritResults.map((s) => (
-                    <li key={s.id}>
-                      <button
-                        onClick={() => { setPickedSpirit(s); setSpiritOpen(false); setSpiritKeyword('') }}
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-neutral-50"
-                      >
-                        <span className="font-medium">{isEn ? s.nameEn || s.nameKo : s.nameKo}</span>
-                        {s.nameEn && <span className="text-neutral-400 ml-2 text-xs">{isEn ? s.nameKo : s.nameEn}</span>}
-                      </button>
-                    </li>
-                  ))}
+                  {spiritResults.map((s) => {
+                    const displayName = getLocalizedSpiritListNames(s, i18n.language)
+                    return (
+                      <li key={s.id}>
+                        <button
+                          onClick={() => { setPickedSpirit(s); setSpiritOpen(false); setSpiritKeyword('') }}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-neutral-50"
+                        >
+                          <span className="font-medium">{displayName.primaryName}</span>
+                          {displayName.secondaryName && <span className="text-neutral-400 ml-2 text-xs">{displayName.secondaryName}</span>}
+                        </button>
+                      </li>
+                    )
+                  })}
                 </ul>
               )}
             </div>

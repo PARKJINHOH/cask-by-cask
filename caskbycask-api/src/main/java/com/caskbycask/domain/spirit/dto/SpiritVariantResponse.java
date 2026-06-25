@@ -47,6 +47,8 @@ public record SpiritVariantResponse(
         String variantValue,
         @Schema(description = "에디션 식별 값(영문)")
         String variantValueEn,
+        @Schema(description = "에디션 목록 표시용 시리즈 식별자")
+        String seriesIdentifier,
         @Schema(description = "공통 상세 정보 (관리자 수정 폼 프리필용)")
         SpiritCommonDetailResponse commonDetail,
         @Schema(description = "위스키 상세 (관리자 수정 폼 프리필용, category=WHISKY 전용)")
@@ -75,6 +77,7 @@ public record SpiritVariantResponse(
                 spirit.getVariantType(),
                 spirit.getVariantValue(),
                 spirit.getVariantValueEn(),
+                spirit.getSeriesIdentifier(),
                 commonDetail,
                 whiskyDetail
         );

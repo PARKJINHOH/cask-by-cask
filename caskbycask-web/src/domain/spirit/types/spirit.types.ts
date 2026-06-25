@@ -6,6 +6,7 @@ export interface SpiritAutocompleteItem {
   id: number
   nameKo: string
   nameEn: string
+  seriesIdentifier?: string | null
   category: SpiritCategory
   imageUrl: string | null
 }
@@ -14,6 +15,7 @@ export interface SpiritListItem {
   id: number
   nameKo: string
   nameEn: string
+  seriesIdentifier?: string | null
   category: SpiritCategory
   country: string | null
   abv: number | null
@@ -52,6 +54,7 @@ export interface SpiritDetail extends SpiritListItem {
   variantType?: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE'
   variantValue?: string | null
   variantValueEn?: string | null
+  seriesIdentifier?: string | null
   abvMin?: number | null
   abvMax?: number | null
   variants: SpiritVariant[]
@@ -82,6 +85,7 @@ export interface SpiritVariant {
   variantType?: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE'
   variantValue?: string | null
   variantValueEn?: string | null
+  seriesIdentifier?: string | null
 }
 
 // ── 카테고리 상세 Enum 타입 ────────────────────────────────────

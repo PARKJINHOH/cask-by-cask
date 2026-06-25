@@ -4,6 +4,7 @@ export interface WishlistSpiritInfo {
   id: number
   nameKo: string
   nameEn: string
+  seriesIdentifier?: string | null
   category: string
   primaryImageUrl: string | null
   avgScore: number | null
