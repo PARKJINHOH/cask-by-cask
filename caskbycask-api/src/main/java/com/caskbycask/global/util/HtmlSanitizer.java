@@ -46,6 +46,7 @@ public class HtmlSanitizer {
                 // 목록 + 체크리스트(TipTap TaskList)
                 .addTags("ul", "ol", "li")
                 .addAttributes("ul", "data-type")
+                .addAttributes("ol", "start")
                 .addAttributes("li", "data-type", "data-checked")
                 // 링크: href javascript: 프로토콜 명시적 차단
                 .addTags("a")

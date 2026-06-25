@@ -1,5 +1,5 @@
 import { createPortal } from 'react-dom'
-import DOMPurify from 'dompurify'
+import { sanitizeHtml } from '@/shared/utils/sanitize'
 import type { PopupPreviewData } from '../types/popup.types'
 
 interface Props {
@@ -15,16 +15,7 @@ export default function PopupPreviewModal({ isOpen, onClose, popupData }: Props)
     if (popupData.closeOnOverlay !== false) onClose()
   }
 
-  const sanitizedContent = DOMPurify.sanitize(popupData.content ?? '', {
-    ALLOWED_TAGS: [
-      'p', 'br', 'strong', 'em', 'u', 's', 'code', 'pre', 'blockquote',
-      'h1', 'h2', 'h3', 'h4', 'ul', 'ol', 'li', 'a', 'img',
-      'table', 'thead', 'tbody', 'tr', 'th', 'td',
-    ],
-    ALLOWED_ATTR: ['href', 'src', 'alt', 'class', 'colspan', 'rowspan',
-      'rel', 'target', 'style', 'width', 'height'],
-    FORCE_BODY: true,
-  })
+  const sanitizedContent = sanitizeHtml(popupData.content ?? '')
 
   return createPortal(
     <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center p-4">

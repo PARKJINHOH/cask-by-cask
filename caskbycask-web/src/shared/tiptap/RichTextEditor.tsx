@@ -38,6 +38,8 @@ const ALLOWED_ATTR = [
   'data-spirit-thumbnail', 'data-spirit-abv', 'data-spirit-review-count',
   'data-video-embed', 'data-uploaded-video',
   'allowfullscreen', 'allow', 'frameborder', 'controls', 'preload', 'type',
+  'start',
+  'id',
 ]
 
 // 미디어 업로드 정책 — 백엔드(PostService.validateMediaPolicy / NoticeImageValidator / PostVideoValidator)와

@@ -63,10 +63,12 @@ export function sanitizeHtml(dirty: string): string {
       // 체크리스트(TaskList) / 술 임베드 칩
       'data-type', 'data-checked',
       'data-spirit-id', 'data-spirit-name', 'data-spirit-name-en', 'data-spirit-category',
+      'data-spirit-thumbnail', 'data-spirit-abv', 'data-spirit-review-count',
       // YouTube/Vimeo 임베드 iframe
       'allow', 'allowfullscreen', 'frameborder', 'data-video-embed',
       // 업로드 동영상 video
       'controls', 'preload', 'type', 'data-uploaded-video',
+      'start',
     ],
     FORBID_TAGS: ['script', 'object', 'embed', 'form', 'input', 'style'],
     // on* 이벤트 핸들러 전체 차단
