@@ -90,7 +90,7 @@ public class PopupService {
 
         // [보안] XSS: HTML형 저장 전 서버 Sanitize 필수. 프론트 DOMPurify 우회 방어.
         String contentSanitized = PopupType.HTML.equals(request.getPopupType())
-                ? htmlSanitizer.sanitizeLegal(request.getContent())
+                ? htmlSanitizer.sanitize(request.getContent(), true)
                 : null;
 
         Popup popup = Popup.builder()
@@ -136,7 +136,7 @@ public class PopupService {
         PopupType effectiveType = request.getPopupType() != null ? request.getPopupType() : popup.getPopupType();
         String newContent = request.getContent() != null ? request.getContent() : popup.getContent();
         String newContentSanitized = (request.getContent() != null && PopupType.HTML.equals(effectiveType))
-                ? htmlSanitizer.sanitizeLegal(request.getContent())
+                ? htmlSanitizer.sanitize(request.getContent(), true)
                 : popup.getContentSanitized();
 
         popup.update(

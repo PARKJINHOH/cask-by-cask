@@ -42,7 +42,7 @@ public class LegalDocumentSeeder implements ApplicationRunner {
             return;
         }
         String content = html.strip();
-        String sanitized = htmlSanitizer.sanitizeLegal(content);
+        String sanitized = htmlSanitizer.sanitize(content, true);
 
         LegalDocument doc = LegalDocument.builder()
                 .type(type)

@@ -57,7 +57,7 @@ public class LegalDocumentService {
         if (Boolean.TRUE.equals(doc.getIsActive())) {
             throw new CustomException(ErrorCode.CANNOT_EDIT_ACTIVE_LEGAL_DOCUMENT);
         }
-        String sanitized = htmlSanitizer.sanitizeLegal(request.content());
+        String sanitized = htmlSanitizer.sanitize(request.content(), true);
         doc.update(request.version(), request.content(), sanitized);
         return LegalDocumentResponse.from(doc);
     }
@@ -73,7 +73,7 @@ public class LegalDocumentService {
     public LegalDocumentResponse create(CreateLegalDocumentRequest request, Long authorId) {
         User author = userRepository.getByIdOrThrow(authorId);
 
-        String sanitized = htmlSanitizer.sanitizeLegal(request.content());
+        String sanitized = htmlSanitizer.sanitize(request.content(), true);
 
         LegalDocument doc = LegalDocument.builder()
                 .type(request.type())
