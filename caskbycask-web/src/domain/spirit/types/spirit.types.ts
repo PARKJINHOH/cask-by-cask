@@ -19,6 +19,8 @@ export interface SpiritListItem {
   abv: number | null
   abvMin?: number | null
   abvMax?: number | null
+  volumeMlMin?: number | null
+  volumeMlMax?: number | null
   avgScore: number | null
   reviewCount: number
   primaryImageUrl: string | null

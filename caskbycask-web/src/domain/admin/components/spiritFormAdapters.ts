@@ -48,6 +48,8 @@ export function toSpiritRequestForm(payload: CreateSpiritPayload): SpiritRegiste
     abvMin: abvMin ?? null,
     abvMax: abvMax ?? null,
     volumeMl: volumeMl ?? null,
+    volumeMlMin: payload.volumeMlMin ?? null,
+    volumeMlMax: payload.volumeMlMax ?? null,
     country: payload.country ?? undefined,
     region: payload.region ?? undefined,
 
@@ -116,6 +118,8 @@ export function toPrefillDetail(d: MySpiritRequestDetail): SpiritRegisterRequest
     volumeMl: d.volumeMl ?? null,
     abvMin: d.abvMin ?? null,
     abvMax: d.abvMax ?? null,
+    volumeMlMin: d.volumeMlMin ?? null,
+    volumeMlMax: d.volumeMlMax ?? null,
     country: d.country ?? null,
     region: d.region ?? null,
     ageStatement: d.ageStatement ?? null,

@@ -81,5 +81,11 @@ public record UpdateSpiritRequest(
         BigDecimal abvMin,
 
         @Schema(description = "최대 도수")
-        BigDecimal abvMax
+        BigDecimal abvMax,
+
+        @Schema(description = "최소 용량")
+        Integer volumeMlMin,
+
+        @Schema(description = "최대 용량")
+        Integer volumeMlMax
 ) {}

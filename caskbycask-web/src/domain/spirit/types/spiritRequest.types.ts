@@ -24,6 +24,8 @@ export interface SpiritRegisterRequestForm {
   bottledYear?: number | null
   vintageYear?: number | null
   volumeMl?: number | null
+  volumeMlMin?: number | null
+  volumeMlMax?: number | null
   // 공통 상세 (신청자 입력 — 관리자 등록 참고용)
   ageStatement?: number | null
   ageStatementMonths?: number | null

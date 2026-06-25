@@ -106,6 +106,16 @@ public record CreateSpiritRequest(
         @DecimalMax(value = "100.0", message = "최대 도수는 100.0 이하이어야 합니다.")
         BigDecimal abvMax,
 
+        @Schema(description = "최소 용량")
+        @Min(value = 1, message = "최소 용량은 1ml 이상이어야 합니다.")
+        @Max(value = 100000, message = "최소 용량은 100000ml 이하여야 합니다.")
+        Integer volumeMlMin,
+
+        @Schema(description = "최대 용량")
+        @Min(value = 1, message = "최대 용량은 1ml 이상이어야 합니다.")
+        @Max(value = 100000, message = "최대 용량은 100000ml 이하여야 합니다.")
+        Integer volumeMlMax,
+
         @Schema(description = "노출 상태 (ACTIVE, HIDDEN, PENDING)")
         SpiritStatus status
 ) {}

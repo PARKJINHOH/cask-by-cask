@@ -44,6 +44,16 @@ public record CreateVariantRequest(
         @Max(value = 100000, message = "용량은 100000ml 이하여야 합니다.")
         Integer volumeMl,
 
+        @Schema(description = "최소 용량 (범위)")
+        @Min(value = 1, message = "최소 용량은 1ml 이상이어야 합니다.")
+        @Max(value = 100000, message = "최소 용량은 100000ml 이하여야 합니다.")
+        Integer volumeMlMin,
+
+        @Schema(description = "최대 용량 (범위)")
+        @Min(value = 1, message = "최대 용량은 1ml 이상이어야 합니다.")
+        @Max(value = 100000, message = "최대 용량은 100000ml 이하여야 합니다.")
+        Integer volumeMlMax,
+
         @Schema(description = "공통 상세 정보 (용량, 도수 및 기타 필드)")
         @Valid SpiritCommonDetailRequest commonDetail,
 

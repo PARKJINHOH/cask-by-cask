@@ -101,6 +101,17 @@ function formatAbv(
   return abv != null ? `${abv}%` : null
 }
 
+function formatVolume(
+  volume: number | null | undefined,
+  min: number | null | undefined,
+  max: number | null | undefined,
+): string | null {
+  if (min != null && max != null) return min === max ? `${min}ml` : `${min}ml~${max}ml`
+  if (min != null) return `${min}ml`
+  if (max != null) return `${max}ml`
+  return volume != null ? `${volume}ml` : null
+}
+
 function formatPhenolPpm(
   ppm: number | null | undefined,
   min: number | null | undefined,
@@ -300,7 +311,7 @@ function SpiritDetailSections({ spirit, isEn }: { spirit: SpiritDetail; isEn: bo
               <DI label={isEn ? 'Distilled' : '증류 연월'} value={cd.distilledDate} />
               <DI label={isEn ? 'Bottled' : '병입 연월'} value={cd.bottledDate} />
               <DI label={isEn ? 'Release Date' : '출시일'} value={cd.releaseDate} />
-              <DI label={isEn ? 'Volume' : '용량'} value={cd.volumeMl ? `${cd.volumeMl}ml` : null} />
+              <DI label={isEn ? 'Volume' : '용량'} value={formatVolume(spirit.volumeMl ?? cd.volumeMl, spirit.volumeMlMin, spirit.volumeMlMax)} />
               <DI label={isEn ? 'ABV' : '도수'} value={formatAbv(spirit.abv ?? cd.abv, spirit.abvMin, spirit.abvMax)} />
               <DI label={isEn ? 'Bottle No.' : '병 번호'} value={cd.bottleNo} />
               <DI label={isEn ? 'Batch No.' : '배치 번호'} value={cd.batchNo} />
@@ -566,7 +577,7 @@ function CoreSpecStrip({
       label: t('spirit.detail.abv'),
       value: abvValue
     } : null,
-    spirit.volumeMl    ? { k: 'volume', icon: SPEC_ICON.volume, label: t('spirit.detail.volume'), value: `${spirit.volumeMl}ml` } : null,
+    (spirit.volumeMl || spirit.volumeMlMin || spirit.volumeMlMax) ? { k: 'volume', icon: SPEC_ICON.volume, label: t('spirit.detail.volume'), value: formatVolume(spirit.volumeMl, spirit.volumeMlMin, spirit.volumeMlMax) } : null,
     originValue        ? { k: 'origin', icon: SPEC_ICON.origin, label: isEn ? 'Origin' : '국가 · 지역', value: originValue } : null,
     ageValue           ? { k: 'age',    icon: SPEC_ICON.age,    label: isEn ? 'Age' : '숙성 연수', value: ageValue } : null,
   ].filter(Boolean) as { k: string; icon: React.ReactNode; label: string; value: React.ReactNode }[]

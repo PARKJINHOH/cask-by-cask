@@ -61,6 +61,14 @@ public record SpiritRegisterRequestBody(
         @DecimalMin(value = "0.0", message = "최대 도수는 0.0 이상이어야 합니다.")
         @DecimalMax(value = "100.0", message = "최대 도수는 100.0 이하이어야 합니다.")
         BigDecimal abvMax,
+        @Schema(description = "최소 용량 ml (선택, 범위 지정 시)")
+        @Min(value = 1, message = "최소 용량은 1ml 이상이어야 합니다.")
+        @Max(value = 100000, message = "최소 용량은 100000ml 이하여야 합니다.")
+        Integer volumeMlMin,
+        @Schema(description = "최대 용량 ml (선택, 범위 지정 시)")
+        @Min(value = 1, message = "최대 용량은 1ml 이상이어야 합니다.")
+        @Max(value = 100000, message = "최대 용량은 100000ml 이하여야 합니다.")
+        Integer volumeMlMax,
         @Schema(description = "생산 국가 (선택)")
         @Size(max = 100, message = "생산 국가는 100자 이하여야 합니다.")
         String country,

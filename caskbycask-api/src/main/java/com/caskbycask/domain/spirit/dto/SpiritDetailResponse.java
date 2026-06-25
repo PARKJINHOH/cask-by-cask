@@ -83,6 +83,12 @@ public record SpiritDetailResponse(
         @Schema(description = "최대 도수")
         BigDecimal abvMax,
 
+        @Schema(description = "최소 용량")
+        Integer volumeMlMin,
+
+        @Schema(description = "최대 용량")
+        Integer volumeMlMax,
+
         @Schema(description = "조회수")
         Integer viewCount,
 
@@ -134,6 +140,8 @@ public record SpiritDetailResponse(
                 spirit.getVariantValueEn(),
                 spirit.getAbvMin(),
                 spirit.getAbvMax(),
+                spirit.getVolumeMlMin(),
+                spirit.getVolumeMlMax(),
                 spirit.getViewCount(),
                 variants
         );

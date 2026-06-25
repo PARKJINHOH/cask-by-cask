@@ -201,6 +201,11 @@ export function useSpiritForm() {
   const [abvMin, setAbvMin] = useState('')
   const [abvMax, setAbvMax] = useState('')
 
+  // 마스터 용량 범위 지정을 위한 상태
+  const [isVolumeMlRange, setIsVolumeMlRange] = useState(false)
+  const [volumeMlMin, setVolumeMlMin] = useState('')
+  const [volumeMlMax, setVolumeMlMax] = useState('')
+
   const [commonDetail, setCommonDetail] = useState<CommonDetailForm>(DEFAULT_COMMON_DETAIL)
   const [whiskyDetail, setWhiskyDetail] = useState<WhiskyDetailForm>(DEFAULT_WHISKY)
   const [wineDetail, setWineDetail] = useState<WineDetailForm>(DEFAULT_WINE)
@@ -316,6 +321,9 @@ export function useSpiritForm() {
     setIsAbvRange(false)
     setAbvMin('')
     setAbvMax('')
+    setIsVolumeMlRange(false)
+    setVolumeMlMin('')
+    setVolumeMlMax('')
     setCommonDetail(DEFAULT_COMMON_DETAIL)
     setWhiskyDetail(DEFAULT_WHISKY)
     setWineDetail(DEFAULT_WINE)
@@ -359,6 +367,8 @@ export function useSpiritForm() {
         abvMin: v.abvMin,
         abvMax: v.abvMax,
         volumeMl: v.volumeMl,
+        volumeMlMin: v.volumeMlMin,
+        volumeMlMax: v.volumeMlMax,
         // DTO 데이터 변환
         commonDetail: v.commonDetail ? {
           isNas: v.commonDetail.isNas,
@@ -401,14 +411,24 @@ export function useSpiritForm() {
       }))
     )
 
-    if (s.abvMin != null || s.abvMax != null) {
+    if (s.abvMin != null && s.abvMax != null && s.abvMin !== s.abvMax) {
       setIsAbvRange(true)
-      setAbvMin(s.abvMin?.toString() ?? '')
-      setAbvMax(s.abvMax?.toString() ?? '')
+      setAbvMin(s.abvMin.toString())
+      setAbvMax(s.abvMax.toString())
     } else {
       setIsAbvRange(false)
       setAbvMin('')
       setAbvMax('')
+    }
+
+    if (s.volumeMlMin != null && s.volumeMlMax != null && s.volumeMlMin !== s.volumeMlMax) {
+      setIsVolumeMlRange(true)
+      setVolumeMlMin(s.volumeMlMin.toString())
+      setVolumeMlMax(s.volumeMlMax.toString())
+    } else {
+      setIsVolumeMlRange(false)
+      setVolumeMlMin('')
+      setVolumeMlMax('')
     }
 
     if (s.commonDetail) {
@@ -418,9 +438,15 @@ export function useSpiritForm() {
         ageStatementMin: cd.ageStatementMin, ageStatementMinMonths: cd.ageStatementMinMonths,
         ageStatementMax: cd.ageStatementMax, ageStatementMaxMonths: cd.ageStatementMaxMonths,
         distilledDate: cd.distilledDate ?? '', bottledDate: cd.bottledDate ?? '',
-        releaseDate: cd.releaseDate ?? '', volumeMl: cd.volumeMl?.toString() ?? '',
-        abv: cd.abv?.toString() ?? '', bottleNo: cd.bottleNo ?? '',
+        releaseDate: cd.releaseDate ?? '', volumeMl: cd.volumeMl?.toString() ?? s.volumeMl?.toString() ?? '',
+        abv: cd.abv?.toString() ?? s.abv?.toString() ?? '', bottleNo: cd.bottleNo ?? '',
         batchNo: cd.batchNo ?? '', totalBottles: cd.totalBottles?.toString() ?? '',
+      })
+    } else {
+      setCommonDetail({
+        ...DEFAULT_COMMON_DETAIL,
+        volumeMl: s.volumeMl?.toString() ?? '',
+        abv: s.abv?.toString() ?? '',
       })
     }
     if (s.whiskyDetail) {
@@ -501,14 +527,25 @@ export function useSpiritForm() {
     })
 
     // 도수 범위 지정 프리필
-    if (r.abvMin != null || r.abvMax != null) {
+    if (r.abvMin != null && r.abvMax != null && r.abvMin !== r.abvMax) {
       setIsAbvRange(true)
-      setAbvMin(r.abvMin?.toString() ?? '')
-      setAbvMax(r.abvMax?.toString() ?? '')
+      setAbvMin(r.abvMin.toString())
+      setAbvMax(r.abvMax.toString())
     } else {
       setIsAbvRange(false)
       setAbvMin('')
       setAbvMax('')
+    }
+
+    // 용량 범위 지정 프리필
+    if (r.volumeMlMin != null && r.volumeMlMax != null && r.volumeMlMin !== r.volumeMlMax) {
+      setIsVolumeMlRange(true)
+      setVolumeMlMin(r.volumeMlMin.toString())
+      setVolumeMlMax(r.volumeMlMax.toString())
+    } else {
+      setIsVolumeMlRange(false)
+      setVolumeMlMin('')
+      setVolumeMlMax('')
     }
 
     if (r.category === 'WHISKY') {
@@ -620,7 +657,18 @@ export function useSpiritForm() {
         errs.abv = '도수는 0~100 사이여야 합니다.'
     }
 
-    if (!commonDetail.volumeMl) errs.volumeMl = '용량은 필수입니다.'
+    // 용량 범위 지정 여부에 따른 검증
+    if (isVolumeMlRange) {
+      if (!volumeMlMin) errs.volumeMlMin = '최소 용량은 필수입니다.'
+      else if (Number(volumeMlMin) < 1 || Number(volumeMlMin) > 100000) errs.volumeMlMin = '용량은 1~100,000 사이여야 합니다.'
+      if (!volumeMlMax) errs.volumeMlMax = '최대 용량은 필수입니다.'
+      else if (Number(volumeMlMax) < 1 || Number(volumeMlMax) > 100000) errs.volumeMlMax = '용량은 1~100,000 사이여야 합니다.'
+      if (volumeMlMin && volumeMlMax && Number(volumeMlMin) > Number(volumeMlMax)) errs.volumeMlMin = '최소 용량이 최대 용량보다 큽니다.'
+    } else {
+      if (!commonDetail.volumeMl) errs.volumeMl = '용량은 필수입니다.'
+      else if (Number(commonDetail.volumeMl) < 1 || Number(commonDetail.volumeMl) > 100000)
+        errs.volumeMl = '용량은 1~100,000 사이여야 합니다.'
+    }
 
     if (commonDetail.distilledDate && !DATE_RE.test(commonDetail.distilledDate))
       errs.distilledDate = '형식: YYYY 또는 YYYY-MM'
@@ -677,7 +725,7 @@ export function useSpiritForm() {
       distilledDate: dropAging ? null : (commonDetail.distilledDate || null),
       bottledDate: isWine ? null : (commonDetail.bottledDate || null),
       releaseDate: commonDetail.releaseDate || null,
-      volumeMl: commonDetail.volumeMl ? Number(commonDetail.volumeMl) : null,
+      volumeMl: isVolumeMlRange ? (volumeMlMin ? Number(volumeMlMin) : null) : (commonDetail.volumeMl ? Number(commonDetail.volumeMl) : null),
       abv: isAbvRange ? (abvMin ? Number(abvMin) : null) : (commonDetail.abv ? Number(commonDetail.abv) : null),
       bottleNo: isWine ? null : (commonDetail.bottleNo || null),
       batchNo: isWine ? null : (commonDetail.batchNo || null),
@@ -835,7 +883,9 @@ export function useSpiritForm() {
         ...v,
         variantValueEn: v.variantValueEn || null,
         variantValue: v.variantValue.trim(),
-        volumeMl: common.volumeMl,
+        volumeMl: v.volumeMl ? Number(v.volumeMl) : common.volumeMl,
+        volumeMlMin: v.volumeMlMin ? Number(v.volumeMlMin) : null,
+        volumeMlMax: v.volumeMlMax ? Number(v.volumeMlMax) : null,
         commonDetail: cleanVariantCommonDetail(v.commonDetail),
         whiskyDetail: category === 'WHISKY' ? (cleanWhiskyDetail(v.whiskyDetail) || undefined) : undefined,
       })) : [],
@@ -843,6 +893,8 @@ export function useSpiritForm() {
       variantValue: null,
       abvMin: isAbvRange ? (abvMin ? Number(abvMin) : null) : null,
       abvMax: isAbvRange ? (abvMax ? Number(abvMax) : null) : null,
+      volumeMlMin: isVolumeMlRange ? (volumeMlMin ? Number(volumeMlMin) : null) : null,
+      volumeMlMax: isVolumeMlRange ? (volumeMlMax ? Number(volumeMlMax) : null) : null,
       ...buildCategoryPayload(),
     }
   }
@@ -856,6 +908,7 @@ export function useSpiritForm() {
     isVariantSplit, setIsVariantSplit, variants, setVariants,
     addVariant, removeVariant, updateVariant, updateVariantCommon, updateVariantWhisky,
     isAbvRange, setIsAbvRange, abvMin, setAbvMin, abvMax, setAbvMax,
+    isVolumeMlRange, setIsVolumeMlRange, volumeMlMin, setVolumeMlMin, volumeMlMax, setVolumeMlMax,
     commonDetail, updateCommon,
     whiskyDetail, updateWhisky, wineDetail, updateWine,
     cognacDetail, updateCognac, otherDetail, updateOther,
@@ -1216,8 +1269,8 @@ export default function SpiritFormFields({
           {/* 필수 규격 */}
           <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-4 space-y-4">
             <p className="text-xs font-semibold text-amber-700">필수 규격</p>
-            <div className="grid grid-cols-5 gap-4">
-              <div className="col-span-3">
+            <div className="grid grid-cols-1">
+              <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="block text-xs font-medium text-neutral-600 mb-0">알코올 도수 <span className="text-red-400">*</span></label>
                   <label className="flex items-center gap-1 text-[11px] text-neutral-500 cursor-pointer select-none">
@@ -1261,15 +1314,51 @@ export default function SpiritFormFields({
                   <p className="text-xs text-red-500 mt-1">{errors.abv || errors.abvMin || errors.abvMax}</p>
                 )}
               </div>
-              <div className="col-span-2">
-                <label className={LABEL}>용량 <span className="text-red-400">*</span></label>
-                <div className="relative">
-                  <input type="number" min="1" max="100000" value={form.commonDetail.volumeMl}
-                    onChange={(e) => form.updateCommon({ volumeMl: e.target.value })}
-                    className={`${INPUT} pr-10 ${errors.volumeMl ? 'border-red-400' : ''}`} />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">ml</span>
+            </div>
+            <div className="grid grid-cols-1">
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-medium text-neutral-600 mb-0">용량 <span className="text-red-400">*</span></label>
+                  <label className="flex items-center gap-1 text-[11px] text-neutral-500 cursor-pointer select-none">
+                    <input type="checkbox" checked={form.isVolumeMlRange} onChange={(e) => form.setIsVolumeMlRange(e.target.checked)} className="accent-amber-500 rounded" />
+                    범위 지정
+                  </label>
                 </div>
-                {errors.volumeMl && <p className="text-xs text-red-500 mt-1">{errors.volumeMl}</p>}
+                {form.isVolumeMlRange ? (
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <input type="number" min="1" max="100000" value={form.volumeMlMin}
+                               onChange={(e) => form.setVolumeMlMin(e.target.value)}
+                               placeholder="최소"
+                               className={`${INPUT} pr-8 ${errors.volumeMlMin ? 'border-red-400' : ''}`} />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">ml</span>
+                      </div>
+                      <span className="text-neutral-400">~</span>
+                      <div className="relative flex-1">
+                        <input type="number" min="1" max="100000" value={form.volumeMlMax}
+                               onChange={(e) => form.setVolumeMlMax(e.target.value)}
+                               placeholder="최대"
+                               className={`${INPUT} pr-8 ${errors.volumeMlMax ? 'border-red-400' : ''}`} />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">ml</span>
+                      </div>
+                    </div>
+                ) : (
+                    <div className="relative">
+                      <input type="number" min="1" max="100000" value={form.commonDetail.volumeMl}
+                             onChange={(e) => {
+                               let val = e.target.value
+                               const num = parseFloat(val)
+                               if (!isNaN(num) && num > 100000) val = '100000'
+                               else if (!isNaN(num) && num < 1) val = '1'
+                               form.updateCommon({ volumeMl: val })
+                             }}
+                             className={`${INPUT} pr-10 ${errors.volumeMl ? 'border-red-400' : ''}`} />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">ml</span>
+                    </div>
+                )}
+                {(errors.volumeMl || errors.volumeMlMin || errors.volumeMlMax) && (
+                    <p className="text-xs text-red-500 mt-1">{errors.volumeMl || errors.volumeMlMin || errors.volumeMlMax}</p>
+                )}
               </div>
             </div>
           {/* 위스키 전용 기본 정보: 스타일 & 병입 구분 */}
@@ -1685,20 +1774,38 @@ function VariantItemCard({
           </div>
         </div>
 
-        <div>
-          <label className="block text-[11px] font-semibold text-neutral-500 mb-1">알코올 도수</label>
-          <div className="relative max-w-[200px]">
-            <input
-              type="number"
-              step="0.1"
-              min="0"
-              max="100"
-              value={variant.abv ?? ''}
-              onChange={(e) => onUpdate({ abv: e.target.value === '' ? null : Number(e.target.value) })}
-              placeholder="예) 46.3"
-              className="w-full px-2.5 py-1.5 pr-6 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
-            />
-            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-neutral-400 pointer-events-none">%</span>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-[11px] font-semibold text-neutral-500 mb-1">알코올 도수</label>
+            <div className="relative">
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                max="100"
+                value={variant.abv ?? ''}
+                onChange={(e) => onUpdate({ abv: e.target.value === '' ? null : Number(e.target.value) })}
+                placeholder="예) 46.3"
+                className="w-full px-2.5 py-1.5 pr-6 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
+              />
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-neutral-400 pointer-events-none">%</span>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-semibold text-neutral-500 mb-1">용량</label>
+            <div className="relative">
+              <input
+                type="number"
+                min="1"
+                max="100000"
+                value={variant.volumeMl ?? ''}
+                onChange={(e) => onUpdate({ volumeMl: e.target.value === '' ? null : Number(e.target.value) })}
+                placeholder="예) 700"
+                className="w-full px-2.5 py-1.5 pr-8 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
+              />
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-neutral-400 pointer-events-none">ml</span>
+            </div>
           </div>
         </div>
       </div>

@@ -41,5 +41,6 @@ export function parseAgeYearMonth(text: string): { years: number | null; months:
 /** {years, months}를 숙성 연수 입력 문자열("년" 또는 "년-개월")로 합성. */
 export function formatAgeYearMonth(years: number | null, months: number | null): string {
   if (years == null) return ''
-  return months != null ? `${years}-${String(months).padStart(2, '0')}` : `${years}`
+  const yearsStr = String(years).padStart(2, '0')
+  return months != null ? `${yearsStr}-${String(months).padStart(2, '0')}` : `${yearsStr}`
 }

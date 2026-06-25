@@ -331,6 +331,8 @@ public class SpiritService {
                 .variantValueEn(request.variantValueEn())
                 .abvMin(request.abvMin())
                 .abvMax(request.abvMax())
+                .volumeMlMin(request.volumeMlMin())
+                .volumeMlMax(request.volumeMlMax())
                 .build();
 
         Spirit saved = spiritRepository.save(spirit);
@@ -363,6 +365,8 @@ public class SpiritService {
                         .variantValueEn(vReq.variantValueEn())
                         .abvMin(vReq.abvMin())
                         .abvMax(vReq.abvMax())
+                        .volumeMlMin(vReq.volumeMlMin())
+                        .volumeMlMax(vReq.volumeMlMax())
                         .displayOrder(i)
                         .build();
 
@@ -408,7 +412,9 @@ public class SpiritService {
                 request.variantValueEn() != null ? request.variantValueEn() : spirit.getVariantValueEn(),
                 // 도수 범위 지정 해제 시 null 로 명시 전송됨 — fallback 없이 그대로 반영해야 해제가 반영됨
                 request.abvMin(),
-                request.abvMax()
+                request.abvMax(),
+                request.volumeMlMin(),
+                request.volumeMlMax()
         );
 
         spiritDetailService.saveCommonDetail(spirit, request.commonDetail());
@@ -438,7 +444,7 @@ public class SpiritService {
                                 spirit.getVintageYear(), vReq.abv(), vReq.volumeMl(),
                                 spirit.getCountry(), spirit.getRegion(),
                                 spirit, vReq.variantType(), vReq.variantValue(), vReq.variantValueEn(),
-                                vReq.abvMin(), vReq.abvMax()
+                                vReq.abvMin(), vReq.abvMax(), vReq.volumeMlMin(), vReq.volumeMlMax()
                         );
                         existing.assignDisplayOrder(i);
                         spiritDetailService.saveCommonDetail(existing, vReq.commonDetail());
@@ -467,6 +473,8 @@ public class SpiritService {
                                 .variantValueEn(vReq.variantValueEn())
                                 .abvMin(vReq.abvMin())
                                 .abvMax(vReq.abvMax())
+                                .volumeMlMin(vReq.volumeMlMin())
+                                .volumeMlMax(vReq.volumeMlMax())
                                 .displayOrder(i)
                                 .build();
 
@@ -487,7 +495,8 @@ public class SpiritService {
                                 existing.getVintageYear(), existing.getAbv(), existing.getVolumeMl(),
                                 existing.getCountry(), existing.getRegion(),
                                 null, existing.getVariantType(), existing.getVariantValue(), existing.getVariantValueEn(),
-                                existing.getAbvMin(), existing.getAbvMax()
+                                existing.getAbvMin(), existing.getAbvMax(),
+                                existing.getVolumeMlMin(), existing.getVolumeMlMax()
                         );
                         existing.hide();
                     }
@@ -501,7 +510,8 @@ public class SpiritService {
                             existing.getVintageYear(), existing.getAbv(), existing.getVolumeMl(),
                             existing.getCountry(), existing.getRegion(),
                             null, existing.getVariantType(), existing.getVariantValue(), existing.getVariantValueEn(),
-                            existing.getAbvMin(), existing.getAbvMax()
+                            existing.getAbvMin(), existing.getAbvMax(),
+                            existing.getVolumeMlMin(), existing.getVolumeMlMax()
                     );
                     existing.hide();
                 }
@@ -682,7 +692,8 @@ public class SpiritService {
         ObjectNode merged = objectMapper.valueToTree(existing);
         ObjectNode incoming = objectMapper.valueToTree(body);
         for (String f : List.of("nameKo", "nameEn", "category", "producerId", "bottler",
-                "bottledYear", "vintageYear", "abv", "volumeMl", "country", "region")) {
+                "bottledYear", "vintageYear", "abv", "volumeMl", "country", "region",
+                "abvMin", "abvMax", "volumeMlMin", "volumeMlMax")) {
             JsonNode v = incoming.get(f);
             if (v != null) merged.set(f, v);
             else merged.putNull(f);
@@ -762,6 +773,8 @@ public class SpiritService {
                 .variantValueEn(detail.variantValueEn())
                 .abvMin(detail.abvMin())
                 .abvMax(detail.abvMax())
+                .volumeMlMin(detail.volumeMlMin())
+                .volumeMlMax(detail.volumeMlMax())
                 .build();
 
         Spirit saved = spiritRepository.save(spirit);
@@ -794,6 +807,8 @@ public class SpiritService {
                         .variantValueEn(vReq.variantValueEn())
                         .abvMin(vReq.abvMin())
                         .abvMax(vReq.abvMax())
+                        .volumeMlMin(vReq.volumeMlMin())
+                        .volumeMlMax(vReq.volumeMlMax())
                         .displayOrder(i)
                         .build();
 

@@ -55,6 +55,8 @@ export interface CreateVariantRequest {
   abvMin?: number | null
   abvMax?: number | null
   volumeMl?: number | null
+  volumeMlMin?: number | null
+  volumeMlMax?: number | null
   commonDetail?: SpiritCommonDetailRequest
   whiskyDetail?: WhiskyDetailRequest
 }
@@ -267,6 +269,8 @@ export interface AdminSpiritVariant {
   variantValueEn?: string | null
   abvMin?: number | null
   abvMax?: number | null
+  volumeMlMin?: number | null
+  volumeMlMax?: number | null
   commonDetail?: SpiritCommonDetailResponse | null
   whiskyDetail?: WhiskyDetailResponse | null
 }
@@ -299,6 +303,8 @@ export interface AdminSpiritDetail {
   variantValueEn?: string | null
   abvMin?: number | null
   abvMax?: number | null
+  volumeMlMin?: number | null
+  volumeMlMax?: number | null
   variants?: AdminSpiritVariant[]
   commonDetail: SpiritCommonDetailResponse | null
   whiskyDetail: WhiskyDetailResponse | null
@@ -326,6 +332,8 @@ export interface UpdateSpiritPayload {
   variantValueEn?: string | null
   abvMin?: number | null
   abvMax?: number | null
+  volumeMlMin?: number | null
+  volumeMlMax?: number | null
   commonDetail?: SpiritCommonDetailRequest
   whiskyDetail?: WhiskyDetailRequest
   wineDetail?: WineDetailRequest
@@ -353,6 +361,8 @@ export interface CreateSpiritPayload {
   variantValueEn?: string | null
   abvMin?: number | null
   abvMax?: number | null
+  volumeMlMin?: number | null
+  volumeMlMax?: number | null
   commonDetail?: SpiritCommonDetailRequest
   whiskyDetail?: WhiskyDetailRequest
   wineDetail?: WineDetailRequest
@@ -379,6 +389,8 @@ export interface SpiritRegisterRequestDetail {
   volumeMl: number | null
   abvMin: number | null
   abvMax: number | null
+  volumeMlMin: number | null
+  volumeMlMax: number | null
   country: string | null
   region: string | null
   ageStatement: number | null

@@ -160,6 +160,14 @@ public class Spirit extends BaseTimeEntity {
     @Comment("최대 도수(%)")
     private BigDecimal abvMax;
 
+    @Column
+    @Comment("최소 용량(ml)")
+    private Integer volumeMlMin;
+
+    @Column
+    @Comment("최대 용량(ml)")
+    private Integer volumeMlMax;
+
     @OneToOne(mappedBy = "spirit", cascade = ALL, orphanRemoval = true, fetch = LAZY)
     private SpiritCommonDetail commonDetail;
 
@@ -193,7 +201,8 @@ public class Spirit extends BaseTimeEntity {
                        Integer vintageYear, BigDecimal abv, Integer volumeMl,
                        String country, String region,
                        Spirit parent, VariantType variantType, String variantValue, String variantValueEn,
-                       BigDecimal abvMin, BigDecimal abvMax) {
+                       BigDecimal abvMin, BigDecimal abvMax,
+                       Integer volumeMlMin, Integer volumeMlMax) {
         this.nameKo = nameKo;
         this.nameEn = nameEn;
         this.category = category;
@@ -211,6 +220,8 @@ public class Spirit extends BaseTimeEntity {
         this.variantValueEn = variantValueEn;
         this.abvMin = abvMin;
         this.abvMax = abvMax;
+        this.volumeMlMin = volumeMlMin;
+        this.volumeMlMax = volumeMlMax;
     }
 
     /** 하위 에디션 표시 순서 지정 (마스터 화면에서의 목록 순서 보존용) */
