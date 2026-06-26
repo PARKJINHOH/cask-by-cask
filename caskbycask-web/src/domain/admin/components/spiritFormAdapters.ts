@@ -98,6 +98,7 @@ export function toSpiritRequestForm(payload: CreateSpiritPayload): SpiritRegiste
     variantValue: variant?.variantValue || null,
     variantValueEn: variant?.variantValueEn || null,
     seriesIdentifier: variant?.seriesIdentifier || null,
+    seriesIdentifierEn: variant?.seriesIdentifierEn || null,
   }
 }
 
@@ -166,6 +167,7 @@ export function toPrefillDetail(d: MySpiritRequestDetail): SpiritRegisterRequest
     variantValue: d.variantValue ?? null,
     variantValueEn: d.variantValueEn ?? null,
     seriesIdentifier: d.seriesIdentifier ?? null,
+    seriesIdentifierEn: d.seriesIdentifierEn ?? null,
     status: d.status,
     rejectReason: null,
     createdAt: '',

@@ -47,7 +47,9 @@ public record AdminSpiritVariantResponse(
         @Schema(description = "에디션 식별 값(영문)")
         String variantValueEn,
         @Schema(description = "에디션 목록 표시용 시리즈 식별자")
-        String seriesIdentifier
+        String seriesIdentifier,
+        @Schema(description = "에디션 목록 표시용 시리즈 식별자(영문)")
+        String seriesIdentifierEn
 ) {
     public static AdminSpiritVariantResponse of(Spirit spirit, String primaryImageUrl, String origin) {
         SpiritCommonDetail cd = spirit.getCommonDetail();
@@ -68,7 +70,8 @@ public record AdminSpiritVariantResponse(
                 spirit.getVariantType(),
                 spirit.getVariantValue(),
                 spirit.getVariantValueEn(),
-                spirit.getSeriesIdentifier()
+                spirit.getSeriesIdentifier(),
+                spirit.getSeriesIdentifierEn()
         );
     }
 }

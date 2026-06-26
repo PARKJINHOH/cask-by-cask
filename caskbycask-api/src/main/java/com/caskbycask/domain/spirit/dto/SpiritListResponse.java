@@ -24,6 +24,8 @@ public record SpiritListResponse(
         String nameEn,
         @Schema(description = "에디션 목록 표시용 시리즈 식별자")
         String seriesIdentifier,
+        @Schema(description = "에디션 목록 표시용 시리즈 식별자(영문)")
+        String seriesIdentifierEn,
         @Schema(description = "카테고리")
         SpiritCategory category,
         @Schema(description = "생산 국가")
@@ -57,6 +59,7 @@ public record SpiritListResponse(
                 spirit.getNameKo(),
                 spirit.getNameEn(),
                 spirit.getSeriesIdentifier(),
+                spirit.getSeriesIdentifierEn(),
                 spirit.getCategory(),
                 spirit.getCountry(),
                 spirit.getAbv(),
@@ -78,6 +81,7 @@ public record SpiritListResponse(
                 spirit.getNameKo(),
                 spirit.getNameEn(),
                 spirit.getSeriesIdentifier(),
+                spirit.getSeriesIdentifierEn(),
                 spirit.getCategory(),
                 spirit.getCountry(),
                 spirit.getAbv(),

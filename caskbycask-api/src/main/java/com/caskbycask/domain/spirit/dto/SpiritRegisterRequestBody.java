@@ -187,7 +187,11 @@ public record SpiritRegisterRequestBody(
         String variantValueEn,
         @Schema(description = "에디션 목록 표시용 시리즈 식별자")
         @Size(max = 100, message = "시리즈 식별자는 100자 이하여야 합니다.")
-        String seriesIdentifier
+        String seriesIdentifier,
+
+        @Schema(description = "에디션 목록 표시용 시리즈 식별자(영문)")
+        @Size(max = 100, message = "시리즈 식별자(영문)는 100자 이하여야 합니다.")
+        String seriesIdentifierEn
 ) {
         /**
          * 카테고리별 핵심값(스타일/종류/등급/주종) 필수 여부.

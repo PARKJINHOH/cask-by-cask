@@ -28,7 +28,12 @@ public record CreateVariantRequest(
         @Size(max = 100, message = "시리즈 식별자는 100자 이하여야 합니다.")
         String seriesIdentifier,
 
+        @Schema(description = "에디션 목록 표시용 시리즈 식별자(영문)")
+        @Size(max = 100, message = "시리즈 식별자(영문)는 100자 이하여야 합니다.")
+        String seriesIdentifierEn,
+
         @Schema(description = "알코올 도수")
+        @NotNull(message = "에디션 알코올 도수는 필수입니다.")
         @DecimalMin(value = "0.0", message = "도수는 0.0 이상이어야 합니다.")
         @DecimalMax(value = "100.0", message = "도수는 100.0 이하이어야 합니다.")
         BigDecimal abv,
@@ -44,6 +49,7 @@ public record CreateVariantRequest(
         BigDecimal abvMax,
 
         @Schema(description = "용량 ml")
+        @NotNull(message = "에디션 용량은 필수입니다.")
         @Min(value = 1, message = "용량은 1ml 이상이어야 합니다.")
         @Max(value = 100000, message = "용량은 100000ml 이하여야 합니다.")
         Integer volumeMl,

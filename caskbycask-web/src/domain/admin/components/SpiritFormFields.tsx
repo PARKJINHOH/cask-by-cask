@@ -225,6 +225,7 @@ export function useSpiritForm() {
   const addVariant = () => {
     const currentType = variants[0]?.variantType ?? 'BATCH'
     const currentSeriesIdentifier = variants[0]?.seriesIdentifier ?? ''
+    const currentSeriesIdentifierEn = variants[0]?.seriesIdentifierEn ?? ''
     setVariants((prev) => [
       ...prev,
       {
@@ -233,6 +234,7 @@ export function useSpiritForm() {
         variantValue: '',
         variantValueEn: '',
         seriesIdentifier: currentSeriesIdentifier,
+        seriesIdentifierEn: currentSeriesIdentifierEn,
         abv: null,
         abvMin: null,
         abvMax: null,
@@ -366,6 +368,7 @@ export function useSpiritForm() {
         variantValue: v.variantValue ?? '',
         variantValueEn: v.variantValueEn ?? '',
         seriesIdentifier: v.seriesIdentifier ?? s.seriesIdentifier ?? '',
+        seriesIdentifierEn: v.seriesIdentifierEn ?? s.seriesIdentifierEn ?? '',
         abv: v.abv,
         abvMin: v.abvMin,
         abvMax: v.abvMax,
@@ -607,6 +610,7 @@ export function useSpiritForm() {
         variantValue: r.variantValue,
         variantValueEn: r.variantValueEn ?? '',
         seriesIdentifier: r.seriesIdentifier ?? '',
+        seriesIdentifierEn: r.seriesIdentifierEn ?? '',
         abv: r.abv ?? null,
         abvMin: null,
         abvMax: null,
@@ -649,26 +653,26 @@ export function useSpiritForm() {
     if (!nameKo.trim()) errs.nameKo = '한글 이름은 필수입니다.'
 
     // 도수 범위 지정 여부에 따른 검증
-    if (isAbvRange) {
+    if (!isVariantSplit && isAbvRange) {
       if (!abvMin) errs.abvMin = '최소 도수는 필수입니다.'
       else if (Number(abvMin) < 0 || Number(abvMin) > 100) errs.abvMin = '도수는 0~100 사이여야 합니다.'
       if (!abvMax) errs.abvMax = '최대 도수는 필수입니다.'
       else if (Number(abvMax) < 0 || Number(abvMax) > 100) errs.abvMax = '도수는 0~100 사이여야 합니다.'
       if (abvMin && abvMax && Number(abvMin) > Number(abvMax)) errs.abvMin = '최소 도수가 최대 도수보다 큽니다.'
-    } else {
+    } else if (!isVariantSplit) {
       if (!commonDetail.abv) errs.abv = '알코올 도수는 필수입니다.'
       else if (Number(commonDetail.abv) < 0 || Number(commonDetail.abv) > 100)
         errs.abv = '도수는 0~100 사이여야 합니다.'
     }
 
     // 용량 범위 지정 여부에 따른 검증
-    if (isVolumeMlRange) {
+    if (!isVariantSplit && isVolumeMlRange) {
       if (!volumeMlMin) errs.volumeMlMin = '최소 용량은 필수입니다.'
       else if (Number(volumeMlMin) < 1 || Number(volumeMlMin) > 100000) errs.volumeMlMin = '용량은 1~100,000 사이여야 합니다.'
       if (!volumeMlMax) errs.volumeMlMax = '최대 용량은 필수입니다.'
       else if (Number(volumeMlMax) < 1 || Number(volumeMlMax) > 100000) errs.volumeMlMax = '용량은 1~100,000 사이여야 합니다.'
       if (volumeMlMin && volumeMlMax && Number(volumeMlMin) > Number(volumeMlMax)) errs.volumeMlMin = '최소 용량이 최대 용량보다 큽니다.'
-    } else {
+    } else if (!isVariantSplit) {
       if (!commonDetail.volumeMl) errs.volumeMl = '용량은 필수입니다.'
       else if (Number(commonDetail.volumeMl) < 1 || Number(commonDetail.volumeMl) > 100000)
         errs.volumeMl = '용량은 1~100,000 사이여야 합니다.'
@@ -701,6 +705,16 @@ export function useSpiritForm() {
         if (!v.seriesIdentifier.trim()) {
           errs[`seriesIdentifier_${idx}`] = '시리즈 식별자는 필수입니다.'
         }
+        if (v.abv == null) {
+          errs[`variantAbv_${idx}`] = '알코올 도수는 필수입니다.'
+        } else if (Number(v.abv) < 0 || Number(v.abv) > 100) {
+          errs[`variantAbv_${idx}`] = '도수는 0~100 사이여야 합니다.'
+        }
+        if (v.volumeMl == null) {
+          errs[`variantVolumeMl_${idx}`] = '용량은 필수입니다.'
+        } else if (Number(v.volumeMl) < 1 || Number(v.volumeMl) > 100000) {
+          errs[`variantVolumeMl_${idx}`] = '용량은 1~100,000 사이여야 합니다.'
+        }
         if (v.commonDetail?.distilledDate && !DATE_RE.test(v.commonDetail.distilledDate)) {
           errs[`variantDistilledDate_${idx}`] = '형식: YYYY 또는 YYYY-MM'
         }
@@ -721,6 +735,7 @@ export function useSpiritForm() {
     const isWine = category === 'WINE'
     const isCognac = category === 'COGNAC'
     const dropAging = isWine || isCognac
+    const dropMasterSpecs = isVariantSplit
     return {
       isNas: dropAging ? false : commonDetail.isNas,
       ageStatement: dropAging || commonDetail.isNas ? null : (commonDetail.ageStatement ?? null),
@@ -732,8 +747,8 @@ export function useSpiritForm() {
       distilledDate: dropAging ? null : (commonDetail.distilledDate || null),
       bottledDate: isWine ? null : (commonDetail.bottledDate || null),
       releaseDate: commonDetail.releaseDate || null,
-      volumeMl: isVolumeMlRange ? (volumeMlMin ? Number(volumeMlMin) : null) : (commonDetail.volumeMl ? Number(commonDetail.volumeMl) : null),
-      abv: isAbvRange ? (abvMin ? Number(abvMin) : null) : (commonDetail.abv ? Number(commonDetail.abv) : null),
+      volumeMl: dropMasterSpecs ? null : (isVolumeMlRange ? (volumeMlMin ? Number(volumeMlMin) : null) : (commonDetail.volumeMl ? Number(commonDetail.volumeMl) : null)),
+      abv: dropMasterSpecs ? null : (isAbvRange ? (abvMin ? Number(abvMin) : null) : (commonDetail.abv ? Number(commonDetail.abv) : null)),
       bottleNo: isWine ? null : (commonDetail.bottleNo || null),
       batchNo: isWine ? null : (commonDetail.batchNo || null),
       totalBottles: isWine ? null : (commonDetail.totalBottles ? Number(commonDetail.totalBottles) : null),
@@ -887,12 +902,14 @@ export function useSpiritForm() {
       commonDetail: common,
       isVariantSplit,
       seriesIdentifier: isVariantSplit ? (variants[0]?.seriesIdentifier.trim() || null) : null,
+      seriesIdentifierEn: isVariantSplit ? ((variants[0]?.seriesIdentifierEn ?? '').trim() || null) : null,
       variants: isVariantSplit ? variants.map(v => ({
         ...v,
         variantValueEn: v.variantValueEn || null,
         variantValue: v.variantValue.trim(),
         seriesIdentifier: v.seriesIdentifier.trim(),
-        volumeMl: v.volumeMl ? Number(v.volumeMl) : common.volumeMl,
+        seriesIdentifierEn: (v.seriesIdentifierEn ?? '').trim() || null,
+        volumeMl: v.volumeMl ? Number(v.volumeMl) : null,
         volumeMlMin: v.volumeMlMin ? Number(v.volumeMlMin) : null,
         volumeMlMax: v.volumeMlMax ? Number(v.volumeMlMax) : null,
         commonDetail: cleanVariantCommonDetail(v.commonDetail),
@@ -901,10 +918,10 @@ export function useSpiritForm() {
       variantType: 'NONE',
       variantValue: null,
       variantValueEn: null,
-      abvMin: isAbvRange ? (abvMin ? Number(abvMin) : null) : null,
-      abvMax: isAbvRange ? (abvMax ? Number(abvMax) : null) : null,
-      volumeMlMin: isVolumeMlRange ? (volumeMlMin ? Number(volumeMlMin) : null) : null,
-      volumeMlMax: isVolumeMlRange ? (volumeMlMax ? Number(volumeMlMax) : null) : null,
+      abvMin: !isVariantSplit && isAbvRange ? (abvMin ? Number(abvMin) : null) : null,
+      abvMax: !isVariantSplit && isAbvRange ? (abvMax ? Number(abvMax) : null) : null,
+      volumeMlMin: !isVariantSplit && isVolumeMlRange ? (volumeMlMin ? Number(volumeMlMin) : null) : null,
+      volumeMlMax: !isVariantSplit && isVolumeMlRange ? (volumeMlMax ? Number(volumeMlMax) : null) : null,
       ...buildCategoryPayload(),
     }
   }
@@ -1081,6 +1098,7 @@ export default function SpiritFormFields({
   const producerLabel = category ? PRODUCER_LABEL[category] : '증류소'
   const ph = category ? PLACEHOLDERS[category] : DEFAULT_PLACEHOLDER
   const queryClient = useQueryClient()
+  const isMasterSpecsDisabled = form.isVariantSplit
 
   const [activeVariantIdx, setActiveVariantIdx] = useState(0)
 
@@ -1214,6 +1232,7 @@ export default function SpiritFormFields({
                                 variantValue: '',
                                 variantValueEn: '',
                                 seriesIdentifier: '',
+                                seriesIdentifierEn: '',
                                 abv: null,
                                 abvMin: null,
                                 abvMax: null,
@@ -1283,9 +1302,9 @@ export default function SpiritFormFields({
             <div className="grid grid-cols-1">
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-medium text-neutral-600 mb-0">알코올 도수 <span className="text-red-400">*</span></label>
+                  <label className="block text-xs font-medium text-neutral-600 mb-0">알코올 도수 {!isMasterSpecsDisabled && <span className="text-red-400">*</span>}</label>
                   <label className="flex items-center gap-1 text-[11px] text-neutral-500 cursor-pointer select-none">
-                    <input type="checkbox" checked={form.isAbvRange} onChange={(e) => form.setIsAbvRange(e.target.checked)} className="accent-amber-500 rounded" />
+                    <input type="checkbox" checked={form.isAbvRange} disabled={isMasterSpecsDisabled} onChange={(e) => form.setIsAbvRange(e.target.checked)} className="accent-amber-500 rounded disabled:opacity-50" />
                     범위 지정
                   </label>
                 </div>
@@ -1293,23 +1312,26 @@ export default function SpiritFormFields({
                   <div className="flex items-center gap-2">
                     <div className="relative flex-1">
                       <input type="number" step="0.1" min="0" max="100" value={form.abvMin}
+                         disabled={isMasterSpecsDisabled}
                          onChange={(e) => form.setAbvMin(e.target.value)}
                          placeholder="최소"
-                         className={`${INPUT} pr-8 ${errors.abvMin ? 'border-red-400' : ''}`} />
+                         className={`${INPUT} pr-8 disabled:bg-neutral-100 disabled:text-neutral-400 ${errors.abvMin ? 'border-red-400' : ''}`} />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">%</span>
                     </div>
                     <span className="text-neutral-400">~</span>
                     <div className="relative flex-1">
                       <input type="number" step="0.1" min="0" max="100" value={form.abvMax}
+                         disabled={isMasterSpecsDisabled}
                          onChange={(e) => form.setAbvMax(e.target.value)}
                          placeholder="최대"
-                         className={`${INPUT} pr-8 ${errors.abvMax ? 'border-red-400' : ''}`} />
+                         className={`${INPUT} pr-8 disabled:bg-neutral-100 disabled:text-neutral-400 ${errors.abvMax ? 'border-red-400' : ''}`} />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">%</span>
                     </div>
                   </div>
                 ) : (
                   <div className="relative">
                     <input type="number" step="0.1" min="0" max="100" value={form.commonDetail.abv}
+                       disabled={isMasterSpecsDisabled}
                        onChange={(e) => {
                          let val = e.target.value
                          const num = parseFloat(val)
@@ -1317,7 +1339,7 @@ export default function SpiritFormFields({
                          else if (!isNaN(num) && num < 0) val = '0'
                          form.updateCommon({ abv: val })
                        }}
-                       className={`${INPUT} pr-8 ${errors.abv ? 'border-red-400' : ''}`} />
+                       className={`${INPUT} pr-8 disabled:bg-neutral-100 disabled:text-neutral-400 ${errors.abv ? 'border-red-400' : ''}`} />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">%</span>
                   </div>
                 )}
@@ -1329,9 +1351,9 @@ export default function SpiritFormFields({
             <div className="grid grid-cols-1">
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-medium text-neutral-600 mb-0">용량 <span className="text-red-400">*</span></label>
+                  <label className="block text-xs font-medium text-neutral-600 mb-0">용량 {!isMasterSpecsDisabled && <span className="text-red-400">*</span>}</label>
                   <label className="flex items-center gap-1 text-[11px] text-neutral-500 cursor-pointer select-none">
-                    <input type="checkbox" checked={form.isVolumeMlRange} onChange={(e) => form.setIsVolumeMlRange(e.target.checked)} className="accent-amber-500 rounded" />
+                    <input type="checkbox" checked={form.isVolumeMlRange} disabled={isMasterSpecsDisabled} onChange={(e) => form.setIsVolumeMlRange(e.target.checked)} className="accent-amber-500 rounded disabled:opacity-50" />
                     범위 지정
                   </label>
                 </div>
@@ -1339,23 +1361,26 @@ export default function SpiritFormFields({
                     <div className="flex items-center gap-2">
                       <div className="relative flex-1">
                         <input type="number" min="1" max="100000" value={form.volumeMlMin}
+                               disabled={isMasterSpecsDisabled}
                                onChange={(e) => form.setVolumeMlMin(e.target.value)}
                                placeholder="최소"
-                               className={`${INPUT} pr-8 ${errors.volumeMlMin ? 'border-red-400' : ''}`} />
+                               className={`${INPUT} pr-8 disabled:bg-neutral-100 disabled:text-neutral-400 ${errors.volumeMlMin ? 'border-red-400' : ''}`} />
                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">ml</span>
                       </div>
                       <span className="text-neutral-400">~</span>
                       <div className="relative flex-1">
                         <input type="number" min="1" max="100000" value={form.volumeMlMax}
+                               disabled={isMasterSpecsDisabled}
                                onChange={(e) => form.setVolumeMlMax(e.target.value)}
                                placeholder="최대"
-                               className={`${INPUT} pr-8 ${errors.volumeMlMax ? 'border-red-400' : ''}`} />
+                               className={`${INPUT} pr-8 disabled:bg-neutral-100 disabled:text-neutral-400 ${errors.volumeMlMax ? 'border-red-400' : ''}`} />
                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">ml</span>
                       </div>
                     </div>
                 ) : (
                     <div className="relative">
                       <input type="number" min="1" max="100000" value={form.commonDetail.volumeMl}
+                             disabled={isMasterSpecsDisabled}
                              onChange={(e) => {
                                let val = e.target.value
                                const num = parseFloat(val)
@@ -1363,7 +1388,7 @@ export default function SpiritFormFields({
                                else if (!isNaN(num) && num < 1) val = '1'
                                form.updateCommon({ volumeMl: val })
                              }}
-                             className={`${INPUT} pr-10 ${errors.volumeMl ? 'border-red-400' : ''}`} />
+                             className={`${INPUT} pr-10 disabled:bg-neutral-100 disabled:text-neutral-400 ${errors.volumeMl ? 'border-red-400' : ''}`} />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">ml</span>
                     </div>
                 )}
@@ -1744,9 +1769,9 @@ function VariantItemCard({
       <div className="space-y-4">
         <h4 className="text-xs font-bold text-neutral-600 uppercase tracking-wider">에디션 기본 정보</h4>
         
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-[11px] font-semibold text-neutral-500 mb-1">시리즈 식별자 <span className="text-red-400">*</span></label>
+            <label className="block text-[11px] font-semibold text-neutral-500 mb-1">한글 시리즈 식별자 <span className="text-red-400">*</span></label>
             <input
               type="text"
               value={variant.seriesIdentifier}
@@ -1767,6 +1792,25 @@ function VariantItemCard({
             )}
           </div>
 
+          <div>
+            <label className="block text-[11px] font-semibold text-neutral-500 mb-1">영문 시리즈 식별자</label>
+            <input
+              type="text"
+              value={variant.seriesIdentifierEn ?? ''}
+              onChange={(e) => onUpdate({ seriesIdentifierEn: e.target.value })}
+              placeholder={
+                variant.variantType === 'BATCH'
+                  ? '예) .1 Series'
+                  : variant.variantType === 'RELEASE_YEAR'
+                  ? '예) 2024 Release'
+                  : '예) Single Cask'
+              }
+              className="w-full px-2.5 py-1.5 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-[11px] font-semibold text-neutral-500 mb-1">식별 값(한글) <span className="text-red-400">*</span></label>
             <input
@@ -1809,7 +1853,7 @@ function VariantItemCard({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-[11px] font-semibold text-neutral-500 mb-1">알코올 도수</label>
+            <label className="block text-[11px] font-semibold text-neutral-500 mb-1">알코올 도수 <span className="text-red-400">*</span></label>
             <div className="relative">
               <input
                 type="number"
@@ -1819,14 +1863,19 @@ function VariantItemCard({
                 value={variant.abv ?? ''}
                 onChange={(e) => onUpdate({ abv: e.target.value === '' ? null : Number(e.target.value) })}
                 placeholder="예) 46.3"
-                className="w-full px-2.5 py-1.5 pr-6 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
+                className={`w-full px-2.5 py-1.5 pr-6 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white ${
+                  errors[`variantAbv_${index}`] ? 'border-red-400' : ''
+                }`}
               />
               <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-neutral-400 pointer-events-none">%</span>
             </div>
+            {errors[`variantAbv_${index}`] && (
+              <p className="text-[10px] text-red-500 mt-1">{errors[`variantAbv_${index}`]}</p>
+            )}
           </div>
 
           <div>
-            <label className="block text-[11px] font-semibold text-neutral-500 mb-1">용량</label>
+            <label className="block text-[11px] font-semibold text-neutral-500 mb-1">용량 <span className="text-red-400">*</span></label>
             <div className="relative">
               <input
                 type="number"
@@ -1835,10 +1884,15 @@ function VariantItemCard({
                 value={variant.volumeMl ?? ''}
                 onChange={(e) => onUpdate({ volumeMl: e.target.value === '' ? null : Number(e.target.value) })}
                 placeholder="예) 700"
-                className="w-full px-2.5 py-1.5 pr-8 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
+                className={`w-full px-2.5 py-1.5 pr-8 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white ${
+                  errors[`variantVolumeMl_${index}`] ? 'border-red-400' : ''
+                }`}
               />
               <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-neutral-400 pointer-events-none">ml</span>
             </div>
+            {errors[`variantVolumeMl_${index}`] && (
+              <p className="text-[10px] text-red-500 mt-1">{errors[`variantVolumeMl_${index}`]}</p>
+            )}
           </div>
         </div>
       </div>

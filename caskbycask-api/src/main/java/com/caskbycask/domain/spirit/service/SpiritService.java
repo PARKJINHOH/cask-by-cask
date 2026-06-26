@@ -315,6 +315,7 @@ public class SpiritService {
         verifyProducerAccess(registeredBy, producer);
         validateEditionSeriesIdentifier(request);
         String seriesIdentifier = resolveSeriesIdentifier(request);
+        String seriesIdentifierEn = resolveSeriesIdentifierEn(request);
 
         Spirit spirit = Spirit.builder()
                 .nameKo(request.nameKo())
@@ -334,6 +335,7 @@ public class SpiritService {
                 .variantValue(request.variantValue())
                 .variantValueEn(request.variantValueEn())
                 .seriesIdentifier(seriesIdentifier)
+                .seriesIdentifierEn(seriesIdentifierEn)
                 .abvMin(request.abvMin())
                 .abvMax(request.abvMax())
                 .volumeMlMin(request.volumeMlMin())
@@ -369,6 +371,7 @@ public class SpiritService {
                         .variantValue(vReq.variantValue())
                         .variantValueEn(vReq.variantValueEn())
                         .seriesIdentifier(normalizeSeriesIdentifier(vReq.seriesIdentifier()))
+                        .seriesIdentifierEn(resolveSeriesIdentifierEn(vReq))
                         .abvMin(vReq.abvMin())
                         .abvMax(vReq.abvMax())
                         .volumeMlMin(vReq.volumeMlMin())
@@ -401,6 +404,7 @@ public class SpiritService {
         SpiritCategory prevCategory = spirit.getCategory();
         validateEditionSeriesIdentifier(request, spirit);
         String seriesIdentifier = resolveSeriesIdentifier(request, spirit);
+        String seriesIdentifierEn = resolveSeriesIdentifierEn(request, spirit);
 
         spirit.update(
                 request.nameKo() != null ? request.nameKo() : spirit.getNameKo(),
@@ -419,6 +423,7 @@ public class SpiritService {
                 request.variantValue() != null ? request.variantValue() : spirit.getVariantValue(),
                 request.variantValueEn() != null ? request.variantValueEn() : spirit.getVariantValueEn(),
                 seriesIdentifier,
+                seriesIdentifierEn,
                 // 도수 범위 지정 해제 시 null 로 명시 전송됨 — fallback 없이 그대로 반영해야 해제가 반영됨
                 request.abvMin(),
                 request.abvMax(),
@@ -454,6 +459,7 @@ public class SpiritService {
                                 spirit.getCountry(), spirit.getRegion(),
                                 spirit, vReq.variantType(), vReq.variantValue(), vReq.variantValueEn(),
                                 normalizeSeriesIdentifier(vReq.seriesIdentifier()),
+                                resolveSeriesIdentifierEn(vReq),
                                 vReq.abvMin(), vReq.abvMax(), vReq.volumeMlMin(), vReq.volumeMlMax()
                         );
                         existing.assignDisplayOrder(i);
@@ -482,6 +488,7 @@ public class SpiritService {
                                 .variantValue(vReq.variantValue())
                                 .variantValueEn(vReq.variantValueEn())
                                 .seriesIdentifier(normalizeSeriesIdentifier(vReq.seriesIdentifier()))
+                                .seriesIdentifierEn(resolveSeriesIdentifierEn(vReq))
                                 .abvMin(vReq.abvMin())
                                 .abvMax(vReq.abvMax())
                                 .volumeMlMin(vReq.volumeMlMin())
@@ -507,6 +514,7 @@ public class SpiritService {
                                 existing.getCountry(), existing.getRegion(),
                                 null, existing.getVariantType(), existing.getVariantValue(), existing.getVariantValueEn(),
                                 existing.getSeriesIdentifier(),
+                                existing.getSeriesIdentifierEn(),
                                 existing.getAbvMin(), existing.getAbvMax(),
                                 existing.getVolumeMlMin(), existing.getVolumeMlMax()
                         );
@@ -523,6 +531,7 @@ public class SpiritService {
                             existing.getCountry(), existing.getRegion(),
                             null, existing.getVariantType(), existing.getVariantValue(), existing.getVariantValueEn(),
                             existing.getSeriesIdentifier(),
+                            existing.getSeriesIdentifierEn(),
                             existing.getAbvMin(), existing.getAbvMax(),
                             existing.getVolumeMlMin(), existing.getVolumeMlMax()
                     );
@@ -770,6 +779,7 @@ public class SpiritService {
         Producer producer = resolveProducer(detail.producerId());
         validateEditionSeriesIdentifier(detail);
         String seriesIdentifier = resolveSeriesIdentifier(detail);
+        String seriesIdentifierEn = resolveSeriesIdentifierEn(detail);
 
         Spirit spirit = Spirit.builder()
                 .nameKo(detail.nameKo())
@@ -789,6 +799,7 @@ public class SpiritService {
                 .variantValue(detail.variantValue())
                 .variantValueEn(detail.variantValueEn())
                 .seriesIdentifier(seriesIdentifier)
+                .seriesIdentifierEn(seriesIdentifierEn)
                 .abvMin(detail.abvMin())
                 .abvMax(detail.abvMax())
                 .volumeMlMin(detail.volumeMlMin())
@@ -824,6 +835,7 @@ public class SpiritService {
                         .variantValue(vReq.variantValue())
                         .variantValueEn(vReq.variantValueEn())
                         .seriesIdentifier(normalizeSeriesIdentifier(vReq.seriesIdentifier()))
+                        .seriesIdentifierEn(resolveSeriesIdentifierEn(vReq))
                         .abvMin(vReq.abvMin())
                         .abvMax(vReq.abvMax())
                         .volumeMlMin(vReq.volumeMlMin())
@@ -938,6 +950,41 @@ public class SpiritService {
             return normalizeSeriesIdentifier(request.variants().get(0).seriesIdentifier());
         }
         return spirit.getSeriesIdentifier();
+    }
+
+    private String resolveSeriesIdentifierEn(CreateSpiritRequest request) {
+        String direct = normalizeSeriesIdentifier(request.seriesIdentifierEn());
+        if (direct != null) return direct;
+        if (Boolean.TRUE.equals(request.isVariantSplit()) && request.variants() != null && !request.variants().isEmpty()) {
+            return resolveSeriesIdentifierEn(request.variants().get(0));
+        }
+        return normalizeSeriesIdentifier(request.seriesIdentifier());
+    }
+
+    private String resolveSeriesIdentifierEn(UpdateSpiritRequest request, Spirit spirit) {
+        VariantType requestedVariantType = request.variantType() != null
+                ? request.variantType()
+                : spirit.getVariantType();
+        if (Boolean.FALSE.equals(request.isVariantSplit()) && requestedVariantType == VariantType.NONE) {
+            return null;
+        }
+        if (request.seriesIdentifierEn() != null) {
+            String direct = normalizeSeriesIdentifier(request.seriesIdentifierEn());
+            return direct != null ? direct : resolveSeriesIdentifierEnFallback(request.seriesIdentifier());
+        }
+        if (Boolean.TRUE.equals(request.isVariantSplit()) && request.variants() != null && !request.variants().isEmpty()) {
+            return resolveSeriesIdentifierEn(request.variants().get(0));
+        }
+        return spirit.getSeriesIdentifierEn();
+    }
+
+    private String resolveSeriesIdentifierEn(CreateVariantRequest request) {
+        String direct = normalizeSeriesIdentifier(request.seriesIdentifierEn());
+        return direct != null ? direct : normalizeSeriesIdentifier(request.seriesIdentifier());
+    }
+
+    private String resolveSeriesIdentifierEnFallback(String seriesIdentifier) {
+        return normalizeSeriesIdentifier(seriesIdentifier);
     }
 
     private String normalizeSeriesIdentifier(String value) {

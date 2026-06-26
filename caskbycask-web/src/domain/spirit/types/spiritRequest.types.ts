@@ -72,6 +72,7 @@ export interface SpiritRegisterRequestForm {
   variantValue?: string | null      // 에디션 값 (예: Batch 11, 2023)
   variantValueEn?: string | null     // 에디션 값 영문
   seriesIdentifier?: string | null
+  seriesIdentifierEn?: string | null
   // 유지할 기존 이미지 URL 목록 (수정 시 전송 — 신규 파일은 multipart 별도)
   imageUrls?: string[]
   // 관리자에게 전달할 기타 문구 (선택)

@@ -52,6 +52,7 @@ export interface CreateVariantRequest {
   variantValue: string
   variantValueEn?: string | null
   seriesIdentifier: string
+  seriesIdentifierEn?: string | null
   abv?: number | null
   abvMin?: number | null
   abvMax?: number | null
@@ -232,6 +233,7 @@ export interface AdminSpiritItem {
   nameKo: string
   nameEn: string
   seriesIdentifier?: string | null
+  seriesIdentifierEn?: string | null
   category: SpiritCategory
   country: string | null
   abv: number | null
@@ -270,6 +272,7 @@ export interface AdminSpiritVariant {
   variantValue?: string | null
   variantValueEn?: string | null
   seriesIdentifier?: string | null
+  seriesIdentifierEn?: string | null
   abvMin?: number | null
   abvMax?: number | null
   volumeMlMin?: number | null
@@ -305,6 +308,7 @@ export interface AdminSpiritDetail {
   variantValue?: string | null
   variantValueEn?: string | null
   seriesIdentifier?: string | null
+  seriesIdentifierEn?: string | null
   abvMin?: number | null
   abvMax?: number | null
   volumeMlMin?: number | null
@@ -335,6 +339,7 @@ export interface UpdateSpiritPayload {
   variantValue?: string | null
   variantValueEn?: string | null
   seriesIdentifier?: string | null
+  seriesIdentifierEn?: string | null
   abvMin?: number | null
   abvMax?: number | null
   volumeMlMin?: number | null
@@ -365,6 +370,7 @@ export interface CreateSpiritPayload {
   variantValue?: string | null
   variantValueEn?: string | null
   seriesIdentifier?: string | null
+  seriesIdentifierEn?: string | null
   abvMin?: number | null
   abvMax?: number | null
   volumeMlMin?: number | null
@@ -442,6 +448,7 @@ export interface SpiritRegisterRequestDetail {
   variantValue: string | null
   variantValueEn: string | null
   seriesIdentifier: string | null
+  seriesIdentifierEn: string | null
   status: RequestStatus
   rejectReason: string | null
   createdAt: string

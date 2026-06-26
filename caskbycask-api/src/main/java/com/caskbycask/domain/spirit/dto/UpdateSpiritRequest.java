@@ -80,6 +80,9 @@ public record UpdateSpiritRequest(
         @Schema(description = "에디션 목록 표시용 시리즈 식별자")
         String seriesIdentifier,
 
+        @Schema(description = "에디션 목록 표시용 시리즈 식별자(영문)")
+        String seriesIdentifierEn,
+
         @Schema(description = "최소 도수")
         BigDecimal abvMin,
 

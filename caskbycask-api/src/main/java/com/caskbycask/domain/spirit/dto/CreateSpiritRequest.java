@@ -100,6 +100,10 @@ public record CreateSpiritRequest(
         @Size(max = 100, message = "시리즈 식별자는 100자 이하여야 합니다.")
         String seriesIdentifier,
 
+        @Schema(description = "에디션 목록 표시용 시리즈 식별자(영문)")
+        @Size(max = 100, message = "시리즈 식별자(영문)는 100자 이하여야 합니다.")
+        String seriesIdentifierEn,
+
         @Schema(description = "최소 도수")
         @DecimalMin(value = "0.0", message = "최소 도수는 0.0 이상이어야 합니다.")
         @DecimalMax(value = "100.0", message = "최소 도수는 100.0 이하이어야 합니다.")
