@@ -228,7 +228,7 @@ export default function WhiskyDetailSection({ value, onChange }: Props) {
         {isPhenolRange && value.isPeated ? (
           <div className="flex items-center gap-2">
             <div className="flex-1">
-              <input type="number" min={0} max={999}
+              <input type="number" min={0} max={999} step="any"
                 value={value.phenolPpmMin}
                 onChange={(e) => onChange({ phenolPpmMin: e.target.value })}
                 placeholder="최소"
@@ -237,7 +237,7 @@ export default function WhiskyDetailSection({ value, onChange }: Props) {
             </div>
             <span className="text-neutral-400">~</span>
             <div className="flex-1">
-              <input type="number" min={0} max={999}
+              <input type="number" min={0} max={999} step="any"
                 value={value.phenolPpmMax}
                 onChange={(e) => onChange({ phenolPpmMax: e.target.value })}
                 placeholder="최대"
@@ -246,7 +246,7 @@ export default function WhiskyDetailSection({ value, onChange }: Props) {
             </div>
           </div>
         ) : (
-          <input type="number" min={0} max={999}
+          <input type="number" min={0} max={999} step="any"
             value={value.phenolPpm}
             onChange={(e) => onChange({ phenolPpm: e.target.value })}
             disabled={!value.isPeated}

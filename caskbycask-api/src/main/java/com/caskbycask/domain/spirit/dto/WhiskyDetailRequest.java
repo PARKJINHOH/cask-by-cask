@@ -5,6 +5,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+
+import java.math.BigDecimal;
 
 import java.util.List;
 import java.util.Map;
@@ -54,19 +58,19 @@ public record WhiskyDetailRequest(
         Boolean isPeated,
 
         @Schema(description = "피트 강도 ppm (isPeated=true 일 때만 유효)")
-        @Min(value = 0, message = "phenolPpm은 0 이상이어야 합니다.")
-        @Max(value = 999, message = "phenolPpm은 999 이하이어야 합니다.")
-        Integer phenolPpm,
+        @DecimalMin(value = "0.0", message = "phenolPpm은 0 이상이어야 합니다.")
+        @DecimalMax(value = "999.9", message = "phenolPpm은 999 이하이어야 합니다.")
+        BigDecimal phenolPpm,
 
         @Schema(description = "최소 피트 강도 ppm")
-        @Min(value = 0, message = "phenolPpmMin은 0 이상이어야 합니다.")
-        @Max(value = 999, message = "phenolPpmMin은 999 이하이어야 합니다.")
-        Integer phenolPpmMin,
+        @DecimalMin(value = "0.0", message = "phenolPpmMin은 0 이상이어야 합니다.")
+        @DecimalMax(value = "999.9", message = "phenolPpmMin은 999 이하이어야 합니다.")
+        BigDecimal phenolPpmMin,
 
         @Schema(description = "최대 피트 강도 ppm")
-        @Min(value = 0, message = "phenolPpmMax은 0 이상이어야 합니다.")
-        @Max(value = 999, message = "phenolPpmMax은 999 이하이어야 합니다.")
-        Integer phenolPpmMax,
+        @DecimalMin(value = "0.0", message = "phenolPpmMax은 0 이상이어야 합니다.")
+        @DecimalMax(value = "999.9", message = "phenolPpmMax은 999 이하이어야 합니다.")
+        BigDecimal phenolPpmMax,
 
         @Schema(description = "캐스크 번호")
         @Size(max = 100, message = "캐스크 번호는 100자 이하여야 합니다.")

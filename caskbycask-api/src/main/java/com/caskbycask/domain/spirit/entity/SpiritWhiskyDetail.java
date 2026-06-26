@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.Comment;
 
+import java.math.BigDecimal;
+
 @Entity
 @Table(name = "spirit_whisky_detail")
 @Getter
@@ -63,15 +65,15 @@ public class SpiritWhiskyDetail {
     /** 피트 강도 (ppm). isPeated=true 일 때만 유효. */
     @Column
     @Comment("페놀 수치(ppm)")
-    private Integer phenolPpm;
+    private BigDecimal phenolPpm;
 
     @Column(name = "phenol_ppm_min")
     @Comment("최소 페놀 수치(ppm)")
-    private Integer phenolPpmMin;
+    private BigDecimal phenolPpmMin;
 
     @Column(name = "phenol_ppm_max")
     @Comment("최대 페놀 수치(ppm)")
-    private Integer phenolPpmMax;
+    private BigDecimal phenolPpmMax;
 
     /** JSON: { "styleOther": "", "caskNo": "", "caskTypes": ["EX_SHERRY", ...], "caskTypeOther": "" } */
     @Column(columnDefinition = "TEXT")
@@ -81,7 +83,7 @@ public class SpiritWhiskyDetail {
     public void update(WhiskyStyle style, BottlingType bottlingType,
                        Boolean isNonChillFiltered, Boolean isNaturalColour,
                        Boolean isSingleCask, Boolean isCaskStrength,
-                       Boolean isPeated, Integer phenolPpm, Integer phenolPpmMin, Integer phenolPpmMax, String extraData) {
+                       Boolean isPeated, BigDecimal phenolPpm, BigDecimal phenolPpmMin, BigDecimal phenolPpmMax, String extraData) {
         this.style               = style;
         this.bottlingType        = bottlingType;
         this.isNonChillFiltered  = isNonChillFiltered;

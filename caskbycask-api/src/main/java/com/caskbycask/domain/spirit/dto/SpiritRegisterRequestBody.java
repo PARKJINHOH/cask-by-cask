@@ -149,17 +149,17 @@ public record SpiritRegisterRequestBody(
         @Schema(description = "피팅 여부 (선택, 위스키 — 피트/이탄 사용)")
         Boolean isPeated,
         @Schema(description = "피트 강도 ppm (선택, 위스키)")
-        @Min(value = 0, message = "phenolPpm은 0 이상이어야 합니다.")
-        @Max(value = 999, message = "phenolPpm은 999 이하이어야 합니다.")
-        Integer phenolPpm,
+        @DecimalMin(value = "0.0", message = "phenolPpm은 0 이상이어야 합니다.")
+        @DecimalMax(value = "999.9", message = "phenolPpm은 999 이하이어야 합니다.")
+        BigDecimal phenolPpm,
         @Schema(description = "최소 피트 강도 ppm (선택, 위스키)")
-        @Min(value = 0, message = "phenolPpmMin은 0 이상이어야 합니다.")
-        @Max(value = 999, message = "phenolPpmMin은 999 이하이어야 합니다.")
-        Integer phenolPpmMin,
+        @DecimalMin(value = "0.0", message = "phenolPpmMin은 0 이상이어야 합니다.")
+        @DecimalMax(value = "999.9", message = "phenolPpmMin은 999 이하이어야 합니다.")
+        BigDecimal phenolPpmMin,
         @Schema(description = "최대 피트 강도 ppm (선택, 위스키)")
-        @Min(value = 0, message = "phenolPpmMax은 0 이상이어야 합니다.")
-        @Max(value = 999, message = "phenolPpmMax은 999 이하이어야 합니다.")
-        Integer phenolPpmMax,
+        @DecimalMin(value = "0.0", message = "phenolPpmMax은 0 이상이어야 합니다.")
+        @DecimalMax(value = "999.9", message = "phenolPpmMax은 999 이하이어야 합니다.")
+        BigDecimal phenolPpmMax,
         @Schema(description = "와인 종류 (필수, 신청자 입력)")
         WineType wineType,
         @Schema(description = "꼬냑 등급 (필수, 신청자 입력)")

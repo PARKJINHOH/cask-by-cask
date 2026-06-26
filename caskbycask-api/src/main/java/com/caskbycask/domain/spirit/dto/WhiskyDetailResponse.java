@@ -3,6 +3,8 @@ package com.caskbycask.domain.spirit.dto;
 import com.caskbycask.domain.spirit.entity.enums.*;
 import io.swagger.v3.oas.annotations.media.Schema;
 
+import java.math.BigDecimal;
+
 import java.util.List;
 import java.util.Map;
 
@@ -48,13 +50,13 @@ public record WhiskyDetailResponse(
         Boolean isPeated,
 
         @Schema(description = "피트 강도 ppm")
-        Integer phenolPpm,
+        BigDecimal phenolPpm,
 
         @Schema(description = "최소 피트 강도 ppm")
-        Integer phenolPpmMin,
+        BigDecimal phenolPpmMin,
 
         @Schema(description = "최대 피트 강도 ppm")
-        Integer phenolPpmMax,
+        BigDecimal phenolPpmMax,
 
         @Schema(description = "캐스크 번호")
         String caskNo,
