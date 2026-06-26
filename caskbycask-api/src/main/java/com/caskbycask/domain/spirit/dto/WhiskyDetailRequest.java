@@ -55,17 +55,17 @@ public record WhiskyDetailRequest(
 
         @Schema(description = "피트 강도 ppm (isPeated=true 일 때만 유효)")
         @Min(value = 0, message = "phenolPpm은 0 이상이어야 합니다.")
-        @Max(value = 300, message = "phenolPpm은 300 이하이어야 합니다.")
+        @Max(value = 999, message = "phenolPpm은 999 이하이어야 합니다.")
         Integer phenolPpm,
 
         @Schema(description = "최소 피트 강도 ppm")
         @Min(value = 0, message = "phenolPpmMin은 0 이상이어야 합니다.")
-        @Max(value = 300, message = "phenolPpmMin은 300 이하이어야 합니다.")
+        @Max(value = 999, message = "phenolPpmMin은 999 이하이어야 합니다.")
         Integer phenolPpmMin,
 
         @Schema(description = "최대 피트 강도 ppm")
         @Min(value = 0, message = "phenolPpmMax은 0 이상이어야 합니다.")
-        @Max(value = 300, message = "phenolPpmMax은 300 이하이어야 합니다.")
+        @Max(value = 999, message = "phenolPpmMax은 999 이하이어야 합니다.")
         Integer phenolPpmMax,
 
         @Schema(description = "캐스크 번호")
