@@ -1,5 +1,5 @@
 # CaskByCask — Claude Code 컨텍스트
-- 운영중인 사이트야.
+- 현재 운영중인 사이트야.
 
 ## 프로젝트
 위스키·와인·꼬냑 주류 리뷰 커뮤니티 플랫폼.
@@ -61,33 +61,3 @@
   2. 컴포넌트에서 `const { t, i18n } = useTranslation()` 훅 사용
   3. 술 이름 표시가 있으면 `isEn = i18n.language === 'en'` 기반 스왑 적용
   4. 관리자(`/admin/**`) 페이지는 한국어 고정 유지
-
-## ⚠️ 술 데이터 폼 — 단일 소스 (SINGLE SOURCE OF TRUTH) — 제일 중요
-
-술(Spirit)의 데이터 항목(필드)·검증·페이로드·프리필은 **단 하나의 파일**에서만 정의한다.
-**한 곳을 고치면 등록·수정·요청승인 세 화면에 자동 반영**되어야 한다. 절대 화면별로 복붙하지 말 것.
-
-### 단일 소스 파일
-- `caskbycask-web/src/domain/admin/components/SpiritFormFields.tsx`
-  - `useSpiritForm()` 훅 — 폼 상태 + `validate()` + `buildPayload()` + `prefillFromSpirit()` / `prefillFromRequest()`
-  - `<SpiritFormFields>` 컴포넌트 — 4섹션 UI(① 기본 ② 생산·병입 ③ 카테고리 상세 ④ 공통 상세)
-  - 공용 상수(`CATEGORIES`, `CATEGORY_LABEL`, `PRODUCER_LABEL`, `DATE_RE`, `CARD`, `SectionTitle`)도 여기서 export
-- 카테고리별 입력 UI는 하위 섹션 컴포넌트에 위임(이들도 공유):
-  `SpiritCommonDetailSection`, `WhiskyDetailSection`, `WineDetailSection`, `CognacDetailSection`, `OtherDetailSection`
-
-### 이 단일 소스를 쓰는 3개 관리자 화면 (UI 골격만 가짐, 데이터 로직 X)
-| 화면 | 파일 | 차이점 |
-|---|---|---|
-| 새 술 등록 | `pages/admin/AdminSpiritFormPage.tsx` | 빈 폼 → `create` |
-| 주류 관리 상세 = 수정 | `pages/admin/AdminSpiritDetailPage.tsx` | `prefillFromSpirit` + **카테고리 고정**(`categoryLocked`) → `update`. 메타정보/이미지/숨김 처리 추가 |
-| 등록 요청 상세 = 승인 | `pages/admin/AdminRequestDetailPage.tsx` | `prefillFromRequest` + 카테고리 변경 가능 → `approve`. 신청자 정보/반려 추가 |
-
-- 페이지별 고유 영역(이미지 카드 등)은 `<SpiritFormFields imageSlot={...}>` 슬롯으로 주입.
-- 주류 상세는 별도 수정 페이지 없음 — 상세 화면 자체가 풀 편집기다. (`spirits/:id/edit` 라우트 제거됨)
-- 사용자 등록 요청 페이지(`SpiritRequestPage`)는 의도적으로 **일부 필드만 노출**(별도 폼). 관리자 폼이 전체 필드의 기준.
-
-### 술 데이터 항목을 추가·변경할 때 (체크리스트)
-1. **프론트**: `SpiritFormFields.tsx` 에서 — 폼 상태(`useSpiritForm`) + UI(섹션 컴포넌트) + `validate()` + `buildPayload()` + `prefillFromSpirit`/`prefillFromRequest` 를 모두 수정 (한 파일 안에서 끝남)
-2. **타입**: `domain/admin/types/admin.types.ts` 의 `CreateSpiritPayload`/`UpdateSpiritPayload`/`AdminSpiritDetail`/`SpiritRegisterRequestDetail`(+ 해당 Request/Response DTO 타입)
-3. **백엔드**: Spirit 엔티티/세부 엔티티 + 요청·응답 DTO + 서비스 매핑 + **Flyway 마이그레이션 추가**(스키마 변경 시)
-4. 신규 필드가 사용자에게도 보여야 하면 `SpiritDetailPage`(사용자 상세) 표시 로직과 i18n 키도 추가
