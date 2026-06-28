@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { useAdminNoticeList, useDeleteNotice } from '@/domain/notice/hooks/useAdminNotices'
 import { NOTICE_CATEGORY_LABELS } from '@/domain/notice/types/notice.types'
 import type { NoticeCategory } from '@/domain/notice/types/notice.types'
@@ -19,12 +19,30 @@ const PUBLISHED_OPTIONS = [
 
 export default function AdminNoticeListPage() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { toasts, showToast, removeToast } = useToast()
 
-  const [page, setPage] = useState(0)
-  const [categoryFilter, setCategoryFilter] = useState<NoticeCategory | undefined>()
-  const [publishedFilter, setPublishedFilter] = useState<boolean | undefined>()
+  const page = Math.max(0, parseInt(searchParams.get('page') ?? '0', 10))
+  const categoryFilter = (searchParams.get('category') || undefined) as NoticeCategory | undefined
+  const publishedParam = searchParams.get('published')
+  const publishedFilter = publishedParam == null ? undefined : publishedParam === 'true'
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; title: string } | null>(null)
+  const setListParam = (params: { category?: NoticeCategory | undefined; published?: boolean | undefined; page?: number }) =>
+    setSearchParams(
+      (prev) => {
+        const n = new URLSearchParams(prev)
+        const nextCategory = 'category' in params ? params.category : categoryFilter
+        const nextPublished = 'published' in params ? params.published : publishedFilter
+        const nextPage = params.page ?? page
+        if (nextCategory) n.set('category', nextCategory)
+        else n.delete('category')
+        if (nextPublished === undefined) n.delete('published')
+        else n.set('published', String(nextPublished))
+        n.set('page', String(nextPage))
+        return n
+      },
+      { replace: true },
+    )
 
   const { data, isLoading } = useAdminNoticeList({
     category: categoryFilter,
@@ -72,8 +90,7 @@ export default function AdminNoticeListPage() {
         <select
           value={categoryFilter ?? ''}
           onChange={(e) => {
-            setCategoryFilter((e.target.value as NoticeCategory) || undefined)
-            setPage(0)
+            setListParam({ category: (e.target.value as NoticeCategory) || undefined, page: 0 })
           }}
           className="h-9 px-3 text-sm border border-neutral-300 rounded-lg bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
         >
@@ -89,8 +106,7 @@ export default function AdminNoticeListPage() {
               key={String(opt.value)}
               type="button"
               onClick={() => {
-                setPublishedFilter(opt.value)
-                setPage(0)
+                setListParam({ published: opt.value, page: 0 })
               }}
               className={`h-9 px-4 text-sm font-medium transition-colors
                 ${publishedFilter === opt.value
@@ -219,7 +235,7 @@ export default function AdminNoticeListPage() {
 
       {totalPages > 1 && (
         <div className="mt-6 flex justify-center">
-          <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
+          <Pagination currentPage={page} totalPages={totalPages} onPageChange={(p) => setListParam({ page: p })} />
         </div>
       )}
 

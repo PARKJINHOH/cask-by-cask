@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SeoMeta from '@/shared/components/SeoMeta'
 import RichContent from '@/shared/components/RichContent'
@@ -17,8 +17,16 @@ import { formatDateTime } from '@/shared/utils/format'
 export default function FeedbackDetailPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const location = useLocation()
   const { id } = useParams()
   const feedbackId = Number(id)
+  const listReturnTo =
+    typeof location.state === 'object' &&
+    location.state !== null &&
+    'returnTo' in location.state &&
+    typeof location.state.returnTo === 'string'
+      ? location.state.returnTo
+      : '/request/feedback'
 
   const role = useAuthStore((s) => s.user?.role)
   const isAdmin = role === 'SUPER_ADMIN' || role === 'ADMIN'
@@ -48,7 +56,7 @@ export default function FeedbackDetailPage() {
   const handleDelete = async () => {
     if (!window.confirm(t('feedback.detail.deleteConfirm'))) return
     await deleteMutation.mutateAsync(feedbackId)
-    navigate('/request/feedback')
+    navigate(listReturnTo)
   }
 
   const handleAddComment = async (e: React.FormEvent) => {
@@ -68,7 +76,7 @@ export default function FeedbackDetailPage() {
     <div className="max-w-3xl mx-auto px-4 py-10">
       <SeoMeta title={detail.title} noindex />
 
-      <Link to="/request/feedback" className="text-sm text-neutral-500 hover:text-primary-800">
+      <Link to={listReturnTo} className="text-sm text-neutral-500 hover:text-primary-800">
         ← {t('feedback.backToList')}
       </Link>
 

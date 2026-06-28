@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+﻿import { useSearchParams } from 'react-router-dom'
 import Badge from '@/shared/components/Badge'
 import Spinner from '@/shared/components/Spinner'
 import Pagination from '@/shared/components/Pagination'
@@ -35,9 +35,26 @@ const TARGET_TYPE_LABEL: Record<ReportTargetType, string> = {
 // ── 메인 페이지 ────────────────────────────────────────────────
 
 export default function AdminReportPage() {
-  const [targetType, setTargetType]   = useState<ReportTargetType | ''>('')
-  const [status, setStatus]           = useState<ReportStatus | ''>('PENDING')
-  const [page, setPage]               = useState(0)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const targetType = (searchParams.get('targetType') ?? '') as ReportTargetType | ''
+  const status = (searchParams.get('status') ?? 'PENDING') as ReportStatus | ''
+  const page = Math.max(0, parseInt(searchParams.get('page') ?? '0', 10))
+  const setListParam = (params: { targetType?: ReportTargetType | ''; status?: ReportStatus | ''; page?: number }) =>
+    setSearchParams(
+      (prev) => {
+        const n = new URLSearchParams(prev)
+        const nextTargetType = params.targetType ?? targetType
+        const nextStatus = params.status ?? status
+        const nextPage = params.page ?? page
+        if (nextTargetType) n.set('targetType', nextTargetType)
+        else n.delete('targetType')
+        if (nextStatus) n.set('status', nextStatus)
+        else n.delete('status')
+        n.set('page', String(nextPage))
+        return n
+      },
+      { replace: true },
+    )
 
   const resolve = useResolveReport()
   const dismiss = useDismissReport()
@@ -70,13 +87,13 @@ export default function AdminReportPage() {
           label="대상 유형"
           options={TARGET_TYPE_OPTIONS}
           value={targetType}
-          onChange={(v) => { setTargetType(v as ReportTargetType | ''); setPage(0) }}
+          onChange={(v) => setListParam({ targetType: v as ReportTargetType | '', page: 0 })}
         />
         <FilterTabs
           label="상태"
           options={STATUS_OPTIONS}
           value={status}
-          onChange={(v) => { setStatus(v as ReportStatus | ''); setPage(0) }}
+          onChange={(v) => setListParam({ status: v as ReportStatus | '', page: 0 })}
         />
       </div>
 
@@ -183,7 +200,7 @@ export default function AdminReportPage() {
             <Pagination
               currentPage={page}
               totalPages={data.totalPages}
-              onPageChange={setPage}
+              onPageChange={(p) => setListParam({ page: p })}
             />
           )}
         </>

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import Spinner from '@/shared/components/Spinner'
 import Pagination from '@/shared/components/Pagination'
@@ -24,12 +25,30 @@ const APPROVAL_FILTERS: { value: boolean | undefined; label: string }[] = [
 ]
 
 export default function AdminStorePage() {
-  const [keyword, setKeyword] = useState('')
-  const [input, setInput] = useState('')
-  const [isApproved, setIsApproved] = useState<boolean | undefined>(false)
-  const [page, setPage] = useState(0)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const keyword = searchParams.get('keyword') ?? ''
+  const approvedParam = searchParams.get('approved')
+  const isApproved = approvedParam == null ? false : approvedParam === 'all' ? undefined : approvedParam === 'true'
+  const page = Math.max(0, parseInt(searchParams.get('page') ?? '0', 10))
+  const [input, setInput] = useState(keyword)
   const [aliasStore, setAliasStore] = useState<AdminStore | null>(null)
   const [showCreate, setShowCreate] = useState(false)
+  const setListParam = (params: { keyword?: string; isApproved?: boolean | undefined; page?: number }) =>
+    setSearchParams(
+      (prev) => {
+        const n = new URLSearchParams(prev)
+        const nextKeyword = 'keyword' in params ? params.keyword ?? '' : keyword
+        const nextApproved = 'isApproved' in params ? params.isApproved : isApproved
+        const nextPage = params.page ?? page
+        if (nextKeyword) n.set('keyword', nextKeyword)
+        else n.delete('keyword')
+        if (nextApproved === undefined) n.set('approved', 'all')
+        else n.set('approved', String(nextApproved))
+        n.set('page', String(nextPage))
+        return n
+      },
+      { replace: true },
+    )
 
   const { data, isLoading } = useAdminStores({ keyword: keyword || undefined, isApproved, page })
   const approve = useApproveStore()
@@ -57,7 +76,7 @@ export default function AdminStorePage() {
           {APPROVAL_FILTERS.map((f) => (
             <button
               key={String(f.value)}
-              onClick={() => { setIsApproved(f.value); setPage(0) }}
+              onClick={() => setListParam({ isApproved: f.value, page: 0 })}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                 isApproved === f.value ? 'bg-primary-800 text-white' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
               }`}
@@ -70,11 +89,11 @@ export default function AdminStorePage() {
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && (setKeyword(input.trim()), setPage(0))}
+            onKeyDown={(e) => e.key === 'Enter' && setListParam({ keyword: input.trim(), page: 0 })}
             placeholder="매장명 검색"
             className="border border-neutral-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
           />
-          <button onClick={() => { setKeyword(input.trim()); setPage(0) }} className="px-3 py-2 text-sm rounded-lg border border-neutral-200 hover:bg-neutral-50">검색</button>
+          <button onClick={() => setListParam({ keyword: input.trim(), page: 0 })} className="px-3 py-2 text-sm rounded-lg border border-neutral-200 hover:bg-neutral-50">검색</button>
         </div>
       </div>
 
@@ -111,7 +130,7 @@ export default function AdminStorePage() {
                   </tbody>
                 </table>
               </div>
-              {data.totalPages > 1 && <Pagination currentPage={page} totalPages={data.totalPages} onPageChange={setPage} />}
+              {data.totalPages > 1 && <Pagination currentPage={page} totalPages={data.totalPages} onPageChange={(p) => setListParam({ page: p })} />}
             </>
           )}
         </div>

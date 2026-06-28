@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useLocation, useParams } from 'react-router-dom'
 import Badge from '@/shared/components/Badge'
 import Button from '@/shared/components/Button'
 import Spinner from '@/shared/components/Spinner'
@@ -60,7 +60,15 @@ interface FormState {
 
 export default function AdminProducerRequestDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const location = useLocation()
   const requestId = Number(id)
+  const listReturnTo =
+    typeof location.state === 'object' &&
+    location.state !== null &&
+    'returnTo' in location.state &&
+    typeof location.state.returnTo === 'string'
+      ? location.state.returnTo
+      : '/admin/producers/requests'
 
   const { data: req, isLoading } = useAdminProducerRequest(requestId)
   const update = useUpdateProducerRequest()
@@ -148,10 +156,10 @@ export default function AdminProducerRequestDetailPage() {
     <div className="p-6 mx-auto space-y-6 pb-28 max-w-3xl">
       <AdminPageHeader
         breadcrumbs={[
-          { label: '생산자 등록 요청', to: '/admin/producers/requests' },
+          { label: '생산자 등록 요청', to: listReturnTo },
           { label: '요청 상세' },
         ]}
-        backTo="/admin/producers/requests"
+        backTo={listReturnTo}
         backLabel="요청 목록"
         title="생산자 등록 요청 상세"
         badge={<Badge variant={req.status} size="md">{STATUS_LABEL[req.status] ?? req.status}</Badge>}

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useLocation, useParams, useNavigate } from 'react-router-dom'
 import Badge from '@/shared/components/Badge'
 import Button from '@/shared/components/Button'
 import Spinner from '@/shared/components/Spinner'
@@ -135,7 +135,15 @@ function ImageSection({ requestId, imageUrls }: { requestId: number; imageUrls: 
 export default function AdminRequestDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
   const requestId = Number(id)
+  const listReturnTo =
+    typeof location.state === 'object' &&
+    location.state !== null &&
+    'returnTo' in location.state &&
+    typeof location.state.returnTo === 'string'
+      ? location.state.returnTo
+      : '/admin/spirits/requests'
 
   const { data: req, isLoading } = useAdminRequestDetail(requestId)
   const approve = useApproveRequestWithDetail()
@@ -170,7 +178,7 @@ export default function AdminRequestDetailPage() {
     setActionError('')
     try {
       await reject.mutateAsync({ id: requestId, reason: rejectReason.trim() })
-      navigate('/admin/spirits/requests')
+      navigate(listReturnTo)
     } catch {
       setActionError('반려 처리 중 오류가 발생했습니다.')
     }
@@ -190,10 +198,10 @@ export default function AdminRequestDetailPage() {
       {/* 헤더 */}
       <AdminPageHeader
         breadcrumbs={[
-          { label: '등록 요청', to: '/admin/spirits/requests' },
+          { label: '등록 요청', to: listReturnTo },
           { label: '요청 상세' },
         ]}
-        backTo="/admin/spirits/requests"
+        backTo={listReturnTo}
         backLabel="요청 목록"
         title="등록 요청 상세"
         badge={<Badge variant={req.status} size="md">{STATUS_LABEL[req.status]}</Badge>}

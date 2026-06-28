@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import Badge from '@/shared/components/Badge'
 import Spinner from '@/shared/components/Spinner'
 import Pagination from '@/shared/components/Pagination'
@@ -31,8 +30,21 @@ const STATUS_FILTERS: Array<{ value: StatusFilter; label: string }> = [
 
 export default function AdminRequestPage() {
   const navigate = useNavigate()
-  const [status, setStatus] = useState<StatusFilter>('PENDING')
-  const [page, setPage]     = useState(0)
+  const location = useLocation()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const status = ((searchParams.get('status') ?? 'PENDING') as StatusFilter)
+  const page = Math.max(0, parseInt(searchParams.get('page') ?? '0', 10))
+  const detailState = { returnTo: `${location.pathname}${location.search}` }
+  const setListParam = (nextStatus: StatusFilter, nextPage = 0) =>
+    setSearchParams(
+      (prev) => {
+        const n = new URLSearchParams(prev)
+        n.set('status', nextStatus)
+        n.set('page', String(nextPage))
+        return n
+      },
+      { replace: true },
+    )
 
   const { data, isLoading } = useAdminRequests(status, page)
 
@@ -48,7 +60,7 @@ export default function AdminRequestPage() {
             {STATUS_FILTERS.map(({ value, label }) => (
               <button
                 key={value}
-                onClick={() => { setStatus(value); setPage(0) }}
+                onClick={() => setListParam(value, 0)}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                   status === value
                     ? 'bg-primary-800 text-white'
@@ -94,7 +106,7 @@ export default function AdminRequestPage() {
                     <tr
                       key={req.id}
                       className="hover:bg-neutral-50 transition-colors cursor-pointer"
-                      onClick={() => navigate(`/admin/spirits/requests/${req.id}`)}
+                      onClick={() => navigate(`/admin/spirits/requests/${req.id}`, { state: detailState })}
                     >
                       <td className="px-4 py-3 text-neutral-400 tabular-nums">{req.id}</td>
                       <td className="px-4 py-3 font-medium text-neutral-900">{req.nameKo}</td>
@@ -126,7 +138,7 @@ export default function AdminRequestPage() {
             <Pagination
               currentPage={page}
               totalPages={data.totalPages}
-              onPageChange={setPage}
+              onPageChange={(p) => setListParam(status, p)}
             />
           )}
         </>

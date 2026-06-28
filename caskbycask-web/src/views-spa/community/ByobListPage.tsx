@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useByobList } from '@/domain/byob/hooks/useByob'
 import ByobCard from '@/domain/byob/components/ByobCard'
@@ -33,8 +32,22 @@ const ALL_FILTER_STYLE = {
 export default function ByobListPage() {
   const { t } = useTranslation()
   const { isLoggedIn } = useAuthStore()
-  const [status, setStatus] = useState<StatusFilter>('ALL')
-  const [page, setPage] = useState(0)
+  const location = useLocation()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const status = ((searchParams.get('status') ?? 'ALL') as StatusFilter)
+  const page = Math.max(0, parseInt(searchParams.get('page') ?? '0', 10))
+  const detailState = { returnTo: `${location.pathname}${location.search}` }
+  const setListParam = (nextStatus: StatusFilter, nextPage = 0) =>
+    setSearchParams(
+      (prev) => {
+        const n = new URLSearchParams(prev)
+        if (nextStatus === 'ALL') n.delete('status')
+        else n.set('status', nextStatus)
+        n.set('page', String(nextPage))
+        return n
+      },
+      { replace: true },
+    )
 
   const { data, isLoading } = useByobList({
     status: status === 'ALL' ? undefined : status,
@@ -82,7 +95,7 @@ export default function ByobListPage() {
           return (
             <button
               key={opt}
-              onClick={() => { setStatus(opt); setPage(0) }}
+              onClick={() => setListParam(opt, 0)}
               className={['px-3 py-1.5 text-xs font-medium rounded-full border transition-colors', style].join(' ')}
             >
               {opt === 'ALL' ? t('byob.statusAll') : t(STATUS_LABEL_KEY[opt])}
@@ -99,7 +112,7 @@ export default function ByobListPage() {
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {items.map((byob) => (
-              <ByobCard key={byob.id} byob={byob} />
+              <ByobCard key={byob.id} byob={byob} state={detailState} />
             ))}
           </div>
           {totalPages > 1 && (
@@ -107,7 +120,7 @@ export default function ByobListPage() {
               <Pagination
                 currentPage={page}
                 totalPages={totalPages}
-                onPageChange={setPage}
+                onPageChange={(p) => setListParam(status, p)}
               />
             </div>
           )}

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import Spinner from '@/shared/components/Spinner'
 import Pagination from '@/shared/components/Pagination'
@@ -29,9 +30,26 @@ const CHANNEL_LABEL: Record<string, string> = {
 }
 
 export default function AdminPriceReportPage() {
-  const [status, setStatus] = useState<PriceReportStatus | ''>('PENDING')
-  const [flaggedOnly, setFlaggedOnly] = useState(false)
-  const [page, setPage] = useState(0)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const status = (searchParams.get('status') ?? 'PENDING') as PriceReportStatus | ''
+  const flaggedOnly = searchParams.get('flagged') === 'true'
+  const page = Math.max(0, parseInt(searchParams.get('page') ?? '0', 10))
+  const setListParam = (params: { status?: PriceReportStatus | ''; flaggedOnly?: boolean; page?: number }) =>
+    setSearchParams(
+      (prev) => {
+        const n = new URLSearchParams(prev)
+        const nextStatus = params.status ?? status
+        const nextFlaggedOnly = params.flaggedOnly ?? flaggedOnly
+        const nextPage = params.page ?? page
+        if (nextStatus) n.set('status', nextStatus)
+        else n.delete('status')
+        if (nextFlaggedOnly) n.set('flagged', 'true')
+        else n.delete('flagged')
+        n.set('page', String(nextPage))
+        return n
+      },
+      { replace: true },
+    )
 
   const { data, isLoading } = useAdminPriceReports({
     status: status || undefined,
@@ -49,7 +67,7 @@ export default function AdminPriceReportPage() {
           {STATUS_TABS.map((s) => (
             <button
               key={s.value}
-              onClick={() => { setStatus(s.value); setPage(0) }}
+              onClick={() => setListParam({ status: s.value, page: 0 })}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                 status === s.value ? 'bg-primary-800 text-white' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
               }`}
@@ -59,7 +77,7 @@ export default function AdminPriceReportPage() {
           ))}
         </div>
         <label className="flex items-center gap-2 text-sm text-neutral-600 cursor-pointer ml-auto">
-          <input type="checkbox" checked={flaggedOnly} onChange={(e) => { setFlaggedOnly(e.target.checked); setPage(0) }} className="accent-primary-800" />
+          <input type="checkbox" checked={flaggedOnly} onChange={(e) => setListParam({ flaggedOnly: e.target.checked, page: 0 })} className="accent-primary-800" />
           ⚠️ 플래그된 항목만
         </label>
       </div>
@@ -73,7 +91,7 @@ export default function AdminPriceReportPage() {
           <div className="space-y-3">
             {data.content.map((r) => <ReportCard key={r.id} report={r} />)}
           </div>
-          {data.totalPages > 1 && <Pagination currentPage={page} totalPages={data.totalPages} onPageChange={setPage} />}
+          {data.totalPages > 1 && <Pagination currentPage={page} totalPages={data.totalPages} onPageChange={(p) => setListParam({ page: p })} />}
         </>
       )}
     </div>

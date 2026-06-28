@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useLocation, useParams, useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { usePostDetail, usePostActions } from '@/domain/community/hooks/usePostDetail'
@@ -24,9 +24,17 @@ export default function PostDetailPage() {
   const postId = Number(id)
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const location = useLocation()
   const { isLoggedIn } = useAuthStore()
   const { showToast } = useToast()
   const boardPath = boardType ?? 'free'
+  const listReturnTo =
+    typeof location.state === 'object' &&
+    location.state !== null &&
+    'returnTo' in location.state &&
+    typeof location.state.returnTo === 'string'
+      ? location.state.returnTo
+      : `/community/${boardPath}`
 
   const qc = useQueryClient()
   useEffect(() => {
@@ -77,7 +85,7 @@ export default function PostDetailPage() {
         <p className="text-xs text-neutral-400 mb-6">{t('post.adultGate.path')}</p>
         <div className="flex items-center justify-center gap-3">
           <Link
-            to={`/community/${boardPath}`}
+            to={listReturnTo}
             className="px-5 py-2.5 text-sm font-medium border border-neutral-200 rounded-xl text-neutral-600 hover:bg-neutral-50 transition-colors"
           >
             {boardPath === 'notice' ? t('board.notice') : t('board.free')}
@@ -120,7 +128,7 @@ export default function PostDetailPage() {
     deleteMutation.mutate(undefined, {
       onSuccess: () => {
         showToast(t('post.deleteSuccess'), 'success')
-        navigate(`/community/${boardPath}`, { replace: true })
+        navigate(listReturnTo, { replace: true })
       },
     })
   }
@@ -195,7 +203,7 @@ export default function PostDetailPage() {
 
       {/* 뒤로가기 */}
       <Link
-        to={`/community/${boardPath}`}
+        to={listReturnTo}
         className="inline-flex items-center gap-1 text-sm text-neutral-500 hover:text-neutral-700 mb-6"
       >
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

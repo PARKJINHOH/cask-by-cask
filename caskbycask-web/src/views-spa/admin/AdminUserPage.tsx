@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import Badge from '@/shared/components/Badge'
 import Button from '@/shared/components/Button'
 import Input from '@/shared/components/Input'
@@ -56,10 +56,14 @@ function ActiveStatusCell({ user }: { user: AdminUser }) {
 
 export default function AdminUserPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
-  const [keyword, setKeyword]           = useState('')
-  const [roleFilter, setRoleFilter]     = useState<AdminUserRole | ''>('')
-  const [activeFilter, setActiveFilter] = useState<'' | 'true' | 'false'>('')
+  const keywordParam = searchParams.get('keyword') ?? ''
+  const roleParam = (searchParams.get('role') ?? '') as AdminUserRole | ''
+  const activeParam = (searchParams.get('active') ?? '') as '' | 'true' | 'false'
+  const [keyword, setKeyword]           = useState(keywordParam)
+  const [roleFilter, setRoleFilter]     = useState<AdminUserRole | ''>(roleParam)
+  const [activeFilter, setActiveFilter] = useState<'' | 'true' | 'false'>(activeParam)
 
   const page = Math.max(0, parseInt(searchParams.get('page') ?? '0', 10))
   const setPage = (p: number) =>
@@ -68,25 +72,27 @@ export default function AdminUserPage() {
       { replace: true },
     )
 
-  const [queryParams, setQueryParams] = useState({
-    keyword: '',
-    role: undefined as AdminUserRole | undefined,
-    isActive: undefined as boolean | undefined,
-    page: 0,
+  const detailState = { returnTo: `${location.pathname}${location.search}` }
+
+  const { data, isLoading } = useAdminUsers({
+    keyword: keywordParam,
+    role: roleParam || undefined,
+    isActive: activeParam === '' ? undefined : activeParam === 'true',
+    page,
     size: 20,
   })
 
-  const { data, isLoading } = useAdminUsers({ ...queryParams, page })
-
   const handleSearch = () => {
-    setPage(0)
-    setQueryParams({
-      keyword: keyword.trim() || '',
-      role: roleFilter || undefined,
-      isActive: activeFilter === '' ? undefined : activeFilter === 'true',
-      page: 0,
-      size: 20,
-    })
+    const next = new URLSearchParams(searchParams)
+    const trimmed = keyword.trim()
+    if (trimmed) next.set('keyword', trimmed)
+    else next.delete('keyword')
+    if (roleFilter) next.set('role', roleFilter)
+    else next.delete('role')
+    if (activeFilter) next.set('active', activeFilter)
+    else next.delete('active')
+    next.set('page', '0')
+    setSearchParams(next, { replace: true })
   }
 
   return (
@@ -169,7 +175,7 @@ export default function AdminUserPage() {
                     <tr
                       key={user.id}
                       className="hover:bg-neutral-50 transition-colors cursor-pointer"
-                      onClick={() => navigate(`/admin/users/${user.id}`)}
+                      onClick={() => navigate(`/admin/users/${user.id}`, { state: detailState })}
                     >
                       <td className="hidden md:table-cell px-4 py-3 text-neutral-400 tabular-nums">{user.id}</td>
                       <td className="px-4 py-3 text-neutral-600 max-w-[200px] truncate">

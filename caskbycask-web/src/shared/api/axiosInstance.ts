@@ -93,9 +93,6 @@ axiosInstance.interceptors.response.use(
     } catch (refreshErr) {
       processQueue(refreshErr)
       logout()
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login'
-      }
       return Promise.reject(refreshErr)
     } finally {
       isRefreshing = false

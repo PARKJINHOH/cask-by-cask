@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { useNavigate, useParams, Link } from 'react-router-dom'
+import { useLocation, useNavigate, useParams, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useByobDetail, useByobActions } from '@/domain/byob/hooks/useByob'
 import ByobStatusBadge from '@/domain/byob/components/ByobStatusBadge'
@@ -100,8 +100,16 @@ function BottlesInput({ bottles, onChange }: BottlesInputProps) {
 export default function ByobDetailPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const location = useLocation()
   const { id } = useParams<{ id: string }>()
   const byobId = Number(id)
+  const listReturnTo =
+    typeof location.state === 'object' &&
+    location.state !== null &&
+    'returnTo' in location.state &&
+    typeof location.state.returnTo === 'string'
+      ? location.state.returnTo
+      : '/community/byob'
   const { user, isLoggedIn } = useAuthStore()
 
   const { data: byob, isLoading } = useByobDetail(byobId)
@@ -154,7 +162,7 @@ export default function ByobDetailPage() {
     const confirmKey = byob.linkedFreePostId ? 'byob.confirmDeleteWithLinked' : 'byob.confirmDelete'
     if (!window.confirm(t(confirmKey))) return
     await deleteMutation.mutateAsync()
-    navigate('/community/byob')
+    navigate(listReturnTo)
   }
 
   const handleStatusChange = async (newStatus: ByobStatus) => {
@@ -171,7 +179,7 @@ export default function ByobDetailPage() {
     <div className="max-w-6xl mx-auto px-4 py-8">
       <SeoMeta title={byob.title} description={byob.content.replace(/<[^>]*>/g, '').slice(0, 120)} />
 
-      <Link to="/community/byob" className="inline-flex items-center gap-1.5 text-sm text-neutral-500
+      <Link to={listReturnTo} className="inline-flex items-center gap-1.5 text-sm text-neutral-500
         hover:text-neutral-700 mb-5">
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <polyline points="15 18 9 12 15 6" />

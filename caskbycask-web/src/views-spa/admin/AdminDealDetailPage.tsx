@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import Spinner from '@/shared/components/Spinner'
 import { formatDateTime } from '@/shared/utils/format'
@@ -34,7 +34,15 @@ export default function AdminDealDetailPage() {
   const { id: idParam } = useParams<{ id: string }>()
   const id = Number(idParam)
   const navigate = useNavigate()
+  const location = useLocation()
   const qc = useQueryClient()
+  const listReturnTo =
+    typeof location.state === 'object' &&
+    location.state !== null &&
+    'returnTo' in location.state &&
+    typeof location.state.returnTo === 'string'
+      ? location.state.returnTo
+      : '/admin/deals'
 
   const [form, setForm] = useState({ ...EMPTY_FORM })
   const [spiritId, setSpiritId] = useState<number | null>(null)
@@ -144,7 +152,7 @@ export default function AdminDealDetailPage() {
     }
   }
 
-  const goList = () => navigate('/admin/deals')
+  const goList = () => navigate(listReturnTo)
   const invalidateDealQueries = () => qc.invalidateQueries({ queryKey: ['admin', 'deals'] })
 
   const connectSpirit = (option: SpiritConnectionOption) => {

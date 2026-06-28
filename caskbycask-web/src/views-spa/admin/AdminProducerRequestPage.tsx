@@ -1,5 +1,5 @@
 import { Fragment, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Dialog, Transition, TransitionChild, DialogPanel, DialogTitle } from '@headlessui/react'
 import Badge from '@/shared/components/Badge'
 import Button from '@/shared/components/Button'
@@ -88,8 +88,21 @@ function RejectModal({ open, request, onClose }: RejectModalProps) {
 
 export default function AdminProducerRequestPage() {
   const navigate = useNavigate()
-  const [status, setStatus] = useState<RequestStatus>('PENDING')
-  const [page, setPage] = useState(0)
+  const location = useLocation()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const status = ((searchParams.get('status') ?? 'PENDING') as RequestStatus)
+  const page = Math.max(0, parseInt(searchParams.get('page') ?? '0', 10))
+  const detailState = { returnTo: `${location.pathname}${location.search}` }
+  const setListParam = (nextStatus: RequestStatus, nextPage = 0) =>
+    setSearchParams(
+      (prev) => {
+        const n = new URLSearchParams(prev)
+        n.set('status', nextStatus)
+        n.set('page', String(nextPage))
+        return n
+      },
+      { replace: true },
+    )
   const [rejectTarget, setRejectTarget] = useState<MyProducerRequest | null>(null)
   const approve = useApproveProducerRequest()
 
@@ -111,7 +124,7 @@ export default function AdminProducerRequestPage() {
             {STATUS_OPTIONS.map(({ value, label }) => (
               <button
                 key={value}
-                onClick={() => { setStatus(value); setPage(0) }}
+                  onClick={() => setListParam(value, 0)}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                   status === value
                     ? 'bg-primary-800 text-white'
@@ -161,7 +174,7 @@ export default function AdminProducerRequestPage() {
                       <td className="px-4 py-3">
                         <button
                           type="button"
-                          onClick={() => navigate(`/admin/producers/requests/${req.id}`)}
+                          onClick={() => navigate(`/admin/producers/requests/${req.id}`, { state: detailState })}
                           className="font-medium text-primary-800 hover:text-primary-900 hover:underline text-left"
                         >
                           {req.nameKo}
@@ -208,7 +221,7 @@ export default function AdminProducerRequestPage() {
             <Pagination
               currentPage={page}
               totalPages={data.totalPages}
-              onPageChange={setPage}
+              onPageChange={(p) => setListParam(status, p)}
             />
           )}
         </>

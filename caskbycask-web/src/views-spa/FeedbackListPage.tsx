@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SeoMeta from '@/shared/components/SeoMeta'
 import { useAuthStore } from '@/domain/auth/store/authStore'
@@ -11,12 +10,31 @@ import { formatBoardDate } from '@/shared/utils/format'
 export default function FeedbackListPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const location = useLocation()
+  const [searchParams, setSearchParams] = useSearchParams()
   const role = useAuthStore((s) => s.user?.role)
   const isAdmin = role === 'SUPER_ADMIN' || role === 'ADMIN'
 
-  const [status, setStatus] = useState<FeedbackStatus | ''>('')
-  const [mine, setMine] = useState(false)
-  const [page, setPage] = useState(0)
+  const status = (searchParams.get('status') ?? '') as FeedbackStatus | ''
+  const mine = searchParams.get('mine') === 'true'
+  const page = Math.max(0, parseInt(searchParams.get('page') ?? '0', 10))
+  const detailState = { returnTo: `${location.pathname}${location.search}` }
+  const setListParam = (params: { status?: FeedbackStatus | ''; mine?: boolean; page?: number }) =>
+    setSearchParams(
+      (prev) => {
+        const n = new URLSearchParams(prev)
+        const nextStatus = params.status ?? status
+        const nextMine = params.mine ?? mine
+        const nextPage = params.page ?? page
+        if (nextStatus) n.set('status', nextStatus)
+        else n.delete('status')
+        if (nextMine) n.set('mine', 'true')
+        else n.delete('mine')
+        n.set('page', String(nextPage))
+        return n
+      },
+      { replace: true },
+    )
 
   const { data, isLoading } = useFeedbackList({
     status: status || undefined,
@@ -48,7 +66,7 @@ export default function FeedbackListPage() {
       {/* 탭 */}
       <div className="flex items-center gap-1 mb-4">
         <button
-          onClick={() => { setMine(false); setPage(0) }}
+          onClick={() => setListParam({ mine: false, page: 0 })}
           className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
             !mine ? 'bg-primary-800 text-white' : 'text-neutral-500 hover:bg-neutral-100'
           }`}
@@ -56,7 +74,7 @@ export default function FeedbackListPage() {
           {t('feedback.tabAll')}
         </button>
         <button
-          onClick={() => { setMine(true); setPage(0) }}
+          onClick={() => setListParam({ mine: true, page: 0 })}
           className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
             mine ? 'bg-primary-800 text-white' : 'text-neutral-500 hover:bg-neutral-100'
           }`}
@@ -70,8 +88,7 @@ export default function FeedbackListPage() {
         <select
           value={status}
           onChange={(e) => {
-            setStatus(e.target.value as FeedbackStatus | '')
-            setPage(0)
+            setListParam({ status: e.target.value as FeedbackStatus | '', page: 0 })
           }}
           className="ml-auto px-3 py-1.5 text-sm border border-neutral-300 rounded-lg bg-white
             focus:outline-none focus:ring-2 focus:ring-primary-400"
@@ -97,7 +114,7 @@ export default function FeedbackListPage() {
           {items.map((f) => (
             <li
               key={f.id}
-              onClick={() => navigate(`/request/feedback/${f.id}`)}
+              onClick={() => navigate(`/request/feedback/${f.id}`, { state: detailState })}
               className="p-4 bg-white border border-neutral-200 rounded-xl cursor-pointer
                 hover:border-primary-300 hover:shadow-sm transition-all"
             >
@@ -136,7 +153,7 @@ export default function FeedbackListPage() {
         <div className="flex justify-center items-center gap-2 mt-8">
           <button
             disabled={data.page === 0}
-            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            onClick={() => setListParam({ page: Math.max(0, page - 1) })}
             className="px-3 py-1.5 text-sm border border-neutral-200 rounded-lg disabled:opacity-40
               hover:bg-neutral-50 transition-colors"
           >
@@ -147,7 +164,7 @@ export default function FeedbackListPage() {
           </span>
           <button
             disabled={data.last}
-            onClick={() => setPage((p) => p + 1)}
+            onClick={() => setListParam({ page: page + 1 })}
             className="px-3 py-1.5 text-sm border border-neutral-200 rounded-lg disabled:opacity-40
               hover:bg-neutral-50 transition-colors"
           >

@@ -1,4 +1,5 @@
 ﻿import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Badge from '@/shared/components/Badge'
 import Spinner from '@/shared/components/Spinner'
@@ -43,13 +44,30 @@ const STATUS_BADGE: Record<InquiryStatus, 'neutral' | 'PENDING' | 'RESOLVED'> = 
 
 export default function AdminInquiryPage() {
   const qc = useQueryClient()
-  const [status, setStatus] = useState<InquiryStatus | ''>('')
-  const [category, setCategory] = useState<InquiryCategory | ''>('')
-  const [page, setPage] = useState(0)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const status = (searchParams.get('status') ?? '') as InquiryStatus | ''
+  const category = (searchParams.get('category') ?? '') as InquiryCategory | ''
+  const page = Math.max(0, parseInt(searchParams.get('page') ?? '0', 10))
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [noteInput, setNoteInput] = useState('')
   const [replyInput, setReplyInput] = useState('')
   const [replySent, setReplySent] = useState(false)
+  const setListParam = (params: { status?: InquiryStatus | ''; category?: InquiryCategory | ''; page?: number }) =>
+    setSearchParams(
+      (prev) => {
+        const n = new URLSearchParams(prev)
+        const nextStatus = params.status ?? status
+        const nextCategory = params.category ?? category
+        const nextPage = params.page ?? page
+        if (nextStatus) n.set('status', nextStatus)
+        else n.delete('status')
+        if (nextCategory) n.set('category', nextCategory)
+        else n.delete('category')
+        n.set('page', String(nextPage))
+        return n
+      },
+      { replace: true },
+    )
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin', 'inquiries', { status, category, page }],
@@ -103,13 +121,13 @@ export default function AdminInquiryPage() {
           label="상태"
           options={STATUS_OPTIONS}
           value={status}
-          onChange={(v) => { setStatus(v as InquiryStatus | ''); setPage(0) }}
+          onChange={(v) => setListParam({ status: v as InquiryStatus | '', page: 0 })}
         />
         <FilterTabs
           label="유형"
           options={CATEGORY_OPTIONS}
           value={category}
-          onChange={(v) => { setCategory(v as InquiryCategory | ''); setPage(0) }}
+          onChange={(v) => setListParam({ category: v as InquiryCategory | '', page: 0 })}
         />
       </div>
 
@@ -180,7 +198,7 @@ export default function AdminInquiryPage() {
           </div>
 
           {data && data.totalPages > 1 && (
-            <Pagination currentPage={page} totalPages={data.totalPages} onPageChange={setPage} />
+            <Pagination currentPage={page} totalPages={data.totalPages} onPageChange={(p) => setListParam({ page: p })} />
           )}
         </>
       )}

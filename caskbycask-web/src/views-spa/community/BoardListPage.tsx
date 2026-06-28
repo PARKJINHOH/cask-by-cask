@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { usePosts, useBestPosts, usePostPrefixes } from '@/domain/community/hooks/usePosts'
 import { usePinnedNotices } from '@/domain/notice/hooks/useNotices'
@@ -33,9 +33,11 @@ export default function BoardListPage({ boardType, title }: Props) {
   const { t } = useTranslation()
   const { isLoggedIn, user } = useAuthStore()
   const navigate = useNavigate()
+  const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const isAll = !boardType
   const boardPath = isAll ? 'all' : boardType === 'NOTICE' ? 'notice' : 'free'
+  const detailState = { returnTo: `${location.pathname}${location.search}` }
 
   const tabs: Tab[] = isAll
     ? ['all']
@@ -304,7 +306,7 @@ export default function BoardListPage({ boardType, title }: Props) {
                 {showPinnedNotices && pinnedNotices.map((notice) => (
                   <tr
                     key={`notice-${notice.id}`}
-                    onClick={() => navigate(`/notices/${notice.id}`)}
+                    onClick={() => navigate(`/notices/${notice.id}`, { state: detailState })}
                     className="group/row border-b border-neutral-200 bg-amber-50/40 hover:bg-amber-50 transition-colors cursor-pointer"
                   >
                     <td className="px-4 py-2 text-center">
@@ -330,7 +332,7 @@ export default function BoardListPage({ boardType, title }: Props) {
                 {posts.map((post) => (
                   <tr
                     key={post.id}
-                    onClick={() => navigate(getPostHref(post))}
+                    onClick={() => navigate(getPostHref(post), { state: detailState })}
                     className={[
                       'group/row border-b border-neutral-200 transition-colors cursor-pointer',
                       post.isPinned ? 'bg-amber-50/50 hover:bg-amber-50' : 'hover:bg-neutral-50',
@@ -408,6 +410,7 @@ export default function BoardListPage({ boardType, title }: Props) {
               <Link
                 key={`notice-${notice.id}`}
                 to={`/notices/${notice.id}`}
+                state={detailState}
                 className="block bg-amber-50/60 border border-amber-200 rounded-xl px-4 py-3.5 hover:border-amber-300 transition-colors"
               >
                 <div className="flex items-center gap-2 mb-1.5">
@@ -429,6 +432,7 @@ export default function BoardListPage({ boardType, title }: Props) {
               <Link
                 key={post.id}
                 to={getPostHref(post)}
+                state={detailState}
                 className={[
                   'block border rounded-xl px-4 py-3.5 transition-colors',
                   post.isPinned

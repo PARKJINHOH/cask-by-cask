@@ -85,9 +85,10 @@ export default function AdminSpiritPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
-  const [keyword, setKeyword]   = useState('')
-  const [category, setCategory] = useState<SpiritCategory | ''>('')
-  const [status, setStatus]     = useState<SpiritStatus | ''>('')
+  const keywordParam = searchParams.get('keyword') ?? ''
+  const categoryParam = (searchParams.get('category') ?? '') as SpiritCategory | ''
+  const statusParam = (searchParams.get('status') ?? '') as SpiritStatus | ''
+  const [keyword, setKeyword]   = useState(keywordParam)
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
 
   const page = Math.max(0, parseInt(searchParams.get('page') ?? '0', 10))
@@ -97,13 +98,29 @@ export default function AdminSpiritPage() {
       (prev) => { const n = new URLSearchParams(prev); n.set('page', String(p)); return n },
       { replace: true },
     )
+  const setParam = (key: string, value: string | null) =>
+    setSearchParams(
+      (prev) => {
+        const n = new URLSearchParams(prev)
+        if (value) n.set(key, value)
+        else n.delete(key)
+        n.set('page', '0')
+        return n
+      },
+      { replace: true },
+    )
 
   const { data, isLoading } = useAdminSpirits({
-    keyword: keyword.trim() || undefined,
-    category: category || undefined,
-    status: status || undefined,
+    keyword: keywordParam.trim() || undefined,
+    category: categoryParam || undefined,
+    status: statusParam || undefined,
     page,
   })
+
+  const handleKeywordChange = (value: string) => {
+    setKeyword(value)
+    setParam('keyword', value.trim() || null)
+  }
 
   return (
     <div className="p-6 space-y-5">
@@ -121,7 +138,7 @@ export default function AdminSpiritPage() {
             label="이름 검색"
             placeholder="한글/영문 이름"
             value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
+            onChange={(e) => handleKeywordChange(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') setPage(0) }}
           />
         </div>
@@ -129,8 +146,8 @@ export default function AdminSpiritPage() {
         <div>
           <label className="block text-sm font-medium text-neutral-700 mb-1">카테고리</label>
           <select
-            value={category}
-            onChange={(e) => { setCategory(e.target.value as SpiritCategory | ''); setPage(0) }}
+            value={categoryParam}
+            onChange={(e) => setParam('category', e.target.value || null)}
             className="h-9 px-3 text-sm border border-neutral-300 rounded-lg bg-white
               focus:outline-none focus:ring-2 focus:ring-primary-400"
           >
@@ -144,8 +161,8 @@ export default function AdminSpiritPage() {
         <div>
           <label className="block text-sm font-medium text-neutral-700 mb-1">상태</label>
           <select
-            value={status}
-            onChange={(e) => { setStatus(e.target.value as SpiritStatus | ''); setPage(0) }}
+            value={statusParam}
+            onChange={(e) => setParam('status', e.target.value || null)}
             className="h-9 px-3 text-sm border border-neutral-300 rounded-lg bg-white
               focus:outline-none focus:ring-2 focus:ring-primary-400"
           >

@@ -6,6 +6,7 @@ import type { ByobListItem } from '../types/byob.types'
 
 interface Props {
   byob: ByobListItem
+  state?: unknown
 }
 
 function formatDate(iso: string) {
@@ -13,13 +14,14 @@ function formatDate(iso: string) {
 }
 
 // [perf] BYOB 목록에서 반복 렌더 → byob 참조가 같으면 재렌더 skip.
-function ByobCard({ byob }: Props) {
+function ByobCard({ byob, state }: Props) {
   const { t } = useTranslation()
   const isFull = byob.approvedCount >= byob.maxParticipants
 
   return (
     <Link
       to={`/community/byob/${byob.id}`}
+      state={state}
       className={[
         'block border rounded-2xl p-5 hover:shadow-sm transition-all duration-150',
         byob.isPinned

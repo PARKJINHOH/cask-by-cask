@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Spinner from '@/shared/components/Spinner'
 import Pagination from '@/shared/components/Pagination'
@@ -19,10 +19,23 @@ const STATUS_TABS: Array<{ value: DealStatus | 'ALL'; label: string }> = [
 
 export default function AdminDealListPage() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const [searchParams, setSearchParams] = useSearchParams()
   const qc = useQueryClient()
-  const [status, setStatus] = useState<DealStatus | 'ALL'>('ALL')
-  const [page, setPage] = useState(0)
+  const status = ((searchParams.get('status') ?? 'ALL') as DealStatus | 'ALL')
+  const page = Math.max(0, parseInt(searchParams.get('page') ?? '0', 10))
   const [selectedIds, setSelectedIds] = useState<number[]>([])
+  const detailState = { returnTo: `${location.pathname}${location.search}` }
+  const setListParam = (nextStatus: DealStatus | 'ALL', nextPage = 0) =>
+    setSearchParams(
+      (prev) => {
+        const n = new URLSearchParams(prev)
+        n.set('status', nextStatus)
+        n.set('page', String(nextPage))
+        return n
+      },
+      { replace: true },
+    )
 
   useEffect(() => {
     setSelectedIds([])
@@ -60,7 +73,7 @@ export default function AdminDealListPage() {
         {STATUS_TABS.map((tab) => (
           <button
             key={tab.value}
-            onClick={() => { setStatus(tab.value); setPage(0) }}
+            onClick={() => setListParam(tab.value, 0)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
               status === tab.value
                 ? 'bg-primary-800 text-white'
@@ -118,7 +131,7 @@ export default function AdminDealListPage() {
                   data.content.map((item) => (
                     <tr
                       key={item.id}
-                      onClick={() => navigate(`/admin/deals/${item.id}`)}
+                      onClick={() => navigate(`/admin/deals/${item.id}`, { state: detailState })}
                       className="hover:bg-neutral-50 transition-colors cursor-pointer"
                     >
                       <td className="px-3 py-3 w-10 text-center" onClick={(e) => e.stopPropagation()}>
@@ -187,7 +200,7 @@ export default function AdminDealListPage() {
             </div>
 
             {data && data.totalPages > 1 && (
-              <Pagination currentPage={page} totalPages={data.totalPages} onPageChange={setPage} />
+              <Pagination currentPage={page} totalPages={data.totalPages} onPageChange={(p) => setListParam(status, p)} />
             )}
           </div>
         </>

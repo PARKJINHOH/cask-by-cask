@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams, useNavigate, Navigate } from 'react-router-dom'
+import { useLocation, useParams, useNavigate, Navigate } from 'react-router-dom'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { formatDate } from '@/shared/utils/format'
 import Badge from '@/shared/components/Badge'
@@ -348,7 +348,15 @@ function isSuspended(user: AdminUser) {
 export default function AdminUserDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
   const currentUser = useAuthStore((s) => s.user)
+  const listReturnTo =
+    typeof location.state === 'object' &&
+    location.state !== null &&
+    'returnTo' in location.state &&
+    typeof location.state.returnTo === 'string'
+      ? location.state.returnTo
+      : '/admin/users'
 
   const userId = Number(id)
   const { data: user, isLoading, refetch } = useAdminUser(userId)
@@ -415,7 +423,7 @@ export default function AdminUserDetailPage() {
       <div className="px-6 py-4 border-b border-neutral-200 bg-white flex items-center gap-3">
         <button
           type="button"
-          onClick={() => navigate('/admin/users')}
+          onClick={() => navigate(listReturnTo)}
           className="inline-flex items-center gap-1 h-8 pl-2 pr-3 rounded-full border border-neutral-200
             bg-white text-sm text-neutral-600 shadow-sm transition-colors
             hover:border-primary-300 hover:text-primary-700 hover:bg-primary-50"
@@ -600,7 +608,7 @@ export default function AdminUserDetailPage() {
         <DeleteModal
           user={user}
           onClose={() => setDeleteModal(false)}
-          onDeleted={() => navigate('/admin/users')}
+          onDeleted={() => navigate(listReturnTo)}
         />
       )}
     </div>

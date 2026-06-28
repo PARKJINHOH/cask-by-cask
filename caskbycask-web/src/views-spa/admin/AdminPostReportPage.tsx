@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { adminCommunityApi } from '@/domain/admin/api/adminCommunityApi'
 import { POST_REPORT_PENDING_COUNT_KEY } from '@/domain/admin/constants/queryKeys'
@@ -41,10 +41,24 @@ function stateBadge(r: PostReportAdmin): { label: string; cls: string } {
 }
 
 export default function AdminPostReportPage() {
-  const [status, setStatus] = useState<PostReportAdminStatus | ''>('')
-  const [page, setPage]     = useState(0)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const status = (searchParams.get('status') ?? '') as PostReportAdminStatus | ''
+  const page = Math.max(0, parseInt(searchParams.get('page') ?? '0', 10))
   const [reasonModal, setReasonModal] = useState<string | null>(null)
   const queryClient         = useQueryClient()
+  const setListParam = (params: { status?: PostReportAdminStatus | ''; page?: number }) =>
+    setSearchParams(
+      (prev) => {
+        const n = new URLSearchParams(prev)
+        const nextStatus = params.status ?? status
+        const nextPage = params.page ?? page
+        if (nextStatus) n.set('status', nextStatus)
+        else n.delete('status')
+        n.set('page', String(nextPage))
+        return n
+      },
+      { replace: true },
+    )
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-post-reports', status, page],
@@ -146,7 +160,7 @@ export default function AdminPostReportPage() {
           {STATUS_OPTIONS.map((opt) => (
             <button
               key={opt.value}
-              onClick={() => { setStatus(opt.value as PostReportAdminStatus | ''); setPage(0) }}
+              onClick={() => setListParam({ status: opt.value as PostReportAdminStatus | '', page: 0 })}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                 status === opt.value
                   ? 'bg-primary-800 text-white'
@@ -333,7 +347,7 @@ export default function AdminPostReportPage() {
             <Pagination
               currentPage={page}
               totalPages={data.totalPages}
-              onPageChange={setPage}
+              onPageChange={(p) => setListParam({ page: p })}
             />
           )}
         </>

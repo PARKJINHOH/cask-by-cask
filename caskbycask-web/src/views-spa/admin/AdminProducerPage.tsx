@@ -1,5 +1,6 @@
 ﻿import { useState, useRef, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
+import { useSearchParams } from 'react-router-dom'
 import Button from '@/shared/components/Button'
 import Spinner from '@/shared/components/Spinner'
 import Pagination from '@/shared/components/Pagination'
@@ -209,19 +210,48 @@ function SortArrows({ active, dir }: { active: boolean; dir: 'asc' | 'desc' }) {
 const EMPTY_FILTERS: ProducerFilters = { nameKo: '', nameEn: '', country: '', foundedYear: '', type: '' }
 
 export default function AdminProducerPage() {
-  const [filterInput, setFilterInput] = useState<ProducerFilters>(EMPTY_FILTERS)
-  const [appliedFilters, setAppliedFilters] = useState<ProducerFilters>(EMPTY_FILTERS)
-  const [page, setPage] = useState(0)
-  const [sort, setSort] = useState<SortState>({ field: 'id', dir: 'desc' })
+  const [searchParams, setSearchParams] = useSearchParams()
+  const initialFilters: ProducerFilters = {
+    nameKo: searchParams.get('nameKo') ?? '',
+    nameEn: searchParams.get('nameEn') ?? '',
+    country: searchParams.get('country') ?? '',
+    foundedYear: searchParams.get('foundedYear') ?? '',
+    type: (searchParams.get('type') ?? '') as ProducerType | '',
+  }
+  const page = Math.max(0, parseInt(searchParams.get('page') ?? '0', 10))
+  const [filterInput, setFilterInput] = useState<ProducerFilters>(initialFilters)
+  const [appliedFilters, setAppliedFilters] = useState<ProducerFilters>(initialFilters)
+  const [sort, setSort] = useState<SortState>({
+    field: searchParams.get('sortField') ?? 'id',
+    dir: searchParams.get('sortDir') === 'asc' ? 'asc' : 'desc',
+  })
   const [showCreate, setShowCreate] = useState(false)
   const [editTarget, setEditTarget] = useState<Producer | null>(null)
   const editFormRef = useRef<HTMLDivElement>(null)
 
   const { data, isLoading } = useAdminProducers(appliedFilters, page, `${sort.field},${sort.dir}`)
 
+  const setListQuery = (filters: ProducerFilters, nextPage: number, nextSort = sort) =>
+    setSearchParams(
+      () => {
+        const n = new URLSearchParams()
+        Object.entries(filters).forEach(([key, value]) => {
+          if (value) n.set(key, String(value))
+        })
+        n.set('page', String(nextPage))
+        if (nextSort.field !== 'id') n.set('sortField', nextSort.field)
+        if (nextSort.dir !== 'desc') n.set('sortDir', nextSort.dir)
+        return n
+      },
+      { replace: true },
+    )
+
   const handleSort = (field: string) => {
-    setSort(prev => prev.field === field ? { field, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { field, dir: 'asc' })
-    setPage(0)
+    const nextSort: SortState = sort.field === field
+      ? { field, dir: sort.dir === 'asc' ? 'desc' : 'asc' }
+      : { field, dir: 'asc' }
+    setSort(nextSort)
+    setListQuery(appliedFilters, 0, nextSort)
   }
   const create = useCreateProducer()
   const update = useUpdateProducer()
@@ -237,13 +267,13 @@ export default function AdminProducerPage() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     setAppliedFilters(filterInput)
-    setPage(0)
+    setListQuery(filterInput, 0)
   }
 
   const handleResetFilters = () => {
     setFilterInput(EMPTY_FILTERS)
     setAppliedFilters(EMPTY_FILTERS)
-    setPage(0)
+    setListQuery(EMPTY_FILTERS, 0)
   }
 
   const handleCreate = (form: FormValues) => {
@@ -471,7 +501,7 @@ export default function AdminProducerPage() {
             <Pagination
               currentPage={page}
               totalPages={data.totalPages}
-              onPageChange={setPage}
+              onPageChange={(p) => setListQuery(appliedFilters, p)}
             />
           )}
         </>
