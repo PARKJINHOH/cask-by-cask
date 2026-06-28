@@ -134,10 +134,7 @@ public class SpiritService {
         Spirit spirit = spiritRepository.findByIdWithAllDetails(id, SpiritStatus.ACTIVE)
                 .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_NOT_FOUND));
 
-        List<SpiritImageResponse> images = spiritImageRepository.findBySpiritIdOrderBySortOrderAscIdAsc(id)
-                .stream()
-                .map(SpiritImageResponse::from)
-                .toList();
+        List<SpiritImageResponse> images = displayImages(spirit);
 
         List<SpiritVariantResponse> variants = getVariantsResponse(spirit, true);
 
@@ -158,6 +155,16 @@ public class SpiritService {
         List<SpiritVariantResponse> variants = getVariantsResponse(spirit, false);
 
         return spiritDetailService.buildFullDetailResponse(spirit, images, variants);
+    }
+
+    private List<SpiritImageResponse> displayImages(Spirit spirit) {
+        List<SpiritImage> images = spiritImageRepository.findBySpiritIdOrderBySortOrderAscIdAsc(spirit.getId());
+        if (images.isEmpty() && spirit.getParent() != null) {
+            images = spiritImageRepository.findBySpiritIdOrderBySortOrderAscIdAsc(spirit.getParent().getId());
+        }
+        return images.stream()
+                .map(SpiritImageResponse::from)
+                .toList();
     }
 
     /**
