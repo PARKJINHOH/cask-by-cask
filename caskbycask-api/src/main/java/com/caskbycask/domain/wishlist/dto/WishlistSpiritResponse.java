@@ -1,5 +1,6 @@
 package com.caskbycask.domain.wishlist.dto;
 
+import com.caskbycask.domain.seo.util.SpiritSlugUtils;
 import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -19,6 +20,10 @@ public record WishlistSpiritResponse(
         SpiritCategory category,
         @Schema(description = "대표 이미지 URL")
         String primaryImageUrl,
+        @Schema(description = "KO canonical path")
+        String canonicalPathKo,
+        @Schema(description = "EN canonical path")
+        String canonicalPathEn,
         @Schema(description = "전체 리뷰 평균 점수")
         BigDecimal avgScore
 ) {
@@ -30,6 +35,8 @@ public record WishlistSpiritResponse(
                 spirit.getSeriesIdentifier(),
                 spirit.getCategory(),
                 primaryImageUrl,
+                SpiritSlugUtils.canonicalPathKo(spirit),
+                SpiritSlugUtils.canonicalPathEn(spirit),
                 spirit.getAvgScore()
         );
     }

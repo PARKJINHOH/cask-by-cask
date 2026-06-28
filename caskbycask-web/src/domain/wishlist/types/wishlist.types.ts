@@ -7,6 +7,8 @@ export interface WishlistSpiritInfo {
   seriesIdentifier?: string | null
   category: string
   primaryImageUrl: string | null
+  canonicalPathKo?: string | null
+  canonicalPathEn?: string | null
   avgScore: number | null
 }
 

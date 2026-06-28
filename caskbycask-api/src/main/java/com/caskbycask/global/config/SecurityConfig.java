@@ -115,6 +115,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/profiles/images/**").permitAll()
                         // 가격 제보 이미지 서빙 — <img> 태그 GET 은 JWT 헤더 미포함이므로 공개 (UUID 파일명이 접근 차폐)
                         .requestMatchers(HttpMethod.GET, "/api/price-reports/images/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/seo/**").permitAll()
                         // 내 등록요청 조회는 비공개(로그인 필수) — 아래 광범위한 /api/spirits/** permitAll 보다 먼저 선언
                         .requestMatchers(HttpMethod.GET, "/api/spirits/requests/me", "/api/spirits/requests/me/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/spirits/**").permitAll()

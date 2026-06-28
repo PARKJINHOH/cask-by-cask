@@ -1,5 +1,6 @@
 package com.caskbycask.domain.review.dto;
 
+import com.caskbycask.domain.seo.util.SpiritSlugUtils;
 import com.caskbycask.domain.review.entity.Review;
 import com.caskbycask.domain.user.entity.enums.Role;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -20,6 +21,10 @@ public record ReviewResponse(
         String spiritNameKo,
         @Schema(description = "술 영문명")
         String spiritNameEn,
+        @Schema(description = "KO canonical path")
+        String spiritCanonicalPathKo,
+        @Schema(description = "EN canonical path")
+        String spiritCanonicalPathEn,
         @Schema(description = "향(Nose) 점수")
         BigDecimal noseScore,
         @Schema(description = "맛(Taste) 점수")
@@ -67,6 +72,8 @@ public record ReviewResponse(
                 review.getSpirit().getId(),
                 review.getSpirit().getNameKo(),
                 review.getSpirit().getNameEn(),
+                SpiritSlugUtils.canonicalPathKo(review.getSpirit()),
+                SpiritSlugUtils.canonicalPathEn(review.getSpirit()),
                 review.getNoseScore(),
                 review.getTasteScore(),
                 review.getFinishScore(),

@@ -345,7 +345,8 @@ public class HibernateSpiritSearchService implements SpiritSearchService {
         List<SpiritAutocompleteResponse> autocompleteList = entityManager.createQuery(
                 "select new com.caskbycask.domain.spirit.dto.SpiritAutocompleteResponse(" +
                 "s.id, s.nameKo, s.nameEn, s.seriesIdentifier, s.seriesIdentifierEn, s.category, " +
-                "(select max(si.imageUrl) from SpiritImage si where si.spirit.id = s.id and si.sortOrder = 0) " +
+                "(select max(si.imageUrl) from SpiritImage si where si.spirit.id = s.id and si.sortOrder = 0), " +
+                "s.variantType, s.variantValue, s.variantValueEn " +
                 ") from Spirit s where s.id in :ids", SpiritAutocompleteResponse.class)
                 .setParameter("ids", ids)
                 .getResultList();

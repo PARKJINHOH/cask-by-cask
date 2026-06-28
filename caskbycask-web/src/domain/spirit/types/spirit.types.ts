@@ -10,6 +10,22 @@ export interface SpiritAutocompleteItem {
   seriesIdentifierEn?: string | null
   category: SpiritCategory
   imageUrl: string | null
+  canonicalPathKo?: string | null
+  canonicalPathEn?: string | null
+}
+
+export interface SpiritSeo {
+  canonicalId: number
+  canonicalPathKo: string
+  canonicalPathEn: string
+  canonicalUrlKo: string
+  canonicalUrlEn: string
+  titleKo: string
+  titleEn: string
+  descriptionKo: string
+  descriptionEn: string
+  primaryImageUrl: string
+  updatedAt: string | null
 }
 
 export interface SpiritListItem {
@@ -28,6 +44,8 @@ export interface SpiritListItem {
   avgScore: number | null
   reviewCount: number
   primaryImageUrl: string | null
+  canonicalPathKo?: string | null
+  canonicalPathEn?: string | null
   viewCount?: number
   status?: SpiritStatus
 }

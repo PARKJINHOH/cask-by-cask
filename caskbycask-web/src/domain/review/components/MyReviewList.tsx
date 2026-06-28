@@ -8,6 +8,7 @@ import ReviewFormModal from './ReviewFormModal'
 import { useMyReviews, useDeleteMyReview } from '../hooks/useReviews'
 import { scoreColor, formatDate } from '@/shared/utils/format'
 import type { ReviewItem } from '../types/review.types'
+import { getSpiritDetailPath } from '@/domain/spirit/utils/spiritUrl'
 
 function ScoreBar({ label, value }: { label: string; value: number }) {
   return (
@@ -30,7 +31,7 @@ function ScoreBar({ label, value }: { label: string; value: number }) {
 }
 
 export default function MyReviewList() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [page, setPage]                     = useState(0)
   const [editingReview, setEditingReview]   = useState<ReviewItem | null>(null)
 
@@ -66,7 +67,11 @@ export default function MyReviewList() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <Link
-                      to={`/spirits/${review.spiritId}`}
+                      to={getSpiritDetailPath({
+                        id: review.spiritId,
+                        spiritCanonicalPathKo: review.spiritCanonicalPathKo,
+                        spiritCanonicalPathEn: review.spiritCanonicalPathEn,
+                      }, i18n.language)}
                       className="text-sm font-semibold text-neutral-900 hover:text-primary-800
                         transition-colors line-clamp-1 block"
                     >

@@ -1,7 +1,9 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useSpiritDetail } from '@/domain/spirit/hooks/useSpiritDetail'
+import { useQueries } from '@tanstack/react-query'
+import { useSpiritDetail, useSpiritSeo } from '@/domain/spirit/hooks/useSpiritDetail'
+import { spiritSeoApi } from '@/domain/spirit/api/spiritSeoApi'
 import { localizeCountry } from '@/shared/utils/countryName'
 import { localizeRegion } from '@/shared/utils/regionName'
 import Badge from '@/shared/components/Badge'
@@ -17,7 +19,7 @@ import CommentList from '@/domain/comment/components/CommentList'
 import WishlistButtons from '@/domain/wishlist/components/WishlistButtons'
 import SeoMeta, { buildCanonical, SITE_URL } from '@/shared/components/SeoMeta'
 import { DEFAULT_OG_IMAGE } from '@/shared/config/site'
-import type { SpiritDetail, SpiritImage, SpiritVariant } from '@/domain/spirit/types/spirit.types'
+import type { SpiritDetail, SpiritImage, SpiritSeo, SpiritVariant } from '@/domain/spirit/types/spirit.types'
 import PriceRangeChart from '@/domain/pricetracker/components/PriceRangeChart'
 import StoreDetailPanel from '@/domain/pricetracker/components/StoreDetailPanel'
 import PriceAlertInline from '@/domain/pricetracker/components/PriceAlertInline'
@@ -666,14 +668,49 @@ function formatVariantSelectLabel(variant: SpiritVariant, isEn: boolean) {
   return specs.length > 0 ? `${main} (${specs.join(', ')})` : main
 }
 
+function toVariantOption(spirit: SpiritDetail): SpiritVariant {
+  return {
+    id: spirit.id,
+    nameKo: spirit.nameKo,
+    nameEn: spirit.nameEn,
+    category: spirit.category,
+    bottledYear: spirit.bottledYear,
+    vintageYear: spirit.vintageYear,
+    abv: spirit.abv,
+    volumeMl: spirit.volumeMl,
+    batchNo: spirit.commonDetail?.batchNo ?? null,
+    bottleNo: spirit.commonDetail?.bottleNo ?? null,
+    bottledDate: spirit.commonDetail?.bottledDate ?? null,
+    avgScore: spirit.avgScore,
+    reviewCount: spirit.reviewCount,
+    primaryImageUrl: spirit.primaryImageUrl,
+    variantType: spirit.variantType,
+    variantValue: spirit.variantValue,
+    variantValueEn: spirit.variantValueEn,
+    seriesIdentifier: spirit.seriesIdentifier,
+    seriesIdentifierEn: spirit.seriesIdentifierEn,
+  }
+}
+
+function stripLangPrefix(path: string) {
+  return path.replace(/^\/(ko|en)(?=\/)/, '') || '/'
+}
+
+function localizedSeoPath(seo: SpiritSeo | undefined, isEn: boolean) {
+  if (!seo) return null
+  return stripLangPrefix(isEn ? seo.canonicalPathEn : seo.canonicalPathKo)
+}
+
+function currentRoutePath(pathname: string) {
+  return stripLangPrefix(pathname).replace(/\/+$/, '') || '/'
+}
+
 function PriceTabContent({
   spiritId,
-  activeVariantId,
   selectedVariantId,
   variants,
 }: {
   spiritId: number
-  activeVariantId: number | null
   selectedVariantId: number | null
   variants: SpiritVariant[]
 }) {
@@ -692,17 +729,17 @@ function PriceTabContent({
     return labels
   }, [variants, isEn, spiritId, t])
 
-  const integratedVariantIds = variants.length > 0 ? [spiritId, ...variants.map((variant) => variant.id)] : []
+  const integratedVariantIds = variants.length > 0 ? Array.from(new Set(variants.map((variant) => variant.id))) : []
   const isIntegratedVariantChart = selectedVariantId == null && integratedVariantIds.length > 0
   const chartSpiritIds = isIntegratedVariantChart
     ? integratedVariantIds
-    : [selectedVariantId ?? activeVariantId ?? spiritId]
+    : [selectedVariantId ?? spiritId]
   const primaryChartSpiritId = chartSpiritIds[0] ?? spiritId
-  const actionSpiritId = selectedVariantId ?? activeVariantId ?? spiritId
+  const actionSpiritId = selectedVariantId ?? spiritId
 
   useEffect(() => {
     setSelectedDate(null)
-  }, [storeType, period, selectedVariantId, activeVariantId])
+  }, [storeType, period, selectedVariantId])
 
   const { data: chartData, isLoading: chartLoading } = usePriceChart(
     primaryChartSpiritId,
@@ -848,57 +885,45 @@ export default function SpiritDetailPage() {
   const [lightboxIdx, setLightboxIdx]   = useState(-1)
   const [selectedVariantId, setSelectedVariantId] = useState<number | null>(null)
 
-  const { data: parentSpirit, isLoading: isParentLoading } = useSpiritDetail(spiritId)
-  const [activeVariantId, setActiveVariantId] = useState<number | null>(null)
+  const { data: spirit, isLoading } = useSpiritDetail(spiritId)
+  const { data: spiritSeo } = useSpiritSeo(spiritId)
 
   // Redirect to parent if visited child variant directamente
-  useEffect(() => {
-    if (parentSpirit && parentSpirit.parentId != null) {
-      navigate(`/spirits/${parentSpirit.parentId}`, {
-        replace: true,
-        state: { activeVariantId: parentSpirit.id }
-      })
-    }
-  }, [parentSpirit, navigate])
-
-  // Initialize activeVariantId from location state or default to variant #1
-  useEffect(() => {
-    if (parentSpirit) {
-      const isSplit = parentSpirit.parentId != null || (parentSpirit.variants && parentSpirit.variants.length > 0)
-      if (isSplit) {
-        const stateVariantId = (location.state as any)?.activeVariantId
-        const sortedVariants = [...(parentSpirit.variants ?? [])].sort((a, b) => a.id - b.id)
-        const defaultVariantId = sortedVariants[0]?.id || null
-        setActiveVariantId(stateVariantId || defaultVariantId)
-      } else {
-        setActiveVariantId(null)
-      }
-    }
-  }, [parentSpirit, location.state])
-
-  const defaultVariantId = useMemo(() => {
-    if (!parentSpirit) return null
-    const isSplit = parentSpirit.parentId != null || (parentSpirit.variants && parentSpirit.variants.length > 0)
-    if (!isSplit) return null
-    const stateVariantId = (location.state as any)?.activeVariantId
-    const sortedVariants = [...(parentSpirit.variants ?? [])].sort((a, b) => a.id - b.id)
-    return stateVariantId || sortedVariants[0]?.id || null
-  }, [parentSpirit, location.state])
-
-  const currentDisplayId = activeVariantId || defaultVariantId || spiritId
-  const { data: spirit, isLoading: isDisplayLoading } = useSpiritDetail(currentDisplayId)
-  const isLoading = isParentLoading || isDisplayLoading
-
   // SEO Review 스키마용 — 첫 페이지 (ReviewList 와 동일 queryKey 라 캐시 공유)
-  const { data: reviewsPage } = useReviews(currentDisplayId, 0)
+  const { data: reviewsPage } = useReviews(spiritId, 0)
 
-  const isVariantSplitGroup = parentSpirit ? (parentSpirit.parentId != null || (parentSpirit.variants && parentSpirit.variants.length > 0)) : false
+  const isVariantSplitGroup = spirit ? (spirit.parentId != null || (spirit.variants && spirit.variants.length > 0)) : false
   const hasVariants = isVariantSplitGroup
 
   const variantsList = useMemo(() => {
-    if (!parentSpirit) return []
-    return [...(parentSpirit.variants ?? [])].sort((a, b) => a.id - b.id)
-  }, [parentSpirit])
+    if (!spirit) return []
+    const byId = new Map<number, SpiritVariant>()
+    if (spirit.parentId != null || (spirit.variants && spirit.variants.length > 0)) {
+      byId.set(spirit.id, toVariantOption(spirit))
+      ;(spirit.variants ?? []).forEach((variant) => byId.set(variant.id, variant))
+    }
+    return Array.from(byId.values()).sort((a, b) => a.id - b.id)
+  }, [spirit])
+
+  const variantSeoQueries = useQueries({
+    queries: variantsList.map((variant) => ({
+      queryKey: ['spiritSeo', variant.id],
+      queryFn: () => spiritSeoApi.getSeo(variant.id).then((res) => res.data.data!),
+      enabled: !!variant.id,
+      staleTime: 1000 * 60 * 30,
+    })),
+  })
+
+  const variantSeoById = useMemo(() => {
+    const map = new Map<number, SpiritSeo>()
+    variantSeoQueries.forEach((query, index) => {
+      const id = variantsList[index]?.id
+      if (id && query.data) {
+        map.set(id, query.data as SpiritSeo)
+      }
+    })
+    return map
+  }, [variantSeoQueries, variantsList])
 
   const groupOptions = useMemo(() => {
     return variantsList.map((v) => {
@@ -909,13 +934,21 @@ export default function SpiritDetailPage() {
     })
   }, [variantsList, isEn])
 
+  useEffect(() => {
+    const targetPath = localizedSeoPath(spiritSeo, isEn)
+    if (!targetPath) return
+    if (currentRoutePath(location.pathname) !== targetPath.replace(/\/+$/, '')) {
+      navigate(targetPath, { replace: true })
+    }
+  }, [spiritSeo, isEn, location.pathname, navigate])
+
   // 변형(다른 배치) 간 이동 시 갤러리·탭 상태 초기화
   useEffect(() => {
     setSelectedImg(0)
     setActiveTab('reviews')
     setLightboxIdx(-1)
     setSelectedVariantId(null)
-  }, [spiritId, activeVariantId])
+  }, [spiritId])
 
   if (isLoading) return <Spinner fullscreen />
 
@@ -943,10 +976,12 @@ export default function SpiritDetailPage() {
   // 표시용 갤러리 이미지는 본인 것을 우선하되, 없으면 마스터 이미지로 폴백한다.
   const galleryImages = (spirit.images && spirit.images.length > 0)
     ? spirit.images
-    : (parentSpirit?.images ?? [])
+    : []
 
-  const canonicalUrl = buildCanonical(`/spirits/${spirit.id}`)
-  const rawImage = spirit.primaryImageUrl || galleryImages[0]?.imageUrl
+  const canonicalUrl = isEn
+    ? (spiritSeo?.canonicalUrlEn ?? buildCanonical(`/en/spirits/${spirit.id}`))
+    : (spiritSeo?.canonicalUrlKo ?? buildCanonical(`/ko/spirits/${spirit.id}`))
+  const rawImage = spiritSeo?.primaryImageUrl || spirit.primaryImageUrl || galleryImages[0]?.imageUrl
   const heroImage = rawImage
     ? (rawImage.startsWith('http') ? rawImage : `${SITE_URL}${rawImage}`)
     : DEFAULT_OG_IMAGE
@@ -963,6 +998,8 @@ export default function SpiritDetailPage() {
     }),
   )
 
+  const langPrefix = isEn ? '/en' : '/ko'
+
   const productJsonLd = {
     '@type': 'Product',
     name: primaryName,
@@ -970,6 +1007,7 @@ export default function SpiritDetailPage() {
     description: isEn
       ? `${primaryName} — ${primaryProducer || ''} ${countryLabel ? `· ${countryLabel}` : ''} · Liquor specifications, tasting notes & user reviews on CaskByCask.`
       : `${primaryName} — ${primaryProducer || ''} ${countryLabel ? `· ${countryLabel}` : ''} · 원산지, 도수 등 상세 주류 정보와 테이스팅 노트 및 사용자 리뷰.`,
+    url: canonicalUrl,
     image: heroImage,
     brand: primaryProducer ? {
       '@type': 'Brand',
@@ -999,24 +1037,29 @@ export default function SpiritDetailPage() {
 
   // BreadcrumbList — 홈 / 카탈로그 / 카테고리 / 현재 spirit
   const breadcrumbJsonLd = buildBreadcrumbSchema([
-    { name: isEn ? 'Home' : '홈', path: '/' },
-    { name: isEn ? 'Spirits' : '주류 카탈로그', path: '/spirits' },
-    { name: t(`spirit.category.${spirit.category}`), path: `/spirits?category=${spirit.category}` },
-    { name: primaryName ?? '', path: `/spirits/${spirit.id}` },
+    { name: isEn ? 'Home' : '홈', path: `${langPrefix}/` },
+    { name: isEn ? 'Spirits' : '주류 카탈로그', path: `${langPrefix}/spirits` },
+    { name: t(`spirit.category.${spirit.category}`), path: `${langPrefix}/spirits?category=${spirit.category}` },
+    { name: primaryName ?? '', path: canonicalUrl },
   ])
+  const seoTitle = isEn ? spiritSeo?.titleEn : spiritSeo?.titleKo
+  const seoDescription = isEn ? spiritSeo?.descriptionEn : spiritSeo?.descriptionKo
 
   return (
     <div className={`${hasVariants ? 'max-w-6xl' : 'max-w-5xl'} mx-auto px-4 py-6`}>
       <SeoMeta
-        title={primaryName}
-        description={isEn
+        title={seoTitle ?? primaryName}
+        description={seoDescription ?? (isEn
           ? `${primaryName} specs, tasting notes, ratings and reviews. ${primaryProducer || ''} ${countryLabel || ''}`.trim()
-          : `${primaryName} 상세 주류 정보, 테이스팅 노트 및 평점 리뷰. ${primaryProducer || ''} ${countryLabel || ''}`.trim()}
+          : `${primaryName} 상세 주류 정보, 테이스팅 노트 및 평점 리뷰. ${primaryProducer || ''} ${countryLabel || ''}`.trim())}
         canonical={canonicalUrl}
         ogType="product"
         ogImage={heroImage}
         ogImageAlt={primaryName}
         locale={isEn ? 'en_US' : 'ko_KR'}
+        alternateKo={spiritSeo?.canonicalUrlKo}
+        alternateEn={spiritSeo?.canonicalUrlEn}
+        alternateDefault={spiritSeo?.canonicalUrlKo}
         jsonLd={[productJsonLd, breadcrumbJsonLd]}
       />
 
@@ -1110,9 +1153,11 @@ export default function SpiritDetailPage() {
                   {t('spirit.detail.variantPageSelect')}
                 </span>
                 <select
-                  value={activeVariantId ?? ''}
+                  value={spirit.id}
                   onChange={(e) => {
-                    setActiveVariantId(Number(e.target.value))
+                    const targetId = Number(e.target.value)
+                    const targetPath = localizedSeoPath(variantSeoById.get(targetId), isEn)
+                    navigate(targetPath ?? `/spirits/${targetId}`)
                   }}
                   className="text-xs font-semibold text-neutral-700 bg-white border border-neutral-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-pointer min-w-[200px] shadow-sm hover:border-neutral-300 transition-colors"
                 >
@@ -1172,7 +1217,6 @@ export default function SpiritDetailPage() {
           ) : (
             <PriceTabContent
               spiritId={spiritId}
-              activeVariantId={activeVariantId}
               selectedVariantId={selectedVariantId}
               variants={variantsList}
             />

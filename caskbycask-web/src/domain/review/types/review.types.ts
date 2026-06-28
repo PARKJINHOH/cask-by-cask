@@ -5,6 +5,8 @@ export interface ReviewItem {
   spiritId: number
   spiritNameKo: string
   spiritNameEn: string
+  spiritCanonicalPathKo?: string | null
+  spiritCanonicalPathEn?: string | null
   noseScore: number
   tasteScore: number
   finishScore: number

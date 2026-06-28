@@ -25,6 +25,7 @@ import ActiveFilterChips, {
 import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 import { buildBreadcrumbSchema, buildItemListSchema } from '@/shared/utils/seoSchema'
 import { getSpiritListDisplayNames } from '@/domain/spirit/utils/spiritDisplayName'
+import { getSpiritCanonicalPath, getSpiritDetailPath } from '@/domain/spirit/utils/spiritUrl'
 
 // ── SEO 카테고리별 메타 ─────────────────────────────────────────
 const CATEGORY_META: Record<SpiritCategory | '', {
@@ -611,7 +612,7 @@ export default function SpiritListPage() {
       const displayName = getSpiritListDisplayNames(s)
       return {
         name: isEn ? (displayName.nameEn || displayName.nameKo) : displayName.nameKo,
-        path: `/spirits/${s.id}`,
+        path: getSpiritCanonicalPath(s, i18n.language, { includeLocale: true }),
       }
     }),
   )
@@ -783,7 +784,7 @@ export default function SpiritListPage() {
                           type="button"
 
                           onClick={() => {
-                            navigate(`/spirits/${item.id}`)
+                            navigate(getSpiritDetailPath(item, i18n.language))
                             setKeywordInput(displayName.nameKo)
                             setIsOpen(false)
                           }}

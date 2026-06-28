@@ -2,6 +2,55 @@ import { Metadata } from 'next'
 
 const API_URL = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
 
+interface ApiResponse<T> {
+  success: boolean
+  data: T | null
+}
+
+interface SpiritSeoResponse {
+  canonicalId: number
+  canonicalPathKo: string
+  canonicalPathEn: string
+  canonicalUrlKo: string
+  canonicalUrlEn: string
+  titleKo: string
+  titleEn: string
+  descriptionKo: string
+  descriptionEn: string
+  primaryImageUrl: string
+  updatedAt: string | null
+}
+
+export function extractLeadingId(value: string | undefined | null): string | null {
+  if (!value) return null
+  const decoded = safeDecodeURIComponent(value)
+  const match = decoded.match(/^(\d+)/)
+  return match ? match[1] : null
+}
+
+function safeDecodeURIComponent(value: string): string {
+  try {
+    return decodeURIComponent(value)
+  } catch {
+    return value
+  }
+}
+
+async function getSpiritSeo(id: string): Promise<SpiritSeoResponse | null> {
+  const numericId = extractLeadingId(id)
+  if (!numericId) return null
+  try {
+    const res = await fetch(`${API_URL}/api/seo/spirits/${numericId}`, {
+      next: { revalidate: 3600 },
+    })
+    if (!res.ok) return null
+    const responseData = await res.json() as ApiResponse<SpiritSeoResponse>
+    return responseData.data ?? null
+  } catch {
+    return null
+  }
+}
+
 // HTML 태그 제거 및 텍스트 요약 유틸리티
 export function stripHtmlAndSummarize(htmlStr: string, maxLength = 150): string {
   if (!htmlStr) return ''
@@ -142,6 +191,47 @@ export function getSpiritsListMetadata(lang: 'ko' | 'en' | null): Metadata {
  * 주류 상세 페이지 메타데이터를 반환합니다.
  */
 export async function getSpiritDetailMetadata(id: string, lang: 'ko' | 'en' | null): Promise<Metadata> {
+  const seo = await getSpiritSeo(id)
+  if (seo) {
+    const isEn = lang === 'en'
+    const title = isEn ? seo.titleEn : seo.titleKo
+    const description = isEn ? seo.descriptionEn : seo.descriptionKo
+    const canonical = isEn ? seo.canonicalUrlEn : seo.canonicalUrlKo
+    const ogImage = seo.primaryImageUrl || 'https://caskbycask.net/og-image.png'
+
+    return {
+      title,
+      description,
+      alternates: {
+        canonical,
+        languages: {
+          ko: seo.canonicalUrlKo,
+          en: seo.canonicalUrlEn,
+          'x-default': seo.canonicalUrlKo,
+        },
+      },
+      openGraph: {
+        title,
+        description,
+        url: canonical,
+        images: [
+          {
+            url: ogImage,
+            alt: title,
+          },
+        ],
+        type: 'website',
+        siteName: 'CaskByCask',
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title,
+        description,
+        images: [ogImage],
+      },
+    }
+  }
+
   const prefix = lang ? `/${lang}` : ''
   try {
     const res = await fetch(`${API_URL}/api/spirits/${id}`, {

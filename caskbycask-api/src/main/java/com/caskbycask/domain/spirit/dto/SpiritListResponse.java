@@ -1,5 +1,6 @@
 package com.caskbycask.domain.spirit.dto;
 
+import com.caskbycask.domain.seo.util.SpiritSlugUtils;
 import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.domain.spirit.entity.SpiritCognacDetail;
 import com.caskbycask.domain.spirit.entity.SpiritOtherDetail;
@@ -42,6 +43,10 @@ public record SpiritListResponse(
         Integer reviewCount,
         @Schema(description = "대표 이미지 URL")
         String primaryImageUrl,
+        @Schema(description = "KO canonical path")
+        String canonicalPathKo,
+        @Schema(description = "EN canonical path")
+        String canonicalPathEn,
         @Schema(description = "카테고리별 스타일/유형 코드")
         String style,
         @Schema(description = "스타일 직접 입력값")
@@ -54,6 +59,10 @@ public record SpiritListResponse(
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     public static SpiritListResponse of(Spirit spirit, String primaryImageUrl) {
+        return of(spirit, primaryImageUrl, spirit);
+    }
+
+    public static SpiritListResponse of(Spirit spirit, String primaryImageUrl, Spirit canonicalSpirit) {
         return new SpiritListResponse(
                 spirit.getId(),
                 spirit.getNameKo(),
@@ -68,6 +77,8 @@ public record SpiritListResponse(
                 spirit.getAvgScore(),
                 spirit.getReviewCount(),
                 primaryImageUrl,
+                SpiritSlugUtils.canonicalPathKo(canonicalSpirit),
+                SpiritSlugUtils.canonicalPathEn(canonicalSpirit),
                 null,
                 null,
                 spirit.getViewCount(),
@@ -76,6 +87,10 @@ public record SpiritListResponse(
     }
 
     public static SpiritListResponse ofWithStyle(Spirit spirit, String primaryImageUrl) {
+        return ofWithStyle(spirit, primaryImageUrl, spirit);
+    }
+
+    public static SpiritListResponse ofWithStyle(Spirit spirit, String primaryImageUrl, Spirit canonicalSpirit) {
         return new SpiritListResponse(
                 spirit.getId(),
                 spirit.getNameKo(),
@@ -90,6 +105,8 @@ public record SpiritListResponse(
                 spirit.getAvgScore(),
                 spirit.getReviewCount(),
                 primaryImageUrl,
+                SpiritSlugUtils.canonicalPathKo(canonicalSpirit),
+                SpiritSlugUtils.canonicalPathEn(canonicalSpirit),
                 styleCode(spirit),
                 styleOther(spirit),
                 spirit.getViewCount(),

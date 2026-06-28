@@ -23,6 +23,7 @@ import AttendanceButton from '@/domain/score/components/AttendanceButton'
 import axios from 'axios'
 import { spiritApi } from '@/domain/spirit/api/spiritApi'
 import type { SpiritAutocompleteItem } from '@/domain/spirit/types/spirit.types'
+import { getSpiritDetailPath } from '@/domain/spirit/utils/spiritUrl'
 
 
 const SEEN_KEY = 'notice:lastSeenId'
@@ -392,7 +393,7 @@ function GuestLangToggle() {
 // ── PC 헤더 검색바 ────────────────────────────────────────────
 
 function HeaderSearch() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [value, setValue] = useState('')
@@ -417,7 +418,7 @@ function HeaderSearch() {
   }
 
   const handleItemClick = (item: SpiritAutocompleteItem) => {
-    navigate(`/spirits/${item.id}`)
+    navigate(getSpiritDetailPath(item, i18n.language))
     setValue(item.nameKo)
     setIsOpen(false)
   }

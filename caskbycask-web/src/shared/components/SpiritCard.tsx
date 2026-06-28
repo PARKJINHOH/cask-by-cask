@@ -7,6 +7,7 @@ import { scoreColor } from '@/shared/utils/format'
 import { localizeCountry } from '@/shared/utils/countryName'
 import type { SpiritListItem } from '@/domain/spirit/types/spirit.types'
 import { getLocalizedSpiritListNames } from '@/domain/spirit/utils/spiritDisplayName'
+import { getSpiritDetailPath } from '@/domain/spirit/utils/spiritUrl'
 
 export interface SpiritCardProps {
   spirit: SpiritListItem
@@ -47,6 +48,7 @@ function SpiritCard({
   const { t, i18n } = useTranslation()
   const { primaryName, secondaryName } = getLocalizedSpiritListNames(spirit, i18n.language)
   const countryLabel  = localizeCountry(spirit.country, i18n.language)
+  const detailPath = getSpiritDetailPath(spirit, i18n.language)
 
   if (listView) {
     return (
@@ -95,7 +97,7 @@ function SpiritCard({
 
           {/* 나머지 — 상세 페이지 이동 */}
           <Link
-            to={`/spirits/${spirit.id}`}
+            to={detailPath}
             state={detailState}
             className="flex-1 flex items-center gap-3 min-w-0 focus-visible:outline-none
               focus-visible:ring-2 focus-visible:ring-primary-500 rounded-lg"
@@ -239,7 +241,7 @@ function SpiritCard({
 
       {/* 카드 전체를 덮는 상세 링크(stretched link) — 확대 버튼(z-20)보다 아래(z-10) */}
       <Link
-        to={`/spirits/${spirit.id}`}
+        to={detailPath}
         state={detailState}
         className="absolute inset-0 z-10 rounded-2xl focus-visible:outline-none
           focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500"

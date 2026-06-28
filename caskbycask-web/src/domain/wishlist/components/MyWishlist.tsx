@@ -6,6 +6,7 @@ import EmptyState from '@/shared/components/EmptyState'
 import Pagination from '@/shared/components/Pagination'
 import { useMyWishlist, useRemoveWishlist } from '../hooks/useWishlist'
 import { getLocalizedSpiritListNames } from '@/domain/spirit/utils/spiritDisplayName'
+import { getSpiritDetailPath } from '@/domain/spirit/utils/spiritUrl'
 
 export default function MyWishlist() {
   const { t, i18n } = useTranslation()
@@ -51,7 +52,7 @@ export default function MyWishlist() {
                 </button>
 
                 <Link
-                  to={`/spirits/${item.spirit.id}`}
+                  to={getSpiritDetailPath(item.spirit, i18n.language)}
                   className="block focus-visible:outline-none focus-visible:ring-2
                     focus-visible:ring-primary-500 focus-visible:ring-offset-2 rounded-2xl"
                 >

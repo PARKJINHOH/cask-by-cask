@@ -6,6 +6,7 @@ import type { AromaNotes } from '../utils/aroma'
 import type { ReviewItem as ReviewItemType } from '../types/review.types'
 import UserBadge from '@/shared/components/UserBadge'
 import type { UserRole } from '@/domain/auth/types/auth.types'
+import { getSpiritDetailPath } from '@/domain/spirit/utils/spiritUrl'
 
 function formatAromaId(id: string): string {
   return id.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
@@ -87,6 +88,11 @@ export default function ReviewItem({ review, currentUserId, onEdit, onDelete, sh
   const { t, i18n } = useTranslation()
   const isOwner = !!currentUserId && currentUserId === review.userId
   const spiritName = i18n.language === 'en' ? (review.spiritNameEn || review.spiritNameKo) : review.spiritNameKo
+  const spiritDetailPath = getSpiritDetailPath({
+    id: review.spiritId,
+    spiritCanonicalPathKo: review.spiritCanonicalPathKo,
+    spiritCanonicalPathEn: review.spiritCanonicalPathEn,
+  }, i18n.language)
 
   const sections = [
     { label: t('review.nose'),   score: review.noseScore,   note: review.noseNote,   aromaNotes: parseAromaNotes(review.noseAromaWheelNotes) },
@@ -143,7 +149,7 @@ export default function ReviewItem({ review, currentUserId, onEdit, onDelete, sh
       {showSpiritName && (
         <div className="pb-2.5 border-b border-neutral-100">
           <Link
-            to={`/spirits/${review.spiritId}`}
+            to={spiritDetailPath}
             className="text-base font-bold text-neutral-800 hover:text-primary-800 hover:underline transition-colors block truncate"
           >
             {spiritName}

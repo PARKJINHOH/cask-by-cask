@@ -1,10 +1,12 @@
 package com.caskbycask.domain.seo.controller;
 
+import com.caskbycask.domain.seo.dto.SpiritSeoResponse;
+import com.caskbycask.domain.seo.service.SpiritSeoService;
+import com.caskbycask.domain.seo.util.SpiritSlugUtils;
 import com.caskbycask.domain.spirit.entity.Spirit;
-import com.caskbycask.domain.spirit.entity.SpiritImage;
-import com.caskbycask.domain.spirit.entity.enums.VariantType;
-import com.caskbycask.domain.spirit.repository.SpiritImageRepository;
+import com.caskbycask.domain.spirit.entity.enums.SpiritStatus;
 import com.caskbycask.domain.spirit.repository.SpiritRepository;
+import com.caskbycask.global.exception.CustomException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,8 +17,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.util.UriUtils;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -29,13 +33,10 @@ import java.util.Optional;
 public class SeoPageController {
 
     private final SpiritRepository spiritRepository;
-    private final SpiritImageRepository spiritImageRepository;
+    private final SpiritSeoService spiritSeoService;
 
     @Value("${seo.index-path}")
     private String indexPath;
-
-    @Value("${seo.site-url:https://caskbycask.net}")
-    private String siteUrl;
 
     // Cache the loaded index.html content in memory to avoid constant disk reads.
     private String cachedIndexHtml = null;
@@ -53,8 +54,23 @@ public class SeoPageController {
         String uri = request.getRequestURI();
         boolean isEn = uri.startsWith("/en/");
 
-        // 1. Fetch Spirit from DB
-        Optional<Spirit> spiritOpt = spiritRepository.findById(id);
+        SpiritSeoResponse seo;
+        try {
+            seo = spiritSeoService.getSpiritSeo(id);
+        } catch (CustomException e) {
+            return serveDefaultIndexHtml();
+        }
+
+        String canonicalPath = isEn ? seo.canonicalPathEn() : seo.canonicalPathKo();
+        String requestPath = UriUtils.decode(uri, StandardCharsets.UTF_8);
+        if (!requestPath.equals(canonicalPath)) {
+            return ResponseEntity.status(HttpStatus.MOVED_PERMANENTLY)
+                    .location(URI.create(UriUtils.encodePath(canonicalPath, StandardCharsets.UTF_8)))
+                    .body("");
+        }
+
+        // 1. Fetch canonical Spirit from DB
+        Optional<Spirit> spiritOpt = spiritRepository.findByIdWithAllDetails(seo.canonicalId(), SpiritStatus.ACTIVE);
         if (spiritOpt.isEmpty()) {
             return serveDefaultIndexHtml();
         }
@@ -68,26 +84,9 @@ public class SeoPageController {
         }
 
         // 3. Extract metadata
-        String nameKo = spirit.getNameKo();
-        String nameEn = spirit.getNameEn();
-        if (spirit.getVariantType() != null && spirit.getVariantType() != VariantType.NONE) {
-            if (spirit.getVariantValue() != null && !spirit.getVariantValue().trim().isEmpty()) {
-                nameKo = nameKo + " " + spirit.getVariantValue().trim();
-            }
-            String valEn = spirit.getVariantValueEn() != null && !spirit.getVariantValueEn().trim().isEmpty()
-                    ? spirit.getVariantValueEn().trim()
-                    : (spirit.getVariantValue() != null ? spirit.getVariantValue().trim() : "");
-            if (nameEn != null && !nameEn.trim().isEmpty()) {
-                if (!valEn.isEmpty()) {
-                    nameEn = nameEn + " " + valEn;
-                }
-            } else {
-                if (!valEn.isEmpty()) {
-                    nameEn = valEn;
-                }
-            }
-        }
-        String primaryName = isEn ? (nameEn != null && !nameEn.isEmpty() ? nameEn : nameKo) : nameKo;
+        String nameKo = SpiritSlugUtils.displayNameKo(spirit);
+        String nameEn = SpiritSlugUtils.displayNameEn(spirit);
+        String primaryName = isEn ? nameEn : nameKo;
         String secondaryName = isEn ? nameKo : nameEn;
 
         String producerName = "";
@@ -101,45 +100,22 @@ public class SeoPageController {
         String category = spirit.getCategory() != null ? spirit.getCategory().name() : "";
 
         // Build Title
-        String pageTitle = primaryName + " — CaskByCask";
+        String pageTitle = isEn ? seo.titleEn() : seo.titleKo();
 
         // Build Description
-        String description = isEn ?
-                String.format("%s — %s %s. CaskByCask tasting notes, ratings, and user reviews.", primaryName, producerName, country).trim() :
-                String.format("%s — %s %s. CaskByCask 테이스팅 노트와 사용자 평점, 리뷰.", primaryName, producerName, country).trim();
+        String description = isEn ? seo.descriptionEn() : seo.descriptionKo();
 
-        // Resolve Image
-        Optional<SpiritImage> primaryImageOpt = spiritImageRepository.findBySpiritIdAndIsPrimaryTrue(id);
-        String relativeImgUrl = primaryImageOpt.map(SpiritImage::getImageUrl).orElse("");
-        if (relativeImgUrl.isEmpty()) {
-            // Check if there are any images
-            var images = spiritImageRepository.findBySpiritIdOrderBySortOrderAscIdAsc(id);
-            if (!images.isEmpty()) {
-                relativeImgUrl = images.get(0).getImageUrl();
-            }
-        }
-        String imageUrl = siteUrl + "/og-image.png"; // Fallback default
-        if (!relativeImgUrl.isEmpty()) {
-            imageUrl = relativeImgUrl.startsWith("http") ? relativeImgUrl : siteUrl + relativeImgUrl;
-        }
-
-        // Resolve Canonical URL
-        String canonicalUrl = siteUrl + (isEn ? "/en" : "/ko") + "/spirits/" + id;
-        int spiritsIndex = uri.indexOf("/spirits/");
-        if (spiritsIndex != -1) {
-            String pathAfterSpirits = uri.substring(spiritsIndex + 9); // e.g. "8-glenallachie-12"
-            int hyphenIndex = pathAfterSpirits.indexOf('-');
-            if (hyphenIndex != -1) {
-                String slug = pathAfterSpirits.substring(hyphenIndex + 1);
-                canonicalUrl += "-" + slug;
-            }
-        }
+        String imageUrl = seo.primaryImageUrl();
+        String canonicalUrl = isEn ? seo.canonicalUrlEn() : seo.canonicalUrlKo();
 
         // 4. Build Product JSON-LD structured data
-        String jsonLd = generateProductJsonLd(spirit, primaryName, secondaryName, producerName, country, category, imageUrl);
+        String jsonLd = generateProductJsonLd(
+                spirit, primaryName, secondaryName, producerName, country, category, imageUrl, canonicalUrl);
 
         // 5. Replace placeholders in index.html
-        String resultHtml = injectMetaTags(html, pageTitle, description, canonicalUrl, imageUrl, jsonLd);
+        String resultHtml = injectMetaTags(
+                html, pageTitle, description, canonicalUrl, imageUrl, jsonLd,
+                seo.canonicalUrlKo(), seo.canonicalUrlEn(), seo.canonicalUrlKo());
 
         return ResponseEntity.ok()
                 .contentType(MediaType.TEXT_HTML)
@@ -179,7 +155,8 @@ public class SeoPageController {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not Found");
     }
 
-    private String injectMetaTags(String html, String title, String description, String canonicalUrl, String imageUrl, String jsonLd) {
+    private String injectMetaTags(String html, String title, String description, String canonicalUrl, String imageUrl,
+                                  String jsonLd, String koUrl, String enUrl, String defaultUrl) {
         // Add title tag inside <head> (since index.html has no title tag by default)
         if (html.contains("<head>")) {
             html = html.replace("<head>", "<head>\n    <title>" + title + "</title>");
@@ -190,8 +167,19 @@ public class SeoPageController {
                 "<meta name=\"description\" content=\"" + escapeHtml(description) + "\" />");
 
         // Replace Canonical URL
-        html = html.replaceAll("<link rel=\"canonical\" href=\"[^\"]*\" />",
-                "<link rel=\"canonical\" href=\"" + canonicalUrl + "\" />");
+        html = replaceOrInsertHeadTag(
+                html,
+                "<link rel=\"canonical\" href=\"[^\"]*\" />",
+                "<link rel=\"canonical\" href=\"" + canonicalUrl + "\" />"
+        );
+
+        html = html.replaceAll("\\s*<link rel=\"alternate\" href[Ll]ang=\"(ko|en|x-default)\" href=\"[^\"]*\" />", "");
+        String hreflangTags = "\n    <link rel=\"alternate\" hreflang=\"ko\" href=\"" + koUrl + "\" />"
+                + "\n    <link rel=\"alternate\" hreflang=\"en\" href=\"" + enUrl + "\" />"
+                + "\n    <link rel=\"alternate\" hreflang=\"x-default\" href=\"" + defaultUrl + "\" />";
+        if (html.contains("</head>")) {
+            html = html.replace("</head>", hreflangTags + "\n</head>");
+        }
 
         // Replace Open Graph Title, Description, Url, Image
         html = html.replaceAll("<meta property=\"og:title\" content=\"[^\"]*\" />",
@@ -219,12 +207,27 @@ public class SeoPageController {
         return html;
     }
 
-    private String generateProductJsonLd(Spirit spirit, String name, String alternateName, String brand, String country, String category, String imageUrl) {
+    private String replaceOrInsertHeadTag(String html, String regex, String tag) {
+        if (html.matches("(?s).*" + regex + ".*")) {
+            return html.replaceAll(regex, tag);
+        }
+        if (html.contains("</head>")) {
+            return html.replace("</head>", "    " + tag + "\n</head>");
+        }
+        return html;
+    }
+
+    private String generateProductJsonLd(Spirit spirit, String name, String alternateName, String brand, String country,
+                                         String category, String imageUrl, String canonicalUrl) {
         StringBuilder sb = new StringBuilder();
         sb.append("{\n");
         sb.append("      \"@context\": \"https://schema.org\",\n");
         sb.append("      \"@type\": \"Product\",\n");
         sb.append("      \"name\": \"").append(escapeJson(name)).append("\"");
+
+        if (canonicalUrl != null && !canonicalUrl.isEmpty()) {
+            sb.append(",\n      \"url\": \"").append(escapeJson(canonicalUrl)).append("\"");
+        }
 
         if (alternateName != null && !alternateName.isEmpty()) {
             sb.append(",\n      \"alternateName\": \"").append(escapeJson(alternateName)).append("\"");

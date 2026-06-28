@@ -48,6 +48,9 @@ interface Props {
   noindex?: boolean
   jsonLd?: JsonLd | JsonLd[]
   locale?: 'ko_KR' | 'en_US'
+  alternateKo?: string
+  alternateEn?: string
+  alternateDefault?: string
 }
 
 export default function SeoMeta({
@@ -61,10 +64,16 @@ export default function SeoMeta({
   noindex = false,
   jsonLd,
   locale = 'ko_KR',
+  alternateKo,
+  alternateEn,
+  alternateDefault,
 }: Props) {
   const fullTitle = title.includes(SITE_NAME) ? title : `${title} — ${SITE_NAME}`
   const jsonLdArray = Array.isArray(jsonLd) ? jsonLd : jsonLd ? [jsonLd] : []
   const altLocale = locale === 'ko_KR' ? 'en_US' : 'ko_KR'
+  const koHref = alternateKo ?? canonical
+  const enHref = alternateEn ?? canonical
+  const defaultHref = alternateDefault ?? koHref ?? canonical
 
   return (
     <>
@@ -83,9 +92,9 @@ export default function SeoMeta({
           (정공법은 /en, /ko 경로 분리지만 현 SPA 구조에서는 동일 URL 시그널이 안전한 차선.) */}
       {canonical && (
         <>
-          <link rel="alternate" hrefLang="ko" href={canonical} />
-          <link rel="alternate" hrefLang="en" href={canonical} />
-          <link rel="alternate" hrefLang="x-default" href={canonical} />
+          {koHref && <link rel="alternate" hrefLang="ko" href={koHref} />}
+          {enHref && <link rel="alternate" hrefLang="en" href={enHref} />}
+          {defaultHref && <link rel="alternate" hrefLang="x-default" href={defaultHref} />}
         </>
       )}
 

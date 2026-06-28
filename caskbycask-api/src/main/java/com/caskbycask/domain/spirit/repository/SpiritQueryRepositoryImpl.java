@@ -11,6 +11,7 @@ import com.caskbycask.domain.spirit.entity.QSpiritWineDetail;
 import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.domain.producer.entity.QProducer;
 import com.caskbycask.domain.spirit.entity.enums.SpiritSort;
+import com.caskbycask.domain.spirit.entity.enums.SpiritStatus;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.Tuple;
@@ -77,12 +78,11 @@ public class SpiritQueryRepositoryImpl implements SpiritQueryRepository {
 
         // ── 3. 대표 이미지 IN 배치 조회 ────────────────────────
         Map<Long, String> primaryImages = fetchPrimaryImages(spirits, image);
+        Map<Long, Spirit> canonicalSpirits = fetchCanonicalSpirits(spirits);
 
         // ── 4. DTO 변환 ────────────────────────────────────────
         List<SpiritListResponse> content = spirits.stream()
-                .map(s -> includeStyle
-                        ? SpiritListResponse.ofWithStyle(s, primaryImages.get(s.getId()))
-                        : SpiritListResponse.of(s, primaryImages.get(s.getId())))
+                .map(s -> toListResponse(s, primaryImages.get(s.getId()), includeStyle, canonicalSpirits))
                 .toList();
 
         return new PageImpl<>(content, pageable, total != null ? total : 0L);
@@ -212,6 +212,34 @@ public class SpiritQueryRepositoryImpl implements SpiritQueryRepository {
         ));
     }
 
+    private Map<Long, Spirit> fetchCanonicalSpirits(List<Spirit> spirits) {
+        if (spirits.isEmpty()) return Map.of();
+
+        QSpirit variant = new QSpirit("canonicalVariant");
+        List<Long> ids = spirits.stream().map(Spirit::getId).toList();
+
+        List<Spirit> variants = queryFactory
+                .selectFrom(variant)
+                .where(variant.parent.id.in(ids)
+                        .and(variant.status.eq(SpiritStatus.ACTIVE)))
+                .orderBy(variant.parent.id.asc(), variant.displayOrder.asc().nullsLast(), variant.id.asc())
+                .fetch();
+
+        return variants.stream().collect(Collectors.toMap(
+                v -> v.getParent().getId(),
+                v -> v,
+                (first, ignored) -> first
+        ));
+    }
+
+    private SpiritListResponse toListResponse(Spirit spirit, String primaryImageUrl, boolean includeStyle,
+                                              Map<Long, Spirit> canonicalSpirits) {
+        Spirit canonicalSpirit = canonicalSpirits.getOrDefault(spirit.getId(), spirit);
+        return includeStyle
+                ? SpiritListResponse.ofWithStyle(spirit, primaryImageUrl, canonicalSpirit)
+                : SpiritListResponse.of(spirit, primaryImageUrl, canonicalSpirit);
+    }
+
     @Override
     public List<SpiritListResponse> findListByIds(List<Long> ids, boolean includeStyle) {
         if (ids.isEmpty()) return List.of();
@@ -243,12 +271,11 @@ public class SpiritQueryRepositoryImpl implements SpiritQueryRepository {
 
         // 3. 대표 이미지 배치 조회
         Map<Long, String> primaryImages = fetchPrimaryImages(sortedSpirits, image);
+        Map<Long, Spirit> canonicalSpirits = fetchCanonicalSpirits(sortedSpirits);
 
         // 4. DTO 변환
         return sortedSpirits.stream()
-                .map(s -> includeStyle
-                        ? SpiritListResponse.ofWithStyle(s, primaryImages.get(s.getId()))
-                        : SpiritListResponse.of(s, primaryImages.get(s.getId())))
+                .map(s -> toListResponse(s, primaryImages.get(s.getId()), includeStyle, canonicalSpirits))
                 .toList();
     }
 }
