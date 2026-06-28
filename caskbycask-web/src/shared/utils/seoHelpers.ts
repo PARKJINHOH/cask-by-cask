@@ -258,15 +258,16 @@ export async function getSpiritDetailMetadata(id: string, lang: 'ko' | 'en' | nu
     let nameKo = spirit.nameKo
     let nameEn = spirit.nameEn
     if (hasEdition) {
-      if (spirit.variantValue && spirit.variantValue.trim()) {
-        nameKo = `${spirit.nameKo} ${spirit.variantValue.trim()}`
-      }
-      const valEn = spirit.variantValueEn || spirit.variantValue
-      if (valEn && valEn.trim()) {
-        nameEn = spirit.nameEn 
-          ? `${spirit.nameEn} ${valEn.trim()}` 
-          : valEn.trim()
-      }
+      nameKo = formatEditionDisplayName(
+        spirit.nameKo,
+        spirit.seriesIdentifier,
+        spirit.variantValue,
+      )
+      nameEn = formatEditionDisplayName(
+        spirit.nameEn || spirit.nameKo,
+        spirit.seriesIdentifierEn || spirit.seriesIdentifier,
+        spirit.variantValueEn || spirit.variantValue,
+      )
     }
 
     const title = nameEn 
@@ -314,6 +315,17 @@ export async function getSpiritDetailMetadata(id: string, lang: 'ko' | 'en' | nu
       description: 'CaskByCask에서 각 주류의 상세 정보와 평점 리뷰를 확인해 보세요. Explore detailed specifications and ratings for various spirits.',
     }
   }
+}
+
+function formatEditionDisplayName(
+  name: string | null | undefined,
+  seriesIdentifier: string | null | undefined,
+  variantValue: string | null | undefined,
+) {
+  return [name, seriesIdentifier, variantValue]
+    .map((part) => part?.trim())
+    .filter(Boolean)
+    .join(' ')
 }
 
 /**

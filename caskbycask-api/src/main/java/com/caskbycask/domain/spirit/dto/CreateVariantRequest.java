@@ -7,6 +7,7 @@ import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
@@ -17,10 +18,12 @@ public record CreateVariantRequest(
         VariantType variantType,
 
         @Schema(description = "에디션 식별 값 (예: Batch 10)")
+        @NotBlank(message = "에디션 식별 값은 필수입니다.")
         @Size(max = 100, message = "에디션 식별 값은 100자 이하여야 합니다.")
         String variantValue,
 
         @Schema(description = "에디션 식별 값 (영문, 예: Batch 10)")
+        @NotBlank(message = "에디션 식별 값(영문)은 필수입니다.")
         @Size(max = 100, message = "에디션 식별 값(영문)은 100자 이하여야 합니다.")
         String variantValueEn,
 

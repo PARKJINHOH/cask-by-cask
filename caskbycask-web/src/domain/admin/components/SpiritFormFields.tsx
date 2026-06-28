@@ -702,8 +702,8 @@ export function useSpiritForm() {
         if (!v.variantValue.trim()) {
           errs[`variantValue_${idx}`] = '에디션 식별 값은 필수입니다.'
         }
-        if (!v.seriesIdentifier.trim()) {
-          errs[`seriesIdentifier_${idx}`] = '시리즈 식별자는 필수입니다.'
+        if (!(v.variantValueEn ?? '').trim()) {
+          errs[`variantValueEn_${idx}`] = '에디션 식별 값(영문)은 필수입니다.'
         }
         if (v.abv == null) {
           errs[`variantAbv_${idx}`] = '알코올 도수는 필수입니다.'
@@ -905,8 +905,8 @@ export function useSpiritForm() {
       seriesIdentifierEn: isVariantSplit ? ((variants[0]?.seriesIdentifierEn ?? '').trim() || null) : null,
       variants: isVariantSplit ? variants.map(v => ({
         ...v,
-        variantValueEn: v.variantValueEn || null,
         variantValue: v.variantValue.trim(),
+        variantValueEn: (v.variantValueEn ?? '').trim(),
         seriesIdentifier: v.seriesIdentifier.trim(),
         seriesIdentifierEn: (v.seriesIdentifierEn ?? '').trim() || null,
         volumeMl: v.volumeMl ? Number(v.volumeMl) : null,
@@ -1771,7 +1771,7 @@ function VariantItemCard({
         
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-[11px] font-semibold text-neutral-500 mb-1">한글 시리즈 식별자 <span className="text-red-400">*</span></label>
+            <label className="block text-[11px] font-semibold text-neutral-500 mb-1">한글 시리즈 식별자</label>
             <input
               type="text"
               value={variant.seriesIdentifier}
@@ -1783,13 +1783,8 @@ function VariantItemCard({
                   ? '예) 2024 릴리즈'
                   : '예) 싱글 캐스크'
               }
-              className={`w-full px-2.5 py-1.5 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white ${
-                errors[`seriesIdentifier_${index}`] ? 'border-red-400' : ''
-              }`}
+              className="w-full px-2.5 py-1.5 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
             />
-            {errors[`seriesIdentifier_${index}`] && (
-              <p className="text-[10px] text-red-500 mt-1">{errors[`seriesIdentifier_${index}`]}</p>
-            )}
           </div>
 
           <div>
@@ -1834,7 +1829,7 @@ function VariantItemCard({
           </div>
 
           <div>
-            <label className="block text-[11px] font-semibold text-neutral-500 mb-1">식별 값(영문)</label>
+            <label className="block text-[11px] font-semibold text-neutral-500 mb-1">식별 값(영문) <span className="text-red-400">*</span></label>
             <input
               type="text"
               value={variant.variantValueEn ?? ''}
@@ -1846,8 +1841,13 @@ function VariantItemCard({
                   ? '예) 2024 Release'
                   : '예) Cask #1234'
               }
-              className="w-full px-2.5 py-1.5 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
+              className={`w-full px-2.5 py-1.5 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white ${
+                errors[`variantValueEn_${index}`] ? 'border-red-400' : ''
+              }`}
             />
+            {errors[`variantValueEn_${index}`] && (
+              <p className="text-[10px] text-red-500 mt-1">{errors[`variantValueEn_${index}`]}</p>
+            )}
           </div>
         </div>
 

@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { adminSpiritApi } from '@/domain/admin/api/adminSpiritApi'
 import Button from '@/shared/components/Button'
 import AdminPageHeader from '@/shared/components/AdminPageHeader'
+import ImageLightbox from '@/shared/components/ImageLightbox'
+import ImageEditorModal from '@/shared/components/ImageEditorModal'
 import SpiritFormFields, { useSpiritForm, CARD, SectionTitle } from '@/domain/admin/components/SpiritFormFields'
 import type { SpiritStatus } from '@/domain/spirit/types/spirit.types'
 
@@ -25,6 +27,9 @@ export default function AdminSpiritFormPage() {
   const [images, setImages] = useState<File[]>([])
   const previews = useMemo(() => images.map((f) => URL.createObjectURL(f)), [images])
   useEffect(() => () => { previews.forEach((u) => URL.revokeObjectURL(u)) }, [previews])
+  const [lightboxIndex, setLightboxIndex] = useState(-1)
+  const [editingIndex, setEditingIndex] = useState<number | null>(null)
+  const [isEditingImage, setIsEditingImage] = useState(false)
 
   const handleAddImages = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? [])
@@ -34,6 +39,21 @@ export default function AdminSpiritFormPage() {
     setImages((prev) => [...prev, ...files.slice(0, room)])
   }
   const removeImage = (idx: number) => setImages((prev) => prev.filter((_, i) => i !== idx))
+
+  const handleEditSave = async (file: File) => {
+    if (editingIndex == null) return
+    setIsEditingImage(true)
+    try {
+      setImages((prev) => prev.map((original, idx) => (
+        idx === editingIndex
+          ? new File([file], original.name.replace(/\.[^.]+$/, '') + '_edited.png', { type: file.type || 'image/png' })
+          : original
+      )))
+      setEditingIndex(null)
+    } finally {
+      setIsEditingImage(false)
+    }
+  }
 
   const handleSubmit = async (status: SpiritStatus) => {
     if (!form.validate()) {
@@ -89,8 +109,13 @@ export default function AdminSpiritFormPage() {
             </p>
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
               {previews.map((url, i) => (
-                <div key={url} className="relative aspect-square rounded-xl overflow-hidden border border-neutral-200">
-                  <img src={url} alt="" className="w-full h-full object-cover" />
+                <div
+                  key={url}
+                  onClick={() => setLightboxIndex(i)}
+                  className="relative group aspect-square rounded-xl overflow-hidden border border-neutral-200 bg-white cursor-zoom-in"
+                >
+                  <div className="absolute top-0 left-0 w-1/3 h-1/3 checker-corner" />
+                  <img src={url} alt="" className="relative w-full h-full object-cover pointer-events-none" />
                   {i === 0 && (
                     <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-amber-500 text-white text-[10px] font-semibold">
                       대표
@@ -98,10 +123,29 @@ export default function AdminSpiritFormPage() {
                   )}
                   <button
                     type="button"
-                    onClick={() => removeImage(i)}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setEditingIndex(i)
+                    }}
+                    aria-label="이미지 편집"
+                    title="이미지 편집"
+                    className="absolute top-1 right-8 z-10 w-6 h-6 flex items-center justify-center rounded-full
+                      bg-amber-600/80 text-white text-xs leading-none opacity-0 group-hover:opacity-100
+                      transition-opacity hover:bg-amber-600"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      removeImage(i)
+                    }}
                     aria-label="삭제"
-                    className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white text-sm leading-none
-                      flex items-center justify-center hover:bg-black/80 transition-colors"
+                    className="absolute top-1 right-1 z-10 w-6 h-6 rounded-full bg-black/60 text-white text-sm leading-none
+                      flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-black/80 transition-opacity"
                   >×</button>
                 </div>
               ))}
@@ -115,6 +159,21 @@ export default function AdminSpiritFormPage() {
                 </label>
               )}
             </div>
+            <ImageLightbox
+              images={previews}
+              initialIndex={lightboxIndex >= 0 ? lightboxIndex : 0}
+              open={lightboxIndex >= 0}
+              onClose={() => setLightboxIndex(-1)}
+            />
+            {editingIndex != null && previews[editingIndex] && (
+              <ImageEditorModal
+                open={editingIndex != null}
+                onClose={() => setEditingIndex(null)}
+                imageSrc={previews[editingIndex]}
+                onSave={handleEditSave}
+                isSaving={isEditingImage}
+              />
+            )}
           </div>
         }
       />

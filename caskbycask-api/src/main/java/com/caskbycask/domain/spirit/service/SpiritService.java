@@ -320,7 +320,7 @@ public class SpiritService {
         }
 
         verifyProducerAccess(registeredBy, producer);
-        validateEditionSeriesIdentifier(request);
+        validateEditionValues(request);
         String seriesIdentifier = resolveSeriesIdentifier(request);
         String seriesIdentifierEn = resolveSeriesIdentifierEn(request);
 
@@ -409,7 +409,7 @@ public class SpiritService {
                 : spirit.getProducer();
 
         SpiritCategory prevCategory = spirit.getCategory();
-        validateEditionSeriesIdentifier(request, spirit);
+        validateEditionValues(request, spirit);
         String seriesIdentifier = resolveSeriesIdentifier(request, spirit);
         String seriesIdentifierEn = resolveSeriesIdentifierEn(request, spirit);
 
@@ -588,7 +588,7 @@ public class SpiritService {
 
         // 카테고리 핵심값 필수 (신청자 제출 경로)
         if (!body.hasCategoryCore()) throw new CustomException(ErrorCode.INVALID_INPUT);
-        validateEditionSeriesIdentifier(body);
+        validateEditionValues(body);
 
         // 욕설 필터 — 신청자가 입력한 기타 문구 검사
         badWordFilter.validate(body.note());
@@ -650,7 +650,7 @@ public class SpiritService {
 
         // 카테고리 핵심값 필수 (신청자 수정 경로)
         if (!body.hasCategoryCore()) throw new CustomException(ErrorCode.INVALID_INPUT);
-        validateEditionSeriesIdentifier(body);
+        validateEditionValues(body);
 
         badWordFilter.validate(body.note());
 
@@ -784,7 +784,7 @@ public class SpiritService {
         User admin = getUser(adminId);
 
         Producer producer = resolveProducer(detail.producerId());
-        validateEditionSeriesIdentifier(detail);
+        validateEditionValues(detail);
         String seriesIdentifier = resolveSeriesIdentifier(detail);
         String seriesIdentifierEn = resolveSeriesIdentifierEn(detail);
 
@@ -904,32 +904,34 @@ public class SpiritService {
 
     // ── Private helpers ─────────────────────────────────────
 
-    private void validateEditionSeriesIdentifier(CreateSpiritRequest request) {
-        validateEditionSeriesIdentifier(request.variantType(), resolveSeriesIdentifier(request));
-        validateVariantSeriesIdentifiers(request.variants());
+    private void validateEditionValues(CreateSpiritRequest request) {
+        validateEditionValue(request.variantType(), request.variantValue(), request.variantValueEn());
+        validateVariantEditionValues(request.variants());
     }
 
-    private void validateEditionSeriesIdentifier(UpdateSpiritRequest request, Spirit spirit) {
+    private void validateEditionValues(UpdateSpiritRequest request, Spirit spirit) {
         VariantType variantType = request.variantType() != null
                 ? request.variantType()
                 : spirit.getVariantType();
-        validateEditionSeriesIdentifier(variantType, resolveSeriesIdentifier(request, spirit));
-        validateVariantSeriesIdentifiers(request.variants());
+        String variantValue = request.variantValue() != null ? request.variantValue() : spirit.getVariantValue();
+        String variantValueEn = request.variantValueEn() != null ? request.variantValueEn() : spirit.getVariantValueEn();
+        validateEditionValue(variantType, variantValue, variantValueEn);
+        validateVariantEditionValues(request.variants());
     }
 
-    private void validateEditionSeriesIdentifier(SpiritRegisterRequestBody body) {
-        validateEditionSeriesIdentifier(body.variantType(), body.seriesIdentifier());
+    private void validateEditionValues(SpiritRegisterRequestBody body) {
+        validateEditionValue(body.variantType(), body.variantValue(), body.variantValueEn());
     }
 
-    private void validateVariantSeriesIdentifiers(List<CreateVariantRequest> variants) {
+    private void validateVariantEditionValues(List<CreateVariantRequest> variants) {
         if (variants == null) return;
-        variants.forEach(v -> validateEditionSeriesIdentifier(v.variantType(), v.seriesIdentifier()));
+        variants.forEach(v -> validateEditionValue(v.variantType(), v.variantValue(), v.variantValueEn()));
     }
 
-    private void validateEditionSeriesIdentifier(VariantType variantType, String seriesIdentifier) {
+    private void validateEditionValue(VariantType variantType, String variantValue, String variantValueEn) {
         if (variantType != null
                 && variantType != VariantType.NONE
-                && !StringUtils.hasText(seriesIdentifier)) {
+                && (!StringUtils.hasText(variantValue) || !StringUtils.hasText(variantValueEn))) {
             throw new CustomException(ErrorCode.INVALID_INPUT);
         }
     }

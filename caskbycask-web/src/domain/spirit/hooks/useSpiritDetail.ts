@@ -5,6 +5,8 @@ import { spiritSeoApi } from '../api/spiritSeoApi'
 export function formatSpiritName<T extends {
   nameKo: string
   nameEn: string
+  seriesIdentifier?: string | null
+  seriesIdentifierEn?: string | null
   variantType?: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE' | null
   variantValue?: string | null
   variantValueEn?: string | null
@@ -12,17 +14,18 @@ export function formatSpiritName<T extends {
   if (!spirit) return spirit
   const hasEdition = spirit.variantType && spirit.variantType !== 'NONE'
   if (hasEdition) {
-    let nameKo = spirit.nameKo
-    let nameEn = spirit.nameEn
-    if (spirit.variantValue && spirit.variantValue.trim()) {
-      nameKo = `${spirit.nameKo} ${spirit.variantValue.trim()}`
-    }
+    const nameKo = formatEditionDisplayName(
+      spirit.nameKo,
+      spirit.seriesIdentifier,
+      spirit.variantValue,
+    )
+    const nameEnBase = spirit.nameEn || spirit.nameKo
     const valEn = spirit.variantValueEn || spirit.variantValue
-    if (valEn && valEn.trim()) {
-      nameEn = spirit.nameEn 
-        ? `${spirit.nameEn} ${valEn.trim()}` 
-        : valEn.trim()
-    }
+    const nameEn = formatEditionDisplayName(
+      nameEnBase,
+      spirit.seriesIdentifierEn || spirit.seriesIdentifier,
+      valEn,
+    )
     return {
       ...spirit,
       nameKo,
@@ -30,6 +33,17 @@ export function formatSpiritName<T extends {
     }
   }
   return spirit
+}
+
+function formatEditionDisplayName(
+  name: string | null | undefined,
+  seriesIdentifier: string | null | undefined,
+  variantValue: string | null | undefined,
+) {
+  return [name, seriesIdentifier, variantValue]
+    .map((part) => part?.trim())
+    .filter(Boolean)
+    .join(' ')
 }
 
 export function useSpiritDetail(id: number) {
