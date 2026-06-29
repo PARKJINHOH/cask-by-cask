@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 
 import requests
 
+from filters.deal_policy import normalize_analysis_result
 from logger import get_logger
 from models import AnalysisResult, PostDetail
 
@@ -27,6 +28,7 @@ _RETRY_INTERVAL_SEC = 5
 
 def build_payload(detail: PostDetail, analysis: AnalysisResult) -> dict:
     raw = detail.raw
+    analysis = normalize_analysis_result(analysis)
     return {
         "sourceUrl": raw.url,
         "sourceSite": raw.site.upper(),          # DCINSIDE | NAVER_CAFE

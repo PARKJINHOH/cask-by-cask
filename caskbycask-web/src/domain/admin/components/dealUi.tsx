@@ -20,18 +20,23 @@ const STATUS_STYLE: Record<DealStatus, string> = {
 }
 
 export function formatPrice(v: number | null | undefined, currency?: string | null): string {
-  if (v == null) return '-'
-  const n = v.toLocaleString()
+  const value = Number.isFinite(Number(v)) ? Math.max(0, Number(v)) : 0
+  const n = new Intl.NumberFormat('ko-KR').format(value)
   switch (currency) {
     case 'USD': return `$${n}`
     case 'EUR': return `€${n}`
+    case 'JPY': return `¥${n}`
+    case 'TWD': return `NT$${n}`
+    case 'HKD': return `HK$${n}`
+    case 'SGD': return `S$${n}`
     default: return `${n}원`
   }
 }
 
 export function formatDiscount(rate: number | null | undefined): string {
-  if (rate == null) return '-'
-  return `${Math.round(rate * 100)}%`
+  if (rate == null || !Number.isFinite(rate) || rate <= 0) return '0%'
+  const percent = rate * 100
+  return `${Number.isInteger(percent) ? percent : percent.toFixed(1)}%`
 }
 
 /** 신뢰도 뱃지: 8~10 초록 / 5~7 노랑 / 그 외 회색. */

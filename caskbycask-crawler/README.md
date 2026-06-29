@@ -23,6 +23,7 @@ OpenAI 로 분석하고, CaskByCask 백엔드의 관리자 검토 큐로 보내�
 | `scrapers/` | `base_scraper` + `dcinside_scraper` + `naver_cafe_scraper` |
 | `filters/keyword_filter.py` | 제목 할인/구매 키워드 1차 필터 |
 | `filters/deal_deduplicator.py` | 제목·AI 결과 기반 딜 단위 중복 판정 |
+| `filters/deal_policy.py` | AI 분석 후 업로드 정책(카테고리, 복합 할인 제외, 가격/할인율 정규화) |
 | `analyzer/` | `prompts.py`(프롬프트) + `openai_analyzer.py` |
 | `storage/image_handler.py` | 이미지 임시 다운로드→압축→base64→삭제 |
 | `uploader/api_uploader.py` | 백엔드 내부 API 업로드 (+수신 계약 명세) |
@@ -55,5 +56,7 @@ python3 main.py
 - 2xx 접수 / 409 중복(멱등, sourceUrl 기준). 저장 시 `is_visible=false, status=PENDING`.
 - 요청 본문(flat): `sourceUrl, sourceSite, drinkName, drinkCategory, originalPrice, dealPrice,
   discountRate, currency, seller, dealCondition, expiryInfo, confidenceScore, summaryKo, crawledAt`
+- 업로드 전 `filters/deal_policy.py`에서 정상가/할인가가 모두 있는 단순 단품 딜만 통과시키며,
+  빈 가격은 `0`, 할인율은 `(originalPrice - dealPrice) / originalPrice`로 재계산한다.
 
 자세한 배포 절차는 **[DEPLOY.md](./DEPLOY.md)** 참고.

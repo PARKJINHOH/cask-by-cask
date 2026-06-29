@@ -13,6 +13,7 @@ export interface DealPostSummary {
   sourceSite: string
   drinkName: string | null
   drinkCategory: string | null
+  originalPrice: number | null
   dealPrice: number | null
   discountRate: number | null   // 0.0 ~ 1.0
   confidenceScore: number | null // 1 ~ 10

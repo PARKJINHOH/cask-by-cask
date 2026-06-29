@@ -65,6 +65,7 @@ nano .env      # 또는 vi .env
 | `NAVER_NID_AUT`, `NAVER_NID_SES` | 네이버 로그인 쿠키 (아래 6번) |
 | `OPENAI_MODEL` | 분석 모델. 기본 `gpt-4o-mini` |
 | `OPENAI_REQUEST_INTERVAL_SEC` | AI API 호출 시작 간격. 무료 티어 보호용 기본 `5`초 |
+| `ALLOWED_DEAL_CATEGORIES` | 업로드 허용 주류 카테고리. 기본 `WHISKY,COGNAC,WINE,TEQUILA,RUM` |
 | `MAX_AI_ANALYSIS_PER_RUN` | 1회 실행에서 AI 분석까지 진행할 최대 건수. 초과분은 DB 대기열로 이월 |
 | `DUPLICATE_LOOKBACK_HOURS` | 같은 딜 fingerprint 를 비교할 최근 시간 범위. 기본 `72`시간 |
 | `DUPLICATE_JACCARD_THRESHOLD`, `DUPLICATE_NGRAM_THRESHOLD` | 로컬 제목 유사도 기준. 기본 `0.58`, `0.62` |

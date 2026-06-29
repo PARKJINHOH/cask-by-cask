@@ -9,12 +9,12 @@ import type { StoreType } from '@/domain/pricetracker/types/pricetracker.types'
 import { spiritApi } from '@/domain/spirit/api/spiritApi'
 import type { SpiritDetail, SpiritListItem, SpiritVariant } from '@/domain/spirit/types/spirit.types'
 import {
-  ConfidenceBadge, DealStatusBadge, SourceLinkButton, formatPrice, siteLabel,
+  ConfidenceBadge, DealStatusBadge, SourceLinkButton, formatDiscount, formatPrice, siteLabel,
 } from '@/domain/admin/components/dealUi'
 
 const EMPTY_FORM = {
-  drinkName: '', drinkCategory: '', originalPrice: '', dealPrice: '',
-  discountPercent: '', seller: '', dealCondition: '', expiryInfo: '', summaryKo: '', currency: '',
+  drinkName: '', drinkCategory: '', originalPrice: '0', dealPrice: '0',
+  seller: '', dealCondition: '', summaryKo: '', currency: 'KRW',
 }
 
 type SpiritConnectionOption = {
@@ -70,12 +70,10 @@ export default function AdminDealDetailPage() {
     setForm({
       drinkName: detail.drinkName ?? '',
       drinkCategory: detail.drinkCategory ?? '',
-      originalPrice: detail.originalPrice?.toString() ?? '',
-      dealPrice: detail.dealPrice?.toString() ?? '',
-      discountPercent: detail.discountRate != null ? String(Math.round(detail.discountRate * 100)) : '',
+      originalPrice: formatPriceInput(detail.originalPrice),
+      dealPrice: formatPriceInput(detail.dealPrice),
       seller: detail.seller ?? '',
       dealCondition: detail.dealCondition ?? '',
-      expiryInfo: detail.expiryInfo ?? '',
       summaryKo: detail.summaryKo ?? '',
       currency: detail.currency ?? 'KRW',
     })
@@ -126,26 +124,21 @@ export default function AdminDealDetailPage() {
     }
   }, [spiritKeyword, spiritId])
 
-  const buildPayload = (): UpdateDealRequest => {
-    const toInt = (s: string) => {
-      if (s.trim() === '') return null
-      const value = Number(s)
-      return Number.isFinite(value) ? value : null
-    }
-    const discountRateValue = form.discountPercent.trim() === ''
-      ? null
-      : Number(form.discountPercent) / 100
+  const originalPriceValue = parsePriceInput(form.originalPrice)
+  const dealPriceValue = parsePriceInput(form.dealPrice)
+  const discountRate = calculateDiscountRate(originalPriceValue, dealPriceValue)
 
+  const buildPayload = (): UpdateDealRequest => {
     return {
       drinkName: form.drinkName.trim() || null,
       drinkCategory: form.drinkCategory || null,
-      originalPrice: toInt(form.originalPrice),
-      dealPrice: toInt(form.dealPrice),
-      discountRate: discountRateValue != null && Number.isFinite(discountRateValue) ? discountRateValue : null,
+      originalPrice: originalPriceValue,
+      dealPrice: dealPriceValue,
+      discountRate,
       currency: form.currency || 'KRW',
       seller: form.seller.trim() || null,
       dealCondition: form.dealCondition.trim() || null,
-      expiryInfo: form.expiryInfo.trim() || null,
+      expiryInfo: null,
       summaryKo: form.summaryKo.trim() || null,
       spiritId,
       storeType,
@@ -230,8 +223,8 @@ export default function AdminDealDetailPage() {
   const busy = approveMut.isPending || deleteMut.isPending || updateMut.isPending
 
   const validatePrices = (): boolean => {
-    const dp = Number(form.dealPrice)
-    const op = Number(form.originalPrice)
+    const dp = dealPriceValue
+    const op = originalPriceValue
     if (!Number.isFinite(op) || op <= 0) {
       window.alert('정상가는 0보다 큰 금액을 입력해주세요.')
       return false
@@ -348,29 +341,26 @@ export default function AdminDealDetailPage() {
           </Field>
           <Field label="정상가" required>
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
               className={inputCls}
               value={form.originalPrice}
-              onChange={(e) => setForm({ ...form, originalPrice: e.target.value })}
+              onChange={(e) => setForm({ ...form, originalPrice: formatPriceInput(e.target.value) })}
             />
           </Field>
           <Field label="할인가" required>
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
               className={inputCls}
               value={form.dealPrice}
-              onChange={(e) => setForm({ ...form, dealPrice: e.target.value })}
+              onChange={(e) => setForm({ ...form, dealPrice: formatPriceInput(e.target.value) })}
             />
           </Field>
-          <Field label="할인율 (%)">
-            <input
-              type="number"
-              min={0}
-              max={100}
-              className={inputCls}
-              value={form.discountPercent}
-              onChange={(e) => setForm({ ...form, discountPercent: e.target.value })}
-            />
+          <Field label="할인율">
+            <div className={`${inputCls} bg-neutral-50 text-neutral-800 tabular-nums`}>
+              {formatDiscount(discountRate)}
+            </div>
           </Field>
           <Field label="통화" required>
             <select
@@ -391,13 +381,6 @@ export default function AdminDealDetailPage() {
               className={inputCls}
               value={form.seller}
               onChange={(e) => setForm({ ...form, seller: e.target.value })}
-            />
-          </Field>
-          <Field label="기간 정보">
-            <input
-              className={inputCls}
-              value={form.expiryInfo}
-              onChange={(e) => setForm({ ...form, expiryInfo: e.target.value })}
             />
           </Field>
           <Field label="판매처 유형">
@@ -525,7 +508,8 @@ export default function AdminDealDetailPage() {
         </Field>
 
         <p className="text-xs text-neutral-400">
-          현재 할인가 미리보기: {formatPrice(form.dealPrice.trim() === '' ? null : Number(form.dealPrice), form.currency)}
+          현재 가격: {formatPrice(originalPriceValue, form.currency)} / {formatPrice(dealPriceValue, form.currency)}
+          {' '}({formatDiscount(discountRate)})
         </p>
       </div>
 
@@ -566,6 +550,21 @@ export default function AdminDealDetailPage() {
 
 const inputCls =
   'w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400'
+
+function parsePriceInput(value: string): number {
+  const digits = value.replace(/[^\d]/g, '')
+  return digits === '' ? 0 : Number(digits)
+}
+
+function formatPriceInput(value: string | number | null | undefined): string {
+  const parsed = typeof value === 'number' ? value : parsePriceInput(String(value ?? ''))
+  return new Intl.NumberFormat('ko-KR').format(Math.max(0, parsed))
+}
+
+function calculateDiscountRate(originalPrice: number, dealPrice: number): number {
+  if (originalPrice <= 0 || dealPrice <= 0 || originalPrice <= dealPrice) return 0
+  return Math.round(((originalPrice - dealPrice) / originalPrice) * 10000) / 10000
+}
 
 function toConnectionOption(spirit: SpiritDetail | SpiritVariant): SpiritConnectionOption {
   const commonDetail = 'commonDetail' in spirit ? spirit.commonDetail : null

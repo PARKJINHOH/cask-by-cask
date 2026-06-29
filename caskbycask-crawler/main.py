@@ -15,6 +15,7 @@ from analyzer.openai_analyzer import OpenAIAnalyzer
 from config import load_settings
 from db.seen_posts import SeenPostStore
 from filters.deal_deduplicator import DealDeduplicator
+from filters.deal_policy import review_analysis
 from filters.keyword_filter import KeywordFilter
 from logger import get_logger, setup_logging
 from models import RawPost
@@ -237,14 +238,24 @@ def run() -> int:
                 continue
 
             stats["analyzed"] += 1
+            decision = review_analysis(detail, result, settings.allowed_deal_categories)
+            result = decision.result
             log.info(
-                "분석 %s | deal=%s score=%d cat=%s dealPrice=%s | %s",
+                "분석 %s | deal=%s score=%d cat=%s original=%s dealPrice=%s rate=%s | %s",
                 post.key, result.is_deal, result.confidence_score,
-                result.drink_category, result.deal_price, result.summary_ko[:60],
+                result.drink_category, result.original_price, result.deal_price,
+                result.discount_rate, result.summary_ko[:60],
             )
 
-            # 4) 업로드 판정: 핫딜이면서 confidence_score 기준 충족분만 채택
-            if not result.is_deal or result.confidence_score < settings.min_confidence_score:
+            # 4) 업로드 판정: 정책 통과 + confidence_score 기준 충족분만 채택
+            if not decision.accepted:
+                log.info("정책 제외 %s | reason=%s", post.key, decision.reason)
+                store.mark(post.key, post.site, post.url, "SKIPPED")
+                store.delete_pending(post.key)
+                stats["skipped"] += 1
+                continue
+
+            if result.confidence_score < settings.min_confidence_score:
                 store.mark(post.key, post.site, post.url, "SKIPPED")
                 store.delete_pending(post.key)
                 stats["skipped"] += 1

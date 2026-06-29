@@ -89,9 +89,14 @@ public class DealAdminService {
                     .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_NOT_FOUND));
         }
 
+        Integer originalPrice = DealPriceNormalizer.normalizePrice(req.originalPrice());
+        Integer dealPrice = DealPriceNormalizer.normalizePrice(req.dealPrice());
+
         deal.applyAdminEdit(
-                req.drinkName(), req.drinkCategory(), req.originalPrice(), req.dealPrice(),
-                req.discountRate(), req.currency(), req.seller(), req.dealCondition(), req.expiryInfo(), req.summaryKo()
+                req.drinkName(), req.drinkCategory(), originalPrice, dealPrice,
+                DealPriceNormalizer.calculateDiscountRate(originalPrice, dealPrice),
+                DealPriceNormalizer.normalizeCurrency(req.currency()), req.seller(),
+                req.dealCondition(), req.expiryInfo(), req.summaryKo()
         );
         deal.linkSpiritAndStoreType(spirit, req.storeType());
     }

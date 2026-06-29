@@ -25,15 +25,18 @@ public class DealIngestService {
             throw new CustomException(ErrorCode.DEAL_ALREADY_EXISTS);
         }
 
+        Integer originalPrice = DealPriceNormalizer.normalizePrice(req.originalPrice());
+        Integer dealPrice = DealPriceNormalizer.normalizePrice(req.dealPrice());
+
         DealPost deal = DealPost.builder()
                 .sourceUrl(req.sourceUrl())
                 .sourceSite(req.sourceSite())
                 .drinkName(req.drinkName())
                 .drinkCategory(req.drinkCategory())
-                .originalPrice(req.originalPrice())
-                .dealPrice(req.dealPrice())
-                .discountRate(req.discountRate())
-                .currency(req.currency() != null && !req.currency().isBlank() ? req.currency() : "KRW")
+                .originalPrice(originalPrice)
+                .dealPrice(dealPrice)
+                .discountRate(DealPriceNormalizer.calculateDiscountRate(originalPrice, dealPrice))
+                .currency(DealPriceNormalizer.normalizeCurrency(req.currency()))
                 .seller(req.seller())
                 .dealCondition(req.dealCondition())
                 .expiryInfo(req.expiryInfo())
