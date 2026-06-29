@@ -21,6 +21,41 @@ interface SpiritSeoResponse {
   updatedAt: string | null
 }
 
+interface SpiritDetailResponse {
+  id: number
+  nameKo: string
+  nameEn: string | null
+  category: string | null
+  producerNameKo: string | null
+  producerNameEn: string | null
+  country: string | null
+  avgScore: number | string | null
+  reviewCount: number | null
+  images?: Array<{
+    imageUrl?: string | null
+    isPrimary?: boolean
+  }> | null
+  variantType?: string | null
+  variantValue?: string | null
+  variantValueEn?: string | null
+  seriesIdentifier?: string | null
+  seriesIdentifierEn?: string | null
+}
+
+interface ReviewResponse {
+  nickname: string | null
+  totalScore: number | string | null
+  comment: string | null
+  noseNote: string | null
+  tasteNote: string | null
+  finishNote: string | null
+  createdAt: string | null
+}
+
+interface PageResponse<T> {
+  content: T[]
+}
+
 export function extractLeadingId(value: string | undefined | null): string | null {
   if (!value) return null
   const decoded = safeDecodeURIComponent(value)
@@ -45,6 +80,19 @@ async function getSpiritSeo(id: string): Promise<SpiritSeoResponse | null> {
     })
     if (!res.ok) return null
     const responseData = await res.json() as ApiResponse<SpiritSeoResponse>
+    return responseData.data ?? null
+  } catch {
+    return null
+  }
+}
+
+async function fetchApiData<T>(path: string, revalidate = 3600): Promise<T | null> {
+  try {
+    const res = await fetch(`${API_URL}${path}`, {
+      next: { revalidate },
+    })
+    if (!res.ok) return null
+    const responseData = await res.json() as ApiResponse<T>
     return responseData.data ?? null
   } catch {
     return null
@@ -318,6 +366,96 @@ export async function getSpiritDetailMetadata(id: string, lang: 'ko' | 'en' | nu
       title: '주류 상세 정보 및 리뷰 (Specs & Reviews) — CaskByCask',
       description: 'CaskByCask에서 각 주류의 상세 정보와 평점 리뷰를 확인해 보세요. Explore detailed specifications and ratings for various spirits.',
     }
+  }
+}
+
+export async function getSpiritDetailJsonLd(id: string, lang: 'ko' | 'en' | null): Promise<object | null> {
+  const numericId = extractLeadingId(id)
+  if (!numericId) return null
+
+  const [seo, spirit, reviewsPage] = await Promise.all([
+    getSpiritSeo(numericId),
+    fetchApiData<SpiritDetailResponse>(`/api/spirits/${numericId}`),
+    fetchApiData<PageResponse<ReviewResponse>>(`/api/spirits/${numericId}/reviews?page=0&size=5`),
+  ])
+
+  if (!spirit) return null
+
+  const isEn = lang === 'en'
+  const hasEdition = spirit.variantType && spirit.variantType !== 'NONE'
+  const nameKo = hasEdition
+    ? formatEditionDisplayName(spirit.nameKo, spirit.seriesIdentifier, spirit.variantValue)
+    : spirit.nameKo
+  const nameEn = hasEdition
+    ? formatEditionDisplayName(
+        spirit.nameEn || spirit.nameKo,
+        spirit.seriesIdentifierEn || spirit.seriesIdentifier,
+        spirit.variantValueEn || spirit.variantValue,
+      )
+    : (spirit.nameEn || spirit.nameKo)
+  const primaryName = isEn ? nameEn : nameKo
+  const secondaryName = isEn ? nameKo : nameEn
+  const primaryProducer = isEn
+    ? (spirit.producerNameEn || spirit.producerNameKo)
+    : spirit.producerNameKo
+  const secondaryProducer = isEn
+    ? spirit.producerNameKo
+    : spirit.producerNameEn
+  const canonical = seo
+    ? (isEn ? seo.canonicalUrlEn : seo.canonicalUrlKo)
+    : `https://caskbycask.net${lang ? `/${lang}` : ''}/spirits/${numericId}`
+  const primaryImage = spirit.images?.find((image) => image.isPrimary)?.imageUrl
+    || spirit.images?.find((image) => image.imageUrl)?.imageUrl
+  const image = seo?.primaryImageUrl
+    || (primaryImage
+      ? (primaryImage.startsWith('http') ? primaryImage : `https://caskbycask.net${primaryImage}`)
+      : 'https://caskbycask.net/og-image.png')
+  const reviewCount = spirit.reviewCount ?? 0
+  const avgScore = spirit.avgScore == null ? null : Number(spirit.avgScore)
+  const reviews = (reviewsPage?.content ?? [])
+    .filter((review) => review.totalScore != null)
+    .map((review) => ({
+      '@type': 'Review',
+      author: {
+        '@type': 'Person',
+        name: review.nickname || 'CaskByCask user',
+      },
+      datePublished: review.createdAt || undefined,
+      reviewBody: review.comment || review.tasteNote || review.noseNote || review.finishNote || undefined,
+      reviewRating: {
+        '@type': 'Rating',
+        ratingValue: Number(review.totalScore),
+        bestRating: 100,
+        worstRating: 0,
+      },
+    }))
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: primaryName,
+    alternateName: secondaryName !== primaryName ? secondaryName : undefined,
+    description: isEn
+      ? `${primaryName} specs, tasting notes, ratings and reviews on CaskByCask.`
+      : `${primaryName} 상세 주류 정보, 시음 노트, 평점과 리뷰를 CaskByCask에서 확인하세요.`,
+    url: canonical,
+    image,
+    category: spirit.category || undefined,
+    countryOfOrigin: spirit.country || undefined,
+    brand: primaryProducer ? {
+      '@type': 'Brand',
+      name: primaryProducer,
+      alternateName: secondaryProducer || undefined,
+    } : undefined,
+    aggregateRating: avgScore != null && reviewCount > 0 ? {
+      '@type': 'AggregateRating',
+      ratingValue: avgScore,
+      ratingCount: reviewCount,
+      reviewCount,
+      bestRating: 100,
+      worstRating: 0,
+    } : undefined,
+    review: reviews.length > 0 ? reviews : undefined,
   }
 }
 

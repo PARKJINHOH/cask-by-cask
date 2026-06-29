@@ -5,6 +5,7 @@ import {
   getDefaultMetadata,
   getSpiritsListMetadata,
   getSpiritDetailMetadata,
+  getSpiritDetailJsonLd,
   getCommunityPostMetadata,
   getCommunityPostJsonLd,
   getByobPostMetadata,
@@ -43,7 +44,9 @@ export default async function CatchAllPage({ params }: Props) {
   const parsed = parsePath(pathSegments)
 
   let jsonLdData: object | null = null
-  if (parsed.type === 'community-detail') {
+  if (parsed.type === 'spirit-detail') {
+    jsonLdData = await getSpiritDetailJsonLd(parsed.spiritId!, parsed.lang)
+  } else if (parsed.type === 'community-detail') {
     jsonLdData = await getCommunityPostJsonLd(parsed.boardType!, parsed.postId!, parsed.lang)
   } else if (parsed.type === 'byob-detail') {
     jsonLdData = await getByobPostJsonLd(parsed.postId!, parsed.lang)
