@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import type { UserProfile } from '@/domain/user/types/user.types'
@@ -6,7 +6,8 @@ import LevelBadge from '@/shared/components/LevelBadge'
 import Spinner from '@/shared/components/Spinner'
 import EmptyState from '@/shared/components/EmptyState'
 import { formatDate } from '@/shared/utils/format'
-import { useInfiniteScoreHistory, useLevelConfigs } from '../hooks/useScoreHistory'
+import Pagination from '@/shared/components/Pagination'
+import { useScoreHistory, useLevelConfigs } from '../hooks/useScoreHistory'
 import {
   MAX_LEVEL,
   calcProgress,
@@ -14,7 +15,6 @@ import {
   LEVELS,
 } from '../types/score.types'
 import type { ScoreHistoryFilterType, LevelInfo } from '../types/score.types'
-import { useState } from 'react'
 import AttendanceGrass from './AttendanceGrass'
 
 // ── 진행 바 컴포넌트 ──────────────────────────────────────────
@@ -202,29 +202,21 @@ const FILTER_TABS: { value: ScoreHistoryFilterType; label: string }[] = [
 function ScoreHistoryList() {
   const { t } = useTranslation()
   const [filter, setFilter] = useState<ScoreHistoryFilterType>('ALL')
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
-    useInfiniteScoreHistory(filter)
+  const [page, setPage] = useState(0)
 
-  // 무한 스크롤 Sentinel
-  const observerRef = useRef<IntersectionObserver | null>(null)
-  const sentinelRef = useCallback(
-    (node: HTMLDivElement | null) => {
-      if (observerRef.current) observerRef.current.disconnect()
-      if (!node || !hasNextPage) return
-      observerRef.current = new IntersectionObserver(
-        (entries) => {
-          if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
-            fetchNextPage()
-          }
-        },
-        { rootMargin: '200px' },
-      )
-      observerRef.current.observe(node)
-    },
-    [fetchNextPage, hasNextPage, isFetchingNextPage],
-  )
+  const { data, isLoading } = useScoreHistory({
+    page,
+    size: 10,
+    type: filter,
+  })
 
-  const allItems = data?.pages.flatMap((p) => p.content) ?? []
+  const handleFilterChange = (newFilter: ScoreHistoryFilterType) => {
+    setFilter(newFilter)
+    setPage(0)
+  }
+
+  const items = data?.content ?? []
+  const totalPages = data?.totalPages ?? 0
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-neutral-100 overflow-hidden">
@@ -233,7 +225,7 @@ function ScoreHistoryList() {
         {FILTER_TABS.map(({ value, label }) => (
           <button
             key={value}
-            onClick={() => setFilter(value)}
+            onClick={() => handleFilterChange(value)}
             className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
               filter === value
                 ? 'text-amber-700 border-b-2 border-amber-600 bg-amber-50/50'
@@ -245,12 +237,12 @@ function ScoreHistoryList() {
         ))}
       </div>
 
-      <div className="px-4">
+      <div className="px-4 pb-4">
         {isLoading ? (
           <div className="flex justify-center py-10">
             <Spinner className="text-amber-600" />
           </div>
-        ) : allItems.length === 0 ? (
+        ) : items.length === 0 ? (
           <div className="py-8">
             <EmptyState
               title={t('maturing.noHistoryTitle', '점수 이력이 없습니다.')}
@@ -259,14 +251,19 @@ function ScoreHistoryList() {
           </div>
         ) : (
           <>
-            {allItems.map((item) => (
-              <HistoryItem key={item.id} item={item} />
-            ))}
-
-            {/* 무한 스크롤 감지 */}
-            <div ref={sentinelRef} className="py-2 flex justify-center">
-              {isFetchingNextPage && <Spinner className="text-amber-400" />}
+            <div className="divide-y divide-neutral-50 mb-4">
+              {items.map((item) => (
+                <HistoryItem key={item.id} item={item} />
+              ))}
             </div>
+
+            {totalPages > 1 && (
+              <Pagination
+                currentPage={page}
+                totalPages={totalPages}
+                onPageChange={setPage}
+              />
+            )}
           </>
         )}
       </div>

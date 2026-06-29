@@ -11,6 +11,7 @@ interface Props {
   endDate?: string;
   onStartDateChange?: (v?: string) => void;
   onEndDateChange?: (v?: string) => void;
+  onReset?: () => void;
   view: 'table' | 'card';
   onCategoryChange: (v?: SpiritCategory) => void;
   onStatusChange: (v?: BottleStatus) => void;
@@ -28,6 +29,7 @@ export function BottleFilterBar({
   onStatusChange,
   onStartDateChange,
   onEndDateChange,
+  onReset,
   onViewChange,
   onAdd,
 }: Props) {
@@ -52,6 +54,30 @@ export function BottleFilterBar({
       </div>
 
       <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+        {onReset && (
+          <button
+            onClick={onReset}
+            title={t('collection.filter.reset', '필터 초기화')}
+            className="h-9 w-9 flex items-center justify-center border border-neutral-300 rounded hover:bg-neutral-50 transition-colors text-neutral-500"
+            type="button"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H18"
+              />
+            </svg>
+          </button>
+        )}
+
         {onStartDateChange && onEndDateChange && (
           <div className="flex items-center gap-1">
             <input

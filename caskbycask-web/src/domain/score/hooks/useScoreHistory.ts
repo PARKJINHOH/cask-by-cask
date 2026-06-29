@@ -26,3 +26,13 @@ export function useInfiniteScoreHistory(type: ScoreHistoryFilterType) {
     enabled: isLoggedIn,
   })
 }
+
+export function useScoreHistory(params: { page: number; size: number; type: ScoreHistoryFilterType }) {
+  const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
+
+  return useQuery({
+    queryKey: ['scoreHistory', 'me', params],
+    queryFn: () => scoreApi.getMyHistory(params).then((res) => res.data.data!),
+    enabled: isLoggedIn,
+  })
+}
