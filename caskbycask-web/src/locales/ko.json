@@ -1573,6 +1573,7 @@
     "attendanceTitle": "출석 현황",
     "attendanceButton": "출석체크 하기",
     "attendanceCompleted": "오늘 출석 완료",
+    "attendancePrompt": "출석체크",
     "overviewContributions": "지난 1년간 {{count}}회 출석",
     "currentStreak": "현재 {{days}}일 연속 출석 중",
     "filter": {
