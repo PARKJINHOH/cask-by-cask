@@ -81,8 +81,8 @@ public class CalendarEventService {
         int safeSize = Math.min(Math.max(size, 1), 500);
         Pageable pageable = PageRequest.of(0, safeSize);
         List<CalendarEvent> events = category == null
-                ? calendarEventRepository.findAllByOrderByCreatedAtDescIdDesc(pageable)
-                : calendarEventRepository.findByCategoryOrderByCreatedAtDescIdDesc(category, pageable);
+                ? calendarEventRepository.findAllByOrderByStartDateDescIdDesc(pageable)
+                : calendarEventRepository.findByCategoryOrderByStartDateDescIdDesc(category, pageable);
 
         return events.stream()
                 .map(AdminEventResponse::from)

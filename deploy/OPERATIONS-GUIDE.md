@@ -18,7 +18,7 @@
 | CDN/DNS | Cloudflare (Proxied, SSL Full strict) |
 | 이메일 | Gmail SMTP (drinkindex.cs@gmail.com) |
 | 운영자 / 개인정보 보호책임자 | 박진호 |
-| 운영 알림 | Slack `#server-prd` (선택) — 상세는 14장 |
+| 운영 알림 | Slack `#server-prd` (선택) — 상세는 15장 |
 
 **서버 구성**: nginx(정적 SPA + `/api` 리버스 프록시) → Spring Boot(127.0.0.1:8080) → MariaDB / Redis (모두 같은 서버 localhost)
 
@@ -104,6 +104,25 @@ systemd: /etc/systemd/system/caskbycask-api.service
 | `SSH_KEY` | 배포용 SSH 개인키 전체 |
 | `SSH_PORT` | `CHANGE_ME_SSH_PORT` (선택) |
 | `SLACK_WEBHOOK_URL` | 배포 결과 알림용 webhook (선택, 서버 `api.env` 와 동일 URL). 미설정 시 알림만 건너뜀 |
+
+### GitHub Actions 장애 시 로컬 PC 수동 배포
+
+GitHub Actions 자체 장애나 GitHub 접속 문제로 워크플로를 실행할 수 없을 때만 사용한다. 절차와 옵션은 [local/README.md](local/README.md)를 기준으로 한다.
+
+```powershell
+.\deploy\local\manual-deploy.ps1 `
+  -Target both `
+  -HostName CHANGE_ME_SERVER_IP `
+  -User CHANGE_ME_SSH_USER `
+  -Port CHANGE_ME_SSH_PORT `
+  -KeyPath "$env:USERPROFILE\.ssh\CHANGE_ME_KEY"
+```
+
+- API: 로컬 PC에서 `bootJar` 빌드 → `/app/spring-boot/app.jar.new` 업로드 → `/app/scripts/deploy-api.sh` 실행.
+- WEB: 기본값은 서버 remote 빌드다. 로컬 PC가 소스를 서버 임시 디렉토리(`/app/manual-build`)로 올리고, 서버에서 `npm ci && npm run build` 후 `/app/next/dist.new`를 만든다.
+- 최종 교체/재시작/헬스체크/롤백은 기존 서버 스크립트가 담당한다.
+- Windows에서 만든 Next.js standalone 산출물을 그대로 운영 Ubuntu aarch64 서버에 올리는 방식은 네이티브 의존성(`sharp`, `@next/swc`) 때문에 기본 금지다. 정말 필요하면 `-WebBuildMode local -AllowCrossPlatformWebBuild`를 명시한다.
+- 이 경로는 Actions 아티팩트/Slack 배포 결과 이력이 남지 않는다. 배포 후 `/app/scripts/status.sh`와 각 헬스체크를 직접 확인한다.
 
 ---
 
@@ -381,12 +400,12 @@ tail -f /app/logs/caskbycask-api-error.log
 - [ ] **월간**: `upload/` · `db_backup/` 외부 백업(Object Storage/스냅샷) 1회
 - [ ] **월간**: ERROR 로그 점검 (`/app/logs/caskbycask-api-error.log`)
 - [ ] **분기**: JWT_SECRET 회전 검토, 관리자 비밀번호 점검
-- [ ] **분기**: SSL/Origin Cert 만료일 — *14장 `check-resources.sh` 가 자동 감시(만료 14일/3일 전 알림)*
+- [ ] **분기**: SSL/Origin Cert 만료일 — *15장 `check-resources.sh` 가 자동 감시(만료 14일/3일 전 알림)*
 - [ ] **분기**: 알람 생존 확인 — `/app/scripts/check-resources.sh` 수동 실행으로 Slack 도달 점검
 
 ---
 
-## 15. 모니터링 (Prometheus + Grafana)
+## 14. 모니터링 (Prometheus + Grafana)
 
 ### 구성 개요
 
@@ -433,7 +452,7 @@ sudo systemctl reload prometheus || sudo kill -HUP $(pidof prometheus)
 
 ---
 
-## 14. 운영 알람 (Slack)
+## 15. 운영 알람 (Slack)
 
 모든 알람은 한 webhook(`SLACK_WEBHOOK_URL`, 채널 `#server-prd`)으로 모인다.
 메시지는 **요약 한 줄 + 간단 본문** 규칙(예: `서버장애 - 용량부족` / `/ 디스크 사용량 99% (임계 95%)`).

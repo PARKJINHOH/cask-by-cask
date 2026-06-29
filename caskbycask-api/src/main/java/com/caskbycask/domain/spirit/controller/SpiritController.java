@@ -94,9 +94,10 @@ public class SpiritController {
             @PathVariable Long id,
             HttpServletRequest request
     ) {
+        SpiritDetailResponse detail = spiritService.getSpiritDetail(id);
         String clientIp = resolveClientIp(request);
         spiritViewCountService.tryIncrementViewCount(id, clientIp);
-        return ResponseEntity.ok(ApiResponse.success(spiritService.getSpiritDetail(id)));
+        return ResponseEntity.ok(ApiResponse.success(detail));
     }
 
     /** 같은 이름의 다른 배치·병입 제품 목록 */

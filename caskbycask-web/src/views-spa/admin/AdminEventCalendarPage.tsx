@@ -267,7 +267,7 @@ export default function AdminEventCalendarPage() {
           <div>
             <h2 className="text-base font-semibold text-neutral-900">등록된 이벤트 목록</h2>
             <p className="text-xs text-neutral-500 mt-1">
-              최신 등록순으로 최대 200건을 표시합니다. 수정, 삭제, 노출 상태를 바로 관리할 수 있습니다.
+              기간 시작일 최신순으로 최대 200건을 표시합니다. 수정, 삭제, 노출 상태를 바로 관리할 수 있습니다.
             </p>
           </div>
           <span className="text-xs text-neutral-500 bg-neutral-100 px-2 py-1 rounded-full">

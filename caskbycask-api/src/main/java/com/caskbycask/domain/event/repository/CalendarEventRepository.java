@@ -62,12 +62,12 @@ public interface CalendarEventRepository extends JpaRepository<CalendarEvent, Lo
     List<CalendarEvent> findBySourceOrderByCreatedAtDesc(EventSource source);
 
     /**
-     * 관리자용: 전체 이벤트를 최근 등록순으로.
+     * 관리자용: 전체 이벤트를 기간 시작일 최신순으로.
      */
-    List<CalendarEvent> findAllByOrderByCreatedAtDescIdDesc(Pageable pageable);
+    List<CalendarEvent> findAllByOrderByStartDateDescIdDesc(Pageable pageable);
 
     /**
-     * 관리자용: 카테고리별 전체 이벤트를 최근 등록순으로.
+     * 관리자용: 카테고리별 전체 이벤트를 기간 시작일 최신순으로.
      */
-    List<CalendarEvent> findByCategoryOrderByCreatedAtDescIdDesc(EventCategory category, Pageable pageable);
+    List<CalendarEvent> findByCategoryOrderByStartDateDescIdDesc(EventCategory category, Pageable pageable);
 }

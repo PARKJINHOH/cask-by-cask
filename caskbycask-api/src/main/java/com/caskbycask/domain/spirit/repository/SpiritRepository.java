@@ -78,6 +78,11 @@ public interface SpiritRepository extends JpaRepository<Spirit, Long>, SpiritQue
                                             @Param("status") SpiritStatus status);
 
     @Modifying
-    @Query("UPDATE Spirit s SET s.viewCount = s.viewCount + 1 WHERE s.id = :id")
+    @Query("""
+            UPDATE Spirit s
+            SET s.viewCount = s.viewCount + 1
+            WHERE s.id = :id
+              AND s.status = com.caskbycask.domain.spirit.entity.enums.SpiritStatus.ACTIVE
+            """)
     void incrementViewCount(@Param("id") Long id);
 }

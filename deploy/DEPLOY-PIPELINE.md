@@ -2,6 +2,7 @@
 
 > 빌드는 GitHub 호스팅 러너에서, 서버에는 **산출물(jar/dist)만** 전송하는 수동 배포.
 > Jenkins/Docker 미사용. DB 마이그레이션(Flyway) 등 운영 SQL 절차는 [../deploy.md](../deploy.md) 참고.
+> GitHub Actions 장애 시 대체 수동 배포는 [local/README.md](local/README.md) 참고.
 
 ---
 
@@ -129,7 +130,42 @@ systemd: /etc/systemd/system/caskbycask-api.service (app 127.0.0.1:8080, actuato
 
 ---
 
-## 7. 롤백 (수동)
+## 7. GitHub Actions 장애 시 대체 수동 배포
+
+비상 시에는 로컬 PC에서 `deploy/local/manual-deploy.ps1`을 실행한다.
+
+```powershell
+.\deploy\local\manual-deploy.ps1 `
+  -Target both `
+  -HostName CHANGE_ME_SERVER_IP `
+  -User CHANGE_ME_SSH_USER `
+  -Port CHANGE_ME_SSH_PORT `
+  -KeyPath "$env:USERPROFILE\.ssh\CHANGE_ME_KEY"
+```
+
+흐름:
+
+```
+로컬 PC
+   ├─ API: bootJar 빌드 → app.jar 업로드
+   └─ WEB: 소스 tar.gz 업로드
+       ↓
+운영 서버
+   ├─ WEB: /app/manual-build 에서 npm ci + npm run build
+   ├─ /app/next/dist.new 준비
+   ├─ deploy-web.sh 실행
+   └─ deploy-api.sh 실행
+```
+
+- WEB은 기본적으로 서버에서 빌드한다. Next.js standalone에는 OS/CPU별 네이티브 의존성이 포함될 수 있어 Windows 산출물을 Ubuntu aarch64 운영 서버에 그대로 올리는 것을 피한다.
+- 서버의 최종 교체/재시작/헬스체크/롤백은 평소 배포와 같은 `/app/scripts/deploy-web.sh`, `/app/scripts/deploy-api.sh`를 사용한다.
+- 이 경로는 Oracle Object Storage 아티팩트와 Actions Slack 결과 알림을 남기지 않는다. 배포 후 `/app/scripts/status.sh`로 직접 확인한다.
+
+상세 옵션은 [local/README.md](local/README.md)를 따른다.
+
+---
+
+## 8. 롤백 (수동)
 
 자동 롤백은 "직전 배포가 안 뜰 때" 동작한다. 운영 중 수동 롤백:
 
@@ -150,7 +186,7 @@ rm -rf dist && mv dist_<타임스탬프> dist
 
 ---
 
-## 8. 로그 / 백업 정책
+## 9. 로그 / 백업 정책
 
 ### 로그
 - jar 은 systemd 가 관리하는 **서비스**로 실행된다 (`java -jar &` 같은 백그라운드 실행 아님).
