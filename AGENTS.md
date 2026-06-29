@@ -5,7 +5,6 @@
 백엔드(caskbycask-api)와 프론트엔드(caskbycask-web) 두 프로젝트로 구성.
 
 ## 핵심 원칙
-- 빠르게보다 정확하게: 각 Step 완료 후 검증 체크리스트 통과 확인 후 진행
 - 보안: 모든 쿼리는 로그인 사용자 userId 기준 필터링, 타인 데이터 접근 금지
 - 아키텍처: 백엔드·프론트엔드 모두 DDD 구조
 - 최고관리자는 랭킹, 점수획득, 점수차감, 출석체크 등 관련된건 X.
@@ -22,7 +21,6 @@
   - V1 재생성이 필요하면 엔티티로부터 Hibernate 스키마를 다시 덤프해 교체. (한글 seed 편집 시 PowerShell `Get-Content -Raw` 금지 — UTF-8 깨짐. .NET `File.ReadAllText` 사용)
 - 공통 응답: ApiResponse<T> 래퍼
 - 예외: GlobalExceptionHandler + ErrorCode Enum
-- 구현 후 항상 gradle build 테스트 해줘
 - JAVA_HOME = "C:\Users\EM_NB139\.jdks\temurin-21.0.10"
 - JAVA_HOME = "C:\Users\JINHOH_PC\.jdks\temurin-21.0.10"
 
@@ -83,7 +81,5 @@
 
 # 운영 서비스 주의사항
 현재 실제 운영 중인 서비스이다.
-기존 기능이 변경될 가능성이 있는 작업은
-반드시 영향 범위를 먼저 설명한 후 수정한다.
-추측해서 구현하지 말고,
-불명확한 요구사항은 질문 후 구현한다.
+기존 기능이 변경될 가능성이 있는 작업은 반드시 영향 범위를 먼저 설명한 후 수정한다.
+추측해서 구현하지 말고, 불명확한 요구사항은 질문 후 구현한다.

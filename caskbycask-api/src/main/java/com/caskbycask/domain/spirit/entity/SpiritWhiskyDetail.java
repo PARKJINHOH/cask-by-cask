@@ -63,15 +63,15 @@ public class SpiritWhiskyDetail {
     private Boolean isPeated;
 
     /** 피트 강도 (ppm). isPeated=true 일 때만 유효. */
-    @Column
+    @Column(precision = 5, scale = 1)
     @Comment("페놀 수치(ppm)")
     private BigDecimal phenolPpm;
 
-    @Column(name = "phenol_ppm_min")
+    @Column(name = "phenol_ppm_min", precision = 5, scale = 1)
     @Comment("최소 페놀 수치(ppm)")
     private BigDecimal phenolPpmMin;
 
-    @Column(name = "phenol_ppm_max")
+    @Column(name = "phenol_ppm_max", precision = 5, scale = 1)
     @Comment("최대 페놀 수치(ppm)")
     private BigDecimal phenolPpmMax;
 

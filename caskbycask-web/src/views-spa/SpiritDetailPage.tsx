@@ -119,10 +119,14 @@ function formatPhenolPpm(
   min: number | null | undefined,
   max: number | null | undefined,
 ): string | null {
-  if (min != null && max != null) return min === max ? `${min} ppm` : `${min}~${max} ppm`
-  if (min != null) return `${min}+ ppm`
-  if (max != null) return `~${max} ppm`
-  return ppm != null ? `${ppm} ppm` : null
+  const formatPpmValue = (value: number) => value.toFixed(1)
+
+  if (min != null && max != null) {
+    return min === max ? `${formatPpmValue(min)} ppm` : `${formatPpmValue(min)}~${formatPpmValue(max)} ppm`
+  }
+  if (min != null) return `${formatPpmValue(min)}+ ppm`
+  if (max != null) return `~${formatPpmValue(max)} ppm`
+  return ppm != null ? `${formatPpmValue(ppm)} ppm` : null
 }
 type ListReturnState = { returnTo?: string }
 
