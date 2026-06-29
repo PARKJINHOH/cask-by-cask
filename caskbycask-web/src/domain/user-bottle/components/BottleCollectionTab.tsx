@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { UserBottle, SpiritCategory, BottleStatus } from '../types/userBottle.types';
 import { useMyBottles, useDeleteBottle, useToggleBottleStatus, useToggleBottlePublic } from '../hooks/useUserBottle';
@@ -6,24 +6,48 @@ import { BottleStats } from './BottleStats';
 import { BottleFilterBar } from './BottleFilterBar';
 import { BottleList } from './BottleList';
 import { BottleFormModal } from './BottleFormModal';
+import { BottleDetailModal } from './BottleDetailModal';
 
 export function BottleCollectionTab() {
   const { t } = useTranslation();
   const [category, setCategory] = useState<SpiritCategory | undefined>();
   const [status, setStatus] = useState<BottleStatus | undefined>();
-  const [year, setYear] = useState<number | undefined>();
+  const [startDate, setStartDate] = useState<string | undefined>();
+  const [endDate, setEndDate] = useState<string | undefined>();
   const [view, setView] = useState<'table' | 'card'>('table');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<UserBottle | undefined>();
+  const [detailBottle, setDetailBottle] = useState<UserBottle | null>(null);
 
-  const { data, isLoading } = useMyBottles({ category, status, year });
+  const { data, isLoading } = useMyBottles({ category, status });
   const deleteMut = useDeleteBottle();
   const toggleStatusMut = useToggleBottleStatus();
   const togglePublicMut = useToggleBottlePublic();
 
+  // 클라이언트 사이드 날짜 범위 필터링
+  const filteredBottles = useMemo(() => {
+    const bottles = data?.bottles ?? [];
+    if (!startDate && !endDate) return bottles;
+    return bottles.filter(b => {
+      if (!b.purchaseDate) return false;
+      if (startDate && b.purchaseDate < startDate) return false;
+      if (endDate && b.purchaseDate > endDate) return false;
+      return true;
+    });
+  }, [data?.bottles, startDate, endDate]);
+
   const handleDelete = (b: UserBottle) => {
     const name = b.spiritNameKo || b.spiritNameText || '';
-    if (confirm(t('collection.deleteConfirm', { name }))) deleteMut.mutate(b.id);
+    if (confirm(t('collection.deleteConfirm', { name }))) {
+      deleteMut.mutate(b.id);
+      setDetailBottle(null);
+    }
+  };
+
+  const handleEditFromDetail = (b: UserBottle) => {
+    setDetailBottle(null);
+    setEditing(b);
+    setModalOpen(true);
   };
 
   if (isLoading) return <div className="py-8 text-center text-neutral-400">{t('common.loading')}</div>;
@@ -32,18 +56,28 @@ export function BottleCollectionTab() {
     <div className="space-y-3">
       {data?.stats && <BottleStats stats={data.stats} />}
       <BottleFilterBar
-        category={category} status={status} year={year} years={data?.purchaseYears ?? []} view={view}
+        category={category} status={status}
+        startDate={startDate} endDate={endDate}
+        view={view}
         onCategoryChange={setCategory} onStatusChange={setStatus}
-        onYearChange={setYear}
+        onStartDateChange={setStartDate} onEndDateChange={setEndDate}
         onViewChange={setView}
         onAdd={() => { setEditing(undefined); setModalOpen(true); }}
       />
       <BottleList
-        bottles={data?.bottles ?? []} view={view} editable
-        onEdit={b => { setEditing(b); setModalOpen(true); }}
+        bottles={filteredBottles} view={view} editable
+        onDetail={b => setDetailBottle(b)}
         onDelete={handleDelete}
         onToggleStatus={id => toggleStatusMut.mutate(id)}
         onTogglePublic={id => togglePublicMut.mutate(id)}
+      />
+      <BottleDetailModal
+        bottle={detailBottle}
+        open={!!detailBottle}
+        editable
+        onClose={() => setDetailBottle(null)}
+        onEdit={handleEditFromDetail}
+        onDelete={handleDelete}
       />
       <BottleFormModal open={modalOpen} onClose={() => setModalOpen(false)} editing={editing} />
     </div>

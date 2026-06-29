@@ -4,13 +4,13 @@ import type { UserBottle } from '../types/userBottle.types';
 interface Props {
   bottle: UserBottle;
   editable?: boolean;
-  onEdit?: (b: UserBottle) => void;
+  onDetail?: (b: UserBottle) => void;
   onDelete?: (b: UserBottle) => void;
   onToggleStatus?: (id: number) => void;
   onTogglePublic?: (id: number) => void;
 }
 
-export function BottleCard({ bottle: b, editable, onEdit, onDelete, onToggleStatus, onTogglePublic }: Props) {
+export function BottleCard({ bottle: b, editable, onDetail, onDelete, onToggleStatus, onTogglePublic }: Props) {
   const { t, i18n } = useTranslation();
   const isEn = i18n.language === 'en';
   const money = new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 });
@@ -36,7 +36,12 @@ export function BottleCard({ bottle: b, editable, onEdit, onDelete, onToggleStat
           </button>
         )}
       </div>
-      <h3 className="font-semibold text-neutral-900 text-sm leading-snug mt-1">{name}</h3>
+      <h3
+        onClick={() => onDetail?.(b)}
+        className="font-semibold text-neutral-900 text-sm leading-snug mt-1 cursor-pointer hover:text-amber-600 hover:underline transition-colors"
+      >
+        {name}
+      </h3>
       {b.batch && <p className="text-xs text-neutral-400 mt-0.5 truncate" title={b.batch}>{b.batch}</p>}
       <div className="flex items-center justify-between gap-3 mt-2">
         <span className="text-sm font-medium whitespace-nowrap">
@@ -54,9 +59,6 @@ export function BottleCard({ bottle: b, editable, onEdit, onDelete, onToggleStat
       </div>
       {editable && (
         <div className="flex flex-nowrap gap-3 mt-3 pt-2 border-t border-neutral-100">
-          <button onClick={() => onEdit?.(b)} className="text-xs text-neutral-500 hover:text-amber-600 whitespace-nowrap">
-            {t('collection.editBottle')}
-          </button>
           <button onClick={() => onDelete?.(b)} className="text-xs text-neutral-500 hover:text-red-500 whitespace-nowrap">
             {t('collection.deleteBottle')}
           </button>

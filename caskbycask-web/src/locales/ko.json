@@ -1333,7 +1333,10 @@
       "WHISKY": "위스키",
       "COGNAC": "꼬냑",
       "WINE": "와인",
-      "OTHER": "기타"
+      "OTHER": "기타",
+      "startDate": "시작일",
+      "endDate": "종료일",
+      "dateSeparator": "~"
     },
     "status": {
       "OPENED": "오픈",
@@ -1385,7 +1388,21 @@
       "store": "매장",
       "status": "상태",
       "visibility": "공개",
-      "actions": "편집"
+      "actions": ""
+    },
+    "detail": {
+      "title": "바틀 상세",
+      "purchaseDate": "구매일",
+      "category": "종류",
+      "batch": "배치 / 캐스크번호",
+      "bottlingYear": "병입년도",
+      "price": "금액",
+      "store": "구입 매장",
+      "status": "상태",
+      "visibility": "공개 여부",
+      "memo": "메모",
+      "noMemo": "메모 없음",
+      "noData": "-"
     },
     "publicPage": {
       "title": "{{nickname}}의 컬렉션"

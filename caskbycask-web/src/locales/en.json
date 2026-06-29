@@ -1333,7 +1333,10 @@
       "WHISKY": "Whisky",
       "COGNAC": "Cognac",
       "WINE": "Wine",
-      "OTHER": "Other"
+      "OTHER": "Other",
+      "startDate": "Start",
+      "endDate": "End",
+      "dateSeparator": "~"
     },
     "status": {
       "OPENED": "Opened",
@@ -1385,7 +1388,21 @@
       "store": "Store",
       "status": "Status",
       "visibility": "Visibility",
-      "actions": "Edit"
+      "actions": ""
+    },
+    "detail": {
+      "title": "Bottle Details",
+      "purchaseDate": "Purchase Date",
+      "category": "Category",
+      "batch": "Batch / Cask No.",
+      "bottlingYear": "Bottling Year",
+      "price": "Price",
+      "store": "Store",
+      "status": "Status",
+      "visibility": "Visibility",
+      "memo": "Memo",
+      "noMemo": "No memo",
+      "noData": "-"
     },
     "publicPage": {
       "title": "{{nickname}}'s Collection"
