@@ -53,7 +53,7 @@ public class UserBottle extends BaseTimeEntity {
     @Comment("카테고리 — WHISKY/WINE/COGNAC/OTHER")
     private SpiritCategory category;
 
-    @Column(name = "purchase_date", nullable = false)
+    @Column(name = "purchase_date")
     @Comment("구매 일자")
     private LocalDate purchaseDate;
 
@@ -65,11 +65,11 @@ public class UserBottle extends BaseTimeEntity {
     @Comment("병입 연도")
     private String bottlingYear;
 
-    @Column(name = "price", nullable = false)
+    @Column(name = "price")
     @Comment("구매 가격(원)")
     private Integer price;
 
-    @Column(name = "store", nullable = false, length = 200)
+    @Column(name = "store", length = 200)
     @Comment("구매처")
     private String store;
 

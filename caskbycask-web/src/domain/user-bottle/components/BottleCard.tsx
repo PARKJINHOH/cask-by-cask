@@ -13,9 +13,11 @@ interface Props {
 export function BottleCard({ bottle: b, editable, onEdit, onDelete, onToggleStatus, onTogglePublic }: Props) {
   const { t, i18n } = useTranslation();
   const isEn = i18n.language === 'en';
+  const money = new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 });
   const name = b.spiritId
     ? (isEn ? (b.spiritNameEn || b.spiritNameKo || '') : (b.spiritNameKo || ''))
     : (b.spiritNameText || '');
+  const meta = [b.purchaseDate, b.store].filter(Boolean).join(' · ');
 
   return (
     <div className="bg-white border border-neutral-200 rounded-lg p-4 hover:shadow-md transition-shadow">
@@ -34,11 +36,11 @@ export function BottleCard({ bottle: b, editable, onEdit, onDelete, onToggleStat
         )}
       </div>
       <h3 className="font-semibold text-neutral-900 text-sm leading-snug mt-1">{name}</h3>
-      <p className="text-xs text-neutral-400 mt-0.5">{b.purchaseDate} · {b.store}</p>
+      {meta && <p className="text-xs text-neutral-400 mt-0.5">{meta}</p>}
       {b.bottlingYear && <p className="text-xs text-neutral-400">{b.bottlingYear}</p>}
       <div className="flex items-center justify-between mt-2">
         <span className="text-sm font-medium">
-          {b.price > 0 ? `₩${b.price.toLocaleString()}` : '-'}
+          {b.price != null && b.price > 0 ? money.format(b.price) : '-'}
         </span>
         <button onClick={() => editable && onToggleStatus?.(b.id)} disabled={!editable}
           className={`text-xs px-2 py-0.5 rounded-full ${

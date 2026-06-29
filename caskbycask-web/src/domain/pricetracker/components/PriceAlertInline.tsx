@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { useMyPriceAlerts, useUpsertPriceAlert, useDeletePriceAlert } from '../hooks/usePriceChart'
+import { formatOptionalPriceInput, formatPriceInput, parsePriceInput } from '@/shared/utils/moneyInput'
 
 const krw = new Intl.NumberFormat('ko-KR')
 
@@ -28,7 +29,7 @@ export default function PriceAlertInline({ spiritId }: { spiritId: number }) {
   }
 
   const submit = () => {
-    const price = Number(value.replace(/[^0-9]/g, ''))
+    const price = parsePriceInput(value)
     if (!price || price <= 0) return
     upsert.mutate({ spiritId, targetPrice: price }, { onSuccess: () => { setEditing(false); setValue('') } })
   }
@@ -43,7 +44,7 @@ export default function PriceAlertInline({ spiritId }: { spiritId: number }) {
         </span>
         <div className="ml-auto flex items-center gap-2">
           <button
-            onClick={() => { setEditing(true); setValue(String(existing.targetPriceKrw)) }}
+            onClick={() => { setEditing(true); setValue(formatPriceInput(existing.targetPriceKrw)) }}
             className="text-xs text-primary-700 hover:underline"
           >
             {t('common.edit', '수정')}
@@ -66,7 +67,7 @@ export default function PriceAlertInline({ spiritId }: { spiritId: number }) {
       <div className="flex items-center border border-neutral-300 rounded-lg overflow-hidden bg-white focus-within:ring-2 focus-within:ring-primary-200">
         <input
           value={value}
-          onChange={(e) => setValue(e.target.value.replace(/[^0-9]/g, ''))}
+          onChange={(e) => setValue(formatOptionalPriceInput(e.target.value))}
           onKeyDown={(e) => e.key === 'Enter' && submit()}
           inputMode="numeric"
           pattern="[0-9]*"

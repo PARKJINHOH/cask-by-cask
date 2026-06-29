@@ -33,13 +33,15 @@ public class UserBottleService {
     public UserBottleResponse createBottle(Long userId, UserBottleRequest req) {
         var user = userRepository.getByIdOrThrow(userId);
         Spirit spirit = resolveSpirit(req.spiritId());
+        String spiritNameText = normalizeText(req.spiritNameText());
+        validateBottleName(spirit, spiritNameText);
 
         UserBottle bottle = UserBottle.builder()
-            .user(user).spirit(spirit).spiritNameText(req.spiritNameText())
+            .user(user).spirit(spirit).spiritNameText(spiritNameText)
             .category(req.category()).purchaseDate(req.purchaseDate())
-            .batch(req.batch()).bottlingYear(req.bottlingYear())
-            .price(req.price()).store(req.store())
-            .status(req.status()).isPublic(req.isPublic()).memo(req.memo())
+            .batch(normalizeText(req.batch())).bottlingYear(normalizeText(req.bottlingYear()))
+            .price(req.price()).store(normalizeText(req.store()))
+            .status(req.status()).isPublic(Boolean.TRUE.equals(req.isPublic())).memo(normalizeText(req.memo()))
             .build();
 
         return UserBottleResponse.from(userBottleRepository.save(bottle));
@@ -71,9 +73,11 @@ public class UserBottleService {
     public UserBottleResponse updateBottle(Long bottleId, Long userId, UserBottleRequest req) {
         UserBottle bottle = findAndValidateOwner(bottleId, userId);
         Spirit spirit = resolveSpirit(req.spiritId());
-        bottle.update(spirit, req.spiritNameText(), req.category(),
-            req.purchaseDate(), req.batch(), req.bottlingYear(),
-            req.price(), req.store(), req.status(), req.isPublic(), req.memo());
+        String spiritNameText = normalizeText(req.spiritNameText());
+        validateBottleName(spirit, spiritNameText);
+        bottle.update(spirit, spiritNameText, req.category(),
+            req.purchaseDate(), normalizeText(req.batch()), normalizeText(req.bottlingYear()),
+            req.price(), normalizeText(req.store()), req.status(), Boolean.TRUE.equals(req.isPublic()), normalizeText(req.memo()));
         return UserBottleResponse.from(bottle);
     }
 
@@ -107,6 +111,18 @@ public class UserBottleService {
         if (spiritId == null) return null;
         return spiritRepository.findById(spiritId)
             .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_NOT_FOUND));
+    }
+
+    private void validateBottleName(Spirit spirit, String spiritNameText) {
+        if (spirit == null && spiritNameText == null) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+    }
+
+    private String normalizeText(String value) {
+        if (value == null) return null;
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private UserBottleListResponse toListResponse(Page<UserBottle> page, BottleStatsDto stats,

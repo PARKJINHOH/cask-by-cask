@@ -23,6 +23,7 @@ public record UserBottleResponse(
     BottleStatus status,
     Boolean isPublic,
     String memo,
+    List<UserBottleImageResponse> images,
     List<String> imageUrls,
     LocalDateTime createdAt
 ) {
@@ -32,13 +33,16 @@ public record UserBottleResponse(
         List<String> urls = b.getImages().stream()
             .map(img -> img.getImageUrl())
             .toList();
+        List<UserBottleImageResponse> images = b.getImages().stream()
+            .map(UserBottleImageResponse::from)
+            .toList();
         return new UserBottleResponse(
             b.getId(),
             b.getSpirit() != null ? b.getSpirit().getId() : null,
             nameKo, nameEn, b.getSpiritNameText(),
             b.getCategory(), b.getPurchaseDate(), b.getBatch(), b.getBottlingYear(),
             b.getPrice(), b.getStore(), b.getStatus(), b.getIsPublic(),
-            b.getMemo(), urls, b.getCreatedAt()
+            b.getMemo(), images, urls, b.getCreatedAt()
         );
     }
 }

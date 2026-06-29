@@ -59,15 +59,23 @@ public class UserBottleImageService {
         userBottleService.findAndValidateOwner(bottleId, userId);
         UserBottleImage image = userBottleImageRepository.findByIdAndUserBottleId(imageId, bottleId)
             .orElseThrow(() -> new CustomException(ErrorCode.BOTTLE_IMAGE_NOT_FOUND));
-        // Delete physical file
-        try {
-            String urlPath = image.getImageUrl(); // e.g. "/uploads/bottles/1/uuid.webp"
-            Path filePath = Paths.get(uploadPath + urlPath);
-            Files.deleteIfExists(filePath);
-        } catch (IOException e) {
-            log.warn("이미지 파일 삭제 실패: {}", image.getImageUrl());
-        }
+        deletePhysicalFile(image.getImageUrl());
         userBottleImageRepository.delete(image);
+    }
+
+    @Transactional
+    public void replaceImage(Long bottleId, Long imageId, Long userId, MultipartFile file) {
+        userBottleService.findAndValidateOwner(bottleId, userId);
+        UserBottleImage image = userBottleImageRepository.findByIdAndUserBottleId(imageId, bottleId)
+            .orElseThrow(() -> new CustomException(ErrorCode.BOTTLE_IMAGE_NOT_FOUND));
+        validateFile(file);
+
+        String ext = getExt(file.getOriginalFilename());
+        String filename = UUID.randomUUID() + "." + ext;
+        String oldUrl = image.getImageUrl();
+        String relativeUrl = saveFile(bottleId, filename, file);
+        image.replaceImageUrl(relativeUrl);
+        deletePhysicalFile(oldUrl);
     }
 
     private void validateFile(MultipartFile file) {
@@ -90,12 +98,24 @@ public class UserBottleImageService {
                 Files.write(dir.resolve(webpName), webp);
                 return "/uploads/bottles/" + bottleId + "/" + webpName;
             } catch (Exception e) {
-                log.warn("WebP 변환 실패, 원본 저장: {}", e.getMessage());
+                log.warn("WebP conversion failed, saving original: {}", e.getMessage());
                 Files.write(dir.resolve(filename), file.getBytes());
                 return "/uploads/bottles/" + bottleId + "/" + filename;
             }
         } catch (IOException e) {
             throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    private void deletePhysicalFile(String imageUrl) {
+        try {
+            String relativePath = imageUrl.startsWith("/uploads/")
+                ? imageUrl.substring("/uploads/".length())
+                : imageUrl.replaceFirst("^/+", "");
+            Path filePath = Paths.get(uploadPath, relativePath);
+            Files.deleteIfExists(filePath);
+        } catch (IOException e) {
+            log.warn("Failed to delete bottle image file: {}", imageUrl);
         }
     }
 

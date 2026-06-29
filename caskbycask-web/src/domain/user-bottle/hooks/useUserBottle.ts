@@ -62,3 +62,21 @@ export function useUploadBottleImage() {
   });
 }
 
+export function useReplaceBottleImage() {
+  const invalidate = useInvalidateMyBottles();
+  return useMutation({
+    mutationFn: ({ bottleId, imageId, file }: { bottleId: number; imageId: number; file: File }) =>
+      userBottleApi.replaceImage(bottleId, imageId, file),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteBottleImage() {
+  const invalidate = useInvalidateMyBottles();
+  return useMutation({
+    mutationFn: ({ bottleId, imageId }: { bottleId: number; imageId: number }) =>
+      userBottleApi.deleteImage(bottleId, imageId),
+    onSuccess: invalidate,
+  });
+}
+

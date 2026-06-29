@@ -34,6 +34,14 @@ export const userBottleApi = {
     });
   },
 
+  replaceImage: (bottleId: number, imageId: number, file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return axiosInstance.put<ApiResponse<void>>(`/api/bottles/${bottleId}/images/${imageId}`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+
   deleteImage: (bottleId: number, imageId: number) =>
     axiosInstance.delete<ApiResponse<void>>(`/api/bottles/${bottleId}/images/${imageId}`),
 

@@ -15,6 +15,7 @@ import type {
 } from '@/domain/pricetracker/types/pricetracker.types'
 import type { SpiritListItem } from '@/domain/spirit/types/spirit.types'
 import { getLocalizedSpiritListNames } from '@/domain/spirit/utils/spiritDisplayName'
+import { formatOptionalPriceInput, parsePriceInput } from '@/shared/utils/moneyInput'
 
 const DISCOUNT_TYPES: DiscountType[] = ['PAYMENT', 'BUNDLE', 'COUPON', 'OTHER']
 const DUTYFREE_CHANNELS: DutyFreeChannel[] = ['AIRPORT', 'CITY', 'INFLIGHT', 'ONLINE']
@@ -93,18 +94,18 @@ export default function PriceRegisterPage() {
 
   // ── 자동 계산 ────────────────────────────────────────
   const computedActual = useMemo(() => {
-    const s = Number(salePrice) || 0
-    const p = Number(payback) || 0
+    const s = parsePriceInput(salePrice)
+    const p = parsePriceInput(payback)
     return s ? Math.max(s - p, 0) : 0
   }, [salePrice, payback])
-  const actualPrice = actualOverride !== '' ? Number(actualOverride) : computedActual
+  const actualPrice = actualOverride !== '' ? parsePriceInput(actualOverride) : computedActual
 
   const discountSum = useMemo(
     () => discountItems.reduce((acc, d) => acc + (Number(d.amount) || 0), 0),
     [discountItems],
   )
-  const feelPrice = Math.max((Number(basePrice) || 0) - discountSum, 0) // 면세 체감가 (USD)
-  const krwPreview = feelPrice && Number(exchangeRate) ? Math.round(feelPrice * Number(exchangeRate)) : 0
+  const feelPrice = Math.max(parsePriceInput(basePrice) - discountSum, 0) // 면세 체감가 (USD)
+  const krwPreview = feelPrice && parsePriceInput(exchangeRate) ? Math.round(feelPrice * parsePriceInput(exchangeRate)) : 0
 
   // ── 핸들러 ───────────────────────────────────────────
   const handleImageUpload = async (file: File) => {
@@ -134,8 +135,8 @@ export default function PriceRegisterPage() {
   // ── 유효성 ───────────────────────────────────────────
   const canSubmit = useMemo(() => {
     if (!selectedSpirit) return false
-    if (isDutyFree) return !!basePrice && !!exchangeRate
-    return !!salePrice
+    if (isDutyFree) return parsePriceInput(basePrice) > 0 && parsePriceInput(exchangeRate) > 0
+    return parsePriceInput(salePrice) > 0
   }, [selectedSpirit, isDutyFree, basePrice, exchangeRate, salePrice])
 
   const handleSubmit = async () => {
@@ -149,11 +150,11 @@ export default function PriceRegisterPage() {
         dutyfreeChannel: isDutyFree && useSuggest ? channel : null,
         currency,
         isAnonymous: authorMode === 'ANONYMOUS',
-        regularPrice: !isDutyFree && regularPrice ? Number(regularPrice) : null,
-        salePrice: isDutyFree ? Number(basePrice) : Number(salePrice),
-        paybackAmount: !isDutyFree && payback ? Number(payback) : null,
+        regularPrice: !isDutyFree && regularPrice ? parsePriceInput(regularPrice) : null,
+        salePrice: isDutyFree ? parsePriceInput(basePrice) : parsePriceInput(salePrice),
+        paybackAmount: !isDutyFree && payback ? parsePriceInput(payback) : null,
         finalPrice: isDutyFree ? feelPrice : actualPrice,
-        exchangeRate: isDutyFree && exchangeRate ? Number(exchangeRate) : null,
+        exchangeRate: isDutyFree && exchangeRate ? parsePriceInput(exchangeRate) : null,
         purchasedAt: purchasedAt || null,
         description: description || null,
         imageIds: images.map((i) => i.id),
@@ -327,7 +328,7 @@ export default function PriceRegisterPage() {
                 <LabeledInput label={t('price.register.payback')} value={payback} onChange={setPayback} suffix={moneyUnit} />
                 <LabeledInput
                   label={t('price.register.finalPrice')}
-                  value={actualOverride !== '' ? actualOverride : (computedActual ? String(computedActual) : '')}
+                  value={actualOverride !== '' ? actualOverride : formatOptionalPriceInput(computedActual)}
                   onChange={setActualOverride}
                   suffix={moneyUnit}
                   hint={t('price.register.autoCalc')}
@@ -360,10 +361,11 @@ export default function PriceRegisterPage() {
                         className="flex-1 border border-neutral-300 rounded-lg px-2 py-1.5 text-xs"
                       />
                       <input
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
                         placeholder="$"
-                        value={item.amount || ''}
-                        onChange={(e) => patchDiscount(idx, { amount: Number(e.target.value) })}
+                        value={item.amount ? formatOptionalPriceInput(item.amount) : ''}
+                        onChange={(e) => patchDiscount(idx, { amount: parsePriceInput(e.target.value) })}
                         className="w-20 border border-neutral-300 rounded-lg px-2 py-1.5 text-xs"
                       />
                       <button onClick={() => removeDiscountItem(idx)} className="text-neutral-300 hover:text-red-400 text-lg leading-none">×</button>
@@ -523,9 +525,10 @@ function LabeledInput({
       </label>
       <div className="flex items-center bg-white border border-neutral-300 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-primary-200">
         <input
-          type="number"
+          type="text"
+          inputMode="numeric"
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => onChange(formatOptionalPriceInput(e.target.value))}
           className="flex-1 px-3 py-2 text-sm focus:outline-none min-w-0"
         />
         {suffix && <span className="pr-3 text-xs text-neutral-400 shrink-0">{suffix}</span>}

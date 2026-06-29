@@ -13,6 +13,7 @@ interface Props {
 export function BottleTable({ bottles, editable, onEdit, onDelete, onToggleStatus, onTogglePublic }: Props) {
   const { t, i18n } = useTranslation();
   const isEn = i18n.language === 'en';
+  const money = new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 });
 
   const displayName = (b: UserBottle) =>
     b.spiritId
@@ -39,14 +40,14 @@ export function BottleTable({ bottles, editable, onEdit, onDelete, onToggleStatu
               <td className="px-3 py-2 text-amber-600 font-medium whitespace-nowrap text-xs">
                 {t(`collection.filter.${b.category}`)}
               </td>
-              <td className="px-3 py-2 text-neutral-500 whitespace-nowrap">{b.purchaseDate}</td>
+              <td className="px-3 py-2 text-neutral-500 whitespace-nowrap">{b.purchaseDate ?? '-'}</td>
               <td className="px-3 py-2 font-medium">{displayName(b)}</td>
               <td className="px-3 py-2 text-neutral-400">{b.batch ?? '-'}</td>
               <td className="px-3 py-2 text-neutral-400">{b.bottlingYear ?? '-'}</td>
               <td className="px-3 py-2 text-right whitespace-nowrap">
-                {b.price > 0 ? `₩${b.price.toLocaleString()}` : '-'}
+                {b.price != null && b.price > 0 ? money.format(b.price) : '-'}
               </td>
-              <td className="px-3 py-2 text-neutral-600 max-w-[120px] truncate" title={b.store}>{b.store}</td>
+              <td className="px-3 py-2 text-neutral-600 max-w-[120px] truncate" title={b.store ?? undefined}>{b.store ?? '-'}</td>
               <td className="px-3 py-2 text-center">
                 <button onClick={() => editable && onToggleStatus?.(b.id)} disabled={!editable}
                   className={`text-xs px-2 py-0.5 rounded-full ${

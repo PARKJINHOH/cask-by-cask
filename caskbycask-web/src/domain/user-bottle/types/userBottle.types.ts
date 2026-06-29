@@ -1,6 +1,11 @@
 export type BottleStatus = 'OPENED' | 'UNOPENED';
 export type SpiritCategory = 'WHISKY' | 'COGNAC' | 'WINE' | 'OTHER';
 
+export interface UserBottleImage {
+  id: number;
+  imageUrl: string;
+}
+
 export interface UserBottle {
   id: number;
   spiritId: number | null;
@@ -8,14 +13,15 @@ export interface UserBottle {
   spiritNameEn: string | null;
   spiritNameText: string | null;
   category: SpiritCategory;
-  purchaseDate: string;
+  purchaseDate: string | null;
   batch: string | null;
   bottlingYear: string | null;
-  price: number;
-  store: string;
+  price: number | null;
+  store: string | null;
   status: BottleStatus;
   isPublic: boolean;
   memo: string | null;
+  images?: UserBottleImage[];
   imageUrls: string[];
   createdAt: string;
 }
@@ -44,11 +50,11 @@ export interface UserBottleRequest {
   spiritId?: number;
   spiritNameText?: string;
   category: SpiritCategory;
-  purchaseDate: string;
+  purchaseDate?: string | null;
   batch?: string;
   bottlingYear?: string;
-  price: number;
-  store: string;
+  price?: number | null;
+  store?: string | null;
   status: BottleStatus;
   isPublic: boolean;
   memo?: string;

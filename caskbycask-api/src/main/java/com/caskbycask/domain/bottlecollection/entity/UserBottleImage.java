@@ -30,4 +30,8 @@ public class UserBottleImage {
     @Column(name = "sort_order", nullable = false)
     @Comment("정렬 순서")
     private Integer sortOrder;
+
+    public void replaceImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
+    }
 }

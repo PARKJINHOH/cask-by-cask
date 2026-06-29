@@ -1,6 +1,8 @@
 package com.caskbycask.domain.bottlecollection.controller;
 
-import com.caskbycask.domain.bottlecollection.dto.*;
+import com.caskbycask.domain.bottlecollection.dto.UserBottleListResponse;
+import com.caskbycask.domain.bottlecollection.dto.UserBottleRequest;
+import com.caskbycask.domain.bottlecollection.dto.UserBottleResponse;
 import com.caskbycask.domain.bottlecollection.entity.BottleStatus;
 import com.caskbycask.domain.bottlecollection.service.UserBottleImageService;
 import com.caskbycask.domain.bottlecollection.service.UserBottleService;
@@ -12,7 +14,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
@@ -92,6 +102,16 @@ public class UserBottleController {
         return ResponseEntity.ok(ApiResponse.success());
     }
 
+    @PutMapping("/api/bottles/{id}/images/{imageId}")
+    public ResponseEntity<ApiResponse<Void>> replaceImage(
+            @PathVariable Long id,
+            @PathVariable Long imageId,
+            @RequestParam("file") MultipartFile file,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        userBottleImageService.replaceImage(id, imageId, userDetails.getUserId(), file);
+        return ResponseEntity.ok(ApiResponse.success());
+    }
+
     @DeleteMapping("/api/bottles/{id}/images/{imageId}")
     public ResponseEntity<ApiResponse<Void>> deleteImage(
             @PathVariable Long id,
@@ -101,7 +121,6 @@ public class UserBottleController {
         return ResponseEntity.ok(ApiResponse.success());
     }
 
-    // 인증 불필요 — Spring Security permitAll 설정에서 허용
     @GetMapping("/api/users/{userId}/bottles")
     public ResponseEntity<ApiResponse<UserBottleListResponse>> getPublicBottles(
             @PathVariable Long userId,
