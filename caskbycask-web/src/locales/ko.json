@@ -457,7 +457,9 @@
       "WHISKY": "위스키",
       "COGNAC": "꼬냑",
       "WINE": "와인",
-      "OTHER": "기타"
+      "OTHER": "기타",
+      "allYears": "전체 연도",
+      "year": "{{year}}년"
     },
     "sort": {
       "latest": "최신순",
@@ -1362,7 +1364,7 @@
       "purchaseDate": "구매일",
       "price": "금액",
       "store": "구입 매장",
-      "batch": "배치 (선택)",
+      "batch": "배치, 캐스크번호, 기타",
       "bottlingYear": "병입년도 (선택)",
       "status": "상태",
       "isPublic": "공개 여부",

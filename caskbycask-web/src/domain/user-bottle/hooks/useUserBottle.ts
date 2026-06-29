@@ -5,7 +5,7 @@ import type { SpiritCategory, BottleStatus, UserBottleRequest } from '../types/u
 
 const MY_BOTTLES_KEY = ['bottles', 'my'] as const;
 
-export function useMyBottles(params: { category?: SpiritCategory; status?: BottleStatus; page?: number }) {
+export function useMyBottles(params: { category?: SpiritCategory; status?: BottleStatus; year?: number; page?: number }) {
   const isLoggedIn = useAuthStore(s => s.isLoggedIn);
   return useQuery({
     queryKey: [...MY_BOTTLES_KEY, params],
@@ -14,10 +14,10 @@ export function useMyBottles(params: { category?: SpiritCategory; status?: Bottl
   });
 }
 
-export function usePublicBottles(userId: number, category?: SpiritCategory) {
+export function usePublicBottles(userId: number, category?: SpiritCategory, year?: number) {
   return useQuery({
-    queryKey: ['bottles', 'public', userId, category],
-    queryFn: () => userBottleApi.getPublicBottles(userId, { category }),
+    queryKey: ['bottles', 'public', userId, category, year],
+    queryFn: () => userBottleApi.getPublicBottles(userId, { category, year }),
   });
 }
 

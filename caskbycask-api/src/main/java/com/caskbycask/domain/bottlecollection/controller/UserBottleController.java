@@ -36,11 +36,12 @@ public class UserBottleController {
     public ResponseEntity<ApiResponse<UserBottleListResponse>> getMyBottles(
             @RequestParam(required = false) SpiritCategory category,
             @RequestParam(required = false) BottleStatus status,
+            @RequestParam(required = false) Integer year,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.ok(ApiResponse.success(
-            userBottleService.getMyBottles(userDetails.getUserId(), category, status,
+            userBottleService.getMyBottles(userDetails.getUserId(), category, status, year,
                 PageRequest.of(page, size))));
     }
 
@@ -125,9 +126,10 @@ public class UserBottleController {
     public ResponseEntity<ApiResponse<UserBottleListResponse>> getPublicBottles(
             @PathVariable Long userId,
             @RequestParam(required = false) SpiritCategory category,
+            @RequestParam(required = false) Integer year,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size) {
         return ResponseEntity.ok(ApiResponse.success(
-            userBottleService.getPublicBottles(userId, category, PageRequest.of(page, size))));
+            userBottleService.getPublicBottles(userId, category, year, PageRequest.of(page, size))));
     }
 }

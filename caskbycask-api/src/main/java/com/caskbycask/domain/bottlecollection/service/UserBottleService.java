@@ -48,21 +48,23 @@ public class UserBottleService {
     }
 
     public UserBottleListResponse getMyBottles(Long userId, SpiritCategory category,
-                                                BottleStatus status, Pageable pageable) {
-        Page<UserBottle> page = userBottleQueryRepository.findByUser(userId, category, status, pageable);
-        BottleStatsDto stats = userBottleQueryRepository.getStats(userId);
-        return toListResponse(page, stats, pageable.getPageNumber(), null);
+                                                BottleStatus status, Integer year, Pageable pageable) {
+        Page<UserBottle> page = userBottleQueryRepository.findByUser(userId, category, status, year, pageable);
+        BottleStatsDto stats = userBottleQueryRepository.getStats(userId, category, status, year);
+        List<Integer> purchaseYears = userBottleQueryRepository.getPurchaseYears(userId, false);
+        return toListResponse(page, stats, pageable.getPageNumber(), null, purchaseYears);
     }
 
-    public UserBottleListResponse getPublicBottles(Long userId, SpiritCategory category, Pageable pageable) {
+    public UserBottleListResponse getPublicBottles(Long userId, SpiritCategory category, Integer year, Pageable pageable) {
         // 공개 페이지 제목에 표시할 보틀 소유자 닉네임 (존재하지 않으면 404)
         String ownerNickname = userRepository.getByIdOrThrow(userId)
             .getNickname();
-        Page<UserBottle> page = userBottleQueryRepository.findPublicByUser(userId, category, pageable);
+        Page<UserBottle> page = userBottleQueryRepository.findPublicByUser(userId, category, year, pageable);
         long total = page.getTotalElements();
         // 공개 페이지에서는 총금액 집계 비공개 (타인에게 전체 지출 노출 방지)
         BottleStatsDto stats = new BottleStatsDto(total, 0L, 0L, 0L, List.of());
-        return toListResponse(page, stats, pageable.getPageNumber(), ownerNickname);
+        List<Integer> purchaseYears = userBottleQueryRepository.getPurchaseYears(userId, true);
+        return toListResponse(page, stats, pageable.getPageNumber(), ownerNickname, purchaseYears);
     }
 
     public UserBottleResponse getBottle(Long bottleId, Long userId) {
@@ -126,10 +128,11 @@ public class UserBottleService {
     }
 
     private UserBottleListResponse toListResponse(Page<UserBottle> page, BottleStatsDto stats,
-                                                   int pageNum, String ownerNickname) {
+                                                   int pageNum, String ownerNickname,
+                                                   List<Integer> purchaseYears) {
         List<UserBottleResponse> bottles = page.getContent().stream()
             .map(UserBottleResponse::from).toList();
         return new UserBottleListResponse(bottles, stats,
-            page.getTotalPages(), page.getTotalElements(), pageNum, ownerNickname);
+            page.getTotalPages(), page.getTotalElements(), pageNum, ownerNickname, purchaseYears);
     }
 }

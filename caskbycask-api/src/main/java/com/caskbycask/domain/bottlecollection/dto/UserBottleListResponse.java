@@ -8,5 +8,6 @@ public record UserBottleListResponse(
     int totalPages,
     long totalElements,
     int currentPage,
-    String ownerNickname
+    String ownerNickname,
+    List<Integer> purchaseYears
 ) {}

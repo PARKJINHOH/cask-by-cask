@@ -44,6 +44,7 @@ export interface BottleListResponse {
   currentPage: number;
   /** 공개 보틀 조회 시 소유자 닉네임 (내 보틀 조회 시 null) */
   ownerNickname?: string | null;
+  purchaseYears: number[];
 }
 
 export interface UserBottleRequest {

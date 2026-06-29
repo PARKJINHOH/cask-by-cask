@@ -3,7 +3,7 @@ import type { ApiResponse } from '@/shared/types/common.types';
 import type { BottleListResponse, UserBottle, UserBottleRequest, SpiritCategory, BottleStatus } from '../types/userBottle.types';
 
 export const userBottleApi = {
-  getMyBottles: (params: { category?: SpiritCategory; status?: BottleStatus; page?: number; size?: number }) =>
+  getMyBottles: (params: { category?: SpiritCategory; status?: BottleStatus; year?: number; page?: number; size?: number }) =>
     axiosInstance.get<ApiResponse<BottleListResponse>>('/api/bottles/my', { params })
       .then(r => r.data.data),
 
@@ -45,7 +45,7 @@ export const userBottleApi = {
   deleteImage: (bottleId: number, imageId: number) =>
     axiosInstance.delete<ApiResponse<void>>(`/api/bottles/${bottleId}/images/${imageId}`),
 
-  getPublicBottles: (userId: number, params?: { category?: SpiritCategory; page?: number }) =>
+  getPublicBottles: (userId: number, params?: { category?: SpiritCategory; year?: number; page?: number }) =>
     axiosInstance.get<ApiResponse<BottleListResponse>>(`/api/users/${userId}/bottles`, { params })
       .then(r => r.data.data),
 };

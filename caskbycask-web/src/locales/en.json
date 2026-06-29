@@ -457,7 +457,9 @@
       "WHISKY": "Whisky",
       "COGNAC": "Cognac",
       "WINE": "Wine",
-      "OTHER": "Other"
+      "OTHER": "Other",
+      "allYears": "All years",
+      "year": "{{year}}"
     },
     "sort": {
       "latest": "Latest",
@@ -1362,7 +1364,7 @@
       "purchaseDate": "Purchase Date",
       "price": "Price",
       "store": "Store",
-      "batch": "Batch (optional)",
+      "batch": "Batch, Cask No., etc.",
       "bottlingYear": "Bottling Year (optional)",
       "status": "Status",
       "isPublic": "Visibility",

@@ -11,11 +11,12 @@ export function BottleCollectionTab() {
   const { t } = useTranslation();
   const [category, setCategory] = useState<SpiritCategory | undefined>();
   const [status, setStatus] = useState<BottleStatus | undefined>();
+  const [year, setYear] = useState<number | undefined>();
   const [view, setView] = useState<'table' | 'card'>('table');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<UserBottle | undefined>();
 
-  const { data, isLoading } = useMyBottles({ category, status });
+  const { data, isLoading } = useMyBottles({ category, status, year });
   const deleteMut = useDeleteBottle();
   const toggleStatusMut = useToggleBottleStatus();
   const togglePublicMut = useToggleBottlePublic();
@@ -31,8 +32,9 @@ export function BottleCollectionTab() {
     <div className="space-y-3">
       {data?.stats && <BottleStats stats={data.stats} />}
       <BottleFilterBar
-        category={category} status={status} view={view}
+        category={category} status={status} year={year} years={data?.purchaseYears ?? []} view={view}
         onCategoryChange={setCategory} onStatusChange={setStatus}
+        onYearChange={setYear}
         onViewChange={setView}
         onAdd={() => { setEditing(undefined); setModalOpen(true); }}
       />
