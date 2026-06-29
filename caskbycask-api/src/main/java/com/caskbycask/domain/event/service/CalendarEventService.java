@@ -77,6 +77,19 @@ public class CalendarEventService {
     }
 
     @Transactional(readOnly = true)
+    public List<AdminEventResponse> getLatestEventsForAdmin(EventCategory category, int size) {
+        int safeSize = Math.min(Math.max(size, 1), 500);
+        Pageable pageable = PageRequest.of(0, safeSize);
+        List<CalendarEvent> events = category == null
+                ? calendarEventRepository.findAllByOrderByCreatedAtDescIdDesc(pageable)
+                : calendarEventRepository.findByCategoryOrderByCreatedAtDescIdDesc(category, pageable);
+
+        return events.stream()
+                .map(AdminEventResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public AdminEventResponse getEventForAdmin(Long eventId) {
         return AdminEventResponse.from(findEventById(eventId));
     }

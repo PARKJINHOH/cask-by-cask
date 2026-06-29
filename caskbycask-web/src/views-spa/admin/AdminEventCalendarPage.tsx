@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import {
   useAdminEvents,
+  useAdminEventList,
   useEventSuggestions,
   useCreateEvent,
   useUpdateEvent,
   useDeleteEvent,
+  useUpdateEventVisibility,
 } from '@/domain/event/hooks/useAdminEvents'
 import EventCalendarGrid from '@/domain/event/components/EventCalendarGrid'
 import { CATEGORY_META, CATEGORY_ORDER } from '@/domain/event/constants/eventCategory'
@@ -44,6 +46,11 @@ const emptyForm = (startDate: string): FormState => ({
 
 const fmtDate = (s: string) => s.replace(/-/g, '.')
 
+const fmtPeriod = (event: AdminCalendarEvent) =>
+  `${fmtDate(event.startDate)}${event.endDate && event.endDate !== event.startDate ? ` ~ ${fmtDate(event.endDate)}` : ''}`
+
+const fmtCreatedAt = (s?: string) => s?.slice(0, 16).replace('T', ' ') ?? '-'
+
 export default function AdminEventCalendarPage() {
   const { toasts, showToast, removeToast } = useToast()
   const now = new Date()
@@ -62,11 +69,16 @@ export default function AdminEventCalendarPage() {
     month,
     category: categoryFilter === 'ALL' ? undefined : categoryFilter,
   })
+  const { data: eventList = [], isLoading: isEventListLoading } = useAdminEventList({
+    category: categoryFilter === 'ALL' ? undefined : categoryFilter,
+    size: 200,
+  })
   const { data: suggestions = [], isLoading: isSuggestionsLoading } = useEventSuggestions()
 
   const createMutation = useCreateEvent()
   const updateMutation = useUpdateEvent()
   const deleteMutation = useDeleteEvent()
+  const visibilityMutation = useUpdateEventVisibility()
 
   const goPrev = () => { if (month === 1) { setYear((y) => y - 1); setMonth(12) } else setMonth((m) => m - 1) }
   const goNext = () => { if (month === 12) { setYear((y) => y + 1); setMonth(1) } else setMonth((m) => m + 1) }
@@ -136,6 +148,15 @@ export default function AdminEventCalendarPage() {
       setForm(null)
     } catch {
       showToast('삭제 중 오류가 발생했습니다.', 'error')
+    }
+  }
+
+  const handleToggleVisibility = async (event: AdminCalendarEvent) => {
+    try {
+      await visibilityMutation.mutateAsync({ id: event.id, isVisible: !event.isVisible })
+      showToast(event.isVisible ? '이벤트가 미노출로 변경되었습니다.' : '이벤트가 노출로 변경되었습니다.', 'success')
+    } catch {
+      showToast('노출 상태 변경 중 오류가 발생했습니다.', 'error')
     }
   }
 
@@ -240,6 +261,128 @@ export default function AdminEventCalendarPage() {
       )}
 
       <p className="mt-3 text-xs text-neutral-400">🔒 표시는 비공개(사용자에게 노출되지 않음) 이벤트입니다.</p>
+
+      <div className="mt-8">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <div>
+            <h2 className="text-base font-semibold text-neutral-900">등록된 이벤트 목록</h2>
+            <p className="text-xs text-neutral-500 mt-1">
+              최신 등록순으로 최대 200건을 표시합니다. 수정, 삭제, 노출 상태를 바로 관리할 수 있습니다.
+            </p>
+          </div>
+          <span className="text-xs text-neutral-500 bg-neutral-100 px-2 py-1 rounded-full">
+            {eventList.length}건
+          </span>
+        </div>
+
+        <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-neutral-50 text-neutral-500 text-left">
+                <th className="px-4 py-3 font-medium min-w-[240px]">이벤트명</th>
+                <th className="px-4 py-3 font-medium whitespace-nowrap">카테고리</th>
+                <th className="px-4 py-3 font-medium whitespace-nowrap">기간</th>
+                <th className="px-4 py-3 font-medium whitespace-nowrap">출처</th>
+                <th className="px-4 py-3 font-medium whitespace-nowrap">등록일</th>
+                <th className="px-4 py-3 font-medium whitespace-nowrap">노출</th>
+                <th className="px-4 py-3 font-medium text-right whitespace-nowrap">관리</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-neutral-100">
+              {isEventListLoading ? (
+                <tr>
+                  <td colSpan={7} className="px-4 py-10 text-center text-neutral-400">
+                    불러오는 중...
+                  </td>
+                </tr>
+              ) : eventList.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-4 py-10 text-center text-neutral-400">
+                    등록된 이벤트가 없습니다.
+                  </td>
+                </tr>
+              ) : (
+                eventList.map((event) => (
+                  <tr key={event.id} className="hover:bg-neutral-50/70 transition-colors">
+                    <td className="px-4 py-3">
+                      <button
+                        type="button"
+                        onClick={() => openEdit(event)}
+                        className="text-left font-medium text-neutral-900 hover:text-primary-800 hover:underline line-clamp-1"
+                      >
+                        {event.title}
+                      </button>
+                      {event.description && (
+                        <p className="mt-1 text-xs text-neutral-400 line-clamp-1">
+                          {event.description}
+                        </p>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${CATEGORY_META[event.category].chip}`}>
+                        {CATEGORY_META[event.category].koLabel}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-neutral-600 tabular-nums">
+                      {fmtPeriod(event)}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className="text-neutral-600">
+                        {event.source === 'USER' ? '사용자 제보' : '관리자'}
+                      </span>
+                      {event.source === 'USER' && event.createdByNickname && (
+                        <span className="ml-1 text-neutral-400">({event.createdByNickname})</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-neutral-500 tabular-nums">
+                      {fmtCreatedAt(event.createdAt)}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={event.isVisible}
+                          disabled={visibilityMutation.isPending}
+                          onClick={() => handleToggleVisibility(event)}
+                          className={[
+                            'relative inline-flex h-5 w-9 flex-shrink-0 rounded-full',
+                            'border-2 border-transparent transition-colors duration-200',
+                            'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1',
+                            'disabled:cursor-not-allowed disabled:opacity-60',
+                            event.isVisible ? 'bg-primary-800' : 'bg-neutral-300',
+                          ].join(' ')}
+                        >
+                          <span
+                            className={[
+                              'pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow',
+                              'transform transition-transform duration-200',
+                              event.isVisible ? 'translate-x-4' : 'translate-x-0',
+                            ].join(' ')}
+                          />
+                        </button>
+                        <span className={event.isVisible ? 'text-emerald-700 text-xs font-medium' : 'text-neutral-500 text-xs font-medium'}>
+                          {event.isVisible ? '노출' : '미노출'}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="flex justify-end gap-2">
+                        <Button size="sm" variant="secondary" onClick={() => openEdit(event)}>
+                          수정
+                        </Button>
+                        <Button size="sm" variant="danger" onClick={() => setDeleteTarget(event)}>
+                          삭제
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
       </>
       )}
 

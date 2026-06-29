@@ -47,6 +47,14 @@ public class EventAdminController {
         return ResponseEntity.ok(ApiResponse.success(calendarEventService.getSuggestionsForAdmin()));
     }
 
+    @GetMapping("/list")
+    public ResponseEntity<ApiResponse<List<AdminEventResponse>>> getLatestEvents(
+            @RequestParam(required = false) EventCategory category,
+            @RequestParam(defaultValue = "200") Integer size
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(calendarEventService.getLatestEventsForAdmin(category, size)));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<AdminEventResponse>> getEventDetail(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(calendarEventService.getEventForAdmin(id)));

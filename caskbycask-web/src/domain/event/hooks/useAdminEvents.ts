@@ -10,6 +10,14 @@ export function useAdminEvents(params: { year: number; month: number; category?:
   })
 }
 
+export function useAdminEventList(params: { category?: EventCategory; size?: number } = {}) {
+  return useQuery({
+    queryKey: ['admin-event-list', params.category ?? 'ALL', params.size ?? 200],
+    queryFn: () => eventApi.getAdminEventList(params).then((r) => r.data.data ?? []),
+    retry: false,
+  })
+}
+
 /** 사용자 제보 목록(최근 제보순) */
 export function useEventSuggestions() {
   return useQuery({
@@ -24,6 +32,7 @@ function useInvalidateEvents() {
   const qc = useQueryClient()
   return () => {
     qc.invalidateQueries({ queryKey: ['admin-events'] })
+    qc.invalidateQueries({ queryKey: ['admin-event-list'] })
     qc.invalidateQueries({ queryKey: ['admin-event-suggestions'] })
     qc.invalidateQueries({ queryKey: ['events'] })
   }
@@ -50,6 +59,15 @@ export function useDeleteEvent() {
   const invalidate = useInvalidateEvents()
   return useMutation({
     mutationFn: (id: number) => eventApi.deleteEvent(id).then((r) => r.data.data),
+    onSuccess: invalidate,
+  })
+}
+
+export function useUpdateEventVisibility() {
+  const invalidate = useInvalidateEvents()
+  return useMutation({
+    mutationFn: ({ id, isVisible }: { id: number; isVisible: boolean }) =>
+      eventApi.updateVisibility(id, isVisible).then((r) => r.data.data),
     onSuccess: invalidate,
   })
 }

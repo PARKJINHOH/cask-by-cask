@@ -31,6 +31,9 @@ export const eventApi = {
   getAdminEvents: (params: { year: number; month: number; category?: EventCategory }) =>
     axiosInstance.get<ApiResponse<AdminCalendarEvent[]>>('/api/admin/events', { params }),
 
+  getAdminEventList: (params: { category?: EventCategory; size?: number } = {}) =>
+    axiosInstance.get<ApiResponse<AdminCalendarEvent[]>>('/api/admin/events/list', { params }),
+
   getAdminEventDetail: (id: number) =>
     axiosInstance.get<ApiResponse<AdminCalendarEvent>>(`/api/admin/events/${id}`),
 
