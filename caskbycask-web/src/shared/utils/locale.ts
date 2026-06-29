@@ -63,18 +63,56 @@ export function detectDefaultLang(): 'ko' | 'en' {
 }
 
 /**
+ * 검색 크롤러 봇(Yeti, Googlebot 등)인지 판별합니다.
+ */
+export function isBot(userAgent: string): boolean {
+  const bots = [
+    'yeti',
+    'naver',
+    'googlebot',
+    'bingbot',
+    'msnbot',
+    'slurp',
+    'duckduckbot',
+    'baiduspider',
+    'sogou',
+    'exabot',
+    'facebot',
+    'facebookexternalhit',
+    'ia_archiver',
+    'twitterbot',
+    'linkedinbot',
+    'slackbot',
+    'telegrambot',
+    'wa-bot',
+    'discordbot',
+    'applebot',
+    'daum',
+  ]
+  const ua = userAgent.toLowerCase()
+  return bots.some((bot) => ua.includes(bot))
+}
+
+/**
  * 현재 페이지의 URL을 적절한 언어 서브패스가 포함된 경로로 전환하여 리다이렉트합니다.
  */
 export function redirectToLocale(): boolean {
   if (typeof window === 'undefined') {
     return false
   }
+
+  // 크롤러 봇인 경우 리다이렉트하지 않음 (SEO 친화적 색인 유도)
+  if (isBot(window.navigator.userAgent)) {
+    return false
+  }
+
   const { pathname, search, hash } = window.location
 
   // 예외 대상 경로는 리다이렉트하지 않음
   if (isExcludePath(pathname)) {
     return false
   }
+
 
   const { lang } = getLocaleFromUrl(pathname)
   
