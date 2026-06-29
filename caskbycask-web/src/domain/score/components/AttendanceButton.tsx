@@ -23,7 +23,7 @@ export default function AttendanceButton() {
     return dismissedDate !== getTodayDateString()
   })
 
-  const { data: attended = false } = useQuery({
+  const { data: attended = false, isPending } = useQuery({
     queryKey: ['attendance', 'today'],
     queryFn: () => scoreApi.getTodayAttendanceStatus().then((res) => res.data.data ?? false),
     enabled: isLoggedIn,
@@ -54,7 +54,7 @@ export default function AttendanceButton() {
       <button
         type="button"
         onClick={() => !attended && !loading && checkIn()}
-        disabled={attended || loading}
+        disabled={isPending || attended || loading}
         title={attended ? t('maturing.attendanceCompleted') : t('maturing.attendanceButton')}
         className={`flex items-center justify-center p-2 rounded-lg transition-all duration-150 select-none cursor-pointer
           ${
@@ -75,7 +75,7 @@ export default function AttendanceButton() {
       </button>
 
       {/* 출석 유도 말풍선 툴팁 */}
-      {!attended && !loading && showTooltip && (
+      {!isPending && !attended && !loading && showTooltip && (
         <div 
           className="absolute top-full right-1/2 translate-x-1/2 mt-2 z-50"
           onClick={(e) => e.stopPropagation()}
