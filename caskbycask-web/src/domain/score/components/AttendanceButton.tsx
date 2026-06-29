@@ -50,7 +50,7 @@ export default function AttendanceButton() {
   if (!isLoggedIn) return null
 
   return (
-    <div className="relative inline-flex items-center">
+    <div className={`relative inline-flex items-center ${isPending ? 'invisible' : ''}`}>
       <button
         type="button"
         onClick={() => !attended && !loading && checkIn()}
