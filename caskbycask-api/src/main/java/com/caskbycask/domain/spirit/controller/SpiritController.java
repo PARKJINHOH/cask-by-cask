@@ -96,7 +96,8 @@ public class SpiritController {
     ) {
         SpiritDetailResponse detail = spiritService.getSpiritDetail(id);
         String clientIp = resolveClientIp(request);
-        spiritViewCountService.tryIncrementViewCount(id, clientIp);
+        Long viewCountTargetId = detail.parentId() != null ? detail.parentId() : detail.id();
+        spiritViewCountService.tryIncrementViewCount(viewCountTargetId, clientIp);
         return ResponseEntity.ok(ApiResponse.success(detail));
     }
 
