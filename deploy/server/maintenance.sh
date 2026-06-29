@@ -42,13 +42,21 @@ case "$1" in
     ok "✅ 점검 모드 ON — 방문자에게 점검 페이지가 노출됩니다."
 
     # 우회 시크릿 생성 및 nginx 설정 자동 적용
+    # SECRET_FILE 이 conf 와 어긋난 경우에도 현재 conf 의 점검 우회 토큰 3곳을 직접 교체한다.
     NEW_SECRET=$(openssl rand -hex 24)
-    if [ -f "$SECRET_FILE" ]; then
-        OLD_SECRET=$(cat "$SECRET_FILE")
-        sudo sed -i "s/$OLD_SECRET/$NEW_SECRET/g" "$NGINX_CONF"
-    else
-        sudo sed -i "s/CHANGE_ME_TO_A_LONG_RANDOM_SECRET/$NEW_SECRET/g" "$NGINX_CONF"
+    sudo env NEW_SECRET="$NEW_SECRET" perl -0pi -e '
+        s/(?<=\$cookie_cbc_maint = ")[^"]+(?=")/$ENV{NEW_SECRET}/g;
+        s/(?<=location = \/__cbc_unlock_)[^\s{]+/$ENV{NEW_SECRET}/g;
+        s/(?<=cbc_maint=)[^;"]+/$ENV{NEW_SECRET}/g;
+    ' "$NGINX_CONF"
+
+    if ! sudo grep -qF "\$cookie_cbc_maint = \"$NEW_SECRET\"" "$NGINX_CONF" ||
+       ! sudo grep -qF "__cbc_unlock_$NEW_SECRET" "$NGINX_CONF" ||
+       ! sudo grep -qF "cbc_maint=$NEW_SECRET;" "$NGINX_CONF"; then
+        err "nginx 설정에 우회 시크릿을 적용하지 못했습니다 — $NGINX_CONF 를 확인하세요."
+        exit 1
     fi
+
     echo "$NEW_SECRET" > "$SECRET_FILE"
     chmod 600 "$SECRET_FILE"
 

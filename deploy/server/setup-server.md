@@ -221,6 +221,7 @@ sudo chown ubuntu:ubuntu /app/next/maintenance.html
 
 > **별도 작업 불필요** — `./maintenance.sh on` 실행 시 자동으로 시크릿을 생성·nginx에 적용·URL을 출력한다.
 > 생성된 시크릿은 `/app/next/.maintenance_secret` 에 저장되며, 다음 `on` 호출 시 새 시크릿으로 교체된다.
+> 스크립트는 `.maintenance_secret` 파일이 conf 와 어긋난 경우에도 `caskbycask.conf` 의 쿠키 검사, unlock location, Set-Cookie 값 3곳을 직접 갱신한다.
 
 ```
 [maint] ✅ 점검 모드 ON — 방문자에게 점검 페이지가 노출됩니다.
@@ -231,8 +232,11 @@ sudo chown ubuntu:ubuntu /app/next/maintenance.html
 수동으로 시크릿만 교체해야 할 경우:
 ```bash
 SECRET=$(openssl rand -hex 24)
-OLD=$(cat /app/next/.maintenance_secret)
-sudo sed -i "s/$OLD/$SECRET/g" /etc/nginx/sites-available/caskbycask.conf
+sudo env NEW_SECRET="$SECRET" perl -0pi -e '
+    s/(?<=\$cookie_cbc_maint = ")[^"]+(?=")/$ENV{NEW_SECRET}/g;
+    s/(?<=location = \/__cbc_unlock_)[^\s{]+/$ENV{NEW_SECRET}/g;
+    s/(?<=cbc_maint=)[^;"]+/$ENV{NEW_SECRET}/g;
+' /etc/nginx/sites-available/caskbycask.conf
 sudo nginx -t && sudo systemctl reload nginx
 echo "$SECRET" > /app/next/.maintenance_secret && chmod 600 /app/next/.maintenance_secret
 echo "점검 우회 URL:  https://caskbycask.net/__cbc_unlock_$SECRET"

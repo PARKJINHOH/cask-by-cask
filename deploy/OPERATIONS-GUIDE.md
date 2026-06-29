@@ -150,18 +150,19 @@ cd /app/scripts
 
 점검 중에도 관리자 본인은 정상 화면으로 작업할 수 있다. **시크릿 토큰 쿠키 방식** — IP 가 바뀌어도(집/모바일/외부망) 쿠키만 있으면 우회된다.
 
-### 최초 1회 — 시크릿 설정
+### 시크릿 설정 / 교체
 
-`caskbycask.conf` 에 자리표시자 `CHANGE_ME_TO_A_LONG_RANDOM_SECRET` 가 3곳 있다. 서버에서 랜덤 값으로 일괄 치환한다. **(git 에는 자리표시자 그대로 두고 서버에서만 치환)**
+`caskbycask.conf` 에는 관리자 우회용 시크릿이 3곳 있다: 쿠키 검사 `if`, 발급 `location` 경로, `Set-Cookie` 값. **git 에는 자리표시자 그대로 두고**, 서버에 배치한 conf 에서만 실제 값으로 교체한다.
+
+일반적으로는 직접 치환하지 않고 `maintenance.sh on` 을 사용한다. 스크립트가 새 시크릿을 생성하고, Nginx 설정 3곳에 적용한 뒤 reload 하며, 현재 유효한 우회 URL 을 출력한다. `/app/next/.maintenance_secret` 파일이 conf 와 어긋난 경우에도 conf 의 3곳을 직접 갱신한다.
 
 ```bash
-SECRET=$(openssl rand -hex 24)
-sudo sed -i "s/CHANGE_ME_TO_A_LONG_RANDOM_SECRET/$SECRET/g" /etc/nginx/sites-available/caskbycask.conf
-sudo nginx -t && sudo systemctl reload nginx
-echo "점검 우회 URL:  https://caskbycask.net/__cbc_unlock_$SECRET"
+cd /app/scripts
+./maintenance.sh on
+./maintenance.sh status
 ```
 
-→ 출력된 **우회 URL 을 안전한 곳(비밀번호 관리자 등)에 보관**한다.  `CHANGE_ME_BYPASS_URL` ← 여기에 기록
+→ 출력된 **우회 URL 을 안전한 곳(비밀번호 관리자 등)에 보관**한다.
 
 ### 점검 중 우회하기
 
