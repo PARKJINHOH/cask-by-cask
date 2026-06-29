@@ -73,6 +73,11 @@ public class Notice extends BaseTimeEntity {
     @Comment("추천 수")
     private Long recommendCount = 0L;
 
+    @Builder.Default
+    @Column(nullable = false)
+    @Comment("노출 순서 (높을수록 우선)")
+    private Integer displayOrder = 0;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "author_id", nullable = false)
     @Comment("작성자(users.id)")
@@ -98,6 +103,10 @@ public class Notice extends BaseTimeEntity {
 
     public void increaseRecommendCount() { this.recommendCount++; }
     public void decreaseRecommendCount() { if (this.recommendCount > 0) this.recommendCount--; }
+
+    public void updateDisplayOrder(Integer displayOrder) {
+        this.displayOrder = displayOrder;
+    }
 
     public void softDelete() { this.deletedAt = LocalDateTime.now(); }
 }

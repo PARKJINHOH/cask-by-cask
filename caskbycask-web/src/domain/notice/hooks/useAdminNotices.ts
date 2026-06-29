@@ -48,3 +48,11 @@ export function useDeleteNotice() {
     onSuccess: () => qc.invalidateQueries({ queryKey: [QUERY_KEY] }),
   })
 }
+
+export function useUpdateNoticeDisplayOrders() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (noticeIds: number[]) => noticeApi.updateDisplayOrders(noticeIds).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [QUERY_KEY] }),
+  })
+}

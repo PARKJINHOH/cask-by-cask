@@ -8,6 +8,7 @@ import Modal from '@/shared/components/Modal'
 import Pagination from '@/shared/components/Pagination'
 import { useToast } from '@/shared/hooks/useToast'
 import Toast from '@/shared/components/Toast'
+import AdminNoticeOrderModal from './components/AdminNoticeOrderModal'
 
 const PAGE_SIZE = 20
 
@@ -27,6 +28,7 @@ export default function AdminNoticeListPage() {
   const publishedParam = searchParams.get('published')
   const publishedFilter = publishedParam == null ? undefined : publishedParam === 'true'
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; title: string } | null>(null)
+  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false)
   const setListParam = (params: { category?: NoticeCategory | undefined; published?: boolean | undefined; page?: number }) =>
     setSearchParams(
       (prev) => {
@@ -80,9 +82,14 @@ export default function AdminNoticeListPage() {
             총 {data?.totalElements ?? 0}건
           </p>
         </div>
-        <Button onClick={() => navigate('/admin/notices/new')}>
-          + 공지 작성
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={() => setIsOrderModalOpen(true)}>
+            노출 순서 변경
+          </Button>
+          <Button onClick={() => navigate('/admin/notices/new')}>
+            + 공지 작성
+          </Button>
+        </div>
       </div>
 
       {/* 필터 */}
@@ -264,6 +271,13 @@ export default function AdminNoticeListPage() {
           <span className="text-neutral-500">삭제된 공지는 복구할 수 없습니다.</span>
         </p>
       </Modal>
+
+      {/* 순서 변경 모달 */}
+      <AdminNoticeOrderModal
+        open={isOrderModalOpen}
+        onClose={() => setIsOrderModalOpen(false)}
+        showToast={showToast}
+      />
     </div>
   )
 }

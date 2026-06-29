@@ -52,8 +52,10 @@ public class NoticeService {
 
     @Transactional(readOnly = true)
     public Page<NoticeListResponse> getPublishedNotices(NoticeCategory category, int page, int size, Long userId) {
-        // isPinned DESC, createdAt DESC — 고정 공지 우선, 나머지 최신순
-        Sort sort = Sort.by(Sort.Direction.DESC, "isPinned", "createdAt");
+        // isPinned DESC, displayOrder DESC, createdAt DESC — 고정 공지 우선, 노출 순서 우선, 나머지 최신순
+        Sort sort = Sort.by(Sort.Direction.DESC, "isPinned")
+                .and(Sort.by(Sort.Direction.DESC, "displayOrder"))
+                .and(Sort.by(Sort.Direction.DESC, "createdAt"));
         Pageable pageable = PageRequest.of(page, size, sort);
 
         Page<Notice> notices = (category != null)
@@ -133,7 +135,9 @@ public class NoticeService {
     @Transactional(readOnly = true)
     public Page<NoticeListResponse> getAllNoticesForAdmin(NoticeCategory category, Boolean isPublished,
                                                           int page, int size) {
-        Sort sort = Sort.by(Sort.Direction.DESC, "isPinned", "createdAt");
+        Sort sort = Sort.by(Sort.Direction.DESC, "isPinned")
+                .and(Sort.by(Sort.Direction.DESC, "displayOrder"))
+                .and(Sort.by(Sort.Direction.DESC, "createdAt"));
         Pageable pageable = PageRequest.of(page, size, sort);
 
         // Querydsl BooleanBuilder로 nullable 필터 처리
@@ -215,6 +219,16 @@ public class NoticeService {
         Notice notice = noticeRepository.findById(noticeId)
                 .orElseThrow(() -> new CustomException(ErrorCode.NOTICE_NOT_FOUND));
         notice.softDelete();
+    }
+
+    @Transactional
+    public void updateDisplayOrders(List<Long> noticeIds) {
+        for (int i = 0; i < noticeIds.size(); i++) {
+            Long noticeId = noticeIds.get(i);
+            Notice notice = noticeRepository.findById(noticeId)
+                    .orElseThrow(() -> new CustomException(ErrorCode.NOTICE_NOT_FOUND));
+            notice.updateDisplayOrder(noticeIds.size() - i);
+        }
     }
 
     // ═══════════════════════════════════════════

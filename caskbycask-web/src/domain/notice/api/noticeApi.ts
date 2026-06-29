@@ -60,4 +60,7 @@ export const noticeApi = {
 
   deleteImage: (imageId: number) =>
     axiosInstance.delete<ApiResponse<null>>(`/api/admin/notices/images/${imageId}`),
+
+  updateDisplayOrders: (noticeIds: number[]) =>
+    axiosInstance.put<ApiResponse<null>>('/api/admin/notices/display-orders', { noticeIds }),
 }

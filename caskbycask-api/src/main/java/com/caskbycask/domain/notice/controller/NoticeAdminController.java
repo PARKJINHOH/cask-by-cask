@@ -94,4 +94,12 @@ public class NoticeAdminController {
         noticeService.deleteImage(imageId);
         return ResponseEntity.ok(ApiResponse.success());
     }
+
+    @PutMapping("/display-orders")
+    public ResponseEntity<ApiResponse<Void>> updateDisplayOrders(
+            @Valid @RequestBody UpdateNoticeDisplayOrdersRequest request
+    ) {
+        noticeService.updateDisplayOrders(request.getNoticeIds());
+        return ResponseEntity.ok(ApiResponse.success());
+    }
 }
