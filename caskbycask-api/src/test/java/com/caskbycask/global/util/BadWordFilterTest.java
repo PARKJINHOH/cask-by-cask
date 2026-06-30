@@ -39,6 +39,53 @@ class BadWordFilterTest {
         assertThat(detected).containsExactly("시발");
     }
 
+    @Test
+    void detect_doesNotFlagBojiInsideNormalKoreanVerbPhrase() {
+        BadWordFilter filter = filterWithWords("보지");
+
+        List<String> detected = filter.detect(
+                "다른 배치는 마셔보지는 못했지만 최소한 Spring 2025버전은 맛있는 위스키라고 생각됩니다."
+        );
+
+        assertThat(detected).isEmpty();
+    }
+
+    @Test
+    void detect_flagsStandaloneBojiEvenWithParticle() {
+        BadWordFilter filter = filterWithWords("보지");
+
+        List<String> detected = filter.detect("보지가 포함된 노골적인 표현");
+
+        assertThat(detected).containsExactly("보지");
+    }
+
+    @Test
+    void detect_doesNotFlagJajiInsideNormalKoreanVerbPhrase() {
+        BadWordFilter filter = filterWithWords("자지");
+
+        List<String> detected = filter.detect("밤에 잠을 자지 못해서 피곤했다.");
+
+        assertThat(detected).isEmpty();
+    }
+
+    @Test
+    void detect_doesNotFlagLatinBadWordInsideNormalWord() {
+        BadWordFilter filter = filterWithWords("cunt", "shit");
+
+        List<String> detected = filter.detect("Scunthorpe tasting note with shitake mushroom nuance");
+
+        assertThat(detected).isEmpty();
+    }
+
+    @Test
+    void detect_flagsLatinBadWordEvenWithSpaces() {
+        BadWordFilter filter = filterWithWords("fuck");
+
+        List<String> detected = filter.detect("f u c k");
+
+        assertThat(detected).containsExactly("fuck");
+    }
+
     private BadWordFilter filterWithWords(String... words) {
         BadWordRepository repository = mock(BadWordRepository.class);
         given(repository.findAllByIsActiveTrue()).willReturn(

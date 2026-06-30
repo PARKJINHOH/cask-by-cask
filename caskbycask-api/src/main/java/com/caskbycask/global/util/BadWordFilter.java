@@ -17,6 +17,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class BadWordFilter {
 
+    private static final Set<String> HANGUL_LEFT_BOUNDARY_REQUIRED_WORDS = Set.of("보지", "자지");
+
     private final BadWordRepository badWordRepository;
 
     // volatile: refreshCache()가 새 Set 참조를 원자적으로 교체 → 읽기 스레드가 항상 최신 Set을 봄
@@ -54,11 +56,71 @@ public class BadWordFilter {
         String compacted = plain.replaceAll("\\s", "").toLowerCase();
 
         return badWordSet.stream()
-                .filter(word -> {
-                    String w = word.replaceAll("\\s", "").toLowerCase();
-                    return !w.isBlank() && compacted.contains(w);
-                })
+                .filter(word -> containsBadWord(compacted, normalize(word)))
                 .collect(Collectors.toList());
+    }
+
+    private boolean containsBadWord(String text, String word) {
+        if (word.isBlank()) {
+            return false;
+        }
+
+        int fromIndex = 0;
+        while (fromIndex <= text.length() - word.length()) {
+            int index = text.indexOf(word, fromIndex);
+            if (index < 0) {
+                return false;
+            }
+
+            if (isValidMatch(text, word, index)) {
+                return true;
+            }
+            fromIndex = index + 1;
+        }
+
+        return false;
+    }
+
+    private boolean isValidMatch(String text, String word, int start) {
+        int end = start + word.length();
+
+        if (isLatinWord(word)) {
+            return !hasLatinWordCharBefore(text, start) && !hasLatinWordCharAfter(text, end);
+        }
+
+        if (HANGUL_LEFT_BOUNDARY_REQUIRED_WORDS.contains(word)) {
+            return !hasHangulCharBefore(text, start);
+        }
+
+        return true;
+    }
+
+    private String normalize(String text) {
+        return text.replaceAll("\\s", "").toLowerCase(Locale.ROOT);
+    }
+
+    private boolean isLatinWord(String word) {
+        return word.chars().allMatch(ch -> Character.isLetterOrDigit(ch) && !isHangul((char) ch));
+    }
+
+    private boolean hasLatinWordCharBefore(String text, int start) {
+        return start > 0 && isLatinWordChar(text.charAt(start - 1));
+    }
+
+    private boolean hasLatinWordCharAfter(String text, int end) {
+        return end < text.length() && isLatinWordChar(text.charAt(end));
+    }
+
+    private boolean isLatinWordChar(char ch) {
+        return Character.isLetterOrDigit(ch) && !isHangul(ch);
+    }
+
+    private boolean hasHangulCharBefore(String text, int start) {
+        return start > 0 && isHangul(text.charAt(start - 1));
+    }
+
+    private boolean isHangul(char ch) {
+        return (ch >= '가' && ch <= '힣') || (ch >= 'ㄱ' && ch <= 'ㅎ') || (ch >= 'ㅏ' && ch <= 'ㅣ');
     }
 
     /**
