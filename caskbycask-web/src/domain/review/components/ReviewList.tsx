@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/domain/auth/store/authStore'
@@ -12,10 +12,12 @@ import type { ReviewItem as ReviewItemType } from '../types/review.types'
 
 interface ReviewListProps {
   spiritId: number
+  writeSpiritId?: number
+  reviewVariantLabels?: Record<number, string>
   onNeedLogin: () => void
 }
 
-export default function ReviewList({ spiritId, onNeedLogin }: ReviewListProps) {
+export default function ReviewList({ spiritId, writeSpiritId, reviewVariantLabels, onNeedLogin }: ReviewListProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
@@ -24,9 +26,13 @@ export default function ReviewList({ spiritId, onNeedLogin }: ReviewListProps) {
   const { data, isLoading } = useReviews(spiritId, page)
   const deleteMutation      = useDeleteReview(spiritId)
 
+  useEffect(() => {
+    setPage(0)
+  }, [spiritId])
+
   const handleWriteClick = () => {
     if (!user) { onNeedLogin(); return }
-    navigate(`/spirits/${spiritId}/review/write`)
+    navigate(`/spirits/${writeSpiritId ?? spiritId}/review/write`)
   }
 
   const handleEdit = (review: ReviewItemType) => {
@@ -77,6 +83,7 @@ export default function ReviewList({ spiritId, onNeedLogin }: ReviewListProps) {
                 currentUserId={user?.id}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
+                reviewVariantLabel={reviewVariantLabels?.[review.spiritId]}
               />
             ))}
           </div>

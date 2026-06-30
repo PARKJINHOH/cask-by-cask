@@ -82,9 +82,10 @@ export interface ReviewItemProps {
   onEdit: (review: ReviewItemType) => void
   onDelete: (id: number) => void
   showSpiritName?: boolean
+  reviewVariantLabel?: string
 }
 
-export default function ReviewItem({ review, currentUserId, onEdit, onDelete, showSpiritName }: ReviewItemProps) {
+export default function ReviewItem({ review, currentUserId, onEdit, onDelete, showSpiritName, reviewVariantLabel }: ReviewItemProps) {
   const { t, i18n } = useTranslation()
   const isOwner = !!currentUserId && currentUserId === review.userId
   const spiritName = i18n.language === 'en' ? (review.spiritNameEn || review.spiritNameKo) : review.spiritNameKo
@@ -103,8 +104,8 @@ export default function ReviewItem({ review, currentUserId, onEdit, onDelete, sh
   return (
     <article className="p-5 bg-white rounded-xl border border-neutral-100 space-y-5">
       {/* 헤더 */}
-      <div className="flex items-center justify-between gap-2 pb-3 border-b border-neutral-100">
-        <div className="flex items-center gap-3 min-w-0">
+      <div className="flex items-start justify-between gap-2 pb-3 border-b border-neutral-100">
+        <div className="flex items-start gap-3 min-w-0">
           <UserBadge
             user={{
               id: review.userId,
@@ -116,17 +117,24 @@ export default function ReviewItem({ review, currentUserId, onEdit, onDelete, sh
             size="sm"
             onlyReviews={true}
             disableNicknameHover={true}
-          />
-          <div className="flex flex-col justify-center gap-0.5 ml-1">
-            {review.userReviewCount && review.userReviewCount >= 2 && (
-              <span className="text-[10px] text-neutral-500 font-semibold leading-none">
-                {t('review.nthReview', { index: review.userReviewIndex })}
+            subLine={
+              <span className="flex flex-col gap-0.5 min-w-0">
+                {reviewVariantLabel && (
+                  <span className="font-semibold text-primary-700 truncate max-w-[220px] sm:max-w-[320px]">
+                    {reviewVariantLabel}
+                  </span>
+                )}
+                <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-neutral-400">
+                  {review.userReviewCount && review.userReviewCount >= 2 && (
+                    <span className="font-semibold text-neutral-500">
+                      {t('review.nthReview', { index: review.userReviewIndex })}
+                    </span>
+                  )}
+                  <span>{formatDate(review.createdAt, i18n.language)}</span>
+                </span>
               </span>
-            )}
-            <span className="text-xs text-neutral-400 leading-none">
-              {formatDate(review.createdAt, i18n.language)}
-            </span>
-          </div>
+            }
+          />
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
           <span className="text-2xl font-bold tabular-nums" style={{ color: scoreColor(review.totalScore) }}>

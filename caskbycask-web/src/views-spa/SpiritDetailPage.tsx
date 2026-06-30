@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQueries } from '@tanstack/react-query'
@@ -887,7 +887,9 @@ export default function SpiritDetailPage() {
   const [activeTab, setActiveTab]       = useState<Tab>('reviews')
   const [loginModal, setLoginModal]     = useState(false)
   const [lightboxIdx, setLightboxIdx]   = useState(-1)
-  const [selectedVariantId, setSelectedVariantId] = useState<number | null>(null)
+  const [reviewVariantFilterId, setReviewVariantFilterId] = useState<number | null>(null)
+  const [priceVariantId, setPriceVariantId] = useState<number | null>(null)
+  const topVariantSelectionRef = useRef<number | null>(null)
 
   const { data: spirit, isLoading } = useSpiritDetail(spiritId)
   const { data: spiritSeo } = useSpiritSeo(spiritId)
@@ -898,6 +900,7 @@ export default function SpiritDetailPage() {
 
   const isVariantSplitGroup = spirit ? (spirit.parentId != null || (spirit.variants && spirit.variants.length > 0)) : false
   const hasVariants = isVariantSplitGroup
+  const masterSpiritId = spirit?.parentId ?? spirit?.id ?? spiritId
 
   const variantsList = useMemo(() => {
     if (!spirit) return []
@@ -938,6 +941,14 @@ export default function SpiritDetailPage() {
     })
   }, [variantsList, isEn])
 
+  const reviewVariantLabelMap = useMemo(() => {
+    if (!isVariantSplitGroup) return {}
+    return variantsList.reduce<Record<number, string>>((acc, variant) => {
+      acc[variant.id] = formatVariantSelectLabel(variant, isEn)
+      return acc
+    }, {})
+  }, [isVariantSplitGroup, variantsList, isEn])
+
   useEffect(() => {
     const targetPath = localizedSeoPath(spiritSeo, isEn)
     if (!targetPath) return
@@ -948,10 +959,13 @@ export default function SpiritDetailPage() {
 
   // 변형(다른 배치) 간 이동 시 갤러리·탭 상태 초기화
   useEffect(() => {
+    const syncedReviewFilterId = topVariantSelectionRef.current === spiritId ? spiritId : null
+    topVariantSelectionRef.current = null
     setSelectedImg(0)
     setActiveTab('reviews')
     setLightboxIdx(-1)
-    setSelectedVariantId(null)
+    setReviewVariantFilterId(syncedReviewFilterId)
+    setPriceVariantId(null)
   }, [spiritId])
 
   if (isLoading) return <Spinner fullscreen />
@@ -1161,6 +1175,8 @@ export default function SpiritDetailPage() {
                   onChange={(e) => {
                     const targetId = Number(e.target.value)
                     const targetPath = localizedSeoPath(variantSeoById.get(targetId), isEn)
+                    topVariantSelectionRef.current = targetId
+                    setReviewVariantFilterId(targetId)
                     navigate(targetPath ?? `/spirits/${targetId}`)
                   }}
                   className="text-xs font-semibold text-neutral-700 bg-white border border-neutral-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-pointer min-w-[200px] shadow-sm hover:border-neutral-300 transition-colors"
@@ -1205,23 +1221,36 @@ export default function SpiritDetailPage() {
         <div className="space-y-5">
         <TabBar active={activeTab} onChange={setActiveTab} />
         
-        {(activeTab === 'reviews' || activeTab === 'price') && (
+        {activeTab === 'reviews' && (
           <VariantSelector
             variants={variantsList}
-            selectedValue={selectedVariantId}
-            onChange={setSelectedVariantId}
+            selectedValue={reviewVariantFilterId}
+            onChange={setReviewVariantFilterId}
+          />
+        )}
+
+        {activeTab === 'price' && (
+          <VariantSelector
+            variants={variantsList}
+            selectedValue={priceVariantId}
+            onChange={setPriceVariantId}
           />
         )}
 
         <div role="tabpanel">
           {activeTab === 'reviews' ? (
-            <ReviewList spiritId={selectedVariantId || spiritId} onNeedLogin={() => setLoginModal(true)} />
+            <ReviewList
+              spiritId={reviewVariantFilterId ?? masterSpiritId}
+              writeSpiritId={spirit.id}
+              reviewVariantLabels={reviewVariantLabelMap}
+              onNeedLogin={() => setLoginModal(true)}
+            />
           ) : activeTab === 'community' ? (
             <CommentList spiritId={spiritId} onNeedLogin={() => setLoginModal(true)} />
           ) : (
             <PriceTabContent
               spiritId={spiritId}
-              selectedVariantId={selectedVariantId}
+              selectedVariantId={priceVariantId}
               variants={variantsList}
             />
           )}
