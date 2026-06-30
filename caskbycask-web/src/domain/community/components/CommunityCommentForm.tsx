@@ -11,6 +11,7 @@ interface Props {
   postId: number
   parentId?: number
   parentNickname?: string
+  replyMentionedUserId?: number
   editingComment?: PostCommentItem
   forcedSecret?: boolean // 부모/형제 대댓글이 비밀댓글이라 강제로 비밀댓글이 되는 경우
   onSuccess: () => void
@@ -24,6 +25,7 @@ export default function CommunityCommentForm({
   postId,
   parentId,
   parentNickname,
+  replyMentionedUserId,
   editingComment,
   forcedSecret = false,
   onSuccess,
@@ -33,7 +35,7 @@ export default function CommunityCommentForm({
   const { t } = useTranslation()
   const [content, setContent] = useState(editingComment?.content ?? '')
   const [isSecret, setIsSecret] = useState(forcedSecret)
-  const [mentionedUserId, setMentionedUserId] = useState<number | null>(null)
+  const [selectedMention, setSelectedMention] = useState<{ id: number; nickname: string } | null>(null)
   const [mentionQuery, setMentionQuery] = useState('')
   const [mentionStart, setMentionStart] = useState<number | null>(null)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
@@ -68,7 +70,9 @@ export default function CommunityCommentForm({
   const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value
     setContent(val)
-    setMentionedUserId(null) // 내용 변경 시 멘션 초기화
+    if (selectedMention && !val.includes(`@${selectedMention.nickname}`)) {
+      setSelectedMention(null)
+    }
 
     const cursor = e.target.selectionStart ?? val.length
     const before = val.slice(0, cursor)
@@ -80,7 +84,7 @@ export default function CommunityCommentForm({
       setMentionQuery('')
       setMentionStart(null)
     }
-  }, [])
+  }, [selectedMention])
 
   const selectMention = (user: UserMention) => {
     if (mentionStart === null || !textareaRef.current) return
@@ -89,7 +93,7 @@ export default function CommunityCommentForm({
     const after = content.slice(cursor)
     const inserted = `@${user.nickname} `
     setContent(before + inserted + after)
-    setMentionedUserId(user.id)
+    setSelectedMention({ id: user.id, nickname: user.nickname })
     setMentionQuery('')
     setMentionStart(null)
     textareaRef.current.focus()
@@ -103,7 +107,7 @@ export default function CommunityCommentForm({
       await createMutation.mutateAsync({
         content: insert,
         parentId,
-        mentionedUserId: undefined,
+        mentionedUserId: selectedMention?.id ?? replyMentionedUserId,
         isSecret,
       })
       onSuccess()
@@ -115,7 +119,7 @@ export default function CommunityCommentForm({
         setError(t('comment.saveError'))
       }
     }
-  }, [createMutation, parentId, isSecret, onSuccess, onBadWord, t])
+  }, [createMutation, parentId, selectedMention, replyMentionedUserId, isSecret, onSuccess, onBadWord, t])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -128,12 +132,12 @@ export default function CommunityCommentForm({
         await createMutation.mutateAsync({
           content,
           parentId,
-          mentionedUserId: mentionedUserId ?? undefined,
+          mentionedUserId: selectedMention?.id ?? replyMentionedUserId,
           isSecret,
         })
       }
       setContent('')
-      setMentionedUserId(null)
+      setSelectedMention(null)
       setIsSecret(forcedSecret)
       onSuccess()
     } catch (err: unknown) {

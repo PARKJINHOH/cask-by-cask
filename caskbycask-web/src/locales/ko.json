@@ -677,7 +677,7 @@
     "placeholder": "댓글을 입력하세요...",
     "spiritPlaceholder": "이 술에 대한 이야기를 나눠보세요...",
     "reply": "답글",
-    "replyTo": "@ {{nickname}}에게 답글",
+    "replyTo": "@{{nickname}}에게 답글",
     "cancelReplyAria": "답글 취소",
     "edit": "수정",
     "delete": "삭제",

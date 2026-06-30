@@ -452,7 +452,9 @@ public class CommentService {
         }
         // 멘션된 사용자에게 MENTION 알림 → 게시글로 이동
         // [악용 방지] 멘션 대상이 작성자를 차단했다면 알림을 보내지 않는다(차단 관계 존중, 멘션 스팸 차단).
-        if (mentionedUserId != null && !mentionedUserId.equals(authorId)
+        boolean mentionedParentAuthor = parent != null
+                && parent.getAuthor().getId().equals(mentionedUserId);
+        if (mentionedUserId != null && !mentionedUserId.equals(authorId) && !mentionedParentAuthor
                 && !userBlockRepository.existsByBlockerIdAndBlockedId(mentionedUserId, authorId)) {
             userRepository.findById(mentionedUserId).ifPresent(mentioned ->
                     notificationService.send(mentioned, NotificationType.MENTION,

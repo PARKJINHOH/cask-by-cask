@@ -677,7 +677,7 @@
     "placeholder": "Write a comment...",
     "spiritPlaceholder": "Share your thoughts about this spirit...",
     "reply": "Reply",
-    "replyTo": "@ Reply to {{nickname}}",
+    "replyTo": "Reply to @{{nickname}}",
     "cancelReplyAria": "Cancel reply",
     "edit": "Edit",
     "delete": "Delete",

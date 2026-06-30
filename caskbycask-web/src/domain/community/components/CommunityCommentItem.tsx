@@ -12,6 +12,8 @@ interface Props {
   postId: number
   isLoggedIn: boolean
   depth?: number
+  rootCommentId?: number
+  threadForcedSecret?: boolean
   onLoginNeeded: () => void
   onBadWord: (words: string[]) => void
 }
@@ -32,12 +34,36 @@ function isEmojiOnly(content: string) {
   return /^\[emoji-img:.+\]$/.test(content.trim())
 }
 
-export default function CommunityCommentItem({ comment, postId, isLoggedIn, depth = 0, onLoginNeeded, onBadWord }: Props) {
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function startsWithMention(content: string, nickname: string) {
+  return new RegExp(`^@${escapeRegExp(nickname)}(\\s|$)`).test(content.trimStart())
+}
+
+export default function CommunityCommentItem({
+  comment,
+  postId,
+  isLoggedIn,
+  depth = 0,
+  rootCommentId,
+  threadForcedSecret,
+  onLoginNeeded,
+  onBadWord,
+}: Props) {
   const { t } = useTranslation()
   const [isEditing, setIsEditing] = useState(false)
   const emojiComment = isEmojiOnly(comment.content)
-  // 본인 또는 형제 대댓글이 비밀댓글이면 이후 답글도 강제로 비밀댓글
-  const forcedSecret = comment.isSecret || comment.children.some((c) => c.isSecret)
+  const currentRootCommentId = rootCommentId ?? comment.id
+  // 루트 또는 형제 대댓글이 비밀댓글이면 이후 답글도 강제로 비밀댓글
+  const forcedSecret = threadForcedSecret ?? (comment.isSecret || comment.children.some((c) => c.isSecret))
+  const replyParentId = depth === 0 ? comment.id : currentRootCommentId
+  const replyTargetNickname = comment.authorNickname ?? t('board.anonymous')
+  const replyMentionedUserId = comment.authorId ?? undefined
+  const showMentionPrefix = Boolean(
+    comment.mentionedUserNickname && !startsWithMention(comment.content, comment.mentionedUserNickname),
+  )
   const [isReplying, setIsReplying] = useState(false)
   const [showReport, setShowReport] = useState(false)
   const [reportReason, setReportReason] = useState('')
@@ -85,6 +111,8 @@ export default function CommunityCommentItem({ comment, postId, isLoggedIn, dept
                   postId={postId}
                   isLoggedIn={isLoggedIn}
                   depth={depth + 1}
+                  rootCommentId={currentRootCommentId}
+                  threadForcedSecret={forcedSecret}
                   onLoginNeeded={onLoginNeeded}
                   onBadWord={onBadWord}
                 />
@@ -106,6 +134,8 @@ export default function CommunityCommentItem({ comment, postId, isLoggedIn, dept
                   postId={postId}
                   isLoggedIn={isLoggedIn}
                   depth={depth + 1}
+                  rootCommentId={currentRootCommentId}
+                  threadForcedSecret={forcedSecret}
                   onLoginNeeded={onLoginNeeded}
                   onBadWord={onBadWord}
                 />
@@ -127,6 +157,8 @@ export default function CommunityCommentItem({ comment, postId, isLoggedIn, dept
                   postId={postId}
                   isLoggedIn={isLoggedIn}
                   depth={depth + 1}
+                  rootCommentId={currentRootCommentId}
+                  threadForcedSecret={forcedSecret}
                   onLoginNeeded={onLoginNeeded}
                   onBadWord={onBadWord}
                 />
@@ -172,6 +204,11 @@ export default function CommunityCommentItem({ comment, postId, isLoggedIn, dept
 
           {/* 본문 */}
           <p className="text-sm text-neutral-800 whitespace-pre-wrap leading-relaxed">
+            {showMentionPrefix && (
+              <>
+                <span className="text-primary-800 font-medium">@{comment.mentionedUserNickname}</span>{' '}
+              </>
+            )}
             {renderContent(comment.content)}
           </p>
 
@@ -186,7 +223,7 @@ export default function CommunityCommentItem({ comment, postId, isLoggedIn, dept
 
           {/* 액션 버튼 — 한 줄 우측 정렬 */}
           <div className="flex items-center justify-end gap-1 mt-2">
-            {isLoggedIn && depth === 0 && (
+            {isLoggedIn && (
               <button
                 type="button"
                 onClick={() => setIsReplying((v) => !v)}
@@ -249,8 +286,9 @@ export default function CommunityCommentItem({ comment, postId, isLoggedIn, dept
             <div className="mt-3 pl-3 border-l-2 border-primary-200">
               <CommunityCommentForm
                 postId={postId}
-                parentId={comment.id}
-                parentNickname={comment.authorNickname ?? undefined}
+                parentId={replyParentId}
+                parentNickname={replyTargetNickname}
+                replyMentionedUserId={replyMentionedUserId}
                 forcedSecret={forcedSecret}
                 onSuccess={() => setIsReplying(false)}
                 onCancel={() => setIsReplying(false)}
@@ -322,6 +360,8 @@ export default function CommunityCommentItem({ comment, postId, isLoggedIn, dept
               postId={postId}
               isLoggedIn={isLoggedIn}
               depth={depth + 1}
+              rootCommentId={currentRootCommentId}
+              threadForcedSecret={forcedSecret}
               onLoginNeeded={onLoginNeeded}
               onBadWord={onBadWord}
             />
