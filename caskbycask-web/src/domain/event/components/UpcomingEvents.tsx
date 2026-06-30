@@ -23,9 +23,9 @@ export default function UpcomingEvents({ events, onSelect }: Props) {
   const today = startOfToday()
 
   return (
-    <div className="rounded-xl border border-neutral-200 bg-white">
+    <div className="rounded-xl border border-neutral-200 bg-white shadow-sm">
       <div className="px-4 py-3 border-b border-neutral-100">
-        <h2 className="text-sm font-semibold text-neutral-800">{t('calendar.upcoming')}</h2>
+        <h2 className="text-sm font-semibold text-neutral-900">{t('calendar.upcoming')}</h2>
       </div>
 
       {events.length === 0 ? (
@@ -33,7 +33,7 @@ export default function UpcomingEvents({ events, onSelect }: Props) {
           {t('calendar.upcomingEmpty')}
         </p>
       ) : (
-        <ul className="divide-y divide-neutral-50">
+        <ul className="space-y-2 p-3">
           {events.map((ev) => {
             const meta = CATEGORY_META[ev.category]
             const start = parseYmd(ev.startDate)
@@ -61,22 +61,32 @@ export default function UpcomingEvents({ events, onSelect }: Props) {
                 <button
                   type="button"
                   onClick={() => onSelect(ev)}
-                  className="group w-full flex items-stretch gap-3 px-4 py-3 text-left hover:bg-primary-50/40 transition-colors"
+                  className="group w-full rounded-lg border border-neutral-100 bg-white px-3 py-3 text-left shadow-xs transition-[border-color,background-color,box-shadow] hover:border-primary-200 hover:bg-primary-50/30 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
                 >
-                  <span className={`w-1 shrink-0 rounded-full ${meta.dot}`} aria-hidden="true" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium ${meta.chip}`}>
-                        {t(meta.labelKey)}
-                      </span>
-                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-semibold tabular-nums ${relClass}`}>
-                        {relLabel}
-                      </span>
+                  <div className="flex items-start gap-3">
+                    <span className={`mt-1 h-10 w-1 shrink-0 rounded-full ${meta.dot}`} aria-hidden="true" />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium ${meta.chip}`}>
+                          {t(meta.labelKey)}
+                        </span>
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-semibold tabular-nums ${relClass}`}>
+                          {relLabel}
+                        </span>
+                      </div>
+                      <p className="mt-1.5 text-sm font-semibold leading-snug text-neutral-900 line-clamp-2 group-hover:text-primary-900 transition-colors">
+                        {ev.title}
+                      </p>
+                      <div className="mt-2 flex items-center justify-between gap-2">
+                        <p className="text-xs text-neutral-500 tabular-nums">{dateText}</p>
+                        <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-primary-800">
+                          {t('calendar.openLink')}
+                          <svg className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </span>
+                      </div>
                     </div>
-                    <p className="mt-1 text-sm font-medium text-neutral-800 truncate group-hover:text-primary-800 transition-colors">
-                      {ev.title}
-                    </p>
-                    <p className="text-xs text-neutral-500 tabular-nums">{dateText}</p>
                   </div>
                 </button>
               </li>
