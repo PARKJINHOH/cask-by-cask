@@ -10,6 +10,7 @@ import { useAdminSpirits } from '@/domain/admin/hooks/useAdminSpirits'
 import type { SpiritCategory, SpiritStatus } from '@/domain/spirit/types/spirit.types'
 import { getSpiritListDisplayNames } from '@/domain/spirit/utils/spiritDisplayName'
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
+import { scoreColor } from '@/shared/utils/format'
 
 // ── 상수 ────────────────────────────────────────────────────────
 
@@ -288,7 +289,10 @@ export default function AdminSpiritPage() {
                           {STATUS_OPTIONS.find((s) => s.value === spirit.status)?.label ?? spirit.status}
                         </Badge>
                       </td>
-                      <td className="hidden md:table-cell px-4 py-3 text-right font-medium text-primary-800 tabular-nums">
+                      <td
+                        className="hidden md:table-cell px-4 py-3 text-right font-semibold text-neutral-400 tabular-nums"
+                        style={spirit.avgScore != null ? { color: scoreColor(spirit.avgScore) } : undefined}
+                      >
                         {spirit.avgScore != null ? spirit.avgScore.toFixed(1) : '-'}
                       </td>
                       <td className="hidden md:table-cell px-4 py-3 text-right text-neutral-600 tabular-nums">

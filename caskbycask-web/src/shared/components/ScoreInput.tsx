@@ -1,4 +1,5 @@
 import { useCallback, useId } from 'react'
+import { scoreColor } from '@/shared/utils/format'
 
 export interface ScoreInputProps {
   label: string
@@ -8,15 +9,6 @@ export interface ScoreInputProps {
   onNoteChange?: (note: string) => void
   notePlaceholder?: string
   disabled?: boolean
-}
-
-function scoreColor(v: number): string {
-  if (v >= 95) return '#007BFF'
-  if (v >= 90) return '#28A745'
-  if (v >= 85) return '#5e6f00'
-  if (v >= 80) return '#FFC107'
-  if (v >= 60) return '#FD7E14'
-  return '#DC3545'
 }
 
 export default function ScoreInput({

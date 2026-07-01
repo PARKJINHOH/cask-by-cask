@@ -7,7 +7,7 @@ import AdminPageHeader from '@/shared/components/AdminPageHeader'
 import ImageLightbox from '@/shared/components/ImageLightbox'
 import ImageEditorModal from '@/shared/components/ImageEditorModal'
 import { adminSpiritApi } from '@/domain/admin/api/adminSpiritApi'
-import { formatDate } from '@/shared/utils/format'
+import { formatDate, scoreColor } from '@/shared/utils/format'
 import {
   useAdminSpiritDetail,
   useUpdateSpirit,
@@ -622,7 +622,16 @@ export default function AdminSpiritDetailPage() {
       {/* 메타 정보 */}
       <div className="bg-white rounded-xl shadow-sm p-5">
         <Row label="ID">{spirit.id}</Row>
-        <Row label="평점">{spirit.avgScore != null ? Number(spirit.avgScore).toFixed(1) : '-'}</Row>
+        <Row label="평점">
+          {spirit.avgScore != null ? (
+            <span
+              className="font-semibold tabular-nums"
+              style={{ color: scoreColor(Number(spirit.avgScore)) }}
+            >
+              {Number(spirit.avgScore).toFixed(1)}
+            </span>
+          ) : '-'}
+        </Row>
         <Row label="리뷰 수">{spirit.reviewCount}</Row>
         <Row label="등록일">{formatDate(spirit.createdAt)}</Row>
         <Row label="수정일">{formatDate(spirit.updatedAt)}</Row>
