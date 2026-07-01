@@ -6,6 +6,7 @@ import com.caskbycask.domain.score.constant.ScoreActions;
 import com.caskbycask.domain.score.service.ScoreService;
 import com.caskbycask.domain.community.entity.enums.NotificationType;
 import com.caskbycask.domain.community.service.NotificationService;
+import com.caskbycask.domain.review.dto.ModerationRequest;
 import com.caskbycask.domain.spirit.dto.*;
 import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.domain.spirit.entity.SpiritImage;
@@ -23,6 +24,7 @@ import com.caskbycask.domain.spirit.repository.SpiritVariantLinkRepository;
 import com.caskbycask.domain.user.entity.User;
 import com.caskbycask.domain.user.entity.enums.Role;
 import com.caskbycask.domain.user.repository.UserRepository;
+import com.caskbycask.global.email.EmailSender;
 import com.caskbycask.global.exception.CustomException;
 import com.caskbycask.global.exception.ErrorCode;
 import com.caskbycask.global.util.BadWordFilter;
@@ -79,6 +81,7 @@ public class SpiritService {
     private final NotificationService notificationService;
     private final BadWordFilter badWordFilter;
     private final SpiritSearchService spiritSearchService;
+    private final EmailSender emailSender;
 
     // ── 공개 조회 ──────────────────────────────────────────
 
@@ -177,6 +180,136 @@ public class SpiritService {
                 .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_NOT_FOUND));
 
         return getVariantsResponse(spirit, true);
+    }
+
+    @Transactional
+    public SpiritVariantResponse createUserVariant(Long id, CreateUserVariantRequest request, Long userId) {
+        Spirit selected = spiritRepository.findByIdAndStatus(id, SpiritStatus.ACTIVE)
+                .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_NOT_FOUND));
+        Spirit master = selected.getParent() != null
+                ? spiritRepository.findByIdAndStatus(selected.getParent().getId(), SpiritStatus.ACTIVE)
+                    .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_NOT_FOUND))
+                : selected;
+
+        VariantType variantType = resolveVariantTypeForUserCreate(master);
+        String seriesIdentifier = resolveSeriesIdentifierForUserCreate(master);
+        String seriesIdentifierEn = resolveSeriesIdentifierEnForUserCreate(master, seriesIdentifier);
+        if (variantType == null || variantType == VariantType.NONE || !StringUtils.hasText(seriesIdentifier)) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+
+        String variantValue = request.variantValue().trim();
+        Optional<Spirit> duplicate = spiritRepository
+                .findByParentIdAndVariantValueIgnoreCaseAndStatusIn(
+                        master.getId(),
+                        variantValue,
+                        List.of(SpiritStatus.ACTIVE, SpiritStatus.PENDING))
+                .stream()
+                .findFirst();
+        if (duplicate.isPresent()) {
+            Spirit existing = duplicate.get();
+            return SpiritVariantResponse.of(
+                    existing,
+                    null,
+                    SpiritCommonDetailResponse.from(existing.getCommonDetail()),
+                    spiritDetailService.buildVariantWhiskyDetail(existing));
+        }
+
+        User user = getUser(userId);
+        List<Spirit> existingVariants = spiritRepository.findByParentId(master.getId());
+        Integer nextDisplayOrder = existingVariants.stream()
+                .map(Spirit::getDisplayOrder)
+                .filter(order -> order != null)
+                .max(Integer::compareTo)
+                .map(order -> order + 1)
+                .orElse(existingVariants.size());
+
+        Spirit variant = Spirit.builder()
+                .nameKo(master.getNameKo())
+                .nameEn(master.getNameEn())
+                .category(master.getCategory())
+                .producer(master.getProducer())
+                .bottler(master.getBottler())
+                .bottledYear(master.getBottledYear())
+                .vintageYear(master.getVintageYear())
+                .abv(master.getAbv())
+                .volumeMl(master.getVolumeMl())
+                .country(master.getCountry())
+                .region(master.getRegion())
+                .status(SpiritStatus.PENDING)
+                .registeredBy(user)
+                .parent(master)
+                .variantType(variantType)
+                .variantValue(variantValue)
+                .variantValueEn(normalizeSeriesIdentifier(request.variantValueEn()))
+                .seriesIdentifier(seriesIdentifier)
+                .seriesIdentifierEn(seriesIdentifierEn)
+                .displayOrder(nextDisplayOrder)
+                .build();
+
+        Spirit saved = spiritRepository.save(variant);
+        return SpiritVariantResponse.of(
+                saved,
+                null,
+                SpiritCommonDetailResponse.from(saved.getCommonDetail()),
+                spiritDetailService.buildVariantWhiskyDetail(saved));
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AdminVariantRequestResponse> getVariantRequestsForAdmin(
+            SpiritStatus status, String keyword, Pageable pageable) {
+        String normalizedKeyword = StringUtils.hasText(keyword) ? keyword.trim() : null;
+        return spiritRepository.findVariantRequestsForAdmin(status, normalizedKeyword, pageable)
+                .map(AdminVariantRequestResponse::from);
+    }
+
+    @Transactional
+    public AdminVariantRequestResponse approveVariantRequest(Long id) {
+        Spirit variant = getVariantRequestTarget(id);
+        if (variant.getStatus() != SpiritStatus.PENDING) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+        variant.approve();
+        return AdminVariantRequestResponse.from(variant);
+    }
+
+    @Transactional
+    public void rejectVariantRequest(Long id, ModerationRequest moderation) {
+        Spirit variant = getVariantRequestTarget(id);
+        if (variant.getStatus() != SpiritStatus.PENDING) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+        variant.hide();
+        sendLegacyVariantRejectEmailIfNeeded(variant, moderation);
+    }
+
+    private void sendLegacyVariantRejectEmailIfNeeded(Spirit variant, ModerationRequest moderation) {
+        if (moderation == null || !moderation.shouldSendEmail()) return;
+        User requester = variant.getRegisteredBy();
+        if (requester == null || !StringUtils.hasText(requester.getEmail())) return;
+
+        String reason = StringUtils.hasText(moderation.reason())
+                ? moderation.reason().trim()
+                : "운영 정책에 따라 반려되었습니다.";
+        String edition = List.of(variant.getSeriesIdentifier(), variant.getVariantValue()).stream()
+                .filter(StringUtils::hasText)
+                .collect(Collectors.joining(" "));
+        String body = """
+                하위 에디션 요청이 반려되었습니다.
+
+                주류: %s
+                에디션: %s
+                사유: %s
+                """.formatted(
+                variant.getParent() != null ? variant.getParent().getNameKo() : variant.getNameKo(),
+                StringUtils.hasText(edition) ? edition : "-",
+                reason
+        );
+        try {
+            emailSender.send(requester.getEmail(), "[CaskByCask] 하위 에디션 요청 반려 안내", body);
+        } catch (Exception e) {
+            log.warn("Failed to send legacy variant reject email: to={}", requester.getEmail(), e);
+        }
     }
 
     private List<SpiritVariantResponse> getVariantsResponse(Spirit spirit, boolean activeOnly) {
@@ -306,6 +439,42 @@ public class SpiritService {
                 () -> variantLinkRepository.save(SpiritVariantLink.of(id, targetId, type)));
     }
 
+    private VariantType resolveVariantTypeForUserCreate(Spirit master) {
+        if (master.getVariantType() != null && master.getVariantType() != VariantType.NONE) {
+            return master.getVariantType();
+        }
+        return spiritRepository.findByParentId(master.getId()).stream()
+                .filter(v -> v.getStatus() == SpiritStatus.ACTIVE)
+                .map(Spirit::getVariantType)
+                .filter(type -> type != null && type != VariantType.NONE)
+                .findFirst()
+                .orElse(null);
+    }
+
+    private String resolveSeriesIdentifierForUserCreate(Spirit master) {
+        String direct = normalizeSeriesIdentifier(master.getSeriesIdentifier());
+        if (direct != null) return direct;
+        return spiritRepository.findByParentId(master.getId()).stream()
+                .filter(v -> v.getStatus() == SpiritStatus.ACTIVE)
+                .map(Spirit::getSeriesIdentifier)
+                .map(this::normalizeSeriesIdentifier)
+                .filter(value -> value != null)
+                .findFirst()
+                .orElse(null);
+    }
+
+    private String resolveSeriesIdentifierEnForUserCreate(Spirit master, String fallback) {
+        String direct = normalizeSeriesIdentifier(master.getSeriesIdentifierEn());
+        if (direct != null) return direct;
+        return spiritRepository.findByParentId(master.getId()).stream()
+                .filter(v -> v.getStatus() == SpiritStatus.ACTIVE)
+                .map(Spirit::getSeriesIdentifierEn)
+                .map(this::normalizeSeriesIdentifier)
+                .filter(value -> value != null)
+                .findFirst()
+                .orElse(fallback);
+    }
+
     // ── 관리자 CRUD ─────────────────────────────────────────
 
     @Transactional
@@ -323,6 +492,8 @@ public class SpiritService {
         validateEditionValues(request);
         String seriesIdentifier = resolveSeriesIdentifier(request);
         String seriesIdentifierEn = resolveSeriesIdentifierEn(request);
+        VariantType masterVariantType = resolveMasterVariantType(request);
+        validateVariantSplitSeriesIdentifier(request.isVariantSplit(), masterVariantType, seriesIdentifier);
 
         Spirit spirit = Spirit.builder()
                 .nameKo(request.nameKo())
@@ -338,7 +509,7 @@ public class SpiritService {
                 .region(request.region())
                 .status(request.status() != null ? request.status() : SpiritStatus.ACTIVE)
                 .registeredBy(registeredBy)
-                .variantType(request.variantType())
+                .variantType(masterVariantType)
                 .variantValue(request.variantValue())
                 .variantValueEn(request.variantValueEn())
                 .seriesIdentifier(seriesIdentifier)
@@ -377,8 +548,8 @@ public class SpiritService {
                         .variantType(vReq.variantType())
                         .variantValue(vReq.variantValue())
                         .variantValueEn(vReq.variantValueEn())
-                        .seriesIdentifier(normalizeSeriesIdentifier(vReq.seriesIdentifier()))
-                        .seriesIdentifierEn(resolveSeriesIdentifierEn(vReq))
+                        .seriesIdentifier(resolveVariantSeriesIdentifier(vReq, seriesIdentifier))
+                        .seriesIdentifierEn(resolveVariantSeriesIdentifierEn(vReq, seriesIdentifier, seriesIdentifierEn))
                         .abvMin(vReq.abvMin())
                         .abvMax(vReq.abvMax())
                         .volumeMlMin(vReq.volumeMlMin())
@@ -412,6 +583,8 @@ public class SpiritService {
         validateEditionValues(request, spirit);
         String seriesIdentifier = resolveSeriesIdentifier(request, spirit);
         String seriesIdentifierEn = resolveSeriesIdentifierEn(request, spirit);
+        VariantType masterVariantType = resolveMasterVariantType(request, spirit);
+        validateVariantSplitSeriesIdentifier(request.isVariantSplit(), masterVariantType, seriesIdentifier);
 
         spirit.update(
                 request.nameKo() != null ? request.nameKo() : spirit.getNameKo(),
@@ -426,7 +599,7 @@ public class SpiritService {
                 request.country() != null ? request.country() : spirit.getCountry(),
                 request.region() != null ? request.region() : spirit.getRegion(),
                 spirit.getParent(),
-                request.variantType() != null ? request.variantType() : spirit.getVariantType(),
+                masterVariantType,
                 request.variantValue() != null ? request.variantValue() : spirit.getVariantValue(),
                 request.variantValueEn() != null ? request.variantValueEn() : spirit.getVariantValueEn(),
                 seriesIdentifier,
@@ -465,8 +638,8 @@ public class SpiritService {
                                 spirit.getVintageYear(), vReq.abv(), vReq.volumeMl(),
                                 spirit.getCountry(), spirit.getRegion(),
                                 spirit, vReq.variantType(), vReq.variantValue(), vReq.variantValueEn(),
-                                normalizeSeriesIdentifier(vReq.seriesIdentifier()),
-                                resolveSeriesIdentifierEn(vReq),
+                                resolveVariantSeriesIdentifier(vReq, seriesIdentifier),
+                                resolveVariantSeriesIdentifierEn(vReq, seriesIdentifier, seriesIdentifierEn),
                                 vReq.abvMin(), vReq.abvMax(), vReq.volumeMlMin(), vReq.volumeMlMax()
                         );
                         existing.assignDisplayOrder(i);
@@ -494,8 +667,8 @@ public class SpiritService {
                                 .variantType(vReq.variantType())
                                 .variantValue(vReq.variantValue())
                                 .variantValueEn(vReq.variantValueEn())
-                                .seriesIdentifier(normalizeSeriesIdentifier(vReq.seriesIdentifier()))
-                                .seriesIdentifierEn(resolveSeriesIdentifierEn(vReq))
+                                .seriesIdentifier(resolveVariantSeriesIdentifier(vReq, seriesIdentifier))
+                                .seriesIdentifierEn(resolveVariantSeriesIdentifierEn(vReq, seriesIdentifier, seriesIdentifierEn))
                                 .abvMin(vReq.abvMin())
                                 .abvMax(vReq.abvMax())
                                 .volumeMlMin(vReq.volumeMlMin())
@@ -787,6 +960,8 @@ public class SpiritService {
         validateEditionValues(detail);
         String seriesIdentifier = resolveSeriesIdentifier(detail);
         String seriesIdentifierEn = resolveSeriesIdentifierEn(detail);
+        VariantType masterVariantType = resolveMasterVariantType(detail);
+        validateVariantSplitSeriesIdentifier(detail.isVariantSplit(), masterVariantType, seriesIdentifier);
 
         Spirit spirit = Spirit.builder()
                 .nameKo(detail.nameKo())
@@ -802,7 +977,7 @@ public class SpiritService {
                 .region(detail.region())
                 .status(SpiritStatus.ACTIVE)
                 .registeredBy(req.getUser())
-                .variantType(detail.variantType())
+                .variantType(masterVariantType)
                 .variantValue(detail.variantValue())
                 .variantValueEn(detail.variantValueEn())
                 .seriesIdentifier(seriesIdentifier)
@@ -841,8 +1016,8 @@ public class SpiritService {
                         .variantType(vReq.variantType())
                         .variantValue(vReq.variantValue())
                         .variantValueEn(vReq.variantValueEn())
-                        .seriesIdentifier(normalizeSeriesIdentifier(vReq.seriesIdentifier()))
-                        .seriesIdentifierEn(resolveSeriesIdentifierEn(vReq))
+                        .seriesIdentifier(resolveVariantSeriesIdentifier(vReq, seriesIdentifier))
+                        .seriesIdentifierEn(resolveVariantSeriesIdentifierEn(vReq, seriesIdentifier, seriesIdentifierEn))
                         .abvMin(vReq.abvMin())
                         .abvMax(vReq.abvMax())
                         .volumeMlMin(vReq.volumeMlMin())
@@ -905,35 +1080,71 @@ public class SpiritService {
     // ── Private helpers ─────────────────────────────────────
 
     private void validateEditionValues(CreateSpiritRequest request) {
-        validateEditionValue(request.variantType(), request.variantValue(), request.variantValueEn());
+        if (!Boolean.TRUE.equals(request.isVariantSplit())) {
+            validateEditionValue(request.variantType(), request.variantValue());
+        }
         validateVariantEditionValues(request.variants());
     }
 
     private void validateEditionValues(UpdateSpiritRequest request, Spirit spirit) {
-        VariantType variantType = request.variantType() != null
-                ? request.variantType()
-                : spirit.getVariantType();
-        String variantValue = request.variantValue() != null ? request.variantValue() : spirit.getVariantValue();
-        String variantValueEn = request.variantValueEn() != null ? request.variantValueEn() : spirit.getVariantValueEn();
-        validateEditionValue(variantType, variantValue, variantValueEn);
+        if (!Boolean.TRUE.equals(request.isVariantSplit())) {
+            VariantType variantType = request.variantType() != null
+                    ? request.variantType()
+                    : spirit.getVariantType();
+            String variantValue = request.variantValue() != null ? request.variantValue() : spirit.getVariantValue();
+            validateEditionValue(variantType, variantValue);
+        }
         validateVariantEditionValues(request.variants());
     }
 
     private void validateEditionValues(SpiritRegisterRequestBody body) {
-        validateEditionValue(body.variantType(), body.variantValue(), body.variantValueEn());
+        validateEditionValue(body.variantType(), body.variantValue());
     }
 
     private void validateVariantEditionValues(List<CreateVariantRequest> variants) {
         if (variants == null) return;
-        variants.forEach(v -> validateEditionValue(v.variantType(), v.variantValue(), v.variantValueEn()));
+        variants.forEach(v -> validateEditionValue(v.variantType(), v.variantValue()));
     }
 
-    private void validateEditionValue(VariantType variantType, String variantValue, String variantValueEn) {
+    private void validateEditionValue(VariantType variantType, String variantValue) {
         if (variantType != null
                 && variantType != VariantType.NONE
-                && (!StringUtils.hasText(variantValue) || !StringUtils.hasText(variantValueEn))) {
+                && !StringUtils.hasText(variantValue)) {
             throw new CustomException(ErrorCode.INVALID_INPUT);
         }
+    }
+
+    private void validateVariantSplitSeriesIdentifier(Boolean isVariantSplit, VariantType variantType, String seriesIdentifier) {
+        if (Boolean.TRUE.equals(isVariantSplit)
+                && variantType != null
+                && variantType != VariantType.NONE
+                && !StringUtils.hasText(seriesIdentifier)) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+    }
+
+    private VariantType resolveMasterVariantType(CreateSpiritRequest request) {
+        if (Boolean.TRUE.equals(request.isVariantSplit())) {
+            if (request.variantType() != null && request.variantType() != VariantType.NONE) {
+                return request.variantType();
+            }
+            if (request.variants() != null && !request.variants().isEmpty()) {
+                return request.variants().get(0).variantType();
+            }
+        }
+        return request.variantType();
+    }
+
+    private VariantType resolveMasterVariantType(UpdateSpiritRequest request, Spirit spirit) {
+        if (Boolean.TRUE.equals(request.isVariantSplit())) {
+            if (request.variantType() != null && request.variantType() != VariantType.NONE) {
+                return request.variantType();
+            }
+            if (request.variants() != null && !request.variants().isEmpty()) {
+                return request.variants().get(0).variantType();
+            }
+        }
+        return request.variantType() != null ? request.variantType() : spirit.getVariantType();
     }
 
     private String resolveSeriesIdentifier(CreateSpiritRequest request) {
@@ -992,6 +1203,18 @@ public class SpiritService {
         return direct != null ? direct : normalizeSeriesIdentifier(request.seriesIdentifier());
     }
 
+    private String resolveVariantSeriesIdentifier(CreateVariantRequest request, String fallback) {
+        String direct = normalizeSeriesIdentifier(request.seriesIdentifier());
+        return direct != null ? direct : normalizeSeriesIdentifier(fallback);
+    }
+
+    private String resolveVariantSeriesIdentifierEn(CreateVariantRequest request, String seriesIdentifier, String seriesIdentifierEn) {
+        String direct = normalizeSeriesIdentifier(request.seriesIdentifierEn());
+        if (direct != null) return direct;
+        String fallbackEn = normalizeSeriesIdentifier(seriesIdentifierEn);
+        return fallbackEn != null ? fallbackEn : resolveVariantSeriesIdentifier(request, seriesIdentifier);
+    }
+
     private String resolveSeriesIdentifierEnFallback(String seriesIdentifier) {
         return normalizeSeriesIdentifier(seriesIdentifier);
     }
@@ -1003,6 +1226,14 @@ public class SpiritService {
     private Spirit getSpirit(Long id) {
         return spiritRepository.findById(id)
                 .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_NOT_FOUND));
+    }
+
+    private Spirit getVariantRequestTarget(Long id) {
+        Spirit variant = getSpirit(id);
+        if (variant.getParent() == null) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+        return variant;
     }
 
     private User getUser(Long userId) {

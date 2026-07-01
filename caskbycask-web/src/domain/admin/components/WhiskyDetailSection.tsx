@@ -7,7 +7,7 @@ export interface WhiskyDetailForm {
   caskDetails: Record<string, string[]>
   isNonChillFiltered: boolean; isNaturalColour: boolean
   isSingleCask: boolean; isCaskStrength: boolean; isPeated: boolean
-  phenolPpm: string; phenolPpmMin: string; phenolPpmMax: string; caskNo: string; notes: string
+  phenolPpm: string; phenolPpmMin: string; phenolPpmMax: string; notes: string
 }
 
 export const DEFAULT_WHISKY: WhiskyDetailForm = {
@@ -15,7 +15,7 @@ export const DEFAULT_WHISKY: WhiskyDetailForm = {
   caskTypes: [], caskFinishes: [], caskTypeOther: '',
   caskDetails: {},
   isNonChillFiltered: false, isNaturalColour: false, isSingleCask: false,
-  isCaskStrength: false, isPeated: false, phenolPpm: '', phenolPpmMin: '', phenolPpmMax: '', caskNo: '', notes: '',
+  isCaskStrength: false, isPeated: false, phenolPpm: '', phenolPpmMin: '', phenolPpmMax: '', notes: '',
 }
 
 interface Props { value: WhiskyDetailForm; onChange: (u: Partial<WhiskyDetailForm>) => void }
@@ -254,15 +254,6 @@ export default function WhiskyDetailSection({ value, onChange }: Props) {
             className={`${INPUT} ${!value.isPeated ? 'opacity-40 cursor-not-allowed' : ''}`}
           />
         )}
-      </div>
-
-      {/* 싱글 캐스크 번호 */}
-      <div>
-        <label className={LABEL}>싱글 캐스크 번호</label>
-        <input type="text" value={value.caskNo} maxLength={100}
-          onChange={(e) => onChange({ caskNo: e.target.value })}
-          placeholder="ex. 카발란 FI150504001A"
-          className={INPUT} />
       </div>
 
       {/* 기타 정보 (참고용 자유 입력) */}

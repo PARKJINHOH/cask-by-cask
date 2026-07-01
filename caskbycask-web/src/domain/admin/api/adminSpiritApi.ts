@@ -5,6 +5,10 @@ import type {
   AdminSpiritDetail,
   AdminSpiritImageItem,
   AdminSpiritVariant,
+  AdminVariantRequest,
+  AdminVariantReviewRequest,
+  ApproveVariantReviewPayload,
+  ModerationPayload,
   SpiritRegisterRequest,
   SpiritRegisterRequestDetail,
   UpdateSpiritPayload,
@@ -69,6 +73,58 @@ export const adminSpiritApi = {
 
   removeVariant: (id: number, targetId: number) =>
     axiosInstance.delete<ApiResponse<AdminSpiritVariant[]>>(`/api/admin/spirits/${id}/variants/${targetId}`),
+
+  listVariantRequests: (params: {
+    keyword?: string
+    status?: SpiritStatus
+    page?: number
+    size?: number
+  }) =>
+    axiosInstance.get<ApiResponse<PageResponse<AdminVariantRequest>>>(
+      '/api/admin/spirits/variant-requests',
+      { params },
+    ),
+
+  approveVariantRequest: (id: number) =>
+    axiosInstance.post<ApiResponse<AdminVariantRequest>>(`/api/admin/spirits/variant-requests/${id}/approve`),
+
+  rejectVariantRequest: (id: number, data?: ModerationPayload) =>
+    axiosInstance.patch<ApiResponse<null>>(`/api/admin/spirits/variant-requests/${id}/reject`, data ?? {}),
+
+  listVariantReviewRequests: (params: {
+    keyword?: string
+    status?: string
+    page?: number
+    size?: number
+  }) =>
+    axiosInstance.get<ApiResponse<PageResponse<AdminVariantReviewRequest>>>(
+      '/api/admin/spirits/variant-review-requests',
+      { params },
+    ),
+
+  approveVariantReviewRequest: (id: number, data?: ApproveVariantReviewPayload) =>
+    axiosInstance.post<ApiResponse<AdminVariantReviewRequest>>(
+      `/api/admin/spirits/variant-review-requests/${id}/approve`,
+      data ?? { targetVariantId: null },
+    ),
+
+  approveSavedVariantReviewRequest: (id: number, targetVariantId: number) =>
+    axiosInstance.post<ApiResponse<AdminVariantReviewRequest>>(
+      `/api/admin/spirits/variant-review-requests/${id}/approve-saved-variant`,
+      { targetVariantId },
+    ),
+
+  rejectSavedVariantReviewRequest: (id: number, targetVariantId: number, reason: string) =>
+    axiosInstance.post<ApiResponse<AdminVariantReviewRequest>>(
+      `/api/admin/spirits/variant-review-requests/${id}/reject-review`,
+      { targetVariantId, reviewRejectReason: reason },
+    ),
+
+  rejectVariantReviewRequest: (id: number, data: ModerationPayload) =>
+    axiosInstance.patch<ApiResponse<null>>(
+      `/api/admin/spirits/variant-review-requests/${id}/reject`,
+      data,
+    ),
 
   listRequests: (params: { status?: string; page?: number; size?: number }) =>
     axiosInstance.get<ApiResponse<PageResponse<SpiritRegisterRequest>>>(

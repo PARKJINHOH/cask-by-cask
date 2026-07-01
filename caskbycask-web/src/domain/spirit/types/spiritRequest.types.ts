@@ -45,7 +45,6 @@ export interface SpiritRegisterRequestForm {
   whiskyStyleOther?: string   // whiskyStyle=OTHER 일 때 직접 입력
   brandName?: string          // 브랜드명 (위스키, 선택)
   bottlingType?: string       // 병입 구분 OB/IB (위스키, 선택)
-  caskNo?: string             // 캐스크 번호 (위스키, 선택)
   whiskyNotes?: string        // 기타 정보 (위스키, 참고용 자유 입력)
   // 캐스크 및 특성 (위스키, 선택 — 관리자 등록 폼 참고용)
   caskTypes?: string[]

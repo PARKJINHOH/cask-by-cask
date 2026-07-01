@@ -7,31 +7,41 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public record AdminReviewResponse(
-        @Schema(description = "리뷰 고유 ID")
+        @Schema(description = "Review ID")
         Long id,
-        @Schema(description = "작성자 사용자 ID")
+        @Schema(description = "Author user ID")
         Long userId,
-        @Schema(description = "작성자 닉네임")
+        @Schema(description = "Author nickname")
         String userNickname,
-        @Schema(description = "술 고유 ID")
+        @Schema(description = "Spirit ID")
         Long spiritId,
-        @Schema(description = "술 한글명")
+        @Schema(description = "Spirit Korean name")
         String spiritNameKo,
-        @Schema(description = "향(Nose) 점수")
+        @Schema(description = "Spirit English name")
+        String spiritNameEn,
+        @Schema(description = "Master spirit ID")
+        Long masterSpiritId,
+        @Schema(description = "Nose score")
         BigDecimal noseScore,
-        @Schema(description = "맛(Taste) 점수")
+        @Schema(description = "Taste score")
         BigDecimal tasteScore,
-        @Schema(description = "피니시(Finish) 점수")
+        @Schema(description = "Finish score")
         BigDecimal finishScore,
-        @Schema(description = "총점 (Nose·Taste·Finish 평균)")
+        @Schema(description = "Total score")
         BigDecimal totalScore,
-        @Schema(description = "텍스트 코멘트")
+        @Schema(description = "Comment")
         String comment,
-        @Schema(description = "숨김 처리 여부 (신고 3회 이상 시 자동 true)")
+        @Schema(description = "Nose note")
+        String noseNote,
+        @Schema(description = "Taste note")
+        String tasteNote,
+        @Schema(description = "Finish note")
+        String finishNote,
+        @Schema(description = "Hidden flag")
         Boolean isHidden,
-        @Schema(description = "신고 누적 횟수")
+        @Schema(description = "Report count")
         Integer reportCount,
-        @Schema(description = "작성 일시")
+        @Schema(description = "Created at")
         LocalDateTime createdAt
 ) {
     public static AdminReviewResponse from(Review review) {
@@ -41,11 +51,18 @@ public record AdminReviewResponse(
                 review.getUser().getNickname(),
                 review.getSpirit().getId(),
                 review.getSpirit().getNameKo(),
+                review.getSpirit().getNameEn(),
+                review.getSpirit().getParent() != null
+                        ? review.getSpirit().getParent().getId()
+                        : review.getSpirit().getId(),
                 review.getNoseScore(),
                 review.getTasteScore(),
                 review.getFinishScore(),
                 review.getTotalScore(),
                 review.getComment(),
+                review.getNoseNote(),
+                review.getTasteNote(),
+                review.getFinishNote(),
                 review.getIsHidden(),
                 review.getReportCount(),
                 review.getCreatedAt()

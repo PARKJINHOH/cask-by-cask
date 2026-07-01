@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import Modal from '@/shared/components/Modal'
 import Button from '@/shared/components/Button'
 import { scoreColor } from '@/shared/utils/format'
-import { useCreateReview, useUpdateReview } from '../hooks/useReviews'
+import { useCreateReview, useCreateVariantReviewRequest, useUpdateReview } from '../hooks/useReviews'
 import ReviewScoreSection from './ReviewScoreSection'
 import { getReviewSaveErrorMessage } from '../utils/reviewErrors'
 import { EMPTY_AROMA_NOTES, parseAromaNotes, serializeAromaNotes } from '../utils/aroma'
@@ -14,6 +14,10 @@ import type { AromaNotes } from '../utils/aroma'
 import type { ReviewItem } from '../types/review.types'
 import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
 import { useSpiritDetail, useSpiritVariants } from '@/domain/spirit/hooks/useSpiritDetail'
+import ReviewVariantCreateModal, { type ReviewVariantDraft } from './ReviewVariantCreateModal'
+import ReviewVariantDraftCard from './ReviewVariantDraftCard'
+
+const ADD_VARIANT_SELECT_VALUE = '__ADD_VARIANT__'
 
 function getAromaWheelKey(category?: SpiritCategory): string {
   if (category === 'WHISKY') return 'review.aromaWheelWhisky'
@@ -54,23 +58,33 @@ export default function ReviewFormModal({
   const { t } = useTranslation()
 
   const { data: spirit } = useSpiritDetail(spiritId)
-  const masterId = spirit?.parentId || (spirit?.variants && spirit.variants.length > 0 ? spirit.id : null)
+  const hasSubEditionFlow = !!spirit && (
+    !!spirit.parentId ||
+    !!spirit.seriesIdentifier ||
+    !!(spirit.variantType && spirit.variantType !== 'NONE') ||
+    (spirit.variants?.length ?? 0) > 0
+  )
+  const masterId = spirit?.parentId || (hasSubEditionFlow ? spirit.id : null)
   const { data: variants = [] } = useSpiritVariants(masterId || 0)
 
   const [targetSpiritId, setTargetSpiritId] = useState<number | null>(null)
   const [variantError, setVariantError] = useState<string | null>(null)
+  const [variantCreateOpen, setVariantCreateOpen] = useState(false)
+  const [pendingVariantDraft, setPendingVariantDraft] = useState<ReviewVariantDraft | null>(null)
+  const editionSelectRef = useRef<HTMLSelectElement>(null)
 
   useEffect(() => {
     if (spirit) {
-      if (spirit.parentId) {
-        setTargetSpiritId(spirit.id)
+      if (hasSubEditionFlow) {
+        setTargetSpiritId(null)
       } else if (!spirit.variants || spirit.variants.length === 0) {
         setTargetSpiritId(spirit.id)
       }
     }
-  }, [spirit])
+  }, [spirit, hasSubEditionFlow])
 
   const createMutation = useCreateReview(targetSpiritId || spiritId)
+  const createVariantReviewRequest = useCreateVariantReviewRequest(masterId || spiritId)
   const updateMutation = useUpdateReview(spiritId)
 
   const showAroma = spiritCategory === 'WHISKY' || spiritCategory === 'WINE' || spiritCategory === 'COGNAC'
@@ -114,6 +128,7 @@ export default function ReviewFormModal({
       setNoseAromas(parseAromaNotes(editingReview?.noseAromaWheelNotes))
       setTasteAromas(parseAromaNotes(editingReview?.tasteAromaWheelNotes))
       setFinishAromas(parseAromaNotes(editingReview?.finishAromaWheelNotes))
+      setPendingVariantDraft(null)
     }
   }, [open, editingReview, reset])
 
@@ -124,8 +139,11 @@ export default function ReviewFormModal({
   const totalPreview = (nose + taste + finish) / 3
 
   const onSubmit = async (values: ReviewFormValues) => {
-    if (masterId && variants.length > 0 && !editingReview && targetSpiritId === null) {
+    if (masterId && hasSubEditionFlow && !editingReview && targetSpiritId === null && !pendingVariantDraft) {
       setVariantError(t('review.selectEditionRequired'))
+      setTimeout(() => {
+        editionSelectRef.current?.focus()
+      }, 0)
       return
     }
 
@@ -143,6 +161,15 @@ export default function ReviewFormModal({
     }
     if (editingReview) {
       await updateMutation.mutateAsync({ reviewId: editingReview.id, data: payload })
+    } else if (pendingVariantDraft && masterId) {
+      await createVariantReviewRequest.mutateAsync({
+        ...payload,
+        variantValue: pendingVariantDraft.variantValue,
+        variantValueEn: pendingVariantDraft.variantValueEn,
+        abv: pendingVariantDraft.abv,
+        volumeMl: pendingVariantDraft.volumeMl,
+        requestMemo: pendingVariantDraft.requestMemo,
+      })
     } else {
       await createMutation.mutateAsync(payload)
     }
@@ -150,11 +177,16 @@ export default function ReviewFormModal({
     onClose()
   }
 
-  const isPending = createMutation.isPending || updateMutation.isPending || isSubmitting
-  const serverError = createMutation.error || updateMutation.error
+  const isPending =
+    createMutation.isPending ||
+    createVariantReviewRequest.isPending ||
+    updateMutation.isPending ||
+    isSubmitting
+  const serverError = createMutation.error || createVariantReviewRequest.error || updateMutation.error
   const serverErrorMessage = serverError
     ? getReviewSaveErrorMessage(serverError, t('review.saveError'))
     : ''
+  const canAddVariant = !!masterId && hasSubEditionFlow && !editingReview
 
   return (
     <Modal
@@ -167,16 +199,24 @@ export default function ReviewFormModal({
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
 
         {/* 에디션 선택 (하위 에디션이 존재하는 경우에만 노출) */}
-        {masterId && variants.length > 0 && !editingReview && (
+        {masterId && hasSubEditionFlow && !editingReview && (
           <div className="bg-amber-50/40 border border-amber-200/60 rounded-2xl p-4 space-y-2 text-left">
             <label className="block text-xs font-bold text-neutral-700">
               {t('review.selectEdition')} <span className="text-red-500">*</span>
             </label>
             <select
-              value={targetSpiritId ?? ''}
+              ref={editionSelectRef}
+              value={pendingVariantDraft ? ADD_VARIANT_SELECT_VALUE : targetSpiritId ?? ''}
               onChange={(e) => {
                 const val = e.target.value
+                if (val === ADD_VARIANT_SELECT_VALUE) {
+                  setTargetSpiritId(null)
+                  setVariantError(null)
+                  setVariantCreateOpen(true)
+                  return
+                }
                 setTargetSpiritId(val === '' ? null : Number(val))
+                setPendingVariantDraft(null)
                 setVariantError(null)
               }}
               className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-pointer"
@@ -190,8 +230,8 @@ export default function ReviewFormModal({
                   </option>
                 )
               })}
-              <option value={spirit?.parentId ? spirit.parentId : spirit?.id}>
-                {t('review.editionUnknown')}
+              <option value={ADD_VARIANT_SELECT_VALUE}>
+                {t('review.addEditionSelectOption')}
               </option>
             </select>
             {variantError && (
@@ -200,6 +240,19 @@ export default function ReviewFormModal({
             <p className="text-[11px] text-neutral-400">
               {t('review.editionWarning')}
             </p>
+          </div>
+        )}
+
+        {canAddVariant && pendingVariantDraft && (
+          <div className="space-y-2">
+            <ReviewVariantDraftCard
+              draft={pendingVariantDraft}
+              onEdit={() => setVariantCreateOpen(true)}
+              onDelete={() => {
+                setPendingVariantDraft(null)
+                setTimeout(() => editionSelectRef.current?.focus(), 0)
+              }}
+            />
           </div>
         )}
 
@@ -335,6 +388,18 @@ export default function ReviewFormModal({
           </Button>
         </div>
       </form>
+      {masterId && (
+        <ReviewVariantCreateModal
+          open={variantCreateOpen}
+          onClose={() => setVariantCreateOpen(false)}
+          initialDraft={pendingVariantDraft}
+          onCreated={(draft) => {
+            setPendingVariantDraft(draft)
+            setTargetSpiritId(null)
+            setVariantError(null)
+          }}
+        />
+      )}
     </Modal>
   )
 }

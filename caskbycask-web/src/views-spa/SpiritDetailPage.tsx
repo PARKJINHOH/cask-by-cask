@@ -376,7 +376,6 @@ function SpiritDetailSections({ spirit, isEn }: { spirit: SpiritDetail; isEn: bo
               </DIChips>
               <DI label={isEn ? 'Phenol (ppm)' : '피트 강도'}
                 value={formatPhenolPpm(whisky.phenolPpm, whisky.phenolPpmMin, whisky.phenolPpmMax)} />
-              <DI label={isEn ? 'Single Cask No.' : '싱글 캐스크 번호'} value={whisky.caskNo} />
             </DetailGrid>
             <div className="flex flex-wrap gap-1.5 mt-4">
               {whisky.isNonChillFiltered && (

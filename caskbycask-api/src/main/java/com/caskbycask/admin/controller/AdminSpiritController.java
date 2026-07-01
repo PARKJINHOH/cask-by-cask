@@ -1,5 +1,10 @@
 package com.caskbycask.admin.controller;
 
+import com.caskbycask.domain.review.dto.AdminVariantReviewRequestResponse;
+import com.caskbycask.domain.review.dto.ApproveVariantReviewRequest;
+import com.caskbycask.domain.review.dto.ModerationRequest;
+import com.caskbycask.domain.review.entity.enums.VariantReviewRequestStatus;
+import com.caskbycask.domain.review.service.VariantReviewRequestService;
 import com.caskbycask.domain.spirit.dto.*;
 import com.caskbycask.domain.spirit.entity.enums.RequestStatus;
 import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
@@ -29,11 +34,98 @@ public class AdminSpiritController {
 
     private final SpiritService spiritService;
     private final SpiritImageService spiritImageService;
+    private final VariantReviewRequestService variantReviewRequestService;
 
-    // ── 술 CRUD ─────────────────────────────────────────────
-    // PARTNER 포함 접근 가능 (verifyProducerAccess 로 세부 제어)
+    // ?? ??CRUD ?????????????????????????????????????????????
+    // PARTNER ?ы븿 ?묎렐 媛??(verifyProducerAccess 濡??몃? ?쒖뼱)
 
-    // 관리자 술 목록 — status 미지정(전체) 시 ACTIVE/HIDDEN/PENDING 모두 조회
+    // User-added sub-edition approval queue.
+    @GetMapping("/variant-requests")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
+    public ResponseEntity<ApiResponse<PageResponse<AdminVariantRequestResponse>>> getVariantRequests(
+            @RequestParam(required = false) SpiritStatus status,
+            @RequestParam(required = false) String keyword,
+            @PageableDefault(size = 20) Pageable pageable) {
+        return ResponseEntity.ok(ApiResponse.success(
+                PageResponse.from(spiritService.getVariantRequestsForAdmin(status, keyword, pageable))
+        ));
+    }
+
+    @PostMapping("/variant-requests/{id}/approve")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
+    public ResponseEntity<ApiResponse<AdminVariantRequestResponse>> approveVariantRequest(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(spiritService.approveVariantRequest(id)));
+    }
+
+    @PatchMapping("/variant-requests/{id}/reject")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> rejectVariantRequest(
+            @PathVariable Long id,
+            @Valid @RequestBody(required = false) ModerationRequest request) {
+        spiritService.rejectVariantRequest(id, request);
+        return ResponseEntity.ok(ApiResponse.success());
+    }
+
+    @GetMapping("/variant-review-requests")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
+    public ResponseEntity<ApiResponse<PageResponse<AdminVariantReviewRequestResponse>>> getVariantReviewRequests(
+            @RequestParam(required = false) VariantReviewRequestStatus status,
+            @RequestParam(required = false) String keyword,
+            @PageableDefault(size = 20) Pageable pageable) {
+        return ResponseEntity.ok(ApiResponse.success(
+                PageResponse.from(variantReviewRequestService.getAdminRequests(status, keyword, pageable))
+        ));
+    }
+
+    @PostMapping("/variant-review-requests/{id}/approve")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
+    public ResponseEntity<ApiResponse<AdminVariantReviewRequestResponse>> approveVariantReviewRequest(
+            @PathVariable Long id,
+            @Valid @RequestBody(required = false) ApproveVariantReviewRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(ApiResponse.success(
+                variantReviewRequestService.approve(id, request, userDetails.getUserId())
+        ));
+    }
+
+    @PostMapping("/variant-review-requests/{id}/approve-saved-variant")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
+    public ResponseEntity<ApiResponse<AdminVariantReviewRequestResponse>> approveSavedVariantReviewRequest(
+            @PathVariable Long id,
+            @Valid @RequestBody ApproveVariantReviewRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(ApiResponse.success(
+                variantReviewRequestService.approveSavedVariant(id, request.targetVariantId(), userDetails.getUserId())
+        ));
+    }
+
+    @PostMapping("/variant-review-requests/{id}/reject-review")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
+    public ResponseEntity<ApiResponse<AdminVariantReviewRequestResponse>> rejectSavedVariantReviewRequest(
+            @PathVariable Long id,
+            @Valid @RequestBody ApproveVariantReviewRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(ApiResponse.success(
+                variantReviewRequestService.rejectReviewOnly(
+                        id,
+                        request.targetVariantId(),
+                        userDetails.getUserId(),
+                        request.reviewRejectReason()
+                )
+        ));
+    }
+
+    @PatchMapping("/variant-review-requests/{id}/reject")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> rejectVariantReviewRequest(
+            @PathVariable Long id,
+            @Valid @RequestBody(required = false) ModerationRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        variantReviewRequestService.reject(id, userDetails.getUserId(), request);
+        return ResponseEntity.ok(ApiResponse.success());
+    }
+
+    // 愿由ъ옄 ??紐⑸줉 ??status 誘몄????꾩껜) ??ACTIVE/HIDDEN/PENDING 紐⑤몢 議고쉶
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<SpiritListResponse>>> list(
             @RequestParam(required = false) String keyword,
@@ -49,7 +141,7 @@ public class AdminSpiritController {
                 PageResponse.from(spiritService.searchSpiritsForAdmin(condition, pageable))));
     }
 
-    // 관리자 술 상세 — 상태(ACTIVE/HIDDEN/PENDING) 무관 조회
+    // 愿由ъ옄 ???곸꽭 ???곹깭(ACTIVE/HIDDEN/PENDING) 臾닿? 議고쉶
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<SpiritDetailResponse>> getDetail(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(
@@ -97,8 +189,8 @@ public class AdminSpiritController {
         return ResponseEntity.ok(ApiResponse.success());
     }
 
-    // ── 연관 술(다른 배치·병입) 수동 관리 ─────────────────────
-    // 자동(이름) 연결에 더해 관리자가 수동 추가/제거. 양방향.
+    // ?? ?곌? ???ㅻⅨ 諛곗튂쨌蹂묒엯) ?섎룞 愿由??????????????????????
+    // ?먮룞(?대쫫) ?곌껐???뷀빐 愿由ъ옄媛 ?섎룞 異붽?/?쒓굅. ?묐갑??
 
     @GetMapping("/{id}/variants")
     public ResponseEntity<ApiResponse<List<AdminSpiritVariantResponse>>> getVariants(@PathVariable Long id) {
@@ -121,7 +213,7 @@ public class AdminSpiritController {
         return ResponseEntity.ok(ApiResponse.success(spiritService.getSpiritVariantsForAdmin(id)));
     }
 
-    // ── 이미지 관리 ──────────────────────────────────────────
+    // ?? ?대?吏 愿由???????????????????????????????????????????
 
     @PostMapping("/{id}/images")
     public ResponseEntity<ApiResponse<SpiritImageResponse>> uploadImage(
@@ -158,7 +250,7 @@ public class AdminSpiritController {
         ));
     }
 
-    // ── 등록 요청 — 조회/수정 (PARTNER 포함) ──────────────────
+    // ?? ?깅줉 ?붿껌 ??議고쉶/?섏젙 (PARTNER ?ы븿) ??????????????????
 
     @GetMapping("/requests")
     public ResponseEntity<ApiResponse<PageResponse<SpiritRegisterRequestResponse>>> getRequests(
@@ -204,9 +296,9 @@ public class AdminSpiritController {
         ));
     }
 
-    // ── 등록 요청 — 승인/거절 (ADMIN 이상만) ──────────────────
+    // ?? ?깅줉 ?붿껌 ???뱀씤/嫄곗젅 (ADMIN ?댁긽留? ??????????????????
 
-    // 등록 요청 상세 화면(= 새 술 등록과 동일 폼)에서 관리자가 보완한 전체 상세로 승인
+    // ?깅줉 ?붿껌 ?곸꽭 ?붾㈃(= ?????깅줉怨??숈씪 ???먯꽌 愿由ъ옄媛 蹂댁셿???꾩껜 ?곸꽭濡??뱀씤
     @PostMapping("/requests/{id}/approve")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
     public ResponseEntity<ApiResponse<SpiritDetailResponse>> approveRequestWithDetail(

@@ -18,9 +18,17 @@ import {
   useDeleteSpiritImage,
   useSetPrimarySpiritImage,
   useReorderSpiritImages,
+  useApproveSavedVariantReviewRequest,
+  useRejectSavedVariantReviewRequest,
 } from '@/domain/admin/hooks/useAdminSpirits'
-import type { AdminSpiritImageItem } from '@/domain/admin/types/admin.types'
+import type {
+  AdminSpiritImageItem,
+  AdminSpiritVariant,
+  AdminVariantReviewRequest,
+  CreateVariantRequest,
+} from '@/domain/admin/types/admin.types'
 import SpiritFormFields, { useSpiritForm, CARD } from '@/domain/admin/components/SpiritFormFields'
+import AdminSpiritReviewPanel from '@/domain/admin/components/AdminSpiritReviewPanel'
 import Toast from '@/shared/components/Toast'
 import { useToast } from '@/shared/hooks/useToast'
 
@@ -29,14 +37,101 @@ const STATUS_LABEL: Record<string, string> = {
   ACTIVE: '공개', HIDDEN: '숨김', PENDING: '대기',
 }
 
-type ListReturnState = { returnTo?: string }
+type ListReturnState = {
+  returnTo?: string
+  variantReviewApproval?: AdminVariantReviewRequest
+}
 
 function getAdminSpiritListReturnTo(state: unknown) {
   const returnTo = (state as ListReturnState | null)?.returnTo
   if (!returnTo) return '/admin/spirits'
-  return returnTo === '/admin/spirits' || returnTo.startsWith('/admin/spirits?')
+  return /^(\/(ko|en))?\/admin\/spirits($|\?|\/variant-requests($|\?))/.test(returnTo)
     ? returnTo
     : '/admin/spirits'
+}
+
+function getVariantReviewApprovalState(state: unknown, spiritId: number) {
+  const request = (state as ListReturnState | null)?.variantReviewApproval
+  if (!request || request.status !== 'PENDING' || request.masterId !== spiritId) return null
+  return request
+}
+
+function approvalVariantTempId(requestId: number) {
+  return `variant-review-approval-${requestId}`
+}
+
+function normalizedText(value?: string | null) {
+  return (value ?? '').trim().toLowerCase()
+}
+
+function buildApprovalVariant(request: AdminVariantReviewRequest): CreateVariantRequest & { tempId: string } {
+  const variantType =
+    request.variantType && request.variantType !== 'NONE'
+      ? request.variantType
+      : 'BATCH'
+
+  return {
+    tempId: approvalVariantTempId(request.id),
+    variantType,
+    variantValue: request.variantValue ?? '',
+    variantValueEn: request.variantValueEn ?? '',
+    seriesIdentifier: request.seriesIdentifier ?? '',
+    seriesIdentifierEn: request.seriesIdentifierEn ?? '',
+    abv: request.abv,
+    volumeMl: request.volumeMl,
+    commonDetail: {
+      isNas: false,
+      ageStatement: null,
+      ageStatementMonths: null,
+      ageStatementMin: null,
+      ageStatementMinMonths: null,
+      ageStatementMax: null,
+      ageStatementMaxMonths: null,
+      distilledDate: null,
+      bottledDate: null,
+      releaseDate: null,
+      bottleNo: null,
+      batchNo: variantType === 'BATCH' ? request.variantValue : null,
+      totalBottles: null,
+    },
+  }
+}
+
+function findApprovalVariantIndex(variants: CreateVariantRequest[], request: AdminVariantReviewRequest | null) {
+  if (!request) return -1
+  const tempId = approvalVariantTempId(request.id)
+  const tempIndex = variants.findIndex((variant) => (variant as any).tempId === tempId)
+  if (tempIndex >= 0) return tempIndex
+  const requestValue = normalizedText(request.variantValue)
+  return variants.findIndex((variant) => normalizedText(variant.variantValue) === requestValue)
+}
+
+function findSavedApprovalVariant(
+  variants: AdminSpiritVariant[],
+  formVariant: CreateVariantRequest,
+) {
+  const variantValue = normalizedText(formVariant.variantValue)
+  const candidates = variants
+    .filter((variant) => variant.status === 'ACTIVE')
+    .filter((variant) => normalizedText(variant.variantValue) === variantValue)
+    .sort((a, b) => b.id - a.id)
+
+  if (candidates.length === 0) return null
+
+  const specMatched = candidates.find((variant) =>
+    (formVariant.abv == null || Number(variant.abv) === Number(formVariant.abv))
+    && (formVariant.volumeMl == null || Number(variant.volumeMl) === Number(formVariant.volumeMl))
+  )
+
+  return specMatched ?? candidates[0]
+}
+
+function focusAdminField(fieldKey: string) {
+  window.setTimeout(() => {
+    const target = document.querySelector<HTMLElement>(`[data-field="${fieldKey}"], [name="${fieldKey}"]`)
+    target?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    target?.focus()
+  }, 0)
 }
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
@@ -313,10 +408,13 @@ export default function AdminSpiritDetailPage() {
   const location = useLocation()
   const spiritId = Number(id)
   const listReturnTo = getAdminSpiritListReturnTo(location.state)
+  const variantReviewApproval = getVariantReviewApprovalState(location.state, spiritId)
   const goList = () => navigate(listReturnTo)
 
   const { data: spirit, isLoading } = useAdminSpiritDetail(spiritId)
   const updateSpirit = useUpdateSpirit()
+  const approveSavedVariantReview = useApproveSavedVariantReviewRequest()
+  const rejectSavedVariantReview = useRejectSavedVariantReviewRequest()
   const deleteSpirit = useDeleteSpirit()
   const permanentlyDeleteSpirit = usePermanentlyDeleteSpirit()
   const restoreSpirit = useRestoreSpirit()
@@ -325,23 +423,143 @@ export default function AdminSpiritDetailPage() {
 
   const { toasts, showToast, removeToast } = useToast()
   const [initialized, setInitialized] = useState(false)
+  const [activeTab, setActiveTab] = useState<'detail' | 'reviews'>('detail')
+  const [reviewApprovalChecked, setReviewApprovalChecked] = useState(false)
+  const [reviewRejectedChecked, setReviewRejectedChecked] = useState(false)
+  const [reviewRejectReason, setReviewRejectReason] = useState('')
 
   // 기존 데이터 → 폼 프리필 (한 번만)
   if (spirit && !initialized) {
     form.prefillFromSpirit(spirit)
+    if (variantReviewApproval) {
+      const approvalVariantType =
+        variantReviewApproval.variantType && variantReviewApproval.variantType !== 'NONE'
+          ? variantReviewApproval.variantType
+          : 'BATCH'
+      const resolvedSeriesIdentifier =
+        spirit.seriesIdentifier
+        ?? spirit.variants?.find((variant) => variant.seriesIdentifier)?.seriesIdentifier
+        ?? variantReviewApproval.seriesIdentifier
+        ?? ''
+      const resolvedSeriesIdentifierEn =
+        spirit.seriesIdentifierEn
+        ?? spirit.variants?.find((variant) => variant.seriesIdentifierEn)?.seriesIdentifierEn
+        ?? variantReviewApproval.seriesIdentifierEn
+        ?? ''
+
+      form.setIsVariantSplit(true)
+      form.setVariantType(approvalVariantType)
+      form.setSeriesIdentifier(resolvedSeriesIdentifier)
+      form.setSeriesIdentifierEn(resolvedSeriesIdentifierEn)
+      form.setVariants((prev) => {
+        const requestValue = normalizedText(variantReviewApproval.variantValue)
+        const tempId = approvalVariantTempId(variantReviewApproval.id)
+        const hasSameVariant = prev.some((variant) => normalizedText(variant.variantValue) === requestValue)
+        const hasSeed = prev.some((variant) => (variant as any).tempId === tempId)
+        if (hasSeed) return prev
+        if (hasSameVariant) {
+          return prev.map((variant) =>
+            normalizedText(variant.variantValue) === requestValue
+              ? { ...variant, tempId }
+              : variant
+          )
+        }
+        return [...prev, buildApprovalVariant(variantReviewApproval)]
+      })
+    }
     setInitialized(true)
   }
 
-  const handleSave = () => {
-    if (!form.validate()) { window.scrollTo({ top: 0, behavior: 'smooth' }); return }
-    // 카테고리는 고정 — buildPayload의 category 값은 변경되지 않음
-    updateSpirit.mutate(
-      { id: spiritId, data: form.buildPayload() },
-      {
-        onSuccess: () => showToast('저장되었습니다.', 'success'),
-        onError: () => showToast('저장 중 오류가 발생했습니다.', 'error'),
-      },
-    )
+  const approvalVariantIndex = findApprovalVariantIndex(form.variants, variantReviewApproval)
+  const isApprovalMode = !!variantReviewApproval
+  const isSaving = updateSpirit.isPending || approveSavedVariantReview.isPending || rejectSavedVariantReview.isPending
+
+  const validateApprovalVariantSpecs = () => {
+    if (!variantReviewApproval) return true
+    if (approvalVariantIndex < 0 || !form.variants[approvalVariantIndex]) {
+      setActiveTab('detail')
+      showToast('승인할 하위 에디션을 찾을 수 없습니다.', 'error')
+      return false
+    }
+
+    const variant = form.variants[approvalVariantIndex]
+    const nextErrors: Record<string, string> = {}
+    if (variant.abv == null || Number.isNaN(Number(variant.abv)) || Number(variant.abv) < 0 || Number(variant.abv) > 100) {
+      nextErrors[`variantAbv_${approvalVariantIndex}`] = '승인할 에디션의 알코올 도수는 필수입니다.'
+    }
+    if (variant.volumeMl == null || Number.isNaN(Number(variant.volumeMl)) || Number(variant.volumeMl) < 1 || Number(variant.volumeMl) > 100000) {
+      nextErrors[`variantVolumeMl_${approvalVariantIndex}`] = '승인할 에디션의 용량은 필수입니다.'
+    }
+
+    if (Object.keys(nextErrors).length === 0) return true
+
+    form.setErrors((prev) => ({ ...prev, ...nextErrors }))
+    setActiveTab('detail')
+    focusAdminField(Object.keys(nextErrors)[0])
+    return false
+  }
+
+  const handleSave = async () => {
+    if (variantReviewApproval && reviewRejectedChecked && !reviewRejectReason.trim()) {
+      setActiveTab('reviews')
+      showToast('리뷰 미승인 사유를 입력해주세요.', 'error')
+      return
+    }
+
+    if (activeTab !== 'detail') {
+      setActiveTab('detail')
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 0))
+    }
+
+    if (!form.validate()) {
+      setActiveTab('detail')
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
+    if (!validateApprovalVariantSpecs()) return
+
+    try {
+      const approvalVariantSnapshot =
+        variantReviewApproval && approvalVariantIndex >= 0
+          ? { ...form.variants[approvalVariantIndex] }
+          : null
+
+      // 카테고리는 고정 — buildPayload의 category 값은 변경되지 않음
+      await updateSpirit.mutateAsync({ id: spiritId, data: form.buildPayload() })
+
+      if (variantReviewApproval && approvalVariantSnapshot) {
+        const variantsResponse = await adminSpiritApi.getVariants(spiritId)
+        const targetVariant = findSavedApprovalVariant(variantsResponse.data.data ?? [], approvalVariantSnapshot)
+        if (!targetVariant) {
+          throw new Error('approval variant not found')
+        }
+
+        if (reviewRejectedChecked) {
+          await rejectSavedVariantReview.mutateAsync({
+            id: variantReviewApproval.id,
+            targetVariantId: targetVariant.id,
+            reason: reviewRejectReason.trim(),
+          })
+          showToast('하위 에디션은 등록되고 리뷰는 미승인 처리되었습니다.', 'success')
+        } else {
+          await approveSavedVariantReview.mutateAsync({
+            id: variantReviewApproval.id,
+            targetVariantId: targetVariant.id,
+          })
+          showToast('하위 에디션과 리뷰가 등록되었습니다.', 'success')
+        }
+        navigate(location.pathname, { replace: true, state: { returnTo: listReturnTo } })
+      } else {
+        showToast('저장되었습니다.', 'success')
+      }
+    } catch {
+      showToast(
+        variantReviewApproval
+          ? '저장 또는 하위 에디션/리뷰 승인 중 오류가 발생했습니다.'
+          : '저장 중 오류가 발생했습니다.',
+        'error',
+      )
+    }
   }
 
   const handleDelete = async () => {
@@ -410,20 +628,103 @@ export default function AdminSpiritDetailPage() {
         <Row label="수정일">{formatDate(spirit.updatedAt)}</Row>
       </div>
 
+      {variantReviewApproval && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-amber-900">하위 에디션/리뷰 승인 검수 중</p>
+              <p className="mt-1 text-sm text-amber-800">
+                사용자 입력값을 하위 에디션 목록에 반영했습니다. 상세 정보를 확인/수정한 뒤 리뷰 탭에서 리뷰 검수 완료 또는 리뷰 미승인을 선택하면 저장할 수 있습니다.
+              </p>
+              <p className="mt-2 text-xs text-amber-700">
+                요청 에디션: {[variantReviewApproval.seriesIdentifier, variantReviewApproval.variantValue].filter(Boolean).join(' ')}
+                {' · '}
+                {variantReviewApproval.abv}% / {variantReviewApproval.volumeMl}ml
+              </p>
+            </div>
+            <Button type="button" variant="secondary" onClick={() => setActiveTab('reviews')}>
+              리뷰 확인
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* 이미지 (메타 정보 아래 · 술 정보 위, 가로 전체) */}
-      <SpiritImageSection spiritId={spiritId} images={spirit.images} />
+      <div className="flex gap-2 border-b border-neutral-200">
+        <button
+          type="button"
+          onClick={() => setActiveTab('detail')}
+          className={`border-b-2 px-4 py-2 text-sm font-semibold transition-colors ${
+            activeTab === 'detail'
+              ? 'border-primary-800 text-primary-900'
+              : 'border-transparent text-neutral-500 hover:text-neutral-800'
+          }`}
+        >
+          상세 정보
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('reviews')}
+          className={`border-b-2 px-4 py-2 text-sm font-semibold transition-colors ${
+            activeTab === 'reviews'
+              ? 'border-primary-800 text-primary-900'
+              : 'border-transparent text-neutral-500 hover:text-neutral-800'
+          }`}
+        >
+          리뷰
+        </button>
+      </div>
+
+      {activeTab === 'detail' ? (
+        <>
+          <SpiritImageSection spiritId={spiritId} images={spirit.images} />
 
 
 
       {/* 공유 폼 (카테고리 고정) */}
-      <SpiritFormFields form={form} categoryLocked />
+          <SpiritFormFields
+            form={form}
+            categoryLocked
+            activeVariantIndex={approvalVariantIndex >= 0 ? approvalVariantIndex : null}
+          />
+        </>
+      ) : (
+        <AdminSpiritReviewPanel
+          spiritId={spiritId}
+          pendingVariantReview={variantReviewApproval}
+          reviewApprovalChecked={reviewApprovalChecked}
+          reviewRejectedChecked={reviewRejectedChecked}
+          reviewRejectReason={reviewRejectReason}
+          onReviewApprovalCheckedChange={(checked) => {
+            setReviewApprovalChecked(checked)
+            if (checked) {
+              setReviewRejectedChecked(false)
+              setReviewRejectReason('')
+            }
+          }}
+          onReviewRejectedCheckedChange={(checked) => {
+            setReviewRejectedChecked(checked)
+            if (checked) setReviewApprovalChecked(false)
+          }}
+          onReviewRejectReasonChange={setReviewRejectReason}
+        />
+      )}
 
       {/* 저장/삭제 알림 — 상단 중앙 토스트 */}
       <Toast toasts={toasts} onRemove={removeToast} position="top-center" />
 
       {/* 하단 고정 액션바 */}
+      {(activeTab === 'detail' || isApprovalMode) && (
       <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/90 backdrop-blur border-t border-neutral-200">
-        <div className="max-w-3xl lg:max-w-6xl xl:max-w-7xl mx-auto px-6 py-3 flex items-center justify-end gap-2">
+        <div className="max-w-3xl lg:max-w-6xl xl:max-w-7xl mx-auto px-6 py-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          {isApprovalMode ? (
+            <p className="text-xs text-neutral-500">
+              리뷰 탭에서 미승인 리뷰를 확인하고 검수 완료 또는 리뷰 미승인을 선택해야 저장됩니다.
+            </p>
+          ) : (
+            <span />
+          )}
+          <div className="flex items-center justify-end gap-2">
           <Button variant="secondary" onClick={goList}>목록으로</Button>
           {spirit.status === 'HIDDEN' ? (
             <Button
@@ -449,9 +750,17 @@ export default function AdminSpiritDetailPage() {
           >
             삭제
           </Button>
-          <Button onClick={handleSave} isLoading={updateSpirit.isPending}>변경사항 저장</Button>
+          <Button
+            onClick={handleSave}
+            isLoading={isSaving}
+            disabled={isApprovalMode && !reviewApprovalChecked && !reviewRejectedChecked}
+          >
+            변경사항 저장
+          </Button>
+          </div>
         </div>
       </div>
+      )}
     </div>
   )
 }

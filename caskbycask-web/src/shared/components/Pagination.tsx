@@ -3,6 +3,7 @@
   totalPages: number
   onPageChange: (page: number) => void
   className?: string
+  scrollToTopOnChange?: boolean
 }
 
 /** Returns at most 5 page numbers with '...' where needed. */
@@ -29,8 +30,18 @@ export default function Pagination({
   totalPages,
   onPageChange,
   className = '',
+  scrollToTopOnChange = true,
 }: PaginationProps) {
   if (totalPages <= 1) return null
+
+  const handlePageChange = (page: number) => {
+    if (page === currentPage || page < 0 || page >= totalPages) return
+    onPageChange(page)
+    if (!scrollToTopOnChange || typeof window === 'undefined') return
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    })
+  }
 
   return (
     <nav
@@ -39,7 +50,7 @@ export default function Pagination({
       className={`flex items-center justify-center gap-1 ${className}`}
     >
       <button
-        onClick={() => onPageChange(currentPage - 1)}
+        onClick={() => handlePageChange(currentPage - 1)}
         disabled={currentPage === 0}
         aria-label="이전 페이지"
         className={`${navBtn} border-neutral-200 hover:bg-neutral-50 text-neutral-500 px-2`}
@@ -55,7 +66,7 @@ export default function Pagination({
         ) : (
           <button
             key={p}
-            onClick={() => onPageChange(p)}
+            onClick={() => handlePageChange(p)}
             aria-label={`${p + 1}페이지`}
             aria-current={p === currentPage ? 'page' : undefined}
             className={[
@@ -71,7 +82,7 @@ export default function Pagination({
       )}
 
       <button
-        onClick={() => onPageChange(currentPage + 1)}
+        onClick={() => handlePageChange(currentPage + 1)}
         disabled={currentPage === totalPages - 1}
         aria-label="다음 페이지"
         className={`${navBtn} border-neutral-200 hover:bg-neutral-50 text-neutral-500 px-2`}

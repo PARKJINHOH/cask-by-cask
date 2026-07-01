@@ -75,7 +75,7 @@ public class SpiritWhiskyDetail {
     @Comment("최대 페놀 수치(ppm)")
     private BigDecimal phenolPpmMax;
 
-    /** JSON: { "styleOther": "", "caskNo": "", "caskTypes": ["EX_SHERRY", ...], "caskTypeOther": "" } */
+    /** JSON: { "styleOther": "", "caskTypes": ["EX_SHERRY", ...], "caskTypeOther": "" } */
     @Column(columnDefinition = "TEXT")
     @Comment("추가 데이터(JSON)")
     private String extraData;

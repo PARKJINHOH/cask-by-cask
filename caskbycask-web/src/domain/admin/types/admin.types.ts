@@ -281,6 +281,96 @@ export interface AdminSpiritVariant {
   whiskyDetail?: WhiskyDetailResponse | null
 }
 
+export interface AdminVariantRequest {
+  id: number
+  masterId: number | null
+  masterNameKo: string
+  masterNameEn: string
+  category: SpiritCategory
+  variantType: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE' | null
+  variantValue: string | null
+  variantValueEn: string | null
+  seriesIdentifier: string | null
+  seriesIdentifierEn: string | null
+  status: SpiritStatus
+  requesterId: number | null
+  requesterNickname: string | null
+  createdAt: string
+}
+
+export type VariantReviewRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'MERGED'
+
+export interface AdminVariantReviewRequest {
+  id: number
+  masterId: number
+  masterNameKo: string
+  masterNameEn: string
+  category: SpiritCategory
+  variantType: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE' | null
+  variantValue: string
+  variantValueEn: string | null
+  seriesIdentifier: string | null
+  seriesIdentifierEn: string | null
+  abv: number
+  volumeMl: number
+  requestMemo: string | null
+  requesterId: number
+  requesterNickname: string
+  noseScore: number
+  tasteScore: number
+  finishScore: number
+  totalScore: number
+  noseNote: string | null
+  tasteNote: string | null
+  finishNote: string | null
+  comment: string | null
+  status: VariantReviewRequestStatus
+  linkedVariantId: number | null
+  reviewId: number | null
+  rejectReason: string | null
+  createdAt: string
+  reviewedAt: string | null
+}
+
+export interface ApproveVariantReviewPayload {
+  targetVariantId?: number | null
+  variantValue?: string | null
+  variantValueEn?: string | null
+  abv?: number | null
+  volumeMl?: number | null
+  ageStatement?: number | null
+  ageStatementMonths?: number | null
+  batchNo?: string | null
+  caskNo?: string | null
+  detailNotes?: string | null
+}
+
+export interface ModerationPayload {
+  reason?: string | null
+  sendEmail?: boolean
+}
+
+export interface AdminReview {
+  id: number
+  userId: number
+  userNickname: string
+  spiritId: number
+  spiritNameKo: string
+  spiritNameEn: string
+  masterSpiritId: number
+  noseScore: number
+  tasteScore: number
+  finishScore: number
+  totalScore: number
+  comment: string | null
+  noseNote: string | null
+  tasteNote: string | null
+  finishNote: string | null
+  isHidden: boolean
+  reportCount: number
+  createdAt: string
+}
+
 export interface AdminSpiritDetail {
   id: number
   nameKo: string

@@ -1,7 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { reviewApi } from '../api/reviewApi'
 import { useAuthStore } from '@/domain/auth/store/authStore'
-import type { CreateReviewRequest, UpdateReviewRequest } from '../types/review.types'
+import type {
+  CreateReviewRequest,
+  CreateVariantReviewRequest,
+  UpdateReviewRequest,
+  VariantReviewRequestStatus,
+} from '../types/review.types'
 
 export function useReviews(spiritId: number, page = 0) {
   return useQuery({
@@ -20,6 +25,18 @@ export function useMyReviews(page = 0) {
   })
 }
 
+export function useMyReviewRequests(page = 0, status?: VariantReviewRequestStatus) {
+  const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
+  return useQuery({
+    queryKey: ['my-review-requests', page, status],
+    queryFn: () =>
+      reviewApi
+        .getMyReviewRequests({ page, size: 10, status })
+        .then((res) => res.data.data!),
+    enabled: isLoggedIn,
+  })
+}
+
 export function useCreateReview(spiritId: number) {
   const queryClient = useQueryClient()
   return useMutation({
@@ -27,6 +44,49 @@ export function useCreateReview(spiritId: number) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reviews', spiritId] })
       queryClient.invalidateQueries({ queryKey: ['spirit', spiritId] })
+    },
+  })
+}
+
+export function useCreateVariantReviewRequest(spiritId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: CreateVariantReviewRequest) =>
+      reviewApi.createVariantReviewRequest(spiritId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-review-requests'] })
+    },
+  })
+}
+
+export function useUpdateMyReviewRequest() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ requestId, data }: { requestId: number; data: CreateVariantReviewRequest }) =>
+      reviewApi.updateMyReviewRequest(requestId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-review-requests'] })
+    },
+  })
+}
+
+export function useResubmitMyReviewRequest() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ requestId, data }: { requestId: number; data: CreateVariantReviewRequest }) =>
+      reviewApi.resubmitMyReviewRequest(requestId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-review-requests'] })
+    },
+  })
+}
+
+export function useDeleteMyReviewRequest() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (requestId: number) => reviewApi.deleteMyReviewRequest(requestId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-review-requests'] })
     },
   })
 }

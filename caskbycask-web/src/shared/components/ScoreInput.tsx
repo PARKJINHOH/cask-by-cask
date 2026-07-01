@@ -48,11 +48,8 @@ export default function ScoreInput({
     if (!isNaN(v)) onChange(clamp(v))
   }
 
-  // 마우스 휠: 슬라이더 위에서 스크롤 → ±0.1 조정 (데스크탑)
-  const handleWheel = (e: React.WheelEvent) => {
-    if (disabled) return
-    e.preventDefault()
-    adjust(e.deltaY > 0 ? -0.1 : 0.1)
+  const handleWheelBlur = (e: React.WheelEvent<HTMLInputElement>) => {
+    e.currentTarget.blur()
   }
 
   const color = scoreColor(value)
@@ -74,6 +71,7 @@ export default function ScoreInput({
           step={0.1}
           value={value}
           onChange={handleNumber}
+          onWheel={handleWheelBlur}
           disabled={disabled}
           className="w-20 text-center text-xl font-bold py-1.5 px-1 rounded-xl border border-neutral-300
             focus:outline-none focus:ring-2 focus:ring-primary-400 tabular-nums bg-white
@@ -104,7 +102,6 @@ export default function ScoreInput({
         {/* 슬라이더 트랙 */}
         <div
           className="relative flex-1 h-8 flex items-center"
-          onWheel={handleWheel}
         >
           {/* 배경 트랙 */}
           <div className="absolute inset-x-0 h-2 rounded-full bg-neutral-200" aria-hidden>
@@ -131,6 +128,7 @@ export default function ScoreInput({
             step={0.1}
             value={value}
             onChange={handleSlider}
+            onWheel={handleWheelBlur}
             disabled={disabled}
             aria-label={`${label} 슬라이더`}
             aria-valuemin={0}

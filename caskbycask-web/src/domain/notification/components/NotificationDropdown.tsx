@@ -18,7 +18,7 @@ const TABS: { key: Tab; labelKey: string }[] = [
 const TYPE_ICON: Record<NotificationType, string> = {
   COMMENT: '💬', REPLY: '↩', MENTION: '@', LIKE: '♥', MESSAGE: '✉', SYSTEM: 'ℹ',
   BYOB_APPLY: '🍾', BYOB_APPROVE: '✅', BYOB_REJECT: '❌', BYOB_REMOVE: '🚫',
-  REQUEST_APPROVED: '✅', REQUEST_REJECTED: '❌',
+  REQUEST_APPROVED: '✅', REQUEST_REJECTED: '❌', PRICE_ALERT: '₩',
 }
 
 function relativeTime(dateStr: string): string {
@@ -33,6 +33,9 @@ function relativeTime(dateStr: string): string {
 }
 
 function targetPath(item: NotificationItem): string | null {
+  if (item.targetType === 'MY_REVIEWS' || item.targetType === 'SPIRIT_VARIANT_REVIEW_REQUEST') {
+    return '/mypage?tab=reviews'
+  }
   if (!item.targetId) return null
   switch (item.targetType) {
     case 'FREE':    return `/community/free/${item.targetId}`
@@ -40,6 +43,7 @@ function targetPath(item: NotificationItem): string | null {
     case 'POST':    return `/community/free/${item.targetId}`
     case 'BYOB':    return `/community/byob/${item.targetId}`
     case 'MESSAGE': return `/mypage?tab=messages&messageId=${item.targetId}`
+    case 'SPIRIT':  return `/spirits/${item.targetId}`
     default:        return null
   }
 }

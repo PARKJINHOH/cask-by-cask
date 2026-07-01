@@ -1,6 +1,7 @@
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { spiritApi } from '../api/spiritApi'
 import { spiritSeoApi } from '../api/spiritSeoApi'
+import type { CreateSpiritVariantRequest } from '../types/spirit.types'
 
 export function formatSpiritName<T extends {
   nameKo: string
@@ -12,7 +13,7 @@ export function formatSpiritName<T extends {
   variantValueEn?: string | null
 }>(spirit: T): T {
   if (!spirit) return spirit
-  const hasEdition = spirit.variantType && spirit.variantType !== 'NONE'
+  const hasEdition = spirit.variantType && spirit.variantType !== 'NONE' && spirit.variantValue
   if (hasEdition) {
     const nameKo = formatEditionDisplayName(
       spirit.nameKo,
@@ -70,5 +71,20 @@ export function useSpiritVariants(id: number) {
     queryKey: ['spirit', id, 'variants'],
     queryFn: () => spiritApi.getVariants(id).then((res) => (res.data.data ?? []).map((v) => formatSpiritName(v))),
     enabled: !!id,
+  })
+}
+
+export function useCreateSpiritVariant(masterId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: CreateSpiritVariantRequest) => spiritApi.createVariant(masterId, data),
+    onSuccess: (res) => {
+      const variant = res.data.data
+      queryClient.invalidateQueries({ queryKey: ['spirit', masterId] })
+      queryClient.invalidateQueries({ queryKey: ['spirit', masterId, 'variants'] })
+      if (variant?.id) {
+        queryClient.invalidateQueries({ queryKey: ['spirit', variant.id] })
+      }
+    },
   })
 }

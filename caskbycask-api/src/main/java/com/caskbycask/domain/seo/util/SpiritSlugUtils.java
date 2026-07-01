@@ -47,7 +47,7 @@ public final class SpiritSlugUtils {
     public static String displayNameKo(String nameKo, String seriesIdentifier, VariantType variantType, String variantValue) {
         List<String> parts = new ArrayList<>();
         addIfPresent(parts, nameKo);
-        if (hasEdition(variantType)) {
+        if (hasEdition(variantType, variantValue)) {
             addIfPresent(parts, seriesIdentifier);
             addIfPresent(parts, variantValue);
         }
@@ -71,7 +71,7 @@ public final class SpiritSlugUtils {
                                        VariantType variantType, String variantValue, String variantValueEn) {
         List<String> parts = new ArrayList<>();
         addIfPresent(parts, firstNonBlank(nameEn, nameKo));
-        if (hasEdition(variantType)) {
+        if (hasEdition(variantType, variantValue)) {
             addIfPresent(parts, firstNonBlank(seriesIdentifierEn, seriesIdentifier));
             addIfPresent(parts, firstNonBlank(variantValueEn, variantValue));
         }
@@ -79,11 +79,15 @@ public final class SpiritSlugUtils {
     }
 
     public static boolean hasEdition(Spirit spirit) {
-        return hasEdition(spirit.getVariantType());
+        return hasEdition(spirit.getVariantType(), spirit.getVariantValue());
     }
 
     public static boolean hasEdition(VariantType variantType) {
         return variantType != null && variantType != VariantType.NONE;
+    }
+
+    public static boolean hasEdition(VariantType variantType, String variantValue) {
+        return hasEdition(variantType) && hasText(variantValue);
     }
 
     public static String slugify(String value) {

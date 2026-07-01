@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, type TextareaHTMLAttributes } from 'react'
 import { DndContext, PointerSensor, useSensor, useSensors, closestCenter, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, horizontalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -194,6 +194,9 @@ export function useSpiritForm() {
 
   // 하위 에디션 관련 상태
   const [isVariantSplit, setIsVariantSplit] = useState(false)
+  const [variantType, setVariantType] = useState<'NONE' | CreateVariantRequest['variantType']>('NONE')
+  const [seriesIdentifier, setSeriesIdentifier] = useState('')
+  const [seriesIdentifierEn, setSeriesIdentifierEn] = useState('')
   const [variants, setVariants] = useState<CreateVariantRequest[]>([])
 
   // 마스터 도수 범위 지정을 위한 상태
@@ -223,9 +226,7 @@ export function useSpiritForm() {
   const setCountryValue = (code: string | null, nameKo: string) => { setCountryCode(code); setCountry(nameKo) }
 
   const addVariant = () => {
-    const currentType = variants[0]?.variantType ?? 'BATCH'
-    const currentSeriesIdentifier = variants[0]?.seriesIdentifier ?? ''
-    const currentSeriesIdentifierEn = variants[0]?.seriesIdentifierEn ?? ''
+    const currentType = variantType !== 'NONE' ? variantType : (variants[0]?.variantType ?? 'BATCH')
     setVariants((prev) => [
       ...prev,
       {
@@ -233,8 +234,8 @@ export function useSpiritForm() {
         variantType: currentType,
         variantValue: '',
         variantValueEn: '',
-        seriesIdentifier: currentSeriesIdentifier,
-        seriesIdentifierEn: currentSeriesIdentifierEn,
+        seriesIdentifier,
+        seriesIdentifierEn,
         abv: null,
         abvMin: null,
         abvMax: null,
@@ -270,7 +271,6 @@ export function useSpiritForm() {
           phenolPpm: null,
           phenolPpmMin: null,
           phenolPpmMax: null,
-          caskNo: null,
           notes: null,
         },
       },
@@ -321,6 +321,9 @@ export function useSpiritForm() {
     setCountry('')
     setRegion('')
     setIsVariantSplit(false)
+    setVariantType('NONE')
+    setSeriesIdentifier('')
+    setSeriesIdentifierEn('')
     setVariants([])
     setIsAbvRange(false)
     setAbvMin('')
@@ -360,7 +363,14 @@ export function useSpiritForm() {
     setRegion(s.region ?? '')
 
     // 에디션 및 도수 범위 지정 프리필
-    setIsVariantSplit(!!(s.variants && s.variants.length > 0))
+    const inferredVariantType =
+      (s.variantType && s.variantType !== 'NONE')
+        ? s.variantType
+        : ((s.variants ?? []).find((v) => v.variantType && v.variantType !== 'NONE')?.variantType ?? 'NONE')
+    setVariantType(inferredVariantType)
+    setSeriesIdentifier(s.seriesIdentifier ?? (s.variants ?? [])[0]?.seriesIdentifier ?? '')
+    setSeriesIdentifierEn(s.seriesIdentifierEn ?? (s.variants ?? [])[0]?.seriesIdentifierEn ?? '')
+    setIsVariantSplit(inferredVariantType !== 'NONE' || !!(s.variants && s.variants.length > 0))
     setVariants(
       (s.variants ?? []).map((v) => ({
         tempId: v.id ? `db-${v.id}` : Math.random().toString(),
@@ -411,7 +421,6 @@ export function useSpiritForm() {
           phenolPpm: v.whiskyDetail.phenolPpm,
           phenolPpmMin: v.whiskyDetail.phenolPpmMin,
           phenolPpmMax: v.whiskyDetail.phenolPpmMax,
-          caskNo: v.whiskyDetail.caskNo,
           notes: v.whiskyDetail.notes,
         } : undefined,
       }))
@@ -468,7 +477,7 @@ export function useSpiritForm() {
         isSingleCask: w.isSingleCask ?? false, isCaskStrength: w.isCaskStrength ?? false,
         isPeated: w.isPeated ?? false, phenolPpm: w.phenolPpm?.toString() ?? '',
         phenolPpmMin: w.phenolPpmMin?.toString() ?? '', phenolPpmMax: w.phenolPpmMax?.toString() ?? '',
-        caskNo: w.caskNo ?? '', notes: w.notes ?? '',
+        notes: w.notes ?? '',
       })
     }
     if (s.wineDetail) {
@@ -559,7 +568,7 @@ export function useSpiritForm() {
         ...DEFAULT_WHISKY,
         style: r.whiskyStyle ?? '', styleOther: r.whiskyStyleOther ?? '',
         brandName: r.brandName ?? '', bottlingType: r.bottlingType ?? '',
-        caskNo: r.caskNo ?? '', notes: r.whiskyNotes ?? '',
+        notes: r.whiskyNotes ?? '',
         caskTypes: r.caskTypes ?? [], caskFinishes: r.caskFinishes ?? [], caskTypeOther: r.caskTypeOther ?? '',
         caskDetails: r.caskDetails ?? {},
         isNonChillFiltered: r.isNonChillFiltered ?? false, isNaturalColour: r.isNaturalColour ?? false,
@@ -604,6 +613,9 @@ export function useSpiritForm() {
 
     // 신청자가 선택한 에디션(위스키 단일 에디션) → 하위 에디션 1개로 seed. 관리자가 보완/추가 가능.
     const splitType = r.variantType && r.variantType !== 'NONE' ? r.variantType : null
+    setVariantType(splitType ?? 'NONE')
+    setSeriesIdentifier(r.seriesIdentifier ?? '')
+    setSeriesIdentifierEn(r.seriesIdentifierEn ?? '')
     if (r.category === 'WHISKY' && splitType && r.variantValue) {
       const seed: CreateVariantRequest = {
         variantType: splitType,
@@ -632,7 +644,7 @@ export function useSpiritForm() {
           isSingleCask: splitType === 'SINGLE_CASK' || (r.isSingleCask ?? false), isCaskStrength: r.isCaskStrength ?? false,
           isPeated: r.isPeated ?? false,
           phenolPpm: r.phenolPpm ?? null, phenolPpmMin: r.phenolPpmMin ?? null, phenolPpmMax: r.phenolPpmMax ?? null,
-          caskNo: r.caskNo ?? '', notes: r.whiskyNotes ?? '',
+          notes: r.whiskyNotes ?? '',
         },
       }
       // tempId 는 런타임 식별자 — 타입에는 없고 (v as any).tempId 로 읽음(기존 컨벤션)
@@ -641,40 +653,53 @@ export function useSpiritForm() {
       setVariants([seed])
     } else {
       setIsVariantSplit(false)
+      setVariantType('NONE')
       setVariants([])
     }
   }
 
   // ── 검증 (단일 정의) ──
+  const focusFirstError = (errs: Record<string, string>) => {
+    const firstKey = Object.keys(errs)[0]
+    if (!firstKey) return
+    window.setTimeout(() => {
+      const target = document.querySelector<HTMLElement>(`[data-field="${firstKey}"], [name="${firstKey}"]`)
+      target?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      target?.focus()
+    }, 0)
+  }
+
   const validate = (): boolean => {
     const errs: Record<string, string> = {}
     if (!category) errs.category = '카테고리를 선택해주세요.'
     if (!nameEn.trim()) errs.nameEn = '영문 이름은 필수입니다.'
     if (!nameKo.trim()) errs.nameKo = '한글 이름은 필수입니다.'
 
+    const requireMasterSpecs = !isVariantSplit
+
     // 도수 범위 지정 여부에 따른 검증
-    if (!isVariantSplit && isAbvRange) {
-      if (!abvMin) errs.abvMin = '최소 도수는 필수입니다.'
-      else if (Number(abvMin) < 0 || Number(abvMin) > 100) errs.abvMin = '도수는 0~100 사이여야 합니다.'
-      if (!abvMax) errs.abvMax = '최대 도수는 필수입니다.'
-      else if (Number(abvMax) < 0 || Number(abvMax) > 100) errs.abvMax = '도수는 0~100 사이여야 합니다.'
+    if (isAbvRange) {
+      if (requireMasterSpecs && !abvMin) errs.abvMin = '최소 도수는 필수입니다.'
+      else if (abvMin && (Number(abvMin) < 0 || Number(abvMin) > 100)) errs.abvMin = '도수는 0~100 사이여야 합니다.'
+      if (requireMasterSpecs && !abvMax) errs.abvMax = '최대 도수는 필수입니다.'
+      else if (abvMax && (Number(abvMax) < 0 || Number(abvMax) > 100)) errs.abvMax = '도수는 0~100 사이여야 합니다.'
       if (abvMin && abvMax && Number(abvMin) > Number(abvMax)) errs.abvMin = '최소 도수가 최대 도수보다 큽니다.'
-    } else if (!isVariantSplit) {
-      if (!commonDetail.abv) errs.abv = '알코올 도수는 필수입니다.'
-      else if (Number(commonDetail.abv) < 0 || Number(commonDetail.abv) > 100)
+    } else {
+      if (requireMasterSpecs && !commonDetail.abv) errs.abv = '알코올 도수는 필수입니다.'
+      else if (commonDetail.abv && (Number(commonDetail.abv) < 0 || Number(commonDetail.abv) > 100))
         errs.abv = '도수는 0~100 사이여야 합니다.'
     }
 
     // 용량 범위 지정 여부에 따른 검증
-    if (!isVariantSplit && isVolumeMlRange) {
-      if (!volumeMlMin) errs.volumeMlMin = '최소 용량은 필수입니다.'
-      else if (Number(volumeMlMin) < 1 || Number(volumeMlMin) > 100000) errs.volumeMlMin = '용량은 1~100,000 사이여야 합니다.'
-      if (!volumeMlMax) errs.volumeMlMax = '최대 용량은 필수입니다.'
-      else if (Number(volumeMlMax) < 1 || Number(volumeMlMax) > 100000) errs.volumeMlMax = '용량은 1~100,000 사이여야 합니다.'
+    if (isVolumeMlRange) {
+      if (requireMasterSpecs && !volumeMlMin) errs.volumeMlMin = '최소 용량은 필수입니다.'
+      else if (volumeMlMin && (Number(volumeMlMin) < 1 || Number(volumeMlMin) > 100000)) errs.volumeMlMin = '용량은 1~100,000 사이여야 합니다.'
+      if (requireMasterSpecs && !volumeMlMax) errs.volumeMlMax = '최대 용량은 필수입니다.'
+      else if (volumeMlMax && (Number(volumeMlMax) < 1 || Number(volumeMlMax) > 100000)) errs.volumeMlMax = '용량은 1~100,000 사이여야 합니다.'
       if (volumeMlMin && volumeMlMax && Number(volumeMlMin) > Number(volumeMlMax)) errs.volumeMlMin = '최소 용량이 최대 용량보다 큽니다.'
-    } else if (!isVariantSplit) {
-      if (!commonDetail.volumeMl) errs.volumeMl = '용량은 필수입니다.'
-      else if (Number(commonDetail.volumeMl) < 1 || Number(commonDetail.volumeMl) > 100000)
+    } else {
+      if (requireMasterSpecs && !commonDetail.volumeMl) errs.volumeMl = '용량은 필수입니다.'
+      else if (commonDetail.volumeMl && (Number(commonDetail.volumeMl) < 1 || Number(commonDetail.volumeMl) > 100000))
         errs.volumeMl = '용량은 1~100,000 사이여야 합니다.'
     }
 
@@ -698,21 +723,17 @@ export function useSpiritForm() {
 
     // 하위 에디션 검증
     if (isVariantSplit) {
+      if (!seriesIdentifier.trim()) {
+        errs.seriesIdentifier = '시리즈 식별자는 필수입니다.'
+      }
       variants.forEach((v, idx) => {
         if (!v.variantValue.trim()) {
           errs[`variantValue_${idx}`] = '에디션 식별 값은 필수입니다.'
         }
-        if (!(v.variantValueEn ?? '').trim()) {
-          errs[`variantValueEn_${idx}`] = '에디션 식별 값(영문)은 필수입니다.'
-        }
-        if (v.abv == null) {
-          errs[`variantAbv_${idx}`] = '알코올 도수는 필수입니다.'
-        } else if (Number(v.abv) < 0 || Number(v.abv) > 100) {
+        if (v.abv != null && (Number(v.abv) < 0 || Number(v.abv) > 100)) {
           errs[`variantAbv_${idx}`] = '도수는 0~100 사이여야 합니다.'
         }
-        if (v.volumeMl == null) {
-          errs[`variantVolumeMl_${idx}`] = '용량은 필수입니다.'
-        } else if (Number(v.volumeMl) < 1 || Number(v.volumeMl) > 100000) {
+        if (v.volumeMl != null && (Number(v.volumeMl) < 1 || Number(v.volumeMl) > 100000)) {
           errs[`variantVolumeMl_${idx}`] = '용량은 1~100,000 사이여야 합니다.'
         }
         if (v.commonDetail?.distilledDate && !DATE_RE.test(v.commonDetail.distilledDate)) {
@@ -725,6 +746,7 @@ export function useSpiritForm() {
     }
 
     setErrors(errs)
+    focusFirstError(errs)
     return Object.keys(errs).length === 0
   }
 
@@ -735,7 +757,6 @@ export function useSpiritForm() {
     const isWine = category === 'WINE'
     const isCognac = category === 'COGNAC'
     const dropAging = isWine || isCognac
-    const dropMasterSpecs = isVariantSplit
     return {
       isNas: dropAging ? false : commonDetail.isNas,
       ageStatement: dropAging || commonDetail.isNas ? null : (commonDetail.ageStatement ?? null),
@@ -747,8 +768,8 @@ export function useSpiritForm() {
       distilledDate: dropAging ? null : (commonDetail.distilledDate || null),
       bottledDate: isWine ? null : (commonDetail.bottledDate || null),
       releaseDate: commonDetail.releaseDate || null,
-      volumeMl: dropMasterSpecs ? null : (isVolumeMlRange ? (volumeMlMin ? Number(volumeMlMin) : null) : (commonDetail.volumeMl ? Number(commonDetail.volumeMl) : null)),
-      abv: dropMasterSpecs ? null : (isAbvRange ? (abvMin ? Number(abvMin) : null) : (commonDetail.abv ? Number(commonDetail.abv) : null)),
+      volumeMl: isVolumeMlRange ? (volumeMlMin ? Number(volumeMlMin) : null) : (commonDetail.volumeMl ? Number(commonDetail.volumeMl) : null),
+      abv: isAbvRange ? (abvMin ? Number(abvMin) : null) : (commonDetail.abv ? Number(commonDetail.abv) : null),
       bottleNo: isWine ? null : (commonDetail.bottleNo || null),
       batchNo: isWine ? null : (commonDetail.batchNo || null),
       totalBottles: isWine ? null : (commonDetail.totalBottles ? Number(commonDetail.totalBottles) : null),
@@ -780,7 +801,6 @@ export function useSpiritForm() {
           phenolPpm: whiskyDetail.isPeated && whiskyDetail.phenolPpm ? Number(whiskyDetail.phenolPpm) : null,
           phenolPpmMin: whiskyDetail.isPeated && whiskyDetail.phenolPpmMin ? Number(whiskyDetail.phenolPpmMin) : null,
           phenolPpmMax: whiskyDetail.isPeated && whiskyDetail.phenolPpmMax ? Number(whiskyDetail.phenolPpmMax) : null,
-          caskNo: whiskyDetail.caskNo || null,
           notes: whiskyDetail.notes || null,
         },
       }
@@ -860,7 +880,6 @@ export function useSpiritForm() {
       phenolPpm: w.isPeated && w.phenolPpm ? Number(w.phenolPpm) : null,
       phenolPpmMin: w.isPeated && w.phenolPpmMin ? Number(w.phenolPpmMin) : null,
       phenolPpmMax: w.isPeated && w.phenolPpmMax ? Number(w.phenolPpmMax) : null,
-      caskNo: w.caskNo || null,
       notes: w.notes || null,
     }
   }
@@ -889,6 +908,8 @@ export function useSpiritForm() {
   // 최종 페이로드 (등록/수정/승인 공통). category 보장은 호출 전 validate()로.
   const buildPayload = (): CreateSpiritPayload => {
     const common = buildCommonPayload()
+    const selectedVariantType = isVariantSplit ? (variantType !== 'NONE' ? variantType : (variants[0]?.variantType ?? 'BATCH')) : 'NONE'
+    const variantsToSubmit = variants.filter((v) => v.variantValue.trim().length > 0)
     return {
       nameKo, nameEn, category: category as SpiritCategory,
       producerId: producerId ?? null,
@@ -901,27 +922,27 @@ export function useSpiritForm() {
       region: region || null,
       commonDetail: common,
       isVariantSplit,
-      seriesIdentifier: isVariantSplit ? (variants[0]?.seriesIdentifier.trim() || null) : null,
-      seriesIdentifierEn: isVariantSplit ? ((variants[0]?.seriesIdentifierEn ?? '').trim() || null) : null,
-      variants: isVariantSplit ? variants.map(v => ({
+      seriesIdentifier: isVariantSplit ? (seriesIdentifier.trim() || null) : null,
+      seriesIdentifierEn: isVariantSplit ? (seriesIdentifierEn.trim() || null) : null,
+      variants: isVariantSplit ? variantsToSubmit.map(v => ({
         ...v,
         variantValue: v.variantValue.trim(),
-        variantValueEn: (v.variantValueEn ?? '').trim(),
-        seriesIdentifier: v.seriesIdentifier.trim(),
-        seriesIdentifierEn: (v.seriesIdentifierEn ?? '').trim() || null,
+        variantValueEn: (v.variantValueEn ?? '').trim() || null,
+        seriesIdentifier: seriesIdentifier.trim(),
+        seriesIdentifierEn: seriesIdentifierEn.trim() || null,
         volumeMl: v.volumeMl ? Number(v.volumeMl) : null,
         volumeMlMin: v.volumeMlMin ? Number(v.volumeMlMin) : null,
         volumeMlMax: v.volumeMlMax ? Number(v.volumeMlMax) : null,
         commonDetail: cleanVariantCommonDetail(v.commonDetail),
         whiskyDetail: category === 'WHISKY' ? (cleanWhiskyDetail(v.whiskyDetail) || undefined) : undefined,
       })) : [],
-      variantType: 'NONE',
+      variantType: selectedVariantType,
       variantValue: null,
       variantValueEn: null,
-      abvMin: !isVariantSplit && isAbvRange ? (abvMin ? Number(abvMin) : null) : null,
-      abvMax: !isVariantSplit && isAbvRange ? (abvMax ? Number(abvMax) : null) : null,
-      volumeMlMin: !isVariantSplit && isVolumeMlRange ? (volumeMlMin ? Number(volumeMlMin) : null) : null,
-      volumeMlMax: !isVariantSplit && isVolumeMlRange ? (volumeMlMax ? Number(volumeMlMax) : null) : null,
+      abvMin: isAbvRange ? (abvMin ? Number(abvMin) : null) : null,
+      abvMax: isAbvRange ? (abvMax ? Number(abvMax) : null) : null,
+      volumeMlMin: isVolumeMlRange ? (volumeMlMin ? Number(volumeMlMin) : null) : null,
+      volumeMlMax: isVolumeMlRange ? (volumeMlMax ? Number(volumeMlMax) : null) : null,
       ...buildCategoryPayload(),
     }
   }
@@ -932,7 +953,9 @@ export function useSpiritForm() {
     producerId, setProducerId, producerName,
     bottler, setBottler, bottledYear, setBottledYear, vintageYear, setVintageYear,
     countryCode, country, region, setCountryValue, setRegion,
-    isVariantSplit, setIsVariantSplit, variants, setVariants,
+    isVariantSplit, setIsVariantSplit, variantType, setVariantType,
+    seriesIdentifier, setSeriesIdentifier, seriesIdentifierEn, setSeriesIdentifierEn,
+    variants, setVariants,
     addVariant, removeVariant, updateVariant, updateVariantCommon, updateVariantWhisky,
     isAbvRange, setIsAbvRange, abvMin, setAbvMin, abvMax, setAbvMax,
     isVolumeMlRange, setIsVolumeMlRange, volumeMlMin, setVolumeMlMin, volumeMlMax, setVolumeMlMax,
@@ -953,13 +976,14 @@ function AutoResizeTextarea({
   placeholder,
   className,
   maxLength,
+  ...rest
 }: {
   value: string
   onChange: (v: string) => void
   placeholder?: string
   className?: string
   maxLength?: number
-}) {
+} & Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'value' | 'onChange'>) {
   const ref = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
@@ -978,6 +1002,7 @@ function AutoResizeTextarea({
       className={`${className} resize-none overflow-hidden min-h-[38px] py-2`}
       rows={1}
       maxLength={maxLength}
+      {...rest}
     />
   )
 }
@@ -1081,6 +1106,8 @@ interface SpiritFormFieldsProps {
   imageSlot?: React.ReactNode
   /** false면 하위 에디션을 1개까지만 허용 — "에디션 추가" 버튼/탭 바를 숨김 (사용자 등록 요청 화면용). 미지정 시 true(관리자 동작 동일) */
   allowMultipleVariants?: boolean
+  /** 외부 흐름에서 특정 하위 에디션을 바로 열어야 할 때 사용 */
+  activeVariantIndex?: number | null
   /** 생산자 선택 컴포넌트 교체 (미지정 시 AdminProducerSelector) */
   producerSelector?: React.ComponentType<ProducerSelectorProps>
   /** 생산자 직접 등록 콜백 교체 (미지정 시 관리자 즉시 생성) */
@@ -1091,14 +1118,15 @@ interface SpiritFormFieldsProps {
 
 export default function SpiritFormFields({
   form, categoryLocked, onCategorySelect, imageSlot,
-  allowMultipleVariants = true, producerSelector, onCreateProducer, bottomSlot,
+  allowMultipleVariants = true, activeVariantIndex, producerSelector, onCreateProducer, bottomSlot,
 }: SpiritFormFieldsProps) {
   const { category, errors } = form
   const handleCategory = onCategorySelect ?? form.selectCategory
   const producerLabel = category ? PRODUCER_LABEL[category] : '증류소'
   const ph = category ? PLACEHOLDERS[category] : DEFAULT_PLACEHOLDER
   const queryClient = useQueryClient()
-  const isMasterSpecsDisabled = form.isVariantSplit
+  const isMasterSpecsDisabled = false
+  const isMasterSpecsRequired = !form.isVariantSplit
 
   const [activeVariantIdx, setActiveVariantIdx] = useState(0)
 
@@ -1138,6 +1166,12 @@ export default function SpiritFormFields({
     }
   }, [form.variants.length, activeVariantIdx])
 
+  useEffect(() => {
+    if (activeVariantIndex == null) return
+    if (activeVariantIndex < 0 || activeVariantIndex >= form.variants.length) return
+    setActiveVariantIdx(activeVariantIndex)
+  }, [activeVariantIndex, form.variants.length])
+
   // 기타 카테고리 — 목록에 없는 생산자 즉시 직접 생성 후 선택 (관리자 기본 동작)
   const handleCreateProducer = async (data: NewProducerInput) => {
     const res = await adminProducerApi.create({ type: 'OTHER', ...data })
@@ -1166,7 +1200,7 @@ export default function SpiritFormFields({
                 const selected = category === cat
                 if (categoryLocked && !selected) return null
                 return (
-                  <button key={cat} type="button"
+                  <button key={cat} type="button" data-field="category"
                     onClick={() => !categoryLocked && handleCategory(cat)}
                     disabled={categoryLocked}
                     className={`py-3 rounded-xl border-2 text-sm font-semibold transition-all flex items-center justify-center ${
@@ -1187,6 +1221,7 @@ export default function SpiritFormFields({
             <div>
               <label className={LABEL}>한국어 이름 <span className="text-red-400">*</span></label>
               <AutoResizeTextarea value={form.nameKo} onChange={form.setNameKo} maxLength={200}
+                data-field="nameKo"
                 placeholder={ph.nameKo}
                 className={`${INPUT} ${errors.nameKo ? 'border-red-400' : ''}`} />
               {errors.nameKo && <p className="text-xs text-red-500 mt-1">{errors.nameKo}</p>}
@@ -1194,6 +1229,7 @@ export default function SpiritFormFields({
             <div>
               <label className={LABEL}>영어 이름 <span className="text-red-400">*</span></label>
               <AutoResizeTextarea value={form.nameEn} onChange={form.setNameEn} maxLength={200}
+                data-field="nameEn"
                 placeholder={ph.nameEn}
                 className={`${INPUT} ${errors.nameEn ? 'border-red-400' : ''}`} />
               {errors.nameEn && <p className="text-xs text-red-500 mt-1">{errors.nameEn}</p>}
@@ -1213,7 +1249,7 @@ export default function SpiritFormFields({
                 ].map(([val, label]) => {
                   const isSelected = val === 'NONE'
                     ? !form.isVariantSplit
-                    : (form.isVariantSplit && form.variants.length > 0 && form.variants[0]?.variantType === val)
+                    : (form.isVariantSplit && form.variantType === val)
                   return (
                     <button
                       key={val}
@@ -1221,65 +1257,16 @@ export default function SpiritFormFields({
                       onClick={() => {
                         if (val === 'NONE') {
                           form.setIsVariantSplit(false)
+                          form.setVariantType('NONE')
                           form.setVariants([])
                         } else {
                           form.setIsVariantSplit(true)
-                          form.setVariants((prev) => {
-                            if (prev.length === 0) {
-                              return [{
-                                tempId: Math.random().toString(),
-                                variantType: val as any,
-                                variantValue: '',
-                                variantValueEn: '',
-                                seriesIdentifier: '',
-                                seriesIdentifierEn: '',
-                                abv: null,
-                                abvMin: null,
-                                abvMax: null,
-                                volumeMl: null,
-                                commonDetail: {
-                                  isNas: false,
-                                  ageStatement: null,
-                                  ageStatementMin: null,
-                                  ageStatementMax: null,
-                                  distilledDate: null,
-                                  bottledDate: null,
-                                  releaseDate: null,
-                                  volumeMl: null,
-                                  abv: null,
-                                  bottleNo: null,
-                                  batchNo: null,
-                                  totalBottles: null,
-                                },
-                                whiskyDetail: {
-                                  style: null,
-                                  styleOther: null,
-                                  brandName: null,
-                                  bottlingType: null,
-                                  caskTypes: [],
-                                  caskFinishes: [],
-                                  caskTypeOther: null,
-                                  caskDetails: {},
-                                  isNonChillFiltered: null,
-                                  isNaturalColour: null,
-                                  isSingleCask: null,
-                                  isCaskStrength: null,
-                                  isPeated: null,
-                                  phenolPpm: null,
-                                  phenolPpmMin: null,
-                                  phenolPpmMax: null,
-                                  caskNo: null,
-                                  notes: null,
-                                },
-                              }]
-                            } else {
-                              return prev.map(v => ({
-                                tempId: (v as any).tempId || Math.random().toString(),
-                                ...v,
-                                variantType: val as any
-                              }))
-                            }
-                          })
+                          form.setVariantType(val as any)
+                          form.setVariants((prev) => prev.map(v => ({
+                            tempId: (v as any).tempId || Math.random().toString(),
+                            ...v,
+                            variantType: val as any
+                          })))
                         }
                       }}
                       className={`py-2 rounded-lg border text-xs font-semibold transition-all ${
@@ -1302,7 +1289,7 @@ export default function SpiritFormFields({
             <div className="grid grid-cols-1">
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-medium text-neutral-600 mb-0">알코올 도수 {!isMasterSpecsDisabled && <span className="text-red-400">*</span>}</label>
+                  <label className="block text-xs font-medium text-neutral-600 mb-0">알코올 도수 {isMasterSpecsRequired && <span className="text-red-400">*</span>}</label>
                   <label className="flex items-center gap-1 text-[11px] text-neutral-500 cursor-pointer select-none">
                     <input type="checkbox" checked={form.isAbvRange} disabled={isMasterSpecsDisabled} onChange={(e) => form.setIsAbvRange(e.target.checked)} className="accent-amber-500 rounded disabled:opacity-50" />
                     범위 지정
@@ -1351,7 +1338,7 @@ export default function SpiritFormFields({
             <div className="grid grid-cols-1">
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-medium text-neutral-600 mb-0">용량 {!isMasterSpecsDisabled && <span className="text-red-400">*</span>}</label>
+                  <label className="block text-xs font-medium text-neutral-600 mb-0">용량 {isMasterSpecsRequired && <span className="text-red-400">*</span>}</label>
                   <label className="flex items-center gap-1 text-[11px] text-neutral-500 cursor-pointer select-none">
                     <input type="checkbox" checked={form.isVolumeMlRange} disabled={isMasterSpecsDisabled} onChange={(e) => form.setIsVolumeMlRange(e.target.checked)} className="accent-amber-500 rounded disabled:opacity-50" />
                     범위 지정
@@ -1542,6 +1529,15 @@ export default function SpiritFormFields({
               <div className={CARD}>
                 <SectionTitle title="하위 에디션 목록" hint="각 에디션별 개별 정보 입력" />
 
+                <SeriesIdentifierFields
+                  variantType={form.variantType}
+                  seriesIdentifier={form.seriesIdentifier}
+                  seriesIdentifierEn={form.seriesIdentifierEn}
+                  errors={errors}
+                  onSeriesIdentifierChange={form.setSeriesIdentifier}
+                  onSeriesIdentifierEnChange={form.setSeriesIdentifierEn}
+                />
+
                 {/* 탭 바 (다중 에디션 허용 시에만 노출 — 사용자 등록 요청 화면은 1개로 고정) */}
                 {allowMultipleVariants && (
                   <div className="flex flex-wrap items-center gap-1.5 border-b border-neutral-200 pb-3 mb-4">
@@ -1596,8 +1592,8 @@ export default function SpiritFormFields({
                     onUpdateWhisky={(updates) => form.updateVariantWhisky(activeVariantIdx, updates)}
                   />
                 ) : (
-                  <div className="text-center py-8 text-neutral-400 text-sm">
-                    등록된 에디션이 없습니다. 상단의 '+ 에디션 추가' 버튼을 눌러 에디션을 등록해주세요.
+                  <div className="rounded-2xl border border-dashed border-neutral-200 bg-neutral-50/50 py-8 text-center text-neutral-400 text-sm">
+                    등록된 에디션이 없습니다. '+ 에디션 추가' 버튼을 눌러 에디션을 등록해주세요.
                   </div>
                 )}
               </div>
@@ -1659,7 +1655,6 @@ function toWhiskyDetailForm(detail?: WhiskyDetailRequest): WhiskyDetailForm {
     phenolPpm: detail.phenolPpm?.toString() ?? '',
     phenolPpmMin: detail.phenolPpmMin?.toString() ?? '',
     phenolPpmMax: detail.phenolPpmMax?.toString() ?? '',
-    caskNo: detail.caskNo ?? '',
     notes: detail.notes ?? '',
   }
 }
@@ -1683,6 +1678,76 @@ function toCommonDetailForm(detail?: SpiritCommonDetailRequest): CommonDetailFor
     batchNo: detail.batchNo ?? '',
     totalBottles: detail.totalBottles?.toString() ?? '',
   }
+}
+
+interface SeriesIdentifierFieldsProps {
+  variantType: 'NONE' | CreateVariantRequest['variantType']
+  seriesIdentifier: string
+  seriesIdentifierEn: string
+  errors: Record<string, string>
+  onSeriesIdentifierChange: (value: string) => void
+  onSeriesIdentifierEnChange: (value: string) => void
+}
+
+function SeriesIdentifierFields({
+  variantType,
+  seriesIdentifier,
+  seriesIdentifierEn,
+  errors,
+  onSeriesIdentifierChange,
+  onSeriesIdentifierEnChange,
+}: SeriesIdentifierFieldsProps) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div>
+        <label className="flex items-center text-[11px] font-semibold text-neutral-600 mb-1">
+          한글 시리즈 식별자 <span className="text-red-400 ml-0.5">*</span>
+          <InfoTooltip text="모든 하위 에디션이 공유하는 이름 조각입니다. 예: .3 Series, 1993 29 Year Old, Batch Series" />
+        </label>
+        <input
+          type="text"
+          data-field="seriesIdentifier"
+          value={seriesIdentifier}
+          onChange={(e) => onSeriesIdentifierChange(e.target.value)}
+          placeholder={
+            variantType === 'BATCH'
+              ? '예) Batch Series, .3 Series'
+              : variantType === 'RELEASE_YEAR'
+              ? '예) Annual Release'
+              : '예) 1993 29 Year Old'
+          }
+          maxLength={100}
+          className={`w-full px-2.5 py-1.5 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white ${
+            errors.seriesIdentifier ? 'border-red-400' : ''
+          }`}
+        />
+        {errors.seriesIdentifier && (
+          <p className="text-[10px] text-red-500 mt-1">{errors.seriesIdentifier}</p>
+        )}
+      </div>
+      <div>
+        <label className="flex items-center text-[11px] font-semibold text-neutral-600 mb-1">
+          영문 시리즈 식별자
+          <InfoTooltip text="영문 화면에서 사용할 공유 식별자입니다. 비우면 한글 시리즈 식별자를 fallback으로 사용합니다." />
+        </label>
+        <input
+          type="text"
+          data-field="seriesIdentifierEn"
+          value={seriesIdentifierEn}
+          onChange={(e) => onSeriesIdentifierEnChange(e.target.value)}
+          placeholder={
+            variantType === 'BATCH'
+              ? 'e.g. Batch Series, .3 Series'
+              : variantType === 'RELEASE_YEAR'
+              ? 'e.g. Annual Release'
+              : 'e.g. 1993 29 Year Old'
+          }
+          maxLength={100}
+          className="w-full px-2.5 py-1.5 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
+        />
+      </div>
+    </div>
+  )
 }
 
 interface VariantItemCardProps {
@@ -1737,7 +1802,6 @@ function VariantItemCard({
     if (u.phenolPpmMax !== undefined) {
       converted.phenolPpmMax = u.phenolPpmMax === '' ? null : Number(u.phenolPpmMax)
     }
-    if (u.caskNo !== undefined) converted.caskNo = u.caskNo || null
     if (u.notes !== undefined) converted.notes = u.notes || null
 
     onUpdateWhisky(converted)
@@ -1771,45 +1835,12 @@ function VariantItemCard({
         
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-[11px] font-semibold text-neutral-500 mb-1">한글 시리즈 식별자</label>
+            <label className="block text-[11px] font-semibold text-neutral-500 mb-1">
+              식별 값(한글) <span className="text-red-400">*</span>
+            </label>
             <input
               type="text"
-              value={variant.seriesIdentifier}
-              onChange={(e) => onUpdate({ seriesIdentifier: e.target.value })}
-              placeholder={
-                variant.variantType === 'BATCH'
-                  ? '예) .1 시리즈'
-                  : variant.variantType === 'RELEASE_YEAR'
-                  ? '예) 2024 릴리즈'
-                  : '예) 싱글 캐스크'
-              }
-              className="w-full px-2.5 py-1.5 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
-            />
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-semibold text-neutral-500 mb-1">영문 시리즈 식별자</label>
-            <input
-              type="text"
-              value={variant.seriesIdentifierEn ?? ''}
-              onChange={(e) => onUpdate({ seriesIdentifierEn: e.target.value })}
-              placeholder={
-                variant.variantType === 'BATCH'
-                  ? '예) .1 Series'
-                  : variant.variantType === 'RELEASE_YEAR'
-                  ? '예) 2024 Release'
-                  : '예) Single Cask'
-              }
-              className="w-full px-2.5 py-1.5 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-[11px] font-semibold text-neutral-500 mb-1">식별 값(한글) <span className="text-red-400">*</span></label>
-            <input
-              type="text"
+              data-field={`variantValue_${index}`}
               value={variant.variantValue}
               onChange={(e) => onUpdate({ variantValue: e.target.value })}
               placeholder={
@@ -1829,9 +1860,10 @@ function VariantItemCard({
           </div>
 
           <div>
-            <label className="block text-[11px] font-semibold text-neutral-500 mb-1">식별 값(영문) <span className="text-red-400">*</span></label>
+            <label className="block text-[11px] font-semibold text-neutral-500 mb-1">식별 값(영문)</label>
             <input
               type="text"
+              data-field={`variantValueEn_${index}`}
               value={variant.variantValueEn ?? ''}
               onChange={(e) => onUpdate({ variantValueEn: e.target.value })}
               placeholder={
@@ -1853,10 +1885,11 @@ function VariantItemCard({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-[11px] font-semibold text-neutral-500 mb-1">알코올 도수 <span className="text-red-400">*</span></label>
+            <label className="block text-[11px] font-semibold text-neutral-500 mb-1">알코올 도수</label>
             <div className="relative">
               <input
                 type="number"
+                data-field={`variantAbv_${index}`}
                 step="0.1"
                 min="0"
                 max="100"
@@ -1875,10 +1908,11 @@ function VariantItemCard({
           </div>
 
           <div>
-            <label className="block text-[11px] font-semibold text-neutral-500 mb-1">용량 <span className="text-red-400">*</span></label>
+            <label className="block text-[11px] font-semibold text-neutral-500 mb-1">용량</label>
             <div className="relative">
               <input
                 type="number"
+                data-field={`variantVolumeMl_${index}`}
                 min="1"
                 max="100000"
                 value={variant.volumeMl ?? ''}

@@ -79,14 +79,21 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     @Query(value = """
             SELECT r FROM Review r
             JOIN FETCH r.user
-            JOIN FETCH r.spirit
+            JOIN FETCH r.spirit s
             WHERE (:isHidden IS NULL OR r.isHidden = :isHidden)
+              AND (:spiritId IS NULL OR s.id = :spiritId OR s.parent.id = :spiritId)
             """,
             countQuery = """
             SELECT COUNT(r) FROM Review r
+            JOIN r.spirit s
             WHERE (:isHidden IS NULL OR r.isHidden = :isHidden)
+              AND (:spiritId IS NULL OR s.id = :spiritId OR s.parent.id = :spiritId)
             """)
-    Page<Review> findForAdmin(@Param("isHidden") Boolean isHidden, Pageable pageable);
+    Page<Review> findForAdmin(
+            @Param("isHidden") Boolean isHidden,
+            @Param("spiritId") Long spiritId,
+            Pageable pageable
+    );
 
     @Query(value = "SELECT DATE(created_at) as date, COUNT(*) as count FROM review WHERE created_at >= :from GROUP BY DATE(created_at) ORDER BY DATE(created_at)", nativeQuery = true)
     List<DailyCountProjection> findDailyReviewTrend(@Param("from") LocalDateTime from);

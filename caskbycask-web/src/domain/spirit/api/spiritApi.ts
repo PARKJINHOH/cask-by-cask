@@ -3,7 +3,7 @@ import type { ApiResponse, PageResponse } from '@/shared/types/common.types'
 import type {
   CountryStats, RegionStats,
   SpiritCategory, SpiritDetail, SpiritListItem, SpiritSearchParams, SpiritVariant,
-  SpiritAutocompleteItem,
+  SpiritAutocompleteItem, CreateSpiritVariantRequest,
 } from '../types/spirit.types'
 
 // Spring `@RequestParam List<T>` 는 `?k=v1&k=v2` 형식만 바인딩.
@@ -36,6 +36,9 @@ export const spiritApi = {
   /** 같은 이름의 다른 배치·병입 제품 목록 */
   getVariants: (id: number) =>
     axiosInstance.get<ApiResponse<SpiritVariant[]>>(`/api/spirits/${id}/variants`),
+
+  createVariant: (id: number, data: CreateSpiritVariantRequest) =>
+    axiosInstance.post<ApiResponse<SpiritVariant>>(`/api/spirits/${id}/variants`, data),
 
   getCountries: (category?: SpiritCategory) =>
     axiosInstance.get<ApiResponse<CountryStats[]>>('/api/spirits/countries', {

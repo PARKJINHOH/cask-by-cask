@@ -39,6 +39,50 @@ export interface CreateReviewRequest {
   finishAromaWheelNotes?: string
 }
 
+export interface CreateVariantReviewRequest extends CreateReviewRequest {
+  variantValue: string
+  variantValueEn?: string | null
+  abv: number
+  volumeMl: number
+  requestMemo?: string | null
+}
+
+export type VariantReviewRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'MERGED'
+
+export interface VariantReviewRequestItem {
+  id: number
+  masterSpiritId: number
+  masterNameKo: string
+  masterNameEn: string
+  masterCanonicalPathKo?: string | null
+  masterCanonicalPathEn?: string | null
+  variantType: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE' | null
+  seriesIdentifier: string | null
+  seriesIdentifierEn: string | null
+  variantValue: string
+  variantValueEn: string | null
+  abv: number
+  volumeMl: number
+  requestMemo: string | null
+  noseScore: number
+  tasteScore: number
+  finishScore: number
+  totalScore: number
+  noseNote: string | null
+  tasteNote: string | null
+  finishNote: string | null
+  comment: string | null
+  noseAromaWheelNotes: string | null
+  tasteAromaWheelNotes: string | null
+  finishAromaWheelNotes: string | null
+  status: VariantReviewRequestStatus
+  linkedVariantId: number | null
+  reviewId: number | null
+  rejectReason: string | null
+  createdAt: string
+  reviewedAt: string | null
+}
+
 export interface UpdateReviewRequest {
   noseScore?: number
   tasteScore?: number

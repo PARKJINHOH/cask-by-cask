@@ -1,10 +1,13 @@
 package com.caskbycask.domain.review.controller;
 
+import com.caskbycask.domain.review.dto.CreateVariantReviewRequest;
 import com.caskbycask.domain.review.dto.ReviewRequest;
 import com.caskbycask.domain.review.dto.ReviewResponse;
 import com.caskbycask.domain.review.dto.UpdateReviewRequest;
+import com.caskbycask.domain.review.dto.VariantReviewRequestResponse;
 import com.caskbycask.domain.review.entity.enums.ReviewSort;
 import com.caskbycask.domain.review.service.ReviewService;
+import com.caskbycask.domain.review.service.VariantReviewRequestService;
 import com.caskbycask.global.auth.security.CustomUserDetails;
 import com.caskbycask.global.response.ApiResponse;
 import com.caskbycask.global.response.PageResponse;
@@ -23,6 +26,7 @@ import org.springframework.web.bind.annotation.*;
 public class ReviewController {
 
     private final ReviewService reviewService;
+    private final VariantReviewRequestService variantReviewRequestService;
 
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<ReviewResponse>>> getReviews(
@@ -40,6 +44,15 @@ public class ReviewController {
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(
                 reviewService.createReview(spiritId, userDetails.getUserId(), request)));
+    }
+
+    @PostMapping("/variant-request")
+    public ResponseEntity<ApiResponse<VariantReviewRequestResponse>> createVariantReviewRequest(
+            @PathVariable Long spiritId,
+            @Valid @RequestBody CreateVariantReviewRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(
+                variantReviewRequestService.create(spiritId, userDetails.getUserId(), request)));
     }
 
     @PatchMapping("/{reviewId}")

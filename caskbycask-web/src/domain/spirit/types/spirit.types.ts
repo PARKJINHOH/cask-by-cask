@@ -110,6 +110,11 @@ export interface SpiritVariant {
   seriesIdentifierEn?: string | null
 }
 
+export interface CreateSpiritVariantRequest {
+  variantValue: string
+  variantValueEn?: string | null
+}
+
 // ── 카테고리 상세 Enum 타입 ────────────────────────────────────
 export type WhiskyStyle = 'SINGLE_MALT' | 'BLENDED_MALT' | 'BLENDED_WHISKY' | 'BOURBON' | 'WHEATED_BOURBON' | 'TENNESSEE' | 'RYE' | 'POT_STILL' | 'GRAIN_CORN' | 'OTHER'
 export type BottlingType = 'OB' | 'IB'

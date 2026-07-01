@@ -107,6 +107,16 @@ public class SpiritController {
         return ResponseEntity.ok(ApiResponse.success(spiritService.getSpiritVariants(id)));
     }
 
+    @PostMapping("/{id}/variants")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<SpiritVariantResponse>> createUserVariant(
+            @PathVariable Long id,
+            @Valid @RequestBody CreateUserVariantRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(
+                spiritService.createUserVariant(id, request, userDetails.getUserId())));
+    }
+
     @PostMapping(value = "/requests", consumes = "multipart/form-data")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<SpiritRegisterRequestResponse>> submitRequest(

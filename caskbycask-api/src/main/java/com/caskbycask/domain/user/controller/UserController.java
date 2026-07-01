@@ -5,7 +5,11 @@ import com.caskbycask.domain.community.dto.UserMentionResponse;
 import com.caskbycask.domain.community.entity.UserBlock;
 import com.caskbycask.domain.community.repository.UserBlockRepository;
 import com.caskbycask.domain.review.dto.ReviewResponse;
+import com.caskbycask.domain.review.dto.CreateVariantReviewRequest;
+import com.caskbycask.domain.review.dto.VariantReviewRequestResponse;
+import com.caskbycask.domain.review.entity.enums.VariantReviewRequestStatus;
 import com.caskbycask.domain.review.service.ReviewService;
+import com.caskbycask.domain.review.service.VariantReviewRequestService;
 import com.caskbycask.domain.user.dto.AdultVerificationRequest;
 import com.caskbycask.domain.user.dto.UpdateEmailSubscriptionRequest;
 import com.caskbycask.domain.user.dto.UpdateNicknameRequest;
@@ -41,6 +45,7 @@ public class UserController {
 
     private final UserService userService;
     private final ReviewService reviewService;
+    private final VariantReviewRequestService variantReviewRequestService;
     private final UserRepository userRepository;
     private final UserBlockRepository userBlockRepository;
 
@@ -195,6 +200,41 @@ public class UserController {
             @PageableDefault(size = 10) Pageable pageable) {
         return ResponseEntity.ok(ApiResponse.success(
                 PageResponse.from(reviewService.getMyReviews(userDetails.getUserId(), pageable))));
+    }
+
+    @GetMapping("/me/review-requests")
+    public ResponseEntity<ApiResponse<PageResponse<VariantReviewRequestResponse>>> getMyReviewRequests(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(required = false) VariantReviewRequestStatus status,
+            @PageableDefault(size = 10) Pageable pageable) {
+        return ResponseEntity.ok(ApiResponse.success(
+                PageResponse.from(variantReviewRequestService.getMyRequests(userDetails.getUserId(), status, pageable))));
+    }
+
+    @PatchMapping("/me/review-requests/{requestId}")
+    public ResponseEntity<ApiResponse<VariantReviewRequestResponse>> updateMyReviewRequest(
+            @PathVariable Long requestId,
+            @Valid @RequestBody CreateVariantReviewRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(ApiResponse.success(
+                variantReviewRequestService.updateMyRequest(requestId, userDetails.getUserId(), request)));
+    }
+
+    @PatchMapping("/me/review-requests/{requestId}/resubmit-review")
+    public ResponseEntity<ApiResponse<VariantReviewRequestResponse>> resubmitMyReviewRequest(
+            @PathVariable Long requestId,
+            @Valid @RequestBody CreateVariantReviewRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(ApiResponse.success(
+                variantReviewRequestService.resubmitMyReview(requestId, userDetails.getUserId(), request)));
+    }
+
+    @DeleteMapping("/me/review-requests/{requestId}")
+    public ResponseEntity<ApiResponse<Void>> deleteMyReviewRequest(
+            @PathVariable Long requestId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        variantReviewRequestService.deleteMyRequest(requestId, userDetails.getUserId());
+        return ResponseEntity.ok(ApiResponse.success());
     }
 
     @GetMapping("/{userId}/reviews")

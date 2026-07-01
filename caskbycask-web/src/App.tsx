@@ -44,6 +44,7 @@ const AdminSpiritDetailPage = lazy(() => import('@/views-spa/admin/AdminSpiritDe
 const AdminSpiritFormPage = lazy(() => import('@/views-spa/admin/AdminSpiritFormPage'))
 const AdminRequestPage = lazy(() => import('@/views-spa/admin/AdminRequestPage'))
 const AdminRequestDetailPage = lazy(() => import('@/views-spa/admin/AdminRequestDetailPage'))
+const AdminVariantRequestPage = lazy(() => import('@/views-spa/admin/AdminVariantRequestPage'))
 const AdminProducerPage = lazy(() => import('@/views-spa/admin/AdminProducerPage'))
 const AdminProducerRequestPage = lazy(() => import('@/views-spa/admin/AdminProducerRequestPage'))
 const AdminProducerRequestDetailPage = lazy(() => import('@/views-spa/admin/AdminProducerRequestDetailPage'))
@@ -157,9 +158,10 @@ export default function App() {
               <Route path="users/nickname-bad-words" element={<AdminNicknameBadWordPage />} />
               <Route path="spirits" element={<AdminSpiritPage />} />
               <Route path="spirits/new" element={<AdminSpiritFormPage />} />
-              <Route path="spirits/:id" element={<AdminSpiritDetailPage />} />
               <Route path="spirits/requests" element={<AdminRequestPage />} />
               <Route path="spirits/requests/:id" element={<AdminRequestDetailPage />} />
+              <Route path="spirits/variant-requests" element={<AdminVariantRequestPage />} />
+              <Route path="spirits/:id" element={<AdminSpiritDetailPage />} />
               <Route path="producers" element={<AdminProducerPage />} />
               <Route path="producers/requests" element={<AdminProducerRequestPage />} />
               <Route path="producers/requests/:id" element={<AdminProducerRequestDetailPage />} />

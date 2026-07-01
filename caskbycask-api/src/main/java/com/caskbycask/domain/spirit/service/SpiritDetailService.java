@@ -149,11 +149,11 @@ public class SpiritDetailService {
                 .stream().filter(caskTypes::contains).toList();
 
         Map<String, Object> extra = new LinkedHashMap<>();
-        extra.put("caskNo", req.caskNo());
         extra.put("caskTypes", caskTypes.stream().map(Enum::name).toList());
         extra.put("caskFinishes", caskFinishes.stream().map(Enum::name).toList());
         extra.put("caskTypeOther", hasOther ? req.caskTypeOther() : null);
         extra.put("caskDetails", req.caskDetails());
+        extra.put("caskNo", req.caskNo());
         extra.put("notes", req.notes());
         // 스타일 직접 입력은 style=OTHER 일 때만 보존
         extra.put("styleOther", req.style() == WhiskyStyle.OTHER ? req.styleOther() : null);

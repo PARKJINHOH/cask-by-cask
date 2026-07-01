@@ -3,6 +3,7 @@ package com.caskbycask.admin.controller;
 import com.caskbycask.admin.service.AdminContentService;
 import com.caskbycask.domain.comment.dto.AdminCommentResponse;
 import com.caskbycask.domain.review.dto.AdminReviewResponse;
+import com.caskbycask.domain.review.dto.ModerationRequest;
 import com.caskbycask.global.response.ApiResponse;
 import com.caskbycask.global.response.PageResponse;
 import lombok.RequiredArgsConstructor;
@@ -22,14 +23,31 @@ public class AdminContentController {
     @GetMapping("/api/admin/reviews")
     public ResponseEntity<ApiResponse<PageResponse<AdminReviewResponse>>> getReviews(
             @RequestParam(required = false) Boolean isHidden,
+            @RequestParam(required = false) Long spiritId,
             @PageableDefault(size = 20) Pageable pageable) {
         return ResponseEntity.ok(ApiResponse.success(
-                PageResponse.from(adminContentService.getReviews(isHidden, pageable))));
+                PageResponse.from(adminContentService.getReviews(isHidden, spiritId, pageable))));
+    }
+
+    @PatchMapping("/api/admin/reviews/{id}/hide")
+    public ResponseEntity<ApiResponse<Void>> hideReview(
+            @PathVariable Long id,
+            @RequestBody(required = false) ModerationRequest request) {
+        adminContentService.hideReview(id, request);
+        return ResponseEntity.ok(ApiResponse.success());
+    }
+
+    @PatchMapping("/api/admin/reviews/{id}/unhide")
+    public ResponseEntity<ApiResponse<Void>> unhideReview(@PathVariable Long id) {
+        adminContentService.unhideReview(id);
+        return ResponseEntity.ok(ApiResponse.success());
     }
 
     @DeleteMapping("/api/admin/reviews/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteReview(@PathVariable Long id) {
-        adminContentService.deleteReview(id);
+    public ResponseEntity<ApiResponse<Void>> deleteReview(
+            @PathVariable Long id,
+            @RequestBody(required = false) ModerationRequest request) {
+        adminContentService.deleteReview(id, request);
         return ResponseEntity.ok(ApiResponse.success());
     }
 

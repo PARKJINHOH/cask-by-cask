@@ -3,6 +3,8 @@ package com.caskbycask.domain.spirit.repository;
 import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
 import com.caskbycask.domain.spirit.entity.enums.SpiritStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -48,6 +50,56 @@ public interface SpiritRepository extends JpaRepository<Spirit, Long>, SpiritQue
             ORDER BY COALESCE(s.displayOrder, 999999) ASC, s.id ASC
             """)
     List<Spirit> findByParentId(@Param("parentId") Long parentId);
+
+    @Query("""
+            SELECT s FROM Spirit s
+            WHERE s.parent.id = :parentId
+              AND s.status IN :statuses
+              AND LOWER(s.variantValue) = LOWER(:variantValue)
+            ORDER BY s.id ASC
+            """)
+    List<Spirit> findByParentIdAndVariantValueIgnoreCaseAndStatusIn(@Param("parentId") Long parentId,
+                                                                    @Param("variantValue") String variantValue,
+                                                                    @Param("statuses") List<SpiritStatus> statuses);
+
+    @Query(value = """
+            SELECT s FROM Spirit s
+            LEFT JOIN FETCH s.parent p
+            LEFT JOIN FETCH s.registeredBy u
+            WHERE s.parent IS NOT NULL
+              AND (:status IS NULL OR s.status = :status)
+              AND (
+                    :keyword IS NULL
+                    OR LOWER(s.variantValue) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                    OR LOWER(COALESCE(s.variantValueEn, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                    OR LOWER(s.nameKo) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                    OR LOWER(s.nameEn) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                    OR LOWER(p.nameKo) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                    OR LOWER(p.nameEn) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                    OR LOWER(COALESCE(u.nickname, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                  )
+            ORDER BY s.createdAt DESC, s.id DESC
+            """,
+            countQuery = """
+            SELECT COUNT(s) FROM Spirit s
+            LEFT JOIN s.parent p
+            LEFT JOIN s.registeredBy u
+            WHERE s.parent IS NOT NULL
+              AND (:status IS NULL OR s.status = :status)
+              AND (
+                    :keyword IS NULL
+                    OR LOWER(s.variantValue) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                    OR LOWER(COALESCE(s.variantValueEn, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                    OR LOWER(s.nameKo) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                    OR LOWER(s.nameEn) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                    OR LOWER(p.nameKo) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                    OR LOWER(p.nameEn) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                    OR LOWER(COALESCE(u.nickname, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                  )
+            """)
+    Page<Spirit> findVariantRequestsForAdmin(@Param("status") SpiritStatus status,
+                                             @Param("keyword") String keyword,
+                                             Pageable pageable);
 
     /** 같은 이름(한글/영문)의 다른 배치·병입 제품 — 자기 자신 제외, ACTIVE 만 */
     @Query("""
