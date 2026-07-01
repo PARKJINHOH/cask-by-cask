@@ -76,6 +76,7 @@ export interface SpiritDetail extends SpiritListItem {
   variantValueEn?: string | null
   seriesIdentifier?: string | null
   seriesIdentifierEn?: string | null
+  displayOrder?: number | null
   abvMin?: number | null
   abvMax?: number | null
   variants: SpiritVariant[]
@@ -108,6 +109,7 @@ export interface SpiritVariant {
   variantValueEn?: string | null
   seriesIdentifier?: string | null
   seriesIdentifierEn?: string | null
+  displayOrder?: number | null
 }
 
 export interface CreateSpiritVariantRequest {

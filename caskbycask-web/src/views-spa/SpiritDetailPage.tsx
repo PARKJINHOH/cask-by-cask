@@ -692,7 +692,15 @@ function toVariantOption(spirit: SpiritDetail): SpiritVariant {
     variantValueEn: spirit.variantValueEn,
     seriesIdentifier: spirit.seriesIdentifier,
     seriesIdentifierEn: spirit.seriesIdentifierEn,
+    displayOrder: spirit.displayOrder,
   }
+}
+
+function compareVariantDisplayOrder(a: SpiritVariant, b: SpiritVariant) {
+  const orderA = a.displayOrder ?? Number.MAX_SAFE_INTEGER
+  const orderB = b.displayOrder ?? Number.MAX_SAFE_INTEGER
+  if (orderA !== orderB) return orderA - orderB
+  return a.id - b.id
 }
 
 function stripLangPrefix(path: string) {
@@ -908,7 +916,7 @@ export default function SpiritDetailPage() {
       byId.set(spirit.id, toVariantOption(spirit))
       ;(spirit.variants ?? []).forEach((variant) => byId.set(variant.id, variant))
     }
-    return Array.from(byId.values()).sort((a, b) => a.id - b.id)
+    return Array.from(byId.values()).sort(compareVariantDisplayOrder)
   }, [spirit])
 
   const variantSeoQueries = useQueries({
