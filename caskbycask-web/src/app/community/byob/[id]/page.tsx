@@ -1,6 +1,7 @@
 import { Metadata } from 'next'
 import ClientAppWrapper from '@/app/ClientAppWrapper'
-import { getByobPostMetadata, getByobPostJsonLd } from '@/shared/utils/seoHelpers'
+import SeoFallback from '@/app/SeoFallback'
+import { getByobPostMetadata, getByobPostJsonLd, getByobPostSeoSnapshot } from '@/shared/utils/seoHelpers'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -13,7 +14,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ByobPostSSRPage({ params }: Props) {
   const { id } = await params
-  const jsonLdData = await getByobPostJsonLd(id, null)
+  const [jsonLdData, snapshot] = await Promise.all([
+    getByobPostJsonLd(id, null),
+    getByobPostSeoSnapshot(id, null),
+  ])
 
   return (
     <>
@@ -23,7 +27,9 @@ export default async function ByobPostSSRPage({ params }: Props) {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdData).replace(/</g, '\\u003c') }}
         />
       )}
-      <ClientAppWrapper />
+      <ClientAppWrapper>
+        <SeoFallback snapshot={snapshot} />
+      </ClientAppWrapper>
     </>
   )
 }

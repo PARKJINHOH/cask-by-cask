@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.caskbycask.domain.byob.entity.enums.ByobStatus;
 import com.caskbycask.domain.seo.util.SpiritSlugUtils;
 import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.domain.spirit.entity.enums.SpiritStatus;
@@ -61,8 +62,10 @@ public class SitemapService {
         appendMultilingualUrl(sb, "/spirits?category=OTHER",   null, "daily",  "0.7");
 
         appendMultilingualUrl(sb, "/notices",                null, "daily",  "0.7");
+        appendMultilingualUrl(sb, "/community/all",          null, "hourly", "0.8");
         appendMultilingualUrl(sb, "/community/free",         null, "hourly", "0.8");
         appendMultilingualUrl(sb, "/community/notice",       null, "daily",  "0.7");
+        appendMultilingualUrl(sb, "/community/byob",         null, "daily",  "0.7");
         appendMultilingualUrl(sb, "/ranking",                null, "weekly", "0.5");
         appendMultilingualUrl(sb, "/faq",                    null, "monthly", "0.6");
         appendMultilingualUrl(sb, "/terms",                  null, "yearly", "0.2");
@@ -123,6 +126,23 @@ public class SitemapService {
             }
         } catch (Exception e) {
             log.warn("Post sitemap entries skipped: {}", e.getMessage());
+        }
+
+        // ── 동적: BYOB 모임 ───────────────────────────────────────────
+        try {
+            @SuppressWarnings("unchecked")
+            List<Object[]> byobs = em.createQuery(
+                    "SELECT b.id, b.updatedAt FROM Byob b WHERE b.status <> :cancelled ORDER BY b.id"
+            )
+                    .setParameter("cancelled", ByobStatus.CANCELLED)
+                    .getResultList();
+            for (Object[] row : byobs) {
+                Long id = (Long) row[0];
+                LocalDateTime updated = (LocalDateTime) row[1];
+                appendMultilingualUrl(sb, "/community/byob/" + id, updated, "weekly", "0.6");
+            }
+        } catch (Exception e) {
+            log.warn("BYOB sitemap entries skipped: {}", e.getMessage());
         }
 
         sb.append("</urlset>\n");

@@ -1,6 +1,7 @@
 import { Metadata } from 'next'
 import ClientAppWrapper from '@/app/ClientAppWrapper'
-import { getCommunityPostMetadata, getCommunityPostJsonLd } from '@/shared/utils/seoHelpers'
+import SeoFallback from '@/app/SeoFallback'
+import { getCommunityPostMetadata, getCommunityPostJsonLd, getCommunityPostSeoSnapshot } from '@/shared/utils/seoHelpers'
 
 interface Props {
   params: Promise<{ boardType: string; id: string }>
@@ -13,7 +14,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function CommunityPostSSRPage({ params }: Props) {
   const { boardType, id } = await params
-  const jsonLdData = await getCommunityPostJsonLd(boardType, id, null)
+  const [jsonLdData, snapshot] = await Promise.all([
+    getCommunityPostJsonLd(boardType, id, null),
+    getCommunityPostSeoSnapshot(boardType, id, null),
+  ])
 
   return (
     <>
@@ -23,7 +27,9 @@ export default async function CommunityPostSSRPage({ params }: Props) {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdData).replace(/</g, '\\u003c') }}
         />
       )}
-      <ClientAppWrapper />
+      <ClientAppWrapper>
+        <SeoFallback snapshot={snapshot} />
+      </ClientAppWrapper>
     </>
   )
 }

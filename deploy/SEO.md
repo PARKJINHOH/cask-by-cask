@@ -102,7 +102,7 @@ OG 메타가 바뀌어도 메신저/SNS 는 캐시한 이전 미리보기를 계
 
 ## 7. Sitemap 자동 업데이트
 
-`SitemapService.java` 가 1시간 캐시로 동적 생성 → spirit/notice/post 신규 등록 후 최대 1시간 내 sitemap 에 반영.
+`SitemapService.java` 가 1시간 캐시로 동적 생성 → spirit/notice/post/BYOB 신규 등록 후 최대 1시간 내 sitemap 에 반영.
 
 - 검색엔진은 일반적으로 sitemap.xml 을 주기적으로 재크롤링하므로 별도 ping 불필요.
 - 그래도 즉시 재색인이 필요하면:
@@ -120,12 +120,12 @@ Next.js 빌드(`npm run build`) 시, 프로젝트 구조에 맞춰 정적 페이
 
 ### 대상 및 렌더링 방식
 - **정적 페이지 (SSG/Static)**: `/notices`, `/ranking`, `/faq`, `/terms`, `/privacy` 등은 빌드 시 정적 HTML로 생성되어 즉시 서빙됩니다.
-- **동적 페이지 (SSR/ISR)**: `/spirits/[id]`, `/community/[category]/[id]` 등 핵심 SEO가 필요한 페이지는 서버 측(Node.js)에서 동적으로 HTML을 생성하여 검색엔진 봇 및 클라이언트에 즉시 완전한 메타태그와 본문을 반환합니다.
+- **동적 페이지 (SSR/ISR)**: `/spirits/[id]`, `/community/[category]/[id]`, `/community/byob/[id]` 등 핵심 SEO가 필요한 페이지는 서버 측(Node.js)에서 동적으로 HTML을 생성하여 검색엔진 봇 및 클라이언트에 즉시 완전한 메타태그, JSON-LD, 서버 렌더링 요약 본문을 반환합니다.
 
 ### nginx 동작
 `location /` 블록이 3000번 포트의 Next.js Node 서버로 프록시 패스(`proxy_pass http://127.0.0.1:3000`)하고, `/_next/static/` 경로는 nginx가 `/app/next/dist/.next/static/`에서 직접 정적 자원을 서빙합니다.
 
-→ 검색봇은 JS 실행 없이도 서버가 렌더링한 완전한 head 메타 + JSON-LD 구조화 데이터를 즉시 받게 됩니다.
+→ 검색봇은 JS 실행 없이도 서버가 렌더링한 완전한 head 메타 + JSON-LD 구조화 데이터 + 핵심 요약 본문을 즉시 받게 됩니다.
 
 ### 트러블슈팅 및 검증
 - **빌드 검증**: 로컬 빌드 시 터미널 로그에서 각 라우트별 렌더링 타입(○ Static, λ SSR)이 정상적으로 설계와 일치하는지 확인합니다.

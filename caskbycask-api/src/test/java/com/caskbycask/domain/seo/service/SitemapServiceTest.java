@@ -21,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -119,6 +120,7 @@ class SitemapServiceTest {
 
         when(em.createQuery(anyString())).thenAnswer(inv -> {
             Query query = org.mockito.Mockito.mock(Query.class);
+            lenient().when(query.setParameter(anyString(), any())).thenReturn(query);
             when(query.getResultList()).thenReturn(List.of());
             return query;
         });

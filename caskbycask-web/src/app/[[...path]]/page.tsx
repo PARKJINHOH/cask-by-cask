@@ -1,15 +1,20 @@
 import { Metadata } from 'next'
 import ClientAppWrapper from '@/app/ClientAppWrapper'
+import SeoFallback from '@/app/SeoFallback'
+import type { SeoSnapshotData } from '@/shared/utils/seoHelpers'
 import {
   parsePath,
   getDefaultMetadata,
   getSpiritsListMetadata,
   getSpiritDetailMetadata,
   getSpiritDetailJsonLd,
+  getSpiritSeoSnapshot,
   getCommunityPostMetadata,
   getCommunityPostJsonLd,
+  getCommunityPostSeoSnapshot,
   getByobPostMetadata,
   getByobPostJsonLd,
+  getByobPostSeoSnapshot,
 } from '@/shared/utils/seoHelpers'
 
 interface Props {
@@ -44,12 +49,22 @@ export default async function CatchAllPage({ params }: Props) {
   const parsed = parsePath(pathSegments)
 
   let jsonLdData: object | null = null
+  let snapshot: SeoSnapshotData | null = null
   if (parsed.type === 'spirit-detail') {
-    jsonLdData = await getSpiritDetailJsonLd(parsed.spiritId!, parsed.lang)
+    ;[jsonLdData, snapshot] = await Promise.all([
+      getSpiritDetailJsonLd(parsed.spiritId!, parsed.lang),
+      getSpiritSeoSnapshot(parsed.spiritId!, parsed.lang),
+    ])
   } else if (parsed.type === 'community-detail') {
-    jsonLdData = await getCommunityPostJsonLd(parsed.boardType!, parsed.postId!, parsed.lang)
+    ;[jsonLdData, snapshot] = await Promise.all([
+      getCommunityPostJsonLd(parsed.boardType!, parsed.postId!, parsed.lang),
+      getCommunityPostSeoSnapshot(parsed.boardType!, parsed.postId!, parsed.lang),
+    ])
   } else if (parsed.type === 'byob-detail') {
-    jsonLdData = await getByobPostJsonLd(parsed.postId!, parsed.lang)
+    ;[jsonLdData, snapshot] = await Promise.all([
+      getByobPostJsonLd(parsed.postId!, parsed.lang),
+      getByobPostSeoSnapshot(parsed.postId!, parsed.lang),
+    ])
   }
 
   return (
@@ -60,7 +75,9 @@ export default async function CatchAllPage({ params }: Props) {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdData).replace(/</g, '\\u003c') }}
         />
       )}
-      <ClientAppWrapper />
+      <ClientAppWrapper>
+        <SeoFallback snapshot={snapshot} />
+      </ClientAppWrapper>
     </>
   )
 }
