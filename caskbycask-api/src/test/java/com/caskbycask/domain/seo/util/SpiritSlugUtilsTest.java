@@ -51,6 +51,25 @@ class SpiritSlugUtilsTest {
 
     @Test
     @DisplayName("영문 시리즈 식별자나 식별 값이 없으면 한글 값을 fallback으로 사용한다")
+    void slug_edition_without_variant_value_uses_series_identifier() {
+        Spirit spirit = Spirit.builder()
+                .nameKo("카발란 솔리스트")
+                .nameEn("Kavalan Solist")
+                .category(SpiritCategory.WHISKY)
+                .variantType(VariantType.SINGLE_CASK)
+                .seriesIdentifier("콜헤이타 포트 싱글 캐스크 스트렝스")
+                .seriesIdentifierEn("Colheita Port Single Cask Strength")
+                .build();
+        ReflectionTestUtils.setField(spirit, "id", 199L);
+
+        assertThat(SpiritSlugUtils.canonicalPathKo(spirit))
+                .isEqualTo("/ko/spirits/199-카발란-솔리스트-콜헤이타-포트-싱글-캐스크-스트렝스");
+        assertThat(SpiritSlugUtils.canonicalPathEn(spirit))
+                .isEqualTo("/en/spirits/199-kavalan-solist-colheita-port-single-cask-strength");
+    }
+
+    @Test
+    @DisplayName("edition English slug falls back to Korean series and variant")
     void slug_english_falls_back_to_korean_series_and_variant() {
         Spirit spirit = Spirit.builder()
                 .nameKo("더 글렌드로낙")

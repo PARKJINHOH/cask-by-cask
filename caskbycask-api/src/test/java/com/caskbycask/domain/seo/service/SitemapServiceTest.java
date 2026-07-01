@@ -90,6 +90,26 @@ class SitemapServiceTest {
         assertThat(xml).doesNotContain("https://caskbycask.net/en/spirits/176</loc>");
     }
 
+    @Test
+    @DisplayName("sitemap.xml includes series identifier when an edition has no variant value")
+    void sitemap_contains_series_identifier_for_edition_without_variant_value() {
+        Spirit spirit = Spirit.builder()
+                .nameKo("카발란 솔리스트")
+                .nameEn("Kavalan Solist")
+                .category(SpiritCategory.WHISKY)
+                .variantType(VariantType.SINGLE_CASK)
+                .seriesIdentifier("콜헤이타 포트 싱글 캐스크 스트렝스")
+                .seriesIdentifierEn("Colheita Port Single Cask Strength")
+                .build();
+        ReflectionTestUtils.setField(spirit, "id", 199L);
+        mockQueries(List.of(spirit));
+
+        String xml = sitemapService.generateSitemap();
+
+        assertThat(xml).contains("https://caskbycask.net/ko/spirits/199-카발란-솔리스트-콜헤이타-포트-싱글-캐스크-스트렝스");
+        assertThat(xml).contains("https://caskbycask.net/en/spirits/199-kavalan-solist-colheita-port-single-cask-strength");
+    }
+
     private void mockQueries(List<Spirit> spirits) {
         @SuppressWarnings("unchecked")
         TypedQuery<Spirit> spiritQuery = org.mockito.Mockito.mock(TypedQuery.class);
