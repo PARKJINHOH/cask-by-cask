@@ -16,6 +16,7 @@ import type {
 import type { SpiritListItem } from '@/domain/spirit/types/spirit.types'
 import { getLocalizedSpiritListNames } from '@/domain/spirit/utils/spiritDisplayName'
 import { formatOptionalPriceInput, parsePriceInput } from '@/shared/utils/moneyInput'
+import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
 
 const DISCOUNT_TYPES: DiscountType[] = ['PAYMENT', 'BUNDLE', 'COUPON', 'OTHER']
 const DUTYFREE_CHANNELS: DutyFreeChannel[] = ['AIRPORT', 'CITY', 'INFLIGHT', 'ONLINE']
@@ -31,6 +32,7 @@ export default function PriceRegisterPage() {
   const fixedSpiritId = Number(searchParams.get('spiritId')) || 0
   const { data: fixedSpirit } = useSpiritDetail(fixedSpiritId)
   const [spiritKeyword, setSpiritKeyword] = useState('')
+  const debouncedSpiritKeyword = useDebouncedValue(spiritKeyword)
   const [pickedSpirit, setPickedSpirit] = useState<SpiritListItem | null>(null)
   const [spiritOpen, setSpiritOpen] = useState(false)
   const selectedSpirit: SpiritListItem | null = fixedSpirit ?? pickedSpirit
@@ -40,6 +42,7 @@ export default function PriceRegisterPage() {
   // ── 매장 ─────────────────────────────────────────────
   const [storeType, setStoreType] = useState<StoreType>('DOMESTIC')
   const [storeKeyword, setStoreKeyword] = useState('')
+  const debouncedStoreKeyword = useDebouncedValue(storeKeyword)
   const [selectedStore, setSelectedStore] = useState<StoreSearchResult | null>(null)
   const [useSuggest, setUseSuggest] = useState(false)
   const [suggestedStoreName, setSuggestedStoreName] = useState('')
@@ -74,21 +77,23 @@ export default function PriceRegisterPage() {
 
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
+  const spiritSearchKeyword = debouncedSpiritKeyword.trim()
+  const storeSearchKeyword = debouncedStoreKeyword.trim()
 
   // ── 자동완성 쿼리 ────────────────────────────────────
   const { data: spiritResults } = useQuery({
-    queryKey: ['spiritSearch-register', spiritKeyword],
-    queryFn: () => spiritApi.search({ keyword: spiritKeyword, page: 0, size: 8 }),
+    queryKey: ['spiritSearch-register', spiritSearchKeyword],
+    queryFn: () => spiritApi.search({ keyword: spiritSearchKeyword, page: 0, size: 8 }),
     select: (res) => res.data.data?.content ?? [],
-    enabled: spiritKeyword.length >= 1 && spiritOpen && !fixedSpirit,
+    enabled: spiritSearchKeyword.length >= 1 && spiritKeyword.trim().length >= 1 && spiritOpen && !fixedSpirit,
     staleTime: 30_000,
   })
 
   const { data: storeResults } = useQuery({
-    queryKey: ['storeSearch', storeKeyword, storeType],
-    queryFn: () => priceTrackerApi.searchStores(storeKeyword, storeType),
+    queryKey: ['storeSearch', storeSearchKeyword, storeType],
+    queryFn: () => priceTrackerApi.searchStores(storeSearchKeyword, storeType),
     select: (res) => res.data.data ?? [],
-    enabled: storeKeyword.length >= 1 && storeOpen && !useSuggest,
+    enabled: storeSearchKeyword.length >= 1 && storeKeyword.trim().length >= 1 && storeOpen && !useSuggest,
     staleTime: 30_000,
   })
 

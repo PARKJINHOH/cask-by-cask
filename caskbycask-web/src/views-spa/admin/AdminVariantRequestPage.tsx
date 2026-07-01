@@ -7,6 +7,7 @@ import Modal from '@/shared/components/Modal'
 import Pagination from '@/shared/components/Pagination'
 import Spinner from '@/shared/components/Spinner'
 import { formatDate, scoreColor } from '@/shared/utils/format'
+import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
 import {
   useAdminVariantRequests,
   useAdminVariantReviewRequests,
@@ -170,6 +171,7 @@ export default function AdminVariantRequestPage() {
   const status = (searchParams.get('status') ?? 'PENDING') as StatusFilter
   const page = Math.max(0, parseInt(searchParams.get('page') ?? '0', 10))
   const [keyword, setKeyword] = useState(keywordParam)
+  const debouncedKeyword = useDebouncedValue(keyword)
   const [rejectTarget, setRejectTarget] = useState<AdminVariantReviewRequest | null>(null)
   const [legacyRejectTarget, setLegacyRejectTarget] = useState<AdminVariantRequest | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
@@ -210,6 +212,25 @@ export default function AdminVariantRequestPage() {
       },
       { replace: true },
     )
+
+  useEffect(() => {
+    setKeyword(keywordParam)
+  }, [keywordParam])
+
+  useEffect(() => {
+    const trimmed = debouncedKeyword.trim()
+    if (trimmed === keywordParam.trim()) return
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        if (trimmed) next.set('keyword', trimmed)
+        else next.delete('keyword')
+        next.set('page', '0')
+        return next
+      },
+      { replace: true },
+    )
+  }, [debouncedKeyword, keywordParam, setSearchParams])
 
   const goToVariantReviewApproval = (item: AdminVariantReviewRequest) => {
     navigate(`/admin/spirits/${item.masterId}`, {
@@ -271,7 +292,6 @@ export default function AdminVariantRequestPage() {
             value={keyword}
             onChange={(event) => {
               setKeyword(event.target.value)
-              setParam('keyword', event.target.value.trim() || null)
             }}
           />
         </div>

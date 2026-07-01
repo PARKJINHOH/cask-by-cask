@@ -5,19 +5,11 @@ import { useMessageActions } from '../hooks/useMessages'
 import axiosInstance from '@/shared/api/axiosInstance'
 import type { ApiResponse } from '@/shared/types/common.types'
 import { useAuthStore } from '@/domain/auth/store/authStore'
+import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
 
 interface UserSuggestion {
   id: number
   nickname: string
-}
-
-function useDebounce<T>(value: T, delay: number): T {
-  const [debounced, setDebounced] = useState(value)
-  useEffect(() => {
-    const t = setTimeout(() => setDebounced(value), delay)
-    return () => clearTimeout(t)
-  }, [value, delay])
-  return debounced
 }
 
 export default function MessagePopup() {
@@ -32,7 +24,7 @@ export default function MessagePopup() {
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [inlineError, setInlineError] = useState('')
   const [sendStatus, setSendStatus] = useState<'idle' | 'success'>('idle')
-  const debouncedReceiver = useDebounce(receiver, 300)
+  const debouncedReceiver = useDebouncedValue(receiver)
   const isPrefilled = Boolean(prefilledNickname)
   const suggestRef = useRef<HTMLDivElement>(null)
 

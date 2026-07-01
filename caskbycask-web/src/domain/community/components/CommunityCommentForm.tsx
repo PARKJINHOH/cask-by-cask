@@ -6,6 +6,7 @@ import { communityApi } from '../api/communityApi'
 import type { PostCommentItem, UserMention, CommunityEmoji } from '../types/community.types'
 import Button from '@/shared/components/Button'
 import EmojiPicker from './EmojiPicker'
+import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
 
 interface Props {
   postId: number
@@ -41,7 +42,6 @@ export default function CommunityCommentForm({
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [error, setError] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   const createMutation = useCreateComment(postId)
   const updateMutation = useUpdateComment(postId)
@@ -52,13 +52,7 @@ export default function CommunityCommentForm({
     if (forcedSecret) setIsSecret(true)
   }, [forcedSecret])
 
-  // @멘션 검색 (디바운스)
-  const [debouncedQuery, setDebouncedQuery] = useState('')
-  useEffect(() => {
-    clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => setDebouncedQuery(mentionQuery), 300)
-    return () => clearTimeout(debounceRef.current)
-  }, [mentionQuery])
+  const debouncedQuery = useDebouncedValue(mentionQuery)
 
   const { data: mentionUsers = [] } = useQuery({
     queryKey: ['users', 'search', debouncedQuery],

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import Badge from '@/shared/components/Badge'
 import Button from '@/shared/components/Button'
@@ -8,6 +8,8 @@ import Pagination from '@/shared/components/Pagination'
 import ImageLightbox from '@/shared/components/ImageLightbox'
 import { useAdminSpirits } from '@/domain/admin/hooks/useAdminSpirits'
 import type { SpiritCategory, SpiritStatus } from '@/domain/spirit/types/spirit.types'
+import { getSpiritListDisplayNames } from '@/domain/spirit/utils/spiritDisplayName'
+import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
 
 // ── 상수 ────────────────────────────────────────────────────────
 
@@ -89,6 +91,7 @@ export default function AdminSpiritPage() {
   const categoryParam = (searchParams.get('category') ?? '') as SpiritCategory | ''
   const statusParam = (searchParams.get('status') ?? '') as SpiritStatus | ''
   const [keyword, setKeyword]   = useState(keywordParam)
+  const debouncedKeyword = useDebouncedValue(keyword)
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
 
   const page = Math.max(0, parseInt(searchParams.get('page') ?? '0', 10))
@@ -110,6 +113,25 @@ export default function AdminSpiritPage() {
       { replace: true },
     )
 
+  useEffect(() => {
+    setKeyword(keywordParam)
+  }, [keywordParam])
+
+  useEffect(() => {
+    const trimmed = debouncedKeyword.trim()
+    if (trimmed === keywordParam.trim()) return
+    setSearchParams(
+      (prev) => {
+        const n = new URLSearchParams(prev)
+        if (trimmed) n.set('keyword', trimmed)
+        else n.delete('keyword')
+        n.set('page', '0')
+        return n
+      },
+      { replace: true },
+    )
+  }, [debouncedKeyword, keywordParam, setSearchParams])
+
   const { data, isLoading } = useAdminSpirits({
     keyword: keywordParam.trim() || undefined,
     category: categoryParam || undefined,
@@ -119,7 +141,6 @@ export default function AdminSpiritPage() {
 
   const handleKeywordChange = (value: string) => {
     setKeyword(value)
-    setParam('keyword', value.trim() || null)
   }
 
   return (
@@ -204,6 +225,7 @@ export default function AdminSpiritPage() {
                 ) : (
                   data.content.map((spirit) => {
                     const styleLabel = getStyleLabel(spirit)
+                    const displayName = getSpiritListDisplayNames(spirit)
                     return (
                     <tr
                       key={spirit.id}
@@ -252,9 +274,9 @@ export default function AdminSpiritPage() {
 
                       <td className="px-4 py-3">
                         <p className="font-medium text-neutral-900 group-hover:text-primary-700">
-                          {spirit.nameKo}
+                          {displayName.nameKo}
                         </p>
-                        <p className="text-xs text-neutral-400">{spirit.nameEn}</p>
+                        <p className="text-xs text-neutral-400">{displayName.nameEn}</p>
                       </td>
                       <td className="px-4 py-3">
                         <Badge variant={spirit.category} size="sm">

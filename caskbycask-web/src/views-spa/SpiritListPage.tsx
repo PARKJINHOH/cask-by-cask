@@ -26,6 +26,7 @@ import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 import { buildBreadcrumbSchema, buildItemListSchema } from '@/shared/utils/seoSchema'
 import { getSpiritListDisplayNames } from '@/domain/spirit/utils/spiritDisplayName'
 import { getSpiritCanonicalPath, getSpiritDetailPath } from '@/domain/spirit/utils/spiritUrl'
+import { SEARCH_DEBOUNCE_MS } from '@/shared/hooks/useDebouncedValue'
 
 // ── SEO 카테고리별 메타 ─────────────────────────────────────────
 const CATEGORY_META: Record<SpiritCategory | '', {
@@ -393,7 +394,7 @@ export default function SpiritListPage() {
           setIsAutocompleteLoading(false)
         }
       }
-    }, 250)
+    }, SEARCH_DEBOUNCE_MS)
   }
 
 

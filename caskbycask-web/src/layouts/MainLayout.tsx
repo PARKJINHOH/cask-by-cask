@@ -24,6 +24,7 @@ import axios from 'axios'
 import { spiritApi } from '@/domain/spirit/api/spiritApi'
 import type { SpiritAutocompleteItem } from '@/domain/spirit/types/spirit.types'
 import { getSpiritDetailPath } from '@/domain/spirit/utils/spiritUrl'
+import { SEARCH_DEBOUNCE_MS } from '@/shared/hooks/useDebouncedValue'
 
 
 const SEEN_KEY = 'notice:lastSeenId'
@@ -478,7 +479,7 @@ function HeaderSearch() {
           setIsLoading(false)
         }
       }
-    }, 250)
+    }, SEARCH_DEBOUNCE_MS)
   }
 
   const handleFocus = () => {

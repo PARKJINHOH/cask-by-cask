@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { appellationApi } from '@/shared/api/appellationApi'
+import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
 
 interface Props {
   value: string
@@ -11,17 +12,30 @@ export default function AppellationAutocomplete({ value, onChange, placeholder }
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+  const debouncedValue = useDebouncedValue(value)
 
-  // 300ms debounce
   useEffect(() => {
-    if (!value.trim()) { setSuggestions([]); setOpen(false); return }
-    const timer = setTimeout(async () => {
-      const results = await appellationApi.search(value, 8)
-      setSuggestions(results)
-      setOpen(results.length > 0)
-    }, 300)
-    return () => clearTimeout(timer)
-  }, [value])
+    const keyword = debouncedValue.trim()
+    if (!keyword) { setSuggestions([]); setOpen(false); return }
+    let ignore = false
+    ;(async () => {
+      try {
+        const results = await appellationApi.search(keyword, 8)
+        if (!ignore) {
+          setSuggestions(results)
+          setOpen(results.length > 0)
+        }
+      } catch {
+        if (!ignore) {
+          setSuggestions([])
+          setOpen(false)
+        }
+      }
+    })()
+    return () => {
+      ignore = true
+    }
+  }, [debouncedValue])
 
   // 외부 클릭 시 닫기
   useEffect(() => {

@@ -11,6 +11,7 @@ import type { SpiritDetail, SpiritListItem, SpiritVariant } from '@/domain/spiri
 import {
   ConfidenceBadge, DealStatusBadge, SourceLinkButton, formatDiscount, formatPrice, siteLabel,
 } from '@/domain/admin/components/dealUi'
+import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
 
 const EMPTY_FORM = {
   drinkName: '', drinkCategory: '', originalPrice: '0', dealPrice: '0',
@@ -52,6 +53,7 @@ export default function AdminDealDetailPage() {
   const [storeType, setStoreType] = useState<StoreType>('DOMESTIC')
 
   const [spiritKeyword, setSpiritKeyword] = useState('')
+  const debouncedSpiritKeyword = useDebouncedValue(spiritKeyword)
   const [spiritSearchResults, setSpiritSearchResults] = useState<SpiritListItem[]>([])
   const [searchingSpirits, setSearchingSpirits] = useState(false)
   const [spiritSearchError, setSpiritSearchError] = useState(false)
@@ -86,7 +88,7 @@ export default function AdminDealDetailPage() {
 
   useEffect(() => {
     let ignore = false
-    const keyword = spiritKeyword.trim()
+    const keyword = debouncedSpiritKeyword.trim()
 
     setSpiritSearchError(false)
     setVariantPicker(null)
@@ -99,7 +101,7 @@ export default function AdminDealDetailPage() {
     }
 
     setSearchingSpirits(true)
-    const timer = window.setTimeout(async () => {
+    ;(async () => {
       try {
         const res = await spiritApi.search({ keyword, page: 0, size: 20 })
         if (!ignore) {
@@ -116,13 +118,12 @@ export default function AdminDealDetailPage() {
           setSearchingSpirits(false)
         }
       }
-    }, 250)
+    })()
 
     return () => {
       ignore = true
-      window.clearTimeout(timer)
     }
-  }, [spiritKeyword, spiritId])
+  }, [debouncedSpiritKeyword, spiritId])
 
   const originalPriceValue = parsePriceInput(form.originalPrice)
   const dealPriceValue = parsePriceInput(form.dealPrice)

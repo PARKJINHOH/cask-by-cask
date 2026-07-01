@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import Spinner from '@/shared/components/Spinner'
 import Pagination from '@/shared/components/Pagination'
 import { priceTrackerApi } from '@/domain/pricetracker/api/priceTrackerApi'
+import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
 import {
   useAdminStores,
   useApproveStore,
@@ -193,14 +194,16 @@ function StoreRow({ store: s, onApprove, onDelete, onAlias }: {
 function MergeRow({ suggestedId, onDone }: { suggestedId: number; onDone: () => void }) {
   const merge = useMergeStore()
   const [keyword, setKeyword] = useState('')
+  const debouncedKeyword = useDebouncedValue(keyword)
+  const searchKeyword = debouncedKeyword.trim()
   const [target, setTarget] = useState<StoreSearchResult | null>(null)
   const [open, setOpen] = useState(false)
 
   const { data: results } = useQuery({
-    queryKey: ['admin-merge-target', keyword],
-    queryFn: () => priceTrackerApi.searchStores(keyword),
+    queryKey: ['admin-merge-target', searchKeyword],
+    queryFn: () => priceTrackerApi.searchStores(searchKeyword),
     select: (res) => res.data.data ?? [],
-    enabled: keyword.length >= 1 && open,
+    enabled: searchKeyword.length >= 1 && keyword.trim().length >= 1 && open,
     staleTime: 30_000,
   })
 

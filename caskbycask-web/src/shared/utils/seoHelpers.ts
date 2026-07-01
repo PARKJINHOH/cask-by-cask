@@ -306,7 +306,7 @@ export async function getSpiritDetailMetadata(id: string, lang: 'ko' | 'en' | nu
       }
     }
 
-    const hasEdition = spirit.variantType && spirit.variantType !== 'NONE' && spirit.variantValue
+    const hasEdition = spirit.variantType && spirit.variantType !== 'NONE'
     let nameKo = spirit.nameKo
     let nameEn = spirit.nameEn
     if (hasEdition) {
@@ -382,7 +382,7 @@ export async function getSpiritDetailJsonLd(id: string, lang: 'ko' | 'en' | null
   if (!spirit) return null
 
   const isEn = lang === 'en'
-  const hasEdition = spirit.variantType && spirit.variantType !== 'NONE' && spirit.variantValue
+  const hasEdition = spirit.variantType && spirit.variantType !== 'NONE'
   const nameKo = hasEdition
     ? formatEditionDisplayName(spirit.nameKo, spirit.seriesIdentifier, spirit.variantValue)
     : spirit.nameKo

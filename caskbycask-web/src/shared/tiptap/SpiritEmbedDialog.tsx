@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { spiritApi } from '@/domain/spirit/api/spiritApi'
 import type { SpiritListItem } from '@/domain/spirit/types/spirit.types'
 import { getLocalizedSpiritListNames, getSpiritListDisplayNames } from '@/domain/spirit/utils/spiritDisplayName'
+import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
 import { SPIRIT_CATEGORY_EMOJI, type SpiritEmbedAttrs } from './SpiritEmbed'
 
 interface Props {
@@ -15,6 +16,7 @@ interface Props {
 export default function SpiritEmbedDialog({ open, onClose, onSelect }: Props) {
   const { t, i18n } = useTranslation()
   const [keyword, setKeyword] = useState('')
+  const debouncedKeyword = useDebouncedValue(keyword)
   const [results, setResults] = useState<SpiritListItem[]>([])
   const [loading, setLoading] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -31,24 +33,28 @@ export default function SpiritEmbedDialog({ open, onClose, onSelect }: Props) {
   // 디바운스 검색
   useEffect(() => {
     if (!open) return
-    const q = keyword.trim()
+    const q = debouncedKeyword.trim()
     if (q.length < 1) {
       setResults([])
+      setLoading(false)
       return
     }
+    let ignore = false
     setLoading(true)
-    const timer = setTimeout(async () => {
+    ;(async () => {
       try {
         const res = await spiritApi.search({ keyword: q, page: 0, size: 12 })
-        setResults(res.data.data?.content ?? [])
+        if (!ignore) setResults(res.data.data?.content ?? [])
       } catch {
-        setResults([])
+        if (!ignore) setResults([])
       } finally {
-        setLoading(false)
+        if (!ignore) setLoading(false)
       }
-    }, 300)
-    return () => clearTimeout(timer)
-  }, [keyword, open])
+    })()
+    return () => {
+      ignore = true
+    }
+  }, [debouncedKeyword, open])
 
   // ESC 닫기
   useEffect(() => {

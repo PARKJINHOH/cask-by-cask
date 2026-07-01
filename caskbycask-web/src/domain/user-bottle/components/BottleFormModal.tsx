@@ -6,6 +6,7 @@ import axiosInstance from '@/shared/api/axiosInstance';
 import { getSpiritListDisplayNames } from '@/domain/spirit/utils/spiritDisplayName';
 import ImageEditorModal from '@/shared/components/ImageEditorModal';
 import { formatOptionalPriceInput, parsePriceInput } from '@/shared/utils/moneyInput';
+import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue';
 
 interface SpiritOption { id: number; nameKo: string; nameEn: string | null; seriesIdentifier?: string | null; category: string; }
 interface Props { open: boolean; onClose: () => void; editing?: UserBottle; }
@@ -34,6 +35,7 @@ export function BottleFormModal({ open, onClose, editing }: Props) {
   const deleteImageMut = useDeleteBottleImage();
 
   const [spiritQuery, setSpiritQuery] = useState('');
+  const debouncedSpiritQuery = useDebouncedValue(spiritQuery);
   const [selectedSpirit, setSelectedSpirit] = useState<SpiritOption | null>(null);
   const [spiritOptions, setSpiritOptions] = useState<SpiritOption[]>([]);
   const [existingImages, setExistingImages] = useState<UserBottleImage[]>([]);
@@ -95,17 +97,19 @@ export function BottleFormModal({ open, onClose, editing }: Props) {
   }, [open, editing]);
 
   useEffect(() => {
-    if (spiritQuery.length < 2) { setSpiritOptions([]); return; }
-    const timer = setTimeout(async () => {
+    const keyword = debouncedSpiritQuery.trim();
+    if (keyword.length < 2) { setSpiritOptions([]); return; }
+    let ignore = false;
+    (async () => {
       try {
-        const res = await axiosInstance.get('/api/spirits', { params: { keyword: spiritQuery, size: 5 } });
-        setSpiritOptions(res.data?.data?.content ?? []);
+        const res = await axiosInstance.get('/api/spirits', { params: { keyword, size: 5 } });
+        if (!ignore) setSpiritOptions(res.data?.data?.content ?? []);
       } catch {
-        setSpiritOptions([]);
+        if (!ignore) setSpiritOptions([]);
       }
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [spiritQuery]);
+    })();
+    return () => { ignore = true; };
+  }, [debouncedSpiritQuery]);
 
   const selectedSpiritNames = selectedSpirit ? getSpiritListDisplayNames(selectedSpirit) : null;
   const selectedPending = useMemo(

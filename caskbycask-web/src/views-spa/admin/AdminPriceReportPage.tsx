@@ -5,6 +5,7 @@ import Spinner from '@/shared/components/Spinner'
 import Pagination from '@/shared/components/Pagination'
 import { formatDate } from '@/shared/utils/format'
 import { priceTrackerApi } from '@/domain/pricetracker/api/priceTrackerApi'
+import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
 import {
   useAdminPriceReports,
   useApprovePriceReport,
@@ -103,6 +104,8 @@ function ReportCard({ report: r }: { report: AdminPriceReport }) {
   const reject = useRejectPriceReport()
 
   const [mapKeyword, setMapKeyword] = useState('')
+  const debouncedMapKeyword = useDebouncedValue(mapKeyword)
+  const storeSearchKeyword = debouncedMapKeyword.trim()
   const [mappedStore, setMappedStore] = useState<StoreSearchResult | null>(null)
   const [mapOpen, setMapOpen] = useState(false)
   const [rejecting, setRejecting] = useState(false)
@@ -112,10 +115,10 @@ function ReportCard({ report: r }: { report: AdminPriceReport }) {
   const flagged = r.autoFlagged || r.reportCount > 0
 
   const { data: storeResults } = useQuery({
-    queryKey: ['admin-store-map', mapKeyword],
-    queryFn: () => priceTrackerApi.searchStores(mapKeyword),
+    queryKey: ['admin-store-map', storeSearchKeyword],
+    queryFn: () => priceTrackerApi.searchStores(storeSearchKeyword),
     select: (res) => res.data.data ?? [],
-    enabled: mapKeyword.length >= 1 && mapOpen,
+    enabled: storeSearchKeyword.length >= 1 && mapKeyword.trim().length >= 1 && mapOpen,
     staleTime: 30_000,
   })
 

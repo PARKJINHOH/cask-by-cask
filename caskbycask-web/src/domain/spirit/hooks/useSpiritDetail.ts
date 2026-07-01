@@ -13,7 +13,7 @@ export function formatSpiritName<T extends {
   variantValueEn?: string | null
 }>(spirit: T): T {
   if (!spirit) return spirit
-  const hasEdition = spirit.variantType && spirit.variantType !== 'NONE' && spirit.variantValue
+  const hasEdition = spirit.variantType && spirit.variantType !== 'NONE'
   if (hasEdition) {
     const nameKo = formatEditionDisplayName(
       spirit.nameKo,
