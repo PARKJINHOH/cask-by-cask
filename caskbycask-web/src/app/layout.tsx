@@ -2,15 +2,15 @@ import type { Metadata } from 'next'
 import '@/index.css'
 
 export const metadata: Metadata = {
-  title: 'CaskByCask — 주류 정보, 리뷰, 커뮤니티',
-  description: '위스키, 와인, 꼬냑 등 주류 정보와 평점 리뷰 전문 플랫폼, CaskByCask(캐스크바이캐스크)입니다.',
+  title: 'CaskByCask(캐바캐) — 주류 정보, 리뷰, 커뮤니티',
+  description: '위스키, 와인, 꼬냑 등 주류 정보와 평점 리뷰 전문 플랫폼, CaskByCask(캐바캐)입니다.',
   robots: {
     index: true,
     follow: true,
   },
   openGraph: {
-    title: 'CaskByCask — 주류 정보, 리뷰, 커뮤니티',
-    description: '위스키, 와인, 꼬냑 등 주류 정보와 평점 리뷰 전문 플랫폼, CaskByCask(캐스크바이캐스크)입니다.',
+    title: 'CaskByCask(캐바캐) — 주류 정보, 리뷰, 커뮤니티',
+    description: '위스키, 와인, 꼬냑 등 주류 정보와 평점 리뷰 전문 플랫폼, CaskByCask(캐바캐)입니다.',
   },
 }
 

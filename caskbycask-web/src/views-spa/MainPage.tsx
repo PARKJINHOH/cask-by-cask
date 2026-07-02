@@ -614,7 +614,7 @@ export default function MainPage() {
       <SeoMeta
         title={isEn
           ? 'CaskByCask — Detailed Liquor Info, Reviews & Community'
-          : 'CaskByCask — 주류 정보, 리뷰, 커뮤니티'}
+          : 'CaskByCask(캐바캐) — 주류 정보, 리뷰, 커뮤니티'}
         description={isEn
           ? 'Explore detailed specifications, user ratings, and reviews of global spirits (whisky, wine, cognac, rum, tequila) and join our community.'
           : '전 세계 위스키, 와인, 꼬냑 등의 상세한 주류 정보와 평점 리뷰를 제공하고 소통하는 주류 전문 정보 커뮤니티 플랫폼입니다.'}
