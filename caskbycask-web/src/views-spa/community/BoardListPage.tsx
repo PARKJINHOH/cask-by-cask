@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-do
 import { useTranslation } from 'react-i18next'
 import { usePosts, useBestPosts, usePostPrefixes } from '@/domain/community/hooks/usePosts'
 import { usePinnedNotices } from '@/domain/notice/hooks/useNotices'
-import type { BoardType, PostSort } from '@/domain/community/types/community.types'
+import type { BoardType, PostListItem, PostSort } from '@/domain/community/types/community.types'
 import type { UserRole } from '@/domain/auth/types/auth.types'
 import Pagination from '@/shared/components/Pagination'
 import UserBadge from '@/shared/components/UserBadge'
@@ -27,6 +27,74 @@ type Tab = 'all' | 'best' | 'event'
 interface Props {
   boardType?: BoardType
   title: string
+}
+
+type PostThumbnailMedia = {
+  type: 'image' | 'video'
+  url: string
+}
+
+function getPostThumbnail(post: PostListItem): PostThumbnailMedia | null {
+  if (post.adultOnly || post.isLocked) return null
+  if (post.thumbnailImageUrl) return { type: 'image', url: post.thumbnailImageUrl }
+  if (post.thumbnailVideoUrl) return { type: 'video', url: post.thumbnailVideoUrl }
+  return null
+}
+
+function PreviewMedia({ media, className }: { media: PostThumbnailMedia; className: string }) {
+  return (
+    media.type === 'video' ? (
+      <video
+        src={media.url}
+        muted
+        playsInline
+        preload="metadata"
+        className={className}
+      />
+    ) : (
+      <img
+        src={media.url}
+        alt=""
+        loading="lazy"
+        className={className}
+      />
+    )
+  )
+}
+
+function MediaMarker({ media }: { media: PostThumbnailMedia | null }) {
+  if (!media) return null
+
+  const isVideo = media?.type === 'video'
+
+  return (
+    <span
+      className="group/media relative inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded border border-neutral-300 bg-neutral-100 text-neutral-600"
+      aria-hidden="true"
+    >
+      {isVideo ? (
+        <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M8 5.5v13l11-6.5-11-6.5z" />
+        </svg>
+      ) : (
+        <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4 7a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="m4 16 4-4 3 3 2-2 7 7" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 8h.01" />
+        </svg>
+      )}
+      <span className="pointer-events-none absolute left-6 top-1/2 z-50 hidden h-36 w-36 -translate-y-1/2 overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-xl ring-1 ring-black/5 sm:group-hover/media:block">
+        <PreviewMedia media={media} className="h-full w-full object-cover" />
+        {isVideo && (
+          <span className="absolute inset-0 flex items-center justify-center bg-black/10 text-white">
+            <svg className="h-8 w-8 drop-shadow" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M8 5.5v13l11-6.5-11-6.5z" />
+            </svg>
+          </span>
+        )}
+      </span>
+    </span>
+  )
 }
 
 export default function BoardListPage({ boardType, title }: Props) {
@@ -290,11 +358,12 @@ export default function BoardListPage({ boardType, title }: Props) {
       ) : (
         <>
           {/* PC 테이블 */}
-          <div className="hidden sm:block bg-white border border-neutral-200 rounded-xl overflow-hidden">
+          <div className="hidden sm:block bg-white border border-neutral-200 rounded-xl overflow-visible">
             <table className="w-full text-sm table-fixed">
               <thead>
                 <tr className="bg-neutral-50 border-b border-neutral-100">
                   <th className="text-center px-4 py-2.5 font-medium text-neutral-500 w-28">{t('board.prefix')}</th>
+                  <th className="text-center px-2 py-2.5 font-medium text-neutral-500 w-10"></th>
                   <th className="text-center px-4 py-2.5 font-medium text-neutral-500">{t('board.title')}</th>
                   <th className="text-center px-4 py-2.5 font-medium text-neutral-500 w-32">닉네임</th>
                   <th className="text-center px-4 py-2.5 font-medium text-neutral-500 w-16">{t('board.likes')}</th>
@@ -313,6 +382,9 @@ export default function BoardListPage({ boardType, title }: Props) {
                       <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
                         {t('board.noticeBadge')}
                       </span>
+                    </td>
+                    <td className="px-2 py-2 text-center">
+                      <MediaMarker media={null} />
                     </td>
                     <td className="px-4 py-2">
                       <span className="block text-[15px] font-semibold text-neutral-800 group-hover/row:text-primary-800 transition-colors truncate">
@@ -350,7 +422,10 @@ export default function BoardListPage({ boardType, title }: Props) {
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-2 overflow-hidden" title={post.isLocked ? t('board.locked') : undefined}>
+                    <td className="px-2 py-2 text-center">
+                      <MediaMarker media={getPostThumbnail(post)} />
+                    </td>
+                    <td className="px-4 py-2" title={post.isLocked ? t('board.locked') : undefined}>
                       <div className="flex items-center gap-2 min-w-0">
                         {post.isLocked && <span className="text-neutral-400">🔒</span>}
                         {post.adultOnly && <AdultBadge />}
@@ -417,11 +492,12 @@ export default function BoardListPage({ boardType, title }: Props) {
                   <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
                     {t('board.noticeBadge')}
                   </span>
+                  <MediaMarker media={null} />
                 </div>
                 <p className="text-[15px] font-semibold text-neutral-800 line-clamp-1">
                   {notice.title}
                 </p>
-                <div className="flex items-center gap-3 mt-1.5 text-xs text-neutral-400">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-xs text-neutral-400">
                   <RecommendBadge count={notice.recommendCount} />
                   <span>조회 {notice.viewCount.toLocaleString()}</span>
                   <span>{formatBoardDate(notice.createdAt)}</span>
@@ -451,6 +527,7 @@ export default function BoardListPage({ boardType, title }: Props) {
                       {t(`prefix.${post.prefix.name}`, post.prefix.name)}
                     </span>
                   )}
+                  <MediaMarker media={getPostThumbnail(post)} />
                   {post.isLocked && <span className="text-neutral-400 text-sm">🔒</span>}
                   {(post as any).byobStatus && (
                     <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-100
@@ -466,7 +543,7 @@ export default function BoardListPage({ boardType, title }: Props) {
                   {post.adultOnly && <AdultBadge className="mr-1 align-middle" />}
                   {post.title}
                 </p>
-                <div className="flex items-center gap-3 mt-1.5 text-xs text-neutral-400">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-xs text-neutral-400">
                   {post.authorRole ? (
                     <UserBadge
                       user={{ nickname: post.authorNickname, role: post.authorRole as UserRole, currentLevel: post.authorLevel, maturingPower: post.authorMaturingPower ?? undefined, nicknameFixed: post.authorNicknameFixed, profileImageUrl: post.authorProfileImageUrl }}

@@ -26,6 +26,8 @@ export interface PostListItem {
   likeCount: number
   commentCount: number
   hasPoll: boolean
+  thumbnailImageUrl?: string | null
+  thumbnailVideoUrl?: string | null
   createdAt: string
 }
 

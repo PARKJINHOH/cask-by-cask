@@ -30,6 +30,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -41,6 +42,8 @@ public class PostService {
     private final PostScrapRepository postScrapRepository;
     private final PostReportRepository postReportRepository;
     private final PostPrefixRepository postPrefixRepository;
+    private final PostImageRepository postImageRepository;
+    private final PostVideoRepository postVideoRepository;
     private final SeriesRepository seriesRepository;
     private final DeletedPostRepository deletedPostRepository;
     private final UserBlockRepository userBlockRepository;
@@ -70,9 +73,9 @@ public class PostService {
         // [패치 9] distilleryTagId — 소식 게시판 증류소 태그 필터
         // 차단한 사용자의 글은 목록에서 제외
         List<Long> blockedIds = blockedAuthorIds(userId);
-        return postRepository.findPosts(boardType, prefixId, keyword, sort,
-                        authorId, commentAuthorId, distilleryTagId, blockedIds, PageRequest.of(page, size))
-                .map(PostListResponse::from);
+        Page<Post> posts = postRepository.findPosts(boardType, prefixId, keyword, sort,
+                authorId, commentAuthorId, distilleryTagId, blockedIds, PageRequest.of(page, size));
+        return toPostListResponses(posts);
     }
 
     private static final int BEST_MIN_LIKE_COUNT = 5;
@@ -111,13 +114,50 @@ public class PostService {
     @Transactional(readOnly = true)
     public Page<PostListResponse> getBestPosts(BoardType boardType, Long userId, int page, int size) {
         List<Long> blockedIds = blockedAuthorIds(userId);
-        return postRepository.findBestPosts(boardType, BEST_MIN_LIKE_COUNT, blockedIds, PageRequest.of(page, size))
-                .map(PostListResponse::from);
+        Page<Post> posts = postRepository.findBestPosts(boardType, BEST_MIN_LIKE_COUNT, blockedIds, PageRequest.of(page, size));
+        return toPostListResponses(posts);
     }
 
     /** 로그인 사용자가 차단한 작성자 ID 목록 (비로그인 시 빈 리스트) */
     private List<Long> blockedAuthorIds(Long userId) {
         return userId == null ? List.of() : userBlockRepository.findBlockedIdsByBlockerId(userId);
+    }
+
+    private Page<PostListResponse> toPostListResponses(Page<Post> posts) {
+        List<Long> postIds = posts.getContent().stream()
+                .map(Post::getId)
+                .toList();
+        Map<Long, String> thumbnailImageUrls = firstImageUrlsByPostIds(postIds);
+        Map<Long, String> thumbnailVideoUrls = firstVideoUrlsByPostIds(postIds);
+        return posts.map(post -> PostListResponse.from(
+                post,
+                thumbnailImageUrls.get(post.getId()),
+                thumbnailVideoUrls.get(post.getId())
+        ));
+    }
+
+    private Map<Long, String> firstImageUrlsByPostIds(List<Long> postIds) {
+        if (postIds.isEmpty()) {
+            return Map.of();
+        }
+        return postImageRepository.findFirstImageUrlsByPostIds(postIds).stream()
+                .collect(Collectors.toMap(
+                        row -> (Long) row[0],
+                        row -> (String) row[1],
+                        (first, ignored) -> first
+                ));
+    }
+
+    private Map<Long, String> firstVideoUrlsByPostIds(List<Long> postIds) {
+        if (postIds.isEmpty()) {
+            return Map.of();
+        }
+        return postVideoRepository.findFirstVideoUrlsByPostIds(postIds).stream()
+                .collect(Collectors.toMap(
+                        row -> (Long) row[0],
+                        row -> (String) row[1],
+                        (first, ignored) -> first
+                ));
     }
 
     @Transactional
@@ -404,9 +444,21 @@ public class PostService {
 
     @Transactional(readOnly = true)
     public Page<PostListResponse> getMyScraps(Long userId, int page, int size) {
-        return postScrapRepository
-                .findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(page, size))
-                .map(scrap -> PostListResponse.from(scrap.getPost()));
+        Page<PostScrap> scraps = postScrapRepository
+                .findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(page, size));
+        List<Long> postIds = scraps.getContent().stream()
+                .map(scrap -> scrap.getPost().getId())
+                .toList();
+        Map<Long, String> thumbnailImageUrls = firstImageUrlsByPostIds(postIds);
+        Map<Long, String> thumbnailVideoUrls = firstVideoUrlsByPostIds(postIds);
+        return scraps.map(scrap -> {
+            Post post = scrap.getPost();
+            return PostListResponse.from(
+                    post,
+                    thumbnailImageUrls.get(post.getId()),
+                    thumbnailVideoUrls.get(post.getId())
+            );
+        });
     }
 
     @Transactional

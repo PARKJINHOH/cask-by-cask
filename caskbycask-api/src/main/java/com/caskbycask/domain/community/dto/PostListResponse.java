@@ -27,18 +27,21 @@ public class PostListResponse {
     private final int likeCount;
     private final int commentCount;
     private final boolean hasPoll;
+    private final String thumbnailImageUrl;
+    private final String thumbnailVideoUrl;
     // [패치 9] 소식 게시판 증류소 태그 (없으면 null)
     private final Long distilleryTagId;
     private final String distilleryTagNameKo;
     private final String distilleryTagNameEn;
     private final LocalDateTime createdAt;
 
-    private PostListResponse(Post post) {
+    private PostListResponse(Post post, String thumbnailImageUrl, String thumbnailVideoUrl) {
         this.id            = post.getId();
         this.boardType     = post.getBoardType();
         this.prefix        = post.getPrefix() != null ? PrefixInfo.from(post.getPrefix()) : null;
         this.title         = post.getTitle();
-        this.isLocked      = post.getStatus() != null && post.getStatus().name().equals("LOCKED");
+        boolean locked     = post.getStatus() != null && post.getStatus().name().equals("LOCKED");
+        this.isLocked      = locked;
         this.isPinned      = Boolean.TRUE.equals(post.getIsPinned());
         this.adultOnly     = Boolean.TRUE.equals(post.getAdultOnly());
         boolean anon       = Boolean.TRUE.equals(post.getIsAnonymous());
@@ -53,6 +56,9 @@ public class PostListResponse {
         this.likeCount     = post.getLikeCount();
         this.commentCount  = post.getCommentCount();
         this.hasPoll       = post.getPoll() != null;
+        boolean exposeThumbnail = !locked && !this.adultOnly;
+        this.thumbnailImageUrl = exposeThumbnail ? thumbnailImageUrl : null;
+        this.thumbnailVideoUrl = exposeThumbnail && this.thumbnailImageUrl == null ? thumbnailVideoUrl : null;
         // [패치 9] 소식 게시판 증류소 태그
         this.distilleryTagId     = post.getDistilleryTag() != null ? post.getDistilleryTag().getId() : null;
         this.distilleryTagNameKo = post.getDistilleryTag() != null ? post.getDistilleryTag().getNameKo() : null;
@@ -61,6 +67,14 @@ public class PostListResponse {
     }
 
     public static PostListResponse from(Post post) {
-        return new PostListResponse(post);
+        return new PostListResponse(post, null, null);
+    }
+
+    public static PostListResponse from(Post post, String thumbnailImageUrl) {
+        return new PostListResponse(post, thumbnailImageUrl, null);
+    }
+
+    public static PostListResponse from(Post post, String thumbnailImageUrl, String thumbnailVideoUrl) {
+        return new PostListResponse(post, thumbnailImageUrl, thumbnailVideoUrl);
     }
 }
