@@ -93,6 +93,10 @@
   }
   .notice-content p {
     @apply mb-0 leading-7;
+    white-space: pre-wrap;
+  }
+  .notice-content p:empty {
+    min-height: 1.75rem;
   }
   .notice-content h1 { @apply text-2xl font-bold mt-8 mb-3 text-neutral-900; }
   .notice-content h2 { @apply text-xl font-bold mt-7 mb-3 text-neutral-900; }
