@@ -23,6 +23,7 @@ import AttendanceButton from '@/domain/score/components/AttendanceButton'
 import axios from 'axios'
 import { spiritApi } from '@/domain/spirit/api/spiritApi'
 import type { SpiritAutocompleteItem } from '@/domain/spirit/types/spirit.types'
+import { getSpiritListDisplayNames } from '@/domain/spirit/utils/spiritDisplayName'
 import { getSpiritDetailPath } from '@/domain/spirit/utils/spiritUrl'
 import { SEARCH_DEBOUNCE_MS } from '@/shared/hooks/useDebouncedValue'
 
@@ -419,8 +420,9 @@ function HeaderSearch() {
   }
 
   const handleItemClick = (item: SpiritAutocompleteItem) => {
+    const displayName = getSpiritListDisplayNames(item)
     navigate(getSpiritDetailPath(item, i18n.language))
-    setValue(item.nameKo)
+    setValue(displayName.nameKo)
     setIsOpen(false)
   }
 
@@ -538,39 +540,42 @@ function HeaderSearch() {
             </div>
           ) : results.length > 0 ? (
             <ul className="py-2">
-              {results.map((item) => (
-                <li key={item.id}>
-                  <button
-                    type="button"
-                    onClick={() => handleItemClick(item)}
+              {results.map((item) => {
+                const displayName = getSpiritListDisplayNames(item)
+                return (
+                  <li key={item.id}>
+                    <button
+                      type="button"
+                      onClick={() => handleItemClick(item)}
 
-                    className="w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-neutral-50/50 transition-colors"
-                  >
-                    {item.imageUrl ? (
-                      <img
-                        src={item.imageUrl}
-                        alt={item.nameKo}
-                        className="w-10 h-10 object-contain rounded bg-white flex-shrink-0 border border-neutral-100"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 rounded bg-neutral-100/50 flex items-center justify-center text-neutral-400 flex-shrink-0 text-[10px]">
-                        No Image
+                      className="w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-neutral-50/50 transition-colors"
+                    >
+                      {item.imageUrl ? (
+                        <img
+                          src={item.imageUrl}
+                          alt={displayName.nameKo}
+                          className="w-10 h-10 object-contain rounded bg-white flex-shrink-0 border border-neutral-100"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded bg-neutral-100/50 flex items-center justify-center text-neutral-400 flex-shrink-0 text-[10px]">
+                          No Image
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold text-neutral-800 truncate">
+                          {displayName.nameKo}
+                        </div>
+                        <div className="text-xs text-neutral-400 truncate">
+                          {displayName.nameEn}
+                        </div>
                       </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold text-neutral-800 truncate">
-                        {item.nameKo}
-                      </div>
-                      <div className="text-xs text-neutral-400 truncate">
-                        {item.nameEn}
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-semibold bg-primary-50 text-primary-800 px-2 py-0.5 rounded-full flex-shrink-0">
-                      {t(`category.${item.category.toLowerCase()}`, item.category)}
-                    </span>
-                  </button>
-                </li>
-              ))}
+                      <span className="text-[10px] font-semibold bg-primary-50 text-primary-800 px-2 py-0.5 rounded-full flex-shrink-0">
+                        {t(`category.${item.category.toLowerCase()}`, item.category)}
+                      </span>
+                    </button>
+                  </li>
+                )
+              })}
             </ul>
           ) : null}
         </div>

@@ -67,8 +67,8 @@ public record SpiritListResponse(
                 spirit.getId(),
                 spirit.getNameKo(),
                 spirit.getNameEn(),
-                spirit.getSeriesIdentifier(),
-                spirit.getSeriesIdentifierEn(),
+                displaySeriesIdentifier(spirit, canonicalSpirit),
+                displaySeriesIdentifierEn(spirit, canonicalSpirit),
                 spirit.getCategory(),
                 spirit.getCountry(),
                 spirit.getAbv(),
@@ -95,8 +95,8 @@ public record SpiritListResponse(
                 spirit.getId(),
                 spirit.getNameKo(),
                 spirit.getNameEn(),
-                spirit.getSeriesIdentifier(),
-                spirit.getSeriesIdentifierEn(),
+                displaySeriesIdentifier(spirit, canonicalSpirit),
+                displaySeriesIdentifierEn(spirit, canonicalSpirit),
                 spirit.getCategory(),
                 spirit.getCountry(),
                 spirit.getAbv(),
@@ -112,6 +112,22 @@ public record SpiritListResponse(
                 spirit.getViewCount(),
                 spirit.getStatus()
         );
+    }
+
+    private static String displaySeriesIdentifier(Spirit spirit, Spirit canonicalSpirit) {
+        return hasText(spirit.getSeriesIdentifier())
+                ? spirit.getSeriesIdentifier()
+                : canonicalSpirit.getSeriesIdentifier();
+    }
+
+    private static String displaySeriesIdentifierEn(Spirit spirit, Spirit canonicalSpirit) {
+        return hasText(spirit.getSeriesIdentifierEn())
+                ? spirit.getSeriesIdentifierEn()
+                : canonicalSpirit.getSeriesIdentifierEn();
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 
     private static String styleCode(Spirit spirit) {

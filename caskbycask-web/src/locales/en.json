@@ -589,7 +589,7 @@
       "reportErrorTitle": "[Data Error] {{name}}",
       "reportErrorBody": "▸ Spirit ID: {{id}}\n▸ Spirit name: {{name}}\n\nPlease tell us which field is incorrect and the correct information.\n",
       "variantsTitle": "Other Batches & Bottlings",
-      "variantsHint": "Other bottlings registered under the same name",
+      "variantsHint": "Other linked sub-edition bottlings",
       "variantsBatch": "Batch",
       "variantsBottled": "Bottled",
       "variantFilter": "Batch/Bottling Filter:",

@@ -332,10 +332,6 @@ public class SpiritService {
         Spirit spirit = spiritRepository.findById(id)
                 .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_NOT_FOUND));
 
-        Set<Long> autoIds = spiritRepository
-                .findActiveVariantsByName(id, spirit.getNameKo(), spirit.getNameEn())
-                .stream().map(Spirit::getId).collect(Collectors.toSet());
-
         Map<Long, Spirit> variants = resolveVariants(spirit, false);
         if (variants.isEmpty()) return List.of();
 
@@ -344,7 +340,7 @@ public class SpiritService {
                 .map(v -> AdminSpiritVariantResponse.of(
                         v,
                         primaryImageMap.get(v.getId()),
-                        autoIds.contains(v.getId()) ? "AUTO" : "MANUAL"))
+                        "MANUAL"))
                 .toList();
     }
 
@@ -366,18 +362,10 @@ public class SpiritService {
      */
     @Transactional
     public void removeVariantLink(Long id, Long targetId) {
-        Spirit spirit = spiritRepository.findById(id)
-                .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_NOT_FOUND));
-
-        boolean isAuto = spiritRepository
-                .findActiveVariantsByName(id, spirit.getNameKo(), spirit.getNameEn())
-                .stream().anyMatch(s -> s.getId().equals(targetId));
-
-        if (isAuto) {
-            upsertLink(id, targetId, VariantLinkType.EXCLUDED);
-        } else {
-            findLink(id, targetId).ifPresent(variantLinkRepository::delete);
+        if (!spiritRepository.existsById(id) || !spiritRepository.existsById(targetId)) {
+            throw new CustomException(ErrorCode.SPIRIT_NOT_FOUND);
         }
+        findLink(id, targetId).ifPresent(variantLinkRepository::delete);
     }
 
     // ── 연관 술 내부 헬퍼 ─────────────────────────────────────
@@ -395,16 +383,13 @@ public class SpiritService {
                 .filter(s -> !activeManualOnly || s.getStatus() == SpiritStatus.ACTIVE)
                 .forEach(s -> map.put(s.getId(), s));
 
-        // 2. 만약 parent_id 계층이 설정되어 있지 않은 경우, 기존 자동 이름 매칭 및 수동 링크(Fallback) 사용
+        // 2. parent_id 계층이 설정되어 있지 않은 경우에도 이름만으로는 묶지 않고,
+        //    관리자가 명시적으로 추가한 수동 링크만 fallback으로 사용한다.
         if (map.isEmpty()) {
-            List<Spirit> auto = spiritRepository.findActiveVariantsByName(
-                    id, spirit.getNameKo(), spirit.getNameEn());
-
             List<SpiritVariantLink> links = variantLinkRepository.findAllInvolving(id);
             Set<Long> excluded = partnerIds(links, id, VariantLinkType.EXCLUDED);
             Set<Long> manual = partnerIds(links, id, VariantLinkType.MANUAL);
 
-            auto.forEach(s -> map.put(s.getId(), s));
             if (!manual.isEmpty()) {
                 spiritRepository.findAllById(manual).stream()
                         .filter(s -> !activeManualOnly || s.getStatus() == SpiritStatus.ACTIVE)

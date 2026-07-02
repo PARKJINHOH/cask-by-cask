@@ -589,7 +589,7 @@
       "reportErrorTitle": "[정보 오류] {{name}}",
       "reportErrorBody": "▸ 술 ID: {{id}}\n▸ 술 이름: {{name}}\n\n잘못된 항목과 올바른 정보를 알려주세요.\n",
       "variantsTitle": "다른 배치 · 병입",
-      "variantsHint": "같은 이름으로 등록된 다른 배치·병입 제품",
+      "variantsHint": "하위 에디션으로 연결된 다른 배치·병입 제품",
       "variantsBatch": "배치",
       "variantsBottled": "병입",
       "variantFilter": "배치/병입별 필터:",
