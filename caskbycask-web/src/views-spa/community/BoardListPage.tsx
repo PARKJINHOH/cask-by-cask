@@ -461,7 +461,7 @@ export default function BoardListPage({ boardType, title }: Props) {
                         <UserBadge
                           user={{ id: post.authorId ?? undefined, nickname: post.authorNickname, role: post.authorRole as UserRole, currentLevel: post.authorLevel, maturingPower: post.authorMaturingPower ?? undefined, nicknameFixed: post.authorNicknameFixed, profileImageUrl: post.authorProfileImageUrl }}
                           size="sm"
-                          showAvatar={false}
+                          avatarSize="xs"
                           levelIconSize={14}
                         />
                       ) : (
@@ -548,7 +548,7 @@ export default function BoardListPage({ boardType, title }: Props) {
                     <UserBadge
                       user={{ nickname: post.authorNickname, role: post.authorRole as UserRole, currentLevel: post.authorLevel, maturingPower: post.authorMaturingPower ?? undefined, nicknameFixed: post.authorNicknameFixed, profileImageUrl: post.authorProfileImageUrl }}
                       size="sm"
-                      showAvatar={false}
+                      avatarSize="xs"
                       levelIconSize={14}
                     />
                   ) : (

@@ -21,12 +21,13 @@ export interface UserBadgeUser {
 }
 
 type BadgeSize = 'sm' | 'md' | 'lg' | 'xl'
+type AvatarSize = 'xs' | BadgeSize
 
 interface Props {
   user: UserBadgeUser
   size?: BadgeSize
   /** 아바타(프로필 이미지)만 텍스트와 독립적으로 키우고 싶을 때 사용. 미지정 시 size 를 따름 */
-  avatarSize?: BadgeSize
+  avatarSize?: AvatarSize
   showName?: boolean
   showScore?: boolean
   scoreBelow?: boolean
@@ -45,13 +46,14 @@ interface Props {
   disableNicknameHover?: boolean
 }
 
-const AVATAR_CLS: Record<string, string> = {
+const AVATAR_CLS: Record<AvatarSize, string> = {
+  xs: 'w-3.5 h-3.5',
   sm: 'w-5 h-5',
   md: 'w-6 h-6',
   lg: 'w-8 h-8',
   xl: 'w-11 h-11',
 }
-const ICON_IN_AVATAR: Record<string, number> = { sm: 12, md: 14, lg: 18, xl: 24 }
+const ICON_IN_AVATAR: Record<AvatarSize, number> = { xs: 9, sm: 12, md: 14, lg: 18, xl: 24 }
 const ICON_AFTER_NAME: Record<string, number> = { sm: 11, md: 13, lg: 15, xl: 16 }
 
 // 포털 오버레이 크기 (px)
@@ -87,6 +89,7 @@ export default function UserBadge({
   disableNicknameHover,
 }: Props) {
   const avSize = avatarSize ?? size
+  const fixedAvatarPadding = avSize === 'xs' ? 'p-px' : 'p-[2px]'
   const twoLine = scoreBelow || !!subLine
   const nameCls = nameClassName ?? TEXT_CLS[size]
   const level = user.currentLevel ?? 1
@@ -155,8 +158,8 @@ export default function UserBadge({
       ref={avatarRef}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className="p-[2px] rounded-full inline-flex bg-gradient-to-br from-amber-400 via-orange-400
-        to-amber-600 flex-shrink-0 cursor-default"
+      className={`${fixedAvatarPadding} rounded-full inline-flex bg-gradient-to-br from-amber-400 via-orange-400
+        to-amber-600 flex-shrink-0 cursor-default`}
     >
       <span className={`${avatarBase} ring-[1.5px] ring-white`}>{avatarInner}</span>
     </span>

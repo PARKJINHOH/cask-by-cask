@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import ByobStatusBadge from './ByobStatusBadge'
 import type { ByobListItem } from '../types/byob.types'
+import DefaultAvatar from '@/shared/components/DefaultAvatar'
 
 interface Props {
   byob: ByobListItem
@@ -64,8 +65,23 @@ function ByobCard({ byob, state }: Props) {
         모집 {formatDate(byob.recruitStartAt)} ~ {formatDate(byob.recruitEndAt)}
       </div>
 
-      <div className="text-xs text-neutral-400">
-        {t('byob.hostNickname')}: {byob.hostNickname}
+      <div className="flex items-center gap-1.5 text-xs text-neutral-400">
+        <span className="inline-flex h-4 w-4 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-neutral-100 ring-1 ring-inset ring-neutral-200">
+          {byob.hostProfileImageUrl ? (
+            <img
+              src={byob.hostProfileImageUrl}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <DefaultAvatar seed={byob.hostNickname || '?'} px={10} />
+          )}
+        </span>
+        <span className="min-w-0 truncate">
+          {t('byob.hostNickname')}: {byob.hostNickname}
+        </span>
       </div>
     </Link>
   )
