@@ -1,22 +1,24 @@
 package com.caskbycask.domain.spirit.service;
 
-import com.caskbycask.domain.spirit.dto.SpiritSearchCondition;
 import com.caskbycask.domain.spirit.dto.SpiritAutocompleteResponse;
+import com.caskbycask.domain.spirit.dto.SpiritSearchCondition;
 import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.domain.spirit.entity.enums.SpiritSort;
 import com.caskbycask.domain.spirit.entity.enums.SpiritStatus;
+import com.caskbycask.domain.spirit.support.SpiritSearchTextNormalizer;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.hibernate.search.engine.search.predicate.dsl.BooleanPredicateClausesStep;
+import org.hibernate.search.engine.search.predicate.dsl.SearchPredicateFactory;
 import org.hibernate.search.engine.search.query.SearchResult;
 import org.hibernate.search.engine.search.sort.dsl.SearchSortFactory;
+import org.hibernate.search.engine.search.sort.dsl.SortFinalStep;
 import org.hibernate.search.mapper.orm.Search;
 import org.hibernate.search.mapper.orm.session.SearchSession;
 import org.springframework.data.domain.Page;
-
-
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -25,7 +27,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.Duration;
-import java.util.*;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -33,6 +38,46 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class HibernateSpiritSearchService implements SpiritSearchService {
+
+    private static final List<FieldBoost> COMPACT_FIELDS = List.of(
+            new FieldBoost("searchTextKoCompact", 30.0f),
+            new FieldBoost("searchTextEnCompact", 24.0f)
+    );
+
+    private static final List<TextFieldBoost> TEXT_FIELDS = List.of(
+            new TextFieldBoost("nameKo", 8.0f, 3.0f),
+            new TextFieldBoost("nameKo_ngram", 0.0f, 1.2f),
+            new TextFieldBoost("nameEn", 6.0f, 2.4f),
+            new TextFieldBoost("nameEn_ngram", 0.0f, 1.0f),
+            new TextFieldBoost("seriesIdentifier", 6.0f, 2.4f),
+            new TextFieldBoost("seriesIdentifier_ngram", 0.0f, 1.0f),
+            new TextFieldBoost("seriesIdentifierEn", 5.0f, 2.0f),
+            new TextFieldBoost("seriesIdentifierEn_ngram", 0.0f, 0.8f),
+            new TextFieldBoost("variantValue", 5.0f, 2.0f),
+            new TextFieldBoost("variantValue_ngram", 0.0f, 0.8f),
+            new TextFieldBoost("variantValueEn", 4.0f, 1.6f),
+            new TextFieldBoost("variantValueEn_ngram", 0.0f, 0.7f),
+            new TextFieldBoost("producer.nameKo", 4.0f, 1.8f),
+            new TextFieldBoost("producer.nameKo_ngram", 0.0f, 0.8f),
+            new TextFieldBoost("producer.nameEn", 3.0f, 1.2f),
+            new TextFieldBoost("producer.nameEn_ngram", 0.0f, 0.5f),
+            new TextFieldBoost("producer.searchKeywords", 0.0f, 1.4f)
+    );
+
+    private static final List<FieldBoost> NUMBER_FIELDS = List.of(
+            new FieldBoost("nameKo", 2.4f),
+            new FieldBoost("nameKo_ngram", 1.2f),
+            new FieldBoost("nameEn", 2.0f),
+            new FieldBoost("nameEn_ngram", 1.0f),
+            new FieldBoost("seriesIdentifier", 2.4f),
+            new FieldBoost("seriesIdentifier_ngram", 1.2f),
+            new FieldBoost("seriesIdentifierEn", 2.0f),
+            new FieldBoost("seriesIdentifierEn_ngram", 1.0f),
+            new FieldBoost("variantValue", 2.0f),
+            new FieldBoost("variantValue_ngram", 1.0f),
+            new FieldBoost("variantValueEn", 1.6f),
+            new FieldBoost("variantValueEn_ngram", 0.8f)
+    );
 
     private final EntityManager entityManager;
     private final RedisTemplate<String, String> redisTemplate;
@@ -42,106 +87,23 @@ public class HibernateSpiritSearchService implements SpiritSearchService {
     @Transactional(readOnly = true)
     public Page<Long> searchSpiritIds(SpiritSearchCondition condition, Pageable pageable) {
         SearchSession searchSession = Search.session(entityManager);
+        boolean hasKeyword = StringUtils.hasText(condition.keyword());
 
         SearchResult<Long> result = searchSession.search(Spirit.class)
                 .select(f -> f.id(Long.class))
                 .where(f -> f.bool(b -> {
-                    // 1. 기본 필터: status 및 parent 가 없는 마스터 제품
                     if (condition.status() != null) {
                         b.must(f.match().field("status").matching(condition.status()));
                     }
                     b.must(f.match().field("hasParent").matching(false));
 
-                    // 2. 키워드 검색 (글렌알라키 12년 등 다양한 패턴 매칭)
-                    if (StringUtils.hasText(condition.keyword())) {
-                        String[] tokens = condition.keyword().trim().split("\\s+");
-                        if (tokens.length > 0) {
-                            b.must(f.bool(kb -> {
-                                // 한글명 형태소 및 ngram 검색
-                                kb.should(f.bool(sub -> {
-                                    for (String token : tokens) {
-                                        sub.must(f.match().field("nameKo").matching(token).boost(2.0f));
-                                    }
-                                }));
-                                kb.should(f.bool(sub -> {
-                                    for (String token : tokens) {
-                                        sub.must(f.match().field("nameKo_ngram").matching(token).boost(1.0f));
-                                    }
-                                }));
-
-                                // 영문명 형태소 및 ngram 검색
-                                kb.should(f.bool(sub -> {
-                                    for (String token : tokens) {
-                                        sub.must(f.match().field("nameEn").matching(token).boost(1.5f));
-                                    }
-                                }));
-                                kb.should(f.bool(sub -> {
-                                    for (String token : tokens) {
-                                        sub.must(f.match().field("nameEn_ngram").matching(token).boost(0.8f));
-                                    }
-                                }));
-
-                                kb.should(f.bool(sub -> {
-                                    for (String token : tokens) {
-                                        sub.must(f.match().field("seriesIdentifier").matching(token).boost(1.2f));
-                                    }
-                                }));
-                                kb.should(f.bool(sub -> {
-                                    for (String token : tokens) {
-                                        sub.must(f.match().field("seriesIdentifierEn").matching(token).boost(1.2f));
-                                    }
-                                }));
-                                kb.should(f.bool(sub -> {
-                                    for (String token : tokens) {
-                                        sub.must(f.match().field("seriesIdentifier_ngram").matching(token).boost(0.7f));
-                                    }
-                                }));
-                                kb.should(f.bool(sub -> {
-                                    for (String token : tokens) {
-                                        sub.must(f.match().field("seriesIdentifierEn_ngram").matching(token).boost(0.7f));
-                                    }
-                                }));
-
-                                // 생산자 정보 매칭
-                                kb.should(f.bool(sub -> {
-                                    for (String token : tokens) {
-                                        sub.must(f.match().field("producer.nameKo").matching(token).boost(1.5f));
-                                    }
-                                }));
-                                kb.should(f.bool(sub -> {
-                                    for (String token : tokens) {
-                                        sub.must(f.match().field("producer.nameKo_ngram").matching(token).boost(0.8f));
-                                    }
-                                }));
-                                kb.should(f.bool(sub -> {
-                                    for (String token : tokens) {
-                                        sub.must(f.match().field("producer.nameEn").matching(token).boost(1.0f));
-                                    }
-                                }));
-                                kb.should(f.bool(sub -> {
-                                    for (String token : tokens) {
-                                        sub.must(f.match().field("producer.nameEn_ngram").matching(token).boost(0.5f));
-                                    }
-                                }));
-                                kb.should(f.bool(sub -> {
-                                    for (String token : tokens) {
-                                        sub.must(f.match().field("producer.searchKeywords").matching(token).boost(1.2f));
-                                    }
-                                }));
-
-                            }));
-                        }
+                    if (hasKeyword) {
+                        applyKeywordPredicate(b, f, condition.keyword());
                     }
 
-
-
-
-                    // 3. 카테고리 필터
                     if (condition.category() != null) {
                         b.must(f.match().field("category").matching(condition.category()));
                     }
-
-                    // 4. 서브타입 상세 필터 (위스키, 와인, 꼬냑 등)
                     if (condition.hasWhiskyStyle()) {
                         b.must(f.bool(sb -> {
                             for (var style : condition.whiskyStyles()) {
@@ -192,7 +154,6 @@ public class HibernateSpiritSearchService implements SpiritSearchService {
                         }));
                     }
 
-                    // 5. RDBMS 범위 및 국가/지역 필터
                     if (StringUtils.hasText(condition.country())) {
                         b.must(f.match().field("country").matching(condition.country()));
                     }
@@ -200,7 +161,6 @@ public class HibernateSpiritSearchService implements SpiritSearchService {
                         b.must(f.match().field("region").matching(condition.region()));
                     }
                     if (condition.producerId() != null) {
-                        // Embedded Entity 의 id 매핑 매칭
                         b.must(f.match().field("producer.id").matching(condition.producerId()));
                     }
                     if (condition.minAbv() != null) {
@@ -216,17 +176,7 @@ public class HibernateSpiritSearchService implements SpiritSearchService {
                         b.must(f.range().field("avgScore").atMost(condition.maxScore()));
                     }
                 }))
-                .sort(f -> {
-                    SpiritSort sort = condition.sort();
-                    if (sort == null) {
-                        return f.field("createdAt").desc();
-                    }
-                    return switch (sort) {
-                        case SCORE_DESC -> f.field("avgScore").desc();
-                        case REVIEW_COUNT_DESC -> f.field("reviewCount").desc();
-                        default -> f.field("createdAt").desc();
-                    };
-                })
+                .sort(f -> buildSearchSort(f, condition.sort(), hasKeyword))
                 .fetch((int) pageable.getOffset(), pageable.getPageSize());
 
         return new PageImpl<>(result.hits(), pageable, result.total().hitCount());
@@ -239,10 +189,10 @@ public class HibernateSpiritSearchService implements SpiritSearchService {
             return List.of();
         }
 
-        String cleanKeyword = keyword.trim().toLowerCase();
-        String redisKey = "autocomplete:" + cleanKeyword;
+        String cleanKeyword = keyword.trim().toLowerCase(Locale.ROOT);
+        String cacheKeyword = SpiritSearchTextNormalizer.compact(cleanKeyword);
+        String redisKey = "autocomplete:v2:" + (StringUtils.hasText(cacheKeyword) ? cacheKeyword : cleanKeyword);
 
-        // 1. Redis 캐시 확인
         try {
             String cachedJson = redisTemplate.opsForValue().get(redisKey);
             if (StringUtils.hasText(cachedJson)) {
@@ -252,87 +202,17 @@ public class HibernateSpiritSearchService implements SpiritSearchService {
             log.error("Failed to read autocomplete cache from Redis", e);
         }
 
-        // 2. Lucene 검색 (상위 10개 ID 조회)
         SearchSession searchSession = Search.session(entityManager);
         SearchResult<Long> result = searchSession.search(Spirit.class)
                 .select(f -> f.id(Long.class))
                 .where(f -> f.bool(b -> {
                     b.must(f.match().field("status").matching(SpiritStatus.ACTIVE));
                     b.must(f.match().field("hasParent").matching(false));
-                    String[] tokens = cleanKeyword.split("\\s+");
-                    if (tokens.length > 0) {
-                        b.must(f.bool(kb -> {
-                            kb.should(f.bool(sub -> {
-                                for (String token : tokens) {
-                                    sub.must(f.match().field("nameKo").matching(token).boost(2.0f));
-                                }
-                            }));
-                            kb.should(f.bool(sub -> {
-                                for (String token : tokens) {
-                                    sub.must(f.match().field("nameKo_ngram").matching(token).boost(1.0f));
-                                }
-                            }));
-                            kb.should(f.bool(sub -> {
-                                for (String token : tokens) {
-                                    sub.must(f.match().field("nameEn").matching(token).boost(1.5f));
-                                }
-                            }));
-                            kb.should(f.bool(sub -> {
-                                for (String token : tokens) {
-                                    sub.must(f.match().field("nameEn_ngram").matching(token).boost(0.8f));
-                                }
-                            }));
-                            kb.should(f.bool(sub -> {
-                                for (String token : tokens) {
-                                    sub.must(f.match().field("seriesIdentifier").matching(token).boost(1.2f));
-                                }
-                            }));
-                            kb.should(f.bool(sub -> {
-                                for (String token : tokens) {
-                                    sub.must(f.match().field("seriesIdentifierEn").matching(token).boost(1.2f));
-                                }
-                            }));
-                            kb.should(f.bool(sub -> {
-                                for (String token : tokens) {
-                                    sub.must(f.match().field("seriesIdentifier_ngram").matching(token).boost(0.7f));
-                                }
-                            }));
-                            kb.should(f.bool(sub -> {
-                                for (String token : tokens) {
-                                    sub.must(f.match().field("seriesIdentifierEn_ngram").matching(token).boost(0.7f));
-                                }
-                            }));
-                            kb.should(f.bool(sub -> {
-                                for (String token : tokens) {
-                                    sub.must(f.match().field("producer.nameKo").matching(token).boost(1.5f));
-                                }
-                            }));
-                            kb.should(f.bool(sub -> {
-                                for (String token : tokens) {
-                                    sub.must(f.match().field("producer.nameKo_ngram").matching(token).boost(0.8f));
-                                }
-                            }));
-                            kb.should(f.bool(sub -> {
-                                for (String token : tokens) {
-                                    sub.must(f.match().field("producer.nameEn").matching(token).boost(1.0f));
-                                }
-                            }));
-                            kb.should(f.bool(sub -> {
-                                for (String token : tokens) {
-                                    sub.must(f.match().field("producer.nameEn_ngram").matching(token).boost(0.5f));
-                                }
-                            }));
-                            kb.should(f.bool(sub -> {
-                                for (String token : tokens) {
-                                    sub.must(f.match().field("producer.searchKeywords").matching(token).boost(1.2f));
-                                }
-                            }));
-                        }));
-
-
-
-                    }
-
+                    applyKeywordPredicate(b, f, cleanKeyword);
+                }))
+                .sort(f -> f.composite(c -> {
+                    c.add(f.score().desc());
+                    c.add(f.field("createdAt").desc());
                 }))
                 .fetch(0, 10);
 
@@ -341,18 +221,15 @@ public class HibernateSpiritSearchService implements SpiritSearchService {
             return List.of();
         }
 
-        // 3. DB 경량 쿼리 수행 (JPQL 생성자 프로젝션 활용)
         List<SpiritAutocompleteResponse> autocompleteList = entityManager.createQuery(
                 "select new com.caskbycask.domain.spirit.dto.SpiritAutocompleteResponse(" +
-                "s.id, s.nameKo, s.nameEn, s.seriesIdentifier, s.seriesIdentifierEn, s.category, " +
-                "(select max(si.imageUrl) from SpiritImage si where si.spirit.id = s.id and si.sortOrder = 0), " +
-                "s.variantType, s.variantValue, s.variantValueEn " +
-                ") from Spirit s where s.id in :ids", SpiritAutocompleteResponse.class)
+                        "s.id, s.nameKo, s.nameEn, s.seriesIdentifier, s.seriesIdentifierEn, s.category, " +
+                        "(select max(si.imageUrl) from SpiritImage si where si.spirit.id = s.id and si.sortOrder = 0), " +
+                        "s.variantType, s.variantValue, s.variantValueEn " +
+                        ") from Spirit s where s.id in :ids", SpiritAutocompleteResponse.class)
                 .setParameter("ids", ids)
                 .getResultList();
 
-
-        // 4. Lucene 스코어 순서(ids 순서)로 정렬 복원
         Map<Long, SpiritAutocompleteResponse> map = autocompleteList.stream()
                 .collect(Collectors.toMap(SpiritAutocompleteResponse::id, Function.identity()));
         List<SpiritAutocompleteResponse> sortedList = ids.stream()
@@ -360,7 +237,6 @@ public class HibernateSpiritSearchService implements SpiritSearchService {
                 .filter(Objects::nonNull)
                 .toList();
 
-        // 5. Redis 캐싱 적용 (10분 만료)
         try {
             String json = objectMapper.writeValueAsString(sortedList);
             redisTemplate.opsForValue().set(redisKey, json, Duration.ofMinutes(10));
@@ -369,5 +245,102 @@ public class HibernateSpiritSearchService implements SpiritSearchService {
         }
 
         return sortedList;
+    }
+
+    private SortFinalStep buildSearchSort(SearchSortFactory f, SpiritSort sort, boolean hasKeyword) {
+        SpiritSort effectiveSort = sort != null ? sort : SpiritSort.LATEST;
+        if (!hasKeyword) {
+            return switch (effectiveSort) {
+                case SCORE_DESC -> f.field("avgScore").desc();
+                case REVIEW_COUNT_DESC -> f.field("reviewCount").desc();
+                default -> f.field("createdAt").desc();
+            };
+        }
+        return f.composite(c -> {
+            if (effectiveSort == SpiritSort.SCORE_DESC) {
+                c.add(f.field("avgScore").desc());
+                c.add(f.score().desc());
+            } else if (effectiveSort == SpiritSort.REVIEW_COUNT_DESC) {
+                c.add(f.field("reviewCount").desc());
+                c.add(f.score().desc());
+            } else {
+                c.add(f.score().desc());
+            }
+            c.add(f.field("createdAt").desc());
+        });
+    }
+
+    private void applyKeywordPredicate(BooleanPredicateClausesStep<?> target,
+                                       SearchPredicateFactory f,
+                                       String keyword) {
+        SpiritSearchTextNormalizer.KeywordParts parts = SpiritSearchTextNormalizer.parts(keyword);
+        if (!parts.hasToken()) {
+            return;
+        }
+
+        target.must(f.bool(keywordBool -> {
+            if (parts.hasCompact()) {
+                keywordBool.should(f.bool(compactBool -> {
+                    addCompactMatches(compactBool, f, parts.compact());
+                    compactBool.minimumShouldMatchNumber(1);
+                }));
+            }
+            keywordBool.should(f.bool(tokenGroupBool -> {
+                for (String token : parts.textTokens()) {
+                    tokenGroupBool.must(f.bool(tokenBool -> {
+                        addTextMatches(tokenBool, f, token);
+                        tokenBool.minimumShouldMatchNumber(1);
+                    }));
+                }
+                boolean requireNumberTokens = parts.textTokens().isEmpty();
+                for (String token : parts.numberTokens()) {
+                    var numberPredicate = f.bool(tokenBool -> {
+                        addNumberMatches(tokenBool, f, token);
+                        tokenBool.minimumShouldMatchNumber(1);
+                    });
+                    if (requireNumberTokens) {
+                        tokenGroupBool.must(numberPredicate);
+                    } else {
+                        tokenGroupBool.should(numberPredicate);
+                    }
+                }
+            }));
+            keywordBool.minimumShouldMatchNumber(1);
+        }));
+    }
+
+    private void addCompactMatches(BooleanPredicateClausesStep<?> target,
+                                   SearchPredicateFactory f,
+                                   String compactKeyword) {
+        String pattern = "*" + compactKeyword + "*";
+        for (FieldBoost field : COMPACT_FIELDS) {
+            target.should(f.wildcard().field(field.name()).matching(pattern).boost(field.boost()));
+        }
+    }
+
+    private void addTextMatches(BooleanPredicateClausesStep<?> target,
+                                SearchPredicateFactory f,
+                                String token) {
+        for (TextFieldBoost field : TEXT_FIELDS) {
+            if (field.phraseBoost() > 0.0f) {
+                target.should(f.phrase().field(field.name()).matching(token).boost(field.phraseBoost()));
+            }
+            target.should(f.match().field(field.name()).matching(token).boost(field.matchBoost()));
+        }
+    }
+
+    private void addNumberMatches(BooleanPredicateClausesStep<?> target,
+                                  SearchPredicateFactory f,
+                                  String token) {
+        for (FieldBoost field : NUMBER_FIELDS) {
+            target.should(f.match().field(field.name()).matching(token).boost(field.boost()));
+            target.should(f.match().field(field.name()).matching(token).skipAnalysis().boost(field.boost() + 0.4f));
+        }
+    }
+
+    private record FieldBoost(String name, float boost) {
+    }
+
+    private record TextFieldBoost(String name, float phraseBoost, float matchBoost) {
     }
 }

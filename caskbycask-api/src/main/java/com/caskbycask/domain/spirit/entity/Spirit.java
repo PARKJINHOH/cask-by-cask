@@ -4,6 +4,7 @@ import com.caskbycask.domain.producer.entity.Producer;
 import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
 import com.caskbycask.domain.spirit.entity.enums.SpiritStatus;
 import com.caskbycask.domain.spirit.entity.enums.VariantType;
+import com.caskbycask.domain.spirit.support.SpiritSearchTextNormalizer;
 import com.caskbycask.domain.user.entity.User;
 import com.caskbycask.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
@@ -142,10 +143,14 @@ public class Spirit extends BaseTimeEntity {
 
     @Column(length = 100)
     @Comment("에디션 식별 값")
+    @FullTextField(analyzer = "korean_search")
+    @FullTextField(name = "variantValue_ngram", analyzer = "ngram_search", searchAnalyzer = "korean_search")
     private String variantValue;
 
     @Column(length = 100)
     @Comment("에디션 식별 값(영문)")
+    @FullTextField(analyzer = "english_search")
+    @FullTextField(name = "variantValueEn_ngram", analyzer = "ngram_search", searchAnalyzer = "english_search")
     private String variantValueEn;
 
     @Column(length = 100)
@@ -179,6 +184,28 @@ public class Spirit extends BaseTimeEntity {
     @Column
     @Comment("최대 용량(ml)")
     private Integer volumeMlMax;
+
+    @Transient
+    @KeywordField(name = "searchTextKoCompact")
+    @IndexingDependency(derivedFrom = {
+            @ObjectPath(@PropertyValue(propertyName = "nameKo")),
+            @ObjectPath(@PropertyValue(propertyName = "seriesIdentifier")),
+            @ObjectPath(@PropertyValue(propertyName = "variantValue"))
+    })
+    public String getSearchTextKoCompact() {
+        return SpiritSearchTextNormalizer.compact(nameKo, seriesIdentifier, variantValue);
+    }
+
+    @Transient
+    @KeywordField(name = "searchTextEnCompact")
+    @IndexingDependency(derivedFrom = {
+            @ObjectPath(@PropertyValue(propertyName = "nameEn")),
+            @ObjectPath(@PropertyValue(propertyName = "seriesIdentifierEn")),
+            @ObjectPath(@PropertyValue(propertyName = "variantValueEn"))
+    })
+    public String getSearchTextEnCompact() {
+        return SpiritSearchTextNormalizer.compact(nameEn, seriesIdentifierEn, variantValueEn);
+    }
 
     @OneToOne(mappedBy = "spirit", cascade = ALL, orphanRemoval = true, fetch = LAZY)
     private SpiritCommonDetail commonDetail;
