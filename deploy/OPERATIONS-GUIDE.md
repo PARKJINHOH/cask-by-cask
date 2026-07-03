@@ -259,6 +259,52 @@ sudo systemctl start caskbycask-api && ./maintenance.sh off
 
 ---
 
+### 운영 스냅샷으로 개발 DB 갱신
+
+운영 데이터로 로컬/개발 테스트를 하고 싶을 때만 수동 실행한다. 운영 DB(`caskbycask_prod`)에는 `mariadb-dump` 읽기만 수행하고, 교체 대상은 개발 DB(`caskbycask_dev`)이다.
+
+```bash
+cd /app/scripts
+
+# 대화형 확인 후 실행
+./refresh-dev-db-from-prod.sh
+
+# 비대화형 실행이 필요할 때만 사용
+./refresh-dev-db-from-prod.sh --yes
+```
+
+동작 순서:
+
+1. `caskbycask_prod` 를 단일 트랜잭션으로 dump
+2. `caskbycask_dev_refresh_tmp` 임시 DB 생성 후 restore
+3. 임시 DB에서 운영 계정/개인 테이블 데이터를 제거하고 공개 콘텐츠 작성자를 탈퇴 사용자로 재귀속
+4. 기존 `caskbycask_dev` 를 `/app/db_backup/dev_refresh/` 에 백업
+5. `caskbycask_dev` 를 drop/create 후 정리된 임시 DB로 교체
+
+운영 계정 데이터는 개발 DB에 남기지 않는다. 공개 콘텐츠의 작성자는 `withdrawn@caskbycask.system` 으로 재귀속된다. 최고관리자는 이 스크립트가 직접 만들지 않고, API 재시작 시 `AdminDataInitializer` 가 `ADMIN_EMAIL` / `ADMIN_PASSWORD` 기반으로 생성한다.
+
+권장 계정:
+
+- `PROD_DB_READONLY_USERNAME` / `PROD_DB_READONLY_PASSWORD`: 운영 DB dump 전용 읽기 계정
+- `DEV_REFRESH_DB_USERNAME` / `DEV_REFRESH_DB_PASSWORD`: `caskbycask_dev` 와 `caskbycask_dev_refresh_tmp` 를 create/drop/restore 할 수 있는 계정
+
+예시:
+
+```sql
+CREATE USER 'caskbycask_prod_ro'@'127.0.0.1' IDENTIFIED BY 'CHANGE_ME_READONLY_PASSWORD';
+GRANT SELECT, SHOW VIEW, TRIGGER, EVENT ON caskbycask_prod.* TO 'caskbycask_prod_ro'@'127.0.0.1';
+
+CREATE USER 'caskbycask_dev_refresh'@'127.0.0.1' IDENTIFIED BY 'CHANGE_ME_REFRESH_PASSWORD';
+GRANT ALL PRIVILEGES ON caskbycask_dev.* TO 'caskbycask_dev_refresh'@'127.0.0.1';
+GRANT ALL PRIVILEGES ON caskbycask_dev_refresh_tmp.* TO 'caskbycask_dev_refresh'@'127.0.0.1';
+
+FLUSH PRIVILEGES;
+```
+
+미설정 시 스크립트는 기존 `DB_USERNAME` / `DB_PASSWORD` 를 사용한다. 이 경우 해당 계정에 `caskbycask_dev` 교체 권한이 있어야 한다.
+
+---
+
 ## 8. nginx 설정 / 운영 스크립트 변경 적용
 
 운영 스크립트(`deploy/server/*.sh`)는 **배포(Actions)가 `/app/scripts` 로 자동 전송**한다.
@@ -310,6 +356,8 @@ sudo systemctl restart caskbycask-api   # 수정 후 재시작해야 반영
 | `OAUTH_NAVER_CLIENT_ID` / `OAUTH_NAVER_CLIENT_SECRET` | 네이버 로그인 키 (네이버 개발자센터) |
 | `OAUTH_GOOGLE_CLIENT_ID` / `OAUTH_GOOGLE_CLIENT_SECRET` | 구글 로그인 키 (Google Cloud Console) |
 | `SLACK_WEBHOOK_URL` | (선택) 운영/백업 알림 |
+| `PROD_DB_READONLY_USERNAME` / `PROD_DB_READONLY_PASSWORD` | (선택) 운영 스냅샷 dump 전용 읽기 계정 |
+| `DEV_REFRESH_DB_USERNAME` / `DEV_REFRESH_DB_PASSWORD` | (선택) 운영 스냅샷을 `caskbycask_dev` 로 갱신할 때 사용하는 교체 권한 계정 |
 
 > **소셜 로그인 제공자 콘솔 설정** — 네이버/구글 모두 **승인된 redirect URI** 에 `https://caskbycask.net/oauth/callback`
 > (로컬 개발 시 `http://localhost:5173/oauth/callback`)을 등록해야 한다. 구글은 OAuth 동의 화면에 `openid`,`email`,`profile`
@@ -368,6 +416,9 @@ tail -f /app/logs/caskbycask-api-error.log
 
 # DB 백업
 /app/scripts/backup-db.sh
+
+# 운영 스냅샷으로 개발 DB 갱신(caskbycask_prod -> caskbycask_dev, 마스킹 포함)
+/app/scripts/refresh-dev-db-from-prod.sh
 
 # 리소스 점검(디스크/SSL) 수동 실행
 /app/scripts/check-resources.sh
