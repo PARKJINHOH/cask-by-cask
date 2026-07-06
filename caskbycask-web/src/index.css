@@ -50,6 +50,10 @@
 }
 
 @layer base {
+  html.js-enabled [data-seo-fallback] {
+    display: none;
+  }
+
   html {
     font-family: 'Pretendard', sans-serif;
     /* 페이지마다 세로 스크롤 유무가 달라 스크롤바 너비만큼 본문이 좌우로

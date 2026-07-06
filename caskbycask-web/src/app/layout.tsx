@@ -22,6 +22,16 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `document.documentElement.classList.add('js-enabled');`,
+          }}
+        />
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `html.js-enabled [data-seo-fallback]{display:none!important}`,
+          }}
+        />
         {/* Google tag (gtag.js) */}
         <script async src="https://www.googletagmanager.com/gtag/js?id=G-879K3LVK58"></script>
         <script

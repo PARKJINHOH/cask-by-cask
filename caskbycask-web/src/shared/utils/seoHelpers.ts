@@ -135,6 +135,17 @@ interface CommunityPostResponse {
   images?: Array<{ imageUrl?: string | null }> | null
 }
 
+interface CommunityPostCommentResponse {
+  id: number
+  authorNickname?: string | null
+  content?: string | null
+  children?: CommunityPostCommentResponse[] | null
+  createdAt?: string | null
+  isDeleted?: boolean | null
+  isHidden?: boolean | null
+  isSecretMasked?: boolean | null
+}
+
 interface ByobDetailResponse {
   id: number
   title: string
@@ -241,6 +252,32 @@ function normalizeLang(lang: 'ko' | 'en' | null): 'ko' | 'en' {
 
 function getPostContentHtml(post: Pick<CommunityPostResponse, 'content' | 'contentSanitized'>): string {
   return post.contentSanitized || post.content || ''
+}
+
+function buildCommentJsonLd(
+  comment: CommunityPostCommentResponse,
+  canonical: string,
+): object | null {
+  if (comment.isDeleted || comment.isHidden || comment.isSecretMasked) return null
+
+  const text = stripHtmlAndSummarize(comment.content || '', 500)
+  if (!text) return null
+
+  const childComments = (comment.children || [])
+    .map((child) => buildCommentJsonLd(child, canonical))
+    .filter((child): child is object => child !== null)
+
+  return {
+    '@type': 'Comment',
+    'url': `${canonical}#comment-${comment.id}`,
+    'text': text,
+    'datePublished': comment.createdAt || undefined,
+    'author': {
+      '@type': 'Person',
+      'name': comment.authorNickname || 'User',
+    },
+    'comment': childComments.length > 0 ? childComments : undefined,
+  }
 }
 
 function escapeHtml(value: string): string {
@@ -1075,17 +1112,26 @@ export async function getCommunityPostJsonLd(boardType: string, id: string, lang
       if (post) {
         const body = getPostContentHtml(post)
         const image = toAbsoluteImageUrl(post.imageUrl || post.images?.[0]?.imageUrl)
+        const canonical = `https://caskbycask.net${prefix}/community/${boardType}/${id}`
+        const commentsPage = (post.commentCount || 0) > 0
+          ? await fetchApiData<PageResponse<CommunityPostCommentResponse>>(`/api/posts/${id}/comments?page=0&size=30`, 60)
+          : null
+        const comments = (commentsPage?.content || [])
+          .map((comment) => buildCommentJsonLd(comment, canonical))
+          .filter((comment): comment is object => comment !== null)
+
         return {
           '@context': 'https://schema.org',
           '@type': 'DiscussionForumPosting',
           'headline': post.title,
           'articleBody': stripHtmlAndSummarize(body, 500),
-          'url': `https://caskbycask.net${prefix}/community/${boardType}/${id}`,
+          'url': canonical,
           'datePublished': post.createdAt,
           'dateModified': post.updatedAt || post.createdAt,
           'articleSection': boardLabel(post.boardType || boardType, normalizeLang(lang)),
           'isAccessibleForFree': !post.adultOnly,
           'image': image || undefined,
+          'comment': comments.length > 0 ? comments : undefined,
           'publisher': {
             '@type': 'Organization',
             'name': 'CaskByCask',

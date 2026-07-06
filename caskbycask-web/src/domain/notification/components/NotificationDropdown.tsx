@@ -69,7 +69,7 @@ export default function NotificationDropdown({ onClose }: Props) {
   }
 
   return (
-    <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white border border-neutral-200 rounded-2xl shadow-xl z-50 overflow-hidden">
+    <div className="fixed left-3 right-3 top-16 mt-2 w-auto bg-white border border-neutral-200 rounded-2xl shadow-xl z-50 overflow-hidden sm:absolute sm:left-auto sm:right-0 sm:top-full sm:w-96">
       {/* 헤더 */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-100">
         <span className="text-sm font-semibold text-neutral-800">{t('notification.title')}</span>
