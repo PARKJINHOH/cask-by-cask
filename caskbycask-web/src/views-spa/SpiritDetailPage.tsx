@@ -1024,8 +1024,9 @@ export default function SpiritDetailPage() {
   )
 
   const langPrefix = isEn ? '/en' : '/ko'
+  const hasProductSnippetData = (spirit.avgScore != null && spirit.reviewCount > 0) || reviewSchemas.length > 0
 
-  const productJsonLd = {
+  const spiritJsonLd = hasProductSnippetData ? {
     '@type': 'Product',
     name: primaryName,
     alternateName: secondaryName || undefined,
@@ -1058,6 +1059,21 @@ export default function SpiritDetailPage() {
       worstRating: 0,
     } : undefined,
     ...(reviewSchemas.length > 0 ? { review: reviewSchemas } : {}),
+  } : {
+    '@type': 'WebPage',
+    name: primaryName,
+    alternateName: secondaryName || undefined,
+    description: isEn
+      ? `${primaryName} specs, tasting notes, and detailed liquor information on CaskByCask.`
+      : `${primaryName} 상세 주류 정보와 시음 노트를 CaskByCask에서 확인하세요.`,
+    url: canonicalUrl,
+    image: heroImage,
+    about: {
+      '@type': 'Thing',
+      name: primaryName,
+      alternateName: secondaryName || undefined,
+      additionalType: spirit.category || undefined,
+    },
   }
 
   // BreadcrumbList — 홈 / 카탈로그 / 카테고리 / 현재 spirit
@@ -1085,7 +1101,7 @@ export default function SpiritDetailPage() {
         alternateKo={spiritSeo?.canonicalUrlKo}
         alternateEn={spiritSeo?.canonicalUrlEn}
         alternateDefault={spiritSeo?.canonicalUrlKo}
-        jsonLd={[productJsonLd, breadcrumbJsonLd]}
+        jsonLd={[spiritJsonLd, breadcrumbJsonLd]}
       />
 
       {/* Back */}

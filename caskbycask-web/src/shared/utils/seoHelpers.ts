@@ -802,6 +802,27 @@ export async function getSpiritDetailJsonLd(id: string, lang: 'ko' | 'en' | null
         worstRating: 0,
       },
     }))
+  const hasProductSnippetData = (avgScore != null && reviewCount > 0) || reviews.length > 0
+
+  if (!hasProductSnippetData) {
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'WebPage',
+      name: primaryName,
+      alternateName: secondaryName !== primaryName ? secondaryName : undefined,
+      description: isEn
+        ? `${primaryName} specs, tasting notes, and detailed liquor information on CaskByCask.`
+        : `${primaryName} 상세 주류 정보와 시음 노트를 CaskByCask에서 확인하세요.`,
+      url: canonical,
+      image,
+      about: {
+        '@type': 'Thing',
+        name: primaryName,
+        alternateName: secondaryName !== primaryName ? secondaryName : undefined,
+        additionalType: spirit.category || undefined,
+      },
+    }
+  }
 
   return {
     '@context': 'https://schema.org',

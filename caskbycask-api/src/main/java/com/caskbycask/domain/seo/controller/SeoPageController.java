@@ -108,9 +108,9 @@ public class SeoPageController {
         String imageUrl = seo.primaryImageUrl();
         String canonicalUrl = isEn ? seo.canonicalUrlEn() : seo.canonicalUrlKo();
 
-        // 4. Build Product JSON-LD structured data
-        String jsonLd = generateProductJsonLd(
-                spirit, primaryName, secondaryName, producerName, country, category, imageUrl, canonicalUrl);
+        // 4. Build structured data. Only rated/reviewed spirits are marked as Product snippets.
+        String jsonLd = generateSpiritJsonLd(
+                spirit, primaryName, secondaryName, producerName, country, category, imageUrl, canonicalUrl, description);
 
         // 5. Replace placeholders in index.html
         String resultHtml = injectMetaTags(
@@ -217,8 +217,16 @@ public class SeoPageController {
         return html;
     }
 
-    private String generateProductJsonLd(Spirit spirit, String name, String alternateName, String brand, String country,
-                                         String category, String imageUrl, String canonicalUrl) {
+    private String generateSpiritJsonLd(Spirit spirit, String name, String alternateName, String brand, String country,
+                                        String category, String imageUrl, String canonicalUrl, String description) {
+        boolean hasProductSnippetData = spirit.getAvgScore() != null
+                && spirit.getReviewCount() != null
+                && spirit.getReviewCount() > 0;
+
+        if (!hasProductSnippetData) {
+            return generateWebPageJsonLd(name, alternateName, category, imageUrl, canonicalUrl, description);
+        }
+
         StringBuilder sb = new StringBuilder();
         sb.append("{\n");
         sb.append("      \"@context\": \"https://schema.org\",\n");
@@ -258,6 +266,42 @@ public class SeoPageController {
             sb.append("        \"worstRating\": 0\n");
             sb.append("      }");
         }
+
+        sb.append("\n    }");
+        return sb.toString();
+    }
+
+    private String generateWebPageJsonLd(String name, String alternateName, String category,
+                                         String imageUrl, String canonicalUrl, String description) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("{\n");
+        sb.append("      \"@context\": \"https://schema.org\",\n");
+        sb.append("      \"@type\": \"WebPage\",\n");
+        sb.append("      \"name\": \"").append(escapeJson(name)).append("\"");
+
+        if (canonicalUrl != null && !canonicalUrl.isEmpty()) {
+            sb.append(",\n      \"url\": \"").append(escapeJson(canonicalUrl)).append("\"");
+        }
+        if (alternateName != null && !alternateName.isEmpty()) {
+            sb.append(",\n      \"alternateName\": \"").append(escapeJson(alternateName)).append("\"");
+        }
+        if (description != null && !description.isEmpty()) {
+            sb.append(",\n      \"description\": \"").append(escapeJson(description)).append("\"");
+        }
+        if (imageUrl != null && !imageUrl.isEmpty()) {
+            sb.append(",\n      \"image\": \"").append(escapeJson(imageUrl)).append("\"");
+        }
+
+        sb.append(",\n      \"about\": {\n");
+        sb.append("        \"@type\": \"Thing\",\n");
+        sb.append("        \"name\": \"").append(escapeJson(name)).append("\"");
+        if (alternateName != null && !alternateName.isEmpty()) {
+            sb.append(",\n        \"alternateName\": \"").append(escapeJson(alternateName)).append("\"");
+        }
+        if (category != null && !category.isEmpty()) {
+            sb.append(",\n        \"additionalType\": \"").append(escapeJson(category)).append("\"");
+        }
+        sb.append("\n      }");
 
         sb.append("\n    }");
         return sb.toString();
