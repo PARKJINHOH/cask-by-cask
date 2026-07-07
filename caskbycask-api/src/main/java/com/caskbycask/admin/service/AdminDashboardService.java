@@ -75,12 +75,13 @@ public class AdminDashboardService {
 
     public List<DashboardDailyStatResponse> getUserTrend(int period) {
         LocalDateTime from = LocalDate.now().minusDays(period - 1L).atStartOfDay();
+        long countBefore = userRepository.countByCreatedAtBefore(from);
         Map<String, Long> dataMap = userRepository.findDailySignupTrend(from).stream()
                 .collect(Collectors.toMap(
                         p -> p.getDate().toLocalDate().toString(),
                         DailyCountProjection::getCount
                 ));
-        return buildDailyStats(period, dataMap);
+        return buildDailyStats(period, dataMap, countBefore);
     }
 
     public List<DashboardCategoryStatResponse> getCategoryStats() {
@@ -94,12 +95,13 @@ public class AdminDashboardService {
 
     public List<DashboardDailyStatResponse> getReviewTrend(int period) {
         LocalDateTime from = LocalDate.now().minusDays(period - 1L).atStartOfDay();
+        long countBefore = reviewRepository.countByCreatedAtBefore(from);
         Map<String, Long> dataMap = reviewRepository.findDailyReviewTrend(from).stream()
                 .collect(Collectors.toMap(
                         p -> p.getDate().toLocalDate().toString(),
                         DailyCountProjection::getCount
                 ));
-        return buildDailyStats(period, dataMap);
+        return buildDailyStats(period, dataMap, countBefore);
     }
 
     public List<DashboardReportStatResponse> getReportStats() {
@@ -119,12 +121,15 @@ public class AdminDashboardService {
                 .collect(Collectors.toList());
     }
 
-    private List<DashboardDailyStatResponse> buildDailyStats(int period, Map<String, Long> dataMap) {
+    private List<DashboardDailyStatResponse> buildDailyStats(int period, Map<String, Long> dataMap, long countBefore) {
         List<DashboardDailyStatResponse> result = new ArrayList<>(period);
         LocalDate today = LocalDate.now();
+        long runningCount = countBefore;
         for (int i = period - 1; i >= 0; i--) {
             String date = today.minusDays(i).toString();
-            result.add(new DashboardDailyStatResponse(date, dataMap.getOrDefault(date, 0L)));
+            long dailyCount = dataMap.getOrDefault(date, 0L);
+            runningCount += dailyCount;
+            result.add(new DashboardDailyStatResponse(date, dailyCount, runningCount));
         }
         return result;
     }

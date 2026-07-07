@@ -67,6 +67,8 @@ public interface UserRepository extends JpaRepository<User, Long>, UserQueryRepo
     @Query("SELECT COUNT(u) FROM User u WHERE u.createdAt >= :start AND u.createdAt < :end")
     long countByCreatedAtBetween(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 
+    long countByCreatedAtBefore(LocalDateTime dateTime);
+
     @Query(value = "SELECT DATE(created_at) as date, COUNT(*) as count FROM users WHERE created_at >= :from AND deleted_at IS NULL GROUP BY DATE(created_at) ORDER BY DATE(created_at)", nativeQuery = true)
     List<DailyCountProjection> findDailySignupTrend(@Param("from") LocalDateTime from);
 

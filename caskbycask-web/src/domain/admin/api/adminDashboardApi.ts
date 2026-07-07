@@ -11,6 +11,7 @@ export interface DashboardKpis {
 export interface DailyStatItem {
   date: string
   count: number
+  cumulativeCount: number
 }
 
 export interface CategoryStatItem {

@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  ComposedChart,
 } from 'recharts'
 import { adminDashboardApi } from '@/domain/admin/api/adminDashboardApi'
 
@@ -70,9 +71,7 @@ function PeriodTabs({ value, onChange }: { value: number; onChange: (v: number) 
 
 function xAxisFormatter(date: string, period: number) {
   const d = new Date(date)
-  if (period <= 7) return `${d.getMonth() + 1}/${d.getDate()}`
-  if (period <= 30) return `${d.getMonth() + 1}/${d.getDate()}`
-  return `${d.getMonth() + 1}월`
+  return `${d.getMonth() + 1}/${d.getDate()}`
 }
 
 function tickInterval(period: number) {
@@ -162,29 +161,39 @@ export default function AdminDashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* 신규 가입자 추이 */}
         <div className="bg-white rounded-xl border border-neutral-200 p-5">
-          <h2 className="text-sm font-semibold text-neutral-700 mb-4">신규 가입자 추이</h2>
+          <h2 className="text-sm font-semibold text-neutral-700 mb-4">가입자 추이</h2>
           <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={userTrendFormatted}>
+            <ComposedChart data={userTrendFormatted}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis
                 dataKey="label"
                 tick={{ fontSize: 11 }}
                 interval={tickInterval(trendPeriod)}
               />
-              <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={30} />
+              <YAxis yAxisId="left" allowDecimals={false} tick={{ fontSize: 11 }} width={30} />
+              <YAxis yAxisId="right" orientation="right" allowDecimals={false} tick={{ fontSize: 11 }} width={35} />
               <Tooltip
-                formatter={(value) => [`${value}명`, '신규 가입']}
                 labelFormatter={(label) => `날짜: ${label}`}
               />
-              <Line
-                type="monotone"
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Bar
+                yAxisId="left"
                 dataKey="count"
-                stroke="#f59e0b"
+                name="일 신규 가입자"
+                fill="#f59e0b"
+                radius={[3, 3, 0, 0]}
+              />
+              <Line
+                yAxisId="right"
+                type="monotone"
+                dataKey="cumulativeCount"
+                name="전체 회원수"
+                stroke="#d97706"
                 strokeWidth={2}
                 dot={false}
                 activeDot={{ r: 4 }}
               />
-            </LineChart>
+            </ComposedChart>
           </ResponsiveContainer>
         </div>
 
@@ -233,20 +242,37 @@ export default function AdminDashboardPage() {
         <div className="bg-white rounded-xl border border-neutral-200 p-5">
           <h2 className="text-sm font-semibold text-neutral-700 mb-4">리뷰 작성 추이</h2>
           <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={reviewTrendFormatted}>
+            <ComposedChart data={reviewTrendFormatted}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis
                 dataKey="label"
                 tick={{ fontSize: 11 }}
                 interval={tickInterval(trendPeriod)}
               />
-              <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={30} />
+              <YAxis yAxisId="left" allowDecimals={false} tick={{ fontSize: 11 }} width={30} />
+              <YAxis yAxisId="right" orientation="right" allowDecimals={false} tick={{ fontSize: 11 }} width={35} />
               <Tooltip
-                formatter={(value) => [`${value}건`, '리뷰 작성']}
                 labelFormatter={(label) => `날짜: ${label}`}
               />
-              <Bar dataKey="count" fill="#f59e0b" radius={[3, 3, 0, 0]} />
-            </BarChart>
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Bar
+                yAxisId="left"
+                dataKey="count"
+                name="일 리뷰 작성"
+                fill="#8b5cf6"
+                radius={[3, 3, 0, 0]}
+              />
+              <Line
+                yAxisId="right"
+                type="monotone"
+                dataKey="cumulativeCount"
+                name="전체 리뷰수"
+                stroke="#ef4444"
+                strokeWidth={2}
+                dot={false}
+                activeDot={{ r: 4 }}
+              />
+            </ComposedChart>
           </ResponsiveContainer>
         </div>
 
