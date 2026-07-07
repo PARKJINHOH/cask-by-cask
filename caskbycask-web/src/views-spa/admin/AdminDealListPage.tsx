@@ -22,7 +22,7 @@ export default function AdminDealListPage() {
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const qc = useQueryClient()
-  const status = ((searchParams.get('status') ?? 'ALL') as DealStatus | 'ALL')
+  const status = ((searchParams.get('status') ?? 'PENDING') as DealStatus | 'ALL')
   const page = Math.max(0, parseInt(searchParams.get('page') ?? '0', 10))
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const detailState = { returnTo: `${location.pathname}${location.search}` }

@@ -59,6 +59,27 @@ export const PRODUCER_LABEL: Record<SpiritCategory, string> = {
 }
 export const DATE_RE = /^\d{4}(-\d{2})?$/
 
+function trimStringsRecursively<T>(obj: T): T {
+  if (obj === null || obj === undefined) return obj
+  if (typeof obj === 'string') {
+    return obj.trim() as unknown as T
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(trimStringsRecursively) as unknown as T
+  }
+  if (typeof obj === 'object') {
+    const newObj: any = {}
+    for (const key in obj) {
+      if (Object.prototype.hasOwnProperty.call(obj, key)) {
+        newObj[key] = trimStringsRecursively((obj as any)[key])
+      }
+    }
+    return newObj as T
+  }
+  return obj
+}
+
+
 // 카테고리별 입력 예시 placeholder (이름/병입업체)
 const PLACEHOLDERS: Record<SpiritCategory, { nameEn: string; nameKo: string; bottler: string }> = {
   WHISKY: { nameEn: 'Balvenie 12Y DoubleWood', nameKo: '예) 발베니 12년 더블우드', bottler: '예) Gordon & MacPhail' },
@@ -945,6 +966,7 @@ export function useSpiritForm() {
       volumeMlMax: isVolumeMlRange ? (volumeMlMax ? Number(volumeMlMax) : null) : null,
       ...buildCategoryPayload(),
     }
+    return trimStringsRecursively(payload)
   }
 
   return {
@@ -1301,6 +1323,7 @@ export default function SpiritFormFields({
                       <input type="number" step="0.1" min="0" max="100" value={form.abvMin}
                          disabled={isMasterSpecsDisabled}
                          onChange={(e) => form.setAbvMin(e.target.value)}
+                         onWheel={(e) => e.currentTarget.blur()}
                          placeholder="최소"
                          className={`${INPUT} pr-8 disabled:bg-neutral-100 disabled:text-neutral-400 ${errors.abvMin ? 'border-red-400' : ''}`} />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">%</span>
@@ -1310,6 +1333,7 @@ export default function SpiritFormFields({
                       <input type="number" step="0.1" min="0" max="100" value={form.abvMax}
                          disabled={isMasterSpecsDisabled}
                          onChange={(e) => form.setAbvMax(e.target.value)}
+                         onWheel={(e) => e.currentTarget.blur()}
                          placeholder="최대"
                          className={`${INPUT} pr-8 disabled:bg-neutral-100 disabled:text-neutral-400 ${errors.abvMax ? 'border-red-400' : ''}`} />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">%</span>
@@ -1319,6 +1343,7 @@ export default function SpiritFormFields({
                   <div className="relative">
                     <input type="number" step="0.1" min="0" max="100" value={form.commonDetail.abv}
                        disabled={isMasterSpecsDisabled}
+                       onWheel={(e) => e.currentTarget.blur()}
                        onChange={(e) => {
                          let val = e.target.value
                          const num = parseFloat(val)
@@ -1350,6 +1375,7 @@ export default function SpiritFormFields({
                         <input type="number" min="1" max="100000" value={form.volumeMlMin}
                                disabled={isMasterSpecsDisabled}
                                onChange={(e) => form.setVolumeMlMin(e.target.value)}
+                               onWheel={(e) => e.currentTarget.blur()}
                                placeholder="최소"
                                className={`${INPUT} pr-8 disabled:bg-neutral-100 disabled:text-neutral-400 ${errors.volumeMlMin ? 'border-red-400' : ''}`} />
                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">ml</span>
@@ -1359,6 +1385,7 @@ export default function SpiritFormFields({
                         <input type="number" min="1" max="100000" value={form.volumeMlMax}
                                disabled={isMasterSpecsDisabled}
                                onChange={(e) => form.setVolumeMlMax(e.target.value)}
+                               onWheel={(e) => e.currentTarget.blur()}
                                placeholder="최대"
                                className={`${INPUT} pr-8 disabled:bg-neutral-100 disabled:text-neutral-400 ${errors.volumeMlMax ? 'border-red-400' : ''}`} />
                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">ml</span>
@@ -1368,6 +1395,7 @@ export default function SpiritFormFields({
                     <div className="relative">
                       <input type="number" min="1" max="100000" value={form.commonDetail.volumeMl}
                              disabled={isMasterSpecsDisabled}
+                             onWheel={(e) => e.currentTarget.blur()}
                              onChange={(e) => {
                                let val = e.target.value
                                const num = parseFloat(val)
@@ -1488,13 +1516,17 @@ export default function SpiritFormFields({
                 <div>
                   <label className={LABEL}>빈티지 연도</label>
                   <input type="number" min={1800} max={2100} value={form.vintageYear}
-                    onChange={(e) => form.setVintageYear(e.target.value)} className={INPUT} />
+                    onChange={(e) => form.setVintageYear(e.target.value)}
+                    onWheel={(e) => e.currentTarget.blur()}
+                    className={INPUT} />
                 </div>
               ) : (
                 <div>
                   <label className={LABEL}>병입 연도</label>
                   <input type="number" min={1800} max={2100} value={form.bottledYear}
-                    onChange={(e) => form.setBottledYear(e.target.value)} className={INPUT} />
+                    onChange={(e) => form.setBottledYear(e.target.value)}
+                    onWheel={(e) => e.currentTarget.blur()}
+                    className={INPUT} />
                 </div>
               )}
             </div>
@@ -1895,6 +1927,7 @@ function VariantItemCard({
                 max="100"
                 value={variant.abv ?? ''}
                 onChange={(e) => onUpdate({ abv: e.target.value === '' ? null : Number(e.target.value) })}
+                onWheel={(e) => e.currentTarget.blur()}
                 placeholder="예) 46.3"
                 className={`w-full px-2.5 py-1.5 pr-6 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white ${
                   errors[`variantAbv_${index}`] ? 'border-red-400' : ''
@@ -1917,6 +1950,7 @@ function VariantItemCard({
                 max="100000"
                 value={variant.volumeMl ?? ''}
                 onChange={(e) => onUpdate({ volumeMl: e.target.value === '' ? null : Number(e.target.value) })}
+                onWheel={(e) => e.currentTarget.blur()}
                 placeholder="예) 700"
                 className={`w-full px-2.5 py-1.5 pr-8 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white ${
                   errors[`variantVolumeMl_${index}`] ? 'border-red-400' : ''

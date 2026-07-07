@@ -72,6 +72,9 @@ public interface UserRepository extends JpaRepository<User, Long>, UserQueryRepo
     @Query(value = "SELECT DATE(created_at) as date, COUNT(*) as count FROM users WHERE created_at >= :from AND deleted_at IS NULL GROUP BY DATE(created_at) ORDER BY DATE(created_at)", nativeQuery = true)
     List<DailyCountProjection> findDailySignupTrend(@Param("from") LocalDateTime from);
 
+    @Query(value = "SELECT DATE(deleted_at) as date, COUNT(*) as count FROM users WHERE deleted_at >= :from GROUP BY DATE(deleted_at) ORDER BY DATE(deleted_at)", nativeQuery = true)
+    List<DailyCountProjection> findDailyWithdrawalTrend(@Param("from") LocalDateTime from);
+
     List<User> findAllByEmailSubscribedTrue();
 
     long countByEmailSubscribedTrue();

@@ -81,7 +81,12 @@ public class AdminDashboardService {
                         p -> p.getDate().toLocalDate().toString(),
                         DailyCountProjection::getCount
                 ));
-        return buildDailyStats(period, dataMap, countBefore);
+        Map<String, Long> deletedMap = userRepository.findDailyWithdrawalTrend(from).stream()
+                .collect(Collectors.toMap(
+                        p -> p.getDate().toLocalDate().toString(),
+                        DailyCountProjection::getCount
+                ));
+        return buildDailyStats(period, dataMap, deletedMap, countBefore);
     }
 
     public List<DashboardCategoryStatResponse> getCategoryStats() {
@@ -101,7 +106,12 @@ public class AdminDashboardService {
                         p -> p.getDate().toLocalDate().toString(),
                         DailyCountProjection::getCount
                 ));
-        return buildDailyStats(period, dataMap, countBefore);
+        Map<String, Long> deletedMap = reviewRepository.findDailyDeleteTrend(from).stream()
+                .collect(Collectors.toMap(
+                        p -> p.getDate().toLocalDate().toString(),
+                        DailyCountProjection::getCount
+                ));
+        return buildDailyStats(period, dataMap, deletedMap, countBefore);
     }
 
     public List<DashboardReportStatResponse> getReportStats() {
@@ -121,15 +131,16 @@ public class AdminDashboardService {
                 .collect(Collectors.toList());
     }
 
-    private List<DashboardDailyStatResponse> buildDailyStats(int period, Map<String, Long> dataMap, long countBefore) {
+    private List<DashboardDailyStatResponse> buildDailyStats(int period, Map<String, Long> dataMap, Map<String, Long> deletedMap, long countBefore) {
         List<DashboardDailyStatResponse> result = new ArrayList<>(period);
         LocalDate today = LocalDate.now();
         long runningCount = countBefore;
         for (int i = period - 1; i >= 0; i--) {
             String date = today.minusDays(i).toString();
             long dailyCount = dataMap.getOrDefault(date, 0L);
+            long dailyDeleted = deletedMap.getOrDefault(date, 0L);
             runningCount += dailyCount;
-            result.add(new DashboardDailyStatResponse(date, dailyCount, runningCount));
+            result.add(new DashboardDailyStatResponse(date, dailyCount, runningCount, dailyDeleted));
         }
         return result;
     }

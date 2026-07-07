@@ -166,6 +166,7 @@ export default function SpiritCommonDetailSection({ value, onChange, dateErrors,
                 type="number" min={1}
                 value={value.totalBottles}
                 onChange={(e) => onChange({ totalBottles: e.target.value })}
+                onWheel={(e) => e.currentTarget.blur()}
                 placeholder="총 병 수"
                 className={INPUT}
               />

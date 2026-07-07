@@ -98,6 +98,7 @@ export default function CognacDetailSection({ value, onChange, errors }: Props) 
           </label>
           <input type="number" min={1800} max={new Date().getFullYear()}
             value={value.vintageYear} onChange={(e) => onChange({ vintageYear: e.target.value })}
+            onWheel={(e) => e.currentTarget.blur()}
             className={INPUT} />
         </div>
         <div>
@@ -108,6 +109,7 @@ export default function CognacDetailSection({ value, onChange, errors }: Props) 
           <div className="relative">
             <input type="number" min={0} max={100}
               value={value.ageYears} onChange={(e) => onChange({ ageYears: e.target.value })}
+              onWheel={(e) => e.currentTarget.blur()}
               className={`${INPUT} pr-8`} />
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">년</span>
           </div>

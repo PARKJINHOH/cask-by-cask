@@ -80,6 +80,41 @@ function tickInterval(period: number) {
   return 14
 }
 
+interface CustomTooltipProps {
+  active?: boolean
+  payload?: any[]
+  label?: string
+  type: 'user' | 'review'
+}
+
+function ChartTooltip({ active, payload, label, type }: CustomTooltipProps) {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload
+    if (type === 'user') {
+      return (
+        <div className="bg-white border border-neutral-200 p-3 rounded-lg shadow-md text-xs space-y-1">
+          <p className="font-semibold text-neutral-800 mb-1">{label}</p>
+          <p className="text-amber-600">일 신규 가입: <span className="font-bold">{(data.count ?? 0).toLocaleString()}명</span></p>
+          <p className="text-neutral-500">일 탈퇴 회원: <span className="font-bold">{(data.deletedCount ?? 0).toLocaleString()}명</span></p>
+          <div className="border-t border-neutral-100 my-1"></div>
+          <p className="text-amber-800 font-medium">전체 회원수: <span>{(data.cumulativeCount ?? 0).toLocaleString()}명</span></p>
+        </div>
+      )
+    } else {
+      return (
+        <div className="bg-white border border-neutral-200 p-3 rounded-lg shadow-md text-xs space-y-1">
+          <p className="font-semibold text-neutral-800 mb-1">{label}</p>
+          <p className="text-purple-600">일 리뷰 작성: <span className="font-bold">{(data.count ?? 0).toLocaleString()}건</span></p>
+          <p className="text-neutral-500">일 리뷰 삭제: <span className="font-bold">{(data.deletedCount ?? 0).toLocaleString()}건</span></p>
+          <div className="border-t border-neutral-100 my-1"></div>
+          <p className="text-red-600 font-medium">전체 리뷰수: <span>{(data.cumulativeCount ?? 0).toLocaleString()}건</span></p>
+        </div>
+      )
+    }
+  }
+  return null
+}
+
 export default function AdminDashboardPage() {
   const [trendPeriod, setTrendPeriod] = useState(30)
 
@@ -172,9 +207,7 @@ export default function AdminDashboardPage() {
               />
               <YAxis yAxisId="left" allowDecimals={false} tick={{ fontSize: 11 }} width={30} />
               <YAxis yAxisId="right" orientation="right" allowDecimals={false} tick={{ fontSize: 11 }} width={35} />
-              <Tooltip
-                labelFormatter={(label) => `날짜: ${label}`}
-              />
+              <Tooltip content={<ChartTooltip type="user" />} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
               <Bar
                 yAxisId="left"
@@ -251,9 +284,7 @@ export default function AdminDashboardPage() {
               />
               <YAxis yAxisId="left" allowDecimals={false} tick={{ fontSize: 11 }} width={30} />
               <YAxis yAxisId="right" orientation="right" allowDecimals={false} tick={{ fontSize: 11 }} width={35} />
-              <Tooltip
-                labelFormatter={(label) => `날짜: ${label}`}
-              />
+              <Tooltip content={<ChartTooltip type="review" />} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
               <Bar
                 yAxisId="left"

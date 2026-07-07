@@ -41,6 +41,7 @@ export default function GrapeVarietyInput({ value, onChange }: Props) {
               max={100}
               value={row.percentage}
               onChange={(e) => update(idx, 'percentage', e.target.value)}
+              onWheel={(e) => e.currentTarget.blur()}
               placeholder="비율"
               className="w-20 px-3 py-2 text-sm border border-neutral-300 rounded-lg
                 focus:outline-none focus:ring-2 focus:ring-primary-400 pr-7"

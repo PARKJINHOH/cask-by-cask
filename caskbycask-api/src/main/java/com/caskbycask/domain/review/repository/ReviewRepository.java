@@ -97,6 +97,9 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 
     long countByCreatedAtBefore(LocalDateTime dateTime);
 
-    @Query(value = "SELECT DATE(created_at) as date, COUNT(*) as count FROM review WHERE created_at >= :from GROUP BY DATE(created_at) ORDER BY DATE(created_at)", nativeQuery = true)
+    @Query(value = "SELECT DATE(created_at) as date, COUNT(*) as count FROM review WHERE created_at >= :from AND deleted_at IS NULL GROUP BY DATE(created_at) ORDER BY DATE(created_at)", nativeQuery = true)
     List<DailyCountProjection> findDailyReviewTrend(@Param("from") LocalDateTime from);
+
+    @Query(value = "SELECT DATE(deleted_at) as date, COUNT(*) as count FROM review WHERE deleted_at >= :from GROUP BY DATE(deleted_at) ORDER BY DATE(deleted_at)", nativeQuery = true)
+    List<DailyCountProjection> findDailyDeleteTrend(@Param("from") LocalDateTime from);
 }

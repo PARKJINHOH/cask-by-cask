@@ -12,6 +12,7 @@ export interface DailyStatItem {
   date: string
   count: number
   cumulativeCount: number
+  deletedCount: number
 }
 
 export interface CategoryStatItem {

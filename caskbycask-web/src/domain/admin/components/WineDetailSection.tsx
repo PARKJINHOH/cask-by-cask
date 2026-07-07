@@ -106,6 +106,7 @@ export default function WineDetailSection({ value, onChange, errors }: Props) {
         <label className={LABEL}>빈티지 연도</label>
         <input type="number" min={1800} max={new Date().getFullYear()}
           value={value.vintage} onChange={(e) => onChange({ vintage: e.target.value })}
+          onWheel={(e) => e.currentTarget.blur()}
           placeholder={`예: ${new Date().getFullYear() - 3}`} className={INPUT} />
       </div>
 
@@ -139,7 +140,9 @@ export default function WineDetailSection({ value, onChange, errors }: Props) {
           <label className={LABEL}>포도밭 고도</label>
           <div className="relative">
             <input type="number" min={0} max={5000} value={value.altitudeM}
-              onChange={(e) => onChange({ altitudeM: e.target.value })} className={`${INPUT} pr-8`} />
+              onChange={(e) => onChange({ altitudeM: e.target.value })}
+              onWheel={(e) => e.currentTarget.blur()}
+              className={`${INPUT} pr-8`} />
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">m</span>
           </div>
         </div>
@@ -186,6 +189,7 @@ export default function WineDetailSection({ value, onChange, errors }: Props) {
           <div className="relative">
             <input type="number" min={1} max={600} value={value.oakAgedMonths}
               onChange={(e) => onChange({ oakAgedMonths: e.target.value })}
+              onWheel={(e) => e.currentTarget.blur()}
               disabled={!value.isOakAged}
               className={`${INPUT} pr-10 ${!value.isOakAged ? 'opacity-40 cursor-not-allowed' : ''}`} />
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">개월</span>

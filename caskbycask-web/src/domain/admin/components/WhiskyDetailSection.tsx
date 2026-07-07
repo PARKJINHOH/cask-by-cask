@@ -231,6 +231,7 @@ export default function WhiskyDetailSection({ value, onChange }: Props) {
               <input type="number" min={0} max={999} step="any"
                 value={value.phenolPpmMin}
                 onChange={(e) => onChange({ phenolPpmMin: e.target.value })}
+                onWheel={(e) => e.currentTarget.blur()}
                 placeholder="최소"
                 className={INPUT}
               />
@@ -240,6 +241,7 @@ export default function WhiskyDetailSection({ value, onChange }: Props) {
               <input type="number" min={0} max={999} step="any"
                 value={value.phenolPpmMax}
                 onChange={(e) => onChange({ phenolPpmMax: e.target.value })}
+                onWheel={(e) => e.currentTarget.blur()}
                 placeholder="최대"
                 className={INPUT}
               />
@@ -249,6 +251,7 @@ export default function WhiskyDetailSection({ value, onChange }: Props) {
           <input type="number" min={0} max={999} step="any"
             value={value.phenolPpm}
             onChange={(e) => onChange({ phenolPpm: e.target.value })}
+            onWheel={(e) => e.currentTarget.blur()}
             disabled={!value.isPeated}
             placeholder="예: 55"
             className={`${INPUT} ${!value.isPeated ? 'opacity-40 cursor-not-allowed' : ''}`}
