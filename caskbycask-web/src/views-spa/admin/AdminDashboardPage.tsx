@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
-  LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
+  Line, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
   ComposedChart,
 } from 'recharts'
@@ -69,7 +69,7 @@ function PeriodTabs({ value, onChange }: { value: number; onChange: (v: number) 
   )
 }
 
-function xAxisFormatter(date: string, period: number) {
+function xAxisFormatter(date: string) {
   const d = new Date(date)
   return `${d.getMonth() + 1}/${d.getDate()}`
 }
@@ -155,12 +155,12 @@ export default function AdminDashboardPage() {
 
   const userTrendFormatted = userTrend.map((d) => ({
     ...d,
-    label: xAxisFormatter(d.date, trendPeriod),
+    label: xAxisFormatter(d.date),
   }))
 
   const reviewTrendFormatted = reviewTrend.map((d) => ({
     ...d,
-    label: xAxisFormatter(d.date, trendPeriod),
+    label: xAxisFormatter(d.date),
   }))
 
   return (

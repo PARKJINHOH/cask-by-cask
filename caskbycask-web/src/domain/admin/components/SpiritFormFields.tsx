@@ -931,7 +931,7 @@ export function useSpiritForm() {
     const common = buildCommonPayload()
     const selectedVariantType = isVariantSplit ? (variantType !== 'NONE' ? variantType : (variants[0]?.variantType ?? 'BATCH')) : 'NONE'
     const variantsToSubmit = variants.filter((v) => v.variantValue.trim().length > 0)
-    return {
+    const payload: CreateSpiritPayload = {
       nameKo, nameEn, category: category as SpiritCategory,
       producerId: producerId ?? null,
       bottler: bottler || null,
