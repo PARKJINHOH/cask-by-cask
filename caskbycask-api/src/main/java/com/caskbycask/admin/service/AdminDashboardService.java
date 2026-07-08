@@ -3,6 +3,9 @@ package com.caskbycask.admin.service;
 import com.caskbycask.domain.admin.dto.*;
 import com.caskbycask.domain.community.entity.enums.ReportStatus;
 import com.caskbycask.domain.community.repository.PostReportRepository;
+import com.caskbycask.domain.event.entity.enums.EventSource;
+import com.caskbycask.domain.event.repository.CalendarEventRepository;
+import com.caskbycask.domain.producer.repository.ProducerRegisterRequestRepository;
 import com.caskbycask.domain.pricetracker.entity.enums.PriceReportReportStatus;
 import com.caskbycask.domain.pricetracker.entity.enums.PriceReportStatus;
 import com.caskbycask.domain.pricetracker.repository.PriceReportReportRepository;
@@ -10,12 +13,16 @@ import com.caskbycask.domain.pricetracker.repository.PriceReportRepository;
 import com.caskbycask.domain.pricetracker.repository.StoreRepository;
 import com.caskbycask.domain.report.entity.enums.ReportTargetType;
 import com.caskbycask.domain.report.repository.ReportRepository;
+import com.caskbycask.domain.review.entity.enums.VariantReviewRequestStatus;
+import com.caskbycask.domain.review.repository.SpiritVariantReviewRequestRepository;
 import com.caskbycask.domain.spirit.entity.enums.RequestStatus;
+import com.caskbycask.domain.spirit.entity.enums.SpiritStatus;
 import com.caskbycask.domain.spirit.repository.SpiritRegisterRequestRepository;
 import com.caskbycask.domain.spirit.repository.SpiritRepository;
 import com.caskbycask.domain.review.repository.ReviewRepository;
 import com.caskbycask.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,7 +41,10 @@ public class AdminDashboardService {
     private final SpiritRepository spiritRepository;
     private final ReportRepository reportRepository;
     private final PostReportRepository postReportRepository;
+    private final CalendarEventRepository calendarEventRepository;
     private final SpiritRegisterRequestRepository spiritRegisterRequestRepository;
+    private final ProducerRegisterRequestRepository producerRegisterRequestRepository;
+    private final SpiritVariantReviewRequestRepository spiritVariantReviewRequestRepository;
     // [패치 12] 가격 트래커 모더레이션 큐 집계용
     private final PriceReportRepository priceReportRepository;
     private final PriceReportReportRepository priceReportReportRepository;
@@ -71,6 +81,83 @@ public class AdminDashboardService {
         return DashboardPendingCountsResponse.of(
                 spiritRegisterRequests, priceReports, flaggedPriceReports, storeSuggestions,
                 postReports, commentReports, priceReportReports, noticeRegisterRequests);
+    }
+
+    public AdminApprovalEventSnapshotsResponse getApprovalEventSnapshots() {
+        AdminApprovalEventSnapshotsResponse.AdminApprovalEventSnapshot spiritRegister =
+                snapshot(
+                        "/admin/spirits/requests",
+                        spiritRegisterRequestRepository.countByStatus(RequestStatus.PENDING),
+                        spiritRegisterRequestRepository.findTopByStatusOrderByCreatedAtDescIdDesc(RequestStatus.PENDING)
+                                .map(req -> new LatestApprovalEvent("spirit-register:" + req.getId(), req.getCreatedAt()))
+                                .orElse(null)
+                );
+
+        long variantCount = spiritRepository.countVariantRequestsByStatus(SpiritStatus.PENDING);
+        LatestApprovalEvent latestVariant = spiritRepository
+                .findLatestVariantRequests(SpiritStatus.PENDING, PageRequest.of(0, 1))
+                .stream()
+                .findFirst()
+                .map(req -> new LatestApprovalEvent("spirit-variant:" + req.getId(), req.getCreatedAt()))
+                .orElse(null);
+
+        long variantReviewCount = spiritVariantReviewRequestRepository.countByStatus(VariantReviewRequestStatus.PENDING);
+        LatestApprovalEvent latestVariantReview = spiritVariantReviewRequestRepository
+                .findTopByStatusOrderByCreatedAtDescIdDesc(VariantReviewRequestStatus.PENDING)
+                .map(req -> new LatestApprovalEvent("variant-review:" + req.getId(), req.getCreatedAt()))
+                .orElse(null);
+
+        AdminApprovalEventSnapshotsResponse.AdminApprovalEventSnapshot variantRequests =
+                snapshot(
+                        "/admin/spirits/variant-requests",
+                        variantCount + variantReviewCount,
+                        latestOf(latestVariant, latestVariantReview)
+                );
+
+        AdminApprovalEventSnapshotsResponse.AdminApprovalEventSnapshot producerRegister =
+                snapshot(
+                        "/admin/producers/requests",
+                        producerRegisterRequestRepository.countByStatus(RequestStatus.PENDING),
+                        producerRegisterRequestRepository.findTopByStatusOrderByCreatedAtDescIdDesc(RequestStatus.PENDING)
+                                .map(req -> new LatestApprovalEvent("producer-register:" + req.getId(), req.getCreatedAt()))
+                                .orElse(null)
+                );
+
+        AdminApprovalEventSnapshotsResponse.AdminApprovalEventSnapshot priceReports =
+                snapshot(
+                        "/admin/price-reports",
+                        priceReportRepository.countByStatus(PriceReportStatus.PENDING),
+                        priceReportRepository.findTopByStatusOrderByCreatedAtDescIdDesc(PriceReportStatus.PENDING)
+                                .map(report -> new LatestApprovalEvent("price-report:" + report.getId(), report.getCreatedAt()))
+                                .orElse(null)
+                );
+
+        AdminApprovalEventSnapshotsResponse.AdminApprovalEventSnapshot storeSuggestions =
+                snapshot(
+                        "/admin/stores",
+                        storeRepository.countByIsApprovedFalse(),
+                        storeRepository.findTopByIsApprovedFalseOrderByCreatedAtDescIdDesc()
+                                .map(store -> new LatestApprovalEvent("store-suggestion:" + store.getId(), store.getCreatedAt()))
+                                .orElse(null)
+                );
+
+        AdminApprovalEventSnapshotsResponse.AdminApprovalEventSnapshot eventSuggestions =
+                snapshot(
+                        "/admin/events",
+                        calendarEventRepository.countBySourceAndIsVisibleFalse(EventSource.USER),
+                        calendarEventRepository.findTopBySourceAndIsVisibleFalseOrderByCreatedAtDescIdDesc(EventSource.USER)
+                                .map(event -> new LatestApprovalEvent("event-suggestion:" + event.getId(), event.getCreatedAt()))
+                                .orElse(null)
+                );
+
+        return new AdminApprovalEventSnapshotsResponse(List.of(
+                eventSuggestions,
+                spiritRegister,
+                variantRequests,
+                producerRegister,
+                priceReports,
+                storeSuggestions
+        ));
     }
 
     public List<DashboardDailyStatResponse> getUserTrend(int period) {
@@ -143,5 +230,30 @@ public class AdminDashboardService {
             result.add(new DashboardDailyStatResponse(date, dailyCount, runningCount, dailyDeleted));
         }
         return result;
+    }
+
+    private AdminApprovalEventSnapshotsResponse.AdminApprovalEventSnapshot snapshot(
+            String path,
+            long count,
+            LatestApprovalEvent latest
+    ) {
+        return new AdminApprovalEventSnapshotsResponse.AdminApprovalEventSnapshot(
+                path,
+                count,
+                latest == null ? null : latest.eventKey(),
+                latest == null ? null : latest.createdAt()
+        );
+    }
+
+    private LatestApprovalEvent latestOf(LatestApprovalEvent first, LatestApprovalEvent second) {
+        if (first == null) return second;
+        if (second == null) return first;
+        int compared = first.createdAt().compareTo(second.createdAt());
+        if (compared > 0) return first;
+        if (compared < 0) return second;
+        return first.eventKey().compareTo(second.eventKey()) >= 0 ? first : second;
+    }
+
+    private record LatestApprovalEvent(String eventKey, LocalDateTime createdAt) {
     }
 }

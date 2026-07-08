@@ -14,6 +14,7 @@ import org.springframework.data.repository.query.Param;
 import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 public interface PriceReportRepository extends JpaRepository<PriceReport, Long> {
 
@@ -24,6 +25,7 @@ public interface PriceReportRepository extends JpaRepository<PriceReport, Long> 
     // [패치 12] 모더레이션 대시보드 — 대기 가격 등록 수 / 플래그된 대기 가격 수
     long countByStatus(PriceReportStatus status);
     long countByStatusAndAutoFlaggedTrue(PriceReportStatus status);
+    Optional<PriceReport> findTopByStatusOrderByCreatedAtDescIdDesc(PriceReportStatus status);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE PriceReport p SET p.store = :targetStore WHERE p.store = :suggestedStore")

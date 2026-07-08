@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface SpiritRegisterRequestRepository extends JpaRepository<SpiritRegisterRequest, Long> {
 
@@ -15,4 +16,6 @@ public interface SpiritRegisterRequestRepository extends JpaRepository<SpiritReg
     List<SpiritRegisterRequest> findByUserIdOrderByCreatedAtDesc(Long userId);
 
     long countByStatus(RequestStatus status);
+
+    Optional<SpiritRegisterRequest> findTopByStatusOrderByCreatedAtDescIdDesc(RequestStatus status);
 }

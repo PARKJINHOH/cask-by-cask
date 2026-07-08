@@ -101,6 +101,21 @@ public interface SpiritRepository extends JpaRepository<Spirit, Long>, SpiritQue
                                              @Param("keyword") String keyword,
                                              Pageable pageable);
 
+    @Query("""
+            SELECT COUNT(s) FROM Spirit s
+            WHERE s.parent IS NOT NULL
+              AND s.status = :status
+            """)
+    long countVariantRequestsByStatus(@Param("status") SpiritStatus status);
+
+    @Query("""
+            SELECT s FROM Spirit s
+            WHERE s.parent IS NOT NULL
+              AND s.status = :status
+            ORDER BY s.createdAt DESC, s.id DESC
+            """)
+    List<Spirit> findLatestVariantRequests(@Param("status") SpiritStatus status, Pageable pageable);
+
     /** 같은 이름(한글/영문)의 다른 배치·병입 제품 — 자기 자신 제외, ACTIVE 만 */
     @Query("""
             SELECT s FROM Spirit s

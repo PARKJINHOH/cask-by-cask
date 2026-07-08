@@ -9,11 +9,13 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface StoreRepository extends JpaRepository<Store, Long> {
 
     // [패치 12] 모더레이션 대시보드 — 미승인 매장 제안 수
     long countByIsApprovedFalse();
+    Optional<Store> findTopByIsApprovedFalseOrderByCreatedAtDescIdDesc();
 
     @Query("""
             SELECT DISTINCT s FROM Store s

@@ -14,6 +14,10 @@ import {
   INQUIRY_PENDING_COUNT_KEY,
 } from '@/domain/admin/constants/queryKeys'
 import { ADMIN_NAV, isMenuVisible } from '@/domain/admin/constants/adminMenu'
+import {
+  APPROVAL_EVENT_MENU_PATHS,
+  useAdminApprovalEventDots,
+} from '@/domain/admin/hooks/useAdminApprovalEventDots'
 
 export default function AdminLayout() {
   const location = useLocation()
@@ -31,6 +35,11 @@ export default function AdminLayout() {
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN'
   const isSuperAdmin = user?.role === 'SUPER_ADMIN'
   const allowedMenus: string[] = user?.allowedMenus ?? []
+  const hasMenuNewEvent = useAdminApprovalEventDots({
+    enabled: isAdmin,
+    pathname: location.pathname,
+    userId: user?.id,
+  })
 
   const { data: inquiryPendingCount = 0 } = useQuery({
     queryKey: INQUIRY_PENDING_COUNT_KEY,
@@ -197,6 +206,10 @@ export default function AdminLayout() {
                       ? location.pathname === item.path
                       : location.pathname.startsWith(item.path)
                     const badgeCount = badgeCountFor(item.path)
+                    const isApprovalEventMenu = APPROVAL_EVENT_MENU_PATHS.includes(
+                      item.path as (typeof APPROVAL_EVENT_MENU_PATHS)[number],
+                    )
+                    const showNewEventDot = hasMenuNewEvent(item.path)
                     return (
                       <Link
                         key={item.path}
@@ -208,7 +221,21 @@ export default function AdminLayout() {
                             : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700'
                           }`}
                       >
-                        {item.label}
+                        {isApprovalEventMenu ? (
+                          <span className="flex min-w-0 flex-1 items-center gap-2">
+                            <span className="flex h-2 w-2 shrink-0 items-center">
+                              {showNewEventDot && (
+                                <span
+                                  className="h-2 w-2 rounded-full bg-red-500"
+                                  aria-label="새 승인 요청"
+                                />
+                              )}
+                            </span>
+                            <span className="truncate">{item.label}</span>
+                          </span>
+                        ) : (
+                          <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                        )}
                         {badgeCount > 0 && (
                           <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center leading-none">
                             {badgeCount > 99 ? '99+' : badgeCount}

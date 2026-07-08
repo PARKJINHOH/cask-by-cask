@@ -38,6 +38,7 @@ export default function UserContextMenu({ nickname, userId, children, disabled, 
   const menuRef = useRef<HTMLDivElement>(null)
 
   const handleClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
     e.stopPropagation()
     if (!triggerRef.current) return
 
@@ -59,6 +60,17 @@ export default function UserContextMenu({ nickname, userId, children, disabled, 
     setPos({ top, left })
     setOpen((v) => !v)
   }, [isLoggedIn, isMe, onlyReviews])
+
+  const stopMenuEvent = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+
+  const closeAndNavigate = (e: React.MouseEvent, path: string) => {
+    stopMenuEvent(e)
+    setOpen(false)
+    navigate(path)
+  }
 
   useEffect(() => {
     if (!open) return
@@ -87,14 +99,13 @@ export default function UserContextMenu({ nickname, userId, children, disabled, 
           ref={menuRef}
           className="fixed z-[9999] flex flex-col bg-white border border-neutral-200 rounded-lg shadow-lg py-1 w-max min-w-[160px]"
           style={{ top: pos.top, left: pos.left }}
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
         >
           {onlyReviews ? (
             <button
               className="px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 w-full text-left whitespace-nowrap"
-              onClick={() => {
-                setOpen(false)
-                navigate(`/users/${userId}/reviews?nickname=${encodeURIComponent(nickname)}`)
-              }}
+              onClick={(e) => closeAndNavigate(e, `/users/${userId}/reviews?nickname=${encodeURIComponent(nickname)}`)}
             >
               작성 리뷰 보기
             </button>
@@ -102,28 +113,19 @@ export default function UserContextMenu({ nickname, userId, children, disabled, 
             <>
               <button
                 className="px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 w-full text-left whitespace-nowrap"
-                onClick={() => {
-                  setOpen(false)
-                  navigate(`/community/all?authorId=${userId}&authorNickname=${encodeURIComponent(nickname)}`)
-                }}
+                onClick={(e) => closeAndNavigate(e, `/community/all?authorId=${userId}&authorNickname=${encodeURIComponent(nickname)}`)}
               >
                 사용자 게시글 보기
               </button>
               <button
                 className="px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 w-full text-left whitespace-nowrap"
-                onClick={() => {
-                  setOpen(false)
-                  navigate(`/community/all?commentAuthorId=${userId}&authorNickname=${encodeURIComponent(nickname)}`)
-                }}
+                onClick={(e) => closeAndNavigate(e, `/community/all?commentAuthorId=${userId}&authorNickname=${encodeURIComponent(nickname)}`)}
               >
                 사용자 댓글 보기
               </button>
               <button
                 className="px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 w-full text-left whitespace-nowrap"
-                onClick={() => {
-                  setOpen(false)
-                  navigate(`/users/${userId}/reviews?nickname=${encodeURIComponent(nickname)}`)
-                }}
+                onClick={(e) => closeAndNavigate(e, `/users/${userId}/reviews?nickname=${encodeURIComponent(nickname)}`)}
               >
                 작성 리뷰 보기
               </button>
@@ -132,7 +134,8 @@ export default function UserContextMenu({ nickname, userId, children, disabled, 
                   <div className="border-t border-neutral-100 my-1" />
                   <button
                     className="px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 w-full text-left whitespace-nowrap"
-                    onClick={() => {
+                    onClick={(e) => {
+                      stopMenuEvent(e)
                       setOpen(false)
                       openPopup(nickname)
                     }}
@@ -141,7 +144,8 @@ export default function UserContextMenu({ nickname, userId, children, disabled, 
                   </button>
                   <button
                     className="px-4 py-2 text-sm text-red-600 hover:bg-red-50 w-full text-left whitespace-nowrap"
-                    onClick={() => {
+                    onClick={(e) => {
+                      stopMenuEvent(e)
                       setOpen(false)
                       if (window.confirm('이 사용자를 차단할까요?\n차단하면 이 사용자의 게시글·댓글 내용이 가려집니다.')) {
                         blockMutation.mutate()

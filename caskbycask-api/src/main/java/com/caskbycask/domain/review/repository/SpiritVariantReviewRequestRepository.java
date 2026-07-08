@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Optional;
+
 public interface SpiritVariantReviewRequestRepository extends JpaRepository<SpiritVariantReviewRequest, Long> {
 
     @Query(value = """
@@ -63,4 +65,9 @@ public interface SpiritVariantReviewRequestRepository extends JpaRepository<Spir
             @Param("status") VariantReviewRequestStatus status,
             Pageable pageable
     );
+
+    long countByStatus(VariantReviewRequestStatus status);
+
+    Optional<SpiritVariantReviewRequest> findTopByStatusOrderByCreatedAtDescIdDesc(
+            VariantReviewRequestStatus status);
 }

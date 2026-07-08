@@ -51,4 +51,9 @@ public class AdminDashboardController {
     public ResponseEntity<ApiResponse<DashboardPendingCountsResponse>> getPendingCounts() {
         return ResponseEntity.ok(ApiResponse.success(adminDashboardService.getPendingCounts()));
     }
+
+    @GetMapping("/approval-event-snapshots")
+    public ResponseEntity<ApiResponse<AdminApprovalEventSnapshotsResponse>> getApprovalEventSnapshots() {
+        return ResponseEntity.ok(ApiResponse.success(adminDashboardService.getApprovalEventSnapshots()));
+    }
 }

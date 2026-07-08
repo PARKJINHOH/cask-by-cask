@@ -25,6 +25,17 @@ export interface ReportStatItem {
   count: number
 }
 
+export interface AdminApprovalEventSnapshot {
+  path: string
+  count: number
+  latestEventKey: string | null
+  latestCreatedAt: string | null
+}
+
+export interface AdminApprovalEventSnapshotsResponse {
+  queues: AdminApprovalEventSnapshot[]
+}
+
 export const adminDashboardApi = {
   getKpis: () =>
     axiosInstance.get<ApiResponse<DashboardKpis>>('/api/admin/dashboard/kpis'),
@@ -44,4 +55,9 @@ export const adminDashboardApi = {
 
   getReportStats: () =>
     axiosInstance.get<ApiResponse<ReportStatItem[]>>('/api/admin/dashboard/report-stats'),
+
+  getApprovalEventSnapshots: () =>
+    axiosInstance.get<ApiResponse<AdminApprovalEventSnapshotsResponse>>(
+      '/api/admin/dashboard/approval-event-snapshots',
+    ),
 }

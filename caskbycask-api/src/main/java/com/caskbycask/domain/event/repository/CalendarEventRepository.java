@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 public interface CalendarEventRepository extends JpaRepository<CalendarEvent, Long> {
 
@@ -60,6 +61,10 @@ public interface CalendarEventRepository extends JpaRepository<CalendarEvent, Lo
      * 관리자용: 특정 출처(예: USER 제보)의 전체 이벤트를 최근 등록순으로.
      */
     List<CalendarEvent> findBySourceOrderByCreatedAtDesc(EventSource source);
+
+    long countBySourceAndIsVisibleFalse(EventSource source);
+
+    Optional<CalendarEvent> findTopBySourceAndIsVisibleFalseOrderByCreatedAtDescIdDesc(EventSource source);
 
     /**
      * 관리자용: 전체 이벤트를 기간 시작일 최신순으로.
