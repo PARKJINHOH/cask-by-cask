@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 import { spiritApi } from '@/domain/spirit/api/spiritApi'
+import { eventApi } from '@/domain/event/api/eventApi'
 import { useBanners } from '@/domain/banner/hooks/useBanners'
 import { usePopups } from '@/domain/popup/hooks/usePopups'
 import { useNotices, usePinnedNotices } from '@/domain/notice/hooks/useNotices'
@@ -461,6 +462,39 @@ function NoticeWidget({ notices }: { notices: NoticeListItem[] }) {
 // ── 이벤트 캘린더 카드 ───────────────────────────────────────────
 function EventCard() {
   const { t } = useTranslation()
+  const { data: upcomingEvents = [] } = useQuery({
+    queryKey: ['events', 'upcoming', 1],
+    queryFn: () => eventApi.getUpcomingEvents(1).then((r) => r.data.data || []),
+    staleTime: 60_000,
+  })
+
+  const latestEvent = upcomingEvents[0]
+
+  const getDDayText = (startDateStr: string) => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const start = new Date(startDateStr)
+    start.setHours(0, 0, 0, 0)
+    const diffTime = start.getTime() - today.getTime()
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+
+    if (diffDays === 0) {
+      return t('home.eventCard.dDay')
+    } else if (diffDays > 0) {
+      return t('home.eventCard.dMinus', { days: diffDays })
+    } else {
+      return t('home.eventCard.dPlus', { days: Math.abs(diffDays) })
+    }
+  }
+
+  const formatDateRange = (start: string, end: string | null) => {
+    const format = (dateStr: string) => dateStr.replace(/-/g, '.')
+    if (!end || start === end) {
+      return format(start)
+    }
+    return `${format(start)} ~ ${format(end)}`
+  }
+
   return (
     <Link
       to="/calendar"
@@ -473,7 +507,7 @@ function EventCard() {
             <rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
           </svg>
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="text-xs text-amber-200/80 font-medium mb-0.5">{t('home.eventCard.label')}</p>
           <p className="text-sm font-bold text-white truncate">{t('home.eventCard.title')}</p>
         </div>
@@ -482,6 +516,22 @@ function EventCard() {
           <polyline points="9 18 15 12 9 6" />
         </svg>
       </div>
+
+      {latestEvent && (
+        <div className="mt-3 pt-3 border-t border-white/10 flex flex-col gap-1.5 text-left">
+          <div className="flex items-center gap-2">
+            <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded tracking-wide flex-shrink-0">
+              {getDDayText(latestEvent.startDate)}
+            </span>
+            <span className="text-xs text-amber-200/80 font-medium">
+              {formatDateRange(latestEvent.startDate, latestEvent.endDate)}
+            </span>
+          </div>
+          <p className="text-sm font-semibold text-white line-clamp-2 leading-snug group-hover:text-amber-100 transition-colors">
+            {latestEvent.title}
+          </p>
+        </div>
+      )}
     </Link>
   )
 }

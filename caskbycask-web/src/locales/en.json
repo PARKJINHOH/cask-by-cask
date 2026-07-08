@@ -91,7 +91,10 @@
     },
     "eventCard": {
       "label": "This Week's Events",
-      "title": "Tastings & Releases"
+      "title": "Tastings & Releases",
+      "dDay": "D-Day",
+      "dMinus": "D-{{days}}",
+      "dPlus": "D+{{days}}"
     },
     "categoryExplore": "Explore by Category"
   },

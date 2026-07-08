@@ -91,7 +91,10 @@
     },
     "eventCard": {
       "label": "이번 주 이벤트",
-      "title": "시음회 · 출시 일정 보기"
+      "title": "시음회 · 출시 일정 보기",
+      "dDay": "D-Day",
+      "dMinus": "D-{{days}}일",
+      "dPlus": "D+{{days}}일"
     },
     "categoryExplore": "카테고리별 탐색"
   },
