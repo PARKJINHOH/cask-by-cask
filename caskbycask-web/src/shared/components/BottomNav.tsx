@@ -52,7 +52,8 @@ export default function BottomNav() {
   const { t } = useTranslation()
   const location = useLocation()
   const navigate = useNavigate()
-  const { isLoggedIn } = useAuthStore()
+  const { isLoggedIn, isAuthReady } = useAuthStore()
+  const canUseMemberTabs = isAuthReady && isLoggedIn
 
   const isHome    = location.pathname === '/'
   const isSpirits = location.pathname.startsWith('/spirits')
@@ -78,13 +79,13 @@ export default function BottomNav() {
       label:  t('wishlist.tab'),
       icon:   <HeartIcon active={isWishlist} />,
       active: isWishlist,
-      onClick: () => navigate(isLoggedIn ? '/mypage?tab=wishlist' : '/login'),
+      onClick: () => navigate(canUseMemberTabs ? '/mypage?tab=wishlist' : '/login'),
     },
     {
       label:  t('nav.mypage'),
       icon:   <PersonIcon active={isMypageMain} />,
       active: isMypageMain,
-      onClick: () => navigate(isLoggedIn ? '/mypage' : '/login'),
+      onClick: () => navigate(canUseMemberTabs ? '/mypage' : '/login'),
     },
   ]
 

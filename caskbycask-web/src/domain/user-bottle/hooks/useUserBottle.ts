@@ -7,10 +7,11 @@ const MY_BOTTLES_KEY = ['bottles', 'my'] as const;
 
 export function useMyBottles(params: { category?: SpiritCategory; status?: BottleStatus; year?: number; page?: number }) {
   const isLoggedIn = useAuthStore(s => s.isLoggedIn);
+  const isAuthReady = useAuthStore(s => s.isAuthReady);
   return useQuery({
     queryKey: [...MY_BOTTLES_KEY, params],
     queryFn: () => userBottleApi.getMyBottles(params),
-    enabled: isLoggedIn,
+    enabled: isAuthReady && isLoggedIn,
   });
 }
 

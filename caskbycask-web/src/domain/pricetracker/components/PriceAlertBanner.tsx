@@ -24,11 +24,11 @@ function loadDismissed(): Record<string, boolean> {
 export default function PriceAlertBanner({ spiritId }: { spiritId?: number }) {
   const { t, i18n } = useTranslation()
   const isEn = i18n.language === 'en'
-  const { isLoggedIn } = useAuthStore()
+  const { isLoggedIn, isAuthReady } = useAuthStore()
   const { data: alerts } = useMyPriceAlerts()
   const [dismissed, setDismissed] = useState<Record<string, boolean>>(loadDismissed)
 
-  if (!isLoggedIn || !alerts) return null
+  if (!isAuthReady || !isLoggedIn || !alerts) return null
 
   const key = (a: PriceAlertResponse) => `${a.id}:${a.lastNotifiedAt}`
 

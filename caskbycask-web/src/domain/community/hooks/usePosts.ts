@@ -42,10 +42,11 @@ export function usePostPrefixes(boardType: BoardType) {
 
 export function useMyScrappedPosts(page = 0, size = 20) {
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
+  const isAuthReady = useAuthStore((s) => s.isAuthReady)
   return useQuery({
     queryKey: ['posts', 'me', 'scraps', page, size],
     queryFn: () => communityApi.getMyScrappedPosts({ page, size }).then((r) => r.data.data!),
-    enabled: isLoggedIn,
+    enabled: isAuthReady && isLoggedIn,
   })
 }
 

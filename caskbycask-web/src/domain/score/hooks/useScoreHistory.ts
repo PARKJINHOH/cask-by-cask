@@ -13,6 +13,7 @@ export function useLevelConfigs() {
 
 export function useInfiniteScoreHistory(type: ScoreHistoryFilterType) {
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
+  const isAuthReady = useAuthStore((s) => s.isAuthReady)
 
   return useInfiniteQuery({
     queryKey: ['scoreHistory', 'me', type],
@@ -23,16 +24,17 @@ export function useInfiniteScoreHistory(type: ScoreHistoryFilterType) {
     initialPageParam: 0,
     getNextPageParam: (lastPage) =>
       lastPage.last ? undefined : lastPage.page + 1,
-    enabled: isLoggedIn,
+    enabled: isAuthReady && isLoggedIn,
   })
 }
 
 export function useScoreHistory(params: { page: number; size: number; type: ScoreHistoryFilterType }) {
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
+  const isAuthReady = useAuthStore((s) => s.isAuthReady)
 
   return useQuery({
     queryKey: ['scoreHistory', 'me', params],
     queryFn: () => scoreApi.getMyHistory(params).then((res) => res.data.data!),
-    enabled: isLoggedIn,
+    enabled: isAuthReady && isLoggedIn,
   })
 }

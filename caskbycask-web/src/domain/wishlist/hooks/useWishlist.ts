@@ -5,17 +5,19 @@ import { useAuthStore } from '@/domain/auth/store/authStore'
 
 export function useMyWishlist(type?: WishlistType, page = 0) {
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
+  const isAuthReady = useAuthStore((s) => s.isAuthReady)
   return useQuery({
     queryKey: ['wishlist', type, page],
     queryFn: () =>
       wishlistApi.getMyWishlist({ type, page, size: 18 }).then((res) => res.data.data!),
-    enabled: isLoggedIn,
+    enabled: isAuthReady && isLoggedIn,
   })
 }
 
 /** Returns a Set of WishlistTypes that are active for the given spirit. */
 export function useWishlistStatus(spiritId: number) {
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
+  const isAuthReady = useAuthStore((s) => s.isAuthReady)
   return useQuery({
     queryKey: ['wishlist-status', spiritId],
     queryFn: async () => {
@@ -25,7 +27,7 @@ export function useWishlistStatus(spiritId: number) {
         items.filter((w) => w.spirit.id === spiritId).map((w) => w.type),
       )
     },
-    enabled: isLoggedIn,
+    enabled: isAuthReady && isLoggedIn,
     staleTime: 30_000,
   })
 }

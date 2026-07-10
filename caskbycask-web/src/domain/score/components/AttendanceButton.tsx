@@ -15,7 +15,7 @@ const getTodayDateString = () => {
 export default function AttendanceButton() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-  const { isLoggedIn, setPendingAttendanceToast } = useAuthStore()
+  const { isLoggedIn, isAuthReady, setPendingAttendanceToast } = useAuthStore()
   const [loading, setLoading] = useState(false)
 
   const [showTooltip, setShowTooltip] = useState(() => {
@@ -26,7 +26,7 @@ export default function AttendanceButton() {
   const { data: attended = false, isPending } = useQuery({
     queryKey: ['attendance', 'today'],
     queryFn: () => scoreApi.getTodayAttendanceStatus().then((res) => res.data.data ?? false),
-    enabled: isLoggedIn,
+    enabled: isAuthReady && isLoggedIn,
   })
 
   const { mutate: checkIn } = useMutation({
@@ -47,7 +47,7 @@ export default function AttendanceButton() {
     },
   })
 
-  if (!isLoggedIn) return null
+  if (!isAuthReady || !isLoggedIn) return null
 
   return (
     <div className={`relative inline-flex items-center ${isPending ? 'invisible' : ''}`}>

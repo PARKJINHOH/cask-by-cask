@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useAuthStore } from '@/domain/auth/store/authStore'
 import { priceTrackerApi } from '../api/priceTrackerApi'
 import type { BucketType, PriceReportStatus, StoreType } from '../types/pricetracker.types'
 
@@ -35,10 +36,13 @@ export function usePriceChartDetail(
 }
 
 export function useMyPriceAlerts() {
+  const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
+  const isAuthReady = useAuthStore((s) => s.isAuthReady)
   return useQuery({
     queryKey: ['priceAlerts', 'me'],
     queryFn: () => priceTrackerApi.getMyAlerts(),
     select: (res) => res.data.data,
+    enabled: isAuthReady && isLoggedIn,
   })
 }
 
@@ -68,11 +72,14 @@ export function useTogglePriceAlert() {
 }
 
 export function useMyPriceReports(status: PriceReportStatus | undefined, page: number) {
+  const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
+  const isAuthReady = useAuthStore((s) => s.isAuthReady)
   return useQuery({
     queryKey: ['priceReports', 'my', status, page],
     queryFn: () => priceTrackerApi.getMyReports(status, page),
     select: (res) => res.data.data,
     staleTime: 30_000,
+    enabled: isAuthReady && isLoggedIn,
   })
 }
 

@@ -65,13 +65,13 @@ const PW_REMINDER_DISMISS_KEY = 'pw:reminder:dismissed'
 
 function PasswordChangeBanner() {
   const { t } = useTranslation()
-  const { isLoggedIn } = useAuthStore()
+  const { isLoggedIn, isAuthReady } = useAuthStore()
   const { data: profile } = useMe()
   const [dismissed, setDismissed] = useState(
     () => sessionStorage.getItem(PW_REMINDER_DISMISS_KEY) === '1',
   )
 
-  if (!isLoggedIn || !profile?.passwordChangeRequired || dismissed) return null
+  if (!isAuthReady || !isLoggedIn || !profile?.passwordChangeRequired || dismissed) return null
 
   const handleDismiss = () => {
     sessionStorage.setItem(PW_REMINDER_DISMISS_KEY, '1')
@@ -161,6 +161,7 @@ function GNB() {
         { key: 'communityByob',  label: t('menu.communityByob'),  to: '/community/byob' },
       ],
     },
+    { key: 'tierList', label: t('menu.tierList'), to: '/tier-lists' },
   ]
 
   const itemCls = (active: boolean) =>
@@ -589,7 +590,7 @@ function HeaderSearch() {
 
 function UserDropdown() {
   const { t } = useTranslation()
-  const { user, isLoggedIn, setUser } = useAuthStore()
+  const { user, isLoggedIn, isAuthReady, setUser } = useAuthStore()
   const { logout } = useAuth()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
@@ -619,6 +620,15 @@ function UserDropdown() {
     setOpen(false)
     await logout()
     navigate('/')
+  }
+
+  if (!isAuthReady || (isLoggedIn && !user && !profile)) {
+    return (
+      <div className="flex items-center gap-2" aria-hidden="true">
+        <div className="w-7 h-7 rounded-full bg-neutral-100 animate-pulse" />
+        <div className="hidden sm:block w-20 h-4 rounded bg-neutral-100 animate-pulse" />
+      </div>
+    )
   }
 
   if (!isLoggedIn) {
@@ -761,7 +771,8 @@ function UserDropdown() {
 
 export default function MainLayout() {
   const { t } = useTranslation()
-  const { isLoggedIn } = useAuthStore()
+  const { isLoggedIn, isAuthReady } = useAuthStore()
+  const showAuthedActions = isAuthReady && isLoggedIn
 
   return (
     <div className="min-h-screen bg-canvas flex flex-col">
@@ -792,9 +803,9 @@ export default function MainLayout() {
 
           {/* 우측 액션 */}
           <div className="flex items-center gap-1 sm:gap-2 ml-auto flex-shrink-0">
-            {isLoggedIn && <AttendanceButton />}
-            {isLoggedIn && <NotificationBell />}
-            {isLoggedIn && <LangToggle />}
+            {showAuthedActions && <AttendanceButton />}
+            {showAuthedActions && <NotificationBell />}
+            {showAuthedActions && <LangToggle />}
             <UserDropdown />
           </div>
         </div>
@@ -867,7 +878,7 @@ export default function MainLayout() {
       <AttendanceToastHandler />
 
       {/* 쪽지 보내기 플로팅 팝업 */}
-      {isLoggedIn && <MessagePopup />}
+      {showAuthedActions && <MessagePopup />}
 
       {/* 임시 비밀번호 강제 변경 모달 (필요 시 자동 노출) */}
       <ForcePasswordChangeModal />

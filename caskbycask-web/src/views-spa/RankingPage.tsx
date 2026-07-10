@@ -155,8 +155,9 @@ function MyRankBar({ period }: { period: RankingPeriod }) {
   const { t } = useTranslation()
   const { data: myRank, isLoading } = useMyRank(period)
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
+  const isAuthReady = useAuthStore((s) => s.isAuthReady)
 
-  if (!isLoggedIn) return null
+  if (!isAuthReady || !isLoggedIn) return null
 
   return (
     <div className="fixed bottom-16 lg:bottom-0 left-0 right-0 z-30 bg-amber-600/95

@@ -8,6 +8,7 @@ import MainLayout from '@/layouts/MainLayout'
 import AdminLayout from '@/layouts/AdminLayout'
 import PrivateRoute from '@/shared/components/PrivateRoute'
 import AdminRoute from '@/shared/components/AdminRoute'
+import AuthSessionBootstrap from '@/domain/auth/components/AuthSessionBootstrap'
 
 const NotFoundPage = lazy(() => import('@/views-spa/NotFoundPage'))
 const MainPage = lazy(() => import('@/views-spa/MainPage'))
@@ -90,10 +91,12 @@ const PriceRegisterPage = lazy(() => import('@/views-spa/PriceRegisterPage'))
 const AdminPriceReportPage = lazy(() => import('@/views-spa/admin/AdminPriceReportPage'))
 const AdminStorePage = lazy(() => import('@/views-spa/admin/AdminStorePage'))
 const ProducerDetailPage = lazy(() => import('@/views-spa/ProducerDetailPage'))
+const TierListPage = lazy(() => import('@/views-spa/TierListPage'))
 
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <AuthSessionBootstrap />
       <ErrorBoundary>
         <BrowserRouter basename={window.__APP_BASENAME__}>
           <Routes>
@@ -122,6 +125,7 @@ export default function App() {
             <Route path="community/byob" element={<ByobListPage />} />
             <Route path="community/byob/:id" element={<ByobDetailPage />} />
             <Route path="community/:boardType/:id" element={<PostDetailPage />} />
+            <Route path="tier-lists/:shareKey" element={<TierListPage />} />
             {/* 공개 읽기용 (비회원 접근 가능) */}
             <Route path="notifications" element={<NotificationsPage />} />
             <Route path="users/:userId/bottles" element={<UserBottlePublicPage />} />
@@ -137,6 +141,7 @@ export default function App() {
               <Route path="community/:boardType/:id/edit" element={<PostFormPage />} />
               <Route path="community/byob/write" element={<ByobFormPage />} />
               <Route path="community/byob/:id/edit" element={<ByobFormPage />} />
+              <Route path="tier-lists" element={<TierListPage />} />
 <Route path="mypage" element={<MyPage />} />
               <Route path="request/spirit" element={<SpiritRequestPage />} />
               <Route path="request/spirit/my" element={<MySpiritRequestsPage />} />

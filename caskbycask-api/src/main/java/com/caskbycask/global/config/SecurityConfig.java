@@ -113,6 +113,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/notices/images/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/popups/images/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/profiles/images/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/tier-list/images/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/tier-lists/share/**").permitAll()
                         // 가격 제보 이미지 서빙 — <img> 태그 GET 은 JWT 헤더 미포함이므로 공개 (UUID 파일명이 접근 차폐)
                         .requestMatchers(HttpMethod.GET, "/api/price-reports/images/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/seo/**").permitAll()

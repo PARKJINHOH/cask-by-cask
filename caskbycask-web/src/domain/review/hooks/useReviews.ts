@@ -18,22 +18,24 @@ export function useReviews(spiritId: number, page = 0) {
 
 export function useMyReviews(page = 0) {
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
+  const isAuthReady = useAuthStore((s) => s.isAuthReady)
   return useQuery({
     queryKey: ['my-reviews', page],
     queryFn: () => reviewApi.getMyReviews({ page, size: 10 }).then((res) => res.data.data!),
-    enabled: isLoggedIn,
+    enabled: isAuthReady && isLoggedIn,
   })
 }
 
 export function useMyReviewRequests(page = 0, status?: VariantReviewRequestStatus) {
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
+  const isAuthReady = useAuthStore((s) => s.isAuthReady)
   return useQuery({
     queryKey: ['my-review-requests', page, status],
     queryFn: () =>
       reviewApi
         .getMyReviewRequests({ page, size: 10, status })
         .then((res) => res.data.data!),
-    enabled: isLoggedIn,
+    enabled: isAuthReady && isLoggedIn,
   })
 }
 

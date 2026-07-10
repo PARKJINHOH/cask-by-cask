@@ -10,7 +10,7 @@ import { useAuthStore } from '@/domain/auth/store/authStore'
 const POLL_INTERVAL = 30_000 // NotificationConstants.NOTIFICATION_POLL_INTERVAL_SECONDS × 1000
 
 export function useNotificationPolling() {
-  const { isLoggedIn } = useAuthStore()
+  const { isLoggedIn, isAuthReady } = useAuthStore()
 
   return useQuery({
     queryKey: ['notifications', 'unread-count'],
@@ -19,7 +19,7 @@ export function useNotificationPolling() {
     refetchInterval: POLL_INTERVAL,
     refetchIntervalInBackground: false, // 탭 비활성 시 폴링 중단 (불필요한 서버 부하 방지)
     staleTime: POLL_INTERVAL,
-    enabled: isLoggedIn,
+    enabled: isAuthReady && isLoggedIn,
   })
 }
 

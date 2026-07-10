@@ -498,36 +498,45 @@ function EventCard() {
   return (
     <Link
       to="/calendar"
-      className="block bg-amber-800 rounded-xl p-4
-        hover:bg-amber-700 transition-colors group"
+      className="block overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm
+        transition-all duration-200 hover:border-amber-300 hover:shadow-md
+        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40 group"
     >
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-lg bg-white/15 flex items-center justify-center flex-shrink-0">
-          <svg className="w-5 h-5 text-amber-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+      <div className="flex items-center gap-3 bg-stone-100 px-4 py-4">
+        <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl border border-stone-200 bg-white text-stone-600 shadow-sm">
+          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.8">
             <rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
           </svg>
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-xs text-amber-200/80 font-medium mb-0.5">{t('home.eventCard.label')}</p>
-          <p className="text-sm font-bold text-white truncate">{t('home.eventCard.title')}</p>
+          <p className="mb-1 text-[11px] font-semibold tracking-wide text-stone-500">
+            {t('home.eventCard.label')}
+          </p>
+          <p className="truncate text-[15px] font-bold text-neutral-800">
+            {t('home.eventCard.title')}
+          </p>
         </div>
-        <svg className="w-4 h-4 text-white/60 group-hover:text-white transition-colors ml-auto flex-shrink-0"
-          fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-          <polyline points="9 18 15 12 9 6" />
-        </svg>
+        <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-stone-200 bg-white text-stone-400 transition-colors group-hover:border-amber-200 group-hover:text-amber-700">
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </span>
       </div>
 
       {latestEvent && (
-        <div className="mt-3 pt-3 border-t border-white/10 flex flex-col gap-1.5 text-left">
-          <div className="flex items-center gap-2">
-            <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded tracking-wide flex-shrink-0">
+        <div className="border-t border-neutral-200 bg-white px-4 py-4 text-left">
+          <div className="mb-2.5 flex items-center justify-between gap-3">
+            <span className="text-[11px] font-semibold tracking-wide text-neutral-500">
+              {t('home.eventCard.nextEvent')}
+            </span>
+            <span className="flex-shrink-0 rounded-full bg-amber-50 px-2 py-1 text-[10px] font-bold tracking-wide text-amber-800">
               {getDDayText(latestEvent.startDate)}
             </span>
-            <span className="text-xs text-amber-200/80 font-medium">
-              {formatDateRange(latestEvent.startDate, latestEvent.endDate)}
-            </span>
           </div>
-          <p className="text-sm font-semibold text-white line-clamp-2 leading-snug group-hover:text-amber-100 transition-colors">
+          <p className="mb-1.5 text-xs font-medium text-neutral-500">
+            {formatDateRange(latestEvent.startDate, latestEvent.endDate)}
+          </p>
+          <p className="line-clamp-2 text-sm font-semibold leading-relaxed text-neutral-800 transition-colors group-hover:text-amber-900">
             {latestEvent.title}
           </p>
         </div>

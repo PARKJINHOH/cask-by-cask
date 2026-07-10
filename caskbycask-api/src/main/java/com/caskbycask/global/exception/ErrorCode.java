@@ -95,6 +95,10 @@ public enum ErrorCode {
     BOTTLE_IMAGE_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "BOTTLE_003", "이미지는 최대 2장까지 등록할 수 있습니다."),
     BOTTLE_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "BOTTLE_004", "이미지를 찾을 수 없습니다."),
 
+    // Tier List
+    TIER_LIST_NOT_FOUND(HttpStatus.NOT_FOUND, "TIER_001", "티어리스트를 찾을 수 없습니다."),
+    TIER_LIST_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "TIER_002", "티어리스트 이미지를 찾을 수 없습니다."),
+
     // Report
     ALREADY_REPORTED(HttpStatus.CONFLICT, "REPORT_001", "이미 신고한 항목입니다."),
     REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "REPORT_002", "신고 내역을 찾을 수 없습니다."),

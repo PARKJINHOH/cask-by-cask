@@ -3,17 +3,19 @@ import { persist } from 'zustand/middleware'
 import type { AttendanceResult, UserInfo } from '../types/auth.types'
 
 interface AuthState {
-  // accessToken 만 JS 가 보유(헤더용). refresh 토큰은 httpOnly 쿠키에만 존재 → JS 접근 불가.
+  // access token은 만료 시간이 짧으므로 localStorage에 저장하지 않고 메모리에만 둔다.
   accessToken: string | null
   user: UserInfo | null
   isLoggedIn: boolean
-  // 로그인 후 출석 토스트 표시용 — localStorage에 저장하지 않음
+  isAuthReady: boolean
+  // 로그인 직후 출석 토스트 표시용. 비영구 상태라 localStorage에 저장하지 않는다.
   pendingAttendanceToast: AttendanceResult | null
 }
 
 interface AuthActions {
   setAccessToken: (accessToken: string) => void
   setUser: (user: UserInfo) => void
+  setAuthReady: (ready: boolean) => void
   logout: () => void
   setPendingAttendanceToast: (result: AttendanceResult | null) => void
 }
@@ -24,6 +26,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
       accessToken: null,
       user: null,
       isLoggedIn: false,
+      isAuthReady: false,
       pendingAttendanceToast: null,
 
       setAccessToken: (accessToken) =>
@@ -31,11 +34,14 @@ export const useAuthStore = create<AuthState & AuthActions>()(
 
       setUser: (user) => set({ user }),
 
+      setAuthReady: (ready) => set({ isAuthReady: ready }),
+
       logout: () =>
         set({
           accessToken: null,
           user: null,
           isLoggedIn: false,
+          isAuthReady: true,
           pendingAttendanceToast: null,
         }),
 
@@ -44,9 +50,18 @@ export const useAuthStore = create<AuthState & AuthActions>()(
     }),
     {
       name: 'auth-storage',
-      // pendingAttendanceToast는 비영구 상태 — 제외
+      version: 2,
+      migrate: (persistedState) => {
+        const state = persistedState as Partial<AuthState> | undefined
+        const user = state?.user ?? null
+        return {
+          user,
+          isLoggedIn: Boolean(state?.isLoggedIn || user),
+          accessToken: null,
+          isAuthReady: false,
+        }
+      },
       partialize: (state) => ({
-        accessToken: state.accessToken,
         user: state.user,
         isLoggedIn: state.isLoggedIn,
       }),

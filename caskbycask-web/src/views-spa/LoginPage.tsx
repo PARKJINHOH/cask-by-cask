@@ -14,6 +14,7 @@ import { OAUTH_LINK_TICKET_KEY } from '@/domain/auth/oauth'
 import Button from '@/shared/components/Button'
 import Input from '@/shared/components/Input'
 import Modal from '@/shared/components/Modal'
+import RouteFallback from '@/shared/components/RouteFallback'
 import SeoMeta from '@/shared/components/SeoMeta'
 import type { ApiResponse } from '@/shared/types/common.types'
 
@@ -247,6 +248,7 @@ function DormantReactivateModal({
 // ── Page ───────────────────────────────────────────────────
 export default function LoginPage() {
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
+  const isAuthReady = useAuthStore((s) => s.isAuthReady)
   const navigate   = useNavigate()
   const location   = useLocation()
   const { login }  = useAuth()
@@ -299,6 +301,7 @@ export default function LoginPage() {
   const socialLinkNotice = state?.socialLinkNotice
 
   // 이미 로그인된 사용자는 이전 페이지 또는 홈으로
+  if (!isAuthReady) return <RouteFallback />
   if (isLoggedIn) return <Navigate to={from} replace />
 
   const onSubmit = async (data: FormValues) => {

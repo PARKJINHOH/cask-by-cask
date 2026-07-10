@@ -35,10 +35,11 @@ export function useDeleteProfileImage() {
 
 export function useMe() {
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
+  const isAuthReady = useAuthStore((s) => s.isAuthReady)
   return useQuery({
     queryKey: ['me'],
     queryFn: () => userApi.getMe().then((res) => res.data.data!),
-    enabled: isLoggedIn,
+    enabled: isAuthReady && isLoggedIn,
   })
 }
 
@@ -114,10 +115,11 @@ export function useVerifyAdult() {
 // ── 소셜 연동 ───────────────────────────────────────────────
 export function useSocialAccounts() {
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
+  const isAuthReady = useAuthStore((s) => s.isAuthReady)
   return useQuery({
     queryKey: ['socialAccounts'],
     queryFn: () => userApi.getSocialAccounts().then((res) => res.data.data!),
-    enabled: isLoggedIn,
+    enabled: isAuthReady && isLoggedIn,
   })
 }
 
@@ -133,10 +135,11 @@ export function useUnlinkSocial() {
 
 export function useBlockedUsers() {
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
+  const isAuthReady = useAuthStore((s) => s.isAuthReady)
   return useQuery({
     queryKey: ['blockedUsers'],
     queryFn: () => userApi.getBlockedUsers().then((res) => res.data.data ?? []),
-    enabled: isLoggedIn,
+    enabled: isAuthReady && isLoggedIn,
   })
 }
 

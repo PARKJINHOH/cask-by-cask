@@ -9,7 +9,7 @@ const krw = new Intl.NumberFormat('ko-KR')
 /** 술 1개당 1개의 목표가 알림을 설정하는 한 줄 인라인 폼 */
 export default function PriceAlertInline({ spiritId }: { spiritId: number }) {
   const { t } = useTranslation()
-  const { isLoggedIn } = useAuthStore()
+  const { isLoggedIn, isAuthReady } = useAuthStore()
   const { data: myAlerts } = useMyPriceAlerts()
   const upsert = useUpsertPriceAlert()
   const remove = useDeletePriceAlert()
@@ -18,6 +18,8 @@ export default function PriceAlertInline({ spiritId }: { spiritId: number }) {
   const [value, setValue] = useState('')
 
   const existing = myAlerts?.find((a) => a.spiritId === spiritId && a.isActive)
+
+  if (!isAuthReady) return null
 
   if (!isLoggedIn) {
     return (

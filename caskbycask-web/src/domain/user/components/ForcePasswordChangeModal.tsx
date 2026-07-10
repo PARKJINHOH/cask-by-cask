@@ -36,6 +36,7 @@ type FormValues = z.infer<typeof schema>
 export default function ForcePasswordChangeModal() {
   const { t } = useTranslation()
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
+  const isAuthReady = useAuthStore((s) => s.isAuthReady)
   const { data: profile } = useMe()
   const updatePassword = useUpdatePassword()
   const qc = useQueryClient()
@@ -48,7 +49,7 @@ export default function ForcePasswordChangeModal() {
     setError,
   } = useForm<FormValues>({ resolver: zodResolver(schema) })
 
-  if (!isLoggedIn || !profile?.mustChangePassword) return null
+  if (!isAuthReady || !isLoggedIn || !profile?.mustChangePassword) return null
 
   const onSubmit = async (values: FormValues) => {
     try {

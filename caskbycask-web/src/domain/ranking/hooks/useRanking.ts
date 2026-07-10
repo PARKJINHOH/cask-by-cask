@@ -14,10 +14,11 @@ export function useRanking(period: RankingPeriod, page: number) {
 
 export function useMyRank(period: RankingPeriod) {
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
+  const isAuthReady = useAuthStore((s) => s.isAuthReady)
   return useQuery({
     queryKey: ['ranking', 'me', period],
     queryFn: () => rankingApi.getMyRank(period).then((res) => res.data.data!),
-    enabled: isLoggedIn,
+    enabled: isAuthReady && isLoggedIn,
     staleTime: 60_000,
   })
 }
