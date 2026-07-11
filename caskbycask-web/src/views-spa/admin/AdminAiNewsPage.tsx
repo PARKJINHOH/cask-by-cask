@@ -277,7 +277,7 @@ function SettingsTab() {
       <Metric label="출력 토큰" value={(usage?.outputTokens ?? 0).toLocaleString()} />
       <Metric label="월 토큰 합계" value={`${((usage?.inputTokens ?? 0) + (usage?.outputTokens ?? 0)).toLocaleString()} / ${usage?.openaiTokenLimit?.toLocaleString() ?? '무제한'}`} />
       <Metric label="AI 이미지" value={`${usage?.imageCount ?? 0} / ${usage?.openaiImageLimit ?? '무제한'}장`} />
-      <Metric label="예상 OpenAI 비용" value={`$${Number(usage?.estimatedCostUsd ?? 0).toFixed(4)}`} />
+      <Metric label="예상 Gemini 비용" value={`$${Number(usage?.estimatedCostUsd ?? 0).toFixed(4)}`} />
     </div>
     <form onSubmit={(e) => { e.preventDefault(); save.mutate(form) }} className="space-y-5 rounded-xl bg-white p-5 shadow-sm">
       <div className="grid gap-4 sm:grid-cols-3">
@@ -290,9 +290,9 @@ function SettingsTab() {
         <NumberField label="정보 글 간격(시간)" value={form.tipIntervalHours} onChange={(v) => setForm({ ...form, tipIntervalHours: v })} />
         <NumberField label="신뢰도 기준(0~1)" value={form.confidenceThreshold} step="0.01" onChange={(v) => setForm({ ...form, confidenceThreshold: v })} />
         <NumberField label="Tavily 월 한도" value={form.tavilyMonthlyCreditLimit} onChange={(v) => setForm({ ...form, tavilyMonthlyCreditLimit: v })} />
-        <NumberField label="OpenAI 월 예산(USD, 0=모니터링)" value={form.openaiMonthlyBudgetUsd ?? 0} step="0.01" onChange={(v) => setForm({ ...form, openaiMonthlyBudgetUsd: v > 0 ? v : null })} />
-        <NumberField label="OpenAI 월 토큰 한도(0=무제한)" value={form.openaiMonthlyTokenLimit ?? 0} onChange={(v) => setForm({ ...form, openaiMonthlyTokenLimit: v > 0 ? v : null })} />
-        <NumberField label="OpenAI 월 이미지 한도(0=무제한)" value={form.openaiMonthlyImageLimit ?? 0} onChange={(v) => setForm({ ...form, openaiMonthlyImageLimit: v > 0 ? v : null })} />
+        <NumberField label="Gemini 월 예산(USD, 0=모니터링)" value={form.openaiMonthlyBudgetUsd ?? 0} step="0.01" onChange={(v) => setForm({ ...form, openaiMonthlyBudgetUsd: v > 0 ? v : null })} />
+        <NumberField label="Gemini 월 토큰 한도(0=무제한)" value={form.openaiMonthlyTokenLimit ?? 0} onChange={(v) => setForm({ ...form, openaiMonthlyTokenLimit: v > 0 ? v : null })} />
+        <NumberField label="Gemini 월 이미지 한도(0=무제한)" value={form.openaiMonthlyImageLimit ?? 0} onChange={(v) => setForm({ ...form, openaiMonthlyImageLimit: v > 0 ? v : null })} />
         <NumberField label="위스키 비율" value={form.whiskyRatio} onChange={(v) => setForm({ ...form, whiskyRatio: v })} />
         <NumberField label="와인 비율" value={form.wineRatio} onChange={(v) => setForm({ ...form, wineRatio: v })} />
         <NumberField label="꼬냑 비율" value={form.cognacRatio} onChange={(v) => setForm({ ...form, cognacRatio: v })} />

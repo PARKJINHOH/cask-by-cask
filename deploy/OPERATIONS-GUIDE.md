@@ -515,13 +515,14 @@ AI 소식 크롤러의 비밀값은 API의 `/app/env/api.env`가 아니라 `/app
 | `CASKBYCASK_API_URL` | 같은 서버 API. 운영 권장값 `http://127.0.0.1:8080` |
 | `CASKBYCASK_INTERNAL_KEY` | API env와 동일한 내부 인증 키 |
 | `TAVILY_API_KEY` | 2시간 주기 한국어·영어 웹 검색 |
-| `OPENAI_API_KEY` | 후보 분류, 원고 및 대표 이미지 생성 |
+| `GEMINI_API_KEY` | Google AI Studio 키. 후보 분류, 원고 및 대표 이미지 생성 |
 | `AI_NEWS_CLASSIFIER_MODEL` | 후보·중복 분류 모델 |
 | `AI_NEWS_WRITER_MODEL` | 최종 근거 검증·한국어 원고 모델 |
 | `AI_NEWS_IMAGE_MODEL` | 팁/정보 글 대표 이미지 모델 |
-| `AI_NEWS_OPENAI_HARD_MONTHLY_USD` | 관리자 DB 설정과 별개의 절대 안전상한. `0`이면 비활성 |
-| `AI_NEWS_OPENAI_HARD_MONTHLY_TOKENS` | 월 토큰 절대 안전상한. `0`이면 비활성 |
-| `AI_NEWS_OPENAI_HARD_MONTHLY_IMAGES` | 월 생성 이미지 절대 안전상한. `0`이면 비활성 |
+| `AI_NEWS_GEMINI_FREE_TIER` | 텍스트 무료 티어 사용 여부. 기본 `true` |
+| `AI_NEWS_GEMINI_HARD_MONTHLY_USD` | 관리자 DB 설정과 별개의 절대 안전상한. `0`이면 비활성 |
+| `AI_NEWS_GEMINI_HARD_MONTHLY_TOKENS` | 월 토큰 절대 안전상한. `0`이면 비활성 |
+| `AI_NEWS_GEMINI_HARD_MONTHLY_IMAGES` | 월 생성 이미지 절대 안전상한. `0`이면 비활성 |
 
 배포 및 확인:
 
@@ -536,7 +537,7 @@ tail -n 100 /app/caskbycask-crawler/logs/ai-news.log
 - 코드 배포는 `.env`, `.venv`, `targets.json`, SQLite, `logs/`, `temp/`를 덮어쓰지 않는다.
 - 관리자 화면 기본값은 자동화 OFF·자동발행 OFF·드라이런 ON이다.
 - 드라이런 3회와 원고 10건 확인 후 `자동화 → 조건부 자동발행 → 드라이런 해제` 순으로 켠다.
-- Tavily 기본 월 한도는 900크레딧이다. OpenAI는 토큰/이미지/예상비용을 화면에서 확인하고 필요할 때 월 상한을 입력한다.
+- Tavily 기본 월 한도는 900크레딧이다. Gemini는 토큰/이미지/예상비용을 화면에서 확인하고 필요할 때 월 상한을 입력한다. 텍스트 무료 티어에서도 대표 이미지 생성은 유료다.
 - 관리자 비용·토큰·이미지 상한은 80%에서 경고하고 100%에서 신규 호출을 중단한다. 환경변수 절대 상한도 별도로 적용된다.
 - 수동 롤백은 `previous`가 가리키는 릴리스를 확인한 뒤 `current` 링크를 해당 경로로 교체한다.
 
@@ -555,7 +556,7 @@ tail -n 100 /app/caskbycask-crawler/logs/ai-news.log
 | **API 비정상 종료** | 크래시·OOM·비정상 exit (`systemctl stop`/배포 재시작은 제외) | `notify-systemd.sh` (ExecStopPost) | 서버 |
 | **API 기동** | 서비스 시작(배포·장애복구) | `notify-systemd.sh` (ExecStartPost) | 서버 |
 | **디스크/SSL** | 디스크 임계 초과·SSL 만료 임박 | `check-resources.sh` | 서버(cron) |
-| **크롤러 장애** | 네이버 카페 쿠키/인증, 내부 API 토큰, OpenAI 인증·quota, 게시글 처리 오류 | `caskbycask-crawler/alerts/slack_notifier.py` | 서버(cron) |
+| **크롤러 장애** | 네이버 카페 쿠키/인증, 내부 API 토큰, OpenAI/Gemini 인증·quota, 게시글 처리 오류 | `caskbycask-crawler/alerts/slack_notifier.py` | 서버(cron) |
 | ~~서비스 다운~~ ⏸️보류 | `/healthz` 무응답 = VM 통째 다운 | `synology/healthcheck.sh` | 시놀로지 |
 
 > ⏸️ **서비스 다운(외부 헬스체크)은 현재 보류.** 이 알람은 크롤러용 시놀로지 DS220+ 가 상시 켜져 있다는 전제인데, `caskbycask-crawler` 가 아직 운영에 반영되지 않았다. 크롤러를 운영에 올릴 때 함께 활성화한다(5번 절차). 그 전까지 **VM 통째 다운 감지는 공백** — 서버 내부 알람(ERROR·종료·디스크)은 VM 이 죽으면 못 뜨므로, 필요하면 임시로 UptimeRobot 등 무료 외부 모니터로 메울 수 있다.

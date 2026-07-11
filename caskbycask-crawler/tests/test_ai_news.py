@@ -13,12 +13,19 @@ from unittest.mock import Mock, patch
 requests = types.ModuleType("requests")
 requests.post = Mock()
 sys.modules.setdefault("requests", requests)
-openai = types.ModuleType("openai")
-openai.OpenAI = Mock()
-sys.modules.setdefault("openai", openai)
+google = types.ModuleType("google")
+genai = types.ModuleType("google.genai")
+genai_types = types.ModuleType("google.genai.types")
+genai.Client = Mock()
+genai_types.GenerateContentConfig = lambda **kwargs: kwargs
+google.genai = genai
+genai.types = genai_types
+sys.modules.setdefault("google", google)
+sys.modules.setdefault("google.genai", genai)
+sys.modules.setdefault("google.genai.types", genai_types)
 
 from news_models import DraftArticle, SearchSource, UsageAccumulator, canonicalize_url, local_datetime_string
-from news_openai import OpenAiNewsWriter
+from news_gemini import GeminiNewsWriter
 from news_tavily import TavilyNewsSearch
 from news_targets import target_from_config
 
@@ -140,10 +147,32 @@ class CommunityTargetTest(unittest.TestCase):
         self.assertEqual("네이버 카페", target["name"])
 
 
-class OpenAiNewsWriterTest(unittest.TestCase):
+class GeminiNewsWriterTest(unittest.TestCase):
+    def test_json_response_and_thinking_tokens_are_counted(self) -> None:
+        response = types.SimpleNamespace(
+            text='{"ok": true}',
+            usage_metadata=types.SimpleNamespace(
+                prompt_token_count=11,
+                candidates_token_count=7,
+                thoughts_token_count=5,
+            ),
+        )
+        generate = Mock(return_value=response)
+        writer = GeminiNewsWriter.__new__(GeminiNewsWriter)
+        writer.client = types.SimpleNamespace(models=types.SimpleNamespace(generate_content=generate))
+        writer.usage = UsageAccumulator()
+
+        result = writer._request_json("gemini-test-lite", "system", {"value": "테스트"})
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(11, writer.usage.input_tokens)
+        self.assertEqual(12, writer.usage.output_tokens)
+        config = generate.call_args.kwargs["config"]
+        self.assertEqual("application/json", config["response_mime_type"])
+
     def test_final_semantic_duplicate_judgement_is_normalized(self) -> None:
-        writer = OpenAiNewsWriter.__new__(OpenAiNewsWriter)
-        writer.classifier_model = "gpt-test-mini"
+        writer = GeminiNewsWriter.__new__(GeminiNewsWriter)
+        writer.classifier_model = "gemini-test-lite"
         writer._request_json = Mock(return_value={
             "duplicate": True,
             "semantic_similarity": 0.93,
@@ -166,11 +195,12 @@ class OpenAiNewsWriterTest(unittest.TestCase):
         self.assertEqual(41, result["matchedArticleId"])
 
     def test_image_response_is_written_and_usage_is_counted(self) -> None:
-        writer = OpenAiNewsWriter.__new__(OpenAiNewsWriter)
-        writer.client = types.SimpleNamespace(images=types.SimpleNamespace(generate=Mock(return_value=
-            types.SimpleNamespace(data=[types.SimpleNamespace(b64_json=base64.b64encode(b"image").decode())])
+        writer = GeminiNewsWriter.__new__(GeminiNewsWriter)
+        writer.client = types.SimpleNamespace(interactions=types.SimpleNamespace(create=Mock(return_value=
+            types.SimpleNamespace(output_image=types.SimpleNamespace(
+                data=base64.b64encode(b"image").decode()))
         )))
-        writer.image_model = "gpt-image-test"
+        writer.image_model = "gemini-image-test"
         writer.image_estimated_cost_usd = 0.12
         writer.usage = UsageAccumulator()
 

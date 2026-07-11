@@ -16,7 +16,7 @@ from news_config import NewsSettings
 from news_community import collect_community_sources
 from news_images import fetch_approved_official_image
 from news_models import DraftArticle, SearchSource, canonicalize_url, local_datetime_string
-from news_openai import OpenAiNewsWriter
+from news_gemini import GeminiNewsWriter
 from news_tavily import TavilyNewsSearch
 from uploader.ai_news_api import AiNewsApi
 
@@ -115,7 +115,7 @@ def _duplicate_payload(topic: dict, draft: DraftArticle | None, reason: str,
 
 
 def _record_usage(api: AiNewsApi, run_id: int, settings: NewsSettings,
-                  writer: OpenAiNewsWriter, tavily_credits: int) -> None:
+                  writer: GeminiNewsWriter, tavily_credits: int) -> None:
     api.record_usage({
         "runId": run_id,
         "provider": "TAVILY",
@@ -138,9 +138,11 @@ def _record_usage(api: AiNewsApi, run_id: int, settings: NewsSettings,
                 values["input"] * settings.writer_input_usd_per_million
                 + values["output"] * settings.writer_output_usd_per_million
             ) / 1_000_000
+        if settings.gemini_free_tier:
+            estimated = 0
         api.record_usage({
             "runId": run_id,
-            "provider": "OPENAI",
+            "provider": "GEMINI",
             "modelName": model,
             "inputTokens": values["input"],
             "outputTokens": values["output"],
@@ -152,7 +154,7 @@ def _record_usage(api: AiNewsApi, run_id: int, settings: NewsSettings,
     if writer.usage.image_count:
         api.record_usage({
             "runId": run_id,
-            "provider": "OPENAI",
+            "provider": "GEMINI",
             "modelName": settings.image_model,
             "inputTokens": 0,
             "outputTokens": 0,
@@ -163,7 +165,7 @@ def _record_usage(api: AiNewsApi, run_id: int, settings: NewsSettings,
         })
 
 
-def _process_draft(api: AiNewsApi, writer: OpenAiNewsWriter, draft: DraftArticle,
+def _process_draft(api: AiNewsApi, writer: GeminiNewsWriter, draft: DraftArticle,
                    sources: list[SearchSource], temp_dir: Path, config: dict, log) -> dict | None:
     selected = [sources[i] for i in draft.source_indexes if 0 <= i < len(sources)]
     canonical_hash = _canonical_hash(selected) if draft.article_type == "RELEASE_NEWS" else None
@@ -202,7 +204,7 @@ def _process_draft(api: AiNewsApi, writer: OpenAiNewsWriter, draft: DraftArticle
             if image_path:
                 draft.image_url = api.upload_image(image_path)
                 draft.image_kind = "AI_GENERATED"
-                draft.image_rights_evidence = "OpenAI 생성 이미지; 비브랜드·무문자 프롬프트 적용"
+                draft.image_rights_evidence = "Google Gemini 생성 이미지; 비브랜드·무문자 프롬프트 및 SynthID 적용"
         finally:
             if image_path:
                 image_path.unlink(missing_ok=True)
@@ -244,41 +246,41 @@ def run() -> int:
                               f"remaining={remaining_tavily_credits}")
         return 0
     estimated_cost = float(usage.get("estimatedCostUsd", 0) or 0)
-    admin_openai_budget = float(usage.get("openaiBudgetUsd", 0) or 0)
-    if admin_openai_budget > 0 and estimated_cost >= admin_openai_budget:
-        notifier.warning_once("ai_news_openai_admin_budget", "AI 소식 OpenAI 관리자 한도 도달",
+    admin_ai_budget = float(usage.get("openaiBudgetUsd", 0) or 0)
+    if admin_ai_budget > 0 and estimated_cost >= admin_ai_budget:
+        notifier.warning_once("ai_news_gemini_admin_budget", "AI 소식 Gemini 관리자 한도 도달",
                               json.dumps(usage, ensure_ascii=False))
         return 0
-    if admin_openai_budget > 0 and estimated_cost / admin_openai_budget >= 0.8:
-        notifier.warning_once("ai_news_openai_admin_budget_80", "AI 소식 OpenAI 관리자 한도 80% 도달",
+    if admin_ai_budget > 0 and estimated_cost / admin_ai_budget >= 0.8:
+        notifier.warning_once("ai_news_gemini_admin_budget_80", "AI 소식 Gemini 관리자 한도 80% 도달",
                               json.dumps(usage, ensure_ascii=False))
     used_tokens = int(usage.get("inputTokens", 0)) + int(usage.get("outputTokens", 0))
     admin_token_limit = int(usage.get("openaiTokenLimit", 0) or 0)
     if admin_token_limit > 0 and used_tokens >= admin_token_limit:
-        notifier.warning_once("ai_news_openai_token_limit", "AI 소식 OpenAI 토큰 한도 도달",
+        notifier.warning_once("ai_news_gemini_token_limit", "AI 소식 Gemini 토큰 한도 도달",
                               json.dumps(usage, ensure_ascii=False))
         return 0
     if admin_token_limit > 0 and used_tokens / admin_token_limit >= 0.8:
-        notifier.warning_once("ai_news_openai_token_limit_80", "AI 소식 OpenAI 토큰 한도 80% 도달",
+        notifier.warning_once("ai_news_gemini_token_limit_80", "AI 소식 Gemini 토큰 한도 80% 도달",
                               json.dumps(usage, ensure_ascii=False))
     used_images = int(usage.get("imageCount", 0))
     admin_image_limit = int(usage.get("openaiImageLimit", 0) or 0)
     if admin_image_limit > 0 and used_images >= admin_image_limit:
-        notifier.warning_once("ai_news_openai_image_limit", "AI 소식 OpenAI 이미지 한도 도달",
+        notifier.warning_once("ai_news_gemini_image_limit", "AI 소식 Gemini 이미지 한도 도달",
                               json.dumps(usage, ensure_ascii=False))
         return 0
     if admin_image_limit > 0 and used_images / admin_image_limit >= 0.8:
-        notifier.warning_once("ai_news_openai_image_limit_80", "AI 소식 OpenAI 이미지 한도 80% 도달",
+        notifier.warning_once("ai_news_gemini_image_limit_80", "AI 소식 Gemini 이미지 한도 80% 도달",
                               json.dumps(usage, ensure_ascii=False))
     if settings.hard_monthly_cost_usd > 0 and estimated_cost >= settings.hard_monthly_cost_usd:
-        notifier.warning_once("ai_news_openai_hard_budget", "AI 소식 OpenAI 절대 한도 도달", json.dumps(usage, ensure_ascii=False))
+        notifier.warning_once("ai_news_gemini_hard_budget", "AI 소식 Gemini 절대 한도 도달", json.dumps(usage, ensure_ascii=False))
         return 0
     if settings.hard_monthly_tokens > 0 and used_tokens >= settings.hard_monthly_tokens:
-        notifier.warning_once("ai_news_openai_hard_tokens", "AI 소식 OpenAI 절대 토큰 한도 도달",
+        notifier.warning_once("ai_news_gemini_hard_tokens", "AI 소식 Gemini 절대 토큰 한도 도달",
                               json.dumps(usage, ensure_ascii=False))
         return 0
     if settings.hard_monthly_images > 0 and used_images >= settings.hard_monthly_images:
-        notifier.warning_once("ai_news_openai_hard_images", "AI 소식 OpenAI 절대 이미지 한도 도달",
+        notifier.warning_once("ai_news_gemini_hard_images", "AI 소식 Gemini 절대 이미지 한도 도달",
                               json.dumps(usage, ensure_ascii=False))
         return 0
 
@@ -290,9 +292,9 @@ def run() -> int:
              "duplicateCount": 0, "errorCount": 0}
     search = TavilyNewsSearch(settings.tavily_api_key, settings.http_timeout_sec,
                               settings.search_results_per_query)
-    writer = OpenAiNewsWriter(settings.openai_api_key, settings.classifier_model,
+    writer = GeminiNewsWriter(settings.gemini_api_key, settings.classifier_model,
                               settings.writer_model, settings.image_model,
-                              settings.openai_base_url, settings.image_estimated_cost_usd)
+                              settings.image_estimated_cost_usd)
     fatal_error = None
     try:
         now_year = datetime.now(timezone.utc).year

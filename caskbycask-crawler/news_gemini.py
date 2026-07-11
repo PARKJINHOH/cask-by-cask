@@ -6,7 +6,8 @@ import re
 from pathlib import Path
 from typing import Any
 
-from openai import OpenAI
+from google import genai
+from google.genai import types
 
 from news_models import DraftArticle, SearchSource, UsageAccumulator
 
@@ -22,10 +23,10 @@ WRITING_RULES = """
 """.strip()
 
 
-class OpenAiNewsWriter:
+class GeminiNewsWriter:
     def __init__(self, api_key: str, classifier_model: str, writer_model: str,
-                 image_model: str, base_url: str = "", image_estimated_cost_usd: float = 0.0):
-        self.client = OpenAI(api_key=api_key, base_url=base_url or "https://api.openai.com/v1")
+                 image_model: str, image_estimated_cost_usd: float = 0.0):
+        self.client = genai.Client(api_key=api_key)
         self.classifier_model = classifier_model
         self.writer_model = writer_model
         self.image_model = image_model
@@ -177,25 +178,23 @@ JSON {"topics":[{"title":"한국어 50자 이하","normalized_key":"영문-소�
             prompt.strip() + "\nLandscape 3:2 editorial illustration, no text, no logo, no trademark, "
             "no branded bottle, no recognizable product label."
         )
-        kwargs = {
-            "model": self.image_model,
-            "prompt": safe_prompt,
-            "size": "1536x1024",
-            "quality": "medium",
-            "n": 1,
-        }
-        suffix = ".webp"
-        try:
-            result = self.client.images.generate(**kwargs, output_format="webp")
-        except TypeError:
-            result = self.client.images.generate(**kwargs)
-            suffix = ".png"
-        data = result.data[0]
-        encoded = getattr(data, "b64_json", None)
+        result = self.client.interactions.create(
+            model=self.image_model,
+            input=safe_prompt,
+            response_format={
+                "type": "image",
+                "mime_type": "image/png",
+                "aspect_ratio": "3:2",
+                "image_size": "1K",
+            },
+        )
+        output_image = getattr(result, "output_image", None)
+        encoded = getattr(output_image, "data", None)
         if not encoded:
-            raise RuntimeError("OpenAI 이미지 응답에 base64 데이터가 없습니다.")
-        path = output_dir / f"{self._safe_key(stem)[:60] or 'ai-news'}{suffix}"
-        path.write_bytes(base64.b64decode(encoded))
+            raise RuntimeError("Gemini 이미지 응답에 base64 데이터가 없습니다.")
+        image_bytes = base64.b64decode(encoded)
+        path = output_dir / f"{self._safe_key(stem)[:60] or 'ai-news'}.png"
+        path.write_bytes(image_bytes)
         self.usage.add_image(self.image_estimated_cost_usd)
         return path
 
@@ -214,20 +213,22 @@ JSON {"topics":[{"title":"한국어 50자 이하","normalized_key":"영문-소�
 
     def _request_json(self, model: str, system: str, payload: dict[str, Any]) -> dict[str, Any]:
         user_text = json.dumps(payload, ensure_ascii=False)
-        response = None
-        try:
-            response = self.client.responses.create(model=model, instructions=system, input=user_text)
-            text = response.output_text
-        except (AttributeError, TypeError):
-            response = self.client.chat.completions.create(
-                model=model,
-                messages=[{"role": "system", "content": system}, {"role": "user", "content": user_text}],
-                response_format={"type": "json_object"},
-            )
-            text = response.choices[0].message.content or "{}"
-        usage = getattr(response, "usage", None)
-        input_tokens = int(getattr(usage, "input_tokens", getattr(usage, "prompt_tokens", 0)) or 0)
-        output_tokens = int(getattr(usage, "output_tokens", getattr(usage, "completion_tokens", 0)) or 0)
+        response = self.client.models.generate_content(
+            model=model,
+            contents=user_text,
+            config=types.GenerateContentConfig(
+                system_instruction=system,
+                response_mime_type="application/json",
+                temperature=0.2,
+            ),
+        )
+        text = response.text or "{}"
+        usage = getattr(response, "usage_metadata", None)
+        input_tokens = int(getattr(usage, "prompt_token_count", 0) or 0)
+        output_tokens = (
+            int(getattr(usage, "candidates_token_count", 0) or 0)
+            + int(getattr(usage, "thoughts_token_count", 0) or 0)
+        )
         self.usage.add_text(model, input_tokens, output_tokens)
         return self._parse_json(text)
 
@@ -238,7 +239,7 @@ JSON {"topics":[{"title":"한국어 50자 이하","normalized_key":"영문-소�
             value = re.sub(r"^```(?:json)?\s*|\s*```$", "", value, flags=re.IGNORECASE)
         parsed = json.loads(value)
         if not isinstance(parsed, dict):
-            raise RuntimeError("OpenAI JSON 응답이 객체가 아닙니다.")
+            raise RuntimeError("Gemini JSON 응답이 객체가 아닙니다.")
         return parsed
 
     @staticmethod
