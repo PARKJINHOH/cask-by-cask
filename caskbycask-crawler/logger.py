@@ -28,7 +28,7 @@ def setup_logging(log_path: str, level: int = logging.INFO) -> logging.Logger:
 
     # 외부 라이브러리 잡음 억제
     logging.getLogger("urllib3").setLevel(logging.WARNING)
-    logging.getLogger("openai").setLevel(logging.WARNING)
+    logging.getLogger("google_genai").setLevel(logging.WARNING)
     logging.getLogger("httpx").setLevel(logging.WARNING)
 
     return root

@@ -30,12 +30,9 @@ class NewsSettings:
     classifier_output_usd_per_million: float = float(os.getenv("AI_NEWS_CLASSIFIER_OUTPUT_USD_PER_MILLION", "1.50"))
     writer_input_usd_per_million: float = float(os.getenv("AI_NEWS_WRITER_INPUT_USD_PER_MILLION", "1.50"))
     writer_output_usd_per_million: float = float(os.getenv("AI_NEWS_WRITER_OUTPUT_USD_PER_MILLION", "9.00"))
-    hard_monthly_cost_usd: float = float(os.getenv(
-        "AI_NEWS_GEMINI_HARD_MONTHLY_USD", os.getenv("AI_NEWS_OPENAI_HARD_MONTHLY_USD", "0")))
-    hard_monthly_tokens: int = int(os.getenv(
-        "AI_NEWS_GEMINI_HARD_MONTHLY_TOKENS", os.getenv("AI_NEWS_OPENAI_HARD_MONTHLY_TOKENS", "0")))
-    hard_monthly_images: int = int(os.getenv(
-        "AI_NEWS_GEMINI_HARD_MONTHLY_IMAGES", os.getenv("AI_NEWS_OPENAI_HARD_MONTHLY_IMAGES", "0")))
+    hard_monthly_cost_usd: float = float(os.getenv("AI_NEWS_GEMINI_HARD_MONTHLY_USD", "0"))
+    hard_monthly_tokens: int = int(os.getenv("AI_NEWS_GEMINI_HARD_MONTHLY_TOKENS", "0"))
+    hard_monthly_images: int = int(os.getenv("AI_NEWS_GEMINI_HARD_MONTHLY_IMAGES", "0"))
     http_timeout_sec: int = int(os.getenv("HTTP_TIMEOUT_SEC", "30"))
     news_log_path: str = os.getenv("AI_NEWS_LOG_PATH", "./logs/ai-news.log")
     dry_run_override: bool = _bool("AI_NEWS_FORCE_DRY_RUN", False)

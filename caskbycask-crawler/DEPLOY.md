@@ -6,8 +6,7 @@ Oracle Cloud (Ubuntu 24.04 LTS, aarch64 또는 x86_64) 운영 서버 기준.
 ---
 
 ## 0. 사전 준비 체크리스트
-- [ ] OpenAI API 키 (`sk-...`)
-- [ ] Google AI Studio Gemini API 키 (AI 소식·팁용)
+- [ ] Google AI Studio Gemini API 키 (핫딜·AI 소식·팁 공용)
 - [ ] 백엔드(Oracle Cloud)의 `api.env`에 `CASKBYCASK_INTERNAL_KEY` 설정(크롤러와 동일값)
 - [ ] 네이버 카페 로그인 쿠키(NID_AUT/NID_SES), 수집할 카페의 `club_id`/`menu_id`
 - [ ] 수집할 디시 갤러리 `board_id`
@@ -60,8 +59,7 @@ nano .env      # 또는 vi .env
 필수로 채울 값:
 | 키 | 설명 |
 |---|---|
-| `OPENAI_API_KEY` | OpenAI 키 |
-| `GEMINI_API_KEY` | Google AI Studio 키. AI 소식·팁 분류·작성·이미지 생성에 사용 |
+| `GEMINI_API_KEY` | Google AI Studio 키. 핫딜·AI 소식·팁 분석·작성·이미지 생성에 공용 사용 |
 | `AI_NEWS_GEMINI_FREE_TIER` | 텍스트 무료 티어 사용 여부. 기본 `true` |
 | `AI_NEWS_GEMINI_HARD_MONTHLY_USD` | 관리자 설정과 별개의 월 비용 절대 상한 (`0` 비활성) |
 | `AI_NEWS_GEMINI_HARD_MONTHLY_TOKENS` | 월 토큰 절대 상한 (`0` 비활성) |
@@ -69,13 +67,13 @@ nano .env      # 또는 vi .env
 | `CASKBYCASK_API_URL` | `http://127.0.0.1:8080` (API가 같은 서버에 있으므로 로컬 호출 권장) |
 | `CASKBYCASK_INTERNAL_KEY` | **백엔드와 동일한** 시크릿(긴 랜덤 문자열) |
 | `NAVER_NID_AUT`, `NAVER_NID_SES` | 네이버 로그인 쿠키 (아래 6번) |
-| `OPENAI_MODEL` | 분석 모델. 기본 `gpt-4o-mini` |
-| `OPENAI_REQUEST_INTERVAL_SEC` | AI API 호출 시작 간격. 무료 티어 보호용 기본 `5`초 |
+| `GEMINI_MODEL` | 핫딜 분석 모델. 기본 `gemini-3.1-flash-lite` |
+| `GEMINI_REQUEST_INTERVAL_SEC` | 핫딜 AI API 호출 시작 간격. 무료 티어 보호용 기본 `5`초 |
 | `ALLOWED_DEAL_CATEGORIES` | 업로드 허용 주류 카테고리. 기본 `WHISKY,COGNAC,WINE,TEQUILA,RUM` |
 | `MAX_AI_ANALYSIS_PER_RUN` | 1회 실행에서 AI 분석까지 진행할 최대 건수. 초과분은 DB 대기열로 이월 |
 | `DUPLICATE_LOOKBACK_HOURS` | 같은 딜 fingerprint 를 비교할 최근 시간 범위. 기본 `72`시간 |
 | `DUPLICATE_JACCARD_THRESHOLD`, `DUPLICATE_NGRAM_THRESHOLD` | 로컬 제목 유사도 기준. 기본 `0.58`, `0.62` |
-| `SLACK_WEBHOOK_URL` | 선택. 네이버 카페/API/OpenAI 문제를 Slack으로 알림 |
+| `SLACK_WEBHOOK_URL` | 선택. 네이버 카페/API/Gemini 문제를 Slack으로 알림 |
 | `SLACK_CHANNEL` | 선택. 기본 `#server-prd` |
 
 경로 설정 (Ubuntu 서버 경로에 맞춤):
@@ -200,7 +198,7 @@ GitHub Actions의 `target=crawler` 또는 `target=all`은 새 릴리스를 `/app
 | Slack 알림이 안 옴 | `SLACK_WEBHOOK_URL` 값, Slack Incoming Webhook 앱의 채널 권한, `SLACK_ALERTS_ENABLED=true` 확인 |
 | AI 비용 급증 | 핫딜은 `MAX_NEW_POSTS_PER_RUN`, `MAX_IMAGES_PER_POST`, AI 소식은 관리자 월 한도와 `AI_NEWS_GEMINI_HARD_MONTHLY_*` 조정 |
 | 같은 딜이 여러 건 올라옴 | `DUPLICATE_LOOKBACK_HOURS` 상향 또는 `DUPLICATE_JACCARD_THRESHOLD`, `DUPLICATE_NGRAM_THRESHOLD` 하향 |
-| 핫딜 AI 429 | `OPENAI_REQUEST_INTERVAL_SEC` 확인 또는 상향 (기본 5초) |
+| 핫딜 AI 429 | `GEMINI_REQUEST_INTERVAL_SEC` 확인 또는 상향 (기본 5초) |
 | AI 소식 Gemini 429 | Google AI Studio 프로젝트의 무료 티어 rate limit 확인. 다음 2시간 실행을 기다리거나 후보 수를 낮춤 |
 | 크롤링 차단/429 | `REQUEST_DELAY_SEC` 상향 (예: 2.0~3.0) |
 | 로그 위치 | `/app/caskbycask-crawler/logs/crawler.log` |

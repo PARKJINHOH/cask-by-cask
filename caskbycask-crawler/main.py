@@ -1,7 +1,7 @@
 """주류 핫딜 자동 수집 — 오케스트레이터(엔트리포인트).
 
 흐름: 스크래퍼 목록 → 1차 제목 필터 → 중복 제외 → 본문/이미지 수집
-      → 이미지 임시저장→base64→삭제 → OpenAI 분석 → confidence 통과 시 백엔드 업로드.
+      → 이미지 임시저장→base64→삭제 → Gemini 분석 → confidence 통과 시 백엔드 업로드.
 게시글 단위로 예외를 격리해, 한 건 실패가 전체 실행을 멈추지 않게 한다.
 시놀로지 작업 스케줄러가 20분마다 이 스크립트를 호출한다.
 """
@@ -11,7 +11,7 @@ import sys
 import traceback
 
 from alerts.slack_notifier import SlackNotifier
-from analyzer.openai_analyzer import OpenAIAnalyzer
+from analyzer.gemini_analyzer import GeminiAnalyzer
 from config import load_settings
 from db.seen_posts import SeenPostStore
 from filters.deal_deduplicator import DealDeduplicator
@@ -136,12 +136,11 @@ def run() -> int:
         settings.image_temp_dir, timeout=settings.http_timeout_sec,
         max_images=settings.max_images_per_post,
     )
-    analyzer = OpenAIAnalyzer(
-        settings.openai_api_key,
-        settings.openai_model,
-        settings.openai_base_url,
+    analyzer = GeminiAnalyzer(
+        settings.gemini_api_key,
+        settings.gemini_model,
         notifier=notifier,
-        request_interval_sec=settings.openai_request_interval_sec,
+        request_interval_sec=settings.gemini_request_interval_sec,
     )
     uploader = ApiUploader(settings.api_url, settings.internal_key, settings.http_timeout_sec, notifier=notifier)
     detail_scrapers = make_detail_scraper(settings, notifier)

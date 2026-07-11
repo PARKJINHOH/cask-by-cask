@@ -23,10 +23,9 @@ def _csv(key: str, default: str = "") -> list[str]:
 
 @dataclass
 class Settings:
-    # OpenAI
-    openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
-    openai_model: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-    openai_base_url: str = os.getenv("OPENAI_BASE_URL", "").strip()
+    # Google Gemini
+    gemini_api_key: str = os.getenv("GEMINI_API_KEY", os.getenv("GOOGLE_API_KEY", ""))
+    gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite")
 
     # 백엔드
     api_url: str = os.getenv("CASKBYCASK_API_URL", "").rstrip("/")
@@ -62,11 +61,11 @@ class Settings:
     max_new_posts_per_run: int = int(os.getenv("MAX_NEW_POSTS_PER_RUN", "40"))
     # 중복방지 DB 보존 기간(일) — 이보다 오래된 기록은 매 실행 시 정리
     seen_retention_days: int = int(os.getenv("SEEN_RETENTION_DAYS", "7"))
-    # 분석/업로드 실패 시 같은 글을 OpenAI 에 다시 보내는 최대 횟수.
+    # 분석/업로드 실패 시 같은 글을 Gemini에 다시 보내는 최대 횟수.
     # 이 횟수를 넘기면 ERROR 로 최종 마킹해 무한 재시도로 인한 비용 누수를 막는다.
     max_analysis_retries: int = int(os.getenv("MAX_ANALYSIS_RETRIES", "2"))
     # 무료 티어 분당 15회 제한을 넘지 않도록 AI API 호출 시작 간격을 둔다.
-    openai_request_interval_sec: float = float(os.getenv("OPENAI_REQUEST_INTERVAL_SEC", "5"))
+    gemini_request_interval_sec: float = float(os.getenv("GEMINI_REQUEST_INTERVAL_SEC", "5"))
     # 1회 실행에서 AI 분석까지 진행할 최대 게시글 수. 남은 글은 pending_posts 에 남겨 다음 실행으로 이월.
     max_ai_analysis_per_run: int = int(os.getenv("MAX_AI_ANALYSIS_PER_RUN", "40"))
     # 같은 딜로 볼 최근 fingerprint 조회 범위와 로컬 유사도 기준.
@@ -161,8 +160,8 @@ class Settings:
         missing: list[str] = []
 
         # AI 분석은 어떤 모드에서도 필요
-        if not self.openai_api_key:
-            missing.append("OPENAI_API_KEY")
+        if not self.gemini_api_key:
+            missing.append("GEMINI_API_KEY")
 
         # 백엔드 업로드 관련 값은 실제 업로드(=DRY_RUN 아님)일 때만 필수
         if not self.dry_run:

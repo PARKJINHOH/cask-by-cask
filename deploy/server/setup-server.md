@@ -158,7 +158,7 @@ redis-cli -a '강한비번' ping    # PONG 이면 OK
 
 ```bash
 sudo cp ~/setup/api.env.example /app/env/api.env
-sudo nano /app/env/api.env        # CHANGE_ME 값 채우기 (DB/Redis 비번, JWT, OpenAI, Admin 등)
+sudo nano /app/env/api.env        # CHANGE_ME 값 채우기 (DB/Redis 비번, JWT, Admin 등)
 sudo chown ubuntu:ubuntu /app/env/api.env
 sudo chmod 600 /app/env/api.env   # ★ 배포/실행 유저만 읽기
 ```
@@ -526,12 +526,12 @@ nano .env
 * `CASKBYCASK_API_URL=http://127.0.0.1:8080` (백엔드가 같은 서버이므로 로컬 주소 호출)
 * `CASKBYCASK_INTERNAL_KEY` (서버 `/app/env/api.env` 의 키값과 일치)
 * 경로 4종에 대해 `/app/caskbycask-crawler/...` 설정 유지 확인
-* 핫딜 분석용 `OPENAI_API_KEY`, `NAVER_NID_AUT`, `NAVER_NID_SES` 기입
-* AI 소식용 `TAVILY_API_KEY`, `GEMINI_API_KEY` 기입
+* 핫딜·AI 소식 공용 `GEMINI_API_KEY`, 핫딜용 `GEMINI_MODEL=gemini-3.1-flash-lite`, `GEMINI_REQUEST_INTERVAL_SEC=5` 기입
+* `NAVER_NID_AUT`, `NAVER_NID_SES`, AI 소식용 `TAVILY_API_KEY` 기입
 * AI 소식 모델은 `AI_NEWS_CLASSIFIER_MODEL=gemini-3.1-flash-lite`, `AI_NEWS_WRITER_MODEL=gemini-3.5-flash`, `AI_NEWS_IMAGE_MODEL=gemini-3.1-flash-lite-image`
 * 텍스트 무료 티어 사용 시 `AI_NEWS_GEMINI_FREE_TIER=true`. 이미지 생성은 별도 유료 사용량으로 집계된다.
 * 절대 안전상한이 필요하면 `AI_NEWS_GEMINI_HARD_MONTHLY_USD`, `AI_NEWS_GEMINI_HARD_MONTHLY_TOKENS`, `AI_NEWS_GEMINI_HARD_MONTHLY_IMAGES` 설정 (`0`은 비활성)
-* (선택) `SLACK_WEBHOOK_URL`, `SLACK_CHANNEL=#server-prd` 기입 — 네이버 카페/API/OpenAI/Gemini 문제 알림
+* (선택) `SLACK_WEBHOOK_URL`, `SLACK_CHANNEL=#server-prd` 기입 — 네이버 카페/API/Gemini 문제 알림
 
 ### 15-5. 타겟 등록 및 수동 검증
 `targets.json` 작성 후 수동으로 1회 실행하여 정상적으로 수집이 수행되는지 테스트합니다.

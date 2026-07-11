@@ -121,7 +121,7 @@ systemd: /etc/systemd/system/caskbycask-api.service (app 127.0.0.1:8080, actuato
 | `OCI_NAMESPACE` | Oracle Cloud Object Storage Namespace |
 | `OCI_BUCKET` | 아티팩트를 보관할 버킷 이름 (예: `caskbycask-artifacts`) |
 
-> DB 비번/JWT/OpenAI 등 **앱 비밀값은 GitHub 에 두지 않는다.** 서버 `/app/env/api.env` 에만 존재.
+> DB 비번/JWT/Gemini 등 **앱 비밀값은 GitHub 에 두지 않는다.** 서버 환경 파일에만 존재.
 
 ---
 

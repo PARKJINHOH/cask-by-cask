@@ -4,6 +4,7 @@ import unittest
 import sys
 import types
 import base64
+import json
 import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -18,12 +19,17 @@ genai = types.ModuleType("google.genai")
 genai_types = types.ModuleType("google.genai.types")
 genai.Client = Mock()
 genai_types.GenerateContentConfig = lambda **kwargs: kwargs
+genai_types.Part = types.SimpleNamespace(
+    from_bytes=lambda **kwargs: {"data": kwargs["data"], "mime_type": kwargs["mime_type"]}
+)
 google.genai = genai
 genai.types = genai_types
 sys.modules.setdefault("google", google)
 sys.modules.setdefault("google.genai", genai)
 sys.modules.setdefault("google.genai.types", genai_types)
 
+from models import PostDetail, RawPost
+from analyzer.gemini_analyzer import GeminiAnalyzer
 from news_models import DraftArticle, SearchSource, UsageAccumulator, canonicalize_url, local_datetime_string
 from news_gemini import GeminiNewsWriter
 from news_tavily import TavilyNewsSearch
@@ -145,6 +151,43 @@ class CommunityTargetTest(unittest.TestCase):
         self.assertEqual(7, target["menu_id"])
         self.assertEqual(2, target["list_pages"])
         self.assertEqual("네이버 카페", target["name"])
+
+
+class GeminiDealAnalyzerTest(unittest.TestCase):
+    def test_text_and_data_url_image_use_native_gemini_multimodal_api(self) -> None:
+        response = types.SimpleNamespace(text=json.dumps({
+            "is_deal": True,
+            "drink_name": "테스트 위스키",
+            "drink_category": "WHISKY",
+            "original_price": 100000,
+            "deal_price": 80000,
+            "discount_rate": 0.2,
+            "currency": "KRW",
+            "seller": "테스트몰",
+            "confidence_score": 9,
+            "summary_ko": "테스트 할인",
+        }, ensure_ascii=False))
+        generate = Mock(return_value=response)
+        analyzer = GeminiAnalyzer.__new__(GeminiAnalyzer)
+        analyzer.model = "gemini-3.1-flash-lite"
+        analyzer.notifier = None
+        analyzer.request_interval_sec = 0
+        analyzer._last_request_started_at = 0
+        analyzer.client = types.SimpleNamespace(models=types.SimpleNamespace(generate_content=generate))
+        detail = PostDetail(
+            RawPost("dcinside", "whisky", "위스키", "1", "테스트 할인", "https://example.com/1"),
+            "정상가 100,000원, 할인가 80,000원",
+        )
+        encoded = base64.b64encode(b"image-bytes").decode()
+
+        result = analyzer.analyze(detail, [f"data:image/jpeg;base64,{encoded}"])
+
+        self.assertIsNotNone(result)
+        self.assertEqual("테스트 위스키", result.drink_name)
+        call = generate.call_args.kwargs
+        self.assertEqual("gemini-3.1-flash-lite", call["model"])
+        self.assertEqual(b"image-bytes", call["contents"][1]["data"])
+        self.assertEqual("application/json", call["config"]["response_mime_type"])
 
 
 class GeminiNewsWriterTest(unittest.TestCase):

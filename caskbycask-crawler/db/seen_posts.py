@@ -1,6 +1,6 @@
 """이미 처리한 게시글 중복 방지용 SQLite 스토어.
 
-같은 글을 두 번 분석하지 않도록(=OpenAI 비용 절약) post key 를 기록한다.
+같은 글을 두 번 분석하지 않도록(=Gemini 호출량 절약) post key 를 기록한다.
 백엔드도 sourcePostId 로 2차 멱등 처리하지만, 1차 방어선은 여기다.
 """
 from __future__ import annotations
@@ -36,7 +36,7 @@ class SeenPostStore:
             """
         )
         # 분석/업로드가 실패해 seen_posts 에 마킹되지 못한 글의 재시도 횟수.
-        # 마킹 없이 두면 다음 실행마다 같은 글을 OpenAI 에 다시 보내 비용이 누적된다.
+        # 마킹 없이 두면 다음 실행마다 같은 글을 Gemini에 다시 보내 호출량이 누적된다.
         self.conn.execute(
             """
             CREATE TABLE IF NOT EXISTS failed_attempts (
@@ -151,7 +151,7 @@ class SeenPostStore:
         """분석/업로드 실패 시 재시도 횟수를 1 증가시키고 갱신된 횟수를 반환.
 
         seen_posts 에 마킹되지 않은 채로 두면(=일시적 장애라 재시도 허용) 다음
-        실행에서 후보 목록에 그대로 다시 잡혀 OpenAI 호출이 반복된다. 호출부가
+        실행에서 후보 목록에 그대로 다시 잡혀 Gemini 호출이 반복된다. 호출부가
         이 횟수를 보고 임계치를 넘으면 ERROR 로 최종 마킹해 비용 누수를 막는다.
         """
         self.conn.execute(

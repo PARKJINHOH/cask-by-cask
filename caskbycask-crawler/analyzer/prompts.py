@@ -1,4 +1,4 @@
-"""OpenAI analysis prompts for liquor deal review."""
+"""Gemini analysis prompts for liquor deal review."""
 from __future__ import annotations
 
 SYSTEM_PROMPT = (

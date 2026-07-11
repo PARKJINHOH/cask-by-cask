@@ -1,7 +1,7 @@
 # CaskByCask 핫딜 수집 크롤러 (caskbycask-crawler)
 
 주류(위스키·와인·꼬냑) 커뮤니티의 할인/특가 게시글을 자동 수집해
-OpenAI 로 분석하고, CaskByCask 백엔드의 관리자 검토 큐로 보내는 파이썬 크롤러.
+Google Gemini로 분석하고, CaskByCask 백엔드의 관리자 검토 큐로 보내는 파이썬 크롤러.
 **시놀로지 DS220+ 에서 작업 스케줄러로 20분마다 실행**한다.
 
 같은 프로젝트의 `news_main.py`는 커뮤니티 소식용 AI 자동화 진입점이다. 핫딜 작업과 상태를 공유하지 않으며
@@ -29,7 +29,7 @@ Tavily 한국어/영어 검색 + 등록 커뮤니티 수집
 ## 파이프라인
 ```
 스크래퍼(디시·네이버카페) → 제목 1차 키워드 필터 → pending 대기열 저장
- → 최근 딜 fingerprint 중복 제외 → 본문/이미지 수집 → 이미지 임시저장·base64·즉시삭제 → OpenAI 분석
+ → 최근 딜 fingerprint 중복 제외 → 본문/이미지 수집 → 이미지 임시저장·base64·즉시삭제 → Gemini 분석
  → AI 정규화 fingerprint 중복 제외
  → is_deal & confidence_score 통과분만 백엔드 업로드(is_visible=false, PENDING) → 관리자 검토
 ```
@@ -41,12 +41,12 @@ Tavily 한국어/영어 검색 + 등록 커뮤니티 수집
 | `config.py` | `.env` + `targets.json` 로딩 |
 | `models.py` | 스테이지 간 타입드 데이터 계약 |
 | `logger.py` | 회전 파일 + 콘솔 로깅 |
-| `alerts/slack_notifier.py` | 네이버 카페/API/OpenAI 등 운영 문제 Slack 알림 |
+| `alerts/slack_notifier.py` | 네이버 카페/API/Gemini 등 운영 문제 Slack 알림 |
 | `scrapers/` | `base_scraper` + `dcinside_scraper` + `naver_cafe_scraper` |
 | `filters/keyword_filter.py` | 제목 할인/구매 키워드 1차 필터 |
 | `filters/deal_deduplicator.py` | 제목·AI 결과 기반 딜 단위 중복 판정 |
 | `filters/deal_policy.py` | AI 분석 후 업로드 정책(카테고리, 복합 할인 제외, 가격/할인율 정규화) |
-| `analyzer/` | `prompts.py`(프롬프트) + `openai_analyzer.py` |
+| `analyzer/` | `prompts.py`(프롬프트) + `gemini_analyzer.py` |
 | `storage/image_handler.py` | 이미지 임시 다운로드→압축→base64→삭제 |
 | `uploader/api_uploader.py` | 백엔드 내부 API 업로드 (+수신 계약 명세) |
 | `db/seen_posts.py` | 게시글 중복, 분석 대기열, 딜 fingerprint SQLite 스토어 |
@@ -67,7 +67,7 @@ python3 main.py
 
 - 네이버 카페 쿠키 없음/만료, 401/403, 요청 제한(429)
 - `CASKBYCASK_INTERNAL_KEY` 불일치로 인한 크롤러 설정 API 또는 업로드 API 인증 실패
-- OpenAI API 키 인증 실패, rate limit/quota, 분석 응답 파싱 실패
+- Gemini API 키 인증 실패, rate limit/quota, 분석 응답 파싱 실패
 - 게시글 처리 예외, 실행 종료 시 오류 카운트 요약
 
 같은 실행 안에서는 유형별로 1회만 전송하며, `SLACK_MAX_ALERTS_PER_RUN`으로 실행당 최대 알림 수를 제한한다.

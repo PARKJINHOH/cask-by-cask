@@ -40,7 +40,7 @@ _CURRENCIES = {"KRW", "USD", "EUR"}
 
 @dataclass
 class AnalysisResult:
-    """OpenAI 분석 결과(정규화). 필드는 백엔드 /api/internal/deals 계약과 1:1 대응."""
+    """Gemini 분석 결과(정규화). 필드는 백엔드 /api/internal/deals 계약과 1:1 대응."""
     is_deal: bool
     drink_name: Optional[str]
     drink_category: str               # WHISKY|COGNAC|WINE|TEQUILA|RUM|BEER|SOJU|OTHER
