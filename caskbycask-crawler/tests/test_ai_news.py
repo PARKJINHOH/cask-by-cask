@@ -205,13 +205,33 @@ class GeminiNewsWriterTest(unittest.TestCase):
         writer.client = types.SimpleNamespace(models=types.SimpleNamespace(generate_content=generate))
         writer.usage = UsageAccumulator()
 
-        result = writer._request_json("gemini-test-lite", "system", {"value": "테스트"})
+        schema = {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]}
+        result = writer._request_json("gemini-test-lite", "system", {"value": "테스트"}, schema)
 
         self.assertTrue(result["ok"])
         self.assertEqual(11, writer.usage.input_tokens)
         self.assertEqual(12, writer.usage.output_tokens)
         config = generate.call_args.kwargs["config"]
         self.assertEqual("application/json", config["response_mime_type"])
+        self.assertEqual(schema, config["response_json_schema"])
+
+    def test_malformed_json_is_retried_once(self) -> None:
+        responses = [
+            types.SimpleNamespace(text='{"title":"미완성"', usage_metadata=None),
+            types.SimpleNamespace(text='{"title":"완성"}', usage_metadata=None),
+        ]
+        generate = Mock(side_effect=responses)
+        writer = GeminiNewsWriter.__new__(GeminiNewsWriter)
+        writer.client = types.SimpleNamespace(models=types.SimpleNamespace(generate_content=generate))
+        writer.usage = UsageAccumulator()
+
+        result = writer._request_json(
+            "gemini-test-lite", "system", {"value": "테스트"},
+            {"type": "object", "properties": {"title": {"type": "string"}}, "required": ["title"]},
+        )
+
+        self.assertEqual("완성", result["title"])
+        self.assertEqual(2, generate.call_count)
 
     def test_final_semantic_duplicate_judgement_is_normalized(self) -> None:
         writer = GeminiNewsWriter.__new__(GeminiNewsWriter)
@@ -250,6 +270,9 @@ class GeminiNewsWriterTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             path = writer.generate_image("unbranded cask diagram", Path(temp), "tip:test")
             self.assertEqual(b"image", path.read_bytes())
+            self.assertEqual(".jpg", path.suffix)
+            response_format = writer.client.interactions.create.call_args.kwargs["response_format"]
+            self.assertEqual("image/jpeg", response_format["mime_type"])
 
         self.assertEqual(1, writer.usage.image_count)
         self.assertEqual(0.12, writer.usage.estimated_cost_usd)

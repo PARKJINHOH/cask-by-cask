@@ -13,7 +13,14 @@ class AiNewsApi:
         self.headers = {"X-Internal-Key": internal_key, "Accept": "application/json"}
 
     def _data(self, response: requests.Response) -> Any:
-        response.raise_for_status()
+        if response.status_code >= 400:
+            try:
+                error_body = response.json()
+            except ValueError:
+                error_body = response.text
+            raise RuntimeError(
+                f"AI 소식 API 오류 status={response.status_code}, body={str(error_body)[:1500]}"
+            )
         body = response.json()
         if not body.get("success", False):
             raise RuntimeError(body.get("message") or "AI 소식 API 요청 실패")

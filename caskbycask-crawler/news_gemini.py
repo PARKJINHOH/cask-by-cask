@@ -22,6 +22,70 @@ WRITING_RULES = """
 - 제목은 50자 이하이며 본문은 안전한 TipTap 호환 HTML(p, h2, h3, ul, li, strong)로 작성한다.
 """.strip()
 
+ARTICLE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "title": {"type": "string"},
+        "content_html": {"type": "string"},
+        "confidence": {"type": "number"},
+        "semantic_fingerprint": {"type": "string"},
+        "image_prompt": {"type": "string"},
+    },
+    "required": ["title", "content_html", "confidence", "semantic_fingerprint", "image_prompt"],
+}
+
+RELEASE_CLASSIFICATION_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "candidates": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "category": {"type": "string", "enum": ["WHISKY", "WINE", "COGNAC"]},
+                    "event_key": {"type": "string"},
+                    "summary": {"type": "string"},
+                    "source_indexes": {"type": "array", "items": {"type": "integer"}},
+                    "confidence": {"type": "number"},
+                },
+                "required": ["category", "event_key", "summary", "source_indexes", "confidence"],
+            },
+        },
+    },
+    "required": ["candidates"],
+}
+
+TIP_DUPLICATE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "duplicate": {"type": "boolean"},
+        "semantic_similarity": {"type": "number"},
+        "matched_article_id": {"type": "integer"},
+        "reason": {"type": "string"},
+    },
+    "required": ["duplicate", "semantic_similarity", "reason"],
+}
+
+TOPIC_SUGGESTION_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "topics": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string"},
+                    "normalized_key": {"type": "string"},
+                    "category": {"type": "string", "enum": ["WHISKY", "WINE", "COGNAC"]},
+                    "aliases": {"type": "string"},
+                },
+                "required": ["title", "normalized_key", "category", "aliases"],
+            },
+        },
+    },
+    "required": ["topics"],
+}
+
 
 class GeminiNewsWriter:
     def __init__(self, api_key: str, classifier_model: str, writer_model: str,
@@ -57,7 +121,7 @@ summary, source_indexes(서로 다른 근거 인덱스), confidence(0~1).
             "max_candidates": max(0, max_candidates),
             "target_category_ratio": category_ratios or {"WHISKY": 60, "WINE": 20, "COGNAC": 20},
             "sources": compact,
-        })
+        }, RELEASE_CLASSIFICATION_SCHEMA)
         candidates = result.get("candidates", []) if isinstance(result, dict) else []
         cleaned: list[dict[str, Any]] = []
         for item in candidates[:max_candidates]:
@@ -80,7 +144,7 @@ summary, source_indexes(서로 다른 근거 인덱스), confidence(0~1).
             "output_fields": ["title", "content_html", "confidence", "semantic_fingerprint", "image_prompt"],
             "image_prompt_rule": "브랜드 로고나 실제 라벨을 만들지 않는 가로형 비브랜드 에디토리얼 이미지용 영문 프롬프트",
         }
-        result = self._request_json(self.writer_model, WRITING_RULES, prompt)
+        result = self._request_json(self.writer_model, WRITING_RULES, prompt, ARTICLE_SCHEMA)
         return self._draft_from_result("RELEASE_NEWS", candidate["category"],
                                        f"release:{candidate['event_key']}", None,
                                        candidate["source_indexes"], result)
@@ -98,7 +162,7 @@ summary, source_indexes(서로 다른 근거 인덱스), confidence(0~1).
                 "존재하지 않는 병은 표현하지 않는 영문 프롬프트"
             ),
         }
-        result = self._request_json(self.writer_model, WRITING_RULES, prompt)
+        result = self._request_json(self.writer_model, WRITING_RULES, prompt, ARTICLE_SCHEMA)
         return self._draft_from_result("TIP_INFO", topic["category"],
                                        f"tip:{topic['normalizedKey']}", int(topic["id"]),
                                        list(range(len(sources))), result)
@@ -136,7 +200,7 @@ summary, source_indexes(서로 다른 근거 인덱스), confidence(0~1).
                 "content_html": draft.content_html[:6000],
             },
             "published_or_deleted_tip_history": compact_corpus,
-        })
+        }, TIP_DUPLICATE_SCHEMA)
         try:
             similarity = min(1.0, max(0.0, float(result.get("semantic_similarity") or 0)))
         except (TypeError, ValueError):
@@ -161,7 +225,7 @@ JSON {"topics":[{"title":"한국어 50자 이하","normalized_key":"영문-소�
 """.strip()
         result = self._request_json(self.classifier_model, system, {
             "existing_keys": existing_keys, "count": max(1, min(5, count)),
-        })
+        }, TOPIC_SUGGESTION_SCHEMA)
         topics = []
         for item in result.get("topics", [])[:count]:
             category = str(item.get("category", "")).upper()
@@ -183,7 +247,7 @@ JSON {"topics":[{"title":"한국어 50자 이하","normalized_key":"영문-소�
             input=safe_prompt,
             response_format={
                 "type": "image",
-                "mime_type": "image/png",
+                "mime_type": "image/jpeg",
                 "aspect_ratio": "3:2",
                 "image_size": "1K",
             },
@@ -193,7 +257,7 @@ JSON {"topics":[{"title":"한국어 50자 이하","normalized_key":"영문-소�
         if not encoded:
             raise RuntimeError("Gemini 이미지 응답에 base64 데이터가 없습니다.")
         image_bytes = base64.b64decode(encoded)
-        path = output_dir / f"{self._safe_key(stem)[:60] or 'ai-news'}.png"
+        path = output_dir / f"{self._safe_key(stem)[:60] or 'ai-news'}.jpg"
         path.write_bytes(image_bytes)
         self.usage.add_image(self.image_estimated_cost_usd)
         return path
@@ -211,26 +275,37 @@ JSON {"topics":[{"title":"한국어 50자 이하","normalized_key":"영문-소�
                             confidence, source_indexes, image_prompt, topic_id=topic_id,
                             model_name=self.writer_model)
 
-    def _request_json(self, model: str, system: str, payload: dict[str, Any]) -> dict[str, Any]:
+    def _request_json(self, model: str, system: str, payload: dict[str, Any],
+                      response_schema: dict[str, Any]) -> dict[str, Any]:
         user_text = json.dumps(payload, ensure_ascii=False)
-        response = self.client.models.generate_content(
-            model=model,
-            contents=user_text,
-            config=types.GenerateContentConfig(
-                system_instruction=system,
-                response_mime_type="application/json",
-                temperature=0.2,
-            ),
-        )
-        text = response.text or "{}"
-        usage = getattr(response, "usage_metadata", None)
-        input_tokens = int(getattr(usage, "prompt_token_count", 0) or 0)
-        output_tokens = (
-            int(getattr(usage, "candidates_token_count", 0) or 0)
-            + int(getattr(usage, "thoughts_token_count", 0) or 0)
-        )
-        self.usage.add_text(model, input_tokens, output_tokens)
-        return self._parse_json(text)
+        last_error: json.JSONDecodeError | None = None
+        last_text = ""
+        for attempt in range(2):
+            response = self.client.models.generate_content(
+                model=model,
+                contents=user_text,
+                config=types.GenerateContentConfig(
+                    system_instruction=system + ("\n반드시 스키마에 맞는 완전한 JSON 객체를 반환한다." if attempt else ""),
+                    response_mime_type="application/json",
+                    response_json_schema=response_schema,
+                    temperature=0.1,
+                ),
+            )
+            last_text = response.text or "{}"
+            usage = getattr(response, "usage_metadata", None)
+            input_tokens = int(getattr(usage, "prompt_token_count", 0) or 0)
+            output_tokens = (
+                int(getattr(usage, "candidates_token_count", 0) or 0)
+                + int(getattr(usage, "thoughts_token_count", 0) or 0)
+            )
+            self.usage.add_text(model, input_tokens, output_tokens)
+            try:
+                return self._parse_json(last_text)
+            except json.JSONDecodeError as error:
+                last_error = error
+        raise RuntimeError(
+            f"Gemini JSON 응답 파싱에 2회 실패했습니다: {last_error}; 응답={last_text[:500]}"
+        ) from last_error
 
     @staticmethod
     def _parse_json(text: str) -> dict[str, Any]:
