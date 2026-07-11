@@ -542,9 +542,9 @@ python3 -m json.tool targets.json
 python3 main.py
 tail -n 50 /app/caskbycask-crawler/logs/crawler.log
 ```
-`TypeError: Client.__init__() got an unexpected keyword argument 'proxies'`가 발생하면
-가상환경 패키지가 이전 요구사항으로 설치된 상태입니다. `requirements.txt`의 `httpx==0.27.2`
-고정값이 반영되도록 `pip install -r requirements.txt`를 다시 실행합니다.
+Gemini SDK import 오류나 `httpx` 의존성 오류가 발생하면 가상환경에 현재
+`requirements.txt`의 `google-genai==2.11.0`, `httpx==0.28.1` 조합이 반영되도록
+`python3 -m pip install -r requirements.txt`를 다시 실행합니다.
 
 ### 15-6. cron 스케줄러 등록
 핫딜은 20분 주기, AI 소식은 KST 기준 2시간 주기로 `ubuntu` 유저의 crontab에 등록합니다. 각 실행 스크립트는 서로 다른 `flock` 잠금을 사용합니다.

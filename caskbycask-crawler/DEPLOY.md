@@ -141,12 +141,12 @@ tail -n 50 /app/caskbycask-crawler/logs/crawler.log
 ```
 종료 로그의 `후보/신규/분석/업로드/스킵/오류` 카운트가 정상적으로 기록되는지 확인합니다.
 
-`TypeError: Client.__init__() got an unexpected keyword argument 'proxies'`가 발생하면
-가상환경 패키지가 이전 요구사항으로 설치된 상태입니다. `requirements.txt`의 `httpx==0.27.2`
-고정값이 반영되도록 아래를 다시 실행합니다.
+Gemini SDK import 오류나 `httpx` 의존성 오류가 발생하면 가상환경에 현재
+`requirements.txt`의 `google-genai==2.11.0`, `httpx==0.28.1` 조합이 반영되도록
+아래를 다시 실행합니다.
 
 ```bash
-pip install -r requirements.txt
+python3 -m pip install -r requirements.txt
 ```
 
 ---
