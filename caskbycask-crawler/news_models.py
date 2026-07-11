@@ -12,6 +12,21 @@ TRACKING_QUERY_KEYS = {"fbclid", "gclid", "ref", "source"}
 SERVICE_ZONE = ZoneInfo("Asia/Seoul")
 
 
+def truncate_utf16(value: str, max_units: int) -> str:
+    """Java Bean Validation @Size와 같은 UTF-16 code unit 기준으로 자른다."""
+    if max_units <= 0:
+        return ""
+    result: list[str] = []
+    units = 0
+    for character in str(value):
+        character_units = 2 if ord(character) > 0xFFFF else 1
+        if units + character_units > max_units:
+            break
+        result.append(character)
+        units += character_units
+    return "".join(result)
+
+
 def canonicalize_url(value: str) -> str:
     parsed = urlsplit(value.strip())
     if parsed.scheme.lower() not in {"http", "https"} or not parsed.hostname:
@@ -59,12 +74,12 @@ class SearchSource:
     def evidence_payload(self) -> dict[str, Any]:
         canonical_url = canonicalize_url(self.url)
         return {
-            "sourceUrl": self.url,
-            "canonicalUrl": canonical_url,
-            "domain": self.domain,
-            "sourceTitle": self.title[:500],
+            "sourceUrl": truncate_utf16(self.url, 1500),
+            "canonicalUrl": truncate_utf16(canonical_url, 1500),
+            "domain": truncate_utf16(self.domain, 255),
+            "sourceTitle": truncate_utf16(self.title, 500),
             "sourceType": self.source_type,
-            "evidenceSummary": self.content[:2000] or None,
+            "evidenceSummary": truncate_utf16(self.content, 2000) or None,
             "contentHash": hashlib.sha256(self.content.encode("utf-8")).hexdigest(),
             "publishedAt": local_datetime_string(self.published_at) if self.published_at else None,
             "retrievedAt": local_datetime_string(),

@@ -30,7 +30,8 @@ sys.modules.setdefault("google.genai.types", genai_types)
 
 from models import PostDetail, RawPost
 from analyzer.gemini_analyzer import GeminiAnalyzer
-from news_models import DraftArticle, SearchSource, UsageAccumulator, canonicalize_url, local_datetime_string
+from news_models import (DraftArticle, SearchSource, UsageAccumulator, canonicalize_url,
+                         local_datetime_string, truncate_utf16)
 from news_gemini import GeminiNewsWriter
 from news_tavily import TavilyNewsSearch
 from news_targets import target_from_config
@@ -96,6 +97,14 @@ class NewsModelTest(unittest.TestCase):
         self.assertEqual(2000, len(payload["evidenceSummary"]))
         self.assertEqual(64, len(payload["contentHash"]))
         self.assertIsNotNone(payload["retrievedAt"])
+
+    def test_utf16_truncation_matches_java_size_validation(self) -> None:
+        value = "😀" * 1100
+
+        truncated = truncate_utf16(value, 2000)
+
+        self.assertEqual(1000, len(truncated))
+        self.assertEqual(2000, len(truncated.encode("utf-16-le")) // 2)
 
     def test_usage_accumulator_never_adds_negative_usage(self) -> None:
         usage = UsageAccumulator()

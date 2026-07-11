@@ -96,6 +96,7 @@ class GeminiNewsWriter:
         self.image_model = image_model
         self.image_estimated_cost_usd = image_estimated_cost_usd
         self.usage = UsageAccumulator()
+        self._image_unavailable_reason: str | None = None
 
     def classify_releases(self, sources: list[SearchSource], max_candidates: int,
                           category_ratios: dict[str, int] | None = None) -> list[dict[str, Any]]:
@@ -237,21 +238,33 @@ JSON {"topics":[{"title":"한국어 50자 이하","normalized_key":"영문-소�
         return topics
 
     def generate_image(self, prompt: str, output_dir: Path, stem: str) -> Path:
+        image_unavailable_reason = getattr(self, "_image_unavailable_reason", None)
+        if image_unavailable_reason:
+            raise RuntimeError(image_unavailable_reason)
         output_dir.mkdir(parents=True, exist_ok=True)
         safe_prompt = (
             prompt.strip() + "\nLandscape 3:2 editorial illustration, no text, no logo, no trademark, "
             "no branded bottle, no recognizable product label."
         )
-        result = self.client.interactions.create(
-            model=self.image_model,
-            input=safe_prompt,
-            response_format={
-                "type": "image",
-                "mime_type": "image/jpeg",
-                "aspect_ratio": "3:2",
-                "image_size": "1K",
-            },
-        )
+        try:
+            result = self.client.interactions.create(
+                model=self.image_model,
+                input=safe_prompt,
+                response_format={
+                    "type": "image",
+                    "mime_type": "image/jpeg",
+                    "aspect_ratio": "3:2",
+                    "image_size": "1K",
+                },
+            )
+        except Exception as error:
+            message = str(error)
+            if "limit: 0" in message or "free_tier_requests" in message:
+                self._image_unavailable_reason = (
+                    f"{self.image_model}은 현재 프로젝트의 무료 티어 이미지 할당량이 0입니다. "
+                    "Google AI Studio 결제를 활성화해야 합니다."
+                )
+            raise
         output_image = getattr(result, "output_image", None)
         encoded = getattr(output_image, "data", None)
         if not encoded:

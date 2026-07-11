@@ -209,11 +209,10 @@ def _process_draft(api: AiNewsApi, writer: GeminiNewsWriter, draft: DraftArticle
             if image_path:
                 image_path.unlink(missing_ok=True)
     except Exception as error:
-        if draft.article_type != "TIP_INFO":
-            raise
-        # 정보 글은 이미지 없이 공개하지 않는다. 원고와 실패 사유는 백엔드가
-        # PENDING_REVIEW로 보존하고, 다음 2시간 실행에서 동일 원고의 이미지만 재시도한다.
-        log.warning("팁 이미지 생성/업로드 실패 - 검토 대기로 저장: %s", error)
+        # 이미지가 없으면 공개하지 않되 생성한 원고와 근거는 버리지 않는다.
+        # 백엔드가 PENDING_REVIEW로 보존하며, 팁은 다음 실행에서 이미지만 재시도한다.
+        log.warning("%s 이미지 생성/업로드 실패 - 검토 대기로 저장: %s",
+                    draft.article_type, error)
     response = api.submit_article(_article_payload(draft, sources))
     log.info("원고 저장 id=%s status=%s title=%s", response.get("id"), response.get("status"), draft.title)
     return response
