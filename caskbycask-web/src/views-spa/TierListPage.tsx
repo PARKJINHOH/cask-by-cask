@@ -661,15 +661,17 @@ function SpiritCandidateCard({
     staleTime: 60_000,
   })
   const variants = variantsQuery.data ?? []
-  const baseSelected = selectedSpiritIds.has(spirit.id)
-  const selectedVariant = variants.find((variant) => selectedSpiritIds.has(variant.id))
-  const selectedVariantId = baseSelected ? spirit.id : selectedVariant?.id ?? ''
-  const anySelected = baseSelected || !!selectedVariant
+  const allEditionsSelected = [spirit.id, ...variants.map((variant) => variant.id)]
+    .every((id) => selectedSpiritIds.has(id))
+
+  const selectedOptionLabel = (label: string, id: number) => (
+    selectedSpiritIds.has(id) ? `\u2713 ${label}` : label
+  )
 
   return (
     <div
       className={`rounded-lg border bg-white p-1.5 text-left transition-colors
-        ${anySelected ? 'border-red-500 bg-red-50/50' : 'border-neutral-200 hover:border-primary-300 hover:bg-primary-50/40'}`}
+        ${allEditionsSelected ? 'border-red-500 bg-red-50/50' : 'border-neutral-200 hover:border-primary-300 hover:bg-primary-50/40'}`}
     >
       <button
         type="button"
@@ -693,7 +695,7 @@ function SpiritCandidateCard({
 
       {variants.length > 0 && (
         <select
-          value={selectedVariantId ? String(selectedVariantId) : ''}
+          value=""
           onChange={(e) => {
             const selectedId = Number(e.target.value)
             if (!selectedId) return
@@ -702,17 +704,31 @@ function SpiritCandidateCard({
               return
             }
             const variant = variants.find((item) => item.id === selectedId)
-            if (variant) onAdd(variant)
+            if (variant) {
+              onAdd({
+                ...variant,
+                primaryImageUrl: variant.primaryImageUrl || spirit.primaryImageUrl,
+              })
+            }
           }}
           aria-label={t('tierList.selectVariant')}
           className={`mt-1.5 w-full rounded border px-1.5 py-1 text-[10px] font-semibold leading-tight focus:outline-none focus:ring-1 focus:ring-primary-400
-            ${selectedVariantId ? 'border-red-500 bg-red-50 text-red-600' : 'border-neutral-200 text-neutral-600'}`}
+            ${allEditionsSelected ? 'border-red-500 bg-red-50 text-red-600' : 'border-neutral-200 text-neutral-600'}`}
         >
           <option value="">{t('tierList.selectVariant')}</option>
-          <option value={spirit.id}>{t('tierList.baseEdition')}</option>
+          <option
+            value={spirit.id}
+            className={selectedSpiritIds.has(spirit.id) ? 'text-red-600' : undefined}
+          >
+            {selectedOptionLabel(t('tierList.baseEdition'), spirit.id)}
+          </option>
           {variants.map((variant) => (
-            <option key={variant.id} value={variant.id}>
-              {variantOptionLabel(variant, isEn)}
+            <option
+              key={variant.id}
+              value={variant.id}
+              className={selectedSpiritIds.has(variant.id) ? 'text-red-600' : undefined}
+            >
+              {selectedOptionLabel(variantOptionLabel(variant, isEn), variant.id)}
             </option>
           ))}
         </select>
