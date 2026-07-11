@@ -258,6 +258,17 @@ public enum ErrorCode {
     DEAL_ALREADY_EXISTS(HttpStatus.CONFLICT, "DEAL_002", "이미 수집된 핫딜입니다."),
     DEAL_ALREADY_PROCESSED(HttpStatus.CONFLICT, "DEAL_003", "이미 처리된 핫딜입니다. 검토 대기 상태에서만 승인/반려할 수 있습니다."),
 
+    // AI News
+    AI_NEWS_NOT_FOUND(HttpStatus.NOT_FOUND, "AI_NEWS_001", "AI 소식 원고를 찾을 수 없습니다."),
+    AI_NEWS_DUPLICATE(HttpStatus.CONFLICT, "AI_NEWS_002", "이미 수집되었거나 발행된 동일 주제의 글입니다."),
+    AI_NEWS_INVALID_STATUS(HttpStatus.CONFLICT, "AI_NEWS_003", "현재 상태에서는 요청한 작업을 수행할 수 없습니다."),
+    AI_NEWS_SETTINGS_NOT_FOUND(HttpStatus.NOT_FOUND, "AI_NEWS_004", "AI 소식 설정을 찾을 수 없습니다."),
+    AI_NEWS_TOPIC_NOT_FOUND(HttpStatus.NOT_FOUND, "AI_NEWS_005", "AI 정보 글 주제를 찾을 수 없습니다."),
+    AI_NEWS_SOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "AI_NEWS_006", "AI 소식 출처 설정을 찾을 수 없습니다."),
+    AI_NEWS_BUDGET_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "AI_NEWS_007", "AI 소식 월간 사용 한도를 초과했습니다."),
+    AI_NEWS_EVIDENCE_INSUFFICIENT(HttpStatus.BAD_REQUEST, "AI_NEWS_008", "자동 발행에 필요한 출처 근거가 부족합니다."),
+    AI_NEWS_SYSTEM_AUTHOR_NOT_FOUND(HttpStatus.SERVICE_UNAVAILABLE, "AI_NEWS_009", "AI 소식 시스템 작성자 계정이 준비되지 않았습니다."),
+
     // Common
     NOT_FOUND(HttpStatus.NOT_FOUND, "COMMON_001", "리소스를 찾을 수 없습니다."),
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "COMMON_002", "입력값이 올바르지 않습니다."),

@@ -39,4 +39,16 @@ public class CreatePostRequest {
 
     // [패치 9] 소식 게시판 증류소 태그 (선택). PARTNER는 본인 담당 증류소만, ADMIN은 임의/생략 가능.
     private Long distilleryTagId;
+
+    public static CreatePostRequest aiNotice(Long prefixId, String title, String content, boolean pinned) {
+        CreatePostRequest request = new CreatePostRequest();
+        request.boardType = BoardType.NOTICE;
+        request.prefixId = prefixId;
+        request.title = title;
+        request.content = content;
+        request.isAnonymous = false;
+        request.isPinned = pinned;
+        request.adultOnly = false;
+        return request;
+    }
 }

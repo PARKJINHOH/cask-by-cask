@@ -11,21 +11,22 @@
 ```
 main push (코드만)
    │   ← 사용자가 Actions 탭에서 "Run workflow" 클릭 (수동)
-   │     target 선택: both(FE+BE) / api(백엔드만) / web(프론트만)
+   │     target 선택: both(FE+BE) / api / web / crawler / all(전체)
    ▼
 GitHub Actions (ubuntu-latest, x86) — 대상 잡만 실행, 나머지는 skipped
    ├─ build-api : gradle bootJar      → app.jar      ➔ Oracle Object Storage 업로드
    ├─ build-web : npm ci + npm run build (standalone) → dist ➔ dist.tar.gz ➔ Oracle Object Storage 업로드
-   └─ deploy    : Object Storage에서 최신 아티팩트 다운로드 ➔ scp/rsync 로 서버 전송 ➔ 해당 교체 스크립트 실행
+   └─ deploy    : 앱 아티팩트와 crawler 소스 묶음을 전송 ➔ 해당 교체 스크립트 실행
    ▼
 서버 (Ubuntu 24.04 aarch64, Oracle Cloud 춘천)
    ├─ deploy-web.sh : dist 교체 (무중단에 가까움)
-   └─ deploy-api.sh : jar 교체 → 재시작 → 헬스체크 → 실패 시 롤백
+   ├─ deploy-api.sh : jar 교체 → 재시작 → 헬스체크 → 실패 시 롤백
+   └─ deploy-crawler.sh : 릴리스 설치·구문검사 → current/previous 링크 교체 → cron 갱신
 ```
 
 - **아티팩트 저장소**: Github Private Repo의 아티팩트 저장 공간 한계(Artifact storage quota) 문제를 해결하기 위해, 빌드된 아티팩트를 **Oracle Object Storage(S3 호환 API)**에 업로드하여 임시 보관합니다.
 - **버킷 용량 관리**: 10GB 무료 버킷의 공간 효율성을 위해, `api`와 `web` 빌드 산출물은 **각각 최신 3개씩만 유지**하고 이전 파일은 자동 정리(cleanup)합니다.
-- 서버는 **빌드하지 않는다** (Gradle/Node/소스 없음). JRE + nginx 만 있으면 됨.
+- API/웹은 서버에서 빌드하지 않는다. 크롤러만 Python 소스 릴리스를 설치하고 영속 `.venv`의 의존성을 갱신한다.
 - 서버가 aarch64여도 산출물(jar=바이트코드, dist=정적파일)은 아키텍처 무관 → x86 러너 빌드본 그대로 동작.
 
 ---
@@ -42,6 +43,11 @@ GitHub Actions (ubuntu-latest, x86) — 대상 잡만 실행, 나머지는 skipp
 │  ├─ dist/                    ← 운영 (.next/standalone 및 public 등, nginx root)
 │  ├─ dist.new/                ← 배포 중 staging
 │  └─ dist_<타임스탬프>/        ← 직전 백업 1개
+├─ caskbycask-crawler/
+│  ├─ current -> releases/...  ← 현재 크롤러 릴리스
+│  ├─ previous -> releases/... ← 직전 롤백 대상
+│  ├─ .env / .venv / *.db      ← 배포 시 보존
+│  └─ logs/ temp/              ← 배포 시 보존
 ├─ upload/                     ← 영속 (이미지·동영상) — 배포와 무관, 절대 삭제 안 함
 ├─ db_backup/                  ← 영속 (DB 덤프, 일배치 gzip / 3일 보관)
 ├─ logs/                       ← jar 로그 (logback) — 매일 자정 롤오버→gzip(archived/) / 30일 보관
@@ -53,6 +59,7 @@ GitHub Actions (ubuntu-latest, x86) — 대상 잡만 실행, 나머지는 skipp
 └─ scripts/
    ├─ deploy-api.sh            ← Actions 가 매 배포 시 갱신
    ├─ deploy-web.sh
+   ├─ deploy-crawler.sh
    └─ backup-db.sh             ← DB 백업 (cron 03:00)
 
 nginx:  /etc/nginx/sites-available/caskbycask.conf  (root → /app/next/dist)
@@ -122,11 +129,11 @@ systemd: /etc/systemd/system/caskbycask-api.service (app 127.0.0.1:8080, actuato
 
 1. 코드 `main` 에 push
 2. GitHub → **Actions → "Deploy (manual)" → Run workflow** (사용자 적은 시간대 권장)
-   - **`target` 선택**: `both`(FE+BE, 기본) / `api`(백엔드만) / `web`(프론트만)
+   - **`target` 선택**: `both`(FE+BE, 기본) / `api` / `web` / `crawler` / `all`(전체)
 3. 선택한 대상만 빌드 → deploy 잡이 빌드된 산출물만 전송 + 교체 (나머지 잡은 `skipped`)
 4. 백엔드 배포 시 `deploy-api.sh` 가 readiness 헬스체크까지 통과해야 성공 처리 (실패 시 자동 롤백)
 
-> 프론트만 고쳤으면 `web`, 백엔드만 고쳤으면 `api` 를 선택해 불필요한 빌드·재시작을 건너뛴다.
+> 프론트만 고쳤으면 `web`, 백엔드만 고쳤으면 `api`, 크롤러만 고쳤으면 `crawler`를 선택한다.
 
 ---
 

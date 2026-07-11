@@ -1,6 +1,8 @@
 package com.caskbycask.domain.community.batch;
 
 import com.caskbycask.domain.byob.repository.ByobRepository;
+import com.caskbycask.domain.ainews.entity.enums.AiNewsArticleStatus;
+import com.caskbycask.domain.ainews.repository.AiNewsArticleRepository;
 import com.caskbycask.domain.community.entity.PostImage;
 import com.caskbycask.domain.community.entity.PostVideo;
 import com.caskbycask.domain.community.repository.PostImageRepository;
@@ -41,6 +43,7 @@ public class MediaCleanupBatch {
     private final PostRepository postRepository;
     private final ContentDraftRepository contentDraftRepository;
     private final ByobRepository byobRepository;
+    private final AiNewsArticleRepository aiNewsArticleRepository;
     private final FileStorageService fileStorageService;
 
     // 업로드 후 어떤 콘텐츠(게시글/임시저장/BYOB)에도 박히지 않은 채 이 시간이 지나면 정리 후보.
@@ -97,6 +100,9 @@ public class MediaCleanupBatch {
     private boolean isReferenced(String savedFileName) {
         return postRepository.existsByContentContaining(savedFileName)
                 || contentDraftRepository.existsByContentContaining(savedFileName)
-                || byobRepository.existsByContentContaining(savedFileName);
+                || byobRepository.existsByContentContaining(savedFileName)
+                || aiNewsArticleRepository.existsByContentContainingAndStatusIn(savedFileName,
+                        List.of(AiNewsArticleStatus.DRAFT, AiNewsArticleStatus.PENDING_REVIEW,
+                                AiNewsArticleStatus.FAILED));
     }
 }

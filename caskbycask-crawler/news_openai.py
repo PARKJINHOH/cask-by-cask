@@ -1,0 +1,246 @@
+from __future__ import annotations
+
+import base64
+import json
+import re
+from pathlib import Path
+from typing import Any
+
+from openai import OpenAI
+
+from news_models import DraftArticle, SearchSource, UsageAccumulator
+
+
+WRITING_RULES = """
+당신은 CaskByCask의 주류 전문 편집자다. 결과는 JSON 객체 하나만 반환한다.
+- 한국어로 자연스럽고 중립적인 정보문을 작성한다.
+- 제공된 근거에 없는 사실, 출시일, 가격, 수치, 역사적 사실을 만들지 않는다.
+- 원문 문장을 길게 복사하지 않고 사실만 독자적인 문장으로 재구성한다.
+- 의학적 효능, 과음 권장, 투자·구매 선동, 과장 홍보 표현을 금지한다.
+- 공개 본문에 출처 목록, AI 안내, 참고문헌 문구를 넣지 않는다.
+- 제목은 50자 이하이며 본문은 안전한 TipTap 호환 HTML(p, h2, h3, ul, li, strong)로 작성한다.
+""".strip()
+
+
+class OpenAiNewsWriter:
+    def __init__(self, api_key: str, classifier_model: str, writer_model: str,
+                 image_model: str, base_url: str = "", image_estimated_cost_usd: float = 0.0):
+        self.client = OpenAI(api_key=api_key, base_url=base_url or "https://api.openai.com/v1")
+        self.classifier_model = classifier_model
+        self.writer_model = writer_model
+        self.image_model = image_model
+        self.image_estimated_cost_usd = image_estimated_cost_usd
+        self.usage = UsageAccumulator()
+
+    def classify_releases(self, sources: list[SearchSource], max_candidates: int,
+                          category_ratios: dict[str, int] | None = None) -> list[dict[str, Any]]:
+        if not sources or max_candidates <= 0:
+            return []
+        compact = [{
+            "index": i,
+            "title": s.title,
+            "domain": s.domain,
+            "published_at": s.published_at,
+            "text": s.content[:2500],
+        } for i, s in enumerate(sources)]
+        system = """
+주류 뉴스 후보를 선별한다. JSON {"candidates": [...]}만 반환하라.
+위스키·와인·꼬냑의 실제 신제품 출시, 출시 예정, 한국 출시·수입 소식만 후보로 삼는다.
+단순 할인, 개인 리뷰, 질문, 루머, 과거 재탕, 근거가 없는 커뮤니티 추측은 제외한다.
+같은 제품/사건을 다룬 여러 결과는 하나로 묶는다.
+후보가 충분하면 입력된 target_category_ratio를 장기 목표 비중으로 반영한다.
+각 후보 필드: category(WHISKY/WINE/COGNAC), event_key(영문 소문자 안정 키),
+summary, source_indexes(서로 다른 근거 인덱스), confidence(0~1).
+""".strip()
+        result = self._request_json(self.classifier_model, system, {
+            "max_candidates": max(0, max_candidates),
+            "target_category_ratio": category_ratios or {"WHISKY": 60, "WINE": 20, "COGNAC": 20},
+            "sources": compact,
+        })
+        candidates = result.get("candidates", []) if isinstance(result, dict) else []
+        cleaned: list[dict[str, Any]] = []
+        for item in candidates[:max_candidates]:
+            category = str(item.get("category", "")).upper()
+            indexes = [int(i) for i in item.get("source_indexes", []) if str(i).isdigit() and int(i) < len(sources)]
+            event_key = self._safe_key(str(item.get("event_key", "")))
+            if category not in {"WHISKY", "WINE", "COGNAC"} or not indexes or not event_key:
+                continue
+            cleaned.append({**item, "category": category, "source_indexes": sorted(set(indexes)), "event_key": event_key})
+        return cleaned
+
+    def write_release(self, candidate: dict[str, Any], sources: list[SearchSource]) -> DraftArticle:
+        selected = [sources[i] for i in candidate["source_indexes"]]
+        evidence = [{"index": i, "title": s.title, "domain": s.domain, "text": s.content[:6000]}
+                    for i, s in zip(candidate["source_indexes"], selected)]
+        prompt = {
+            "task": "출시 소식 원고 작성과 최종 사실 검증",
+            "candidate": candidate,
+            "evidence": evidence,
+            "output_fields": ["title", "content_html", "confidence", "semantic_fingerprint", "image_prompt"],
+            "image_prompt_rule": "브랜드 로고나 실제 라벨을 만들지 않는 가로형 비브랜드 에디토리얼 이미지용 영문 프롬프트",
+        }
+        result = self._request_json(self.writer_model, WRITING_RULES, prompt)
+        return self._draft_from_result("RELEASE_NEWS", candidate["category"],
+                                       f"release:{candidate['event_key']}", None,
+                                       candidate["source_indexes"], result)
+
+    def write_tip(self, topic: dict[str, Any], sources: list[SearchSource]) -> DraftArticle:
+        evidence = [{"index": i, "title": s.title, "domain": s.domain, "text": s.content[:6000]}
+                    for i, s in enumerate(sources)]
+        prompt = {
+            "task": "오래 읽히는 팁 및 정보 글 작성과 최종 사실 검증",
+            "topic": {"title": topic["title"], "aliases": topic.get("aliases"), "category": topic["category"]},
+            "evidence": evidence,
+            "output_fields": ["title", "content_html", "confidence", "semantic_fingerprint", "image_prompt"],
+            "image_prompt_rule": (
+                "교육적이고 세련된 가로형 에디토리얼 일러스트. 글자, 로고, 상표, 실제 제품 라벨, "
+                "존재하지 않는 병은 표현하지 않는 영문 프롬프트"
+            ),
+        }
+        result = self._request_json(self.writer_model, WRITING_RULES, prompt)
+        return self._draft_from_result("TIP_INFO", topic["category"],
+                                       f"tip:{topic['normalizedKey']}", int(topic["id"]),
+                                       list(range(len(sources))), result)
+
+    def judge_tip_duplicate(self, topic: dict[str, Any], draft: DraftArticle,
+                            corpus: list[dict[str, Any]]) -> dict[str, Any]:
+        if not corpus or topic.get("allowRepublish"):
+            return {"duplicate": False, "semanticSimilarity": 0.0,
+                    "matchedArticleId": None, "reason": "비교 대상 없음 또는 재발행 허용"}
+        system = """
+주류 팁·정보 글의 영구 중복 여부를 최종 판정한다. JSON 객체 하나만 반환한다.
+먼저 새 글의 제목·소제목·핵심 질문 지문을 과거 전체 글과 의미상 비교하고,
+표현이나 제목만 다르지만 독자가 얻게 될 핵심 답이 같은 글도 중복으로 본다.
+큰 주제 안에서 다루는 핵심 질문과 교육 목표가 명확히 다를 때만 비중복이다.
+결과 형식은 {"duplicate":true|false,"semantic_similarity":0~1,
+"matched_article_id":숫자 또는 null,"reason":"한국어 판정 근거"}이다.
+""".strip()
+        compact_corpus = [{
+            "article_id": item.get("articleId"),
+            "title": item.get("title"),
+            "semantic_fingerprint": item.get("semanticFingerprint"),
+            "topic_key": item.get("topicKey"),
+            "topic_title": item.get("topicTitle"),
+            "topic_aliases": item.get("topicAliases"),
+            "outline_and_core_questions": str(item.get("contentOutline") or "")[:1000],
+        } for item in corpus]
+        result = self._request_json(self.classifier_model, system, {
+            "new_topic": {
+                "title": topic.get("title"), "normalized_key": topic.get("normalizedKey"),
+                "aliases": topic.get("aliases"),
+            },
+            "new_article": {
+                "title": draft.title,
+                "semantic_fingerprint": draft.semantic_fingerprint,
+                "content_html": draft.content_html[:6000],
+            },
+            "published_or_deleted_tip_history": compact_corpus,
+        })
+        try:
+            similarity = min(1.0, max(0.0, float(result.get("semantic_similarity") or 0)))
+        except (TypeError, ValueError):
+            similarity = 0.0
+        matched = result.get("matched_article_id")
+        try:
+            matched = int(matched) if matched is not None else None
+        except (TypeError, ValueError):
+            matched = None
+        return {
+            "duplicate": bool(result.get("duplicate")),
+            "semanticSimilarity": similarity,
+            "matchedArticleId": matched,
+            "reason": str(result.get("reason") or "AI 최종 중복 판정")[:800],
+        }
+
+    def suggest_topics(self, existing_keys: list[str], count: int = 3) -> list[dict[str, str]]:
+        system = """
+위스키·와인·꼬냑 커뮤니티에 유용한 장기 정보 글 주제를 제안한다.
+기존 키와 의미가 같은 주제, 제품 홍보, 건강 효능, 단순 구매 추천은 제외한다.
+JSON {"topics":[{"title":"한국어 50자 이하","normalized_key":"영문-소문자-키","category":"WHISKY|WINE|COGNAC","aliases":"쉼표 구분"}]}만 반환한다.
+""".strip()
+        result = self._request_json(self.classifier_model, system, {
+            "existing_keys": existing_keys, "count": max(1, min(5, count)),
+        })
+        topics = []
+        for item in result.get("topics", [])[:count]:
+            category = str(item.get("category", "")).upper()
+            key = self._safe_key(str(item.get("normalized_key", "")))
+            title = str(item.get("title", "")).strip()[:50]
+            if category in {"WHISKY", "WINE", "COGNAC"} and key and title and key not in existing_keys:
+                topics.append({"title": title, "normalizedKey": key, "category": category,
+                               "aliases": str(item.get("aliases") or "")})
+        return topics
+
+    def generate_image(self, prompt: str, output_dir: Path, stem: str) -> Path:
+        output_dir.mkdir(parents=True, exist_ok=True)
+        safe_prompt = (
+            prompt.strip() + "\nLandscape 3:2 editorial illustration, no text, no logo, no trademark, "
+            "no branded bottle, no recognizable product label."
+        )
+        kwargs = {
+            "model": self.image_model,
+            "prompt": safe_prompt,
+            "size": "1536x1024",
+            "quality": "medium",
+            "n": 1,
+        }
+        suffix = ".webp"
+        try:
+            result = self.client.images.generate(**kwargs, output_format="webp")
+        except TypeError:
+            result = self.client.images.generate(**kwargs)
+            suffix = ".png"
+        data = result.data[0]
+        encoded = getattr(data, "b64_json", None)
+        if not encoded:
+            raise RuntimeError("OpenAI 이미지 응답에 base64 데이터가 없습니다.")
+        path = output_dir / f"{self._safe_key(stem)[:60] or 'ai-news'}{suffix}"
+        path.write_bytes(base64.b64decode(encoded))
+        self.usage.add_image(self.image_estimated_cost_usd)
+        return path
+
+    def _draft_from_result(self, article_type: str, category: str, dedupe_key: str,
+                           topic_id: int | None, source_indexes: list[int], result: dict[str, Any]) -> DraftArticle:
+        title = re.sub(r"\s+", " ", str(result.get("title") or "")).strip()[:50]
+        content = str(result.get("content_html") or "").strip()
+        confidence = min(1.0, max(0.0, float(result.get("confidence") or 0)))
+        fingerprint = re.sub(r"\s+", " ", str(result.get("semantic_fingerprint") or title).lower()).strip()[:1000]
+        image_prompt = str(result.get("image_prompt") or "Elegant educational illustration about spirits").strip()
+        if not title or not content:
+            raise RuntimeError("AI 원고 응답에 제목 또는 본문이 없습니다.")
+        return DraftArticle(article_type, category, title, content, dedupe_key, fingerprint,
+                            confidence, source_indexes, image_prompt, topic_id=topic_id,
+                            model_name=self.writer_model)
+
+    def _request_json(self, model: str, system: str, payload: dict[str, Any]) -> dict[str, Any]:
+        user_text = json.dumps(payload, ensure_ascii=False)
+        response = None
+        try:
+            response = self.client.responses.create(model=model, instructions=system, input=user_text)
+            text = response.output_text
+        except (AttributeError, TypeError):
+            response = self.client.chat.completions.create(
+                model=model,
+                messages=[{"role": "system", "content": system}, {"role": "user", "content": user_text}],
+                response_format={"type": "json_object"},
+            )
+            text = response.choices[0].message.content or "{}"
+        usage = getattr(response, "usage", None)
+        input_tokens = int(getattr(usage, "input_tokens", getattr(usage, "prompt_tokens", 0)) or 0)
+        output_tokens = int(getattr(usage, "output_tokens", getattr(usage, "completion_tokens", 0)) or 0)
+        self.usage.add_text(model, input_tokens, output_tokens)
+        return self._parse_json(text)
+
+    @staticmethod
+    def _parse_json(text: str) -> dict[str, Any]:
+        value = text.strip()
+        if value.startswith("```"):
+            value = re.sub(r"^```(?:json)?\s*|\s*```$", "", value, flags=re.IGNORECASE)
+        parsed = json.loads(value)
+        if not isinstance(parsed, dict):
+            raise RuntimeError("OpenAI JSON 응답이 객체가 아닙니다.")
+        return parsed
+
+    @staticmethod
+    def _safe_key(value: str) -> str:
+        return re.sub(r"[^a-z0-9가-힣]+", "-", value.lower()).strip("-")

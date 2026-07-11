@@ -20,4 +20,14 @@ public class UpdatePostRequest {
 
     // 성인 전용 토글. null이면 변경 안 함. true로 변경/유지 시 성인인증 필요.
     private Boolean adultOnly;
+
+    public static UpdatePostRequest aiNews(Long prefixId, String title, String content, boolean pinned) {
+        UpdatePostRequest request = new UpdatePostRequest();
+        request.prefixId = prefixId;
+        request.title = title;
+        request.content = content;
+        request.isPinned = pinned;
+        request.adultOnly = false;
+        return request;
+    }
 }

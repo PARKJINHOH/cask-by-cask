@@ -60,6 +60,9 @@ nano .env      # 또는 vi .env
 | 키 | 설명 |
 |---|---|
 | `OPENAI_API_KEY` | OpenAI 키 |
+| `AI_NEWS_OPENAI_HARD_MONTHLY_USD` | 관리자 설정과 별개의 월 비용 절대 상한 (`0` 비활성) |
+| `AI_NEWS_OPENAI_HARD_MONTHLY_TOKENS` | 월 토큰 절대 상한 (`0` 비활성) |
+| `AI_NEWS_OPENAI_HARD_MONTHLY_IMAGES` | 월 생성 이미지 절대 상한 (`0` 비활성) |
 | `CASKBYCASK_API_URL` | `http://127.0.0.1:8080` (API가 같은 서버에 있으므로 로컬 호출 권장) |
 | `CASKBYCASK_INTERNAL_KEY` | **백엔드와 동일한** 시크릿(긴 랜덤 문자열) |
 | `NAVER_NID_AUT`, `NAVER_NID_SES` | 네이버 로그인 쿠키 (아래 6번) |
@@ -161,6 +164,27 @@ pip install -r requirements.txt
    */20 * * * * /app/caskbycask-crawler/run.sh >> /app/caskbycask-crawler/logs/cron.log 2>&1
    ```
    - `run.sh`가 `flock`을 활용하여 중복 실행을 자체적으로 방지하므로, 이전 회차 수집이 20분을 초과해도 겹쳐서 실행되지 않아 안전합니다.
+
+### AI 소식 작업 추가
+
+`.env`에 `TAVILY_API_KEY`와 `AI_NEWS_*` 모델/비용 설정을 추가한 뒤 별도 잠금 파일을 사용하는
+`run-news.sh`를 KST 기준 2시간마다 실행합니다.
+
+```cron
+CRON_TZ=Asia/Seoul
+17 */2 * * * /app/caskbycask-crawler/current/run-news.sh >> /app/caskbycask-crawler/logs/ai-news-cron.log 2>&1
+```
+
+수동 검증:
+
+```bash
+/app/caskbycask-crawler/current/run-news.sh
+tail -n 100 /app/caskbycask-crawler/logs/ai-news.log
+```
+
+GitHub Actions의 `target=crawler` 또는 `target=all`은 새 릴리스를 `/app/caskbycask-crawler/releases/`에
+설치한 뒤 `current` 심볼릭 링크를 교체합니다. `.env`, `.venv`, `targets.json`, `*.db`, `logs/`, `temp/`는
+릴리스 밖의 영속 경로에 남습니다. 직전 릴리스는 `previous` 링크로 확인할 수 있습니다.
 
 ---
 

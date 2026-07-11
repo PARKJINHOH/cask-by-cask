@@ -40,6 +40,8 @@ public final class AccountPolicy {
     /** 센티넬 계정 닉네임 (가입 예약어) */
     public static final String SENTINEL_NICKNAME = "탈퇴한사용자";
 
+    public static final String AI_NEWS_NICKNAME = "관리자(AI)";
+
     private AccountPolicy() {
     }
 
@@ -50,7 +52,7 @@ public final class AccountPolicy {
 
     /** 시스템 예약 닉네임 여부 (가입 차단용) */
     public static boolean isReservedNickname(String nickname) {
-        return SENTINEL_NICKNAME.equals(nickname);
+        return SENTINEL_NICKNAME.equals(nickname) || AI_NEWS_NICKNAME.equals(nickname);
     }
 
     /**

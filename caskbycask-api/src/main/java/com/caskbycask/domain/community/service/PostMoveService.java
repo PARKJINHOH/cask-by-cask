@@ -45,7 +45,7 @@ public class PostMoveService {
      * 4) Post 레코드 DB 삭제
      */
     @Transactional
-    public void moveToDeleted(Post post, Long deletedBy, String deleteReason) {
+    public DeletedPost moveToDeleted(Post post, Long deletedBy, String deleteReason) {
         // 1. DeletedPost 생성
         DeletedPost deletedPost = DeletedPost.builder()
                 .originalPostId(post.getId())
@@ -94,5 +94,6 @@ public class PostMoveService {
 
         // 4. Post 레코드 삭제 (cascade로 PostImage, Poll, PollOption 함께 삭제)
         postRepository.delete(post);
+        return deletedPost;
     }
 }

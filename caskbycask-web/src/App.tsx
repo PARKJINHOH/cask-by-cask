@@ -62,6 +62,8 @@ const AdminBadWordPage = lazy(() => import('@/views-spa/admin/AdminBadWordPage')
 const AdminNicknameBadWordPage = lazy(() => import('@/views-spa/admin/AdminNicknameBadWordPage'))
 const AdminEmojiPage = lazy(() => import('@/views-spa/admin/AdminEmojiPage'))
 const AdminPrefixPage = lazy(() => import('@/views-spa/admin/AdminPrefixPage'))
+const AdminAiNewsPage = lazy(() => import('@/views-spa/admin/AdminAiNewsPage'))
+const AdminAiNewsFormPage = lazy(() => import('@/views-spa/admin/AdminAiNewsFormPage'))
 const AdminScorePage = lazy(() => import('@/views-spa/admin/AdminScorePage'))
 const AdminLevelPage = lazy(() => import('@/views-spa/admin/AdminLevelPage'))
 const TermsPage = lazy(() => import('@/views-spa/legal/TermsPage'))
@@ -183,6 +185,9 @@ export default function App() {
               <Route path="banners/:id/edit" element={<AdminBannerFormPage />} />
               <Route path="events" element={<AdminEventCalendarPage />} />
               <Route path="community/post-reports" element={<AdminPostReportPage />} />
+              <Route path="community/ai-news" element={<AdminAiNewsPage />} />
+              <Route path="community/ai-news/new" element={<AdminAiNewsFormPage />} />
+              <Route path="community/ai-news/:id/edit" element={<AdminAiNewsFormPage />} />
               <Route path="community/bad-words" element={<AdminBadWordPage />} />
               <Route path="community/emojis" element={<AdminEmojiPage />} />
               <Route path="community/prefixes" element={<AdminPrefixPage />} />

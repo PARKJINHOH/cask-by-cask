@@ -1,0 +1,166 @@
+import { useEffect, useState, type ReactNode } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { adminAiNewsApi } from '@/domain/admin/api/adminAiNewsApi'
+import type { AiNewsArticleType, AiNewsCategory } from '@/domain/admin/types/aiNews.types'
+import { communityApi } from '@/domain/community/api/communityApi'
+import PostEditor from '@/domain/community/components/PostEditor'
+import AdminPageHeader from '@/shared/components/AdminPageHeader'
+import Spinner from '@/shared/components/Spinner'
+
+export default function AdminAiNewsFormPage() {
+  const { id } = useParams()
+  const articleId = id ? Number(id) : null
+  const isEdit = articleId != null && Number.isFinite(articleId)
+  const navigate = useNavigate()
+  const qc = useQueryClient()
+  const [articleType, setArticleType] = useState<AiNewsArticleType>('TIP_INFO')
+  const [category, setCategory] = useState<AiNewsCategory>('WHISKY')
+  const [title, setTitle] = useState('')
+  const [content, setContent] = useState('')
+  const [prefixId, setPrefixId] = useState<number | ''>('')
+  const [topicId, setTopicId] = useState<number | ''>('')
+  const [pinned, setPinned] = useState(false)
+  const [confidence, setConfidence] = useState(1)
+  const [semanticFingerprint, setSemanticFingerprint] = useState('')
+  const [error, setError] = useState('')
+
+  const { data: detail, isLoading } = useQuery({
+    queryKey: ['admin', 'ai-news', 'article', articleId],
+    queryFn: () => adminAiNewsApi.article(articleId!),
+    enabled: isEdit,
+  })
+  const { data: prefixes = [] } = useQuery({
+    queryKey: ['post-prefixes', 'NOTICE'],
+    queryFn: () => communityApi.getPrefixes('NOTICE').then((r) => r.data.data ?? []),
+  })
+  const { data: topics } = useQuery({
+    queryKey: ['admin', 'ai-news', 'topics', 'form'],
+    queryFn: () => adminAiNewsApi.topics({ page: 0, size: 100 }),
+  })
+
+  useEffect(() => {
+    if (!detail) return
+    setArticleType(detail.articleType)
+    setCategory(detail.category)
+    setTitle(detail.title)
+    setContent(detail.content)
+    setPrefixId(detail.prefixId ?? '')
+    setTopicId(detail.topicId ?? '')
+    setPinned(detail.pinned)
+    setConfidence(Number(detail.confidenceScore))
+    setSemanticFingerprint(detail.semanticFingerprint ?? '')
+  }, [detail])
+
+  useEffect(() => {
+    if (!isEdit && prefixId === '' && prefixes.length > 0) setPrefixId(prefixes[0].id)
+  }, [isEdit, prefixId, prefixes])
+
+  const save = useMutation({
+    mutationFn: async (publish: boolean) => {
+      if (!title.trim() || !content.trim()) throw new Error('제목과 본문을 입력하세요.')
+      if (isEdit) {
+        const updated = await adminAiNewsApi.updateArticle(articleId!, {
+          category, title: title.trim(), content,
+          prefixId: prefixId === '' ? null : prefixId,
+          pinned, confidenceScore: confidence,
+          semanticFingerprint: semanticFingerprint.trim() || null,
+        })
+        if (publish && updated.status !== 'PUBLISHED') await adminAiNewsApi.publish(updated.id)
+        return updated.id
+      }
+      const created = await adminAiNewsApi.createArticle({
+        articleType, category, title: title.trim(), content,
+        dedupeKey: `manual:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
+        confidenceScore: confidence,
+        semanticFingerprint: semanticFingerprint.trim() || title.trim().toLowerCase(),
+        topicId: topicId === '' ? null : topicId,
+        prefixId: prefixId === '' ? null : prefixId,
+        pinned, autoPublishRequested: false, sources: [],
+      })
+      if (publish) await adminAiNewsApi.publish(created.id)
+      return created.id
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'ai-news'] })
+      navigate('/admin/community/ai-news', { replace: true })
+    },
+    onError: (e) => setError(e instanceof Error ? e.message : '저장하지 못했습니다.'),
+  })
+
+  const deleteMut = useMutation({
+    mutationFn: () => adminAiNewsApi.deleteArticle(articleId!, '관리자 화면에서 삭제'),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin', 'ai-news'] }); navigate('/admin/community/ai-news', { replace: true }) },
+  })
+
+  if (isLoading) return <div className="flex justify-center py-24"><Spinner size="lg" className="text-primary-800" /></div>
+  return (
+    <div className="mx-auto max-w-5xl p-4 sm:p-6">
+      <AdminPageHeader
+        breadcrumbs={[{ label: '커뮤니티' }, { label: '소식(AI)', to: '/admin/community/ai-news' }, { label: isEdit ? '수정' : '작성' }]}
+        backTo="/admin/community/ai-news" useBackToPath title={isEdit ? 'AI 소식 수정' : 'AI 소식 작성'}
+      />
+      <div className="space-y-5 rounded-xl bg-white p-5 shadow-sm">
+        {detail && (
+          <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-xs text-neutral-600">
+            상태: <strong>{detail.status}</strong> · 중복 키: {detail.dedupeKey}
+            {detail.failureReason && <p className="mt-1 text-red-600">검토 사유: {detail.failureReason}</p>}
+            {detail.duplicateReason && <p className="mt-1 text-amber-700">중복 판정: {detail.duplicateReason}</p>}
+          </div>
+        )}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Field label="글 유형">
+            <select disabled={isEdit} value={articleType} onChange={(e) => setArticleType(e.target.value as AiNewsArticleType)} className={inputCls}>
+              <option value="RELEASE_NEWS">출시·국내 소식</option><option value="TIP_INFO">팁 및 정보</option>
+            </select>
+          </Field>
+          <Field label="주종">
+            <select value={category} onChange={(e) => setCategory(e.target.value as AiNewsCategory)} className={inputCls}>
+              <option value="WHISKY">위스키</option><option value="WINE">와인</option><option value="COGNAC">꼬냑</option>
+            </select>
+          </Field>
+          <Field label="말머리">
+            <select value={prefixId} onChange={(e) => setPrefixId(e.target.value ? Number(e.target.value) : '')} className={inputCls}>
+              <option value="">없음</option>{prefixes.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </Field>
+          <Field label="정보 주제">
+            <select disabled={isEdit || articleType !== 'TIP_INFO'} value={topicId} onChange={(e) => setTopicId(e.target.value ? Number(e.target.value) : '')} className={inputCls}>
+              <option value="">직접 작성</option>{topics?.content.map((t) => <option key={t.id} value={t.id}>{t.title} ({t.status})</option>)}
+            </select>
+          </Field>
+        </div>
+        <Field label="제목">
+          <input maxLength={50} value={title} onChange={(e) => setTitle(e.target.value)} className={inputCls} placeholder="제목을 입력하세요." />
+          <p className="mt-1 text-right text-xs text-neutral-400">{title.length}/50</p>
+        </Field>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="신뢰도 (0~1)"><input type="number" min="0" max="1" step="0.01" value={confidence} onChange={(e) => setConfidence(Number(e.target.value))} className={inputCls} /></Field>
+          <Field label="의미 중복 지문"><input value={semanticFingerprint} onChange={(e) => setSemanticFingerprint(e.target.value)} className={inputCls} placeholder="동일 주제 판별용 문구" /></Field>
+        </div>
+        <label className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-neutral-700">
+          <input type="checkbox" checked={pinned} onChange={(e) => setPinned(e.target.checked)} /> 소식 게시판 상단 고정
+        </label>
+        <Field label="본문">
+          <PostEditor value={content} onChange={setContent} placeholder="내용을 입력하세요. 이미지와 영상을 업로드할 수 있습니다." onImageError={setError} onVideoError={setError} />
+        </Field>
+        {detail && detail.sources.length > 0 && <div className="rounded-lg border p-4"><p className="text-sm font-semibold text-neutral-800">내부 근거 출처</p>
+          <div className="mt-2 space-y-2">{detail.sources.map((source) => <div key={source.id ?? source.domain} className="text-xs text-neutral-600"><span className="font-semibold">[{source.sourceType}] {source.domain}</span> · <a href={source.sourceUrl} target="_blank" rel="noreferrer" className="text-primary-700 hover:underline">원문</a>{source.evidenceSummary && <p className="mt-0.5">{source.evidenceSummary}</p>}</div>)}</div>
+        </div>}
+        {error && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-600">{error}</p>}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
+          {isEdit ? <button type="button" onClick={() => { if (window.confirm('삭제하시겠습니까?')) deleteMut.mutate() }} disabled={deleteMut.isPending} className="rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50">삭제</button> : <span />}
+          <div className="flex gap-2">
+            <button type="button" onClick={() => save.mutate(false)} disabled={save.isPending} className="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-semibold text-neutral-700 hover:bg-neutral-50">저장</button>
+            <button type="button" onClick={() => save.mutate(true)} disabled={save.isPending} className="rounded-lg bg-primary-800 px-5 py-2 text-sm font-semibold text-white hover:bg-primary-900">저장 후 발행</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return <label className="block"><span className="mb-1.5 block text-xs font-semibold text-neutral-600">{label}</span>{children}</label>
+}
+const inputCls = 'w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100 disabled:bg-neutral-100'

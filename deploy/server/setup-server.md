@@ -527,6 +527,9 @@ nano .env
 * `CASKBYCASK_INTERNAL_KEY` (서버 `/app/env/api.env` 의 키값과 일치)
 * 경로 4종에 대해 `/app/caskbycask-crawler/...` 설정 유지 확인
 * `OPENAI_API_KEY`, `NAVER_NID_AUT`, `NAVER_NID_SES` 기입
+* `TAVILY_API_KEY` 기입
+* AI 소식 모델은 `AI_NEWS_CLASSIFIER_MODEL=gpt-5.4-mini`, `AI_NEWS_WRITER_MODEL=gpt-5.5`, `AI_NEWS_IMAGE_MODEL=gpt-image-2`
+* 절대 안전상한이 필요하면 `AI_NEWS_OPENAI_HARD_MONTHLY_USD`, `AI_NEWS_OPENAI_HARD_MONTHLY_TOKENS`, `AI_NEWS_OPENAI_HARD_MONTHLY_IMAGES` 설정 (`0`은 비활성)
 * (선택) `SLACK_WEBHOOK_URL`, `SLACK_CHANNEL=#server-prd` 기입 — 네이버 카페/API/OpenAI 문제 알림
 
 ### 15-5. 타겟 등록 및 수동 검증
@@ -543,11 +546,14 @@ tail -n 50 /app/caskbycask-crawler/logs/crawler.log
 고정값이 반영되도록 `pip install -r requirements.txt`를 다시 실행합니다.
 
 ### 15-6. cron 스케줄러 등록
-20분 주기로 자동 크롤링이 작동하도록 `ubuntu` 유저의 crontab에 등록합니다. (`run.sh` 내부에서 `flock`을 통한 중복 실행 차단 처리가 되어 있어 겹치지 않습니다.)
+핫딜은 20분 주기, AI 소식은 KST 기준 2시간 주기로 `ubuntu` 유저의 crontab에 등록합니다. 각 실행 스크립트는 서로 다른 `flock` 잠금을 사용합니다.
 ```bash
 chmod +x /app/caskbycask-crawler/run.sh
-( crontab -l 2>/dev/null | grep -v 'caskbycask-crawler/run.sh'; \
-  echo "*/20 * * * * /app/caskbycask-crawler/run.sh >> /app/caskbycask-crawler/logs/cron.log 2>&1" ) | crontab -
+chmod +x /app/caskbycask-crawler/run-news.sh
+( crontab -l 2>/dev/null | grep -v 'caskbycask-crawler/run'; \
+  echo "*/20 * * * * /app/caskbycask-crawler/current/run.sh >> /app/caskbycask-crawler/logs/cron.log 2>&1"; \
+  echo "CRON_TZ=Asia/Seoul"; \
+  echo "17 */2 * * * /app/caskbycask-crawler/current/run-news.sh >> /app/caskbycask-crawler/logs/ai-news-cron.log 2>&1" ) | crontab -
 ```
 
 ---

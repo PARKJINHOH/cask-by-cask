@@ -332,6 +332,36 @@ public class PostService {
         return PostDetailResponse.builder(post, true).build();
     }
 
+    /** AI 소식 관리 전용 수정. 로그인한 관리자가 시스템 작성자의 글을 수정할 수 있게 한다. */
+    @Transactional
+    public PostDetailResponse adminUpdatePost(Long postId, UpdatePostRequest request, Long adminId) {
+        User actor = findUser(adminId);
+        if (actor.getRole() != Role.SUPER_ADMIN && actor.getRole() != Role.ADMIN) {
+            throw new CustomException(ErrorCode.FORBIDDEN);
+        }
+
+        Post post = findPost(postId);
+        String newTitle = request.getTitle() != null ? request.getTitle() : post.getTitle();
+        String newContent = request.getContent() != null ? request.getContent() : post.getContent();
+        badWordFilter.validate(newTitle, Jsoup.parse(newContent).text());
+        String sanitized = htmlSanitizer.sanitize(newContent);
+        validateMediaPolicy(sanitized);
+
+        PostPrefix prefix = post.getPrefix();
+        if (request.getPrefixId() != null) {
+            prefix = postPrefixRepository.findById(request.getPrefixId())
+                    .orElseThrow(() -> new CustomException(ErrorCode.POST_PREFIX_NOT_FOUND));
+        }
+        if (request.getIsPinned() != null) {
+            post.changePinned(request.getIsPinned());
+        }
+
+        post.update(newTitle, newContent, sanitized, prefix, false);
+        postImageService.syncImageUsage(post, newContent);
+        postVideoService.syncVideoUsage(post, newContent);
+        return PostDetailResponse.builder(post, true).build();
+    }
+
     // ═══════════════════════════════════════════
     // 삭제 (본인)
     // ═══════════════════════════════════════════
@@ -480,9 +510,9 @@ public class PostService {
     // ═══════════════════════════════════════════
 
     @Transactional
-    public void adminDeletePost(Long postId, Long adminId, String deleteReason) {
+    public DeletedPost adminDeletePost(Long postId, Long adminId, String deleteReason) {
         Post post = findPost(postId);
-        postMoveService.moveToDeleted(post, adminId, deleteReason);
+        return postMoveService.moveToDeleted(post, adminId, deleteReason);
     }
 
     @Transactional

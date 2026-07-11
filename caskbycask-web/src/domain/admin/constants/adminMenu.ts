@@ -98,6 +98,7 @@ export const ADMIN_NAV: AdminNavEntry[] = [
     groupLabel: '커뮤니티',
     groupIcon: '💬',
     items: [
+      { path: '/admin/community/ai-news',      label: '소식(AI)', exact: true },
       { path: '/admin/community/post-reports', label: '게시글 신고' },
       { path: '/admin/community/bad-words',    label: '욕설 필터' },
       { path: '/admin/community/emojis',       label: '이모지 관리', exact: true },

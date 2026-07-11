@@ -70,7 +70,7 @@ systemd: /etc/systemd/system/caskbycask-api.service
 
 1. 변경 코드를 `main` 브랜치에 push
 2. GitHub → **Actions** 탭 → **"Deploy (manual)"** → **Run workflow** 클릭
-   - **`target` 드롭다운으로 배포 대상 선택** — `both`(FE+BE, 기본) / `api`(백엔드만) / `web`(프론트만)
+   - **`target` 드롭다운으로 배포 대상 선택** — `both`(FE+BE, 기본) / `api` / `web` / `crawler` / `all`(FE+BE+크롤러)
    - `ref` 입력란 비워두면 `main` 배포 (기본값)
    - 🕐 **사용자 적은 시간대 권장**
 3. 자동 진행 (대상에 해당하는 잡만 실행, 나머지는 `skipped`):
@@ -501,6 +501,44 @@ sudo systemctl reload prometheus || sudo kill -HUP $(pidof prometheus)
 
 - [ ] **월간**: Prometheus `localhost:9090/targets` — `caskbycask-api` UP 확인
 - [ ] **월간**: Grafana 대시보드에서 메트릭 수집 gap 없는지 육안 확인
+
+---
+
+## 14-7. AI 소식·팁 자동화
+
+AI 소식 크롤러의 비밀값은 API의 `/app/env/api.env`가 아니라 `/app/caskbycask-crawler/.env`에서 관리한다.
+
+필수값:
+
+| 키 | 용도 |
+|---|---|
+| `CASKBYCASK_API_URL` | 같은 서버 API. 운영 권장값 `http://127.0.0.1:8080` |
+| `CASKBYCASK_INTERNAL_KEY` | API env와 동일한 내부 인증 키 |
+| `TAVILY_API_KEY` | 2시간 주기 한국어·영어 웹 검색 |
+| `OPENAI_API_KEY` | 후보 분류, 원고 및 대표 이미지 생성 |
+| `AI_NEWS_CLASSIFIER_MODEL` | 후보·중복 분류 모델 |
+| `AI_NEWS_WRITER_MODEL` | 최종 근거 검증·한국어 원고 모델 |
+| `AI_NEWS_IMAGE_MODEL` | 팁/정보 글 대표 이미지 모델 |
+| `AI_NEWS_OPENAI_HARD_MONTHLY_USD` | 관리자 DB 설정과 별개의 절대 안전상한. `0`이면 비활성 |
+| `AI_NEWS_OPENAI_HARD_MONTHLY_TOKENS` | 월 토큰 절대 안전상한. `0`이면 비활성 |
+| `AI_NEWS_OPENAI_HARD_MONTHLY_IMAGES` | 월 생성 이미지 절대 안전상한. `0`이면 비활성 |
+
+배포 및 확인:
+
+```bash
+# Actions: target=crawler 또는 target=all
+readlink -f /app/caskbycask-crawler/current
+crontab -l | grep caskbycask-crawler
+tail -n 100 /app/caskbycask-crawler/logs/ai-news.log
+```
+
+- 핫딜은 `current/run.sh`를 20분마다, AI 소식은 `current/run-news.sh`를 KST 기준 `17 */2 * * *`에 실행한다.
+- 코드 배포는 `.env`, `.venv`, `targets.json`, SQLite, `logs/`, `temp/`를 덮어쓰지 않는다.
+- 관리자 화면 기본값은 자동화 OFF·자동발행 OFF·드라이런 ON이다.
+- 드라이런 3회와 원고 10건 확인 후 `자동화 → 조건부 자동발행 → 드라이런 해제` 순으로 켠다.
+- Tavily 기본 월 한도는 900크레딧이다. OpenAI는 토큰/이미지/예상비용을 화면에서 확인하고 필요할 때 월 상한을 입력한다.
+- 관리자 비용·토큰·이미지 상한은 80%에서 경고하고 100%에서 신규 호출을 중단한다. 환경변수 절대 상한도 별도로 적용된다.
+- 수동 롤백은 `previous`가 가리키는 릴리스를 확인한 뒤 `current` 링크를 해당 경로로 교체한다.
 
 ---
 

@@ -8,6 +8,7 @@ import { useAuthStore } from '@/domain/auth/store/authStore'
 import { getInquiryPendingCount } from '@/domain/inquiry/api/inquiryApi'
 import { adminReportApi } from '@/domain/admin/api/adminReportApi'
 import { adminCommunityApi } from '@/domain/admin/api/adminCommunityApi'
+import { adminAiNewsApi } from '@/domain/admin/api/adminAiNewsApi'
 import {
   REPORT_PENDING_COUNT_KEY,
   POST_REPORT_PENDING_COUNT_KEY,
@@ -59,12 +60,20 @@ export default function AdminLayout() {
     enabled: isAdmin,
   })
 
+  const { data: aiNewsPendingCount = 0 } = useQuery({
+    queryKey: ['admin', 'ai-news', 'pending-count'],
+    queryFn: adminAiNewsApi.pendingCount,
+    refetchInterval: 60_000,
+    enabled: isAdmin,
+  })
+
   // 메뉴 경로별 미처리 배지 카운트
   const badgeCountFor = (path: string): number => {
     switch (path) {
       case '/admin/inquiries':              return inquiryPendingCount
       case '/admin/reports':                return reportPendingCount
       case '/admin/community/post-reports': return postReportPendingCount
+      case '/admin/community/ai-news':      return aiNewsPendingCount
       default:                              return 0
     }
   }
