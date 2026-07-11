@@ -57,7 +57,7 @@ CaskByCask는 주류(위스키·와인·꼬냑·기타) 정보와 사용자 리�
                                             └─ /api → Spring Boot (caskbycask-api:8080) ─┬─ MariaDB
                                                                                          └─ Redis
 
-[시놀로지 NAS] caskbycask-crawler ── 20분 주기 크롤링 → OpenAI 분석
+[Oracle Cloud] caskbycask-crawler ── 2시간 주기 크롤링 → Gemini 분석
         └─ POST /api/internal/deals (X-Internal-Key) → 관리자 검토 큐 (status=PENDING, is_visible=false)
 ```
 

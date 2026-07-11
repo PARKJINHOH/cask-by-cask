@@ -59,8 +59,8 @@ done
     | grep -v 'caskbycask-crawler/run.sh' \
     | grep -v 'caskbycask-crawler/.*/run-news.sh' \
     | grep -v 'caskbycask-crawler/run-news.sh' || true
-  echo '*/20 * * * * /app/caskbycask-crawler/current/run.sh >> /app/caskbycask-crawler/logs/cron.log 2>&1'
   echo 'CRON_TZ=Asia/Seoul'
+  echo '0 */2 * * * /app/caskbycask-crawler/current/run.sh >> /app/caskbycask-crawler/logs/cron.log 2>&1'
   echo '17 */2 * * * /app/caskbycask-crawler/current/run-news.sh >> /app/caskbycask-crawler/logs/ai-news-cron.log 2>&1'
 ) | crontab -
 

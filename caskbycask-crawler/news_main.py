@@ -196,10 +196,13 @@ def _process_draft(api: AiNewsApi, writer: GeminiNewsWriter, draft: DraftArticle
                 image_path.unlink(missing_ok=True)
 
     try:
-        if not draft.image_url:
+        if not draft.image_url and writer.image_generation_enabled:
             image_path = writer.generate_image(draft.image_prompt, temp_dir, draft.dedupe_key)
         else:
             image_path = None
+            if not draft.image_url:
+                log.info("%s AI 이미지 생성 비활성화 - 이미지 없이 검토 대기로 저장",
+                         draft.article_type)
         try:
             if image_path:
                 draft.image_url = api.upload_image(image_path)
@@ -293,7 +296,8 @@ def run() -> int:
                               settings.search_results_per_query)
     writer = GeminiNewsWriter(settings.gemini_api_key, settings.classifier_model,
                               settings.writer_model, settings.image_model,
-                              settings.image_estimated_cost_usd)
+                              settings.image_estimated_cost_usd,
+                              settings.image_generation_enabled)
     fatal_error = None
     try:
         now_year = datetime.now(timezone.utc).year

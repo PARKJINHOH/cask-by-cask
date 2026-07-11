@@ -89,12 +89,14 @@ TOPIC_SUGGESTION_SCHEMA = {
 
 class GeminiNewsWriter:
     def __init__(self, api_key: str, classifier_model: str, writer_model: str,
-                 image_model: str, image_estimated_cost_usd: float = 0.0):
+                 image_model: str, image_estimated_cost_usd: float = 0.0,
+                 image_generation_enabled: bool = False):
         self.client = genai.Client(api_key=api_key)
         self.classifier_model = classifier_model
         self.writer_model = writer_model
         self.image_model = image_model
         self.image_estimated_cost_usd = image_estimated_cost_usd
+        self.image_generation_enabled = image_generation_enabled
         self.usage = UsageAccumulator()
         self._image_unavailable_reason: str | None = None
 
@@ -238,6 +240,8 @@ JSON {"topics":[{"title":"한국어 50자 이하","normalized_key":"영문-소�
         return topics
 
     def generate_image(self, prompt: str, output_dir: Path, stem: str) -> Path:
+        if not self.image_generation_enabled:
+            raise RuntimeError("AI 이미지 생성이 운영 설정에서 비활성화되어 있습니다.")
         image_unavailable_reason = getattr(self, "_image_unavailable_reason", None)
         if image_unavailable_reason:
             raise RuntimeError(image_unavailable_reason)

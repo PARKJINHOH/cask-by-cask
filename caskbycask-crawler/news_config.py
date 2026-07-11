@@ -22,6 +22,7 @@ class NewsSettings:
     classifier_model: str = os.getenv("AI_NEWS_CLASSIFIER_MODEL", "gemini-3.1-flash-lite")
     writer_model: str = os.getenv("AI_NEWS_WRITER_MODEL", "gemini-3.5-flash")
     image_model: str = os.getenv("AI_NEWS_IMAGE_MODEL", "gemini-3.1-flash-lite-image")
+    image_generation_enabled: bool = _bool("AI_NEWS_IMAGE_GENERATION_ENABLED", False)
     max_candidates_per_run: int = int(os.getenv("AI_NEWS_MAX_CANDIDATES_PER_RUN", "3"))
     search_results_per_query: int = int(os.getenv("AI_NEWS_SEARCH_RESULTS_PER_QUERY", "10"))
     gemini_free_tier: bool = _bool("AI_NEWS_GEMINI_FREE_TIER", True)

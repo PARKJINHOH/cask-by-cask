@@ -1,7 +1,7 @@
 # Oracle Cloud Ubuntu 24.04 배포 가이드
 
 Oracle Cloud (Ubuntu 24.04 LTS, aarch64 또는 x86_64) 운영 서버 기준.
-크롤러를 20분마다 실행하도록 cron 스케줄러로 설정한다.
+핫딜과 AI 소식 크롤러를 KST 기준 2시간마다 시차를 두고 실행하도록 cron 스케줄러로 설정한다.
 
 ---
 
@@ -151,7 +151,7 @@ python3 -m pip install -r requirements.txt
 
 ---
 
-## 10. cron 스케줄러 등록 (20분마다)
+## 10. cron 스케줄러 등록 (2시간마다)
 1. `run.sh` 실행권한 부여:
    ```bash
    chmod +x /app/caskbycask-crawler/run.sh
@@ -162,19 +162,28 @@ python3 -m pip install -r requirements.txt
    ```
 3. 아래의 내용을 crontab 파일 하단에 추가합니다:
    ```text
-   */20 * * * * /app/caskbycask-crawler/run.sh >> /app/caskbycask-crawler/logs/cron.log 2>&1
+   CRON_TZ=Asia/Seoul
+   0 */2 * * * /app/caskbycask-crawler/current/run.sh >> /app/caskbycask-crawler/logs/cron.log 2>&1
    ```
-   - `run.sh`가 `flock`을 활용하여 중복 실행을 자체적으로 방지하므로, 이전 회차 수집이 20분을 초과해도 겹쳐서 실행되지 않아 안전합니다.
+   - `run.sh`가 `flock`을 활용하여 중복 실행을 자체적으로 방지하므로, 이전 회차 수집이 2시간을 초과해도 겹쳐서 실행되지 않습니다.
 
 ### AI 소식 작업 추가
 
 `.env`에 `TAVILY_API_KEY`와 `AI_NEWS_*` 모델/비용 설정을 추가한 뒤 별도 잠금 파일을 사용하는
-`run-news.sh`를 KST 기준 2시간마다 실행합니다.
+`run-news.sh`는 핫딜 실행 17분 후에 시작하도록 KST 기준 2시간마다 실행합니다. 두 작업은 서로 다른 잠금 파일을 사용하지만 Gemini 무료 한도의 순간 중첩을 피하기 위해 시차를 둡니다.
 
 ```cron
 CRON_TZ=Asia/Seoul
 17 */2 * * * /app/caskbycask-crawler/current/run-news.sh >> /app/caskbycask-crawler/logs/ai-news-cron.log 2>&1
 ```
+
+AI 이미지 생성은 요금제를 활성화하기 전까지 아래처럼 비활성화합니다.
+
+```properties
+AI_NEWS_IMAGE_GENERATION_ENABLED=false
+```
+
+이 상태에서는 Gemini 이미지 API를 호출하지 않으며, 승인된 공식 이미지가 없는 출시 글과 모든 팁 글은 이미지 없이 관리자 검토 대기로 저장됩니다.
 
 수동 검증:
 

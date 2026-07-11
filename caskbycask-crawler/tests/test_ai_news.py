@@ -274,6 +274,7 @@ class GeminiNewsWriterTest(unittest.TestCase):
         )))
         writer.image_model = "gemini-image-test"
         writer.image_estimated_cost_usd = 0.12
+        writer.image_generation_enabled = True
         writer.usage = UsageAccumulator()
 
         with tempfile.TemporaryDirectory() as temp:
@@ -285,6 +286,18 @@ class GeminiNewsWriterTest(unittest.TestCase):
 
         self.assertEqual(1, writer.usage.image_count)
         self.assertEqual(0.12, writer.usage.estimated_cost_usd)
+
+    def test_disabled_image_generation_does_not_call_provider(self) -> None:
+        create = Mock()
+        writer = GeminiNewsWriter.__new__(GeminiNewsWriter)
+        writer.client = types.SimpleNamespace(interactions=types.SimpleNamespace(create=create))
+        writer.image_generation_enabled = False
+
+        with tempfile.TemporaryDirectory() as temp:
+            with self.assertRaisesRegex(RuntimeError, "비활성화"):
+                writer.generate_image("image", Path(temp), "tip:test")
+
+        create.assert_not_called()
 
 
 if __name__ == "__main__":

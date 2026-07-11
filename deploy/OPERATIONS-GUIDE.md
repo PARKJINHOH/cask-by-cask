@@ -521,6 +521,7 @@ AI 소식 크롤러의 비밀값은 API의 `/app/env/api.env`가 아니라 `/app
 | `AI_NEWS_CLASSIFIER_MODEL` | 후보·중복 분류 모델 |
 | `AI_NEWS_WRITER_MODEL` | 최종 근거 검증·한국어 원고 모델 |
 | `AI_NEWS_IMAGE_MODEL` | 팁/정보 글 대표 이미지 모델 |
+| `AI_NEWS_IMAGE_GENERATION_ENABLED` | AI 이미지 API 호출 여부. 요금제 활성화 전 기본값 `false` |
 | `AI_NEWS_GEMINI_FREE_TIER` | 텍스트 무료 티어 사용 여부. 기본 `true` |
 | `AI_NEWS_GEMINI_HARD_MONTHLY_USD` | 관리자 DB 설정과 별개의 절대 안전상한. `0`이면 비활성 |
 | `AI_NEWS_GEMINI_HARD_MONTHLY_TOKENS` | 월 토큰 절대 안전상한. `0`이면 비활성 |
@@ -535,7 +536,8 @@ crontab -l | grep caskbycask-crawler
 tail -n 100 /app/caskbycask-crawler/logs/ai-news.log
 ```
 
-- 핫딜은 `current/run.sh`를 20분마다, AI 소식은 `current/run-news.sh`를 KST 기준 `17 */2 * * *`에 실행한다.
+- `CRON_TZ=Asia/Seoul` 기준 핫딜은 `current/run.sh`를 짝수 시각 정각(`0 */2 * * *`)에, AI 소식·팁은 핫딜 17분 후(`17 */2 * * *`)에 실행한다.
+- `AI_NEWS_IMAGE_GENERATION_ENABLED=false`이면 Gemini 이미지 API를 호출하지 않는다. 승인 공식 이미지가 없는 원고는 이미지 없이 검토 대기로 보존한다.
 - 코드 배포는 `.env`, `.venv`, `targets.json`, SQLite, `logs/`, `temp/`를 덮어쓰지 않는다.
 - 관리자 화면 기본값은 자동화 OFF·자동발행 OFF·드라이런 ON이다.
 - 드라이런 3회와 원고 10건 확인 후 `자동화 → 조건부 자동발행 → 드라이런 해제` 순으로 켠다.

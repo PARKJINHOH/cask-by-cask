@@ -529,6 +529,7 @@ nano .env
 * 핫딜·AI 소식 공용 `GEMINI_API_KEY`, 핫딜용 `GEMINI_MODEL=gemini-3.1-flash-lite`, `GEMINI_REQUEST_INTERVAL_SEC=5` 기입
 * `NAVER_NID_AUT`, `NAVER_NID_SES`, AI 소식용 `TAVILY_API_KEY` 기입
 * AI 소식 모델은 `AI_NEWS_CLASSIFIER_MODEL=gemini-3.1-flash-lite`, `AI_NEWS_WRITER_MODEL=gemini-3.5-flash`, `AI_NEWS_IMAGE_MODEL=gemini-3.1-flash-lite-image`
+* 이미지 요금제를 활성화하기 전에는 `AI_NEWS_IMAGE_GENERATION_ENABLED=false`로 설정
 * 텍스트 무료 티어 사용 시 `AI_NEWS_GEMINI_FREE_TIER=true`. 이미지 생성은 별도 유료 사용량으로 집계된다.
 * 절대 안전상한이 필요하면 `AI_NEWS_GEMINI_HARD_MONTHLY_USD`, `AI_NEWS_GEMINI_HARD_MONTHLY_TOKENS`, `AI_NEWS_GEMINI_HARD_MONTHLY_IMAGES` 설정 (`0`은 비활성)
 * (선택) `SLACK_WEBHOOK_URL`, `SLACK_CHANNEL=#server-prd` 기입 — 네이버 카페/API/Gemini 문제 알림
@@ -547,13 +548,13 @@ Gemini SDK import 오류나 `httpx` 의존성 오류가 발생하면 가상환�
 `python3 -m pip install -r requirements.txt`를 다시 실행합니다.
 
 ### 15-6. cron 스케줄러 등록
-핫딜은 20분 주기, AI 소식은 KST 기준 2시간 주기로 `ubuntu` 유저의 crontab에 등록합니다. 각 실행 스크립트는 서로 다른 `flock` 잠금을 사용합니다.
+핫딜과 AI 소식은 KST 기준 2시간 주기로 등록하되 Gemini 호출이 겹치지 않도록 17분 시차를 둡니다. 각 실행 스크립트는 서로 다른 `flock` 잠금을 사용합니다.
 ```bash
 chmod +x /app/caskbycask-crawler/run.sh
 chmod +x /app/caskbycask-crawler/run-news.sh
 ( crontab -l 2>/dev/null | grep -v 'caskbycask-crawler/run'; \
-  echo "*/20 * * * * /app/caskbycask-crawler/current/run.sh >> /app/caskbycask-crawler/logs/cron.log 2>&1"; \
   echo "CRON_TZ=Asia/Seoul"; \
+  echo "0 */2 * * * /app/caskbycask-crawler/current/run.sh >> /app/caskbycask-crawler/logs/cron.log 2>&1"; \
   echo "17 */2 * * * /app/caskbycask-crawler/current/run-news.sh >> /app/caskbycask-crawler/logs/ai-news-cron.log 2>&1" ) | crontab -
 ```
 
@@ -569,5 +570,5 @@ chmod +x /app/caskbycask-crawler/run-news.sh
 - [ ] backup-db cron 등록 + 수동 1회 성공
 - [ ] `caskbycask-api` 기동 + actuator health UP + 사이트 정상 로딩
 - [ ] (선택) Prometheus + Grafana 기동 + `monitoring.caskbycask.net` 접속 + 대시보드 정상 표시
-- [ ] (선택) 크롤러 패키지 설치 및 `.env`/`targets.json` 설정 + cron 20분 주기 작동 설정 완료
+- [ ] (선택) 크롤러 패키지 설치 및 `.env`/`targets.json` 설정 + 핫딜/AI 소식 2시간 주기 시차 실행 설정 완료
 
