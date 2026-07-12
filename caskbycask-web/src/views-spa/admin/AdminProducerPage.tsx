@@ -1,7 +1,8 @@
 ﻿import { useState, useRef, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import Button from '@/shared/components/Button'
+import Modal from '@/shared/components/Modal'
 import Spinner from '@/shared/components/Spinner'
 import Pagination from '@/shared/components/Pagination'
 import {
@@ -11,12 +12,15 @@ import {
   useDeleteProducer,
   type ProducerFilters,
 } from '@/domain/admin/hooks/useAdminProducer'
-import type { Producer, ProducerType, CreateProducerPayload, UpdateProducerPayload } from '@/domain/producer/types/producer.types'
+import { useAdminSpirits } from '@/domain/admin/hooks/useAdminSpirits'
+import type { AdminProducer, Producer, ProducerType, CreateProducerPayload, UpdateProducerPayload } from '@/domain/producer/types/producer.types'
 import { PRODUCER_TYPE_LABEL } from '@/domain/producer/types/producer.types'
 import CountryRegionSelector from '@/domain/location/components/CountryRegionSelector'
 import { ISO3166_COUNTRIES } from '@/domain/location/data/iso3166Countries'
 
 const PRODUCER_TYPES: ProducerType[] = ['DISTILLERY', 'WINERY', 'COGNAC_HOUSE', 'OTHER']
+const SPIRIT_CATEGORY_LABEL = { WHISKY: '위스키', COGNAC: '꼬냑', WINE: '와인', OTHER: '기타' } as const
+const SPIRIT_STATUS_LABEL = { ACTIVE: '공개', HIDDEN: '숨김', PENDING: '대기' } as const
 
 interface FormValues {
   type: ProducerType
@@ -209,6 +213,67 @@ function SortArrows({ active, dir }: { active: boolean; dir: 'asc' | 'desc' }) {
 
 const EMPTY_FILTERS: ProducerFilters = { nameKo: '', nameEn: '', country: '', foundedYear: '', type: '' }
 
+function ProducerSpiritModal({ producer, onClose }: { producer: AdminProducer; onClose: () => void }) {
+  const navigate = useNavigate()
+  const [page, setPage] = useState(0)
+  const { data, isLoading } = useAdminSpirits({ producerId: producer.id, page })
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={`${producer.nameKo} 등록 주류 (${producer.spiritCount}개)`}
+      size="xl"
+      footer={<Button variant="ghost" size="sm" onClick={onClose}>닫기</Button>}
+    >
+      {isLoading ? (
+        <div className="flex justify-center py-10"><Spinner /></div>
+      ) : !data || data.empty ? (
+        <p className="py-10 text-center text-sm text-neutral-400">등록된 주류가 없습니다.</p>
+      ) : (
+        <div className="space-y-4">
+          <div className="max-h-[55vh] overflow-y-auto rounded-lg border border-neutral-200 divide-y divide-neutral-100">
+            {data.content.map((spirit) => (
+              <button
+                key={spirit.id}
+                type="button"
+                onClick={() => navigate(`/admin/spirits/${spirit.id}`)}
+                className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-amber-50 transition-colors"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-neutral-900">{spirit.nameKo}</p>
+                  {spirit.nameEn && (
+                    <p className="mt-0.5 truncate text-xs text-neutral-400">{spirit.nameEn}</p>
+                  )}
+                </div>
+                <span className="shrink-0 text-xs text-neutral-500">{SPIRIT_CATEGORY_LABEL[spirit.category]}</span>
+                <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
+                  spirit.status === 'ACTIVE'
+                    ? 'bg-emerald-50 text-emerald-700'
+                    : spirit.status === 'PENDING'
+                      ? 'bg-amber-50 text-amber-700'
+                      : 'bg-neutral-100 text-neutral-600'
+                }`}>
+                  {SPIRIT_STATUS_LABEL[spirit.status]}
+                </span>
+                <span className="shrink-0 text-neutral-300" aria-hidden="true">›</span>
+              </button>
+            ))}
+          </div>
+
+          {data.totalPages > 1 && (
+            <Pagination
+              currentPage={page}
+              totalPages={data.totalPages}
+              onPageChange={setPage}
+            />
+          )}
+        </div>
+      )}
+    </Modal>
+  )
+}
+
 export default function AdminProducerPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const initialFilters: ProducerFilters = {
@@ -227,6 +292,7 @@ export default function AdminProducerPage() {
   })
   const [showCreate, setShowCreate] = useState(false)
   const [editTarget, setEditTarget] = useState<Producer | null>(null)
+  const [spiritListTarget, setSpiritListTarget] = useState<AdminProducer | null>(null)
   const editFormRef = useRef<HTMLDivElement>(null)
 
   const { data, isLoading } = useAdminProducers(appliedFilters, page, `${sort.field},${sort.dir}`)
@@ -439,13 +505,14 @@ export default function AdminProducerPage() {
                     <span className="inline-flex items-center">설립연도<SortArrows active={sort.field === 'foundedYear'} dir={sort.dir} /></span>
                   </th>
                   <th className="text-left px-4 py-3 text-neutral-500 font-medium">웹사이트</th>
+                  <th className="text-center px-4 py-3 text-neutral-500 font-medium whitespace-nowrap">등록 주류</th>
                   <th className="text-right px-4 py-3 text-neutral-500 font-medium">액션</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100">
                 {!data || data.empty ? (
                   <tr>
-                    <td colSpan={9} className="px-4 py-10 text-center text-neutral-400">
+                    <td colSpan={10} className="px-4 py-10 text-center text-neutral-400">
                       데이터가 없습니다.
                     </td>
                   </tr>
@@ -468,6 +535,17 @@ export default function AdminProducerPage() {
                         {d.website
                           ? <a href={d.website} target="_blank" rel="noopener noreferrer" className="text-primary-800 hover:underline truncate max-w-[140px] inline-block">{d.website}</a>
                           : '-'}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <button
+                          type="button"
+                          onClick={() => setSpiritListTarget(d)}
+                          className="inline-flex min-w-9 justify-center rounded-md px-2 py-1 text-sm font-semibold tabular-nums
+                            text-primary-800 hover:bg-primary-50 hover:underline"
+                          aria-label={`${d.nameKo} 등록 주류 ${d.spiritCount}개 보기`}
+                        >
+                          {d.spiritCount}
+                        </button>
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex gap-1 justify-end">
@@ -505,6 +583,14 @@ export default function AdminProducerPage() {
             />
           )}
         </>
+      )}
+
+      {spiritListTarget && (
+        <ProducerSpiritModal
+          key={spiritListTarget.id}
+          producer={spiritListTarget}
+          onClose={() => setSpiritListTarget(null)}
+        />
       )}
     </div>
   )

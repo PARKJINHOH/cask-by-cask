@@ -18,6 +18,14 @@ public interface SpiritRepository extends JpaRepository<Spirit, Long>, SpiritQue
 
     Optional<Spirit> findByIdAndStatus(Long id, SpiritStatus status);
 
+    @Query("""
+            SELECT s.producer.id, COUNT(s) FROM Spirit s
+            WHERE s.producer.id IN :producerIds
+              AND s.parent IS NULL
+            GROUP BY s.producer.id
+            """)
+    List<Object[]> countCatalogSpiritsByProducerIds(@Param("producerIds") List<Long> producerIds);
+
     @Query("SELECT s.category, COUNT(s) FROM Spirit s WHERE s.status = com.caskbycask.domain.spirit.entity.enums.SpiritStatus.ACTIVE GROUP BY s.category")
     List<Object[]> findCategoryStats();
 

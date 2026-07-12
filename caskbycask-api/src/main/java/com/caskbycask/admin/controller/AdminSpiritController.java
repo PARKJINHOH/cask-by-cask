@@ -131,10 +131,11 @@ public class AdminSpiritController {
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) SpiritCategory category,
             @RequestParam(required = false) SpiritStatus status,
+            @RequestParam(required = false) Long producerId,
             @PageableDefault(size = 20) Pageable pageable) {
         SpiritSearchCondition condition = new SpiritSearchCondition(
                 keyword, category, null, null, null,
-                null, null, null, null, null, null, null,
+                null, null, producerId, null, null, null, null,
                 status, null,
                 null, null, null, null);
         return ResponseEntity.ok(ApiResponse.success(

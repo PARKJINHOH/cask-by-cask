@@ -9,6 +9,7 @@ import com.caskbycask.domain.producer.entity.ProducerRegisterRequest;
 import com.caskbycask.domain.producer.repository.ProducerRegisterRequestRepository;
 import com.caskbycask.domain.producer.repository.ProducerRepository;
 import com.caskbycask.domain.spirit.entity.enums.RequestStatus;
+import com.caskbycask.domain.spirit.repository.SpiritRepository;
 import com.caskbycask.domain.user.entity.User;
 import com.caskbycask.domain.user.repository.UserRepository;
 import com.caskbycask.global.exception.CustomException;
@@ -23,12 +24,15 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class ProducerService {
 
     private final ProducerRepository producerRepository;
+    private final SpiritRepository spiritRepository;
     private final ProducerRegisterRequestRepository producerRequestRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
@@ -51,6 +55,25 @@ public class ProducerService {
     @Transactional(readOnly = true)
     public ProducerResponse findById(Long id) {
         return ProducerResponse.from(getProducer(id));
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AdminProducerResponse> searchForAdmin(
+            String keyword, String nameKo, String nameEn, String country, Integer foundedYear,
+            ProducerType type, Pageable pageable) {
+        String keywordParam = StringUtils.hasText(keyword) ? keyword.trim() : null;
+        String nameKoParam = StringUtils.hasText(nameKo) ? nameKo.trim() : null;
+        String nameEnParam = StringUtils.hasText(nameEn) ? nameEn.trim() : null;
+        String countryParam = StringUtils.hasText(country) ? country.trim() : null;
+        Page<Producer> producers = producerRepository.search(
+                keywordParam, nameKoParam, nameEnParam, countryParam, foundedYear, type, pageable);
+        List<Long> producerIds = producers.getContent().stream().map(Producer::getId).toList();
+        Map<Long, Long> spiritCounts = producerIds.isEmpty()
+                ? Map.of()
+                : spiritRepository.countCatalogSpiritsByProducerIds(producerIds).stream()
+                        .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1]));
+        return producers.map(producer -> AdminProducerResponse.of(
+                producer, spiritCounts.getOrDefault(producer.getId(), 0L)));
     }
 
     // ── 관리자 CRUD ─────────────────────────────────────────────

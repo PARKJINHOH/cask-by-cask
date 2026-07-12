@@ -14,6 +14,7 @@ interface SpiritListParams {
   keyword?: string
   category?: SpiritCategory
   status?: SpiritStatus
+  producerId?: number
   page: number
 }
 

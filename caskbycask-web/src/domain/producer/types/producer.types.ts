@@ -33,6 +33,10 @@ export interface Producer {
   searchKeywords: string | null
 }
 
+export interface AdminProducer extends Producer {
+  spiritCount: number
+}
+
 export interface CreateProducerPayload {
   type?: ProducerType
   nameKo: string

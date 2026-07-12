@@ -23,6 +23,21 @@ public class AdminProducerController {
 
     private final ProducerService producerService;
 
+    @GetMapping
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
+    public ResponseEntity<ApiResponse<PageResponse<AdminProducerResponse>>> list(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String nameKo,
+            @RequestParam(required = false) String nameEn,
+            @RequestParam(required = false) String country,
+            @RequestParam(required = false) Integer foundedYear,
+            @RequestParam(required = false) com.caskbycask.domain.producer.entity.ProducerType type,
+            @PageableDefault(size = 20) Pageable pageable) {
+        return ResponseEntity.ok(ApiResponse.success(PageResponse.from(
+                producerService.searchForAdmin(
+                        keyword, nameKo, nameEn, country, foundedYear, type, pageable))));
+    }
+
     // ── 증류소 CRUD ──────────────────────────────────────────────
     // [보안] SecurityConfig 의 /api/admin/producers/** 는 PARTNER 도 허용한다.
     //   증류소 마스터데이터 자체의 생성/수정/삭제는 소유권 검증이 없으므로

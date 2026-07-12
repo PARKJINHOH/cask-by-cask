@@ -1,6 +1,6 @@
 import axiosInstance from '@/shared/api/axiosInstance'
 import type { ApiResponse, PageResponse } from '@/shared/types/common.types'
-import type { Producer, ProducerType, CreateProducerPayload, UpdateProducerPayload } from '@/domain/producer/types/producer.types'
+import type { AdminProducer, Producer, ProducerType, CreateProducerPayload, UpdateProducerPayload } from '@/domain/producer/types/producer.types'
 
 export const adminProducerApi = {
   list: (params: {
@@ -14,7 +14,7 @@ export const adminProducerApi = {
     size?: number
     sort?: string
   }) =>
-    axiosInstance.get<ApiResponse<PageResponse<Producer>>>('/api/producers', { params }),
+    axiosInstance.get<ApiResponse<PageResponse<AdminProducer>>>('/api/admin/producers', { params }),
 
   create: (data: CreateProducerPayload) =>
     axiosInstance.post<ApiResponse<Producer>>('/api/admin/producers', data),

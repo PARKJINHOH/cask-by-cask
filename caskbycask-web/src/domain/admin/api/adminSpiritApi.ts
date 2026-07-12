@@ -25,6 +25,7 @@ export const adminSpiritApi = {
     keyword?: string
     category?: SpiritCategory
     status?: SpiritStatus
+    producerId?: number
     page?: number
     size?: number
   }) =>
