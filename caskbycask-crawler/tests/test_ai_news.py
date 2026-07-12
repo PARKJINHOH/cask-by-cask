@@ -33,6 +33,7 @@ from analyzer.gemini_analyzer import GeminiAnalyzer
 from news_models import (DraftArticle, SearchSource, UsageAccumulator, canonicalize_url,
                          local_datetime_string, truncate_utf16)
 from news_gemini import GeminiNewsWriter
+from news_prompts import AI_NEWS_MIN_TEXT_LENGTH, AI_NEWS_WRITING_PROMPT
 from news_tavily import TavilyNewsSearch
 from news_targets import target_from_config
 
@@ -200,6 +201,27 @@ class GeminiDealAnalyzerTest(unittest.TestCase):
 
 
 class GeminiNewsWriterTest(unittest.TestCase):
+    def test_writer_prompt_contains_editable_seo_and_length_rules(self) -> None:
+        self.assertIn("[제목 및 본문 SEO]", AI_NEWS_WRITING_PROMPT)
+        self.assertIn(f"{AI_NEWS_MIN_TEXT_LENGTH:,}자 이상", AI_NEWS_WRITING_PROMPT)
+
+    def test_short_article_is_rewritten_once_to_meet_minimum_length(self) -> None:
+        writer = GeminiNewsWriter.__new__(GeminiNewsWriter)
+        writer.writer_model = "gemini-test-lite"
+        short = {"title": "짧은 글", "content_html": "<p>짧은 본문</p>"}
+        long = {"title": "보강한 글", "content_html": f"<p>{'가' * 1000}</p>"}
+        writer._request_json = Mock(side_effect=[short, long])
+
+        result = writer._request_article({"task": "테스트"})
+
+        self.assertEqual(long, result)
+        self.assertEqual(2, writer._request_json.call_count)
+        revision_payload = writer._request_json.call_args_list[1].args[2]
+        self.assertIn("revision_request", revision_payload)
+
+    def test_plain_text_length_excludes_html_and_whitespace(self) -> None:
+        self.assertEqual(5, GeminiNewsWriter._plain_text_length("<h2>가 나</h2><p>다&amp;라</p>"))
+
     def test_json_response_and_thinking_tokens_are_counted(self) -> None:
         response = types.SimpleNamespace(
             text='{"ok": true}',

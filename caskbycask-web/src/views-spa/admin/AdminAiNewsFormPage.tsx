@@ -141,9 +141,10 @@ export default function AdminAiNewsFormPage() {
         <label className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-neutral-700">
           <input type="checkbox" checked={pinned} onChange={(e) => setPinned(e.target.checked)} /> 소식 게시판 상단 고정
         </label>
-        <Field label="본문">
+        <div>
+          <p className="mb-1.5 text-xs font-semibold text-neutral-600">본문</p>
           <PostEditor value={content} onChange={setContent} placeholder="내용을 입력하세요. 이미지와 영상을 업로드할 수 있습니다." onImageError={setError} onVideoError={setError} />
-        </Field>
+        </div>
         {detail && detail.sources.length > 0 && <div className="rounded-lg border p-4"><p className="text-sm font-semibold text-neutral-800">내부 근거 출처</p>
           <div className="mt-2 space-y-2">{detail.sources.map((source) => <div key={source.id ?? source.domain} className="text-xs text-neutral-600"><span className="font-semibold">[{source.sourceType}] {source.domain}</span> · <a href={source.sourceUrl} target="_blank" rel="noreferrer" className="text-primary-700 hover:underline">원문</a>{source.evidenceSummary && <p className="mt-0.5">{source.evidenceSummary}</p>}</div>)}</div>
         </div>}

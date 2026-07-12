@@ -281,9 +281,9 @@ function SettingsTab() {
     </div>
     <form onSubmit={(e) => { e.preventDefault(); save.mutate(form) }} className="space-y-5 rounded-xl bg-white p-5 shadow-sm">
       <div className="grid gap-4 sm:grid-cols-3">
-        <Toggle label="자동화 활성화" checked={form.automationEnabled} onChange={(v) => setForm({ ...form, automationEnabled: v })} />
-        <Toggle label="조건부 자동발행" checked={form.autoPublishEnabled} onChange={(v) => setForm({ ...form, autoPublishEnabled: v })} />
-        <Toggle label="드라이런" checked={form.dryRun} onChange={(v) => setForm({ ...form, dryRun: v })} />
+        <Toggle label="자동화 활성화" description="정해진 주기에 따라 소식 수집, AI 원고·이미지 생성 및 원고 저장을 실행합니다. OFF이면 새로운 자동 작업을 시작하지 않습니다." checked={form.automationEnabled} onChange={(v) => setForm({ ...form, automationEnabled: v })} />
+        <Toggle label="조건부 자동발행" description="자동화가 ON이고 드라이런이 OFF일 때, 출처·신뢰도·이미지·예산 등 모든 조건을 통과한 원고만 커뮤니티에 발행합니다. OFF이면 검토 대기로 저장합니다." checked={form.autoPublishEnabled} onChange={(v) => setForm({ ...form, autoPublishEnabled: v })} />
+        <Toggle label="드라이런" description="수집과 AI 생성은 실제로 실행해 사용량이 발생하지만 자동 발행은 차단하는 안전 모드입니다. 조건부 자동발행이 OFF이면 ON/OFF 모두 공개 결과는 같습니다." checked={form.dryRun} onChange={(v) => setForm({ ...form, dryRun: v })} />
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <NumberField label="출시 소식 일일 한도" value={form.dailyReleaseLimit} onChange={(v) => setForm({ ...form, dailyReleaseLimit: v })} />
@@ -313,7 +313,12 @@ function StatusBadge({ status }: { status: AiNewsArticleStatus }) {
 }
 function Loading() { return <div className="flex justify-center py-20"><Spinner size="lg" className="text-primary-800" /></div> }
 function Metric({ label, value }: { label: string; value: string }) { return <div className="rounded-xl bg-white p-4 shadow-sm"><p className="text-xs text-neutral-500">{label}</p><p className="mt-1 text-lg font-bold text-neutral-900">{value}</p></div> }
-function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) { return <label className="flex items-center gap-3 rounded-lg border p-3 text-sm font-medium"><input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />{label}</label> }
+function Toggle({ label, description, checked, onChange }: { label: string; description: string; checked: boolean; onChange: (v: boolean) => void }) {
+  return <label className="flex items-start gap-3 rounded-lg border p-3">
+    <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="mt-1" />
+    <span><span className="block text-sm font-semibold text-neutral-800">{label}</span><span className="mt-1 block text-xs leading-5 text-neutral-500">{description}</span></span>
+  </label>
+}
 function NumberField({ label, value, onChange, step = '1' }: { label: string; value: number; onChange: (v: number) => void; step?: string }) { return <label className="text-xs font-medium text-neutral-600">{label}<input type="number" step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} className={`${inputCls} mt-1 w-full`} /></label> }
 
 const inputCls = 'rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100'

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import html
 import json
 import re
 from pathlib import Path
@@ -10,17 +11,8 @@ from google import genai
 from google.genai import types
 
 from news_models import DraftArticle, SearchSource, UsageAccumulator
+from news_prompts import AI_NEWS_MIN_TEXT_LENGTH, AI_NEWS_RECOMMENDED_TEXT_LENGTH, AI_NEWS_WRITING_PROMPT
 
-
-WRITING_RULES = """
-당신은 CaskByCask의 주류 전문 편집자다. 결과는 JSON 객체 하나만 반환한다.
-- 한국어로 자연스럽고 중립적인 정보문을 작성한다.
-- 제공된 근거에 없는 사실, 출시일, 가격, 수치, 역사적 사실을 만들지 않는다.
-- 원문 문장을 길게 복사하지 않고 사실만 독자적인 문장으로 재구성한다.
-- 의학적 효능, 과음 권장, 투자·구매 선동, 과장 홍보 표현을 금지한다.
-- 공개 본문에 출처 목록, AI 안내, 참고문헌 문구를 넣지 않는다.
-- 제목은 50자 이하이며 본문은 안전한 TipTap 호환 HTML(p, h2, h3, ul, li, strong)로 작성한다.
-""".strip()
 
 ARTICLE_SCHEMA = {
     "type": "object",
@@ -147,7 +139,7 @@ summary, source_indexes(서로 다른 근거 인덱스), confidence(0~1).
             "output_fields": ["title", "content_html", "confidence", "semantic_fingerprint", "image_prompt"],
             "image_prompt_rule": "브랜드 로고나 실제 라벨을 만들지 않는 가로형 비브랜드 에디토리얼 이미지용 영문 프롬프트",
         }
-        result = self._request_json(self.writer_model, WRITING_RULES, prompt, ARTICLE_SCHEMA)
+        result = self._request_article(prompt)
         return self._draft_from_result("RELEASE_NEWS", candidate["category"],
                                        f"release:{candidate['event_key']}", None,
                                        candidate["source_indexes"], result)
@@ -165,7 +157,7 @@ summary, source_indexes(서로 다른 근거 인덱스), confidence(0~1).
                 "존재하지 않는 병은 표현하지 않는 영문 프롬프트"
             ),
         }
-        result = self._request_json(self.writer_model, WRITING_RULES, prompt, ARTICLE_SCHEMA)
+        result = self._request_article(prompt)
         return self._draft_from_result("TIP_INFO", topic["category"],
                                        f"tip:{topic['normalizedKey']}", int(topic["id"]),
                                        list(range(len(sources))), result)
@@ -288,9 +280,36 @@ JSON {"topics":[{"title":"한국어 50자 이하","normalized_key":"영문-소�
         image_prompt = str(result.get("image_prompt") or "Elegant educational illustration about spirits").strip()
         if not title or not content:
             raise RuntimeError("AI 원고 응답에 제목 또는 본문이 없습니다.")
+        if self._plain_text_length(content) < AI_NEWS_MIN_TEXT_LENGTH:
+            raise RuntimeError(f"AI 원고 본문이 최소 {AI_NEWS_MIN_TEXT_LENGTH:,}자보다 짧습니다.")
         return DraftArticle(article_type, category, title, content, dedupe_key, fingerprint,
                             confidence, source_indexes, image_prompt, topic_id=topic_id,
                             model_name=self.writer_model)
+
+    def _request_article(self, prompt: dict[str, Any]) -> dict[str, Any]:
+        result = self._request_json(self.writer_model, AI_NEWS_WRITING_PROMPT, prompt, ARTICLE_SCHEMA)
+        if self._plain_text_length(str(result.get("content_html") or "")) >= AI_NEWS_MIN_TEXT_LENGTH:
+            return result
+
+        revision_prompt = {
+            **prompt,
+            "revision_request": (
+                f"이전 원고의 순수 본문이 {AI_NEWS_MIN_TEXT_LENGTH:,}자 미만이다. "
+                "근거 안에서 설명과 독자에게 유용한 세부 내용을 "
+                f"보강하여 순수 텍스트 {AI_NEWS_RECOMMENDED_TEXT_LENGTH}자로 다시 작성하라. "
+                "제목과 본문은 SEO 작성 규칙을 지킨다."
+            ),
+            "previous_draft": {
+                "title": result.get("title"),
+                "content_html": result.get("content_html"),
+            },
+        }
+        return self._request_json(self.writer_model, AI_NEWS_WRITING_PROMPT, revision_prompt, ARTICLE_SCHEMA)
+
+    @staticmethod
+    def _plain_text_length(content_html: str) -> int:
+        without_tags = re.sub(r"<[^>]*>", " ", content_html)
+        return len(re.sub(r"\s+", "", html.unescape(without_tags)))
 
     def _request_json(self, model: str, system: str, payload: dict[str, Any],
                       response_schema: dict[str, Any]) -> dict[str, Any]:
