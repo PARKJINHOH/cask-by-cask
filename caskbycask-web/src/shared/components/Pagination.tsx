@@ -6,6 +6,9 @@
   scrollToTopOnChange?: boolean
 }
 
+import { useRef } from 'react'
+import { scrollToPageTop } from '@/shared/utils/scrollToPageTop'
+
 /** Returns at most 5 page numbers with '...' where needed. */
 function buildPages(current: number, total: number): (number | '...')[] {
   if (total <= 5) return Array.from({ length: total }, (_, i) => i)
@@ -32,19 +35,19 @@ export default function Pagination({
   className = '',
   scrollToTopOnChange = true,
 }: PaginationProps) {
+  const navRef = useRef<HTMLElement>(null)
+
   if (totalPages <= 1) return null
 
   const handlePageChange = (page: number) => {
     if (page === currentPage || page < 0 || page >= totalPages) return
     onPageChange(page)
-    if (!scrollToTopOnChange || typeof window === 'undefined') return
-    window.requestAnimationFrame(() => {
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-    })
+    if (scrollToTopOnChange) scrollToPageTop(navRef.current)
   }
 
   return (
     <nav
+      ref={navRef}
       role="navigation"
       aria-label="페이지 네비게이션"
       className={`flex items-center justify-center gap-1 ${className}`}

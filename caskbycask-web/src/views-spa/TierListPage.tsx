@@ -47,6 +47,7 @@ import RegionChips from '@/domain/spirit/components/filter/RegionChips'
 import RangeSlider from '@/shared/components/RangeSlider'
 import Spinner from '@/shared/components/Spinner'
 import EmptyState from '@/shared/components/EmptyState'
+import Modal from '@/shared/components/Modal'
 import Pagination from '@/shared/components/Pagination'
 import Toast from '@/shared/components/Toast'
 import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
@@ -955,7 +956,6 @@ function SpiritPicker({
                 currentPage={data.page}
                 totalPages={data.totalPages}
                 onPageChange={setPage}
-                scrollToTopOnChange={false}
                 className="mt-4"
               />
             </div>
@@ -1120,7 +1120,6 @@ function ProducerPicker({ onAdd }: { onAdd: (producer: Producer) => void }) {
                 currentPage={data.page}
                 totalPages={data.totalPages}
                 onPageChange={setPage}
-                scrollToTopOnChange={false}
                 className="mt-4"
               />
             </div>
@@ -1254,6 +1253,7 @@ export default function TierListPage() {
   const [ownerNickname, setOwnerNickname] = useState<string | undefined>()
   const [isSaving, setIsSaving] = useState(false)
   const [isGuestDraftSaving, setIsGuestDraftSaving] = useState(false)
+  const [authPromptOpen, setAuthPromptOpen] = useState(false)
   const [editMode, setEditMode] = useState(true)
   const [isPresenting, setIsPresenting] = useState(false)
   const [presentationViewport, setPresentationViewport] = useState({ width: 1280, height: 720 })
@@ -1698,7 +1698,7 @@ export default function TierListPage() {
 
   const copyShareUrl = async () => {
     if (!canPersist) {
-      window.alert(t('tierList.shareMembersOnly'))
+      setAuthPromptOpen(true)
       return
     }
     if (!shareValue) {
@@ -1848,6 +1848,36 @@ export default function TierListPage() {
 
       <Toast toasts={toasts} onRemove={removeToast} />
 
+      <Modal
+        open={authPromptOpen}
+        onClose={() => setAuthPromptOpen(false)}
+        title={t('tierList.authPromptTitle')}
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => continueWithAuth('/signup')}
+              disabled={isGuestDraftSaving}
+              className="rounded-lg border border-primary-800 px-4 py-2 text-sm font-semibold text-primary-800 hover:bg-primary-50 disabled:opacity-60"
+            >
+              {t('auth.signup.title')}
+            </button>
+            <button
+              type="button"
+              onClick={() => continueWithAuth('/login')}
+              disabled={isGuestDraftSaving}
+              className="rounded-lg bg-primary-800 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-900 disabled:opacity-60"
+            >
+              {isGuestDraftSaving ? t('tierList.guestDraftSaving') : t('auth.login.title')}
+            </button>
+          </>
+        }
+      >
+        <p className="whitespace-pre-line text-sm leading-relaxed text-neutral-600">
+          {t('tierList.authPromptDesc')}
+        </p>
+      </Modal>
+
       {isLoading ? (
         <div className="flex justify-center py-20">
           <Spinner size="lg" className="text-primary-800" />
@@ -1887,16 +1917,14 @@ export default function TierListPage() {
                 >
                   {isPresenting ? t('tierList.exitPresentation') : t('tierList.presentationMode')}
                 </button>
-                {canPersist && (
-                  <button
-                    type="button"
-                    onClick={save}
-                    disabled={isSaving}
-                    className="rounded-lg bg-primary-800 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-900 disabled:opacity-60"
-                  >
-                    {isSaving ? t('tierList.saving') : t('tierList.save')}
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={canPersist ? save : () => setAuthPromptOpen(true)}
+                  disabled={!isAuthReady || isSaving}
+                  className="rounded-lg bg-primary-800 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-900 disabled:opacity-60"
+                >
+                  {isSaving ? t('tierList.saving') : t('tierList.save')}
+                </button>
                 {canPersist && currentId && (
                   <button
                     type="button"
@@ -1913,26 +1941,6 @@ export default function TierListPage() {
                 >
                   {t('tierList.copyShare')}
                 </button>
-                {isAuthReady && !isLoggedIn && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => continueWithAuth('/login')}
-                      disabled={isGuestDraftSaving}
-                      className="rounded-lg bg-primary-800 px-3 py-2 text-sm font-semibold text-white hover:bg-primary-900 disabled:opacity-60"
-                    >
-                      {isGuestDraftSaving ? t('tierList.guestDraftSaving') : t('auth.login.title')}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => continueWithAuth('/signup')}
-                      disabled={isGuestDraftSaving}
-                      className="rounded-lg border border-primary-800 px-3 py-2 text-sm font-semibold text-primary-800 hover:bg-primary-50 disabled:opacity-60"
-                    >
-                      {t('auth.signup.title')}
-                    </button>
-                  </>
-                )}
                 <button
                   type="button"
                   onClick={downloadPng}

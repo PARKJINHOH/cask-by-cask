@@ -297,7 +297,7 @@ export default function RankingPage() {
           <Pagination
             currentPage={page}
             totalPages={data.totalPages}
-            onPageChange={(p) => { setPage(p); window.scrollTo(0, 0) }}
+            onPageChange={setPage}
           />
         </>
       )}

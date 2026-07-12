@@ -5,6 +5,7 @@ import { useNotificationsPage } from '@/domain/notification/hooks/useNotificatio
 import { useMarkNotificationRead } from '@/domain/notification/hooks/useNotificationPolling'
 import type { NotificationItem, NotificationType } from '@/domain/notification/types/notification.types'
 import SeoMeta from '@/shared/components/SeoMeta'
+import { scrollToPageTop } from '@/shared/utils/scrollToPageTop'
 
 type Tab = '' | NotificationType
 
@@ -156,7 +157,10 @@ export default function NotificationsPage() {
         <div className="flex justify-center items-center gap-2 mt-8">
           <button
             disabled={data.page === 0}
-            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            onClick={(e) => {
+              setPage((p) => Math.max(0, p - 1))
+              scrollToPageTop(e.currentTarget)
+            }}
             className="px-3 py-1.5 text-sm border border-neutral-200 rounded-lg disabled:opacity-40
               hover:bg-neutral-50 transition-colors"
           >
@@ -167,7 +171,10 @@ export default function NotificationsPage() {
           </span>
           <button
             disabled={data.last}
-            onClick={() => setPage((p) => p + 1)}
+            onClick={(e) => {
+              setPage((p) => p + 1)
+              scrollToPageTop(e.currentTarget)
+            }}
             className="px-3 py-1.5 text-sm border border-neutral-200 rounded-lg disabled:opacity-40
               hover:bg-neutral-50 transition-colors"
           >

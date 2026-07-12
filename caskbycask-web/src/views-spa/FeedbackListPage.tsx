@@ -6,6 +6,7 @@ import { useFeedbackList } from '@/domain/feedback/hooks/useFeedback'
 import { FEEDBACK_STATUSES, type FeedbackStatus } from '@/domain/feedback/types/feedback.types'
 import { ProgressBar, StatusBadge, TypeChip } from '@/domain/feedback/components/FeedbackUi'
 import { formatBoardDate } from '@/shared/utils/format'
+import { scrollToPageTop } from '@/shared/utils/scrollToPageTop'
 
 export default function FeedbackListPage() {
   const { t } = useTranslation()
@@ -153,7 +154,10 @@ export default function FeedbackListPage() {
         <div className="flex justify-center items-center gap-2 mt-8">
           <button
             disabled={data.page === 0}
-            onClick={() => setListParam({ page: Math.max(0, page - 1) })}
+            onClick={(e) => {
+              setListParam({ page: Math.max(0, page - 1) })
+              scrollToPageTop(e.currentTarget)
+            }}
             className="px-3 py-1.5 text-sm border border-neutral-200 rounded-lg disabled:opacity-40
               hover:bg-neutral-50 transition-colors"
           >
@@ -164,7 +168,10 @@ export default function FeedbackListPage() {
           </span>
           <button
             disabled={data.last}
-            onClick={() => setListParam({ page: page + 1 })}
+            onClick={(e) => {
+              setListParam({ page: page + 1 })
+              scrollToPageTop(e.currentTarget)
+            }}
             className="px-3 py-1.5 text-sm border border-neutral-200 rounded-lg disabled:opacity-40
               hover:bg-neutral-50 transition-colors"
           >

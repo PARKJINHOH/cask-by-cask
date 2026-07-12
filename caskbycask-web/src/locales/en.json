@@ -1683,6 +1683,8 @@
     "saved": "Saved.",
     "saveFailed": "Could not save. Please check your input.",
     "guestModeNotice": "Guests can build tier lists and upload custom images. Log in or sign up to keep the current work for 30 minutes and restore it afterward.",
+    "authPromptTitle": "Log in to continue",
+    "authPromptDesc": "Saving tier lists and sharing URLs are available to members only.\nWe will temporarily keep your current work while you log in or sign up.",
     "guestDraftSaving": "Saving draft...",
     "guestDraftSaveFailed": "Could not temporarily save this tier list. Please try again.",
     "guestDraftRestored": "Your tier list from before login has been restored.",
