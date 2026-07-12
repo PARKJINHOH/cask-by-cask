@@ -162,6 +162,32 @@ summary, source_indexes(서로 다른 근거 인덱스), confidence(0~1).
                                        f"tip:{topic['normalizedKey']}", int(topic["id"]),
                                        list(range(len(sources))), result)
 
+    def rewrite_article(self, article: dict[str, Any]) -> DraftArticle:
+        prompt = {
+            "task": "기존 AI 소식 원고 재작성",
+            "article_type": article["articleType"],
+            "category": article["category"],
+            "original_article": {
+                "title": article["title"],
+                "content_html": str(article["content"])[:30000],
+                "semantic_fingerprint": article.get("semanticFingerprint"),
+            },
+            "additional_instruction_for_this_article_only": article["additionalPrompt"],
+            "rules": [
+                "추가 지시는 이 원고 재작성에만 적용하고 다른 원고의 작성 기준으로 일반화하지 않는다.",
+                "기존 원고의 사실관계를 유지하면서 추가 지시를 충실히 반영한다.",
+                "확인되지 않은 새로운 사실, 출처, 수치 또는 인용을 만들어내지 않는다.",
+                "완성된 전체 제목과 전체 HTML 본문을 반환한다.",
+            ],
+            "output_fields": ["title", "content_html", "confidence", "semantic_fingerprint", "image_prompt"],
+            "image_prompt_rule": "기존 대표 이미지는 유지하므로 일반적인 비브랜드 영문 프롬프트만 반환",
+        }
+        result = self._request_article(prompt)
+        return self._draft_from_result(
+            article["articleType"], article["category"], f"rewrite:{article['articleId']}",
+            None, [], result,
+        )
+
     def judge_tip_duplicate(self, topic: dict[str, Any], draft: DraftArticle,
                             corpus: list[dict[str, Any]]) -> dict[str, Any]:
         if not corpus or topic.get("allowRepublish"):

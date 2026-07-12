@@ -48,6 +48,10 @@ public interface AiNewsArticleRepository extends JpaRepository<AiNewsArticle, Lo
 
     long countByStatus(AiNewsArticleStatus status);
 
+    boolean existsByTopicId(Long topicId);
+
+    Optional<AiNewsArticle> findFirstByStatusOrderByRewriteRequestedAtAsc(AiNewsArticleStatus status);
+
     boolean existsByContentContainingAndStatusIn(String value, Collection<AiNewsArticleStatus> statuses);
 
     @Query("select count(a) from AiNewsArticle a where a.articleType = :type and a.publishedAt >= :from")

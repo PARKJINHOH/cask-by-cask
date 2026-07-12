@@ -27,6 +27,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class AiNewsServiceTest {
@@ -139,6 +140,8 @@ class AiNewsServiceTest {
         AiNewsDtos.InternalConfigResponse config = service.internalConfig();
 
         assertThat(config.tipDue()).isFalse();
+        verify(articleRepository).findByArticleTypeAndStatusInOrderByCreatedAtAsc(
+                AiNewsArticleType.TIP_INFO, List.of(AiNewsArticleStatus.PUBLISHED));
     }
 
     @Test
@@ -149,6 +152,49 @@ class AiNewsServiceTest {
 
         assertThatThrownBy(() -> service.updateSettings(request, 1L))
                 .isInstanceOf(CustomException.class);
+    }
+
+    @Test
+    void topicWithArticleHistoryCannotBeDeleted() {
+        AiNewsTopic topic = AiNewsTopic.builder()
+                .id(7L)
+                .title("셰리 캐스크란?")
+                .normalizedKey("what-is-sherry-cask")
+                .category(AiNewsCategory.WHISKY)
+                .status(AiNewsTopicStatus.COMPLETED)
+                .build();
+        given(topicRepository.findById(7L)).willReturn(Optional.of(topic));
+        given(articleRepository.existsByTopicId(7L)).willReturn(true);
+
+        assertThatThrownBy(() -> service.deleteTopic(7L, 1L))
+                .isInstanceOf(CustomException.class);
+    }
+
+    @Test
+    void deletedArticleCanBeQueuedAndCompletedForRewrite() {
+        AiNewsArticle article = AiNewsArticle.builder()
+                .id(21L)
+                .articleType(AiNewsArticleType.TIP_INFO)
+                .status(AiNewsArticleStatus.DELETED)
+                .category(AiNewsCategory.WHISKY)
+                .title("기존 제목")
+                .content("<p>기존 본문</p>")
+                .confidenceScore(BigDecimal.ONE)
+                .dedupeKey("tip:rewrite-test")
+                .build();
+        given(articleRepository.findDetailById(21L)).willReturn(Optional.of(article));
+
+        service.requestRewrite(21L, new AiNewsDtos.RewriteRequest("초보자 예시를 보강해주세요."), 1L);
+
+        assertThat(article.getStatus()).isEqualTo(AiNewsArticleStatus.REWRITE_REQUESTED);
+        assertThat(article.getRewritePrompt()).isEqualTo("초보자 예시를 보강해주세요.");
+
+        service.completeRewrite(21L, new AiNewsDtos.RewriteResultRequest(
+                "개선된 제목", "<p>개선된 본문</p>", new BigDecimal("0.95"), "개선 지문", "writer-model"));
+
+        assertThat(article.getStatus()).isEqualTo(AiNewsArticleStatus.PENDING_REVIEW);
+        assertThat(article.getTitle()).isEqualTo("개선된 제목");
+        assertThat(article.getRewritePrompt()).isNull();
     }
 
     private AiNewsSettings defaultSettings() {

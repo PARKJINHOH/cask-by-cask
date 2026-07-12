@@ -459,7 +459,7 @@ export default function BoardListPage({ boardType, title }: Props) {
                     <td className="px-4 py-2 text-center">
                       {post.authorRole ? (
                         <UserBadge
-                          user={{ id: post.authorId ?? undefined, nickname: post.authorNickname, role: post.authorRole as UserRole, currentLevel: post.authorLevel, maturingPower: post.authorMaturingPower ?? undefined, nicknameFixed: post.authorNicknameFixed, profileImageUrl: post.authorProfileImageUrl }}
+                          user={{ id: post.authorId ?? undefined, nickname: post.authorNickname, role: post.authorRole as UserRole, currentLevel: post.authorLevel, maturingPower: post.authorMaturingPower ?? undefined, nicknameFixed: post.authorNicknameFixed, profileImageUrl: post.authorProfileImageUrl, systemAccount: post.authorSystemAccount }}
                           size="sm"
                           avatarSize="xs"
                           levelIconSize={14}
@@ -546,7 +546,7 @@ export default function BoardListPage({ boardType, title }: Props) {
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-xs text-neutral-400">
                   {post.authorRole ? (
                     <UserBadge
-                      user={{ nickname: post.authorNickname, role: post.authorRole as UserRole, currentLevel: post.authorLevel, maturingPower: post.authorMaturingPower ?? undefined, nicknameFixed: post.authorNicknameFixed, profileImageUrl: post.authorProfileImageUrl }}
+                      user={{ nickname: post.authorNickname, role: post.authorRole as UserRole, currentLevel: post.authorLevel, maturingPower: post.authorMaturingPower ?? undefined, nicknameFixed: post.authorNicknameFixed, profileImageUrl: post.authorProfileImageUrl, systemAccount: post.authorSystemAccount }}
                       size="sm"
                       avatarSize="xs"
                       levelIconSize={14}

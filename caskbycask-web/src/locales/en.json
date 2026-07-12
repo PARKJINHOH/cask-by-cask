@@ -76,6 +76,7 @@
     },
     "community": {
       "title": "Latest from Community",
+      "newsLatest": "Latest News",
       "free": "Free",
       "news": "News",
       "byob": "BYOB",

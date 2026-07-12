@@ -22,6 +22,7 @@ export interface PostListItem {
   authorMaturingPower?: number | null
   authorNicknameFixed?: boolean | null
   authorProfileImageUrl?: string | null
+  authorSystemAccount?: boolean
   viewCount: number
   likeCount: number
   commentCount: number
@@ -82,6 +83,7 @@ export interface PostDetail {
   authorMaturingPower?: number | null
   authorNicknameFixed?: boolean | null
   authorProfileImageUrl?: string | null
+  authorSystemAccount?: boolean
   viewCount: number
   likeCount: number
   commentCount: number

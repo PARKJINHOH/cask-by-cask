@@ -88,6 +88,12 @@ public class AiNewsArticle extends BaseTimeEntity {
     @Column(length = 2000)
     private String failureReason;
 
+    @Lob
+    @Column(columnDefinition = "TEXT")
+    private String rewritePrompt;
+
+    private LocalDateTime rewriteRequestedAt;
+
     private LocalDateTime publishedAt;
 
     @Builder.Default
@@ -164,5 +170,25 @@ public class AiNewsArticle extends BaseTimeEntity {
         this.status = AiNewsArticleStatus.SKIPPED_DUPLICATE;
         this.duplicateReason = reason;
         this.failureReason = reason;
+    }
+
+    public void requestRewrite(String prompt, LocalDateTime requestedAt) {
+        this.rewritePrompt = prompt;
+        this.rewriteRequestedAt = requestedAt;
+        this.status = AiNewsArticleStatus.REWRITE_REQUESTED;
+        this.failureReason = null;
+    }
+
+    public void completeRewrite(String title, String content, BigDecimal confidenceScore,
+                                String semanticFingerprint, String modelName) {
+        this.title = title;
+        this.content = content;
+        this.confidenceScore = confidenceScore;
+        this.semanticFingerprint = semanticFingerprint;
+        this.modelName = modelName;
+        this.status = AiNewsArticleStatus.PENDING_REVIEW;
+        this.rewritePrompt = null;
+        this.rewriteRequestedAt = null;
+        this.failureReason = "AI 재작성이 완료되었습니다. 내용을 검토한 후 발행해주세요.";
     }
 }

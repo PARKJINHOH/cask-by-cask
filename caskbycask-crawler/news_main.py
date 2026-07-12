@@ -234,11 +234,13 @@ def run() -> int:
         return 0
 
     usage = config["usage"]
+    has_rewrite_requests = bool(config.get("rewriteRequests"))
     tavily_limit = int(remote_settings.get("tavilyMonthlyCreditLimit", 900))
     tavily_used = int(usage.get("tavilyCredits", 0))
     if tavily_used >= tavily_limit:
         notifier.warning_once("ai_news_tavily_budget", "AI 소식 Tavily 한도 도달", json.dumps(usage, ensure_ascii=False))
-        return 0
+        if not has_rewrite_requests:
+            return 0
     if tavily_limit > 0 and tavily_used / tavily_limit >= 0.8:
         notifier.warning_once("ai_news_tavily_budget_80", "AI 소식 Tavily 한도 80% 도달",
                               json.dumps(usage, ensure_ascii=False))
@@ -246,7 +248,8 @@ def run() -> int:
     if remaining_tavily_credits < 2:
         notifier.warning_once("ai_news_tavily_reserve", "AI 소식 Tavily 잔여 한도 부족",
                               f"remaining={remaining_tavily_credits}")
-        return 0
+        if not has_rewrite_requests:
+            return 0
     estimated_cost = float(usage.get("estimatedCostUsd", 0) or 0)
     admin_ai_budget = float(usage.get("openaiBudgetUsd", 0) or 0)
     if admin_ai_budget > 0 and estimated_cost >= admin_ai_budget:
@@ -300,12 +303,30 @@ def run() -> int:
                               settings.image_generation_enabled)
     fatal_error = None
     try:
+        for rewrite_request in list(config.get("rewriteRequests") or []):
+            stats["candidateCount"] += 1
+            try:
+                rewritten = writer.rewrite_article(rewrite_request)
+                api.complete_rewrite(int(rewrite_request["articleId"]), {
+                    "title": rewritten.title,
+                    "content": rewritten.content_html,
+                    "confidenceScore": rewritten.confidence,
+                    "semanticFingerprint": rewritten.semantic_fingerprint,
+                    "modelName": rewritten.model_name,
+                })
+                stats["reviewCount"] += 1
+                log.info("AI 원고 재작성 완료 articleId=%s", rewrite_request.get("articleId"))
+            except Exception as error:  # noqa: BLE001
+                stats["errorCount"] += 1
+                log.exception("AI 원고 재작성 실패 articleId=%s: %s",
+                              rewrite_request.get("articleId"), error)
+
         now_year = datetime.now(timezone.utc).year
         release_sources = _dedupe_sources(
             search.search(f"위스키 와인 꼬냑 신제품 출시 예정 국내 출시 수입 {now_year}")
             + search.search(f"new whisky wine cognac release announced launch {now_year}")
             + collect_community_sources(config, notifier, log, settings.http_timeout_sec)
-        )
+        ) if remaining_tavily_credits >= 2 else []
         _apply_source_trust(release_sources, config)
         remaining_daily = max(0, int(remote_settings.get("dailyReleaseLimit", 3))
                               - int(config.get("releasePublishedToday", 0)))

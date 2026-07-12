@@ -48,6 +48,12 @@ export const adminAiNewsApi = {
   deleteArticle: (id: number, reason?: string) =>
     axiosInstance.delete(`/api/admin/ai-news/articles/${id}`, { data: { reason } }),
   restore: (id: number) => axiosInstance.post(`/api/admin/ai-news/articles/${id}/restore`),
+  requestRewrite: async (id: number, prompt: string) => {
+    const res = await axiosInstance.post<ApiResponse<AiNewsArticleDetail>>(
+      `/api/admin/ai-news/articles/${id}/rewrite`, { prompt },
+    )
+    return res.data.data!
+  },
 
   topics: async (params?: { status?: AiNewsTopicStatus; page?: number; size?: number }) => {
     const res = await axiosInstance.get<ApiResponse<PageResponse<AiNewsTopic>>>('/api/admin/ai-news/topics', { params })

@@ -268,6 +268,7 @@ public enum ErrorCode {
     AI_NEWS_BUDGET_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "AI_NEWS_007", "AI 소식 월간 사용 한도를 초과했습니다."),
     AI_NEWS_EVIDENCE_INSUFFICIENT(HttpStatus.BAD_REQUEST, "AI_NEWS_008", "자동 발행에 필요한 출처 근거가 부족합니다."),
     AI_NEWS_SYSTEM_AUTHOR_NOT_FOUND(HttpStatus.SERVICE_UNAVAILABLE, "AI_NEWS_009", "AI 소식 시스템 작성자 계정이 준비되지 않았습니다."),
+    AI_NEWS_TOPIC_IN_USE(HttpStatus.CONFLICT, "AI_NEWS_010", "이미 생성된 원고가 연결된 정보 주제는 삭제할 수 없습니다."),
 
     // Common
     NOT_FOUND(HttpStatus.NOT_FOUND, "COMMON_001", "리소스를 찾을 수 없습니다."),

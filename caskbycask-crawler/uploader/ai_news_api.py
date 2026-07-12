@@ -45,6 +45,13 @@ class AiNewsApi:
                                  json=payload, timeout=max(self.timeout, 60))
         return self._data(response)
 
+    def complete_rewrite(self, article_id: int, payload: dict) -> dict:
+        response = requests.post(
+            f"{self.base_url}/api/internal/ai-news/articles/{article_id}/rewrite-result",
+            headers=self.headers, json=payload, timeout=max(self.timeout, 60),
+        )
+        return self._data(response)
+
     def create_topic_suggestion(self, payload: dict) -> dict:
         response = requests.post(f"{self.base_url}/api/internal/ai-news/topics/suggestions",
                                  headers=self.headers, json=payload, timeout=self.timeout)

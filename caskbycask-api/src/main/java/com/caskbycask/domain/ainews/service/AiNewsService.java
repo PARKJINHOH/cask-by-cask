@@ -288,6 +288,32 @@ public class AiNewsService {
         return AiNewsDtos.ArticleDetailResponse.from(article);
     }
 
+    @Transactional
+    public AiNewsDtos.ArticleDetailResponse requestRewrite(Long id, AiNewsDtos.RewriteRequest request,
+                                                           Long actorId) {
+        AiNewsArticle article = findArticleDetail(id);
+        if (article.getStatus() == AiNewsArticleStatus.PUBLISHED
+                || article.getStatus() == AiNewsArticleStatus.SKIPPED_DUPLICATE
+                || article.getStatus() == AiNewsArticleStatus.REWRITE_REQUESTED) {
+            throw new CustomException(ErrorCode.AI_NEWS_INVALID_STATUS);
+        }
+        article.requestRewrite(request.prompt().trim(), LocalDateTime.now());
+        log(actorId, article.getId(), "AI 소식 재작성 요청", request.prompt().trim());
+        return AiNewsDtos.ArticleDetailResponse.from(article);
+    }
+
+    @Transactional
+    public AiNewsDtos.ArticleDetailResponse completeRewrite(Long id, AiNewsDtos.RewriteResultRequest request) {
+        AiNewsArticle article = findArticleDetail(id);
+        if (article.getStatus() != AiNewsArticleStatus.REWRITE_REQUESTED) {
+            throw new CustomException(ErrorCode.AI_NEWS_INVALID_STATUS);
+        }
+        article.completeRewrite(request.title().trim(), withLeadImage(request.content(), article.getImageUrl()),
+                request.confidenceScore() != null ? request.confidenceScore() : BigDecimal.ZERO,
+                trimToNull(request.semanticFingerprint()), trimToNull(request.modelName()));
+        return AiNewsDtos.ArticleDetailResponse.from(article);
+    }
+
     @Transactional(readOnly = true)
     public List<AiNewsDtos.SourceConfigResponse> sourceConfigs() {
         return sourceConfigRepository.findAllByOrderBySourceNameAsc().stream()
@@ -377,6 +403,9 @@ public class AiNewsService {
     public void deleteTopic(Long id, Long actorId) {
         AiNewsTopic topic = topicRepository.findById(id)
                 .orElseThrow(() -> new CustomException(ErrorCode.AI_NEWS_TOPIC_NOT_FOUND));
+        if (articleRepository.existsByTopicId(id)) {
+            throw new CustomException(ErrorCode.AI_NEWS_TOPIC_IN_USE);
+        }
         topicRepository.delete(topic);
         log(actorId, id, "AI 정보 글 주제 삭제", topic.getTitle());
     }
@@ -391,7 +420,7 @@ public class AiNewsService {
         boolean tipDue = lastTip == null || !lastTip.plusHours(settings.getTipIntervalHours()).isAfter(LocalDateTime.now());
         List<AiNewsDtos.TipDuplicateCorpusResponse> duplicateCorpus = articleRepository
                 .findByArticleTypeAndStatusInOrderByCreatedAtAsc(AiNewsArticleType.TIP_INFO,
-                        List.of(AiNewsArticleStatus.PUBLISHED, AiNewsArticleStatus.DELETED))
+                        List.of(AiNewsArticleStatus.PUBLISHED))
                 .stream().map(this::toDuplicateCorpus).toList();
         return new AiNewsDtos.InternalConfigResponse(AiNewsDtos.SettingsResponse.from(settings), usageSummary(),
                 sourceConfigRepository.findByEnabledTrueOrderBySourceNameAsc().stream()
@@ -399,7 +428,10 @@ public class AiNewsService {
                 topicRepository.findByStatusOrderByCreatedAtAsc(AiNewsTopicStatus.READY).stream()
                         .map(AiNewsDtos.TopicResponse::from).toList(),
                 topicRepository.findAll().stream().map(AiNewsTopic::getNormalizedKey).toList(),
-                duplicateCorpus, lastTip, tipDue, publishedToday);
+                duplicateCorpus,
+                articleRepository.findFirstByStatusOrderByRewriteRequestedAtAsc(AiNewsArticleStatus.REWRITE_REQUESTED)
+                        .map(AiNewsDtos.RewriteQueueResponse::from).stream().toList(),
+                lastTip, tipDue, publishedToday);
     }
 
     @Transactional(readOnly = true)
@@ -651,6 +683,14 @@ public class AiNewsService {
     private void publishWithSystemAuthor(AiNewsArticle article) {
         User author = userRepository.findByEmail(SYSTEM_AUTHOR_EMAIL)
                 .orElseThrow(() -> new CustomException(ErrorCode.AI_NEWS_SYSTEM_AUTHOR_NOT_FOUND));
+        if (article.getDeletedPostId() != null) {
+            PostDetailResponse restored = postService.restorePost(article.getDeletedPostId());
+            postService.adminUpdatePost(restored.getId(),
+                    UpdatePostRequest.aiNews(article.getPrefixId(), article.getTitle(), article.getContent(),
+                            article.isPinned()), author.getId());
+            article.publish(restored.getId(), LocalDateTime.now());
+            return;
+        }
         PostDetailResponse post = postService.createPost(
                 CreatePostRequest.aiNotice(article.getPrefixId(), article.getTitle(), article.getContent(), article.isPinned()),
                 author.getId());

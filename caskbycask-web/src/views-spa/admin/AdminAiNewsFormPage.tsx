@@ -23,6 +23,7 @@ export default function AdminAiNewsFormPage() {
   const [pinned, setPinned] = useState(false)
   const [confidence, setConfidence] = useState(1)
   const [semanticFingerprint, setSemanticFingerprint] = useState('')
+  const [rewritePrompt, setRewritePrompt] = useState('')
   const [error, setError] = useState('')
 
   const { data: detail, isLoading } = useQuery({
@@ -93,6 +94,16 @@ export default function AdminAiNewsFormPage() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin', 'ai-news'] }); navigate('/admin/community/ai-news', { replace: true }) },
   })
 
+  const rewriteMut = useMutation({
+    mutationFn: () => adminAiNewsApi.requestRewrite(articleId!, rewritePrompt.trim()),
+    onSuccess: (next) => {
+      setRewritePrompt('')
+      qc.invalidateQueries({ queryKey: ['admin', 'ai-news'] })
+      qc.setQueryData(['admin', 'ai-news', 'article', articleId], next)
+    },
+    onError: (e) => setError(e instanceof Error ? e.message : 'AI 재작성을 요청하지 못했습니다.'),
+  })
+
   if (isLoading) return <div className="flex justify-center py-24"><Spinner size="lg" className="text-primary-800" /></div>
   return (
     <div className="mx-auto max-w-5xl p-4 sm:p-6">
@@ -106,6 +117,7 @@ export default function AdminAiNewsFormPage() {
             상태: <strong>{detail.status}</strong> · 중복 키: {detail.dedupeKey}
             {detail.failureReason && <p className="mt-1 text-red-600">검토 사유: {detail.failureReason}</p>}
             {detail.duplicateReason && <p className="mt-1 text-amber-700">중복 판정: {detail.duplicateReason}</p>}
+            {detail.rewritePrompt && <p className="mt-1 text-violet-700">재작성 추가 프롬프트: {detail.rewritePrompt}</p>}
           </div>
         )}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -148,6 +160,24 @@ export default function AdminAiNewsFormPage() {
         {detail && detail.sources.length > 0 && <div className="rounded-lg border p-4"><p className="text-sm font-semibold text-neutral-800">내부 근거 출처</p>
           <div className="mt-2 space-y-2">{detail.sources.map((source) => <div key={source.id ?? source.domain} className="text-xs text-neutral-600"><span className="font-semibold">[{source.sourceType}] {source.domain}</span> · <a href={source.sourceUrl} target="_blank" rel="noreferrer" className="text-primary-700 hover:underline">원문</a>{source.evidenceSummary && <p className="mt-0.5">{source.evidenceSummary}</p>}</div>)}</div>
         </div>}
+        {detail && !['PUBLISHED', 'SKIPPED_DUPLICATE', 'REWRITE_REQUESTED'].includes(detail.status) && (
+          <div className="rounded-lg border border-violet-200 bg-violet-50 p-4">
+            <p className="text-sm font-semibold text-violet-900">AI 재작성 요청</p>
+            <p className="mt-1 text-xs leading-5 text-violet-700">
+              아래 추가 프롬프트는 이 원고 재작성에만 적용됩니다. 다음 AI 자동화 실행에서 기존 제목과 본문을 바탕으로 다시 작성하며, 결과는 검토 대기로 저장됩니다.
+            </p>
+            <textarea maxLength={4000} rows={4} value={rewritePrompt} onChange={(e) => setRewritePrompt(e.target.value)}
+              className={`${inputCls} mt-3 resize-y`} placeholder="예: 초보자가 이해하기 쉽게 용어 설명을 보강하고, 각 단락에 구체적인 예시를 추가해주세요." />
+            <div className="mt-2 flex items-center justify-between gap-3">
+              <span className="text-xs text-violet-500">{rewritePrompt.length}/4000</span>
+              <button type="button" disabled={!rewritePrompt.trim() || rewriteMut.isPending} onClick={() => {
+                if (window.confirm('이 원고를 AI 재작성 대기 상태로 변경하시겠습니까?')) rewriteMut.mutate()
+              }} className="rounded-lg bg-violet-700 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-800 disabled:opacity-50">
+                AI 재작성 요청
+              </button>
+            </div>
+          </div>
+        )}
         {error && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-600">{error}</p>}
         <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
           {isEdit ? <button type="button" onClick={() => { if (window.confirm('삭제하시겠습니까?')) deleteMut.mutate() }} disabled={deleteMut.isPending} className="rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50">삭제</button> : <span />}

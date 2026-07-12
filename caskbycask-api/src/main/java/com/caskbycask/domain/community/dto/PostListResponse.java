@@ -9,6 +9,8 @@ import java.time.LocalDateTime;
 @Getter
 public class PostListResponse {
 
+    private static final String AI_SYSTEM_AUTHOR_EMAIL = "ai-news@system.caskbycask.local";
+
     private final Long id;
     private final BoardType boardType;
     private final PrefixInfo prefix;
@@ -23,6 +25,7 @@ public class PostListResponse {
     private final Boolean authorNicknameFixed; // null if anonymous
     private final String authorProfileImageUrl; // null if anonymous
     private final Long authorId;               // null if anonymous
+    private final boolean authorSystemAccount;
     private final long viewCount;
     private final int likeCount;
     private final int commentCount;
@@ -52,6 +55,7 @@ public class PostListResponse {
         this.authorNicknameFixed    = anon ? null : post.getAuthor().getNicknameFixed();
         this.authorProfileImageUrl  = anon ? null : post.getAuthor().getProfileImageUrl();
         this.authorId               = anon ? null : post.getAuthor().getId();
+        this.authorSystemAccount    = !anon && AI_SYSTEM_AUTHOR_EMAIL.equalsIgnoreCase(post.getAuthor().getEmail());
         this.viewCount     = post.getViewCount();
         this.likeCount     = post.getLikeCount();
         this.commentCount  = post.getCommentCount();

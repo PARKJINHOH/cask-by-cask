@@ -93,6 +93,14 @@ public class AiNewsAdminController {
         return ResponseEntity.ok(ApiResponse.success(aiNewsService.restore(id, user.getUserId())));
     }
 
+    @PostMapping("/articles/{id}/rewrite")
+    public ResponseEntity<ApiResponse<AiNewsDtos.ArticleDetailResponse>> requestRewrite(
+            @PathVariable Long id,
+            @Valid @RequestBody AiNewsDtos.RewriteRequest request,
+            @AuthenticationPrincipal CustomUserDetails user) {
+        return ResponseEntity.ok(ApiResponse.success(aiNewsService.requestRewrite(id, request, user.getUserId())));
+    }
+
     @GetMapping("/topics")
     public ResponseEntity<ApiResponse<PageResponse<AiNewsDtos.TopicResponse>>> topics(
             @RequestParam(required = false) AiNewsTopicStatus status,

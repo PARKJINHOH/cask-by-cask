@@ -57,6 +57,16 @@ public final class AiNewsDtos {
 
     public record ActionRequest(@Size(max = 1000) String reason) {}
 
+    public record RewriteRequest(@NotBlank @Size(max = 4000) String prompt) {}
+
+    public record RewriteResultRequest(
+            @NotBlank @Size(max = 50) String title,
+            @NotBlank String content,
+            @DecimalMin("0.0") @DecimalMax("1.0") BigDecimal confidenceScore,
+            @Size(max = 1000) String semanticFingerprint,
+            @Size(max = 100) String modelName
+    ) {}
+
     public record DuplicateSkipRequest(
             @NotNull AiNewsCategory category,
             @NotBlank @Size(max = 50) String title,
@@ -132,6 +142,8 @@ public final class AiNewsDtos {
             String modelName,
             String duplicateReason,
             String failureReason,
+            String rewritePrompt,
+            LocalDateTime rewriteRequestedAt,
             LocalDateTime publishedAt,
             LocalDateTime createdAt,
             LocalDateTime updatedAt,
@@ -145,9 +157,27 @@ public final class AiNewsDtos {
                     article.getTopic() != null ? article.getTopic().getTitle() : null,
                     article.getPrefixId(), article.isPinned(), article.isUpdateAvailable(), article.getImageUrl(),
                     article.getImageKind(), article.getImageRightsEvidence(), article.getModelName(),
-                    article.getDuplicateReason(), article.getFailureReason(), article.getPublishedAt(),
+                    article.getDuplicateReason(), article.getFailureReason(), article.getRewritePrompt(),
+                    article.getRewriteRequestedAt(), article.getPublishedAt(),
                     article.getCreatedAt(), article.getUpdatedAt(),
                     article.getSources().stream().map(SourceResponse::from).toList());
+        }
+    }
+
+    public record RewriteQueueResponse(
+            Long articleId,
+            AiNewsArticleType articleType,
+            AiNewsCategory category,
+            String title,
+            String content,
+            String additionalPrompt,
+            String semanticFingerprint,
+            LocalDateTime requestedAt
+    ) {
+        public static RewriteQueueResponse from(AiNewsArticle article) {
+            return new RewriteQueueResponse(article.getId(), article.getArticleType(), article.getCategory(),
+                    article.getTitle(), article.getContent(), article.getRewritePrompt(),
+                    article.getSemanticFingerprint(), article.getRewriteRequestedAt());
         }
     }
 
@@ -321,6 +351,7 @@ public final class AiNewsDtos {
             List<TopicResponse> readyTopics,
             List<String> allTopicKeys,
             List<TipDuplicateCorpusResponse> tipDuplicateCorpus,
+            List<RewriteQueueResponse> rewriteRequests,
             LocalDateTime lastTipPublishedAt,
             boolean tipDue,
             long releasePublishedToday

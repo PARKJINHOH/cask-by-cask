@@ -12,6 +12,8 @@ import java.util.stream.Collectors;
 @Getter
 public class PostDetailResponse {
 
+    private static final String AI_SYSTEM_AUTHOR_EMAIL = "ai-news@system.caskbycask.local";
+
     private final Long id;
     private final BoardType boardType;
     private final PrefixInfo prefix;
@@ -28,6 +30,7 @@ public class PostDetailResponse {
     private final Integer authorMaturingPower; // null if isAnonymous
     private final Boolean authorNicknameFixed; // null if isAnonymous
     private final String authorProfileImageUrl; // null if isAnonymous
+    private final boolean authorSystemAccount;
     private final long viewCount;
     private final int likeCount;
     private final int commentCount;
@@ -58,6 +61,7 @@ public class PostDetailResponse {
         this.authorMaturingPower = b.authorMaturingPower;
         this.authorNicknameFixed   = b.authorNicknameFixed;
         this.authorProfileImageUrl = b.authorProfileImageUrl;
+        this.authorSystemAccount = b.authorSystemAccount;
         this.viewCount        = b.viewCount;
         this.likeCount        = b.likeCount;
         this.commentCount     = b.commentCount;
@@ -90,6 +94,8 @@ public class PostDetailResponse {
                 .authorMaturingPower(Boolean.TRUE.equals(post.getIsAnonymous()) ? null : post.getAuthor().getMaturingPower())
                 .authorNicknameFixed(Boolean.TRUE.equals(post.getIsAnonymous()) ? null : post.getAuthor().getNicknameFixed())
                 .authorProfileImageUrl(Boolean.TRUE.equals(post.getIsAnonymous()) ? null : post.getAuthor().getProfileImageUrl())
+                .authorSystemAccount(!Boolean.TRUE.equals(post.getIsAnonymous())
+                        && AI_SYSTEM_AUTHOR_EMAIL.equalsIgnoreCase(post.getAuthor().getEmail()))
                 .viewCount(post.getViewCount())
                 .likeCount(post.getLikeCount())
                 .commentCount(post.getCommentCount())
@@ -117,6 +123,7 @@ public class PostDetailResponse {
         private Integer authorMaturingPower;
         private Boolean authorNicknameFixed;
         private String authorProfileImageUrl;
+        private boolean authorSystemAccount;
         private long viewCount;
         private int likeCount;
         private int commentCount;
@@ -146,6 +153,7 @@ public class PostDetailResponse {
         public Builder authorMaturingPower(Integer m)     { this.authorMaturingPower = m; return this; }
         public Builder authorNicknameFixed(Boolean f)      { this.authorNicknameFixed = f; return this; }
         public Builder authorProfileImageUrl(String u)    { this.authorProfileImageUrl = u; return this; }
+        public Builder authorSystemAccount(boolean s)      { this.authorSystemAccount = s; return this; }
         public Builder viewCount(long v)                  { this.viewCount = v; return this; }
         public Builder likeCount(int l)                   { this.likeCount = l; return this; }
         public Builder commentCount(int c)                { this.commentCount = c; return this; }

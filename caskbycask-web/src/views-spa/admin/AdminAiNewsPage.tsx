@@ -15,7 +15,7 @@ type Tab = 'articles' | 'topics' | 'sources' | 'settings'
 
 const statusLabels: Record<AiNewsArticleStatus, string> = {
   DRAFT: '임시저장', PENDING_REVIEW: '검토 대기', PUBLISHED: '발행됨', REJECTED: '반려',
-  SKIPPED_DUPLICATE: '중복 제외', FAILED: '실패', DELETED: '삭제됨',
+  SKIPPED_DUPLICATE: '중복 제외', FAILED: '실패', DELETED: '삭제됨', REWRITE_REQUESTED: '재작성 대기',
 }
 const articleTypeLabels: Record<AiNewsArticleType, string> = {
   RELEASE_NEWS: '출시·국내 소식', TIP_INFO: '팁 및 정보',
@@ -23,6 +23,16 @@ const articleTypeLabels: Record<AiNewsArticleType, string> = {
 const categoryLabels: Record<AiNewsCategory, string> = { WHISKY: '위스키', WINE: '와인', COGNAC: '꼬냑' }
 const sourceTypeLabels: Record<AiNewsSourceType, string> = {
   OFFICIAL: '공식', TRUSTED_MEDIA: '전문매체', COMMUNITY: '커뮤니티', UNAPPROVED: '미승인',
+}
+const topicStatusLabels: Record<AiNewsTopicStatus, string> = {
+  READY: '작성 대기', SCHEDULED: '작성 예정', HOLD: '보류', BLOCKED: '중복 차단', COMPLETED: '발행 완료',
+}
+const topicStatusDescriptions: Record<AiNewsTopicStatus, string> = {
+  READY: 'AI 자동화가 실제로 선택하는 상태입니다. 정보 글 발행 주기가 되면 오래된 주제부터 처리합니다.',
+  SCHEDULED: '향후 작성을 위해 분류해 둔 상태입니다. 현재 날짜 예약 기능은 없으므로 작성하려면 READY로 변경해야 합니다.',
+  HOLD: '원고나 자동발행 조건을 관리자가 확인해야 하는 보류 상태이며 자동 처리되지 않습니다.',
+  BLOCKED: '기존 글과 주제·동의어 또는 의미가 중복되어 차단된 상태이며 자동 처리되지 않습니다.',
+  COMPLETED: '해당 주제로 글이 발행된 상태입니다. 다시 작성하려면 재발행 허용을 켜고 READY로 변경해야 합니다.',
 }
 
 export default function AdminAiNewsPage() {
@@ -136,8 +146,8 @@ function ArticlesTab() {
                     <td className="px-4 py-3">{articleTypeLabels[item.articleType]}</td>
                     <td className="px-4 py-3">{categoryLabels[item.category]}</td>
                     <td className="max-w-[340px] px-4 py-3">
-                      <button onClick={() => navigate(`/admin/community/ai-news/${item.id}/edit`)} className="truncate font-semibold text-neutral-800 hover:text-primary-700">
-                        {item.updateAvailable && <span className="mr-1 text-amber-600">●</span>}{item.title}
+                      <button title={item.title} onClick={() => navigate(`/admin/community/ai-news/${item.id}/edit`)} className="block max-w-[340px] truncate font-semibold text-neutral-800 hover:text-primary-700">
+                        {item.updateAvailable && <span className="mr-1 text-amber-600">●</span>}{shortTitle(item.title)}
                       </button>
                       {item.failureReason && <p className="mt-1 truncate text-xs text-red-500">{item.failureReason}</p>}
                     </td>
@@ -146,7 +156,7 @@ function ArticlesTab() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
                         <button onClick={() => navigate(`/admin/community/ai-news/${item.id}/edit`)} className={smallBtn}>수정</button>
-                        {!['PUBLISHED', 'DELETED', 'SKIPPED_DUPLICATE', 'REJECTED'].includes(item.status) && <button onClick={() => runAction(item.id, 'publish')} className={smallPrimaryBtn}>발행</button>}
+                        {!['PUBLISHED', 'DELETED', 'SKIPPED_DUPLICATE', 'REJECTED', 'REWRITE_REQUESTED'].includes(item.status) && <button onClick={() => runAction(item.id, 'publish')} className={smallPrimaryBtn}>발행</button>}
                         {item.status === 'PENDING_REVIEW' && <button onClick={() => runAction(item.id, 'reject')} className={smallBtn}>반려</button>}
                         {item.status === 'DELETED'
                           ? <button onClick={() => runAction(item.id, 'restore')} className={smallBtn}>복원</button>
@@ -181,6 +191,11 @@ function TopicsTab() {
     mutationFn: ({ id, payload }: { id: number; payload: AiNewsTopicRequest }) => adminAiNewsApi.updateTopic(id, payload),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'ai-news', 'topics'] }),
   })
+  const remove = useMutation({
+    mutationFn: (id: number) => adminAiNewsApi.deleteTopic(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'ai-news', 'topics'] }),
+    onError: () => window.alert('이미 생성된 원고가 연결된 주제는 삭제할 수 없습니다. 사용을 중단하려면 상태를 보류로 변경해주세요.'),
+  })
   const submit = (e: FormEvent) => {
     e.preventDefault()
     if (!form.title.trim() || !form.normalizedKey.trim()) return
@@ -188,6 +203,25 @@ function TopicsTab() {
   }
   return (
     <div className="space-y-4">
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+        <p className="font-semibold">정보 주제란?</p>
+        <p className="mt-1 leading-6 text-amber-900">
+          출시 소식과 별도로 AI가 작성할 위스키·와인·꼬냑 팁과 장기 정보 글의 소재 목록입니다.
+          설정된 정보 글 간격이 지나면 READY 주제를 오래된 순서로 하나 선택해 자료 검색, 원고 작성, 중복 검사를 진행합니다.
+          READY 주제가 없으면 AI가 새 주제를 제안할 수 있습니다.
+        </p>
+        <p className="mt-2 text-xs text-amber-800">
+          중복 키는 주제를 식별하는 고유값이며 생성 후 변경할 수 없습니다. 삭제는 아직 원고에 사용되지 않은 주제만 가능합니다.
+        </p>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+        {(Object.keys(topicStatusLabels) as AiNewsTopicStatus[]).map((value) => (
+          <div key={value} className="rounded-xl bg-white p-3 shadow-sm">
+            <p className="text-sm font-semibold text-neutral-800">{value} · {topicStatusLabels[value]}</p>
+            <p className="mt-1 text-xs leading-5 text-neutral-500">{topicStatusDescriptions[value]}</p>
+          </div>
+        ))}
+      </div>
       <form onSubmit={submit} className="grid gap-3 rounded-xl bg-white p-4 shadow-sm sm:grid-cols-5">
         <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="새 정보 글 주제" className={inputCls} />
         <input value={form.normalizedKey} onChange={(e) => setForm({ ...form, normalizedKey: e.target.value })} placeholder="중복 키 (영문 권장)" className={inputCls} />
@@ -198,7 +232,7 @@ function TopicsTab() {
         <button disabled={save.isPending} className="rounded-lg bg-primary-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">주제 추가</button>
       </form>
       <div className="flex justify-end"><select value={status} onChange={(e) => setStatus(e.target.value as AiNewsTopicStatus | '')} className={inputCls}>
-        <option value="">전체 상태</option>{['READY','SCHEDULED','HOLD','BLOCKED','COMPLETED'].map((s) => <option key={s} value={s}>{s}</option>)}
+        <option value="">전체 상태</option>{(Object.keys(topicStatusLabels) as AiNewsTopicStatus[]).map((s) => <option key={s} value={s}>{s} · {topicStatusLabels[s]}</option>)}
       </select></div>
       {isLoading ? <Loading /> : <div className="grid gap-3 lg:grid-cols-2">
         {data?.content.map((topic) => (
@@ -206,11 +240,16 @@ function TopicsTab() {
             <div className="flex items-start justify-between gap-3"><div><p className="font-semibold text-neutral-800">{topic.title}</p>
               <p className="mt-1 text-xs text-neutral-400">{topic.normalizedKey} · {categoryLabels[topic.category]}{topic.aiSuggested ? ' · AI 제안' : ''}</p></div>
               <select value={topic.status} onChange={(e) => update.mutate({ id: topic.id, payload: { title: topic.title, normalizedKey: topic.normalizedKey, aliases: topic.aliases, category: topic.category, status: e.target.value as AiNewsTopicStatus, allowRepublish: topic.allowRepublish } })} className={inputCls}>
-                {['READY','SCHEDULED','HOLD','BLOCKED','COMPLETED'].map((s) => <option key={s} value={s}>{s}</option>)}
+                {(Object.keys(topicStatusLabels) as AiNewsTopicStatus[]).map((s) => <option key={s} value={s}>{s} · {topicStatusLabels[s]}</option>)}
               </select></div>
             {topic.aliases && <p className="mt-3 text-xs text-neutral-500">동의어: {topic.aliases}</p>}
-            <label className="mt-3 flex items-center gap-2 text-xs text-neutral-600"><input type="checkbox" checked={topic.allowRepublish}
-              onChange={(e) => update.mutate({ id: topic.id, payload: { title: topic.title, normalizedKey: topic.normalizedKey, aliases: topic.aliases, category: topic.category, status: topic.status, allowRepublish: e.target.checked } })} /> 재발행 허용</label>
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <label className="flex items-center gap-2 text-xs text-neutral-600"><input type="checkbox" checked={topic.allowRepublish}
+                onChange={(e) => update.mutate({ id: topic.id, payload: { title: topic.title, normalizedKey: topic.normalizedKey, aliases: topic.aliases, category: topic.category, status: topic.status, allowRepublish: e.target.checked } })} /> 재발행 허용</label>
+              <button type="button" disabled={remove.isPending} onClick={() => {
+                if (window.confirm(`'${topic.title}' 주제를 삭제하시겠습니까? 원고 이력이 있는 주제는 삭제할 수 없습니다.`)) remove.mutate(topic.id)
+              }} className={smallDangerBtn}>삭제</button>
+            </div>
           </div>
         ))}
       </div>}
@@ -318,6 +357,9 @@ function Toggle({ label, description, checked, onChange }: { label: string; desc
     <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="mt-1" />
     <span><span className="block text-sm font-semibold text-neutral-800">{label}</span><span className="mt-1 block text-xs leading-5 text-neutral-500">{description}</span></span>
   </label>
+}
+function shortTitle(value: string, maxLength = 32) {
+  return value.length > maxLength ? `${value.slice(0, maxLength).trimEnd()}...` : value
 }
 function NumberField({ label, value, onChange, step = '1' }: { label: string; value: number; onChange: (v: number) => void; step?: string }) { return <label className="text-xs font-medium text-neutral-600">{label}<input type="number" step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} className={`${inputCls} mt-1 w-full`} /></label> }
 

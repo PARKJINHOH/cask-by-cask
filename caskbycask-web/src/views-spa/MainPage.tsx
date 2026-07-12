@@ -322,35 +322,37 @@ function ByobRow({ item }: { item: ByobListItem }) {
 }
 
 // ── 커뮤니티 최신글 섹션 ──────────────────────────────────────────
-type CommunityTab = 'free' | 'news' | 'byob'
+type CommunityTab = 'free' | 'byob'
 
 function CommunityLatestSection() {
   const { t } = useTranslation()
   const [tab, setTab] = useState<CommunityTab>('free')
 
-  const { data: freeData } = usePosts({ boardType: 'FREE', sort: 'LATEST', page: 0, size: 6 })
-  const { data: newsData } = usePosts({ boardType: 'NOTICE', sort: 'LATEST', page: 0, size: 6 })
-  const { data: byobData } = useByobList({ page: 0, size: 6 })
+  const { data: freeData } = usePosts({ boardType: 'FREE', sort: 'LATEST', page: 0, size: 5 })
+  const { data: newsData } = usePosts({ boardType: 'NOTICE', sort: 'LATEST', page: 0, size: 3 })
+  const { data: byobData } = useByobList({ page: 0, size: 5 })
   const { data: pinnedNotices = [] } = usePinnedNotices()
 
   const freePosts = freeData?.content ?? []
   const newsPosts = newsData?.content ?? []
   const byobItems = byobData?.content ?? []
+  const visiblePinnedNotices = pinnedNotices.slice(0, 5)
+  const visibleFreePosts = freePosts.slice(0, Math.max(0, 5 - visiblePinnedNotices.length))
+  const visibleNewsPosts = newsPosts.slice(0, 3)
 
   const tabs: { key: CommunityTab; label: string; to: string }[] = [
     { key: 'free', label: t('home.community.free'), to: '/community/free' },
-    { key: 'news', label: t('home.community.news'), to: '/community/notice' },
     { key: 'byob', label: t('home.community.byob'), to: '/community/byob' },
   ]
 
   const moreLink = tabs.find((x) => x.key === tab)!.to
   // 자유/소식 탭은 상단노출 공지를 함께 노출하므로 공지가 있으면 빈 상태가 아님
   const isEmpty =
-    (tab === 'free' && freePosts.length === 0 && pinnedNotices.length === 0) ||
-    (tab === 'news' && newsPosts.length === 0 && pinnedNotices.length === 0) ||
+    (tab === 'free' && visibleFreePosts.length === 0 && visiblePinnedNotices.length === 0) ||
     (tab === 'byob' && byobItems.length === 0)
 
   return (
+    <div className="space-y-8">
     <section>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-base font-bold text-neutral-900 tracking-tight">
@@ -378,16 +380,11 @@ function CommunityLatestSection() {
           <p className="text-sm text-neutral-400 py-10 text-center">{t('home.community.empty')}</p>
         ) : tab === 'free' ? (
           <>
-            {pinnedNotices.map((n) => <NoticePostRow key={`notice-${n.id}`} notice={n} />)}
-            {freePosts.map((p) => <PostRow key={p.id} post={p} boardPath="free" />)}
-          </>
-        ) : tab === 'news' ? (
-          <>
-            {pinnedNotices.map((n) => <NoticePostRow key={`notice-${n.id}`} notice={n} />)}
-            {newsPosts.map((p) => <PostRow key={p.id} post={p} boardPath="notice" />)}
+            {visiblePinnedNotices.map((n) => <NoticePostRow key={`notice-${n.id}`} notice={n} />)}
+            {visibleFreePosts.map((p) => <PostRow key={p.id} post={p} boardPath="free" />)}
           </>
         ) : (
-          byobItems.map((b) => <ByobRow key={b.id} item={b} />)
+          byobItems.slice(0, 5).map((b) => <ByobRow key={b.id} item={b} />)
         )}
       </div>
 
@@ -404,6 +401,19 @@ function CommunityLatestSection() {
         </Link>
       </div>
     </section>
+    <section>
+      <SectionHeader
+        title={t('home.community.newsLatest')}
+        link="/community/notice"
+        linkLabel={t('home.sections.viewAll')}
+      />
+      <div className="overflow-hidden rounded-xl border border-neutral-100 bg-white">
+        {visibleNewsPosts.length > 0
+          ? visibleNewsPosts.map((post) => <PostRow key={post.id} post={post} boardPath="notice" />)
+          : <p className="py-10 text-center text-sm text-neutral-400">{t('home.community.empty')}</p>}
+      </div>
+    </section>
+    </div>
   )
 }
 

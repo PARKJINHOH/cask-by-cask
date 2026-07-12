@@ -18,6 +18,7 @@ export interface UserBadgeUser {
   producerLogoUrl?: string
   nicknameFixed?: boolean | null
   profileImageUrl?: string | null
+  systemAccount?: boolean
 }
 
 type BadgeSize = 'sm' | 'md' | 'lg' | 'xl'
@@ -237,7 +238,7 @@ export default function UserBadge({
             <LevelBadge level={level} size={levelIconSize ?? ICON_AFTER_NAME[size]} />
           )}
 
-          {user.role === 'ADMIN' && (
+          {user.role === 'ADMIN' && !user.systemAccount && (
             <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-semibold
               rounded-full bg-blue-100 text-blue-700 leading-none flex-shrink-0">
               관리자

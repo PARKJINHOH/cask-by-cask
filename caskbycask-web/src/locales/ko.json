@@ -76,6 +76,7 @@
     },
     "community": {
       "title": "커뮤니티 최신글",
+      "newsLatest": "소식 최신글",
       "free": "자유",
       "news": "소식",
       "byob": "BYOB",

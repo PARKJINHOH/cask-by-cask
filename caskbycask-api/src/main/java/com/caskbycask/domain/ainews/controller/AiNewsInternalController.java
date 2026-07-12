@@ -40,6 +40,13 @@ public class AiNewsInternalController {
         return ResponseEntity.ok(ApiResponse.success(aiNewsService.ingest(request)));
     }
 
+    @PostMapping("/articles/{id}/rewrite-result")
+    public ResponseEntity<ApiResponse<AiNewsDtos.ArticleDetailResponse>> completeRewrite(
+            @PathVariable Long id,
+            @Valid @RequestBody AiNewsDtos.RewriteResultRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(aiNewsService.completeRewrite(id, request)));
+    }
+
     @PostMapping("/duplicates")
     public ResponseEntity<ApiResponse<AiNewsDtos.ArticleDetailResponse>> recordDuplicate(
             @Valid @RequestBody AiNewsDtos.DuplicateSkipRequest request) {

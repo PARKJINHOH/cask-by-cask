@@ -1,7 +1,7 @@
 export type AiNewsArticleType = 'RELEASE_NEWS' | 'TIP_INFO'
 export type AiNewsArticleStatus =
   | 'DRAFT' | 'PENDING_REVIEW' | 'PUBLISHED' | 'REJECTED'
-  | 'SKIPPED_DUPLICATE' | 'FAILED' | 'DELETED'
+  | 'SKIPPED_DUPLICATE' | 'FAILED' | 'DELETED' | 'REWRITE_REQUESTED'
 export type AiNewsCategory = 'WHISKY' | 'WINE' | 'COGNAC'
 export type AiNewsSourceType = 'OFFICIAL' | 'TRUSTED_MEDIA' | 'COMMUNITY' | 'UNAPPROVED'
 export type AiNewsTopicStatus = 'READY' | 'SCHEDULED' | 'HOLD' | 'BLOCKED' | 'COMPLETED'
@@ -47,6 +47,8 @@ export interface AiNewsArticleDetail extends AiNewsArticleSummary {
   imageRightsEvidence: string | null
   modelName: string | null
   duplicateReason: string | null
+  rewritePrompt: string | null
+  rewriteRequestedAt: string | null
   updatedAt: string
   sources: AiNewsSourceEvidence[]
 }
