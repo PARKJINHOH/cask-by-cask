@@ -454,8 +454,17 @@ export default function AdminDealDetailPage() {
                       className="w-full text-left px-3 py-2 hover:bg-neutral-50 flex items-center justify-between gap-3"
                     >
                       <div className="min-w-0">
-                        <span className="font-medium text-neutral-800">{sp.nameKo}</span>
-                        {sp.nameEn && <span className="text-xs text-neutral-400 ml-2">{sp.nameEn}</span>}
+                        <span className="font-medium text-neutral-800">
+                          {formatSpiritSearchName(sp.nameKo, sp.seriesIdentifier)}
+                        </span>
+                        {sp.nameEn && (
+                          <span className="text-xs text-neutral-400 ml-2">
+                            {formatSpiritSearchName(
+                              sp.nameEn,
+                              sp.seriesIdentifierEn || sp.seriesIdentifier,
+                            )}
+                          </span>
+                        )}
                       </div>
                       <span className="text-xs text-neutral-400 shrink-0">
                         {loadingVariantSpiritId === sp.id ? '확인 중...' : sp.category}
@@ -568,6 +577,10 @@ function formatPriceInput(value: string | number | null | undefined): string {
 function calculateDiscountRate(originalPrice: number, dealPrice: number): number {
   if (originalPrice <= 0 || dealPrice <= 0 || originalPrice <= dealPrice) return 0
   return Math.round(((originalPrice - dealPrice) / originalPrice) * 10000) / 10000
+}
+
+function formatSpiritSearchName(name: string, seriesIdentifier?: string | null): string {
+  return seriesIdentifier ? `${name} (${seriesIdentifier})` : name
 }
 
 function toConnectionOption(spirit: SpiritDetail | SpiritVariant): SpiritConnectionOption {
