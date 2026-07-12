@@ -45,8 +45,11 @@ export interface DealPostDetail {
   spiritId: number | null
   spiritNameKo: string | null
   spiritNameEn: string | null
+  spiritVariantType: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE' | null
   spiritVariantValue: string | null
   spiritVariantValueEn: string | null
+  spiritSeriesIdentifier: string | null
+  spiritSeriesIdentifierEn: string | null
   spiritBatchNo: string | null
   spiritBottledDate: string | null
   storeType: StoreType
