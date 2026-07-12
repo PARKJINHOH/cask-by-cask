@@ -41,7 +41,9 @@ public class HibernateSpiritSearchService implements SpiritSearchService {
 
     private static final List<FieldBoost> COMPACT_FIELDS = List.of(
             new FieldBoost("searchTextKoCompact", 30.0f),
-            new FieldBoost("searchTextEnCompact", 24.0f)
+            new FieldBoost("searchTextEnCompact", 24.0f),
+            new FieldBoost("producer.searchTextKoCompact", 18.0f),
+            new FieldBoost("producer.searchTextEnCompact", 14.0f)
     );
 
     private static final List<TextFieldBoost> TEXT_FIELDS = List.of(
@@ -279,33 +281,28 @@ public class HibernateSpiritSearchService implements SpiritSearchService {
         }
 
         target.must(f.bool(keywordBool -> {
-            if (parts.hasCompact()) {
-                keywordBool.should(f.bool(compactBool -> {
-                    addCompactMatches(compactBool, f, parts.compact());
-                    compactBool.minimumShouldMatchNumber(1);
+            for (String token : parts.textTokens()) {
+                keywordBool.must(f.bool(tokenBool -> {
+                    addCompactMatches(tokenBool, f, token);
+                    tokenBool.minimumShouldMatchNumber(1);
                 }));
             }
-            keywordBool.should(f.bool(tokenGroupBool -> {
+            for (String token : parts.numberTokens()) {
+                keywordBool.must(f.bool(tokenBool -> {
+                    addCompactMatches(tokenBool, f, token);
+                    tokenBool.minimumShouldMatchNumber(1);
+                }));
+            }
+
+            // 엄격한 포함 여부는 compact 필드로 판정하고, 분석 필드는 관련도 점수에만 반영한다.
+            keywordBool.should(f.bool(scoreBool -> {
                 for (String token : parts.textTokens()) {
-                    tokenGroupBool.must(f.bool(tokenBool -> {
-                        addTextMatches(tokenBool, f, token);
-                        tokenBool.minimumShouldMatchNumber(1);
-                    }));
+                    addTextMatches(scoreBool, f, token);
                 }
-                boolean requireNumberTokens = parts.textTokens().isEmpty();
                 for (String token : parts.numberTokens()) {
-                    var numberPredicate = f.bool(tokenBool -> {
-                        addNumberMatches(tokenBool, f, token);
-                        tokenBool.minimumShouldMatchNumber(1);
-                    });
-                    if (requireNumberTokens) {
-                        tokenGroupBool.must(numberPredicate);
-                    } else {
-                        tokenGroupBool.should(numberPredicate);
-                    }
+                    addNumberMatches(scoreBool, f, token);
                 }
             }));
-            keywordBool.minimumShouldMatchNumber(1);
         }));
     }
 

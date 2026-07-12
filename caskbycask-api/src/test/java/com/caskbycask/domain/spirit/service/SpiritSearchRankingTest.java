@@ -102,8 +102,8 @@ class SpiritSearchRankingTest {
     }
 
     @Test
-    @DisplayName("exact Korean brand keyword ranks same-brand spirits before similar Glen names")
-    void searchExactKoreanBrandRanksSameBrandBeforeSimilarPrefixes() {
+    @DisplayName("exact Korean brand keyword excludes other spirits sharing only a prefix")
+    void searchExactKoreanBrandExcludesSimilarPrefixesEverywhere() {
         Producer glenturretProducer = producerRepository.save(producer(
                 "\uAE00\uB80C\uD130\uB81B \uC99D\uB958\uC18C",
                 "The Glenturret Distillery",
@@ -125,25 +125,33 @@ class SpiritSearchRankingTest {
                 "\uAE00\uB80C\uD130\uB81B 15\uB144",
                 "The Glenturret 15 Years Old",
                 glenturretProducer));
-        spiritRepository.save(activeSpirit(
+        Spirit glenfiddich12 = spiritRepository.save(activeSpirit(
                 "\uAE00\uB80C\uD53C\uB515 12\uB144",
                 "Glenfiddich 12 Years Old",
                 glenfiddichProducer));
-        spiritRepository.save(activeSpirit(
+        Spirit glendronach15 = spiritRepository.save(activeSpirit(
                 "\uB354 \uAE00\uB80C\uB4DC\uB85C\uB099 15\uB144",
                 "The GlenDronach 15 Years Old",
                 glendronachProducer));
         spiritRepository.flush();
 
-        Page<SpiritListResponse> result = spiritService.searchSpirits(
-                searchCondition("\uAE00\uB80C\uD130\uB81B", SpiritStatus.ACTIVE),
+        Page<SpiritListResponse> publicResult = spiritService.searchSpirits(
+                searchCondition("\uAE00\uB80C\uB4DC\uB85C\uB099", SpiritStatus.ACTIVE),
                 PageRequest.of(0, 10));
-
-        List<Long> firstTwoIds = result.getContent().stream()
-                .map(SpiritListResponse::id)
-                .limit(2)
+        Page<SpiritListResponse> adminResult = spiritService.searchSpiritsForAdmin(
+                searchCondition("\uAE00\uB80C\uB4DC\uB85C\uB099", null),
+                PageRequest.of(0, 10));
+        List<Long> autocompleteIds = spiritService.autocomplete("\uAE00\uB80C\uB4DC\uB85C\uB099").stream()
+                .map(response -> response.id())
                 .toList();
-        assertThat(firstTwoIds).containsExactlyInAnyOrder(glenturret12.getId(), glenturret15.getId());
+
+        assertThat(publicResult.getContent()).extracting(SpiritListResponse::id)
+                .containsExactly(glendronach15.getId());
+        assertThat(adminResult.getContent()).extracting(SpiritListResponse::id)
+                .containsExactly(glendronach15.getId());
+        assertThat(autocompleteIds).containsExactly(glendronach15.getId());
+        assertThat(publicResult.getContent()).extracting(SpiritListResponse::id)
+                .doesNotContain(glenturret12.getId(), glenturret15.getId(), glenfiddich12.getId());
     }
 
     private Producer producer(String nameKo, String nameEn, String searchKeywords) {

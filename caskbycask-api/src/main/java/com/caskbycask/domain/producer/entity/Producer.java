@@ -6,6 +6,12 @@ import lombok.*;
 import org.hibernate.annotations.Comment;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.FullTextField;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.Indexed;
+import org.hibernate.search.mapper.pojo.mapping.definition.annotation.IndexingDependency;
+import org.hibernate.search.mapper.pojo.mapping.definition.annotation.KeywordField;
+import org.hibernate.search.mapper.pojo.mapping.definition.annotation.ObjectPath;
+import org.hibernate.search.mapper.pojo.mapping.definition.annotation.PropertyValue;
+
+import com.caskbycask.domain.spirit.support.SpiritSearchTextNormalizer;
 
 @Entity
 @Table(name = "producer")
@@ -70,6 +76,26 @@ public class Producer extends BaseTimeEntity {
     @Comment("검색 별칭(공백/콤마 구분)")
     @FullTextField(analyzer = "korean_search")
     private String searchKeywords;
+
+    @Transient
+    @KeywordField(name = "searchTextKoCompact")
+    @IndexingDependency(derivedFrom = {
+            @ObjectPath(@PropertyValue(propertyName = "nameKo")),
+            @ObjectPath(@PropertyValue(propertyName = "searchKeywords"))
+    })
+    public String getSearchTextKoCompact() {
+        return SpiritSearchTextNormalizer.compact(nameKo, searchKeywords);
+    }
+
+    @Transient
+    @KeywordField(name = "searchTextEnCompact")
+    @IndexingDependency(derivedFrom = {
+            @ObjectPath(@PropertyValue(propertyName = "nameEn")),
+            @ObjectPath(@PropertyValue(propertyName = "searchKeywords"))
+    })
+    public String getSearchTextEnCompact() {
+        return SpiritSearchTextNormalizer.compact(nameEn, searchKeywords);
+    }
 
     public void update(ProducerType type, String nameKo, String nameEn, String country, String region,
                        String website, Integer foundedYear, String descriptionKo, String descriptionEn,

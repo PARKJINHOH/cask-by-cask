@@ -188,7 +188,10 @@ export default function AdminDealDetailPage() {
       }
 
       setVariantPicker({
-        title: spiritDetail.nameKo,
+        title: [
+          spiritDetail.nameKo,
+          spiritDetail.seriesIdentifier || spiritDetail.seriesIdentifierEn,
+        ].filter(Boolean).join(' '),
         options,
       })
     } catch (e) {

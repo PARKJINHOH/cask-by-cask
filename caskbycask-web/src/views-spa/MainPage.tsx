@@ -337,7 +337,7 @@ function CommunityLatestSection() {
   const newsPosts = newsData?.content ?? []
   const byobItems = byobData?.content ?? []
   const visiblePinnedNotices = pinnedNotices.slice(0, 5)
-  const visibleFreePosts = freePosts.slice(0, Math.max(0, 5 - visiblePinnedNotices.length))
+  const visibleFreePosts = freePosts.slice(0, 5)
   const visibleNewsPosts = newsPosts.slice(0, 3)
 
   const tabs: { key: CommunityTab; label: string; to: string }[] = [
