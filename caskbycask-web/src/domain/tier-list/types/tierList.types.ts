@@ -71,3 +71,18 @@ export interface TierListImageUpload {
   savedFileName: string
   mimeType: string
 }
+
+export interface TierListGuestDraft {
+  token: string | null
+  expiresAt: string
+  content: TierListGuestDraftPayload
+}
+
+export interface TierListGuestDraftPayload extends Omit<TierListSavePayload, 'items'> {
+  items: Array<TierListSavePayload['items'][number] & {
+    spiritVariantLabel?: string | null
+    spiritVariantLabelEn?: string | null
+    spiritCanonicalPathKo?: string | null
+    spiritCanonicalPathEn?: string | null
+  }>
+}

@@ -75,6 +75,7 @@ export default function OAuthCallbackPage() {
               emailVerified: data.emailVerified,
               suggestedNickname: data.suggestedNickname,
               provider,
+              returnTo,
             },
           })
         } else if (data.status === 'NEEDS_LINK' && data.linkTicket) {
@@ -82,7 +83,10 @@ export default function OAuthCallbackPage() {
           sessionStorage.setItem(OAUTH_LINK_TICKET_KEY, data.linkTicket)
           sessionStorage.removeItem(OAUTH_MODE_KEY)
           sessionStorage.removeItem(OAUTH_PROVIDER_KEY)
-          navigate('/login', { replace: true, state: { socialLinkNotice: data.maskedEmail, provider } })
+          navigate('/login', {
+            replace: true,
+            state: { socialLinkNotice: data.maskedEmail, provider, from: { pathname: returnTo } },
+          })
         } else {
           fail(t('auth.social.callbackError'), '/login')
         }

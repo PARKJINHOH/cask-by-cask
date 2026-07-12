@@ -98,6 +98,8 @@ public enum ErrorCode {
     // Tier List
     TIER_LIST_NOT_FOUND(HttpStatus.NOT_FOUND, "TIER_001", "티어리스트를 찾을 수 없습니다."),
     TIER_LIST_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "TIER_002", "티어리스트 이미지를 찾을 수 없습니다."),
+    TIER_LIST_DRAFT_NOT_FOUND(HttpStatus.NOT_FOUND, "TIER_003", "임시 티어리스트를 찾을 수 없습니다."),
+    TIER_LIST_DRAFT_EXPIRED(HttpStatus.GONE, "TIER_004", "임시 티어리스트가 만료되었습니다."),
 
     // Report
     ALREADY_REPORTED(HttpStatus.CONFLICT, "REPORT_001", "이미 신고한 항목입니다."),

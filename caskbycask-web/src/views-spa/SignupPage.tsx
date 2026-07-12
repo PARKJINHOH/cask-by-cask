@@ -2,7 +2,7 @@
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useNavigate, Link } from 'react-router-dom'
+import { useLocation, useNavigate, Link } from 'react-router-dom'
 import type { AxiosError } from 'axios'
 import { useAuth } from '@/domain/auth/hooks/useAuth'
 import { authApi } from '@/domain/auth/api/authApi'
@@ -216,7 +216,10 @@ const inputError  = 'border-danger-400 bg-danger-50/30 focus:ring-danger-400'
 // ── Page ───────────────────────────────────────────────────
 export default function SignupPage() {
   const navigate   = useNavigate()
+  const location   = useLocation()
   const { signup } = useAuth()
+  const routeState = location.state as { from?: { pathname: string } } | null
+  const returnTo = routeState?.from?.pathname ?? '/'
 
   const [emailStatus,    setEmailStatus]    = useState<CheckStatus>('idle')
   const [nicknameStatus, setNicknameStatus] = useState<CheckStatus>('idle')
@@ -391,7 +394,7 @@ export default function SignupPage() {
 
       // Step 3: 회원가입
       await signup({ email: data.email, password: data.password, nickname: data.nickname, agreedToTerms: data.agreedToTerms, agreedToPrivacy: data.agreedToPrivacy, emailSubscribed: data.emailSubscribed })
-      navigate('/login', { replace: true, state: { verifySuccess: true } })
+      navigate('/login', { replace: true, state: { verifySuccess: true, from: { pathname: returnTo } } })
     } catch (err) {
       const code = (err as AxiosError<ApiResponse<unknown>>)?.response?.data?.code
       if (code === 'USER_002') {
@@ -639,13 +642,13 @@ export default function SignupPage() {
 
         {/* 소셜 로그인으로 가입 */}
         <div className="mt-5">
-          <SocialLoginButtons />
+          <SocialLoginButtons returnTo={returnTo} />
         </div>
 
         {/* Footer */}
         <p className="mt-6 text-center text-sm text-neutral-500">
           이미 계정이 있으신가요?{' '}
-          <Link to="/login" className="text-primary-800 font-semibold hover:underline">
+          <Link to="/login" state={{ from: { pathname: returnTo } }} className="text-primary-800 font-semibold hover:underline">
             로그인
           </Link>
         </p>

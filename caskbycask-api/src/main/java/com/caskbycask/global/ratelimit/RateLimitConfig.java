@@ -99,6 +99,18 @@ public class RateLimitConfig {
                         pp.matcher(HttpMethod.POST, "/api/inquiries"),
                         5, Duration.ofMinutes(1), RateLimitRule.KeyType.IP),
                 new RateLimitRule(
+                        "guest-tier-list-draft-create",
+                        pp.matcher(HttpMethod.POST, "/api/tier-list-drafts"),
+                        10, Duration.ofMinutes(1), RateLimitRule.KeyType.IP),
+                new RateLimitRule(
+                        "guest-tier-list-draft-update",
+                        pp.matcher(HttpMethod.PUT, "/api/tier-list-drafts"),
+                        20, Duration.ofMinutes(1), RateLimitRule.KeyType.IP),
+                new RateLimitRule(
+                        "guest-tier-list-image-upload",
+                        pp.matcher(HttpMethod.POST, "/api/tier-list-drafts/images"),
+                        10, Duration.ofMinutes(1), RateLimitRule.KeyType.IP),
+                new RateLimitRule(
                         "post-write",
                         pp.matcher(HttpMethod.POST, "/api/posts"),
                         20, Duration.ofMinutes(1), RateLimitRule.KeyType.IP_OR_USER),

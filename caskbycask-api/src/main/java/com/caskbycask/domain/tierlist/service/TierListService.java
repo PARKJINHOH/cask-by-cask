@@ -124,9 +124,9 @@ public class TierListService {
     }
 
     @Transactional(readOnly = true)
-    public TierListImage getImage(String savedFileName) {
+    public Optional<TierListImageFile> findImageFile(String savedFileName) {
         return tierListImageRepository.findBySavedFileName(savedFileName)
-                .orElseThrow(() -> new CustomException(ErrorCode.TIER_LIST_IMAGE_NOT_FOUND));
+                .map(image -> new TierListImageFile(image.getSavedFileName(), image.getSubPath(), image.getMimeType()));
     }
 
     private TierListResponse toResponse(TierList tierList, boolean owner) {

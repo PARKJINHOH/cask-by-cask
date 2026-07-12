@@ -15,6 +15,7 @@ interface OAuthSignupState {
   emailVerified: boolean
   suggestedNickname: string | null
   provider: string
+  returnTo?: string
 }
 
 const NICKNAME_RE = /^[가-힣a-zA-Z0-9]+$/
@@ -101,7 +102,7 @@ export default function OAuthSignupPage() {
         emailSubscribed,
       })
       await establishOAuthSession(res.data.data!)
-      navigate('/', { replace: true })
+      navigate(state.returnTo ?? '/', { replace: true })
     } catch (err) {
       const data = (err as AxiosError<ApiResponse<unknown>>)?.response?.data
       const code = data?.code

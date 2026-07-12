@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import axios from 'axios'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -18,6 +19,7 @@ import { tierListApi } from '@/domain/tier-list/api/tierListApi'
 import type {
   TierListItem,
   TierListItemType,
+  TierListGuestDraftPayload,
   TierListRow,
   TierListSavePayload,
 } from '@/domain/tier-list/types/tierList.types'
@@ -54,9 +56,11 @@ import { getLocalizedSpiritListNames } from '@/domain/spirit/utils/spiritDisplay
 import { getSpiritDetailPath } from '@/domain/spirit/utils/spiritUrl'
 import { localizeCountry } from '@/shared/utils/countryName'
 import ProducerIcon from '@/shared/components/icons/ProducerIcon'
+import { useAuthStore } from '@/domain/auth/store/authStore'
 
 const POOL_KEY = 'pool'
 const ITEM_DROP_PREFIX = 'item-drop:'
+const GUEST_DRAFT_TOKEN_KEY = 'tier_list_guest_draft_token'
 const PRODUCER_QUICK_COUNTRIES = ['스코틀랜드', '프랑스', '미국', '일본', '아일랜드']
 const DEFAULT_ROWS: TierListRow[] = [
   { id: null, rowKey: 'S', label: 'S', color: '#f87171', sortOrder: 0 },
@@ -98,6 +102,24 @@ function asLocalItems(items: TierListItem[]): LocalTierItem[] {
   return items.map((item) => ({
     ...item,
     localId: item.id != null ? `saved-${item.id}` : nextKey('item'),
+  }))
+}
+
+function asLocalDraftItems(items: TierListGuestDraftPayload['items']): LocalTierItem[] {
+  return items.map((item) => ({
+    id: null,
+    localId: nextKey('item'),
+    rowKey: item.rowKey,
+    itemType: item.itemType,
+    spiritId: item.spiritId ?? null,
+    producerId: item.producerId ?? null,
+    displayName: item.displayName,
+    imageUrl: item.imageUrl ?? null,
+    sortOrder: item.sortOrder,
+    spiritVariantLabel: item.spiritVariantLabel ?? null,
+    spiritVariantLabelEn: item.spiritVariantLabelEn ?? null,
+    spiritCanonicalPathKo: item.spiritCanonicalPathKo ?? null,
+    spiritCanonicalPathEn: item.spiritCanonicalPathEn ?? null,
   }))
 }
 
@@ -548,11 +570,13 @@ function TierBoard({
 
 function CandidatePool({
   items,
+  rows,
   draggable,
   nameEditable,
   canRemove,
   onItemNameChange,
   onRemoveItem,
+  onMoveItem,
   onAddRow,
   canAddRow,
   presentation = false,
@@ -560,11 +584,13 @@ function CandidatePool({
   presentationColumnCount,
 }: {
   items: LocalTierItem[]
+  rows: TierListRow[]
   draggable: boolean
   nameEditable: boolean
   canRemove: boolean
   onItemNameChange: (localId: string, value: string) => void
   onRemoveItem: (localId: string) => void
+  onMoveItem: (localId: string, rowKey: string) => void
   onAddRow: () => void
   canAddRow: boolean
   presentation?: boolean
@@ -609,7 +635,7 @@ function CandidatePool({
           poolItems.map((item) => (
             <div
               key={item.localId}
-              className={`relative shrink-0 ${presentation ? '' : 'w-[76px] sm:w-20 lg:w-[86px]'}`}
+              className={`relative shrink-0 ${presentation ? '' : 'w-[92px] sm:w-20 lg:w-[86px]'}`}
               style={presentation && presentationCardSize ? { width: presentationCardSize } : undefined}
             >
               {canRemove && (
@@ -635,6 +661,20 @@ function CandidatePool({
                 compact
                 onNameChange={(value) => onItemNameChange(item.localId, value)}
               />
+              {!presentation && (
+                <select
+                  value=""
+                  onChange={(e) => onMoveItem(item.localId, e.target.value)}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  aria-label={t('tierList.mobileMoveToTier')}
+                  className="mt-1 w-full rounded-md border border-neutral-300 bg-white px-1 py-1 text-[11px] font-semibold text-neutral-700 sm:hidden"
+                >
+                  <option value="" disabled>{t('tierList.mobileMoveToTier')}</option>
+                  {normalizeRows(rows).map((row) => (
+                    <option key={row.rowKey} value={row.rowKey}>{row.label}</option>
+                  ))}
+                </select>
+              )}
             </div>
           ))
         )}
@@ -1091,7 +1131,13 @@ function ProducerPicker({ onAdd }: { onAdd: (producer: Producer) => void }) {
   )
 }
 
-function CustomItemForm({ onAdd }: { onAdd: (name: string, imageUrl: string | null) => void }) {
+function CustomItemForm({
+  onAdd,
+  onUploadImage,
+}: {
+  onAdd: (name: string, imageUrl: string | null) => void
+  onUploadImage: (file: File) => Promise<string | null>
+}) {
   const { t } = useTranslation()
   const [name, setName] = useState('')
   const [file, setFile] = useState<File | null>(null)
@@ -1103,8 +1149,7 @@ function CustomItemForm({ onAdd }: { onAdd: (name: string, imageUrl: string | nu
     try {
       let imageUrl: string | null = null
       if (file) {
-        const res = await tierListApi.uploadImage(file)
-        imageUrl = res.data.data?.imageUrl ?? null
+        imageUrl = await onUploadImage(file)
       }
       onAdd(name.trim(), imageUrl)
       setName('')
@@ -1145,11 +1190,13 @@ function AddPanel({
   onAddSpirit,
   onAddProducer,
   onAddCustom,
+  onUploadImage,
 }: {
   selectedSpiritIds: Set<number>
   onAddSpirit: (target: SpiritTarget) => void
   onAddProducer: (producer: Producer) => void
   onAddCustom: (name: string, imageUrl: string | null) => void
+  onUploadImage: (file: File) => Promise<string | null>
 }) {
   const { t } = useTranslation()
   const [tab, setTab] = useState<'spirit' | 'producer' | 'custom'>('spirit')
@@ -1180,7 +1227,7 @@ function AddPanel({
       </div>
       {tab === 'spirit' && <SpiritPicker selectedSpiritIds={selectedSpiritIds} onAdd={onAddSpirit} />}
       {tab === 'producer' && <ProducerPicker onAdd={onAddProducer} />}
-      {tab === 'custom' && <CustomItemForm onAdd={onAddCustom} />}
+      {tab === 'custom' && <CustomItemForm onAdd={onAddCustom} onUploadImage={onUploadImage} />}
     </section>
   )
 }
@@ -1192,7 +1239,9 @@ export default function TierListPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { toasts, showToast, removeToast } = useToast()
+  const { isLoggedIn, isAuthReady } = useAuthStore()
   const readOnly = !!shareKey
+  const canPersist = isAuthReady && isLoggedIn
   const selectedId = Number(searchParams.get('id') ?? 0) || null
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
 
@@ -1204,10 +1253,12 @@ export default function TierListPage() {
   const [shareValue, setShareValue] = useState<string | null>(null)
   const [ownerNickname, setOwnerNickname] = useState<string | undefined>()
   const [isSaving, setIsSaving] = useState(false)
+  const [isGuestDraftSaving, setIsGuestDraftSaving] = useState(false)
   const [editMode, setEditMode] = useState(true)
   const [isPresenting, setIsPresenting] = useState(false)
   const [presentationViewport, setPresentationViewport] = useState({ width: 1280, height: 720 })
   const presentationRef = useRef<HTMLDivElement>(null)
+  const guestDraftClaimAttemptedRef = useRef(false)
   const selectedSpiritIds = useMemo(
     () => new Set(items.filter((item) => item.itemType === 'SPIRIT' && item.spiritId != null).map((item) => item.spiritId!)),
     [items],
@@ -1277,13 +1328,13 @@ export default function TierListPage() {
   const summariesQuery = useQuery({
     queryKey: ['tier-lists', 'mine'],
     queryFn: () => tierListApi.listMine().then((res) => res.data.data ?? []),
-    enabled: !readOnly,
+    enabled: !readOnly && canPersist,
   })
 
   const detailQuery = useQuery({
     queryKey: ['tier-lists', 'mine', selectedId],
     queryFn: () => tierListApi.getMine(selectedId!).then((res) => res.data.data!),
-    enabled: !readOnly && selectedId != null,
+    enabled: !readOnly && canPersist && selectedId != null,
   })
 
   const sharedQuery = useQuery({
@@ -1319,6 +1370,38 @@ export default function TierListPage() {
     setEditMode(!readOnly)
   }, [loadedTierList])
 
+  useEffect(() => {
+    if (!canPersist || readOnly || selectedId || guestDraftClaimAttemptedRef.current) return
+    const token = sessionStorage.getItem(GUEST_DRAFT_TOKEN_KEY)
+    if (!token) return
+    guestDraftClaimAttemptedRef.current = true
+    tierListApi.claimGuestDraft(token)
+      .then((res) => {
+        const content = res.data.data?.content
+        if (!content) return
+        setCurrentId(null)
+        setTitle(content.title ?? '')
+        setDescription(content.description ?? '')
+        setRows(normalizeRows(content.rows.map((row) => ({ ...row, id: null }))))
+        setItems(asLocalDraftItems(content.items ?? []))
+        setShareValue(null)
+        setOwnerNickname(undefined)
+        setEditMode(true)
+        sessionStorage.removeItem(GUEST_DRAFT_TOKEN_KEY)
+        showToast(t('tierList.guestDraftRestored'), 'success')
+      })
+      .catch((error: unknown) => {
+        const status = axios.isAxiosError(error) ? error.response?.status : undefined
+        if (status === 404 || status === 410) {
+          sessionStorage.removeItem(GUEST_DRAFT_TOKEN_KEY)
+          showToast(t('tierList.guestDraftExpired'), 'info')
+          return
+        }
+        guestDraftClaimAttemptedRef.current = false
+        showToast(t('tierList.guestDraftRestoreFailed'), 'error')
+      })
+  }, [canPersist, readOnly, selectedId, showToast, t])
+
   const updateRow = (rowKey: string, patch: Partial<TierListRow>) => {
     setRows((prev) => prev.map((row) => row.rowKey === rowKey ? { ...row, ...patch } : row))
   }
@@ -1341,6 +1424,21 @@ export default function TierListPage() {
 
   const removeCandidateItem = (localId: string) => {
     setItems((prev) => prev.filter((item) => item.localId !== localId || item.rowKey !== null))
+  }
+
+  const moveCandidateToRow = (localId: string, rowKey: string) => {
+    setItems((prev) => {
+      const activeItem = prev.find((item) => item.localId === localId && item.rowKey === null)
+      if (!activeItem || !rows.some((row) => row.rowKey === rowKey)) return prev
+      const nextSortOrder = prev.filter((item) => item.rowKey === rowKey).length
+      const remainingPool = sortItems(prev.filter((item) => item.rowKey === null && item.localId !== localId))
+      const poolOrder = new Map(remainingPool.map((item, index) => [item.localId, index]))
+      return prev.map((item) => {
+        if (item.localId === localId) return { ...item, rowKey, sortOrder: nextSortOrder }
+        if (item.rowKey === null) return { ...item, sortOrder: poolOrder.get(item.localId) ?? item.sortOrder }
+        return item
+      })
+    })
   }
 
   const resetItems = () => {
@@ -1495,6 +1593,65 @@ export default function TierListPage() {
     })),
   })
 
+  const buildGuestDraftPayload = (): TierListGuestDraftPayload => ({
+    ...buildPayload(),
+    items: sortItems(items).map((item, index) => ({
+      rowKey: item.rowKey,
+      itemType: item.itemType,
+      spiritId: item.spiritId,
+      producerId: item.producerId,
+      displayName: item.displayName.trim() || t('tierList.unnamedItem'),
+      imageUrl: item.imageUrl,
+      sortOrder: index,
+      spiritVariantLabel: item.spiritVariantLabel,
+      spiritVariantLabelEn: item.spiritVariantLabelEn,
+      spiritCanonicalPathKo: item.spiritCanonicalPathKo,
+      spiritCanonicalPathEn: item.spiritCanonicalPathEn,
+    })),
+  })
+
+  const upsertGuestDraft = async () => {
+    const payload = buildGuestDraftPayload()
+    const existingToken = sessionStorage.getItem(GUEST_DRAFT_TOKEN_KEY)
+    if (existingToken) {
+      try {
+        await tierListApi.updateGuestDraft(existingToken, payload)
+        return existingToken
+      } catch (error: unknown) {
+        const status = axios.isAxiosError(error) ? error.response?.status : undefined
+        if (status !== 404 && status !== 410) throw error
+        sessionStorage.removeItem(GUEST_DRAFT_TOKEN_KEY)
+      }
+    }
+    const res = await tierListApi.createGuestDraft(payload)
+    const token = res.data.data?.token
+    if (!token) throw new Error('Guest tier-list draft token is missing')
+    sessionStorage.setItem(GUEST_DRAFT_TOKEN_KEY, token)
+    return token
+  }
+
+  const continueWithAuth = async (path: '/login' | '/signup') => {
+    setIsGuestDraftSaving(true)
+    try {
+      await upsertGuestDraft()
+      navigate(path, { state: { from: { pathname: '/tier-lists' } } })
+    } catch {
+      showToast(t('tierList.guestDraftSaveFailed'), 'error')
+    } finally {
+      setIsGuestDraftSaving(false)
+    }
+  }
+
+  const uploadCustomImage = async (file: File) => {
+    if (canPersist) {
+      const res = await tierListApi.uploadImage(file)
+      return res.data.data?.imageUrl ?? null
+    }
+    const token = await upsertGuestDraft()
+    const res = await tierListApi.uploadGuestDraftImage(token, file)
+    return res.data.data?.imageUrl ?? null
+  }
+
   const save = async () => {
     if (!title.trim()) {
       showToast(t('tierList.titleRequired'), 'error')
@@ -1540,6 +1697,10 @@ export default function TierListPage() {
   }
 
   const copyShareUrl = async () => {
+    if (!canPersist) {
+      window.alert(t('tierList.shareMembersOnly'))
+      return
+    }
     if (!shareValue) {
       showToast(t('tierList.saveFirst'), 'info')
       return
@@ -1726,15 +1887,17 @@ export default function TierListPage() {
                 >
                   {isPresenting ? t('tierList.exitPresentation') : t('tierList.presentationMode')}
                 </button>
-                <button
-                  type="button"
-                  onClick={save}
-                  disabled={isSaving}
-                  className="rounded-lg bg-primary-800 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-900 disabled:opacity-60"
-                >
-                  {isSaving ? t('tierList.saving') : t('tierList.save')}
-                </button>
-                {currentId && (
+                {canPersist && (
+                  <button
+                    type="button"
+                    onClick={save}
+                    disabled={isSaving}
+                    className="rounded-lg bg-primary-800 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-900 disabled:opacity-60"
+                  >
+                    {isSaving ? t('tierList.saving') : t('tierList.save')}
+                  </button>
+                )}
+                {canPersist && currentId && (
                   <button
                     type="button"
                     onClick={deleteCurrent}
@@ -1750,6 +1913,26 @@ export default function TierListPage() {
                 >
                   {t('tierList.copyShare')}
                 </button>
+                {isAuthReady && !isLoggedIn && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => continueWithAuth('/login')}
+                      disabled={isGuestDraftSaving}
+                      className="rounded-lg bg-primary-800 px-3 py-2 text-sm font-semibold text-white hover:bg-primary-900 disabled:opacity-60"
+                    >
+                      {isGuestDraftSaving ? t('tierList.guestDraftSaving') : t('auth.login.title')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => continueWithAuth('/signup')}
+                      disabled={isGuestDraftSaving}
+                      className="rounded-lg border border-primary-800 px-3 py-2 text-sm font-semibold text-primary-800 hover:bg-primary-50 disabled:opacity-60"
+                    >
+                      {t('auth.signup.title')}
+                    </button>
+                  </>
+                )}
                 <button
                   type="button"
                   onClick={downloadPng}
@@ -1773,6 +1956,10 @@ export default function TierListPage() {
                   </svg>
                 </button>
               </div>
+
+              {isAuthReady && !isLoggedIn && (
+                <p className="mt-3 text-xs text-neutral-500">{t('tierList.guestModeNotice')}</p>
+              )}
 
               {summaries.length > 0 && (
                 <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
@@ -1826,11 +2013,13 @@ export default function TierListPage() {
                   footer={!readOnly ? (
                     <CandidatePool
                       items={items}
+                      rows={rows}
                       draggable={editMode || isPresenting}
                       nameEditable={editMode && !isPresenting}
                       canRemove={editMode && !isPresenting}
                       onItemNameChange={updateItemName}
                       onRemoveItem={removeCandidateItem}
+                      onMoveItem={moveCandidateToRow}
                       onAddRow={addRow}
                       canAddRow={rows.length < 12}
                       presentation={isPresenting}
@@ -1853,6 +2042,7 @@ export default function TierListPage() {
                     onAddSpirit={addSpirit}
                     onAddProducer={addProducer}
                     onAddCustom={addCustom}
+                    onUploadImage={uploadCustomImage}
                   />
                 </div>
               )}

@@ -1,6 +1,7 @@
 package com.caskbycask.domain.tierlist.controller;
 
-import com.caskbycask.domain.tierlist.entity.TierListImage;
+import com.caskbycask.domain.tierlist.dto.TierListImageFile;
+import com.caskbycask.domain.tierlist.service.TierListGuestDraftService;
 import com.caskbycask.domain.tierlist.service.TierListService;
 import com.caskbycask.global.exception.CustomException;
 import com.caskbycask.global.exception.ErrorCode;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 public class TierListImageController {
 
     private final TierListService tierListService;
+    private final TierListGuestDraftService guestDraftService;
     private final FileStorageService fileStorageService;
 
     @GetMapping("/{savedFileName}")
@@ -24,10 +26,12 @@ public class TierListImageController {
         if (savedFileName.contains("..") || savedFileName.contains("/") || savedFileName.contains("\\")) {
             throw new CustomException(ErrorCode.INVALID_FILE_PATH);
         }
-        TierListImage image = tierListService.getImage(savedFileName);
-        Resource resource = fileStorageService.loadAsResource(savedFileName, image.getSubPath());
+        TierListImageFile image = tierListService.findImageFile(savedFileName)
+                .or(() -> guestDraftService.findActiveImage(savedFileName))
+                .orElseThrow(() -> new CustomException(ErrorCode.TIER_LIST_IMAGE_NOT_FOUND));
+        Resource resource = fileStorageService.loadAsResource(savedFileName, image.subPath());
         return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(image.getMimeType()))
+                .contentType(MediaType.parseMediaType(image.mimeType()))
                 .body(resource);
     }
 }

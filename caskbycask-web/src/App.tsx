@@ -127,6 +127,7 @@ export default function App() {
             <Route path="community/byob" element={<ByobListPage />} />
             <Route path="community/byob/:id" element={<ByobDetailPage />} />
             <Route path="community/:boardType/:id" element={<PostDetailPage />} />
+            <Route path="tier-lists" element={<TierListPage />} />
             <Route path="tier-lists/:shareKey" element={<TierListPage />} />
             {/* 공개 읽기용 (비회원 접근 가능) */}
             <Route path="notifications" element={<NotificationsPage />} />
@@ -143,7 +144,6 @@ export default function App() {
               <Route path="community/:boardType/:id/edit" element={<PostFormPage />} />
               <Route path="community/byob/write" element={<ByobFormPage />} />
               <Route path="community/byob/:id/edit" element={<ByobFormPage />} />
-              <Route path="tier-lists" element={<TierListPage />} />
 <Route path="mypage" element={<MyPage />} />
               <Route path="request/spirit" element={<SpiritRequestPage />} />
               <Route path="request/spirit/my" element={<MySpiritRequestsPage />} />

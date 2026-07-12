@@ -322,7 +322,7 @@ export default function LoginPage() {
           // 이미 연동됨 등 — 마이페이지에서 현황 확인 가능하므로 무시하고 이동
         }
         startTransition(() => {
-          navigate('/mypage?tab=settings', { replace: true, state: { socialLinked: true } })
+          navigate(from !== '/' ? from : '/mypage?tab=settings', { replace: true, state: { socialLinked: true } })
         })
         return
       }
