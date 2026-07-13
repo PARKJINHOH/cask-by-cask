@@ -32,7 +32,7 @@ const ALLOWED_TAGS = [
 ]
 const ALLOWED_ATTR = [
   'href', 'src', 'alt', 'class', 'rel', 'target', 'style', 'width', 'height',
-  'data-image-layout', 'data-image-pair',
+  'data-image-layout', 'data-image-pair', 'data-image-pair-width', 'data-image-pair-height',
   'colspan', 'rowspan', 'scope', 'data-color',
   'data-type', 'data-checked',
   'data-spirit-id', 'data-spirit-name', 'data-spirit-name-en', 'data-spirit-category',

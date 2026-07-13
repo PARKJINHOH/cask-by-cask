@@ -1,10 +1,46 @@
 import Image from '@tiptap/extension-image'
+import { mergeAttributes } from '@tiptap/core'
 import { NodeSelection, Selection } from '@tiptap/pm/state'
 import { Fragment, Slice } from '@tiptap/pm/model'
 import { Plugin } from '@tiptap/pm/state'
 import { dropPoint } from '@tiptap/pm/transform'
 
 const INTERNAL_IMAGE_DRAG = 'application/x-caskbycask-image-pos'
+const activeImageDragPositions = new WeakMap<object, number>()
+const DEFAULT_PAIR_WIDTH = 50
+const MIN_PAIR_WIDTH = 25
+const MAX_PAIR_WIDTH = 75
+const DEFAULT_PAIR_HEIGHT = 0.36
+
+function clampPairWidth(value: unknown) {
+  const parsed = Number(value)
+  return Number.isFinite(parsed)
+    ? Math.min(MAX_PAIR_WIDTH, Math.max(MIN_PAIR_WIDTH, parsed))
+    : DEFAULT_PAIR_WIDTH
+}
+
+function clampPairHeight(value: unknown) {
+  const parsed = Number(value)
+  return Number.isFinite(parsed)
+    ? Math.min(1.2, Math.max(0.12, parsed))
+    : DEFAULT_PAIR_HEIGHT
+}
+
+function imageAspect(element: Element | null) {
+  const image = element?.querySelector('img') as HTMLImageElement | null
+  if (!image) return 1
+  if (image.naturalWidth > 0 && image.naturalHeight > 0) {
+    return image.naturalWidth / image.naturalHeight
+  }
+  const rect = image.getBoundingClientRect()
+  return rect.height > 0 ? rect.width / rect.height : 1
+}
+
+function calculatePairHeight(sourceElement: Element | null, targetElement: Element | null) {
+  const leftHeight = 0.5 / imageAspect(sourceElement)
+  const rightHeight = 0.5 / imageAspect(targetElement)
+  return clampPairHeight(Math.min(leftHeight, rightHeight))
+}
 
 function createPairId() {
   return typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -46,7 +82,38 @@ export const ResizableImage = Image.extend({
           ? { 'data-image-pair': attributes.pairId }
           : {},
       },
+      pairWidth: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-image-pair-width'),
+        renderHTML: (attributes) => attributes.pairWidth != null
+          ? { 'data-image-pair-width': String(attributes.pairWidth) }
+          : {},
+      },
+      pairHeight: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-image-pair-height'),
+        renderHTML: (attributes) => attributes.pairHeight != null
+          ? { 'data-image-pair-height': String(attributes.pairHeight) }
+          : {},
+      },
     }
+  },
+
+  renderHTML({ HTMLAttributes }) {
+    const layout = HTMLAttributes['data-image-layout'] as string | undefined
+    if (layout !== 'half-left' && layout !== 'half-right') {
+      return ['img', mergeAttributes(this.options.HTMLAttributes, HTMLAttributes)]
+    }
+
+    const leftWidth = clampPairWidth(HTMLAttributes['data-image-pair-width'])
+    const ownWidth = layout === 'half-right' ? 100 - leftWidth : leftWidth
+    const pairHeight = clampPairHeight(HTMLAttributes['data-image-pair-height'])
+    const pairStyle = `width:${ownWidth}%;height:${pairHeight * 100}cqi;object-fit:cover`
+    const style = HTMLAttributes.style
+      ? `${HTMLAttributes.style};${pairStyle}`
+      : pairStyle
+
+    return ['img', mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, { style })]
   },
 
   addProseMirrorPlugins() {
@@ -55,10 +122,12 @@ export const ResizableImage = Image.extend({
         props: {
           handleDrop: (view, event) => {
             const rawSourcePos = event.dataTransfer?.getData(INTERNAL_IMAGE_DRAG)
-            if (!rawSourcePos) return false
+            const fallbackSourcePos = activeImageDragPositions.get(view)
+            if (!rawSourcePos && fallbackSourcePos == null) return false
 
             event.preventDefault()
-            const sourcePos = Number(rawSourcePos)
+            activeImageDragPositions.delete(view)
+            const sourcePos = rawSourcePos ? Number(rawSourcePos) : fallbackSourcePos!
             const state = view.state
             const sourceNode = state.doc.nodeAt(sourcePos)
             if (!Number.isInteger(sourcePos) || sourceNode?.type.name !== this.name) return true
@@ -66,11 +135,11 @@ export const ResizableImage = Image.extend({
             const targetElement = (event.target as HTMLElement | null)?.closest('.di-image')
             let targetPos: number | null = null
             if (targetElement && view.dom.contains(targetElement)) {
-              try {
-                targetPos = view.posAtDOM(targetElement, 0)
-              } catch {
-                targetPos = null
-              }
+              state.doc.descendants((candidate, pos) => {
+                if (targetPos == null
+                  && candidate.type.name === this.name
+                  && view.nodeDOM(pos) === targetElement) targetPos = pos
+              })
             }
 
             const tr = state.tr
@@ -86,7 +155,13 @@ export const ResizableImage = Image.extend({
                 const mapped = tr.mapping.map(pos)
                 const node = tr.doc.nodeAt(mapped)
                 if (node?.type.name === this.name) {
-                  tr.setNodeMarkup(mapped, undefined, { ...node.attrs, layout: null, pairId: null })
+                  tr.setNodeMarkup(mapped, undefined, {
+                    ...node.attrs,
+                    layout: null,
+                    pairId: null,
+                    pairWidth: null,
+                    pairHeight: null,
+                  })
                 }
               })
             }
@@ -104,6 +179,8 @@ export const ResizableImage = Image.extend({
               clearPair(targetNode.attrs.pairId, targetPos)
               const placeLeft = event.clientX < targetRect.left + targetRect.width / 2
               const pairId = createPairId()
+              const sourceElement = view.nodeDOM(sourcePos) as Element | null
+              const pairHeight = calculatePairHeight(sourceElement, targetElement ?? null)
 
               tr.delete(sourcePos, sourcePos + sourceNode.nodeSize)
               const mappedTargetPos = tr.mapping.map(targetPos)
@@ -115,12 +192,16 @@ export const ResizableImage = Image.extend({
                 width: null,
                 layout: placeLeft ? 'half-left' : 'half-right',
                 pairId,
+                pairWidth: DEFAULT_PAIR_WIDTH,
+                pairHeight,
               }
               const targetAttrs = {
                 ...currentTarget.attrs,
                 width: null,
                 layout: placeLeft ? 'half-right' : 'half-left',
                 pairId,
+                pairWidth: DEFAULT_PAIR_WIDTH,
+                pairHeight,
               }
               tr.setNodeMarkup(mappedTargetPos, undefined, targetAttrs)
               const insertPos = placeLeft ? mappedTargetPos : mappedTargetPos + currentTarget.nodeSize
@@ -134,6 +215,8 @@ export const ResizableImage = Image.extend({
               ...sourceNode.attrs,
               layout: null,
               pairId: null,
+              pairWidth: null,
+              pairHeight: null,
             })
             const slice = new Slice(Fragment.from(movedNode), 0, 0)
             const coords = view.posAtCoords({ left: event.clientX, top: event.clientY })
@@ -155,7 +238,7 @@ export const ResizableImage = Image.extend({
     return ({ editor, node, getPos }) => {
       let currentNode = node
 
-      // wrapper(블록, 정렬 담당) > frame(인라인블록, 핸들 기준) > img
+      // wrapper(블록, 정렬 담당) > frame(인라인블록) > img + 투명 드래그 표면
       const wrapper = document.createElement('div')
       wrapper.className = 'di-image'
 
@@ -164,6 +247,8 @@ export const ResizableImage = Image.extend({
       wrapper.appendChild(frame)
 
       const img = document.createElement('img')
+      // crxMouse의 이미지 Super Drag와 겹치지 않도록 실제 img의 네이티브 드래그는 끈다.
+      img.draggable = false
       img.src = currentNode.attrs.src
       if (currentNode.attrs.alt) img.alt = currentNode.attrs.alt
       if (currentNode.attrs.title) img.title = currentNode.attrs.title
@@ -185,24 +270,6 @@ export const ResizableImage = Image.extend({
         }
       }
 
-      img.addEventListener('dblclick', (e) => {
-        e.preventDefault()
-        e.stopPropagation()
-        dispatchImageEdit()
-      })
-
-      let lastTap = 0
-      img.addEventListener('touchend', (e) => {
-        const currentTime = new Date().getTime()
-        const tapLength = currentTime - lastTap
-        if (tapLength < 300 && tapLength > 0) {
-          e.preventDefault()
-          e.stopPropagation()
-          dispatchImageEdit()
-        }
-        lastTap = currentTime
-      })
-
       // 정렬(TextAlign이 image에 적용된 경우) 반영
       const applyAlign = () => {
         const align = (currentNode.attrs as Record<string, unknown>).textAlign as string | undefined
@@ -212,22 +279,140 @@ export const ResizableImage = Image.extend({
 
       const applyLayout = () => {
         const layout = currentNode.attrs.layout as string | null
+        const isPair = layout === 'half-left' || layout === 'half-right'
+        const pairWidth = clampPairWidth(currentNode.attrs.pairWidth)
+        const ownWidth = layout === 'half-right' ? 100 - pairWidth : pairWidth
+        const editorWidth = Math.max(1, editor.view.dom.clientWidth - 32)
+        const pairHeight = clampPairHeight(currentNode.attrs.pairHeight)
         wrapper.dataset.imageLayout = layout ?? ''
         wrapper.classList.toggle('di-image--half-left', layout === 'half-left')
         wrapper.classList.toggle('di-image--half-right', layout === 'half-right')
+        wrapper.style.width = isPair ? `${ownWidth}%` : ''
+        frame.style.height = isPair ? `${Math.round(editorWidth * pairHeight)}px` : ''
+        img.style.width = isPair ? '100%' : ''
+        img.style.height = isPair ? '100%' : ''
+        img.style.objectFit = isPair ? 'cover' : ''
       }
       applyLayout()
 
-      // 드래그 이동 핸들 추가 (모바일/데스크톱 공용)
-      const dragHandle = document.createElement('span')
-      dragHandle.className = 'di-image__drag-handle'
-      dragHandle.draggable = true
-      dragHandle.title = '드래그하여 이미지 이동'
-      dragHandle.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 9 2 12 5 15"></polyline><polyline points="9 5 12 2 15 5"></polyline><polyline points="15 19 12 22 9 19"></polyline><polyline points="19 9 22 12 19 15"></polyline><line x1="2" y1="12" x2="22" y2="12"></line><line x1="12" y1="2" x2="12" y2="22"></line></svg>`
-      frame.appendChild(dragHandle)
+      const layoutObserver = typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(() => applyLayout())
+        : null
+      layoutObserver?.observe(editor.view.dom)
+
+      // 이미지 전체를 잡고 이동하되 이벤트 대상은 img가 아닌 투명 표면으로 둔다.
+      // crxMouse가 왼쪽 드래그를 이미지 Super Drag로 오인하는 가능성을 줄인다.
+      const dragSurface = document.createElement('span')
+      dragSurface.className = 'di-image__drag-surface'
+      dragSurface.draggable = true
+      frame.appendChild(dragSurface)
+
+      dragSurface.addEventListener('dblclick', (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        dispatchImageEdit()
+      })
+
+      let lastTap = 0
+      dragSurface.addEventListener('touchend', (e) => {
+        const currentTime = Date.now()
+        const tapLength = currentTime - lastTap
+        if (tapLength < 300 && tapLength > 0) {
+          e.preventDefault()
+          e.stopPropagation()
+          dispatchImageEdit()
+        }
+        lastTap = currentTime
+      })
+
+      const dividerHandle = document.createElement('span')
+      dividerHandle.className = 'di-image__pair-divider'
+      dividerHandle.setAttribute('role', 'separator')
+      dividerHandle.setAttribute('aria-orientation', 'vertical')
+      dividerHandle.setAttribute('aria-valuemin', String(MIN_PAIR_WIDTH))
+      dividerHandle.setAttribute('aria-valuemax', String(MAX_PAIR_WIDTH))
+      dividerHandle.setAttribute('aria-valuenow', String(DEFAULT_PAIR_WIDTH))
+      dividerHandle.tabIndex = 0
+      wrapper.appendChild(dividerHandle)
+
+      const commitPairWidth = (nextWidth: number) => {
+        const leftPos = getPos()
+        if (typeof leftPos !== 'number' || !currentNode.attrs.pairId) return
+        const state = editor.view.state
+        let partnerPos: number | null = null
+        state.doc.descendants((candidate, pos) => {
+          if (candidate.type.name === currentNode.type.name
+            && candidate.attrs.pairId === currentNode.attrs.pairId
+            && pos !== leftPos) partnerPos = pos
+        })
+        if (partnerPos == null) return
+        const leftNode = state.doc.nodeAt(leftPos)
+        const rightNode = state.doc.nodeAt(partnerPos)
+        if (!leftNode || !rightNode) return
+        const width = clampPairWidth(nextWidth)
+        const tr = state.tr
+        tr.setNodeMarkup(leftPos, undefined, { ...leftNode.attrs, pairWidth: width })
+        tr.setNodeMarkup(partnerPos, undefined, { ...rightNode.attrs, pairWidth: width })
+        editor.view.dispatch(tr)
+      }
+
+      const resizePair = (event: PointerEvent) => {
+        if (currentNode.attrs.layout !== 'half-left' || !currentNode.attrs.pairId) return
+        event.preventDefault()
+        event.stopPropagation()
+
+        const currentPos = getPos()
+        if (typeof currentPos !== 'number') return
+        const state = editor.view.state
+        let partnerPos: number | null = null
+        state.doc.descendants((candidate, pos) => {
+          if (candidate.type.name === currentNode.type.name
+            && candidate.attrs.pairId === currentNode.attrs.pairId
+            && pos !== currentPos) partnerPos = pos
+        })
+        if (partnerPos == null) return
+
+        const partnerElement = editor.view.nodeDOM(partnerPos) as HTMLElement | null
+        if (!partnerElement) return
+        const leftRect = wrapper.getBoundingClientRect()
+        const rightRect = partnerElement.getBoundingClientRect()
+        const rowLeft = Math.min(leftRect.left, rightRect.left)
+        const rowWidth = leftRect.width + rightRect.width
+        if (rowWidth <= 0) return
+
+        const preview = (clientX: number) => {
+          const leftWidth = clampPairWidth(((clientX - rowLeft) / rowWidth) * 100)
+          wrapper.style.width = `${leftWidth}%`
+          partnerElement.style.width = `${100 - leftWidth}%`
+          dividerHandle.setAttribute('aria-valuenow', String(Math.round(leftWidth)))
+          return leftWidth
+        }
+
+        let finalWidth = clampPairWidth(currentNode.attrs.pairWidth)
+        const onMove = (moveEvent: PointerEvent) => {
+          finalWidth = preview(moveEvent.clientX)
+        }
+        const onUp = () => {
+          document.removeEventListener('pointermove', onMove)
+          document.removeEventListener('pointerup', onUp)
+          commitPairWidth(finalWidth)
+        }
+
+        document.addEventListener('pointermove', onMove)
+        document.addEventListener('pointerup', onUp)
+      }
+      dividerHandle.addEventListener('pointerdown', resizePair)
+      dividerHandle.addEventListener('keydown', (event) => {
+        if (currentNode.attrs.layout !== 'half-left') return
+        const direction = event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : 0
+        if (direction === 0) return
+        event.preventDefault()
+        event.stopPropagation()
+        commitPairWidth(clampPairWidth(currentNode.attrs.pairWidth) + direction * 2)
+      })
 
       // 데스크톱 마우스 드래그 시작 시 노드 선택
-      dragHandle.addEventListener('mousedown', (e) => {
+      dragSurface.addEventListener('mousedown', (e) => {
         if (e.button !== 0) return
         const pos = getPos()
         if (typeof pos === 'number') {
@@ -237,16 +422,25 @@ export const ResizableImage = Image.extend({
         }
       })
 
-      dragHandle.addEventListener('dragstart', (e) => {
+      const startImageDrag = (e: DragEvent) => {
         const pos = getPos()
         if (typeof pos !== 'number' || !e.dataTransfer) return
         editor.view.dispatch(
           editor.view.state.tr.setSelection(NodeSelection.create(editor.view.state.doc, pos))
         )
+        // ProseMirror 기본 dragstart가 dataTransfer.clearData()로 내부 식별자를
+        // 지우지 않도록 이 커스텀 이미지 드래그는 NodeView에서 끝까지 처리한다.
+        e.stopPropagation()
+        activeImageDragPositions.set(editor.view, pos)
         e.dataTransfer.setData(INTERNAL_IMAGE_DRAG, String(pos))
         e.dataTransfer.effectAllowed = 'move'
         e.dataTransfer.setDragImage(img, Math.min(40, img.width / 2), Math.min(40, img.height / 2))
-      })
+      }
+      const endImageDrag = () => {
+        activeImageDragPositions.delete(editor.view)
+      }
+      dragSurface.addEventListener('dragstart', startImageDrag)
+      dragSurface.addEventListener('dragend', endImageDrag)
 
       // 모바일 터치 드래그 앤 드롭 구현
       let originalPos: number | null = null
@@ -254,7 +448,7 @@ export const ResizableImage = Image.extend({
       let currentDropPos: number | null = null
       let currentTouchPoint: { x: number; y: number } | null = null
 
-      dragHandle.addEventListener('touchstart', (e) => {
+      dragSurface.addEventListener('touchstart', (e) => {
         if (e.touches.length !== 1) return
         const touch = e.touches[0]
         currentTouchPoint = { x: touch.clientX, y: touch.clientY }
@@ -289,7 +483,7 @@ export const ResizableImage = Image.extend({
         document.body.appendChild(dragPreview)
       }, { passive: false })
 
-      dragHandle.addEventListener('touchmove', (e) => {
+      dragSurface.addEventListener('touchmove', (e) => {
         if (e.touches.length !== 1 || !dragPreview || originalPos == null) return
         const touch = e.touches[0]
         currentTouchPoint = { x: touch.clientX, y: touch.clientY }
@@ -329,7 +523,7 @@ export const ResizableImage = Image.extend({
         e.preventDefault()
       }, { passive: false })
 
-      dragHandle.addEventListener('touchend', () => {
+      dragSurface.addEventListener('touchend', () => {
         if (dragPreview) {
           document.body.removeChild(dragPreview)
           dragPreview = null
@@ -347,11 +541,11 @@ export const ResizableImage = Image.extend({
             const targetWrapper = (touchedElement as HTMLElement | null)?.closest('.di-image')
             let imageTargetPos: number | null = null
             if (targetWrapper && view.dom.contains(targetWrapper)) {
-              try {
-                imageTargetPos = view.posAtDOM(targetWrapper, 0)
-              } catch {
-                imageTargetPos = null
-              }
+              state.doc.descendants((candidate, pos) => {
+                if (imageTargetPos == null
+                  && candidate.type.name === nodeToMove.type.name
+                  && view.nodeDOM(pos) === targetWrapper) imageTargetPos = pos
+              })
             }
 
             const targetNode = imageTargetPos != null ? state.doc.nodeAt(imageTargetPos) : null
@@ -377,13 +571,21 @@ export const ResizableImage = Image.extend({
                   const mapped = tr.mapping.map(pos)
                   const candidate = tr.doc.nodeAt(mapped)
                   if (candidate?.type.name === nodeToMove.type.name) {
-                    tr.setNodeMarkup(mapped, undefined, { ...candidate.attrs, layout: null, pairId: null })
+                    tr.setNodeMarkup(mapped, undefined, {
+                      ...candidate.attrs,
+                      layout: null,
+                      pairId: null,
+                      pairWidth: null,
+                      pairHeight: null,
+                    })
                   }
                 })
               }
 
               clearPair(nodeToMove.attrs.pairId, originalPos)
               clearPair(targetNode.attrs.pairId, imageTargetPos)
+              const sourceElement = view.nodeDOM(originalPos) as Element | null
+              const pairHeight = calculatePairHeight(sourceElement, targetWrapper ?? null)
               tr.delete(originalPos, originalPos + nodeToMove.nodeSize)
               const mappedTargetPos = tr.mapping.map(imageTargetPos)
               const currentTarget = tr.doc.nodeAt(mappedTargetPos)
@@ -393,6 +595,8 @@ export const ResizableImage = Image.extend({
                   width: null,
                   layout: placeLeft ? 'half-right' : 'half-left',
                   pairId,
+                  pairWidth: DEFAULT_PAIR_WIDTH,
+                  pairHeight,
                 })
                 const insertPos = placeLeft ? mappedTargetPos : mappedTargetPos + currentTarget.nodeSize
                 tr.insert(insertPos, nodeToMove.type.create({
@@ -400,6 +604,8 @@ export const ResizableImage = Image.extend({
                   width: null,
                   layout: placeLeft ? 'half-left' : 'half-right',
                   pairId,
+                  pairWidth: DEFAULT_PAIR_WIDTH,
+                  pairHeight,
                 }))
                 tr.setSelection(NodeSelection.create(tr.doc, insertPos))
                 view.dispatch(tr)
@@ -424,7 +630,13 @@ export const ResizableImage = Image.extend({
                 const mapped = tr.mapping.map(pos)
                 const partner = tr.doc.nodeAt(mapped)
                 if (partner?.type.name === nodeToMove.type.name) {
-                  tr.setNodeMarkup(mapped, undefined, { ...partner.attrs, layout: null, pairId: null })
+                  tr.setNodeMarkup(mapped, undefined, {
+                    ...partner.attrs,
+                    layout: null,
+                    pairId: null,
+                    pairWidth: null,
+                    pairHeight: null,
+                  })
                 }
               })
             }
@@ -444,6 +656,8 @@ export const ResizableImage = Image.extend({
                 ...nodeToMove.attrs,
                 layout: null,
                 pairId: null,
+                pairWidth: null,
+                pairHeight: null,
               }))
               if (tr.doc.nodeAt(targetPos)?.type === nodeToMove.type) {
                 tr.setSelection(NodeSelection.create(tr.doc, targetPos))
@@ -524,7 +738,11 @@ export const ResizableImage = Image.extend({
           img.style.width = ''
           applyAlign()
           applyLayout()
+          dividerHandle.setAttribute('aria-valuenow', String(Math.round(clampPairWidth(updatedNode.attrs.pairWidth))))
           return true
+        },
+        destroy() {
+          layoutObserver?.disconnect()
         },
       }
     }

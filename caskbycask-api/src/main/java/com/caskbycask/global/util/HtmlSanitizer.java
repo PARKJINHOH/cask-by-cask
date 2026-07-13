@@ -61,7 +61,8 @@ public class HtmlSanitizer {
                 // 이미지: 업로드 엔드포인트 전용 (style 및 크기 속성 허용)
                 .addTags("img")
                 .addAttributes("img", "src", "alt", "width", "height", "style",
-                        "data-image-layout", "data-image-pair")
+                        "data-image-layout", "data-image-pair",
+                        "data-image-pair-width", "data-image-pair-height")
                 // 테이블
                 .addTags("table", "thead", "tbody", "tr", "th", "td")
                 .addAttributes("th", "scope", "colspan", "rowspan")

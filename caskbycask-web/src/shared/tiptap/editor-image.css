@@ -8,18 +8,70 @@
 .ProseMirror .di-image--half-left,
 .ProseMirror .di-image--half-right {
   display: inline-block;
-  width: calc(50% - 0.25rem);
   vertical-align: top;
+  margin: 0.5rem 0;
+  position: relative;
 }
-
-.ProseMirror .di-image--half-left { margin-right: 0.5rem; }
-.ProseMirror .di-image--half-right { margin-left: 0; }
 
 .ProseMirror .di-image--half-left .di-image__frame,
 .ProseMirror .di-image--half-right .di-image__frame,
 .ProseMirror .di-image--half-left .di-image__frame > img,
 .ProseMirror .di-image--half-right .di-image__frame > img {
   width: 100%;
+}
+
+.ProseMirror .di-image--half-left .di-image__frame,
+.ProseMirror .di-image--half-right .di-image__frame {
+  display: block;
+}
+
+.ProseMirror .di-image--half-left .di-image__frame > img,
+.ProseMirror .di-image--half-right .di-image__frame > img {
+  height: 100%;
+  object-fit: cover;
+  border-radius: 0;
+}
+
+.ProseMirror .di-image--half-left .di-image__frame > img {
+  border-radius: 0.5rem 0 0 0.5rem;
+}
+
+.ProseMirror .di-image--half-right .di-image__frame > img {
+  border-radius: 0 0.5rem 0.5rem 0;
+}
+
+.ProseMirror .di-image__pair-divider {
+  display: none;
+}
+
+.ProseMirror .di-image--half-left .di-image__pair-divider {
+  display: block;
+  position: absolute;
+  top: 0;
+  right: -7px;
+  width: 14px;
+  height: 100%;
+  z-index: 20;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.ProseMirror .di-image--half-left .di-image__pair-divider::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.65);
+}
+
+.ProseMirror .di-image--half-left .di-image__pair-divider:hover::before,
+.ProseMirror .di-image--half-left .di-image__pair-divider:focus-visible::before {
+  background: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
 }
 
 .ProseMirror .di-image--half-left .di-image__handle,
@@ -32,6 +84,7 @@
   display: inline-block;
   line-height: 0;
   max-width: 100%;
+  cursor: grab;
 }
 
 .ProseMirror .di-image__frame > img {
@@ -69,33 +122,19 @@
 .ProseMirror .di-image__handle--sw { bottom: -6px; left: -6px;  cursor: nesw-resize; }
 .ProseMirror .di-image__handle--se { bottom: -6px; right: -6px; cursor: nwse-resize; }
 
-/* 이미지 우측 이동 버튼 (드래그 핸들) */
-.ProseMirror .di-image__drag-handle {
+/* 이미지 전체를 드래그 영역으로 사용한다. 실제 img 위의 투명 표면이므로 별도 버튼은 없다. */
+.ProseMirror .di-image__drag-surface {
   position: absolute;
-  right: 8px;
-  bottom: 8px;
-  width: 28px;
-  height: 28px;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #4b5563;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  cursor: grab;
-  z-index: 10;
+  inset: 0;
+  display: block;
+  background: transparent;
+  cursor: grab !important;
+  z-index: 3;
   touch-action: none;
+  -webkit-user-drag: element;
+  user-select: none;
 }
 
-.ProseMirror .di-image__drag-handle:active {
-  cursor: grabbing;
-  background: #f3f4f6;
-  color: #1f2937;
-}
-
-.ProseMirror .di-image__drag-handle svg {
-  width: 14px;
-  height: 14px;
+.ProseMirror .di-image__drag-surface:active {
+  cursor: grabbing !important;
 }

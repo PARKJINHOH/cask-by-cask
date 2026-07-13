@@ -17,15 +17,19 @@ class HtmlSanitizerTest {
     @Test
     void sanitize_preservesSafeImagePairLayoutAttributes() {
         String rawHtml = "<img src=\"/api/posts/images/1\" data-image-layout=\"half-left\" "
-                + "data-image-pair=\"pair-1\"><img src=\"/api/posts/images/2\" "
-                + "data-image-layout=\"half-right\" data-image-pair=\"pair-1\">";
+                + "data-image-pair=\"pair-1\" data-image-pair-width=\"42\" "
+                + "data-image-pair-height=\"0.36\"><img src=\"/api/posts/images/2\" "
+                + "data-image-layout=\"half-right\" data-image-pair=\"pair-1\" "
+                + "data-image-pair-width=\"42\" data-image-pair-height=\"0.36\">";
 
         String sanitized = htmlSanitizer.sanitize(rawHtml);
 
         assertThat(sanitized)
                 .contains("data-image-layout=\"half-left\"")
                 .contains("data-image-layout=\"half-right\"")
-                .contains("data-image-pair=\"pair-1\"");
+                .contains("data-image-pair=\"pair-1\"")
+                .contains("data-image-pair-width=\"42\"")
+                .contains("data-image-pair-height=\"0.36\"");
     }
 
     @Test

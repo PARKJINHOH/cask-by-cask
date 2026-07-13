@@ -55,7 +55,7 @@ export function sanitizeHtml(dirty: string): string {
     ALLOWED_ATTR: [
       'href', 'target', 'rel',
       'src', 'alt', 'width', 'height', 'style',
-      'data-image-layout', 'data-image-pair',
+      'data-image-layout', 'data-image-pair', 'data-image-pair-width', 'data-image-pair-height',
       'class',  // Tailwind CSS 클래스
       'id',
       'colspan', 'rowspan', 'scope',

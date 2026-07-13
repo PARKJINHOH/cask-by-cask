@@ -3,15 +3,19 @@
    여기서는 편집기 고유 동작(최소 높이, 플레이스홀더, 셀 선택, 노드 선택)만 정의. */
 
 .di-richtext {
-  /* 편집 영역 높이를 우하단 핸들로 드래그해 조절(세로). resize 동작을 위해 overflow 는
-     visible 이 아니어야 하므로 auto 로 둔다.
+  /* 콘텐츠가 늘어도 브라우저 페이지를 밀어내지 않고 편집 영역 안에서 스크롤한다.
+     화면 높이에 따라 기본 높이는 달라지며 수동 리사이즈도 뷰포트 안에서 제한한다.
      iOS Safari 에서 contenteditable 이 flex item 일 때 캐럿(커서)이 가로로 누워버리는
      렌더링 버그가 있으므로, flex 레이아웃 대신 block 레이아웃을 사용한다. */
   min-height: 220px;
-  max-height: max(550px, 60vh);
-  overflow: auto;
+  height: clamp(220px, 60dvh, 680px);
+  max-height: max(220px, calc(100dvh - 16rem));
+  overflow-x: hidden;
+  overflow-y: auto;
   resize: vertical;
   scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+  box-sizing: border-box;
 }
 
 .di-richtext .ProseMirror {
