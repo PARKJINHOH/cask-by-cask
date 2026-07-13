@@ -28,6 +28,9 @@ import org.springframework.util.StringUtils;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -187,13 +190,20 @@ public class HibernateSpiritSearchService implements SpiritSearchService {
     @Override
     @Transactional(readOnly = true)
     public List<SpiritAutocompleteResponse> autocompleteSpirits(String keyword) {
+        return autocompleteSpirits(keyword, false);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SpiritAutocompleteResponse> autocompleteSpirits(String keyword, boolean includeVariants) {
         if (!StringUtils.hasText(keyword) || keyword.trim().length() < 2) {
             return List.of();
         }
 
         String cleanKeyword = keyword.trim().toLowerCase(Locale.ROOT);
         String cacheKeyword = SpiritSearchTextNormalizer.compact(cleanKeyword);
-        String redisKey = "autocomplete:v2:" + (StringUtils.hasText(cacheKeyword) ? cacheKeyword : cleanKeyword);
+        String redisKey = "autocomplete:v3:" + (includeVariants ? "all:" : "master:")
+                + (StringUtils.hasText(cacheKeyword) ? cacheKeyword : cleanKeyword);
 
         try {
             String cachedJson = redisTemplate.opsForValue().get(redisKey);
@@ -209,14 +219,16 @@ public class HibernateSpiritSearchService implements SpiritSearchService {
                 .select(f -> f.id(Long.class))
                 .where(f -> f.bool(b -> {
                     b.must(f.match().field("status").matching(SpiritStatus.ACTIVE));
-                    b.must(f.match().field("hasParent").matching(false));
+                    if (!includeVariants) {
+                        b.must(f.match().field("hasParent").matching(false));
+                    }
                     applyKeywordPredicate(b, f, cleanKeyword);
                 }))
                 .sort(f -> f.composite(c -> {
                     c.add(f.score().desc());
                     c.add(f.field("createdAt").desc());
                 }))
-                .fetch(0, 10);
+                .fetch(0, includeVariants ? 40 : 10);
 
         List<Long> ids = result.hits();
         if (ids.isEmpty()) {
@@ -224,10 +236,12 @@ public class HibernateSpiritSearchService implements SpiritSearchService {
         }
 
         List<SpiritAutocompleteResponse> autocompleteList = entityManager.createQuery(
-                "select new com.caskbycask.domain.spirit.dto.SpiritAutocompleteResponse(" +
-                        "s.id, s.nameKo, s.nameEn, s.seriesIdentifier, s.seriesIdentifierEn, s.category, " +
+                        "select new com.caskbycask.domain.spirit.dto.SpiritAutocompleteResponse(" +
+                        "s.id, s.nameKo, s.nameEn, s.seriesIdentifier, s.seriesIdentifierEn, " +
+                        "s.parent.id, s.variantType, s.variantValue, s.variantValueEn, s.displayOrder, " +
+                        "s.category, s.abv, s.avgScore, s.reviewCount, " +
                         "(select max(si.imageUrl) from SpiritImage si where si.spirit.id = s.id and si.sortOrder = 0), " +
-                        "s.variantType, s.variantValue, s.variantValueEn " +
+                        "(select max(pi.imageUrl) from SpiritImage pi where pi.spirit.id = s.parent.id and pi.sortOrder = 0) " +
                         ") from Spirit s where s.id in :ids", SpiritAutocompleteResponse.class)
                 .setParameter("ids", ids)
                 .getResultList();
@@ -238,6 +252,23 @@ public class HibernateSpiritSearchService implements SpiritSearchService {
                 .map(map::get)
                 .filter(Objects::nonNull)
                 .toList();
+
+        if (includeVariants) {
+            Map<Long, Integer> groupRank = new HashMap<>();
+            for (int i = 0; i < sortedList.size(); i++) {
+                SpiritAutocompleteResponse item = sortedList.get(i);
+                long rootId = item.parentId() != null ? item.parentId() : item.id();
+                groupRank.merge(rootId, i, Math::min);
+            }
+            List<SpiritAutocompleteResponse> grouped = new ArrayList<>(sortedList);
+            grouped.sort(Comparator
+                    .comparingInt((SpiritAutocompleteResponse item) ->
+                            groupRank.getOrDefault(item.parentId() != null ? item.parentId() : item.id(), Integer.MAX_VALUE))
+                    .thenComparingInt(item -> item.parentId() == null ? -1 :
+                            (item.displayOrder() != null ? item.displayOrder() : Integer.MAX_VALUE))
+                    .thenComparing(SpiritAutocompleteResponse::id));
+            sortedList = grouped.stream().limit(30).toList();
+        }
 
         try {
             String json = objectMapper.writeValueAsString(sortedList);

@@ -8,7 +8,15 @@ export interface SpiritAutocompleteItem {
   nameEn: string
   seriesIdentifier?: string | null
   seriesIdentifierEn?: string | null
+  parentId?: number | null
+  variantType?: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE' | null
+  variantValue?: string | null
+  variantValueEn?: string | null
+  displayOrder?: number | null
   category: SpiritCategory
+  abv?: number | null
+  avgScore?: number | null
+  reviewCount?: number | null
   imageUrl: string | null
   canonicalPathKo?: string | null
   canonicalPathEn?: string | null

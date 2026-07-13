@@ -32,10 +32,12 @@ const ALLOWED_TAGS = [
 ]
 const ALLOWED_ATTR = [
   'href', 'src', 'alt', 'class', 'rel', 'target', 'style', 'width', 'height',
+  'data-image-layout', 'data-image-pair',
   'colspan', 'rowspan', 'scope', 'data-color',
   'data-type', 'data-checked',
   'data-spirit-id', 'data-spirit-name', 'data-spirit-name-en', 'data-spirit-category',
   'data-spirit-thumbnail', 'data-spirit-abv', 'data-spirit-review-count',
+  'data-spirit-width',
   'data-video-embed', 'data-uploaded-video',
   'allowfullscreen', 'allow', 'frameborder', 'controls', 'preload', 'type',
   'start',

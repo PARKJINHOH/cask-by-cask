@@ -40,8 +40,9 @@ public class SpiritController {
 
     @GetMapping("/autocomplete")
     public ResponseEntity<ApiResponse<List<SpiritAutocompleteResponse>>> autocomplete(
-            @RequestParam(required = false) String keyword) {
-        List<SpiritAutocompleteResponse> result = spiritService.autocomplete(keyword);
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "false") boolean includeVariants) {
+        List<SpiritAutocompleteResponse> result = spiritService.autocomplete(keyword, includeVariants);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 

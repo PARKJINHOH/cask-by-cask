@@ -77,3 +77,44 @@
   outline: 2px solid var(--color-primary-400);
   outline-offset: 1px;
 }
+
+.di-richtext .ProseMirror a.di-spirit-embed {
+  position: relative;
+}
+
+/* 리사이즈 NodeView에서도 기존 카드 UI(제목 위, 도수·리뷰 아래)를 그대로 유지한다. */
+.di-richtext .ProseMirror a.di-spirit-embed > .di-spirit-embed__content {
+  display: flex !important;
+  flex: 1 1 auto;
+  flex-direction: column !important;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.di-richtext .ProseMirror a.di-spirit-embed > .di-spirit-embed__content > span:last-child {
+  display: block;
+  flex: none;
+  white-space: nowrap;
+}
+
+.di-richtext .ProseMirror .di-spirit-embed__resize {
+  display: none;
+  position: absolute;
+  top: 50%;
+  width: 10px;
+  height: 30px;
+  transform: translateY(-50%);
+  border: 2px solid #2563eb;
+  border-radius: 3px;
+  background: #fff;
+  z-index: 5;
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+.di-richtext .ProseMirror a.di-spirit-embed.ProseMirror-selectednode .di-spirit-embed__resize {
+  display: block;
+}
+
+.di-richtext .ProseMirror .di-spirit-embed__resize--left { left: -6px; }
+.di-richtext .ProseMirror .di-spirit-embed__resize--right { right: -6px; }

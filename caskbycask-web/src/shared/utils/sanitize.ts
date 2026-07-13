@@ -55,6 +55,7 @@ export function sanitizeHtml(dirty: string): string {
     ALLOWED_ATTR: [
       'href', 'target', 'rel',
       'src', 'alt', 'width', 'height', 'style',
+      'data-image-layout', 'data-image-pair',
       'class',  // Tailwind CSS 클래스
       'id',
       'colspan', 'rowspan', 'scope',
@@ -64,6 +65,7 @@ export function sanitizeHtml(dirty: string): string {
       'data-type', 'data-checked',
       'data-spirit-id', 'data-spirit-name', 'data-spirit-name-en', 'data-spirit-category',
       'data-spirit-thumbnail', 'data-spirit-abv', 'data-spirit-review-count',
+      'data-spirit-width',
       // YouTube/Vimeo 임베드 iframe
       'allow', 'allowfullscreen', 'frameborder', 'data-video-embed',
       // 업로드 동영상 video

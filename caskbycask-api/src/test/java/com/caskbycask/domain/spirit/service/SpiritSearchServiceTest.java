@@ -7,6 +7,7 @@ import com.caskbycask.domain.spirit.dto.SpiritSearchCondition;
 import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
 import com.caskbycask.domain.spirit.entity.enums.SpiritStatus;
+import com.caskbycask.domain.spirit.entity.enums.VariantType;
 import com.caskbycask.domain.spirit.repository.SpiritRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
@@ -187,5 +188,51 @@ class SpiritSearchServiceTest {
                 .toList();
         assertThat(names).contains("글렌알라키 12년");
         assertThat(names).doesNotContain("크라이겔라키 13년");
+    }
+
+    @Test
+    @DisplayName("에디터 자동완성은 시리즈 마스터 다음에 하위 에디션을 표시 순서대로 반환한다")
+    void autocompleteWithVariantsGroupsMasterAndEditions() {
+        Spirit master = Spirit.builder()
+                .nameKo("글렌알라키")
+                .nameEn("GlenAllachie")
+                .seriesIdentifier("신테이스 시리즈")
+                .seriesIdentifierEn("Sinteis Series")
+                .category(SpiritCategory.WHISKY)
+                .status(SpiritStatus.ACTIVE)
+                .build();
+        spiritRepository.save(master);
+
+        for (int i = 1; i <= 3; i++) {
+            Spirit variant = Spirit.builder()
+                    .nameKo("글렌알라키")
+                    .nameEn("GlenAllachie")
+                    .seriesIdentifier("신테이스 시리즈")
+                    .seriesIdentifierEn("Sinteis Series")
+                    .parent(master)
+                    .variantType(VariantType.BATCH)
+                    .variantValue("파트" + i)
+                    .variantValueEn("Part " + i)
+                    .displayOrder(i - 1)
+                    .category(SpiritCategory.WHISKY)
+                    .status(SpiritStatus.ACTIVE)
+                    .build();
+            spiritRepository.save(variant);
+        }
+        spiritRepository.flush();
+
+        List<com.caskbycask.domain.spirit.dto.SpiritAutocompleteResponse> result =
+                spiritSearchService.autocompleteSpirits("신테이스", true);
+
+        assertThat(result)
+                .extracting(item -> item.parentId() == null
+                        ? item.nameKo() + " " + item.seriesIdentifier()
+                        : item.nameKo() + " " + item.seriesIdentifier() + " " + item.variantValue())
+                .containsSubsequence(
+                        "글렌알라키 신테이스 시리즈",
+                        "글렌알라키 신테이스 시리즈 파트1",
+                        "글렌알라키 신테이스 시리즈 파트2",
+                        "글렌알라키 신테이스 시리즈 파트3"
+                );
     }
 }

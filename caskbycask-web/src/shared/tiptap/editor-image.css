@@ -5,6 +5,28 @@
   margin: 0.5rem 0;
 }
 
+.ProseMirror .di-image--half-left,
+.ProseMirror .di-image--half-right {
+  display: inline-block;
+  width: calc(50% - 0.25rem);
+  vertical-align: top;
+}
+
+.ProseMirror .di-image--half-left { margin-right: 0.5rem; }
+.ProseMirror .di-image--half-right { margin-left: 0; }
+
+.ProseMirror .di-image--half-left .di-image__frame,
+.ProseMirror .di-image--half-right .di-image__frame,
+.ProseMirror .di-image--half-left .di-image__frame > img,
+.ProseMirror .di-image--half-right .di-image__frame > img {
+  width: 100%;
+}
+
+.ProseMirror .di-image--half-left .di-image__handle,
+.ProseMirror .di-image--half-right .di-image__handle {
+  display: none !important;
+}
+
 .ProseMirror .di-image__frame {
   position: relative;
   display: inline-block;

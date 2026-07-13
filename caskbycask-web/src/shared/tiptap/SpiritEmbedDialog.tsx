@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { spiritApi } from '@/domain/spirit/api/spiritApi'
-import type { SpiritListItem } from '@/domain/spirit/types/spirit.types'
+import type { SpiritAutocompleteItem } from '@/domain/spirit/types/spirit.types'
 import { getLocalizedSpiritListNames, getSpiritListDisplayNames } from '@/domain/spirit/utils/spiritDisplayName'
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
 import { SPIRIT_CATEGORY_EMOJI, type SpiritEmbedAttrs } from './SpiritEmbed'
@@ -17,7 +17,7 @@ export default function SpiritEmbedDialog({ open, onClose, onSelect }: Props) {
   const { t, i18n } = useTranslation()
   const [keyword, setKeyword] = useState('')
   const debouncedKeyword = useDebouncedValue(keyword)
-  const [results, setResults] = useState<SpiritListItem[]>([])
+  const [results, setResults] = useState<SpiritAutocompleteItem[]>([])
   const [loading, setLoading] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -34,7 +34,7 @@ export default function SpiritEmbedDialog({ open, onClose, onSelect }: Props) {
   useEffect(() => {
     if (!open) return
     const q = debouncedKeyword.trim()
-    if (q.length < 1) {
+    if (q.length < 2) {
       setResults([])
       setLoading(false)
       return
@@ -43,8 +43,8 @@ export default function SpiritEmbedDialog({ open, onClose, onSelect }: Props) {
     setLoading(true)
     ;(async () => {
       try {
-        const res = await spiritApi.search({ keyword: q, page: 0, size: 12 })
-        if (!ignore) setResults(res.data.data?.content ?? [])
+        const res = await spiritApi.autocomplete(q, undefined, true)
+        if (!ignore) setResults(res.data.data ?? [])
       } catch {
         if (!ignore) setResults([])
       } finally {
@@ -66,14 +66,14 @@ export default function SpiritEmbedDialog({ open, onClose, onSelect }: Props) {
 
   if (!open) return null
 
-  const pick = (s: SpiritListItem) => {
+  const pick = (s: SpiritAutocompleteItem) => {
     const displayName = getSpiritListDisplayNames(s)
     onSelect({
       id: String(s.id),
       name: displayName.nameKo,
       nameEn: displayName.nameEn || displayName.nameKo,
       category: s.category,
-      thumbnailUrl: s.primaryImageUrl ?? null,
+      thumbnailUrl: s.imageUrl ?? null,
       abv: s.abv ?? null,
       reviewCount: s.reviewCount ?? 0,
     })
@@ -132,9 +132,9 @@ export default function SpiritEmbedDialog({ open, onClose, onSelect }: Props) {
                 onClick={() => pick(s)}
                 className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-neutral-50 transition-colors border-b border-neutral-50 last:border-0"
               >
-                {s.primaryImageUrl ? (
+                {s.imageUrl ? (
                   <img
-                    src={s.primaryImageUrl}
+                    src={s.imageUrl}
                     alt=""
                     className="w-9 h-9 rounded object-cover bg-neutral-100 shrink-0"
                   />

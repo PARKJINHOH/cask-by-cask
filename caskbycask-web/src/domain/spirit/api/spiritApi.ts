@@ -50,9 +50,9 @@ export const spiritApi = {
       params: { category, country },
     }),
 
-  autocomplete: (keyword: string, signal?: AbortSignal) =>
+  autocomplete: (keyword: string, signal?: AbortSignal, includeVariants = false) =>
     axiosInstance.get<ApiResponse<SpiritAutocompleteItem[]>>('/api/spirits/autocomplete', {
-      params: { keyword },
+      params: { keyword, includeVariants },
       signal,
     }),
 }

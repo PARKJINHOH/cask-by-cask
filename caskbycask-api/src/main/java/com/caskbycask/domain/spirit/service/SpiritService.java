@@ -91,6 +91,11 @@ public class SpiritService {
     }
 
     @Transactional(readOnly = true)
+    public List<SpiritAutocompleteResponse> autocomplete(String keyword, boolean includeVariants) {
+        return spiritSearchService.autocompleteSpirits(keyword, includeVariants);
+    }
+
+    @Transactional(readOnly = true)
     public Page<SpiritListResponse> searchSpirits(SpiritSearchCondition condition,
                                                    Pageable pageable) {
         if (org.springframework.util.StringUtils.hasText(condition.keyword())) {

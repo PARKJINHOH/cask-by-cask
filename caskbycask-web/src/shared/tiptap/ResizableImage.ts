@@ -1,5 +1,16 @@
 import Image from '@tiptap/extension-image'
 import { NodeSelection, Selection } from '@tiptap/pm/state'
+import { Fragment, Slice } from '@tiptap/pm/model'
+import { Plugin } from '@tiptap/pm/state'
+import { dropPoint } from '@tiptap/pm/transform'
+
+const INTERNAL_IMAGE_DRAG = 'application/x-caskbycask-image-pos'
+
+function createPairId() {
+  return typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `image-pair-${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
 
 /**
  * 공통 이미지 확장 (사용자/관리자 Tiptap 에디터 공용)
@@ -21,7 +32,123 @@ export const ResizableImage = Image.extend({
           return { width: attributes.width }
         },
       },
+      layout: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-image-layout'),
+        renderHTML: (attributes) => attributes.layout
+          ? { 'data-image-layout': attributes.layout }
+          : {},
+      },
+      pairId: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-image-pair'),
+        renderHTML: (attributes) => attributes.pairId
+          ? { 'data-image-pair': attributes.pairId }
+          : {},
+      },
     }
+  },
+
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        props: {
+          handleDrop: (view, event) => {
+            const rawSourcePos = event.dataTransfer?.getData(INTERNAL_IMAGE_DRAG)
+            if (!rawSourcePos) return false
+
+            event.preventDefault()
+            const sourcePos = Number(rawSourcePos)
+            const state = view.state
+            const sourceNode = state.doc.nodeAt(sourcePos)
+            if (!Number.isInteger(sourcePos) || sourceNode?.type.name !== this.name) return true
+
+            const targetElement = (event.target as HTMLElement | null)?.closest('.di-image')
+            let targetPos: number | null = null
+            if (targetElement && view.dom.contains(targetElement)) {
+              try {
+                targetPos = view.posAtDOM(targetElement, 0)
+              } catch {
+                targetPos = null
+              }
+            }
+
+            const tr = state.tr
+            const clearPair = (pairId: string | null | undefined, exceptPos?: number) => {
+              if (!pairId) return
+              const matches: number[] = []
+              state.doc.descendants((node, pos) => {
+                if (node.type.name === this.name && node.attrs.pairId === pairId && pos !== exceptPos) {
+                  matches.push(pos)
+                }
+              })
+              matches.forEach((pos) => {
+                const mapped = tr.mapping.map(pos)
+                const node = tr.doc.nodeAt(mapped)
+                if (node?.type.name === this.name) {
+                  tr.setNodeMarkup(mapped, undefined, { ...node.attrs, layout: null, pairId: null })
+                }
+              })
+            }
+
+            clearPair(sourceNode.attrs.pairId, sourcePos)
+
+            const targetNode = targetPos != null ? state.doc.nodeAt(targetPos) : null
+            const targetRect = targetElement?.getBoundingClientRect()
+            const isPairDrop = targetPos != null
+              && targetPos !== sourcePos
+              && targetNode?.type.name === this.name
+              && targetRect
+
+            if (isPairDrop && targetPos != null && targetNode && targetRect) {
+              clearPair(targetNode.attrs.pairId, targetPos)
+              const placeLeft = event.clientX < targetRect.left + targetRect.width / 2
+              const pairId = createPairId()
+
+              tr.delete(sourcePos, sourcePos + sourceNode.nodeSize)
+              const mappedTargetPos = tr.mapping.map(targetPos)
+              const currentTarget = tr.doc.nodeAt(mappedTargetPos)
+              if (!currentTarget || currentTarget.type.name !== this.name) return true
+
+              const sourceAttrs = {
+                ...sourceNode.attrs,
+                width: null,
+                layout: placeLeft ? 'half-left' : 'half-right',
+                pairId,
+              }
+              const targetAttrs = {
+                ...currentTarget.attrs,
+                width: null,
+                layout: placeLeft ? 'half-right' : 'half-left',
+                pairId,
+              }
+              tr.setNodeMarkup(mappedTargetPos, undefined, targetAttrs)
+              const insertPos = placeLeft ? mappedTargetPos : mappedTargetPos + currentTarget.nodeSize
+              tr.insert(insertPos, sourceNode.type.create(sourceAttrs))
+              tr.setSelection(NodeSelection.create(tr.doc, insertPos))
+              view.dispatch(tr)
+              return true
+            }
+
+            const movedNode = sourceNode.type.create({
+              ...sourceNode.attrs,
+              layout: null,
+              pairId: null,
+            })
+            const slice = new Slice(Fragment.from(movedNode), 0, 0)
+            const coords = view.posAtCoords({ left: event.clientX, top: event.clientY })
+            tr.delete(sourcePos, sourcePos + sourceNode.nodeSize)
+            const requestedPos = tr.mapping.map(coords?.pos ?? sourcePos)
+            const insertPos = dropPoint(tr.doc, requestedPos, slice)
+            if (insertPos == null) return true
+            tr.insert(insertPos, movedNode)
+            tr.setSelection(NodeSelection.create(tr.doc, insertPos))
+            view.dispatch(tr)
+            return true
+          },
+        },
+      }),
+    ]
   },
 
   addNodeView() {
@@ -83,9 +210,18 @@ export const ResizableImage = Image.extend({
       }
       applyAlign()
 
+      const applyLayout = () => {
+        const layout = currentNode.attrs.layout as string | null
+        wrapper.dataset.imageLayout = layout ?? ''
+        wrapper.classList.toggle('di-image--half-left', layout === 'half-left')
+        wrapper.classList.toggle('di-image--half-right', layout === 'half-right')
+      }
+      applyLayout()
+
       // 드래그 이동 핸들 추가 (모바일/데스크톱 공용)
       const dragHandle = document.createElement('span')
       dragHandle.className = 'di-image__drag-handle'
+      dragHandle.draggable = true
       dragHandle.title = '드래그하여 이미지 이동'
       dragHandle.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 9 2 12 5 15"></polyline><polyline points="9 5 12 2 15 5"></polyline><polyline points="15 19 12 22 9 19"></polyline><polyline points="19 9 22 12 19 15"></polyline><line x1="2" y1="12" x2="22" y2="12"></line><line x1="12" y1="2" x2="12" y2="22"></line></svg>`
       frame.appendChild(dragHandle)
@@ -101,14 +237,27 @@ export const ResizableImage = Image.extend({
         }
       })
 
+      dragHandle.addEventListener('dragstart', (e) => {
+        const pos = getPos()
+        if (typeof pos !== 'number' || !e.dataTransfer) return
+        editor.view.dispatch(
+          editor.view.state.tr.setSelection(NodeSelection.create(editor.view.state.doc, pos))
+        )
+        e.dataTransfer.setData(INTERNAL_IMAGE_DRAG, String(pos))
+        e.dataTransfer.effectAllowed = 'move'
+        e.dataTransfer.setDragImage(img, Math.min(40, img.width / 2), Math.min(40, img.height / 2))
+      })
+
       // 모바일 터치 드래그 앤 드롭 구현
       let originalPos: number | null = null
       let dragPreview: HTMLDivElement | null = null
       let currentDropPos: number | null = null
+      let currentTouchPoint: { x: number; y: number } | null = null
 
       dragHandle.addEventListener('touchstart', (e) => {
         if (e.touches.length !== 1) return
         const touch = e.touches[0]
+        currentTouchPoint = { x: touch.clientX, y: touch.clientY }
 
         const pos = getPos()
         if (typeof pos !== 'number') return
@@ -143,6 +292,7 @@ export const ResizableImage = Image.extend({
       dragHandle.addEventListener('touchmove', (e) => {
         if (e.touches.length !== 1 || !dragPreview || originalPos == null) return
         const touch = e.touches[0]
+        currentTouchPoint = { x: touch.clientX, y: touch.clientY }
 
         // 미리보기 썸네일 위치 업데이트
         dragPreview.style.left = `${touch.clientX - 30}px`
@@ -191,8 +341,93 @@ export const ResizableImage = Image.extend({
           const nodeToMove = state.doc.nodeAt(originalPos)
 
           if (nodeToMove) {
+            const touchedElement = currentTouchPoint
+              ? document.elementFromPoint(currentTouchPoint.x, currentTouchPoint.y)
+              : null
+            const targetWrapper = (touchedElement as HTMLElement | null)?.closest('.di-image')
+            let imageTargetPos: number | null = null
+            if (targetWrapper && view.dom.contains(targetWrapper)) {
+              try {
+                imageTargetPos = view.posAtDOM(targetWrapper, 0)
+              } catch {
+                imageTargetPos = null
+              }
+            }
+
+            const targetNode = imageTargetPos != null ? state.doc.nodeAt(imageTargetPos) : null
+            const targetRect = targetWrapper?.getBoundingClientRect()
+            if (imageTargetPos != null
+              && imageTargetPos !== originalPos
+              && targetNode?.type.name === nodeToMove.type.name
+              && targetRect
+              && currentTouchPoint) {
+              const pairId = createPairId()
+              const placeLeft = currentTouchPoint.x < targetRect.left + targetRect.width / 2
+              const tr = state.tr
+
+              const clearPair = (existingPairId: string | null | undefined, exceptPos: number) => {
+                if (!existingPairId) return
+                const positions: number[] = []
+                state.doc.descendants((candidate, pos) => {
+                  if (candidate.type.name === nodeToMove.type.name
+                    && candidate.attrs.pairId === existingPairId
+                    && pos !== exceptPos) positions.push(pos)
+                })
+                positions.forEach((pos) => {
+                  const mapped = tr.mapping.map(pos)
+                  const candidate = tr.doc.nodeAt(mapped)
+                  if (candidate?.type.name === nodeToMove.type.name) {
+                    tr.setNodeMarkup(mapped, undefined, { ...candidate.attrs, layout: null, pairId: null })
+                  }
+                })
+              }
+
+              clearPair(nodeToMove.attrs.pairId, originalPos)
+              clearPair(targetNode.attrs.pairId, imageTargetPos)
+              tr.delete(originalPos, originalPos + nodeToMove.nodeSize)
+              const mappedTargetPos = tr.mapping.map(imageTargetPos)
+              const currentTarget = tr.doc.nodeAt(mappedTargetPos)
+              if (currentTarget?.type.name === nodeToMove.type.name) {
+                tr.setNodeMarkup(mappedTargetPos, undefined, {
+                  ...currentTarget.attrs,
+                  width: null,
+                  layout: placeLeft ? 'half-right' : 'half-left',
+                  pairId,
+                })
+                const insertPos = placeLeft ? mappedTargetPos : mappedTargetPos + currentTarget.nodeSize
+                tr.insert(insertPos, nodeToMove.type.create({
+                  ...nodeToMove.attrs,
+                  width: null,
+                  layout: placeLeft ? 'half-left' : 'half-right',
+                  pairId,
+                }))
+                tr.setSelection(NodeSelection.create(tr.doc, insertPos))
+                view.dispatch(tr)
+              }
+              originalPos = null
+              currentDropPos = null
+              currentTouchPoint = null
+              return
+            }
+
             let targetPos = currentDropPos
             const tr = state.tr
+
+            if (nodeToMove.attrs.pairId) {
+              const partnerPositions: number[] = []
+              state.doc.descendants((candidate, pos) => {
+                if (candidate.type.name === nodeToMove.type.name
+                  && candidate.attrs.pairId === nodeToMove.attrs.pairId
+                  && pos !== originalPos) partnerPositions.push(pos)
+              })
+              partnerPositions.forEach((pos) => {
+                const mapped = tr.mapping.map(pos)
+                const partner = tr.doc.nodeAt(mapped)
+                if (partner?.type.name === nodeToMove.type.name) {
+                  tr.setNodeMarkup(mapped, undefined, { ...partner.attrs, layout: null, pairId: null })
+                }
+              })
+            }
 
             // 원본 제거
             tr.delete(originalPos, originalPos + nodeToMove.nodeSize)
@@ -205,7 +440,11 @@ export const ResizableImage = Image.extend({
             targetPos = Math.min(Math.max(0, targetPos), tr.doc.content.size)
 
             try {
-              tr.insert(targetPos, nodeToMove)
+              tr.insert(targetPos, nodeToMove.type.create({
+                ...nodeToMove.attrs,
+                layout: null,
+                pairId: null,
+              }))
               if (tr.doc.nodeAt(targetPos)?.type === nodeToMove.type) {
                 tr.setSelection(NodeSelection.create(tr.doc, targetPos))
               }
@@ -218,6 +457,7 @@ export const ResizableImage = Image.extend({
 
         originalPos = null
         currentDropPos = null
+        currentTouchPoint = null
       })
 
       // 모서리 리사이즈 핸들 4개
@@ -283,6 +523,7 @@ export const ResizableImage = Image.extend({
           }
           img.style.width = ''
           applyAlign()
+          applyLayout()
           return true
         },
       }

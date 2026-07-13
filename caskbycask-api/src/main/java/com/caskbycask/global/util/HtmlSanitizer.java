@@ -56,10 +56,12 @@ public class HtmlSanitizer {
                 // 본문 내 술 카드 임베드: TipTap SpiritEmbed 노드 데이터 보존
                 .addAttributes("a", "class", "data-spirit-id", "data-spirit-name",
                         "data-spirit-name-en", "data-spirit-category",
-                        "data-spirit-thumbnail", "data-spirit-abv", "data-spirit-review-count")
+                        "data-spirit-thumbnail", "data-spirit-abv", "data-spirit-review-count",
+                        "data-spirit-width")
                 // 이미지: 업로드 엔드포인트 전용 (style 및 크기 속성 허용)
                 .addTags("img")
-                .addAttributes("img", "src", "alt", "width", "height", "style")
+                .addAttributes("img", "src", "alt", "width", "height", "style",
+                        "data-image-layout", "data-image-pair")
                 // 테이블
                 .addTags("table", "thead", "tbody", "tr", "th", "td")
                 .addAttributes("th", "scope", "colspan", "rowspan")

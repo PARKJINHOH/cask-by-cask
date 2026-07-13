@@ -9,4 +9,5 @@ import java.util.List;
 public interface SpiritSearchService {
     Page<Long> searchSpiritIds(SpiritSearchCondition condition, Pageable pageable);
     List<SpiritAutocompleteResponse> autocompleteSpirits(String keyword);
+    List<SpiritAutocompleteResponse> autocompleteSpirits(String keyword, boolean includeVariants);
 }

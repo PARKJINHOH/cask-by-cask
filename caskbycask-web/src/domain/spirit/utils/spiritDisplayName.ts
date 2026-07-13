@@ -3,6 +3,9 @@ type SpiritSeriesNameSource = {
   nameEn?: string | null
   seriesIdentifier?: string | null
   seriesIdentifierEn?: string | null
+  parentId?: number | null
+  variantValue?: string | null
+  variantValueEn?: string | null
 }
 
 function appendSeriesIdentifier(name: string | null | undefined, seriesIdentifier: string | null | undefined) {
@@ -13,9 +16,13 @@ function appendSeriesIdentifier(name: string | null | undefined, seriesIdentifie
 }
 
 export function getSpiritListDisplayNames<T extends SpiritSeriesNameSource>(spirit: T) {
+  const nameKo = appendSeriesIdentifier(spirit.nameKo, spirit.seriesIdentifier)
+  const nameEn = appendSeriesIdentifier(spirit.nameEn, spirit.seriesIdentifierEn || spirit.seriesIdentifier)
   return {
-    nameKo: appendSeriesIdentifier(spirit.nameKo, spirit.seriesIdentifier),
-    nameEn: appendSeriesIdentifier(spirit.nameEn, spirit.seriesIdentifierEn || spirit.seriesIdentifier),
+    nameKo: spirit.parentId ? appendSeriesIdentifier(nameKo, spirit.variantValue) : nameKo,
+    nameEn: spirit.parentId
+      ? appendSeriesIdentifier(nameEn, spirit.variantValueEn || spirit.variantValue)
+      : nameEn,
   }
 }
 
