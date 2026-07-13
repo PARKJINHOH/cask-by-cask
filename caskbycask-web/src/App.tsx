@@ -91,6 +91,7 @@ const PriceTrackerPage = lazy(() => import('@/views-spa/PriceTrackerPage'))
 const SpiritPriceDetailPage = lazy(() => import('@/views-spa/SpiritPriceDetailPage'))
 const PriceRegisterPage = lazy(() => import('@/views-spa/PriceRegisterPage'))
 const AdminPriceReportPage = lazy(() => import('@/views-spa/admin/AdminPriceReportPage'))
+const AdminPriceReportDetailPage = lazy(() => import('@/views-spa/admin/AdminPriceReportDetailPage'))
 const AdminStorePage = lazy(() => import('@/views-spa/admin/AdminStorePage'))
 const ProducerDetailPage = lazy(() => import('@/views-spa/ProducerDetailPage'))
 const TierListPage = lazy(() => import('@/views-spa/TierListPage'))
@@ -192,6 +193,7 @@ export default function App() {
               <Route path="community/emojis" element={<AdminEmojiPage />} />
               <Route path="community/prefixes" element={<AdminPrefixPage />} />
               <Route path="price-reports" element={<AdminPriceReportPage />} />
+              <Route path="price-reports/:id" element={<AdminPriceReportDetailPage />} />
               <Route path="stores" element={<AdminStorePage />} />
               <Route path="deals" element={<AdminDealListPage />} />
               <Route path="deals/:id" element={<AdminDealDetailPage />} />

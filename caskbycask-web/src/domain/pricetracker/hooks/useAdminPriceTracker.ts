@@ -11,6 +11,16 @@ export function useAdminPriceReports(params: { status?: PriceReportStatus; isFla
   })
 }
 
+export function useAdminPriceReport(id: number) {
+  return useQuery({
+    queryKey: ['admin', 'priceReports', id],
+    queryFn: () => adminPriceTrackerApi.getPriceReport(id),
+    select: (res) => res.data.data,
+    enabled: Number.isFinite(id) && id > 0,
+    staleTime: 0,
+  })
+}
+
 export function useApprovePriceReport() {
   const qc = useQueryClient()
   return useMutation({

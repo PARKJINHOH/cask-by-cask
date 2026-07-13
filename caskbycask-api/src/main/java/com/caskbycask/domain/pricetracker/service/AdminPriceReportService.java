@@ -71,6 +71,16 @@ public class AdminPriceReportService {
                 itemsByReport.getOrDefault(report.getId(), List.of()))));
     }
 
+    @Transactional(readOnly = true)
+    public AdminPriceReportResponse getPriceReport(Long id) {
+        PriceReport report = priceReportRepository.findById(id)
+                .orElseThrow(() -> new CustomException(ErrorCode.PRICE_REPORT_NOT_FOUND));
+        List<PriceReportImage> images = priceReportImageRepository
+                .findByPriceReportIdOrderBySortOrder(id);
+
+        return AdminPriceReportResponse.from(report, images, report.getDiscountItems());
+    }
+
     @Transactional
     public AdminPriceReportResponse approvePriceReport(Long id, Long adminId, ApprovePriceReportRequest request) {
         PriceReport report = priceReportRepository.findById(id)
@@ -78,9 +88,10 @@ public class AdminPriceReportService {
 
         User admin = userRepository.getByIdOrThrow(adminId);
 
-        // [패치 10] 매장 승인 + 가격 승인 통합 처리.
+        // 매장 승인 + 가격 승인 통합 처리.
         //   ① request.storeId 제공 → 표준 매장 매핑 (미승인 매장이면 이 자리에서 신규 승인)
-        //   ② 미제공 → 기존 store 사용. 단, 매장이 확정(승인)되지 않으면 가격 APPROVED 불가.
+        //   ② 미제공 + 기존 store가 미승인 → 기존 매장을 함께 승인
+        //   ③ store가 없는 직접 입력 제보 → suggestedStoreName을 유지한 채 가격 승인
         if (request != null && request.storeId() != null) {
             Store store = storeRepository.findById(request.storeId())
                     .orElseThrow(() -> new CustomException(ErrorCode.STORE_NOT_FOUND));
@@ -88,12 +99,8 @@ public class AdminPriceReportService {
                 store.approve(admin); // 신규 매장 승인
             }
             report.updateStore(store);
-        }
-
-        // [패치 10] 매장 확정 없이는 가격 APPROVED 불가
-        Store resolvedStore = report.getStore();
-        if (resolvedStore == null || Boolean.FALSE.equals(resolvedStore.getIsApproved())) {
-            throw new CustomException(ErrorCode.STORE_RESOLUTION_REQUIRED);
+        } else if (report.getStore() != null && Boolean.FALSE.equals(report.getStore().getIsApproved())) {
+            report.getStore().approve(admin);
         }
 
         // 인증 사진 있으면 isVerified=true

@@ -6,6 +6,7 @@ import com.caskbycask.domain.pricetracker.entity.enums.PriceCurrency;
 import com.caskbycask.domain.pricetracker.entity.enums.PriceReportStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -55,6 +56,7 @@ public interface PriceReportRepository extends JpaRepository<PriceReport, Long> 
             Pageable pageable);
 
     // 관리자 목록 — autoFlagged 우선 정렬
+    @EntityGraph(attributePaths = {"spirit", "store", "reporter"})
     @Query("""
             SELECT p FROM PriceReport p
             WHERE (:status IS NULL OR p.status = :status)

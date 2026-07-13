@@ -16,6 +16,9 @@ export const adminPriceTrackerApi = {
       params: { status: params.status, isFlagged: params.isFlagged, page: params.page, size: 20 },
     }),
 
+  getPriceReport: (id: number) =>
+    axiosInstance.get<ApiResponse<AdminPriceReport>>(`/api/admin/price-reports/${id}`),
+
   approve: (id: number, storeId?: number | null) =>
     axiosInstance.patch<ApiResponse<AdminPriceReport>>(`/api/admin/price-reports/${id}/approve`, {
       storeId: storeId ?? null,

@@ -34,6 +34,13 @@ public class AdminPriceReportController {
                 adminPriceReportService.getPriceReports(status, isFlagged, pageable)));
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<AdminPriceReportResponse>> getPriceReport(
+            @PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(
+                adminPriceReportService.getPriceReport(id)));
+    }
+
     @PatchMapping("/{id}/approve")
     public ResponseEntity<ApiResponse<AdminPriceReportResponse>> approvePriceReport(
             @PathVariable Long id,
