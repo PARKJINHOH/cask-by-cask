@@ -980,6 +980,12 @@
     "save": "Save",
     "cancel": "Cancel",
     "close": "Close",
+    "imageViewer": {
+      "imageAlt": "Image {{current}} of {{total}}",
+      "previous": "Previous image",
+      "next": "Next image",
+      "goTo": "View image {{number}}"
+    },
     "delete": "Delete",
     "edit": "Edit",
     "confirm": "Confirm",

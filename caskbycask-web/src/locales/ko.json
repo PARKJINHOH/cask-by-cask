@@ -980,6 +980,12 @@
     "save": "저장",
     "cancel": "취소",
     "close": "닫기",
+    "imageViewer": {
+      "imageAlt": "이미지 {{current}} / {{total}}",
+      "previous": "이전 이미지",
+      "next": "다음 이미지",
+      "goTo": "{{number}}번 이미지 보기"
+    },
     "delete": "삭제",
     "edit": "수정",
     "confirm": "확인",

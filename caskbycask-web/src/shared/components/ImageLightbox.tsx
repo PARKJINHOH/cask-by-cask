@@ -1,5 +1,6 @@
 import { Fragment, useState, useEffect, useCallback, useRef } from 'react'
 import { Dialog, Transition, TransitionChild, DialogPanel } from '@headlessui/react'
+import { useTranslation } from 'react-i18next'
 
 interface Props {
   images: string[]
@@ -17,6 +18,7 @@ const DOUBLE_TAP_MS = 300
 type View = { scale: number; tx: number; ty: number }
 
 export default function ImageLightbox({ images, initialIndex = 0, open, onClose }: Props) {
+  const { t } = useTranslation()
   const [current, setCurrent] = useState(initialIndex)
   const [view, setView] = useState<View>({ scale: 1, tx: 0, ty: 0 })
   const [smooth, setSmooth] = useState(true)
@@ -131,6 +133,7 @@ export default function ImageLightbox({ images, initialIndex = 0, open, onClose 
 
   const onWheel = useCallback(
     (e: React.WheelEvent) => {
+      e.preventDefault()
       setSmooth(true)
       zoomAt(e.clientX, e.clientY, e.deltaY < 0 ? 1.18 : 1 / 1.18)
     },
@@ -251,19 +254,19 @@ export default function ImageLightbox({ images, initialIndex = 0, open, onClose 
           <div className="fixed inset-0 bg-black/85 backdrop-blur-sm" aria-hidden="true" />
         </TransitionChild>
 
-        <div className="fixed inset-0 flex flex-col items-center justify-center p-3 overflow-hidden">
+        <div className="fixed inset-0 overflow-hidden">
           <TransitionChild
             as={Fragment}
             enter="ease-out duration-200" enterFrom="opacity-0 scale-95" enterTo="opacity-100 scale-100"
             leave="ease-in duration-150" leaveFrom="opacity-100 scale-100" leaveTo="opacity-0 scale-95"
           >
-            <DialogPanel className="flex flex-col items-center gap-2 w-full max-w-[95vw]">
+            <DialogPanel className="relative h-full w-full overflow-hidden">
               {/* 닫기 버튼 */}
-              <div className="w-full flex justify-end">
+              <div className="absolute right-3 top-3 z-20 flex justify-end sm:right-5 sm:top-5">
                 <button
                   onClick={onClose}
-                  aria-label="닫기"
-                  className="text-white/60 hover:text-white transition-colors p-1"
+                  aria-label={t('common.close')}
+                  className="rounded-full bg-black/40 p-2 text-white/80 transition-colors hover:bg-black/60 hover:text-white"
                 >
                   <svg className="w-7 h-7" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" fill="none">
                     <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
@@ -272,11 +275,11 @@ export default function ImageLightbox({ images, initialIndex = 0, open, onClose 
               </div>
 
               {/* 메인 이미지 + 좌우 화살표 */}
-              <div className="relative flex items-center justify-center w-full">
+              <div className="absolute inset-0 flex items-center justify-center">
                 {images.length > 1 && (
                   <button
                     onClick={prev}
-                    aria-label="이전 이미지"
+                    aria-label={t('common.imageViewer.previous')}
                     className="absolute left-0 z-10 p-2 rounded-full bg-black/40 text-white/80
                       hover:bg-black/60 hover:text-white transition-colors"
                   >
@@ -289,7 +292,7 @@ export default function ImageLightbox({ images, initialIndex = 0, open, onClose 
                 {/* 줌/팬 스테이지 — touch-action: none 으로 브라우저 기본 제스처 차단 */}
                 <div
                   ref={stageRef}
-                  className="relative flex items-center justify-center overflow-hidden rounded-lg select-none bg-white"
+                  className="absolute inset-0 flex items-center justify-center overflow-hidden select-none"
                   style={{ touchAction: 'none', cursor: zoomed ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in' }}
                   onWheel={onWheel}
                   onDoubleClick={onDoubleClick}
@@ -304,9 +307,9 @@ export default function ImageLightbox({ images, initialIndex = 0, open, onClose 
                   <img
                     key={current}
                     src={images[current]}
-                    alt={`이미지 ${current + 1}`}
+                    alt={t('common.imageViewer.imageAlt', { current: current + 1, total: images.length })}
                     draggable={false}
-                    className={`${images.length > 1 ? 'max-h-[80vh]' : 'max-h-[88vh]'} max-w-[90vw] object-contain shadow-2xl`}
+                    className="max-h-full max-w-[calc(100vw-2rem)] object-contain shadow-2xl"
                     style={{
                       transform: `translate(${view.tx}px, ${view.ty}px) scale(${view.scale})`,
                       transition: smooth ? 'transform 0.15s ease-out' : 'none',
@@ -317,7 +320,7 @@ export default function ImageLightbox({ images, initialIndex = 0, open, onClose 
                 {images.length > 1 && (
                   <button
                     onClick={next}
-                    aria-label="다음 이미지"
+                    aria-label={t('common.imageViewer.next')}
                     className="absolute right-0 z-10 p-2 rounded-full bg-black/40 text-white/80
                       hover:bg-black/60 hover:text-white transition-colors"
                   >
@@ -330,15 +333,16 @@ export default function ImageLightbox({ images, initialIndex = 0, open, onClose 
 
               {/* 카운터 + 썸네일 스트립 */}
               {images.length > 1 && (
-                <>
+                <div className="absolute bottom-3 left-1/2 z-20 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 flex-col items-center gap-2 sm:bottom-5">
                   <p className="text-white/50 text-xs tabular-nums">
                     {current + 1} / {images.length}
                   </p>
-                  <div className="flex gap-2 max-w-full overflow-x-hidden pb-1">
+                  <div className="flex max-w-full gap-2 overflow-x-auto pb-1">
                     {images.map((url, i) => (
                       <button
                         key={i}
                         onClick={() => goTo(i)}
+                        aria-label={t('common.imageViewer.goTo', { number: i + 1 })}
                         className={`flex-shrink-0 w-12 h-12 rounded-md overflow-hidden border-2 bg-white transition-all ${
                           i === current
                             ? 'border-white'
@@ -349,7 +353,7 @@ export default function ImageLightbox({ images, initialIndex = 0, open, onClose 
                       </button>
                     ))}
                   </div>
-                </>
+                </div>
               )}
             </DialogPanel>
           </TransitionChild>
