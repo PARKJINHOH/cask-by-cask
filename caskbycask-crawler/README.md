@@ -10,7 +10,8 @@ Oracle Cloud에서 `run-news.sh`를 2시간마다 실행한다.
 ## AI 소식·팁 자동화
 
 ```text
-Tavily 한국어/영어 검색 + 등록 커뮤니티 수집
+Tavily 일반 검색 + 관리자가 등록한 공식 홈페이지·공식 SNS URL 직접 확인
+  + 등록 도메인으로 제한한 Tavily 검색
   → Gemini 후보 분류/정규화 URL·이벤트 키 중복 확인
   → 근거 기반 한국어 원고 작성
   → 팁은 과거 제목·소제목·동의어·의미 지문 전체 비교와 최종 AI 중복 판정
@@ -24,6 +25,8 @@ Tavily 한국어/영어 검색 + 등록 커뮤니티 수집
 - 핫딜은 짝수 시각 정각(`0 */2 * * *`), AI 소식·팁은 같은 짝수 시각 17분(`17 */2 * * *`)에 실행해 Gemini 호출이 겹치지 않게 한다.
 - AI 이미지 생성은 기본 비활성화다. `AI_NEWS_IMAGE_GENERATION_ENABLED=false`이면 이미지 API를 호출하지 않고 원고를 검토 대기로 저장한다.
 - `관리자 > 커뮤니티 > 소식(AI)`에서 자동화·드라이런·출처·주제·사용량을 관리한다.
+- 출처 관리의 활성화된 `공식`·`전문매체` URL은 매 실행 때 확인하며, 성공/실패 결과와 오류를 관리자 목록에 기록한다.
+- 네이버 카페·디시인사이드 핫딜 대상은 별도 `targets.json`이 소유하며 AI 소식 출처 관리와 공유하지 않는다.
 - 첫 배포는 `automationEnabled=false`, `autoPublishEnabled=false`, `dryRun=true`이다.
 - 필수 추가 환경변수는 `TAVILY_API_KEY`, `GEMINI_API_KEY`이며 모델과 비용·토큰·이미지 절대 상한은 `.env.example`을 참고한다.
 - 기본 모델은 분류·중복판정 `gemini-3.1-flash-lite`, 최종 원고 `gemini-3.5-flash`, 이미지 `gemini-3.1-flash-lite-image`다. 텍스트 무료 티어를 쓰면 `AI_NEWS_GEMINI_FREE_TIER=true`로 두며, 이미지 생성은 무료 티어가 없어 별도 결제가 필요하다.

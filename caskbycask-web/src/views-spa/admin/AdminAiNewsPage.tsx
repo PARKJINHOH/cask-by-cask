@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { adminAiNewsApi } from '@/domain/admin/api/adminAiNewsApi'
@@ -127,7 +127,7 @@ function ArticlesTab() {
         </label>
         <button onClick={() => navigate('/admin/community/ai-news/new')}
           className="sm:ml-auto rounded-lg bg-primary-800 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-900">
-          직접 작성
+          작성 / AI 요청
         </button>
       </div>
 
@@ -259,45 +259,97 @@ function TopicsTab() {
 
 function SourcesTab() {
   const qc = useQueryClient()
-  const empty: AiNewsSourceConfigRequest = { sourceName: '', domain: '', sourceType: 'UNAPPROVED', enabled: true, autoPublishAllowed: false, imageUseAllowed: false, crawlerType: null, crawlerTargetKey: null, crawlerTargetValue: null }
+  const empty: AiNewsSourceConfigRequest = { sourceName: '', sourceUrl: '', sourceType: 'OFFICIAL', enabled: true, autoPublishAllowed: false, imageUseAllowed: false }
   const [form, setForm] = useState<AiNewsSourceConfigRequest>(empty)
-  const { data = [], isLoading } = useQuery({ queryKey: ['admin', 'ai-news', 'sources'], queryFn: adminAiNewsApi.sources })
-  const create = useMutation({ mutationFn: adminAiNewsApi.createSource, onSuccess: () => { setForm(empty); qc.invalidateQueries({ queryKey: ['admin', 'ai-news', 'sources'] }) } })
-  const update = useMutation({ mutationFn: ({ id, payload }: { id: number; payload: AiNewsSourceConfigRequest }) => adminAiNewsApi.updateSource(id, payload), onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'ai-news', 'sources'] }) })
-  const submit = (e: FormEvent) => { e.preventDefault(); if (form.sourceName.trim() && form.domain.trim()) create.mutate(form) }
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [page, setPage] = useState(0)
+  const { data, isLoading } = useQuery({ queryKey: ['admin', 'ai-news', 'sources', page], queryFn: () => adminAiNewsApi.sources(page, 10) })
+  const invalidate = () => qc.invalidateQueries({ queryKey: ['admin', 'ai-news', 'sources'] })
+  const resetForm = () => { setForm(empty); setEditingId(null) }
+  const create = useMutation({ mutationFn: adminAiNewsApi.createSource, onSuccess: () => { resetForm(); setPage(0); invalidate() } })
+  const update = useMutation({ mutationFn: ({ id, payload }: { id: number; payload: AiNewsSourceConfigRequest }) => adminAiNewsApi.updateSource(id, payload), onSuccess: () => { resetForm(); invalidate() } })
+  const remove = useMutation({ mutationFn: adminAiNewsApi.deleteSource, onSuccess: invalidate })
+  const submit = (e: FormEvent) => {
+    e.preventDefault()
+    if (!form.sourceName.trim() || !form.sourceUrl.trim()) return
+    if (editingId == null) create.mutate(form)
+    else update.mutate({ id: editingId, payload: form })
+  }
+  const startEdit = (source: AiNewsSourceConfig) => {
+    setEditingId(source.id)
+    setForm({ sourceName: source.sourceName, sourceUrl: source.sourceUrl, sourceType: source.sourceType, enabled: source.enabled, autoPublishAllowed: source.autoPublishAllowed, imageUseAllowed: source.imageUseAllowed })
+  }
   return (
     <div className="space-y-4">
-      <form onSubmit={submit} className="grid gap-3 rounded-xl bg-white p-4 shadow-sm lg:grid-cols-4">
-        <input value={form.sourceName} onChange={(e) => setForm({ ...form, sourceName: e.target.value })} placeholder="출처 이름" className={inputCls} />
-        <input value={form.domain} onChange={(e) => setForm({ ...form, domain: e.target.value })} placeholder="example.com" className={inputCls} />
-        <select value={form.sourceType} onChange={(e) => setForm({ ...form, sourceType: e.target.value as AiNewsSourceType })} className={inputCls}>
-          {Object.entries(sourceTypeLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-        </select>
-        <button className="rounded-lg bg-primary-800 px-4 py-2 text-sm font-semibold text-white">출처 추가</button>
-        <input value={form.crawlerType ?? ''} onChange={(e) => setForm({ ...form, crawlerType: e.target.value || null })} placeholder="수집기 (NAVER_CAFE/DCINSIDE)" className={inputCls} />
-        <input value={form.crawlerTargetKey ?? ''} onChange={(e) => setForm({ ...form, crawlerTargetKey: e.target.value || null })} placeholder="대상 키 (club_id/board_id)" className={inputCls} />
-        <input value={form.crawlerTargetValue ?? ''} onChange={(e) => setForm({ ...form, crawlerTargetValue: e.target.value || null })} placeholder="대상 값" className={inputCls} />
+      <form onSubmit={submit} className="space-y-5 rounded-xl bg-white p-5 shadow-sm">
+        <div>
+          <h3 className="text-sm font-bold text-neutral-900">{editingId == null ? '공식 출처 추가' : '공식 출처 수정'}</h3>
+          <p className="mt-1 text-xs leading-5 text-neutral-500"><span className="font-semibold text-red-600">*</span> 표시는 필수값입니다. AI가 등록 URL을 직접 확인하고 Tavily 제한 검색의 신뢰 출처로 사용합니다.</p>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-3">
+          <SourceField label="출처 이름" required help="관리자가 알아볼 수 있는 공식 명칭입니다. 예: 메타베브코리아 공식 인스타그램">
+            <input required maxLength={100} value={form.sourceName} onChange={(e) => setForm({ ...form, sourceName: e.target.value })} placeholder="메타베브코리아 공식 인스타그램" className={`${inputCls} w-full`} />
+          </SourceField>
+          <SourceField label="공식 출처 URL" required help="홈페이지, 뉴스룸 또는 공식 SNS 계정의 전체 URL을 입력하세요.">
+            <input required type="url" maxLength={1500} value={form.sourceUrl} onChange={(e) => setForm({ ...form, sourceUrl: e.target.value })} placeholder="https://www.instagram.com/metabevkorea" className={`${inputCls} w-full`} />
+          </SourceField>
+          <SourceField label="출처 등급" required help="공식 홈페이지·계정은 공식, 검증된 언론은 전문매체를 선택합니다.">
+            <select required value={form.sourceType} onChange={(e) => setForm({ ...form, sourceType: e.target.value as AiNewsSourceType })} className={`${inputCls} w-full`}>
+              {Object.entries(sourceTypeLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+          </SourceField>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-neutral-100 pt-4">
+          <div className="flex flex-wrap gap-5 text-sm text-neutral-700">
+            <label className="flex items-center gap-2"><input type="checkbox" checked={form.enabled} onChange={(e) => setForm({ ...form, enabled: e.target.checked })} />수집 활성</label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={form.autoPublishAllowed} onChange={(e) => setForm({ ...form, autoPublishAllowed: e.target.checked })} />자동 발행 허용</label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={form.imageUseAllowed} onChange={(e) => setForm({ ...form, imageUseAllowed: e.target.checked })} />공식 이미지 사용 허용</label>
+          </div>
+          <div className="flex gap-2">
+            {editingId != null && <button type="button" onClick={resetForm} className="rounded-lg border border-neutral-300 px-4 py-2.5 text-sm text-neutral-700">취소</button>}
+            <button disabled={create.isPending || update.isPending} className="rounded-lg bg-primary-800 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{editingId == null ? (create.isPending ? '추가 중...' : '출처 추가') : (update.isPending ? '저장 중...' : '수정 저장')}</button>
+          </div>
+        </div>
+        {(create.isError || update.isError) && <p className="text-sm text-red-600">저장하지 못했습니다. 동일한 URL 범위가 이미 등록되어 있거나 입력값 형식이 올바르지 않은지 확인해주세요.</p>}
       </form>
-      {isLoading ? <Loading /> : <div className="overflow-x-auto rounded-xl bg-white shadow-sm"><table className="w-full min-w-[850px] text-sm">
-        <thead className="border-b bg-neutral-50 text-left text-xs text-neutral-500"><tr><th className="px-4 py-3">출처</th><th className="px-4 py-3">도메인</th><th className="px-4 py-3">등급</th><th className="px-4 py-3">활성</th><th className="px-4 py-3">자동발행</th><th className="px-4 py-3">이미지</th><th className="px-4 py-3">수집 대상</th></tr></thead>
-        <tbody className="divide-y">{data.map((source) => <SourceRow key={source.id} source={source} onChange={(payload) => update.mutate({ id: source.id, payload })} />)}</tbody>
-      </table></div>}
+      {isLoading ? <Loading /> : <>
+        <div className="overflow-x-auto rounded-xl bg-white shadow-sm"><table className="w-full min-w-[1050px] text-sm">
+          <thead className="border-b bg-neutral-50 text-left text-xs text-neutral-500"><tr><th className="px-4 py-3">수집 상태</th><th className="px-4 py-3">출처</th><th className="px-4 py-3">URL</th><th className="px-4 py-3">등급</th><th className="px-4 py-3">활성</th><th className="px-4 py-3">자동발행</th><th className="px-4 py-3">이미지</th><th className="px-4 py-3">관리</th></tr></thead>
+          <tbody className="divide-y">{data?.content.map((source) => <SourceRow key={source.id} source={source} onChange={(payload) => update.mutate({ id: source.id, payload })} onEdit={() => startEdit(source)} onDelete={() => { if (window.confirm(`'${source.sourceName}' 출처를 삭제하시겠습니까?`)) remove.mutate(source.id) }} />)}</tbody>
+        </table>{data?.empty && <p className="py-12 text-center text-sm text-neutral-500">등록된 출처가 없습니다.</p>}</div>
+        <Pagination currentPage={data?.page ?? 0} totalPages={data?.totalPages ?? 0} onPageChange={setPage} scrollToTopOnChange={false} />
+      </>}
     </div>
   )
 }
 
-function SourceRow({ source, onChange }: { source: AiNewsSourceConfig; onChange: (v: AiNewsSourceConfigRequest) => void }) {
+function SourceRow({ source, onChange, onEdit, onDelete }: { source: AiNewsSourceConfig; onChange: (v: AiNewsSourceConfigRequest) => void; onEdit: () => void; onDelete: () => void }) {
   const payload = (patch: Partial<AiNewsSourceConfigRequest>): AiNewsSourceConfigRequest => ({
-    sourceName: source.sourceName, domain: source.domain, sourceType: source.sourceType, enabled: source.enabled,
-    autoPublishAllowed: source.autoPublishAllowed, imageUseAllowed: source.imageUseAllowed,
-    crawlerType: source.crawlerType, crawlerTargetKey: source.crawlerTargetKey, crawlerTargetValue: source.crawlerTargetValue, ...patch,
+    sourceName: source.sourceName, sourceUrl: source.sourceUrl, sourceType: source.sourceType, enabled: source.enabled,
+    autoPublishAllowed: source.autoPublishAllowed, imageUseAllowed: source.imageUseAllowed, ...patch,
   })
-  return <tr><td className="px-4 py-3 font-semibold">{source.sourceName}</td><td className="px-4 py-3 text-neutral-500">{source.domain}</td>
+  return <tr><td className="px-4 py-3"><CrawlStatus source={source} /></td><td className="px-4 py-3 font-semibold">{source.sourceName}</td>
+    <td className="max-w-[320px] px-4 py-3"><a href={source.sourceUrl} target="_blank" rel="noopener noreferrer" className="block truncate text-blue-600 underline-offset-2 hover:underline" title={source.sourceUrl}>{source.sourceUrl}</a></td>
     <td className="px-4 py-3"><select value={source.sourceType} onChange={(e) => onChange(payload({ sourceType: e.target.value as AiNewsSourceType }))} className={inputCls}>{Object.entries(sourceTypeLabels).map(([v,l]) => <option key={v} value={v}>{l}</option>)}</select></td>
     <td className="px-4 py-3"><input type="checkbox" checked={source.enabled} onChange={(e) => onChange(payload({ enabled: e.target.checked }))} /></td>
     <td className="px-4 py-3"><input type="checkbox" checked={source.autoPublishAllowed} onChange={(e) => onChange(payload({ autoPublishAllowed: e.target.checked }))} /></td>
     <td className="px-4 py-3"><input type="checkbox" checked={source.imageUseAllowed} onChange={(e) => onChange(payload({ imageUseAllowed: e.target.checked }))} /></td>
-    <td className="px-4 py-3 text-xs text-neutral-500">{[source.crawlerType, source.crawlerTargetKey, source.crawlerTargetValue].filter(Boolean).join(' · ') || '-'}</td></tr>
+    <td className="px-4 py-3"><div className="flex gap-2"><button onClick={onEdit} className={smallBtn}>수정</button><button onClick={onDelete} className={smallDangerBtn}>삭제</button></div></td></tr>
+}
+
+function CrawlStatus({ source }: { source: AiNewsSourceConfig }) {
+  const color = source.crawlStatus === 'SUCCESS' ? 'bg-blue-500' : source.crawlStatus === 'ERROR' ? 'bg-red-500' : 'bg-neutral-300'
+  const label = source.crawlStatus === 'SUCCESS' ? '수집 성공' : source.crawlStatus === 'ERROR' ? '수집 실패' : '수집 전'
+  const detail = source.lastCrawledAt ? `${label} · ${formatDateTime(source.lastCrawledAt)}${source.lastCrawlError ? ` · ${source.lastCrawlError}` : ''}` : label
+  return <span className="inline-flex items-center gap-2" title={detail}><span className={`h-3 w-3 rounded-full ${color}`} /><span className="text-xs text-neutral-600">{label}</span></span>
+}
+
+function SourceField({ label, required = false, help, children }: { label: string; required?: boolean; help: string; children: ReactNode }) {
+  return <label className="block text-xs font-medium text-neutral-700">
+    <span>{label}{required && <span className="ml-0.5 text-red-600">*</span>}</span>
+    <span className="mt-1.5 block">{children}</span>
+    <span className="mt-1.5 block font-normal leading-4 text-neutral-500">{help}</span>
+  </label>
 }
 
 function SettingsTab() {

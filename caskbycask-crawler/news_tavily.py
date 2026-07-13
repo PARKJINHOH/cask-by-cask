@@ -14,7 +14,8 @@ class TavilyNewsSearch:
         self.max_results = max(1, min(20, max_results))
         self.credits_used = 0
 
-    def search(self, query: str, *, topic: str = "news", time_range: str | None = "day") -> list[SearchSource]:
+    def search(self, query: str, *, topic: str = "news", time_range: str | None = "day",
+               include_domains: list[str] | None = None) -> list[SearchSource]:
         payload = {
             "query": query,
             "topic": topic,
@@ -26,6 +27,8 @@ class TavilyNewsSearch:
         }
         if time_range:
             payload["time_range"] = time_range
+        if include_domains:
+            payload["include_domains"] = list(dict.fromkeys(include_domains))[:300]
         response = requests.post(
             "https://api.tavily.com/search",
             headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},

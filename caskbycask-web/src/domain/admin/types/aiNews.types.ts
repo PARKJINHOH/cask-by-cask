@@ -4,7 +4,25 @@ export type AiNewsArticleStatus =
   | 'SKIPPED_DUPLICATE' | 'FAILED' | 'DELETED' | 'REWRITE_REQUESTED'
 export type AiNewsCategory = 'WHISKY' | 'WINE' | 'COGNAC'
 export type AiNewsSourceType = 'OFFICIAL' | 'TRUSTED_MEDIA' | 'COMMUNITY' | 'UNAPPROVED'
+export type AiNewsSourceCrawlStatus = 'NOT_CHECKED' | 'SUCCESS' | 'ERROR'
 export type AiNewsTopicStatus = 'READY' | 'SCHEDULED' | 'HOLD' | 'BLOCKED' | 'COMPLETED'
+export type AiNewsDraftRequestStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'CANCELLED'
+
+export interface AiNewsDraftRequest {
+  id: number
+  prompt: string
+  referenceUrls: string[]
+  status: AiNewsDraftRequestStatus
+  failureReason: string | null
+  articleId: number | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AiNewsDraftRequestCreateRequest {
+  prompt: string
+  referenceUrls: string[]
+}
 
 export interface AiNewsArticleSummary {
   id: number
@@ -109,17 +127,26 @@ export interface AiNewsTopicRequest {
 export interface AiNewsSourceConfig {
   id: number
   sourceName: string
+  sourceUrl: string
   domain: string
+  pathPrefix: string
   sourceType: AiNewsSourceType
   enabled: boolean
   autoPublishAllowed: boolean
   imageUseAllowed: boolean
-  crawlerType: string | null
-  crawlerTargetKey: string | null
-  crawlerTargetValue: string | null
+  crawlStatus: AiNewsSourceCrawlStatus
+  lastCrawledAt: string | null
+  lastCrawlError: string | null
 }
 
-export type AiNewsSourceConfigRequest = Omit<AiNewsSourceConfig, 'id'>
+export interface AiNewsSourceConfigRequest {
+  sourceName: string
+  sourceUrl: string
+  sourceType: AiNewsSourceType
+  enabled: boolean
+  autoPublishAllowed: boolean
+  imageUseAllowed: boolean
+}
 
 export interface AiNewsSettings {
   automationEnabled: boolean

@@ -8,6 +8,7 @@ import requests
 from bs4 import BeautifulSoup
 
 from news_models import SearchSource
+from news_source_config import matching_source_config
 
 
 ALLOWED_IMAGE_TYPES = {
@@ -19,15 +20,11 @@ ALLOWED_IMAGE_TYPES = {
 
 def fetch_approved_official_image(sources: list[SearchSource], config: dict,
                                   output_dir: Path, timeout: int, log) -> tuple[Path, str] | None:
-    approved_domains = {
-        str(item.get("domain") or "").lower().removeprefix("www.")
-        for item in config.get("sources", [])
-        if item.get("enabled")
-        and item.get("sourceType") == "OFFICIAL"
-        and item.get("imageUseAllowed")
-    }
     for source in sources:
-        if source.domain not in approved_domains:
+        matched = matching_source_config(source.url, source.domain, config.get("sources", []))
+        if not (matched and matched.get("enabled")
+                and matched.get("sourceType") == "OFFICIAL"
+                and matched.get("imageUseAllowed")):
             continue
         try:
             page = requests.get(source.url, timeout=timeout, headers={"User-Agent": "CaskByCaskBot/1.0"})

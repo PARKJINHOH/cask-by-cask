@@ -3,7 +3,8 @@ import type { ApiResponse, PageResponse } from '@/shared/types/common.types'
 import type {
   AiNewsArticleCreateRequest, AiNewsArticleDetail, AiNewsArticleStatus,
   AiNewsArticleSummary, AiNewsArticleType, AiNewsArticleUpdateRequest,
-  AiNewsCategory, AiNewsRun, AiNewsSettings, AiNewsSourceConfig,
+  AiNewsCategory, AiNewsDraftRequest, AiNewsDraftRequestCreateRequest,
+  AiNewsRun, AiNewsSettings, AiNewsSourceConfig,
   AiNewsSourceConfigRequest, AiNewsTopic, AiNewsTopicRequest,
   AiNewsTopicStatus, AiNewsUsageSummary,
 } from '../types/aiNews.types'
@@ -55,6 +56,21 @@ export const adminAiNewsApi = {
     return res.data.data!
   },
 
+  draftRequests: async (page = 0, size = 10) => {
+    const res = await axiosInstance.get<ApiResponse<PageResponse<AiNewsDraftRequest>>>(
+      '/api/admin/ai-news/draft-requests', { params: { page, size } },
+    )
+    return res.data.data!
+  },
+  createDraftRequest: async (data: AiNewsDraftRequestCreateRequest) => {
+    const res = await axiosInstance.post<ApiResponse<AiNewsDraftRequest>>(
+      '/api/admin/ai-news/draft-requests', data,
+    )
+    return res.data.data!
+  },
+  cancelDraftRequest: (id: number) =>
+    axiosInstance.delete(`/api/admin/ai-news/draft-requests/${id}`),
+
   topics: async (params?: { status?: AiNewsTopicStatus; page?: number; size?: number }) => {
     const res = await axiosInstance.get<ApiResponse<PageResponse<AiNewsTopic>>>('/api/admin/ai-news/topics', { params })
     return res.data.data!
@@ -63,9 +79,11 @@ export const adminAiNewsApi = {
   updateTopic: (id: number, data: AiNewsTopicRequest) => axiosInstance.put(`/api/admin/ai-news/topics/${id}`, data),
   deleteTopic: (id: number) => axiosInstance.delete(`/api/admin/ai-news/topics/${id}`),
 
-  sources: async () => {
-    const res = await axiosInstance.get<ApiResponse<AiNewsSourceConfig[]>>('/api/admin/ai-news/sources')
-    return res.data.data ?? []
+  sources: async (page = 0, size = 10) => {
+    const res = await axiosInstance.get<ApiResponse<PageResponse<AiNewsSourceConfig>>>('/api/admin/ai-news/sources', {
+      params: { page, size },
+    })
+    return res.data.data!
   },
   createSource: (data: AiNewsSourceConfigRequest) => axiosInstance.post('/api/admin/ai-news/sources', data),
   updateSource: (id: number, data: AiNewsSourceConfigRequest) => axiosInstance.put(`/api/admin/ai-news/sources/${id}`, data),

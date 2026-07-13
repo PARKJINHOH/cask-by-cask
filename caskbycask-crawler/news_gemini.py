@@ -26,6 +26,15 @@ ARTICLE_SCHEMA = {
     "required": ["title", "content_html", "confidence", "semantic_fingerprint", "image_prompt"],
 }
 
+REQUESTED_ARTICLE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        **ARTICLE_SCHEMA["properties"],
+        "category": {"type": "string", "enum": ["WHISKY", "WINE", "COGNAC"]},
+    },
+    "required": [*ARTICLE_SCHEMA["required"], "category"],
+}
+
 RELEASE_CLASSIFICATION_SCHEMA = {
     "type": "object",
     "properties": {
@@ -143,6 +152,31 @@ summary, source_indexes(서로 다른 근거 인덱스), confidence(0~1).
         return self._draft_from_result("RELEASE_NEWS", candidate["category"],
                                        f"release:{candidate['event_key']}", None,
                                        candidate["source_indexes"], result)
+
+    def write_requested_release(self, request: dict[str, Any], sources: list[SearchSource]) -> DraftArticle:
+        evidence = [{"index": i, "title": source.title, "url": source.url,
+                     "domain": source.domain, "text": source.content[:6000]}
+                    for i, source in enumerate(sources)]
+        prompt = {
+            "task": "관리자가 우선 요청한 출시·국내 소식 원고 작성과 사실 검증",
+            "admin_prompt": request["prompt"],
+            "evidence": evidence,
+            "rules": [
+                "관리자 요청 의도를 따르되 제공된 근거에 없는 사실은 만들지 않는다.",
+                "주종을 WHISKY, WINE, COGNAC 중 하나로 판단한다.",
+                "결과는 자동 발행하지 않고 관리자 임시저장 원고로 만든다.",
+            ],
+        }
+        result = self._request_json(self.writer_model, AI_NEWS_WRITING_PROMPT,
+                                    prompt, REQUESTED_ARTICLE_SCHEMA)
+        category = str(result.get("category") or "").upper()
+        if self._plain_text_length(str(result.get("content_html") or "")) < AI_NEWS_MIN_TEXT_LENGTH:
+            result = self._request_article({**prompt, "category": category,
+                                            "revision_request": "본문 최소 분량과 SEO 규칙을 충족하도록 보강한다."})
+        return self._draft_from_result(
+            "RELEASE_NEWS", category, f"admin-request:{request['id']}", None,
+            list(range(len(sources))), result,
+        )
 
     def write_tip(self, topic: dict[str, Any], sources: list[SearchSource]) -> DraftArticle:
         evidence = [{"index": i, "title": s.title, "domain": s.domain, "text": s.content[:6000]}

@@ -212,35 +212,41 @@ public final class AiNewsDtos {
 
     public record SourceConfigUpsertRequest(
             @NotBlank @Size(max = 100) String sourceName,
-            @NotBlank @Size(max = 255) String domain,
+            @NotBlank @Size(max = 1500) String sourceUrl,
             @NotNull AiNewsSourceType sourceType,
             Boolean enabled,
             Boolean autoPublishAllowed,
-            Boolean imageUseAllowed,
-            @Size(max = 30) String crawlerType,
-            @Size(max = 255) String crawlerTargetKey,
-            @Size(max = 500) String crawlerTargetValue
+            Boolean imageUseAllowed
     ) {}
 
     public record SourceConfigResponse(
             Long id,
             String sourceName,
+            String sourceUrl,
             String domain,
+            String pathPrefix,
             AiNewsSourceType sourceType,
             boolean enabled,
             boolean autoPublishAllowed,
             boolean imageUseAllowed,
-            String crawlerType,
-            String crawlerTargetKey,
-            String crawlerTargetValue
+            AiNewsSourceCrawlStatus crawlStatus,
+            LocalDateTime lastCrawledAt,
+            String lastCrawlError
     ) {
         public static SourceConfigResponse from(AiNewsSourceConfig source) {
-            return new SourceConfigResponse(source.getId(), source.getSourceName(), source.getDomain(),
+            return new SourceConfigResponse(source.getId(), source.getSourceName(), source.getSourceUrl(), source.getDomain(),
+                    source.getPathPrefix(),
                     source.getSourceType(), source.isEnabled(), source.isAutoPublishAllowed(),
-                    source.isImageUseAllowed(), source.getCrawlerType(), source.getCrawlerTargetKey(),
-                    source.getCrawlerTargetValue());
+                    source.isImageUseAllowed(), source.getCrawlStatus(), source.getLastCrawledAt(),
+                    source.getLastCrawlError());
         }
     }
+
+    public record SourceCrawlResultRequest(
+            @NotNull AiNewsSourceCrawlStatus status,
+            @Size(max = 1000) String errorMessage,
+            LocalDateTime checkedAt
+    ) {}
 
     public record SettingsUpdateRequest(
             boolean automationEnabled,

@@ -1,8 +1,10 @@
 package com.caskbycask.domain.ainews.controller;
 
 import com.caskbycask.domain.ainews.dto.AiNewsDtos;
+import com.caskbycask.domain.ainews.dto.AiNewsDraftRequestDtos;
 import com.caskbycask.domain.ainews.entity.enums.*;
 import com.caskbycask.domain.ainews.service.AiNewsService;
+import com.caskbycask.domain.ainews.service.AiNewsDraftRequestService;
 import com.caskbycask.global.auth.security.CustomUserDetails;
 import com.caskbycask.global.response.ApiResponse;
 import com.caskbycask.global.response.PageResponse;
@@ -14,7 +16,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.time.LocalDate;
 
 @RestController
@@ -24,6 +25,7 @@ import java.time.LocalDate;
 public class AiNewsAdminController {
 
     private final AiNewsService aiNewsService;
+    private final AiNewsDraftRequestService draftRequestService;
 
     @GetMapping("/articles")
     public ResponseEntity<ApiResponse<PageResponse<AiNewsDtos.ArticleSummaryResponse>>> articles(
@@ -132,8 +134,29 @@ public class AiNewsAdminController {
     }
 
     @GetMapping("/sources")
-    public ResponseEntity<ApiResponse<List<AiNewsDtos.SourceConfigResponse>>> sources() {
-        return ResponseEntity.ok(ApiResponse.success(aiNewsService.sourceConfigs()));
+    public ResponseEntity<ApiResponse<PageResponse<AiNewsDtos.SourceConfigResponse>>> sources(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(ApiResponse.success(PageResponse.from(aiNewsService.sourceConfigs(page, size))));
+    }
+
+    @GetMapping("/draft-requests")
+    public ResponseEntity<ApiResponse<PageResponse<AiNewsDraftRequestDtos.Response>>> draftRequests(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(ApiResponse.success(PageResponse.from(draftRequestService.list(page, size))));
+    }
+
+    @PostMapping("/draft-requests")
+    public ResponseEntity<ApiResponse<AiNewsDraftRequestDtos.Response>> createDraftRequest(
+            @Valid @RequestBody AiNewsDraftRequestDtos.CreateRequest request,
+            @AuthenticationPrincipal CustomUserDetails user) {
+        return ResponseEntity.ok(ApiResponse.success(draftRequestService.create(request, user.getUserId())));
+    }
+
+    @DeleteMapping("/draft-requests/{id}")
+    public ResponseEntity<ApiResponse<AiNewsDraftRequestDtos.Response>> cancelDraftRequest(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(draftRequestService.cancel(id)));
     }
 
     @PostMapping("/sources")

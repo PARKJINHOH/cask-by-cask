@@ -7,6 +7,7 @@ import { communityApi } from '@/domain/community/api/communityApi'
 import PostEditor from '@/domain/community/components/PostEditor'
 import AdminPageHeader from '@/shared/components/AdminPageHeader'
 import Spinner from '@/shared/components/Spinner'
+import AdminAiNewsRequestPanel from './AdminAiNewsRequestPanel'
 
 export default function AdminAiNewsFormPage() {
   const { id } = useParams()
@@ -14,6 +15,7 @@ export default function AdminAiNewsFormPage() {
   const isEdit = articleId != null && Number.isFinite(articleId)
   const navigate = useNavigate()
   const qc = useQueryClient()
+  const [writeMode, setWriteMode] = useState<'manual' | 'ai'>('manual')
   const [articleType, setArticleType] = useState<AiNewsArticleType>('TIP_INFO')
   const [category, setCategory] = useState<AiNewsCategory>('WHISKY')
   const [title, setTitle] = useState('')
@@ -111,6 +113,23 @@ export default function AdminAiNewsFormPage() {
         breadcrumbs={[{ label: '커뮤니티' }, { label: '소식(AI)', to: '/admin/community/ai-news' }, { label: isEdit ? '수정' : '작성' }]}
         backTo="/admin/community/ai-news" useBackToPath title={isEdit ? 'AI 소식 수정' : 'AI 소식 작성'}
       />
+      {!isEdit && (
+        <div className="mb-5 grid grid-cols-2 rounded-xl bg-neutral-100 p-1.5">
+          <button type="button" onClick={() => setWriteMode('manual')}
+            className={`rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors ${
+              writeMode === 'manual' ? 'bg-white text-primary-800 shadow-sm' : 'text-neutral-500 hover:text-neutral-800'
+            }`}>
+            직접작성
+          </button>
+          <button type="button" onClick={() => setWriteMode('ai')}
+            className={`rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors ${
+              writeMode === 'ai' ? 'bg-white text-primary-800 shadow-sm' : 'text-neutral-500 hover:text-neutral-800'
+            }`}>
+            AI요청
+          </button>
+        </div>
+      )}
+      {!isEdit && writeMode === 'ai' ? <AdminAiNewsRequestPanel /> : (
       <div className="space-y-5 rounded-xl bg-white p-5 shadow-sm">
         {detail && (
           <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-xs text-neutral-600">
@@ -187,6 +206,7 @@ export default function AdminAiNewsFormPage() {
           </div>
         </div>
       </div>
+      )}
     </div>
   )
 }

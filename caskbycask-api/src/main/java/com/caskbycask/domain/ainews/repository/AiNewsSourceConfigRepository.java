@@ -2,13 +2,15 @@ package com.caskbycask.domain.ainews.repository;
 
 import com.caskbycask.domain.ainews.entity.AiNewsSourceConfig;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
-import java.util.Optional;
 
 public interface AiNewsSourceConfigRepository extends JpaRepository<AiNewsSourceConfig, Long> {
-    List<AiNewsSourceConfig> findAllByOrderBySourceNameAsc();
+    Page<AiNewsSourceConfig> findAllByOrderBySourceNameAsc(Pageable pageable);
     List<AiNewsSourceConfig> findByEnabledTrueOrderBySourceNameAsc();
-    Optional<AiNewsSourceConfig> findByDomain(String domain);
-    boolean existsByDomain(String domain);
+    List<AiNewsSourceConfig> findByDomain(String domain);
+    boolean existsByDomainAndPathPrefix(String domain, String pathPrefix);
+    boolean existsByDomainAndPathPrefixAndIdNot(String domain, String pathPrefix, Long id);
 }

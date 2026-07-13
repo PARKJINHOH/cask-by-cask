@@ -1,7 +1,9 @@
 package com.caskbycask.domain.ainews.controller;
 
 import com.caskbycask.domain.ainews.dto.AiNewsDtos;
+import com.caskbycask.domain.ainews.dto.AiNewsDraftRequestDtos;
 import com.caskbycask.domain.ainews.service.AiNewsService;
+import com.caskbycask.domain.ainews.service.AiNewsDraftRequestService;
 import com.caskbycask.domain.ainews.entity.enums.AiNewsArticleType;
 import com.caskbycask.domain.community.dto.PostImageUploadResponse;
 import com.caskbycask.global.response.ApiResponse;
@@ -18,6 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class AiNewsInternalController {
 
     private final AiNewsService aiNewsService;
+    private final AiNewsDraftRequestService draftRequestService;
 
     @GetMapping("/config")
     public ResponseEntity<ApiResponse<AiNewsDtos.InternalConfigResponse>> config() {
@@ -63,6 +66,30 @@ public class AiNewsInternalController {
     public ResponseEntity<ApiResponse<Void>> usage(@Valid @RequestBody AiNewsDtos.UsageRequest request) {
         aiNewsService.recordUsage(request);
         return ResponseEntity.ok(ApiResponse.success());
+    }
+
+    @GetMapping("/draft-requests/next")
+    public ResponseEntity<ApiResponse<AiNewsDraftRequestDtos.Response>> nextDraftRequest() {
+        return ResponseEntity.ok(ApiResponse.success(draftRequestService.nextPending()));
+    }
+
+    @PostMapping("/draft-requests/{id}/complete")
+    public ResponseEntity<ApiResponse<AiNewsDraftRequestDtos.Response>> completeDraftRequest(
+            @PathVariable Long id, @Valid @RequestBody AiNewsDtos.ArticleUpsertRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(draftRequestService.complete(id, request)));
+    }
+
+    @PostMapping("/draft-requests/{id}/fail")
+    public ResponseEntity<ApiResponse<AiNewsDraftRequestDtos.Response>> failDraftRequest(
+            @PathVariable Long id, @Valid @RequestBody AiNewsDraftRequestDtos.FailRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(draftRequestService.fail(id, request)));
+    }
+
+    @PatchMapping("/sources/{id}/crawl-result")
+    public ResponseEntity<ApiResponse<AiNewsDtos.SourceConfigResponse>> sourceCrawlResult(
+            @PathVariable Long id,
+            @Valid @RequestBody AiNewsDtos.SourceCrawlResultRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(aiNewsService.recordSourceCrawlResult(id, request)));
     }
 
     @PostMapping("/runs")

@@ -35,7 +35,8 @@ from news_models import (DraftArticle, SearchSource, UsageAccumulator, canonical
 from news_gemini import GeminiNewsWriter
 from news_prompts import AI_NEWS_MIN_TEXT_LENGTH, AI_NEWS_WRITING_PROMPT
 from news_tavily import TavilyNewsSearch
-from news_targets import target_from_config
+from news_source_config import matching_source_config
+from news_official import _targeted_match
 
 
 class TavilyNewsSearchTest(unittest.TestCase):
@@ -58,7 +59,7 @@ class TavilyNewsSearchTest(unittest.TestCase):
         post.return_value = response
 
         search = TavilyNewsSearch("test-key", timeout=5, max_results=50)
-        results = search.search("whisky release")
+        results = search.search("whisky release", include_domains=["example.com"])
 
         self.assertEqual(1, search.credits_used)
         self.assertEqual(20, search.max_results)
@@ -68,6 +69,7 @@ class TavilyNewsSearchTest(unittest.TestCase):
         request_payload = post.call_args.kwargs["json"]
         self.assertEqual("basic", request_payload["search_depth"])
         self.assertEqual("day", request_payload["time_range"])
+        self.assertEqual(["example.com"], request_payload["include_domains"])
 
 
 class NewsModelTest(unittest.TestCase):
@@ -137,30 +139,51 @@ class NewsModelTest(unittest.TestCase):
         self.assertEqual("TIP_INFO", draft.article_type)
 
 
-class CommunityTargetTest(unittest.TestCase):
-    def test_dcinside_short_target(self) -> None:
-        target = target_from_config({
-            "crawlerType": "DCINSIDE",
-            "crawlerTargetKey": "board_id",
-            "crawlerTargetValue": "whiskey",
-            "sourceName": "DC 위스키",
-        })
+class NewsSourceConfigTest(unittest.TestCase):
+    def test_account_rule_wins_over_domain_rule_only_for_matching_path(self) -> None:
+        configs = [
+            {"domain": "instagram.com", "pathPrefix": "", "sourceType": "UNAPPROVED"},
+            {"domain": "instagram.com", "pathPrefix": "/metabevkorea", "sourceType": "OFFICIAL"},
+        ]
 
-        self.assertEqual("whiskey", target["board_id"])
-        self.assertTrue(target["minor"])
-        self.assertEqual(1, target["list_pages"])
+        official = matching_source_config(
+            "https://www.instagram.com/metabevkorea/news", "instagram.com", configs
+        )
+        other = matching_source_config(
+            "https://www.instagram.com/another_account", "instagram.com", configs
+        )
 
-    def test_naver_json_target_preserves_admin_configuration(self) -> None:
-        target = target_from_config({
-            "crawlerType": "NAVER_CAFE",
-            "crawlerTargetValue": '{"club_id":"123","menu_id":7,"list_pages":2}',
-            "sourceName": "네이버 카페",
-        })
+        self.assertEqual("OFFICIAL", official["sourceType"])
+        self.assertEqual("UNAPPROVED", other["sourceType"])
 
-        self.assertEqual("123", target["club_id"])
-        self.assertEqual(7, target["menu_id"])
-        self.assertEqual(2, target["list_pages"])
-        self.assertEqual("네이버 카페", target["name"])
+    def test_similar_account_name_does_not_match_prefix(self) -> None:
+        configs = [
+            {"domain": "instagram.com", "pathPrefix": "/metabevkorea", "sourceType": "OFFICIAL"},
+        ]
+
+        matched = matching_source_config(
+            "https://instagram.com/metabevkorea_fake", "instagram.com", configs
+        )
+
+        self.assertIsNone(matched)
+
+    def test_social_post_can_be_assigned_to_registered_account_by_handle_evidence(self) -> None:
+        configs = [{
+            "id": 1,
+            "domain": "instagram.com",
+            "pathPrefix": "/metabevkorea",
+            "sourceType": "OFFICIAL",
+        }]
+        source = SearchSource(
+            title="MetaBevKorea 신제품 소식",
+            url="https://instagram.com/p/example-post",
+            domain="instagram.com",
+            content="메타베브코리아 공식 계정 @metabevkorea 게시물",
+        )
+
+        matched = _targeted_match(source, configs)
+
+        self.assertEqual(1, matched["id"])
 
 
 class GeminiDealAnalyzerTest(unittest.TestCase):

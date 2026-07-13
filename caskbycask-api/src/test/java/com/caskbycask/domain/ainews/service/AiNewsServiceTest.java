@@ -4,6 +4,7 @@ import com.caskbycask.admin.service.AdminLogService;
 import com.caskbycask.domain.ainews.dto.AiNewsDtos;
 import com.caskbycask.domain.ainews.entity.AiNewsArticle;
 import com.caskbycask.domain.ainews.entity.AiNewsSettings;
+import com.caskbycask.domain.ainews.entity.AiNewsSourceConfig;
 import com.caskbycask.domain.ainews.entity.AiNewsTopic;
 import com.caskbycask.domain.ainews.entity.enums.*;
 import com.caskbycask.domain.ainews.repository.*;
@@ -27,6 +28,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -152,6 +154,77 @@ class AiNewsServiceTest {
 
         assertThatThrownBy(() -> service.updateSettings(request, 1L))
                 .isInstanceOf(CustomException.class);
+    }
+
+    @Test
+    void accountUrlIsStoredAsDomainAndPathScope() {
+        given(sourceConfigRepository.existsByDomainAndPathPrefix("instagram.com", "/metabevkorea"))
+                .willReturn(false);
+        given(sourceConfigRepository.save(any(AiNewsSourceConfig.class)))
+                .willAnswer(invocation -> invocation.getArgument(0));
+        AiNewsDtos.SourceConfigUpsertRequest request = new AiNewsDtos.SourceConfigUpsertRequest(
+                "메타베브코리아 공식 인스타그램",
+                "https://www.instagram.com/metabevkorea/",
+                AiNewsSourceType.OFFICIAL,
+                true, false, false);
+
+        AiNewsDtos.SourceConfigResponse result = service.createSourceConfig(request, null);
+
+        assertThat(result.domain()).isEqualTo("instagram.com");
+        assertThat(result.pathPrefix()).isEqualTo("/metabevkorea");
+        assertThat(result.sourceUrl()).isEqualTo("https://instagram.com/metabevkorea");
+    }
+
+    @Test
+    void sameDomainCanHaveDifferentAccountScopes() {
+        given(sourceConfigRepository.existsByDomainAndPathPrefix("instagram.com", "/another_account"))
+                .willReturn(false);
+        given(sourceConfigRepository.save(any(AiNewsSourceConfig.class)))
+                .willAnswer(invocation -> invocation.getArgument(0));
+        AiNewsDtos.SourceConfigUpsertRequest request = new AiNewsDtos.SourceConfigUpsertRequest(
+                "다른 공식 계정", "https://instagram.com/another_account",
+                AiNewsSourceType.OFFICIAL, true, false, false);
+
+        AiNewsDtos.SourceConfigResponse result = service.createSourceConfig(request, null);
+
+        assertThat(result.pathPrefix()).isEqualTo("/another_account");
+    }
+
+    @Test
+    void accountScopeWinsOnlyForTheMatchingAccountPath() {
+        AiNewsSourceConfig domainRule = AiNewsSourceConfig.builder()
+                .sourceName("인스타그램 기본").sourceUrl("https://instagram.com")
+                .domain("instagram.com").pathPrefix("")
+                .sourceType(AiNewsSourceType.UNAPPROVED).build();
+        AiNewsSourceConfig accountRule = AiNewsSourceConfig.builder()
+                .sourceName("메타베브코리아").sourceUrl("https://instagram.com/metabevkorea")
+                .domain("instagram.com").pathPrefix("/metabevkorea")
+                .sourceType(AiNewsSourceType.OFFICIAL).build();
+
+        AiNewsSourceConfig matching = AiNewsService.findBestSourceConfig(
+                List.of(domainRule, accountRule), "/metabevkorea/news");
+        AiNewsSourceConfig other = AiNewsService.findBestSourceConfig(
+                List.of(domainRule, accountRule), "/another_account");
+
+        assertThat(matching).isSameAs(accountRule);
+        assertThat(other).isSameAs(domainRule);
+    }
+
+    @Test
+    void crawlerErrorIsStoredWithCheckedTimeAndMessage() {
+        AiNewsSourceConfig source = AiNewsSourceConfig.builder()
+                .id(3L).sourceName("공식 뉴스룸").sourceUrl("https://example.com/news")
+                .domain("example.com").pathPrefix("/news").sourceType(AiNewsSourceType.OFFICIAL)
+                .build();
+        given(sourceConfigRepository.findById(3L)).willReturn(Optional.of(source));
+        LocalDateTime checkedAt = LocalDateTime.of(2026, 7, 13, 12, 30);
+
+        service.recordSourceCrawlResult(3L, new AiNewsDtos.SourceCrawlResultRequest(
+                AiNewsSourceCrawlStatus.ERROR, "HTTP 403", checkedAt));
+
+        assertThat(source.getCrawlStatus()).isEqualTo(AiNewsSourceCrawlStatus.ERROR);
+        assertThat(source.getLastCrawledAt()).isEqualTo(checkedAt);
+        assertThat(source.getLastCrawlError()).isEqualTo("HTTP 403");
     }
 
     @Test

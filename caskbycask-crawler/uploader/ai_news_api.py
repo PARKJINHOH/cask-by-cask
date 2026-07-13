@@ -78,6 +78,37 @@ class AiNewsApi:
                                  json=payload, timeout=self.timeout)
         self._data(response)
 
+    def record_source_crawl_result(self, source_id: int, status: str,
+                                   error_message: str | None = None) -> None:
+        response = requests.patch(
+            f"{self.base_url}/api/internal/ai-news/sources/{source_id}/crawl-result",
+            headers=self.headers,
+            json={"status": status, "errorMessage": error_message},
+            timeout=self.timeout,
+        )
+        self._data(response)
+
+    def next_draft_request(self) -> dict | None:
+        response = requests.get(
+            f"{self.base_url}/api/internal/ai-news/draft-requests/next",
+            headers=self.headers, timeout=self.timeout,
+        )
+        return self._data(response)
+
+    def complete_draft_request(self, request_id: int, payload: dict) -> dict:
+        response = requests.post(
+            f"{self.base_url}/api/internal/ai-news/draft-requests/{request_id}/complete",
+            headers=self.headers, json=payload, timeout=max(self.timeout, 60),
+        )
+        return self._data(response)
+
+    def fail_draft_request(self, request_id: int, reason: str) -> dict:
+        response = requests.post(
+            f"{self.base_url}/api/internal/ai-news/draft-requests/{request_id}/fail",
+            headers=self.headers, json={"reason": reason[:1000]}, timeout=self.timeout,
+        )
+        return self._data(response)
+
     def upload_image(self, path: Path) -> str:
         mime = {
             ".webp": "image/webp", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png",

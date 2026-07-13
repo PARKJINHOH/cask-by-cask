@@ -315,25 +315,28 @@ public class AiNewsService {
     }
 
     @Transactional(readOnly = true)
-    public List<AiNewsDtos.SourceConfigResponse> sourceConfigs() {
-        return sourceConfigRepository.findAllByOrderBySourceNameAsc().stream()
-                .map(AiNewsDtos.SourceConfigResponse::from).toList();
+    public Page<AiNewsDtos.SourceConfigResponse> sourceConfigs(int page, int size) {
+        return sourceConfigRepository.findAllByOrderBySourceNameAsc(
+                        PageRequest.of(Math.max(0, page), Math.min(100, Math.max(1, size))))
+                .map(AiNewsDtos.SourceConfigResponse::from);
     }
 
     @Transactional
     public AiNewsDtos.SourceConfigResponse createSourceConfig(AiNewsDtos.SourceConfigUpsertRequest request,
                                                                Long actorId) {
-        String domain = normalizeDomain(request.domain());
-        if (sourceConfigRepository.existsByDomain(domain)) throw new CustomException(ErrorCode.AI_NEWS_DUPLICATE);
+        String sourceUrl = normalizeSourceConfigUrl(request.sourceUrl());
+        SourceScope scope = normalizeSourceScope(sourceUrl, null);
+        if (sourceConfigRepository.existsByDomainAndPathPrefix(scope.domain, scope.pathPrefix)) {
+            throw new CustomException(ErrorCode.AI_NEWS_DUPLICATE);
+        }
         AiNewsSourceConfig source = sourceConfigRepository.save(AiNewsSourceConfig.builder()
-                .sourceName(request.sourceName().trim()).domain(domain).sourceType(request.sourceType())
+                .sourceName(request.sourceName().trim()).sourceUrl(sourceUrl)
+                .domain(scope.domain).pathPrefix(scope.pathPrefix)
+                .sourceType(request.sourceType())
                 .enabled(request.enabled() == null || request.enabled())
                 .autoPublishAllowed(Boolean.TRUE.equals(request.autoPublishAllowed()))
-                .imageUseAllowed(Boolean.TRUE.equals(request.imageUseAllowed()))
-                .crawlerType(trimToNull(request.crawlerType()))
-                .crawlerTargetKey(trimToNull(request.crawlerTargetKey()))
-                .crawlerTargetValue(trimToNull(request.crawlerTargetValue())).build());
-        log(actorId, source.getId(), "AI 소식 출처 추가", domain);
+                .imageUseAllowed(Boolean.TRUE.equals(request.imageUseAllowed())).build());
+        log(actorId, source.getId(), "AI 소식 출처 추가", scope.display());
         return AiNewsDtos.SourceConfigResponse.from(source);
     }
 
@@ -343,12 +346,16 @@ public class AiNewsService {
                                                                Long actorId) {
         AiNewsSourceConfig source = sourceConfigRepository.findById(id)
                 .orElseThrow(() -> new CustomException(ErrorCode.AI_NEWS_SOURCE_NOT_FOUND));
-        if (!source.getDomain().equals(normalizeDomain(request.domain()))) throw new CustomException(ErrorCode.INVALID_INPUT);
-        source.update(request.sourceName().trim(), request.sourceType(),
+        String sourceUrl = normalizeSourceConfigUrl(request.sourceUrl());
+        SourceScope scope = normalizeSourceScope(sourceUrl, null);
+        if (sourceConfigRepository.existsByDomainAndPathPrefixAndIdNot(scope.domain, scope.pathPrefix, id)) {
+            throw new CustomException(ErrorCode.AI_NEWS_DUPLICATE);
+        }
+        source.update(request.sourceName().trim(), sourceUrl, scope.domain, scope.pathPrefix, request.sourceType(),
                 request.enabled() == null || request.enabled(), Boolean.TRUE.equals(request.autoPublishAllowed()),
-                Boolean.TRUE.equals(request.imageUseAllowed()), trimToNull(request.crawlerType()),
-                trimToNull(request.crawlerTargetKey()), trimToNull(request.crawlerTargetValue()));
-        log(actorId, source.getId(), "AI 소식 출처 수정", source.getDomain());
+                Boolean.TRUE.equals(request.imageUseAllowed()));
+        log(actorId, source.getId(), "AI 소식 출처 수정",
+                new SourceScope(source.getDomain(), source.getPathPrefix()).display());
         return AiNewsDtos.SourceConfigResponse.from(source);
     }
 
@@ -577,9 +584,9 @@ public class AiNewsService {
 
     private List<ResolvedSource> resolveStoredSources(AiNewsArticle article) {
         return article.getSources().stream()
-                .map(source -> resolveSource(source.getDomain(), source.getSourceType()))
+                .map(source -> resolveSource(source.getSourceUrl(), source.getDomain(), source.getSourceType()))
                 .collect(java.util.stream.Collectors.toMap(
-                        ResolvedSource::domain, source -> source, (left, right) -> left,
+                        ResolvedSource::scopeKey, source -> source, (left, right) -> left,
                         LinkedHashMap::new))
                 .values().stream().toList();
     }
@@ -707,11 +714,11 @@ public class AiNewsService {
                                                      List<AiNewsDtos.SourceEvidenceRequest> sources) {
         if (sources == null) return List.of();
         List<ResolvedSource> resolved = new ArrayList<>();
-        Set<String> domains = new HashSet<>();
+        Set<String> scopes = new HashSet<>();
         for (AiNewsDtos.SourceEvidenceRequest source : sources) {
-            String domain = normalizeDomain(source.domain());
-            if (!domains.add(domain)) continue;
-            ResolvedSource trust = resolveSource(domain, source.sourceType());
+            String domain = verifiedSourceDomain(source.sourceUrl(), source.domain());
+            ResolvedSource trust = resolveSource(source.sourceUrl(), domain, source.sourceType());
+            if (!scopes.add(trust.scopeKey)) continue;
             resolved.add(trust);
             article.addSource(AiNewsArticleSource.builder()
                     .sourceUrl(source.sourceUrl().trim())
@@ -730,12 +737,13 @@ public class AiNewsService {
 
     private void mergeNewSources(AiNewsArticle article, List<AiNewsDtos.SourceEvidenceRequest> sources) {
         if (sources == null || sources.isEmpty()) return;
-        Set<String> existing = article.getSources().stream().map(AiNewsArticleSource::getDomain)
+        Set<String> existing = article.getSources().stream()
+                .map(source -> resolveSource(source.getSourceUrl(), source.getDomain(), source.getSourceType()).scopeKey)
                 .collect(java.util.stream.Collectors.toSet());
         for (AiNewsDtos.SourceEvidenceRequest source : sources) {
-            String domain = normalizeDomain(source.domain());
-            if (existing.contains(domain)) continue;
-            ResolvedSource trust = resolveSource(domain, source.sourceType());
+            String domain = verifiedSourceDomain(source.sourceUrl(), source.domain());
+            ResolvedSource trust = resolveSource(source.sourceUrl(), domain, source.sourceType());
+            if (existing.contains(trust.scopeKey)) continue;
             article.addSource(AiNewsArticleSource.builder()
                     .sourceUrl(source.sourceUrl().trim()).canonicalUrl(normalizeCanonicalUrl(source.canonicalUrl()))
                     .domain(domain).sourceTitle(trimToNull(source.sourceTitle())).sourceType(trust.type)
@@ -743,40 +751,62 @@ public class AiNewsService {
                     .publishedAt(source.publishedAt())
                     .retrievedAt(source.retrievedAt() != null ? source.retrievedAt() : LocalDateTime.now())
                     .build());
-            existing.add(domain);
+            existing.add(trust.scopeKey);
         }
     }
 
-    private ResolvedSource resolveSource(String domain, AiNewsSourceType claimedType) {
-        AiNewsSourceConfig configured = sourceConfigRepository.findByDomain(domain).orElse(null);
+    @Transactional
+    public AiNewsDtos.SourceConfigResponse recordSourceCrawlResult(
+            Long id, AiNewsDtos.SourceCrawlResultRequest request) {
+        AiNewsSourceConfig source = sourceConfigRepository.findById(id)
+                .orElseThrow(() -> new CustomException(ErrorCode.AI_NEWS_SOURCE_NOT_FOUND));
+        AiNewsSourceCrawlStatus status = request.status();
+        String error = status == AiNewsSourceCrawlStatus.ERROR ? trimToNull(request.errorMessage()) : null;
+        if (status == AiNewsSourceCrawlStatus.ERROR && error == null) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+        source.recordCrawlResult(status, error,
+                request.checkedAt() != null ? request.checkedAt() : LocalDateTime.now(SERVICE_ZONE));
+        return AiNewsDtos.SourceConfigResponse.from(source);
+    }
+
+    private ResolvedSource resolveSource(String sourceUrl, String domain, AiNewsSourceType claimedType) {
+        String path = sourceUrlPath(sourceUrl);
+        AiNewsSourceConfig configured = findBestSourceConfig(sourceConfigRepository.findByDomain(domain), path);
         if (configured != null) {
-            return new ResolvedSource(domain, configured.isEnabled() ? configured.getSourceType() : AiNewsSourceType.UNAPPROVED,
+            return new ResolvedSource(domain, scopeKey(domain, configured.getPathPrefix()),
+                    configured.isEnabled() ? configured.getSourceType() : AiNewsSourceType.UNAPPROVED,
                     configured.isEnabled() && configured.isAutoPublishAllowed(),
                     configured.isEnabled() && configured.isImageUseAllowed());
         }
-        if (isProducerDomain(domain)) {
+        SourceScope producerScope = findProducerScope(sourceUrl, domain);
+        if (producerScope != null) {
             AiNewsSourceConfig saved = sourceConfigRepository.save(AiNewsSourceConfig.builder()
-                    .sourceName(domain).domain(domain).sourceType(AiNewsSourceType.OFFICIAL)
+                    .sourceName(producerScope.display()).sourceUrl("https://" + producerScope.display())
+                    .domain(domain).pathPrefix(producerScope.pathPrefix)
+                    .sourceType(AiNewsSourceType.OFFICIAL)
                     .enabled(true).autoPublishAllowed(true).imageUseAllowed(false).build());
-            return new ResolvedSource(domain, saved.getSourceType(), true, false);
+            return new ResolvedSource(domain, scopeKey(domain, saved.getPathPrefix()), saved.getSourceType(), true, false);
         }
         AiNewsSourceType initialType = claimedType == AiNewsSourceType.COMMUNITY
                 ? AiNewsSourceType.COMMUNITY : AiNewsSourceType.UNAPPROVED;
         sourceConfigRepository.save(AiNewsSourceConfig.builder()
-                .sourceName(domain).domain(domain).sourceType(initialType)
+                .sourceName(domain).sourceUrl("https://" + domain).domain(domain).pathPrefix("").sourceType(initialType)
                 .enabled(true).autoPublishAllowed(false).imageUseAllowed(false).build());
-        return new ResolvedSource(domain, initialType, false, false);
+        return new ResolvedSource(domain, scopeKey(domain, ""), initialType, false, false);
     }
 
-    private boolean isProducerDomain(String domain) {
+    private SourceScope findProducerScope(String sourceUrl, String domain) {
+        String sourcePath = sourceUrlPath(sourceUrl);
         for (Producer producer : producerRepository.findAllByWebsiteIsNotNull()) {
             try {
-                if (domain.equals(normalizeDomain(URI.create(producer.getWebsite()).getHost()))) return true;
+                SourceScope scope = normalizeSourceScope(producer.getWebsite(), null);
+                if (domain.equals(scope.domain) && pathMatches(sourcePath, scope.pathPrefix)) return scope;
             } catch (RuntimeException ignored) {
                 // 잘못 저장된 기존 URL은 신뢰 출처로 자동 승격하지 않는다.
             }
         }
-        return false;
+        return null;
     }
 
     private AiNewsArticle findArticleDetail(Long id) {
@@ -814,6 +844,108 @@ public class AiNewsService {
             throw new CustomException(ErrorCode.INVALID_INPUT);
         }
         return value;
+    }
+
+    private static SourceScope normalizeSourceScope(String rawDomain, String rawPathPrefix) {
+        String value = rawDomain == null ? "" : rawDomain.trim();
+        String derivedPath = null;
+        if (value.contains("://")) {
+            try {
+                URI parsed = URI.create(value).normalize();
+                derivedPath = parsed.getPath();
+                value = parsed.getHost();
+            } catch (RuntimeException ignored) {
+                throw new CustomException(ErrorCode.INVALID_INPUT);
+            }
+        }
+        String domain = normalizeDomain(value);
+        String pathPrefix = normalizePathPrefix(hasText(rawPathPrefix) ? rawPathPrefix : derivedPath);
+        return new SourceScope(domain, pathPrefix);
+    }
+
+    private static String normalizeSourceConfigUrl(String rawUrl) {
+        if (!hasText(rawUrl)) throw new CustomException(ErrorCode.INVALID_INPUT);
+        try {
+            URI parsed = URI.create(rawUrl.trim()).normalize();
+            String scheme = parsed.getScheme() == null ? null : parsed.getScheme().toLowerCase(Locale.ROOT);
+            String host = parsed.getHost() == null ? null : parsed.getHost().toLowerCase(Locale.ROOT);
+            if (!("http".equals(scheme) || "https".equals(scheme)) || host == null
+                    || parsed.getUserInfo() != null) {
+                throw new CustomException(ErrorCode.INVALID_INPUT);
+            }
+            String normalizedHost = host.replaceFirst("^www\\.", "");
+            String path = normalizePathPrefix(parsed.getPath());
+            URI normalized = new URI(scheme, null, normalizedHost, parsed.getPort(),
+                    path.isEmpty() ? null : path, null, null);
+            String value = normalized.toString();
+            if (value.length() > 1500) throw new CustomException(ErrorCode.INVALID_INPUT);
+            return value;
+        } catch (CustomException e) {
+            throw e;
+        } catch (Exception ignored) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+    }
+
+    private static String normalizePathPrefix(String raw) {
+        if (!hasText(raw) || "/".equals(raw.trim())) return "";
+        String value = raw.trim();
+        if (value.contains("?") || value.contains("#") || value.contains("://")) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+        if (!value.startsWith("/")) value = "/" + value;
+        try {
+            value = URI.create(value).normalize().getPath();
+        } catch (RuntimeException ignored) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+        if (value == null || value.contains("..")) throw new CustomException(ErrorCode.INVALID_INPUT);
+        value = value.replaceAll("/{2,}", "/").replaceFirst("/+$", "");
+        if (value.length() > 255) throw new CustomException(ErrorCode.INVALID_INPUT);
+        return value;
+    }
+
+    private static String sourceUrlPath(String rawUrl) {
+        try {
+            URI parsed = URI.create(rawUrl.trim()).normalize();
+            if (!("http".equalsIgnoreCase(parsed.getScheme()) || "https".equalsIgnoreCase(parsed.getScheme()))
+                    || parsed.getHost() == null) {
+                throw new CustomException(ErrorCode.INVALID_INPUT);
+            }
+            return normalizePathPrefix(parsed.getPath());
+        } catch (CustomException e) {
+            throw e;
+        } catch (RuntimeException ignored) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+    }
+
+    private static String verifiedSourceDomain(String sourceUrl, String claimedDomain) {
+        try {
+            String actual = normalizeDomain(URI.create(sourceUrl.trim()).getHost());
+            if (!actual.equals(normalizeDomain(claimedDomain))) throw new CustomException(ErrorCode.INVALID_INPUT);
+            return actual;
+        } catch (CustomException e) {
+            throw e;
+        } catch (RuntimeException ignored) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+    }
+
+    private static boolean pathMatches(String sourcePath, String pathPrefix) {
+        if (!hasText(pathPrefix)) return true;
+        return sourcePath.equals(pathPrefix) || sourcePath.startsWith(pathPrefix + "/");
+    }
+
+    static AiNewsSourceConfig findBestSourceConfig(List<AiNewsSourceConfig> configs, String sourcePath) {
+        return configs.stream()
+                .filter(source -> pathMatches(sourcePath, source.getPathPrefix()))
+                .max(Comparator.comparingInt(source -> source.getPathPrefix().length()))
+                .orElse(null);
+    }
+
+    private static String scopeKey(String domain, String pathPrefix) {
+        return domain + (hasText(pathPrefix) ? pathPrefix : "/*");
     }
 
     private static String normalizeCanonicalUrl(String raw) {
@@ -864,6 +996,12 @@ public class AiNewsService {
         return value != null && !value.isBlank();
     }
 
-    private record ResolvedSource(String domain, AiNewsSourceType type, boolean autoPublishAllowed,
+    private record SourceScope(String domain, String pathPrefix) {
+        String display() {
+            return domain + (hasText(pathPrefix) ? pathPrefix : "");
+        }
+    }
+
+    private record ResolvedSource(String domain, String scopeKey, AiNewsSourceType type, boolean autoPublishAllowed,
                                   boolean imageUseAllowed) {}
 }

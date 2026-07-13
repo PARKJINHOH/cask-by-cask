@@ -13,9 +13,10 @@ from pathlib import Path
 from alerts.slack_notifier import SlackNotifier
 from logger import setup_logging
 from news_config import NewsSettings
-from news_community import collect_community_sources
 from news_images import fetch_approved_official_image
 from news_models import DraftArticle, SearchSource, canonicalize_url, local_datetime_string
+from news_source_config import matching_source_config
+from news_official import collect_reference_sources, collect_registered_sources
 from news_gemini import GeminiNewsWriter
 from news_tavily import TavilyNewsSearch
 from uploader.ai_news_api import AiNewsApi
@@ -37,12 +38,10 @@ def _dedupe_sources(sources: list[SearchSource]) -> list[SearchSource]:
 
 
 def _apply_source_trust(sources: list[SearchSource], config: dict) -> None:
-    trusted = {
-        str(item.get("domain", "")).lower().removeprefix("www."): item.get("sourceType", "UNAPPROVED")
-        for item in config.get("sources", []) if item.get("enabled")
-    }
     for source in sources:
-        source.source_type = trusted.get(source.domain, "UNAPPROVED")
+        matched = matching_source_config(source.url, source.domain, config.get("sources", []))
+        source.source_type = (matched.get("sourceType", "UNAPPROVED")
+                              if matched and matched.get("enabled") else "UNAPPROVED")
 
 
 def _article_payload(draft: DraftArticle, sources: list[SearchSource]) -> dict:
@@ -233,13 +232,15 @@ def run() -> int:
         log.info("AI 소식 자동화가 관리자 설정에서 비활성화되어 있습니다.")
         return 0
 
+    draft_request = api.next_draft_request()
     usage = config["usage"]
     has_rewrite_requests = bool(config.get("rewriteRequests"))
+    has_draft_request = draft_request is not None
     tavily_limit = int(remote_settings.get("tavilyMonthlyCreditLimit", 900))
     tavily_used = int(usage.get("tavilyCredits", 0))
     if tavily_used >= tavily_limit:
         notifier.warning_once("ai_news_tavily_budget", "AI 소식 Tavily 한도 도달", json.dumps(usage, ensure_ascii=False))
-        if not has_rewrite_requests:
+        if not has_rewrite_requests and not has_draft_request:
             return 0
     if tavily_limit > 0 and tavily_used / tavily_limit >= 0.8:
         notifier.warning_once("ai_news_tavily_budget_80", "AI 소식 Tavily 한도 80% 도달",
@@ -248,7 +249,7 @@ def run() -> int:
     if remaining_tavily_credits < 2:
         notifier.warning_once("ai_news_tavily_reserve", "AI 소식 Tavily 잔여 한도 부족",
                               f"remaining={remaining_tavily_credits}")
-        if not has_rewrite_requests:
+        if not has_rewrite_requests and not has_draft_request:
             return 0
     estimated_cost = float(usage.get("estimatedCostUsd", 0) or 0)
     admin_ai_budget = float(usage.get("openaiBudgetUsd", 0) or 0)
@@ -303,6 +304,59 @@ def run() -> int:
                               settings.image_generation_enabled)
     fatal_error = None
     try:
+        if draft_request:
+            request_id = int(draft_request["id"])
+            reference_urls = list(draft_request.get("referenceUrls") or [])[:3]
+            request_sources: list[SearchSource] = []
+            source_errors: list[str] = []
+            stats["candidateCount"] += 1
+            try:
+                for reference_url in reference_urls:
+                    try:
+                        request_sources.extend(
+                            collect_reference_sources([reference_url], settings.http_timeout_sec)
+                        )
+                    except Exception as error:  # noqa: BLE001
+                        source_errors.append(f"{reference_url}: {error}")
+                        log.warning("AI 작성 요청 참고 URL 수집 실패 requestId=%s url=%s: %s",
+                                    request_id, reference_url, error)
+
+                if remaining_tavily_credits - search.credits_used >= 1:
+                    try:
+                        request_sources.extend(search.search(
+                            f"{str(draft_request['prompt'])[:500]} "
+                            "위스키 와인 꼬냑 출시 수입 공식 발표",
+                            topic="news",
+                            time_range="month",
+                        ))
+                    except Exception as error:  # noqa: BLE001
+                        if not request_sources:
+                            raise
+                        log.warning("AI 작성 요청 Tavily 보강 검색 실패 - 참고 URL 근거로 계속 진행 "
+                                    "requestId=%s: %s", request_id, error)
+
+                request_sources = _dedupe_sources(request_sources)
+                _apply_source_trust(request_sources, config)
+                if not request_sources:
+                    detail = "; ".join(source_errors) or "Tavily 잔여 한도가 없고 참고 URL도 없습니다."
+                    raise RuntimeError(f"AI 원고 작성에 사용할 참고 근거를 수집하지 못했습니다. {detail}")
+
+                requested_draft = writer.write_requested_release(draft_request, request_sources)
+                payload = _article_payload(requested_draft, request_sources)
+                payload["autoPublishRequested"] = False
+                response = api.complete_draft_request(request_id, payload)
+                stats["reviewCount"] += 1
+                log.info("관리자 AI 작성 요청 임시저장 완료 requestId=%s articleId=%s title=%s",
+                         request_id, response.get("articleId"), requested_draft.title)
+            except Exception as error:  # noqa: BLE001
+                stats["errorCount"] += 1
+                try:
+                    api.fail_draft_request(request_id, str(error))
+                except Exception as report_error:  # noqa: BLE001
+                    log.warning("AI 작성 요청 실패 상태 보고 실패 requestId=%s: %s",
+                                request_id, report_error)
+                log.exception("관리자 AI 작성 요청 처리 실패 requestId=%s: %s", request_id, error)
+
         for rewrite_request in list(config.get("rewriteRequests") or []):
             stats["candidateCount"] += 1
             try:
@@ -322,11 +376,17 @@ def run() -> int:
                               rewrite_request.get("articleId"), error)
 
         now_year = datetime.now(timezone.utc).year
-        release_sources = _dedupe_sources(
-            search.search(f"위스키 와인 꼬냑 신제품 출시 예정 국내 출시 수입 {now_year}")
-            + search.search(f"new whisky wine cognac release announced launch {now_year}")
-            + collect_community_sources(config, notifier, log, settings.http_timeout_sec)
-        ) if remaining_tavily_credits >= 2 else []
+        if remaining_tavily_credits - search.credits_used >= 2:
+            registered_sources = collect_registered_sources(
+                config, search, api, log, settings.http_timeout_sec, allow_tavily=True
+            )
+            general_sources = search.search(
+                f"위스키 와인 꼬냑 신제품 출시 예정 국내 출시 수입 "
+                f"new whisky wine cognac release announced launch {now_year}"
+            )
+            release_sources = _dedupe_sources(general_sources + registered_sources)
+        else:
+            release_sources = []
         _apply_source_trust(release_sources, config)
         remaining_daily = max(0, int(remote_settings.get("dailyReleaseLimit", 3))
                               - int(config.get("releasePublishedToday", 0)))
