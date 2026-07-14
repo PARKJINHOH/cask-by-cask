@@ -81,7 +81,7 @@ export default function AdminPriceReportPage() {
         </div>
         <label
           className="flex items-center gap-2 text-sm text-neutral-600 cursor-pointer ml-auto"
-          title="같은 주류·매장의 최근 승인 가격 중앙값보다 30% 이상 높거나 낮은 등록만 표시합니다."
+          title="같은 주류·용량·매장의 최근 승인 가격 중앙값보다 30% 이상 높거나 낮은 등록만 표시합니다."
         >
           <input
             type="checkbox"
@@ -106,6 +106,7 @@ export default function AdminPriceReportPage() {
                 <tr>
                   <TableHead className="w-36">등록 일시</TableHead>
                   <TableHead>주류명</TableHead>
+                  <TableHead className="text-right w-20">용량</TableHead>
                   <TableHead>매장</TableHead>
                   <TableHead className="text-right w-32">실구매가</TableHead>
                   <TableHead className="w-28">구매일</TableHead>
@@ -117,7 +118,7 @@ export default function AdminPriceReportPage() {
               <tbody className="divide-y divide-neutral-100">
                 {!data || data.empty ? (
                   <tr>
-                    <td colSpan={8} className="px-4 py-12 text-center text-neutral-400">
+                    <td colSpan={9} className="px-4 py-12 text-center text-neutral-400">
                       처리할 가격 등록이 없습니다.
                     </td>
                   </tr>
@@ -164,6 +165,9 @@ function PriceReportRow({ report, onClick }: { report: AdminPriceReport; onClick
       <td className="px-4 py-3 max-w-[240px]">
         <p className="font-medium text-neutral-800 truncate">{report.spiritNameKo}</p>
         <p className="text-xs text-neutral-400 mt-0.5">#{report.id}</p>
+      </td>
+      <td className="px-3 py-3 text-right text-xs text-neutral-600 whitespace-nowrap tabular-nums">
+        {report.volumeMl == null ? '미확인' : `${report.volumeMl.toLocaleString()}ml`}
       </td>
       <td className="px-3 py-3 max-w-[200px]">
         <p className="text-neutral-700 truncate">{storeName}</p>

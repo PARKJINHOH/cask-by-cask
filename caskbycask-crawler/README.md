@@ -81,9 +81,11 @@ python3 main.py
 `uploader/api_uploader.py` 상단 주석에 계약을 명시했다. 요약:
 - `POST /api/internal/deals` · 헤더 `X-Internal-Key`
 - 2xx 접수 / 409 중복(멱등, sourceUrl 기준). 저장 시 `is_visible=false, status=PENDING`.
-- 요청 본문(flat): `sourceUrl, sourceSite, drinkName, drinkCategory, originalPrice, dealPrice,
+- 요청 본문(flat): `sourceUrl, sourceSite, drinkName, drinkCategory, volumeMl, originalPrice, dealPrice,
   discountRate, currency, seller, dealCondition, expiryInfo, confidenceScore, summaryKo, crawledAt`
 - 업로드 전 `filters/deal_policy.py`에서 정상가/할인가가 모두 있는 단순 단품 딜만 통과시키며,
   빈 가격은 `0`, 할인율은 `(originalPrice - dealPrice) / originalPrice`로 재계산한다.
+- `volumeMl`은 병 1개 기준이다. `700ml`, `70cl`, `0.7L`는 모두 `700`으로 정규화하고,
+  여러 용량 옵션이나 범위 표기는 추측하지 않고 `null`로 보내 관리자 확인 대상으로 남긴다.
 
 자세한 배포 절차는 **[DEPLOY.md](./DEPLOY.md)** 참고.

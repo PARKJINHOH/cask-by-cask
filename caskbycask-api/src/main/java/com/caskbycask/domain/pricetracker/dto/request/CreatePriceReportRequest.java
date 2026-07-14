@@ -3,6 +3,8 @@ package com.caskbycask.domain.pricetracker.dto.request;
 import com.caskbycask.domain.pricetracker.entity.enums.DutyFreeChannel;
 import com.caskbycask.domain.pricetracker.entity.enums.PriceCurrency;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
@@ -12,6 +14,7 @@ import java.util.List;
 
 public record CreatePriceReportRequest(
         @NotNull Long spiritId,
+        @NotNull @Min(1) @Max(100000) Integer volumeMl,
         Long storeId,                           // 자동완성 선택 매장 (nullable)
         @Size(max = 255) String suggestedStoreName, // 직접 입력 매장명 (nullable)
         DutyFreeChannel dutyfreeChannel,        // 면세 매장 제안 시 채널 (nullable)

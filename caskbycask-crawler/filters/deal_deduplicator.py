@@ -90,6 +90,7 @@ class DealDeduplicator:
             str(raw.get("canonical_brand") or ""),
             str(raw.get("canonical_product") or ""),
             str(raw.get("product_variant") or ""),
+            f"용량{analysis.volume_ml}ml" if analysis.volume_ml else "",
             str(raw.get("seller_chain") or ""),
         ]
         tokens = _tokenize(" ".join(parts))
@@ -223,7 +224,12 @@ def _core_tokens(tokens: set[str]) -> set[str]:
 
 
 def _variant_tokens(tokens: set[str]) -> set[str]:
-    return {t for t in tokens if re.fullmatch(r"배치\d+", t) or re.fullmatch(r"\d+년", t)}
+    return {
+        t for t in tokens
+        if re.fullmatch(r"배치\d+", t)
+        or re.fullmatch(r"\d+년", t)
+        or re.fullmatch(r"용량\d+ml", t)
+    }
 
 
 def _has_variant_conflict(left: set[str], right: set[str]) -> bool:

@@ -4,6 +4,7 @@ import com.caskbycask.domain.pricetracker.dto.response.ChartPoint;
 import com.caskbycask.domain.pricetracker.dto.response.ChartResponse;
 import com.caskbycask.domain.pricetracker.dto.response.ChartSeries;
 import com.caskbycask.domain.pricetracker.dto.response.PriceReportChartDetailResponse;
+import com.caskbycask.domain.pricetracker.dto.response.PriceVolumeOptionResponse;
 import com.caskbycask.domain.pricetracker.entity.PriceReport;
 import com.caskbycask.domain.pricetracker.entity.PriceReportImage;
 import com.caskbycask.domain.pricetracker.entity.enums.BucketType;
@@ -37,12 +38,14 @@ public class PriceChartService {
     private final DealPostRepository dealPostRepository;
 
     @Transactional(readOnly = true)
-    public ChartResponse getChart(Long spiritId, StoreType storeType, String period, String region) {
-        return getChart(List.of(spiritId), storeType, period, region);
+    public ChartResponse getChart(Long spiritId, StoreType storeType, String period, String region,
+                                  Integer volumeMl, boolean unknownVolume) {
+        return getChart(List.of(spiritId), storeType, period, region, volumeMl, unknownVolume);
     }
 
     @Transactional(readOnly = true)
-    public ChartResponse getChart(List<Long> spiritIds, StoreType storeType, String period, String region) {
+    public ChartResponse getChart(List<Long> spiritIds, StoreType storeType, String period, String region,
+                                  Integer volumeMl, boolean unknownVolume) {
         List<Long> targetSpiritIds = normalizeSpiritIds(spiritIds);
         PriceCurrency currency = (storeType == StoreType.DUTYFREE) ? PriceCurrency.USD : PriceCurrency.KRW;
         if (targetSpiritIds.isEmpty()) {
@@ -56,6 +59,7 @@ public class PriceChartService {
         reports = reports.stream()
                 .filter(r -> startDate == null || !effectiveDate(r).isBefore(startDate))
                 .filter(r -> matchesStoreType(r, storeType))
+                .filter(r -> matchesVolume(r.getVolumeMl(), volumeMl, unknownVolume))
                 .filter(r -> region == null || region.isBlank()
                         || (r.getStore() != null && region.equals(r.getStore().getRegion())))
                 .toList();
@@ -65,6 +69,7 @@ public class PriceChartService {
                 .filter(d -> (d.getDealPrice() != null && d.getDealPrice() > 0) || (d.getOriginalPrice() != null && d.getOriginalPrice() > 0))
                 .filter(d -> startDate == null || !effectiveDate(d).isBefore(startDate))
                 .filter(d -> storeType == null || d.getStoreType() == storeType)
+                .filter(d -> matchesVolume(d.getVolumeMl(), volumeMl, unknownVolume))
                 .toList();
 
         List<TempPrice> tempPrices = buildTempPrices(reports, deals);
@@ -94,13 +99,15 @@ public class PriceChartService {
 
     @Transactional(readOnly = true)
     public List<PriceReportChartDetailResponse> getChartPointDetails(
-            Long spiritId, LocalDate pointDate, StoreType storeType, BucketType bucketType) {
-        return getChartPointDetails(List.of(spiritId), pointDate, storeType, bucketType);
+            Long spiritId, LocalDate pointDate, StoreType storeType, BucketType bucketType,
+            Integer volumeMl, boolean unknownVolume) {
+        return getChartPointDetails(List.of(spiritId), pointDate, storeType, bucketType, volumeMl, unknownVolume);
     }
 
     @Transactional(readOnly = true)
     public List<PriceReportChartDetailResponse> getChartPointDetails(
-            List<Long> spiritIds, LocalDate pointDate, StoreType storeType, BucketType bucketType) {
+            List<Long> spiritIds, LocalDate pointDate, StoreType storeType, BucketType bucketType,
+            Integer volumeMl, boolean unknownVolume) {
         List<Long> targetSpiritIds = normalizeSpiritIds(spiritIds);
         if (targetSpiritIds.isEmpty()) return List.of();
         boolean weekly = bucketType == BucketType.WEEKLY;
@@ -116,6 +123,7 @@ public class PriceChartService {
                     LocalDate rDate = effectiveDate(r);
                     return !rDate.isBefore(rangeStart) && !rDate.isAfter(rangeEnd);
                 })
+                .filter(r -> matchesVolume(r.getVolumeMl(), volumeMl, unknownVolume))
                 .toList();
 
         List<DealPost> deals = dealPostRepository.findAllBySpiritIdInAndStatusAndIsVisibleTrue(targetSpiritIds, DealStatus.APPROVED);
@@ -126,6 +134,7 @@ public class PriceChartService {
                     return !dDate.isBefore(rangeStart) && !dDate.isAfter(rangeEnd);
                 })
                 .filter(d -> storeType == null || d.getStoreType() == storeType)
+                .filter(d -> matchesVolume(d.getVolumeMl(), volumeMl, unknownVolume))
                 .toList();
 
         List<TempPrice> tempPrices = buildTempPrices(
@@ -140,6 +149,48 @@ public class PriceChartService {
                         .thenComparing(TempPrice::finalPrice, Comparator.nullsLast(Comparator.naturalOrder())))
                 .map(this::toDetailResponse)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<PriceVolumeOptionResponse> getVolumeOptions(List<Long> spiritIds, StoreType storeType) {
+        List<Long> targetSpiritIds = normalizeSpiritIds(spiritIds);
+        if (targetSpiritIds.isEmpty()) return List.of();
+
+        Map<Integer, Long> counts = new HashMap<>();
+        long unknownCount = 0;
+
+        List<PriceReport> reports = priceReportRepository.findApprovedForChart(
+                targetSpiritIds, PriceReportStatus.APPROVED);
+        for (PriceReport report : reports) {
+            if (!matchesStoreType(report, storeType)) continue;
+            if (report.getVolumeMl() == null) {
+                unknownCount++;
+            } else {
+                counts.merge(report.getVolumeMl(), 1L, Long::sum);
+            }
+        }
+
+        List<DealPost> deals = dealPostRepository.findAllBySpiritIdInAndStatusAndIsVisibleTrue(
+                targetSpiritIds, DealStatus.APPROVED);
+        for (DealPost deal : deals) {
+            if (storeType != null && deal.getStoreType() != storeType) continue;
+            if ((deal.getDealPrice() == null || deal.getDealPrice() <= 0)
+                    && (deal.getOriginalPrice() == null || deal.getOriginalPrice() <= 0)) continue;
+            if (deal.getVolumeMl() == null) {
+                unknownCount++;
+            } else {
+                counts.merge(deal.getVolumeMl(), 1L, Long::sum);
+            }
+        }
+
+        List<PriceVolumeOptionResponse> options = counts.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .map(entry -> new PriceVolumeOptionResponse(entry.getKey(), entry.getValue()))
+                .collect(Collectors.toCollection(ArrayList::new));
+        if (unknownCount > 0) {
+            options.add(new PriceVolumeOptionResponse(null, unknownCount));
+        }
+        return options;
     }
 
     private record TempPrice(
@@ -203,6 +254,12 @@ public class PriceChartService {
             return r.getStore() == null || r.getStore().getStoreType() == StoreType.DOMESTIC;
         }
         return r.getStore() != null && r.getStore().getStoreType() == storeType;
+    }
+
+    private boolean matchesVolume(Integer candidateVolumeMl, Integer volumeMl, boolean unknownVolume) {
+        if (unknownVolume) return candidateVolumeMl == null;
+        if (volumeMl != null) return Objects.equals(candidateVolumeMl, volumeMl);
+        return true;
     }
 
     private List<TempPrice> buildTempPrices(List<PriceReport> reports, List<DealPost> deals) {

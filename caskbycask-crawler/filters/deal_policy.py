@@ -6,6 +6,7 @@ from dataclasses import dataclass, replace
 from typing import Iterable
 
 from models import AnalysisResult, PostDetail
+from filters.volume_normalizer import extract_volume_ml, normalize_volume_ml
 
 DEFAULT_ALLOWED_CATEGORIES = frozenset({"WHISKY", "COGNAC", "WINE", "TEQUILA", "RUM"})
 
@@ -26,6 +27,9 @@ _ALCOHOL_HINT_RE = re.compile(
 )
 
 _COMPLEX_DISCOUNT_PATTERNS = [
+    # 묶음 총액은 병 1개의 가격 추세에 넣을 수 없으므로 보수적으로 제외한다.
+    re.compile(r"\d+(?:[.,]\d+)?\s*(?:ml|㎖|cl|l|ℓ)\s*(?:x|×|\*)\s*[2-9]\d*", re.IGNORECASE),
+    re.compile(r"[2-9]\d*\s*(?:개|병|캔|박스)\s*(?:세트|묶음|팩)", re.IGNORECASE),
     re.compile(r"\d+\s*(?:개|병|캔|박스)\s*(?:구매|이상|사면|시)[^\n]{0,40}\d{1,2}\s*%", re.IGNORECASE),
     re.compile(r"(?:2|3|두|세)\s*(?:개|병|캔|박스)\s*(?:구매|이상|사면|시)[^\n]{0,40}\d{1,2}\s*%", re.IGNORECASE),
     re.compile(r"\d+\s*만원\s*이상[^\n]{0,40}\d{1,2}\s*%", re.IGNORECASE),
@@ -50,6 +54,7 @@ def normalize_analysis_result(analysis: AnalysisResult) -> AnalysisResult:
     deal_price = _normalize_price(analysis.deal_price)
     return replace(
         analysis,
+        volume_ml=normalize_volume_ml(analysis.volume_ml),
         original_price=original_price,
         deal_price=deal_price,
         discount_rate=_calculate_discount_rate(original_price, deal_price),
@@ -64,6 +69,10 @@ def review_analysis(
     allowed_categories: Iterable[str] | None = None,
 ) -> DealPolicyDecision:
     result = normalize_analysis_result(analysis)
+    if result.volume_ml is None:
+        # AI가 만든 요약/조건 문구가 아니라 실제 제목·본문에 명시된 값만 정규식 보완에 사용한다.
+        source_text = " ".join(part for part in [detail.raw.title, detail.content_text] if part)
+        result = replace(result, volume_ml=extract_volume_ml(source_text))
     text = _combined_text(detail, result)
     allowed = {c.upper() for c in (allowed_categories or DEFAULT_ALLOWED_CATEGORIES)}
 

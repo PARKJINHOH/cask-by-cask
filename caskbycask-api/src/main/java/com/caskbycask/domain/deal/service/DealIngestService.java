@@ -33,6 +33,7 @@ public class DealIngestService {
                 .sourceSite(req.sourceSite())
                 .drinkName(req.drinkName())
                 .drinkCategory(req.drinkCategory())
+                .volumeMl(req.volumeMl())
                 .originalPrice(originalPrice)
                 .dealPrice(dealPrice)
                 .discountRate(DealPriceNormalizer.calculateDiscountRate(originalPrice, dealPrice))

@@ -113,6 +113,7 @@ export default function AdminDealListPage() {
                   <th className="text-left px-3 py-3 text-neutral-500 font-medium w-28">출처</th>
                   <th className="text-left px-4 py-3 text-neutral-500 font-medium">주류명</th>
                   <th className="text-left px-3 py-3 text-neutral-500 font-medium w-20">카테고리</th>
+                  <th className="text-right px-3 py-3 text-neutral-500 font-medium w-20">용량</th>
                   <th className="text-right px-3 py-3 text-neutral-500 font-medium w-28">정상가</th>
                   <th className="text-right px-3 py-3 text-neutral-500 font-medium w-28">할인가</th>
                   <th className="text-center px-3 py-3 text-neutral-500 font-medium w-16">할인율</th>
@@ -124,7 +125,7 @@ export default function AdminDealListPage() {
               <tbody className="divide-y divide-neutral-100">
                 {!data || data.empty ? (
                   <tr>
-                    <td colSpan={11} className="px-4 py-10 text-center text-neutral-400">
+                    <td colSpan={12} className="px-4 py-10 text-center text-neutral-400">
                       데이터가 없습니다.
                     </td>
                   </tr>
@@ -157,6 +158,9 @@ export default function AdminDealListPage() {
                         <p className="truncate font-medium text-neutral-800">{item.drinkName ?? '(미상)'}</p>
                       </td>
                       <td className="px-3 py-3 text-neutral-500 text-xs">{item.drinkCategory ?? '-'}</td>
+                      <td className="px-3 py-3 text-right tabular-nums text-neutral-500 whitespace-nowrap">
+                        {item.volumeMl == null ? '미확인' : `${item.volumeMl.toLocaleString()}ml`}
+                      </td>
                       <td className="px-3 py-3 text-right tabular-nums text-neutral-600 whitespace-nowrap">
                         {formatPrice(item.originalPrice)}
                       </td>

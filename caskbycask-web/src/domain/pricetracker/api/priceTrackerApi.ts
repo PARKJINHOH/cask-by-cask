@@ -8,8 +8,10 @@ import type {
   PriceReportImageUpload,
   PriceReportStatus,
   PriceReportSummary,
+  PriceVolumeOption,
   StoreSearchResult,
   StoreType,
+  VolumeSelection,
 } from '../types/pricetracker.types'
 
 function serializeParams(params: Record<string, unknown>): string {
@@ -29,17 +31,36 @@ function serializeParams(params: Record<string, unknown>): string {
 
 export const priceTrackerApi = {
   // ── 차트 ────────────────────────────────────────
-  getChart: (spiritId: number, storeType: StoreType, period: string, region?: string, spiritIds?: number[]) =>
+  getChart: (spiritId: number, storeType: StoreType, period: string, region?: string,
+             spiritIds?: number[], volume?: VolumeSelection | null) =>
     axiosInstance.get<ApiResponse<ChartResponse>>('/api/price-reports/chart', {
-      params: { spiritId, spiritIds, storeType, period, region: region || undefined },
+      params: {
+        spiritId, spiritIds, storeType, period, region: region || undefined,
+        volumeMl: typeof volume === 'number' ? volume : undefined,
+        unknownVolume: volume === 'UNKNOWN' ? true : undefined,
+      },
       paramsSerializer: serializeParams,
     }),
 
-  getChartDetails: (spiritId: number, pointDate: string, storeType: StoreType, bucketType?: string, spiritIds?: number[]) =>
+  getChartDetails: (spiritId: number, pointDate: string, storeType: StoreType, bucketType?: string,
+                    spiritIds?: number[], volume?: VolumeSelection | null) =>
     axiosInstance.get<ApiResponse<PriceReportChartDetail[]>>(
       `/api/price-reports/chart/${pointDate}/details`,
-      { params: { spiritId, spiritIds, storeType, bucketType }, paramsSerializer: serializeParams },
+      {
+        params: {
+          spiritId, spiritIds, storeType, bucketType,
+          volumeMl: typeof volume === 'number' ? volume : undefined,
+          unknownVolume: volume === 'UNKNOWN' ? true : undefined,
+        },
+        paramsSerializer: serializeParams,
+      },
     ),
+
+  getVolumeOptions: (spiritId: number, storeType: StoreType, spiritIds?: number[]) =>
+    axiosInstance.get<ApiResponse<PriceVolumeOption[]>>('/api/price-reports/chart/volume-options', {
+      params: { spiritId, spiritIds, storeType },
+      paramsSerializer: serializeParams,
+    }),
 
   // ── 가격 등록 ────────────────────────────────────
   uploadImage: (file: File) => {
@@ -77,9 +98,10 @@ export const priceTrackerApi = {
     }),
 
   // ── 가격 알림 ─────────────────────────────────────
-  upsertAlert: (spiritId: number, targetPrice: number) =>
+  upsertAlert: (spiritId: number, volumeMl: number, targetPrice: number) =>
     axiosInstance.post<ApiResponse<PriceAlertResponse>>('/api/price-alerts', {
       spiritId,
+      volumeMl,
       targetPrice,
     }),
 

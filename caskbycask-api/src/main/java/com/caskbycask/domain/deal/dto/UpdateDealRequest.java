@@ -1,6 +1,8 @@
 package com.caskbycask.domain.deal.dto;
 
 import com.caskbycask.domain.pricetracker.entity.enums.StoreType;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
@@ -9,6 +11,7 @@ import java.math.BigDecimal;
 public record UpdateDealRequest(
         @Size(max = 200) String drinkName,
         @Size(max = 50) String drinkCategory,
+        @Min(1) @Max(100000) Integer volumeMl,
         Integer originalPrice,
         Integer dealPrice,
         BigDecimal discountRate,

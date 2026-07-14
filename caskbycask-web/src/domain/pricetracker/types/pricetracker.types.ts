@@ -5,6 +5,12 @@ export type PriceReportReportReason = 'FALSE_PRICE' | 'DUPLICATE' | 'BAD_IMAGE' 
 export type DiscountType = 'PAYMENT' | 'BUNDLE' | 'COUPON' | 'OTHER'
 export type DutyFreeChannel = 'AIRPORT' | 'CITY' | 'INFLIGHT' | 'ONLINE'
 export type PriceReportStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
+export type VolumeSelection = number | 'UNKNOWN'
+
+export interface PriceVolumeOption {
+  volumeMl: number | null
+  count: number
+}
 
 export interface ChartPoint {
   date: string
@@ -37,6 +43,7 @@ export interface DiscountItemDetail {
 export interface PriceReportChartDetail {
   reportId: number
   spiritId: number | null
+  volumeMl: number | null
   storeName: string | null
   suggestedStoreName: string | null
   finalPrice: number | null
@@ -67,6 +74,7 @@ export interface PriceReportSummary {
   id: number
   spiritId: number
   spiritNameKo: string
+  volumeMl: number | null
   storeName: string | null
   suggestedStoreName: string | null
   status: PriceReportStatus
@@ -96,6 +104,7 @@ export interface AdminPriceReport {
   id: number
   spiritId: number
   spiritNameKo: string
+  volumeMl: number | null
   storeId: number | null
   storeName: string | null
   suggestedStoreName: string | null
@@ -146,6 +155,7 @@ export interface PriceAlertResponse {
   spiritId: number
   spiritNameKo: string
   spiritNameEn: string
+  volumeMl: number | null
   targetPriceKrw: number
   isActive: boolean
   lastNotifiedAt: string | null
@@ -167,6 +177,7 @@ export interface DiscountItemInput {
 
 export interface CreatePriceReportRequest {
   spiritId: number
+  volumeMl: number
   storeId?: number | null
   suggestedStoreName?: string | null
   dutyfreeChannel?: DutyFreeChannel | null

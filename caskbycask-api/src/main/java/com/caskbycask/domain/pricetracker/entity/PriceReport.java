@@ -20,7 +20,9 @@ import java.util.List;
 @Entity
 @Table(name = "price_reports", indexes = {
         @Index(name = "idx_price_report_spirit_status_purchased",
-                columnList = "spirit_id,status,purchased_at")
+                columnList = "spirit_id,status,purchased_at"),
+        @Index(name = "idx_price_report_spirit_status_volume_purchased",
+                columnList = "spirit_id,status,volume_ml,purchased_at")
 })
 @SQLRestriction("deleted_at IS NULL")
 @Getter
@@ -76,6 +78,10 @@ public class PriceReport extends BaseTimeEntity {
     @Column(precision = 12, scale = 0)
     @Comment("실구매가")
     private BigDecimal actualPrice;      // 실구매가 (서비스 계산 후 저장)
+
+    @Column
+    @Comment("거래 당시 병 1개 용량(ml)")
+    private Integer volumeMl;
 
     @Column(precision = 10, scale = 4)
     @Comment("환율 스냅샷")
@@ -177,7 +183,7 @@ public class PriceReport extends BaseTimeEntity {
                        PriceCurrency currency,
                        BigDecimal price, BigDecimal salePrice, BigDecimal paybackAmount,
                        BigDecimal actualPrice, BigDecimal exchangeRateSnapshot,
-                       LocalDate purchasedAt, String description, Boolean isAnonymous,
+                       Integer volumeMl, LocalDate purchasedAt, String description, Boolean isAnonymous,
                        boolean autoFlagged) {
         this.store = store;
         this.suggestedStoreName = suggestedStoreName;
@@ -188,10 +194,15 @@ public class PriceReport extends BaseTimeEntity {
         this.paybackAmount = paybackAmount;
         this.actualPrice = actualPrice;
         this.exchangeRateSnapshot = exchangeRateSnapshot;
+        this.volumeMl = volumeMl;
         this.purchasedAt = purchasedAt;
         this.description = description;
         this.isAnonymous = isAnonymous;
         this.autoFlagged = autoFlagged;
+    }
+
+    public void updateVolume(Integer volumeMl) {
+        this.volumeMl = volumeMl;
     }
 
     public void verify() {

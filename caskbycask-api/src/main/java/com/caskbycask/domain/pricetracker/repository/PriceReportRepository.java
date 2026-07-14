@@ -43,6 +43,7 @@ public interface PriceReportRepository extends JpaRepository<PriceReport, Long> 
             SELECT p.actualPrice FROM PriceReport p
             WHERE p.spirit.id = :spiritId
             AND p.store.id = :storeId
+            AND p.volumeMl = :volumeMl
             AND p.status = :status
             AND p.currency = :currency
             AND p.actualPrice IS NOT NULL
@@ -51,6 +52,7 @@ public interface PriceReportRepository extends JpaRepository<PriceReport, Long> 
     List<BigDecimal> findRecentApprovedActualPrices(
             @Param("spiritId") Long spiritId,
             @Param("storeId") Long storeId,
+            @Param("volumeMl") Integer volumeMl,
             @Param("status") PriceReportStatus status,
             @Param("currency") PriceCurrency currency,
             Pageable pageable);

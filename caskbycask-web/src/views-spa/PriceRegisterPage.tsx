@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
@@ -20,6 +20,7 @@ import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
 
 const DISCOUNT_TYPES: DiscountType[] = ['PAYMENT', 'BUNDLE', 'COUPON', 'OTHER']
 const DUTYFREE_CHANNELS: DutyFreeChannel[] = ['AIRPORT', 'CITY', 'INFLIGHT', 'ONLINE']
+const COMMON_VOLUMES_ML = [375, 500, 700, 750, 1000]
 
 const krw = new Intl.NumberFormat('ko-KR')
 
@@ -38,6 +39,8 @@ export default function PriceRegisterPage() {
   const selectedSpirit: SpiritListItem | null = fixedSpirit ?? pickedSpirit
   const fixedSpiritNames = fixedSpirit ? getLocalizedSpiritListNames(fixedSpirit, i18n.language) : null
   const pickedSpiritNames = pickedSpirit ? getLocalizedSpiritListNames(pickedSpirit, i18n.language) : null
+  const queryVolumeMl = parseVolumeMl(searchParams.get('volumeMl') ?? '')
+  const [volumeInput, setVolumeInput] = useState(queryVolumeMl ? String(queryVolumeMl) : '')
 
   // ── 매장 ─────────────────────────────────────────────
   const [storeType, setStoreType] = useState<StoreType>('DOMESTIC')
@@ -79,6 +82,21 @@ export default function PriceRegisterPage() {
   const [done, setDone] = useState(false)
   const spiritSearchKeyword = debouncedSpiritKeyword.trim()
   const storeSearchKeyword = debouncedStoreKeyword.trim()
+  const volumeMl = parseVolumeMl(volumeInput)
+
+  useEffect(() => {
+    if (!selectedSpirit) return
+    if (queryVolumeMl) {
+      setVolumeInput(String(queryVolumeMl))
+      return
+    }
+    const exactVolume = 'volumeMl' in selectedSpirit
+      ? selectedSpirit.volumeMl
+      : selectedSpirit.volumeMlMin === selectedSpirit.volumeMlMax
+        ? selectedSpirit.volumeMlMin
+        : null
+    setVolumeInput(exactVolume ? String(exactVolume) : '')
+  }, [selectedSpirit?.id, queryVolumeMl])
 
   // ── 자동완성 쿼리 ────────────────────────────────────
   const { data: spiritResults } = useQuery({
@@ -140,9 +158,10 @@ export default function PriceRegisterPage() {
   // ── 유효성 ───────────────────────────────────────────
   const canSubmit = useMemo(() => {
     if (!selectedSpirit) return false
+    if (!volumeMl) return false
     if (isDutyFree) return parsePriceInput(basePrice) > 0 && parsePriceInput(exchangeRate) > 0
     return parsePriceInput(salePrice) > 0
-  }, [selectedSpirit, isDutyFree, basePrice, exchangeRate, salePrice])
+  }, [selectedSpirit, volumeMl, isDutyFree, basePrice, exchangeRate, salePrice])
 
   const handleSubmit = async () => {
     if (!selectedSpirit || !canSubmit) return
@@ -150,6 +169,7 @@ export default function PriceRegisterPage() {
     try {
       await priceTrackerApi.createPriceReport({
         spiritId: selectedSpirit.id,
+        volumeMl: volumeMl!,
         storeId: selectedStore?.id ?? null,
         suggestedStoreName: useSuggest ? suggestedStoreName || null : null,
         dutyfreeChannel: isDutyFree && useSuggest ? channel : null,
@@ -244,7 +264,45 @@ export default function PriceRegisterPage() {
           )}
         </Section>
 
-        {/* 2. 매장 */}
+        {/* 2. 병 용량 */}
+        <Section label={t('price.register.volume')}>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+            <div className="flex w-full items-center overflow-hidden rounded-xl border border-neutral-300 bg-white focus-within:ring-2 focus-within:ring-primary-200 sm:w-44">
+              <input
+                value={volumeInput}
+                onChange={(e) => setVolumeInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                inputMode="numeric"
+                pattern="[0-9]*"
+                placeholder={t('price.register.volumePlaceholder')}
+                aria-label={t('price.register.volume')}
+                className="min-w-0 flex-1 px-3 py-2.5 text-sm focus:outline-none"
+              />
+              <span className="pr-3 text-xs font-medium text-neutral-400">ml</span>
+            </div>
+            <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto pb-1 sm:flex-wrap">
+              {COMMON_VOLUMES_ML.map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => setVolumeInput(String(preset))}
+                  className={`shrink-0 rounded-lg border px-2.5 py-2 text-xs font-medium transition-colors ${
+                    volumeMl === preset
+                      ? 'border-primary-700 bg-primary-50 text-primary-700'
+                      : 'border-neutral-200 bg-white text-neutral-500 hover:border-primary-300'
+                  }`}
+                >
+                  {preset.toLocaleString()}ml
+                </button>
+              ))}
+            </div>
+          </div>
+          <p className="mt-1.5 text-xs text-neutral-400">{t('price.register.volumeHint')}</p>
+          {volumeInput && !volumeMl && (
+            <p className="mt-1 text-xs text-red-500">{t('price.register.volumeError')}</p>
+          )}
+        </Section>
+
+        {/* 3. 매장 */}
         <Section label={t('price.register.store')}>
           <div className="flex gap-2 mb-2">
             {(['DOMESTIC', 'OVERSEAS', 'DUTYFREE'] as const).map((tp) => (
@@ -323,7 +381,7 @@ export default function PriceRegisterPage() {
           )}
         </Section>
 
-        {/* 3. 가격 */}
+        {/* 4. 가격 */}
         <Section label={`${t('price.register.priceSection')} (${currency})`}>
           {!isDutyFree ? (
             <div className="space-y-3">
@@ -397,7 +455,7 @@ export default function PriceRegisterPage() {
           )}
         </Section>
 
-        {/* 4. 구매일 */}
+        {/* 5. 구매일 */}
         <Section label={t('price.register.purchasedAt')}>
           <input
             type="date"
@@ -495,6 +553,12 @@ export default function PriceRegisterPage() {
       </div>
     </div>
   )
+}
+
+function parseVolumeMl(value: string): number | null {
+  if (!/^\d+$/.test(value)) return null
+  const parsed = Number(value)
+  return Number.isInteger(parsed) && parsed >= 1 && parsed <= 100000 ? parsed : null
 }
 
 function Section({ label, children }: { label: string; children: React.ReactNode }) {

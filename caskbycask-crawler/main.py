@@ -240,9 +240,9 @@ def run() -> int:
             decision = review_analysis(detail, result, settings.allowed_deal_categories)
             result = decision.result
             log.info(
-                "분석 %s | deal=%s score=%d cat=%s original=%s dealPrice=%s rate=%s | %s",
+                "분석 %s | deal=%s score=%d cat=%s volumeMl=%s original=%s dealPrice=%s rate=%s | %s",
                 post.key, result.is_deal, result.confidence_score,
-                result.drink_category, result.original_price, result.deal_price,
+                result.drink_category, result.volume_ml, result.original_price, result.deal_price,
                 result.discount_rate, result.summary_ko[:60],
             )
 

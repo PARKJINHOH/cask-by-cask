@@ -24,8 +24,8 @@ export function useAdminPriceReport(id: number) {
 export function useApprovePriceReport() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, storeId }: { id: number; storeId?: number | null }) =>
-      adminPriceTrackerApi.approve(id, storeId),
+    mutationFn: ({ id, storeId, volumeMl }: { id: number; storeId?: number | null; volumeMl?: number | null }) =>
+      adminPriceTrackerApi.approve(id, storeId, volumeMl),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'priceReports'] }),
   })
 }

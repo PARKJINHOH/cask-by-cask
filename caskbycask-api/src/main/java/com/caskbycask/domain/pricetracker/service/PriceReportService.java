@@ -94,7 +94,7 @@ public class PriceReportService {
 
         boolean autoFlagged = checkAutoFlag(spirit.getId(),
                 store != null ? store.getId() : null,
-                request.currency(), actualPrice);
+                request.volumeMl(), request.currency(), actualPrice);
 
         User reporter = userRepository.getByIdOrThrow(userId);
 
@@ -109,6 +109,7 @@ public class PriceReportService {
                 .salePrice(request.salePrice())
                 .paybackAmount(request.paybackAmount())
                 .actualPrice(actualPrice)
+                .volumeMl(request.volumeMl())
                 .exchangeRateSnapshot(request.exchangeRate())
                 .purchasedAt(request.purchasedAt())
                 .description(request.description())
@@ -162,7 +163,7 @@ public class PriceReportService {
                 request.paybackAmount(), request.regularPrice(), request.discountItems(), store);
 
         boolean autoFlagged = checkAutoFlag(report.getSpirit().getId(),
-                store != null ? store.getId() : null, request.currency(), actualPrice);
+                store != null ? store.getId() : null, request.volumeMl(), request.currency(), actualPrice);
 
         // 기존 이미지 연결 해제
         priceReportImageRepository.findByPriceReportIdOrderBySortOrder(id)
@@ -186,7 +187,7 @@ public class PriceReportService {
 
         report.update(store, request.suggestedStoreName(), request.dutyfreeChannel(), request.currency(),
                 request.regularPrice(), request.salePrice(), request.paybackAmount(),
-                actualPrice, request.exchangeRate(), request.purchasedAt(),
+                actualPrice, request.exchangeRate(), request.volumeMl(), request.purchasedAt(),
                 request.description(), request.isAnonymous(), autoFlagged);
         report.resetToPending();
 
@@ -281,11 +282,13 @@ public class PriceReportService {
         return sale.subtract(payback);
     }
 
-    private boolean checkAutoFlag(Long spiritId, Long storeId, PriceCurrency currency, BigDecimal actualPrice) {
-        if (actualPrice == null || storeId == null || currency != PriceCurrency.KRW) return false;
+    private boolean checkAutoFlag(Long spiritId, Long storeId, Integer volumeMl,
+                                  PriceCurrency currency, BigDecimal actualPrice) {
+        if (actualPrice == null || storeId == null || volumeMl == null
+                || currency != PriceCurrency.KRW) return false;
 
         List<BigDecimal> recentPrices = priceReportRepository.findRecentApprovedActualPrices(
-                spiritId, storeId, PriceReportStatus.APPROVED, PriceCurrency.KRW,
+                spiritId, storeId, volumeMl, PriceReportStatus.APPROVED, PriceCurrency.KRW,
                 PageRequest.of(0, 20));
 
         if (recentPrices.isEmpty()) return false;

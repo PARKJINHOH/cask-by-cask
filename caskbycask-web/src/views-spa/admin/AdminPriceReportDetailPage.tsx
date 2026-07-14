@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import Spinner from '@/shared/components/Spinner'
@@ -56,6 +56,11 @@ export default function AdminPriceReportDetailPage() {
   const [mapOpen, setMapOpen] = useState(false)
   const [rejecting, setRejecting] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
+  const [volumeInput, setVolumeInput] = useState('')
+
+  useEffect(() => {
+    if (report) setVolumeInput(report.volumeMl == null ? '' : String(report.volumeMl))
+  }, [report])
 
   const { data: storeResults } = useQuery({
     queryKey: ['admin-store-map', storeSearchKeyword],
@@ -68,8 +73,17 @@ export default function AdminPriceReportDetailPage() {
   const goList = () => navigate(listReturnTo)
   const handleApprove = () => {
     if (!report) return
+    const volumeMl = parseOptionalVolumeMl(volumeInput)
+    if (report.volumeMl != null && !volumeInput) {
+      window.alert('기존에 확인된 용량은 비울 수 없습니다. 올바른 용량으로 수정해주세요.')
+      return
+    }
+    if (volumeInput && volumeMl == null) {
+      window.alert('용량은 1~100,000ml 사이의 정수로 입력해주세요.')
+      return
+    }
     approve.mutate(
-      { id: report.id, storeId: mappedStore?.id ?? report.storeId ?? null },
+      { id: report.id, storeId: mappedStore?.id ?? report.storeId ?? null, volumeMl },
       { onSuccess: goList },
     )
   }
@@ -121,19 +135,20 @@ export default function AdminPriceReportDetailPage() {
         </div>
       </div>
 
-      <div className="bg-neutral-50 rounded-xl p-4 grid grid-cols-2 lg:grid-cols-5 gap-4 text-sm">
+      <div className="bg-neutral-50 rounded-xl p-4 grid grid-cols-2 lg:grid-cols-6 gap-4 text-sm">
         <Meta label="등록 번호" value={`#${report.id}`} />
         <Meta label="등록 일시" value={formatDateTime(report.createdAt)} />
         <Meta label="구매일" value={report.purchasedAt ?? '-'} />
         <Meta label="작성자" value={report.isAnonymous ? '익명' : report.reporterNickname ?? '-'} />
         <Meta label="통화" value={report.currency} />
+        <Meta label="병 용량" value={report.volumeMl == null ? '미확인' : `${report.volumeMl.toLocaleString()}ml`} />
       </div>
 
       {report.autoFlagged && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
           <p className="text-xs font-semibold text-amber-700 mb-1">자동 플래그 사유</p>
           <p className="text-sm text-neutral-700">
-            같은 주류·매장의 최근 승인된 원화 실구매가 중앙값보다 30% 이상 높거나 낮아 자동 표시된 항목입니다.
+            같은 주류·용량·매장의 최근 승인된 원화 실구매가 중앙값보다 30% 이상 높거나 낮아 자동 표시된 항목입니다.
           </p>
         </div>
       )}
@@ -212,6 +227,25 @@ export default function AdminPriceReportDetailPage() {
           )}
         </div>
       </div>
+
+      {report.status === 'PENDING' && (
+        <div className="bg-white rounded-xl shadow-sm p-5">
+          <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-1">병 용량 확인</p>
+          <p className="text-sm text-neutral-500 mb-3">
+            사용자가 입력한 병 1개의 용량입니다. 사진이나 설명과 다르면 승인 전에 수정할 수 있습니다.
+          </p>
+          <div className="flex max-w-xs items-center overflow-hidden rounded-lg border border-neutral-300 focus-within:ring-2 focus-within:ring-primary-200">
+            <input
+              value={volumeInput}
+              onChange={(e) => setVolumeInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              inputMode="numeric"
+              placeholder="미확인"
+              className="min-w-0 flex-1 px-3 py-2 text-sm focus:outline-none"
+            />
+            <span className="pr-3 text-xs text-neutral-400">ml</span>
+          </div>
+        </div>
+      )}
 
       {report.status === 'PENDING' && (
         <div className="bg-white rounded-xl shadow-sm p-5">
@@ -382,4 +416,10 @@ function extractErrorMessage(error: unknown): string | null {
   const data = response.data
   if (!data || typeof data !== 'object' || !('message' in data) || typeof data.message !== 'string') return null
   return data.message
+}
+
+function parseOptionalVolumeMl(value: string): number | null {
+  if (!value) return null
+  const parsed = Number(value)
+  return Number.isInteger(parsed) && parsed >= 1 && parsed <= 100000 ? parsed : null
 }

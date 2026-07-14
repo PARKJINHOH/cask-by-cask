@@ -57,7 +57,7 @@ class AdminPriceReportServiceTest {
         given(priceReportRepository.save(report)).willReturn(report);
 
         AdminPriceReportResponse response = service.approvePriceReport(
-                1L, 9L, new ApprovePriceReportRequest(null));
+                1L, 9L, new ApprovePriceReportRequest(null, 700));
 
         assertThat(response.status()).isEqualTo(PriceReportStatus.APPROVED);
         assertThat(response.storeId()).isNull();
@@ -82,7 +82,7 @@ class AdminPriceReportServiceTest {
         given(priceReportRepository.save(report)).willReturn(report);
 
         AdminPriceReportResponse response = service.approvePriceReport(
-                1L, 9L, new ApprovePriceReportRequest(null));
+                1L, 9L, new ApprovePriceReportRequest(null, 700));
 
         assertThat(store.getIsApproved()).isTrue();
         assertThat(store.getApprovedBy()).isSameAs(admin);
@@ -99,6 +99,7 @@ class AdminPriceReportServiceTest {
                 .currency(PriceCurrency.KRW)
                 .salePrice(BigDecimal.valueOf(100_000))
                 .actualPrice(BigDecimal.valueOf(100_000))
+                .volumeMl(700)
                 .suggestedStoreName(store == null ? "사용자 제안 매장" : null)
                 .isAnonymous(true)
                 .autoFlagged(false)

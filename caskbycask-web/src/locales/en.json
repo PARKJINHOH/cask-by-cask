@@ -1509,6 +1509,12 @@
     "tracker": "Price Tracker",
     "trackerDesc": "Compare actual purchase prices for whisky, wine & cognac",
     "registerBtn": "Register Price",
+    "volume": {
+      "filterLabel": "Bottle Size",
+      "filterHint": "Only prices for the selected bottle size are shown. Different sizes are never merged into one trend.",
+      "unknown": "Unknown Size",
+      "legacyAll": "All Sizes (Legacy Alert)"
+    },
     "chart": {
       "domestic": "Domestic",
       "overseas": "Overseas",
@@ -1573,6 +1579,7 @@
       "success": "Price alert set successfully",
       "dutyfreeNote": "Duty-free prices are excluded from KRW alerts (approximate exchange rate)",
       "loginRequired": "Log in to set a target-price alert",
+      "volumeRequired": "Select a confirmed bottle size to set a target-price alert",
       "inlineLabel": "Target Alert",
       "inputPlaceholder": "Enter price",
       "activeNotice": "Alerting below {{price}} KRW",
@@ -1586,6 +1593,10 @@
       "title": "Register Price",
       "spirit": "Spirit",
       "spiritPlaceholder": "Search spirit name",
+      "volume": "Bottle Size",
+      "volumePlaceholder": "e.g. 700",
+      "volumeHint": "Enter the labeled size of one bottle in ml. The price must also be for one bottle. Example: 70cl → 700ml",
+      "volumeError": "Enter a whole number between 1 and 100,000ml.",
       "store": "Store",
       "storePlaceholder": "Search store name",
       "brandPlaceholder": "Enter brand / store name",

@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { priceTrackerApi } from '../api/priceTrackerApi'
-import type { BucketType, PriceReportStatus, StoreType } from '../types/pricetracker.types'
+import type { BucketType, PriceReportStatus, StoreType, VolumeSelection } from '../types/pricetracker.types'
 
 export function usePriceChart(
   spiritId: number,
@@ -9,12 +9,14 @@ export function usePriceChart(
   period: string,
   region?: string,
   spiritIds?: number[],
+  volume?: VolumeSelection | null,
+  enabled = true,
 ) {
   return useQuery({
-    queryKey: ['priceChart', spiritId, storeType, period, region, spiritIds],
-    queryFn: () => priceTrackerApi.getChart(spiritId, storeType, period, region, spiritIds),
+    queryKey: ['priceChart', spiritId, storeType, period, region, spiritIds, volume],
+    queryFn: () => priceTrackerApi.getChart(spiritId, storeType, period, region, spiritIds, volume),
     select: (res) => res.data.data,
-    enabled: !!spiritId,
+    enabled: !!spiritId && enabled,
     staleTime: 5 * 60 * 1000,
   })
 }
@@ -25,10 +27,11 @@ export function usePriceChartDetail(
   storeType: StoreType,
   bucketType?: BucketType,
   spiritIds?: number[],
+  volume?: VolumeSelection | null,
 ) {
   return useQuery({
-    queryKey: ['priceChartDetail', spiritId, pointDate, storeType, bucketType, spiritIds],
-    queryFn: () => priceTrackerApi.getChartDetails(spiritId, pointDate!, storeType, bucketType, spiritIds),
+    queryKey: ['priceChartDetail', spiritId, pointDate, storeType, bucketType, spiritIds, volume],
+    queryFn: () => priceTrackerApi.getChartDetails(spiritId, pointDate!, storeType, bucketType, spiritIds, volume),
     select: (res) => res.data.data,
     enabled: !!spiritId && !!pointDate,
     staleTime: 5 * 60 * 1000,
@@ -46,11 +49,21 @@ export function useMyPriceAlerts() {
   })
 }
 
+export function usePriceVolumeOptions(spiritId: number, storeType: StoreType, spiritIds?: number[]) {
+  return useQuery({
+    queryKey: ['priceVolumeOptions', spiritId, storeType, spiritIds],
+    queryFn: () => priceTrackerApi.getVolumeOptions(spiritId, storeType, spiritIds),
+    select: (res) => res.data.data ?? [],
+    enabled: !!spiritId,
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
 export function useUpsertPriceAlert() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ spiritId, targetPrice }: { spiritId: number; targetPrice: number }) =>
-      priceTrackerApi.upsertAlert(spiritId, targetPrice),
+    mutationFn: ({ spiritId, volumeMl, targetPrice }: { spiritId: number; volumeMl: number; targetPrice: number }) =>
+      priceTrackerApi.upsertAlert(spiritId, volumeMl, targetPrice),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['priceAlerts'] }),
   })
 }

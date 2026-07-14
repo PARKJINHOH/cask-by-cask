@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -36,17 +37,21 @@ public class PriceAlertService {
                 .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_NOT_FOUND));
         User user = userRepository.getByIdOrThrow(userId);
 
-        // 술 1개당 1개 — 있으면 목표가 갱신 + 활성화
+        // 같은 술·용량당 1개. 기존 volume=null 알림은 사용자가 다시 저장할 때 현재 용량으로 전환한다.
         PriceAlert alert = priceAlertRepository
-                .findByUserIdAndSpiritId(userId, request.spiritId())
+                .findByUserIdAndSpiritIdAndVolumeMl(userId, request.spiritId(), request.volumeMl())
+                .or(() -> priceAlertRepository
+                        .findByUserIdAndSpiritIdAndVolumeMlIsNull(userId, request.spiritId()))
                 .map(existing -> {
                     existing.updateTarget(request.targetPrice());
+                    existing.updateVolume(request.volumeMl());
                     existing.reactivate();
                     return existing;
                 })
                 .orElseGet(() -> PriceAlert.builder()
                         .user(user)
                         .spirit(spirit)
+                        .volumeMl(request.volumeMl())
                         .targetPriceKrw(request.targetPrice())
                         .build());
 
@@ -76,10 +81,18 @@ public class PriceAlertService {
      * 가격 승인 시 호출 — 면세 가격 제외, 24시간 내 중복 발동 방지
      */
     @Transactional
-    public void checkAndNotifyAlerts(Long spiritId, BigDecimal finalPriceKrw, Long priceReportId) {
+    public void checkAndNotifyAlerts(Long spiritId, Integer volumeMl,
+                                     BigDecimal finalPriceKrw, Long priceReportId) {
         if (finalPriceKrw == null) return;
 
-        List<PriceAlert> alerts = priceAlertRepository.findBySpiritIdAndIsActiveTrue(spiritId);
+        List<PriceAlert> alerts = new ArrayList<>();
+        if (volumeMl != null) {
+            alerts.addAll(priceAlertRepository
+                    .findBySpiritIdAndVolumeMlAndIsActiveTrue(spiritId, volumeMl));
+        }
+        // 마이그레이션 전 생성된 알림은 기존 의미(해당 주류 전체 용량)를 유지한다.
+        alerts.addAll(priceAlertRepository
+                .findBySpiritIdAndVolumeMlIsNullAndIsActiveTrue(spiritId));
 
         for (PriceAlert alert : alerts) {
             if (alert.getTargetPriceKrw() == null) continue;
@@ -87,8 +100,10 @@ public class PriceAlertService {
             if (alert.getTargetPriceKrw().compareTo(finalPriceKrw) < 0) continue; // 목표가 미달
 
             String spiritName = alert.getSpirit().getNameKo();
-            String message = String.format("[%s] 목표 가격(%s원)에 도달했습니다! 현재 최저가: %s원",
+            String volumeLabel = volumeMl != null ? " " + volumeMl + "ml" : "";
+            String message = String.format("[%s%s] 목표 가격(%s원)에 도달했습니다! 현재 최저가: %s원",
                     spiritName,
+                    volumeLabel,
                     alert.getTargetPriceKrw().toPlainString(),
                     finalPriceKrw.toPlainString());
 
@@ -103,8 +118,9 @@ public class PriceAlertService {
             alert.markNotified();
             priceAlertRepository.save(alert);
 
-            log.info("Price alert notified: userId={}, spiritId={}, target={}, actual={}",
+            log.info("Price alert notified: userId={}, spiritId={}, volumeMl={}, target={}, actual={}",
                     alert.getUser().getId(), spiritId,
+                    volumeMl,
                     alert.getTargetPriceKrw(), finalPriceKrw);
         }
     }

@@ -66,6 +66,9 @@ export default function PriceReportCard({ detail, isBest }: Props) {
                   ✓ {t('price.panel.verified')}
                 </span>
               )}
+              <span className="inline-flex items-center px-1.5 py-0.5 bg-neutral-100 text-neutral-600 rounded text-[10px] font-semibold">
+                {detail.volumeMl == null ? t('price.volume.unknown') : `${detail.volumeMl.toLocaleString()}ml`}
+              </span>
             </div>
             <div className="flex items-center gap-2 mt-0.5 text-xs text-neutral-400">
               <span>{reporterLabel}</span>

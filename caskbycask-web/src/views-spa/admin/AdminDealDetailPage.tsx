@@ -14,7 +14,7 @@ import {
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
 
 const EMPTY_FORM = {
-  drinkName: '', drinkCategory: '', originalPrice: '0', dealPrice: '0',
+  drinkName: '', drinkCategory: '', volumeMl: '', originalPrice: '0', dealPrice: '0',
   seller: '', dealCondition: '', summaryKo: '', currency: 'KRW',
 }
 
@@ -72,6 +72,7 @@ export default function AdminDealDetailPage() {
     setForm({
       drinkName: detail.drinkName ?? '',
       drinkCategory: detail.drinkCategory ?? '',
+      volumeMl: detail.volumeMl == null ? '' : String(detail.volumeMl),
       originalPrice: formatPriceInput(detail.originalPrice),
       dealPrice: formatPriceInput(detail.dealPrice),
       seller: detail.seller ?? '',
@@ -127,12 +128,14 @@ export default function AdminDealDetailPage() {
 
   const originalPriceValue = parsePriceInput(form.originalPrice)
   const dealPriceValue = parsePriceInput(form.dealPrice)
+  const volumeMlValue = parseOptionalVolumeMl(form.volumeMl)
   const discountRate = calculateDiscountRate(originalPriceValue, dealPriceValue)
 
   const buildPayload = (): UpdateDealRequest => {
     return {
       drinkName: form.drinkName.trim() || null,
       drinkCategory: form.drinkCategory || null,
+      volumeMl: volumeMlValue,
       originalPrice: originalPriceValue,
       dealPrice: dealPriceValue,
       discountRate,
@@ -235,6 +238,10 @@ export default function AdminDealDetailPage() {
     }
     if (!Number.isFinite(dp) || dp <= 0) {
       window.alert('할인가는 0보다 큰 금액을 입력해주세요.')
+      return false
+    }
+    if (form.volumeMl !== '' && volumeMlValue == null) {
+      window.alert('용량은 1~100,000ml 사이의 정수로 입력해주세요.')
       return false
     }
     return true
@@ -342,6 +349,21 @@ export default function AdminDealDetailPage() {
               <option value="">미지정</option>
               {DEAL_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
+          </Field>
+          <Field label="병 용량 (ml)">
+            <div>
+              <input
+                type="text"
+                inputMode="numeric"
+                className={inputCls}
+                value={form.volumeMl}
+                onChange={(e) => setForm({ ...form, volumeMl: e.target.value.replace(/\D/g, '').slice(0, 6) })}
+                placeholder="원문에서 확인되지 않으면 비워두기"
+              />
+              <p className="mt-1 text-[11px] text-neutral-400">
+                병 1개 기준입니다. 70cl은 700ml로 입력하며, 묶음 총액은 병당 가격으로 보정하지 않으면 승인하지 않습니다.
+              </p>
+            </div>
           </Field>
           <Field label="정상가" required>
             <input
@@ -581,6 +603,12 @@ function calculateDiscountRate(originalPrice: number, dealPrice: number): number
 
 function formatSpiritSearchName(name: string, seriesIdentifier?: string | null): string {
   return seriesIdentifier ? `${name} (${seriesIdentifier})` : name
+}
+
+function parseOptionalVolumeMl(value: string): number | null {
+  if (!value) return null
+  const parsed = Number(value)
+  return Number.isInteger(parsed) && parsed >= 1 && parsed <= 100000 ? parsed : null
 }
 
 function toConnectionOption(spirit: SpiritDetail | SpiritVariant): SpiritConnectionOption {

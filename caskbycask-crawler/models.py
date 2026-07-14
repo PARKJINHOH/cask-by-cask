@@ -8,6 +8,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional
 
+from filters.volume_normalizer import normalize_volume_ml
+
 
 @dataclass
 class RawPost:
@@ -44,6 +46,7 @@ class AnalysisResult:
     is_deal: bool
     drink_name: Optional[str]
     drink_category: str               # WHISKY|COGNAC|WINE|TEQUILA|RUM|BEER|SOJU|OTHER
+    volume_ml: Optional[int]           # 병 1개 용량(ml), 불명확하면 None
     original_price: Optional[int]
     deal_price: Optional[int]
     discount_rate: Optional[float]    # 0.0 ~ 1.0
@@ -91,6 +94,7 @@ class AnalysisResult:
             is_deal=bool(data.get("is_deal", False)),
             drink_name=(data.get("drink_name") or None),
             drink_category=category,
+            volume_ml=normalize_volume_ml(data.get("volume_ml")),
             original_price=_int(data.get("original_price")),
             deal_price=_int(data.get("deal_price")),
             discount_rate=_float(data.get("discount_rate")),

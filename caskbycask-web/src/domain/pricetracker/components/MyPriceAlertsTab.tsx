@@ -33,6 +33,10 @@ export default function MyPriceAlertsTab() {
               {isEn ? a.spiritNameEn || a.spiritNameKo : a.spiritNameKo}
             </Link>
             <p className="text-xs text-neutral-500 mt-0.5">
+              <span className="font-medium">
+                {a.volumeMl == null ? t('price.volume.legacyAll') : `${a.volumeMl.toLocaleString()}ml`}
+                {' · '}
+              </span>
               {t('price.alert.activeNotice', { price: krw.format(a.targetPriceKrw) })}
               {a.lastNotifiedAt && <span className="ml-2 text-amber-600">🎯 {t('price.alert.triggered')}</span>}
             </p>

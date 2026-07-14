@@ -93,7 +93,7 @@ public class DealAdminService {
         Integer dealPrice = DealPriceNormalizer.normalizePrice(req.dealPrice());
 
         deal.applyAdminEdit(
-                req.drinkName(), req.drinkCategory(), originalPrice, dealPrice,
+                req.drinkName(), req.drinkCategory(), originalPrice, dealPrice, req.volumeMl(),
                 DealPriceNormalizer.calculateDiscountRate(originalPrice, dealPrice),
                 DealPriceNormalizer.normalizeCurrency(req.currency()), req.seller(),
                 req.dealCondition(), req.expiryInfo(), req.summaryKo()

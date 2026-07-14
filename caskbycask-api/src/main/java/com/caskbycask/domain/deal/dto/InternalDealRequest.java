@@ -29,6 +29,7 @@ public record InternalDealRequest(
 
         @Size(max = 200) String drinkName,
         @Size(max = 50) String drinkCategory,
+        @Min(1) @Max(100000) Integer volumeMl,
         Integer originalPrice,
         Integer dealPrice,
         BigDecimal discountRate,

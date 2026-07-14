@@ -8,9 +8,13 @@ import java.util.Optional;
 
 public interface PriceAlertRepository extends JpaRepository<PriceAlert, Long> {
 
-    Optional<PriceAlert> findByUserIdAndSpiritId(Long userId, Long spiritId);
+    Optional<PriceAlert> findByUserIdAndSpiritIdAndVolumeMl(Long userId, Long spiritId, Integer volumeMl);
+
+    Optional<PriceAlert> findByUserIdAndSpiritIdAndVolumeMlIsNull(Long userId, Long spiritId);
 
     List<PriceAlert> findByUserId(Long userId);
 
-    List<PriceAlert> findBySpiritIdAndIsActiveTrue(Long spiritId);
+    List<PriceAlert> findBySpiritIdAndVolumeMlAndIsActiveTrue(Long spiritId, Integer volumeMl);
+
+    List<PriceAlert> findBySpiritIdAndVolumeMlIsNullAndIsActiveTrue(Long spiritId);
 }

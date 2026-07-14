@@ -75,6 +75,7 @@ export default function MyPriceReportsTab() {
                   </div>
                   <p className="text-xs text-neutral-400 mt-0.5 truncate">
                     {r.storeName || r.suggestedStoreName || t('price.panel.unknownStore')}
+                    {` · ${r.volumeMl == null ? t('price.volume.unknown') : `${r.volumeMl.toLocaleString()}ml`}`}
                     {r.purchasedAt && ` · ${r.purchasedAt}`}
                   </p>
                 </div>

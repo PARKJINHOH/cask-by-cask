@@ -24,12 +24,18 @@ SYSTEM_PROMPT = (
     "- 구매가만 있고 정상가가 없으면 is_deal=false로 판단한다.\n"
     "- discount_rate는 (original_price - deal_price) / original_price 로 계산한다.\n"
     "- 복합 할인이라 최종 단품 가격을 확정할 수 없으면 is_deal=false로 판단한다."
+    "\n용량 규칙:\n"
+    "- volume_ml은 병 1개의 표기 용량을 ml 정수로 넣는다(700ml=700, 70cl=700, 0.7L=700).\n"
+    "- 묶음 가격만 제시된 700ml x 2 같은 상품은 병당 가격을 확정할 수 없으므로 is_deal=false로 판단한다.\n"
+    "- 원문에 병당 가격이 별도로 명시된 경우에만 병 1개의 용량인 700을 넣는다.\n"
+    "- 서로 다른 용량 옵션이 함께 있거나 용량을 확인할 수 없으면 추측하지 말고 null로 넣는다."
 )
 
 _SCHEMA = """{
   "is_deal": bool,
   "drink_name": "주류명(모르면 null)",
   "drink_category": "WHISKY|COGNAC|WINE|TEQUILA|RUM|BEER|SOJU|OTHER",
+  "volume_ml": 병 1개의 용량을 ml 정수로 표기, 불명확하면 null,
   "original_price": 정수 또는 null,
   "deal_price": 정수 또는 null,
   "discount_rate": 0.0~1.0 또는 null,

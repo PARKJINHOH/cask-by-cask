@@ -6,8 +6,8 @@ import { formatOptionalPriceInput, formatPriceInput, parsePriceInput } from '@/s
 
 const krw = new Intl.NumberFormat('ko-KR')
 
-/** 술 1개당 1개의 목표가 알림을 설정하는 한 줄 인라인 폼 */
-export default function PriceAlertInline({ spiritId }: { spiritId: number }) {
+/** 같은 술·용량당 1개의 목표가 알림을 설정하는 한 줄 인라인 폼 */
+export default function PriceAlertInline({ spiritId, volumeMl }: { spiritId: number; volumeMl: number | null }) {
   const { t } = useTranslation()
   const { isLoggedIn, isAuthReady } = useAuthStore()
   const { data: myAlerts } = useMyPriceAlerts()
@@ -17,7 +17,9 @@ export default function PriceAlertInline({ spiritId }: { spiritId: number }) {
   const [editing, setEditing] = useState(false)
   const [value, setValue] = useState('')
 
-  const existing = myAlerts?.find((a) => a.spiritId === spiritId && a.isActive)
+  const existing = myAlerts?.find((a) =>
+    a.spiritId === spiritId && a.isActive && (a.volumeMl === volumeMl || a.volumeMl == null),
+  )
 
   if (!isAuthReady) return null
 
@@ -30,10 +32,19 @@ export default function PriceAlertInline({ spiritId }: { spiritId: number }) {
     )
   }
 
+  if (!volumeMl) {
+    return (
+      <div className="flex items-center gap-2 text-xs text-neutral-400 px-1 py-2">
+        <span>🔔</span>
+        <span>{t('price.alert.volumeRequired')}</span>
+      </div>
+    )
+  }
+
   const submit = () => {
     const price = parsePriceInput(value)
     if (!price || price <= 0) return
-    upsert.mutate({ spiritId, targetPrice: price }, { onSuccess: () => { setEditing(false); setValue('') } })
+    upsert.mutate({ spiritId, volumeMl, targetPrice: price }, { onSuccess: () => { setEditing(false); setValue('') } })
   }
 
   // 설정됨 (편집 모드 아님)
@@ -42,6 +53,7 @@ export default function PriceAlertInline({ spiritId }: { spiritId: number }) {
       <div className="flex flex-wrap items-center gap-2 rounded-lg bg-primary-50/70 border border-primary-100 px-3 py-2 text-sm">
         <span className="text-primary-700">🔔</span>
         <span className="text-neutral-700">
+          <span className="font-semibold">{volumeMl.toLocaleString()}ml · </span>
           {t('price.alert.activeNotice', { price: krw.format(existing.targetPriceKrw) })}
         </span>
         <div className="ml-auto flex items-center gap-2">
@@ -65,7 +77,9 @@ export default function PriceAlertInline({ spiritId }: { spiritId: number }) {
   // 미설정 또는 편집 모드 → 한 줄 입력 폼
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-lg bg-neutral-50 border border-neutral-200 px-3 py-2">
-      <span className="text-sm text-neutral-600 whitespace-nowrap">🔔 {t('price.alert.inlineLabel')}</span>
+      <span className="text-sm text-neutral-600 whitespace-nowrap">
+        🔔 {t('price.alert.inlineLabel')} · {volumeMl.toLocaleString()}ml
+      </span>
       <div className="flex items-center border border-neutral-300 rounded-lg overflow-hidden bg-white focus-within:ring-2 focus-within:ring-primary-200">
         <input
           value={value}

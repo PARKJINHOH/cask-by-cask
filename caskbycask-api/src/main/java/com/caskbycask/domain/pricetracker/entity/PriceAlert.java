@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "price_alerts", uniqueConstraints = {
-        @UniqueConstraint(name = "uq_price_alert_user_spirit", columnNames = {"user_id", "spirit_id"})
+        @UniqueConstraint(name = "uq_price_alert_user_spirit_volume", columnNames = {"user_id", "spirit_id", "volume_ml"})
 })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -40,6 +40,10 @@ public class PriceAlert extends BaseTimeEntity {
     @Comment("목표 가격(원)")
     private BigDecimal targetPriceKrw; // 면세 가격 제외 KRW 목표가
 
+    @Column
+    @Comment("알림 대상 병 1개 용량(ml), null은 기존 전체 용량 알림")
+    private Integer volumeMl;
+
     @Builder.Default
     @Column(nullable = false)
     @Comment("알림 활성 여부")
@@ -51,6 +55,10 @@ public class PriceAlert extends BaseTimeEntity {
 
     public void updateTarget(BigDecimal targetPriceKrw) {
         this.targetPriceKrw = targetPriceKrw;
+    }
+
+    public void updateVolume(Integer volumeMl) {
+        this.volumeMl = volumeMl;
     }
 
     public void deactivate() {

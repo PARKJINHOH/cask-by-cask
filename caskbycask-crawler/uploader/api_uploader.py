@@ -34,6 +34,7 @@ def build_payload(detail: PostDetail, analysis: AnalysisResult) -> dict:
         "sourceSite": raw.site.upper(),          # DCINSIDE | NAVER_CAFE
         "drinkName": analysis.drink_name,
         "drinkCategory": analysis.drink_category,
+        "volumeMl": analysis.volume_ml,
         "originalPrice": analysis.original_price,
         "dealPrice": analysis.deal_price,
         "discountRate": analysis.discount_rate,

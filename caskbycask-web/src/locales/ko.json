@@ -1509,6 +1509,12 @@
     "tracker": "가격 트래커",
     "trackerDesc": "위스키·와인·꼬냑 실구매가를 비교하세요",
     "registerBtn": "가격 등록",
+    "volume": {
+      "filterLabel": "병 용량",
+      "filterHint": "선택한 용량의 가격만 표시합니다. 서로 다른 용량은 한 추세로 합치지 않습니다.",
+      "unknown": "용량 미확인",
+      "legacyAll": "전체 용량(기존 알림)"
+    },
     "chart": {
       "domestic": "국내",
       "overseas": "해외",
@@ -1573,6 +1579,7 @@
       "success": "가격 알림이 설정되었습니다",
       "dutyfreeNote": "면세 가격은 환율 근사치로 인해 KRW 알림 비교에서 제외됩니다",
       "loginRequired": "로그인 후 목표가 알림을 설정할 수 있습니다",
+      "volumeRequired": "확인된 병 용량을 선택하면 목표가 알림을 설정할 수 있습니다",
       "inlineLabel": "목표가 알림",
       "inputPlaceholder": "가격 입력",
       "activeNotice": "현재 {{price}}원 이하 알림 중",
@@ -1586,6 +1593,10 @@
       "title": "가격 등록",
       "spirit": "대상 술",
       "spiritPlaceholder": "술 이름을 검색하세요",
+      "volume": "병 용량",
+      "volumePlaceholder": "예: 700",
+      "volumeHint": "병 1개의 표기 용량을 ml 단위로 입력해주세요. 가격도 병 1개 기준이어야 합니다. 예: 70cl → 700ml",
+      "volumeError": "용량은 1~100,000ml 사이의 정수로 입력해주세요.",
       "store": "매장",
       "storePlaceholder": "매장 이름을 검색하세요",
       "brandPlaceholder": "브랜드/매장명을 입력하세요",

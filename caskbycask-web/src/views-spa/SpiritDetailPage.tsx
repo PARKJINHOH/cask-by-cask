@@ -24,7 +24,9 @@ import PriceRangeChart from '@/domain/pricetracker/components/PriceRangeChart'
 import StoreDetailPanel from '@/domain/pricetracker/components/StoreDetailPanel'
 import PriceAlertInline from '@/domain/pricetracker/components/PriceAlertInline'
 import PriceAlertBanner from '@/domain/pricetracker/components/PriceAlertBanner'
-import { usePriceChart, usePriceChartDetail } from '@/domain/pricetracker/hooks/usePriceChart'
+import PriceVolumeFilter from '@/domain/pricetracker/components/PriceVolumeFilter'
+import { usePriceChart, usePriceChartDetail, usePriceVolumeOptions } from '@/domain/pricetracker/hooks/usePriceChart'
+import { usePriceVolumeSelection } from '@/domain/pricetracker/hooks/usePriceVolumeSelection'
 import { useState as useStateForPrice } from 'react'
 import type { StoreType } from '@/domain/pricetracker/types/pricetracker.types'
 import { CATEGORY_TO_PRODUCER_TYPE, PRODUCER_TYPE_LABEL } from '@/domain/producer/types/producer.types'
@@ -747,10 +749,30 @@ function PriceTabContent({
     : [selectedVariantId ?? spiritId]
   const primaryChartSpiritId = chartSpiritIds[0] ?? spiritId
   const actionSpiritId = selectedVariantId ?? spiritId
+  const preferredVolumeMl = variants.find((variant) => variant.id === actionSpiritId)?.volumeMl ?? null
+  const { data: volumeOptions, isLoading: volumeOptionsLoading } = usePriceVolumeOptions(
+    primaryChartSpiritId,
+    storeType,
+    isIntegratedVariantChart ? chartSpiritIds : undefined,
+  )
+  const selectableVolumeOptions = useMemo(() => {
+    if (!volumeOptions) return undefined
+    if (preferredVolumeMl == null || volumeOptions.some((option) => option.volumeMl === preferredVolumeMl)) {
+      return volumeOptions
+    }
+    return [{ volumeMl: preferredVolumeMl, count: 0 }, ...volumeOptions]
+  }, [volumeOptions, preferredVolumeMl])
+  const [selectedVolume, setSelectedVolume] = usePriceVolumeSelection(selectableVolumeOptions, preferredVolumeMl)
+  const volumeReady = selectableVolumeOptions !== undefined
+    && (selectableVolumeOptions.length === 0 || selectedVolume !== null)
+  const selectedKnownVolume = typeof selectedVolume === 'number' ? selectedVolume : null
+  const registerHref = `/price-tracker/register?spiritId=${actionSpiritId}${
+    selectedKnownVolume ? `&volumeMl=${selectedKnownVolume}` : ''
+  }`
 
   useEffect(() => {
     setSelectedDate(null)
-  }, [storeType, period, selectedVariantId])
+  }, [storeType, period, selectedVariantId, selectedVolume])
 
   const { data: chartData, isLoading: chartLoading } = usePriceChart(
     primaryChartSpiritId,
@@ -758,6 +780,8 @@ function PriceTabContent({
     period,
     undefined,
     isIntegratedVariantChart ? chartSpiritIds : undefined,
+    selectedVolume,
+    volumeReady,
   )
   const { data: rawDetails, isLoading: detailLoading } = usePriceChartDetail(
     primaryChartSpiritId,
@@ -765,6 +789,7 @@ function PriceTabContent({
     storeType,
     chartData?.bucketType,
     isIntegratedVariantChart ? chartSpiritIds : undefined,
+    selectedVolume,
   )
   const details = rawDetails?.map((detail) => ({
     ...detail,
@@ -774,13 +799,19 @@ function PriceTabContent({
   return (
     <div className="space-y-4">
       {/* PRICE_ALERT 발동 배너 + 목표가 알림 인라인 */}
-      <PriceAlertBanner spiritId={actionSpiritId} />
+      <PriceAlertBanner spiritId={actionSpiritId} volume={selectedVolume} />
+      <PriceVolumeFilter
+        options={selectableVolumeOptions}
+        value={selectedVolume}
+        onChange={setSelectedVolume}
+        isLoading={volumeOptionsLoading}
+      />
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex-1 min-w-[240px]">
-          <PriceAlertInline spiritId={actionSpiritId} />
+          <PriceAlertInline spiritId={actionSpiritId} volumeMl={selectedKnownVolume} />
         </div>
         <Link
-          to={`/price-tracker/register?spiritId=${actionSpiritId}`}
+          to={registerHref}
           className="shrink-0 px-3 py-1.5 rounded-lg bg-primary-700 text-white text-xs font-medium hover:bg-primary-800 transition-colors"
         >
           + {t('price.registerBtn')}
@@ -790,7 +821,7 @@ function PriceTabContent({
       <div className="flex flex-col lg:flex-row gap-4">
         <div className="flex-1 min-w-0 bg-white rounded-2xl border border-neutral-200 p-4">
           <PriceRangeChart
-            data={chartData ?? undefined} isLoading={chartLoading}
+            data={chartData ?? undefined} isLoading={chartLoading || !volumeReady}
             period={period} onPeriodChange={setPeriod}
             storeType={storeType} onStoreTypeChange={setStoreType}
             onPointClick={(date) => setSelectedDate(date)}

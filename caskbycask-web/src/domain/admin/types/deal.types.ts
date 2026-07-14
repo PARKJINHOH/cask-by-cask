@@ -13,6 +13,7 @@ export interface DealPostSummary {
   sourceSite: string
   drinkName: string | null
   drinkCategory: string | null
+  volumeMl: number | null
   originalPrice: number | null
   dealPrice: number | null
   discountRate: number | null   // 0.0 ~ 1.0
@@ -28,6 +29,7 @@ export interface DealPostDetail {
   sourceSite: string
   drinkName: string | null
   drinkCategory: string | null
+  volumeMl: number | null
   originalPrice: number | null
   dealPrice: number | null
   discountRate: number | null
@@ -58,6 +60,7 @@ export interface DealPostDetail {
 export interface UpdateDealRequest {
   drinkName: string | null
   drinkCategory: string | null
+  volumeMl: number | null
   originalPrice: number | null
   dealPrice: number | null
   discountRate: number | null

@@ -44,7 +44,7 @@ public class AdminPriceReportController {
     @PatchMapping("/{id}/approve")
     public ResponseEntity<ApiResponse<AdminPriceReportResponse>> approvePriceReport(
             @PathVariable Long id,
-            @RequestBody(required = false) ApprovePriceReportRequest request,
+            @Valid @RequestBody(required = false) ApprovePriceReportRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.ok(ApiResponse.success(
                 adminPriceReportService.approvePriceReport(id, userDetails.getUserId(), request)));

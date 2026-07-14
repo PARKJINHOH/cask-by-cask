@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useSpiritDetail } from '@/domain/spirit/hooks/useSpiritDetail'
 import Spinner from '@/shared/components/Spinner'
-import { usePriceChart, usePriceChartDetail } from '@/domain/pricetracker/hooks/usePriceChart'
+import { usePriceChart, usePriceChartDetail, usePriceVolumeOptions } from '@/domain/pricetracker/hooks/usePriceChart'
+import { usePriceVolumeSelection } from '@/domain/pricetracker/hooks/usePriceVolumeSelection'
 import PriceRangeChart from '@/domain/pricetracker/components/PriceRangeChart'
+import PriceVolumeFilter from '@/domain/pricetracker/components/PriceVolumeFilter'
 import StoreDetailPanel from '@/domain/pricetracker/components/StoreDetailPanel'
 import PriceAlertInline from '@/domain/pricetracker/components/PriceAlertInline'
 import PriceAlertBanner from '@/domain/pricetracker/components/PriceAlertBanner'
@@ -25,10 +27,31 @@ export default function SpiritPriceDetailPage() {
   const [panelOpen, setPanelOpen] = useState(false) // mobile
 
   const { data: spirit, isLoading: spiritLoading } = useSpiritDetail(spiritId)
-  const { data: chartData, isLoading: chartLoading } = usePriceChart(spiritId, storeType, period, region || undefined)
-  const { data: pointDetails, isLoading: detailLoading } = usePriceChartDetail(
-    spiritId, selectedDate, storeType, selectedBucketType,
+  const { data: volumeOptions, isLoading: volumeOptionsLoading } = usePriceVolumeOptions(spiritId, storeType)
+  const preferredVolumeMl = spirit?.volumeMl
+    ?? (spirit?.volumeMlMin === spirit?.volumeMlMax ? spirit?.volumeMlMin : null)
+  const selectableVolumeOptions = useMemo(() => {
+    if (!volumeOptions) return undefined
+    if (preferredVolumeMl == null || volumeOptions.some((option) => option.volumeMl === preferredVolumeMl)) {
+      return volumeOptions
+    }
+    return [{ volumeMl: preferredVolumeMl, count: 0 }, ...volumeOptions]
+  }, [volumeOptions, preferredVolumeMl])
+  const [selectedVolume, setSelectedVolume] = usePriceVolumeSelection(selectableVolumeOptions, preferredVolumeMl)
+  const volumeReady = selectableVolumeOptions !== undefined
+    && (selectableVolumeOptions.length === 0 || selectedVolume !== null)
+  const selectedKnownVolume = typeof selectedVolume === 'number' ? selectedVolume : null
+  const { data: chartData, isLoading: chartLoading } = usePriceChart(
+    spiritId, storeType, period, region || undefined, undefined, selectedVolume, volumeReady,
   )
+  const { data: pointDetails, isLoading: detailLoading } = usePriceChartDetail(
+    spiritId, selectedDate, storeType, selectedBucketType, undefined, selectedVolume,
+  )
+
+  useEffect(() => {
+    setSelectedDate(null)
+    setPanelOpen(false)
+  }, [storeType, period, selectedVolume])
 
   const handlePointClick = (date: string, bucketType: BucketType) => {
     setSelectedDate(date)
@@ -44,7 +67,7 @@ export default function SpiritPriceDetailPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
       {/* PRICE_ALERT 발동 배너 */}
-      <PriceAlertBanner spiritId={spiritId} />
+      <PriceAlertBanner spiritId={spiritId} volume={selectedVolume} />
 
       {/* 헤더 */}
       <div className="flex items-start justify-between gap-4 mb-4">
@@ -59,16 +82,25 @@ export default function SpiritPriceDetailPage() {
           {subName && <p className="text-sm text-neutral-400 mt-0.5">{subName}</p>}
         </div>
         <Link
-          to={`/price-tracker/register?spiritId=${spiritId}`}
+          to={`/price-tracker/register?spiritId=${spiritId}${selectedKnownVolume ? `&volumeMl=${selectedKnownVolume}` : ''}`}
           className="shrink-0 px-3 py-1.5 rounded-lg bg-primary-700 text-white text-xs font-medium hover:bg-primary-800 transition-colors"
         >
           + {t('price.registerBtn')}
         </Link>
       </div>
 
+      <div className="mb-4">
+        <PriceVolumeFilter
+          options={selectableVolumeOptions}
+          value={selectedVolume}
+          onChange={setSelectedVolume}
+          isLoading={volumeOptionsLoading}
+        />
+      </div>
+
       {/* 목표가 알림 인라인 */}
       <div className="mb-6">
-        <PriceAlertInline spiritId={spiritId} />
+        <PriceAlertInline spiritId={spiritId} volumeMl={selectedKnownVolume} />
       </div>
 
       {/* PC: 차트(좌) + 패널(우) */}
@@ -77,7 +109,7 @@ export default function SpiritPriceDetailPage() {
         <div className="flex-1 min-w-0 bg-white rounded-2xl border border-neutral-200 p-5">
           <PriceRangeChart
             data={chartData ?? undefined}
-            isLoading={chartLoading}
+            isLoading={chartLoading || !volumeReady}
             period={period}
             onPeriodChange={setPeriod}
             storeType={storeType}

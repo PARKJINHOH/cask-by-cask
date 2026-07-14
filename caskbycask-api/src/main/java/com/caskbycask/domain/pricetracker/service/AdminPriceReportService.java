@@ -102,6 +102,10 @@ public class AdminPriceReportService {
         } else if (report.getStore() != null && Boolean.FALSE.equals(report.getStore().getIsApproved())) {
             report.getStore().approve(admin);
         }
+        // 구버전 관리자 화면이 volumeMl 없이 승인해도 사용자가 입력한 용량을 지우지 않는다.
+        if (request != null && request.volumeMl() != null) {
+            report.updateVolume(request.volumeMl());
+        }
 
         // 인증 사진 있으면 isVerified=true
         boolean hasImages = !priceReportImageRepository
@@ -126,7 +130,7 @@ public class AdminPriceReportService {
                 && saved.getCurrency() == PriceCurrency.KRW;
         if (isDomesticKrw) {
             priceAlertService.checkAndNotifyAlerts(
-                    saved.getSpirit().getId(), saved.getActualPrice(), saved.getId());
+                    saved.getSpirit().getId(), saved.getVolumeMl(), saved.getActualPrice(), saved.getId());
         }
 
         List<PriceReportImage> images = priceReportImageRepository

@@ -21,7 +21,9 @@ import java.time.LocalDateTime;
         name = "deal_posts",
         indexes = {
                 @Index(name = "idx_deal_posts_status", columnList = "status"),
-                @Index(name = "idx_deal_posts_created_at", columnList = "createdAt")
+                @Index(name = "idx_deal_posts_created_at", columnList = "createdAt"),
+                @Index(name = "idx_deal_post_spirit_status_visible_volume",
+                        columnList = "spirit_id,status,is_visible,volume_ml")
         },
         uniqueConstraints = @UniqueConstraint(name = "uk_deal_posts_source_url", columnNames = "source_url")
 )
@@ -63,6 +65,10 @@ public class DealPost extends BaseTimeEntity {
     @Column(name = "deal_price")
     @Comment("할인가")
     private Integer dealPrice;
+
+    @Column(name = "volume_ml")
+    @Comment("핫딜 대상 병 1개 용량(ml)")
+    private Integer volumeMl;
 
     /** 할인율 0.0000 ~ 1.0000. */
     @Column(name = "discount_rate", precision = 5, scale = 4)
@@ -142,12 +148,13 @@ public class DealPost extends BaseTimeEntity {
 
     /** 관리자 인라인 수정(승인 전 보정). 전달된 값으로 덮어쓴다(null 포함 — 비우기 허용). */
     public void applyAdminEdit(String drinkName, String drinkCategory, Integer originalPrice,
-                               Integer dealPrice, BigDecimal discountRate, String currency, String seller,
+                               Integer dealPrice, Integer volumeMl, BigDecimal discountRate, String currency, String seller,
                                String dealCondition, String expiryInfo, String summaryKo) {
         this.drinkName = drinkName;
         this.drinkCategory = drinkCategory;
         this.originalPrice = originalPrice;
         this.dealPrice = dealPrice;
+        this.volumeMl = volumeMl;
         this.discountRate = discountRate;
         this.currency = currency;
         this.seller = seller;

@@ -2,6 +2,7 @@ package com.caskbycask.domain.pricetracker.controller;
 
 import com.caskbycask.domain.pricetracker.dto.response.ChartResponse;
 import com.caskbycask.domain.pricetracker.dto.response.PriceReportChartDetailResponse;
+import com.caskbycask.domain.pricetracker.dto.response.PriceVolumeOptionResponse;
 import com.caskbycask.domain.pricetracker.entity.enums.BucketType;
 import com.caskbycask.domain.pricetracker.entity.enums.StoreType;
 import com.caskbycask.domain.pricetracker.service.PriceChartService;
@@ -28,9 +29,21 @@ public class PriceChartController {
             @RequestParam(required = false) List<Long> spiritIds,
             @RequestParam(required = false) StoreType storeType,
             @RequestParam(required = false, defaultValue = "3M") String period,
-            @RequestParam(required = false) String region) {
+            @RequestParam(required = false) String region,
+            @RequestParam(required = false) Integer volumeMl,
+            @RequestParam(required = false, defaultValue = "false") boolean unknownVolume) {
         return ResponseEntity.ok(ApiResponse.success(
-                priceChartService.getChart(resolveSpiritIds(spiritId, spiritIds), storeType, period, region)));
+                priceChartService.getChart(resolveSpiritIds(spiritId, spiritIds), storeType, period, region,
+                        volumeMl, unknownVolume)));
+    }
+
+    @GetMapping("/volume-options")
+    public ResponseEntity<ApiResponse<List<PriceVolumeOptionResponse>>> getVolumeOptions(
+            @RequestParam Long spiritId,
+            @RequestParam(required = false) List<Long> spiritIds,
+            @RequestParam(required = false) StoreType storeType) {
+        return ResponseEntity.ok(ApiResponse.success(
+                priceChartService.getVolumeOptions(resolveSpiritIds(spiritId, spiritIds), storeType)));
     }
 
     @GetMapping("/{pointDate}/details")
@@ -39,9 +52,12 @@ public class PriceChartController {
             @RequestParam Long spiritId,
             @RequestParam(required = false) List<Long> spiritIds,
             @RequestParam(required = false) StoreType storeType,
-            @RequestParam(required = false) BucketType bucketType) {
+            @RequestParam(required = false) BucketType bucketType,
+            @RequestParam(required = false) Integer volumeMl,
+            @RequestParam(required = false, defaultValue = "false") boolean unknownVolume) {
         return ResponseEntity.ok(ApiResponse.success(
-                priceChartService.getChartPointDetails(resolveSpiritIds(spiritId, spiritIds), pointDate, storeType, bucketType)));
+                priceChartService.getChartPointDetails(resolveSpiritIds(spiritId, spiritIds), pointDate,
+                        storeType, bucketType, volumeMl, unknownVolume)));
     }
 
     private List<Long> resolveSpiritIds(Long spiritId, List<Long> spiritIds) {
