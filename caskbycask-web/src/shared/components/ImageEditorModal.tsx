@@ -8,6 +8,10 @@ interface ImageEditorModalProps {
   onSave: (editedFile: File) => Promise<void>
   isSaving: boolean
   fixedRatio?: string
+  outputSize?: {
+    width: number
+    height: number
+  }
 }
 
 type EditMode = 'paint' | 'crop' | 'rotate' | 'resize'
@@ -27,6 +31,7 @@ export default function ImageEditorModal({
   onSave,
   isSaving,
   fixedRatio,
+  outputSize,
 }: ImageEditorModalProps) {
   const [mode, setMode] = useState<EditMode>('paint')
   const [paintType, setPaintType] = useState<PaintType>('mosaic')
@@ -801,7 +806,46 @@ export default function ImageEditorModal({
     const canvas = canvasRef.current
     if (!canvas) return
 
-    canvas.toBlob((blob) => {
+    let outputCanvas = canvas
+
+    if (outputSize) {
+      const targetRatio = outputSize.width / outputSize.height
+      const sourceRatio = canvas.width / canvas.height
+      let sourceX = 0
+      let sourceY = 0
+      let sourceWidth = canvas.width
+      let sourceHeight = canvas.height
+
+      if (sourceRatio > targetRatio) {
+        sourceWidth = canvas.height * targetRatio
+        sourceX = (canvas.width - sourceWidth) / 2
+      } else if (sourceRatio < targetRatio) {
+        sourceHeight = canvas.width / targetRatio
+        sourceY = (canvas.height - sourceHeight) / 2
+      }
+
+      outputCanvas = document.createElement('canvas')
+      outputCanvas.width = outputSize.width
+      outputCanvas.height = outputSize.height
+      const outputContext = outputCanvas.getContext('2d')
+      if (!outputContext) return
+
+      outputContext.imageSmoothingEnabled = true
+      outputContext.imageSmoothingQuality = 'high'
+      outputContext.drawImage(
+        canvas,
+        sourceX,
+        sourceY,
+        sourceWidth,
+        sourceHeight,
+        0,
+        0,
+        outputSize.width,
+        outputSize.height,
+      )
+    }
+
+    outputCanvas.toBlob((blob) => {
       if (!blob) return
       const file = new File([blob], 'edited_image.png', { type: 'image/png' })
       onSave(file)

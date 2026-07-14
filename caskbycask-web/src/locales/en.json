@@ -8,6 +8,8 @@
     "spiritSearchHint": "Type a spirit name to search.",
     "spiritNoResult": "No results found.",
     "spiritCardButton": "Insert spirit card",
+    "imageSourceLabel": "Image source",
+    "imageSourcePlaceholder": "Add a source (optional)",
     "reviewCard": {
       "toolbarButton": "Insert my review",
       "dialogTitle": "Import My Review",
@@ -76,6 +78,15 @@
     "maturingPower": "Lv.{{level}}"
   },
   "home": {
+    "banner": {
+      "imageAlt": "Banner",
+      "openLink": "Open link",
+      "previous": "Previous banner",
+      "next": "Next banner",
+      "goToSlide": "View banner {{index}}",
+      "play": "Play automatically",
+      "pause": "Pause"
+    },
     "menu": {
       "title": "Spirit Archive",
       "subtitle": "Explore and review whisky, wine, and cognac",

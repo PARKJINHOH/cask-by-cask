@@ -53,6 +53,23 @@ public class LocalFileStorageService implements FileStorageService {
             String subPath,
             String detectedMimeType
     ) {
+        return uploadImage(
+                file,
+                originalSavedFileName,
+                subPath,
+                detectedMimeType,
+                WebpConversionMode.LOSSY
+        );
+    }
+
+    @Override
+    public ImageUploadResult uploadImage(
+            MultipartFile file,
+            String originalSavedFileName,
+            String subPath,
+            String detectedMimeType,
+            WebpConversionMode conversionMode
+    ) {
         Path targetDir  = resolveAndValidate(subPath, null);
         Path originalPath = resolveAndValidate(subPath, originalSavedFileName);
 
@@ -70,7 +87,10 @@ public class LocalFileStorageService implements FileStorageService {
             String webpFileName = stripExtension(originalSavedFileName) + ".webp";
             Path webpPath = resolveAndValidate(subPath, webpFileName);
             try {
-                byte[] webpBytes = webpConversionService.toWebp(Files.readAllBytes(originalPath));
+                byte[] webpBytes = webpConversionService.toWebp(
+                        Files.readAllBytes(originalPath),
+                        conversionMode
+                );
                 Files.write(webpPath, webpBytes);
                 return new ImageUploadResult(webpFileName, "image/webp", buildUrl(subPath, webpFileName));
             } catch (Exception e) {

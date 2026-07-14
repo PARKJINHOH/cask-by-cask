@@ -33,6 +33,20 @@ class HtmlSanitizerTest {
     }
 
     @Test
+    void sanitize_preservesImageSourceAsPlainAttributeButRemovesExecutableMarkup() {
+        String rawHtml = "<img src=\"/api/posts/images/1\" data-image-source=\"Magazine &amp; issue 7\" "
+                + "onerror=\"alert(1)\"><script>alert(2)</script>";
+
+        String sanitized = htmlSanitizer.sanitize(rawHtml);
+
+        assertThat(sanitized)
+                .contains("data-image-source=\"Magazine &amp; issue 7\"")
+                .doesNotContain("onerror")
+                .doesNotContain("script")
+                .doesNotContain("alert");
+    }
+
+    @Test
     void sanitize_preservesSpiritCardWidth() {
         String rawHtml = "<a class=\"di-spirit-embed di-spirit-width-420\" "
                 + "data-spirit-id=\"1\" data-spirit-name=\"긴 주류 이름\" "

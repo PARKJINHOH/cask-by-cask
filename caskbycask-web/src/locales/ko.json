@@ -8,6 +8,8 @@
     "spiritSearchHint": "술 이름을 입력하면 검색됩니다.",
     "spiritNoResult": "검색 결과가 없습니다.",
     "spiritCardButton": "주류 카드 삽입",
+    "imageSourceLabel": "이미지 출처",
+    "imageSourcePlaceholder": "출처를 입력하세요 (선택)",
     "reviewCard": {
       "toolbarButton": "내 리뷰 카드 삽입",
       "dialogTitle": "내 리뷰 불러오기",
@@ -76,6 +78,15 @@
     "maturingPower": "Lv.{{level}}"
   },
   "home": {
+    "banner": {
+      "imageAlt": "배너",
+      "openLink": "바로가기",
+      "previous": "이전 배너",
+      "next": "다음 배너",
+      "goToSlide": "{{index}}번째 배너 보기",
+      "play": "자동 재생",
+      "pause": "일시 정지"
+    },
     "menu": {
       "title": "주류 아카이브",
       "subtitle": "위스키, 와인, 꼬냑을 탐색하고 리뷰해보세요",

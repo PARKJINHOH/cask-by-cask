@@ -741,23 +741,14 @@ export default function RealMainPreviewModal({
                           <NoticeWidget notices={notices} />
 
                           {/* 사이드바 배너 영역 렌더링 */}
-                          {sideBanners.length > 0 && (
-                            <div className="space-y-4">
-                              {sideBanners.map((banner) => {
-                                const img = banner.pcImage
-                                if (!img) return null
-                                return (
-                                  <div key={banner.id} className="relative overflow-hidden rounded-xl border border-neutral-100 bg-white shadow-sm">
-                                    <div className="aspect-[16/9] w-full relative">
-                                      <img
-                                        src={img.imageUrl}
-                                        alt={banner.contentSanitized || 'side banner'}
-                                        className="w-full h-full object-cover"
-                                      />
-                                    </div>
-                                  </div>
-                                )
-                              })}
+                          {sideBanners.some((banner) => banner.pcImage) && (
+                            <div className="rounded-xl shadow-sm">
+                              <BannerSlider
+                                banners={sideBanners.filter((banner) => banner.pcImage)}
+                                aspectClass="aspect-[4/5]"
+                                autoPlayIntervalMs={3000}
+                                prioritizeFirstImage={false}
+                              />
                             </div>
                           )}
                         </aside>
@@ -836,23 +827,14 @@ export default function RealMainPreviewModal({
                           <NoticeWidget notices={notices} />
 
                           {/* 사이드바 배너 (모바일에선 본문 하단에 단독 노출) */}
-                          {sideBanners.length > 0 && (
-                            <div className="space-y-4">
-                              {sideBanners.map((banner) => {
-                                const img = banner.pcImage
-                                if (!img) return null
-                                return (
-                                  <div key={banner.id} className="relative overflow-hidden rounded-xl border border-neutral-100 bg-white shadow-sm">
-                                    <div className="aspect-[16/9] w-full relative">
-                                      <img
-                                        src={img.imageUrl}
-                                        alt={banner.contentSanitized || 'side banner'}
-                                        className="w-full h-full object-cover"
-                                      />
-                                    </div>
-                                  </div>
-                                )
-                              })}
+                          {sideBanners.some((banner) => banner.pcImage) && (
+                            <div className="rounded-xl shadow-sm">
+                              <BannerSlider
+                                banners={sideBanners.filter((banner) => banner.pcImage)}
+                                aspectClass="aspect-[4/5]"
+                                autoPlayIntervalMs={3000}
+                                prioritizeFirstImage={false}
+                              />
                             </div>
                           )}
 
@@ -876,4 +858,3 @@ export default function RealMainPreviewModal({
     </Transition>
   )
 }
-

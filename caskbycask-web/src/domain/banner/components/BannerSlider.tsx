@@ -1,13 +1,22 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { sanitizeHtml } from '@/shared/utils/sanitize'
 import type { BannerResponse } from '../types/banner.types'
 
 interface BannerSliderProps {
   banners: BannerResponse[]
   aspectClass?: string
+  autoPlayIntervalMs?: number
+  prioritizeFirstImage?: boolean
 }
 
-export default function BannerSlider({ banners, aspectClass = 'aspect-[16/9]' }: BannerSliderProps) {
+export default function BannerSlider({
+  banners,
+  aspectClass = 'aspect-[16/9]',
+  autoPlayIntervalMs = 5000,
+  prioritizeFirstImage = true,
+}: BannerSliderProps) {
+  const { t } = useTranslation()
   const [current, setCurrent] = useState(0)
   const [isHoverPaused, setIsHoverPaused] = useState(false)
   const [isManualPaused, setIsManualPaused] = useState(false)
@@ -21,9 +30,13 @@ export default function BannerSlider({ banners, aspectClass = 'aspect-[16/9]' }:
 
   useEffect(() => {
     if (total <= 1 || isPaused) return
-    const timer = setInterval(next, 5000)
+    const timer = setInterval(next, autoPlayIntervalMs)
     return () => clearInterval(timer)
-  }, [total, isPaused, next])
+  }, [total, isPaused, next, autoPlayIntervalMs])
+
+  useEffect(() => {
+    if (current >= total && total > 0) setCurrent(0)
+  }, [current, total])
 
   if (total === 0) return null
 
@@ -52,7 +65,7 @@ export default function BannerSlider({ banners, aspectClass = 'aspect-[16/9]' }:
   return (
     <div
       className={[
-        'relative w-full overflow-hidden bg-neutral-900 select-none rounded-xl border border-neutral-200/80',
+        'relative w-full overflow-hidden bg-neutral-900 select-none rounded-xl ring-1 ring-inset ring-neutral-200/80',
         aspectClass,
       ].join(' ')}
       onMouseEnter={() => setIsHoverPaused(true)}
@@ -82,11 +95,11 @@ export default function BannerSlider({ banners, aspectClass = 'aspect-[16/9]' }:
               (b.pcImage || b.moImage) ? (
                 <img
                   src={(b.pcImage ?? b.moImage)!.imageUrl}
-                  alt="배너"
+                  alt={t('home.banner.imageAlt')}
                   className="w-full h-full object-cover"
                   draggable={false}
-                  loading={idx === 0 ? 'eager' : 'lazy'}
-                  fetchPriority={idx === 0 ? 'high' : 'auto'}
+                  loading={prioritizeFirstImage && idx === 0 ? 'eager' : 'lazy'}
+                  fetchPriority={prioritizeFirstImage && idx === 0 ? 'high' : 'auto'}
                   decoding="async"
                 />
               ) : (
@@ -118,44 +131,14 @@ export default function BannerSlider({ banners, aspectClass = 'aspect-[16/9]' }:
                   <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
                   <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
                 </svg>
-                바로가기
+                {t('home.banner.openLink')}
               </span>
             )}
           </div>
         ))}
       </div>
 
-      {/* 이전/다음 버튼 (PC) */}
-      {total > 1 && (
-        <>
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); prev() }}
-            className="hidden lg:flex absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full
-              bg-white/80 hover:bg-white text-neutral-700 items-center justify-center
-              shadow-md transition-all backdrop-blur-sm z-10"
-            aria-label="이전 배너"
-          >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); next() }}
-            className="hidden lg:flex absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full
-              bg-white/80 hover:bg-white text-neutral-700 items-center justify-center
-              shadow-md transition-all backdrop-blur-sm z-10"
-            aria-label="다음 배너"
-          >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <polyline points="9 18 15 12 9 6" />
-            </svg>
-          </button>
-        </>
-      )}
-
-      {/* 도트 인디케이터 + 재생/일시정지 */}
+      {/* 도트 인디케이터 + 이전/재생·일시정지/다음 */}
       {total > 1 && (
         <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2 z-10">
           {/* 도트 */}
@@ -171,7 +154,8 @@ export default function BannerSlider({ banners, aspectClass = 'aspect-[16/9]' }:
                     ? 'w-5 h-1.5 bg-white'
                     : 'w-1.5 h-1.5 bg-white/50 hover:bg-white/80',
                 ].join(' ')}
-                aria-label={`배너 ${i + 1}`}
+                aria-label={t('home.banner.goToSlide', { index: i + 1 })}
+                aria-current={i === current ? 'true' : undefined}
               />
             ))}
           </div>
@@ -179,27 +163,53 @@ export default function BannerSlider({ banners, aspectClass = 'aspect-[16/9]' }:
           {/* 구분선 */}
           <span className="w-px h-3 bg-white/30" />
 
-          {/* 재생/일시정지 */}
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); setIsManualPaused((p) => !p) }}
-            className="w-5 h-5 flex items-center justify-center text-white/80
-              hover:text-white transition-colors"
-            aria-label={isManualPaused ? '자동 재생' : '일시 정지'}
-          >
-            {isManualPaused ? (
-              /* 재생 아이콘 */
-              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-                <polygon points="5,3 19,12 5,21" />
+          {/* 이전 / 재생·일시정지 / 다음 */}
+          <div className="flex items-center gap-0.5">
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); prev() }}
+              className="w-5 h-5 flex items-center justify-center text-white/80
+                hover:text-white transition-colors"
+              aria-label={t('home.banner.previous')}
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polyline points="15 18 9 12 15 6" />
               </svg>
-            ) : (
-              /* 일시정지 아이콘 */
-              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-                <rect x="6" y="4" width="4" height="16" rx="1" />
-                <rect x="14" y="4" width="4" height="16" rx="1" />
+            </button>
+
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setIsManualPaused((p) => !p) }}
+              className="w-5 h-5 flex items-center justify-center text-white/80
+                hover:text-white transition-colors"
+              aria-label={isManualPaused ? t('home.banner.play') : t('home.banner.pause')}
+            >
+              {isManualPaused ? (
+                /* 재생 아이콘 */
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                  <polygon points="5,3 19,12 5,21" />
+                </svg>
+              ) : (
+                /* 일시정지 아이콘 */
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                  <rect x="6" y="4" width="4" height="16" rx="1" />
+                  <rect x="14" y="4" width="4" height="16" rx="1" />
+                </svg>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); next() }}
+              className="w-5 h-5 flex items-center justify-center text-white/80
+                hover:text-white transition-colors"
+              aria-label={t('home.banner.next')}
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polyline points="9 18 15 12 9 6" />
               </svg>
-            )}
-          </button>
+            </button>
+          </div>
         </div>
       )}
 

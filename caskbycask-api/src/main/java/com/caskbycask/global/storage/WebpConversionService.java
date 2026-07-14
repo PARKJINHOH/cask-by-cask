@@ -14,7 +14,8 @@ import java.io.IOException;
 public class WebpConversionService {
 
     private static final int DEFAULT_QUALITY = 85; // 0~100, 80=균형, 75 이상 권장
-    private final WebpWriter writer = WebpWriter.DEFAULT.withQ(DEFAULT_QUALITY);
+    private final WebpWriter lossyWriter = WebpWriter.DEFAULT.withQ(DEFAULT_QUALITY);
+    private final WebpWriter losslessWriter = WebpWriter.DEFAULT.withLossless();
 
     public boolean isConvertibleMime(String mimeType) {
         return "image/jpeg".equals(mimeType) || "image/png".equals(mimeType);
@@ -22,6 +23,11 @@ public class WebpConversionService {
 
     // 변환 성공 시 WebP 바이트, 실패 시 IOException
     public byte[] toWebp(byte[] sourceBytes) throws IOException {
+        return toWebp(sourceBytes, WebpConversionMode.LOSSY);
+    }
+
+    public byte[] toWebp(byte[] sourceBytes, WebpConversionMode mode) throws IOException {
+        WebpWriter writer = mode == WebpConversionMode.LOSSLESS ? losslessWriter : lossyWriter;
         return ImmutableImage.loader().fromBytes(sourceBytes).bytes(writer);
     }
 }

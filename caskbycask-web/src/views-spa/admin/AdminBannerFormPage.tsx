@@ -66,8 +66,8 @@ function BannerPreview({
   linkUrl?: string
 }) {
   const isMain = position === 'MAIN'
-  const aspectClass = isMain ? 'aspect-[21/9]' : 'aspect-[16/9]'
-  const ratioLabel = isMain ? '21:9 비율' : '16:9 비율'
+  const aspectClass = isMain ? 'aspect-[21/9]' : 'aspect-[4/5]'
+  const ratioLabel = isMain ? '21:9 비율' : '4:5 비율'
 
   const renderImageSlot = (imageUrl: string | null, label: string) => {
     if (bannerType === 'HTML') {
@@ -393,7 +393,7 @@ export default function AdminBannerFormPage() {
                     {/* 배너 이미지 */}
                     <PromoImageDropzone
                       label="배너 이미지"
-                      hint={position === 'MAIN' ? '(권장 비율 21:9)' : '(권장 비율 16:9)'}
+                      hint={position === 'MAIN' ? '(권장 비율 21:9)' : '(권장 비율 4:5 · PC/MO 공통)'}
                       required
                       alt="배너 미리보기"
                       heightClass="h-36"
@@ -497,7 +497,8 @@ export default function AdminBannerFormPage() {
             setEditingLocalFile(null)
           }}
           imageSrc={editingLocalFile.objectUrl}
-          fixedRatio={position === 'MAIN' ? '21:9' : '16:9'}
+          fixedRatio={position === 'MAIN' ? '21:9' : '4:5'}
+          outputSize={position === 'SIDE' ? { width: 1200, height: 1500 } : undefined}
           isSaving={isPcUploading}
           onSave={async (editedFile) => {
             const type = editingLocalFile.imageType

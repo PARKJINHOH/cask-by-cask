@@ -742,38 +742,14 @@ export default function MainPage() {
             <NoticeWidget notices={notices} />
 
             {/* 사이드바 배너 */}
-            {sideBanners.length > 0 && (
-              <div className="space-y-4">
-                {sideBanners.map((banner) => {
-                  const img = banner.pcImage
-                  if (!img) return null
-                  return (
-                    <div key={banner.id} className="relative overflow-hidden rounded-xl border border-neutral-100 bg-white shadow-sm">
-                      {banner.linkUrl ? (
-                        <a
-                          href={banner.linkUrl}
-                          target={banner.linkTargetBlank ? '_blank' : '_self'}
-                          rel={banner.linkTargetBlank ? 'noopener noreferrer' : undefined}
-                          className="block aspect-[16/9] w-full relative group overflow-hidden"
-                        >
-                          <img
-                            src={img.imageUrl}
-                            alt={banner.contentSanitized || 'side banner'}
-                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                          />
-                        </a>
-                      ) : (
-                        <div className="aspect-[16/9] w-full">
-                          <img
-                            src={img.imageUrl}
-                            alt={banner.contentSanitized || 'side banner'}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
+            {sideBanners.some((banner) => banner.pcImage) && (
+              <div className="rounded-xl shadow-sm">
+                <BannerSlider
+                  banners={sideBanners.filter((banner) => banner.pcImage)}
+                  aspectClass="aspect-[4/5]"
+                  autoPlayIntervalMs={3000}
+                  prioritizeFirstImage={false}
+                />
               </div>
             )}
           </aside>

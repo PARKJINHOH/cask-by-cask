@@ -13,7 +13,6 @@ import { Table } from '@tiptap/extension-table'
 import { TableRow } from '@tiptap/extension-table-row'
 import { TableCell } from '@tiptap/extension-table-cell'
 import { TableHeader } from '@tiptap/extension-table-header'
-import DOMPurify from 'dompurify'
 import { ResizableImage } from './ResizableImage'
 import { VideoEmbed, toEmbedUrl, handleVideoEnter } from './VideoEmbed'
 import { UploadedVideo } from './UploadedVideo'
@@ -23,33 +22,9 @@ import RichTextToolbar from './RichTextToolbar'
 import SpiritEmbedDialog from './SpiritEmbedDialog'
 import ReviewEmbedDialog from './ReviewEmbedDialog'
 import ImageEditorModal from '../components/ImageEditorModal'
+import { toEditorHtmlFragment } from './editorHtmlFragment'
 import './rich-text.css'
 import './editor-image.css'
-
-// [보안] 에디터가 생성한 HTML을 클라이언트에서 1차 정제(서버 jsoup 가 최종 정제).
-const ALLOWED_TAGS = [
-  'p', 'br', 'span', 'mark', 'strong', 'em', 'u', 's', 'code', 'pre', 'blockquote',
-  'h1', 'h2', 'h3', 'h4', 'ul', 'ol', 'li', 'hr', 'a', 'img',
-  'table', 'thead', 'tbody', 'tr', 'th', 'td', 'div', 'iframe', 'video',
-]
-const ALLOWED_ATTR = [
-  'href', 'src', 'alt', 'class', 'rel', 'target', 'style', 'width', 'height',
-  'data-image-layout', 'data-image-pair', 'data-image-pair-width', 'data-image-pair-height',
-  'colspan', 'rowspan', 'scope', 'data-color',
-  'data-type', 'data-checked',
-  'data-spirit-id', 'data-spirit-name', 'data-spirit-name-en', 'data-spirit-category',
-  'data-spirit-thumbnail', 'data-spirit-abv', 'data-spirit-review-count',
-  'data-spirit-width',
-  'data-review-id', 'data-review-width', 'data-spirit-name-ko',
-  'data-spirit-identifier-ko', 'data-spirit-identifier-en',
-  'data-review-nose-score', 'data-review-taste-score', 'data-review-finish-score',
-  'data-review-total-score', 'data-review-nose-note', 'data-review-taste-note',
-  'data-review-finish-note', 'data-review-comment', 'data-review-role', 'data-review-section',
-  'data-video-embed', 'data-uploaded-video',
-  'allowfullscreen', 'allow', 'frameborder', 'controls', 'preload', 'type',
-  'start',
-  'id',
-]
 
 // 미디어 업로드 정책 — 백엔드(PostService.validateMediaPolicy / NoticeImageValidator / PostVideoValidator)와
 // 동기화 유지. 소규모 서버 디스크 보호용 한도로, 서버 증설 시 양쪽을 함께 상향한다.
@@ -161,11 +136,10 @@ export default function RichTextEditor({
       ...(enableSpiritEmbed ? [SpiritEmbed] : []),
       ...(enableReviewEmbed ? [ReviewEmbed] : []),
     ],
-    content: value,
+    content: toEditorHtmlFragment(value),
     onUpdate({ editor: e }) {
-      const clean = DOMPurify.sanitize(e.getHTML(), {
-        ALLOWED_TAGS, ALLOWED_ATTR, FORCE_BODY: true,
-      })
+      // getHTML() 결과를 전체 문서가 아닌 저장/재삽입 가능한 안전한 body fragment로 통일한다.
+      const clean = toEditorHtmlFragment(e.getHTML())
       lastEmitted.current = clean
       onChange(clean)
     },
@@ -220,6 +194,20 @@ export default function RichTextEditor({
             return true
           }
         }
+
+        // 외부 편집기/웹 문서의 리치 HTML은 실행 가능한 요소를 먼저 제거한 뒤
+        // Tiptap 스키마에 삽입한다. 지원되는 문단·목록·표 등의 순서와 중첩은 유지된다.
+        const clipboardHtml = event.clipboardData?.getData('text/html') ?? ''
+        if (clipboardHtml && editor) {
+          const fragment = toEditorHtmlFragment(clipboardHtml)
+          if (fragment) {
+            event.preventDefault()
+            editor.commands.insertContent(fragment, {
+              parseOptions: { preserveWhitespace: 'full' },
+            })
+            return true
+          }
+        }
         return false
       },
     },
@@ -230,8 +218,9 @@ export default function RichTextEditor({
   useEffect(() => {
     if (!editor) return
     if (value !== lastEmitted.current && value !== editor.getHTML()) {
-      editor.commands.setContent(value || '', { emitUpdate: false })
-      lastEmitted.current = value
+      const fragment = toEditorHtmlFragment(value || '')
+      editor.commands.setContent(fragment, { emitUpdate: false })
+      lastEmitted.current = fragment
     }
   }, [editor, value])
 

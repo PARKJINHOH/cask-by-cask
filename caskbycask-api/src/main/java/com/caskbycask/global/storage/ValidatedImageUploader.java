@@ -23,10 +23,24 @@ public class ValidatedImageUploader {
     private final FileStorageService fileStorageService;
 
     public StoredImage upload(MultipartFile file, String directory) {
+        return upload(file, directory, WebpConversionMode.LOSSY);
+    }
+
+    public StoredImage uploadLossless(MultipartFile file, String directory) {
+        return upload(file, directory, WebpConversionMode.LOSSLESS);
+    }
+
+    private StoredImage upload(MultipartFile file, String directory, WebpConversionMode conversionMode) {
         String mimeType = noticeImageValidator.validate(file);
         String savedFileName = noticeImageValidator.generateSavedFileName(file.getOriginalFilename());
         String subPath = directory + "/" + YearMonth.now().format(MONTH_DIR);
-        ImageUploadResult result = fileStorageService.uploadImage(file, savedFileName, subPath, mimeType);
+        ImageUploadResult result = fileStorageService.uploadImage(
+                file,
+                savedFileName,
+                subPath,
+                mimeType,
+                conversionMode
+        );
         return new StoredImage(result.savedFileName(), subPath, result.mimeType(), result.imageUrl());
     }
 

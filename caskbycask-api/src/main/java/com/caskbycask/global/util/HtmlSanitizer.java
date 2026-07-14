@@ -71,7 +71,7 @@ public class HtmlSanitizer {
                 .addTags("img")
                 .addAttributes("img", "src", "alt", "width", "height", "style",
                         "data-image-layout", "data-image-pair",
-                        "data-image-pair-width", "data-image-pair-height")
+                        "data-image-pair-width", "data-image-pair-height", "data-image-source")
                 // 테이블
                 .addTags("table", "thead", "tbody", "tr", "th", "td")
                 .addAttributes("th", "scope", "colspan", "rowspan")

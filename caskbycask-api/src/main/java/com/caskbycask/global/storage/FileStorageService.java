@@ -33,6 +33,20 @@ public interface FileStorageService {
     );
 
     /**
+     * 도메인 특성에 따라 WebP 변환 방식을 지정하는 이미지 업로드.
+     * 별도 구현이 없는 스토리지는 기존 변환 방식을 사용한다.
+     */
+    default ImageUploadResult uploadImage(
+            MultipartFile file,
+            String originalSavedFileName,
+            String subPath,
+            String detectedMimeType,
+            WebpConversionMode conversionMode
+    ) {
+        return uploadImage(file, originalSavedFileName, subPath, detectedMimeType);
+    }
+
+    /**
      * 파일 삭제. savedFileName 기준.
      * 구현체는 dual-save 로 생성된 sibling 파일({uuid}.원본확장자) 도 함께 제거해야 한다.
      */

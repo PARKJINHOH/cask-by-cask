@@ -4,6 +4,7 @@ import { NodeSelection, Selection } from '@tiptap/pm/state'
 import { Fragment, Slice } from '@tiptap/pm/model'
 import { Plugin } from '@tiptap/pm/state'
 import { dropPoint } from '@tiptap/pm/transform'
+import i18n from '@/shared/utils/i18n'
 
 const INTERNAL_IMAGE_DRAG = 'application/x-caskbycask-image-pos'
 const activeImageDragPositions = new WeakMap<object, number>()
@@ -95,6 +96,14 @@ export const ResizableImage = Image.extend({
         renderHTML: (attributes) => attributes.pairHeight != null
           ? { 'data-image-pair-height': String(attributes.pairHeight) }
           : {},
+      },
+      source: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-image-source'),
+        renderHTML: (attributes) => {
+          const source = typeof attributes.source === 'string' ? attributes.source.trim() : ''
+          return source ? { 'data-image-source': source } : {}
+        },
       },
     }
   },
@@ -242,9 +251,13 @@ export const ResizableImage = Image.extend({
       const wrapper = document.createElement('div')
       wrapper.className = 'di-image'
 
+      const media = document.createElement('span')
+      media.className = 'di-image__media'
+      wrapper.appendChild(media)
+
       const frame = document.createElement('span')
       frame.className = 'di-image__frame'
-      wrapper.appendChild(frame)
+      media.appendChild(frame)
 
       const img = document.createElement('img')
       // crxMouse의 이미지 Super Drag와 겹치지 않도록 실제 img의 네이티브 드래그는 끈다.
@@ -254,6 +267,31 @@ export const ResizableImage = Image.extend({
       if (currentNode.attrs.title) img.title = currentNode.attrs.title
       if (currentNode.attrs.width) img.setAttribute('width', currentNode.attrs.width)
       frame.appendChild(img)
+
+      const sourceInput = document.createElement('input')
+      sourceInput.type = 'text'
+      sourceInput.className = 'di-image__source'
+      sourceInput.maxLength = 500
+      sourceInput.value = currentNode.attrs.source ?? ''
+      sourceInput.contentEditable = 'false'
+      const updateSourceInputLabels = () => {
+        sourceInput.placeholder = i18n.t('editor.imageSourcePlaceholder')
+        sourceInput.setAttribute('aria-label', i18n.t('editor.imageSourceLabel'))
+      }
+      updateSourceInputLabels()
+      i18n.on('languageChanged', updateSourceInputLabels)
+      media.appendChild(sourceInput)
+
+      sourceInput.addEventListener('input', () => {
+        const pos = getPos()
+        if (typeof pos !== 'number') return
+        const imageNode = editor.state.doc.nodeAt(pos)
+        if (imageNode?.type.name !== currentNode.type.name) return
+        editor.view.dispatch(editor.state.tr.setNodeMarkup(pos, undefined, {
+          ...imageNode.attrs,
+          source: sourceInput.value,
+        }))
+      })
 
       // 이미지 더블클릭 (데스크톱) / 더블탭 (모바일) 시 편집 이벤트 발생
       const dispatchImageEdit = () => {
@@ -333,7 +371,7 @@ export const ResizableImage = Image.extend({
       dividerHandle.setAttribute('aria-valuemax', String(MAX_PAIR_WIDTH))
       dividerHandle.setAttribute('aria-valuenow', String(DEFAULT_PAIR_WIDTH))
       dividerHandle.tabIndex = 0
-      wrapper.appendChild(dividerHandle)
+      frame.appendChild(dividerHandle)
 
       const commitPairWidth = (nextWidth: number) => {
         const leftPos = getPos()
@@ -730,6 +768,9 @@ export const ResizableImage = Image.extend({
           if (updatedNode.type.name !== currentNode.type.name) return false
           currentNode = updatedNode
           img.src = updatedNode.attrs.src
+          if (sourceInput.value !== (updatedNode.attrs.source ?? '')) {
+            sourceInput.value = updatedNode.attrs.source ?? ''
+          }
           if (updatedNode.attrs.width) {
             img.setAttribute('width', updatedNode.attrs.width)
           } else {
@@ -743,6 +784,13 @@ export const ResizableImage = Image.extend({
         },
         destroy() {
           layoutObserver?.disconnect()
+          i18n.off('languageChanged', updateSourceInputLabels)
+        },
+        stopEvent(event) {
+          return event.target === sourceInput
+        },
+        ignoreMutation(mutation) {
+          return mutation.target === sourceInput
         },
       }
     }

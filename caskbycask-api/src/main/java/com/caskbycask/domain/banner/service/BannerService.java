@@ -219,7 +219,8 @@ public class BannerService {
             throw new CustomException(ErrorCode.BANNER_IMAGE_RATE_LIMIT_EXCEEDED);
         }
         // [보안] 4단계 검증 + 연월별 디렉토리 저장 (공통 흐름)
-        StoredImage stored = validatedImageUploader.upload(file, "banners");
+        // 배너는 작은 노출 영역에 텍스트가 포함되는 이미지가 많아 손실 압축 시 가독성이 크게 저하된다.
+        StoredImage stored = validatedImageUploader.uploadLossless(file, "banners");
 
         User uploader = userRepository.getByIdOrThrow(uploaderId);
 

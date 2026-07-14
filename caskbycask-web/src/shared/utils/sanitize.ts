@@ -33,7 +33,7 @@ export function sanitizeHtml(dirty: string): string {
   if (typeof window === 'undefined') {
     return dirty
   }
-  return DOMPurify.sanitize(dirty, {
+  const sanitized = DOMPurify.sanitize(dirty, {
     ALLOWED_TAGS: [
       // 구조
       'div', 'article', 'section', 'header', 'footer', 'main', 'span',
@@ -56,6 +56,7 @@ export function sanitizeHtml(dirty: string): string {
       'href', 'target', 'rel',
       'src', 'alt', 'width', 'height', 'style',
       'data-image-layout', 'data-image-pair', 'data-image-pair-width', 'data-image-pair-height',
+      'data-image-source',
       'class',  // Tailwind CSS 클래스
       'id',
       'colspan', 'rowspan', 'scope',
@@ -85,4 +86,58 @@ export function sanitizeHtml(dirty: string): string {
       'onchange', 'onsubmit', 'onkeydown', 'onkeyup', 'onkeypress',
     ],
   })
+
+  return decorateImageSources(sanitized)
+}
+
+/**
+ * 저장 HTML은 기존 이미지 구조를 그대로 유지하고, 화면에 표시할 때만 출처용 figure를 만든다.
+ * 출처가 없는 기존 이미지는 DOM을 전혀 바꾸지 않는다.
+ */
+function decorateImageSources(html: string): string {
+  const template = document.createElement('template')
+  template.innerHTML = html
+
+  template.content.querySelectorAll<HTMLImageElement>('img[data-image-source]').forEach((image) => {
+    const source = image.dataset.imageSource?.trim() ?? ''
+    if (!source || image.closest('.di-image-with-source')) return
+
+    const figure = document.createElement('figure')
+    figure.className = 'di-image-with-source'
+
+    const layout = image.dataset.imageLayout
+    if (layout === 'half-left' || layout === 'half-right') {
+      figure.classList.add('di-image-with-source--paired')
+      figure.dataset.imageLayout = layout
+      const renderedWidth = image.style.width
+      figure.style.width = renderedWidth || '50%'
+      image.style.width = '100%'
+    } else {
+      const width = image.getAttribute('width')
+      if (width && /^\d+(?:\.\d+)?(?:px)?$/.test(width)) {
+        figure.classList.add('di-image-with-source--sized')
+        figure.style.width = width.endsWith('px') ? width : `${width}px`
+        image.style.width = '100%'
+        image.removeAttribute('width')
+      }
+
+      const textAlign = image.style.textAlign
+      if (textAlign === 'center') {
+        figure.style.marginLeft = 'auto'
+        figure.style.marginRight = 'auto'
+      } else if (textAlign === 'right') {
+        figure.style.marginLeft = 'auto'
+        figure.style.marginRight = '0'
+      }
+    }
+
+    const caption = document.createElement('figcaption')
+    caption.className = 'di-image-source-caption'
+    caption.textContent = source
+
+    image.replaceWith(figure)
+    figure.append(image, caption)
+  })
+
+  return template.innerHTML
 }
