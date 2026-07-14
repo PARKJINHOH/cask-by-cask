@@ -160,9 +160,9 @@ export default function PostDetailPage() {
       <SeoMeta
         title={post.title}
         description={seoDescription}
-        canonical={buildCanonical(`/community/${boardPath}/${postId}`)}
+        canonical={buildCanonical(`/ko/community/${boardPath}/${postId}`)}
         ogType="article"
-        noindex={!!post.isBlocked || !!post.isLocked}
+        noindex={!!post.isBlocked || !!post.isLocked || !!post.isHidden || !!post.adultOnly}
         jsonLd={[
           {
             '@type': 'Article',
@@ -179,10 +179,10 @@ export default function PostDetailPage() {
             },
           },
           buildBreadcrumbSchema([
-            { name: '홈', path: '/' },
+            { name: '홈', path: '/ko/' },
             { name: boardPath === 'notice' ? '소식 게시판' : '자유게시판',
-              path: `/community/${boardPath}` },
-            { name: post.title, path: `/community/${boardPath}/${postId}` },
+              path: `/ko/community/${boardPath}` },
+            { name: post.title, path: `/ko/community/${boardPath}/${postId}` },
           ]),
         ]}
       />

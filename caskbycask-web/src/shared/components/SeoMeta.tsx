@@ -69,11 +69,12 @@ export default function SeoMeta({
   alternateDefault,
 }: Props) {
   const fullTitle = title.includes(SITE_NAME) ? title : `${title} — ${SITE_NAME}`
-  const jsonLdArray = Array.isArray(jsonLd) ? jsonLd : jsonLd ? [jsonLd] : []
+  const jsonLdArray = noindex ? [] : Array.isArray(jsonLd) ? jsonLd : jsonLd ? [jsonLd] : []
   const altLocale = locale === 'ko_KR' ? 'en_US' : 'ko_KR'
-  const koHref = alternateKo ?? canonical
-  const enHref = alternateEn ?? canonical
-  const defaultHref = alternateDefault ?? koHref ?? canonical
+  const hasLanguageAlternates = Boolean(alternateKo || alternateEn || alternateDefault)
+  const koHref = alternateKo
+  const enHref = alternateEn
+  const defaultHref = alternateDefault ?? alternateKo
 
   return (
     <>
@@ -81,16 +82,14 @@ export default function SeoMeta({
       {description && <meta name="description" content={description} />}
       {keywords && <meta name="keywords" content={keywords} />}
       {noindex ? (
-        <meta name="robots" content="noindex, nofollow" />
+        <meta name="robots" content="noindex, follow" />
       ) : (
         <meta name="robots" content="index, follow" />
       )}
       {canonical && <link rel="canonical" href={canonical} />}
 
-      {/* hreflang — SPA 단일 URL이지만 콘텐츠가 i18n 으로 양쪽 노출되므로
-          동일 URL을 ko/en alternate 로 명시하고 x-default 도 추가.
-          (정공법은 /en, /ko 경로 분리지만 현 SPA 구조에서는 동일 URL 시그널이 안전한 차선.) */}
-      {canonical && (
+      {/* hreflang은 실제 번역 본문과 언어별 URL이 모두 있을 때만 명시적으로 출력한다. */}
+      {hasLanguageAlternates && (
         <>
           {koHref && <link rel="alternate" hrefLang="ko" href={koHref} />}
           {enHref && <link rel="alternate" hrefLang="en" href={enHref} />}

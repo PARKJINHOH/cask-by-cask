@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useByobList } from '@/domain/byob/hooks/useByob'
 import ByobCard from '@/domain/byob/components/ByobCard'
 import Pagination from '@/shared/components/Pagination'
-import SeoMeta from '@/shared/components/SeoMeta'
+import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import type { ByobStatus } from '@/domain/byob/types/byob.types'
 
@@ -30,7 +30,7 @@ const ALL_FILTER_STYLE = {
 }
 
 export default function ByobListPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { isLoggedIn } = useAuthStore()
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -63,6 +63,8 @@ export default function ByobListPage() {
       <SeoMeta
         title={t('byob.title')}
         description={t('byob.subtitle')}
+        canonical={buildCanonical('/ko/community/byob')}
+        locale={i18n.language === 'en' ? 'en_US' : 'ko_KR'}
         noindex={page > 0 || status !== 'ALL'}
       />
 

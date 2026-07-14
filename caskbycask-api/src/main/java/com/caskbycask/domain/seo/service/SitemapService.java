@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.caskbycask.domain.byob.entity.enums.ByobStatus;
+import com.caskbycask.domain.community.entity.enums.PostStatus;
 import com.caskbycask.domain.seo.util.SpiritSlugUtils;
 import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.domain.spirit.entity.enums.SpiritStatus;
@@ -61,11 +62,12 @@ public class SitemapService {
         appendMultilingualUrl(sb, "/spirits?category=WINE",    null, "daily",  "0.8");
         appendMultilingualUrl(sb, "/spirits?category=OTHER",   null, "daily",  "0.7");
 
-        appendMultilingualUrl(sb, "/notices",                null, "daily",  "0.7");
-        appendMultilingualUrl(sb, "/community/all",          null, "hourly", "0.8");
-        appendMultilingualUrl(sb, "/community/free",         null, "hourly", "0.8");
-        appendMultilingualUrl(sb, "/community/notice",       null, "daily",  "0.7");
-        appendMultilingualUrl(sb, "/community/byob",         null, "daily",  "0.7");
+        // 게시판 본문은 별도 영문 번역 데이터가 없으므로 한국어 원문 canonical만 사이트맵에 포함한다.
+        appendKoreanUrl(sb, "/notices",                null, "daily",  "0.7");
+        appendKoreanUrl(sb, "/community/all",          null, "hourly", "0.8");
+        appendKoreanUrl(sb, "/community/free",         null, "hourly", "0.8");
+        appendKoreanUrl(sb, "/community/notice",       null, "daily",  "0.7");
+        appendKoreanUrl(sb, "/community/byob",         null, "daily",  "0.7");
         appendMultilingualUrl(sb, "/ranking",                null, "weekly", "0.5");
         appendMultilingualUrl(sb, "/faq",                    null, "monthly", "0.6");
         appendMultilingualUrl(sb, "/terms",                  null, "yearly", "0.2");
@@ -105,7 +107,7 @@ public class SitemapService {
             for (Object[] row : notices) {
                 Long id = (Long) row[0];
                 LocalDateTime updated = (LocalDateTime) row[1];
-                appendMultilingualUrl(sb, "/notices/" + id, updated, "monthly", "0.6");
+                appendKoreanUrl(sb, "/notices/" + id, updated, "monthly", "0.6");
             }
         } catch (Exception e) {
             log.warn("Notice sitemap entries skipped: {}", e.getMessage());
@@ -115,14 +117,23 @@ public class SitemapService {
         try {
             @SuppressWarnings("unchecked")
             List<Object[]> posts = em.createQuery(
-                    "SELECT p.id, p.updatedAt, p.boardType FROM Post p ORDER BY p.id"
-            ).getResultList();
+                    """
+                    SELECT p.id, p.updatedAt, p.boardType
+                    FROM Post p
+                    WHERE p.status = :active
+                      AND p.isHidden = false
+                      AND p.adultOnly = false
+                    ORDER BY p.id
+                    """
+            )
+                    .setParameter("active", PostStatus.ACTIVE)
+                    .getResultList();
             for (Object[] row : posts) {
                 Long id = (Long) row[0];
                 LocalDateTime updated = (LocalDateTime) row[1];
                 Object boardType = row[2];
                 String slug = boardType == null ? "free" : boardType.toString().toLowerCase();
-                appendMultilingualUrl(sb, "/community/" + slug + "/" + id, updated, "weekly", "0.6");
+                appendKoreanUrl(sb, "/community/" + slug + "/" + id, updated, "weekly", "0.6");
             }
         } catch (Exception e) {
             log.warn("Post sitemap entries skipped: {}", e.getMessage());
@@ -139,7 +150,7 @@ public class SitemapService {
             for (Object[] row : byobs) {
                 Long id = (Long) row[0];
                 LocalDateTime updated = (LocalDateTime) row[1];
-                appendMultilingualUrl(sb, "/community/byob/" + id, updated, "weekly", "0.6");
+                appendKoreanUrl(sb, "/community/byob/" + id, updated, "weekly", "0.6");
             }
         } catch (Exception e) {
             log.warn("BYOB sitemap entries skipped: {}", e.getMessage());
@@ -154,6 +165,12 @@ public class SitemapService {
         String cleanPath = path.startsWith("/") ? path : "/" + path;
         appendUrl(sb, siteUrl + "/ko" + (cleanPath.equals("/") ? "/" : cleanPath), lastmod, changefreq, priority);
         appendUrl(sb, siteUrl + "/en" + (cleanPath.equals("/") ? "/" : cleanPath), lastmod, changefreq, priority);
+    }
+
+    private void appendKoreanUrl(StringBuilder sb, String path, LocalDateTime lastmod,
+                                 String changefreq, String priority) {
+        String cleanPath = path.startsWith("/") ? path : "/" + path;
+        appendUrl(sb, siteUrl + "/ko" + (cleanPath.equals("/") ? "/" : cleanPath), lastmod, changefreq, priority);
     }
 
     private void appendUrl(StringBuilder sb, String loc, LocalDateTime lastmod,

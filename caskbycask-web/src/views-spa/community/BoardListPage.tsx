@@ -98,7 +98,7 @@ function MediaMarker({ media }: { media: PostThumbnailMedia | null }) {
 }
 
 export default function BoardListPage({ boardType, title }: Props) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { isLoggedIn, user } = useAuthStore()
   const navigate = useNavigate()
   const location = useLocation()
@@ -219,7 +219,8 @@ export default function BoardListPage({ boardType, title }: Props) {
       <SeoMeta
         title={seoTitle}
         description={seoDesc}
-        canonical={buildCanonical(`/community/${boardPath}`)}
+        canonical={buildCanonical(`/ko/community/${boardPath}`)}
+        locale={i18n.language === 'en' ? 'en_US' : 'ko_KR'}
         noindex={seoNoindex}
       />
 

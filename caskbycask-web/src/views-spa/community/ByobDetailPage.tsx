@@ -5,7 +5,7 @@ import { useByobDetail, useByobActions } from '@/domain/byob/hooks/useByob'
 import ByobStatusBadge from '@/domain/byob/components/ByobStatusBadge'
 import ByobParticipantPanel from '@/domain/byob/components/ByobParticipantPanel'
 import ByobCommentSection from '@/domain/byob/components/ByobCommentSection'
-import SeoMeta from '@/shared/components/SeoMeta'
+import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 import RichContent from '@/shared/components/RichContent'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import type { ByobStatus, ApplyByobPayload } from '@/domain/byob/types/byob.types'
@@ -98,7 +98,7 @@ function BottlesInput({ bottles, onChange }: BottlesInputProps) {
 
 // ── 메인 컴포넌트 ─────────────────────────────────────────────────
 export default function ByobDetailPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
   const { id } = useParams<{ id: string }>()
@@ -177,7 +177,13 @@ export default function ByobDetailPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
-      <SeoMeta title={byob.title} description={byob.content.replace(/<[^>]*>/g, '').slice(0, 120)} />
+      <SeoMeta
+        title={byob.title}
+        description={byob.content.replace(/<[^>]*>/g, '').slice(0, 120)}
+        canonical={buildCanonical(`/ko/community/byob/${byobId}`)}
+        locale={i18n.language === 'en' ? 'en_US' : 'ko_KR'}
+        noindex={byob.status === 'CANCELLED'}
+      />
 
       <Link to={listReturnTo} className="inline-flex items-center gap-1.5 text-sm text-neutral-500
         hover:text-neutral-700 mb-5">

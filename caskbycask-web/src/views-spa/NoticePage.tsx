@@ -52,7 +52,7 @@ export default function NoticePage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const categoryParam = (searchParams.get('category') ?? '') as NoticeCategory | ''
   const [page, setPage] = useState(0)
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   // 카테고리 변경 시 페이지 초기화
   const setCategory = (cat: NoticeCategory | '') => {
@@ -85,7 +85,9 @@ export default function NoticePage() {
       <SeoMeta
         title={t('menu.notice', '공지사항')}
         description={t('notice.seoDesc', 'CaskByCask의 새로운 소식, 업데이트, 이벤트, 점검 안내 등 공지사항을 확인하세요.')}
-        canonical={buildCanonical('/notices')}
+        canonical={buildCanonical('/ko/notices')}
+        locale={i18n.language === 'en' ? 'en_US' : 'ko_KR'}
+        noindex={Boolean(categoryParam)}
         keywords={t('notice.seoKeywords', 'CaskByCask 공지사항, 위스키 커뮤니티 소식, 업데이트, 이벤트')}
       />
 

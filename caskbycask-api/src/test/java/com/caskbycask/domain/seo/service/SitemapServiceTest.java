@@ -20,8 +20,10 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -65,6 +67,37 @@ class SitemapServiceTest {
         assertThat(xml).startsWith("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
         assertThat(xml).contains("<urlset");
         assertThat(xml).contains("</urlset>");
+    }
+
+    @Test
+    @DisplayName("번역 본문이 없는 게시판은 한국어 canonical URL만 사이트맵에 포함한다")
+    void sitemap_contains_only_korean_board_canonicals() {
+        mockQueries(List.of());
+
+        String xml = sitemapService.generateSitemap();
+
+        assertThat(xml).contains("https://caskbycask.net/ko/notices");
+        assertThat(xml).contains("https://caskbycask.net/ko/community/all");
+        assertThat(xml).contains("https://caskbycask.net/ko/community/free");
+        assertThat(xml).contains("https://caskbycask.net/ko/community/notice");
+        assertThat(xml).contains("https://caskbycask.net/ko/community/byob");
+        assertThat(xml).doesNotContain("https://caskbycask.net/en/notices");
+        assertThat(xml).doesNotContain("https://caskbycask.net/en/community/");
+    }
+
+    @Test
+    @DisplayName("게시글 사이트맵 조회는 활성·공개·비성인 게시글만 대상으로 한다")
+    void sitemap_filters_non_public_posts() {
+        mockQueries(List.of());
+
+        sitemapService.generateSitemap();
+
+        verify(em).createQuery(argThat((String query) ->
+                query.contains("FROM Post p")
+                        && query.contains("p.status = :active")
+                        && query.contains("p.isHidden = false")
+                        && query.contains("p.adultOnly = false")
+        ));
     }
 
     @Test

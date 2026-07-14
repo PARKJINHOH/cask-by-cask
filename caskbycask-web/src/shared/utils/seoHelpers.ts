@@ -1,6 +1,8 @@
 import { Metadata } from 'next'
 
 const API_URL = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+const SITE_URL = 'https://caskbycask.net'
+const DEFAULT_OG_IMAGE = `${SITE_URL}/og-image.png`
 
 interface ApiResponse<T> {
   success: boolean
@@ -128,11 +130,23 @@ interface CommunityPostResponse {
   viewCount?: number | null
   likeCount?: number | null
   commentCount?: number | null
+  isLocked?: boolean | null
+  isHidden?: boolean | null
   adultOnly?: boolean | null
   createdAt?: string | null
   updatedAt?: string | null
   imageUrl?: string | null
   images?: Array<{ imageUrl?: string | null }> | null
+}
+
+interface CommunityPostListItemResponse {
+  id: number
+  boardType?: string | null
+  title: string
+  isLocked?: boolean | null
+  adultOnly?: boolean | null
+  authorNickname?: string | null
+  createdAt?: string | null
 }
 
 interface CommunityPostCommentResponse {
@@ -164,8 +178,42 @@ interface ByobDetailResponse {
   updatedAt?: string | null
 }
 
+interface ByobListItemResponse {
+  id: number
+  title: string
+  location?: string | null
+  eventAt?: string | null
+  status?: string | null
+}
+
+interface NoticeListItemResponse {
+  id: number
+  title: string
+  category?: string | null
+  createdAt?: string | null
+}
+
+interface NoticeDetailResponse {
+  id: number
+  title: string
+  contentSanitized?: string | null
+  category?: string | null
+  viewCount?: number | null
+  recommendCount?: number | null
+  images?: Array<{ imageUrl?: string | null }> | null
+  createdAt?: string | null
+  updatedAt?: string | null
+}
+
+export interface SeoSnapshotItem {
+  title: string
+  href: string
+  description?: string | null
+  meta?: string | null
+}
+
 export interface SeoSnapshotData {
-  kind: 'spirit' | 'community' | 'byob'
+  kind: 'spirit' | 'community' | 'byob' | 'board-list' | 'notice'
   lang: 'ko' | 'en'
   eyebrow: string
   title: string
@@ -175,6 +223,7 @@ export interface SeoSnapshotData {
   metrics: Array<{ label: string; value: string }>
   details: Array<{ label: string; value: string }>
   bodyHtml?: string | null
+  items?: SeoSnapshotItem[]
   links: Array<{ label: string; href: string }>
 }
 
@@ -190,6 +239,10 @@ interface ReviewResponse {
 
 interface PageResponse<T> {
   content: T[]
+  page?: number
+  size?: number
+  totalElements?: number
+  totalPages?: number
 }
 
 export function extractLeadingId(value: string | undefined | null): string | null {
@@ -235,15 +288,31 @@ async function fetchApiData<T>(path: string, revalidate = 3600): Promise<T | nul
   }
 }
 
-// HTML 태그 제거 및 텍스트 요약 유틸리티
-export function stripHtmlAndSummarize(htmlStr: string, maxLength = 150): string {
+function stripHtmlToText(htmlStr: string): string {
   if (!htmlStr) return ''
-  const cleanText = htmlStr
+  return htmlStr
     .replace(/<[^>]*>/g, ' ') // HTML 태그 제거
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
     .replace(/\s+/g, ' ') // 공백 단일화
     .trim()
+}
+
+// HTML 태그 제거 및 텍스트 요약 유틸리티
+export function stripHtmlAndSummarize(htmlStr: string, maxLength = 150): string {
+  const cleanText = stripHtmlToText(htmlStr)
   if (cleanText.length <= maxLength) return cleanText
   return cleanText.substring(0, maxLength) + '...'
+}
+
+function toKstIsoDateTime(value: string | null | undefined): string | undefined {
+  if (!value) return undefined
+  if (/Z$|[+-]\d{2}:?\d{2}$/.test(value)) return value
+  return value.includes('T') ? `${value}+09:00` : value
 }
 
 function normalizeLang(lang: 'ko' | 'en' | null): 'ko' | 'en' {
@@ -271,7 +340,7 @@ function buildCommentJsonLd(
     '@type': 'Comment',
     'url': `${canonical}#comment-${comment.id}`,
     'text': text,
-    'datePublished': comment.createdAt || undefined,
+    'datePublished': toKstIsoDateTime(comment.createdAt),
     'author': {
       '@type': 'Person',
       'name': comment.authorNickname || 'User',
@@ -466,11 +535,16 @@ function localLabels(lang: 'ko' | 'en') {
       }
 }
 
+export type BoardListType = 'all' | 'notice' | 'free' | 'byob' | 'notices'
+export type MetadataSearchParams = Record<string, string | string[] | undefined>
+
 interface ParsedPath {
-  type: 'home' | 'spirits-list' | 'spirit-detail' | 'community-detail' | 'byob-detail' | 'default'
+  type: 'home' | 'spirits-list' | 'spirit-detail' | 'community-list' | 'community-detail'
+    | 'notices-list' | 'notice-detail' | 'byob-detail' | 'noindex' | 'default'
   lang: 'ko' | 'en' | null
   spiritId?: string
   boardType?: string
+  boardListType?: BoardListType
   postId?: string
 }
 
@@ -495,68 +569,515 @@ export function parsePath(segments: string[]): ParsedPath {
     return { type: 'home', lang }
   }
 
+  const privateRoot = new Set([
+    'admin', 'mypage', 'messages', 'notifications', 'login', 'signup',
+    'account-recovery', 'oauth', 'request',
+  ])
+  if (privateRoot.has(remaining[0])) {
+    return { type: 'noindex', lang }
+  }
+
   // 1) /spirits
   if (remaining[0] === 'spirits') {
     if (remaining.length === 1) {
       return { type: 'spirits-list', lang }
+    }
+    if (remaining.includes('review')) {
+      return { type: 'noindex', lang }
     }
     if (remaining.length >= 2) {
       return { type: 'spirit-detail', lang, spiritId: remaining[1] }
     }
   }
 
-  // 2) /community
-  if (remaining[0] === 'community') {
-    if (remaining.length >= 2) {
-      if (remaining[1] === 'byob') {
-        if (remaining.length >= 3) {
-          return { type: 'byob-detail', lang, postId: remaining[2] }
-        }
-      } else {
-        if (remaining.length >= 3) {
-          return { type: 'community-detail', lang, boardType: remaining[1], postId: remaining[2] }
-        }
-      }
+  // 2) /notices
+  if (remaining[0] === 'notices') {
+    if (remaining.length === 1) {
+      return { type: 'notices-list', lang, boardListType: 'notices' }
     }
+    if (remaining.length === 2 && extractLeadingId(remaining[1])) {
+      return { type: 'notice-detail', lang, postId: remaining[1] }
+    }
+    return { type: 'noindex', lang }
+  }
+
+  // 3) /community
+  if (remaining[0] === 'community') {
+    const board = remaining[1] as BoardListType | undefined
+    if (!board || !['all', 'notice', 'free', 'byob'].includes(board)) {
+      return { type: 'noindex', lang }
+    }
+    if (remaining.length === 2) {
+      return { type: 'community-list', lang, boardListType: board }
+    }
+    if (remaining[2] === 'write' || remaining[3] === 'edit') {
+      return { type: 'noindex', lang }
+    }
+    if (!extractLeadingId(remaining[2])) {
+      return { type: 'noindex', lang }
+    }
+    if (remaining.length === 3 && board === 'byob') {
+      return { type: 'byob-detail', lang, postId: remaining[2] }
+    }
+    if (remaining.length === 3 && board !== 'all') {
+      return { type: 'community-detail', lang, boardType: board, postId: remaining[2] }
+    }
+    return { type: 'noindex', lang }
   }
 
   return { type: 'default', lang }
+}
+
+const BOARD_LIST_CONFIG: Record<BoardListType, {
+  path: string
+  eyebrow: { ko: string; en: string }
+  title: { ko: string; en: string }
+  description: { ko: string; en: string }
+}> = {
+  all: {
+    path: '/community/all',
+    eyebrow: { ko: '주류 커뮤니티', en: 'Spirits Community' },
+    title: { ko: '커뮤니티 전체 게시판 — CaskByCask', en: 'Community Boards — CaskByCask' },
+    description: {
+      ko: '위스키·와인·꼬냑 등 주류 관련 소식과 자유로운 이야기, BYOB 모임을 한곳에서 확인하세요.',
+      en: 'Browse spirits news, community discussions, and BYOB gatherings on CaskByCask.',
+    },
+  },
+  notice: {
+    path: '/community/notice',
+    eyebrow: { ko: '커뮤니티 소식', en: 'Community News' },
+    title: { ko: '주류 소식·이벤트 게시판 — CaskByCask', en: 'Spirits News and Events — CaskByCask' },
+    description: {
+      ko: '위스키·와인·꼬냑 신제품, 업계 동향, 증류소 소식과 커뮤니티 이벤트를 확인하세요.',
+      en: 'Read product releases, industry updates, distillery news, and community events.',
+    },
+  },
+  free: {
+    path: '/community/free',
+    eyebrow: { ko: '주류 커뮤니티', en: 'Spirits Community' },
+    title: { ko: '위스키·와인·꼬냑 자유게시판 — CaskByCask', en: 'Spirits Community Board — CaskByCask' },
+    description: {
+      ko: '위스키·와인·꼬냑 등 주류에 관한 테이스팅 경험, 질문과 정보를 자유롭게 나누는 게시판입니다.',
+      en: 'Share tasting experiences, questions, and information about whisky, wine, cognac, and other spirits.',
+    },
+  },
+  byob: {
+    path: '/community/byob',
+    eyebrow: { ko: 'BYOB 모임', en: 'BYOB Gatherings' },
+    title: { ko: 'BYOB 주류 모임 모집 — CaskByCask', en: 'BYOB Spirits Gatherings — CaskByCask' },
+    description: {
+      ko: '각자 술을 가져와 함께 시음하는 BYOB 모임의 일정, 장소와 모집 현황을 확인하세요.',
+      en: 'Find BYOB tasting gatherings, schedules, locations, and recruitment status.',
+    },
+  },
+  notices: {
+    path: '/notices',
+    eyebrow: { ko: '서비스 안내', en: 'Service Updates' },
+    title: { ko: 'CaskByCask 공지사항', en: 'CaskByCask Notices' },
+    description: {
+      ko: 'CaskByCask의 서비스 업데이트, 이벤트, 점검 일정과 주요 공지사항을 확인하세요.',
+      en: 'Read CaskByCask service updates, events, maintenance schedules, and important notices.',
+    },
+  },
+}
+
+function firstSearchParam(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value
+}
+
+export function isBoardListNoindex(
+  board: BoardListType,
+  searchParams: MetadataSearchParams,
+): boolean {
+  const page = firstSearchParam(searchParams.page)
+  if (page != null && page !== '' && page !== '0') return true
+
+  if (board === 'notices') {
+    return Boolean(firstSearchParam(searchParams.category))
+  }
+  if (board === 'byob') {
+    const status = firstSearchParam(searchParams.status)
+    return Boolean(status && status !== 'ALL')
+  }
+
+  const tab = firstSearchParam(searchParams.tab)
+  const sort = firstSearchParam(searchParams.sort)
+  if (tab && tab !== 'all') return true
+  if (sort && sort !== 'LATEST') return true
+
+  return ['keyword', 'prefix', 'authorId', 'commentAuthorId', 'authorNickname', 'distilleryTagId']
+    .some((key) => Boolean(firstSearchParam(searchParams[key])))
+}
+
+function buildRobots(index: boolean): Metadata['robots'] {
+  return {
+    index,
+    follow: true,
+    googleBot: {
+      index,
+      follow: true,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+      'max-video-preview': -1,
+    },
+  }
+}
+
+export function getNoindexMetadata(
+  lang: 'ko' | 'en' | null,
+  title?: string,
+): Metadata {
+  const resolvedLang = normalizeLang(lang)
+  return {
+    title: title || (resolvedLang === 'en' ? 'Page — CaskByCask' : '페이지 — CaskByCask'),
+    robots: buildRobots(false),
+  }
+}
+
+export function getBoardListMetadata(
+  board: BoardListType,
+  lang: 'ko' | 'en' | null,
+  noindex = false,
+): Metadata {
+  const resolvedLang = normalizeLang(lang)
+  const config = BOARD_LIST_CONFIG[board]
+  const title = config.title[resolvedLang]
+  const description = config.description[resolvedLang]
+  // 게시판 본문은 별도 영문 번역 데이터가 없으므로 검색 신호를 한국어 원문으로 통합한다.
+  const canonical = `${SITE_URL}/ko${config.path}`
+
+  return {
+    title,
+    description,
+    robots: buildRobots(!noindex),
+    alternates: { canonical },
+    openGraph: {
+      title,
+      description,
+      url: canonical,
+      type: 'website',
+      siteName: 'CaskByCask',
+      locale: resolvedLang === 'en' ? 'en_US' : 'ko_KR',
+      images: [{ url: DEFAULT_OG_IMAGE, alt: title }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [DEFAULT_OG_IMAGE],
+    },
+  }
+}
+
+export async function getBoardListSeoSnapshot(
+  board: BoardListType,
+  lang: 'ko' | 'en' | null,
+): Promise<SeoSnapshotData> {
+  const resolvedLang = normalizeLang(lang)
+  const config = BOARD_LIST_CONFIG[board]
+  const canonicalPath = `/ko${config.path}`
+  let totalElements: number | undefined
+  let items: SeoSnapshotItem[] = []
+
+  if (board === 'notices') {
+    const page = await fetchApiData<PageResponse<NoticeListItemResponse>>('/api/notices?page=0&size=20', 300)
+    totalElements = page?.totalElements
+    items = (page?.content || []).map((notice) => ({
+      title: notice.title,
+      href: `/ko/notices/${notice.id}`,
+      description: notice.category || null,
+      meta: formatDateOnly(notice.createdAt),
+    }))
+  } else if (board === 'byob') {
+    const page = await fetchApiData<PageResponse<ByobListItemResponse>>('/api/byob?page=0&size=12', 60)
+    totalElements = page?.totalElements
+    items = (page?.content || [])
+      .filter((byob) => byob.status !== 'CANCELLED')
+      .map((byob) => ({
+        title: byob.title,
+        href: `/ko/community/byob/${byob.id}`,
+        description: byob.location || null,
+        meta: formatDateOnly(byob.eventAt),
+      }))
+  } else {
+    const boardType = board === 'notice' ? 'NOTICE' : board === 'free' ? 'FREE' : null
+    const query = new URLSearchParams({ page: '0', size: '20', sort: 'LATEST' })
+    if (boardType) query.set('boardType', boardType)
+    const page = await fetchApiData<PageResponse<CommunityPostListItemResponse>>(`/api/posts?${query.toString()}`, 60)
+    totalElements = page?.totalElements
+    items = (page?.content || [])
+      .filter((post) => !post.isLocked && !post.adultOnly)
+      .map((post) => {
+        const pathBoard = post.boardType?.toUpperCase() === 'NOTICE' ? 'notice' : 'free'
+        return {
+          title: post.title,
+          href: `/ko/community/${pathBoard}/${post.id}`,
+          description: post.authorNickname || null,
+          meta: formatDateOnly(post.createdAt),
+        }
+      })
+  }
+
+  const countLabel = resolvedLang === 'en' ? 'Public posts' : '공개 글'
+  return {
+    kind: 'board-list',
+    lang: resolvedLang,
+    eyebrow: config.eyebrow[resolvedLang],
+    title: config.title[resolvedLang].replace(/\s+—\s+CaskByCask$/, ''),
+    description: config.description[resolvedLang],
+    image: null,
+    metrics: totalElements == null
+      ? []
+      : [{ label: countLabel, value: totalElements.toLocaleString(resolvedLang === 'en' ? 'en-US' : 'ko-KR') }],
+    details: [],
+    items,
+    links: [
+      { label: resolvedLang === 'en' ? 'Home' : '홈', href: '/ko/' },
+      { label: config.eyebrow[resolvedLang], href: canonicalPath },
+    ],
+  }
+}
+
+export function buildBoardListJsonLd(
+  board: BoardListType,
+  snapshot: SeoSnapshotData,
+): object | null {
+  if (snapshot.lang === 'en') return null
+
+  const config = BOARD_LIST_CONFIG[board]
+  const canonical = `${SITE_URL}/ko${config.path}`
+  const itemListId = `${canonical}#item-list`
+  const breadcrumbId = `${canonical}#breadcrumb`
+  const itemListElements = (snapshot.items || []).map((item, index) => ({
+    '@type': 'ListItem',
+    'position': index + 1,
+    'url': `${SITE_URL}${item.href}`,
+    'name': item.title,
+  }))
+
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'CollectionPage',
+        '@id': canonical,
+        'url': canonical,
+        'name': config.title.ko,
+        'description': config.description.ko,
+        'inLanguage': 'ko-KR',
+        'isPartOf': { '@id': `${SITE_URL}/ko/#website` },
+        'breadcrumb': { '@id': breadcrumbId },
+        'mainEntity': itemListElements.length > 0 ? { '@id': itemListId } : undefined,
+      },
+      {
+        '@type': 'BreadcrumbList',
+        '@id': breadcrumbId,
+        'itemListElement': [
+          {
+            '@type': 'ListItem',
+            'position': 1,
+            'name': '홈',
+            'item': `${SITE_URL}/ko/`,
+          },
+          {
+            '@type': 'ListItem',
+            'position': 2,
+            'name': config.eyebrow.ko,
+            'item': canonical,
+          },
+        ],
+      },
+      ...(itemListElements.length > 0 ? [{
+        '@type': 'ItemList',
+        '@id': itemListId,
+        'numberOfItems': itemListElements.length,
+        'itemListElement': itemListElements,
+      }] : []),
+    ],
+  }
+}
+
+async function getNoticeDetail(id: string): Promise<NoticeDetailResponse | null> {
+  const numericId = extractLeadingId(id)
+  if (!numericId) return null
+  return fetchApiData<NoticeDetailResponse>(`/api/notices/${numericId}`, 300)
+}
+
+export async function getNoticeDetailMetadata(
+  id: string,
+  lang: 'ko' | 'en' | null,
+): Promise<Metadata> {
+  const notice = await getNoticeDetail(id)
+  if (!notice) return getNoindexMetadata(lang, '존재하지 않는 공지사항 — CaskByCask')
+
+  const numericId = extractLeadingId(id)!
+  const title = `${notice.title} — CaskByCask`
+  const description = stripHtmlAndSummarize(notice.contentSanitized || '', 160)
+    || `CaskByCask 공지사항 — ${notice.title}`
+  const canonical = `${SITE_URL}/ko/notices/${numericId}`
+  const ogImage = toAbsoluteImageUrl(notice.images?.[0]?.imageUrl) || DEFAULT_OG_IMAGE
+
+  return {
+    title,
+    description,
+    robots: buildRobots(true),
+    alternates: { canonical },
+    openGraph: {
+      title,
+      description,
+      url: canonical,
+      type: 'article',
+      siteName: 'CaskByCask',
+      locale: 'ko_KR',
+      publishedTime: toKstIsoDateTime(notice.createdAt),
+      modifiedTime: toKstIsoDateTime(notice.updatedAt || notice.createdAt),
+      images: [{ url: ogImage, alt: notice.title }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [ogImage],
+    },
+  }
+}
+
+export async function getNoticeDetailSeoSnapshot(
+  id: string,
+  lang: 'ko' | 'en' | null,
+): Promise<SeoSnapshotData | null> {
+  const notice = await getNoticeDetail(id)
+  if (!notice) return null
+
+  const numericId = extractLeadingId(id)!
+  const resolvedLang = normalizeLang(lang)
+  const description = stripHtmlAndSummarize(notice.contentSanitized || '', 220)
+  return {
+    kind: 'notice',
+    lang: resolvedLang,
+    eyebrow: resolvedLang === 'en' ? 'Service Notice' : '공지사항',
+    title: notice.title,
+    description,
+    image: toAbsoluteImageUrl(notice.images?.[0]?.imageUrl),
+    metrics: compactDetails([
+      { label: resolvedLang === 'en' ? 'Views' : '조회', value: formatCount(notice.viewCount, resolvedLang) },
+      { label: resolvedLang === 'en' ? 'Recommendations' : '추천', value: formatCount(notice.recommendCount, resolvedLang) },
+    ]),
+    details: compactDetails([
+      { label: resolvedLang === 'en' ? 'Category' : '카테고리', value: notice.category },
+      { label: resolvedLang === 'en' ? 'Published' : '작성일', value: formatDateOnly(notice.createdAt) },
+      { label: resolvedLang === 'en' ? 'Updated' : '수정일', value: formatDateOnly(notice.updatedAt) },
+    ]),
+    bodyHtml: notice.contentSanitized || null,
+    links: [
+      { label: resolvedLang === 'en' ? 'Home' : '홈', href: '/ko/' },
+      { label: resolvedLang === 'en' ? 'Notices' : '공지사항', href: '/ko/notices' },
+      { label: notice.title, href: `/ko/notices/${numericId}` },
+    ],
+  }
+}
+
+export async function getNoticeDetailJsonLd(
+  id: string,
+  lang: 'ko' | 'en' | null,
+): Promise<object | null> {
+  if (normalizeLang(lang) === 'en') return null
+  const notice = await getNoticeDetail(id)
+  if (!notice) return null
+
+  const numericId = extractLeadingId(id)!
+  const canonical = `${SITE_URL}/ko/notices/${numericId}`
+  const image = toAbsoluteImageUrl(notice.images?.[0]?.imageUrl) || DEFAULT_OG_IMAGE
+  const articleId = `${canonical}#article`
+  const breadcrumbId = `${canonical}#breadcrumb`
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'WebPage',
+        '@id': canonical,
+        'url': canonical,
+        'name': notice.title,
+        'inLanguage': 'ko-KR',
+        'breadcrumb': { '@id': breadcrumbId },
+        'mainEntity': { '@id': articleId },
+      },
+      {
+        '@type': 'Article',
+        '@id': articleId,
+        'mainEntityOfPage': { '@id': canonical },
+        'headline': notice.title,
+        'description': stripHtmlAndSummarize(notice.contentSanitized || '', 300),
+        'articleBody': stripHtmlToText(notice.contentSanitized || ''),
+        'image': [image],
+        'datePublished': toKstIsoDateTime(notice.createdAt),
+        'dateModified': toKstIsoDateTime(notice.updatedAt || notice.createdAt),
+        'inLanguage': 'ko-KR',
+        'isAccessibleForFree': true,
+        'author': { '@type': 'Organization', 'name': 'CaskByCask', 'url': SITE_URL },
+        'publisher': {
+          '@type': 'Organization',
+          'name': 'CaskByCask',
+          'url': SITE_URL,
+          'logo': { '@type': 'ImageObject', 'url': `${SITE_URL}/logo.png` },
+        },
+      },
+      {
+        '@type': 'BreadcrumbList',
+        '@id': breadcrumbId,
+        'itemListElement': [
+          { '@type': 'ListItem', 'position': 1, 'name': '홈', 'item': `${SITE_URL}/ko/` },
+          { '@type': 'ListItem', 'position': 2, 'name': '공지사항', 'item': `${SITE_URL}/ko/notices` },
+          { '@type': 'ListItem', 'position': 3, 'name': notice.title, 'item': canonical },
+        ],
+      },
+    ],
+  }
 }
 
 /**
  * 기본/홈페이지 메타데이터를 반환합니다.
  */
 export function getDefaultMetadata(lang: 'ko' | 'en' | null): Metadata {
-  const prefix = lang ? `/${lang}` : ''
-  const canonical = `https://caskbycask.net${prefix}`
+  const resolvedLang = normalizeLang(lang)
+  const canonical = `${SITE_URL}/${resolvedLang}/`
+  const title = resolvedLang === 'en'
+    ? 'CaskByCask — Spirits Information, Reviews and Community'
+    : 'CaskByCask(캐바캐) — 주류 정보, 리뷰, 커뮤니티'
+  const description = resolvedLang === 'en'
+    ? 'Explore whisky, wine, cognac and other spirits with detailed information, ratings, reviews, and community discussions.'
+    : '위스키, 와인, 꼬냑 등 주류 정보와 평점 리뷰 전문 플랫폼, CaskByCask(캐바캐)입니다.'
   return {
-    title: 'CaskByCask(캐바캐) — 주류 정보, 리뷰, 커뮤니티',
-    description: '위스키, 와인, 꼬냑 등 주류 정보와 평점 리뷰 전문 플랫폼, CaskByCask(캐바캐)입니다.',
-    robots: {
-      index: true,
-      follow: true,
-    },
+    title,
+    description,
+    robots: buildRobots(true),
     alternates: {
       canonical,
+      languages: {
+        ko: `${SITE_URL}/ko/`,
+        en: `${SITE_URL}/en/`,
+        'x-default': `${SITE_URL}/ko/`,
+      },
     },
     openGraph: {
-      title: 'CaskByCask(캐바캐) — 주류 정보, 리뷰, 커뮤니티',
-      description: '위스키, 와인, 꼬냑 등 주류 정보와 평점 리뷰 전문 플랫폼, CaskByCask(캐바캐)입니다.',
+      title,
+      description,
       url: canonical,
       type: 'website',
       siteName: 'CaskByCask',
+      locale: resolvedLang === 'en' ? 'en_US' : 'ko_KR',
       images: [
         {
-          url: 'https://caskbycask.net/og-image.png',
-          alt: 'CaskByCask 주류 정보 탐색 (Specs & Reviews)',
+          url: DEFAULT_OG_IMAGE,
+          alt: title,
         },
       ],
     },
     twitter: {
       card: 'summary_large_image',
-      title: 'CaskByCask(캐바캐) — 주류 정보, 리뷰, 커뮤니티',
-      description: '위스키, 와인, 꼬냑 등 주류 정보와 평점 리뷰 전문 플랫폼, CaskByCask(캐바캐)입니다.',
-      images: ['https://caskbycask.net/og-image.png'],
+      title,
+      description,
+      images: [DEFAULT_OG_IMAGE],
     },
   }
 }
@@ -976,11 +1497,14 @@ export async function getCommunityPostSeoSnapshot(
 ): Promise<SeoSnapshotData | null> {
   const resolvedLang = normalizeLang(lang)
   const labels = localLabels(resolvedLang)
-  const post = await fetchApiData<CommunityPostResponse>(`/api/posts/${id}`, 60)
-  if (!post) return null
+  const numericId = extractLeadingId(id)
+  if (!numericId) return null
+  const post = await fetchApiData<CommunityPostResponse>(`/api/posts/${numericId}`, 60)
+  if (!post || post.adultOnly || post.isLocked || post.isHidden) return null
 
   const bodyHtml = getPostContentHtml(post)
   const boardName = boardLabel(post.boardType || boardType, resolvedLang)
+  const canonicalBoard = post.boardType?.toUpperCase() === 'NOTICE' ? 'notice' : 'free'
   const description = stripHtmlAndSummarize(bodyHtml, 220)
   const image = toAbsoluteImageUrl(post.imageUrl || post.images?.[0]?.imageUrl)
 
@@ -1005,10 +1529,10 @@ export async function getCommunityPostSeoSnapshot(
     ]),
     bodyHtml: bodyHtml || null,
     links: [
-      { label: labels.home, href: `/${resolvedLang}/` },
-      { label: labels.community, href: `/${resolvedLang}/community/all` },
-      { label: boardName, href: `/${resolvedLang}/community/${boardType}` },
-      { label: post.title, href: `/${resolvedLang}/community/${boardType}/${id}` },
+      { label: labels.home, href: '/ko/' },
+      { label: labels.community, href: '/ko/community/all' },
+      { label: boardName, href: `/ko/community/${canonicalBoard}` },
+      { label: post.title, href: `/ko/community/${canonicalBoard}/${numericId}` },
     ],
   }
 }
@@ -1016,7 +1540,9 @@ export async function getCommunityPostSeoSnapshot(
 export async function getByobPostSeoSnapshot(id: string, lang: 'ko' | 'en' | null): Promise<SeoSnapshotData | null> {
   const resolvedLang = normalizeLang(lang)
   const labels = localLabels(resolvedLang)
-  const byob = await fetchApiData<ByobDetailResponse>(`/api/byob/${id}`, 60)
+  const numericId = extractLeadingId(id)
+  if (!numericId) return null
+  const byob = await fetchApiData<ByobDetailResponse>(`/api/byob/${numericId}`, 60)
   if (!byob) return null
 
   const participantValue = byob.maxParticipants != null
@@ -1045,10 +1571,10 @@ export async function getByobPostSeoSnapshot(id: string, lang: 'ko' | 'en' | nul
     ]),
     bodyHtml: plainTextToHtml(byob.content),
     links: [
-      { label: labels.home, href: `/${resolvedLang}/` },
-      { label: labels.community, href: `/${resolvedLang}/community/all` },
-      { label: labels.byob, href: `/${resolvedLang}/community/byob` },
-      { label: byob.title, href: `/${resolvedLang}/community/byob/${id}` },
+      { label: labels.home, href: '/ko/' },
+      { label: labels.community, href: '/ko/community/all' },
+      { label: labels.byob, href: '/ko/community/byob' },
+      { label: byob.title, href: `/ko/community/byob/${numericId}` },
     ],
   }
 }
@@ -1057,64 +1583,43 @@ export async function getByobPostSeoSnapshot(id: string, lang: 'ko' | 'en' | nul
  * 커뮤니티 게시글 상세 페이지 메타데이터를 반환합니다.
  */
 export async function getCommunityPostMetadata(boardType: string, id: string, lang: 'ko' | 'en' | null): Promise<Metadata> {
-  const prefix = lang ? `/${lang}` : ''
-  try {
-    const res = await fetch(`${API_URL}/api/posts/${id}`, {
-      next: { revalidate: 60 }, // 커뮤니티 글은 60초 캐싱 (실시간성 반영)
-    })
-    
-    if (!res.ok) {
-      return {
-        title: '커뮤니티 게시글 — CaskByCask',
-        description: 'CaskByCask 커뮤니티에서 유익한 주류 이야기를 만나보세요.',
-      }
-    }
-    
-    const responseData = await res.json()
-    const post = responseData.data as CommunityPostResponse | null
-    
-    if (!post) {
-      return {
-        title: '존재하지 않는 게시글 — CaskByCask',
-      }
-    }
+  const numericId = extractLeadingId(id)
+  const normalizedBoard = boardType === 'notice' || boardType === 'free' ? boardType : null
+  if (!numericId || !normalizedBoard) return getNoindexMetadata(lang, '커뮤니티 게시글 — CaskByCask')
 
-    const title = `${post.title} — CaskByCask`
-    const description = stripHtmlAndSummarize(getPostContentHtml(post)) || 'CaskByCask 커뮤니티 게시글 상세 페이지입니다.'
-    const canonical = `https://caskbycask.net${prefix}/community/${boardType}/${id}`
-    const ogImage = toAbsoluteImageUrl(post.imageUrl || post.images?.[0]?.imageUrl) || 'https://caskbycask.net/og-image.png'
+  const post = await fetchApiData<CommunityPostResponse>(`/api/posts/${numericId}`, 60)
+  if (!post) return getNoindexMetadata(lang, '존재하지 않는 게시글 — CaskByCask')
 
-    return {
+  const canonicalBoard = post.boardType?.toUpperCase() === 'NOTICE' ? 'notice' : 'free'
+  const title = `${post.title} — CaskByCask`
+  const description = stripHtmlAndSummarize(getPostContentHtml(post))
+    || 'CaskByCask 커뮤니티 게시글 상세 페이지입니다.'
+  const canonical = `${SITE_URL}/ko/community/${canonicalBoard}/${numericId}`
+  const ogImage = toAbsoluteImageUrl(post.imageUrl || post.images?.[0]?.imageUrl) || DEFAULT_OG_IMAGE
+  const restricted = Boolean(post.adultOnly || post.isLocked || post.isHidden)
+
+  return {
+    title,
+    description,
+    robots: buildRobots(!restricted),
+    alternates: { canonical },
+    openGraph: {
       title,
       description,
-      alternates: {
-        canonical,
-      },
-      openGraph: {
-        title,
-        description,
-        url: canonical,
-        images: [
-          {
-            url: ogImage,
-            alt: title,
-          },
-        ],
-        type: 'article',
-        siteName: 'CaskByCask',
-      },
-      twitter: {
-        card: 'summary_large_image',
-        title,
-        description,
-        images: [ogImage],
-      },
-    }
-  } catch (error) {
-    return {
-      title: '커뮤니티 게시글 — CaskByCask',
-      description: 'CaskByCask 커뮤니티에서 다양한 정보를 확인해 보세요.',
-    }
+      url: canonical,
+      images: [{ url: ogImage, alt: title }],
+      type: 'article',
+      siteName: 'CaskByCask',
+      locale: 'ko_KR',
+      publishedTime: toKstIsoDateTime(post.createdAt),
+      modifiedTime: toKstIsoDateTime(post.updatedAt || post.createdAt),
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [ogImage],
+    },
   }
 }
 
@@ -1122,134 +1627,130 @@ export async function getCommunityPostMetadata(boardType: string, id: string, la
  * 커뮤니티 게시글 JSON-LD 스키마 데이터를 생성해 반환합니다.
  */
 export async function getCommunityPostJsonLd(boardType: string, id: string, lang: 'ko' | 'en' | null): Promise<object | null> {
-  const prefix = lang ? `/${lang}` : ''
-  try {
-    const res = await fetch(`${API_URL}/api/posts/${id}`, {
-      next: { revalidate: 60 },
-    })
-    if (res.ok) {
-      const responseData = await res.json()
-      const post = responseData.data as CommunityPostResponse | null
-      if (post) {
-        const body = getPostContentHtml(post)
-        const image = toAbsoluteImageUrl(post.imageUrl || post.images?.[0]?.imageUrl)
-        const canonical = `https://caskbycask.net${prefix}/community/${boardType}/${id}`
-        const commentsPage = (post.commentCount || 0) > 0
-          ? await fetchApiData<PageResponse<CommunityPostCommentResponse>>(`/api/posts/${id}/comments?page=0&size=30`, 60)
-          : null
-        const comments = (commentsPage?.content || [])
-          .map((comment) => buildCommentJsonLd(comment, canonical))
-          .filter((comment): comment is object => comment !== null)
+  if (normalizeLang(lang) === 'en') return null
+  const numericId = extractLeadingId(id)
+  if (!numericId || (boardType !== 'notice' && boardType !== 'free')) return null
 
-        return {
-          '@context': 'https://schema.org',
-          '@type': 'DiscussionForumPosting',
-          'headline': post.title,
-          'articleBody': stripHtmlAndSummarize(body, 500),
-          'url': canonical,
-          'datePublished': post.createdAt,
-          'dateModified': post.updatedAt || post.createdAt,
-          'articleSection': boardLabel(post.boardType || boardType, normalizeLang(lang)),
-          'isAccessibleForFree': !post.adultOnly,
-          'image': image || undefined,
-          'comment': comments.length > 0 ? comments : undefined,
-          'publisher': {
-            '@type': 'Organization',
-            'name': 'CaskByCask',
-            'url': 'https://caskbycask.net',
+  const post = await fetchApiData<CommunityPostResponse>(`/api/posts/${numericId}`, 60)
+  if (!post || post.adultOnly || post.isLocked || post.isHidden) return null
+
+  const body = getPostContentHtml(post)
+  const text = stripHtmlToText(body)
+  const image = toAbsoluteImageUrl(post.imageUrl || post.images?.[0]?.imageUrl)
+  if (!text && !image) return null
+  const canonicalBoard = post.boardType?.toUpperCase() === 'NOTICE' ? 'notice' : 'free'
+  const canonical = `${SITE_URL}/ko/community/${canonicalBoard}/${numericId}`
+  const postingId = `${canonical}#posting`
+  const breadcrumbId = `${canonical}#breadcrumb`
+  const commentsPage = (post.commentCount || 0) > 0
+    ? await fetchApiData<PageResponse<CommunityPostCommentResponse>>(`/api/posts/${numericId}/comments?page=0&size=30`, 60)
+    : null
+  const comments = (commentsPage?.content || [])
+    .map((comment) => buildCommentJsonLd(comment, canonical))
+    .filter((comment): comment is object => comment !== null)
+
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'WebPage',
+        '@id': canonical,
+        'url': canonical,
+        'name': post.title,
+        'inLanguage': 'ko-KR',
+        'breadcrumb': { '@id': breadcrumbId },
+        'mainEntity': { '@id': postingId },
+      },
+      {
+        '@type': 'DiscussionForumPosting',
+        '@id': postingId,
+        'mainEntityOfPage': { '@id': canonical },
+        'headline': post.title,
+        'text': text || undefined,
+        'articleBody': text || undefined,
+        'url': canonical,
+        'datePublished': toKstIsoDateTime(post.createdAt),
+        'dateModified': toKstIsoDateTime(post.updatedAt || post.createdAt),
+        'articleSection': boardLabel(post.boardType || boardType, 'ko'),
+        'inLanguage': 'ko-KR',
+        'isAccessibleForFree': true,
+        'image': image || undefined,
+        'comment': comments.length > 0 ? comments : undefined,
+        'publisher': {
+          '@type': 'Organization',
+          'name': 'CaskByCask',
+          'url': SITE_URL,
+        },
+        'author': {
+          '@type': 'Person',
+          'name': post.authorNickname || post.authorName || 'User',
+        },
+        'interactionStatistic': [
+          {
+            '@type': 'InteractionCounter',
+            'interactionType': 'https://schema.org/LikeAction',
+            'userInteractionCount': post.likeCount || 0,
           },
-          'author': {
-            '@type': 'Person',
-            'name': post.authorNickname || post.authorName || 'User',
+          {
+            '@type': 'InteractionCounter',
+            'interactionType': 'https://schema.org/CommentAction',
+            'userInteractionCount': post.commentCount || 0,
           },
-          'interactionStatistic': [
-            {
-              '@type': 'InteractionCounter',
-              'interactionType': 'https://schema.org/LikeAction',
-              'userInteractionCount': post.likeCount || 0,
-            },
-            {
-              '@type': 'InteractionCounter',
-              'interactionType': 'https://schema.org/CommentAction',
-              'userInteractionCount': post.commentCount || 0,
-            },
-            {
-              '@type': 'InteractionCounter',
-              'interactionType': 'https://schema.org/ViewAction',
-              'userInteractionCount': post.viewCount || 0,
-            },
-          ],
-        }
-      }
-    }
-  } catch (e) {
-    // Graceful error
+          {
+            '@type': 'InteractionCounter',
+            'interactionType': 'https://schema.org/ViewAction',
+            'userInteractionCount': post.viewCount || 0,
+          },
+        ],
+      },
+      {
+        '@type': 'BreadcrumbList',
+        '@id': breadcrumbId,
+        'itemListElement': [
+          { '@type': 'ListItem', 'position': 1, 'name': '홈', 'item': `${SITE_URL}/ko/` },
+          { '@type': 'ListItem', 'position': 2, 'name': canonicalBoard === 'notice' ? '소식' : '자유게시판', 'item': `${SITE_URL}/ko/community/${canonicalBoard}` },
+          { '@type': 'ListItem', 'position': 3, 'name': post.title, 'item': canonical },
+        ],
+      },
+    ],
   }
-  return null
 }
 
 /**
  * BYOB 모임 상세 페이지 메타데이터를 반환합니다.
  */
 export async function getByobPostMetadata(id: string, lang: 'ko' | 'en' | null): Promise<Metadata> {
-  const prefix = lang ? `/${lang}` : ''
-  try {
-    const res = await fetch(`${API_URL}/api/byob/${id}`, {
-      next: { revalidate: 60 },
-    })
-    
-    if (!res.ok) {
-      return {
-        title: 'BYOB 모임 상세 — CaskByCask',
-        description: 'CaskByCask BYOB(Bring Your Own Bottle) 모임에서 함께 주류를 나누어 즐겨 보세요.',
-      }
-    }
-    
-    const responseData = await res.json()
-    const byob = responseData.data as ByobDetailResponse | null
-    
-    if (!byob) {
-      return {
-        title: '존재하지 않는 BYOB 모임 — CaskByCask',
-      }
-    }
+  const numericId = extractLeadingId(id)
+  if (!numericId) return getNoindexMetadata(lang, 'BYOB 모임 상세 — CaskByCask')
 
-    const title = `${byob.title} (BYOB 모임) — CaskByCask`
-    const description = stripHtmlAndSummarize(byob.content || '') || 'CaskByCask BYOB 주류 공유 모임 모집글 상세 페이지입니다.'
-    const canonical = `https://caskbycask.net${prefix}/community/byob/${id}`
-    const ogImage = 'https://caskbycask.net/og-image.png'
+  const byob = await fetchApiData<ByobDetailResponse>(`/api/byob/${numericId}`, 60)
+  if (!byob) return getNoindexMetadata(lang, '존재하지 않는 BYOB 모임 — CaskByCask')
 
-    return {
+  const title = `${byob.title} (BYOB 모임) — CaskByCask`
+  const description = stripHtmlAndSummarize(byob.content || '')
+    || 'CaskByCask BYOB 주류 공유 모임 모집글 상세 페이지입니다.'
+  const canonical = `${SITE_URL}/ko/community/byob/${numericId}`
+
+  return {
+    title,
+    description,
+    robots: buildRobots(byob.status !== 'CANCELLED'),
+    alternates: { canonical },
+    openGraph: {
       title,
       description,
-      alternates: {
-        canonical,
-      },
-      openGraph: {
-        title,
-        description,
-        url: canonical,
-        images: [
-          {
-            url: ogImage,
-            alt: title,
-          },
-        ],
-        type: 'website',
-        siteName: 'CaskByCask',
-      },
-      twitter: {
-        card: 'summary_large_image',
-        title,
-        description,
-        images: [ogImage],
-      },
-    }
-  } catch (error) {
-    return {
-      title: 'BYOB 모임 상세 — CaskByCask',
-      description: 'CaskByCask BYOB 주류 공유 모임 정보를 확인해 보세요.',
-    }
+      url: canonical,
+      images: [{ url: DEFAULT_OG_IMAGE, alt: title }],
+      type: 'website',
+      siteName: 'CaskByCask',
+      locale: 'ko_KR',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [DEFAULT_OG_IMAGE],
+    },
   }
 }
 
@@ -1257,50 +1758,43 @@ export async function getByobPostMetadata(id: string, lang: 'ko' | 'en' | null):
  * BYOB 모임 JSON-LD 스키마 데이터를 생성해 반환합니다.
  */
 export async function getByobPostJsonLd(id: string, lang: 'ko' | 'en' | null): Promise<object | null> {
-  const prefix = lang ? `/${lang}` : ''
-  try {
-    const res = await fetch(`${API_URL}/api/byob/${id}`, {
-      next: { revalidate: 60 },
-    })
-    if (res.ok) {
-      const responseData = await res.json()
-      const byob = responseData.data as ByobDetailResponse | null
-      if (byob) {
-        const eventStatus = byob.status === 'CANCELLED'
-          ? 'https://schema.org/EventCancelled'
-          : 'https://schema.org/EventScheduled'
-        return {
-          '@context': 'https://schema.org',
-          '@type': 'Event',
-          'name': byob.title,
-          'url': `https://caskbycask.net${prefix}/community/byob/${id}`,
-          'description': stripHtmlAndSummarize(byob.content || '', 300),
-          'startDate': byob.eventAt || byob.createdAt,
-          'eventStatus': eventStatus,
-          'eventAttendanceMode': 'https://schema.org/OfflineEventAttendanceMode',
-          'maximumAttendeeCapacity': byob.maxParticipants || undefined,
-          'remainingAttendeeCapacity': byob.maxParticipants != null && byob.approvedCount != null
-            ? Math.max(byob.maxParticipants - byob.approvedCount, 0)
-            : undefined,
-          'location': {
-            '@type': 'Place',
-            'name': byob.location || '상세 주소는 본문 참조',
-            'address': {
-              '@type': 'PostalAddress',
-              'streetAddress': byob.address || '상세 장소',
-              'addressLocality': byob.location || '지역',
-              'addressCountry': 'KR',
-            },
-          },
-          'organizer': {
-            '@type': 'Person',
-            'name': byob.hostNickname || 'Host',
-          },
-        }
-      }
-    }
-  } catch (e) {
-    // Graceful error
+  if (normalizeLang(lang) === 'en') return null
+  const numericId = extractLeadingId(id)
+  if (!numericId) return null
+  const byob = await fetchApiData<ByobDetailResponse>(`/api/byob/${numericId}`, 60)
+  if (!byob || !byob.eventAt || !byob.location || byob.status === 'CANCELLED') return null
+
+  const canonical = `${SITE_URL}/ko/community/byob/${numericId}`
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Event',
+    '@id': `${canonical}#event`,
+    'mainEntityOfPage': canonical,
+    'name': byob.title,
+    'url': canonical,
+    'description': stripHtmlAndSummarize(byob.content || '', 300),
+    'startDate': toKstIsoDateTime(byob.eventAt),
+    'eventStatus': 'https://schema.org/EventScheduled',
+    'eventAttendanceMode': 'https://schema.org/OfflineEventAttendanceMode',
+    'image': [DEFAULT_OG_IMAGE],
+    'maximumAttendeeCapacity': byob.maxParticipants || undefined,
+    'remainingAttendeeCapacity': byob.maxParticipants != null && byob.approvedCount != null
+      ? Math.max(byob.maxParticipants - byob.approvedCount, 0)
+      : undefined,
+    'location': {
+      '@type': 'Place',
+      'name': byob.location,
+      'address': {
+        '@type': 'PostalAddress',
+        'streetAddress': byob.address || byob.location,
+        'addressLocality': byob.location,
+        'addressCountry': 'KR',
+      },
+    },
+    'organizer': {
+      '@type': 'Person',
+      'name': byob.hostNickname || 'CaskByCask member',
+      'url': canonical,
+    },
   }
-  return null
 }

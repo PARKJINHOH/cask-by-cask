@@ -77,8 +77,33 @@ export default function SeoFallback({ snapshot }: Props) {
           </div>
         )}
 
+        {snapshot.items && snapshot.items.length > 0 && (
+          <section className="border-t border-neutral-200 p-6 md:p-8" aria-labelledby="seo-list-heading">
+            <h2 id="seo-list-heading" className="text-xl font-bold text-neutral-950">
+              {snapshot.lang === 'en' ? 'Latest public posts' : '최신 공개 글'}
+            </h2>
+            <ul className="mt-4 divide-y divide-neutral-100">
+              {snapshot.items.map((item) => (
+                <li key={item.href} className="py-4">
+                  <a className="text-base font-semibold text-amber-900 hover:underline" href={item.href}>
+                    {item.title}
+                  </a>
+                  {(item.description || item.meta) && (
+                    <p className="mt-1 text-sm text-neutral-500">
+                      {[item.description, item.meta].filter(Boolean).join(' · ')}
+                    </p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
         {snapshot.links.length > 0 && (
-          <nav className="border-t border-neutral-200 bg-neutral-50 px-6 py-4 md:px-8" aria-label="Related pages">
+          <nav
+            className="border-t border-neutral-200 bg-neutral-50 px-6 py-4 md:px-8"
+            aria-label={snapshot.lang === 'en' ? 'Related pages' : '관련 페이지'}
+          >
             <ul className="flex flex-wrap gap-3 text-sm font-semibold">
               {snapshot.links.map((link) => (
                 <li key={link.href}>

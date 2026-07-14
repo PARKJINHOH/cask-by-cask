@@ -13,22 +13,39 @@ interface SpiritSeoResponse {
 }
 
 const SPIRIT_PATH = /^\/(?:(ko|en)\/)?spirits\/([^/]+)(?:\/.*)?$/i
+const LOCALE_PATH = /^\/(ko|en)(?:\/|$)/i
+const LOCALE_REDIRECT_EXEMPT = new Set(['/oauth/callback', '/healthz'])
+const NOINDEX_PATHS = [
+  /^\/admin(?:\/|$)/,
+  /^\/mypage(?:\/|$)/,
+  /^\/messages(?:\/|$)/,
+  /^\/notifications(?:\/|$)/,
+  /^\/request(?:\/|$)/,
+  /^\/login(?:\/|$)/,
+  /^\/signup(?:\/|$)/,
+  /^\/account-recovery(?:\/|$)/,
+  /^\/oauth(?:\/|$)/,
+  /^\/feedback(?:\/|$)/,
+  /^\/inquiry(?:\/|$)/,
+  /^\/community\/(?:all|notice|free|byob)\/(?:write|\d+\/edit)(?:\/|$)/,
+  /^\/spirits\/[^/]+\/review\/(?:write|[^/]+\/edit)(?:\/|$)/,
+]
 
 export async function proxy(request: NextRequest) {
   if (request.method !== 'GET' && request.method !== 'HEAD') {
-    return NextResponse.next()
+    return nextWithSeoContext(request)
   }
 
   const pathname = request.nextUrl.pathname
   const match = pathname.match(SPIRIT_PATH)
   if (!match) {
-    return NextResponse.next()
+    return redirectToDefaultLocale(request) ?? nextWithSeoContext(request)
   }
 
   const lang = match[1] === 'en' ? 'en' : 'ko'
   const id = extractLeadingId(match[2])
   if (!id) {
-    return NextResponse.next()
+    return redirectToDefaultLocale(request) ?? nextWithSeoContext(request)
   }
 
   try {
@@ -36,26 +53,54 @@ export async function proxy(request: NextRequest) {
       cache: 'no-store',
     })
     if (!res.ok) {
-      return NextResponse.next()
+      return redirectToDefaultLocale(request) ?? nextWithSeoContext(request)
     }
 
     const body = await res.json() as ApiResponse<SpiritSeoResponse>
     const seo = body.data
     if (!seo) {
-      return NextResponse.next()
+      return redirectToDefaultLocale(request) ?? nextWithSeoContext(request)
     }
 
     const canonicalPath = lang === 'en' ? seo.canonicalPathEn : seo.canonicalPathKo
     if (normalizePath(pathname) === normalizePath(canonicalPath)) {
-      return NextResponse.next()
+      return nextWithSeoContext(request)
     }
 
     const url = request.nextUrl.clone()
     url.pathname = canonicalPath
     return NextResponse.redirect(url, 301)
   } catch {
-    return NextResponse.next()
+    return redirectToDefaultLocale(request) ?? nextWithSeoContext(request)
   }
+}
+
+function redirectToDefaultLocale(request: NextRequest): NextResponse | null {
+  const pathname = request.nextUrl.pathname
+  const lastSegment = pathname.split('/').pop() ?? ''
+  if (
+    LOCALE_PATH.test(pathname)
+    || LOCALE_REDIRECT_EXEMPT.has(pathname)
+    || lastSegment.includes('.')
+  ) return null
+
+  const url = request.nextUrl.clone()
+  url.pathname = `/ko${pathname === '/' ? '/' : pathname}`
+  return NextResponse.redirect(url, 308)
+}
+
+function nextWithSeoContext(request: NextRequest): NextResponse {
+  const pathname = request.nextUrl.pathname
+  const lang = pathname.match(LOCALE_PATH)?.[1]?.toLowerCase() === 'en' ? 'en' : 'ko'
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set('x-caskbycask-lang', lang)
+
+  const response = NextResponse.next({ request: { headers: requestHeaders } })
+  const pathWithoutLocale = pathname.replace(LOCALE_PATH, '/')
+  if (NOINDEX_PATHS.some((pattern) => pattern.test(pathWithoutLocale))) {
+    response.headers.set('X-Robots-Tag', 'noindex, nofollow')
+  }
+  return response
 }
 
 function extractLeadingId(value: string): string | null {
@@ -87,6 +132,6 @@ function safeDecodeURI(value: string): string {
 
 export const config = {
   matcher: [
-    '/((?!api|_next|uploads|favicon.ico|robots.txt|sitemap.xml|og-image.png|logo.png|site.webmanifest).*)',
+    '/((?!api|_next|uploads|favicon.ico|robots.txt|sitemap.xml|og-image.png|logo.png|site.webmanifest|healthz).*)',
   ],
 }

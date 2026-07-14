@@ -68,7 +68,7 @@ export default function NoticeDetailPage() {
         title={notice.title}
         description={stripHtmlForMeta(notice.contentSanitized, 160)
           || `CaskByCask 공지사항 — ${notice.title}`}
-        canonical={buildCanonical(`/notices/${notice.id}`)}
+        canonical={buildCanonical(`/ko/notices/${notice.id}`)}
         ogType="article"
         jsonLd={[
           {
@@ -84,9 +84,9 @@ export default function NoticeDetailPage() {
             },
           },
           buildBreadcrumbSchema([
-            { name: '홈', path: '/' },
-            { name: '공지사항', path: '/notices' },
-            { name: notice.title, path: `/notices/${notice.id}` },
+            { name: '홈', path: '/ko/' },
+            { name: '공지사항', path: '/ko/notices' },
+            { name: notice.title, path: `/ko/notices/${notice.id}` },
           ]),
         ]}
       />
