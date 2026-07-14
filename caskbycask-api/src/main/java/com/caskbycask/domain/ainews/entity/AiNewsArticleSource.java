@@ -53,4 +53,16 @@ public class AiNewsArticleSource extends BaseTimeEntity {
     void attach(AiNewsArticle article) {
         this.article = article;
     }
+
+    public void updateUrl(String sourceUrl, String canonicalUrl, AiNewsSourceType sourceType,
+                          LocalDateTime retrievedAt) {
+        this.sourceUrl = sourceUrl;
+        this.canonicalUrl = canonicalUrl;
+        this.sourceType = sourceType;
+        this.sourceTitle = null;
+        this.evidenceSummary = null;
+        this.contentHash = null;
+        this.publishedAt = null;
+        this.retrievedAt = retrievedAt;
+    }
 }

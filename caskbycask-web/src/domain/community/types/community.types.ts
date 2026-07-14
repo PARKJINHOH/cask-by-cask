@@ -89,6 +89,7 @@ export interface PostDetail {
   commentCount: number
   poll: PollDetail | null
   images: PostImageInfo[]
+  sourceUrls: string[]
   series: SeriesInfo | null
   isMyPost: boolean | null
   isLiked: boolean | null

@@ -43,6 +43,16 @@ public interface AiNewsArticleRepository extends JpaRepository<AiNewsArticle, Lo
     Optional<AiNewsArticle> findFirstByArticleTypeAndSourcesCanonicalUrlInOrderByCreatedAtAsc(
             AiNewsArticleType articleType, Collection<String> canonicalUrls);
     Optional<AiNewsArticle> findByPostId(Long postId);
+
+    @Query("""
+            select source.canonicalUrl
+            from AiNewsArticle article join article.sources source
+            where article.postId = :postId and article.status = :status
+            order by source.id asc
+            """)
+    List<String> findSourceUrlsByPostIdAndStatus(@Param("postId") Long postId,
+                                                  @Param("status") AiNewsArticleStatus status);
+
     Optional<AiNewsArticle> findFirstByArticleTypeAndSemanticFingerprint(AiNewsArticleType articleType,
                                                                           String semanticFingerprint);
 

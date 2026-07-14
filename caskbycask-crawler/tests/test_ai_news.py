@@ -225,8 +225,16 @@ class GeminiDealAnalyzerTest(unittest.TestCase):
 
 class GeminiNewsWriterTest(unittest.TestCase):
     def test_writer_prompt_contains_editable_seo_and_length_rules(self) -> None:
-        self.assertIn("[제목 및 본문 SEO]", AI_NEWS_WRITING_PROMPT)
+        self.assertIn("검색 엔진 최적화 (SEO)", AI_NEWS_WRITING_PROMPT)
         self.assertIn(f"{AI_NEWS_MIN_TEXT_LENGTH:,}자 이상", AI_NEWS_WRITING_PROMPT)
+
+    def test_writer_prompt_protects_official_names_and_press_release_tone(self) -> None:
+        self.assertIn("Anti-Hallucination for Proper Nouns", AI_NEWS_WRITING_PROMPT)
+        self.assertIn("Official Brand/Product Names", AI_NEWS_WRITING_PROMPT)
+        self.assertIn("Loanword Consistency", AI_NEWS_WRITING_PROMPT)
+        self.assertIn("Tone & Manner", AI_NEWS_WRITING_PROMPT)
+        self.assertIn("한국어 공식 제품명", AI_NEWS_WRITING_PROMPT)
+        self.assertIn("합니다/습니다", AI_NEWS_WRITING_PROMPT)
 
     def test_short_article_is_rewritten_once_to_meet_minimum_length(self) -> None:
         writer = GeminiNewsWriter.__new__(GeminiNewsWriter)

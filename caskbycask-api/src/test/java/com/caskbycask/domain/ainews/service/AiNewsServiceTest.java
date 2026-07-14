@@ -3,6 +3,7 @@ package com.caskbycask.domain.ainews.service;
 import com.caskbycask.admin.service.AdminLogService;
 import com.caskbycask.domain.ainews.dto.AiNewsDtos;
 import com.caskbycask.domain.ainews.entity.AiNewsArticle;
+import com.caskbycask.domain.ainews.entity.AiNewsArticleSource;
 import com.caskbycask.domain.ainews.entity.AiNewsSettings;
 import com.caskbycask.domain.ainews.entity.AiNewsSourceConfig;
 import com.caskbycask.domain.ainews.entity.AiNewsTopic;
@@ -74,6 +75,60 @@ class AiNewsServiceTest {
 
         assertThat(result.duplicate()).isTrue();
         assertThat(result.status()).isEqualTo(AiNewsArticleStatus.PUBLISHED);
+    }
+
+    @Test
+    void adminUpdateReplacesAndNormalizesPublicSourceUrls() {
+        AiNewsArticle article = AiNewsArticle.builder()
+                .id(12L)
+                .articleType(AiNewsArticleType.RELEASE_NEWS)
+                .status(AiNewsArticleStatus.DRAFT)
+                .category(AiNewsCategory.WHISKY)
+                .title("출시 소식")
+                .content("<p>본문</p>")
+                .confidenceScore(BigDecimal.ONE)
+                .dedupeKey("release:source-edit")
+                .build();
+        article.addSource(AiNewsArticleSource.builder()
+                .sourceUrl("https://example.com/original")
+                .canonicalUrl("https://example.com/original")
+                .domain("example.com")
+                .sourceTitle("기존 근거")
+                .sourceType(AiNewsSourceType.TRUSTED_MEDIA)
+                .evidenceSummary("보존할 근거")
+                .retrievedAt(LocalDateTime.now())
+                .build());
+        article.addSource(AiNewsArticleSource.builder()
+                .sourceUrl("https://removed.example/news")
+                .canonicalUrl("https://removed.example/news")
+                .domain("removed.example")
+                .sourceType(AiNewsSourceType.UNAPPROVED)
+                .retrievedAt(LocalDateTime.now())
+                .build());
+
+        given(articleRepository.findDetailById(12L)).willReturn(Optional.of(article));
+        given(sourceConfigRepository.findByDomain("example.com")).willReturn(List.of(
+                AiNewsSourceConfig.builder()
+                        .sourceName("전문 매체").sourceUrl("https://example.com")
+                        .domain("example.com").sourceType(AiNewsSourceType.TRUSTED_MEDIA).build()));
+        given(sourceConfigRepository.findByDomain("new.example")).willReturn(List.of(
+                AiNewsSourceConfig.builder()
+                        .sourceName("공식 사이트").sourceUrl("https://new.example")
+                        .domain("new.example").sourceType(AiNewsSourceType.OFFICIAL).build()));
+
+        AiNewsDtos.ArticleDetailResponse result = service.updateArticle(12L,
+                new AiNewsDtos.ArticleAdminUpdateRequest(
+                        AiNewsCategory.WHISKY, "수정된 출시 소식", "<p>수정 본문</p>",
+                        null, false, BigDecimal.ONE, null,
+                        List.of("https://example.com/original",
+                                "https://www.new.example/news?utm_source=test&id=2#section")),
+                null);
+
+        assertThat(result.sources()).extracting(AiNewsDtos.SourceResponse::canonicalUrl)
+                .containsExactly("https://example.com/original", "https://new.example/news?id=2");
+        assertThat(result.sources()).extracting(AiNewsDtos.SourceResponse::domain)
+                .doesNotContain("removed.example");
+        assertThat(result.sources().getFirst().evidenceSummary()).isEqualTo("보존할 근거");
     }
 
     @Test

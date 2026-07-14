@@ -3,6 +3,8 @@ package com.caskbycask.domain.community.service;
 import com.caskbycask.admin.service.AdminLogService;
 import com.caskbycask.domain.admin.entity.enums.AdminLogTargetType;
 import com.caskbycask.domain.admin.entity.enums.AdminLogType;
+import com.caskbycask.domain.ainews.entity.enums.AiNewsArticleStatus;
+import com.caskbycask.domain.ainews.repository.AiNewsArticleRepository;
 import com.caskbycask.domain.community.dto.*;
 import com.caskbycask.domain.community.entity.*;
 import com.caskbycask.domain.community.entity.enums.BoardType;
@@ -37,6 +39,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class PostService {
 
+    private static final String AI_SYSTEM_AUTHOR_EMAIL = "ai-news@system.caskbycask.local";
+
     private final PostRepository postRepository;
     private final PostLikeRepository postLikeRepository;
     private final PostScrapRepository postScrapRepository;
@@ -59,6 +63,7 @@ public class PostService {
     private final ScoreService scoreService;
     private final AdminLogService adminLogService;
     private final ProducerRepository producerRepository;
+    private final AiNewsArticleRepository aiNewsArticleRepository;
 
     // ═══════════════════════════════════════════
     // 조회
@@ -184,6 +189,12 @@ public class PostService {
 
         PostDetailResponse.Builder builder = PostDetailResponse.builder(post, showContent)
                 .isHidden(hidden);
+
+        if (showContent && BoardType.NOTICE.equals(post.getBoardType())
+                && AI_SYSTEM_AUTHOR_EMAIL.equalsIgnoreCase(post.getAuthor().getEmail())) {
+            builder.sourceUrls(aiNewsArticleRepository.findSourceUrlsByPostIdAndStatus(
+                    postId, AiNewsArticleStatus.PUBLISHED));
+        }
 
         if (userId != null) {
             boolean mine = post.getAuthor().getId().equals(userId);

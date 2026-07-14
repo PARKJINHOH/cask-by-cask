@@ -99,6 +99,7 @@ export interface AiNewsArticleUpdateRequest {
   pinned?: boolean
   confidenceScore?: number
   semanticFingerprint?: string | null
+  sourceUrls?: string[]
 }
 
 export interface AiNewsTopic {

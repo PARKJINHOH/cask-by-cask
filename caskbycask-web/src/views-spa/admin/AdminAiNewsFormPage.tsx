@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { adminAiNewsApi } from '@/domain/admin/api/adminAiNewsApi'
-import type { AiNewsArticleType, AiNewsCategory } from '@/domain/admin/types/aiNews.types'
+import type { AiNewsArticleType, AiNewsCategory, AiNewsSourceEvidence } from '@/domain/admin/types/aiNews.types'
 import { communityApi } from '@/domain/community/api/communityApi'
 import PostEditor from '@/domain/community/components/PostEditor'
 import AdminPageHeader from '@/shared/components/AdminPageHeader'
@@ -25,6 +25,7 @@ export default function AdminAiNewsFormPage() {
   const [pinned, setPinned] = useState(false)
   const [confidence, setConfidence] = useState(1)
   const [semanticFingerprint, setSemanticFingerprint] = useState('')
+  const [sourceUrls, setSourceUrls] = useState<string[]>([])
   const [rewritePrompt, setRewritePrompt] = useState('')
   const [error, setError] = useState('')
 
@@ -53,6 +54,7 @@ export default function AdminAiNewsFormPage() {
     setPinned(detail.pinned)
     setConfidence(Number(detail.confidenceScore))
     setSemanticFingerprint(detail.semanticFingerprint ?? '')
+    setSourceUrls(detail.sources.map((source) => source.canonicalUrl))
   }, [detail])
 
   useEffect(() => {
@@ -62,12 +64,14 @@ export default function AdminAiNewsFormPage() {
   const save = useMutation({
     mutationFn: async (publish: boolean) => {
       if (!title.trim() || !content.trim()) throw new Error('제목과 본문을 입력하세요.')
+      const sources = buildSourceEvidence(sourceUrls)
       if (isEdit) {
         const updated = await adminAiNewsApi.updateArticle(articleId!, {
           category, title: title.trim(), content,
           prefixId: prefixId === '' ? null : prefixId,
           pinned, confidenceScore: confidence,
           semanticFingerprint: semanticFingerprint.trim() || null,
+          sourceUrls: sources.map((source) => source.sourceUrl),
         })
         if (publish && updated.status !== 'PUBLISHED') await adminAiNewsApi.publish(updated.id)
         return updated.id
@@ -79,7 +83,7 @@ export default function AdminAiNewsFormPage() {
         semanticFingerprint: semanticFingerprint.trim() || title.trim().toLowerCase(),
         topicId: topicId === '' ? null : topicId,
         prefixId: prefixId === '' ? null : prefixId,
-        pinned, autoPublishRequested: false, sources: [],
+        pinned, autoPublishRequested: false, sources,
       })
       if (publish) await adminAiNewsApi.publish(created.id)
       return created.id
@@ -176,9 +180,35 @@ export default function AdminAiNewsFormPage() {
           <p className="mb-1.5 text-xs font-semibold text-neutral-600">본문</p>
           <PostEditor value={content} onChange={setContent} placeholder="내용을 입력하세요. 이미지와 영상을 업로드할 수 있습니다." onImageError={setError} onVideoError={setError} />
         </div>
-        {detail && detail.sources.length > 0 && <div className="rounded-lg border p-4"><p className="text-sm font-semibold text-neutral-800">내부 근거 출처</p>
-          <div className="mt-2 space-y-2">{detail.sources.map((source) => <div key={source.id ?? source.domain} className="text-xs text-neutral-600"><span className="font-semibold">[{source.sourceType}] {source.domain}</span> · <a href={source.sourceUrl} target="_blank" rel="noreferrer" className="text-primary-700 hover:underline">원문</a>{source.evidenceSummary && <p className="mt-0.5">{source.evidenceSummary}</p>}</div>)}</div>
-        </div>}
+        <div className="rounded-lg border border-neutral-200 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-neutral-800">출처 URL</p>
+              <p className="mt-0.5 text-xs text-neutral-500">저장된 URL은 발행 게시글 본문 최하단에 표시됩니다.</p>
+            </div>
+            <button type="button"
+              onClick={() => setSourceUrls((current) => [...current, ''])}
+              className="shrink-0 rounded-lg border border-primary-200 px-3 py-1.5 text-sm font-semibold text-primary-800 hover:bg-primary-50">
+              + 추가
+            </button>
+          </div>
+          {sourceUrls.length === 0 ? (
+            <p className="mt-3 rounded-lg bg-neutral-50 px-3 py-4 text-center text-xs text-neutral-400">등록된 출처 URL이 없습니다.</p>
+          ) : (
+            <div className="mt-3 space-y-2">
+              {sourceUrls.map((url, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <input type="url" maxLength={1500} value={url}
+                    onChange={(e) => setSourceUrls((current) => current.map((item, itemIndex) => itemIndex === index ? e.target.value : item))}
+                    className={inputCls} placeholder="https://example.com/news/article" aria-label={`출처 URL ${index + 1}`} />
+                  <button type="button" onClick={() => setSourceUrls((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-red-200 text-lg text-red-500 hover:bg-red-50"
+                    aria-label={`출처 URL ${index + 1} 삭제`} title="출처 URL 삭제">−</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
         {detail && !['PUBLISHED', 'SKIPPED_DUPLICATE', 'REWRITE_REQUESTED'].includes(detail.status) && (
           <div className="rounded-lg border border-violet-200 bg-violet-50 p-4">
             <p className="text-sm font-semibold text-violet-900">AI 재작성 요청</p>
@@ -215,3 +245,32 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   return <label className="block"><span className="mb-1.5 block text-xs font-semibold text-neutral-600">{label}</span>{children}</label>
 }
 const inputCls = 'w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100 disabled:bg-neutral-100'
+
+function buildSourceEvidence(sourceUrls: string[]): AiNewsSourceEvidence[] {
+  const seenDomains = new Set<string>()
+  return sourceUrls
+    .map((url) => url.trim())
+    .filter(Boolean)
+    .map((sourceUrl) => {
+      let parsed: URL
+      try {
+        parsed = new URL(sourceUrl)
+      } catch {
+        throw new Error(`올바른 출처 URL을 입력하세요: ${sourceUrl}`)
+      }
+      if (!['http:', 'https:'].includes(parsed.protocol) || !parsed.hostname || parsed.username || parsed.password) {
+        throw new Error(`http 또는 https 출처 URL만 등록할 수 있습니다: ${sourceUrl}`)
+      }
+      const domain = parsed.hostname.toLowerCase().replace(/^www\./, '')
+      if (seenDomains.has(domain)) {
+        throw new Error(`동일한 도메인의 출처 URL은 하나만 등록할 수 있습니다: ${domain}`)
+      }
+      seenDomains.add(domain)
+      return {
+        sourceUrl,
+        canonicalUrl: sourceUrl,
+        domain,
+        sourceType: 'UNAPPROVED' as const,
+      }
+    })
+}

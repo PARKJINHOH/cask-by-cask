@@ -52,7 +52,8 @@ public final class AiNewsDtos {
             Long prefixId,
             Boolean pinned,
             @DecimalMin("0.0") @DecimalMax("1.0") BigDecimal confidenceScore,
-            @Size(max = 1000) String semanticFingerprint
+            @Size(max = 1000) String semanticFingerprint,
+            List<@NotBlank @Size(max = 1500) String> sourceUrls
     ) {}
 
     public record ActionRequest(@Size(max = 1000) String reason) {}

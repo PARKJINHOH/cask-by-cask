@@ -225,6 +225,7 @@ public class AiNewsService {
                 Boolean.TRUE.equals(request.pinned()),
                 request.confidenceScore() != null ? request.confidenceScore() : article.getConfidenceScore(),
                 trimToNull(request.semanticFingerprint()));
+        replaceAdminSourceUrls(article, request.sourceUrls());
 
         if (article.getStatus() == AiNewsArticleStatus.PUBLISHED && article.getPostId() != null) {
             postService.adminUpdatePost(article.getPostId(),
@@ -755,6 +756,42 @@ public class AiNewsService {
         }
     }
 
+    /** 관리자 편집 화면의 URL 목록을 반영한다. null은 기존 출처 유지, 빈 목록은 전체 삭제다. */
+    private void replaceAdminSourceUrls(AiNewsArticle article, List<String> sourceUrls) {
+        if (sourceUrls == null) return;
+
+        Map<String, AdminSourceUrl> requestedByDomain = new LinkedHashMap<>();
+        for (String rawUrl : sourceUrls) {
+            String canonicalUrl = normalizeAdminSourceUrl(rawUrl);
+            String domain = verifiedSourceDomain(canonicalUrl, URI.create(canonicalUrl).getHost());
+            ResolvedSource trust = resolveSource(canonicalUrl, domain, AiNewsSourceType.UNAPPROVED);
+            if (requestedByDomain.putIfAbsent(domain,
+                    new AdminSourceUrl(canonicalUrl, domain, trust.type)) != null) {
+                throw new CustomException(ErrorCode.INVALID_INPUT);
+            }
+        }
+
+        Map<String, AiNewsArticleSource> existingByDomain = article.getSources().stream()
+                .collect(java.util.stream.Collectors.toMap(AiNewsArticleSource::getDomain, source -> source,
+                        (left, right) -> left, LinkedHashMap::new));
+        article.getSources().removeIf(source -> !requestedByDomain.containsKey(source.getDomain()));
+
+        for (AdminSourceUrl requested : requestedByDomain.values()) {
+            AiNewsArticleSource existing = existingByDomain.get(requested.domain);
+            if (existing == null) {
+                article.addSource(AiNewsArticleSource.builder()
+                        .sourceUrl(requested.url)
+                        .canonicalUrl(requested.url)
+                        .domain(requested.domain)
+                        .sourceType(requested.type)
+                        .retrievedAt(LocalDateTime.now())
+                        .build());
+            } else if (!requested.url.equals(existing.getCanonicalUrl())) {
+                existing.updateUrl(requested.url, requested.url, requested.type, LocalDateTime.now());
+            }
+        }
+    }
+
     @Transactional
     public AiNewsDtos.SourceConfigResponse recordSourceCrawlResult(
             Long id, AiNewsDtos.SourceCrawlResultRequest request) {
@@ -1002,6 +1039,20 @@ public class AiNewsService {
         }
     }
 
+    private static String normalizeAdminSourceUrl(String raw) {
+        try {
+            URI parsed = URI.create(raw.trim());
+            if (parsed.getUserInfo() != null) throw new CustomException(ErrorCode.INVALID_INPUT);
+            return normalizeCanonicalUrl(raw);
+        } catch (CustomException e) {
+            throw e;
+        } catch (RuntimeException ignored) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+    }
+
     private record ResolvedSource(String domain, String scopeKey, AiNewsSourceType type, boolean autoPublishAllowed,
                                   boolean imageUseAllowed) {}
+
+    private record AdminSourceUrl(String url, String domain, AiNewsSourceType type) {}
 }

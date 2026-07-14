@@ -36,6 +36,7 @@ public class PostDetailResponse {
     private final int commentCount;
     private final PollDetailResponse poll;
     private final List<PostImageInfo> images;
+    private final List<String> sourceUrls;
     private final SeriesInfo series;
     private final Boolean isMyPost;   // null if not logged in
     private final Boolean isLiked;    // null if not logged in
@@ -67,6 +68,7 @@ public class PostDetailResponse {
         this.commentCount     = b.commentCount;
         this.poll             = b.poll;
         this.images           = b.images;
+        this.sourceUrls       = b.sourceUrls;
         this.series           = b.series;
         this.isMyPost         = b.isMyPost;
         this.isLiked          = b.isLiked;
@@ -129,6 +131,7 @@ public class PostDetailResponse {
         private int commentCount;
         private PollDetailResponse poll;
         private List<PostImageInfo> images;
+        private List<String> sourceUrls = List.of();
         private SeriesInfo series;
         private Boolean isMyPost;
         private Boolean isLiked;
@@ -159,6 +162,10 @@ public class PostDetailResponse {
         public Builder commentCount(int c)                { this.commentCount = c; return this; }
         public Builder poll(PollDetailResponse p)         { this.poll = p; return this; }
         public Builder images(List<PostImageInfo> i)      { this.images = i; return this; }
+        public Builder sourceUrls(List<String> urls)      {
+            this.sourceUrls = urls != null ? List.copyOf(urls) : List.of();
+            return this;
+        }
         public Builder series(SeriesInfo s)               { this.series = s; return this; }
         public Builder isMyPost(Boolean m)                { this.isMyPost = m; return this; }
         public Builder isLiked(Boolean l)                 { this.isLiked = l; return this; }

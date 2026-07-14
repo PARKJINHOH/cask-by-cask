@@ -177,6 +177,7 @@ export default function PostDetailPage() {
               name: 'CaskByCask',
               logo: { '@type': 'ImageObject', url: `${SITE_URL}/logo.png` },
             },
+            citation: post.sourceUrls?.length ? post.sourceUrls : undefined,
           },
           buildBreadcrumbSchema([
             { name: '홈', path: '/ko/' },
@@ -354,6 +355,22 @@ export default function PostDetailPage() {
             className="prose prose-sm sm:prose max-w-none notice-content"
             html={post.contentSanitized ?? ''}
           />
+        )}
+
+        {!!post.contentSanitized && !post.isBlocked && post.sourceUrls?.length > 0 && (
+          <div className="mt-8 border-t border-neutral-100 pt-4 text-xs text-neutral-400">
+            <p className="mb-1.5 font-medium text-neutral-500">{t('post.sourceLinks')}</p>
+            <ul className="space-y-1">
+              {post.sourceUrls.map((sourceUrl) => (
+                <li key={sourceUrl} className="break-all">
+                  <a href={sourceUrl} target="_blank" rel="noopener noreferrer"
+                    className="transition-colors hover:text-primary-700 hover:underline">
+                    {sourceUrl}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
 
         {/* 투표 위젯 */}
