@@ -8,10 +8,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import jakarta.persistence.LockModeType;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -38,6 +40,10 @@ public interface AiNewsArticleRepository extends JpaRepository<AiNewsArticle, Lo
     @Query("select a from AiNewsArticle a where a.id = :id")
     Optional<AiNewsArticle> findDetailById(@Param("id") Long id);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select a from AiNewsArticle a where a.id = :id")
+    Optional<AiNewsArticle> findForPublishById(@Param("id") Long id);
+
     Optional<AiNewsArticle> findByDedupeKey(String dedupeKey);
     Optional<AiNewsArticle> findFirstByCanonicalUrlHash(String canonicalUrlHash);
     Optional<AiNewsArticle> findFirstByArticleTypeAndSourcesCanonicalUrlInOrderByCreatedAtAsc(
@@ -61,6 +67,12 @@ public interface AiNewsArticleRepository extends JpaRepository<AiNewsArticle, Lo
     boolean existsByTopicId(Long topicId);
 
     Optional<AiNewsArticle> findFirstByStatusOrderByRewriteRequestedAtAsc(AiNewsArticleStatus status);
+
+    @Query("select a.id from AiNewsArticle a where a.status = :status " +
+           "and a.scheduledAt is not null and a.scheduledAt <= :now order by a.scheduledAt asc")
+    List<Long> findDueScheduledIds(@Param("status") AiNewsArticleStatus status,
+                                   @Param("now") LocalDateTime now,
+                                   Pageable pageable);
 
     boolean existsByContentContainingAndStatusIn(String value, Collection<AiNewsArticleStatus> statuses);
 

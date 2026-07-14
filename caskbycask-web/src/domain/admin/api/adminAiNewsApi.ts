@@ -40,8 +40,16 @@ export const adminAiNewsApi = {
     const res = await axiosInstance.put<ApiResponse<AiNewsArticleDetail>>(`/api/admin/ai-news/articles/${id}`, data)
     return res.data.data!
   },
-  publish: async (id: number) => {
-    const res = await axiosInstance.post<ApiResponse<AiNewsArticleDetail>>(`/api/admin/ai-news/articles/${id}/publish`)
+  publish: async (id: number, scheduledAt?: string | null) => {
+    const res = await axiosInstance.post<ApiResponse<AiNewsArticleDetail>>(
+      `/api/admin/ai-news/articles/${id}/publish`, scheduledAt ? { scheduledAt } : undefined,
+    )
+    return res.data.data!
+  },
+  cancelSchedule: async (id: number) => {
+    const res = await axiosInstance.post<ApiResponse<AiNewsArticleDetail>>(
+      `/api/admin/ai-news/articles/${id}/schedule/cancel`,
+    )
     return res.data.data!
   },
   reject: (id: number, reason?: string) =>

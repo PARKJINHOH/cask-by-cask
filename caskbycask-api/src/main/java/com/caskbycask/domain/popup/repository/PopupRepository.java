@@ -19,7 +19,7 @@ public interface PopupRepository extends JpaRepository<Popup, Long> {
             WHERE p.isVisible = true
             AND p.displayPage = :displayPage
             AND p.language = :language
-            AND (p.isAlwaysVisible = true OR (p.startAt <= :now AND p.endAt >= :now))
+            AND (p.isAlwaysVisible = true OR (p.startAt <= :now AND (p.endAt IS NULL OR p.endAt >= :now)))
             ORDER BY p.sortOrder ASC
             """)
     List<Popup> findActivePopups(

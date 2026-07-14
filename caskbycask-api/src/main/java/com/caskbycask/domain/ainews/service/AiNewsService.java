@@ -238,16 +238,49 @@ public class AiNewsService {
 
     @Transactional
     public AiNewsDtos.ArticleDetailResponse publish(Long id, Long actorId) {
-        AiNewsArticle article = findArticleDetail(id);
+        return publish(id, null, actorId);
+    }
+
+    @Transactional
+    public AiNewsDtos.ArticleDetailResponse publish(Long id, LocalDateTime scheduledAt, Long actorId) {
+        AiNewsArticle article = findArticleForPublish(id);
         if (article.getStatus() == AiNewsArticleStatus.PUBLISHED) return AiNewsDtos.ArticleDetailResponse.from(article);
         if (article.getStatus() == AiNewsArticleStatus.DELETED
                 || article.getStatus() == AiNewsArticleStatus.REJECTED
                 || article.getStatus() == AiNewsArticleStatus.SKIPPED_DUPLICATE) {
             throw new CustomException(ErrorCode.AI_NEWS_INVALID_STATUS);
         }
+        LocalDateTime now = LocalDateTime.now(SERVICE_ZONE);
+        if (scheduledAt != null && scheduledAt.isAfter(now)) {
+            article.schedule(scheduledAt);
+            log(actorId, article.getId(), "AI 소식 예약발행", scheduledAt + " · " + article.getTitle());
+            return AiNewsDtos.ArticleDetailResponse.from(article);
+        }
         publishWithSystemAuthor(article);
         log(actorId, article.getId(), "AI 소식 발행", article.getTitle());
         return AiNewsDtos.ArticleDetailResponse.from(article);
+    }
+
+    @Transactional
+    public AiNewsDtos.ArticleDetailResponse cancelSchedule(Long id, Long actorId) {
+        AiNewsArticle article = findArticleForPublish(id);
+        if (article.getStatus() != AiNewsArticleStatus.SCHEDULED) {
+            throw new CustomException(ErrorCode.AI_NEWS_INVALID_STATUS);
+        }
+        article.cancelSchedule();
+        log(actorId, article.getId(), "AI 소식 예약발행 취소", article.getTitle());
+        return AiNewsDtos.ArticleDetailResponse.from(article);
+    }
+
+    @Transactional
+    public void publishScheduled(Long id, LocalDateTime now) {
+        AiNewsArticle article = findArticleForPublish(id);
+        if (article.getStatus() != AiNewsArticleStatus.SCHEDULED
+                || article.getScheduledAt() == null
+                || article.getScheduledAt().isAfter(now)) {
+            return;
+        }
+        publishWithSystemAuthor(article);
     }
 
     @Transactional
@@ -696,13 +729,13 @@ public class AiNewsService {
             postService.adminUpdatePost(restored.getId(),
                     UpdatePostRequest.aiNews(article.getPrefixId(), article.getTitle(), article.getContent(),
                             article.isPinned()), author.getId());
-            article.publish(restored.getId(), LocalDateTime.now());
+            article.publish(restored.getId(), LocalDateTime.now(SERVICE_ZONE));
             return;
         }
         PostDetailResponse post = postService.createPost(
                 CreatePostRequest.aiNotice(article.getPrefixId(), article.getTitle(), article.getContent(), article.isPinned()),
                 author.getId());
-        article.publish(post.getId(), LocalDateTime.now());
+        article.publish(post.getId(), LocalDateTime.now(SERVICE_ZONE));
     }
 
     private AiNewsTopic resolveTopic(AiNewsDtos.ArticleUpsertRequest request) {
@@ -848,6 +881,11 @@ public class AiNewsService {
 
     private AiNewsArticle findArticleDetail(Long id) {
         return articleRepository.findDetailById(id)
+                .orElseThrow(() -> new CustomException(ErrorCode.AI_NEWS_NOT_FOUND));
+    }
+
+    private AiNewsArticle findArticleForPublish(Long id) {
+        return articleRepository.findForPublishById(id)
                 .orElseThrow(() -> new CustomException(ErrorCode.AI_NEWS_NOT_FOUND));
     }
 

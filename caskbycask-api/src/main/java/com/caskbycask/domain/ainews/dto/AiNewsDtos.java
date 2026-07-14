@@ -58,6 +58,8 @@ public final class AiNewsDtos {
 
     public record ActionRequest(@Size(max = 1000) String reason) {}
 
+    public record PublishRequest(LocalDateTime scheduledAt) {}
+
     public record RewriteRequest(@NotBlank @Size(max = 4000) String prompt) {}
 
     public record RewriteResultRequest(
@@ -109,6 +111,7 @@ public final class AiNewsDtos {
             boolean pinned,
             boolean updateAvailable,
             String failureReason,
+            LocalDateTime scheduledAt,
             LocalDateTime publishedAt,
             LocalDateTime createdAt
     ) {
@@ -116,6 +119,7 @@ public final class AiNewsDtos {
             return new ArticleSummaryResponse(article.getId(), article.getArticleType(), article.getStatus(),
                     article.getCategory(), article.getTitle(), article.getConfidenceScore(), article.getPostId(),
                     article.isPinned(), article.isUpdateAvailable(), article.getFailureReason(),
+                    article.getScheduledAt(),
                     article.getPublishedAt(), article.getCreatedAt());
         }
     }
@@ -145,6 +149,7 @@ public final class AiNewsDtos {
             String failureReason,
             String rewritePrompt,
             LocalDateTime rewriteRequestedAt,
+            LocalDateTime scheduledAt,
             LocalDateTime publishedAt,
             LocalDateTime createdAt,
             LocalDateTime updatedAt,
@@ -159,7 +164,7 @@ public final class AiNewsDtos {
                     article.getPrefixId(), article.isPinned(), article.isUpdateAvailable(), article.getImageUrl(),
                     article.getImageKind(), article.getImageRightsEvidence(), article.getModelName(),
                     article.getDuplicateReason(), article.getFailureReason(), article.getRewritePrompt(),
-                    article.getRewriteRequestedAt(), article.getPublishedAt(),
+                    article.getRewriteRequestedAt(), article.getScheduledAt(), article.getPublishedAt(),
                     article.getCreatedAt(), article.getUpdatedAt(),
                     article.getSources().stream().map(SourceResponse::from).toList());
         }

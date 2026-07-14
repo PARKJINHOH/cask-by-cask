@@ -25,6 +25,7 @@ export interface NoticeListItem {
   viewCount: number
   recommendCount: number
   isRecommended: boolean
+  publishedAt: string | null
   createdAt: string
 }
 
@@ -56,6 +57,7 @@ export interface NoticeAdminDetail {
   category: NoticeCategory
   isPinned: boolean
   isPublished: boolean
+  publishedAt: string | null
   viewCount: number
   images: NoticeImageItem[]
   createdAt: string
@@ -68,6 +70,7 @@ export interface CreateNoticePayload {
   category?: NoticeCategory
   isPinned?: boolean
   isPublished?: boolean
+  publishedAt?: string | null
 }
 
 export interface UpdateNoticePayload {
@@ -76,6 +79,7 @@ export interface UpdateNoticePayload {
   category?: NoticeCategory
   isPinned?: boolean
   isPublished?: boolean
+  publishedAt?: string | null
 }
 
 export interface UploadedNoticeImage {

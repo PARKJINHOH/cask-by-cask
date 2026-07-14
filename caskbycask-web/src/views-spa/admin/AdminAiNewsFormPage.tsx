@@ -27,6 +27,7 @@ export default function AdminAiNewsFormPage() {
   const [semanticFingerprint, setSemanticFingerprint] = useState('')
   const [sourceUrls, setSourceUrls] = useState<string[]>([])
   const [rewritePrompt, setRewritePrompt] = useState('')
+  const [scheduledAt, setScheduledAt] = useState('')
   const [error, setError] = useState('')
 
   const { data: detail, isLoading } = useQuery({
@@ -55,6 +56,7 @@ export default function AdminAiNewsFormPage() {
     setConfidence(Number(detail.confidenceScore))
     setSemanticFingerprint(detail.semanticFingerprint ?? '')
     setSourceUrls(detail.sources.map((source) => source.canonicalUrl))
+    setScheduledAt(detail.scheduledAt?.slice(0, 16) ?? '')
   }, [detail])
 
   useEffect(() => {
@@ -62,8 +64,11 @@ export default function AdminAiNewsFormPage() {
   }, [isEdit, prefixId, prefixes])
 
   const save = useMutation({
-    mutationFn: async (publish: boolean) => {
+    mutationFn: async (action: 'save' | 'publish' | 'schedule') => {
       if (!title.trim() || !content.trim()) throw new Error('제목과 본문을 입력하세요.')
+      if (action === 'schedule' && (!scheduledAt || new Date(scheduledAt).getTime() <= Date.now())) {
+        throw new Error('현재 이후의 예약 발행일시를 입력하세요.')
+      }
       const sources = buildSourceEvidence(sourceUrls)
       if (isEdit) {
         const updated = await adminAiNewsApi.updateArticle(articleId!, {
@@ -73,7 +78,8 @@ export default function AdminAiNewsFormPage() {
           semanticFingerprint: semanticFingerprint.trim() || null,
           sourceUrls: sources.map((source) => source.sourceUrl),
         })
-        if (publish && updated.status !== 'PUBLISHED') await adminAiNewsApi.publish(updated.id)
+        if (action === 'publish' && updated.status !== 'PUBLISHED') await adminAiNewsApi.publish(updated.id)
+        if (action === 'schedule') await adminAiNewsApi.publish(updated.id, scheduledAt)
         return updated.id
       }
       const created = await adminAiNewsApi.createArticle({
@@ -85,7 +91,8 @@ export default function AdminAiNewsFormPage() {
         prefixId: prefixId === '' ? null : prefixId,
         pinned, autoPublishRequested: false, sources,
       })
-      if (publish) await adminAiNewsApi.publish(created.id)
+      if (action === 'publish') await adminAiNewsApi.publish(created.id)
+      if (action === 'schedule') await adminAiNewsApi.publish(created.id, scheduledAt)
       return created.id
     },
     onSuccess: () => {
@@ -98,6 +105,18 @@ export default function AdminAiNewsFormPage() {
   const deleteMut = useMutation({
     mutationFn: () => adminAiNewsApi.deleteArticle(articleId!, '관리자 화면에서 삭제'),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin', 'ai-news'] }); navigate('/admin/community/ai-news', { replace: true }) },
+  })
+
+  const canPublish = !detail || !['PUBLISHED', 'DELETED', 'REJECTED', 'SKIPPED_DUPLICATE', 'REWRITE_REQUESTED'].includes(detail.status)
+
+  const cancelScheduleMut = useMutation({
+    mutationFn: () => adminAiNewsApi.cancelSchedule(articleId!),
+    onSuccess: (next) => {
+      setScheduledAt('')
+      qc.invalidateQueries({ queryKey: ['admin', 'ai-news'] })
+      qc.setQueryData(['admin', 'ai-news', 'article', articleId], next)
+    },
+    onError: (e) => setError(e instanceof Error ? e.message : '예약발행을 취소하지 못했습니다.'),
   })
 
   const rewriteMut = useMutation({
@@ -141,6 +160,9 @@ export default function AdminAiNewsFormPage() {
             {detail.failureReason && <p className="mt-1 text-red-600">검토 사유: {detail.failureReason}</p>}
             {detail.duplicateReason && <p className="mt-1 text-amber-700">중복 판정: {detail.duplicateReason}</p>}
             {detail.rewritePrompt && <p className="mt-1 text-violet-700">재작성 추가 프롬프트: {detail.rewritePrompt}</p>}
+            {detail.status === 'SCHEDULED' && detail.scheduledAt && (
+              <p className="mt-1 text-blue-700">예약 발행: {new Date(detail.scheduledAt).toLocaleString('ko-KR')}</p>
+            )}
           </div>
         )}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -209,7 +231,25 @@ export default function AdminAiNewsFormPage() {
             </div>
           )}
         </div>
-        {detail && !['PUBLISHED', 'SKIPPED_DUPLICATE', 'REWRITE_REQUESTED'].includes(detail.status) && (
+        {canPublish && <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+          <p className="text-sm font-semibold text-blue-900">예약 발행</p>
+          <p className="mt-1 text-xs text-blue-700">년·월·일과 시·분을 지정하면 해당 시각 이후 서버가 자동 발행합니다.</p>
+          <div className="mt-3 flex flex-wrap items-end gap-2">
+            <label className="block min-w-64 flex-1">
+              <span className="mb-1 block text-xs font-medium text-blue-800">예약 발행일시</span>
+              <input type="datetime-local" step="60" min={toLocalInputValue(new Date())} max="9999-12-31T23:59"
+                value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} className={inputCls} />
+            </label>
+            {detail?.status === 'SCHEDULED' && (
+              <button type="button" disabled={cancelScheduleMut.isPending} onClick={() => {
+                if (window.confirm('예약발행을 취소하고 검토 대기 상태로 변경하시겠습니까?')) cancelScheduleMut.mutate()
+              }} className="rounded-lg border border-blue-300 bg-white px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-50">
+                예약 취소
+              </button>
+            )}
+          </div>
+        </div>}
+        {detail && !['PUBLISHED', 'SCHEDULED', 'SKIPPED_DUPLICATE', 'REWRITE_REQUESTED'].includes(detail.status) && (
           <div className="rounded-lg border border-violet-200 bg-violet-50 p-4">
             <p className="text-sm font-semibold text-violet-900">AI 재작성 요청</p>
             <p className="mt-1 text-xs leading-5 text-violet-700">
@@ -231,8 +271,9 @@ export default function AdminAiNewsFormPage() {
         <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
           {isEdit ? <button type="button" onClick={() => { if (window.confirm('삭제하시겠습니까?')) deleteMut.mutate() }} disabled={deleteMut.isPending} className="rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50">삭제</button> : <span />}
           <div className="flex gap-2">
-            <button type="button" onClick={() => save.mutate(false)} disabled={save.isPending} className="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-semibold text-neutral-700 hover:bg-neutral-50">저장</button>
-            <button type="button" onClick={() => save.mutate(true)} disabled={save.isPending} className="rounded-lg bg-primary-800 px-5 py-2 text-sm font-semibold text-white hover:bg-primary-900">저장 후 발행</button>
+            <button type="button" onClick={() => save.mutate('save')} disabled={save.isPending} className="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-semibold text-neutral-700 hover:bg-neutral-50">저장</button>
+            {canPublish && <button type="button" onClick={() => save.mutate('schedule')} disabled={save.isPending || !scheduledAt} className="rounded-lg border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-50">예약 발행</button>}
+            {canPublish && <button type="button" onClick={() => save.mutate('publish')} disabled={save.isPending} className="rounded-lg bg-primary-800 px-5 py-2 text-sm font-semibold text-white hover:bg-primary-900">즉시 발행</button>}
           </div>
         </div>
       </div>
@@ -273,4 +314,9 @@ function buildSourceEvidence(sourceUrls: string[]): AiNewsSourceEvidence[] {
         sourceType: 'UNAPPROVED' as const,
       }
     })
+}
+
+function toLocalInputValue(date: Date) {
+  const offset = date.getTimezoneOffset() * 60_000
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16)
 }

@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
                 @Index(name = "idx_notice_category", columnList = "category"),
                 @Index(name = "idx_notice_author_id", columnList = "author_id"),
                 @Index(name = "idx_notice_is_published", columnList = "is_published"),
+                @Index(name = "idx_notice_published_at", columnList = "published_at"),
                 @Index(name = "idx_notice_is_pinned", columnList = "is_pinned")
         }
 )
@@ -63,6 +64,10 @@ public class Notice extends BaseTimeEntity {
     @Comment("게시 여부")
     private Boolean isPublished = false;
 
+    @Column
+    @Comment("발행 예정/실제 일시")
+    private LocalDateTime publishedAt;
+
     @Builder.Default
     @Column(nullable = false)
     @Comment("조회 수")
@@ -96,8 +101,15 @@ public class Notice extends BaseTimeEntity {
 
     public void pin()      { this.isPinned = true; }
     public void unpin()    { this.isPinned = false; }
-    public void publish()  { this.isPublished = true; }
-    public void unpublish(){ this.isPublished = false; }
+    public void publish(LocalDateTime publishedAt) {
+        this.isPublished = true;
+        this.publishedAt = publishedAt;
+    }
+
+    public void unpublish() {
+        this.isPublished = false;
+        this.publishedAt = null;
+    }
 
     public void incrementViewCount() { this.viewCount++; }
 

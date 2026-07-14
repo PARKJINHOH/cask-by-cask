@@ -31,6 +31,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Set;
+import java.time.LocalDateTime;
 import java.util.stream.Collectors;
 
 @Service
@@ -58,9 +59,10 @@ public class NoticeService {
                 .and(Sort.by(Sort.Direction.DESC, "createdAt"));
         Pageable pageable = PageRequest.of(page, size, sort);
 
+        LocalDateTime now = LocalDateTime.now();
         Page<Notice> notices = (category != null)
-                ? noticeRepository.findAllByIsPublishedTrueAndCategory(category, pageable)
-                : noticeRepository.findAllByIsPublishedTrue(pageable);
+                ? noticeRepository.findAllPublishedByCategory(category, now, pageable)
+                : noticeRepository.findAllPublished(now, pageable);
 
         // 현재 사용자가 추천한 공지 id 집합 (비회원은 빈 집합)
         final Set<Long> recommendedIds;
@@ -77,7 +79,7 @@ public class NoticeService {
     @Transactional
     public NoticeDetailResponse getPublishedNoticeDetail(Long noticeId, Long userId, String clientIp) {
         // [보안] isPublished=true 조건으로 미발행 공지 직접 접근 차단
-        Notice notice = noticeRepository.findByIdAndIsPublishedTrue(noticeId)
+        Notice notice = noticeRepository.findPublishedById(noticeId, LocalDateTime.now())
                 .orElseThrow(() -> new CustomException(ErrorCode.NOTICE_NOT_FOUND));
 
         // [패치 7] 게시글과 동일한 Redis TTL(1시간) 중복 방지 — 키 없을 때만 viewCount UPDATE
@@ -98,7 +100,7 @@ public class NoticeService {
      */
     @Transactional
     public NoticeRecommendResponse toggleRecommend(Long noticeId, Long userId) {
-        Notice notice = noticeRepository.findByIdAndIsPublishedTrue(noticeId)
+        Notice notice = noticeRepository.findPublishedById(noticeId, LocalDateTime.now())
                 .orElseThrow(() -> new CustomException(ErrorCode.NOTICE_NOT_FOUND));
 
         return noticeRecommendRepository.findByNoticeIdAndUserId(noticeId, userId)
@@ -168,6 +170,9 @@ public class NoticeService {
                 .category(request.getCategory() != null ? request.getCategory() : NoticeCategory.GENERAL)
                 .isPinned(Boolean.TRUE.equals(request.getIsPinned()))
                 .isPublished(Boolean.TRUE.equals(request.getIsPublished()))
+                .publishedAt(Boolean.TRUE.equals(request.getIsPublished())
+                        ? (request.getPublishedAt() != null ? request.getPublishedAt() : LocalDateTime.now())
+                        : null)
                 .author(author)
                 .build();
 
@@ -202,7 +207,18 @@ public class NoticeService {
             if (request.getIsPinned()) notice.pin(); else notice.unpin();
         }
         if (request.getIsPublished() != null) {
-            if (request.getIsPublished()) notice.publish(); else notice.unpublish();
+            if (request.getIsPublished()) {
+                LocalDateTime now = LocalDateTime.now();
+                LocalDateTime targetPublishedAt = request.getPublishedAt();
+                if (targetPublishedAt == null) {
+                    boolean alreadyPublished = Boolean.TRUE.equals(notice.getIsPublished())
+                            && (notice.getPublishedAt() == null || !notice.getPublishedAt().isAfter(now));
+                    targetPublishedAt = alreadyPublished ? notice.getPublishedAt() : now;
+                }
+                notice.publish(targetPublishedAt);
+            } else {
+                notice.unpublish();
+            }
         }
 
         // content 변경된 경우 이미지 사용 현황 재동기화

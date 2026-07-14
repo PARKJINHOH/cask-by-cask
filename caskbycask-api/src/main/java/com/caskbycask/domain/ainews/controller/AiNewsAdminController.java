@@ -17,6 +17,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @RestController
 @RequestMapping("/api/admin/ai-news")
@@ -67,8 +68,17 @@ public class AiNewsAdminController {
 
     @PostMapping("/articles/{id}/publish")
     public ResponseEntity<ApiResponse<AiNewsDtos.ArticleDetailResponse>> publish(
+            @PathVariable Long id,
+            @RequestBody(required = false) AiNewsDtos.PublishRequest request,
+            @AuthenticationPrincipal CustomUserDetails user) {
+        LocalDateTime scheduledAt = request != null ? request.scheduledAt() : null;
+        return ResponseEntity.ok(ApiResponse.success(aiNewsService.publish(id, scheduledAt, user.getUserId())));
+    }
+
+    @PostMapping("/articles/{id}/schedule/cancel")
+    public ResponseEntity<ApiResponse<AiNewsDtos.ArticleDetailResponse>> cancelSchedule(
             @PathVariable Long id, @AuthenticationPrincipal CustomUserDetails user) {
-        return ResponseEntity.ok(ApiResponse.success(aiNewsService.publish(id, user.getUserId())));
+        return ResponseEntity.ok(ApiResponse.success(aiNewsService.cancelSchedule(id, user.getUserId())));
     }
 
     @PostMapping("/articles/{id}/reject")

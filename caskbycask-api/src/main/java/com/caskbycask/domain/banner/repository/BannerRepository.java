@@ -19,7 +19,7 @@ public interface BannerRepository extends JpaRepository<Banner, Long> {
             WHERE b.isVisible = true
             AND b.position = :position
             AND b.language = :language
-            AND (b.isAlwaysVisible = true OR (b.startAt <= :now AND b.endAt >= :now))
+            AND (b.isAlwaysVisible = true OR (b.startAt <= :now AND (b.endAt IS NULL OR b.endAt >= :now)))
             ORDER BY b.sortOrder ASC, b.createdAt DESC
             """)
     List<Banner> findActiveBanners(

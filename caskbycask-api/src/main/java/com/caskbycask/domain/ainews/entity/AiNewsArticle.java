@@ -94,6 +94,8 @@ public class AiNewsArticle extends BaseTimeEntity {
 
     private LocalDateTime rewriteRequestedAt;
 
+    private LocalDateTime scheduledAt;
+
     private LocalDateTime publishedAt;
 
     @Builder.Default
@@ -126,6 +128,7 @@ public class AiNewsArticle extends BaseTimeEntity {
         this.postId = postId;
         this.deletedPostId = null;
         this.status = AiNewsArticleStatus.PUBLISHED;
+        this.scheduledAt = null;
         this.publishedAt = publishedAt;
         this.failureReason = null;
         if (topic != null) topic.markPublished(publishedAt);
@@ -133,12 +136,14 @@ public class AiNewsArticle extends BaseTimeEntity {
 
     public void reject(String reason) {
         this.status = AiNewsArticleStatus.REJECTED;
+        this.scheduledAt = null;
         this.failureReason = reason;
     }
 
     public void markDeleted(Long deletedPostId) {
         this.deletedPostId = deletedPostId;
         this.status = AiNewsArticleStatus.DELETED;
+        this.scheduledAt = null;
     }
 
     public void restore(Long postId) {
@@ -176,6 +181,7 @@ public class AiNewsArticle extends BaseTimeEntity {
         this.rewritePrompt = prompt;
         this.rewriteRequestedAt = requestedAt;
         this.status = AiNewsArticleStatus.REWRITE_REQUESTED;
+        this.scheduledAt = null;
         this.failureReason = null;
     }
 
@@ -190,5 +196,17 @@ public class AiNewsArticle extends BaseTimeEntity {
         this.rewritePrompt = null;
         this.rewriteRequestedAt = null;
         this.failureReason = "AI 재작성이 완료되었습니다. 내용을 검토한 후 발행해주세요.";
+    }
+
+    public void schedule(LocalDateTime scheduledAt) {
+        this.status = AiNewsArticleStatus.SCHEDULED;
+        this.scheduledAt = scheduledAt;
+        this.failureReason = null;
+    }
+
+    public void cancelSchedule() {
+        this.status = AiNewsArticleStatus.PENDING_REVIEW;
+        this.scheduledAt = null;
+        this.failureReason = "예약발행이 취소되었습니다. 내용을 검토한 후 발행해주세요.";
     }
 }

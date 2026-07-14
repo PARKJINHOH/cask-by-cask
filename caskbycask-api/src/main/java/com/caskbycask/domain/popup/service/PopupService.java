@@ -127,10 +127,13 @@ public class PopupService {
                 ? request.getIsAlwaysVisible()
                 : popup.getIsAlwaysVisible();
 
+        boolean scheduleFieldsProvided = request.getIsAlwaysVisible() != null;
         LocalDateTime newStartAt = Boolean.TRUE.equals(newIsAlwaysVisible) ? null
-                : (request.getStartAt() != null ? request.getStartAt() : popup.getStartAt());
+                : (scheduleFieldsProvided ? request.getStartAt()
+                : (request.getStartAt() != null ? request.getStartAt() : popup.getStartAt()));
         LocalDateTime newEndAt = Boolean.TRUE.equals(newIsAlwaysVisible) ? null
-                : (request.getEndAt() != null ? request.getEndAt() : popup.getEndAt());
+                : (scheduleFieldsProvided ? request.getEndAt()
+                : (request.getEndAt() != null ? request.getEndAt() : popup.getEndAt()));
 
         // content 변경 시 재Sanitize
         PopupType effectiveType = request.getPopupType() != null ? request.getPopupType() : popup.getPopupType();

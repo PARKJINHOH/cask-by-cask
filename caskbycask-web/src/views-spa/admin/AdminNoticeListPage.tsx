@@ -194,9 +194,11 @@ export default function AdminNoticeListPage() {
                       : <span className="text-neutral-300">—</span>}
                   </td>
                   <td className="hidden md:table-cell px-4 py-3">
-                    {notice.isPublished
-                      ? <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">발행</span>
-                      : <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-neutral-100 text-neutral-500">미발행</span>}
+                    {notice.isPublished && notice.publishedAt && new Date(notice.publishedAt).getTime() > Date.now()
+                      ? <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700" title={new Date(notice.publishedAt).toLocaleString('ko-KR')}>예약</span>
+                      : notice.isPublished
+                        ? <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">발행</span>
+                        : <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-neutral-100 text-neutral-500">미발행</span>}
                   </td>
                   <td className="hidden md:table-cell px-4 py-3 text-neutral-500">{notice.viewCount.toLocaleString()}</td>
                   <td className="hidden md:table-cell px-4 py-3 text-neutral-400 text-xs">

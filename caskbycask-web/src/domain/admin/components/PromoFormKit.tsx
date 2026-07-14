@@ -72,13 +72,6 @@ export function promoSuperRefine(
         path: ['startAt'],
       })
     }
-    if (!data.endAt) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: '노출하려면 상시 노출을 체크하거나 종료일시를 입력하세요',
-        path: ['endAt'],
-      })
-    }
   }
 }
 
@@ -460,13 +453,13 @@ export function PromoScheduleFields({
 
           {!isAlwaysVisible && (
             <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-              노출하려면 <strong>상시 노출</strong>을 체크하거나 <strong>시작일시·종료일시</strong>를 모두 입력해야 합니다.
+              예약발행 시 <strong>시작일시</strong>를 입력하세요. 종료일시는 선택 사항이며, 비워두면 계속 노출됩니다.
             </p>
           )}
 
           <div className={`grid grid-cols-2 gap-3 ${isAlwaysVisible ? 'opacity-40 pointer-events-none' : ''}`}>
             <div>
-              <label className="block text-xs font-medium text-neutral-500 mb-1">시작일시</label>
+              <label className="block text-xs font-medium text-neutral-500 mb-1">예약 시작일시</label>
               <input
                 type="datetime-local"
                 {...startAtProps}
@@ -483,7 +476,7 @@ export function PromoScheduleFields({
               {startAtError && <p className="mt-1 text-xs text-red-600">{startAtError}</p>}
             </div>
             <div>
-              <label className="block text-xs font-medium text-neutral-500 mb-1">종료일시</label>
+              <label className="block text-xs font-medium text-neutral-500 mb-1">종료일시 (선택)</label>
               <input
                 type="datetime-local"
                 {...endAtProps}

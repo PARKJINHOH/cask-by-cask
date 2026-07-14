@@ -25,7 +25,17 @@ const schema = z.object({
   content: z.string().min(1, '내용을 입력하세요'),
   category: z.enum(['GENERAL', 'UPDATE', 'EVENT', 'MAINTENANCE', 'NOTICE'] as const),
   isPinned: z.boolean(),
-  isPublished: z.boolean(),
+  publishMode: z.enum(['DRAFT', 'NOW', 'SCHEDULED'] as const),
+  publishedAt: z.string(),
+}).superRefine((values, ctx) => {
+  if (values.publishMode !== 'SCHEDULED') return
+  if (!values.publishedAt) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['publishedAt'], message: '예약 발행일시를 입력하세요' })
+    return
+  }
+  if (new Date(values.publishedAt).getTime() <= Date.now()) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['publishedAt'], message: '현재 이후의 일시를 입력하세요' })
+  }
 })
 
 type FormValues = z.infer<typeof schema>
@@ -56,7 +66,8 @@ export default function AdminNoticeFormPage() {
       content: '',
       category: 'GENERAL',
       isPinned: false,
-      isPublished: false,
+      publishMode: 'DRAFT',
+      publishedAt: '',
     },
   })
 
@@ -67,7 +78,10 @@ export default function AdminNoticeFormPage() {
         content: existing.content,
         category: existing.category,
         isPinned: existing.isPinned,
-        isPublished: existing.isPublished,
+        publishMode: existing.isPublished
+          ? (existing.publishedAt && new Date(existing.publishedAt).getTime() > Date.now() ? 'SCHEDULED' : 'NOW')
+          : 'DRAFT',
+        publishedAt: existing.publishedAt?.slice(0, 16) ?? '',
       })
     }
   }, [existing, reset])
@@ -92,7 +106,12 @@ export default function AdminNoticeFormPage() {
         draftKey: DRAFT_KEY,
         title: v.title,
         content: v.content,
-        meta: JSON.stringify({ category: v.category, isPinned: v.isPinned }),
+        meta: JSON.stringify({
+          category: v.category,
+          isPinned: v.isPinned,
+          publishMode: v.publishMode,
+          publishedAt: v.publishedAt,
+        }),
       })
       const saved = res.data.data
       if (saved?.id) setCurrentDraftId(saved.id)
@@ -111,11 +130,20 @@ export default function AdminNoticeFormPage() {
   const loadDraft = (d: { id: number; title: string | null; content: string | null; meta: string | null }) => {
     let category: NoticeCategory = 'GENERAL'
     let isPinned = false
+    let publishMode: FormValues['publishMode'] = 'DRAFT'
+    let publishedAt = ''
     if (d.meta) {
       try {
-        const m = JSON.parse(d.meta) as { category?: NoticeCategory; isPinned?: boolean }
+        const m = JSON.parse(d.meta) as {
+          category?: NoticeCategory
+          isPinned?: boolean
+          publishMode?: FormValues['publishMode']
+          publishedAt?: string
+        }
         if (m.category) category = m.category
         if (typeof m.isPinned === 'boolean') isPinned = m.isPinned
+        if (m.publishMode) publishMode = m.publishMode
+        if (m.publishedAt) publishedAt = m.publishedAt
       } catch { /* meta 파싱 실패 무시 */ }
     }
     setCurrentDraftId(d.id)
@@ -124,21 +152,30 @@ export default function AdminNoticeFormPage() {
       content: d.content ?? '',
       category,
       isPinned,
-      isPublished: false,
+      publishMode,
+      publishedAt,
     })
     showToast('임시저장을 불러왔습니다.', 'success')
   }
 
   const onSubmit = async (values: FormValues) => {
     try {
+      const payload = {
+        title: values.title,
+        content: values.content,
+        category: values.category,
+        isPinned: values.isPinned,
+        isPublished: values.publishMode !== 'DRAFT',
+        publishedAt: values.publishMode === 'SCHEDULED' ? values.publishedAt : null,
+      }
       if (isEdit && noticeId != null) {
         await updateMutation.mutateAsync({
           id: noticeId,
-          data: values,
+          data: payload,
         })
         showToast('공지사항이 저장되었습니다.', 'success')
       } else {
-        await createMutation.mutateAsync(values)
+        await createMutation.mutateAsync(payload)
         showToast('공지사항이 저장되었습니다.', 'success')
         // 등록 완료 → 불러온/저장된 임시저장 삭제
         if (currentDraftId) draftApi.remove(currentDraftId).catch(() => { /* 무시 */ })
@@ -150,7 +187,7 @@ export default function AdminNoticeFormPage() {
   }
 
   const isPending = createMutation.isPending || updateMutation.isPending
-  const isPublished = watch('isPublished')
+  const publishMode = watch('publishMode')
 
   if (isEdit && isLoading) {
     return (
@@ -298,39 +335,32 @@ export default function AdminNoticeFormPage() {
           )}
         </div>
 
-        {/* 노출 설정 */}
-        <Controller
-          name="isPublished"
-          control={control}
-          render={({ field }) => (
-            <div className="flex items-center justify-between px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-lg">
-              <div>
-                <p className="text-sm font-medium text-neutral-700">공지 노출</p>
-                <p className="text-xs text-neutral-400 mt-0.5">
-                  {isPublished ? '사용자에게 공지가 공개됩니다.' : '저장만 되고 사용자에게 노출되지 않습니다.'}
-                </p>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={field.value}
-                onClick={() => field.onChange(!field.value)}
-                className={[
-                  'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent',
-                  'transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
-                  field.value ? 'bg-primary-800' : 'bg-neutral-300',
-                ].join(' ')}
-              >
-                <span
-                  className={[
-                    'pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform duration-200',
-                    field.value ? 'translate-x-5' : 'translate-x-0',
-                  ].join(' ')}
-                />
-              </button>
+        {/* 발행 설정 */}
+        <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4">
+          <p className="text-sm font-semibold text-neutral-700">발행 설정</p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            {([
+              ['DRAFT', '미발행', '저장만 하고 노출하지 않습니다.'],
+              ['NOW', '즉시 발행', '저장 즉시 사용자에게 공개합니다.'],
+              ['SCHEDULED', '예약 발행', '지정한 날짜와 시간에 공개합니다.'],
+            ] as const).map(([value, label, description]) => (
+              <label key={value} className={`cursor-pointer rounded-lg border p-3 ${publishMode === value ? 'border-primary-500 bg-white ring-1 ring-primary-200' : 'border-neutral-200 bg-white'}`}>
+                <input type="radio" value={value} {...register('publishMode')} className="mr-2 accent-primary-800" />
+                <span className="text-sm font-semibold text-neutral-700">{label}</span>
+                <p className="mt-1 text-xs text-neutral-400">{description}</p>
+              </label>
+            ))}
+          </div>
+          {publishMode === 'SCHEDULED' && (
+            <div className="mt-3 max-w-sm">
+              <label className="mb-1 block text-xs font-medium text-neutral-600">예약 발행일시 (년·월·일·시·분)</label>
+              <input type="datetime-local" step="60" min={toLocalInputValue(new Date())} max="9999-12-31T23:59"
+                {...register('publishedAt')}
+                className="h-10 w-full rounded-lg border border-neutral-300 bg-white px-3 text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100" />
+              {errors.publishedAt && <p className="mt-1 text-xs text-danger-600">{errors.publishedAt.message}</p>}
             </div>
           )}
-        />
+        </div>
 
         {/* 하단 버튼 */}
         <div className="flex items-center gap-3 pt-2 border-t border-neutral-100">
@@ -353,4 +383,9 @@ export default function AdminNoticeFormPage() {
       </form>
     </div>
   )
+}
+
+function toLocalInputValue(date: Date) {
+  const offset = date.getTimezoneOffset() * 60_000
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16)
 }

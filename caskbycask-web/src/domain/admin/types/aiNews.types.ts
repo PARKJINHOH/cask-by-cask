@@ -1,6 +1,6 @@
 export type AiNewsArticleType = 'RELEASE_NEWS' | 'TIP_INFO'
 export type AiNewsArticleStatus =
-  | 'DRAFT' | 'PENDING_REVIEW' | 'PUBLISHED' | 'REJECTED'
+  | 'DRAFT' | 'PENDING_REVIEW' | 'SCHEDULED' | 'PUBLISHED' | 'REJECTED'
   | 'SKIPPED_DUPLICATE' | 'FAILED' | 'DELETED' | 'REWRITE_REQUESTED'
 export type AiNewsCategory = 'WHISKY' | 'WINE' | 'COGNAC'
 export type AiNewsSourceType = 'OFFICIAL' | 'TRUSTED_MEDIA' | 'COMMUNITY' | 'UNAPPROVED'
@@ -35,6 +35,7 @@ export interface AiNewsArticleSummary {
   pinned: boolean
   updateAvailable: boolean
   failureReason: string | null
+  scheduledAt: string | null
   publishedAt: string | null
   createdAt: string
 }

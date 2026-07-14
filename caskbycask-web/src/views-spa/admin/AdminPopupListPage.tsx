@@ -56,14 +56,20 @@ function PeriodCell({ item }: { item: AdminPopupListItem }) {
   }
   if (!item.startAt && !item.endAt) return <span className="text-neutral-300">—</span>
   const isExpired = item.endAt && new Date(item.endAt) < new Date()
+  const isScheduled = item.startAt && new Date(item.startAt) > new Date()
   return (
     <div className="space-y-0.5">
       <p className="text-xs text-neutral-600 whitespace-nowrap">
-        {item.startAt ? formatDt(item.startAt) : '—'} ~ {item.endAt ? formatDt(item.endAt) : '—'}
+        {item.startAt ? formatDt(item.startAt) : '—'} ~ {item.endAt ? formatDt(item.endAt) : '계속'}
       </p>
       {isExpired && (
         <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-600">
           만료
+        </span>
+      )}
+      {isScheduled && (
+        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
+          예약
         </span>
       )}
     </div>

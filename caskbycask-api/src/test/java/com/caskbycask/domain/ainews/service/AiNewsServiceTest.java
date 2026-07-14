@@ -31,6 +31,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 @ExtendWith(MockitoExtension.class)
 class AiNewsServiceTest {
@@ -75,6 +76,52 @@ class AiNewsServiceTest {
 
         assertThat(result.duplicate()).isTrue();
         assertThat(result.status()).isEqualTo(AiNewsArticleStatus.PUBLISHED);
+    }
+
+    @Test
+    void futurePublishTimeSchedulesArticleWithoutCreatingCommunityPost() {
+        AiNewsArticle article = AiNewsArticle.builder()
+                .id(21L)
+                .articleType(AiNewsArticleType.TIP_INFO)
+                .status(AiNewsArticleStatus.PENDING_REVIEW)
+                .category(AiNewsCategory.WHISKY)
+                .title("예약 원고")
+                .content("<p>본문</p>")
+                .confidenceScore(BigDecimal.ONE)
+                .dedupeKey("tip:scheduled")
+                .build();
+        given(articleRepository.findForPublishById(21L)).willReturn(Optional.of(article));
+        LocalDateTime scheduledAt = LocalDateTime.now().plusDays(1).withSecond(0).withNano(0);
+
+        AiNewsDtos.ArticleDetailResponse result = service.publish(21L, scheduledAt, null);
+
+        assertThat(result.status()).isEqualTo(AiNewsArticleStatus.SCHEDULED);
+        assertThat(result.scheduledAt()).isEqualTo(scheduledAt);
+        assertThat(result.publishedAt()).isNull();
+        verifyNoInteractions(postService);
+    }
+
+    @Test
+    void scheduledArticleCanReturnToReviewQueue() {
+        LocalDateTime scheduledAt = LocalDateTime.now().plusDays(1).withSecond(0).withNano(0);
+        AiNewsArticle article = AiNewsArticle.builder()
+                .id(22L)
+                .articleType(AiNewsArticleType.TIP_INFO)
+                .status(AiNewsArticleStatus.SCHEDULED)
+                .scheduledAt(scheduledAt)
+                .category(AiNewsCategory.WHISKY)
+                .title("예약 취소 원고")
+                .content("<p>본문</p>")
+                .confidenceScore(BigDecimal.ONE)
+                .dedupeKey("tip:cancel-scheduled")
+                .build();
+        given(articleRepository.findForPublishById(22L)).willReturn(Optional.of(article));
+
+        AiNewsDtos.ArticleDetailResponse result = service.cancelSchedule(22L, null);
+
+        assertThat(result.status()).isEqualTo(AiNewsArticleStatus.PENDING_REVIEW);
+        assertThat(result.scheduledAt()).isNull();
+        verifyNoInteractions(postService);
     }
 
     @Test

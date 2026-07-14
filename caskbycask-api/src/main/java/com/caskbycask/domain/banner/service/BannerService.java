@@ -138,10 +138,13 @@ public class BannerService {
         Boolean newIsAlwaysVisible = request.getIsAlwaysVisible() != null
                 ? request.getIsAlwaysVisible() : banner.getIsAlwaysVisible();
 
+        boolean scheduleFieldsProvided = request.getIsAlwaysVisible() != null;
         LocalDateTime newStartAt = Boolean.TRUE.equals(newIsAlwaysVisible) ? null
-                : (request.getStartAt() != null ? request.getStartAt() : banner.getStartAt());
+                : (scheduleFieldsProvided ? request.getStartAt()
+                : (request.getStartAt() != null ? request.getStartAt() : banner.getStartAt()));
         LocalDateTime newEndAt = Boolean.TRUE.equals(newIsAlwaysVisible) ? null
-                : (request.getEndAt() != null ? request.getEndAt() : banner.getEndAt());
+                : (scheduleFieldsProvided ? request.getEndAt()
+                : (request.getEndAt() != null ? request.getEndAt() : banner.getEndAt()));
 
         String newContent = request.getContent() != null ? request.getContent() : banner.getContent();
         String newContentSanitized = (request.getContent() != null && BannerType.HTML.equals(banner.getBannerType()))

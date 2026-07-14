@@ -14,7 +14,7 @@ import { formatDateTime } from '@/shared/utils/format'
 type Tab = 'articles' | 'topics' | 'sources' | 'settings'
 
 const statusLabels: Record<AiNewsArticleStatus, string> = {
-  DRAFT: '임시저장', PENDING_REVIEW: '검토 대기', PUBLISHED: '발행됨', REJECTED: '반려',
+  DRAFT: '임시저장', PENDING_REVIEW: '검토 대기', SCHEDULED: '예약 발행', PUBLISHED: '발행됨', REJECTED: '반려',
   SKIPPED_DUPLICATE: '중복 제외', FAILED: '실패', DELETED: '삭제됨', REWRITE_REQUESTED: '재작성 대기',
 }
 const articleTypeLabels: Record<AiNewsArticleType, string> = {
@@ -152,7 +152,10 @@ function ArticlesTab() {
                       {item.failureReason && <p className="mt-1 truncate text-xs text-red-500">{item.failureReason}</p>}
                     </td>
                     <td className="px-4 py-3 tabular-nums">{Math.round(Number(item.confidenceScore) * 100)}%</td>
-                    <td className="px-4 py-3"><StatusBadge status={item.status} /></td>
+                    <td className="px-4 py-3">
+                      <StatusBadge status={item.status} />
+                      {item.status === 'SCHEDULED' && item.scheduledAt && <p className="mt-1 whitespace-nowrap text-[11px] text-blue-600">{formatDateTime(item.scheduledAt)}</p>}
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
                         <button onClick={() => navigate(`/admin/community/ai-news/${item.id}/edit`)} className={smallBtn}>수정</button>
@@ -399,7 +402,7 @@ function SettingsTab() {
 }
 
 function StatusBadge({ status }: { status: AiNewsArticleStatus }) {
-  const color = status === 'PUBLISHED' ? 'bg-green-100 text-green-700' : status === 'PENDING_REVIEW' ? 'bg-amber-100 text-amber-700' : status === 'FAILED' || status === 'DELETED' ? 'bg-red-100 text-red-700' : 'bg-neutral-100 text-neutral-600'
+  const color = status === 'PUBLISHED' ? 'bg-green-100 text-green-700' : status === 'SCHEDULED' ? 'bg-blue-100 text-blue-700' : status === 'PENDING_REVIEW' ? 'bg-amber-100 text-amber-700' : status === 'FAILED' || status === 'DELETED' ? 'bg-red-100 text-red-700' : 'bg-neutral-100 text-neutral-600'
   return <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${color}`}>{statusLabels[status]}</span>
 }
 function Loading() { return <div className="flex justify-center py-20"><Spinner size="lg" className="text-primary-800" /></div> }

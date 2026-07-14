@@ -5,6 +5,8 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Getter
 @NoArgsConstructor
 public class UpdateNoticeRequest {
@@ -20,4 +22,6 @@ public class UpdateNoticeRequest {
     private Boolean isPinned;
 
     private Boolean isPublished;
+
+    private LocalDateTime publishedAt;
 }

@@ -11,16 +11,25 @@ import org.springframework.data.querydsl.QuerydslPredicateExecutor;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
+import java.time.LocalDateTime;
 
 public interface NoticeRepository extends JpaRepository<Notice, Long>,
         QuerydslPredicateExecutor<Notice> {
 
     // 공개 조회 — @SQLRestriction("deleted_at IS NULL") 자동 적용
-    Optional<Notice> findByIdAndIsPublishedTrue(Long id);
+    @Query("SELECT n FROM Notice n WHERE n.id = :id AND n.isPublished = true " +
+           "AND (n.publishedAt IS NULL OR n.publishedAt <= :now)")
+    Optional<Notice> findPublishedById(@Param("id") Long id, @Param("now") LocalDateTime now);
 
-    Page<Notice> findAllByIsPublishedTrue(Pageable pageable);
+    @Query("SELECT n FROM Notice n WHERE n.isPublished = true " +
+           "AND (n.publishedAt IS NULL OR n.publishedAt <= :now)")
+    Page<Notice> findAllPublished(@Param("now") LocalDateTime now, Pageable pageable);
 
-    Page<Notice> findAllByIsPublishedTrueAndCategory(NoticeCategory category, Pageable pageable);
+    @Query("SELECT n FROM Notice n WHERE n.isPublished = true AND n.category = :category " +
+           "AND (n.publishedAt IS NULL OR n.publishedAt <= :now)")
+    Page<Notice> findAllPublishedByCategory(@Param("category") NoticeCategory category,
+                                            @Param("now") LocalDateTime now,
+                                            Pageable pageable);
 
     // 관리자 조회: isPublished 무관, deletedAt IS NULL 자동 적용
     @Query("SELECT n FROM Notice n WHERE (:category IS NULL OR n.category = :category) " +

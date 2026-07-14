@@ -18,12 +18,13 @@ public class NoticeListResponse {
     private final Long viewCount;
     private final Long recommendCount;
     private final Boolean isRecommended;
+    private final LocalDateTime publishedAt;
     private final LocalDateTime createdAt;
 
     private NoticeListResponse(Long id, String title, NoticeCategory category,
                                Boolean isPinned, Boolean isPublished,
                                Long viewCount, Long recommendCount, Boolean isRecommended,
-                               LocalDateTime createdAt) {
+                               LocalDateTime publishedAt, LocalDateTime createdAt) {
         this.id = id;
         this.title = title;
         this.category = category;
@@ -32,6 +33,7 @@ public class NoticeListResponse {
         this.viewCount = viewCount;
         this.recommendCount = recommendCount;
         this.isRecommended = isRecommended;
+        this.publishedAt = publishedAt;
         this.createdAt = createdAt;
     }
 
@@ -49,6 +51,7 @@ public class NoticeListResponse {
                 notice.getViewCount(),
                 notice.getRecommendCount(),
                 isRecommended,
+                notice.getPublishedAt(),
                 notice.getCreatedAt()
         );
     }

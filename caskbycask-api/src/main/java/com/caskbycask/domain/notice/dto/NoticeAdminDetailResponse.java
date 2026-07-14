@@ -22,13 +22,14 @@ public class NoticeAdminDetailResponse {
     private final Boolean isPinned;
     private final Boolean isPublished;
     private final Long viewCount;
+    private final LocalDateTime publishedAt;
     private final List<NoticeImageResponse> images;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
 
     private NoticeAdminDetailResponse(Long id, String title, String content, String contentSanitized,
                                       NoticeCategory category, Boolean isPinned, Boolean isPublished,
-                                      Long viewCount, List<NoticeImageResponse> images,
+                                      Long viewCount, LocalDateTime publishedAt, List<NoticeImageResponse> images,
                                       LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.title = title;
@@ -38,6 +39,7 @@ public class NoticeAdminDetailResponse {
         this.isPinned = isPinned;
         this.isPublished = isPublished;
         this.viewCount = viewCount;
+        this.publishedAt = publishedAt;
         this.images = images;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
@@ -53,6 +55,7 @@ public class NoticeAdminDetailResponse {
                 notice.getIsPinned(),
                 notice.getIsPublished(),
                 notice.getViewCount(),
+                notice.getPublishedAt(),
                 images.stream().map(NoticeImageResponse::from).collect(Collectors.toList()),
                 notice.getCreatedAt(),
                 notice.getUpdatedAt()
