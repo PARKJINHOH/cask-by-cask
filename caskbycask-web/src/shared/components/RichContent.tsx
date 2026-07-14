@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { sanitizeHtml } from '@/shared/utils/sanitize'
 import ImageLightbox from './ImageLightbox'
 
@@ -15,6 +16,7 @@ interface Props {
 //   - 본문 내 이미지(<img>) 클릭 시 라이트박스(확대/줌/이전·다음) 표시
 export default function RichContent({ html, className }: Props) {
   const navigate = useNavigate()
+  const { t, i18n } = useTranslation()
   const containerRef = useRef<HTMLDivElement>(null)
   const [images, setImages] = useState<string[]>([])
   const [lightbox, setLightbox] = useState({ open: false, index: 0 })
@@ -79,6 +81,94 @@ export default function RichContent({ html, className }: Props) {
     }
   }, [html])
 
+  // 리뷰 카드는 저장 당시 언어와 무관하게 현재 UI 언어로 술 이름과 라벨을 표시한다.
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const formatDecimal = (value: string | null) => {
+      const parsed = Number(value)
+      return Number.isFinite(parsed) ? parsed.toFixed(1) : '-'
+    }
+    const formatAbv = (value: string) => {
+      const parsed = Number(value)
+      if (!Number.isFinite(parsed)) return value
+      return Number.isInteger(parsed) ? String(parsed) : parsed.toFixed(1)
+    }
+
+    container.querySelectorAll<HTMLElement>('a.di-review-embed[data-review-id]').forEach((card) => {
+      const isEn = i18n.language === 'en'
+      const nameKo = card.dataset.spiritNameKo ?? ''
+      const nameEn = card.dataset.spiritNameEn || nameKo
+      const identifierKo = card.dataset.spiritIdentifierKo ?? ''
+      const identifierEn = card.dataset.spiritIdentifierEn || identifierKo
+      const primaryName = isEn ? nameEn : nameKo
+      const secondaryName = isEn ? nameKo : nameEn
+      const primaryIdentifier = isEn ? identifierEn : identifierKo
+      const secondaryIdentifier = isEn ? identifierKo : identifierEn
+      const join = (name: string, identifier: string) => identifier ? `${name} — ${identifier}` : name
+
+      const setText = (role: string, value: string) => {
+        const element = card.querySelector<HTMLElement>(`[data-review-role='${role}']`)
+        if (element) element.textContent = value
+        return element
+      }
+
+      setText('title', join(primaryName, primaryIdentifier))
+      const subtitle = setText('subtitle', join(secondaryName, secondaryIdentifier))
+      if (subtitle) subtitle.hidden = !secondaryName || secondaryName === primaryName
+
+      const abv = card.querySelector<HTMLElement>("[data-review-role='abv']")
+      if (abv) {
+        const value = card.dataset.spiritAbv
+        abv.hidden = !value
+        if (value) abv.textContent = t('editor.reviewCard.abv', { value: formatAbv(value) })
+      }
+      setText('review-count', t('editor.reviewCard.reviewCount', {
+        count: Number(card.dataset.spiritReviewCount ?? 0),
+      }))
+      setText('total-label', t('editor.reviewCard.total'))
+      setText('total-score', formatDecimal(card.dataset.reviewTotalScore ?? null))
+
+      const sections = {
+        nose: {
+          label: t('editor.reviewCard.nose'),
+          score: card.dataset.reviewNoseScore,
+          note: card.dataset.reviewNoseNote,
+        },
+        taste: {
+          label: t('editor.reviewCard.taste'),
+          score: card.dataset.reviewTasteScore,
+          note: card.dataset.reviewTasteNote,
+        },
+        finish: {
+          label: t('editor.reviewCard.finish'),
+          score: card.dataset.reviewFinishScore,
+          note: card.dataset.reviewFinishNote,
+        },
+        overall: {
+          label: t('editor.reviewCard.overall'),
+          score: undefined,
+          note: card.dataset.reviewComment,
+        },
+      }
+
+      Object.entries(sections).forEach(([sectionName, values]) => {
+        const section = card.querySelector<HTMLElement>(`[data-review-section='${sectionName}']`)
+        if (!section) return
+        const label = section.querySelector<HTMLElement>("[data-review-role='label']")
+        const score = section.querySelector<HTMLElement>("[data-review-role='section-score']")
+        const note = section.querySelector<HTMLElement>("[data-review-role='note']")
+        if (label) label.textContent = values.label
+        if (score) {
+          score.hidden = values.score == null
+          score.textContent = values.score == null ? '' : formatDecimal(values.score)
+        }
+        if (note) note.textContent = values.note || t('editor.reviewCard.noNote')
+      })
+    })
+  }, [html, i18n.language, t])
+
   const collectImages = useCallback(() => {
     const el = containerRef.current
     if (!el) return [] as HTMLImageElement[]
@@ -90,7 +180,7 @@ export default function RichContent({ html, className }: Props) {
       const target = e.target as HTMLElement
 
       // 술 임베드 칩 → SPA 이동
-      const chip = target.closest('a.di-spirit-embed')
+      const chip = target.closest('a.di-spirit-embed, a.di-review-embed')
       if (chip) {
         const id = chip.getAttribute('data-spirit-id')
         if (id) {

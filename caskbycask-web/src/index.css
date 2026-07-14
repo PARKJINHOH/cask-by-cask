@@ -309,6 +309,165 @@
     white-space: nowrap;
   }
 
+  /* ── 본문 내 내 리뷰 카드 — 기본 100%, 에디터에서 5% 단위 조절 ── */
+  .notice-content .di-review-embed {
+    display: flex;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    flex-direction: column;
+    gap: 0.9rem;
+    margin: 1rem auto;
+    padding: 1rem;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--color-primary-300) 55%, white);
+    border-radius: 0.9rem;
+    background:
+      radial-gradient(circle at 100% 0%, rgba(251, 191, 36, 0.12), transparent 42%),
+      linear-gradient(145deg, #fffcf5 0%, #faf8f3 100%);
+    color: var(--color-neutral-800);
+    text-decoration: none;
+    cursor: pointer;
+    container-type: inline-size;
+    container-name: review-card;
+    transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+  }
+  .notice-content .di-review-embed:hover {
+    border-color: var(--color-primary-400);
+    box-shadow: 0 8px 24px rgba(120, 53, 15, 0.08);
+    text-decoration: none;
+  }
+  .notice-content .di-review-embed.di-review-width-35 { width: 35%; }
+  .notice-content .di-review-embed.di-review-width-40 { width: 40%; }
+  .notice-content .di-review-embed.di-review-width-45 { width: 45%; }
+  .notice-content .di-review-embed.di-review-width-50 { width: 50%; }
+  .notice-content .di-review-embed.di-review-width-55 { width: 55%; }
+  .notice-content .di-review-embed.di-review-width-60 { width: 60%; }
+  .notice-content .di-review-embed.di-review-width-65 { width: 65%; }
+  .notice-content .di-review-embed.di-review-width-70 { width: 70%; }
+  .notice-content .di-review-embed.di-review-width-75 { width: 75%; }
+  .notice-content .di-review-embed.di-review-width-80 { width: 80%; }
+  .notice-content .di-review-embed.di-review-width-85 { width: 85%; }
+  .notice-content .di-review-embed.di-review-width-90 { width: 90%; }
+  .notice-content .di-review-embed.di-review-width-95 { width: 95%; }
+  .notice-content .di-review-embed.di-review-width-100 { width: 100%; }
+
+  .notice-content .di-review-embed [data-review-role='header'] {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+  .notice-content .di-review-embed [data-review-role='heading'] {
+    display: flex;
+    min-width: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
+  }
+  .notice-content .di-review-embed [data-review-role='title'] {
+    color: var(--color-neutral-900);
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+  }
+  .notice-content .di-review-embed [data-review-role='subtitle'] {
+    margin-top: 0.1rem;
+    color: var(--color-neutral-400);
+    font-size: 0.75rem;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+  .notice-content .di-review-embed [data-review-role='meta'] {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.7rem;
+    margin-top: 0.45rem;
+    color: var(--color-neutral-500);
+    font-size: 0.72rem;
+  }
+  .notice-content .di-review-embed [data-review-role='total'] {
+    display: flex;
+    min-width: 4.25rem;
+    flex: 0 0 auto;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.45rem 0.65rem;
+    border: 1px solid rgba(245, 158, 11, 0.2);
+    border-radius: 0.7rem;
+    background: rgba(255, 255, 255, 0.72);
+  }
+  .notice-content .di-review-embed [data-review-role='total-label'] {
+    color: var(--color-primary-800);
+    font-size: 0.65rem;
+    font-weight: 600;
+  }
+  .notice-content .di-review-embed [data-review-role='total-score'] {
+    color: var(--color-primary-900);
+    font-size: 1.2rem;
+    font-weight: 800;
+    line-height: 1.25;
+    font-variant-numeric: tabular-nums;
+  }
+  .notice-content .di-review-embed [data-review-role='sections'] {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.5rem;
+  }
+  .notice-content .di-review-embed [data-review-section] {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 0.3rem;
+    padding: 0.7rem 0.75rem;
+    border: 1px solid rgba(229, 231, 235, 0.8);
+    border-radius: 0.65rem;
+    background: rgba(255, 255, 255, 0.6);
+  }
+  .notice-content .di-review-embed [data-review-role='section-heading'] {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+  .notice-content .di-review-embed [data-review-role='label'] {
+    color: var(--color-neutral-700);
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+  .notice-content .di-review-embed [data-review-role='section-score'] {
+    color: var(--color-primary-800);
+    font-size: 0.72rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .notice-content .di-review-embed [data-review-role='note'] {
+    color: var(--color-neutral-600);
+    font-size: 0.78rem;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .notice-content .di-review-embed [data-review-section='overall'] {
+    border-color: rgba(245, 158, 11, 0.16);
+    background: rgba(255, 251, 235, 0.68);
+  }
+
+  @container review-card (min-width: 620px) {
+    .notice-content .di-review-embed [data-review-role='sections'] {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .notice-content .di-review-embed [data-review-section='overall'] {
+      grid-column: 1 / -1;
+    }
+  }
+
+  @media (max-width: 520px) {
+    .notice-content .di-review-embed[class*='di-review-width-'] {
+      width: 100%;
+    }
+  }
+
   /* ── 영상 임베드(YouTube/Vimeo) ──────────────────────────────
      Tailwind 임의값 클래스 purge 여부와 무관하게 16:9 비율로 표시되도록
      data-video-embed 속성 기준으로 직접 스타일링 (에디터/본문 공통) */

@@ -18,8 +18,10 @@ import { ResizableImage } from './ResizableImage'
 import { VideoEmbed, toEmbedUrl, handleVideoEnter } from './VideoEmbed'
 import { UploadedVideo } from './UploadedVideo'
 import { SpiritEmbed, type SpiritEmbedAttrs } from './SpiritEmbed'
+import { ReviewEmbed, type ReviewEmbedAttrs } from './ReviewEmbed'
 import RichTextToolbar from './RichTextToolbar'
 import SpiritEmbedDialog from './SpiritEmbedDialog'
+import ReviewEmbedDialog from './ReviewEmbedDialog'
 import ImageEditorModal from '../components/ImageEditorModal'
 import './rich-text.css'
 import './editor-image.css'
@@ -38,6 +40,11 @@ const ALLOWED_ATTR = [
   'data-spirit-id', 'data-spirit-name', 'data-spirit-name-en', 'data-spirit-category',
   'data-spirit-thumbnail', 'data-spirit-abv', 'data-spirit-review-count',
   'data-spirit-width',
+  'data-review-id', 'data-review-width', 'data-spirit-name-ko',
+  'data-spirit-identifier-ko', 'data-spirit-identifier-en',
+  'data-review-nose-score', 'data-review-taste-score', 'data-review-finish-score',
+  'data-review-total-score', 'data-review-nose-note', 'data-review-taste-note',
+  'data-review-finish-note', 'data-review-comment', 'data-review-role', 'data-review-section',
   'data-video-embed', 'data-uploaded-video',
   'allowfullscreen', 'allow', 'frameborder', 'controls', 'preload', 'type',
   'start',
@@ -80,18 +87,22 @@ interface Props {
   onVideoError?: (msg: string) => void
   /** 본문 내 술 카드 삽입 기능 (기본 true) */
   enableSpiritEmbed?: boolean
+  /** 로그인 사용자의 리뷰 카드 삽입 기능 (커뮤니티에서만 사용) */
+  enableReviewEmbed?: boolean
 }
 
 export default function RichTextEditor({
   value, onChange, placeholder, maxChars = 100000,
   uploadImage, uploadVideo, onImageError, onVideoError,
   enableSpiritEmbed = true,
+  enableReviewEmbed = false,
 }: Props) {
   const [uploadProgress, setUploadProgress] = useState<number | null>(null)
   const [uploadLabel, setUploadLabel] = useState<'이미지' | '동영상'>('이미지')
   // 여러 장 동시 업로드 시 진행 위치(예: 2/5). 단일 업로드면 null.
   const [batchProgress, setBatchProgress] = useState<{ current: number; total: number } | null>(null)
   const [spiritOpen, setSpiritOpen] = useState(false)
+  const [reviewOpen, setReviewOpen] = useState(false)
   const videoInputRef = useRef<HTMLInputElement>(null)
   const imageInputRef = useRef<HTMLInputElement>(null)
   const lastEmitted = useRef(value)
@@ -148,6 +159,7 @@ export default function RichTextEditor({
       VideoEmbed,
       UploadedVideo,
       ...(enableSpiritEmbed ? [SpiritEmbed] : []),
+      ...(enableReviewEmbed ? [ReviewEmbed] : []),
     ],
     content: value,
     onUpdate({ editor: e }) {
@@ -366,6 +378,10 @@ export default function RichTextEditor({
     editor?.chain().focus().insertSpiritEmbed(attrs).run()
   }, [editor])
 
+  const handleReviewSelect = useCallback((attrs: ReviewEmbedAttrs) => {
+    editor?.chain().focus().insertReviewEmbed(attrs).run()
+  }, [editor])
+
   const charCount = editor?.storage.characterCount?.characters() ?? 0
   const isNearLimit = charCount > maxChars * 0.9
 
@@ -379,7 +395,8 @@ export default function RichTextEditor({
           target.closest('button') ||
           target.closest('input') ||
           target.closest('select') ||
-          target.closest('.di-spirit-embed-dialog')
+          target.closest('.di-spirit-embed-dialog') ||
+          target.closest('.di-review-embed-dialog')
         ) {
           return
         }
@@ -422,6 +439,7 @@ export default function RichTextEditor({
           onVideoUpload={uploadVideo ? () => videoInputRef.current?.click() : undefined}
           onVideoEmbed={insertVideoEmbed}
           onSpiritEmbed={enableSpiritEmbed ? () => setSpiritOpen(true) : undefined}
+          onReviewEmbed={enableReviewEmbed ? () => setReviewOpen(true) : undefined}
         />
       )}
 
@@ -449,6 +467,10 @@ export default function RichTextEditor({
 
       {enableSpiritEmbed && (
         <SpiritEmbedDialog open={spiritOpen} onClose={() => setSpiritOpen(false)} onSelect={handleSpiritSelect} />
+      )}
+
+      {enableReviewEmbed && (
+        <ReviewEmbedDialog open={reviewOpen} onClose={() => setReviewOpen(false)} onSelect={handleReviewSelect} />
       )}
 
       {uploadImage && (

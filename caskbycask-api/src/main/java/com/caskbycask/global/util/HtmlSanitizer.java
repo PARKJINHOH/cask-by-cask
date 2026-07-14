@@ -57,7 +57,16 @@ public class HtmlSanitizer {
                 .addAttributes("a", "class", "data-spirit-id", "data-spirit-name",
                         "data-spirit-name-en", "data-spirit-category",
                         "data-spirit-thumbnail", "data-spirit-abv", "data-spirit-review-count",
-                        "data-spirit-width")
+                        "data-spirit-width",
+                        // 본문 내 내 리뷰 카드: 화면에 필요한 스냅샷만 보존
+                        "data-review-id", "data-review-width",
+                        "data-spirit-name-ko", "data-spirit-identifier-ko",
+                        "data-spirit-identifier-en", "data-review-nose-score",
+                        "data-review-taste-score", "data-review-finish-score",
+                        "data-review-total-score", "data-review-nose-note",
+                        "data-review-taste-note", "data-review-finish-note",
+                        "data-review-comment")
+                .addAttributes("span", "data-review-role", "data-review-section")
                 // 이미지: 업로드 엔드포인트 전용 (style 및 크기 속성 허용)
                 .addTags("img")
                 .addAttributes("img", "src", "alt", "width", "height", "style",

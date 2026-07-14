@@ -34,6 +34,7 @@ export default function PostEditor({ value, onChange, placeholder, onImageError,
       onImageError={onImageError}
       onVideoError={onVideoError}
       enableSpiritEmbed
+      enableReviewEmbed
     />
   )
 }

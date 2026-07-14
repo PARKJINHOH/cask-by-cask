@@ -3,6 +3,7 @@ import type { ApiResponse, PageResponse } from '@/shared/types/common.types'
 import type {
   CreateReviewRequest,
   CreateVariantReviewRequest,
+  ReviewEmbedItem,
   ReviewItem,
   UpdateReviewRequest,
   VariantReviewRequestItem,
@@ -36,6 +37,9 @@ export const reviewApi = {
 
   getMyReviews: (params?: { page?: number; size?: number }) =>
     axiosInstance.get<ApiResponse<PageResponse<ReviewItem>>>('/api/users/me/reviews', { params }),
+
+  getMyReviewEmbeds: (params?: { page?: number; size?: number }) =>
+    axiosInstance.get<ApiResponse<PageResponse<ReviewEmbedItem>>>('/api/users/me/review-embeds', { params }),
 
   getMyReviewRequests: (params?: { page?: number; size?: number; status?: VariantReviewRequestStatus }) =>
     axiosInstance.get<ApiResponse<PageResponse<VariantReviewRequestItem>>>(

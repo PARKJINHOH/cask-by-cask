@@ -122,7 +122,7 @@ export const SpiritEmbed = Node.create({
   },
 
   parseHTML() {
-    return [{ tag: 'a[data-spirit-id]' }]
+    return [{ tag: 'a.di-spirit-embed[data-spirit-id]' }]
   },
 
   renderHTML({ HTMLAttributes, node }) {

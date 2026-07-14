@@ -122,3 +122,36 @@
 
 .di-richtext .ProseMirror .di-spirit-embed__resize--left { left: -6px; }
 .di-richtext .ProseMirror .di-spirit-embed__resize--right { right: -6px; }
+
+/* 내 리뷰 카드 — 선택 시 양쪽 손잡이로 에디터 폭 대비 비율을 조절한다. */
+.di-richtext .ProseMirror a.di-review-embed {
+  position: relative;
+}
+
+.di-richtext .ProseMirror a.di-review-embed.ProseMirror-selectednode {
+  outline: 2px solid var(--color-primary-400);
+  outline-offset: 2px;
+}
+
+.di-richtext .ProseMirror .di-review-embed__resize {
+  display: none;
+  position: absolute;
+  top: 50%;
+  width: 11px;
+  height: 42px;
+  transform: translateY(-50%);
+  border: 2px solid var(--color-primary-600);
+  border-radius: 4px;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+  z-index: 5;
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+.di-richtext .ProseMirror a.di-review-embed.ProseMirror-selectednode .di-review-embed__resize {
+  display: block;
+}
+
+.di-richtext .ProseMirror .di-review-embed__resize--left { left: -7px; }
+.di-richtext .ProseMirror .di-review-embed__resize--right { right: -7px; }

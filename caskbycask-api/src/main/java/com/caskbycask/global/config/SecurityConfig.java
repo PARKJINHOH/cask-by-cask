@@ -148,6 +148,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/price-reports/{id:[0-9]+}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/price-reports/chart").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/price-reports/chart/**").permitAll()
+                        // 커뮤니티 에디터의 내 리뷰 카드 목록은 반드시 로그인 사용자 범위로만 조회
+                        .requestMatchers(HttpMethod.GET, "/api/users/me/review-embeds").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/users/*/bottles").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/users/*/reviews").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/score-history/level-config").permitAll()

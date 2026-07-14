@@ -6,7 +6,25 @@
   "editor": {
     "spiritSearchPlaceholder": "Search a spirit to insert",
     "spiritSearchHint": "Type a spirit name to search.",
-    "spiritNoResult": "No results found."
+    "spiritNoResult": "No results found.",
+    "spiritCardButton": "Insert spirit card",
+    "reviewCard": {
+      "toolbarButton": "Insert my review",
+      "dialogTitle": "Import My Review",
+      "dialogHint": "Select a review to insert as a card.",
+      "empty": "There are no public reviews available to import.",
+      "loadError": "Could not load your reviews.",
+      "retry": "Retry",
+      "loadMore": "Load more reviews",
+      "abv": "{{value}}% ABV",
+      "reviewCount": "{{count}} reviews",
+      "nose": "Nose",
+      "taste": "Taste",
+      "finish": "Finish",
+      "overall": "Overall",
+      "total": "Score",
+      "noNote": "No notes were provided."
+    }
   },
   "producerSelector": {
     "placeholder": "Select producer...",

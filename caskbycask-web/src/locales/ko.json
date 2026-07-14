@@ -6,7 +6,25 @@
   "editor": {
     "spiritSearchPlaceholder": "삽입할 술 이름을 검색하세요",
     "spiritSearchHint": "술 이름을 입력하면 검색됩니다.",
-    "spiritNoResult": "검색 결과가 없습니다."
+    "spiritNoResult": "검색 결과가 없습니다.",
+    "spiritCardButton": "주류 카드 삽입",
+    "reviewCard": {
+      "toolbarButton": "내 리뷰 카드 삽입",
+      "dialogTitle": "내 리뷰 불러오기",
+      "dialogHint": "카드로 삽입할 리뷰를 선택하세요.",
+      "empty": "불러올 수 있는 공개 리뷰가 없습니다.",
+      "loadError": "내 리뷰를 불러오지 못했습니다.",
+      "retry": "다시 시도",
+      "loadMore": "리뷰 더 보기",
+      "abv": "도수 {{value}}%",
+      "reviewCount": "리뷰 {{count}}개",
+      "nose": "향",
+      "taste": "맛",
+      "finish": "피니시",
+      "overall": "총평",
+      "total": "총점",
+      "noNote": "작성된 내용이 없습니다."
+    }
   },
   "producerSelector": {
     "placeholder": "생산자 선택...",

@@ -44,4 +44,27 @@ class HtmlSanitizerTest {
                 .contains("di-spirit-width-420")
                 .contains("data-spirit-width=\"420\"");
     }
+
+    @Test
+    void sanitize_preservesReviewCardSnapshotAndStructure() {
+        String rawHtml = "<a class=\"di-review-embed di-review-width-100\" "
+                + "data-review-id=\"7\" data-review-width=\"100\" data-spirit-id=\"1\" "
+                + "data-spirit-name-ko=\"테스트 위스키\" data-spirit-name-en=\"Test Whisky\" "
+                + "data-spirit-identifier-ko=\"배치 1\" data-spirit-abv=\"46\" "
+                + "data-spirit-review-count=\"12\" data-review-nose-score=\"4.0\" "
+                + "data-review-nose-note=\"과일과 바닐라\" data-review-comment=\"균형이 좋다\">"
+                + "<span data-review-role=\"sections\"><span data-review-section=\"nose\">"
+                + "<span data-review-role=\"note\">과일과 바닐라</span></span></span></a>";
+
+        String sanitized = htmlSanitizer.sanitize(rawHtml);
+
+        assertThat(sanitized)
+                .contains("di-review-embed")
+                .contains("data-review-id=\"7\"")
+                .contains("data-review-width=\"100\"")
+                .contains("data-review-nose-note=\"과일과 바닐라\"")
+                .contains("data-review-comment=\"균형이 좋다\"")
+                .contains("data-review-role=\"sections\"")
+                .contains("data-review-section=\"nose\"");
+    }
 }

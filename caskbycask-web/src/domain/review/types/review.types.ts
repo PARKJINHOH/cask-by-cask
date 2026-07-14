@@ -26,6 +26,26 @@ export interface ReviewItem {
   userReviewCount?: number
 }
 
+export interface ReviewEmbedItem {
+  id: number
+  spiritId: number
+  spiritNameKo: string
+  spiritNameEn: string | null
+  spiritIdentifierKo: string | null
+  spiritIdentifierEn: string | null
+  spiritAbv: number | null
+  spiritReviewCount: number
+  noseScore: number
+  tasteScore: number
+  finishScore: number
+  totalScore: number
+  noseNote: string | null
+  tasteNote: string | null
+  finishNote: string | null
+  comment: string | null
+  createdAt: string
+}
+
 export interface CreateReviewRequest {
   noseScore: number
   tasteScore: number

@@ -5,6 +5,7 @@ import com.caskbycask.domain.community.dto.UserMentionResponse;
 import com.caskbycask.domain.community.entity.UserBlock;
 import com.caskbycask.domain.community.repository.UserBlockRepository;
 import com.caskbycask.domain.review.dto.ReviewResponse;
+import com.caskbycask.domain.review.dto.ReviewEmbedResponse;
 import com.caskbycask.domain.review.dto.CreateVariantReviewRequest;
 import com.caskbycask.domain.review.dto.VariantReviewRequestResponse;
 import com.caskbycask.domain.review.entity.enums.VariantReviewRequestStatus;
@@ -200,6 +201,14 @@ public class UserController {
             @PageableDefault(size = 10) Pageable pageable) {
         return ResponseEntity.ok(ApiResponse.success(
                 PageResponse.from(reviewService.getMyReviews(userDetails.getUserId(), pageable))));
+    }
+
+    @GetMapping("/me/review-embeds")
+    public ResponseEntity<ApiResponse<PageResponse<ReviewEmbedResponse>>> getMyReviewEmbeds(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PageableDefault(size = 20) Pageable pageable) {
+        return ResponseEntity.ok(ApiResponse.success(
+                PageResponse.from(reviewService.getMyReviewEmbeds(userDetails.getUserId(), pageable))));
     }
 
     @GetMapping("/me/review-requests")

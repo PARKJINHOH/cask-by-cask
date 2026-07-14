@@ -1,6 +1,7 @@
 package com.caskbycask.domain.review.service;
 
 import com.caskbycask.domain.review.dto.ReviewRequest;
+import com.caskbycask.domain.review.dto.ReviewEmbedResponse;
 import com.caskbycask.domain.review.dto.ReviewResponse;
 import com.caskbycask.domain.review.dto.UpdateReviewRequest;
 import com.caskbycask.domain.review.entity.Review;
@@ -58,6 +59,15 @@ public class ReviewService {
                 Sort.by(Sort.Direction.DESC, "createdAt"));
         return reviewRepository.findByUserIdWithUser(userId, sorted)
                 .map(this::toResponse);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ReviewEmbedResponse> getMyReviewEmbeds(Long userId, Pageable pageable) {
+        Pageable sorted = PageRequest.of(
+                pageable.getPageNumber(), pageable.getPageSize(),
+                Sort.by(Sort.Direction.DESC, "createdAt"));
+        return reviewRepository.findEmbeddableByUserId(userId, sorted)
+                .map(ReviewEmbedResponse::from);
     }
 
     // ── 작성 ──────────────────────────────────────────────

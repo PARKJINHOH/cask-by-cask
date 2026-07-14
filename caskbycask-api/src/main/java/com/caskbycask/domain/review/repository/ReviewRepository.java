@@ -70,6 +70,23 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
             countQuery = "SELECT COUNT(r) FROM Review r WHERE r.user.id = :userId")
     Page<Review> findByUserIdWithUser(@Param("userId") Long userId, Pageable pageable);
 
+    @Query(value = """
+            SELECT r FROM Review r
+            JOIN FETCH r.spirit s
+            LEFT JOIN FETCH s.parent
+            WHERE r.user.id = :userId
+              AND r.isHidden = false
+              AND s.status = com.caskbycask.domain.spirit.entity.enums.SpiritStatus.ACTIVE
+            """,
+            countQuery = """
+            SELECT COUNT(r) FROM Review r
+            JOIN r.spirit s
+            WHERE r.user.id = :userId
+              AND r.isHidden = false
+              AND s.status = com.caskbycask.domain.spirit.entity.enums.SpiritStatus.ACTIVE
+            """)
+    Page<Review> findEmbeddableByUserId(@Param("userId") Long userId, Pageable pageable);
+
     @Query("SELECT AVG(r.totalScore) FROM Review r WHERE r.spirit.id = :spiritId AND r.isHidden = false")
     Optional<Double> findAvgScoreBySpiritId(@Param("spiritId") Long spiritId);
 

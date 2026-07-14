@@ -66,6 +66,12 @@ export function sanitizeHtml(dirty: string): string {
       'data-spirit-id', 'data-spirit-name', 'data-spirit-name-en', 'data-spirit-category',
       'data-spirit-thumbnail', 'data-spirit-abv', 'data-spirit-review-count',
       'data-spirit-width',
+      // 내 리뷰 카드 스냅샷 / 구조
+      'data-review-id', 'data-review-width', 'data-spirit-name-ko',
+      'data-spirit-identifier-ko', 'data-spirit-identifier-en',
+      'data-review-nose-score', 'data-review-taste-score', 'data-review-finish-score',
+      'data-review-total-score', 'data-review-nose-note', 'data-review-taste-note',
+      'data-review-finish-note', 'data-review-comment', 'data-review-role', 'data-review-section',
       // YouTube/Vimeo 임베드 iframe
       'allow', 'allowfullscreen', 'frameborder', 'data-video-embed',
       // 업로드 동영상 video
