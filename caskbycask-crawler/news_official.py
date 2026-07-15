@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ipaddress
 import socket
+import time
 from urllib.parse import urljoin, urlsplit
 
 import requests
@@ -12,6 +13,8 @@ from news_source_config import matching_source_config, normalized_path
 
 
 ELIGIBLE_TYPES = {"OFFICIAL", "TRUSTED_MEDIA"}
+SEARCH_ONLY_DOMAINS = {"instagram.com"}
+DIRECT_REQUEST_ATTEMPTS = 2
 
 
 def _assert_public_url(url: str) -> None:
@@ -30,13 +33,23 @@ def _get_public_url(url: str, timeout: int) -> tuple[str, str, str]:
     current = url
     for _ in range(4):
         _assert_public_url(current)
-        response = requests.get(
-            current,
-            timeout=timeout,
-            allow_redirects=False,
-            stream=True,
-            headers={"User-Agent": "CaskByCaskBot/1.0 (+official-source-check)"},
-        )
+        response = None
+        for attempt in range(DIRECT_REQUEST_ATTEMPTS):
+            try:
+                response = requests.get(
+                    current,
+                    timeout=(min(timeout, 10), timeout),
+                    allow_redirects=False,
+                    stream=True,
+                    headers={"User-Agent": "CaskByCaskBot/1.0 (+official-source-check)"},
+                )
+                break
+            except requests.RequestException:
+                if attempt + 1 >= DIRECT_REQUEST_ATTEMPTS:
+                    raise
+                time.sleep(attempt + 1)
+        if response is None:  # pragma: no cover - 위 반복문의 방어 코드
+            raise RuntimeError("공개 URL 응답을 받지 못했습니다.")
         if response.status_code not in {301, 302, 303, 307, 308}:
             response.raise_for_status()
             content_type = str(response.headers.get("Content-Type") or "").lower()
@@ -117,6 +130,11 @@ def collect_registered_sources(config: dict, search, api, log, timeout: int,
     successful: set[int] = set()
     for item in configs:
         source_id = int(item["id"])
+        domain = str(item.get("domain") or "").lower().removeprefix("www.")
+        if domain in SEARCH_ONLY_DOMAINS:
+            log.info("직접 수집 제한 플랫폼은 Tavily 검색으로 확인 source=%s domain=%s",
+                     item.get("sourceName"), domain)
+            continue
         try:
             collected.append(_direct_source(item, timeout))
             successful.add(source_id)
@@ -127,8 +145,14 @@ def collect_registered_sources(config: dict, search, api, log, timeout: int,
     if allow_tavily:
         domains = list(dict.fromkeys(str(item.get("domain") or "") for item in configs if item.get("domain")))
         try:
+            source_hints = " ".join(
+                f'{str(item.get("sourceName") or "").strip()} '
+                f'{normalized_path(item.get("pathPrefix")).strip("/")}'
+                for item in configs
+            )[:800]
             targeted = search.search(
-                "latest official whisky wine cognac product release launch import 한국 출시 수입 신제품",
+                "latest official whisky wine cognac product release launch import 한국 출시 수입 신제품 "
+                f"{source_hints}",
                 topic="news",
                 time_range="week",
                 include_domains=domains,
@@ -140,6 +164,8 @@ def collect_registered_sources(config: dict, search, api, log, timeout: int,
                 source.source_type = str(matched.get("sourceType") or "UNAPPROVED")
                 collected.append(source)
                 successful.add(int(matched["id"]))
+            # 제한 검색이 정상 완료되면 신규 결과가 없어도 출처 확인 작업 자체는 성공이다.
+            successful.update(int(item["id"]) for item in configs)
         except Exception as error:  # noqa: BLE001
             log.warning("등록 공식 출처 Tavily 제한 검색 실패: %s", error)
             for item in configs:

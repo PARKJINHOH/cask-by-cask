@@ -13,6 +13,7 @@ from unittest.mock import Mock, patch
 # Stub requests so all HTTP behaviour remains mocked and deterministic.
 requests = types.ModuleType("requests")
 requests.post = Mock()
+requests.RequestException = type("RequestException", (Exception,), {})
 sys.modules.setdefault("requests", requests)
 google = types.ModuleType("google")
 genai = types.ModuleType("google.genai")
@@ -36,7 +37,7 @@ from news_gemini import GeminiNewsWriter
 from news_prompts import AI_NEWS_MIN_TEXT_LENGTH, AI_NEWS_WRITING_PROMPT
 from news_tavily import TavilyNewsSearch
 from news_source_config import matching_source_config
-from news_official import _targeted_match
+from news_official import _get_public_url, _targeted_match, collect_registered_sources
 
 
 class TavilyNewsSearchTest(unittest.TestCase):
@@ -140,6 +141,30 @@ class NewsModelTest(unittest.TestCase):
 
 
 class NewsSourceConfigTest(unittest.TestCase):
+    @patch("news_official.time.sleep")
+    @patch("news_official._assert_public_url")
+    @patch("news_official.requests.get", create=True)
+    def test_direct_request_retries_a_transient_connection_failure(
+        self, get: Mock, assert_public_url: Mock, sleep: Mock,
+    ) -> None:
+        response = Mock()
+        response.status_code = 200
+        response.headers = {"Content-Type": "text/html; charset=utf-8"}
+        response.iter_content.return_value = [b"<html>ok</html>"]
+        response.encoding = "utf-8"
+        response.url = "https://example.com/news"
+        get.side_effect = [requests.RequestException("connect timeout"), response]
+
+        final_url, content_type, body = _get_public_url("https://example.com/news", 15)
+
+        self.assertEqual("https://example.com/news", final_url)
+        self.assertIn("text/html", content_type)
+        self.assertEqual("<html>ok</html>", body)
+        self.assertEqual(2, get.call_count)
+        self.assertEqual((10, 15), get.call_args.kwargs["timeout"])
+        assert_public_url.assert_called_once_with("https://example.com/news")
+        sleep.assert_called_once_with(1)
+
     def test_account_rule_wins_over_domain_rule_only_for_matching_path(self) -> None:
         configs = [
             {"domain": "instagram.com", "pathPrefix": "", "sourceType": "UNAPPROVED"},
@@ -184,6 +209,72 @@ class NewsSourceConfigTest(unittest.TestCase):
         matched = _targeted_match(source, configs)
 
         self.assertEqual(1, matched["id"])
+
+    @patch("news_official._direct_source")
+    def test_instagram_uses_search_without_direct_request(self, direct_source: Mock) -> None:
+        config = {"sources": [{
+            "id": 1,
+            "sourceName": "메타베브코리아",
+            "sourceUrl": "https://www.instagram.com/metabevkorea",
+            "domain": "instagram.com",
+            "pathPrefix": "/metabevkorea",
+            "sourceType": "OFFICIAL",
+            "enabled": True,
+        }]}
+        search = Mock()
+        search.search.return_value = []
+        api = Mock()
+
+        sources = collect_registered_sources(config, search, api, Mock(), timeout=15)
+
+        self.assertEqual([], sources)
+        direct_source.assert_not_called()
+        search.search.assert_called_once()
+        query = search.search.call_args.args[0]
+        self.assertIn("메타베브코리아", query)
+        self.assertIn("metabevkorea", query)
+        api.record_source_crawl_result.assert_called_once_with(1, "SUCCESS")
+
+    @patch("news_official._direct_source")
+    def test_successful_empty_fallback_clears_transient_direct_failure(self, direct_source: Mock) -> None:
+        config = {"sources": [{
+            "id": 2,
+            "sourceName": "Whisky Advocate News",
+            "sourceUrl": "https://whiskyadvocate.com/Tag/news",
+            "domain": "whiskyadvocate.com",
+            "pathPrefix": "/Tag/news",
+            "sourceType": "TRUSTED_MEDIA",
+            "enabled": True,
+        }]}
+        direct_source.side_effect = TimeoutError("connect timeout")
+        search = Mock()
+        search.search.return_value = []
+        api = Mock()
+
+        sources = collect_registered_sources(config, search, api, Mock(), timeout=15)
+
+        self.assertEqual([], sources)
+        api.record_source_crawl_result.assert_called_once_with(2, "SUCCESS")
+
+    @patch("news_official._direct_source")
+    def test_failed_fallback_keeps_direct_failure(self, direct_source: Mock) -> None:
+        config = {"sources": [{
+            "id": 2,
+            "sourceName": "Whisky Advocate News",
+            "sourceUrl": "https://whiskyadvocate.com/Tag/news",
+            "domain": "whiskyadvocate.com",
+            "pathPrefix": "/Tag/news",
+            "sourceType": "TRUSTED_MEDIA",
+            "enabled": True,
+        }]}
+        direct_source.side_effect = TimeoutError("connect timeout")
+        search = Mock()
+        search.search.side_effect = RuntimeError("Tavily unavailable")
+        api = Mock()
+
+        collect_registered_sources(config, search, api, Mock(), timeout=15)
+
+        api.record_source_crawl_result.assert_called_once_with(2, "ERROR", "connect timeout")
 
 
 class GeminiDealAnalyzerTest(unittest.TestCase):
