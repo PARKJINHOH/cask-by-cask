@@ -10,14 +10,17 @@ import {
   getAdminInquiryDetail,
   updateInquiryNote,
   replyInquiry,
+  downloadAdminInquiryAttachment,
 } from '@/domain/inquiry/api/inquiryApi'
 import type { InquiryCategory, InquiryStatus } from '@/domain/inquiry/types/inquiry.types'
+import RichContent from '@/shared/components/RichContent'
 
 const CATEGORY_OPTIONS: Array<{ value: InquiryCategory | ''; label: string }> = [
   { value: '', label: '전체' },
   { value: 'BUG_REPORT', label: '버그 신고' },
   { value: 'FEATURE_REQUEST', label: '기능 제안' },
   { value: 'ACCOUNT_INQUIRY', label: '계정 문의' },
+  { value: 'PARTNERSHIP_INQUIRY', label: '파트너 및 제휴 관련' },
   { value: 'OTHER', label: '기타' },
 ]
 
@@ -33,6 +36,7 @@ const CATEGORY_LABEL: Record<InquiryCategory, string> = {
   FEATURE_REQUEST: '기능 제안',
   ACCOUNT_INQUIRY: '계정 문의',
   CORRECTION_REQUEST: '정보 수정 요청',
+  PARTNERSHIP_INQUIRY: '파트너 및 제휴 관련',
   OTHER: '기타',
 }
 
@@ -52,6 +56,7 @@ export default function AdminInquiryPage() {
   const [noteInput, setNoteInput] = useState('')
   const [replyInput, setReplyInput] = useState('')
   const [replySent, setReplySent] = useState(false)
+  const [downloadingFileKey, setDownloadingFileKey] = useState<string | null>(null)
   const setListParam = (params: { status?: InquiryStatus | ''; category?: InquiryCategory | ''; page?: number }) =>
     setSearchParams(
       (prev) => {
@@ -110,6 +115,26 @@ export default function AdminInquiryPage() {
   }
 
   const closeDetail = () => setSelectedId(null)
+
+  const downloadAttachment = async (fileKey: string, originalFilename: string) => {
+    if (selectedId == null) return
+    setDownloadingFileKey(fileKey)
+    try {
+      const blob = await downloadAdminInquiryAttachment(selectedId, fileKey)
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = originalFilename
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+    } catch {
+      alert('첨부파일을 다운로드하지 못했습니다.')
+    } finally {
+      setDownloadingFileKey(null)
+    }
+  }
 
   return (
     <div className="p-6 space-y-5">
@@ -178,7 +203,7 @@ export default function AdminInquiryPage() {
                         <p className="text-xs text-neutral-600">{item.senderEmail}</p>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        {item.hasImages && (
+                        {item.hasAttachments && (
                           <span className="text-neutral-400">📎</span>
                         )}
                       </td>
@@ -251,28 +276,41 @@ export default function AdminInquiryPage() {
                   <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-2">
                     문의 내용
                   </p>
-                  <div className="bg-white border border-neutral-200 rounded-xl p-4 text-sm text-neutral-700
-                    whitespace-pre-wrap leading-relaxed min-h-[100px]">
-                    {detail.body}
+                  <div className="bg-white border border-neutral-200 rounded-xl p-4 text-sm text-neutral-700 leading-relaxed min-h-[100px]">
+                    {/<[a-z][\s\S]*>/i.test(detail.body) ? (
+                      <RichContent html={detail.body} className="notice-content" />
+                    ) : (
+                      <div className="whitespace-pre-wrap">{detail.body}</div>
+                    )}
                   </div>
                 </div>
 
-                {/* 첨부 이미지 */}
-                {detail.imageUrls.length > 0 && (
+                {/* 첨부파일 */}
+                {detail.attachments.length > 0 && (
                   <div>
                     <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-2">
-                      첨부 이미지 ({detail.imageUrls.length})
+                      첨부파일 ({detail.attachments.length})
                     </p>
-                    <div className="flex flex-wrap gap-2">
-                      {detail.imageUrls.map((url, i) => (
-                        <a key={i} href={url} target="_blank" rel="noopener noreferrer">
-                          <img
-                            src={url}
-                            alt={`첨부 이미지 ${i + 1}`}
-                            className="w-28 h-28 object-cover rounded-lg border border-neutral-200
-                              hover:opacity-80 transition-opacity"
-                          />
-                        </a>
+                    <div className="space-y-2">
+                      {detail.attachments.map((attachment) => (
+                        <button
+                          key={attachment.fileKey}
+                          type="button"
+                          onClick={() => downloadAttachment(attachment.fileKey, attachment.originalFilename)}
+                          disabled={downloadingFileKey === attachment.fileKey}
+                          className="flex w-full items-center gap-3 rounded-xl border border-neutral-200 p-3 text-left hover:border-primary-300 hover:bg-primary-50/40 transition-colors disabled:opacity-50"
+                        >
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-neutral-100">📎</span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-medium text-neutral-700">{attachment.originalFilename}</span>
+                            <span className="block text-xs text-neutral-400">
+                              {attachment.size > 0 ? formatAttachmentSize(attachment.size) : attachment.contentType}
+                            </span>
+                          </span>
+                          <span className="text-xs font-medium text-primary-800">
+                            {downloadingFileKey === attachment.fileKey ? '다운로드 중...' : '다운로드'}
+                          </span>
+                        </button>
                       ))}
                     </div>
                   </div>
@@ -379,6 +417,12 @@ export default function AdminInquiryPage() {
       )}
     </div>
   )
+}
+
+function formatAttachmentSize(bytes: number) {
+  return bytes >= 1024 * 1024
+    ? `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+    : `${Math.max(1, Math.round(bytes / 1024))} KB`
 }
 
 function FilterTabs<T extends string>({

@@ -3,16 +3,44 @@ import { useTranslation } from 'react-i18next'
 import { submitInquiry } from '@/domain/inquiry/api/inquiryApi'
 import type { InquiryCategory } from '@/domain/inquiry/types/inquiry.types'
 import SeoMeta from '@/shared/components/SeoMeta'
+import RichTextEditor from '@/shared/tiptap/RichTextEditor'
 
-const CATEGORIES: InquiryCategory[] = ['BUG_REPORT', 'FEATURE_REQUEST', 'ACCOUNT_INQUIRY', 'OTHER']
-const MAX_IMAGES = 3
-const MAX_FILE_SIZE = 2 * 1024 * 1024
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+const CATEGORIES: InquiryCategory[] = [
+  'BUG_REPORT',
+  'FEATURE_REQUEST',
+  'ACCOUNT_INQUIRY',
+  'PARTNERSHIP_INQUIRY',
+  'OTHER',
+]
+const MAX_ATTACHMENTS = 3
+const MAX_FILE_SIZE = 5 * 1024 * 1024
+const MAX_TOTAL_SIZE = 15 * 1024 * 1024
+const ALLOWED_EXTENSIONS = new Set([
+  'jpg', 'jpeg', 'png', 'webp', 'gif',
+  'pdf', 'txt', 'csv', 'docx', 'xlsx', 'pptx', 'hwp', 'hwpx',
+])
+const FILE_ACCEPT = [...ALLOWED_EXTENSIONS].map((extension) => `.${extension}`).join(',')
 
-interface ImagePreview {
-  file: File
-  url: string
+const hasTextContent = (html: string) => {
+  const container = document.createElement('div')
+  container.innerHTML = html
+  return Boolean(container.textContent?.trim())
 }
+
+const templateToHtml = (template: string) => template
+  .split('\n')
+  .map((line) => {
+    const escaped = line
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+    return /^\[.+\]$/.test(line) ? `<h3>${escaped}</h3>` : `<p>${escaped || '<br>'}</p>`
+  })
+  .join('')
+
+const formatFileSize = (bytes: number) => bytes >= 1024 * 1024
+  ? `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  : `${Math.max(1, Math.round(bytes / 1024))} KB`
 
 export default function InquiryPage() {
   const { t } = useTranslation()
@@ -20,8 +48,9 @@ export default function InquiryPage() {
   const [category, setCategory] = useState<InquiryCategory | ''>('')
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
+  const [bodyEdited, setBodyEdited] = useState(false)
   const [senderEmail, setSenderEmail] = useState('')
-  const [images, setImages] = useState<ImagePreview[]>([])
+  const [attachments, setAttachments] = useState<File[]>([])
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
@@ -32,40 +61,70 @@ export default function InquiryPage() {
     const errs: Record<string, string> = {}
     if (!category) errs.category = t('inquiry.form.categoryPlaceholder')
     if (!title.trim()) errs.title = t('common.required')
-    if (!body.trim()) errs.body = t('common.required')
+    if (!hasTextContent(body)) errs.body = t('common.required')
     if (!senderEmail.trim()) errs.senderEmail = t('common.required')
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(senderEmail)) errs.senderEmail = t('inquiry.form.senderEmailInvalid')
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
 
+  const handleCategoryChange = (nextCategory: InquiryCategory | '') => {
+    if (nextCategory === category) return
+
+    if (!nextCategory) {
+      setCategory('')
+      return
+    }
+
+    if (hasTextContent(body) && bodyEdited && !window.confirm(t('inquiry.form.templateReplaceConfirm'))) {
+      return
+    }
+
+    setCategory(nextCategory)
+    setBody(templateToHtml(t(`inquiry.template.${nextCategory}`)))
+    setBodyEdited(false)
+    setErrors((prev) => {
+      const next = { ...prev }
+      delete next.category
+      delete next.body
+      return next
+    })
+  }
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? [])
     e.target.value = ''
 
-    const remaining = MAX_IMAGES - images.length
-    const toAdd = files.slice(0, remaining)
+    const remaining = MAX_ATTACHMENTS - attachments.length
+    if (files.length > remaining) {
+      alert(t('inquiry.form.tooManyAttachments', { count: MAX_ATTACHMENTS }))
+    }
 
-    const newPreviews: ImagePreview[] = []
+    const toAdd = files.slice(0, remaining)
+    const validFiles: File[] = []
     for (const file of toAdd) {
-      if (!ALLOWED_TYPES.includes(file.type)) {
-        alert(`${file.name}: JPG, PNG, WEBP, GIF 형식만 가능합니다.`)
+      const extension = file.name.includes('.') ? file.name.split('.').pop()?.toLowerCase() ?? '' : ''
+      if (!ALLOWED_EXTENSIONS.has(extension)) {
+        alert(t('inquiry.form.invalidAttachmentType', { name: file.name }))
         continue
       }
       if (file.size > MAX_FILE_SIZE) {
-        alert(`${file.name}: 파일 크기가 2MB를 초과합니다.`)
+        alert(t('inquiry.form.attachmentTooLarge', { name: file.name }))
         continue
       }
-      newPreviews.push({ file, url: URL.createObjectURL(file) })
+      validFiles.push(file)
     }
-    setImages((prev) => [...prev, ...newPreviews])
+
+    const nextTotalSize = [...attachments, ...validFiles].reduce((sum, file) => sum + file.size, 0)
+    if (nextTotalSize > MAX_TOTAL_SIZE) {
+      alert(t('inquiry.form.totalAttachmentSizeExceeded'))
+      return
+    }
+    setAttachments((prev) => [...prev, ...validFiles])
   }
 
-  const removeImage = (index: number) => {
-    setImages((prev) => {
-      URL.revokeObjectURL(prev[index].url)
-      return prev.filter((_, i) => i !== index)
-    })
+  const removeAttachment = (index: number) => {
+    setAttachments((prev) => prev.filter((_, i) => i !== index))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -76,10 +135,9 @@ export default function InquiryPage() {
     try {
       await submitInquiry(
         { category: category as InquiryCategory, title, body, senderEmail },
-        images.map((i) => i.file),
+        attachments,
       )
       setSubmitted(true)
-      images.forEach((i) => URL.revokeObjectURL(i.url))
     } catch {
       setSubmitError(t('inquiry.form.error'))
     } finally {
@@ -121,7 +179,7 @@ export default function InquiryPage() {
             </label>
             <select
               value={category}
-              onChange={(e) => setCategory(e.target.value as InquiryCategory)}
+              onChange={(e) => handleCategoryChange(e.target.value as InquiryCategory | '')}
               className={`w-full px-3 py-2.5 text-sm border rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-primary-400 transition-colors ${
                 errors.category ? 'border-red-400' : 'border-neutral-300'
               }`}
@@ -145,7 +203,7 @@ export default function InquiryPage() {
               value={senderEmail}
               onChange={(e) => setSenderEmail(e.target.value)}
               maxLength={200}
-              placeholder="이메일 입력"
+              placeholder={t('inquiry.form.senderEmailPlaceholder')}
               className={`w-full px-3 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400 transition-colors ${
                 errors.senderEmail ? 'border-red-400' : 'border-neutral-300'
               }`}
@@ -177,66 +235,61 @@ export default function InquiryPage() {
           <label className="block text-sm font-medium text-neutral-700 mb-1.5">
             {t('inquiry.form.body')} <span className="text-red-500">*</span>
           </label>
-          <textarea
+          <RichTextEditor
             value={body}
-            onChange={(e) => setBody(e.target.value)}
-            maxLength={5000}
-            rows={8}
+            onChange={(html) => {
+              setBody(html)
+              setBodyEdited(true)
+            }}
             placeholder={t('inquiry.form.bodyPlaceholder')}
-            className={`w-full px-3 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400 transition-colors resize-none ${
-              errors.body ? 'border-red-400' : 'border-neutral-300'
-            }`}
+            maxChars={5000}
+            enableSpiritEmbed={false}
+            enableReviewEmbed={false}
+            enableVideoEmbed={false}
+            enableImages={false}
+            compactHeight
           />
-          <div className="flex justify-between mt-1">
-            {errors.body ? (
-              <p className="text-xs text-red-500">{errors.body}</p>
-            ) : <span />}
-            <p className="text-xs text-neutral-400">{body.length} / 5,000</p>
-          </div>
+          {errors.body && <p className="mt-1 text-xs text-red-500">{errors.body}</p>}
         </div>
 
-        {/* 이미지 첨부 */}
+        {/* 파일 첨부 */}
         <div>
           <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-            {t('inquiry.form.images')}
+            {t('inquiry.form.attachments')}
             <span className="ml-1.5 text-xs font-normal text-neutral-400">
-              {t('inquiry.form.imagesHint')}
+              {t('inquiry.form.attachmentsHint')}
             </span>
           </label>
+          <p className="mb-2 text-xs text-neutral-400">{t('inquiry.form.attachmentsFormats')}</p>
 
-          {/* 이미지 미리보기 */}
-          {images.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-3">
-              {images.map((img, idx) => (
-                <div key={idx} className="relative group w-24 h-24">
-                  <img
-                    src={img.url}
-                    alt=""
-                    className="w-full h-full object-cover rounded-lg border border-neutral-200"
-                  />
+          {attachments.length > 0 && (
+            <div className="space-y-2 mb-3">
+              {attachments.map((file, idx) => (
+                <div key={`${file.name}-${file.lastModified}-${idx}`} className="flex items-center gap-3 p-3 bg-neutral-50 border border-neutral-200 rounded-xl">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-neutral-500 border border-neutral-200">📎</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-neutral-700">{file.name}</p>
+                    <p className="text-xs text-neutral-400">{formatFileSize(file.size)}</p>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => removeImage(idx)}
-                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full
-                      flex items-center justify-center text-xs opacity-0 group-hover:opacity-100
-                      transition-opacity shadow-sm"
+                    onClick={() => removeAttachment(idx)}
+                    aria-label={t('inquiry.form.removeAttachmentAria', { name: file.name })}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-neutral-400 hover:bg-red-50 hover:text-red-500 transition-colors"
                   >
                     ×
                   </button>
-                  <p className="text-xs text-neutral-400 mt-1 truncate max-w-[96px]">
-                    {img.file.name}
-                  </p>
                 </div>
               ))}
             </div>
           )}
 
-          {images.length < MAX_IMAGES && (
+          {attachments.length < MAX_ATTACHMENTS && (
             <>
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/jpeg,image/png,image/webp,image/gif"
+                accept={FILE_ACCEPT}
                 multiple
                 className="hidden"
                 onChange={handleFileChange}
@@ -253,7 +306,7 @@ export default function InquiryPage() {
                   <line x1="12" y1="8" x2="12" y2="16" />
                   <line x1="8" y1="12" x2="16" y2="12" />
                 </svg>
-                {t('inquiry.form.addImage')} ({images.length}/{MAX_IMAGES})
+                {t('inquiry.form.addAttachment')} ({attachments.length}/{MAX_ATTACHMENTS})
               </button>
             </>
           )}

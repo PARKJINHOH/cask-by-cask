@@ -81,4 +81,21 @@ class HtmlSanitizerTest {
                 .contains("data-review-role=\"sections\"")
                 .contains("data-review-section=\"nose\"");
     }
+
+    @Test
+    void sanitizeInquiry_preservesFormattingButRemovesEmbeddedMedia() {
+        String rawHtml = "<h3>문의</h3><p><strong>내용</strong></p>"
+                + "<img src=\"/api/posts/images/1\">"
+                + "<iframe src=\"https://www.youtube.com/embed/test\"></iframe>"
+                + "<a data-spirit-id=\"1\" href=\"/spirits/1\">술 카드</a>";
+
+        String sanitized = htmlSanitizer.sanitizeInquiry(rawHtml);
+
+        assertThat(sanitized)
+                .contains("<h3>문의</h3>")
+                .contains("<strong>내용</strong>")
+                .doesNotContain("<img")
+                .doesNotContain("<iframe")
+                .doesNotContain("data-spirit-id");
+    }
 }

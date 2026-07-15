@@ -7,16 +7,22 @@ import com.caskbycask.domain.inquiry.dto.InquiryReplyRequest;
 import com.caskbycask.domain.inquiry.dto.UpdateInquiryStatusRequest;
 import com.caskbycask.domain.inquiry.entity.enums.InquiryCategory;
 import com.caskbycask.domain.inquiry.entity.enums.InquiryStatus;
+import com.caskbycask.domain.inquiry.service.InquiryAttachmentDownload;
 import com.caskbycask.global.auth.security.CustomUserDetails;
 import com.caskbycask.global.response.ApiResponse;
 import com.caskbycask.global.response.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.core.io.Resource;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.nio.charset.StandardCharsets;
 
 @RestController
 @RequestMapping("/api/admin/inquiries")
@@ -42,6 +48,23 @@ public class AdminInquiryController {
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<InquiryDetailResponse>> detail(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(adminInquiryService.detail(id)));
+    }
+
+    @GetMapping("/{id}/attachments/{fileKey}")
+    public ResponseEntity<Resource> downloadAttachment(
+            @PathVariable Long id,
+            @PathVariable String fileKey
+    ) {
+        InquiryAttachmentDownload download = adminInquiryService.downloadAttachment(id, fileKey);
+        ContentDisposition disposition = ContentDisposition.attachment()
+                .filename(download.originalFilename(), StandardCharsets.UTF_8)
+                .build();
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(download.contentType()))
+                .contentLength(download.size())
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .header("X-Content-Type-Options", "nosniff")
+                .body(download.resource());
     }
 
     @PatchMapping("/{id}/status")

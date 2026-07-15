@@ -10,10 +10,10 @@ export interface SubmitInquiryData {
   senderEmail: string
 }
 
-export const submitInquiry = async (data: SubmitInquiryData, images: File[]): Promise<void> => {
+export const submitInquiry = async (data: SubmitInquiryData, attachments: File[]): Promise<void> => {
   const formData = new FormData()
   formData.append('data', new Blob([JSON.stringify(data)], { type: 'application/json' }))
-  images.forEach((img) => formData.append('images', img))
+  attachments.forEach((file) => formData.append('attachments', file))
   await axiosInstance.post('/api/inquiries', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
@@ -36,6 +36,14 @@ export const getAdminInquiryDetail = async (id: number): Promise<InquiryDetailRe
     `/api/admin/inquiries/${id}`,
   )
   return data.data!
+}
+
+export const downloadAdminInquiryAttachment = async (inquiryId: number, fileKey: string): Promise<Blob> => {
+  const { data } = await axiosInstance.get<Blob>(
+    `/api/admin/inquiries/${inquiryId}/attachments/${encodeURIComponent(fileKey)}`,
+    { responseType: 'blob' },
+  )
+  return data
 }
 
 export const updateInquiryNote = async (id: number, note: string): Promise<void> => {

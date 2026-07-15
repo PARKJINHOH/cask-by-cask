@@ -128,6 +128,19 @@ public class HtmlSanitizer {
     }
 
     /**
+     * 문의 Editor 전용 정제. 첨부파일을 별도 채널로 관리하므로 본문 내 이미지·영상·카드 임베드는 제거한다.
+     */
+    public String sanitizeInquiry(String rawHtml) {
+        String cleaned = sanitize(rawHtml, false);
+        if (cleaned.isBlank()) return cleaned;
+
+        Document doc = Jsoup.parseBodyFragment(cleaned);
+        doc.outputSettings().prettyPrint(false);
+        doc.select("img, iframe, video, a[data-spirit-id], a[data-review-id]").remove();
+        return doc.body().html();
+    }
+
+    /**
      * 오버로딩 메소드: 역할을 식별하여 Sanitize
      * @param isAdminContext true 일 경우 관리자/법적 문서용 완화 정책(class/id 주입 허용) 사용
      */

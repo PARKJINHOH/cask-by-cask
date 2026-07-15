@@ -9,6 +9,6 @@ import jakarta.validation.constraints.Size;
 public record InquiryRequest(
         @NotNull InquiryCategory category,
         @NotBlank @Size(max = 200) String title,
-        @NotBlank @Size(max = 5000) String body,
+        @NotBlank @Size(max = 100000) String body,
         @NotBlank @Email @Size(max = 200) String senderEmail
 ) {}

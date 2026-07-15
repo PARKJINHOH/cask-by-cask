@@ -64,6 +64,12 @@ interface Props {
   enableSpiritEmbed?: boolean
   /** 로그인 사용자의 리뷰 카드 삽입 기능 (커뮤니티에서만 사용) */
   enableReviewEmbed?: boolean
+  /** YouTube/Vimeo URL 임베드 기능 (기본 true) */
+  enableVideoEmbed?: boolean
+  /** 본문 이미지 노드 기능 (기본 true) */
+  enableImages?: boolean
+  /** 비교적 짧은 입력 폼에서 사용하는 낮은 편집 영역 */
+  compactHeight?: boolean
 }
 
 export default function RichTextEditor({
@@ -71,6 +77,9 @@ export default function RichTextEditor({
   uploadImage, uploadVideo, onImageError, onVideoError,
   enableSpiritEmbed = true,
   enableReviewEmbed = false,
+  enableVideoEmbed = true,
+  enableImages = true,
+  compactHeight = false,
 }: Props) {
   const [uploadProgress, setUploadProgress] = useState<number | null>(null)
   const [uploadLabel, setUploadLabel] = useState<'이미지' | '동영상'>('이미지')
@@ -121,7 +130,7 @@ export default function RichTextEditor({
       LineHeight,
       Highlight.configure({ multicolor: true }),
       Link.configure({ openOnClick: false, HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' } }),
-      ResizableImage.configure({ inline: false, allowBase64: false }),
+      ...(enableImages ? [ResizableImage.configure({ inline: false, allowBase64: false })] : []),
       TextAlign.configure({ types: ['heading', 'paragraph', 'image'] }),
       TaskList,
       TaskItem.configure({ nested: true }),
@@ -131,8 +140,8 @@ export default function RichTextEditor({
       TableCell,
       Placeholder.configure({ placeholder: placeholder ?? '내용을 입력하세요...' }),
       CharacterCount.configure({ limit: maxChars }),
-      VideoEmbed,
-      UploadedVideo,
+      ...(enableVideoEmbed ? [VideoEmbed] : []),
+      ...(enableVideoEmbed || uploadVideo ? [UploadedVideo] : []),
       ...(enableSpiritEmbed ? [SpiritEmbed] : []),
       ...(enableReviewEmbed ? [ReviewEmbed] : []),
     ],
@@ -162,7 +171,7 @@ export default function RichTextEditor({
         }
       },
       handleKeyDown(_view, event) {
-        if (event.key === 'Enter' && !event.shiftKey && editor) {
+        if (enableVideoEmbed && event.key === 'Enter' && !event.shiftKey && editor) {
           if (handleVideoEnter(editor)) return true
         }
         return false
@@ -184,7 +193,7 @@ export default function RichTextEditor({
           return true
         }
         // YouTube/Vimeo URL 붙여넣기 → 임베드
-        const text = event.clipboardData?.getData('text/plain') ?? ''
+        const text = enableVideoEmbed ? (event.clipboardData?.getData('text/plain') ?? '') : ''
         const embedUrl = toEmbedUrl(text.trim())
         if (embedUrl) {
           event.preventDefault()
@@ -426,7 +435,7 @@ export default function RichTextEditor({
           editor={editor}
           onImageUpload={uploadImage ? () => imageInputRef.current?.click() : undefined}
           onVideoUpload={uploadVideo ? () => videoInputRef.current?.click() : undefined}
-          onVideoEmbed={insertVideoEmbed}
+          onVideoEmbed={enableVideoEmbed ? insertVideoEmbed : undefined}
           onSpiritEmbed={enableSpiritEmbed ? () => setSpiritOpen(true) : undefined}
           onReviewEmbed={enableReviewEmbed ? () => setReviewOpen(true) : undefined}
         />
@@ -448,7 +457,10 @@ export default function RichTextEditor({
         </div>
       )}
 
-      <EditorContent editor={editor} className="di-richtext notice-content" />
+      <EditorContent
+        editor={editor}
+        className={`di-richtext notice-content${compactHeight ? ' di-richtext--compact' : ''}`}
+      />
 
       <div className={['flex justify-end px-3 py-1.5 bg-neutral-50 border-t border-neutral-100 text-xs tabular-nums', isNearLimit ? 'text-amber-600' : 'text-neutral-400'].join(' ')}>
         {charCount.toLocaleString()} / {maxChars.toLocaleString()}자

@@ -5,5 +5,6 @@ public enum InquiryCategory {
     FEATURE_REQUEST,
     ACCOUNT_INQUIRY,
     CORRECTION_REQUEST,
+    PARTNERSHIP_INQUIRY,
     OTHER
 }

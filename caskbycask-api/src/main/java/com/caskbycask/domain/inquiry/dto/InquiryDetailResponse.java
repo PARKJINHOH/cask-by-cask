@@ -5,8 +5,6 @@ import com.caskbycask.domain.inquiry.entity.enums.InquiryCategory;
 import com.caskbycask.domain.inquiry.entity.enums.InquiryStatus;
 
 import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 public record InquiryDetailResponse(
@@ -15,7 +13,7 @@ public record InquiryDetailResponse(
         String title,
         String body,
         String senderEmail,
-        List<String> imageUrls,
+        List<InquiryAttachmentResponse> attachments,
         InquiryStatus status,
         String adminNote,
         String replyBody,
@@ -24,17 +22,17 @@ public record InquiryDetailResponse(
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
-    public static InquiryDetailResponse from(Inquiry inquiry) {
-        List<String> urls = (inquiry.getImageUrls() != null && !inquiry.getImageUrls().isBlank())
-                ? Arrays.asList(inquiry.getImageUrls().split(","))
-                : Collections.emptyList();
+    public static InquiryDetailResponse from(
+            Inquiry inquiry,
+            List<InquiryAttachmentResponse> attachments
+    ) {
         return new InquiryDetailResponse(
                 inquiry.getId(),
                 inquiry.getCategory(),
                 inquiry.getTitle(),
                 inquiry.getBody(),
                 inquiry.getSenderEmail(),
-                urls,
+                attachments,
                 inquiry.getStatus(),
                 inquiry.getAdminNote(),
                 inquiry.getReplyBody(),

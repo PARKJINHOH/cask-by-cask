@@ -83,7 +83,7 @@ interface Props {
   /** 동영상 파일 업로드 열기 (없으면 동영상 업로드 버튼 숨김) */
   onVideoUpload?: () => void
   /** YouTube/Vimeo URL 임베드 */
-  onVideoEmbed: () => void
+  onVideoEmbed?: () => void
   /** 본문 내 술 카드 삽입 (없으면 버튼 숨김) */
   onSpiritEmbed?: () => void
   /** 로그인 사용자의 리뷰 카드 삽입 (없으면 버튼 숨김) */
@@ -178,11 +178,13 @@ export default function RichTextToolbar({
             </svg>
           </ToolbarButton>
         )}
-        <ToolbarButton title="YouTube/Vimeo 삽입" onClick={onVideoEmbed}>
-          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </ToolbarButton>
+        {onVideoEmbed && (
+          <ToolbarButton title="YouTube/Vimeo 삽입" onClick={onVideoEmbed}>
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 000-1.664z" /><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </ToolbarButton>
+        )}
         {onVideoUpload && (
           <ToolbarButton title="동영상 업로드 (MP4/WebM)" onClick={onVideoUpload}>
             <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

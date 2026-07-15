@@ -1,5 +1,5 @@
 export type InquiryCategory =
-  | 'BUG_REPORT' | 'FEATURE_REQUEST' | 'ACCOUNT_INQUIRY' | 'CORRECTION_REQUEST' | 'OTHER'
+  | 'BUG_REPORT' | 'FEATURE_REQUEST' | 'ACCOUNT_INQUIRY' | 'CORRECTION_REQUEST' | 'PARTNERSHIP_INQUIRY' | 'OTHER'
 export type InquiryStatus = 'PENDING' | 'IN_PROGRESS' | 'RESOLVED'
 
 export interface InquiryListResponse {
@@ -7,7 +7,7 @@ export interface InquiryListResponse {
   category: InquiryCategory
   title: string
   senderEmail: string
-  hasImages: boolean
+  hasAttachments: boolean
   status: InquiryStatus
   createdAt: string
 }
@@ -18,7 +18,7 @@ export interface InquiryDetailResponse {
   title: string
   body: string
   senderEmail: string
-  imageUrls: string[]
+  attachments: InquiryAttachment[]
   status: InquiryStatus
   adminNote: string | null
   replyBody: string | null
@@ -26,4 +26,11 @@ export interface InquiryDetailResponse {
   repliedAt: string | null
   createdAt: string
   updatedAt: string
+}
+
+export interface InquiryAttachment {
+  fileKey: string
+  originalFilename: string
+  contentType: string
+  size: number
 }

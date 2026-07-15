@@ -32,24 +32,24 @@ public class Inquiry extends BaseTimeEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
-    @Comment("분류 — ACCOUNT_INQUIRY/BUG_REPORT/CORRECTION_REQUEST/FEATURE_REQUEST/OTHER")
+    @Comment("분류 — ACCOUNT_INQUIRY/BUG_REPORT/CORRECTION_REQUEST/FEATURE_REQUEST/PARTNERSHIP_INQUIRY/OTHER")
     private InquiryCategory category;
 
     @Column(nullable = false, length = 200)
     @Comment("제목")
     private String title;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
-    @Comment("문의 내용")
+    @Column(nullable = false, columnDefinition = "MEDIUMTEXT")
+    @Comment("문의 내용(정제된 HTML)")
     private String body;
 
     @Column(nullable = false, length = 200)
     @Comment("문의자 이메일")
     private String senderEmail;
 
-    @Column(columnDefinition = "TEXT")
-    @Comment("첨부 이미지 URL(목록)")
-    private String imageUrls;
+    @Column(columnDefinition = "MEDIUMTEXT")
+    @Comment("첨부파일 메타데이터(JSON, V42 이전 데이터는 이미지 URL 목록)")
+    private String attachmentData;
 
     @Enumerated(EnumType.STRING)
     @Builder.Default

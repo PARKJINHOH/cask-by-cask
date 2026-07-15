@@ -11,7 +11,7 @@ public record InquiryListResponse(
         InquiryCategory category,
         String title,
         String senderEmail,
-        boolean hasImages,
+        boolean hasAttachments,
         InquiryStatus status,
         LocalDateTime createdAt
 ) {
@@ -21,7 +21,7 @@ public record InquiryListResponse(
                 inquiry.getCategory(),
                 inquiry.getTitle(),
                 inquiry.getSenderEmail(),
-                inquiry.getImageUrls() != null && !inquiry.getImageUrls().isBlank(),
+                inquiry.getAttachmentData() != null && !inquiry.getAttachmentData().isBlank(),
                 inquiry.getStatus(),
                 inquiry.getCreatedAt()
         );

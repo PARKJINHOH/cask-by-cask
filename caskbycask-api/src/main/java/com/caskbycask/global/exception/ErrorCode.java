@@ -194,10 +194,13 @@ public enum ErrorCode {
 
     // Inquiry
     INQUIRY_NOT_FOUND(HttpStatus.NOT_FOUND, "INQUIRY_001", "문의를 찾을 수 없습니다."),
-    INQUIRY_TOO_MANY_IMAGES(HttpStatus.BAD_REQUEST, "INQUIRY_002", "이미지는 최대 3개까지 첨부할 수 있습니다."),
-    INQUIRY_IMAGE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "INQUIRY_003", "이미지 파일 크기는 2MB를 초과할 수 없습니다."),
-    INQUIRY_TOTAL_IMAGE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "INQUIRY_004", "첨부 이미지 총 크기는 6MB를 초과할 수 없습니다."),
-    INQUIRY_INVALID_IMAGE_FORMAT(HttpStatus.BAD_REQUEST, "INQUIRY_005", "JPG, PNG, WEBP, GIF 형식의 이미지만 첨부할 수 있습니다."),
+    INQUIRY_TOO_MANY_ATTACHMENTS(HttpStatus.BAD_REQUEST, "INQUIRY_002", "파일은 최대 3개까지 첨부할 수 있습니다."),
+    INQUIRY_ATTACHMENT_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "INQUIRY_003", "첨부파일 크기는 파일당 5MB를 초과할 수 없습니다."),
+    INQUIRY_TOTAL_ATTACHMENT_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "INQUIRY_004", "첨부파일 총 크기는 15MB를 초과할 수 없습니다."),
+    INQUIRY_INVALID_ATTACHMENT_FORMAT(HttpStatus.BAD_REQUEST, "INQUIRY_005", "허용되지 않거나 실제 형식과 확장자가 다른 첨부파일입니다."),
+    INQUIRY_BODY_REQUIRED(HttpStatus.BAD_REQUEST, "INQUIRY_006", "문의 내용을 입력해주세요."),
+    INQUIRY_BODY_TOO_LONG(HttpStatus.BAD_REQUEST, "INQUIRY_007", "문의 내용은 5,000자를 초과할 수 없습니다."),
+    INQUIRY_ATTACHMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "INQUIRY_008", "첨부파일을 찾을 수 없습니다."),
 
     // Banner
     BANNER_NOT_FOUND(HttpStatus.NOT_FOUND, "BANNER_001", "배너를 찾을 수 없습니다."),

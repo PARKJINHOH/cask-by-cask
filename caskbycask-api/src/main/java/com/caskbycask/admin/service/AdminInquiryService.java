@@ -1,11 +1,15 @@
 package com.caskbycask.admin.service;
 
 import com.caskbycask.domain.inquiry.dto.InquiryDetailResponse;
+import com.caskbycask.domain.inquiry.dto.InquiryAttachmentResponse;
 import com.caskbycask.domain.inquiry.dto.InquiryListResponse;
 import com.caskbycask.domain.inquiry.entity.Inquiry;
 import com.caskbycask.domain.inquiry.entity.enums.InquiryCategory;
 import com.caskbycask.domain.inquiry.entity.enums.InquiryStatus;
 import com.caskbycask.domain.inquiry.repository.InquiryRepository;
+import com.caskbycask.domain.inquiry.service.InquiryAttachmentCodec;
+import com.caskbycask.domain.inquiry.service.InquiryAttachmentDownload;
+import com.caskbycask.domain.inquiry.service.InquiryAttachmentStorage;
 import com.caskbycask.global.email.EmailSender;
 import com.caskbycask.global.exception.CustomException;
 import com.caskbycask.global.exception.ErrorCode;
@@ -23,6 +27,8 @@ public class AdminInquiryService {
 
     private final InquiryRepository inquiryRepository;
     private final EmailSender emailSender;
+    private final InquiryAttachmentCodec attachmentCodec;
+    private final InquiryAttachmentStorage attachmentStorage;
 
     @Transactional(readOnly = true)
     public long pendingCount() {
@@ -47,7 +53,23 @@ public class AdminInquiryService {
 
     @Transactional(readOnly = true)
     public InquiryDetailResponse detail(Long id) {
-        return InquiryDetailResponse.from(findById(id));
+        Inquiry inquiry = findById(id);
+        return InquiryDetailResponse.from(
+                inquiry,
+                attachmentCodec.decode(inquiry.getAttachmentData()).stream()
+                        .map(InquiryAttachmentResponse::from)
+                        .toList()
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public InquiryAttachmentDownload downloadAttachment(Long inquiryId, String fileKey) {
+        Inquiry inquiry = findById(inquiryId);
+        return attachmentCodec.decode(inquiry.getAttachmentData()).stream()
+                .filter(attachment -> attachment.storedFilename().equals(fileKey))
+                .findFirst()
+                .map(attachmentStorage::load)
+                .orElseThrow(() -> new CustomException(ErrorCode.INQUIRY_ATTACHMENT_NOT_FOUND));
     }
 
     @Transactional
