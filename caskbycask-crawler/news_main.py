@@ -18,6 +18,7 @@ from news_models import DraftArticle, SearchSource, canonicalize_url, local_date
 from news_source_config import matching_source_config
 from news_official import collect_reference_sources, collect_registered_sources
 from news_gemini import GeminiNewsWriter
+from news_prompts import AI_NEWS_TITLE_MAX_LENGTH
 from news_tavily import TavilyNewsSearch
 from uploader.ai_news_api import AiNewsApi
 
@@ -104,7 +105,7 @@ def _duplicate_payload(topic: dict, draft: DraftArticle | None, reason: str,
                        model_name: str) -> dict:
     return {
         "category": topic["category"],
-        "title": (draft.title if draft else topic["title"])[:50],
+        "title": (draft.title if draft else topic["title"])[:AI_NEWS_TITLE_MAX_LENGTH],
         "dedupeKey": draft.dedupe_key if draft else f"tip:{topic['normalizedKey']}",
         "semanticFingerprint": draft.semantic_fingerprint if draft else topic.get("normalizedKey"),
         "topicId": int(topic["id"]),

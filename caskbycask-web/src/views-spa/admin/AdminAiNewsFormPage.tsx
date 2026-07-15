@@ -9,6 +9,8 @@ import AdminPageHeader from '@/shared/components/AdminPageHeader'
 import Spinner from '@/shared/components/Spinner'
 import AdminAiNewsRequestPanel from './AdminAiNewsRequestPanel'
 
+const MAX_TITLE_LENGTH = 70
+
 export default function AdminAiNewsFormPage() {
   const { id } = useParams()
   const articleId = id ? Number(id) : null
@@ -188,8 +190,8 @@ export default function AdminAiNewsFormPage() {
           </Field>
         </div>
         <Field label="제목">
-          <input maxLength={50} value={title} onChange={(e) => setTitle(e.target.value)} className={inputCls} placeholder="제목을 입력하세요." />
-          <p className="mt-1 text-right text-xs text-neutral-400">{title.length}/50</p>
+          <input maxLength={MAX_TITLE_LENGTH} value={title} onChange={(e) => setTitle(e.target.value)} className={inputCls} placeholder="제목을 입력하세요." />
+          <p className="mt-1 text-right text-xs text-neutral-400">{title.length}/{MAX_TITLE_LENGTH}</p>
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="신뢰도 (0~1)"><input type="number" min="0" max="1" step="0.01" value={confidence} onChange={(e) => setConfidence(Number(e.target.value))} className={inputCls} /></Field>

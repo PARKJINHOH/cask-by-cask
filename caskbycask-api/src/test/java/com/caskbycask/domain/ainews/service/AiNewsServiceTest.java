@@ -274,7 +274,7 @@ class AiNewsServiceTest {
 
         assertThat(result.domain()).isEqualTo("instagram.com");
         assertThat(result.pathPrefix()).isEqualTo("/metabevkorea");
-        assertThat(result.sourceUrl()).isEqualTo("https://instagram.com/metabevkorea");
+        assertThat(result.sourceUrl()).isEqualTo("https://www.instagram.com/metabevkorea");
     }
 
     @Test
@@ -290,6 +290,24 @@ class AiNewsServiceTest {
         AiNewsDtos.SourceConfigResponse result = service.createSourceConfig(request, null);
 
         assertThat(result.pathPrefix()).isEqualTo("/another_account");
+    }
+
+    @Test
+    void wwwSubdomainIsPreservedInRegisteredSourceUrl() {
+        given(sourceConfigRepository.existsByDomainAndPathPrefix(
+                "wine21.com", "/11_news/news_list.html"))
+                .willReturn(false);
+        given(sourceConfigRepository.save(any(AiNewsSourceConfig.class)))
+                .willAnswer(invocation -> invocation.getArgument(0));
+        AiNewsDtos.SourceConfigUpsertRequest request = new AiNewsDtos.SourceConfigUpsertRequest(
+                "Wine21", "https://www.wine21.com/11_news/news_list.html",
+                AiNewsSourceType.TRUSTED_MEDIA, true, false, false);
+
+        AiNewsDtos.SourceConfigResponse result = service.createSourceConfig(request, null);
+
+        assertThat(result.domain()).isEqualTo("wine21.com");
+        assertThat(result.pathPrefix()).isEqualTo("/11_news/news_list.html");
+        assertThat(result.sourceUrl()).isEqualTo("https://www.wine21.com/11_news/news_list.html");
     }
 
     @Test

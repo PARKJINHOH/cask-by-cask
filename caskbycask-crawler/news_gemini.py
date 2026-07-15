@@ -11,7 +11,12 @@ from google import genai
 from google.genai import types
 
 from news_models import DraftArticle, SearchSource, UsageAccumulator
-from news_prompts import AI_NEWS_MIN_TEXT_LENGTH, AI_NEWS_RECOMMENDED_TEXT_LENGTH, AI_NEWS_WRITING_PROMPT
+from news_prompts import (
+    AI_NEWS_MIN_TEXT_LENGTH,
+    AI_NEWS_RECOMMENDED_TEXT_LENGTH,
+    AI_NEWS_TITLE_MAX_LENGTH,
+    AI_NEWS_WRITING_PROMPT,
+)
 
 
 ARTICLE_SCHEMA = {
@@ -333,7 +338,7 @@ JSON {"topics":[{"title":"한국어 50자 이하","normalized_key":"영문-소�
 
     def _draft_from_result(self, article_type: str, category: str, dedupe_key: str,
                            topic_id: int | None, source_indexes: list[int], result: dict[str, Any]) -> DraftArticle:
-        title = re.sub(r"\s+", " ", str(result.get("title") or "")).strip()[:50]
+        title = re.sub(r"\s+", " ", str(result.get("title") or "")).strip()[:AI_NEWS_TITLE_MAX_LENGTH]
         content = str(result.get("content_html") or "").strip()
         confidence = min(1.0, max(0.0, float(result.get("confidence") or 0)))
         fingerprint = re.sub(r"\s+", " ", str(result.get("semantic_fingerprint") or title).lower()).strip()[:1000]

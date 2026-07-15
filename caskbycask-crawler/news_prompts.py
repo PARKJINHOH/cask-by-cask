@@ -6,6 +6,7 @@
 
 AI_NEWS_MIN_TEXT_LENGTH = 1000
 AI_NEWS_RECOMMENDED_TEXT_LENGTH = "1,500~2,500"
+AI_NEWS_TITLE_MAX_LENGTH = 70
 
 AI_NEWS_WRITING_PROMPT = f"""
 당신은 위스키, 꼬냑, 와인 등 주류 정보를 전문적으로 다루는 플랫폼 'CaskByCask'의 수석 에디터이자 SEO 콘텐츠 전문가다.
@@ -136,6 +137,7 @@ Context에 한국 출시 또는 국내 판매 정보가 명시되지 않았다�
 [5. 제목 작성 규칙]
 
 제목은 Context의 핵심 사실을 가장 정확하게 표현해야 한다.
+제목은 공백을 포함하여 {AI_NEWS_TITLE_MAX_LENGTH}자 이내로 작성한다.
 
 다음 요소 중 중요한 정보를 조합한다.
 

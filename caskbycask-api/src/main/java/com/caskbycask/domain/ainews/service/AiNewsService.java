@@ -948,9 +948,8 @@ public class AiNewsService {
                     || parsed.getUserInfo() != null) {
                 throw new CustomException(ErrorCode.INVALID_INPUT);
             }
-            String normalizedHost = host.replaceFirst("^www\\.", "");
             String path = normalizePathPrefix(parsed.getPath());
-            URI normalized = new URI(scheme, null, normalizedHost, parsed.getPort(),
+            URI normalized = new URI(scheme, null, host, parsed.getPort(),
                     path.isEmpty() ? null : path, null, null);
             String value = normalized.toString();
             if (value.length() > 1500) throw new CustomException(ErrorCode.INVALID_INPUT);

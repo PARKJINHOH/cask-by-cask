@@ -11,6 +11,8 @@ import java.util.List;
 
 public final class AiNewsDtos {
 
+    public static final int ARTICLE_TITLE_MAX_LENGTH = 70;
+
     private AiNewsDtos() {}
 
     public record SourceEvidenceRequest(
@@ -28,7 +30,7 @@ public final class AiNewsDtos {
     public record ArticleUpsertRequest(
             @NotNull AiNewsArticleType articleType,
             @NotNull AiNewsCategory category,
-            @NotBlank @Size(max = 50) String title,
+            @NotBlank @Size(max = ARTICLE_TITLE_MAX_LENGTH) String title,
             @NotBlank String content,
             @NotBlank @Size(max = 255) String dedupeKey,
             @DecimalMin("0.0") @DecimalMax("1.0") BigDecimal confidenceScore,
@@ -47,7 +49,7 @@ public final class AiNewsDtos {
 
     public record ArticleAdminUpdateRequest(
             @NotNull AiNewsCategory category,
-            @NotBlank @Size(max = 50) String title,
+            @NotBlank @Size(max = ARTICLE_TITLE_MAX_LENGTH) String title,
             @NotBlank String content,
             Long prefixId,
             Boolean pinned,
@@ -63,7 +65,7 @@ public final class AiNewsDtos {
     public record RewriteRequest(@NotBlank @Size(max = 4000) String prompt) {}
 
     public record RewriteResultRequest(
-            @NotBlank @Size(max = 50) String title,
+            @NotBlank @Size(max = ARTICLE_TITLE_MAX_LENGTH) String title,
             @NotBlank String content,
             @DecimalMin("0.0") @DecimalMax("1.0") BigDecimal confidenceScore,
             @Size(max = 1000) String semanticFingerprint,
@@ -72,7 +74,7 @@ public final class AiNewsDtos {
 
     public record DuplicateSkipRequest(
             @NotNull AiNewsCategory category,
-            @NotBlank @Size(max = 50) String title,
+            @NotBlank @Size(max = ARTICLE_TITLE_MAX_LENGTH) String title,
             @NotBlank @Size(max = 255) String dedupeKey,
             @Size(max = 1000) String semanticFingerprint,
             @NotNull Long topicId,
