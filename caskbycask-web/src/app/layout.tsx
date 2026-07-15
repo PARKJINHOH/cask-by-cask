@@ -25,7 +25,7 @@ export default async function RootLayout({
   const lang = requestHeaders.get('x-caskbycask-lang') === 'en' ? 'en' : 'ko'
 
   return (
-    <html lang={lang}>
+    <html lang={lang} suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
