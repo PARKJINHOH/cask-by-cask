@@ -9,7 +9,6 @@ import { useBanners } from '@/domain/banner/hooks/useBanners'
 import { usePopups } from '@/domain/popup/hooks/usePopups'
 import { useNotices, usePinnedNotices } from '@/domain/notice/hooks/useNotices'
 import { usePosts } from '@/domain/community/hooks/usePosts'
-import { useByobList } from '@/domain/byob/hooks/useByob'
 import { PopupViewer } from '@/domain/popup/components/PopupViewer'
 import BannerSlider from '@/domain/banner/components/BannerSlider'
 import SpiritCard from '@/shared/components/SpiritCard'
@@ -18,7 +17,6 @@ import { formatBoardDate } from '@/shared/utils/format'
 import type { SpiritListItem } from '@/domain/spirit/types/spirit.types'
 import type { NoticeListItem } from '@/domain/notice/types/notice.types'
 import type { PostListItem } from '@/domain/community/types/community.types'
-import type { ByobListItem } from '@/domain/byob/types/byob.types'
 
 // ── 카테고리 메뉴 데이터 ─────────────────────────────────────────
 const CATEGORY_MENU = [
@@ -287,118 +285,41 @@ function NoticePostRow({ notice }: { notice: NoticeListItem }) {
   )
 }
 
-function ByobRow({ item }: { item: ByobListItem }) {
-  const statusMap: Record<string, { label: string; cls: string }> = {
-    OPEN: { label: '모집중', cls: 'text-green-700' },
-    CLOSED: { label: '마감', cls: 'text-yellow-700' },
-    CANCELLED: { label: '취소', cls: 'text-neutral-400' },
-  }
-  const status = statusMap[item.status]
-  return (
-    <Link
-      to={`/community/byob/${item.id}`}
-      className={[
-        'flex items-center gap-3 px-4 py-3.5 border-b border-neutral-50 last:border-b-0 transition-colors group',
-        item.isPinned ? 'bg-amber-50/50 hover:bg-amber-50' : 'hover:bg-primary-50/40',
-      ].join(' ')}
-    >
-      <span className="flex-shrink-0 text-xs font-bold px-1.5 py-0.5 rounded w-12 text-center
-        bg-orange-50 text-orange-700">
-        BYOB
-      </span>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm text-neutral-800 group-hover:text-primary-800 line-clamp-1 transition-colors">
-          {item.title}
-          {status && <span className={`text-xs ml-1.5 font-medium ${status.cls}`}>{status.label}</span>}
-        </p>
-      </div>
-      <div className="flex-shrink-0 flex items-center gap-3 text-xs text-neutral-400">
-        <span className="hidden sm:inline max-w-[90px] truncate">{item.location}</span>
-        <span className="tabular-nums">{item.approvedCount}/{item.maxParticipants}</span>
-        <span>{formatBoardDate(item.createdAt)}</span>
-      </div>
-    </Link>
-  )
-}
-
 // ── 커뮤니티 최신글 섹션 ──────────────────────────────────────────
-type CommunityTab = 'free' | 'byob'
-
 function CommunityLatestSection() {
   const { t } = useTranslation()
-  const [tab, setTab] = useState<CommunityTab>('free')
 
   const { data: freeData } = usePosts({ boardType: 'FREE', sort: 'LATEST', page: 0, size: 5 })
   const { data: newsData } = usePosts({ boardType: 'NOTICE', sort: 'LATEST', page: 0, size: 3 })
-  const { data: byobData } = useByobList({ page: 0, size: 5 })
   const { data: pinnedNotices = [] } = usePinnedNotices()
 
   const freePosts = freeData?.content ?? []
   const newsPosts = newsData?.content ?? []
-  const byobItems = byobData?.content ?? []
   const visiblePinnedNotices = pinnedNotices.slice(0, 5)
   const visibleFreePosts = freePosts.slice(0, 5)
   const visibleNewsPosts = newsPosts.slice(0, 3)
 
-  const tabs: { key: CommunityTab; label: string; to: string }[] = [
-    { key: 'free', label: t('home.community.free'), to: '/community/free' },
-    { key: 'byob', label: t('home.community.byob'), to: '/community/byob' },
-  ]
-
-  const moreLink = tabs.find((x) => x.key === tab)!.to
-  // 자유/소식 탭은 상단노출 공지를 함께 노출하므로 공지가 있으면 빈 상태가 아님
-  const isEmpty =
-    (tab === 'free' && visibleFreePosts.length === 0 && visiblePinnedNotices.length === 0) ||
-    (tab === 'byob' && byobItems.length === 0)
+  // 상단노출 공지를 함께 노출하므로 공지가 있으면 빈 상태가 아님
+  const isEmpty = visibleFreePosts.length === 0 && visiblePinnedNotices.length === 0
 
   return (
     <div className="space-y-8">
     <section>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-base font-bold text-neutral-900 tracking-tight">
-          {t('home.community.title')}
-        </h2>
-        <div className="flex items-center gap-1">
-          {tabs.map((x) => (
-            <button
-              key={x.key}
-              onClick={() => setTab(x.key)}
-              className={`text-xs px-3 py-1 rounded-full font-medium transition-colors ${
-                tab === x.key
-                  ? 'bg-primary-800 text-white'
-                  : 'text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100'
-              }`}
-            >
-              {x.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <SectionHeader
+        title={t('home.community.title')}
+        link="/community/all"
+        linkLabel={t('home.sections.viewAll')}
+      />
 
       <div className="bg-white rounded-xl border border-neutral-100 overflow-hidden">
         {isEmpty ? (
           <p className="text-sm text-neutral-400 py-10 text-center">{t('home.community.empty')}</p>
-        ) : tab === 'free' ? (
+        ) : (
           <>
             {visiblePinnedNotices.map((n) => <NoticePostRow key={`notice-${n.id}`} notice={n} />)}
             {visibleFreePosts.map((p) => <PostRow key={p.id} post={p} boardPath="free" />)}
           </>
-        ) : (
-          byobItems.slice(0, 5).map((b) => <ByobRow key={b.id} item={b} />)
         )}
-      </div>
-
-      <div className="mt-3 text-center">
-        <Link
-          to={moreLink}
-          className="inline-flex items-center gap-1.5 text-xs text-neutral-500 hover:text-primary-800
-            font-medium transition-colors py-2 px-4 rounded-lg hover:bg-primary-50"
-        >
-          {t('home.community.more')}
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
-        </Link>
       </div>
     </section>
     <section>
