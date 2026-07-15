@@ -23,7 +23,9 @@ export default function AdminDealListPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const qc = useQueryClient()
   const status = ((searchParams.get('status') ?? 'PENDING') as DealStatus | 'ALL')
+  const drinkNameParam = searchParams.get('drinkName') ?? ''
   const page = Math.max(0, parseInt(searchParams.get('page') ?? '0', 10))
+  const [drinkName, setDrinkName] = useState(drinkNameParam)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const detailState = { returnTo: `${location.pathname}${location.search}` }
   const setListParam = (nextStatus: DealStatus | 'ALL', nextPage = 0) =>
@@ -39,12 +41,31 @@ export default function AdminDealListPage() {
 
   useEffect(() => {
     setSelectedIds([])
-  }, [status, page])
+  }, [status, drinkNameParam, page])
+
+  useEffect(() => {
+    setDrinkName(drinkNameParam)
+  }, [drinkNameParam])
+
+  const handleDrinkNameSearch = () => {
+    const trimmed = drinkName.trim()
+    setSearchParams(
+      (prev) => {
+        const n = new URLSearchParams(prev)
+        if (trimmed) n.set('drinkName', trimmed)
+        else n.delete('drinkName')
+        n.set('page', '0')
+        return n
+      },
+      { replace: true },
+    )
+  }
 
   const { data, isLoading } = useQuery({
-    queryKey: ['admin', 'deals', { status, page }],
+    queryKey: ['admin', 'deals', { status, drinkName: drinkNameParam, page }],
     queryFn: () => adminDealApi.list({
       status: status === 'ALL' ? undefined : status,
+      drinkName: drinkNameParam.trim() || undefined,
       page,
       size: 20,
     }),
@@ -69,20 +90,53 @@ export default function AdminDealListPage() {
       </div>
 
       {/* 상태 필터 탭 */}
-      <div className="flex flex-wrap items-center gap-1.5 p-4 bg-white rounded-xl shadow-sm">
-        {STATUS_TABS.map((tab) => (
-          <button
-            key={tab.value}
-            onClick={() => setListParam(tab.value, 0)}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-              status === tab.value
-                ? 'bg-primary-800 text-white'
-                : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+      <div className="flex flex-col gap-3 p-4 bg-white rounded-xl shadow-sm sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="mb-1.5 text-sm font-medium text-neutral-700">상태</p>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {STATUS_TABS.map((tab) => (
+              <button
+                key={tab.value}
+                onClick={() => setListParam(tab.value, 0)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  status === tab.value
+                    ? 'bg-primary-800 text-white'
+                    : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <form
+          className="w-full sm:w-96"
+          onSubmit={(e) => {
+            e.preventDefault()
+            handleDrinkNameSearch()
+          }}
+        >
+          <label htmlFor="deal-drink-name" className="mb-1.5 block text-sm font-medium text-neutral-700">
+            주류명 검색
+          </label>
+          <div className="flex gap-2">
+            <input
+              id="deal-drink-name"
+              type="search"
+              value={drinkName}
+              onChange={(e) => setDrinkName(e.target.value)}
+              placeholder="주류명을 입력하세요"
+              className="h-9 min-w-0 flex-1 rounded-lg border border-neutral-300 bg-white px-3 text-sm outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-200"
+            />
+            <button
+              type="submit"
+              className="h-9 rounded-lg bg-primary-800 px-4 text-sm font-medium text-white transition-colors hover:bg-primary-900"
+            >
+              검색
+            </button>
+          </div>
+        </form>
       </div>
 
       {isLoading ? (

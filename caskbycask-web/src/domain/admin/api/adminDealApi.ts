@@ -3,7 +3,7 @@ import type { ApiResponse, PageResponse } from '@/shared/types/common.types'
 import type { DealPostDetail, DealPostSummary, DealStatus, UpdateDealRequest } from '../types/deal.types'
 
 export const adminDealApi = {
-  list: async (params: { status?: DealStatus; page?: number; size?: number }) => {
+  list: async (params: { status?: DealStatus; drinkName?: string; page?: number; size?: number }) => {
     const res = await axiosInstance.get<ApiResponse<PageResponse<DealPostSummary>>>(
       '/api/admin/deals', { params },
     )

@@ -16,6 +16,12 @@ public interface DealPostRepository extends JpaRepository<DealPost, Long> {
 
     Page<DealPost> findAllByOrderByCreatedAtDesc(Pageable pageable);
 
+    Page<DealPost> findAllByDrinkNameContainingIgnoreCaseOrderByCreatedAtDesc(
+            String drinkName, Pageable pageable);
+
+    Page<DealPost> findAllByStatusAndDrinkNameContainingIgnoreCaseOrderByCreatedAtDesc(
+            DealStatus status, String drinkName, Pageable pageable);
+
     List<DealPost> findAllBySpiritIdAndStatusAndIsVisibleTrue(Long spiritId, DealStatus status);
 
     List<DealPost> findAllBySpiritIdInAndStatusAndIsVisibleTrue(Collection<Long> spiritIds, DealStatus status);

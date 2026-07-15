@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { priceTrackerApi } from '../api/priceTrackerApi'
 import type { DiscountItemDetail, PriceReportChartDetail, PriceReportReportReason } from '../types/pricetracker.types'
@@ -15,7 +16,9 @@ interface Props {
 
 export default function PriceReportCard({ detail, isBest }: Props) {
   const { t } = useTranslation()
-  const { isLoggedIn } = useAuthStore()
+  const navigate = useNavigate()
+  const { isLoggedIn, user } = useAuthStore()
+  const canEditHotDeal = detail.isHotDeal && user?.role === 'SUPER_ADMIN'
   const [expanded, setExpanded] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
   const [reason, setReason] = useState<PriceReportReportReason>('FALSE_PRICE')
@@ -90,6 +93,15 @@ export default function PriceReportCard({ detail, isBest }: Props) {
               <p className="text-xs text-neutral-400 line-through">
                 {fmt.format(detail.salePrice)}원
               </p>
+            )}
+            {canEditHotDeal && (
+              <button
+                type="button"
+                onClick={() => navigate(`/admin/deals/${detail.reportId}`)}
+                className="mt-2 inline-flex items-center rounded-lg border border-primary-200 bg-primary-50 px-2.5 py-1 text-xs font-semibold text-primary-800 transition-colors hover:border-primary-300 hover:bg-primary-100"
+              >
+                {t('common.edit')}
+              </button>
             )}
           </div>
         </div>

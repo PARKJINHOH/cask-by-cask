@@ -25,14 +25,35 @@ public class DealAdminService {
     private final SpiritRepository spiritRepository;
 
     @Transactional(readOnly = true)
-    public Page<DealPostSummaryResponse> list(DealStatus status, int page, int size) {
+    public Page<DealPostSummaryResponse> list(DealStatus status, String drinkName, int page, int size) {
         Pageable pageable = PageRequest.of(Math.max(0, page), Math.max(1, size));
+        String normalizedDrinkName = normalizeSearchKeyword(drinkName);
+
+        if (status != null && normalizedDrinkName != null) {
+            return dealPostRepository
+                    .findAllByStatusAndDrinkNameContainingIgnoreCaseOrderByCreatedAtDesc(
+                            status, normalizedDrinkName, pageable)
+                    .map(DealPostSummaryResponse::from);
+        }
+        if (normalizedDrinkName != null) {
+            return dealPostRepository
+                    .findAllByDrinkNameContainingIgnoreCaseOrderByCreatedAtDesc(
+                            normalizedDrinkName, pageable)
+                    .map(DealPostSummaryResponse::from);
+        }
         if (status == null) {
             return dealPostRepository.findAllByOrderByCreatedAtDesc(pageable)
                     .map(DealPostSummaryResponse::from);
         }
         return dealPostRepository.findAllByStatusOrderByCreatedAtDesc(status, pageable)
                 .map(DealPostSummaryResponse::from);
+    }
+
+    private String normalizeSearchKeyword(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            return null;
+        }
+        return keyword.trim();
     }
 
     @Transactional(readOnly = true)

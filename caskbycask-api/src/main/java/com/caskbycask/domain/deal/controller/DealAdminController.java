@@ -26,11 +26,12 @@ public class DealAdminController {
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<DealPostSummaryResponse>>> list(
             @RequestParam(required = false) DealStatus status,
+            @RequestParam(required = false) String drinkName,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
         return ResponseEntity.ok(ApiResponse.success(
-                PageResponse.from(dealAdminService.list(status, page, size))));
+                PageResponse.from(dealAdminService.list(status, drinkName, page, size))));
     }
 
     @GetMapping("/{id}")
