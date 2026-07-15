@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/domain/auth/store/authStore'
@@ -19,12 +19,13 @@ import DefaultAvatar from '@/shared/components/DefaultAvatar'
 import SeoMeta from '@/shared/components/SeoMeta'
 import { useMessageList } from '@/domain/message/hooks/useMessages'
 
-type Tab = 'maturing' | 'reviews' | 'wishlist' | 'byob' | 'collection' | 'priceReports' | 'priceAlerts' | 'messages' | 'blocks' | 'settings'
+type Tab = 'maturing' | 'reviews' | 'wishlist' | 'tasteTrees' | 'byob' | 'collection' | 'priceReports' | 'priceAlerts' | 'messages' | 'blocks' | 'settings'
 
 const ALL_TABS: { value: Tab; labelKey: string; adminHidden?: boolean }[] = [
   { value: 'maturing',     labelKey: 'mypage.maturingTab',    adminHidden: true },
   { value: 'reviews',      labelKey: 'mypage.reviewsTab' },
   { value: 'wishlist',     labelKey: 'mypage.wishlistTab' },
+  { value: 'tasteTrees',   labelKey: 'mypage.tasteTreesTab' },
   { value: 'byob',         labelKey: 'mypage.byobTab' },
   { value: 'collection',   labelKey: 'mypage.collectionTab' },
   { value: 'priceReports', labelKey: 'mypage.priceReportsTab' },
@@ -201,6 +202,15 @@ export default function MyPage() {
             {tab === 'maturing'  && <MaturingPowerSection profile={profile ?? { id: 0, email, nickname, role, createdAt: '' }} />}
             {tab === 'reviews'   && <MyReviewList />}
             {tab === 'wishlist'  && <MyFavorites />}
+            {tab === 'tasteTrees' && (
+              <div className="rounded-2xl border border-neutral-200 bg-white p-6">
+                <h2 className="text-lg font-black text-neutral-950">{t('tasteTree.myTrees')}</h2>
+                <p className="mt-2 text-sm text-neutral-500">{t('tasteTree.myTreesDesc')}</p>
+                <Link to="/taste-trees/mine" className="mt-5 inline-flex rounded-lg bg-primary-800 px-4 py-2.5 text-sm font-bold text-white hover:bg-primary-900">
+                  {t('tasteTree.openMyTrees')}
+                </Link>
+              </div>
+            )}
             {tab === 'byob'        && <ByobHistoryTab />}
             {tab === 'collection'  && <BottleCollectionTab />}
             {tab === 'priceReports' && <MyPriceReportsTab />}

@@ -101,6 +101,15 @@ public enum ErrorCode {
     TIER_LIST_DRAFT_NOT_FOUND(HttpStatus.NOT_FOUND, "TIER_003", "임시 티어리스트를 찾을 수 없습니다."),
     TIER_LIST_DRAFT_EXPIRED(HttpStatus.GONE, "TIER_004", "임시 티어리스트가 만료되었습니다."),
 
+    // Whisky Taste Tree
+    TASTE_TREE_NOT_FOUND(HttpStatus.NOT_FOUND, "TASTE_TREE_001", "위스키 취향 트리를 찾을 수 없습니다."),
+    TASTE_TREE_VERSION_NOT_FOUND(HttpStatus.NOT_FOUND, "TASTE_TREE_002", "트리 버전을 찾을 수 없습니다."),
+    TASTE_TREE_ACCESS_DENIED(HttpStatus.FORBIDDEN, "TASTE_TREE_003", "트리를 수정할 권한이 없습니다."),
+    TASTE_TREE_INVALID_STRUCTURE(HttpStatus.BAD_REQUEST, "TASTE_TREE_004", "트리 연결 구조가 올바르지 않습니다."),
+    TASTE_TREE_RESULT_NOT_FOUND(HttpStatus.NOT_FOUND, "TASTE_TREE_005", "취향 트리 결과를 찾을 수 없습니다."),
+    TASTE_TREE_ALREADY_PUBLISHED(HttpStatus.CONFLICT, "TASTE_TREE_006", "이미 게시된 트리 버전입니다."),
+    TASTE_TREE_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "TASTE_TREE_007", "트리 이미지를 찾을 수 없습니다."),
+
     // Report
     ALREADY_REPORTED(HttpStatus.CONFLICT, "REPORT_001", "이미 신고한 항목입니다."),
     REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "REPORT_002", "신고 내역을 찾을 수 없습니다."),

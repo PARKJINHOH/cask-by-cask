@@ -3,6 +3,8 @@ package com.caskbycask.domain.spirit.repository;
 import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
 import com.caskbycask.domain.spirit.entity.enums.SpiritStatus;
+import com.caskbycask.domain.spirit.entity.enums.BottlingType;
+import com.caskbycask.domain.spirit.entity.enums.WhiskyStyle;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -160,4 +162,29 @@ public interface SpiritRepository extends JpaRepository<Spirit, Long>, SpiritQue
               AND s.status = com.caskbycask.domain.spirit.entity.enums.SpiritStatus.ACTIVE
             """)
     void incrementViewCount(@Param("id") Long id);
+
+    @Query("""
+            SELECT s FROM Spirit s
+            JOIN FETCH s.whiskyDetail w
+            LEFT JOIN FETCH s.commonDetail
+            WHERE s.status = com.caskbycask.domain.spirit.entity.enums.SpiritStatus.ACTIVE
+              AND s.category = com.caskbycask.domain.spirit.entity.enums.SpiritCategory.WHISKY
+              AND s.parent IS NULL
+              AND w.style IN :styles
+              AND (:peated IS NULL OR w.isPeated = :peated)
+              AND (:caskToken = '' OR LOWER(COALESCE(w.extraData, '')) LIKE LOWER(CONCAT('%', :caskToken, '%')))
+              AND (:bottlingType IS NULL OR w.bottlingType = :bottlingType)
+              AND (:caskStrength IS NULL OR w.isCaskStrength = :caskStrength)
+              AND (:singleCask IS NULL OR w.isSingleCask = :singleCask)
+            ORDER BY CASE WHEN s.avgScore IS NULL THEN 1 ELSE 0 END,
+                     s.avgScore DESC, s.reviewCount DESC, s.id DESC
+            """)
+    List<Spirit> findTasteTreeRecommendations(
+            @Param("styles") List<WhiskyStyle> styles,
+            @Param("peated") Boolean peated,
+            @Param("caskToken") String caskToken,
+            @Param("bottlingType") BottlingType bottlingType,
+            @Param("caskStrength") Boolean caskStrength,
+            @Param("singleCask") Boolean singleCask,
+            Pageable pageable);
 }

@@ -95,6 +95,10 @@ const AdminPriceReportDetailPage = lazy(() => import('@/views-spa/admin/AdminPri
 const AdminStorePage = lazy(() => import('@/views-spa/admin/AdminStorePage'))
 const ProducerDetailPage = lazy(() => import('@/views-spa/ProducerDetailPage'))
 const TierListPage = lazy(() => import('@/views-spa/TierListPage'))
+const TasteTreePage = lazy(() => import('@/views-spa/TasteTreePage'))
+const TasteTreeResultPage = lazy(() => import('@/views-spa/TasteTreeResultPage'))
+const TasteTreeBuilderPage = lazy(() => import('@/views-spa/TasteTreeBuilderPage'))
+const MyTasteTreesPage = lazy(() => import('@/views-spa/MyTasteTreesPage'))
 
 export default function App() {
   return (
@@ -130,6 +134,9 @@ export default function App() {
             <Route path="community/:boardType/:id" element={<PostDetailPage />} />
             <Route path="tier-lists" element={<TierListPage />} />
             <Route path="tier-lists/:shareKey" element={<TierListPage />} />
+            <Route path="taste-trees" element={<TasteTreePage />} />
+            <Route path="taste-trees/t/:shareKey" element={<TasteTreePage />} />
+            <Route path="taste-trees/result/:shareKey" element={<TasteTreeResultPage />} />
             {/* 공개 읽기용 (비회원 접근 가능) */}
             <Route path="notifications" element={<NotificationsPage />} />
             <Route path="users/:userId/bottles" element={<UserBottlePublicPage />} />
@@ -139,6 +146,9 @@ export default function App() {
             <Route path="price-tracker/spirits/:id" element={<SpiritPriceDetailPage />} />
             <Route element={<PrivateRoute />}>
               <Route path="price-tracker/register" element={<PriceRegisterPage />} />
+              <Route path="taste-trees/new" element={<TasteTreeBuilderPage />} />
+              <Route path="taste-trees/:id/edit" element={<TasteTreeBuilderPage />} />
+              <Route path="taste-trees/mine" element={<MyTasteTreesPage />} />
               <Route path="spirits/:id/review/write" element={<ReviewFormPage />} />
               <Route path="spirits/:id/review/:reviewId/edit" element={<ReviewFormPage />} />
               <Route path="community/:boardType/write" element={<PostFormPage />} />

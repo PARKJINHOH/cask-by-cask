@@ -162,6 +162,7 @@ function GNB() {
       ],
     },
     { key: 'tierList', label: t('menu.tierList'), to: '/tier-lists' },
+    { key: 'tasteTree', label: t('menu.tasteTree'), to: '/taste-trees' },
   ]
 
   const itemCls = (active: boolean) =>
@@ -170,8 +171,8 @@ function GNB() {
 
   return (
     <nav ref={navRef} className="bg-canvas border-b-2 border-neutral-200 sticky top-16 z-30">
-      <div className="max-w-7xl mx-auto px-2 sm:px-4">
-        <ul className="flex items-center gap-0.5 sm:gap-1 py-1">
+      <div className="max-w-7xl mx-auto overflow-x-auto overscroll-x-contain px-2 sm:px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <ul className="flex min-w-max items-center gap-0.5 py-1 sm:gap-1">
           {menus.map(menu => {
             if ('to' in menu) {
               const isNotice  = menu.key === 'notice'
