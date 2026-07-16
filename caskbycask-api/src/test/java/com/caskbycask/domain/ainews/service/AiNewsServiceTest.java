@@ -125,6 +125,29 @@ class AiNewsServiceTest {
     }
 
     @Test
+    void failedScheduledPublishIsRemovedFromAutomaticRetryQueue() {
+        LocalDateTime scheduledAt = LocalDateTime.now().minusMinutes(1);
+        AiNewsArticle article = AiNewsArticle.builder()
+                .id(23L)
+                .articleType(AiNewsArticleType.TIP_INFO)
+                .status(AiNewsArticleStatus.SCHEDULED)
+                .scheduledAt(scheduledAt)
+                .category(AiNewsCategory.WHISKY)
+                .title("예약 발행 실패 원고")
+                .content("<p>본문</p>")
+                .confidenceScore(BigDecimal.ONE)
+                .dedupeKey("tip:failed-scheduled-publish")
+                .build();
+        given(articleRepository.findForPublishById(23L)).willReturn(Optional.of(article));
+
+        service.failScheduledPublish(23L);
+
+        assertThat(article.getStatus()).isEqualTo(AiNewsArticleStatus.FAILED);
+        assertThat(article.getScheduledAt()).isNull();
+        assertThat(article.getFailureReason()).contains("직접 다시 발행");
+    }
+
+    @Test
     void adminUpdateReplacesAndNormalizesPublicSourceUrls() {
         AiNewsArticle article = AiNewsArticle.builder()
                 .id(12L)

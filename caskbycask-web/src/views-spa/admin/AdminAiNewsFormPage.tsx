@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState, type MouseEvent, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { adminAiNewsApi } from '@/domain/admin/api/adminAiNewsApi'
@@ -234,14 +234,16 @@ export default function AdminAiNewsFormPage() {
           )}
         </div>
         {canPublish && <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
-          <p className="text-sm font-semibold text-blue-900">예약 발행</p>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-semibold text-blue-900">예약 발행</p>
+            <button type="button" onClick={() => setScheduledAt(toLocalInputValue(new Date()))}
+              className="rounded-lg border border-blue-300 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100">
+              지금
+            </button>
+          </div>
           <p className="mt-1 text-xs text-blue-700">년·월·일과 시·분을 지정하면 해당 시각 이후 서버가 자동 발행합니다.</p>
           <div className="mt-3 flex flex-wrap items-end gap-2">
-            <label className="block min-w-64 flex-1">
-              <span className="mb-1 block text-xs font-medium text-blue-800">예약 발행일시</span>
-              <input type="datetime-local" step="60" min={toLocalInputValue(new Date())} max="9999-12-31T23:59"
-                value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} className={inputCls} />
-            </label>
+            <ScheduledDateTimeFields value={scheduledAt} onChange={setScheduledAt} />
             {detail?.status === 'SCHEDULED' && (
               <button type="button" disabled={cancelScheduleMut.isPending} onClick={() => {
                 if (window.confirm('예약발행을 취소하고 검토 대기 상태로 변경하시겠습니까?')) cancelScheduleMut.mutate()
@@ -289,6 +291,50 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 }
 const inputCls = 'w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100 disabled:bg-neutral-100'
 
+function ScheduledDateTimeFields({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const date = value.slice(0, 10)
+  const time = value.slice(11, 16)
+  const now = new Date()
+
+  const updateDate = (nextDate: string) => {
+    if (!nextDate) {
+      onChange('')
+      return
+    }
+    onChange(`${nextDate}T${time || toLocalTimeValue(now)}`)
+  }
+  const updateTime = (nextTime: string) => {
+    if (!nextTime) {
+      onChange('')
+      return
+    }
+    onChange(`${date || toLocalDateValue(now)}T${nextTime}`)
+  }
+
+  return (
+    <div className="grid min-w-64 flex-1 grid-cols-1 gap-2 sm:grid-cols-[minmax(10rem,1fr)_8rem]">
+      <label className="block">
+        <span className="mb-1 block text-xs font-medium text-blue-800">날짜</span>
+        <input type="date" min={toLocalDateValue(now)} max="9999-12-31" value={date}
+          onClick={openPicker} onChange={(e) => updateDate(e.target.value)} className={inputCls} />
+      </label>
+      <label className="block">
+        <span className="mb-1 block text-xs font-medium text-blue-800">시간</span>
+        <input type="time" step="60" value={time}
+          onClick={openPicker} onChange={(e) => updateTime(e.target.value)} className={inputCls} />
+      </label>
+    </div>
+  )
+}
+
+function openPicker(event: MouseEvent<HTMLInputElement>) {
+  try {
+    event.currentTarget.showPicker()
+  } catch {
+    // showPicker 미지원 브라우저는 기본 입력 동작을 사용한다.
+  }
+}
+
 function buildSourceEvidence(sourceUrls: string[]): AiNewsSourceEvidence[] {
   const seenDomains = new Set<string>()
   return sourceUrls
@@ -319,6 +365,14 @@ function buildSourceEvidence(sourceUrls: string[]): AiNewsSourceEvidence[] {
 }
 
 function toLocalInputValue(date: Date) {
+  return `${toLocalDateValue(date)}T${toLocalTimeValue(date)}`
+}
+
+function toLocalDateValue(date: Date) {
   const offset = date.getTimezoneOffset() * 60_000
-  return new Date(date.getTime() - offset).toISOString().slice(0, 16)
+  return new Date(date.getTime() - offset).toISOString().slice(0, 10)
+}
+
+function toLocalTimeValue(date: Date) {
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
 }

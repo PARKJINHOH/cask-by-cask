@@ -209,4 +209,10 @@ public class AiNewsArticle extends BaseTimeEntity {
         this.scheduledAt = null;
         this.failureReason = "예약발행이 취소되었습니다. 내용을 검토한 후 발행해주세요.";
     }
+
+    public void failScheduledPublish() {
+        this.status = AiNewsArticleStatus.FAILED;
+        this.scheduledAt = null;
+        this.failureReason = "예약발행에 실패했습니다. 내용을 확인한 후 직접 다시 발행해주세요.";
+    }
 }

@@ -35,6 +35,11 @@ public class AiNewsPublishScheduler {
                 aiNewsService.publishScheduled(id, now);
             } catch (RuntimeException e) {
                 log.error("예약된 AI 소식 발행에 실패했습니다. articleId={}", id, e);
+                try {
+                    aiNewsService.failScheduledPublish(id);
+                } catch (RuntimeException statusUpdateException) {
+                    log.error("예약발행 실패 상태 저장에 실패했습니다. articleId={}", id, statusUpdateException);
+                }
             }
         }
     }

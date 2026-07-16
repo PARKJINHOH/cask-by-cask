@@ -22,19 +22,37 @@ class BadWordFilterTest {
     }
 
     @Test
-    void detect_flagsExplicitInitialBadWordEvenWithSpaces() {
+    void detect_doesNotFlagExplicitInitialBadWordWithSpaces() {
         BadWordFilter filter = filterWithWords("ㅅㅂ");
 
         List<String> detected = filter.detect("ㅅ ㅂ");
 
-        assertThat(detected).containsExactly("ㅅㅂ");
+        assertThat(detected).isEmpty();
     }
 
     @Test
-    void detect_flagsFullBadWordEvenWithSpaces() {
+    void detect_doesNotFlagFullBadWordWithSpaces() {
         BadWordFilter filter = filterWithWords("시발");
 
         List<String> detected = filter.detect("시 발");
+
+        assertThat(detected).isEmpty();
+    }
+
+    @Test
+    void detect_doesNotJoinWordsAcrossWhitespace() {
+        BadWordFilter filter = filterWithWords("시발");
+
+        List<String> detected = filter.detect("글로벌 출시 발표");
+
+        assertThat(detected).isEmpty();
+    }
+
+    @Test
+    void detect_flagsContiguousBadWord() {
+        BadWordFilter filter = filterWithWords("시발");
+
+        List<String> detected = filter.detect("이건 시발 이라고 적힌 문장이다.");
 
         assertThat(detected).containsExactly("시발");
     }
@@ -78,12 +96,12 @@ class BadWordFilterTest {
     }
 
     @Test
-    void detect_flagsLatinBadWordEvenWithSpaces() {
+    void detect_doesNotFlagLatinBadWordWithSpaces() {
         BadWordFilter filter = filterWithWords("fuck");
 
         List<String> detected = filter.detect("f u c k");
 
-        assertThat(detected).containsExactly("fuck");
+        assertThat(detected).isEmpty();
     }
 
     private BadWordFilter filterWithWords(String... words) {

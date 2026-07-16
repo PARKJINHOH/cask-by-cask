@@ -284,6 +284,13 @@ public class AiNewsService {
     }
 
     @Transactional
+    public void failScheduledPublish(Long id) {
+        AiNewsArticle article = findArticleForPublish(id);
+        if (article.getStatus() != AiNewsArticleStatus.SCHEDULED) return;
+        article.failScheduledPublish();
+    }
+
+    @Transactional
     public AiNewsDtos.ArticleDetailResponse reject(Long id, String reason, Long actorId) {
         AiNewsArticle article = findArticleDetail(id);
         if (article.getStatus() == AiNewsArticleStatus.PUBLISHED || article.getStatus() == AiNewsArticleStatus.DELETED) {
