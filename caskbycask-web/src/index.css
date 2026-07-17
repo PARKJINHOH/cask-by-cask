@@ -49,6 +49,11 @@
   }
 }
 
+/* 취향 트리 연결선 문구는 선택된 연결선 SVG보다도 항상 위에 표시한다. */
+.taste-tree-graph .react-flow__edgelabel-renderer {
+  z-index: 10000 !important;
+}
+
 @layer base {
   html.js-enabled [data-seo-fallback] {
     display: none;
@@ -610,6 +615,20 @@
 }
 .route-enter {
   animation: routeEnter 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes tasteTreeBorderGlow {
+  0%, 100% {
+    border-color: #fcd34d;
+    box-shadow: 0 0 0 0 rgb(245 158 11 / 0);
+  }
+  50% {
+    border-color: #d97706;
+    box-shadow: 0 0 0 3px rgb(245 158 11 / 0.12);
+  }
+}
+.taste-tree-border-glow {
+  animation: tasteTreeBorderGlow 2.8s ease-in-out infinite;
 }
 
 /* ── 모션 축소 설정 존중 (접근성) ──────────────────────────────

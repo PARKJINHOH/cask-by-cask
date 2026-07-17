@@ -1,44 +1,22 @@
 export type TasteTreeType = 'OFFICIAL' | 'USER'
 export type TasteTreeVersionStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED'
-export type TasteTreeNodeType = 'START' | 'QUESTION' | 'INFO' | 'RESULT'
-export type TasteTreeSelectionType = 'SINGLE' | 'MULTIPLE'
-export type TasteTreeResultItemType = 'REGISTERED' | 'CUSTOM'
+export type TasteTreeModerationStatus = 'VISIBLE' | 'HIDDEN'
+export type TasteTreeSort = 'LATEST' | 'LIKES' | 'VIEWS'
+export type TasteTreeNodeType = 'START' | 'CHOICE' | 'INFO' | 'WHISKY'
+export type TasteTreeWhiskySource = 'REGISTERED' | 'CUSTOM'
 
-export interface TasteTreeOption {
-  key: string
-  labelKo: string
-  labelEn?: string | null
-  descriptionKo?: string | null
-  descriptionEn?: string | null
-  targetNodeKey: string
-  attributeCodes?: string[] | null
-}
-
-export interface TasteTreeResultDefinition {
-  type: TasteTreeResultItemType
+export interface TasteTreeWhisky {
+  source: TasteTreeWhiskySource
   spiritId?: number | null
-  displayNameKo?: string | null
-  displayNameEn?: string | null
+  nameKo?: string | null
+  nameEn?: string | null
   imageUrl?: string | null
-  customName?: string | null
-  customImageUrl?: string | null
+  imageOverrideUrl?: string | null
   priceAmount?: number | null
   currencyCode?: string | null
-  recommendationReasonKo?: string | null
-  recommendationReasonEn?: string | null
-}
-
-export interface TasteTreeDynamicFilter {
-  styles?: string[] | null
-  peated?: boolean | null
-  caskToken?: string | null
-  bottlingType?: string | null
-  caskStrength?: boolean | null
-  singleCask?: boolean | null
-  resultTitleKo?: string | null
-  resultTitleEn?: string | null
-  recommendationReasonKo?: string | null
-  recommendationReasonEn?: string | null
+  priceText?: string | null
+  noteKo?: string | null
+  noteEn?: string | null
 }
 
 export interface TasteTreeNode {
@@ -48,19 +26,38 @@ export interface TasteTreeNode {
   titleEn?: string | null
   descriptionKo?: string | null
   descriptionEn?: string | null
-  positionX?: number | null
-  positionY?: number | null
-  selectionType?: TasteTreeSelectionType | null
-  minSelect?: number | null
-  maxSelect?: number | null
-  options?: TasteTreeOption[] | null
-  results?: TasteTreeResultDefinition[] | null
-  dynamicFilter?: TasteTreeDynamicFilter | null
+  positionX: number
+  positionY: number
+  width?: number | null
+  height?: number | null
+  imageUrl?: string | null
+  imageFit?: 'CONTAIN' | 'COVER' | null
+  imagePositionX?: number | null
+  imagePositionY?: number | null
+  imageScale?: number | null
+  imageHidden?: boolean | null
+  whisky?: TasteTreeWhisky | null
+}
+
+export interface TasteTreeEdge {
+  key: string
+  sourceNodeKey: string
+  targetNodeKey: string
+  labelKo: string
+  labelEn?: string | null
+  descriptionKo?: string | null
+  descriptionEn?: string | null
+  sortOrder: number
+  sourceHandle?: string | null
+  targetHandle?: string | null
+  labelPosition?: number | null
+  lineType?: 'STRAIGHT' | 'STEP' | null
 }
 
 export interface TasteTreeContent {
-  experienceLevel?: string | null
+  schemaVersion: number
   nodes: TasteTreeNode[]
+  edges: TasteTreeEdge[]
 }
 
 export interface TasteTreeSummary {
@@ -70,9 +67,13 @@ export interface TasteTreeSummary {
   ownerNickname: string | null
   title: string
   description: string | null
-  experienceLevel: string | null
   publishedVersion: number | null
   bookmarked: boolean
+  likedByMe: boolean
+  canLike: boolean
+  likeCount: number
+  viewCount: number
+  moderationStatus: TasteTreeModerationStatus
   hasDraft: boolean
   updatedAt: string
 }
@@ -84,6 +85,11 @@ export interface TasteTreeView {
   ownerNickname: string | null
   owner: boolean
   bookmarked: boolean
+  likedByMe: boolean
+  canLike: boolean
+  likeCount: number
+  viewCount: number
+  moderationStatus: TasteTreeModerationStatus
   versionId: number
   versionNumber: number
   versionStatus: TasteTreeVersionStatus
@@ -95,58 +101,26 @@ export interface TasteTreeView {
   updatedAt: string
 }
 
-export interface TasteTreePathSnapshot {
-  nodeKey: string
-  titleKo: string
-  titleEn: string | null
-  selectedLabelsKo: string[]
-  selectedLabelsEn: string[]
-}
-
-export interface TasteTreeResultItem {
-  type: TasteTreeResultItemType
-  spiritId: number | null
-  nameKo: string
-  nameEn: string
-  imageUrl: string | null
-  canonicalPathKo: string | null
-  canonicalPathEn: string | null
-  priceAmount: number | null
-  currencyCode: string | null
-  matchScore: number
-  recommendationReasonKo: string | null
-  recommendationReasonEn: string | null
-}
-
-export interface TasteTreeResult {
-  id: number
-  shareKey: string
-  treeId: number
-  treeShareKey: string
-  treeType: TasteTreeType
-  treeTitle: string
-  treeDescription: string | null
-  resultTitleKo: string
-  resultTitleEn: string
-  ownerNickname: string | null
-  versionId: number
-  versionNumber: number
-  latestVersion: boolean
-  content: TasteTreeContent
-  path: TasteTreePathSnapshot[]
-  items: TasteTreeResultItem[]
-  createdAt: string
-}
-
-export interface TasteTreeAnswer {
-  nodeKey: string
-  optionKeys: string[]
-}
-
 export interface TasteTreeSavePayload {
   title: string
   description?: string | null
   content: TasteTreeContent
+}
+
+export interface TasteTreeEngagement {
+  liked: boolean
+  likeCount: number
+  viewCount: number
+}
+
+export interface TasteTreePage {
+  content: TasteTreeSummary[]
+  page: number
+  size: number
+  totalElements: number
+  totalPages: number
+  last: boolean
+  empty: boolean
 }
 
 export interface MyTasteTrees {

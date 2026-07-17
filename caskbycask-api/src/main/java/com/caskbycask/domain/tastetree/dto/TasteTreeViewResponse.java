@@ -1,5 +1,6 @@
 package com.caskbycask.domain.tastetree.dto;
 
+import com.caskbycask.domain.tastetree.entity.enums.TasteTreeModerationStatus;
 import com.caskbycask.domain.tastetree.entity.enums.TasteTreeType;
 import com.caskbycask.domain.tastetree.entity.enums.TasteTreeVersionStatus;
 
@@ -12,6 +13,11 @@ public record TasteTreeViewResponse(
         String ownerNickname,
         boolean owner,
         boolean bookmarked,
+        boolean likedByMe,
+        boolean canLike,
+        int likeCount,
+        int viewCount,
+        TasteTreeModerationStatus moderationStatus,
         Long versionId,
         Integer versionNumber,
         TasteTreeVersionStatus versionStatus,

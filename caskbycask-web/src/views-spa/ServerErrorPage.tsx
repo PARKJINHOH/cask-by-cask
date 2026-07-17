@@ -34,6 +34,7 @@ export default function ServerErrorPage({ resetError }: Props) {
           </button>
           <Link
             to="/"
+            onClick={resetError}
             className="px-6 py-3 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-medium rounded-lg transition-colors"
           >
             {t('errors.serverError.goHome')}

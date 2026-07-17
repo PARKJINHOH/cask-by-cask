@@ -12,6 +12,9 @@ public interface TasteTreeBookmarkRepository extends JpaRepository<TasteTreeBook
     Optional<TasteTreeBookmark> findByTreeIdAndUserId(Long treeId, Long userId);
     boolean existsByTreeIdAndUserId(Long treeId, Long userId);
 
+    @Query("SELECT b.tree.id FROM TasteTreeBookmark b WHERE b.user.id = :userId AND b.tree.id IN :treeIds")
+    List<Long> findTreeIdsByUserIdAndTreeIdIn(@Param("userId") Long userId, @Param("treeIds") List<Long> treeIds);
+
     @Query("SELECT b FROM TasteTreeBookmark b JOIN FETCH b.tree t LEFT JOIN FETCH t.owner WHERE b.user.id = :userId ORDER BY b.createdAt DESC")
     List<TasteTreeBookmark> findAllByUserIdWithTree(@Param("userId") Long userId);
 }

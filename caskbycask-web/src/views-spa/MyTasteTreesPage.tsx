@@ -74,7 +74,7 @@ export default function MyTasteTreesPage() {
       <Toast toasts={toasts} onRemove={removeToast} />
       <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">WHISKY TASTE TREE</p>
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">{t('tasteTree.eyebrow')}</p>
           <h1 className="mt-2 text-3xl font-black text-neutral-950">{t('tasteTree.myTrees')}</h1>
           <p className="mt-2 text-sm text-neutral-500">{t('tasteTree.myTreesDesc')}</p>
         </div>

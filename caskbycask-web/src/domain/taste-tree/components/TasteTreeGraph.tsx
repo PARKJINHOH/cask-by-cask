@@ -1,317 +1,300 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type MouseEvent as ReactMouseEvent,
-  type PointerEvent as ReactPointerEvent,
-} from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { TasteTreeContent } from '../types/tasteTree.types'
+import {
+  Background,
+  ConnectionLineType,
+  ConnectionMode,
+  Controls,
+  Handle,
+  MarkerType,
+  NodeResizer,
+  Position,
+  ReactFlow,
+  useNodesState,
+  type Connection,
+  type ConnectionLineComponentProps,
+  type Node as FlowNode,
+  type NodeProps,
+  type ResizeParams,
+} from '@xyflow/react'
+import '@xyflow/react/dist/style.css'
+import type { TasteTreeContent, TasteTreeEdge, TasteTreeNode } from '../types/tasteTree.types'
+import MovableTasteTreeEdge, { type TasteTreeFlowEdge } from './TasteTreeEdge'
+
+export type TasteTreeSourceHandle = 'point-top' | 'point-left' | 'point-right' | 'point-bottom'
+export type TasteTreeTargetHandle = TasteTreeSourceHandle
 
 interface TasteTreeGraphProps {
   content: TasteTreeContent
   activeNodeKeys?: string[]
-  focusNodeKey?: string
+  activeEdgeKeys?: string[]
   compact?: boolean
+  editable?: boolean
+  language?: 'ko' | 'en'
+  selectedNodeKey?: string
+  selectedEdgeKey?: string
   onNodeClick?: (nodeKey: string) => void
+  onEdgeClick?: (edgeKey: string) => void
+  onPaneClick?: () => void
+  onMoveNode?: (nodeKey: string, x: number, y: number) => void
+  onResizeNode?: (nodeKey: string, x: number, y: number, width: number, height: number) => void
+  onDeleteNode?: (nodeKey: string) => void
+  onConnect?: (
+    sourceKey: string,
+    targetKey: string,
+    sourceHandle?: TasteTreeSourceHandle,
+    targetHandle?: TasteTreeTargetHandle,
+  ) => void
+  onReconnectEdge?: (
+    edgeKey: string,
+    sourceKey: string,
+    targetKey: string,
+    sourceHandle?: TasteTreeSourceHandle,
+    targetHandle?: TasteTreeTargetHandle,
+  ) => void
+  onDeleteEdge?: (edgeKey: string) => void
+  onUpdateEdge?: (edgeKey: string, patch: Partial<TasteTreeEdge>) => void
 }
 
-const NODE_WIDTH = 184
-const NODE_HEIGHT = 76
-const VIEW_PADDING = 20
-const MAX_ZOOM = 1.8
-
-interface GraphView {
-  scale: number
-  x: number
-  y: number
+interface TreeNodeData extends Record<string, unknown> {
+  node: TasteTreeNode
+  isEn: boolean
+  active: boolean
+  editable: boolean
+  onDeleteNode?: TasteTreeGraphProps['onDeleteNode']
+  onResizeNode?: TasteTreeGraphProps['onResizeNode']
 }
 
-interface DragStart {
-  pointerId: number
-  startX: number
-  startY: number
-  viewX: number
-  viewY: number
+type TreeFlowNode = FlowNode<TreeNodeData, 'taste-tree'>
+
+const editableHandleClass = '!h-3 !w-3 !border-2 !border-white !bg-amber-700'
+const readonlyHandleClass = '!h-2 !w-2 !border-0 !opacity-0'
+const emptyActiveKeys: string[] = []
+
+function TreeNodeCard({ data, selected }: NodeProps<TreeFlowNode>) {
+  const { node, isEn, active, editable, onDeleteNode, onResizeNode } = data
+  const { t } = useTranslation(undefined, { lng: isEn ? 'en' : 'ko' })
+  const title = isEn ? node.titleEn || node.titleKo : node.titleKo
+  const description = isEn ? node.descriptionEn || node.descriptionKo : node.descriptionKo
+  const whisky = node.whisky
+  const image = node.imageHidden ? null : whisky?.imageOverrideUrl || node.imageUrl || whisky?.imageUrl
+  const handleClass = editable ? editableHandleClass : readonlyHandleClass
+
+  return (
+    <article className={`group relative h-full w-full min-h-[128px] overflow-visible rounded-[6px] border bg-white shadow-[0_10px_28px_rgba(70,45,25,0.09)] transition-colors ${
+      active ? 'border-amber-600 ring-4 ring-amber-100' : selected ? 'border-stone-800 ring-2 ring-stone-200' : 'border-stone-200'
+    }`}>
+      <NodeResizer
+        isVisible={editable && selected}
+        color="#b45309"
+        minWidth={180}
+        minHeight={image ? 320 : 128}
+        maxWidth={420}
+        maxHeight={760}
+        keepAspectRatio
+        handleClassName="!h-3 !w-3 !rounded-[2px] !border-2 !border-white !bg-amber-700"
+        lineClassName="!border-amber-700"
+        onResizeEnd={(_, params: ResizeParams) => onResizeNode?.(
+          node.key,
+          Math.round(params.x),
+          Math.round(params.y),
+          Math.round(params.width),
+          Math.round(params.height),
+        )}
+      />
+      {node.type !== 'START' && <Handle id="point-top" type="source" position={Position.Top} isConnectable={editable} className={handleClass} />}
+      <Handle id="point-left" type="source" position={Position.Left} isConnectable={editable} className={handleClass} />
+      <Handle id="point-right" type="source" position={Position.Right} isConnectable={editable} className={handleClass} />
+      <Handle id="point-bottom" type="source" position={Position.Bottom} isConnectable={editable} className={handleClass} />
+
+      {node.type !== 'WHISKY' && <span className={`absolute left-2.5 top-2.5 z-10 inline-flex rounded-[3px] px-1.5 py-0.5 text-[8px] font-black tracking-wide ${
+        node.type === 'START' ? 'bg-stone-950 text-white' : 'bg-stone-100 text-stone-700'
+      }`}>{t(`tasteTree.nodeTypes.${node.type}`)}</span>}
+
+      {image && (
+        <div className="aspect-[3/4] w-full overflow-hidden rounded-t-[5px] bg-[#f3efea]">
+          <img src={image} alt="" className="mx-auto h-full w-auto max-w-none" />
+        </div>
+      )}
+      <div className={`flex flex-col items-center justify-center p-4 text-center ${image ? 'min-h-[84px]' : 'min-h-[128px] pt-9'}`}>
+        <h3 className="line-clamp-2 w-full text-center text-sm font-black leading-5 text-stone-950">{title}</h3>
+        {description && <p className="mt-2 line-clamp-2 w-full whitespace-pre-line break-keep text-center text-[11px] font-semibold leading-4 text-stone-500">{description}</p>}
+        {(whisky?.priceText || whisky?.priceAmount != null) && (
+          <p className="mt-2 text-[11px] font-bold text-amber-800">
+            {whisky.priceText || `${new Intl.NumberFormat(isEn ? 'en-US' : 'ko-KR').format(whisky.priceAmount!)} ${whisky.currencyCode || 'KRW'}`}
+          </p>
+        )}
+      </div>
+
+      {editable && node.type !== 'START' && (
+        <button type="button" onClick={(event) => { event.stopPropagation(); onDeleteNode?.(node.key) }}
+          className="nodrag absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center rounded-[5px] border border-red-200 bg-white text-base font-black text-red-600 shadow-md hover:bg-red-50" aria-label={t('tasteTree.builder.deleteNode')}>−</button>
+      )}
+    </article>
+  )
+}
+
+const nodeTypes = { 'taste-tree': TreeNodeCard }
+const edgeTypes = { 'taste-tree-edge': MovableTasteTreeEdge }
+
+function inferSourceHandle(edge: TasteTreeEdge, nodes: Map<string, TasteTreeNode>): TasteTreeSourceHandle {
+  if (edge.sourceHandle?.startsWith('point-')) return edge.sourceHandle as TasteTreeSourceHandle
+  if (edge.sourceHandle === 'source-left') return 'point-left'
+  if (edge.sourceHandle === 'source-right') return 'point-right'
+  if (edge.sourceHandle === 'source-bottom') return 'point-bottom'
+  const source = nodes.get(edge.sourceNodeKey)
+  const target = nodes.get(edge.targetNodeKey)
+  if (!source || !target) return 'point-bottom'
+  const xDifference = target.positionX - source.positionX
+  const yDifference = target.positionY - source.positionY
+  if (Math.abs(xDifference) > Math.abs(yDifference) * 0.65) return xDifference < 0 ? 'point-left' : 'point-right'
+  return yDifference < 0 ? 'point-top' : 'point-bottom'
+}
+
+function normalizeTargetHandle(value?: string | null): TasteTreeTargetHandle {
+  if (value?.startsWith('point-')) return value as TasteTreeTargetHandle
+  if (value === 'target-left') return 'point-left'
+  if (value === 'target-right') return 'point-right'
+  return 'point-top'
+}
+
+function StraightArrowConnectionLine({ fromX, fromY, toX, toY }: ConnectionLineComponentProps) {
+  return <g>
+    <defs><marker id="taste-tree-drag-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#92400e" /></marker></defs>
+    <path d={`M ${fromX},${fromY} L ${toX},${toY}`} fill="none" stroke="#92400e" strokeWidth="2.5" markerEnd="url(#taste-tree-drag-arrow)" />
+  </g>
 }
 
 export default function TasteTreeGraph({
   content,
-  activeNodeKeys = [],
-  focusNodeKey,
+  activeNodeKeys = emptyActiveKeys,
+  activeEdgeKeys = emptyActiveKeys,
   compact = false,
+  editable = false,
+  language,
+  selectedNodeKey,
+  selectedEdgeKey,
   onNodeClick,
+  onEdgeClick,
+  onPaneClick,
+  onMoveNode,
+  onResizeNode,
+  onDeleteNode,
+  onConnect,
+  onReconnectEdge,
+  onDeleteEdge,
+  onUpdateEdge,
 }: TasteTreeGraphProps) {
-  const { i18n, t } = useTranslation()
-  const isEn = i18n.language === 'en'
-  const viewportRef = useRef<HTMLDivElement>(null)
-  const dragStartRef = useRef<DragStart | null>(null)
-  const draggedRef = useRef(false)
-  const previousFocusKeyRef = useRef(focusNodeKey)
-  const [fitScale, setFitScale] = useState(1)
-  const [view, setView] = useState<GraphView>({ scale: 1, x: VIEW_PADDING, y: VIEW_PADDING })
-  const [dragging, setDragging] = useState(false)
-  const active = useMemo(() => new Set(activeNodeKeys), [activeNodeKeys])
-  const nodes = content.nodes ?? []
-  const positions = useMemo(() => {
-    const map = new Map<string, { x: number; y: number }>()
-    nodes.forEach((node, index) => {
-      map.set(node.key, {
-        x: node.positionX ?? 40 + (index % 4) * 230,
-        y: node.positionY ?? 30 + Math.floor(index / 4) * 150,
-      })
-    })
-    return map
-  }, [nodes])
-  const width = Math.max(760, ...Array.from(positions.values()).map((p) => p.x + NODE_WIDTH + 60))
-  const height = Math.max(440, ...Array.from(positions.values()).map((p) => p.y + NODE_HEIGHT + 60))
+  const { t, i18n } = useTranslation()
+  const isEn = language ? language === 'en' : i18n.language === 'en'
+  const activeNodes = useMemo(() => new Set(activeNodeKeys), [activeNodeKeys])
+  const activeEdges = useMemo(() => new Set(activeEdgeKeys), [activeEdgeKeys])
+  const contentNodeMap = useMemo(() => new Map(content.nodes.map((node) => [node.key, node])), [content.nodes])
 
-  const centeredView = useCallback((scale: number) => {
-    const viewport = viewportRef.current
-    if (!viewport) return { scale, x: VIEW_PADDING, y: VIEW_PADDING }
+  const calculatedNodes = useMemo<TreeFlowNode[]>(() => content.nodes.map((node, index) => ({
+    id: node.key,
+    type: 'taste-tree',
+    position: { x: node.positionX ?? 80 + (index % 4) * 280, y: node.positionY ?? 50 + Math.floor(index / 4) * 250 },
+    data: { node, isEn, active: activeNodes.has(node.key), editable, onDeleteNode, onResizeNode },
+    style: {
+      width: node.width ?? 220,
+      ...(node.height != null ? { height: node.height } : {}),
+    },
+    selected: selectedNodeKey === node.key,
+    draggable: editable,
+    connectable: editable,
+  })), [activeNodes, content.nodes, editable, isEn, onDeleteNode, onResizeNode, selectedNodeKey])
+  const [nodes, setNodes, onNodesChange] = useNodesState<TreeFlowNode>(calculatedNodes)
+
+  useEffect(() => {
+    setNodes(calculatedNodes)
+  }, [calculatedNodes, setNodes])
+
+  const edges = useMemo<TasteTreeFlowEdge[]>(() => content.edges.map((edge) => {
+    const active = activeEdges.has(edge.key)
+    const selected = selectedEdgeKey === edge.key
+    const color = active ? '#b45309' : selected ? '#292524' : '#b9a99b'
     return {
-      scale,
-      x: Math.max(VIEW_PADDING, (viewport.clientWidth - width * scale) / 2),
-      y: Math.max(VIEW_PADDING, (viewport.clientHeight - height * scale) / 2),
+      id: edge.key,
+      source: edge.sourceNodeKey,
+      target: edge.targetNodeKey,
+      sourceHandle: inferSourceHandle(edge, contentNodeMap),
+      targetHandle: normalizeTargetHandle(edge.targetHandle),
+      type: 'taste-tree-edge',
+      animated: editable && active,
+      selected,
+      reconnectable: editable && selected,
+      selectable: editable,
+      interactionWidth: 24,
+      markerEnd: { type: MarkerType.ArrowClosed, color },
+      style: { stroke: color, strokeWidth: active || selected ? 4 : 2 },
+      deletable: editable,
+      data: {
+        edge,
+        label: isEn ? edge.labelEn || edge.labelKo : edge.labelKo,
+        editable,
+        active,
+        labelMoveAria: t('tasteTree.builder.edgeLabelMove', { lng: isEn ? 'en' : 'ko' }),
+        onSelectEdge: onEdgeClick,
+        onUpdateEdge,
+      },
     }
-  }, [height, width])
+  }), [activeEdges, content.edges, contentNodeMap, editable, isEn, onEdgeClick, onUpdateEdge, selectedEdgeKey, t])
 
-  const fitView = useCallback(() => {
-    const viewport = viewportRef.current
-    if (!viewport) return
-    const nextScale = Math.min(
-      1,
-      Math.max(0.1, (viewport.clientWidth - VIEW_PADDING * 2) / width),
-      Math.max(0.1, (viewport.clientHeight - VIEW_PADDING * 2) / height),
+  const connect = useCallback((connection: Connection) => {
+    if (!connection.source || !connection.target) return
+    onConnect?.(
+      connection.source,
+      connection.target,
+      (connection.sourceHandle ?? undefined) as TasteTreeSourceHandle | undefined,
+      (connection.targetHandle ?? undefined) as TasteTreeTargetHandle | undefined,
     )
-    setFitScale(nextScale)
-    setView(centeredView(nextScale))
-  }, [centeredView, height, width])
-
-  useLayoutEffect(() => {
-    const viewport = viewportRef.current
-    if (!viewport) return
-    fitView()
-    const observer = new ResizeObserver(fitView)
-    observer.observe(viewport)
-    return () => observer.disconnect()
-  }, [fitView])
-
-  const zoomAt = useCallback((nextScale: number, focusX: number, focusY: number) => {
-    const clampedScale = Math.min(MAX_ZOOM, Math.max(fitScale, nextScale))
-    if (clampedScale <= fitScale + 0.001) {
-      setView(centeredView(fitScale))
-      return
-    }
-    setView((previous) => {
-      const contentX = (focusX - previous.x) / previous.scale
-      const contentY = (focusY - previous.y) / previous.scale
-      return {
-        scale: clampedScale,
-        x: focusX - contentX * clampedScale,
-        y: focusY - contentY * clampedScale,
-      }
-    })
-  }, [centeredView, fitScale])
-
-  const zoomFromCenter = (factor: number) => {
-    const viewport = viewportRef.current
-    if (!viewport) return
-    zoomAt(view.scale * factor, viewport.clientWidth / 2, viewport.clientHeight / 2)
-  }
-
-  const handleWheel = useCallback((event: WheelEvent) => {
-    const viewport = viewportRef.current
-    if (!viewport) return
-    event.preventDefault()
-    const bounds = viewport.getBoundingClientRect()
-    zoomAt(
-      view.scale * (event.deltaY < 0 ? 1.12 : 1 / 1.12),
-      event.clientX - bounds.left,
-      event.clientY - bounds.top,
-    )
-  }, [view.scale, zoomAt])
-
-  useEffect(() => {
-    const viewport = viewportRef.current
-    if (!viewport) return
-    viewport.addEventListener('wheel', handleWheel, { passive: false })
-    return () => viewport.removeEventListener('wheel', handleWheel)
-  }, [handleWheel])
-
-  useEffect(() => {
-    if (!focusNodeKey || previousFocusKeyRef.current === focusNodeKey) return
-    previousFocusKeyRef.current = focusNodeKey
-
-    const viewport = viewportRef.current
-    const position = positions.get(focusNodeKey)
-    if (!viewport || !position) return
-
-    const nextScale = Math.min(MAX_ZOOM, Math.max(0.62, Math.min(1.15, fitScale * 1.7)))
-    const nodeCenterX = position.x + NODE_WIDTH / 2
-    const nodeCenterY = position.y + NODE_HEIGHT / 2
-    setView({
-      scale: nextScale,
-      x: viewport.clientWidth / 2 - nodeCenterX * nextScale,
-      y: viewport.clientHeight / 2 - nodeCenterY * nextScale,
-    })
-  }, [fitScale, focusNodeKey, positions])
-
-  const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.pointerType === 'mouse' && event.button !== 0) return
-    draggedRef.current = false
-    dragStartRef.current = {
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      startY: event.clientY,
-      viewX: view.x,
-      viewY: view.y,
-    }
-  }
-
-  const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const start = dragStartRef.current
-    if (!start || start.pointerId !== event.pointerId) return
-    const deltaX = event.clientX - start.startX
-    const deltaY = event.clientY - start.startY
-    if (!draggedRef.current && Math.hypot(deltaX, deltaY) < 4) return
-
-    if (!draggedRef.current) {
-      draggedRef.current = true
-      event.currentTarget.setPointerCapture(event.pointerId)
-      setDragging(true)
-    }
-    event.preventDefault()
-    setView((previous) => ({
-      ...previous,
-      x: start.viewX + deltaX,
-      y: start.viewY + deltaY,
-    }))
-  }
-
-  const finishDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (dragStartRef.current?.pointerId !== event.pointerId) return
-    const wasDragged = draggedRef.current
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId)
-    }
-    dragStartRef.current = null
-    setDragging(false)
-    if (wasDragged) {
-      window.setTimeout(() => {
-        draggedRef.current = false
-      }, 0)
-    }
-  }
-
-  const suppressClickAfterDrag = (event: ReactMouseEvent<HTMLDivElement>) => {
-    if (!draggedRef.current) return
-    event.preventDefault()
-    event.stopPropagation()
-    draggedRef.current = false
-  }
+  }, [onConnect])
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-stone-50">
-      <div className="flex items-center justify-between border-b border-neutral-200 bg-white px-3 py-2">
-        <p className="text-xs font-bold text-neutral-700">{t('tasteTree.fullTree')}</p>
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => zoomFromCenter(1 / 1.12)}
-            className="h-7 rounded-md border border-neutral-300 px-2 text-xs font-semibold text-neutral-600 hover:bg-neutral-50"
-            aria-label={t('tasteTree.zoomOut')}
-          >
-            {t('tasteTree.zoomOut')}
-          </button>
-          <button
-            type="button"
-            onClick={() => zoomFromCenter(1.12)}
-            className="h-7 rounded-md border border-neutral-300 px-2 text-xs font-semibold text-neutral-600 hover:bg-neutral-50"
-            aria-label={t('tasteTree.zoomIn')}
-          >
-            {t('tasteTree.zoomIn')}
-          </button>
-          <button
-            type="button"
-            onClick={fitView}
-            className="h-7 rounded-md border border-neutral-300 px-2 text-xs font-semibold text-neutral-600 hover:bg-neutral-50"
-          >
-            {t('tasteTree.resetView')}
-          </button>
-        </div>
-      </div>
-      <div
-        ref={viewportRef}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={finishDrag}
-        onPointerCancel={finishDrag}
-        onClickCapture={suppressClickAfterDrag}
-        className={`${compact ? 'h-[390px]' : 'h-[560px]'} relative touch-none select-none overflow-hidden overscroll-contain ${dragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+    <div className={`taste-tree-graph overflow-hidden rounded-[8px] border border-stone-200 bg-[#eeeae5] shadow-inner ${compact ? 'h-[420px]' : editable ? 'h-[720px]' : 'h-[620px]'}`}>
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        fitView
+        fitViewOptions={{ padding: 0.18 }}
+        minZoom={0.18}
+        maxZoom={1.8}
+        nodesDraggable={editable}
+        nodesConnectable={editable}
+        connectionMode={ConnectionMode.Loose}
+        connectionLineType={ConnectionLineType.Straight}
+        connectionLineComponent={StraightArrowConnectionLine}
+        edgesReconnectable={editable}
+        elementsSelectable={editable || Boolean(onNodeClick)}
+        onNodeClick={(_, node) => onNodeClick?.(node.id)}
+        onEdgeClick={(_, edge) => onEdgeClick?.(edge.id)}
+        onPaneClick={onPaneClick}
+        onNodesChange={onNodesChange}
+        onNodeDragStop={(_, node) => onMoveNode?.(node.id, Math.round(node.position.x), Math.round(node.position.y))}
+        onConnect={connect}
+        onReconnect={(edge, connection) => {
+          if (!connection.source || !connection.target) return
+          onReconnectEdge?.(
+            edge.id,
+            connection.source,
+            connection.target,
+            (connection.sourceHandle ?? undefined) as TasteTreeSourceHandle | undefined,
+            (connection.targetHandle ?? undefined) as TasteTreeTargetHandle | undefined,
+          )
+        }}
+        onEdgesDelete={(deleted) => deleted.forEach((edge) => onDeleteEdge?.(edge.id))}
+        deleteKeyCode={editable ? ['Backspace', 'Delete'] : null}
+        reconnectRadius={18}
+        elevateEdgesOnSelect
+        colorMode="light"
+        proOptions={{ hideAttribution: true }}
       >
-        <div
-          className={`absolute left-0 top-0 origin-top-left will-change-transform ${dragging ? '' : 'transition-transform duration-300 ease-out'}`}
-          style={{ width, height, transform: `translate3d(${view.x}px, ${view.y}px, 0) scale(${view.scale})` }}
-        >
-          <svg className="absolute inset-0 h-full w-full" viewBox={`0 0 ${width} ${height}`} aria-hidden="true">
-            {nodes.flatMap((node) =>
-              (node.options ?? []).map((option) => {
-                const source = positions.get(node.key)
-                const target = positions.get(option.targetNodeKey)
-                if (!source || !target) return null
-                const highlighted = active.has(node.key) && active.has(option.targetNodeKey)
-                const x1 = source.x + NODE_WIDTH / 2
-                const y1 = source.y + NODE_HEIGHT
-                const x2 = target.x + NODE_WIDTH / 2
-                const y2 = target.y
-                const midY = y1 + (y2 - y1) / 2
-                return (
-                  <path
-                    key={`${node.key}-${option.key}`}
-                    d={`M ${x1} ${y1} V ${midY} H ${x2} V ${y2}`}
-                    fill="none"
-                    stroke={highlighted ? '#b45309' : '#d6d3d1'}
-                    strokeWidth={highlighted ? 4 : 2}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    opacity={highlighted ? 1 : 0.6}
-                  />
-                )
-              }),
-            )}
-          </svg>
-          {nodes.map((node) => {
-            const position = positions.get(node.key)!
-            const highlighted = active.has(node.key)
-            const title = isEn ? node.titleEn || node.titleKo : node.titleKo
-            return (
-              <button
-                key={node.key}
-                type="button"
-                onClick={() => onNodeClick?.(node.key)}
-                disabled={!onNodeClick}
-                className={`absolute flex flex-col items-center justify-center rounded-2xl border px-3 text-center shadow-sm transition-colors ${
-                  highlighted
-                    ? 'border-amber-600 bg-amber-50 text-amber-950 shadow-amber-100'
-                    : node.type === 'RESULT'
-                      ? 'border-stone-300 bg-stone-100 text-stone-700'
-                      : 'border-neutral-200 bg-white text-neutral-600'
-                } ${onNodeClick ? 'cursor-pointer hover:border-amber-400' : 'pointer-events-none cursor-default'}`}
-                style={{ left: position.x, top: position.y, width: NODE_WIDTH, minHeight: NODE_HEIGHT }}
-              >
-                <span className="mb-1 text-[10px] font-bold uppercase tracking-wider text-amber-700">
-                  {node.type}
-                </span>
-                <span className="line-clamp-2 text-xs font-bold leading-4">{title}</span>
-              </button>
-            )
-          })}
-        </div>
-      </div>
+        <Background color="#d8cec5" gap={28} size={1} />
+        <Controls showInteractive={false} className="!overflow-hidden !rounded-[6px] !border-stone-200 !bg-white !shadow-lg" />
+      </ReactFlow>
     </div>
   )
 }

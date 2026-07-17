@@ -1,18 +1,15 @@
 package com.caskbycask.domain.tastetree.dto;
 
-import com.caskbycask.domain.spirit.entity.enums.BottlingType;
-import com.caskbycask.domain.spirit.entity.enums.WhiskyStyle;
-
 import java.math.BigDecimal;
 import java.util.List;
 
 public record TasteTreeContent(
-        String experienceLevel,
-        List<Node> nodes
+        Integer schemaVersion,
+        List<Node> nodes,
+        List<Edge> edges
 ) {
-    public enum NodeType { START, QUESTION, INFO, RESULT }
-    public enum SelectionType { SINGLE, MULTIPLE }
-    public enum ResultItemType { REGISTERED, CUSTOM }
+    public enum NodeType { START, CHOICE, INFO, WHISKY }
+    public enum WhiskySource { REGISTERED, CUSTOM }
 
     public record Node(
             String key,
@@ -23,48 +20,45 @@ public record TasteTreeContent(
             String descriptionEn,
             Integer positionX,
             Integer positionY,
-            SelectionType selectionType,
-            Integer minSelect,
-            Integer maxSelect,
-            List<Option> options,
-            List<ResultItemDefinition> results,
-            DynamicFilter dynamicFilter
+            Integer width,
+            Integer height,
+            String imageUrl,
+            ImageFit imageFit,
+            Integer imagePositionX,
+            Integer imagePositionY,
+            Integer imageScale,
+            Boolean imageHidden,
+            Whisky whisky
     ) {}
 
-    public record Option(
+    public enum ImageFit { CONTAIN, COVER }
+
+    public record Edge(
             String key,
+            String sourceNodeKey,
+            String targetNodeKey,
             String labelKo,
             String labelEn,
             String descriptionKo,
             String descriptionEn,
-            String targetNodeKey,
-            List<String> attributeCodes
+            Integer sortOrder,
+            String sourceHandle,
+            String targetHandle,
+            Double labelPosition,
+            String lineType
     ) {}
 
-    public record ResultItemDefinition(
-            ResultItemType type,
+    public record Whisky(
+            WhiskySource source,
             Long spiritId,
-            String displayNameKo,
-            String displayNameEn,
+            String nameKo,
+            String nameEn,
             String imageUrl,
-            String customName,
-            String customImageUrl,
+            String imageOverrideUrl,
             BigDecimal priceAmount,
             String currencyCode,
-            String recommendationReasonKo,
-            String recommendationReasonEn
-    ) {}
-
-    public record DynamicFilter(
-            List<WhiskyStyle> styles,
-            Boolean peated,
-            String caskToken,
-            BottlingType bottlingType,
-            Boolean caskStrength,
-            Boolean singleCask,
-            String resultTitleKo,
-            String resultTitleEn,
-            String recommendationReasonKo,
-            String recommendationReasonEn
+            String priceText,
+            String noteKo,
+            String noteEn
     ) {}
 }

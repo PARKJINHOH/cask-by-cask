@@ -1,26 +1,47 @@
 package com.caskbycask.domain.tastetree.controller;
 
 import com.caskbycask.domain.tastetree.dto.*;
+import com.caskbycask.domain.tastetree.entity.enums.TasteTreeType;
 import com.caskbycask.domain.tastetree.service.TasteTreeService;
 import com.caskbycask.global.auth.security.CustomUserDetails;
 import com.caskbycask.global.response.ApiResponse;
+import com.caskbycask.global.response.PageResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.Duration;
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/taste-trees")
 @RequiredArgsConstructor
 public class TasteTreeController {
 
+    private static final String VIEWER_COOKIE = "di_tt_viewer";
     private final TasteTreeService service;
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<PageResponse<TasteTreeSummaryResponse>>> search(
+            @RequestParam(required = false) TasteTreeType type,
+            @RequestParam(defaultValue = "") String keyword,
+            @RequestParam(defaultValue = "LATEST") TasteTreeSort sort,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(ApiResponse.success(
+                service.searchPublic(type, keyword, sort, page, size, userId(userDetails))));
+    }
 
     @GetMapping("/official")
     public ResponseEntity<ApiResponse<List<TasteTreeSummaryResponse>>> getOfficial(
@@ -35,18 +56,39 @@ public class TasteTreeController {
         return ResponseEntity.ok(ApiResponse.success(service.getShared(shareKey, userId(userDetails))));
     }
 
-    @PostMapping("/share/{shareKey}/complete")
-    public ResponseEntity<ApiResponse<TasteTreeResultResponse>> complete(
+    @PostMapping("/share/{shareKey}/view")
+    public ResponseEntity<ApiResponse<TasteTreeEngagementResponse>> recordView(
             @PathVariable String shareKey,
-            @Valid @RequestBody TasteTreeCompleteRequest request,
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success(service.complete(shareKey, request, userId(userDetails))));
+            @CookieValue(name = VIEWER_COOKIE, required = false) String viewerId,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            HttpServletRequest request,
+            HttpServletResponse response) {
+        String resolvedViewerId = viewerId;
+        if (resolvedViewerId == null || resolvedViewerId.length() > 64) {
+            resolvedViewerId = UUID.randomUUID().toString();
+            ResponseCookie cookie = ResponseCookie.from(VIEWER_COOKIE, resolvedViewerId)
+                    .httpOnly(true).secure(request.isSecure()).sameSite("Lax").path("/")
+                    .maxAge(Duration.ofDays(365)).build();
+            response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+        }
+        return ResponseEntity.ok(ApiResponse.success(
+                service.recordView(shareKey, userId(userDetails), resolvedViewerId)));
     }
 
-    @GetMapping("/results/{shareKey}")
-    public ResponseEntity<ApiResponse<TasteTreeResultResponse>> getResult(@PathVariable String shareKey) {
-        return ResponseEntity.ok(ApiResponse.success(service.getResult(shareKey)));
+    @PutMapping("/share/{shareKey}/like")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<TasteTreeEngagementResponse>> like(
+            @PathVariable String shareKey,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(ApiResponse.success(service.like(shareKey, userDetails.getUserId())));
+    }
+
+    @DeleteMapping("/share/{shareKey}/like")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<TasteTreeEngagementResponse>> unlike(
+            @PathVariable String shareKey,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(ApiResponse.success(service.unlike(shareKey, userDetails.getUserId())));
     }
 
     @GetMapping("/me")
@@ -98,15 +140,6 @@ public class TasteTreeController {
         return ResponseEntity.ok(ApiResponse.success(service.toggleBookmark(shareKey, userDetails.getUserId())));
     }
 
-    @PostMapping("/share/{shareKey}/clone")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ApiResponse<TasteTreeViewResponse>> cloneTree(
-            @PathVariable String shareKey,
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success(service.cloneTree(shareKey, userDetails.getUserId())));
-    }
-
     @DeleteMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Void>> delete(
@@ -116,12 +149,14 @@ public class TasteTreeController {
         return ResponseEntity.ok(ApiResponse.success());
     }
 
-    @PostMapping(value = "/images", consumes = "multipart/form-data")
+    @PostMapping(value = "/{id}/images", consumes = "multipart/form-data")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<TasteTreeImageUploadResponse>> uploadImage(
+            @PathVariable Long id,
             @RequestParam("image") MultipartFile file,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        return ResponseEntity.ok(ApiResponse.success(service.uploadImage(file, userDetails.getUserId())));
+        return ResponseEntity.ok(ApiResponse.success(
+                service.uploadImage(file, id, userDetails.getUserId(), false)));
     }
 
     private Long userId(CustomUserDetails details) {

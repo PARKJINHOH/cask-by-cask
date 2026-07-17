@@ -1,35 +1,43 @@
 package com.caskbycask.domain.tastetree.service;
 
-import com.caskbycask.domain.seo.util.SpiritSlugUtils;
 import com.caskbycask.domain.spirit.entity.Spirit;
-import com.caskbycask.domain.spirit.entity.SpiritImage;
 import com.caskbycask.domain.spirit.entity.enums.SpiritStatus;
-import com.caskbycask.domain.spirit.entity.enums.WhiskyStyle;
 import com.caskbycask.domain.spirit.repository.SpiritImageRepository;
 import com.caskbycask.domain.spirit.repository.SpiritRepository;
 import com.caskbycask.domain.tastetree.dto.*;
-import com.caskbycask.domain.tastetree.dto.TasteTreeCompleteRequest.Answer;
-import com.caskbycask.domain.tastetree.dto.TasteTreeContent.*;
+import com.caskbycask.domain.tastetree.dto.TasteTreeContent.Edge;
+import com.caskbycask.domain.tastetree.dto.TasteTreeContent.Node;
+import com.caskbycask.domain.tastetree.dto.TasteTreeContent.NodeType;
+import com.caskbycask.domain.tastetree.dto.TasteTreeContent.Whisky;
+import com.caskbycask.domain.tastetree.dto.TasteTreeContent.WhiskySource;
 import com.caskbycask.domain.tastetree.entity.*;
-import com.caskbycask.domain.tastetree.entity.enums.TasteTreeType;
-import com.caskbycask.domain.tastetree.entity.enums.TasteTreeVersionStatus;
+import com.caskbycask.domain.tastetree.entity.enums.*;
 import com.caskbycask.domain.tastetree.repository.*;
 import com.caskbycask.domain.user.entity.User;
 import com.caskbycask.domain.user.repository.UserRepository;
 import com.caskbycask.global.exception.CustomException;
 import com.caskbycask.global.exception.ErrorCode;
+import com.caskbycask.global.response.PageResponse;
+import com.caskbycask.global.storage.FileStorageService;
 import com.caskbycask.global.storage.ValidatedImageUploader;
 import com.caskbycask.global.storage.ValidatedImageUploader.StoredImage;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.time.LocalDate;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -38,33 +46,64 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class TasteTreeService {
 
-    private static final int MAX_NODES = 100;
-    private static final int MAX_OPTIONS = 8;
-    private static final int MAX_RESULT_ITEMS = 3;
-    private static final int MAX_TRAVERSAL = 120;
+    private static final int SCHEMA_VERSION = 8;
+    private static final int MIN_NODE_WIDTH = 180;
+    private static final int MAX_NODE_WIDTH = 420;
+    private static final int MIN_NODE_HEIGHT = 128;
+    private static final int MAX_NODE_HEIGHT = 760;
+    private static final int MAX_NODES = 150;
+    private static final int MAX_EDGES = 400;
+    private static final Set<String> SOURCE_HANDLES = Set.of(
+            "source-left", "source-right", "source-bottom",
+            "point-top", "point-left", "point-right", "point-bottom");
+    private static final Set<String> TARGET_HANDLES = Set.of(
+            "target-top", "target-left", "target-right",
+            "point-top", "point-left", "point-right", "point-bottom");
+    private static final Set<String> LINE_TYPES = Set.of("STRAIGHT", "STEP");
 
     private final TasteTreeRepository treeRepository;
     private final TasteTreeVersionRepository versionRepository;
     private final TasteTreeBookmarkRepository bookmarkRepository;
-    private final TasteTreeResultRepository resultRepository;
+    private final TasteTreeLikeRepository likeRepository;
+    private final TasteTreeDailyViewRepository dailyViewRepository;
     private final TasteTreeImageRepository imageRepository;
     private final UserRepository userRepository;
     private final SpiritRepository spiritRepository;
     private final SpiritImageRepository spiritImageRepository;
     private final ValidatedImageUploader validatedImageUploader;
+    private final FileStorageService fileStorageService;
     private final ObjectMapper objectMapper;
 
     @Transactional(readOnly = true)
+    public PageResponse<TasteTreeSummaryResponse> searchPublic(
+            TasteTreeType type, String keyword, TasteTreeSort sort, int page, int size, Long userId) {
+        int safeSize = Math.min(Math.max(size, 1), 50);
+        Sort pageSort = switch (sort == null ? TasteTreeSort.LATEST : sort) {
+            case LIKES -> Sort.by(Sort.Order.desc("tree.likeCount"), Sort.Order.desc("publishedAt"), Sort.Order.desc("id"));
+            case VIEWS -> Sort.by(Sort.Order.desc("tree.viewCount"), Sort.Order.desc("publishedAt"), Sort.Order.desc("id"));
+            case LATEST -> Sort.by(Sort.Order.desc("publishedAt"), Sort.Order.desc("id"));
+        };
+        Page<TasteTreeVersion> versions = versionRepository.searchPublished(
+                type, TasteTreeModerationStatus.VISIBLE, trimToEmpty(keyword),
+                PageRequest.of(Math.max(page, 0), safeSize, pageSort));
+        Set<Long> treeIds = versions.stream().map(v -> v.getTree().getId()).collect(Collectors.toSet());
+        Set<Long> bookmarked = userId == null || treeIds.isEmpty() ? Set.of()
+                : new HashSet<>(bookmarkRepository.findTreeIdsByUserIdAndTreeIdIn(userId, new ArrayList<>(treeIds)));
+        Set<Long> liked = userId == null || treeIds.isEmpty() ? Set.of()
+                : new HashSet<>(likeRepository.findTreeIdsByUserIdAndTreeIdIn(userId, new ArrayList<>(treeIds)));
+        return PageResponse.from(versions.map(version -> toSummary(
+                version.getTree(), version, userId, bookmarked.contains(version.getTree().getId()),
+                liked.contains(version.getTree().getId()), version.getVersionNumber(), false)));
+    }
+
+    @Transactional(readOnly = true)
     public List<TasteTreeSummaryResponse> getOfficialTrees(Long userId) {
-        return treeRepository.findAllByTypeWithOwner(TasteTreeType.OFFICIAL).stream()
-                .map(tree -> latestPublished(tree.getId()).map(version -> toSummary(tree, version, userId)).orElse(null))
-                .filter(Objects::nonNull)
-                .toList();
+        return searchPublic(TasteTreeType.OFFICIAL, "", TasteTreeSort.LATEST, 0, 50, userId).content();
     }
 
     @Transactional(readOnly = true)
     public TasteTreeViewResponse getShared(String shareKey, Long userId) {
-        TasteTree tree = findSharedTree(shareKey);
+        TasteTree tree = findPublicTree(shareKey);
         TasteTreeVersion version = latestPublished(tree.getId())
                 .orElseThrow(() -> new CustomException(ErrorCode.TASTE_TREE_NOT_FOUND));
         return toView(tree, version, userId, false);
@@ -73,21 +112,35 @@ public class TasteTreeService {
     @Transactional(readOnly = true)
     public TasteTreeViewResponse getMine(Long id, Long userId) {
         TasteTree tree = findOwnedTree(id, userId);
-        TasteTreeVersion version = draft(tree.getId()).or(() -> latestPublished(tree.getId()))
-                .orElseThrow(() -> new CustomException(ErrorCode.TASTE_TREE_VERSION_NOT_FOUND));
+        TasteTreeVersion version = editableVersion(tree);
         return toView(tree, version, userId, true);
     }
 
     @Transactional(readOnly = true)
     public MyTasteTreesResponse getMyTrees(Long userId) {
-        List<TasteTreeSummaryResponse> created = treeRepository.findAllOwnedBy(userId).stream()
-                .map(tree -> draft(tree.getId()).or(() -> latestPublished(tree.getId()))
-                        .map(version -> toSummary(tree, version, userId)).orElse(null))
+        List<TasteTree> createdTrees = treeRepository.findAllOwnedBy(userId);
+        Map<Long, List<TasteTreeVersion>> versions = versionsByTree(createdTrees);
+        Set<Long> createdLiked = likedTreeIds(userId, createdTrees);
+        List<TasteTreeSummaryResponse> created = createdTrees.stream()
+                .map(tree -> preferredVersion(versions.get(tree.getId()))
+                        .map(version -> toSummary(tree, version, userId, false,
+                                createdLiked.contains(tree.getId()), publishedVersion(versions.get(tree.getId())),
+                                hasDraft(versions.get(tree.getId()))))
+                        .orElse(null))
                 .filter(Objects::nonNull)
                 .toList();
-        List<TasteTreeSummaryResponse> saved = bookmarkRepository.findAllByUserIdWithTree(userId).stream()
-                .map(bookmark -> latestPublished(bookmark.getTree().getId())
-                        .map(version -> toSummary(bookmark.getTree(), version, userId)).orElse(null))
+
+        List<TasteTree> savedTrees = bookmarkRepository.findAllByUserIdWithTree(userId).stream()
+                .map(TasteTreeBookmark::getTree)
+                .filter(tree -> tree.getModerationStatus() == TasteTreeModerationStatus.VISIBLE)
+                .toList();
+        Map<Long, List<TasteTreeVersion>> savedVersions = versionsByTree(savedTrees);
+        Set<Long> savedLiked = likedTreeIds(userId, savedTrees);
+        List<TasteTreeSummaryResponse> saved = savedTrees.stream()
+                .map(tree -> latestPublished(savedVersions.get(tree.getId()))
+                        .map(version -> toSummary(tree, version, userId, true,
+                                savedLiked.contains(tree.getId()), version.getVersionNumber(), false))
+                        .orElse(null))
                 .filter(Objects::nonNull)
                 .toList();
         return new MyTasteTreesResponse(created, saved);
@@ -95,12 +148,23 @@ public class TasteTreeService {
 
     @Transactional
     public TasteTreeViewResponse create(TasteTreeSaveRequest request, Long userId) {
+        return createTree(request, userId, TasteTreeType.USER);
+    }
+
+    @Transactional
+    public TasteTreeViewResponse createOfficial(TasteTreeSaveRequest request, Long adminId) {
+        return createTree(request, adminId, TasteTreeType.OFFICIAL);
+    }
+
+    private TasteTreeViewResponse createTree(TasteTreeSaveRequest request, Long creatorId, TasteTreeType type) {
         validateDraftContent(request.content());
-        User owner = userRepository.getByIdOrThrow(userId);
+        User creator = userRepository.getByIdOrThrow(creatorId);
         TasteTree tree = treeRepository.save(TasteTree.builder()
-                .type(TasteTreeType.USER)
-                .owner(owner)
+                .type(type)
+                .owner(type == TasteTreeType.USER ? creator : null)
+                .createdBy(creator)
                 .shareKey(generateTreeShareKey())
+                .moderationStatus(TasteTreeModerationStatus.VISIBLE)
                 .build());
         TasteTreeVersion version = versionRepository.save(TasteTreeVersion.builder()
                 .tree(tree)
@@ -108,15 +172,25 @@ public class TasteTreeService {
                 .status(TasteTreeVersionStatus.DRAFT)
                 .title(trimRequired(request.title()))
                 .description(trimToNull(request.description()))
-                .contentJson(writeJson(request.content()))
+                .contentJson(writeJson(normalize(request.content())))
                 .build());
-        return toView(tree, version, userId, true);
+        return toView(tree, version, creatorId, true);
     }
 
     @Transactional
     public TasteTreeViewResponse saveDraft(Long id, TasteTreeSaveRequest request, Long userId) {
+        return saveDraft(findOwnedTree(id, userId), request, userId);
+    }
+
+    @Transactional
+    public TasteTreeViewResponse saveOfficialDraft(Long id, TasteTreeSaveRequest request, Long adminId) {
+        TasteTree tree = findAnyTree(id);
+        if (tree.getType() != TasteTreeType.OFFICIAL) throw new CustomException(ErrorCode.TASTE_TREE_ACCESS_DENIED);
+        return saveDraft(tree, request, adminId);
+    }
+
+    private TasteTreeViewResponse saveDraft(TasteTree tree, TasteTreeSaveRequest request, Long actorId) {
         validateDraftContent(request.content());
-        TasteTree tree = findOwnedTree(id, userId);
         TasteTreeVersion version = draft(tree.getId()).orElseGet(() -> versionRepository.save(
                 TasteTreeVersion.builder()
                         .tree(tree)
@@ -124,111 +198,145 @@ public class TasteTreeService {
                         .status(TasteTreeVersionStatus.DRAFT)
                         .title(trimRequired(request.title()))
                         .description(trimToNull(request.description()))
-                        .contentJson(writeJson(request.content()))
+                        .contentJson(writeJson(normalize(request.content())))
                         .build()));
-        version.updateDraft(trimRequired(request.title()), trimToNull(request.description()), writeJson(request.content()));
-        return toView(tree, version, userId, true);
+        version.updateDraft(trimRequired(request.title()), trimToNull(request.description()),
+                writeJson(normalize(request.content())));
+        return toView(tree, version, actorId, true);
     }
 
     @Transactional
     public TasteTreeViewResponse publish(Long id, Long userId) {
-        TasteTree tree = findOwnedTree(id, userId);
-        TasteTreeVersion draft = draft(tree.getId())
-                .orElseThrow(() -> new CustomException(ErrorCode.TASTE_TREE_VERSION_NOT_FOUND));
-        validateContent(readContent(draft), TasteTreeType.USER);
-        latestPublished(tree.getId()).ifPresent(TasteTreeVersion::archive);
-        draft.publish();
-        return toView(tree, draft, userId, true);
+        return publish(findOwnedTree(id, userId), userId);
     }
 
     @Transactional
-    public TasteTreeViewResponse cloneTree(String shareKey, Long userId) {
-        TasteTree source = findSharedTree(shareKey);
-        TasteTreeVersion sourceVersion = latestPublished(source.getId())
+    public TasteTreeViewResponse publishOfficial(Long id, Long adminId) {
+        TasteTree tree = findAnyTree(id);
+        if (tree.getType() != TasteTreeType.OFFICIAL) throw new CustomException(ErrorCode.TASTE_TREE_ACCESS_DENIED);
+        return publish(tree, adminId);
+    }
+
+    private TasteTreeViewResponse publish(TasteTree tree, Long actorId) {
+        TasteTreeVersion draft = draft(tree.getId())
                 .orElseThrow(() -> new CustomException(ErrorCode.TASTE_TREE_VERSION_NOT_FOUND));
-        User owner = userRepository.getByIdOrThrow(userId);
-        TasteTree clone = treeRepository.save(TasteTree.builder()
-                .type(TasteTreeType.USER)
-                .owner(owner)
-                .shareKey(generateTreeShareKey())
-                .sourceTree(source)
-                .build());
-        TasteTreeVersion draft = versionRepository.save(TasteTreeVersion.builder()
-                .tree(clone)
-                .versionNumber(1)
-                .status(TasteTreeVersionStatus.DRAFT)
-                .title(truncate(sourceVersion.getTitle() + " 복사본", 120))
-                .description(sourceVersion.getDescription())
-                .contentJson(sourceVersion.getContentJson())
-                .build());
-        return toView(clone, draft, userId, true);
+        validatePublishedContent(readContent(draft));
+        latestPublished(tree.getId()).ifPresent(TasteTreeVersion::archive);
+        draft.publish();
+        return toView(tree, draft, actorId, true);
     }
 
     @Transactional
     public TasteTreeBookmarkResponse toggleBookmark(String shareKey, Long userId) {
-        TasteTree tree = findSharedTree(shareKey);
+        TasteTree tree = findPublicTree(shareKey);
         Optional<TasteTreeBookmark> existing = bookmarkRepository.findByTreeIdAndUserId(tree.getId(), userId);
         if (existing.isPresent()) {
             bookmarkRepository.delete(existing.get());
             return new TasteTreeBookmarkResponse(false);
         }
         bookmarkRepository.save(TasteTreeBookmark.builder()
-                .tree(tree)
-                .user(userRepository.getReferenceById(userId))
-                .build());
+                .tree(tree).user(userRepository.getReferenceById(userId)).build());
         return new TasteTreeBookmarkResponse(true);
     }
 
     @Transactional
-    public TasteTreeResultResponse complete(String shareKey, TasteTreeCompleteRequest request, Long userId) {
-        TasteTree tree = findSharedTree(shareKey);
-        TasteTreeVersion version = latestPublished(tree.getId())
-                .orElseThrow(() -> new CustomException(ErrorCode.TASTE_TREE_VERSION_NOT_FOUND));
-        TasteTreeContent content = readContent(version);
-        ResolvedPath resolved = resolvePath(content, request.answers());
-        List<TasteTreeResultItemSnapshot> items = resolveResultItems(resolved.resultNode());
-        if (items.isEmpty() || items.size() > MAX_RESULT_ITEMS) {
-            throw new CustomException(ErrorCode.TASTE_TREE_INVALID_STRUCTURE);
+    public TasteTreeEngagementResponse like(String shareKey, Long userId) {
+        TasteTree tree = lockPublicTree(shareKey);
+        ensureCanLike(tree, userId);
+        if (!likeRepository.existsByTreeIdAndUserId(tree.getId(), userId)) {
+            likeRepository.save(TasteTreeLike.builder()
+                    .tree(tree).user(userRepository.getReferenceById(userId)).build());
+            tree.increaseLikeCount();
         }
-
-        TasteTreeResult result = resultRepository.save(TasteTreeResult.builder()
-                .tree(tree)
-                .version(version)
-                .user(userId == null ? null : userRepository.getReferenceById(userId))
-                .shareKey(generateResultShareKey())
-                .pathJson(writeJson(resolved.path()))
-                .itemsJson(writeJson(items))
-                .build());
-        return toResultResponse(result, content, resolved.path(), items);
+        return engagement(tree, true);
     }
 
-    @Transactional(readOnly = true)
-    public TasteTreeResultResponse getResult(String shareKey) {
-        TasteTreeResult result = resultRepository.findByShareKeyWithTreeAndVersion(shareKey)
-                .orElseThrow(() -> new CustomException(ErrorCode.TASTE_TREE_RESULT_NOT_FOUND));
-        List<TasteTreePathSnapshot> path = readJson(result.getPathJson(), new TypeReference<>() {});
-        List<TasteTreeResultItemSnapshot> items = readJson(result.getItemsJson(), new TypeReference<>() {});
-        return toResultResponse(result, readContent(result.getVersion()), path, items);
+    @Transactional
+    public TasteTreeEngagementResponse unlike(String shareKey, Long userId) {
+        TasteTree tree = lockPublicTree(shareKey);
+        Optional<TasteTreeLike> like = likeRepository.findByTreeIdAndUserId(tree.getId(), userId);
+        if (like.isPresent()) {
+            likeRepository.delete(like.get());
+            tree.decreaseLikeCount();
+        }
+        return engagement(tree, false);
+    }
+
+    @Transactional
+    public TasteTreeEngagementResponse recordView(String shareKey, Long userId, String anonymousViewerId) {
+        TasteTree tree = lockPublicTree(shareKey);
+        String viewerKey = userId == null ? "guest:" + anonymousViewerId : "user:" + userId;
+        String hash = sha256(viewerKey);
+        LocalDate today = LocalDate.now();
+        if (!dailyViewRepository.existsByTreeIdAndViewerKeyHashAndViewedDate(tree.getId(), hash, today)) {
+            dailyViewRepository.save(TasteTreeDailyView.builder()
+                    .tree(tree).viewerKeyHash(hash).viewedDate(today).build());
+            tree.increaseViewCount();
+        }
+        boolean liked = userId != null && likeRepository.existsByTreeIdAndUserId(tree.getId(), userId);
+        return engagement(tree, liked);
     }
 
     @Transactional
     public void delete(Long id, Long userId) {
-        treeRepository.delete(findOwnedTree(id, userId));
+        deleteTree(findOwnedTree(id, userId));
     }
 
     @Transactional
-    public TasteTreeImageUploadResponse uploadImage(MultipartFile file, Long userId) {
+    public void deleteAdmin(Long id) {
+        deleteTree(findAnyTree(id));
+    }
+
+    private void deleteTree(TasteTree tree) {
+        Long treeId = tree.getId();
+        List<TasteTreeImageFile> imageFiles = imageRepository.findFilesByTreeId(treeId);
+        imageRepository.deleteAllByTreeId(treeId);
+        treeRepository.deleteById(treeId);
+        deleteFilesAfterCommit(imageFiles);
+    }
+
+    @Transactional
+    public void hideAdmin(Long id) {
+        findAnyTree(id).hide();
+    }
+
+    @Transactional
+    public void restoreAdmin(Long id) {
+        findAnyTree(id).restore();
+    }
+
+    @Transactional(readOnly = true)
+    public List<TasteTreeSummaryResponse> getAdminTrees() {
+        List<TasteTree> trees = treeRepository.findAllWithOwner();
+        Map<Long, List<TasteTreeVersion>> versions = versionsByTree(trees);
+        return trees.stream().map(tree -> preferredVersion(versions.get(tree.getId()))
+                        .map(version -> toSummary(tree, version, null, false, false,
+                                publishedVersion(versions.get(tree.getId())), hasDraft(versions.get(tree.getId()))))
+                        .orElse(null))
+                .filter(Objects::nonNull).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public TasteTreeViewResponse getAdmin(Long id, Long adminId) {
+        TasteTree tree = findAnyTree(id);
+        return toView(tree, editableVersion(tree), adminId, true);
+    }
+
+    @Transactional
+    public TasteTreeImageUploadResponse uploadImage(MultipartFile file, Long treeId, Long userId, boolean admin) {
+        TasteTree tree = admin ? findAnyTree(treeId) : findOwnedTree(treeId, userId);
         StoredImage stored = validatedImageUploader.upload(file, "taste-tree");
-        TasteTreeImage image = imageRepository.save(TasteTreeImage.builder()
-                .uploadedBy(userRepository.getByIdOrThrow(userId))
+        TasteTreeImage image = TasteTreeImage.builder()
+                .tree(tree)
+                .uploadedBy(userRepository.getReferenceById(userId))
                 .originalFileName(file.getOriginalFilename())
                 .savedFileName(stored.savedFileName())
                 .fileSize(file.getSize())
                 .mimeType(stored.mimeType())
                 .imageUrl(stored.imageUrl())
                 .subPath(stored.subPath())
-                .build());
-        return TasteTreeImageUploadResponse.from(image);
+                .build();
+        return TasteTreeImageUploadResponse.from(imageRepository.save(image));
     }
 
     @Transactional(readOnly = true)
@@ -237,265 +345,192 @@ public class TasteTreeService {
                 .map(image -> new TasteTreeImageFile(image.getSavedFileName(), image.getSubPath(), image.getMimeType()));
     }
 
-    private TasteTreeResultResponse toResultResponse(
-            TasteTreeResult result,
-            TasteTreeContent content,
-            List<TasteTreePathSnapshot> path,
-            List<TasteTreeResultItemSnapshot> items
-    ) {
-        TasteTree tree = result.getTree();
-        TasteTreeVersion version = result.getVersion();
-        boolean latest = latestPublished(tree.getId()).map(v -> v.getId().equals(version.getId())).orElse(false);
-        TasteTreePathSnapshot destination = path.isEmpty() ? null : path.get(path.size() - 1);
-        return new TasteTreeResultResponse(
-                result.getId(), result.getShareKey(), tree.getId(), tree.getShareKey(), tree.getType(),
-                version.getTitle(), version.getDescription(),
-                destination == null ? version.getTitle() : destination.titleKo(),
-                destination == null ? version.getTitle() : fallback(destination.titleEn(), destination.titleKo()),
-                ownerNickname(tree), version.getId(),
-                version.getVersionNumber(), latest, content, path, items, result.getCreatedAt());
+    @Transactional
+    public int cleanupOldViews() {
+        return dailyViewRepository.deleteBefore(LocalDate.now().minusDays(2));
     }
 
-    private List<TasteTreeResultItemSnapshot> resolveResultItems(Node resultNode) {
-        if (resultNode.dynamicFilter() != null) {
-            return resolveDynamicItems(resultNode.dynamicFilter());
-        }
-        List<ResultItemDefinition> definitions = safeList(resultNode.results());
-        Map<Long, Spirit> spirits = definitions.stream()
-                .filter(item -> item.type() == ResultItemType.REGISTERED && item.spiritId() != null)
-                .map(ResultItemDefinition::spiritId)
-                .distinct()
-                .map(id -> spiritRepository.findByIdAndStatus(id, SpiritStatus.ACTIVE)
-                        .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_NOT_FOUND)))
+    private TasteTreeContent hydrateContent(TasteTreeContent content) {
+        Set<Long> ids = safeNodes(content).stream()
+                .map(Node::whisky).filter(Objects::nonNull)
+                .filter(whisky -> whisky.source() == WhiskySource.REGISTERED && whisky.spiritId() != null)
+                .map(Whisky::spiritId).collect(Collectors.toSet());
+        if (ids.isEmpty()) return content;
+        Map<Long, Spirit> spirits = spiritRepository.findAllById(ids).stream()
+                .filter(spirit -> spirit.getStatus() == SpiritStatus.ACTIVE)
                 .collect(Collectors.toMap(Spirit::getId, Function.identity()));
-        Map<Long, String> images = primaryImages(spirits.keySet());
-
-        List<TasteTreeResultItemSnapshot> snapshots = new ArrayList<>();
-        for (int i = 0; i < definitions.size(); i++) {
-            ResultItemDefinition item = definitions.get(i);
-            int score = 96 - (i * 6);
-            if (item.type() == ResultItemType.REGISTERED) {
-                Spirit spirit = spirits.get(item.spiritId());
-                snapshots.add(toRegisteredSnapshot(spirit, images.get(spirit.getId()), score,
-                        item.recommendationReasonKo(), item.recommendationReasonEn()));
-            } else {
-                snapshots.add(new TasteTreeResultItemSnapshot(
-                        ResultItemType.CUSTOM, null, item.customName(), item.customName(), item.customImageUrl(),
-                        null, null, item.priceAmount(), item.currencyCode(), score,
-                        item.recommendationReasonKo(), item.recommendationReasonEn()));
-            }
-        }
-        return snapshots;
-    }
-
-    private List<TasteTreeResultItemSnapshot> resolveDynamicItems(DynamicFilter filter) {
-        List<WhiskyStyle> styles = safeList(filter.styles()).isEmpty()
-                ? List.of(WhiskyStyle.values()) : filter.styles();
-        String caskToken = trimToEmpty(filter.caskToken());
-        List<Spirit> spirits = spiritRepository.findTasteTreeRecommendations(
-                styles, filter.peated(), caskToken, filter.bottlingType(), filter.caskStrength(),
-                filter.singleCask(), PageRequest.of(0, MAX_RESULT_ITEMS));
-        if (spirits.isEmpty() && !caskToken.isEmpty()) {
-            spirits = spiritRepository.findTasteTreeRecommendations(
-                    styles, filter.peated(), "", filter.bottlingType(), filter.caskStrength(),
-                    filter.singleCask(), PageRequest.of(0, MAX_RESULT_ITEMS));
-        }
-        Map<Long, String> images = primaryImages(spirits.stream().map(Spirit::getId).collect(Collectors.toSet()));
-        List<TasteTreeResultItemSnapshot> result = new ArrayList<>();
-        for (int i = 0; i < Math.min(MAX_RESULT_ITEMS, spirits.size()); i++) {
-            Spirit spirit = spirits.get(i);
-            result.add(toRegisteredSnapshot(spirit, images.get(spirit.getId()), 96 - (i * 6),
-                    filter.recommendationReasonKo(), filter.recommendationReasonEn()));
-        }
-        return result;
-    }
-
-    private TasteTreeResultItemSnapshot toRegisteredSnapshot(
-            Spirit spirit, String imageUrl, int score, String reasonKo, String reasonEn) {
-        return new TasteTreeResultItemSnapshot(
-                ResultItemType.REGISTERED, spirit.getId(), SpiritSlugUtils.displayNameKo(spirit),
-                SpiritSlugUtils.displayNameEn(spirit), imageUrl, SpiritSlugUtils.canonicalPathKo(spirit),
-                SpiritSlugUtils.canonicalPathEn(spirit), null, null, score, reasonKo, reasonEn);
-    }
-
-    private Map<Long, String> primaryImages(Collection<Long> ids) {
-        if (ids.isEmpty()) return Map.of();
-        return spiritImageRepository.findBySpiritIdInAndIsPrimaryTrue(new ArrayList<>(ids)).stream()
-                .collect(Collectors.toMap(image -> image.getSpirit().getId(), SpiritImage::getImageUrl, (a, b) -> a));
-    }
-
-    private ResolvedPath resolvePath(TasteTreeContent content, List<Answer> answers) {
-        Map<String, Node> nodes = content.nodes().stream().collect(Collectors.toMap(Node::key, Function.identity()));
-        Map<String, Answer> answerMap = answers.stream().collect(Collectors.toMap(Answer::nodeKey, Function.identity(), (a, b) -> a));
-        Node current = content.nodes().stream().filter(node -> node.type() == NodeType.START).findFirst()
-                .orElseThrow(() -> new CustomException(ErrorCode.TASTE_TREE_INVALID_STRUCTURE));
-        List<TasteTreePathSnapshot> path = new ArrayList<>();
-
-        for (int guard = 0; guard < MAX_TRAVERSAL; guard++) {
-            if (current.type() == NodeType.RESULT) {
-                path.add(snapshot(current, List.of()));
-                return new ResolvedPath(path, current);
-            }
-            if (current.type() == NodeType.START || current.type() == NodeType.INFO) {
-                path.add(snapshot(current, List.of()));
-                Option next = safeList(current.options()).stream().findFirst()
-                        .orElseThrow(() -> new CustomException(ErrorCode.TASTE_TREE_INVALID_STRUCTURE));
-                current = requireNode(nodes, next.targetNodeKey());
-                continue;
-            }
-
-            Answer answer = answerMap.get(current.key());
-            if (answer == null) throw new CustomException(ErrorCode.TASTE_TREE_INVALID_STRUCTURE);
-            List<Option> selected = safeList(current.options()).stream()
-                    .filter(option -> answer.optionKeys().contains(option.key()))
-                    .toList();
-            int min = current.minSelect() == null ? 1 : current.minSelect();
-            int max = current.maxSelect() == null ? 1 : current.maxSelect();
-            if (selected.size() < min || selected.size() > max || selected.size() != new HashSet<>(answer.optionKeys()).size()) {
-                throw new CustomException(ErrorCode.TASTE_TREE_INVALID_STRUCTURE);
-            }
-            Set<String> targets = selected.stream().map(Option::targetNodeKey).collect(Collectors.toSet());
-            if (targets.size() != 1) throw new CustomException(ErrorCode.TASTE_TREE_INVALID_STRUCTURE);
-            path.add(snapshot(current, selected));
-            current = requireNode(nodes, targets.iterator().next());
-        }
-        throw new CustomException(ErrorCode.TASTE_TREE_INVALID_STRUCTURE);
-    }
-
-    private TasteTreePathSnapshot snapshot(Node node, List<Option> selected) {
-        return new TasteTreePathSnapshot(node.key(), node.titleKo(), node.titleEn(),
-                selected.stream().map(Option::labelKo).toList(),
-                selected.stream().map(option -> fallback(option.labelEn(), option.labelKo())).toList());
-    }
-
-    private void validateContent(TasteTreeContent content, TasteTreeType treeType) {
-        if (content == null || content.nodes() == null || content.nodes().isEmpty() || content.nodes().size() > MAX_NODES) {
-            invalidStructure();
-        }
-        List<Node> nodes = content.nodes();
-        if (nodes.stream().filter(node -> node.type() == NodeType.START).count() != 1
-                || nodes.stream().noneMatch(node -> node.type() == NodeType.RESULT)) {
-            invalidStructure();
-        }
-        Map<String, Node> byKey = new HashMap<>();
-        for (Node node : nodes) {
-            if (!StringUtils.hasText(node.key()) || node.type() == null || !StringUtils.hasText(node.titleKo())
-                    || byKey.put(node.key(), node) != null) {
-                invalidStructure();
-            }
-        }
-        for (Node node : nodes) {
-            List<Option> options = safeList(node.options());
-            if (options.size() > MAX_OPTIONS) invalidStructure();
-            Set<String> optionKeys = new HashSet<>();
-            for (Option option : options) {
-                if (!StringUtils.hasText(option.key()) || !StringUtils.hasText(option.labelKo())
-                        || !StringUtils.hasText(option.targetNodeKey()) || !byKey.containsKey(option.targetNodeKey())
-                        || !optionKeys.add(option.key())) {
-                    invalidStructure();
-                }
-            }
-            if (node.type() == NodeType.QUESTION) {
-                int min = node.minSelect() == null ? 1 : node.minSelect();
-                int max = node.maxSelect() == null ? 1 : node.maxSelect();
-                if (options.isEmpty() || min < 1 || max < min || max > options.size()) invalidStructure();
-            }
-            if (node.type() == NodeType.RESULT) {
-                List<ResultItemDefinition> results = safeList(node.results());
-                boolean dynamic = node.dynamicFilter() != null;
-                if (treeType == TasteTreeType.USER && dynamic) invalidStructure();
-                if (!dynamic && (results.isEmpty() || results.size() > MAX_RESULT_ITEMS)) invalidStructure();
-                validateResultItems(results);
-            }
-        }
-        validateReachability(nodes, byKey);
+        Map<Long, String> images = spiritImageRepository.findBySpiritIdInAndIsPrimaryTrue(new ArrayList<>(ids)).stream()
+                .collect(Collectors.toMap(image -> image.getSpirit().getId(), image -> image.getImageUrl(), (a, b) -> a));
+        List<Node> nodes = safeNodes(content).stream().map(node -> {
+            Whisky whisky = node.whisky();
+            if (whisky == null || whisky.source() != WhiskySource.REGISTERED) return node;
+            Spirit spirit = spirits.get(whisky.spiritId());
+            if (spirit == null) return node;
+            Whisky hydrated = new Whisky(WhiskySource.REGISTERED, spirit.getId(), spirit.getNameKo(), spirit.getNameEn(),
+                    images.get(spirit.getId()), whisky.imageOverrideUrl(), whisky.priceAmount(), whisky.currencyCode(), whisky.priceText(),
+                    whisky.noteKo(), whisky.noteEn());
+            return new Node(node.key(), node.type(), node.titleKo(), node.titleEn(), node.descriptionKo(),
+                    node.descriptionEn(), node.positionX(), node.positionY(), node.width(), node.height(), node.imageUrl(), node.imageFit(),
+                    node.imagePositionX(), node.imagePositionY(), node.imageScale(), node.imageHidden(), hydrated);
+        }).toList();
+        return new TasteTreeContent(SCHEMA_VERSION, nodes, safeEdges(content));
     }
 
     private void validateDraftContent(TasteTreeContent content) {
-        if (content == null || content.nodes() == null || content.nodes().isEmpty() || content.nodes().size() > MAX_NODES) {
-            invalidStructure();
-        }
-        if (content.nodes().stream().filter(node -> node.type() == NodeType.START).count() != 1) {
-            invalidStructure();
-        }
+        if (content == null || safeNodes(content).isEmpty() || safeNodes(content).size() > MAX_NODES
+                || safeEdges(content).size() > MAX_EDGES) invalidStructure();
         Set<String> nodeKeys = new HashSet<>();
-        for (Node node : content.nodes()) {
-            if (node == null || node.type() == null || !StringUtils.hasText(node.key())
+        for (Node node : safeNodes(content)) {
+            if (node == null || !StringUtils.hasText(node.key()) || node.type() == null
                     || !StringUtils.hasText(node.titleKo()) || !nodeKeys.add(node.key())
-                    || safeList(node.options()).size() > MAX_OPTIONS || node.dynamicFilter() != null) {
-                invalidStructure();
-            }
-            Set<String> optionKeys = new HashSet<>();
-            for (Option option : safeList(node.options())) {
-                if (option == null || !StringUtils.hasText(option.key()) || !optionKeys.add(option.key())) {
-                    invalidStructure();
-                }
-            }
-            if (safeList(node.results()).size() > MAX_RESULT_ITEMS) invalidStructure();
-            for (ResultItemDefinition item : safeList(node.results())) {
-                if (item == null || item.type() == null) invalidStructure();
-                if (item.type() == ResultItemType.REGISTERED && item.spiritId() != null) {
-                    spiritRepository.findByIdAndStatus(item.spiritId(), SpiritStatus.ACTIVE)
-                            .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_NOT_FOUND));
-                }
-            }
+                    || (node.width() != null && (node.width() < MIN_NODE_WIDTH || node.width() > MAX_NODE_WIDTH))
+                    || (node.height() != null && (node.height() < MIN_NODE_HEIGHT || node.height() > MAX_NODE_HEIGHT))
+                    || (node.imagePositionX() != null && (node.imagePositionX() < 0 || node.imagePositionX() > 100))
+                    || (node.imagePositionY() != null && (node.imagePositionY() < 0 || node.imagePositionY() > 100))
+                    || (node.imageScale() != null && (node.imageScale() < 50 || node.imageScale() > 250))) invalidStructure();
+        }
+        Set<String> edgeKeys = new HashSet<>();
+        for (Edge edge : safeEdges(content)) {
+            if (edge == null || !StringUtils.hasText(edge.key()) || !edgeKeys.add(edge.key())
+                    || !StringUtils.hasText(edge.sourceNodeKey()) || !StringUtils.hasText(edge.targetNodeKey())
+                    || edge.sourceNodeKey().equals(edge.targetNodeKey())
+                    || !nodeKeys.contains(edge.sourceNodeKey()) || !nodeKeys.contains(edge.targetNodeKey())
+                    || (edge.descriptionKo() != null && edge.descriptionKo().length() > 300)
+                    || (edge.descriptionEn() != null && edge.descriptionEn().length() > 300)
+                    || (edge.sourceHandle() != null && !SOURCE_HANDLES.contains(edge.sourceHandle()))
+                    || (edge.targetHandle() != null && !TARGET_HANDLES.contains(edge.targetHandle()))
+                    || (edge.labelPosition() != null && (edge.labelPosition() < 0.08 || edge.labelPosition() > 0.92))
+                    || (edge.lineType() != null && !LINE_TYPES.contains(edge.lineType()))) invalidStructure();
         }
     }
 
-    private void validateResultItems(List<ResultItemDefinition> items) {
-        Set<Long> registeredIds = new HashSet<>();
-        for (ResultItemDefinition item : items) {
-            if (item == null || item.type() == null) invalidStructure();
-            if (item.type() == ResultItemType.REGISTERED) {
-                if (item.spiritId() == null || !registeredIds.add(item.spiritId())) invalidStructure();
-                spiritRepository.findByIdAndStatus(item.spiritId(), SpiritStatus.ACTIVE)
-                        .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_NOT_FOUND));
-            } else if (!StringUtils.hasText(item.customName())) {
-                invalidStructure();
-            }
-        }
-    }
-
-    private void validateReachability(List<Node> nodes, Map<String, Node> byKey) {
+    private void validatePublishedContent(TasteTreeContent content) {
+        validateDraftContent(content);
+        List<Node> nodes = safeNodes(content);
+        if (nodes.stream().filter(node -> node.type() == NodeType.START).count() != 1) invalidStructure();
         Node start = nodes.stream().filter(node -> node.type() == NodeType.START).findFirst().orElseThrow();
-        Set<String> visiting = new HashSet<>();
+        Map<String, Node> byKey = nodes.stream().collect(Collectors.toMap(Node::key, Function.identity()));
+        Map<String, List<String>> adjacency = new HashMap<>();
+        Set<String> pairs = new HashSet<>();
+        for (Edge edge : safeEdges(content)) {
+            if (!pairs.add(edge.sourceNodeKey() + "->" + edge.targetNodeKey())) invalidStructure();
+            if (!StringUtils.hasText(edge.labelKo())) invalidStructure();
+            if (byKey.get(edge.sourceNodeKey()).type() == NodeType.START && "point-top".equals(edge.sourceHandle())) invalidStructure();
+            adjacency.computeIfAbsent(edge.sourceNodeKey(), ignored -> new ArrayList<>()).add(edge.targetNodeKey());
+        }
         Set<String> visited = new HashSet<>();
-        walk(start, byKey, visiting, visited);
-        if (visited.size() != nodes.size()) invalidStructure();
+        walkAcyclic(start.key(), adjacency, new HashSet<>(), visited);
+        if (visited.size() != byKey.size()) invalidStructure();
+        if (nodes.stream().noneMatch(node -> node.type() != NodeType.START)) invalidStructure();
+        for (Node node : nodes) {
+            if (node.type() != NodeType.START && node.type() != NodeType.WHISKY) invalidStructure();
+        }
+        validateWhiskies(nodes);
     }
 
-    private void walk(Node node, Map<String, Node> byKey, Set<String> visiting, Set<String> visited) {
-        if (visiting.contains(node.key())) invalidStructure();
-        if (!visited.add(node.key())) return;
-        visiting.add(node.key());
-        for (Option option : safeList(node.options())) walk(requireNode(byKey, option.targetNodeKey()), byKey, visiting, visited);
-        visiting.remove(node.key());
+    private void walkAcyclic(String key, Map<String, List<String>> adjacency, Set<String> visiting, Set<String> visited) {
+        if (!visiting.add(key)) invalidStructure();
+        if (visited.add(key)) {
+            for (String next : adjacency.getOrDefault(key, List.of())) walkAcyclic(next, adjacency, visiting, visited);
+        }
+        visiting.remove(key);
     }
 
-    private TasteTreeViewResponse toView(
-            TasteTree tree, TasteTreeVersion version, Long userId, boolean forceOwner) {
-        return new TasteTreeViewResponse(
-                tree.getId(), tree.getType(), tree.getShareKey(), ownerNickname(tree),
-                forceOwner || (userId != null && tree.isOwnedBy(userId)),
-                userId != null && bookmarkRepository.existsByTreeIdAndUserId(tree.getId(), userId),
-                version.getId(), version.getVersionNumber(), version.getStatus(), version.getTitle(),
-                version.getDescription(), readContent(version), draft(tree.getId()).isPresent(),
-                tree.getCreatedAt(), version.getUpdatedAt());
+    private void validateWhiskies(List<Node> nodes) {
+        Set<Long> registeredIds = nodes.stream().filter(node -> node.type() == NodeType.WHISKY)
+                .map(Node::whisky).filter(Objects::nonNull)
+                .filter(w -> w.source() == WhiskySource.REGISTERED && w.spiritId() != null)
+                .map(Whisky::spiritId).collect(Collectors.toSet());
+        Map<Long, Spirit> spirits = spiritRepository.findAllById(registeredIds).stream()
+                .collect(Collectors.toMap(Spirit::getId, Function.identity()));
+        for (Node node : nodes) {
+            if (node.type() != NodeType.WHISKY) continue;
+            Whisky whisky = node.whisky();
+            if (whisky == null || whisky.source() == null) invalidStructure();
+            if (whisky.source() == WhiskySource.REGISTERED) {
+                Spirit spirit = spirits.get(whisky.spiritId());
+                if (spirit == null || spirit.getStatus() != SpiritStatus.ACTIVE) invalidStructure();
+            }
+            if (whisky.priceText() != null && whisky.priceText().length() > 50) invalidStructure();
+        }
     }
 
-    private TasteTreeSummaryResponse toSummary(TasteTree tree, TasteTreeVersion version, Long userId) {
-        TasteTreeContent content = readContent(version);
-        Integer published = latestPublished(tree.getId()).map(TasteTreeVersion::getVersionNumber).orElse(null);
+    private TasteTreeContent normalize(TasteTreeContent content) {
+        return new TasteTreeContent(SCHEMA_VERSION, safeNodes(content), safeEdges(content));
+    }
+
+    private List<Node> safeNodes(TasteTreeContent content) {
+        return content == null || content.nodes() == null ? List.of() : content.nodes();
+    }
+
+    private List<Edge> safeEdges(TasteTreeContent content) {
+        return content == null || content.edges() == null ? List.of() : content.edges();
+    }
+
+    private TasteTreeSummaryResponse toSummary(TasteTree tree, TasteTreeVersion version, Long userId,
+                                                boolean bookmarked, boolean liked, Integer publishedVersion,
+                                                boolean hasDraft) {
         return new TasteTreeSummaryResponse(
                 tree.getId(), tree.getType(), tree.getShareKey(), ownerNickname(tree), version.getTitle(),
-                version.getDescription(), content.experienceLevel(), published,
-                userId != null && bookmarkRepository.existsByTreeIdAndUserId(tree.getId(), userId),
-                draft(tree.getId()).isPresent(), version.getUpdatedAt());
+                version.getDescription(), publishedVersion,
+                bookmarked, liked, canLike(tree, userId), tree.getLikeCount(), tree.getViewCount(),
+                tree.getModerationStatus(), hasDraft, version.getUpdatedAt());
     }
 
-    private TasteTree findSharedTree(String shareKey) {
-        return treeRepository.findByShareKeyWithOwner(shareKey)
-                .orElseThrow(() -> new CustomException(ErrorCode.TASTE_TREE_NOT_FOUND));
+    private TasteTreeViewResponse toView(TasteTree tree, TasteTreeVersion version, Long userId, boolean editable) {
+        boolean bookmarked = userId != null && bookmarkRepository.existsByTreeIdAndUserId(tree.getId(), userId);
+        boolean liked = userId != null && likeRepository.existsByTreeIdAndUserId(tree.getId(), userId);
+        return new TasteTreeViewResponse(
+                tree.getId(), tree.getType(), tree.getShareKey(), ownerNickname(tree), editable,
+                bookmarked, liked, canLike(tree, userId), tree.getLikeCount(), tree.getViewCount(),
+                tree.getModerationStatus(), version.getId(), version.getVersionNumber(), version.getStatus(),
+                version.getTitle(), version.getDescription(), hydrateContent(readContent(version)),
+                draft(tree.getId()).isPresent(), tree.getCreatedAt(), tree.getUpdatedAt());
+    }
+
+    private Map<Long, List<TasteTreeVersion>> versionsByTree(List<TasteTree> trees) {
+        if (trees.isEmpty()) return Map.of();
+        return versionRepository.findAllByTreeIdInOrderByTreeIdAscVersionNumberDesc(
+                        trees.stream().map(TasteTree::getId).toList()).stream()
+                .collect(Collectors.groupingBy(version -> version.getTree().getId()));
+    }
+
+    private Optional<TasteTreeVersion> preferredVersion(List<TasteTreeVersion> versions) {
+        if (versions == null) return Optional.empty();
+        return versions.stream().filter(v -> v.getStatus() == TasteTreeVersionStatus.DRAFT).findFirst()
+                .or(() -> versions.stream().filter(v -> v.getStatus() == TasteTreeVersionStatus.PUBLISHED).findFirst());
+    }
+
+    private Optional<TasteTreeVersion> latestPublished(List<TasteTreeVersion> versions) {
+        if (versions == null) return Optional.empty();
+        return versions.stream().filter(v -> v.getStatus() == TasteTreeVersionStatus.PUBLISHED).findFirst();
+    }
+
+    private Integer publishedVersion(List<TasteTreeVersion> versions) {
+        return latestPublished(versions).map(TasteTreeVersion::getVersionNumber).orElse(null);
+    }
+
+    private boolean hasDraft(List<TasteTreeVersion> versions) {
+        return versions != null && versions.stream().anyMatch(v -> v.getStatus() == TasteTreeVersionStatus.DRAFT);
+    }
+
+    private Set<Long> likedTreeIds(Long userId, List<TasteTree> trees) {
+        if (trees.isEmpty()) return Set.of();
+        return new HashSet<>(likeRepository.findTreeIdsByUserIdAndTreeIdIn(
+                userId, trees.stream().map(TasteTree::getId).toList()));
+    }
+
+    private TasteTreeVersion editableVersion(TasteTree tree) {
+        return draft(tree.getId()).or(() -> latestPublished(tree.getId()))
+                .orElseThrow(() -> new CustomException(ErrorCode.TASTE_TREE_VERSION_NOT_FOUND));
+    }
+
+    private Optional<TasteTreeVersion> latestPublished(Long treeId) {
+        return versionRepository.findFirstByTreeIdAndStatusOrderByVersionNumberDesc(treeId, TasteTreeVersionStatus.PUBLISHED);
+    }
+
+    private Optional<TasteTreeVersion> draft(Long treeId) {
+        return versionRepository.findFirstByTreeIdAndStatusOrderByVersionNumberDesc(treeId, TasteTreeVersionStatus.DRAFT);
     }
 
     private TasteTree findOwnedTree(Long id, Long userId) {
@@ -503,27 +538,48 @@ public class TasteTreeService {
                 .orElseThrow(() -> new CustomException(ErrorCode.TASTE_TREE_ACCESS_DENIED));
     }
 
-    private Optional<TasteTreeVersion> latestPublished(Long treeId) {
-        return versionRepository.findFirstByTreeIdAndStatusOrderByVersionNumberDesc(
-                treeId, TasteTreeVersionStatus.PUBLISHED);
+    private TasteTree findAnyTree(Long id) {
+        return treeRepository.findByIdWithOwner(id)
+                .orElseThrow(() -> new CustomException(ErrorCode.TASTE_TREE_NOT_FOUND));
     }
 
-    private Optional<TasteTreeVersion> draft(Long treeId) {
-        return versionRepository.findFirstByTreeIdAndStatusOrderByVersionNumberDesc(
-                treeId, TasteTreeVersionStatus.DRAFT);
+    private TasteTree findPublicTree(String shareKey) {
+        TasteTree tree = treeRepository.findByShareKeyWithOwner(shareKey)
+                .orElseThrow(() -> new CustomException(ErrorCode.TASTE_TREE_NOT_FOUND));
+        if (tree.getModerationStatus() != TasteTreeModerationStatus.VISIBLE || latestPublished(tree.getId()).isEmpty()) {
+            throw new CustomException(ErrorCode.TASTE_TREE_NOT_FOUND);
+        }
+        return tree;
+    }
+
+    private TasteTree lockPublicTree(String shareKey) {
+        TasteTree tree = treeRepository.findByShareKeyForUpdate(shareKey)
+                .orElseThrow(() -> new CustomException(ErrorCode.TASTE_TREE_NOT_FOUND));
+        if (tree.getModerationStatus() != TasteTreeModerationStatus.VISIBLE || latestPublished(tree.getId()).isEmpty()) {
+            throw new CustomException(ErrorCode.TASTE_TREE_NOT_FOUND);
+        }
+        return tree;
+    }
+
+    private void ensureCanLike(TasteTree tree, Long userId) {
+        if (!canLike(tree, userId)) throw new CustomException(ErrorCode.TASTE_TREE_ACCESS_DENIED);
+    }
+
+    private boolean canLike(TasteTree tree, Long userId) {
+        return userId != null && !tree.isOwnedBy(userId) && !tree.isCreatedBy(userId);
+    }
+
+    private TasteTreeEngagementResponse engagement(TasteTree tree, boolean liked) {
+        return new TasteTreeEngagementResponse(liked, tree.getLikeCount(), tree.getViewCount());
+    }
+
+    private String ownerNickname(TasteTree tree) {
+        return tree.getOwner() == null ? null : tree.getOwner().getNickname();
     }
 
     private TasteTreeContent readContent(TasteTreeVersion version) {
         try {
             return objectMapper.readValue(version.getContentJson(), TasteTreeContent.class);
-        } catch (JsonProcessingException e) {
-            throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    private <T> T readJson(String json, TypeReference<T> type) {
-        try {
-            return objectMapper.readValue(json, type);
         } catch (JsonProcessingException e) {
             throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR);
         }
@@ -539,28 +595,30 @@ public class TasteTreeService {
 
     private String generateTreeShareKey() {
         String key;
-        do key = randomKey(); while (treeRepository.existsByShareKey(key));
+        do key = UUID.randomUUID().toString().replace("-", "").substring(0, 16);
+        while (treeRepository.existsByShareKey(key));
         return key;
     }
 
-    private String generateResultShareKey() {
-        String key;
-        do key = randomKey(); while (resultRepository.existsByShareKey(key));
-        return key;
+    private String sha256(String value) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(digest);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
-    private String randomKey() {
-        return UUID.randomUUID().toString().replace("-", "").substring(0, 16);
-    }
-
-    private Node requireNode(Map<String, Node> nodes, String key) {
-        Node node = nodes.get(key);
-        if (node == null) invalidStructure();
-        return node;
-    }
-
-    private String ownerNickname(TasteTree tree) {
-        return tree.getOwner() == null ? null : tree.getOwner().getNickname();
+    private void deleteFilesAfterCommit(List<TasteTreeImageFile> images) {
+        if (images.isEmpty()) return;
+        Runnable delete = () -> images.forEach(image -> fileStorageService.delete(image.savedFileName(), image.subPath()));
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            delete.run();
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override public void afterCommit() { delete.run(); }
+        });
     }
 
     private String trimRequired(String value) {
@@ -576,21 +634,7 @@ public class TasteTreeService {
         return StringUtils.hasText(value) ? value.trim() : "";
     }
 
-    private String truncate(String value, int max) {
-        return value.length() <= max ? value : value.substring(0, max);
-    }
-
-    private String fallback(String primary, String fallback) {
-        return StringUtils.hasText(primary) ? primary : fallback;
-    }
-
-    private <T> List<T> safeList(List<T> list) {
-        return list == null ? List.of() : list;
-    }
-
     private void invalidStructure() {
         throw new CustomException(ErrorCode.TASTE_TREE_INVALID_STRUCTURE);
     }
-
-    private record ResolvedPath(List<TasteTreePathSnapshot> path, Node resultNode) {}
 }

@@ -7,7 +7,8 @@ import lombok.*;
 
 @Entity
 @Table(name = "taste_tree_images", indexes = {
-        @Index(name = "idx_taste_tree_images_uploader", columnList = "uploaded_by_id")
+        @Index(name = "idx_taste_tree_images_uploader", columnList = "uploaded_by_id"),
+        @Index(name = "idx_taste_tree_images_tree", columnList = "tree_id")
 }, uniqueConstraints = {
         @UniqueConstraint(name = "ux_taste_tree_images_saved_file", columnNames = "saved_file_name")
 })
@@ -20,6 +21,10 @@ public class TasteTreeImage extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tree_id")
+    private TasteTree tree;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "uploaded_by_id", nullable = false)

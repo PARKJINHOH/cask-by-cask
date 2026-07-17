@@ -8,6 +8,8 @@ interface ImageEditorModalProps {
   onSave: (editedFile: File) => Promise<void>
   isSaving: boolean
   fixedRatio?: string
+  initialCropRatio?: string
+  initialMode?: EditMode
   outputSize?: {
     width: number
     height: number
@@ -31,6 +33,8 @@ export default function ImageEditorModal({
   onSave,
   isSaving,
   fixedRatio,
+  initialCropRatio,
+  initialMode = 'paint',
   outputSize,
 }: ImageEditorModalProps) {
   const [mode, setMode] = useState<EditMode>('paint')
@@ -245,20 +249,21 @@ export default function ImageEditorModal({
       setHistory([initialData])
       setHistoryIndex(0)
 
-      if (fixedRatio) {
-        setCropBox(getInitialCropBoxForRatio(fixedRatio))
+      const startingRatio = fixedRatio ?? initialCropRatio
+      if (startingRatio) {
+        setCropBox(getInitialCropBoxForRatio(startingRatio))
       }
     }
     img.src = imageSrc
-    setMode('paint') // Reset mode
-    if (fixedRatio) {
-      setCropRatio(fixedRatio)
+    setMode(initialMode)
+    if (fixedRatio ?? initialCropRatio) {
+      setCropRatio((fixedRatio ?? initialCropRatio)!)
     } else {
       setCropRatio('free')
     }
     setTiltAngle(0)
     tiltBaseCanvasRef.current = null
-  }, [open, imageSrc, fixedRatio])
+  }, [open, imageSrc, fixedRatio, initialCropRatio, initialMode])
 
   const handleCustomRatioChange = (w: string, h: string) => {
     setCustomRatioW(w)

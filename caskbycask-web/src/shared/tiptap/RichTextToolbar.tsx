@@ -78,11 +78,12 @@ function ToolbarButton({ onClick, isActive, disabled, title, children }: Toolbar
 interface ToolbarGroupProps {
   label: string
   children: ReactNode
+  className?: string
 }
 
-function ToolbarGroup({ label, children }: ToolbarGroupProps) {
+function ToolbarGroup({ label, children, className = '' }: ToolbarGroupProps) {
   return (
-    <div role="group" aria-label={label} className="flex shrink-0 items-center gap-0.5 rounded-md border border-neutral-200/80 bg-white/70 p-0.5">
+    <div role="group" aria-label={label} className={`flex shrink-0 items-center gap-0.5 rounded-md border border-neutral-200/80 bg-white/70 p-0.5 ${className}`}>
       {children}
     </div>
   )
@@ -421,7 +422,7 @@ export default function RichTextToolbar({
             </ToolbarGroup>
           )}
           {s.isImage && (
-            <ToolbarGroup label={t('editor.toolbar.groups.imageEdit')}>
+            <ToolbarGroup label={t('editor.toolbar.groups.imageEdit')} className="di-toolbar-image-size">
               <span className="px-1 text-xs font-medium text-neutral-500">{t('editor.image')}</span>
               {(['25%', '50%', '75%', '100%'] as const).map((width) => (
                 <ToolbarButton

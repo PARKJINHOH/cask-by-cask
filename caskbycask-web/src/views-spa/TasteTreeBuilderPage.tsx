@@ -1,531 +1,684 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
-import { tasteTreeApi } from '@/domain/taste-tree/api/tasteTreeApi'
-import TasteTreeGraph from '@/domain/taste-tree/components/TasteTreeGraph'
-import type {
-  TasteTreeContent,
-  TasteTreeNode,
-  TasteTreeOption,
-  TasteTreeResultDefinition,
-  TasteTreeSavePayload,
-  TasteTreeView,
-} from '@/domain/taste-tree/types/tasteTree.types'
+import { adminTasteTreeApi, tasteTreeApi } from '@/domain/taste-tree/api/tasteTreeApi'
+import TasteTreeGraph, { type TasteTreeSourceHandle, type TasteTreeTargetHandle } from '@/domain/taste-tree/components/TasteTreeGraph'
+import TasteTreePlayer from '@/domain/taste-tree/components/TasteTreePlayer'
+import type { TasteTreeContent, TasteTreeEdge, TasteTreeNode, TasteTreeSavePayload, TasteTreeWhisky } from '@/domain/taste-tree/types/tasteTree.types'
+import { useAuthStore } from '@/domain/auth/store/authStore'
 import { spiritApi } from '@/domain/spirit/api/spiritApi'
 import SeoMeta from '@/shared/components/SeoMeta'
 import Toast from '@/shared/components/Toast'
+import ImageEditorModal from '@/shared/components/ImageEditorModal'
 import { useToast } from '@/shared/hooks/useToast'
 
-const inputClass = 'w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-100'
-const labelClass = 'mb-1.5 block text-xs font-bold text-neutral-700'
+const inputClass = 'w-full rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100'
+const labelClass = 'mb-2.5 block text-xs font-black text-stone-600'
 
-function initialContent(t: TFunction): TasteTreeContent {
+interface PendingNodeImage {
+  file: File
+  previewUrl: string
+}
+
+type PendingNodeImages = Record<string, PendingNodeImage>
+
+function withNodeImageUrl(content: TasteTreeContent, nodeKey: string, imageUrl: string): TasteTreeContent {
   return {
-    experienceLevel: 'USER',
-    nodes: [
-      {
-        key: 'start',
-        type: 'START',
-        titleKo: t('tasteTree.builder.defaultStartTitle'),
-        titleEn: t('tasteTree.builder.defaultStartTitleEn'),
-        descriptionKo: t('tasteTree.builder.defaultStartDesc'),
-        descriptionEn: t('tasteTree.builder.defaultStartDescEn'),
-        positionX: 310,
-        positionY: 20,
-        options: [{ key: 'start-next', labelKo: t('tasteTree.start'), labelEn: 'Start', targetNodeKey: 'question-1' }],
-      },
-      {
-        key: 'question-1',
-        type: 'QUESTION',
-        titleKo: t('tasteTree.builder.defaultQuestion'),
-        titleEn: t('tasteTree.builder.defaultQuestionEn'),
-        positionX: 310,
-        positionY: 170,
-        selectionType: 'SINGLE',
-        minSelect: 1,
-        maxSelect: 1,
-        options: [
-          { key: 'option-1', labelKo: t('tasteTree.builder.defaultOption'), labelEn: t('tasteTree.builder.defaultOptionEn'), targetNodeKey: 'result-1' },
-        ],
-      },
-      {
-        key: 'result-1',
-        type: 'RESULT',
-        titleKo: t('tasteTree.builder.defaultResult'),
-        titleEn: t('tasteTree.builder.defaultResultEn'),
-        positionX: 310,
-        positionY: 340,
-        results: [],
-      },
-    ],
+    ...content,
+    nodes: content.nodes.map((node) => node.key !== nodeKey ? node : node.type !== 'START'
+      ? {
+          ...node,
+          imageHidden: false,
+          whisky: { ...(node.whisky ?? { source: 'CUSTOM' }), imageOverrideUrl: imageUrl },
+        }
+      : { ...node, imageUrl, imageHidden: false }),
   }
+}
+
+function mergeNodeDescription(description?: string | null, legacyBody?: string | null) {
+  const current = description?.trim() ?? ''
+  const legacy = legacyBody?.trim() ?? ''
+  if (!legacy || current.includes(legacy)) return description ?? ''
+  return [current, legacy].filter(Boolean).join('\n')
+}
+
+function normalizeBuilderContent(content: TasteTreeContent): TasteTreeContent {
+  return {
+    ...content,
+    schemaVersion: 8,
+    nodes: content.nodes.map((node) => {
+      if (node.type === 'START') return node
+      const whisky: TasteTreeWhisky = node.whisky ?? {
+        source: 'CUSTOM',
+        nameKo: node.titleKo,
+        nameEn: node.titleEn,
+      }
+      return {
+        ...node,
+        type: 'WHISKY',
+        descriptionKo: mergeNodeDescription(node.descriptionKo, whisky.noteKo),
+        descriptionEn: mergeNodeDescription(node.descriptionEn, whisky.noteEn),
+        whisky: { ...whisky, noteKo: null, noteEn: null },
+      }
+    }),
+  }
+}
+
+function withoutPendingImagePreviews(content: TasteTreeContent, pendingImages: PendingNodeImages): TasteTreeContent {
+  return {
+    ...content,
+    nodes: content.nodes.map((node) => {
+      const previewUrl = pendingImages[node.key]?.previewUrl
+      if (!previewUrl) return node
+      return {
+        ...node,
+        imageUrl: node.imageUrl === previewUrl ? null : node.imageUrl,
+        whisky: node.whisky
+          ? { ...node.whisky, imageOverrideUrl: node.whisky.imageOverrideUrl === previewUrl ? null : node.whisky.imageOverrideUrl }
+          : node.whisky,
+      }
+    }),
+  }
+}
+
+function createInitialContent(t: TFunction): TasteTreeContent {
+  return {
+    schemaVersion: 8,
+    nodes: [{
+      key: 'start', type: 'START', titleKo: t('tasteTree.builder.defaultStartTitle', { lng: 'ko' }),
+      titleEn: t('tasteTree.builder.defaultStartTitle', { lng: 'en' }),
+      descriptionKo: t('tasteTree.builder.defaultStartDesc', { lng: 'ko' }),
+      descriptionEn: t('tasteTree.builder.defaultStartDesc', { lng: 'en' }), positionX: 420, positionY: 40,
+    }],
+    edges: [],
+  }
+}
+
+function wouldCreateCycle(content: TasteTreeContent, source: string, target: string) {
+  const adjacency = new Map<string, string[]>()
+  content.edges.forEach((edge) => adjacency.set(edge.sourceNodeKey, [...(adjacency.get(edge.sourceNodeKey) ?? []), edge.targetNodeKey]))
+  adjacency.set(source, [...(adjacency.get(source) ?? []), target])
+  const stack = [target]
+  const visited = new Set<string>()
+  while (stack.length) {
+    const key = stack.pop()!
+    if (key === source) return true
+    if (visited.has(key)) continue
+    visited.add(key)
+    stack.push(...(adjacency.get(key) ?? []))
+  }
+  return false
 }
 
 function validateForPublish(content: TasteTreeContent) {
-  const nodes = content.nodes
-  const nodeKeys = new Set(nodes.map((node) => node.key))
-  const start = nodes.find((node) => node.type === 'START')
-  if (!start || nodes.filter((node) => node.type === 'START').length !== 1) return 'tasteTree.builder.errorStart'
-  if (!nodes.some((node) => node.type === 'RESULT')) return 'tasteTree.builder.errorResult'
-  for (const node of nodes) {
+  const starts = content.nodes.filter((node) => node.type === 'START')
+  if (starts.length !== 1) return 'tasteTree.builder.errorStart'
+  const pairs = new Set<string>()
+  for (const edge of content.edges) {
+    const pair = `${edge.sourceNodeKey}->${edge.targetNodeKey}`
+    if (pairs.has(pair) || !edge.labelKo.trim()) return 'tasteTree.builder.errorConnection'
+    pairs.add(pair)
+  }
+  const reachable = new Set<string>()
+  const walk = (key: string) => {
+    if (reachable.has(key)) return
+    reachable.add(key)
+    content.edges.filter((edge) => edge.sourceNodeKey === key).forEach((edge) => walk(edge.targetNodeKey))
+  }
+  walk(starts[0].key)
+  if (reachable.size !== content.nodes.length) return 'tasteTree.builder.errorUnreachable'
+  if (!content.nodes.some((node) => node.type !== 'START')) return 'tasteTree.builder.errorWhisky'
+  for (const node of content.nodes) {
     if (!node.titleKo.trim()) return 'tasteTree.builder.errorNodeTitle'
-    if (node.type === 'QUESTION' && !(node.options?.length)) return 'tasteTree.builder.errorQuestionOption'
-    if (node.type === 'RESULT') {
-      const items = node.results ?? []
-      if (items.length < 1 || items.length > 3) return 'tasteTree.builder.errorResultCount'
-      if (items.some((item) => item.type === 'REGISTERED' ? !item.spiritId : !item.customName?.trim())) return 'tasteTree.builder.errorResultItem'
-    }
-    for (const option of node.options ?? []) {
-      if (!option.labelKo.trim() || !option.targetNodeKey || !nodeKeys.has(option.targetNodeKey)) return 'tasteTree.builder.errorOption'
-    }
-    if (node.selectionType === 'MULTIPLE') {
-      const targets = new Set((node.options ?? []).map((option) => option.targetNodeKey))
-      if (targets.size > 1) return 'tasteTree.builder.errorMultiTarget'
+    if (node.type !== 'START') {
+      if (node.type !== 'WHISKY') return 'tasteTree.builder.errorWhisky'
+      if (!node.whisky) return 'tasteTree.builder.errorWhisky'
+      if (node.whisky.source === 'REGISTERED' && !node.whisky.spiritId) return 'tasteTree.builder.errorWhisky'
     }
   }
-  const visited = new Set<string>()
-  const visiting = new Set<string>()
-  const map = new Map(nodes.map((node) => [node.key, node]))
-  const walk = (key: string): boolean => {
-    if (visiting.has(key)) return false
-    if (visited.has(key)) return true
-    visiting.add(key)
-    visited.add(key)
-    for (const option of map.get(key)?.options ?? []) {
-      if (!walk(option.targetNodeKey)) return false
-    }
-    visiting.delete(key)
-    return true
-  }
-  if (!walk(start.key)) return 'tasteTree.builder.errorCycle'
-  if (visited.size !== nodes.length) return 'tasteTree.builder.errorUnreachable'
   return null
 }
 
-export default function TasteTreeBuilderPage() {
+export default function TasteTreeBuilderPage({ admin = false }: { admin?: boolean }) {
   const { id } = useParams<{ id?: string }>()
   const treeId = id ? Number(id) : null
-  const { t, i18n } = useTranslation()
+  const { t, i18n } = useTranslation(undefined, admin ? { lng: 'ko' } : undefined)
+  const isEn = !admin && i18n.language === 'en'
+  const userNickname = useAuthStore((state) => state.user?.nickname ?? null)
   const navigate = useNavigate()
   const { toasts, showToast, removeToast } = useToast()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [content, setContent] = useState<TasteTreeContent>(() => initialContent(t))
-  const [selectedKey, setSelectedKey] = useState('question-1')
+  const [content, setContent] = useState<TasteTreeContent>(() => createInitialContent(t))
+  const [selectedKey, setSelectedKey] = useState('start')
   const [currentId, setCurrentId] = useState<number | null>(treeId)
-  const [version, setVersion] = useState<TasteTreeView | null>(null)
+  const [initializedId, setInitializedId] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [spiritKeyword, setSpiritKeyword] = useState('')
+  const [selectedEdgeKey, setSelectedEdgeKey] = useState<string | null>(null)
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [pendingImages, setPendingImages] = useState<PendingNodeImages>({})
+  const pendingImagesRef = useRef<PendingNodeImages>({})
+
+  useEffect(() => {
+    pendingImagesRef.current = pendingImages
+  }, [pendingImages])
+
+  useEffect(() => () => {
+    Object.values(pendingImagesRef.current).forEach(({ previewUrl }) => URL.revokeObjectURL(previewUrl))
+  }, [])
 
   const detailQuery = useQuery({
-    queryKey: ['taste-trees', 'mine', treeId],
-    queryFn: () => tasteTreeApi.getMineDetail(treeId!).then((response) => response.data.data!),
+    queryKey: [admin ? 'admin-taste-tree' : 'taste-tree-builder', treeId],
+    queryFn: () => (admin ? adminTasteTreeApi.get(treeId!) : tasteTreeApi.getMineDetail(treeId!)).then((response) => response.data.data!),
     enabled: Boolean(treeId),
   })
 
   useEffect(() => {
-    if (!detailQuery.data) return
-    setTitle(detailQuery.data.title)
-    setDescription(detailQuery.data.description ?? '')
-    setContent(detailQuery.data.content)
-    setSelectedKey(detailQuery.data.content.nodes.find((node) => node.type === 'QUESTION')?.key ?? detailQuery.data.content.nodes[0]?.key ?? '')
-    setVersion(detailQuery.data)
-  }, [detailQuery.data])
+    const tree = detailQuery.data
+    if (!tree || initializedId === tree.id) return
+    setTitle(tree.title)
+    setDescription(tree.description ?? '')
+    const normalizedContent = normalizeBuilderContent(tree.content)
+    setContent(normalizedContent)
+    setSelectedKey(normalizedContent.nodes.find((node) => node.type === 'START')?.key ?? normalizedContent.nodes[0]?.key ?? '')
+    setCurrentId(tree.id)
+    setInitializedId(tree.id)
+  }, [detailQuery.data, initializedId])
 
   const selected = content.nodes.find((node) => node.key === selectedKey) ?? content.nodes[0]
   const spiritQuery = useQuery({
-    queryKey: ['taste-tree-builder', 'spirits', spiritKeyword],
+    queryKey: ['taste-tree-builder-spirits', spiritKeyword],
     queryFn: () => spiritApi.autocomplete(spiritKeyword, undefined, true).then((response) => response.data.data ?? []),
-    enabled: selected?.type === 'RESULT' && spiritKeyword.trim().length >= 2,
-    staleTime: 30_000,
+    enabled: selected?.type !== 'START' && spiritKeyword.trim().length >= 2,
   })
 
   const updateNode = (key: string, patch: Partial<TasteTreeNode>) => {
-    setContent((previous) => ({
-      ...previous,
-      nodes: previous.nodes.map((node) => node.key === key ? { ...node, ...patch } : node),
-    }))
+    setContent((previous) => ({ ...previous, nodes: previous.nodes.map((node) => node.key === key ? { ...node, ...patch } : node) }))
   }
 
-  const addNode = (type: 'QUESTION' | 'RESULT' | 'INFO') => {
-    const key = `${type.toLowerCase()}-${Date.now()}`
-    const index = content.nodes.length
+  const discardPendingImage = (nodeKey: string) => {
+    setPendingImages((previous) => {
+      const pending = previous[nodeKey]
+      if (!pending) return previous
+      URL.revokeObjectURL(pending.previewUrl)
+      const next = { ...previous }
+      delete next[nodeKey]
+      return next
+    })
+  }
+
+  const connect = (
+    sourceKey: string,
+    targetKey: string,
+    sourceHandle: TasteTreeSourceHandle = 'point-bottom',
+    targetHandle: TasteTreeTargetHandle = 'point-top',
+    labelKo = t('tasteTree.builder.defaultEdgeLabel', { lng: 'ko' }),
+  ) => {
+    const source = content.nodes.find((node) => node.key === sourceKey)
+    const target = content.nodes.find((node) => node.key === targetKey)
+    if (!source || !target || target.type === 'START'
+      || sourceKey === targetKey || content.edges.some((edge) => edge.sourceNodeKey === sourceKey && edge.targetNodeKey === targetKey)) return
+    if (wouldCreateCycle(content, sourceKey, targetKey)) {
+      showToast(t('tasteTree.builder.errorCycle'), 'error')
+      return
+    }
+    const edge: TasteTreeEdge = {
+      key: `edge-${crypto.randomUUID()}`, sourceNodeKey: sourceKey, targetNodeKey: targetKey,
+      labelKo, labelEn: admin ? null : t('tasteTree.builder.defaultEdgeLabel', { lng: 'en' }),
+      descriptionKo: null, descriptionEn: null,
+      sortOrder: content.edges.filter((candidate) => candidate.sourceNodeKey === sourceKey).length,
+      sourceHandle, targetHandle, lineType: 'STEP',
+    }
+    setContent((previous) => ({ ...previous, edges: [...previous.edges, edge] }))
+    setSelectedKey(targetKey)
+    setSelectedEdgeKey(null)
+  }
+
+  const addNode = () => {
+    const anchor = selected ?? content.nodes[0]
+    const key = `node-${crypto.randomUUID()}`
     const node: TasteTreeNode = {
-      key,
-      type,
-      titleKo: type === 'QUESTION' ? t('tasteTree.builder.newQuestion') : type === 'RESULT' ? t('tasteTree.builder.newResult') : t('tasteTree.builder.newInfo'),
-      titleEn: '',
-      positionX: 60 + (index % 4) * 220,
-      positionY: 160 + Math.floor(index / 4) * 150,
-      ...(type === 'QUESTION' ? { selectionType: 'SINGLE' as const, minSelect: 1, maxSelect: 1, options: [] } : {}),
-      ...(type === 'INFO' ? { options: [] } : {}),
-      ...(type === 'RESULT' ? { results: [] } : {}),
+      key, type: 'WHISKY', titleKo: t('tasteTree.builder.newChoice', { lng: 'ko' }),
+      titleEn: admin ? null : t('tasteTree.builder.newChoice', { lng: 'en' }),
+      descriptionKo: '', descriptionEn: admin ? null : '',
+      positionX: (anchor?.positionX ?? 120) + 280,
+      positionY: (anchor?.positionY ?? 80) + 160,
+      whisky: {
+        source: 'CUSTOM',
+        nameKo: t('tasteTree.builder.newChoice', { lng: 'ko' }),
+        nameEn: admin ? null : t('tasteTree.builder.newChoice', { lng: 'en' }),
+      },
     }
     setContent((previous) => ({ ...previous, nodes: [...previous.nodes, node] }))
     setSelectedKey(key)
+    setSelectedEdgeKey(null)
   }
 
   const deleteNode = (key: string) => {
-    const target = content.nodes.find((node) => node.key === key)
-    if (!target || target.type === 'START') return
+    if (!window.confirm(t('tasteTree.builder.deleteNodeConfirm'))) return
+    discardPendingImage(key)
     setContent((previous) => ({
       ...previous,
-      nodes: previous.nodes
-        .filter((node) => node.key !== key)
-        .map((node) => ({ ...node, options: (node.options ?? []).filter((option) => option.targetNodeKey !== key) })),
+      nodes: previous.nodes.filter((node) => node.key !== key),
+      edges: previous.edges.filter((edge) => edge.sourceNodeKey !== key && edge.targetNodeKey !== key),
     }))
-    setSelectedKey('start')
+    setSelectedKey(content.nodes.find((node) => node.type === 'START')?.key ?? '')
+    setSelectedEdgeKey(null)
   }
 
-  const updateOption = (index: number, patch: Partial<TasteTreeOption>) => {
-    if (!selected) return
-    updateNode(selected.key, {
-      options: (selected.options ?? []).map((option, optionIndex) => optionIndex === index ? { ...option, ...patch } : option),
-    })
+  const updateEdge = (key: string, patch: Partial<TasteTreeEdge>) => {
+    setContent((previous) => ({ ...previous, edges: previous.edges.map((edge) => edge.key === key ? { ...edge, ...patch } : edge) }))
   }
 
-  const addOption = () => {
-    if (!selected || (selected.options?.length ?? 0) >= 8) return
-    const firstTarget = content.nodes.find((node) => node.key !== selected.key)?.key ?? ''
-    const option: TasteTreeOption = {
-      key: `option-${Date.now()}`,
-      labelKo: t('tasteTree.builder.newOption'),
-      labelEn: '',
-      descriptionKo: '',
-      descriptionEn: '',
-      targetNodeKey: firstTarget,
-    }
-    updateNode(selected.key, { options: [...(selected.options ?? []), option] })
+  const deleteEdge = (key: string) => {
+    setContent((previous) => ({ ...previous, edges: previous.edges.filter((edge) => edge.key !== key) }))
+    setSelectedEdgeKey((current) => current === key ? null : current)
   }
 
-  const removeOption = (index: number) => {
-    if (!selected) return
-    updateNode(selected.key, { options: (selected.options ?? []).filter((_, optionIndex) => optionIndex !== index) })
-  }
-
-  const addResultItem = (item: TasteTreeResultDefinition) => {
-    if (!selected || selected.type !== 'RESULT' || (selected.results?.length ?? 0) >= 3) return
-    if (item.type === 'REGISTERED' && selected.results?.some((result) => result.type === 'REGISTERED' && result.spiritId === item.spiritId)) {
-      showToast(t('tasteTree.builder.duplicateSpirit'), 'info')
+  const reconnectEdge = (
+    edgeKey: string,
+    sourceKey: string,
+    targetKey: string,
+    sourceHandle: TasteTreeSourceHandle = 'point-bottom',
+    targetHandle: TasteTreeTargetHandle = 'point-top',
+  ) => {
+    const source = content.nodes.find((node) => node.key === sourceKey)
+    const target = content.nodes.find((node) => node.key === targetKey)
+    const remainingContent = { ...content, edges: content.edges.filter((edge) => edge.key !== edgeKey) }
+    if (!source || !target || target.type === 'START' || sourceKey === targetKey
+      || remainingContent.edges.some((edge) => edge.sourceNodeKey === sourceKey && edge.targetNodeKey === targetKey)) {
+      showToast(t('tasteTree.builder.errorConnection'), 'error')
       return
     }
-    updateNode(selected.key, { results: [...(selected.results ?? []), item] })
-    setSpiritKeyword('')
-  }
-
-  const updateResultItem = (index: number, patch: Partial<TasteTreeResultDefinition>) => {
-    if (!selected) return
-    updateNode(selected.key, {
-      results: (selected.results ?? []).map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item),
-    })
-  }
-
-  const removeResultItem = (index: number) => {
-    if (!selected) return
-    updateNode(selected.key, { results: (selected.results ?? []).filter((_, itemIndex) => itemIndex !== index) })
-  }
-
-  const uploadCustomImage = async (index: number, file?: File) => {
-    if (!file) return
-    try {
-      const response = await tasteTreeApi.uploadImage(file)
-      const imageUrl = response.data.data?.imageUrl
-      if (imageUrl) updateResultItem(index, { customImageUrl: imageUrl })
-    } catch {
-      showToast(t('tasteTree.builder.imageUploadFailed'), 'error')
+    if (wouldCreateCycle(remainingContent, sourceKey, targetKey)) {
+      showToast(t('tasteTree.builder.errorCycle'), 'error')
+      return
     }
+    updateEdge(edgeKey, {
+      sourceNodeKey: sourceKey,
+      targetNodeKey: targetKey,
+      sourceHandle,
+      targetHandle,
+      sortOrder: remainingContent.edges.filter((edge) => edge.sourceNodeKey === sourceKey).length,
+    })
+    setSelectedEdgeKey(edgeKey)
   }
-
-  const payload = (): TasteTreeSavePayload => ({
-    title: title.trim() || t('tasteTree.builder.untitled'),
+  const payload = (nextContent: TasteTreeContent = content): TasteTreeSavePayload => ({
+    title: title.trim(),
     description: description.trim() || null,
-    content,
+    content: nextContent,
   })
 
-  const saveDraft = async () => {
+  const save = async () => {
+    if (!title.trim()) { showToast(t('tasteTree.builder.errorTitle'), 'error'); return null }
     setSaving(true)
     try {
+      const queuedImages = pendingImages
+      const contentWithoutPreviews = withoutPendingImagePreviews(content, queuedImages)
       const response = currentId
-        ? await tasteTreeApi.saveDraft(currentId, payload())
-        : await tasteTreeApi.create(payload())
+        ? await (admin ? adminTasteTreeApi.saveDraft(currentId, payload(contentWithoutPreviews)) : tasteTreeApi.saveDraft(currentId, payload(contentWithoutPreviews)))
+        : await (admin ? adminTasteTreeApi.create(payload(contentWithoutPreviews)) : tasteTreeApi.create(payload(contentWithoutPreviews)))
       const saved = response.data.data!
       setCurrentId(saved.id)
-      setVersion(saved)
-      if (!currentId) navigate(`/taste-trees/${saved.id}/edit`, { replace: true })
+
+      let contentAfterUploads = content
+      const uploadedKeys: string[] = []
+      const failedKeys: string[] = []
+      for (const [nodeKey, pendingImage] of Object.entries(queuedImages)) {
+        if (!contentAfterUploads.nodes.some((node) => node.key === nodeKey)) {
+          uploadedKeys.push(nodeKey)
+          continue
+        }
+        try {
+          const imageResponse = await (admin
+            ? adminTasteTreeApi.uploadImage(saved.id, pendingImage.file)
+            : tasteTreeApi.uploadImage(saved.id, pendingImage.file))
+          const imageUrl = imageResponse.data.data?.imageUrl
+          if (!imageUrl) throw new Error('Image URL is missing')
+          contentAfterUploads = withNodeImageUrl(
+            withoutPendingImagePreviews(contentAfterUploads, { [nodeKey]: pendingImage }),
+            nodeKey,
+            imageUrl,
+          )
+          uploadedKeys.push(nodeKey)
+        } catch {
+          failedKeys.push(nodeKey)
+        }
+      }
+
+      if (Object.keys(queuedImages).length > 0) {
+        setContent(contentAfterUploads)
+        setPendingImages((previous) => {
+          const next = { ...previous }
+          uploadedKeys.forEach((nodeKey) => {
+            const uploaded = next[nodeKey]
+            if (uploaded) URL.revokeObjectURL(uploaded.previewUrl)
+            delete next[nodeKey]
+          })
+          return next
+        })
+        const finalContent = withoutPendingImagePreviews(contentAfterUploads, queuedImages)
+        await (admin
+          ? adminTasteTreeApi.saveDraft(saved.id, payload(finalContent))
+          : tasteTreeApi.saveDraft(saved.id, payload(finalContent)))
+      }
+
       showToast(t('tasteTree.builder.draftSaved'), 'success')
-      return saved
+      if (failedKeys.length > 0) {
+        showToast(t('tasteTree.builder.imageUploadFailed'), 'error')
+        return null
+      }
+      if (!treeId) navigate(admin ? `/admin/taste-trees/${saved.id}/edit` : `/taste-trees/${saved.id}/edit`, { replace: true })
+      return saved.id
     } catch {
       showToast(t('tasteTree.builder.saveFailed'), 'error')
       return null
-    } finally {
-      setSaving(false)
-    }
+    } finally { setSaving(false) }
   }
 
   const publish = async () => {
-    const errorKey = validateForPublish(content)
-    if (!title.trim()) {
-      showToast(t('tasteTree.builder.errorTitle'), 'error')
-      return
-    }
-    if (errorKey) {
-      showToast(t(errorKey), 'error')
-      return
-    }
+    const error = validateForPublish(content)
+    if (error) { showToast(t(error), 'error'); return }
     setPublishing(true)
     try {
-      const saved = await saveDraft()
-      if (!saved) return
-      const response = await tasteTreeApi.publish(saved.id)
-      setVersion(response.data.data!)
+      const savedId = await save()
+      if (!savedId) return
+      await (admin ? adminTasteTreeApi.publish(savedId) : tasteTreeApi.publish(savedId))
       showToast(t('tasteTree.builder.published'), 'success')
+    } catch { showToast(t('tasteTree.builder.publishFailed'), 'error') }
+    finally { setPublishing(false) }
+  }
+
+  const upload = async (file: File) => {
+    if (!selected) return false
+    const nodeKey = selected.key
+    if (!currentId) {
+      const previewUrl = URL.createObjectURL(file)
+      setPendingImages((previous) => {
+        const replaced = previous[nodeKey]
+        if (replaced) URL.revokeObjectURL(replaced.previewUrl)
+        return { ...previous, [nodeKey]: { file, previewUrl } }
+      })
+      setContent((previous) => withNodeImageUrl(previous, nodeKey, previewUrl))
+      return true
+    }
+    try {
+      const response = await (admin ? adminTasteTreeApi.uploadImage(currentId, file) : tasteTreeApi.uploadImage(currentId, file))
+      const url = response.data.data?.imageUrl
+      if (!url) return false
+      const queuedImage = pendingImages[nodeKey]
+      setContent((previous) => withNodeImageUrl(
+        queuedImage ? withoutPendingImagePreviews(previous, { [nodeKey]: queuedImage }) : previous,
+        nodeKey,
+        url,
+      ))
+      discardPendingImage(nodeKey)
+      return true
     } catch {
-      showToast(t('tasteTree.builder.publishFailed'), 'error')
-    } finally {
-      setPublishing(false)
+      showToast(t('tasteTree.builder.imageUploadFailed'), 'error')
+      return false
     }
   }
 
-  const nodeTargets = useMemo(() => content.nodes.filter((node) => node.key !== selected?.key), [content.nodes, selected?.key])
-  const isEn = i18n.language === 'en'
+  const outgoing = useMemo(() => content.edges.filter((edge) => edge.sourceNodeKey === selected?.key).sort((a, b) => a.sortOrder - b.sortOrder), [content.edges, selected?.key])
+  const selectedEdge = content.edges.find((edge) => edge.key === selectedEdgeKey) ?? null
+  const backPath = admin ? '/admin/taste-trees' : '/taste-trees/mine'
 
   return (
-    <div className="mx-auto max-w-[1800px] px-4 py-6">
-      <SeoMeta title={treeId ? t('tasteTree.builder.editTitle') : t('tasteTree.builder.createTitle')} noindex />
+    <div className={`${admin ? 'p-4 lg:p-6' : 'mx-auto max-w-[1800px] px-4 py-7 lg:px-6'} min-w-0`}>
+      <SeoMeta title={t('tasteTree.builder.title')} noindex />
       <Toast toasts={toasts} onRemove={removeToast} />
-
-      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 lg:hidden">
-        <h1 className="text-lg font-black text-amber-950">{t('tasteTree.pcOnlyTitle')}</h1>
-        <p className="mt-2 text-sm leading-6 text-amber-800">{t('tasteTree.pcOnlyDesc')}</p>
-      </div>
-
-      <div className="hidden lg:block">
-        <header className="mb-4 flex items-center justify-between gap-4 rounded-2xl border border-neutral-200 bg-white px-5 py-4 shadow-sm">
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-black text-neutral-950">{t('tasteTree.builder.title')}</h1>
-              {version && (
-                <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${version.versionStatus === 'DRAFT' ? 'bg-amber-50 text-amber-800' : 'bg-green-50 text-green-700'}`}>
-                  VERSION {version.versionNumber} · {version.versionStatus}
-                </span>
-              )}
-            </div>
-            <p className="mt-1 text-xs text-neutral-400">{t('tasteTree.builder.subtitle')}</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button onClick={() => navigate('/taste-trees/mine')} className="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-bold text-neutral-600 hover:bg-neutral-50">
-              {t('tasteTree.myTrees')}
-            </button>
-            <button onClick={saveDraft} disabled={saving || publishing} className="rounded-lg border border-primary-800 px-4 py-2 text-sm font-bold text-primary-800 hover:bg-primary-50 disabled:opacity-50">
-              {saving ? t('common.saving') : t('tasteTree.builder.saveDraft')}
-            </button>
-            <button onClick={publish} disabled={saving || publishing} className="rounded-lg bg-primary-800 px-5 py-2 text-sm font-bold text-white hover:bg-primary-900 disabled:opacity-50">
-              {publishing ? t('tasteTree.builder.publishing') : t('tasteTree.builder.publish')}
-            </button>
-          </div>
-        </header>
-
-        <section className="mb-4 grid grid-cols-2 gap-4 rounded-2xl border border-neutral-200 bg-white p-5">
-          <label>
-            <span className={labelClass}>{t('tasteTree.builder.treeTitle')}</span>
-            <input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={120} className={inputClass} placeholder={t('tasteTree.builder.treeTitlePlaceholder')} />
-          </label>
-          <label>
-            <span className={labelClass}>{t('tasteTree.builder.treeDescription')}</span>
-            <input value={description} onChange={(event) => setDescription(event.target.value)} maxLength={1000} className={inputClass} placeholder={t('tasteTree.builder.treeDescriptionPlaceholder')} />
-          </label>
-        </section>
-
-        <div className="grid min-h-[720px] grid-cols-[230px_minmax(520px,1fr)_380px] gap-4">
-          <aside className="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm">
-            <div className="mb-3 flex items-center justify-between px-1">
-              <h2 className="text-sm font-black text-neutral-900">{t('tasteTree.builder.nodes')}</h2>
-              <span className="text-xs text-neutral-400">{content.nodes.length}/100</span>
-            </div>
-            <div className="space-y-1.5">
-              {content.nodes.map((node) => (
-                <button
-                  key={node.key}
-                  onClick={() => setSelectedKey(node.key)}
-                  className={`w-full rounded-lg border px-3 py-2.5 text-left ${selected?.key === node.key ? 'border-amber-500 bg-amber-50' : 'border-transparent hover:bg-neutral-50'}`}
-                >
-                  <span className="block text-[10px] font-black uppercase tracking-wider text-amber-700">{node.type}</span>
-                  <span className="mt-1 block truncate text-xs font-bold text-neutral-800">{isEn ? node.titleEn || node.titleKo : node.titleKo}</span>
-                </button>
-              ))}
-            </div>
-            <div className="mt-4 space-y-2 border-t border-neutral-100 pt-4">
-              <button onClick={() => addNode('QUESTION')} className="w-full rounded-lg border border-dashed border-neutral-300 px-3 py-2 text-xs font-bold text-neutral-600 hover:border-amber-400 hover:bg-amber-50">{t('tasteTree.builder.addQuestion')}</button>
-              <button onClick={() => addNode('RESULT')} className="w-full rounded-lg border border-dashed border-neutral-300 px-3 py-2 text-xs font-bold text-neutral-600 hover:border-amber-400 hover:bg-amber-50">{t('tasteTree.builder.addResult')}</button>
-              <button onClick={() => addNode('INFO')} className="w-full rounded-lg border border-dashed border-neutral-300 px-3 py-2 text-xs font-bold text-neutral-600 hover:border-amber-400 hover:bg-amber-50">{t('tasteTree.builder.addInfo')}</button>
-            </div>
-          </aside>
-
-          <main className="min-w-0">
-            <TasteTreeGraph content={content} activeNodeKeys={selected ? [selected.key] : []} onNodeClick={setSelectedKey} />
-            <div className="mt-3 rounded-xl border border-neutral-200 bg-white p-4 text-xs leading-5 text-neutral-500">
-              {t('tasteTree.builder.graphHelp')}
-            </div>
-          </main>
-
-          <aside className="max-h-[900px] overflow-y-auto rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
-            {selected && (
-              <div className="space-y-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-wider text-amber-700">{selected.type}</p>
-                    <h2 className="mt-1 text-base font-black text-neutral-950">{t('tasteTree.builder.nodeSettings')}</h2>
-                  </div>
-                  {selected.type !== 'START' && (
-                    <button onClick={() => deleteNode(selected.key)} className="rounded-md border border-red-200 px-2.5 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50">{t('common.delete')}</button>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <label>
-                    <span className={labelClass}>{t('tasteTree.builder.titleKo')}</span>
-                    <input value={selected.titleKo} onChange={(event) => updateNode(selected.key, { titleKo: event.target.value })} className={inputClass} />
-                  </label>
-                  <label>
-                    <span className={labelClass}>{t('tasteTree.builder.titleEn')}</span>
-                    <input value={selected.titleEn ?? ''} onChange={(event) => updateNode(selected.key, { titleEn: event.target.value })} className={inputClass} />
-                  </label>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <label>
-                    <span className={labelClass}>{t('tasteTree.builder.descriptionKo')}</span>
-                    <textarea value={selected.descriptionKo ?? ''} onChange={(event) => updateNode(selected.key, { descriptionKo: event.target.value })} rows={3} className={inputClass} />
-                  </label>
-                  <label>
-                    <span className={labelClass}>{t('tasteTree.builder.descriptionEn')}</span>
-                    <textarea value={selected.descriptionEn ?? ''} onChange={(event) => updateNode(selected.key, { descriptionEn: event.target.value })} rows={3} className={inputClass} />
-                  </label>
-                </div>
-
-                {selected.type === 'QUESTION' && (
-                  <div className="rounded-xl border border-neutral-200 p-3">
-                    <span className={labelClass}>{t('tasteTree.builder.selectionType')}</span>
-                    <div className="grid grid-cols-2 gap-2">
-                      {(['SINGLE', 'MULTIPLE'] as const).map((type) => (
-                        <button
-                          key={type}
-                          onClick={() => updateNode(selected.key, { selectionType: type, minSelect: 1, maxSelect: type === 'SINGLE' ? 1 : Math.max(1, selected.maxSelect ?? 1) })}
-                          className={`rounded-lg border px-3 py-2 text-xs font-bold ${selected.selectionType === type ? 'border-amber-500 bg-amber-50 text-amber-900' : 'border-neutral-200 text-neutral-500'}`}
-                        >
-                          {type === 'SINGLE' ? t('tasteTree.builder.single') : t('tasteTree.builder.multiple')}
-                        </button>
-                      ))}
-                    </div>
-                    {selected.selectionType === 'MULTIPLE' && (
-                      <label className="mt-3 block">
-                        <span className={labelClass}>{t('tasteTree.builder.maxSelect')}</span>
-                        <select value={selected.maxSelect ?? 1} onChange={(event) => updateNode(selected.key, { maxSelect: Number(event.target.value) })} className={inputClass}>
-                          {[1, 2, 3].map((count) => <option key={count} value={count}>{count}</option>)}
-                        </select>
-                      </label>
-                    )}
-                  </div>
-                )}
-
-                {(selected.type === 'START' || selected.type === 'QUESTION' || selected.type === 'INFO') && (
-                  <div>
-                    <div className="mb-2 flex items-center justify-between">
-                      <h3 className="text-sm font-black text-neutral-900">{t('tasteTree.builder.options')}</h3>
-                      <button onClick={addOption} disabled={(selected.options?.length ?? 0) >= 8 || selected.type === 'START' && (selected.options?.length ?? 0) >= 1} className="rounded-md border border-neutral-300 px-2 py-1 text-xs font-bold text-neutral-600 disabled:opacity-40">{t('tasteTree.builder.addOption')}</button>
-                    </div>
-                    <div className="space-y-3">
-                      {(selected.options ?? []).map((option, index) => (
-                        <div key={option.key} className="rounded-xl border border-neutral-200 p-3">
-                          <div className="mb-2 flex items-center justify-between">
-                            <span className="text-xs font-black text-neutral-500">{t('tasteTree.builder.optionNumber', { number: index + 1 })}</span>
-                            {selected.type !== 'START' && <button onClick={() => removeOption(index)} className="text-xs font-bold text-red-600">{t('common.delete')}</button>}
-                          </div>
-                          <div className="grid grid-cols-2 gap-2">
-                            <input value={option.labelKo} onChange={(event) => updateOption(index, { labelKo: event.target.value })} className={inputClass} placeholder={t('tasteTree.builder.labelKo')} />
-                            <input value={option.labelEn ?? ''} onChange={(event) => updateOption(index, { labelEn: event.target.value })} className={inputClass} placeholder={t('tasteTree.builder.labelEn')} />
-                          </div>
-                          <select value={option.targetNodeKey} onChange={(event) => updateOption(index, { targetNodeKey: event.target.value })} className={`${inputClass} mt-2`}>
-                            <option value="">{t('tasteTree.builder.selectNext')}</option>
-                            {nodeTargets.map((node) => <option key={node.key} value={node.key}>{node.type} · {node.titleKo}</option>)}
-                          </select>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {selected.type === 'RESULT' && (
-                  <div>
-                    <div className="mb-2 flex items-center justify-between">
-                      <div>
-                        <h3 className="text-sm font-black text-neutral-900">{t('tasteTree.builder.resultWhiskies')}</h3>
-                        <p className="mt-1 text-[11px] text-neutral-400">{t('tasteTree.builder.resultCount', { count: selected.results?.length ?? 0 })}</p>
-                      </div>
-                      <button onClick={() => addResultItem({ type: 'CUSTOM', customName: '', currencyCode: 'KRW', recommendationReasonKo: '', recommendationReasonEn: '' })} disabled={(selected.results?.length ?? 0) >= 3} className="rounded-md border border-neutral-300 px-2 py-1 text-xs font-bold text-neutral-600 disabled:opacity-40">
-                        {t('tasteTree.builder.addCustom')}
-                      </button>
-                    </div>
-
-                    {(selected.results?.length ?? 0) < 3 && (
-                      <div className="relative mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3">
-                        <label>
-                          <span className={labelClass}>{t('tasteTree.builder.searchRegistered')}</span>
-                          <input value={spiritKeyword} onChange={(event) => setSpiritKeyword(event.target.value)} className={inputClass} placeholder={t('tasteTree.builder.searchPlaceholder')} />
-                        </label>
-                        {spiritKeyword.trim().length >= 2 && (
-                          <div className="mt-2 max-h-52 overflow-y-auto rounded-lg border border-neutral-200 bg-white">
-                            {(spiritQuery.data ?? []).map((spirit) => (
-                              <button
-                                key={spirit.id}
-                                onClick={() => addResultItem({
-                                  type: 'REGISTERED', spiritId: spirit.id, displayNameKo: spirit.nameKo,
-                                  displayNameEn: spirit.nameEn, imageUrl: spirit.imageUrl,
-                                  recommendationReasonKo: '', recommendationReasonEn: '',
-                                })}
-                                className="flex w-full items-center gap-3 border-b border-neutral-100 p-2.5 text-left last:border-0 hover:bg-neutral-50"
-                              >
-                                {spirit.imageUrl ? <img src={spirit.imageUrl} alt="" className="h-10 w-10 rounded-md object-contain" /> : <div className="h-10 w-10 rounded-md bg-neutral-100" />}
-                                <span className="min-w-0"><strong className="block truncate text-xs text-neutral-900">{isEn ? spirit.nameEn || spirit.nameKo : spirit.nameKo}</strong><span className="block truncate text-[10px] text-neutral-400">{isEn ? spirit.nameKo : spirit.nameEn}</span></span>
-                              </button>
-                            ))}
-                            {!spiritQuery.isLoading && !(spiritQuery.data?.length) && <p className="p-4 text-center text-xs text-neutral-400">{t('tasteTree.builder.noSearchResult')}</p>}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    <div className="space-y-3">
-                      {(selected.results ?? []).map((item, index) => (
-                        <div key={`${item.type}-${item.spiritId ?? index}`} className="rounded-xl border border-neutral-200 p-3">
-                          <div className="mb-3 flex items-start justify-between gap-2">
-                            <div className="flex min-w-0 items-center gap-2">
-                              {(item.imageUrl || item.customImageUrl) && <img src={item.imageUrl || item.customImageUrl || ''} alt="" className="h-12 w-12 rounded-md bg-neutral-50 object-contain" />}
-                              <div className="min-w-0"><span className="text-[10px] font-black text-amber-700">{item.type === 'REGISTERED' ? t('tasteTree.builder.registered') : t('tasteTree.builder.custom')}</span><p className="truncate text-xs font-bold text-neutral-900">{item.type === 'REGISTERED' ? item.displayNameKo || `#${item.spiritId}` : item.customName || t('tasteTree.builder.nameRequired')}</p></div>
-                            </div>
-                            <button onClick={() => removeResultItem(index)} className="text-xs font-bold text-red-600">{t('common.delete')}</button>
-                          </div>
-                          {item.type === 'CUSTOM' && (
-                            <div className="space-y-2">
-                              <input value={item.customName ?? ''} onChange={(event) => updateResultItem(index, { customName: event.target.value })} className={inputClass} placeholder={t('tasteTree.builder.customName')} />
-                              <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={(event) => uploadCustomImage(index, event.target.files?.[0])} className="w-full text-xs text-neutral-500 file:mr-2 file:rounded-md file:border-0 file:bg-neutral-100 file:px-2 file:py-1.5 file:text-xs file:font-bold" />
-                              <div className="grid grid-cols-[1fr_100px] gap-2"><input type="number" min="0" value={item.priceAmount ?? ''} onChange={(event) => updateResultItem(index, { priceAmount: event.target.value ? Number(event.target.value) : null })} className={inputClass} placeholder={t('tasteTree.builder.optionalPrice')} /><select value={item.currencyCode ?? 'KRW'} onChange={(event) => updateResultItem(index, { currencyCode: event.target.value })} className={inputClass}><option value="KRW">KRW</option><option value="JPY">JPY</option><option value="USD">USD</option><option value="EUR">EUR</option></select></div>
-                            </div>
-                          )}
-                          <textarea value={item.recommendationReasonKo ?? ''} onChange={(event) => updateResultItem(index, { recommendationReasonKo: event.target.value })} maxLength={300} rows={2} className={`${inputClass} mt-2`} placeholder={t('tasteTree.builder.reasonKo')} />
-                          <textarea value={item.recommendationReasonEn ?? ''} onChange={(event) => updateResultItem(index, { recommendationReasonEn: event.target.value })} maxLength={300} rows={2} className={`${inputClass} mt-2`} placeholder={t('tasteTree.builder.reasonEn')} />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </aside>
+      <header className="mb-5 flex flex-col gap-4 rounded-2xl border border-stone-200 bg-white p-5 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <Link to={backPath} className="text-xs font-bold text-stone-400 hover:text-amber-800">{t('common.back')}</Link>
+          <h1 className="mt-2 text-2xl font-black text-stone-950">{admin ? '공식 주류 트리 편집' : t('tasteTree.builder.title')}</h1>
+          <p className="mt-1 text-xs text-stone-500">{t('tasteTree.builder.graphHelp')}</p>
         </div>
+        <div className="hidden gap-2 lg:flex">
+          <button type="button" onClick={() => setPreviewOpen(true)} className="rounded-[6px] border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm font-black text-amber-900 hover:bg-amber-100">{admin ? '미리보기' : t('tasteTree.builder.preview')}</button>
+          <button type="button" onClick={save} disabled={saving || publishing} className="rounded-xl border border-stone-300 px-4 py-2.5 text-sm font-bold text-stone-700 hover:bg-stone-50 disabled:opacity-40">{saving ? t('common.saving') : t('tasteTree.builder.saveDraft')}</button>
+          <button type="button" onClick={publish} disabled={saving || publishing} className="rounded-xl bg-amber-500 px-5 py-2.5 text-sm font-black text-stone-950 hover:bg-amber-400 disabled:opacity-40">{publishing ? t('tasteTree.builder.publishing') : t('tasteTree.builder.publish')}</button>
+        </div>
+      </header>
+
+      <div className="mb-5 hidden gap-4 rounded-2xl border border-stone-200 bg-white p-5 lg:grid lg:grid-cols-2">
+        <label><span className={labelClass}>{t('tasteTree.builder.treeTitle')}</span><input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={120} className={inputClass} /></label>
+        <label><span className={labelClass}>{t('tasteTree.builder.treeDescription')}</span><input value={description} onChange={(event) => setDescription(event.target.value)} maxLength={1000} className={inputClass} /></label>
       </div>
+
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 lg:hidden">
+        <p className="text-sm font-black text-amber-950">{t('tasteTree.pcOnlyTitle')}</p>
+        <p className="mt-1 text-xs leading-5 text-amber-800">{t('tasteTree.pcOnlyDesc')}</p>
+        <div className="mt-4"><TasteTreeGraph content={content} compact /></div>
+      </div>
+
+      <div className="hidden gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="relative min-w-0">
+          <TasteTreeGraph
+            content={content}
+            editable
+            language={admin ? 'ko' : undefined}
+            selectedNodeKey={selectedEdge ? undefined : selected?.key}
+            selectedEdgeKey={selectedEdgeKey ?? undefined}
+            onNodeClick={(key) => { setSelectedKey(key); setSelectedEdgeKey(null) }}
+            onEdgeClick={(key) => setSelectedEdgeKey(key)}
+            onPaneClick={() => setSelectedEdgeKey(null)}
+            onMoveNode={(key, x, y) => updateNode(key, { positionX: x, positionY: y })}
+            onResizeNode={(key, x, y, width, height) => updateNode(key, { positionX: x, positionY: y, width, height })}
+            onDeleteNode={deleteNode}
+            onConnect={connect}
+            onReconnectEdge={reconnectEdge}
+            onDeleteEdge={deleteEdge}
+            onUpdateEdge={updateEdge}
+          />
+          <button
+            type="button"
+            onClick={addNode}
+            className="absolute right-4 top-4 z-10 rounded-[6px] bg-stone-900 px-4 py-2.5 text-sm font-black text-white shadow-lg hover:bg-stone-800"
+          >
+            {admin ? '노드 추가' : t('tasteTree.builder.addNode')}
+          </button>
+        </div>
+
+        <aside className="max-h-[720px] overflow-y-auto rounded-[8px] border border-stone-200 bg-white p-5 shadow-sm">
+          {selectedEdge ? <EdgeEditor
+            edge={selectedEdge}
+            content={content}
+            admin={admin}
+            updateEdge={updateEdge}
+            deleteEdge={deleteEdge}
+            t={t}
+          /> : selected && <>
+            <div className="flex items-center justify-between gap-3">
+              <div><p className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-700">{t(`tasteTree.nodeTypes.${selected.type}`)}</p><h2 className="mt-1 text-lg font-black text-stone-950">{t('tasteTree.builder.nodeSettings')}</h2></div>
+              {selected.type !== 'START' && <button type="button" onClick={() => deleteNode(selected.key)} className="rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-bold text-red-600">{t('common.delete')}</button>}
+            </div>
+            <div className="mt-7 space-y-6">
+              <label><span className={labelClass}>{t('tasteTree.builder.titleKo')}</span><input value={selected.titleKo} onChange={(event) => updateNode(selected.key, { titleKo: event.target.value })} className={inputClass} /></label>
+              {!admin && <label><span className={labelClass}>{t('tasteTree.builder.titleEn')}</span><input value={selected.titleEn ?? ''} onChange={(event) => updateNode(selected.key, { titleEn: event.target.value })} className={inputClass} /></label>}
+              <label><span className={labelClass}>{t('tasteTree.builder.descriptionKo')}</span><textarea value={selected.descriptionKo ?? ''} onChange={(event) => updateNode(selected.key, { descriptionKo: event.target.value })} rows={3} className={inputClass} /></label>
+              {!admin && <label><span className={labelClass}>{t('tasteTree.builder.descriptionEn')}</span><textarea value={selected.descriptionEn ?? ''} onChange={(event) => updateNode(selected.key, { descriptionEn: event.target.value })} rows={3} className={inputClass} /></label>}
+
+              {selected.type !== 'START' && <WhiskyEditor node={selected} updateNode={updateNode} spiritKeyword={spiritKeyword} setSpiritKeyword={setSpiritKeyword} spirits={spiritQuery.data ?? []} isEn={isEn} t={t} />}
+
+              <NodeImageEditor key={selected.key} node={selected} updateNode={updateNode} upload={upload} discardPendingImage={discardPendingImage} t={t} />
+
+              <div className="border-t border-stone-200 pt-4">
+                <h3 className="text-sm font-black text-stone-900">{t('tasteTree.builder.connections')}</h3>
+                <div className="mt-3 space-y-3">
+                  {outgoing.map((edge) => <div key={edge.key} className="rounded-[6px] border border-stone-200 p-3">
+                    <div className="flex items-center justify-between"><span className="text-[10px] font-bold text-stone-400">{content.nodes.find((node) => node.key === edge.targetNodeKey)?.titleKo}</span><button type="button" onClick={() => deleteEdge(edge.key)} className="text-xs font-bold text-red-600">{t('common.delete')}</button></div>
+                    <input value={edge.labelKo} onChange={(event) => updateEdge(edge.key, { labelKo: event.target.value })} placeholder={t('tasteTree.builder.edgeLabelKo')} className={`${inputClass} mt-2`} />
+                    {!admin && <input value={edge.labelEn ?? ''} onChange={(event) => updateEdge(edge.key, { labelEn: event.target.value })} placeholder={t('tasteTree.builder.edgeLabelEn')} className={`${inputClass} mt-2`} />}
+                  </div>)}
+                  {!outgoing.length && <p className="text-xs leading-5 text-stone-400">{t('tasteTree.builder.noConnections')}</p>}
+                </div>
+              </div>
+            </div>
+          </>}
+        </aside>
+      </div>
+
+      {previewOpen && <div className="fixed inset-0 z-[100] overflow-y-auto bg-stone-950/75 p-4 lg:p-8" role="dialog" aria-modal="true" aria-label={admin ? '트리 미리보기' : t('tasteTree.builder.preview')}>
+        <div className="mx-auto max-w-[1500px] rounded-[8px] bg-stone-100 p-4 shadow-2xl lg:p-6">
+          <header className="mb-4 flex items-center justify-between gap-4 rounded-[6px] border border-stone-200 bg-white px-5 py-4">
+            <p className="text-xs font-black text-amber-700">{admin ? '미리보기' : t('tasteTree.builder.preview')}</p>
+            <button type="button" onClick={() => setPreviewOpen(false)} className="rounded-[6px] border border-stone-300 px-4 py-2 text-sm font-black text-stone-700 hover:bg-stone-50">{t('tasteTree.builder.closePreview')}</button>
+          </header>
+          <TasteTreePlayer content={content} language={admin ? 'ko' : undefined} treeTitle={title || t('tasteTree.builder.untitled')} creatorName={admin ? 'CaskByCask' : userNickname} />
+        </div>
+      </div>}
     </div>
   )
+}
+
+function NodeImageEditor({ node, updateNode, upload, discardPendingImage, t }: any) {
+  const whisky = node.whisky
+  const image = node.imageHidden ? null : whisky?.imageOverrideUrl || node.imageUrl || whisky?.imageUrl
+  const [editing, setEditing] = useState(false)
+  const [isEditingImage, setIsEditingImage] = useState(false)
+  const [localEditUrl, setLocalEditUrl] = useState<string | null>(null)
+
+  useEffect(() => () => {
+    if (localEditUrl) URL.revokeObjectURL(localEditUrl)
+  }, [localEditUrl])
+
+  const closeEditor = () => {
+    setEditing(false)
+    setLocalEditUrl(null)
+  }
+
+  const selectImage = (file: File) => {
+    setLocalEditUrl(URL.createObjectURL(file))
+    setEditing(true)
+  }
+
+  const editImage = async (file: File) => {
+    setIsEditingImage(true)
+    try {
+      const saved = await upload(file)
+      if (saved) closeEditor()
+    } finally {
+      setIsEditingImage(false)
+    }
+  }
+  const remove = () => {
+    discardPendingImage(node.key)
+    updateNode(node.key, {
+      imageUrl: null,
+      imageHidden: !(whisky?.source === 'REGISTERED' && whisky.imageUrl),
+      whisky: whisky ? { ...whisky, imageOverrideUrl: null } : null,
+    })
+  }
+
+  return <section className="border-t border-stone-200 pt-6">
+    <span className={labelClass}>{t('tasteTree.builder.nodeImage')}</span>
+    {image && <div className="group relative mb-3 aspect-[3/4] w-full overflow-hidden rounded-[6px] border border-stone-200 bg-stone-100">
+      <img src={image} alt="" className="pointer-events-none mx-auto h-full w-auto max-w-none" />
+      <button
+        type="button"
+        onClick={() => { setLocalEditUrl(null); setEditing(true) }}
+        aria-label={t('tasteTree.builder.imageEdit')}
+        title={t('tasteTree.builder.imageEdit')}
+        className="absolute right-9 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-amber-600/90 text-white opacity-0 transition-opacity hover:bg-amber-600 group-hover:opacity-100"
+      >
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+      </button>
+      <button
+        type="button"
+        onClick={remove}
+        aria-label={t('tasteTree.builder.imageRemove')}
+        className="absolute right-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-red-500/90 text-sm text-white opacity-0 transition-opacity hover:bg-red-500 group-hover:opacity-100"
+      >×</button>
+    </div>}
+    <label className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-[6px] border-2 border-dashed border-stone-300 bg-stone-50 px-4 py-3 text-xs font-black text-stone-500 transition-colors hover:border-amber-400 hover:bg-amber-50 hover:text-amber-700">
+      <span className="text-lg leading-none">+</span>
+      <span>{t('tasteTree.builder.imageAdd')}</span>
+      <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (file) selectImage(file); event.currentTarget.value = '' }} className="hidden cursor-pointer" />
+    </label>
+    {editing && (localEditUrl || image) && <ImageEditorModal
+      open={editing}
+      onClose={closeEditor}
+      imageSrc={localEditUrl || image}
+      onSave={editImage}
+      isSaving={isEditingImage}
+      initialMode="crop"
+      initialCropRatio="3:4"
+    />}
+  </section>
+}
+
+function EdgeEditor({ edge, content, admin, updateEdge, deleteEdge, t }: any) {
+  const sourceHandle = (edge.sourceHandle?.replace('source-', 'point-') || 'point-bottom') as TasteTreeSourceHandle
+  const targetHandle = (edge.targetHandle?.replace('target-', 'point-') || 'point-top') as TasteTreeTargetHandle
+  const sourceNode = content.nodes.find((node: TasteTreeNode) => node.key === edge.sourceNodeKey)
+  return <>
+    <div className="flex items-start justify-between gap-3">
+      <div><p className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-700">LINE</p><h2 className="mt-1 text-lg font-black text-stone-950">{t('tasteTree.builder.edgeSettings')}</h2></div>
+      <button type="button" onClick={() => deleteEdge(edge.key)} className="rounded-[6px] border border-red-200 px-2.5 py-1.5 text-xs font-bold text-red-600">{t('common.delete')}</button>
+    </div>
+    <p className="mt-3 rounded-[6px] border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-950">{t('tasteTree.builder.edgeHelp')}</p>
+    <div className="mt-5 space-y-4">
+      <label><span className={labelClass}>{t('tasteTree.builder.edgeLabelKo')}</span><input value={edge.labelKo} onChange={(event) => updateEdge(edge.key, { labelKo: event.target.value })} className={inputClass} /></label>
+      <label><span className={labelClass}>{t('tasteTree.builder.edgeDescriptionKo')}</span><input value={edge.descriptionKo ?? ''} maxLength={300} onChange={(event) => updateEdge(edge.key, { descriptionKo: event.target.value })} placeholder={t('tasteTree.builder.edgeDescriptionPlaceholder')} className={inputClass} /></label>
+      {!admin && <label><span className={labelClass}>{t('tasteTree.builder.edgeLabelEn')}</span><input value={edge.labelEn ?? ''} onChange={(event) => updateEdge(edge.key, { labelEn: event.target.value })} className={inputClass} /></label>}
+      {!admin && <label><span className={labelClass}>{t('tasteTree.builder.edgeDescriptionEn')}</span><input value={edge.descriptionEn ?? ''} maxLength={300} onChange={(event) => updateEdge(edge.key, { descriptionEn: event.target.value })} placeholder={t('tasteTree.builder.edgeDescriptionPlaceholder')} className={inputClass} /></label>}
+      <label><span className={labelClass}>{t('tasteTree.builder.lineType')}</span><select value={edge.lineType ?? 'STEP'} onChange={(event) => updateEdge(edge.key, { lineType: event.target.value as TasteTreeEdge['lineType'] })} className={inputClass}>
+        <option value="STEP">{t('tasteTree.builder.lineStep')}</option>
+        <option value="STRAIGHT">{t('tasteTree.builder.lineStraight')}</option>
+      </select></label>
+      <div className="grid grid-cols-2 gap-2">
+        <label><span className={labelClass}>{t('tasteTree.builder.sourceHandle')}</span><select value={sourceHandle} onChange={(event) => updateEdge(edge.key, { sourceHandle: event.target.value })} className={inputClass}>
+          <option value="point-top" disabled={sourceNode?.type === 'START'}>{t('tasteTree.builder.handleTop')}</option><option value="point-left">{t('tasteTree.builder.handleLeft')}</option><option value="point-right">{t('tasteTree.builder.handleRight')}</option><option value="point-bottom">{t('tasteTree.builder.handleBottom')}</option>
+        </select></label>
+        <label><span className={labelClass}>{t('tasteTree.builder.targetHandle')}</span><select value={targetHandle} onChange={(event) => updateEdge(edge.key, { targetHandle: event.target.value })} className={inputClass}>
+          <option value="point-top">{t('tasteTree.builder.handleTop')}</option><option value="point-left">{t('tasteTree.builder.handleLeft')}</option><option value="point-right">{t('tasteTree.builder.handleRight')}</option><option value="point-bottom">{t('tasteTree.builder.handleBottom')}</option>
+        </select></label>
+      </div>
+    </div>
+  </>
+}
+
+function WhiskyEditor({ node, updateNode, spiritKeyword, setSpiritKeyword, spirits, isEn, t }: any) {
+  const whisky = node.whisky ?? { source: 'CUSTOM', nameKo: '' }
+  const updateWhisky = (patch: Record<string, unknown>) => updateNode(node.key, { whisky: { ...whisky, ...patch } })
+  const selectRegisteredSpirit = (spirit: any) => {
+    updateNode(node.key, {
+      titleKo: spirit.nameKo,
+      titleEn: spirit.nameEn,
+      imageHidden: false,
+      whisky: {
+        ...whisky,
+        source: 'REGISTERED',
+        spiritId: spirit.id,
+        nameKo: spirit.nameKo,
+        nameEn: spirit.nameEn,
+        imageUrl: spirit.imageUrl,
+      },
+    })
+    setSpiritKeyword('')
+  }
+  return <div className="rounded-[6px] bg-stone-50 p-4">
+    <span className={labelClass}>{t('tasteTree.builder.whiskySource')}</span>
+    <div className="grid grid-cols-2 gap-2">
+      {(['REGISTERED', 'CUSTOM'] as const).map((source) => <button key={source} type="button" onClick={() => updateNode(node.key, {
+        imageHidden: false,
+        whisky: { ...whisky, source, spiritId: null, nameKo: null, nameEn: null, imageUrl: null },
+      })} className={`rounded-[5px] border px-3 py-2 text-xs font-black ${whisky.source === source ? 'border-amber-500 bg-amber-50 text-amber-900' : 'border-stone-200 bg-white text-stone-500'}`}>{t(`tasteTree.whiskySources.${source}`)}</button>)}
+    </div>
+    {whisky.source === 'REGISTERED' ? <>
+      <input value={spiritKeyword} onChange={(event) => setSpiritKeyword(event.target.value)} placeholder={t('tasteTree.builder.searchPlaceholder')} className={`${inputClass} mt-3`} />
+      {spiritKeyword.trim().length >= 2 && <div className="mt-2 max-h-48 overflow-y-auto rounded-xl border border-stone-200 bg-white">
+        {spirits.map((spirit: any) => <button key={spirit.id} type="button" onClick={() => selectRegisteredSpirit(spirit)} className="flex w-full items-center gap-3 border-b border-stone-100 p-2 text-left last:border-0 hover:bg-amber-50">
+          {spirit.imageUrl && <img src={spirit.imageUrl} alt="" className="h-10 w-10 rounded-lg object-contain" />}<span className="min-w-0 text-xs font-bold text-stone-800">{isEn ? spirit.nameEn || spirit.nameKo : spirit.nameKo}</span>
+        </button>)}
+      </div>}
+      {whisky.spiritId && <p className="mt-3 rounded-lg bg-emerald-50 p-2 text-xs font-bold text-emerald-700">{whisky.nameKo} #{whisky.spiritId}</p>}
+    </> : null}
+    <input value={whisky.priceText ?? ''} onChange={(event) => updateWhisky({ priceText: event.target.value, priceAmount: null, currencyCode: null })} maxLength={50} placeholder={t('tasteTree.builder.priceTextPlaceholder')} className={`${inputClass} mt-4`} />
+  </div>
 }
