@@ -140,7 +140,7 @@ export default function TasteTreeEdge({
         role={data?.editable ? 'button' : undefined}
         aria-label={data?.editable ? data.labelMoveAria : undefined}
         tabIndex={data?.editable ? 0 : undefined}
-        className={`nodrag nopan absolute max-w-[260px] rounded-[4px] border px-3 py-1.5 text-center text-[13px] font-black leading-5 shadow-sm ${
+        className={`taste-tree-edge-label nodrag nopan absolute max-w-[260px] break-keep rounded-[4px] border px-3 py-1.5 text-center text-[13px] font-black leading-5 shadow-sm ${
           data?.active
             ? 'border-amber-300 bg-amber-100 text-amber-950'
             : selected

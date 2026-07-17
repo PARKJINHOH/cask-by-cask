@@ -117,10 +117,10 @@ function TreeNodeCard({ data, selected }: NodeProps<TreeFlowNode>) {
         </div>
       )}
       <div className={`flex flex-col items-center justify-center p-4 text-center ${image ? 'min-h-[84px]' : 'min-h-[128px] pt-9'}`}>
-        <h3 className="line-clamp-2 w-full text-center text-sm font-black leading-5 text-stone-950">{title}</h3>
+        <h3 className="line-clamp-2 w-full break-keep text-center text-sm font-black leading-5 text-stone-950">{title}</h3>
         {description && <p className="mt-2 line-clamp-2 w-full whitespace-pre-line break-keep text-center text-[11px] font-semibold leading-4 text-stone-500">{description}</p>}
         {(whisky?.priceText || whisky?.priceAmount != null) && (
-          <p className="mt-2 text-[11px] font-bold text-amber-800">
+          <p className="mt-2 whitespace-nowrap text-[11px] font-bold text-amber-800">
             {whisky.priceText || `${new Intl.NumberFormat(isEn ? 'en-US' : 'ko-KR').format(whisky.priceAmount!)} ${whisky.currencyCode || 'KRW'}`}
           </p>
         )}
@@ -252,7 +252,7 @@ export default function TasteTreeGraph({
   }, [onConnect])
 
   return (
-    <div className={`taste-tree-graph overflow-hidden rounded-[8px] border border-stone-200 bg-[#eeeae5] shadow-inner ${compact ? 'h-[420px]' : editable ? 'h-[720px]' : 'h-[620px]'}`}>
+    <div className={`taste-tree-graph ${editable ? '' : 'taste-tree-export-safe-font'} overflow-hidden rounded-[8px] border border-stone-200 bg-[#eeeae5] shadow-inner ${compact ? 'h-[420px]' : editable ? 'h-[720px]' : 'h-[620px]'}`}>
       <ReactFlow
         nodes={nodes}
         edges={edges}

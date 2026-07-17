@@ -32,7 +32,7 @@ function TasteTreeDirectory() {
   const changeSort = (next: TasteTreeSort) => { setSort(next); setPage(0) }
 
   return (
-    <div className="mx-auto max-w-[1500px] px-4 py-7 lg:px-7 lg:py-10">
+    <div className="mx-auto max-w-7xl px-4 py-7 lg:px-7 lg:py-10">
       <SeoMeta title={t('tasteTree.title')} description={t('tasteTree.subtitle')} canonical={buildCanonical('/taste-trees')} />
       <header className="overflow-hidden rounded-[32px] bg-stone-950 px-6 py-9 text-white shadow-xl sm:px-10 lg:flex lg:items-end lg:justify-between lg:px-12 lg:py-12">
         <div className="max-w-3xl">

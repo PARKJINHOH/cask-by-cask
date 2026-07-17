@@ -1913,6 +1913,8 @@
     "approxPrice": "Approx. {{price}} {{currency}}",
     "creatorPriceNotice": "Reference price entered by the tree creator.",
     "capture": "Save image",
+    "captureSaving": "Saving image...",
+    "captureFailed": "Save failed · Retry",
     "share": "Share",
     "shareText": "See my Spirit Taste Tree result.",
     "shareCopied": "Share URL copied.",

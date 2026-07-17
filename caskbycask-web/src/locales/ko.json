@@ -1913,6 +1913,8 @@
     "approxPrice": "약 {{price}} {{currency}}",
     "creatorPriceNotice": "트리 제작자가 입력한 참고 가격입니다.",
     "capture": "이미지 저장",
+    "captureSaving": "이미지 저장 중...",
+    "captureFailed": "저장 실패 · 다시 시도",
     "share": "공유",
     "shareText": "내 주류 취향 트리 결과를 확인해 보세요.",
     "shareCopied": "공유 URL을 복사했습니다.",

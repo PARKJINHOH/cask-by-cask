@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { toPng } from 'html-to-image'
 import type { TasteTreeContent, TasteTreeEdge, TasteTreeNode } from '../types/tasteTree.types'
 import TasteTreeGraph from './TasteTreeGraph'
 
@@ -29,6 +30,8 @@ export default function TasteTreePlayer({ content, language, treeTitle, creatorN
   const [nodePath, setNodePath] = useState<string[]>(start ? [start.key] : [])
   const [edgePath, setEdgePath] = useState<string[]>([])
   const [fullMap, setFullMap] = useState(false)
+  const [captureState, setCaptureState] = useState<'idle' | 'saving' | 'error'>('idle')
+  const graphCaptureRef = useRef<HTMLDivElement>(null)
   const current = nodeMap.get(currentKey)
 
   const outgoing = useMemo(() => content.edges
@@ -63,6 +66,62 @@ export default function TasteTreePlayer({ content, language, treeTitle, creatorN
     setFullMap(false)
   }
 
+  const captureFullTree = async () => {
+    const graph = graphCaptureRef.current
+    const viewport = graph?.querySelector<HTMLElement>('.react-flow__viewport')
+    const nodeElements = viewport?.querySelectorAll<HTMLElement>('.react-flow__node')
+    if (!viewport || !nodeElements?.length || captureState === 'saving') return
+    setCaptureState('saving')
+    try {
+      await document.fonts?.ready
+      await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+
+      const bounds = Array.from(nodeElements).reduce((result, node) => {
+        const transform = window.getComputedStyle(node).transform
+        const matrix = transform === 'none' ? new DOMMatrixReadOnly() : new DOMMatrixReadOnly(transform)
+        return {
+          left: Math.min(result.left, matrix.m41),
+          top: Math.min(result.top, matrix.m42),
+          right: Math.max(result.right, matrix.m41 + node.offsetWidth),
+          bottom: Math.max(result.bottom, matrix.m42 + node.offsetHeight),
+        }
+      }, { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity })
+
+      const padding = 96
+      const exportWidth = Math.max(1, Math.ceil(bounds.right - bounds.left + padding * 2))
+      const exportHeight = Math.max(1, Math.ceil(bounds.bottom - bounds.top + padding * 2))
+      const maxDimensionRatio = Math.min(12_000 / exportWidth, 12_000 / exportHeight)
+      const maxPixelAreaRatio = Math.sqrt(64_000_000 / (exportWidth * exportHeight))
+      const pixelRatio = Math.max(1, Math.min(4, maxDimensionRatio, maxPixelAreaRatio))
+
+      const dataUrl = await toPng(viewport, {
+        width: exportWidth,
+        height: exportHeight,
+        backgroundColor: '#f7f3ee',
+        cacheBust: true,
+        pixelRatio,
+        skipFonts: true,
+        style: {
+          height: `${exportHeight}px`,
+          transform: `translate(${padding - bounds.left}px, ${padding - bounds.top}px) scale(1)`,
+          transformOrigin: 'top left',
+          width: `${exportWidth}px`,
+        },
+        filter: (node) => !node.classList?.contains('react-flow__controls')
+          && !node.classList?.contains('react-flow__background')
+          && !node.classList?.contains('react-flow__panel'),
+      })
+      const link = document.createElement('a')
+      const safeTitle = (treeTitle || 'taste-tree').replace(/[\\/:*?"<>|]/g, '-')
+      link.download = `${safeTitle}-taste-tree.png`
+      link.href = dataUrl
+      link.click()
+      setCaptureState('idle')
+    } catch {
+      setCaptureState('error')
+    }
+  }
+
   if (fullMap) {
     return (
       <section className="overflow-hidden rounded-[30px] border border-stone-200 bg-white shadow-sm">
@@ -72,12 +131,18 @@ export default function TasteTreePlayer({ content, language, treeTitle, creatorN
             <h2 className="mt-1 text-xl font-black text-stone-950">{t('tasteTree.fullTree')}</h2>
             <p className="mt-1 text-sm text-stone-500">{t('tasteTree.currentPosition', { title: localized(current.titleKo, current.titleEn, isEn) })}</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {outgoing.length > 0 && <button type="button" onClick={() => setFullMap(false)} className="rounded-xl bg-stone-900 px-4 py-2.5 text-sm font-bold text-white hover:bg-stone-800">{t('tasteTree.continueJourney')}</button>}
+            {!outgoing.length && <button type="button" onClick={() => { setCaptureState('idle'); setFullMap(false) }} className="rounded-xl border border-stone-300 px-4 py-2.5 text-sm font-bold text-stone-700 hover:bg-stone-50">{t('common.back')}</button>}
+            <button type="button" onClick={captureFullTree} disabled={captureState === 'saving'} className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm font-bold text-amber-900 hover:bg-amber-100 disabled:cursor-wait disabled:opacity-60">
+              {captureState === 'saving' ? t('tasteTree.captureSaving') : captureState === 'error' ? t('tasteTree.captureFailed') : t('tasteTree.capture')}
+            </button>
             <button type="button" onClick={restart} className="rounded-xl border border-stone-300 px-4 py-2.5 text-sm font-bold text-stone-700 hover:bg-stone-50">{t('tasteTree.restart')}</button>
           </div>
         </header>
-        <TasteTreeGraph content={content} activeNodeKeys={nodePath} activeEdgeKeys={edgePath} language={language} />
+        <div ref={graphCaptureRef}>
+          <TasteTreeGraph content={content} activeNodeKeys={nodePath} activeEdgeKeys={edgePath} language={language} />
+        </div>
       </section>
     )
   }

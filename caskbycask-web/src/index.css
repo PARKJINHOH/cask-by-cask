@@ -54,6 +54,12 @@
   z-index: 10000 !important;
 }
 
+/* 이미지 내보내기에서는 외부 웹폰트를 포함하지 않으므로, 읽기 전용 트리는
+   화면과 PNG가 같은 한글 시스템 글꼴 폭을 사용해 글자 단위 줄바꿈을 방지한다. */
+.taste-tree-export-safe-font {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+}
+
 @layer base {
   html.js-enabled [data-seo-fallback] {
     display: none;
