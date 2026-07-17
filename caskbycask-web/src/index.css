@@ -161,13 +161,15 @@
   }
   .di-image-with-source--paired {
     display: inline-table;
+    table-layout: fixed;
     margin-top: 1rem;
     margin-bottom: 1rem;
     vertical-align: top;
   }
-  .di-image-with-source--paired > img[data-image-layout] {
+  .notice-content .di-image-with-source--paired > img[data-image-layout] {
     display: block;
-    width: 100%;
+    width: 100% !important;
+    max-width: 100%;
     margin: 0;
   }
   .notice-content {

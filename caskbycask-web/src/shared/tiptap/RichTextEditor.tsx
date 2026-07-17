@@ -23,6 +23,12 @@ import SpiritEmbedDialog from './SpiritEmbedDialog'
 import ReviewEmbedDialog from './ReviewEmbedDialog'
 import ImageEditorModal from '../components/ImageEditorModal'
 import { toEditorHtmlFragment } from './editorHtmlFragment'
+import {
+  UploadInsertionAnchor,
+  createUploadInsertionAnchor,
+  getUploadInsertionAnchor,
+  removeUploadInsertionAnchor,
+} from './UploadInsertionAnchor'
 import './rich-text.css'
 import './editor-image.css'
 
@@ -81,6 +87,7 @@ export default function RichTextEditor({
   enableImages = true,
   compactHeight = false,
 }: Props) {
+  const editorShellRef = useRef<HTMLDivElement>(null)
   const [uploadProgress, setUploadProgress] = useState<number | null>(null)
   const [uploadLabel, setUploadLabel] = useState<'이미지' | '동영상'>('이미지')
   // 여러 장 동시 업로드 시 진행 위치(예: 2/5). 단일 업로드면 null.
@@ -91,7 +98,9 @@ export default function RichTextEditor({
   const imageInputRef = useRef<HTMLInputElement>(null)
   const lastEmitted = useRef(value)
   // editorProps(드래그/붙여넣기) 클로저에서 최신 다중 업로드 핸들러를 참조하기 위한 ref.
-  const uploadAndInsertImagesRef = useRef<(files: File[]) => void>(() => {})
+  const uploadAndInsertImagesRef = useRef<(files: File[], insertionPos?: number) => void>(() => {})
+  // 파일 선택 창을 여는 순간의 커서 위치. 업로드 완료 시점의 selection을 사용하지 않는다.
+  const pendingImageInsertionPosRef = useRef<number | null>(null)
   // 이 세션에서 업로드한 미디어 URL → 파일 크기. 합계 100MB 사전 검증용.
   const mediaSizesRef = useRef(new Map<string, number>())
 
@@ -100,6 +109,81 @@ export default function RichTextEditor({
   const [editImageSrc, setEditImageSrc] = useState('')
   const [editImagePos, setEditImagePos] = useState<number | null>(null)
   const [isEditingSaving, setIsEditingSaving] = useState(false)
+
+  // 편집 중 브라우저가 캐럿을 화면에 맞추려고 페이지 자체를 스크롤하지 않도록 잠근다.
+  // 에디터 내부 스크롤은 그대로 유지하고, 포커스가 완전히 빠질 때 기존 페이지 위치를 복원한다.
+  useEffect(() => {
+    const shell = editorShellRef.current
+    if (!shell) return
+
+    let locked = false
+    let scrollX = 0
+    let scrollY = 0
+    let focusOutFrame: number | null = null
+    const body = document.body
+    const html = document.documentElement
+    const previous = {
+      position: body.style.position,
+      top: body.style.top,
+      left: body.style.left,
+      right: body.style.right,
+      width: body.style.width,
+      overflow: body.style.overflow,
+      paddingRight: body.style.paddingRight,
+      scrollBehavior: html.style.scrollBehavior,
+    }
+
+    const lockPageScroll = () => {
+      if (locked) return
+      locked = true
+      scrollX = window.scrollX
+      scrollY = window.scrollY
+      const scrollbarGap = Math.max(0, window.innerWidth - html.clientWidth)
+      const currentPaddingRight = Number.parseFloat(window.getComputedStyle(body).paddingRight) || 0
+      body.style.position = 'fixed'
+      body.style.top = `${-scrollY}px`
+      body.style.left = `${-scrollX}px`
+      body.style.right = '0'
+      body.style.width = '100%'
+      body.style.overflow = 'hidden'
+      if (scrollbarGap > 0) body.style.paddingRight = `${currentPaddingRight + scrollbarGap}px`
+    }
+
+    const unlockPageScroll = () => {
+      if (!locked) return
+      locked = false
+      body.style.position = previous.position
+      body.style.top = previous.top
+      body.style.left = previous.left
+      body.style.right = previous.right
+      body.style.width = previous.width
+      body.style.overflow = previous.overflow
+      body.style.paddingRight = previous.paddingRight
+      html.style.scrollBehavior = 'auto'
+      window.scrollTo(scrollX, scrollY)
+      html.style.scrollBehavior = previous.scrollBehavior
+    }
+
+    const handleFocusIn = () => {
+      if (focusOutFrame != null) cancelAnimationFrame(focusOutFrame)
+      lockPageScroll()
+    }
+    const handleFocusOut = () => {
+      focusOutFrame = requestAnimationFrame(() => {
+        focusOutFrame = null
+        if (!shell.contains(document.activeElement)) unlockPageScroll()
+      })
+    }
+
+    shell.addEventListener('focusin', handleFocusIn)
+    shell.addEventListener('focusout', handleFocusOut)
+    return () => {
+      shell.removeEventListener('focusin', handleFocusIn)
+      shell.removeEventListener('focusout', handleFocusOut)
+      if (focusOutFrame != null) cancelAnimationFrame(focusOutFrame)
+      unlockPageScroll()
+    }
+  }, [])
 
   const handleImageUpload = useCallback(async (file: File): Promise<string | null> => {
     if (!uploadImage) return null
@@ -131,6 +215,7 @@ export default function RichTextEditor({
       Highlight.configure({ multicolor: true }),
       Link.configure({ openOnClick: false, HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' } }),
       ...(enableImages ? [ResizableImage.configure({ inline: false, allowBase64: false })] : []),
+      UploadInsertionAnchor,
       TextAlign.configure({ types: ['heading', 'paragraph', 'image'] }),
       TaskList,
       TaskItem.configure({ nested: true }),
@@ -176,12 +261,14 @@ export default function RichTextEditor({
         }
         return false
       },
-      handleDrop(_view, event) {
+      handleDrop(view, event) {
         const files = Array.from(event.dataTransfer?.files ?? [])
         const imgFiles = files.filter((f) => f.type.startsWith('image/'))
         if (imgFiles.length === 0 || !uploadImage) return false
         event.preventDefault()
-        uploadAndInsertImagesRef.current(imgFiles)
+        const insertionPos = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos
+          ?? view.state.selection.from
+        uploadAndInsertImagesRef.current(imgFiles, insertionPos)
         return true
       },
       handlePaste(view, event) {
@@ -189,7 +276,7 @@ export default function RichTextEditor({
         const imgFiles = Array.from(event.clipboardData?.files ?? []).filter((f) => f.type.startsWith('image/'))
         if (imgFiles.length > 0 && uploadImage) {
           event.preventDefault()
-          uploadAndInsertImagesRef.current(imgFiles)
+          uploadAndInsertImagesRef.current(imgFiles, view.state.selection.from)
           return true
         }
         // YouTube/Vimeo URL 붙여넣기 → 임베드
@@ -286,8 +373,9 @@ export default function RichTextEditor({
 
   // 이미지 파일 여러 장을 순차 업로드하며 성공한 것부터 에디터에 삽입한다.
   // (파일 선택 / 드래그 / 붙여넣기 공용)
-  const uploadAndInsertImages = useCallback(async (files: File[]) => {
+  const uploadAndInsertImages = useCallback(async (files: File[], insertionPos?: number) => {
     if (!uploadImage || !editor) return
+    const initialInsertionPos = insertionPos ?? editor.state.selection.from
     let images = files.filter((f) => f.type.startsWith('image/'))
     if (images.length === 0) return
     // 문서 내 기존 이미지 + 새 파일 합계가 장수 한도를 넘으면 초과분은 업로드하지 않는다.
@@ -299,6 +387,7 @@ export default function RichTextEditor({
       images = images.slice(0, remaining)
     }
     let budget = MAX_MEDIA_TOTAL - usage.knownBytes
+    const anchorId = createUploadInsertionAnchor(editor, initialInsertionPos)
     try {
       for (let i = 0; i < images.length; i++) {
         if (images[i].size > budget) {
@@ -310,13 +399,15 @@ export default function RichTextEditor({
         if (!url) continue
         mediaSizesRef.current.set(url, images[i].size)
         budget -= images[i].size
-        editor.chain().focus().setImage({ src: url }).run()
-        // setImage 직후 삽입된 이미지가 NodeSelection 으로 선택돼,
-        // 다음 setImage 가 이 이미지를 덮어쓴다. 커서를 이미지 뒤로 옮겨 이어 붙인다.
-        const after = editor.state.selection.to
-        editor.commands.setTextSelection(after)
+        const anchor = getUploadInsertionAnchor(editor, anchorId)
+        if (anchor == null) break
+        editor.commands.insertContentAt(anchor, {
+          type: 'image',
+          attrs: { src: url },
+        }, { updateSelection: false })
       }
     } finally {
+      removeUploadInsertionAnchor(editor, anchorId)
       setBatchProgress(null)
     }
   }, [uploadImage, editor, handleImageUpload, onImageError])
@@ -385,6 +476,7 @@ export default function RichTextEditor({
 
   return (
     <div
+      ref={editorShellRef}
       onClick={(e) => {
         const target = e.target as HTMLElement
         // 툴바, 버튼, 입력필드, 셀렉트박스 및 술 카드 다이얼로그 내부 클릭 시에는 포커스 동작 무시
@@ -413,7 +505,10 @@ export default function RichTextEditor({
           onChange={(e) => {
             const files = Array.from(e.target.files ?? [])
             e.target.value = ''
-            if (files.length) uploadAndInsertImages(files)
+            if (files.length) {
+              uploadAndInsertImages(files, pendingImageInsertionPosRef.current ?? editor?.state.selection.from)
+            }
+            pendingImageInsertionPosRef.current = null
           }}
         />
       )}
@@ -433,7 +528,10 @@ export default function RichTextEditor({
       {editor && (
         <RichTextToolbar
           editor={editor}
-          onImageUpload={uploadImage ? () => imageInputRef.current?.click() : undefined}
+          onImageUpload={uploadImage ? () => {
+            pendingImageInsertionPosRef.current = editor.state.selection.from
+            imageInputRef.current?.click()
+          } : undefined}
           onVideoUpload={uploadVideo ? () => videoInputRef.current?.click() : undefined}
           onVideoEmbed={enableVideoEmbed ? insertVideoEmbed : undefined}
           onSpiritEmbed={enableSpiritEmbed ? () => setSpiritOpen(true) : undefined}

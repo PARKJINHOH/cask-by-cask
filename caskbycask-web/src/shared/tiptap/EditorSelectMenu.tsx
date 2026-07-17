@@ -42,7 +42,7 @@ export default function EditorSelectMenu({
         title={title}
         onMouseDown={(e) => { e.preventDefault(); setOpen((o) => !o) }}
         style={{ minWidth: width }}
-        className="h-7 px-2 flex items-center justify-between gap-1 rounded text-xs text-neutral-700 hover:bg-neutral-100 transition-colors border border-transparent hover:border-neutral-200"
+        className="h-8 px-2 flex items-center justify-between gap-1 rounded text-[13px] text-neutral-700 hover:bg-neutral-100 transition-colors border border-transparent hover:border-neutral-200"
       >
         <span className="flex items-center gap-1 truncate">
           {icon}

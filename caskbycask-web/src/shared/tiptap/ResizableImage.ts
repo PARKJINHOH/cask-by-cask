@@ -12,6 +12,23 @@ const DEFAULT_PAIR_WIDTH = 50
 const MIN_PAIR_WIDTH = 25
 const MAX_PAIR_WIDTH = 75
 const DEFAULT_PAIR_HEIGHT = 0.36
+const MIN_IMAGE_WIDTH_PX = 40
+
+type ImageWidth = { unit: 'percent' | 'pixel'; value: number }
+
+function parseImageWidth(value: unknown): ImageWidth | null {
+  if (typeof value !== 'string' && typeof value !== 'number') return null
+  const raw = String(value).trim()
+  const percent = raw.match(/^(\d+(?:\.\d+)?)%$/)
+  if (percent) {
+    return { unit: 'percent', value: Math.min(100, Math.max(1, Number(percent[1]))) }
+  }
+  const pixel = raw.match(/^(\d+(?:\.\d+)?)(?:px)?$/)
+  if (pixel) {
+    return { unit: 'pixel', value: Math.max(1, Number(pixel[1])) }
+  }
+  return null
+}
 
 function clampPairWidth(value: unknown) {
   const parsed = Number(value)
@@ -325,9 +342,18 @@ export const ResizableImage = Image.extend({
         wrapper.dataset.imageLayout = layout ?? ''
         wrapper.classList.toggle('di-image--half-left', layout === 'half-left')
         wrapper.classList.toggle('di-image--half-right', layout === 'half-right')
+        const imageWidth = isPair ? null : parseImageWidth(currentNode.attrs.width)
         wrapper.style.width = isPair ? `${ownWidth}%` : ''
+        media.style.width = isPair
+          ? '100%'
+          : imageWidth?.unit === 'percent'
+            ? `${imageWidth.value}%`
+            : imageWidth?.unit === 'pixel'
+              ? `${Math.min(imageWidth.value, editorWidth)}px`
+              : ''
+        frame.style.width = isPair || imageWidth ? '100%' : ''
         frame.style.height = isPair ? `${Math.round(editorWidth * pairHeight)}px` : ''
-        img.style.width = isPair ? '100%' : ''
+        img.style.width = isPair || imageWidth ? '100%' : ''
         img.style.height = isPair ? '100%' : ''
         img.style.objectFit = isPair ? 'cover' : ''
       }
@@ -426,18 +452,25 @@ export const ResizableImage = Image.extend({
           return leftWidth
         }
 
+        const handle = event.currentTarget as HTMLElement
+        handle.setPointerCapture(event.pointerId)
+        wrapper.classList.add('di-image--resizing-pair')
         let finalWidth = clampPairWidth(currentNode.attrs.pairWidth)
         const onMove = (moveEvent: PointerEvent) => {
           finalWidth = preview(moveEvent.clientX)
         }
-        const onUp = () => {
-          document.removeEventListener('pointermove', onMove)
-          document.removeEventListener('pointerup', onUp)
+        const onUp = (upEvent: PointerEvent) => {
+          handle.removeEventListener('pointermove', onMove)
+          handle.removeEventListener('pointerup', onUp)
+          handle.removeEventListener('pointercancel', onUp)
+          if (handle.hasPointerCapture(upEvent.pointerId)) handle.releasePointerCapture(upEvent.pointerId)
           commitPairWidth(finalWidth)
+          wrapper.classList.remove('di-image--resizing-pair')
         }
 
-        document.addEventListener('pointermove', onMove)
-        document.addEventListener('pointerup', onUp)
+        handle.addEventListener('pointermove', onMove)
+        handle.addEventListener('pointerup', onUp)
+        handle.addEventListener('pointercancel', onUp)
       }
       dividerHandle.addEventListener('pointerdown', resizePair)
       dividerHandle.addEventListener('keydown', (event) => {
@@ -717,11 +750,12 @@ export const ResizableImage = Image.extend({
       handlePositions.forEach((pos) => {
         const handle = document.createElement('span')
         handle.className = `di-image__handle di-image__handle--${pos}`
-        handle.addEventListener('mousedown', (event) => startResize(event, pos))
+        handle.addEventListener('pointerdown', (event) => startResize(event, pos))
         frame.appendChild(handle)
       })
 
-      function startResize(event: MouseEvent, pos: (typeof handlePositions)[number]) {
+      function startResize(event: PointerEvent, pos: (typeof handlePositions)[number]) {
+        if (currentNode.attrs.layout === 'half-left' || currentNode.attrs.layout === 'half-right') return
         event.preventDefault()
         event.stopPropagation()
 
@@ -730,18 +764,62 @@ export const ResizableImage = Image.extend({
         const startWidth = rect.width
         const maxWidth = wrapper.getBoundingClientRect().width || startWidth
         const growsRight = pos === 'ne' || pos === 'se'
+        const minWidth = Math.min(MIN_IMAGE_WIDTH_PX, maxWidth)
+        let finalPercent = Math.round((startWidth / maxWidth) * 100)
+        let nextWidth = startWidth
+        let animationFrame: number | null = null
+        const handle = event.currentTarget as HTMLElement
+        const scrollContainer = editor.view.dom.closest<HTMLElement>('.di-richtext')
+          ?? editor.view.dom.parentElement
+        const lockedScrollTop = scrollContainer?.scrollTop ?? 0
+        const lockedScrollLeft = scrollContainer?.scrollLeft ?? 0
+        const lockedBottomGap = scrollContainer
+          ? Math.max(0, scrollContainer.scrollHeight - scrollContainer.clientHeight - lockedScrollTop)
+          : 0
+        const keepBottomAnchored = lockedBottomGap <= 2
+        const previousOverflowAnchor = scrollContainer?.style.overflowAnchor ?? ''
+        wrapper.classList.add('di-image--resizing')
+        media.style.willChange = 'width'
+        if (scrollContainer) {
+          scrollContainer.classList.add('di-richtext--image-resizing')
+          scrollContainer.style.overflowAnchor = 'none'
+        }
+        handle.setPointerCapture(event.pointerId)
 
-        const onMove = (moveEvent: MouseEvent) => {
-          const dx = moveEvent.clientX - startX
-          const delta = growsRight ? dx : -dx
-          const next = Math.min(Math.max(40, Math.round(startWidth + delta)), Math.round(maxWidth))
-          img.style.width = `${next}px`
+        const restoreEditorScroll = () => {
+          if (!scrollContainer) return
+          const maxScrollTop = Math.max(0, scrollContainer.scrollHeight - scrollContainer.clientHeight)
+          // 이미지가 에디터 하단 근처에 있을 때 높이가 줄면 예전 scrollTop은 더 이상
+          // 유효하지 않다. 그 값을 계속 강제하면 브라우저 보정과 충돌해 이미지가 떨린다.
+          scrollContainer.scrollTop = keepBottomAnchored
+            ? Math.max(0, maxScrollTop - lockedBottomGap)
+            : Math.min(lockedScrollTop, maxScrollTop)
+          scrollContainer.scrollLeft = lockedScrollLeft
         }
 
-        const onUp = () => {
-          document.removeEventListener('mousemove', onMove)
-          document.removeEventListener('mouseup', onUp)
-          const finalWidth = Math.round(img.getBoundingClientRect().width)
+        const renderPreview = () => {
+          animationFrame = null
+          finalPercent = Math.min(100, Math.max(1, Math.round((nextWidth / maxWidth) * 100)))
+          media.style.width = `${finalPercent}%`
+          frame.style.width = '100%'
+          img.style.width = '100%'
+          restoreEditorScroll()
+        }
+
+        const onMove = (moveEvent: PointerEvent) => {
+          const dx = moveEvent.clientX - startX
+          const delta = growsRight ? dx : -dx
+          nextWidth = Math.min(Math.max(minWidth, Math.round(startWidth + delta)), Math.round(maxWidth))
+          if (animationFrame == null) animationFrame = requestAnimationFrame(renderPreview)
+        }
+
+        const onUp = (upEvent: PointerEvent) => {
+          handle.removeEventListener('pointermove', onMove)
+          handle.removeEventListener('pointerup', onUp)
+          handle.removeEventListener('pointercancel', onUp)
+          if (handle.hasPointerCapture(upEvent.pointerId)) handle.releasePointerCapture(upEvent.pointerId)
+          if (animationFrame != null) cancelAnimationFrame(animationFrame)
+          renderPreview()
           if (typeof getPos === 'function') {
             editor
               .chain()
@@ -750,16 +828,30 @@ export const ResizableImage = Image.extend({
                 if (pos2 == null) return false
                 tr.setNodeMarkup(pos2, undefined, {
                   ...currentNode.attrs,
-                  width: String(finalWidth),
+                  width: `${finalPercent}%`,
                 })
                 return true
               })
               .run()
           }
+          restoreEditorScroll()
+          media.style.willChange = ''
+          wrapper.classList.remove('di-image--resizing')
+          requestAnimationFrame(() => {
+            restoreEditorScroll()
+            requestAnimationFrame(() => {
+              restoreEditorScroll()
+              if (scrollContainer) {
+                scrollContainer.classList.remove('di-richtext--image-resizing')
+                scrollContainer.style.overflowAnchor = previousOverflowAnchor
+              }
+            })
+          })
         }
 
-        document.addEventListener('mousemove', onMove)
-        document.addEventListener('mouseup', onUp)
+        handle.addEventListener('pointermove', onMove)
+        handle.addEventListener('pointerup', onUp)
+        handle.addEventListener('pointercancel', onUp)
       }
 
       return {
@@ -787,10 +879,14 @@ export const ResizableImage = Image.extend({
           i18n.off('languageChanged', updateSourceInputLabels)
         },
         stopEvent(event) {
+          const target = event.target as Node | null
           return event.target === sourceInput
+            || (target != null && dividerHandle.contains(target))
+            || (target instanceof HTMLElement && target.classList.contains('di-image__handle'))
         },
         ignoreMutation(mutation) {
           return mutation.target === sourceInput
+            || (mutation.type === 'attributes' && wrapper.contains(mutation.target))
         },
       }
     }

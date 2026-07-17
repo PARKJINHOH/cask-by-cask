@@ -116,6 +116,7 @@ type GNBItem =
 function GNB() {
   const { t } = useTranslation()
   const [open, setOpen] = useState<string | null>(null)
+  const [dropdownLeft, setDropdownLeft] = useState(0)
   const navRef = useRef<HTMLElement>(null)
 
   // 드롭다운: 외부 클릭 / ESC 로 닫기 (터치·키보드 접근성)
@@ -165,13 +166,39 @@ function GNB() {
     { key: 'tasteTree', label: t('menu.tasteTree'), to: '/taste-trees' },
   ]
 
+  const activeDropdown = open
+    ? menus.find((menu): menu is Extract<GNBItem, { children: GNBChild[] }> => menu.key === open && 'children' in menu)
+    : undefined
+
+  const openDropdown = (key: string, anchor: HTMLElement) => {
+    const nav = navRef.current
+    if (nav) {
+      const navRect = nav.getBoundingClientRect()
+      const anchorRect = anchor.getBoundingClientRect()
+      const menuWidth = 160
+      const edgeGap = 8
+      setDropdownLeft(Math.min(
+        Math.max(edgeGap, anchorRect.left - navRect.left),
+        Math.max(edgeGap, navRect.width - menuWidth - edgeGap),
+      ))
+    }
+    setOpen(key)
+  }
+
   const itemCls = (active: boolean) =>
     `inline-flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-3 py-3 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap
     ${active ? 'text-primary-800' : 'text-neutral-600 hover:text-primary-800'}`
 
   return (
-    <nav ref={navRef} className="bg-canvas border-b-2 border-neutral-200 sticky top-16 z-30">
-      <div className="max-w-7xl mx-auto overflow-x-auto overscroll-x-contain px-2 sm:px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <nav
+      ref={navRef}
+      className="bg-canvas border-b-2 border-neutral-200 sticky top-16 z-30"
+      onMouseLeave={() => setOpen(null)}
+    >
+      <div
+        className="max-w-7xl mx-auto overflow-x-auto overscroll-x-contain px-2 sm:px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        onScroll={() => setOpen(null)}
+      >
         <ul className="flex min-w-max items-center gap-0.5 py-1 sm:gap-1">
           {menus.map(menu => {
             if ('to' in menu) {
@@ -207,12 +234,14 @@ function GNB() {
               <li
                 key={menu.key}
                 className="relative"
-                onMouseEnter={() => setOpen(menu.key)}
-                onMouseLeave={() => setOpen(null)}
+                onMouseEnter={(event) => openDropdown(menu.key, event.currentTarget)}
               >
                 <button
                   className={itemCls(isOpen)}
-                  onClick={() => setOpen(isOpen ? null : menu.key)}
+                  onClick={(event) => isOpen
+                    ? setOpen(null)
+                    : openDropdown(menu.key, event.currentTarget)}
+                  onFocus={(event) => openDropdown(menu.key, event.currentTarget)}
                   aria-haspopup="true"
                   aria-expanded={isOpen}
                 >
@@ -225,36 +254,6 @@ function GNB() {
                   </svg>
                 </button>
 
-                {isOpen && (
-                  <div className="absolute top-full left-0 w-40 pt-1 z-30">
-                  <div className="bg-white rounded-xl shadow-lg border border-neutral-100 py-1">
-                    {menu.children.map(child =>
-                      child.comingSoon ? (
-                        <span
-                          key={child.key}
-                          className="flex items-center justify-between px-4 py-2 text-sm
-                            text-neutral-400 cursor-default select-none"
-                        >
-                          {child.label}
-                          <span className="text-xs bg-neutral-100 text-neutral-400 px-1.5 py-0.5 rounded">
-                            준비중
-                          </span>
-                        </span>
-                      ) : (
-                        <Link
-                          key={child.key}
-                          to={child.to}
-                          onClick={() => setOpen(null)}
-                          className="flex items-center px-4 py-2 text-sm text-neutral-700
-                            hover:bg-neutral-50 hover:text-primary-800 transition-colors"
-                        >
-                          {child.label}
-                        </Link>
-                      )
-                    )}
-                  </div>
-                  </div>
-                )}
               </li>
             )
           })}
@@ -272,6 +271,38 @@ function GNB() {
           </li>
         </ul>
       </div>
+
+      {activeDropdown && (
+        <div
+          className="absolute top-full w-40 pt-1 z-50"
+          style={{ left: dropdownLeft }}
+        >
+          <div className="bg-white rounded-xl shadow-lg border border-neutral-100 py-1">
+            {activeDropdown.children.map(child =>
+              child.comingSoon ? (
+                <span
+                  key={child.key}
+                  className="flex items-center justify-between px-4 py-2 text-sm text-neutral-400 cursor-default select-none"
+                >
+                  {child.label}
+                  <span className="text-xs bg-neutral-100 text-neutral-400 px-1.5 py-0.5 rounded">
+                    준비중
+                  </span>
+                </span>
+              ) : (
+                <Link
+                  key={child.key}
+                  to={child.to}
+                  onClick={() => setOpen(null)}
+                  className="flex items-center px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 hover:text-primary-800 transition-colors"
+                >
+                  {child.label}
+                </Link>
+              )
+            )}
+          </div>
+        </div>
+      )}
     </nav>
   )
 }

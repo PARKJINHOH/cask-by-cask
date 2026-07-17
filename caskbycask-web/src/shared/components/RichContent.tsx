@@ -60,8 +60,23 @@ export default function RichContent({ html, className }: Props) {
         const heightRatio = Number.isFinite(savedHeight) ? clamp(savedHeight, 0.12, 1.2) : fallbackHeight
         const rowHeight = Math.round(el.clientWidth * heightRatio)
 
-        left.style.width = `${leftWidth}%`
-        right.style.width = `${100 - leftWidth}%`
+        const leftFigure = left.closest<HTMLElement>('.di-image-with-source--paired')
+        const rightFigure = right.closest<HTMLElement>('.di-image-with-source--paired')
+
+        // 출처가 있는 반반 이미지는 각각 figure 안에 들어간다. 이때 폭은 바깥 figure에
+        // 적용하고 내부 이미지는 figure를 가득 채워야 절반 폭이 이중 적용되지 않는다.
+        if (leftFigure) {
+          leftFigure.style.width = `${leftWidth}%`
+          left.style.setProperty('width', '100%', 'important')
+        } else {
+          left.style.width = `${leftWidth}%`
+        }
+        if (rightFigure) {
+          rightFigure.style.width = `${100 - leftWidth}%`
+          right.style.setProperty('width', '100%', 'important')
+        } else {
+          right.style.width = `${100 - leftWidth}%`
+        }
         left.style.height = `${rowHeight}px`
         right.style.height = `${rowHeight}px`
       })

@@ -16,14 +16,10 @@ const FONT_FAMILIES: SelectOption[] = [
 ]
 
 const FONT_SIZES: SelectOption[] = [
-  { value: '', label: '기본' },
   { value: '12px', label: '12' },
   { value: '14px', label: '14' },
-  { value: '16px', label: '16' },
+  { value: '', label: '기본' },
   { value: '18px', label: '18' },
-  { value: '20px', label: '20' },
-  { value: '24px', label: '24' },
-  { value: '30px', label: '30' },
 ]
 
 const LINE_HEIGHTS: SelectOption[] = [
@@ -62,7 +58,7 @@ function ToolbarButton({ onClick, isActive, disabled, title, children }: Toolbar
       disabled={disabled}
       onMouseDown={(e) => { e.preventDefault(); onClick() }}
       className={[
-        'h-7 w-7 flex items-center justify-center rounded text-sm transition-colors',
+        'di-toolbar-button h-8 w-8 flex items-center justify-center rounded text-[15px] transition-colors',
         'disabled:opacity-40 disabled:cursor-not-allowed',
         isActive ? 'bg-primary-100 text-primary-900' : 'text-neutral-600 hover:bg-neutral-100',
       ].join(' ')}
@@ -94,6 +90,19 @@ export default function RichTextToolbar({
   editor, onImageUpload, onVideoUpload, onVideoEmbed, onSpiritEmbed, onReviewEmbed,
 }: Props) {
   const { t } = useTranslation()
+  const localizedFontFamilies = FONT_FAMILIES.map((option) => ({
+    ...option,
+    label: option.value === ''
+      ? t('editor.fontPretendardDefault')
+      : option.value === 'serif'
+        ? t('editor.fontSerif')
+        : option.value === 'Arial, sans-serif'
+          ? t('editor.fontSans')
+          : t('editor.fontMono'),
+  }))
+  const localizedFontSizes = FONT_SIZES.map((option) => option.value === ''
+    ? { ...option, label: t('editor.fontSize16Default') }
+    : { ...option, label: `${option.label}px` })
   const s = useEditorState({
     editor,
     selector: (ctx) => {
@@ -161,8 +170,10 @@ export default function RichTextToolbar({
     else editor.chain().focus().setLineHeight(v).run()
   }
 
-  const fontLabel = FONT_FAMILIES.find((f) => f.value === s.fontFamily)?.label ?? '기본'
-  const sizeLabel = (FONT_SIZES.find((f) => f.value === s.fontSize)?.label) ?? '16'
+  const fontName = localizedFontFamilies.find((f) => f.value === s.fontFamily)?.label ?? t('editor.fontPretendardDefault')
+  // 기존 게시글에 명시적으로 저장된 16px도 기본 크기와 같은 항목으로 표시한다.
+  const normalizedFontSize = s.fontSize === '16px' ? '' : s.fontSize
+  const sizeLabel = (localizedFontSizes.find((f) => f.value === normalizedFontSize)?.label) ?? t('editor.fontSize16Default')
   const lineLabel = s.lineHeight
     ? (LINE_HEIGHTS.find((f) => f.value === s.lineHeight)?.label ?? s.lineHeight)
     : '줄간격'
@@ -172,7 +183,7 @@ export default function RichTextToolbar({
       {/* 1행: 사진 / 동영상 / 링크 / 술카드 | 글꼴 관련 */}
       <div className="flex flex-wrap items-center gap-0.5 p-2 pb-1">
         {onImageUpload && (
-          <ToolbarButton title="이미지 추가" onClick={onImageUpload}>
+          <ToolbarButton title={t('editor.imageAdd')} onClick={onImageUpload}>
             <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
             </svg>
@@ -219,12 +230,12 @@ export default function RichTextToolbar({
 
         {/* 글꼴 관련: 글꼴 / 크기 / 줄간격 / 굵게 / 기울임 / 밑줄 / 취소선 / 색상 / 하이라이트 */}
         <EditorSelectMenu
-          title="글꼴" current={fontLabel} options={FONT_FAMILIES}
-          activeValue={s.fontFamily} onSelect={setFontFamily} width={62}
+          title={t('editor.font')} current={fontName} options={localizedFontFamilies}
+          activeValue={s.fontFamily} onSelect={setFontFamily} width={94}
         />
         <EditorSelectMenu
-          title="글자 크기" current={sizeLabel} options={FONT_SIZES}
-          activeValue={s.fontSize} onSelect={setFontSize} width={50}
+          title={t('editor.fontSize')} current={sizeLabel} options={localizedFontSizes}
+          activeValue={normalizedFontSize} onSelect={setFontSize} width={82}
         />
         <EditorSelectMenu
           title="줄간격"
@@ -397,9 +408,9 @@ export default function RichTextToolbar({
         {s.isImage && (
           <>
             <Divider />
-            <span className="text-xs text-neutral-400 px-1">이미지</span>
+            <span className="text-xs text-neutral-400 px-1">{t('editor.image')}</span>
             {(['25%', '50%', '75%', '100%'] as const).map((w) => (
-              <ToolbarButton key={w} title={`이미지 폭 ${w}`} onClick={() => editor.chain().focus().updateAttributes('image', { width: w }).run()}>
+              <ToolbarButton key={w} title={t('editor.imageWidth', { width: w })} onClick={() => editor.chain().focus().updateAttributes('image', { width: w }).run()}>
                 <span className="text-xs">{w}</span>
               </ToolbarButton>
             ))}
