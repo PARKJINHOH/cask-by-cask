@@ -263,6 +263,7 @@ export const ResizableImage = Image.extend({
   addNodeView() {
     return ({ editor, node, getPos }) => {
       let currentNode = node
+      let activeResizeCleanup: (() => void) | null = null
 
       // wrapper(블록, 정렬 담당) > frame(인라인블록) > img + 투명 드래그 표면
       const wrapper = document.createElement('div')
@@ -756,19 +757,25 @@ export const ResizableImage = Image.extend({
 
       function startResize(event: PointerEvent, pos: (typeof handlePositions)[number]) {
         if (currentNode.attrs.layout === 'half-left' || currentNode.attrs.layout === 'half-right') return
+        activeResizeCleanup?.()
+        activeResizeCleanup = null
         event.preventDefault()
         event.stopPropagation()
 
         const startX = event.clientX
         const rect = img.getBoundingClientRect()
         const startWidth = rect.width
-        const maxWidth = wrapper.getBoundingClientRect().width || startWidth
+        const wrapperRect = wrapper.getBoundingClientRect()
+        const maxWidth = wrapperRect.width || startWidth
+        const textAlign = window.getComputedStyle(wrapper).textAlign
         const growsRight = pos === 'ne' || pos === 'se'
         const minWidth = Math.min(MIN_IMAGE_WIDTH_PX, maxWidth)
         let finalPercent = Math.round((startWidth / maxWidth) * 100)
         let nextWidth = startWidth
         let animationFrame: number | null = null
         const handle = event.currentTarget as HTMLElement
+        const preview = document.createElement('span')
+        const previewImage = img.cloneNode(false) as HTMLImageElement
         const scrollContainer = editor.view.dom.closest<HTMLElement>('.di-richtext')
           ?? editor.view.dom.parentElement
         const lockedScrollTop = scrollContainer?.scrollTop ?? 0
@@ -778,8 +785,26 @@ export const ResizableImage = Image.extend({
           : 0
         const keepBottomAnchored = lockedBottomGap <= 2
         const previousOverflowAnchor = scrollContainer?.style.overflowAnchor ?? ''
+
+        // crxMouse는 document_start 시점부터 window 전역 mouse/drag 이벤트를 관찰한다.
+        // 해당 이벤트를 막으면 확장 기능도 함께 깨지므로, 리사이즈 미리보기만 fixed 레이어로
+        // 분리한다. 드래그 중 편집기 레이아웃과 scrollHeight가 변하지 않아 서로 스크롤을
+        // 보정하는 루프가 발생하지 않고, pointerup 때 실제 문서 폭을 한 번만 반영한다.
+        preview.className = 'di-image-resize-preview'
+        preview.setAttribute('aria-hidden', 'true')
+        previewImage.className = 'di-image-resize-preview__image'
+        previewImage.draggable = false
+        previewImage.removeAttribute('width')
+        preview.appendChild(previewImage)
+        handlePositions.forEach((previewPos) => {
+          const previewHandle = document.createElement('span')
+          previewHandle.className = `di-image-resize-preview__handle di-image-resize-preview__handle--${previewPos}`
+          preview.appendChild(previewHandle)
+        })
+        document.body.appendChild(preview)
+
         wrapper.classList.add('di-image--resizing')
-        media.style.willChange = 'width'
+        media.style.visibility = 'hidden'
         if (scrollContainer) {
           scrollContainer.classList.add('di-richtext--image-resizing')
           scrollContainer.style.overflowAnchor = 'none'
@@ -800,11 +825,18 @@ export const ResizableImage = Image.extend({
         const renderPreview = () => {
           animationFrame = null
           finalPercent = Math.min(100, Math.max(1, Math.round((nextWidth / maxWidth) * 100)))
-          media.style.width = `${finalPercent}%`
-          frame.style.width = '100%'
-          img.style.width = '100%'
-          restoreEditorScroll()
+          const previewWidth = (finalPercent / 100) * maxWidth
+          const previewLeft = textAlign === 'center'
+            ? wrapperRect.left + (maxWidth - previewWidth) / 2
+            : textAlign === 'right' || textAlign === 'end'
+              ? wrapperRect.right - previewWidth
+              : wrapperRect.left
+          preview.style.left = `${previewLeft}px`
+          preview.style.top = `${rect.top}px`
+          preview.style.width = `${previewWidth}px`
         }
+
+        renderPreview()
 
         const onMove = (moveEvent: PointerEvent) => {
           const dx = moveEvent.clientX - startX
@@ -834,8 +866,10 @@ export const ResizableImage = Image.extend({
               })
               .run()
           }
+          activeResizeCleanup = null
+          preview.remove()
+          media.style.visibility = ''
           restoreEditorScroll()
-          media.style.willChange = ''
           wrapper.classList.remove('di-image--resizing')
           requestAnimationFrame(() => {
             restoreEditorScroll()
@@ -852,6 +886,20 @@ export const ResizableImage = Image.extend({
         handle.addEventListener('pointermove', onMove)
         handle.addEventListener('pointerup', onUp)
         handle.addEventListener('pointercancel', onUp)
+        activeResizeCleanup = () => {
+          handle.removeEventListener('pointermove', onMove)
+          handle.removeEventListener('pointerup', onUp)
+          handle.removeEventListener('pointercancel', onUp)
+          if (handle.hasPointerCapture(event.pointerId)) handle.releasePointerCapture(event.pointerId)
+          if (animationFrame != null) cancelAnimationFrame(animationFrame)
+          preview.remove()
+          media.style.visibility = ''
+          wrapper.classList.remove('di-image--resizing')
+          if (scrollContainer) {
+            scrollContainer.classList.remove('di-richtext--image-resizing')
+            scrollContainer.style.overflowAnchor = previousOverflowAnchor
+          }
+        }
       }
 
       return {
@@ -875,6 +923,7 @@ export const ResizableImage = Image.extend({
           return true
         },
         destroy() {
+          activeResizeCleanup?.()
           layoutObserver?.disconnect()
           i18n.off('languageChanged', updateSourceInputLabels)
         },

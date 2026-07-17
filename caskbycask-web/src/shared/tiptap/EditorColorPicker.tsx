@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import type { Editor } from '@tiptap/react'
+import { useTranslation } from 'react-i18next'
+import EditorTooltip from './EditorTooltip'
 
 // 글자 색상 팔레트 (공통)
 const COLORS = [
@@ -14,6 +16,7 @@ interface Props {
 }
 
 export default function EditorColorPicker({ editor }: Props) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const current = (editor.getAttributes('textStyle').color as string | undefined) ?? undefined
@@ -28,15 +31,19 @@ export default function EditorColorPicker({ editor }: Props) {
 
   return (
     <div ref={ref} className="relative">
-      <button
-        type="button"
-        title="글자 색상"
-        onMouseDown={(e) => { e.preventDefault(); setOpen((o) => !o) }}
-        className="h-7 px-1 flex flex-col items-center justify-center rounded text-neutral-600 hover:bg-neutral-100 transition-colors"
-      >
-        <span className="text-xs font-bold leading-none">A</span>
-        <span className="block w-4 h-1 rounded-sm mt-0.5" style={{ backgroundColor: current ?? '#111827' }} />
-      </button>
+      <EditorTooltip content={t('editor.toolbar.textColor')} disabled={open}>
+        <button
+          type="button"
+          aria-label={t('editor.toolbar.textColor')}
+          aria-expanded={open}
+          aria-haspopup="dialog"
+          onMouseDown={(e) => { e.preventDefault(); setOpen((o) => !o) }}
+          className="h-8 w-8 flex flex-col items-center justify-center rounded text-neutral-600 hover:bg-neutral-100 transition-colors"
+        >
+          <span className="text-xs font-bold leading-none">A</span>
+          <span className="block w-4 h-1 rounded-sm mt-0.5" style={{ backgroundColor: current ?? '#111827' }} />
+        </button>
+      </EditorTooltip>
 
       {open && (
         <div className="absolute z-30 mt-1 left-0 p-2 bg-white border border-neutral-200 rounded-lg shadow-lg w-[176px]">
@@ -48,6 +55,7 @@ export default function EditorColorPicker({ editor }: Props) {
                   key={c}
                   type="button"
                   title={c}
+                  aria-label={c}
                   onMouseDown={(e) => {
                     e.preventDefault()
                     editor.chain().focus().setColor(c).run()
@@ -71,7 +79,7 @@ export default function EditorColorPicker({ editor }: Props) {
             }}
             className="mt-2 w-full text-xs text-neutral-500 hover:text-neutral-700 py-1 border-t border-neutral-100"
           >
-            색상 제거
+            {t('editor.toolbar.removeTextColor')}
           </button>
         </div>
       )}
