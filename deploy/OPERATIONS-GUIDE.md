@@ -324,9 +324,17 @@ Cloudflare 대시보드에서 다음을 확인한다.
 |---|---|
 | DNS → Records | `@` A 레코드와 `www` 레코드를 모두 **Proxied**로 유지. `www`는 CNAME(`caskbycask.net`) 권장, 기존 A가 같은 서버 IP를 가리키면 그대로 사용 가능 |
 | SSL/TLS → Overview | **Full (strict)** 유지 |
+| SSL/TLS → Edge Certificates → HSTS | **활성화**, Max Age `1 month`(`max-age=2592000`), **includeSubDomains 비활성화**, **Preload 비활성화** |
 | Rules → Redirect Rules → Single Redirect | 호스트가 `caskbycask.net`이면 `https://www.caskbycask.net`의 같은 경로로 `301`, **Preserve query string 활성화** |
 
 Cloudflare Single Redirect 조건은 `(http.host eq "caskbycask.net")`, 동적 대상 URL은 `concat("https://www.caskbycask.net", http.request.uri.path)`를 사용한다. 같은 목적의 Page Rule, Bulk Redirect, Worker가 이미 있다면 중복 규칙을 만들지 말고 방향이 www인지 확인한다. 규칙 반영 후 기존 비-www 응답이 캐시되어 있으면 Cloudflare 캐시를 purge한다.
+
+#### 운영 반영 및 외부 검증 (2026-07-19)
+
+- Cloudflare Single Redirect를 운영에 반영했다. `http://caskbycask.net`과 `https://caskbycask.net` 요청은 경로와 쿼리 문자열을 보존해 `https://www.caskbycask.net`으로 한 번에 `301` 이동한다.
+- `http://caskbycask.net/ko/community/notice?from=apex&check=1` 요청이 `https://www.caskbycask.net/ko/community/notice?from=apex&check=1`로 직접 이동하고, 최종 응답이 `200`이며 리디렉션 루프가 없음을 외부 요청으로 확인했다.
+- Cloudflare HSTS를 Max Age 1개월로 활성화했다. HTTPS 비-www `301` 응답과 HTTPS www `200` 응답에서 `Strict-Transport-Security: max-age=2592000`을 확인했으며, `includeSubDomains`와 `preload` 지시어는 포함되지 않는다.
+- HSTS의 1개월은 자동 해제 시점이 아니라 브라우저 보관 기간이다. 사용자가 HTTPS 응답을 받을 때마다 기간이 갱신되므로, 안정성 확인 후 Max Age를 늘리거나 설정을 변경하려면 Cloudflare에서 직접 조정한다.
 
 전환 시 소셜 로그인 중단과 양방향 리디렉션 루프를 피하기 위해 다음 순서를 지킨다.
 

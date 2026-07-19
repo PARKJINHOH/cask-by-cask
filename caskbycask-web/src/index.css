@@ -650,8 +650,10 @@
 }
 
 /* native button/ARIA button은 카드 토큰과 분리한다.
-   토글 트랙과 명시적인 도형 컨트롤만 기존 형태를 유지한다. */
-:where(button, [role='button']):not([role='switch']):not([class*='rounded-none']):not([data-preserve-radius]) {
+   토글 트랙과 명시적인 도형 컨트롤은 기존 형태를 유지한다.
+   border-b-2로 현재 상태를 표시하는 밑줄형 탭은 모서리를 둥글게 만들면
+   하단 선 양끝이 위로 휘어 U자처럼 보이므로 control radius 적용에서 제외한다. */
+:where(button, [role='button']):not([role='switch']):not([class*='rounded-none']):not([class*='border-b-2']):not([data-preserve-radius]) {
   border-radius: var(--radius-control);
 }
 

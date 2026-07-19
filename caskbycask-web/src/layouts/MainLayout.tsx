@@ -416,11 +416,11 @@ function GuestLangToggle() {
   ]
 
   return (
-    <div ref={ref} className="relative inline-flex">
+    <div ref={ref} className="relative inline-flex flex-shrink-0">
       <button
         onClick={() => setOpen((v) => !v)}
         aria-label="언어 선택 / Select Language"
-        className="flex items-center justify-center px-2.5 py-1.5 text-neutral-500 hover:text-primary-800 hover:bg-neutral-50 rounded-l-lg border-r border-neutral-300 transition-colors select-none cursor-pointer"
+        className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-300 bg-white text-neutral-500 transition-colors hover:border-neutral-400 hover:bg-neutral-50 hover:text-primary-800 select-none cursor-pointer"
       >
         <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"
           strokeLinecap="round" strokeLinejoin="round">
@@ -688,27 +688,24 @@ function UserDropdown() {
 
   if (!isLoggedIn) {
     return (
-      <div className="flex items-center gap-2">
-        <div className="inline-flex items-center border border-neutral-300 rounded-lg bg-white">
-          <GuestLangToggle />
+      <div className="flex items-center gap-1 sm:gap-2">
+        <GuestLangToggle />
+        <div className="inline-flex h-8 items-center overflow-hidden rounded-[var(--radius-control)] border border-neutral-300 bg-white">
           <Link
             to="/login"
-            className="inline-flex items-center text-sm font-medium px-3.5 py-1.5 text-neutral-700
-              hover:text-primary-800 hover:bg-neutral-50 rounded-r-lg
-              transition-all duration-150 whitespace-nowrap"
+            className="inline-flex h-full items-center px-2.5 text-sm font-medium text-neutral-700
+              transition-colors whitespace-nowrap hover:bg-neutral-50 hover:text-primary-800 sm:px-3.5"
           >
             {t('nav.login')}
           </Link>
+          <Link
+            to="/signup"
+            className="inline-flex h-full items-center border-l border-primary-800 bg-primary-800 px-2.5 text-sm font-semibold text-white
+              transition-colors whitespace-nowrap hover:border-primary-900 hover:bg-primary-900 sm:px-3.5"
+          >
+            {t('nav.signup')}
+          </Link>
         </div>
-        <Link
-          to="/signup"
-          className="inline-flex items-center text-sm font-semibold px-3 py-1.5 sm:px-3.5 rounded-lg
-            bg-primary-800 text-white shadow-sm
-            hover:bg-primary-900 active:bg-primary-800
-            transition-all duration-150 whitespace-nowrap"
-        >
-          {t('nav.signup')}
-        </Link>
       </div>
     )
   }
