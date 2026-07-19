@@ -3,7 +3,7 @@ import { headers } from 'next/headers'
 import '@/index.css'
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://caskbycask.net'),
+  metadataBase: new URL('https://www.caskbycask.net'),
   title: 'CaskByCask(캐바캐) — 주류 정보, 리뷰, 커뮤니티',
   description: '위스키, 와인, 꼬냑 등 주류 정보와 평점 리뷰 전문 플랫폼, CaskByCask(캐바캐)입니다.',
   robots: {

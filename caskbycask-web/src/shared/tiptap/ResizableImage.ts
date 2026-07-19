@@ -12,6 +12,25 @@ const DEFAULT_PAIR_WIDTH = 50
 const MIN_PAIR_WIDTH = 25
 const MAX_PAIR_WIDTH = 75
 const DEFAULT_PAIR_HEIGHT = 0.36
+const MIN_IMAGE_WIDTH_PX = 40
+const MOBILE_IMAGE_DRAG_LONG_PRESS_MS = 500
+const MOBILE_IMAGE_DRAG_CANCEL_DISTANCE_PX = 10
+
+type ImageWidth = { unit: 'percent' | 'pixel'; value: number }
+
+function parseImageWidth(value: unknown): ImageWidth | null {
+  if (typeof value !== 'string' && typeof value !== 'number') return null
+  const raw = String(value).trim()
+  const percent = raw.match(/^(\d+(?:\.\d+)?)%$/)
+  if (percent) {
+    return { unit: 'percent', value: Math.min(100, Math.max(1, Number(percent[1]))) }
+  }
+  const pixel = raw.match(/^(\d+(?:\.\d+)?)(?:px)?$/)
+  if (pixel) {
+    return { unit: 'pixel', value: Math.max(1, Number(pixel[1])) }
+  }
+  return null
+}
 
 function clampPairWidth(value: unknown) {
   const parsed = Number(value)
@@ -246,6 +265,7 @@ export const ResizableImage = Image.extend({
   addNodeView() {
     return ({ editor, node, getPos }) => {
       let currentNode = node
+      let activeResizeCleanup: (() => void) | null = null
 
       // wrapper(블록, 정렬 담당) > frame(인라인블록) > img + 투명 드래그 표면
       const wrapper = document.createElement('div')
@@ -325,9 +345,18 @@ export const ResizableImage = Image.extend({
         wrapper.dataset.imageLayout = layout ?? ''
         wrapper.classList.toggle('di-image--half-left', layout === 'half-left')
         wrapper.classList.toggle('di-image--half-right', layout === 'half-right')
+        const imageWidth = isPair ? null : parseImageWidth(currentNode.attrs.width)
         wrapper.style.width = isPair ? `${ownWidth}%` : ''
+        media.style.width = isPair
+          ? '100%'
+          : imageWidth?.unit === 'percent'
+            ? `${imageWidth.value}%`
+            : imageWidth?.unit === 'pixel'
+              ? `${Math.min(imageWidth.value, editorWidth)}px`
+              : ''
+        frame.style.width = isPair || imageWidth ? '100%' : ''
         frame.style.height = isPair ? `${Math.round(editorWidth * pairHeight)}px` : ''
-        img.style.width = isPair ? '100%' : ''
+        img.style.width = isPair || imageWidth ? '100%' : ''
         img.style.height = isPair ? '100%' : ''
         img.style.objectFit = isPair ? 'cover' : ''
       }
@@ -352,7 +381,13 @@ export const ResizableImage = Image.extend({
       })
 
       let lastTap = 0
+      let touchInteractionMoved = false
+      let touchDragActive = false
       dragSurface.addEventListener('touchend', (e) => {
+        if (touchDragActive || touchInteractionMoved) {
+          lastTap = 0
+          return
+        }
         const currentTime = Date.now()
         const tapLength = currentTime - lastTap
         if (tapLength < 300 && tapLength > 0) {
@@ -395,6 +430,7 @@ export const ResizableImage = Image.extend({
       }
 
       const resizePair = (event: PointerEvent) => {
+        if (event.pointerType === 'touch') return
         if (currentNode.attrs.layout !== 'half-left' || !currentNode.attrs.pairId) return
         event.preventDefault()
         event.stopPropagation()
@@ -426,18 +462,25 @@ export const ResizableImage = Image.extend({
           return leftWidth
         }
 
+        const handle = event.currentTarget as HTMLElement
+        handle.setPointerCapture(event.pointerId)
+        wrapper.classList.add('di-image--resizing-pair')
         let finalWidth = clampPairWidth(currentNode.attrs.pairWidth)
         const onMove = (moveEvent: PointerEvent) => {
           finalWidth = preview(moveEvent.clientX)
         }
-        const onUp = () => {
-          document.removeEventListener('pointermove', onMove)
-          document.removeEventListener('pointerup', onUp)
+        const onUp = (upEvent: PointerEvent) => {
+          handle.removeEventListener('pointermove', onMove)
+          handle.removeEventListener('pointerup', onUp)
+          handle.removeEventListener('pointercancel', onUp)
+          if (handle.hasPointerCapture(upEvent.pointerId)) handle.releasePointerCapture(upEvent.pointerId)
           commitPairWidth(finalWidth)
+          wrapper.classList.remove('di-image--resizing-pair')
         }
 
-        document.addEventListener('pointermove', onMove)
-        document.addEventListener('pointerup', onUp)
+        handle.addEventListener('pointermove', onMove)
+        handle.addEventListener('pointerup', onUp)
+        handle.addEventListener('pointercancel', onUp)
       }
       dividerHandle.addEventListener('pointerdown', resizePair)
       dividerHandle.addEventListener('keydown', (event) => {
@@ -480,51 +523,92 @@ export const ResizableImage = Image.extend({
       dragSurface.addEventListener('dragstart', startImageDrag)
       dragSurface.addEventListener('dragend', endImageDrag)
 
-      // 모바일 터치 드래그 앤 드롭 구현
+      // 모바일에서는 스크롤을 우선하고, 길게 누르기가 성립한 뒤에만 이미지 이동을 시작한다.
       let originalPos: number | null = null
       let dragPreview: HTMLDivElement | null = null
       let currentDropPos: number | null = null
       let currentTouchPoint: { x: number; y: number } | null = null
+      let touchStartPoint: { x: number; y: number } | null = null
+      let longPressTimer: number | null = null
+
+      const clearLongPressTimer = () => {
+        if (longPressTimer == null) return
+        window.clearTimeout(longPressTimer)
+        longPressTimer = null
+      }
+
+      const removeDragPreview = () => {
+        dragPreview?.remove()
+        dragPreview = null
+        dragSurface.classList.remove('di-image__drag-surface--touch-dragging')
+      }
+
+      const resetTouchDrag = () => {
+        clearLongPressTimer()
+        removeDragPreview()
+        originalPos = null
+        currentDropPos = null
+        currentTouchPoint = null
+        touchStartPoint = null
+        touchDragActive = false
+      }
+
+      const createTouchDragPreview = (point: { x: number; y: number }) => {
+        dragPreview = document.createElement('div')
+        dragPreview.className = 'di-image-touch-drag-preview'
+        dragPreview.style.left = `${point.x - 30}px`
+        dragPreview.style.top = `${point.y - 30}px`
+        dragPreview.style.backgroundImage = `url(${img.src})`
+        document.body.appendChild(dragPreview)
+      }
 
       dragSurface.addEventListener('touchstart', (e) => {
+        resetTouchDrag()
+        touchInteractionMoved = false
         if (e.touches.length !== 1) return
         const touch = e.touches[0]
         currentTouchPoint = { x: touch.clientX, y: touch.clientY }
+        touchStartPoint = { ...currentTouchPoint }
 
-        const pos = getPos()
-        if (typeof pos !== 'number') return
-        originalPos = pos
-
-        // 노드 선택
-        editor.view.dispatch(
-          editor.view.state.tr.setSelection(NodeSelection.create(editor.view.state.doc, pos))
-        )
-
-        e.preventDefault()
-
-        // 터치 드래그용 반투명 썸네일 생성
-        dragPreview = document.createElement('div')
-        dragPreview.style.position = 'fixed'
-        dragPreview.style.left = `${touch.clientX - 30}px`
-        dragPreview.style.top = `${touch.clientY - 30}px`
-        dragPreview.style.width = '60px'
-        dragPreview.style.height = '60px'
-        dragPreview.style.backgroundImage = `url(${img.src})`
-        dragPreview.style.backgroundSize = 'cover'
-        dragPreview.style.backgroundPosition = 'center'
-        dragPreview.style.opacity = '0.7'
-        dragPreview.style.pointerEvents = 'none'
-        dragPreview.style.zIndex = '10000'
-        dragPreview.style.borderRadius = '6px'
-        dragPreview.style.border = '2px dashed #3b82f6'
-        dragPreview.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
-        document.body.appendChild(dragPreview)
+        longPressTimer = window.setTimeout(() => {
+          longPressTimer = null
+          const pos = getPos()
+          if (typeof pos !== 'number' || !currentTouchPoint) return
+          originalPos = pos
+          touchDragActive = true
+          dragSurface.classList.add('di-image__drag-surface--touch-dragging')
+          editor.view.dispatch(
+            editor.view.state.tr.setSelection(NodeSelection.create(editor.view.state.doc, pos))
+          )
+          createTouchDragPreview(currentTouchPoint)
+        }, MOBILE_IMAGE_DRAG_LONG_PRESS_MS)
       }, { passive: false })
 
       dragSurface.addEventListener('touchmove', (e) => {
-        if (e.touches.length !== 1 || !dragPreview || originalPos == null) return
+        if (e.touches.length !== 1) {
+          touchInteractionMoved = true
+          resetTouchDrag()
+          return
+        }
         const touch = e.touches[0]
         currentTouchPoint = { x: touch.clientX, y: touch.clientY }
+
+        if (!touchDragActive) {
+          if (touchStartPoint) {
+            const distance = Math.hypot(
+              touch.clientX - touchStartPoint.x,
+              touch.clientY - touchStartPoint.y,
+            )
+            if (distance > MOBILE_IMAGE_DRAG_CANCEL_DISTANCE_PX) {
+              touchInteractionMoved = true
+              clearLongPressTimer()
+            }
+          }
+          return
+        }
+
+        if (!dragPreview || originalPos == null) return
+        touchInteractionMoved = true
 
         // 미리보기 썸네일 위치 업데이트
         dragPreview.style.left = `${touch.clientX - 30}px`
@@ -561,11 +645,15 @@ export const ResizableImage = Image.extend({
         e.preventDefault()
       }, { passive: false })
 
-      dragSurface.addEventListener('touchend', () => {
-        if (dragPreview) {
-          document.body.removeChild(dragPreview)
-          dragPreview = null
+      dragSurface.addEventListener('touchend', (event) => {
+        clearLongPressTimer()
+        if (!touchDragActive) {
+          resetTouchDrag()
+          return
         }
+        event.preventDefault()
+        event.stopPropagation()
+        removeDragPreview()
 
         if (originalPos != null && currentDropPos != null && currentDropPos !== originalPos) {
           const view = editor.view
@@ -648,9 +736,7 @@ export const ResizableImage = Image.extend({
                 tr.setSelection(NodeSelection.create(tr.doc, insertPos))
                 view.dispatch(tr)
               }
-              originalPos = null
-              currentDropPos = null
-              currentTouchPoint = null
+              resetTouchDrag()
               return
             }
 
@@ -707,9 +793,16 @@ export const ResizableImage = Image.extend({
           }
         }
 
-        originalPos = null
-        currentDropPos = null
-        currentTouchPoint = null
+        resetTouchDrag()
+      }, { passive: false })
+
+      dragSurface.addEventListener('touchcancel', () => {
+        touchInteractionMoved = true
+        resetTouchDrag()
+      })
+
+      dragSurface.addEventListener('contextmenu', (event) => {
+        if (touchDragActive || longPressTimer != null) event.preventDefault()
       })
 
       // 모서리 리사이즈 핸들 4개
@@ -717,31 +810,108 @@ export const ResizableImage = Image.extend({
       handlePositions.forEach((pos) => {
         const handle = document.createElement('span')
         handle.className = `di-image__handle di-image__handle--${pos}`
-        handle.addEventListener('mousedown', (event) => startResize(event, pos))
+        handle.addEventListener('pointerdown', (event) => startResize(event, pos))
         frame.appendChild(handle)
       })
 
-      function startResize(event: MouseEvent, pos: (typeof handlePositions)[number]) {
+      function startResize(event: PointerEvent, pos: (typeof handlePositions)[number]) {
+        if (event.pointerType === 'touch') return
+        if (currentNode.attrs.layout === 'half-left' || currentNode.attrs.layout === 'half-right') return
+        activeResizeCleanup?.()
+        activeResizeCleanup = null
         event.preventDefault()
         event.stopPropagation()
 
         const startX = event.clientX
         const rect = img.getBoundingClientRect()
         const startWidth = rect.width
-        const maxWidth = wrapper.getBoundingClientRect().width || startWidth
+        const wrapperRect = wrapper.getBoundingClientRect()
+        const maxWidth = wrapperRect.width || startWidth
+        const textAlign = window.getComputedStyle(wrapper).textAlign
         const growsRight = pos === 'ne' || pos === 'se'
+        const minWidth = Math.min(MIN_IMAGE_WIDTH_PX, maxWidth)
+        let finalPercent = Math.round((startWidth / maxWidth) * 100)
+        let nextWidth = startWidth
+        let animationFrame: number | null = null
+        const handle = event.currentTarget as HTMLElement
+        const preview = document.createElement('span')
+        const previewImage = img.cloneNode(false) as HTMLImageElement
+        const scrollContainer = editor.view.dom.closest<HTMLElement>('.di-richtext')
+          ?? editor.view.dom.parentElement
+        const lockedScrollTop = scrollContainer?.scrollTop ?? 0
+        const lockedScrollLeft = scrollContainer?.scrollLeft ?? 0
+        const lockedBottomGap = scrollContainer
+          ? Math.max(0, scrollContainer.scrollHeight - scrollContainer.clientHeight - lockedScrollTop)
+          : 0
+        const keepBottomAnchored = lockedBottomGap <= 2
+        const previousOverflowAnchor = scrollContainer?.style.overflowAnchor ?? ''
 
-        const onMove = (moveEvent: MouseEvent) => {
-          const dx = moveEvent.clientX - startX
-          const delta = growsRight ? dx : -dx
-          const next = Math.min(Math.max(40, Math.round(startWidth + delta)), Math.round(maxWidth))
-          img.style.width = `${next}px`
+        // crxMouse는 document_start 시점부터 window 전역 mouse/drag 이벤트를 관찰한다.
+        // 해당 이벤트를 막으면 확장 기능도 함께 깨지므로, 리사이즈 미리보기만 fixed 레이어로
+        // 분리한다. 드래그 중 편집기 레이아웃과 scrollHeight가 변하지 않아 서로 스크롤을
+        // 보정하는 루프가 발생하지 않고, pointerup 때 실제 문서 폭을 한 번만 반영한다.
+        preview.className = 'di-image-resize-preview'
+        preview.setAttribute('aria-hidden', 'true')
+        previewImage.className = 'di-image-resize-preview__image'
+        previewImage.draggable = false
+        previewImage.removeAttribute('width')
+        preview.appendChild(previewImage)
+        handlePositions.forEach((previewPos) => {
+          const previewHandle = document.createElement('span')
+          previewHandle.className = `di-image-resize-preview__handle di-image-resize-preview__handle--${previewPos}`
+          preview.appendChild(previewHandle)
+        })
+        document.body.appendChild(preview)
+
+        wrapper.classList.add('di-image--resizing')
+        media.style.visibility = 'hidden'
+        if (scrollContainer) {
+          scrollContainer.classList.add('di-richtext--image-resizing')
+          scrollContainer.style.overflowAnchor = 'none'
+        }
+        handle.setPointerCapture(event.pointerId)
+
+        const restoreEditorScroll = () => {
+          if (!scrollContainer) return
+          const maxScrollTop = Math.max(0, scrollContainer.scrollHeight - scrollContainer.clientHeight)
+          // 이미지가 에디터 하단 근처에 있을 때 높이가 줄면 예전 scrollTop은 더 이상
+          // 유효하지 않다. 그 값을 계속 강제하면 브라우저 보정과 충돌해 이미지가 떨린다.
+          scrollContainer.scrollTop = keepBottomAnchored
+            ? Math.max(0, maxScrollTop - lockedBottomGap)
+            : Math.min(lockedScrollTop, maxScrollTop)
+          scrollContainer.scrollLeft = lockedScrollLeft
         }
 
-        const onUp = () => {
-          document.removeEventListener('mousemove', onMove)
-          document.removeEventListener('mouseup', onUp)
-          const finalWidth = Math.round(img.getBoundingClientRect().width)
+        const renderPreview = () => {
+          animationFrame = null
+          finalPercent = Math.min(100, Math.max(1, Math.round((nextWidth / maxWidth) * 100)))
+          const previewWidth = (finalPercent / 100) * maxWidth
+          const previewLeft = textAlign === 'center'
+            ? wrapperRect.left + (maxWidth - previewWidth) / 2
+            : textAlign === 'right' || textAlign === 'end'
+              ? wrapperRect.right - previewWidth
+              : wrapperRect.left
+          preview.style.left = `${previewLeft}px`
+          preview.style.top = `${rect.top}px`
+          preview.style.width = `${previewWidth}px`
+        }
+
+        renderPreview()
+
+        const onMove = (moveEvent: PointerEvent) => {
+          const dx = moveEvent.clientX - startX
+          const delta = growsRight ? dx : -dx
+          nextWidth = Math.min(Math.max(minWidth, Math.round(startWidth + delta)), Math.round(maxWidth))
+          if (animationFrame == null) animationFrame = requestAnimationFrame(renderPreview)
+        }
+
+        const onUp = (upEvent: PointerEvent) => {
+          handle.removeEventListener('pointermove', onMove)
+          handle.removeEventListener('pointerup', onUp)
+          handle.removeEventListener('pointercancel', onUp)
+          if (handle.hasPointerCapture(upEvent.pointerId)) handle.releasePointerCapture(upEvent.pointerId)
+          if (animationFrame != null) cancelAnimationFrame(animationFrame)
+          renderPreview()
           if (typeof getPos === 'function') {
             editor
               .chain()
@@ -750,16 +920,46 @@ export const ResizableImage = Image.extend({
                 if (pos2 == null) return false
                 tr.setNodeMarkup(pos2, undefined, {
                   ...currentNode.attrs,
-                  width: String(finalWidth),
+                  width: `${finalPercent}%`,
                 })
                 return true
               })
               .run()
           }
+          activeResizeCleanup = null
+          preview.remove()
+          media.style.visibility = ''
+          restoreEditorScroll()
+          wrapper.classList.remove('di-image--resizing')
+          requestAnimationFrame(() => {
+            restoreEditorScroll()
+            requestAnimationFrame(() => {
+              restoreEditorScroll()
+              if (scrollContainer) {
+                scrollContainer.classList.remove('di-richtext--image-resizing')
+                scrollContainer.style.overflowAnchor = previousOverflowAnchor
+              }
+            })
+          })
         }
 
-        document.addEventListener('mousemove', onMove)
-        document.addEventListener('mouseup', onUp)
+        handle.addEventListener('pointermove', onMove)
+        handle.addEventListener('pointerup', onUp)
+        handle.addEventListener('pointercancel', onUp)
+        activeResizeCleanup = () => {
+          handle.removeEventListener('pointermove', onMove)
+          handle.removeEventListener('pointerup', onUp)
+          handle.removeEventListener('pointercancel', onUp)
+          if (handle.hasPointerCapture(event.pointerId)) handle.releasePointerCapture(event.pointerId)
+          if (animationFrame != null) cancelAnimationFrame(animationFrame)
+          preview.remove()
+          media.style.visibility = ''
+          wrapper.classList.remove('di-image--resizing')
+          if (scrollContainer) {
+            scrollContainer.classList.remove('di-richtext--image-resizing')
+            scrollContainer.style.overflowAnchor = previousOverflowAnchor
+          }
+        }
       }
 
       return {
@@ -783,14 +983,20 @@ export const ResizableImage = Image.extend({
           return true
         },
         destroy() {
+          activeResizeCleanup?.()
+          resetTouchDrag()
           layoutObserver?.disconnect()
           i18n.off('languageChanged', updateSourceInputLabels)
         },
         stopEvent(event) {
+          const target = event.target as Node | null
           return event.target === sourceInput
+            || (target != null && dividerHandle.contains(target))
+            || (target instanceof HTMLElement && target.classList.contains('di-image__handle'))
         },
         ignoreMutation(mutation) {
           return mutation.target === sourceInput
+            || (mutation.type === 'attributes' && wrapper.contains(mutation.target))
         },
       }
     }

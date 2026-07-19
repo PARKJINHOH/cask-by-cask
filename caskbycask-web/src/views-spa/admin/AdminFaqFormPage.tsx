@@ -6,6 +6,7 @@ import Button from '@/shared/components/Button'
 import AdminPageHeader from '@/shared/components/AdminPageHeader'
 import { useToast } from '@/shared/hooks/useToast'
 import Toast from '@/shared/components/Toast'
+import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 
 const CATEGORY_OPTIONS: { value: FaqCategory; labelKo: string; labelEn: string }[] = [
   { value: 'SERVICE', labelKo: 'CaskByCask 이용 안내', labelEn: 'About CaskByCask' },
@@ -106,6 +107,7 @@ export default function AdminFaqFormPage() {
       />
 
       <form onSubmit={handleSubmit} className="space-y-5">
+        <RequiredFieldsNotice admin />
         {/* 언어 (신규만) */}
         {!isEdit && (
           <div>
@@ -148,10 +150,12 @@ export default function AdminFaqFormPage() {
         {/* 질문 */}
         <div>
           <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-            질문 <span className="text-neutral-400 font-normal">(최대 500자)</span>
+            질문 <RequiredMark /> <span className="text-neutral-400 font-normal">(최대 500자)</span>
           </label>
           <input
             type="text"
+            required
+            aria-required="true"
             value={form.question}
             onChange={(e) => set('question', e.target.value)}
             maxLength={500}
@@ -164,8 +168,10 @@ export default function AdminFaqFormPage() {
 
         {/* 답변 */}
         <div>
-          <label className="block text-sm font-medium text-neutral-700 mb-1.5">답변</label>
+          <label className="block text-sm font-medium text-neutral-700 mb-1.5">답변 <RequiredMark /></label>
           <textarea
+            required
+            aria-required="true"
             value={form.answer}
             onChange={(e) => set('answer', e.target.value)}
             rows={6}

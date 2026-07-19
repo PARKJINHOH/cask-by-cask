@@ -8,6 +8,8 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Getter
 @NoArgsConstructor
 public class CreatePostRequest {
@@ -40,7 +42,11 @@ public class CreatePostRequest {
     // [패치 9] 소식 게시판 증류소 태그 (선택). PARTNER는 본인 담당 증류소만, ADMIN은 임의/생략 가능.
     private Long distilleryTagId;
 
-    public static CreatePostRequest aiNotice(Long prefixId, String title, String content, boolean pinned) {
+    @Size(max = 10, message = "해시태그는 최대 10개까지 입력할 수 있습니다.")
+    private List<@NotBlank @Size(max = 30) String> hashtags;
+
+    public static CreatePostRequest aiNotice(Long prefixId, String title, String content, boolean pinned,
+                                             List<String> hashtags) {
         CreatePostRequest request = new CreatePostRequest();
         request.boardType = BoardType.NOTICE;
         request.prefixId = prefixId;
@@ -49,6 +55,7 @@ public class CreatePostRequest {
         request.isAnonymous = false;
         request.isPinned = pinned;
         request.adultOnly = false;
+        request.hashtags = hashtags;
         return request;
     }
 }

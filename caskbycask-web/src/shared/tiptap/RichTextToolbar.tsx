@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import EditorColorPicker from './EditorColorPicker'
 import EditorHighlightPicker from './EditorHighlightPicker'
 import EditorSelectMenu, { type SelectOption } from './EditorSelectMenu'
+import EditorTooltip from './EditorTooltip'
 
 // ── 글꼴 / 글자 크기 / 줄간격 옵션 ─────────────────────────────
 // 글꼴: Pretendard(기본)만 웹폰트 로드 → 나머지는 시스템 폰트 폴백.
@@ -16,14 +17,13 @@ const FONT_FAMILIES: SelectOption[] = [
 ]
 
 const FONT_SIZES: SelectOption[] = [
-  { value: '', label: '기본' },
   { value: '12px', label: '12' },
   { value: '14px', label: '14' },
-  { value: '16px', label: '16' },
+  { value: '', label: '기본' },
   { value: '18px', label: '18' },
   { value: '20px', label: '20' },
+  { value: '22px', label: '22' },
   { value: '24px', label: '24' },
-  { value: '30px', label: '30' },
 ]
 
 const LINE_HEIGHTS: SelectOption[] = [
@@ -56,24 +56,37 @@ interface ToolbarButtonProps {
 
 function ToolbarButton({ onClick, isActive, disabled, title, children }: ToolbarButtonProps) {
   return (
-    <button
-      type="button"
-      title={title}
-      disabled={disabled}
-      onMouseDown={(e) => { e.preventDefault(); onClick() }}
-      className={[
-        'h-7 w-7 flex items-center justify-center rounded text-sm transition-colors',
-        'disabled:opacity-40 disabled:cursor-not-allowed',
-        isActive ? 'bg-primary-100 text-primary-900' : 'text-neutral-600 hover:bg-neutral-100',
-      ].join(' ')}
-    >
-      {children}
-    </button>
+    <EditorTooltip content={title}>
+      <button
+        type="button"
+        aria-label={title}
+        aria-pressed={isActive ?? undefined}
+        disabled={disabled}
+        onMouseDown={(e) => { e.preventDefault(); onClick() }}
+        className={[
+          'di-toolbar-button h-8 w-8 flex items-center justify-center rounded text-[15px] transition-colors',
+          'disabled:opacity-40 disabled:cursor-not-allowed',
+          isActive ? 'bg-primary-100 text-primary-900' : 'text-neutral-600 hover:bg-neutral-100',
+        ].join(' ')}
+      >
+        {children}
+      </button>
+    </EditorTooltip>
   )
 }
 
-function Divider() {
-  return <div className="w-px h-5 bg-neutral-200 mx-0.5" />
+interface ToolbarGroupProps {
+  label: string
+  children: ReactNode
+  className?: string
+}
+
+function ToolbarGroup({ label, children, className = '' }: ToolbarGroupProps) {
+  return (
+    <div role="group" aria-label={label} className={`flex shrink-0 items-center gap-0.5 rounded-md border border-neutral-200/80 bg-white/70 p-0.5 ${className}`}>
+      {children}
+    </div>
+  )
 }
 
 interface Props {
@@ -94,6 +107,22 @@ export default function RichTextToolbar({
   editor, onImageUpload, onVideoUpload, onVideoEmbed, onSpiritEmbed, onReviewEmbed,
 }: Props) {
   const { t } = useTranslation()
+  const localizedFontFamilies = FONT_FAMILIES.map((option) => ({
+    ...option,
+    label: option.value === ''
+      ? t('editor.fontPretendardDefault')
+      : option.value === 'serif'
+        ? t('editor.fontSerif')
+        : option.value === 'Arial, sans-serif'
+          ? t('editor.fontSans')
+          : t('editor.fontMono'),
+  }))
+  const localizedFontSizes = FONT_SIZES.map((option) => option.value === ''
+    ? { ...option, label: t('editor.fontSize16Default') }
+    : { ...option, label: `${option.label}px` })
+  const localizedLineHeights = LINE_HEIGHTS.map((option) => option.value === ''
+    ? { ...option, label: t('editor.fontDefault') }
+    : option)
   const s = useEditorState({
     editor,
     selector: (ctx) => {
@@ -138,7 +167,7 @@ export default function RichTextToolbar({
 
   const addLink = () => {
     const prev = editor.getAttributes('link').href ?? ''
-    const url = window.prompt('링크 URL을 입력하세요', prev)
+    const url = window.prompt(t('editor.toolbar.linkPrompt'), prev)
     if (url === null) return
     if (url === '') editor.chain().focus().extendMarkRange('link').unsetLink().run()
     else editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run()
@@ -161,251 +190,253 @@ export default function RichTextToolbar({
     else editor.chain().focus().setLineHeight(v).run()
   }
 
-  const fontLabel = FONT_FAMILIES.find((f) => f.value === s.fontFamily)?.label ?? '기본'
-  const sizeLabel = (FONT_SIZES.find((f) => f.value === s.fontSize)?.label) ?? '16'
+  const fontName = localizedFontFamilies.find((f) => f.value === s.fontFamily)?.label ?? t('editor.fontPretendardDefault')
+  // 기존 게시글에 명시적으로 저장된 16px도 기본 크기와 같은 항목으로 표시한다.
+  const normalizedFontSize = s.fontSize === '16px' ? '' : s.fontSize
+  const sizeLabel = (localizedFontSizes.find((f) => f.value === normalizedFontSize)?.label) ?? t('editor.fontSize16Default')
   const lineLabel = s.lineHeight
-    ? (LINE_HEIGHTS.find((f) => f.value === s.lineHeight)?.label ?? s.lineHeight)
-    : '줄간격'
+    ? (localizedLineHeights.find((f) => f.value === s.lineHeight)?.label ?? s.lineHeight)
+    : t('editor.toolbar.lineHeightLabel')
 
   return (
     <div className="rich-text-toolbar border-b border-neutral-200 bg-neutral-50">
-      {/* 1행: 사진 / 동영상 / 링크 / 술카드 | 글꼴 관련 */}
-      <div className="flex flex-wrap items-center gap-0.5 p-2 pb-1">
-        {onImageUpload && (
-          <ToolbarButton title="이미지 추가" onClick={onImageUpload}>
-            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
+      {/* 1행: 실행 이력 / 글꼴 / 문자 서식 / 제목 */}
+      <div className="flex flex-wrap items-center gap-1 p-2 pb-1">
+        <ToolbarGroup label={t('editor.toolbar.groups.history')}>
+          <ToolbarButton title={t('editor.toolbar.undo')} onClick={() => editor.chain().focus().undo().run()} disabled={!s.canUndo}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 7v6h6" /><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
             </svg>
           </ToolbarButton>
-        )}
-        {onVideoEmbed && (
-          <ToolbarButton title="YouTube/Vimeo 삽입" onClick={onVideoEmbed}>
-            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 000-1.664z" /><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <ToolbarButton title={t('editor.toolbar.redo')} onClick={() => editor.chain().focus().redo().run()} disabled={!s.canRedo}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 7v6h-6" /><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13" />
             </svg>
           </ToolbarButton>
-        )}
-        {onVideoUpload && (
-          <ToolbarButton title="동영상 업로드 (MP4/WebM)" onClick={onVideoUpload}>
-            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M15 10l4.553-2.276A1 1 0 0121 8.723v6.554a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" />
-            </svg>
-          </ToolbarButton>
-        )}
-        <ToolbarButton title="링크" onClick={addLink} isActive={s.isLink}>
-          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-          </svg>
-        </ToolbarButton>
-        {onSpiritEmbed && (
-          <ToolbarButton title={t('editor.spiritCardButton')} onClick={onSpiritEmbed}>
-            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M8 3h8l-1 6a4 4 0 0 1-3 3 4 4 0 0 1-3-3L8 3z" /><line x1="12" y1="12" x2="12" y2="19" /><line x1="8" y1="21" x2="16" y2="21" />
-            </svg>
-          </ToolbarButton>
-        )}
-        {onReviewEmbed && (
-          <ToolbarButton title={t('editor.reviewCard.toolbarButton')} onClick={onReviewEmbed}>
-            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M5 3h11a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2V3z" />
-              <path d="M18 7h1a2 2 0 0 1 2 2v10H9" />
-              <path d="M8 8h7M8 12h5" />
-            </svg>
-          </ToolbarButton>
-        )}
+        </ToolbarGroup>
 
-        <Divider />
+        <ToolbarGroup label={t('editor.toolbar.groups.font')}>
+          <EditorSelectMenu
+            title={t('editor.toolbar.font')} current={fontName} options={localizedFontFamilies}
+            activeValue={s.fontFamily} onSelect={setFontFamily} width={94}
+          />
+          <EditorSelectMenu
+            title={t('editor.toolbar.fontSize')} current={sizeLabel} options={localizedFontSizes}
+            activeValue={normalizedFontSize} onSelect={setFontSize} width={82}
+          />
+        </ToolbarGroup>
 
-        {/* 글꼴 관련: 글꼴 / 크기 / 줄간격 / 굵게 / 기울임 / 밑줄 / 취소선 / 색상 / 하이라이트 */}
-        <EditorSelectMenu
-          title="글꼴" current={fontLabel} options={FONT_FAMILIES}
-          activeValue={s.fontFamily} onSelect={setFontFamily} width={62}
-        />
-        <EditorSelectMenu
-          title="글자 크기" current={sizeLabel} options={FONT_SIZES}
-          activeValue={s.fontSize} onSelect={setFontSize} width={50}
-        />
-        <EditorSelectMenu
-          title="줄간격"
-          current={lineLabel}
-          options={LINE_HEIGHTS}
-          activeValue={s.lineHeight}
-          onSelect={setLineHeight}
-          width={66}
-          icon={
-            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <ToolbarGroup label={t('editor.toolbar.groups.textStyle')}>
+          <ToolbarButton title={t('editor.toolbar.bold')} onClick={() => editor.chain().focus().toggleBold().run()} isActive={s.isBold}>
+            <strong className="font-bold text-xs">B</strong>
+          </ToolbarButton>
+          <ToolbarButton title={t('editor.toolbar.italic')} onClick={() => editor.chain().focus().toggleItalic().run()} isActive={s.isItalic}>
+            <em className="italic text-xs">I</em>
+          </ToolbarButton>
+          <ToolbarButton title={t('editor.toolbar.underline')} onClick={() => editor.chain().focus().toggleUnderline().run()} isActive={s.isUnderline}>
+            <span className="underline text-xs">U</span>
+          </ToolbarButton>
+          <ToolbarButton title={t('editor.toolbar.strike')} onClick={() => editor.chain().focus().toggleStrike().run()} isActive={s.isStrike}>
+            <span className="line-through text-xs">S</span>
+          </ToolbarButton>
+          <EditorColorPicker editor={editor} />
+          <EditorHighlightPicker editor={editor} />
+        </ToolbarGroup>
+
+        <ToolbarGroup label={t('editor.toolbar.groups.heading')}>
+          {([1, 2, 3] as const).map((level) => (
+            <ToolbarButton
+              key={level}
+              title={t('editor.toolbar.heading', { level })}
+              onClick={() => editor.chain().focus().toggleHeading({ level }).run()}
+              isActive={level === 1 ? s.isH1 : level === 2 ? s.isH2 : s.isH3}
+            >
+              <span className="text-xs font-semibold">H{level}</span>
+            </ToolbarButton>
+          ))}
+          <ToolbarButton title={t('editor.toolbar.inlineCode')} onClick={() => editor.chain().focus().toggleCode().run()} isActive={s.isCode}>
+            <span className="font-mono text-xs">{'<>'}</span>
+          </ToolbarButton>
+        </ToolbarGroup>
+      </div>
+
+      {/* 2행: 문단 / 목록 / 블록 / 삽입 */}
+      <div className="flex flex-wrap items-center gap-1 px-2 pb-2">
+        <ToolbarGroup label={t('editor.toolbar.groups.paragraph')}>
+          <EditorSelectMenu
+            title={t('editor.toolbar.lineHeight')}
+            current={lineLabel}
+            options={localizedLineHeights}
+            activeValue={s.lineHeight}
+            onSelect={setLineHeight}
+            width={76}
+            icon={
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="10" y1="6" x2="21" y2="6" /><line x1="10" y1="12" x2="21" y2="12" /><line x1="10" y1="18" x2="21" y2="18" />
+                <path d="M3 4v16M1 6l2-2 2 2M1 18l2 2 2-2" />
+              </svg>
+            }
+          />
+          <ToolbarButton title={t('editor.toolbar.alignLeft')} onClick={() => editor.chain().focus().setTextAlign('left').run()} isActive={s.isAlignLeft}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="15" y2="12" /><line x1="3" y1="18" x2="18" y2="18" />
+            </svg>
+          </ToolbarButton>
+          <ToolbarButton title={t('editor.toolbar.alignCenter')} onClick={() => editor.chain().focus().setTextAlign('center').run()} isActive={s.isAlignCenter}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="3" y1="6" x2="21" y2="6" /><line x1="6" y1="12" x2="18" y2="12" /><line x1="4" y1="18" x2="20" y2="18" />
+            </svg>
+          </ToolbarButton>
+          <ToolbarButton title={t('editor.toolbar.alignRight')} onClick={() => editor.chain().focus().setTextAlign('right').run()} isActive={s.isAlignRight}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="3" y1="6" x2="21" y2="6" /><line x1="9" y1="12" x2="21" y2="12" /><line x1="6" y1="18" x2="21" y2="18" />
+            </svg>
+          </ToolbarButton>
+          <ToolbarButton title={t('editor.toolbar.alignJustify')} onClick={() => editor.chain().focus().setTextAlign('justify').run()} isActive={s.isAlignJustify}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </ToolbarButton>
+        </ToolbarGroup>
+
+        <ToolbarGroup label={t('editor.toolbar.groups.list')}>
+          <ToolbarButton title={t('editor.toolbar.bulletList')} onClick={() => editor.chain().focus().toggleBulletList().run()} isActive={s.isBulletList}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="9" y1="6" x2="20" y2="6" /><line x1="9" y1="12" x2="20" y2="12" /><line x1="9" y1="18" x2="20" y2="18" />
+              <circle cx="4" cy="6" r="1.5" fill="currentColor" stroke="none" /><circle cx="4" cy="12" r="1.5" fill="currentColor" stroke="none" /><circle cx="4" cy="18" r="1.5" fill="currentColor" stroke="none" />
+            </svg>
+          </ToolbarButton>
+          <ToolbarButton title={t('editor.toolbar.orderedList')} onClick={() => editor.chain().focus().toggleOrderedList().run()} isActive={s.isOrderedList}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="10" y1="6" x2="21" y2="6" /><line x1="10" y1="12" x2="21" y2="12" /><line x1="10" y1="18" x2="21" y2="18" />
-              <polyline points="3 8 3 4 3 4" /><path d="M3 4l2 2M3 4L1 6M3 16v4M3 20l2-2M3 20l-2-2" />
+              <text x="1" y="8" fontSize="7" fill="currentColor" stroke="none">1.</text>
+              <text x="1" y="14" fontSize="7" fill="currentColor" stroke="none">2.</text>
+              <text x="1" y="20" fontSize="7" fill="currentColor" stroke="none">3.</text>
             </svg>
-          }
-        />
-        <ToolbarButton title="굵게 (Ctrl+B)" onClick={() => editor.chain().focus().toggleBold().run()} isActive={s.isBold}>
-          <strong className="font-bold text-xs">B</strong>
-        </ToolbarButton>
-        <ToolbarButton title="기울임 (Ctrl+I)" onClick={() => editor.chain().focus().toggleItalic().run()} isActive={s.isItalic}>
-          <em className="italic text-xs">I</em>
-        </ToolbarButton>
-        <ToolbarButton title="밑줄 (Ctrl+U)" onClick={() => editor.chain().focus().toggleUnderline().run()} isActive={s.isUnderline}>
-          <span className="underline text-xs">U</span>
-        </ToolbarButton>
-        <ToolbarButton title="취소선" onClick={() => editor.chain().focus().toggleStrike().run()} isActive={s.isStrike}>
-          <span className="line-through text-xs">S</span>
-        </ToolbarButton>
-        <EditorColorPicker editor={editor} />
-        <EditorHighlightPicker editor={editor} />
-      </div>
-
-      {/* 2행: 나머지 기능 */}
-      <div className="flex flex-wrap items-center gap-0.5 px-2 pb-2">
-        {/* 실행 취소/다시 실행 */}
-        <ToolbarButton title="실행 취소 (Ctrl+Z)" onClick={() => editor.chain().focus().undo().run()} disabled={!s.canUndo}>
-          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M3 7v6h6" /><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
-          </svg>
-        </ToolbarButton>
-        <ToolbarButton title="다시 실행 (Ctrl+Y)" onClick={() => editor.chain().focus().redo().run()} disabled={!s.canRedo}>
-          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M21 7v6h-6" /><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13" />
-          </svg>
-        </ToolbarButton>
-
-        <Divider />
-
-        {/* 인라인 코드 */}
-        <ToolbarButton title="인라인 코드" onClick={() => editor.chain().focus().toggleCode().run()} isActive={s.isCode}>
-          <span className="font-mono text-xs">{'<>'}</span>
-        </ToolbarButton>
-
-        <Divider />
-
-        {/* 헤딩 */}
-        {([1, 2, 3] as const).map((level) => (
-          <ToolbarButton
-            key={level}
-            title={`제목 ${level}`}
-            onClick={() => editor.chain().focus().toggleHeading({ level }).run()}
-            isActive={level === 1 ? s.isH1 : level === 2 ? s.isH2 : s.isH3}
-          >
-            <span className="text-xs font-semibold">H{level}</span>
           </ToolbarButton>
-        ))}
+          <ToolbarButton title={t('editor.toolbar.taskList')} onClick={() => editor.chain().focus().toggleTaskList().run()} isActive={s.isTaskList}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="10" y1="6" x2="21" y2="6" /><line x1="10" y1="12" x2="21" y2="12" /><line x1="10" y1="18" x2="21" y2="18" />
+              <polyline points="3 6 4 7 6 5" /><rect x="2.5" y="10.5" width="4" height="4" rx="0.5" /><rect x="2.5" y="16.5" width="4" height="4" rx="0.5" />
+            </svg>
+          </ToolbarButton>
+        </ToolbarGroup>
 
-        <Divider />
+        <ToolbarGroup label={t('editor.toolbar.groups.block')}>
+          <ToolbarButton title={t('editor.toolbar.blockquote')} onClick={() => editor.chain().focus().toggleBlockquote().run()} isActive={s.isBlockquote}>
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z" />
+              <path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z" />
+            </svg>
+          </ToolbarButton>
+          <ToolbarButton title={t('editor.toolbar.codeBlock')} onClick={() => editor.chain().focus().toggleCodeBlock().run()} isActive={s.isCodeBlock}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" />
+            </svg>
+          </ToolbarButton>
+          <ToolbarButton title={t('editor.toolbar.horizontalRule')} onClick={() => editor.chain().focus().setHorizontalRule().run()}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="3" y1="12" x2="21" y2="12" /><line x1="6" y1="6" x2="18" y2="6" opacity="0.35" /><line x1="6" y1="18" x2="18" y2="18" opacity="0.35" />
+            </svg>
+          </ToolbarButton>
+        </ToolbarGroup>
 
-        {/* 정렬 */}
-        <ToolbarButton title="왼쪽 정렬" onClick={() => editor.chain().focus().setTextAlign('left').run()} isActive={s.isAlignLeft}>
-          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="15" y2="12" /><line x1="3" y1="18" x2="18" y2="18" />
-          </svg>
-        </ToolbarButton>
-        <ToolbarButton title="가운데 정렬" onClick={() => editor.chain().focus().setTextAlign('center').run()} isActive={s.isAlignCenter}>
-          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="3" y1="6" x2="21" y2="6" /><line x1="6" y1="12" x2="18" y2="12" /><line x1="4" y1="18" x2="20" y2="18" />
-          </svg>
-        </ToolbarButton>
-        <ToolbarButton title="오른쪽 정렬" onClick={() => editor.chain().focus().setTextAlign('right').run()} isActive={s.isAlignRight}>
-          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="3" y1="6" x2="21" y2="6" /><line x1="9" y1="12" x2="21" y2="12" /><line x1="6" y1="18" x2="21" y2="18" />
-          </svg>
-        </ToolbarButton>
-        <ToolbarButton title="양쪽 정렬" onClick={() => editor.chain().focus().setTextAlign('justify').run()} isActive={s.isAlignJustify}>
-          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
-          </svg>
-        </ToolbarButton>
-
-        <Divider />
-
-        {/* 목록 / 체크리스트 / 인용 / 코드블록 / 구분선 */}
-        <ToolbarButton title="순서없는 목록" onClick={() => editor.chain().focus().toggleBulletList().run()} isActive={s.isBulletList}>
-          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="9" y1="6" x2="20" y2="6" /><line x1="9" y1="12" x2="20" y2="12" /><line x1="9" y1="18" x2="20" y2="18" />
-            <circle cx="4" cy="6" r="1.5" fill="currentColor" stroke="none" /><circle cx="4" cy="12" r="1.5" fill="currentColor" stroke="none" /><circle cx="4" cy="18" r="1.5" fill="currentColor" stroke="none" />
-          </svg>
-        </ToolbarButton>
-        <ToolbarButton title="순서있는 목록" onClick={() => editor.chain().focus().toggleOrderedList().run()} isActive={s.isOrderedList}>
-          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="10" y1="6" x2="21" y2="6" /><line x1="10" y1="12" x2="21" y2="12" /><line x1="10" y1="18" x2="21" y2="18" />
-            <text x="1" y="8" fontSize="7" fill="currentColor" stroke="none">1.</text>
-            <text x="1" y="14" fontSize="7" fill="currentColor" stroke="none">2.</text>
-            <text x="1" y="20" fontSize="7" fill="currentColor" stroke="none">3.</text>
-          </svg>
-        </ToolbarButton>
-        <ToolbarButton title="체크리스트" onClick={() => editor.chain().focus().toggleTaskList().run()} isActive={s.isTaskList}>
-          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="10" y1="6" x2="21" y2="6" /><line x1="10" y1="12" x2="21" y2="12" /><line x1="10" y1="18" x2="21" y2="18" />
-            <polyline points="3 6 4 7 6 5" /><rect x="2.5" y="10.5" width="4" height="4" rx="0.5" /><rect x="2.5" y="16.5" width="4" height="4" rx="0.5" />
-          </svg>
-        </ToolbarButton>
-        <ToolbarButton title="인용문" onClick={() => editor.chain().focus().toggleBlockquote().run()} isActive={s.isBlockquote}>
-          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z" />
-            <path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z" />
-          </svg>
-        </ToolbarButton>
-        <ToolbarButton title="코드 블록" onClick={() => editor.chain().focus().toggleCodeBlock().run()} isActive={s.isCodeBlock}>
-          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" />
-          </svg>
-        </ToolbarButton>
-        <ToolbarButton title="구분선" onClick={() => editor.chain().focus().setHorizontalRule().run()}>
-          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="3" y1="12" x2="21" y2="12" /><line x1="6" y1="6" x2="18" y2="6" opacity="0.35" /><line x1="6" y1="18" x2="18" y2="18" opacity="0.35" />
-          </svg>
-        </ToolbarButton>
-
-        <Divider />
-
-        {/* 표 */}
-        <ToolbarButton title="표 삽입" onClick={addTable}>
-          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <rect x="3" y="3" width="18" height="18" rx="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="3" y1="15" x2="21" y2="15" /><line x1="9" y1="3" x2="9" y2="21" /><line x1="15" y1="3" x2="15" y2="21" />
-          </svg>
-        </ToolbarButton>
-
-        {/* 표 편집 메뉴 (표 안에 커서가 있을 때만) */}
-        {s.isTable && (
-          <>
-            <Divider />
-            <span className="text-xs text-neutral-400 px-1">표</span>
-            <ToolbarButton title="위에 행 추가" onClick={() => editor.chain().focus().addRowBefore().run()}>
-              <span className="text-xs">⬆+</span>
+        <ToolbarGroup label={t('editor.toolbar.groups.insert')}>
+          <ToolbarButton title={t('editor.toolbar.link')} onClick={addLink} isActive={s.isLink}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+            </svg>
+          </ToolbarButton>
+          {onImageUpload && (
+            <ToolbarButton title={t('editor.toolbar.imageAdd')} onClick={onImageUpload}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
+              </svg>
             </ToolbarButton>
-            <ToolbarButton title="아래에 행 추가" onClick={() => editor.chain().focus().addRowAfter().run()}>
-              <span className="text-xs">⬇+</span>
+          )}
+          {onVideoEmbed && (
+            <ToolbarButton title={t('editor.toolbar.videoEmbed')} onClick={onVideoEmbed}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 000-1.664z" /><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
             </ToolbarButton>
-            <ToolbarButton title="왼쪽에 열 추가" onClick={() => editor.chain().focus().addColumnBefore().run()}>
-              <span className="text-xs">⬅+</span>
+          )}
+          {onVideoUpload && (
+            <ToolbarButton title={t('editor.toolbar.videoUpload')} onClick={onVideoUpload}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M15 10l4.553-2.276A1 1 0 0121 8.723v6.554a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" />
+              </svg>
             </ToolbarButton>
-            <ToolbarButton title="오른쪽에 열 추가" onClick={() => editor.chain().focus().addColumnAfter().run()}>
-              <span className="text-xs">➡+</span>
+          )}
+          {onSpiritEmbed && (
+            <ToolbarButton title={t('editor.toolbar.spiritCard')} onClick={onSpiritEmbed}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M8 3h8l-1 6a4 4 0 0 1-3 3 4 4 0 0 1-3-3L8 3z" /><line x1="12" y1="12" x2="12" y2="19" /><line x1="8" y1="21" x2="16" y2="21" />
+              </svg>
             </ToolbarButton>
-            <ToolbarButton title="행 삭제" onClick={() => editor.chain().focus().deleteRow().run()}>
-              <span className="text-xs text-red-500">⬓</span>
+          )}
+          {onReviewEmbed && (
+            <ToolbarButton title={t('editor.toolbar.reviewCard')} onClick={onReviewEmbed}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M5 3h11a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2V3z" />
+                <path d="M18 7h1a2 2 0 0 1 2 2v10H9" /><path d="M8 8h7M8 12h5" />
+              </svg>
             </ToolbarButton>
-            <ToolbarButton title="열 삭제" onClick={() => editor.chain().focus().deleteColumn().run()}>
-              <span className="text-xs text-red-500">◧</span>
-            </ToolbarButton>
-            <ToolbarButton title="표 삭제" onClick={() => editor.chain().focus().deleteTable().run()}>
-              <span className="text-xs text-red-500">✕</span>
-            </ToolbarButton>
-          </>
-        )}
-
-        {/* 이미지 크기 (이미지 선택 시) */}
-        {s.isImage && (
-          <>
-            <Divider />
-            <span className="text-xs text-neutral-400 px-1">이미지</span>
-            {(['25%', '50%', '75%', '100%'] as const).map((w) => (
-              <ToolbarButton key={w} title={`이미지 폭 ${w}`} onClick={() => editor.chain().focus().updateAttributes('image', { width: w }).run()}>
-                <span className="text-xs">{w}</span>
-              </ToolbarButton>
-            ))}
-          </>
-        )}
+          )}
+          <ToolbarButton title={t('editor.toolbar.tableInsert')} onClick={addTable}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="3" y1="15" x2="21" y2="15" /><line x1="9" y1="3" x2="9" y2="21" /><line x1="15" y1="3" x2="15" y2="21" />
+            </svg>
+          </ToolbarButton>
+        </ToolbarGroup>
       </div>
+
+      {/* 3행: 현재 선택 대상에 필요한 기능만 노출 */}
+      {(s.isTable || s.isImage) && (
+        <div className="flex flex-wrap items-center gap-1 border-t border-neutral-200 bg-primary-50/40 px-2 py-1.5">
+          {s.isTable && (
+            <ToolbarGroup label={t('editor.toolbar.groups.tableEdit')}>
+              <span className="px-1 text-xs font-medium text-neutral-500">{t('editor.toolbar.tableLabel')}</span>
+              <ToolbarButton title={t('editor.toolbar.rowBefore')} onClick={() => editor.chain().focus().addRowBefore().run()}>
+                <span className="text-xs">⬆+</span>
+              </ToolbarButton>
+              <ToolbarButton title={t('editor.toolbar.rowAfter')} onClick={() => editor.chain().focus().addRowAfter().run()}>
+                <span className="text-xs">⬇+</span>
+              </ToolbarButton>
+              <ToolbarButton title={t('editor.toolbar.columnBefore')} onClick={() => editor.chain().focus().addColumnBefore().run()}>
+                <span className="text-xs">⬅+</span>
+              </ToolbarButton>
+              <ToolbarButton title={t('editor.toolbar.columnAfter')} onClick={() => editor.chain().focus().addColumnAfter().run()}>
+                <span className="text-xs">➡+</span>
+              </ToolbarButton>
+              <ToolbarButton title={t('editor.toolbar.deleteRow')} onClick={() => editor.chain().focus().deleteRow().run()}>
+                <span className="text-xs text-red-500">⬓</span>
+              </ToolbarButton>
+              <ToolbarButton title={t('editor.toolbar.deleteColumn')} onClick={() => editor.chain().focus().deleteColumn().run()}>
+                <span className="text-xs text-red-500">◧</span>
+              </ToolbarButton>
+              <ToolbarButton title={t('editor.toolbar.deleteTable')} onClick={() => editor.chain().focus().deleteTable().run()}>
+                <span className="text-xs text-red-500">✕</span>
+              </ToolbarButton>
+            </ToolbarGroup>
+          )}
+          {s.isImage && (
+            <ToolbarGroup label={t('editor.toolbar.groups.imageEdit')} className="di-toolbar-image-size">
+              <span className="px-1 text-xs font-medium text-neutral-500">{t('editor.image')}</span>
+              {(['25%', '50%', '75%', '100%'] as const).map((width) => (
+                <ToolbarButton
+                  key={width}
+                  title={t('editor.imageWidth', { width })}
+                  onClick={() => editor.chain().focus().updateAttributes('image', { width }).run()}
+                >
+                  <span className="text-xs">{width}</span>
+                </ToolbarButton>
+              ))}
+            </ToolbarGroup>
+          )}
+        </div>
+      )}
     </div>
   )
 }

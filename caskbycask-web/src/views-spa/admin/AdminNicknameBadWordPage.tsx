@@ -4,6 +4,7 @@ import { adminUserApi } from '@/domain/admin/api/adminUserApi'
 import Spinner from '@/shared/components/Spinner'
 import Pagination from '@/shared/components/Pagination'
 import { formatDate } from '@/shared/utils/format'
+import { RequiredFieldsNotice } from '@/shared/components/FormFieldLabel'
 
 export default function AdminNicknameBadWordPage() {
   const [page, setPage]     = useState(0)
@@ -64,9 +65,12 @@ export default function AdminNicknameBadWordPage() {
 
       {/* 추가 폼 */}
       <form onSubmit={handleAdd} className="flex flex-col gap-2 p-4 bg-white rounded-xl shadow-sm">
+        <RequiredFieldsNotice admin />
         <div className="flex gap-2">
           <input
             type="text"
+            required
+            aria-required="true"
             value={input}
             onChange={(e) => { setInput(e.target.value); setErrorMsg('') }}
             placeholder="금지 단어 입력..."

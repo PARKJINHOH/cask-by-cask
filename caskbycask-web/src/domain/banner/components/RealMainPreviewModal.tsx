@@ -338,46 +338,6 @@ function EventCard() {
   )
 }
 
-function ShortcutsWidget() {
-  const { t } = useTranslation()
-  const items = [
-    {
-      label: t('menu.faq'),
-      icon: <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />,
-    },
-    {
-      label: t('home.shortcuts.community'),
-      icon: <><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></>,
-    },
-    {
-      label: t('home.shortcuts.review'),
-      icon: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />,
-    },
-    {
-      label: t('home.shortcuts.search'),
-      icon: <><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></>,
-    },
-  ]
-  return (
-    <div className="bg-white rounded-xl border border-neutral-100 p-4 select-none">
-      <h3 className="text-sm font-bold text-neutral-900 mb-3 tracking-tight">{t('home.shortcuts.title')}</h3>
-      <div className="grid grid-cols-2 gap-2">
-        {items.map((it, i) => (
-          <div
-            key={i}
-            className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-neutral-50 text-neutral-600 text-xs font-medium transition-colors"
-          >
-            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-              {it.icon}
-            </svg>
-            {it.label}
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
 const CATEGORY_MENU = [
   {
     key: 'WHISKY',
@@ -655,7 +615,6 @@ export default function RealMainPreviewModal({
                         {/* 사이드바 */}
                         <aside className="space-y-5">
                           <EventCard />
-                          <ShortcutsWidget />
                           <NoticeWidget notices={notices} />
 
                           {/* 사이드바 배너 영역 렌더링 */}
@@ -741,7 +700,6 @@ export default function RealMainPreviewModal({
                           )}
 
                           <EventCard />
-                          <ShortcutsWidget />
                           <NoticeWidget notices={notices} />
 
                           {/* 사이드바 배너 (모바일에선 본문 하단에 단독 노출) */}

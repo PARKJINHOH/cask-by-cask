@@ -1,7 +1,7 @@
 import { Metadata } from 'next'
 
 const API_URL = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
-const SITE_URL = 'https://caskbycask.net'
+const SITE_URL = 'https://www.caskbycask.net'
 const DEFAULT_OG_IMAGE = `${SITE_URL}/og-image.png`
 
 interface ApiResponse<T> {
@@ -137,6 +137,8 @@ interface CommunityPostResponse {
   updatedAt?: string | null
   imageUrl?: string | null
   images?: Array<{ imageUrl?: string | null }> | null
+  sourceUrls?: string[] | null
+  hashtags?: string[] | null
 }
 
 interface CommunityPostListItemResponse {
@@ -223,6 +225,8 @@ export interface SeoSnapshotData {
   metrics: Array<{ label: string; value: string }>
   details: Array<{ label: string; value: string }>
   bodyHtml?: string | null
+  sourceUrls?: string[]
+  hashtags?: string[]
   items?: SeoSnapshotItem[]
   links: Array<{ label: string; href: string }>
 }
@@ -368,7 +372,7 @@ function plainTextToHtml(value: string | null | undefined): string | null {
 
 function toAbsoluteImageUrl(url: string | null | undefined): string | null {
   if (!url) return null
-  return url.startsWith('http') ? url : `https://caskbycask.net${url}`
+  return url.startsWith('http') ? url : `https://www.caskbycask.net${url}`
 }
 
 function toNumber(value: number | string | null | undefined): number | null {
@@ -1087,7 +1091,7 @@ export function getDefaultMetadata(lang: 'ko' | 'en' | null): Metadata {
  */
 export function getSpiritsListMetadata(lang: 'ko' | 'en' | null): Metadata {
   const prefix = lang ? `/${lang}` : ''
-  const canonical = `https://caskbycask.net${prefix}/spirits`
+  const canonical = `https://www.caskbycask.net${prefix}/spirits`
   
   return {
     title: '주류 정보 탐색 및 상세 검색 (Search Liquor Specs & Reviews) — CaskByCask',
@@ -1102,7 +1106,7 @@ export function getSpiritsListMetadata(lang: 'ko' | 'en' | null): Metadata {
       type: 'website',
       images: [
         {
-          url: 'https://caskbycask.net/og-image.png',
+          url: 'https://www.caskbycask.net/og-image.png',
           alt: 'CaskByCask 주류 정보 탐색 (Specs & Reviews)',
         },
       ],
@@ -1111,7 +1115,7 @@ export function getSpiritsListMetadata(lang: 'ko' | 'en' | null): Metadata {
       card: 'summary_large_image',
       title: '주류 정보 탐색 및 상세 검색 (Search Liquor Specs & Reviews) — CaskByCask',
       description: '전 세계의 다양한 주류 상세 정보와 리뷰 평점을 쉽고 빠르게 탐색해 보세요. Easily discover detailed specifications, tasting notes and ratings of global spirits.',
-      images: ['https://caskbycask.net/og-image.png'],
+      images: ['https://www.caskbycask.net/og-image.png'],
     },
   }
 }
@@ -1126,7 +1130,7 @@ export async function getSpiritDetailMetadata(id: string, lang: 'ko' | 'en' | nu
     const title = isEn ? seo.titleEn : seo.titleKo
     const description = isEn ? seo.descriptionEn : seo.descriptionKo
     const canonical = isEn ? seo.canonicalUrlEn : seo.canonicalUrlKo
-    const ogImage = seo.primaryImageUrl || 'https://caskbycask.net/og-image.png'
+    const ogImage = seo.primaryImageUrl || 'https://www.caskbycask.net/og-image.png'
 
     return {
       title,
@@ -1209,8 +1213,8 @@ export async function getSpiritDetailMetadata(id: string, lang: 'ko' | 'en' | nu
     const ageEn = spirit.commonDetail?.ageStatement ? `${spirit.commonDetail.ageStatement}yo` : ''
     const description = `${nameKo}의 원산지, ${abv}, ${age} 캐스크 정보 등 상세한 주류 정보와 함께 테이스팅 노트 및 평점(${spirit.avgScore ?? spirit.scoreAvg ?? 0}점) 리뷰를 만나보세요. Discover detailed specs (${abvEn}, ${ageEn}), tasting notes, and ratings for ${nameEn || nameKo} on CaskByCask.`
     
-    const canonical = `https://caskbycask.net${prefix}/spirits/${id}`
-    const ogImage = spirit.imageUrl || 'https://caskbycask.net/og-image.png'
+    const canonical = `https://www.caskbycask.net${prefix}/spirits/${id}`
+    const ogImage = spirit.imageUrl || 'https://www.caskbycask.net/og-image.png'
 
     return {
       title,
@@ -1280,13 +1284,13 @@ export async function getSpiritDetailJsonLd(id: string, lang: 'ko' | 'en' | null
     : spirit.producerNameEn
   const canonical = seo
     ? (isEn ? seo.canonicalUrlEn : seo.canonicalUrlKo)
-    : `https://caskbycask.net${lang ? `/${lang}` : ''}/spirits/${numericId}`
+    : `https://www.caskbycask.net${lang ? `/${lang}` : ''}/spirits/${numericId}`
   const primaryImage = spirit.images?.find((image) => image.isPrimary)?.imageUrl
     || spirit.images?.find((image) => image.imageUrl)?.imageUrl
   const image = seo?.primaryImageUrl
     || (primaryImage
-      ? (primaryImage.startsWith('http') ? primaryImage : `https://caskbycask.net${primaryImage}`)
-      : 'https://caskbycask.net/og-image.png')
+      ? (primaryImage.startsWith('http') ? primaryImage : `https://www.caskbycask.net${primaryImage}`)
+      : 'https://www.caskbycask.net/og-image.png')
   const reviewCount = spirit.reviewCount ?? 0
   const avgScore = spirit.avgScore == null ? null : Number(spirit.avgScore)
   const labels = localLabels(isEn ? 'en' : 'ko')
@@ -1420,7 +1424,7 @@ export async function getSpiritSeoSnapshot(id: string, lang: 'ko' | 'en' | null)
     || spirit.images?.find((image) => image.imageUrl)?.imageUrl
   const image = toAbsoluteImageUrl(seo?.primaryImageUrl)
     || toAbsoluteImageUrl(primaryImage)
-    || 'https://caskbycask.net/og-image.png'
+    || 'https://www.caskbycask.net/og-image.png'
   const score = formatDecimal(spirit.avgScore)
   const reviewCount = formatCount(spirit.reviewCount, resolvedLang)
   const viewCount = formatCount(spirit.viewCount, resolvedLang)
@@ -1528,6 +1532,8 @@ export async function getCommunityPostSeoSnapshot(
       { label: resolvedLang === 'en' ? 'Updated' : '수정일', value: formatDateOnly(post.updatedAt) },
     ]),
     bodyHtml: bodyHtml || null,
+    sourceUrls: post.sourceUrls || [],
+    hashtags: post.hashtags || [],
     links: [
       { label: labels.home, href: '/ko/' },
       { label: labels.community, href: '/ko/community/all' },
@@ -1557,7 +1563,7 @@ export async function getByobPostSeoSnapshot(id: string, lang: 'ko' | 'en' | nul
     title: byob.title,
     subtitle: byob.location || null,
     description,
-    image: 'https://caskbycask.net/og-image.png',
+    image: 'https://www.caskbycask.net/og-image.png',
     metrics: compactDetails([
       { label: labels.eventAt, value: formatDateOnly(byob.eventAt) },
       { label: labels.participants, value: participantValue },
@@ -1601,6 +1607,7 @@ export async function getCommunityPostMetadata(boardType: string, id: string, la
   return {
     title,
     description,
+    keywords: post.hashtags?.length ? post.hashtags : undefined,
     robots: buildRobots(!restricted),
     alternates: { canonical },
     openGraph: {
@@ -1639,6 +1646,7 @@ export async function getCommunityPostJsonLd(boardType: string, id: string, lang
   const image = toAbsoluteImageUrl(post.imageUrl || post.images?.[0]?.imageUrl)
   if (!text && !image) return null
   const canonicalBoard = post.boardType?.toUpperCase() === 'NOTICE' ? 'notice' : 'free'
+  const isNewsArticle = canonicalBoard === 'notice'
   const canonical = `${SITE_URL}/ko/community/${canonicalBoard}/${numericId}`
   const postingId = `${canonical}#posting`
   const breadcrumbId = `${canonical}#breadcrumb`
@@ -1649,19 +1657,36 @@ export async function getCommunityPostJsonLd(boardType: string, id: string, lang
     .map((comment) => buildCommentJsonLd(comment, canonical))
     .filter((comment): comment is object => comment !== null)
 
-  return {
-    '@context': 'https://schema.org',
-    '@graph': [
-      {
-        '@type': 'WebPage',
-        '@id': canonical,
+  const mainEntity = isNewsArticle
+    ? {
+        '@type': 'NewsArticle',
+        '@id': postingId,
+        'mainEntityOfPage': { '@id': canonical },
+        'headline': post.title,
+        'text': text || undefined,
+        'articleBody': text || undefined,
         'url': canonical,
-        'name': post.title,
+        'datePublished': toKstIsoDateTime(post.createdAt),
+        'dateModified': toKstIsoDateTime(post.updatedAt || post.createdAt),
+        'articleSection': boardLabel(post.boardType || boardType, 'ko'),
         'inLanguage': 'ko-KR',
-        'breadcrumb': { '@id': breadcrumbId },
-        'mainEntity': { '@id': postingId },
-      },
-      {
+        'isAccessibleForFree': true,
+        'image': image || undefined,
+        'keywords': post.hashtags?.length ? post.hashtags.join(', ') : undefined,
+        'citation': post.sourceUrls?.length ? post.sourceUrls : undefined,
+        'publisher': {
+          '@type': 'Organization',
+          'name': 'CaskByCask',
+          'url': SITE_URL,
+          'logo': { '@type': 'ImageObject', 'url': `${SITE_URL}/logo.png` },
+        },
+        'author': {
+          '@type': 'Organization',
+          'name': '소식관리자',
+          'url': SITE_URL,
+        },
+      }
+    : {
         '@type': 'DiscussionForumPosting',
         '@id': postingId,
         'mainEntityOfPage': { '@id': canonical },
@@ -1702,7 +1727,21 @@ export async function getCommunityPostJsonLd(boardType: string, id: string, lang
             'userInteractionCount': post.viewCount || 0,
           },
         ],
+      }
+
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'WebPage',
+        '@id': canonical,
+        'url': canonical,
+        'name': post.title,
+        'inLanguage': 'ko-KR',
+        'breadcrumb': { '@id': breadcrumbId },
+        'mainEntity': { '@id': postingId },
       },
+      mainEntity,
       {
         '@type': 'BreadcrumbList',
         '@id': breadcrumbId,

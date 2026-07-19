@@ -7,6 +7,7 @@ import type { PostCommentItem, UserMention, CommunityEmoji } from '../types/comm
 import Button from '@/shared/components/Button'
 import EmojiPicker from './EmojiPicker'
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
+import FormFieldLabel from '@/shared/components/FormFieldLabel'
 
 interface Props {
   postId: number
@@ -161,8 +162,11 @@ export default function CommunityCommentForm({
 
       {/* 멘션 드롭다운 */}
       <div className="relative">
+        <FormFieldLabel required className="mb-1.5">{t('comment.contentLabel')}</FormFieldLabel>
         <textarea
           ref={textareaRef}
+          required
+          aria-required="true"
           value={content}
           onChange={handleChange}
           maxLength={MAX_LENGTH}

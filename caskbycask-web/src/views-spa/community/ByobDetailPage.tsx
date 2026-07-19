@@ -9,6 +9,7 @@ import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 import RichContent from '@/shared/components/RichContent'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import type { ByobStatus, ApplyByobPayload } from '@/domain/byob/types/byob.types'
+import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 
 const STATUS_OPTIONS: ByobStatus[] = ['OPEN', 'CLOSED', 'CANCELLED']
 
@@ -176,7 +177,7 @@ export default function ByobDetailPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 py-8">
       <SeoMeta
         title={byob.title}
         description={byob.content.replace(/<[^>]*>/g, '').slice(0, 120)}
@@ -407,13 +408,14 @@ export default function ByobDetailPage() {
             {/* 신청 폼 */}
             {isLoggedIn && !isHost && applyStep === 'form' ? (
               <form onSubmit={handleApply} className="space-y-4">
+                <RequiredFieldsNotice />
                 {/* 가져올 술 (복수) */}
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-                    {t('byob.bottle')} <span className="text-red-500">*</span>
+                    {t('byob.bottle')} <RequiredMark />
                     <span className="ml-1 text-xs text-neutral-400 font-normal">(최대 10병)</span>
                   </label>
-                  <BottlesInput bottles={bottleList} onChange={setBottleList} />
+                  <div aria-required="true"><BottlesInput bottles={bottleList} onChange={setBottleList} /></div>
                 </div>
 
                 {/* 주최자에게 한마디 */}

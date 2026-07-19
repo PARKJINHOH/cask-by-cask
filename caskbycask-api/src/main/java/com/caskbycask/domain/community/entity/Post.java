@@ -134,6 +134,13 @@ public class Post extends BaseTimeEntity {
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PostImage> images = new ArrayList<>();
 
+    @Builder.Default
+    @ElementCollection
+    @CollectionTable(name = "post_hashtags", joinColumns = @JoinColumn(name = "post_id"))
+    @OrderColumn(name = "sort_order")
+    @Column(name = "hashtag", nullable = false, length = 30)
+    private List<String> hashtags = new ArrayList<>();
+
     public void incrementViewCount()    { this.viewCount++; }
     public void incrementLikeCount()    { this.likeCount++; }
     public void decrementLikeCount()    { if (this.likeCount > 0) this.likeCount--; }
@@ -163,6 +170,11 @@ public class Post extends BaseTimeEntity {
         this.contentSanitized = contentSanitized;
         this.prefix = prefix;
         this.adultOnly = adultOnly;
+    }
+
+    public void replaceHashtags(List<String> hashtags) {
+        this.hashtags.clear();
+        this.hashtags.addAll(hashtags);
     }
 
     public void assignToSeries(Series series, Integer order) {

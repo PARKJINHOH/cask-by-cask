@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState, type MouseEvent, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { adminAiNewsApi } from '@/domain/admin/api/adminAiNewsApi'
@@ -8,6 +8,8 @@ import PostEditor from '@/domain/community/components/PostEditor'
 import AdminPageHeader from '@/shared/components/AdminPageHeader'
 import Spinner from '@/shared/components/Spinner'
 import AdminAiNewsRequestPanel from './AdminAiNewsRequestPanel'
+import { formatHashtagInput, MAX_HASHTAGS, MAX_HASHTAG_LENGTH, parseHashtagInput } from '@/shared/utils/hashtags'
+import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 
 const MAX_TITLE_LENGTH = 70
 
@@ -28,6 +30,7 @@ export default function AdminAiNewsFormPage() {
   const [confidence, setConfidence] = useState(1)
   const [semanticFingerprint, setSemanticFingerprint] = useState('')
   const [sourceUrls, setSourceUrls] = useState<string[]>([])
+  const [hashtagInput, setHashtagInput] = useState('')
   const [rewritePrompt, setRewritePrompt] = useState('')
   const [scheduledAt, setScheduledAt] = useState('')
   const [error, setError] = useState('')
@@ -58,6 +61,7 @@ export default function AdminAiNewsFormPage() {
     setConfidence(Number(detail.confidenceScore))
     setSemanticFingerprint(detail.semanticFingerprint ?? '')
     setSourceUrls(detail.sources.map((source) => source.canonicalUrl))
+    setHashtagInput(formatHashtagInput(detail.hashtags))
     setScheduledAt(detail.scheduledAt?.slice(0, 16) ?? '')
   }, [detail])
 
@@ -72,12 +76,17 @@ export default function AdminAiNewsFormPage() {
         throw new Error('현재 이후의 예약 발행일시를 입력하세요.')
       }
       const sources = buildSourceEvidence(sourceUrls)
+      const hashtags = parseHashtagInput(hashtagInput)
+      if (hashtags.length > MAX_HASHTAGS || hashtags.some((hashtag) => hashtag.length > MAX_HASHTAG_LENGTH)) {
+        throw new Error(`해시태그는 최대 ${MAX_HASHTAGS}개, 각 ${MAX_HASHTAG_LENGTH}자까지 입력할 수 있습니다.`)
+      }
       if (isEdit) {
         const updated = await adminAiNewsApi.updateArticle(articleId!, {
           category, title: title.trim(), content,
           prefixId: prefixId === '' ? null : prefixId,
           pinned, confidenceScore: confidence,
           semanticFingerprint: semanticFingerprint.trim() || null,
+          hashtags,
           sourceUrls: sources.map((source) => source.sourceUrl),
         })
         if (action === 'publish' && updated.status !== 'PUBLISHED') await adminAiNewsApi.publish(updated.id)
@@ -91,7 +100,7 @@ export default function AdminAiNewsFormPage() {
         semanticFingerprint: semanticFingerprint.trim() || title.trim().toLowerCase(),
         topicId: topicId === '' ? null : topicId,
         prefixId: prefixId === '' ? null : prefixId,
-        pinned, autoPublishRequested: false, sources,
+        pinned, autoPublishRequested: false, hashtags, sources,
       })
       if (action === 'publish') await adminAiNewsApi.publish(created.id)
       if (action === 'schedule') await adminAiNewsApi.publish(created.id, scheduledAt)
@@ -156,6 +165,7 @@ export default function AdminAiNewsFormPage() {
       )}
       {!isEdit && writeMode === 'ai' ? <AdminAiNewsRequestPanel /> : (
       <div className="space-y-5 rounded-xl bg-white p-5 shadow-sm">
+        <RequiredFieldsNotice admin />
         {detail && (
           <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-xs text-neutral-600">
             상태: <strong>{detail.status}</strong> · 중복 키: {detail.dedupeKey}
@@ -189,9 +199,21 @@ export default function AdminAiNewsFormPage() {
             </select>
           </Field>
         </div>
-        <Field label="제목">
-          <input maxLength={MAX_TITLE_LENGTH} value={title} onChange={(e) => setTitle(e.target.value)} className={inputCls} placeholder="제목을 입력하세요." />
+        <Field label="제목" required>
+          <input required aria-required="true" maxLength={MAX_TITLE_LENGTH} value={title} onChange={(e) => setTitle(e.target.value)} className={inputCls} placeholder="제목을 입력하세요." />
           <p className="mt-1 text-right text-xs text-neutral-400">{title.length}/{MAX_TITLE_LENGTH}</p>
+        </Field>
+        <Field label="해시태그">
+          <input value={hashtagInput} onChange={(event) => setHashtagInput(event.target.value)}
+            className={inputCls} placeholder="#위스키 #신제품 #증류소" />
+          <p className="mt-1 text-xs text-neutral-500">
+            쉼표 또는 공백으로 구분합니다. 최대 {MAX_HASHTAGS}개이며, AI 초안도 관련 해시태그를 함께 제안합니다.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {parseHashtagInput(hashtagInput).map((hashtag) => (
+              <span key={hashtag.toLocaleLowerCase()} className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800">#{hashtag}</span>
+            ))}
+          </div>
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="신뢰도 (0~1)"><input type="number" min="0" max="1" step="0.01" value={confidence} onChange={(e) => setConfidence(Number(e.target.value))} className={inputCls} /></Field>
@@ -200,8 +222,8 @@ export default function AdminAiNewsFormPage() {
         <label className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-neutral-700">
           <input type="checkbox" checked={pinned} onChange={(e) => setPinned(e.target.checked)} /> 소식 게시판 상단 고정
         </label>
-        <div>
-          <p className="mb-1.5 text-xs font-semibold text-neutral-600">본문</p>
+        <div aria-required="true">
+          <p className="mb-1.5 text-xs font-semibold text-neutral-600">본문 <RequiredMark /></p>
           <PostEditor value={content} onChange={setContent} placeholder="내용을 입력하세요. 이미지와 영상을 업로드할 수 있습니다." onImageError={setError} onVideoError={setError} />
         </div>
         <div className="rounded-lg border border-neutral-200 p-4">
@@ -234,14 +256,16 @@ export default function AdminAiNewsFormPage() {
           )}
         </div>
         {canPublish && <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
-          <p className="text-sm font-semibold text-blue-900">예약 발행</p>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-semibold text-blue-900">예약 발행</p>
+            <button type="button" onClick={() => setScheduledAt(toLocalInputValue(new Date()))}
+              className="rounded-lg border border-blue-300 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100">
+              지금
+            </button>
+          </div>
           <p className="mt-1 text-xs text-blue-700">년·월·일과 시·분을 지정하면 해당 시각 이후 서버가 자동 발행합니다.</p>
           <div className="mt-3 flex flex-wrap items-end gap-2">
-            <label className="block min-w-64 flex-1">
-              <span className="mb-1 block text-xs font-medium text-blue-800">예약 발행일시</span>
-              <input type="datetime-local" step="60" min={toLocalInputValue(new Date())} max="9999-12-31T23:59"
-                value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} className={inputCls} />
-            </label>
+            <ScheduledDateTimeFields value={scheduledAt} onChange={setScheduledAt} />
             {detail?.status === 'SCHEDULED' && (
               <button type="button" disabled={cancelScheduleMut.isPending} onClick={() => {
                 if (window.confirm('예약발행을 취소하고 검토 대기 상태로 변경하시겠습니까?')) cancelScheduleMut.mutate()
@@ -253,11 +277,11 @@ export default function AdminAiNewsFormPage() {
         </div>}
         {detail && !['PUBLISHED', 'SCHEDULED', 'SKIPPED_DUPLICATE', 'REWRITE_REQUESTED'].includes(detail.status) && (
           <div className="rounded-lg border border-violet-200 bg-violet-50 p-4">
-            <p className="text-sm font-semibold text-violet-900">AI 재작성 요청</p>
+            <p className="text-sm font-semibold text-violet-900">AI 재작성 요청 <RequiredMark /></p>
             <p className="mt-1 text-xs leading-5 text-violet-700">
               아래 추가 프롬프트는 이 원고 재작성에만 적용됩니다. 다음 AI 자동화 실행에서 기존 제목과 본문을 바탕으로 다시 작성하며, 결과는 검토 대기로 저장됩니다.
             </p>
-            <textarea maxLength={4000} rows={4} value={rewritePrompt} onChange={(e) => setRewritePrompt(e.target.value)}
+            <textarea required aria-required="true" maxLength={4000} rows={4} value={rewritePrompt} onChange={(e) => setRewritePrompt(e.target.value)}
               className={`${inputCls} mt-3 resize-y`} placeholder="예: 초보자가 이해하기 쉽게 용어 설명을 보강하고, 각 단락에 구체적인 예시를 추가해주세요." />
             <div className="mt-2 flex items-center justify-between gap-3">
               <span className="text-xs text-violet-500">{rewritePrompt.length}/4000</span>
@@ -284,10 +308,54 @@ export default function AdminAiNewsFormPage() {
   )
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return <label className="block"><span className="mb-1.5 block text-xs font-semibold text-neutral-600">{label}</span>{children}</label>
+function Field({ label, children, required = false }: { label: string; children: ReactNode; required?: boolean }) {
+  return <label className="block" aria-required={required || undefined}><span className="mb-1.5 block text-xs font-semibold text-neutral-600">{label}{required && <RequiredMark />}</span>{children}</label>
 }
 const inputCls = 'w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100 disabled:bg-neutral-100'
+
+function ScheduledDateTimeFields({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const date = value.slice(0, 10)
+  const time = value.slice(11, 16)
+  const now = new Date()
+
+  const updateDate = (nextDate: string) => {
+    if (!nextDate) {
+      onChange('')
+      return
+    }
+    onChange(`${nextDate}T${time || toLocalTimeValue(now)}`)
+  }
+  const updateTime = (nextTime: string) => {
+    if (!nextTime) {
+      onChange('')
+      return
+    }
+    onChange(`${date || toLocalDateValue(now)}T${nextTime}`)
+  }
+
+  return (
+    <div className="grid min-w-64 flex-1 grid-cols-1 gap-2 sm:grid-cols-[minmax(10rem,1fr)_8rem]">
+      <label className="block">
+        <span className="mb-1 block text-xs font-medium text-blue-800">날짜</span>
+        <input type="date" min={toLocalDateValue(now)} max="9999-12-31" value={date}
+          onClick={openPicker} onChange={(e) => updateDate(e.target.value)} className={inputCls} />
+      </label>
+      <label className="block">
+        <span className="mb-1 block text-xs font-medium text-blue-800">시간</span>
+        <input type="time" step="60" value={time}
+          onClick={openPicker} onChange={(e) => updateTime(e.target.value)} className={inputCls} />
+      </label>
+    </div>
+  )
+}
+
+function openPicker(event: MouseEvent<HTMLInputElement>) {
+  try {
+    event.currentTarget.showPicker()
+  } catch {
+    // showPicker 미지원 브라우저는 기본 입력 동작을 사용한다.
+  }
+}
 
 function buildSourceEvidence(sourceUrls: string[]): AiNewsSourceEvidence[] {
   const seenDomains = new Set<string>()
@@ -319,6 +387,14 @@ function buildSourceEvidence(sourceUrls: string[]): AiNewsSourceEvidence[] {
 }
 
 function toLocalInputValue(date: Date) {
+  return `${toLocalDateValue(date)}T${toLocalTimeValue(date)}`
+}
+
+function toLocalDateValue(date: Date) {
   const offset = date.getTimezoneOffset() * 60_000
-  return new Date(date.getTime() - offset).toISOString().slice(0, 16)
+  return new Date(date.getTime() - offset).toISOString().slice(0, 10)
+}
+
+function toLocalTimeValue(date: Date) {
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
 }

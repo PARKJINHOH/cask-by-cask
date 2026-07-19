@@ -6,6 +6,7 @@ import axiosInstance from '@/shared/api/axiosInstance'
 import type { ApiResponse } from '@/shared/types/common.types'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
+import FormFieldLabel, { RequiredFieldsNotice } from '@/shared/components/FormFieldLabel'
 
 interface UserSuggestion {
   id: number
@@ -113,12 +114,15 @@ export default function MessagePopup() {
       ) : (
         <>
         <div className="px-4 py-3 space-y-3">
+          <RequiredFieldsNotice />
           {/* 받는 사람 */}
           <div>
-            <label className="block text-xs font-medium text-neutral-600 mb-1">{t('messages.to')}</label>
+            <FormFieldLabel required className="mb-1 text-xs">{t('messages.to')}</FormFieldLabel>
             <div className="relative">
               <input
                 type="text"
+                required
+                aria-required="true"
                 value={receiver}
                 onChange={(e) => {
                   setReceiver(e.target.value)
@@ -160,8 +164,10 @@ export default function MessagePopup() {
 
           {/* 내용 */}
           <div>
-            <label className="block text-xs font-medium text-neutral-600 mb-1">{t('messages.content')}</label>
+            <FormFieldLabel required className="mb-1 text-xs">{t('messages.content')}</FormFieldLabel>
             <textarea
+              required
+              aria-required="true"
               value={content}
               onChange={(e) => setContent(e.target.value.slice(0, 100))}
               rows={4}

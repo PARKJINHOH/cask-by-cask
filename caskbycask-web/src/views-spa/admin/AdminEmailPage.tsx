@@ -7,6 +7,7 @@ import { adminEmailApi } from '@/domain/admin/api/adminEmailApi'
 import type { SendEmailResult, EmailTemplate } from '@/domain/admin/api/adminEmailApi'
 import { formatDate } from '@/shared/utils/format'
 import { sanitizeHtml } from '@/shared/utils/sanitize'
+import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 
 // ── 결과 배너 ─────────────────────────────────────────────────────
 function ResultBanner({ result, onClose }: { result: SendEmailResult; onClose: () => void }) {
@@ -83,8 +84,10 @@ function SaveTemplateModal({
   return (
     <Modal open onClose={onClose} title={editTarget ? '템플릿 수정' : '템플릿으로 저장'} size="sm">
       <div className="space-y-4">
+        <RequiredFieldsNotice admin />
         <Input
           label="템플릿 이름"
+          required
           placeholder="예: 신년 이벤트 안내"
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -212,8 +215,10 @@ export default function AdminEmailPage() {
 
           {/* 작성 영역 */}
           <div className="bg-white rounded-xl shadow-sm p-5 space-y-4">
+            <RequiredFieldsNotice admin />
             <Input
               label="제목"
+              required
               placeholder="이메일 제목 입력"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
@@ -221,7 +226,7 @@ export default function AdminEmailPage() {
 
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="text-sm font-medium text-neutral-700">본문</label>
+                <label className="text-sm font-medium text-neutral-700">본문 <RequiredMark /></label>
                 <button
                   type="button"
                   onClick={() => { setEditTarget(null); setSaveModal(true) }}
@@ -235,6 +240,8 @@ export default function AdminEmailPage() {
                 </button>
               </div>
               <textarea
+                required
+                aria-required="true"
                 rows={14}
                 placeholder="이메일 본문을 입력하세요. HTML 태그 사용 가능합니다."
                 value={body}

@@ -1,5 +1,5 @@
 ﻿import { useEffect } from 'react'
-import { Link, useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { useNoticeDetail, useToggleNoticeRecommend } from '@/domain/notice/hooks/useNoticeDetail'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { NOTICE_CATEGORY_LABELS } from '@/domain/notice/types/notice.types'
@@ -51,19 +51,13 @@ export default function NoticeDetailPage() {
   if (isError || !notice) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-16 text-center">
-        <p className="text-neutral-500 text-sm mb-4">공지사항을 찾을 수 없습니다.</p>
-        <button
-          onClick={() => navigate('/notices')}
-          className="text-sm text-primary-800 hover:underline"
-        >
-          목록으로 돌아가기
-        </button>
+        <p className="text-neutral-500 text-sm">공지사항을 찾을 수 없습니다.</p>
       </div>
     )
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 py-8">
       <SeoMeta
         title={notice.title}
         description={stripHtmlForMeta(notice.contentSanitized, 160)
@@ -90,15 +84,6 @@ export default function NoticeDetailPage() {
           ]),
         ]}
       />
-
-      {/* 브레드크럼 */}
-      <nav className="flex items-center gap-1.5 text-xs text-neutral-400 mb-6">
-        <Link to="/" className="hover:text-neutral-600 transition-colors">홈</Link>
-        <span>/</span>
-        <Link to="/notices" className="hover:text-neutral-600 transition-colors">공지사항</Link>
-        <span>/</span>
-        <span className="text-neutral-600 truncate max-w-[200px]">{notice.title}</span>
-      </nav>
 
       {/* 공지 헤더 */}
       <div className="mb-8 pb-6 border-b border-neutral-200">
@@ -144,28 +129,6 @@ export default function NoticeDetailPage() {
         </button>
       </div>
 
-      {/* 하단 네비게이션 */}
-      <div className="mt-12 pt-6 border-t border-neutral-200 space-y-3">
-        {/* 목록으로 */}
-        <div className="flex justify-center">
-          <Link
-            to="/notices"
-            className="inline-flex items-center gap-2 px-5 py-2 text-sm font-medium
-              border border-neutral-300 rounded-lg text-neutral-600
-              hover:border-neutral-400 hover:text-neutral-800 transition-colors"
-          >
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="8" y1="6" x2="21" y2="6" />
-              <line x1="8" y1="12" x2="21" y2="12" />
-              <line x1="8" y1="18" x2="21" y2="18" />
-              <line x1="3" y1="6" x2="3.01" y2="6" />
-              <line x1="3" y1="12" x2="3.01" y2="12" />
-              <line x1="3" y1="18" x2="3.01" y2="18" />
-            </svg>
-            목록으로
-          </Link>
-        </div>
-      </div>
     </div>
   )
 }

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import EditorTooltip from './EditorTooltip'
 
 export interface SelectOption {
   value: string
@@ -37,30 +38,36 @@ export default function EditorSelectMenu({
 
   return (
     <div ref={ref} className="relative">
-      <button
-        type="button"
-        title={title}
-        onMouseDown={(e) => { e.preventDefault(); setOpen((o) => !o) }}
-        style={{ minWidth: width }}
-        className="h-7 px-2 flex items-center justify-between gap-1 rounded text-xs text-neutral-700 hover:bg-neutral-100 transition-colors border border-transparent hover:border-neutral-200"
-      >
-        <span className="flex items-center gap-1 truncate">
-          {icon}
-          <span className="truncate">{current}</span>
-        </span>
-        <svg className="w-3 h-3 text-neutral-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
-      </button>
+      <EditorTooltip content={title} disabled={open}>
+        <button
+          type="button"
+          aria-label={title}
+          aria-expanded={open}
+          aria-haspopup="listbox"
+          onMouseDown={(e) => { e.preventDefault(); setOpen((o) => !o) }}
+          style={{ minWidth: width }}
+          className="h-8 px-2 flex items-center justify-between gap-1 rounded text-[13px] text-neutral-700 hover:bg-neutral-100 transition-colors border border-transparent hover:border-neutral-200"
+        >
+          <span className="flex items-center gap-1 truncate">
+            {icon}
+            <span className="truncate">{current}</span>
+          </span>
+          <svg className="w-3 h-3 text-neutral-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
+      </EditorTooltip>
 
       {open && (
-        <div className="absolute z-30 mt-1 left-0 py-1 bg-white border border-neutral-200 rounded-lg shadow-lg min-w-[140px] max-h-72 overflow-y-auto">
+        <div role="listbox" className="absolute z-30 mt-1 left-0 py-1 bg-white border border-neutral-200 rounded-lg shadow-lg min-w-[140px] max-h-72 overflow-y-auto">
           {options.map((opt) => {
             const isActive = activeValue != null && activeValue === opt.value
             return (
               <button
                 key={opt.value}
                 type="button"
+                role="option"
+                aria-selected={isActive}
                 onMouseDown={(e) => {
                   e.preventDefault()
                   onSelect(opt.value)

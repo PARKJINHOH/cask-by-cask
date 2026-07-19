@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import FormFieldLabel from '@/shared/components/FormFieldLabel'
 import SeoMeta from '@/shared/components/SeoMeta'
 import RichContent from '@/shared/components/RichContent'
 import { useAuthStore } from '@/domain/auth/store/authStore'
@@ -73,15 +74,11 @@ export default function FeedbackDetailPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-10">
+    <div className="max-w-7xl mx-auto px-4 py-10">
       <SeoMeta title={detail.title} noindex />
 
-      <Link to={listReturnTo} className="text-sm text-neutral-500 hover:text-primary-800">
-        ← {t('feedback.backToList')}
-      </Link>
-
       {/* 헤더 카드 */}
-      <div className="mt-4 p-5 bg-white border border-neutral-200 rounded-2xl">
+      <div className="p-5 bg-white border border-neutral-200 rounded-2xl">
         <div className="flex items-center gap-2 flex-wrap">
           <TypeChip type={detail.type} />
           <StatusBadge status={detail.status} />
@@ -240,7 +237,10 @@ export default function FeedbackDetailPage() {
         {/* 댓글 입력 — 작성자 본인 또는 관리자만 */}
         {(detail.isOwner || isAdmin) && (
           <form onSubmit={handleAddComment} className="mt-4">
+            <FormFieldLabel required className="mb-1.5">{t('comment.contentLabel')}</FormFieldLabel>
             <textarea
+              required
+              aria-required="true"
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               maxLength={5000}

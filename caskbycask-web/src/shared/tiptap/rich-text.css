@@ -18,6 +18,13 @@
   box-sizing: border-box;
 }
 
+/* 이미지 리사이즈 중 콘텐츠 높이 변화에 브라우저 스크롤 앵커가 개입하지 않게 한다. */
+.di-richtext.di-richtext--image-resizing,
+.di-richtext.di-richtext--image-resizing * {
+  overflow-anchor: none !important;
+  scroll-behavior: auto !important;
+}
+
 .di-richtext.di-richtext--compact {
   height: clamp(220px, 52dvh, 580px);
 }
@@ -32,6 +39,11 @@
 }
 .di-richtext .ProseMirror:focus {
   outline: none;
+}
+
+.rich-text-toolbar .di-toolbar-button > svg {
+  width: 1rem !important;
+  height: 1rem !important;
 }
 
 /* Placeholder */

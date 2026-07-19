@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAllProducers } from '../hooks/useProducer'
 import type { Producer, ProducerSelectorProps as Props } from '../types/producer.types'
+import { RequiredFieldsNotice } from '@/shared/components/FormFieldLabel'
 
 export type { NewProducerInput } from '../types/producer.types'
 
@@ -189,11 +190,12 @@ export default function ProducerSelector({ value, defaultName, onChange, placeho
                 </button>
               ) : (
                 <div className="p-2 space-y-2">
-                  <input value={newKo} onChange={(e) => setNewKo(e.target.value)} maxLength={200}
+                  <RequiredFieldsNotice />
+                  <input value={newKo} onChange={(e) => setNewKo(e.target.value)} maxLength={200} required aria-required="true" aria-label={t('producerSelector.newNameKo')}
                     placeholder={`${t('producerSelector.newNameKo')} · ${t('producerSelector.newNameKoPh')}`} className={NEW_INPUT} />
-                  <input value={newEn} onChange={(e) => setNewEn(e.target.value)} maxLength={200}
+                  <input value={newEn} onChange={(e) => setNewEn(e.target.value)} maxLength={200} required aria-required="true" aria-label={t('producerSelector.newNameEn')}
                     placeholder={`${t('producerSelector.newNameEn')} · ${t('producerSelector.newNameEnPh')}`} className={NEW_INPUT} />
-                  <input value={newCountry} onChange={(e) => setNewCountry(e.target.value)} maxLength={100}
+                  <input value={newCountry} onChange={(e) => setNewCountry(e.target.value)} maxLength={100} required aria-required="true" aria-label={t('producerSelector.newCountry')}
                     placeholder={`${t('producerSelector.newCountry')} · ${t('producerSelector.newCountryPh')}`} className={NEW_INPUT} />
                   {createErr && <p className="text-xs text-red-500">{createErr}</p>}
                   <div className="flex gap-2">

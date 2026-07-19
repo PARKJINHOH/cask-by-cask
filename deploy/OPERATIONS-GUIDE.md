@@ -10,7 +10,7 @@
 
 | 항목 | 값 |
 |---|---|
-| 사이트 | https://caskbycask.net |
+| 사이트 | https://www.caskbycask.net |
 | 서버 | Oracle Cloud Infrastructure · 대한민국 춘천 리전 (Ubuntu 24.04 aarch64) |
 | 서버 공인 IP | `CHANGE_ME_SERVER_IP` |
 | SSH 접속 유저 | `CHANGE_ME_SSH_USER` (예: ubuntu) |
@@ -204,7 +204,7 @@ systemd 가 `caskbycask-api` 와 nginx 를 자동 기동한다(enable 되어 있
 
 ```bash
 curl -s http://127.0.0.1:8081/actuator/health   # {"status":"UP"} 기대
-curl -s https://caskbycask.net/healthz           # ok 기대
+curl -s https://www.caskbycask.net/healthz       # ok 기대
 ```
 
 ---
@@ -310,6 +310,37 @@ FLUSH PRIVILEGES;
 운영 스크립트(`deploy/server/*.sh`)는 **배포(Actions)가 `/app/scripts` 로 자동 전송**한다.
 nginx 설정·점검 페이지는 전송하지 않으므로 변경 시 아래처럼 수동 적용한다.
 
+### 대표 호스트(canonical host) 정책
+
+- 대표 URL은 `https://www.caskbycask.net`이다.
+- `http://caskbycask.net`, `http://www.caskbycask.net`, `https://caskbycask.net`은 경로와 쿼리 문자열을 유지해 `https://www.caskbycask.net`으로 `301` 이동한다.
+- nginx는 원본 서버의 안전망으로 동일한 리디렉션을 수행한다. Cloudflare를 우회해도 비-www 콘텐츠를 `200`으로 제공하지 않는다.
+- TLS 연결이 HTTP 리디렉션보다 먼저 처리되므로 `/etc/nginx/ssl/caskbycask.net.pem`의 SAN에 `caskbycask.net`과 `www.caskbycask.net`(또는 `*.caskbycask.net`)이 모두 포함되어야 한다.
+- 비-www 호스트의 쿠키·localStorage는 www로 이전되지 않으므로, 기존 사용자는 최초 전환 후 한 번 다시 로그인해야 할 수 있다. 보안을 위해 refresh cookie는 host-only 상태를 유지한다.
+
+Cloudflare 대시보드에서 다음을 확인한다.
+
+| 위치 | 설정 |
+|---|---|
+| DNS → Records | `@` A 레코드와 `www` 레코드를 모두 **Proxied**로 유지. `www`는 CNAME(`caskbycask.net`) 권장, 기존 A가 같은 서버 IP를 가리키면 그대로 사용 가능 |
+| SSL/TLS → Overview | **Full (strict)** 유지 |
+| Rules → Redirect Rules → Single Redirect | 호스트가 `caskbycask.net`이면 `https://www.caskbycask.net`의 같은 경로로 `301`, **Preserve query string 활성화** |
+
+Cloudflare Single Redirect 조건은 `(http.host eq "caskbycask.net")`, 동적 대상 URL은 `concat("https://www.caskbycask.net", http.request.uri.path)`를 사용한다. 같은 목적의 Page Rule, Bulk Redirect, Worker가 이미 있다면 중복 규칙을 만들지 말고 방향이 www인지 확인한다. 규칙 반영 후 기존 비-www 응답이 캐시되어 있으면 Cloudflare 캐시를 purge한다.
+
+전환 시 소셜 로그인 중단과 양방향 리디렉션 루프를 피하기 위해 다음 순서를 지킨다.
+
+1. Google Cloud Console과 네이버 개발자센터에 `https://www.caskbycask.net/oauth/callback`을 먼저 등록한다.
+2. 전환 중에는 `/app/env/api.env`의 `OAUTH_ALLOWED_REDIRECT_URIS`에 비-www와 www 콜백을 쉼표로 함께 허용한 뒤 API를 재시작한다.
+3. 웹/API 배포와 nginx 설정을 반영한다.
+4. 기존 `www → 비-www` Cloudflare 규칙이 있으면 제거하고, `비-www → www` 규칙을 활성화한다.
+5. 검증 후 비-www OAuth 콜백을 환경변수와 제공자 콘솔에서 정리한다.
+
+```dotenv
+# 대표 호스트 전환 중 임시값
+OAUTH_ALLOWED_REDIRECT_URIS=https://caskbycask.net/oauth/callback,https://www.caskbycask.net/oauth/callback
+```
+
 ```bash
 # 레포에서 서버로 파일 업로드 (예: ~/setup/ 경유, scp/FTP)
 #   deploy/nginx/caskbycask.conf
@@ -326,6 +357,10 @@ sudo chown CHANGE_ME_SSH_USER:CHANGE_ME_SSH_USER /app/next/maintenance.html
 
 # 검증 후 reload (항상 nginx -t 먼저!)
 sudo nginx -t && sudo systemctl reload nginx
+
+# 대표 호스트 검증: 비-www는 301 + Location, www는 200 기대
+curl -I 'https://caskbycask.net/ko/community/notice?from=apex'
+curl -I 'https://www.caskbycask.net/ko/community/notice?from=apex'
 ```
 
 > ⚠️ nginx 설정을 덮어쓰면 4장의 **우회 시크릿(sed 치환)이 자리표시자로 되돌아간다.** conf 교체 후 시크릿 sed 를 반드시 다시 실행할 것.
@@ -352,14 +387,14 @@ sudo systemctl restart caskbycask-api   # 수정 후 재시작해야 반영
 | `GMAIL_APP_PASSWORD` | 이메일 발송용 Gmail 앱 비번 |
 | `CASKBYCASK_INTERNAL_KEY` | 크롤러 ↔ API 내부 인증 키 (크롤러 .env 와 동일값) |
 | `OAUTH_TOKEN_ENCRYPTION_KEY` | 소셜 refresh token 암호화 키 (Base64 32B, `openssl rand -base64 32`). 분실 시 기존 연동의 자동 연결해지만 불가 |
-| `OAUTH_ALLOWED_REDIRECT_URIS` | 소셜 콜백 화이트리스트 (예: `https://caskbycask.net/oauth/callback`). 제공자 콘솔 등록값과 동일 |
+| `OAUTH_ALLOWED_REDIRECT_URIS` | 소셜 콜백 화이트리스트 (예: `https://www.caskbycask.net/oauth/callback`). 제공자 콘솔 등록값과 동일 |
 | `OAUTH_NAVER_CLIENT_ID` / `OAUTH_NAVER_CLIENT_SECRET` | 네이버 로그인 키 (네이버 개발자센터) |
 | `OAUTH_GOOGLE_CLIENT_ID` / `OAUTH_GOOGLE_CLIENT_SECRET` | 구글 로그인 키 (Google Cloud Console) |
 | `SLACK_WEBHOOK_URL` | (선택) 운영/백업 알림 |
 | `PROD_DB_READONLY_USERNAME` / `PROD_DB_READONLY_PASSWORD` | (선택) 운영 스냅샷 dump 전용 읽기 계정 |
 | `DEV_REFRESH_DB_USERNAME` / `DEV_REFRESH_DB_PASSWORD` | (선택) 운영 스냅샷을 `caskbycask_dev` 로 갱신할 때 사용하는 교체 권한 계정 |
 
-> **소셜 로그인 제공자 콘솔 설정** — 네이버/구글 모두 **승인된 redirect URI** 에 `https://caskbycask.net/oauth/callback`
+> **소셜 로그인 제공자 콘솔 설정** — 네이버/구글 모두 **승인된 redirect URI** 에 `https://www.caskbycask.net/oauth/callback`
 > (로컬 개발 시 `http://localhost:5173/oauth/callback`)을 등록해야 한다. 구글은 OAuth 동의 화면에 `openid`,`email`,`profile`
 > 스코프가 필요하고, refresh token 수신을 위해 앱이 `access_type=offline` + `prompt=consent` 로 인가 요청한다(코드에 반영됨).
 > 등록 redirect URI 가 `OAUTH_ALLOWED_REDIRECT_URIS` 와 다르면 콜백이 `OAUTH_008` 로 거부된다.
@@ -398,7 +433,7 @@ sudo systemctl restart caskbycask-web
 # 개별 상태 점검
 curl -s http://127.0.0.1:8081/actuator/health    # 백엔드 health
 curl -s http://127.0.0.1:3000/healthz             # 프론트엔드 health
-curl -s https://caskbycask.net/healthz            # 사이트 외부 health
+curl -s https://www.caskbycask.net/healthz        # 사이트 외부 health
 systemctl status caskbycask-api caskbycask-web nginx mariadb redis-server
 
 # 점검 모드

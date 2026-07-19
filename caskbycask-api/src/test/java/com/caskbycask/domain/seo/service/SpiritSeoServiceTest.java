@@ -38,7 +38,7 @@ class SpiritSeoServiceTest {
 
     @BeforeEach
     void setUp() {
-        ReflectionTestUtils.setField(spiritSeoService, "siteUrl", "https://caskbycask.net");
+        ReflectionTestUtils.setField(spiritSeoService, "siteUrl", "https://www.caskbycask.net");
     }
 
     @Test

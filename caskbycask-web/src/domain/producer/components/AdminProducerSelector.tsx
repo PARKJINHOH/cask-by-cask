@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useAllProducers } from '../hooks/useProducer'
 import type { Producer, ProducerSelectorProps as Props } from '../types/producer.types'
+import { RequiredFieldsNotice } from '@/shared/components/FormFieldLabel'
 
 export type { NewProducerInput } from '../types/producer.types'
 
@@ -225,11 +226,12 @@ export default function AdminProducerSelector({
             </button>
           ) : (
             <div className="p-2 space-y-2">
-              <input value={newKo} onChange={(e) => setNewKo(e.target.value)} maxLength={200}
+              <RequiredFieldsNotice admin />
+              <input value={newKo} onChange={(e) => setNewKo(e.target.value)} maxLength={200} required aria-required="true" aria-label="한글 이름"
                 placeholder="한글 이름 · 예) 산토리" className={NEW_INPUT} />
-              <input value={newEn} onChange={(e) => setNewEn(e.target.value)} maxLength={200}
+              <input value={newEn} onChange={(e) => setNewEn(e.target.value)} maxLength={200} required aria-required="true" aria-label="영문 이름"
                 placeholder="영문 이름 · 예) Suntory" className={NEW_INPUT} />
-              <input value={newCountry} onChange={(e) => setNewCountry(e.target.value)} maxLength={100}
+              <input value={newCountry} onChange={(e) => setNewCountry(e.target.value)} maxLength={100} required aria-required="true" aria-label="국가"
                 placeholder="국가 · 예) 일본" className={NEW_INPUT} />
               {createErr && <p className="text-xs text-red-500">{createErr}</p>}
               <div className="flex gap-2">

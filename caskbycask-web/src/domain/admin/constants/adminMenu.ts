@@ -63,6 +63,7 @@ export const ADMIN_NAV: AdminNavEntry[] = [
       { path: '/admin/spirits/requests', label: '등록 요청' },
       { path: '/admin/spirits/variant-requests', label: '하위 에디션/리뷰 승인', exact: true },
       { path: '/admin/spirits',          label: '주류 관리', exact: true },
+      { path: '/admin/taste-trees',      label: '위스키 트리', exact: true },
     ],
   },
   {

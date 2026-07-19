@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useByobComments, useByobActions } from '../hooks/useByob'
 import type { ByobComment } from '../types/byob.types'
 import DefaultAvatar from '@/shared/components/DefaultAvatar'
+import FormFieldLabel from '@/shared/components/FormFieldLabel'
 
 interface CommentItemProps {
   comment: ByobComment
@@ -147,7 +148,10 @@ export default function ByobCommentSection({ byobId, myUserId, hostUserId, isHos
             </button>
           </div>
         )}
+        <FormFieldLabel required className="mb-1.5">{t('comment.contentLabel')}</FormFieldLabel>
         <textarea
+          required
+          aria-required="true"
           value={content}
           onChange={(e) => setContent(e.target.value.slice(0, 200))}
           rows={3}

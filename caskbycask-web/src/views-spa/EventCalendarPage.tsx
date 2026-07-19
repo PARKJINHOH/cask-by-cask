@@ -13,6 +13,7 @@ import Button from '@/shared/components/Button'
 import DateInput from '@/shared/components/DateInput'
 import Toast from '@/shared/components/Toast'
 import { useToast } from '@/shared/hooks/useToast'
+import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 
 interface SuggestForm {
   title: string
@@ -170,7 +171,7 @@ export default function EventCalendarPage() {
   ]
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 py-8">
       <Toast toasts={toasts} onRemove={removeToast} />
 
       {/* 헤더 */}
@@ -275,6 +276,7 @@ export default function EventCalendarPage() {
         {suggestForm && (
           <div className="space-y-4">
             <p className="text-sm text-neutral-500">{t('calendar.suggest.subtitle')}</p>
+            <RequiredFieldsNotice />
 
             {suggestError && (
               <div className="px-3 py-2 rounded-lg bg-red-50 text-red-600 text-sm">{suggestError}</div>
@@ -282,10 +284,12 @@ export default function EventCalendarPage() {
 
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1">
-                {t('calendar.suggest.name')} <span className="text-red-500">*</span>
+                {t('calendar.suggest.name')} <RequiredMark />
               </label>
               <input
                 type="text"
+                required
+                aria-required="true"
                 value={suggestForm.title}
                 maxLength={200}
                 onChange={(e) => patchSuggest({ title: e.target.value })}
@@ -296,9 +300,9 @@ export default function EventCalendarPage() {
 
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1">
-                {t('calendar.suggest.category')} <span className="text-red-500">*</span>
+                {t('calendar.suggest.category')} <RequiredMark />
               </label>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2" role="radiogroup" aria-required="true">
                 {CATEGORY_ORDER.map((c) => (
                   <button
                     key={c}
@@ -321,9 +325,11 @@ export default function EventCalendarPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  {t('calendar.suggest.startDate')} <span className="text-red-500">*</span>
+                  {t('calendar.suggest.startDate')} <RequiredMark />
                 </label>
                 <DateInput
+                  required
+                  aria-required="true"
                   value={suggestForm.startDate}
                   onChange={(e) => patchSuggest({ startDate: e.target.value })}
                   className="w-full h-10 px-3 rounded-lg border border-neutral-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"

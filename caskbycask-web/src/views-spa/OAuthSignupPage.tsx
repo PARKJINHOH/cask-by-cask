@@ -6,6 +6,7 @@ import { authApi } from '@/domain/auth/api/authApi'
 import { useAuth } from '@/domain/auth/hooks/useAuth'
 import Button from '@/shared/components/Button'
 import Input from '@/shared/components/Input'
+import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 import SeoMeta from '@/shared/components/SeoMeta'
 import type { ApiResponse } from '@/shared/types/common.types'
 
@@ -132,9 +133,11 @@ export default function OAuthSignupPage() {
         </div>
 
         <div className="space-y-4">
+          <RequiredFieldsNotice className="text-right" />
           {/* 닉네임 */}
           <Input
             label={t('auth.nickname')}
+            required
             placeholder={t('auth.oauthSignup.nicknameHint')}
             maxLength={8}
             value={nickname}
@@ -147,6 +150,7 @@ export default function OAuthSignupPage() {
               <div className="flex gap-2 items-start">
                 <Input
                   label={t('auth.email')}
+                  required
                   type="email"
                   placeholder="example@email.com"
                   maxLength={255}
@@ -161,6 +165,7 @@ export default function OAuthSignupPage() {
               {codeSent && (
                 <Input
                   label={t('auth.oauthSignup.code')}
+                  required
                   placeholder={t('auth.oauthSignup.codeHint')}
                   inputMode="numeric"
                   maxLength={6}
@@ -180,9 +185,10 @@ export default function OAuthSignupPage() {
             <label className="flex items-center justify-between gap-2 cursor-pointer">
               <span className="flex items-center gap-2 min-w-0">
                 <input type="checkbox" checked={agreedToTerms}
+                  required
                   onChange={(e) => setAgreedToTerms(e.target.checked)}
                   className="w-4 h-4 shrink-0 rounded accent-primary-800" />
-                <span className="text-sm text-neutral-700 truncate">{t('auth.signup.terms.agreeTerms')}</span>
+                <span className="text-sm text-neutral-700 truncate">{t('auth.signup.terms.agreeTerms')}<RequiredMark /></span>
               </span>
               <Link to="/terms" target="_blank" className="shrink-0 text-xs text-primary-800 hover:underline">
                 {t('auth.signup.terms.viewFull')}
@@ -191,9 +197,10 @@ export default function OAuthSignupPage() {
             <label className="flex items-center justify-between gap-2 cursor-pointer">
               <span className="flex items-center gap-2 min-w-0">
                 <input type="checkbox" checked={agreedToPrivacy}
+                  required
                   onChange={(e) => setAgreedToPrivacy(e.target.checked)}
                   className="w-4 h-4 shrink-0 rounded accent-primary-800" />
-                <span className="text-sm text-neutral-700 truncate">{t('auth.signup.terms.agreePrivacy')}</span>
+                <span className="text-sm text-neutral-700 truncate">{t('auth.signup.terms.agreePrivacy')}<RequiredMark /></span>
               </span>
               <Link to="/privacy" target="_blank" className="shrink-0 text-xs text-primary-800 hover:underline">
                 {t('auth.signup.terms.viewFull')}

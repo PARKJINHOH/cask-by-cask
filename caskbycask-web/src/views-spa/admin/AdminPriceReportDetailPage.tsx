@@ -15,6 +15,7 @@ import type {
   PriceReportStatus,
   StoreSearchResult,
 } from '@/domain/pricetracker/types/pricetracker.types'
+import FormFieldLabel from '@/shared/components/FormFieldLabel'
 
 const krw = new Intl.NumberFormat('ko-KR')
 
@@ -313,8 +314,12 @@ export default function AdminPriceReportDetailPage() {
       {report.status === 'PENDING' && (
         <div className="bg-white rounded-xl shadow-sm p-4">
           {rejecting ? (
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <div className="flex flex-col gap-2">
+              <FormFieldLabel admin required>반려 사유</FormFieldLabel>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
               <input
+                required
+                aria-required="true"
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}
                 placeholder="반려 사유 입력"
@@ -328,6 +333,7 @@ export default function AdminPriceReportDetailPage() {
               >
                 {reject.isPending ? '처리 중...' : '반려 확인'}
               </button>
+              </div>
               <button
                 type="button"
                 onClick={() => setRejecting(false)}

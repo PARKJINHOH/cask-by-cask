@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useByobParticipants, useByobActions } from '../hooks/useByob'
 import type { ByobParticipant, ParticipantStatus } from '../types/byob.types'
+import FormFieldLabel from '@/shared/components/FormFieldLabel'
 
 const STATUS_LABEL: Record<ParticipantStatus, string> = {
   PENDING:  '대기',
@@ -114,7 +115,10 @@ export default function ByobParticipantPanel({ byobId }: Props) {
             <h4 className="text-base font-semibold text-neutral-900 mb-1">
               {rejectTarget.nickname}{t('byob.rejectModalTitle')}
             </h4>
+            <FormFieldLabel required className="mt-3 mb-1.5">{t('byob.rejectReasonPlaceholder')}</FormFieldLabel>
             <textarea
+              required
+              aria-required="true"
               value={rejectedReason}
               onChange={(e) => setRejectedReason(e.target.value)}
               rows={3}
@@ -149,7 +153,10 @@ export default function ByobParticipantPanel({ byobId }: Props) {
             <h4 className="text-base font-semibold text-neutral-900 mb-1">
               {removeTarget.nickname}님 제외
             </h4>
+            <FormFieldLabel required className="mt-3 mb-1.5">{t('byob.removeReasonPlaceholder')}</FormFieldLabel>
             <textarea
+              required
+              aria-required="true"
               value={removedReason}
               onChange={(e) => setRemovedReason(e.target.value)}
               rows={3}

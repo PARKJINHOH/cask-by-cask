@@ -20,7 +20,7 @@ export default function UserBottlePublicPage() {
   if (isLoading) return <div className="py-8 text-center text-neutral-400">{t('common.loading')}</div>;
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-6 space-y-4">
+    <div className="max-w-7xl mx-auto px-4 py-6 space-y-4">
       <h1 className="text-xl font-bold text-neutral-900">
         {t('collection.publicPage.title', { nickname: data?.ownerNickname ?? `#${userId}` })}
       </h1>

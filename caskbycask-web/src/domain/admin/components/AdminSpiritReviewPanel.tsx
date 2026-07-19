@@ -12,6 +12,7 @@ import {
   useUnhideAdminReview,
 } from '../hooks/useAdminContent'
 import type { AdminReview, AdminVariantReviewRequest, ModerationPayload } from '../types/admin.types'
+import { RequiredMark } from '@/shared/components/FormFieldLabel'
 
 type ModerationAction = 'hide' | 'delete'
 
@@ -220,9 +221,11 @@ export default function AdminSpiritReviewPanel({
               {reviewRejectedChecked && (
                 <div className="rounded-lg border border-red-200 bg-white p-3">
                   <label className="mb-1.5 block text-xs font-semibold text-red-700">
-                    미승인 사유 <span className="text-red-500">*</span>
+                    미승인 사유 <RequiredMark />
                   </label>
                   <textarea
+                    required
+                    aria-required="true"
                     value={reviewRejectReason}
                     onChange={(event) => onReviewRejectReasonChange?.(event.target.value)}
                     rows={5}

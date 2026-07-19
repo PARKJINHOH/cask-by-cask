@@ -90,6 +90,7 @@ export interface PostDetail {
   poll: PollDetail | null
   images: PostImageInfo[]
   sourceUrls: string[]
+  hashtags: string[]
   series: SeriesInfo | null
   isMyPost: boolean | null
   isLiked: boolean | null
@@ -198,6 +199,7 @@ export interface CreatePostPayload {
   adultOnly?: boolean
   poll?: PollPayload
   seriesId?: number
+  hashtags?: string[]
 }
 
 export interface UpdatePostPayload {
@@ -206,4 +208,5 @@ export interface UpdatePostPayload {
   content?: string
   isPinned?: boolean
   adultOnly?: boolean
+  hashtags?: string[]
 }

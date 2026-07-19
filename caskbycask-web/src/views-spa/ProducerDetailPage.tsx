@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { useProducerDetail } from '@/domain/producer/hooks/useProducer'
@@ -13,7 +13,6 @@ import { localizeRegion } from '@/shared/utils/regionName'
 export default function ProducerDetailPage() {
   const { id } = useParams<{ id: string }>()
   const producerId = Number(id)
-  const navigate = useNavigate()
   const { t, i18n } = useTranslation()
   const isEn = i18n.language === 'en'
 
@@ -31,10 +30,7 @@ export default function ProducerDetailPage() {
   if (!producer) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-20 text-center">
-        <p className="text-neutral-500 mb-4">{t('producerDetail.notFound')}</p>
-        <button onClick={() => navigate('/spirits')} className="text-primary-800 hover:underline text-sm">
-          ← {t('producerDetail.back')}
-        </button>
+        <p className="text-neutral-500">{t('producerDetail.notFound')}</p>
       </div>
     )
   }
@@ -48,7 +44,7 @@ export default function ProducerDetailPage() {
   const spirits       = spiritsPage?.content ?? []
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6">
+    <div className="max-w-7xl mx-auto px-4 py-6">
       <SeoMeta
         title={primaryName}
         description={isEn
@@ -57,15 +53,6 @@ export default function ProducerDetailPage() {
         canonical={buildCanonical(`/producers/${producer.id}`)}
         locale={isEn ? 'en_US' : 'ko_KR'}
       />
-
-      {/* 뒤로 */}
-      <button onClick={() => navigate(-1)}
-        className="flex items-center gap-1 text-sm text-neutral-400 hover:text-primary-800 mb-5 transition-colors">
-        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <polyline points="15,18 9,12 15,6" />
-        </svg>
-        {t('common.back')}
-      </button>
 
       {/* 생산자 정보 카드 */}
       <div className="bg-white rounded-2xl shadow-sm p-6 mb-8">

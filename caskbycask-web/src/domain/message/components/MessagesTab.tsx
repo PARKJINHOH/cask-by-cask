@@ -7,6 +7,7 @@ import { useAuthStore } from '@/domain/auth/store/authStore'
 import { useToast } from '@/shared/hooks/useToast'
 import Toast from '@/shared/components/Toast'
 import type { MessageSummary } from '../types/message.types'
+import FormFieldLabel from '@/shared/components/FormFieldLabel'
 
 interface Props {
   initialMessageId?: number
@@ -172,7 +173,10 @@ function ThreadPanel({
 
       {/* 답장 영역 */}
       <div className="flex-shrink-0 border-t border-neutral-200 p-3">
+        <FormFieldLabel required className="mb-1.5 text-xs">{t('messages.content')}</FormFieldLabel>
         <textarea
+          required
+          aria-required="true"
           value={replyText}
           onChange={(e) => setReplyText(e.target.value.slice(0, 100))}
           rows={3}

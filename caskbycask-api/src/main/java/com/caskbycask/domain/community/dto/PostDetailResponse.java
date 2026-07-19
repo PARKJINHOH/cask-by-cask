@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 public class PostDetailResponse {
 
     private static final String AI_SYSTEM_AUTHOR_EMAIL = "ai-news@system.caskbycask.local";
+    private static final String NEWS_MANAGER_AUTHOR_NAME = "소식관리자";
 
     private final Long id;
     private final BoardType boardType;
@@ -37,6 +38,7 @@ public class PostDetailResponse {
     private final PollDetailResponse poll;
     private final List<PostImageInfo> images;
     private final List<String> sourceUrls;
+    private final List<String> hashtags;
     private final SeriesInfo series;
     private final Boolean isMyPost;   // null if not logged in
     private final Boolean isLiked;    // null if not logged in
@@ -69,6 +71,7 @@ public class PostDetailResponse {
         this.poll             = b.poll;
         this.images           = b.images;
         this.sourceUrls       = b.sourceUrls;
+        this.hashtags         = b.hashtags;
         this.series           = b.series;
         this.isMyPost         = b.isMyPost;
         this.isLiked          = b.isLiked;
@@ -80,6 +83,9 @@ public class PostDetailResponse {
 
     public static Builder builder(Post post, boolean showContent) {
         boolean locked = PostStatus.LOCKED.equals(post.getStatus());
+        boolean anonymous = Boolean.TRUE.equals(post.getIsAnonymous());
+        boolean systemAccount = !anonymous
+                && AI_SYSTEM_AUTHOR_EMAIL.equalsIgnoreCase(post.getAuthor().getEmail());
         return new Builder()
                 .id(post.getId())
                 .boardType(post.getBoardType())
@@ -89,20 +95,21 @@ public class PostDetailResponse {
                 .isPinned(Boolean.TRUE.equals(post.getIsPinned()))
                 .adultOnly(Boolean.TRUE.equals(post.getAdultOnly()))
                 .contentSanitized(showContent ? post.getContentSanitized() : null)
-                .authorNickname(Boolean.TRUE.equals(post.getIsAnonymous()) ? "익명" : post.getAuthor().getNickname())
+                .authorNickname(anonymous ? "익명" : systemAccount
+                        ? NEWS_MANAGER_AUTHOR_NAME : post.getAuthor().getNickname())
                 .authorId(Boolean.TRUE.equals(post.getIsAnonymous()) ? null : post.getAuthor().getId())
                 .authorRole(Boolean.TRUE.equals(post.getIsAnonymous()) ? null : post.getAuthor().getRole().name())
                 .authorLevel(Boolean.TRUE.equals(post.getIsAnonymous()) ? null : post.getAuthor().getCurrentLevel())
                 .authorMaturingPower(Boolean.TRUE.equals(post.getIsAnonymous()) ? null : post.getAuthor().getMaturingPower())
                 .authorNicknameFixed(Boolean.TRUE.equals(post.getIsAnonymous()) ? null : post.getAuthor().getNicknameFixed())
                 .authorProfileImageUrl(Boolean.TRUE.equals(post.getIsAnonymous()) ? null : post.getAuthor().getProfileImageUrl())
-                .authorSystemAccount(!Boolean.TRUE.equals(post.getIsAnonymous())
-                        && AI_SYSTEM_AUTHOR_EMAIL.equalsIgnoreCase(post.getAuthor().getEmail()))
+                .authorSystemAccount(systemAccount)
                 .viewCount(post.getViewCount())
                 .likeCount(post.getLikeCount())
                 .commentCount(post.getCommentCount())
                 .poll(post.getPoll() != null ? PollDetailResponse.from(post.getPoll()) : null)
                 .images(post.getImages().stream().map(PostImageInfo::from).collect(Collectors.toList()))
+                .hashtags(post.getHashtags())
                 .series(SeriesInfo.from(post))
                 .createdAt(post.getCreatedAt())
                 .updatedAt(post.getUpdatedAt());
@@ -132,6 +139,7 @@ public class PostDetailResponse {
         private PollDetailResponse poll;
         private List<PostImageInfo> images;
         private List<String> sourceUrls = List.of();
+        private List<String> hashtags = List.of();
         private SeriesInfo series;
         private Boolean isMyPost;
         private Boolean isLiked;
@@ -164,6 +172,10 @@ public class PostDetailResponse {
         public Builder images(List<PostImageInfo> i)      { this.images = i; return this; }
         public Builder sourceUrls(List<String> urls)      {
             this.sourceUrls = urls != null ? List.copyOf(urls) : List.of();
+            return this;
+        }
+        public Builder hashtags(List<String> hashtags)    {
+            this.hashtags = hashtags != null ? List.copyOf(hashtags) : List.of();
             return this;
         }
         public Builder series(SeriesInfo s)               { this.series = s; return this; }

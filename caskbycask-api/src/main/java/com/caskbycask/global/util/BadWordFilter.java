@@ -42,7 +42,7 @@ public class BadWordFilter {
      * 텍스트에서 금지어를 탐지하여 감지된 단어 목록을 반환.
      * 탐지 전략:
      *   1) HTML 태그 제거
-     *   2) 공백 제거 후 비교 (스페이스 삽입 우회 방어)
+     *   2) 대소문자만 정규화한 원문에서 연속된 금지어 비교
      *
      * 초성 금칙어(예: "ㅅㅂ")는 사용자가 실제 초성 문자를 입력한 경우만 잡는다.
      * 일반 한글 문장을 초성으로 변환해 비교하면 "시트러스 보다" 같은 정상 문구도 오탐된다.
@@ -53,10 +53,10 @@ public class BadWordFilter {
         }
 
         String plain = Jsoup.parse(text).text();
-        String compacted = plain.replaceAll("\\s", "").toLowerCase();
+        String normalized = plain.toLowerCase(Locale.ROOT);
 
         return badWordSet.stream()
-                .filter(word -> containsBadWord(compacted, normalize(word)))
+                .filter(word -> containsBadWord(normalized, normalize(word)))
                 .collect(Collectors.toList());
     }
 
@@ -89,14 +89,14 @@ public class BadWordFilter {
         }
 
         if (HANGUL_LEFT_BOUNDARY_REQUIRED_WORDS.contains(word)) {
-            return !hasHangulCharBefore(text, start);
+            return !hasHangulCharBeforeIgnoringWhitespace(text, start);
         }
 
         return true;
     }
 
     private String normalize(String text) {
-        return text.replaceAll("\\s", "").toLowerCase(Locale.ROOT);
+        return text.toLowerCase(Locale.ROOT);
     }
 
     private boolean isLatinWord(String word) {
@@ -115,8 +115,12 @@ public class BadWordFilter {
         return Character.isLetterOrDigit(ch) && !isHangul(ch);
     }
 
-    private boolean hasHangulCharBefore(String text, int start) {
-        return start > 0 && isHangul(text.charAt(start - 1));
+    private boolean hasHangulCharBeforeIgnoringWhitespace(String text, int start) {
+        int index = start - 1;
+        while (index >= 0 && Character.isWhitespace(text.charAt(index))) {
+            index--;
+        }
+        return index >= 0 && isHangul(text.charAt(index));
     }
 
     private boolean isHangul(char ch) {

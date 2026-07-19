@@ -6,7 +6,7 @@ import type { ProducerRegisterRequestForm, MyProducerRequest } from '@/domain/pr
 import type { RequestStatus } from '@/domain/spirit/types/spiritRequest.types'
 import CountryRegionSelector from '@/domain/location/components/CountryRegionSelector'
 import SeoMeta from '@/shared/components/SeoMeta'
-import Breadcrumb from '@/shared/components/Breadcrumb'
+import FormFieldLabel, { RequiredFieldsNotice } from '@/shared/components/FormFieldLabel'
 
 const STATUS_STYLE: Record<RequestStatus, string> = {
   PENDING:  'bg-amber-50 text-amber-700',
@@ -16,15 +16,6 @@ const STATUS_STYLE: Record<RequestStatus, string> = {
 
 const FIELD_CLS =
   'w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 transition-colors'
-
-function ReqLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <label className="block text-sm font-medium text-neutral-700">
-      {children}
-      <span className="ml-1 text-red-500">*</span>
-    </label>
-  )
-}
 
 function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -145,16 +136,8 @@ export default function ProducerRequestPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 py-8">
       <SeoMeta title={t('producerRequest.title')} description={t('producerRequest.subtitle')} noindex />
-
-      <Breadcrumb
-        className="mb-2"
-        items={[
-          { label: t('menu.request') },
-          { label: t('menu.requestProducer'), to: '/request/producer' },
-        ]}
-      />
 
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-neutral-900">{t('producerRequest.title')}</h1>
@@ -165,6 +148,7 @@ export default function ProducerRequestPage() {
         {/* ── 폼 ──────────────────────────────────────────── */}
         <section className="bg-white rounded-2xl shadow-sm p-5 sm:p-6">
           <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-6">
+            <RequiredFieldsNotice />
 
             <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-4 sm:p-5 space-y-4">
               <div className="flex items-center gap-2">
@@ -174,9 +158,11 @@ export default function ProducerRequestPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <ReqLabel>{t('producerRequest.form.nameKo')}</ReqLabel>
+                  <FormFieldLabel required>{t('producerRequest.form.nameKo')}</FormFieldLabel>
                   <input
                     {...register('nameKo', { required: true, maxLength: 200 })}
+                    required
+                    aria-required="true"
                     maxLength={200}
                     className={`${FIELD_CLS} bg-white ${errors.nameKo ? 'border-red-400' : 'border-neutral-300'}`}
                     placeholder="예) 글렌피딕 증류소"
@@ -185,9 +171,11 @@ export default function ProducerRequestPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <ReqLabel>{t('producerRequest.form.nameEn')}</ReqLabel>
+                  <FormFieldLabel required>{t('producerRequest.form.nameEn')}</FormFieldLabel>
                   <input
                     {...register('nameEn', { required: true, maxLength: 200 })}
+                    required
+                    aria-required="true"
                     maxLength={200}
                     className={`${FIELD_CLS} bg-white ${errors.nameEn ? 'border-red-400' : 'border-neutral-300'}`}
                     placeholder="Glenfiddich Producer"
@@ -197,10 +185,12 @@ export default function ProducerRequestPage() {
               </div>
 
               <div className="space-y-1.5">
-                <ReqLabel>{t('producerRequest.form.country')}</ReqLabel>
+                <FormFieldLabel required>{t('producerRequest.form.country')}</FormFieldLabel>
                 {customCountry ? (
                   <div className="flex gap-2">
                     <input
+                      required
+                      aria-required="true"
                       value={countryNameKo}
                       onChange={(e) => { setCountryNameKo(e.target.value); if (e.target.value) setCountryError(false) }}
                       placeholder={t('producerRequest.form.customCountryPlaceholder', '국가 직접 입력 (예: 조지아)')}
@@ -216,12 +206,14 @@ export default function ProducerRequestPage() {
                     />
                   </div>
                 ) : (
-                  <CountryRegionSelector
-                    countryCode={countryCode}
-                    regionNameKo={regionNameKo}
-                    onCountryChange={(code, nameKo) => { setCountryCode(code); setCountryNameKo(nameKo); if (nameKo) setCountryError(false) }}
-                    onRegionChange={(nameKo) => setRegionNameKo(nameKo)}
-                  />
+                  <div aria-required="true">
+                    <CountryRegionSelector
+                      countryCode={countryCode}
+                      regionNameKo={regionNameKo}
+                      onCountryChange={(code, nameKo) => { setCountryCode(code); setCountryNameKo(nameKo); if (nameKo) setCountryError(false) }}
+                      onRegionChange={(nameKo) => setRegionNameKo(nameKo)}
+                    />
+                  </div>
                 )}
                 <button
                   type="button"

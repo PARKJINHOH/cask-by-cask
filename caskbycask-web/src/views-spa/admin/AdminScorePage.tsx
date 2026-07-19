@@ -7,6 +7,7 @@ import {
   type UpdateScoreConfigRequest,
 } from '@/domain/admin/api/adminScoreApi'
 import { ACTION_ICONS } from '@/domain/score/types/score.types'
+import { RequiredFieldsNotice } from '@/shared/components/FormFieldLabel'
 
 const ACTION_LABELS: Record<string, string> = {
   POST_WRITE_GENERAL:         '자유 - 일반 글쓰기',
@@ -286,7 +287,11 @@ function EditRow({
     <tr className="bg-amber-50/40 align-top">
       <td className="px-4 py-3">
         <div className="space-y-1.5">
+          <RequiredFieldsNotice admin />
           <input
+            required
+            aria-required="true"
+            aria-label="액션 키"
             list="edit-action-suggestions"
             value={actionType}
             onChange={(e) => setActionType(e.target.value)}
@@ -315,6 +320,9 @@ function EditRow({
       <td className="px-4 py-3">
         <input
           type="number"
+          required
+          aria-required="true"
+          aria-label="점수"
           value={score}
           onChange={(e) => setScore(e.target.value)}
           className="w-20 px-2 py-1 text-sm text-center border border-neutral-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-400"
@@ -397,7 +405,11 @@ function AddRow({
     <tr className="bg-primary-50/50 align-top">
       <td className="px-4 py-3">
         <div className="space-y-1.5">
+          <RequiredFieldsNotice admin />
           <input
+            required
+            aria-required="true"
+            aria-label="액션 키"
             list="score-action-suggestions"
             value={actionType}
             onChange={(e) => setActionType(e.target.value)}
@@ -428,6 +440,9 @@ function AddRow({
       <td className="px-4 py-3">
         <input
           type="number"
+          required
+          aria-required="true"
+          aria-label="점수"
           value={score}
           onChange={(e) => setScore(e.target.value)}
           className="w-20 px-2 py-1 text-sm text-center border border-neutral-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-400"

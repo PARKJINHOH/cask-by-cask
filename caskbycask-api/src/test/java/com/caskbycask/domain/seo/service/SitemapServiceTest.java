@@ -37,7 +37,7 @@ class SitemapServiceTest {
 
     @BeforeEach
     void setUp() {
-        ReflectionTestUtils.setField(sitemapService, "siteUrl", "https://caskbycask.net");
+        ReflectionTestUtils.setField(sitemapService, "siteUrl", "https://www.caskbycask.net");
     }
 
     @Test
@@ -47,14 +47,14 @@ class SitemapServiceTest {
 
         String xml = sitemapService.generateSitemap();
 
-        assertThat(xml).contains("https://caskbycask.net/ko/spirits?category=WHISKY");
-        assertThat(xml).contains("https://caskbycask.net/en/spirits?category=WHISKY");
-        assertThat(xml).contains("https://caskbycask.net/ko/spirits?category=COGNAC");
-        assertThat(xml).contains("https://caskbycask.net/en/spirits?category=COGNAC");
-        assertThat(xml).contains("https://caskbycask.net/ko/spirits?category=WINE");
-        assertThat(xml).contains("https://caskbycask.net/en/spirits?category=WINE");
-        assertThat(xml).contains("https://caskbycask.net/ko/spirits?category=OTHER");
-        assertThat(xml).contains("https://caskbycask.net/en/spirits?category=OTHER");
+        assertThat(xml).contains("https://www.caskbycask.net/ko/spirits?category=WHISKY");
+        assertThat(xml).contains("https://www.caskbycask.net/en/spirits?category=WHISKY");
+        assertThat(xml).contains("https://www.caskbycask.net/ko/spirits?category=COGNAC");
+        assertThat(xml).contains("https://www.caskbycask.net/en/spirits?category=COGNAC");
+        assertThat(xml).contains("https://www.caskbycask.net/ko/spirits?category=WINE");
+        assertThat(xml).contains("https://www.caskbycask.net/en/spirits?category=WINE");
+        assertThat(xml).contains("https://www.caskbycask.net/ko/spirits?category=OTHER");
+        assertThat(xml).contains("https://www.caskbycask.net/en/spirits?category=OTHER");
     }
 
     @Test
@@ -76,13 +76,13 @@ class SitemapServiceTest {
 
         String xml = sitemapService.generateSitemap();
 
-        assertThat(xml).contains("https://caskbycask.net/ko/notices");
-        assertThat(xml).contains("https://caskbycask.net/ko/community/all");
-        assertThat(xml).contains("https://caskbycask.net/ko/community/free");
-        assertThat(xml).contains("https://caskbycask.net/ko/community/notice");
-        assertThat(xml).contains("https://caskbycask.net/ko/community/byob");
-        assertThat(xml).doesNotContain("https://caskbycask.net/en/notices");
-        assertThat(xml).doesNotContain("https://caskbycask.net/en/community/");
+        assertThat(xml).contains("https://www.caskbycask.net/ko/notices");
+        assertThat(xml).contains("https://www.caskbycask.net/ko/community/all");
+        assertThat(xml).contains("https://www.caskbycask.net/ko/community/free");
+        assertThat(xml).contains("https://www.caskbycask.net/ko/community/notice");
+        assertThat(xml).contains("https://www.caskbycask.net/ko/community/byob");
+        assertThat(xml).doesNotContain("https://www.caskbycask.net/en/notices");
+        assertThat(xml).doesNotContain("https://www.caskbycask.net/en/community/");
     }
 
     @Test
@@ -118,10 +118,10 @@ class SitemapServiceTest {
 
         String xml = sitemapService.generateSitemap();
 
-        assertThat(xml).contains("https://caskbycask.net/ko/spirits/176-더-글렌드로낙-올로로소-12년-1l-스페셜-릴리즈");
-        assertThat(xml).contains("https://caskbycask.net/en/spirits/176-the-glendronach-oloroso-12-year-old-1l-special-release");
-        assertThat(xml).doesNotContain("https://caskbycask.net/ko/spirits/176</loc>");
-        assertThat(xml).doesNotContain("https://caskbycask.net/en/spirits/176</loc>");
+        assertThat(xml).contains("https://www.caskbycask.net/ko/spirits/176-더-글렌드로낙-올로로소-12년-1l-스페셜-릴리즈");
+        assertThat(xml).contains("https://www.caskbycask.net/en/spirits/176-the-glendronach-oloroso-12-year-old-1l-special-release");
+        assertThat(xml).doesNotContain("https://www.caskbycask.net/ko/spirits/176</loc>");
+        assertThat(xml).doesNotContain("https://www.caskbycask.net/en/spirits/176</loc>");
     }
 
     @Test
@@ -140,8 +140,8 @@ class SitemapServiceTest {
 
         String xml = sitemapService.generateSitemap();
 
-        assertThat(xml).contains("https://caskbycask.net/ko/spirits/199-카발란-솔리스트-콜헤이타-포트-싱글-캐스크-스트렝스");
-        assertThat(xml).contains("https://caskbycask.net/en/spirits/199-kavalan-solist-colheita-port-single-cask-strength");
+        assertThat(xml).contains("https://www.caskbycask.net/ko/spirits/199-카발란-솔리스트-콜헤이타-포트-싱글-캐스크-스트렝스");
+        assertThat(xml).contains("https://www.caskbycask.net/en/spirits/199-kavalan-solist-colheita-port-single-cask-strength");
     }
 
     private void mockQueries(List<Spirit> spirits) {

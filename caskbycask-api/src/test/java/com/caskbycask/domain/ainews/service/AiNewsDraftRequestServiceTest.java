@@ -96,7 +96,7 @@ class AiNewsDraftRequestServiceTest {
         AiNewsDtos.ArticleUpsertRequest result = new AiNewsDtos.ArticleUpsertRequest(
                 AiNewsArticleType.RELEASE_NEWS, AiNewsCategory.WHISKY, "국내 출시 소식", "<p>본문</p>",
                 "crawler-value", BigDecimal.valueOf(0.9), null, "출시 지문", null, null,
-                true, true, null, null, null, "gemini", List.of());
+                true, true, null, null, null, "gemini", List.of("위스키"), List.of());
 
         AiNewsDraftRequestDtos.Response response = service.complete(3L, result);
 

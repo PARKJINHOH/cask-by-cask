@@ -13,6 +13,7 @@ import {
 } from '@/domain/producer/hooks/useProducerRequest'
 import type { MyProducerRequest } from '@/domain/producer/types/producerRequest.types'
 import type { RequestStatus } from '@/domain/spirit/types/spiritRequest.types'
+import FormFieldLabel from '@/shared/components/FormFieldLabel'
 
 const STATUS_OPTIONS: Array<{ value: RequestStatus; label: string }> = [
   { value: 'PENDING',  label: '대기 중' },
@@ -58,7 +59,10 @@ function RejectModal({ open, request, onClose }: RejectModalProps) {
               <DialogTitle className="text-base font-bold text-neutral-900">
                 반려 사유 입력 — {request?.nameKo}
               </DialogTitle>
+              <FormFieldLabel admin required>반려 사유</FormFieldLabel>
               <textarea
+                required
+                aria-required="true"
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 rows={3}

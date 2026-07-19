@@ -111,12 +111,12 @@ function decorateImageSources(html: string): string {
       figure.dataset.imageLayout = layout
       const renderedWidth = image.style.width
       figure.style.width = renderedWidth || '50%'
-      image.style.width = '100%'
+      image.style.setProperty('width', '100%', 'important')
     } else {
       const width = image.getAttribute('width')
-      if (width && /^\d+(?:\.\d+)?(?:px)?$/.test(width)) {
+      if (width && /^\d+(?:\.\d+)?(?:px|%)?$/.test(width)) {
         figure.classList.add('di-image-with-source--sized')
-        figure.style.width = width.endsWith('px') ? width : `${width}px`
+        figure.style.width = width.endsWith('px') || width.endsWith('%') ? width : `${width}px`
         image.style.width = '100%'
         image.removeAttribute('width')
       }

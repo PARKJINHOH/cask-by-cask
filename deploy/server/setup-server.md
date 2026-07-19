@@ -188,7 +188,8 @@ sudo ln -sf /etc/nginx/sites-available/caskbycask.conf /etc/nginx/sites-enabled/
 sudo rm -f /etc/nginx/sites-enabled/default
 ```
 
-Cloudflare Origin Cert 배치 (Cloudflare 대시보드에서 발급):
+Cloudflare Origin Cert 배치 (Cloudflare 대시보드에서 발급). SAN에 `caskbycask.net`과
+`www.caskbycask.net`(모니터링 서브도메인까지 공유하면 `*.caskbycask.net`)을 포함한다:
 
 ```bash
 # /etc/nginx/ssl/caskbycask.net.pem , caskbycask.net.key 배치
@@ -225,7 +226,7 @@ sudo chown ubuntu:ubuntu /app/next/maintenance.html
 
 ```
 [maint] ✅ 점검 모드 ON — 방문자에게 점검 페이지가 노출됩니다.
-[maint] 🔑 점검 우회 URL: https://caskbycask.net/__cbc_unlock_<자동생성값>
+[maint] 🔑 점검 우회 URL: https://www.caskbycask.net/__cbc_unlock_<자동생성값>
 [maint]    이 URL 을 안전하게 보관하세요. 쿠키 만료(24h) 시 재방문하면 됩니다.
 ```
 
@@ -239,7 +240,7 @@ sudo env NEW_SECRET="$SECRET" perl -0pi -e '
 ' /etc/nginx/sites-available/caskbycask.conf
 sudo nginx -t && sudo systemctl reload nginx
 echo "$SECRET" > /app/next/.maintenance_secret && chmod 600 /app/next/.maintenance_secret
-echo "점검 우회 URL:  https://caskbycask.net/__cbc_unlock_$SECRET"
+echo "점검 우회 URL:  https://www.caskbycask.net/__cbc_unlock_$SECRET"
 ```
 
 사용법:
@@ -306,7 +307,12 @@ ls -l /app/db_backup/
 |---|---|---|
 | Security List | Oracle 콘솔 | 443(Cloudflare 대역 권장), 80, 22(내 IP) Ingress 허용 |
 | DNS A 레코드 | Cloudflare | `caskbycask.net` → 서버 공인 IP, **Proxied(주황 구름)** |
+| DNS www 레코드 | Cloudflare | CNAME `www` → `caskbycask.net` 권장(또는 같은 서버 IP의 A), **Proxied(주황 구름)** |
 | SSL/TLS | Cloudflare | **Full (strict)** |
+| 대표 호스트 Redirect Rule | Cloudflare | `caskbycask.net` → 같은 경로의 `https://www.caskbycask.net`, 301, 쿼리 문자열 유지 |
+
+nginx에도 동일한 비-www → www 리디렉션이 구성되어 Cloudflare 우회 요청을 막는다. Redirect Rule 조건은
+`(http.host eq "caskbycask.net")`, 동적 대상은 `concat("https://www.caskbycask.net", http.request.uri.path)`이며 **Preserve query string**을 켠다.
 
 ---
 
@@ -334,7 +340,7 @@ curl -s http://127.0.0.1:8081/actuator/health   # {"status":"UP"} 기대
 curl -s http://127.0.0.1:3000/healthz            # "ok" 기대
 ```
 
-브라우저에서 `https://caskbycask.net` 접속 → SPA 로딩 + SSR 페이지 및 이미지 서빙(`/uploads/...`) 확인.
+브라우저에서 `https://www.caskbycask.net` 접속 → SPA 로딩 + SSR 페이지 및 이미지 서빙(`/uploads/...`) 확인.
 
 ---
 

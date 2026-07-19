@@ -1,5 +1,6 @@
 import { useCallback, useId } from 'react'
 import { scoreColor } from '@/shared/utils/format'
+import { RequiredMark } from '@/shared/components/FormFieldLabel'
 
 export interface ScoreInputProps {
   label: string
@@ -9,6 +10,7 @@ export interface ScoreInputProps {
   onNoteChange?: (note: string) => void
   notePlaceholder?: string
   disabled?: boolean
+  required?: boolean
 }
 
 export default function ScoreInput({
@@ -19,6 +21,7 @@ export default function ScoreInput({
   onNoteChange,
   notePlaceholder,
   disabled = false,
+  required = false,
 }: ScoreInputProps) {
   const id = useId()
 
@@ -54,6 +57,7 @@ export default function ScoreInput({
       <div className="flex items-center justify-between gap-2">
         <label htmlFor={`${id}-num`} className="text-sm font-semibold text-neutral-700">
           {label}
+          {required && <RequiredMark />}
         </label>
         <input
           id={`${id}-num`}
@@ -65,6 +69,8 @@ export default function ScoreInput({
           onChange={handleNumber}
           onWheel={handleWheelBlur}
           disabled={disabled}
+          required={required}
+          aria-required={required || undefined}
           className="w-20 text-center text-xl font-bold py-1.5 px-1 rounded-xl border border-neutral-300
             focus:outline-none focus:ring-2 focus:ring-primary-400 tabular-nums bg-white
             [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none
@@ -122,6 +128,7 @@ export default function ScoreInput({
             onChange={handleSlider}
             onWheel={handleWheelBlur}
             disabled={disabled}
+            aria-required={required || undefined}
             aria-label={`${label} 슬라이더`}
             aria-valuemin={0}
             aria-valuemax={100}

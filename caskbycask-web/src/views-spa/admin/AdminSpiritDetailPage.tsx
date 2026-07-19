@@ -6,6 +6,7 @@ import Spinner from '@/shared/components/Spinner'
 import AdminPageHeader from '@/shared/components/AdminPageHeader'
 import ImageLightbox from '@/shared/components/ImageLightbox'
 import ImageEditorModal from '@/shared/components/ImageEditorModal'
+import { RequiredFieldsNotice } from '@/shared/components/FormFieldLabel'
 import { adminSpiritApi } from '@/domain/admin/api/adminSpiritApi'
 import { formatDate, scoreColor } from '@/shared/utils/format'
 import {
@@ -691,6 +692,7 @@ export default function AdminSpiritDetailPage() {
 
 
       {/* 공유 폼 (카테고리 고정) */}
+          <RequiredFieldsNotice admin className="mb-4" />
           <SpiritFormFields
             form={form}
             categoryLocked

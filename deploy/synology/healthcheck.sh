@@ -23,7 +23,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 set -uo pipefail
 
-URL="${HEALTH_URL:-https://caskbycask.net/healthz}"
+URL="${HEALTH_URL:-https://www.caskbycask.net/healthz}"
 SLACK_WEBHOOK_URL="${SLACK_WEBHOOK_URL:-PASTE_WEBHOOK_URL_HERE}"
 SLACK_CHANNEL="${SLACK_CHANNEL:-#server-prd}"
 TIMEOUT="${HEALTH_TIMEOUT:-10}"

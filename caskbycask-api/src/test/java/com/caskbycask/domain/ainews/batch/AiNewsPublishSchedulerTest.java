@@ -17,6 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -38,5 +39,20 @@ class AiNewsPublishSchedulerTest {
         verify(aiNewsService).publishScheduled(eq(10L), cutoff.capture());
         verify(aiNewsService).publishScheduled(eq(20L), cutoff.capture());
         assertThat(cutoff.getAllValues()).containsOnly(cutoff.getAllValues().getFirst());
+    }
+
+    @Test
+    void marksFailedScheduledArticleSoItIsNotRetried() {
+        given(articleRepository.findDueScheduledIds(
+                eq(AiNewsArticleStatus.SCHEDULED), any(LocalDateTime.class), any(Pageable.class)))
+                .willReturn(List.of(10L, 20L));
+        doThrow(new RuntimeException("publish failed"))
+                .when(aiNewsService).publishScheduled(eq(10L), any(LocalDateTime.class));
+        AiNewsPublishScheduler scheduler = new AiNewsPublishScheduler(articleRepository, aiNewsService);
+
+        scheduler.publishDueArticles();
+
+        verify(aiNewsService).failScheduledPublish(10L);
+        verify(aiNewsService).publishScheduled(eq(20L), any(LocalDateTime.class));
     }
 }

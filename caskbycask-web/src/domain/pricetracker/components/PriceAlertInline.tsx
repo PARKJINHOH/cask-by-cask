@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { useMyPriceAlerts, useUpsertPriceAlert, useDeletePriceAlert } from '../hooks/usePriceChart'
 import { formatOptionalPriceInput, formatPriceInput, parsePriceInput } from '@/shared/utils/moneyInput'
+import { RequiredMark } from '@/shared/components/FormFieldLabel'
 
 const krw = new Intl.NumberFormat('ko-KR')
 
@@ -79,9 +80,12 @@ export default function PriceAlertInline({ spiritId, volumeMl }: { spiritId: num
     <div className="flex flex-wrap items-center gap-2 rounded-lg bg-neutral-50 border border-neutral-200 px-3 py-2">
       <span className="text-sm text-neutral-600 whitespace-nowrap">
         🔔 {t('price.alert.inlineLabel')} · {volumeMl.toLocaleString()}ml
+        <RequiredMark />
       </span>
       <div className="flex items-center border border-neutral-300 rounded-lg overflow-hidden bg-white focus-within:ring-2 focus-within:ring-primary-200">
         <input
+          required
+          aria-required="true"
           value={value}
           onChange={(e) => setValue(formatOptionalPriceInput(e.target.value))}
           onKeyDown={(e) => e.key === 'Enter' && submit()}

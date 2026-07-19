@@ -88,7 +88,7 @@ public class AiNewsDraftRequestService {
                     AiNewsArticleType.RELEASE_NEWS, result.category(), result.title(), result.content(), dedupeKey,
                     result.confidenceScore(), result.canonicalUrlHash(), result.semanticFingerprint(),
                     null, null, false, false, result.imageUrl(), result.imageKind(),
-                    result.imageRightsEvidence(), result.modelName(), result.sources());
+                    result.imageRightsEvidence(), result.modelName(), result.hashtags(), result.sources());
             AiNewsDtos.ArticleDetailResponse created = aiNewsService.createDraft(draft, request.getRequestedBy().getId());
             article = articleRepository.findById(created.id())
                     .orElseThrow(() -> new CustomException(ErrorCode.AI_NEWS_NOT_FOUND));

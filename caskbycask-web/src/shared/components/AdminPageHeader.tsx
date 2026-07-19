@@ -10,10 +10,10 @@ export interface Crumb {
 interface AdminPageHeaderProps {
   /** 상단 경로 표시. 마지막 항목은 현재 페이지(굵게). */
   breadcrumbs?: Crumb[]
-  /** pill형 뒤로가기 버튼 이동 경로 (미지정 시 버튼 숨김) */
+  /** 뒤로가기 버튼 이동 경로 (미지정 시 버튼 숨김) */
   backTo?: string
   useBackToPath?: boolean
-  /** pill형 뒤로가기 버튼 라벨 */
+  /** 뒤로가기 버튼 라벨 */
   backLabel?: string
   /** 페이지 제목 */
   title: string
@@ -25,7 +25,7 @@ interface AdminPageHeaderProps {
 
 /**
  * 관리자 하위(상세/폼) 페이지 공통 헤더.
- * 브레드크럼 + pill형 뒤로가기 버튼 + 제목을 일관되게 렌더링한다.
+ * 브레드크럼 + 뒤로가기 버튼 + 제목을 일관되게 렌더링한다.
  */
 export default function AdminPageHeader({
   breadcrumbs,
@@ -58,13 +58,13 @@ export default function AdminPageHeader({
         </nav>
       )}
 
-      {/* 뒤로가기 pill + 제목 */}
+      {/* 뒤로가기 + 제목 */}
       <div className="flex items-center gap-3">
         {backTo && (
           <button
             type="button"
             onClick={() => (useBackToPath ? navigate(backTo) : navigate(-1))}
-            className="inline-flex items-center gap-1 h-8 pl-2 pr-3 rounded-full border border-neutral-200
+            className="inline-flex items-center gap-1 h-8 pl-2 pr-3 rounded-lg border border-neutral-200
               bg-white text-sm text-neutral-600 shadow-sm transition-colors
               hover:border-primary-300 hover:text-primary-700 hover:bg-primary-50"
           >

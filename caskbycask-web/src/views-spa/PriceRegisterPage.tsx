@@ -17,6 +17,7 @@ import type { SpiritListItem } from '@/domain/spirit/types/spirit.types'
 import { getLocalizedSpiritListNames } from '@/domain/spirit/utils/spiritDisplayName'
 import { formatOptionalPriceInput, parsePriceInput } from '@/shared/utils/moneyInput'
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
+import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 
 const DISCOUNT_TYPES: DiscountType[] = ['PAYMENT', 'BUNDLE', 'COUPON', 'OTHER']
 const DUTYFREE_CHANNELS: DutyFreeChannel[] = ['AIRPORT', 'CITY', 'INFLIGHT', 'ONLINE']
@@ -208,15 +209,13 @@ export default function PriceRegisterPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
-      <button onClick={() => navigate(-1)} className="text-sm text-neutral-400 hover:text-neutral-600 mb-4 block">
-        ← {t('common.back', '뒤로')}
-      </button>
+    <div className="max-w-7xl mx-auto px-4 py-8">
       <h1 className="text-xl font-bold text-neutral-900 mb-6">{t('price.register.title')}</h1>
 
       <div className="space-y-6">
+        <RequiredFieldsNotice />
         {/* 1. 대상 술 */}
-        <Section label={t('price.register.spirit')}>
+        <Section label={t('price.register.spirit')} required>
           {fixedSpirit ? (
             <div className="flex items-center gap-3 border border-neutral-200 rounded-xl px-3 py-2.5 bg-neutral-50">
               {fixedSpirit.primaryImageUrl ? (
@@ -236,6 +235,8 @@ export default function PriceRegisterPage() {
           ) : (
             <div className="relative">
               <input
+                required
+                aria-required="true"
                 value={pickedSpirit ? (pickedSpiritNames?.primaryName ?? '') : spiritKeyword}
                 onChange={(e) => { setSpiritKeyword(e.target.value); setPickedSpirit(null); setSpiritOpen(true) }}
                 onFocus={() => setSpiritOpen(true)}
@@ -265,10 +266,12 @@ export default function PriceRegisterPage() {
         </Section>
 
         {/* 2. 병 용량 */}
-        <Section label={t('price.register.volume')}>
+        <Section label={t('price.register.volume')} required>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
             <div className="flex w-full items-center overflow-hidden rounded-xl border border-neutral-300 bg-white focus-within:ring-2 focus-within:ring-primary-200 sm:w-44">
               <input
+                required
+                aria-required="true"
                 value={volumeInput}
                 onChange={(e) => setVolumeInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 inputMode="numeric"
@@ -561,10 +564,13 @@ function parseVolumeMl(value: string): number | null {
   return Number.isInteger(parsed) && parsed >= 1 && parsed <= 100000 ? parsed : null
 }
 
-function Section({ label, children }: { label: string; children: React.ReactNode }) {
+function Section({ label, children, required = false }: { label: string; children: React.ReactNode; required?: boolean }) {
   return (
     <div>
-      <p className="text-sm font-medium text-neutral-700 mb-2">{label}</p>
+      <p className="text-sm font-medium text-neutral-700 mb-2">
+        {label}
+        {required && <RequiredMark />}
+      </p>
       {children}
     </div>
   )
@@ -589,13 +595,15 @@ function LabeledInput({
     <div>
       <label className="text-xs text-neutral-400 block mb-1">
         {label}
-        {required && <span className="text-red-500 ml-0.5">*</span>}
+        {required && <RequiredMark />}
         {hint && <span className="text-neutral-300 ml-1">· {hint}</span>}
       </label>
       <div className="flex items-center bg-white border border-neutral-300 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-primary-200">
         <input
           type="text"
           inputMode="numeric"
+          required={required}
+          aria-required={required || undefined}
           value={value}
           onChange={(e) => onChange(formatOptionalPriceInput(e.target.value))}
           className="flex-1 px-3 py-2 text-sm focus:outline-none min-w-0"

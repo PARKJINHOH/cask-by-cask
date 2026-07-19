@@ -6,6 +6,7 @@ import type { AiNewsDraftRequestStatus } from '@/domain/admin/types/aiNews.types
 import Pagination from '@/shared/components/Pagination'
 import Spinner from '@/shared/components/Spinner'
 import { formatDateTime } from '@/shared/utils/format'
+import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 
 const statusLabels: Record<AiNewsDraftRequestStatus, string> = {
   PENDING: '다음 배치 대기',
@@ -77,6 +78,7 @@ export default function AdminAiNewsRequestPanel() {
   return (
     <div className="space-y-5">
       <form onSubmit={submit} className="space-y-5 rounded-xl bg-white p-5 shadow-sm">
+        <RequiredFieldsNotice admin />
         <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950">
           <p className="font-semibold">다음 AI 배치에서 가장 먼저 작성합니다.</p>
           <p className="mt-1 leading-6 text-blue-800">
@@ -87,9 +89,9 @@ export default function AdminAiNewsRequestPanel() {
         </div>
 
         <label className="block">
-          <span className="mb-1.5 block text-xs font-semibold text-neutral-700">AI 프롬프트 <span className="text-red-500">*</span></span>
+          <span className="mb-1.5 block text-xs font-semibold text-neutral-700">AI 프롬프트 <RequiredMark /></span>
           <textarea
-            required maxLength={4000} rows={7} value={prompt} onChange={(event) => setPrompt(event.target.value)}
+            required aria-required="true" maxLength={4000} rows={7} value={prompt} onChange={(event) => setPrompt(event.target.value)}
             className={`${inputCls} resize-y`}
             placeholder="예: 메타베브코리아가 최근 발표한 글렌알라키 국내 출시·행사 소식을 확인하고, 확인된 사실만으로 소개 글을 작성해 주세요."
           />

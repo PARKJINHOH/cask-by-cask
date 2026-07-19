@@ -1,4 +1,5 @@
 import { forwardRef, InputHTMLAttributes, useState } from 'react'
+import FormFieldLabel from './FormFieldLabel'
 
 export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'size'> {
   label?: string
@@ -49,9 +50,9 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="space-y-1">
         {label && (
-          <label htmlFor={inputId} className="block text-sm font-medium text-neutral-700">
+          <FormFieldLabel htmlFor={inputId} required={props.required}>
             {label}
-          </label>
+          </FormFieldLabel>
         )}
 
         <div className="relative">
@@ -59,6 +60,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             id={inputId}
             ref={ref}
             type={resolvedType}
+            aria-required={restProps.required || undefined}
             aria-invalid={!!error}
             aria-describedby={
               error ? `${inputId}-error` : hint ? `${inputId}-hint` : undefined

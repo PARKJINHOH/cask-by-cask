@@ -13,6 +13,7 @@ import {
 } from '@/domain/producer/hooks/useProducerRequest'
 import type { UpdateProducerRequestPayload } from '@/domain/producer/types/producerRequest.types'
 import { PRODUCER_TYPE_LABEL, type ProducerType } from '@/domain/producer/types/producer.types'
+import FormFieldLabel, { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 
 const STATUS_LABEL: Record<string, string> = {
   PENDING: '대기 중', APPROVED: '승인됨', REJECTED: '반려됨',
@@ -36,7 +37,7 @@ function Field({ label, required, children }: { label: string; required?: boolea
   return (
     <div className="space-y-1.5">
       <label className="block text-sm font-medium text-neutral-700">
-        {label}{required && <span className="ml-1 text-red-500">*</span>}
+        {label}{required && <RequiredMark />}
       </label>
       {children}
     </div>
@@ -184,13 +185,14 @@ export default function AdminProducerRequestDetailPage() {
 
         {isPending ? (
           <div className="space-y-4">
+            <RequiredFieldsNotice admin />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field label="한글명" required>
-                <input className={FIELD_CLS} value={form.nameKo} maxLength={200}
+                <input className={FIELD_CLS} value={form.nameKo} maxLength={200} required aria-required="true"
                   onChange={e => set({ nameKo: e.target.value })} />
               </Field>
               <Field label="영문명" required>
-                <input className={FIELD_CLS} value={form.nameEn} maxLength={200}
+                <input className={FIELD_CLS} value={form.nameEn} maxLength={200} required aria-required="true"
                   onChange={e => set({ nameEn: e.target.value })} />
               </Field>
             </div>
@@ -205,7 +207,7 @@ export default function AdminProducerRequestDetailPage() {
                 </select>
               </Field>
               <Field label="국가" required>
-                <input className={FIELD_CLS} value={form.country} maxLength={100}
+                <input className={FIELD_CLS} value={form.country} maxLength={100} required aria-required="true"
                   onChange={e => set({ country: e.target.value })} />
               </Field>
               <Field label="지역">
@@ -272,7 +274,10 @@ export default function AdminProducerRequestDetailPage() {
           <h2 className="text-sm font-bold text-neutral-500">요청 처리</h2>
           {rejectOpen ? (
             <div className="space-y-3">
+              <FormFieldLabel admin required>반려 사유</FormFieldLabel>
               <textarea
+                required
+                aria-required="true"
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 rows={3}

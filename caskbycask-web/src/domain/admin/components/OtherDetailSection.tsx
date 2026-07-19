@@ -1,5 +1,6 @@
 import type { OtherSpiritType } from '@/domain/spirit/types/spirit.types'
 import InfoTooltip from '@/shared/components/InfoTooltip'
+import { RequiredMark } from '@/shared/components/FormFieldLabel'
 
 export interface OtherDetailForm {
   otherType: string
@@ -63,9 +64,9 @@ export default function OtherDetailSection({ value, onChange, errors }: Props) {
         <p className="text-xs font-semibold text-amber-700">필수 정보</p>
         <div>
           <label className={LABEL}>
-            주종 <span className="text-red-400">*</span>
+            주종 <RequiredMark />
           </label>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2" role="radiogroup" aria-required="true">
             {OTHER_TYPES.map(([v, l]) => (
               <label key={v} className="flex items-center gap-1.5 cursor-pointer text-sm select-none">
                 <input type="radio" value={v} checked={value.otherType === v}

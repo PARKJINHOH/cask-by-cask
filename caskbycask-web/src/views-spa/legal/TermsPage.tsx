@@ -1,4 +1,3 @@
-﻿import { Link } from 'react-router-dom'
 import { useLegalLatest } from '@/domain/legal/hooks/useLegal'
 import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 import { sanitizeHtml } from '@/shared/utils/sanitize'
@@ -15,8 +14,7 @@ export default function TermsPage() {
       />
       <div className="w-full max-w-2xl mx-auto">
         <div className="mb-6">
-          <Link to="/signup" className="text-sm text-primary-800 hover:underline">← 회원가입으로 돌아가기</Link>
-          <div className="flex items-baseline gap-3 mt-3">
+          <div className="flex items-baseline gap-3">
             <h1 className="text-2xl font-bold text-neutral-900">이용약관</h1>
             {data && (
               <span className="text-sm text-neutral-400">{data.version}</span>

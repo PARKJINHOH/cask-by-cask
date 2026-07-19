@@ -20,6 +20,7 @@ import com.caskbycask.domain.user.entity.User;
 import com.caskbycask.domain.user.repository.UserRepository;
 import com.caskbycask.global.exception.CustomException;
 import com.caskbycask.global.exception.ErrorCode;
+import com.caskbycask.global.util.HashtagNormalizer;
 import lombok.RequiredArgsConstructor;
 import org.jsoup.Jsoup;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -93,7 +94,10 @@ public class AiNewsService {
                 existing.applyImageRetry(request.title().trim(), withLeadImage(request.content(), request.imageUrl()),
                         request.category(), confidence, trimToNull(request.semanticFingerprint()),
                         request.imageUrl().trim(), request.imageKind().trim(),
-                        trimToNull(request.imageRightsEvidence()), trimToNull(request.modelName()));
+                        trimToNull(request.imageRightsEvidence()), trimToNull(request.modelName()),
+                        request.hashtags() != null
+                                ? HashtagNormalizer.normalize(request.hashtags())
+                                : List.copyOf(existing.getHashtags()));
                 String holdReason = autoPublishHoldReason(existing, resolveStoredSources(existing), getSettingsEntity(),
                         Boolean.TRUE.equals(request.autoPublishRequested()));
                 if (holdReason == null) publishWithSystemAuthor(existing);
@@ -135,6 +139,7 @@ public class AiNewsService {
                 .imageKind(trimToNull(request.imageKind()))
                 .imageRightsEvidence(trimToNull(request.imageRightsEvidence()))
                 .modelName(trimToNull(request.modelName()))
+                .hashtags(new ArrayList<>(HashtagNormalizer.normalize(request.hashtags())))
                 .build();
 
         List<ResolvedSource> resolvedSources = addResolvedSources(article, request.sources());
@@ -180,6 +185,7 @@ public class AiNewsService {
                 .imageKind(trimToNull(request.imageKind()))
                 .imageRightsEvidence(trimToNull(request.imageRightsEvidence()))
                 .modelName(trimToNull(request.modelName()))
+                .hashtags(new ArrayList<>(HashtagNormalizer.normalize(request.hashtags())))
                 .build();
         addResolvedSources(article, request.sources());
         articleRepository.save(article);
@@ -221,16 +227,19 @@ public class AiNewsService {
                                                             AiNewsDtos.ArticleAdminUpdateRequest request,
                                                             Long actorId) {
         AiNewsArticle article = findArticleDetail(id);
+        List<String> hashtags = request.hashtags() != null
+                ? HashtagNormalizer.normalize(request.hashtags())
+                : List.copyOf(article.getHashtags());
         article.updateDraft(request.title().trim(), request.content(), request.category(), request.prefixId(),
                 Boolean.TRUE.equals(request.pinned()),
                 request.confidenceScore() != null ? request.confidenceScore() : article.getConfidenceScore(),
-                trimToNull(request.semanticFingerprint()));
+                trimToNull(request.semanticFingerprint()), hashtags);
         replaceAdminSourceUrls(article, request.sourceUrls());
 
         if (article.getStatus() == AiNewsArticleStatus.PUBLISHED && article.getPostId() != null) {
             postService.adminUpdatePost(article.getPostId(),
                     UpdatePostRequest.aiNews(request.prefixId(), request.title().trim(), request.content(),
-                            Boolean.TRUE.equals(request.pinned())), actorId);
+                            Boolean.TRUE.equals(request.pinned()), hashtags), actorId);
         }
         log(actorId, article.getId(), "AI 소식 원고 수정", request.title());
         return AiNewsDtos.ArticleDetailResponse.from(article);
@@ -284,6 +293,13 @@ public class AiNewsService {
     }
 
     @Transactional
+    public void failScheduledPublish(Long id) {
+        AiNewsArticle article = findArticleForPublish(id);
+        if (article.getStatus() != AiNewsArticleStatus.SCHEDULED) return;
+        article.failScheduledPublish();
+    }
+
+    @Transactional
     public AiNewsDtos.ArticleDetailResponse reject(Long id, String reason, Long actorId) {
         AiNewsArticle article = findArticleDetail(id);
         if (article.getStatus() == AiNewsArticleStatus.PUBLISHED || article.getStatus() == AiNewsArticleStatus.DELETED) {
@@ -316,7 +332,8 @@ public class AiNewsService {
         PostDetailResponse restored = postService.restorePost(article.getDeletedPostId());
         article.restore(restored.getId());
         postService.adminUpdatePost(restored.getId(),
-                UpdatePostRequest.aiNews(article.getPrefixId(), article.getTitle(), article.getContent(), article.isPinned()),
+                UpdatePostRequest.aiNews(article.getPrefixId(), article.getTitle(), article.getContent(),
+                        article.isPinned(), article.getHashtags()),
                 actorId);
         log(actorId, article.getId(), "AI 소식 복원", article.getTitle());
         return AiNewsDtos.ArticleDetailResponse.from(article);
@@ -344,7 +361,10 @@ public class AiNewsService {
         }
         article.completeRewrite(request.title().trim(), withLeadImage(request.content(), article.getImageUrl()),
                 request.confidenceScore() != null ? request.confidenceScore() : BigDecimal.ZERO,
-                trimToNull(request.semanticFingerprint()), trimToNull(request.modelName()));
+                trimToNull(request.semanticFingerprint()), trimToNull(request.modelName()),
+                request.hashtags() != null
+                        ? HashtagNormalizer.normalize(request.hashtags())
+                        : List.copyOf(article.getHashtags()));
         return AiNewsDtos.ArticleDetailResponse.from(article);
     }
 
@@ -728,12 +748,13 @@ public class AiNewsService {
             PostDetailResponse restored = postService.restorePost(article.getDeletedPostId());
             postService.adminUpdatePost(restored.getId(),
                     UpdatePostRequest.aiNews(article.getPrefixId(), article.getTitle(), article.getContent(),
-                            article.isPinned()), author.getId());
+                            article.isPinned(), article.getHashtags()), author.getId());
             article.publish(restored.getId(), LocalDateTime.now(SERVICE_ZONE));
             return;
         }
         PostDetailResponse post = postService.createPost(
-                CreatePostRequest.aiNotice(article.getPrefixId(), article.getTitle(), article.getContent(), article.isPinned()),
+                CreatePostRequest.aiNotice(article.getPrefixId(), article.getTitle(), article.getContent(),
+                        article.isPinned(), article.getHashtags()),
                 author.getId());
         article.publish(post.getId(), LocalDateTime.now(SERVICE_ZONE));
     }

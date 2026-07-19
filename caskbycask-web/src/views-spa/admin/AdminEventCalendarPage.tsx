@@ -20,6 +20,7 @@ import DateInput from '@/shared/components/DateInput'
 import Modal from '@/shared/components/Modal'
 import Toast from '@/shared/components/Toast'
 import { useToast } from '@/shared/hooks/useToast'
+import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
 
@@ -477,6 +478,7 @@ export default function AdminEventCalendarPage() {
       >
         {form && (
           <div className="space-y-4">
+            <RequiredFieldsNotice admin />
             {error && (
               <div className="px-3 py-2 rounded-lg bg-red-50 text-red-600 text-sm">{error}</div>
             )}
@@ -497,9 +499,11 @@ export default function AdminEventCalendarPage() {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">이벤트명 <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">이벤트명 <RequiredMark /></label>
               <input
                 type="text"
+                required
+                aria-required="true"
                 value={form.title}
                 maxLength={200}
                 onChange={(e) => patch({ title: e.target.value })}
@@ -509,8 +513,8 @@ export default function AdminEventCalendarPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">카테고리 <span className="text-red-500">*</span></label>
-              <div className="flex flex-wrap gap-2">
+              <label className="block text-sm font-medium text-neutral-700 mb-1">카테고리 <RequiredMark /></label>
+              <div className="flex flex-wrap gap-2" role="radiogroup" aria-required="true">
                 {CATEGORY_ORDER.map((c) => (
                   <button
                     key={c}
@@ -532,8 +536,10 @@ export default function AdminEventCalendarPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">시작일 <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">시작일 <RequiredMark /></label>
                 <DateInput
+                  required
+                  aria-required="true"
                   value={form.startDate}
                   onChange={(e) => patch({ startDate: e.target.value })}
                   className="w-full h-10 px-3 rounded-lg border border-neutral-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"

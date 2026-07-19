@@ -1,18 +1,18 @@
 # CaskByCask SEO/AEO 운영 가이드
 
-운영 도메인 (`https://caskbycask.net`) 배포 후 수행해야 하는 검색 노출 작업 체크리스트.
+운영 대표 URL (`https://www.caskbycask.net`) 배포 후 수행해야 하는 검색 노출 작업 체크리스트.
 
 ---
 
 ## 1. 런칭 직전 점검
 
-- [ ] DNS 설정 완료, HTTPS 정상 동작 (`curl -I https://caskbycask.net`)
-- [ ] `https://caskbycask.net/robots.txt` 응답 200, 내용 정상
-- [ ] `https://caskbycask.net/sitemap.xml` 응답 200, `<url>` 항목 포함
-- [ ] `https://caskbycask.net/llms.txt` 응답 200
+- [ ] DNS 설정 완료, HTTPS 정상 동작 (`curl -I https://www.caskbycask.net`)
+- [ ] `https://www.caskbycask.net/robots.txt` 응답 200, 내용 정상
+- [ ] `https://www.caskbycask.net/sitemap.xml` 응답 200, `<url>` 항목 포함
+- [ ] `https://www.caskbycask.net/llms.txt` 응답 200
 - [ ] 메인/카테고리/공지 등 주요 페이지의 HTML `<head>` 에 페이지별 `<title>`, `<meta name="description">`, `<link rel="canonical">`, JSON-LD 가 들어있는지 확인
   - 브라우저: 페이지 진입 후 DevTools → Elements → `<head>` 검사
-  - 명령행: `curl -sL https://caskbycask.net/spirits | grep -E "<title>|description|canonical"`
+  - 명령행: `curl -sL https://www.caskbycask.net/spirits | grep -E "<title>|description|canonical"`
 - [ ] OG 미리보기 정상 — https://www.opengraph.xyz/ 같은 사이트에서 URL 입력 후 카드 확인
 
 ---
@@ -20,12 +20,12 @@
 ## 2. Google Search Console 등록
 
 1. https://search.google.com/search-console 접속 → 속성 추가
-2. **도메인 속성** (`caskbycask.net`) 또는 **URL 접두어** (`https://caskbycask.net/`) 선택
+2. **도메인 속성** (`caskbycask.net`) 또는 **URL 접두어** (`https://www.caskbycask.net/`) 선택
    - 도메인 속성이 더 포괄적 (모든 서브도메인 + 프로토콜). DNS TXT 인증 필요.
 3. 소유권 확인
    - 도메인 속성: Cloudflare DNS 에 `google-site-verification=...` TXT 레코드 추가
    - URL 접두어: HTML 파일 업로드, HTML 메타 태그, Google Analytics, GTM 중 택일
-4. 좌측 메뉴 → **사이트맵** → `https://caskbycask.net/sitemap.xml` 제출
+4. 좌측 메뉴 → **사이트맵** → `https://www.caskbycask.net/sitemap.xml` 제출
 5. 좌측 메뉴 → **URL 검사** → 메인 페이지 URL 입력 → "색인 생성 요청"
 
 ### 색인 모니터링
@@ -38,9 +38,9 @@
 ## 3. Naver 웹마스터도구 등록 (한국 검색 핵심)
 
 1. https://searchadvisor.naver.com 접속 → 로그인
-2. **사이트 관리** → 사이트 등록 → `https://caskbycask.net`
+2. **사이트 관리** → 사이트 등록 → `https://www.caskbycask.net`
 3. 소유권 확인 (HTML 파일 업로드 또는 메타 태그 방식)
-4. **요청** → 사이트맵 제출 → `https://caskbycask.net/sitemap.xml`
+4. **요청** → 사이트맵 제출 → `https://www.caskbycask.net/sitemap.xml`
 5. **요청** → RSS 제출 (선택)
 6. **검증** → robots.txt 검증 정상 확인
 
@@ -53,7 +53,7 @@
 ## 4. Bing/Microsoft 웹마스터 등록
 
 1. https://www.bing.com/webmasters 접속
-2. **Add a site** → `https://caskbycask.net`
+2. **Add a site** → `https://www.caskbycask.net`
 3. Google Search Console 가 이미 등록되어 있으면 **Import from Google Search Console** 로 한 번에 가져오기 가능
 4. 사이트맵 자동 제출됨 (또는 수동: `/sitemap.xml`)
 
@@ -73,7 +73,7 @@
 학습 거부로 정책을 바꾸려면 각 봇 아래 `Disallow: /` 추가.
 
 ### llms.txt
-- `https://caskbycask.net/llms.txt` 응답 200 확인
+- `https://www.caskbycask.net/llms.txt` 응답 200 확인
 - 사이트 구조 변경 시 갱신 (특히 카테고리/주요 페이지 URL)
 
 ---
@@ -150,14 +150,15 @@ Next.js 빌드(`npm run build`) 시, 프로젝트 구조에 맞춰 정적 페이
 
 ## 10. 응급 대응 — 검색 노출 갑자기 떨어졌을 때
 
-1. `https://caskbycask.net/robots.txt` 확인 — 실수로 `Disallow: /` 안 들어갔는지
-2. 주요 페이지 `curl -sL https://caskbycask.net/spirits | grep "noindex"` — noindex 안 박혔는지
+1. `https://www.caskbycask.net/robots.txt` 확인 — 실수로 `Disallow: /` 안 들어갔는지
+2. 주요 페이지 `curl -sL https://www.caskbycask.net/spirits | grep "noindex"` — noindex 안 박혔는지
 3. Search Console "페이지" → 색인 제외 사유 확인 (예: "noindex로 차단됨", "표준 URL과 다름")
 4. `sitemap.xml` 응답 200 확인, 마지막 lastmod 가 합리적인 날짜인지
-5. SSL 인증서 만료 확인 (`openssl s_client -connect caskbycask.net:443 -servername caskbycask.net 2>/dev/null | openssl x509 -noout -dates`)
+5. SSL 인증서 만료 확인 (`openssl s_client -connect www.caskbycask.net:443 -servername www.caskbycask.net 2>/dev/null | openssl x509 -noout -dates`)
 
 ---
 
 ## 변경 이력
 
+- 2026-07-18: 대표 호스트를 `www.caskbycask.net`으로 전환
 - 2026-05-21: 초안 작성 (STEP 1~6 완료 시점)

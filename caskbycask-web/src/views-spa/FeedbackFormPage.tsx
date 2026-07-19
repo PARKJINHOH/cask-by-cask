@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SeoMeta from '@/shared/components/SeoMeta'
-import Breadcrumb from '@/shared/components/Breadcrumb'
 import PostEditor from '@/domain/community/components/PostEditor'
 import Toast from '@/shared/components/Toast'
 import { useToast } from '@/shared/hooks/useToast'
@@ -12,6 +11,7 @@ import {
   useUpdateFeedback,
 } from '@/domain/feedback/hooks/useFeedback'
 import { FEEDBACK_TYPES, type FeedbackType } from '@/domain/feedback/types/feedback.types'
+import FormFieldLabel, { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 
 // 리치 에디터 본문이 비었는지 판정 — 태그만 있고 텍스트·미디어가 없으면 빈 것으로 본다.
 const isContentEmpty = (html: string) => {
@@ -118,31 +118,23 @@ export default function FeedbackFormPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-10">
+    <div className="max-w-7xl mx-auto px-4 py-10">
       <SeoMeta title={isEdit ? t('feedback.form.editTitle') : t('feedback.new')} noindex />
       <Toast toasts={toasts} onRemove={removeToast} />
-
-      <Breadcrumb
-        className="mb-2"
-        items={[
-          { label: t('menu.request') },
-          { label: t('menu.requestFeedback'), to: '/request/feedback' },
-        ]}
-      />
 
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-neutral-900">
           {isEdit ? t('feedback.form.editTitle') : t('feedback.new')}
         </h1>
+        <RequiredFieldsNotice className="mt-3" />
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* 유형 */}
         <div>
-          <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-            {t('feedback.form.type')} <span className="text-red-500">*</span>
-          </label>
+          <FormFieldLabel required className="mb-1.5">{t('feedback.form.type')}</FormFieldLabel>
           <select
+            required
             value={type}
             onChange={(e) => setType(e.target.value as FeedbackType)}
             className={`w-full px-3 py-2.5 text-sm border rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-primary-400 transition-colors ${
@@ -161,10 +153,9 @@ export default function FeedbackFormPage() {
 
         {/* 제목 */}
         <div>
-          <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-            {t('feedback.form.title')} <span className="text-red-500">*</span>
-          </label>
+          <FormFieldLabel required className="mb-1.5">{t('feedback.form.title')}</FormFieldLabel>
           <input
+            required
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -179,9 +170,7 @@ export default function FeedbackFormPage() {
 
         {/* 내용 */}
         <div>
-          <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-            {t('feedback.form.content')} <span className="text-red-500">*</span>
-          </label>
+          <p className="mb-1.5 text-sm font-medium text-neutral-700">{t('feedback.form.content')}<RequiredMark /></p>
           <PostEditor
             value={content}
             onChange={setContent}

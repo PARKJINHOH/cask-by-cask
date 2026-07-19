@@ -1,4 +1,38 @@
-# CaskByCask 관리자 디자인 가이드
+# CaskByCask 디자인 가이드
+
+## 공통 모서리 규칙
+
+- 사용자·관리자 화면의 카드, 패널, 모달 등 둥근 사각형은 `--radius-surface`(16px)를 사용한다.
+- native button, ARIA button, 링크형 CTA, `input`, `textarea`, `select`는 `--radius-control`(8px)를 사용한다.
+- 원형 상태 점, 아바타, 토글 트랙과 그래프·에디터 조작점은 형태 보존 예외다.
+- Tailwind의 `rounded`, `rounded-sm`~`rounded-4xl`은 공통 surface 토큰으로 매핑되며, 버튼과 입력 요소는 전역 control 규칙이 우선한다.
+- 링크형 버튼은 `inline-flex` + `rounded-*` 조합 또는 `ui-button` 클래스를 사용한다.
+
+## 사용자 페이지 메뉴 인디케이터
+
+- 모든 사용자 라우트는 `MainLayout`의 `PageIndicator`를 통해 같은 위치에 메뉴 경로를 표시한다.
+- 홈(`/`)은 현재 위치가 자명하므로 인디케이터를 표시하지 않는다.
+- 상세·작성·수정 페이지의 뒤로가기는 인디케이터 왼쪽에만 표시하고 본문에 중복 배치하지 않는다.
+- 새 사용자 라우트를 추가할 때 `PageIndicator.tsx`에 경로, 번역 라벨, 안전한 복귀 경로를 함께 등록한다.
+- 인디케이터 라벨은 `ko.json`과 `en.json`의 `pageIndicator` 키를 동시에 추가한다.
+
+## 사용자 페이지 본문 폭
+
+- 헤더, GNB, 알림 배너, 메뉴 인디케이터, 사용자 본문, 푸터는 모두 `.user-layout-container`의 최대 폭 1200px(`75rem`)과 `px-4`를 공통 기준으로 사용한다.
+- 모바일에서는 최대 폭만 자연스럽게 해제되고 동일한 16px 좌우 여백을 유지한다.
+
+## 입력 폼 필수값 표시
+
+- 사용자·관리자 입력 폼은 필수 라벨 뒤에 공통 `RequiredMark`의 빨간색 `*`를 표시한다.
+- 여러 필드가 있는 페이지·모달·폼 그룹 상단에는 `RequiredFieldsNotice`로 `* 표시는 필수 입력 항목입니다.` 안내를 한 번 제공한다.
+- 라벨은 `FormFieldLabel required`를 사용하고, 공통 `Input`은 `required` 속성만 전달하면 같은 표시를 자동 적용한다. 별표를 직접 작성하지 않는다.
+- 표시와 실제 동작이 어긋나지 않도록 native 입력에는 `required`와 `aria-required`를 함께 적용한다.
+- 라디오·파일 드롭존·복합 선택처럼 native 입력 하나로 표현되지 않는 컨트롤은 `role="radiogroup"` 또는 적절한 그룹 역할과 `aria-required="true"`를 사용한다.
+- 조건부 필수값은 해당 조건이 활성화된 동안에만 별표와 필수 속성을 표시한다.
+- 검색·필터·정렬 입력은 저장 폼의 필수값 표시 대상에서 제외한다.
+- 사용자 화면의 안내 문구는 `common.requiredFieldsHint` 번역키를 사용하며, 관리자 화면은 한국어 고정 모드를 사용한다.
+
+---
 
 ## 액션 버튼 (테이블 행 내 버튼)
 

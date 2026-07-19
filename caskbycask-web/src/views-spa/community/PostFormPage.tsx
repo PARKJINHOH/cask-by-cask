@@ -11,12 +11,13 @@ import type { BoardType } from '@/domain/community/types/community.types'
 import { useToast } from '@/shared/hooks/useToast'
 import Toast from '@/shared/components/Toast'
 import SeoMeta from '@/shared/components/SeoMeta'
-import Breadcrumb from '@/shared/components/Breadcrumb'
+import FormFieldLabel, { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 import { draftApi } from '@/shared/api/draftApi'
 import DraftSavedNotice from '@/shared/components/DraftSavedNotice'
 import DraftListModal from '@/shared/components/DraftListModal'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { useMe } from '@/domain/user/hooks/useUser'
+import { formatHashtagInput, MAX_HASHTAGS, MAX_HASHTAG_LENGTH, parseHashtagInput } from '@/shared/utils/hashtags'
 
 // 게시판 공지(고정글) 설정 가능 역할
 const PIN_ROLES = ['SUPER_ADMIN', 'ADMIN', 'PARTNER']
@@ -70,6 +71,10 @@ export default function PostFormPage() {
   const [pollEndsAt, setPollEndsAt] = useState('')
   const [pollOptions, setPollOptions] = useState(['', ''])
   const [seriesId, setSeriesId] = useState<number | ''>('')
+  const [hashtagInput, setHashtagInput] = useState('')
+  const parsedHashtags = parseHashtagInput(hashtagInput)
+  const hashtagsValid = parsedHashtags.length <= MAX_HASHTAGS
+    && parsedHashtags.every((hashtag) => hashtag.length <= MAX_HASHTAG_LENGTH)
 
   // ── 임시저장 (신규 작성 시에만) ──
   const draftKey = `POST:${boardType}`
@@ -87,6 +92,7 @@ export default function PostFormPage() {
       setContent(existingPost.contentSanitized ?? '')
       setIsPinned(existingPost.isPinned)
       setAdultOnly(existingPost.adultOnly ?? false)
+      setHashtagInput(formatHashtagInput(existingPost.hashtags))
     }
   }, [existingPost, isEdit])
 
@@ -102,7 +108,11 @@ export default function PostFormPage() {
         draftKey,
         title,
         content,
-        meta: JSON.stringify({ prefixId: prefixId !== '' ? prefixId : null, isAnonymous }),
+        meta: JSON.stringify({
+          prefixId: prefixId !== '' ? prefixId : null,
+          isAnonymous,
+          hashtags: boardType === 'NOTICE' ? parsedHashtags : [],
+        }),
       })
       const saved = res.data.data
       if (saved?.id) setCurrentDraftId(saved.id)
@@ -128,9 +138,10 @@ export default function PostFormPage() {
     setContent(d.content ?? '')
     if (d.meta) {
       try {
-        const m = JSON.parse(d.meta) as { prefixId?: number | null; isAnonymous?: boolean }
+        const m = JSON.parse(d.meta) as { prefixId?: number | null; isAnonymous?: boolean; hashtags?: string[] }
         if (m.prefixId != null) setPrefixId(m.prefixId)
         if (typeof m.isAnonymous === 'boolean') setIsAnonymous(m.isAnonymous)
+        if (boardType === 'NOTICE') setHashtagInput(formatHashtagInput(m.hashtags))
       } catch { /* meta 파싱 실패 무시 */ }
     }
     showToast(t('post.draft.loadedSuccess', '임시저장을 불러왔습니다.'), 'success')
@@ -152,6 +163,7 @@ export default function PostFormPage() {
           title,
           content,
           adultOnly: isSharingSelected ? adultOnly : false,
+          hashtags: boardType === 'NOTICE' ? parsedHashtags : undefined,
           ...(canPin ? { isPinned } : {}),
         })
       }
@@ -163,6 +175,7 @@ export default function PostFormPage() {
         content,
         isAnonymous: boardType === 'FREE' ? isAnonymous : false,
         adultOnly: isSharingSelected ? adultOnly : false,
+        hashtags: boardType === 'NOTICE' ? parsedHashtags : undefined,
         ...(canPin ? { isPinned } : {}),
         poll: pollEnabled && pollQuestion.trim() && validOptions.length >= 2 ? {
           question: pollQuestion.trim(),
@@ -203,7 +216,7 @@ export default function PostFormPage() {
   const needsAdultVerify = adultOnly && me?.adultVerified !== true
 
   const canSubmit = title.trim().length > 0 && content.trim().length > 0 &&
-    prefixId !== '' && !needsAdultVerify &&
+    prefixId !== '' && !needsAdultVerify && hashtagsValid &&
     (!pollEnabled || (pollQuestion.trim() && pollOptions.filter((o) => o.trim()).length >= 2))
 
   const addPollOption = () => {
@@ -214,7 +227,7 @@ export default function PostFormPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 py-8">
       <SeoMeta title={isEdit ? '게시글 수정' : '게시글 작성'} description="CaskByCask 커뮤니티 게시글 작성." noindex />
       <Toast toasts={toasts} onRemove={removeToast} />
       <DraftListModal
@@ -225,32 +238,22 @@ export default function PostFormPage() {
         onError={(msg) => showToast(msg, 'error')}
       />
 
-      <Breadcrumb
-        className="mb-2"
-        items={[
-          { label: t('menu.community'), to: '/community/all' },
-          {
-            label: boardType === 'NOTICE' ? t('menu.communityNews') : t('menu.communityBoard'),
-            to: `/community/${boardPath}`,
-          },
-        ]}
-      />
-
       <div className="flex items-center gap-3 mb-6">
-        <Link to={`/community/${boardPath}`} className="text-neutral-400 hover:text-neutral-600">
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-          </svg>
-        </Link>
         <h1 className="text-xl font-bold text-neutral-900">
           {isEdit ? t('post.edit') : t('board.write')}
         </h1>
+        <RequiredFieldsNotice className="ml-auto" />
       </div>
 
       <div className="space-y-5">
         {/* 제목 */}
         <div className="relative">
+          <FormFieldLabel required htmlFor="post-title" className="mb-2">
+            {t('board.title')}
+          </FormFieldLabel>
           <input
+            id="post-title"
+            required
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value.slice(0, MAX_TITLE))}
@@ -264,7 +267,9 @@ export default function PostFormPage() {
 
         {/* 말머리 탭 (제목 아래, 말머리가 있을 때만) */}
         {prefixes.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2">
+          <div>
+            <p className="mb-2 text-sm font-medium text-neutral-700">{t('board.prefix')}<RequiredMark /></p>
+            <div className="flex flex-wrap items-center gap-2" role="group" aria-required="true" aria-label={t('board.prefix')}>
             {prefixes.map((p) => (
               <button
                 key={p.id}
@@ -283,6 +288,7 @@ export default function PostFormPage() {
                 {t(`prefix.${p.name}`, p.name)}
               </button>
             ))}
+            </div>
           </div>
         )}
 
@@ -350,6 +356,7 @@ export default function PostFormPage() {
 
         {/* 본문 */}
         <div>
+          <p className="mb-2 text-sm font-medium text-neutral-700">{t('post.contentLabel')}<RequiredMark /></p>
           <PostEditor
             value={content}
             onChange={setContent}
@@ -400,6 +407,34 @@ export default function PostFormPage() {
           </p>
         </div>
 
+        {boardType === 'NOTICE' && (
+          <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4">
+            <label htmlFor="post-hashtags" className="text-sm font-semibold text-neutral-800">
+              {t('post.hashtags.label')}
+            </label>
+            <input
+              id="post-hashtags"
+              type="text"
+              value={hashtagInput}
+              onChange={(event) => setHashtagInput(event.target.value)}
+              placeholder={t('post.hashtags.placeholder')}
+              className="mt-2 w-full rounded-lg border border-neutral-300 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300"
+            />
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              {parsedHashtags.map((hashtag) => (
+                <span key={hashtag.toLocaleLowerCase()} className="rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-800">
+                  #{hashtag}
+                </span>
+              ))}
+            </div>
+            <p className={`mt-2 text-xs ${hashtagsValid ? 'text-neutral-500' : 'text-red-600'}`}>
+              {hashtagsValid
+                ? t('post.hashtags.help', { count: parsedHashtags.length, max: MAX_HASHTAGS })
+                : t('post.hashtags.invalid', { max: MAX_HASHTAGS, length: MAX_HASHTAG_LENGTH })}
+            </p>
+          </div>
+        )}
+
         {/* 투표 */}
         {!isEdit && (
           <div className="border border-neutral-200 rounded-xl overflow-hidden">
@@ -419,7 +454,12 @@ export default function PostFormPage() {
 
             {pollEnabled && (
               <div className="px-4 pb-4 pt-3 space-y-3 border-t border-neutral-100 bg-neutral-50">
+                <FormFieldLabel required htmlFor="post-poll-question">
+                  {t('post.poll.questionLabel')}
+                </FormFieldLabel>
                 <input
+                  id="post-poll-question"
+                  required
                   type="text"
                   value={pollQuestion}
                   onChange={(e) => setPollQuestion(e.target.value)}
@@ -436,9 +476,12 @@ export default function PostFormPage() {
                   ))}
                 </div>
                 <div className="space-y-2">
+                  <p className="text-sm font-medium text-neutral-700">{t('post.poll.optionsLabel')}<RequiredMark /></p>
                   {pollOptions.map((opt, i) => (
                     <div key={i} className="flex items-center gap-2">
                       <input
+                        required
+                        aria-label={t('post.poll.optionPlaceholder', { index: i + 1 })}
                         type="text" value={opt}
                         onChange={(e) => setPollOptions((p) => p.map((o, idx) => idx === i ? e.target.value : o))}
                         placeholder={t('post.poll.optionPlaceholder', { index: i + 1, defaultValue: `선택지 ${i + 1}` })}

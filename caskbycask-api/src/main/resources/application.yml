@@ -106,7 +106,7 @@ rate-limit:
 
 # SEO 메타 — sitemap.xml 의 base URL 및 index.html 파일 경로
 seo:
-  site-url: https://caskbycask.net
+  site-url: https://www.caskbycask.net
   index-path: ${SEO_INDEX_PATH:../caskbycask-web/dist/index.html}
 
 # Actuator: Prometheus/Health 만 노출

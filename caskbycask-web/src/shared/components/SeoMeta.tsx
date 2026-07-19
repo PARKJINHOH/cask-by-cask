@@ -26,8 +26,8 @@ function serializeJsonLd(schema: object): string {
  *   <SeoMeta
  *     title="라프로익 10년"
  *     description="라프로익 10년의 테이스팅 노트와 사용자 평점을 확인하세요."
- *     canonical="https://caskbycask.net/spirits/123"
- *     ogImage="https://caskbycask.net/uploads/spirit/123.jpg"
+ *     canonical="https://www.caskbycask.net/spirits/123"
+ *     ogImage="https://www.caskbycask.net/uploads/spirit/123.jpg"
  *     jsonLd={{ "@type": "Product", ... }}
  *   />
  */

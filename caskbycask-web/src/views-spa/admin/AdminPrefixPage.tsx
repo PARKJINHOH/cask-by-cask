@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { adminCommunityApi } from '@/domain/admin/api/adminCommunityApi'
 import type { PostPrefixAdmin } from '@/domain/admin/types/admin.types'
 import type { BoardType } from '@/domain/community/types/community.types'
+import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 
 const BOARD_TABS: { value: BoardType; label: string }[] = [
   { value: 'NOTICE', label: '소식' },
@@ -217,14 +218,17 @@ function PrefixForm({
       <h2 className="text-sm font-semibold text-neutral-700">
         {initial ? '말머리 수정' : '말머리 추가'}
       </h2>
+      <RequiredFieldsNotice admin />
 
         <div className="space-y-3">
           <div>
             <label className="block text-xs font-medium text-neutral-600 mb-1">
-              이름 <span className="text-red-500">*</span>
+              이름 <RequiredMark />
             </label>
             <input
               type="text"
+              required
+              aria-required="true"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="일반, 이벤트, 질문..."

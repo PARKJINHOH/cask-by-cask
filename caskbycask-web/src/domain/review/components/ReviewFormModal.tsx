@@ -16,6 +16,7 @@ import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
 import { useSpiritDetail, useSpiritVariants } from '@/domain/spirit/hooks/useSpiritDetail'
 import ReviewVariantCreateModal, { type ReviewVariantDraft } from './ReviewVariantCreateModal'
 import ReviewVariantDraftCard from './ReviewVariantDraftCard'
+import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 
 const ADD_VARIANT_SELECT_VALUE = '__ADD_VARIANT__'
 
@@ -197,14 +198,17 @@ export default function ReviewFormModal({
       closeOnOverlay={!isPending}
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <RequiredFieldsNotice />
 
         {/* 에디션 선택 (하위 에디션이 존재하는 경우에만 노출) */}
         {masterId && hasSubEditionFlow && !editingReview && (
           <div className="bg-amber-50/40 border border-amber-200/60 rounded-2xl p-4 space-y-2 text-left">
             <label className="block text-xs font-bold text-neutral-700">
-              {t('review.selectEdition')} <span className="text-red-500">*</span>
+              {t('review.selectEdition')} <RequiredMark />
             </label>
             <select
+              required
+              aria-required="true"
               ref={editionSelectRef}
               value={pendingVariantDraft ? ADD_VARIANT_SELECT_VALUE : targetSpiritId ?? ''}
               onChange={(e) => {
