@@ -92,7 +92,7 @@ export default function PriceTrackerPage() {
   }, [inputVal])
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 py-8">
       {/* PRICE_ALERT 발동 배너 */}
       <PriceAlertBanner />
 

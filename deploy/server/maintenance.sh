@@ -63,7 +63,7 @@ case "$1" in
     if sudo nginx -t 2>/dev/null; then
         sudo systemctl reload nginx
         echo ""
-        ok "🔑 점검 우회 URL: https://caskbycask.net/__cbc_unlock_$NEW_SECRET"
+        ok "🔑 점검 우회 URL: https://www.caskbycask.net/__cbc_unlock_$NEW_SECRET"
         log "   이 URL 을 안전하게 보관하세요. 쿠키 만료(24h) 시 재방문하면 됩니다."
         echo ""
     else
@@ -85,7 +85,7 @@ case "$1" in
     if [ -f "$FLAG" ]; then
         log "현재 상태: 🛠  점검 모드 ON  (플래그: $FLAG)"
         if [ -f "$SECRET_FILE" ]; then
-            log "우회 URL: https://caskbycask.net/__cbc_unlock_$(cat "$SECRET_FILE")"
+            log "우회 URL: https://www.caskbycask.net/__cbc_unlock_$(cat "$SECRET_FILE")"
         else
             log "우회 URL: 미설정 (maintenance.sh on 으로 재시작하면 자동 생성됩니다)"
         fi

@@ -18,6 +18,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { adminCommunityApi } from '@/domain/admin/api/adminCommunityApi'
 import type { EmojiAdmin, EmojiGroup } from '@/domain/admin/types/admin.types'
 import Spinner from '@/shared/components/Spinner'
+import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 
 const UNGROUPED_ID = null
 
@@ -517,15 +518,18 @@ function EmojiForm({
         <h2 className="text-sm font-semibold text-neutral-700">
           {initial ? '이모지 수정' : '이모지 추가'}
         </h2>
+        <RequiredFieldsNotice admin />
 
         <div className="space-y-3">
           {/* 레이블 */}
           <div>
             <label className="block text-xs font-medium text-neutral-600 mb-1">
-              레이블 <span className="text-red-500">*</span>
+              레이블 <RequiredMark />
             </label>
             <input
               type="text"
+              required
+              aria-required="true"
               value={label}
               onChange={(e) => setLabel(e.target.value)}
               placeholder="좋아요, 웃음..."
@@ -551,10 +555,11 @@ function EmojiForm({
           {/* 유니코드 */}
           <div>
             <label className="block text-xs font-medium text-neutral-600 mb-1">
-              유니코드 <span className="text-neutral-400 font-normal">(이미지 또는 유니코드 중 하나 필수)</span>
+              유니코드/이미지 <RequiredMark /> <span className="text-neutral-400 font-normal">(둘 중 하나)</span>
             </label>
             <input
               type="text"
+              aria-required="true"
               value={unicode}
               onChange={(e) => { setUnicode(e.target.value); if (e.target.value) { setImageUrl(''); setPreview(null) } }}
               placeholder="👍"
@@ -589,6 +594,7 @@ function EmojiForm({
               <input
                 ref={fileRef}
                 type="file"
+                aria-required="true"
                 accept="image/jpeg,image/png,image/gif,image/webp"
                 className="hidden"
                 onChange={handleFileChange}
@@ -658,12 +664,15 @@ function GroupForm({
         <h2 className="text-sm font-semibold text-neutral-700">
           {initial ? '그룹 수정' : '그룹 추가'}
         </h2>
+        <RequiredFieldsNotice admin />
         <div>
           <label className="block text-xs font-medium text-neutral-600 mb-1">
-            그룹 이름 <span className="text-red-500">*</span>
+            그룹 이름 <RequiredMark />
           </label>
           <input
             type="text"
+            required
+            aria-required="true"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="네이버 이모지, 다음 이모지..."

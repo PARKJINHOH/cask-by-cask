@@ -65,6 +65,7 @@ function FindEmailTab() {
       </p>
       <Input
         label="닉네임"
+        required
         placeholder="닉네임 입력"
         maxLength={8}
         value={nickname}
@@ -184,6 +185,7 @@ function ResetPasswordTab() {
           </p>
           <Input
             label="이메일"
+            required
             type="email"
             placeholder="example@email.com"
             autoComplete="email"
@@ -207,6 +209,7 @@ function ResetPasswordTab() {
           </div>
           <Input
             label="인증 코드"
+            required
             placeholder="6자리 코드 입력"
             inputMode="numeric"
             maxLength={6}
@@ -233,6 +236,7 @@ function ResetPasswordTab() {
         <form onSubmit={handleConfirm} noValidate className="space-y-4">
           <Input
             label="새 비밀번호"
+            required
             type="password"
             placeholder="영문, 숫자, 특수문자 포함 7자 이상"
             autoComplete="new-password"
@@ -242,6 +246,7 @@ function ResetPasswordTab() {
           />
           <Input
             label="새 비밀번호 확인"
+            required
             type="password"
             placeholder="새 비밀번호 다시 입력"
             autoComplete="new-password"

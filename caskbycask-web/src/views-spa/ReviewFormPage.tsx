@@ -28,6 +28,7 @@ import {
 import type { AromaNotes } from '@/domain/review/utils/aroma'
 import type { ReviewItem } from '@/domain/review/types/review.types'
 import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
+import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 
 const ADD_VARIANT_SELECT_VALUE = '__ADD_VARIANT__'
 
@@ -222,17 +223,6 @@ export default function ReviewFormPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
       <SeoMeta title={`${primaryName ?? ''} 리뷰 작성`} description="CaskByCask 리뷰 작성 페이지." noindex />
-      {/* 뒤로가기 */}
-      <button
-        onClick={handleCancel}
-        className="flex items-center gap-1 text-sm text-neutral-400 hover:text-primary-800 mb-5 transition-colors"
-      >
-        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <polyline points="15,18 9,12 15,6" />
-        </svg>
-        {t('common.back')}
-      </button>
-
       {/* 카드 래퍼 */}
       <div className="bg-white rounded-2xl shadow-sm border border-neutral-100 p-6 md:p-8">
 
@@ -247,14 +237,17 @@ export default function ReviewFormPage() {
         </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <RequiredFieldsNotice />
 
         {/* 에디션 선택 (하위 에디션이 존재하는 경우에만 노출) */}
         {masterId && hasSubEditionFlow && !isEdit && (
           <div className="bg-amber-50/40 border border-amber-200/60 rounded-2xl p-4 space-y-2">
             <label className="block text-xs font-bold text-neutral-700">
-              {t('review.selectEdition')} <span className="text-red-500">*</span>
+              {t('review.selectEdition')} <RequiredMark />
             </label>
             <select
+              required
+              aria-required="true"
               ref={editionSelectRef}
               value={pendingVariantDraft ? ADD_VARIANT_SELECT_VALUE : targetSpiritId ?? ''}
               onChange={(e) => {

@@ -190,6 +190,7 @@ class AiNewsServiceTest {
                 new AiNewsDtos.ArticleAdminUpdateRequest(
                         AiNewsCategory.WHISKY, "수정된 출시 소식", "<p>수정 본문</p>",
                         null, false, BigDecimal.ONE, null,
+                        List.of("위스키", "신제품"),
                         List.of("https://example.com/original",
                                 "https://www.new.example/news?utm_source=test&id=2#section")),
                 null);
@@ -199,6 +200,7 @@ class AiNewsServiceTest {
         assertThat(result.sources()).extracting(AiNewsDtos.SourceResponse::domain)
                 .doesNotContain("removed.example");
         assertThat(result.sources().getFirst().evidenceSummary()).isEqualTo("보존할 근거");
+        assertThat(result.hashtags()).containsExactly("위스키", "신제품");
     }
 
     @Test
@@ -246,7 +248,7 @@ class AiNewsServiceTest {
 
     @Test
     void aiSystemNicknameIsReservedForSignupAndProfileChanges() {
-        assertThat(AccountPolicy.isReservedNickname("관리자(AI)")).isTrue();
+        assertThat(AccountPolicy.isReservedNickname("소식관리자")).isTrue();
     }
 
     @Test
@@ -406,11 +408,13 @@ class AiNewsServiceTest {
         assertThat(article.getRewritePrompt()).isEqualTo("초보자 예시를 보강해주세요.");
 
         service.completeRewrite(21L, new AiNewsDtos.RewriteResultRequest(
-                "개선된 제목", "<p>개선된 본문</p>", new BigDecimal("0.95"), "개선 지문", "writer-model"));
+                "개선된 제목", "<p>개선된 본문</p>", new BigDecimal("0.95"), "개선 지문", "writer-model",
+                List.of("셰리캐스크")));
 
         assertThat(article.getStatus()).isEqualTo(AiNewsArticleStatus.PENDING_REVIEW);
         assertThat(article.getTitle()).isEqualTo("개선된 제목");
         assertThat(article.getRewritePrompt()).isNull();
+        assertThat(article.getHashtags()).containsExactly("셰리캐스크");
     }
 
     private AiNewsSettings defaultSettings() {

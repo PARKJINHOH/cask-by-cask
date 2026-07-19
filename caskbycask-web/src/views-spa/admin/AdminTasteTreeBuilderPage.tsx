@@ -1,5 +1,5 @@
-import TasteTreeBuilderPage from '@/views-spa/TasteTreeBuilderPage'
+import TasteTreeBuilder from '@/domain/taste-tree/components/TasteTreeBuilder'
 
 export default function AdminTasteTreeBuilderPage() {
-  return <TasteTreeBuilderPage admin />
+  return <TasteTreeBuilder mode="admin" />
 }

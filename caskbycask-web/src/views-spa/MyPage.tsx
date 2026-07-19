@@ -84,7 +84,7 @@ export default function MyPage() {
   const avatarSeed      = String(profile?.id ?? authUser?.id ?? nickname ?? '?')
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
+    <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
       <SeoMeta title={t('mypage.title', '마이페이지')} description={`${t('mypage.title', '마이페이지')}.`} noindex />
       {/* Profile card */}
       <div className="bg-white rounded-2xl p-6 shadow-sm flex items-center gap-5">

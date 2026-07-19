@@ -81,7 +81,7 @@ export default function NoticePage() {
   }, [notices])
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 py-8">
       <SeoMeta
         title={t('menu.notice', '공지사항')}
         description={t('notice.seoDesc', 'CaskByCask의 새로운 소식, 업데이트, 이벤트, 점검 안내 등 공지사항을 확인하세요.')}

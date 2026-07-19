@@ -17,7 +17,7 @@ DISK_WARN="${DISK_WARN_PCT:-85}"
 DISK_CRIT="${DISK_CRIT_PCT:-95}"
 SSL_WARN_DAYS="${SSL_WARN_DAYS:-14}"
 SSL_CRIT_DAYS="${SSL_CRIT_DAYS:-3}"
-DOMAIN="${HEALTH_DOMAIN:-caskbycask.net}"
+DOMAIN="${HEALTH_DOMAIN:-www.caskbycask.net}"
 COOLDOWN="${ALERT_COOLDOWN_SEC:-21600}"          # 6시간
 STATE_DIR="${CBC_STATE_DIR:-/app/logs/.alert-state}"
 mkdir -p "$STATE_DIR" 2>/dev/null || true

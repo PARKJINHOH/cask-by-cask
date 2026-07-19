@@ -3,6 +3,18 @@
 @theme {
   --font-sans: 'Pretendard', sans-serif;
 
+  /* 전 화면 모서리 토큰: 카드·패널은 16px, 버튼·입력 컨트롤은 8px */
+  --radius-surface: 1rem;
+  --radius-control: 0.5rem;
+  --radius-xs: var(--radius-surface);
+  --radius-sm: var(--radius-surface);
+  --radius-md: var(--radius-surface);
+  --radius-lg: var(--radius-surface);
+  --radius-xl: var(--radius-surface);
+  --radius-2xl: var(--radius-surface);
+  --radius-3xl: var(--radius-surface);
+  --radius-4xl: var(--radius-surface);
+
   /* 페이지/헤더/푸터 공통 캔버스 배경 (near-white 중성 그레이 — 카드 흰색과 은은히 대비) */
   --color-canvas: #F7F8FA;
 
@@ -47,6 +59,13 @@
       transform: translateY(-4px);
     }
   }
+}
+
+/* 사용자 화면의 헤더·내비게이션·본문·푸터가 공유하는 최대 폭 */
+.user-layout-container {
+  width: 100%;
+  max-width: 75rem;
+  margin-inline: auto;
 }
 
 /* 취향 트리 연결선 문구는 선택된 연결선 SVG보다도 항상 위에 표시한다. */
@@ -197,10 +216,10 @@
     border-radius: 0;
   }
   .notice-content img[data-image-layout='half-left'] {
-    border-radius: 0.5rem 0 0 0.5rem;
+    border-radius: var(--radius-surface) 0 0 var(--radius-surface);
   }
   .notice-content img[data-image-layout='half-right'] {
-    border-radius: 0 0.5rem 0.5rem 0;
+    border-radius: 0 var(--radius-surface) var(--radius-surface) 0;
   }
   .notice-content img[style*="text-align: center"],
   .notice-content img[style*="text-align:center"],
@@ -279,7 +298,7 @@
     margin: 0.15rem 0.15rem;
     border: 1px solid var(--color-neutral-200);
     background: #fff;
-    border-radius: 0.5rem;
+    border-radius: var(--radius-surface);
     text-decoration: none;
     white-space: normal;
     vertical-align: middle;
@@ -318,7 +337,7 @@
   .notice-content .di-spirit-embed > :first-child {
     width: 2.25rem;
     height: 2.25rem;
-    border-radius: 0.375rem;
+    border-radius: var(--radius-surface);
     flex-shrink: 0;
     object-fit: cover;
     background: var(--color-neutral-100);
@@ -369,7 +388,7 @@
     padding: 1rem;
     overflow: hidden;
     border: 1px solid color-mix(in srgb, var(--color-primary-300) 55%, white);
-    border-radius: 0.9rem;
+    border-radius: var(--radius-surface);
     background:
       radial-gradient(circle at 100% 0%, rgba(251, 191, 36, 0.12), transparent 42%),
       linear-gradient(145deg, #fffcf5 0%, #faf8f3 100%);
@@ -442,7 +461,7 @@
     align-items: center;
     padding: 0.45rem 0.65rem;
     border: 1px solid rgba(245, 158, 11, 0.2);
-    border-radius: 0.7rem;
+    border-radius: var(--radius-surface);
     background: rgba(255, 255, 255, 0.72);
   }
   .notice-content .di-review-embed [data-review-role='total-label'] {
@@ -469,7 +488,7 @@
     gap: 0.3rem;
     padding: 0.7rem 0.75rem;
     border: 1px solid rgba(229, 231, 235, 0.8);
-    border-radius: 0.65rem;
+    border-radius: var(--radius-surface);
     background: rgba(255, 255, 255, 0.6);
   }
   .notice-content .di-review-embed [data-review-role='section-heading'] {
@@ -525,7 +544,7 @@
     padding-bottom: 56.25%;
     height: 0;
     overflow: hidden;
-    border-radius: 0.5rem;
+    border-radius: var(--radius-surface);
     margin: 1rem 0;
     background-color: #f5f5f5;
   }
@@ -536,7 +555,7 @@
     width: 100%;
     height: 100%;
     border: 0;
-    border-radius: 0.5rem;
+    border-radius: var(--radius-surface);
   }
 
   /* Dual range slider — transparent input overlaid on a custom track */
@@ -618,6 +637,28 @@
 @keyframes routeEnter {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: none; }
+}
+
+/* input·textarea·select는 카드 토큰과 분리해 8px 입력 토큰을 따른다.
+   체크박스·라디오·슬라이더·파일·색상 입력은 고유 형태를 유지한다. */
+:where(
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='color']),
+  textarea,
+  select
+):not([class*='rounded-none']):not([data-preserve-radius]) {
+  border-radius: var(--radius-control);
+}
+
+/* native button/ARIA button은 카드 토큰과 분리한다.
+   토글 트랙과 명시적인 도형 컨트롤만 기존 형태를 유지한다. */
+:where(button, [role='button']):not([role='switch']):not([class*='rounded-none']):not([data-preserve-radius]) {
+  border-radius: var(--radius-control);
+}
+
+/* Link로 만든 CTA/상단 메뉴 컨트롤도 동일한 8px 버튼 토큰을 따른다. */
+.ui-button,
+:where(a, label)[class*='inline-flex'][class*='rounded-'] {
+  border-radius: var(--radius-control);
 }
 .route-enter {
   animation: routeEnter 0.34s cubic-bezier(0.22, 1, 0.36, 1);

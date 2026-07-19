@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { z } from 'zod'
 import type { UseFormRegisterReturn } from 'react-hook-form'
 import Button from '@/shared/components/Button'
+import { RequiredMark } from '@/shared/components/FormFieldLabel'
 
 /**
  * 팝업·배너 관리자 폼 공용 키트 — 단일 소스 (SINGLE SOURCE OF TRUTH)
@@ -127,11 +128,13 @@ export function AdminTitleField({ inputProps, placeholder, error }: {
   return (
     <div>
       <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-        관리자 제목 <span className="text-red-500">*</span>
+        관리자 제목 <RequiredMark />
         <span className="ml-1 text-xs font-normal text-neutral-400">(사용자에게 노출되지 않습니다)</span>
       </label>
       <input
         {...inputProps}
+        required
+        aria-required="true"
         placeholder={placeholder}
         maxLength={200}
         className="w-full h-10 px-3 text-sm border border-neutral-300 rounded-lg
@@ -151,10 +154,10 @@ export function PromoTypeField({ label, isEdit, value, onChange }: {
   return (
     <div>
       <label className="block text-sm font-medium text-neutral-700 mb-2">
-        {label} <span className="text-red-500">*</span>
+        {label} <RequiredMark />
         {isEdit && <span className="ml-1 text-xs font-normal text-neutral-400">(수정 불가)</span>}
       </label>
-      <div className="flex gap-3">
+      <div className="flex gap-3" role="radiogroup" aria-required="true">
         {(['IMAGE', 'HTML'] as const).map((t) => (
           <button
             key={t}
@@ -187,10 +190,10 @@ export function PromoLanguageField({ isEdit, value, onChange }: {
   return (
     <div>
       <label className="block text-sm font-medium text-neutral-700 mb-2">
-        언어 <span className="text-red-500">*</span>
+        언어 <RequiredMark />
         {isEdit && <span className="ml-1 text-xs font-normal text-neutral-400">(수정 불가)</span>}
       </label>
-      <div className="flex gap-3">
+      <div className="flex gap-3" role="radiogroup" aria-required="true">
         {(['KO', 'EN'] as const).map((l) => (
           <label
             key={l}
@@ -204,6 +207,8 @@ export function PromoLanguageField({ isEdit, value, onChange }: {
           >
             <input
               type="radio"
+              required
+              aria-required="true"
               checked={value === l}
               onChange={() => !isEdit && onChange(l)}
               disabled={isEdit}
@@ -320,11 +325,11 @@ export function PromoImageDropzone({
   }
 
   return (
-    <div>
+    <div aria-required={required || undefined}>
       {label && (
         <p className="text-sm font-medium text-neutral-700 mb-2">
           {label}
-          {required && <span className="text-red-500 ml-0.5">*</span>}
+          {required && <RequiredMark />}
           {hint && <span className="ml-1 text-xs font-normal text-neutral-400">{hint}</span>}
         </p>
       )}
@@ -459,10 +464,12 @@ export function PromoScheduleFields({
 
           <div className={`grid grid-cols-2 gap-3 ${isAlwaysVisible ? 'opacity-40 pointer-events-none' : ''}`}>
             <div>
-              <label className="block text-xs font-medium text-neutral-500 mb-1">예약 시작일시</label>
+              <label className="block text-xs font-medium text-neutral-500 mb-1">예약 시작일시 <RequiredMark /></label>
               <input
                 type="datetime-local"
                 {...startAtProps}
+                required={!isAlwaysVisible}
+                aria-required={!isAlwaysVisible || undefined}
                 onChange={(e) => {
                   e.target.value = fixDatetimeYear(e.target.value)
                   startAtProps.onChange(e)

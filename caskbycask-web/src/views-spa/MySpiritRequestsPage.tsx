@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useMyRequests, useDeleteMyRequest } from '@/domain/spirit/hooks/useSpiritRequest'
 import type { MySpiritRequest, RequestStatus } from '@/domain/spirit/types/spiritRequest.types'
 import SeoMeta from '@/shared/components/SeoMeta'
-import Breadcrumb from '@/shared/components/Breadcrumb'
 import { formatBoardDate } from '@/shared/utils/format'
 
 const STATUS_STYLE: Record<RequestStatus, string> = {
@@ -30,17 +29,8 @@ export default function MySpiritRequestsPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 py-8">
       <SeoMeta title={t('spiritRequest.myRequests.title')} description={t('spiritRequest.subtitle')} noindex />
-
-      <Breadcrumb
-        className="mb-2"
-        items={[
-          { label: t('menu.request') },
-          { label: t('menu.requestSpirit'), to: '/request/spirit' },
-          { label: t('spiritRequest.myRequests.title') },
-        ]}
-      />
 
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-neutral-900">{t('spiritRequest.myRequests.title')}</h1>

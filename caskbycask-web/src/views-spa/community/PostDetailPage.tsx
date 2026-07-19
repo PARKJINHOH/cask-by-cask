@@ -156,7 +156,7 @@ export default function PostDetailPage() {
     || `CaskByCask 커뮤니티 게시글 — ${post.title}`
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 py-8">
       <SeoMeta
         title={post.title}
         description={seoDescription}
@@ -165,19 +165,22 @@ export default function PostDetailPage() {
         noindex={!!post.isBlocked || !!post.isLocked || !!post.isHidden || !!post.adultOnly}
         jsonLd={[
           {
-            '@type': 'Article',
+            '@type': boardPath === 'notice' ? 'NewsArticle' : 'DiscussionForumPosting',
             headline: post.title,
             datePublished: post.createdAt,
             dateModified: post.updatedAt ?? post.createdAt,
-            author: post.authorNickname
-              ? { '@type': 'Person', name: post.authorNickname }
-              : undefined,
+            author: boardPath === 'notice'
+              ? { '@type': 'Organization', name: '소식관리자', url: SITE_URL }
+              : post.authorNickname
+                ? { '@type': 'Person', name: post.authorNickname }
+                : undefined,
             publisher: {
               '@type': 'Organization',
               name: 'CaskByCask',
               logo: { '@type': 'ImageObject', url: `${SITE_URL}/logo.png` },
             },
             citation: post.sourceUrls?.length ? post.sourceUrls : undefined,
+            keywords: post.hashtags?.length ? post.hashtags : undefined,
           },
           buildBreadcrumbSchema([
             { name: '홈', path: '/ko/' },
@@ -370,6 +373,16 @@ export default function PostDetailPage() {
                 </li>
               ))}
             </ul>
+          </div>
+        )}
+
+        {!!post.contentSanitized && !post.isBlocked && post.hashtags?.length > 0 && (
+          <div className="mt-6 flex flex-wrap gap-2" aria-label={t('post.hashtags.label')}>
+            {post.hashtags.map((hashtag) => (
+              <span key={hashtag.toLocaleLowerCase()} className="rounded-full bg-primary-50 px-3 py-1.5 text-sm font-medium text-primary-800">
+                #{hashtag}
+              </span>
+            ))}
           </div>
         )}
 

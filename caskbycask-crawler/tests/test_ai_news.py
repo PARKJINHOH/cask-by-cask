@@ -15,6 +15,9 @@ requests = types.ModuleType("requests")
 requests.post = Mock()
 requests.RequestException = type("RequestException", (Exception,), {})
 sys.modules.setdefault("requests", requests)
+bs4 = types.ModuleType("bs4")
+bs4.BeautifulSoup = Mock()
+sys.modules.setdefault("bs4", bs4)
 google = types.ModuleType("google")
 genai = types.ModuleType("google.genai")
 genai_types = types.ModuleType("google.genai.types")
@@ -138,6 +141,22 @@ class NewsModelTest(unittest.TestCase):
 
         self.assertEqual(3, draft.topic_id)
         self.assertEqual("TIP_INFO", draft.article_type)
+
+    def test_generated_hashtags_are_cleaned_and_deduplicated(self) -> None:
+        writer = GeminiNewsWriter.__new__(GeminiNewsWriter)
+        writer.writer_model = "gemini-test"
+        result = writer._draft_from_result(
+            "RELEASE_NEWS", "WHISKY", "release:test", None, [0], {
+                "title": "테스트 위스키 출시",
+                "content_html": f"<p>{'본문' * 700}</p>",
+                "confidence": 0.95,
+                "semantic_fingerprint": "test whisky release",
+                "image_prompt": "editorial whisky illustration",
+                "hashtags": ["#위스키", "위스키", " 신제품 ", "싱글 몰트"],
+            },
+        )
+
+        self.assertEqual(["위스키", "신제품", "싱글몰트"], result.hashtags)
 
 
 class NewsSourceConfigTest(unittest.TestCase):

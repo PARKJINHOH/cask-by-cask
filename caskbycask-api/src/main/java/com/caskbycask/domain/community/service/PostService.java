@@ -24,6 +24,7 @@ import com.caskbycask.global.exception.CustomException;
 import com.caskbycask.global.exception.ErrorCode;
 import com.caskbycask.global.util.BadWordFilter;
 import com.caskbycask.global.util.HtmlSanitizer;
+import com.caskbycask.global.util.HashtagNormalizer;
 import lombok.RequiredArgsConstructor;
 import org.jsoup.Jsoup;
 import org.springframework.data.domain.Page;
@@ -270,7 +271,10 @@ public class PostService {
                 .distilleryTag(distilleryTag)
                 .title(request.getTitle())
                 .content(request.getContent())
-                .contentSanitized(sanitized);
+                .contentSanitized(sanitized)
+                .hashtags(BoardType.NOTICE.equals(request.getBoardType())
+                        ? new java.util.ArrayList<>(HashtagNormalizer.normalize(request.getHashtags()))
+                        : new java.util.ArrayList<>());
 
         if (series != null) {
             postBuilder.series(series).seriesOrder(series.getPostCount() + 1);
@@ -337,6 +341,9 @@ public class PostService {
         requireAdultVerified(findUser(userId), newAdultOnly);
 
         post.update(newTitle, newContent, sanitized, prefix, newAdultOnly);
+        if (BoardType.NOTICE.equals(post.getBoardType()) && request.getHashtags() != null) {
+            post.replaceHashtags(HashtagNormalizer.normalize(request.getHashtags()));
+        }
         postImageService.syncImageUsage(post, newContent);
         postVideoService.syncVideoUsage(post, newContent);
 
@@ -368,6 +375,9 @@ public class PostService {
         }
 
         post.update(newTitle, newContent, sanitized, prefix, false);
+        if (BoardType.NOTICE.equals(post.getBoardType()) && request.getHashtags() != null) {
+            post.replaceHashtags(HashtagNormalizer.normalize(request.getHashtags()));
+        }
         postImageService.syncImageUsage(post, newContent);
         postVideoService.syncVideoUsage(post, newContent);
         return PostDetailResponse.builder(post, true).build();
@@ -540,6 +550,7 @@ public class PostService {
                 .title(deleted.getTitle())
                 .content(deleted.getContent())
                 .contentSanitized(deleted.getContentSanitized())
+                .hashtags(new java.util.ArrayList<>(deleted.getHashtags()))
                 .build();
 
         Post saved = postRepository.save(restored);

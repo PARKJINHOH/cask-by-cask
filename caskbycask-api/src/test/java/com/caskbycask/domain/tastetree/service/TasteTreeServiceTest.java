@@ -7,6 +7,8 @@ import com.caskbycask.domain.spirit.repository.SpiritImageRepository;
 import com.caskbycask.domain.spirit.repository.SpiritRepository;
 import com.caskbycask.domain.tastetree.dto.TasteTreeEngagementResponse;
 import com.caskbycask.domain.tastetree.dto.TasteTreeImageFile;
+import com.caskbycask.domain.tastetree.dto.TasteTreeContent;
+import com.caskbycask.domain.tastetree.dto.TasteTreeSaveRequest;
 import com.caskbycask.domain.tastetree.entity.TasteTree;
 import com.caskbycask.domain.tastetree.entity.TasteTreeDailyView;
 import com.caskbycask.domain.tastetree.entity.TasteTreeVersion;
@@ -180,6 +182,28 @@ class TasteTreeServiceTest {
 
         assertThatCode(() -> service.publish(16L, 7L)).doesNotThrowAnyException();
         verify(draft).publish();
+    }
+
+    @Test
+    void draftRejectsNodeTextOverRecommendedLimits() {
+        TasteTreeContent.Node longTitleNode = nodeWithText("가".repeat(51), null);
+        TasteTreeContent.Node longDescriptionNode = nodeWithText("시작", "가".repeat(201));
+
+        assertThatThrownBy(() -> service.create(new TasteTreeSaveRequest(
+                "테스트 트리", null, new TasteTreeContent(8, List.of(longTitleNode), List.of())), 7L))
+                .isInstanceOfSatisfying(CustomException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.TASTE_TREE_INVALID_STRUCTURE));
+        assertThatThrownBy(() -> service.create(new TasteTreeSaveRequest(
+                "테스트 트리", null, new TasteTreeContent(8, List.of(longDescriptionNode), List.of())), 7L))
+                .isInstanceOfSatisfying(CustomException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.TASTE_TREE_INVALID_STRUCTURE));
+        verify(userRepository, never()).getByIdOrThrow(any());
+    }
+
+    private TasteTreeContent.Node nodeWithText(String titleKo, String descriptionKo) {
+        return new TasteTreeContent.Node(
+                "start", TasteTreeContent.NodeType.START, titleKo, null, descriptionKo, null,
+                0, 0, null, null, null, null, null, null, null, null, null);
     }
 
     @Test

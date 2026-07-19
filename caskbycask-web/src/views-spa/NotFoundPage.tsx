@@ -18,19 +18,13 @@ export default function NotFoundPage() {
         <p className="text-neutral-600 mb-8 leading-relaxed">
           {t('errors.notFound.description')}
         </p>
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+        <div className="flex justify-center">
           <Link
             to="/"
-            className="px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-lg transition-colors"
+            className="ui-button px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-lg transition-colors"
           >
             {t('errors.notFound.goHome')}
           </Link>
-          <button
-            onClick={() => window.history.back()}
-            className="px-6 py-3 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-medium rounded-lg transition-colors"
-          >
-            {t('errors.notFound.goBack')}
-          </button>
         </div>
       </div>
     </div>

@@ -14,6 +14,7 @@ import {
 } from '@/domain/inquiry/api/inquiryApi'
 import type { InquiryCategory, InquiryStatus } from '@/domain/inquiry/types/inquiry.types'
 import RichContent from '@/shared/components/RichContent'
+import FormFieldLabel from '@/shared/components/FormFieldLabel'
 
 const CATEGORY_OPTIONS: Array<{ value: InquiryCategory | ''; label: string }> = [
   { value: '', label: '전체' },
@@ -350,7 +351,10 @@ export default function AdminInquiryPage() {
                     </div>
                   ) : (
                     <>
+                      <FormFieldLabel admin required className="mb-1.5">답변 내용</FormFieldLabel>
                       <textarea
+                        required
+                        aria-required="true"
                         value={replyInput}
                         onChange={(e) => setReplyInput(e.target.value)}
                         rows={6}

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useByobDetail, useByobActions } from '@/domain/byob/hooks/useByob'
 import PostEditor from '@/domain/community/components/PostEditor'
 import SeoMeta from '@/shared/components/SeoMeta'
-import Breadcrumb from '@/shared/components/Breadcrumb'
+import FormFieldLabel, { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 
 function toLocalDatetimeValue(iso: string) {
   if (!iso) return ''
@@ -192,20 +192,13 @@ export default function ByobFormPage() {
     focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-400`
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 py-8">
       <SeoMeta title={isEdit ? t('byob.edit') : t('byob.write')} noindex />
 
-      <Breadcrumb
-        className="mb-2"
-        items={[
-          { label: t('menu.community'), to: '/community/all' },
-          { label: t('menu.communityByob'), to: '/community/byob' },
-        ]}
-      />
-
-      <h1 className="text-2xl font-bold text-neutral-900 mb-6">
-        {isEdit ? t('byob.edit') : t('byob.write')}
-      </h1>
+      <div className="mb-6 flex items-end justify-between gap-4">
+        <h1 className="text-2xl font-bold text-neutral-900">{isEdit ? t('byob.edit') : t('byob.write')}</h1>
+        <RequiredFieldsNotice />
+      </div>
 
       <form onSubmit={handleSubmit}>
         {/* PC: 2컬럼 (좌: 메인 폼, 우: 바틀 목록) */}
@@ -216,18 +209,14 @@ export default function ByobFormPage() {
 
             {/* 제목 */}
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
-                {t('byob.formTitle')} <span className="text-red-500">*</span>
-              </label>
-              <input value={title} onChange={(e) => setTitle(e.target.value)}
+              <FormFieldLabel required className="mb-1">{t('byob.formTitle')}</FormFieldLabel>
+              <input required value={title} onChange={(e) => setTitle(e.target.value)}
                 maxLength={100} className={inputCls} />
             </div>
 
             {/* 모임 소개 */}
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-                {t('byob.formContent')} <span className="text-red-500">*</span>
-              </label>
+              <p className="mb-1.5 text-sm font-medium text-neutral-700">{t('byob.formContent')}<RequiredMark /></p>
               <PostEditor
                 value={content}
                 onChange={setContent}
@@ -238,17 +227,13 @@ export default function ByobFormPage() {
             {/* 장소명 + 상세 주소 */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  {t('byob.formLocation')} <span className="text-red-500">*</span>
-                </label>
-                <input value={location} onChange={(e) => setLocation(e.target.value)}
+                <FormFieldLabel required className="mb-1">{t('byob.formLocation')}</FormFieldLabel>
+                <input required value={location} onChange={(e) => setLocation(e.target.value)}
                   maxLength={100} placeholder="서울특별시 용산구 원효로64길" className={inputCls} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  {t('byob.formAddress')} <span className="text-red-500">*</span>
-                </label>
-                <input value={address} onChange={(e) => setAddress(e.target.value)}
+                <FormFieldLabel required className="mb-1">{t('byob.formAddress')}</FormFieldLabel>
+                <input required value={address} onChange={(e) => setAddress(e.target.value)}
                   maxLength={200} placeholder="123동 4567호" className={inputCls} />
                 <p className="mt-1 text-xs text-amber-600 flex items-start gap-1">
                   <svg className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -261,10 +246,8 @@ export default function ByobFormPage() {
 
             {/* 모임 날짜 */}
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
-                {t('byob.formEventAt')} <span className="text-red-500">*</span>
-              </label>
-              <input type="datetime-local" value={eventAt}
+              <FormFieldLabel required className="mb-1">{t('byob.formEventAt')}</FormFieldLabel>
+              <input required type="datetime-local" value={eventAt}
                 onChange={(e) => setEventAt(fixDatetimeYear(e.target.value))}
                 onClick={openPicker}
                 lang={i18n.language}
@@ -275,10 +258,8 @@ export default function ByobFormPage() {
             {/* 모집 기간 */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  {t('byob.formRecruitStart')} <span className="text-red-500">*</span>
-                </label>
-                <input type="datetime-local" value={recruitStartAt}
+                <FormFieldLabel required className="mb-1">{t('byob.formRecruitStart')}</FormFieldLabel>
+                <input required type="datetime-local" value={recruitStartAt}
                   onChange={(e) => setRecruitStartAt(fixDatetimeYear(e.target.value))}
                   onClick={openPicker}
                   lang={i18n.language}
@@ -286,10 +267,8 @@ export default function ByobFormPage() {
                   className={`${inputCls} cursor-pointer`} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  {t('byob.formRecruitEnd')} <span className="text-red-500">*</span>
-                </label>
-                <input type="datetime-local" value={recruitEndAt}
+                <FormFieldLabel required className="mb-1">{t('byob.formRecruitEnd')}</FormFieldLabel>
+                <input required type="datetime-local" value={recruitEndAt}
                   onChange={(e) => setRecruitEndAt(fixDatetimeYear(e.target.value))}
                   onClick={openPicker}
                   lang={i18n.language}
@@ -300,10 +279,8 @@ export default function ByobFormPage() {
 
             {/* 최대 인원 */}
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
-                {t('byob.formMaxParticipants')} <span className="text-red-500">*</span>
-              </label>
-              <input type="number" value={maxParticipants}
+              <FormFieldLabel required className="mb-1">{t('byob.formMaxParticipants')}</FormFieldLabel>
+              <input required type="number" value={maxParticipants}
                 onChange={(e) => setMaxParticipants(Math.max(2, Math.min(100, Number(e.target.value))))}
                 min={2} max={100} className="w-32 px-3 py-2 border border-neutral-300 rounded-lg text-sm
                   focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-400" />

@@ -65,6 +65,7 @@ def _article_payload(draft: DraftArticle, sources: list[SearchSource]) -> dict:
         "imageKind": draft.image_kind,
         "imageRightsEvidence": draft.image_rights_evidence,
         "modelName": draft.model_name,
+        "hashtags": draft.hashtags,
         "sources": [source.evidence_payload() for source in selected],
     }
 
@@ -368,6 +369,7 @@ def run() -> int:
                     "confidenceScore": rewritten.confidence,
                     "semanticFingerprint": rewritten.semantic_fingerprint,
                     "modelName": rewritten.model_name,
+                    "hashtags": rewritten.hashtags,
                 })
                 stats["reviewCount"] += 1
                 log.info("AI 원고 재작성 완료 articleId=%s", rewrite_request.get("articleId"))

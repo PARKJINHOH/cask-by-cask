@@ -16,6 +16,7 @@ import {
   useDeleteAlias,
 } from '@/domain/pricetracker/hooks/useAdminPriceTracker'
 import type { AdminStore, DutyFreeChannel, StoreSearchResult, StoreType } from '@/domain/pricetracker/types/pricetracker.types'
+import FormFieldLabel, { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 
 const TYPE_LABEL: Record<StoreType, string> = { DOMESTIC: '국내', OVERSEAS: '해외', DUTYFREE: '면세' }
 const CHANNEL_LABEL: Record<DutyFreeChannel, string> = { AIRPORT: '공항', CITY: '시내', INFLIGHT: '기내', ONLINE: '온라인' }
@@ -258,8 +259,11 @@ function AliasPanel({ store, onClose }: { store: AdminStore; onClose: () => void
         <p className="font-semibold text-neutral-900 text-sm truncate">{store.displayName} · 별칭</p>
         <button onClick={onClose} className="text-neutral-400 hover:text-neutral-600 text-lg leading-none">×</button>
       </div>
+      <FormFieldLabel admin required className="mb-1.5 text-xs">별칭</FormFieldLabel>
       <div className="flex gap-2 mb-3">
         <input
+          required
+          aria-required="true"
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && add()}
@@ -308,8 +312,9 @@ function CreateStoreForm({ onDone }: { onDone: () => void }) {
 
   return (
     <div className="p-4 bg-white rounded-xl shadow-sm flex flex-wrap items-end gap-3">
-      <Field label="매장명">
-        <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="border border-neutral-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" />
+      <RequiredFieldsNotice admin className="w-full" />
+      <Field label="매장명" required>
+        <input required aria-required="true" value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="border border-neutral-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" />
       </Field>
       <Field label="유형">
         <div className="flex gap-1">
@@ -338,10 +343,10 @@ function CreateStoreForm({ onDone }: { onDone: () => void }) {
   )
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children, required = false }: { label: string; children: React.ReactNode; required?: boolean }) {
   return (
     <div>
-      <p className="text-xs text-neutral-500 mb-1">{label}</p>
+      <p className="text-xs text-neutral-500 mb-1">{label}{required && <RequiredMark />}</p>
       {children}
     </div>
   )

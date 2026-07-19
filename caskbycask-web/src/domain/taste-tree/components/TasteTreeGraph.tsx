@@ -7,7 +7,6 @@ import {
   Controls,
   Handle,
   MarkerType,
-  NodeResizer,
   Position,
   ReactFlow,
   useNodesState,
@@ -15,7 +14,6 @@ import {
   type ConnectionLineComponentProps,
   type Node as FlowNode,
   type NodeProps,
-  type ResizeParams,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import type { TasteTreeContent, TasteTreeEdge, TasteTreeNode } from '../types/tasteTree.types'
@@ -37,7 +35,6 @@ interface TasteTreeGraphProps {
   onEdgeClick?: (edgeKey: string) => void
   onPaneClick?: () => void
   onMoveNode?: (nodeKey: string, x: number, y: number) => void
-  onResizeNode?: (nodeKey: string, x: number, y: number, width: number, height: number) => void
   onDeleteNode?: (nodeKey: string) => void
   onConnect?: (
     sourceKey: string,
@@ -62,17 +59,16 @@ interface TreeNodeData extends Record<string, unknown> {
   active: boolean
   editable: boolean
   onDeleteNode?: TasteTreeGraphProps['onDeleteNode']
-  onResizeNode?: TasteTreeGraphProps['onResizeNode']
 }
 
 type TreeFlowNode = FlowNode<TreeNodeData, 'taste-tree'>
 
-const editableHandleClass = '!h-3 !w-3 !border-2 !border-white !bg-amber-700'
+const editableHandleClass = '!h-3 !w-3 !border-2 !border-white !bg-teal-600'
 const readonlyHandleClass = '!h-2 !w-2 !border-0 !opacity-0'
 const emptyActiveKeys: string[] = []
 
 function TreeNodeCard({ data, selected }: NodeProps<TreeFlowNode>) {
-  const { node, isEn, active, editable, onDeleteNode, onResizeNode } = data
+  const { node, isEn, active, editable, onDeleteNode } = data
   const { t } = useTranslation(undefined, { lng: isEn ? 'en' : 'ko' })
   const title = isEn ? node.titleEn || node.titleKo : node.titleKo
   const description = isEn ? node.descriptionEn || node.descriptionKo : node.descriptionKo
@@ -81,33 +77,15 @@ function TreeNodeCard({ data, selected }: NodeProps<TreeFlowNode>) {
   const handleClass = editable ? editableHandleClass : readonlyHandleClass
 
   return (
-    <article className={`group relative h-full w-full min-h-[128px] overflow-visible rounded-[6px] border bg-white shadow-[0_10px_28px_rgba(70,45,25,0.09)] transition-colors ${
+    <article className={`group relative w-full min-h-[128px] overflow-visible rounded-lg border bg-white shadow-[0_10px_28px_rgba(70,45,25,0.09)] transition-colors ${
       active ? 'border-amber-600 ring-4 ring-amber-100' : selected ? 'border-stone-800 ring-2 ring-stone-200' : 'border-stone-200'
     }`}>
-      <NodeResizer
-        isVisible={editable && selected}
-        color="#b45309"
-        minWidth={180}
-        minHeight={image ? 320 : 128}
-        maxWidth={420}
-        maxHeight={760}
-        keepAspectRatio
-        handleClassName="!h-3 !w-3 !rounded-[2px] !border-2 !border-white !bg-amber-700"
-        lineClassName="!border-amber-700"
-        onResizeEnd={(_, params: ResizeParams) => onResizeNode?.(
-          node.key,
-          Math.round(params.x),
-          Math.round(params.y),
-          Math.round(params.width),
-          Math.round(params.height),
-        )}
-      />
       {node.type !== 'START' && <Handle id="point-top" type="source" position={Position.Top} isConnectable={editable} className={handleClass} />}
       <Handle id="point-left" type="source" position={Position.Left} isConnectable={editable} className={handleClass} />
       <Handle id="point-right" type="source" position={Position.Right} isConnectable={editable} className={handleClass} />
       <Handle id="point-bottom" type="source" position={Position.Bottom} isConnectable={editable} className={handleClass} />
 
-      {node.type !== 'WHISKY' && <span className={`absolute left-2.5 top-2.5 z-10 inline-flex rounded-[3px] px-1.5 py-0.5 text-[8px] font-black tracking-wide ${
+      {node.type !== 'WHISKY' && <span className={`absolute left-2.5 top-2.5 z-10 inline-flex rounded-lg px-1.5 py-0.5 text-[8px] font-black tracking-wide ${
         node.type === 'START' ? 'bg-stone-950 text-white' : 'bg-stone-100 text-stone-700'
       }`}>{t(`tasteTree.nodeTypes.${node.type}`)}</span>}
 
@@ -116,9 +94,11 @@ function TreeNodeCard({ data, selected }: NodeProps<TreeFlowNode>) {
           <img src={image} alt="" className="mx-auto h-full w-auto max-w-none" />
         </div>
       )}
-      <div className={`flex flex-col items-center justify-center p-4 text-center ${image ? 'min-h-[84px]' : 'min-h-[128px] pt-9'}`}>
-        <h3 className="line-clamp-2 w-full break-keep text-center text-sm font-black leading-5 text-stone-950">{title}</h3>
-        {description && <p className="mt-2 line-clamp-2 w-full whitespace-pre-line break-keep text-center text-[11px] font-semibold leading-4 text-stone-500">{description}</p>}
+      <div className={`flex flex-col items-center justify-center p-4 text-center ${
+        image ? 'min-h-[84px]' : description ? 'min-h-[128px] pt-9' : 'min-h-[128px]'
+      }`}>
+        <h3 className="w-full break-keep [overflow-wrap:anywhere] text-center text-sm font-black leading-5 text-stone-950">{title}</h3>
+        {description && <p className="mt-2 w-full whitespace-pre-line break-keep [overflow-wrap:anywhere] text-center text-[11px] font-semibold leading-4 text-stone-500">{description}</p>}
         {(whisky?.priceText || whisky?.priceAmount != null) && (
           <p className="mt-2 whitespace-nowrap text-[11px] font-bold text-amber-800">
             {whisky.priceText || `${new Intl.NumberFormat(isEn ? 'en-US' : 'ko-KR').format(whisky.priceAmount!)} ${whisky.currencyCode || 'KRW'}`}
@@ -128,7 +108,7 @@ function TreeNodeCard({ data, selected }: NodeProps<TreeFlowNode>) {
 
       {editable && node.type !== 'START' && (
         <button type="button" onClick={(event) => { event.stopPropagation(); onDeleteNode?.(node.key) }}
-          className="nodrag absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center rounded-[5px] border border-red-200 bg-white text-base font-black text-red-600 shadow-md hover:bg-red-50" aria-label={t('tasteTree.builder.deleteNode')}>−</button>
+          className="nodrag absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center rounded-lg border border-red-200 bg-white text-base font-black text-red-600 shadow-md hover:bg-red-50" aria-label={t('tasteTree.builder.deleteNode')}>−</button>
       )}
     </article>
   )
@@ -178,7 +158,6 @@ export default function TasteTreeGraph({
   onEdgeClick,
   onPaneClick,
   onMoveNode,
-  onResizeNode,
   onDeleteNode,
   onConnect,
   onReconnectEdge,
@@ -195,15 +174,14 @@ export default function TasteTreeGraph({
     id: node.key,
     type: 'taste-tree',
     position: { x: node.positionX ?? 80 + (index % 4) * 280, y: node.positionY ?? 50 + Math.floor(index / 4) * 250 },
-    data: { node, isEn, active: activeNodes.has(node.key), editable, onDeleteNode, onResizeNode },
+    data: { node, isEn, active: activeNodes.has(node.key), editable, onDeleteNode },
     style: {
       width: node.width ?? 220,
-      ...(node.height != null ? { height: node.height } : {}),
     },
     selected: selectedNodeKey === node.key,
     draggable: editable,
     connectable: editable,
-  })), [activeNodes, content.nodes, editable, isEn, onDeleteNode, onResizeNode, selectedNodeKey])
+  })), [activeNodes, content.nodes, editable, isEn, onDeleteNode, selectedNodeKey])
   const [nodes, setNodes, onNodesChange] = useNodesState<TreeFlowNode>(calculatedNodes)
 
   useEffect(() => {
@@ -252,7 +230,7 @@ export default function TasteTreeGraph({
   }, [onConnect])
 
   return (
-    <div className={`taste-tree-graph ${editable ? '' : 'taste-tree-export-safe-font'} overflow-hidden rounded-[8px] border border-stone-200 bg-[#eeeae5] shadow-inner ${compact ? 'h-[420px]' : editable ? 'h-[720px]' : 'h-[620px]'}`}>
+    <div className={`taste-tree-graph ${editable ? '' : 'taste-tree-export-safe-font'} overflow-hidden rounded-2xl border border-stone-200 bg-[#eeeae5] shadow-inner ${compact ? 'h-[420px]' : editable ? 'h-[720px]' : 'h-[620px]'}`}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -293,7 +271,7 @@ export default function TasteTreeGraph({
         proOptions={{ hideAttribution: true }}
       >
         <Background color="#d8cec5" gap={28} size={1} />
-        <Controls showInteractive={false} className="!overflow-hidden !rounded-[6px] !border-stone-200 !bg-white !shadow-lg" />
+        <Controls showInteractive={false} className="!overflow-hidden !rounded-lg !border-stone-200 !bg-white !shadow-lg" />
       </ReactFlow>
     </div>
   )

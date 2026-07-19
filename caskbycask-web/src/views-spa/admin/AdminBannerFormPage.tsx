@@ -13,6 +13,7 @@ import Toast from '@/shared/components/Toast'
 import { useToast } from '@/shared/hooks/useToast'
 import ImageEditorModal from '@/shared/components/ImageEditorModal'
 import RealMainPreviewModal from '@/domain/banner/components/RealMainPreviewModal'
+import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 import {
   toInputDt, toApiDt, promoSuperRefine,
   FormSection, PromoImageDropzone,
@@ -324,6 +325,7 @@ export default function AdminBannerFormPage() {
       />
 
       <form onSubmit={(e) => e.preventDefault()} className="space-y-5">
+        <RequiredFieldsNotice admin />
         <TwoColumnFormLayout
           left={
             <>
@@ -337,9 +339,9 @@ export default function AdminBannerFormPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 mb-2">
-                    배너 노출 위치 <span className="text-red-500">*</span>
+                    배너 노출 위치 <RequiredMark />
                   </label>
-                  <div className="flex gap-3">
+                  <div className="flex gap-3" role="radiogroup" aria-required="true">
                     {(['MAIN', 'SIDE'] as const).map((pos) => (
                       <label
                         key={pos}
@@ -351,6 +353,8 @@ export default function AdminBannerFormPage() {
                       >
                         <input
                           type="radio"
+                          required
+                          aria-required="true"
                           value={pos}
                           checked={watch('position') === pos}
                           onChange={() => {
@@ -421,9 +425,9 @@ export default function AdminBannerFormPage() {
                     />
                   </div>
                 ) : (
-                  <div>
+                  <div aria-required="true">
                     <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-                      내용 <span className="text-red-500">*</span>
+                      내용 <RequiredMark />
                     </label>
                     <Controller
                       name="content"

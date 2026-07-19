@@ -35,10 +35,10 @@ app:
       same-site: Strict
 
 cors:
-  allowed-origins: https://caskbycask.net
+  allowed-origins: https://www.caskbycask.net
 
 seo:
-  site-url: https://caskbycask.net
+  site-url: https://www.caskbycask.net
   index-path: /app/vite/dist/index.html
 
 logging:

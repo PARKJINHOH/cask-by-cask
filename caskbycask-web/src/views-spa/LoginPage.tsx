@@ -205,6 +205,7 @@ function DormantReactivateModal({
           <div className="space-y-3">
             <Input
               label="인증 코드"
+              required
               placeholder="6자리 코드 입력"
               inputMode="numeric"
               maxLength={6}
@@ -413,6 +414,7 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
           <Input
             label="이메일"
+            required
             type="email"
             placeholder="example@email.com"
             autoComplete="email"
@@ -423,6 +425,7 @@ export default function LoginPage() {
 
           <Input
             label="비밀번호"
+            required
             type="password"
             placeholder="비밀번호 입력"
             autoComplete="current-password"

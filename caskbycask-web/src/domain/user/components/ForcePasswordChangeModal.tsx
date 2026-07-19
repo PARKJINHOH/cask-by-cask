@@ -76,6 +76,7 @@ export default function ForcePasswordChangeModal() {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
           <Input
             label={t('forcePw.current')}
+            required
             type="password"
             placeholder={t('forcePw.current')}
             autoComplete="current-password"
@@ -85,6 +86,7 @@ export default function ForcePasswordChangeModal() {
           />
           <Input
             label={t('forcePw.new')}
+            required
             type="password"
             placeholder={t('forcePw.hint')}
             autoComplete="new-password"
@@ -94,6 +96,7 @@ export default function ForcePasswordChangeModal() {
           />
           <Input
             label={t('forcePw.confirm')}
+            required
             type="password"
             placeholder={t('forcePw.confirm')}
             autoComplete="new-password"

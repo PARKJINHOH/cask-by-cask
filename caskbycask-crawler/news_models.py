@@ -1,15 +1,19 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 import hashlib
 
 
 TRACKING_QUERY_KEYS = {"fbclid", "gclid", "ref", "source"}
-SERVICE_ZONE = ZoneInfo("Asia/Seoul")
+try:
+    SERVICE_ZONE = ZoneInfo("Asia/Seoul")
+except ZoneInfoNotFoundError:
+    # Windows의 최소 Python 설치처럼 IANA tzdata가 없는 환경에서도 KST는 DST가 없어 고정 UTC+9로 안전하다.
+    SERVICE_ZONE = timezone(timedelta(hours=9), name="Asia/Seoul")
 
 
 def truncate_utf16(value: str, max_units: int) -> str:
@@ -97,6 +101,7 @@ class DraftArticle:
     confidence: float
     source_indexes: list[int]
     image_prompt: str
+    hashtags: list[str] = field(default_factory=list)
     topic_id: int | None = None
     image_url: str | None = None
     image_kind: str | None = None

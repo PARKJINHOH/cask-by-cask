@@ -11,6 +11,7 @@ import { useUpdateNickname, useUpdatePassword, useDeleteMe, useResetPassword, us
 import ProfileImageSection from './ProfileImageSection'
 import { startOAuth } from '@/domain/auth/oauth'
 import type { SocialProvider } from '@/domain/auth/types/auth.types'
+import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 
 // ── 설정 그룹 카드 ───────────────────────────────────────────
 
@@ -173,6 +174,7 @@ function NicknameSection() {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
         <Input
           label={t('mypage.nickname.label')}
+          required
           placeholder={t('mypage.nickname.hint')}
           maxLength={8}
           error={errors.nickname?.message}
@@ -357,6 +359,7 @@ function PasswordSection() {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
         <Input
           label={t('mypage.password.current')}
+          required
           type="password"
           placeholder={t('mypage.password.current')}
           autoComplete="current-password"
@@ -366,6 +369,7 @@ function PasswordSection() {
         />
         <Input
           label={t('mypage.password.new')}
+          required
           type="password"
           placeholder={t('mypage.password.hint')}
           autoComplete="new-password"
@@ -375,6 +379,7 @@ function PasswordSection() {
         />
         <Input
           label={t('mypage.password.confirm')}
+          required
           type="password"
           placeholder={t('mypage.password.confirm')}
           autoComplete="new-password"
@@ -571,11 +576,14 @@ function AdultVerificationSection() {
       ) : (
         <div className="space-y-3">
           <p className="text-xs text-neutral-500 leading-relaxed">{t('mypage.adult.desc')}</p>
+          <RequiredFieldsNotice />
 
           <div className="space-y-1.5">
-            <label className="text-xs text-neutral-600">{t('mypage.adult.birthDateLabel')}</label>
+            <label className="text-xs text-neutral-600">{t('mypage.adult.birthDateLabel')}<RequiredMark /></label>
             <input
               type="date"
+              required
+              aria-required="true"
               value={birthDate}
               min={minDate}
               max={maxDate}
@@ -589,11 +597,13 @@ function AdultVerificationSection() {
           <label className="flex items-start gap-2 text-xs text-neutral-600 leading-relaxed cursor-pointer">
             <input
               type="checkbox"
+              required
+              aria-required="true"
               checked={agreed}
               onChange={(e) => setAgreed(e.target.checked)}
               className="mt-0.5 accent-primary-700"
             />
-            <span>{t('mypage.adult.confirmLabel')}</span>
+            <span>{t('mypage.adult.confirmLabel')}<RequiredMark /></span>
           </label>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
@@ -807,6 +817,11 @@ function DangerZone() {
               })}
             </label>
             <Input
+              required
+              aria-label={t('mypage.settingsGroups.danger.confirmInstruction', {
+                word: confirmWord,
+                defaultValue: `계속하려면 아래에 ${confirmWord}를 입력해주세요.`
+              })}
               value={confirmText}
               onChange={(e) => setConfirmText(e.target.value)}
               placeholder={confirmWord}

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useSpiritDetail } from '@/domain/spirit/hooks/useSpiritDetail'
 import Spinner from '@/shared/components/Spinner'
@@ -14,7 +14,6 @@ import type { BucketType, StoreType } from '@/domain/pricetracker/types/pricetra
 
 export default function SpiritPriceDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
   const { t, i18n } = useTranslation()
   const isEn = i18n.language === 'en'
   const spiritId = Number(id)
@@ -72,12 +71,6 @@ export default function SpiritPriceDetailPage() {
       {/* 헤더 */}
       <div className="flex items-start justify-between gap-4 mb-4">
         <div>
-          <button
-            onClick={() => navigate(-1)}
-            className="text-sm text-neutral-400 hover:text-neutral-600 mb-2 block"
-          >
-            ← {t('spirit.detail.backToList', '목록으로')}
-          </button>
           <h1 className="text-xl font-bold text-neutral-900">{primaryName}</h1>
           {subName && <p className="text-sm text-neutral-400 mt-0.5">{subName}</p>}
         </div>

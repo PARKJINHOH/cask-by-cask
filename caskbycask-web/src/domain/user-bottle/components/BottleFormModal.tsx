@@ -7,6 +7,7 @@ import { getSpiritListDisplayNames } from '@/domain/spirit/utils/spiritDisplayNa
 import ImageEditorModal from '@/shared/components/ImageEditorModal';
 import { formatOptionalPriceInput, parsePriceInput } from '@/shared/utils/moneyInput';
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue';
+import FormFieldLabel, { RequiredFieldsNotice } from '@/shared/components/FormFieldLabel';
 
 interface SpiritOption { id: number; nameKo: string; nameEn: string | null; seriesIdentifier?: string | null; category: string; }
 interface Props { open: boolean; onClose: () => void; editing?: UserBottle; }
@@ -236,10 +237,13 @@ export function BottleFormModal({ open, onClose, editing }: Props) {
         </div>
 
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          <RequiredFieldsNotice />
           <div>
-            <RequiredLabel>{t('collection.form.spiritName')}</RequiredLabel>
+            <FormFieldLabel required className="mb-1">{t('collection.form.spiritName')}</FormFieldLabel>
             <input
               type="text"
+              required
+              aria-required="true"
               value={selectedSpiritNames ? `${selectedSpiritNames.nameKo}${selectedSpiritNames.nameEn ? ` (${selectedSpiritNames.nameEn})` : ''}` : spiritQuery}
               onChange={(e) => { setSpiritQuery(e.target.value); setSelectedSpirit(null); setNameTouched(true); }}
               onBlur={() => setNameTouched(true)}
@@ -456,14 +460,6 @@ export function BottleFormModal({ open, onClose, editing }: Props) {
         />
       )}
     </div>
-  );
-}
-
-function RequiredLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <label className="block text-sm font-medium text-neutral-700 mb-1">
-      {children}<span className="text-red-500 ml-0.5">*</span>
-    </label>
   );
 }
 

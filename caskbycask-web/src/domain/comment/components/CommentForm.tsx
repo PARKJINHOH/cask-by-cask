@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/shared/components/Button'
 import { useCreateComment, useUpdateComment } from '../hooks/useComments'
 import type { CommentItem } from '../types/comment.types'
+import FormFieldLabel from '@/shared/components/FormFieldLabel'
 
 export interface CommentFormProps {
   spiritId: number
@@ -71,7 +72,10 @@ export default function CommentForm({
         </div>
       )}
 
+      <FormFieldLabel required className="mb-1.5">{t('comment.contentLabel')}</FormFieldLabel>
       <textarea
+        required
+        aria-required="true"
         value={content}
         onChange={(e) => setContent(e.target.value)}
         maxLength={1000}

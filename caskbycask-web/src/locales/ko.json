@@ -146,6 +146,30 @@
     "more": "더보기",
     "maturingPower": "Lv.{{level}}"
   },
+  "pageIndicator": {
+    "ariaLabel": "현재 메뉴 위치",
+    "detail": "상세",
+    "write": "작성",
+    "edit": "수정",
+    "sharedView": "공유 보기",
+    "myContent": "내 콘텐츠",
+    "myRequests": "내 요청",
+    "reviewWrite": "리뷰 작성",
+    "reviewEdit": "리뷰 수정",
+    "ranking": "랭킹",
+    "inquiry": "문의하기",
+    "account": "계정",
+    "accountRecovery": "계정 찾기",
+    "terms": "이용약관",
+    "privacy": "개인정보 처리방침",
+    "operationPolicy": "운영정책",
+    "notifications": "알림",
+    "userBottles": "보틀 컬렉션",
+    "userReviews": "사용자 리뷰",
+    "producer": "생산자",
+    "priceTracker": "가격 정보",
+    "priceRegister": "가격 등록"
+  },
   "home": {
     "banner": {
       "imageAlt": "배너",
@@ -181,13 +205,6 @@
       "more": "게시글 더보기",
       "empty": "아직 게시글이 없습니다."
     },
-    "shortcuts": {
-      "title": "바로가기",
-      "ranking": "랭킹",
-      "community": "커뮤니티",
-      "review": "리뷰 작성",
-      "search": "술 검색"
-    },
     "eventCard": {
       "label": "이번 주 이벤트",
       "title": "시음회 · 출시 일정 보기",
@@ -211,8 +228,9 @@
     "communityByob": "BYOB 모임",
     "calendar": "이벤트 달력",
     "faq": "FAQ",
+    "tasteExplorer": "취향 탐색",
     "tierList": "티어리스트",
-    "tasteTree": "주류 취향 트리"
+    "tasteTree": "취향 트리"
   },
   "calendar": {
     "title": "이벤트 달력",
@@ -499,8 +517,8 @@
       "error": "회원가입 중 오류가 발생했습니다.",
       "hasAccount": "이미 계정이 있으신가요?",
       "terms": {
-        "agreeTerms": "이용약관에 동의합니다 (필수)",
-        "agreePrivacy": "개인정보 처리방침에 동의합니다 (필수)",
+        "agreeTerms": "이용약관에 동의합니다",
+        "agreePrivacy": "개인정보 처리방침에 동의합니다",
         "viewFull": "전문보기",
         "termsRequired": "이용약관에 동의해주세요.",
         "privacyRequired": "개인정보 처리방침에 동의해주세요."
@@ -761,6 +779,7 @@
     "nose": "향 (Nose)",
     "taste": "맛 (Taste)",
     "finish": "피니시 (Finish)",
+    "tastingNote": "테이스팅 노트",
     "total": "총점",
     "totalPreview": "총점 미리보기",
     "comment": "기타 코멘트",
@@ -803,6 +822,7 @@
   },
   "comment": {
     "title": "커뮤니티",
+    "contentLabel": "댓글 내용",
     "tab": "커뮤니티",
     "placeholder": "댓글을 입력하세요...",
     "spiritPlaceholder": "이 술에 대한 이야기를 나눠보세요...",
@@ -1096,6 +1116,7 @@
     "reset": "초기화",
     "apply": "적용",
     "required": "필수",
+    "requiredFieldsHint": "표시는 필수 입력 항목입니다.",
     "optional": "선택",
     "saving": "저장 중...",
     "submit": "등록",
@@ -1173,6 +1194,12 @@
     "seriesNext": "다음 글",
     "commentSection": "댓글",
     "sourceLinks": "출처",
+    "hashtags": {
+      "label": "해시태그",
+      "placeholder": "#위스키 #신제품 #증류소",
+      "help": "공백 또는 쉼표로 구분 · {{count}}/{{max}}개",
+      "invalid": "해시태그는 최대 {{max}}개, 각 {{length}}자까지 입력할 수 있습니다."
+    },
     "loginToComment": "로그인하고 댓글을 남겨보세요",
     "lockedNotice": "신고 누적으로 잠긴 게시글입니다. 본문을 볼 수 없습니다.",
     "hiddenNotice": "관리자가 숨김 처리한 게시글입니다. 본문을 볼 수 없습니다.",
@@ -1180,6 +1207,7 @@
       "title": "제목을 입력하세요",
       "content": "내용을 입력하세요. YouTube/Vimeo URL을 붙여넣으면 자동 임베드됩니다."
     },
+    "contentLabel": "내용",
     "writeGuideline": {
       "text": "음란물, 비방, 저작권 침해, 욕설, 도배, 개인정보 노출, 허위사실 유포, 무단 광고성 게시물은 제재 대상이며 사전 통보 없이 이동·비공개 처리될 수 있습니다.",
       "linkText": "커뮤니티 운영정책 보기"
@@ -1209,9 +1237,11 @@
       "add": "투표 추가",
       "remove": "투표 제거",
       "questionPlaceholder": "투표 질문을 입력하세요",
+      "questionLabel": "투표 질문",
       "multiple": "복수 선택",
       "single": "단일 선택",
       "optionPlaceholder": "선택지 {{index}}",
+      "optionsLabel": "선택지",
       "addOption": "+ 선택지 추가",
       "endsAt": "종료일시 (선택)"
     },
@@ -1937,8 +1967,6 @@
     "noCreatedTrees": "아직 만든 트리가 없습니다.",
     "noSavedTrees": "아직 저장한 트리가 없습니다.",
     "exploreOfficial": "공식 트리 둘러보기",
-    "pcOnlyTitle": "트리 만들기는 PC에서 이용할 수 있어요.",
-    "pcOnlyDesc": "넓은 화면에서 노드를 연결하고 결과 주류를 편하게 등록해 주세요. 만든 트리의 플레이와 공유는 모바일에서도 지원합니다.",
     "builder": {
       "title": "나만의 주류 트리 Builder",
       "subtitle": "질문과 결과를 연결해 링크로 공유할 수 있는 취향 트리를 만드세요.",
@@ -1956,7 +1984,9 @@
       "connections": "연결된 다음 노드",
       "noConnections": "아직 연결된 노드가 없습니다.",
       "newChoice": "새 주류",
-      "addNode": "노드 추가",
+      "addNode": "주류 추가",
+      "requiredHint": "필수 입력 항목",
+      "registeredSpirit": "등록할 주류",
       "defaultEdgeLabel": "이 길로 가기",
       "deleteNodeConfirm": "이 노드와 연결선을 삭제할까요?",
       "addLeft": "왼쪽 노드 추가",
@@ -1990,10 +2020,8 @@
       "imagePositionY": "세로 위치",
       "imageReset": "이미지 설정 초기화",
       "imageRemove": "이미지 삭제",
-      "edgeLabelKo": "선택 문구 (한국어)",
-      "edgeLabelEn": "선택 문구 (영어)",
-      "edgeDescriptionKo": "선택 문구 아래 설명 (선택·한국어)",
-      "edgeDescriptionEn": "선택 문구 아래 설명 (선택·영어)",
+      "edgeLabelKo": "선택 문구",
+      "edgeDescriptionKo": "선택 문구 아래 설명 (선택)",
       "edgeDescriptionPlaceholder": "선택했을 때 어떤 주류로 이어지는지 간단히 설명해 주세요.",
       "lineType": "연결선 모양",
       "lineStep": "꺾은선 (ㄱ·ㄴ)",
@@ -2004,10 +2032,8 @@
       "newQuestion": "새 질문",
       "newResult": "새 결과",
       "newInfo": "새 안내",
-      "titleKo": "제목 (한국어)",
-      "titleEn": "제목 (영어)",
-      "descriptionKo": "설명 (한국어)",
-      "descriptionEn": "설명 (영어)",
+      "titleKo": "제목 (최대 {{max}}자)",
+      "descriptionKo": "설명 (선택, 최대 {{max}}자)",
       "selectionType": "선택 방식",
       "single": "하나 선택",
       "multiple": "복수 선택",
@@ -2034,7 +2060,7 @@
       "reasonEn": "추천 이유 (영어, 최대 300자)",
       "duplicateSpirit": "같은 등록 주류는 한 결과에 두 번 추가할 수 없습니다.",
       "imageUploadFailed": "이미지를 업로드하지 못했습니다.",
-      "graphHelp": "우측 상단에서 주류 노드를 추가하고 노드 면의 점을 드래그해 연결하세요. 각 주류에서 탐색을 끝내거나 다음 주류로 계속 연결할 수 있고, 선택한 노드의 테두리 조절점으로 크기를 바꿀 수 있습니다.",
+      "graphHelp": "우측 상단에서 주류 노드를 추가하고 노드 면의 점을 드래그해 연결하세요. 노드 높이는 입력한 제목과 설명에 맞춰 자동으로 조절되며, 각 주류에서 탐색을 끝내거나 다음 주류로 계속 연결할 수 있습니다.",
       "saveDraft": "작업본 저장",
       "draftSaved": "작업본을 저장했습니다.",
       "saveFailed": "작업본을 저장하지 못했습니다.",
@@ -2057,6 +2083,8 @@
       "errorStart": "시작 노드는 하나만 있어야 합니다.",
       "errorResult": "결과 노드를 하나 이상 추가해 주세요.",
       "errorNodeTitle": "모든 노드의 한국어 제목을 입력해 주세요.",
+      "errorNodeTitleLength": "노드 제목은 언어별 최대 50자까지 입력할 수 있습니다.",
+      "errorNodeDescriptionLength": "노드 설명은 언어별 최대 200자까지 입력할 수 있습니다.",
       "errorQuestionOption": "모든 질문에 선택지를 하나 이상 추가해 주세요.",
       "errorResultCount": "각 결과 노드에는 주류를 1개 이상 3개 이하로 등록해 주세요.",
       "errorResultItem": "직접 등록 주류의 이름 등 필수 정보를 확인해 주세요.",

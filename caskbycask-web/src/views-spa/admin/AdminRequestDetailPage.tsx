@@ -4,6 +4,7 @@ import Badge from '@/shared/components/Badge'
 import Button from '@/shared/components/Button'
 import Spinner from '@/shared/components/Spinner'
 import AdminPageHeader from '@/shared/components/AdminPageHeader'
+import FormFieldLabel, { RequiredFieldsNotice } from '@/shared/components/FormFieldLabel'
 import { formatDate } from '@/shared/utils/format'
 import {
   useAdminRequestDetail,
@@ -221,6 +222,7 @@ export default function AdminRequestDetailPage() {
       </div>
 
       {/* 공유 폼 (좌측 하단에 이미지 카드 주입) */}
+      <RequiredFieldsNotice admin />
       <SpiritFormFields
         form={form}
         imageSlot={<ImageSection requestId={requestId} imageUrls={req.imageUrls} />}
@@ -233,8 +235,8 @@ export default function AdminRequestDetailPage() {
       {/* 반려 입력 (PENDING 시) */}
       {isPending && rejectMode && (
         <div className="bg-white rounded-xl shadow-sm p-5 space-y-3">
-          <label className="block text-sm font-medium text-neutral-700">반려 사유</label>
-          <textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} rows={3} maxLength={500}
+          <FormFieldLabel admin required>반려 사유</FormFieldLabel>
+          <textarea required aria-required="true" value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} rows={3} maxLength={500}
             placeholder="반려 사유를 입력하세요..."
             className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg resize-none
               focus:outline-none focus:ring-2 focus:ring-primary-400" />

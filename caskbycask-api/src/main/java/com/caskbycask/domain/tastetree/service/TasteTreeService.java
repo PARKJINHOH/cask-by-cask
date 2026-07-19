@@ -51,6 +51,8 @@ public class TasteTreeService {
     private static final int MAX_NODE_WIDTH = 420;
     private static final int MIN_NODE_HEIGHT = 128;
     private static final int MAX_NODE_HEIGHT = 760;
+    private static final int MAX_NODE_TITLE_LENGTH = 50;
+    private static final int MAX_NODE_DESCRIPTION_LENGTH = 200;
     private static final int MAX_NODES = 150;
     private static final int MAX_EDGES = 400;
     private static final Set<String> SOURCE_HANDLES = Set.of(
@@ -383,6 +385,10 @@ public class TasteTreeService {
         for (Node node : safeNodes(content)) {
             if (node == null || !StringUtils.hasText(node.key()) || node.type() == null
                     || !StringUtils.hasText(node.titleKo()) || !nodeKeys.add(node.key())
+                    || node.titleKo().length() > MAX_NODE_TITLE_LENGTH
+                    || (node.titleEn() != null && node.titleEn().length() > MAX_NODE_TITLE_LENGTH)
+                    || (node.descriptionKo() != null && node.descriptionKo().length() > MAX_NODE_DESCRIPTION_LENGTH)
+                    || (node.descriptionEn() != null && node.descriptionEn().length() > MAX_NODE_DESCRIPTION_LENGTH)
                     || (node.width() != null && (node.width() < MIN_NODE_WIDTH || node.width() > MAX_NODE_WIDTH))
                     || (node.height() != null && (node.height() < MIN_NODE_HEIGHT || node.height() > MAX_NODE_HEIGHT))
                     || (node.imagePositionX() != null && (node.imagePositionX() < 0 || node.imagePositionX() > 100))

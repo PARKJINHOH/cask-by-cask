@@ -215,7 +215,7 @@ export default function RankingPage() {
   const rest  = data?.content.filter((item) => item.rank > 3)  ?? []
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8 pb-24 lg:pb-16 space-y-5">
+    <div className="max-w-7xl mx-auto px-4 py-8 pb-24 lg:pb-16 space-y-5">
       <SeoMeta
         title={t('ranking.title', '레벨 랭킹')}
         description={t('ranking.seo.desc', 'CaskByCask 사용자 활동 점수 랭킹. 주간·월간·전체 기간별 리뷰와 활동에 따른 레벨 순위를 확인하세요.')}

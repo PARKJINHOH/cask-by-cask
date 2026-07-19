@@ -10,6 +10,7 @@ import type {
 import Spinner from '@/shared/components/Spinner'
 import Pagination from '@/shared/components/Pagination'
 import { formatDateTime } from '@/shared/utils/format'
+import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 
 type Tab = 'articles' | 'topics' | 'sources' | 'settings'
 
@@ -226,8 +227,9 @@ function TopicsTab() {
         ))}
       </div>
       <form onSubmit={submit} className="grid gap-3 rounded-xl bg-white p-4 shadow-sm sm:grid-cols-5">
-        <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="새 정보 글 주제" className={inputCls} />
-        <input value={form.normalizedKey} onChange={(e) => setForm({ ...form, normalizedKey: e.target.value })} placeholder="중복 키 (영문 권장)" className={inputCls} />
+        <RequiredFieldsNotice admin className="sm:col-span-5" />
+        <input required aria-required="true" aria-label="새 정보 글 주제" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="새 정보 글 주제" className={inputCls} />
+        <input required aria-required="true" aria-label="중복 키" value={form.normalizedKey} onChange={(e) => setForm({ ...form, normalizedKey: e.target.value })} placeholder="중복 키 (영문 권장)" className={inputCls} />
         <input value={form.aliases ?? ''} onChange={(e) => setForm({ ...form, aliases: e.target.value })} placeholder="동의어, 쉼표 구분" className={inputCls} />
         <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value as AiNewsCategory })} className={inputCls}>
           {Object.entries(categoryLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
@@ -287,7 +289,8 @@ function SourcesTab() {
       <form onSubmit={submit} className="space-y-5 rounded-xl bg-white p-5 shadow-sm">
         <div>
           <h3 className="text-sm font-bold text-neutral-900">{editingId == null ? '공식 출처 추가' : '공식 출처 수정'}</h3>
-          <p className="mt-1 text-xs leading-5 text-neutral-500"><span className="font-semibold text-red-600">*</span> 표시는 필수값입니다. AI가 등록 URL을 직접 확인하고 Tavily 제한 검색의 신뢰 출처로 사용합니다.</p>
+          <RequiredFieldsNotice admin className="mt-1" />
+          <p className="mt-1 text-xs leading-5 text-neutral-500">AI가 등록 URL을 직접 확인하고 Tavily 제한 검색의 신뢰 출처로 사용합니다.</p>
         </div>
         <div className="grid gap-4 lg:grid-cols-3">
           <SourceField label="출처 이름" required help="관리자가 알아볼 수 있는 공식 명칭입니다. 예: 메타베브코리아 공식 인스타그램">
@@ -348,8 +351,8 @@ function CrawlStatus({ source }: { source: AiNewsSourceConfig }) {
 }
 
 function SourceField({ label, required = false, help, children }: { label: string; required?: boolean; help: string; children: ReactNode }) {
-  return <label className="block text-xs font-medium text-neutral-700">
-    <span>{label}{required && <span className="ml-0.5 text-red-600">*</span>}</span>
+  return <label className="block text-xs font-medium text-neutral-700" aria-required={required || undefined}>
+    <span>{label}{required && <RequiredMark />}</span>
     <span className="mt-1.5 block">{children}</span>
     <span className="mt-1.5 block font-normal leading-4 text-neutral-500">{help}</span>
   </label>
@@ -374,6 +377,7 @@ function SettingsTab() {
       <Metric label="예상 Gemini 비용" value={`$${Number(usage?.estimatedCostUsd ?? 0).toFixed(4)}`} />
     </div>
     <form onSubmit={(e) => { e.preventDefault(); save.mutate(form) }} className="space-y-5 rounded-xl bg-white p-5 shadow-sm">
+      <RequiredFieldsNotice admin />
       <div className="grid gap-4 sm:grid-cols-3">
         <Toggle label="자동화 활성화" description="정해진 주기에 따라 소식 수집, AI 원고·이미지 생성 및 원고 저장을 실행합니다. OFF이면 새로운 자동 작업을 시작하지 않습니다." checked={form.automationEnabled} onChange={(v) => setForm({ ...form, automationEnabled: v })} />
         <Toggle label="조건부 자동발행" description="자동화가 ON이고 드라이런이 OFF일 때, 출처·신뢰도·이미지·예산 등 모든 조건을 통과한 원고만 커뮤니티에 발행합니다. OFF이면 검토 대기로 저장합니다." checked={form.autoPublishEnabled} onChange={(v) => setForm({ ...form, autoPublishEnabled: v })} />
@@ -416,7 +420,7 @@ function Toggle({ label, description, checked, onChange }: { label: string; desc
 function shortTitle(value: string, maxLength = 32) {
   return value.length > maxLength ? `${value.slice(0, maxLength).trimEnd()}...` : value
 }
-function NumberField({ label, value, onChange, step = '1' }: { label: string; value: number; onChange: (v: number) => void; step?: string }) { return <label className="text-xs font-medium text-neutral-600">{label}<input type="number" step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} className={`${inputCls} mt-1 w-full`} /></label> }
+function NumberField({ label, value, onChange, step = '1' }: { label: string; value: number; onChange: (v: number) => void; step?: string }) { return <label className="text-xs font-medium text-neutral-600">{label}<RequiredMark /><input required aria-required="true" type="number" step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} className={`${inputCls} mt-1 w-full`} /></label> }
 
 const inputCls = 'rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100'
 const smallBtn = 'rounded-md border border-neutral-200 px-2 py-1 text-xs text-neutral-600 hover:bg-neutral-100'

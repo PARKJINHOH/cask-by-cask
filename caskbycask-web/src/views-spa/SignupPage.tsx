@@ -8,6 +8,7 @@ import { useAuth } from '@/domain/auth/hooks/useAuth'
 import { authApi } from '@/domain/auth/api/authApi'
 import Button from '@/shared/components/Button'
 import Input from '@/shared/components/Input'
+import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 import SeoMeta from '@/shared/components/SeoMeta'
 import SocialLoginButtons from '@/domain/auth/components/SocialLoginButtons'
 import type { ApiResponse } from '@/shared/types/common.types'
@@ -432,12 +433,14 @@ export default function SignupPage() {
 
         {/* Form */}
         <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
+          <RequiredFieldsNotice className="text-right" />
 
           {/* 이메일 */}
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-neutral-700">이메일</label>
+            <label className="block text-sm font-medium text-neutral-700">이메일<RequiredMark /></label>
             <div className="flex gap-2 items-start">
               <input
+                required
                 type="email"
                 placeholder="example@email.com"
                 autoComplete="email"
@@ -464,6 +467,7 @@ export default function SignupPage() {
                 )}
                 <div className="flex gap-2 items-start">
                   <input
+                    required
                     type="text"
                     inputMode="numeric"
                     pattern="[0-9]*"
@@ -519,9 +523,10 @@ export default function SignupPage() {
 
           {/* 닉네임 */}
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-neutral-700">닉네임</label>
+            <label className="block text-sm font-medium text-neutral-700">닉네임<RequiredMark /></label>
             <div className="flex gap-2 items-start">
               <input
+                required
                 type="text"
                 placeholder="2~8자, 한글·영문·숫자"
                 autoComplete="nickname"
@@ -548,6 +553,7 @@ export default function SignupPage() {
           {/* 비밀번호 */}
           <Input
             label="비밀번호"
+            required
             type="password"
             placeholder="영문+숫자+특수문자 포함, 7자 이상"
             autoComplete="new-password"
@@ -559,6 +565,7 @@ export default function SignupPage() {
           {/* 비밀번호 확인 */}
           <Input
             label="비밀번호 확인"
+            required
             type="password"
             placeholder="비밀번호 재입력"
             autoComplete="new-password"
@@ -575,11 +582,12 @@ export default function SignupPage() {
                 <label className="flex items-center gap-2 cursor-pointer min-w-0">
                   <input
                     type="checkbox"
+                    required
                     {...register('agreedToTerms')}
                     className="w-4 h-4 shrink-0 rounded accent-primary-800 cursor-pointer"
                   />
                   <span className="text-sm text-neutral-700 truncate">
-                    이용약관 동의 <span className="text-danger-500">(필수)</span>
+                    이용약관 동의<RequiredMark />
                   </span>
                 </label>
                 <button
@@ -599,11 +607,12 @@ export default function SignupPage() {
                 <label className="flex items-center gap-2 cursor-pointer min-w-0">
                   <input
                     type="checkbox"
+                    required
                     {...register('agreedToPrivacy')}
                     className="w-4 h-4 shrink-0 rounded accent-primary-800 cursor-pointer"
                   />
                   <span className="text-sm text-neutral-700 truncate">
-                    개인정보 처리방침 동의 <span className="text-danger-500">(필수)</span>
+                    개인정보 처리방침 동의<RequiredMark />
                   </span>
                 </label>
                 <button

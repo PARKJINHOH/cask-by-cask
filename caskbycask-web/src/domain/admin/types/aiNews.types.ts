@@ -65,6 +65,7 @@ export interface AiNewsArticleDetail extends AiNewsArticleSummary {
   imageKind: string | null
   imageRightsEvidence: string | null
   modelName: string | null
+  hashtags: string[]
   duplicateReason: string | null
   rewritePrompt: string | null
   rewriteRequestedAt: string | null
@@ -89,6 +90,7 @@ export interface AiNewsArticleCreateRequest {
   imageKind?: string | null
   imageRightsEvidence?: string | null
   modelName?: string | null
+  hashtags?: string[]
   sources?: AiNewsSourceEvidence[]
 }
 
@@ -100,6 +102,7 @@ export interface AiNewsArticleUpdateRequest {
   pinned?: boolean
   confidenceScore?: number
   semanticFingerprint?: string | null
+  hashtags?: string[]
   sourceUrls?: string[]
 }
 

@@ -18,6 +18,7 @@ import { useToast } from '@/shared/hooks/useToast'
 import { draftApi } from '@/shared/api/draftApi'
 import DraftSavedNotice from '@/shared/components/DraftSavedNotice'
 import DraftListModal from '@/shared/components/DraftListModal'
+import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 
 
 const schema = z.object({
@@ -223,13 +224,16 @@ export default function AdminNoticeFormPage() {
         onSubmit={(e) => e.preventDefault()}
         className="space-y-6"
       >
+        <RequiredFieldsNotice admin />
         {/* 제목 */}
         <div>
           <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-            제목 <span className="text-danger-500">*</span>
+            제목 <RequiredMark />
           </label>
           <input
             {...register('title')}
+            required
+            aria-required="true"
             placeholder="공지 제목을 입력하세요"
             maxLength={300}
             className="w-full h-10 px-3 text-sm border border-neutral-300 rounded-lg
@@ -278,9 +282,9 @@ export default function AdminNoticeFormPage() {
         </div>
 
         {/* 에디터 */}
-        <div>
+        <div aria-required="true">
           <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-            내용 <span className="text-danger-500">*</span>
+            내용 <RequiredMark />
           </label>
           <Controller
             name="content"
@@ -353,9 +357,10 @@ export default function AdminNoticeFormPage() {
           </div>
           {publishMode === 'SCHEDULED' && (
             <div className="mt-3 max-w-sm">
-              <label className="mb-1 block text-xs font-medium text-neutral-600">예약 발행일시 (년·월·일·시·분)</label>
+              <label className="mb-1 block text-xs font-medium text-neutral-600">예약 발행일시 (년·월·일·시·분) <RequiredMark /></label>
               <input type="datetime-local" step="60" min={toLocalInputValue(new Date())} max="9999-12-31T23:59"
                 {...register('publishedAt')}
+                required={publishMode === 'SCHEDULED'} aria-required={publishMode === 'SCHEDULED' || undefined}
                 className="h-10 w-full rounded-lg border border-neutral-300 bg-white px-3 text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100" />
               {errors.publishedAt && <p className="mt-1 text-xs text-danger-600">{errors.publishedAt.message}</p>}
             </div>

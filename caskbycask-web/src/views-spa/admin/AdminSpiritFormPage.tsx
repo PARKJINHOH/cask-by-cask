@@ -7,6 +7,7 @@ import ImageLightbox from '@/shared/components/ImageLightbox'
 import ImageEditorModal from '@/shared/components/ImageEditorModal'
 import SpiritFormFields, { useSpiritForm, CARD, SectionTitle } from '@/domain/admin/components/SpiritFormFields'
 import type { SpiritStatus } from '@/domain/spirit/types/spirit.types'
+import { RequiredFieldsNotice } from '@/shared/components/FormFieldLabel'
 
 // ── 새 술 등록 (관리자 직접 등록) ───────────────────────────────────
 // 폼 필드·검증·페이로드는 SpiritFormFields(단일 소스)에서 정의.
@@ -99,6 +100,7 @@ export default function AdminSpiritFormPage() {
         title="새 술 등록"
       />
 
+      <RequiredFieldsNotice admin className="mb-4" />
       <SpiritFormFields
         form={form}
         imageSlot={

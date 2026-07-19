@@ -44,6 +44,7 @@ public final class AiNewsDtos {
             @Size(max = 30) String imageKind,
             @Size(max = 1000) String imageRightsEvidence,
             @Size(max = 100) String modelName,
+            @Size(max = 10) List<@NotBlank @Size(max = 30) String> hashtags,
             @Valid List<SourceEvidenceRequest> sources
     ) {}
 
@@ -55,6 +56,7 @@ public final class AiNewsDtos {
             Boolean pinned,
             @DecimalMin("0.0") @DecimalMax("1.0") BigDecimal confidenceScore,
             @Size(max = 1000) String semanticFingerprint,
+            @Size(max = 10) List<@NotBlank @Size(max = 30) String> hashtags,
             List<@NotBlank @Size(max = 1500) String> sourceUrls
     ) {}
 
@@ -69,7 +71,8 @@ public final class AiNewsDtos {
             @NotBlank String content,
             @DecimalMin("0.0") @DecimalMax("1.0") BigDecimal confidenceScore,
             @Size(max = 1000) String semanticFingerprint,
-            @Size(max = 100) String modelName
+            @Size(max = 100) String modelName,
+            @Size(max = 10) List<@NotBlank @Size(max = 30) String> hashtags
     ) {}
 
     public record DuplicateSkipRequest(
@@ -147,6 +150,7 @@ public final class AiNewsDtos {
             String imageKind,
             String imageRightsEvidence,
             String modelName,
+            List<String> hashtags,
             String duplicateReason,
             String failureReason,
             String rewritePrompt,
@@ -165,6 +169,7 @@ public final class AiNewsDtos {
                     article.getTopic() != null ? article.getTopic().getTitle() : null,
                     article.getPrefixId(), article.isPinned(), article.isUpdateAvailable(), article.getImageUrl(),
                     article.getImageKind(), article.getImageRightsEvidence(), article.getModelName(),
+                    List.copyOf(article.getHashtags()),
                     article.getDuplicateReason(), article.getFailureReason(), article.getRewritePrompt(),
                     article.getRewriteRequestedAt(), article.getScheduledAt(), article.getPublishedAt(),
                     article.getCreatedAt(), article.getUpdatedAt(),
@@ -178,14 +183,15 @@ public final class AiNewsDtos {
             AiNewsCategory category,
             String title,
             String content,
+            List<String> hashtags,
             String additionalPrompt,
             String semanticFingerprint,
             LocalDateTime requestedAt
     ) {
         public static RewriteQueueResponse from(AiNewsArticle article) {
             return new RewriteQueueResponse(article.getId(), article.getArticleType(), article.getCategory(),
-                    article.getTitle(), article.getContent(), article.getRewritePrompt(),
-                    article.getSemanticFingerprint(), article.getRewriteRequestedAt());
+                    article.getTitle(), article.getContent(), List.copyOf(article.getHashtags()),
+                    article.getRewritePrompt(), article.getSemanticFingerprint(), article.getRewriteRequestedAt());
         }
     }
 

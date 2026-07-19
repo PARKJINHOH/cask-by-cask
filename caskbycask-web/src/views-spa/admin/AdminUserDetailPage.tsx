@@ -23,6 +23,7 @@ import {
 import {
   ADMIN_MENU_GROUPS, MEMBER_GROUP_LABEL, selectAllMenuPaths,
 } from '@/domain/admin/constants/adminMenu'
+import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 
 // 담당 증류소 선택이 필요한 역할
 const PRODUCER_ROLES: AdminUserRole[] = ['PARTNER', 'DISTILLERY_STAFF']
@@ -244,15 +245,16 @@ function SuspendModal({ user, onClose }: { user: AdminUser; onClose: () => void 
   return (
     <Modal open onClose={onClose} title="계정 징계" size="sm">
       <div className="space-y-4">
+        <RequiredFieldsNotice admin />
         <div>
           <p className="text-xs text-neutral-500 mb-1">대상 회원</p>
           <p className="text-sm font-semibold">{user.nickname}</p>
           <p className="text-xs text-neutral-400">{user.email}</p>
         </div>
         <div>
-          <label className="block text-sm font-medium text-neutral-700 mb-1.5">정지 기간 (일)</label>
+          <label className="block text-sm font-medium text-neutral-700 mb-1.5">정지 기간 (일) <RequiredMark /></label>
           <div className="flex items-center gap-2">
-            <input type="number" min={1} max={365} value={days} onChange={(e) => setDays(Number(e.target.value))}
+            <input type="number" min={1} max={365} required aria-required="true" value={days} onChange={(e) => setDays(Number(e.target.value))}
               className="w-24 h-9 px-3 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400" />
             <span className="text-sm text-neutral-500">일 동안 로그인 불가</span>
           </div>
@@ -269,9 +271,9 @@ function SuspendModal({ user, onClose }: { user: AdminUser; onClose: () => void 
         </div>
         <div>
           <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-            징계 사유 <span className="ml-1 text-xs text-neutral-400 font-normal">(이메일로 발송됩니다)</span>
+            징계 사유 <RequiredMark /> <span className="ml-1 text-xs text-neutral-400 font-normal">(이메일로 발송됩니다)</span>
           </label>
-          <textarea value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} rows={4}
+          <textarea required aria-required="true" value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} rows={4}
             placeholder="징계 사유를 입력하세요."
             className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary-400" />
           <p className="text-right text-xs text-neutral-400 mt-0.5">{reason.length}/500</p>
@@ -308,6 +310,7 @@ function DeleteModal({ user, onClose, onDeleted }: { user: AdminUser; onClose: (
   return (
     <Modal open onClose={onClose} title="계정 삭제" size="sm">
       <div className="space-y-4">
+        <RequiredFieldsNotice admin />
         <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
           <p className="text-sm font-semibold text-red-700 mb-1">이 작업은 되돌릴 수 없습니다.</p>
           <p className="text-xs text-red-600">계정과 모든 관련 데이터가 DB에서 영구 삭제됩니다.</p>
@@ -319,9 +322,9 @@ function DeleteModal({ user, onClose, onDeleted }: { user: AdminUser; onClose: (
         </div>
         <div>
           <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-            확인을 위해 닉네임 <span className="font-bold text-neutral-900">"{user.nickname}"</span>을 입력하세요.
+            확인을 위해 닉네임 <span className="font-bold text-neutral-900">"{user.nickname}"</span>을 입력하세요. <RequiredMark />
           </label>
-          <input value={input} onChange={(e) => setInput(e.target.value)} placeholder={user.nickname}
+          <input required aria-required="true" value={input} onChange={(e) => setInput(e.target.value)} placeholder={user.nickname}
             className="w-full h-9 px-3 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400" />
         </div>
         {error && <p className="text-sm text-red-600">{error}</p>}

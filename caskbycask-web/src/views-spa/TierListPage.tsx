@@ -14,6 +14,7 @@ import {
 } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { useTranslation } from 'react-i18next'
+import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 
 import { tierListApi } from '@/domain/tier-list/api/tierListApi'
 import type {
@@ -420,15 +421,20 @@ function TierBoard({
       <div className={`${presentation ? 'shrink-0 px-4 py-2 pr-44' : 'px-4 py-4'} border-b border-neutral-100`}>
         <div className="flex flex-wrap items-end gap-2">
           {canEditRows ? (
-            <input
-              value={title}
-              onChange={(e) => onTitleChange(e.target.value)}
-              maxLength={100}
-              placeholder={t('tierList.titlePlaceholder')}
-              aria-label={t('tierList.formTitle')}
-              className="min-w-0 flex-1 rounded-md border border-transparent bg-neutral-50 px-2 py-1 text-xl font-bold text-neutral-950
-                focus:border-primary-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-100 sm:text-2xl"
-            />
+            <div className="relative min-w-0 flex-1">
+              <input
+                value={title}
+                onChange={(e) => onTitleChange(e.target.value)}
+                required
+                aria-required="true"
+                maxLength={100}
+                placeholder={t('tierList.titlePlaceholder')}
+                aria-label={t('tierList.formTitle')}
+                className="w-full rounded-md border border-transparent bg-neutral-50 px-2 py-1 pr-7 text-xl font-bold text-neutral-950
+                  focus:border-primary-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-100 sm:text-2xl"
+              />
+              <RequiredMark className="absolute right-2 top-1/2 ml-0 -translate-y-1/2" />
+            </div>
           ) : (
             <h1 className={`min-w-0 text-xl sm:text-2xl font-bold text-neutral-950 ${presentation ? 'truncate' : ''}`}>
               {title || t('tierList.untitled')}
@@ -440,6 +446,7 @@ function TierBoard({
             </span>
           )}
         </div>
+        {canEditRows && <RequiredFieldsNotice className="mt-2" />}
         {canEditRows ? (
           <input
             value={description}
@@ -1160,12 +1167,17 @@ function CustomItemForm({
 
   return (
     <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
-      <input
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder={t('tierList.customName')}
-        className="rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400"
-      />
+      <label className="block">
+        <span className="mb-1 block text-xs font-medium text-neutral-600">{t('tierList.customName')}<RequiredMark /></span>
+        <input
+          required
+          aria-required="true"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder={t('tierList.customName')}
+          className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400"
+        />
+      </label>
       <input
         type="file"
         accept="image/*"

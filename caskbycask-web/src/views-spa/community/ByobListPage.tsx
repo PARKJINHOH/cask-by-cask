@@ -59,7 +59,7 @@ export default function ByobListPage() {
   const totalPages = data?.totalPages ?? 0
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 py-8">
       <SeoMeta
         title={t('byob.title')}
         description={t('byob.subtitle')}

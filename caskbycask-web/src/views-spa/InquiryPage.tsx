@@ -4,6 +4,7 @@ import { submitInquiry } from '@/domain/inquiry/api/inquiryApi'
 import type { InquiryCategory } from '@/domain/inquiry/types/inquiry.types'
 import SeoMeta from '@/shared/components/SeoMeta'
 import RichTextEditor from '@/shared/tiptap/RichTextEditor'
+import FormFieldLabel, { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 
 const CATEGORIES: InquiryCategory[] = [
   'BUG_REPORT',
@@ -162,22 +163,22 @@ export default function InquiryPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-10">
+    <div className="max-w-7xl mx-auto px-4 py-10">
       <SeoMeta title={t('inquiry.title')} description={t('inquiry.subtitle')} noindex />
       {/* 헤더 */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-neutral-900">{t('inquiry.title')}</h1>
         <p className="mt-1 text-sm text-neutral-500">{t('inquiry.subtitle')}</p>
+        <RequiredFieldsNotice className="mt-3" />
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* 문의 유형 + 이메일 (PC 2열) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-              {t('inquiry.form.category')} <span className="text-red-500">*</span>
-            </label>
+            <FormFieldLabel required className="mb-1.5">{t('inquiry.form.category')}</FormFieldLabel>
             <select
+              required
               value={category}
               onChange={(e) => handleCategoryChange(e.target.value as InquiryCategory | '')}
               className={`w-full px-3 py-2.5 text-sm border rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-primary-400 transition-colors ${
@@ -195,10 +196,9 @@ export default function InquiryPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-              {t('inquiry.form.senderEmail')} <span className="text-red-500">*</span>
-            </label>
+            <FormFieldLabel required className="mb-1.5">{t('inquiry.form.senderEmail')}</FormFieldLabel>
             <input
+              required
               type="email"
               value={senderEmail}
               onChange={(e) => setSenderEmail(e.target.value)}
@@ -214,10 +214,9 @@ export default function InquiryPage() {
 
         {/* 제목 */}
         <div>
-          <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-            {t('inquiry.form.title')} <span className="text-red-500">*</span>
-          </label>
+          <FormFieldLabel required className="mb-1.5">{t('inquiry.form.title')}</FormFieldLabel>
           <input
+            required
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -232,9 +231,7 @@ export default function InquiryPage() {
 
         {/* 내용 */}
         <div>
-          <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-            {t('inquiry.form.body')} <span className="text-red-500">*</span>
-          </label>
+          <p className="mb-1.5 text-sm font-medium text-neutral-700">{t('inquiry.form.body')}<RequiredMark /></p>
           <RichTextEditor
             value={body}
             onChange={(html) => {

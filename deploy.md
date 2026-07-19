@@ -73,14 +73,14 @@ npm run start      # 로컬 프로덕션 실행 (포트 3000)
 
 ```bash
 # 1) Next.js 3000 포트 또는 nginx 도메인을 대상으로 curl 요청 테스트 (Title, Description 태그 검증)
-curl -s https://caskbycask.net/spirits/1 | grep -o "<title>[^<]*</title>"
-curl -s https://caskbycask.net/spirits/1 | grep -o 'meta name="description" content="[^"]*"'
+curl -s https://www.caskbycask.net/spirits/1 | grep -o "<title>[^<]*</title>"
+curl -s https://www.caskbycask.net/spirits/1 | grep -o 'meta name="description" content="[^"]*"'
 
 # 2) JSON-LD 구조화 스키마가 정상적으로 헤더에 이스케이프되어 수록되었는지 확인
-curl -s https://caskbycask.net/spirits/1 | grep -o 'application/ld+json'
+curl -s https://www.caskbycask.net/spirits/1 | grep -o 'application/ld+json'
 
 # 3) 커뮤니티 게시글 상세의 DiscussionForumPosting 스키마 확인
-curl -s https://caskbycask.net/community/free/1 | grep -o 'DiscussionForumPosting'
+curl -s https://www.caskbycask.net/community/free/1 | grep -o 'DiscussionForumPosting'
 ```
 
 ### 문제 해결

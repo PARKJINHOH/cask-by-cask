@@ -55,7 +55,8 @@ export default function SeoFallback({ snapshot }: Props) {
           </div>
         </div>
 
-        {(snapshot.details.length > 0 || snapshot.bodyHtml) && (
+        {(snapshot.details.length > 0 || snapshot.bodyHtml
+          || (snapshot.sourceUrls?.length ?? 0) > 0 || (snapshot.hashtags?.length ?? 0) > 0) && (
           <div className="border-t border-neutral-200 p-6 md:p-8">
             {snapshot.details.length > 0 && (
               <dl className="grid gap-x-8 gap-y-4 md:grid-cols-2">
@@ -73,6 +74,33 @@ export default function SeoFallback({ snapshot }: Props) {
                 className="mt-6 max-w-none text-base leading-8 text-neutral-800 [&_a]:text-amber-700 [&_img]:my-4 [&_img]:max-w-full [&_img]:rounded-lg [&_p]:my-3"
                 dangerouslySetInnerHTML={{ __html: snapshot.bodyHtml }}
               />
+            )}
+
+            {snapshot.sourceUrls && snapshot.sourceUrls.length > 0 && (
+              <section className="mt-8 border-t border-neutral-100 pt-5" aria-labelledby="seo-source-heading">
+                <h2 id="seo-source-heading" className="text-sm font-bold text-neutral-700">
+                  {snapshot.lang === 'en' ? 'Sources' : '출처'}
+                </h2>
+                <ul className="mt-2 space-y-1 text-sm">
+                  {snapshot.sourceUrls.map((sourceUrl) => (
+                    <li key={sourceUrl} className="break-all">
+                      <a href={sourceUrl} rel="noopener noreferrer" className="text-amber-800 hover:underline">
+                        {sourceUrl}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            {snapshot.hashtags && snapshot.hashtags.length > 0 && (
+              <ul className="mt-6 flex flex-wrap gap-2" aria-label={snapshot.lang === 'en' ? 'Hashtags' : '해시태그'}>
+                {snapshot.hashtags.map((hashtag) => (
+                  <li key={hashtag.toLocaleLowerCase()} className="rounded-full bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-900">
+                    #{hashtag}
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
         )}

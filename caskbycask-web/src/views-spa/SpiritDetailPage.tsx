@@ -130,14 +130,6 @@ function formatPhenolPpm(
   if (max != null) return `~${formatPpmValue(max)} ppm`
   return ppm != null ? `${formatPpmValue(ppm)} ppm` : null
 }
-type ListReturnState = { returnTo?: string }
-
-function getSpiritListReturnTo(state: unknown) {
-  const returnTo = (state as ListReturnState | null)?.returnTo
-  if (!returnTo) return null
-  return returnTo === '/spirits' || returnTo.startsWith('/spirits?') ? returnTo : null
-}
-
 // ── 카테고리 상세 섹션 ─────────────────────────────────────
 
 function Badge2({ children, detail }: { children: React.ReactNode; detail?: string }) {
@@ -912,15 +904,6 @@ export default function SpiritDetailPage() {
   const spiritId = parseInt(id || '', 10)
   const { t, i18n } = useTranslation()
   const isEn = i18n.language === 'en'
-  const listReturnTo = getSpiritListReturnTo(location.state)
-  const goBack = () => {
-    if (listReturnTo) {
-      navigate(listReturnTo)
-    } else {
-      navigate(-1)
-    }
-  }
-
   const [selectedImg, setSelectedImg]   = useState(0)
   const [activeTab, setActiveTab]       = useState<Tab>('reviews')
   const [loginModal, setLoginModal]     = useState(false)
@@ -1011,11 +994,7 @@ export default function SpiritDetailPage() {
   if (!spirit) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-20 text-center">
-        <p className="text-neutral-500 mb-4">{t('spirit.detail.notFound')}</p>
-        <button onClick={() => navigate(listReturnTo ?? '/spirits')}
-          className="text-primary-800 hover:underline text-sm">
-          ← {t('spirit.detail.backToList')}
-        </button>
+        <p className="text-neutral-500">{t('spirit.detail.notFound')}</p>
       </div>
     )
   }
@@ -1118,7 +1097,7 @@ export default function SpiritDetailPage() {
   const seoDescription = isEn ? spiritSeo?.descriptionEn : spiritSeo?.descriptionKo
 
   return (
-    <div className={`${hasVariants ? 'max-w-6xl' : 'max-w-5xl'} mx-auto px-4 py-6`}>
+    <div className="max-w-7xl mx-auto px-4 py-6">
       <SeoMeta
         title={seoTitle ?? primaryName}
         description={seoDescription ?? (isEn
@@ -1136,14 +1115,6 @@ export default function SpiritDetailPage() {
       />
 
       {/* Back */}
-      <button onClick={goBack}
-        className="flex items-center gap-1 text-sm text-neutral-400 hover:text-primary-800 mb-5 transition-colors">
-        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <polyline points="15,18 9,12 15,6" />
-        </svg>
-        {t('common.back')}
-      </button>
-
       <div className={hasVariants ? 'lg:flex lg:items-start lg:gap-6' : ''}>
       <div className="flex-1 min-w-0">
       {/* Header card */}

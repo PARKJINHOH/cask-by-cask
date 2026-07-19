@@ -43,7 +43,7 @@ public class SitemapService {
     @PersistenceContext
     private EntityManager em;
 
-    @Value("${seo.site-url:https://caskbycask.net}")
+    @Value("${seo.site-url:https://www.caskbycask.net}")
     private String siteUrl;
 
     @Transactional(readOnly = true)

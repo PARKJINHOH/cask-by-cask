@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ScoreInput from '@/shared/components/ScoreInput'
+import { RequiredMark } from '@/shared/components/FormFieldLabel'
 import type { AromaNotes } from '../utils/aroma'
 
 // ── ReviewScoreSection ────────────────────────────────────────────
@@ -70,7 +71,7 @@ export default function ReviewScoreSection({
     <div className="bg-neutral-50 rounded-2xl p-4 space-y-4">
       {/* 점수 입력 */}
       <div>
-        <ScoreInput label={label} value={score} onChange={onScoreChange} />
+        <ScoreInput label={label} value={score} onChange={onScoreChange} required />
         {scoreError && <p className="text-xs text-red-500 mt-1">{scoreError}</p>}
       </div>
 
@@ -164,7 +165,13 @@ export default function ReviewScoreSection({
 
       {/* 테이스팅 노트 작성 */}
       <div>
+        <label className="mb-1.5 block text-sm font-medium text-neutral-700">
+          {t('review.tastingNote')}
+          <RequiredMark />
+        </label>
         <textarea
+          required
+          aria-required="true"
           value={note}
           onChange={(e) => onNoteChange(e.target.value)}
           placeholder={notePlaceholder}

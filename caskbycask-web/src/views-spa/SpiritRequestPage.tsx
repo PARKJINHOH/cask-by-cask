@@ -7,7 +7,7 @@ import ProducerSelector from '@/domain/producer/components/ProducerSelector'
 import { useSubmitProducerRequest } from '@/domain/producer/hooks/useProducerRequest'
 import type { NewProducerInput } from '@/domain/producer/types/producer.types'
 import SeoMeta from '@/shared/components/SeoMeta'
-import Breadcrumb from '@/shared/components/Breadcrumb'
+import { RequiredFieldsNotice } from '@/shared/components/FormFieldLabel'
 import SpiritFormFields, { useSpiritForm, CARD, SectionTitle } from '@/domain/admin/components/SpiritFormFields'
 import { toSpiritRequestForm, toPrefillDetail } from '@/domain/admin/components/spiritFormAdapters'
 
@@ -134,16 +134,8 @@ export default function SpiritRequestPage() {
   }, [])
 
   return (
-    <div className="max-w-3xl lg:max-w-6xl xl:max-w-7xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 py-8">
       <SeoMeta title={t('spiritRequest.title')} description={t('spiritRequest.subtitle')} noindex />
-
-      <Breadcrumb
-        className="mb-2"
-        items={[
-          { label: t('menu.request') },
-          { label: t('menu.requestSpirit'), to: '/request/spirit' },
-        ]}
-      />
 
       {/* Page title */}
       <div className="mb-6 flex items-start justify-between gap-4">
@@ -161,6 +153,7 @@ export default function SpiritRequestPage() {
       </div>
 
       <form onSubmit={(e) => { e.preventDefault(); onSubmit() }} noValidate className="space-y-6">
+          <RequiredFieldsNotice />
 
           {/* 수정 모드 배너 */}
           {editingId != null && (

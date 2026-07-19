@@ -12,6 +12,7 @@ import {
   ConfidenceBadge, DealStatusBadge, SourceLinkButton, formatDiscount, formatPrice, siteLabel,
 } from '@/domain/admin/components/dealUi'
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
+import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 
 const EMPTY_FORM = {
   drinkName: '', drinkCategory: '', volumeMl: '', originalPrice: '0', dealPrice: '0',
@@ -331,6 +332,7 @@ export default function AdminDealDetailPage() {
         <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">
           AI 분석 결과 및 노출 정보
         </p>
+        <RequiredFieldsNotice admin />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="주류명">
@@ -369,6 +371,8 @@ export default function AdminDealDetailPage() {
             <input
               type="text"
               inputMode="numeric"
+              required
+              aria-required="true"
               className={inputCls}
               value={form.originalPrice}
               onChange={(e) => setForm({ ...form, originalPrice: formatPriceInput(e.target.value) })}
@@ -378,6 +382,8 @@ export default function AdminDealDetailPage() {
             <input
               type="text"
               inputMode="numeric"
+              required
+              aria-required="true"
               className={inputCls}
               value={form.dealPrice}
               onChange={(e) => setForm({ ...form, dealPrice: formatPriceInput(e.target.value) })}
@@ -390,6 +396,8 @@ export default function AdminDealDetailPage() {
           </Field>
           <Field label="통화" required>
             <select
+              required
+              aria-required="true"
               className={inputCls}
               value={form.currency}
               onChange={(e) => setForm({ ...form, currency: e.target.value })}
@@ -686,7 +694,7 @@ function Field({ label, children, required }: { label: string; children: ReactNo
     <label className="block">
       <span className="block text-xs font-medium text-neutral-500 mb-1">
         {label}
-        {required && <span className="text-red-500 ml-0.5">*</span>}
+        {required && <RequiredMark />}
       </span>
       {children}
     </label>

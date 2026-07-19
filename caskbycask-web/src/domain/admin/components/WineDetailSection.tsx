@@ -1,6 +1,7 @@
 import AppellationAutocomplete from '@/shared/components/AppellationAutocomplete'
 import GrapeVarietyInput, { type GrapeVarietyRow } from '@/shared/components/GrapeVarietyInput'
 import InfoTooltip from '@/shared/components/InfoTooltip'
+import { RequiredMark } from '@/shared/components/FormFieldLabel'
 
 export interface WineDetailForm {
   wineType: string; vintage: string; isOakAged: boolean; isNaturalWine: boolean
@@ -64,9 +65,9 @@ export default function WineDetailSection({ value, onChange, errors }: Props) {
         <p className="text-xs font-semibold text-amber-700">필수 정보</p>
         <div>
           <label className={LABEL}>
-            와인 종류 <span className="text-red-400">*</span>
+            와인 종류 <RequiredMark />
           </label>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2" role="radiogroup" aria-required="true">
             {WINE_TYPES.map(([v, l]) => (
               <label key={v} className="flex items-center gap-1.5 cursor-pointer text-sm select-none">
                 <input type="radio" value={v} checked={value.wineType === v}

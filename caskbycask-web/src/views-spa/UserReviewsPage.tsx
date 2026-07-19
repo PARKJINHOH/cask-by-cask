@@ -83,7 +83,7 @@ export default function UserReviewsPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
+    <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
       {/* Title */}
       <div className="border-b border-neutral-100 pb-4">
         <h1 className="text-2xl font-bold text-neutral-900 tracking-tight">

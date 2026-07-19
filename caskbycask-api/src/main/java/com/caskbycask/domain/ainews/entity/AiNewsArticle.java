@@ -102,6 +102,13 @@ public class AiNewsArticle extends BaseTimeEntity {
     @OneToMany(mappedBy = "article", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<AiNewsArticleSource> sources = new ArrayList<>();
 
+    @Builder.Default
+    @ElementCollection
+    @CollectionTable(name = "ai_news_article_hashtags", joinColumns = @JoinColumn(name = "article_id"))
+    @OrderColumn(name = "sort_order")
+    @Column(name = "hashtag", nullable = false, length = 30)
+    private List<String> hashtags = new ArrayList<>();
+
     public void addSource(AiNewsArticleSource source) {
         sources.add(source);
         source.attach(this);
@@ -109,7 +116,7 @@ public class AiNewsArticle extends BaseTimeEntity {
 
     public void updateDraft(String title, String content, AiNewsCategory category,
                             Long prefixId, boolean pinned, BigDecimal confidenceScore,
-                            String semanticFingerprint) {
+                            String semanticFingerprint, List<String> hashtags) {
         this.title = title;
         this.content = content;
         this.category = category;
@@ -117,6 +124,7 @@ public class AiNewsArticle extends BaseTimeEntity {
         this.pinned = pinned;
         this.confidenceScore = confidenceScore;
         this.semanticFingerprint = semanticFingerprint;
+        replaceHashtags(hashtags);
     }
 
     public void markPending(String reason) {
@@ -159,7 +167,7 @@ public class AiNewsArticle extends BaseTimeEntity {
     public void applyImageRetry(String title, String content, AiNewsCategory category,
                                 BigDecimal confidenceScore, String semanticFingerprint,
                                 String imageUrl, String imageKind, String imageRightsEvidence,
-                                String modelName) {
+                                String modelName, List<String> hashtags) {
         this.title = title;
         this.content = content;
         this.category = category;
@@ -169,6 +177,7 @@ public class AiNewsArticle extends BaseTimeEntity {
         this.imageKind = imageKind;
         this.imageRightsEvidence = imageRightsEvidence;
         this.modelName = modelName;
+        replaceHashtags(hashtags);
     }
 
     public void markSkippedDuplicate(String reason) {
@@ -186,16 +195,22 @@ public class AiNewsArticle extends BaseTimeEntity {
     }
 
     public void completeRewrite(String title, String content, BigDecimal confidenceScore,
-                                String semanticFingerprint, String modelName) {
+                                String semanticFingerprint, String modelName, List<String> hashtags) {
         this.title = title;
         this.content = content;
         this.confidenceScore = confidenceScore;
         this.semanticFingerprint = semanticFingerprint;
         this.modelName = modelName;
+        replaceHashtags(hashtags);
         this.status = AiNewsArticleStatus.PENDING_REVIEW;
         this.rewritePrompt = null;
         this.rewriteRequestedAt = null;
         this.failureReason = "AI 재작성이 완료되었습니다. 내용을 검토한 후 발행해주세요.";
+    }
+
+    public void replaceHashtags(List<String> hashtags) {
+        this.hashtags.clear();
+        this.hashtags.addAll(hashtags);
     }
 
     public void schedule(LocalDateTime scheduledAt) {

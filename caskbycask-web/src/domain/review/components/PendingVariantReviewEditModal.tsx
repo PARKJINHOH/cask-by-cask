@@ -5,6 +5,7 @@ import Button from '@/shared/components/Button'
 import ReviewScoreSection from './ReviewScoreSection'
 import { EMPTY_AROMA_NOTES } from '../utils/aroma'
 import type { CreateVariantReviewRequest, VariantReviewRequestItem } from '../types/review.types'
+import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 
 interface Props {
   open: boolean
@@ -118,6 +119,7 @@ export default function PendingVariantReviewEditModal({
       closeOnOverlay={!isLoading}
     >
       <form onSubmit={handleSubmit} className="space-y-4">
+        <RequiredFieldsNotice />
         <div className="rounded-xl border border-amber-100 bg-amber-50 p-4">
           <p className="text-xs font-semibold text-amber-900">
             {isReviewOnly ? t('mypage.reviews.rejectedTitle') : t('mypage.reviews.pendingTitle')}
@@ -130,10 +132,12 @@ export default function PendingVariantReviewEditModal({
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <label className="mb-1.5 block text-xs font-semibold text-neutral-700">
-              {t('review.addEditionValueKoLabel')} <span className="text-red-500">*</span>
+              {t('review.addEditionValueKoLabel')} <RequiredMark />
             </label>
             <input
               ref={variantValueRef}
+              required
+              aria-required="true"
               value={variantValue}
               onChange={(event) => {
                 setVariantValue(event.target.value)
@@ -164,11 +168,13 @@ export default function PendingVariantReviewEditModal({
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <label className="mb-1.5 block text-xs font-semibold text-neutral-700">
-              {t('review.addEditionAbvLabel')} <span className="text-red-500">*</span>
+              {t('review.addEditionAbvLabel')} <RequiredMark />
             </label>
             <input
               ref={abvRef}
               type="number"
+              required
+              aria-required="true"
               min={0}
               max={100}
               step={0.1}
@@ -186,11 +192,13 @@ export default function PendingVariantReviewEditModal({
           </div>
           <div>
             <label className="mb-1.5 block text-xs font-semibold text-neutral-700">
-              {t('review.addEditionVolumeLabel')} <span className="text-red-500">*</span>
+              {t('review.addEditionVolumeLabel')} <RequiredMark />
             </label>
             <input
               ref={volumeMlRef}
               type="number"
+              required
+              aria-required="true"
               min={1}
               max={100000}
               value={volumeMl}

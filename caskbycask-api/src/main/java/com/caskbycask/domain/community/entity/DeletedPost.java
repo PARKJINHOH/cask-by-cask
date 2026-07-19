@@ -6,6 +6,8 @@ import lombok.*;
 import org.hibernate.annotations.Comment;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 // deleted_posts는 BaseTimeEntity 없이 직접 시간 컬럼 관리
 @Entity
@@ -64,4 +66,11 @@ public class DeletedPost {
     @Column(nullable = false)
     @Comment("원글 작성 일시")
     private LocalDateTime originalCreatedAt;
+
+    @Builder.Default
+    @ElementCollection
+    @CollectionTable(name = "deleted_post_hashtags", joinColumns = @JoinColumn(name = "deleted_post_id"))
+    @OrderColumn(name = "sort_order")
+    @Column(name = "hashtag", nullable = false, length = 30)
+    private List<String> hashtags = new ArrayList<>();
 }

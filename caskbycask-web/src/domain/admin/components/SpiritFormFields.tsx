@@ -9,6 +9,7 @@ import { CATEGORY_TO_PRODUCER_TYPE } from '@/domain/producer/types/producer.type
 import type { ProducerSelectorProps, NewProducerInput } from '@/domain/producer/types/producer.types'
 import CountryRegionSelector from '@/domain/location/components/CountryRegionSelector'
 import InfoTooltip from '@/shared/components/InfoTooltip'
+import { RequiredMark } from '@/shared/components/FormFieldLabel'
 import { ISO3166_COUNTRIES } from '@/domain/location/data/iso3166Countries'
 import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
 import type {
@@ -1214,10 +1215,10 @@ export default function SpiritFormFields({
           {/* 카테고리 */}
           <div>
             <label className={LABEL}>
-              카테고리 <span className="text-red-400">*</span>
+              카테고리 <RequiredMark />
               {categoryLocked && <span className="ml-1.5 text-[11px] text-neutral-400 font-normal">(고정 — 변경 불가)</span>}
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3" role="radiogroup" aria-required="true">
               {CATEGORIES.map(([cat, label]) => {
                 const selected = category === cat
                 if (categoryLocked && !selected) return null
@@ -1241,16 +1242,18 @@ export default function SpiritFormFields({
           {/* 이름 */}
           <div className="space-y-4">
             <div>
-              <label className={LABEL}>한국어 이름 <span className="text-red-400">*</span></label>
+              <label className={LABEL}>한국어 이름 <RequiredMark /></label>
               <AutoResizeTextarea value={form.nameKo} onChange={form.setNameKo} maxLength={200}
+                required aria-required="true"
                 data-field="nameKo"
                 placeholder={ph.nameKo}
                 className={`${INPUT} ${errors.nameKo ? 'border-red-400' : ''}`} />
               {errors.nameKo && <p className="text-xs text-red-500 mt-1">{errors.nameKo}</p>}
             </div>
             <div>
-              <label className={LABEL}>영어 이름 <span className="text-red-400">*</span></label>
+              <label className={LABEL}>영어 이름 <RequiredMark /></label>
               <AutoResizeTextarea value={form.nameEn} onChange={form.setNameEn} maxLength={200}
+                required aria-required="true"
                 data-field="nameEn"
                 placeholder={ph.nameEn}
                 className={`${INPUT} ${errors.nameEn ? 'border-red-400' : ''}`} />
@@ -1311,7 +1314,7 @@ export default function SpiritFormFields({
             <div className="grid grid-cols-1">
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-medium text-neutral-600 mb-0">알코올 도수 {isMasterSpecsRequired && <span className="text-red-400">*</span>}</label>
+                  <label className="block text-xs font-medium text-neutral-600 mb-0">알코올 도수 {isMasterSpecsRequired && <RequiredMark />}</label>
                   <label className="flex items-center gap-1 text-[11px] text-neutral-500 cursor-pointer select-none">
                     <input type="checkbox" checked={form.isAbvRange} disabled={isMasterSpecsDisabled} onChange={(e) => form.setIsAbvRange(e.target.checked)} className="accent-amber-500 rounded disabled:opacity-50" />
                     범위 지정
@@ -1321,6 +1324,7 @@ export default function SpiritFormFields({
                   <div className="flex items-center gap-2">
                     <div className="relative flex-1">
                       <input type="number" step="0.1" min="0" max="100" value={form.abvMin}
+                         required={isMasterSpecsRequired} aria-required={isMasterSpecsRequired || undefined}
                          disabled={isMasterSpecsDisabled}
                          onChange={(e) => form.setAbvMin(e.target.value)}
                          onWheel={(e) => e.currentTarget.blur()}
@@ -1331,6 +1335,7 @@ export default function SpiritFormFields({
                     <span className="text-neutral-400">~</span>
                     <div className="relative flex-1">
                       <input type="number" step="0.1" min="0" max="100" value={form.abvMax}
+                         required={isMasterSpecsRequired} aria-required={isMasterSpecsRequired || undefined}
                          disabled={isMasterSpecsDisabled}
                          onChange={(e) => form.setAbvMax(e.target.value)}
                          onWheel={(e) => e.currentTarget.blur()}
@@ -1342,6 +1347,7 @@ export default function SpiritFormFields({
                 ) : (
                   <div className="relative">
                     <input type="number" step="0.1" min="0" max="100" value={form.commonDetail.abv}
+                       required={isMasterSpecsRequired} aria-required={isMasterSpecsRequired || undefined}
                        disabled={isMasterSpecsDisabled}
                        onWheel={(e) => e.currentTarget.blur()}
                        onChange={(e) => {
@@ -1363,7 +1369,7 @@ export default function SpiritFormFields({
             <div className="grid grid-cols-1">
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-medium text-neutral-600 mb-0">용량 {isMasterSpecsRequired && <span className="text-red-400">*</span>}</label>
+                  <label className="block text-xs font-medium text-neutral-600 mb-0">용량 {isMasterSpecsRequired && <RequiredMark />}</label>
                   <label className="flex items-center gap-1 text-[11px] text-neutral-500 cursor-pointer select-none">
                     <input type="checkbox" checked={form.isVolumeMlRange} disabled={isMasterSpecsDisabled} onChange={(e) => form.setIsVolumeMlRange(e.target.checked)} className="accent-amber-500 rounded disabled:opacity-50" />
                     범위 지정
@@ -1373,6 +1379,7 @@ export default function SpiritFormFields({
                     <div className="flex items-center gap-2">
                       <div className="relative flex-1">
                         <input type="number" min="1" max="100000" value={form.volumeMlMin}
+                               required={isMasterSpecsRequired} aria-required={isMasterSpecsRequired || undefined}
                                disabled={isMasterSpecsDisabled}
                                onChange={(e) => form.setVolumeMlMin(e.target.value)}
                                onWheel={(e) => e.currentTarget.blur()}
@@ -1383,6 +1390,7 @@ export default function SpiritFormFields({
                       <span className="text-neutral-400">~</span>
                       <div className="relative flex-1">
                         <input type="number" min="1" max="100000" value={form.volumeMlMax}
+                               required={isMasterSpecsRequired} aria-required={isMasterSpecsRequired || undefined}
                                disabled={isMasterSpecsDisabled}
                                onChange={(e) => form.setVolumeMlMax(e.target.value)}
                                onWheel={(e) => e.currentTarget.blur()}
@@ -1394,6 +1402,7 @@ export default function SpiritFormFields({
                 ) : (
                     <div className="relative">
                       <input type="number" min="1" max="100000" value={form.commonDetail.volumeMl}
+                             required={isMasterSpecsRequired} aria-required={isMasterSpecsRequired || undefined}
                              disabled={isMasterSpecsDisabled}
                              onWheel={(e) => e.currentTarget.blur()}
                              onChange={(e) => {
@@ -1417,8 +1426,8 @@ export default function SpiritFormFields({
             <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-4 space-y-4">
               {/* 스타일 */}
               <div>
-                <label className={LABEL}>스타일 <span className="text-red-400">*</span></label>
-                <div className="flex flex-wrap gap-2">
+                <label className={LABEL}>스타일 <RequiredMark /></label>
+                <div className="flex flex-wrap gap-2" role="radiogroup" aria-required="true">
                   {WHISKY_STYLES.map(([v, l]) => (
                     <label key={v} className="flex items-center gap-1.5 cursor-pointer text-xs select-none">
                       <input type="radio" value={v} checked={form.whiskyDetail.style === v}
@@ -1733,12 +1742,14 @@ function SeriesIdentifierFields({
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div>
         <label className="flex items-center text-[11px] font-semibold text-neutral-600 mb-1">
-          한글 시리즈 식별자 <span className="text-red-400 ml-0.5">*</span>
+          한글 시리즈 식별자 <RequiredMark />
           <InfoTooltip text="모든 하위 에디션이 공유하는 이름 조각입니다. 예: .3 Series, 1993 29 Year Old, Batch Series" />
         </label>
         <input
           type="text"
           data-field="seriesIdentifier"
+          required
+          aria-required="true"
           value={seriesIdentifier}
           onChange={(e) => onSeriesIdentifierChange(e.target.value)}
           placeholder={
@@ -1868,11 +1879,13 @@ function VariantItemCard({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-[11px] font-semibold text-neutral-500 mb-1">
-              식별 값(한글) <span className="text-red-400">*</span>
+              식별 값(한글) <RequiredMark />
             </label>
             <input
               type="text"
               data-field={`variantValue_${index}`}
+              required
+              aria-required="true"
               value={variant.variantValue}
               onChange={(e) => onUpdate({ variantValue: e.target.value })}
               placeholder={

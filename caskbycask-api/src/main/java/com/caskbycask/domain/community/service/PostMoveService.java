@@ -58,6 +58,7 @@ public class PostMoveService {
                 .deleteReason(deleteReason)
                 .deletedAt(LocalDateTime.now())
                 .originalCreatedAt(post.getCreatedAt())
+                .hashtags(new java.util.ArrayList<>(post.getHashtags()))
                 .build();
         deletedPostRepository.save(deletedPost);
 

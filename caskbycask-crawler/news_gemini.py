@@ -27,8 +27,9 @@ ARTICLE_SCHEMA = {
         "confidence": {"type": "number"},
         "semantic_fingerprint": {"type": "string"},
         "image_prompt": {"type": "string"},
+        "hashtags": {"type": "array", "items": {"type": "string"}, "maxItems": 10},
     },
-    "required": ["title", "content_html", "confidence", "semantic_fingerprint", "image_prompt"],
+    "required": ["title", "content_html", "confidence", "semantic_fingerprint", "image_prompt", "hashtags"],
 }
 
 REQUESTED_ARTICLE_SCHEMA = {
@@ -150,7 +151,7 @@ summary, source_indexes(서로 다른 근거 인덱스), confidence(0~1).
             "task": "출시 소식 원고 작성과 최종 사실 검증",
             "candidate": candidate,
             "evidence": evidence,
-            "output_fields": ["title", "content_html", "confidence", "semantic_fingerprint", "image_prompt"],
+            "output_fields": ["title", "content_html", "confidence", "semantic_fingerprint", "image_prompt", "hashtags"],
             "image_prompt_rule": "브랜드 로고나 실제 라벨을 만들지 않는 가로형 비브랜드 에디토리얼 이미지용 영문 프롬프트",
         }
         result = self._request_article(prompt)
@@ -190,7 +191,7 @@ summary, source_indexes(서로 다른 근거 인덱스), confidence(0~1).
             "task": "오래 읽히는 팁 및 정보 글 작성과 최종 사실 검증",
             "topic": {"title": topic["title"], "aliases": topic.get("aliases"), "category": topic["category"]},
             "evidence": evidence,
-            "output_fields": ["title", "content_html", "confidence", "semantic_fingerprint", "image_prompt"],
+            "output_fields": ["title", "content_html", "confidence", "semantic_fingerprint", "image_prompt", "hashtags"],
             "image_prompt_rule": (
                 "교육적이고 세련된 가로형 에디토리얼 일러스트. 글자, 로고, 상표, 실제 제품 라벨, "
                 "존재하지 않는 병은 표현하지 않는 영문 프롬프트"
@@ -210,6 +211,7 @@ summary, source_indexes(서로 다른 근거 인덱스), confidence(0~1).
                 "title": article["title"],
                 "content_html": str(article["content"])[:30000],
                 "semantic_fingerprint": article.get("semanticFingerprint"),
+                "hashtags": article.get("hashtags") or [],
             },
             "additional_instruction_for_this_article_only": article["additionalPrompt"],
             "rules": [
@@ -218,7 +220,7 @@ summary, source_indexes(서로 다른 근거 인덱스), confidence(0~1).
                 "확인되지 않은 새로운 사실, 출처, 수치 또는 인용을 만들어내지 않는다.",
                 "완성된 전체 제목과 전체 HTML 본문을 반환한다.",
             ],
-            "output_fields": ["title", "content_html", "confidence", "semantic_fingerprint", "image_prompt"],
+            "output_fields": ["title", "content_html", "confidence", "semantic_fingerprint", "image_prompt", "hashtags"],
             "image_prompt_rule": "기존 대표 이미지는 유지하므로 일반적인 비브랜드 영문 프롬프트만 반환",
         }
         result = self._request_article(prompt)
@@ -343,12 +345,23 @@ JSON {"topics":[{"title":"한국어 50자 이하","normalized_key":"영문-소�
         confidence = min(1.0, max(0.0, float(result.get("confidence") or 0)))
         fingerprint = re.sub(r"\s+", " ", str(result.get("semantic_fingerprint") or title).lower()).strip()[:1000]
         image_prompt = str(result.get("image_prompt") or "Elegant educational illustration about spirits").strip()
+        hashtags: list[str] = []
+        seen_hashtags: set[str] = set()
+        raw_hashtags = result.get("hashtags") if isinstance(result.get("hashtags"), list) else []
+        for raw_hashtag in raw_hashtags:
+            hashtag = re.sub(r"[^\w-]", "", str(raw_hashtag).strip().lstrip("#"), flags=re.UNICODE)[:30]
+            dedupe_key = hashtag.casefold()
+            if hashtag and dedupe_key not in seen_hashtags:
+                seen_hashtags.add(dedupe_key)
+                hashtags.append(hashtag)
+            if len(hashtags) >= 10:
+                break
         if not title or not content:
             raise RuntimeError("AI 원고 응답에 제목 또는 본문이 없습니다.")
         if self._plain_text_length(content) < AI_NEWS_MIN_TEXT_LENGTH:
             raise RuntimeError(f"AI 원고 본문이 최소 {AI_NEWS_MIN_TEXT_LENGTH:,}자보다 짧습니다.")
         return DraftArticle(article_type, category, title, content, dedupe_key, fingerprint,
-                            confidence, source_indexes, image_prompt, topic_id=topic_id,
+                            confidence, source_indexes, image_prompt, hashtags=hashtags, topic_id=topic_id,
                             model_name=self.writer_model)
 
     def _request_article(self, prompt: dict[str, Any]) -> dict[str, Any]:

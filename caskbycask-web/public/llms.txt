@@ -12,15 +12,15 @@ CaskByCask (캐스크바이캐스크) 는 다음을 제공합니다:
 
 ## 핵심 페이지
 
-- [홈](https://caskbycask.net/): 최신·인기 주류, 공지사항, 카테고리 진입
-- [주류 카탈로그](https://caskbycask.net/spirits): 전체 주류 검색·필터링 (카테고리·국가·도수·평점·키워드)
-- [위스키 카탈로그](https://caskbycask.net/spirits?category=WHISKY): 위스키 전용
-- [꼬냑 카탈로그](https://caskbycask.net/spirits?category=COGNAC): 꼬냑 전용
-- [와인 카탈로그](https://caskbycask.net/spirits?category=WINE): 와인 전용
-- [공지사항](https://caskbycask.net/notices): 서비스 업데이트와 이벤트 안내
-- [랭킹](https://caskbycask.net/ranking): 사용자 활동 랭킹
-- [자유게시판](https://caskbycask.net/community/free): 사용자 자유 토론
-- [FAQ](https://caskbycask.net/faq): 위스키·와인·꼬냑 자주 묻는 질문
+- [홈](https://www.caskbycask.net/): 최신·인기 주류, 공지사항, 카테고리 진입
+- [주류 카탈로그](https://www.caskbycask.net/spirits): 전체 주류 검색·필터링 (카테고리·국가·도수·평점·키워드)
+- [위스키 카탈로그](https://www.caskbycask.net/spirits?category=WHISKY): 위스키 전용
+- [꼬냑 카탈로그](https://www.caskbycask.net/spirits?category=COGNAC): 꼬냑 전용
+- [와인 카탈로그](https://www.caskbycask.net/spirits?category=WINE): 와인 전용
+- [공지사항](https://www.caskbycask.net/notices): 서비스 업데이트와 이벤트 안내
+- [랭킹](https://www.caskbycask.net/ranking): 사용자 활동 랭킹
+- [자유게시판](https://www.caskbycask.net/community/free): 사용자 자유 토론
+- [FAQ](https://www.caskbycask.net/faq): 위스키·와인·꼬냑 자주 묻는 질문
 
 ## 데이터 구조
 
@@ -45,8 +45,8 @@ CaskByCask (캐스크바이캐스크) 는 다음을 제공합니다:
 
 - 운영: CaskByCask
 - 언어: 기본 한국어 (ko-KR), 영어 부분 지원 (en-US)
-- 사이트맵: https://caskbycask.net/sitemap.xml
-- 문의: https://caskbycask.net/inquiry
+- 사이트맵: https://www.caskbycask.net/sitemap.xml
+- 문의: https://www.caskbycask.net/inquiry
 
 ## 핵심 Q&A (AI 인용용 요약)
 

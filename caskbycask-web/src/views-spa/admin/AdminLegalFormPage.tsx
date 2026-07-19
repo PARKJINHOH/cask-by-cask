@@ -16,6 +16,7 @@ import Button from '@/shared/components/Button'
 import AdminPageHeader from '@/shared/components/AdminPageHeader'
 import Toast from '@/shared/components/Toast'
 import { useToast } from '@/shared/hooks/useToast'
+import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 
 const schema = z.object({
   type: z.enum(['TERMS', 'PRIVACY_POLICY', 'OPERATION_POLICY'] as const),
@@ -154,14 +155,17 @@ export default function AdminLegalFormPage() {
       )}
 
       <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
+        <RequiredFieldsNotice admin />
         {/* 문서 타입 + 버전 */}
         <div className="flex gap-4">
           <div className="w-48">
             <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-              문서 종류 <span className="text-danger-500">*</span>
+              문서 종류 <RequiredMark />
             </label>
             <select
               {...register('type')}
+              required
+              aria-required="true"
               disabled={isEdit}
               className="w-full h-10 px-3 text-sm border border-neutral-300 rounded-lg
                 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white
@@ -175,10 +179,12 @@ export default function AdminLegalFormPage() {
 
           <div className="flex-1">
             <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-              버전 <span className="text-danger-500">*</span>
+              버전 <RequiredMark />
             </label>
             <input
               {...register('version')}
+              required
+              aria-required="true"
               placeholder="예: v1.0, 2026-01-01"
               maxLength={50}
               className="w-full h-10 px-3 text-sm border border-neutral-300 rounded-lg
@@ -191,10 +197,10 @@ export default function AdminLegalFormPage() {
         </div>
 
         {/* 내용 에디터 */}
-        <div>
+        <div aria-required="true">
           <div className="flex items-center justify-between mb-1.5">
             <label className="block text-sm font-medium text-neutral-700">
-              내용 <span className="text-danger-500">*</span>
+              내용 <RequiredMark />
             </label>
             <button
               type="button"

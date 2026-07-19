@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect, Suspense } from 'react'
-import { Outlet, Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Outlet, Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 
 import RouteFallback from '@/shared/components/RouteFallback'
 import RouteTransition from '@/shared/components/RouteTransition'
+import PageIndicator from '@/shared/components/PageIndicator'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { useAuth } from '@/domain/auth/hooks/useAuth'
@@ -80,7 +81,7 @@ function PasswordChangeBanner() {
 
   return (
     <div className="bg-amber-50 border-b border-amber-200">
-      <div className="max-w-7xl mx-auto px-4 py-2 flex items-center gap-3 text-sm">
+      <div className="user-layout-container px-4 py-2 flex items-center gap-3 text-sm">
         <svg className="w-4 h-4 text-amber-600 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
           <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
         </svg>
@@ -115,6 +116,7 @@ type GNBItem =
 
 function GNB() {
   const { t } = useTranslation()
+  const location = useLocation()
   const [open, setOpen] = useState<string | null>(null)
   const [dropdownLeft, setDropdownLeft] = useState(0)
   const navRef = useRef<HTMLElement>(null)
@@ -162,13 +164,26 @@ function GNB() {
         { key: 'communityByob',  label: t('menu.communityByob'),  to: '/community/byob' },
       ],
     },
-    { key: 'tierList', label: t('menu.tierList'), to: '/tier-lists' },
-    { key: 'tasteTree', label: t('menu.tasteTree'), to: '/taste-trees' },
+    {
+      key: 'tasteExplorer',
+      label: t('menu.tasteExplorer'),
+      children: [
+        { key: 'tierList', label: t('menu.tierList'), to: '/tier-lists' },
+        { key: 'tasteTree', label: t('menu.tasteTree'), to: '/taste-trees' },
+      ],
+    },
   ]
 
   const activeDropdown = open
     ? menus.find((menu): menu is Extract<GNBItem, { children: GNBChild[] }> => menu.key === open && 'children' in menu)
     : undefined
+
+  const isPathActive = (to: string) => {
+    if (to === '/spirits') return location.pathname.startsWith('/spirits')
+    return location.pathname === to || location.pathname.startsWith(`${to}/`)
+  }
+
+  const isGroupActive = (children: GNBChild[]) => children.some((child) => isPathActive(child.to))
 
   const openDropdown = (key: string, anchor: HTMLElement) => {
     const nav = navRef.current
@@ -186,8 +201,9 @@ function GNB() {
   }
 
   const itemCls = (active: boolean) =>
-    `inline-flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-3 py-3 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap
-    ${active ? 'text-primary-800' : 'text-neutral-600 hover:text-primary-800'}`
+    `relative inline-flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-3 py-3 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap
+    after:absolute after:inset-x-1.5 after:bottom-0 after:h-0.5 after:rounded-full after:transition-colors sm:after:inset-x-3
+    ${active ? 'text-primary-800 after:bg-primary-700' : 'text-neutral-600 after:bg-transparent hover:text-primary-800'}`
 
   return (
     <nav
@@ -196,7 +212,7 @@ function GNB() {
       onMouseLeave={() => setOpen(null)}
     >
       <div
-        className="max-w-7xl mx-auto overflow-x-auto overscroll-x-contain px-2 sm:px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="user-layout-container overflow-x-auto overscroll-x-contain px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         onScroll={() => setOpen(null)}
       >
         <ul className="flex min-w-max items-center gap-0.5 py-1 sm:gap-1">
@@ -204,17 +220,20 @@ function GNB() {
             if ('to' in menu) {
               const isNotice  = menu.key === 'notice'
               const isSpirits = menu.key === 'spirits'
+              const isActive = isPathActive(menu.to)
               return (
                 <li
                   key={menu.key}
                   className={`flex items-center ${isSpirits ? 'mr-1' : ''}`}
+                  onMouseEnter={() => setOpen(null)}
                 >
                   <Link
                     to={menu.to}
+                    onFocus={() => setOpen(null)}
                     className={
                       isSpirits
-                        ? 'inline-flex items-center px-2 sm:px-3.5 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold rounded-lg bg-primary-800 text-white hover:bg-primary-900 transition-colors whitespace-nowrap'
-                        : `${itemCls(false)} relative`
+                        ? `inline-flex items-center px-2 sm:px-3.5 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold rounded-lg text-white transition-colors whitespace-nowrap ${isActive ? 'bg-primary-900 ring-2 ring-primary-300 ring-offset-1' : 'bg-primary-800 hover:bg-primary-900'}`
+                        : itemCls(isActive)
                     }
                   >
                     {menu.label}
@@ -230,6 +249,7 @@ function GNB() {
             }
 
             const isOpen = open === menu.key
+            const isActive = isGroupActive(menu.children)
             return (
               <li
                 key={menu.key}
@@ -237,7 +257,7 @@ function GNB() {
                 onMouseEnter={(event) => openDropdown(menu.key, event.currentTarget)}
               >
                 <button
-                  className={itemCls(isOpen)}
+                  className={itemCls(isOpen || isActive)}
                   onClick={(event) => isOpen
                     ? setOpen(null)
                     : openDropdown(menu.key, event.currentTarget)}
@@ -257,11 +277,14 @@ function GNB() {
               </li>
             )
           })}
-          <li className="ml-auto flex-shrink-0">
+          <li className="ml-auto flex-shrink-0" onMouseEnter={() => setOpen(null)}>
             <Link
               to="/calendar"
-              className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-lg
-                border border-neutral-300 text-neutral-600 hover:text-primary-800 hover:border-primary-300 transition-colors whitespace-nowrap"
+              onFocus={() => setOpen(null)}
+              className={`inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-lg
+                border transition-colors whitespace-nowrap ${isPathActive('/calendar')
+                  ? 'border-primary-400 bg-primary-50 text-primary-800'
+                  : 'border-neutral-300 text-neutral-600 hover:text-primary-800 hover:border-primary-300'}`}
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
@@ -810,7 +833,7 @@ export default function MainLayout() {
     <div className="min-h-screen bg-canvas flex flex-col">
       {/* 헤더 */}
       <header className="bg-canvas border-b border-neutral-200 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-2 sm:px-4 h-16 flex items-center gap-2 sm:gap-4">
+        <div className="user-layout-container px-4 h-16 flex items-center gap-2 sm:gap-4">
           {/* 로고 */}
           <Link to="/" className="flex items-center gap-1 sm:gap-2 flex-shrink-0 -my-2">
             <img src="/logo.png" alt="CaskByCask" className="h-10 sm:h-15 w-auto" />
@@ -849,8 +872,11 @@ export default function MainLayout() {
       {/* 비밀번호 변경 권고 배너 */}
       <PasswordChangeBanner />
 
+      {/* 사용자 페이지 공통 메뉴 위치 표시 및 뒤로가기 */}
+      <PageIndicator />
+
       {/* 본문 */}
-      <main className="flex-1 pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">
+      <main className="user-layout-container flex-1 pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">
         <Suspense fallback={<RouteFallback />}>
           <RouteTransition>
             <Outlet />
@@ -860,7 +886,7 @@ export default function MainLayout() {
 
       {/* 푸터 (PC only) */}
       <footer className="hidden lg:block bg-canvas border-t border-neutral-200 py-6">
-        <div className="max-w-7xl mx-auto px-4">
+        <div className="user-layout-container px-4">
           <div className="flex justify-center items-start gap-16 mb-5">
             {/* 로고 + 태그라인 */}
             <div>

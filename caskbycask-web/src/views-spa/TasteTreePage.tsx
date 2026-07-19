@@ -32,9 +32,9 @@ function TasteTreeDirectory() {
   const changeSort = (next: TasteTreeSort) => { setSort(next); setPage(0) }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-7 lg:px-7 lg:py-10">
+    <div className="mx-auto max-w-7xl px-4 py-7 lg:py-10">
       <SeoMeta title={t('tasteTree.title')} description={t('tasteTree.subtitle')} canonical={buildCanonical('/taste-trees')} />
-      <header className="overflow-hidden rounded-[32px] bg-stone-950 px-6 py-9 text-white shadow-xl sm:px-10 lg:flex lg:items-end lg:justify-between lg:px-12 lg:py-12">
+      <header className="overflow-hidden rounded-2xl bg-stone-950 px-6 py-9 text-white shadow-xl sm:px-10 lg:flex lg:items-end lg:justify-between lg:px-12 lg:py-12">
         <div className="max-w-3xl">
           <p className="text-xs font-black uppercase tracking-[0.22em] text-amber-400">{t('tasteTree.eyebrow')}</p>
           <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-5xl">{t('tasteTree.title')}</h1>
@@ -46,7 +46,7 @@ function TasteTreeDirectory() {
         </div>
       </header>
 
-      <section className="mt-6 rounded-[26px] border border-stone-200 bg-white p-3 shadow-sm sm:p-4">
+      <section className="mt-6 rounded-2xl border border-stone-200 bg-white p-3 shadow-sm sm:p-4">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div className="grid grid-cols-2 gap-2">
             {(['OFFICIAL', 'USER'] as const).map((value) => (
@@ -70,11 +70,11 @@ function TasteTreeDirectory() {
       </section>
 
       {query.isLoading ? (
-        <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">{[0, 1, 2].map((key) => <div key={key} className="h-72 animate-pulse rounded-[26px] bg-stone-100" />)}</div>
+        <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">{[0, 1, 2].map((key) => <div key={key} className="h-72 animate-pulse rounded-2xl bg-stone-100" />)}</div>
       ) : query.data?.content.length ? (
         <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           {query.data.content.map((tree, index) => (
-            <Link key={tree.id} to={`/taste-trees/t/${tree.shareKey}`} className="group relative overflow-hidden rounded-[26px] border border-stone-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-amber-300 hover:shadow-xl">
+            <Link key={tree.id} to={`/taste-trees/t/${tree.shareKey}`} className="group relative overflow-hidden rounded-2xl border border-stone-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-amber-300 hover:shadow-xl">
               <div className="relative flex items-center justify-between">
                 <span className={`rounded-full px-3 py-1 text-[10px] font-black ${tree.type === 'OFFICIAL' ? 'bg-stone-950 text-white' : 'bg-amber-100 text-amber-900'}`}>{tree.type === 'OFFICIAL' ? t('tasteTree.officialBadge') : t('tasteTree.userTree')}</span>
                 <span className="text-xs font-black text-stone-300">#{String(index + 1 + page * 12).padStart(2, '0')}</span>
@@ -91,7 +91,7 @@ function TasteTreeDirectory() {
           ))}
         </div>
       ) : (
-        <div className="mt-6 rounded-[26px] border border-dashed border-stone-300 bg-white py-20 text-center text-sm font-bold text-stone-500">{t('tasteTree.noPublicTrees')}</div>
+        <div className="mt-6 rounded-2xl border border-dashed border-stone-300 bg-white py-20 text-center text-sm font-bold text-stone-500">{t('tasteTree.noPublicTrees')}</div>
       )}
 
       {query.data && query.data.totalPages > 1 && (
@@ -140,7 +140,7 @@ function TasteTreeDetail({ shareKey }: { shareKey: string }) {
   })
 
   const tree = treeQuery.data
-  if (treeQuery.isLoading) return <div className="mx-auto max-w-7xl px-4 py-10"><div className="h-[700px] animate-pulse rounded-[32px] bg-stone-100" /></div>
+  if (treeQuery.isLoading) return <div className="mx-auto max-w-7xl px-4 py-10"><div className="h-[700px] animate-pulse rounded-2xl bg-stone-100" /></div>
   if (!tree) return <div className="mx-auto max-w-4xl px-4 py-20 text-center"><h1 className="text-2xl font-black">{t('tasteTree.notFound')}</h1><Link to="/taste-trees" className="mt-5 inline-block text-amber-800">{t('tasteTree.officialTrees')}</Link></div>
 
   const requireLogin = (action: () => void) => {
@@ -149,10 +149,10 @@ function TasteTreeDetail({ shareKey }: { shareKey: string }) {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-7 lg:px-7 lg:py-10">
+    <div className="mx-auto max-w-7xl px-4 py-7 lg:py-10">
       <SeoMeta title={tree.title} description={tree.description ?? t('tasteTree.subtitle')} canonical={buildCanonical(`/taste-trees/t/${shareKey}`)} />
       <Toast toasts={toasts} onRemove={removeToast} />
-      <header className="mb-6 rounded-[30px] border border-stone-200 bg-white p-6 shadow-sm sm:p-8 lg:flex lg:items-end lg:justify-between">
+      <header className="mb-6 rounded-2xl border border-stone-200 bg-white p-6 shadow-sm sm:p-8 lg:flex lg:items-end lg:justify-between">
         <div className="max-w-4xl">
           <div className="flex flex-wrap items-center gap-2">
             <Link to="/taste-trees" className="text-xs font-black text-stone-400 hover:text-amber-800">{t('tasteTree.allTrees')}</Link>

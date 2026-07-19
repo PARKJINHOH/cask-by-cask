@@ -8,6 +8,7 @@ import {
 } from '@/domain/admin/api/adminScoreApi'
 import LevelBadge from '@/shared/components/LevelBadge'
 import { generateLevels, DEFAULT_LEVEL_FORMULA } from '@/domain/score/types/score.types'
+import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 
 export default function AdminLevelPage() {
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -160,13 +161,16 @@ function FormulaGenerator({
           입력값으로 1~최대레벨의 필요 점수를 한 번에 만듭니다. 지수 곡선에 초반 가중을 더해, 초반은 너무 빠르지 않게·후반은 가파르게 만듭니다.
         </p>
       </div>
+      <RequiredFieldsNotice admin />
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {fields.map(({ label, value, set, step, hint }) => (
           <div key={label}>
-            <label className="block text-xs font-medium text-neutral-600 mb-1">{label}</label>
+            <label className="block text-xs font-medium text-neutral-600 mb-1">{label}<RequiredMark /></label>
             <input
               type="number"
+              required
+              aria-required="true"
               value={value}
               step={step}
               onChange={(e) => set(e.target.value)}

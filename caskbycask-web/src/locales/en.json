@@ -146,6 +146,30 @@
     "more": "More",
     "maturingPower": "Lv.{{level}}"
   },
+  "pageIndicator": {
+    "ariaLabel": "Current menu location",
+    "detail": "Details",
+    "write": "Create",
+    "edit": "Edit",
+    "sharedView": "Shared View",
+    "myContent": "My Content",
+    "myRequests": "My Requests",
+    "reviewWrite": "Write Review",
+    "reviewEdit": "Edit Review",
+    "ranking": "Ranking",
+    "inquiry": "Contact Us",
+    "account": "Account",
+    "accountRecovery": "Account Recovery",
+    "terms": "Terms of Service",
+    "privacy": "Privacy Policy",
+    "operationPolicy": "Operation Policy",
+    "notifications": "Notifications",
+    "userBottles": "Bottle Collection",
+    "userReviews": "User Reviews",
+    "producer": "Producer",
+    "priceTracker": "Price Tracker",
+    "priceRegister": "Register Price"
+  },
   "home": {
     "banner": {
       "imageAlt": "Banner",
@@ -181,13 +205,6 @@
       "more": "View more posts",
       "empty": "No posts yet."
     },
-    "shortcuts": {
-      "title": "Quick Links",
-      "ranking": "Ranking",
-      "community": "Community",
-      "review": "Write Review",
-      "search": "Search"
-    },
     "eventCard": {
       "label": "This Week's Events",
       "title": "Tastings & Releases",
@@ -211,8 +228,9 @@
     "communityByob": "BYOB Gatherings",
     "calendar": "Events",
     "faq": "FAQ",
-    "tierList": "Tier List",
-    "tasteTree": "Spirit Taste Tree"
+    "tasteExplorer": "Taste Explorer",
+    "tierList": "Tier Lists",
+    "tasteTree": "Taste Trees"
   },
   "calendar": {
     "title": "Event Calendar",
@@ -499,8 +517,8 @@
       "error": "An error occurred during sign up.",
       "hasAccount": "Already have an account?",
       "terms": {
-        "agreeTerms": "I agree to the Terms of Service (Required)",
-        "agreePrivacy": "I agree to the Privacy Policy (Required)",
+        "agreeTerms": "I agree to the Terms of Service",
+        "agreePrivacy": "I agree to the Privacy Policy",
         "viewFull": "View Full",
         "termsRequired": "You must agree to the Terms of Service.",
         "privacyRequired": "You must agree to the Privacy Policy."
@@ -761,6 +779,7 @@
     "nose": "Nose",
     "taste": "Taste",
     "finish": "Finish",
+    "tastingNote": "Tasting note",
     "total": "Total Score",
     "totalPreview": "Score Preview",
     "comment": "Additional Comments",
@@ -803,6 +822,7 @@
   },
   "comment": {
     "title": "Community",
+    "contentLabel": "Comment",
     "tab": "Community",
     "placeholder": "Write a comment...",
     "spiritPlaceholder": "Share your thoughts about this spirit...",
@@ -1096,6 +1116,7 @@
     "reset": "Reset",
     "apply": "Apply",
     "required": "required",
+    "requiredFieldsHint": "indicates a required field.",
     "optional": "optional",
     "saving": "Saving...",
     "submit": "Submit",
@@ -1173,6 +1194,12 @@
     "seriesNext": "Next",
     "commentSection": "Comments",
     "sourceLinks": "Sources",
+    "hashtags": {
+      "label": "Hashtags",
+      "placeholder": "#whisky #newrelease #distillery",
+      "help": "Separate with spaces or commas · {{count}}/{{max}}",
+      "invalid": "Use up to {{max}} hashtags with no more than {{length}} characters each."
+    },
     "loginToComment": "Log in to leave a comment",
     "lockedNotice": "This post is locked and cannot be viewed.",
     "hiddenNotice": "This post has been hidden by an administrator and cannot be viewed.",
@@ -1180,6 +1207,7 @@
       "title": "Enter title",
       "content": "Enter content. YouTube/Vimeo URLs will be automatically embedded."
     },
+    "contentLabel": "Content",
     "writeGuideline": {
       "text": "Posts containing obscene content, defamation, copyright infringement, profanity, spam, exposure of personal information, false information, or unauthorized advertising are subject to penalty and may be moved or hidden without prior notice.",
       "linkText": "View Community Guidelines"
@@ -1209,9 +1237,11 @@
       "add": "Add Poll",
       "remove": "Remove Poll",
       "questionPlaceholder": "Enter poll question",
+      "questionLabel": "Poll question",
       "multiple": "Multiple Choice",
       "single": "Single Choice",
       "optionPlaceholder": "Option {{index}}",
+      "optionsLabel": "Options",
       "addOption": "+ Add Option",
       "endsAt": "End Date & Time (Optional)"
     },
@@ -1937,8 +1967,6 @@
     "noCreatedTrees": "You have not created a tree yet.",
     "noSavedTrees": "You have not saved a tree yet.",
     "exploreOfficial": "Explore official trees",
-    "pcOnlyTitle": "Tree building is available on desktop.",
-    "pcOnlyDesc": "Use a wider screen to connect nodes and add result spirits. Playing and sharing your tree still works on mobile.",
     "builder": {
       "title": "My Spirit Tree Builder",
       "subtitle": "Connect questions and results, then publish a taste tree anyone with the link can play.",
@@ -1956,7 +1984,9 @@
       "connections": "Next connections",
       "noConnections": "No nodes are connected yet.",
       "newChoice": "New spirit",
-      "addNode": "Add node",
+      "addNode": "Add spirit",
+      "requiredHint": "Required fields",
+      "registeredSpirit": "Spirit to add",
       "defaultEdgeLabel": "Take this path",
       "deleteNodeConfirm": "Delete this node and its connections?",
       "addLeft": "Add a node on the left",
@@ -1990,10 +2020,8 @@
       "imagePositionY": "Vertical position",
       "imageReset": "Reset image settings",
       "imageRemove": "Remove image",
-      "edgeLabelKo": "Choice label (Korean)",
-      "edgeLabelEn": "Choice label (English)",
-      "edgeDescriptionKo": "Description below choice (Optional · Korean)",
-      "edgeDescriptionEn": "Description below choice (Optional · English)",
+      "edgeLabelKo": "Choice label",
+      "edgeDescriptionKo": "Description below choice (Optional)",
       "edgeDescriptionPlaceholder": "Briefly explain which spirit this choice leads to.",
       "lineType": "Connection shape",
       "lineStep": "Elbow line",
@@ -2004,10 +2032,8 @@
       "newQuestion": "New question",
       "newResult": "New result",
       "newInfo": "New information",
-      "titleKo": "Title (Korean)",
-      "titleEn": "Title (English)",
-      "descriptionKo": "Description (Korean)",
-      "descriptionEn": "Description (English)",
+      "titleKo": "Title (up to {{max}} characters)",
+      "descriptionKo": "Description (optional, up to {{max}} characters)",
       "selectionType": "Selection type",
       "single": "Choose one",
       "multiple": "Choose multiple",
@@ -2034,7 +2060,7 @@
       "reasonEn": "Recommendation reason (English, up to 300 characters)",
       "duplicateSpirit": "The same listed spirit cannot be added twice to one result.",
       "imageUploadFailed": "Could not upload the image.",
-      "graphHelp": "Add spirit nodes from the top right and connect them by dragging node points. Players can stop at any spirit or continue to another, and selected nodes can be resized from their border handles.",
+      "graphHelp": "Add spirit nodes from the top right and connect them by dragging node points. Node height adjusts automatically to the title and description, and players can stop at any spirit or continue to another.",
       "saveDraft": "Save draft",
       "draftSaved": "Draft saved.",
       "saveFailed": "Could not save the draft.",
@@ -2057,6 +2083,8 @@
       "errorStart": "A tree must have exactly one Start node.",
       "errorResult": "Add at least one Result node.",
       "errorNodeTitle": "Enter a Korean title for every node.",
+      "errorNodeTitleLength": "Node titles can contain up to 50 characters per language.",
+      "errorNodeDescriptionLength": "Node descriptions can contain up to 200 characters per language.",
       "errorQuestionOption": "Add at least one option to every question.",
       "errorResultCount": "Each Result node must contain one to three spirits.",
       "errorResultItem": "Check required fields, including custom spirit names.",

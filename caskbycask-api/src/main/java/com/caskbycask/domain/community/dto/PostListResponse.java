@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 public class PostListResponse {
 
     private static final String AI_SYSTEM_AUTHOR_EMAIL = "ai-news@system.caskbycask.local";
+    private static final String NEWS_MANAGER_AUTHOR_NAME = "소식관리자";
 
     private final Long id;
     private final BoardType boardType;
@@ -48,14 +49,16 @@ public class PostListResponse {
         this.isPinned      = Boolean.TRUE.equals(post.getIsPinned());
         this.adultOnly     = Boolean.TRUE.equals(post.getAdultOnly());
         boolean anon       = Boolean.TRUE.equals(post.getIsAnonymous());
-        this.authorNickname      = anon ? "익명" : post.getAuthor().getNickname();
+        boolean systemAccount = !anon && AI_SYSTEM_AUTHOR_EMAIL.equalsIgnoreCase(post.getAuthor().getEmail());
+        this.authorNickname      = anon ? "익명" : systemAccount
+                ? NEWS_MANAGER_AUTHOR_NAME : post.getAuthor().getNickname();
         this.authorRole          = anon ? null : post.getAuthor().getRole().name();
         this.authorLevel         = anon ? null : post.getAuthor().getCurrentLevel();
         this.authorMaturingPower = anon ? null : post.getAuthor().getMaturingPower();
         this.authorNicknameFixed    = anon ? null : post.getAuthor().getNicknameFixed();
         this.authorProfileImageUrl  = anon ? null : post.getAuthor().getProfileImageUrl();
         this.authorId               = anon ? null : post.getAuthor().getId();
-        this.authorSystemAccount    = !anon && AI_SYSTEM_AUTHOR_EMAIL.equalsIgnoreCase(post.getAuthor().getEmail());
+        this.authorSystemAccount    = systemAccount;
         this.viewCount     = post.getViewCount();
         this.likeCount     = post.getLikeCount();
         this.commentCount  = post.getCommentCount();

@@ -12,6 +12,7 @@ import type { UploadedPopupImage, PopupType, PopupPreviewData } from '@/domain/p
 import AdminPageHeader from '@/shared/components/AdminPageHeader'
 import Toast from '@/shared/components/Toast'
 import { useToast } from '@/shared/hooks/useToast'
+import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 import {
   toInputDt, toApiDt, promoSuperRefine,
   FormSection, ToggleSwitch, PromoImageDropzone,
@@ -354,6 +355,7 @@ export default function AdminPopupFormPage() {
       />
 
       <form onSubmit={(e) => e.preventDefault()} className="space-y-5">
+        <RequiredFieldsNotice admin />
         <TwoColumnFormLayout
           left={
             <>
@@ -431,9 +433,9 @@ export default function AdminPopupFormPage() {
                     />
                   </div>
                 ) : (
-                  <div>
+                  <div aria-required="true">
                     <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-                      내용 <span className="text-red-500">*</span>
+                      내용 <RequiredMark />
                     </label>
                     <Controller
                       name="content"

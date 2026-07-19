@@ -17,6 +17,7 @@ import type { AdminProducer, Producer, ProducerType, CreateProducerPayload, Upda
 import { PRODUCER_TYPE_LABEL } from '@/domain/producer/types/producer.types'
 import CountryRegionSelector from '@/domain/location/components/CountryRegionSelector'
 import { ISO3166_COUNTRIES } from '@/domain/location/data/iso3166Countries'
+import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 
 const PRODUCER_TYPES: ProducerType[] = ['DISTILLERY', 'WINERY', 'COGNAC_HOUSE', 'OTHER']
 const SPIRIT_CATEGORY_LABEL = { WHISKY: '위스키', COGNAC: '꼬냑', WINE: '와인', OTHER: '기타' } as const
@@ -81,10 +82,13 @@ function ProducerForm({ initial, onSave, onCancel, isPending }: ProducerFormProp
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
+      <RequiredFieldsNotice admin />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1 sm:col-span-2">
-          <label className="block text-xs font-medium text-neutral-600">생산자 종류 *</label>
+          <label className="block text-xs font-medium text-neutral-600">생산자 종류 <RequiredMark /></label>
           <select
+            required
+            aria-required="true"
             {...register('type', { required: true })}
             defaultValue={initial?.type ?? 'DISTILLERY'}
             className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg bg-white
@@ -96,18 +100,22 @@ function ProducerForm({ initial, onSave, onCancel, isPending }: ProducerFormProp
           </select>
         </div>
         <div className="space-y-1">
-          <label className="block text-xs font-medium text-neutral-600">한국어명 *</label>
+          <label className="block text-xs font-medium text-neutral-600">한국어명 <RequiredMark /></label>
           <input
             {...register('nameKo', { required: true, maxLength: 200 })}
+            required
+            aria-required="true"
             maxLength={200}
             className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none
               focus:ring-2 focus:ring-primary-400 ${errors.nameKo ? 'border-red-400' : 'border-neutral-300'}`}
           />
         </div>
         <div className="space-y-1">
-          <label className="block text-xs font-medium text-neutral-600">영어명 *</label>
+          <label className="block text-xs font-medium text-neutral-600">영어명 <RequiredMark /></label>
           <input
             {...register('nameEn', { required: true, maxLength: 200 })}
+            required
+            aria-required="true"
             maxLength={200}
             className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none
               focus:ring-2 focus:ring-primary-400 ${errors.nameEn ? 'border-red-400' : 'border-neutral-300'}`}
@@ -147,8 +155,8 @@ function ProducerForm({ initial, onSave, onCancel, isPending }: ProducerFormProp
           />
         </div>
         <div className="space-y-1 sm:col-span-2">
-          <label className="block text-xs font-medium text-neutral-600">국가 * / 지역</label>
-          <CountryRegionSelector
+          <label className="block text-xs font-medium text-neutral-600">국가 <RequiredMark /> / 지역</label>
+          <div aria-required="true"><CountryRegionSelector
             countryCode={countryCode}
             regionNameKo={regionNameKo}
             onCountryChange={(code, nameKo) => {
@@ -157,7 +165,7 @@ function ProducerForm({ initial, onSave, onCancel, isPending }: ProducerFormProp
               if (nameKo) setCountryError(false)
             }}
             onRegionChange={(nameKo) => setRegionNameKo(nameKo)}
-          />
+          /></div>
           {countryError && <p className="text-xs text-red-500">국가를 선택해주세요.</p>}
         </div>
         <div className="space-y-1 sm:col-span-2">

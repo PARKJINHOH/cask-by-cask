@@ -42,11 +42,11 @@
 }
 
 .ProseMirror .di-image--half-left .di-image__frame > img {
-  border-radius: 0.5rem 0 0 0.5rem;
+  border-radius: var(--radius-surface) 0 0 var(--radius-surface);
 }
 
 .ProseMirror .di-image--half-right .di-image__frame > img {
-  border-radius: 0 0.5rem 0.5rem 0;
+  border-radius: 0 var(--radius-surface) var(--radius-surface) 0;
 }
 
 .ProseMirror .di-image__pair-divider {
@@ -112,7 +112,7 @@
 .ProseMirror .di-image__frame > img {
   max-width: 100%;
   height: auto;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-surface);
   display: inline-block;
   vertical-align: bottom;
 }
@@ -166,7 +166,7 @@
   margin-top: 0.125rem;
   padding: 0.3rem 0.5rem;
   border: 1px solid #d4d4d4;
-  border-radius: 0.2rem;
+  border-radius: var(--radius-surface);
   background: #fafafa;
   color: #525252;
   font-size: 0.75rem;
@@ -208,7 +208,7 @@
   pointer-events: none;
   z-index: 10000;
   border: 2px dashed #2563eb;
-  border-radius: 6px;
+  border-radius: var(--radius-surface);
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
@@ -260,7 +260,7 @@
   max-width: none;
   height: auto;
   margin: 0;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-surface);
   outline: 2px solid #2563eb;
   outline-offset: 1px;
   user-select: none;

@@ -1,4 +1,5 @@
 import InfoTooltip from '@/shared/components/InfoTooltip'
+import { RequiredMark } from '@/shared/components/FormFieldLabel'
 
 export interface CognacDetailForm {
   grade: string; cru: string; isFineChampagne: boolean; blendDetail: string
@@ -47,9 +48,9 @@ export default function CognacDetailSection({ value, onChange, errors }: Props) 
         <p className="text-xs font-semibold text-amber-700">필수 정보</p>
         <div>
           <label className={LABEL}>
-            등급 <span className="text-red-400">*</span>
+            등급 <RequiredMark />
           </label>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-3" role="radiogroup" aria-required="true">
             {GRADES.map(([v, l, years]) => (
               <label key={v} className="flex flex-col items-center cursor-pointer select-none">
                 <input type="radio" value={v} checked={value.grade === v}
