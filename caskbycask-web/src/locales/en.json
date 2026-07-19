@@ -1860,7 +1860,7 @@
     "restart": "Start over",
     "nextChoice": "Choose the next branch",
     "chooseDirection": "Choose where you want to go next.",
-    "journeyComplete": "You finished exploring at this spirit",
+    "journeyComplete": "This is a spirit taste you love",
     "stepCount": "{{count}} steps taken",
     "revealWhisky": "Your destination spirit",
     "viewFullJourney": "View the full tree",
