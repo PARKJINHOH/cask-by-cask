@@ -26,6 +26,8 @@ export interface TasteTreeNode {
   titleEn?: string | null
   descriptionKo?: string | null
   descriptionEn?: string | null
+  promptKo?: string | null
+  promptEn?: string | null
   positionX: number
   positionY: number
   width?: number | null

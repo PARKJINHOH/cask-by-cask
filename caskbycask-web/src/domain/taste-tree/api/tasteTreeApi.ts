@@ -27,6 +27,9 @@ export const tasteTreeApi = {
   getOfficial: () =>
     axiosInstance.get<ApiResponse<TasteTreeSummary[]>>('/api/taste-trees/official'),
 
+  getFacts: () =>
+    axiosInstance.get<ApiResponse<string[]>>('/api/taste-trees/facts'),
+
   getShared: (shareKey: string) =>
     axiosInstance.get<ApiResponse<TasteTreeView>>(`/api/taste-trees/share/${shareKey}`),
 
@@ -72,6 +75,8 @@ export const tasteTreeApi = {
 
 export const adminTasteTreeApi = {
   list: () => axiosInstance.get<ApiResponse<TasteTreeSummary[]>>('/api/admin/taste-trees'),
+  getFacts: () => axiosInstance.get<ApiResponse<string[]>>('/api/admin/taste-trees/facts'),
+  updateFacts: (factsKo: string[]) => axiosInstance.put<ApiResponse<string[]>>('/api/admin/taste-trees/facts', { factsKo }),
   get: (id: number) => axiosInstance.get<ApiResponse<TasteTreeView>>(`/api/admin/taste-trees/${id}`),
   create: (payload: TasteTreeSavePayload) =>
     axiosInstance.post<ApiResponse<TasteTreeView>>('/api/admin/taste-trees', payload),

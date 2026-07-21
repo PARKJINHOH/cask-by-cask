@@ -8,6 +8,7 @@ import com.caskbycask.domain.spirit.repository.SpiritRepository;
 import com.caskbycask.domain.tastetree.dto.TasteTreeEngagementResponse;
 import com.caskbycask.domain.tastetree.dto.TasteTreeImageFile;
 import com.caskbycask.domain.tastetree.dto.TasteTreeContent;
+import com.caskbycask.domain.tastetree.dto.TasteTreeFactsUpdateRequest;
 import com.caskbycask.domain.tastetree.dto.TasteTreeSaveRequest;
 import com.caskbycask.domain.tastetree.entity.TasteTree;
 import com.caskbycask.domain.tastetree.entity.TasteTreeDailyView;
@@ -49,6 +50,7 @@ class TasteTreeServiceTest {
     @Mock private TasteTreeLikeRepository likeRepository;
     @Mock private TasteTreeDailyViewRepository dailyViewRepository;
     @Mock private TasteTreeImageRepository imageRepository;
+    @Mock private TasteTreeFactRepository factRepository;
     @Mock private UserRepository userRepository;
     @Mock private SpiritRepository spiritRepository;
     @Mock private SpiritImageRepository spiritImageRepository;
@@ -60,7 +62,7 @@ class TasteTreeServiceTest {
     @BeforeEach
     void setUp() {
         service = new TasteTreeService(treeRepository, versionRepository, bookmarkRepository, likeRepository,
-                dailyViewRepository, imageRepository, userRepository, spiritRepository, spiritImageRepository,
+                dailyViewRepository, imageRepository, factRepository, userRepository, spiritRepository, spiritImageRepository,
                 validatedImageUploader, fileStorageService, new ObjectMapper());
     }
 
@@ -103,7 +105,7 @@ class TasteTreeServiceTest {
     }
 
     @Test
-    void publishRejectsLegacyNonSpiritNode() {
+    void publishRejectsLegacyInfoNode() {
         TasteTree tree = org.mockito.Mockito.mock(TasteTree.class);
         TasteTreeVersion draft = org.mockito.Mockito.mock(TasteTreeVersion.class);
         given(treeRepository.findOwnedById(13L, 7L)).willReturn(Optional.of(tree));
@@ -113,9 +115,9 @@ class TasteTreeServiceTest {
         given(draft.getContentJson()).willReturn("""
                 {"schemaVersion":2,"nodes":[
                   {"key":"start","type":"START","titleKo":"시작","positionX":0,"positionY":0},
-                  {"key":"choice","type":"CHOICE","titleKo":"끝나면 안 되는 선택","positionX":0,"positionY":200}
+                  {"key":"info","type":"INFO","titleKo":"게시할 수 없는 안내","positionX":0,"positionY":200}
                 ],"edges":[
-                  {"key":"edge-1","sourceNodeKey":"start","targetNodeKey":"choice","labelKo":"선택","sortOrder":0}
+                  {"key":"edge-1","sourceNodeKey":"start","targetNodeKey":"info","labelKo":"선택","sortOrder":0}
                 ]}
                 """);
 
@@ -161,9 +163,9 @@ class TasteTreeServiceTest {
                 16L, TasteTreeVersionStatus.DRAFT)).willReturn(Optional.of(draft));
         given(draft.getContentJson()).willReturn("""
                 {"schemaVersion":5,"nodes":[
-                  {"key":"start","type":"START","titleKo":"시작","positionX":0,"positionY":0},
+                  {"key":"start","type":"START","titleKo":"시작","promptKo":"어느 쪽이 좋으세요?","positionX":0,"positionY":0},
                   {"key":"spirit","type":"WHISKY","titleKo":"도착","positionX":0,"positionY":200,
-                   "width":220,"height":380,
+                   "promptKo":"어떤 방향으로 이어갈까요?","width":220,"height":380,
                    "whisky":{"source":"REGISTERED","spiritId":77}},
                   {"key":"stronger","type":"WHISKY","titleKo":"더 강한 주류","positionX":0,"positionY":600,
                    "whisky":{"source":"CUSTOM","nameKo":"더 강한 주류"}}
@@ -185,16 +187,104 @@ class TasteTreeServiceTest {
     }
 
     @Test
+    void publishAcceptsRegisteredSpiritOnStartNode() {
+        TasteTree tree = org.mockito.Mockito.mock(TasteTree.class);
+        TasteTreeVersion draft = org.mockito.Mockito.mock(TasteTreeVersion.class);
+        Spirit startSpirit = org.mockito.Mockito.mock(Spirit.class);
+        given(treeRepository.findOwnedById(17L, 7L)).willReturn(Optional.of(tree));
+        given(tree.getId()).willReturn(17L);
+        given(versionRepository.findFirstByTreeIdAndStatusOrderByVersionNumberDesc(
+                17L, TasteTreeVersionStatus.DRAFT)).willReturn(Optional.of(draft));
+        given(draft.getContentJson()).willReturn("""
+                {"schemaVersion":8,"nodes":[
+                  {"key":"start","type":"START","titleKo":"첫 주류","promptKo":"다음 주류로 이동할까요?","positionX":0,"positionY":0,
+                   "whisky":{"source":"REGISTERED","spiritId":88}},
+                  {"key":"next","type":"WHISKY","titleKo":"다음 주류","positionX":0,"positionY":200,
+                   "whisky":{"source":"CUSTOM","nameKo":"다음 주류"}}
+                ],"edges":[
+                  {"key":"edge-1","sourceNodeKey":"start","targetNodeKey":"next","labelKo":"다음","sortOrder":0}
+                ]}
+                """);
+        given(startSpirit.getId()).willReturn(88L);
+        given(startSpirit.getStatus()).willReturn(SpiritStatus.ACTIVE);
+        given(startSpirit.getNameKo()).willReturn("시작 위스키");
+        given(spiritRepository.findAllById(any())).willReturn(List.of(startSpirit));
+        given(spiritImageRepository.findBySpiritIdInAndIsPrimaryTrue(any())).willReturn(List.of());
+
+        assertThatCode(() -> service.publish(17L, 7L)).doesNotThrowAnyException();
+        verify(draft).publish();
+    }
+
+    @Test
+    void publishAcceptsQuestionNodeBetweenSpirits() {
+        TasteTree tree = org.mockito.Mockito.mock(TasteTree.class);
+        TasteTreeVersion draft = org.mockito.Mockito.mock(TasteTreeVersion.class);
+        given(treeRepository.findOwnedById(18L, 7L)).willReturn(Optional.of(tree));
+        given(tree.getId()).willReturn(18L);
+        given(versionRepository.findFirstByTreeIdAndStatusOrderByVersionNumberDesc(
+                18L, TasteTreeVersionStatus.DRAFT)).willReturn(Optional.of(draft));
+        given(draft.getContentJson()).willReturn("""
+                {"schemaVersion":9,"nodes":[
+                  {"key":"start","type":"START","titleKo":"시작","promptKo":"어떤 향을 좋아하시나요?","positionX":0,"positionY":0},
+                  {"key":"question","type":"CHOICE","titleKo":"이 위스키에서 어떤 점이 좋았나요?","positionX":0,"positionY":200},
+                  {"key":"spirit","type":"WHISKY","titleKo":"다음 주류","positionX":0,"positionY":400,
+                   "whisky":{"source":"CUSTOM","nameKo":"다음 주류"}}
+                ],"edges":[
+                  {"key":"edge-1","sourceNodeKey":"start","targetNodeKey":"question","labelKo":"향으로 고르기","sortOrder":0},
+                  {"key":"edge-2","sourceNodeKey":"question","targetNodeKey":"spirit","labelKo":"달콤한 향","sortOrder":0}
+                ],"tipsKo":["스카치위스키는 최소 3년간 오크통에서 숙성해야 합니다."]}
+                """);
+
+        assertThatCode(() -> service.publish(18L, 7L)).doesNotThrowAnyException();
+        verify(draft).publish();
+    }
+
+    @Test
+    void publishRejectsConnectedMainNodeWithoutQuestion() {
+        TasteTree tree = org.mockito.Mockito.mock(TasteTree.class);
+        TasteTreeVersion draft = org.mockito.Mockito.mock(TasteTreeVersion.class);
+        given(treeRepository.findOwnedById(19L, 7L)).willReturn(Optional.of(tree));
+        given(tree.getId()).willReturn(19L);
+        given(versionRepository.findFirstByTreeIdAndStatusOrderByVersionNumberDesc(
+                19L, TasteTreeVersionStatus.DRAFT)).willReturn(Optional.of(draft));
+        given(draft.getContentJson()).willReturn("""
+                {"schemaVersion":9,"nodes":[
+                  {"key":"start","type":"START","titleKo":"시작","positionX":0,"positionY":0},
+                  {"key":"spirit","type":"WHISKY","titleKo":"도착","positionX":0,"positionY":200,
+                   "whisky":{"source":"CUSTOM","nameKo":"도착"}}
+                ],"edges":[
+                  {"key":"edge-1","sourceNodeKey":"start","targetNodeKey":"spirit","labelKo":"다음","sortOrder":0}
+                ]}
+                """);
+
+        assertThatThrownBy(() -> service.publish(19L, 7L))
+                .isInstanceOfSatisfying(CustomException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.TASTE_TREE_INVALID_STRUCTURE));
+        verify(draft, never()).publish();
+    }
+
+    @Test
+    void updateFactsTrimsAndReplacesTheCommonList() {
+        List<String> updated = service.updateFacts(new TasteTreeFactsUpdateRequest(
+                List.of("  첫 번째 상식입니다.  ", "두 번째 상식입니다.")));
+
+        assertThat(updated).containsExactly("첫 번째 상식입니다.", "두 번째 상식입니다.");
+        verify(factRepository).deleteAllInBatch();
+        verify(factRepository).flush();
+        verify(factRepository).saveAll(any());
+    }
+
+    @Test
     void draftRejectsNodeTextOverRecommendedLimits() {
         TasteTreeContent.Node longTitleNode = nodeWithText("가".repeat(51), null);
         TasteTreeContent.Node longDescriptionNode = nodeWithText("시작", "가".repeat(201));
 
         assertThatThrownBy(() -> service.create(new TasteTreeSaveRequest(
-                "테스트 트리", null, new TasteTreeContent(8, List.of(longTitleNode), List.of())), 7L))
+                "테스트 트리", null, new TasteTreeContent(9, List.of(longTitleNode), List.of(), List.of())), 7L))
                 .isInstanceOfSatisfying(CustomException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.TASTE_TREE_INVALID_STRUCTURE));
         assertThatThrownBy(() -> service.create(new TasteTreeSaveRequest(
-                "테스트 트리", null, new TasteTreeContent(8, List.of(longDescriptionNode), List.of())), 7L))
+                "테스트 트리", null, new TasteTreeContent(9, List.of(longDescriptionNode), List.of(), List.of())), 7L))
                 .isInstanceOfSatisfying(CustomException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.TASTE_TREE_INVALID_STRUCTURE));
         verify(userRepository, never()).getByIdOrThrow(any());
@@ -203,7 +293,7 @@ class TasteTreeServiceTest {
     private TasteTreeContent.Node nodeWithText(String titleKo, String descriptionKo) {
         return new TasteTreeContent.Node(
                 "start", TasteTreeContent.NodeType.START, titleKo, null, descriptionKo, null,
-                0, 0, null, null, null, null, null, null, null, null, null);
+                null, null, 0, 0, null, null, null, null, null, null, null, null, null);
     }
 
     @Test

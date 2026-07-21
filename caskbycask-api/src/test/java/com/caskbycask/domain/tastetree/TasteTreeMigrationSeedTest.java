@@ -37,6 +37,14 @@ class TasteTreeMigrationSeedTest {
                 .contains("FOREIGN KEY (tree_id) REFERENCES taste_trees (id) ON DELETE CASCADE");
     }
 
+    @Test
+    void commonFactsMigrationCreatesTableAndSeedsSeventyFacts() throws Exception {
+        String sql = readMigration("/db/migration/V48__create_taste_tree_facts.sql");
+
+        assertThat(sql).contains("CREATE TABLE taste_tree_facts");
+        assertThat(sql.lines().filter(line -> line.startsWith("('")).count()).isEqualTo(70);
+    }
+
     private String readMigration(String resourcePath) throws Exception {
         try (InputStream input = getClass().getResourceAsStream(resourcePath)) {
             assertThat(input).isNotNull();

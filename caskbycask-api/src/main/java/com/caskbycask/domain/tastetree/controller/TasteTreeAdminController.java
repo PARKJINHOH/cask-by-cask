@@ -27,6 +27,17 @@ public class TasteTreeAdminController {
         return ResponseEntity.ok(ApiResponse.success(service.getAdminTrees()));
     }
 
+    @GetMapping("/facts")
+    public ResponseEntity<ApiResponse<List<String>>> getFacts() {
+        return ResponseEntity.ok(ApiResponse.success(service.getFacts()));
+    }
+
+    @PutMapping("/facts")
+    public ResponseEntity<ApiResponse<List<String>>> updateFacts(
+            @Valid @RequestBody TasteTreeFactsUpdateRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(service.updateFacts(request)));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<TasteTreeViewResponse>> get(
             @PathVariable Long id, @AuthenticationPrincipal CustomUserDetails userDetails) {

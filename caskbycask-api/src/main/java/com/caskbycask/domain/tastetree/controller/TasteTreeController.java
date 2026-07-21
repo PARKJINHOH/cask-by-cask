@@ -49,6 +49,11 @@ public class TasteTreeController {
         return ResponseEntity.ok(ApiResponse.success(service.getOfficialTrees(userId(userDetails))));
     }
 
+    @GetMapping("/facts")
+    public ResponseEntity<ApiResponse<List<String>>> getFacts() {
+        return ResponseEntity.ok(ApiResponse.success(service.getFacts()));
+    }
+
     @GetMapping("/share/{shareKey}")
     public ResponseEntity<ApiResponse<TasteTreeViewResponse>> getShared(
             @PathVariable String shareKey,

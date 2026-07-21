@@ -46,13 +46,16 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class TasteTreeService {
 
-    private static final int SCHEMA_VERSION = 8;
+    private static final int SCHEMA_VERSION = 9;
     private static final int MIN_NODE_WIDTH = 180;
     private static final int MAX_NODE_WIDTH = 420;
     private static final int MIN_NODE_HEIGHT = 128;
     private static final int MAX_NODE_HEIGHT = 760;
     private static final int MAX_NODE_TITLE_LENGTH = 50;
     private static final int MAX_NODE_DESCRIPTION_LENGTH = 200;
+    private static final int MAX_NODE_PROMPT_LENGTH = 120;
+    private static final int MAX_FACTS = 70;
+    private static final int MAX_FACT_LENGTH = 160;
     private static final int MAX_NODES = 150;
     private static final int MAX_EDGES = 400;
     private static final Set<String> SOURCE_HANDLES = Set.of(
@@ -69,12 +72,40 @@ public class TasteTreeService {
     private final TasteTreeLikeRepository likeRepository;
     private final TasteTreeDailyViewRepository dailyViewRepository;
     private final TasteTreeImageRepository imageRepository;
+    private final TasteTreeFactRepository factRepository;
     private final UserRepository userRepository;
     private final SpiritRepository spiritRepository;
     private final SpiritImageRepository spiritImageRepository;
     private final ValidatedImageUploader validatedImageUploader;
     private final FileStorageService fileStorageService;
     private final ObjectMapper objectMapper;
+
+    @Transactional(readOnly = true)
+    public List<String> getFacts() {
+        return factRepository.findAllByOrderByDisplayOrderAscIdAsc().stream()
+                .map(TasteTreeFact::getContentKo)
+                .toList();
+    }
+
+    @Transactional
+    public List<String> updateFacts(TasteTreeFactsUpdateRequest request) {
+        List<String> facts = request.factsKo().stream().map(String::trim).toList();
+        if (facts.size() > MAX_FACTS
+                || facts.stream().anyMatch(fact -> !StringUtils.hasText(fact) || fact.length() > MAX_FACT_LENGTH)
+                || new HashSet<>(facts).size() != facts.size()) invalidStructure();
+
+        factRepository.deleteAllInBatch();
+        factRepository.flush();
+        List<TasteTreeFact> entities = new ArrayList<>(facts.size());
+        for (int index = 0; index < facts.size(); index++) {
+            entities.add(TasteTreeFact.builder()
+                    .contentKo(facts.get(index))
+                    .displayOrder(index)
+                    .build());
+        }
+        factRepository.saveAll(entities);
+        return facts;
+    }
 
     @Transactional(readOnly = true)
     public PageResponse<TasteTreeSummaryResponse> searchPublic(
@@ -353,6 +384,7 @@ public class TasteTreeService {
     }
 
     private TasteTreeContent hydrateContent(TasteTreeContent content) {
+        content = normalize(content);
         Set<Long> ids = safeNodes(content).stream()
                 .map(Node::whisky).filter(Objects::nonNull)
                 .filter(whisky -> whisky.source() == WhiskySource.REGISTERED && whisky.spiritId() != null)
@@ -372,10 +404,10 @@ public class TasteTreeService {
                     images.get(spirit.getId()), whisky.imageOverrideUrl(), whisky.priceAmount(), whisky.currencyCode(), whisky.priceText(),
                     whisky.noteKo(), whisky.noteEn());
             return new Node(node.key(), node.type(), node.titleKo(), node.titleEn(), node.descriptionKo(),
-                    node.descriptionEn(), node.positionX(), node.positionY(), node.width(), node.height(), node.imageUrl(), node.imageFit(),
+                    node.descriptionEn(), node.promptKo(), node.promptEn(), node.positionX(), node.positionY(), node.width(), node.height(), node.imageUrl(), node.imageFit(),
                     node.imagePositionX(), node.imagePositionY(), node.imageScale(), node.imageHidden(), hydrated);
         }).toList();
-        return new TasteTreeContent(SCHEMA_VERSION, nodes, safeEdges(content));
+        return new TasteTreeContent(SCHEMA_VERSION, nodes, safeEdges(content), null);
     }
 
     private void validateDraftContent(TasteTreeContent content) {
@@ -389,6 +421,8 @@ public class TasteTreeService {
                     || (node.titleEn() != null && node.titleEn().length() > MAX_NODE_TITLE_LENGTH)
                     || (node.descriptionKo() != null && node.descriptionKo().length() > MAX_NODE_DESCRIPTION_LENGTH)
                     || (node.descriptionEn() != null && node.descriptionEn().length() > MAX_NODE_DESCRIPTION_LENGTH)
+                    || (node.promptKo() != null && node.promptKo().length() > MAX_NODE_PROMPT_LENGTH)
+                    || (node.promptEn() != null && node.promptEn().length() > MAX_NODE_PROMPT_LENGTH)
                     || (node.width() != null && (node.width() < MIN_NODE_WIDTH || node.width() > MAX_NODE_WIDTH))
                     || (node.height() != null && (node.height() < MIN_NODE_HEIGHT || node.height() > MAX_NODE_HEIGHT))
                     || (node.imagePositionX() != null && (node.imagePositionX() < 0 || node.imagePositionX() > 100))
@@ -429,7 +463,10 @@ public class TasteTreeService {
         if (visited.size() != byKey.size()) invalidStructure();
         if (nodes.stream().noneMatch(node -> node.type() != NodeType.START)) invalidStructure();
         for (Node node : nodes) {
-            if (node.type() != NodeType.START && node.type() != NodeType.WHISKY) invalidStructure();
+            if (node.type() != NodeType.START && node.type() != NodeType.WHISKY && node.type() != NodeType.CHOICE) invalidStructure();
+            boolean hasOutgoing = !adjacency.getOrDefault(node.key(), List.of()).isEmpty();
+            if (node.type() == NodeType.CHOICE && (node.whisky() != null || !hasOutgoing)) invalidStructure();
+            if (node.type() != NodeType.CHOICE && hasOutgoing && !StringUtils.hasText(node.promptKo())) invalidStructure();
         }
         validateWhiskies(nodes);
     }
@@ -443,16 +480,18 @@ public class TasteTreeService {
     }
 
     private void validateWhiskies(List<Node> nodes) {
-        Set<Long> registeredIds = nodes.stream().filter(node -> node.type() == NodeType.WHISKY)
-                .map(Node::whisky).filter(Objects::nonNull)
+        Set<Long> registeredIds = nodes.stream().map(Node::whisky).filter(Objects::nonNull)
                 .filter(w -> w.source() == WhiskySource.REGISTERED && w.spiritId() != null)
                 .map(Whisky::spiritId).collect(Collectors.toSet());
         Map<Long, Spirit> spirits = spiritRepository.findAllById(registeredIds).stream()
                 .collect(Collectors.toMap(Spirit::getId, Function.identity()));
         for (Node node : nodes) {
-            if (node.type() != NodeType.WHISKY) continue;
             Whisky whisky = node.whisky();
-            if (whisky == null || whisky.source() == null) invalidStructure();
+            if (whisky == null) {
+                if (node.type() == NodeType.WHISKY) invalidStructure();
+                continue;
+            }
+            if (whisky.source() == null) invalidStructure();
             if (whisky.source() == WhiskySource.REGISTERED) {
                 Spirit spirit = spirits.get(whisky.spiritId());
                 if (spirit == null || spirit.getStatus() != SpiritStatus.ACTIVE) invalidStructure();
@@ -462,7 +501,17 @@ public class TasteTreeService {
     }
 
     private TasteTreeContent normalize(TasteTreeContent content) {
-        return new TasteTreeContent(SCHEMA_VERSION, safeNodes(content), safeEdges(content));
+        List<Edge> edges = safeEdges(content);
+        Set<String> sourceKeys = edges.stream().map(Edge::sourceNodeKey).collect(Collectors.toSet());
+        List<Node> nodes = safeNodes(content).stream().map(node -> {
+            boolean acceptsPrompt = node.type() != NodeType.CHOICE && sourceKeys.contains(node.key());
+            return new Node(node.key(), node.type(), node.titleKo(), node.titleEn(), node.descriptionKo(),
+                    node.descriptionEn(), acceptsPrompt ? trimToNull(node.promptKo()) : null,
+                    acceptsPrompt ? trimToNull(node.promptEn()) : null,
+                    node.positionX(), node.positionY(), node.width(), node.height(), node.imageUrl(), node.imageFit(),
+                    node.imagePositionX(), node.imagePositionY(), node.imageScale(), node.imageHidden(), node.whisky());
+        }).toList();
+        return new TasteTreeContent(SCHEMA_VERSION, nodes, edges, null);
     }
 
     private List<Node> safeNodes(TasteTreeContent content) {

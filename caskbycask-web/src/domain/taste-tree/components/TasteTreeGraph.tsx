@@ -31,6 +31,7 @@ interface TasteTreeGraphProps {
   language?: 'ko' | 'en'
   selectedNodeKey?: string
   selectedEdgeKey?: string
+  invalidNodeKeys?: string[]
   onNodeClick?: (nodeKey: string) => void
   onEdgeClick?: (edgeKey: string) => void
   onPaneClick?: () => void
@@ -57,6 +58,7 @@ interface TreeNodeData extends Record<string, unknown> {
   node: TasteTreeNode
   isEn: boolean
   active: boolean
+  invalid: boolean
   editable: boolean
   onDeleteNode?: TasteTreeGraphProps['onDeleteNode']
 }
@@ -68,7 +70,7 @@ const readonlyHandleClass = '!h-2 !w-2 !border-0 !opacity-0'
 const emptyActiveKeys: string[] = []
 
 function TreeNodeCard({ data, selected }: NodeProps<TreeFlowNode>) {
-  const { node, isEn, active, editable, onDeleteNode } = data
+  const { node, isEn, active, invalid, editable, onDeleteNode } = data
   const { t } = useTranslation(undefined, { lng: isEn ? 'en' : 'ko' })
   const title = isEn ? node.titleEn || node.titleKo : node.titleKo
   const description = isEn ? node.descriptionEn || node.descriptionKo : node.descriptionKo
@@ -76,9 +78,36 @@ function TreeNodeCard({ data, selected }: NodeProps<TreeFlowNode>) {
   const image = node.imageHidden ? null : whisky?.imageOverrideUrl || node.imageUrl || whisky?.imageUrl
   const handleClass = editable ? editableHandleClass : readonlyHandleClass
 
+  if (node.type === 'CHOICE') {
+    const borderColor = invalid ? 'bg-red-600' : active ? 'bg-amber-600' : selected ? 'bg-stone-800' : 'bg-stone-300'
+    return (
+      <article aria-invalid={invalid || undefined} className={`group relative h-[160px] w-full overflow-visible transition-[filter] ${invalid ? 'drop-shadow-[0_0_12px_rgba(220,38,38,0.42)]' : active ? 'drop-shadow-[0_0_10px_rgba(217,119,6,0.38)]' : 'drop-shadow-[0_10px_18px_rgba(70,45,25,0.10)]'}`}>
+        <Handle id="point-top" type="source" position={Position.Top} isConnectable={editable} className={`${handleClass} !z-20`} />
+        <Handle id="point-left" type="source" position={Position.Left} isConnectable={editable} className={`${handleClass} !z-20`} />
+        <Handle id="point-right" type="source" position={Position.Right} isConnectable={editable} className={`${handleClass} !z-20`} />
+        <Handle id="point-bottom" type="source" position={Position.Bottom} isConnectable={editable} className={`${handleClass} !z-20`} />
+
+        <div className={`absolute inset-0 ${borderColor} [clip-path:polygon(50%_0%,100%_50%,50%_100%,0%_50%)]`} />
+        <div className="absolute inset-[2px] bg-white [clip-path:polygon(50%_0%,100%_50%,50%_100%,0%_50%)]" />
+        <div className="absolute inset-0 flex flex-col items-center justify-center px-[19%] py-8 text-center">
+          <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-[10px] font-black text-amber-800">?</span>
+          <h3 className="mt-2 w-full break-keep [overflow-wrap:anywhere] text-center text-sm font-black leading-5 text-stone-950">{title}</h3>
+          {description && <p className="mt-1.5 line-clamp-2 w-full break-keep [overflow-wrap:anywhere] text-[10px] font-semibold leading-4 text-stone-500">{description}</p>}
+        </div>
+
+        {invalid && <span aria-label={t('tasteTree.builder.invalidNode')} title={t('tasteTree.builder.invalidNode')} className="absolute -left-2 -top-2 z-30 flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-red-600 text-sm font-black text-white shadow-md">!</span>}
+
+        {editable && (
+          <button type="button" onClick={(event) => { event.stopPropagation(); onDeleteNode?.(node.key) }}
+            className="nodrag absolute -right-2 -top-2 z-30 flex h-7 w-7 items-center justify-center rounded-lg border border-red-200 bg-white text-base font-black text-red-600 shadow-md hover:bg-red-50" aria-label={t('tasteTree.builder.deleteNode')}>−</button>
+        )}
+      </article>
+    )
+  }
+
   return (
-    <article className={`group relative w-full min-h-[128px] overflow-visible rounded-lg border bg-white shadow-[0_10px_28px_rgba(70,45,25,0.09)] transition-colors ${
-      active ? 'border-amber-600 ring-4 ring-amber-100' : selected ? 'border-stone-800 ring-2 ring-stone-200' : 'border-stone-200'
+    <article aria-invalid={invalid || undefined} className={`group relative w-full min-h-[128px] overflow-visible rounded-lg border bg-white shadow-[0_10px_28px_rgba(70,45,25,0.09)] transition-colors ${
+      invalid ? 'border-red-500 ring-4 ring-red-100' : active ? 'border-amber-600 ring-4 ring-amber-100' : selected ? 'border-stone-800 ring-2 ring-stone-200' : 'border-stone-200'
     }`}>
       {node.type !== 'START' && <Handle id="point-top" type="source" position={Position.Top} isConnectable={editable} className={handleClass} />}
       <Handle id="point-left" type="source" position={Position.Left} isConnectable={editable} className={handleClass} />
@@ -105,6 +134,8 @@ function TreeNodeCard({ data, selected }: NodeProps<TreeFlowNode>) {
           </p>
         )}
       </div>
+
+      {invalid && <span aria-label={t('tasteTree.builder.invalidNode')} title={t('tasteTree.builder.invalidNode')} className="absolute -left-2 -top-2 z-20 flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-red-600 text-sm font-black text-white shadow-md">!</span>}
 
       {editable && node.type !== 'START' && (
         <button type="button" onClick={(event) => { event.stopPropagation(); onDeleteNode?.(node.key) }}
@@ -154,6 +185,7 @@ export default function TasteTreeGraph({
   language,
   selectedNodeKey,
   selectedEdgeKey,
+  invalidNodeKeys = emptyActiveKeys,
   onNodeClick,
   onEdgeClick,
   onPaneClick,
@@ -168,20 +200,21 @@ export default function TasteTreeGraph({
   const isEn = language ? language === 'en' : i18n.language === 'en'
   const activeNodes = useMemo(() => new Set(activeNodeKeys), [activeNodeKeys])
   const activeEdges = useMemo(() => new Set(activeEdgeKeys), [activeEdgeKeys])
+  const invalidNodes = useMemo(() => new Set(invalidNodeKeys), [invalidNodeKeys])
   const contentNodeMap = useMemo(() => new Map(content.nodes.map((node) => [node.key, node])), [content.nodes])
 
   const calculatedNodes = useMemo<TreeFlowNode[]>(() => content.nodes.map((node, index) => ({
     id: node.key,
     type: 'taste-tree',
     position: { x: node.positionX ?? 80 + (index % 4) * 280, y: node.positionY ?? 50 + Math.floor(index / 4) * 250 },
-    data: { node, isEn, active: activeNodes.has(node.key), editable, onDeleteNode },
+    data: { node, isEn, active: activeNodes.has(node.key), invalid: invalidNodes.has(node.key), editable, onDeleteNode },
     style: {
-      width: node.width ?? 220,
+      width: node.type === 'CHOICE' ? Math.max(node.width ?? 300, 280) : node.width ?? 220,
     },
     selected: selectedNodeKey === node.key,
     draggable: editable,
     connectable: editable,
-  })), [activeNodes, content.nodes, editable, isEn, onDeleteNode, selectedNodeKey])
+  })), [activeNodes, content.nodes, editable, invalidNodes, isEn, onDeleteNode, selectedNodeKey])
   const [nodes, setNodes, onNodesChange] = useNodesState<TreeFlowNode>(calculatedNodes)
 
   useEffect(() => {

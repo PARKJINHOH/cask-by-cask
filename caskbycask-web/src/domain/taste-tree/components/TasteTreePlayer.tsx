@@ -1,7 +1,9 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toPng } from 'html-to-image'
+import { tasteTreeApi } from '../api/tasteTreeApi'
 import type { TasteTreeContent, TasteTreeEdge, TasteTreeNode } from '../types/tasteTree.types'
 import TasteTreeGraph from './TasteTreeGraph'
 
@@ -21,6 +23,23 @@ function nodeImage(node: TasteTreeNode) {
   return node.whisky?.imageOverrideUrl || node.imageUrl || node.whisky?.imageUrl || null
 }
 
+function SpiritFactBanner({ fact, label, className = '' }: { fact: string; label: string; className?: string }) {
+  return <div className={`border-b border-orange-950 bg-orange-900 px-5 py-4 sm:px-7 ${className}`}>
+    <p className="text-[9px] font-black uppercase tracking-[0.14em] text-orange-200">{label}</p>
+    <p className="mt-1 break-keep text-sm font-bold leading-5 text-orange-50">{fact}</p>
+  </div>
+}
+
+function QuestionPreviewPanel({ title, description, label }: { title: string; description: string; label: string }) {
+  return <div className="flex h-full min-h-[360px] items-center justify-center bg-[#eeeae5] px-7 py-10 sm:min-h-[440px] lg:min-h-[520px]">
+    <div className="mx-auto max-w-xl text-center">
+      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-700">{label}</p>
+      <h2 className="mt-4 break-keep text-3xl font-black leading-tight text-stone-950 sm:text-4xl">{title}</h2>
+      {description && <p className="mt-5 break-keep text-sm font-semibold leading-6 text-stone-500 sm:text-base">{description}</p>}
+    </div>
+  </div>
+}
+
 export default function TasteTreePlayer({ content, language, treeTitle, creatorName }: TasteTreePlayerProps) {
   const { t, i18n } = useTranslation(undefined, language ? { lng: language } : undefined)
   const isEn = language ? language === 'en' : i18n.language === 'en'
@@ -33,6 +52,18 @@ export default function TasteTreePlayer({ content, language, treeTitle, creatorN
   const [captureState, setCaptureState] = useState<'idle' | 'saving' | 'error'>('idle')
   const graphCaptureRef = useRef<HTMLDivElement>(null)
   const current = nodeMap.get(currentKey)
+  const factsQuery = useQuery({
+    queryKey: ['taste-tree-facts'],
+    queryFn: () => tasteTreeApi.getFacts().then((response) => response.data.data ?? []),
+    enabled: !isEn,
+    staleTime: 5 * 60 * 1000,
+  })
+  const factsKo = useMemo(() => (factsQuery.data ?? []).map((fact) => fact.trim()).filter(Boolean), [factsQuery.data])
+  const [tipIndex, setTipIndex] = useState<number | null>(null)
+
+  useEffect(() => {
+    setTipIndex(factsKo.length > 0 ? Math.floor(Math.random() * factsKo.length) : null)
+  }, [factsKo])
 
   const outgoing = useMemo(() => content.edges
     .filter((edge) => edge.sourceNodeKey === currentKey)
@@ -137,7 +168,7 @@ export default function TasteTreePlayer({ content, language, treeTitle, creatorN
             <button type="button" onClick={captureFullTree} disabled={captureState === 'saving'} className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm font-bold text-amber-900 hover:bg-amber-100 disabled:cursor-wait disabled:opacity-60">
               {captureState === 'saving' ? t('tasteTree.captureSaving') : captureState === 'error' ? t('tasteTree.captureFailed') : t('tasteTree.capture')}
             </button>
-            <button type="button" onClick={restart} className="rounded-xl border border-stone-300 px-4 py-2.5 text-sm font-bold text-stone-700 hover:bg-stone-50">{t('tasteTree.restart')}</button>
+            <button type="button" onClick={restart} className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-bold text-red-700 hover:bg-red-100">{t('tasteTree.restart')}</button>
           </div>
         </header>
         <div ref={graphCaptureRef}>
@@ -152,10 +183,17 @@ export default function TasteTreePlayer({ content, language, treeTitle, creatorN
   const currentDescription = localized(current.descriptionKo, current.descriptionEn, isEn)
   const currentImage = nodeImage(current)
   const isMain = current.type === 'START'
+  const isQuestion = current.type === 'CHOICE'
+  const currentPrompt = isQuestion
+    ? ''
+    : localized(current.promptKo, current.promptEn, isEn)
+      || (isMain && !currentWhisky ? currentTitle : '')
+  const randomTip = isEn || tipIndex == null ? null : factsKo[tipIndex] ?? null
 
   if (!outgoing.length) {
     return (
       <section className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
+        {randomTip && <SpiritFactBanner fact={randomTip} label={t('tasteTree.spiritFact')} />}
         <header className="flex items-center gap-3 border-b border-amber-200 bg-amber-50 px-5 py-4 sm:px-7">
           <span aria-hidden="true" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-500 text-sm font-black text-white">✓</span>
           <p className="break-keep text-sm font-black text-amber-950 sm:text-base">{t('tasteTree.journeyComplete')}</p>
@@ -163,23 +201,24 @@ export default function TasteTreePlayer({ content, language, treeTitle, creatorN
 
         <div className="grid lg:grid-cols-[minmax(280px,0.72fr)_minmax(0,1.28fr)]">
           <aside className="min-w-0 border-b border-stone-200 bg-white lg:border-b-0 lg:border-r">
+            {isQuestion ? <QuestionPreviewPanel title={currentTitle} description={currentDescription} label={t('tasteTree.nodeTypes.CHOICE')} /> : <>
             <div className="flex min-h-[280px] items-center justify-center bg-[#eeeae5] p-5 sm:min-h-[360px] sm:p-7 lg:min-h-[420px]">
-              {isMain ? <div className="text-center">
+              {currentImage ? <img src={currentImage} alt={currentTitle} className="max-h-[380px] w-full object-contain" /> : isMain ? <div className="text-center">
                 <h2 className="break-keep text-2xl font-black leading-tight text-stone-950">{treeTitle || currentTitle}</h2>
                 {creatorName && <p className="mt-2 text-xs font-bold text-stone-500">{creatorName}</p>}
-              </div> : currentImage ? <img src={currentImage} alt={currentTitle} className="max-h-[380px] w-full object-contain" /> : <p className="text-center text-sm font-bold text-stone-400">{t('tasteTree.noImage')}</p>}
+              </div> : <p className="text-center text-sm font-bold text-stone-400">{t('tasteTree.noImage')}</p>}
             </div>
 
             <div className="p-5 sm:p-7">
-              <h2 className="break-keep text-2xl font-black leading-tight text-stone-950 sm:text-3xl">{currentTitle}</h2>
+              <h2 className="break-keep text-center text-2xl font-black leading-tight text-stone-950 sm:text-3xl">{currentTitle}</h2>
               {currentDescription && <p className="mt-3 break-keep text-sm leading-6 text-stone-500">{currentDescription}</p>}
-              {!isMain && <div className="mt-4 flex flex-wrap items-center gap-2">
+              {currentWhisky && <div className="mt-4 flex flex-wrap items-center gap-2">
                 {currentWhisky?.priceText && <span className="rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-black text-amber-900">{currentWhisky.priceText}</span>}
                 {!currentWhisky?.priceText && currentWhisky?.priceAmount != null && <span className="rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-black text-amber-900">{t('tasteTree.approxPrice', { price: new Intl.NumberFormat(isEn ? 'en-US' : 'ko-KR').format(currentWhisky.priceAmount), currency: currentWhisky.currencyCode || 'KRW' })}</span>}
-                {currentWhisky?.source === 'REGISTERED' && currentWhisky.spiritId && <Link to={`/spirits/${currentWhisky.spiritId}`} className="ui-button rounded-lg border border-stone-300 px-3 py-1.5 text-xs font-bold text-stone-700 hover:bg-stone-50">{t('tasteTree.viewDetail')}</Link>}
+                {currentWhisky?.source === 'REGISTERED' && currentWhisky.spiritId && <Link to={`/spirits/${currentWhisky.spiritId}`} target="_blank" rel="noopener noreferrer" className="ui-button rounded-lg border border-stone-300 px-3 py-1.5 text-xs font-bold text-stone-700 hover:bg-stone-50">{t('tasteTree.viewDetail')}</Link>}
               </div>}
-              <span className="mt-4 inline-flex rounded-lg bg-stone-100 px-3 py-1.5 text-xs font-bold text-stone-600">{t('tasteTree.stepCount', { count: edgePath.length })}</span>
             </div>
+            </>}
           </aside>
 
           <div className="min-w-0 bg-[#faf9f7] p-4 sm:p-6 lg:p-7">
@@ -196,7 +235,7 @@ export default function TasteTreePlayer({ content, language, treeTitle, creatorN
 
         <footer className="flex flex-wrap items-center gap-2 border-t border-stone-200 px-3 py-3 sm:px-5">
           <button type="button" onClick={back} disabled={nodePath.length <= 1} className="rounded-lg border border-stone-300 px-3 py-2 text-xs font-bold text-stone-700 hover:bg-stone-50 disabled:opacity-35 sm:px-4 sm:text-sm">{t('common.back')}</button>
-          <button type="button" onClick={restart} className="ml-auto rounded-lg px-2 py-2 text-xs font-bold text-stone-500 hover:bg-stone-50 sm:px-3 sm:text-sm">{t('tasteTree.restart')}</button>
+          <button type="button" onClick={restart} className="ml-auto rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-700 hover:bg-red-100 sm:text-sm">{t('tasteTree.restart')}</button>
         </footer>
       </section>
     )
@@ -204,48 +243,62 @@ export default function TasteTreePlayer({ content, language, treeTitle, creatorN
 
   return (
     <section className="grid overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm lg:grid-cols-[minmax(240px,0.72fr)_minmax(0,1.28fr)]">
-      <aside className="flex min-h-[240px] items-center justify-center border-b border-stone-200 bg-[#eeeae5] p-6 lg:min-h-[420px] lg:border-b-0 lg:border-r">
-        {isMain ? <div className="max-w-sm text-center lg:text-left">
-          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-700">{t('tasteTree.nodeTypes.START')}</p>
-          <h2 className="mt-3 break-keep text-3xl font-black leading-tight text-stone-950 sm:text-4xl">{treeTitle || currentTitle}</h2>
-          {creatorName && <p className="mt-3 text-xs font-bold text-stone-500">{creatorName}</p>}
-        </div> : currentImage ? <img src={currentImage} alt={currentTitle} className="max-h-[460px] w-full object-contain" /> : <p className="text-sm font-bold text-stone-400">{t('tasteTree.noImage')}</p>}
+      {randomTip && <SpiritFactBanner fact={randomTip} label={t('tasteTree.spiritFact')} className="lg:col-span-2" />}
+      <aside className="min-w-0 border-b border-stone-200 bg-white lg:border-b-0 lg:border-r">
+        {isQuestion ? <QuestionPreviewPanel title={currentTitle} description={currentDescription} label={t('tasteTree.nodeTypes.CHOICE')} /> : <>
+          <div className="flex min-h-[240px] items-center justify-center bg-[#eeeae5] p-6 sm:min-h-[320px] lg:min-h-[380px]">
+            {currentImage ? <img src={currentImage} alt={currentTitle} className="max-h-[340px] w-full object-contain" /> : isMain ? <div className="max-w-sm text-center">
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-700">{t('tasteTree.nodeTypes.START')}</p>
+              <h2 className="mt-3 break-keep text-3xl font-black leading-tight text-stone-950 sm:text-4xl">{treeTitle || currentTitle}</h2>
+              {creatorName && <p className="mt-3 text-xs font-bold text-stone-500">{creatorName}</p>}
+            </div> : <p className="text-sm font-bold text-stone-400">{t('tasteTree.noImage')}</p>}
+          </div>
+
+          <div className="p-5 sm:p-7">
+            <h2 className="break-keep text-center text-2xl font-black leading-tight text-stone-950 sm:text-3xl">{currentTitle}</h2>
+            {currentDescription && <p className="mt-3 break-keep text-sm leading-6 text-stone-500">{currentDescription}</p>}
+            {currentWhisky && <div className="mt-4 flex flex-wrap items-center gap-2">
+              {currentWhisky.priceText && <span className="rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-black text-amber-900">{currentWhisky.priceText}</span>}
+              {!currentWhisky.priceText && currentWhisky.priceAmount != null && <span className="rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-black text-amber-900">{t('tasteTree.approxPrice', { price: new Intl.NumberFormat(isEn ? 'en-US' : 'ko-KR').format(currentWhisky.priceAmount), currency: currentWhisky.currencyCode || 'KRW' })}</span>}
+              {currentWhisky.source === 'REGISTERED' && currentWhisky.spiritId && <Link to={`/spirits/${currentWhisky.spiritId}`} target="_blank" rel="noopener noreferrer" className="ui-button rounded-lg border border-stone-300 px-3 py-1.5 text-xs font-bold text-stone-700 hover:bg-stone-50">{t('tasteTree.viewDetail')}</Link>}
+            </div>}
+          </div>
+        </>}
       </aside>
 
       <div className="flex min-w-0 flex-col">
-        <header className="flex items-start justify-between gap-4 px-5 py-5 sm:px-7 sm:py-6">
-          <div className="min-w-0">
-            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-700">{t('tasteTree.nextChoice')}</p>
-            <h2 className="mt-1 break-keep text-2xl font-black text-stone-950">{currentTitle}</h2>
-            {currentDescription && <p className="mt-2 line-clamp-2 break-keep text-sm leading-6 text-stone-500">{currentDescription}</p>}
-            {!isMain && <div className="mt-3 flex flex-wrap items-center gap-2">
-              {currentWhisky?.priceText && <span className="rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-black text-amber-900">{currentWhisky.priceText}</span>}
-              {!currentWhisky?.priceText && currentWhisky?.priceAmount != null && <span className="rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-black text-amber-900">{t('tasteTree.approxPrice', { price: new Intl.NumberFormat(isEn ? 'en-US' : 'ko-KR').format(currentWhisky.priceAmount), currency: currentWhisky.currencyCode || 'KRW' })}</span>}
-              {currentWhisky?.source === 'REGISTERED' && currentWhisky.spiritId && <Link to={`/spirits/${currentWhisky.spiritId}`} className="ui-button rounded-lg border border-stone-300 px-3 py-1.5 text-xs font-bold text-stone-700 hover:bg-stone-50">{t('tasteTree.viewDetail')}</Link>}
-            </div>}
+        <div className="flex-1 bg-[#faf9f7] px-5 py-5 sm:px-7 sm:py-6">
+          {isMain && currentImage && <div className="mb-5 rounded-lg border border-stone-200 bg-white p-4 sm:p-5">
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-700">{t('tasteTree.nodeTypes.START')}</p>
+            <h2 className="mt-1.5 break-keep text-xl font-black leading-tight text-stone-950 sm:text-2xl">{treeTitle || currentTitle}</h2>
+            {creatorName && <p className="mt-2 text-xs font-bold text-stone-500">{creatorName}</p>}
+          </div>}
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-700">{t('tasteTree.nextChoice')}</p>
+              {currentPrompt && <h3 className="mt-1 break-keep text-lg font-black text-stone-950 sm:text-xl">{currentPrompt}</h3>}
+            </div>
           </div>
-          <span className="shrink-0 rounded-lg bg-stone-100 px-3 py-1.5 text-xs font-bold text-stone-600">{t('tasteTree.stepCount', { count: edgePath.length })}</span>
-        </header>
-
-        <div className="flex-1 border-t border-stone-200 bg-[#faf9f7] px-5 py-5 sm:px-7 sm:py-6">
-          <h3 className="text-base font-black text-stone-950">{t('tasteTree.chooseDirection')}</h3>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className={`mt-5 grid gap-3 ${outgoing.length > 2 ? 'sm:grid-cols-2' : ''}`}>
             {outgoing.map((edge) => {
               const description = localized(edge.descriptionKo, edge.descriptionEn, isEn)
               return <button key={edge.key} type="button" onClick={() => selectEdge(edge)}
-                className="group flex min-h-[92px] flex-col items-center justify-center rounded-lg border border-stone-200 bg-white px-5 py-4 text-center transition hover:-translate-y-0.5 hover:border-amber-400 hover:bg-amber-50 hover:shadow-md">
-                <span className="break-keep text-base font-black leading-6 text-stone-900 sm:text-lg">{localized(edge.labelKo, edge.labelEn, isEn)}</span>
-                {description && <span className="mt-1.5 line-clamp-2 break-keep text-center text-sm leading-5 text-stone-500">{description}</span>}
+                className="group flex min-h-[108px] items-center gap-4 rounded-lg border border-stone-200 bg-white px-5 py-4 text-left transition hover:-translate-y-0.5 hover:border-amber-400 hover:bg-amber-50 hover:shadow-md">
+                <span className="flex min-w-0 flex-1 flex-col justify-center">
+                  <span className="break-keep text-base font-black leading-6 text-stone-900 sm:text-lg">{localized(edge.labelKo, edge.labelEn, isEn)}</span>
+                  {description && <span className="mt-1 line-clamp-2 break-keep text-sm leading-5 text-stone-500">{description}</span>}
+                </span>
+                <svg className="my-auto h-5 w-5 shrink-0 text-stone-300 transition group-hover:translate-x-0.5 group-hover:text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="m9 18 6-6-6-6" /></svg>
               </button>
             })}
           </div>
-          <button type="button" onClick={() => setFullMap(true)} className="mt-3 w-full rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-xs font-black text-amber-900 transition hover:border-amber-400 hover:bg-amber-100">{t('tasteTree.stopHere')}</button>
+          <button type="button" onClick={() => setFullMap(true)} className="mt-3 w-full rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-xs font-black text-amber-900 transition hover:border-amber-400 hover:bg-amber-100">{t('tasteTree.stopHere')}</button>
         </div>
 
         <footer className="flex flex-wrap gap-2 border-t border-stone-200 px-5 py-3 sm:px-7">
           <button type="button" onClick={back} disabled={nodePath.length <= 1} className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-bold text-stone-700 hover:bg-stone-50 disabled:opacity-35">{t('common.back')}</button>
           <button type="button" onClick={() => setFullMap(true)} className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-bold text-amber-900 hover:bg-amber-100">{t('tasteTree.fullTree')}</button>
-          <button type="button" onClick={restart} className="ml-auto rounded-lg px-3 py-2 text-sm font-bold text-stone-500 hover:bg-stone-50">{t('tasteTree.restart')}</button>
+          <button type="button" onClick={restart} className="ml-auto rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-700 hover:bg-red-100">{t('tasteTree.restart')}</button>
         </footer>
       </div>
     </section>

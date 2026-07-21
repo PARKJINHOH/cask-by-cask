@@ -1,12 +1,16 @@
 package com.caskbycask.domain.tastetree.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 import java.math.BigDecimal;
 import java.util.List;
 
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public record TasteTreeContent(
         Integer schemaVersion,
         List<Node> nodes,
-        List<Edge> edges
+        List<Edge> edges,
+        List<String> tipsKo
 ) {
     public enum NodeType { START, CHOICE, INFO, WHISKY }
     public enum WhiskySource { REGISTERED, CUSTOM }
@@ -18,6 +22,8 @@ public record TasteTreeContent(
             String titleEn,
             String descriptionKo,
             String descriptionEn,
+            String promptKo,
+            String promptEn,
             Integer positionX,
             Integer positionY,
             Integer width,

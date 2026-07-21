@@ -116,7 +116,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/tier-list/images/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/tier-lists/share/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/taste-tree/images/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/taste-trees", "/api/taste-trees/official", "/api/taste-trees/share/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/taste-trees", "/api/taste-trees/official", "/api/taste-trees/facts", "/api/taste-trees/share/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/taste-trees/share/*/view").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/tier-list-drafts/claim").authenticated()
                         .requestMatchers("/api/tier-list-drafts", "/api/tier-list-drafts/images").permitAll()

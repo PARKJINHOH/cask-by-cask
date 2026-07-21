@@ -20,6 +20,7 @@ const labelClass = 'mb-2.5 block text-xs font-black text-stone-600'
 const fieldClass = 'block'
 const NODE_TITLE_MAX_LENGTH = 50
 const NODE_DESCRIPTION_MAX_LENGTH = 200
+const NODE_PROMPT_MAX_LENGTH = 120
 
 interface PendingNodeImage {
   file: File
@@ -49,11 +50,16 @@ function mergeNodeDescription(description?: string | null, legacyBody?: string |
 }
 
 function normalizeBuilderContent(content: TasteTreeContent): TasteTreeContent {
+  const sourceKeys = new Set(content.edges.map((edge) => edge.sourceNodeKey))
   return {
     ...content,
-    schemaVersion: 8,
+    schemaVersion: 9,
     nodes: content.nodes.map((node) => {
-      if (node.type === 'START') return node
+      const promptPatch = sourceKeys.has(node.key) && node.type !== 'CHOICE'
+        ? {}
+        : { promptKo: null, promptEn: null }
+      if (node.type === 'START') return { ...node, ...promptPatch }
+      if (node.type === 'CHOICE') return { ...node, ...promptPatch, imageUrl: null, imageHidden: true, whisky: null }
       const whisky: TasteTreeWhisky = node.whisky ?? {
         source: 'CUSTOM',
         nameKo: node.titleKo,
@@ -61,6 +67,7 @@ function normalizeBuilderContent(content: TasteTreeContent): TasteTreeContent {
       }
       return {
         ...node,
+        ...promptPatch,
         type: 'WHISKY',
         descriptionKo: mergeNodeDescription(node.descriptionKo, whisky.noteKo),
         descriptionEn: mergeNodeDescription(node.descriptionEn, whisky.noteEn),
@@ -89,12 +96,14 @@ function withoutPendingImagePreviews(content: TasteTreeContent, pendingImages: P
 
 function createInitialContent(t: TFunction): TasteTreeContent {
   return {
-    schemaVersion: 8,
+    schemaVersion: 9,
     nodes: [{
       key: 'start', type: 'START', titleKo: t('tasteTree.builder.defaultStartTitle', { lng: 'ko' }),
       titleEn: null,
       descriptionKo: t('tasteTree.builder.defaultStartDesc', { lng: 'ko' }),
-      descriptionEn: null, positionX: 420, positionY: 40,
+      descriptionEn: null,
+      promptKo: null,
+      promptEn: null, positionX: 420, positionY: 40,
     }],
     edges: [],
   }
@@ -135,14 +144,17 @@ function validateForPublish(content: TasteTreeContent) {
   }
   walk(starts[0].key)
   if (reachable.size !== content.nodes.length) return 'tasteTree.builder.errorUnreachable'
-  if (!content.nodes.some((node) => node.type !== 'START')) return 'tasteTree.builder.errorWhisky'
+  if (!content.nodes.some((node) => node.type !== 'START')) return 'tasteTree.builder.errorItem'
   for (const node of content.nodes) {
     if (!node.titleKo.trim()) return 'tasteTree.builder.errorNodeTitle'
-    if (node.type !== 'START') {
-      if (node.type !== 'WHISKY') return 'tasteTree.builder.errorWhisky'
+    if (node.type !== 'START' && node.type !== 'WHISKY' && node.type !== 'CHOICE') return 'tasteTree.builder.errorItem'
+    const hasOutgoing = content.edges.some((edge) => edge.sourceNodeKey === node.key)
+    if (node.type !== 'CHOICE' && hasOutgoing && !node.promptKo?.trim()) return 'tasteTree.builder.errorNodePromptRequired'
+    if (node.type === 'WHISKY') {
       if (!node.whisky) return 'tasteTree.builder.errorWhisky'
-      if (node.whisky.source === 'REGISTERED' && !node.whisky.spiritId) return 'tasteTree.builder.errorWhisky'
     }
+    if (node.type === 'CHOICE' && !content.edges.some((edge) => edge.sourceNodeKey === node.key)) return 'tasteTree.builder.errorQuestionOption'
+    if (node.whisky?.source === 'REGISTERED' && !node.whisky.spiritId) return 'tasteTree.builder.errorWhisky'
   }
   return null
 }
@@ -152,7 +164,56 @@ function validateNodeTextLengths(content: TasteTreeContent) {
     || (node.titleEn?.length ?? 0) > NODE_TITLE_MAX_LENGTH)) return 'tasteTree.builder.errorNodeTitleLength'
   if (content.nodes.some((node) => (node.descriptionKo?.length ?? 0) > NODE_DESCRIPTION_MAX_LENGTH
     || (node.descriptionEn?.length ?? 0) > NODE_DESCRIPTION_MAX_LENGTH)) return 'tasteTree.builder.errorNodeDescriptionLength'
+  if (content.nodes.some((node) => (node.promptKo?.length ?? 0) > NODE_PROMPT_MAX_LENGTH
+    || (node.promptEn?.length ?? 0) > NODE_PROMPT_MAX_LENGTH)) return 'tasteTree.builder.errorNodePromptLength'
   return null
+}
+
+function collectInvalidNodeKeys(content: TasteTreeContent) {
+  const invalid = new Set<string>()
+  const starts = content.nodes.filter((node) => node.type === 'START')
+  if (starts.length !== 1) {
+    const candidates = starts.length > 0 ? starts : content.nodes
+    candidates.forEach((node) => invalid.add(node.key))
+  }
+
+  const pairs = new Set<string>()
+  content.edges.forEach((edge) => {
+    const pair = `${edge.sourceNodeKey}->${edge.targetNodeKey}`
+    if (!edge.labelKo.trim() || pairs.has(pair)) invalid.add(edge.sourceNodeKey)
+    pairs.add(pair)
+  })
+
+  if (starts.length === 1) {
+    const reachable = new Set<string>()
+    const walk = (key: string) => {
+      if (reachable.has(key)) return
+      reachable.add(key)
+      content.edges.filter((edge) => edge.sourceNodeKey === key).forEach((edge) => walk(edge.targetNodeKey))
+    }
+    walk(starts[0].key)
+    content.nodes.filter((node) => !reachable.has(node.key)).forEach((node) => invalid.add(node.key))
+  }
+
+  if (!content.nodes.some((node) => node.type !== 'START')) starts.forEach((node) => invalid.add(node.key))
+
+  content.nodes.forEach((node) => {
+    const hasOutgoing = content.edges.some((edge) => edge.sourceNodeKey === node.key)
+    const textTooLong = node.titleKo.length > NODE_TITLE_MAX_LENGTH
+      || (node.titleEn?.length ?? 0) > NODE_TITLE_MAX_LENGTH
+      || (node.descriptionKo?.length ?? 0) > NODE_DESCRIPTION_MAX_LENGTH
+      || (node.descriptionEn?.length ?? 0) > NODE_DESCRIPTION_MAX_LENGTH
+      || (node.promptKo?.length ?? 0) > NODE_PROMPT_MAX_LENGTH
+      || (node.promptEn?.length ?? 0) > NODE_PROMPT_MAX_LENGTH
+    if (!node.titleKo.trim() || textTooLong) invalid.add(node.key)
+    if (node.type !== 'START' && node.type !== 'WHISKY' && node.type !== 'CHOICE') invalid.add(node.key)
+    if (node.type !== 'CHOICE' && hasOutgoing && !node.promptKo?.trim()) invalid.add(node.key)
+    if (node.type === 'WHISKY' && !node.whisky) invalid.add(node.key)
+    if (node.type === 'CHOICE' && !hasOutgoing) invalid.add(node.key)
+    if (node.whisky?.source === 'REGISTERED' && !node.whisky.spiritId) invalid.add(node.key)
+  })
+
+  return invalid
 }
 
 type TasteTreeBuilderMode = 'user' | 'admin'
@@ -176,7 +237,9 @@ export default function TasteTreeBuilder({ mode }: { mode: TasteTreeBuilderMode 
   const [publishing, setPublishing] = useState(false)
   const [spiritKeyword, setSpiritKeyword] = useState('')
   const [selectedEdgeKey, setSelectedEdgeKey] = useState<string | null>(null)
+  const [invalidNodeKeys, setInvalidNodeKeys] = useState<string[]>([])
   const [previewOpen, setPreviewOpen] = useState(false)
+  const [addMenuOpen, setAddMenuOpen] = useState(false)
   const [pendingImages, setPendingImages] = useState<PendingNodeImages>({})
   const pendingImagesRef = useRef<PendingNodeImages>({})
 
@@ -206,11 +269,33 @@ export default function TasteTreeBuilder({ mode }: { mode: TasteTreeBuilderMode 
     setInitializedId(tree.id)
   }, [detailQuery.data, initializedId])
 
+  useEffect(() => {
+    setContent((previous) => {
+      const sourceKeys = new Set(previous.edges.map((edge) => edge.sourceNodeKey))
+      let changed = false
+      const nodes = previous.nodes.map((node) => {
+        if (node.type === 'CHOICE' || sourceKeys.has(node.key) || (!node.promptKo && !node.promptEn)) return node
+        changed = true
+        return { ...node, promptKo: null, promptEn: null }
+      })
+      return changed ? { ...previous, nodes } : previous
+    })
+  }, [content.edges])
+
+  useEffect(() => {
+    if (invalidNodeKeys.length === 0) return
+    const currentlyInvalid = collectInvalidNodeKeys(content)
+    setInvalidNodeKeys((previous) => {
+      const next = previous.filter((key) => currentlyInvalid.has(key))
+      return next.length === previous.length && next.every((key, index) => key === previous[index]) ? previous : next
+    })
+  }, [content, invalidNodeKeys.length])
+
   const selected = content.nodes.find((node) => node.key === selectedKey) ?? content.nodes[0]
   const spiritQuery = useQuery({
     queryKey: ['taste-tree-builder-spirits', spiritKeyword],
     queryFn: () => spiritApi.autocomplete(spiritKeyword, undefined, true).then((response) => response.data.data ?? []),
-    enabled: selected?.type !== 'START' && spiritKeyword.trim().length >= 2,
+    enabled: (selected?.type === 'WHISKY' || (admin && selected?.type === 'START')) && spiritKeyword.trim().length >= 2,
   })
 
   const updateNode = (key: string, patch: Partial<TasteTreeNode>) => {
@@ -255,16 +340,18 @@ export default function TasteTreeBuilder({ mode }: { mode: TasteTreeBuilderMode 
     setSelectedEdgeKey(null)
   }
 
-  const addNode = () => {
+  const addNode = (type: 'WHISKY' | 'CHOICE') => {
     const anchor = selected ?? content.nodes[0]
     const key = `node-${crypto.randomUUID()}`
+    const question = type === 'CHOICE'
     const node: TasteTreeNode = {
-      key, type: 'WHISKY', titleKo: t('tasteTree.builder.newChoice', { lng: 'ko' }),
+      key, type, titleKo: t(question ? 'tasteTree.builder.newQuestion' : 'tasteTree.builder.newChoice', { lng: 'ko' }),
       titleEn: null,
       descriptionKo: '', descriptionEn: null,
       positionX: (anchor?.positionX ?? 120) + 280,
       positionY: (anchor?.positionY ?? 80) + 160,
-      whisky: {
+      width: question ? 300 : null,
+      whisky: question ? null : {
         source: 'CUSTOM',
         nameKo: t('tasteTree.builder.newChoice', { lng: 'ko' }),
         nameEn: null,
@@ -273,6 +360,7 @@ export default function TasteTreeBuilder({ mode }: { mode: TasteTreeBuilderMode 
     setContent((previous) => ({ ...previous, nodes: [...previous.nodes, node] }))
     setSelectedKey(key)
     setSelectedEdgeKey(null)
+    setAddMenuOpen(false)
   }
 
   const deleteNode = (key: string) => {
@@ -337,7 +425,7 @@ export default function TasteTreeBuilder({ mode }: { mode: TasteTreeBuilderMode 
     setSaving(true)
     try {
       const queuedImages = pendingImages
-      const contentWithoutPreviews = withoutPendingImagePreviews(content, queuedImages)
+      const contentWithoutPreviews = withoutPendingImagePreviews(normalizeBuilderContent(content), queuedImages)
       const response = currentId
         ? await (admin ? adminTasteTreeApi.saveDraft(currentId, payload(contentWithoutPreviews)) : tasteTreeApi.saveDraft(currentId, payload(contentWithoutPreviews)))
         : await (admin ? adminTasteTreeApi.create(payload(contentWithoutPreviews)) : tasteTreeApi.create(payload(contentWithoutPreviews)))
@@ -400,8 +488,18 @@ export default function TasteTreeBuilder({ mode }: { mode: TasteTreeBuilderMode 
   }
 
   const publish = async () => {
+    const invalidKeys = [...collectInvalidNodeKeys(content)]
     const error = validateForPublish(content)
-    if (error) { showToast(t(error), 'error'); return }
+    if (error) {
+      setInvalidNodeKeys(invalidKeys)
+      if (invalidKeys[0]) {
+        setSelectedKey(invalidKeys[0])
+        setSelectedEdgeKey(null)
+      }
+      showToast(t(error), 'error')
+      return
+    }
+    setInvalidNodeKeys([])
     setPublishing(true)
     try {
       const savedId = await save()
@@ -489,6 +587,7 @@ export default function TasteTreeBuilder({ mode }: { mode: TasteTreeBuilderMode 
             language={admin ? 'ko' : undefined}
             selectedNodeKey={selectedEdge ? undefined : selected?.key}
             selectedEdgeKey={selectedEdgeKey ?? undefined}
+            invalidNodeKeys={invalidNodeKeys}
             onNodeClick={(key) => { setSelectedKey(key); setSelectedEdgeKey(null) }}
             onEdgeClick={(key) => setSelectedEdgeKey(key)}
             onPaneClick={() => setSelectedEdgeKey(null)}
@@ -499,13 +598,20 @@ export default function TasteTreeBuilder({ mode }: { mode: TasteTreeBuilderMode 
             onDeleteEdge={deleteEdge}
             onUpdateEdge={updateEdge}
           />
-          <button
-            type="button"
-            onClick={addNode}
-            className="absolute right-4 top-4 z-10 rounded-lg bg-stone-900 px-4 py-2.5 text-sm font-black text-white shadow-lg hover:bg-stone-800"
-          >
-            {admin ? '주류 추가' : t('tasteTree.builder.addNode')}
-          </button>
+          <div className="absolute right-4 top-4 z-10">
+            <button
+              type="button"
+              onClick={() => setAddMenuOpen((open) => !open)}
+              aria-expanded={addMenuOpen}
+              className="rounded-lg bg-stone-900 px-4 py-2.5 text-sm font-black text-white shadow-lg hover:bg-stone-800"
+            >
+              {t('tasteTree.builder.addNode')} <span aria-hidden="true">+</span>
+            </button>
+            {addMenuOpen && <div className="mt-2 w-44 overflow-hidden rounded-lg border border-stone-200 bg-white p-1.5 shadow-xl">
+              <button type="button" onClick={() => addNode('WHISKY')} className="block w-full rounded-md px-3 py-2.5 text-left text-xs font-black text-stone-800 hover:bg-amber-50">{t('tasteTree.builder.addWhiskyNode')}</button>
+              <button type="button" onClick={() => addNode('CHOICE')} className="block w-full rounded-md px-3 py-2.5 text-left text-xs font-black text-stone-800 hover:bg-amber-50">{t('tasteTree.builder.addQuestion')}</button>
+            </div>}
+          </div>
         </div>
 
         <aside className="max-h-[720px] overflow-y-auto rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
@@ -524,15 +630,35 @@ export default function TasteTreeBuilder({ mode }: { mode: TasteTreeBuilderMode 
               </div>
               {selected.type !== 'START' && <button type="button" onClick={() => deleteNode(selected.key)} className="rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-bold text-red-600">{t('common.delete')}</button>}
             </div>
-            <div className="mt-7 space-y-7">
-              <label className={fieldClass}><span className={labelClass}>{t('tasteTree.builder.titleKo', { max: NODE_TITLE_MAX_LENGTH })} <RequiredMark /></span><input value={selected.titleKo} required aria-required="true" maxLength={NODE_TITLE_MAX_LENGTH} onChange={(event) => updateNode(selected.key, { titleKo: event.target.value })} className={inputClass} /></label>
-              <label className={fieldClass}><span className={labelClass}>{t('tasteTree.builder.descriptionKo', { max: NODE_DESCRIPTION_MAX_LENGTH })}</span><textarea value={selected.descriptionKo ?? ''} maxLength={NODE_DESCRIPTION_MAX_LENGTH} onChange={(event) => updateNode(selected.key, { descriptionKo: event.target.value })} rows={3} className={inputClass} /></label>
+            <div className="mt-6 space-y-4">
+              <section className="rounded-xl border border-stone-200 bg-stone-50/70 p-4">
+                <h3 className="text-sm font-black text-stone-900">{t(selected.type === 'CHOICE' ? 'tasteTree.builder.selectionPrompt' : 'tasteTree.builder.basicSection')}</h3>
+                <div className="mt-4 space-y-4">
+                  {selected.type === 'CHOICE' ? <input
+                    value={selected.titleKo}
+                    required
+                    aria-required="true"
+                    aria-label={t('tasteTree.builder.selectionPrompt')}
+                    maxLength={NODE_TITLE_MAX_LENGTH}
+                    onChange={(event) => updateNode(selected.key, { titleKo: event.target.value })}
+                    placeholder={t('tasteTree.builder.selectionPromptPlaceholder')}
+                    className={inputClass}
+                  /> : <>
+                    <label className={fieldClass}><span className={labelClass}>{t('tasteTree.builder.titleKo', { max: NODE_TITLE_MAX_LENGTH })} <RequiredMark /></span><input value={selected.titleKo} required aria-required="true" maxLength={NODE_TITLE_MAX_LENGTH} onChange={(event) => updateNode(selected.key, { titleKo: event.target.value })} className={inputClass} /></label>
+                    <label className={fieldClass}><span className={labelClass}>{t('tasteTree.builder.descriptionKo', { max: NODE_DESCRIPTION_MAX_LENGTH })}</span><textarea value={selected.descriptionKo ?? ''} maxLength={NODE_DESCRIPTION_MAX_LENGTH} onChange={(event) => updateNode(selected.key, { descriptionKo: event.target.value })} rows={3} className={inputClass} /></label>
+                  </>}
+                </div>
+              </section>
 
-              {selected.type !== 'START' && <WhiskyEditor node={selected} updateNode={updateNode} spiritKeyword={spiritKeyword} setSpiritKeyword={setSpiritKeyword} spirits={spiritQuery.data ?? []} isEn={isEn} t={t} />}
+              {(selected.type === 'WHISKY' || (admin && selected.type === 'START')) && <section className="rounded-xl border border-stone-200 bg-stone-50/70 p-4">
+                <h3 className="text-sm font-black text-stone-900">{t('tasteTree.builder.spiritSection')}</h3>
+                <div className="mt-4 space-y-6">
+                  <WhiskyEditor node={selected} updateNode={updateNode} spiritKeyword={spiritKeyword} setSpiritKeyword={setSpiritKeyword} spirits={spiritQuery.data ?? []} isEn={isEn} t={t} />
+                  <NodeImageEditor key={selected.key} node={selected} updateNode={updateNode} upload={upload} discardPendingImage={discardPendingImage} t={t} />
+                </div>
+              </section>}
 
-              <NodeImageEditor key={selected.key} node={selected} updateNode={updateNode} upload={upload} discardPendingImage={discardPendingImage} t={t} />
-
-              <div className="border-t border-stone-200 pt-4">
+              <section className="rounded-xl border border-stone-200 bg-stone-50/70 p-4">
                 <h3 className="text-sm font-black text-stone-900">{t('tasteTree.builder.connections')}</h3>
                 <div className="mt-3 space-y-3">
                   {outgoing.map((edge) => <div key={edge.key} className="rounded-lg border border-stone-200 p-3">
@@ -541,7 +667,20 @@ export default function TasteTreeBuilder({ mode }: { mode: TasteTreeBuilderMode 
                   </div>)}
                   {!outgoing.length && <p className="text-xs leading-5 text-stone-400">{t('tasteTree.builder.noConnections')}</p>}
                 </div>
-              </div>
+                {selected.type !== 'CHOICE' && <label className="mt-4 block">
+                  <span className={labelClass}>{t('tasteTree.builder.selectionPrompt')} {outgoing.length > 0 && <RequiredMark />}</span>
+                  <input
+                    value={selected.promptKo ?? ''}
+                    required={outgoing.length > 0}
+                    aria-required={outgoing.length > 0}
+                    disabled={outgoing.length === 0}
+                    maxLength={NODE_PROMPT_MAX_LENGTH}
+                    onChange={(event) => updateNode(selected.key, { promptKo: event.target.value })}
+                    placeholder={outgoing.length > 0 ? t('tasteTree.builder.selectionPromptPlaceholder') : ''}
+                    className={`${inputClass} disabled:cursor-not-allowed disabled:bg-stone-100 disabled:text-stone-400`}
+                  />
+                </label>}
+              </section>
             </div>
           </>}
         </aside>
