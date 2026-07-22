@@ -558,6 +558,8 @@ npm.cmd run seo:verify
 Remove-Item Env:SEO_VERIFY_BASE_URL, Env:SEO_VERIFY_ALL_URLS, Env:SEO_VERIFY_BROWSER -ErrorAction SilentlyContinue
 ```
 
+Codex 샌드박스나 일부 컨테이너처럼 Chrome OS sandbox가 허용되지 않아 Puppeteer 기동이 실패할 때만 `SEO_VERIFY_BROWSER_NO_SANDBOX=true`를 임시로 추가한다. 일반 PC·배포 러너에서는 설정하지 않으며, 신뢰할 수 없는 사이트를 대상으로 사용하지 않는다. 검사 후에는 `Remove-Item Env:SEO_VERIFY_BROWSER_NO_SANDBOX -ErrorAction SilentlyContinue`로 제거한다.
+
 ---
 
 ## 12. 장애 대응 (트러블슈팅)

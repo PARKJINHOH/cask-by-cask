@@ -12,6 +12,12 @@ import AdultBadge from '@/shared/components/AdultBadge'
 import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { formatBoardDate } from '@/shared/utils/format'
+import { buildBreadcrumbSchema, buildItemListSchema } from '@/shared/utils/seoSchema'
+import {
+  isBoardListNoindex,
+  metadataSearchParamsFromUrl,
+  type BoardListType,
+} from '@/shared/utils/seoIndexing'
 
 const PAGE_SIZE = 20
 
@@ -104,7 +110,7 @@ export default function BoardListPage({ boardType, title }: Props) {
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const isAll = !boardType
-  const boardPath = isAll ? 'all' : boardType === 'NOTICE' ? 'notice' : 'free'
+  const boardPath: BoardListType = isAll ? 'all' : boardType === 'NOTICE' ? 'notice' : 'free'
   const detailState = { returnTo: `${location.pathname}${location.search}` }
 
   const tabs: Tab[] = isAll
@@ -204,8 +210,10 @@ export default function BoardListPage({ boardType, title }: Props) {
     : boardType === 'NOTICE'
       ? t('board.seo.noticeDesc', 'CaskByCask 소식 게시판 — 위스키·와인·꼬냑 관련 소식과 이벤트 게시글.')
       : t('board.seo.freeDesc', 'CaskByCask 자유게시판 — 위스키, 와인, 꼬냑 등 주류에 대한 자유로운 의견과 정보 공유.')
-  const seoNoindex = !!keywordParam || pageParam > 0 || tabParam !== 'all'
-    || !!authorIdParam || !!commentAuthorIdParam
+  const seoNoindex = isBoardListNoindex(
+    boardPath,
+    metadataSearchParamsFromUrl(searchParams),
+  )
 
   // "전체" 게시판에서 게시글 클릭 시 원래 게시판 경로로 분기
   const getPostHref = (post: typeof posts[number]) => {
@@ -213,15 +221,35 @@ export default function BoardListPage({ boardType, title }: Props) {
     const sub = post.boardType === 'NOTICE' ? 'notice' : 'free'
     return `/community/${sub}/${post.id}`
   }
+  const seoCanonical = buildCanonical(`/ko/community/${boardPath}`)
+  const seoJsonLd = [
+    buildBreadcrumbSchema([
+      { name: t('menu.home', '홈'), path: '/ko' },
+      { name: seoTitle, path: `/ko/community/${boardPath}` },
+    ]),
+    {
+      '@type': 'CollectionPage' as const,
+      name: seoTitle,
+      description: seoDesc,
+      url: seoCanonical,
+    },
+    ...(posts.length > 0 ? [buildItemListSchema(
+      posts
+        .filter((post) => !post.isLocked && !post.adultOnly)
+        .map((post) => ({ name: post.title, path: `/ko${getPostHref(post)}` })),
+    )] : []),
+  ]
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       <SeoMeta
         title={seoTitle}
         description={seoDesc}
-        canonical={buildCanonical(`/ko/community/${boardPath}`)}
+        canonical={seoCanonical}
         locale={i18n.language === 'en' ? 'en_US' : 'ko_KR'}
         noindex={seoNoindex}
+        deferJsonLd={query.data == null && !seoNoindex}
+        jsonLd={i18n.language === 'en' ? undefined : seoJsonLd}
       />
 
       {/* 작성자/댓글 필터 배너 */}

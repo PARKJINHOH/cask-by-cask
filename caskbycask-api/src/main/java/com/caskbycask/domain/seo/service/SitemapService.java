@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.net.URI;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -249,7 +250,7 @@ public class SitemapService {
     }
 
     private void appendSitemap(StringBuilder sb, String path) {
-        sb.append("  <sitemap><loc>").append(escape(normalizedSiteUrl() + path)).append("</loc></sitemap>\n");
+        sb.append("  <sitemap><loc>").append(serializeLoc(normalizedSiteUrl() + path)).append("</loc></sitemap>\n");
     }
 
     private void appendMultilingualUrl(StringBuilder sb, String path, LocalDateTime lastmod) {
@@ -265,7 +266,7 @@ public class SitemapService {
 
     private void appendUrl(StringBuilder sb, String loc, LocalDateTime lastmod) {
         sb.append("  <url>\n");
-        sb.append("    <loc>").append(escape(loc)).append("</loc>\n");
+        sb.append("    <loc>").append(serializeLoc(loc)).append("</loc>\n");
         if (lastmod != null) {
             sb.append("    <lastmod>")
                     .append(lastmod.atZone(SERVICE_ZONE).format(W3C))
@@ -276,6 +277,10 @@ public class SitemapService {
 
     private String normalizedSiteUrl() {
         return siteUrl.endsWith("/") ? siteUrl.substring(0, siteUrl.length() - 1) : siteUrl;
+    }
+
+    private String serializeLoc(String loc) {
+        return escape(URI.create(loc).toASCIIString());
     }
 
     private String escape(String value) {

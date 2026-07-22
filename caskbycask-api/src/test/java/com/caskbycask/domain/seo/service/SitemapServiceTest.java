@@ -98,11 +98,12 @@ class SitemapServiceTest {
         String ko = sitemapService.generateSpiritSitemap("ko", 0);
         String en = sitemapService.generateSpiritSitemap("en", 0);
 
-        assertThat(ko).contains("/ko/spirits/295-탐두");
-        assertThat(ko).contains("/ko/spirits/296-탐두-2026년-말띠-에디션");
+        assertThat(ko).contains("/ko/spirits/295-%ED%83%90%EB%91%90");
+        assertThat(ko).contains("/ko/spirits/296-%ED%83%90%EB%91%90-2026%EB%85%84-%EB%A7%90%EB%9D%A0-%EC%97%90%EB%94%94%EC%85%98");
         assertThat(en).contains("/en/spirits/295-tamdhu");
         assertThat(en).contains("/en/spirits/296-tamdhu-year-of-the-horse-2026");
         assertThat(ko).contains("<lastmod>2026-07-21T12:30:00+09:00</lastmod>");
+        assertThat(ko).doesNotContain("탐두", "말띠", "에디션");
         assertThat(ko).doesNotContain("/ko/spirits/295</loc>");
     }
 

@@ -6,6 +6,8 @@ import Pagination from '@/shared/components/Pagination'
 import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import type { ByobStatus } from '@/domain/byob/types/byob.types'
+import { isBoardListNoindex, metadataSearchParamsFromUrl } from '@/shared/utils/seoIndexing'
+import { buildBreadcrumbSchema, buildItemListSchema } from '@/shared/utils/seoSchema'
 
 const PAGE_SIZE = 12
 
@@ -57,15 +59,38 @@ export default function ByobListPage() {
 
   const items = data?.content ?? []
   const totalPages = data?.totalPages ?? 0
+  const seoTitle = t('byob.title')
+  const seoDescription = t('byob.subtitle')
+  const seoCanonical = buildCanonical('/ko/community/byob')
+  const seoNoindex = isBoardListNoindex('byob', metadataSearchParamsFromUrl(searchParams))
+  const seoJsonLd = [
+    buildBreadcrumbSchema([
+      { name: t('menu.home', '홈'), path: '/ko' },
+      { name: seoTitle, path: '/ko/community/byob' },
+    ]),
+    {
+      '@type': 'CollectionPage' as const,
+      name: seoTitle,
+      description: seoDescription,
+      url: seoCanonical,
+    },
+    ...(items.length > 0 ? [buildItemListSchema(
+      items
+        .filter((item) => item.status !== 'CANCELLED')
+        .map((item) => ({ name: item.title, path: `/ko/community/byob/${item.id}` })),
+    )] : []),
+  ]
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       <SeoMeta
-        title={t('byob.title')}
-        description={t('byob.subtitle')}
-        canonical={buildCanonical('/ko/community/byob')}
+        title={seoTitle}
+        description={seoDescription}
+        canonical={seoCanonical}
         locale={i18n.language === 'en' ? 'en_US' : 'ko_KR'}
-        noindex={page > 0 || status !== 'ALL'}
+        noindex={seoNoindex}
+        deferJsonLd={data == null && !seoNoindex}
+        jsonLd={i18n.language === 'en' ? undefined : seoJsonLd}
       />
 
       <div className="flex items-center justify-between mb-6">

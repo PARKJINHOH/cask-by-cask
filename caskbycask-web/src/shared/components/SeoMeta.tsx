@@ -19,6 +19,7 @@ interface Props {
   keywords?: string
   noindex?: boolean
   deferIndexState?: boolean
+  deferJsonLd?: boolean
   jsonLd?: JsonLd | JsonLd[]
   locale?: 'ko_KR' | 'en_US'
   alternateKo?: string
@@ -82,6 +83,34 @@ function syncRouteJsonLd(jsonLd: JsonLd | JsonLd[] | undefined, noindex: boolean
   matches.forEach((duplicate) => duplicate.remove())
 }
 
+function preserveMatchingCollectionJsonLd(canonical?: string) {
+  const matches = Array.from(document.querySelectorAll<HTMLScriptElement>(
+    'script[data-cbc-route-jsonld="true"]',
+  ))
+  let kept = false
+  for (const element of matches) {
+    let matchesCanonical = false
+    try {
+      const parsed = JSON.parse(element.textContent || '{}') as { '@graph'?: unknown[] }
+      const graph = Array.isArray(parsed['@graph']) ? parsed['@graph'] : [parsed]
+      matchesCanonical = Boolean(canonical) && graph.some((node) => {
+        if (!node || typeof node !== 'object') return false
+        const schema = node as Record<string, unknown>
+        return schema['@type'] === 'CollectionPage'
+          && (schema.url === canonical || schema['@id'] === canonical)
+      })
+    } catch {
+      matchesCanonical = false
+    }
+
+    if (matchesCanonical && !kept) {
+      kept = true
+    } else {
+      element.remove()
+    }
+  }
+}
+
 /**
  * Next.js가 직접 요청의 초기 SEO 태그를 생성하고, 이 컴포넌트는 React Router의
  * 클라이언트 이동 시 동일 태그를 교체한다. React 19 head hoisting으로 태그를
@@ -97,6 +126,7 @@ export default function SeoMeta({
   keywords,
   noindex = false,
   deferIndexState = false,
+  deferJsonLd = false,
   jsonLd,
   locale = 'ko_KR',
   alternateKo,
@@ -132,7 +162,10 @@ export default function SeoMeta({
     upsertMeta('name', 'twitter:title', fullTitle)
     upsertMeta('name', 'twitter:description', description)
     upsertMeta('name', 'twitter:image', ogImage)
-    if (!deferIndexState) syncRouteJsonLd(jsonLd, noindex)
+    if (!deferIndexState) {
+      if (deferJsonLd) preserveMatchingCollectionJsonLd(canonical)
+      else syncRouteJsonLd(jsonLd, noindex)
+    }
   }, [
     alternateDefault,
     alternateEn,
@@ -140,6 +173,7 @@ export default function SeoMeta({
     canonical,
     description,
     deferIndexState,
+    deferJsonLd,
     jsonLd,
     keywords,
     locale,

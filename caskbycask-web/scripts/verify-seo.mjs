@@ -3,6 +3,7 @@ const canonicalOrigin = (process.env.SEO_VERIFY_CANONICAL_ORIGIN
   || (baseUrl.includes('localhost') ? 'https://www.caskbycask.net' : baseUrl)).replace(/\/+$/, '')
 const verifyAllSitemapUrls = process.env.SEO_VERIFY_ALL_URLS === 'true'
 const verifyBrowser = process.env.SEO_VERIFY_BROWSER !== 'false'
+const browserNoSandbox = process.env.SEO_VERIFY_BROWSER_NO_SANDBOX === 'true'
 const sitemapRequestDelayMs = process.env.SEO_VERIFY_REQUEST_DELAY_MS === undefined
   ? (verifyAllSitemapUrls ? 1000 : 0)
   : Number(process.env.SEO_VERIFY_REQUEST_DELAY_MS)
@@ -10,6 +11,19 @@ const representativeSpiritIds = (process.env.SEO_VERIFY_SPIRIT_IDS || '295,296,3
   .split(',')
   .map((value) => value.trim())
   .filter(Boolean)
+const boardSeoCases = [
+  {
+    path: '/ko/community/free',
+    canonical: '/ko/community/free',
+    noindex: false,
+    blockedClientApiPath: '/api/posts',
+    requireItemList: true,
+  },
+  { path: '/ko/community/free?sort=BEST', canonical: '/ko/community/free', noindex: true },
+  { path: '/ko/community/free?prefix=1', canonical: '/ko/community/free', noindex: true },
+  { path: '/ko/notices?page=1', canonical: '/ko/notices', noindex: true },
+  { path: '/ko/community/byob?page=00', canonical: '/ko/community/byob', noindex: true },
+]
 
 function invariant(condition, message) {
   if (!condition) throw new Error(message)
@@ -80,6 +94,8 @@ async function verifyHtml(path, { canonical, noindex = false, h1 = true, jsonLd 
 async function verifyMissingRoute(path) {
   const { response, body } = await get(path, 'manual')
   invariant(response.status === 404, `${path}: expected 404, got ${response.status}`)
+  invariant(count(body, /<meta\b[^>]*\bname=["']robots["']/gi) === 1,
+    `${path}: 404 response must have exactly one robots meta`)
   invariant(/noindex/i.test(robotsOf(body)), `${path}: 404 response must be noindex`)
 }
 
@@ -111,6 +127,8 @@ async function verifySitemaps() {
   invariant(childSitemaps.length > 0, '/sitemap.xml: no child sitemap found')
   invariant(new Set(childSitemaps).size === childSitemaps.length,
     '/sitemap.xml: duplicate child sitemap found')
+  invariant(childSitemaps.every((url) => !/[^\x00-\x7F]/.test(url)),
+    '/sitemap.xml: child sitemap URLs must be ASCII percent-encoded')
 
   const urls = []
   for (const child of childSitemaps) {
@@ -123,7 +141,10 @@ async function verifySitemaps() {
       `${child}: Cache-Control max-age is missing`)
     const childResponse = await fetch(childTarget, { redirect: 'manual' })
     invariant(childResponse.status === 200, `${child}: GET expected 200, got ${childResponse.status}`)
-    urls.push(...locs(await childResponse.text()))
+    const childUrls = locs(await childResponse.text())
+    invariant(childUrls.every((url) => !/[^\x00-\x7F]/.test(url)),
+      `${child}: sitemap URLs must be ASCII percent-encoded`)
+    urls.push(...childUrls)
   }
   invariant(new Set(urls).size === urls.length, 'duplicate URL found across sitemap shards')
 
@@ -178,6 +199,15 @@ async function verifySpiritRedirects(sitemapUrls) {
     })
     invariant(canonical, `representative spirit ${id}: KO canonical is missing from sitemap`)
     const canonicalPath = new URL(canonical).pathname
+    const canonicalEn = sitemapUrls.find((url) => {
+      const pathname = new URL(url).pathname
+      return new RegExp(`^/en/spirits/${id}-`).test(pathname)
+    })
+    invariant(canonicalEn, `representative spirit ${id}: EN canonical is missing from sitemap`)
+
+    await verifyHtml(canonicalPath, { canonical: canonicalPath })
+    const canonicalPathEn = new URL(canonicalEn).pathname
+    await verifyHtml(canonicalPathEn, { canonical: canonicalPathEn })
 
     for (const sourcePath of [`/ko/spirits/${id}`, `/ko/spirits/${id}-seo-check-wrong-slug`]) {
       const response = await fetch(`${baseUrl}${sourcePath}`, { redirect: 'manual' })
@@ -194,9 +224,29 @@ async function verifySpiritRedirects(sitemapUrls) {
 async function verifyRenderedHtml(categoryStates = []) {
   if (!verifyBrowser) return
   const { default: puppeteer } = await import('puppeteer')
-  const browser = await puppeteer.launch({ headless: true })
+  // 파이프 전송은 검증용 브라우저가 로컬 디버깅 포트를 열지 않으며,
+  // 제한된 Windows/Linux 실행 환경에서도 안정적으로 기동된다.
+  const browser = await puppeteer.launch({
+    headless: true,
+    pipe: true,
+    args: browserNoSandbox ? ['--no-sandbox', '--disable-gpu'] : [],
+  })
   try {
     const page = await browser.newPage()
+    let blockedClientApiPath = null
+    await page.setRequestInterception(true)
+    page.on('request', (request) => {
+      const url = request.url()
+      if (blockedClientApiPath && new URL(url).pathname === blockedClientApiPath) {
+        request.abort()
+        return
+      }
+      if (url.startsWith(`${baseUrl}/`) || url.startsWith('data:') || url.startsWith('blob:')) {
+        request.continue()
+      } else {
+        request.abort()
+      }
+    })
     const representativeCategories = [
       categoryStates.find(({ hasContent }) => hasContent),
       categoryStates.find(({ hasContent }) => !hasContent),
@@ -204,17 +254,61 @@ async function verifyRenderedHtml(categoryStates = []) {
       `/ko/spirits?category=${category}`,
       !hasContent,
     ])
-    for (const [path, noindex] of [
+    for (const [path, noindex, blockedApi = null, requireItemList = false] of [
       ['/ko/spirits', false],
       ['/ko/spirits?sort=SCORE_DESC', true],
       ...representativeCategories,
+      ...boardSeoCases.map(({ path, noindex, blockedClientApiPath: blockedApi, requireItemList }) => [
+        path,
+        noindex,
+        blockedApi ?? null,
+        requireItemList ?? false,
+      ]),
     ]) {
-      const response = await page.goto(`${baseUrl}${path}`, { waitUntil: 'domcontentloaded' })
+      blockedClientApiPath = blockedApi
+      let response
+      try {
+        response = await page.goto(`${baseUrl}${path}`, { waitUntil: 'domcontentloaded' })
+      } catch (error) {
+        throw new Error(`${path}: rendered navigation failed: ${error.message}`)
+      }
       invariant(response?.status() === 200, `${path}: rendered request must return 200`)
-      await page.waitForFunction(
-        () => !document.querySelector('[data-seo-fallback]') && document.querySelectorAll('h1').length > 0,
-        { timeout: 15_000 },
-      )
+      try {
+        await page.waitForFunction(
+          () => !document.querySelector('[data-seo-fallback]') && document.querySelectorAll('h1').length > 0,
+          { timeout: 15_000 },
+        )
+      } catch (error) {
+        throw new Error(`${path}: client did not replace the SEO fallback: ${error.message}`)
+      }
+      try {
+        await page.waitForFunction((expectedNoindex, expectedItemList) => {
+          const robots = document.querySelector('meta[name="robots"]')?.getAttribute('content') || ''
+          const jsonLd = Array.from(document.querySelectorAll('script[data-cbc-route-jsonld="true"]'))
+            .map((element) => element.textContent || '')
+          return document.querySelectorAll('title').length === 1
+            && document.querySelectorAll('meta[name="description"]').length === 1
+            && document.querySelectorAll('meta[name="robots"]').length === 1
+            && document.querySelectorAll('link[rel="canonical"]').length === 1
+            && document.querySelectorAll('h1').length === 1
+            && document.querySelectorAll('script[data-cbc-route-jsonld="true"]').length === (expectedNoindex ? 0 : 1)
+            && /noindex/i.test(robots) === expectedNoindex
+            && (!expectedItemList || jsonLd.some((value) => value.includes('"@type":"ItemList"')))
+        }, { timeout: 15_000 }, noindex, requireItemList ?? false)
+      } catch (error) {
+        const unstableState = await page.evaluate(() => ({
+          title: document.querySelectorAll('title').length,
+          description: document.querySelectorAll('meta[name="description"]').length,
+          robots: document.querySelectorAll('meta[name="robots"]').length,
+          canonical: document.querySelectorAll('link[rel="canonical"]').length,
+          h1: document.querySelectorAll('h1').length,
+          jsonLd: document.querySelectorAll('script[data-cbc-route-jsonld="true"]').length,
+          itemList: Array.from(document.querySelectorAll('script[data-cbc-route-jsonld="true"]'))
+            .some((element) => (element.textContent || '').includes('"@type":"ItemList"')),
+          robotsContent: document.querySelector('meta[name="robots"]')?.getAttribute('content') || '',
+        }))
+        throw new Error(`${path}: rendered SEO did not stabilize: ${JSON.stringify(unstableState)} (${error.message})`)
+      }
       const state = await page.evaluate(() => ({
         title: document.querySelectorAll('title').length,
         description: document.querySelectorAll('meta[name="description"]').length,
@@ -222,14 +316,19 @@ async function verifyRenderedHtml(categoryStates = []) {
         canonical: document.querySelectorAll('link[rel="canonical"]').length,
         h1: document.querySelectorAll('h1').length,
         jsonLd: document.querySelectorAll('script[data-cbc-route-jsonld="true"]').length,
+        itemList: Array.from(document.querySelectorAll('script[data-cbc-route-jsonld="true"]'))
+          .some((element) => (element.textContent || '').includes('"@type":"ItemList"')),
         robotsContent: document.querySelector('meta[name="robots"]')?.getAttribute('content') || '',
       }))
-      invariant(state.title === 1, `${path}: rendered title must appear exactly once`)
-      invariant(state.description === 1, `${path}: rendered description must appear exactly once`)
-      invariant(state.robots === 1, `${path}: rendered robots must appear exactly once`)
-      invariant(state.canonical === 1, `${path}: rendered canonical must appear exactly once`)
-      invariant(state.h1 === 1, `${path}: rendered H1 must appear exactly once`)
-      invariant(state.jsonLd === (noindex ? 0 : 1), `${path}: unexpected rendered JSON-LD count`)
+      invariant(state.title === 1, `${path}: rendered title count must be 1, got ${state.title}`)
+      invariant(state.description === 1, `${path}: rendered description count must be 1, got ${state.description}`)
+      invariant(state.robots === 1, `${path}: rendered robots count must be 1, got ${state.robots}`)
+      invariant(state.canonical === 1, `${path}: rendered canonical count must be 1, got ${state.canonical}`)
+      invariant(state.h1 === 1, `${path}: rendered H1 count must be 1, got ${state.h1}`)
+      invariant(state.jsonLd === (noindex ? 0 : 1),
+        `${path}: unexpected rendered JSON-LD count ${state.jsonLd}`)
+      invariant(!requireItemList || state.itemList,
+        `${path}: SSR ItemList must survive while the client list API is unavailable`)
       invariant(noindex === /noindex/i.test(state.robotsContent),
         `${path}: unexpected rendered robots ${state.robotsContent}`)
     }
@@ -246,11 +345,15 @@ async function main() {
     noindex: true,
     jsonLd: false,
   })
+  for (const { path, canonical, noindex } of boardSeoCases) {
+    await verifyHtml(path, { canonical, noindex, jsonLd: !noindex })
+  }
   for (const path of [
     '/ko/__seo_release_check_missing__',
     '/ko/notices/9223372036854775807',
     '/ko/community/free/9223372036854775807',
     '/ko/community/byob/9223372036854775807',
+    '/ko/spirits/9223372036854775807',
     '/ko/tier-lists/__seo_release_check_missing__',
     '/ko/taste-trees/t/__seo_release_check_missing__',
     '/ko/users/9223372036854775807/bottles',
@@ -266,6 +369,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(error.message)
+  console.error(error.stack || error.message)
   process.exitCode = 1
 })

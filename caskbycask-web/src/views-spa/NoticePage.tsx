@@ -7,6 +7,8 @@ import type { NoticeCategory } from '@/domain/notice/types/notice.types'
 import Pagination from '@/shared/components/Pagination'
 import RecommendBadge from '@/shared/components/RecommendBadge'
 import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
+import { isBoardListNoindex, metadataSearchParamsFromUrl } from '@/shared/utils/seoIndexing'
+import { buildBreadcrumbSchema, buildItemListSchema } from '@/shared/utils/seoSchema'
 
 const PAGE_SIZE = 20
 
@@ -71,6 +73,25 @@ export default function NoticePage() {
 
   const notices = data?.content ?? []
   const totalPages = data?.totalPages ?? 0
+  const seoTitle = t('menu.notice', '공지사항')
+  const seoDescription = t('notice.seoDesc', 'CaskByCask의 새로운 소식, 업데이트, 이벤트, 점검 안내 등 공지사항을 확인하세요.')
+  const seoCanonical = buildCanonical('/ko/notices')
+  const seoNoindex = isBoardListNoindex('notices', metadataSearchParamsFromUrl(searchParams))
+  const seoJsonLd = [
+    buildBreadcrumbSchema([
+      { name: t('menu.home', '홈'), path: '/ko' },
+      { name: seoTitle, path: '/ko/notices' },
+    ]),
+    {
+      '@type': 'CollectionPage' as const,
+      name: seoTitle,
+      description: seoDescription,
+      url: seoCanonical,
+    },
+    ...(notices.length > 0 ? [buildItemListSchema(
+      notices.map((notice) => ({ name: notice.title, path: `/ko/notices/${notice.id}` })),
+    )] : []),
+  ]
 
   // 페이지 진입 시 최신 공지 id를 localStorage에 기록
   useEffect(() => {
@@ -83,17 +104,19 @@ export default function NoticePage() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       <SeoMeta
-        title={t('menu.notice', '공지사항')}
-        description={t('notice.seoDesc', 'CaskByCask의 새로운 소식, 업데이트, 이벤트, 점검 안내 등 공지사항을 확인하세요.')}
-        canonical={buildCanonical('/ko/notices')}
+        title={seoTitle}
+        description={seoDescription}
+        canonical={seoCanonical}
         locale={i18n.language === 'en' ? 'en_US' : 'ko_KR'}
-        noindex={Boolean(categoryParam)}
+        noindex={seoNoindex}
+        deferJsonLd={data == null && !seoNoindex}
         keywords={t('notice.seoKeywords', 'CaskByCask 공지사항, 위스키 커뮤니티 소식, 업데이트, 이벤트')}
+        jsonLd={i18n.language === 'en' ? undefined : seoJsonLd}
       />
 
       {/* 페이지 헤더 */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-neutral-900">{t('menu.notice', '공지사항')}</h1>
+        <h1 className="text-2xl font-bold text-neutral-900">{seoTitle}</h1>
       </div>
 
       {/* 카테고리 탭 */}

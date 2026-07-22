@@ -4,6 +4,14 @@ import {
   isSpiritSeoCategory,
   type SpiritSeoCategory,
 } from '@/domain/spirit/config/spiritSeo'
+import {
+  isBoardListNoindex,
+  type BoardListType,
+  type MetadataSearchParams,
+} from '@/shared/utils/seoIndexing'
+
+export { isBoardListNoindex }
+export type { BoardListType, MetadataSearchParams }
 
 const API_URL = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
 const SITE_URL = 'https://www.caskbycask.net'
@@ -575,9 +583,6 @@ function localLabels(lang: 'ko' | 'en') {
       }
 }
 
-export type BoardListType = 'all' | 'notice' | 'free' | 'byob' | 'notices'
-export type MetadataSearchParams = Record<string, string | string[] | undefined>
-
 interface ParsedPath {
   type: 'home' | 'spirits-list' | 'spirit-detail' | 'community-list' | 'community-detail'
     | 'notices-list' | 'notice-detail' | 'byob-detail' | 'noindex' | 'default' | 'not-found'
@@ -853,34 +858,6 @@ const BOARD_LIST_CONFIG: Record<BoardListType, {
       en: 'Read CaskByCask service updates, events, maintenance schedules, and important notices.',
     },
   },
-}
-
-function firstSearchParam(value: string | string[] | undefined): string | undefined {
-  return Array.isArray(value) ? value[0] : value
-}
-
-export function isBoardListNoindex(
-  board: BoardListType,
-  searchParams: MetadataSearchParams,
-): boolean {
-  const page = firstSearchParam(searchParams.page)
-  if (page != null && page !== '' && page !== '0') return true
-
-  if (board === 'notices') {
-    return Boolean(firstSearchParam(searchParams.category))
-  }
-  if (board === 'byob') {
-    const status = firstSearchParam(searchParams.status)
-    return Boolean(status && status !== 'ALL')
-  }
-
-  const tab = firstSearchParam(searchParams.tab)
-  const sort = firstSearchParam(searchParams.sort)
-  if (tab && tab !== 'all') return true
-  if (sort && sort !== 'LATEST') return true
-
-  return ['keyword', 'prefix', 'authorId', 'commentAuthorId', 'authorNickname', 'distilleryTagId']
-    .some((key) => Boolean(firstSearchParam(searchParams[key])))
 }
 
 function buildRobots(index: boolean): Metadata['robots'] {
@@ -1508,6 +1485,7 @@ export async function getSpiritDetailMetadata(id: string, lang: 'ko' | 'en' | nu
     return {
       title,
       description,
+      robots: buildRobots(true),
       alternates: {
         canonical,
         languages: {
@@ -1548,6 +1526,7 @@ export async function getSpiritDetailMetadata(id: string, lang: 'ko' | 'en' | nu
       return {
         title: '주류 상세 정보 및 리뷰 (Specs & Reviews) — CaskByCask',
         description: 'CaskByCask에서 각 주류의 상세 정보와 평점 리뷰를 확인해 보세요. Explore detailed specifications and ratings for various spirits.',
+        robots: buildRobots(false),
       }
     }
     
@@ -1557,6 +1536,7 @@ export async function getSpiritDetailMetadata(id: string, lang: 'ko' | 'en' | nu
     if (!spirit) {
       return {
         title: '존재하지 않는 주류 — CaskByCask',
+        robots: buildRobots(false),
       }
     }
 
@@ -1592,6 +1572,7 @@ export async function getSpiritDetailMetadata(id: string, lang: 'ko' | 'en' | nu
     return {
       title,
       description,
+      robots: buildRobots(true),
       alternates: {
         canonical,
       },
@@ -1619,6 +1600,7 @@ export async function getSpiritDetailMetadata(id: string, lang: 'ko' | 'en' | nu
     return {
       title: '주류 상세 정보 및 리뷰 (Specs & Reviews) — CaskByCask',
       description: 'CaskByCask에서 각 주류의 상세 정보와 평점 리뷰를 확인해 보세요. Explore detailed specifications and ratings for various spirits.',
+      robots: buildRobots(false),
     }
   }
 }

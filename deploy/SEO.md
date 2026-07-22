@@ -152,6 +152,8 @@ Next.js 빌드(`npm run build`) 시, 프로젝트 구조에 맞춰 정적 페이
   Remove-Item Env:SEO_VERIFY_BASE_URL, Env:SEO_VERIFY_ALL_URLS, Env:SEO_VERIFY_BROWSER -ErrorAction SilentlyContinue
   ```
 
+  Codex 샌드박스나 일부 컨테이너처럼 Chrome OS sandbox를 실행할 수 없는 신뢰된 검증 환경에서 브라우저 기동 자체가 실패할 때만 `SEO_VERIFY_BROWSER_NO_SANDBOX=true`를 임시로 사용한다. 일반 개발 PC·배포 러너에서는 설정하지 않으며, 신뢰할 수 없는 사이트를 대상으로 이 옵션을 사용하지 않는다. 검사 후에는 `Remove-Item Env:SEO_VERIFY_BROWSER_NO_SANDBOX -ErrorAction SilentlyContinue`로 제거한다.
+
 ---
 
 ## 9. 모니터링 KPI
