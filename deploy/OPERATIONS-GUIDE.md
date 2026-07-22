@@ -79,11 +79,13 @@ ARM64에서 검증·빌드한다. Actions는 커밋 SHA로 고정하고 `content
    - 🕐 **사용자 적은 시간대 권장**
 3. 자동 진행 (대상에 해당하는 잡만 실행, 나머지는 `skipped`):
    - `build-api` (`clean test bootJar`) · `build-web` (`npm ci` → 세션 캐시 테스트 → 타입 검사 → Next.js Standalone Build) · `test-crawler` (Python 3.12 ARM64 hash lock 설치 → 전체 테스트) — 대상이면 병렬 실행
-   - `deploy` 잡은 운영 셸 스크립트 구문을 먼저 검사하고, 빌드된 산출물만 서버로 전송 → 해당 교체 스크립트 실행
+   - `deploy` 잡은 운영 셸 스크립트 구문과 API/Web 실패·롤백 상태 전이 테스트를 먼저 검사하고, 빌드된 산출물만 서버로 전송 → 해당 교체 스크립트 실행
    - both 일 때: 프론트 먼저 교체(Next.js 서비스 재시작) → 백엔드 jar 교체 → 재시작 → **readiness 헬스체크**
-4. 백엔드 배포 시 헬스체크 통과해야 성공. **실패하면 자동으로 직전 버전으로 롤백.**
+4. API/Web은 신규 서비스 재시작과 로컬 health를 모두 통과해야 성공한다. 실패하면 직전 파일을 복원하고, **구버전 재시작과 로컬 health까지 통과한 경우에만 롤백 복구 완료**로 기록한다. 롤백이 성공해도 해당 Actions 배포는 실패로 남는다.
+   - API/Web별 `.deploy.lock`은 **교체·재시작 구간**의 동시 실행을 거절한다. 고정 staging 경로 업로드는 잠금 범위 밖이므로 Actions와 로컬 수동 배포를 동시에 시작하지 않는다.
+   - health 요청은 connect 1초·요청 2초, 단계별 총 API 120초·Web 15초로 제한하며, 교체 도중 HUP/INT/TERM 또는 예기치 않은 종료가 발생해도 검증 전이면 같은 롤백 경로를 실행한다.
    - `both`/`all`에서 웹 교체 후 API가 실패하면 API만 자동 롤백되고 웹은 새 버전으로 남는다.
-     API 변경은 직전 웹과 하위 호환을 유지하고, 호환되지 않으면 9장의 웹 수동 롤백도 즉시 수행한다.
+     API 변경은 직전 웹과 하위 호환을 유지하고, 호환되지 않으면 10장의 웹 수동 롤백도 즉시 수행한다.
 5. 완료 시 **Slack `#server-prd` 로 결과 통보**(BE·FE·crawler·배포 단계별, `SLACK_WEBHOOK_URL` Secret 설정 시).
    - 배포 안 한 쪽은 `⏭`(skipped) 로 표시 — 예: `백엔드 ⏭ · 프론트 ✅ · 크롤러 ⏭` (web 만 배포). 요약에 대상(`· web`)도 표기됨.
 
@@ -492,20 +494,44 @@ sudo systemctl restart caskbycask-api   # 수정 후 재시작해야 반영
 자동 롤백은 "직전 배포가 안 뜰 때"만 동작한다. 운영 중 직전 버전으로 수동 롤백:
 
 ```bash
-# 백엔드
+# 백엔드 — 현재 실패본을 보존하고 직전 백업 복원
+(
+set -euo pipefail
 cd /app/spring-boot
+flock -n 8 || { echo 'API 자동/수동 배포가 진행 중입니다. 먼저 해당 작업을 종료하세요.' >&2; exit 1; }
 sudo systemctl stop caskbycask-api
-mv app.jar app.jar.bad
+mv app.jar "app.jar.manual_failed_$(date +%Y%m%d-%H%M%S)"
 mv app.jar_<타임스탬프> app.jar       # 직전 백업으로 복귀
 sudo systemctl start caskbycask-api
+for i in $(seq 1 60); do
+  curl --connect-timeout 1 --max-time 2 -fsS \
+    http://127.0.0.1:8081/actuator/health/readiness \
+    | grep -q '"status":"UP"' && break
+  sleep 2
+done
+curl --connect-timeout 1 --max-time 2 -fsS \
+  http://127.0.0.1:8081/actuator/health/readiness | grep '"status":"UP"'
+) 8>/app/spring-boot/.deploy.lock
 
-# 프론트
+# 프론트 — 현재 실패본을 보존하고 직전 백업 복원
+(
+set -euo pipefail
 cd /app/next
-rm -rf dist && mv dist_<타임스탬프> dist
+flock -n 9 || { echo 'Web 자동/수동 배포가 진행 중입니다. 먼저 해당 작업을 종료하세요.' >&2; exit 1; }
+mv dist "dist_manual_failed_$(date +%Y%m%d-%H%M%S)"
+mv dist_<타임스탬프> dist
 sudo systemctl restart caskbycask-web
+for i in $(seq 1 15); do
+  curl --connect-timeout 1 --max-time 2 -fsS \
+    http://127.0.0.1:3000/healthz >/dev/null && break
+  sleep 1
+done
+curl --connect-timeout 1 --max-time 2 -fsS http://127.0.0.1:3000/healthz
+) 9>/app/next/.deploy.lock
 ```
 
 > 보관본은 직전 1개뿐. 더 과거로 가려면 해당 커밋을 다시 빌드/배포해야 한다.
+> 수동 롤백도 staging 업로드 중인 Actions/로컬 배포와 동시에 실행하지 않는다. 위 잠금은 이미 시작된 교체를 막지만 업로드 중 파일까지 보호하지는 않는다.
 
 ---
 
@@ -585,7 +611,7 @@ Codex 샌드박스나 일부 컨테이너처럼 Chrome OS sandbox가 허용되�
 | 사이트 502/503 | ① `systemctl status caskbycask-api caskbycask-web` ② `journalctl -u caskbycask-web -n 100` ③ DB/Redis/Next.js 살아있는지 ④ healthz 확인 |
 | 점검 페이지가 안 풀림 | `/app/scripts/maintenance.sh status` → `off` 실행. 플래그 파일 `/app/next/maintenance.on` 직접 확인 |
 | 점검 우회 URL 이 안 먹힘 | conf 시크릿 3곳 일치 확인 → `nginx -t && reload`. 쿠키 24h 만료 시 URL 재방문 |
-| 배포 실패 | Actions 로그 확인. 헬스체크 실패면 자동 롤백됨 → `journalctl` 로 원인 분석 후 재배포 |
+| 배포 실패 | Actions 로그에서 `롤백 및 ... 확인 완료` 여부 확인. 없으면 자동 복구도 실패한 것이므로 즉시 `systemctl`·로컬 health 확인 → `journalctl` 원인 분석 후 재배포 |
 | nginx reload 실패 | `sudo nginx -t` 로 문법 오류 위치 확인 후 수정 |
 | 백엔드 부팅 실패 (Flyway) | 마이그레이션/엔티티 스키마 불일치 가능 → 로그의 Flyway 메시지 확인 |
 | 디스크 부족 | `df -h` → `/app/logs/archived`, `/app/db_backup` 오래된 파일 정리. `upload/` 는 삭제 금지 |

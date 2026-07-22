@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 GitHub Actions 장애 시 로컬 PC에서 운영 서버로 수동 배포한다.
 
@@ -47,6 +47,8 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+Write-Warning 'GitHub Actions·다른 수동 배포·수동 롤백이 진행 중이면 이 작업을 시작하지 마세요. .deploy.lock은 최종 교체 구간만 보호합니다.'
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $artifactRoot = Join-Path $repoRoot 'deploy\.manual-artifacts'

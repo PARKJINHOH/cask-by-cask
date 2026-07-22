@@ -79,6 +79,7 @@ command_version java java -version
 command_version python3 python3 --version
 command_version mariadb mariadb --version
 command_version nginx nginx -v
+command_version flock flock --version
 
 section "services"
 service_state caskbycask-api

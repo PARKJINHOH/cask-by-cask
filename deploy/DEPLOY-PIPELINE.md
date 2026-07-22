@@ -142,8 +142,10 @@ systemd: /etc/systemd/system/caskbycask-api.service (app 127.0.0.1:8080, actuato
    - **`target` 선택**: `both`(FE+BE, 기본) / `api` / `web` / `crawler` / `all`(전체)
 3. 선택한 대상만 빌드/검증 → deploy 잡이 통과한 산출물만 전송 + 교체 (나머지 잡은 `skipped`)
    - crawler/all은 운영과 같은 ARM64/Python 3.12에서 lock hash 설치와 전체 테스트를 먼저 통과해야 한다.
-   - deploy 잡은 운영 스크립트 테스트와 함께 nginx의 location별 보안 헤더 상속 정적 검사를 수행한다.
-4. 백엔드 배포 시 `deploy-api.sh` 가 readiness 헬스체크까지 통과해야 성공 처리 (실패 시 자동 롤백)
+   - deploy 잡은 운영 스크립트 테스트, API/Web 실패·롤백 상태 전이 테스트, nginx location별 보안 헤더 상속 정적 검사를 수행한다.
+4. API/Web은 신규 재시작과 로컬 health를 통과해야 성공한다. 실패 시 직전 파일을 복원하고 구버전 재시작+health까지 검증한다. 복구돼도 해당 배포는 실패로 기록하며, 구버전 검증 실패 시 수동 조치가 필요하다.
+   - 서비스별 `.deploy.lock`은 교체·재시작 구간의 동시 실행을 거절한다. staging 업로드는 잠금 밖이므로 Actions와 로컬 수동 배포를 동시에 시작하지 않는다.
+   - health 요청은 connect 1초·요청 2초, 단계별 총 API 120초·Web 15초 제한을 적용하고, 검증 전 교체 구간의 HUP/INT/TERM·예기치 않은 종료도 롤백한다.
 
 > 프론트만 고쳤으면 `web`, 백엔드만 고쳤으면 `api`, 크롤러만 고쳤으면 `crawler`를 선택한다.
 
@@ -189,19 +191,44 @@ systemd: /etc/systemd/system/caskbycask-api.service (app 127.0.0.1:8080, actuato
 자동 롤백은 "직전 배포가 안 뜰 때" 동작한다. 운영 중 수동 롤백:
 
 ```bash
-# 백엔드
+# 백엔드 — 현재 실패본 보존
+(
+set -euo pipefail
 cd /app/spring-boot
+flock -n 8 || { echo 'API 자동/수동 배포가 진행 중입니다. 먼저 해당 작업을 종료하세요.' >&2; exit 1; }
 sudo systemctl stop caskbycask-api
-mv app.jar app.jar.bad
+mv app.jar "app.jar.manual_failed_$(date +%Y%m%d-%H%M%S)"
 mv app.jar_<타임스탬프> app.jar          # 직전 백업으로 복귀
 sudo systemctl start caskbycask-api
+for i in $(seq 1 60); do
+  curl --connect-timeout 1 --max-time 2 -fsS \
+    http://127.0.0.1:8081/actuator/health/readiness \
+    | grep -q '"status":"UP"' && break
+  sleep 2
+done
+curl --connect-timeout 1 --max-time 2 -fsS \
+  http://127.0.0.1:8081/actuator/health/readiness | grep '"status":"UP"'
+) 8>/app/spring-boot/.deploy.lock
 
-# 프론트
+# 프론트 — 현재 실패본 보존
+(
+set -euo pipefail
 cd /app/next
-rm -rf dist && mv dist_<타임스탬프> dist
+flock -n 9 || { echo 'Web 자동/수동 배포가 진행 중입니다. 먼저 해당 작업을 종료하세요.' >&2; exit 1; }
+mv dist "dist_manual_failed_$(date +%Y%m%d-%H%M%S)"
+mv dist_<타임스탬프> dist
+sudo systemctl restart caskbycask-web
+for i in $(seq 1 15); do
+  curl --connect-timeout 1 --max-time 2 -fsS \
+    http://127.0.0.1:3000/healthz >/dev/null && break
+  sleep 1
+done
+curl --connect-timeout 1 --max-time 2 -fsS http://127.0.0.1:3000/healthz
+) 9>/app/next/.deploy.lock
 ```
 
 > 보관본이 1개(직전)뿐이므로 더 과거로의 롤백은 해당 커밋을 다시 빌드/배포해야 한다.
+> 수동 롤백도 staging 업로드 중인 Actions/로컬 배포와 동시에 실행하지 않는다. `.deploy.lock`은 업로드 중인 고정 staging 파일까지 보호하지 않는다.
 
 ---
 

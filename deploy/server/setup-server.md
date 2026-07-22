@@ -60,7 +60,7 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
     nginx \
     mariadb-server mariadb-client \
     redis-server \
-    rsync curl iptables-persistent
+    rsync curl util-linux iptables-persistent
 ```
 
 확인:
@@ -70,6 +70,7 @@ java -version          # 21 확인
 nginx -v
 mariadb --version
 redis-server --version
+flock --version         # API/Web/크롤러 중복 실행 잠금
 ```
 
 ---

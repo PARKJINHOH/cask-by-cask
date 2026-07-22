@@ -224,7 +224,8 @@ jobs:
           persist-credentials: false
       - name: Validate operations scripts
         run: |
-          bash -n deploy/server/*.sh
+          bash -n deploy/server/*.sh deploy/tests/*.sh
+          bash deploy/tests/test-release-deploy.sh
           bash deploy/tests/test-db-query-candidates.sh
           bash deploy/tests/test-backup-db.sh
           bash deploy/tests/test-offsite-backup.sh

@@ -8,6 +8,7 @@ GitHub Actions 장애 시 사용하는 비상 배포 경로다. 평소에는 Git
 - WEB은 기본적으로 로컬 PC가 SSH로 서버 빌드를 지휘한다. Next.js standalone에는 `sharp`, `@next/swc` 같은 OS/CPU별 의존성이 들어갈 수 있어 Windows에서 만든 산출물을 Ubuntu aarch64 운영 서버에 그대로 올리는 방식은 기본값으로 쓰지 않는다.
 - 서버의 최종 교체, 재시작, 헬스체크, 롤백은 기존 `/app/scripts/deploy-api.sh`, `/app/scripts/deploy-web.sh`가 담당한다.
 - nginx 설정, systemd 유닛, `/app/env/api.env`, 업로드 파일(`/app/upload`)은 건드리지 않는다.
+- 고정 staging 경로를 사용하므로 GitHub Actions 배포·다른 로컬 수동 배포·수동 롤백과 절대 동시에 실행하지 않는다. 실행 중인 배포가 완전히 끝난 뒤 시작한다.
 
 ## 사전 조건
 
@@ -94,6 +95,7 @@ curl -fsS http://127.0.0.1:3000/healthz
 ## 주의
 
 - 이 경로는 GitHub Actions 장애 시 쓰는 비상 절차다. 평소 배포 이력과 Slack 결과 알림은 Actions 기준으로 남긴다.
+- GitHub Actions 또는 다른 배포가 진행 중이면 staging 업로드부터 경합할 수 있으므로 수동 배포를 시작하지 않는다. `.deploy.lock`은 최종 교체 구간만 보호한다.
 - 수동 배포는 로컬 작업 트리의 현재 상태를 그대로 배포할 수 있다. 배포 전 IDE에서 대상 변경 파일을 반드시 확인한다.
 - DB 스키마 변경이 포함된 API 배포는 Flyway 마이그레이션 파일이 포함되어야 한다.
 - WEB remote 빌드는 서버에서 npm 패키지를 내려받을 수 있어야 한다.
