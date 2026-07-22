@@ -8,6 +8,7 @@ User=ubuntu
 WorkingDirectory=/app/next/dist
 # Next.js standalone server 구동에 필요한 환경변수 주입
 Environment=PORT=3000
+Environment=HOSTNAME=127.0.0.1
 Environment=NODE_ENV=production
 Environment=INTERNAL_API_URL=http://localhost:8080
 # systemd를 통해 node server.js를 직접 구동하여 백그라운드 프로세스 영속 관리

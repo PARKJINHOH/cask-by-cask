@@ -175,6 +175,10 @@ sudo cp ~/setup/caskbycask-web.service /etc/systemd/system/
 sudo systemctl daemon-reload
 ```
 
+`caskbycask-web.service`의 `HOSTNAME=127.0.0.1`을 유지한다. Next.js 3000 포트는 nginx만 접근하며
+외부 인터페이스에 직접 바인딩하지 않는다. 기동 후 `sudo ss -ltnp | grep ':3000'`에서
+`127.0.0.1:3000`인지 확인한다.
+
 > 아직 `enable --now` 하지 않는다. **app.jar 및 Next.js dist 배치(첫 배포) 후** 마지막 단계에서 기동.
 
 ---
@@ -218,7 +222,7 @@ GitHub Actions 배포는 nginx 설정을 서버로 전송하지 않는다. 저�
 
 ```bash
 ls -l ~/setup/caskbycask.conf
-grep -nE 'sitemap\.xml|sitemaps/|indexnow-key' ~/setup/caskbycask.conf
+grep -nE 'sitemap\.xml|sitemaps/|indexnow-key|_next/image' ~/setup/caskbycask.conf
 ```
 
 현재 활성 설정을 백업하고 기존 점검 우회 시크릿을 준비한다:
@@ -291,7 +295,13 @@ curl -I https://www.caskbycask.net/sitemaps/static.xml
 curl -I https://www.caskbycask.net/sitemaps/content-0.xml
 curl -I https://www.caskbycask.net/sitemaps/spirits-ko-0.xml
 curl -I https://www.caskbycask.net/sitemaps/spirits-en-0.xml
+
+# 프론트에서 사용하지 않는 Next Image Optimizer는 404 기대
+curl -I 'https://www.caskbycask.net/_next/image?url=%2Flogo.png&w=64&q=75'
 ```
+
+`/_next/image` 차단은 현재 소스가 `next/image`를 사용하지 않는다는 전제의 방어 설정이다.
+Next.js가 보안 패치된 sharp 버전을 정식 지원하고 스테이징에서 이미지 회귀 테스트를 마치기 전에는 제거하지 않는다.
 
 ### 8-2. 서버 점검 페이지 배치
 

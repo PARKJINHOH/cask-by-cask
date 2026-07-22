@@ -1,6 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
+  images: {
+    // 현재 프로젝트는 next/image를 사용하지 않는다. 번들 sharp의 보안 패치가
+    // Next.js 지원 범위에 들어올 때까지 앱에서 이미지 최적화를 사용하지 않는다.
+    unoptimized: true,
+  },
   async rewrites() {
     return [
       {

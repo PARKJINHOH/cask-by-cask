@@ -87,7 +87,7 @@ systemd: /etc/systemd/system/caskbycask-api.service
 |---|---|
 | `app.jar` (백엔드) | nginx 설정 (`caskbycask.conf`) |
 | `dist/` (프론트) | 점검 페이지 (`maintenance.html`) |
-| 운영 스크립트 전체 (`deploy/server/*.sh`) | systemd 유닛 (`caskbycask-api.service`) |
+| 운영 스크립트 전체 (`deploy/server/*.sh`) | systemd 유닛 (`caskbycask-api.service`, `caskbycask-web.service`) |
 | | `api.env` (비밀값) |
 
 > ⚠️ **nginx 설정·점검 페이지를 변경했다면 배포만으로는 반영되지 않는다.** 아래 8장 참고하여 수동 적용한다.
@@ -305,12 +305,24 @@ FLUSH PRIVILEGES;
 
 ---
 
-## 8. nginx 설정 / 운영 스크립트 변경 적용
+## 8. nginx·systemd 설정 / 운영 스크립트 변경 적용
 
 운영 스크립트(`deploy/server/*.sh`)는 **배포(Actions)가 `/app/scripts` 로 자동 전송**한다.
-nginx 설정·점검 페이지는 전송하지 않으므로 변경 시 아래처럼 수동 적용한다.
+nginx·systemd 설정과 점검 페이지는 전송하지 않으므로 변경 시 아래처럼 수동 적용한다.
 
-SEO 경로는 `/sitemap.xml`, `/sitemaps/**`, `/indexnow-key.txt`를 API(127.0.0.1:8080)로 전달한다. sitemap의 `Cache-Control`과 `ETag`는 API 응답을 그대로 사용하므로 nginx에서 별도 캐시 헤더를 중복 추가하지 않는다. 설정 교체 후 아래 명령으로 `nginx -t`와 무중단 reload를 수행하고, 11장의 sitemap 점검 명령을 실행한다.
+`caskbycask-web.service`를 갱신할 때는 Next standalone이 nginx를 우회해 외부에 노출되지 않도록
+`HOSTNAME=127.0.0.1`이 있는지 확인한 뒤 적용한다.
+
+```bash
+grep -n 'HOSTNAME=127.0.0.1' ~/setup/caskbycask-web.service
+sudo cp ~/setup/caskbycask-web.service /etc/systemd/system/caskbycask-web.service
+sudo systemctl daemon-reload
+sudo systemctl restart caskbycask-web
+sudo ss -ltnp | grep ':3000'   # 127.0.0.1:3000 기대, 0.0.0.0:3000이면 중단
+curl -sS http://127.0.0.1:3000/healthz
+```
+
+SEO 경로는 `/sitemap.xml`, `/sitemaps/**`, `/indexnow-key.txt`를 API(127.0.0.1:8080)로 전달한다. sitemap의 `Cache-Control`과 `ETag`는 API 응답을 그대로 사용하므로 nginx에서 별도 캐시 헤더를 중복 추가하지 않는다. 현재 프론트는 `next/image`를 사용하지 않으며 Next.js 설정에서 이미지 최적화를 비활성화한다. nginx도 `/_next/image`를 정확 일치 경로로 `404` 차단한다. Next.js가 보안 패치된 sharp 버전을 정식 지원하고 스테이징 검증을 마치기 전에는 이 차단을 제거하지 않는다. 설정 교체 후 아래 명령으로 `nginx -t`와 무중단 reload를 수행하고, 11장의 sitemap 점검 명령을 실행한다.
 
 ### 대표 호스트(canonical host) 정책
 
@@ -371,6 +383,9 @@ sudo nginx -t && sudo systemctl reload nginx
 # 대표 호스트 검증: 비-www는 301 + Location, www는 200 기대
 curl -I 'https://caskbycask.net/ko/community/notice?from=apex'
 curl -I 'https://www.caskbycask.net/ko/community/notice?from=apex'
+
+# 미사용 Next Image Optimizer 차단 확인: 404 기대
+curl -I 'https://www.caskbycask.net/_next/image?url=%2Flogo.png&w=64&q=75'
 ```
 
 > ⚠️ nginx 설정을 덮어쓰면 4장의 **우회 시크릿(sed 치환)이 자리표시자로 되돌아간다.** conf 교체 후 시크릿 sed 를 반드시 다시 실행할 것.

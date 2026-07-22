@@ -126,6 +126,12 @@ tasks.named<Delete>("clean") {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    // Keep JUnit @TempDir under the project build directory. On Windows CI and
+    // sandboxed runners the user-level temp directory may fail during cleanup.
+    systemProperty(
+        "java.io.tmpdir",
+        layout.buildDirectory.dir("tmp/test").get().asFile.absolutePath
+    )
     // SchemaDumpTest 게이트 프로퍼티 전달 (-Dschema.dump=true 일 때만 베이스라인 DDL 재생성)
     systemProperty("schema.dump", System.getProperty("schema.dump") ?: "false")
 }
