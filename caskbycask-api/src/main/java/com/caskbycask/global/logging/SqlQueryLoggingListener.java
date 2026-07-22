@@ -20,6 +20,11 @@ public class SqlQueryLoggingListener implements QueryExecutionListener {
 
     @Override
     public void afterQuery(ExecutionInfo execInfo, List<QueryInfo> queryInfoList) {
+        // Avoid stack inspection and bind-value rendering unless SQL diagnostics were
+        // explicitly enabled for a non-production environment.
+        if (!log.isDebugEnabled()) {
+            return;
+        }
         String userPrefix = resolveUserPrefix();
         String caller = resolveCaller();
         for (QueryInfo qi : queryInfoList) {

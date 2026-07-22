@@ -47,11 +47,13 @@ logging:
   level:
     root: WARN
     com.caskbycask: INFO
-    com.caskbycask.global.logging.SqlQueryLoggingListener: DEBUG
+    # Never log SQL bind values in production. They may contain credentials or personal data.
+    com.caskbycask.global.logging.SqlQueryLoggingListener: "OFF"
 
 decorator:
   datasource:
-    enabled: true
+    # Query interception is for local diagnostics only; it adds work to every production query.
+    enabled: false
 
 springdoc:
   api-docs:

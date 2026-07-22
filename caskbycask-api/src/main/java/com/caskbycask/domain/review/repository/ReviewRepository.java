@@ -72,6 +72,23 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 
     @Query(value = """
             SELECT r FROM Review r
+            JOIN FETCH r.user
+            JOIN FETCH r.spirit s
+            WHERE r.user.id = :userId
+              AND r.isHidden = false
+              AND s.status = com.caskbycask.domain.spirit.entity.enums.SpiritStatus.ACTIVE
+            """,
+            countQuery = """
+            SELECT COUNT(r) FROM Review r
+            JOIN r.spirit s
+            WHERE r.user.id = :userId
+              AND r.isHidden = false
+              AND s.status = com.caskbycask.domain.spirit.entity.enums.SpiritStatus.ACTIVE
+            """)
+    Page<Review> findPublicByUserId(@Param("userId") Long userId, Pageable pageable);
+
+    @Query(value = """
+            SELECT r FROM Review r
             JOIN FETCH r.spirit s
             LEFT JOIN FETCH s.parent
             WHERE r.user.id = :userId

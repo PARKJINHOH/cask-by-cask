@@ -251,6 +251,6 @@ public class UserController {
             @PathVariable Long userId,
             @PageableDefault(size = 10) Pageable pageable) {
         return ResponseEntity.ok(ApiResponse.success(
-                PageResponse.from(reviewService.getMyReviews(userId, pageable))));
+                PageResponse.from(reviewService.getPublicUserReviews(userId, pageable))));
     }
 }

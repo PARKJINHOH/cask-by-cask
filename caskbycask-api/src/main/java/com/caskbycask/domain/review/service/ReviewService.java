@@ -62,6 +62,15 @@ public class ReviewService {
     }
 
     @Transactional(readOnly = true)
+    public Page<ReviewResponse> getPublicUserReviews(Long userId, Pageable pageable) {
+        Pageable sorted = PageRequest.of(
+                pageable.getPageNumber(), pageable.getPageSize(),
+                Sort.by(Sort.Direction.DESC, "createdAt"));
+        return reviewRepository.findPublicByUserId(userId, sorted)
+                .map(this::toResponse);
+    }
+
+    @Transactional(readOnly = true)
     public Page<ReviewEmbedResponse> getMyReviewEmbeds(Long userId, Pageable pageable) {
         Pageable sorted = PageRequest.of(
                 pageable.getPageNumber(), pageable.getPageSize(),

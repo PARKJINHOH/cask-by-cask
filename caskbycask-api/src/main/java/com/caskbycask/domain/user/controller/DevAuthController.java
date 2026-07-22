@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
-@Profile({"local", "dev"})
+@Profile("local")
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
