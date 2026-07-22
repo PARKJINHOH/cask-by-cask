@@ -225,6 +225,9 @@ jobs:
       - name: Validate operations scripts
         run: |
           bash -n deploy/server/*.sh
+          bash deploy/tests/test-backup-db.sh
+          bash deploy/tests/test-offsite-backup.sh
+          bash deploy/tests/test-restore-offsite-drill.sh
       # 아티팩트 다운로드 — 해당 빌드가 실제로 성공했을 때만
       - name: Download api jar
         if: ${{ needs.build-api.result == 'success' }}

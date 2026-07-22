@@ -240,12 +240,22 @@ sudo tail -f /var/log/nginx/error.log
 
 ### 자동 백업
 
-`/app/scripts/backup-db.sh` 가 **매일 03:00(cron)** `caskbycask_prod` 를 gzip 덤프 → `/app/db_backup/` 에 저장, **3일 초과분 자동 삭제**. (Slack 설정 시 성공/실패 알림)
+`/app/scripts/backup-db.sh` 가 **매일 03:00(cron)** 공통 잠금을 획득한 뒤
+`caskbycask_prod` 를 임시 gzip으로 덤프하고 무결성 검사를 통과한 파일만 원자적으로
+`/app/db_backup/` 에 배치한다. **3일 초과분은 자동 삭제**하고 백업 로그는 주간
+logrotate를 적용한다. (Slack 설정 시 성공/실패 알림)
 
 ```bash
 /app/scripts/backup-db.sh          # 수동 즉시 백업
 ls -lh /app/db_backup/             # 백업 목록
 ```
+
+로컬 덤프와 `/app/upload`는 같은 인스턴스 디스크에 있으므로 이것만으로는 재해 복구가
+완성되지 않는다. 별도 private OCI Object Storage 버킷으로 복제하는 `backup-offsite.sh`와
+disposable 격리 호스트에서 수행하는 `restore-offsite-drill.sh` 절차는
+[`BACKUP-RESTORE.md`](BACKUP-RESTORE.md)를 따른다. 버킷 versioning/lifecycle, 전용 키,
+로컬·원격 sentinel을 확인하기 전에는 외부 백업을 활성화하거나 기존 cron을 교체하지 않는다.
+복원 훈련 스크립트는 외부 SQL을 실행하므로 **운영 서버에서 실행하지 않는다**.
 
 ### 복원
 
@@ -316,6 +326,9 @@ FLUSH PRIVILEGES;
 
 운영 스크립트(`deploy/server/*.sh`)는 **배포(Actions)가 `/app/scripts` 로 자동 전송**한다.
 nginx·systemd 설정과 점검 페이지는 전송하지 않으므로 변경 시 아래처럼 수동 적용한다.
+외부 백업의 `backup.env`, `/etc/cron.d/caskbycask-backup`, logrotate 설정도 비밀값·운영 승인
+항목이므로 자동 설치하지 않는다. [`BACKUP-RESTORE.md`](BACKUP-RESTORE.md)의 sentinel과 최초
+수동 검증을 통과한 뒤 각각 권한 600/644로 설치한다.
 
 `caskbycask-web.service`를 갱신할 때는 Next standalone이 nginx를 우회해 외부에 노출되지 않도록
 `HOSTNAME=127.0.0.1`이 있는지 확인한 뒤 적용한다.
@@ -493,8 +506,12 @@ journalctl -u caskbycask-api -f
 journalctl -u caskbycask-web -f
 tail -f /app/logs/caskbycask-api-error.log
 
-# DB 백업
+# DB 로컬 백업
 /app/scripts/backup-db.sh
+
+# 외부 백업(버킷·키·sentinel 사전 설정 후에만)
+/app/scripts/backup-offsite.sh
+# restore-offsite-drill.sh는 운영 서버 실행 금지. 별도 disposable 격리 호스트에서만 실행.
 
 # 운영 스냅샷으로 개발 DB 갱신(caskbycask_prod -> caskbycask_dev, 마스킹 포함)
 /app/scripts/refresh-dev-db-from-prod.sh
@@ -649,7 +666,7 @@ tail -n 100 /app/caskbycask-crawler/logs/ai-news.log
 | 알람 | 트리거 | 구현 | 도는 위치 |
 |---|---|---|---|
 | 앱 ERROR | ERROR 로그 발생(분당 5건 제한) | `SlackErrorAppender` (logback, prod) | 서버 |
-| DB 백업 | 백업 성공/실패 | `backup-db.sh` | 서버(cron) |
+| DB 백업 | 로컬/외부 백업 성공·실패 | `backup-db.sh`, `backup-offsite.sh` | 서버(cron) |
 | **배포 결과** | Actions 배포 성공/실패(BE·FE·crawler·배포 단계별) | `deploy.yml` notify job | GitHub |
 | **API 비정상 종료** | 크래시·OOM·비정상 exit (`systemctl stop`/배포 재시작은 제외) | `notify-systemd.sh` (ExecStopPost) | 서버 |
 | **API 기동** | 서비스 시작(배포·장애복구) | `notify-systemd.sh` (ExecStartPost) | 서버 |

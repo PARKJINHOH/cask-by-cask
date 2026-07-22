@@ -11,7 +11,7 @@
 
 ## 사전 준비 — FTP 로 올릴 파일
 
-레포 전체를 클론하지 않는다. 아래 4개 파일만 **FTP 로 서버 `~/setup/` (= `/home/ubuntu/setup/`) 에 업로드**한 뒤 시작한다.
+레포 전체를 클론하지 않는다. 아래 파일을 **FTP 로 서버 `~/setup/` (= `/home/ubuntu/setup/`) 에 업로드**한 뒤 시작한다.
 (파일 내용을 직접 `nano` 로 붙여넣어도 됨 — 그 경우 이 단계 생략)
 
 | 레포 경로 | 서버 업로드 위치 | 최종 배치 위치 |
@@ -22,10 +22,15 @@
 | `deploy/nginx/caskbycask.conf` | `~/setup/caskbycask.conf` | `/etc/nginx/sites-available/` |
 | `deploy/nginx/maintenance.html` | `~/setup/maintenance.html` | `/app/next/maintenance.html` |
 | `deploy/server/backup-db.sh` | `~/setup/backup-db.sh` | `/app/scripts/backup-db.sh` |
+| `deploy/logrotate/caskbycask-backup` | `~/setup/caskbycask-backup.logrotate` | `/etc/logrotate.d/caskbycask-backup` |
+| `deploy/env/backup.env.example` | `~/setup/backup.env.example` | `/app/env/backup.env` (선택) |
+| `deploy/server/backup-offsite.sh` | `~/setup/backup-offsite.sh` | `/app/scripts/backup-offsite.sh` (선택) |
+| `deploy/server/restore-offsite-drill.sh` | `~/setup/restore-offsite-drill.sh` | `/app/scripts/restore-offsite-drill.sh` (선택) |
+| `deploy/cron/caskbycask-backup` | `~/setup/caskbycask-backup.cron` | `/etc/cron.d/caskbycask-backup` (외부 백업 활성화 시) |
 
 ```bash
 mkdir -p ~/setup        # FTP 업로드 대상 폴더 (서버에서 미리 생성)
-ls -l ~/setup           # 업로드 후 4개 파일 확인
+ls -l ~/setup           # 업로드 후 필수 파일과 선택 파일 확인
 ```
 
 ---
@@ -383,6 +388,9 @@ sudo netfilter-persistent save
 sudo cp ~/setup/backup-db.sh /app/scripts/backup-db.sh
 sudo chmod +x /app/scripts/backup-db.sh
 sudo chown ubuntu:ubuntu /app/scripts/backup-db.sh
+sudo install -o root -g root -m 644 \
+  ~/setup/caskbycask-backup.logrotate /etc/logrotate.d/caskbycask-backup
+sudo logrotate -d /etc/logrotate.d/caskbycask-backup
 
 # ubuntu 유저 crontab 에 등록 (중복 방지 후 추가)
 ( crontab -l 2>/dev/null | grep -v 'backup-db.sh'; \
@@ -396,6 +404,12 @@ crontab -l                       # backup-db.sh 라인 보이면 OK
 /app/scripts/backup-db.sh        # 수동 1회 실행 → /app/db_backup/ 에 .sql.gz 생성 확인
 ls -l /app/db_backup/
 ```
+
+위 cron은 같은 디스크의 로컬 DB 백업만 수행한다. 인스턴스 장애까지 대비하려면
+[`../BACKUP-RESTORE.md`](../BACKUP-RESTORE.md)에 따라 별도 private OCI Object Storage 버킷,
+versioning/lifecycle, 백업 전용 키를 먼저 구성한다. 이 사전 조건과 최초 수동 복원 훈련을
+통과하기 전에는 기존 DB-only cron을 외부 백업 cron으로 바꾸지 않는다. 복원 훈련은 운영
+서버가 아니라 disposable 격리 호스트에서만 실행한다.
 
 ---
 
@@ -679,7 +693,7 @@ crontab -l | grep -E 'CRON_TZ|caskbycask-crawler/current'
 - [ ] `/app/env/api.env` 작성 + `chmod 600`
 - [ ] systemd 유닛 + nginx 설정 + Origin Cert 배치 (`nginx -t` 통과)
 - [ ] iptables 80/443 + Oracle Security List + Cloudflare DNS/SSL
-- [ ] backup-db cron 등록 + 수동 1회 성공
+- [ ] backup-db cron·logrotate 등록 + 수동 1회 성공
 - [ ] `caskbycask-api` 기동 + actuator health UP + 사이트 정상 로딩
 - [ ] (선택) Prometheus + Grafana 기동 + `monitoring.caskbycask.net` 접속 + 대시보드 정상 표시
 - [ ] (선택) 크롤러 패키지 설치 및 `.env`/`targets.json` 설정 + 핫딜/AI 소식 2시간 주기 시차 실행 설정 완료

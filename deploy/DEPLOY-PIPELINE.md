@@ -62,12 +62,15 @@ GitHub Actions — 대상 잡만 실행, 나머지는 skipped
 │  ├─ caskbycask-api-error.log ← ERROR 전용
 │  └─ archived/*.log.gz        ← 일별 압축 보관
 ├─ env/
-│  └─ api.env                  ← 앱 비밀값 (chmod 600, git/GitHub 에 없음)
+│  ├─ api.env                  ← 앱 비밀값 (chmod 600, git/GitHub 에 없음)
+│  └─ backup.env               ← 외부 백업 전용 키·확인값(선택, chmod 600)
 └─ scripts/
    ├─ deploy-api.sh            ← Actions 가 매 배포 시 갱신
    ├─ deploy-web.sh
    ├─ deploy-crawler.sh
-   └─ backup-db.sh             ← DB 백업 (cron 03:00)
+   ├─ backup-db.sh             ← DB 로컬 백업 (cron 03:00)
+   ├─ backup-offsite.sh        ← OCI Object Storage 복제(opt-in)
+   └─ restore-offsite-drill.sh ← 격리 호스트 전용 복원 검증
 
 nginx:  /etc/nginx/sites-available/caskbycask.conf  (root → /app/next/dist)
 ssl:    /etc/nginx/ssl/caskbycask.net.{pem,key}     (Cloudflare Origin Cert)
@@ -215,9 +218,14 @@ rm -rf dist && mv dist_<타임스탬프> dist
 
 ### DB 백업
 - `/app/scripts/backup-db.sh` 가 **매일 03:00(cron)** 실행:
-  - `caskbycask_prod` 를 mariadb-dump(단일 트랜잭션) → gzip → `/app/db_backup/`
+  - 공통 `flock`으로 중복 실행을 막고 DB 비밀번호는 휘발성 권한 600 option file로만 전달
+  - `caskbycask_prod` 를 mariadb-dump(단일 트랜잭션) → 임시 gzip 무결성 검사 → 원자적 이동
   - **3일 초과 자동 삭제**, 실패/성공 시 Slack 알림(설정 시)
-- cron 은 셋업 시 배포 유저 crontab 에 등록([setup-server.md](server/setup-server.md) 11단계). 수동 실행: `/app/scripts/backup-db.sh`
+- cron 은 셋업 시 배포 유저 crontab 에 등록하고 백업 로그에는 logrotate를 적용한다([setup-server.md](server/setup-server.md) 11단계). 수동 실행: `/app/scripts/backup-db.sh`
 - 복원: `gunzip < /app/db_backup/<파일>.sql.gz | mariadb -u caskbycask -p caskbycask_prod`
+- 인스턴스·볼륨 장애 대비 외부 복제와 월간 임시 DB 복원 훈련은
+  [`BACKUP-RESTORE.md`](BACKUP-RESTORE.md)의 opt-in 절차를 사용한다. 버킷 versioning/lifecycle,
+  전용 키, 로컬·원격 sentinel을 확인하기 전에는 `backup-offsite.sh`를 예약 실행하지 않는다.
+  복원 훈련은 운영 MariaDB가 아닌 disposable 격리 호스트에서만 실행한다.
 
-> ⚠️ DB 백업은 같은 디스크에 쌓이므로, 인스턴스 장애 대비 **외부 복사**(Oracle Object Storage / Block Volume 스냅샷)를 별도 권장. `upload/` 도 동일.
+> 로컬 DB 백업과 `upload/`는 같은 디스크이므로 외부 백업을 활성화하기 전에는 재해 복구가 완성된 상태가 아니다.
