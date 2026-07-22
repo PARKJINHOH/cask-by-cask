@@ -2,6 +2,8 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import type { ApiResponse } from '@/shared/types/common.types'
 import type { TokenResponse } from '@/domain/auth/types/auth.types'
+import { queryClient } from '@/shared/api/queryClient'
+import { clearSessionQueryCache } from '@/shared/api/sessionQueryCache.js'
 
 // 빌드 시 API URL이 없으면 nginx 상대 경로(/api)를 사용한다.
 const getApiBaseUrl = () => {
@@ -43,8 +45,9 @@ export function refreshAccessToken(): Promise<string> {
       useAuthStore.getState().setAccessToken(newAccess)
       return newAccess
     })
-    .catch((error) => {
+    .catch(async (error) => {
       useAuthStore.getState().logout()
+      await clearSessionQueryCache(queryClient)
       throw error
     })
     .finally(() => {

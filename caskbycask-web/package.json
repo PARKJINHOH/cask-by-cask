@@ -6,8 +6,10 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "typecheck": "next typegen && tsc --noEmit",
     "start": "next start",
-    "seo:verify": "node scripts/verify-seo.mjs"
+    "seo:verify": "node scripts/verify-seo.mjs",
+    "test:auth-cache": "node --test scripts/session-query-cache.test.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

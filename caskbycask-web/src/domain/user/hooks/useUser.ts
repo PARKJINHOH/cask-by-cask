@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { userApi } from '../api/userApi'
 import { useAuthStore } from '@/domain/auth/store/authStore'
+import { clearSessionQueryCache } from '@/shared/api/sessionQueryCache.js'
 import type { UpdateNicknameRequest, UpdatePasswordRequest } from '../types/user.types'
 
 export function useUploadProfileImage() {
@@ -65,10 +66,12 @@ export function useUpdatePassword() {
 }
 
 export function useDeleteMe() {
+  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: () => userApi.deleteMe(),
-    onSuccess: () => {
+    onSuccess: async () => {
       useAuthStore.getState().logout()
+      await clearSessionQueryCache(queryClient)
     },
   })
 }

@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '../store/authStore'
 import { authApi } from '../api/authApi'
 import type { LoginRequest, LoginResponse, ReactivateRequest, SignupRequest } from '../types/auth.types'
+import { clearSessionQueryCache } from '@/shared/api/sessionQueryCache.js'
 
 export function useAuth() {
   const { setAccessToken, setUser, setAuthReady, setPendingAttendanceToast, logout: logoutStore } = useAuthStore()
@@ -10,7 +11,7 @@ export function useAuth() {
   // 토큰 적재 + 출석 토스트 + 프로필 로드 (login / reactivate 공통)
   // refresh 토큰은 응답 바디에 없고 httpOnly 쿠키로 자동 저장됨 → access 토큰만 적재.
   const establishSession = async (loginData: LoginResponse) => {
-    qc.removeQueries({ queryKey: ['me'] })
+    await clearSessionQueryCache(qc)
     setAccessToken(loginData.accessToken)
 
     // 출석 결과 저장 — MainLayout의 AttendanceToastHandler가 소비 후 제거
@@ -51,9 +52,7 @@ export function useAuth() {
       await authApi.logout()
     } finally {
       logoutStore()
-      qc.removeQueries({ queryKey: ['me'] })
-      qc.removeQueries({ queryKey: ['socialAccounts'] })
-      qc.removeQueries({ queryKey: ['blockedUsers'] })
+      await clearSessionQueryCache(qc)
     }
   }
 
