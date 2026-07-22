@@ -230,7 +230,8 @@ GitHub Actions 배포는 nginx 설정을 서버로 전송하지 않는다. 저�
 
 ```bash
 ls -l ~/setup/caskbycask.conf
-grep -nE 'sitemap\.xml|sitemaps/|indexnow-key|_next/image' ~/setup/caskbycask.conf
+grep -nE 'sitemap\.xml|sitemaps/|indexnow-key|_next/image|/uploads/|X-Content-Type-Options' \
+    ~/setup/caskbycask.conf
 ```
 
 현재 활성 설정을 백업하고 기존 점검 우회 시크릿을 준비한다:
@@ -285,6 +286,28 @@ sudo nginx -t
 sudo systemctl reload nginx
 sudo systemctl is-active nginx   # active 기대
 ```
+
+`add_header`를 자체 선언한 location에서도 공통 보안 헤더가 유지되는지 원본 nginx에 직접 확인한다.
+업로드 확인 경로는 존재하지 않는 파일이므로 `404`가 정상이며, 세 경로 모두 `always`가 적용된
+보안 헤더 3종을 보여야 한다. 하나라도 없으면 reload 완료로 판단하지 말고 백업 설정으로 복구한다.
+
+```bash
+for path in \
+    /healthz \
+    /uploads/__nginx_header_check_missing__.png \
+    /favicon.ico
+do
+    echo "== $path =="
+    curl -skI --resolve www.caskbycask.net:443:127.0.0.1 \
+        "https://www.caskbycask.net$path" \
+        | grep -iE '^(HTTP/|x-content-type-options:|x-frame-options:|referrer-policy:)'
+done
+```
+
+업로드 확인 경로만 `HTTP/... 404`가 정상이고 나머지는 `200`을 기대한다. 세 응답 모두
+`X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`,
+`Referrer-Policy: strict-origin-when-cross-origin`을 포함해야 한다. `-k`는 Cloudflare Origin
+Certificate를 로컬 `127.0.0.1`에 직접 검증할 때만 사용한다.
 
 `nginx -t`가 실패하면 reload하지 말고 즉시 백업으로 복구한다:
 

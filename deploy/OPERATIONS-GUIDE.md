@@ -356,6 +356,12 @@ nginx·systemd 설정과 점검 페이지는 전송하지 않으므로 변경 �
 `caskbycask-web.service`를 갱신할 때는 Next standalone이 nginx를 우회해 외부에 노출되지 않도록
 `HOSTNAME=127.0.0.1`이 있는지 확인한 뒤 적용한다.
 
+nginx는 location에 `add_header`가 하나라도 있으면 server 수준의 `add_header`를 상속하지 않는다.
+따라서 캐시·쿠키·Range 헤더를 자체 선언한 모든 location에 `nosniff`, `DENY`,
+`strict-origin-when-cross-origin`을 함께 명시한다. 이 규칙은 Actions의
+`bash deploy/tests/test-nginx-security-headers.sh`가 정적으로 검사하며, 기존 Cache-Control·CORS·본문은
+변경하지 않는다.
+
 ```bash
 grep -n 'HOSTNAME=127.0.0.1' ~/setup/caskbycask-web.service
 sudo cp ~/setup/caskbycask-web.service /etc/systemd/system/caskbycask-web.service
@@ -422,6 +428,14 @@ sudo chown CHANGE_ME_SSH_USER:CHANGE_ME_SSH_USER /app/next/maintenance.html
 
 # 검증 후 reload (항상 nginx -t 먼저!)
 sudo nginx -t && sudo systemctl reload nginx
+
+# Cloudflare를 우회해 원본 nginx의 일반/404 응답에 always 보안 헤더 3종이 있는지 확인
+for path in /healthz /uploads/__nginx_header_check_missing__.png /favicon.ico; do
+  echo "== $path =="
+  curl -skI --resolve www.caskbycask.net:443:127.0.0.1 \
+    "https://www.caskbycask.net$path" \
+    | grep -iE '^(HTTP/|x-content-type-options:|x-frame-options:|referrer-policy:)'
+done
 
 # 대표 호스트 검증: 비-www는 301 + Location, www는 200 기대
 curl -I 'https://caskbycask.net/ko/community/notice?from=apex'

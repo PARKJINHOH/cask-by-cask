@@ -142,6 +142,7 @@ systemd: /etc/systemd/system/caskbycask-api.service (app 127.0.0.1:8080, actuato
    - **`target` 선택**: `both`(FE+BE, 기본) / `api` / `web` / `crawler` / `all`(전체)
 3. 선택한 대상만 빌드/검증 → deploy 잡이 통과한 산출물만 전송 + 교체 (나머지 잡은 `skipped`)
    - crawler/all은 운영과 같은 ARM64/Python 3.12에서 lock hash 설치와 전체 테스트를 먼저 통과해야 한다.
+   - deploy 잡은 운영 스크립트 테스트와 함께 nginx의 location별 보안 헤더 상속 정적 검사를 수행한다.
 4. 백엔드 배포 시 `deploy-api.sh` 가 readiness 헬스체크까지 통과해야 성공 처리 (실패 시 자동 롤백)
 
 > 프론트만 고쳤으면 `web`, 백엔드만 고쳤으면 `api`, 크롤러만 고쳤으면 `crawler`를 선택한다.
