@@ -9,28 +9,64 @@ import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-# The bundled verification runtime intentionally contains no project packages.
-# Stub requests so all HTTP behaviour remains mocked and deterministic.
-requests = types.ModuleType("requests")
-requests.post = Mock()
-requests.RequestException = type("RequestException", (Exception,), {})
-sys.modules.setdefault("requests", requests)
-bs4 = types.ModuleType("bs4")
-bs4.BeautifulSoup = Mock()
-sys.modules.setdefault("bs4", bs4)
-google = types.ModuleType("google")
-genai = types.ModuleType("google.genai")
-genai_types = types.ModuleType("google.genai.types")
-genai.Client = Mock()
-genai_types.GenerateContentConfig = lambda **kwargs: kwargs
-genai_types.Part = types.SimpleNamespace(
-    from_bytes=lambda **kwargs: {"data": kwargs["data"], "mime_type": kwargs["mime_type"]}
-)
-google.genai = genai
-genai.types = genai_types
-sys.modules.setdefault("google", google)
-sys.modules.setdefault("google.genai", genai)
-sys.modules.setdefault("google.genai.types", genai_types)
+# 번들 검증 런타임에 프로젝트 패키지가 없을 때만 최소 stub을 사용한다.
+# 운영/CI처럼 실제 패키지가 설치된 환경에서는 sys.modules를 덮어쓰지 않는다.
+try:
+    import requests
+except ModuleNotFoundError:
+    requests = types.ModuleType("requests")
+    requests.post = Mock()
+    requests.RequestException = type("RequestException", (Exception,), {})
+    requests.Timeout = type("Timeout", (requests.RequestException,), {})
+
+    class StubSession:
+        def __init__(self):
+            self.trust_env = True
+            self.adapters = {}
+
+        def mount(self, prefix, adapter):
+            self.adapters[prefix] = adapter
+
+        def close(self):
+            return None
+
+    class StubHttpAdapter:
+        def __init__(self):
+            self.poolmanager = types.SimpleNamespace(connection_pool_kw={})
+
+        def send(self, request, **kwargs):
+            return None
+
+    requests.Session = StubSession
+    requests_adapters = types.ModuleType("requests.adapters")
+    requests_adapters.HTTPAdapter = StubHttpAdapter
+    requests.adapters = requests_adapters
+    sys.modules["requests"] = requests
+    sys.modules["requests.adapters"] = requests_adapters
+
+try:
+    import bs4  # noqa: F401
+except ModuleNotFoundError:
+    bs4 = types.ModuleType("bs4")
+    bs4.BeautifulSoup = Mock()
+    sys.modules["bs4"] = bs4
+
+try:
+    import google.genai  # noqa: F401
+except ModuleNotFoundError:
+    google = types.ModuleType("google")
+    genai = types.ModuleType("google.genai")
+    genai_types = types.ModuleType("google.genai.types")
+    genai.Client = Mock()
+    genai_types.GenerateContentConfig = lambda **kwargs: kwargs
+    genai_types.Part = types.SimpleNamespace(
+        from_bytes=lambda **kwargs: {"data": kwargs["data"], "mime_type": kwargs["mime_type"]}
+    )
+    google.genai = genai
+    genai.types = genai_types
+    sys.modules.setdefault("google", google)
+    sys.modules["google.genai"] = genai
+    sys.modules["google.genai.types"] = genai_types
 
 from models import PostDetail, RawPost
 from analyzer.gemini_analyzer import GeminiAnalyzer
@@ -40,7 +76,18 @@ from news_gemini import GeminiNewsWriter
 from news_prompts import AI_NEWS_MIN_TEXT_LENGTH, AI_NEWS_WRITING_PROMPT
 from news_tavily import TavilyNewsSearch
 from news_source_config import matching_source_config
-from news_official import _get_public_url, _targeted_match, collect_registered_sources
+from news_official import _direct_source, _get_public_url, _targeted_match, collect_registered_sources
+
+
+def config_value(config, name: str):
+    """google-genai 실제 타입과 최소 테스트 stub 양쪽을 같은 방식으로 검사한다."""
+    return config[name] if isinstance(config, dict) else getattr(config, name)
+
+
+def part_bytes(part) -> bytes:
+    if isinstance(part, dict):
+        return part["data"]
+    return part.inline_data.data
 
 
 class TavilyNewsSearchTest(unittest.TestCase):
@@ -161,28 +208,61 @@ class NewsModelTest(unittest.TestCase):
 
 class NewsSourceConfigTest(unittest.TestCase):
     @patch("news_official.time.sleep")
-    @patch("news_official._assert_public_url")
-    @patch("news_official.requests.get", create=True)
+    @patch("news_official.get_public_response")
+    @patch("news_official.new_public_session")
     def test_direct_request_retries_a_transient_connection_failure(
-        self, get: Mock, assert_public_url: Mock, sleep: Mock,
+        self, session_factory: Mock, get_public: Mock, sleep: Mock,
     ) -> None:
+        session = session_factory.return_value
         response = Mock()
-        response.status_code = 200
         response.headers = {"Content-Type": "text/html; charset=utf-8"}
         response.iter_content.return_value = [b"<html>ok</html>"]
         response.encoding = "utf-8"
-        response.url = "https://example.com/news"
-        get.side_effect = [requests.RequestException("connect timeout"), response]
+        get_public.side_effect = [
+            requests.RequestException("connect timeout"),
+            (response, "https://example.com/news"),
+        ]
 
         final_url, content_type, body = _get_public_url("https://example.com/news", 15)
 
         self.assertEqual("https://example.com/news", final_url)
         self.assertIn("text/html", content_type)
         self.assertEqual("<html>ok</html>", body)
-        self.assertEqual(2, get.call_count)
-        self.assertEqual((10, 15), get.call_args.kwargs["timeout"])
-        assert_public_url.assert_called_once_with("https://example.com/news")
+        self.assertEqual(2, get_public.call_count)
+        self.assertEqual(15, get_public.call_args.kwargs["timeout"])
+        self.assertIs(session, get_public.call_args.args[0])
         sleep.assert_called_once_with(1)
+        response.close.assert_called_once()
+        session.close.assert_called_once()
+
+    @patch("news_official.BeautifulSoup")
+    @patch("news_official._get_public_url")
+    def test_direct_source_limits_redirects_to_configured_domain(
+        self, get_public: Mock, soup_factory: Mock,
+    ) -> None:
+        get_public.return_value = (
+            "https://www.example.com/news",
+            "text/html; charset=utf-8",
+            "<html><title>Official news</title><body>공식 뉴스 본문이 충분히 있습니다.</body></html>",
+        )
+        soup = soup_factory.return_value
+        soup.return_value = []
+        soup.title.get_text.return_value = "Official news"
+        soup.get_text.return_value = "공식 뉴스 본문이 충분히 있습니다. 제품 출시와 관련된 세부 정보입니다."
+
+        source = _direct_source({
+            "sourceUrl": "https://example.com/news",
+            "sourceName": "Example",
+            "domain": "example.com",
+            "sourceType": "OFFICIAL",
+        }, 15)
+
+        self.assertEqual("example.com", source.domain)
+        get_public.assert_called_once_with(
+            "https://example.com/news",
+            15,
+            allowed_hosts={"example.com"},
+        )
 
     def test_account_rule_wins_over_domain_rule_only_for_matching_path(self) -> None:
         configs = [
@@ -329,8 +409,8 @@ class GeminiDealAnalyzerTest(unittest.TestCase):
         self.assertEqual("테스트 위스키", result.drink_name)
         call = generate.call_args.kwargs
         self.assertEqual("gemini-3.1-flash-lite", call["model"])
-        self.assertEqual(b"image-bytes", call["contents"][1]["data"])
-        self.assertEqual("application/json", call["config"]["response_mime_type"])
+        self.assertEqual(b"image-bytes", part_bytes(call["contents"][1]))
+        self.assertEqual("application/json", config_value(call["config"], "response_mime_type"))
 
 
 class GeminiNewsWriterTest(unittest.TestCase):
@@ -384,8 +464,8 @@ class GeminiNewsWriterTest(unittest.TestCase):
         self.assertEqual(11, writer.usage.input_tokens)
         self.assertEqual(12, writer.usage.output_tokens)
         config = generate.call_args.kwargs["config"]
-        self.assertEqual("application/json", config["response_mime_type"])
-        self.assertEqual(schema, config["response_json_schema"])
+        self.assertEqual("application/json", config_value(config, "response_mime_type"))
+        self.assertEqual(schema, config_value(config, "response_json_schema"))
 
     def test_malformed_json_is_retried_once(self) -> None:
         responses = [

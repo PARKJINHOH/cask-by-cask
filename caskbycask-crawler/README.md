@@ -60,11 +60,15 @@ Tavily 일반 검색 + 관리자가 등록한 공식 홈페이지·공식 SNS UR
 ```bash
 python3 -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
+python -m unittest discover -s tests -p "test_*.py"
 cp .env.example .env                 # 값 채우기
 cp targets.example.json targets.json # 대상 채우기
 # .env 의 경로를 로컬용으로 바꾸고, 우선 DRY_RUN=true 로 분석만 확인
 python3 main.py
 ```
+
+운영 배포는 개발용 설치와 달리 커밋된 `requirements.lock`의 버전·hash를 검증하고,
+릴리스별 독립 `.venv`를 만든 뒤 테스트가 통과해야만 `current`를 교체합니다.
 > `DRY_RUN=true` 면 백엔드 업로드 없이 분석 결과를 로그로만 출력한다(파이프라인 점검용).
 
 ## Slack 운영 알림

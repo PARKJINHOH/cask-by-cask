@@ -1,15 +1,14 @@
 from __future__ import annotations
 
-import ipaddress
-import socket
 import time
-from urllib.parse import urljoin, urlsplit
+from urllib.parse import urlsplit
 
 import requests
 from bs4 import BeautifulSoup
 
 from news_models import SearchSource
 from news_source_config import matching_source_config, normalized_path
+from safe_http import get_public_response, new_public_session, read_limited_body
 
 
 ELIGIBLE_TYPES = {"OFFICIAL", "TRUSTED_MEDIA"}
@@ -17,30 +16,21 @@ SEARCH_ONLY_DOMAINS = {"instagram.com"}
 DIRECT_REQUEST_ATTEMPTS = 2
 
 
-def _assert_public_url(url: str) -> None:
-    parsed = urlsplit(url)
-    if parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.username or parsed.password:
-        raise ValueError("HTTP(S) 공개 URL만 수집할 수 있습니다.")
-    if parsed.hostname.lower() == "localhost":
-        raise ValueError("내부 주소는 수집할 수 없습니다.")
-    for info in socket.getaddrinfo(parsed.hostname, parsed.port or 443, type=socket.SOCK_STREAM):
-        address = ipaddress.ip_address(info[4][0])
-        if not address.is_global:
-            raise ValueError("내부 또는 비공개 네트워크 주소는 수집할 수 없습니다.")
-
-
-def _get_public_url(url: str, timeout: int) -> tuple[str, str, str]:
-    current = url
-    for _ in range(4):
-        _assert_public_url(current)
-        response = None
+def _get_public_url(
+    url: str,
+    timeout: int,
+    *,
+    allowed_hosts: set[str] | None = None,
+) -> tuple[str, str, str]:
+    session = new_public_session()
+    try:
         for attempt in range(DIRECT_REQUEST_ATTEMPTS):
             try:
-                response = requests.get(
-                    current,
-                    timeout=(min(timeout, 10), timeout),
-                    allow_redirects=False,
-                    stream=True,
+                response, final_url = get_public_response(
+                    session,
+                    url,
+                    timeout=timeout,
+                    allowed_hosts=allowed_hosts,
                     headers={"User-Agent": "CaskByCaskBot/1.0 (+official-source-check)"},
                 )
                 break
@@ -48,39 +38,30 @@ def _get_public_url(url: str, timeout: int) -> tuple[str, str, str]:
                 if attempt + 1 >= DIRECT_REQUEST_ATTEMPTS:
                     raise
                 time.sleep(attempt + 1)
-        if response is None:  # pragma: no cover - 위 반복문의 방어 코드
+        else:  # pragma: no cover - 재시도 반복문의 방어 코드
             raise RuntimeError("공개 URL 응답을 받지 못했습니다.")
-        if response.status_code not in {301, 302, 303, 307, 308}:
-            response.raise_for_status()
+
+        try:
             content_type = str(response.headers.get("Content-Type") or "").lower()
-            chunks: list[bytes] = []
-            size = 0
-            for chunk in response.iter_content(64 * 1024):
-                if not chunk:
-                    continue
-                size += len(chunk)
-                if size > 2 * 1024 * 1024:
-                    response.close()
-                    raise ValueError("응답 본문이 2MB 제한을 초과했습니다.")
-                chunks.append(chunk)
             encoding = response.encoding or "utf-8"
-            text = b"".join(chunks).decode(encoding, errors="replace")
-            final_url = response.url or current
-            response.close()
+            body = read_limited_body(response, 2 * 1024 * 1024)
+            text = body.decode(encoding, errors="replace")
             return final_url, content_type, text
-        location = response.headers.get("Location")
-        response.close()
-        if not location:
-            raise ValueError("리디렉션 응답에 이동할 URL이 없습니다.")
-        current = urljoin(current, location)
-    raise ValueError("리디렉션 횟수가 제한을 초과했습니다.")
+        finally:
+            response.close()
+    finally:
+        session.close()
 
 
 def _direct_source(config: dict, timeout: int) -> SearchSource:
     url = str(config.get("sourceUrl") or "").strip()
-    final_url, content_type, body = _get_public_url(url, timeout)
-    final_domain = (urlsplit(final_url).hostname or "").lower().removeprefix("www.")
     configured_domain = str(config.get("domain") or "").lower().removeprefix("www.")
+    final_url, content_type, body = _get_public_url(
+        url,
+        timeout,
+        allowed_hosts={configured_domain},
+    )
+    final_domain = (urlsplit(final_url).hostname or "").lower().removeprefix("www.")
     if final_domain != configured_domain:
         raise ValueError(f"등록 도메인 밖으로 이동했습니다: {final_domain}")
     if "html" not in content_type and "xml" not in content_type and "text" not in content_type:

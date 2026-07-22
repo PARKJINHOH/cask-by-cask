@@ -65,8 +65,10 @@ systemd: /etc/systemd/system/caskbycask-api.service
 ## 2. 배포 방법 (GitHub Actions 수동 배포)
 
 빌드는 GitHub 러너에서 수행하고, 서버에는 **산출물(jar/dist)만** 전송한다. 서버는 빌드하지 않는다.
-API는 Ubuntu 24.04 x64, Next.js standalone은 운영 서버와 같은 Ubuntu 24.04 ARM64에서
-검증·빌드한다. Actions는 커밋 SHA로 고정하고 `contents: read` 최소 권한으로 실행한다.
+API는 Ubuntu 24.04 x64, Next.js standalone과 crawler는 운영 서버와 같은 Ubuntu 24.04
+ARM64에서 검증·빌드한다. Actions는 커밋 SHA로 고정하고 `contents: read` 최소 권한으로 실행한다.
+입력한 `ref`는 워크플로 시작 시 immutable commit SHA로 한 번 확정되므로 실행 중 브랜치가
+이동해도 테스트한 소스와 실제 배포 소스가 달라지지 않는다.
 
 ### 절차
 
@@ -76,14 +78,14 @@ API는 Ubuntu 24.04 x64, Next.js standalone은 운영 서버와 같은 Ubuntu 24
    - `ref` 입력란 비워두면 `main` 배포 (기본값)
    - 🕐 **사용자 적은 시간대 권장**
 3. 자동 진행 (대상에 해당하는 잡만 실행, 나머지는 `skipped`):
-   - `build-api` (`clean test bootJar`) · `build-web` (`npm ci` → 세션 캐시 테스트 → 타입 검사 → Next.js Standalone Build) — 대상이면 병렬 실행
+   - `build-api` (`clean test bootJar`) · `build-web` (`npm ci` → 세션 캐시 테스트 → 타입 검사 → Next.js Standalone Build) · `test-crawler` (Python 3.12 ARM64 hash lock 설치 → 전체 테스트) — 대상이면 병렬 실행
    - `deploy` 잡은 운영 셸 스크립트 구문을 먼저 검사하고, 빌드된 산출물만 서버로 전송 → 해당 교체 스크립트 실행
    - both 일 때: 프론트 먼저 교체(Next.js 서비스 재시작) → 백엔드 jar 교체 → 재시작 → **readiness 헬스체크**
 4. 백엔드 배포 시 헬스체크 통과해야 성공. **실패하면 자동으로 직전 버전으로 롤백.**
    - `both`/`all`에서 웹 교체 후 API가 실패하면 API만 자동 롤백되고 웹은 새 버전으로 남는다.
      API 변경은 직전 웹과 하위 호환을 유지하고, 호환되지 않으면 9장의 웹 수동 롤백도 즉시 수행한다.
-5. 완료 시 **Slack `#server-prd` 로 결과 통보**(BE·FE·배포 단계별, `SLACK_WEBHOOK_URL` Secret 설정 시).
-   - 배포 안 한 쪽은 `⏭`(skipped) 로 표시 — 예: `백엔드 ⏭ · 프론트 ✅` (web 만 배포). 요약에 대상(`· web`)도 표기됨.
+5. 완료 시 **Slack `#server-prd` 로 결과 통보**(BE·FE·crawler·배포 단계별, `SLACK_WEBHOOK_URL` Secret 설정 시).
+   - 배포 안 한 쪽은 `⏭`(skipped) 로 표시 — 예: `백엔드 ⏭ · 프론트 ✅ · 크롤러 ⏭` (web 만 배포). 요약에 대상(`· web`)도 표기됨.
 
 ### 배포가 전송하는 것 / 안 하는 것
 
@@ -91,6 +93,7 @@ API는 Ubuntu 24.04 x64, Next.js standalone은 운영 서버와 같은 Ubuntu 24
 |---|---|
 | `app.jar` (백엔드) | nginx 설정 (`caskbycask.conf`) |
 | `dist/` (프론트) | 점검 페이지 (`maintenance.html`) |
+| crawler 릴리스 아카이브 (`target=crawler/all`) | crawler `.env`, `targets.json`, SQLite, 로그 |
 | 운영 스크립트 전체 (`deploy/server/*.sh`) | systemd 유닛 (`caskbycask-api.service`, `caskbycask-web.service`) |
 | | `api.env` (비밀값) |
 
@@ -625,12 +628,16 @@ tail -n 100 /app/caskbycask-crawler/logs/ai-news.log
 
 - `CRON_TZ=Asia/Seoul` 기준 핫딜은 `current/run.sh`를 짝수 시각 정각(`0 */2 * * *`)에, AI 소식·팁은 핫딜 17분 후(`17 */2 * * *`)에 실행한다.
 - `AI_NEWS_IMAGE_GENERATION_ENABLED=false`이면 Gemini 이미지 API를 호출하지 않는다. 승인 공식 이미지가 없는 원고는 이미지 없이 검토 대기로 보존한다.
-- 코드 배포는 `.env`, `.venv`, `targets.json`, SQLite, `logs/`, `temp/`를 덮어쓰지 않는다.
+- 코드 배포는 `.env`, `targets.json`, SQLite, `logs/`, `temp/`를 덮어쓰지 않는다. `.venv`는 각
+  릴리스 안에서 hash lock으로 새로 설치되며 `current`/`previous`와 함께 전환된다.
+- 배포는 핫딜·AI 소식의 두 `flock`을 획득한 뒤 cron을 갱신하고 링크를 교체한다. 실행 중 작업이
+  120초 안에 끝나지 않거나 cron 갱신이 실패하면 기존 `current`를 유지한다.
 - 관리자 화면 기본값은 자동화 OFF·자동발행 OFF·드라이런 ON이다.
 - 드라이런 3회와 원고 10건 확인 후 `자동화 → 조건부 자동발행 → 드라이런 해제` 순으로 켠다.
 - Tavily 기본 월 한도는 900크레딧이다. Gemini는 토큰/이미지/예상비용을 화면에서 확인하고 필요할 때 월 상한을 입력한다. 텍스트 무료 티어에서도 대표 이미지 생성은 유료다.
 - 관리자 비용·토큰·이미지 상한은 80%에서 경고하고 100%에서 신규 호출을 중단한다. 환경변수 절대 상한도 별도로 적용된다.
-- 수동 롤백은 `previous`가 가리키는 릴리스를 확인한 뒤 `current` 링크를 해당 경로로 교체한다.
+- 수동 롤백도 두 crawler `flock`을 획득한 뒤 `previous`의 `.venv/bin/python`을 확인하고
+  `current` 링크를 교체한다. 정확한 명령은 [`../caskbycask-crawler/DEPLOY.md`](../caskbycask-crawler/DEPLOY.md)를 따른다.
 
 ---
 
@@ -643,7 +650,7 @@ tail -n 100 /app/caskbycask-crawler/logs/ai-news.log
 |---|---|---|---|
 | 앱 ERROR | ERROR 로그 발생(분당 5건 제한) | `SlackErrorAppender` (logback, prod) | 서버 |
 | DB 백업 | 백업 성공/실패 | `backup-db.sh` | 서버(cron) |
-| **배포 결과** | Actions 배포 성공/실패(BE·FE·배포 단계별) | `deploy.yml` notify job | GitHub |
+| **배포 결과** | Actions 배포 성공/실패(BE·FE·crawler·배포 단계별) | `deploy.yml` notify job | GitHub |
 | **API 비정상 종료** | 크래시·OOM·비정상 exit (`systemctl stop`/배포 재시작은 제외) | `notify-systemd.sh` (ExecStopPost) | 서버 |
 | **API 기동** | 서비스 시작(배포·장애복구) | `notify-systemd.sh` (ExecStartPost) | 서버 |
 | **디스크/SSL** | 디스크 임계 초과·SSL 만료 임박 | `check-resources.sh` | 서버(cron) |

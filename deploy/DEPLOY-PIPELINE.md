@@ -16,20 +16,24 @@ main push (코드만)
 GitHub Actions — 대상 잡만 실행, 나머지는 skipped
    ├─ build-api (Ubuntu 24.04 x64) : clean test bootJar → app.jar ➔ Oracle Object Storage 업로드
    ├─ build-web (Ubuntu 24.04 ARM64) : npm ci + cache test + typecheck + standalone build → dist.tar.gz ➔ Oracle Object Storage 업로드
+   ├─ test-crawler (Ubuntu 24.04 ARM64/Python 3.12) : hash lock 설치 → compile + unit test
    └─ deploy    : 앱 아티팩트와 crawler 소스 묶음을 전송 ➔ 해당 교체 스크립트 실행
    ▼
 서버 (Ubuntu 24.04 aarch64, Oracle Cloud 춘천)
    ├─ deploy-web.sh : dist 교체 (무중단에 가까움)
    ├─ deploy-api.sh : jar 교체 → 재시작 → 헬스체크 → 실패 시 롤백
-   └─ deploy-crawler.sh : 릴리스 설치·구문검사 → current/previous 링크 교체 → cron 갱신
+   └─ deploy-crawler.sh : 릴리스별 venv 설치·테스트 → 실행 lock/cron 확인 → current/previous 교체
 ```
 
 - **아티팩트 저장소**: Github Private Repo의 아티팩트 저장 공간 한계(Artifact storage quota) 문제를 해결하기 위해, 빌드된 아티팩트를 **Oracle Object Storage(S3 호환 API)**에 업로드하여 임시 보관합니다.
 - **버킷 용량 관리**: 10GB 무료 버킷의 공간 효율성을 위해, `api`와 `web` 빌드 산출물은 **각각 최신 3개씩만 유지**하고 이전 파일은 자동 정리(cleanup)합니다.
-- API/웹은 서버에서 빌드하지 않는다. 크롤러만 Python 소스 릴리스를 설치하고 영속 `.venv`의 의존성을 갱신한다.
+- API/웹은 서버에서 빌드하지 않는다. 크롤러는 ARM gate를 통과한 Python 소스를 전송하고 서버에서
+  hash lock으로 릴리스별 `.venv`를 설치한다. 실패하면 `current`를 교체하지 않는다.
 - API JAR는 JVM 바이트코드이므로 x64 러너에서 빌드한다. Next.js standalone은 네이티브 모듈을
   포함할 수 있으므로 운영 서버와 같은 ARM64 러너에서 빌드한다.
 - 외부 Actions는 커밋 SHA로 고정하고 워크플로 기본 권한은 `contents: read`만 부여한다.
+- 실행 시작 시 입력한 branch/tag를 하나의 immutable commit SHA로 확정하고 API·Web·crawler 테스트와
+  실제 패키징이 모두 같은 커밋만 사용한다.
 
 ---
 
@@ -48,7 +52,8 @@ GitHub Actions — 대상 잡만 실행, 나머지는 skipped
 ├─ caskbycask-crawler/
 │  ├─ current -> releases/...  ← 현재 크롤러 릴리스
 │  ├─ previous -> releases/... ← 직전 롤백 대상
-│  ├─ .env / .venv / *.db      ← 배포 시 보존
+│  ├─ releases/.../.venv        ← 코드와 함께 전환되는 릴리스별 의존성
+│  ├─ .env / targets.json / *.db ← 배포 시 보존
 │  └─ logs/ temp/              ← 배포 시 보존
 ├─ upload/                     ← 영속 (이미지·동영상) — 배포와 무관, 절대 삭제 안 함
 ├─ db_backup/                  ← 영속 (DB 덤프, 일배치 gzip / 3일 보관)
@@ -132,7 +137,8 @@ systemd: /etc/systemd/system/caskbycask-api.service (app 127.0.0.1:8080, actuato
 1. 코드 `main` 에 push
 2. GitHub → **Actions → "Deploy (manual)" → Run workflow** (사용자 적은 시간대 권장)
    - **`target` 선택**: `both`(FE+BE, 기본) / `api` / `web` / `crawler` / `all`(전체)
-3. 선택한 대상만 빌드 → deploy 잡이 빌드된 산출물만 전송 + 교체 (나머지 잡은 `skipped`)
+3. 선택한 대상만 빌드/검증 → deploy 잡이 통과한 산출물만 전송 + 교체 (나머지 잡은 `skipped`)
+   - crawler/all은 운영과 같은 ARM64/Python 3.12에서 lock hash 설치와 전체 테스트를 먼저 통과해야 한다.
 4. 백엔드 배포 시 `deploy-api.sh` 가 readiness 헬스체크까지 통과해야 성공 처리 (실패 시 자동 롤백)
 
 > 프론트만 고쳤으면 `web`, 백엔드만 고쳤으면 `api`, 크롤러만 고쳤으면 `crawler`를 선택한다.

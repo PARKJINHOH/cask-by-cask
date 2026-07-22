@@ -24,36 +24,68 @@ sudo apt-get install -y python3-venv python3-pip
 ---
 
 ## 2. 디렉토리 구성
-크롤러 파일들이 위치할 경로를 `/app` 하위에 생성하고 권한을 `ubuntu` 유저로 설정합니다.
+릴리스 코드와 영속 설정·로그를 분리할 경로를 만들고 `ubuntu` 유저로 설정합니다.
 ```bash
-sudo mkdir -p /app/caskbycask-crawler/{logs,temp}
+sudo mkdir -p /app/caskbycask-crawler/{releases,logs,temp}
 sudo chown -R ubuntu:ubuntu /app/caskbycask-crawler
-cd /app/caskbycask-crawler
 ```
 
 ---
 
-## 3. 코드 업로드 (배치)
-로컬 PC의 `caskbycask-crawler/` 폴더 내 파일들을 서버의 `/app/caskbycask-crawler` 디렉토리로 업로드합니다.
-(※ `.venv`, `__pycache__`, `.env`, `targets.json`, `*.db`, `logs/` 등은 배포 대상에서 제외합니다 — `.gitignore` 참고)
+## 3. 영속 설정 준비
 
----
+소스 전체를 `/app/caskbycask-crawler` 루트에 직접 업로드하지 않습니다. 이 경로에는 배포와
+무관하게 유지되는 `.env`, `targets.json`, `*.db`, `logs/`, `temp/`만 둡니다. 개발 PC에서
+`.env.example`과 `targets.example.json`을 `~/setup/`에 올린 뒤 최초 한 번만 설치합니다.
 
-## 4. 가상환경 + 의존성 설치
 ```bash
-cd /app/caskbycask-crawler
-python3 -m venv .venv
-source .venv/bin/activate
-pip install --upgrade pip
-pip install -r requirements.txt
+install -m 600 ~/setup/crawler.env.example /app/caskbycask-crawler/.env
+install -m 600 ~/setup/targets.example.json /app/caskbycask-crawler/targets.json
+nano /app/caskbycask-crawler/.env
+nano /app/caskbycask-crawler/targets.json
 ```
+
+---
+
+## 4. 첫 릴리스 배포와 의존성 lock 검증
+
+운영 배포는 `requirements.lock`만 사용하며 모든 전이 의존성의 버전과 배포 파일 hash를
+검증합니다. 공용 가상환경을 수동 갱신하지 않습니다.
+
+GitHub Actions의 crawler gate와 `deploy-crawler.sh`가 Linux ARM64/Python 3.12에서
+`pip --require-hashes --only-binary=:all:`로 설치한 뒤 전체 단위 테스트를 실행합니다.
+새 릴리스마다 `releases/<release-id>/.venv`를 따로 만들므로 `current`/`previous` 전환 시
+소스와 의존성이 함께 전환됩니다. Actions에서 `target=crawler` 또는 `target=all`을 실행한 뒤
+다음 명령으로 결과를 확인합니다.
+
+```bash
+readlink -f /app/caskbycask-crawler/current
+/app/caskbycask-crawler/current/.venv/bin/python \
+  /app/caskbycask-crawler/current/scripts/verify_requirements_lock.py
+```
+
+### 의존성 변경 시 lock 재생성(개발 PC)
+
+`requirements.txt`의 직접 의존성을 변경한 PR에서만 아래 명령을 실행합니다.
+
+```bash
+python -m pip install "uv==0.11.29"
+uv pip compile requirements.txt \
+  --python-version 3.12 \
+  --python-platform aarch64-manylinux_2_28 \
+  --only-binary :all: \
+  --generate-hashes \
+  --output-file requirements.lock
+python scripts/verify_requirements_lock.py
+```
+
+생성된 `requirements.lock`을 반드시 같이 반영하고 임의로 손편집하지 않습니다.
 
 ---
 
 ## 5. 환경설정 `.env`
 ```bash
-cp .env.example .env
-nano .env      # 또는 vi .env
+nano /app/caskbycask-crawler/.env
 ```
 
 필수로 채울 값:
@@ -124,8 +156,7 @@ openssl rand -hex 32   # 출력값을 .env 와 백엔드(api.env) 양쪽에 동�
 
 ## 8. 수집 대상 `targets.json`
 ```bash
-cp targets.example.json targets.json
-nano targets.json
+nano /app/caskbycask-crawler/targets.json
 ```
 디시 `board_id`, 카페 `club_id`/`menu_id`, 페이지 수, 게시판 이름을 채운다.
 
@@ -134,20 +165,23 @@ nano targets.json
 ## 9. 수동 1회 실행 (검증)
 ```bash
 cd /app/caskbycask-crawler
-source .venv/bin/activate
-python3 -m json.tool targets.json
-python3 main.py
+/app/caskbycask-crawler/current/.venv/bin/python -m json.tool targets.json
+/app/caskbycask-crawler/current/.venv/bin/python /app/caskbycask-crawler/current/main.py
 tail -n 50 /app/caskbycask-crawler/logs/crawler.log
 ```
 종료 로그의 `후보/신규/분석/업로드/스킵/오류` 카운트가 정상적으로 기록되는지 확인합니다.
 
-Gemini SDK import 오류나 `httpx` 의존성 오류가 발생하면 가상환경에 현재
-`requirements.txt`의 `google-genai==2.11.0`, `httpx==0.28.1` 조합이 반영되도록
-아래를 다시 실행합니다.
+Gemini SDK import 오류나 `httpx` 의존성 오류가 발생하면 운영 가상환경을 직접 수정하지 말고
+현재 릴리스의 lock 정합성과 설치 버전을 확인합니다.
 
 ```bash
-python3 -m pip install -r requirements.txt
+/app/caskbycask-crawler/current/.venv/bin/python \
+  /app/caskbycask-crawler/current/scripts/verify_requirements_lock.py
+/app/caskbycask-crawler/current/.venv/bin/python -c \
+  'import PIL, requests; print(requests.__version__, PIL.__version__)'
 ```
+
+불일치나 import 오류가 있으면 해당 릴리스를 재배포하거나 `previous`로 롤백합니다.
 
 ---
 
@@ -193,8 +227,22 @@ tail -n 100 /app/caskbycask-crawler/logs/ai-news.log
 ```
 
 GitHub Actions의 `target=crawler` 또는 `target=all`은 새 릴리스를 `/app/caskbycask-crawler/releases/`에
-설치한 뒤 `current` 심볼릭 링크를 교체합니다. `.env`, `.venv`, `targets.json`, `*.db`, `logs/`, `temp/`는
-릴리스 밖의 영속 경로에 남습니다. 직전 릴리스는 `previous` 링크로 확인할 수 있습니다.
+설치한 뒤 lock/hash 검증, 컴파일, 전체 테스트가 모두 성공한 경우에만 `current` 심볼릭 링크를
+교체합니다. `.env`, `targets.json`, `*.db`, `logs/`, `temp/`는 릴리스 밖의 영속 경로에 남고,
+각 `.venv`는 해당 릴리스 안에 포함됩니다. 교체 전 두 작업의 `flock`을 기다리고 cron 갱신이
+실패하면 기존 릴리스를 유지합니다. 직전 코드와 가상환경은 `previous` 링크로 함께 롤백됩니다.
+실행 래퍼는 릴리스 `.venv/bin/python`이 없으면 시스템 Python으로 우회하지 않고 실패합니다.
+
+```bash
+# 수동 롤백도 두 작업 lock을 모두 잡은 상태에서 코드와 .venv를 함께 전환
+(
+  flock -w 120 8 || exit 1
+  flock -w 120 7 || exit 1
+  target="$(readlink -f /app/caskbycask-crawler/previous)"
+  test -x "$target/.venv/bin/python"
+  ln -sfnT "$target" /app/caskbycask-crawler/current
+) 8>/tmp/caskbycask-crawler.lock 7>/tmp/caskbycask-ai-news.lock
+```
 
 ---
 
@@ -216,4 +264,7 @@ GitHub Actions의 `target=crawler` 또는 `target=all`은 새 릴리스를 `/app
 - `.env`, `targets.json`, `seen_posts.db`는 절대 git에 올리지 않는다 (`.gitignore` 처리됨).
 - Nginx에 IP 화이트리스트 차단 등을 적용하지 않았더라도 `CASKBYCASK_INTERNAL_KEY`를 통한 인증 토큰(`X-Internal-Key`) 검증이 이루어지므로 안전하며, `CASKBYCASK_API_URL`을 로컬 호스트(`http://127.0.0.1:8080`)로 사용하면 외부로 트래픽이 노출되지 않아 한층 더 안전합니다.
 - 이미지는 분석 직후 로컬에서 삭제되며 서버에 보관하지 않는다 (원격 URL 만 백엔드로 전달).
+- 외부 이미지 요청은 HTTP(S) 기본 80/443, 공개 DNS/IP만 허용하고 각 리디렉션을 다시 검사합니다. 검증한 IP로 실제 연결을 고정하되 원래 Host/SNI로 인증서를 검증해 DNS rebinding을 막습니다. 환경 proxy와 `.netrc` 자격증명은 사용하지 않습니다.
+- DNS·응답 헤더와 본문에는 총시간 제한을 적용해 slow-drip 응답이 작업을 장기간 점유하지 못하게 합니다.
+- 이미지 본문은 JPEG/PNG/WebP/GIF 실제 포맷, 2천만 픽셀, 60프레임, 10MB 제한을 통과해야 Pillow가 디코딩합니다.
 

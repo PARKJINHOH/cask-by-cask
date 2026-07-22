@@ -2,7 +2,7 @@ name: Deploy (manual)
 
 # 수동 배포 전용 — Actions 탭에서 "Run workflow" 클릭으로 실행.
 # API 는 x64 러너에서, 네이티브 모듈을 포함할 수 있는 Next.js standalone 은
-# 운영 서버와 같은 Linux ARM64 러너에서 검증·빌드하고 산출물만 서버로 전송한다.
+# 운영 서버와 같은 Linux ARM64 러너에서 Web과 crawler를 검증·빌드하고 산출물만 서버로 전송한다.
 #
 # 필요한 배포용 Repository Secrets (앱 런타임 환경변수 아님):
 #   SSH_HOST   서버 공인 IP (또는 Cloudflare 미프록시 직결 주소)
@@ -38,13 +38,27 @@ permissions:
   contents: read
 
 jobs:
+  resolve-ref:
+    runs-on: ubuntu-24.04
+    outputs:
+      sha: ${{ steps.source.outputs.sha }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+      - name: Freeze deployment commit
+        id: source
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
   build-api:
+    needs: resolve-ref
     if: ${{ inputs.target == 'both' || inputs.target == 'api' || inputs.target == 'all' }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
-          ref: ${{ inputs.ref }}
+          ref: ${{ needs.resolve-ref.outputs.sha }}
           persist-credentials: false
       - uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
         with:
@@ -98,12 +112,13 @@ jobs:
           fi
 
   build-web:
+    needs: resolve-ref
     if: ${{ inputs.target == 'both' || inputs.target == 'web' || inputs.target == 'all' }}
     runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
-          ref: ${{ inputs.ref }}
+          ref: ${{ needs.resolve-ref.outputs.sha }}
           persist-credentials: false
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
@@ -168,8 +183,36 @@ jobs:
               done
             fi
           fi
+
+  test-crawler:
+    needs: resolve-ref
+    if: ${{ inputs.target == 'crawler' || inputs.target == 'all' }}
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          ref: ${{ needs.resolve-ref.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: caskbycask-crawler/requirements.lock
+      - name: Verify locked dependencies
+        working-directory: caskbycask-crawler
+        run: |
+          python scripts/verify_requirements_lock.py
+          python -m pip install --require-hashes --only-binary=:all: -r requirements.lock
+      - name: Compile and test crawler
+        working-directory: caskbycask-crawler
+        run: |
+          python -m compileall -q -x '/\.venv/' .
+          python -m unittest discover -s tests -p 'test_*.py'
+      - name: Test crawler release wrappers
+        run: bash deploy/tests/test-crawler-runtime.sh
+
   deploy:
-    needs: [build-api, build-web]
+    needs: [resolve-ref, build-api, build-web, test-crawler]
     # 빌드 중 하나가 스킵돼도(=대상 아님) deploy 는 돌아야 한다.
     # needs 가 skipped 면 기본적으로 의존 잡도 skipped 되므로 status 함수로 강제 실행.
     if: ${{ !failure() && !cancelled() }}
@@ -177,7 +220,7 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
-          ref: ${{ inputs.ref }}
+          ref: ${{ needs.resolve-ref.outputs.sha }}
           persist-credentials: false
       - name: Validate operations scripts
         run: |
@@ -329,15 +372,17 @@ jobs:
 
   # 배포 결과 Slack 알림 — 빌드/배포 어느 단계가 깨졌는지 한 메시지로 요약.
   notify:
-    needs: [build-api, build-web, deploy]
+    needs: [resolve-ref, build-api, build-web, test-crawler, deploy]
     if: always()
     runs-on: ubuntu-24.04
     steps:
       - name: Notify Slack (배포 결과)
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          REF_RESULT: ${{ needs.resolve-ref.result }}
           API_RESULT: ${{ needs.build-api.result }}
           WEB_RESULT: ${{ needs.build-web.result }}
+          CRAWLER_RESULT: ${{ needs.test-crawler.result }}
           DEPLOY_RESULT: ${{ needs.deploy.result }}
           REF: ${{ inputs.ref }}
           TARGET: ${{ inputs.target }}
@@ -348,7 +393,7 @@ jobs:
           icon() { case "$1" in success) echo "✅";; failure) echo "❌";; cancelled) echo "⏹";; skipped) echo "⏭";; *) echo "❔";; esac; }
           # 대상 아닌 잡은 skipped — 정상으로 취급. failure/cancelled 만 실패로 본다.
           fail=0
-          for r in "$API_RESULT" "$WEB_RESULT"; do
+          for r in "$REF_RESULT" "$API_RESULT" "$WEB_RESULT" "$CRAWLER_RESULT"; do
             case "$r" in failure|cancelled) fail=1;; esac
           done
           [ "$DEPLOY_RESULT" = success ] || fail=1
@@ -358,6 +403,6 @@ jobs:
             COLOR=danger; SUMMARY="❌ 배포 실패 (${REF:-main} · ${TARGET:-both})"
           fi
           # \n 은 JSON 문자열 안에서 그대로 개행으로 해석됨
-          BODY="백엔드 $(icon "$API_RESULT") · 프론트 $(icon "$WEB_RESULT") · 배포 $(icon "$DEPLOY_RESULT")\\n실행: ${ACTOR}\\n<${RUN_URL}|GitHub Actions 로그>"
+          BODY="소스 고정 $(icon "$REF_RESULT") · 백엔드 $(icon "$API_RESULT") · 프론트 $(icon "$WEB_RESULT") · 크롤러 $(icon "$CRAWLER_RESULT") · 배포 $(icon "$DEPLOY_RESULT")\\n실행: ${ACTOR}\\n<${RUN_URL}|GitHub Actions 로그>"
           payload=$(printf '{"channel":"#server-prd","username":"CaskByCask Deploy","icon_emoji":":rocket:","attachments":[{"color":"%s","title":"%s","text":"%s"}]}' "$COLOR" "$SUMMARY" "$BODY")
           curl -fsS -X POST -H 'Content-Type: application/json; charset=utf-8' -d "$payload" "$SLACK_WEBHOOK_URL" >/dev/null

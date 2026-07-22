@@ -18,10 +18,9 @@ import shutil
 import time
 from pathlib import Path
 
-import requests
-from PIL import Image
-
+from image_security import CONTENT_TYPE_FORMAT, open_validated_image, validate_image_file
 from logger import get_logger
+from safe_http import get_public_response, new_public_session, operation_deadline
 
 log = get_logger("image")
 
@@ -72,27 +71,48 @@ class ImageHandler:
 
     def _download_one(self, url: str, image_dir: Path, idx: int, referer: str) -> None:
         headers = {"User-Agent": "Mozilla/5.0", "Referer": referer or url}
-        with requests.get(url, headers=headers, timeout=self.timeout, stream=True) as r:
-            r.raise_for_status()
+        session = new_public_session()
+        try:
+            r, _ = get_public_response(
+                session,
+                url,
+                headers=headers,
+                timeout=self.timeout,
+            )
+            try:
+                ct = r.headers.get("Content-Type", "").split(";")[0].strip().lower()
+                if ct not in _ALLOWED_CT:
+                    raise ValueError(f"허용되지 않은 Content-Type: {ct or '미상'}")
 
-            ct = r.headers.get("Content-Type", "").split(";")[0].strip().lower()
-            if ct not in _ALLOWED_CT:
-                raise ValueError(f"허용되지 않은 Content-Type: {ct or '미상'}")
+                clen = r.headers.get("Content-Length")
+                if clen and clen.isdigit() and int(clen) > _MAX_BYTES:
+                    raise ValueError(f"용량 초과(헤더 {int(clen)}B)")
 
-            clen = r.headers.get("Content-Length")
-            if clen and clen.isdigit() and int(clen) > _MAX_BYTES:
-                raise ValueError(f"용량 초과(헤더 {int(clen)}B)")
-
-            dest = image_dir / f"{idx}{_ALLOWED_CT[ct]}"
-            size = 0
-            with open(dest, "wb") as f:
-                for chunk in r.iter_content(8192):
-                    size += len(chunk)
-                    if size > _MAX_BYTES:   # Content-Length 누락 대비 스트리밍 중 차단
-                        f.close()
-                        dest.unlink(missing_ok=True)
-                        raise ValueError("용량 초과(스트리밍)")
-                    f.write(chunk)
+                dest = image_dir / f"{idx}{_ALLOWED_CT[ct]}"
+                partial = dest.with_suffix(f"{dest.suffix}.part")
+                size = 0
+                try:
+                    with operation_deadline(
+                        max(15, float(self.timeout) * 2),
+                        message="이미지 다운로드 총시간 제한을 초과했습니다.",
+                    ) as check:
+                        with partial.open("wb") as f:
+                            for chunk in r.iter_content(8192):
+                                if not chunk:
+                                    continue
+                                size += len(chunk)
+                                if size > _MAX_BYTES:
+                                    raise ValueError("용량 초과(스트리밍)")
+                                f.write(chunk)
+                                check()
+                    validate_image_file(partial, expected_format=CONTENT_TYPE_FORMAT[ct])
+                    partial.replace(dest)
+                finally:
+                    partial.unlink(missing_ok=True)
+            finally:
+                r.close()
+        finally:
+            session.close()
 
     def encode_dir(self, image_dir: str) -> list[str]:
         """디렉토리 내 이미지들을 Pillow 압축 후 base64 data URL 목록으로 인코딩."""
@@ -111,7 +131,12 @@ class ImageHandler:
     @staticmethod
     def _encode_one(path: Path) -> str | None:
         try:
-            with Image.open(path) as im:
+            expected_format = CONTENT_TYPE_FORMAT.get(
+                next((ct for ct, suffix in _ALLOWED_CT.items() if suffix == path.suffix.lower()), "")
+            )
+            if not expected_format:
+                raise ValueError(f"허용되지 않은 이미지 확장자: {path.suffix or '미상'}")
+            with open_validated_image(path, expected_format=expected_format) as im:
                 im = im.convert("RGB")
                 im.thumbnail((_MAX_EDGE, _MAX_EDGE))
                 buf = io.BytesIO()

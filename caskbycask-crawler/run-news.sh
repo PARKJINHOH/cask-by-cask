@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+APP_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOCK_FILE="/tmp/caskbycask-ai-news.lock"
 
 cd "$APP_DIR"
@@ -11,9 +11,10 @@ if ! flock -n 9; then
   exit 0
 fi
 
-if [ -f "$APP_DIR/.venv/bin/activate" ]; then
-  # shellcheck disable=SC1091
-  source "$APP_DIR/.venv/bin/activate"
+PYTHON="$APP_DIR/.venv/bin/python"
+if [ ! -x "$PYTHON" ]; then
+  echo "[run-news.sh] 릴리스 가상환경을 찾을 수 없습니다: $PYTHON" >&2
+  exit 1
 fi
 
-python3 news_main.py
+exec "$PYTHON" "$APP_DIR/news_main.py"

@@ -605,27 +605,28 @@ Ubuntu 24.04에는 Python 3.12가 기본 설치되어 있으므로, 가상환경
 sudo apt-get install -y python3-venv python3-pip
 ```
 
-### 15-2. 디렉토리 준비 및 코드 업로드
+### 15-2. 영속 디렉터리와 설정 파일 준비
 ```bash
-sudo mkdir -p /app/caskbycask-crawler/{logs,temp}
+sudo mkdir -p /app/caskbycask-crawler/{releases,logs,temp}
 sudo chown -R ubuntu:ubuntu /app/caskbycask-crawler
 ```
-로컬 PC의 `caskbycask-crawler/` 폴더 내 소스 파일들을 서버의 `/app/caskbycask-crawler/`로 업로드합니다. (`.venv`, `.env`, `targets.json`, `*.db`, `logs/` 등은 제외)
+소스 전체를 이 디렉터리에 직접 덮어쓰지 않습니다. 서버에 영속적으로 둘
+`/app/caskbycask-crawler/.env`와 `/app/caskbycask-crawler/targets.json`만 준비하고,
+코드는 GitHub Actions의 `target=crawler` 배포가 `releases/<release-id>`에 설치합니다.
+`current` 경로가 과거 설치의 일반 디렉터리로 존재하면 먼저 별도 이름으로 이동한 뒤 배포합니다.
 
-### 15-3. 가상환경 및 라이브러리 설치
+개발 PC에서 `caskbycask-crawler/.env.example`과 `targets.example.json`을 각각
+`~/setup/crawler.env.example`, `~/setup/targets.example.json`으로 업로드한 뒤 다음을 실행합니다.
+
 ```bash
-cd /app/caskbycask-crawler
-python3 -m venv .venv
-source .venv/bin/activate
-pip install --upgrade pip
-pip install -r requirements.txt
+install -m 600 ~/setup/crawler.env.example /app/caskbycask-crawler/.env
+install -m 600 ~/setup/targets.example.json /app/caskbycask-crawler/targets.json
+nano /app/caskbycask-crawler/.env
+nano /app/caskbycask-crawler/targets.json
 ```
 
-### 15-4. 환경 설정 (`.env`)
-```bash
-cp .env.example .env
-nano .env
-```
+### 15-3. 환경 설정 (`.env`)
+
 필수 설정값 수정:
 * `CASKBYCASK_API_URL=http://127.0.0.1:8080` (백엔드가 같은 서버이므로 로컬 주소 호출)
 * `CASKBYCASK_INTERNAL_KEY` (서버 `/app/env/api.env` 의 키값과 일치)
@@ -638,28 +639,35 @@ nano .env
 * 절대 안전상한이 필요하면 `AI_NEWS_GEMINI_HARD_MONTHLY_USD`, `AI_NEWS_GEMINI_HARD_MONTHLY_TOKENS`, `AI_NEWS_GEMINI_HARD_MONTHLY_IMAGES` 설정 (`0`은 비활성)
 * (선택) `SLACK_WEBHOOK_URL`, `SLACK_CHANNEL=#server-prd` 기입 — 네이버 카페/API/Gemini 문제 알림
 
-### 15-5. 타겟 등록 및 수동 검증
-`targets.json` 작성 후 수동으로 1회 실행하여 정상적으로 수집이 수행되는지 테스트합니다.
+### 15-4. 타겟 검증
+
 ```bash
-cp targets.example.json targets.json
-nano targets.json
-python3 -m json.tool targets.json
-python3 main.py
+python3 -m json.tool /app/caskbycask-crawler/targets.json >/dev/null
+test -s /app/caskbycask-crawler/.env
+```
+
+### 15-5. 릴리스와 가상환경 설치
+
+Actions에서 `target=crawler` 또는 `target=all`을 실행합니다. 배포 스크립트가 릴리스별 `.venv`를
+만들고 `requirements.lock`의 해시와 Linux ARM64 wheel을 검증한 뒤 전체 테스트가 통과할 때만
+`current` 링크를 교체합니다. 서버에서 `pip install -r requirements.txt`를 직접 실행하지 않습니다.
+
+배포 후에는 릴리스에 포함된 가상환경과 lock 정합성을 확인하고 수동으로 한 번 실행합니다.
+
+```bash
+/app/caskbycask-crawler/current/.venv/bin/python \
+  /app/caskbycask-crawler/current/scripts/verify_requirements_lock.py
+/app/caskbycask-crawler/current/.venv/bin/python -c \
+  'import PIL, requests; print(requests.__version__, PIL.__version__)'
+/app/caskbycask-crawler/current/run.sh
 tail -n 50 /app/caskbycask-crawler/logs/crawler.log
 ```
-Gemini SDK import 오류나 `httpx` 의존성 오류가 발생하면 가상환경에 현재
-`requirements.txt`의 `google-genai==2.11.0`, `httpx==0.28.1` 조합이 반영되도록
-`python3 -m pip install -r requirements.txt`를 다시 실행합니다.
 
 ### 15-6. cron 스케줄러 등록
-핫딜과 AI 소식은 KST 기준 2시간 주기로 등록하되 Gemini 호출이 겹치지 않도록 17분 시차를 둡니다. 각 실행 스크립트는 서로 다른 `flock` 잠금을 사용합니다.
+cron은 `deploy-crawler.sh`가 중복 항목을 제거한 뒤 자동 갱신합니다. 핫딜과 AI 소식은 KST 기준 2시간 주기로 실행되고 Gemini 호출이 겹치지 않도록 17분 시차를 둡니다. 각 실행 스크립트는 서로 다른 `flock` 잠금을 사용합니다.
 ```bash
-chmod +x /app/caskbycask-crawler/run.sh
-chmod +x /app/caskbycask-crawler/run-news.sh
-( crontab -l 2>/dev/null | grep -v 'caskbycask-crawler/run'; \
-  echo "CRON_TZ=Asia/Seoul"; \
-  echo "0 */2 * * * /app/caskbycask-crawler/current/run.sh >> /app/caskbycask-crawler/logs/cron.log 2>&1"; \
-  echo "17 */2 * * * /app/caskbycask-crawler/current/run-news.sh >> /app/caskbycask-crawler/logs/ai-news-cron.log 2>&1" ) | crontab -
+readlink -f /app/caskbycask-crawler/current
+crontab -l | grep -E 'CRON_TZ|caskbycask-crawler/current'
 ```
 
 ---
