@@ -9,34 +9,28 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.UUID;
 
-// [보안] 이미지 업로드 보안 검증 — 4단계 순서 준수
-// 1단계: 파일 크기 (최대 10MB)
-// 2단계: 확장자 화이트리스트 검증
-// 3단계: Magic Bytes 검사 (확장자 스푸핑 차단)
-// 4단계: 파일명 UUID 랜덤화 (원본명은 저장 경로에 사용 안 함)
+/**
+ * 업로드 이미지의 크기, 확장자와 실제 형식을 순서대로 검증한다.
+ */
 @Component
 public class NoticeImageValidator {
 
-    private static final long MAX_FILE_SIZE = 10L * 1024 * 1024; // 10MB
+    private static final long MAX_FILE_SIZE = 10L * 1024 * 1024;
 
-    // Magic Bytes 상수
     private static final byte[] MAGIC_JPEG = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF};
-    private static final byte[] MAGIC_PNG  = {(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
-    private static final byte[] MAGIC_GIF  = {0x47, 0x49, 0x46, 0x38}; // "GIF8" — GIF87a / GIF89a 공통
-    private static final byte[] MAGIC_RIFF = {0x52, 0x49, 0x46, 0x46}; // WEBP header 1/2: "RIFF"
-    private static final byte[] MAGIC_WEBP = {0x57, 0x45, 0x42, 0x50}; // WEBP header 2/2: "WEBP" (offset 8)
+    private static final byte[] MAGIC_PNG = {(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
+    private static final byte[] MAGIC_GIF = {0x47, 0x49, 0x46, 0x38};
+    private static final byte[] MAGIC_RIFF = {0x52, 0x49, 0x46, 0x46};
+    private static final byte[] MAGIC_WEBP = {0x57, 0x45, 0x42, 0x50};
 
     /**
-     * 파일 유효성 검사 후 검증된 MIME 타입 반환.
-     * 순서: 크기 → 확장자 → Magic Bytes
+     * 파일을 검증하고, 실제 바이트에서 판별한 MIME 타입을 반환한다.
      */
     public String validate(MultipartFile file) {
-        // 1단계: 파일 크기
         if (file.getSize() > MAX_FILE_SIZE) {
             throw new CustomException(ErrorCode.NOTICE_IMAGE_SIZE_EXCEEDED);
         }
 
-        // 2단계: 확장자 화이트리스트
         String extension = extractExtension(file.getOriginalFilename());
         try {
             NoticeImageAllowedExtension.valueOf(extension.toUpperCase());
@@ -44,13 +38,16 @@ public class NoticeImageValidator {
             throw new CustomException(ErrorCode.NOTICE_INVALID_IMAGE_FORMAT);
         }
 
-        // 3단계: Magic Bytes 검사 → 검증된 MIME 타입 반환
-        return detectMimeType(file);
+        String mimeType = detectMimeType(file);
+        if (!extensionMatchesMime(extension, mimeType)) {
+            throw new CustomException(ErrorCode.NOTICE_INVALID_IMAGE_MAGIC_BYTES);
+        }
+
+        return mimeType;
     }
 
     /**
-     * UUID 기반 저장 파일명 생성. 확장자는 소문자로 정규화.
-     * 4단계: 파일명 랜덤화 — 원본명은 DB에만 보존, 경로에는 미사용.
+     * 원본 파일명을 경로에 노출하지 않도록 UUID 기반 저장명을 생성한다.
      */
     public String generateSavedFileName(String originalFileName) {
         String extension = extractExtension(originalFileName);
@@ -59,8 +56,10 @@ public class NoticeImageValidator {
 
     private String detectMimeType(MultipartFile file) {
         byte[] header = new byte[12];
-        try (InputStream is = file.getInputStream()) {
-            int read = is.read(header, 0, 12);
+        try (InputStream input = file.getInputStream()) {
+            // InputStream.read(...)는 데이터가 남아 있어도 일부만 반환할 수 있다.
+            // PNG/WebP의 8~12바이트 헤더를 안정적으로 채우기 위해 readNBytes를 사용한다.
+            int read = input.readNBytes(header, 0, header.length);
             if (read < 3) {
                 throw new CustomException(ErrorCode.NOTICE_INVALID_IMAGE_MAGIC_BYTES);
             }
@@ -69,9 +68,9 @@ public class NoticeImageValidator {
         }
 
         if (startsWith(header, MAGIC_JPEG)) return "image/jpeg";
-        if (startsWith(header, MAGIC_PNG))  return "image/png";
-        if (startsWith(header, MAGIC_GIF))  return "image/gif";
-        if (isWebp(header))                 return "image/webp";
+        if (startsWith(header, MAGIC_PNG)) return "image/png";
+        if (startsWith(header, MAGIC_GIF)) return "image/gif";
+        if (isWebp(header)) return "image/webp";
 
         throw new CustomException(ErrorCode.NOTICE_INVALID_IMAGE_MAGIC_BYTES);
     }
@@ -84,14 +83,22 @@ public class NoticeImageValidator {
         return true;
     }
 
-    // WEBP: bytes 0~3 = "RIFF", bytes 8~11 = "WEBP"
     private boolean isWebp(byte[] header) {
-        if (header.length < 12) return false;
-        if (!startsWith(header, MAGIC_RIFF)) return false;
+        if (header.length < 12 || !startsWith(header, MAGIC_RIFF)) return false;
         for (int i = 0; i < MAGIC_WEBP.length; i++) {
             if (header[8 + i] != MAGIC_WEBP[i]) return false;
         }
         return true;
+    }
+
+    private boolean extensionMatchesMime(String extension, String mimeType) {
+        return switch (extension.toLowerCase()) {
+            case "jpg", "jpeg" -> "image/jpeg".equals(mimeType);
+            case "png" -> "image/png".equals(mimeType);
+            case "gif" -> "image/gif".equals(mimeType);
+            case "webp" -> "image/webp".equals(mimeType);
+            default -> false;
+        };
     }
 
     private String extractExtension(String fileName) {

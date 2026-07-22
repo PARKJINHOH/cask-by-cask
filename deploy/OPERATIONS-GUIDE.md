@@ -320,6 +320,29 @@ FLUSH PRIVILEGES;
 
 미설정 시 스크립트는 기존 `DB_USERNAME` / `DB_PASSWORD` 를 사용한다. 이 경우 해당 계정에 `caskbycask_dev` 교체 권한이 있어야 한다.
 
+### 변경 전 읽기 전용 사전 점검
+
+운영 변경 전 `/app/scripts/preflight-audit.sh`로 런타임·서비스·헬스·아티팩트·백업 상태를 확인한다. DB 항목은 로컬 관리자 소켓으로 `SELECT`와 `SHOW`만 실행하며 비밀값이나 사용자 식별값을 출력하지 않는다.
+
+```bash
+/app/scripts/preflight-audit.sh
+sudo /app/scripts/preflight-audit.sh --db
+```
+
+### 운영 DB 쿼리 후보 수집
+
+인덱스 변경 전에는 [`server/DB-QUERY-TUNING.md`](server/DB-QUERY-TUNING.md)에 따라 읽기 전용 계정으로 `performance_schema`의 정규화된 SELECT digest만 수집한다. 운영에서는 `ANALYZE FORMAT=JSON`처럼 실제 쿼리를 실행하는 진단을 하지 않으며, 측정 결과 없이 인덱스나 Flyway migration을 추가하지 않는다.
+
+```bash
+DB_AUDIT_CONFIG_FILE=/app/env/db-observer.cnf \
+DB_NAME=caskbycask_prod \
+bash /app/scripts/collect-db-query-candidates.sh
+```
+
+### Hibernate Search 시작 인덱싱
+
+현재 릴리스는 기존 동작과 데이터 정합성을 보존하기 위해 API 시작 시 `Spirit` 전체 재색인을 항상 수행한다. 재색인 실패 시 API 프로세스는 유지하지만 `searchIndex` health를 `DOWN`으로 두어 readiness와 배포 롤백에 반영한다. `HIBERNATE_SEARCH_MASS_INDEX_THREADS`는 1~16만 허용하며 기본값 4를 사용한다. 시작 재색인을 끄는 기능은 영속 경로·연관 엔티티 증분 반영·수동 복구를 별도 검증하기 전까지 제공하지 않는다. 상세 게이트는 [`server/SEARCH-INDEXING.md`](server/SEARCH-INDEXING.md)를 따른다.
+
 ---
 
 ## 8. nginx·systemd 설정 / 운영 스크립트 변경 적용
@@ -515,6 +538,10 @@ tail -f /app/logs/caskbycask-api-error.log
 
 # 운영 스냅샷으로 개발 DB 갱신(caskbycask_prod -> caskbycask_dev, 마스킹 포함)
 /app/scripts/refresh-dev-db-from-prod.sh
+
+# 운영 DB 쿼리 후보 수집(읽기 전용 계정·performance_schema digest만 사용)
+DB_AUDIT_CONFIG_FILE=/app/env/db-observer.cnf DB_NAME=caskbycask_prod \
+  /app/scripts/collect-db-query-candidates.sh
 
 # 리소스 점검(디스크/SSL) 수동 실행
 /app/scripts/check-resources.sh

@@ -168,6 +168,9 @@ sudo chown ubuntu:ubuntu /app/env/api.env
 sudo chmod 600 /app/env/api.env   # ★ 배포/실행 유저만 읽기
 ```
 
+`HIBERNATE_SEARCH_MASS_INDEX_THREADS`는 기본값 4를 사용한다. 현재 릴리스는 데이터 정합성을 위해
+시작 재색인을 항상 수행하며, 비활성화 검토 조건은 [`SEARCH-INDEXING.md`](SEARCH-INDEXING.md)를 확인한다.
+
 > 앱 비밀값은 **GitHub 에 두지 않는다.** 오직 이 파일에만 존재.
 
 ---

@@ -71,6 +71,11 @@ storage:
     # nginx 가 /uploads 로 서빙하는 파일이 같은 디렉터리 트리에 놓인다.
     base-path: ${UPLOAD_PATH:./uploads}
 
+search:
+  mass-index-on-startup:
+    # 현재는 데이터 정합성을 위해 매 기동 시 실행한다. 운영 측정 없이 높이지 않는다.
+    threads-to-load-objects: ${HIBERNATE_SEARCH_MASS_INDEX_THREADS:4}
+
 admin:
   seed:
     email: ${ADMIN_EMAIL}
@@ -126,6 +131,10 @@ management:
       show-details: when-authorized
       probes:
         enabled: true
+      group:
+        readiness:
+          # 재색인 실패 시 API 프로세스는 유지하되 배포 readiness는 실패시킨다.
+          include: readinessState,searchIndex
   metrics:
     tags:
       application: ${spring.application.name}

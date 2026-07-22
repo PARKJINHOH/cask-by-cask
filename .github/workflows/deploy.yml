@@ -225,6 +225,7 @@ jobs:
       - name: Validate operations scripts
         run: |
           bash -n deploy/server/*.sh
+          bash deploy/tests/test-db-query-candidates.sh
           bash deploy/tests/test-backup-db.sh
           bash deploy/tests/test-offsite-backup.sh
           bash deploy/tests/test-restore-offsite-drill.sh
