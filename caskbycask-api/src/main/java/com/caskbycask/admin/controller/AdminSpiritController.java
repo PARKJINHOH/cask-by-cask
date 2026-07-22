@@ -9,7 +9,6 @@ import com.caskbycask.domain.spirit.dto.*;
 import com.caskbycask.domain.spirit.entity.enums.RequestStatus;
 import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
 import com.caskbycask.domain.spirit.entity.enums.SpiritStatus;
-import com.caskbycask.domain.spirit.service.SpiritImageService;
 import com.caskbycask.domain.spirit.service.SpiritService;
 import com.caskbycask.global.auth.security.CustomUserDetails;
 import com.caskbycask.global.response.ApiResponse;
@@ -30,10 +29,10 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/admin/spirits")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','PARTNER','DISTILLERY_STAFF')")
 public class AdminSpiritController {
 
     private final SpiritService spiritService;
-    private final SpiritImageService spiritImageService;
     private final VariantReviewRequestService variantReviewRequestService;
 
     // ?? ??CRUD ?????????????????????????????????????????????
@@ -132,21 +131,25 @@ public class AdminSpiritController {
             @RequestParam(required = false) SpiritCategory category,
             @RequestParam(required = false) SpiritStatus status,
             @RequestParam(required = false) Long producerId,
-            @PageableDefault(size = 20) Pageable pageable) {
+            @PageableDefault(size = 20) Pageable pageable,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
         SpiritSearchCondition condition = new SpiritSearchCondition(
                 keyword, category, null, null, null,
                 null, null, producerId, null, null, null, null,
                 status, null,
                 null, null, null, null);
         return ResponseEntity.ok(ApiResponse.success(
-                PageResponse.from(spiritService.searchSpiritsForAdmin(condition, pageable))));
+                PageResponse.from(spiritService.searchSpiritsForManager(
+                        condition, pageable, userDetails.getUserId()))));
     }
 
     // 愿由ъ옄 ???곸꽭 ???곹깭(ACTIVE/HIDDEN/PENDING) 臾닿? 議고쉶
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<SpiritDetailResponse>> getDetail(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<SpiritDetailResponse>> getDetail(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.ok(ApiResponse.success(
-                spiritService.getSpiritDetailForAdmin(id)
+                spiritService.getSpiritDetailForManager(id, userDetails.getUserId())
         ));
     }
 
@@ -194,24 +197,31 @@ public class AdminSpiritController {
     // ?먮룞(?대쫫) ?곌껐???뷀빐 愿由ъ옄媛 ?섎룞 異붽?/?쒓굅. ?묐갑??
 
     @GetMapping("/{id}/variants")
-    public ResponseEntity<ApiResponse<List<AdminSpiritVariantResponse>>> getVariants(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.success(spiritService.getSpiritVariantsForAdmin(id)));
+    public ResponseEntity<ApiResponse<List<AdminSpiritVariantResponse>>> getVariants(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(ApiResponse.success(
+                spiritService.getSpiritVariantsForManager(id, userDetails.getUserId())));
     }
 
     @PostMapping("/{id}/variants/{targetId}")
     public ResponseEntity<ApiResponse<List<AdminSpiritVariantResponse>>> addVariant(
             @PathVariable Long id,
-            @PathVariable Long targetId) {
-        spiritService.addVariantLink(id, targetId);
-        return ResponseEntity.ok(ApiResponse.success(spiritService.getSpiritVariantsForAdmin(id)));
+            @PathVariable Long targetId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        spiritService.addVariantLink(id, targetId, userDetails.getUserId());
+        return ResponseEntity.ok(ApiResponse.success(
+                spiritService.getSpiritVariantsForManager(id, userDetails.getUserId())));
     }
 
     @DeleteMapping("/{id}/variants/{targetId}")
     public ResponseEntity<ApiResponse<List<AdminSpiritVariantResponse>>> removeVariant(
             @PathVariable Long id,
-            @PathVariable Long targetId) {
-        spiritService.removeVariantLink(id, targetId);
-        return ResponseEntity.ok(ApiResponse.success(spiritService.getSpiritVariantsForAdmin(id)));
+            @PathVariable Long targetId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        spiritService.removeVariantLink(id, targetId, userDetails.getUserId());
+        return ResponseEntity.ok(ApiResponse.success(
+                spiritService.getSpiritVariantsForManager(id, userDetails.getUserId())));
     }
 
     // ?? ?대?吏 愿由???????????????????????????????????????????
@@ -219,41 +229,47 @@ public class AdminSpiritController {
     @PostMapping("/{id}/images")
     public ResponseEntity<ApiResponse<SpiritImageResponse>> uploadImage(
             @PathVariable Long id,
-            @RequestParam MultipartFile file) {
+            @RequestParam MultipartFile file,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(
-                spiritImageService.uploadImage(id, file)
+                spiritService.uploadSpiritImageForManager(id, file, userDetails.getUserId())
         ));
     }
 
     @DeleteMapping("/{id}/images/{imageId}")
     public ResponseEntity<ApiResponse<Void>> deleteImage(
             @PathVariable Long id,
-            @PathVariable Long imageId) {
-        spiritImageService.deleteImage(id, imageId);
+            @PathVariable Long imageId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        spiritService.deleteSpiritImageForManager(id, imageId, userDetails.getUserId());
         return ResponseEntity.ok(ApiResponse.success());
     }
 
     @PatchMapping("/{id}/images/{imageId}/primary")
     public ResponseEntity<ApiResponse<SpiritImageResponse>> setPrimaryImage(
             @PathVariable Long id,
-            @PathVariable Long imageId) {
+            @PathVariable Long imageId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.ok(ApiResponse.success(
-                spiritImageService.setPrimaryImage(id, imageId)
+                spiritService.setPrimarySpiritImageForManager(id, imageId, userDetails.getUserId())
         ));
     }
 
     @PatchMapping("/{id}/images/reorder")
     public ResponseEntity<ApiResponse<List<SpiritImageResponse>>> reorderImages(
             @PathVariable Long id,
-            @Valid @RequestBody SpiritImageReorderRequest request) {
+            @Valid @RequestBody SpiritImageReorderRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.ok(ApiResponse.success(
-                spiritImageService.reorderImages(id, request.imageIds())
+                spiritService.reorderSpiritImagesForManager(
+                        id, request.imageIds(), userDetails.getUserId())
         ));
     }
 
     // ?? ?깅줉 ?붿껌 ??議고쉶/?섏젙 (PARTNER ?ы븿) ??????????????????
 
     @GetMapping("/requests")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
     public ResponseEntity<ApiResponse<PageResponse<SpiritRegisterRequestResponse>>> getRequests(
             @RequestParam(required = false) RequestStatus status,
             @PageableDefault(size = 20) Pageable pageable) {
@@ -263,6 +279,7 @@ public class AdminSpiritController {
     }
 
     @GetMapping("/requests/{id}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
     public ResponseEntity<ApiResponse<SpiritRegisterRequestDetailResponse>> getRequestDetail(
             @PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(
@@ -271,6 +288,7 @@ public class AdminSpiritController {
     }
 
     @PatchMapping("/requests/{id}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
     public ResponseEntity<ApiResponse<SpiritRegisterRequestDetailResponse>> updateRequest(
             @PathVariable Long id,
             @Valid @RequestBody SpiritRegisterRequestBody body) {
@@ -280,6 +298,7 @@ public class AdminSpiritController {
     }
 
     @PostMapping("/requests/{id}/images")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
     public ResponseEntity<ApiResponse<SpiritRegisterRequestDetailResponse>> uploadRequestImage(
             @PathVariable Long id,
             @RequestParam MultipartFile file) {
@@ -289,6 +308,7 @@ public class AdminSpiritController {
     }
 
     @DeleteMapping("/requests/{id}/images")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
     public ResponseEntity<ApiResponse<SpiritRegisterRequestDetailResponse>> removeRequestImage(
             @PathVariable Long id,
             @RequestParam String imageUrl) {

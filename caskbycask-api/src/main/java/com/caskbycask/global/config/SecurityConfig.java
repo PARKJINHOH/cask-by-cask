@@ -177,7 +177,9 @@ public class SecurityConfig {
                         // 소셜 로그인 공개 엔드포인트 (인가 URL/콜백/신규가입). 연동·해제(/api/users/me/social/**)는 인증 필요.
                         .requestMatchers(HttpMethod.POST, "/api/auth/oauth/**").permitAll()
                         .requestMatchers("/api/admin/logs/**").hasAnyRole("SUPER_ADMIN", "ADMIN")
-                        .requestMatchers("/api/admin/spirits/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "PARTNER", "DISTILLERY_STAFF", "IMPORTER")
+                        // Spirit management is producer-scoped for PARTNER/DISTILLERY_STAFF.
+                        // IMPORTER has no ownership relation in the current domain model.
+                        .requestMatchers("/api/admin/spirits/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "PARTNER", "DISTILLERY_STAFF")
                         .requestMatchers("/api/admin/producers/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "PARTNER", "DISTILLERY_STAFF", "IMPORTER")
                         .requestMatchers("/api/admin/wineries/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "PARTNER", "DISTILLERY_STAFF", "IMPORTER")
                         .requestMatchers("/api/admin/cognac-houses/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "PARTNER", "DISTILLERY_STAFF", "IMPORTER")

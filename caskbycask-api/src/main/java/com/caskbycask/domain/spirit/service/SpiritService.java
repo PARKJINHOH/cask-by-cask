@@ -62,6 +62,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class SpiritService {
 
+    private static final String SPIRIT_MANAGEMENT_MENU = "/admin/spirits";
     private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
     private static final Set<String> ALLOWED_EXTENSIONS    = Set.of("jpg", "jpeg", "png", "webp");
     private static final long        MAX_FILE_SIZE          = 10L * 1024 * 1024;
@@ -117,7 +118,7 @@ public class SpiritService {
 
     @Transactional(readOnly = true)
     public Page<SpiritListResponse> searchSpiritsForAdmin(SpiritSearchCondition condition,
-                                                          Pageable pageable) {
+                                                           Pageable pageable) {
         if (org.springframework.util.StringUtils.hasText(condition.keyword())) {
             Page<Long> idPage = spiritSearchService.searchSpiritIds(condition, pageable);
             if (idPage.isEmpty()) {
@@ -127,6 +128,13 @@ public class SpiritService {
             return new org.springframework.data.domain.PageImpl<>(content, pageable, idPage.getTotalElements());
         }
         return spiritRepository.searchForAdmin(condition, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<SpiritListResponse> searchSpiritsForManager(
+            SpiritSearchCondition condition, Pageable pageable, Long userId) {
+        User user = requireSpiritManagementUser(userId);
+        return searchSpiritsForAdmin(scopeToAssignedProducer(condition, user), pageable);
     }
 
     @Transactional(readOnly = true)
@@ -161,12 +169,36 @@ public class SpiritService {
         Spirit spirit = spiritRepository.findByIdWithAllDetails(id, null)
                 .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_NOT_FOUND));
 
+        return buildAdminSpiritDetail(spirit);
+    }
+
+    @Transactional(readOnly = true)
+    public SpiritDetailResponse getSpiritDetailForManager(Long id, Long userId) {
+        User user = requireSpiritManagementUser(userId);
+        Spirit spirit = spiritRepository.findByIdWithAllDetails(id, null)
+                .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_NOT_FOUND));
+        verifyProducerAccess(user, spirit.getProducer());
+
+        return buildAdminSpiritDetail(spirit, user);
+    }
+
+    private SpiritDetailResponse buildAdminSpiritDetail(Spirit spirit) {
+        return buildAdminSpiritDetail(spirit, null);
+    }
+
+    private SpiritDetailResponse buildAdminSpiritDetail(Spirit spirit, User manager) {
+        Long id = spirit.getId();
+
         List<SpiritImageResponse> images = spiritImageRepository.findBySpiritIdOrderBySortOrderAscIdAsc(id)
                 .stream()
                 .map(SpiritImageResponse::from)
                 .toList();
 
-        List<SpiritVariantResponse> variants = getVariantsResponse(spirit, false);
+        Map<Long, Spirit> variantsMap = resolveVariants(spirit, false);
+        if (manager != null) {
+            filterVariantsForManager(variantsMap, manager);
+        }
+        List<SpiritVariantResponse> variants = buildVariantResponses(variantsMap);
 
         return spiritDetailService.buildFullDetailResponse(spirit, images, variants);
     }
@@ -325,7 +357,10 @@ public class SpiritService {
     }
 
     private List<SpiritVariantResponse> getVariantsResponse(Spirit spirit, boolean activeOnly) {
-        Map<Long, Spirit> variantsMap = resolveVariants(spirit, activeOnly);
+        return buildVariantResponses(resolveVariants(spirit, activeOnly));
+    }
+
+    private List<SpiritVariantResponse> buildVariantResponses(Map<Long, Spirit> variantsMap) {
         if (variantsMap.isEmpty()) return List.of();
 
         Map<Long, String> primaryImageMap = primaryImageMap(variantsMap.keySet());
@@ -356,15 +391,36 @@ public class SpiritService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<AdminSpiritVariantResponse> getSpiritVariantsForManager(Long id, Long userId) {
+        User user = requireSpiritManagementUser(userId);
+        Spirit spirit = getSpirit(id);
+        verifyProducerAccess(user, spirit.getProducer());
+
+        Map<Long, Spirit> variants = resolveVariants(spirit, false);
+        filterVariantsForManager(variants, user);
+        if (variants.isEmpty()) return List.of();
+
+        Map<Long, String> primaryImageMap = primaryImageMap(variants.keySet());
+        return variants.values().stream()
+                .map(v -> AdminSpiritVariantResponse.of(
+                        v,
+                        primaryImageMap.get(v.getId()),
+                        "MANUAL"))
+                .toList();
+    }
+
     /** 관리자: 연관 술 수동 추가(양방향). 이미 EXCLUDED 였으면 MANUAL 로 복원. */
     @Transactional
-    public void addVariantLink(Long id, Long targetId) {
+    public void addVariantLink(Long id, Long targetId, Long userId) {
         if (id.equals(targetId)) {
             throw new CustomException(ErrorCode.SPIRIT_VARIANT_SELF_NOT_ALLOWED);
         }
-        if (!spiritRepository.existsById(id) || !spiritRepository.existsById(targetId)) {
-            throw new CustomException(ErrorCode.SPIRIT_NOT_FOUND);
-        }
+        User user = requireSpiritManagementUser(userId);
+        Spirit spirit = getSpirit(id);
+        Spirit target = getSpirit(targetId);
+        verifyProducerAccess(user, spirit.getProducer());
+        verifyProducerAccess(user, target.getProducer());
         upsertLink(id, targetId, VariantLinkType.MANUAL);
     }
 
@@ -373,10 +429,12 @@ public class SpiritService {
      * 대상이 이름 자동 매치이면 EXCLUDED 로 숨김, 순수 수동이었으면 링크 자체 삭제.
      */
     @Transactional
-    public void removeVariantLink(Long id, Long targetId) {
-        if (!spiritRepository.existsById(id) || !spiritRepository.existsById(targetId)) {
-            throw new CustomException(ErrorCode.SPIRIT_NOT_FOUND);
-        }
+    public void removeVariantLink(Long id, Long targetId, Long userId) {
+        User user = requireSpiritManagementUser(userId);
+        Spirit spirit = getSpirit(id);
+        Spirit target = getSpirit(targetId);
+        verifyProducerAccess(user, spirit.getProducer());
+        verifyProducerAccess(user, target.getProducer());
         findLink(id, targetId).ifPresent(variantLinkRepository::delete);
     }
 
@@ -476,11 +534,11 @@ public class SpiritService {
 
     @Transactional
     public SpiritDetailResponse createSpirit(CreateSpiritRequest request, Long userId) {
-        User registeredBy = getUser(userId);
+        User registeredBy = requireSpiritManagementUser(userId);
         Producer producer = resolveProducer(request.producerId());
 
         // PARTNER는 producerId 미입력 시 자신의 증류소 자동 사용
-        if (registeredBy.getRole() == Role.PARTNER && producer == null
+        if (isProducerScopedRole(registeredBy.getRole()) && producer == null
                 && registeredBy.getProducer() != null) {
             producer = registeredBy.getProducer();
         }
@@ -575,13 +633,23 @@ public class SpiritService {
         Spirit spirit = getSpirit(id);
         List<Spirit> indexingTargets = new ArrayList<>();
         indexingTargets.add(spirit);
-        User user = getUser(userId);
+        User user = requireSpiritManagementUser(userId);
 
         verifyProducerAccess(user, spirit.getProducer());
+
+        // A manager must not mutate or detach child editions owned by another producer.
+        // Load once here and reuse below so the ownership check precedes every mutation.
+        List<Spirit> existingVariants = spirit.getParent() == null
+                ? spiritRepository.findByParentId(id)
+                : List.of();
+        if (isProducerScopedRole(user.getRole())) {
+            existingVariants.forEach(existing -> verifyProducerAccess(user, existing.getProducer()));
+        }
 
         Producer producer = request.producerId() != null
                 ? resolveProducer(request.producerId())
                 : spirit.getProducer();
+        verifyProducerAccess(user, producer);
 
         SpiritCategory prevCategory = spirit.getCategory();
         validateEditionValues(request, spirit);
@@ -620,7 +688,6 @@ public class SpiritService {
 
         // 하위 에디션 수정 처리 (마스터 주류일 때만 수행)
         if (spirit.getParent() == null) {
-            List<Spirit> existingVariants = spiritRepository.findByParentId(id);
             indexingTargets.addAll(existingVariants);
             if (Boolean.TRUE.equals(request.isVariantSplit()) && request.variants() != null) {
                 java.util.Set<Long> processedIds = new java.util.HashSet<>();
@@ -1256,6 +1323,97 @@ public class SpiritService {
         return userRepository.getByIdOrThrow(userId);
     }
 
+    @Transactional(readOnly = true)
+    public void assertSpiritManagementAccess(Long spiritId, Long userId) {
+        requireSpiritForManager(spiritId, userId);
+    }
+
+    @Transactional
+    public SpiritImageResponse uploadSpiritImageForManager(
+            Long spiritId, MultipartFile file, Long userId) {
+        requireSpiritForManager(spiritId, userId);
+        return spiritImageService.uploadImage(spiritId, file);
+    }
+
+    @Transactional
+    public void deleteSpiritImageForManager(Long spiritId, Long imageId, Long userId) {
+        requireSpiritForManager(spiritId, userId);
+        spiritImageService.deleteImage(spiritId, imageId);
+    }
+
+    @Transactional
+    public SpiritImageResponse setPrimarySpiritImageForManager(
+            Long spiritId, Long imageId, Long userId) {
+        requireSpiritForManager(spiritId, userId);
+        return spiritImageService.setPrimaryImage(spiritId, imageId);
+    }
+
+    @Transactional
+    public List<SpiritImageResponse> reorderSpiritImagesForManager(
+            Long spiritId, List<Long> imageIds, Long userId) {
+        requireSpiritForManager(spiritId, userId);
+        return spiritImageService.reorderImages(spiritId, imageIds);
+    }
+
+    private Spirit requireSpiritForManager(Long spiritId, Long userId) {
+        User user = requireSpiritManagementUser(userId);
+        Spirit spirit = getSpirit(spiritId);
+        verifyProducerAccess(user, spirit.getProducer());
+        return spirit;
+    }
+
+    private User requireSpiritManagementUser(Long userId) {
+        User user = getUser(userId);
+        if (isAdminRole(user.getRole())) {
+            return user;
+        }
+        if (isProducerScopedRole(user.getRole())
+                && user.getProducer() != null
+                && user.getAllowedMenus() != null
+                && user.getAllowedMenus().contains(SPIRIT_MANAGEMENT_MENU)) {
+            return user;
+        }
+        throw new CustomException(ErrorCode.SPIRIT_ACCESS_DENIED);
+    }
+
+    private SpiritSearchCondition scopeToAssignedProducer(SpiritSearchCondition condition, User user) {
+        if (isAdminRole(user.getRole())) {
+            return condition;
+        }
+
+        Long assignedProducerId = user.getProducer().getId();
+        if (condition.producerId() != null && !assignedProducerId.equals(condition.producerId())) {
+            throw new CustomException(ErrorCode.SPIRIT_ACCESS_DENIED);
+        }
+
+        return new SpiritSearchCondition(
+                condition.keyword(), condition.category(), condition.whiskyStyles(), condition.wineTypes(),
+                condition.cognacGrades(), condition.country(), condition.region(), assignedProducerId,
+                condition.minAbv(), condition.maxAbv(), condition.minScore(), condition.maxScore(),
+                condition.status(), condition.sort(), condition.wineSweetness(), condition.wineBody(),
+                condition.wineAcidity(), condition.wineTannin());
+    }
+
+    private boolean isAdminRole(Role role) {
+        return role == Role.SUPER_ADMIN || role == Role.ADMIN;
+    }
+
+    private boolean isProducerScopedRole(Role role) {
+        return role == Role.PARTNER || role == Role.DISTILLERY_STAFF;
+    }
+
+    private boolean hasProducerAccess(User user, Producer producer) {
+        return producer != null
+                && user.getProducer() != null
+                && user.getProducer().getId().equals(producer.getId());
+    }
+
+    private void filterVariantsForManager(Map<Long, Spirit> variants, User user) {
+        if (isProducerScopedRole(user.getRole())) {
+            variants.entrySet().removeIf(entry -> !hasProducerAccess(user, entry.getValue().getProducer()));
+        }
+    }
+
     private SpiritRegisterRequest getRegisterRequest(Long id) {
         return registerRequestRepository.findById(id)
                 .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_REQUEST_NOT_FOUND));
@@ -1275,10 +1433,8 @@ public class SpiritService {
     }
 
     private void verifyProducerAccess(User user, Producer producer) {
-        if (user.getRole() != Role.PARTNER) return;
-        if (producer == null
-                || user.getProducer() == null
-                || !user.getProducer().getId().equals(producer.getId())) {
+        if (isAdminRole(user.getRole())) return;
+        if (!isProducerScopedRole(user.getRole()) || !hasProducerAccess(user, producer)) {
             throw new CustomException(ErrorCode.SPIRIT_ACCESS_DENIED);
         }
     }
