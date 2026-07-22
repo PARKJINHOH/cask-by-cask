@@ -13,9 +13,9 @@ main push (코드만)
    │   ← 사용자가 Actions 탭에서 "Run workflow" 클릭 (수동)
    │     target 선택: both(FE+BE) / api / web / crawler / all(전체)
    ▼
-GitHub Actions (ubuntu-latest, x86) — 대상 잡만 실행, 나머지는 skipped
-   ├─ build-api : gradle bootJar      → app.jar      ➔ Oracle Object Storage 업로드
-   ├─ build-web : npm ci + npm run build (standalone) → dist ➔ dist.tar.gz ➔ Oracle Object Storage 업로드
+GitHub Actions — 대상 잡만 실행, 나머지는 skipped
+   ├─ build-api (Ubuntu 24.04 x64) : clean test bootJar → app.jar ➔ Oracle Object Storage 업로드
+   ├─ build-web (Ubuntu 24.04 ARM64) : npm ci + cache test + typecheck + standalone build → dist.tar.gz ➔ Oracle Object Storage 업로드
    └─ deploy    : 앱 아티팩트와 crawler 소스 묶음을 전송 ➔ 해당 교체 스크립트 실행
    ▼
 서버 (Ubuntu 24.04 aarch64, Oracle Cloud 춘천)
@@ -27,7 +27,9 @@ GitHub Actions (ubuntu-latest, x86) — 대상 잡만 실행, 나머지는 skipp
 - **아티팩트 저장소**: Github Private Repo의 아티팩트 저장 공간 한계(Artifact storage quota) 문제를 해결하기 위해, 빌드된 아티팩트를 **Oracle Object Storage(S3 호환 API)**에 업로드하여 임시 보관합니다.
 - **버킷 용량 관리**: 10GB 무료 버킷의 공간 효율성을 위해, `api`와 `web` 빌드 산출물은 **각각 최신 3개씩만 유지**하고 이전 파일은 자동 정리(cleanup)합니다.
 - API/웹은 서버에서 빌드하지 않는다. 크롤러만 Python 소스 릴리스를 설치하고 영속 `.venv`의 의존성을 갱신한다.
-- 서버가 aarch64여도 산출물(jar=바이트코드, dist=정적파일)은 아키텍처 무관 → x86 러너 빌드본 그대로 동작.
+- API JAR는 JVM 바이트코드이므로 x64 러너에서 빌드한다. Next.js standalone은 네이티브 모듈을
+  포함할 수 있으므로 운영 서버와 같은 ARM64 러너에서 빌드한다.
+- 외부 Actions는 커밋 SHA로 고정하고 워크플로 기본 권한은 `contents: read`만 부여한다.
 
 ---
 

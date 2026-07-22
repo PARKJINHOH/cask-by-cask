@@ -65,6 +65,8 @@ systemd: /etc/systemd/system/caskbycask-api.service
 ## 2. 배포 방법 (GitHub Actions 수동 배포)
 
 빌드는 GitHub 러너에서 수행하고, 서버에는 **산출물(jar/dist)만** 전송한다. 서버는 빌드하지 않는다.
+API는 Ubuntu 24.04 x64, Next.js standalone은 운영 서버와 같은 Ubuntu 24.04 ARM64에서
+검증·빌드한다. Actions는 커밋 SHA로 고정하고 `contents: read` 최소 권한으로 실행한다.
 
 ### 절차
 
@@ -74,10 +76,12 @@ systemd: /etc/systemd/system/caskbycask-api.service
    - `ref` 입력란 비워두면 `main` 배포 (기본값)
    - 🕐 **사용자 적은 시간대 권장**
 3. 자동 진행 (대상에 해당하는 잡만 실행, 나머지는 `skipped`):
-   - `build-api` (gradle bootJar) · `build-web` (Next.js Standalone Build) — 대상이면 병렬 빌드
-   - `deploy` 잡이 빌드된 산출물만 서버로 전송 → 해당 교체 스크립트 실행
+   - `build-api` (`clean test bootJar`) · `build-web` (`npm ci` → 세션 캐시 테스트 → 타입 검사 → Next.js Standalone Build) — 대상이면 병렬 실행
+   - `deploy` 잡은 운영 셸 스크립트 구문을 먼저 검사하고, 빌드된 산출물만 서버로 전송 → 해당 교체 스크립트 실행
    - both 일 때: 프론트 먼저 교체(Next.js 서비스 재시작) → 백엔드 jar 교체 → 재시작 → **readiness 헬스체크**
 4. 백엔드 배포 시 헬스체크 통과해야 성공. **실패하면 자동으로 직전 버전으로 롤백.**
+   - `both`/`all`에서 웹 교체 후 API가 실패하면 API만 자동 롤백되고 웹은 새 버전으로 남는다.
+     API 변경은 직전 웹과 하위 호환을 유지하고, 호환되지 않으면 9장의 웹 수동 롤백도 즉시 수행한다.
 5. 완료 시 **Slack `#server-prd` 로 결과 통보**(BE·FE·배포 단계별, `SLACK_WEBHOOK_URL` Secret 설정 시).
    - 배포 안 한 쪽은 `⏭`(skipped) 로 표시 — 예: `백엔드 ⏭ · 프론트 ✅` (web 만 배포). 요약에 대상(`· web`)도 표기됨.
 
