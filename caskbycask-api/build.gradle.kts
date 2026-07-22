@@ -1,6 +1,6 @@
 plugins {
     java
-    id("org.springframework.boot") version "3.5.15"
+    id("org.springframework.boot") version "3.5.16"
     id("io.spring.dependency-management") version "1.1.7"
 }
 
@@ -26,6 +26,7 @@ repositories {
 val queryDslVersion = "5.1.0"
 val jjwtVersion = "0.13.0"
 val bucket4jVersion = "8.19.0"
+val hibernateSearchVersion = "7.2.6.Final"
 
 dependencies {
     // Web
@@ -102,8 +103,9 @@ dependencies {
     testAnnotationProcessor("org.projectlombok:lombok")
 
     // Hibernate Search (Embedded Lucene) & Nori 한글 분석기
-    implementation("org.hibernate.search:hibernate-search-mapper-orm:7.1.0.Final")
-    implementation("org.hibernate.search:hibernate-search-backend-lucene:7.1.0.Final")
+    implementation(platform("org.hibernate.search:hibernate-search-bom:$hibernateSearchVersion"))
+    implementation("org.hibernate.search:hibernate-search-mapper-orm")
+    implementation("org.hibernate.search:hibernate-search-backend-lucene")
     implementation("org.apache.lucene:lucene-analysis-nori:9.11.1")
 }
 
@@ -117,7 +119,7 @@ sourceSets {
 }
 
 tasks.withType<JavaCompile> {
-    options.annotationProcessorGeneratedSourcesDirectory = querydslDir.get().asFile
+    options.generatedSourceOutputDirectory.set(querydslDir)
 }
 
 tasks.named<Delete>("clean") {
