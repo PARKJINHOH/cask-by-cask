@@ -140,7 +140,17 @@ Next.js 빌드(`npm run build`) 시, 프로젝트 구조에 맞춰 정적 페이
 ### 트러블슈팅 및 검증
 - **빌드 검증**: 로컬 빌드 시 터미널 로그에서 각 라우트별 렌더링 타입(○ Static, λ SSR)이 정상적으로 설계와 일치하는지 확인합니다.
 - **standalone 구동 검증**: 서버의 systemd 서비스 `caskbycask-web`이 정상 작동 중인지 확인합니다 (`systemctl status caskbycask-web`).
-- **배포 후 자동 검증**: `cd caskbycask-web && SEO_VERIFY_BASE_URL=https://www.caskbycask.net npm run seo:verify`. 원본 HTML뿐 아니라 Puppeteer 렌더링 뒤의 title·description·robots·canonical·H1·JSON-LD 중복도 확인한다. 브라우저 실행이 불가능한 제한 환경에서만 `SEO_VERIFY_BROWSER=false`로 생략할 수 있다. 전체 sitemap URL의 최종 200·self-canonical·index 가능 여부를 검사하는 배포 게이트는 `SEO_VERIFY_ALL_URLS=true`를 함께 지정한다. 이 모드는 운영 URL을 순차적으로 조회하므로 배포 직후 한 번만 실행한다. 정규·에디션 대표 ID 기본값은 `295,296,309`이며 데이터가 달라진 환경에서는 `SEO_VERIFY_SPIRIT_IDS=...`로 존재하는 ID를 쉼표로 지정한다.
+- **배포 후 자동 검증**: `cd caskbycask-web && SEO_VERIFY_BASE_URL=https://www.caskbycask.net npm run seo:verify`. 원본 HTML뿐 아니라 Puppeteer 렌더링 뒤의 title·description·robots·canonical·H1·JSON-LD 중복도 확인한다. 브라우저 실행이 불가능한 제한 환경에서만 `SEO_VERIFY_BROWSER=false`로 생략할 수 있다. 전체 sitemap URL의 최종 200·self-canonical·index 가능 여부를 검사하는 배포 게이트는 `SEO_VERIFY_ALL_URLS=true`를 함께 지정한다. 운영 API의 요청 제한과 SSR 부하를 피하기 위해 전체 검증은 URL 사이에 기본 1초 간격을 두므로 현재 규모에서는 약 10~15분이 걸릴 수 있다. 간격은 `SEO_VERIFY_REQUEST_DELAY_MS`로 늘릴 수 있으나 운영에서는 1,000ms 미만으로 낮추지 않는다. 이 모드는 배포 직후 한 번만 실행한다. 정규·에디션 대표 ID 기본값은 `295,296,309`이며 데이터가 달라진 환경에서는 `SEO_VERIFY_SPIRIT_IDS=...`로 존재하는 ID를 쉼표로 지정한다.
+
+  Windows PowerShell에서는 소스 체크아웃의 `caskbycask-web` 폴더에서 다음과 같이 실행한다.
+
+  ```powershell
+  $env:SEO_VERIFY_BASE_URL = 'https://www.caskbycask.net'
+  $env:SEO_VERIFY_ALL_URLS = 'true'
+  $env:SEO_VERIFY_BROWSER = 'true'
+  npm.cmd run seo:verify
+  Remove-Item Env:SEO_VERIFY_BASE_URL, Env:SEO_VERIFY_ALL_URLS, Env:SEO_VERIFY_BROWSER -ErrorAction SilentlyContinue
+  ```
 
 ---
 

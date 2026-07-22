@@ -14,6 +14,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -51,6 +52,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain
     ) throws ServletException, IOException {
+
+        if (isDirectLoopbackRead(request)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         RateLimitRule rule = findMatchingRule(request);
         if (rule == null) {
@@ -151,5 +157,27 @@ public class RateLimitFilter extends OncePerRequestFilter {
             return realIp.trim();
         }
         return request.getRemoteAddr();
+    }
+
+    /**
+     * Next.js SSR 이 같은 서버의 localhost API 를 직접 조회하는 GET/HEAD 는 외부 사용자의
+     * IP 버킷과 분리한다. 외부 요청은 Nginx 가 아래 프록시 헤더 중 하나 이상을 항상 넣으므로
+     * loopback 주소만으로 우회하지 않고, 프록시 헤더가 모두 없는 직접 호출만 허용한다.
+     */
+    static boolean isDirectLoopbackRead(HttpServletRequest request) {
+        String method = request.getMethod();
+        if (!HttpMethod.GET.matches(method) && !HttpMethod.HEAD.matches(method)) {
+            return false;
+        }
+        if (StringUtils.hasText(request.getHeader("CF-Connecting-IP"))
+                || StringUtils.hasText(request.getHeader("X-Real-IP"))
+                || StringUtils.hasText(request.getHeader("X-Forwarded-For"))) {
+            return false;
+        }
+
+        String remoteAddr = request.getRemoteAddr();
+        return "127.0.0.1".equals(remoteAddr)
+                || "::1".equals(remoteAddr)
+                || "0:0:0:0:0:0:0:1".equals(remoteAddr);
     }
 }

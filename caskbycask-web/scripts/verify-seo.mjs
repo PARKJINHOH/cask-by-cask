@@ -3,6 +3,9 @@ const canonicalOrigin = (process.env.SEO_VERIFY_CANONICAL_ORIGIN
   || (baseUrl.includes('localhost') ? 'https://www.caskbycask.net' : baseUrl)).replace(/\/+$/, '')
 const verifyAllSitemapUrls = process.env.SEO_VERIFY_ALL_URLS === 'true'
 const verifyBrowser = process.env.SEO_VERIFY_BROWSER !== 'false'
+const sitemapRequestDelayMs = process.env.SEO_VERIFY_REQUEST_DELAY_MS === undefined
+  ? (verifyAllSitemapUrls ? 1000 : 0)
+  : Number(process.env.SEO_VERIFY_REQUEST_DELAY_MS)
 const representativeSpiritIds = (process.env.SEO_VERIFY_SPIRIT_IDS || '295,296,309')
   .split(',')
   .map((value) => value.trim())
@@ -10,6 +13,13 @@ const representativeSpiritIds = (process.env.SEO_VERIFY_SPIRIT_IDS || '295,296,3
 
 function invariant(condition, message) {
   if (!condition) throw new Error(message)
+}
+
+invariant(Number.isFinite(sitemapRequestDelayMs) && sitemapRequestDelayMs >= 0,
+  'SEO_VERIFY_REQUEST_DELAY_MS must be a non-negative number')
+
+function delay(ms) {
+  return ms > 0 ? new Promise((resolve) => setTimeout(resolve, ms)) : Promise.resolve()
 }
 
 function count(html, pattern) {
@@ -118,7 +128,11 @@ async function verifySitemaps() {
   invariant(new Set(urls).size === urls.length, 'duplicate URL found across sitemap shards')
 
   const targets = verifyAllSitemapUrls ? urls : urls.slice(0, Math.min(30, urls.length))
-  for (const url of targets) {
+  if (sitemapRequestDelayMs > 0) {
+    console.log(`sitemap URL checks: ${sitemapRequestDelayMs}ms interval (production-safe pacing)`)
+  }
+  for (const [index, url] of targets.entries()) {
+    if (index > 0) await delay(sitemapRequestDelayMs)
     invariant(url.startsWith(`${canonicalOrigin}/`), `unexpected sitemap URL host: ${url}`)
     const response = await fetch(throughTarget(url), { redirect: 'manual' })
     const html = await response.text()

@@ -205,7 +205,95 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-### 8-1. 서버 점검 페이지 배치
+### 8-1. 운영 중 nginx 설정 갱신
+
+GitHub Actions 배포는 nginx 설정을 서버로 전송하지 않는다. 저장소의
+`deploy/nginx/caskbycask.conf`를 `~/setup/caskbycask.conf`로 업로드한 뒤 아래 절차로 수동 반영한다.
+
+> 업로드한 설정에는 점검 우회 시크릿 자리표시자가 들어 있다. 활성 설정을 그대로 덮어쓰기 전에
+> `/app/next/.maintenance_secret` 또는 기존 활성 설정에서 시크릿을 읽어 새 설정에 다시 적용해야 한다.
+> 시크릿 값은 터미널에 출력하거나 작업 기록에 첨부하지 않는다.
+
+업로드 파일과 변경 대상 경로를 확인한다:
+
+```bash
+ls -l ~/setup/caskbycask.conf
+grep -nE 'sitemap\.xml|sitemaps/|indexnow-key' ~/setup/caskbycask.conf
+```
+
+현재 활성 설정을 백업하고 기존 점검 우회 시크릿을 준비한다:
+
+```bash
+BACKUP="/etc/nginx/sites-available/caskbycask.conf.bak-$(date +%Y%m%d-%H%M%S)"
+sudo cp -a /etc/nginx/sites-available/caskbycask.conf "$BACKUP"
+
+SECRET=$(cat /app/next/.maintenance_secret 2>/dev/null || true)
+if [ -z "$SECRET" ]; then
+    SECRET=$(sudo sed -n \
+        's/.*$cookie_cbc_maint = "\([^"]*\)".*/\1/p' \
+        /etc/nginx/sites-available/caskbycask.conf | head -n 1)
+fi
+if [ -z "$SECRET" ] || [ "$SECRET" = "CHANGE_ME_TO_A_LONG_RANDOM_SECRET" ]; then
+    SECRET=$(openssl rand -hex 24)
+fi
+```
+
+업로드한 설정으로 교체하고 시크릿 3곳을 복원한다:
+
+```bash
+sudo cp ~/setup/caskbycask.conf /etc/nginx/sites-available/caskbycask.conf
+
+sudo env NEW_SECRET="$SECRET" perl -0pi -e '
+    s/(?<=\$cookie_cbc_maint = ")[^"]+(?=")/$ENV{NEW_SECRET}/g;
+    s/(?<=location = \/__cbc_unlock_)[^\s{]+/$ENV{NEW_SECRET}/g;
+    s/(?<=cbc_maint=)[^;"]+/$ENV{NEW_SECRET}/g;
+' /etc/nginx/sites-available/caskbycask.conf
+
+printf '%s\n' "$SECRET" | sudo tee /app/next/.maintenance_secret >/dev/null
+sudo chown ubuntu:ubuntu /app/next/.maintenance_secret
+sudo chmod 600 /app/next/.maintenance_secret
+unset SECRET
+```
+
+자리표시자가 남아 있는지 검사한다. `ERROR`가 출력되면 reload하지 않고 백업 설정으로 복구한다:
+
+```bash
+if sudo grep -q 'CHANGE_ME_TO_A_LONG_RANDOM_SECRET' \
+    /etc/nginx/sites-available/caskbycask.conf; then
+    echo "ERROR: 점검 우회 시크릿 치환 실패 — nginx reload 금지"
+else
+    echo "OK: 점검 우회 시크릿 치환 완료"
+fi
+```
+
+문법 검사를 통과한 경우에만 무중단 reload한다:
+
+```bash
+sudo nginx -t
+sudo systemctl reload nginx
+sudo systemctl is-active nginx   # active 기대
+```
+
+`nginx -t`가 실패하면 reload하지 말고 즉시 백업으로 복구한다:
+
+```bash
+sudo cp "$BACKUP" /etc/nginx/sites-available/caskbycask.conf
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+SEO 경로가 포함된 갱신이라면 외부 응답까지 확인한다. 하위 sitemap은 모두 HTTP 200,
+`Content-Type: application/xml`, `ETag`, `Cache-Control: public, max-age=3600`을 반환해야 한다:
+
+```bash
+curl -I https://www.caskbycask.net/sitemap.xml
+curl -s https://www.caskbycask.net/sitemap.xml | head
+curl -I https://www.caskbycask.net/sitemaps/static.xml
+curl -I https://www.caskbycask.net/sitemaps/content-0.xml
+curl -I https://www.caskbycask.net/sitemaps/spirits-ko-0.xml
+curl -I https://www.caskbycask.net/sitemaps/spirits-en-0.xml
+```
+
+### 8-2. 서버 점검 페이지 배치
 
 점검 모드(`maintenance.sh`)가 노출할 정적 점검 페이지를 `dist` 와 **분리된** 위치(`/app/next/maintenance.html`)에 둔다.
 (dist 와 분리해야 프론트 배포 시 `dist` 교체에 영향받지 않는다.)
@@ -215,7 +303,7 @@ sudo cp ~/setup/maintenance.html /app/next/maintenance.html   # deploy/nginx/mai
 sudo chown ubuntu:ubuntu /app/next/maintenance.html
 ```
 
-### 8-2. 점검 우회 시크릿 설정 (관리자 본인만 점검 중 접근)
+### 8-3. 점검 우회 시크릿 설정 (관리자 본인만 점검 중 접근)
 
 `caskbycask.conf` 의 점검 블록에는 관리자 우회용 시크릿 자리표시자 `CHANGE_ME_TO_A_LONG_RANDOM_SECRET` 가 **3곳**(쿠키 검사 `if`, 발급 `location` 경로, `Set-Cookie` 값) 있다.
 **git 에 실제 값을 올리지 말고**, 서버에 배치한 conf 에서만 치환한다.

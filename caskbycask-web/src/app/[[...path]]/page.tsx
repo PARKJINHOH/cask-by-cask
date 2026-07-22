@@ -97,7 +97,6 @@ export default async function CatchAllPage({ params, searchParams }: Props) {
       getSpiritDetailJsonLd(parsed.spiritId!, parsed.lang),
       getSpiritSeoSnapshot(parsed.spiritId!, parsed.lang),
     ])
-    if (!snapshot) notFound()
   } else if (parsed.type === 'community-detail') {
     ;[jsonLdData, snapshot] = await Promise.all([
       getCommunityPostJsonLd(parsed.boardType!, parsed.postId!, parsed.lang),

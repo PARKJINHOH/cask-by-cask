@@ -481,6 +481,17 @@ tail -f /app/logs/caskbycask-api-error.log
 /app/scripts/check-resources.sh
 ```
 
+Windows PowerShell에서는 운영 소스와 같은 리비전의 체크아웃에서 아래처럼 실행한다. 전체 sitemap 검증은 운영 부하를 피하기 위해 URL당 기본 1초 간격을 사용하므로 현재 규모에서는 약 10~15분이 걸릴 수 있다.
+
+```powershell
+cd D:\workspace\easymediaProject\cask-by-cask\caskbycask-web
+$env:SEO_VERIFY_BASE_URL = 'https://www.caskbycask.net'
+$env:SEO_VERIFY_ALL_URLS = 'true'
+$env:SEO_VERIFY_BROWSER = 'true'
+npm.cmd run seo:verify
+Remove-Item Env:SEO_VERIFY_BASE_URL, Env:SEO_VERIFY_ALL_URLS, Env:SEO_VERIFY_BROWSER -ErrorAction SilentlyContinue
+```
+
 ---
 
 ## 12. 장애 대응 (트러블슈팅)
