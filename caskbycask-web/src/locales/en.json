@@ -570,6 +570,13 @@
     },
     "zoomImage": "Enlarge image",
     "count": "<0>{{n}}</0> spirits",
+    "listTitle": {
+      "all": "Spirit Catalog",
+      "whisky": "Whisky",
+      "cognac": "Cognac",
+      "wine": "Wine",
+      "other": "Other Spirits"
+    },
     "category": {
       "whisky": "Whisky",
       "cognac": "Cognac",

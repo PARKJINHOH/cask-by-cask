@@ -33,6 +33,7 @@ function FaqItemRow({ qa, open, onToggle }: { qa: FaqItem; open: boolean; onTogg
 export default function FaqPage() {
   const { i18n } = useTranslation()
   const defaultLang = i18n.language === 'en' ? 'en' : 'ko'
+  const langPrefix = defaultLang === 'en' ? '/en' : '/ko'
 
   const [lang, setLang] = useState<'ko' | 'en'>(defaultLang)
   const [openKey, setOpenKey] = useState<string | null>(null)
@@ -43,8 +44,8 @@ export default function FaqPage() {
   const toggle = (key: string) => setOpenKey((prev) => (prev === key ? null : key))
 
   const breadcrumbJsonLd = buildBreadcrumbSchema([
-    { name: '홈', path: '/' },
-    { name: '자주 묻는 질문', path: '/faq' },
+    { name: defaultLang === 'en' ? 'Home' : '홈', path: langPrefix },
+    { name: defaultLang === 'en' ? 'FAQ' : '자주 묻는 질문', path: `${langPrefix}/faq` },
   ])
 
   return (
@@ -52,7 +53,7 @@ export default function FaqPage() {
       <SeoMeta
         title="자주 묻는 질문 (FAQ)"
         description="위스키, 와인, 꼬냑 등 주류에 대한 자주 묻는 질문 — NAS, 캐스크 타입, 피티드, VSOP/XO 등급, 빈티지 등 핵심 용어 정리. CaskByCask FAQ."
-        canonical={buildCanonical('/faq')}
+        canonical={buildCanonical(`${langPrefix}/faq`)}
         keywords="위스키 FAQ, 꼬냑 FAQ, 와인 FAQ, NAS, VSOP, XO, 캐스크, 피티드, 빈티지, whisky FAQ, cognac grade, single malt, bourbon"
         jsonLd={[breadcrumbJsonLd]}
       />

@@ -1,5 +1,11 @@
 package com.caskbycask.domain.seo.service;
 
+import com.caskbycask.domain.deal.entity.DealPost;
+import com.caskbycask.domain.deal.entity.enums.DealStatus;
+import com.caskbycask.domain.deal.repository.DealPostRepository;
+import com.caskbycask.domain.pricetracker.entity.PriceReport;
+import com.caskbycask.domain.pricetracker.entity.enums.PriceReportStatus;
+import com.caskbycask.domain.pricetracker.repository.PriceReportRepository;
 import com.caskbycask.domain.seo.dto.SpiritSeoResponse;
 import com.caskbycask.domain.seo.util.SpiritSlugUtils;
 import com.caskbycask.domain.spirit.entity.Spirit;
@@ -10,10 +16,14 @@ import com.caskbycask.domain.spirit.repository.SpiritRepository;
 import com.caskbycask.global.exception.CustomException;
 import com.caskbycask.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -23,6 +33,8 @@ public class SpiritSeoService {
 
     private final SpiritRepository spiritRepository;
     private final SpiritImageRepository spiritImageRepository;
+    private final PriceReportRepository priceReportRepository;
+    private final DealPostRepository dealPostRepository;
 
     @Value("${seo.site-url:https://www.caskbycask.net}")
     private String siteUrl;
@@ -32,20 +44,28 @@ public class SpiritSeoService {
         Spirit requested = spiritRepository.findByIdWithAllDetails(id, SpiritStatus.ACTIVE)
                 .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_NOT_FOUND));
 
-        Spirit canonical = resolveCanonicalSpirit(requested);
-        String pathKo = SpiritSlugUtils.canonicalPathKo(canonical);
-        String pathEn = SpiritSlugUtils.canonicalPathEn(canonical);
-        String nameKo = SpiritSlugUtils.displayNameKo(canonical);
-        String nameEn = SpiritSlugUtils.displayNameEn(canonical);
-        String producerKo = canonical.getProducer() != null ? canonical.getProducer().getNameKo() : "";
-        String producerEn = canonical.getProducer() != null
-                ? firstNonBlank(canonical.getProducer().getNameEn(), canonical.getProducer().getNameKo())
+        String pathKo = SpiritSlugUtils.canonicalPathKo(requested);
+        String pathEn = SpiritSlugUtils.canonicalPathEn(requested);
+        String nameKo = SpiritSlugUtils.displayNameKo(requested);
+        String nameEn = SpiritSlugUtils.displayNameEn(requested);
+        String producerKo = requested.getProducer() != null ? requested.getProducer().getNameKo() : "";
+        String producerEn = requested.getProducer() != null
+                ? firstNonBlank(requested.getProducer().getNameEn(), requested.getProducer().getNameKo())
                 : "";
-        String country = canonical.getCountry() != null ? canonical.getCountry() : "";
-        String imageUrl = resolveImageUrl(canonical);
+        String country = requested.getCountry() != null ? requested.getCountry() : "";
+        String imageUrl = resolveImageUrl(requested);
+
+        Spirit parent = requested.getParent();
+        List<Spirit> activeEditions = parent != null
+                ? activeEditions(parent.getId())
+                : activeEditions(requested.getId());
+        String relationType = parent != null
+                ? "EDITION"
+                : (activeEditions.isEmpty() ? "STANDALONE" : "MASTER");
+        List<Long> priceSpiritIds = priceSpiritIds(requested, activeEditions);
 
         return new SpiritSeoResponse(
-                canonical.getId(),
+                requested.getId(),
                 pathKo,
                 pathEn,
                 absoluteUrl(pathKo),
@@ -57,25 +77,99 @@ public class SpiritSeoService {
                 compact(nameEn + " " + producerEn + " " + country
                         + " specs, tasting notes, ratings and reviews on CaskByCask."),
                 imageUrl,
-                canonical.getUpdatedAt()
+                requested.getUpdatedAt(),
+                relationType,
+                parent != null && parent.getStatus() == SpiritStatus.ACTIVE ? related(parent) : null,
+                activeEditions.stream().map(this::related).toList(),
+                recentPrice(priceSpiritIds),
+                recentHotDeal(priceSpiritIds)
         );
     }
 
-    private Spirit resolveCanonicalSpirit(Spirit spirit) {
-        if (spirit.getParent() != null) {
-            return spirit;
+    private List<Long> priceSpiritIds(Spirit requested, List<Spirit> activeEditions) {
+        List<Long> ids = new ArrayList<>();
+        ids.add(requested.getId());
+        if (requested.getParent() == null) {
+            activeEditions.stream().map(Spirit::getId).forEach(ids::add);
         }
+        return ids;
+    }
 
-        List<Spirit> activeVariants = spiritRepository.findByParentId(spirit.getId()).stream()
+    private SpiritSeoResponse.PriceObservation recentPrice(List<Long> spiritIds) {
+        return priceReportRepository.findRecentApprovedForSeo(
+                        spiritIds,
+                        PriceReportStatus.APPROVED,
+                        PageRequest.of(0, 1))
+                .stream()
+                .findFirst()
+                .map(this::priceObservation)
+                .orElse(null);
+    }
+
+    private SpiritSeoResponse.PriceObservation priceObservation(PriceReport report) {
+        String sourceName = report.getStore() != null
+                ? report.getStore().getDisplayName()
+                : report.getSuggestedStoreName();
+        LocalDate observedDate = report.getPurchasedAt() != null
+                ? report.getPurchasedAt()
+                : toDate(report.getCreatedAt());
+        return new SpiritSeoResponse.PriceObservation(
+                report.getActualPrice(),
+                report.getCurrency() != null ? report.getCurrency().name() : null,
+                sourceName,
+                observedDate,
+                null
+        );
+    }
+
+    private SpiritSeoResponse.PriceObservation recentHotDeal(List<Long> spiritIds) {
+        return dealPostRepository.findRecentVisibleForSeo(
+                        spiritIds,
+                        DealStatus.APPROVED,
+                        PageRequest.of(0, 1))
+                .stream()
+                .findFirst()
+                .map(this::hotDealObservation)
+                .orElse(null);
+    }
+
+    private SpiritSeoResponse.PriceObservation hotDealObservation(DealPost deal) {
+        Integer amount = deal.getDealPrice() != null && deal.getDealPrice() > 0
+                ? deal.getDealPrice()
+                : deal.getOriginalPrice();
+        if (amount == null || amount <= 0) {
+            return null;
+        }
+        LocalDate observedDate = deal.getCrawledAt() != null
+                ? deal.getCrawledAt().toLocalDate()
+                : toDate(deal.getCreatedAt());
+        return new SpiritSeoResponse.PriceObservation(
+                BigDecimal.valueOf(amount),
+                firstNonBlank(deal.getCurrency(), "KRW"),
+                firstNonBlank(deal.getSeller(), deal.getSourceSite()),
+                observedDate,
+                deal.getSourceUrl()
+        );
+    }
+
+    private LocalDate toDate(java.time.LocalDateTime dateTime) {
+        return dateTime != null ? dateTime.toLocalDate() : null;
+    }
+
+    private List<Spirit> activeEditions(Long parentId) {
+        return spiritRepository.findByParentId(parentId).stream()
                 .filter(variant -> variant.getStatus() == SpiritStatus.ACTIVE)
                 .toList();
-        if (activeVariants.isEmpty()) {
-            return spirit;
-        }
+    }
 
-        Long defaultVariantId = activeVariants.get(0).getId();
-        return spiritRepository.findByIdWithAllDetails(defaultVariantId, SpiritStatus.ACTIVE)
-                .orElse(activeVariants.get(0));
+    private SpiritSeoResponse.RelatedSpirit related(Spirit spirit) {
+        return new SpiritSeoResponse.RelatedSpirit(
+                spirit.getId(),
+                SpiritSlugUtils.displayNameKo(spirit),
+                SpiritSlugUtils.displayNameEn(spirit),
+                SpiritSlugUtils.canonicalPathKo(spirit),
+                SpiritSlugUtils.canonicalPathEn(spirit)
+        );
     }
 
     private String resolveImageUrl(Spirit spirit) {

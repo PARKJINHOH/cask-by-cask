@@ -1,4 +1,5 @@
 import { Metadata } from 'next'
+import { notFound } from 'next/navigation'
 import ClientAppWrapper from '@/app/ClientAppWrapper'
 import SeoFallback from '@/app/SeoFallback'
 import { getSpiritDetailJsonLd, getSpiritDetailMetadata, getSpiritSeoSnapshot } from '@/shared/utils/seoHelpers'
@@ -18,12 +19,14 @@ export default async function SpiritDetailSSRPage({ params }: Props) {
     getSpiritDetailJsonLd(id, null),
     getSpiritSeoSnapshot(id, null),
   ])
+  if (!snapshot) notFound()
 
   return (
     <>
       {jsonLdData && (
         <script
           type="application/ld+json"
+          data-cbc-route-jsonld="true"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdData).replace(/</g, '\\u003c') }}
         />
       )}

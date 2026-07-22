@@ -34,6 +34,27 @@ export interface SpiritSeo {
   descriptionEn: string
   primaryImageUrl: string
   updatedAt: string | null
+  relationType?: 'STANDALONE' | 'MASTER' | 'EDITION'
+  parent?: SpiritSeoRelation | null
+  editions?: SpiritSeoRelation[]
+  recentPrice?: SpiritSeoPriceObservation | null
+  recentHotDeal?: SpiritSeoPriceObservation | null
+}
+
+export interface SpiritSeoRelation {
+  id: number
+  nameKo: string
+  nameEn: string
+  canonicalPathKo: string
+  canonicalPathEn: string
+}
+
+export interface SpiritSeoPriceObservation {
+  amount: number | string
+  currency: string | null
+  sourceName: string | null
+  observedDate: string | null
+  sourceUrl: string | null
 }
 
 export interface SpiritListItem {

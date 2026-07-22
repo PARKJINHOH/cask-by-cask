@@ -1,7 +1,14 @@
 import { Metadata } from 'next'
+import { notFound } from 'next/navigation'
 import ClientAppWrapper from '@/app/ClientAppWrapper'
 import SeoFallback from '@/app/SeoFallback'
-import { getCommunityPostMetadata, getCommunityPostJsonLd, getCommunityPostSeoSnapshot } from '@/shared/utils/seoHelpers'
+import {
+  extractLeadingId,
+  getCommunityPostMetadata,
+  getCommunityPostJsonLd,
+  getCommunityPostSeoSnapshot,
+  isApiResourceNotFound,
+} from '@/shared/utils/seoHelpers'
 
 interface Props {
   params: Promise<{ boardType: string; id: string }>
@@ -18,12 +25,16 @@ export default async function CommunityPostSSRPage({ params }: Props) {
     getCommunityPostJsonLd(boardType, id, null),
     getCommunityPostSeoSnapshot(boardType, id, null),
   ])
+  const numericId = extractLeadingId(id)
+  if (!snapshot && numericId
+      && await isApiResourceNotFound(`/api/posts/${numericId}`)) notFound()
 
   return (
     <>
       {jsonLdData && (
         <script
           type="application/ld+json"
+          data-cbc-route-jsonld="true"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdData).replace(/</g, '\\u003c') }}
         />
       )}

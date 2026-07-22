@@ -1,16 +1,19 @@
 import { useLegalLatest } from '@/domain/legal/hooks/useLegal'
 import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 import { sanitizeHtml } from '@/shared/utils/sanitize'
+import { useTranslation } from 'react-i18next'
 
 export default function OperationPolicyPage() {
+  const { i18n } = useTranslation()
   const { data, isLoading, isError } = useLegalLatest('OPERATION_POLICY')
+  const langPrefix = i18n.language === 'en' ? '/en' : '/ko'
 
   return (
     <div className="min-h-[calc(100vh-9rem)] px-4 py-12">
       <SeoMeta
         title="커뮤니티 운영정책"
         description="CaskByCask 커뮤니티 게시판 운영정책 및 닉네임 가이드라인."
-        canonical={buildCanonical('/operation-policy')}
+        canonical={buildCanonical(`${langPrefix}/operation-policy`)}
       />
       <div className="w-full max-w-2xl mx-auto">
         <div className="mb-6">

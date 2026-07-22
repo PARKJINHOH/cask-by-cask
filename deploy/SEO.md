@@ -8,7 +8,8 @@
 
 - [ ] DNS 설정 완료, HTTPS 정상 동작 (`curl -I https://www.caskbycask.net`)
 - [ ] `https://www.caskbycask.net/robots.txt` 응답 200, 내용 정상
-- [ ] `https://www.caskbycask.net/sitemap.xml` 응답 200, `<url>` 항목 포함
+- [ ] `https://www.caskbycask.net/sitemap.xml` 응답 200, 루트가 `<sitemapindex>`인지 확인
+- [ ] 루트가 가리키는 `/sitemaps/*.xml` 전체가 GET/HEAD 200이며 3xx·404·`noindex` URL을 포함하지 않는지 확인
 - [ ] `https://www.caskbycask.net/llms.txt` 응답 200
 - [ ] 메인/카테고리/공지 등 주요 페이지의 HTML `<head>` 에 페이지별 `<title>`, `<meta name="description">`, `<link rel="canonical">`, JSON-LD 가 들어있는지 확인
   - 브라우저: 페이지 진입 후 DevTools → Elements → `<head>` 검사
@@ -47,6 +48,7 @@
 ### 색인 가속화
 - **요청** → 수동 색인 요청 (메인/카탈로그/주요 카테고리 페이지)
 - Naver 는 색인 속도가 Google 보다 느릴 수 있음 (수주 ~ 수개월)
+- canonical 호스트와 동일한 `https://www.caskbycask.net` 속성에서 사이트맵을 관리한다. 기존 non-www 속성은 과거 통계 확인용으로 90일 유지하되, www 사이트맵이 정상 수집된 후 non-www 사이트맵 제출은 제거한다.
 
 ---
 
@@ -102,15 +104,21 @@ OG 메타가 바뀌어도 메신저/SNS 는 캐시한 이전 미리보기를 계
 
 ## 7. Sitemap 자동 업데이트
 
-`SitemapService.java` 가 1시간 캐시로 동적 생성 → spirit/notice/post/BYOB 신규 등록 후 최대 1시간 내 sitemap 에 반영.
+`/sitemap.xml`은 sitemap index이고 다음 하위 파일을 동적으로 가리킨다.
+
+- `/sitemaps/static.xml`: 언어 루트, 주류 목록, 실제 결과가 있는 카테고리, 주요 공개 정적 경로
+- `/sitemaps/content-{bucket}.xml`: 공지·공개 게시글·BYOB. ID 10,000 단위 shard
+- `/sitemaps/spirits-ko-{bucket}.xml`, `/sitemaps/spirits-en-{bucket}.xml`: 활성 정규 주류와 에디션의 최종 canonical. ID 10,000 단위 shard
+
+각 응답은 `Cache-Control: public, max-age=3600`과 `ETag`를 제공하고 GET/HEAD를 모두 허용한다. 주류 조회는 sitemap 전용 projection을 사용하며 `lastmod`는 MariaDB의 Asia/Seoul 시간을 `+09:00` offset으로 출력한다.
 
 - 검색엔진은 일반적으로 sitemap.xml 을 주기적으로 재크롤링하므로 별도 ping 불필요.
 - 그래도 즉시 재색인이 필요하면:
   - Google: Search Console → 사이트맵 재제출
-  - Naver: 웹마스터도구 → 수동 색인 요청
-  - Bing: IndexNow API (https://www.indexnow.org/) 활용 가능
+  - Naver: `INDEXNOW_ENABLED=true`일 때 주류 공개·수정·비활성화 트랜잭션 커밋 후 KO/EN canonical을 비동기 통지
+  - IndexNow는 sitemap과 수동 URL 검사를 대체하지 않으며 색인을 보장하지 않는다.
 
-URL 수가 50,000 개를 초과하면 sitemap index 로 분할해야 합니다 (현재 코드에는 분할 로직 미구현 — TODO).
+IndexNow 키는 8~128자의 `a-f`, `A-F`, `0-9`, `-`로 만들고 `/app/env/api.env`에 설정한다. 활성화 후 `https://www.caskbycask.net/indexnow-key.txt`가 200 및 키 원문을 반환하는지 확인한다. 전송 실패는 콘텐츠 저장을 롤백하지 않고 로그만 남긴다.
 
 ---
 
@@ -121,6 +129,8 @@ Next.js 빌드(`npm run build`) 시, 프로젝트 구조에 맞춰 정적 페이
 ### 대상 및 렌더링 방식
 - **정적 페이지 (SSG/Static)**: `/notices`, `/ranking`, `/faq`, `/terms`, `/privacy` 등은 빌드 시 정적 HTML로 생성되어 즉시 서빙됩니다.
 - **동적 페이지 (SSR/ISR)**: `/spirits/[id]`, `/community/[category]/[id]`, `/community/byob/[id]` 등 핵심 SEO가 필요한 페이지는 서버 측(Node.js)에서 동적으로 HTML을 생성하여 검색엔진 봇 및 클라이언트에 즉시 완전한 메타태그, JSON-LD, 서버 렌더링 요약 본문을 반환합니다.
+- 직접 요청의 title·description·robots·canonical과 경로 JSON-LD는 Next.js 서버가 소유한다. SPA 내부 이동 시 클라이언트 SEO 동기화 코드는 기존 태그를 교체하며 누적하지 않는다.
+- 검색·정렬·페이지·세부 필터 URL은 `noindex,follow`와 기본 목록/카테고리 canonical을 사용한다. 결과가 없는 카테고리는 자동 `noindex`되고 sitemap에서 제외되며 첫 활성 주류 등록 후 자동 복귀한다.
 
 ### nginx 동작
 `location /` 블록이 3000번 포트의 Next.js Node 서버로 프록시 패스(`proxy_pass http://127.0.0.1:3000`)하고, `/_next/static/` 경로는 nginx가 `/app/next/dist/.next/static/`에서 직접 정적 자원을 서빙합니다.
@@ -130,6 +140,7 @@ Next.js 빌드(`npm run build`) 시, 프로젝트 구조에 맞춰 정적 페이
 ### 트러블슈팅 및 검증
 - **빌드 검증**: 로컬 빌드 시 터미널 로그에서 각 라우트별 렌더링 타입(○ Static, λ SSR)이 정상적으로 설계와 일치하는지 확인합니다.
 - **standalone 구동 검증**: 서버의 systemd 서비스 `caskbycask-web`이 정상 작동 중인지 확인합니다 (`systemctl status caskbycask-web`).
+- **배포 후 자동 검증**: `cd caskbycask-web && SEO_VERIFY_BASE_URL=https://www.caskbycask.net npm run seo:verify`. 원본 HTML뿐 아니라 Puppeteer 렌더링 뒤의 title·description·robots·canonical·H1·JSON-LD 중복도 확인한다. 브라우저 실행이 불가능한 제한 환경에서만 `SEO_VERIFY_BROWSER=false`로 생략할 수 있다. 전체 sitemap URL의 최종 200·self-canonical·index 가능 여부를 검사하는 배포 게이트는 `SEO_VERIFY_ALL_URLS=true`를 함께 지정한다. 이 모드는 운영 URL을 순차적으로 조회하므로 배포 직후 한 번만 실행한다. 정규·에디션 대표 ID 기본값은 `295,296,309`이며 데이터가 달라진 환경에서는 `SEO_VERIFY_SPIRIT_IDS=...`로 존재하는 ID를 쉼표로 지정한다.
 
 ---
 
@@ -153,12 +164,13 @@ Next.js 빌드(`npm run build`) 시, 프로젝트 구조에 맞춰 정적 페이
 1. `https://www.caskbycask.net/robots.txt` 확인 — 실수로 `Disallow: /` 안 들어갔는지
 2. 주요 페이지 `curl -sL https://www.caskbycask.net/spirits | grep "noindex"` — noindex 안 박혔는지
 3. Search Console "페이지" → 색인 제외 사유 확인 (예: "noindex로 차단됨", "표준 URL과 다름")
-4. `sitemap.xml` 응답 200 확인, 마지막 lastmod 가 합리적인 날짜인지
+4. `sitemap.xml`의 모든 하위 sitemap 응답 200 확인, 주류 shard의 마지막 lastmod가 합리적인 날짜인지
 5. SSL 인증서 만료 확인 (`openssl s_client -connect www.caskbycask.net:443 -servername www.caskbycask.net 2>/dev/null | openssl x509 -noout -dates`)
 
 ---
 
 ## 변경 이력
 
+- 2026-07-21: SEO 메타 단일화, 정규/에디션 self-canonical, sitemap index/shard, IndexNow 운영 절차 반영
 - 2026-07-18: 대표 호스트를 `www.caskbycask.net`으로 전환
 - 2026-05-21: 초안 작성 (STEP 1~6 완료 시점)

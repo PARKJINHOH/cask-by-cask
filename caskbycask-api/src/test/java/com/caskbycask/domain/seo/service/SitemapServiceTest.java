@@ -1,11 +1,9 @@
 package com.caskbycask.domain.seo.service;
 
-import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
 import com.caskbycask.domain.spirit.entity.enums.VariantType;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
-import jakarta.persistence.TypedQuery;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,15 +13,15 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.function.Function;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -37,124 +35,104 @@ class SitemapServiceTest {
 
     @BeforeEach
     void setUp() {
-        ReflectionTestUtils.setField(sitemapService, "siteUrl", "https://www.caskbycask.net");
+        ReflectionTestUtils.setField(sitemapService, "siteUrl", "https://www.caskbycask.net/");
     }
 
     @Test
-    @DisplayName("sitemap.xml에 카테고리 필터 URL 4개가 포함된다")
-    void sitemap_contains_category_urls() {
-        mockQueries(List.of());
+    @DisplayName("루트 사이트맵은 정적·콘텐츠·언어별 주류 shard를 가리키는 sitemap index다")
+    void sitemap_index_contains_stable_shards() {
+        mockQueries(jpql -> {
+            if (jpql.contains("FROM Spirit")) return Long.valueOf(10_001L);
+            if (jpql.contains("FROM Notice")) return Long.valueOf(12L);
+            return null;
+        }, jpql -> List.of());
 
-        String xml = sitemapService.generateSitemap();
+        String xml = sitemapService.generateSitemapIndex();
 
-        assertThat(xml).contains("https://www.caskbycask.net/ko/spirits?category=WHISKY");
-        assertThat(xml).contains("https://www.caskbycask.net/en/spirits?category=WHISKY");
-        assertThat(xml).contains("https://www.caskbycask.net/ko/spirits?category=COGNAC");
-        assertThat(xml).contains("https://www.caskbycask.net/en/spirits?category=COGNAC");
-        assertThat(xml).contains("https://www.caskbycask.net/ko/spirits?category=WINE");
-        assertThat(xml).contains("https://www.caskbycask.net/en/spirits?category=WINE");
-        assertThat(xml).contains("https://www.caskbycask.net/ko/spirits?category=OTHER");
-        assertThat(xml).contains("https://www.caskbycask.net/en/spirits?category=OTHER");
+        assertThat(xml).contains("<sitemapindex");
+        assertThat(xml).contains("https://www.caskbycask.net/sitemaps/static.xml");
+        assertThat(xml).contains("https://www.caskbycask.net/sitemaps/content-0.xml");
+        assertThat(xml).contains("https://www.caskbycask.net/sitemaps/spirits-ko-0.xml");
+        assertThat(xml).contains("https://www.caskbycask.net/sitemaps/spirits-ko-1.xml");
+        assertThat(xml).contains("https://www.caskbycask.net/sitemaps/spirits-en-0.xml");
+        assertThat(xml).contains("https://www.caskbycask.net/sitemaps/spirits-en-1.xml");
+        assertThat(xml).doesNotContain("<urlset");
     }
 
     @Test
-    @DisplayName("sitemap.xml은 유효한 XML urlset을 반환한다")
-    void sitemap_returns_valid_xml() {
-        mockQueries(List.of());
+    @DisplayName("정적 사이트맵은 빈 카테고리와 리다이렉트되는 언어 루트를 제외한다")
+    void static_sitemap_excludes_empty_categories_and_trailing_language_root() {
+        mockQueries(jpql -> null, jpql -> jpql.contains("GROUP BY s.category")
+                ? List.of(new Object[]{SpiritCategory.WHISKY, 42L}, new Object[]{SpiritCategory.WINE, 0L})
+                : List.of());
 
-        String xml = sitemapService.generateSitemap();
+        String xml = sitemapService.generateStaticSitemap();
 
-        assertThat(xml).startsWith("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
-        assertThat(xml).contains("<urlset");
-        assertThat(xml).contains("</urlset>");
-    }
-
-    @Test
-    @DisplayName("번역 본문이 없는 게시판은 한국어 canonical URL만 사이트맵에 포함한다")
-    void sitemap_contains_only_korean_board_canonicals() {
-        mockQueries(List.of());
-
-        String xml = sitemapService.generateSitemap();
-
-        assertThat(xml).contains("https://www.caskbycask.net/ko/notices");
-        assertThat(xml).contains("https://www.caskbycask.net/ko/community/all");
-        assertThat(xml).contains("https://www.caskbycask.net/ko/community/free");
-        assertThat(xml).contains("https://www.caskbycask.net/ko/community/notice");
-        assertThat(xml).contains("https://www.caskbycask.net/ko/community/byob");
-        assertThat(xml).doesNotContain("https://www.caskbycask.net/en/notices");
+        assertThat(xml).contains("https://www.caskbycask.net/ko</loc>");
+        assertThat(xml).contains("https://www.caskbycask.net/en</loc>");
+        assertThat(xml).doesNotContain("https://www.caskbycask.net/ko/</loc>");
+        assertThat(xml).contains("/ko/spirits?category=WHISKY");
+        assertThat(xml).contains("/en/spirits?category=WHISKY");
+        assertThat(xml).doesNotContain("category=WINE");
+        assertThat(xml).doesNotContain("category=COGNAC");
         assertThat(xml).doesNotContain("https://www.caskbycask.net/en/community/");
+        assertThat(xml).contains("/ko/calendar", "/en/calendar");
+        assertThat(xml).contains("/ko/tier-lists", "/en/tier-lists");
+        assertThat(xml).contains("/ko/taste-trees", "/en/taste-trees");
+        assertThat(xml).contains("/ko/price-tracker", "/en/price-tracker");
+        assertThat(xml).contains("/ko/operation-policy", "/en/operation-policy");
     }
 
     @Test
-    @DisplayName("게시글 사이트맵 조회는 활성·공개·비성인 게시글만 대상으로 한다")
-    void sitemap_filters_non_public_posts() {
-        mockQueries(List.of());
+    @DisplayName("주류 shard는 정규 주류와 에디션을 각각 정식 slug URL로 포함하고 KST lastmod를 출력한다")
+    void spirit_sitemap_contains_master_and_edition_canonicals() {
+        LocalDateTime updatedAt = LocalDateTime.of(2026, 7, 21, 12, 30);
+        List<Object[]> rows = List.of(
+                new Object[]{295L, "탐두", "Tamdhu", null, null,
+                        VariantType.NONE, null, null, updatedAt},
+                new Object[]{296L, "탐두", "Tamdhu", "2026년 말띠 에디션", "Year of the Horse 2026",
+                        VariantType.RELEASE_YEAR, null, null, updatedAt}
+        );
+        mockQueries(jpql -> null, jpql -> jpql.contains("FROM Spirit s") ? rows : List.of());
 
-        sitemapService.generateSitemap();
+        String ko = sitemapService.generateSpiritSitemap("ko", 0);
+        String en = sitemapService.generateSpiritSitemap("en", 0);
 
-        verify(em).createQuery(argThat((String query) ->
-                query.contains("FROM Post p")
-                        && query.contains("p.status = :active")
-                        && query.contains("p.isHidden = false")
-                        && query.contains("p.adultOnly = false")
-        ));
+        assertThat(ko).contains("/ko/spirits/295-탐두");
+        assertThat(ko).contains("/ko/spirits/296-탐두-2026년-말띠-에디션");
+        assertThat(en).contains("/en/spirits/295-tamdhu");
+        assertThat(en).contains("/en/spirits/296-tamdhu-year-of-the-horse-2026");
+        assertThat(ko).contains("<lastmod>2026-07-21T12:30:00+09:00</lastmod>");
+        assertThat(ko).doesNotContain("/ko/spirits/295</loc>");
     }
 
     @Test
-    @DisplayName("sitemap.xml은 주류 상세 id-only URL 대신 정식 slug URL만 포함한다")
-    void sitemap_contains_canonical_spirit_slug_urls() {
-        Spirit spirit = Spirit.builder()
-                .nameKo("더 글렌드로낙")
-                .nameEn("The Glendronach")
-                .category(SpiritCategory.WHISKY)
-                .variantType(VariantType.BATCH)
-                .seriesIdentifier("올로로소 12년 1L")
-                .seriesIdentifierEn("Oloroso 12 Year Old 1L")
-                .variantValue("스페셜 릴리즈")
-                .variantValueEn("Special Release")
-                .build();
-        ReflectionTestUtils.setField(spirit, "id", 176L);
-        mockQueries(List.of(spirit));
+    @DisplayName("콘텐츠 shard는 공개 상태 조건으로 조회하고 XML 특수문자를 이스케이프한다")
+    void content_sitemap_uses_public_filters_and_xml_escaping() {
+        mockQueries(jpql -> null, jpql -> {
+            if (jpql.contains("FROM Post p")) {
+                assertThat(jpql).contains("p.status = :active", "p.isHidden = false", "p.adultOnly = false");
+                return List.<Object[]>of(
+                        new Object[]{7L, LocalDateTime.of(2026, 1, 2, 3, 4), "FREE&NEWS"}
+                );
+            }
+            return List.of();
+        });
 
-        String xml = sitemapService.generateSitemap();
+        String xml = sitemapService.generateContentSitemap(0);
 
-        assertThat(xml).contains("https://www.caskbycask.net/ko/spirits/176-더-글렌드로낙-올로로소-12년-1l-스페셜-릴리즈");
-        assertThat(xml).contains("https://www.caskbycask.net/en/spirits/176-the-glendronach-oloroso-12-year-old-1l-special-release");
-        assertThat(xml).doesNotContain("https://www.caskbycask.net/ko/spirits/176</loc>");
-        assertThat(xml).doesNotContain("https://www.caskbycask.net/en/spirits/176</loc>");
+        assertThat(xml).contains("/ko/community/free&amp;news/7");
+        assertThat(xml).contains("2026-01-02T03:04:00+09:00");
     }
 
-    @Test
-    @DisplayName("sitemap.xml includes series identifier when an edition has no variant value")
-    void sitemap_contains_series_identifier_for_edition_without_variant_value() {
-        Spirit spirit = Spirit.builder()
-                .nameKo("카발란 솔리스트")
-                .nameEn("Kavalan Solist")
-                .category(SpiritCategory.WHISKY)
-                .variantType(VariantType.SINGLE_CASK)
-                .seriesIdentifier("콜헤이타 포트 싱글 캐스크 스트렝스")
-                .seriesIdentifierEn("Colheita Port Single Cask Strength")
-                .build();
-        ReflectionTestUtils.setField(spirit, "id", 199L);
-        mockQueries(List.of(spirit));
-
-        String xml = sitemapService.generateSitemap();
-
-        assertThat(xml).contains("https://www.caskbycask.net/ko/spirits/199-카발란-솔리스트-콜헤이타-포트-싱글-캐스크-스트렝스");
-        assertThat(xml).contains("https://www.caskbycask.net/en/spirits/199-kavalan-solist-colheita-port-single-cask-strength");
-    }
-
-    private void mockQueries(List<Spirit> spirits) {
-        @SuppressWarnings("unchecked")
-        TypedQuery<Spirit> spiritQuery = org.mockito.Mockito.mock(TypedQuery.class);
-        when(spiritQuery.setParameter(eq("status"), any())).thenReturn(spiritQuery);
-        when(spiritQuery.getResultList()).thenReturn(spirits);
-        when(em.createQuery(anyString(), eq(Spirit.class))).thenReturn(spiritQuery);
-
-        when(em.createQuery(anyString())).thenAnswer(inv -> {
-            Query query = org.mockito.Mockito.mock(Query.class);
+    private void mockQueries(Function<String, Object> singleResult,
+                             Function<String, List<?>> listResult) {
+        when(em.createQuery(anyString())).thenAnswer(invocation -> {
+            String jpql = invocation.getArgument(0);
+            Query query = mock(Query.class);
             lenient().when(query.setParameter(anyString(), any())).thenReturn(query);
-            when(query.getResultList()).thenReturn(List.of());
+            lenient().when(query.getSingleResult()).thenAnswer(ignored -> singleResult.apply(jpql));
+            lenient().when(query.getResultList()).thenAnswer(ignored -> listResult.apply(jpql));
             return query;
         });
     }

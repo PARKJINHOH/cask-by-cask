@@ -16,7 +16,7 @@ export default function TasteTreePage() {
 }
 
 function TasteTreeDirectory() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn)
   const [type, setType] = useState<TasteTreeType>('OFFICIAL')
   const [sort, setSort] = useState<TasteTreeSort>('LATEST')
@@ -33,7 +33,7 @@ function TasteTreeDirectory() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-7 lg:py-10">
-      <SeoMeta title={t('tasteTree.title')} description={t('tasteTree.subtitle')} canonical={buildCanonical('/taste-trees')} />
+      <SeoMeta title={t('tasteTree.title')} description={t('tasteTree.subtitle')} canonical={buildCanonical(`/${i18n.language === 'en' ? 'en' : 'ko'}/taste-trees`)} />
       <header className="overflow-hidden rounded-2xl bg-stone-950 px-6 py-9 text-white shadow-xl sm:px-10 lg:flex lg:items-end lg:justify-between lg:px-12 lg:py-12">
         <div className="max-w-3xl">
           <p className="text-xs font-black uppercase tracking-[0.22em] text-amber-400">{t('tasteTree.eyebrow')}</p>
@@ -106,7 +106,7 @@ function TasteTreeDirectory() {
 }
 
 function TasteTreeDetail({ shareKey }: { shareKey: string }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
   const queryClient = useQueryClient()
@@ -150,7 +150,7 @@ function TasteTreeDetail({ shareKey }: { shareKey: string }) {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-7 lg:py-10">
-      <SeoMeta title={tree.title} description={tree.description ?? t('tasteTree.subtitle')} canonical={buildCanonical(`/taste-trees/t/${shareKey}`)} />
+      <SeoMeta title={tree.title} description={tree.description ?? t('tasteTree.subtitle')} canonical={buildCanonical(`/${i18n.language === 'en' ? 'en' : 'ko'}/taste-trees/t/${shareKey}`)} />
       <Toast toasts={toasts} onRemove={removeToast} />
       <header className="mb-6 rounded-2xl border border-stone-200 bg-white p-6 shadow-sm sm:p-8 lg:flex lg:items-end lg:justify-between">
         <div className="max-w-4xl">

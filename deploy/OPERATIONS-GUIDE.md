@@ -310,6 +310,8 @@ FLUSH PRIVILEGES;
 운영 스크립트(`deploy/server/*.sh`)는 **배포(Actions)가 `/app/scripts` 로 자동 전송**한다.
 nginx 설정·점검 페이지는 전송하지 않으므로 변경 시 아래처럼 수동 적용한다.
 
+SEO 경로는 `/sitemap.xml`, `/sitemaps/**`, `/indexnow-key.txt`를 API(127.0.0.1:8080)로 전달한다. sitemap의 `Cache-Control`과 `ETag`는 API 응답을 그대로 사용하므로 nginx에서 별도 캐시 헤더를 중복 추가하지 않는다. 설정 교체 후 아래 명령으로 `nginx -t`와 무중단 reload를 수행하고, 11장의 sitemap 점검 명령을 실행한다.
+
 ### 대표 호스트(canonical host) 정책
 
 - 대표 URL은 `https://www.caskbycask.net`이다.
@@ -398,6 +400,10 @@ sudo systemctl restart caskbycask-api   # 수정 후 재시작해야 반영
 | `OAUTH_ALLOWED_REDIRECT_URIS` | 소셜 콜백 화이트리스트 (예: `https://www.caskbycask.net/oauth/callback`). 제공자 콘솔 등록값과 동일 |
 | `OAUTH_NAVER_CLIENT_ID` / `OAUTH_NAVER_CLIENT_SECRET` | 네이버 로그인 키 (네이버 개발자센터) |
 | `OAUTH_GOOGLE_CLIENT_ID` / `OAUTH_GOOGLE_CLIENT_SECRET` | 구글 로그인 키 (Google Cloud Console) |
+| `SEO_SITE_URL` | canonical·sitemap·IndexNow 공개 기준 URL. 운영값은 `https://www.caskbycask.net`으로 유지 |
+| `INDEXNOW_ENABLED` | 네이버 IndexNow 비동기 통지 활성화. 키 파일 확인 전에는 `false` 유지 |
+| `INDEXNOW_KEY` | 공개 소유 확인 키(8~128자의 a-f/A-F/0-9/-). 활성화 시 `/indexnow-key.txt`에 노출되는 것이 정상 |
+| `INDEXNOW_ENDPOINT` | 기본값 `https://searchadvisor.naver.com/indexnow`. 장애 대응 외에는 변경하지 않음 |
 | `SLACK_WEBHOOK_URL` | (선택) 운영/백업 알림 |
 | `PROD_DB_READONLY_USERNAME` / `PROD_DB_READONLY_PASSWORD` | (선택) 운영 스냅샷 dump 전용 읽기 계정 |
 | `DEV_REFRESH_DB_USERNAME` / `DEV_REFRESH_DB_PASSWORD` | (선택) 운영 스냅샷을 `caskbycask_dev` 로 갱신할 때 사용하는 교체 권한 계정 |
@@ -442,6 +448,14 @@ sudo systemctl restart caskbycask-web
 curl -s http://127.0.0.1:8081/actuator/health    # 백엔드 health
 curl -s http://127.0.0.1:3000/healthz             # 프론트엔드 health
 curl -s https://www.caskbycask.net/healthz        # 사이트 외부 health
+curl -I https://www.caskbycask.net/sitemap.xml    # sitemap index GET/HEAD, Cache-Control/ETag
+curl -s https://www.caskbycask.net/sitemap.xml | head
+curl -I https://www.caskbycask.net/sitemaps/static.xml
+curl -s https://www.caskbycask.net/indexnow-key.txt  # 활성화한 경우에만 200 + 키
+# 배포 러너/개발 PC의 소스 체크아웃에서 전체 sitemap 및 대표 주류 redirect를 검증
+# (/app/next/dist standalone에는 검증 스크립트와 Puppeteer 개발 의존성이 포함되지 않음)
+cd /path/to/cask-by-cask/caskbycask-web
+SEO_VERIFY_BASE_URL=https://www.caskbycask.net SEO_VERIFY_ALL_URLS=true npm run seo:verify
 systemctl status caskbycask-api caskbycask-web nginx mariadb redis-server
 
 # 점검 모드

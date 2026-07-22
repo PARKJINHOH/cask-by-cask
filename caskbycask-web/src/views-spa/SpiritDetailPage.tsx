@@ -915,7 +915,6 @@ export default function SpiritDetailPage() {
   const { data: spirit, isLoading } = useSpiritDetail(spiritId)
   const { data: spiritSeo } = useSpiritSeo(spiritId)
 
-  // Redirect to parent if visited child variant directamente
   // SEO Review 스키마용 — 첫 페이지 (ReviewList 와 동일 queryKey 라 캐시 공유)
   const { data: reviewsPage } = useReviews(spiritId, 0)
 
@@ -988,6 +987,14 @@ export default function SpiritDetailPage() {
     setReviewVariantFilterId(syncedReviewFilterId)
     setPriceVariantId(null)
   }, [spiritId])
+
+  // 에디션 직접 진입은 해당 에디션 리뷰를 기본값으로 사용한다.
+  // 정규 주류는 null을 유지해 기존 규칙대로 전체 에디션 집계를 보여준다.
+  useEffect(() => {
+    if (spirit?.parentId != null) {
+      setReviewVariantFilterId(spirit.id)
+    }
+  }, [spirit?.id, spirit?.parentId])
 
   if (isLoading) return <Spinner fullscreen />
 
@@ -1088,7 +1095,7 @@ export default function SpiritDetailPage() {
 
   // BreadcrumbList — 홈 / 카탈로그 / 카테고리 / 현재 spirit
   const breadcrumbJsonLd = buildBreadcrumbSchema([
-    { name: isEn ? 'Home' : '홈', path: `${langPrefix}/` },
+    { name: isEn ? 'Home' : '홈', path: langPrefix },
     { name: isEn ? 'Spirits' : '주류 카탈로그', path: `${langPrefix}/spirits` },
     { name: t(`spirit.category.${spirit.category}`), path: `${langPrefix}/spirits?category=${spirit.category}` },
     { name: primaryName ?? '', path: canonicalUrl },

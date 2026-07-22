@@ -183,7 +183,7 @@ export default function PostDetailPage() {
             keywords: post.hashtags?.length ? post.hashtags : undefined,
           },
           buildBreadcrumbSchema([
-            { name: '홈', path: '/ko/' },
+            { name: '홈', path: '/ko' },
             { name: boardPath === 'notice' ? '소식 게시판' : '자유게시판',
               path: `/ko/community/${boardPath}` },
             { name: post.title, path: `/ko/community/${boardPath}/${postId}` },

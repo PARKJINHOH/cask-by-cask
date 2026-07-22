@@ -1,16 +1,19 @@
 import { useLegalLatest } from '@/domain/legal/hooks/useLegal'
 import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 import { sanitizeHtml } from '@/shared/utils/sanitize'
+import { useTranslation } from 'react-i18next'
 
 export default function TermsPage() {
+  const { i18n } = useTranslation()
   const { data, isLoading, isError } = useLegalLatest('TERMS')
+  const langPrefix = i18n.language === 'en' ? '/en' : '/ko'
 
   return (
     <div className="min-h-[calc(100vh-9rem)] px-4 py-12">
       <SeoMeta
         title="이용약관"
         description="CaskByCask 서비스 이용약관."
-        canonical={buildCanonical('/terms')}
+        canonical={buildCanonical(`${langPrefix}/terms`)}
       />
       <div className="w-full max-w-2xl mx-auto">
         <div className="mb-6">

@@ -96,6 +96,20 @@ public interface PriceReportRepository extends JpaRepository<PriceReport, Long> 
             @Param("spiritIds") Collection<Long> spiritIds,
             @Param("status") PriceReportStatus status);
 
+    /** SEO 본문용 최근 승인 실구매가 1건 조회. 호출 측에서 Pageable(0, 1)을 전달한다. */
+    @EntityGraph(attributePaths = {"store"})
+    @Query("""
+            SELECT p FROM PriceReport p
+            WHERE p.spirit.id IN :spiritIds
+            AND p.status = :status
+            AND p.actualPrice IS NOT NULL
+            ORDER BY p.createdAt DESC, p.id DESC
+            """)
+    List<PriceReport> findRecentApprovedForSeo(
+            @Param("spiritIds") Collection<Long> spiritIds,
+            @Param("status") PriceReportStatus status,
+            Pageable pageable);
+
     // 본인 등록 목록
     @Query("""
             SELECT p FROM PriceReport p

@@ -565,11 +565,11 @@ export default function MainPage() {
         description={isEn
           ? 'Explore detailed specifications, user ratings, and reviews of global spirits (whisky, wine, cognac, rum, tequila) and join our community.'
           : '전 세계 위스키, 와인, 꼬냑 등의 상세한 주류 정보와 평점 리뷰를 제공하고 소통하는 주류 전문 정보 커뮤니티 플랫폼입니다.'}
-        canonical={buildCanonical(isEn ? '/en/' : '/ko/')}
+        canonical={buildCanonical(isEn ? '/en' : '/ko')}
         locale={isEn ? 'en_US' : 'ko_KR'}
-        alternateKo={buildCanonical('/ko/')}
-        alternateEn={buildCanonical('/en/')}
-        alternateDefault={buildCanonical('/ko/')}
+        alternateKo={buildCanonical('/ko')}
+        alternateEn={buildCanonical('/en')}
+        alternateDefault={buildCanonical('/ko')}
         keywords={isEn
           ? 'whisky specs, wine reviews, cognac ratings, liquor directory, community, caskbycask'
           : '주류 정보, 위스키 리뷰, 와인 평점, 꼬냑 등급, 주류 커뮤니티, 캐스크바이캐스크, 캐바캐'}

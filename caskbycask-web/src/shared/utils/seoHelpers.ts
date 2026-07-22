@@ -1,4 +1,9 @@
 import { Metadata } from 'next'
+import {
+  SPIRIT_CATEGORY_META,
+  isSpiritSeoCategory,
+  type SpiritSeoCategory,
+} from '@/domain/spirit/config/spiritSeo'
 
 const API_URL = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
 const SITE_URL = 'https://www.caskbycask.net'
@@ -21,6 +26,27 @@ interface SpiritSeoResponse {
   descriptionEn: string
   primaryImageUrl: string
   updatedAt: string | null
+  relationType?: 'STANDALONE' | 'MASTER' | 'EDITION'
+  parent?: SpiritSeoRelationResponse | null
+  editions?: SpiritSeoRelationResponse[]
+  recentPrice?: SpiritSeoPriceObservationResponse | null
+  recentHotDeal?: SpiritSeoPriceObservationResponse | null
+}
+
+interface SpiritSeoRelationResponse {
+  id: number
+  nameKo: string
+  nameEn: string
+  canonicalPathKo: string
+  canonicalPathEn: string
+}
+
+interface SpiritSeoPriceObservationResponse {
+  amount: number | string
+  currency: string | null
+  sourceName: string | null
+  observedDate: string | null
+  sourceUrl: string | null
 }
 
 interface SpiritDetailResponse {
@@ -215,7 +241,7 @@ export interface SeoSnapshotItem {
 }
 
 export interface SeoSnapshotData {
-  kind: 'spirit' | 'community' | 'byob' | 'board-list' | 'notice'
+  kind: 'spirit' | 'spirits-list' | 'community' | 'byob' | 'board-list' | 'notice'
   lang: 'ko' | 'en'
   eyebrow: string
   title: string
@@ -247,6 +273,16 @@ interface PageResponse<T> {
   size?: number
   totalElements?: number
   totalPages?: number
+}
+
+interface SpiritListSeoItemResponse {
+  id: number
+  nameKo: string
+  nameEn?: string | null
+  producerNameKo?: string | null
+  producerNameEn?: string | null
+  canonicalPathKo?: string | null
+  canonicalPathEn?: string | null
 }
 
 export function extractLeadingId(value: string | undefined | null): string | null {
@@ -544,12 +580,61 @@ export type MetadataSearchParams = Record<string, string | string[] | undefined>
 
 interface ParsedPath {
   type: 'home' | 'spirits-list' | 'spirit-detail' | 'community-list' | 'community-detail'
-    | 'notices-list' | 'notice-detail' | 'byob-detail' | 'noindex' | 'default'
+    | 'notices-list' | 'notice-detail' | 'byob-detail' | 'noindex' | 'default' | 'not-found'
   lang: 'ko' | 'en' | null
   spiritId?: string
   boardType?: string
   boardListType?: BoardListType
   postId?: string
+  canonicalPath?: string
+  /** Public API resource used only to distinguish a real 404 from restricted/unavailable content. */
+  resourcePath?: string
+}
+
+function isKnownPrivatePath(segments: string[]): boolean {
+  const path = segments.join('/')
+  const exact = new Set([
+    'login', 'signup', 'oauth/callback', 'oauth/signup', 'account-recovery', 'inquiry',
+    'notifications', 'mypage', 'price-tracker/register',
+    'taste-trees/new', 'taste-trees/mine',
+    'request/spirit', 'request/spirit/my', 'request/producer',
+    'request/feedback', 'request/feedback/new',
+  ])
+  if (exact.has(path)) return true
+  return [
+    /^taste-trees\/\d+\/edit$/,
+    /^spirits\/\d+\/review\/write$/,
+    /^spirits\/\d+\/review\/\d+\/edit$/,
+    /^community\/(?:all|notice|free|byob)\/write$/,
+    /^community\/(?:all|notice|free|byob)\/\d+\/edit$/,
+    /^request\/feedback\/\d+(?:\/edit)?$/,
+  ].some((pattern) => pattern.test(path))
+}
+
+function isKnownAdminPath(segments: string[]): boolean {
+  if (segments[0] !== 'admin') return false
+  const path = segments.slice(1).join('/')
+  const exact = new Set([
+    '', 'users', 'users/nickname-bad-words', 'spirits', 'spirits/new',
+    'spirits/requests', 'spirits/variant-requests', 'producers', 'producers/requests',
+    'reports', 'notices', 'notices/new', 'popups', 'popups/new', 'banners',
+    'banners/new', 'events', 'community/post-reports', 'community/ai-news',
+    'community/ai-news/new', 'community/bad-words', 'community/emojis',
+    'community/prefixes', 'price-reports', 'stores', 'deals', 'score/points',
+    'score/levels', 'legal', 'legal/new', 'emails/send', 'emails/history',
+    'inquiries', 'logs', 'faq', 'faq/new', 'taste-trees', 'taste-trees/new',
+  ])
+  if (exact.has(path)) return true
+  return [
+    /^users\/\d+$/,
+    /^spirits\/(?:requests\/)?\d+$/,
+    /^producers\/requests\/\d+$/,
+    /^notices\/\d+(?:\/edit)?$/,
+    /^(?:popups|banners)\/\d+\/edit$/,
+    /^community\/ai-news\/\d+\/edit$/,
+    /^(?:price-reports|deals)\/\d+$/,
+    /^(?:legal|faq|taste-trees)\/\d+\/edit$/,
+  ].some((pattern) => pattern.test(path))
 }
 
 /**
@@ -573,25 +658,20 @@ export function parsePath(segments: string[]): ParsedPath {
     return { type: 'home', lang }
   }
 
-  const privateRoot = new Set([
-    'admin', 'mypage', 'messages', 'notifications', 'login', 'signup',
-    'account-recovery', 'oauth', 'request',
-  ])
-  if (privateRoot.has(remaining[0])) {
+  if (isKnownPrivatePath(remaining) || isKnownAdminPath(remaining)) {
     return { type: 'noindex', lang }
   }
+  if (remaining[0] === 'admin') return { type: 'not-found', lang }
 
   // 1) /spirits
   if (remaining[0] === 'spirits') {
     if (remaining.length === 1) {
       return { type: 'spirits-list', lang }
     }
-    if (remaining.includes('review')) {
-      return { type: 'noindex', lang }
-    }
-    if (remaining.length >= 2) {
+    if (remaining.length === 2 && extractLeadingId(remaining[1])) {
       return { type: 'spirit-detail', lang, spiritId: remaining[1] }
     }
+    return { type: 'not-found', lang }
   }
 
   // 2) /notices
@@ -600,36 +680,126 @@ export function parsePath(segments: string[]): ParsedPath {
       return { type: 'notices-list', lang, boardListType: 'notices' }
     }
     if (remaining.length === 2 && extractLeadingId(remaining[1])) {
-      return { type: 'notice-detail', lang, postId: remaining[1] }
+      const postId = extractLeadingId(remaining[1])!
+      return {
+        type: 'notice-detail',
+        lang,
+        postId: remaining[1],
+        resourcePath: `/api/notices/${postId}`,
+      }
     }
-    return { type: 'noindex', lang }
+    return { type: 'not-found', lang }
   }
 
   // 3) /community
   if (remaining[0] === 'community') {
     const board = remaining[1] as BoardListType | undefined
     if (!board || !['all', 'notice', 'free', 'byob'].includes(board)) {
-      return { type: 'noindex', lang }
+      return { type: 'not-found', lang }
     }
     if (remaining.length === 2) {
       return { type: 'community-list', lang, boardListType: board }
     }
-    if (remaining[2] === 'write' || remaining[3] === 'edit') {
-      return { type: 'noindex', lang }
-    }
     if (!extractLeadingId(remaining[2])) {
-      return { type: 'noindex', lang }
+      return { type: 'not-found', lang }
     }
     if (remaining.length === 3 && board === 'byob') {
-      return { type: 'byob-detail', lang, postId: remaining[2] }
+      const postId = extractLeadingId(remaining[2])!
+      return {
+        type: 'byob-detail',
+        lang,
+        postId: remaining[2],
+        resourcePath: `/api/byob/${postId}`,
+      }
     }
     if (remaining.length === 3 && board !== 'all') {
-      return { type: 'community-detail', lang, boardType: board, postId: remaining[2] }
+      const postId = extractLeadingId(remaining[2])!
+      return {
+        type: 'community-detail',
+        lang,
+        boardType: board,
+        postId: remaining[2],
+        resourcePath: `/api/posts/${postId}`,
+      }
     }
-    return { type: 'noindex', lang }
+    return { type: 'not-found', lang }
   }
 
-  return { type: 'default', lang }
+  const knownPublicRoots = new Set([
+    'ranking', 'terms', 'privacy', 'operation-policy', 'faq', 'calendar',
+  ])
+  if (remaining.length === 1 && knownPublicRoots.has(remaining[0])) {
+    return { type: 'default', lang, canonicalPath: remaining.join('/') }
+  }
+
+  if (remaining[0] === 'tier-lists' && remaining.length <= 2) {
+    return {
+      type: 'default',
+      lang,
+      canonicalPath: remaining.join('/'),
+      resourcePath: remaining.length === 2
+        ? `/api/tier-lists/share/${encodeURIComponent(remaining[1])}`
+        : undefined,
+    }
+  }
+  if (remaining[0] === 'taste-trees') {
+    if (remaining.length === 1 || (remaining.length === 3 && remaining[1] === 't')) {
+      return {
+        type: 'default',
+        lang,
+        canonicalPath: remaining.join('/'),
+        resourcePath: remaining.length === 3
+          ? `/api/taste-trees/share/${encodeURIComponent(remaining[2])}`
+          : undefined,
+      }
+    }
+    return { type: 'not-found', lang }
+  }
+  if (remaining[0] === 'users' && remaining.length === 3
+      && ['bottles', 'reviews'].includes(remaining[2]) && /^\d+$/.test(remaining[1])) {
+    return {
+      type: 'default',
+      lang,
+      canonicalPath: remaining.join('/'),
+      // Both public profile routes use the bottle endpoint as a lightweight user-existence probe.
+      resourcePath: `/api/users/${remaining[1]}/bottles?page=0&size=1`,
+    }
+  }
+  if (remaining[0] === 'producers' && remaining.length === 2 && /^\d+$/.test(remaining[1])) {
+    return {
+      type: 'default',
+      lang,
+      canonicalPath: remaining.join('/'),
+      resourcePath: `/api/producers/${remaining[1]}`,
+    }
+  }
+  if (remaining[0] === 'price-tracker') {
+    if (remaining.length === 1
+        || (remaining.length === 3 && remaining[1] === 'spirits' && /^\d+$/.test(remaining[2]))) {
+      return {
+        type: 'default',
+        lang,
+        canonicalPath: remaining.join('/'),
+        resourcePath: remaining.length === 3 ? `/api/seo/spirits/${remaining[2]}` : undefined,
+      }
+    }
+    return { type: 'not-found', lang }
+  }
+
+  return { type: 'not-found', lang }
+}
+
+/**
+ * Returns true only for an authoritative missing response. Restricted content (401/403)
+ * and temporary upstream failures must not be converted into a permanent-looking 404.
+ */
+export async function isApiResourceNotFound(path: string, revalidate = 60): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_URL}${path}`, { next: { revalidate } })
+    return response.status === 404 || response.status === 410
+  } catch {
+    return false
+  }
 }
 
 const BOARD_LIST_CONFIG: Record<BoardListType, {
@@ -836,7 +1006,7 @@ export async function getBoardListSeoSnapshot(
     details: [],
     items,
     links: [
-      { label: resolvedLang === 'en' ? 'Home' : '홈', href: '/ko/' },
+      { label: resolvedLang === 'en' ? 'Home' : '홈', href: '/ko' },
       { label: config.eyebrow[resolvedLang], href: canonicalPath },
     ],
   }
@@ -869,7 +1039,7 @@ export function buildBoardListJsonLd(
         'name': config.title.ko,
         'description': config.description.ko,
         'inLanguage': 'ko-KR',
-        'isPartOf': { '@id': `${SITE_URL}/ko/#website` },
+        'isPartOf': { '@id': `${SITE_URL}/ko#website` },
         'breadcrumb': { '@id': breadcrumbId },
         'mainEntity': itemListElements.length > 0 ? { '@id': itemListId } : undefined,
       },
@@ -881,7 +1051,7 @@ export function buildBoardListJsonLd(
             '@type': 'ListItem',
             'position': 1,
             'name': '홈',
-            'item': `${SITE_URL}/ko/`,
+            'item': `${SITE_URL}/ko`,
           },
           {
             '@type': 'ListItem',
@@ -974,7 +1144,7 @@ export async function getNoticeDetailSeoSnapshot(
     ]),
     bodyHtml: notice.contentSanitized || null,
     links: [
-      { label: resolvedLang === 'en' ? 'Home' : '홈', href: '/ko/' },
+      { label: resolvedLang === 'en' ? 'Home' : '홈', href: '/ko' },
       { label: resolvedLang === 'en' ? 'Notices' : '공지사항', href: '/ko/notices' },
       { label: notice.title, href: `/ko/notices/${numericId}` },
     ],
@@ -1030,7 +1200,7 @@ export async function getNoticeDetailJsonLd(
         '@type': 'BreadcrumbList',
         '@id': breadcrumbId,
         'itemListElement': [
-          { '@type': 'ListItem', 'position': 1, 'name': '홈', 'item': `${SITE_URL}/ko/` },
+          { '@type': 'ListItem', 'position': 1, 'name': '홈', 'item': `${SITE_URL}/ko` },
           { '@type': 'ListItem', 'position': 2, 'name': '공지사항', 'item': `${SITE_URL}/ko/notices` },
           { '@type': 'ListItem', 'position': 3, 'name': notice.title, 'item': canonical },
         ],
@@ -1042,15 +1212,73 @@ export async function getNoticeDetailJsonLd(
 /**
  * 기본/홈페이지 메타데이터를 반환합니다.
  */
-export function getDefaultMetadata(lang: 'ko' | 'en' | null): Metadata {
+const DEFAULT_ROUTE_METADATA: Record<string, {
+  ko: { title: string; description: string }
+  en: { title: string; description: string }
+}> = {
+  ranking: {
+    ko: { title: '활동 점수 랭킹 — CaskByCask', description: '주간·월간·전체 기간별 CaskByCask 사용자 활동 점수와 레벨 순위를 확인하세요.' },
+    en: { title: 'Community Rankings — CaskByCask', description: 'Explore weekly, monthly, and all-time CaskByCask community activity rankings.' },
+  },
+  terms: {
+    ko: { title: '이용약관 — CaskByCask', description: 'CaskByCask 서비스 이용약관입니다.' },
+    en: { title: 'Terms of Service — CaskByCask', description: 'Read the CaskByCask terms of service.' },
+  },
+  privacy: {
+    ko: { title: '개인정보 처리방침 — CaskByCask', description: 'CaskByCask 개인정보 수집·이용·보관 정책입니다.' },
+    en: { title: 'Privacy Policy — CaskByCask', description: 'Read the CaskByCask privacy policy.' },
+  },
+  'operation-policy': {
+    ko: { title: '커뮤니티 운영정책 — CaskByCask', description: 'CaskByCask 커뮤니티 게시판 운영정책과 이용 가이드입니다.' },
+    en: { title: 'Community Policy — CaskByCask', description: 'Read the CaskByCask community operation policy.' },
+  },
+  faq: {
+    ko: { title: '주류·서비스 FAQ — CaskByCask', description: '위스키·와인·꼬냑 용어와 CaskByCask 이용 방법에 대한 자주 묻는 질문입니다.' },
+    en: { title: 'Spirits and Service FAQ — CaskByCask', description: 'Frequently asked questions about spirits and using CaskByCask.' },
+  },
+  calendar: {
+    ko: { title: '주류 행사 캘린더 — CaskByCask', description: '주류 관련 행사와 커뮤니티 일정을 캘린더에서 확인하세요.' },
+    en: { title: 'Spirits Event Calendar — CaskByCask', description: 'Browse spirits events and community schedules.' },
+  },
+  'tier-lists': {
+    ko: { title: '주류 티어리스트 — CaskByCask', description: '위스키·와인·꼬냑을 나만의 기준으로 분류한 공개 티어리스트를 확인하세요.' },
+    en: { title: 'Spirits Tier Lists — CaskByCask', description: 'Explore community tier lists for whisky, wine, cognac, and other spirits.' },
+  },
+  'taste-trees': {
+    ko: { title: '주류 취향 트리 — CaskByCask', description: '선택지를 따라가며 취향에 맞는 주류를 찾는 공개 취향 트리를 확인하세요.' },
+    en: { title: 'Spirits Taste Trees — CaskByCask', description: 'Explore public decision trees that help people discover spirits by taste.' },
+  },
+  producers: {
+    ko: { title: '주류 생산자 정보 — CaskByCask', description: '증류소·와이너리·꼬냑 하우스 정보와 생산 주류를 확인하세요.' },
+    en: { title: 'Spirits Producer Information — CaskByCask', description: 'Explore distilleries, wineries, cognac houses, and their spirits.' },
+  },
+  'price-tracker': {
+    ko: { title: '주류 가격 정보 — CaskByCask', description: '사용자가 확인한 과거 구매 가격과 승인된 핫딜 정보를 살펴보세요.' },
+    en: { title: 'Spirits Price Information — CaskByCask', description: 'Browse user-reported historical purchase prices and approved deal information.' },
+  },
+  users: {
+    ko: { title: '사용자 주류 기록 — CaskByCask', description: 'CaskByCask 사용자가 공개한 보틀과 주류 리뷰를 확인하세요.' },
+    en: { title: 'Public Spirits Collection — CaskByCask', description: 'Browse public bottles and spirits reviews shared by a CaskByCask user.' },
+  },
+}
+
+export function getDefaultMetadata(
+  lang: 'ko' | 'en' | null,
+  canonicalPath?: string,
+): Metadata {
   const resolvedLang = normalizeLang(lang)
-  const canonical = `${SITE_URL}/${resolvedLang}/`
-  const title = resolvedLang === 'en'
+  const pathSuffix = canonicalPath ? `/${canonicalPath.replace(/^\/+|\/+$/g, '')}` : ''
+  const canonical = `${SITE_URL}/${resolvedLang}${pathSuffix}`
+  const canonicalKo = `${SITE_URL}/ko${pathSuffix}`
+  const canonicalEn = `${SITE_URL}/en${pathSuffix}`
+  const routeKey = canonicalPath?.split('/')[0] ?? ''
+  const routeMeta = DEFAULT_ROUTE_METADATA[routeKey]?.[resolvedLang]
+  const title = routeMeta?.title ?? (resolvedLang === 'en'
     ? 'CaskByCask — Spirits Information, Reviews and Community'
-    : 'CaskByCask(캐바캐) — 주류 정보, 리뷰, 커뮤니티'
-  const description = resolvedLang === 'en'
+    : 'CaskByCask(캐바캐) — 주류 정보, 리뷰, 커뮤니티')
+  const description = routeMeta?.description ?? (resolvedLang === 'en'
     ? 'Explore whisky, wine, cognac and other spirits with detailed information, ratings, reviews, and community discussions.'
-    : '위스키, 와인, 꼬냑 등 주류 정보와 평점 리뷰 전문 플랫폼, CaskByCask(캐바캐)입니다.'
+    : '위스키, 와인, 꼬냑 등 주류 정보와 평점 리뷰 전문 플랫폼, CaskByCask(캐바캐)입니다.')
   return {
     title,
     description,
@@ -1058,9 +1286,9 @@ export function getDefaultMetadata(lang: 'ko' | 'en' | null): Metadata {
     alternates: {
       canonical,
       languages: {
-        ko: `${SITE_URL}/ko/`,
-        en: `${SITE_URL}/en/`,
-        'x-default': `${SITE_URL}/ko/`,
+        ko: canonicalKo,
+        en: canonicalEn,
+        'x-default': canonicalKo,
       },
     },
     openGraph: {
@@ -1089,34 +1317,179 @@ export function getDefaultMetadata(lang: 'ko' | 'en' | null): Metadata {
 /**
  * 주류 목록 페이지 메타데이터를 반환합니다.
  */
-export function getSpiritsListMetadata(lang: 'ko' | 'en' | null): Metadata {
-  const prefix = lang ? `/${lang}` : ''
-  const canonical = `https://www.caskbycask.net${prefix}/spirits`
-  
+interface SpiritsListSeoState {
+  lang: 'ko' | 'en'
+  category: SpiritSeoCategory | null
+  canonical: string
+  canonicalKo: string
+  canonicalEn: string
+  indexable: boolean
+  meta: typeof SPIRIT_CATEGORY_META[SpiritSeoCategory | '']
+  page: PageResponse<SpiritListSeoItemResponse> | null
+}
+
+function singleSearchParam(value: string | string[] | undefined): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim() : null
+}
+
+async function resolveSpiritsListSeoState(
+  lang: 'ko' | 'en' | null,
+  searchParams: MetadataSearchParams = {},
+  includeItems = false,
+): Promise<SpiritsListSeoState> {
+  const resolvedLang = normalizeLang(lang)
+  const suppliedCategory = searchParams.category
+  const singleCategory = singleSearchParam(suppliedCategory)
+  const rawCategory = singleCategory?.toUpperCase() ?? null
+  const category = isSpiritSeoCategory(rawCategory) ? rawCategory : null
+  const suppliedKeys = Object.entries(searchParams)
+    .filter(([, value]) => value !== undefined)
+    .map(([key]) => key)
+  const hasUnsupportedQuery = suppliedKeys.some((key) => key !== 'category')
+    || (suppliedCategory !== undefined && (
+      Array.isArray(suppliedCategory)
+      || singleCategory === null
+      || category === null
+      || singleCategory !== category
+    ))
+  const suffix = category ? `?category=${category}` : ''
+  const canonicalKo = `${SITE_URL}/ko/spirits${suffix}`
+  const canonicalEn = `${SITE_URL}/en/spirits${suffix}`
+
+  let page: PageResponse<SpiritListSeoItemResponse> | null = null
+  if (category || includeItems) {
+    const query = new URLSearchParams({ page: '0', size: includeItems ? '20' : '1' })
+    if (category) query.set('category', category)
+    page = await fetchApiData<PageResponse<SpiritListSeoItemResponse>>(`/api/spirits?${query.toString()}`, 300)
+  }
+
+  // API 일시 장애 시 기존 index 상태를 보존하고, 실제 0건이 확인된 카테고리만 noindex 한다.
+  const categoryHasContent = !category || page == null || (page.totalElements ?? page.content.length) > 0
   return {
-    title: '주류 정보 탐색 및 상세 검색 (Search Liquor Specs & Reviews) — CaskByCask',
-    description: '위스키, 와인, 꼬냑 등 전 세계 모든 주류의 상세 정보와 평점 리뷰를 탐색해 보세요. Explore detailed specifications, user ratings, and reviews of global spirits.',
+    lang: resolvedLang,
+    category,
+    canonical: resolvedLang === 'en' ? canonicalEn : canonicalKo,
+    canonicalKo,
+    canonicalEn,
+    indexable: !hasUnsupportedQuery && categoryHasContent,
+    meta: SPIRIT_CATEGORY_META[category ?? ''],
+    page,
+  }
+}
+
+export async function getSpiritsListMetadata(
+  lang: 'ko' | 'en' | null,
+  searchParams: MetadataSearchParams = {},
+): Promise<Metadata> {
+  const state = await resolveSpiritsListSeoState(lang, searchParams)
+  const isEn = state.lang === 'en'
+  const title = `${isEn ? state.meta.titleEn : state.meta.titleKo} — CaskByCask`
+  const description = isEn ? state.meta.descEn : state.meta.descKo
+
+  return {
+    title,
+    description,
+    keywords: isEn ? state.meta.keywordsEn : state.meta.keywordsKo,
+    robots: { index: state.indexable, follow: true },
     alternates: {
-      canonical,
+      canonical: state.canonical,
+      languages: {
+        ko: state.canonicalKo,
+        en: state.canonicalEn,
+        'x-default': state.canonicalKo,
+      },
     },
     openGraph: {
-      title: '주류 정보 탐색 및 상세 검색 (Search Liquor Specs & Reviews) — CaskByCask',
-      description: '위스키, 와인, 꼬냑 등 전 세계의 다양한 주류 상세 정보와 테이스팅 노트 및 평점 리뷰를 간편하게 검색하세요. Search detailed specifications, tasting notes, and ratings of various spirits.',
-      url: canonical,
+      title,
+      description,
+      url: state.canonical,
       type: 'website',
-      images: [
-        {
-          url: 'https://www.caskbycask.net/og-image.png',
-          alt: 'CaskByCask 주류 정보 탐색 (Specs & Reviews)',
-        },
-      ],
+      siteName: 'CaskByCask',
+      locale: isEn ? 'en_US' : 'ko_KR',
+      images: [{ url: DEFAULT_OG_IMAGE, alt: title }],
     },
     twitter: {
       card: 'summary_large_image',
-      title: '주류 정보 탐색 및 상세 검색 (Search Liquor Specs & Reviews) — CaskByCask',
-      description: '전 세계의 다양한 주류 상세 정보와 리뷰 평점을 쉽고 빠르게 탐색해 보세요. Easily discover detailed specifications, tasting notes and ratings of global spirits.',
-      images: ['https://www.caskbycask.net/og-image.png'],
+      title,
+      description,
+      images: [DEFAULT_OG_IMAGE],
     },
+  }
+}
+
+export async function getSpiritsListSeoSnapshot(
+  lang: 'ko' | 'en' | null,
+  searchParams: MetadataSearchParams = {},
+): Promise<SeoSnapshotData> {
+  const state = await resolveSpiritsListSeoState(lang, searchParams, true)
+  const isEn = state.lang === 'en'
+  const items = (state.page?.content ?? []).map((spirit) => ({
+    title: isEn ? (spirit.nameEn || spirit.nameKo) : spirit.nameKo,
+    href: isEn
+      ? (spirit.canonicalPathEn || `/en/spirits/${spirit.id}`)
+      : (spirit.canonicalPathKo || `/ko/spirits/${spirit.id}`),
+    meta: isEn
+      ? (spirit.producerNameEn || spirit.producerNameKo)
+      : spirit.producerNameKo,
+  }))
+  const count = state.page?.totalElements
+
+  return {
+    kind: 'spirits-list',
+    lang: state.lang,
+    eyebrow: isEn ? 'CaskByCask catalog' : 'CaskByCask 주류 정보',
+    title: isEn ? state.meta.titleEn : state.meta.titleKo,
+    description: isEn ? state.meta.descEn : state.meta.descKo,
+    metrics: count == null ? [] : [{
+      label: isEn ? 'Spirits' : '등록 주류',
+      value: count.toLocaleString(isEn ? 'en-US' : 'ko-KR'),
+    }],
+    details: [],
+    items,
+    links: [
+      { label: isEn ? 'Home' : '홈', href: `/${state.lang}` },
+      ...(state.category
+        ? [{ label: isEn ? 'All spirits' : '전체 주류', href: `/${state.lang}/spirits` }]
+        : []),
+    ],
+  }
+}
+
+export async function getSpiritsListJsonLd(
+  lang: 'ko' | 'en' | null,
+  searchParams: MetadataSearchParams = {},
+): Promise<object | null> {
+  const state = await resolveSpiritsListSeoState(lang, searchParams, true)
+  if (!state.indexable) return null
+
+  const isEn = state.lang === 'en'
+  const items = (state.page?.content ?? []).map((spirit, index) => ({
+    '@type': 'ListItem',
+    position: index + 1,
+    name: isEn ? (spirit.nameEn || spirit.nameKo) : spirit.nameKo,
+    url: `${SITE_URL}${isEn
+      ? (spirit.canonicalPathEn || `/en/spirits/${spirit.id}`)
+      : (spirit.canonicalPathKo || `/ko/spirits/${spirit.id}`)}`,
+  }))
+
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: isEn ? 'Home' : '홈', item: `${SITE_URL}/${state.lang}` },
+          { '@type': 'ListItem', position: 2, name: isEn ? 'Spirits' : '주류 카탈로그', item: state.canonical },
+        ],
+      },
+      {
+        '@type': 'CollectionPage',
+        name: isEn ? state.meta.titleEn : state.meta.titleKo,
+        description: isEn ? state.meta.descEn : state.meta.descKo,
+        url: state.canonical,
+        mainEntity: items.length > 0 ? { '@type': 'ItemList', itemListElement: items } : undefined,
+      },
+    ],
   }
 }
 
@@ -1330,7 +1703,7 @@ export async function getSpiritDetailJsonLd(id: string, lang: 'ko' | 'en' | null
   const hasProductSnippetData = (avgScore != null && reviewCount > 0) || reviews.length > 0
 
   if (!hasProductSnippetData) {
-    return {
+    return buildSpiritRouteGraph({
       '@context': 'https://schema.org',
       '@type': 'WebPage',
       name: primaryName,
@@ -1346,10 +1719,10 @@ export async function getSpiritDetailJsonLd(id: string, lang: 'ko' | 'en' | null
         alternateName: secondaryName !== primaryName ? secondaryName : undefined,
         additionalType: spirit.category || undefined,
       },
-    }
+    }, canonical, primaryName, resolvedLanguage(lang))
   }
 
-  return {
+  return buildSpiritRouteGraph({
     '@context': 'https://schema.org',
     '@type': 'Product',
     name: primaryName,
@@ -1376,6 +1749,35 @@ export async function getSpiritDetailJsonLd(id: string, lang: 'ko' | 'en' | null
       worstRating: 0,
     } : undefined,
     review: reviews.length > 0 ? reviews : undefined,
+  }, canonical, primaryName, resolvedLanguage(lang))
+}
+
+function resolvedLanguage(lang: 'ko' | 'en' | null): 'ko' | 'en' {
+  return lang === 'en' ? 'en' : 'ko'
+}
+
+function buildSpiritRouteGraph(
+  primarySchema: Record<string, unknown>,
+  canonical: string,
+  spiritName: string,
+  lang: 'ko' | 'en',
+): object {
+  const { '@context': _context, ...primary } = primarySchema
+  const home = `${SITE_URL}/${lang}`
+  const spirits = `${home}/spirits`
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      primary,
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: lang === 'en' ? 'Home' : '홈', item: home },
+          { '@type': 'ListItem', position: 2, name: lang === 'en' ? 'Spirits' : '주류', item: spirits },
+          { '@type': 'ListItem', position: 3, name: spiritName, item: canonical },
+        ],
+      },
+    ],
   }
 }
 
@@ -1388,6 +1790,29 @@ function formatEditionDisplayName(
     .map((part) => part?.trim())
     .filter(Boolean)
     .join(' ')
+}
+
+function formatPriceObservation(
+  observation: SpiritSeoPriceObservationResponse | null | undefined,
+  lang: 'ko' | 'en',
+) {
+  if (!observation) return null
+  const amount = Number(observation.amount)
+  if (!Number.isFinite(amount) || amount <= 0) return null
+  const currency = observation.currency?.toUpperCase() || 'KRW'
+  let formattedAmount: string
+  try {
+    formattedAmount = new Intl.NumberFormat(lang === 'en' ? 'en-US' : 'ko-KR', {
+      style: 'currency',
+      currency,
+      maximumFractionDigits: currency === 'KRW' ? 0 : 2,
+    }).format(amount)
+  } catch {
+    formattedAmount = `${amount.toLocaleString(lang === 'en' ? 'en-US' : 'ko-KR')} ${currency}`
+  }
+  return [formattedAmount, observation.sourceName, observation.observedDate]
+    .filter(Boolean)
+    .join(' · ')
 }
 
 export async function getSpiritSeoSnapshot(id: string, lang: 'ko' | 'en' | null): Promise<SeoSnapshotData | null> {
@@ -1451,6 +1876,23 @@ export async function getSpiritSeoSnapshot(id: string, lang: 'ko' | 'en' | null)
       : null)
     .filter(Boolean)
     .join(', ')
+  const relationLinks = [
+    ...(seo?.parent ? [{
+      label: `${isEn ? 'Regular product' : '정규 주류'}: ${isEn ? seo.parent.nameEn : seo.parent.nameKo}`,
+      href: isEn ? seo.parent.canonicalPathEn : seo.parent.canonicalPathKo,
+    }] : []),
+    ...((seo?.editions ?? [])
+      .filter((edition) => edition.id !== Number(numericId))
+      .map((edition) => ({
+        label: `${isEn ? 'Edition' : '에디션'}: ${isEn ? edition.nameEn : edition.nameKo}`,
+        href: isEn ? edition.canonicalPathEn : edition.canonicalPathKo,
+      }))),
+  ]
+  const recentPrice = formatPriceObservation(seo?.recentPrice, resolvedLang)
+  const recentHotDeal = formatPriceObservation(seo?.recentHotDeal, resolvedLang)
+  const hotDealSource = seo?.recentHotDeal?.sourceUrl?.match(/^https?:\/\//i)
+    ? seo.recentHotDeal.sourceUrl
+    : null
 
   return {
     kind: 'spirit',
@@ -1484,12 +1926,20 @@ export async function getSpiritSeoSnapshot(id: string, lang: 'ko' | 'en' | null)
       { label: labels.wineType, value: spirit.wineDetail?.wineType },
       { label: labels.wineType, value: grapes },
       { label: labels.cognacGrade, value: spirit.cognacDetail?.grade },
+      { label: isEn ? 'Recently confirmed purchase price' : '최근 확인 가격', value: recentPrice },
+      { label: isEn ? 'Recently approved hot deal' : '최근 승인 핫딜', value: recentHotDeal },
     ]),
+    sourceUrls: hotDealSource ? [hotDealSource] : [],
     links: [
-      { label: labels.home, href: `/${resolvedLang}/` },
+      { label: labels.home, href: `/${resolvedLang}` },
       { label: labels.spirits, href: `/${resolvedLang}/spirits` },
       { label: categoryLabel(spirit.category, resolvedLang), href: `/${resolvedLang}/spirits?category=${spirit.category || ''}` },
       { label: title, href: canonicalPath },
+      ...(recentPrice ? [{
+        label: isEn ? 'View price reports' : '가격 제보 확인',
+        href: `/${resolvedLang}/price-tracker/spirits/${numericId}`,
+      }] : []),
+      ...relationLinks,
     ],
   }
 }
@@ -1535,7 +1985,7 @@ export async function getCommunityPostSeoSnapshot(
     sourceUrls: post.sourceUrls || [],
     hashtags: post.hashtags || [],
     links: [
-      { label: labels.home, href: '/ko/' },
+      { label: labels.home, href: '/ko' },
       { label: labels.community, href: '/ko/community/all' },
       { label: boardName, href: `/ko/community/${canonicalBoard}` },
       { label: post.title, href: `/ko/community/${canonicalBoard}/${numericId}` },
@@ -1577,7 +2027,7 @@ export async function getByobPostSeoSnapshot(id: string, lang: 'ko' | 'en' | nul
     ]),
     bodyHtml: plainTextToHtml(byob.content),
     links: [
-      { label: labels.home, href: '/ko/' },
+      { label: labels.home, href: '/ko' },
       { label: labels.community, href: '/ko/community/all' },
       { label: labels.byob, href: '/ko/community/byob' },
       { label: byob.title, href: `/ko/community/byob/${numericId}` },
@@ -1746,7 +2196,7 @@ export async function getCommunityPostJsonLd(boardType: string, id: string, lang
         '@type': 'BreadcrumbList',
         '@id': breadcrumbId,
         'itemListElement': [
-          { '@type': 'ListItem', 'position': 1, 'name': '홈', 'item': `${SITE_URL}/ko/` },
+          { '@type': 'ListItem', 'position': 1, 'name': '홈', 'item': `${SITE_URL}/ko` },
           { '@type': 'ListItem', 'position': 2, 'name': canonicalBoard === 'notice' ? '소식' : '자유게시판', 'item': `${SITE_URL}/ko/community/${canonicalBoard}` },
           { '@type': 'ListItem', 'position': 3, 'name': post.title, 'item': canonical },
         ],

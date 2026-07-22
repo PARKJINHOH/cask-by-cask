@@ -1,9 +1,40 @@
 import { Metadata } from 'next'
 import ClientAppWrapper from '@/app/ClientAppWrapper'
-import { getSpiritsListMetadata } from '@/shared/utils/seoHelpers'
+import SeoFallback from '@/app/SeoFallback'
+import {
+  getSpiritsListJsonLd,
+  getSpiritsListMetadata,
+  getSpiritsListSeoSnapshot,
+  type MetadataSearchParams,
+} from '@/shared/utils/seoHelpers'
 
-export const metadata: Metadata = getSpiritsListMetadata(null)
+interface Props {
+  searchParams: Promise<MetadataSearchParams>
+}
 
-export default function SpiritListSSRPage() {
-  return <ClientAppWrapper />
+export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
+  return getSpiritsListMetadata(null, await searchParams)
+}
+
+export default async function SpiritListSSRPage({ searchParams }: Props) {
+  const resolvedSearchParams = await searchParams
+  const [jsonLdData, snapshot] = await Promise.all([
+    getSpiritsListJsonLd(null, resolvedSearchParams),
+    getSpiritsListSeoSnapshot(null, resolvedSearchParams),
+  ])
+
+  return (
+    <>
+      {jsonLdData && (
+        <script
+          type="application/ld+json"
+          data-cbc-route-jsonld="true"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdData).replace(/</g, '\\u003c') }}
+        />
+      )}
+      <ClientAppWrapper>
+        <SeoFallback snapshot={snapshot} />
+      </ClientAppWrapper>
+    </>
+  )
 }

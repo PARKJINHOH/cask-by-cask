@@ -1,43 +1,33 @@
 package com.caskbycask.domain.seo.service;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import com.caskbycask.domain.byob.entity.enums.ByobStatus;
 import com.caskbycask.domain.community.entity.enums.PostStatus;
 import com.caskbycask.domain.seo.util.SpiritSlugUtils;
-import com.caskbycask.domain.spirit.entity.Spirit;
+import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
 import com.caskbycask.domain.spirit.entity.enums.SpiritStatus;
+import com.caskbycask.domain.spirit.entity.enums.VariantType;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.Query;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 
-/**
- * sitemap.xml 본문 생성.
- *
- * 포함 URL:
- *   - 정적 페이지: /, /spirits, /spirits?category={WHISKY|COGNAC|WINE|OTHER},
- *                 /notices, /community/free, /community/notice, /ranking, /terms, /privacy
- *   - 동적: /spirits/{id}, /notices/{id}, /community/{boardType}/{postId}
- *
- * 제외:
- *   - /admin/**, /mypage, /messages, /notifications, /verify-email, /login, /signup
- *   - 비공개/삭제 상태의 컨텐츠
- *
- * 50k URL 한도, 50MB 크기 한도 (Google 규약) — 현재 단일 파일.
- * 향후 컨텐츠 폭증 시 sitemap index 로 분할 필요.
- */
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class SitemapService {
 
+    public static final long BUCKET_SIZE = 10_000L;
+    private static final ZoneId SERVICE_ZONE = ZoneId.of("Asia/Seoul");
     private static final DateTimeFormatter W3C = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
     @PersistenceContext
@@ -47,152 +37,252 @@ public class SitemapService {
     private String siteUrl;
 
     @Transactional(readOnly = true)
-    public String generateSitemap() {
-        StringBuilder sb = new StringBuilder(8192);
+    public String generateSitemapIndex() {
+        StringBuilder sb = new StringBuilder(1024);
         sb.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
-        sb.append("<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n");
-
-        // ── 정적 페이지 ──
-        appendMultilingualUrl(sb, "/",                       null, "daily",  "1.0");
-        appendMultilingualUrl(sb, "/spirits",                null, "daily",  "0.9");
-
-        // ── 카테고리 필터 페이지 ──
-        appendMultilingualUrl(sb, "/spirits?category=WHISKY",  null, "daily",  "0.8");
-        appendMultilingualUrl(sb, "/spirits?category=COGNAC",  null, "daily",  "0.8");
-        appendMultilingualUrl(sb, "/spirits?category=WINE",    null, "daily",  "0.8");
-        appendMultilingualUrl(sb, "/spirits?category=OTHER",   null, "daily",  "0.7");
-
-        // 게시판 본문은 별도 영문 번역 데이터가 없으므로 한국어 원문 canonical만 사이트맵에 포함한다.
-        appendKoreanUrl(sb, "/notices",                null, "daily",  "0.7");
-        appendKoreanUrl(sb, "/community/all",          null, "hourly", "0.8");
-        appendKoreanUrl(sb, "/community/free",         null, "hourly", "0.8");
-        appendKoreanUrl(sb, "/community/notice",       null, "daily",  "0.7");
-        appendKoreanUrl(sb, "/community/byob",         null, "daily",  "0.7");
-        appendMultilingualUrl(sb, "/ranking",                null, "weekly", "0.5");
-        appendMultilingualUrl(sb, "/faq",                    null, "monthly", "0.6");
-        appendMultilingualUrl(sb, "/terms",                  null, "yearly", "0.2");
-        appendMultilingualUrl(sb, "/privacy",                null, "yearly", "0.2");
-
-        // ── 동적: spirits ──
-        try {
-            List<Spirit> spirits = em.createQuery("""
-                    SELECT DISTINCT s FROM Spirit s
-                    LEFT JOIN FETCH s.parent
-                    WHERE s.status = :status
-                      AND NOT EXISTS (
-                          SELECT 1 FROM Spirit child
-                          WHERE child.parent = s
-                            AND child.status = :status
-                      )
-                    ORDER BY s.id
-                    """, Spirit.class)
-                    .setParameter("status", SpiritStatus.ACTIVE)
-                    .getResultList();
-            for (Spirit spirit : spirits) {
-                appendUrl(sb, siteUrl + SpiritSlugUtils.canonicalPathKo(spirit),
-                        spirit.getUpdatedAt(), "weekly", "0.8");
-                appendUrl(sb, siteUrl + SpiritSlugUtils.canonicalPathEn(spirit),
-                        spirit.getUpdatedAt(), "weekly", "0.8");
-            }
-        } catch (Exception e) {
-            log.warn("Spirit sitemap entries skipped: {}", e.getMessage());
+        sb.append("<sitemapindex xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n");
+        appendSitemap(sb, "/sitemaps/static.xml");
+        for (long bucket : contentBuckets()) {
+            appendSitemap(sb, "/sitemaps/content-" + bucket + ".xml");
         }
-
-        // ── 동적: notices (공개 = 게시됨 & 미삭제) ──
-        try {
-            @SuppressWarnings("unchecked")
-            List<Object[]> notices = em.createQuery(
-                    "SELECT n.id, n.updatedAt FROM Notice n WHERE n.isPublished = true AND n.deletedAt IS NULL ORDER BY n.id"
-            ).getResultList();
-            for (Object[] row : notices) {
-                Long id = (Long) row[0];
-                LocalDateTime updated = (LocalDateTime) row[1];
-                appendKoreanUrl(sb, "/notices/" + id, updated, "monthly", "0.6");
+        List<Long> spiritBuckets = spiritBuckets();
+        for (String lang : List.of("ko", "en")) {
+            for (long bucket : spiritBuckets) {
+                appendSitemap(sb, "/sitemaps/spirits-" + lang + "-" + bucket + ".xml");
             }
-        } catch (Exception e) {
-            log.warn("Notice sitemap entries skipped: {}", e.getMessage());
         }
-
-        // ── 동적: posts (board_type 별 URL) ──
-        try {
-            @SuppressWarnings("unchecked")
-            List<Object[]> posts = em.createQuery(
-                    """
-                    SELECT p.id, p.updatedAt, p.boardType
-                    FROM Post p
-                    WHERE p.status = :active
-                      AND p.isHidden = false
-                      AND p.adultOnly = false
-                    ORDER BY p.id
-                    """
-            )
-                    .setParameter("active", PostStatus.ACTIVE)
-                    .getResultList();
-            for (Object[] row : posts) {
-                Long id = (Long) row[0];
-                LocalDateTime updated = (LocalDateTime) row[1];
-                Object boardType = row[2];
-                String slug = boardType == null ? "free" : boardType.toString().toLowerCase();
-                appendKoreanUrl(sb, "/community/" + slug + "/" + id, updated, "weekly", "0.6");
-            }
-        } catch (Exception e) {
-            log.warn("Post sitemap entries skipped: {}", e.getMessage());
-        }
-
-        // ── 동적: BYOB 모임 ───────────────────────────────────────────
-        try {
-            @SuppressWarnings("unchecked")
-            List<Object[]> byobs = em.createQuery(
-                    "SELECT b.id, b.updatedAt FROM Byob b WHERE b.status <> :cancelled ORDER BY b.id"
-            )
-                    .setParameter("cancelled", ByobStatus.CANCELLED)
-                    .getResultList();
-            for (Object[] row : byobs) {
-                Long id = (Long) row[0];
-                LocalDateTime updated = (LocalDateTime) row[1];
-                appendKoreanUrl(sb, "/community/byob/" + id, updated, "weekly", "0.6");
-            }
-        } catch (Exception e) {
-            log.warn("BYOB sitemap entries skipped: {}", e.getMessage());
-        }
-
-        sb.append("</urlset>\n");
+        sb.append("</sitemapindex>\n");
         return sb.toString();
     }
 
-    private void appendMultilingualUrl(StringBuilder sb, String path, LocalDateTime lastmod,
-                                       String changefreq, String priority) {
-        String cleanPath = path.startsWith("/") ? path : "/" + path;
-        appendUrl(sb, siteUrl + "/ko" + (cleanPath.equals("/") ? "/" : cleanPath), lastmod, changefreq, priority);
-        appendUrl(sb, siteUrl + "/en" + (cleanPath.equals("/") ? "/" : cleanPath), lastmod, changefreq, priority);
+    @Transactional(readOnly = true)
+    public String generateStaticSitemap() {
+        StringBuilder sb = startUrlSet();
+        appendMultilingualUrl(sb, "/", null);
+        appendMultilingualUrl(sb, "/spirits", null);
+
+        for (Map.Entry<SpiritCategory, Long> entry : activeCategoryCounts().entrySet()) {
+            if (entry.getValue() > 0) {
+                appendMultilingualUrl(sb, "/spirits?category=" + entry.getKey().name(), null);
+            }
+        }
+
+        appendKoreanUrl(sb, "/notices", null);
+        appendKoreanUrl(sb, "/community/all", null);
+        appendKoreanUrl(sb, "/community/free", null);
+        appendKoreanUrl(sb, "/community/notice", null);
+        appendKoreanUrl(sb, "/community/byob", null);
+        appendMultilingualUrl(sb, "/ranking", null);
+        appendMultilingualUrl(sb, "/faq", null);
+        appendMultilingualUrl(sb, "/calendar", null);
+        appendMultilingualUrl(sb, "/tier-lists", null);
+        appendMultilingualUrl(sb, "/taste-trees", null);
+        appendMultilingualUrl(sb, "/price-tracker", null);
+        appendMultilingualUrl(sb, "/terms", null);
+        appendMultilingualUrl(sb, "/privacy", null);
+        appendMultilingualUrl(sb, "/operation-policy", null);
+        return finishUrlSet(sb);
     }
 
-    private void appendKoreanUrl(StringBuilder sb, String path, LocalDateTime lastmod,
-                                 String changefreq, String priority) {
-        String cleanPath = path.startsWith("/") ? path : "/" + path;
-        appendUrl(sb, siteUrl + "/ko" + (cleanPath.equals("/") ? "/" : cleanPath), lastmod, changefreq, priority);
+    @Transactional(readOnly = true)
+    public String generateSpiritSitemap(String lang, long bucket) {
+        if (!("ko".equals(lang) || "en".equals(lang)) || bucket < 0) {
+            throw new IllegalArgumentException("Unsupported sitemap shard");
+        }
+
+        long minId = Math.multiplyExact(bucket, BUCKET_SIZE);
+        long maxId = Math.addExact(minId, BUCKET_SIZE);
+        @SuppressWarnings("unchecked")
+        List<Object[]> rows = em.createQuery("""
+                SELECT s.id, s.nameKo, s.nameEn,
+                       s.seriesIdentifier, s.seriesIdentifierEn,
+                       s.variantType, s.variantValue, s.variantValueEn,
+                       s.updatedAt
+                FROM Spirit s
+                WHERE s.status = :status
+                  AND s.id >= :minId
+                  AND s.id < :maxId
+                ORDER BY s.id
+                """)
+                .setParameter("status", SpiritStatus.ACTIVE)
+                .setParameter("minId", minId)
+                .setParameter("maxId", maxId)
+                .getResultList();
+
+        StringBuilder sb = startUrlSet();
+        for (Object[] row : rows) {
+            Long id = (Long) row[0];
+            String nameKo = (String) row[1];
+            String nameEn = (String) row[2];
+            String seriesIdentifier = (String) row[3];
+            String seriesIdentifierEn = (String) row[4];
+            VariantType variantType = (VariantType) row[5];
+            String variantValue = (String) row[6];
+            String variantValueEn = (String) row[7];
+            LocalDateTime updatedAt = (LocalDateTime) row[8];
+            String path = "en".equals(lang)
+                    ? SpiritSlugUtils.canonicalPathEn(id, nameKo, nameEn, seriesIdentifier,
+                    seriesIdentifierEn, variantType, variantValue, variantValueEn)
+                    : SpiritSlugUtils.canonicalPathKo(id, nameKo, seriesIdentifier, variantType, variantValue);
+            appendUrl(sb, normalizedSiteUrl() + path, updatedAt);
+        }
+        return finishUrlSet(sb);
     }
 
-    private void appendUrl(StringBuilder sb, String loc, LocalDateTime lastmod,
-                           String changefreq, String priority) {
+    @Transactional(readOnly = true)
+    public String generateContentSitemap(long bucket) {
+        if (bucket < 0) throw new IllegalArgumentException("Unsupported sitemap shard");
+        long minId = Math.multiplyExact(bucket, BUCKET_SIZE);
+        long maxId = Math.addExact(minId, BUCKET_SIZE);
+        StringBuilder sb = startUrlSet();
+
+        @SuppressWarnings("unchecked")
+        List<Object[]> notices = em.createQuery("""
+                SELECT n.id, n.updatedAt FROM Notice n
+                WHERE n.isPublished = true
+                  AND n.deletedAt IS NULL
+                  AND n.id >= :minId AND n.id < :maxId
+                ORDER BY n.id
+                """)
+                .setParameter("minId", minId)
+                .setParameter("maxId", maxId)
+                .getResultList();
+        for (Object[] row : notices) {
+            appendKoreanUrl(sb, "/notices/" + row[0], (LocalDateTime) row[1]);
+        }
+
+        @SuppressWarnings("unchecked")
+        List<Object[]> posts = em.createQuery("""
+                SELECT p.id, p.updatedAt, p.boardType FROM Post p
+                WHERE p.status = :active
+                  AND p.isHidden = false
+                  AND p.adultOnly = false
+                  AND p.id >= :minId AND p.id < :maxId
+                ORDER BY p.id
+                """)
+                .setParameter("active", PostStatus.ACTIVE)
+                .setParameter("minId", minId)
+                .setParameter("maxId", maxId)
+                .getResultList();
+        for (Object[] row : posts) {
+            String board = row[2] == null ? "free" : row[2].toString().toLowerCase();
+            appendKoreanUrl(sb, "/community/" + board + "/" + row[0], (LocalDateTime) row[1]);
+        }
+
+        @SuppressWarnings("unchecked")
+        List<Object[]> byobs = em.createQuery("""
+                SELECT b.id, b.updatedAt FROM Byob b
+                WHERE b.status <> :cancelled
+                  AND b.id >= :minId AND b.id < :maxId
+                ORDER BY b.id
+                """)
+                .setParameter("cancelled", ByobStatus.CANCELLED)
+                .setParameter("minId", minId)
+                .setParameter("maxId", maxId)
+                .getResultList();
+        for (Object[] row : byobs) {
+            appendKoreanUrl(sb, "/community/byob/" + row[0], (LocalDateTime) row[1]);
+        }
+        return finishUrlSet(sb);
+    }
+
+    public List<Long> spiritBuckets() {
+        return bucketsThrough(maxId("SELECT MAX(s.id) FROM Spirit s WHERE s.status = :status",
+                "status", SpiritStatus.ACTIVE));
+    }
+
+    public List<Long> contentBuckets() {
+        long noticeMax = maxId("SELECT MAX(n.id) FROM Notice n WHERE n.isPublished = true AND n.deletedAt IS NULL");
+        long postMax = maxId("""
+                SELECT MAX(p.id) FROM Post p
+                WHERE p.status = :active AND p.isHidden = false AND p.adultOnly = false
+                """, "active", PostStatus.ACTIVE);
+        long byobMax = maxId("SELECT MAX(b.id) FROM Byob b WHERE b.status <> :cancelled",
+                "cancelled", ByobStatus.CANCELLED);
+        return bucketsThrough(Math.max(noticeMax, Math.max(postMax, byobMax)));
+    }
+
+    private Map<SpiritCategory, Long> activeCategoryCounts() {
+        Map<SpiritCategory, Long> counts = new EnumMap<>(SpiritCategory.class);
+        @SuppressWarnings("unchecked")
+        List<Object[]> rows = em.createQuery("""
+                SELECT s.category, COUNT(s) FROM Spirit s
+                WHERE s.status = :status
+                GROUP BY s.category
+                """)
+                .setParameter("status", SpiritStatus.ACTIVE)
+                .getResultList();
+        for (Object[] row : rows) {
+            if (row[0] instanceof SpiritCategory category && row[1] instanceof Number count) {
+                counts.put(category, count.longValue());
+            }
+        }
+        return counts;
+    }
+
+    private long maxId(String jpql, Object... parameterPairs) {
+        Query query = em.createQuery(jpql);
+        for (int i = 0; i < parameterPairs.length; i += 2) {
+            query.setParameter((String) parameterPairs[i], parameterPairs[i + 1]);
+        }
+        Object value = query.getSingleResult();
+        return value instanceof Number number ? number.longValue() : -1L;
+    }
+
+    private List<Long> bucketsThrough(long maxId) {
+        if (maxId < 0) return List.of();
+        long lastBucket = maxId / BUCKET_SIZE;
+        List<Long> buckets = new ArrayList<>((int) Math.min(lastBucket + 1, Integer.MAX_VALUE));
+        for (long bucket = 0; bucket <= lastBucket; bucket++) buckets.add(bucket);
+        return buckets;
+    }
+
+    private StringBuilder startUrlSet() {
+        StringBuilder sb = new StringBuilder(8192);
+        sb.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+        sb.append("<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n");
+        return sb;
+    }
+
+    private String finishUrlSet(StringBuilder sb) {
+        return sb.append("</urlset>\n").toString();
+    }
+
+    private void appendSitemap(StringBuilder sb, String path) {
+        sb.append("  <sitemap><loc>").append(escape(normalizedSiteUrl() + path)).append("</loc></sitemap>\n");
+    }
+
+    private void appendMultilingualUrl(StringBuilder sb, String path, LocalDateTime lastmod) {
+        String cleanPath = path.startsWith("/") ? path : "/" + path;
+        appendUrl(sb, normalizedSiteUrl() + "/ko" + ("/".equals(cleanPath) ? "" : cleanPath), lastmod);
+        appendUrl(sb, normalizedSiteUrl() + "/en" + ("/".equals(cleanPath) ? "" : cleanPath), lastmod);
+    }
+
+    private void appendKoreanUrl(StringBuilder sb, String path, LocalDateTime lastmod) {
+        String cleanPath = path.startsWith("/") ? path : "/" + path;
+        appendUrl(sb, normalizedSiteUrl() + "/ko" + ("/".equals(cleanPath) ? "" : cleanPath), lastmod);
+    }
+
+    private void appendUrl(StringBuilder sb, String loc, LocalDateTime lastmod) {
         sb.append("  <url>\n");
         sb.append("    <loc>").append(escape(loc)).append("</loc>\n");
         if (lastmod != null) {
             sb.append("    <lastmod>")
-              .append(lastmod.atOffset(ZoneOffset.UTC).format(W3C))
-              .append("</lastmod>\n");
+                    .append(lastmod.atZone(SERVICE_ZONE).format(W3C))
+                    .append("</lastmod>\n");
         }
-        sb.append("    <changefreq>").append(changefreq).append("</changefreq>\n");
-        sb.append("    <priority>").append(priority).append("</priority>\n");
         sb.append("  </url>\n");
     }
 
-    private String escape(String s) {
-        return s.replace("&", "&amp;")
+    private String normalizedSiteUrl() {
+        return siteUrl.endsWith("/") ? siteUrl.substring(0, siteUrl.length() - 1) : siteUrl;
+    }
+
+    private String escape(String value) {
+        return value.replace("&", "&amp;")
                 .replace("<", "&lt;")
                 .replace(">", "&gt;")
                 .replace("\"", "&quot;")
                 .replace("'", "&apos;");
     }
-
 }

@@ -1,0 +1,257 @@
+const baseUrl = (process.env.SEO_VERIFY_BASE_URL || 'http://localhost:3000').replace(/\/+$/, '')
+const canonicalOrigin = (process.env.SEO_VERIFY_CANONICAL_ORIGIN
+  || (baseUrl.includes('localhost') ? 'https://www.caskbycask.net' : baseUrl)).replace(/\/+$/, '')
+const verifyAllSitemapUrls = process.env.SEO_VERIFY_ALL_URLS === 'true'
+const verifyBrowser = process.env.SEO_VERIFY_BROWSER !== 'false'
+const representativeSpiritIds = (process.env.SEO_VERIFY_SPIRIT_IDS || '295,296,309')
+  .split(',')
+  .map((value) => value.trim())
+  .filter(Boolean)
+
+function invariant(condition, message) {
+  if (!condition) throw new Error(message)
+}
+
+function count(html, pattern) {
+  return [...html.matchAll(pattern)].length
+}
+
+function attr(tag, name) {
+  return tag.match(new RegExp(`\\b${name}=["']([^"']+)["']`, 'i'))?.[1] || null
+}
+
+function canonicalOf(html) {
+  const tags = [...html.matchAll(/<link\b[^>]*>/gi)].map((match) => match[0])
+  const tag = tags.find((candidate) => attr(candidate, 'rel')?.toLowerCase() === 'canonical')
+  return tag ? attr(tag, 'href') : null
+}
+
+function robotsOf(html) {
+  const tags = [...html.matchAll(/<meta\b[^>]*>/gi)].map((match) => match[0])
+  const tag = tags.find((candidate) => attr(candidate, 'name')?.toLowerCase() === 'robots')
+  return tag ? attr(tag, 'content') || '' : ''
+}
+
+function sameUrl(actual, expected) {
+  if (!actual || !expected) return false
+  try {
+    return new URL(decodeXml(actual), canonicalOrigin).href === new URL(expected, canonicalOrigin).href
+  } catch {
+    return false
+  }
+}
+
+async function get(path, redirect = 'follow') {
+  const response = await fetch(`${baseUrl}${path}`, {
+    redirect,
+    headers: { 'User-Agent': 'CaskByCask-SEO-Release-Check/1.0' },
+  })
+  return { response, body: await response.text() }
+}
+
+async function verifyHtml(path, { canonical, noindex = false, h1 = true, jsonLd = true } = {}) {
+  const { response, body } = await get(path)
+  invariant(response.status === 200, `${path}: expected 200, got ${response.status}`)
+  invariant(count(body, /<title\b/gi) === 1, `${path}: title must appear exactly once`)
+  invariant(count(body, /<meta\b[^>]*\bname=["']description["']/gi) === 1,
+    `${path}: description must appear exactly once`)
+  invariant(count(body, /<meta\b[^>]*\bname=["']robots["']/gi) === 1,
+    `${path}: robots must appear exactly once`)
+  invariant(count(body, /<link\b[^>]*\brel=["']canonical["']/gi) === 1,
+    `${path}: canonical must appear exactly once`)
+  if (canonical) invariant(sameUrl(canonicalOf(body), `${canonicalOrigin}${canonical}`),
+    `${path}: unexpected canonical ${canonicalOf(body)}`)
+  invariant(noindex === /noindex/i.test(robotsOf(body)), `${path}: unexpected robots ${robotsOf(body)}`)
+  if (h1) invariant(count(body, /<h1\b/gi) === 1, `${path}: H1 must appear exactly once`)
+  if (jsonLd) invariant(count(body, /<script\b[^>]*data-cbc-route-jsonld=["']true["']/gi) === 1,
+    `${path}: route JSON-LD must appear exactly once`)
+}
+
+async function verifyMissingRoute(path) {
+  const { response, body } = await get(path, 'manual')
+  invariant(response.status === 404, `${path}: expected 404, got ${response.status}`)
+  invariant(/noindex/i.test(robotsOf(body)), `${path}: 404 response must be noindex`)
+}
+
+function decodeXml(value) {
+  return value.replaceAll('&amp;', '&').replaceAll('&lt;', '<').replaceAll('&gt;', '>')
+    .replaceAll('&quot;', '"').replaceAll('&apos;', "'")
+}
+
+function locs(xml) {
+  return [...xml.matchAll(/<loc>(.*?)<\/loc>/gis)].map((match) => decodeXml(match[1].trim()))
+}
+
+function throughTarget(url) {
+  const parsed = new URL(url)
+  return `${baseUrl}${parsed.pathname}${parsed.search}`
+}
+
+async function verifySitemaps() {
+  const { response, body } = await get('/sitemap.xml')
+  invariant(response.status === 200, `/sitemap.xml: expected 200, got ${response.status}`)
+  invariant(/<sitemapindex\b/i.test(body), '/sitemap.xml: root must be sitemapindex')
+  invariant(response.headers.get('etag'), '/sitemap.xml: ETag is missing')
+  invariant(/max-age/i.test(response.headers.get('cache-control') || ''),
+    '/sitemap.xml: Cache-Control max-age is missing')
+  const rootHead = await fetch(`${baseUrl}/sitemap.xml`, { method: 'HEAD', redirect: 'manual' })
+  invariant(rootHead.status === 200, `/sitemap.xml: HEAD expected 200, got ${rootHead.status}`)
+  invariant(rootHead.headers.get('etag'), '/sitemap.xml: HEAD ETag is missing')
+  const childSitemaps = locs(body)
+  invariant(childSitemaps.length > 0, '/sitemap.xml: no child sitemap found')
+  invariant(new Set(childSitemaps).size === childSitemaps.length,
+    '/sitemap.xml: duplicate child sitemap found')
+
+  const urls = []
+  for (const child of childSitemaps) {
+    invariant(child.startsWith(`${canonicalOrigin}/sitemaps/`), `unexpected child sitemap host/path: ${child}`)
+    const childTarget = throughTarget(child)
+    const head = await fetch(childTarget, { method: 'HEAD', redirect: 'manual' })
+    invariant(head.status === 200, `${child}: HEAD expected 200, got ${head.status}`)
+    invariant(head.headers.get('etag'), `${child}: ETag is missing`)
+    invariant(/max-age/i.test(head.headers.get('cache-control') || ''),
+      `${child}: Cache-Control max-age is missing`)
+    const childResponse = await fetch(childTarget, { redirect: 'manual' })
+    invariant(childResponse.status === 200, `${child}: GET expected 200, got ${childResponse.status}`)
+    urls.push(...locs(await childResponse.text()))
+  }
+  invariant(new Set(urls).size === urls.length, 'duplicate URL found across sitemap shards')
+
+  const targets = verifyAllSitemapUrls ? urls : urls.slice(0, Math.min(30, urls.length))
+  for (const url of targets) {
+    invariant(url.startsWith(`${canonicalOrigin}/`), `unexpected sitemap URL host: ${url}`)
+    const response = await fetch(throughTarget(url), { redirect: 'manual' })
+    const html = await response.text()
+    invariant(response.status === 200, `${url}: sitemap URL must be final 200, got ${response.status}`)
+    invariant(count(html, /<link\b[^>]*\brel=["']canonical["']/gi) === 1,
+      `${url}: sitemap URL must have exactly one canonical`)
+    invariant(sameUrl(canonicalOf(html), url),
+      `${url}: sitemap URL must be self-canonical, got ${canonicalOf(html)}`)
+    invariant(count(html, /<meta\b[^>]*\bname=["']robots["']/gi) === 1,
+      `${url}: sitemap URL must have exactly one robots meta`)
+    invariant(!/noindex/i.test(robotsOf(html)),
+      `${url}: noindex URL must not be included in sitemap`)
+  }
+  console.log(`sitemap: ${childSitemaps.length} shards, ${urls.length} URLs (${targets.length} checked)`)
+  return urls
+}
+
+async function verifyCategoryIndexing() {
+  const states = []
+  for (const category of ['WHISKY', 'WINE', 'COGNAC', 'OTHER']) {
+    const response = await fetch(`${baseUrl}/api/spirits?category=${category}&page=0&size=1`)
+    invariant(response.status === 200,
+      `${category}: category probe expected 200, got ${response.status}`)
+    const payload = await response.json()
+    const page = payload?.data
+    invariant(page && Array.isArray(page.content), `${category}: invalid category probe response`)
+    const hasContent = (page.totalElements ?? page.content.length) > 0
+    states.push({ category, hasContent })
+    await verifyHtml(`/ko/spirits?category=${category}`, {
+      canonical: `/ko/spirits?category=${category}`,
+      noindex: !hasContent,
+      jsonLd: hasContent,
+    })
+  }
+  return states
+}
+
+async function verifySpiritRedirects(sitemapUrls) {
+  for (const id of representativeSpiritIds) {
+    const canonical = sitemapUrls.find((url) => {
+      const pathname = new URL(url).pathname
+      return new RegExp(`^/ko/spirits/${id}-`).test(pathname)
+    })
+    invariant(canonical, `representative spirit ${id}: KO canonical is missing from sitemap`)
+    const canonicalPath = new URL(canonical).pathname
+
+    for (const sourcePath of [`/ko/spirits/${id}`, `/ko/spirits/${id}-seo-check-wrong-slug`]) {
+      const response = await fetch(`${baseUrl}${sourcePath}`, { redirect: 'manual' })
+      invariant(response.status === 301,
+        `${sourcePath}: expected permanent 301, got ${response.status}`)
+      const location = response.headers.get('location')
+      invariant(location, `${sourcePath}: redirect Location is missing`)
+      invariant(new URL(location, baseUrl).pathname === canonicalPath,
+        `${sourcePath}: redirect must keep ID ${id} and target ${canonicalPath}, got ${location}`)
+    }
+  }
+}
+
+async function verifyRenderedHtml(categoryStates = []) {
+  if (!verifyBrowser) return
+  const { default: puppeteer } = await import('puppeteer')
+  const browser = await puppeteer.launch({ headless: true })
+  try {
+    const page = await browser.newPage()
+    const representativeCategories = [
+      categoryStates.find(({ hasContent }) => hasContent),
+      categoryStates.find(({ hasContent }) => !hasContent),
+    ].filter(Boolean).map(({ category, hasContent }) => [
+      `/ko/spirits?category=${category}`,
+      !hasContent,
+    ])
+    for (const [path, noindex] of [
+      ['/ko/spirits', false],
+      ['/ko/spirits?sort=SCORE_DESC', true],
+      ...representativeCategories,
+    ]) {
+      const response = await page.goto(`${baseUrl}${path}`, { waitUntil: 'domcontentloaded' })
+      invariant(response?.status() === 200, `${path}: rendered request must return 200`)
+      await page.waitForFunction(
+        () => !document.querySelector('[data-seo-fallback]') && document.querySelectorAll('h1').length > 0,
+        { timeout: 15_000 },
+      )
+      const state = await page.evaluate(() => ({
+        title: document.querySelectorAll('title').length,
+        description: document.querySelectorAll('meta[name="description"]').length,
+        robots: document.querySelectorAll('meta[name="robots"]').length,
+        canonical: document.querySelectorAll('link[rel="canonical"]').length,
+        h1: document.querySelectorAll('h1').length,
+        jsonLd: document.querySelectorAll('script[data-cbc-route-jsonld="true"]').length,
+        robotsContent: document.querySelector('meta[name="robots"]')?.getAttribute('content') || '',
+      }))
+      invariant(state.title === 1, `${path}: rendered title must appear exactly once`)
+      invariant(state.description === 1, `${path}: rendered description must appear exactly once`)
+      invariant(state.robots === 1, `${path}: rendered robots must appear exactly once`)
+      invariant(state.canonical === 1, `${path}: rendered canonical must appear exactly once`)
+      invariant(state.h1 === 1, `${path}: rendered H1 must appear exactly once`)
+      invariant(state.jsonLd === (noindex ? 0 : 1), `${path}: unexpected rendered JSON-LD count`)
+      invariant(noindex === /noindex/i.test(state.robotsContent),
+        `${path}: unexpected rendered robots ${state.robotsContent}`)
+    }
+    console.log('rendered HTML: metadata, H1 and JSON-LD are singular')
+  } finally {
+    await browser.close()
+  }
+}
+
+async function main() {
+  await verifyHtml('/ko/spirits', { canonical: '/ko/spirits' })
+  await verifyHtml('/ko/spirits?sort=SCORE_DESC', {
+    canonical: '/ko/spirits',
+    noindex: true,
+    jsonLd: false,
+  })
+  for (const path of [
+    '/ko/__seo_release_check_missing__',
+    '/ko/notices/9223372036854775807',
+    '/ko/community/free/9223372036854775807',
+    '/ko/community/byob/9223372036854775807',
+    '/ko/tier-lists/__seo_release_check_missing__',
+    '/ko/taste-trees/t/__seo_release_check_missing__',
+    '/ko/users/9223372036854775807/bottles',
+    '/ko/users/9223372036854775807/reviews',
+    '/ko/producers/9223372036854775807',
+    '/ko/price-tracker/spirits/9223372036854775807',
+  ]) await verifyMissingRoute(path)
+  const categoryStates = await verifyCategoryIndexing()
+  await verifyRenderedHtml(categoryStates)
+  const sitemapUrls = await verifySitemaps()
+  await verifySpiritRedirects(sitemapUrls)
+  console.log(`SEO verification passed: ${baseUrl}`)
+}
+
+main().catch((error) => {
+  console.error(error.message)
+  process.exitCode = 1
+})

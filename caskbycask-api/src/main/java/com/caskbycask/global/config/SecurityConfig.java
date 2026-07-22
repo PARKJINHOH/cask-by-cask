@@ -50,7 +50,7 @@ public class SecurityConfig {
         List<String> origins = List.of(allowedOriginsRaw.split(","));
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(origins);
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        config.setAllowedMethods(List.of("GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
         config.setMaxAge(3600L);
@@ -107,7 +107,10 @@ public class SecurityConfig {
                         // 8080 으로 들어온 /actuator/** 요청도 함께 permitAll 처리 (필터 통과만, 실제 노출은 management 포트만).
                         .requestMatchers("/actuator/**").permitAll()
                         // SEO: sitemap.xml — 검색엔진 크롤러용
-                        .requestMatchers(HttpMethod.GET, "/sitemap.xml").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/sitemap.xml", "/sitemaps/**").permitAll()
+                        .requestMatchers(HttpMethod.HEAD, "/sitemap.xml", "/sitemaps/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/indexnow-key.txt").permitAll()
+                        .requestMatchers(HttpMethod.HEAD, "/indexnow-key.txt").permitAll()
                         .requestMatchers(HttpMethod.GET, "/spirits/{id:\\d+}", "/spirits/{id:\\d+}-*", "/ko/spirits/{id:\\d+}", "/ko/spirits/{id:\\d+}-*", "/en/spirits/{id:\\d+}", "/en/spirits/{id:\\d+}-*").permitAll()
                         .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/notices/images/**").permitAll()

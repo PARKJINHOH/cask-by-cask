@@ -78,7 +78,7 @@ export default function NoticeDetailPage() {
             },
           },
           buildBreadcrumbSchema([
-            { name: '홈', path: '/ko/' },
+            { name: '홈', path: '/ko' },
             { name: '공지사항', path: '/ko/notices' },
             { name: notice.title, path: `/ko/notices/${notice.id}` },
           ]),

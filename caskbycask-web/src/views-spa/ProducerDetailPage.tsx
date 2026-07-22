@@ -50,7 +50,7 @@ export default function ProducerDetailPage() {
         description={isEn
           ? `${primaryName} — ${typeLabel} in ${countryLabel}. Spirits and reviews on CaskByCask.`
           : `${primaryName} — ${countryLabel} ${typeLabel}. CaskByCask에서 이 생산자의 술과 리뷰를 확인하세요.`}
-        canonical={buildCanonical(`/producers/${producer.id}`)}
+        canonical={buildCanonical(`/${isEn ? 'en' : 'ko'}/producers/${producer.id}`)}
         locale={isEn ? 'en_US' : 'ko_KR'}
       />
 

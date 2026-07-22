@@ -570,6 +570,13 @@
     },
     "zoomImage": "이미지 확대",
     "count": "총 <0>{{n}}</0>개",
+    "listTitle": {
+      "all": "주류 카탈로그",
+      "whisky": "위스키",
+      "cognac": "꼬냑",
+      "wine": "와인",
+      "other": "기타 주류"
+    },
     "category": {
       "whisky": "위스키",
       "cognac": "꼬냑",

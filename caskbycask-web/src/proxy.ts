@@ -12,7 +12,7 @@ interface SpiritSeoResponse {
   canonicalPathEn: string
 }
 
-const SPIRIT_PATH = /^\/(?:(ko|en)\/)?spirits\/([^/]+)(?:\/.*)?$/i
+const SPIRIT_PATH = /^\/(?:(ko|en)\/)?spirits\/([^/]+)\/?$/i
 const LOCALE_PATH = /^\/(ko|en)(?:\/|$)/i
 const LOCALE_REDIRECT_EXEMPT = new Set(['/oauth/callback', '/healthz'])
 const NOINDEX_PATHS = [
@@ -52,8 +52,11 @@ export async function proxy(request: NextRequest) {
     const res = await fetch(`${API_URL}/api/seo/spirits/${id}`, {
       cache: 'no-store',
     })
+    if (res.status === 404) {
+      return nextWithSeoContext(request, true)
+    }
     if (!res.ok) {
-      return redirectToDefaultLocale(request) ?? nextWithSeoContext(request)
+      return serviceUnavailable()
     }
 
     const body = await res.json() as ApiResponse<SpiritSeoResponse>
@@ -71,7 +74,7 @@ export async function proxy(request: NextRequest) {
     url.pathname = canonicalPath
     return NextResponse.redirect(url, 301)
   } catch {
-    return redirectToDefaultLocale(request) ?? nextWithSeoContext(request)
+    return serviceUnavailable()
   }
 }
 
@@ -85,15 +88,16 @@ function redirectToDefaultLocale(request: NextRequest): NextResponse | null {
   ) return null
 
   const url = request.nextUrl.clone()
-  url.pathname = `/ko${pathname === '/' ? '/' : pathname}`
+  url.pathname = pathname === '/' ? '/ko' : `/ko${pathname}`
   return NextResponse.redirect(url, 308)
 }
 
-function nextWithSeoContext(request: NextRequest): NextResponse {
+function nextWithSeoContext(request: NextRequest, spiritNotFound = false): NextResponse {
   const pathname = request.nextUrl.pathname
   const lang = pathname.match(LOCALE_PATH)?.[1]?.toLowerCase() === 'en' ? 'en' : 'ko'
   const requestHeaders = new Headers(request.headers)
   requestHeaders.set('x-caskbycask-lang', lang)
+  if (spiritNotFound) requestHeaders.set('x-caskbycask-spirit-not-found', '1')
 
   const response = NextResponse.next({ request: { headers: requestHeaders } })
   const pathWithoutLocale = pathname.replace(LOCALE_PATH, '/')
@@ -101,6 +105,17 @@ function nextWithSeoContext(request: NextRequest): NextResponse {
     response.headers.set('X-Robots-Tag', 'noindex, nofollow')
   }
   return response
+}
+
+function serviceUnavailable(): NextResponse {
+  return new NextResponse('Service temporarily unavailable', {
+    status: 503,
+    headers: {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Retry-After': '60',
+      'X-Robots-Tag': 'noindex, nofollow',
+    },
+  })
 }
 
 function extractLeadingId(value: string): string | null {
@@ -132,6 +147,6 @@ function safeDecodeURI(value: string): string {
 
 export const config = {
   matcher: [
-    '/((?!api|_next|uploads|favicon.ico|robots.txt|sitemap.xml|og-image.png|logo.png|site.webmanifest|healthz).*)',
+    '/((?!api|_next|uploads|favicon.ico|robots.txt|sitemap.xml|sitemaps|indexnow-key.txt|og-image.png|logo.png|site.webmanifest|healthz).*)',
   ],
 }

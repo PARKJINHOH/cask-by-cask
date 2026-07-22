@@ -4,6 +4,18 @@ const nextConfig = {
   async rewrites() {
     return [
       {
+        source: '/sitemap.xml',
+        destination: 'http://localhost:8080/sitemap.xml',
+      },
+      {
+        source: '/sitemaps/:path*',
+        destination: 'http://localhost:8080/sitemaps/:path*',
+      },
+      {
+        source: '/indexnow-key.txt',
+        destination: 'http://localhost:8080/indexnow-key.txt',
+      },
+      {
         source: '/api/:path*',
         destination: 'http://localhost:8080/api/:path*',
       },

@@ -1854,7 +1854,9 @@ export default function TierListPage() {
       <SeoMeta
         title={seoTitle}
         description={description || t('tierList.subtitle')}
-        canonical={readOnly && shareKey ? buildCanonical(`/tier-lists/${shareKey}`) : buildCanonical('/tier-lists')}
+        canonical={readOnly && shareKey
+          ? buildCanonical(`/${i18n.language === 'en' ? 'en' : 'ko'}/tier-lists/${shareKey}`)
+          : buildCanonical(`/${i18n.language === 'en' ? 'en' : 'ko'}/tier-lists`)}
         noindex={!readOnly}
       />
 

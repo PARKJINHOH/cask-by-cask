@@ -194,7 +194,7 @@ function MyRankBar({ period }: { period: RankingPeriod }) {
 // ── 메인 페이지 ───────────────────────────────────────────────
 
 export default function RankingPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [searchParams, setSearchParams] = useSearchParams()
   const periodParam = (searchParams.get('period') ?? 'WEEKLY') as RankingPeriod
   const [page, setPage] = useState(0)
@@ -219,7 +219,7 @@ export default function RankingPage() {
       <SeoMeta
         title={t('ranking.title', '레벨 랭킹')}
         description={t('ranking.seo.desc', 'CaskByCask 사용자 활동 점수 랭킹. 주간·월간·전체 기간별 리뷰와 활동에 따른 레벨 순위를 확인하세요.')}
-        canonical={buildCanonical('/ranking')}
+        canonical={buildCanonical(`/${i18n.language === 'en' ? 'en' : 'ko'}/ranking`)}
         keywords={t('ranking.seo.keywords', 'CaskByCask 랭킹, 레벨, 위스키 리뷰 랭킹, 사용자 활동 점수')}
       />
 

@@ -7,6 +7,7 @@ import com.caskbycask.domain.score.service.ScoreService;
 import com.caskbycask.domain.community.entity.enums.NotificationType;
 import com.caskbycask.domain.community.service.NotificationService;
 import com.caskbycask.domain.review.dto.ModerationRequest;
+import com.caskbycask.domain.seo.service.SpiritIndexingEventPublisher;
 import com.caskbycask.domain.spirit.dto.*;
 import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.domain.spirit.entity.SpiritImage;
@@ -35,6 +36,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -82,6 +84,10 @@ public class SpiritService {
     private final BadWordFilter badWordFilter;
     private final SpiritSearchService spiritSearchService;
     private final EmailSender emailSender;
+
+    /** Optional field injection keeps domain unit tests and IndexNow-disabled environments isolated. */
+    @Autowired(required = false)
+    private SpiritIndexingEventPublisher spiritIndexingEventPublisher;
 
     // ── 공개 조회 ──────────────────────────────────────────
 
@@ -275,6 +281,7 @@ public class SpiritService {
             throw new CustomException(ErrorCode.INVALID_INPUT);
         }
         variant.approve();
+        notifyIndexing(variant, variant.getParent());
         return AdminVariantRequestResponse.from(variant);
     }
 
@@ -511,6 +518,8 @@ public class SpiritService {
                 .build();
 
         Spirit saved = spiritRepository.save(spirit);
+        List<Spirit> indexingTargets = new ArrayList<>();
+        if (saved.getStatus() == SpiritStatus.ACTIVE) indexingTargets.add(saved);
 
         spiritDetailService.saveCommonDetail(saved, request.commonDetail());
         spiritDetailService.saveCategoryDetail(saved, request);
@@ -548,6 +557,7 @@ public class SpiritService {
                         .build();
 
                 Spirit savedVariant = spiritRepository.save(variant);
+                if (savedVariant.getStatus() == SpiritStatus.ACTIVE) indexingTargets.add(savedVariant);
                 spiritDetailService.saveCommonDetail(savedVariant, vReq.commonDetail());
                 if (saved.getCategory() == SpiritCategory.WHISKY && vReq.whiskyDetail() != null) {
                     spiritDetailService.saveWhiskyDetail(savedVariant, vReq.whiskyDetail());
@@ -555,12 +565,16 @@ public class SpiritService {
             }
         }
 
+        notifyIndexing(indexingTargets);
+
         return SpiritDetailResponse.of(saved, List.of());
     }
 
     @Transactional
     public SpiritDetailResponse updateSpirit(Long id, UpdateSpiritRequest request, Long userId) {
         Spirit spirit = getSpirit(id);
+        List<Spirit> indexingTargets = new ArrayList<>();
+        indexingTargets.add(spirit);
         User user = getUser(userId);
 
         verifyProducerAccess(user, spirit.getProducer());
@@ -607,6 +621,7 @@ public class SpiritService {
         // 하위 에디션 수정 처리 (마스터 주류일 때만 수행)
         if (spirit.getParent() == null) {
             List<Spirit> existingVariants = spiritRepository.findByParentId(id);
+            indexingTargets.addAll(existingVariants);
             if (Boolean.TRUE.equals(request.isVariantSplit()) && request.variants() != null) {
                 java.util.Set<Long> processedIds = new java.util.HashSet<>();
 
@@ -667,6 +682,7 @@ public class SpiritService {
                                 .build();
 
                         Spirit savedVariant = spiritRepository.save(variant);
+                        indexingTargets.add(savedVariant);
                         spiritDetailService.saveCommonDetail(savedVariant, vReq.commonDetail());
                         if (spirit.getCategory() == SpiritCategory.WHISKY && vReq.whiskyDetail() != null) {
                             spiritDetailService.saveWhiskyDetail(savedVariant, vReq.whiskyDetail());
@@ -713,6 +729,8 @@ public class SpiritService {
         List<SpiritImageResponse> images = spiritImageRepository.findBySpiritIdOrderBySortOrderAscIdAsc(id)
                 .stream().map(SpiritImageResponse::from).toList();
 
+        notifyIndexing(indexingTargets);
+
         return SpiritDetailResponse.of(spirit, images);
     }
 
@@ -720,12 +738,14 @@ public class SpiritService {
     public void deleteSpirit(Long id) {
         Spirit spirit = getSpirit(id);
         spirit.hide();
+        notifyIndexing(spirit);
     }
 
     @Transactional
     public void restoreSpirit(Long id) {
         Spirit spirit = getSpirit(id);
         spirit.activate();
+        notifyIndexing(spirit);
     }
 
     @Transactional
@@ -740,6 +760,7 @@ public class SpiritService {
 
         spiritImageService.deleteImagesBySpiritId(id);
         spiritRepository.delete(spirit);
+        notifyIndexing(spirit);
     }
 
     // ── 사용자 등록 요청 ────────────────────────────────────
@@ -979,6 +1000,8 @@ public class SpiritService {
                 .build();
 
         Spirit saved = spiritRepository.save(spirit);
+        List<Spirit> indexingTargets = new ArrayList<>();
+        indexingTargets.add(saved);
 
         spiritDetailService.saveCommonDetail(saved, detail.commonDetail());
         spiritDetailService.saveCategoryDetail(saved, detail);
@@ -1016,6 +1039,7 @@ public class SpiritService {
                         .build();
 
                 Spirit savedVariant = spiritRepository.save(variant);
+                indexingTargets.add(savedVariant);
                 spiritDetailService.saveCommonDetail(savedVariant, vReq.commonDetail());
                 if (saved.getCategory() == SpiritCategory.WHISKY && vReq.whiskyDetail() != null) {
                     spiritDetailService.saveWhiskyDetail(savedVariant, vReq.whiskyDetail());
@@ -1047,6 +1071,8 @@ public class SpiritService {
                 "SPIRIT",
                 saved.getId()
         );
+
+        notifyIndexing(indexingTargets);
 
         return SpiritDetailResponse.of(saved,
                 images.stream().map(SpiritImageResponse::from).toList());
@@ -1337,5 +1363,20 @@ public class SpiritService {
         } catch (IOException e) {
             throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR);
         }
+    }
+
+    private void notifyIndexing(List<Spirit> spirits) {
+        if (spiritIndexingEventPublisher != null && spirits != null && !spirits.isEmpty()) {
+            spiritIndexingEventPublisher.publish(spirits);
+        }
+    }
+
+    private void notifyIndexing(Spirit... spirits) {
+        if (spiritIndexingEventPublisher == null || spirits == null || spirits.length == 0) return;
+        List<Spirit> targets = new ArrayList<>();
+        for (Spirit spirit : spirits) {
+            if (spirit != null) targets.add(spirit);
+        }
+        notifyIndexing(targets);
     }
 }
