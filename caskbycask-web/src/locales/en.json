@@ -1734,7 +1734,7 @@
       "volumeHint": "Enter the labeled size of one bottle in ml. The price must also be for one bottle. Example: 70cl → 700ml",
       "volumeError": "Enter a whole number between 1 and 100,000ml.",
       "store": "Store",
-      "storePlaceholder": "Search store name",
+      "storePlaceholder": "Enter store name",
       "brandPlaceholder": "Enter brand / store name",
       "suggestStore": "Other (type manually)",
       "currency": "Currency",

@@ -9,7 +9,6 @@ import type {
   PriceReportStatus,
   PriceReportSummary,
   PriceVolumeOption,
-  StoreSearchResult,
   StoreType,
   VolumeSelection,
 } from '../types/pricetracker.types'
@@ -90,12 +89,6 @@ export const priceTrackerApi = {
     reportId: number,
     body: { reason: string; reasonDetail?: string },
   ) => axiosInstance.post<ApiResponse<void>>(`/api/price-reports/${reportId}/reports`, body),
-
-  // ── 매장 검색 ─────────────────────────────────────
-  searchStores: (keyword: string, storeType?: StoreType) =>
-    axiosInstance.get<ApiResponse<StoreSearchResult[]>>('/api/stores/search', {
-      params: { keyword, storeType, limit: 10 },
-    }),
 
   // ── 가격 알림 ─────────────────────────────────────
   upsertAlert: (spiritId: number, volumeMl: number, targetPrice: number) =>

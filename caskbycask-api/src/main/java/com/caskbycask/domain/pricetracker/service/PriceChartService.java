@@ -250,10 +250,7 @@ public class PriceChartService {
 
     private boolean matchesStoreType(PriceReport r, StoreType storeType) {
         if (storeType == null) return true;
-        if (storeType == StoreType.DOMESTIC) {
-            return r.getStore() == null || r.getStore().getStoreType() == StoreType.DOMESTIC;
-        }
-        return r.getStore() != null && r.getStore().getStoreType() == storeType;
+        return r.getEffectiveStoreType() == storeType;
     }
 
     private boolean matchesVolume(Integer candidateVolumeMl, Integer volumeMl, boolean unknownVolume) {

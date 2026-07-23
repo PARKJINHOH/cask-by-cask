@@ -63,13 +63,6 @@ export interface PriceReportChartDetail {
   sourceUrl?: string | null
 }
 
-export interface StoreSearchResult {
-  id: number
-  displayName: string
-  storeType: StoreType
-  dutyfreeChannel: DutyFreeChannel | null
-}
-
 export interface PriceReportSummary {
   id: number
   spiritId: number
@@ -131,25 +124,6 @@ export interface AdminPriceReport {
   approvedAt: string | null
 }
 
-export interface AdminStore {
-  id: number
-  displayName: string
-  storeType: StoreType
-  dutyfreeChannel: DutyFreeChannel | null
-  region: string | null
-  isApproved: boolean
-  createdById: number | null
-  createdByNickname: string | null
-  approvedAt: string | null
-  createdAt: string
-  updatedAt: string
-}
-
-export interface StoreAlias {
-  id: number
-  alias: string
-}
-
 export interface PriceAlertResponse {
   id: number
   spiritId: number
@@ -179,6 +153,7 @@ export interface CreatePriceReportRequest {
   spiritId: number
   volumeMl: number
   storeId?: number | null
+  storeType?: StoreType | null
   suggestedStoreName?: string | null
   dutyfreeChannel?: DutyFreeChannel | null
   currency: PriceCurrency

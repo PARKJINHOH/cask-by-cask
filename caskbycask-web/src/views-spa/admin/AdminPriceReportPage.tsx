@@ -172,7 +172,7 @@ function PriceReportRow({ report, onClick }: { report: AdminPriceReport; onClick
       <td className="px-3 py-3 max-w-[200px]">
         <p className="text-neutral-700 truncate">{storeName}</p>
         {!report.storeName && report.suggestedStoreName && (
-          <p className="text-xs text-amber-600 mt-0.5">제안 매장</p>
+          <p className="text-xs text-neutral-400 mt-0.5">직접 입력</p>
         )}
       </td>
       <td className="px-3 py-3 text-right font-semibold text-neutral-800 whitespace-nowrap tabular-nums">

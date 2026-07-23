@@ -1,19 +1,15 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
 import Spinner from '@/shared/components/Spinner'
 import { formatDateTime } from '@/shared/utils/format'
-import { priceTrackerApi } from '@/domain/pricetracker/api/priceTrackerApi'
 import {
   useAdminPriceReport,
   useApprovePriceReport,
   useRejectPriceReport,
 } from '@/domain/pricetracker/hooks/useAdminPriceTracker'
-import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
 import type {
   AdminPriceReport,
   PriceReportStatus,
-  StoreSearchResult,
 } from '@/domain/pricetracker/types/pricetracker.types'
 import FormFieldLabel from '@/shared/components/FormFieldLabel'
 
@@ -50,11 +46,6 @@ export default function AdminPriceReportDetailPage() {
   const approve = useApprovePriceReport()
   const reject = useRejectPriceReport()
 
-  const [mapKeyword, setMapKeyword] = useState('')
-  const debouncedMapKeyword = useDebouncedValue(mapKeyword)
-  const storeSearchKeyword = debouncedMapKeyword.trim()
-  const [mappedStore, setMappedStore] = useState<StoreSearchResult | null>(null)
-  const [mapOpen, setMapOpen] = useState(false)
   const [rejecting, setRejecting] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
   const [volumeInput, setVolumeInput] = useState('')
@@ -62,14 +53,6 @@ export default function AdminPriceReportDetailPage() {
   useEffect(() => {
     if (report) setVolumeInput(report.volumeMl == null ? '' : String(report.volumeMl))
   }, [report])
-
-  const { data: storeResults } = useQuery({
-    queryKey: ['admin-store-map', storeSearchKeyword],
-    queryFn: () => priceTrackerApi.searchStores(storeSearchKeyword),
-    select: (res) => res.data.data ?? [],
-    enabled: storeSearchKeyword.length >= 1 && mapKeyword.trim().length >= 1 && mapOpen,
-    staleTime: 30_000,
-  })
 
   const goList = () => navigate(listReturnTo)
   const handleApprove = () => {
@@ -84,7 +67,7 @@ export default function AdminPriceReportDetailPage() {
       return
     }
     approve.mutate(
-      { id: report.id, storeId: mappedStore?.id ?? report.storeId ?? null, volumeMl },
+      { id: report.id, volumeMl },
       { onSuccess: goList },
     )
   }
@@ -248,62 +231,6 @@ export default function AdminPriceReportDetailPage() {
         </div>
       )}
 
-      {report.status === 'PENDING' && (
-        <div className="bg-white rounded-xl shadow-sm p-5">
-          <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-1">표준 매장 연결</p>
-          <p className="text-sm text-neutral-500 mb-3">
-            {report.storeName
-              ? `현재 연결: ${report.storeName}`
-              : report.suggestedStoreName
-                ? `제안 매장 “${report.suggestedStoreName}”을 그대로 승인하거나 기존 표준 매장에 연결할 수 있습니다.`
-                : '매장 없이 승인하거나 기존 표준 매장에 연결할 수 있습니다.'}
-          </p>
-          <div className="relative">
-            <input
-              value={mappedStore ? mappedStore.displayName : mapKeyword}
-              onChange={(e) => {
-                setMapKeyword(e.target.value)
-                setMappedStore(null)
-                setMapOpen(true)
-              }}
-              onFocus={() => setMapOpen(true)}
-              placeholder="표준 매장 검색 (선택 사항)"
-              className="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-200 bg-white"
-            />
-            {mapOpen && storeResults && storeResults.length > 0 && !mappedStore && (
-              <ul className="absolute z-10 w-full bg-white border border-neutral-200 rounded-lg mt-1 shadow-lg max-h-48 overflow-y-auto">
-                {storeResults.map((store) => (
-                  <li key={store.id}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMappedStore(store)
-                        setMapOpen(false)
-                      }}
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-neutral-50"
-                    >
-                      {store.displayName}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-          {mappedStore && (
-            <button
-              type="button"
-              onClick={() => {
-                setMappedStore(null)
-                setMapKeyword('')
-              }}
-              className="mt-2 text-xs text-neutral-500 hover:text-neutral-800"
-            >
-              선택 해제
-            </button>
-          )}
-        </div>
-      )}
-
       {report.status === 'REJECTED' && report.rejectReason && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4">
           <p className="text-xs font-semibold text-red-700 mb-1">반려 사유</p>
@@ -359,9 +286,7 @@ export default function AdminPriceReportDetailPage() {
               >
                 {approve.isPending
                   ? '처리 중...'
-                  : mappedStore
-                    ? `승인 (→ ${mappedStore.displayName})`
-                    : '승인'}
+                  : '승인'}
               </button>
             </div>
           )}
@@ -385,7 +310,7 @@ function formatStoreName(report: AdminPriceReport) {
   const channel = report.suggestedDutyfreeChannel
     ? ` · 면세 ${CHANNEL_LABEL[report.suggestedDutyfreeChannel] ?? report.suggestedDutyfreeChannel}`
     : ''
-  return `제안 매장: ${report.suggestedStoreName}${channel}`
+  return `판매처: ${report.suggestedStoreName}${channel}`
 }
 
 function PriceField({ label, value, strong }: { label: string; value: string; strong?: boolean }) {

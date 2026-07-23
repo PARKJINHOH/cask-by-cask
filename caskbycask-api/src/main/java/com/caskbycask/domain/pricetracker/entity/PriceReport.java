@@ -3,6 +3,7 @@ package com.caskbycask.domain.pricetracker.entity;
 import com.caskbycask.domain.pricetracker.entity.enums.DutyFreeChannel;
 import com.caskbycask.domain.pricetracker.entity.enums.PriceCurrency;
 import com.caskbycask.domain.pricetracker.entity.enums.PriceReportStatus;
+import com.caskbycask.domain.pricetracker.entity.enums.StoreType;
 import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.domain.user.entity.User;
 import com.caskbycask.global.entity.BaseTimeEntity;
@@ -46,6 +47,11 @@ public class PriceReport extends BaseTimeEntity {
     @JoinColumn(name = "store_id")
     @Comment("판매처(stores.id)")
     private Store store;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "store_type_snapshot", length = 20)
+    @Comment("가격 제보 당시 판매처 유형 — DOMESTIC/OVERSEAS/DUTYFREE")
+    private StoreType storeTypeSnapshot;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "reporter_id")
@@ -179,13 +185,15 @@ public class PriceReport extends BaseTimeEntity {
         this.rejectedAt = null;
     }
 
-    public void update(Store store, String suggestedStoreName, DutyFreeChannel suggestedDutyfreeChannel,
+    public void update(Store store, StoreType storeTypeSnapshot, String suggestedStoreName,
+                       DutyFreeChannel suggestedDutyfreeChannel,
                        PriceCurrency currency,
                        BigDecimal price, BigDecimal salePrice, BigDecimal paybackAmount,
                        BigDecimal actualPrice, BigDecimal exchangeRateSnapshot,
                        Integer volumeMl, LocalDate purchasedAt, String description, Boolean isAnonymous,
                        boolean autoFlagged) {
         this.store = store;
+        this.storeTypeSnapshot = storeTypeSnapshot;
         this.suggestedStoreName = suggestedStoreName;
         this.suggestedDutyfreeChannel = suggestedDutyfreeChannel;
         this.currency = currency;
@@ -203,6 +211,17 @@ public class PriceReport extends BaseTimeEntity {
 
     public void updateVolume(Integer volumeMl) {
         this.volumeMl = volumeMl;
+    }
+
+    /**
+     * 신규 snapshot을 우선하고, 배포 전 레거시 행은 연결 Store로 보완한다.
+     * Store도 없는 레거시 직접 입력은 당시 동작과 동일하게 통화/면세 채널로 추론한다.
+     */
+    public StoreType getEffectiveStoreType() {
+        if (storeTypeSnapshot != null) return storeTypeSnapshot;
+        if (store != null && store.getStoreType() != null) return store.getStoreType();
+        if (currency == PriceCurrency.USD || suggestedDutyfreeChannel != null) return StoreType.DUTYFREE;
+        return StoreType.DOMESTIC;
     }
 
     public void verify() {

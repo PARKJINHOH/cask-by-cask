@@ -21,7 +21,7 @@ public record AdminPriceReportResponse(
         String storeName,
         String suggestedStoreName,
         DutyFreeChannel suggestedDutyfreeChannel,
-        // 표준 매장 연결 필요 여부 — 승인을 막지는 않으며 관리자 화면 안내용
+        // 구버전 관리자 응답 호환 필드. 매장 마스터 기능 제거 후에는 항상 false.
         Boolean needsStoreResolution,
         PriceReportStatus status,
         PriceCurrency currency,
@@ -55,8 +55,8 @@ public record AdminPriceReportResponse(
                 report.getStore() != null ? report.getStore().getDisplayName() : null,
                 report.getSuggestedStoreName(),
                 report.getSuggestedDutyfreeChannel(),
-                // 매장이 없거나 미승인이면 표준화 대상
-                report.getStore() == null || Boolean.FALSE.equals(report.getStore().getIsApproved()),
+                // 매장 마스터 표준화 기능은 제거되었으며 직접 입력값을 그대로 승인한다.
+                false,
                 report.getStatus(),
                 report.getCurrency(),
                 report.getPrice(),

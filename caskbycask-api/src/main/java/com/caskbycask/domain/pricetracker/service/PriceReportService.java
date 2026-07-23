@@ -7,6 +7,7 @@ import com.caskbycask.domain.pricetracker.dto.request.UpdatePriceReportRequest;
 import com.caskbycask.domain.pricetracker.dto.response.PriceReportResponse;
 import com.caskbycask.domain.pricetracker.dto.response.PriceReportSummaryResponse;
 import com.caskbycask.domain.pricetracker.entity.*;
+import com.caskbycask.domain.pricetracker.entity.enums.DutyFreeChannel;
 import com.caskbycask.domain.pricetracker.entity.enums.PriceCurrency;
 import com.caskbycask.domain.pricetracker.entity.enums.PriceReportStatus;
 import com.caskbycask.domain.pricetracker.entity.enums.StoreType;
@@ -70,7 +71,7 @@ public class PriceReportService {
 
     @Transactional
     public PriceReportResponse createPriceReport(Long userId, CreatePriceReportRequest request) {
-        // [패치 5] 가격 설명 + 제안 매장명 욕설 필터 (기존 누락 영역, 악의적 매장명 방지)
+        // 가격 설명과 직접 입력 판매처명에 금칙어 필터를 동일하게 적용한다.
         badWordFilter.validate(request.description(), request.suggestedStoreName());
 
         Spirit spirit = spiritRepository.findById(request.spiritId())
@@ -81,16 +82,12 @@ public class PriceReportService {
             store = storeRepository.findById(request.storeId())
                     .orElseThrow(() -> new CustomException(ErrorCode.STORE_NOT_FOUND));
         }
-
-        // 면세점 USD → 환율 필수
-        if (store != null && store.getStoreType() == StoreType.DUTYFREE
-                && request.currency() == PriceCurrency.USD
-                && request.exchangeRate() == null) {
-            throw new CustomException(ErrorCode.EXCHANGE_RATE_REQUIRED);
-        }
+        StoreType storeType = resolveStoreType(store, request.storeType(), request.currency(),
+                request.dutyfreeChannel());
+        validateStoreTypeCurrency(storeType, request.currency(), request.exchangeRate());
 
         BigDecimal actualPrice = computeActualPrice(request.finalPrice(), request.salePrice(),
-                request.paybackAmount(), request.regularPrice(), request.discountItems(), store);
+                request.paybackAmount(), request.regularPrice(), request.discountItems(), storeType);
 
         boolean autoFlagged = checkAutoFlag(spirit.getId(),
                 store != null ? store.getId() : null,
@@ -101,6 +98,7 @@ public class PriceReportService {
         PriceReport report = PriceReport.builder()
                 .spirit(spirit)
                 .store(store)
+                .storeTypeSnapshot(storeType)
                 .reporter(reporter)
                 .suggestedStoreName(request.suggestedStoreName())
                 .suggestedDutyfreeChannel(request.dutyfreeChannel())
@@ -144,7 +142,7 @@ public class PriceReportService {
 
         validateOwner(report, userId);
 
-        // [패치 5] 가격 수정 시에도 설명 + 제안 매장명 욕설 필터
+        // 가격 수정 시에도 설명과 직접 입력 판매처명을 함께 검사한다.
         badWordFilter.validate(request.description(), request.suggestedStoreName());
 
         Store store = null;
@@ -152,15 +150,12 @@ public class PriceReportService {
             store = storeRepository.findById(request.storeId())
                     .orElseThrow(() -> new CustomException(ErrorCode.STORE_NOT_FOUND));
         }
-
-        if (store != null && store.getStoreType() == StoreType.DUTYFREE
-                && request.currency() == PriceCurrency.USD
-                && request.exchangeRate() == null) {
-            throw new CustomException(ErrorCode.EXCHANGE_RATE_REQUIRED);
-        }
+        StoreType storeType = resolveStoreType(store, request.storeType(), request.currency(),
+                request.dutyfreeChannel());
+        validateStoreTypeCurrency(storeType, request.currency(), request.exchangeRate());
 
         BigDecimal actualPrice = computeActualPrice(request.finalPrice(), request.salePrice(),
-                request.paybackAmount(), request.regularPrice(), request.discountItems(), store);
+                request.paybackAmount(), request.regularPrice(), request.discountItems(), storeType);
 
         boolean autoFlagged = checkAutoFlag(report.getSpirit().getId(),
                 store != null ? store.getId() : null, request.volumeMl(), request.currency(), actualPrice);
@@ -185,7 +180,7 @@ public class PriceReportService {
             }
         }
 
-        report.update(store, request.suggestedStoreName(), request.dutyfreeChannel(), request.currency(),
+        report.update(store, storeType, request.suggestedStoreName(), request.dutyfreeChannel(), request.currency(),
                 request.regularPrice(), request.salePrice(), request.paybackAmount(),
                 actualPrice, request.exchangeRate(), request.volumeMl(), request.purchasedAt(),
                 request.description(), request.isAnonymous(), autoFlagged);
@@ -263,11 +258,11 @@ public class PriceReportService {
 
     private BigDecimal computeActualPrice(BigDecimal finalPrice, BigDecimal salePrice,
                                           BigDecimal paybackAmount, BigDecimal regularPrice,
-                                          List<CreateDiscountItemRequest> discountItems, Store store) {
+                                          List<CreateDiscountItemRequest> discountItems, StoreType storeType) {
         if (finalPrice != null) return finalPrice;
 
         // 면세점: 정가 - SUM(할인항목)
-        if (store != null && store.getStoreType() == StoreType.DUTYFREE
+        if (storeType == StoreType.DUTYFREE
                 && discountItems != null && !discountItems.isEmpty()) {
             BigDecimal base = regularPrice != null ? regularPrice : BigDecimal.ZERO;
             BigDecimal totalDiscount = discountItems.stream()
@@ -280,6 +275,32 @@ public class PriceReportService {
         BigDecimal sale = salePrice != null ? salePrice : BigDecimal.ZERO;
         BigDecimal payback = paybackAmount != null ? paybackAmount : BigDecimal.ZERO;
         return sale.subtract(payback);
+    }
+
+    private StoreType resolveStoreType(Store store, StoreType requestedType, PriceCurrency currency,
+                                       DutyFreeChannel dutyfreeChannel) {
+        // 기존 storeId 요청은 마스터의 유형을 신뢰해 하위 호환한다.
+        if (store != null && store.getStoreType() != null) return store.getStoreType();
+        if (requestedType != null) return requestedType;
+        // 구버전 직접 입력 요청에는 storeType이 없으므로 기존 필드로 안전하게 추론한다.
+        if (currency == PriceCurrency.USD || dutyfreeChannel != null) return StoreType.DUTYFREE;
+        return StoreType.DOMESTIC;
+    }
+
+    private void validateStoreTypeCurrency(StoreType storeType, PriceCurrency currency,
+                                           BigDecimal exchangeRate) {
+        if (storeType == StoreType.DUTYFREE) {
+            if (currency != PriceCurrency.USD) {
+                throw new CustomException(ErrorCode.INVALID_INPUT);
+            }
+            if (exchangeRate == null) {
+                throw new CustomException(ErrorCode.EXCHANGE_RATE_REQUIRED);
+            }
+            return;
+        }
+        if (currency != PriceCurrency.KRW) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
     }
 
     private boolean checkAutoFlag(Long spiritId, Long storeId, Integer volumeMl,

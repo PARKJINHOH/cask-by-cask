@@ -8,7 +8,6 @@ import com.caskbycask.domain.pricetracker.entity.PriceDiscountItem;
 import com.caskbycask.domain.pricetracker.entity.PriceReport;
 import com.caskbycask.domain.pricetracker.entity.PriceReportImage;
 import com.caskbycask.domain.pricetracker.entity.PriceReportReport;
-import com.caskbycask.domain.pricetracker.entity.Store;
 import com.caskbycask.domain.pricetracker.entity.enums.PriceCurrency;
 import com.caskbycask.domain.pricetracker.entity.enums.PriceReportReportStatus;
 import com.caskbycask.domain.pricetracker.entity.enums.PriceReportStatus;
@@ -17,7 +16,6 @@ import com.caskbycask.domain.pricetracker.repository.PriceDiscountItemRepository
 import com.caskbycask.domain.pricetracker.repository.PriceReportImageRepository;
 import com.caskbycask.domain.pricetracker.repository.PriceReportRepository;
 import com.caskbycask.domain.pricetracker.repository.PriceReportReportRepository;
-import com.caskbycask.domain.pricetracker.repository.StoreRepository;
 import com.caskbycask.domain.score.constant.ScoreActions;
 import com.caskbycask.domain.score.service.ScoreService;
 import com.caskbycask.domain.user.entity.User;
@@ -43,7 +41,6 @@ public class AdminPriceReportService {
     private final PriceReportImageRepository priceReportImageRepository;
     private final PriceDiscountItemRepository priceDiscountItemRepository;
     private final PriceReportReportRepository priceReportReportRepository;
-    private final StoreRepository storeRepository;
     private final UserRepository userRepository;
     private final ScoreService scoreService;
     private final PriceAlertService priceAlertService;
@@ -88,20 +85,8 @@ public class AdminPriceReportService {
 
         User admin = userRepository.getByIdOrThrow(adminId);
 
-        // 매장 승인 + 가격 승인 통합 처리.
-        //   ① request.storeId 제공 → 표준 매장 매핑 (미승인 매장이면 이 자리에서 신규 승인)
-        //   ② 미제공 + 기존 store가 미승인 → 기존 매장을 함께 승인
-        //   ③ store가 없는 직접 입력 제보 → suggestedStoreName을 유지한 채 가격 승인
-        if (request != null && request.storeId() != null) {
-            Store store = storeRepository.findById(request.storeId())
-                    .orElseThrow(() -> new CustomException(ErrorCode.STORE_NOT_FOUND));
-            if (Boolean.FALSE.equals(store.getIsApproved())) {
-                store.approve(admin); // 신규 매장 승인
-            }
-            report.updateStore(store);
-        } else if (report.getStore() != null && Boolean.FALSE.equals(report.getStore().getIsApproved())) {
-            report.getStore().approve(admin);
-        }
+        // 가격 승인에서는 매장 마스터를 생성·승인·매핑하지 않는다.
+        // 기존 Store 연결과 직접 입력 매장명은 관측 당시 데이터로 그대로 보존한다.
         // 구버전 관리자 화면이 volumeMl 없이 승인해도 사용자가 입력한 용량을 지우지 않는다.
         if (request != null && request.volumeMl() != null) {
             report.updateVolume(request.volumeMl());
@@ -125,8 +110,7 @@ public class AdminPriceReportService {
 
         // [패치 8] 면세(USD) 가격은 환율 변동으로 근사치라 KRW 목표가 알림 비교에서 제외.
         //          국내 매장(DOMESTIC) + 통화 KRW 인 경우에만 알림 비교 대상.
-        boolean isDomesticKrw = saved.getStore() != null
-                && saved.getStore().getStoreType() == StoreType.DOMESTIC
+        boolean isDomesticKrw = saved.getEffectiveStoreType() == StoreType.DOMESTIC
                 && saved.getCurrency() == PriceCurrency.KRW;
         if (isDomesticKrw) {
             priceAlertService.checkAndNotifyAlerts(

@@ -10,7 +10,6 @@ import com.caskbycask.domain.pricetracker.entity.enums.PriceReportReportStatus;
 import com.caskbycask.domain.pricetracker.entity.enums.PriceReportStatus;
 import com.caskbycask.domain.pricetracker.repository.PriceReportReportRepository;
 import com.caskbycask.domain.pricetracker.repository.PriceReportRepository;
-import com.caskbycask.domain.pricetracker.repository.StoreRepository;
 import com.caskbycask.domain.report.entity.enums.ReportTargetType;
 import com.caskbycask.domain.report.repository.ReportRepository;
 import com.caskbycask.domain.review.entity.enums.VariantReviewRequestStatus;
@@ -48,7 +47,6 @@ public class AdminDashboardService {
     // [패치 12] 가격 트래커 모더레이션 큐 집계용
     private final PriceReportRepository priceReportRepository;
     private final PriceReportReportRepository priceReportReportRepository;
-    private final StoreRepository storeRepository;
 
     public DashboardKpisResponse getKpis() {
         long totalUsers = userRepository.countByIsActiveTrue();
@@ -70,7 +68,6 @@ public class AdminDashboardService {
         long spiritRegisterRequests = spiritRegisterRequestRepository.countByStatus(RequestStatus.PENDING);
         long priceReports = priceReportRepository.countByStatus(PriceReportStatus.PENDING);
         long flaggedPriceReports = priceReportRepository.countByStatusAndAutoFlaggedTrue(PriceReportStatus.PENDING);
-        long storeSuggestions = storeRepository.countByIsApprovedFalse();
         long postReports = postReportRepository.countByStatus(ReportStatus.PENDING);
         long commentReports = reportRepository.countByTargetTypeAndStatus(
                 ReportTargetType.COMMENT, com.caskbycask.domain.report.entity.enums.ReportStatus.PENDING);
@@ -79,7 +76,7 @@ public class AdminDashboardService {
         long noticeRegisterRequests = 0L;
 
         return DashboardPendingCountsResponse.of(
-                spiritRegisterRequests, priceReports, flaggedPriceReports, storeSuggestions,
+                spiritRegisterRequests, priceReports, flaggedPriceReports,
                 postReports, commentReports, priceReportReports, noticeRegisterRequests);
     }
 
@@ -132,15 +129,6 @@ public class AdminDashboardService {
                                 .orElse(null)
                 );
 
-        AdminApprovalEventSnapshotsResponse.AdminApprovalEventSnapshot storeSuggestions =
-                snapshot(
-                        "/admin/stores",
-                        storeRepository.countByIsApprovedFalse(),
-                        storeRepository.findTopByIsApprovedFalseOrderByCreatedAtDescIdDesc()
-                                .map(store -> new LatestApprovalEvent("store-suggestion:" + store.getId(), store.getCreatedAt()))
-                                .orElse(null)
-                );
-
         AdminApprovalEventSnapshotsResponse.AdminApprovalEventSnapshot eventSuggestions =
                 snapshot(
                         "/admin/events",
@@ -155,8 +143,7 @@ public class AdminDashboardService {
                 spiritRegister,
                 variantRequests,
                 producerRegister,
-                priceReports,
-                storeSuggestions
+                priceReports
         ));
     }
 

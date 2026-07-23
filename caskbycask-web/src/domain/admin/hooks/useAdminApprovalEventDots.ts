@@ -11,7 +11,6 @@ export const APPROVAL_EVENT_MENU_PATHS = [
   '/admin/spirits/variant-requests',
   '/admin/producers/requests',
   '/admin/price-reports',
-  '/admin/stores',
 ] as const
 
 type ApprovalEventMenuPath = (typeof APPROVAL_EVENT_MENU_PATHS)[number]

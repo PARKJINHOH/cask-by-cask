@@ -2,6 +2,7 @@ package com.caskbycask.domain.pricetracker.dto.request;
 
 import com.caskbycask.domain.pricetracker.entity.enums.DutyFreeChannel;
 import com.caskbycask.domain.pricetracker.entity.enums.PriceCurrency;
+import com.caskbycask.domain.pricetracker.entity.enums.StoreType;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -15,6 +16,7 @@ import java.util.List;
 public record UpdatePriceReportRequest(
         @NotNull @Min(1) @Max(100000) Integer volumeMl,
         Long storeId,
+        StoreType storeType,
         @Size(max = 255) String suggestedStoreName,
         DutyFreeChannel dutyfreeChannel,
         @NotNull PriceCurrency currency,

@@ -10,7 +10,6 @@ import type {
   DiscountType,
   DutyFreeChannel,
   DiscountItemInput,
-  StoreSearchResult,
   PriceReportImageUpload,
 } from '@/domain/pricetracker/types/pricetracker.types'
 import type { SpiritListItem } from '@/domain/spirit/types/spirit.types'
@@ -45,13 +44,8 @@ export default function PriceRegisterPage() {
 
   // ── 매장 ─────────────────────────────────────────────
   const [storeType, setStoreType] = useState<StoreType>('DOMESTIC')
-  const [storeKeyword, setStoreKeyword] = useState('')
-  const debouncedStoreKeyword = useDebouncedValue(storeKeyword)
-  const [selectedStore, setSelectedStore] = useState<StoreSearchResult | null>(null)
-  const [useSuggest, setUseSuggest] = useState(false)
   const [suggestedStoreName, setSuggestedStoreName] = useState('')
   const [channel, setChannel] = useState<DutyFreeChannel>('AIRPORT')
-  const [storeOpen, setStoreOpen] = useState(false)
 
   const isDutyFree = storeType === 'DUTYFREE'
   const currency = isDutyFree ? 'USD' : 'KRW'
@@ -82,7 +76,6 @@ export default function PriceRegisterPage() {
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
   const spiritSearchKeyword = debouncedSpiritKeyword.trim()
-  const storeSearchKeyword = debouncedStoreKeyword.trim()
   const volumeMl = parseVolumeMl(volumeInput)
 
   useEffect(() => {
@@ -105,14 +98,6 @@ export default function PriceRegisterPage() {
     queryFn: () => spiritApi.search({ keyword: spiritSearchKeyword, page: 0, size: 8 }),
     select: (res) => res.data.data?.content ?? [],
     enabled: spiritSearchKeyword.length >= 1 && spiritKeyword.trim().length >= 1 && spiritOpen && !fixedSpirit,
-    staleTime: 30_000,
-  })
-
-  const { data: storeResults } = useQuery({
-    queryKey: ['storeSearch', storeSearchKeyword, storeType],
-    queryFn: () => priceTrackerApi.searchStores(storeSearchKeyword, storeType),
-    select: (res) => res.data.data ?? [],
-    enabled: storeSearchKeyword.length >= 1 && storeKeyword.trim().length >= 1 && storeOpen && !useSuggest,
     staleTime: 30_000,
   })
 
@@ -171,9 +156,10 @@ export default function PriceRegisterPage() {
       await priceTrackerApi.createPriceReport({
         spiritId: selectedSpirit.id,
         volumeMl: volumeMl!,
-        storeId: selectedStore?.id ?? null,
-        suggestedStoreName: useSuggest ? suggestedStoreName || null : null,
-        dutyfreeChannel: isDutyFree && useSuggest ? channel : null,
+        storeId: null,
+        storeType,
+        suggestedStoreName: suggestedStoreName.trim() || null,
+        dutyfreeChannel: isDutyFree ? channel : null,
         currency,
         isAnonymous: authorMode === 'ANONYMOUS',
         regularPrice: !isDutyFree && regularPrice ? parsePriceInput(regularPrice) : null,
@@ -311,7 +297,8 @@ export default function PriceRegisterPage() {
             {(['DOMESTIC', 'OVERSEAS', 'DUTYFREE'] as const).map((tp) => (
               <button
                 key={tp}
-                onClick={() => { setStoreType(tp); setSelectedStore(null); setUseSuggest(false) }}
+                type="button"
+                onClick={() => setStoreType(tp)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                   storeType === tp ? 'bg-primary-700 text-white border-primary-700' : 'text-neutral-500 border-neutral-200'
                 }`}
@@ -323,14 +310,6 @@ export default function PriceRegisterPage() {
                   : t('price.chart.dutyfree')}
               </button>
             ))}
-            <button
-              onClick={() => { setUseSuggest((v) => !v); setSelectedStore(null) }}
-              className={`ml-auto px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                useSuggest ? 'bg-neutral-700 text-white border-neutral-700' : 'text-neutral-400 border-neutral-200'
-              }`}
-            >
-              {t('price.register.suggestStore')}
-            </button>
           </div>
 
           {/* 면세 채널 */}
@@ -350,38 +329,13 @@ export default function PriceRegisterPage() {
             </div>
           )}
 
-          {useSuggest ? (
-            <input
-              value={suggestedStoreName}
-              onChange={(e) => setSuggestedStoreName(e.target.value)}
-              placeholder={isDutyFree ? t('price.register.brandPlaceholder') : t('price.register.storePlaceholder')}
-              className="w-full border border-neutral-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-200"
-            />
-          ) : (
-            <div className="relative">
-              <input
-                value={selectedStore ? selectedStore.displayName : storeKeyword}
-                onChange={(e) => { setStoreKeyword(e.target.value); setSelectedStore(null); setStoreOpen(true) }}
-                onFocus={() => setStoreOpen(true)}
-                placeholder={t('price.register.storePlaceholder')}
-                className="w-full border border-neutral-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-200"
-              />
-              {storeOpen && storeResults && storeResults.length > 0 && !selectedStore && (
-                <ul className="absolute z-10 w-full bg-white border border-neutral-200 rounded-xl mt-1 shadow-lg max-h-48 overflow-y-auto">
-                  {storeResults.map((s) => (
-                    <li key={s.id}>
-                      <button
-                        onClick={() => { setSelectedStore(s); setStoreOpen(false); setStoreKeyword('') }}
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-neutral-50"
-                      >
-                        {s.displayName}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
+          <input
+            value={suggestedStoreName}
+            onChange={(e) => setSuggestedStoreName(e.target.value)}
+            maxLength={255}
+            placeholder={isDutyFree ? t('price.register.brandPlaceholder') : t('price.register.storePlaceholder')}
+            className="w-full border border-neutral-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-200"
+          />
         </Section>
 
         {/* 4. 가격 */}

@@ -11,7 +11,6 @@ import com.caskbycask.domain.pricetracker.repository.PriceDiscountItemRepository
 import com.caskbycask.domain.pricetracker.repository.PriceReportImageRepository;
 import com.caskbycask.domain.pricetracker.repository.PriceReportReportRepository;
 import com.caskbycask.domain.pricetracker.repository.PriceReportRepository;
-import com.caskbycask.domain.pricetracker.repository.StoreRepository;
 import com.caskbycask.domain.score.service.ScoreService;
 import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.domain.user.entity.User;
@@ -40,7 +39,6 @@ class AdminPriceReportServiceTest {
     @Mock PriceReportImageRepository priceReportImageRepository;
     @Mock PriceDiscountItemRepository priceDiscountItemRepository;
     @Mock PriceReportReportRepository priceReportReportRepository;
-    @Mock StoreRepository storeRepository;
     @Mock UserRepository userRepository;
     @Mock ScoreService scoreService;
     @Mock PriceAlertService priceAlertService;
@@ -62,12 +60,12 @@ class AdminPriceReportServiceTest {
         assertThat(response.status()).isEqualTo(PriceReportStatus.APPROVED);
         assertThat(response.storeId()).isNull();
         assertThat(response.suggestedStoreName()).isEqualTo("사용자 제안 매장");
-        then(storeRepository).should(never()).findById(org.mockito.ArgumentMatchers.anyLong());
+        then(priceAlertService).should().checkAndNotifyAlerts(5L, 700, BigDecimal.valueOf(100_000), 1L);
     }
 
     @Test
-    @DisplayName("가격 등록에 연결된 미승인 매장은 가격 승인 시 함께 승인한다")
-    void approvePriceReport_withPendingStore_approvesStore() {
+    @DisplayName("가격 승인은 연결된 미승인 매장의 상태를 변경하지 않는다")
+    void approvePriceReport_withPendingStore_doesNotApproveStore() {
         Store store = Store.builder()
                 .id(3L)
                 .displayName("신규 매장")
@@ -84,17 +82,39 @@ class AdminPriceReportServiceTest {
         AdminPriceReportResponse response = service.approvePriceReport(
                 1L, 9L, new ApprovePriceReportRequest(null, 700));
 
-        assertThat(store.getIsApproved()).isTrue();
-        assertThat(store.getApprovedBy()).isSameAs(admin);
+        assertThat(store.getIsApproved()).isFalse();
+        assertThat(store.getApprovedBy()).isNull();
         assertThat(response.status()).isEqualTo(PriceReportStatus.APPROVED);
         assertThat(response.needsStoreResolution()).isFalse();
     }
 
+    @Test
+    @DisplayName("해외 직접 입력 가격은 국내 목표가 알림에 사용하지 않는다")
+    void approvePriceReport_overseasSnapshot_skipsDomesticAlert() {
+        PriceReport report = pendingReport(null, StoreType.OVERSEAS);
+        User admin = User.builder().id(9L).nickname("관리자").build();
+        given(priceReportRepository.findById(1L)).willReturn(Optional.of(report));
+        given(userRepository.getByIdOrThrow(9L)).willReturn(admin);
+        given(priceReportImageRepository.findByPriceReportIdOrderBySortOrder(1L)).willReturn(List.of());
+        given(priceReportRepository.save(report)).willReturn(report);
+
+        service.approvePriceReport(1L, 9L, new ApprovePriceReportRequest(null, 700));
+
+        then(priceAlertService).should(never()).checkAndNotifyAlerts(
+                org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyLong());
+    }
+
     private PriceReport pendingReport(Store store) {
+        return pendingReport(store, null);
+    }
+
+    private PriceReport pendingReport(Store store, StoreType storeTypeSnapshot) {
         Spirit spirit = Spirit.builder().id(5L).nameKo("테스트 위스키").nameEn("Test Whisky").build();
         PriceReport report = PriceReport.builder()
                 .spirit(spirit)
                 .store(store)
+                .storeTypeSnapshot(storeTypeSnapshot)
                 .status(PriceReportStatus.PENDING)
                 .currency(PriceCurrency.KRW)
                 .salePrice(BigDecimal.valueOf(100_000))

@@ -4,6 +4,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 
 public record ApprovePriceReportRequest(
-        Long storeId,  // 기타 제안 매장을 표준 매장으로 매핑 시 사용 (nullable)
+        // 구버전 관리자 화면의 요청 호환용이며 서버에서는 무시한다.
+        Long storeId,
         @Min(1) @Max(100000) Integer volumeMl
 ) {}

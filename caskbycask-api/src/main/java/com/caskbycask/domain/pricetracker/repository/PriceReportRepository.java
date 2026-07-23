@@ -1,7 +1,6 @@
 package com.caskbycask.domain.pricetracker.repository;
 
 import com.caskbycask.domain.pricetracker.entity.PriceReport;
-import com.caskbycask.domain.pricetracker.entity.Store;
 import com.caskbycask.domain.pricetracker.entity.enums.PriceCurrency;
 import com.caskbycask.domain.pricetracker.entity.enums.PriceReportStatus;
 import org.springframework.data.domain.Page;
@@ -27,12 +26,6 @@ public interface PriceReportRepository extends JpaRepository<PriceReport, Long> 
     long countByStatus(PriceReportStatus status);
     long countByStatusAndAutoFlaggedTrue(PriceReportStatus status);
     Optional<PriceReport> findTopByStatusOrderByCreatedAtDescIdDesc(PriceReportStatus status);
-
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("UPDATE PriceReport p SET p.store = :targetStore WHERE p.store = :suggestedStore")
-    void updateStoreReference(
-            @Param("suggestedStore") Store suggestedStore,
-            @Param("targetStore") Store targetStore);
 
     @Modifying
     @Query("UPDATE PriceReport p SET p.reportCount = p.reportCount + 1 WHERE p.id = :id")

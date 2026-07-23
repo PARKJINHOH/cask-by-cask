@@ -10,7 +10,6 @@ public record DashboardPendingCountsResponse(
         long spiritRegisterRequests,   // 대기 술 등록요청 수
         long priceReports,             // 대기 가격 등록 수
         long flaggedPriceReports,      // 플래그된(대기) 가격 수
-        long storeSuggestions,         // 미승인 매장 제안 수
         long postReports,              // 미처리 게시글 신고 수
         long commentReports,           // 미처리 (술 상세) 댓글 신고 수
         long priceReportReports,       // 미처리 가격 신고 수
@@ -22,25 +21,24 @@ public record DashboardPendingCountsResponse(
 
     public static DashboardPendingCountsResponse of(
             long spiritRegisterRequests, long priceReports, long flaggedPriceReports,
-            long storeSuggestions, long postReports, long commentReports,
+            long postReports, long commentReports,
             long priceReportReports, long noticeRegisterRequests) {
 
         long total = spiritRegisterRequests + priceReports + flaggedPriceReports
-                + storeSuggestions + postReports + commentReports
+                + postReports + commentReports
                 + priceReportReports + noticeRegisterRequests;
 
         List<PendingQueueItem> queues = List.of(
                 new PendingQueueItem("spiritRegisterRequests", spiritRegisterRequests, "/admin/spirit-requests"),
                 new PendingQueueItem("priceReports", priceReports, "/admin/price-reports"),
                 new PendingQueueItem("flaggedPriceReports", flaggedPriceReports, "/admin/price-reports?flagged=true"),
-                new PendingQueueItem("storeSuggestions", storeSuggestions, "/admin/stores?approved=false"),
                 new PendingQueueItem("postReports", postReports, "/admin/reports/posts"),
                 new PendingQueueItem("commentReports", commentReports, "/admin/reports/comments"),
                 new PendingQueueItem("priceReportReports", priceReportReports, "/admin/price-report-reports")
         );
 
         return new DashboardPendingCountsResponse(
-                spiritRegisterRequests, priceReports, flaggedPriceReports, storeSuggestions,
+                spiritRegisterRequests, priceReports, flaggedPriceReports,
                 postReports, commentReports, priceReportReports, noticeRegisterRequests,
                 total, queues);
     }

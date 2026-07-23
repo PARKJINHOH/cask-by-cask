@@ -6,6 +6,7 @@ import com.caskbycask.domain.deal.repository.DealPostRepository;
 import com.caskbycask.domain.pricetracker.dto.response.ChartResponse;
 import com.caskbycask.domain.pricetracker.dto.response.PriceVolumeOptionResponse;
 import com.caskbycask.domain.pricetracker.entity.PriceReport;
+import com.caskbycask.domain.pricetracker.entity.Store;
 import com.caskbycask.domain.pricetracker.entity.enums.PriceCurrency;
 import com.caskbycask.domain.pricetracker.entity.enums.PriceReportStatus;
 import com.caskbycask.domain.pricetracker.entity.enums.StoreType;
@@ -82,9 +83,55 @@ class PriceChartServiceVolumeTest {
                 new PriceVolumeOptionResponse(null, 1));
     }
 
+    @Test
+    void directInputSnapshotSeparatesDomesticOverseasAndDutyFree() {
+        Spirit spirit = Spirit.builder().id(1L).nameKo("테스트").build();
+        PriceReport domestic = report(spirit, 700, 50_000, LocalDate.of(2026, 1, 1), StoreType.DOMESTIC, null);
+        PriceReport overseas = report(spirit, 750, 60_000, LocalDate.of(2026, 1, 2), StoreType.OVERSEAS, null);
+        PriceReport dutyFree = report(spirit, 1000, 70_000, LocalDate.of(2026, 1, 3), StoreType.DUTYFREE, null);
+        given(priceReportRepository.findApprovedForChart(List.of(1L), PriceReportStatus.APPROVED))
+                .willReturn(List.of(domestic, overseas, dutyFree));
+        given(dealPostRepository.findAllBySpiritIdInAndStatusAndIsVisibleTrue(
+                List.of(1L), DealStatus.APPROVED)).willReturn(List.of());
+
+        assertThat(service.getVolumeOptions(List.of(1L), StoreType.DOMESTIC))
+                .containsExactly(new PriceVolumeOptionResponse(700, 1));
+        assertThat(service.getVolumeOptions(List.of(1L), StoreType.OVERSEAS))
+                .containsExactly(new PriceVolumeOptionResponse(750, 1));
+        assertThat(service.getVolumeOptions(List.of(1L), StoreType.DUTYFREE))
+                .containsExactly(new PriceVolumeOptionResponse(1000, 1));
+    }
+
+    @Test
+    void snapshotHasPriorityAndLegacyStoreRemainsFallback() {
+        Spirit spirit = Spirit.builder().id(1L).nameKo("테스트").build();
+        Store domesticStore = Store.builder().displayName("국내 매장").storeType(StoreType.DOMESTIC).build();
+        Store dutyFreeStore = Store.builder().displayName("면세점").storeType(StoreType.DUTYFREE).build();
+        PriceReport snapshotFirst = report(spirit, 700, 50_000, LocalDate.of(2026, 1, 1),
+                StoreType.OVERSEAS, domesticStore);
+        PriceReport legacyFallback = report(spirit, 1000, 70_000, LocalDate.of(2026, 1, 2),
+                null, dutyFreeStore);
+        given(priceReportRepository.findApprovedForChart(List.of(1L), PriceReportStatus.APPROVED))
+                .willReturn(List.of(snapshotFirst, legacyFallback));
+        given(dealPostRepository.findAllBySpiritIdInAndStatusAndIsVisibleTrue(
+                List.of(1L), DealStatus.APPROVED)).willReturn(List.of());
+
+        assertThat(service.getVolumeOptions(List.of(1L), StoreType.OVERSEAS))
+                .containsExactly(new PriceVolumeOptionResponse(700, 1));
+        assertThat(service.getVolumeOptions(List.of(1L), StoreType.DUTYFREE))
+                .containsExactly(new PriceVolumeOptionResponse(1000, 1));
+    }
+
     private PriceReport report(Spirit spirit, Integer volumeMl, int price, LocalDate date) {
+        return report(spirit, volumeMl, price, date, null, null);
+    }
+
+    private PriceReport report(Spirit spirit, Integer volumeMl, int price, LocalDate date,
+                               StoreType storeTypeSnapshot, Store store) {
         return PriceReport.builder()
                 .spirit(spirit)
+                .store(store)
+                .storeTypeSnapshot(storeTypeSnapshot)
                 .status(PriceReportStatus.APPROVED)
                 .currency(PriceCurrency.KRW)
                 .volumeMl(volumeMl)

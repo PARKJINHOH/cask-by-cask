@@ -1734,7 +1734,7 @@
       "volumeHint": "병 1개의 표기 용량을 ml 단위로 입력해주세요. 가격도 병 1개 기준이어야 합니다. 예: 70cl → 700ml",
       "volumeError": "용량은 1~100,000ml 사이의 정수로 입력해주세요.",
       "store": "매장",
-      "storePlaceholder": "매장 이름을 검색하세요",
+      "storePlaceholder": "매장 이름을 입력하세요",
       "brandPlaceholder": "브랜드/매장명을 입력하세요",
       "suggestStore": "기타(직접 입력)",
       "currency": "통화",
