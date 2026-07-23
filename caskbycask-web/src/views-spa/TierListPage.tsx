@@ -1852,21 +1852,37 @@ export default function TierListPage() {
   const seoDescription = publicBase
     ? t('tierList.seoDescription')
     : description || t('tierList.subtitle')
+  const sharedErrorStatus = axios.isAxiosError(sharedQuery.error)
+    ? sharedQuery.error.response?.status
+    : undefined
+  const sharedResourceMissing = sharedErrorStatus === 404 || sharedErrorStatus === 410
 
   if (readOnly && sharedQuery.isError) {
     return (
       <>
-        <SeoMeta
-          title={t('tierList.notFoundTitle')}
-          description={t('tierList.notFoundDesc')}
-          canonical={canonical}
-          noindex
-          locale={lang === 'en' ? 'en_US' : 'ko_KR'}
-        />
-        <div className="max-w-5xl mx-auto px-4 py-12">
-          <EmptyState
+        {sharedResourceMissing ? (
+          <SeoMeta
             title={t('tierList.notFoundTitle')}
             description={t('tierList.notFoundDesc')}
+            canonical={canonical}
+            noindex
+            locale={lang === 'en' ? 'en_US' : 'ko_KR'}
+          />
+        ) : (
+          <SeoMeta
+            title={seoTitle}
+            description={seoDescription}
+            canonical={canonical}
+            locale={lang === 'en' ? 'en_US' : 'ko_KR'}
+            alternateKo={alternateKo}
+            alternateEn={alternateEn}
+            alternateDefault={alternateKo}
+          />
+        )}
+        <div className="max-w-5xl mx-auto px-4 py-12">
+          <EmptyState
+            title={sharedResourceMissing ? t('tierList.notFoundTitle') : t('errors.serverError.title')}
+            description={sharedResourceMissing ? t('tierList.notFoundDesc') : t('errors.serverError.description')}
             action={{ label: t('errors.notFound.goHome'), onClick: () => navigate('/') }}
           />
         </div>
