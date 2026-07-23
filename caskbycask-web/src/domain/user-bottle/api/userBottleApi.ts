@@ -1,9 +1,9 @@
 import axiosInstance from '@/shared/api/axiosInstance';
 import type { ApiResponse } from '@/shared/types/common.types';
-import type { BottleListResponse, UserBottle, UserBottleRequest, SpiritCategory, BottleStatus } from '../types/userBottle.types';
+import type { BottleListResponse, UserBottle, UserBottleRequest, SpiritCategory, MyBottleQuery } from '../types/userBottle.types';
 
 export const userBottleApi = {
-  getMyBottles: (params: { category?: SpiritCategory; status?: BottleStatus; year?: number; page?: number; size?: number }) =>
+  getMyBottles: (params: MyBottleQuery) =>
     axiosInstance.get<ApiResponse<BottleListResponse>>('/api/bottles/my', { params })
       .then(r => r.data.data),
 

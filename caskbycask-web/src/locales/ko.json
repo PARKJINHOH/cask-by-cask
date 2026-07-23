@@ -876,7 +876,7 @@
       "wishlistTab": "즐겨찾기",
       "tasteTreesTab": "취향 트리",
     "byobTab": "BYOB 이력",
-    "collectionTab": "내 컬렉션",
+    "collectionTab": "주류보관함",
     "priceReportsTab": "내 가격 등록",
     "priceAlertsTab": "내 목표가 알림",
     "messagesTab": "쪽지",
@@ -1554,7 +1554,8 @@
       "OTHER": "기타",
       "startDate": "시작일",
       "endDate": "종료일",
-      "dateSeparator": "~"
+      "dateSeparator": "~",
+      "reset": "필터 초기화"
     },
     "status": {
       "OPENED": "오픈",

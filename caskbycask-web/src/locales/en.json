@@ -886,7 +886,7 @@
       "wishlistTab": "Favorites",
       "tasteTreesTab": "Taste Trees",
     "byobTab": "BYOB",
-    "collectionTab": "Collection",
+    "collectionTab": "Bottle Cabinet",
     "priceReportsTab": "Price Reports",
     "priceAlertsTab": "Price Alerts",
     "messagesTab": "Messages",
@@ -1554,7 +1554,8 @@
       "OTHER": "Other",
       "startDate": "Start",
       "endDate": "End",
-      "dateSeparator": "~"
+      "dateSeparator": "~",
+      "reset": "Reset filters"
     },
     "status": {
       "OPENED": "Opened",

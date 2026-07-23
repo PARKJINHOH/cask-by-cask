@@ -1,11 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/domain/auth/store/authStore';
 import { userBottleApi } from '../api/userBottleApi';
-import type { SpiritCategory, BottleStatus, UserBottleRequest } from '../types/userBottle.types';
+import type { SpiritCategory, MyBottleQuery, UserBottleRequest } from '../types/userBottle.types';
 
 const MY_BOTTLES_KEY = ['bottles', 'my'] as const;
 
-export function useMyBottles(params: { category?: SpiritCategory; status?: BottleStatus; year?: number; page?: number }) {
+export function useMyBottles(params: MyBottleQuery) {
   const isLoggedIn = useAuthStore(s => s.isLoggedIn);
   const isAuthReady = useAuthStore(s => s.isAuthReady);
   return useQuery({

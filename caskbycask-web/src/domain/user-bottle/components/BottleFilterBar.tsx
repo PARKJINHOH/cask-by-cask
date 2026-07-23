@@ -57,7 +57,8 @@ export function BottleFilterBar({
         {onReset && (
           <button
             onClick={onReset}
-            title={t('collection.filter.reset', '필터 초기화')}
+            title={t('collection.filter.reset')}
+            aria-label={t('collection.filter.reset')}
             className="h-9 w-9 flex items-center justify-center border border-neutral-300 rounded hover:bg-neutral-50 transition-colors text-neutral-500"
             type="button"
           >
@@ -72,7 +73,7 @@ export function BottleFilterBar({
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
-                d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H18"
+                d="M3 12a9 9 0 1 0 3-6.708M3 3v6h6"
               />
             </svg>
           </button>
@@ -82,7 +83,7 @@ export function BottleFilterBar({
           <div className="flex items-center gap-1">
             <input
               type="date"
-              max="9999-12-31"
+              max={endDate ?? '9999-12-31'}
               lang={i18n.language}
               value={startDate ?? ''}
               onChange={e => onStartDateChange(e.target.value || undefined)}
@@ -93,6 +94,7 @@ export function BottleFilterBar({
             <input
               type="date"
               max="9999-12-31"
+              min={startDate}
               lang={i18n.language}
               value={endDate ?? ''}
               onChange={e => onEndDateChange(e.target.value || undefined)}

@@ -2,6 +2,7 @@ package com.caskbycask.domain.bottlecollection.service;
 
 import com.caskbycask.domain.bottlecollection.dto.UserBottleRequest;
 import com.caskbycask.domain.bottlecollection.dto.UserBottleResponse;
+import com.caskbycask.domain.bottlecollection.dto.UserBottleSortKey;
 import com.caskbycask.domain.bottlecollection.entity.BottleStatus;
 import com.caskbycask.domain.bottlecollection.entity.UserBottle;
 import com.caskbycask.domain.bottlecollection.repository.UserBottleQueryRepository;
@@ -19,6 +20,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -98,5 +102,67 @@ class UserBottleServiceTest {
         userBottleService.toggleStatus(1L, 1L);
 
         assertThat(bottle.getStatus()).isEqualTo(BottleStatus.OPENED);
+    }
+
+    @Test
+    @DisplayName("내 보관함 조회 - 날짜 범위와 서버 정렬 조건을 저장소에 그대로 전달한다")
+    void getMyBottles_passesGlobalQueryCondition() {
+        LocalDate startDate = LocalDate.of(2026, 1, 1);
+        LocalDate endDate = LocalDate.of(2026, 6, 30);
+        PageRequest pageable = PageRequest.of(2, 20);
+        given(userBottleQueryRepository.findByUser(
+            1L, SpiritCategory.WHISKY, BottleStatus.UNOPENED,
+            startDate, endDate, UserBottleSortKey.NAME, Sort.Direction.ASC, "en", pageable))
+            .willReturn(new PageImpl<>(List.of(), pageable, 0));
+        given(userBottleQueryRepository.getStats(
+            1L, SpiritCategory.WHISKY, BottleStatus.UNOPENED, startDate, endDate))
+            .willReturn(new com.caskbycask.domain.bottlecollection.dto.BottleStatsDto(
+                0L, 0L, 0L, 0L, List.of()));
+        given(userBottleQueryRepository.getPurchaseYears(1L, false)).willReturn(List.of());
+
+        userBottleService.getMyBottles(
+            1L, SpiritCategory.WHISKY, BottleStatus.UNOPENED,
+            startDate, endDate, null, UserBottleSortKey.NAME,
+            Sort.Direction.ASC, "en", pageable);
+
+        then(userBottleQueryRepository).should().findByUser(
+            1L, SpiritCategory.WHISKY, BottleStatus.UNOPENED,
+            startDate, endDate, UserBottleSortKey.NAME, Sort.Direction.ASC, "en", pageable);
+    }
+
+    @Test
+    @DisplayName("내 보관함 조회 - 기존 year 호출은 동일 연도의 날짜 범위로 호환한다")
+    void getMyBottles_legacyYearCompatibility() {
+        PageRequest pageable = PageRequest.of(0, 50);
+        LocalDate firstDay = LocalDate.of(2025, 1, 1);
+        LocalDate lastDay = LocalDate.of(2025, 12, 31);
+        given(userBottleQueryRepository.findByUser(
+            1L, null, null, firstDay, lastDay,
+            UserBottleSortKey.PURCHASE_DATE, Sort.Direction.DESC, "ko", pageable))
+            .willReturn(new PageImpl<>(List.of(), pageable, 0));
+        given(userBottleQueryRepository.getStats(1L, null, null, firstDay, lastDay))
+            .willReturn(new com.caskbycask.domain.bottlecollection.dto.BottleStatsDto(
+                0L, 0L, 0L, 0L, List.of()));
+        given(userBottleQueryRepository.getPurchaseYears(1L, false)).willReturn(List.of(2025));
+
+        userBottleService.getMyBottles(
+            1L, null, null, null, null, 2025,
+            UserBottleSortKey.PURCHASE_DATE, Sort.Direction.DESC, "ko", pageable);
+
+        then(userBottleQueryRepository).should().findByUser(
+            1L, null, null, firstDay, lastDay,
+            UserBottleSortKey.PURCHASE_DATE, Sort.Direction.DESC, "ko", pageable);
+    }
+
+    @Test
+    @DisplayName("내 보관함 조회 - 종료일보다 늦은 시작일은 거부한다")
+    void getMyBottles_rejectsInvalidDateRange() {
+        assertThatThrownBy(() -> userBottleService.getMyBottles(
+            1L, null, null, LocalDate.of(2026, 7, 2), LocalDate.of(2026, 7, 1), null,
+            UserBottleSortKey.PURCHASE_DATE, Sort.Direction.DESC, "ko", PageRequest.of(0, 50)))
+            .isInstanceOf(CustomException.class)
+            .extracting("errorCode").isEqualTo(ErrorCode.INVALID_INPUT);
+
+        then(userBottleQueryRepository).shouldHaveNoInteractions();
     }
 }

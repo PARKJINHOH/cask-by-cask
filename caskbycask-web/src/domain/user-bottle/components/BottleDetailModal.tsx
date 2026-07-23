@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import type { UserBottle } from '../types/userBottle.types';
+import { getUserBottleDisplayNames } from '../utils/userBottleDisplayName';
 
 interface Props {
   bottle: UserBottle | null;
@@ -12,18 +13,12 @@ interface Props {
 
 export function BottleDetailModal({ bottle, open, editable, onClose, onEdit, onDelete }: Props) {
   const { t, i18n } = useTranslation();
-  const isEn = i18n.language === 'en';
   const money = new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 });
 
   if (!open || !bottle) return null;
 
   const b = bottle;
-  const mainName = b.spiritId
-    ? (isEn ? (b.spiritNameEn || b.spiritNameKo || '') : (b.spiritNameKo || ''))
-    : (b.spiritNameText || '');
-  const subName = b.spiritId
-    ? (isEn ? (b.spiritNameKo || '') : (b.spiritNameEn || ''))
-    : '';
+  const { primaryName: mainName, secondaryName: subName } = getUserBottleDisplayNames(b, i18n.language);
 
   const noData = t('collection.detail.noData');
 

@@ -3,6 +3,7 @@ package com.caskbycask.domain.bottlecollection.controller;
 import com.caskbycask.domain.bottlecollection.dto.UserBottleListResponse;
 import com.caskbycask.domain.bottlecollection.dto.UserBottleRequest;
 import com.caskbycask.domain.bottlecollection.dto.UserBottleResponse;
+import com.caskbycask.domain.bottlecollection.dto.UserBottleSortKey;
 import com.caskbycask.domain.bottlecollection.entity.BottleStatus;
 import com.caskbycask.domain.bottlecollection.service.UserBottleImageService;
 import com.caskbycask.domain.bottlecollection.service.UserBottleService;
@@ -12,6 +13,8 @@ import com.caskbycask.global.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -25,6 +28,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
+
 @RestController
 @RequiredArgsConstructor
 public class UserBottleController {
@@ -36,13 +41,20 @@ public class UserBottleController {
     public ResponseEntity<ApiResponse<UserBottleListResponse>> getMyBottles(
             @RequestParam(required = false) SpiritCategory category,
             @RequestParam(required = false) BottleStatus status,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            // 기존 클라이언트 호환용. startDate/endDate가 없을 때만 연도 범위로 적용한다.
             @RequestParam(required = false) Integer year,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size,
+            @RequestParam(defaultValue = "PURCHASE_DATE") UserBottleSortKey sortKey,
+            @RequestParam(defaultValue = "DESC") Sort.Direction sortDir,
+            @RequestParam(defaultValue = "ko") String lang,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.ok(ApiResponse.success(
-            userBottleService.getMyBottles(userDetails.getUserId(), category, status, year,
-                PageRequest.of(page, size))));
+            userBottleService.getMyBottles(userDetails.getUserId(), category, status,
+                startDate, endDate, year, sortKey, sortDir, lang,
+                PageRequest.of(Math.max(0, page), Math.min(100, Math.max(1, size))))));
     }
 
     @PostMapping("/api/bottles")

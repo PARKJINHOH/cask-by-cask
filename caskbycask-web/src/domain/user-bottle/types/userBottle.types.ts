@@ -1,5 +1,8 @@
 export type BottleStatus = 'OPENED' | 'UNOPENED';
 export type SpiritCategory = 'WHISKY' | 'COGNAC' | 'WINE' | 'OTHER';
+export type BottleSortKey = 'NAME' | 'CATEGORY' | 'PURCHASE_DATE' | 'PRICE' | 'STATUS' | 'VISIBILITY';
+export type BottleSortDir = 'ASC' | 'DESC';
+export type SpiritVariantType = 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE';
 
 export interface UserBottleImage {
   id: number;
@@ -11,6 +14,12 @@ export interface UserBottle {
   spiritId: number | null;
   spiritNameKo: string | null;
   spiritNameEn: string | null;
+  parentId: number | null;
+  variantType: SpiritVariantType | null;
+  seriesIdentifier: string | null;
+  seriesIdentifierEn: string | null;
+  variantValue: string | null;
+  variantValueEn: string | null;
   spiritNameText: string | null;
   category: SpiritCategory;
   purchaseDate: string | null;
@@ -45,6 +54,20 @@ export interface BottleListResponse {
   /** 공개 보틀 조회 시 소유자 닉네임 (내 보틀 조회 시 null) */
   ownerNickname?: string | null;
   purchaseYears: number[];
+}
+
+export interface MyBottleQuery {
+  category?: SpiritCategory;
+  status?: BottleStatus;
+  startDate?: string;
+  endDate?: string;
+  /** 이전 클라이언트 호환용. 신규 화면은 startDate/endDate를 사용한다. */
+  year?: number;
+  page?: number;
+  size?: number;
+  sortKey?: BottleSortKey;
+  sortDir?: BottleSortDir;
+  lang?: 'ko' | 'en';
 }
 
 export interface UserBottleRequest {

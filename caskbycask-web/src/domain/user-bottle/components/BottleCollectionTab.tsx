@@ -1,7 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { UserBottle, SpiritCategory, BottleStatus } from '../types/userBottle.types';
+import type {
+  BottleSortDir,
+  BottleSortKey,
+  UserBottle,
+  SpiritCategory,
+  BottleStatus,
+} from '../types/userBottle.types';
 import { useMyBottles, useDeleteBottle, useToggleBottleStatus, useToggleBottlePublic } from '../hooks/useUserBottle';
+import { getUserBottleDisplayNames } from '../utils/userBottleDisplayName';
 import { BottleStats } from './BottleStats';
 import { BottleFilterBar } from './BottleFilterBar';
 import { BottleList } from './BottleList';
@@ -10,7 +17,7 @@ import { BottleDetailModal } from './BottleDetailModal';
 import Pagination from '@/shared/components/Pagination';
 
 export function BottleCollectionTab() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [category, setCategory] = useState<SpiritCategory | undefined>();
   const [status, setStatus] = useState<BottleStatus | undefined>();
   const [startDate, setStartDate] = useState<string | undefined>();
@@ -20,62 +27,33 @@ export function BottleCollectionTab() {
   const [editing, setEditing] = useState<UserBottle | undefined>();
   const [detailBottle, setDetailBottle] = useState<UserBottle | null>(null);
   const [page, setPage] = useState(0);
+  const [sortKey, setSortKey] = useState<BottleSortKey>('PURCHASE_DATE');
+  const [sortDir, setSortDir] = useState<BottleSortDir>('DESC');
 
-  const { data, isLoading } = useMyBottles({ category, status });
+  const language = i18n.language === 'en' ? 'en' : 'ko';
+  const { data, isLoading } = useMyBottles({
+    category,
+    status,
+    startDate,
+    endDate,
+    page,
+    size: 10,
+    sortKey,
+    sortDir,
+    lang: language,
+  });
   const deleteMut = useDeleteBottle();
   const toggleStatusMut = useToggleBottleStatus();
   const togglePublicMut = useToggleBottlePublic();
 
-  // 필터 조건 변경 시 페이지 초기화
   useEffect(() => {
-    setPage(0);
-  }, [category, status, startDate, endDate]);
-
-  // 클라이언트 사이드 날짜 범위 필터링
-  const filteredBottles = useMemo(() => {
-    const bottles = data?.bottles ?? [];
-    if (!startDate && !endDate) return bottles;
-    return bottles.filter(b => {
-      if (!b.purchaseDate) return false;
-      if (startDate && b.purchaseDate < startDate) return false;
-      if (endDate && b.purchaseDate > endDate) return false;
-      return true;
-    });
-  }, [data?.bottles, startDate, endDate]);
-
-  // 동적 통계 계산
-  const computedStats = useMemo(() => {
-    const totalCount = filteredBottles.length;
-    const totalPrice = filteredBottles.reduce((sum, b) => sum + (b.price ?? 0), 0);
-    const openedCount = filteredBottles.filter(b => b.status === 'OPENED').length;
-    const unopenedCount = totalCount - openedCount;
-
-    const categories: SpiritCategory[] = ['WHISKY', 'COGNAC', 'WINE', 'OTHER'];
-    const categoryStats = categories
-      .map(cat => ({
-        category: cat,
-        count: filteredBottles.filter(b => b.category === cat).length,
-      }))
-      .filter(stat => stat.count > 0);
-
-    return {
-      totalCount,
-      totalPrice,
-      openedCount,
-      unopenedCount,
-      categoryStats,
-    };
-  }, [filteredBottles]);
-
-  // 페이징된 보틀 목록
-  const paginatedBottles = useMemo(() => {
-    return filteredBottles.slice(page * 10, (page + 1) * 10);
-  }, [filteredBottles, page]);
-
-  const totalPages = Math.ceil(filteredBottles.length / 10);
+    if (!data) return;
+    if (data.totalPages === 0 && page !== 0) setPage(0);
+    else if (data.totalPages > 0 && page >= data.totalPages) setPage(data.totalPages - 1);
+  }, [data, page]);
 
   const handleDelete = (b: UserBottle) => {
-    const name = b.spiritNameKo || b.spiritNameText || '';
+    const name = getUserBottleDisplayNames(b, language).primaryName;
     if (confirm(t('collection.deleteConfirm', { name }))) {
       deleteMut.mutate(b.id);
       setDetailBottle(null);
@@ -93,34 +71,59 @@ export function BottleCollectionTab() {
     setStatus(undefined);
     setStartDate(undefined);
     setEndDate(undefined);
+    setPage(0);
+  };
+
+  const handleSort = (nextKey: BottleSortKey) => {
+    setPage(0);
+    if (nextKey === sortKey) {
+      setSortDir(current => current === 'ASC' ? 'DESC' : 'ASC');
+      return;
+    }
+    setSortKey(nextKey);
+    setSortDir('ASC');
+  };
+
+  const handleStartDateChange = (value?: string) => {
+    setPage(0);
+    setStartDate(value);
+    if (value && endDate && value > endDate) setEndDate(value);
+  };
+
+  const handleEndDateChange = (value?: string) => {
+    setPage(0);
+    setEndDate(value);
+    if (value && startDate && value < startDate) setStartDate(value);
   };
 
   if (isLoading) return <div className="py-8 text-center text-neutral-400">{t('common.loading')}</div>;
 
   return (
     <div className="space-y-3">
-      <BottleStats stats={computedStats} />
+      {data?.stats && <BottleStats stats={data.stats} />}
       <BottleFilterBar
         category={category} status={status}
         startDate={startDate} endDate={endDate}
         view={view}
-        onCategoryChange={setCategory} onStatusChange={setStatus}
-        onStartDateChange={setStartDate} onEndDateChange={setEndDate}
+        onCategoryChange={(value) => { setPage(0); setCategory(value); }}
+        onStatusChange={(value) => { setPage(0); setStatus(value); }}
+        onStartDateChange={handleStartDateChange} onEndDateChange={handleEndDateChange}
         onReset={handleReset}
         onViewChange={setView}
         onAdd={() => { setEditing(undefined); setModalOpen(true); }}
       />
       <BottleList
-        bottles={paginatedBottles} view={view} editable
+        bottles={data?.bottles ?? []} view={view} editable
+        sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
         onDetail={b => setDetailBottle(b)}
         onDelete={handleDelete}
         onToggleStatus={id => toggleStatusMut.mutate(id)}
         onTogglePublic={id => togglePublicMut.mutate(id)}
       />
-      {totalPages > 1 && (
+      {(data?.totalPages ?? 0) > 1 && (
         <Pagination
           currentPage={page}
-          totalPages={totalPages}
+          totalPages={data?.totalPages ?? 0}
           onPageChange={setPage}
           className="mt-4"
         />

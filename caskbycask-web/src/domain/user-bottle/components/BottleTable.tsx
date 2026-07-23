@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { UserBottle } from '../types/userBottle.types';
+import type { BottleSortDir, BottleSortKey, UserBottle } from '../types/userBottle.types';
+import { getUserBottleDisplayNames } from '../utils/userBottleDisplayName';
 
 interface Props {
   bottles: UserBottle[];
@@ -9,23 +10,29 @@ interface Props {
   onDelete?: (b: UserBottle) => void;
   onToggleStatus?: (id: number) => void;
   onTogglePublic?: (id: number) => void;
+  sortKey?: BottleSortKey;
+  sortDir?: BottleSortDir;
+  onSort?: (key: BottleSortKey) => void;
 }
 
-type SortKey = 'category' | 'name' | 'purchaseDate' | 'price' | 'status' | 'visibility';
-type SortDir = 'asc' | 'desc';
-
-export function BottleTable({ bottles, editable, onDetail, onDelete, onToggleStatus, onTogglePublic }: Props) {
+export function BottleTable({
+  bottles,
+  editable,
+  onDetail,
+  onDelete,
+  onToggleStatus,
+  onTogglePublic,
+  sortKey,
+  sortDir,
+  onSort,
+}: Props) {
   const { t, i18n } = useTranslation();
   const isEn = i18n.language === 'en';
   const money = new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 });
-
-  const [sortKey, setSortKey] = useState<SortKey | null>(null);
-  const [sortDir, setSortDir] = useState<SortDir>('asc');
-
-  const displayName = (b: UserBottle) =>
-    b.spiritId
-      ? (isEn ? (b.spiritNameEn || b.spiritNameKo || '') : (b.spiritNameKo || ''))
-      : (b.spiritNameText || '');
+  const [localSortKey, setLocalSortKey] = useState<BottleSortKey | null>(null);
+  const [localSortDir, setLocalSortDir] = useState<BottleSortDir>('ASC');
+  const effectiveSortKey = onSort ? sortKey : localSortKey;
+  const effectiveSortDir = onSort ? sortDir : localSortDir;
 
   const formatDate = (date: string | null) => {
     if (!date) return '-';
@@ -37,50 +44,54 @@ export function BottleTable({ bottles, editable, onDetail, onDelete, onToggleSta
     return `${yy}.${mm}.${dd}`;
   };
 
-  const handleSort = (key: SortKey) => {
-    if (sortKey === key) {
-      setSortDir(prev => prev === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortKey(key);
-      setSortDir('asc');
-    }
-  };
-
-  const sortedBottles = useMemo(() => {
-    if (!sortKey) return bottles;
-    const dir = sortDir === 'asc' ? 1 : -1;
-    return [...bottles].sort((a, b) => {
-      switch (sortKey) {
-        case 'category':
-          return dir * a.category.localeCompare(b.category);
-        case 'name':
-          return dir * displayName(a).localeCompare(displayName(b));
-        case 'purchaseDate':
-          return dir * ((a.purchaseDate ?? '').localeCompare(b.purchaseDate ?? ''));
-        case 'price':
-          return dir * ((a.price ?? 0) - (b.price ?? 0));
-        case 'status':
-          return dir * a.status.localeCompare(b.status);
-        case 'visibility':
-          return dir * (Number(a.isPublic) - Number(b.isPublic));
-        default:
-          return 0;
-      }
-    });
-  }, [bottles, sortKey, sortDir, isEn]);
-
-  const sortableColumns: { key: string; sortKey?: SortKey }[] = [
-    { key: 'category', sortKey: 'category' },
-    { key: 'purchaseDate', sortKey: 'purchaseDate' },
-    { key: 'name', sortKey: 'name' },
+  const sortableColumns: { key: string; sortKey?: BottleSortKey }[] = [
+    { key: 'category', sortKey: 'CATEGORY' },
+    { key: 'purchaseDate', sortKey: 'PURCHASE_DATE' },
+    { key: 'name', sortKey: 'NAME' },
     { key: 'batch' },
-    { key: 'price', sortKey: 'price' },
-    { key: 'status', sortKey: 'status' },
+    { key: 'price', sortKey: 'PRICE' },
+    { key: 'status', sortKey: 'STATUS' },
   ];
 
-  const SortIcon = ({ columnKey }: { columnKey: SortKey }) => {
-    if (sortKey !== columnKey) return <span className="text-neutral-300 ml-0.5">↕</span>;
-    return <span className="text-amber-600 ml-0.5">{sortDir === 'asc' ? '↑' : '↓'}</span>;
+  const handleSort = (nextKey: BottleSortKey) => {
+    if (onSort) {
+      onSort(nextKey);
+      return;
+    }
+    if (nextKey === localSortKey) {
+      setLocalSortDir(current => current === 'ASC' ? 'DESC' : 'ASC');
+      return;
+    }
+    setLocalSortKey(nextKey);
+    setLocalSortDir('ASC');
+  };
+
+  const displayBottles = useMemo(() => {
+    if (onSort || !localSortKey) return bottles;
+    const direction = localSortDir === 'ASC' ? 1 : -1;
+    return [...bottles].sort((left, right) => {
+      switch (localSortKey) {
+        case 'CATEGORY':
+          return direction * left.category.localeCompare(right.category);
+        case 'PURCHASE_DATE':
+          return direction * (left.purchaseDate ?? '').localeCompare(right.purchaseDate ?? '');
+        case 'NAME':
+          return direction * getUserBottleDisplayNames(left, isEn ? 'en' : 'ko').primaryName.localeCompare(
+            getUserBottleDisplayNames(right, isEn ? 'en' : 'ko').primaryName,
+          );
+        case 'PRICE':
+          return direction * ((left.price ?? 0) - (right.price ?? 0));
+        case 'STATUS':
+          return direction * left.status.localeCompare(right.status);
+        case 'VISIBILITY':
+          return direction * (Number(left.isPublic) - Number(right.isPublic));
+      }
+    });
+  }, [bottles, isEn, localSortDir, localSortKey, onSort]);
+
+  const SortIcon = ({ columnKey }: { columnKey: BottleSortKey }) => {
+    if (effectiveSortKey !== columnKey) return <span className="text-neutral-300 ml-0.5">↕</span>;
+    return <span className="text-amber-600 ml-0.5">{effectiveSortDir === 'ASC' ? '↑' : '↓'}</span>;
   };
 
   return (
@@ -100,18 +111,20 @@ export function BottleTable({ bottles, editable, onDetail, onDelete, onToggleSta
             ))}
             {editable && (
               <th
-                onClick={() => handleSort('visibility')}
+                onClick={() => handleSort('VISIBILITY')}
                 className="px-3 py-2 text-center whitespace-nowrap min-w-20 font-medium cursor-pointer select-none hover:text-amber-700"
               >
                 {t('collection.table.visibility')}
-                <SortIcon columnKey="visibility" />
+                <SortIcon columnKey="VISIBILITY" />
               </th>
             )}
             {editable && <th className="px-3 py-2 text-center whitespace-nowrap min-w-16 font-medium">{t('collection.table.actions')}</th>}
           </tr>
         </thead>
         <tbody>
-          {sortedBottles.map(b => (
+          {displayBottles.map(b => {
+            const displayName = getUserBottleDisplayNames(b, isEn ? 'en' : 'ko').primaryName;
+            return (
             <tr key={b.id} className="border-b hover:bg-neutral-50">
               <td className="px-3 py-2 text-amber-600 font-medium whitespace-nowrap text-xs">
                 {t(`collection.filter.${b.category}`)}
@@ -124,7 +137,7 @@ export function BottleTable({ bottles, editable, onDetail, onDelete, onToggleSta
                   onClick={() => onDetail?.(b)}
                   className="text-left hover:text-amber-600 hover:underline transition-colors cursor-pointer"
                 >
-                  {displayName(b)}
+                  {displayName}
                 </button>
               </td>
               <td className="px-3 py-2 text-neutral-400 max-w-[160px] truncate" title={b.batch ?? undefined}>{b.batch ?? '-'}</td>
@@ -155,7 +168,8 @@ export function BottleTable({ bottles, editable, onDetail, onDelete, onToggleSta
                 </td>
               )}
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>

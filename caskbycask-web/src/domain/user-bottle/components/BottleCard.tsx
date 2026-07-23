@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import type { UserBottle } from '../types/userBottle.types';
+import { getUserBottleDisplayNames } from '../utils/userBottleDisplayName';
 
 interface Props {
   bottle: UserBottle;
@@ -12,11 +13,8 @@ interface Props {
 
 export function BottleCard({ bottle: b, editable, onDetail, onDelete, onToggleStatus, onTogglePublic }: Props) {
   const { t, i18n } = useTranslation();
-  const isEn = i18n.language === 'en';
   const money = new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 });
-  const name = b.spiritId
-    ? (isEn ? (b.spiritNameEn || b.spiritNameKo || '') : (b.spiritNameKo || ''))
-    : (b.spiritNameText || '');
+  const { primaryName: name } = getUserBottleDisplayNames(b, i18n.language);
 
   return (
     <div className="bg-white border border-neutral-200 rounded-lg p-4 hover:shadow-md transition-shadow">

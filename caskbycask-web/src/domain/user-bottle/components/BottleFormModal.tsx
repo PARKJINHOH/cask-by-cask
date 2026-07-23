@@ -3,13 +3,24 @@ import { useTranslation } from 'react-i18next';
 import type { UserBottle, UserBottleImage, UserBottleRequest, SpiritCategory, BottleStatus } from '../types/userBottle.types';
 import { useCreateBottle, useUpdateBottle, useUploadBottleImage, useReplaceBottleImage, useDeleteBottleImage } from '../hooks/useUserBottle';
 import axiosInstance from '@/shared/api/axiosInstance';
-import { getSpiritListDisplayNames } from '@/domain/spirit/utils/spiritDisplayName';
+import { getLocalizedSpiritListNames } from '@/domain/spirit/utils/spiritDisplayName';
 import ImageEditorModal from '@/shared/components/ImageEditorModal';
 import { formatOptionalPriceInput, parsePriceInput } from '@/shared/utils/moneyInput';
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue';
 import FormFieldLabel, { RequiredFieldsNotice } from '@/shared/components/FormFieldLabel';
 
-interface SpiritOption { id: number; nameKo: string; nameEn: string | null; seriesIdentifier?: string | null; category: string; }
+interface SpiritOption {
+  id: number;
+  nameKo: string;
+  nameEn: string | null;
+  parentId?: number | null;
+  variantType?: UserBottle['variantType'];
+  seriesIdentifier?: string | null;
+  seriesIdentifierEn?: string | null;
+  variantValue?: string | null;
+  variantValueEn?: string | null;
+  category: SpiritCategory;
+}
 interface Props { open: boolean; onClose: () => void; editing?: UserBottle; }
 interface PendingImage { id: string; file: File; previewUrl: string; }
 
@@ -26,6 +37,13 @@ const defaultForm = (): UserBottleRequest => ({
 });
 
 const stripOptional = (value: string) => value.replace(/\s*\([^)]*\)\s*$/u, '');
+
+const getSpiritOptionNames = (spirit: SpiritOption, language: string) => {
+  const names = getLocalizedSpiritListNames(spirit, language);
+  return names.secondaryName === names.primaryName
+    ? { ...names, secondaryName: '' }
+    : names;
+};
 
 export function BottleFormModal({ open, onClose, editing }: Props) {
   const { t, i18n } = useTranslation();
@@ -81,6 +99,12 @@ export function BottleFormModal({ open, onClose, editing }: Props) {
           id: editing.spiritId,
           nameKo: editing.spiritNameKo ?? '',
           nameEn: editing.spiritNameEn,
+          parentId: editing.parentId,
+          variantType: editing.variantType,
+          seriesIdentifier: editing.seriesIdentifier,
+          seriesIdentifierEn: editing.seriesIdentifierEn,
+          variantValue: editing.variantValue,
+          variantValueEn: editing.variantValueEn,
           category: editing.category,
         });
         setSpiritQuery('');
@@ -103,8 +127,10 @@ export function BottleFormModal({ open, onClose, editing }: Props) {
     let ignore = false;
     (async () => {
       try {
-        const res = await axiosInstance.get('/api/spirits', { params: { keyword, size: 5 } });
-        if (!ignore) setSpiritOptions(res.data?.data?.content ?? []);
+        const res = await axiosInstance.get('/api/spirits/autocomplete', {
+          params: { keyword, includeVariants: true },
+        });
+        if (!ignore) setSpiritOptions((res.data?.data ?? []).slice(0, 8));
       } catch {
         if (!ignore) setSpiritOptions([]);
       }
@@ -112,7 +138,9 @@ export function BottleFormModal({ open, onClose, editing }: Props) {
     return () => { ignore = true; };
   }, [debouncedSpiritQuery]);
 
-  const selectedSpiritNames = selectedSpirit ? getSpiritListDisplayNames(selectedSpirit) : null;
+  const selectedSpiritNames = selectedSpirit
+    ? getSpiritOptionNames(selectedSpirit, i18n.language)
+    : null;
   const selectedPending = useMemo(
     () => pendingImages.find((img) => img.id === editingPendingId) ?? null,
     [pendingImages, editingPendingId],
@@ -244,7 +272,9 @@ export function BottleFormModal({ open, onClose, editing }: Props) {
               type="text"
               required
               aria-required="true"
-              value={selectedSpiritNames ? `${selectedSpiritNames.nameKo}${selectedSpiritNames.nameEn ? ` (${selectedSpiritNames.nameEn})` : ''}` : spiritQuery}
+              value={selectedSpiritNames
+                ? `${selectedSpiritNames.primaryName}${selectedSpiritNames.secondaryName ? ` (${selectedSpiritNames.secondaryName})` : ''}`
+                : spiritQuery}
               onChange={(e) => { setSpiritQuery(e.target.value); setSelectedSpirit(null); setNameTouched(true); }}
               onBlur={() => setNameTouched(true)}
               placeholder={t('collection.form.spiritSearch')}
@@ -256,7 +286,7 @@ export function BottleFormModal({ open, onClose, editing }: Props) {
             {spiritOptions.length > 0 && !selectedSpirit && (
               <ul className="mt-1 border border-neutral-200 rounded-lg overflow-hidden shadow-sm">
                 {spiritOptions.map((s) => {
-                  const displayName = getSpiritListDisplayNames(s);
+                  const displayName = getSpiritOptionNames(s, i18n.language);
                   return (
                     <li key={s.id}>
                       <button
@@ -269,7 +299,7 @@ export function BottleFormModal({ open, onClose, editing }: Props) {
                         }}
                         className="w-full text-left px-3 py-2 text-sm hover:bg-amber-50"
                       >
-                        {displayName.nameKo}{displayName.nameEn ? ` (${displayName.nameEn})` : ''}
+                        {displayName.primaryName}{displayName.secondaryName ? ` (${displayName.secondaryName})` : ''}
                       </button>
                     </li>
                   );

@@ -2,7 +2,9 @@ package com.caskbycask.domain.bottlecollection.dto;
 
 import com.caskbycask.domain.bottlecollection.entity.BottleStatus;
 import com.caskbycask.domain.bottlecollection.entity.UserBottle;
+import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
+import com.caskbycask.domain.spirit.entity.enums.VariantType;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -13,6 +15,12 @@ public record UserBottleResponse(
     Long spiritId,
     String spiritNameKo,
     String spiritNameEn,
+    Long parentId,
+    VariantType variantType,
+    String seriesIdentifier,
+    String seriesIdentifierEn,
+    String variantValue,
+    String variantValueEn,
     String spiritNameText,
     SpiritCategory category,
     LocalDate purchaseDate,
@@ -28,8 +36,17 @@ public record UserBottleResponse(
     LocalDateTime createdAt
 ) {
     public static UserBottleResponse from(UserBottle b) {
-        String nameKo = b.getSpirit() != null ? b.getSpirit().getNameKo() : null;
-        String nameEn = b.getSpirit() != null ? b.getSpirit().getNameEn() : null;
+        Spirit spirit = b.getSpirit();
+        Spirit parent = spirit != null ? spirit.getParent() : null;
+        String nameKo = spirit != null ? spirit.getNameKo() : null;
+        String nameEn = spirit != null ? spirit.getNameEn() : null;
+        Long parentId = parent != null ? parent.getId() : null;
+        String seriesIdentifier = firstNonBlank(
+            spirit != null ? spirit.getSeriesIdentifier() : null,
+            parent != null ? parent.getSeriesIdentifier() : null);
+        String seriesIdentifierEn = firstNonBlank(
+            spirit != null ? spirit.getSeriesIdentifierEn() : null,
+            parent != null ? parent.getSeriesIdentifierEn() : null);
         List<String> urls = b.getImages().stream()
             .map(img -> img.getImageUrl())
             .toList();
@@ -38,11 +55,21 @@ public record UserBottleResponse(
             .toList();
         return new UserBottleResponse(
             b.getId(),
-            b.getSpirit() != null ? b.getSpirit().getId() : null,
-            nameKo, nameEn, b.getSpiritNameText(),
+            spirit != null ? spirit.getId() : null,
+            nameKo, nameEn, parentId,
+            spirit != null ? spirit.getVariantType() : null,
+            seriesIdentifier,
+            seriesIdentifierEn,
+            spirit != null ? spirit.getVariantValue() : null,
+            spirit != null ? spirit.getVariantValueEn() : null,
+            b.getSpiritNameText(),
             b.getCategory(), b.getPurchaseDate(), b.getBatch(), b.getBottlingYear(),
             b.getPrice(), b.getStore(), b.getStatus(), b.getIsPublic(),
             b.getMemo(), images, urls, b.getCreatedAt()
         );
+    }
+
+    private static String firstNonBlank(String primary, String fallback) {
+        return primary != null && !primary.isBlank() ? primary : fallback;
     }
 }

@@ -14,10 +14,12 @@ import com.caskbycask.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.time.LocalDate;
 
 @Service
 @RequiredArgsConstructor
@@ -48,9 +50,26 @@ public class UserBottleService {
     }
 
     public UserBottleListResponse getMyBottles(Long userId, SpiritCategory category,
-                                                BottleStatus status, Integer year, Pageable pageable) {
-        Page<UserBottle> page = userBottleQueryRepository.findByUser(userId, category, status, year, pageable);
-        BottleStatsDto stats = userBottleQueryRepository.getStats(userId, category, status, year);
+                                                BottleStatus status, LocalDate startDate,
+                                                LocalDate endDate, Integer legacyYear,
+                                                UserBottleSortKey sortKey, Sort.Direction sortDirection,
+                                                String lang, Pageable pageable) {
+        LocalDate effectiveStartDate = startDate;
+        LocalDate effectiveEndDate = endDate;
+        if (startDate == null && endDate == null && legacyYear != null) {
+            effectiveStartDate = LocalDate.of(legacyYear, 1, 1);
+            effectiveEndDate = LocalDate.of(legacyYear, 12, 31);
+        }
+        if (effectiveStartDate != null && effectiveEndDate != null
+                && effectiveStartDate.isAfter(effectiveEndDate)) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+
+        Page<UserBottle> page = userBottleQueryRepository.findByUser(
+            userId, category, status, effectiveStartDate, effectiveEndDate,
+            sortKey, sortDirection, lang, pageable);
+        BottleStatsDto stats = userBottleQueryRepository.getStats(
+            userId, category, status, effectiveStartDate, effectiveEndDate);
         List<Integer> purchaseYears = userBottleQueryRepository.getPurchaseYears(userId, false);
         return toListResponse(page, stats, pageable.getPageNumber(), null, purchaseYears);
     }
