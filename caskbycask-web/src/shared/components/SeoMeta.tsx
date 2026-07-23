@@ -29,7 +29,7 @@ interface Props {
 
 function upsertMeta(attribute: 'name' | 'property', key: string, content?: string) {
   const selector = `meta[${attribute}="${key}"]`
-  const matches = Array.from(document.head.querySelectorAll<HTMLMetaElement>(selector))
+  const matches = Array.from(document.querySelectorAll<HTMLMetaElement>(selector))
   if (!content) {
     matches.forEach((element) => element.remove())
     return
@@ -45,7 +45,7 @@ function upsertMeta(attribute: 'name' | 'property', key: string, content?: strin
 function upsertLink(rel: string, href?: string, hrefLang?: string) {
   const hrefLangSelector = hrefLang ? `[hreflang="${hrefLang}"]` : ':not([hreflang])'
   const selector = `link[rel="${rel}"]${hrefLangSelector}`
-  const matches = Array.from(document.head.querySelectorAll<HTMLLinkElement>(selector))
+  const matches = Array.from(document.querySelectorAll<HTMLLinkElement>(selector))
   if (!href) {
     matches.forEach((element) => element.remove())
     return
@@ -55,6 +55,14 @@ function upsertLink(rel: string, href?: string, hrefLang?: string) {
   element.rel = rel
   element.href = href
   if (hrefLang) element.hreflang = hrefLang
+  if (!element.isConnected) document.head.appendChild(element)
+  matches.forEach((duplicate) => duplicate.remove())
+}
+
+function syncTitle(title: string) {
+  const matches = Array.from(document.querySelectorAll<HTMLTitleElement>('title'))
+  const element = matches.shift() ?? document.createElement('title')
+  element.text = title
   if (!element.isConnected) document.head.appendChild(element)
   matches.forEach((duplicate) => duplicate.remove())
 }
@@ -111,10 +119,27 @@ function preserveMatchingCollectionJsonLd(canonical?: string) {
   }
 }
 
+const MANAGED_SEO_SELECTOR = [
+  'title',
+  'meta[name="description"]',
+  'meta[name="keywords"]',
+  'meta[name="robots"]',
+  'meta[property^="og:"]',
+  'meta[name^="twitter:"]',
+  'link[rel="canonical"]',
+  'link[rel="alternate"]',
+  'script[data-cbc-route-jsonld="true"]',
+].join(',')
+
+function containsManagedSeoNode(node: Node): boolean {
+  return node instanceof Element
+    && (node.matches(MANAGED_SEO_SELECTOR) || node.querySelector(MANAGED_SEO_SELECTOR) !== null)
+}
+
 /**
  * Next.js가 직접 요청의 초기 SEO 태그를 생성하고, 이 컴포넌트는 React Router의
- * 클라이언트 이동 시 동일 태그를 교체한다. React 19 head hoisting으로 태그를
- * 추가하지 않으므로 SSR 메타데이터와 중복되지 않는다.
+ * 클라이언트 이동 시 동일 태그를 교체한다. Next.js의 스트리밍 메타데이터가
+ * hydration 뒤에 도착할 수도 있으므로 관련 DOM 변경을 감시해 단일 태그를 유지한다.
  */
 export default function SeoMeta({
   title,
@@ -137,35 +162,47 @@ export default function SeoMeta({
     const fullTitle = title.includes(SITE_NAME) ? title : `${title} — ${SITE_NAME}`
     const defaultHref = alternateDefault ?? alternateKo
 
-    document.title = fullTitle
-    upsertMeta('name', 'description', description)
-    upsertMeta('name', 'keywords', keywords)
-    if (!deferIndexState) {
-      upsertMeta('name', 'robots', noindex ? 'noindex, follow' : 'index, follow')
-    }
-    upsertLink('canonical', canonical)
-    upsertLink('alternate', alternateKo, 'ko')
-    upsertLink('alternate', alternateEn, 'en')
-    upsertLink('alternate', defaultHref, 'x-default')
+    const syncSeo = () => {
+      syncTitle(fullTitle)
+      upsertMeta('name', 'description', description)
+      upsertMeta('name', 'keywords', keywords)
+      if (!deferIndexState) {
+        upsertMeta('name', 'robots', noindex ? 'noindex, follow' : 'index, follow')
+      }
+      upsertLink('canonical', canonical)
+      upsertLink('alternate', alternateKo, 'ko')
+      upsertLink('alternate', alternateEn, 'en')
+      upsertLink('alternate', defaultHref, 'x-default')
 
-    upsertMeta('property', 'og:type', ogType)
-    upsertMeta('property', 'og:site_name', SITE_NAME)
-    upsertMeta('property', 'og:locale', locale)
-    upsertMeta('property', 'og:locale:alternate', locale === 'ko_KR' ? 'en_US' : 'ko_KR')
-    upsertMeta('property', 'og:title', fullTitle)
-    upsertMeta('property', 'og:description', description)
-    upsertMeta('property', 'og:url', canonical)
-    upsertMeta('property', 'og:image', ogImage)
-    upsertMeta('property', 'og:image:alt', ogImageAlt)
+      upsertMeta('property', 'og:type', ogType)
+      upsertMeta('property', 'og:site_name', SITE_NAME)
+      upsertMeta('property', 'og:locale', locale)
+      upsertMeta('property', 'og:locale:alternate', locale === 'ko_KR' ? 'en_US' : 'ko_KR')
+      upsertMeta('property', 'og:title', fullTitle)
+      upsertMeta('property', 'og:description', description)
+      upsertMeta('property', 'og:url', canonical)
+      upsertMeta('property', 'og:image', ogImage)
+      upsertMeta('property', 'og:image:alt', ogImageAlt)
 
-    upsertMeta('name', 'twitter:card', 'summary_large_image')
-    upsertMeta('name', 'twitter:title', fullTitle)
-    upsertMeta('name', 'twitter:description', description)
-    upsertMeta('name', 'twitter:image', ogImage)
-    if (!deferIndexState) {
-      if (deferJsonLd) preserveMatchingCollectionJsonLd(canonical)
-      else syncRouteJsonLd(jsonLd, noindex)
+      upsertMeta('name', 'twitter:card', 'summary_large_image')
+      upsertMeta('name', 'twitter:title', fullTitle)
+      upsertMeta('name', 'twitter:description', description)
+      upsertMeta('name', 'twitter:image', ogImage)
+      if (!deferIndexState) {
+        if (deferJsonLd) preserveMatchingCollectionJsonLd(canonical)
+        else syncRouteJsonLd(jsonLd, noindex)
+      }
     }
+
+    const observer = new MutationObserver((mutations) => {
+      const hasManagedSeoMutation = mutations.some(({ addedNodes, removedNodes }) =>
+        [...Array.from(addedNodes), ...Array.from(removedNodes)].some(containsManagedSeoNode))
+      if (hasManagedSeoMutation) syncSeo()
+    })
+    observer.observe(document.documentElement, { childList: true, subtree: true })
+    syncSeo()
+
+    return () => observer.disconnect()
   }, [
     alternateDefault,
     alternateEn,
