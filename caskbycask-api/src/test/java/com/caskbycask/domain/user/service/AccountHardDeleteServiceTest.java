@@ -21,11 +21,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -58,11 +58,11 @@ class AccountHardDeleteServiceTest {
     @Autowired private UserSocialAccountRepository socialAccountRepository;
     @Autowired private PasswordEncoder passwordEncoder;
 
-    @MockBean private RefreshTokenRepository refreshTokenRepository;
-    @MockBean private FileStorageService fileStorageService;
+    @MockitoBean private RefreshTokenRepository refreshTokenRepository;
+    @MockitoBean private FileStorageService fileStorageService;
     // 소셜 연동 해지 의존성 — @DataJpaTest 범위 밖이라 모킹 (연동 없는 사용자는 호출되지 않음)
-    @MockBean private com.caskbycask.global.auth.oauth.OAuthClientRegistry oAuthClientRegistry;
-    @MockBean private com.caskbycask.global.auth.oauth.OAuthTokenCipher oAuthTokenCipher;
+    @MockitoBean private com.caskbycask.global.auth.oauth.OAuthClientRegistry oAuthClientRegistry;
+    @MockitoBean private com.caskbycask.global.auth.oauth.OAuthTokenCipher oAuthTokenCipher;
 
     @PersistenceContext
     private EntityManager em;
