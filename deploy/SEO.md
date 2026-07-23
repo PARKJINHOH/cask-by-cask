@@ -11,9 +11,9 @@
 - [ ] `https://www.caskbycask.net/sitemap.xml` 응답 200, 루트가 `<sitemapindex>`인지 확인
 - [ ] 루트가 가리키는 `/sitemaps/*.xml` 전체가 GET/HEAD 200이며 3xx·404·`noindex` URL을 포함하지 않는지 확인
 - [ ] `https://www.caskbycask.net/llms.txt` 응답 200
-- [ ] 메인/카테고리/공지 등 주요 페이지의 HTML `<head>` 에 페이지별 `<title>`, `<meta name="description">`, `<link rel="canonical">`, JSON-LD 가 들어있는지 확인
+- [ ] 메인/카테고리/공지 등 주요 페이지의 HTML `<head>` 에 페이지별 `<title>`, `<meta name="description">`, `<link rel="canonical">`이 있고, 구조화 데이터 적용 대상 경로에는 JSON-LD가 들어있는지 확인
   - 브라우저: 페이지 진입 후 DevTools → Elements → `<head>` 검사
-  - 명령행: `curl -sL https://www.caskbycask.net/spirits | grep -E "<title>|description|canonical"`
+  - 명령행: `curl -sL https://www.caskbycask.net/ko/spirits | grep -E "<title>|description|canonical"`
 - [ ] OG 미리보기 정상 — https://www.opengraph.xyz/ 같은 사이트에서 URL 입력 후 카드 확인
 
 ---
@@ -42,7 +42,7 @@
 2. **사이트 관리** → 사이트 등록 → `https://www.caskbycask.net`
 3. 소유권 확인 (HTML 파일 업로드 또는 메타 태그 방식)
 4. **요청** → 사이트맵 제출 → `https://www.caskbycask.net/sitemap.xml`
-5. **요청** → RSS 제출 (선택)
+5. RSS는 현재 별도 endpoint를 제공하지 않으므로 제출하지 않는다. 향후 공개 RSS를 구현한 뒤에만 제출한다.
 6. **검증** → robots.txt 검증 정상 확인
 
 ### 색인 가속화
@@ -124,18 +124,28 @@ IndexNow 키는 8~128자의 `a-f`, `A-F`, `0-9`, `-`로 만들고 `/app/env/api.
 
 ## 8. SSR & SSG (Next.js 서버 및 정적 렌더링)
 
-Next.js 빌드(`npm run build`) 시, 프로젝트 구조에 맞춰 정적 페이지(SSG)와 동적 페이지(SSR/ISR)가 자동으로 분류되어 생성됩니다.
+Next.js의 동적 catch-all route가 기존 React Router SPA를 감싸고, 직접 요청의 route별 metadata와
+SEO snapshot을 서버에서 생성한다. 클라이언트 앱 본체는 `ssr: false`이므로 snapshot을 제공하지 않는
+경로의 본문은 브라우저에서 렌더링된다.
 
 ### 대상 및 렌더링 방식
-- **정적 페이지 (SSG/Static)**: `/notices`, `/ranking`, `/faq`, `/terms`, `/privacy` 등은 빌드 시 정적 HTML로 생성되어 즉시 서빙됩니다.
-- **동적 페이지 (SSR/ISR)**: `/spirits/[id]`, `/community/[category]/[id]`, `/community/byob/[id]` 등 핵심 SEO가 필요한 페이지는 서버 측(Node.js)에서 동적으로 HTML을 생성하여 검색엔진 봇 및 클라이언트에 즉시 완전한 메타태그, JSON-LD, 서버 렌더링 요약 본문을 반환합니다.
+- **SSR metadata**: 알려진 공개 경로는 직접 요청에서 title·description·robots·canonical을 반환한다.
+- **SSR SEO snapshot**: `/spirits`, `/spirits/[id]`, 공개 게시판 목록·상세, 공지, BYOB와
+  `/tier-lists` 기본 경로는 JS 실행 전에도 단일 H1과 핵심 요약 본문을 반환한다.
+- **클라이언트 본문**: ranking·faq·약관 등 snapshot이 없는 기존 SPA 경로는 head metadata는
+  서버에서 받지만 본문은 브라우저에서 렌더링된다.
 - 직접 요청의 title·description·robots·canonical과 경로 JSON-LD는 Next.js 서버가 소유한다. SPA 내부 이동 시 클라이언트 SEO 동기화 코드는 기존 태그를 교체하며 누적하지 않는다.
 - 검색·정렬·페이지·세부 필터 URL은 `noindex,follow`와 기본 목록/카테고리 canonical을 사용한다. 결과가 없는 카테고리는 자동 `noindex`되고 sitemap에서 제외되며 첫 활성 주류 등록 후 자동 복귀한다.
+- 티어리스트 기본 경로(`/ko/tier-lists`, `/en/tier-lists`)는 공개 index/self-canonical이며 static
+  sitemap에 포함한다. `?id=` 소유자 편집 뷰는 `noindex,follow`와 언어별 기본 경로 canonical을
+  사용한다. 공개 share 경로는 self-canonical/index를 유지하고, 존재하지 않는 share는 HTTP 404와
+  `noindex`를 반환한다. 티어리스트에는 검색엔진 전용 JSON-LD를 억지로 추가하지 않는다.
 
 ### nginx 동작
 `location /` 블록이 3000번 포트의 Next.js Node 서버로 프록시 패스(`proxy_pass http://127.0.0.1:3000`)하고, `/_next/static/` 경로는 nginx가 `/app/next/dist/.next/static/`에서 직접 정적 자원을 서빙합니다.
 
-→ 검색봇은 JS 실행 없이도 서버가 렌더링한 완전한 head 메타 + JSON-LD 구조화 데이터 + 핵심 요약 본문을 즉시 받게 됩니다.
+→ 검색봇은 JS 실행 없이 route별 head metadata를 받으며, 구조화 데이터와 SEO snapshot을 지원하는
+핵심 경로에서는 JSON-LD와 요약 본문도 함께 받는다.
 
 ### 트러블슈팅 및 검증
 - **빌드 검증**: 로컬 빌드 시 터미널 로그에서 각 라우트별 렌더링 타입(○ Static, λ SSR)이 정상적으로 설계와 일치하는지 확인합니다.
@@ -165,7 +175,7 @@ Next.js 빌드(`npm run build`) 시, 프로젝트 구조에 맞춰 정적 페이
 | 색인된 URL 수 | Search Console "페이지" | 4주차 50%, 8주차 80%, 12주차 95%+ |
 | 평균 노출 위치 | Search Console "성능" | 점차 상승 |
 | Core Web Vitals 양호 비율 | Search Console "Core Web Vitals" | 75%+ |
-| LCP / FID / CLS | PageSpeed Insights | LCP ≤ 2.5s, CLS ≤ 0.1 |
+| LCP / INP / CLS | PageSpeed Insights | LCP ≤ 2.5s, INP ≤ 200ms, CLS ≤ 0.1 |
 | Naver 검색 노출 | 직접 검색 ("위스키 리뷰", "꼬냑 VSOP" 등) | 첫 페이지 진입 |
 | AI 인용 | ChatGPT/Claude/Perplexity 에 "위스키 리뷰 사이트 추천" 등 질의 | 인용/언급 빈도 ↑ |
 
@@ -183,6 +193,7 @@ Next.js 빌드(`npm run build`) 시, 프로젝트 구조에 맞춰 정적 페이
 
 ## 변경 이력
 
+- 2026-07-23: 공개 티어리스트 base와 소유자 편집 뷰의 SSR/CSR 색인 정책·H1·hreflang 검증 일치
 - 2026-07-21: SEO 메타 단일화, 정규/에디션 self-canonical, sitemap index/shard, IndexNow 운영 절차 반영
 - 2026-07-18: 대표 호스트를 `www.caskbycask.net`으로 전환
 - 2026-05-21: 초안 작성 (STEP 1~6 완료 시점)

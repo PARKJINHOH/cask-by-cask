@@ -475,7 +475,7 @@ systemctl status caskbycask-api
 systemctl status caskbycask-web
 journalctl -u caskbycask-api -f          # API 부팅 로그
 journalctl -u caskbycask-web -f          # Next.js 부팅 로그
-curl -s http://127.0.0.1:8081/actuator/health   # {"status":"UP"} 기대
+curl -s http://127.0.0.1:8081/actuator/health/readiness   # {"status":"UP"} 기대
 curl -s http://127.0.0.1:3000/healthz            # "ok" 기대
 ```
 
@@ -721,7 +721,7 @@ crontab -l | grep -E 'CRON_TZ|caskbycask-crawler/current'
 - [ ] systemd 유닛 + nginx 설정 + Origin Cert 배치 (`nginx -t` 통과)
 - [ ] iptables 80/443 + Oracle Security List + Cloudflare DNS/SSL
 - [ ] backup-db cron·logrotate 등록 + 수동 1회 성공
-- [ ] `caskbycask-api` 기동 + actuator health UP + 사이트 정상 로딩
+- [ ] `caskbycask-api` readiness UP + `caskbycask-web` health UP + 사이트 정상 로딩
 - [ ] (선택) Prometheus + Grafana 기동 + `monitoring.caskbycask.net` 접속 + 대시보드 정상 표시
 - [ ] (선택) 크롤러 패키지 설치 및 `.env`/`targets.json` 설정 + 핫딜/AI 소식 2시간 주기 시차 실행 설정 완료
 

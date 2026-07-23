@@ -7,6 +7,8 @@ import type { SeoSnapshotData } from '@/shared/utils/seoHelpers'
 import {
   parsePath,
   getDefaultMetadata,
+  getTierListMetadata,
+  getTierListSeoSnapshot,
   getSpiritsListMetadata,
   getSpiritsListJsonLd,
   getSpiritsListSeoSnapshot,
@@ -45,6 +47,8 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
       return getDefaultMetadata(parsed.lang)
     case 'default':
       return getDefaultMetadata(parsed.lang, parsed.canonicalPath)
+    case 'tier-list':
+      return getTierListMetadata(parsed.lang, parsed.tierListShareKey, resolvedSearchParams)
     case 'spirits-list':
       return getSpiritsListMetadata(parsed.lang, resolvedSearchParams)
     case 'spirit-detail':
@@ -77,7 +81,7 @@ export default async function CatchAllPage({ params, searchParams }: Props) {
   if (parsed.type === 'not-found') notFound()
   if (parsed.type === 'spirit-detail'
       && (await headers()).get('x-caskbycask-spirit-not-found') === '1') notFound()
-  if (parsed.type === 'default' && parsed.resourcePath
+  if ((parsed.type === 'default' || parsed.type === 'tier-list') && parsed.resourcePath
       && await isApiResourceNotFound(parsed.resourcePath)) notFound()
 
   let jsonLdData: object | null = null
@@ -112,6 +116,8 @@ export default async function CatchAllPage({ params, searchParams }: Props) {
       getByobPostJsonLd(parsed.postId!, parsed.lang),
       getByobPostSeoSnapshot(parsed.postId!, parsed.lang),
     ])
+  } else if (parsed.type === 'tier-list' && !parsed.tierListShareKey) {
+    snapshot = getTierListSeoSnapshot(parsed.lang)
   }
 
   if (!snapshot && parsed.resourcePath

@@ -2114,6 +2114,8 @@
   },
   "tierList": {
     "title": "Tier List",
+    "seoTitle": "Spirits Tier Lists",
+    "seoDescription": "Create and share custom tier lists for whisky, wine, cognac, other spirits, and producers.",
     "subtitle": "Create and share custom tier lists with spirits, producers, and your own images.",
     "untitled": "Untitled Tier List",
     "byOwner": "{{nickname}}'s tier list",

@@ -435,10 +435,14 @@ function TierBoard({
               />
               <RequiredMark className="absolute right-2 top-1/2 ml-0 -translate-y-1/2" />
             </div>
-          ) : (
+          ) : readOnly ? (
             <h1 className={`min-w-0 text-xl sm:text-2xl font-bold text-neutral-950 ${presentation ? 'truncate' : ''}`}>
               {title || t('tierList.untitled')}
             </h1>
+          ) : (
+            <h2 className={`min-w-0 text-xl sm:text-2xl font-bold text-neutral-950 ${presentation ? 'truncate' : ''}`}>
+              {title || t('tierList.untitled')}
+            </h2>
           )}
           {ownerNickname && (
             <span className="text-xs font-medium text-neutral-400">
@@ -1835,17 +1839,38 @@ export default function TierListPage() {
 
   const summaries = summariesQuery.data ?? []
   const isLoading = readOnly ? sharedQuery.isLoading : detailQuery.isLoading
-  const seoTitle = title ? `${title} | ${t('tierList.title')}` : t('tierList.title')
+  const lang = i18n.language === 'en' ? 'en' : 'ko'
+  const hasEditorId = !readOnly && searchParams.has('id')
+  const publicBase = !readOnly && !hasEditorId
+  const canonicalSuffix = readOnly && shareKey ? `/tier-lists/${shareKey}` : '/tier-lists'
+  const canonical = buildCanonical(`/${lang}${canonicalSuffix}`)
+  const alternateKo = buildCanonical(`/ko${canonicalSuffix}`)
+  const alternateEn = buildCanonical(`/en${canonicalSuffix}`)
+  const seoTitle = publicBase
+    ? t('tierList.seoTitle')
+    : title ? `${title} | ${t('tierList.title')}` : t('tierList.title')
+  const seoDescription = publicBase
+    ? t('tierList.seoDescription')
+    : description || t('tierList.subtitle')
 
   if (readOnly && sharedQuery.isError) {
     return (
-      <div className="max-w-5xl mx-auto px-4 py-12">
-        <EmptyState
+      <>
+        <SeoMeta
           title={t('tierList.notFoundTitle')}
           description={t('tierList.notFoundDesc')}
-          action={{ label: t('errors.notFound.goHome'), onClick: () => navigate('/') }}
+          canonical={canonical}
+          noindex
+          locale={lang === 'en' ? 'en_US' : 'ko_KR'}
         />
-      </div>
+        <div className="max-w-5xl mx-auto px-4 py-12">
+          <EmptyState
+            title={t('tierList.notFoundTitle')}
+            description={t('tierList.notFoundDesc')}
+            action={{ label: t('errors.notFound.goHome'), onClick: () => navigate('/') }}
+          />
+        </div>
+      </>
     )
   }
 
@@ -1853,11 +1878,13 @@ export default function TierListPage() {
     <div className="max-w-7xl mx-auto px-4 py-6">
       <SeoMeta
         title={seoTitle}
-        description={description || t('tierList.subtitle')}
-        canonical={readOnly && shareKey
-          ? buildCanonical(`/${i18n.language === 'en' ? 'en' : 'ko'}/tier-lists/${shareKey}`)
-          : buildCanonical(`/${i18n.language === 'en' ? 'en' : 'ko'}/tier-lists`)}
-        noindex={!readOnly}
+        description={seoDescription}
+        canonical={canonical}
+        noindex={hasEditorId}
+        locale={lang === 'en' ? 'en_US' : 'ko_KR'}
+        alternateKo={alternateKo}
+        alternateEn={alternateEn}
+        alternateDefault={alternateKo}
       />
 
       <Toast toasts={toasts} onRemove={removeToast} />
@@ -1901,7 +1928,7 @@ export default function TierListPage() {
           {!readOnly && (
             <section className="bg-white border border-neutral-200 rounded-lg p-4">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-xl font-bold text-neutral-950 mr-auto">{t('tierList.title')}</h1>
+                <h1 className="text-xl font-bold text-neutral-950 mr-auto">{t('tierList.seoTitle')}</h1>
                 <div className="flex rounded-lg border border-neutral-300 bg-white p-0.5">
                   <button
                     type="button"

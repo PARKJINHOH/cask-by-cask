@@ -249,7 +249,7 @@ export interface SeoSnapshotItem {
 }
 
 export interface SeoSnapshotData {
-  kind: 'spirit' | 'spirits-list' | 'community' | 'byob' | 'board-list' | 'notice'
+  kind: 'spirit' | 'spirits-list' | 'community' | 'byob' | 'board-list' | 'notice' | 'tier-list'
   lang: 'ko' | 'en'
   eyebrow: string
   title: string
@@ -585,13 +585,14 @@ function localLabels(lang: 'ko' | 'en') {
 
 interface ParsedPath {
   type: 'home' | 'spirits-list' | 'spirit-detail' | 'community-list' | 'community-detail'
-    | 'notices-list' | 'notice-detail' | 'byob-detail' | 'noindex' | 'default' | 'not-found'
+    | 'notices-list' | 'notice-detail' | 'byob-detail' | 'tier-list' | 'noindex' | 'default' | 'not-found'
   lang: 'ko' | 'en' | null
   spiritId?: string
   boardType?: string
   boardListType?: BoardListType
   postId?: string
   canonicalPath?: string
+  tierListShareKey?: string
   /** Public API resource used only to distinguish a real 404 from restricted/unavailable content. */
   resourcePath?: string
 }
@@ -739,9 +740,10 @@ export function parsePath(segments: string[]): ParsedPath {
 
   if (remaining[0] === 'tier-lists' && remaining.length <= 2) {
     return {
-      type: 'default',
+      type: 'tier-list',
       lang,
       canonicalPath: remaining.join('/'),
+      tierListShareKey: remaining[1],
       resourcePath: remaining.length === 2
         ? `/api/tier-lists/share/${encodeURIComponent(remaining[1])}`
         : undefined,
@@ -1218,8 +1220,8 @@ const DEFAULT_ROUTE_METADATA: Record<string, {
     en: { title: 'Spirits Event Calendar — CaskByCask', description: 'Browse spirits events and community schedules.' },
   },
   'tier-lists': {
-    ko: { title: '주류 티어리스트 — CaskByCask', description: '위스키·와인·꼬냑을 나만의 기준으로 분류한 공개 티어리스트를 확인하세요.' },
-    en: { title: 'Spirits Tier Lists — CaskByCask', description: 'Explore community tier lists for whisky, wine, cognac, and other spirits.' },
+    ko: { title: '주류 티어리스트 — CaskByCask', description: '위스키·와인·꼬냑 등 주류와 생산자를 나만의 기준으로 분류하고 공유하는 티어리스트입니다.' },
+    en: { title: 'Spirits Tier Lists — CaskByCask', description: 'Create and share custom tier lists for whisky, wine, cognac, other spirits, and producers.' },
   },
   'taste-trees': {
     ko: { title: '주류 취향 트리 — CaskByCask', description: '선택지를 따라가며 취향에 맞는 주류를 찾는 공개 취향 트리를 확인하세요.' },
@@ -1303,6 +1305,45 @@ interface SpiritsListSeoState {
   indexable: boolean
   meta: typeof SPIRIT_CATEGORY_META[SpiritSeoCategory | '']
   page: PageResponse<SpiritListSeoItemResponse> | null
+}
+
+function hasTierListEditorId(searchParams: MetadataSearchParams): boolean {
+  return Object.prototype.hasOwnProperty.call(searchParams, 'id')
+}
+
+/**
+ * 공개 티어리스트와 소유자 편집 뷰의 색인 정책을 서버 렌더링 단계에서 분리한다.
+ * share 경로는 공개 self-canonical, ?id 편집 뷰는 기본 목록 canonical + noindex다.
+ */
+export function getTierListMetadata(
+  lang: 'ko' | 'en' | null,
+  shareKey: string | undefined,
+  searchParams: MetadataSearchParams,
+): Metadata {
+  const canonicalPath = shareKey ? `tier-lists/${shareKey}` : 'tier-lists'
+  const metadata = getDefaultMetadata(lang, canonicalPath)
+  if (shareKey || !hasTierListEditorId(searchParams)) return metadata
+  return { ...metadata, robots: buildRobots(false) }
+}
+
+/** Raw HTML에서도 공개 티어리스트 기본 경로의 설명과 단일 H1을 제공한다. */
+export function getTierListSeoSnapshot(lang: 'ko' | 'en' | null): SeoSnapshotData {
+  const resolvedLang = normalizeLang(lang)
+  const config = DEFAULT_ROUTE_METADATA['tier-lists'][resolvedLang]
+  return {
+    kind: 'tier-list',
+    lang: resolvedLang,
+    eyebrow: resolvedLang === 'en' ? 'Spirits Community' : '주류 커뮤니티',
+    title: config.title.replace(/\s+—\s+CaskByCask$/, ''),
+    description: config.description,
+    image: null,
+    metrics: [],
+    details: [],
+    links: [
+      { label: resolvedLang === 'en' ? 'Home' : '홈', href: `/${resolvedLang}` },
+      { label: config.title.replace(/\s+—\s+CaskByCask$/, ''), href: `/${resolvedLang}/tier-lists` },
+    ],
+  }
 }
 
 function singleSearchParam(value: string | string[] | undefined): string | null {

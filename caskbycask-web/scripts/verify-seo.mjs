@@ -24,6 +24,29 @@ const boardSeoCases = [
   { path: '/ko/notices?page=1', canonical: '/ko/notices', noindex: true },
   { path: '/ko/community/byob?page=00', canonical: '/ko/community/byob', noindex: true },
 ]
+const tierListSeoCases = [
+  {
+    path: '/ko/tier-lists',
+    canonical: '/ko/tier-lists',
+    noindex: false,
+    alternateKo: '/ko/tier-lists',
+    alternateEn: '/en/tier-lists',
+  },
+  {
+    path: '/en/tier-lists',
+    canonical: '/en/tier-lists',
+    noindex: false,
+    alternateKo: '/ko/tier-lists',
+    alternateEn: '/en/tier-lists',
+  },
+  {
+    path: '/ko/tier-lists?id=9223372036854775807',
+    canonical: '/ko/tier-lists',
+    noindex: true,
+    alternateKo: '/ko/tier-lists',
+    alternateEn: '/en/tier-lists',
+  },
+]
 
 function invariant(condition, message) {
   if (!condition) throw new Error(message)
@@ -56,6 +79,13 @@ function robotsOf(html) {
   return tag ? attr(tag, 'content') || '' : ''
 }
 
+function alternateOf(html, hrefLang) {
+  const tags = [...html.matchAll(/<link\b[^>]*>/gi)].map((match) => match[0])
+  const tag = tags.find((candidate) => attr(candidate, 'rel')?.toLowerCase() === 'alternate'
+    && attr(candidate, 'hreflang')?.toLowerCase() === hrefLang.toLowerCase())
+  return tag ? attr(tag, 'href') : null
+}
+
 function sameUrl(actual, expected) {
   if (!actual || !expected) return false
   try {
@@ -73,7 +103,14 @@ async function get(path, redirect = 'follow') {
   return { response, body: await response.text() }
 }
 
-async function verifyHtml(path, { canonical, noindex = false, h1 = true, jsonLd = true } = {}) {
+async function verifyHtml(path, {
+  canonical,
+  noindex = false,
+  h1 = true,
+  jsonLd = true,
+  alternateKo,
+  alternateEn,
+} = {}) {
   const { response, body } = await get(path)
   invariant(response.status === 200, `${path}: expected 200, got ${response.status}`)
   invariant(count(body, /<title\b/gi) === 1, `${path}: title must appear exactly once`)
@@ -85,6 +122,12 @@ async function verifyHtml(path, { canonical, noindex = false, h1 = true, jsonLd 
     `${path}: canonical must appear exactly once`)
   if (canonical) invariant(sameUrl(canonicalOf(body), `${canonicalOrigin}${canonical}`),
     `${path}: unexpected canonical ${canonicalOf(body)}`)
+  if (alternateKo) invariant(sameUrl(alternateOf(body, 'ko'), `${canonicalOrigin}${alternateKo}`),
+    `${path}: unexpected ko alternate ${alternateOf(body, 'ko')}`)
+  if (alternateEn) invariant(sameUrl(alternateOf(body, 'en'), `${canonicalOrigin}${alternateEn}`),
+    `${path}: unexpected en alternate ${alternateOf(body, 'en')}`)
+  if (alternateKo) invariant(sameUrl(alternateOf(body, 'x-default'), `${canonicalOrigin}${alternateKo}`),
+    `${path}: unexpected x-default alternate ${alternateOf(body, 'x-default')}`)
   invariant(noindex === /noindex/i.test(robotsOf(body)), `${path}: unexpected robots ${robotsOf(body)}`)
   if (h1) invariant(count(body, /<h1\b/gi) === 1, `${path}: H1 must appear exactly once`)
   if (jsonLd) invariant(count(body, /<script\b[^>]*data-cbc-route-jsonld=["']true["']/gi) === 1,
@@ -147,6 +190,12 @@ async function verifySitemaps() {
     urls.push(...childUrls)
   }
   invariant(new Set(urls).size === urls.length, 'duplicate URL found across sitemap shards')
+  for (const path of ['/ko/tier-lists', '/en/tier-lists']) {
+    invariant(urls.some((url) => sameUrl(url, `${canonicalOrigin}${path}`)),
+      `${path}: public tier-list base URL is missing from sitemap`)
+  }
+  invariant(!urls.some((url) => new URL(url).pathname.endsWith('/tier-lists')
+    && new URL(url).searchParams.has('id')), 'tier-list editor URL must not be included in sitemap')
 
   const targets = verifyAllSitemapUrls ? urls : urls.slice(0, Math.min(30, urls.length))
   if (sitemapRequestDelayMs > 0) {
@@ -250,22 +299,44 @@ async function verifyRenderedHtml(categoryStates = []) {
     const representativeCategories = [
       categoryStates.find(({ hasContent }) => hasContent),
       categoryStates.find(({ hasContent }) => !hasContent),
-    ].filter(Boolean).map(({ category, hasContent }) => [
-      `/ko/spirits?category=${category}`,
-      !hasContent,
-    ])
-    for (const [path, noindex, blockedApi = null, requireItemList = false] of [
-      ['/ko/spirits', false],
-      ['/ko/spirits?sort=SCORE_DESC', true],
+    ].filter(Boolean).map(({ category, hasContent }) => ({
+      path: `/ko/spirits?category=${category}`,
+      noindex: !hasContent,
+    }))
+    const renderedSeoCases = [
+      { path: '/ko/spirits', noindex: false },
+      { path: '/ko/spirits?sort=SCORE_DESC', noindex: true },
       ...representativeCategories,
-      ...boardSeoCases.map(({ path, noindex, blockedClientApiPath: blockedApi, requireItemList }) => [
+      ...boardSeoCases.map(({ path, noindex, blockedClientApiPath: blockedApi, requireItemList }) => ({
         path,
         noindex,
-        blockedApi ?? null,
-        requireItemList ?? false,
-      ]),
-    ]) {
+        blockedApi: blockedApi ?? null,
+        requireItemList: requireItemList ?? false,
+      })),
+      ...tierListSeoCases.map(({ path, canonical, noindex, alternateKo, alternateEn }) => ({
+        path,
+        noindex,
+        jsonLd: false,
+        canonical,
+        alternateKo,
+        alternateEn,
+      })),
+    ]
+    for (const {
+      path,
+      noindex,
+      blockedApi = null,
+      requireItemList = false,
+      jsonLd = true,
+      canonical = null,
+      alternateKo = null,
+      alternateEn = null,
+    } of renderedSeoCases) {
       blockedClientApiPath = blockedApi
+      const expectedJsonLdCount = !noindex && jsonLd ? 1 : 0
+      const expectedCanonical = canonical ? `${canonicalOrigin}${canonical}` : null
+      const expectedAlternateKo = alternateKo ? `${canonicalOrigin}${alternateKo}` : null
+      const expectedAlternateEn = alternateEn ? `${canonicalOrigin}${alternateEn}` : null
       let response
       try {
         response = await page.goto(`${baseUrl}${path}`, { waitUntil: 'domcontentloaded' })
@@ -282,19 +353,33 @@ async function verifyRenderedHtml(categoryStates = []) {
         throw new Error(`${path}: client did not replace the SEO fallback: ${error.message}`)
       }
       try {
-        await page.waitForFunction((expectedNoindex, expectedItemList) => {
+        await page.waitForFunction((expected) => {
           const robots = document.querySelector('meta[name="robots"]')?.getAttribute('content') || ''
           const jsonLd = Array.from(document.querySelectorAll('script[data-cbc-route-jsonld="true"]'))
             .map((element) => element.textContent || '')
+          const canonicalHref = document.querySelector('link[rel="canonical"]')?.getAttribute('href') || ''
+          const alternateHref = (lang) => document
+            .querySelector(`link[rel="alternate"][hreflang="${lang}"]`)?.getAttribute('href') || ''
           return document.querySelectorAll('title').length === 1
             && document.querySelectorAll('meta[name="description"]').length === 1
             && document.querySelectorAll('meta[name="robots"]').length === 1
             && document.querySelectorAll('link[rel="canonical"]').length === 1
             && document.querySelectorAll('h1').length === 1
-            && document.querySelectorAll('script[data-cbc-route-jsonld="true"]').length === (expectedNoindex ? 0 : 1)
-            && /noindex/i.test(robots) === expectedNoindex
-            && (!expectedItemList || jsonLd.some((value) => value.includes('"@type":"ItemList"')))
-        }, { timeout: 15_000 }, noindex, requireItemList ?? false)
+            && document.querySelectorAll('script[data-cbc-route-jsonld="true"]').length === expected.jsonLdCount
+            && /noindex/i.test(robots) === expected.noindex
+            && (!expected.itemList || jsonLd.some((value) => value.includes('"@type":"ItemList"')))
+            && (!expected.canonical || canonicalHref === expected.canonical)
+            && (!expected.alternateKo || alternateHref('ko') === expected.alternateKo)
+            && (!expected.alternateEn || alternateHref('en') === expected.alternateEn)
+            && (!expected.alternateKo || alternateHref('x-default') === expected.alternateKo)
+        }, { timeout: 15_000 }, {
+          noindex,
+          itemList: requireItemList,
+          jsonLdCount: expectedJsonLdCount,
+          canonical: expectedCanonical,
+          alternateKo: expectedAlternateKo,
+          alternateEn: expectedAlternateEn,
+        })
       } catch (error) {
         const unstableState = await page.evaluate(() => ({
           title: document.querySelectorAll('title').length,
@@ -306,6 +391,10 @@ async function verifyRenderedHtml(categoryStates = []) {
           itemList: Array.from(document.querySelectorAll('script[data-cbc-route-jsonld="true"]'))
             .some((element) => (element.textContent || '').includes('"@type":"ItemList"')),
           robotsContent: document.querySelector('meta[name="robots"]')?.getAttribute('content') || '',
+          canonicalHref: document.querySelector('link[rel="canonical"]')?.getAttribute('href') || '',
+          alternateKo: document.querySelector('link[rel="alternate"][hreflang="ko"]')?.getAttribute('href') || '',
+          alternateEn: document.querySelector('link[rel="alternate"][hreflang="en"]')?.getAttribute('href') || '',
+          alternateDefault: document.querySelector('link[rel="alternate"][hreflang="x-default"]')?.getAttribute('href') || '',
         }))
         throw new Error(`${path}: rendered SEO did not stabilize: ${JSON.stringify(unstableState)} (${error.message})`)
       }
@@ -319,18 +408,32 @@ async function verifyRenderedHtml(categoryStates = []) {
         itemList: Array.from(document.querySelectorAll('script[data-cbc-route-jsonld="true"]'))
           .some((element) => (element.textContent || '').includes('"@type":"ItemList"')),
         robotsContent: document.querySelector('meta[name="robots"]')?.getAttribute('content') || '',
+        canonicalHref: document.querySelector('link[rel="canonical"]')?.getAttribute('href') || '',
+        alternateKo: document.querySelector('link[rel="alternate"][hreflang="ko"]')?.getAttribute('href') || '',
+        alternateEn: document.querySelector('link[rel="alternate"][hreflang="en"]')?.getAttribute('href') || '',
+        alternateDefault: document.querySelector('link[rel="alternate"][hreflang="x-default"]')?.getAttribute('href') || '',
       }))
       invariant(state.title === 1, `${path}: rendered title count must be 1, got ${state.title}`)
       invariant(state.description === 1, `${path}: rendered description count must be 1, got ${state.description}`)
       invariant(state.robots === 1, `${path}: rendered robots count must be 1, got ${state.robots}`)
       invariant(state.canonical === 1, `${path}: rendered canonical count must be 1, got ${state.canonical}`)
       invariant(state.h1 === 1, `${path}: rendered H1 count must be 1, got ${state.h1}`)
-      invariant(state.jsonLd === (noindex ? 0 : 1),
+      invariant(state.jsonLd === expectedJsonLdCount,
         `${path}: unexpected rendered JSON-LD count ${state.jsonLd}`)
       invariant(!requireItemList || state.itemList,
         `${path}: SSR ItemList must survive while the client list API is unavailable`)
       invariant(noindex === /noindex/i.test(state.robotsContent),
         `${path}: unexpected rendered robots ${state.robotsContent}`)
+      if (expectedCanonical) invariant(state.canonicalHref === expectedCanonical,
+        `${path}: unexpected rendered canonical ${state.canonicalHref}`)
+      if (expectedAlternateKo) {
+        invariant(state.alternateKo === expectedAlternateKo,
+          `${path}: unexpected rendered ko alternate ${state.alternateKo}`)
+        invariant(state.alternateDefault === expectedAlternateKo,
+          `${path}: unexpected rendered x-default alternate ${state.alternateDefault}`)
+      }
+      if (expectedAlternateEn) invariant(state.alternateEn === expectedAlternateEn,
+        `${path}: unexpected rendered en alternate ${state.alternateEn}`)
     }
     console.log('rendered HTML: metadata, H1 and JSON-LD are singular')
   } finally {
@@ -347,6 +450,15 @@ async function main() {
   })
   for (const { path, canonical, noindex } of boardSeoCases) {
     await verifyHtml(path, { canonical, noindex, jsonLd: !noindex })
+  }
+  for (const { path, canonical, noindex, alternateKo, alternateEn } of tierListSeoCases) {
+    await verifyHtml(path, {
+      canonical,
+      noindex,
+      jsonLd: false,
+      alternateKo,
+      alternateEn,
+    })
   }
   for (const path of [
     '/ko/__seo_release_check_missing__',

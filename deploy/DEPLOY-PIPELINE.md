@@ -20,7 +20,7 @@ GitHub Actions — 대상 잡만 실행, 나머지는 skipped
    └─ deploy    : 앱 아티팩트와 crawler 소스 묶음을 전송 ➔ 해당 교체 스크립트 실행
    ▼
 서버 (Ubuntu 24.04 aarch64, Oracle Cloud 춘천)
-   ├─ deploy-web.sh : dist 교체 (무중단에 가까움)
+   ├─ deploy-web.sh : dist 교체 → 재시작 → health → 실패 시 롤백
    ├─ deploy-api.sh : jar 교체 → 재시작 → 헬스체크 → 실패 시 롤백
    └─ deploy-crawler.sh : 릴리스별 venv 설치·테스트 → 실행 lock/cron 확인 → current/previous 교체
 ```
@@ -46,7 +46,7 @@ GitHub Actions — 대상 잡만 실행, 나머지는 skipped
 │  ├─ app.jar.new              ← 배포 중 staging (Actions 전송)
 │  └─ app.jar_<타임스탬프>      ← 직전 백업 1개 (다음 배포 때 삭제)
 ├─ next/
-│  ├─ dist/                    ← 운영 (.next/standalone 및 public 등, nginx root)
+│  ├─ dist/                    ← 운영 (.next/standalone 및 public 등, systemd가 실행)
 │  ├─ dist.new/                ← 배포 중 staging
 │  └─ dist_<타임스탬프>/        ← 직전 백업 1개
 ├─ caskbycask-crawler/
@@ -72,9 +72,10 @@ GitHub Actions — 대상 잡만 실행, 나머지는 skipped
    ├─ backup-offsite.sh        ← OCI Object Storage 복제(opt-in)
    └─ restore-offsite-drill.sh ← 격리 호스트 전용 복원 검증
 
-nginx:  /etc/nginx/sites-available/caskbycask.conf  (root → /app/next/dist)
+nginx:  /etc/nginx/sites-available/caskbycask.conf  (동적 경로 → Next.js 127.0.0.1:3000, 정적 자원 직접 서빙)
 ssl:    /etc/nginx/ssl/caskbycask.net.{pem,key}     (Cloudflare Origin Cert)
 systemd: /etc/systemd/system/caskbycask-api.service (app 127.0.0.1:8080, actuator 8081)
+         /etc/systemd/system/caskbycask-web.service (Next.js 127.0.0.1:3000)
 ```
 
 **버전 보관 정책:** 
@@ -130,6 +131,7 @@ systemd: /etc/systemd/system/caskbycask-api.service (app 127.0.0.1:8080, actuato
 | `OCI_S3_SECRET_ACCESS_KEY` | Oracle Object Storage S3 호환 Secret Access Key |
 | `OCI_NAMESPACE` | Oracle Cloud Object Storage Namespace |
 | `OCI_BUCKET` | 아티팩트를 보관할 버킷 이름 (예: `caskbycask-artifacts`) |
+| `SLACK_WEBHOOK_URL` | (선택) Actions 배포 결과 Slack 알림 webhook |
 
 > DB 비번/JWT/Gemini 등 **앱 비밀값은 GitHub 에 두지 않는다.** 서버 환경 파일에만 존재.
 

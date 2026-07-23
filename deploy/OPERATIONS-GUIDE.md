@@ -20,7 +20,7 @@
 | 운영자 / 개인정보 보호책임자 | 박진호 |
 | 운영 알림 | Slack `#server-prd` (선택) — 상세는 15장 |
 
-**서버 구성**: nginx(정적 SPA + `/api` 리버스 프록시) → Spring Boot(127.0.0.1:8080) → MariaDB / Redis (모두 같은 서버 localhost)
+**서버 구성**: Cloudflare → nginx(Next.js SSR·정적 자원·`/api` 프록시) → Next.js(127.0.0.1:3000) / Spring Boot(127.0.0.1:8080) → MariaDB / Redis (모두 같은 서버 localhost)
 
 ---
 
@@ -64,7 +64,8 @@ systemd: /etc/systemd/system/caskbycask-api.service
 
 ## 2. 배포 방법 (GitHub Actions 수동 배포)
 
-빌드는 GitHub 러너에서 수행하고, 서버에는 **산출물(jar/dist)만** 전송한다. 서버는 빌드하지 않는다.
+빌드는 GitHub 러너에서 수행하고, API/Web 산출물은 private OCI Object Storage를 임시 경유해
+운영 서버에 **산출물(jar/dist)만** 전송한다. 서버는 API/Web을 빌드하지 않는다.
 API는 Ubuntu 24.04 x64, Next.js standalone과 crawler는 운영 서버와 같은 Ubuntu 24.04
 ARM64에서 검증·빌드한다. Actions는 커밋 SHA로 고정하고 `contents: read` 최소 권한으로 실행한다.
 입력한 `ref`는 워크플로 시작 시 immutable commit SHA로 한 번 확정되므로 실행 중 브랜치가
@@ -104,7 +105,8 @@ ARM64에서 검증·빌드한다. Actions는 커밋 SHA로 고정하고 `content
 
 ### GitHub Secrets
 
-배포(SSH) 접속 정보 + (선택) 배포 결과 Slack 알림용 webhook. 앱 비밀값(DB/JWT 등)은 서버 `api.env` 에만 둔다.
+배포 SSH 정보, API/Web 아티팩트용 OCI Object Storage 정보와 (선택) Slack webhook을 등록한다.
+앱 비밀값(DB/JWT 등)은 서버 `api.env` 에만 둔다.
 
 | Secret | 값 |
 |---|---|
@@ -112,6 +114,10 @@ ARM64에서 검증·빌드한다. Actions는 커밋 SHA로 고정하고 `content
 | `SSH_USER` | `CHANGE_ME_SSH_USER` |
 | `SSH_KEY` | 배포용 SSH 개인키 전체 |
 | `SSH_PORT` | `CHANGE_ME_SSH_PORT` (선택) |
+| `OCI_S3_ACCESS_KEY_ID` | Oracle Object Storage S3 호환 Access Key ID |
+| `OCI_S3_SECRET_ACCESS_KEY` | Oracle Object Storage S3 호환 Secret Access Key |
+| `OCI_NAMESPACE` | Oracle Cloud Object Storage Namespace |
+| `OCI_BUCKET` | API/Web 배포 아티팩트용 private 버킷 이름 |
 | `SLACK_WEBHOOK_URL` | 배포 결과 알림용 webhook (선택, 서버 `api.env` 와 동일 URL). 미설정 시 알림만 건너뜀 |
 
 ### GitHub Actions 장애 시 로컬 PC 수동 배포
@@ -205,15 +211,18 @@ sudo systemctl start nginx     # 다시 시작
 
 > ⚠️ `stop-web.sh` 는 사이트가 **완전히 응답 불가**가 된다(헬스체크 포함). 일반 점검에는 3장의 `maintenance.sh on` 을 사용하고, `stop-web.sh` 는 긴급 차단 등 꼭 필요한 경우에만 사용.
 >
-> ⛔ **`stop-web.sh` 후 GitHub Actions 배포 시 Cloudflare 521 발생 주의.** `deploy-api.sh` 헬스체크는 nginx 를 거치지 않고 `127.0.0.1:8081` 관리 포트를 직접 조회하므로 배포는 "성공"으로 끝나지만 nginx 가 내려간 채로 남는다. 배포 전 nginx 상태 반드시 확인: `systemctl is-active nginx`
+> `stop-web.sh` 후 API 배포는 readiness 통과 뒤 nginx가 내려가 있으면 자동 기동한다. nginx 기동에
+> 실패하면 배포도 실패 처리된다. 자동 기동에 의존하지 말고 배포 전 `systemctl is-active nginx`를
+> 확인하며, 실패 시 API는 정상일 수 있으므로 nginx 상태와 Actions 로그를 함께 확인한다.
 
 ### 서버 재부팅 후
 
-systemd 가 `caskbycask-api` 와 nginx 를 자동 기동한다(enable 되어 있음). 별도 조치 불필요. 확인:
+systemd 가 `caskbycask-api`, `caskbycask-web`, nginx 를 자동 기동한다(enable 되어 있음). 별도 조치 불필요. 확인:
 
 ```bash
-curl -s http://127.0.0.1:8081/actuator/health   # {"status":"UP"} 기대
-curl -s https://www.caskbycask.net/healthz       # ok 기대
+curl -s http://127.0.0.1:8081/actuator/health/readiness   # {"status":"UP"} 기대
+curl -s http://127.0.0.1:3000/healthz                     # ok 기대
+curl -s https://www.caskbycask.net/healthz                # ok 기대
 ```
 
 ---
@@ -606,8 +615,8 @@ Codex 샌드박스나 일부 컨테이너처럼 Chrome OS sandbox가 허용되�
 
 | 증상 | 점검 순서 |
 |---|---|
-| **Cloudflare 521** | nginx 다운 → `sudo systemctl start nginx`. 이후 `systemctl enable caskbycask-api` 로 enable 여부도 확인 |
-| **521 — stop-web.sh 후 배포** | `stop-web.sh` 실행 후 Actions 배포 시 nginx 가 내려간 채 남음(헬스체크가 관리 포트 직접 조회라 배포는 성공 표시). `sudo systemctl start nginx` 로 복구 |
+| **Cloudflare 521** | nginx 다운 → `sudo systemctl start nginx`. 이후 `systemctl is-enabled caskbycask-api caskbycask-web nginx` 확인 |
+| **521 — stop-web.sh 후 배포** | API 배포가 nginx 자동 기동을 시도했는지 Actions 로그 확인. 실패했다면 `sudo systemctl start nginx` 후 `nginx -t`·외부 health 확인 |
 | 사이트 502/503 | ① `systemctl status caskbycask-api caskbycask-web` ② `journalctl -u caskbycask-web -n 100` ③ DB/Redis/Next.js 살아있는지 ④ healthz 확인 |
 | 점검 페이지가 안 풀림 | `/app/scripts/maintenance.sh status` → `off` 실행. 플래그 파일 `/app/next/maintenance.on` 직접 확인 |
 | 점검 우회 URL 이 안 먹힘 | conf 시크릿 3곳 일치 확인 → `nginx -t && reload`. 쿠키 24h 만료 시 URL 재방문 |

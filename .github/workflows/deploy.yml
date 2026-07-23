@@ -9,6 +9,10 @@ name: Deploy (manual)
 #   SSH_USER   배포 유저 (예: ubuntu)
 #   SSH_KEY    배포용 SSH 개인키 (전체 내용)
 #   SSH_PORT   (선택) SSH 포트, 미설정 시 22
+#   OCI_S3_ACCESS_KEY_ID      Oracle Object Storage S3 호환 Access Key ID
+#   OCI_S3_SECRET_ACCESS_KEY  Oracle Object Storage S3 호환 Secret Access Key
+#   OCI_NAMESPACE             Object Storage Namespace
+#   OCI_BUCKET                API/Web 배포 아티팩트용 private 버킷
 #   SLACK_WEBHOOK_URL  (선택) 배포 결과 Slack 알림용. 서버 api.env 와 같은 웹훅 URL 을
 #                      repo Secret 으로도 등록. 미설정 시 알림만 조용히 건너뜀.
 
