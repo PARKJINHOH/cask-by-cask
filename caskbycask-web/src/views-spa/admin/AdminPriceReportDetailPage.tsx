@@ -10,6 +10,7 @@ import {
 import type {
   AdminPriceReport,
   PriceReportStatus,
+  StoreType,
 } from '@/domain/pricetracker/types/pricetracker.types'
 import FormFieldLabel from '@/shared/components/FormFieldLabel'
 
@@ -21,6 +22,10 @@ const DISCOUNT_LABEL: Record<string, string> = {
 
 const CHANNEL_LABEL: Record<string, string> = {
   AIRPORT: '공항', CITY: '시내', INFLIGHT: '기내', ONLINE: '온라인',
+}
+
+const STORE_TYPE_LABEL: Record<StoreType, string> = {
+  DOMESTIC: '국내', OVERSEAS: '해외', DUTYFREE: '면세',
 }
 
 const STATUS_STYLE: Record<PriceReportStatus, { label: string; className: string }> = {
@@ -49,9 +54,13 @@ export default function AdminPriceReportDetailPage() {
   const [rejecting, setRejecting] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
   const [volumeInput, setVolumeInput] = useState('')
+  const [storeType, setStoreType] = useState<StoreType>('DOMESTIC')
 
   useEffect(() => {
-    if (report) setVolumeInput(report.volumeMl == null ? '' : String(report.volumeMl))
+    if (report) {
+      setVolumeInput(report.volumeMl == null ? '' : String(report.volumeMl))
+      setStoreType(report.storeType)
+    }
   }, [report])
 
   const goList = () => navigate(listReturnTo)
@@ -67,7 +76,7 @@ export default function AdminPriceReportDetailPage() {
       return
     }
     approve.mutate(
-      { id: report.id, volumeMl },
+      { id: report.id, volumeMl, storeType },
       { onSuccess: goList },
     )
   }
@@ -125,6 +134,7 @@ export default function AdminPriceReportDetailPage() {
         <Meta label="구매일" value={report.purchasedAt ?? '-'} />
         <Meta label="작성자" value={report.isAnonymous ? '익명' : report.reporterNickname ?? '-'} />
         <Meta label="통화" value={report.currency} />
+        <Meta label="판매처 유형" value={STORE_TYPE_LABEL[report.storeType]} />
         <Meta label="병 용량" value={report.volumeMl == null ? '미확인' : `${report.volumeMl.toLocaleString()}ml`} />
       </div>
 
@@ -132,7 +142,7 @@ export default function AdminPriceReportDetailPage() {
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
           <p className="text-xs font-semibold text-amber-700 mb-1">자동 플래그 사유</p>
           <p className="text-sm text-neutral-700">
-            같은 주류·용량·매장의 최근 승인된 원화 실구매가 중앙값보다 30% 이상 높거나 낮아 자동 표시된 항목입니다.
+            같은 주류·용량·판매처 유형의 최근 승인된 원화 실구매가 중앙값보다 30% 이상 높거나 낮아 자동 표시된 항목입니다.
           </p>
         </div>
       )}
@@ -214,19 +224,30 @@ export default function AdminPriceReportDetailPage() {
 
       {report.status === 'PENDING' && (
         <div className="bg-white rounded-xl shadow-sm p-5">
-          <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-1">병 용량 확인</p>
+          <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-1">등록 정보 확인</p>
           <p className="text-sm text-neutral-500 mb-3">
-            사용자가 입력한 병 1개의 용량입니다. 사진이나 설명과 다르면 승인 전에 수정할 수 있습니다.
+            사용자가 입력한 병 용량과 판매처 유형입니다. 사진이나 설명과 다르면 승인 전에 수정할 수 있습니다.
           </p>
-          <div className="flex max-w-xs items-center overflow-hidden rounded-lg border border-neutral-300 focus-within:ring-2 focus-within:ring-primary-200">
-            <input
-              value={volumeInput}
-              onChange={(e) => setVolumeInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              inputMode="numeric"
-              placeholder="미확인"
-              className="min-w-0 flex-1 px-3 py-2 text-sm focus:outline-none"
-            />
-            <span className="pr-3 text-xs text-neutral-400">ml</span>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <div className="flex max-w-xs items-center overflow-hidden rounded-lg border border-neutral-300 focus-within:ring-2 focus-within:ring-primary-200">
+              <input
+                value={volumeInput}
+                onChange={(e) => setVolumeInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                inputMode="numeric"
+                placeholder="미확인"
+                className="min-w-0 flex-1 px-3 py-2 text-sm focus:outline-none"
+              />
+              <span className="pr-3 text-xs text-neutral-400">ml</span>
+            </div>
+            <select
+              value={storeType}
+              onChange={(e) => setStoreType(e.target.value as StoreType)}
+              className="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-200"
+            >
+              {(report.currency === 'USD' ? ['DUTYFREE'] : ['DOMESTIC', 'OVERSEAS']).map((type) => (
+                <option key={type} value={type}>{STORE_TYPE_LABEL[type as StoreType]}</option>
+              ))}
+            </select>
           </div>
         </div>
       )}

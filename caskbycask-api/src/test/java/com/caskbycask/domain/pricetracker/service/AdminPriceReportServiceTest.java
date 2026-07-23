@@ -105,6 +105,25 @@ class AdminPriceReportServiceTest {
                 org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyLong());
     }
 
+    @Test
+    @DisplayName("관리자는 승인 전에 국내 직접 입력을 해외 유형으로 보정할 수 있다")
+    void approvePriceReport_canCorrectStoreType() {
+        PriceReport report = pendingReport(null, StoreType.DOMESTIC);
+        User admin = User.builder().id(9L).nickname("관리자").build();
+        given(priceReportRepository.findById(1L)).willReturn(Optional.of(report));
+        given(userRepository.getByIdOrThrow(9L)).willReturn(admin);
+        given(priceReportImageRepository.findByPriceReportIdOrderBySortOrder(1L)).willReturn(List.of());
+        given(priceReportRepository.save(report)).willReturn(report);
+
+        AdminPriceReportResponse response = service.approvePriceReport(
+                1L, 9L, new ApprovePriceReportRequest(null, 700, StoreType.OVERSEAS));
+
+        assertThat(response.storeType()).isEqualTo(StoreType.OVERSEAS);
+        then(priceAlertService).should(never()).checkAndNotifyAlerts(
+                org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyLong());
+    }
+
     private PriceReport pendingReport(Store store) {
         return pendingReport(store, null);
     }

@@ -6,6 +6,7 @@ import com.caskbycask.domain.pricetracker.entity.PriceReportImage;
 import com.caskbycask.domain.pricetracker.entity.enums.DutyFreeChannel;
 import com.caskbycask.domain.pricetracker.entity.enums.PriceCurrency;
 import com.caskbycask.domain.pricetracker.entity.enums.PriceReportStatus;
+import com.caskbycask.domain.pricetracker.entity.enums.StoreType;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -21,6 +22,7 @@ public record AdminPriceReportResponse(
         String storeName,
         String suggestedStoreName,
         DutyFreeChannel suggestedDutyfreeChannel,
+        StoreType storeType,
         // 구버전 관리자 응답 호환 필드. 매장 마스터 기능 제거 후에는 항상 false.
         Boolean needsStoreResolution,
         PriceReportStatus status,
@@ -55,6 +57,7 @@ public record AdminPriceReportResponse(
                 report.getStore() != null ? report.getStore().getDisplayName() : null,
                 report.getSuggestedStoreName(),
                 report.getSuggestedDutyfreeChannel(),
+                report.getEffectiveStoreType(),
                 // 매장 마스터 표준화 기능은 제거되었으며 직접 입력값을 그대로 승인한다.
                 false,
                 report.getStatus(),

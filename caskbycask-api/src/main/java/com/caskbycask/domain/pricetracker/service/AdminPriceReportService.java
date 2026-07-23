@@ -87,6 +87,14 @@ public class AdminPriceReportService {
 
         // 가격 승인에서는 매장 마스터를 생성·승인·매핑하지 않는다.
         // 기존 Store 연결과 직접 입력 매장명은 관측 당시 데이터로 그대로 보존한다.
+        if (request != null && request.storeType() != null) {
+            boolean dutyFreeCurrency = report.getCurrency() == PriceCurrency.USD;
+            boolean dutyFreeType = request.storeType() == StoreType.DUTYFREE;
+            if (dutyFreeCurrency != dutyFreeType) {
+                throw new CustomException(ErrorCode.INVALID_INPUT);
+            }
+            report.updateStoreTypeSnapshot(request.storeType());
+        }
         // 구버전 관리자 화면이 volumeMl 없이 승인해도 사용자가 입력한 용량을 지우지 않는다.
         if (request != null && request.volumeMl() != null) {
             report.updateVolume(request.volumeMl());

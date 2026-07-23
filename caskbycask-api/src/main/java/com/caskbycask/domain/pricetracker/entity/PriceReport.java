@@ -213,6 +213,10 @@ public class PriceReport extends BaseTimeEntity {
         this.volumeMl = volumeMl;
     }
 
+    public void updateStoreTypeSnapshot(StoreType storeType) {
+        this.storeTypeSnapshot = storeType;
+    }
+
     /**
      * 신규 snapshot을 우선하고, 배포 전 레거시 행은 연결 Store로 보완한다.
      * Store도 없는 레거시 직접 입력은 당시 동작과 동일하게 통화/면세 채널로 추론한다.

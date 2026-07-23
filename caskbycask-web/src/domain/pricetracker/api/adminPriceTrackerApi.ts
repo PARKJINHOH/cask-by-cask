@@ -3,6 +3,7 @@ import type { ApiResponse, PageResponse } from '@/shared/types/common.types'
 import type {
   AdminPriceReport,
   PriceReportStatus,
+  StoreType,
 } from '../types/pricetracker.types'
 
 export const adminPriceTrackerApi = {
@@ -15,9 +16,10 @@ export const adminPriceTrackerApi = {
   getPriceReport: (id: number) =>
     axiosInstance.get<ApiResponse<AdminPriceReport>>(`/api/admin/price-reports/${id}`),
 
-  approve: (id: number, volumeMl?: number | null) =>
+  approve: (id: number, volumeMl?: number | null, storeType?: StoreType) =>
     axiosInstance.patch<ApiResponse<AdminPriceReport>>(`/api/admin/price-reports/${id}/approve`, {
       volumeMl: volumeMl ?? null,
+      storeType,
     }),
 
   reject: (id: number, rejectReason: string) =>

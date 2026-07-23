@@ -102,6 +102,7 @@ export interface AdminPriceReport {
   storeName: string | null
   suggestedStoreName: string | null
   suggestedDutyfreeChannel: DutyFreeChannel | null
+  storeType: StoreType
   needsStoreResolution: boolean
   status: PriceReportStatus
   currency: PriceCurrency

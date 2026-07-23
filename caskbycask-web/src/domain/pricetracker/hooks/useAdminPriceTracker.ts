@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { adminPriceTrackerApi } from '../api/adminPriceTrackerApi'
-import type { PriceReportStatus } from '../types/pricetracker.types'
+import type { PriceReportStatus, StoreType } from '../types/pricetracker.types'
 
 // ── 가격 등록 승인 ──────────────────────────────────
 export function useAdminPriceReports(params: { status?: PriceReportStatus; isFlagged?: boolean; page: number }) {
@@ -24,8 +24,8 @@ export function useAdminPriceReport(id: number) {
 export function useApprovePriceReport() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, volumeMl }: { id: number; volumeMl?: number | null }) =>
-      adminPriceTrackerApi.approve(id, volumeMl),
+    mutationFn: ({ id, volumeMl, storeType }: { id: number; volumeMl?: number | null; storeType?: StoreType }) =>
+      adminPriceTrackerApi.approve(id, volumeMl, storeType),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'priceReports'] }),
   })
 }

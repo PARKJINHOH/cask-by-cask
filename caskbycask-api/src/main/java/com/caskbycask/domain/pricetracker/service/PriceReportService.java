@@ -91,7 +91,7 @@ public class PriceReportService {
 
         boolean autoFlagged = checkAutoFlag(spirit.getId(),
                 store != null ? store.getId() : null,
-                request.volumeMl(), request.currency(), actualPrice);
+                storeType, request.volumeMl(), request.currency(), actualPrice);
 
         User reporter = userRepository.getByIdOrThrow(userId);
 
@@ -158,7 +158,8 @@ public class PriceReportService {
                 request.paybackAmount(), request.regularPrice(), request.discountItems(), storeType);
 
         boolean autoFlagged = checkAutoFlag(report.getSpirit().getId(),
-                store != null ? store.getId() : null, request.volumeMl(), request.currency(), actualPrice);
+                store != null ? store.getId() : null, storeType,
+                request.volumeMl(), request.currency(), actualPrice);
 
         // 기존 이미지 연결 해제
         priceReportImageRepository.findByPriceReportIdOrderBySortOrder(id)
@@ -303,14 +304,18 @@ public class PriceReportService {
         }
     }
 
-    private boolean checkAutoFlag(Long spiritId, Long storeId, Integer volumeMl,
+    private boolean checkAutoFlag(Long spiritId, Long storeId, StoreType storeType, Integer volumeMl,
                                   PriceCurrency currency, BigDecimal actualPrice) {
-        if (actualPrice == null || storeId == null || volumeMl == null
+        if (actualPrice == null || volumeMl == null
                 || currency != PriceCurrency.KRW) return false;
 
-        List<BigDecimal> recentPrices = priceReportRepository.findRecentApprovedActualPrices(
-                spiritId, storeId, volumeMl, PriceReportStatus.APPROVED, PriceCurrency.KRW,
-                PageRequest.of(0, 20));
+        List<BigDecimal> recentPrices = storeId != null
+                ? priceReportRepository.findRecentApprovedActualPrices(
+                        spiritId, storeId, volumeMl, PriceReportStatus.APPROVED, PriceCurrency.KRW,
+                        PageRequest.of(0, 20))
+                : priceReportRepository.findRecentApprovedActualPricesByStoreType(
+                        spiritId, storeType, volumeMl, PriceReportStatus.APPROVED, PriceCurrency.KRW,
+                        PageRequest.of(0, 20));
 
         if (recentPrices.isEmpty()) return false;
 

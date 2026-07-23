@@ -3,6 +3,7 @@ package com.caskbycask.domain.pricetracker.repository;
 import com.caskbycask.domain.pricetracker.entity.PriceReport;
 import com.caskbycask.domain.pricetracker.entity.enums.PriceCurrency;
 import com.caskbycask.domain.pricetracker.entity.enums.PriceReportStatus;
+import com.caskbycask.domain.pricetracker.entity.enums.StoreType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -45,6 +46,25 @@ public interface PriceReportRepository extends JpaRepository<PriceReport, Long> 
     List<BigDecimal> findRecentApprovedActualPrices(
             @Param("spiritId") Long spiritId,
             @Param("storeId") Long storeId,
+            @Param("volumeMl") Integer volumeMl,
+            @Param("status") PriceReportStatus status,
+            @Param("currency") PriceCurrency currency,
+            Pageable pageable);
+
+    // 매장 마스터 없이 직접 입력된 제보의 ±30% 자동 플래그 판별용.
+    @Query("""
+            SELECT p.actualPrice FROM PriceReport p
+            WHERE p.spirit.id = :spiritId
+            AND p.storeTypeSnapshot = :storeType
+            AND p.volumeMl = :volumeMl
+            AND p.status = :status
+            AND p.currency = :currency
+            AND p.actualPrice IS NOT NULL
+            ORDER BY p.createdAt DESC
+            """)
+    List<BigDecimal> findRecentApprovedActualPricesByStoreType(
+            @Param("spiritId") Long spiritId,
+            @Param("storeType") StoreType storeType,
             @Param("volumeMl") Integer volumeMl,
             @Param("status") PriceReportStatus status,
             @Param("currency") PriceCurrency currency,
