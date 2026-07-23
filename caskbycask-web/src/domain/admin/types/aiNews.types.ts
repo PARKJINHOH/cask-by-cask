@@ -24,6 +24,10 @@ export interface AiNewsDraftRequestCreateRequest {
   referenceUrls: string[]
 }
 
+export interface AiNewsDraftRequestRetryRequest {
+  prompt: string
+}
+
 export interface AiNewsArticleSummary {
   id: number
   articleType: AiNewsArticleType

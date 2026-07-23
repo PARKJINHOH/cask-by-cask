@@ -17,6 +17,8 @@ public final class AiNewsDraftRequestDtos {
             @Size(max = 3) List<@NotBlank @Size(max = 1500) String> referenceUrls
     ) {}
 
+    public record RetryRequest(@NotBlank @Size(max = 4000) String prompt) {}
+
     public record FailRequest(@NotBlank @Size(max = 1000) String reason) {}
 
     public record Response(

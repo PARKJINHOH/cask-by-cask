@@ -8,6 +8,8 @@ from news_models import SearchSource
 
 
 class TavilyNewsSearch:
+    QUERY_MAX_LENGTH = 399
+
     def __init__(self, api_key: str, timeout: int = 30, max_results: int = 10):
         self.api_key = api_key
         self.timeout = timeout
@@ -16,8 +18,11 @@ class TavilyNewsSearch:
 
     def search(self, query: str, *, topic: str = "news", time_range: str | None = "day",
                include_domains: list[str] | None = None) -> list[SearchSource]:
+        normalized_query = str(query).strip()[:self.QUERY_MAX_LENGTH].rstrip()
+        if not normalized_query:
+            raise ValueError("Tavily 검색어가 비어 있습니다.")
         payload = {
-            "query": query,
+            "query": normalized_query,
             "topic": topic,
             "search_depth": "basic",
             "max_results": self.max_results,
@@ -35,7 +40,12 @@ class TavilyNewsSearch:
             json=payload,
             timeout=self.timeout,
         )
-        response.raise_for_status()
+        try:
+            response.raise_for_status()
+        except requests.RequestException as error:
+            detail = str(response.text or "").strip()
+            suffix = f": {detail[:500]}" if detail else ""
+            raise RuntimeError(f"Tavily 검색 요청 실패 (HTTP {response.status_code}){suffix}") from error
         self.credits_used += 1
         result = response.json()
         sources: list[SearchSource] = []

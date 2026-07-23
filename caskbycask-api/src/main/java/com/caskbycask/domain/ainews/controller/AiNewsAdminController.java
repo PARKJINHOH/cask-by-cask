@@ -177,8 +177,9 @@ public class AiNewsAdminController {
     @PostMapping("/draft-requests/{id}/retry")
     public ResponseEntity<ApiResponse<AiNewsDraftRequestDtos.Response>> retryDraftRequest(
             @PathVariable Long id,
+            @Valid @RequestBody(required = false) AiNewsDraftRequestDtos.RetryRequest request,
             @AuthenticationPrincipal CustomUserDetails user) {
-        return ResponseEntity.ok(ApiResponse.success(draftRequestService.retry(id, user.getUserId())));
+        return ResponseEntity.ok(ApiResponse.success(draftRequestService.retry(id, request, user.getUserId())));
     }
 
     @DeleteMapping("/draft-requests/{id}/history")

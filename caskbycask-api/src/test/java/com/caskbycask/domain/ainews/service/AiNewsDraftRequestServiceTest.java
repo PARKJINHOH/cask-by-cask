@@ -113,7 +113,7 @@ class AiNewsDraftRequestServiceTest {
         given(userRepository.getByIdOrThrow(9L)).willReturn(admin);
         given(requestRepository.save(any(AiNewsDraftRequest.class))).willReturn(retried);
 
-        AiNewsDraftRequestDtos.Response response = service.retry(3L, 9L);
+        AiNewsDraftRequestDtos.Response response = service.retry(3L, null, 9L);
 
         ArgumentCaptor<AiNewsDraftRequest> requestCaptor = ArgumentCaptor.forClass(AiNewsDraftRequest.class);
         verify(requestRepository).save(requestCaptor.capture());
@@ -130,11 +130,31 @@ class AiNewsDraftRequestServiceTest {
     }
 
     @Test
+    void retryUsesEditedPromptForNewRequestWithoutChangingFailedOriginal() {
+        AiNewsDraftRequest original = draftRequest(3L, AiNewsDraftRequestStatus.FAILED);
+        given(requestRepository.findByIdForUpdate(3L)).willReturn(Optional.of(original));
+        given(userRepository.getByIdOrThrow(9L)).willReturn(admin);
+        given(requestRepository.save(any(AiNewsDraftRequest.class)))
+                .willAnswer(invocation -> invocation.getArgument(0));
+
+        AiNewsDraftRequestDtos.Response response = service.retry(
+                3L, new AiNewsDraftRequestDtos.RetryRequest("  수정한 작성 요청  "), 9L);
+
+        ArgumentCaptor<AiNewsDraftRequest> requestCaptor = ArgumentCaptor.forClass(AiNewsDraftRequest.class);
+        verify(requestRepository).save(requestCaptor.capture());
+        assertThat(requestCaptor.getValue().getPrompt()).isEqualTo("수정한 작성 요청");
+        assertThat(original.getPrompt()).isEqualTo("공식 발표를 확인해 작성");
+        assertThat(original.getStatus()).isEqualTo(AiNewsDraftRequestStatus.FAILED);
+        assertThat(response.prompt()).isEqualTo("수정한 작성 요청");
+        assertThat(response.status()).isEqualTo(AiNewsDraftRequestStatus.PENDING);
+    }
+
+    @Test
     void retryRejectsPendingRequestWithConflictStatus() {
         AiNewsDraftRequest request = draftRequest(3L, AiNewsDraftRequestStatus.PENDING);
         given(requestRepository.findByIdForUpdate(3L)).willReturn(Optional.of(request));
 
-        assertInvalidStatus(() -> service.retry(3L, 9L));
+        assertInvalidStatus(() -> service.retry(3L, null, 9L));
 
         verify(requestRepository, never()).save(any(AiNewsDraftRequest.class));
         verify(userRepository, never()).getByIdOrThrow(any());

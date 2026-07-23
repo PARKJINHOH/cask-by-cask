@@ -71,7 +71,8 @@ public class AiNewsDraftRequestService {
     }
 
     @Transactional
-    public AiNewsDraftRequestDtos.Response retry(Long id, Long actorId) {
+    public AiNewsDraftRequestDtos.Response retry(
+            Long id, AiNewsDraftRequestDtos.RetryRequest retryRequest, Long actorId) {
         AiNewsDraftRequest original = getForUpdate(id);
         if (!isTerminal(original.getStatus())) {
             throw new CustomException(ErrorCode.AI_NEWS_INVALID_STATUS);
@@ -79,8 +80,9 @@ public class AiNewsDraftRequestService {
 
         User actor = userRepository.getByIdOrThrow(actorId);
         List<String> urls = original.referenceUrls();
+        String prompt = retryRequest == null ? original.getPrompt() : retryRequest.prompt().trim();
         AiNewsDraftRequest retried = requestRepository.save(AiNewsDraftRequest.builder()
-                .prompt(original.getPrompt())
+                .prompt(prompt)
                 .referenceUrl1(urls.size() > 0 ? urls.get(0) : null)
                 .referenceUrl2(urls.size() > 1 ? urls.get(1) : null)
                 .referenceUrl3(urls.size() > 2 ? urls.get(2) : null)

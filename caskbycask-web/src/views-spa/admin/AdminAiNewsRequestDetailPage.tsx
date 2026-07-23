@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { adminAiNewsApi } from '@/domain/admin/api/adminAiNewsApi'
@@ -17,6 +17,12 @@ export default function AdminAiNewsRequestDetailPage() {
   const queryClient = useQueryClient()
   const queryKey = ['admin', 'ai-news', 'draft-requests', 'detail', requestId] as const
   const [error, setError] = useState('')
+  const [editedPrompt, setEditedPrompt] = useState<string | null>(null)
+
+  useEffect(() => {
+    setEditedPrompt(null)
+    setError('')
+  }, [requestId])
 
   const { data: request, isLoading, isError } = useQuery({
     queryKey,
@@ -35,7 +41,12 @@ export default function AdminAiNewsRequestDetailPage() {
   })
 
   const retry = useMutation({
-    mutationFn: () => adminAiNewsApi.retryDraftRequest(requestId),
+    mutationFn: () => {
+      const data = request?.status === 'FAILED'
+        ? { prompt: (editedPrompt ?? request.prompt).trim() }
+        : undefined
+      return adminAiNewsApi.retryDraftRequest(requestId, data)
+    },
     onSuccess: (next) => {
       setError('')
       queryClient.invalidateQueries({ queryKey: ['admin', 'ai-news', 'draft-requests'] })
@@ -72,6 +83,8 @@ export default function AdminAiNewsRequestDetailPage() {
   const isPending = request.status === 'PENDING'
   const isTerminal = ['COMPLETED', 'FAILED', 'CANCELLED'].includes(request.status)
   const isMutating = cancel.isPending || retry.isPending || remove.isPending
+  const retryPrompt = editedPrompt ?? request.prompt
+  const canRetry = request.status !== 'FAILED' || Boolean(retryPrompt.trim())
 
   const handleCancel = () => {
     if (window.confirm('이 AI 작성 요청을 취소하시겠습니까?')) cancel.mutate()
@@ -81,7 +94,10 @@ export default function AdminAiNewsRequestDetailPage() {
     const articleNotice = request.status === 'COMPLETED'
       ? '\n기존 임시저장 글은 변경되지 않습니다.'
       : ''
-    if (window.confirm(`같은 내용으로 새 AI 작성 요청을 등록하시겠습니까?${articleNotice}`)) retry.mutate()
+    const promptNotice = request.status === 'FAILED'
+      ? '현재 입력한 프롬프트로 새 AI 작성 요청을 등록하시겠습니까?\n기존 실패 내역은 변경되지 않습니다.'
+      : '같은 내용으로 새 AI 작성 요청을 등록하시겠습니까?'
+    if (window.confirm(`${promptNotice}${articleNotice}`)) retry.mutate()
   }
 
   const handleDelete = () => {
@@ -127,7 +143,24 @@ export default function AdminAiNewsRequestDetailPage() {
 
         <section className="rounded-xl bg-white p-5 shadow-sm">
           <h2 className="text-sm font-semibold text-neutral-800">AI 프롬프트</h2>
-          <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-7 text-neutral-800">{request.prompt}</p>
+          {request.status === 'FAILED' ? (
+            <>
+              <textarea
+                aria-label="재요청 AI 프롬프트"
+                maxLength={4000}
+                rows={8}
+                value={retryPrompt}
+                onChange={(event) => setEditedPrompt(event.target.value)}
+                className="mt-3 w-full resize-y rounded-lg border border-neutral-300 px-3 py-2 text-sm leading-7 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
+              />
+              <div className="mt-1 flex items-center justify-between gap-3 text-xs text-neutral-500">
+                <span>수정 내용은 새 재요청에만 적용되며 기존 실패 내역은 보존됩니다.</span>
+                <span>{retryPrompt.length}/4000</span>
+              </div>
+            </>
+          ) : (
+            <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-7 text-neutral-800">{request.prompt}</p>
+          )}
         </section>
 
         <section className="rounded-xl bg-white p-5 shadow-sm">
@@ -162,9 +195,9 @@ export default function AdminAiNewsRequestDetailPage() {
           )}
           {isTerminal && (
             <>
-              <button type="button" disabled={isMutating} onClick={handleRetry}
+              <button type="button" disabled={isMutating || !canRetry} onClick={handleRetry}
                 className="rounded-lg border border-primary-300 px-4 py-2 text-sm font-semibold text-primary-700 hover:bg-primary-50 disabled:opacity-50">
-                {retry.isPending ? '재요청 중...' : '재요청'}
+                {retry.isPending ? '재요청 중...' : request.status === 'FAILED' ? '수정 내용으로 재요청' : '재요청'}
               </button>
               <button type="button" disabled={isMutating} onClick={handleDelete}
                 className="rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50">

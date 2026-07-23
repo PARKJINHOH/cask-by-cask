@@ -122,6 +122,34 @@ class TavilyNewsSearchTest(unittest.TestCase):
         self.assertEqual("day", request_payload["time_range"])
         self.assertEqual(["example.com"], request_payload["include_domains"])
 
+    @patch("news_tavily.requests.post")
+    def test_search_truncates_query_to_tavily_limit(self, post: Mock) -> None:
+        response = Mock()
+        response.raise_for_status.return_value = None
+        response.json.return_value = {"results": []}
+        post.return_value = response
+
+        search = TavilyNewsSearch("test-key")
+        search.search("가" * 500)
+
+        request_query = post.call_args.kwargs["json"]["query"]
+        self.assertEqual(TavilyNewsSearch.QUERY_MAX_LENGTH, len(request_query))
+        self.assertLess(len(request_query), 400)
+
+    @patch("news_tavily.requests.post")
+    def test_search_failure_includes_tavily_response_detail(self, post: Mock) -> None:
+        response = Mock()
+        response.status_code = 400
+        response.text = '{"detail":"Query must be less than 400 characters"}'
+        response.raise_for_status.side_effect = requests.RequestException("Bad Request")
+        post.return_value = response
+
+        search = TavilyNewsSearch("test-key")
+
+        with self.assertRaisesRegex(RuntimeError, "Query must be less than 400 characters"):
+            search.search("whisky release")
+        self.assertEqual(0, search.credits_used)
+
 
 class NewsModelTest(unittest.TestCase):
     def test_canonical_url_removes_tracking_and_sorts_query(self) -> None:

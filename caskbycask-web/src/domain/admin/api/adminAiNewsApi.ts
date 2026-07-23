@@ -4,7 +4,7 @@ import type {
   AiNewsArticleCreateRequest, AiNewsArticleDetail, AiNewsArticleStatus,
   AiNewsArticleSummary, AiNewsArticleType, AiNewsArticleUpdateRequest,
   AiNewsCategory, AiNewsDraftRequest, AiNewsDraftRequestCreateRequest,
-  AiNewsRun, AiNewsSettings, AiNewsSourceConfig,
+  AiNewsDraftRequestRetryRequest, AiNewsRun, AiNewsSettings, AiNewsSourceConfig,
   AiNewsSourceConfigRequest, AiNewsTopic, AiNewsTopicRequest,
   AiNewsTopicStatus, AiNewsUsageSummary,
 } from '../types/aiNews.types'
@@ -88,9 +88,9 @@ export const adminAiNewsApi = {
     )
     return res.data.data!
   },
-  retryDraftRequest: async (id: number) => {
+  retryDraftRequest: async (id: number, data?: AiNewsDraftRequestRetryRequest) => {
     const res = await axiosInstance.post<ApiResponse<AiNewsDraftRequest>>(
-      `/api/admin/ai-news/draft-requests/${id}/retry`,
+      `/api/admin/ai-news/draft-requests/${id}/retry`, data,
     )
     return res.data.data!
   },
