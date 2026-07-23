@@ -1,29 +1,16 @@
 import { useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { adminAiNewsApi } from '@/domain/admin/api/adminAiNewsApi'
-import type { AiNewsDraftRequestStatus } from '@/domain/admin/types/aiNews.types'
 import Pagination from '@/shared/components/Pagination'
 import Spinner from '@/shared/components/Spinner'
 import { formatDateTime } from '@/shared/utils/format'
 import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
-
-const statusLabels: Record<AiNewsDraftRequestStatus, string> = {
-  PENDING: '다음 배치 대기',
-  COMPLETED: '임시저장 완료',
-  FAILED: '작성 실패',
-  CANCELLED: '요청 취소',
-}
-
-const statusClasses: Record<AiNewsDraftRequestStatus, string> = {
-  PENDING: 'bg-blue-50 text-blue-700',
-  COMPLETED: 'bg-emerald-50 text-emerald-700',
-  FAILED: 'bg-red-50 text-red-700',
-  CANCELLED: 'bg-neutral-100 text-neutral-500',
-}
+import AdminAiNewsRequestStatusBadge, { summarizeAiNewsPrompt } from './AdminAiNewsRequestStatusBadge'
 
 export default function AdminAiNewsRequestPanel() {
   const qc = useQueryClient()
+  const navigate = useNavigate()
   const [prompt, setPrompt] = useState('')
   const [urls, setUrls] = useState(['', '', ''])
   const [page, setPage] = useState(0)
@@ -46,12 +33,6 @@ export default function AdminAiNewsRequestPanel() {
       qc.invalidateQueries({ queryKey: ['admin', 'ai-news', 'draft-requests'] })
     },
     onError: (e) => setError(e instanceof Error ? e.message : 'AI 작성 요청을 저장하지 못했습니다.'),
-  })
-
-  const cancel = useMutation({
-    mutationFn: (id: number) => adminAiNewsApi.cancelDraftRequest(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'ai-news', 'draft-requests'] }),
-    onError: (e) => setError(e instanceof Error ? e.message : '요청을 취소하지 못했습니다.'),
   })
 
   const submit = (event: FormEvent) => {
@@ -127,53 +108,103 @@ export default function AdminAiNewsRequestPanel() {
       <section className="space-y-3">
         <div>
           <h2 className="font-semibold text-neutral-900">AI 작성 요청 내역</h2>
-          <p className="mt-1 text-xs text-neutral-500">실패한 요청은 원인을 확인한 뒤 새 요청으로 다시 등록할 수 있습니다.</p>
+          <p className="mt-1 text-xs text-neutral-500">요청을 선택하면 전체 프롬프트와 처리 결과를 확인하고 취소·삭제·재요청할 수 있습니다.</p>
         </div>
         {isLoading ? (
           <div className="flex justify-center rounded-xl bg-white py-16 shadow-sm"><Spinner className="text-primary-800" /></div>
         ) : !data || data.empty ? (
           <div className="rounded-xl bg-white py-16 text-center text-sm text-neutral-400 shadow-sm">등록된 AI 작성 요청이 없습니다.</div>
         ) : (
-          <div className="space-y-3">
-            {data.content.map((request) => (
-              <article key={request.id} className="rounded-xl bg-white p-4 shadow-sm">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusClasses[request.status]}`}>
-                        {statusLabels[request.status]}
-                      </span>
-                      <span className="text-xs text-neutral-400">요청 #{request.id} · {formatDateTime(request.createdAt)}</span>
+          <div>
+            <div className="hidden overflow-hidden rounded-xl bg-white shadow-sm md:block">
+              <table className="w-full table-fixed text-sm">
+                <thead className="border-b border-neutral-200 bg-neutral-50 text-xs font-semibold text-neutral-500">
+                  <tr>
+                    <th className="w-20 px-4 py-3 text-center">번호</th>
+                    <th className="px-4 py-3 text-left">제목</th>
+                    <th className="w-32 px-4 py-3 text-center">상태</th>
+                    <th className="w-32 px-4 py-3 text-center">결과</th>
+                    <th className="w-40 px-4 py-3 text-center">요청일</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-100">
+                  {data.content.map((request, index) => {
+                    const detailPath = `/admin/community/ai-news/requests/${request.id}`
+                    const number = data.totalElements - (page * data.size) - index
+                    return (
+                      <tr key={request.id} tabIndex={0} role="link"
+                        aria-label={`AI 작성 요청 ${number} 상세 보기`}
+                        onClick={() => navigate(detailPath)}
+                        onKeyDown={(event) => {
+                          if (event.target !== event.currentTarget) return
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault()
+                            navigate(detailPath)
+                          }
+                        }}
+                        className="cursor-pointer transition-colors hover:bg-neutral-50 focus:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-300">
+                        <td className="px-4 py-3 text-center text-xs tabular-nums text-neutral-400">{number}</td>
+                        <td className="px-4 py-3">
+                          <p title={request.prompt} className="truncate text-sm text-neutral-800">
+                            {summarizeAiNewsPrompt(request.prompt)}
+                          </p>
+                          {request.failureReason && <p className="mt-1 truncate text-xs text-red-500">{request.failureReason}</p>}
+                        </td>
+                        <td className="px-4 py-3 text-center"><AdminAiNewsRequestStatusBadge status={request.status} /></td>
+                        <td className="px-4 py-3 text-center">
+                          {request.articleId ? (
+                            <Link to={`/admin/community/ai-news/${request.articleId}/edit`}
+                              onClick={(event) => event.stopPropagation()}
+                              className="text-xs font-semibold text-primary-700 hover:underline">
+                              원고 #{request.articleId}
+                            </Link>
+                          ) : <span className="text-xs text-neutral-300">-</span>}
+                        </td>
+                        <td className="px-4 py-3 text-center text-xs tabular-nums text-neutral-500">{formatDateTime(request.createdAt)}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="space-y-2 md:hidden">
+              {data.content.map((request, index) => {
+                const detailPath = `/admin/community/ai-news/requests/${request.id}`
+                const number = data.totalElements - (page * data.size) - index
+                return (
+                  <article key={request.id} tabIndex={0} role="link"
+                    aria-label={`AI 작성 요청 ${number} 상세 보기`}
+                    onClick={() => navigate(detailPath)}
+                    onKeyDown={(event) => {
+                      if (event.target !== event.currentTarget) return
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        navigate(detailPath)
+                      }
+                    }}
+                    className="cursor-pointer rounded-xl border border-neutral-200 bg-white p-4 shadow-sm transition-colors hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-primary-300">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-xs tabular-nums text-neutral-400">{number}</span>
+                      <AdminAiNewsRequestStatusBadge status={request.status} />
                     </div>
-                    <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-neutral-800">{request.prompt}</p>
-                    {request.referenceUrls.length > 0 && (
-                      <div className="mt-3 space-y-1">
-                        {request.referenceUrls.map((url) => (
-                          <a key={url} href={url} target="_blank" rel="noreferrer"
-                            className="block truncate text-xs text-primary-700 hover:underline">{url}</a>
-                        ))}
-                      </div>
-                    )}
-                    {request.failureReason && <p className="mt-3 rounded-lg bg-red-50 p-2 text-xs leading-5 text-red-700">{request.failureReason}</p>}
-                  </div>
-                  <div className="flex shrink-0 gap-2">
-                    {request.articleId && (
-                      <Link to={`/admin/community/ai-news/${request.articleId}/edit`}
-                        className="rounded-lg bg-primary-800 px-3 py-2 text-xs font-semibold text-white hover:bg-primary-900">
-                        임시저장 글 열기
-                      </Link>
-                    )}
-                    {request.status === 'PENDING' && (
-                      <button type="button" disabled={cancel.isPending} onClick={() => {
-                        if (window.confirm('이 AI 작성 요청을 취소하시겠습니까?')) cancel.mutate(request.id)
-                      }} className="rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50">
-                        요청 취소
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </article>
-            ))}
+                    <p className="mt-3 line-clamp-2 break-words text-sm leading-5 text-neutral-800">
+                      {summarizeAiNewsPrompt(request.prompt, 90)}
+                    </p>
+                    <div className="mt-3 flex items-center justify-between gap-3 text-xs text-neutral-400">
+                      <span>{formatDateTime(request.createdAt)}</span>
+                      {request.articleId && (
+                        <Link to={`/admin/community/ai-news/${request.articleId}/edit`}
+                          onClick={(event) => event.stopPropagation()}
+                          className="shrink-0 font-semibold text-primary-700 hover:underline">
+                          원고 #{request.articleId}
+                        </Link>
+                      )}
+                    </div>
+                  </article>
+                )
+              })}
+            </div>
           </div>
         )}
         {data && data.totalPages > 1 && (

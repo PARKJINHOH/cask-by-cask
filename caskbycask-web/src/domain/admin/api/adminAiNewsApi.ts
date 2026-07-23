@@ -70,14 +70,32 @@ export const adminAiNewsApi = {
     )
     return res.data.data!
   },
+  draftRequest: async (id: number) => {
+    const res = await axiosInstance.get<ApiResponse<AiNewsDraftRequest>>(
+      `/api/admin/ai-news/draft-requests/${id}`,
+    )
+    return res.data.data!
+  },
   createDraftRequest: async (data: AiNewsDraftRequestCreateRequest) => {
     const res = await axiosInstance.post<ApiResponse<AiNewsDraftRequest>>(
       '/api/admin/ai-news/draft-requests', data,
     )
     return res.data.data!
   },
-  cancelDraftRequest: (id: number) =>
-    axiosInstance.delete(`/api/admin/ai-news/draft-requests/${id}`),
+  cancelDraftRequest: async (id: number) => {
+    const res = await axiosInstance.delete<ApiResponse<AiNewsDraftRequest>>(
+      `/api/admin/ai-news/draft-requests/${id}`,
+    )
+    return res.data.data!
+  },
+  retryDraftRequest: async (id: number) => {
+    const res = await axiosInstance.post<ApiResponse<AiNewsDraftRequest>>(
+      `/api/admin/ai-news/draft-requests/${id}/retry`,
+    )
+    return res.data.data!
+  },
+  deleteDraftRequestHistory: (id: number) =>
+    axiosInstance.delete(`/api/admin/ai-news/draft-requests/${id}/history`),
 
   topics: async (params?: { status?: AiNewsTopicStatus; page?: number; size?: number }) => {
     const res = await axiosInstance.get<ApiResponse<PageResponse<AiNewsTopic>>>('/api/admin/ai-news/topics', { params })

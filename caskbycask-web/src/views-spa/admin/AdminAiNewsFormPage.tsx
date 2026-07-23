@@ -1,5 +1,5 @@
 import { useEffect, useState, type MouseEvent, type ReactNode } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { adminAiNewsApi } from '@/domain/admin/api/adminAiNewsApi'
 import type { AiNewsArticleType, AiNewsCategory, AiNewsSourceEvidence } from '@/domain/admin/types/aiNews.types'
@@ -18,8 +18,9 @@ export default function AdminAiNewsFormPage() {
   const articleId = id ? Number(id) : null
   const isEdit = articleId != null && Number.isFinite(articleId)
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const qc = useQueryClient()
-  const [writeMode, setWriteMode] = useState<'manual' | 'ai'>('manual')
+  const writeMode = searchParams.get('mode') === 'ai' ? 'ai' : 'manual'
   const [articleType, setArticleType] = useState<AiNewsArticleType>('TIP_INFO')
   const [category, setCategory] = useState<AiNewsCategory>('WHISKY')
   const [title, setTitle] = useState('')
@@ -149,13 +150,13 @@ export default function AdminAiNewsFormPage() {
       />
       {!isEdit && (
         <div className="mb-5 grid grid-cols-2 rounded-xl bg-neutral-100 p-1.5">
-          <button type="button" onClick={() => setWriteMode('manual')}
+          <button type="button" onClick={() => setSearchParams({}, { replace: true })}
             className={`rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors ${
               writeMode === 'manual' ? 'bg-white text-primary-800 shadow-sm' : 'text-neutral-500 hover:text-neutral-800'
             }`}>
             직접작성
           </button>
-          <button type="button" onClick={() => setWriteMode('ai')}
+          <button type="button" onClick={() => setSearchParams({ mode: 'ai' }, { replace: true })}
             className={`rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors ${
               writeMode === 'ai' ? 'bg-white text-primary-800 shadow-sm' : 'text-neutral-500 hover:text-neutral-800'
             }`}>

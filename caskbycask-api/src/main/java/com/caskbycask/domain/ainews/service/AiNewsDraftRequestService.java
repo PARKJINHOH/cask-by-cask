@@ -40,6 +40,11 @@ public class AiNewsDraftRequestService {
                 .map(AiNewsDraftRequestDtos.Response::from);
     }
 
+    @Transactional(readOnly = true)
+    public AiNewsDraftRequestDtos.Response detail(Long id) {
+        return AiNewsDraftRequestDtos.Response.from(get(id));
+    }
+
     @Transactional
     public AiNewsDraftRequestDtos.Response create(AiNewsDraftRequestDtos.CreateRequest request, Long actorId) {
         User actor = userRepository.getByIdOrThrow(actorId);
@@ -56,13 +61,41 @@ public class AiNewsDraftRequestService {
 
     @Transactional
     public AiNewsDraftRequestDtos.Response cancel(Long id) {
-        AiNewsDraftRequest request = get(id);
+        AiNewsDraftRequest request = getForUpdate(id);
         if (request.getStatus() != AiNewsDraftRequestStatus.PENDING
                 && request.getStatus() != AiNewsDraftRequestStatus.FAILED) {
-            throw new CustomException(ErrorCode.INVALID_INPUT);
+            throw new CustomException(ErrorCode.AI_NEWS_INVALID_STATUS);
         }
         request.cancel();
         return AiNewsDraftRequestDtos.Response.from(request);
+    }
+
+    @Transactional
+    public AiNewsDraftRequestDtos.Response retry(Long id, Long actorId) {
+        AiNewsDraftRequest original = getForUpdate(id);
+        if (!isTerminal(original.getStatus())) {
+            throw new CustomException(ErrorCode.AI_NEWS_INVALID_STATUS);
+        }
+
+        User actor = userRepository.getByIdOrThrow(actorId);
+        List<String> urls = original.referenceUrls();
+        AiNewsDraftRequest retried = requestRepository.save(AiNewsDraftRequest.builder()
+                .prompt(original.getPrompt())
+                .referenceUrl1(urls.size() > 0 ? urls.get(0) : null)
+                .referenceUrl2(urls.size() > 1 ? urls.get(1) : null)
+                .referenceUrl3(urls.size() > 2 ? urls.get(2) : null)
+                .requestedBy(actor)
+                .build());
+        return AiNewsDraftRequestDtos.Response.from(retried);
+    }
+
+    @Transactional
+    public void deleteHistory(Long id) {
+        AiNewsDraftRequest request = getForUpdate(id);
+        if (!isTerminal(request.getStatus())) {
+            throw new CustomException(ErrorCode.AI_NEWS_INVALID_STATUS);
+        }
+        requestRepository.delete(request);
     }
 
     @Transactional(readOnly = true)
@@ -73,12 +106,14 @@ public class AiNewsDraftRequestService {
 
     @Transactional
     public AiNewsDraftRequestDtos.Response complete(Long id, AiNewsDtos.ArticleUpsertRequest result) {
-        AiNewsDraftRequest request = get(id);
+        AiNewsDraftRequest request = getForUpdate(id);
         if (request.getStatus() == AiNewsDraftRequestStatus.COMPLETED) {
             return AiNewsDraftRequestDtos.Response.from(request);
         }
-        if (request.getStatus() != AiNewsDraftRequestStatus.PENDING
-                || result.articleType() != AiNewsArticleType.RELEASE_NEWS) {
+        if (request.getStatus() != AiNewsDraftRequestStatus.PENDING) {
+            throw new CustomException(ErrorCode.AI_NEWS_INVALID_STATUS);
+        }
+        if (result.articleType() != AiNewsArticleType.RELEASE_NEWS) {
             throw new CustomException(ErrorCode.INVALID_INPUT);
         }
         String dedupeKey = "admin-request:" + id;
@@ -99,9 +134,9 @@ public class AiNewsDraftRequestService {
 
     @Transactional
     public AiNewsDraftRequestDtos.Response fail(Long id, AiNewsDraftRequestDtos.FailRequest failure) {
-        AiNewsDraftRequest request = get(id);
+        AiNewsDraftRequest request = getForUpdate(id);
         if (request.getStatus() != AiNewsDraftRequestStatus.PENDING) {
-            throw new CustomException(ErrorCode.INVALID_INPUT);
+            throw new CustomException(ErrorCode.AI_NEWS_INVALID_STATUS);
         }
         request.fail(failure.reason().trim());
         return AiNewsDraftRequestDtos.Response.from(request);
@@ -110,6 +145,17 @@ public class AiNewsDraftRequestService {
     private AiNewsDraftRequest get(Long id) {
         return requestRepository.findById(id)
                 .orElseThrow(() -> new CustomException(ErrorCode.AI_NEWS_NOT_FOUND));
+    }
+
+    private AiNewsDraftRequest getForUpdate(Long id) {
+        return requestRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new CustomException(ErrorCode.AI_NEWS_NOT_FOUND));
+    }
+
+    private static boolean isTerminal(AiNewsDraftRequestStatus status) {
+        return status == AiNewsDraftRequestStatus.COMPLETED
+                || status == AiNewsDraftRequestStatus.FAILED
+                || status == AiNewsDraftRequestStatus.CANCELLED;
     }
 
     private static List<String> normalizeUrls(List<String> rawUrls) {

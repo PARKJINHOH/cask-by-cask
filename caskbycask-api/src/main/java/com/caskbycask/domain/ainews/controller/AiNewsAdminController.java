@@ -157,6 +157,11 @@ public class AiNewsAdminController {
         return ResponseEntity.ok(ApiResponse.success(PageResponse.from(draftRequestService.list(page, size))));
     }
 
+    @GetMapping("/draft-requests/{id}")
+    public ResponseEntity<ApiResponse<AiNewsDraftRequestDtos.Response>> draftRequest(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(draftRequestService.detail(id)));
+    }
+
     @PostMapping("/draft-requests")
     public ResponseEntity<ApiResponse<AiNewsDraftRequestDtos.Response>> createDraftRequest(
             @Valid @RequestBody AiNewsDraftRequestDtos.CreateRequest request,
@@ -167,6 +172,19 @@ public class AiNewsAdminController {
     @DeleteMapping("/draft-requests/{id}")
     public ResponseEntity<ApiResponse<AiNewsDraftRequestDtos.Response>> cancelDraftRequest(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(draftRequestService.cancel(id)));
+    }
+
+    @PostMapping("/draft-requests/{id}/retry")
+    public ResponseEntity<ApiResponse<AiNewsDraftRequestDtos.Response>> retryDraftRequest(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails user) {
+        return ResponseEntity.ok(ApiResponse.success(draftRequestService.retry(id, user.getUserId())));
+    }
+
+    @DeleteMapping("/draft-requests/{id}/history")
+    public ResponseEntity<ApiResponse<Void>> deleteDraftRequestHistory(@PathVariable Long id) {
+        draftRequestService.deleteHistory(id);
+        return ResponseEntity.ok(ApiResponse.success());
     }
 
     @PostMapping("/sources")
