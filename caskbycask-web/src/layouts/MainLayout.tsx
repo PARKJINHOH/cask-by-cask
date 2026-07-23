@@ -27,6 +27,7 @@ import type { SpiritAutocompleteItem } from '@/domain/spirit/types/spirit.types'
 import { getSpiritListDisplayNames } from '@/domain/spirit/utils/spiritDisplayName'
 import { getSpiritDetailPath } from '@/domain/spirit/utils/spiritUrl'
 import { SEARCH_DEBOUNCE_MS } from '@/shared/hooks/useDebouncedValue'
+import { scrollToPageTop } from '@/shared/utils/scrollToPageTop'
 
 
 const SEEN_KEY = 'notice:lastSeenId'
@@ -485,6 +486,7 @@ function HeaderSearch() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     handleSearchRedirect(value.trim())
+    scrollToPageTop(e.currentTarget as HTMLFormElement)
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {

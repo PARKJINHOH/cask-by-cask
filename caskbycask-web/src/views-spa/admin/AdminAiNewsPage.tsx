@@ -323,7 +323,7 @@ function SourcesTab() {
           <thead className="border-b bg-neutral-50 text-left text-xs text-neutral-500"><tr><th className="px-4 py-3">수집 상태</th><th className="px-4 py-3">출처</th><th className="px-4 py-3">URL</th><th className="px-4 py-3">등급</th><th className="px-4 py-3">활성</th><th className="px-4 py-3">자동발행</th><th className="px-4 py-3">이미지</th><th className="px-4 py-3">관리</th></tr></thead>
           <tbody className="divide-y">{data?.content.map((source) => <SourceRow key={source.id} source={source} onChange={(payload) => update.mutate({ id: source.id, payload })} onEdit={() => startEdit(source)} onDelete={() => { if (window.confirm(`'${source.sourceName}' 출처를 삭제하시겠습니까?`)) remove.mutate(source.id) }} />)}</tbody>
         </table>{data?.empty && <p className="py-12 text-center text-sm text-neutral-500">등록된 출처가 없습니다.</p>}</div>
-        <Pagination currentPage={data?.page ?? 0} totalPages={data?.totalPages ?? 0} onPageChange={setPage} scrollToTopOnChange={false} />
+        <Pagination currentPage={data?.page ?? 0} totalPages={data?.totalPages ?? 0} onPageChange={setPage} />
       </>}
     </div>
   )

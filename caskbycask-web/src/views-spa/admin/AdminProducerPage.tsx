@@ -16,6 +16,7 @@ import { useAdminSpirits } from '@/domain/admin/hooks/useAdminSpirits'
 import type { AdminProducer, Producer, ProducerType, CreateProducerPayload, UpdateProducerPayload } from '@/domain/producer/types/producer.types'
 import { PRODUCER_TYPE_LABEL } from '@/domain/producer/types/producer.types'
 import CountryRegionSelector from '@/domain/location/components/CountryRegionSelector'
+import { scrollToPageTop } from '@/shared/utils/scrollToPageTop'
 import { ISO3166_COUNTRIES } from '@/domain/location/data/iso3166Countries'
 import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 
@@ -342,6 +343,7 @@ export default function AdminProducerPage() {
     e.preventDefault()
     setAppliedFilters(filterInput)
     setListQuery(filterInput, 0)
+    scrollToPageTop(e.currentTarget as HTMLFormElement)
   }
 
   const handleResetFilters = () => {

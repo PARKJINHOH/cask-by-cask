@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -9,6 +9,7 @@ import { useAuthStore } from '@/domain/auth/store/authStore'
 import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 import Toast from '@/shared/components/Toast'
 import { useToast } from '@/shared/hooks/useToast'
+import { scrollToElementTop, scrollToPageTop } from '@/shared/utils/scrollToPageTop'
 
 export default function TasteTreePage() {
   const { shareKey } = useParams<{ shareKey?: string }>()
@@ -23,6 +24,8 @@ function TasteTreeDirectory() {
   const [keywordInput, setKeywordInput] = useState('')
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(0)
+  const pageRef = useRef<HTMLDivElement>(null)
+  const listTopRef = useRef<HTMLElement>(null)
   const query = useQuery({
     queryKey: ['taste-trees', 'public', type, sort, keyword, page],
     queryFn: () => tasteTreeApi.search({ type, sort, keyword, page, size: 12 }).then((response) => response.data.data!),
@@ -30,9 +33,19 @@ function TasteTreeDirectory() {
 
   const changeType = (next: TasteTreeType) => { setType(next); setPage(0) }
   const changeSort = (next: TasteTreeSort) => { setSort(next); setPage(0) }
+  const submitKeyword = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setKeyword(keywordInput.trim())
+    setPage(0)
+    scrollToPageTop(pageRef.current)
+  }
+  const changePage = (nextPage: number) => {
+    setPage(nextPage)
+    scrollToElementTop(listTopRef.current)
+  }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-7 lg:py-10">
+    <div ref={pageRef} className="mx-auto max-w-7xl px-4 py-7 lg:py-10">
       <SeoMeta title={t('tasteTree.title')} description={t('tasteTree.subtitle')} canonical={buildCanonical(`/${i18n.language === 'en' ? 'en' : 'ko'}/taste-trees`)} />
       <header className="overflow-hidden rounded-2xl bg-stone-950 px-6 py-9 text-white shadow-xl sm:px-10 lg:flex lg:items-end lg:justify-between lg:px-12 lg:py-12">
         <div className="max-w-3xl">
@@ -46,7 +59,7 @@ function TasteTreeDirectory() {
         </div>
       </header>
 
-      <section className="mt-6 rounded-2xl border border-stone-200 bg-white p-3 shadow-sm sm:p-4">
+      <section ref={listTopRef} className="mt-6 rounded-2xl border border-stone-200 bg-white p-3 shadow-sm sm:p-4">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div className="grid grid-cols-2 gap-2">
             {(['OFFICIAL', 'USER'] as const).map((value) => (
@@ -55,7 +68,7 @@ function TasteTreeDirectory() {
               </button>
             ))}
           </div>
-          <form onSubmit={(event) => { event.preventDefault(); setKeyword(keywordInput.trim()); setPage(0) }} className="flex min-w-0 flex-1 gap-2 xl:max-w-xl">
+          <form onSubmit={submitKeyword} className="flex min-w-0 flex-1 gap-2 xl:max-w-xl">
             <input value={keywordInput} onChange={(event) => setKeywordInput(event.target.value)} placeholder={t('tasteTree.searchPlaceholder')} className="min-w-0 flex-1 rounded-xl border border-stone-300 px-4 py-3 text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100" />
             <button className="rounded-xl bg-amber-500 px-5 py-3 text-sm font-black text-stone-950 hover:bg-amber-400">{t('tasteTree.search')}</button>
           </form>
@@ -96,9 +109,9 @@ function TasteTreeDirectory() {
 
       {query.data && query.data.totalPages > 1 && (
         <nav className="mt-8 flex items-center justify-center gap-3">
-          <button type="button" disabled={page === 0} onClick={() => setPage((value) => value - 1)} className="rounded-xl border border-stone-300 px-4 py-2 text-sm font-bold disabled:opacity-35">{t('tasteTree.previousPage')}</button>
+          <button type="button" disabled={page === 0} onClick={() => changePage(page - 1)} className="rounded-xl border border-stone-300 px-4 py-2 text-sm font-bold disabled:opacity-35">{t('tasteTree.previousPage')}</button>
           <span className="text-sm font-black text-stone-700">{page + 1} / {query.data.totalPages}</span>
-          <button type="button" disabled={query.data.last} onClick={() => setPage((value) => value + 1)} className="rounded-xl border border-stone-300 px-4 py-2 text-sm font-bold disabled:opacity-35">{t('tasteTree.nextPage')}</button>
+          <button type="button" disabled={query.data.last} onClick={() => changePage(page + 1)} className="rounded-xl border border-stone-300 px-4 py-2 text-sm font-bold disabled:opacity-35">{t('tasteTree.nextPage')}</button>
         </nav>
       )}
     </div>

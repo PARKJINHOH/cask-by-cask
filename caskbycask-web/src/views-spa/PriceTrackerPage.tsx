@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
@@ -9,6 +9,7 @@ import type { SpiritListItem } from '@/domain/spirit/types/spirit.types'
 import type { StoreType } from '@/domain/pricetracker/types/pricetracker.types'
 import { usePriceChart } from '@/domain/pricetracker/hooks/usePriceChart'
 import { getLocalizedSpiritListNames } from '@/domain/spirit/utils/spiritDisplayName'
+import { scrollToPageTop } from '@/shared/utils/scrollToPageTop'
 
 const fmt = new Intl.NumberFormat('ko-KR')
 
@@ -76,6 +77,7 @@ export default function PriceTrackerPage() {
   const [keyword, setKeyword] = useState('')
   const [storeType, setStoreType] = useState<StoreType>('DOMESTIC')
   const [inputVal, setInputVal] = useState('')
+  const pageRef = useRef<HTMLDivElement>(null)
 
   const { data: spiritPage, isLoading } = useQuery({
     queryKey: ['spiritSearch', keyword, storeType],
@@ -89,10 +91,11 @@ export default function PriceTrackerPage() {
 
   const handleSearch = useCallback(() => {
     setKeyword(inputVal.trim())
+    scrollToPageTop(pageRef.current)
   }, [inputVal])
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
+    <div ref={pageRef} className="max-w-7xl mx-auto px-4 py-8">
       {/* PRICE_ALERT 발동 배너 */}
       <PriceAlertBanner />
 

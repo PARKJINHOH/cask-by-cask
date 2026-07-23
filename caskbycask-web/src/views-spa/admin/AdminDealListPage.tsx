@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Spinner from '@/shared/components/Spinner'
 import Pagination from '@/shared/components/Pagination'
 import { formatDateTime } from '@/shared/utils/format'
+import { scrollToPageTop } from '@/shared/utils/scrollToPageTop'
 import { adminDealApi } from '@/domain/admin/api/adminDealApi'
 import type { DealStatus } from '@/domain/admin/types/deal.types'
 import {
@@ -26,6 +27,7 @@ export default function AdminDealListPage() {
   const drinkNameParam = searchParams.get('drinkName') ?? ''
   const page = Math.max(0, parseInt(searchParams.get('page') ?? '0', 10))
   const [drinkName, setDrinkName] = useState(drinkNameParam)
+  const pageRef = useRef<HTMLDivElement>(null)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const detailState = { returnTo: `${location.pathname}${location.search}` }
   const setListParam = (nextStatus: DealStatus | 'ALL', nextPage = 0) =>
@@ -47,7 +49,7 @@ export default function AdminDealListPage() {
     setDrinkName(drinkNameParam)
   }, [drinkNameParam])
 
-  const handleDrinkNameSearch = () => {
+  const handleDrinkNameSearch = (source: HTMLElement | null = pageRef.current) => {
     const trimmed = drinkName.trim()
     setSearchParams(
       (prev) => {
@@ -59,6 +61,7 @@ export default function AdminDealListPage() {
       },
       { replace: true },
     )
+    scrollToPageTop(source)
   }
 
   const { data, isLoading } = useQuery({
@@ -81,7 +84,7 @@ export default function AdminDealListPage() {
   const isDeleting = deleteBulkMut.isPending
 
   return (
-    <div className="p-6 space-y-5">
+    <div ref={pageRef} className="p-6 space-y-5">
       <div>
         <h1 className="text-xl font-bold text-neutral-900">핫딜 검토</h1>
         <p className="mt-1 text-sm text-neutral-500">
@@ -114,7 +117,7 @@ export default function AdminDealListPage() {
           className="w-full sm:w-96"
           onSubmit={(e) => {
             e.preventDefault()
-            handleDrinkNameSearch()
+            handleDrinkNameSearch(e.currentTarget)
           }}
         >
           <label htmlFor="deal-drink-name" className="mb-1.5 block text-sm font-medium text-neutral-700">

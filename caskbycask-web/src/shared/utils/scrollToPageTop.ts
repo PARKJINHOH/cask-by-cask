@@ -27,3 +27,33 @@ export function scrollToPageTop(source: HTMLElement | null = null) {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   })
 }
+
+/** Scrolls a list's own content area into view without losing nested admin/modal scrolling. */
+export function scrollToElementTop(
+  target: HTMLElement | null,
+  source: HTMLElement | null = target,
+) {
+  if (typeof window === 'undefined') return
+  if (!target) {
+    scrollToPageTop(source)
+    return
+  }
+
+  const scrollContainer = findScrollableAncestor(source)
+
+  window.requestAnimationFrame(() => {
+    const targetRect = target.getBoundingClientRect()
+
+    if (scrollContainer) {
+      const containerRect = scrollContainer.getBoundingClientRect()
+      const top = scrollContainer.scrollTop + targetRect.top - containerRect.top
+      scrollContainer.scrollTo({ top: Math.max(0, top), behavior: 'smooth' })
+      return
+    }
+
+    window.scrollTo({
+      top: Math.max(0, window.scrollY + targetRect.top),
+      behavior: 'smooth',
+    })
+  })
+}

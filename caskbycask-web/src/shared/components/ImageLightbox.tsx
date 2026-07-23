@@ -14,6 +14,7 @@ const MAX_SCALE = 5
 const SWIPE_THRESHOLD = 60 // px — 확대 안 한 상태에서 좌우 스와이프로 이전/다음
 const TAP_MOVE_TOLERANCE = 10 // px — 이 이하로 움직이면 '탭'으로 간주
 const DOUBLE_TAP_MS = 300
+const SYNTHETIC_DOUBLE_CLICK_GUARD_MS = 500
 
 type View = { scale: number; tx: number; ty: number }
 
@@ -42,6 +43,7 @@ export default function ImageLightbox({ images, initialIndex = 0, open, onClose 
     swipeDx: 0,
     moved: false,
     lastTapAt: 0,
+    lastTouchEndAt: 0,
   })
 
   const apply = useCallback((v: View) => {
@@ -142,6 +144,10 @@ export default function ImageLightbox({ images, initialIndex = 0, open, onClose 
 
   const onDoubleClick = useCallback(
     (e: React.MouseEvent) => {
+      // Touch double-taps can also emit a synthetic dblclick. The touch handler
+      // already toggled the zoom, so handling both would immediately undo it.
+      if (Date.now() - g.current.lastTouchEndAt < SYNTHETIC_DOUBLE_CLICK_GUARD_MS) return
+
       setSmooth(true)
       if (viewRef.current.scale > 1) resetZoom()
       else zoomAt(e.clientX, e.clientY, 2.4)
@@ -212,6 +218,7 @@ export default function ImageLightbox({ images, initialIndex = 0, open, onClose 
   const onTouchEnd = useCallback(
     (e: React.TouchEvent) => {
       const st = g.current
+      st.lastTouchEndAt = Date.now()
       const wasSwipe = st.mode === 'swipe'
       const tapPoint = { x: st.startX, y: st.startY }
 

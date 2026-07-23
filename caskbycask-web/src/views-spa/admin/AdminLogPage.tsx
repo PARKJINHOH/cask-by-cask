@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import Badge from '@/shared/components/Badge'
 import Spinner from '@/shared/components/Spinner'
 import Pagination from '@/shared/components/Pagination'
@@ -6,6 +6,7 @@ import { useAdminLogs } from '@/domain/admin/hooks/useAdminLogs'
 import type { AdminLogType } from '@/domain/admin/types/admin.types'
 import { ADMIN_LOG_TYPE_LABELS, ADMIN_LOG_CATEGORY } from '@/domain/admin/types/admin.types'
 import { formatDate } from '@/shared/utils/format'
+import { scrollToPageTop } from '@/shared/utils/scrollToPageTop'
 
 // ── 필터 카테고리 ──────────────────────────────────────────────
 
@@ -40,6 +41,7 @@ export default function AdminLogPage() {
   const [actorEmail, setActorEmail] = useState('')
   const [emailInput, setEmailInput] = useState('')
   const [page, setPage] = useState(0)
+  const pageRef = useRef<HTMLDivElement>(null)
 
   const { data, isLoading } = useAdminLogs({
     logTypes: getLogTypes(category),
@@ -51,10 +53,11 @@ export default function AdminLogPage() {
   const handleSearch = () => {
     setActorEmail(emailInput.trim())
     setPage(0)
+    scrollToPageTop(pageRef.current)
   }
 
   return (
-    <div className="p-6 space-y-5">
+    <div ref={pageRef} className="p-6 space-y-5">
       {/* 헤더 */}
       <div>
         <h1 className="text-xl font-bold text-neutral-900">변경 이력</h1>

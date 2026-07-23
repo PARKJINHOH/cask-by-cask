@@ -19,6 +19,7 @@ import {
   metadataSearchParamsFromUrl,
   type BoardListType,
 } from '@/shared/utils/seoIndexing'
+import { scrollToPageTop } from '@/shared/utils/scrollToPageTop'
 
 const PAGE_SIZE = 20
 
@@ -216,9 +217,10 @@ export default function BoardListPage({ boardType, title }: Props) {
   }
 
   // 키워드 검색 (Enter 또는 검색 버튼 클릭 시에만)
-  const submitKeyword = (e: React.FormEvent) => {
+  const submitKeyword = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setParam('keyword', keywordInput || null)
+    scrollToPageTop(e.currentTarget)
   }
 
   const setTab = (tab: Tab) => {

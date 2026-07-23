@@ -1,4 +1,5 @@
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import SeoMeta from '@/shared/components/SeoMeta'
 import { useAuthStore } from '@/domain/auth/store/authStore'
@@ -6,7 +7,7 @@ import { useFeedbackList } from '@/domain/feedback/hooks/useFeedback'
 import { FEEDBACK_STATUSES, type FeedbackStatus } from '@/domain/feedback/types/feedback.types'
 import { ProgressBar, StatusBadge, TypeChip } from '@/domain/feedback/components/FeedbackUi'
 import { formatBoardDate } from '@/shared/utils/format'
-import { scrollToPageTop } from '@/shared/utils/scrollToPageTop'
+import { scrollToElementTop } from '@/shared/utils/scrollToPageTop'
 
 export default function FeedbackListPage() {
   const { t } = useTranslation()
@@ -15,6 +16,7 @@ export default function FeedbackListPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const role = useAuthStore((s) => s.user?.role)
   const isAdmin = role === 'SUPER_ADMIN' || role === 'ADMIN'
+  const listTopRef = useRef<HTMLDivElement>(null)
 
   const status = (searchParams.get('status') ?? '') as FeedbackStatus | ''
   const mine = searchParams.get('mine') === 'true'
@@ -65,7 +67,7 @@ export default function FeedbackListPage() {
       </div>
 
       {/* 탭 */}
-      <div className="flex items-center gap-1 mb-4">
+      <div ref={listTopRef} className="flex items-center gap-1 mb-4">
         <button
           onClick={() => setListParam({ mine: false, page: 0 })}
           className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
@@ -156,7 +158,7 @@ export default function FeedbackListPage() {
             disabled={data.page === 0}
             onClick={(e) => {
               setListParam({ page: Math.max(0, page - 1) })
-              scrollToPageTop(e.currentTarget)
+              scrollToElementTop(listTopRef.current, e.currentTarget)
             }}
             className="px-3 py-1.5 text-sm border border-neutral-200 rounded-lg disabled:opacity-40
               hover:bg-neutral-50 transition-colors"
@@ -170,7 +172,7 @@ export default function FeedbackListPage() {
             disabled={data.last}
             onClick={(e) => {
               setListParam({ page: page + 1 })
-              scrollToPageTop(e.currentTarget)
+              scrollToElementTop(listTopRef.current, e.currentTarget)
             }}
             className="px-3 py-1.5 text-sm border border-neutral-200 rounded-lg disabled:opacity-40
               hover:bg-neutral-50 transition-colors"

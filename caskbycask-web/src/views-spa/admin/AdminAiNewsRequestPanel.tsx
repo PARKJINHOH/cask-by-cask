@@ -208,7 +208,7 @@ export default function AdminAiNewsRequestPanel() {
           </div>
         )}
         {data && data.totalPages > 1 && (
-          <Pagination currentPage={page} totalPages={data.totalPages} onPageChange={setPage} scrollToTopOnChange={false} />
+          <Pagination currentPage={page} totalPages={data.totalPages} onPageChange={setPage} />
         )}
       </section>
     </div>

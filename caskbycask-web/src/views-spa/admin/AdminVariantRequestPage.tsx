@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from 'react'
+import { FormEvent, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import Badge, { type BadgeVariant } from '@/shared/components/Badge'
 import Button from '@/shared/components/Button'
@@ -8,6 +8,7 @@ import Pagination from '@/shared/components/Pagination'
 import Spinner from '@/shared/components/Spinner'
 import { formatDate, scoreColor } from '@/shared/utils/format'
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
+import { scrollToPageTop } from '@/shared/utils/scrollToPageTop'
 import {
   useAdminVariantRequests,
   useAdminVariantReviewRequests,
@@ -175,6 +176,7 @@ export default function AdminVariantRequestPage() {
   const [rejectTarget, setRejectTarget] = useState<AdminVariantReviewRequest | null>(null)
   const [legacyRejectTarget, setLegacyRejectTarget] = useState<AdminVariantRequest | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const pageRef = useRef<HTMLDivElement>(null)
   const detailState = { returnTo: `${location.pathname}${location.search}` }
 
   const { data: reviewRequests, isLoading: isReviewRequestLoading } = useAdminVariantReviewRequests({
@@ -230,6 +232,7 @@ export default function AdminVariantRequestPage() {
       },
       { replace: true },
     )
+    scrollToPageTop(pageRef.current)
   }, [debouncedKeyword, keywordParam, setSearchParams])
 
   const goToVariantReviewApproval = (item: AdminVariantReviewRequest) => {
@@ -276,7 +279,7 @@ export default function AdminVariantRequestPage() {
   const legacyItems = legacyRequests?.content ?? []
 
   return (
-    <div className="space-y-5 p-6">
+    <div ref={pageRef} className="space-y-5 p-6">
       <div>
         <h1 className="text-xl font-bold text-neutral-900">하위 에디션/리뷰 승인</h1>
         <p className="mt-1 text-sm text-neutral-500">

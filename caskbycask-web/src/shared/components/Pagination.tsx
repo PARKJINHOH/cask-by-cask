@@ -7,7 +7,7 @@
 }
 
 import { useRef } from 'react'
-import { scrollToPageTop } from '@/shared/utils/scrollToPageTop'
+import { scrollToElementTop } from '@/shared/utils/scrollToPageTop'
 
 /** Returns at most 5 page numbers with '...' where needed. */
 function buildPages(current: number, total: number): (number | '...')[] {
@@ -42,7 +42,9 @@ export default function Pagination({
   const handlePageChange = (page: number) => {
     if (page === currentPage || page < 0 || page >= totalPages) return
     onPageChange(page)
-    if (scrollToTopOnChange) scrollToPageTop(navRef.current)
+    if (scrollToTopOnChange) {
+      scrollToElementTop(navRef.current?.parentElement ?? null, navRef.current)
+    }
   }
 
   return (

@@ -27,6 +27,7 @@ import { buildBreadcrumbSchema, buildItemListSchema } from '@/shared/utils/seoSc
 import { getSpiritListDisplayNames } from '@/domain/spirit/utils/spiritDisplayName'
 import { getSpiritCanonicalPath, getSpiritDetailPath } from '@/domain/spirit/utils/spiritUrl'
 import { SEARCH_DEBOUNCE_MS } from '@/shared/hooks/useDebouncedValue'
+import { scrollToPageTop } from '@/shared/utils/scrollToPageTop'
 import {
   SPIRIT_CATEGORY_META as CATEGORY_META,
   isSpiritSeoCategory,
@@ -318,6 +319,7 @@ export default function SpiritListPage() {
   const cacheRef = useRef<Map<string, SpiritAutocompleteItem[]>>(new Map())
   const abortControllerRef = useRef<AbortController | null>(null)
   const debounceTimeoutRef = useRef<number | NodeJS.Timeout | null>(null)
+  const mobileSearchInputRef = useRef<HTMLInputElement>(null)
 
   const handleKeywordChange = (val: string) => {
     setKeywordInput(val)
@@ -372,9 +374,17 @@ export default function SpiritListPage() {
   }
 
 
-  const submitKeyword = (e: React.FormEvent) => {
+  const submitKeyword = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const kw = keywordInput.trim()
+
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current as number)
+      debounceTimeoutRef.current = null
+    }
+    abortControllerRef.current?.abort()
+    abortControllerRef.current = null
+
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev)
       kw ? next.set('keyword', kw) : next.delete('keyword')
@@ -382,6 +392,10 @@ export default function SpiritListPage() {
       return next
     }, { replace: true })
     setIsOpen(false)
+    setIsAutocompleteLoading(false)
+    setIsFocused(false)
+    mobileSearchInputRef.current?.blur()
+    scrollToPageTop(e.currentTarget)
   }
 
   useEffect(() => {
@@ -808,6 +822,7 @@ export default function SpiritListPage() {
           )}
 
           <input
+            ref={mobileSearchInputRef}
             type="search"
             value={keywordInput}
             onChange={(e) => handleKeywordChange(e.target.value)}

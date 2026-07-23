@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import Badge from '@/shared/components/Badge'
 import Button from '@/shared/components/Button'
@@ -9,6 +9,7 @@ import { formatDate } from '@/shared/utils/format'
 import { useAdminUsers } from '@/domain/admin/hooks/useAdminUsers'
 import type { AdminUser, AdminUserRole } from '@/domain/admin/types/admin.types'
 import { ROLE_LABELS } from '@/domain/admin/types/admin.types'
+import { scrollToPageTop } from '@/shared/utils/scrollToPageTop'
 
 // ── 상수 ────────────────────────────────────────────────────────
 
@@ -64,6 +65,7 @@ export default function AdminUserPage() {
   const [keyword, setKeyword]           = useState(keywordParam)
   const [roleFilter, setRoleFilter]     = useState<AdminUserRole | ''>(roleParam)
   const [activeFilter, setActiveFilter] = useState<'' | 'true' | 'false'>(activeParam)
+  const pageRef = useRef<HTMLDivElement>(null)
 
   const page = Math.max(0, parseInt(searchParams.get('page') ?? '0', 10))
   const setPage = (p: number) =>
@@ -93,10 +95,11 @@ export default function AdminUserPage() {
     else next.delete('active')
     next.set('page', '0')
     setSearchParams(next, { replace: true })
+    scrollToPageTop(pageRef.current)
   }
 
   return (
-    <div className="p-6 space-y-5">
+    <div ref={pageRef} className="p-6 space-y-5">
       {/* 헤더 */}
       <h1 className="text-xl font-bold text-neutral-900">회원 관리</h1>
 

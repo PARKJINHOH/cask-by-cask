@@ -1,11 +1,12 @@
 ﻿import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNotificationsPage } from '@/domain/notification/hooks/useNotifications'
 import { useMarkNotificationRead } from '@/domain/notification/hooks/useNotificationPolling'
 import type { NotificationItem, NotificationType } from '@/domain/notification/types/notification.types'
 import SeoMeta from '@/shared/components/SeoMeta'
-import { scrollToPageTop } from '@/shared/utils/scrollToPageTop'
+import { scrollToElementTop } from '@/shared/utils/scrollToPageTop'
 
 type Tab = '' | NotificationType
 
@@ -70,6 +71,7 @@ export default function NotificationsPage() {
   const navigate = useNavigate()
   const [tab, setTab] = useState<Tab>('')
   const [page, setPage] = useState(0)
+  const listTopRef = useRef<HTMLDivElement>(null)
   const { markRead, markAllRead } = useMarkNotificationRead()
 
   const { data, isLoading } = useNotificationsPage((tab as NotificationType) || undefined, page)
@@ -102,7 +104,7 @@ export default function NotificationsPage() {
       </div>
 
       {/* 탭 */}
-      <div className="flex gap-1 border-b border-neutral-200 mb-5 overflow-x-auto [&::-webkit-scrollbar]:hidden">
+      <div ref={listTopRef} className="flex gap-1 border-b border-neutral-200 mb-5 overflow-x-auto [&::-webkit-scrollbar]:hidden">
         {TABS.map(({ key, labelKey }) => (
           <button
             key={key}
@@ -159,7 +161,7 @@ export default function NotificationsPage() {
             disabled={data.page === 0}
             onClick={(e) => {
               setPage((p) => Math.max(0, p - 1))
-              scrollToPageTop(e.currentTarget)
+              scrollToElementTop(listTopRef.current, e.currentTarget)
             }}
             className="px-3 py-1.5 text-sm border border-neutral-200 rounded-lg disabled:opacity-40
               hover:bg-neutral-50 transition-colors"
@@ -173,7 +175,7 @@ export default function NotificationsPage() {
             disabled={data.last}
             onClick={(e) => {
               setPage((p) => p + 1)
-              scrollToPageTop(e.currentTarget)
+              scrollToElementTop(listTopRef.current, e.currentTarget)
             }}
             className="px-3 py-1.5 text-sm border border-neutral-200 rounded-lg disabled:opacity-40
               hover:bg-neutral-50 transition-colors"
