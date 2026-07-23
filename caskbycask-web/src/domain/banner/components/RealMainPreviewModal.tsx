@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { spiritApi } from '@/domain/spirit/api/spiritApi'
 import { useBanners } from '@/domain/banner/hooks/useBanners'
-import { useNotices, usePinnedNotices } from '@/domain/notice/hooks/useNotices'
+import { usePinnedNotices } from '@/domain/notice/hooks/useNotices'
 import { usePosts } from '@/domain/community/hooks/usePosts'
 import SpiritCard from '@/shared/components/SpiritCard'
 import AdultBadge from '@/shared/components/AdultBadge'
@@ -133,7 +133,7 @@ function SpiritCarousel({ spirits }: { spirits: SpiritListItem[] }) {
         onScroll={updateArrows}
       >
         {spirits.map((s) => (
-          <div key={s.id} className="flex-shrink-0 w-36 sm:w-40 lg:w-[250px] pointer-events-none">
+          <div key={s.id} className="flex-shrink-0 w-32 sm:w-36 lg:w-44 pointer-events-none">
             <SpiritCard spirit={s} imageFit="contain" />
           </div>
         ))}
@@ -271,63 +271,21 @@ function CommunityLatestSection() {
   )
 }
 
-function NoticeWidget({ notices }: { notices: NoticeListItem[] }) {
-  const { t } = useTranslation()
-  if (notices.length === 0) return null
-  return (
-    <div className="bg-white rounded-xl border border-neutral-100 p-4 select-none">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-bold text-neutral-900 tracking-tight">
-          {t('home.sections.notices')}
-        </h3>
-        <div className="text-xs text-primary-800 font-medium flex items-center gap-0.5">
-          {t('home.sections.viewAll')}
-          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <polyline points="9 18 15 12 9 6" />
-          </svg>
-        </div>
-      </div>
-      <div>
-        {notices.slice(0, 4).map((notice) => (
-          <div
-            key={notice.id}
-            className="flex items-center justify-between py-2.5 border-b border-neutral-50
-              last:border-b-0 transition-colors group"
-          >
-            <div className="flex items-center gap-1.5 min-w-0 flex-1">
-              {notice.isPinned && (
-                <span className="flex-shrink-0 text-xs font-semibold text-amber-600 bg-amber-50
-                  px-1.5 py-0.5 rounded">
-                  공지
-                </span>
-              )}
-              <span className="text-sm text-neutral-700 line-clamp-1 transition-colors">
-                {notice.title}
-              </span>
-            </div>
-            <span className="text-xs text-neutral-400 ml-2 flex-shrink-0">
-              {new Date(notice.createdAt).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' })}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
 function EventCard() {
   const { t } = useTranslation()
   return (
     <div className="block bg-amber-800 rounded-xl p-4 transition-colors group select-none">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-lg bg-white/15 flex items-center justify-center flex-shrink-0">
-          <svg className="w-5 h-5 text-amber-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md bg-white/15">
+          <svg className="h-4 w-4 text-amber-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
             <rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
           </svg>
         </div>
         <div className="min-w-0">
           <p className="text-xs text-amber-200/80 font-medium mb-0.5">{t('home.eventCard.label')}</p>
-          <p className="text-sm font-bold text-white truncate">{t('home.eventCard.title')}</p>
+          <p className="whitespace-normal break-keep text-xs font-bold leading-snug text-white">
+            {t('home.eventCard.title')}
+          </p>
         </div>
         <svg className="w-4 h-4 text-white/60 ml-auto flex-shrink-0"
           fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
@@ -450,11 +408,8 @@ export default function RealMainPreviewModal({
     enabled: open,
   })
 
-  const { data: noticesData } = useNotices({ page: 0, size: 5 })
-
   const topRated = topRatedData?.content ?? []
   const recent   = recentData?.content   ?? []
-  const notices  = noticesData?.content  ?? []
 
   // 작성 중인 임시 배너 객체 생성
   const previewBanner: BannerResponse = {
@@ -573,7 +528,7 @@ export default function RealMainPreviewModal({
                       </header>
 
                       {/* 본문 레이아웃: 2열 */}
-                      <div className="px-6 py-8 grid grid-cols-[1fr_300px] gap-6 bg-neutral-50/50">
+                      <div className="px-6 py-8 grid grid-cols-[minmax(0,1fr)_240px] gap-6 bg-neutral-50/50">
                         
                         {/* 주 콘텐츠 (게시판 리스트 모사) */}
                         <div className="space-y-10 min-w-0">
@@ -615,7 +570,6 @@ export default function RealMainPreviewModal({
                         {/* 사이드바 */}
                         <aside className="space-y-5">
                           <EventCard />
-                          <NoticeWidget notices={notices} />
 
                           {/* 사이드바 배너 영역 렌더링 */}
                           {sideBanners.some((banner) => banner.pcImage) && (
@@ -700,7 +654,6 @@ export default function RealMainPreviewModal({
                           )}
 
                           <EventCard />
-                          <NoticeWidget notices={notices} />
 
                           {/* 사이드바 배너 (모바일에선 본문 하단에 단독 노출) */}
                           {sideBanners.some((banner) => banner.pcImage) && (

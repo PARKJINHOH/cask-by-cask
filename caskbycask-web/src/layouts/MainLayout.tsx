@@ -882,11 +882,11 @@ export default function MainLayout() {
       </main>
 
       {/* 푸터 (PC only) */}
-      <footer className="hidden lg:block bg-canvas border-t border-neutral-200 py-6">
+      <footer className="hidden lg:block border-t border-neutral-200 bg-canvas py-5">
         <div className="user-layout-container px-4">
-          <div className="flex justify-center items-start gap-16 mb-5">
+          <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
             {/* 로고 + 태그라인 */}
-            <div>
+            <div className="text-center xl:text-left">
               <Link to="/" className="inline-block text-sm font-bold text-primary-800 tracking-tight mb-1">
                 CaskByCask
               </Link>
@@ -894,34 +894,50 @@ export default function MainLayout() {
               <p className="text-xs text-neutral-400">{t('footer.brandAlias')}</p>
             </div>
 
-            {/* 탐색 */}
-            <div>
-              <p className="text-xs font-bold text-neutral-700 mb-2">{t('footer.explore')}</p>
-              <ul className="space-y-1.5">
-                <li><Link to="/spirits" className="text-xs text-neutral-500 hover:text-primary-800 transition-colors">{t('nav.spirits')}</Link></li>
-                <li><Link to="/ranking" className="text-xs text-neutral-500 hover:text-primary-800 transition-colors">{t('ranking.title')}</Link></li>
-                <li><Link to="/community/free" className="text-xs text-neutral-500 hover:text-primary-800 transition-colors">{t('menu.communityBoard')}</Link></li>
-                <li><Link to="/notices" className="text-xs text-neutral-500 hover:text-primary-800 transition-colors">{t('menu.notice')}</Link></li>
-                <li><Link to="/request/spirit" className="text-xs text-neutral-500 hover:text-primary-800 transition-colors">{t('menu.requestSpirit')}</Link></li>
-                <li><Link to="/faq" className="text-xs text-neutral-500 hover:text-primary-800 transition-colors">{t('menu.faq')}</Link></li>
-              </ul>
-            </div>
+            {/* GNB와 중복되지 않는 푸터 전용 링크 */}
+            <div className="flex flex-col items-center gap-3 xl:items-end">
+              <div className="flex items-center gap-3">
+                <p className="text-xs font-bold text-neutral-700">{t('footer.support')}</p>
+                <ul className="flex items-center gap-3">
+                  <li>
+                    <Link to="/faq" className="text-xs text-neutral-500 transition-colors hover:text-primary-800">
+                      {t('menu.faq')}
+                    </Link>
+                  </li>
+                  <li className="border-l border-neutral-200 pl-3">
+                    <Link to="/inquiry" className="text-xs text-neutral-500 transition-colors hover:text-primary-800">
+                      {t('footer.inquiry')}
+                    </Link>
+                  </li>
+                </ul>
+              </div>
 
-            {/* 정보 */}
-            <div>
-              <p className="text-xs font-bold text-neutral-700 mb-2">{t('footer.info')}</p>
-              <ul className="space-y-1.5">
-                <li><a href="/terms" className="text-xs text-neutral-500 hover:text-primary-800 transition-colors">{t('footer.terms')}</a></li>
-                <li><a href="/privacy" className="text-xs text-neutral-500 hover:text-neutral-700 transition-colors">{t('footer.privacy')}</a></li>
-                <li><a href="/operation-policy" className="text-xs text-neutral-500 hover:text-neutral-700 transition-colors">{t('footer.operationPolicy')}</a></li>
-                <li><Link to="/inquiry" className="text-xs text-neutral-500 hover:text-neutral-700 transition-colors">{t('footer.inquiry')}</Link></li>
-              </ul>
+              <div className="flex items-center gap-3">
+                <p className="text-xs font-bold text-neutral-700">{t('footer.policy')}</p>
+                <ul className="flex items-center gap-3">
+                  <li>
+                    <a href="/terms" className="text-xs text-neutral-500 transition-colors hover:text-primary-800">
+                      {t('footer.terms')}
+                    </a>
+                  </li>
+                  <li className="border-l border-neutral-200 pl-3">
+                    <a href="/privacy" className="text-xs text-neutral-500 transition-colors hover:text-primary-800">
+                      {t('footer.privacy')}
+                    </a>
+                  </li>
+                  <li className="border-l border-neutral-200 pl-3">
+                    <a href="/operation-policy" className="text-xs text-neutral-500 transition-colors hover:text-primary-800">
+                      {t('footer.operationPolicy')}
+                    </a>
+                  </li>
+                </ul>
+              </div>
             </div>
           </div>
 
-          <div className="border-t border-neutral-100 pt-4 text-center">
-            <p className="text-xs text-neutral-400">© 2026 CaskByCask. All rights reserved.</p>
-            <p className="text-xs text-neutral-400">지나친 음주는 뇌졸중, 기억력 손상이나 치매를 유발합니다.</p>
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-x-6 gap-y-1 border-t border-neutral-100 pt-4 text-center">
+            <p className="text-xs text-neutral-400">{t('footer.copyright')}</p>
+            <p className="text-xs text-neutral-400">{t('footer.drinkWarning')}</p>
           </div>
         </div>
       </footer>
