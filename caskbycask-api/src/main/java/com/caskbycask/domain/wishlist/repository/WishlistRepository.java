@@ -17,7 +17,8 @@ public interface WishlistRepository extends JpaRepository<Wishlist, Long> {
 
     @Query(value = """
             SELECT w FROM Wishlist w
-            JOIN FETCH w.spirit
+            JOIN FETCH w.spirit s
+            LEFT JOIN FETCH s.wineDetail
             WHERE w.user.id = :userId
             """,
             countQuery = "SELECT COUNT(w) FROM Wishlist w WHERE w.user.id = :userId")
@@ -26,7 +27,8 @@ public interface WishlistRepository extends JpaRepository<Wishlist, Long> {
 
     @Query(value = """
             SELECT w FROM Wishlist w
-            JOIN FETCH w.spirit
+            JOIN FETCH w.spirit s
+            LEFT JOIN FETCH s.wineDetail
             WHERE w.user.id = :userId AND w.type = :type
             """,
             countQuery = """

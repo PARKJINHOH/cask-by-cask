@@ -4,6 +4,7 @@ import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.domain.spirit.entity.SpiritCommonDetail;
 import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
 import com.caskbycask.domain.spirit.entity.enums.VariantType;
+import com.caskbycask.domain.spirit.entity.enums.WineVintageStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
@@ -25,6 +26,8 @@ public record SpiritVariantResponse(
         Integer bottledYear,
         @Schema(description = "빈티지")
         Integer vintageYear,
+        @Schema(description = "와인 빈티지 상태")
+        WineVintageStatus vintageStatus,
         @Schema(description = "알코올 도수 %")
         BigDecimal abv,
         @Schema(description = "용량 ml")
@@ -70,6 +73,9 @@ public record SpiritVariantResponse(
                 spirit.getCategory(),
                 spirit.getBottledYear(),
                 spirit.getVintageYear(),
+                spirit.getCategory() == SpiritCategory.WINE && spirit.getWineDetail() != null
+                        ? spirit.getWineDetail().getVintageStatus()
+                        : null,
                 spirit.getAbv(),
                 spirit.getVolumeMl(),
                 cd != null ? cd.getBatchNo() : null,

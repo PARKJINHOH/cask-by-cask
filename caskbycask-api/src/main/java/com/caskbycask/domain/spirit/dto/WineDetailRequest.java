@@ -11,17 +11,16 @@ import java.util.List;
 
 public record WineDetailRequest(
 
-        @Schema(description = "와인 종류 (RED, WHITE, ROSE, SPARKLING, DESSERT, ORANGE)")
+        @Schema(description = "와인 종류 (RED, WHITE, ROSE, SPARKLING, DESSERT, ORANGE, FORTIFIED)")
         WineType wineType,
 
-        @Schema(description = "빈티지 연도 (포도 수확 연도)")
-        @Min(value = 1800, message = "빈티지 연도는 1800년 이후여야 합니다.")
-        Integer vintage,
+        @Schema(description = "빈티지 상태 (VINTAGE, NON_VINTAGE, UNKNOWN)")
+        WineVintageStatus vintageStatus,
 
         @Schema(description = "오크 숙성 여부")
         Boolean isOakAged,
 
-        @Schema(description = "내추럴 와인 여부")
+        @Schema(description = "내추럴 와인 표방 여부 (통일된 국제 법적 인증과는 별개)")
         Boolean isNaturalWine,
 
         @Schema(description = "인증 등급 (ORGANIC, BIODYNAMIC, SUSTAINABLE, NONE)")

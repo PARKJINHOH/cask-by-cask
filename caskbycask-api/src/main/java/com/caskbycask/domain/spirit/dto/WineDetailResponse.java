@@ -10,13 +10,13 @@ public record WineDetailResponse(
         @Schema(description = "와인 종류")
         WineType wineType,
 
-        @Schema(description = "빈티지 연도")
-        Integer vintage,
+        @Schema(description = "빈티지 상태")
+        WineVintageStatus vintageStatus,
 
         @Schema(description = "오크 숙성 여부")
         Boolean isOakAged,
 
-        @Schema(description = "내추럴 와인 여부")
+        @Schema(description = "내추럴 와인 표방 여부")
         Boolean isNaturalWine,
 
         @Schema(description = "인증 등급")

@@ -6,6 +6,7 @@ import com.caskbycask.domain.seo.util.SpiritSlugUtils;
 import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
 import com.caskbycask.domain.spirit.entity.enums.SpiritStatus;
 import com.caskbycask.domain.spirit.entity.enums.VariantType;
+import com.caskbycask.domain.spirit.entity.enums.WineVintageStatus;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.Query;
@@ -98,8 +99,10 @@ public class SitemapService {
                 SELECT s.id, s.nameKo, s.nameEn,
                        s.seriesIdentifier, s.seriesIdentifierEn,
                        s.variantType, s.variantValue, s.variantValueEn,
+                       s.category, s.vintageYear, wd.vintageStatus,
                        s.updatedAt
                 FROM Spirit s
+                LEFT JOIN s.wineDetail wd
                 WHERE s.status = :status
                   AND s.id >= :minId
                   AND s.id < :maxId
@@ -120,11 +123,16 @@ public class SitemapService {
             VariantType variantType = (VariantType) row[5];
             String variantValue = (String) row[6];
             String variantValueEn = (String) row[7];
-            LocalDateTime updatedAt = (LocalDateTime) row[8];
+            SpiritCategory category = (SpiritCategory) row[8];
+            Integer vintageYear = (Integer) row[9];
+            WineVintageStatus vintageStatus = (WineVintageStatus) row[10];
+            LocalDateTime updatedAt = (LocalDateTime) row[11];
             String path = "en".equals(lang)
                     ? SpiritSlugUtils.canonicalPathEn(id, nameKo, nameEn, seriesIdentifier,
-                    seriesIdentifierEn, variantType, variantValue, variantValueEn)
-                    : SpiritSlugUtils.canonicalPathKo(id, nameKo, seriesIdentifier, variantType, variantValue);
+                    seriesIdentifierEn, variantType, variantValue, variantValueEn,
+                    category, vintageYear, vintageStatus)
+                    : SpiritSlugUtils.canonicalPathKo(id, nameKo, seriesIdentifier, variantType, variantValue,
+                    category, vintageYear, vintageStatus);
             appendUrl(sb, normalizedSiteUrl() + path, updatedAt);
         }
         return finishUrlSet(sb);

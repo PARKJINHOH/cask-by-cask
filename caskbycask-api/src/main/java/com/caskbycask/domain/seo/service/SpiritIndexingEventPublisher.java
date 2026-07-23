@@ -26,13 +26,18 @@ public class SpiritIndexingEventPublisher {
         Set<String> urls = new LinkedHashSet<>();
         for (Spirit spirit : spirits) {
             if (spirit == null || spirit.getId() == null) continue;
+            var vintageStatus = spirit.getWineDetail() != null
+                    ? spirit.getWineDetail().getVintageStatus()
+                    : null;
             urls.add(normalizedSiteUrl() + SpiritSlugUtils.canonicalPathKo(
                     spirit.getId(), spirit.getNameKo(), spirit.getSeriesIdentifier(),
-                    spirit.getVariantType(), spirit.getVariantValue()));
+                    spirit.getVariantType(), spirit.getVariantValue(),
+                    spirit.getCategory(), spirit.getVintageYear(), vintageStatus));
             urls.add(normalizedSiteUrl() + SpiritSlugUtils.canonicalPathEn(
                     spirit.getId(), spirit.getNameKo(), spirit.getNameEn(),
                     spirit.getSeriesIdentifier(), spirit.getSeriesIdentifierEn(),
-                    spirit.getVariantType(), spirit.getVariantValue(), spirit.getVariantValueEn()));
+                    spirit.getVariantType(), spirit.getVariantValue(), spirit.getVariantValueEn(),
+                    spirit.getCategory(), spirit.getVintageYear(), vintageStatus));
         }
         if (!urls.isEmpty()) {
             eventPublisher.publishEvent(new SpiritIndexingEvent(List.copyOf(urls)));

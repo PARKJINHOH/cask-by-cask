@@ -2,6 +2,7 @@ package com.caskbycask.domain.seo.service;
 
 import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
 import com.caskbycask.domain.spirit.entity.enums.VariantType;
+import com.caskbycask.domain.spirit.entity.enums.WineVintageStatus;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import org.junit.jupiter.api.BeforeEach;
@@ -89,9 +90,17 @@ class SitemapServiceTest {
         LocalDateTime updatedAt = LocalDateTime.of(2026, 7, 21, 12, 30);
         List<Object[]> rows = List.of(
                 new Object[]{295L, "탐두", "Tamdhu", null, null,
-                        VariantType.NONE, null, null, updatedAt},
+                        VariantType.NONE, null, null,
+                        SpiritCategory.WHISKY, null, null, updatedAt},
                 new Object[]{296L, "탐두", "Tamdhu", "2026년 말띠 에디션", "Year of the Horse 2026",
-                        VariantType.RELEASE_YEAR, null, null, updatedAt}
+                        VariantType.RELEASE_YEAR, null, null,
+                        SpiritCategory.WHISKY, null, null, updatedAt},
+                new Object[]{297L, "샤토 마고", "Chateau Margaux", null, null,
+                        VariantType.NONE, null, null,
+                        SpiritCategory.WINE, 2015, WineVintageStatus.VINTAGE, updatedAt},
+                new Object[]{298L, "모엣 샹동", "Moet Chandon", null, null,
+                        VariantType.NONE, null, null,
+                        SpiritCategory.WINE, null, WineVintageStatus.NON_VINTAGE, updatedAt}
         );
         mockQueries(jpql -> null, jpql -> jpql.contains("FROM Spirit s") ? rows : List.of());
 
@@ -102,6 +111,8 @@ class SitemapServiceTest {
         assertThat(ko).contains("/ko/spirits/296-%ED%83%90%EB%91%90-2026%EB%85%84-%EB%A7%90%EB%9D%A0-%EC%97%90%EB%94%94%EC%85%98");
         assertThat(en).contains("/en/spirits/295-tamdhu");
         assertThat(en).contains("/en/spirits/296-tamdhu-year-of-the-horse-2026");
+        assertThat(en).contains("/en/spirits/297-chateau-margaux-2015");
+        assertThat(en).contains("/en/spirits/298-moet-chandon-nv");
         assertThat(ko).contains("<lastmod>2026-07-21T12:30:00+09:00</lastmod>");
         assertThat(ko).doesNotContain("탐두", "말띠", "에디션");
         assertThat(ko).doesNotContain("/ko/spirits/295</loc>");

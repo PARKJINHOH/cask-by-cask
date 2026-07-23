@@ -85,7 +85,7 @@ function trimStringsRecursively<T>(obj: T): T {
 const PLACEHOLDERS: Record<SpiritCategory, { nameEn: string; nameKo: string; bottler: string }> = {
   WHISKY: { nameEn: 'Balvenie 12Y DoubleWood', nameKo: '예) 발베니 12년 더블우드', bottler: '예) Gordon & MacPhail' },
   COGNAC: { nameEn: 'Rémy Martin XO',          nameKo: '예) 레미 마르탱 XO',       bottler: '예) 메종 직병입' },
-  WINE:   { nameEn: 'Château Margaux 2016',    nameKo: '예) 샤토 마고 2016',       bottler: '예) 도멘 직병입' },
+  WINE:   { nameEn: 'Château Margaux',         nameKo: '예) 샤토 마고',            bottler: '예) 도멘 직병입' },
   OTHER:  { nameEn: 'Bombay Sapphire',         nameKo: '예) 봄베이 사파이어',       bottler: '예) 병입업체명' },
 }
 const DEFAULT_PLACEHOLDER = { nameEn: 'Balvenie 12Y DoubleWood', nameKo: '예) 발베니 12년 더블우드', bottler: '' }
@@ -209,7 +209,6 @@ export function useSpiritForm() {
   const [producerName, setProducerName] = useState('')
   const [bottler, setBottler] = useState('')
   const [bottledYear, setBottledYear] = useState('')
-  const [vintageYear, setVintageYear] = useState('')
   const [countryCode, setCountryCode] = useState<string | null>(null)
   const [country, setCountry] = useState('')
   const [region, setRegion] = useState('')
@@ -338,7 +337,6 @@ export function useSpiritForm() {
     setProducerName('')
     setBottler('')
     setBottledYear('')
-    setVintageYear('')
     setCountryCode(null)
     setCountry('')
     setRegion('')
@@ -361,11 +359,10 @@ export function useSpiritForm() {
     setErrors({})
   }
 
-  // 카테고리 선택 (와인 ↔ 비와인 전환 시 연도 필드 정리)
+  // 카테고리 선택 (와인은 와인 상세의 빈티지 상태/연도를 사용)
   const selectCategory = (cat: SpiritCategory) => {
     if (cat === category) return
     if (cat === 'WINE' && category !== 'WINE') setBottledYear('')
-    else if (cat !== 'WINE' && category === 'WINE') setVintageYear('')
     setCategory(cat)
     setErrors({})
   }
@@ -379,7 +376,6 @@ export function useSpiritForm() {
     setProducerName(s.producerNameKo ?? '')
     setBottler(s.bottler ?? '')
     setBottledYear(s.bottledYear?.toString() ?? '')
-    setVintageYear(s.vintageYear?.toString() ?? '')
     setCountryCode(ISO3166_COUNTRIES.find((c) => c.nameKo === s.country)?.code ?? null)
     setCountry(s.country ?? '')
     setRegion(s.region ?? '')
@@ -502,19 +498,21 @@ export function useSpiritForm() {
         notes: w.notes ?? '',
       })
     }
-    if (s.wineDetail) {
+    if (s.category === 'WINE') {
       const w = s.wineDetail
       setWineDetail({
-        wineType: w.wineType ?? '', vintage: w.vintage?.toString() ?? '',
-        isOakAged: w.isOakAged ?? false, isNaturalWine: w.isNaturalWine ?? false,
-        certification: w.certification ?? '',
-        grapeVarieties: (w.grapeVarieties ?? []).map((g) => ({ name: g.name, percentage: g.percentage?.toString() ?? '' })),
-        appellationDesignation: w.appellationDesignation ?? '', soilType: w.soilType ?? '',
-        altitudeM: w.altitudeM?.toString() ?? '', harvestMethod: w.harvestMethod ?? '',
-        fermentationVessel: w.fermentationVessel ?? '', oakType: w.oakType ?? '',
-        oakAgedMonths: w.oakAgedMonths?.toString() ?? '',
-        sweetness: w.sweetness ?? '', body: w.body ?? '',
-        acidity: w.acidity ?? '', tannin: w.tannin ?? '',
+        wineType: w?.wineType ?? '',
+        vintageStatus: w?.vintageStatus ?? (s.vintageYear != null ? 'VINTAGE' : 'UNKNOWN'),
+        vintageYear: s.vintageYear?.toString() ?? '',
+        isOakAged: w?.isOakAged ?? null, isNaturalWine: w?.isNaturalWine ?? null,
+        certification: w?.certification ?? '',
+        grapeVarieties: (w?.grapeVarieties ?? []).map((g) => ({ name: g.name, percentage: g.percentage?.toString() ?? '' })),
+        appellationDesignation: w?.appellationDesignation ?? '', soilType: w?.soilType ?? '',
+        altitudeM: w?.altitudeM?.toString() ?? '', harvestMethod: w?.harvestMethod ?? '',
+        fermentationVessel: w?.fermentationVessel ?? '', oakType: w?.oakType ?? '',
+        oakAgedMonths: w?.oakAgedMonths?.toString() ?? '',
+        sweetness: w?.sweetness ?? '', body: w?.body ?? '',
+        acidity: w?.acidity ?? '', tannin: w?.tannin ?? '',
       })
     }
     if (s.cognacDetail) {
@@ -546,7 +544,6 @@ export function useSpiritForm() {
     setProducerName(r.producerNameKo ?? '')
     setBottler(r.bottler ?? '')
     setBottledYear(r.bottledYear?.toString() ?? '')
-    setVintageYear(r.vintageYear?.toString() ?? '')
     setCountryCode(ISO3166_COUNTRIES.find((c) => c.nameKo === r.country)?.code ?? null)
     setCountry(r.country ?? '')
     setRegion(r.region ?? '')
@@ -602,8 +599,9 @@ export function useSpiritForm() {
       setWineDetail({
         ...DEFAULT_WINE,
         wineType: r.wineType ?? w?.wineType ?? '',
-        vintage: (w?.vintage ?? r.vintageYear)?.toString() ?? '',
-        isOakAged: w?.isOakAged ?? false, isNaturalWine: w?.isNaturalWine ?? false,
+        vintageStatus: w?.vintageStatus ?? (r.vintageYear != null ? 'VINTAGE' : 'UNKNOWN'),
+        vintageYear: r.vintageYear?.toString() ?? '',
+        isOakAged: w?.isOakAged ?? null, isNaturalWine: w?.isNaturalWine ?? null,
         certification: w?.certification ?? '',
         grapeVarieties: (w?.grapeVarieties ?? []).map((g) => ({ name: g.name, percentage: g.percentage?.toString() ?? '' })),
         appellationDesignation: w?.appellationDesignation ?? '', soilType: w?.soilType ?? '',
@@ -737,6 +735,12 @@ export function useSpiritForm() {
     }
     if (category === 'WINE') {
       if (!wineDetail.wineType) errs.wineType = '와인 종류를 선택해주세요.'
+      if (wineDetail.vintageStatus === 'VINTAGE') {
+        const year = Number(wineDetail.vintageYear)
+        if (!wineDetail.vintageYear) errs.vintageYear = '빈티지 연도를 입력해주세요.'
+        else if (!Number.isInteger(year) || year < 1800 || year > new Date().getFullYear())
+          errs.vintageYear = `빈티지 연도는 1800~${new Date().getFullYear()} 사이여야 합니다.`
+      }
       const total = wineDetail.grapeVarieties.reduce((sum, g) => sum + (Number(g.percentage) || 0), 0)
       if (total > 100) errs.grapeVarieties = '포도 품종 비율 합계가 100%를 초과합니다.'
     }
@@ -789,7 +793,7 @@ export function useSpiritForm() {
       ageStatementMaxMonths: dropAging || commonDetail.isNas ? null : (commonDetail.ageStatementMaxMonths ?? null),
       distilledDate: dropAging ? null : (commonDetail.distilledDate || null),
       bottledDate: isWine ? null : (commonDetail.bottledDate || null),
-      releaseDate: commonDetail.releaseDate || null,
+      releaseDate: isWine ? null : (commonDetail.releaseDate || null),
       volumeMl: isVolumeMlRange ? (volumeMlMin ? Number(volumeMlMin) : null) : (commonDetail.volumeMl ? Number(commonDetail.volumeMl) : null),
       abv: isAbvRange ? (abvMin ? Number(abvMin) : null) : (commonDetail.abv ? Number(commonDetail.abv) : null),
       bottleNo: isWine ? null : (commonDetail.bottleNo || null),
@@ -829,7 +833,7 @@ export function useSpiritForm() {
       case 'WINE': return {
         wineDetail: {
           wineType: wineDetail.wineType || null,
-          vintage: wineDetail.vintage ? Number(wineDetail.vintage) : null,
+          vintageStatus: wineDetail.vintageStatus,
           isOakAged: wineDetail.isOakAged ?? null,
           isNaturalWine: wineDetail.isNaturalWine ?? null,
           certification: wineDetail.certification || null,
@@ -937,7 +941,11 @@ export function useSpiritForm() {
       producerId: producerId ?? null,
       bottler: bottler || null,
       bottledYear: category !== 'WINE' && bottledYear ? Number(bottledYear) : null,
-      vintageYear: category === 'WINE' && vintageYear ? Number(vintageYear) : null,
+      vintageYear: category === 'WINE'
+        && wineDetail.vintageStatus === 'VINTAGE'
+        && wineDetail.vintageYear
+        ? Number(wineDetail.vintageYear)
+        : null,
       abv: common.abv,
       volumeMl: common.volumeMl,
       country: country || null,
@@ -974,7 +982,7 @@ export function useSpiritForm() {
     category, setCategory, selectCategory,
     nameKo, setNameKo, nameEn, setNameEn,
     producerId, setProducerId, producerName,
-    bottler, setBottler, bottledYear, setBottledYear, vintageYear, setVintageYear,
+    bottler, setBottler, bottledYear, setBottledYear,
     countryCode, country, region, setCountryValue, setRegion,
     isVariantSplit, setIsVariantSplit, variantType, setVariantType,
     seriesIdentifier, setSeriesIdentifier, seriesIdentifierEn, setSeriesIdentifierEn,
@@ -1137,11 +1145,14 @@ interface SpiritFormFieldsProps {
   onCreateProducer?: (data: NewProducerInput) => Promise<number | null>
   /** 4개 섹션 뒤에 끼워 넣을 슬롯 (이미지 첨부/비고 입력 등 — 사용자 등록 요청 화면용) */
   bottomSlot?: React.ReactNode
+  /** 관리자 화면은 한국어 고정. 사용자 등록 화면에서는 현재 언어를 사용한다. */
+  admin?: boolean
 }
 
 export default function SpiritFormFields({
   form, categoryLocked, onCategorySelect, imageSlot,
   allowMultipleVariants = true, activeVariantIndex, producerSelector, onCreateProducer, bottomSlot,
+  admin = true,
 }: SpiritFormFieldsProps) {
   const { category, errors } = form
   const handleCategory = onCategorySelect ?? form.selectCategory
@@ -1516,20 +1527,12 @@ export default function SpiritFormFields({
               />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
+              <div className={category === 'WINE' ? 'sm:col-span-2' : ''}>
                 <label className={LABEL}>병입업체</label>
                 <input value={form.bottler} onChange={(e) => form.setBottler(e.target.value)} maxLength={200}
                   placeholder={ph.bottler} className={INPUT} />
               </div>
-              {category === 'WINE' ? (
-                <div>
-                  <label className={LABEL}>빈티지 연도</label>
-                  <input type="number" min={1800} max={2100} value={form.vintageYear}
-                    onChange={(e) => form.setVintageYear(e.target.value)}
-                    onWheel={(e) => e.currentTarget.blur()}
-                    className={INPUT} />
-                </div>
-              ) : (
+              {category !== 'WINE' && (
                 <div>
                   <label className={LABEL}>병입 연도</label>
                   <input type="number" min={1800} max={2100} value={form.bottledYear}
@@ -1550,6 +1553,7 @@ export default function SpiritFormFields({
               onChange={form.updateCommon}
               dateErrors={{ distilledDate: errors.distilledDate, bottledDate: errors.bottledDate }}
               category={category}
+              admin={admin}
             />
           </div>
         )}
@@ -1651,6 +1655,7 @@ export default function SpiritFormFields({
                       onChange={form.updateCommon}
                       dateErrors={{ distilledDate: errors.distilledDate, bottledDate: errors.bottledDate }}
                       category={category}
+                      admin={admin}
                     />
                     <div className="pt-5 border-t border-neutral-200">
                       <WhiskyDetailSection value={form.whiskyDetail} onChange={form.updateWhisky} />
@@ -1658,7 +1663,12 @@ export default function SpiritFormFields({
                   </div>
                 )}
                 {category === 'WINE' && (
-                  <WineDetailSection value={form.wineDetail} onChange={form.updateWine} errors={errors} />
+                  <WineDetailSection
+                    value={form.wineDetail}
+                    onChange={form.updateWine}
+                    errors={errors}
+                    admin={admin}
+                  />
                 )}
                 {category === 'COGNAC' && (
                   <CognacDetailSection value={form.cognacDetail} onChange={form.updateCognac} errors={errors} />

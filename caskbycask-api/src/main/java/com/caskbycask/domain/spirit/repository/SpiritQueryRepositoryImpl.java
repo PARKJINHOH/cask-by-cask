@@ -59,7 +59,8 @@ public class SpiritQueryRepositoryImpl implements SpiritQueryRepository {
         if (includeStyle) {
             applyStyleFetchJoin(dataQuery, spirit);
         } else {
-            applySubTypeJoin(dataQuery, condition, spirit);
+            dataQuery.leftJoin(spirit.wineDetail, QSpiritWineDetail.spiritWineDetail).fetchJoin();
+            applySubTypeJoin(dataQuery, condition, spirit, true);
         }
         List<Spirit> spirits = dataQuery
                 .where(predicate)
@@ -73,7 +74,7 @@ public class SpiritQueryRepositoryImpl implements SpiritQueryRepository {
         if (hasKeyword) {
             countQuery.leftJoin(spirit.producer, producer);
         }
-        applySubTypeJoin(countQuery, condition, spirit);
+        applySubTypeJoin(countQuery, condition, spirit, false);
         Long total = countQuery.where(predicate).fetchOne();
 
         // ── 3. 대표 이미지 IN 배치 조회 ────────────────────────
@@ -97,12 +98,13 @@ public class SpiritQueryRepositoryImpl implements SpiritQueryRepository {
 
     // ── 서브타입 join (필터가 있을 때만 join 추가, fetch join은 사용하지 않음) ──
 
-    private void applySubTypeJoin(JPAQuery<?> query, SpiritSearchCondition cond, QSpirit spirit) {
+    private void applySubTypeJoin(JPAQuery<?> query, SpiritSearchCondition cond,
+                                  QSpirit spirit, boolean wineAlreadyJoined) {
         if (cond.hasWhiskyStyle()) {
             QSpiritWhiskyDetail whisky = QSpiritWhiskyDetail.spiritWhiskyDetail;
             query.leftJoin(spirit.whiskyDetail, whisky);
         }
-        if (cond.hasWineType() || cond.hasWineSensory()) {
+        if (!wineAlreadyJoined && (cond.hasWineType() || cond.hasWineSensory())) {
             QSpiritWineDetail wine = QSpiritWineDetail.spiritWineDetail;
             query.leftJoin(spirit.wineDetail, wine);
         }
@@ -220,6 +222,7 @@ public class SpiritQueryRepositoryImpl implements SpiritQueryRepository {
 
         List<Spirit> variants = queryFactory
                 .selectFrom(variant)
+                .leftJoin(variant.wineDetail, new QSpiritWineDetail("canonicalWineDetail")).fetchJoin()
                 .where(variant.parent.id.in(ids)
                         .and(variant.status.eq(SpiritStatus.ACTIVE)))
                 .orderBy(variant.parent.id.asc(), variant.displayOrder.asc().nullsLast(), variant.id.asc())
@@ -255,6 +258,8 @@ public class SpiritQueryRepositoryImpl implements SpiritQueryRepository {
 
         if (includeStyle) {
             applyStyleFetchJoin(query, spirit);
+        } else {
+            query.leftJoin(spirit.wineDetail, QSpiritWineDetail.spiritWineDetail).fetchJoin();
         }
 
         List<Spirit> spirits = query

@@ -17,6 +17,9 @@ export function getUserBottleDisplayNames(bottle: UserBottle, language: string) 
     seriesIdentifierEn: bottle.seriesIdentifierEn,
     variantValue: bottle.variantValue,
     variantValueEn: bottle.variantValueEn,
+    category: bottle.category,
+    vintageYear: bottle.vintageYear,
+    vintageStatus: bottle.vintageStatus,
   }, language);
 
   return names.secondaryName === names.primaryName

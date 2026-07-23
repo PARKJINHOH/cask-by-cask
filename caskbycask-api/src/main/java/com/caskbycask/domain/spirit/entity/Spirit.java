@@ -4,6 +4,7 @@ import com.caskbycask.domain.producer.entity.Producer;
 import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
 import com.caskbycask.domain.spirit.entity.enums.SpiritStatus;
 import com.caskbycask.domain.spirit.entity.enums.VariantType;
+import com.caskbycask.domain.spirit.entity.enums.WineVintageStatus;
 import com.caskbycask.domain.spirit.support.SpiritSearchTextNormalizer;
 import com.caskbycask.domain.user.entity.User;
 import com.caskbycask.global.entity.BaseTimeEntity;
@@ -27,7 +28,8 @@ import java.util.List;
         indexes = {
                 @Index(name = "idx_spirit_category", columnList = "category"),
                 @Index(name = "idx_spirit_status", columnList = "status"),
-                @Index(name = "idx_spirit_producer_id", columnList = "producer_id")
+                @Index(name = "idx_spirit_producer_id", columnList = "producer_id"),
+                @Index(name = "idx_spirit_vintage_year", columnList = "vintage_year")
         }
 )
 @Getter
@@ -78,6 +80,7 @@ public class Spirit extends BaseTimeEntity {
 
     @Column
     @Comment("빈티지 연도")
+    @GenericField
     private Integer vintageYear;
 
     @Column(precision = 4, scale = 1)
@@ -190,10 +193,18 @@ public class Spirit extends BaseTimeEntity {
     @IndexingDependency(derivedFrom = {
             @ObjectPath(@PropertyValue(propertyName = "nameKo")),
             @ObjectPath(@PropertyValue(propertyName = "seriesIdentifier")),
-            @ObjectPath(@PropertyValue(propertyName = "variantValue"))
+            @ObjectPath(@PropertyValue(propertyName = "variantValue")),
+            @ObjectPath(@PropertyValue(propertyName = "category")),
+            @ObjectPath(@PropertyValue(propertyName = "vintageYear")),
+            @ObjectPath({
+                    @PropertyValue(propertyName = "wineDetail"),
+                    @PropertyValue(propertyName = "vintageStatus")
+            })
     })
     public String getSearchTextKoCompact() {
-        return SpiritSearchTextNormalizer.compact(nameKo, seriesIdentifier, variantValue);
+        return SpiritSearchTextNormalizer.compact(
+                nameKo, seriesIdentifier, variantValue,
+                wineVintageSearchToken());
     }
 
     @Transient
@@ -201,10 +212,30 @@ public class Spirit extends BaseTimeEntity {
     @IndexingDependency(derivedFrom = {
             @ObjectPath(@PropertyValue(propertyName = "nameEn")),
             @ObjectPath(@PropertyValue(propertyName = "seriesIdentifierEn")),
-            @ObjectPath(@PropertyValue(propertyName = "variantValueEn"))
+            @ObjectPath(@PropertyValue(propertyName = "variantValueEn")),
+            @ObjectPath(@PropertyValue(propertyName = "category")),
+            @ObjectPath(@PropertyValue(propertyName = "vintageYear")),
+            @ObjectPath({
+                    @PropertyValue(propertyName = "wineDetail"),
+                    @PropertyValue(propertyName = "vintageStatus")
+            })
     })
     public String getSearchTextEnCompact() {
-        return SpiritSearchTextNormalizer.compact(nameEn, seriesIdentifierEn, variantValueEn);
+        return SpiritSearchTextNormalizer.compact(
+                nameEn, seriesIdentifierEn, variantValueEn,
+                wineVintageSearchToken());
+    }
+
+    private String wineVintageSearchToken() {
+        if (category != SpiritCategory.WINE) {
+            return null;
+        }
+        if (vintageYear != null) {
+            return vintageYear.toString();
+        }
+        return wineDetail != null && wineDetail.getVintageStatus() == WineVintageStatus.NON_VINTAGE
+                ? "NV"
+                : null;
     }
 
     @OneToOne(mappedBy = "spirit", cascade = ALL, orphanRemoval = true, fetch = LAZY)
@@ -219,6 +250,10 @@ public class Spirit extends BaseTimeEntity {
     @IndexedEmbedded
     @IndexingDependency(reindexOnUpdate = ReindexOnUpdate.SHALLOW)
     private SpiritWineDetail wineDetail;
+
+    public void attachWineDetail(SpiritWineDetail wineDetail) {
+        this.wineDetail = wineDetail;
+    }
 
     @OneToOne(mappedBy = "spirit", cascade = ALL, orphanRemoval = true, fetch = LAZY)
     @IndexedEmbedded

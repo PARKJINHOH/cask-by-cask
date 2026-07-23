@@ -6,6 +6,8 @@ export interface WishlistSpiritInfo {
   nameEn: string
   seriesIdentifier?: string | null
   category: string
+  vintageYear?: number | null
+  vintageStatus?: 'VINTAGE' | 'NON_VINTAGE' | 'UNKNOWN' | null
   primaryImageUrl: string | null
   canonicalPathKo?: string | null
   canonicalPathEn?: string | null

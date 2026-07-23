@@ -1,8 +1,10 @@
 package com.caskbycask.domain.seo.util;
 
 import com.caskbycask.domain.spirit.entity.Spirit;
+import com.caskbycask.domain.spirit.entity.SpiritWineDetail;
 import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
 import com.caskbycask.domain.spirit.entity.enums.VariantType;
+import com.caskbycask.domain.spirit.entity.enums.WineVintageStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -83,5 +85,66 @@ class SpiritSlugUtilsTest {
 
         assertThat(SpiritSlugUtils.canonicalPathEn(spirit))
                 .isEqualTo("/en/spirits/177-the-glendronach-싱글-캐스크-캐스크-123");
+    }
+
+    @Test
+    @DisplayName("빈티지 와인은 표시명과 slug 끝에 수확 연도를 붙인다")
+    void vintage_wine_appends_harvest_year() {
+        Spirit spirit = wine("샤토 마고", "Chateau Margaux", 2015, WineVintageStatus.VINTAGE);
+
+        assertThat(SpiritSlugUtils.displayNameKo(spirit)).isEqualTo("샤토 마고 2015");
+        assertThat(SpiritSlugUtils.displayNameEn(spirit)).isEqualTo("Chateau Margaux 2015");
+        assertThat(SpiritSlugUtils.canonicalPathKo(spirit))
+                .isEqualTo("/ko/spirits/300-샤토-마고-2015");
+    }
+
+    @Test
+    @DisplayName("논빈티지 와인은 표시명과 slug 끝에 NV를 붙인다")
+    void non_vintage_wine_appends_nv() {
+        Spirit spirit = wine("모엣 샹동 브뤼 임페리얼", "Moet Chandon Brut Imperial",
+                null, WineVintageStatus.NON_VINTAGE);
+
+        assertThat(SpiritSlugUtils.displayNameKo(spirit))
+                .isEqualTo("모엣 샹동 브뤼 임페리얼 NV");
+        assertThat(SpiritSlugUtils.canonicalPathEn(spirit))
+                .isEqualTo("/en/spirits/300-moet-chandon-brut-imperial-nv");
+        assertThat(spirit.getSearchTextKoCompact()).endsWith("nv");
+    }
+
+    @Test
+    @DisplayName("이름에 같은 빈티지 접미사가 이미 있으면 중복해서 붙이지 않는다")
+    void wine_name_does_not_duplicate_existing_vintage_suffix() {
+        Spirit spirit = wine("샤토 마고 2015", "Chateau Margaux (2015)",
+                2015, WineVintageStatus.VINTAGE);
+
+        assertThat(SpiritSlugUtils.displayNameKo(spirit)).isEqualTo("샤토 마고 2015");
+        assertThat(SpiritSlugUtils.displayNameEn(spirit)).isEqualTo("Chateau Margaux (2015)");
+    }
+
+    @Test
+    @DisplayName("빈티지 정보 미상인 와인은 이름에 접미사를 붙이지 않는다")
+    void unknown_vintage_wine_has_no_suffix() {
+        Spirit spirit = wine("하우스 와인", "House Wine", null, WineVintageStatus.UNKNOWN);
+
+        assertThat(SpiritSlugUtils.displayNameKo(spirit)).isEqualTo("하우스 와인");
+        assertThat(SpiritSlugUtils.displayNameEn(spirit)).isEqualTo("House Wine");
+    }
+
+    private Spirit wine(String nameKo, String nameEn,
+                        Integer vintageYear, WineVintageStatus vintageStatus) {
+        Spirit spirit = Spirit.builder()
+                .nameKo(nameKo)
+                .nameEn(nameEn)
+                .category(SpiritCategory.WINE)
+                .vintageYear(vintageYear)
+                .variantType(VariantType.NONE)
+                .build();
+        SpiritWineDetail detail = SpiritWineDetail.builder()
+                .spirit(spirit)
+                .vintageStatus(vintageStatus)
+                .build();
+        ReflectionTestUtils.setField(spirit, "id", 300L);
+        ReflectionTestUtils.setField(spirit, "wineDetail", detail);
+        return spirit;
     }
 }

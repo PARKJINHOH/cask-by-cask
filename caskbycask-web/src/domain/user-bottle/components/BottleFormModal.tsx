@@ -20,6 +20,8 @@ interface SpiritOption {
   variantValue?: string | null;
   variantValueEn?: string | null;
   category: SpiritCategory;
+  vintageYear?: number | null;
+  vintageStatus?: 'VINTAGE' | 'NON_VINTAGE' | 'UNKNOWN' | null;
 }
 interface Props { open: boolean; onClose: () => void; editing?: UserBottle; }
 interface PendingImage { id: string; file: File; previewUrl: string; }

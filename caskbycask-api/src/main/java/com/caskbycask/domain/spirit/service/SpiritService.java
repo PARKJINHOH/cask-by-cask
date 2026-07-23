@@ -18,6 +18,7 @@ import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
 import com.caskbycask.domain.spirit.entity.enums.SpiritStatus;
 import com.caskbycask.domain.spirit.entity.enums.VariantLinkType;
 import com.caskbycask.domain.spirit.entity.enums.VariantType;
+import com.caskbycask.domain.spirit.entity.enums.WineVintageStatus;
 import com.caskbycask.domain.spirit.repository.SpiritImageRepository;
 import com.caskbycask.domain.spirit.repository.SpiritRegisterRequestRepository;
 import com.caskbycask.domain.spirit.repository.SpiritRepository;
@@ -48,6 +49,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Year;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -461,7 +463,7 @@ public class SpiritService {
             Set<Long> manual = partnerIds(links, id, VariantLinkType.MANUAL);
 
             if (!manual.isEmpty()) {
-                spiritRepository.findAllById(manual).stream()
+                spiritRepository.findAllByIdWithCommonAndWineDetail(manual).stream()
                         .filter(s -> !activeManualOnly || s.getStatus() == SpiritStatus.ACTIVE)
                         .forEach(s -> map.putIfAbsent(s.getId(), s));
             }
@@ -549,6 +551,8 @@ public class SpiritService {
         String seriesIdentifierEn = resolveSeriesIdentifierEn(request);
         VariantType masterVariantType = resolveMasterVariantType(request);
         validateVariantSplitSeriesIdentifier(request.isVariantSplit(), masterVariantType, seriesIdentifier);
+        Integer normalizedVintageYear = resolveCreateVintageYear(
+                request.category(), request.vintageYear(), request.wineDetail());
 
         Spirit spirit = Spirit.builder()
                 .nameKo(request.nameKo())
@@ -557,7 +561,7 @@ public class SpiritService {
                 .producer(producer)
                 .bottler(request.bottler())
                 .bottledYear(request.bottledYear())
-                .vintageYear(request.vintageYear())
+                .vintageYear(normalizedVintageYear)
                 .abv(request.abv())
                 .volumeMl(request.volumeMl())
                 .country(request.country())
@@ -657,15 +661,17 @@ public class SpiritService {
         String seriesIdentifierEn = resolveSeriesIdentifierEn(request, spirit);
         VariantType masterVariantType = resolveMasterVariantType(request, spirit);
         validateVariantSplitSeriesIdentifier(request.isVariantSplit(), masterVariantType, seriesIdentifier);
+        SpiritCategory nextCategory = request.category() != null ? request.category() : spirit.getCategory();
+        Integer normalizedVintageYear = resolveUpdateVintageYear(spirit, nextCategory, request);
 
         spirit.update(
                 request.nameKo() != null ? request.nameKo() : spirit.getNameKo(),
                 request.nameEn() != null ? request.nameEn() : spirit.getNameEn(),
-                request.category() != null ? request.category() : spirit.getCategory(),
+                nextCategory,
                 producer,
                 request.bottler() != null ? request.bottler() : spirit.getBottler(),
                 request.bottledYear() != null ? request.bottledYear() : spirit.getBottledYear(),
-                request.vintageYear() != null ? request.vintageYear() : spirit.getVintageYear(),
+                normalizedVintageYear,
                 request.abv() != null ? request.abv() : spirit.getAbv(),
                 request.volumeMl() != null ? request.volumeMl() : spirit.getVolumeMl(),
                 request.country() != null ? request.country() : spirit.getCountry(),
@@ -683,6 +689,9 @@ public class SpiritService {
                 request.volumeMlMax()
         );
 
+        if (nextCategory == SpiritCategory.WINE && spirit.getCommonDetail() != null) {
+            spirit.getCommonDetail().clearReleaseDate();
+        }
         spiritDetailService.saveCommonDetail(spirit, request.commonDetail());
         spiritDetailService.updateCategoryDetail(spirit, prevCategory, request);
 
@@ -840,6 +849,7 @@ public class SpiritService {
         // 카테고리 핵심값 필수 (신청자 제출 경로)
         if (!body.hasCategoryCore()) throw new CustomException(ErrorCode.INVALID_INPUT);
         validateEditionValues(body);
+        validateWineVintage(body.category(), body.vintageYear(), body.wineDetail());
 
         // 욕설 필터 — 신청자가 입력한 기타 문구 검사
         badWordFilter.validate(body.note());
@@ -902,6 +912,7 @@ public class SpiritService {
         // 카테고리 핵심값 필수 (신청자 수정 경로)
         if (!body.hasCategoryCore()) throw new CustomException(ErrorCode.INVALID_INPUT);
         validateEditionValues(body);
+        validateWineVintage(body.category(), body.vintageYear(), body.wineDetail());
 
         badWordFilter.validate(body.note());
 
@@ -1040,6 +1051,8 @@ public class SpiritService {
         String seriesIdentifierEn = resolveSeriesIdentifierEn(detail);
         VariantType masterVariantType = resolveMasterVariantType(detail);
         validateVariantSplitSeriesIdentifier(detail.isVariantSplit(), masterVariantType, seriesIdentifier);
+        Integer normalizedVintageYear = resolveCreateVintageYear(
+                detail.category(), detail.vintageYear(), detail.wineDetail());
 
         Spirit spirit = Spirit.builder()
                 .nameKo(detail.nameKo())
@@ -1048,7 +1061,7 @@ public class SpiritService {
                 .producer(producer)
                 .bottler(detail.bottler())
                 .bottledYear(detail.bottledYear())
-                .vintageYear(detail.vintageYear())
+                .vintageYear(normalizedVintageYear)
                 .abv(detail.abv())
                 .volumeMl(detail.volumeMl())
                 .country(detail.country())
@@ -1423,6 +1436,76 @@ public class SpiritService {
         if (producerId == null) return null;
         return producerRepository.findById(producerId)
                 .orElseThrow(() -> new CustomException(ErrorCode.DISTILLERY_NOT_FOUND));
+    }
+
+    private Integer resolveCreateVintageYear(SpiritCategory category,
+                                             Integer requestedYear,
+                                             WineDetailRequest wineDetail) {
+        if (category != SpiritCategory.WINE) {
+            return requestedYear;
+        }
+
+        WineVintageStatus status = wineDetail != null ? wineDetail.vintageStatus() : null;
+        if (status == null) {
+            status = requestedYear != null ? WineVintageStatus.VINTAGE : WineVintageStatus.UNKNOWN;
+        }
+        return normalizeWineVintageYear(status, requestedYear);
+    }
+
+    private Integer resolveUpdateVintageYear(Spirit spirit,
+                                             SpiritCategory nextCategory,
+                                             UpdateSpiritRequest request) {
+        if (nextCategory != SpiritCategory.WINE) {
+            if (spirit.getCategory() == SpiritCategory.WINE) {
+                return null;
+            }
+            return request.vintageYear() != null ? request.vintageYear() : spirit.getVintageYear();
+        }
+
+        WineDetailRequest wineDetail = request.wineDetail();
+        if (wineDetail == null) {
+            if (request.vintageYear() == null) {
+                return spirit.getCategory() == SpiritCategory.WINE ? spirit.getVintageYear() : null;
+            }
+            return normalizeWineVintageYear(WineVintageStatus.VINTAGE, request.vintageYear());
+        }
+
+        WineVintageStatus status = wineDetail.vintageStatus();
+        if (status == null && request.vintageYear() != null) {
+            status = WineVintageStatus.VINTAGE;
+        }
+        if (status == null && spirit.getCategory() == SpiritCategory.WINE && spirit.getWineDetail() != null) {
+            status = spirit.getWineDetail().getVintageStatus();
+        }
+        if (status == null) {
+            status = request.vintageYear() != null ? WineVintageStatus.VINTAGE : WineVintageStatus.UNKNOWN;
+        }
+
+        Integer candidateYear = request.vintageYear();
+        if (status == WineVintageStatus.VINTAGE && candidateYear == null
+                && spirit.getCategory() == SpiritCategory.WINE) {
+            candidateYear = spirit.getVintageYear();
+        }
+        return normalizeWineVintageYear(status, candidateYear);
+    }
+
+    private void validateWineVintage(SpiritCategory category,
+                                     Integer requestedYear,
+                                     WineDetailRequest wineDetail) {
+        resolveCreateVintageYear(category, requestedYear, wineDetail);
+    }
+
+    private Integer normalizeWineVintageYear(WineVintageStatus status, Integer requestedYear) {
+        if (status != WineVintageStatus.VINTAGE) {
+            if (requestedYear != null) {
+                throw new CustomException(ErrorCode.INVALID_INPUT);
+            }
+            return null;
+        }
+        if (requestedYear == null || requestedYear < 1800 || requestedYear > Year.now().getValue()) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+        return requestedYear;
     }
 
     private String resolveProducerName(Long producerId) {

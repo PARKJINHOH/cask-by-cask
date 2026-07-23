@@ -1,9 +1,11 @@
 package com.caskbycask.domain.spirit.dto;
 
 import com.caskbycask.domain.spirit.entity.Spirit;
+import com.caskbycask.domain.spirit.entity.SpiritWineDetail;
 import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
 import com.caskbycask.domain.spirit.entity.enums.SpiritStatus;
 import com.caskbycask.domain.spirit.entity.enums.VariantType;
+import com.caskbycask.domain.spirit.entity.enums.WineVintageStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -27,6 +29,30 @@ class SpiritListResponseTest {
 
         assertThat(response.seriesIdentifier()).isEqualTo("캐스크 스트렝스");
         assertThat(response.seriesIdentifierEn()).isEqualTo("Cask Strength");
+    }
+
+    @Test
+    @DisplayName("와인 목록 응답은 단일 원본 빈티지 연도와 상태를 제공한다")
+    void wineListContainsVintageYearAndStatus() {
+        Spirit wine = Spirit.builder()
+                .nameKo("샤토 마고")
+                .nameEn("Chateau Margaux")
+                .category(SpiritCategory.WINE)
+                .vintageYear(2015)
+                .status(SpiritStatus.ACTIVE)
+                .build();
+        SpiritWineDetail detail = SpiritWineDetail.builder()
+                .spirit(wine)
+                .vintageStatus(WineVintageStatus.VINTAGE)
+                .build();
+        ReflectionTestUtils.setField(wine, "id", 3L);
+        ReflectionTestUtils.setField(wine, "wineDetail", detail);
+
+        SpiritListResponse response = SpiritListResponse.of(wine, null);
+
+        assertThat(response.vintageYear()).isEqualTo(2015);
+        assertThat(response.vintageStatus()).isEqualTo(WineVintageStatus.VINTAGE);
+        assertThat(response.canonicalPathKo()).endsWith("샤토-마고-2015");
     }
 
     private Spirit spirit(Long id) {

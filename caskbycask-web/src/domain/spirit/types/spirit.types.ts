@@ -1,6 +1,7 @@
 export type SpiritCategory = 'WHISKY' | 'COGNAC' | 'WINE' | 'OTHER'
 export type SpiritStatus  = 'ACTIVE' | 'HIDDEN' | 'PENDING'
 export type SpiritSort    = 'LATEST' | 'SCORE_DESC' | 'REVIEW_COUNT_DESC'
+export type WineVintageStatus = 'VINTAGE' | 'NON_VINTAGE' | 'UNKNOWN'
 
 export interface SpiritAutocompleteItem {
   id: number
@@ -14,6 +15,8 @@ export interface SpiritAutocompleteItem {
   variantValueEn?: string | null
   displayOrder?: number | null
   category: SpiritCategory
+  vintageYear?: number | null
+  vintageStatus?: WineVintageStatus | null
   abv?: number | null
   avgScore?: number | null
   reviewCount?: number | null
@@ -64,6 +67,8 @@ export interface SpiritListItem {
   seriesIdentifier?: string | null
   seriesIdentifierEn?: string | null
   category: SpiritCategory
+  vintageYear?: number | null
+  vintageStatus?: WineVintageStatus | null
   country: string | null
   abv: number | null
   abvMin?: number | null
@@ -125,6 +130,7 @@ export interface SpiritVariant {
   category: SpiritCategory
   bottledYear: number | null
   vintageYear: number | null
+  vintageStatus: WineVintageStatus | null
   abv: number | null
   volumeMl: number | null
   batchNo: string | null
@@ -206,7 +212,7 @@ export interface WhiskyDetailResponse {
 
 export interface WineDetailResponse {
   wineType: WineType | null
-  vintage: number | null
+  vintageStatus: WineVintageStatus | null
   isOakAged: boolean | null
   isNaturalWine: boolean | null
   certification: WineCertification | null

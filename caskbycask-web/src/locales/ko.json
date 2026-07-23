@@ -651,6 +651,30 @@
       "ORANGE":    "오렌지",
       "FORTIFIED": "주정강화"
     },
+    "wineVintageStatus": {
+      "VINTAGE": "빈티지",
+      "NON_VINTAGE": "NV",
+      "UNKNOWN": "정보 미상"
+    },
+    "wineForm": {
+      "vintage": "빈티지",
+      "vintageHint": "포도 수확 연도",
+      "vintageYear": "빈티지 연도",
+      "vintageStatus": {
+        "VINTAGE": "연도 표기",
+        "NON_VINTAGE": "논빈티지(NV)",
+        "UNKNOWN": "정보 미상"
+      },
+      "yes": "예",
+      "no": "아니요",
+      "unknown": "정보 미상",
+      "oakAged": "오크 숙성",
+      "naturalClaim": "내추럴 와인 표방",
+      "naturalClaimHelp": "통일된 국제 법적 인증이 아닌, 최소 개입 양조 방식을 표방하는 정보입니다.",
+      "appellation": "원산지 명칭 / 아펠라시옹 (AOC / DOC / AVA 등)",
+      "appellationPlaceholder": "예: AOC Bordeaux",
+      "commonHint": "와인은 빈티지(수확 연도 또는 NV)로 식별합니다. 도수와 용량만 입력해주세요."
+    },
     "cognacGrade": {
       "VS":        "VS",
       "NAPOLEON":  "Napoléon",

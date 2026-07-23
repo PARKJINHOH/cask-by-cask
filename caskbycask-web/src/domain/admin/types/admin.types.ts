@@ -2,7 +2,7 @@ import type {
   SpiritCategory, SpiritStatus,
   SpiritCommonDetailResponse, WhiskyDetailResponse, WineDetailResponse,
   CognacDetailResponse, OtherDetailResponse,
-  WhiskyStyle, WineType, CognacGrade, OtherSpiritType,
+  WhiskyStyle, WineType, WineVintageStatus, CognacGrade, OtherSpiritType,
 } from '@/domain/spirit/types/spirit.types'
 
 // ── 폼용 Detail Request 타입 ─────────────────────────────────
@@ -65,7 +65,7 @@ export interface CreateVariantRequest {
 
 export interface WineDetailRequest {
   wineType?: string | null
-  vintage?: number | null
+  vintageStatus?: WineVintageStatus | null
   isOakAged?: boolean | null
   isNaturalWine?: boolean | null
   certification?: string | null

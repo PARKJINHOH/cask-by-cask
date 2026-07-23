@@ -20,6 +20,8 @@ export interface UserBottle {
   seriesIdentifierEn: string | null;
   variantValue: string | null;
   variantValueEn: string | null;
+  vintageYear: number | null;
+  vintageStatus: 'VINTAGE' | 'NON_VINTAGE' | 'UNKNOWN' | null;
   spiritNameText: string | null;
   category: SpiritCategory;
   purchaseDate: string | null;

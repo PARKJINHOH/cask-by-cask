@@ -5,6 +5,7 @@ import com.caskbycask.domain.bottlecollection.entity.UserBottle;
 import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
 import com.caskbycask.domain.spirit.entity.enums.VariantType;
+import com.caskbycask.domain.spirit.entity.enums.WineVintageStatus;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -21,6 +22,8 @@ public record UserBottleResponse(
     String seriesIdentifierEn,
     String variantValue,
     String variantValueEn,
+    Integer vintageYear,
+    WineVintageStatus vintageStatus,
     String spiritNameText,
     SpiritCategory category,
     LocalDate purchaseDate,
@@ -62,6 +65,11 @@ public record UserBottleResponse(
             seriesIdentifierEn,
             spirit != null ? spirit.getVariantValue() : null,
             spirit != null ? spirit.getVariantValueEn() : null,
+            spirit != null ? spirit.getVintageYear() : null,
+            spirit != null && spirit.getCategory() == SpiritCategory.WINE
+                    && spirit.getWineDetail() != null
+                    ? spirit.getWineDetail().getVintageStatus()
+                    : null,
             b.getSpiritNameText(),
             b.getCategory(), b.getPurchaseDate(), b.getBatch(), b.getBottlingYear(),
             b.getPrice(), b.getStore(), b.getStatus(), b.getIsPublic(),

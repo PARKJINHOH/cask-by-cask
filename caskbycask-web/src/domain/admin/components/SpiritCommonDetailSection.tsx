@@ -1,6 +1,7 @@
 import NasToggle from '@/shared/components/NasToggle'
 import { formatYearMonth } from '@/shared/utils/yearMonth'
 import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
+import { useTranslation } from 'react-i18next'
 
 export interface CommonDetailForm {
   isNas: boolean
@@ -33,6 +34,7 @@ interface Props {
   dateErrors?: { distilledDate?: string; bottledDate?: string }
   /** 카테고리별로 부적합 필드를 숨김 (와인=빈티지 중심, 꼬냑=등급 중심). 미지정 시 전체 표시. */
   category?: SpiritCategory | null
+  admin?: boolean
 }
 
 const INPUT = 'w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400'
@@ -48,7 +50,8 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 
-export default function SpiritCommonDetailSection({ value, onChange, dateErrors, category }: Props) {
+export default function SpiritCommonDetailSection({ value, onChange, dateErrors, category, admin = true }: Props) {
+  const { t } = useTranslation()
   // 카테고리별 표시 규칙
   //  - 와인 : NAS·숙성년수·증류연월·병입연월·배치/병번호/총병수 숨김 (빈티지로 대체)
   //  - 꼬냑 : NAS·숙성년수·증류연월 숨김 (VS·VSOP·XO 등급으로 식별)
@@ -83,7 +86,7 @@ export default function SpiritCommonDetailSection({ value, onChange, dateErrors,
 
       {isWine && (
         <p className="text-xs text-neutral-400">
-          와인은 빈티지(수확 연도)로 식별합니다. 빈티지·도수·용량·출시일만 입력해주세요.
+          {t('spirit.wineForm.commonHint', admin ? { lng: 'ko' } : undefined)}
         </p>
       )}
 
@@ -124,16 +127,18 @@ export default function SpiritCommonDetailSection({ value, onChange, dateErrors,
           </div>
         )}
 
-        {/* 출시일 — 전 카테고리 공통 */}
-        <Field label="출시일">
-          <input
-            type="date"
-            max="9999-12-31"
-            value={value.releaseDate}
-            onChange={(e) => onChange({ releaseDate: e.target.value })}
-            className={INPUT}
-          />
-        </Field>
+        {/* 출시일 — 와인은 빈티지와 별개이며 카탈로그 식별 정보로 사용하지 않음 */}
+        {!isWine && (
+          <Field label="출시일">
+            <input
+              type="date"
+              max="9999-12-31"
+              value={value.releaseDate}
+              onChange={(e) => onChange({ releaseDate: e.target.value })}
+              className={INPUT}
+            />
+          </Field>
+        )}
 
         {/* 배치 번호 — 출시일 우측에 위치 (와인 제외) */}
         {showBottleMeta && (

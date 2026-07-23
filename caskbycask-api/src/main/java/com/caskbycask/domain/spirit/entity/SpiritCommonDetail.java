@@ -113,4 +113,8 @@ public class SpiritCommonDetail {
         this.batchNo          = batchNo;
         this.totalBottles     = totalBottles;
     }
+
+    public void clearReleaseDate() {
+        this.releaseDate = null;
+    }
 }

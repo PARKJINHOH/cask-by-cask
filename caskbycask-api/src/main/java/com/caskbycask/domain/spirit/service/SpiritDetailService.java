@@ -13,7 +13,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Year;
 import java.util.*;
 
 @Service
@@ -34,13 +33,14 @@ public class SpiritDetailService {
         if (req == null) return;
 
         boolean isNas = Boolean.TRUE.equals(req.isNas());
+        var releaseDate = spirit.getCategory() == SpiritCategory.WINE ? null : req.releaseDate();
 
         commonDetailRepo.findById(spirit.getId()).ifPresentOrElse(
             existing -> existing.update(
                 isNas, req.ageStatement(), req.ageStatementMonths(),
                 req.ageStatementMin(), req.ageStatementMinMonths(),
                 req.ageStatementMax(), req.ageStatementMaxMonths(),
-                req.distilledDate(), req.bottledDate(), req.releaseDate(),
+                req.distilledDate(), req.bottledDate(), releaseDate,
                 req.volumeMl(), req.abv(),
                 req.bottleNo(), req.batchNo(), req.totalBottles()),
             () -> commonDetailRepo.save(SpiritCommonDetail.builder()
@@ -54,7 +54,7 @@ public class SpiritDetailService {
                 .ageStatementMaxMonths(isNas ? null : req.ageStatementMaxMonths())
                 .distilledDate(req.distilledDate())
                 .bottledDate(req.bottledDate())
-                .releaseDate(req.releaseDate())
+                .releaseDate(releaseDate)
                 .volumeMl(req.volumeMl())
                 .abv(req.abv())
                 .bottleNo(req.bottleNo())
@@ -69,7 +69,10 @@ public class SpiritDetailService {
     public void saveCategoryDetail(Spirit spirit, CreateSpiritRequest req) {
         switch (spirit.getCategory()) {
             case WHISKY  -> saveWhiskyDetail(spirit, req.whiskyDetail());
-            case WINE    -> saveWineDetail(spirit, req.wineDetail());
+            case WINE    -> {
+                if (req.wineDetail() != null) saveWineDetail(spirit, req.wineDetail());
+                else ensureWineDetail(spirit);
+            }
             case COGNAC  -> saveCognacDetail(spirit, req.cognacDetail());
             case OTHER   -> saveOtherDetail(spirit, req.otherDetail());
         }
@@ -92,9 +95,16 @@ public class SpiritDetailService {
                 }
             }
             case WINE -> {
-                if (wineType != null && wineDetailRepo.findById(spirit.getId()).isEmpty())
-                    wineDetailRepo.save(SpiritWineDetail.builder()
-                        .spirit(spirit).wineType(wineType).build());
+                if (wineType != null && wineDetailRepo.findById(spirit.getId()).isEmpty()) {
+                    SpiritWineDetail detail = wineDetailRepo.save(SpiritWineDetail.builder()
+                        .spirit(spirit)
+                        .wineType(wineType)
+                        .vintageStatus(spirit.getVintageYear() != null
+                                ? WineVintageStatus.VINTAGE
+                                : WineVintageStatus.UNKNOWN)
+                        .build());
+                    spirit.attachWineDetail(detail);
+                }
             }
             case COGNAC -> {
                 if (cognacGrade != null && cognacDetailRepo.findById(spirit.getId()).isEmpty())
@@ -128,7 +138,10 @@ public class SpiritDetailService {
         // 요청에 포함된 경우에만 갱신 (null = 변경 없음)
         switch (newCategory) {
             case WHISKY  -> { if (req.whiskyDetail()  != null) saveWhiskyDetail(spirit,  req.whiskyDetail()); }
-            case WINE    -> { if (req.wineDetail()    != null) saveWineDetail(spirit,    req.wineDetail()); }
+            case WINE    -> {
+                if (req.wineDetail() != null) saveWineDetail(spirit, req.wineDetail());
+                else if (newCategory != prevCategory) ensureWineDetail(spirit);
+            }
             case COGNAC  -> { if (req.cognacDetail()  != null) saveCognacDetail(spirit,  req.cognacDetail()); }
             case OTHER   -> { if (req.otherDetail()   != null) saveOtherDetail(spirit,   req.otherDetail()); }
         }
@@ -195,13 +208,7 @@ public class SpiritDetailService {
             if (total > 100) throw new CustomException(ErrorCode.INVALID_GRAPE_PERCENTAGE);
         }
 
-        // 빈티지 연도 상한 검증
-        if (req.vintage() != null && req.vintage() > Year.now().getValue()) {
-            throw new CustomException(ErrorCode.INVALID_INPUT);
-        }
-
         boolean isOakAged = Boolean.TRUE.equals(req.isOakAged());
-
         Map<String, Object> extra = new LinkedHashMap<>();
         extra.put("grapeVarieties", req.grapeVarieties());
         extra.put("appellationDesignation", req.appellationDesignation());
@@ -215,24 +222,49 @@ public class SpiritDetailService {
         String extraJson = serialize(extra);
 
         wineDetailRepo.findById(spirit.getId()).ifPresentOrElse(
-            existing -> existing.update(
-                req.wineType(), req.vintage(), req.isOakAged(), req.isNaturalWine(),
-                req.certification(), req.sweetness(), req.body(), req.acidity(), req.tannin(),
-                extraJson),
-            () -> wineDetailRepo.save(SpiritWineDetail.builder()
-                .spirit(spirit)
-                .wineType(req.wineType())
-                .vintage(req.vintage())
-                .isOakAged(req.isOakAged())
-                .isNaturalWine(req.isNaturalWine())
-                .certification(req.certification())
-                .sweetness(req.sweetness())
-                .body(req.body())
-                .acidity(req.acidity())
-                .tannin(req.tannin())
-                .extraData(extraJson)
-                .build())
+            existing -> {
+                existing.update(
+                        req.wineType(),
+                        req.vintageStatus() != null ? req.vintageStatus() : existing.getVintageStatus(),
+                        req.isOakAged(), req.isNaturalWine(),
+                        req.certification(), req.sweetness(), req.body(), req.acidity(), req.tannin(),
+                        extraJson);
+                spirit.attachWineDetail(existing);
+            },
+            () -> {
+                SpiritWineDetail detail = wineDetailRepo.save(SpiritWineDetail.builder()
+                        .spirit(spirit)
+                        .wineType(req.wineType())
+                        .vintageStatus(req.vintageStatus() != null
+                                ? req.vintageStatus()
+                                : (spirit.getVintageYear() != null
+                                    ? WineVintageStatus.VINTAGE
+                                    : WineVintageStatus.UNKNOWN))
+                        .isOakAged(req.isOakAged())
+                        .isNaturalWine(req.isNaturalWine())
+                        .certification(req.certification())
+                        .sweetness(req.sweetness())
+                        .body(req.body())
+                        .acidity(req.acidity())
+                        .tannin(req.tannin())
+                        .extraData(extraJson)
+                        .build());
+                spirit.attachWineDetail(detail);
+            }
         );
+    }
+
+    private void ensureWineDetail(Spirit spirit) {
+        if (wineDetailRepo.findById(spirit.getId()).isPresent()) {
+            return;
+        }
+        SpiritWineDetail detail = wineDetailRepo.save(SpiritWineDetail.builder()
+                .spirit(spirit)
+                .vintageStatus(spirit.getVintageYear() != null
+                        ? WineVintageStatus.VINTAGE
+                        : WineVintageStatus.UNKNOWN)
+                .build());
+        spirit.attachWineDetail(detail);
     }
 
     private void saveCognacDetail(Spirit spirit, CognacDetailRequest req) {
@@ -389,7 +421,7 @@ public class SpiritDetailService {
         }
 
         return new WineDetailResponse(
-                detail.getWineType(), detail.getVintage(),
+                detail.getWineType(), detail.getVintageStatus(),
                 detail.getIsOakAged(), detail.getIsNaturalWine(), detail.getCertification(),
                 grapes,
                 str(extra, "appellationDesignation"), str(extra, "soilType"),

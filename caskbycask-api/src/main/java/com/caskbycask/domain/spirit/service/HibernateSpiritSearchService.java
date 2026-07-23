@@ -202,7 +202,7 @@ public class HibernateSpiritSearchService implements SpiritSearchService {
 
         String cleanKeyword = keyword.trim().toLowerCase(Locale.ROOT);
         String cacheKeyword = SpiritSearchTextNormalizer.compact(cleanKeyword);
-        String redisKey = "autocomplete:v3:" + (includeVariants ? "all:" : "master:")
+        String redisKey = "autocomplete:v4:" + (includeVariants ? "all:" : "master:")
                 + (StringUtils.hasText(cacheKeyword) ? cacheKeyword : cleanKeyword);
 
         try {
@@ -239,10 +239,10 @@ public class HibernateSpiritSearchService implements SpiritSearchService {
                         "select new com.caskbycask.domain.spirit.dto.SpiritAutocompleteResponse(" +
                         "s.id, s.nameKo, s.nameEn, s.seriesIdentifier, s.seriesIdentifierEn, " +
                         "s.parent.id, s.variantType, s.variantValue, s.variantValueEn, s.displayOrder, " +
-                        "s.category, s.abv, s.avgScore, s.reviewCount, " +
+                        "s.category, s.vintageYear, wd.vintageStatus, s.abv, s.avgScore, s.reviewCount, " +
                         "(select max(si.imageUrl) from SpiritImage si where si.spirit.id = s.id and si.sortOrder = 0), " +
                         "(select max(pi.imageUrl) from SpiritImage pi where pi.spirit.id = s.parent.id and pi.sortOrder = 0) " +
-                        ") from Spirit s where s.id in :ids", SpiritAutocompleteResponse.class)
+                        ") from Spirit s left join s.wineDetail wd where s.id in :ids", SpiritAutocompleteResponse.class)
                 .setParameter("ids", ids)
                 .getResultList();
 

@@ -651,6 +651,30 @@
       "ORANGE":    "Orange",
       "FORTIFIED": "Fortified"
     },
+    "wineVintageStatus": {
+      "VINTAGE": "Vintage",
+      "NON_VINTAGE": "NV",
+      "UNKNOWN": "Unknown"
+    },
+    "wineForm": {
+      "vintage": "Vintage",
+      "vintageHint": "Grape harvest year",
+      "vintageYear": "Vintage year",
+      "vintageStatus": {
+        "VINTAGE": "Year shown",
+        "NON_VINTAGE": "Non-vintage (NV)",
+        "UNKNOWN": "Unknown"
+      },
+      "yes": "Yes",
+      "no": "No",
+      "unknown": "Unknown",
+      "oakAged": "Oak aged",
+      "naturalClaim": "Natural wine claim",
+      "naturalClaimHelp": "This describes a minimal-intervention winemaking claim, not a uniform international legal certification.",
+      "appellation": "Origin designation / appellation (AOC / DOC / AVA, etc.)",
+      "appellationPlaceholder": "e.g. AOC Bordeaux",
+      "commonHint": "Wine is identified by vintage (harvest year or NV). Enter only the alcohol level and volume here."
+    },
     "cognacGrade": {
       "VS":        "VS",
       "NAPOLEON":  "Napoléon",

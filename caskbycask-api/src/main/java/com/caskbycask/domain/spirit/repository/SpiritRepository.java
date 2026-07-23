@@ -56,6 +56,7 @@ public interface SpiritRepository extends JpaRepository<Spirit, Long>, SpiritQue
     @Query("""
             SELECT s FROM Spirit s
             LEFT JOIN FETCH s.commonDetail
+            LEFT JOIN FETCH s.wineDetail
             WHERE s.parent.id = :parentId
             ORDER BY COALESCE(s.displayOrder, 999999) ASC, s.id ASC
             """)
@@ -63,6 +64,8 @@ public interface SpiritRepository extends JpaRepository<Spirit, Long>, SpiritQue
 
     @Query("""
             SELECT s FROM Spirit s
+            LEFT JOIN FETCH s.commonDetail
+            LEFT JOIN FETCH s.wineDetail
             WHERE s.parent.id = :parentId
               AND s.status IN :statuses
               AND LOWER(s.variantValue) = LOWER(:variantValue)
@@ -71,6 +74,14 @@ public interface SpiritRepository extends JpaRepository<Spirit, Long>, SpiritQue
     List<Spirit> findByParentIdAndVariantValueIgnoreCaseAndStatusIn(@Param("parentId") Long parentId,
                                                                     @Param("variantValue") String variantValue,
                                                                     @Param("statuses") List<SpiritStatus> statuses);
+
+    @Query("""
+            SELECT DISTINCT s FROM Spirit s
+            LEFT JOIN FETCH s.commonDetail
+            LEFT JOIN FETCH s.wineDetail
+            WHERE s.id IN :ids
+            """)
+    List<Spirit> findAllByIdWithCommonAndWineDetail(@Param("ids") java.util.Collection<Long> ids);
 
     @Query(value = """
             SELECT s FROM Spirit s

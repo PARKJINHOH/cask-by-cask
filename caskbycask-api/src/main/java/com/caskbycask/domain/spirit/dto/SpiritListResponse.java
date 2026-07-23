@@ -9,6 +9,7 @@ import com.caskbycask.domain.spirit.entity.SpiritWineDetail;
 import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
 import com.caskbycask.domain.spirit.entity.enums.SpiritStatus;
 import com.caskbycask.domain.spirit.entity.enums.WhiskyStyle;
+import com.caskbycask.domain.spirit.entity.enums.WineVintageStatus;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,6 +30,10 @@ public record SpiritListResponse(
         String seriesIdentifierEn,
         @Schema(description = "카테고리")
         SpiritCategory category,
+        @Schema(description = "와인 빈티지 연도")
+        Integer vintageYear,
+        @Schema(description = "와인 빈티지 상태")
+        WineVintageStatus vintageStatus,
         @Schema(description = "생산 국가")
         String country,
         @Schema(description = "알코올 도수 %")
@@ -70,6 +75,8 @@ public record SpiritListResponse(
                 displaySeriesIdentifier(spirit, canonicalSpirit),
                 displaySeriesIdentifierEn(spirit, canonicalSpirit),
                 spirit.getCategory(),
+                spirit.getVintageYear(),
+                wineVintageStatus(spirit),
                 spirit.getCountry(),
                 spirit.getAbv(),
                 spirit.getAbvMin(),
@@ -98,6 +105,8 @@ public record SpiritListResponse(
                 displaySeriesIdentifier(spirit, canonicalSpirit),
                 displaySeriesIdentifierEn(spirit, canonicalSpirit),
                 spirit.getCategory(),
+                spirit.getVintageYear(),
+                wineVintageStatus(spirit),
                 spirit.getCountry(),
                 spirit.getAbv(),
                 spirit.getAbvMin(),
@@ -149,6 +158,13 @@ public record SpiritListResponse(
                 yield detail != null && detail.getOtherType() != null ? detail.getOtherType().name() : null;
             }
         };
+    }
+
+    private static WineVintageStatus wineVintageStatus(Spirit spirit) {
+        SpiritWineDetail detail = spirit.getWineDetail();
+        return spirit.getCategory() == SpiritCategory.WINE && detail != null
+                ? detail.getVintageStatus()
+                : null;
     }
 
     private static String styleOther(Spirit spirit) {

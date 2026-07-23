@@ -9,6 +9,7 @@ import {
   type BoardListType,
   type MetadataSearchParams,
 } from '@/shared/utils/seoIndexing'
+import { appendWineVintageDisplay } from '@/domain/spirit/utils/spiritDisplayName'
 
 export { isBoardListNoindex }
 export type { BoardListType, MetadataSearchParams }
@@ -114,7 +115,7 @@ interface SpiritDetailResponse {
   } | null
   wineDetail?: {
     wineType?: string | null
-    vintage?: number | null
+    vintageStatus?: 'VINTAGE' | 'NON_VINTAGE' | 'UNKNOWN' | null
     appellationDesignation?: string | null
     grapeVarieties?: Array<{ name?: string | null; percentage?: number | null }> | null
     sweetness?: string | null
@@ -287,6 +288,9 @@ interface SpiritListSeoItemResponse {
   id: number
   nameKo: string
   nameEn?: string | null
+  category?: string | null
+  vintageYear?: number | null
+  vintageStatus?: 'VINTAGE' | 'NON_VINTAGE' | 'UNKNOWN' | null
   producerNameKo?: string | null
   producerNameEn?: string | null
   canonicalPathKo?: string | null
@@ -1442,7 +1446,10 @@ export async function getSpiritsListSeoSnapshot(
   const state = await resolveSpiritsListSeoState(lang, searchParams, true)
   const isEn = state.lang === 'en'
   const items = (state.page?.content ?? []).map((spirit) => ({
-    title: isEn ? (spirit.nameEn || spirit.nameKo) : spirit.nameKo,
+    title: appendWineVintageDisplay(
+      isEn ? (spirit.nameEn || spirit.nameKo) : spirit.nameKo,
+      spirit,
+    ),
     href: isEn
       ? (spirit.canonicalPathEn || `/en/spirits/${spirit.id}`)
       : (spirit.canonicalPathKo || `/ko/spirits/${spirit.id}`),
@@ -1484,7 +1491,10 @@ export async function getSpiritsListJsonLd(
   const items = (state.page?.content ?? []).map((spirit, index) => ({
     '@type': 'ListItem',
     position: index + 1,
-    name: isEn ? (spirit.nameEn || spirit.nameKo) : spirit.nameKo,
+    name: appendWineVintageDisplay(
+      isEn ? (spirit.nameEn || spirit.nameKo) : spirit.nameKo,
+      spirit,
+    ),
     url: `${SITE_URL}${isEn
       ? (spirit.canonicalPathEn || `/en/spirits/${spirit.id}`)
       : (spirit.canonicalPathKo || `/ko/spirits/${spirit.id}`)}`,
@@ -1581,21 +1591,7 @@ export async function getSpiritDetailMetadata(id: string, lang: 'ko' | 'en' | nu
       }
     }
 
-    const hasEdition = spirit.variantType && spirit.variantType !== 'NONE'
-    let nameKo = spirit.nameKo
-    let nameEn = spirit.nameEn
-    if (hasEdition) {
-      nameKo = formatEditionDisplayName(
-        spirit.nameKo,
-        spirit.seriesIdentifier,
-        spirit.variantValue,
-      )
-      nameEn = formatEditionDisplayName(
-        spirit.nameEn || spirit.nameKo,
-        spirit.seriesIdentifierEn || spirit.seriesIdentifier,
-        spirit.variantValueEn || spirit.variantValue,
-      )
-    }
+    const { nameKo, nameEn } = formatSpiritDisplayNames(spirit)
 
     const title = nameEn 
       ? `${nameKo} (${nameEn}) 주류 정보 & 리뷰 (Specs & Reviews) — CaskByCask` 
@@ -1659,17 +1655,7 @@ export async function getSpiritDetailJsonLd(id: string, lang: 'ko' | 'en' | null
   if (!spirit) return null
 
   const isEn = lang === 'en'
-  const hasEdition = spirit.variantType && spirit.variantType !== 'NONE'
-  const nameKo = hasEdition
-    ? formatEditionDisplayName(spirit.nameKo, spirit.seriesIdentifier, spirit.variantValue)
-    : spirit.nameKo
-  const nameEn = hasEdition
-    ? formatEditionDisplayName(
-        spirit.nameEn || spirit.nameKo,
-        spirit.seriesIdentifierEn || spirit.seriesIdentifier,
-        spirit.variantValueEn || spirit.variantValue,
-      )
-    : (spirit.nameEn || spirit.nameKo)
+  const { nameKo, nameEn } = formatSpiritDisplayNames(spirit)
   const primaryName = isEn ? nameEn : nameKo
   const secondaryName = isEn ? nameKo : nameEn
   const primaryProducer = isEn
@@ -1695,7 +1681,7 @@ export async function getSpiritDetailJsonLd(id: string, lang: 'ko' | 'en' | null
     { label: labels.volume, value: formatVolumeValue(spirit.volumeMl, spirit.volumeMlMin, spirit.volumeMlMax) },
     { label: labels.age, value: formatAgeStatement(spirit.commonDetail, isEn ? 'en' : 'ko') },
     { label: labels.bottler, value: spirit.bottler },
-    { label: labels.vintage, value: spirit.vintageYear },
+    { label: labels.vintage, value: spirit.vintageYear ?? (spirit.wineDetail?.vintageStatus === 'NON_VINTAGE' ? 'NV' : null) },
     { label: labels.bottledYear, value: spirit.bottledYear },
     { label: labels.whiskyStyle, value: spirit.whiskyDetail?.style },
     { label: labels.cask, value: spirit.whiskyDetail?.caskTypes?.filter(Boolean).join(', ') },
@@ -1815,6 +1801,29 @@ function formatEditionDisplayName(
     .join(' ')
 }
 
+function formatSpiritDisplayNames(spirit: SpiritDetailResponse) {
+  const hasEdition = spirit.variantType && spirit.variantType !== 'NONE'
+  const baseNameKo = hasEdition
+    ? formatEditionDisplayName(spirit.nameKo, spirit.seriesIdentifier, spirit.variantValue)
+    : spirit.nameKo
+  const baseNameEn = hasEdition
+    ? formatEditionDisplayName(
+        spirit.nameEn || spirit.nameKo,
+        spirit.seriesIdentifierEn || spirit.seriesIdentifier,
+        spirit.variantValueEn || spirit.variantValue,
+      )
+    : (spirit.nameEn || spirit.nameKo)
+  const vintageSource = {
+    category: spirit.category,
+    vintageYear: spirit.vintageYear,
+    vintageStatus: spirit.wineDetail?.vintageStatus,
+  }
+  return {
+    nameKo: appendWineVintageDisplay(baseNameKo, vintageSource),
+    nameEn: appendWineVintageDisplay(baseNameEn, vintageSource),
+  }
+}
+
 function formatPriceObservation(
   observation: SpiritSeoPriceObservationResponse | null | undefined,
   lang: 'ko' | 'en',
@@ -1851,17 +1860,7 @@ export async function getSpiritSeoSnapshot(id: string, lang: 'ko' | 'en' | null)
   ])
   if (!spirit) return null
 
-  const hasEdition = spirit.variantType && spirit.variantType !== 'NONE'
-  const nameKo = hasEdition
-    ? formatEditionDisplayName(spirit.nameKo, spirit.seriesIdentifier, spirit.variantValue)
-    : spirit.nameKo
-  const nameEn = hasEdition
-    ? formatEditionDisplayName(
-        spirit.nameEn || spirit.nameKo,
-        spirit.seriesIdentifierEn || spirit.seriesIdentifier,
-        spirit.variantValueEn || spirit.variantValue,
-      )
-    : (spirit.nameEn || spirit.nameKo)
+  const { nameKo, nameEn } = formatSpiritDisplayNames(spirit)
   const title = isEn ? nameEn : nameKo
   const subtitle = isEn ? nameKo : (nameEn !== nameKo ? nameEn : null)
   const primaryProducer = isEn
@@ -1939,9 +1938,9 @@ export async function getSpiritSeoSnapshot(id: string, lang: 'ko' | 'en' | null)
       { label: labels.volume, value: volume },
       { label: labels.age, value: age },
       { label: labels.bottler, value: spirit.bottler },
-      { label: labels.vintage, value: spirit.vintageYear },
+      { label: labels.vintage, value: spirit.vintageYear ?? (spirit.wineDetail?.vintageStatus === 'NON_VINTAGE' ? 'NV' : null) },
       { label: labels.bottledYear, value: spirit.bottledYear },
-      { label: labels.releaseDate, value: formatDateOnly(spirit.commonDetail?.releaseDate) },
+      { label: labels.releaseDate, value: spirit.category === 'WINE' ? null : formatDateOnly(spirit.commonDetail?.releaseDate) },
       { label: labels.batchNo, value: spirit.commonDetail?.batchNo },
       { label: labels.bottleNo, value: spirit.commonDetail?.bottleNo },
       { label: labels.whiskyStyle, value: spirit.whiskyDetail?.style },

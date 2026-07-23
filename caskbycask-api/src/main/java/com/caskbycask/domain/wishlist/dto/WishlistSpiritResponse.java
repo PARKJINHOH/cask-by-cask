@@ -3,6 +3,7 @@ package com.caskbycask.domain.wishlist.dto;
 import com.caskbycask.domain.seo.util.SpiritSlugUtils;
 import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
+import com.caskbycask.domain.spirit.entity.enums.WineVintageStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
@@ -18,6 +19,10 @@ public record WishlistSpiritResponse(
         String seriesIdentifier,
         @Schema(description = "카테고리")
         SpiritCategory category,
+        @Schema(description = "와인 빈티지 연도")
+        Integer vintageYear,
+        @Schema(description = "와인 빈티지 상태")
+        WineVintageStatus vintageStatus,
         @Schema(description = "대표 이미지 URL")
         String primaryImageUrl,
         @Schema(description = "KO canonical path")
@@ -34,6 +39,10 @@ public record WishlistSpiritResponse(
                 spirit.getNameEn(),
                 spirit.getSeriesIdentifier(),
                 spirit.getCategory(),
+                spirit.getVintageYear(),
+                spirit.getCategory() == SpiritCategory.WINE && spirit.getWineDetail() != null
+                        ? spirit.getWineDetail().getVintageStatus()
+                        : null,
                 primaryImageUrl,
                 SpiritSlugUtils.canonicalPathKo(spirit),
                 SpiritSlugUtils.canonicalPathEn(spirit),

@@ -2,6 +2,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { spiritApi } from '../api/spiritApi'
 import { spiritSeoApi } from '../api/spiritSeoApi'
 import type { CreateSpiritVariantRequest } from '../types/spirit.types'
+import { appendWineVintageDisplay } from '../utils/spiritDisplayName'
 
 export function formatSpiritName<T extends {
   nameKo: string
@@ -11,29 +12,39 @@ export function formatSpiritName<T extends {
   variantType?: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE' | null
   variantValue?: string | null
   variantValueEn?: string | null
+  category?: string | null
+  vintageYear?: number | null
+  vintageStatus?: 'VINTAGE' | 'NON_VINTAGE' | 'UNKNOWN' | null
+  wineDetail?: { vintageStatus?: 'VINTAGE' | 'NON_VINTAGE' | 'UNKNOWN' | null } | null
 }>(spirit: T): T {
   if (!spirit) return spirit
   const hasEdition = spirit.variantType && spirit.variantType !== 'NONE'
+  let nameKo = spirit.nameKo
+  let nameEn = spirit.nameEn
   if (hasEdition) {
-    const nameKo = formatEditionDisplayName(
+    nameKo = formatEditionDisplayName(
       spirit.nameKo,
       spirit.seriesIdentifier,
       spirit.variantValue,
     )
     const nameEnBase = spirit.nameEn || spirit.nameKo
     const valEn = spirit.variantValueEn || spirit.variantValue
-    const nameEn = formatEditionDisplayName(
+    nameEn = formatEditionDisplayName(
       nameEnBase,
       spirit.seriesIdentifierEn || spirit.seriesIdentifier,
       valEn,
     )
-    return {
-      ...spirit,
-      nameKo,
-      nameEn,
-    }
   }
-  return spirit
+  const vintageSource = {
+    category: spirit.category,
+    vintageYear: spirit.vintageYear,
+    vintageStatus: spirit.vintageStatus ?? spirit.wineDetail?.vintageStatus,
+  }
+  return {
+    ...spirit,
+    nameKo: appendWineVintageDisplay(nameKo, vintageSource),
+    nameEn: appendWineVintageDisplay(nameEn || nameKo, vintageSource),
+  }
 }
 
 function formatEditionDisplayName(

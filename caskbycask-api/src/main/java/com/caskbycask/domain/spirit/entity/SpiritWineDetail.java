@@ -9,7 +9,6 @@ import org.hibernate.annotations.Comment;
 @Table(
         name = "spirit_wine_detail",
         indexes = {
-                @Index(name = "idx_wine_vintage", columnList = "vintage"),
                 @Index(name = "idx_wine_sweetness", columnList = "sweetness"),
                 @Index(name = "idx_wine_body", columnList = "body"),
                 @Index(name = "idx_wine_acidity", columnList = "acidity"),
@@ -34,23 +33,24 @@ public class SpiritWineDetail {
 
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
-    @Comment("와인 유형 — RED/WHITE/ROSE/SPARKLING/DESSERT/ORANGE")
+    @Comment("와인 유형 — RED/WHITE/ROSE/SPARKLING/DESSERT/ORANGE/FORTIFIED")
     @org.hibernate.search.mapper.pojo.mapping.definition.annotation.KeywordField
     private WineType wineType;
 
-    /** 포도 수확 연도 — 와인의 핵심 식별자 */
-    @Column
-    @Comment("빈티지 연도")
-    private Integer vintage;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    @Comment("빈티지 상태 — VINTAGE/NON_VINTAGE/UNKNOWN")
+    @org.hibernate.search.mapper.pojo.mapping.definition.annotation.KeywordField
+    private WineVintageStatus vintageStatus;
 
     /** 오크 숙성 여부 */
     @Column
     @Comment("오크 숙성 여부")
     private Boolean isOakAged;
 
-    /** 개입 최소화, 무첨가 양조 방식 */
+    /** 개입 최소화 양조 방식을 표방하는지 여부 (통일된 국제 법적 인증과는 별개) */
     @Column
-    @Comment("내추럴 와인 여부")
+    @Comment("내추럴 와인 표방 여부")
     private Boolean isNaturalWine;
 
     @Enumerated(EnumType.STRING)
@@ -99,12 +99,12 @@ public class SpiritWineDetail {
     @Comment("추가 데이터(JSON)")
     private String extraData;
 
-    public void update(WineType wineType, Integer vintage, Boolean isOakAged,
+    public void update(WineType wineType, WineVintageStatus vintageStatus, Boolean isOakAged,
                        Boolean isNaturalWine, WineCertification certification,
                        WineSweetness sweetness, WineBody body,
                        WineIntensity acidity, WineIntensity tannin, String extraData) {
         this.wineType      = wineType;
-        this.vintage       = vintage;
+        this.vintageStatus = vintageStatus;
         this.isOakAged     = isOakAged;
         this.isNaturalWine = isNaturalWine;
         this.certification = certification;

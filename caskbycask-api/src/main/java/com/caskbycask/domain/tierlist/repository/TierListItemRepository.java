@@ -15,6 +15,7 @@ public interface TierListItemRepository extends JpaRepository<TierListItem, Long
             LEFT JOIN FETCH i.row
             LEFT JOIN FETCH i.spirit s
             LEFT JOIN FETCH s.commonDetail
+            LEFT JOIN FETCH s.wineDetail
             LEFT JOIN FETCH i.producer
             WHERE i.tierList.id = :tierListId
             ORDER BY i.sortOrder ASC, i.id ASC

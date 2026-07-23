@@ -6,6 +6,7 @@ import com.caskbycask.domain.bottlecollection.entity.BottleStatus;
 import com.caskbycask.domain.bottlecollection.entity.QUserBottle;
 import com.caskbycask.domain.bottlecollection.entity.UserBottle;
 import com.caskbycask.domain.spirit.entity.QSpirit;
+import com.caskbycask.domain.spirit.entity.QSpiritWineDetail;
 import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.Order;
@@ -38,6 +39,7 @@ public class UserBottleQueryRepository {
     private static final QUserBottle bottle = QUserBottle.userBottle;
     private static final QSpirit spirit = new QSpirit("bottleSpirit");
     private static final QSpirit parentSpirit = new QSpirit("bottleParentSpirit");
+    private static final QSpiritWineDetail wineDetail = new QSpiritWineDetail("bottleWineDetail");
 
     public Page<UserBottle> findByUser(Long userId, SpiritCategory category,
                                        BottleStatus status, LocalDate startDate,
@@ -84,6 +86,7 @@ public class UserBottleQueryRepository {
             .distinct()
             .leftJoin(bottle.spirit, spirit).fetchJoin()
             .leftJoin(spirit.parent, parentSpirit).fetchJoin()
+            .leftJoin(spirit.wineDetail, wineDetail).fetchJoin()
             .leftJoin(bottle.images).fetchJoin()
             // ID 선조회와 동일하게 2차 조회에도 사용자·필터 조건을 다시 강제한다.
             .where(where, bottle.id.in(pageIds))

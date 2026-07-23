@@ -172,6 +172,7 @@ export default function SpiritRequestPage() {
           <SpiritFormFields
             form={form}
             allowMultipleVariants={false}
+            admin={false}
             producerSelector={ProducerSelector}
             onCreateProducer={handleCreateProducer}
             bottomSlot={

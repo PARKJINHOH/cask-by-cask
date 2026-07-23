@@ -2,9 +2,14 @@ import AppellationAutocomplete from '@/shared/components/AppellationAutocomplete
 import GrapeVarietyInput, { type GrapeVarietyRow } from '@/shared/components/GrapeVarietyInput'
 import InfoTooltip from '@/shared/components/InfoTooltip'
 import { RequiredMark } from '@/shared/components/FormFieldLabel'
+import { useTranslation } from 'react-i18next'
 
 export interface WineDetailForm {
-  wineType: string; vintage: string; isOakAged: boolean; isNaturalWine: boolean
+  wineType: string
+  vintageStatus: 'VINTAGE' | 'NON_VINTAGE' | 'UNKNOWN'
+  vintageYear: string
+  isOakAged: boolean | null
+  isNaturalWine: boolean | null
   certification: string; grapeVarieties: GrapeVarietyRow[]
   appellationDesignation: string; soilType: string; altitudeM: string
   harvestMethod: string; fermentationVessel: string; oakType: string; oakAgedMonths: string
@@ -13,14 +18,20 @@ export interface WineDetailForm {
 }
 
 export const DEFAULT_WINE: WineDetailForm = {
-  wineType: '', vintage: '', isOakAged: false, isNaturalWine: false,
+  wineType: '', vintageStatus: 'UNKNOWN', vintageYear: '',
+  isOakAged: null, isNaturalWine: null,
   certification: '', grapeVarieties: [], appellationDesignation: '',
   soilType: '', altitudeM: '', harvestMethod: '', fermentationVessel: '',
   oakType: '', oakAgedMonths: '',
   sweetness: '', body: '', acidity: '', tannin: '',
 }
 
-interface Props { value: WineDetailForm; onChange: (u: Partial<WineDetailForm>) => void; errors?: Record<string, string> }
+interface Props {
+  value: WineDetailForm
+  onChange: (u: Partial<WineDetailForm>) => void
+  errors?: Record<string, string>
+  admin?: boolean
+}
 
 const INPUT = 'w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white'
 const LABEL = 'block text-xs font-medium text-neutral-600 mb-1.5'
@@ -37,17 +48,21 @@ const OAK_TYPES = ['French Oak', 'American Oak', 'Hungarian Oak']
 const SWEETNESS = [['DRY','드라이'],['OFF_DRY','오프드라이'],['MEDIUM','미디엄'],['SWEET','스위트']]
 const BODY      = [['LIGHT','라이트'],['MEDIUM','미디엄'],['FULL','풀바디']]
 const LEVEL     = [['LOW','낮음'],['MEDIUM','중간'],['HIGH','높음']]
-
 // 한 줄짜리 세그먼트 라디오 (미지정 포함)
-function Segment({ label, hint, options, value, onChange }: {
-  label: string; hint?: string; options: string[][]; value: string; onChange: (v: string) => void
+function Segment({ label, hint, options, value, onChange, allowClear = true }: {
+  label: string
+  hint?: string
+  options: string[][]
+  value: string
+  onChange: (v: string) => void
+  allowClear?: boolean
 }) {
   return (
     <div>
       <label className={LABEL}>{label}{hint && <span className="ml-1 font-normal text-neutral-400">{hint}</span>}</label>
       <div className="flex flex-wrap gap-2">
         {options.map(([v, l]) => (
-          <button key={v} type="button" onClick={() => onChange(value === v ? '' : v)}
+          <button key={v} type="button" onClick={() => onChange(allowClear && value === v ? '' : v)}
             className={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${
               value === v ? 'border-amber-500 bg-amber-50 text-amber-700 font-medium' : 'border-neutral-200 text-neutral-600 hover:border-amber-300'
             }`}>{l}</button>
@@ -57,7 +72,55 @@ function Segment({ label, hint, options, value, onChange }: {
   )
 }
 
-export default function WineDetailSection({ value, onChange, errors }: Props) {
+function BooleanSegment({ label, hint, value, onChange, optionLabels }: {
+  label: string
+  hint?: React.ReactNode
+  value: boolean | null
+  onChange: (value: boolean | null) => void
+  optionLabels: { yes: string; no: string; unknown: string }
+}) {
+  const options: Array<[string, string, boolean | null]> = [
+    ['YES', optionLabels.yes, true],
+    ['NO', optionLabels.no, false],
+    ['UNKNOWN', optionLabels.unknown, null],
+  ]
+  return (
+    <div>
+      <label className={LABEL}>{label}{hint}</label>
+      <div className="flex flex-wrap gap-2">
+        {options.map(([key, text, optionValue]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => onChange(optionValue)}
+            className={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${
+              value === optionValue
+                ? 'border-amber-500 bg-amber-50 text-amber-700 font-medium'
+                : 'border-neutral-200 text-neutral-600 hover:border-amber-300'
+            }`}
+          >
+            {text}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export default function WineDetailSection({ value, onChange, errors, admin = true }: Props) {
+  const { t } = useTranslation()
+  const tr = (key: string) => t(key, admin ? { lng: 'ko' } : undefined)
+  const booleanOptionLabels = {
+    yes: tr('spirit.wineForm.yes'),
+    no: tr('spirit.wineForm.no'),
+    unknown: tr('spirit.wineForm.unknown'),
+  }
+  const vintageStatuses = [
+    ['VINTAGE', tr('spirit.wineForm.vintageStatus.VINTAGE')],
+    ['NON_VINTAGE', tr('spirit.wineForm.vintageStatus.NON_VINTAGE')],
+    ['UNKNOWN', tr('spirit.wineForm.vintageStatus.UNKNOWN')],
+  ]
+
   return (
     <div className="space-y-5">
       {/* 필수 정보 */}
@@ -81,11 +144,6 @@ export default function WineDetailSection({ value, onChange, errors }: Props) {
                 )}
               </label>
             ))}
-            <label className="flex items-center gap-1.5 cursor-pointer text-sm text-neutral-400">
-              <input type="radio" value="" checked={!value.wineType}
-                onChange={() => onChange({ wineType: '' })} className="accent-amber-500" />
-              미지정
-            </label>
           </div>
           {errors?.wineType && <p className="text-xs text-red-500 mt-1">{errors.wineType}</p>}
         </div>
@@ -102,13 +160,30 @@ export default function WineDetailSection({ value, onChange, errors }: Props) {
         <Segment label="타닌" hint="주로 레드" options={LEVEL} value={value.tannin} onChange={(v) => onChange({ tannin: v })} />
       </div>
 
-      {/* 빈티지 */}
-      <div>
-        <label className={LABEL}>빈티지 연도</label>
-        <input type="number" min={1800} max={new Date().getFullYear()}
-          value={value.vintage} onChange={(e) => onChange({ vintage: e.target.value })}
-          onWheel={(e) => e.currentTarget.blur()}
-          placeholder={`예: ${new Date().getFullYear() - 3}`} className={INPUT} />
+      {/* 빈티지 — 수확 연도 / 논빈티지 / 정보 미상을 명시적으로 구분 */}
+      <div className="space-y-3">
+        <Segment
+          label={tr('spirit.wineForm.vintage')}
+          hint={tr('spirit.wineForm.vintageHint')}
+          options={vintageStatuses}
+          value={value.vintageStatus}
+          allowClear={false}
+          onChange={(v) => onChange({
+            vintageStatus: v as WineDetailForm['vintageStatus'],
+            vintageYear: v === 'VINTAGE' ? value.vintageYear : '',
+          })}
+        />
+        {value.vintageStatus === 'VINTAGE' && (
+          <div>
+            <label className={LABEL}>{tr('spirit.wineForm.vintageYear')} <RequiredMark /></label>
+            <input type="number" min={1800} max={new Date().getFullYear()}
+              value={value.vintageYear} onChange={(e) => onChange({ vintageYear: e.target.value })}
+              onWheel={(e) => e.currentTarget.blur()}
+              placeholder={`예: ${new Date().getFullYear() - 3}`}
+              className={`${INPUT} ${errors?.vintageYear ? 'border-red-400' : ''}`} />
+            {errors?.vintageYear && <p className="text-xs text-red-500 mt-1">{errors.vintageYear}</p>}
+          </div>
+        )}
       </div>
 
       {/* 포도 품종 */}
@@ -121,11 +196,11 @@ export default function WineDetailSection({ value, onChange, errors }: Props) {
 
       {/* 원산지 등급 자동완성 */}
       <div>
-        <label className={LABEL}>원산지 등급 (AOC / DOC / AVA 등)</label>
+        <label className={LABEL}>{tr('spirit.wineForm.appellation')}</label>
         <AppellationAutocomplete
           value={value.appellationDesignation}
           onChange={(v) => onChange({ appellationDesignation: v })}
-          placeholder="예: AOC Bordeaux"
+          placeholder={tr('spirit.wineForm.appellationPlaceholder')}
         />
       </div>
 
@@ -168,19 +243,18 @@ export default function WineDetailSection({ value, onChange, errors }: Props) {
       </div>
 
       {/* 오크 숙성 */}
-      <div>
-        <label className="flex items-center gap-2 cursor-pointer select-none text-sm font-medium text-neutral-700">
-          <input type="checkbox" checked={value.isOakAged}
-            onChange={(e) => onChange({ isOakAged: e.target.checked })} className="w-4 h-4 accent-amber-500" />
-          오크 숙성
-        </label>
-      </div>
+      <BooleanSegment label={tr('spirit.wineForm.oakAged')} value={value.isOakAged}
+        optionLabels={booleanOptionLabels}
+        onChange={(isOakAged) => onChange({
+          isOakAged,
+          ...(isOakAged === true ? {} : { oakType: '', oakAgedMonths: '' }),
+        })} />
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={`${LABEL} ${!value.isOakAged ? 'opacity-40' : ''}`}>오크 종류</label>
           <select value={value.oakType} onChange={(e) => onChange({ oakType: e.target.value })}
-            disabled={!value.isOakAged}
-            className={`${INPUT} ${!value.isOakAged ? 'opacity-40 cursor-not-allowed' : ''}`}>
+            disabled={value.isOakAged !== true}
+            className={`${INPUT} ${value.isOakAged !== true ? 'opacity-40 cursor-not-allowed' : ''}`}>
             <option value="">선택 안 함</option>
             {OAK_TYPES.map((v) => <option key={v} value={v}>{v}</option>)}
           </select>
@@ -191,22 +265,21 @@ export default function WineDetailSection({ value, onChange, errors }: Props) {
             <input type="number" min={1} max={600} value={value.oakAgedMonths}
               onChange={(e) => onChange({ oakAgedMonths: e.target.value })}
               onWheel={(e) => e.currentTarget.blur()}
-              disabled={!value.isOakAged}
-              className={`${INPUT} pr-10 ${!value.isOakAged ? 'opacity-40 cursor-not-allowed' : ''}`} />
+              disabled={value.isOakAged !== true}
+              className={`${INPUT} pr-10 ${value.isOakAged !== true ? 'opacity-40 cursor-not-allowed' : ''}`} />
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">개월</span>
           </div>
         </div>
       </div>
 
       {/* 내추럴 와인, 인증 */}
-      <div>
-        <label className="flex items-center gap-2 cursor-pointer select-none text-sm font-medium text-neutral-700">
-          <input type="checkbox" checked={value.isNaturalWine}
-            onChange={(e) => onChange({ isNaturalWine: e.target.checked })} className="w-4 h-4 accent-amber-500" />
-          내추럴 와인
-          <InfoTooltip text="개입 최소화, 무첨가 양조 방식" />
-        </label>
-      </div>
+      <BooleanSegment
+        label={tr('spirit.wineForm.naturalClaim')}
+        hint={<InfoTooltip text={tr('spirit.wineForm.naturalClaimHelp')} />}
+        value={value.isNaturalWine}
+        optionLabels={booleanOptionLabels}
+        onChange={(isNaturalWine) => onChange({ isNaturalWine })}
+      />
       <div>
         <label className={LABEL}>인증</label>
         <div className="flex flex-wrap gap-4">

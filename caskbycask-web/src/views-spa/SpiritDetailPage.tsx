@@ -310,7 +310,9 @@ function SpiritDetailSections({ spirit, isEn }: { spirit: SpiritDetail; isEn: bo
                   : formatAgeStatement(cd, isEn)} />
               <DI label={isEn ? 'Distilled' : '증류 연월'} value={cd.distilledDate} />
               <DI label={isEn ? 'Bottled' : '병입 연월'} value={cd.bottledDate} />
-              <DI label={isEn ? 'Release Date' : '출시일'} value={cd.releaseDate} />
+              {spirit.category !== 'WINE' && (
+                <DI label={isEn ? 'Release Date' : '출시일'} value={cd.releaseDate} />
+              )}
               <DI label={isEn ? 'Volume' : '용량'} value={formatVolume(spirit.volumeMl ?? cd.volumeMl, spirit.volumeMlMin, spirit.volumeMlMax)} />
               <DI label={isEn ? 'ABV' : '도수'} value={formatAbv(spirit.abv ?? cd.abv, spirit.abvMin, spirit.abvMax)} />
               <DI label={isEn ? 'Bottle No.' : '병 번호'} value={cd.bottleNo} />
@@ -403,7 +405,14 @@ function SpiritDetailSections({ spirit, isEn }: { spirit: SpiritDetail; isEn: bo
             <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest mb-2">Wine</p>
             <DetailGrid>
               <DI label={isEn ? 'Type' : '종류'} value={wine.wineType ? t(`spirit.wineType.${wine.wineType}`) : null} />
-              <DI label={isEn ? 'Vintage' : '빈티지'} value={wine.vintage} />
+              <DI
+                label={t('spirit.wineForm.vintage')}
+                value={wine.vintageStatus === 'VINTAGE'
+                  ? spirit.vintageYear
+                  : wine.vintageStatus
+                    ? t(`spirit.wineVintageStatus.${wine.vintageStatus}`)
+                    : null}
+              />
               <DI label={isEn ? 'Appellation' : '원산지 명칭'} value={wine.appellationDesignation} />
               <DI label={isEn ? 'Soil' : '토양'} value={wine.soilType} />
               <DI label={isEn ? 'Altitude' : '고도'} value={wine.altitudeM != null ? `${wine.altitudeM}m` : null} />
@@ -416,8 +425,10 @@ function SpiritDetailSections({ spirit, isEn }: { spirit: SpiritDetail; isEn: bo
               {wine.oakAgedMonths && (
                 <DI label={isEn ? 'Oak Months' : '오크 숙성'} value={`${wine.oakAgedMonths}${isEn ? ' mo.' : '개월'}`} />
               )}
-              <DI label={isEn ? 'Natural Wine' : '내추럴 와인'}
-                value={wine.isNaturalWine ? (isEn ? 'Yes' : '예') : null} />
+              <DI label={t('spirit.wineForm.naturalClaim')}
+                value={wine.isNaturalWine != null
+                  ? t(wine.isNaturalWine ? 'spirit.wineForm.yes' : 'spirit.wineForm.no')
+                  : null} />
               <DI label={isEn ? 'Sweetness' : '당도'} value={wine.sweetness ? t(`spirit.wineSweetness.${wine.sweetness}`) : null} />
               <DI label={isEn ? 'Body' : '바디'} value={wine.body ? t(`spirit.wineBody.${wine.body}`) : null} />
               <DI label={isEn ? 'Acidity' : '산도'} value={wine.acidity ? t(`spirit.wineIntensity.${wine.acidity}`) : null} />
@@ -673,6 +684,7 @@ function toVariantOption(spirit: SpiritDetail): SpiritVariant {
     category: spirit.category,
     bottledYear: spirit.bottledYear,
     vintageYear: spirit.vintageYear,
+    vintageStatus: spirit.wineDetail?.vintageStatus ?? null,
     abv: spirit.abv,
     volumeMl: spirit.volumeMl,
     batchNo: spirit.commonDetail?.batchNo ?? null,
@@ -1226,7 +1238,8 @@ export default function SpiritDetailPage() {
             <CoreSpecStrip spirit={spirit} countryLabel={countryLabel} regionLabel={regionLabel} isEn={isEn} />
 
             {/* 보조 메타 — 병입자 · 병입년도 · 빈티지 */}
-            {(spirit.bottler || spirit.bottledYear || spirit.vintageYear) && (
+            {(spirit.bottler || spirit.bottledYear || spirit.vintageYear
+              || spirit.wineDetail?.vintageStatus === 'NON_VINTAGE') && (
               <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-[12px] text-neutral-400 -mt-1">
                 {spirit.bottler && (
                   <span>{t('spirit.detail.bottler')} <b className="text-neutral-600 font-semibold">{spirit.bottler}</b></span>
@@ -1234,8 +1247,10 @@ export default function SpiritDetailPage() {
                 {spirit.bottledYear && (
                   <span>{t('spirit.detail.bottledYear')} <b className="text-neutral-600 font-semibold">{spirit.bottledYear}</b></span>
                 )}
-                {spirit.vintageYear && (
-                  <span>{t('spirit.detail.vintageYear')} <b className="text-neutral-600 font-semibold">{spirit.vintageYear}</b></span>
+                {(spirit.vintageYear || spirit.wineDetail?.vintageStatus === 'NON_VINTAGE') && (
+                  <span>{t('spirit.detail.vintageYear')} <b className="text-neutral-600 font-semibold">
+                    {spirit.vintageYear ?? t('spirit.wineVintageStatus.NON_VINTAGE')}
+                  </b></span>
                 )}
               </div>
             )}

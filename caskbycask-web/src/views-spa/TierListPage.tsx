@@ -76,11 +76,16 @@ type SpiritTarget = {
   id: number
   nameKo: string
   nameEn: string
+  category?: SpiritCategory | null
   primaryImageUrl: string | null
   canonicalPathKo?: string | null
   canonicalPathEn?: string | null
   variantValue?: string | null
   variantValueEn?: string | null
+  seriesIdentifier?: string | null
+  seriesIdentifierEn?: string | null
+  vintageYear?: number | null
+  vintageStatus?: 'VINTAGE' | 'NON_VINTAGE' | 'UNKNOWN' | null
   batchNo?: string | null
   bottledDate?: string | null
   bottledYear?: number | null
@@ -168,7 +173,7 @@ function variantOptionLabel(target: SpiritTarget | SpiritVariant, isEn: boolean)
 }
 
 function displayNameForSpirit(target: SpiritTarget, isEn: boolean) {
-  return isEn ? (target.nameEn || target.nameKo) : target.nameKo
+  return getLocalizedSpiritListNames(target, isEn ? 'en' : 'ko').primaryName
 }
 
 function imageUrlForCanvas(url: string | null) {
