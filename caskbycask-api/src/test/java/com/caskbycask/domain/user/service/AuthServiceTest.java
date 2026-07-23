@@ -137,22 +137,22 @@ class AuthServiceTest {
     // ───────────────────── refresh ─────────────────────
 
     @Test
-    @DisplayName("Refresh Token 갱신 성공 — Rotation 적용")
+    @DisplayName("Refresh Token 갱신 성공 — DB의 현재 역할로 Rotation 적용")
     void refresh_success() {
         given(jwtProvider.extractUserId("old_refresh")).willReturn(1L);
-        given(jwtProvider.extractRole("old_refresh")).willReturn(Role.MEMBER);
         given(jwtProvider.isRefreshToken("old_refresh")).willReturn(true);
         given(refreshTokenRepository.findByUserId(1L)).willReturn(Optional.of("old_refresh"));
         given(userRepository.findById(1L)).willReturn(Optional.of(
-                User.builder().email("test@example.com").password("hashed").nickname("tester").role(Role.MEMBER).build()));
-        given(jwtProvider.generateAccessToken(1L, Role.MEMBER)).willReturn("new_access");
-        given(jwtProvider.generateRefreshToken(1L, Role.MEMBER)).willReturn("new_refresh");
+                User.builder().email("test@example.com").password("hashed").nickname("tester").role(Role.PARTNER).build()));
+        given(jwtProvider.generateAccessToken(1L, Role.PARTNER)).willReturn("new_access");
+        given(jwtProvider.generateRefreshToken(1L, Role.PARTNER)).willReturn("new_refresh");
         given(jwtProvider.getRefreshTokenExpiry()).willReturn(604_800_000L);
 
         AuthRefreshResult result = authService.refresh("old_refresh");
 
         assertThat(result.accessToken()).isEqualTo("new_access");
         assertThat(result.refreshToken()).isEqualTo("new_refresh");
+        then(jwtProvider).should(never()).extractRole(anyString());
         then(refreshTokenRepository).should().deleteByUserId(1L);
         then(refreshTokenRepository).should().save(eq(1L), eq("new_refresh"), any());
     }
@@ -161,7 +161,6 @@ class AuthServiceTest {
     @DisplayName("Refresh Token 갱신 실패 — Redis에 토큰 없음")
     void refresh_fail_tokenNotFound() {
         given(jwtProvider.extractUserId("orphan_refresh")).willReturn(1L);
-        given(jwtProvider.extractRole("orphan_refresh")).willReturn(Role.MEMBER);
         given(jwtProvider.isRefreshToken("orphan_refresh")).willReturn(true);
         given(refreshTokenRepository.findByUserId(1L)).willReturn(Optional.empty());
 
@@ -175,7 +174,6 @@ class AuthServiceTest {
     @DisplayName("Refresh Token 갱신 실패 — Redis 토큰과 불일치")
     void refresh_fail_tokenMismatch() {
         given(jwtProvider.extractUserId("incoming_token")).willReturn(1L);
-        given(jwtProvider.extractRole("incoming_token")).willReturn(Role.MEMBER);
         given(jwtProvider.isRefreshToken("incoming_token")).willReturn(true);
         given(refreshTokenRepository.findByUserId(1L)).willReturn(Optional.of("different_token"));
 
@@ -189,7 +187,6 @@ class AuthServiceTest {
     @DisplayName("Refresh Token 갱신 실패 — Access Token 을 재발급에 사용")
     void refresh_fail_accessTokenUsed() {
         given(jwtProvider.extractUserId("access_token")).willReturn(1L);
-        given(jwtProvider.extractRole("access_token")).willReturn(Role.MEMBER);
         given(jwtProvider.isRefreshToken("access_token")).willReturn(false);
 
         assertThatThrownBy(() -> authService.refresh("access_token"))
@@ -203,7 +200,6 @@ class AuthServiceTest {
     @DisplayName("Refresh Token 갱신 실패 — 계정 삭제(탈퇴)됨, 남은 토큰 정리")
     void refresh_fail_userDeleted() {
         given(jwtProvider.extractUserId("valid_refresh")).willReturn(1L);
-        given(jwtProvider.extractRole("valid_refresh")).willReturn(Role.MEMBER);
         given(jwtProvider.isRefreshToken("valid_refresh")).willReturn(true);
         given(refreshTokenRepository.findByUserId(1L)).willReturn(Optional.of("valid_refresh"));
         given(userRepository.findById(1L)).willReturn(Optional.empty());
@@ -223,7 +219,6 @@ class AuthServiceTest {
         inactive.deactivate();
 
         given(jwtProvider.extractUserId("valid_refresh")).willReturn(1L);
-        given(jwtProvider.extractRole("valid_refresh")).willReturn(Role.MEMBER);
         given(jwtProvider.isRefreshToken("valid_refresh")).willReturn(true);
         given(refreshTokenRepository.findByUserId(1L)).willReturn(Optional.of("valid_refresh"));
         given(userRepository.findById(1L)).willReturn(Optional.of(inactive));

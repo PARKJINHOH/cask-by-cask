@@ -4,7 +4,6 @@ export type UserRole =
   | 'MODERATOR'
   | 'MEMBER'
   | 'PARTNER'
-  | 'DISTILLERY_STAFF'
   | 'IMPORTER'
 
 export interface UserInfo {

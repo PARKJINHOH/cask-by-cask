@@ -111,11 +111,10 @@ export type AdminUserRole =
   | 'MODERATOR'
   | 'MEMBER'
   | 'PARTNER'
-  | 'DISTILLERY_STAFF'
   | 'IMPORTER'
 
 /** 회원 상세 역할 Select 에 노출되는 할당 가능 역할 (SUPER_ADMIN/MODERATOR 제외) */
-export const ASSIGNABLE_ROLES: AdminUserRole[] = ['MEMBER', 'PARTNER', 'DISTILLERY_STAFF', 'IMPORTER', 'ADMIN']
+export const ASSIGNABLE_ROLES: AdminUserRole[] = ['MEMBER', 'PARTNER', 'IMPORTER', 'ADMIN']
 
 export const ROLE_LABELS: Record<AdminUserRole, string> = {
   SUPER_ADMIN: '운영자',
@@ -123,7 +122,6 @@ export const ROLE_LABELS: Record<AdminUserRole, string> = {
   MODERATOR: '모더레이터',
   MEMBER: '회원',
   PARTNER: '파트너',
-  DISTILLERY_STAFF: '증류소 관계자',
   IMPORTER: '수입사',
 }
 

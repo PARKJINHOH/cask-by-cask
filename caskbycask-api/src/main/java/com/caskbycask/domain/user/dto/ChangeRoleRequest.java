@@ -11,7 +11,7 @@ public record ChangeRoleRequest(
         @NotNull(message = "역할은 필수입니다.") Role role,
         @Schema(description = "관리자 메모(역할/권한 설명)")
         String description,
-        @Schema(description = "담당 증류소 ID (PARTNER/DISTILLERY_STAFF 역할 시 선택)")
+        @Schema(description = "담당 생산자 ID (PARTNER 역할 시 선택)")
         Long producerId,
         @Schema(description = "접근 허용 메뉴 키(라우트 path) 목록")
         List<String> allowedMenus

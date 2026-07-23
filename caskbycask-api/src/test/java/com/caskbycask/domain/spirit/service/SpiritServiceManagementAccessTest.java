@@ -103,11 +103,11 @@ class SpiritServiceManagementAccessTest {
     }
 
     @Test
-    void distilleryStaffCanAccessOnlyItsAssignedProducer() {
-        User staff = producerManager(2L, Role.DISTILLERY_STAFF, assignedProducer, true);
+    void partnerCanAccessOnlyItsAssignedProducer() {
+        User partner = producerManager(2L, Role.PARTNER, assignedProducer, true);
         Spirit assignedSpirit = spirit(100L, assignedProducer);
         Spirit otherSpirit = spirit(200L, otherProducer);
-        given(userRepository.getByIdOrThrow(2L)).willReturn(staff);
+        given(userRepository.getByIdOrThrow(2L)).willReturn(partner);
         given(spiritRepository.findById(100L)).willReturn(java.util.Optional.of(assignedSpirit));
         given(spiritRepository.findById(200L)).willReturn(java.util.Optional.of(otherSpirit));
 

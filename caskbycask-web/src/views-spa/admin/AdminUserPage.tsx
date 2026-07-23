@@ -14,7 +14,7 @@ import { ROLE_LABELS } from '@/domain/admin/types/admin.types'
 
 const ROLE_LABEL = ROLE_LABELS
 
-const ROLE_OPTIONS: AdminUserRole[] = ['MEMBER', 'PARTNER', 'DISTILLERY_STAFF', 'IMPORTER', 'MODERATOR', 'ADMIN']
+const ROLE_OPTIONS: AdminUserRole[] = ['MEMBER', 'PARTNER', 'IMPORTER', 'MODERATOR', 'ADMIN']
 
 function isSuspended(user: AdminUser): boolean {
   return !!user.suspendedUntil && new Date(user.suspendedUntil) > new Date()

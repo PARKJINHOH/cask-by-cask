@@ -29,7 +29,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/admin/spirits")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','PARTNER','DISTILLERY_STAFF')")
+@PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','PARTNER')")
 public class AdminSpiritController {
 
     private final SpiritService spiritService;

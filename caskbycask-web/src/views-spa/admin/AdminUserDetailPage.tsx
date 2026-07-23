@@ -26,7 +26,7 @@ import {
 import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 
 // 담당 증류소 선택이 필요한 역할
-const PRODUCER_ROLES: AdminUserRole[] = ['PARTNER', 'DISTILLERY_STAFF']
+const PRODUCER_ROLES: AdminUserRole[] = ['PARTNER']
 
 // ── 역할 및 메뉴 권한 카드 (인라인 편집) ─────────────────────────
 
@@ -44,7 +44,7 @@ function RolePermissionCard({ user }: { user: AdminUser }) {
   const showProducer = PRODUCER_ROLES.includes(role)
   const selectAllPaths = selectAllMenuPaths()
 
-  // 현재 역할이 할당 가능 목록(증류소 관계자 등)에 없으면(MODERATOR 등) 현재 역할을 옵션에 추가
+  // 현재 역할이 할당 가능 목록에 없으면(MODERATOR 등) 현재 역할을 옵션에 추가
   const roleOptions: AdminUserRole[] = ASSIGNABLE_ROLES.includes(user.role)
     ? ASSIGNABLE_ROLES
     : [user.role, ...ASSIGNABLE_ROLES]

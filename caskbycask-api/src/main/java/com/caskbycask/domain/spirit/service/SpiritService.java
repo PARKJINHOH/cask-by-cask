@@ -1399,7 +1399,7 @@ public class SpiritService {
     }
 
     private boolean isProducerScopedRole(Role role) {
-        return role == Role.PARTNER || role == Role.DISTILLERY_STAFF;
+        return role == Role.PARTNER;
     }
 
     private boolean hasProducerAccess(User user, Producer producer) {

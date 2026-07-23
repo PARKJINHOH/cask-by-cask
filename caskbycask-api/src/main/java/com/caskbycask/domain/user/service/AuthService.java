@@ -253,7 +253,6 @@ public class AuthService {
     public AuthRefreshResult refresh(String incomingToken) {
         // 토큰 서명·만료 검증 (이상 시 CustomException 발생)
         Long userId = jwtProvider.extractUserId(incomingToken);
-        Role role = jwtProvider.extractRole(incomingToken);
 
         // [보안] Access Token 을 재발급에 사용하는 것을 차단 (Redis 대조와 이중 방어)
         if (!jwtProvider.isRefreshToken(incomingToken)) {
@@ -278,7 +277,9 @@ public class AuthService {
 
         // Rotation: 기존 삭제 후 신규 발급
         refreshTokenRepository.deleteByUserId(userId);
-        TokenResponse tokens = issueTokens(userId, role);
+        // 토큰 클레임의 과거 역할이 아니라 DB의 현재 역할로 회전한다.
+        // 역할 변경/통합 직후에도 재로그인 없이 최신 권한이 반영된다.
+        TokenResponse tokens = issueTokens(userId, user.getRole());
         return new AuthRefreshResult(tokens.accessToken(), tokens.refreshToken());
     }
 
