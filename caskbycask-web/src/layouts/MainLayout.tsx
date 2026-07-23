@@ -873,7 +873,7 @@ export default function MainLayout() {
       <PageIndicator />
 
       {/* 본문 */}
-      <main className="user-layout-container flex-1 pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">
+      <main className="user-content-container flex-1 pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">
         <Suspense fallback={<RouteFallback />}>
           <RouteTransition>
             <Outlet />

@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { usePosts, useBestPosts, usePostPrefixes } from '@/domain/community/hooks/usePosts'
@@ -69,13 +70,32 @@ function PreviewMedia({ media, className }: { media: PostThumbnailMedia; classNa
 }
 
 function MediaMarker({ media }: { media: PostThumbnailMedia | null }) {
+  const markerRef = useRef<HTMLSpanElement>(null)
+  const [previewPosition, setPreviewPosition] = useState<{ left: number; top: number } | null>(null)
   if (!media) return null
 
   const isVideo = media?.type === 'video'
+  const showPreview = () => {
+    const rect = markerRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const size = 144
+    const gap = 8
+    const left = rect.right + gap + size <= window.innerWidth - gap
+      ? rect.right + gap
+      : Math.max(gap, rect.left - gap - size)
+    const top = Math.min(
+      Math.max(gap, rect.top + rect.height / 2 - size / 2),
+      Math.max(gap, window.innerHeight - size - gap),
+    )
+    setPreviewPosition({ left, top })
+  }
 
   return (
     <span
-      className="group/media relative inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded border border-neutral-300 bg-neutral-100 text-neutral-600"
+      ref={markerRef}
+      className="inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded border border-neutral-300 bg-neutral-100 text-neutral-600"
+      onMouseEnter={showPreview}
+      onMouseLeave={() => setPreviewPosition(null)}
       aria-hidden="true"
     >
       {isVideo ? (
@@ -89,16 +109,22 @@ function MediaMarker({ media }: { media: PostThumbnailMedia | null }) {
           <path strokeLinecap="round" strokeLinejoin="round" d="M15 8h.01" />
         </svg>
       )}
-      <span className="pointer-events-none absolute left-6 top-1/2 z-50 hidden h-36 w-36 -translate-y-1/2 overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-xl ring-1 ring-black/5 sm:group-hover/media:block">
-        <PreviewMedia media={media} className="h-full w-full object-cover" />
-        {isVideo && (
-          <span className="absolute inset-0 flex items-center justify-center bg-black/10 text-white">
-            <svg className="h-8 w-8 drop-shadow" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M8 5.5v13l11-6.5-11-6.5z" />
-            </svg>
-          </span>
-        )}
-      </span>
+      {previewPosition && typeof document !== 'undefined' && createPortal(
+        <span
+          className="pointer-events-none fixed z-[100] hidden h-36 w-36 overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-xl ring-1 ring-black/5 sm:block"
+          style={previewPosition}
+        >
+          <PreviewMedia media={media} className="h-full w-full object-cover" />
+          {isVideo && (
+            <span className="absolute inset-0 flex items-center justify-center bg-black/10 text-white">
+              <svg className="h-8 w-8 drop-shadow" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M8 5.5v13l11-6.5-11-6.5z" />
+              </svg>
+            </span>
+          )}
+        </span>,
+        document.body,
+      )}
     </span>
   )
 }
@@ -387,7 +413,7 @@ export default function BoardListPage({ boardType, title }: Props) {
       ) : (
         <>
           {/* PC 테이블 */}
-          <div className="hidden sm:block bg-white border border-neutral-200 rounded-xl overflow-visible">
+          <div className="hidden overflow-hidden rounded-xl border border-neutral-200 bg-white sm:block">
             <table className="w-full text-sm table-fixed">
               <thead>
                 <tr className="bg-neutral-50 border-b border-neutral-100">
@@ -416,7 +442,7 @@ export default function BoardListPage({ boardType, title }: Props) {
                       <MediaMarker media={null} />
                     </td>
                     <td className="px-4 py-2">
-                      <span className="block text-[15px] font-semibold text-neutral-800 group-hover/row:text-primary-800 transition-colors truncate">
+                      <span className="block truncate text-sm font-normal text-neutral-800 transition-colors group-hover/row:text-primary-800">
                         {notice.title}
                       </span>
                     </td>
@@ -459,7 +485,7 @@ export default function BoardListPage({ boardType, title }: Props) {
                         {post.isLocked && <span className="text-neutral-400">🔒</span>}
                         {post.adultOnly && <AdultBadge />}
                         <span className={[
-                          'flex-1 min-w-0 text-[15px] font-medium group-hover/row:text-primary-800 transition-colors truncate',
+                          'flex-1 min-w-0 truncate text-sm font-normal transition-colors group-hover/row:text-primary-800',
                           post.isLocked ? 'text-red-600' : 'text-neutral-800',
                         ].join(' ')}>
                           {post.title}
@@ -523,7 +549,7 @@ export default function BoardListPage({ boardType, title }: Props) {
                   </span>
                   <MediaMarker media={null} />
                 </div>
-                <p className="text-[15px] font-semibold text-neutral-800 line-clamp-1">
+                <p className="line-clamp-2 text-sm font-normal leading-5 text-neutral-800">
                   {notice.title}
                 </p>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-xs text-neutral-400">
@@ -566,7 +592,7 @@ export default function BoardListPage({ boardType, title }: Props) {
                   )}
                 </div>
                 <p className={[
-                  'text-[15px] font-medium line-clamp-1',
+                  'line-clamp-2 text-sm font-normal leading-5',
                   post.isLocked ? 'text-red-600' : 'text-neutral-800',
                 ].join(' ')}>
                   {post.adultOnly && <AdultBadge className="mr-1 align-middle" />}

@@ -189,7 +189,7 @@ export default function NoticePage() {
                         to={`/notices/${notice.id}`}
                         className="flex items-center gap-2 group"
                       >
-                        <span className="font-medium text-neutral-800 group-hover:text-primary-800 transition-colors truncate">
+                        <span className="truncate text-sm font-normal text-neutral-800 transition-colors group-hover:text-primary-800">
                           {notice.title}
                         </span>
                       </Link>
@@ -223,7 +223,7 @@ export default function NoticePage() {
                   <CategoryChip category={notice.category} />
                   <RecommendBadge count={notice.recommendCount} />
                 </div>
-                <p className="text-sm font-medium text-neutral-800 line-clamp-2">{notice.title}</p>
+                <p className="line-clamp-2 text-sm font-normal leading-5 text-neutral-800">{notice.title}</p>
                 <div className="flex items-center gap-3 mt-1.5 text-xs text-neutral-400">
                   <span>{new Date(notice.createdAt).toLocaleDateString('ko-KR')}</span>
                   <span>조회 {notice.viewCount.toLocaleString()}</span>

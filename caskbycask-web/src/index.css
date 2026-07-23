@@ -68,6 +68,13 @@
   margin-inline: auto;
 }
 
+/* 사용자 본문은 긴 문장과 게시글 가독성을 위해 공통 외곽보다 좁게 유지한다. */
+.user-content-container {
+  width: 100%;
+  max-width: 65rem;
+  margin-inline: auto;
+}
+
 /* 취향 트리 연결선 문구는 선택된 연결선 SVG보다도 항상 위에 표시한다. */
 .taste-tree-graph .react-flow__edgelabel-renderer {
   z-index: 10000 !important;
