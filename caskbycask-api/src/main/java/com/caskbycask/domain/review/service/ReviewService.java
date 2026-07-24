@@ -9,6 +9,8 @@ import com.caskbycask.domain.review.entity.enums.ReviewSort;
 import com.caskbycask.domain.review.repository.ReviewRepository;
 import com.caskbycask.domain.score.constant.ScoreActions;
 import com.caskbycask.domain.score.service.ScoreService;
+import com.caskbycask.domain.social.entity.enums.SocialSourceType;
+import com.caskbycask.domain.social.service.SocialPublishRequestService;
 import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.domain.spirit.entity.enums.SpiritStatus;
 import com.caskbycask.domain.spirit.repository.SpiritRepository;
@@ -38,6 +40,7 @@ public class ReviewService {
     private final UserRepository userRepository;
     private final ScoreService scoreService;
     private final BadWordFilter badWordFilter;
+    private final SocialPublishRequestService socialPublishRequestService;
 
     // ── 조회 ──────────────────────────────────────────────
 
@@ -111,6 +114,7 @@ public class ReviewService {
 
         // [레벨] 술 상세 리뷰 작성 점수 지급
         scoreService.award(userId, ScoreActions.SPIRIT_REVIEW_WRITE, "SPIRIT_REVIEW", saved.getId());
+        socialPublishRequestService.requestReview(saved, user, request.socialPublish());
 
         return toResponse(saved);
     }
@@ -156,6 +160,7 @@ public class ReviewService {
         checkOwnership(review, userId);
 
         review.softDelete();
+        socialPublishRequestService.markSourceDeleted(SocialSourceType.REVIEW, reviewId);
         recalculateAvgScore(review.getSpirit().getId());
 
         // [패치 1] 리뷰 삭제 시에도 지급액 차감 (기존: 차감 없음 → 파밍 가능했음).

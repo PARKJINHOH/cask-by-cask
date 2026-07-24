@@ -109,6 +109,10 @@ public class SecurityConfig {
                         // SEO: sitemap.xml — 검색엔진 크롤러용
                         .requestMatchers(HttpMethod.GET, "/sitemap.xml", "/sitemaps/**").permitAll()
                         .requestMatchers(HttpMethod.HEAD, "/sitemap.xml", "/sitemaps/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/s/**", "/api/social/hub",
+                                "/api/social/images/**", "/api/public/reviews/**").permitAll()
+                        .requestMatchers(HttpMethod.HEAD, "/s/**", "/api/social/images/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/admin/social/accounts/oauth/callback").permitAll()
                         .requestMatchers(HttpMethod.GET, "/indexnow-key.txt").permitAll()
                         .requestMatchers(HttpMethod.HEAD, "/indexnow-key.txt").permitAll()
                         .requestMatchers(HttpMethod.GET, "/spirits/{id:\\d+}", "/spirits/{id:\\d+}-*", "/ko/spirits/{id:\\d+}", "/ko/spirits/{id:\\d+}-*", "/en/spirits/{id:\\d+}", "/en/spirits/{id:\\d+}-*").permitAll()

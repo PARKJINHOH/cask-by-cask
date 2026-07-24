@@ -16,6 +16,9 @@ import com.caskbycask.domain.community.service.PostService;
 import com.caskbycask.domain.community.service.PostImageService;
 import com.caskbycask.domain.producer.entity.Producer;
 import com.caskbycask.domain.producer.repository.ProducerRepository;
+import com.caskbycask.domain.social.dto.SocialPublishSelection;
+import com.caskbycask.domain.social.entity.enums.SocialSourceType;
+import com.caskbycask.domain.social.service.SocialPublishRequestService;
 import com.caskbycask.domain.user.entity.User;
 import com.caskbycask.domain.user.repository.UserRepository;
 import com.caskbycask.global.exception.CustomException;
@@ -56,6 +59,7 @@ public class AiNewsService {
     private final PostService postService;
     private final PostImageService postImageService;
     private final AdminLogService adminLogService;
+    private final SocialPublishRequestService socialPublishRequestService;
 
     @Transactional(readOnly = true)
     public Page<AiNewsDtos.ArticleSummaryResponse> listArticles(AiNewsArticleStatus status,
@@ -247,11 +251,18 @@ public class AiNewsService {
 
     @Transactional
     public AiNewsDtos.ArticleDetailResponse publish(Long id, Long actorId) {
-        return publish(id, null, actorId);
+        return publish(id, null, null, actorId);
     }
 
     @Transactional
     public AiNewsDtos.ArticleDetailResponse publish(Long id, LocalDateTime scheduledAt, Long actorId) {
+        return publish(id, scheduledAt, null, actorId);
+    }
+
+    @Transactional
+    public AiNewsDtos.ArticleDetailResponse publish(Long id, LocalDateTime scheduledAt,
+                                                     SocialPublishSelection socialSelection,
+                                                     Long actorId) {
         AiNewsArticle article = findArticleForPublish(id);
         if (article.getStatus() == AiNewsArticleStatus.PUBLISHED) return AiNewsDtos.ArticleDetailResponse.from(article);
         if (article.getStatus() == AiNewsArticleStatus.DELETED
@@ -259,6 +270,8 @@ public class AiNewsService {
                 || article.getStatus() == AiNewsArticleStatus.SKIPPED_DUPLICATE) {
             throw new CustomException(ErrorCode.AI_NEWS_INVALID_STATUS);
         }
+        socialPublishRequestService.requestAiArticle(
+                article.getId(), userRepository.getByIdOrThrow(actorId), socialSelection);
         LocalDateTime now = LocalDateTime.now(SERVICE_ZONE);
         if (scheduledAt != null && scheduledAt.isAfter(now)) {
             article.schedule(scheduledAt);
@@ -306,6 +319,7 @@ public class AiNewsService {
             throw new CustomException(ErrorCode.AI_NEWS_INVALID_STATUS);
         }
         article.reject(trimToNull(reason));
+        socialPublishRequestService.cancelOrigin(SocialSourceType.AI_NEWS_ARTICLE, article.getId());
         log(actorId, article.getId(), "AI 소식 반려", reason);
         return AiNewsDtos.ArticleDetailResponse.from(article);
     }
@@ -320,6 +334,7 @@ public class AiNewsService {
         } else {
             article.markDeleted(null);
         }
+        socialPublishRequestService.cancelOrigin(SocialSourceType.AI_NEWS_ARTICLE, article.getId());
         log(actorId, article.getId(), "AI 소식 삭제", reason);
     }
 
@@ -750,6 +765,7 @@ public class AiNewsService {
                     UpdatePostRequest.aiNews(article.getPrefixId(), article.getTitle(), article.getContent(),
                             article.isPinned(), article.getHashtags()), author.getId());
             article.publish(restored.getId(), LocalDateTime.now(SERVICE_ZONE));
+            socialPublishRequestService.bindAiArticle(article.getId(), restored.getId());
             return;
         }
         PostDetailResponse post = postService.createPost(
@@ -757,6 +773,7 @@ public class AiNewsService {
                         article.isPinned(), article.getHashtags()),
                 author.getId());
         article.publish(post.getId(), LocalDateTime.now(SERVICE_ZONE));
+        socialPublishRequestService.bindAiArticle(article.getId(), post.getId());
     }
 
     private AiNewsTopic resolveTopic(AiNewsDtos.ArticleUpsertRequest request) {

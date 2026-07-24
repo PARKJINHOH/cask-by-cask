@@ -18,9 +18,13 @@ import DraftListModal from '@/shared/components/DraftListModal'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { useMe } from '@/domain/user/hooks/useUser'
 import { formatHashtagInput, MAX_HASHTAGS, MAX_HASHTAG_LENGTH, parseHashtagInput } from '@/shared/utils/hashtags'
+import SocialPublishFields from '@/domain/social/components/SocialPublishFields'
+import { socialApi } from '@/domain/social/api/socialApi'
+import { EMPTY_SOCIAL_SELECTION, type SocialPublishSelection } from '@/domain/social/types/social.types'
 
 // 게시판 공지(고정글) 설정 가능 역할
 const PIN_ROLES = ['SUPER_ADMIN', 'ADMIN', 'PARTNER']
+const OFFICIAL_SOCIAL_ROLES = ['SUPER_ADMIN', 'ADMIN']
 
 // 성인인증이 필요한 자유게시판 말머리 — 주류 나눔 탭
 const SHARING_PREFIX_NAME = '나눔'
@@ -49,6 +53,7 @@ export default function PostFormPage() {
   const { toasts, showToast, removeToast } = useToast()
   const { user } = useAuthStore()
   const canPin = PIN_ROLES.includes(user?.role ?? '')
+  const canPublishOfficialSocial = OFFICIAL_SOCIAL_ROLES.includes(user?.role ?? '')
   const { data: me } = useMe()
 
   const { data: existingPost } = usePostDetail(postId ?? 0)
@@ -72,6 +77,9 @@ export default function PostFormPage() {
   const [pollOptions, setPollOptions] = useState(['', ''])
   const [seriesId, setSeriesId] = useState<number | ''>('')
   const [hashtagInput, setHashtagInput] = useState('')
+  const [socialSelection, setSocialSelection] = useState<SocialPublishSelection>(EMPTY_SOCIAL_SELECTION)
+  const [socialRetryIds, setSocialRetryIds] = useState<number[]>([])
+  const [socialError, setSocialError] = useState('')
   const parsedHashtags = parseHashtagInput(hashtagInput)
   const hashtagsValid = parsedHashtags.length <= MAX_HASHTAGS
     && parsedHashtags.every((hashtag) => hashtag.length <= MAX_HASHTAG_LENGTH)
@@ -165,6 +173,9 @@ export default function PostFormPage() {
           adultOnly: isSharingSelected ? adultOnly : false,
           hashtags: boardType === 'NOTICE' ? parsedHashtags : undefined,
           ...(canPin ? { isPinned } : {}),
+        }).then(async (response) => {
+          await Promise.all(socialRetryIds.map((publicationId) => socialApi.retry(publicationId)))
+          return response
         })
       }
       const validOptions = pollOptions.filter((o) => o.trim())
@@ -184,6 +195,9 @@ export default function PostFormPage() {
           options: validOptions.map((o, i) => ({ optionText: o.trim(), sortOrder: i })),
         } : undefined,
         seriesId: seriesId !== '' ? seriesId : undefined,
+        ...(boardType === 'NOTICE' && canPublishOfficialSocial
+          ? { socialPublish: socialSelection }
+          : {}),
       })
     },
     onSuccess: (res) => {
@@ -535,6 +549,24 @@ export default function PostFormPage() {
           </div>
         )}
 
+        {boardType === 'NOTICE' && canPublishOfficialSocial && (
+          <>
+            <SocialPublishFields
+              kind="news"
+              selection={socialSelection}
+              onChange={(next) => {
+                setSocialSelection(next)
+                setSocialError('')
+              }}
+              editing={isEdit}
+              source={postId ? { type: 'POST', id: postId } : undefined}
+              retryIds={socialRetryIds}
+              onRetryIdsChange={setSocialRetryIds}
+            />
+            {socialError && <p className="text-sm text-red-600">{socialError}</p>}
+          </>
+        )}
+
         {/* 제출 버튼 */}
         <div className="flex items-center justify-end gap-3 pt-2">
           <Link to={`/community/${boardPath}`}
@@ -543,7 +575,16 @@ export default function PostFormPage() {
           </Link>
           <button
             type="button"
-            onClick={() => mutation.mutate()}
+            onClick={() => {
+              if (!socialSelectionValid(
+                socialSelection,
+                boardType === 'NOTICE' && canPublishOfficialSocial && !isEdit,
+              )) {
+                setSocialError(t('social.completeSettings'))
+                return
+              }
+              mutation.mutate()
+            }}
             disabled={!canSubmit || mutation.isPending}
             className="px-6 py-2.5 text-sm font-medium rounded-xl bg-primary-800 text-white hover:bg-primary-900 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
@@ -553,4 +594,11 @@ export default function PostFormPage() {
       </div>
     </div>
   )
+}
+
+function socialSelectionValid(selection: SocialPublishSelection, applies: boolean) {
+  if (!applies || (!selection.instagram && !selection.threads)) return true
+  if (!selection.consentAccepted) return false
+  if ((selection.mediaMode ?? 'TEMPLATE') === 'TEMPLATE') return Boolean(selection.templateId)
+  return Boolean(selection.directImageUrl)
 }

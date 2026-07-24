@@ -17,4 +17,6 @@ public interface SpiritImageRepository extends JpaRepository<SpiritImage, Long> 
     List<SpiritImage> findBySpiritIdInAndIsPrimaryTrue(List<Long> spiritIds);
 
     Optional<SpiritImage> findByIdAndSpiritId(Long id, Long spiritId);
+
+    boolean existsBySpiritId(Long spiritId);
 }

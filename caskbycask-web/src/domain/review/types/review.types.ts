@@ -57,6 +57,7 @@ export interface CreateReviewRequest {
   noseAromaWheelNotes?: string
   tasteAromaWheelNotes?: string
   finishAromaWheelNotes?: string
+  socialPublish?: SocialPublishSelection
 }
 
 export interface CreateVariantReviewRequest extends CreateReviewRequest {
@@ -115,3 +116,4 @@ export interface UpdateReviewRequest {
   tasteAromaWheelNotes?: string
   finishAromaWheelNotes?: string
 }
+import type { SocialPublishSelection } from '@/domain/social/types/social.types'

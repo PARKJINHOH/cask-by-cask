@@ -77,7 +77,7 @@ export default function MyReviewList() {
       : isRejectedLoading
 
   const handleDelete = async (review: ReviewItem) => {
-    if (!confirm(`"${review.spiritNameKo}" 리뷰를 삭제하시겠습니까?`)) return
+    if (!confirm(`"${review.spiritNameKo}" 리뷰를 삭제하시겠습니까?\n\n${t('social.deleteSourceWarning')}`)) return
     await deleteReviewMutation.mutateAsync({ spiritId: review.spiritId, reviewId: review.id })
   }
 

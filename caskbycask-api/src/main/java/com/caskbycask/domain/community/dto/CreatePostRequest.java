@@ -1,6 +1,7 @@
 package com.caskbycask.domain.community.dto;
 
 import com.caskbycask.domain.community.entity.enums.BoardType;
+import com.caskbycask.domain.social.dto.SocialPublishSelection;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -44,6 +45,9 @@ public class CreatePostRequest {
 
     @Size(max = 10, message = "해시태그는 최대 10개까지 입력할 수 있습니다.")
     private List<@NotBlank @Size(max = 30) String> hashtags;
+
+    @Valid
+    private SocialPublishSelection socialPublish;
 
     public static CreatePostRequest aiNotice(Long prefixId, String title, String content, boolean pinned,
                                              List<String> hashtags) {

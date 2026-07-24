@@ -1,7 +1,6 @@
 import NasToggle from '@/shared/components/NasToggle'
 import { formatYearMonth } from '@/shared/utils/yearMonth'
 import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
-import { useTranslation } from 'react-i18next'
 
 export interface CommonDetailForm {
   isNas: boolean
@@ -50,8 +49,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 
-export default function SpiritCommonDetailSection({ value, onChange, dateErrors, category, admin = true }: Props) {
-  const { t } = useTranslation()
+export default function SpiritCommonDetailSection({ value, onChange, dateErrors, category }: Props) {
   // 카테고리별 표시 규칙
   //  - 와인 : NAS·숙성년수·증류연월·병입연월·배치/병번호/총병수 숨김 (빈티지로 대체)
   //  - 꼬냑 : NAS·숙성년수·증류연월 숨김 (VS·VSOP·XO 등급으로 식별)
@@ -82,12 +80,6 @@ export default function SpiritCommonDetailSection({ value, onChange, dateErrors,
           onMaxChange={(v) => onChange({ ageStatementMax: v })}
           onMaxMonthsChange={(v) => onChange({ ageStatementMaxMonths: v })}
         />
-      )}
-
-      {isWine && (
-        <p className="text-xs text-neutral-400">
-          {t('spirit.wineForm.commonHint', admin ? { lng: 'ko' } : undefined)}
-        </p>
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

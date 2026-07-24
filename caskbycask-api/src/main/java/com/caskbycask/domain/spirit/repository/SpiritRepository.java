@@ -20,6 +20,9 @@ public interface SpiritRepository extends JpaRepository<Spirit, Long>, SpiritQue
 
     Optional<Spirit> findByIdAndStatus(Long id, SpiritStatus status);
 
+    @Query("select s.parent.id from Spirit s where s.id = :id")
+    Long findParentIdById(@Param("id") Long id);
+
     @Query("""
             SELECT s.producer.id, COUNT(s) FROM Spirit s
             WHERE s.producer.id IN :producerIds

@@ -18,12 +18,14 @@ import LevelBadge from '@/shared/components/LevelBadge'
 import DefaultAvatar from '@/shared/components/DefaultAvatar'
 import SeoMeta from '@/shared/components/SeoMeta'
 import { useMessageList } from '@/domain/message/hooks/useMessages'
+import SocialHistoryTab from '@/domain/social/components/SocialHistoryTab'
 
-type Tab = 'maturing' | 'reviews' | 'wishlist' | 'tasteTrees' | 'byob' | 'collection' | 'priceReports' | 'priceAlerts' | 'messages' | 'blocks' | 'settings'
+type Tab = 'maturing' | 'reviews' | 'social' | 'wishlist' | 'tasteTrees' | 'byob' | 'collection' | 'priceReports' | 'priceAlerts' | 'messages' | 'blocks' | 'settings'
 
 const ALL_TABS: { value: Tab; labelKey: string; adminHidden?: boolean }[] = [
   { value: 'maturing',     labelKey: 'mypage.maturingTab',    adminHidden: true },
   { value: 'reviews',      labelKey: 'mypage.reviewsTab' },
+  { value: 'social',       labelKey: 'social.mypageTab' },
   { value: 'wishlist',     labelKey: 'mypage.wishlistTab' },
   { value: 'tasteTrees',   labelKey: 'mypage.tasteTreesTab' },
   { value: 'byob',         labelKey: 'mypage.byobTab' },
@@ -201,6 +203,7 @@ export default function MyPage() {
           <div>
             {tab === 'maturing'  && <MaturingPowerSection profile={profile ?? { id: 0, email, nickname, role, createdAt: '' }} />}
             {tab === 'reviews'   && <MyReviewList />}
+            {tab === 'social'    && <SocialHistoryTab />}
             {tab === 'wishlist'  && <MyFavorites />}
             {tab === 'tasteTrees' && (
               <div className="rounded-2xl border border-neutral-200 bg-white p-6">

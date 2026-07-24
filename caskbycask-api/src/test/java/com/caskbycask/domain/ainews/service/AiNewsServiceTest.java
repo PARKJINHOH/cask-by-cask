@@ -12,6 +12,7 @@ import com.caskbycask.domain.ainews.repository.*;
 import com.caskbycask.domain.community.service.PostImageService;
 import com.caskbycask.domain.community.service.PostService;
 import com.caskbycask.domain.producer.repository.ProducerRepository;
+import com.caskbycask.domain.social.service.SocialPublishRequestService;
 import com.caskbycask.domain.user.repository.UserRepository;
 import com.caskbycask.global.exception.CustomException;
 import com.caskbycask.domain.user.policy.AccountPolicy;
@@ -47,6 +48,7 @@ class AiNewsServiceTest {
     @Mock PostService postService;
     @Mock PostImageService postImageService;
     @Mock AdminLogService adminLogService;
+    @Mock SocialPublishRequestService socialPublishRequestService;
 
     private AiNewsService service;
 
@@ -54,7 +56,8 @@ class AiNewsServiceTest {
     void setUp() {
         service = new AiNewsService(settingsRepository, articleRepository, topicRepository,
                 sourceConfigRepository, runRepository, usageRepository, userRepository,
-                producerRepository, postService, postImageService, adminLogService);
+                producerRepository, postService, postImageService, adminLogService,
+                socialPublishRequestService);
     }
 
     @Test

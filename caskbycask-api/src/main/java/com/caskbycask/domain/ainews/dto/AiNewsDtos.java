@@ -2,6 +2,7 @@ package com.caskbycask.domain.ainews.dto;
 
 import com.caskbycask.domain.ainews.entity.*;
 import com.caskbycask.domain.ainews.entity.enums.*;
+import com.caskbycask.domain.social.dto.SocialPublishSelection;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 
@@ -62,7 +63,14 @@ public final class AiNewsDtos {
 
     public record ActionRequest(@Size(max = 1000) String reason) {}
 
-    public record PublishRequest(LocalDateTime scheduledAt) {}
+    public record PublishRequest(
+            LocalDateTime scheduledAt,
+            @Valid SocialPublishSelection socialPublish
+    ) {
+        public PublishRequest(LocalDateTime scheduledAt) {
+            this(scheduledAt, null);
+        }
+    }
 
     public record RewriteRequest(@NotBlank @Size(max = 4000) String prompt) {}
 

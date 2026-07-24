@@ -18,7 +18,7 @@ export interface WineDetailForm {
 }
 
 export const DEFAULT_WINE: WineDetailForm = {
-  wineType: '', vintageStatus: 'UNKNOWN', vintageYear: '',
+  wineType: '', vintageStatus: 'VINTAGE', vintageYear: '',
   isOakAged: null, isNaturalWine: null,
   certification: '', grapeVarieties: [], appellationDesignation: '',
   soilType: '', altitudeM: '', harvestMethod: '', fermentationVessel: '',
@@ -118,7 +118,6 @@ export default function WineDetailSection({ value, onChange, errors, admin = tru
   const vintageStatuses = [
     ['VINTAGE', tr('spirit.wineForm.vintageStatus.VINTAGE')],
     ['NON_VINTAGE', tr('spirit.wineForm.vintageStatus.NON_VINTAGE')],
-    ['UNKNOWN', tr('spirit.wineForm.vintageStatus.UNKNOWN')],
   ]
 
   return (
@@ -160,7 +159,7 @@ export default function WineDetailSection({ value, onChange, errors, admin = tru
         <Segment label="타닌" hint="주로 레드" options={LEVEL} value={value.tannin} onChange={(v) => onChange({ tannin: v })} />
       </div>
 
-      {/* 빈티지 — 수확 연도 / 논빈티지 / 정보 미상을 명시적으로 구분 */}
+      {/* 빈티지 — 수확 연도 / 논빈티지를 명시적으로 구분 */}
       <div className="space-y-3">
         <Segment
           label={tr('spirit.wineForm.vintage')}

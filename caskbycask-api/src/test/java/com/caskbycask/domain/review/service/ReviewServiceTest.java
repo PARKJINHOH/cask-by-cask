@@ -10,6 +10,7 @@ import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
 import com.caskbycask.domain.spirit.entity.enums.SpiritStatus;
 import com.caskbycask.domain.spirit.repository.SpiritRepository;
+import com.caskbycask.domain.social.service.SocialPublishRequestService;
 import com.caskbycask.domain.user.entity.User;
 import com.caskbycask.domain.user.entity.enums.Role;
 import com.caskbycask.domain.user.repository.UserRepository;
@@ -42,6 +43,7 @@ class ReviewServiceTest {
     @Mock private SpiritRepository spiritRepository;
     @Mock private UserRepository userRepository;
     @Mock private ScoreService scoreService;
+    @Mock private SocialPublishRequestService socialPublishRequestService;
     @Mock private BadWordFilter badWordFilter; // [패치 5] 리뷰 욕설 필터 의존성
 
     @InjectMocks

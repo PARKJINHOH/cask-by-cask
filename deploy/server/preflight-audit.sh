@@ -80,6 +80,12 @@ command_version python3 python3 --version
 command_version mariadb mariadb --version
 command_version nginx nginx -v
 command_version flock flock --version
+if command -v fc-match >/dev/null 2>&1; then
+    printf 'social-thumbnail-font='
+    fc-match --format '%{family}\n' 'Noto Sans CJK KR' | head -n 1
+else
+    printf 'social-thumbnail-font=fontconfig-not-installed\n'
+fi
 
 section "services"
 service_state caskbycask-api

@@ -1,12 +1,14 @@
 package com.caskbycask.domain.review.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
+import com.caskbycask.domain.social.dto.SocialPublishSelection;
 
 public record ReviewRequest(
         @Schema(description = "향(Nose) 점수 (0.0~100.0, 소수점 1자리)")
@@ -53,5 +55,17 @@ public record ReviewRequest(
 
         @Schema(description = "피니시 아로마 휠 (800자 이내, 선택)")
         @Size(max = 800, message = "아로마 휠 데이터는 800자 이내여야 합니다.")
-        String finishAromaWheelNotes
-) {}
+        String finishAromaWheelNotes,
+
+        @Valid
+        SocialPublishSelection socialPublish
+) {
+    public ReviewRequest(
+            BigDecimal noseScore, BigDecimal tasteScore, BigDecimal finishScore,
+            String noseNote, String tasteNote, String finishNote, String comment,
+            String noseAromaWheelNotes, String tasteAromaWheelNotes, String finishAromaWheelNotes
+    ) {
+        this(noseScore, tasteScore, finishScore, noseNote, tasteNote, finishNote, comment,
+                noseAromaWheelNotes, tasteAromaWheelNotes, finishAromaWheelNotes, null);
+    }
+}

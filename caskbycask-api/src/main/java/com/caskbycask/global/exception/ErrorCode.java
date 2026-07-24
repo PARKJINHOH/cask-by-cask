@@ -282,6 +282,18 @@ public enum ErrorCode {
     AI_NEWS_SYSTEM_AUTHOR_NOT_FOUND(HttpStatus.SERVICE_UNAVAILABLE, "AI_NEWS_009", "AI 소식 시스템 작성자 계정이 준비되지 않았습니다."),
     AI_NEWS_TOPIC_IN_USE(HttpStatus.CONFLICT, "AI_NEWS_010", "이미 생성된 원고가 연결된 정보 주제는 삭제할 수 없습니다."),
 
+    // Instagram / Threads publishing
+    SOCIAL_PUBLICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "SOCIAL_001", "SNS 게시 이력을 찾을 수 없습니다."),
+    SOCIAL_PUBLICATION_ACCESS_DENIED(HttpStatus.FORBIDDEN, "SOCIAL_002", "본인의 SNS 게시 이력만 접근할 수 있습니다."),
+    SOCIAL_PUBLICATION_NOT_RETRYABLE(HttpStatus.CONFLICT, "SOCIAL_003", "확인된 실패 상태의 게시물만 다시 발행할 수 있습니다."),
+    SOCIAL_TEMPLATE_NOT_FOUND(HttpStatus.NOT_FOUND, "SOCIAL_004", "사용 가능한 SNS 썸네일 배경을 찾을 수 없습니다."),
+    SOCIAL_TEMPLATE_REQUIRED(HttpStatus.BAD_REQUEST, "SOCIAL_005", "SNS 썸네일 배경을 선택해주세요."),
+    SOCIAL_IMAGE_REQUIRED(HttpStatus.BAD_REQUEST, "SOCIAL_006", "SNS 게시용 이미지를 등록해주세요."),
+    SOCIAL_MEDIA_MODE_REQUIRED(HttpStatus.BAD_REQUEST, "SOCIAL_007", "SNS 썸네일 생성 방식을 선택해주세요."),
+    SOCIAL_ACCOUNT_NOT_CONNECTED(HttpStatus.SERVICE_UNAVAILABLE, "SOCIAL_008", "공식 SNS 계정이 연결되지 않았습니다."),
+    SOCIAL_OAUTH_STATE_INVALID(HttpStatus.BAD_REQUEST, "SOCIAL_009", "SNS 계정 연결 요청이 만료되었거나 유효하지 않습니다."),
+    SOCIAL_PUBLISHING_DISABLED(HttpStatus.SERVICE_UNAVAILABLE, "SOCIAL_010", "SNS 자동 게시 기능이 아직 활성화되지 않았습니다."),
+
     // Common
     NOT_FOUND(HttpStatus.NOT_FOUND, "COMMON_001", "리소스를 찾을 수 없습니다."),
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "COMMON_002", "입력값이 올바르지 않습니다."),

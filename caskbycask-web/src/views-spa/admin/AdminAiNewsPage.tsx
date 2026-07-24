@@ -101,7 +101,9 @@ function ArticlesTab() {
   })
 
   const runAction = (id: number, kind: 'publish' | 'reject' | 'delete' | 'restore') => {
-    if ((kind === 'delete' || kind === 'publish') && !window.confirm(kind === 'delete' ? '삭제하시겠습니까?' : '지금 발행하시겠습니까?')) return
+    if ((kind === 'delete' || kind === 'publish') && !window.confirm(kind === 'delete'
+      ? '삭제하시겠습니까?\n\n이미 Instagram 또는 Threads에 게시된 콘텐츠는 자동으로 삭제되지 않습니다. 해당 플랫폼에서 직접 삭제해 주세요.'
+      : '지금 발행하시겠습니까?')) return
     action.mutate({ id, kind })
   }
 

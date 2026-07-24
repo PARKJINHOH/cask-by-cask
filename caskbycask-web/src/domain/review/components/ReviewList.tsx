@@ -40,7 +40,7 @@ export default function ReviewList({ spiritId, writeSpiritId, reviewVariantLabel
   }
 
   const handleDelete = async (reviewId: number) => {
-    if (!confirm(t('review.deleteConfirm'))) return
+    if (!confirm(`${t('review.deleteConfirm')}\n\n${t('social.deleteSourceWarning')}`)) return
     await deleteMutation.mutateAsync(reviewId)
   }
 

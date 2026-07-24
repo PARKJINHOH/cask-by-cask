@@ -10,6 +10,8 @@ import com.caskbycask.domain.community.entity.enums.NotificationType;
 import com.caskbycask.domain.community.service.NotificationService;
 import com.caskbycask.domain.score.constant.ScoreActions;
 import com.caskbycask.domain.score.service.ScoreService;
+import com.caskbycask.domain.social.entity.enums.SocialSourceType;
+import com.caskbycask.domain.social.service.SocialPublishRequestService;
 import com.caskbycask.domain.spirit.dto.SpiritCommonDetailRequest;
 import com.caskbycask.domain.spirit.dto.WhiskyDetailRequest;
 import com.caskbycask.domain.spirit.entity.Spirit;
@@ -52,6 +54,7 @@ public class VariantReviewRequestService {
     private final BadWordFilter badWordFilter;
     private final EmailSender emailSender;
     private final NotificationService notificationService;
+    private final SocialPublishRequestService socialPublishRequestService;
 
     @Transactional
     public VariantReviewRequestResponse create(Long spiritId, Long userId, CreateVariantReviewRequest request) {
@@ -92,6 +95,7 @@ public class VariantReviewRequestService {
                 .finishAromaWheelNotes(normalize(request.finishAromaWheelNotes()))
                 .build());
 
+        socialPublishRequestService.requestVariantReview(saved, requester, request.socialPublish());
         return VariantReviewRequestResponse.from(saved);
     }
 
@@ -133,6 +137,7 @@ public class VariantReviewRequestService {
     @Transactional
     public void deleteMyRequest(Long requestId, Long userId) {
         SpiritVariantReviewRequest request = getEditableMyRequest(requestId, userId);
+        socialPublishRequestService.cancelOrigin(SocialSourceType.VARIANT_REVIEW_REQUEST, requestId);
         requestRepository.delete(request);
     }
 
@@ -216,6 +221,7 @@ public class VariantReviewRequestService {
         reviewService.recalculateAvgScore(variant.getId());
         scoreService.award(request.getRequestUser().getId(), ScoreActions.SPIRIT_REVIEW_WRITE, "SPIRIT_REVIEW", review.getId());
         request.approve(variant, review, admin, merged);
+        socialPublishRequestService.bindVariantReview(request.getId(), review.getId());
         sendVariantReviewApprovedNotification(request, variant, merged);
 
         return AdminVariantReviewRequestResponse.from(request);
@@ -270,6 +276,7 @@ public class VariantReviewRequestService {
         reviewService.recalculateAvgScore(variant.getId());
         scoreService.award(request.getRequestUser().getId(), ScoreActions.SPIRIT_REVIEW_WRITE, "SPIRIT_REVIEW", review.getId());
         request.approve(variant, review, admin, false);
+        socialPublishRequestService.bindVariantReview(request.getId(), review.getId());
         sendVariantReviewApprovedNotification(request, variant, false);
 
         return AdminVariantReviewRequestResponse.from(request);
@@ -310,6 +317,7 @@ public class VariantReviewRequestService {
                 variant.getVolumeMl()
         );
         request.rejectReviewOnly(variant, admin, reason);
+        socialPublishRequestService.cancelOrigin(SocialSourceType.VARIANT_REVIEW_REQUEST, request.getId());
         sendReviewOnlyRejectedNotification(request, reason);
 
         return AdminVariantReviewRequestResponse.from(request);
@@ -321,6 +329,7 @@ public class VariantReviewRequestService {
         User admin = userRepository.getByIdOrThrow(adminUserId);
         String reason = normalize(moderation != null ? moderation.reason() : null);
         request.reject(admin, reason);
+        socialPublishRequestService.cancelOrigin(SocialSourceType.VARIANT_REVIEW_REQUEST, request.getId());
         sendVariantReviewRejectedNotification(request, reason);
 
         if (moderation != null && moderation.shouldSendEmail()) {

@@ -15,6 +15,17 @@ import java.util.Optional;
 
 public interface ReviewRepository extends JpaRepository<Review, Long> {
 
+    @Query("""
+            SELECT r FROM Review r
+            JOIN FETCH r.user
+            JOIN FETCH r.spirit s
+            LEFT JOIN FETCH s.parent
+            WHERE r.id = :reviewId
+              AND r.isHidden = false
+              AND s.status = com.caskbycask.domain.spirit.entity.enums.SpiritStatus.ACTIVE
+            """)
+    Optional<Review> findPublicById(@Param("reviewId") Long reviewId);
+
     // [점수이력 링크] 리뷰 id → 술 id 배치 조회 (행: [reviewId, spiritId])
     @Query("SELECT r.id, r.spirit.id FROM Review r WHERE r.id IN :ids")
     List<Object[]> findIdAndSpiritIdByIdIn(@Param("ids") Collection<Long> ids);

@@ -60,6 +60,7 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
     nginx \
     mariadb-server mariadb-client \
     redis-server \
+    fonts-noto-cjk \
     rsync curl util-linux iptables-persistent
 ```
 
@@ -71,6 +72,7 @@ nginx -v
 mariadb --version
 redis-server --version
 flock --version         # API/Web/크롤러 중복 실행 잠금
+fc-match 'Noto Sans CJK KR'  # SNS 한글 썸네일용 Noto CJK 확인
 ```
 
 ---
@@ -724,4 +726,3 @@ crontab -l | grep -E 'CRON_TZ|caskbycask-crawler/current'
 - [ ] `caskbycask-api` readiness UP + `caskbycask-web` health UP + 사이트 정상 로딩
 - [ ] (선택) Prometheus + Grafana 기동 + `monitoring.caskbycask.net` 접속 + 대시보드 정상 표시
 - [ ] (선택) 크롤러 패키지 설치 및 `.env`/`targets.json` 설정 + 핫딜/AI 소식 2시간 주기 시차 실행 설정 완료
-

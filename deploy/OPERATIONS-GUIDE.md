@@ -483,6 +483,12 @@ sudo systemctl restart caskbycask-api   # 수정 후 재시작해야 반영
 | `OAUTH_ALLOWED_REDIRECT_URIS` | 소셜 콜백 화이트리스트 (예: `https://www.caskbycask.net/oauth/callback`). 제공자 콘솔 등록값과 동일 |
 | `OAUTH_NAVER_CLIENT_ID` / `OAUTH_NAVER_CLIENT_SECRET` | 네이버 로그인 키 (네이버 개발자센터) |
 | `OAUTH_GOOGLE_CLIENT_ID` / `OAUTH_GOOGLE_CLIENT_SECRET` | 구글 로그인 키 (Google Cloud Console) |
+| `SOCIAL_PUBLISH_ENABLED` | Instagram·Threads 비동기 게시 feature flag. 공식 계정 연결·시험 전에는 `false` |
+| `SOCIAL_PUBLIC_MEDIA_BASE_URL` | Meta가 생성 이미지를 가져갈 수 있는 HTTPS 공개 기준 URL |
+| `SOCIAL_OAUTH_REDIRECT_URI` | Meta 콘솔에 등록한 공식 계정 연결 콜백 URL |
+| `SOCIAL_TOKEN_ENCRYPTION_KEY` | Meta 장기 access token AES-256-GCM 암호화 키(Base64 32B). 변경 시 공식 계정 재연결 필요 |
+| `SOCIAL_INSTAGRAM_APP_ID` / `SOCIAL_INSTAGRAM_APP_SECRET` | Instagram API with Instagram Login 앱 키 |
+| `SOCIAL_THREADS_APP_ID` / `SOCIAL_THREADS_APP_SECRET` | Threads API 앱 키 |
 | `SEO_SITE_URL` | canonical·sitemap·IndexNow 공개 기준 URL. 운영값은 `https://www.caskbycask.net`으로 유지 |
 | `INDEXNOW_ENABLED` | 네이버 IndexNow 비동기 통지 활성화. 키 파일 확인 전에는 `false` 유지 |
 | `INDEXNOW_KEY` | 공개 소유 확인 키(8~128자의 a-f/A-F/0-9/-). 활성화 시 `/indexnow-key.txt`에 노출되는 것이 정상 |
@@ -495,6 +501,18 @@ sudo systemctl restart caskbycask-api   # 수정 후 재시작해야 반영
 > (로컬 개발 시 `http://localhost:5173/oauth/callback`)을 등록해야 한다. 구글은 OAuth 동의 화면에 `openid`,`email`,`profile`
 > 스코프가 필요하고, refresh token 수신을 위해 앱이 `access_type=offline` + `prompt=consent` 로 인가 요청한다(코드에 반영됨).
 > 등록 redirect URI 가 `OAUTH_ALLOWED_REDIRECT_URIS` 와 다르면 콜백이 `OAUTH_008` 로 거부된다.
+
+### Instagram·Threads 자동 게시
+
+Meta 앱/권한 준비, 장기 토큰 연결, feature flag 활성화, 상태별 장애 대응은
+[`SOCIAL-PUBLISHING.md`](SOCIAL-PUBLISHING.md)를 따른다. 운영 배포는 Flyway `V52`~`V53` 적용 후
+최고관리자가 `관리자 > SNS 게시 관리 > 공식 계정`에서 OAuth 연결과 `연결 확인`을 완료한 다음
+시험 게시를 거쳐 `SOCIAL_PUBLISH_ENABLED=true`로 전환한다.
+
+생성 이미지는 `/app/upload/social`에 누적되며 Meta가 `/api/social/images/**`로 직접 가져간다.
+nginx/Cloudflare에서 이 경로를 인증 또는 hotlink 차단 대상으로 지정하지 않고 디스크·백업 점검에 포함한다.
+한글 썸네일 합성을 위해 `fonts-noto-cjk`를 설치하고 `fc-match 'Noto Sans CJK KR'` 결과를
+배포 전 점검한다. 글꼴이 없으면 SNS 템플릿 발행은 실패 이력으로 남고 Meta에는 게시하지 않는다.
 
 ---
 
@@ -749,6 +767,7 @@ tail -n 100 /app/caskbycask-crawler/logs/ai-news.log
 | **API 비정상 종료** | 크래시·OOM·비정상 exit (`systemctl stop`/배포 재시작은 제외) | `notify-systemd.sh` (ExecStopPost) | 서버 |
 | **API 기동** | 서비스 시작(배포·장애복구) | `notify-systemd.sh` (ExecStartPost) | 서버 |
 | **디스크/SSL** | 디스크 임계 초과·SSL 만료 임박 | `check-resources.sh` | 서버(cron) |
+| **SNS 토큰 만료** | Instagram/Threads 장기 토큰 자동 갱신 실패 후 만료 | `SocialTokenRefreshScheduler` ERROR 로그 → `SlackErrorAppender` | 서버(매일 03:20) |
 | **크롤러 장애** | 네이버 카페 쿠키/인증, 내부 API 토큰, Gemini 인증·quota, 게시글 처리 오류 | `caskbycask-crawler/alerts/slack_notifier.py` | 서버(cron) |
 | ~~서비스 다운~~ ⏸️보류 | `/healthz` 무응답 = VM 통째 다운 | `synology/healthcheck.sh` | 시놀로지 |
 

@@ -29,6 +29,9 @@ import type { AromaNotes } from '@/domain/review/utils/aroma'
 import type { ReviewItem } from '@/domain/review/types/review.types'
 import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
 import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
+import SocialPublishFields from '@/domain/social/components/SocialPublishFields'
+import { socialApi } from '@/domain/social/api/socialApi'
+import { EMPTY_SOCIAL_SELECTION, type SocialPublishSelection } from '@/domain/social/types/social.types'
 
 const ADD_VARIANT_SELECT_VALUE = '__ADD_VARIANT__'
 
@@ -85,6 +88,9 @@ export default function ReviewFormPage() {
   const [variantError, setVariantError] = useState<string | null>(null)
   const [variantCreateOpen, setVariantCreateOpen] = useState(false)
   const [pendingVariantDraft, setPendingVariantDraft] = useState<ReviewVariantDraft | null>(null)
+  const [socialSelection, setSocialSelection] = useState<SocialPublishSelection>(EMPTY_SOCIAL_SELECTION)
+  const [socialRetryIds, setSocialRetryIds] = useState<number[]>([])
+  const [socialError, setSocialError] = useState('')
   const editionSelectRef = useRef<HTMLSelectElement>(null)
 
   // 페이지 진입 시 최상단으로 스크롤 이동
@@ -164,6 +170,12 @@ export default function ReviewFormPage() {
   const totalPreview = (nose + taste + finish) / 3
 
   const onSubmit = async (values: ReviewFormValues) => {
+    if (!isEdit && (socialSelection.instagram || socialSelection.threads)
+      && !socialSelection.consentAccepted) {
+      setSocialError(t('social.consentRequired'))
+      return
+    }
+    setSocialError('')
     if (masterId && hasSubEditionFlow && !isEdit && targetSpiritId === null && !pendingVariantDraft) {
       setVariantError(t('review.selectEditionRequired'))
       setTimeout(() => {
@@ -183,9 +195,11 @@ export default function ReviewFormPage() {
       noseAromaWheelNotes:   showAroma ? serializeAromaNotes(noseAromas)   : undefined,
       tasteAromaWheelNotes:  showAroma ? serializeAromaNotes(tasteAromas)  : undefined,
       finishAromaWheelNotes: showAroma ? serializeAromaNotes(finishAromas) : undefined,
+      ...(!isEdit ? { socialPublish: socialSelection } : {}),
     }
     if (isEdit && editingReview) {
       await updateMutation.mutateAsync({ reviewId: editingReview.id, data: payload })
+      await Promise.all(socialRetryIds.map((publicationId) => socialApi.retry(publicationId)))
     } else if (pendingVariantDraft && masterId) {
       await createVariantReviewRequest.mutateAsync({
         ...payload,
@@ -414,6 +428,18 @@ export default function ReviewFormPage() {
         {serverError && (
           <p className="text-sm text-red-600">{serverErrorMessage}</p>
         )}
+
+        <SocialPublishFields
+          kind="review"
+          selection={socialSelection}
+          onChange={setSocialSelection}
+          editing={isEdit}
+          source={editingReview ? { type: 'REVIEW', id: editingReview.id } : undefined}
+          retryIds={socialRetryIds}
+          onRetryIdsChange={setSocialRetryIds}
+          reviewSpiritId={targetSpiritId ?? masterId ?? spiritId}
+        />
+        {socialError && <p className="text-sm text-red-600">{socialError}</p>}
 
         <p className="text-[11px] text-neutral-400 text-center leading-relaxed px-2">
           {t('review.qualityWarning')}

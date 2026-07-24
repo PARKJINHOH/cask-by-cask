@@ -118,6 +118,28 @@ seo:
     key: ${INDEXNOW_KEY:}
     endpoint: ${INDEXNOW_ENDPOINT:https://searchadvisor.naver.com/indexnow}
 
+# 공식 Instagram / Threads 게시 연동. 운영 연결과 검증 전에는 반드시 false로 유지한다.
+social-publishing:
+  enabled: ${SOCIAL_PUBLISH_ENABLED:false}
+  site-url: ${SEO_SITE_URL:https://www.caskbycask.net}
+  public-media-base-url: ${SOCIAL_PUBLIC_MEDIA_BASE_URL:${SEO_SITE_URL:https://www.caskbycask.net}}
+  oauth-redirect-uri: ${SOCIAL_OAUTH_REDIRECT_URI:http://localhost:8080/api/admin/social/accounts/oauth/callback}
+  token-encryption-key: ${SOCIAL_TOKEN_ENCRYPTION_KEY:}
+  instagram:
+    app-id: ${SOCIAL_INSTAGRAM_APP_ID:}
+    app-secret: ${SOCIAL_INSTAGRAM_APP_SECRET:}
+    authorization-url: ${SOCIAL_INSTAGRAM_AUTHORIZATION_URL:https://www.instagram.com/oauth/authorize}
+    oauth-api-base-url: ${SOCIAL_INSTAGRAM_OAUTH_API_BASE_URL:https://api.instagram.com}
+    api-base-url: ${SOCIAL_INSTAGRAM_API_BASE_URL:https://graph.instagram.com}
+    scopes: instagram_business_basic,instagram_business_content_publish
+  threads:
+    app-id: ${SOCIAL_THREADS_APP_ID:}
+    app-secret: ${SOCIAL_THREADS_APP_SECRET:}
+    authorization-url: ${SOCIAL_THREADS_AUTHORIZATION_URL:https://threads.net/oauth/authorize}
+    oauth-api-base-url: ${SOCIAL_THREADS_OAUTH_API_BASE_URL:https://graph.threads.net}
+    api-base-url: ${SOCIAL_THREADS_API_BASE_URL:https://graph.threads.net/v1.0}
+    scopes: threads_basic,threads_content_publish
+
 # Actuator: Prometheus/Health 만 노출
 # server.port / server.address 는 프로파일별로 설정 (local: 메인과 동일 포트 / dev,prod: 별도 포트 + localhost 바인딩)
 management:

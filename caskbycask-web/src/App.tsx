@@ -100,6 +100,9 @@ const TasteTreeBuilderPage = lazy(() => import('@/views-spa/TasteTreeBuilderPage
 const MyTasteTreesPage = lazy(() => import('@/views-spa/MyTasteTreesPage'))
 const AdminTasteTreePage = lazy(() => import('@/views-spa/admin/AdminTasteTreePage'))
 const AdminTasteTreeBuilderPage = lazy(() => import('@/views-spa/admin/AdminTasteTreeBuilderPage'))
+const AdminSocialPage = lazy(() => import('@/views-spa/admin/AdminSocialPage'))
+const PublicReviewPage = lazy(() => import('@/views-spa/PublicReviewPage'))
+const SocialHubPage = lazy(() => import('@/views-spa/SocialHubPage'))
 
 export default function App() {
   return (
@@ -142,6 +145,8 @@ export default function App() {
             <Route path="users/:userId/bottles" element={<UserBottlePublicPage />} />
             <Route path="users/:userId/reviews" element={<UserReviewsPage />} />
             <Route path="producers/:id" element={<ProducerDetailPage />} />
+            <Route path="reviews/:reviewId" element={<PublicReviewPage />} />
+            <Route path="social" element={<SocialHubPage />} />
             <Route path="price-tracker" element={<PriceTrackerPage />} />
             <Route path="price-tracker/spirits/:id" element={<SpiritPriceDetailPage />} />
             <Route element={<PrivateRoute />}>
@@ -200,6 +205,7 @@ export default function App() {
               <Route path="community/ai-news/new" element={<AdminAiNewsFormPage />} />
               <Route path="community/ai-news/requests/:requestId" element={<AdminAiNewsRequestDetailPage />} />
               <Route path="community/ai-news/:id/edit" element={<AdminAiNewsFormPage />} />
+              <Route path="social" element={<AdminSocialPage />} />
               <Route path="community/bad-words" element={<AdminBadWordPage />} />
               <Route path="community/emojis" element={<AdminEmojiPage />} />
               <Route path="community/prefixes" element={<AdminPrefixPage />} />

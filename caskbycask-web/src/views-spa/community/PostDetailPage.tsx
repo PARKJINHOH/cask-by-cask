@@ -124,7 +124,7 @@ export default function PostDetailPage() {
 
 
   const handleDelete = async () => {
-    if (!window.confirm(t('post.deleteConfirm'))) return
+    if (!window.confirm(`${t('post.deleteConfirm')}\n\n${t('social.deleteSourceWarning')}`)) return
     deleteMutation.mutate(undefined, {
       onSuccess: () => {
         showToast(t('post.deleteSuccess'), 'success')

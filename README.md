@@ -168,6 +168,7 @@ DB 스키마는 **Flyway가 소유**합니다(클린 베이스라인). `V1__init
 자세한 절차는 다음 문서를 참고하세요.
 - [`deploy/DEPLOY-PIPELINE.md`](./deploy/DEPLOY-PIPELINE.md) — 배포 파이프라인 개요
 - [`deploy/OPERATIONS-GUIDE.md`](./deploy/OPERATIONS-GUIDE.md) — 운영 가이드(배포/점검/백업/복원)
+- [`deploy/SOCIAL-PUBLISHING.md`](./deploy/SOCIAL-PUBLISHING.md) — Instagram·Threads 자동 게시 설정/토큰/운영 가이드
 
 ---
 

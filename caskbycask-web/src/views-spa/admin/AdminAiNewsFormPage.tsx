@@ -9,6 +9,9 @@ import AdminPageHeader from '@/shared/components/AdminPageHeader'
 import Spinner from '@/shared/components/Spinner'
 import AdminAiNewsRequestPanel from './AdminAiNewsRequestPanel'
 import { formatHashtagInput, MAX_HASHTAGS, MAX_HASHTAG_LENGTH, parseHashtagInput } from '@/shared/utils/hashtags'
+import SocialPublishFields from '@/domain/social/components/SocialPublishFields'
+import { EMPTY_SOCIAL_SELECTION, type SocialPublishSelection } from '@/domain/social/types/social.types'
+import { socialApi } from '@/domain/social/api/socialApi'
 import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 
 const MAX_TITLE_LENGTH = 70
@@ -34,6 +37,8 @@ export default function AdminAiNewsFormPage() {
   const [hashtagInput, setHashtagInput] = useState('')
   const [rewritePrompt, setRewritePrompt] = useState('')
   const [scheduledAt, setScheduledAt] = useState('')
+  const [socialSelection, setSocialSelection] = useState<SocialPublishSelection>(EMPTY_SOCIAL_SELECTION)
+  const [socialRetryIds, setSocialRetryIds] = useState<number[]>([])
   const [error, setError] = useState('')
 
   const { data: detail, isLoading } = useQuery({
@@ -73,6 +78,10 @@ export default function AdminAiNewsFormPage() {
   const save = useMutation({
     mutationFn: async (action: 'save' | 'publish' | 'schedule') => {
       if (!title.trim() || !content.trim()) throw new Error('제목과 본문을 입력하세요.')
+      if ((action === 'publish' || action === 'schedule')
+        && !socialSelectionValid(socialSelection, !isEdit || detail?.status !== 'PUBLISHED')) {
+        throw new Error('SNS 게시 동의와 썸네일 설정을 확인하세요.')
+      }
       if (action === 'schedule' && (!scheduledAt || new Date(scheduledAt).getTime() <= Date.now())) {
         throw new Error('현재 이후의 예약 발행일시를 입력하세요.')
       }
@@ -90,8 +99,11 @@ export default function AdminAiNewsFormPage() {
           hashtags,
           sourceUrls: sources.map((source) => source.sourceUrl),
         })
-        if (action === 'publish' && updated.status !== 'PUBLISHED') await adminAiNewsApi.publish(updated.id)
-        if (action === 'schedule') await adminAiNewsApi.publish(updated.id, scheduledAt)
+        await Promise.all(socialRetryIds.map((publicationId) => socialApi.retry(publicationId, true)))
+        if (action === 'publish' && updated.status !== 'PUBLISHED') {
+          await adminAiNewsApi.publish(updated.id, null, socialSelection)
+        }
+        if (action === 'schedule') await adminAiNewsApi.publish(updated.id, scheduledAt, socialSelection)
         return updated.id
       }
       const created = await adminAiNewsApi.createArticle({
@@ -103,8 +115,8 @@ export default function AdminAiNewsFormPage() {
         prefixId: prefixId === '' ? null : prefixId,
         pinned, autoPublishRequested: false, hashtags, sources,
       })
-      if (action === 'publish') await adminAiNewsApi.publish(created.id)
-      if (action === 'schedule') await adminAiNewsApi.publish(created.id, scheduledAt)
+      if (action === 'publish') await adminAiNewsApi.publish(created.id, null, socialSelection)
+      if (action === 'schedule') await adminAiNewsApi.publish(created.id, scheduledAt, socialSelection)
       return created.id
     },
     onSuccess: () => {
@@ -276,6 +288,15 @@ export default function AdminAiNewsFormPage() {
             )}
           </div>
         </div>}
+        <SocialPublishFields
+          kind="news"
+          selection={socialSelection}
+          onChange={setSocialSelection}
+          editing={Boolean(isEdit && detail && detail.status !== 'DRAFT' && detail.status !== 'PENDING_REVIEW')}
+          source={articleId ? { type: 'AI_NEWS_ARTICLE', id: articleId } : undefined}
+          retryIds={socialRetryIds}
+          onRetryIdsChange={setSocialRetryIds}
+        />
         {detail && !['PUBLISHED', 'SCHEDULED', 'SKIPPED_DUPLICATE', 'REWRITE_REQUESTED'].includes(detail.status) && (
           <div className="rounded-lg border border-violet-200 bg-violet-50 p-4">
             <p className="text-sm font-semibold text-violet-900">AI 재작성 요청 <RequiredMark /></p>
@@ -296,7 +317,7 @@ export default function AdminAiNewsFormPage() {
         )}
         {error && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-600">{error}</p>}
         <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
-          {isEdit ? <button type="button" onClick={() => { if (window.confirm('삭제하시겠습니까?')) deleteMut.mutate() }} disabled={deleteMut.isPending} className="rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50">삭제</button> : <span />}
+          {isEdit ? <button type="button" onClick={() => { if (window.confirm('삭제하시겠습니까?\n\n이미 Instagram 또는 Threads에 게시된 콘텐츠는 자동으로 삭제되지 않습니다. 해당 플랫폼에서 직접 삭제해 주세요.')) deleteMut.mutate() }} disabled={deleteMut.isPending} className="rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50">삭제</button> : <span />}
           <div className="flex gap-2">
             <button type="button" onClick={() => save.mutate('save')} disabled={save.isPending} className="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-semibold text-neutral-700 hover:bg-neutral-50">저장</button>
             {canPublish && <button type="button" onClick={() => save.mutate('schedule')} disabled={save.isPending || !scheduledAt} className="rounded-lg border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-50">예약 발행</button>}
@@ -313,6 +334,13 @@ function Field({ label, children, required = false }: { label: string; children:
   return <label className="block" aria-required={required || undefined}><span className="mb-1.5 block text-xs font-semibold text-neutral-600">{label}{required && <RequiredMark />}</span>{children}</label>
 }
 const inputCls = 'w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100 disabled:bg-neutral-100'
+
+function socialSelectionValid(selection: SocialPublishSelection, applies: boolean) {
+  if (!applies || (!selection.instagram && !selection.threads)) return true
+  if (!selection.consentAccepted) return false
+  if ((selection.mediaMode ?? 'TEMPLATE') === 'TEMPLATE') return Boolean(selection.templateId)
+  return Boolean(selection.directImageUrl)
+}
 
 function ScheduledDateTimeFields({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   const date = value.slice(0, 10)

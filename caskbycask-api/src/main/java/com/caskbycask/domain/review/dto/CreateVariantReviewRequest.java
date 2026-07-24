@@ -8,6 +8,8 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.Valid;
+import com.caskbycask.domain.social.dto.SocialPublishSelection;
 
 import java.math.BigDecimal;
 
@@ -81,5 +83,8 @@ public record CreateVariantReviewRequest(
 
         @Schema(description = "Finish aroma wheel notes")
         @Size(max = 800, message = "Aroma wheel notes must be 800 characters or less.")
-        String finishAromaWheelNotes
+        String finishAromaWheelNotes,
+
+        @Valid
+        SocialPublishSelection socialPublish
 ) {}

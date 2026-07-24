@@ -72,7 +72,8 @@ public class AiNewsAdminController {
             @RequestBody(required = false) AiNewsDtos.PublishRequest request,
             @AuthenticationPrincipal CustomUserDetails user) {
         LocalDateTime scheduledAt = request != null ? request.scheduledAt() : null;
-        return ResponseEntity.ok(ApiResponse.success(aiNewsService.publish(id, scheduledAt, user.getUserId())));
+        return ResponseEntity.ok(ApiResponse.success(aiNewsService.publish(
+                id, scheduledAt, request != null ? request.socialPublish() : null, user.getUserId())));
     }
 
     @PostMapping("/articles/{id}/schedule/cancel")

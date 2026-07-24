@@ -17,6 +17,9 @@ import { useSpiritDetail, useSpiritVariants } from '@/domain/spirit/hooks/useSpi
 import ReviewVariantCreateModal, { type ReviewVariantDraft } from './ReviewVariantCreateModal'
 import ReviewVariantDraftCard from './ReviewVariantDraftCard'
 import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
+import SocialPublishFields from '@/domain/social/components/SocialPublishFields'
+import { socialApi } from '@/domain/social/api/socialApi'
+import { EMPTY_SOCIAL_SELECTION, type SocialPublishSelection } from '@/domain/social/types/social.types'
 
 const ADD_VARIANT_SELECT_VALUE = '__ADD_VARIANT__'
 
@@ -72,6 +75,9 @@ export default function ReviewFormModal({
   const [variantError, setVariantError] = useState<string | null>(null)
   const [variantCreateOpen, setVariantCreateOpen] = useState(false)
   const [pendingVariantDraft, setPendingVariantDraft] = useState<ReviewVariantDraft | null>(null)
+  const [socialSelection, setSocialSelection] = useState<SocialPublishSelection>(EMPTY_SOCIAL_SELECTION)
+  const [socialRetryIds, setSocialRetryIds] = useState<number[]>([])
+  const [socialError, setSocialError] = useState('')
   const editionSelectRef = useRef<HTMLSelectElement>(null)
 
   useEffect(() => {
@@ -130,6 +136,9 @@ export default function ReviewFormModal({
       setTasteAromas(parseAromaNotes(editingReview?.tasteAromaWheelNotes))
       setFinishAromas(parseAromaNotes(editingReview?.finishAromaWheelNotes))
       setPendingVariantDraft(null)
+      setSocialSelection(EMPTY_SOCIAL_SELECTION)
+      setSocialRetryIds([])
+      setSocialError('')
     }
   }, [open, editingReview, reset])
 
@@ -140,6 +149,12 @@ export default function ReviewFormModal({
   const totalPreview = (nose + taste + finish) / 3
 
   const onSubmit = async (values: ReviewFormValues) => {
+    if (!editingReview && (socialSelection.instagram || socialSelection.threads)
+      && !socialSelection.consentAccepted) {
+      setSocialError(t('social.consentRequired'))
+      return
+    }
+    setSocialError('')
     if (masterId && hasSubEditionFlow && !editingReview && targetSpiritId === null && !pendingVariantDraft) {
       setVariantError(t('review.selectEditionRequired'))
       setTimeout(() => {
@@ -159,9 +174,11 @@ export default function ReviewFormModal({
       noseAromaWheelNotes:   showAroma ? serializeAromaNotes(noseAromas)   : undefined,
       tasteAromaWheelNotes:  showAroma ? serializeAromaNotes(tasteAromas)  : undefined,
       finishAromaWheelNotes: showAroma ? serializeAromaNotes(finishAromas) : undefined,
+      ...(!editingReview ? { socialPublish: socialSelection } : {}),
     }
     if (editingReview) {
       await updateMutation.mutateAsync({ reviewId: editingReview.id, data: payload })
+      await Promise.all(socialRetryIds.map((publicationId) => socialApi.retry(publicationId)))
     } else if (pendingVariantDraft && masterId) {
       await createVariantReviewRequest.mutateAsync({
         ...payload,
@@ -377,6 +394,18 @@ export default function ReviewFormModal({
         {serverError && (
           <p className="text-sm text-red-600">{serverErrorMessage}</p>
         )}
+
+        <SocialPublishFields
+          kind="review"
+          selection={socialSelection}
+          onChange={setSocialSelection}
+          editing={Boolean(editingReview)}
+          source={editingReview ? { type: 'REVIEW', id: editingReview.id } : undefined}
+          retryIds={socialRetryIds}
+          onRetryIdsChange={setSocialRetryIds}
+          reviewSpiritId={targetSpiritId ?? masterId ?? spiritId}
+        />
+        {socialError && <p className="text-sm text-red-600">{socialError}</p>}
 
         {/* ── 경고 문구 ── */}
         <p className="text-[11px] text-neutral-400 text-center leading-relaxed px-2">

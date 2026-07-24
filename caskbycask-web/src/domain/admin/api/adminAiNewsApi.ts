@@ -8,6 +8,7 @@ import type {
   AiNewsSourceConfigRequest, AiNewsTopic, AiNewsTopicRequest,
   AiNewsTopicStatus, AiNewsUsageSummary,
 } from '../types/aiNews.types'
+import type { SocialPublishSelection } from '@/domain/social/types/social.types'
 
 export const adminAiNewsApi = {
   articles: async (params: {
@@ -40,9 +41,10 @@ export const adminAiNewsApi = {
     const res = await axiosInstance.put<ApiResponse<AiNewsArticleDetail>>(`/api/admin/ai-news/articles/${id}`, data)
     return res.data.data!
   },
-  publish: async (id: number, scheduledAt?: string | null) => {
+  publish: async (id: number, scheduledAt?: string | null, socialPublish?: SocialPublishSelection) => {
     const res = await axiosInstance.post<ApiResponse<AiNewsArticleDetail>>(
-      `/api/admin/ai-news/articles/${id}/publish`, scheduledAt ? { scheduledAt } : undefined,
+      `/api/admin/ai-news/articles/${id}/publish`,
+      scheduledAt || socialPublish ? { scheduledAt: scheduledAt ?? null, socialPublish } : undefined,
     )
     return res.data.data!
   },

@@ -200,6 +200,7 @@ export interface CreatePostPayload {
   poll?: PollPayload
   seriesId?: number
   hashtags?: string[]
+  socialPublish?: SocialPublishSelection
 }
 
 export interface UpdatePostPayload {
@@ -210,3 +211,4 @@ export interface UpdatePostPayload {
   adultOnly?: boolean
   hashtags?: string[]
 }
+import type { SocialPublishSelection } from '@/domain/social/types/social.types'

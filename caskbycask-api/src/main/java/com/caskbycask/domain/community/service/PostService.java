@@ -16,6 +16,8 @@ import com.caskbycask.domain.producer.entity.Producer;
 import com.caskbycask.domain.producer.repository.ProducerRepository;
 import com.caskbycask.domain.score.constant.ScoreActions;
 import com.caskbycask.domain.score.service.ScoreService;
+import com.caskbycask.domain.social.entity.enums.SocialSourceType;
+import com.caskbycask.domain.social.service.SocialPublishRequestService;
 import com.caskbycask.domain.user.entity.User;
 import com.caskbycask.domain.user.entity.enums.Role;
 import com.caskbycask.domain.user.repository.UserRepository;
@@ -65,6 +67,7 @@ public class PostService {
     private final AdminLogService adminLogService;
     private final ProducerRepository producerRepository;
     private final AiNewsArticleRepository aiNewsArticleRepository;
+    private final SocialPublishRequestService socialPublishRequestService;
 
     // ═══════════════════════════════════════════
     // 조회
@@ -302,6 +305,14 @@ public class PostService {
             scoreService.award(userId, resolvePostActionType(post), "POST", post.getId());
         }
 
+        if (request.getSocialPublish() != null && request.getSocialPublish().anyRequested()) {
+            if (!BoardType.NOTICE.equals(post.getBoardType())
+                    || (author.getRole() != Role.SUPER_ADMIN && author.getRole() != Role.ADMIN)) {
+                throw new CustomException(ErrorCode.FORBIDDEN);
+            }
+            socialPublishRequestService.requestPost(post.getId(), author, request.getSocialPublish());
+        }
+
         return PostDetailResponse.builder(post, true).build();
     }
 
@@ -399,6 +410,7 @@ public class PostService {
         // [패치 1] 차감 전에 원래 지급에 쓰인 액션 타입을 확보 (이동 후엔 prefix 등 접근 불가할 수 있음)
         String originalAction = resolvePostActionType(post);
         postMoveService.moveToDeleted(post, userId, null);
+        socialPublishRequestService.markSourceDeleted(SocialSourceType.POST, postId);
 
         // [패치 1] 본인 삭제 시 고정값(-5)이 아니라 "원래 지급액만큼" 차감 (score_history 추적 기반).
         //          익명 글이었다면 지급 0 → 차감 0으로 자동 처리, 관리자 삭제는 제외.
@@ -533,7 +545,9 @@ public class PostService {
     @Transactional
     public DeletedPost adminDeletePost(Long postId, Long adminId, String deleteReason) {
         Post post = findPost(postId);
-        return postMoveService.moveToDeleted(post, adminId, deleteReason);
+        DeletedPost deleted = postMoveService.moveToDeleted(post, adminId, deleteReason);
+        socialPublishRequestService.markSourceDeleted(SocialSourceType.POST, postId);
+        return deleted;
     }
 
     @Transactional

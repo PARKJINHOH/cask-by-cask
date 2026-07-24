@@ -662,8 +662,7 @@
       "vintageYear": "Vintage year",
       "vintageStatus": {
         "VINTAGE": "Year shown",
-        "NON_VINTAGE": "Non-vintage (NV)",
-        "UNKNOWN": "Unknown"
+        "NON_VINTAGE": "Non-vintage (NV)"
       },
       "yes": "Yes",
       "no": "No",
@@ -672,8 +671,7 @@
       "naturalClaim": "Natural wine claim",
       "naturalClaimHelp": "This describes a minimal-intervention winemaking claim, not a uniform international legal certification.",
       "appellation": "Origin designation / appellation (AOC / DOC / AVA, etc.)",
-      "appellationPlaceholder": "e.g. AOC Bordeaux",
-      "commonHint": "Wine is identified by vintage (harvest year or NV). Enter only the alcohol level and volume here."
+      "appellationPlaceholder": "e.g. AOC Bordeaux"
     },
     "cognacGrade": {
       "VS":        "VS",
@@ -2215,6 +2213,63 @@
     "alreadyAdded": "This item is already added.",
     "notFoundTitle": "Tier list not found.",
     "notFoundDesc": "The share link is invalid or the tier list has been deleted."
+  },
+  "social": {
+    "mypageTab": "Social posts",
+    "publishTitle": "Publish to social media",
+    "publishHelp": "Publishing runs separately after save. The original is saved even if social publishing fails.",
+    "editRetryHelp": "A platform not requested on the first save cannot be added later. Only failed publications can be retried.",
+    "disabled": "The official account connection or publishing feature is currently unavailable.",
+    "reviewImageRequired": "A spirit image is required before this review can be published to social media.",
+    "notRequestedAtCreation": "Publishing was not requested when this was first saved.",
+    "openPost": "Open post",
+    "retry": "Retry publication",
+    "templateMode": "Background + text",
+    "directMode": "Upload image",
+    "thumbnailTextPlaceholder": "Enter the title to show on the thumbnail.",
+    "thumbnailPreview": "Thumbnail preview",
+    "uploading": "Uploading image.",
+    "uploadError": "Image upload failed.",
+    "consent": "I understand that this will be published through external Meta services (Instagram and Threads), and that editing or deleting the original will not update the social post. Social posts must be managed on each platform.",
+    "consentRequired": "Please accept the social publishing notice.",
+    "completeSettings": "Please complete the social publishing settings.",
+    "deleteSourceWarning": "Posts already published to Instagram or Threads are not deleted automatically. Delete them directly on the platform.",
+    "historyTitle": "Social publication history",
+    "historyHelp": "Only posts requested after this feature was introduced are shown. Delete posts directly on Instagram or Threads.",
+    "historyEmpty": "No social publication history yet.",
+    "hubTitle": "Latest CaskByCask reviews and news",
+    "hubDescription": "See the latest reviews and news featured on our official Instagram and Threads accounts.",
+    "hubEmpty": "No published social posts yet.",
+    "viewOriginal": "View original",
+    "publicReviewLabel": "Public review",
+    "publicReviewNotFound": "Review not found.",
+    "publicReviewSeoTitle": "{{name}} review",
+    "publicReviewSeoDescription": "Read the nose, taste, finish, and overall review of {{name}}.",
+    "goToSpirits": "Browse spirits",
+    "reviewBy": "Review by {{nickname}}",
+    "totalScore": "Total {{score}}",
+    "noImage": "No image available.",
+    "noReviewText": "No review text was provided.",
+    "viewSpirit": "View full spirit details",
+    "reviewField": {
+      "nose": "Nose",
+      "taste": "Taste",
+      "finish": "Finish",
+      "overall": "Overall"
+    },
+    "status": {
+      "WAITING_SOURCE": "Waiting for approval",
+      "QUEUED": "Queued",
+      "RENDERING": "Creating image",
+      "CONTAINER_CREATED": "Preparing upload",
+      "PUBLISHING": "Publishing",
+      "VERIFYING": "Verifying result",
+      "PUBLISHED": "Published",
+      "RETRY_WAIT": "Waiting to retry",
+      "FAILED": "Failed",
+      "CANCELED": "Canceled",
+      "EXTERNALLY_DELETED": "Deleted on platform"
+    }
   },
   "ranking": {
     "title": "Level Ranking",
