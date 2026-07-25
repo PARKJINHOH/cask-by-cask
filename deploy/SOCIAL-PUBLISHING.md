@@ -30,8 +30,13 @@ Meta 콘솔 UI와 심사 정책은 변경될 수 있다. 설정 시 다음 공�
 - [Instagram Platform 문서](https://developers.facebook.com/docs/instagram-platform)
 - [Threads API 시작](https://developers.facebook.com/docs/threads/get-started)
 - [Threads API 변경 이력](https://developers.facebook.com/docs/threads/changelog)
+- [Meta 데이터 삭제 콜백](https://developers.facebook.com/docs/development/create-an-app/app-dashboard/data-deletion-callback/)
 - [Meta 공식 Instagram Postman 컬렉션](https://www.postman.com/meta/instagram/documentation/6yqw8pt/instagram-api)
 - [Meta 공식 Threads Postman 컬렉션](https://www.postman.com/meta/threads/documentation/dht3nzz/threads-api)
+
+콜백 URL은 Meta 콘솔에 저장하기 전에 운영 API에 먼저 배포해야 한다. Meta의 URL 확인 및 실제 콜백은
+로그인 없이 외부 HTTPS로 접근할 수 있어야 하며 nginx/Cloudflare에서 POST, 폼 데이터 또는 Meta 요청을
+차단하면 안 된다. 제거·삭제 콜백은 `signed_request`를 해당 플랫폼 App Secret으로 HMAC-SHA256 검증한다.
 
 ### Instagram
 
@@ -49,6 +54,12 @@ Meta 콘솔 UI와 심사 정책은 변경될 수 있다. 설정 시 다음 공�
 
 6. 앱이 개발 모드라면 연결할 공식 Instagram 계정을 앱 역할/테스터로 등록하고 초대를 수락한다.
 7. 앱 역할이 아닌 계정도 연결해야 하거나 Meta가 Live 전환 때 요구하면 Business Verification과 App Review에서 위 권한의 Advanced Access를 신청한다. 심사 영상에는 최고관리자 계정 연결, 게시 요청, 게시 완료 링크 확인 흐름을 포함한다.
+8. Instagram 로그인 설정에 다음 운영 콜백을 등록한다.
+
+   - 승인 취소(제거) 콜백 URL:
+     `https://www.caskbycask.net/api/social/meta/instagram/deauthorize`
+   - 데이터 삭제 요청 콜백 URL:
+     `https://www.caskbycask.net/api/social/meta/instagram/data-deletion`
 
 ### Threads
 
@@ -62,6 +73,30 @@ Meta 콘솔 UI와 심사 정책은 변경될 수 있다. 설정 시 다음 공�
 
 5. 개발 모드에서는 공식 Threads 계정을 테스터로 추가하고 Threads 설정에서 초대를 수락한다.
 6. 앱 역할 밖의 계정을 연결할 경우 App Review/Advanced Access 요구사항을 완료한다.
+7. Threads API 설정에 다음 운영 콜백을 등록한다.
+
+   - 리디렉션 콜백 URL:
+     `https://www.caskbycask.net/api/admin/social/accounts/oauth/callback`
+   - 제거 콜백 URL:
+     `https://www.caskbycask.net/api/social/meta/threads/deauthorize`
+   - 삭제 콜백 URL:
+     `https://www.caskbycask.net/api/social/meta/threads/data-deletion`
+
+### 제거·데이터 삭제 처리
+
+- Meta는 제거·삭제 콜백을 `application/x-www-form-urlencoded` POST의 `signed_request`로 호출한다.
+- API는 URL 경로의 플랫폼에 맞는 Instagram 또는 Threads App Secret으로 서명을 검증한다.
+- 제거 콜백은 일치하는 공식 계정 연결과 암호화 access token만 제거한다. 기존 SNS 게시물과 게시 이력은
+  자동 삭제하지 않는다.
+- 데이터 삭제 콜백은 공식 계정 연결을 제거하고 해당 플랫폼 게시 이력에서 Meta가 반환한 container ID,
+  media ID, permalink, provider 오류 정보를 지운다. 원본 리뷰·소식 및 자체 생성한 게시 스냅샷은 유지한다.
+- 삭제 처리는 동기 완료 후 영구 확인 코드를 발급하고 다음 공개 상태 URL을 Meta에 반환한다.
+
+  `https://www.caskbycask.net/api/social/meta/data-deletion/status/{confirmationCode}`
+
+- 유효하지 않은 서명은 `400`, 설정되지 않은 App Secret이나 서버 장애는 `5xx`로 응답한다. 콜백 본문,
+  App Secret, access token, 원본 외부 사용자 ID는 로그에 남기지 않는다.
+- 브라우저로 각 제거·삭제 콜백 URL을 GET 했을 때 `{"status":"ready",...}`가 반환되어야 한다.
 
 ## 3. 운영 환경변수
 
@@ -108,12 +143,15 @@ OAuth에서 받은 단기 토큰은 서버가 즉시 장기 토큰으로 교환�
 ## 5. 배포 순서
 
 1. DB 백업과 배포 점검 절차를 수행한다.
-2. API를 배포해 Flyway `V52__create_social_publishing.sql`과 `V53__add_social_publication_operational_indexes.sql`을 적용한다.
+2. API를 배포해 Flyway `V52__create_social_publishing.sql`,
+   `V53__add_social_publication_operational_indexes.sql`,
+   `V55__create_social_data_deletion_requests.sql`을 적용한다.
 3. Web을 배포한다.
 4. `/app/env/api.env`에 Meta 설정을 추가한 뒤 API를 재시작한다.
 5. `fc-match 'Noto Sans CJK KR'`로 한글 합성 글꼴을 확인한다. 없으면 `sudo apt-get install -y fonts-noto-cjk`로 설치한다.
 6. 최고관리자가 공식 계정을 연결·검증한다.
-7. 시험 게시가 정상일 때 feature flag를 활성화한다.
+7. 운영 콜백 readiness URL 네 개가 `200`인지 확인한 후 Meta 콘솔에 제거·삭제 콜백 URL을 저장한다.
+8. 시험 게시가 정상일 때 feature flag를 활성화한다.
 
 기능을 긴급 중지할 때는 `SOCIAL_PUBLISH_ENABLED=false`로 변경하고 API를 재시작한다. 이 설정은 새 워커 실행을 멈추며 원본 작성 기능은 유지한다. 다시 활성화하면 남아 있는 `QUEUED`/`RETRY_WAIT` 작업을 계속 처리한다.
 

@@ -113,6 +113,13 @@ public class SecurityConfig {
                                 "/api/social/images/**", "/api/public/reviews/**").permitAll()
                         .requestMatchers(HttpMethod.HEAD, "/s/**", "/api/social/images/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/admin/social/accounts/oauth/callback").permitAll()
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/social/meta/*/deauthorize",
+                                "/api/social/meta/*/data-deletion",
+                                "/api/social/meta/data-deletion/status/**").permitAll()
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/social/meta/*/deauthorize",
+                                "/api/social/meta/*/data-deletion").permitAll()
                         .requestMatchers(HttpMethod.GET, "/indexnow-key.txt").permitAll()
                         .requestMatchers(HttpMethod.HEAD, "/indexnow-key.txt").permitAll()
                         .requestMatchers(HttpMethod.GET, "/spirits/{id:\\d+}", "/spirits/{id:\\d+}-*", "/ko/spirits/{id:\\d+}", "/ko/spirits/{id:\\d+}-*", "/en/spirits/{id:\\d+}", "/en/spirits/{id:\\d+}-*").permitAll()

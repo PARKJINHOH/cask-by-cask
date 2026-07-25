@@ -10,5 +10,7 @@ import java.util.Optional;
 
 public interface SocialAccountConnectionRepository extends JpaRepository<SocialAccountConnection, Long> {
     Optional<SocialAccountConnection> findByPlatform(SocialPlatform platform);
+    Optional<SocialAccountConnection> findByPlatformAndExternalUserId(
+            SocialPlatform platform, String externalUserId);
     List<SocialAccountConnection> findByTokenExpiresAtBefore(LocalDateTime dateTime);
 }

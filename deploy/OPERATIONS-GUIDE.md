@@ -489,8 +489,8 @@ sudo systemctl restart caskbycask-api   # 수정 후 재시작해야 반영
 | `SOCIAL_PUBLIC_MEDIA_BASE_URL` | Meta가 생성 이미지를 가져갈 수 있는 HTTPS 공개 기준 URL |
 | `SOCIAL_OAUTH_REDIRECT_URI` | Meta 콘솔에 등록한 공식 계정 연결 콜백 URL |
 | `SOCIAL_TOKEN_ENCRYPTION_KEY` | Meta 장기 access token AES-256-GCM 암호화 키(Base64 32B). 변경 시 공식 계정 재연결 필요 |
-| `SOCIAL_INSTAGRAM_APP_ID` / `SOCIAL_INSTAGRAM_APP_SECRET` | Instagram API with Instagram Login 앱 키 |
-| `SOCIAL_THREADS_APP_ID` / `SOCIAL_THREADS_APP_SECRET` | Threads API 앱 키 |
+| `SOCIAL_INSTAGRAM_APP_ID` / `SOCIAL_INSTAGRAM_APP_SECRET` | Instagram API with Instagram Login 앱 키. Instagram 제거·삭제 `signed_request` 검증에도 사용 |
+| `SOCIAL_THREADS_APP_ID` / `SOCIAL_THREADS_APP_SECRET` | Threads API 앱 키. Threads 제거·삭제 `signed_request` 검증에도 사용 |
 | `SEO_SITE_URL` | canonical·sitemap·IndexNow 공개 기준 URL. 운영값은 `https://www.caskbycask.net`으로 유지 |
 | `INDEXNOW_ENABLED` | 네이버 IndexNow 비동기 통지 활성화. 키 파일 확인 전에는 `false` 유지 |
 | `INDEXNOW_KEY` | 공개 소유 확인 키(8~128자의 a-f/A-F/0-9/-). 활성화 시 `/indexnow-key.txt`에 노출되는 것이 정상 |
@@ -521,9 +521,24 @@ sudo journalctl -u caskbycask-api --since '12 hours ago' | grep -E 'Exchange rat
 ### Instagram·Threads 자동 게시
 
 Meta 앱/권한 준비, 장기 토큰 연결, feature flag 활성화, 상태별 장애 대응은
-[`SOCIAL-PUBLISHING.md`](SOCIAL-PUBLISHING.md)를 따른다. 운영 배포는 Flyway `V52`~`V53` 적용 후
+[`SOCIAL-PUBLISHING.md`](SOCIAL-PUBLISHING.md)를 따른다. 운영 배포는 Flyway `V52`~`V55` 적용 후
 최고관리자가 `관리자 > SNS 게시 관리 > 공식 계정`에서 OAuth 연결과 `연결 확인`을 완료한 다음
 시험 게시를 거쳐 `SOCIAL_PUBLISH_ENABLED=true`로 전환한다.
+
+Meta 콘솔에 제거·삭제 콜백을 등록하기 전에 Flyway
+`V55__create_social_data_deletion_requests.sql`이 포함된 API를 먼저 배포한다. 운영 URL은 다음과 같다.
+
+```text
+Instagram 제거: https://www.caskbycask.net/api/social/meta/instagram/deauthorize
+Instagram 삭제: https://www.caskbycask.net/api/social/meta/instagram/data-deletion
+Threads 제거:   https://www.caskbycask.net/api/social/meta/threads/deauthorize
+Threads 삭제:   https://www.caskbycask.net/api/social/meta/threads/data-deletion
+```
+
+배포 직후 네 URL을 GET해 `200`과 `status=ready`를 확인한다. 실제 POST는 Meta App Secret으로 서명된
+`signed_request`만 허용한다. 제거 요청은 공식 계정 토큰을 삭제하고, 데이터 삭제 요청은 토큰과
+Meta 제공 식별자·permalink를 삭제한 뒤 확인 코드 상태 URL을 반환한다. 이 동작은 Meta에 이미 게시된
+콘텐츠를 자동 삭제하지 않는다.
 
 생성 이미지는 `/app/upload/social`에 누적되며 Meta가 `/api/social/images/**`로 직접 가져간다.
 nginx/Cloudflare에서 이 경로를 인증 또는 hotlink 차단 대상으로 지정하지 않고 디스크·백업 점검에 포함한다.
