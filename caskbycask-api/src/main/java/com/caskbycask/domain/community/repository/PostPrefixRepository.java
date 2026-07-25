@@ -14,4 +14,6 @@ public interface PostPrefixRepository extends JpaRepository<PostPrefix, Long> {
     List<PostPrefix> findByBoardTypeOrderBySortOrderAsc(BoardType boardType);
 
     Optional<PostPrefix> findByBoardTypeAndName(BoardType boardType, String name);
+
+    Optional<PostPrefix> findFirstByBoardTypeAndNameOrderBySortOrderAscIdAsc(BoardType boardType, String name);
 }

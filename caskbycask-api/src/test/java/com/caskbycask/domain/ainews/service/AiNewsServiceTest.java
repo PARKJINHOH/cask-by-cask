@@ -9,6 +9,9 @@ import com.caskbycask.domain.ainews.entity.AiNewsSourceConfig;
 import com.caskbycask.domain.ainews.entity.AiNewsTopic;
 import com.caskbycask.domain.ainews.entity.enums.*;
 import com.caskbycask.domain.ainews.repository.*;
+import com.caskbycask.domain.community.entity.PostPrefix;
+import com.caskbycask.domain.community.entity.enums.BoardType;
+import com.caskbycask.domain.community.repository.PostPrefixRepository;
 import com.caskbycask.domain.community.service.PostImageService;
 import com.caskbycask.domain.community.service.PostService;
 import com.caskbycask.domain.producer.repository.ProducerRepository;
@@ -26,6 +29,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -47,6 +51,7 @@ class AiNewsServiceTest {
     @Mock ProducerRepository producerRepository;
     @Mock PostService postService;
     @Mock PostImageService postImageService;
+    @Mock PostPrefixRepository postPrefixRepository;
     @Mock AdminLogService adminLogService;
     @Mock SocialPublishRequestService socialPublishRequestService;
 
@@ -56,7 +61,7 @@ class AiNewsServiceTest {
     void setUp() {
         service = new AiNewsService(settingsRepository, articleRepository, topicRepository,
                 sourceConfigRepository, runRepository, usageRepository, userRepository,
-                producerRepository, postService, postImageService, adminLogService,
+                producerRepository, postService, postImageService, postPrefixRepository, adminLogService,
                 socialPublishRequestService);
     }
 
@@ -79,6 +84,47 @@ class AiNewsServiceTest {
 
         assertThat(result.duplicate()).isTrue();
         assertThat(result.status()).isEqualTo(AiNewsArticleStatus.PUBLISHED);
+    }
+
+    @Test
+    void pendingTipHoldsTopicAndUsesGeneralPrefixEvenWithoutImage() {
+        AiNewsTopic topic = AiNewsTopic.builder()
+                .id(7L)
+                .title("럼 숙성 방식")
+                .normalizedKey("rum-aging-basics")
+                .category(AiNewsCategory.OTHER)
+                .status(AiNewsTopicStatus.READY)
+                .build();
+        PostPrefix general = PostPrefix.builder()
+                .id(9L)
+                .boardType(BoardType.NOTICE)
+                .name("일반")
+                .sortOrder(0)
+                .build();
+        AtomicReference<AiNewsArticle> saved = new AtomicReference<>();
+        given(articleRepository.findByDedupeKey("tip:rum-aging-basics")).willReturn(Optional.empty());
+        given(topicRepository.findById(7L)).willReturn(Optional.of(topic));
+        given(settingsRepository.findById(AiNewsSettings.SINGLETON_ID))
+                .willReturn(Optional.of(defaultSettings()));
+        given(postPrefixRepository.findFirstByBoardTypeAndNameOrderBySortOrderAscIdAsc(
+                BoardType.NOTICE, "일반")).willReturn(Optional.of(general));
+        given(articleRepository.saveAndFlush(any(AiNewsArticle.class))).willAnswer(invocation -> {
+            AiNewsArticle article = invocation.getArgument(0);
+            saved.set(article);
+            return article;
+        });
+        given(articleRepository.findDetailById(null))
+                .willAnswer(invocation -> Optional.ofNullable(saved.get()));
+
+        AiNewsDtos.ArticleDetailResponse result = service.ingest(new AiNewsDtos.ArticleUpsertRequest(
+                AiNewsArticleType.TIP_INFO, AiNewsCategory.OTHER,
+                "럼 숙성 방식 이해하기", "<p>본문</p>", "tip:rum-aging-basics",
+                new BigDecimal("0.95"), null, "rum-aging-basics", 7L, null,
+                false, false, null, null, null, "gemini-test", List.of("럼"), List.of()));
+
+        assertThat(result.status()).isEqualTo(AiNewsArticleStatus.PENDING_REVIEW);
+        assertThat(result.prefixId()).isEqualTo(9L);
+        assertThat(topic.getStatus()).isEqualTo(AiNewsTopicStatus.HOLD);
     }
 
     @Test

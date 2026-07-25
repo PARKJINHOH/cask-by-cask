@@ -36,7 +36,7 @@ REQUESTED_ARTICLE_SCHEMA = {
     "type": "object",
     "properties": {
         **ARTICLE_SCHEMA["properties"],
-        "category": {"type": "string", "enum": ["WHISKY", "WINE", "COGNAC"]},
+        "category": {"type": "string", "enum": ["WHISKY", "WINE", "COGNAC", "OTHER"]},
     },
     "required": [*ARTICLE_SCHEMA["required"], "category"],
 }
@@ -49,7 +49,7 @@ RELEASE_CLASSIFICATION_SCHEMA = {
             "items": {
                 "type": "object",
                 "properties": {
-                    "category": {"type": "string", "enum": ["WHISKY", "WINE", "COGNAC"]},
+                    "category": {"type": "string", "enum": ["WHISKY", "WINE", "COGNAC", "OTHER"]},
                     "event_key": {"type": "string"},
                     "summary": {"type": "string"},
                     "source_indexes": {"type": "array", "items": {"type": "integer"}},
@@ -83,7 +83,7 @@ TOPIC_SUGGESTION_SCHEMA = {
                 "properties": {
                     "title": {"type": "string"},
                     "normalized_key": {"type": "string"},
-                    "category": {"type": "string", "enum": ["WHISKY", "WINE", "COGNAC"]},
+                    "category": {"type": "string", "enum": ["WHISKY", "WINE", "COGNAC", "OTHER"]},
                     "aliases": {"type": "string"},
                 },
                 "required": ["title", "normalized_key", "category", "aliases"],
@@ -124,7 +124,7 @@ class GeminiNewsWriter:
 단순 할인, 개인 리뷰, 질문, 루머, 과거 재탕, 근거가 없는 커뮤니티 추측은 제외한다.
 같은 제품/사건을 다룬 여러 결과는 하나로 묶는다.
 후보가 충분하면 입력된 target_category_ratio를 장기 목표 비중으로 반영한다.
-각 후보 필드: category(WHISKY/WINE/COGNAC), event_key(영문 소문자 안정 키),
+각 후보 필드: category(WHISKY/WINE/COGNAC/OTHER), event_key(영문 소문자 안정 키),
 summary, source_indexes(서로 다른 근거 인덱스), confidence(0~1).
 """.strip()
         result = self._request_json(self.classifier_model, system, {
@@ -138,7 +138,7 @@ summary, source_indexes(서로 다른 근거 인덱스), confidence(0~1).
             category = str(item.get("category", "")).upper()
             indexes = [int(i) for i in item.get("source_indexes", []) if str(i).isdigit() and int(i) < len(sources)]
             event_key = self._safe_key(str(item.get("event_key", "")))
-            if category not in {"WHISKY", "WINE", "COGNAC"} or not indexes or not event_key:
+            if category not in {"WHISKY", "WINE", "COGNAC", "OTHER"} or not indexes or not event_key:
                 continue
             cleaned.append({**item, "category": category, "source_indexes": sorted(set(indexes)), "event_key": event_key})
         return cleaned
@@ -169,7 +169,7 @@ summary, source_indexes(서로 다른 근거 인덱스), confidence(0~1).
             "evidence": evidence,
             "rules": [
                 "관리자 요청 의도를 따르되 제공된 근거에 없는 사실은 만들지 않는다.",
-                "주종을 WHISKY, WINE, COGNAC 중 하나로 판단한다.",
+                "주종을 WHISKY, WINE, COGNAC, OTHER 중 하나로 판단한다.",
                 "결과는 자동 발행하지 않고 관리자 임시저장 원고로 만든다.",
             ],
         }
@@ -283,7 +283,7 @@ summary, source_indexes(서로 다른 근거 인덱스), confidence(0~1).
         system = """
 위스키·와인·꼬냑 커뮤니티에 유용한 장기 정보 글 주제를 제안한다.
 기존 키와 의미가 같은 주제, 제품 홍보, 건강 효능, 단순 구매 추천은 제외한다.
-JSON {"topics":[{"title":"한국어 50자 이하","normalized_key":"영문-소문자-키","category":"WHISKY|WINE|COGNAC","aliases":"쉼표 구분"}]}만 반환한다.
+JSON {"topics":[{"title":"한국어 50자 이하","normalized_key":"영문-소문자-키","category":"WHISKY|WINE|COGNAC|OTHER","aliases":"쉼표 구분"}]}만 반환한다.
 """.strip()
         result = self._request_json(self.classifier_model, system, {
             "existing_keys": existing_keys, "count": max(1, min(5, count)),
@@ -293,7 +293,7 @@ JSON {"topics":[{"title":"한국어 50자 이하","normalized_key":"영문-소�
             category = str(item.get("category", "")).upper()
             key = self._safe_key(str(item.get("normalized_key", "")))
             title = str(item.get("title", "")).strip()[:50]
-            if category in {"WHISKY", "WINE", "COGNAC"} and key and title and key not in existing_keys:
+            if category in {"WHISKY", "WINE", "COGNAC", "OTHER"} and key and title and key not in existing_keys:
                 topics.append({"title": title, "normalizedKey": key, "category": category,
                                "aliases": str(item.get("aliases") or "")})
         return topics
@@ -350,9 +350,9 @@ JSON {"topics":[{"title":"한국어 50자 이하","normalized_key":"영문-소�
         raw_hashtags = result.get("hashtags") if isinstance(result.get("hashtags"), list) else []
         for raw_hashtag in raw_hashtags:
             hashtag = re.sub(r"[^\w-]", "", str(raw_hashtag).strip().lstrip("#"), flags=re.UNICODE)[:30]
-            dedupe_key = hashtag.casefold()
-            if hashtag and dedupe_key not in seen_hashtags:
-                seen_hashtags.add(dedupe_key)
+            hashtag_key = hashtag.casefold()
+            if hashtag and hashtag_key not in seen_hashtags:
+                seen_hashtags.add(hashtag_key)
                 hashtags.append(hashtag)
             if len(hashtags) >= 10:
                 break

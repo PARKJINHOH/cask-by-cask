@@ -12,6 +12,9 @@ import com.caskbycask.domain.community.dto.PostDetailResponse;
 import com.caskbycask.domain.community.dto.PostImageUploadResponse;
 import com.caskbycask.domain.community.dto.UpdatePostRequest;
 import com.caskbycask.domain.community.entity.DeletedPost;
+import com.caskbycask.domain.community.entity.PostPrefix;
+import com.caskbycask.domain.community.entity.enums.BoardType;
+import com.caskbycask.domain.community.repository.PostPrefixRepository;
 import com.caskbycask.domain.community.service.PostService;
 import com.caskbycask.domain.community.service.PostImageService;
 import com.caskbycask.domain.producer.entity.Producer;
@@ -46,6 +49,7 @@ import java.util.*;
 public class AiNewsService {
 
     private static final String SYSTEM_AUTHOR_EMAIL = "ai-news@system.caskbycask.local";
+    private static final String DEFAULT_PREFIX_NAME = "일반";
     private static final ZoneId SERVICE_ZONE = ZoneId.of("Asia/Seoul");
 
     private final AiNewsSettingsRepository settingsRepository;
@@ -58,6 +62,7 @@ public class AiNewsService {
     private final ProducerRepository producerRepository;
     private final PostService postService;
     private final PostImageService postImageService;
+    private final PostPrefixRepository postPrefixRepository;
     private final AdminLogService adminLogService;
     private final SocialPublishRequestService socialPublishRequestService;
 
@@ -107,7 +112,7 @@ public class AiNewsService {
                 if (holdReason == null) publishWithSystemAuthor(existing);
                 else {
                     existing.markPending(holdReason);
-                    if (existing.getTopic() != null && hasText(existing.getImageUrl())) existing.getTopic().markHold();
+                    if (existing.getTopic() != null) existing.getTopic().markHold();
                 }
             } else if (existing.getStatus() == AiNewsArticleStatus.PUBLISHED
                     && existing.getArticleType() == AiNewsArticleType.RELEASE_NEWS) {
@@ -137,7 +142,7 @@ public class AiNewsService {
                 .dedupeKey(request.dedupeKey().trim())
                 .semanticFingerprint(trimToNull(request.semanticFingerprint()))
                 .topic(topic)
-                .prefixId(request.prefixId())
+                .prefixId(resolveDefaultPrefixId(request.prefixId()))
                 .pinned(Boolean.TRUE.equals(request.pinned()))
                 .imageUrl(trimToNull(request.imageUrl()))
                 .imageKind(trimToNull(request.imageKind()))
@@ -151,7 +156,7 @@ public class AiNewsService {
                 Boolean.TRUE.equals(request.autoPublishRequested()));
         if (holdReason != null) {
             article.markPending(holdReason);
-            if (topic != null && hasText(article.getImageUrl())) topic.markHold();
+            if (topic != null) topic.markHold();
         }
 
         try {
@@ -183,7 +188,7 @@ public class AiNewsService {
                 .dedupeKey(dedupeKey)
                 .semanticFingerprint(trimToNull(request.semanticFingerprint()))
                 .topic(topic)
-                .prefixId(request.prefixId())
+                .prefixId(resolveDefaultPrefixId(request.prefixId()))
                 .pinned(Boolean.TRUE.equals(request.pinned()))
                 .imageUrl(trimToNull(request.imageUrl()))
                 .imageKind(trimToNull(request.imageKind()))
@@ -774,6 +779,14 @@ public class AiNewsService {
                 author.getId());
         article.publish(post.getId(), LocalDateTime.now(SERVICE_ZONE));
         socialPublishRequestService.bindAiArticle(article.getId(), post.getId());
+    }
+
+    private Long resolveDefaultPrefixId(Long requestedPrefixId) {
+        if (requestedPrefixId != null) return requestedPrefixId;
+        return postPrefixRepository
+                .findFirstByBoardTypeAndNameOrderBySortOrderAscIdAsc(BoardType.NOTICE, DEFAULT_PREFIX_NAME)
+                .map(PostPrefix::getId)
+                .orElse(null);
     }
 
     private AiNewsTopic resolveTopic(AiNewsDtos.ArticleUpsertRequest request) {

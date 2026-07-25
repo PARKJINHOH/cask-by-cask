@@ -2,7 +2,7 @@ export type AiNewsArticleType = 'RELEASE_NEWS' | 'TIP_INFO'
 export type AiNewsArticleStatus =
   | 'DRAFT' | 'PENDING_REVIEW' | 'SCHEDULED' | 'PUBLISHED' | 'REJECTED'
   | 'SKIPPED_DUPLICATE' | 'FAILED' | 'DELETED' | 'REWRITE_REQUESTED'
-export type AiNewsCategory = 'WHISKY' | 'WINE' | 'COGNAC'
+export type AiNewsCategory = 'WHISKY' | 'WINE' | 'COGNAC' | 'OTHER'
 export type AiNewsSourceType = 'OFFICIAL' | 'TRUSTED_MEDIA' | 'COMMUNITY' | 'UNAPPROVED'
 export type AiNewsSourceCrawlStatus = 'NOT_CHECKED' | 'SUCCESS' | 'ERROR'
 export type AiNewsTopicStatus = 'READY' | 'SCHEDULED' | 'HOLD' | 'BLOCKED' | 'COMPLETED'

@@ -107,15 +107,31 @@ SOCIAL_PUBLISH_ENABLED=false
 SOCIAL_PUBLIC_MEDIA_BASE_URL=https://www.caskbycask.net
 SOCIAL_OAUTH_REDIRECT_URI=https://www.caskbycask.net/api/admin/social/accounts/oauth/callback
 SOCIAL_TOKEN_ENCRYPTION_KEY=BASE64_32_BYTE_KEY
+SOCIAL_HTTP_CONNECT_TIMEOUT=5s
+SOCIAL_HTTP_READ_TIMEOUT=20s
 SOCIAL_INSTAGRAM_APP_ID=...
 SOCIAL_INSTAGRAM_APP_SECRET=...
+SOCIAL_INSTAGRAM_API_BASE_URL=https://graph.instagram.com/v25.0
+SOCIAL_INSTAGRAM_TOKEN_API_BASE_URL=https://graph.instagram.com
 SOCIAL_THREADS_APP_ID=...
 SOCIAL_THREADS_APP_SECRET=...
+SOCIAL_THREADS_API_BASE_URL=https://graph.threads.net
+SOCIAL_THREADS_TOKEN_API_BASE_URL=https://graph.threads.net
 ```
 
-Meta API 버전/호스트 전환이 필요한 경우에만 `SOCIAL_INSTAGRAM_API_BASE_URL`,
-`SOCIAL_INSTAGRAM_OAUTH_API_BASE_URL`, `SOCIAL_THREADS_API_BASE_URL`,
-`SOCIAL_THREADS_OAUTH_API_BASE_URL`을 공식 문서의 값으로 덮어쓴다. 평상시에는 애플리케이션 기본값을 사용한다.
+Instagram 게시·조회 API는 Graph API `v25.0`으로 고정하고, 장기 토큰 교환·갱신 API는 버전이 없는
+`https://graph.instagram.com`을 사용한다. 두 주소를 하나로 합치면 토큰 갱신 경로가 잘못될 수 있으므로
+`SOCIAL_INSTAGRAM_API_BASE_URL`과 `SOCIAL_INSTAGRAM_TOKEN_API_BASE_URL`을 구분한다.
+Threads는 Meta 공식 Postman 컬렉션의 현재 호스트인 `https://graph.threads.net`을 게시·토큰 API에 사용한다.
+
+Meta가 API 버전을 올리거나 폐기 일정을 공지했을 때만 `SOCIAL_INSTAGRAM_API_BASE_URL`,
+`SOCIAL_INSTAGRAM_OAUTH_API_BASE_URL`, `SOCIAL_INSTAGRAM_TOKEN_API_BASE_URL`,
+`SOCIAL_THREADS_API_BASE_URL`, `SOCIAL_THREADS_OAUTH_API_BASE_URL`,
+`SOCIAL_THREADS_TOKEN_API_BASE_URL`을 공식 문서에 맞춰 변경한다. 버전 변경은 운영에 바로 적용하지 않고
+공식 계정 `연결 확인`과 플랫폼별 시험 게시를 먼저 통과시킨다.
+
+Meta HTTP 연결 제한 시간은 5초, 응답 제한 시간은 20초다. 시간 초과는 원본 저장을 실패시키지 않으며
+비동기 게시 이력에서 재시도 또는 결과 확인 상태로 처리한다. 운영 장애 대응 외에는 무작정 늘리지 않는다.
 
 암호화 키 생성:
 
@@ -151,7 +167,12 @@ OAuth에서 받은 단기 토큰은 서버가 즉시 장기 토큰으로 교환�
 5. `fc-match 'Noto Sans CJK KR'`로 한글 합성 글꼴을 확인한다. 없으면 `sudo apt-get install -y fonts-noto-cjk`로 설치한다.
 6. 최고관리자가 공식 계정을 연결·검증한다.
 7. 운영 콜백 readiness URL 네 개가 `200`인지 확인한 후 Meta 콘솔에 제거·삭제 콜백 URL을 저장한다.
-8. 시험 게시가 정상일 때 feature flag를 활성화한다.
+8. `SOCIAL_PUBLISH_ENABLED=false` 상태에서 관리자 계정 연결과 콜백만 먼저 검증한다.
+9. 기능을 잠시 활성화해 운영용 비공개 시험 리뷰 한 건을 Instagram·Threads에 각각 게시하고,
+   게시 이력의 `PUBLISHED`, permalink, 1080×1350 이미지, 본문과 짧은 URL을 확인한다.
+10. 테스트 게시물을 각 플랫폼에서 직접 삭제한 뒤 다음 날 이력이 `EXTERNALLY_DELETED`로 바뀌는지 확인한다.
+11. 위 검증이 모두 정상일 때만 `SOCIAL_PUBLISH_ENABLED=true`를 유지한다. 실패하면 즉시 `false`로 되돌리고
+    `FAILED`/`VERIFYING` 이력과 API 로그를 확인한다.
 
 기능을 긴급 중지할 때는 `SOCIAL_PUBLISH_ENABLED=false`로 변경하고 API를 재시작한다. 이 설정은 새 워커 실행을 멈추며 원본 작성 기능은 유지한다. 다시 활성화하면 남아 있는 `QUEUED`/`RETRY_WAIT` 작업을 계속 처리한다.
 
@@ -163,7 +184,7 @@ OAuth에서 받은 단기 토큰은 서버가 즉시 장기 토큰으로 교환�
 | `QUEUED` | 발행 대기 | 워커와 feature flag 확인 |
 | `RENDERING` | 서버 이미지 생성 중 | 10분 이상이면 자동 복구 |
 | `CONTAINER_CREATED` | Meta 컨테이너 생성 완료 | 10분 이상이면 자동 재시도 |
-| `PUBLISHING` / `VERIFYING` | 발행 중이거나 결과 불확실 | 최근 게시물을 비교해 중복을 막고 최대 30분 확인 |
+| `PUBLISHING` / `VERIFYING` | 발행 중이거나 결과 불확실 | Instagram은 최근 목록의 timestamp를 로컬 검증하고, Threads는 `since`와 timestamp를 함께 검증해 중복을 막으며 최대 30분 확인 |
 | `RETRY_WAIT` | 일시 오류 자동 재시도 대기 | 1분, 5분, 15분, 1시간 간격 재시도 |
 | `FAILED` | 자동 재시도 종료 | 플랫폼에 중복 게시가 없는지 확인 후 수동 재발행 |
 | `PUBLISHED` | 게시 완료 | permalink로 확인 |

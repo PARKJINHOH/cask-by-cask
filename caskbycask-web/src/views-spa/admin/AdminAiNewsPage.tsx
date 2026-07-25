@@ -21,7 +21,9 @@ const statusLabels: Record<AiNewsArticleStatus, string> = {
 const articleTypeLabels: Record<AiNewsArticleType, string> = {
   RELEASE_NEWS: '출시·국내 소식', TIP_INFO: '팁 및 정보',
 }
-const categoryLabels: Record<AiNewsCategory, string> = { WHISKY: '위스키', WINE: '와인', COGNAC: '꼬냑' }
+const categoryLabels: Record<AiNewsCategory, string> = {
+  WHISKY: '위스키', WINE: '와인', COGNAC: '꼬냑', OTHER: '기타',
+}
 const sourceTypeLabels: Record<AiNewsSourceType, string> = {
   OFFICIAL: '공식', TRUSTED_MEDIA: '전문매체', COMMUNITY: '커뮤니티', UNAPPROVED: '미승인',
 }

@@ -73,6 +73,7 @@ from analyzer.gemini_analyzer import GeminiAnalyzer
 from news_models import (DraftArticle, SearchSource, UsageAccumulator, canonicalize_url,
                          local_datetime_string, truncate_utf16)
 from news_gemini import GeminiNewsWriter
+from alerts.ai_news_error_alert import append_error_detail, format_error_alert
 from news_prompts import AI_NEWS_MIN_TEXT_LENGTH, AI_NEWS_WRITING_PROMPT
 from news_tavily import TavilyNewsSearch
 from news_source_config import matching_source_config
@@ -232,6 +233,31 @@ class NewsModelTest(unittest.TestCase):
         )
 
         self.assertEqual(["위스키", "신제품", "싱글몰트"], result.hashtags)
+        self.assertEqual("release:test", result.dedupe_key)
+
+    def test_ai_news_error_alert_includes_stage_context_and_exception(self) -> None:
+        details: list[dict[str, str]] = []
+        append_error_detail(
+            details, "출시 소식 후보", RuntimeError("Gemini 응답 형식 오류"),
+            eventKey="new-release", category="OTHER",
+        )
+
+        body = format_error_alert(
+            73, "ai-news-20260725T010000Z",
+            {
+                "candidateCount": 4,
+                "publishedCount": 0,
+                "reviewCount": 1,
+                "duplicateCount": 0,
+                "errorCount": 1,
+            },
+            details,
+        )
+
+        self.assertIn("runId=73", body)
+        self.assertIn("출시 소식 후보", body)
+        self.assertIn("eventKey=new-release", body)
+        self.assertIn("RuntimeError: Gemini 응답 형식 오류", body)
 
 
 class NewsSourceConfigTest(unittest.TestCase):
@@ -453,6 +479,27 @@ class GeminiNewsWriterTest(unittest.TestCase):
         self.assertIn("Tone & Manner", AI_NEWS_WRITING_PROMPT)
         self.assertIn("한국어 공식 제품명", AI_NEWS_WRITING_PROMPT)
         self.assertIn("합니다/습니다", AI_NEWS_WRITING_PROMPT)
+
+    def test_release_classifier_accepts_other_category(self) -> None:
+        writer = GeminiNewsWriter.__new__(GeminiNewsWriter)
+        writer.classifier_model = "gemini-test-lite"
+        writer._request_json = Mock(return_value={"candidates": [{
+            "category": "OTHER",
+            "event_key": "new-rum-release",
+            "summary": "신규 럼 출시",
+            "source_indexes": [0],
+            "confidence": 0.92,
+        }]})
+        source = SearchSource(
+            title="신규 럼 출시",
+            url="https://example.com/rum",
+            domain="example.com",
+            content="신규 럼 출시 공식 발표",
+        )
+
+        result = writer.classify_releases([source], 1)
+
+        self.assertEqual("OTHER", result[0]["category"])
 
     def test_short_article_is_rewritten_once_to_meet_minimum_length(self) -> None:
         writer = GeminiNewsWriter.__new__(GeminiNewsWriter)

@@ -10,6 +10,7 @@ import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
 
+from alerts.ai_news_error_alert import append_error_detail, format_error_alert
 from alerts.slack_notifier import SlackNotifier
 from logger import setup_logging
 from news_config import NewsSettings
@@ -298,6 +299,7 @@ def run() -> int:
     run_id = int(run_info["id"])
     stats = {"candidateCount": 0, "publishedCount": 0, "reviewCount": 0,
              "duplicateCount": 0, "errorCount": 0}
+    error_details: list[dict[str, str]] = []
     search = TavilyNewsSearch(settings.tavily_api_key, settings.http_timeout_sec,
                               settings.search_results_per_query)
     writer = GeminiNewsWriter(settings.gemini_api_key, settings.classifier_model,
@@ -327,7 +329,7 @@ def run() -> int:
                     try:
                         request_sources.extend(search.search(
                             f"{str(draft_request['prompt'])[:500]} "
-                            "위스키 와인 꼬냑 출시 수입 공식 발표",
+                            "위스키 와인 꼬냑 럼 데킬라 사케 출시 수입 공식 발표",
                             topic="news",
                             time_range="month",
                         ))
@@ -352,6 +354,8 @@ def run() -> int:
                          request_id, response.get("articleId"), requested_draft.title)
             except Exception as error:  # noqa: BLE001
                 stats["errorCount"] += 1
+                append_error_detail(error_details, "관리자 AI 작성 요청", error,
+                                    requestId=request_id)
                 try:
                     api.fail_draft_request(request_id, str(error))
                 except Exception as report_error:  # noqa: BLE001
@@ -375,6 +379,8 @@ def run() -> int:
                 log.info("AI 원고 재작성 완료 articleId=%s", rewrite_request.get("articleId"))
             except Exception as error:  # noqa: BLE001
                 stats["errorCount"] += 1
+                append_error_detail(error_details, "AI 원고 재작성", error,
+                                    articleId=rewrite_request.get("articleId"))
                 log.exception("AI 원고 재작성 실패 articleId=%s: %s",
                               rewrite_request.get("articleId"), error)
 
@@ -384,8 +390,8 @@ def run() -> int:
                 config, search, api, log, settings.http_timeout_sec, allow_tavily=True
             )
             general_sources = search.search(
-                f"위스키 와인 꼬냑 신제품 출시 예정 국내 출시 수입 "
-                f"new whisky wine cognac release announced launch {now_year}"
+                f"위스키 와인 꼬냑 럼 데킬라 사케 신제품 출시 예정 국내 출시 수입 "
+                f"new whisky wine cognac rum tequila sake release announced launch {now_year}"
             )
             release_sources = _dedupe_sources(general_sources + registered_sources)
         else:
@@ -415,6 +421,12 @@ def run() -> int:
                         stats["reviewCount"] += 1
                 except Exception as error:  # noqa: BLE001
                     stats["errorCount"] += 1
+                    append_error_detail(
+                        error_details, "출시 소식 후보", error,
+                        eventKey=candidate.get("event_key"),
+                        category=candidate.get("category"),
+                        summary=candidate.get("summary"),
+                    )
                     log.exception("출시 소식 후보 처리 실패: %s", error)
 
             if config.get("tipDue") and remaining_tavily_credits - search.credits_used >= 1:
@@ -447,7 +459,8 @@ def run() -> int:
                         log.info("팁 주제 사전 중복 차단 topic=%s reason=%s", topic.get("id"), reason)
                     else:
                         tip_sources = _dedupe_sources(search.search(
-                            f"{topic['title']} {topic.get('aliases') or ''} whisky wine cognac authoritative guide",
+                            f"{topic['title']} {topic.get('aliases') or ''} "
+                            "whisky wine cognac rum tequila sake authoritative guide",
                             topic="general", time_range=None,
                         ))
                         _apply_source_trust(tip_sources, config)
@@ -473,11 +486,18 @@ def run() -> int:
                                 stats["reviewCount"] += 1
                 except Exception as error:  # noqa: BLE001
                     stats["errorCount"] += 1
+                    append_error_detail(
+                        error_details, "팁·정보 주제", error,
+                        topicId=topic.get("id"),
+                        topicKey=topic.get("normalizedKey"),
+                        title=topic.get("title"),
+                    )
                     log.exception("팁 및 정보 글 처리 실패: %s", error)
 
     except Exception as error:  # noqa: BLE001
         fatal_error = str(error)
         stats["errorCount"] += 1
+        append_error_detail(error_details, "AI 소식 실행", error)
         log.exception("AI 소식 실행 실패: %s", error)
         notifier.danger_once("ai_news_fatal", "AI 소식 자동화 실행 실패", fatal_error)
     finally:
@@ -485,6 +505,7 @@ def run() -> int:
             _record_usage(api, run_id, settings, writer, search.credits_used)
         except Exception as usage_error:  # noqa: BLE001
             stats["errorCount"] += 1
+            append_error_detail(error_details, "사용량 기록", usage_error, runId=run_id)
             log.exception("AI 소식 사용량 기록 실패: %s", usage_error)
             notifier.warning_once("ai_news_usage_record", "AI 소식 사용량 기록 실패", str(usage_error))
         finish_status = "FAILED" if fatal_error else ("PARTIAL" if stats["errorCount"] else "SUCCEEDED")
@@ -492,7 +513,7 @@ def run() -> int:
 
     if stats["errorCount"]:
         notifier.warning_once("ai_news_errors", "AI 소식 일부 처리 실패",
-                              json.dumps(stats, ensure_ascii=False))
+                              format_error_alert(run_id, run_key, stats, error_details))
     log.info("AI 소식 실행 완료: %s", stats)
     return 1 if fatal_error else 0
 

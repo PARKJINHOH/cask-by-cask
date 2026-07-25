@@ -489,8 +489,11 @@ sudo systemctl restart caskbycask-api   # 수정 후 재시작해야 반영
 | `SOCIAL_PUBLIC_MEDIA_BASE_URL` | Meta가 생성 이미지를 가져갈 수 있는 HTTPS 공개 기준 URL |
 | `SOCIAL_OAUTH_REDIRECT_URI` | Meta 콘솔에 등록한 공식 계정 연결 콜백 URL |
 | `SOCIAL_TOKEN_ENCRYPTION_KEY` | Meta 장기 access token AES-256-GCM 암호화 키(Base64 32B). 변경 시 공식 계정 재연결 필요 |
+| `SOCIAL_HTTP_CONNECT_TIMEOUT` / `SOCIAL_HTTP_READ_TIMEOUT` | Meta API 연결/응답 제한 시간. 기본값 `5s`/`20s` |
 | `SOCIAL_INSTAGRAM_APP_ID` / `SOCIAL_INSTAGRAM_APP_SECRET` | Instagram API with Instagram Login 앱 키. Instagram 제거·삭제 `signed_request` 검증에도 사용 |
+| `SOCIAL_INSTAGRAM_API_BASE_URL` / `SOCIAL_INSTAGRAM_TOKEN_API_BASE_URL` | Instagram 버전 고정 게시 API(`https://graph.instagram.com/v25.0`)와 버전 없는 토큰 API(`https://graph.instagram.com`). 서로 바꾸지 않음 |
 | `SOCIAL_THREADS_APP_ID` / `SOCIAL_THREADS_APP_SECRET` | Threads API 앱 키. Threads 제거·삭제 `signed_request` 검증에도 사용 |
+| `SOCIAL_THREADS_API_BASE_URL` / `SOCIAL_THREADS_TOKEN_API_BASE_URL` | Threads 게시·토큰 API 호스트. 기본값은 모두 `https://graph.threads.net` |
 | `SEO_SITE_URL` | canonical·sitemap·IndexNow 공개 기준 URL. 운영값은 `https://www.caskbycask.net`으로 유지 |
 | `INDEXNOW_ENABLED` | 네이버 IndexNow 비동기 통지 활성화. 키 파일 확인 전에는 `false` 유지 |
 | `INDEXNOW_KEY` | 공개 소유 확인 키(8~128자의 a-f/A-F/0-9/-). 활성화 시 `/indexnow-key.txt`에 노출되는 것이 정상 |
@@ -524,6 +527,11 @@ Meta 앱/권한 준비, 장기 토큰 연결, feature flag 활성화, 상태별 
 [`SOCIAL-PUBLISHING.md`](SOCIAL-PUBLISHING.md)를 따른다. 운영 배포는 Flyway `V52`~`V55` 적용 후
 최고관리자가 `관리자 > SNS 게시 관리 > 공식 계정`에서 OAuth 연결과 `연결 확인`을 완료한 다음
 시험 게시를 거쳐 `SOCIAL_PUBLISH_ENABLED=true`로 전환한다.
+
+Instagram 게시 API는 Graph API `v25.0`으로 고정하며 장기 토큰 교환·갱신은 버전 없는
+`graph.instagram.com`을 사용한다. Threads는 공식 Postman 컬렉션의 버전 없는 `graph.threads.net` 호스트를
+사용한다. Meta 버전 변경 시에는 [`SOCIAL-PUBLISHING.md`](SOCIAL-PUBLISHING.md)의 연결 확인·시험 게시 게이트를
+통과한 뒤 운영값을 변경한다.
 
 Meta 콘솔에 제거·삭제 콜백을 등록하기 전에 Flyway
 `V55__create_social_data_deletion_requests.sql`이 포함된 API를 먼저 배포한다. 운영 URL은 다음과 같다.

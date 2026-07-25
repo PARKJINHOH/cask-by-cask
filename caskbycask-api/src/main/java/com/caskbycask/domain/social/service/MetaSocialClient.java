@@ -3,6 +3,7 @@ package com.caskbycask.domain.social.service;
 import com.caskbycask.domain.social.config.SocialPublishingProperties;
 import com.caskbycask.domain.social.entity.enums.SocialPlatform;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -14,6 +15,9 @@ import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -21,12 +25,19 @@ import java.util.Optional;
 @Component
 public class MetaSocialClient {
 
+    private static final ZoneId SERVICE_ZONE = ZoneId.of("Asia/Seoul");
+
     private final SocialPublishingProperties properties;
     private final RestClient restClient;
 
     public MetaSocialClient(SocialPublishingProperties properties) {
         this.properties = properties;
-        this.restClient = RestClient.builder().build();
+        var requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(toTimeoutMillis(properties.getConnectTimeout(), "connect"));
+        requestFactory.setReadTimeout(toTimeoutMillis(properties.getReadTimeout(), "read"));
+        this.restClient = RestClient.builder()
+                .requestFactory(requestFactory)
+                .build();
     }
 
     public String authorizationUrl(SocialPlatform platform, String state) {
@@ -38,7 +49,7 @@ public class MetaSocialClient {
                 + "&scope=" + encode(provider.getScopes())
                 + "&state=" + encode(state)
                 + (platform == SocialPlatform.INSTAGRAM
-                ? "&enable_fb_login=0&force_authentication=1" : "");
+                ? "&force_reauth=true" : "");
     }
 
     public TokenResult exchangeCode(SocialPlatform platform, String code) {
@@ -73,7 +84,9 @@ public class MetaSocialClient {
 
     public AccountProfile getProfile(SocialPlatform platform, String accessToken) {
         var provider = provider(platform);
-        String url = provider.getApiBaseUrl() + "/me?fields=id,user_id,username"
+        String fields = platform == SocialPlatform.INSTAGRAM
+                ? "user_id,username" : "id,username";
+        String url = apiBase(provider) + "/me?fields=" + encode(fields)
                 + "&access_token=" + encode(accessToken);
         Map<String, Object> response = getMap(url);
         String id = stringValue(response.get("user_id"));
@@ -95,7 +108,7 @@ public class MetaSocialClient {
         }
         String resource = platform == SocialPlatform.INSTAGRAM ? "/media" : "/threads";
         Map<String, Object> response = postForm(
-                provider.getApiBaseUrl() + "/" + encodePath(userId) + resource, form, false);
+                apiBase(provider) + "/" + encodePath(userId) + resource, form, false);
         return requiredId(response);
     }
 
@@ -107,18 +120,31 @@ public class MetaSocialClient {
         form.add("creation_id", containerId);
         String resource = platform == SocialPlatform.INSTAGRAM ? "/media_publish" : "/threads_publish";
         Map<String, Object> response = postForm(
-                provider.getApiBaseUrl() + "/" + encodePath(userId) + resource, form, true);
+                apiBase(provider) + "/" + encodePath(userId) + resource, form, true);
         return requiredId(response);
     }
 
     public void waitUntilContainerReady(SocialPlatform platform, String accessToken, String containerId) {
         var provider = provider(platform);
+        String fields = platform == SocialPlatform.INSTAGRAM
+                ? "status_code,status" : "id,status,error_message";
         for (int attempt = 0; attempt < 6; attempt++) {
-            Map<String, Object> response = getMap(provider.getApiBaseUrl() + "/" + encodePath(containerId)
-                    + "?fields=status_code,status,error_message&access_token=" + encode(accessToken));
-            String status = stringValue(response.get("status_code"));
-            if (status == null) status = stringValue(response.get("status"));
-            if (status == null || "FINISHED".equalsIgnoreCase(status)
+            Map<String, Object> response = getMap(apiBase(provider) + "/" + encodePath(containerId)
+                    + "?fields=" + encode(fields) + "&access_token=" + encode(accessToken));
+            String status = platform == SocialPlatform.INSTAGRAM
+                    ? stringValue(response.get("status_code"))
+                    : stringValue(response.get("status"));
+            if (status == null) {
+                status = platform == SocialPlatform.INSTAGRAM
+                        ? stringValue(response.get("status"))
+                        : stringValue(response.get("status_code"));
+            }
+            if (status == null || status.isBlank()) {
+                throw new SocialProviderException("INVALID_CONTAINER_STATUS",
+                        "Meta media container response did not contain a status.",
+                        true, false, null);
+            }
+            if ("FINISHED".equalsIgnoreCase(status)
                     || "READY".equalsIgnoreCase(status) || "PUBLISHED".equalsIgnoreCase(status)) {
                 return;
             }
@@ -140,7 +166,7 @@ public class MetaSocialClient {
 
     public String getPermalink(SocialPlatform platform, String accessToken, String mediaId) {
         var provider = provider(platform);
-        Map<String, Object> response = getMap(provider.getApiBaseUrl() + "/" + encodePath(mediaId)
+        Map<String, Object> response = getMap(apiBase(provider) + "/" + encodePath(mediaId)
                 + "?fields=id,permalink&access_token=" + encode(accessToken));
         String permalink = stringValue(response.get("permalink"));
         if (permalink == null || permalink.isBlank()) {
@@ -155,8 +181,15 @@ public class MetaSocialClient {
             SocialPlatform platform, String userId, String accessToken, String caption, LocalDateTime since) {
         var provider = provider(platform);
         String resource = platform == SocialPlatform.INSTAGRAM ? "/media" : "/threads";
-        String url = provider.getApiBaseUrl() + "/" + encodePath(userId) + resource
-                + "?fields=id,permalink,caption,text,timestamp&limit=25&access_token=" + encode(accessToken);
+        String fields = platform == SocialPlatform.INSTAGRAM
+                ? "id,permalink,caption,timestamp"
+                : "id,permalink,text,timestamp";
+        String url = apiBase(provider) + "/" + encodePath(userId) + resource
+                + "?fields=" + encode(fields)
+                + "&limit=25"
+                + (platform == SocialPlatform.THREADS && since != null
+                ? "&since=" + since.atZone(SERVICE_ZONE).toEpochSecond() : "")
+                + "&access_token=" + encode(accessToken);
         Map<String, Object> response = getMap(url);
         Object rawData = response.get("data");
         if (!(rawData instanceof List<?> data)) return Optional.empty();
@@ -164,6 +197,7 @@ public class MetaSocialClient {
             if (!(item instanceof Map<?, ?> map)) continue;
             String body = stringValue(map.get(platform == SocialPlatform.INSTAGRAM ? "caption" : "text"));
             if (!caption.equals(body)) continue;
+            if (!isAtOrAfter(map.get("timestamp"), since)) continue;
             String id = stringValue(map.get("id"));
             String permalink = stringValue(map.get("permalink"));
             if (id != null && permalink != null) return Optional.of(new PublishedMedia(id, permalink));
@@ -201,8 +235,9 @@ public class MetaSocialClient {
                     true, outcomeMayBeUncertain, e);
         } catch (RestClientResponseException e) {
             boolean retryable = e.getStatusCode().value() == 429 || e.getStatusCode().is5xxServerError();
+            boolean uncertain = outcomeMayBeUncertain && e.getStatusCode().is5xxServerError();
             throw new SocialProviderException("HTTP_" + e.getStatusCode().value(),
-                    safeProviderMessage(e), retryable, false, e);
+                    safeProviderMessage(e), retryable, uncertain, e);
         }
     }
 
@@ -229,9 +264,40 @@ public class MetaSocialClient {
     }
 
     private String tokenApiBase(SocialPlatform platform) {
-        return platform == SocialPlatform.INSTAGRAM
-                ? provider(platform).getApiBaseUrl().replaceAll("/+$", "")
-                : codeExchangeBase(platform);
+        String configured = provider(platform).getTokenApiBaseUrl();
+        if (configured == null || configured.isBlank()) {
+            return codeExchangeBase(platform);
+        }
+        return configured.replaceAll("/+$", "");
+    }
+
+    private static String apiBase(SocialPublishingProperties.Provider provider) {
+        return provider.getApiBaseUrl().replaceAll("/+$", "");
+    }
+
+    private static int toTimeoutMillis(java.time.Duration timeout, String name) {
+        if (timeout == null || timeout.isZero() || timeout.isNegative()
+                || timeout.toMillis() > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException("Meta " + name + " timeout must be between 1ms and "
+                    + Integer.MAX_VALUE + "ms.");
+        }
+        return Math.toIntExact(timeout.toMillis());
+    }
+
+    private static boolean isAtOrAfter(Object timestampValue, LocalDateTime since) {
+        if (since == null) return true;
+        String timestamp = stringValue(timestampValue);
+        if (timestamp == null || timestamp.isBlank()) return false;
+        try {
+            String normalized = timestamp.matches(".*[+-]\\d{4}$")
+                    ? timestamp.substring(0, timestamp.length() - 2)
+                    + ":" + timestamp.substring(timestamp.length() - 2)
+                    : timestamp;
+            return !OffsetDateTime.parse(normalized).toInstant()
+                    .isBefore(since.atZone(SERVICE_ZONE).toInstant());
+        } catch (DateTimeParseException ignored) {
+            return false;
+        }
     }
 
     private static String safeProviderMessage(RestClientResponseException e) {

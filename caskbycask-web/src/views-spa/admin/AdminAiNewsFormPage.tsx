@@ -72,7 +72,9 @@ export default function AdminAiNewsFormPage() {
   }, [detail])
 
   useEffect(() => {
-    if (!isEdit && prefixId === '' && prefixes.length > 0) setPrefixId(prefixes[0].id)
+    if (!isEdit && prefixId === '' && prefixes.length > 0) {
+      setPrefixId(prefixes.find((prefix) => prefix.name === '일반')?.id ?? prefixes[0].id)
+    }
   }, [isEdit, prefixId, prefixes])
 
   const save = useMutation({
@@ -198,7 +200,7 @@ export default function AdminAiNewsFormPage() {
           </Field>
           <Field label="주종">
             <select value={category} onChange={(e) => setCategory(e.target.value as AiNewsCategory)} className={inputCls}>
-              <option value="WHISKY">위스키</option><option value="WINE">와인</option><option value="COGNAC">꼬냑</option>
+              <option value="WHISKY">위스키</option><option value="WINE">와인</option><option value="COGNAC">꼬냑</option><option value="OTHER">기타</option>
             </select>
           </Field>
           <Field label="말머리">
