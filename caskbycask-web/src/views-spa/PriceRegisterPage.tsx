@@ -10,6 +10,8 @@ import type {
   DiscountType,
   DutyFreeChannel,
   DiscountItemInput,
+  ForeignPriceCurrency,
+  PriceInputMode,
   PriceReportImageUpload,
 } from '@/domain/pricetracker/types/pricetracker.types'
 import type { SpiritListItem } from '@/domain/spirit/types/spirit.types'
@@ -20,6 +22,7 @@ import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFiel
 
 const DISCOUNT_TYPES: DiscountType[] = ['PAYMENT', 'BUNDLE', 'COUPON', 'OTHER']
 const DUTYFREE_CHANNELS: DutyFreeChannel[] = ['AIRPORT', 'CITY', 'INFLIGHT', 'ONLINE']
+const FOREIGN_CURRENCIES: ForeignPriceCurrency[] = ['TWD', 'USD', 'JPY', 'CNY', 'EUR']
 const COMMON_VOLUMES_ML = [375, 500, 700, 750, 1000]
 
 const krw = new Intl.NumberFormat('ko-KR')
@@ -48,8 +51,12 @@ export default function PriceRegisterPage() {
   const [channel, setChannel] = useState<DutyFreeChannel>('AIRPORT')
 
   const isDutyFree = storeType === 'DUTYFREE'
-  const currency = isDutyFree ? 'USD' : 'KRW'
-  const moneyUnit = isDutyFree ? '$' : '원'
+  const isForeignPurchase = storeType !== 'DOMESTIC'
+  const [priceInputMode, setPriceInputMode] = useState<PriceInputMode>('KRW_DIRECT')
+  const [foreignCurrency, setForeignCurrency] = useState<ForeignPriceCurrency>('TWD')
+  const usesAutoConversion = isForeignPurchase && priceInputMode === 'AUTO_CONVERTED'
+  const currency = usesAutoConversion ? foreignCurrency : 'KRW'
+  const moneyUnit = usesAutoConversion ? foreignCurrency : t('price.register.krwUnit')
 
   // ── 가격 (국내) ──────────────────────────────────────
   const [regularPrice, setRegularPrice] = useState('')
@@ -60,7 +67,7 @@ export default function PriceRegisterPage() {
   // ── 가격 (면세) ──────────────────────────────────────
   const [basePrice, setBasePrice] = useState('')
   const [discountItems, setDiscountItems] = useState<DiscountItemInput[]>([])
-  const [exchangeRate, setExchangeRate] = useState('')
+  const [directKrwPrice, setDirectKrwPrice] = useState('')
 
   // ── 공통 ─────────────────────────────────────────────
   const [purchasedAt, setPurchasedAt] = useState('')
@@ -101,6 +108,21 @@ export default function PriceRegisterPage() {
     staleTime: 30_000,
   })
 
+  const {
+    data: exchangeRates = [],
+    isLoading: exchangeRatesLoading,
+    isError: exchangeRatesError,
+    refetch: refetchExchangeRates,
+  } = useQuery({
+    queryKey: ['price-register-exchange-rates'],
+    queryFn: () => priceTrackerApi.getExchangeRates(),
+    select: (res) => res.data.data ?? [],
+    enabled: usesAutoConversion,
+    staleTime: 6 * 60 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  })
+  const currentExchangeRate = exchangeRates.find((rate) => rate.currency === foreignCurrency)
+
   // ── 자동 계산 ────────────────────────────────────────
   const computedActual = useMemo(() => {
     const s = parsePriceInput(salePrice)
@@ -113,8 +135,14 @@ export default function PriceRegisterPage() {
     () => discountItems.reduce((acc, d) => acc + (Number(d.amount) || 0), 0),
     [discountItems],
   )
-  const feelPrice = Math.max(parsePriceInput(basePrice) - discountSum, 0) // 면세 체감가 (USD)
-  const krwPreview = feelPrice && parsePriceInput(exchangeRate) ? Math.round(feelPrice * parsePriceInput(exchangeRate)) : 0
+  const feelPrice = Math.max(parsePriceInput(basePrice) - discountSum, 0)
+  const foreignFinalPrice = isDutyFree ? feelPrice : actualPrice
+  const autoKrwPrice = foreignFinalPrice && currentExchangeRate
+    ? Math.round(foreignFinalPrice * currentExchangeRate.krwPerUnit)
+    : 0
+  const requiredKrwPrice = isForeignPurchase
+    ? usesAutoConversion ? autoKrwPrice : parsePriceInput(directKrwPrice)
+    : actualPrice
 
   // ── 핸들러 ───────────────────────────────────────────
   const handleImageUpload = async (file: File) => {
@@ -140,14 +168,35 @@ export default function PriceRegisterPage() {
   const removeDiscountItem = (idx: number) => setDiscountItems((prev) => prev.filter((_, i) => i !== idx))
   const patchDiscount = (idx: number, patch: Partial<DiscountItemInput>) =>
     setDiscountItems((prev) => prev.map((d, i) => (i === idx ? { ...d, ...patch } : d)))
+  const handleStoreTypeChange = (nextStoreType: StoreType) => {
+    setStoreType(nextStoreType)
+    if (nextStoreType === 'DOMESTIC') {
+      setPriceInputMode('KRW_DIRECT')
+      return
+    }
+    setPriceInputMode('AUTO_CONVERTED')
+    setForeignCurrency(nextStoreType === 'DUTYFREE' ? 'USD' : 'TWD')
+  }
 
   // ── 유효성 ───────────────────────────────────────────
   const canSubmit = useMemo(() => {
     if (!selectedSpirit) return false
     if (!volumeMl) return false
-    if (isDutyFree) return parsePriceInput(basePrice) > 0 && parsePriceInput(exchangeRate) > 0
-    return parsePriceInput(salePrice) > 0
-  }, [selectedSpirit, volumeMl, isDutyFree, basePrice, exchangeRate, salePrice])
+    if (!isForeignPurchase) {
+      return parsePriceInput(salePrice) > 0 && requiredKrwPrice > 0
+    }
+    if (!usesAutoConversion) return requiredKrwPrice > 0
+    return foreignFinalPrice > 0 && !!currentExchangeRate && requiredKrwPrice > 0
+  }, [
+    selectedSpirit,
+    volumeMl,
+    isForeignPurchase,
+    usesAutoConversion,
+    salePrice,
+    requiredKrwPrice,
+    foreignFinalPrice,
+    currentExchangeRate,
+  ])
 
   const handleSubmit = async () => {
     if (!selectedSpirit || !canSubmit) return
@@ -160,18 +209,32 @@ export default function PriceRegisterPage() {
         storeType,
         suggestedStoreName: suggestedStoreName.trim() || null,
         dutyfreeChannel: isDutyFree ? channel : null,
-        currency,
+        currency: usesAutoConversion ? foreignCurrency : null,
+        priceInputMode: usesAutoConversion ? 'AUTO_CONVERTED' : 'KRW_DIRECT',
         isAnonymous: authorMode === 'ANONYMOUS',
-        regularPrice: !isDutyFree && regularPrice ? parsePriceInput(regularPrice) : null,
-        salePrice: isDutyFree ? parsePriceInput(basePrice) : parsePriceInput(salePrice),
-        paybackAmount: !isDutyFree && payback ? parsePriceInput(payback) : null,
-        finalPrice: isDutyFree ? feelPrice : actualPrice,
-        exchangeRate: isDutyFree && exchangeRate ? parsePriceInput(exchangeRate) : null,
+        regularPrice: usesAutoConversion && isDutyFree
+          ? parsePriceInput(basePrice)
+          : !isForeignPurchase || usesAutoConversion
+            ? (regularPrice ? parsePriceInput(regularPrice) : null)
+            : null,
+        salePrice: usesAutoConversion && isDutyFree
+          ? parsePriceInput(basePrice)
+          : !isForeignPurchase || usesAutoConversion
+            ? parsePriceInput(salePrice)
+            : null,
+        paybackAmount: (!isForeignPurchase || (usesAutoConversion && !isDutyFree)) && payback
+          ? parsePriceInput(payback)
+          : null,
+        finalPrice: isForeignPurchase
+          ? usesAutoConversion ? foreignFinalPrice : requiredKrwPrice
+          : actualPrice,
+        finalPriceKrw: requiredKrwPrice,
+        exchangeRate: null,
         purchasedAt: purchasedAt || null,
         description: description || null,
         imageIds: images.map((i) => i.id),
         imagePublicFlags,
-        discountItems: isDutyFree && discountItems.length ? discountItems : undefined,
+        discountItems: usesAutoConversion && isDutyFree && discountItems.length ? discountItems : undefined,
       })
       setDone(true)
     } finally {
@@ -298,7 +361,7 @@ export default function PriceRegisterPage() {
               <button
                 key={tp}
                 type="button"
-                onClick={() => setStoreType(tp)}
+                onClick={() => handleStoreTypeChange(tp)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                   storeType === tp ? 'bg-primary-700 text-white border-primary-700' : 'text-neutral-500 border-neutral-200'
                 }`}
@@ -339,9 +402,60 @@ export default function PriceRegisterPage() {
         </Section>
 
         {/* 4. 가격 */}
-        <Section label={`${t('price.register.priceSection')} (${currency})`}>
-          {!isDutyFree ? (
-            <div className="space-y-3">
+        <Section label={`${t('price.register.priceSection')} (${currency})`} required>
+          <div className="space-y-3">
+            {isForeignPurchase && (
+              <div>
+                <p className="mb-1.5 text-xs text-neutral-400">{t('price.register.inputMode')}</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {(['AUTO_CONVERTED', 'KRW_DIRECT'] as PriceInputMode[]).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setPriceInputMode(mode)}
+                      className={`rounded-xl border px-3 py-2 text-xs font-medium transition-colors ${
+                        priceInputMode === mode
+                          ? 'border-primary-700 bg-primary-50 text-primary-700'
+                          : 'border-neutral-200 text-neutral-500'
+                      }`}
+                    >
+                      {mode === 'AUTO_CONVERTED'
+                        ? t('price.register.autoConverted')
+                        : t('price.register.krwDirect')}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-1.5 text-xs text-neutral-400">
+                  {usesAutoConversion
+                    ? t('price.register.autoConvertedHint')
+                    : t('price.register.krwDirectHint')}
+                </p>
+              </div>
+            )}
+
+            {usesAutoConversion && (
+              <div>
+                <p className="mb-1.5 text-xs text-neutral-400">{t('price.register.foreignCurrency')}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {FOREIGN_CURRENCIES.map((code) => (
+                    <button
+                      key={code}
+                      type="button"
+                      onClick={() => setForeignCurrency(code)}
+                      className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                        foreignCurrency === code
+                          ? 'border-primary-700 bg-primary-50 text-primary-700'
+                          : 'border-neutral-200 text-neutral-500'
+                      }`}
+                    >
+                      {code}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {(!isForeignPurchase || (usesAutoConversion && !isDutyFree)) && (
               <div className="grid grid-cols-2 gap-3">
                 <LabeledInput label={t('price.register.regularPrice')} value={regularPrice} onChange={setRegularPrice} suffix={moneyUnit} />
                 <LabeledInput label={t('price.register.salePrice')} value={salePrice} onChange={setSalePrice} suffix={moneyUnit} required />
@@ -354,62 +468,132 @@ export default function PriceRegisterPage() {
                   hint={t('price.register.autoCalc')}
                 />
               </div>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <LabeledInput label={t('price.register.basePrice')} value={basePrice} onChange={setBasePrice} suffix="$" required />
+            )}
 
-              {/* 할인 조건 */}
-              <div>
-                <p className="text-xs text-neutral-400 mb-1.5">{t('price.register.discountItems')}</p>
-                <div className="space-y-2">
-                  {discountItems.map((item, idx) => (
-                    <div key={idx} className="flex gap-2 items-start">
-                      <select
-                        value={item.discountType}
-                        onChange={(e) => patchDiscount(idx, { discountType: e.target.value as DiscountType })}
-                        className="border border-neutral-300 rounded-lg px-2 py-1.5 text-xs"
-                      >
-                        {DISCOUNT_TYPES.map((dt) => (
-                          <option key={dt} value={dt}>{t(`price.register.discountType.${dt}`)}</option>
-                        ))}
-                      </select>
-                      <input
-                        placeholder={t('price.register.discountLabel')}
-                        value={item.label}
-                        onChange={(e) => patchDiscount(idx, { label: e.target.value })}
-                        className="flex-1 border border-neutral-300 rounded-lg px-2 py-1.5 text-xs"
-                      />
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        placeholder="$"
-                        value={item.amount ? formatOptionalPriceInput(item.amount) : ''}
-                        onChange={(e) => patchDiscount(idx, { amount: parsePriceInput(e.target.value) })}
-                        className="w-20 border border-neutral-300 rounded-lg px-2 py-1.5 text-xs"
-                      />
-                      <button onClick={() => removeDiscountItem(idx)} className="text-neutral-300 hover:text-red-400 text-lg leading-none">×</button>
-                    </div>
-                  ))}
-                  <button onClick={addDiscountItem} className="text-xs text-primary-700 hover:text-primary-800 font-medium">
-                    + {t('price.register.addDiscount')}
-                  </button>
+            {usesAutoConversion && isDutyFree && (
+              <>
+                <LabeledInput
+                  label={t('price.register.basePrice')}
+                  value={basePrice}
+                  onChange={setBasePrice}
+                  suffix={foreignCurrency}
+                  required
+                />
+
+                <div>
+                  <p className="mb-1.5 text-xs text-neutral-400">{t('price.register.discountItems')}</p>
+                  <div className="space-y-2">
+                    {discountItems.map((item, idx) => (
+                      <div key={idx} className="flex items-start gap-2">
+                        <select
+                          value={item.discountType}
+                          onChange={(e) => patchDiscount(idx, { discountType: e.target.value as DiscountType })}
+                          className="rounded-lg border border-neutral-300 px-2 py-1.5 text-xs"
+                        >
+                          {DISCOUNT_TYPES.map((dt) => (
+                            <option key={dt} value={dt}>{t(`price.register.discountType.${dt}`)}</option>
+                          ))}
+                        </select>
+                        <input
+                          placeholder={t('price.register.discountLabel')}
+                          value={item.label}
+                          onChange={(e) => patchDiscount(idx, { label: e.target.value })}
+                          className="flex-1 rounded-lg border border-neutral-300 px-2 py-1.5 text-xs"
+                        />
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          placeholder={foreignCurrency}
+                          value={item.amount ? formatOptionalPriceInput(item.amount) : ''}
+                          onChange={(e) => patchDiscount(idx, { amount: parsePriceInput(e.target.value) })}
+                          className="w-24 rounded-lg border border-neutral-300 px-2 py-1.5 text-xs"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeDiscountItem(idx)}
+                          className="text-lg leading-none text-neutral-300 hover:text-red-400"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={addDiscountItem}
+                      className="text-xs font-medium text-primary-700 hover:text-primary-800"
+                    >
+                      + {t('price.register.addDiscount')}
+                    </button>
+                  </div>
                 </div>
-              </div>
 
-              {/* 체감가 + 환율 */}
-              <div className="rounded-xl bg-primary-50/60 border border-primary-100 px-3 py-2.5 flex items-center justify-between">
-                <span className="text-xs text-neutral-500">{t('price.register.feelPrice')}</span>
-                <span className="text-sm font-bold text-primary-700">$ {feelPrice.toLocaleString()}</span>
-              </div>
-              <LabeledInput label={t('price.register.exchangeRate')} value={exchangeRate} onChange={setExchangeRate} suffix="원/USD" required />
-              {krwPreview > 0 && (
-                <p className="text-xs text-neutral-500 text-right">
-                  {t('price.register.krwPreview')}: <span className="font-semibold text-neutral-700">≈ {krw.format(krwPreview)}원</span>
-                </p>
-              )}
-            </div>
-          )}
+                <div className="flex items-center justify-between rounded-xl border border-primary-100 bg-primary-50/60 px-3 py-2.5">
+                  <span className="text-xs text-neutral-500">{t('price.register.feelPrice')}</span>
+                  <span className="text-sm font-bold text-primary-700">
+                    {feelPrice.toLocaleString()} {foreignCurrency}
+                  </span>
+                </div>
+              </>
+            )}
+
+            {isForeignPurchase && !usesAutoConversion && (
+              <LabeledInput
+                label={t('price.register.directKrwPrice')}
+                value={directKrwPrice}
+                onChange={setDirectKrwPrice}
+                suffix={t('price.register.krwUnit')}
+                required
+              />
+            )}
+
+            {usesAutoConversion && (
+              <>
+                <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2.5">
+                  {exchangeRatesLoading ? (
+                    <p className="text-xs text-neutral-500">{t('price.register.rateLoading')}</p>
+                  ) : currentExchangeRate ? (
+                    <div className="flex flex-wrap items-center justify-between gap-1">
+                      <p className="text-xs font-medium text-neutral-700">
+                        1 {foreignCurrency} = {currentExchangeRate.krwPerUnit.toLocaleString(undefined, { maximumFractionDigits: 4 })} {t('price.register.krwUnit')}
+                      </p>
+                      <p className="text-[11px] text-neutral-400">
+                        {t('price.register.rateAsOf', { date: currentExchangeRate.effectiveDate })}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs text-red-500">
+                        {exchangeRatesError
+                          ? t('price.register.rateUnavailable')
+                          : t('price.register.currencyRateUnavailable')}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => refetchExchangeRates()}
+                        className="shrink-0 text-xs font-medium text-primary-700"
+                      >
+                        {t('price.register.retry')}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between rounded-xl border border-primary-200 bg-primary-50 px-3 py-3">
+                  <div>
+                    <p className="text-xs font-medium text-neutral-600">
+                      {t('price.register.convertedKrwPrice')} <RequiredMark />
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-neutral-400">{t('price.register.convertedKrwHint')}</p>
+                  </div>
+                  <p className="text-base font-bold text-primary-700">
+                    {requiredKrwPrice > 0
+                      ? `${krw.format(requiredKrwPrice)}${t('price.register.krwUnit')}`
+                      : '-'}
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
         </Section>
 
         {/* 5. 구매일 */}

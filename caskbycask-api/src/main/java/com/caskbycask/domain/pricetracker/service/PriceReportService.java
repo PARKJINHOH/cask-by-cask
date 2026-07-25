@@ -9,6 +9,7 @@ import com.caskbycask.domain.pricetracker.dto.response.PriceReportSummaryRespons
 import com.caskbycask.domain.pricetracker.entity.*;
 import com.caskbycask.domain.pricetracker.entity.enums.DutyFreeChannel;
 import com.caskbycask.domain.pricetracker.entity.enums.PriceCurrency;
+import com.caskbycask.domain.pricetracker.entity.enums.PriceInputMode;
 import com.caskbycask.domain.pricetracker.entity.enums.PriceReportStatus;
 import com.caskbycask.domain.pricetracker.entity.enums.StoreType;
 import com.caskbycask.domain.pricetracker.repository.*;
@@ -30,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -45,6 +47,7 @@ public class PriceReportService {
     private final UserRepository userRepository;
     private final BadWordFilter badWordFilter;
     private final ScoreService scoreService;
+    private final ExchangeRateService exchangeRateService;
 
     @Transactional(readOnly = true)
     public PriceReportResponse getPriceReport(Long id, Long callerId, boolean isAdmin) {
@@ -84,14 +87,14 @@ public class PriceReportService {
         }
         StoreType storeType = resolveStoreType(store, request.storeType(), request.currency(),
                 request.dutyfreeChannel());
-        validateStoreTypeCurrency(storeType, request.currency(), request.exchangeRate());
-
-        BigDecimal actualPrice = computeActualPrice(request.finalPrice(), request.salePrice(),
-                request.paybackAmount(), request.regularPrice(), request.discountItems(), storeType);
+        ResolvedPricing pricing = resolvePricing(
+                request.priceInputMode(), request.currency(), request.finalPriceKrw(),
+                request.finalPrice(), request.salePrice(), request.paybackAmount(),
+                request.regularPrice(), request.discountItems(), request.exchangeRate(), storeType);
 
         boolean autoFlagged = checkAutoFlag(spirit.getId(),
                 store != null ? store.getId() : null,
-                storeType, request.volumeMl(), request.currency(), actualPrice);
+                storeType, request.volumeMl(), pricing.currency(), pricing.actualPrice());
 
         User reporter = userRepository.getByIdOrThrow(userId);
 
@@ -102,13 +105,16 @@ public class PriceReportService {
                 .reporter(reporter)
                 .suggestedStoreName(request.suggestedStoreName())
                 .suggestedDutyfreeChannel(request.dutyfreeChannel())
-                .currency(request.currency())
+                .currency(pricing.currency())
                 .price(request.regularPrice())
                 .salePrice(request.salePrice())
                 .paybackAmount(request.paybackAmount())
-                .actualPrice(actualPrice)
+                .actualPrice(pricing.actualPrice())
+                .actualPriceKrw(pricing.actualPriceKrw())
+                .priceInputMode(pricing.inputMode())
                 .volumeMl(request.volumeMl())
-                .exchangeRateSnapshot(request.exchangeRate())
+                .exchangeRateSnapshot(pricing.exchangeRate())
+                .exchangeRateDate(pricing.exchangeRateDate())
                 .purchasedAt(request.purchasedAt())
                 .description(request.description())
                 .isAnonymous(Boolean.TRUE.equals(request.isAnonymous()))
@@ -152,14 +158,14 @@ public class PriceReportService {
         }
         StoreType storeType = resolveStoreType(store, request.storeType(), request.currency(),
                 request.dutyfreeChannel());
-        validateStoreTypeCurrency(storeType, request.currency(), request.exchangeRate());
-
-        BigDecimal actualPrice = computeActualPrice(request.finalPrice(), request.salePrice(),
-                request.paybackAmount(), request.regularPrice(), request.discountItems(), storeType);
+        ResolvedPricing pricing = resolvePricing(
+                request.priceInputMode(), request.currency(), request.finalPriceKrw(),
+                request.finalPrice(), request.salePrice(), request.paybackAmount(),
+                request.regularPrice(), request.discountItems(), request.exchangeRate(), storeType);
 
         boolean autoFlagged = checkAutoFlag(report.getSpirit().getId(),
                 store != null ? store.getId() : null, storeType,
-                request.volumeMl(), request.currency(), actualPrice);
+                request.volumeMl(), pricing.currency(), pricing.actualPrice());
 
         // 기존 이미지 연결 해제
         priceReportImageRepository.findByPriceReportIdOrderBySortOrder(id)
@@ -181,9 +187,11 @@ public class PriceReportService {
             }
         }
 
-        report.update(store, storeType, request.suggestedStoreName(), request.dutyfreeChannel(), request.currency(),
+        report.update(store, storeType, request.suggestedStoreName(), request.dutyfreeChannel(), pricing.currency(),
                 request.regularPrice(), request.salePrice(), request.paybackAmount(),
-                actualPrice, request.exchangeRate(), request.volumeMl(), request.purchasedAt(),
+                pricing.actualPrice(), pricing.actualPriceKrw(), pricing.inputMode(),
+                pricing.exchangeRate(), pricing.exchangeRateDate(),
+                request.volumeMl(), request.purchasedAt(),
                 request.description(), request.isAnonymous(), autoFlagged);
         report.resetToPending();
 
@@ -285,21 +293,88 @@ public class PriceReportService {
         if (requestedType != null) return requestedType;
         // 구버전 직접 입력 요청에는 storeType이 없으므로 기존 필드로 안전하게 추론한다.
         if (currency == PriceCurrency.USD || dutyfreeChannel != null) return StoreType.DUTYFREE;
+        if (currency != null && currency.isForeignCurrency()) return StoreType.OVERSEAS;
         return StoreType.DOMESTIC;
     }
 
-    private void validateStoreTypeCurrency(StoreType storeType, PriceCurrency currency,
-                                           BigDecimal exchangeRate) {
-        if (storeType == StoreType.DUTYFREE) {
-            if (currency != PriceCurrency.USD) {
+    private ResolvedPricing resolvePricing(
+            PriceInputMode requestedMode,
+            PriceCurrency requestedCurrency,
+            BigDecimal requestedFinalPriceKrw,
+            BigDecimal finalPrice,
+            BigDecimal salePrice,
+            BigDecimal paybackAmount,
+            BigDecimal regularPrice,
+            List<CreateDiscountItemRequest> discountItems,
+            BigDecimal legacyExchangeRate,
+            StoreType storeType) {
+        boolean legacyRequest = requestedMode == null;
+        PriceInputMode mode = requestedMode != null
+                ? requestedMode
+                : requestedCurrency != null && requestedCurrency.isForeignCurrency()
+                    ? PriceInputMode.AUTO_CONVERTED
+                    : PriceInputMode.KRW_DIRECT;
+
+        BigDecimal computedPrice = computeActualPrice(
+                finalPrice, salePrice, paybackAmount, regularPrice, discountItems, storeType);
+
+        if (mode == PriceInputMode.KRW_DIRECT) {
+            if (requestedCurrency != null && requestedCurrency != PriceCurrency.KRW) {
                 throw new CustomException(ErrorCode.INVALID_INPUT);
             }
-            if (exchangeRate == null) {
-                throw new CustomException(ErrorCode.EXCHANGE_RATE_REQUIRED);
-            }
-            return;
+            BigDecimal krwPrice = requestedFinalPriceKrw != null
+                    ? requestedFinalPriceKrw
+                    : computedPrice;
+            validatePositivePrice(krwPrice);
+            BigDecimal roundedKrwPrice = krwPrice.setScale(0, RoundingMode.HALF_UP);
+            return new ResolvedPricing(
+                    PriceInputMode.KRW_DIRECT,
+                    PriceCurrency.KRW,
+                    roundedKrwPrice,
+                    roundedKrwPrice,
+                    null,
+                    null
+            );
         }
-        if (currency != PriceCurrency.KRW) {
+
+        if (storeType == StoreType.DOMESTIC
+                || requestedCurrency == null
+                || !requestedCurrency.isForeignCurrency()
+                || !ExchangeRateService.SUPPORTED_FOREIGN_CURRENCIES.contains(requestedCurrency)) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+        validatePositivePrice(computedPrice);
+
+        BigDecimal exchangeRate;
+        LocalDate exchangeRateDate;
+        if (legacyRequest && legacyExchangeRate != null
+                && legacyExchangeRate.compareTo(BigDecimal.ZERO) > 0) {
+            exchangeRate = legacyExchangeRate;
+            exchangeRateDate = null;
+        } else {
+            ExchangeRate rate = exchangeRateService.getRequiredRate(requestedCurrency);
+            exchangeRate = rate.getKrwPerUnit();
+            exchangeRateDate = rate.getEffectiveDate();
+        }
+        if (exchangeRate == null || exchangeRate.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new CustomException(ErrorCode.EXCHANGE_RATE_REQUIRED);
+        }
+
+        BigDecimal actualPriceKrw = computedPrice.multiply(exchangeRate)
+                .setScale(0, RoundingMode.HALF_UP);
+        validatePositivePrice(actualPriceKrw);
+        return new ResolvedPricing(
+                PriceInputMode.AUTO_CONVERTED,
+                requestedCurrency,
+                computedPrice,
+                actualPriceKrw,
+                exchangeRate,
+                exchangeRateDate
+        );
+    }
+
+    private void validatePositivePrice(BigDecimal price) {
+        if (price == null || price.compareTo(BigDecimal.ZERO) <= 0) {
             throw new CustomException(ErrorCode.INVALID_INPUT);
         }
     }
@@ -336,6 +411,15 @@ public class PriceReportService {
         }
         return sorted.get(size / 2);
     }
+
+    private record ResolvedPricing(
+            PriceInputMode inputMode,
+            PriceCurrency currency,
+            BigDecimal actualPrice,
+            BigDecimal actualPriceKrw,
+            BigDecimal exchangeRate,
+            LocalDate exchangeRateDate
+    ) {}
 
     private List<PriceReportImage> linkImages(List<Long> imageIds, List<Boolean> publicFlags,
                                                Long userId, PriceReport report) {

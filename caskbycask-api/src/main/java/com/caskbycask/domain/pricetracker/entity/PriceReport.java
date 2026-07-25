@@ -2,6 +2,7 @@ package com.caskbycask.domain.pricetracker.entity;
 
 import com.caskbycask.domain.pricetracker.entity.enums.DutyFreeChannel;
 import com.caskbycask.domain.pricetracker.entity.enums.PriceCurrency;
+import com.caskbycask.domain.pricetracker.entity.enums.PriceInputMode;
 import com.caskbycask.domain.pricetracker.entity.enums.PriceReportStatus;
 import com.caskbycask.domain.pricetracker.entity.enums.StoreType;
 import com.caskbycask.domain.spirit.entity.Spirit;
@@ -13,6 +14,7 @@ import org.hibernate.annotations.Comment;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -85,13 +87,27 @@ public class PriceReport extends BaseTimeEntity {
     @Comment("실구매가")
     private BigDecimal actualPrice;      // 실구매가 (서비스 계산 후 저장)
 
+    @Column(name = "actual_price_krw", precision = 14, scale = 0)
+    @Comment("등록 당시 환율 기준 원화 실구매가")
+    private BigDecimal actualPriceKrw;
+
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    @Column(name = "price_input_mode", nullable = false, length = 20)
+    @Comment("가격 입력 방식 — AUTO_CONVERTED/KRW_DIRECT")
+    private PriceInputMode priceInputMode = PriceInputMode.KRW_DIRECT;
+
     @Column
     @Comment("거래 당시 병 1개 용량(ml)")
     private Integer volumeMl;
 
-    @Column(precision = 10, scale = 4)
-    @Comment("환율 스냅샷")
-    private BigDecimal exchangeRateSnapshot; // 면세 USD 등록 시 환율 스냅샷
+    @Column(precision = 18, scale = 8)
+    @Comment("외화 1단위당 원화 환율 스냅샷")
+    private BigDecimal exchangeRateSnapshot;
+
+    @Column
+    @Comment("자동 환율 기준일")
+    private LocalDate exchangeRateDate;
 
     @Column
     @Comment("구매 일자")
@@ -189,7 +205,9 @@ public class PriceReport extends BaseTimeEntity {
                        DutyFreeChannel suggestedDutyfreeChannel,
                        PriceCurrency currency,
                        BigDecimal price, BigDecimal salePrice, BigDecimal paybackAmount,
-                       BigDecimal actualPrice, BigDecimal exchangeRateSnapshot,
+                       BigDecimal actualPrice, BigDecimal actualPriceKrw,
+                       PriceInputMode priceInputMode, BigDecimal exchangeRateSnapshot,
+                       LocalDate exchangeRateDate,
                        Integer volumeMl, LocalDate purchasedAt, String description, Boolean isAnonymous,
                        boolean autoFlagged) {
         this.store = store;
@@ -201,7 +219,10 @@ public class PriceReport extends BaseTimeEntity {
         this.salePrice = salePrice;
         this.paybackAmount = paybackAmount;
         this.actualPrice = actualPrice;
+        this.actualPriceKrw = actualPriceKrw;
+        this.priceInputMode = priceInputMode;
         this.exchangeRateSnapshot = exchangeRateSnapshot;
+        this.exchangeRateDate = exchangeRateDate;
         this.volumeMl = volumeMl;
         this.purchasedAt = purchasedAt;
         this.description = description;
@@ -225,7 +246,24 @@ public class PriceReport extends BaseTimeEntity {
         if (storeTypeSnapshot != null) return storeTypeSnapshot;
         if (store != null && store.getStoreType() != null) return store.getStoreType();
         if (currency == PriceCurrency.USD || suggestedDutyfreeChannel != null) return StoreType.DUTYFREE;
+        if (currency != null && currency.isForeignCurrency()) return StoreType.OVERSEAS;
         return StoreType.DOMESTIC;
+    }
+
+    public BigDecimal resolveActualPriceKrw() {
+        if (actualPriceKrw != null) return actualPriceKrw;
+        return convertToKrw(actualPrice);
+    }
+
+    public BigDecimal convertToKrw(BigDecimal amount) {
+        if (amount == null || currency == null) return null;
+        if (currency == PriceCurrency.KRW) {
+            return amount.setScale(0, RoundingMode.HALF_UP);
+        }
+        if (exchangeRateSnapshot == null || exchangeRateSnapshot.compareTo(BigDecimal.ZERO) <= 0) {
+            return null;
+        }
+        return amount.multiply(exchangeRateSnapshot).setScale(0, RoundingMode.HALF_UP);
     }
 
     public void verify() {

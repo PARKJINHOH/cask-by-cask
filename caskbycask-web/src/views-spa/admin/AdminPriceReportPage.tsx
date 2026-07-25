@@ -151,11 +151,9 @@ export default function AdminPriceReportPage() {
 function PriceReportRow({ report, onClick }: { report: AdminPriceReport; onClick: () => void }) {
   const status = STATUS_STYLE[report.status]
   const storeName = report.storeName ?? report.suggestedStoreName ?? '미지정'
-  const actualPrice = report.actualPrice == null
+  const actualPrice = report.actualPriceKrw == null
     ? '-'
-    : report.currency === 'USD'
-      ? `$ ${report.actualPrice.toLocaleString()}`
-      : `${krw.format(report.actualPrice)}원`
+    : `${krw.format(report.actualPriceKrw)}원`
 
   return (
     <tr onClick={onClick} className="hover:bg-neutral-50 transition-colors cursor-pointer">

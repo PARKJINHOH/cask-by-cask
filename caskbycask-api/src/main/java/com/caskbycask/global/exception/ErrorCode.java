@@ -230,7 +230,8 @@ public enum ErrorCode {
     PRICE_REPORT_ACCESS_DENIED(HttpStatus.FORBIDDEN, "PRICE_002", "가격 등록 접근 권한이 없습니다."),
     PRICE_REPORT_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "PRICE_003", "이미지를 찾을 수 없거나 접근 권한이 없습니다."),
     DUPLICATE_PRICE_REPORT_REPORT(HttpStatus.BAD_REQUEST, "PRICE_004", "이미 신고한 가격 등록입니다."),
-    EXCHANGE_RATE_REQUIRED(HttpStatus.BAD_REQUEST, "PRICE_005", "면세점 USD 등록 시 환율이 필요합니다."),
+    EXCHANGE_RATE_REQUIRED(HttpStatus.BAD_REQUEST, "PRICE_005", "외화 자동 환산 시 환율이 필요합니다."),
+    EXCHANGE_RATE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "PRICE_006", "최신 환율을 불러올 수 없습니다. 원화 직접 입력을 이용해주세요."),
 
     // BYOB
     BYOB_NOT_FOUND(HttpStatus.NOT_FOUND, "BYOB_001", "BYOB 모임을 찾을 수 없습니다."),

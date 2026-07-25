@@ -3,6 +3,7 @@ import type { ApiResponse, PageResponse } from '@/shared/types/common.types'
 import type {
   ChartResponse,
   CreatePriceReportRequest,
+  ExchangeRateQuote,
   PriceAlertResponse,
   PriceReportChartDetail,
   PriceReportImageUpload,
@@ -62,6 +63,9 @@ export const priceTrackerApi = {
     }),
 
   // ── 가격 등록 ────────────────────────────────────
+  getExchangeRates: () =>
+    axiosInstance.get<ApiResponse<ExchangeRateQuote[]>>('/api/price-reports/exchange-rates'),
+
   uploadImage: (file: File) => {
     const form = new FormData()
     form.append('file', file)

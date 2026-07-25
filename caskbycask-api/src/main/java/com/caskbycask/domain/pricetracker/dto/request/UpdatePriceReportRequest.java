@@ -2,6 +2,7 @@ package com.caskbycask.domain.pricetracker.dto.request;
 
 import com.caskbycask.domain.pricetracker.entity.enums.DutyFreeChannel;
 import com.caskbycask.domain.pricetracker.entity.enums.PriceCurrency;
+import com.caskbycask.domain.pricetracker.entity.enums.PriceInputMode;
 import com.caskbycask.domain.pricetracker.entity.enums.StoreType;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -19,12 +20,14 @@ public record UpdatePriceReportRequest(
         StoreType storeType,
         @Size(max = 255) String suggestedStoreName,
         DutyFreeChannel dutyfreeChannel,
-        @NotNull PriceCurrency currency,
+        PriceCurrency currency,
+        PriceInputMode priceInputMode,
         @NotNull Boolean isAnonymous,
         BigDecimal regularPrice,
         BigDecimal salePrice,
         BigDecimal paybackAmount,
         BigDecimal finalPrice,
+        BigDecimal finalPriceKrw,
         BigDecimal exchangeRate,
         @Size(max = 500) String description,
         LocalDate purchasedAt,

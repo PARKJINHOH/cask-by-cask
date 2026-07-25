@@ -18,6 +18,7 @@ public record PriceReportSummaryResponse(
         PriceReportStatus status,
         PriceCurrency currency,
         BigDecimal actualPrice,
+        BigDecimal actualPriceKrw,
         LocalDate purchasedAt,
         Boolean isAnonymous,
         LocalDateTime createdAt
@@ -33,6 +34,7 @@ public record PriceReportSummaryResponse(
                 report.getStatus(),
                 report.getCurrency(),
                 report.getActualPrice(),
+                report.resolveActualPriceKrw(),
                 report.getPurchasedAt(),
                 report.getIsAnonymous(),
                 report.getCreatedAt()

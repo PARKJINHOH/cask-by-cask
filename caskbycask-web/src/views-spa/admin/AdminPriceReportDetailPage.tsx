@@ -163,8 +163,15 @@ export default function AdminPriceReportDetailPage() {
             <PriceField label="페이백" value={money(report, report.paybackAmount)} />
             <PriceField label="실구매가/체감가" value={money(report, report.actualPrice)} strong />
             <PriceField
+              label="원화 실구매가"
+              value={report.actualPriceKrw == null ? '-' : `${krw.format(report.actualPriceKrw)}원`}
+              strong
+            />
+            <PriceField
               label="환율"
-              value={report.exchangeRateSnapshot == null ? '-' : `${krw.format(report.exchangeRateSnapshot)}원/USD`}
+              value={report.exchangeRateSnapshot == null
+                ? '-'
+                : `${report.exchangeRateSnapshot.toLocaleString(undefined, { maximumFractionDigits: 8 })}원/${report.currency}`}
             />
           </div>
 
@@ -244,7 +251,10 @@ export default function AdminPriceReportDetailPage() {
               onChange={(e) => setStoreType(e.target.value as StoreType)}
               className="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-200"
             >
-              {(report.currency === 'USD' ? ['DUTYFREE'] : ['DOMESTIC', 'OVERSEAS']).map((type) => (
+              {(report.currency === 'KRW'
+                ? ['DOMESTIC', 'OVERSEAS', 'DUTYFREE']
+                : ['OVERSEAS', 'DUTYFREE']
+              ).map((type) => (
                 <option key={type} value={type}>{STORE_TYPE_LABEL[type as StoreType]}</option>
               ))}
             </select>
@@ -322,7 +332,7 @@ export default function AdminPriceReportDetailPage() {
 
 function money(report: AdminPriceReport, value: number | null | undefined) {
   if (value == null) return '-'
-  return report.currency === 'USD' ? `$ ${value.toLocaleString()}` : `${krw.format(value)}원`
+  return report.currency === 'KRW' ? `${krw.format(value)}원` : `${value.toLocaleString()} ${report.currency}`
 }
 
 function formatStoreName(report: AdminPriceReport) {

@@ -1,5 +1,7 @@
 export type StoreType = 'DOMESTIC' | 'OVERSEAS' | 'DUTYFREE'
-export type PriceCurrency = 'KRW' | 'USD'
+export type PriceCurrency = 'KRW' | 'TWD' | 'USD' | 'JPY' | 'CNY' | 'EUR'
+export type ForeignPriceCurrency = Exclude<PriceCurrency, 'KRW'>
+export type PriceInputMode = 'AUTO_CONVERTED' | 'KRW_DIRECT'
 export type BucketType = 'INDIVIDUAL' | 'WEEKLY'
 export type PriceReportReportReason = 'FALSE_PRICE' | 'DUPLICATE' | 'BAD_IMAGE' | 'OTHER'
 export type DiscountType = 'PAYMENT' | 'BUNDLE' | 'COUPON' | 'OTHER'
@@ -31,6 +33,14 @@ export interface ChartResponse {
   currency: PriceCurrency
   points: ChartPoint[]
   series: ChartSeries[]
+}
+
+export interface ExchangeRateQuote {
+  currency: ForeignPriceCurrency
+  krwPerUnit: number
+  provider: string
+  effectiveDate: string
+  fetchedAt: string
 }
 
 export interface DiscountItemDetail {
@@ -73,6 +83,7 @@ export interface PriceReportSummary {
   status: PriceReportStatus
   currency: PriceCurrency
   actualPrice: number | null
+  actualPriceKrw: number | null
   purchasedAt: string | null
   isAnonymous: boolean
   createdAt: string
@@ -110,7 +121,10 @@ export interface AdminPriceReport {
   salePrice: number | null
   paybackAmount: number | null
   actualPrice: number | null
+  actualPriceKrw: number | null
+  priceInputMode: PriceInputMode
   exchangeRateSnapshot: number | null
+  exchangeRateDate: string | null
   purchasedAt: string | null
   description: string | null
   isAnonymous: boolean
@@ -157,12 +171,14 @@ export interface CreatePriceReportRequest {
   storeType?: StoreType | null
   suggestedStoreName?: string | null
   dutyfreeChannel?: DutyFreeChannel | null
-  currency: PriceCurrency
+  currency?: PriceCurrency | null
+  priceInputMode?: PriceInputMode | null
   isAnonymous: boolean
   regularPrice?: number | null
   salePrice?: number | null
   paybackAmount?: number | null
   finalPrice?: number | null
+  finalPriceKrw?: number | null
   exchangeRate?: number | null
   description?: string | null
   purchasedAt?: string | null

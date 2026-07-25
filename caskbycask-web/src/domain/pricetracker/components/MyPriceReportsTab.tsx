@@ -80,9 +80,14 @@ export default function MyPriceReportsTab() {
                   </p>
                 </div>
                 <div className="text-right shrink-0">
-                  {r.actualPrice != null && (
+                  {r.actualPriceKrw != null && (
                     <p className="text-sm font-bold text-primary-700">
-                      {r.currency === 'USD' ? `$ ${r.actualPrice.toLocaleString()}` : `${krw.format(r.actualPrice)}원`}
+                      {krw.format(r.actualPriceKrw)}{t('price.register.krwUnit')}
+                    </p>
+                  )}
+                  {r.currency !== 'KRW' && r.actualPrice != null && (
+                    <p className="text-[11px] text-neutral-400">
+                      {r.actualPrice.toLocaleString()} {r.currency}
                     </p>
                   )}
                   <button

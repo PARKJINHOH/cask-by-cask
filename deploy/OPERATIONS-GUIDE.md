@@ -483,6 +483,8 @@ sudo systemctl restart caskbycask-api   # 수정 후 재시작해야 반영
 | `OAUTH_ALLOWED_REDIRECT_URIS` | 소셜 콜백 화이트리스트 (예: `https://www.caskbycask.net/oauth/callback`). 제공자 콘솔 등록값과 동일 |
 | `OAUTH_NAVER_CLIENT_ID` / `OAUTH_NAVER_CLIENT_SECRET` | 네이버 로그인 키 (네이버 개발자센터) |
 | `OAUTH_GOOGLE_CLIENT_ID` / `OAUTH_GOOGLE_CLIENT_SECRET` | 구글 로그인 키 (Google Cloud Console) |
+| `EXCHANGE_RATE_PROVIDER_URL` | 해외·면세 가격 원화 환산용 공개 환율 API. 기본값 `https://api.frankfurter.dev` |
+| `EXCHANGE_RATE_CONNECT_TIMEOUT_MS` / `EXCHANGE_RATE_READ_TIMEOUT_MS` | 환율 API 연결/응답 제한 시간. 기본값 3000ms/5000ms |
 | `SOCIAL_PUBLISH_ENABLED` | Instagram·Threads 비동기 게시 feature flag. 공식 계정 연결·시험 전에는 `false` |
 | `SOCIAL_PUBLIC_MEDIA_BASE_URL` | Meta가 생성 이미지를 가져갈 수 있는 HTTPS 공개 기준 URL |
 | `SOCIAL_OAUTH_REDIRECT_URI` | Meta 콘솔에 등록한 공식 계정 연결 콜백 URL |
@@ -501,6 +503,20 @@ sudo systemctl restart caskbycask-api   # 수정 후 재시작해야 반영
 > (로컬 개발 시 `http://localhost:5173/oauth/callback`)을 등록해야 한다. 구글은 OAuth 동의 화면에 `openid`,`email`,`profile`
 > 스코프가 필요하고, refresh token 수신을 위해 앱이 `access_type=offline` + `prompt=consent` 로 인가 요청한다(코드에 반영됨).
 > 등록 redirect URI 가 `OAUTH_ALLOWED_REDIRECT_URIS` 와 다르면 콜백이 `OAUTH_008` 로 거부된다.
+
+### 해외·면세 가격 환율
+
+- API가 매일 `00:05`, `06:05`, `12:05`, `18:05`(Asia/Seoul)에 Frankfurter 공개 참고 환율을 조회한다.
+- `TWD`, `USD`, `JPY`, `CNY`, `EUR`의 외화 1단위당 원화 환율과 기준일을 `exchange_rates`에 저장한다.
+- 외부 API가 실패하면 기존 행을 덮어쓰지 않고 마지막 정상 환율을 계속 사용한다. 저장 이력이 전혀 없을 때만 사용자가 자동 환산을 선택할 수 없으며 원화 직접 입력은 계속 가능하다.
+- 가격 제보에는 등록 당시 환율과 원화 실구매가가 별도 스냅샷으로 저장되므로 이후 환율 갱신이 과거 그래프를 바꾸지 않는다.
+- 정상 로그: `Exchange rates refreshed`. 실패 로그: `Exchange-rate refresh failed; keeping the last successful rates`.
+- 제공자 상태 확인:
+
+```bash
+curl -fsS 'https://api.frankfurter.dev/v2/rates?base=EUR&quotes=KRW,USD,JPY,CNY,TWD'
+sudo journalctl -u caskbycask-api --since '12 hours ago' | grep -E 'Exchange rates refreshed|Exchange-rate refresh failed'
+```
 
 ### Instagram·Threads 자동 게시
 
@@ -817,6 +833,7 @@ crontab -e
 | `Flyway upgrade recommended: MariaDB 11.8 is newer...` | Flyway 버전이 MariaDB 11.8 을 공식 지원하지 않음 | ✅ `flyway-core 12.8.1` 로 해결 (2026-06-16) |
 | `BadWordFilter cache refreshed — 0 words loaded` | `bad_words` 테이블에 시드 데이터 없음 | ✅ `V12__seed_bad_words.sql` 마이그레이션으로 해결 (2026-06-16) |
 | `The cache 'authUser' is not recording statistics` | Caffeine 캐시 빌드 시 `recordStats()` 미호출 | ✅ `CacheConfig` 에 `.recordStats()` 추가 (2026-06-16) |
+| `Exchange-rate refresh failed; keeping the last successful rates` | 공개 환율 API 네트워크/응답 장애 | 마지막 정상 환율을 계속 사용. 9장의 제공자 상태 확인 명령과 API 서버 outbound HTTPS를 점검 |
 
 > 위 3개 WARN 은 2026-06-16 이후 빌드부터 사라진다. 다시 나타나면 해당 코드/마이그레이션이 누락된 것.
 

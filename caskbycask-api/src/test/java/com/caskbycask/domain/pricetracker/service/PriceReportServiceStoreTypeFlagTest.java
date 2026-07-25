@@ -45,6 +45,7 @@ class PriceReportServiceStoreTypeFlagTest {
     @Mock UserRepository userRepository;
     @Mock BadWordFilter badWordFilter;
     @Mock ScoreService scoreService;
+    @Mock ExchangeRateService exchangeRateService;
     @InjectMocks PriceReportService service;
 
     @Test
@@ -61,8 +62,8 @@ class PriceReportServiceStoreTypeFlagTest {
 
         service.createPriceReport(9L, new CreatePriceReportRequest(
                 5L, 700, null, StoreType.DOMESTIC, "직접 입력 판매처", null,
-                PriceCurrency.KRW, true, null, BigDecimal.valueOf(140_000), null,
-                BigDecimal.valueOf(140_000), null, null, null,
+                PriceCurrency.KRW, null, true, null, BigDecimal.valueOf(140_000), null,
+                BigDecimal.valueOf(140_000), null, null, null, null,
                 List.of(), List.of(), List.of()));
 
         ArgumentCaptor<PriceReport> reportCaptor = ArgumentCaptor.forClass(PriceReport.class);

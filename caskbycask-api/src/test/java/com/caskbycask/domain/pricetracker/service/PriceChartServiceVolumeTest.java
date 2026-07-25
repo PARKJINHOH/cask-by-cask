@@ -122,6 +122,41 @@ class PriceChartServiceVolumeTest {
                 .containsExactly(new PriceVolumeOptionResponse(1000, 1));
     }
 
+    @Test
+    void foreignPriceChartUsesStoredKrwSnapshot() {
+        Spirit spirit = Spirit.builder().id(1L).nameKo("테스트").build();
+        PriceReport taiwanPrice = PriceReport.builder()
+                .spirit(spirit)
+                .storeTypeSnapshot(StoreType.OVERSEAS)
+                .status(PriceReportStatus.APPROVED)
+                .currency(PriceCurrency.TWD)
+                .volumeMl(700)
+                .price(BigDecimal.valueOf(2_500))
+                .salePrice(BigDecimal.valueOf(2_000))
+                .actualPrice(BigDecimal.valueOf(2_000))
+                .actualPriceKrw(BigDecimal.valueOf(90_000))
+                .exchangeRateSnapshot(BigDecimal.valueOf(45))
+                .purchasedAt(LocalDate.of(2026, 1, 3))
+                .isAnonymous(true)
+                .autoFlagged(false)
+                .reportCount(0)
+                .build();
+        given(priceReportRepository.findApprovedForChart(List.of(1L), PriceReportStatus.APPROVED))
+                .willReturn(List.of(taiwanPrice));
+        given(dealPostRepository.findAllBySpiritIdInAndStatusAndIsVisibleTrue(
+                List.of(1L), DealStatus.APPROVED)).willReturn(List.of());
+
+        ChartResponse response = service.getChart(
+                List.of(1L), StoreType.OVERSEAS, "ALL", null, 700, false);
+
+        assertThat(response.currency()).isEqualTo(PriceCurrency.KRW);
+        assertThat(response.points()).singleElement().satisfies(point -> {
+            assertThat(point.minFinalPrice()).isEqualByComparingTo("90000");
+            assertThat(point.maxPrice()).isEqualByComparingTo("112500");
+            assertThat(point.avgSalePrice()).isEqualByComparingTo("90000");
+        });
+    }
+
     private PriceReport report(Spirit spirit, Integer volumeMl, int price, LocalDate date) {
         return report(spirit, volumeMl, price, date, null, null);
     }

@@ -47,7 +47,7 @@ public class PriceChartService {
     public ChartResponse getChart(List<Long> spiritIds, StoreType storeType, String period, String region,
                                   Integer volumeMl, boolean unknownVolume) {
         List<Long> targetSpiritIds = normalizeSpiritIds(spiritIds);
-        PriceCurrency currency = (storeType == StoreType.DUTYFREE) ? PriceCurrency.USD : PriceCurrency.KRW;
+        PriceCurrency currency = PriceCurrency.KRW;
         if (targetSpiritIds.isEmpty()) {
             return new ChartResponse(BucketType.INDIVIDUAL, currency, List.of(), List.of());
         }
@@ -265,9 +265,9 @@ public class PriceChartService {
             tempPrices.add(new TempPrice(
                     r.getSpirit().getId(),
                     effectiveDate(r),
-                    r.getActualPrice(),
-                    r.getPrice(),
-                    r.getSalePrice(),
+                    r.resolveActualPriceKrw(),
+                    r.convertToKrw(r.getPrice()),
+                    r.convertToKrw(r.getSalePrice()),
                     r.getId(),
                     r.getStore() != null ? "store:" + r.getStore().getId() : "suggested:" + nullToBlank(r.getSuggestedStoreName()),
                     reliability(r),

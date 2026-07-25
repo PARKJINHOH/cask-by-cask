@@ -109,6 +109,13 @@ caskbycask:
 rate-limit:
   enabled: true
 
+# 해외·면세 가격 자동 원화 환산. 공개 API 장애 시 DB의 마지막 정상 환율을 계속 사용한다.
+exchange-rate:
+  provider-url: ${EXCHANGE_RATE_PROVIDER_URL:https://api.frankfurter.dev}
+  refresh-cron: ${EXCHANGE_RATE_REFRESH_CRON:0 5 0,6,12,18 * * *}
+  connect-timeout-ms: ${EXCHANGE_RATE_CONNECT_TIMEOUT_MS:3000}
+  read-timeout-ms: ${EXCHANGE_RATE_READ_TIMEOUT_MS:5000}
+
 # SEO 메타 — sitemap.xml 의 base URL 및 index.html 파일 경로
 seo:
   site-url: ${SEO_SITE_URL:https://www.caskbycask.net}

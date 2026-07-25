@@ -1,10 +1,12 @@
 package com.caskbycask.domain.pricetracker.service;
 
 import com.caskbycask.domain.pricetracker.dto.request.CreatePriceReportRequest;
+import com.caskbycask.domain.pricetracker.entity.ExchangeRate;
 import com.caskbycask.domain.pricetracker.entity.PriceReport;
 import com.caskbycask.domain.pricetracker.entity.Store;
 import com.caskbycask.domain.pricetracker.entity.enums.DutyFreeChannel;
 import com.caskbycask.domain.pricetracker.entity.enums.PriceCurrency;
+import com.caskbycask.domain.pricetracker.entity.enums.PriceInputMode;
 import com.caskbycask.domain.pricetracker.entity.enums.StoreType;
 import com.caskbycask.domain.pricetracker.repository.PriceDiscountItemRepository;
 import com.caskbycask.domain.pricetracker.repository.PriceReportImageRepository;
@@ -27,6 +29,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -48,6 +51,7 @@ class PriceReportServiceStoreTypeTest {
     @Mock UserRepository userRepository;
     @Mock BadWordFilter badWordFilter;
     @Mock ScoreService scoreService;
+    @Mock ExchangeRateService exchangeRateService;
     @InjectMocks PriceReportService service;
 
     @Test
@@ -79,30 +83,56 @@ class PriceReportServiceStoreTypeTest {
     }
 
     @Test
-    void dutyFreeRequiresUsdAndExchangeRate() {
-        given(spiritRepository.findById(1L)).willReturn(Optional.of(spirit()));
+    void foreignKrwDirectNeedsNoCurrencyOrExchangeRate() {
+        stubCreateDependencies();
 
-        assertThatThrownBy(() -> service.createPriceReport(
-                2L, request(null, StoreType.DUTYFREE, PriceCurrency.KRW, null)))
-                .isInstanceOf(CustomException.class)
-                .extracting("errorCode").isEqualTo(ErrorCode.INVALID_INPUT);
+        service.createPriceReport(2L, request(
+                null, StoreType.OVERSEAS, null, PriceInputMode.KRW_DIRECT,
+                BigDecimal.valueOf(88_000), null));
 
-        assertThatThrownBy(() -> service.createPriceReport(
-                2L, request(null, StoreType.DUTYFREE, PriceCurrency.USD, null)))
-                .isInstanceOf(CustomException.class)
-                .extracting("errorCode").isEqualTo(ErrorCode.EXCHANGE_RATE_REQUIRED);
+        ArgumentCaptor<PriceReport> captor = ArgumentCaptor.forClass(PriceReport.class);
+        verify(priceReportRepository).save(captor.capture());
+        PriceReport saved = captor.getValue();
+        assertThat(saved.getCurrency()).isEqualTo(PriceCurrency.KRW);
+        assertThat(saved.getPriceInputMode()).isEqualTo(PriceInputMode.KRW_DIRECT);
+        assertThat(saved.getActualPrice()).isEqualByComparingTo("88000");
+        assertThat(saved.getActualPriceKrw()).isEqualByComparingTo("88000");
+        assertThat(saved.getExchangeRateSnapshot()).isNull();
     }
 
     @Test
-    void domesticAndOverseasRejectUsd() {
+    void foreignAutoConversionUsesServerRateAndStoresKrwSnapshot() {
+        stubCreateDependencies();
+        given(exchangeRateService.getRequiredRate(PriceCurrency.TWD)).willReturn(
+                ExchangeRate.builder()
+                        .currency(PriceCurrency.TWD)
+                        .krwPerUnit(new BigDecimal("45.25"))
+                        .provider("TEST")
+                        .effectiveDate(LocalDate.of(2026, 7, 24))
+                        .fetchedAt(LocalDate.now().atStartOfDay())
+                        .build());
+
+        service.createPriceReport(2L, request(
+                null, StoreType.OVERSEAS, PriceCurrency.TWD, PriceInputMode.AUTO_CONVERTED,
+                null, null));
+
+        ArgumentCaptor<PriceReport> captor = ArgumentCaptor.forClass(PriceReport.class);
+        verify(priceReportRepository).save(captor.capture());
+        PriceReport saved = captor.getValue();
+        assertThat(saved.getCurrency()).isEqualTo(PriceCurrency.TWD);
+        assertThat(saved.getActualPrice()).isEqualByComparingTo("90000");
+        assertThat(saved.getActualPriceKrw()).isEqualByComparingTo("4072500");
+        assertThat(saved.getExchangeRateSnapshot()).isEqualByComparingTo("45.25");
+        assertThat(saved.getExchangeRateDate()).isEqualTo(LocalDate.of(2026, 7, 24));
+    }
+
+    @Test
+    void domesticRejectsForeignAutoConversion() {
         given(spiritRepository.findById(1L)).willReturn(Optional.of(spirit()));
 
         assertThatThrownBy(() -> service.createPriceReport(
-                2L, request(null, StoreType.DOMESTIC, PriceCurrency.USD, BigDecimal.valueOf(1400))))
-                .isInstanceOf(CustomException.class)
-                .extracting("errorCode").isEqualTo(ErrorCode.INVALID_INPUT);
-        assertThatThrownBy(() -> service.createPriceReport(
-                2L, request(null, StoreType.OVERSEAS, PriceCurrency.USD, BigDecimal.valueOf(1400))))
+                2L, request(null, StoreType.DOMESTIC, PriceCurrency.USD,
+                        PriceInputMode.AUTO_CONVERTED, null, null)))
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.INVALID_INPUT);
     }
@@ -121,11 +151,17 @@ class PriceReportServiceStoreTypeTest {
 
     private CreatePriceReportRequest request(Long storeId, StoreType storeType,
                                              PriceCurrency currency, BigDecimal exchangeRate) {
+        return request(storeId, storeType, currency, null, null, exchangeRate);
+    }
+
+    private CreatePriceReportRequest request(Long storeId, StoreType storeType,
+                                             PriceCurrency currency, PriceInputMode inputMode,
+                                             BigDecimal finalPriceKrw, BigDecimal exchangeRate) {
         return new CreatePriceReportRequest(
                 1L, 700, storeId, storeType, "직접 입력 매장",
                 storeType == StoreType.DUTYFREE ? DutyFreeChannel.AIRPORT : null,
-                currency, true, BigDecimal.valueOf(100_000), BigDecimal.valueOf(90_000),
-                null, BigDecimal.valueOf(90_000), exchangeRate, null, null,
+                currency, inputMode, true, BigDecimal.valueOf(100_000), BigDecimal.valueOf(90_000),
+                null, BigDecimal.valueOf(90_000), finalPriceKrw, exchangeRate, null, null,
                 List.of(), List.of(), List.of());
     }
 }

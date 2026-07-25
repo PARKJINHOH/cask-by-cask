@@ -5,7 +5,9 @@ import com.caskbycask.domain.pricetracker.dto.request.CreatePriceReportReportReq
 import com.caskbycask.domain.pricetracker.dto.request.UpdatePriceReportRequest;
 import com.caskbycask.domain.pricetracker.dto.response.PriceReportResponse;
 import com.caskbycask.domain.pricetracker.dto.response.PriceReportSummaryResponse;
+import com.caskbycask.domain.pricetracker.dto.response.ExchangeRateResponse;
 import com.caskbycask.domain.pricetracker.entity.enums.PriceReportStatus;
+import com.caskbycask.domain.pricetracker.service.ExchangeRateService;
 import com.caskbycask.domain.pricetracker.service.PriceReportService;
 import com.caskbycask.global.auth.security.CustomUserDetails;
 import com.caskbycask.global.response.ApiResponse;
@@ -19,12 +21,20 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/price-reports")
 @RequiredArgsConstructor
 public class PriceReportController {
 
     private final PriceReportService priceReportService;
+    private final ExchangeRateService exchangeRateService;
+
+    @GetMapping("/exchange-rates")
+    public ResponseEntity<ApiResponse<List<ExchangeRateResponse>>> getExchangeRates() {
+        return ResponseEntity.ok(ApiResponse.success(exchangeRateService.getAvailableRates()));
+    }
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<PriceReportResponse>> getPriceReport(

@@ -5,6 +5,7 @@ import com.caskbycask.domain.pricetracker.entity.PriceReport;
 import com.caskbycask.domain.pricetracker.entity.PriceReportImage;
 import com.caskbycask.domain.pricetracker.entity.enums.DutyFreeChannel;
 import com.caskbycask.domain.pricetracker.entity.enums.PriceCurrency;
+import com.caskbycask.domain.pricetracker.entity.enums.PriceInputMode;
 import com.caskbycask.domain.pricetracker.entity.enums.PriceReportStatus;
 import com.caskbycask.domain.pricetracker.entity.enums.StoreType;
 
@@ -31,7 +32,10 @@ public record AdminPriceReportResponse(
         BigDecimal salePrice,
         BigDecimal paybackAmount,
         BigDecimal actualPrice,
+        BigDecimal actualPriceKrw,
+        PriceInputMode priceInputMode,
         BigDecimal exchangeRateSnapshot,
+        LocalDate exchangeRateDate,
         LocalDate purchasedAt,
         String description,
         Boolean isAnonymous,
@@ -66,7 +70,10 @@ public record AdminPriceReportResponse(
                 report.getSalePrice(),
                 report.getPaybackAmount(),
                 report.getActualPrice(),
+                report.resolveActualPriceKrw(),
+                report.getPriceInputMode(),
                 report.getExchangeRateSnapshot(),
+                report.getExchangeRateDate(),
                 report.getPurchasedAt(),
                 report.getDescription(),
                 report.getIsAnonymous(),

@@ -88,9 +88,9 @@ public class AdminPriceReportService {
         // 가격 승인에서는 매장 마스터를 생성·승인·매핑하지 않는다.
         // 기존 Store 연결과 직접 입력 매장명은 관측 당시 데이터로 그대로 보존한다.
         if (request != null && request.storeType() != null) {
-            boolean dutyFreeCurrency = report.getCurrency() == PriceCurrency.USD;
-            boolean dutyFreeType = request.storeType() == StoreType.DUTYFREE;
-            if (dutyFreeCurrency != dutyFreeType) {
+            // 국내는 KRW만 허용한다. 해외·면세는 자동 외화 환산과 원화 직접 입력을 모두 허용한다.
+            if (request.storeType() == StoreType.DOMESTIC
+                    && report.getCurrency() != PriceCurrency.KRW) {
                 throw new CustomException(ErrorCode.INVALID_INPUT);
             }
             report.updateStoreTypeSnapshot(request.storeType());
