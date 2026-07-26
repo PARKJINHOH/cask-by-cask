@@ -79,7 +79,7 @@ ARM64에서 검증·빌드한다. Actions는 커밋 SHA로 고정하고 `content
    - `ref` 입력란 비워두면 `main` 배포 (기본값)
    - 🕐 **사용자 적은 시간대 권장**
 3. 자동 진행 (대상에 해당하는 잡만 실행, 나머지는 `skipped`):
-   - `build-api` (`clean test bootJar`) · `build-web` (`npm ci` → 세션 캐시 테스트 → 타입 검사 → Next.js Standalone Build) · `test-crawler` (Python 3.12 ARM64 hash lock 설치 → 전체 테스트) — 대상이면 병렬 실행
+   - `build-api` (`fonts-noto-cjk` 설치 → `clean test bootJar`) · `build-web` (`npm ci` → 세션 캐시 테스트 → 타입 검사 → Next.js Standalone Build) · `test-crawler` (Python 3.12 ARM64 hash lock 설치 → 전체 테스트) — 대상이면 병렬 실행
    - `deploy` 잡은 운영 셸 스크립트 구문과 API/Web 실패·롤백 상태 전이 테스트를 먼저 검사하고, 빌드된 산출물만 서버로 전송 → 해당 교체 스크립트 실행
    - both 일 때: 프론트 먼저 교체(Next.js 서비스 재시작) → 백엔드 jar 교체 → 재시작 → **readiness 헬스체크**
 4. API/Web은 신규 서비스 재시작과 로컬 health를 모두 통과해야 성공한다. 실패하면 직전 파일을 복원하고, **구버전 재시작과 로컬 health까지 통과한 경우에만 롤백 복구 완료**로 기록한다. 롤백이 성공해도 해당 Actions 배포는 실패로 남는다.
@@ -556,7 +556,8 @@ Meta 제공 식별자·permalink를 삭제한 뒤 확인 코드 상태 URL을 �
 nginx/Cloudflare에서 이 경로를 인증 또는 hotlink 차단 대상으로 지정하지 않고 디스크·백업 점검에 포함한다.
 리뷰 이미지 하단 주류명 자막과 한글 썸네일 합성을 위해 `fonts-noto-cjk`를 설치하고
 `fc-match 'Noto Sans CJK KR'` 결과를 배포 전 점검한다. 글꼴이 없으면 SNS 이미지 발행은
-실패 이력으로 남고 Meta에는 게시하지 않는다.
+실패 이력으로 남고 Meta에는 게시하지 않는다. GitHub Actions의 `build-api` 잡도 테스트 전에
+같은 글꼴 패키지를 설치해 운영 서버와 동일한 한글 렌더링 조건을 검증한다.
 
 ---
 
