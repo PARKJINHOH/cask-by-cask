@@ -197,7 +197,7 @@ class TasteTreeServiceTest {
                 17L, TasteTreeVersionStatus.DRAFT)).willReturn(Optional.of(draft));
         given(draft.getContentJson()).willReturn("""
                 {"schemaVersion":8,"nodes":[
-                  {"key":"start","type":"START","titleKo":"첫 주류","promptKo":"다음 주류로 이동할까요?","positionX":0,"positionY":0,
+                  {"key":"start","type":"START","titleKo":"첫 주류","positionX":0,"positionY":0,
                    "whisky":{"source":"REGISTERED","spiritId":88}},
                   {"key":"next","type":"WHISKY","titleKo":"다음 주류","positionX":0,"positionY":200,
                    "whisky":{"source":"CUSTOM","nameKo":"다음 주류"}}
@@ -240,7 +240,7 @@ class TasteTreeServiceTest {
     }
 
     @Test
-    void publishRejectsConnectedMainNodeWithoutQuestion() {
+    void publishAcceptsConnectedMainNodeWithoutSpiritOrQuestion() {
         TasteTree tree = org.mockito.Mockito.mock(TasteTree.class);
         TasteTreeVersion draft = org.mockito.Mockito.mock(TasteTreeVersion.class);
         given(treeRepository.findOwnedById(19L, 7L)).willReturn(Optional.of(tree));
@@ -250,14 +250,43 @@ class TasteTreeServiceTest {
         given(draft.getContentJson()).willReturn("""
                 {"schemaVersion":9,"nodes":[
                   {"key":"start","type":"START","titleKo":"시작","positionX":0,"positionY":0},
-                  {"key":"spirit","type":"WHISKY","titleKo":"도착","positionX":0,"positionY":200,
-                   "whisky":{"source":"CUSTOM","nameKo":"도착"}}
+                  {"key":"left","type":"WHISKY","titleKo":"왼쪽 주류","positionX":-200,"positionY":200,
+                   "whisky":{"source":"CUSTOM","nameKo":"왼쪽 주류"}},
+                  {"key":"right","type":"WHISKY","titleKo":"오른쪽 주류","positionX":200,"positionY":200,
+                   "whisky":{"source":"CUSTOM","nameKo":"오른쪽 주류"}}
                 ],"edges":[
-                  {"key":"edge-1","sourceNodeKey":"start","targetNodeKey":"spirit","labelKo":"다음","sortOrder":0}
+                  {"key":"edge-1","sourceNodeKey":"start","targetNodeKey":"left","labelKo":"왼쪽","sortOrder":0},
+                  {"key":"edge-2","sourceNodeKey":"start","targetNodeKey":"right","labelKo":"오른쪽","sortOrder":1}
                 ]}
                 """);
 
-        assertThatThrownBy(() -> service.publish(19L, 7L))
+        assertThatCode(() -> service.publish(19L, 7L)).doesNotThrowAnyException();
+        verify(draft).publish();
+    }
+
+    @Test
+    void publishRejectsMainSpiritBranchWithoutQuestion() {
+        TasteTree tree = org.mockito.Mockito.mock(TasteTree.class);
+        TasteTreeVersion draft = org.mockito.Mockito.mock(TasteTreeVersion.class);
+        given(treeRepository.findOwnedById(20L, 7L)).willReturn(Optional.of(tree));
+        given(tree.getId()).willReturn(20L);
+        given(versionRepository.findFirstByTreeIdAndStatusOrderByVersionNumberDesc(
+                20L, TasteTreeVersionStatus.DRAFT)).willReturn(Optional.of(draft));
+        given(draft.getContentJson()).willReturn("""
+                {"schemaVersion":9,"nodes":[
+                  {"key":"start","type":"START","titleKo":"첫 주류","positionX":0,"positionY":0,
+                   "whisky":{"source":"CUSTOM","nameKo":"첫 주류"}},
+                  {"key":"left","type":"WHISKY","titleKo":"왼쪽 주류","positionX":-200,"positionY":200,
+                   "whisky":{"source":"CUSTOM","nameKo":"왼쪽 주류"}},
+                  {"key":"right","type":"WHISKY","titleKo":"오른쪽 주류","positionX":200,"positionY":200,
+                   "whisky":{"source":"CUSTOM","nameKo":"오른쪽 주류"}}
+                ],"edges":[
+                  {"key":"edge-1","sourceNodeKey":"start","targetNodeKey":"left","labelKo":"왼쪽","sortOrder":0},
+                  {"key":"edge-2","sourceNodeKey":"start","targetNodeKey":"right","labelKo":"오른쪽","sortOrder":1}
+                ]}
+                """);
+
+        assertThatThrownBy(() -> service.publish(20L, 7L))
                 .isInstanceOfSatisfying(CustomException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.TASTE_TREE_INVALID_STRUCTURE));
         verify(draft, never()).publish();

@@ -186,8 +186,11 @@ export default function TasteTreePlayer({ content, language, treeTitle, creatorN
   const isQuestion = current.type === 'CHOICE'
   const currentPrompt = isQuestion
     ? ''
-    : localized(current.promptKo, current.promptEn, isEn)
-      || (isMain && !currentWhisky ? currentTitle : '')
+    : isMain && !currentWhisky
+      ? currentTitle
+      : isMain && outgoing.length <= 1
+        ? ''
+        : localized(current.promptKo, current.promptEn, isEn)
   const randomTip = isEn || tipIndex == null ? null : factsKo[tipIndex] ?? null
 
   if (!outgoing.length) {
@@ -255,7 +258,7 @@ export default function TasteTreePlayer({ content, language, treeTitle, creatorN
           </div>
 
           <div className="p-5 sm:p-7">
-            <h2 className="break-keep text-center text-2xl font-black leading-tight text-stone-950 sm:text-3xl">{currentTitle}</h2>
+            {(!isMain || currentWhisky) && <h2 className="break-keep text-center text-2xl font-black leading-tight text-stone-950 sm:text-3xl">{currentTitle}</h2>}
             {currentDescription && <p className="mt-3 break-keep text-sm leading-6 text-stone-500">{currentDescription}</p>}
             {currentWhisky && <div className="mt-4 flex flex-wrap items-center gap-2">
               {currentWhisky.priceText && <span className="rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-black text-amber-900">{currentWhisky.priceText}</span>}

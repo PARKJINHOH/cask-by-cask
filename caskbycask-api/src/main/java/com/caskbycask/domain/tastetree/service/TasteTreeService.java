@@ -464,11 +464,17 @@ public class TasteTreeService {
         if (nodes.stream().noneMatch(node -> node.type() != NodeType.START)) invalidStructure();
         for (Node node : nodes) {
             if (node.type() != NodeType.START && node.type() != NodeType.WHISKY && node.type() != NodeType.CHOICE) invalidStructure();
-            boolean hasOutgoing = !adjacency.getOrDefault(node.key(), List.of()).isEmpty();
+            int outgoingCount = adjacency.getOrDefault(node.key(), List.of()).size();
+            boolean hasOutgoing = outgoingCount > 0;
             if (node.type() == NodeType.CHOICE && (node.whisky() != null || !hasOutgoing)) invalidStructure();
-            if (node.type() != NodeType.CHOICE && hasOutgoing && !StringUtils.hasText(node.promptKo())) invalidStructure();
+            if (requiresSelectionPrompt(node, outgoingCount) && !StringUtils.hasText(node.promptKo())) invalidStructure();
         }
         validateWhiskies(nodes);
+    }
+
+    private boolean requiresSelectionPrompt(Node node, int outgoingCount) {
+        if (node.type() == NodeType.WHISKY) return outgoingCount > 0;
+        return node.type() == NodeType.START && node.whisky() != null && outgoingCount > 1;
     }
 
     private void walkAcyclic(String key, Map<String, List<String>> adjacency, Set<String> visiting, Set<String> visited) {
@@ -502,9 +508,10 @@ public class TasteTreeService {
 
     private TasteTreeContent normalize(TasteTreeContent content) {
         List<Edge> edges = safeEdges(content);
-        Set<String> sourceKeys = edges.stream().map(Edge::sourceNodeKey).collect(Collectors.toSet());
+        Map<String, Integer> outgoingCounts = new HashMap<>();
+        edges.forEach(edge -> outgoingCounts.merge(edge.sourceNodeKey(), 1, Integer::sum));
         List<Node> nodes = safeNodes(content).stream().map(node -> {
-            boolean acceptsPrompt = node.type() != NodeType.CHOICE && sourceKeys.contains(node.key());
+            boolean acceptsPrompt = requiresSelectionPrompt(node, outgoingCounts.getOrDefault(node.key(), 0));
             return new Node(node.key(), node.type(), node.titleKo(), node.titleEn(), node.descriptionKo(),
                     node.descriptionEn(), acceptsPrompt ? trimToNull(node.promptKo()) : null,
                     acceptsPrompt ? trimToNull(node.promptEn()) : null,

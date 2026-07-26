@@ -2142,7 +2142,7 @@
       "errorNodeTitleLength": "Node titles can contain up to 50 characters per language.",
       "errorNodeDescriptionLength": "Node descriptions can contain up to 200 characters per language.",
       "errorNodePromptLength": "Selection questions can contain up to 120 characters per language.",
-      "errorNodePromptRequired": "Enter a question for every Main or Spirit node that has a next connection.",
+      "errorNodePromptRequired": "Enter a question for Spirit nodes with a next connection and Main nodes with a spirit that branch into two or more choices.",
       "errorItem": "Add at least one spirit or question node after the main node.",
       "errorQuestionOption": "Add at least one option to every question.",
       "errorResultCount": "Each Result node must contain one to three spirits.",
