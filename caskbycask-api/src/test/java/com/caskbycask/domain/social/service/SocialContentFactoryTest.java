@@ -11,6 +11,7 @@ import com.caskbycask.domain.social.entity.enums.SocialSourceType;
 import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.domain.spirit.entity.SpiritImage;
 import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
+import com.caskbycask.domain.spirit.entity.enums.VariantType;
 import com.caskbycask.domain.spirit.repository.SpiritImageRepository;
 import com.caskbycask.domain.user.entity.User;
 import org.junit.jupiter.api.Test;
@@ -137,5 +138,67 @@ class SocialContentFactoryTest {
                 "#위스키 #TestWhisky #캐바캐 #CaskByCask");
         assertThat(english.caption()).doesNotContain("#테스트위스키");
         assertThat(english.caption()).doesNotContain("Read the full review →");
+    }
+
+    @Test
+    void reviewImageTitleUsesOnlyNameAndSeriesIdentifierForEdition() {
+        SocialPublishingProperties properties = new SocialPublishingProperties();
+        properties.setSiteUrl("https://www.caskbycask.net");
+        SocialContentFactory factory = new SocialContentFactory(
+                reviewRepository, postRepository, imageRepository, properties);
+
+        Spirit spirit = Spirit.builder()
+                .nameKo("더 글렌드로낙")
+                .nameEn("The Glendronach")
+                .category(SpiritCategory.WHISKY)
+                .variantType(VariantType.SINGLE_CASK)
+                .seriesIdentifier("싱글 캐스크")
+                .seriesIdentifierEn("Single Cask")
+                .variantValue("캐스크 123")
+                .variantValueEn("Cask 123")
+                .build();
+        ReflectionTestUtils.setField(spirit, "id", 30L);
+        User user = User.builder().email("reviewer@example.com").nickname("리뷰어").build();
+        Review review = Review.builder()
+                .spirit(spirit)
+                .user(user)
+                .noseScore(BigDecimal.valueOf(90))
+                .tasteScore(BigDecimal.valueOf(90))
+                .finishScore(BigDecimal.valueOf(90))
+                .totalScore(BigDecimal.valueOf(90))
+                .build();
+        ReflectionTestUtils.setField(review, "id", 40L);
+        SpiritImage image = SpiritImage.builder()
+                .spirit(spirit)
+                .imageUrl("/uploads/spirits/review.jpg")
+                .isPrimary(true)
+                .build();
+        given(reviewRepository.findPublicById(40L)).willReturn(Optional.of(review));
+        given(imageRepository.findBySpiritIdAndIsPrimaryTrue(30L)).willReturn(Optional.of(image));
+
+        SocialPublishBundle koreanBundle = reviewBundle(40L, "ko");
+        SocialPublishBundle englishBundle = reviewBundle(40L, "en");
+
+        SocialPublicationContent korean = factory.create(koreanBundle, SocialPlatform.INSTAGRAM);
+        SocialPublicationContent english = factory.create(englishBundle, SocialPlatform.INSTAGRAM);
+
+        assertThat(korean.displayTitle()).isEqualTo("더 글렌드로낙 싱글 캐스크 캐스크 123");
+        assertThat(korean.imageTitle()).isEqualTo("더 글렌드로낙 싱글 캐스크");
+        assertThat(english.displayTitle()).isEqualTo("The Glendronach Single Cask Cask 123");
+        assertThat(english.imageTitle()).isEqualTo("The Glendronach Single Cask");
+    }
+
+    private static SocialPublishBundle reviewBundle(Long reviewId, String locale) {
+        return SocialPublishBundle.builder()
+                .originType(SocialSourceType.REVIEW)
+                .originId(reviewId)
+                .contentType(SocialSourceType.REVIEW)
+                .contentId(reviewId)
+                .locale(locale)
+                .consentVersion("2026-07-24")
+                .consentedAt(LocalDateTime.now())
+                .mediaMode(SocialMediaMode.REVIEW_IMAGE)
+                .shortCode("AbCdEf2345")
+                .build();
     }
 }

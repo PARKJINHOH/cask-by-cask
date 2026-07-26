@@ -109,7 +109,8 @@ public class SocialContentFactory {
                 caption,
                 imageUrl,
                 "/" + bundle.getLocale() + "/reviews/" + review.getId(),
-                name
+                name,
+                reviewImageTitle(spirit, english, name)
         );
     }
 
@@ -225,6 +226,24 @@ public class SocialContentFactory {
 
     private static void addIfPresent(List<String> values, String value) {
         if (value != null && !value.isBlank()) values.add(value.trim());
+    }
+
+    private static String reviewImageTitle(Spirit spirit, boolean english, String fullName) {
+        if (!SpiritSlugUtils.hasEdition(spirit)) return fullName;
+
+        List<String> parts = new ArrayList<>(2);
+        addIfPresent(parts, english
+                ? firstNonBlank(spirit.getNameEn(), spirit.getNameKo())
+                : spirit.getNameKo());
+        addIfPresent(parts, english
+                ? firstNonBlank(spirit.getSeriesIdentifierEn(), spirit.getSeriesIdentifier())
+                : spirit.getSeriesIdentifier());
+        return parts.isEmpty() ? fullName : String.join(" ", parts);
+    }
+
+    private static String firstNonBlank(String primary, String fallback) {
+        if (primary != null && !primary.isBlank()) return primary.trim();
+        return fallback == null ? null : fallback.trim();
     }
 
     private static String hashtag(String value) {

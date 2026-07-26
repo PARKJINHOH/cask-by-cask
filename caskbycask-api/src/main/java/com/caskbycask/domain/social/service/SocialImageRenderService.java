@@ -13,7 +13,7 @@ import javax.imageio.ImageWriteParam;
 import javax.imageio.ImageWriter;
 import javax.imageio.stream.ImageOutputStream;
 import java.awt.*;
-import java.awt.font.FontRenderContext;
+import java.awt.font.TextAttribute;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -29,6 +29,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -37,12 +38,13 @@ public class SocialImageRenderService {
 
     public static final int WIDTH = 1080;
     public static final int HEIGHT = 1350;
-    private static final int REVIEW_CAPTION_HORIZONTAL_MARGIN = 72;
-    private static final int REVIEW_CAPTION_BOTTOM_MARGIN = 60;
-    private static final int REVIEW_CAPTION_HORIZONTAL_PADDING = 56;
-    private static final int REVIEW_CAPTION_VERTICAL_PADDING = 32;
-    private static final int REVIEW_CAPTION_FONT_SIZE = 56;
-    private static final int REVIEW_CAPTION_MAX_LINES = 2;
+    private static final int REVIEW_CAPTION_HORIZONTAL_MARGIN = 64;
+    private static final int REVIEW_CAPTION_BOTTOM_MARGIN = 48;
+    private static final int REVIEW_CAPTION_HORIZONTAL_PADDING = 60;
+    private static final int REVIEW_CAPTION_VERTICAL_PADDING = 28;
+    private static final int REVIEW_CAPTION_START_FONT_SIZE = 58;
+    private static final int REVIEW_CAPTION_MIN_FONT_SIZE = 26;
+    private static final int REVIEW_CAPTION_PREFERRED_MAX_LINES = 3;
     private static final long MAX_SOURCE_BYTES = 15L * 1024 * 1024;
     private static final long MAX_OUTPUT_BYTES = 8L * 1024 * 1024;
     private static final long MAX_SOURCE_PIXELS = 40_000_000L;
@@ -142,25 +144,30 @@ public class SocialImageRenderService {
         String printableName = spiritName == null ? "" : spiritName.replaceAll("\\s+", " ").trim();
         if (printableName.isEmpty()) return;
 
-        Font font = preferredFont(REVIEW_CAPTION_FONT_SIZE, Font.BOLD);
+        int boxWidth = WIDTH - REVIEW_CAPTION_HORIZONTAL_MARGIN * 2;
+        int textWidth = boxWidth - REVIEW_CAPTION_HORIZONTAL_PADDING * 2;
+        ReviewCaptionLayout layout = fitReviewCaption(graphics, printableName, textWidth);
+        Font font = layout.font();
         if (font.canDisplayUpTo(printableName) >= 0) {
             throw new IllegalStateException(
                     "The server font cannot display the SNS thumbnail text. Install Noto Sans CJK KR.");
         }
         graphics.setFont(font);
-        FontMetrics metrics = graphics.getFontMetrics();
-        int boxWidth = WIDTH - REVIEW_CAPTION_HORIZONTAL_MARGIN * 2;
-        int textWidth = boxWidth - REVIEW_CAPTION_HORIZONTAL_PADDING * 2;
-        List<String> lines = wrap(printableName, metrics, textWidth, REVIEW_CAPTION_MAX_LINES);
-        int lineGap = 10;
+        FontMetrics metrics = layout.metrics();
+        List<String> lines = layout.lines();
+        int lineGap = Math.max(6, font.getSize() / 7);
         int textHeight = lines.size() * metrics.getHeight()
                 + Math.max(0, lines.size() - 1) * lineGap;
         int boxHeight = textHeight + REVIEW_CAPTION_VERTICAL_PADDING * 2;
         int boxX = REVIEW_CAPTION_HORIZONTAL_MARGIN;
         int boxY = HEIGHT - REVIEW_CAPTION_BOTTOM_MARGIN - boxHeight;
 
-        graphics.setColor(new Color(15, 15, 15, 230));
+        graphics.setPaint(new GradientPaint(
+                0, boxY, new Color(10, 10, 12, 218),
+                0, boxY + boxHeight, new Color(18, 18, 21, 235)));
         graphics.fillRect(boxX, boxY, boxWidth, boxHeight);
+        graphics.setColor(new Color(255, 255, 255, 38));
+        graphics.drawLine(boxX, boxY, boxX + boxWidth - 1, boxY);
 
         graphics.setColor(Color.WHITE);
         int baseline = boxY + REVIEW_CAPTION_VERTICAL_PADDING + metrics.getAscent();
@@ -169,6 +176,34 @@ public class SocialImageRenderService {
             graphics.drawString(line, textX, baseline);
             baseline += metrics.getHeight() + lineGap;
         }
+    }
+
+    private static ReviewCaptionLayout fitReviewCaption(Graphics2D graphics,
+                                                        String text, int maxWidth) {
+        ReviewCaptionLayout smallest = null;
+        for (int size = REVIEW_CAPTION_START_FONT_SIZE;
+             size >= REVIEW_CAPTION_MIN_FONT_SIZE; size -= 2) {
+            Font font = reviewCaptionFont(size);
+            graphics.setFont(font);
+            FontMetrics metrics = graphics.getFontMetrics();
+            List<String> lines = wrapFully(text, metrics, maxWidth);
+            ReviewCaptionLayout candidate = new ReviewCaptionLayout(font, metrics, lines);
+            smallest = candidate;
+            if (lines.size() <= REVIEW_CAPTION_PREFERRED_MAX_LINES) return candidate;
+        }
+        return smallest;
+    }
+
+    private static Font reviewCaptionFont(int size) {
+        Font base = preferredFont(size, Font.PLAIN);
+        return base.deriveFont(Map.of(
+                TextAttribute.WEIGHT, TextAttribute.WEIGHT_SEMIBOLD,
+                TextAttribute.TRACKING, -0.01f
+        ));
+    }
+
+    static List<String> wrapFully(String text, FontMetrics metrics, int maxWidth) {
+        return wrap(text, metrics, maxWidth, Integer.MAX_VALUE);
     }
 
     private BufferedImage composeCovered(BufferedImage source) {
@@ -407,4 +442,6 @@ public class SocialImageRenderService {
         }
         return lines;
     }
+
+    private record ReviewCaptionLayout(Font font, FontMetrics metrics, List<String> lines) {}
 }

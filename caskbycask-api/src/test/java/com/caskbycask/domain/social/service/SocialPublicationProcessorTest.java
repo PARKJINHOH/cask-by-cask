@@ -120,7 +120,8 @@ class SocialPublicationProcessorTest {
         when(stateService.claim(11L)).thenReturn(Optional.of(publication));
         when(contentFactory.create(publication.getBundle(), SocialPlatform.INSTAGRAM))
                 .thenReturn(new SocialPublicationContent(
-                        "caption", "https://source/image.jpg", "/ko/reviews/77", "글렌피딕 12년"));
+                        "caption", "https://source/image.jpg", "/ko/reviews/77",
+                        "글렌피딕 12년 캐스크 123", "글렌피딕 12년"));
         when(imageRenderService.renderReview(
                 "https://source/image.jpg", "글렌피딕 12년"))
                 .thenReturn("/api/social/images/review.jpg");

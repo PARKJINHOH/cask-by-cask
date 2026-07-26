@@ -9,6 +9,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import javax.imageio.ImageIO;
 import java.awt.Color;
+import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
@@ -99,6 +100,22 @@ class SocialImageRenderServiceTest {
 
         assertThat(rendered.getWidth()).isEqualTo(1080);
         assertThat(rendered.getHeight()).isEqualTo(1350);
+    }
+
+    @Test
+    void wrapsLongReviewNameWithoutEllipsisOrDroppedText() {
+        BufferedImage image = new BufferedImage(1080, 1350, BufferedImage.TYPE_INT_RGB);
+        Graphics2D graphics = image.createGraphics();
+        graphics.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 40));
+        String name = "The Macallan Exceptional Single Malt Whisky Anniversary Collection Full Name";
+
+        var lines = SocialImageRenderService.wrapFully(
+                name, graphics.getFontMetrics(), 360);
+        graphics.dispose();
+
+        assertThat(lines).noneMatch(line -> line.contains("…") || line.endsWith("..."));
+        assertThat(String.join("", lines).replaceAll("\\s+", ""))
+                .isEqualTo(name.replaceAll("\\s+", ""));
     }
 
     @Test

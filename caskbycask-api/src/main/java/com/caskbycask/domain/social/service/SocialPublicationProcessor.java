@@ -123,7 +123,7 @@ public class SocialPublicationProcessor {
         }
         String relativeImage = switch (publication.getBundle().getMediaMode()) {
             case REVIEW_IMAGE -> imageRenderService.renderReview(
-                    content.sourceImageUrl(), content.displayTitle());
+                    content.sourceImageUrl(), content.imageTitle());
             case DIRECT_UPLOAD -> imageRenderService.renderDirect(publication.getBundle().getDirectImageUrl());
             case TEMPLATE -> imageRenderService.renderTemplate(
                     publication.getBundle().getThumbnailTemplate().getBackgroundImageUrl(),
