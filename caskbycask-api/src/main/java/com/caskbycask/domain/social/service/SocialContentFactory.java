@@ -59,7 +59,7 @@ public class SocialContentFactory {
                 ? SpiritSlugUtils.displayNameEn(spirit) : SpiritSlugUtils.displayNameKo(spirit);
         String shortUrl = normalizedSiteUrl() + "/s/" + bundle.getShortCode();
         boolean english = "en".equals(bundle.getLocale());
-        String linkLine = (english ? "Read the full review → " : "전체 리뷰 보기 → ") + shortUrl;
+        String linkLine = shortUrl;
         String linkBlock = platform == SocialPlatform.INSTAGRAM
                 ? (english ? "Find the full review via the link in our bio 🔗"
                            : "전체 리뷰는 프로필 링크에서 확인하세요 🔗")
@@ -190,10 +190,6 @@ public class SocialContentFactory {
 
     private static String reviewHashtags(Spirit spirit, String displayName) {
         List<String> tags = new ArrayList<>(4);
-        tags.add("#CaskByCask");
-        tags.add("#캐바캐");
-        String spiritNameTag = hashtag(displayName);
-        if (spiritNameTag != null) tags.add(spiritNameTag);
         String categoryTag = switch (spirit.getCategory()) {
             case WHISKY -> "#위스키";
             case WINE -> "#와인";
@@ -201,6 +197,10 @@ public class SocialContentFactory {
             default -> null;
         };
         if (categoryTag != null) tags.add(categoryTag);
+        String spiritNameTag = hashtag(displayName);
+        if (spiritNameTag != null) tags.add(spiritNameTag);
+        tags.add("#캐바캐");
+        tags.add("#CaskByCask");
         return String.join(" ", tags);
     }
 

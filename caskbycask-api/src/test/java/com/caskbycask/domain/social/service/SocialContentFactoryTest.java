@@ -95,9 +95,10 @@ class SocialContentFactoryTest {
         assertThat(content.caption()).doesNotContain("테이스팅 노트", "향향향", "맛맛맛", "피니시피니시");
         assertThat(content.caption()).contains("총평: ", "...");
         assertThat(content.caption()).contains(
-                "#CaskByCask #캐바캐 #테스트위스키 #위스키");
+                "#위스키 #테스트위스키 #캐바캐 #CaskByCask");
         assertThat(content.caption()).endsWith(
-                "전체 리뷰 보기 → https://www.caskbycask.net/s/AbCdEf2345");
+                "https://www.caskbycask.net/s/AbCdEf2345");
+        assertThat(content.caption()).doesNotContain("전체 리뷰 보기 →");
         assertThat(content.caption().codePointCount(0, content.caption().length())).isLessThanOrEqualTo(500);
 
         SocialPublicationContent instagram = factory.create(bundle, SocialPlatform.INSTAGRAM);
@@ -106,12 +107,12 @@ class SocialContentFactoryTest {
                 테스트 위스키 후기
 
                 전체 리뷰는 프로필 링크에서 확인하세요 🔗
-                전체 리뷰 보기 → https://www.caskbycask.net/s/AbCdEf2345
+                https://www.caskbycask.net/s/AbCdEf2345
 
                 향
                 """);
         assertThat(instagram.caption()).endsWith(
-                "#CaskByCask #캐바캐 #테스트위스키 #위스키");
+                "#위스키 #테스트위스키 #캐바캐 #CaskByCask");
         assertThat(instagram.caption().codePointCount(0, instagram.caption().length()))
                 .isLessThanOrEqualTo(2200);
         assertThat(content.caption()).doesNotContain(
@@ -133,7 +134,8 @@ class SocialContentFactoryTest {
                 englishBundle, SocialPlatform.INSTAGRAM);
 
         assertThat(english.caption()).contains(
-                "#CaskByCask #캐바캐 #TestWhisky #위스키");
+                "#위스키 #TestWhisky #캐바캐 #CaskByCask");
         assertThat(english.caption()).doesNotContain("#테스트위스키");
+        assertThat(english.caption()).doesNotContain("Read the full review →");
     }
 }
