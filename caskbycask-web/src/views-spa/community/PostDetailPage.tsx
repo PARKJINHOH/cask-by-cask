@@ -19,10 +19,15 @@ import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 import { SITE_URL } from '@/shared/config/site'
 import { buildBreadcrumbSchema } from '@/shared/utils/seoSchema'
 
+function toKstIsoDateTime(value: string): string {
+  if (/Z$|[+-]\d{2}:?\d{2}$/.test(value)) return value
+  return value.includes('T') ? `${value}+09:00` : value
+}
+
 export default function PostDetailPage() {
   const { boardType, id } = useParams<{ boardType: string; id: string }>()
   const postId = Number(id)
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
   const { isLoggedIn } = useAuthStore()
@@ -154,41 +159,90 @@ export default function PostDetailPage() {
 
   const seoDescription = stripHtmlForMeta(post.contentSanitized ?? '', 160)
     || `CaskByCask 커뮤니티 게시글 — ${post.title}`
+  const seoText = stripHtmlForMeta(post.contentSanitized ?? '', Number.MAX_SAFE_INTEGER)
+  const canonicalBoardPath = post.boardType === 'NOTICE' ? 'notice' : 'free'
+  const seoCanonical = buildCanonical(`/ko/community/${canonicalBoardPath}/${postId}`)
+  const seoImage = post.images[0]?.imageUrl
+    ? buildCanonical(post.images[0].imageUrl)
+    : undefined
+  const isEn = i18n.language.startsWith('en')
+  const isSeoRestricted = !!post.isBlocked || !!post.isLocked || !!post.isHidden || !!post.adultOnly
+  const seoJsonLd = !isEn && !isSeoRestricted && (seoText || seoImage)
+    ? [
+        {
+          '@type': canonicalBoardPath === 'notice' ? 'NewsArticle' : 'DiscussionForumPosting',
+          '@id': `${seoCanonical}#posting`,
+          mainEntityOfPage: { '@id': seoCanonical },
+          headline: post.title,
+          text: seoText || undefined,
+          articleBody: seoText || undefined,
+          image: seoImage,
+          url: seoCanonical,
+          datePublished: toKstIsoDateTime(post.createdAt),
+          dateModified: toKstIsoDateTime(post.updatedAt || post.createdAt),
+          articleSection: canonicalBoardPath === 'notice' ? '소식' : '자유게시판',
+          inLanguage: 'ko-KR',
+          isAccessibleForFree: true,
+          author: canonicalBoardPath === 'notice'
+            ? { '@type': 'Organization', name: '소식관리자', url: SITE_URL }
+            : {
+                '@type': 'Person',
+                name: post.authorNickname || 'User',
+                url: post.authorId
+                  ? buildCanonical(`/ko/users/${post.authorId}/reviews`)
+                  : undefined,
+              },
+          publisher: {
+            '@type': 'Organization',
+            name: 'CaskByCask',
+            url: SITE_URL,
+            logo: { '@type': 'ImageObject', url: `${SITE_URL}/logo.png` },
+          },
+          citation: post.sourceUrls.length ? post.sourceUrls : undefined,
+          keywords: post.hashtags.length ? post.hashtags.join(', ') : undefined,
+          commentCount: post.commentCount,
+          interactionStatistic: [
+            {
+              '@type': 'InteractionCounter',
+              interactionType: 'https://schema.org/LikeAction',
+              userInteractionCount: post.likeCount,
+            },
+            {
+              '@type': 'InteractionCounter',
+              interactionType: 'https://schema.org/CommentAction',
+              userInteractionCount: post.commentCount,
+            },
+            {
+              '@type': 'InteractionCounter',
+              interactionType: 'https://schema.org/ViewAction',
+              userInteractionCount: post.viewCount,
+            },
+          ],
+        },
+        buildBreadcrumbSchema([
+          { name: '홈', path: '/ko' },
+          {
+            name: canonicalBoardPath === 'notice' ? '소식 게시판' : '자유게시판',
+            path: `/ko/community/${canonicalBoardPath}`,
+          },
+          {
+            name: post.title,
+            path: `/ko/community/${canonicalBoardPath}/${postId}`,
+          },
+        ]),
+      ]
+    : undefined
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       <SeoMeta
         title={post.title}
         description={seoDescription}
-        canonical={buildCanonical(`/ko/community/${boardPath}/${postId}`)}
+        canonical={seoCanonical}
         ogType="article"
-        noindex={!!post.isBlocked || !!post.isLocked || !!post.isHidden || !!post.adultOnly}
-        jsonLd={[
-          {
-            '@type': boardPath === 'notice' ? 'NewsArticle' : 'DiscussionForumPosting',
-            headline: post.title,
-            datePublished: post.createdAt,
-            dateModified: post.updatedAt ?? post.createdAt,
-            author: boardPath === 'notice'
-              ? { '@type': 'Organization', name: '소식관리자', url: SITE_URL }
-              : post.authorNickname
-                ? { '@type': 'Person', name: post.authorNickname }
-                : undefined,
-            publisher: {
-              '@type': 'Organization',
-              name: 'CaskByCask',
-              logo: { '@type': 'ImageObject', url: `${SITE_URL}/logo.png` },
-            },
-            citation: post.sourceUrls?.length ? post.sourceUrls : undefined,
-            keywords: post.hashtags?.length ? post.hashtags : undefined,
-          },
-          buildBreadcrumbSchema([
-            { name: '홈', path: '/ko' },
-            { name: boardPath === 'notice' ? '소식 게시판' : '자유게시판',
-              path: `/ko/community/${boardPath}` },
-            { name: post.title, path: `/ko/community/${boardPath}/${postId}` },
-          ]),
-        ]}
+        noindex={isSeoRestricted}
+        preferExistingJsonLd={!isEn}
+        jsonLd={seoJsonLd}
       />
 
       {/* 링크 복사 상단 슬라이드 배너 — RouteTransition(.route-enter)의 transform 으로

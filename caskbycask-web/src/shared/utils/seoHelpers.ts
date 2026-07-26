@@ -162,6 +162,7 @@ interface CommunityPostResponse {
   contentSanitized?: string | null
   authorNickname?: string | null
   authorName?: string | null
+  authorId?: number | null
   viewCount?: number | null
   likeCount?: number | null
   commentCount?: number | null
@@ -189,6 +190,7 @@ interface CommunityPostListItemResponse {
 interface CommunityPostCommentResponse {
   id: number
   authorNickname?: string | null
+  authorId?: number | null
   content?: string | null
   children?: CommunityPostCommentResponse[] | null
   createdAt?: string | null
@@ -382,7 +384,7 @@ function buildCommentJsonLd(
   if (comment.isDeleted || comment.isHidden || comment.isSecretMasked) return null
 
   const text = stripHtmlAndSummarize(comment.content || '', 500)
-  if (!text) return null
+  if (!text || !comment.createdAt) return null
 
   const childComments = (comment.children || [])
     .map((child) => buildCommentJsonLd(child, canonical))
@@ -396,6 +398,7 @@ function buildCommentJsonLd(
     'author': {
       '@type': 'Person',
       'name': comment.authorNickname || 'User',
+      'url': comment.authorId ? `${SITE_URL}/ko/users/${comment.authorId}/reviews` : undefined,
     },
     'comment': childComments.length > 0 ? childComments : undefined,
   }
@@ -2128,7 +2131,7 @@ export async function getCommunityPostJsonLd(boardType: string, id: string, lang
   const body = getPostContentHtml(post)
   const text = stripHtmlToText(body)
   const image = toAbsoluteImageUrl(post.imageUrl || post.images?.[0]?.imageUrl)
-  if (!text && !image) return null
+  if ((!text && !image) || !post.createdAt) return null
   const canonicalBoard = post.boardType?.toUpperCase() === 'NOTICE' ? 'notice' : 'free'
   const isNewsArticle = canonicalBoard === 'notice'
   const canonical = `${SITE_URL}/ko/community/${canonicalBoard}/${numericId}`
@@ -2193,6 +2196,7 @@ export async function getCommunityPostJsonLd(boardType: string, id: string, lang
         'author': {
           '@type': 'Person',
           'name': post.authorNickname || post.authorName || 'User',
+          'url': post.authorId ? `${SITE_URL}/ko/users/${post.authorId}/reviews` : undefined,
         },
         'interactionStatistic': [
           {

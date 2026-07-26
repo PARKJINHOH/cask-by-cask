@@ -12,6 +12,7 @@ const representativeSpiritIds = (process.env.SEO_VERIFY_SPIRIT_IDS || '295,296,3
   .map((value) => value.trim())
   .filter(Boolean)
 const representativeReviewId = (process.env.SEO_VERIFY_REVIEW_ID || '11').trim()
+const representativeCommunityPostId = (process.env.SEO_VERIFY_COMMUNITY_POST_ID || '2').trim()
 const boardSeoCases = [
   {
     path: '/ko/community/free',
@@ -24,6 +25,21 @@ const boardSeoCases = [
   { path: '/ko/community/free?prefix=1', canonical: '/ko/community/free', noindex: true },
   { path: '/ko/notices?page=1', canonical: '/ko/notices', noindex: true },
   { path: '/ko/community/byob?page=00', canonical: '/ko/community/byob', noindex: true },
+]
+const communityPostSeoCases = [
+  {
+    path: `/ko/community/free/${representativeCommunityPostId}`,
+    canonical: `/ko/community/free/${representativeCommunityPostId}`,
+    noindex: false,
+    jsonLd: true,
+    requireDiscussionForum: true,
+  },
+  {
+    path: `/en/community/free/${representativeCommunityPostId}`,
+    canonical: `/ko/community/free/${representativeCommunityPostId}`,
+    noindex: false,
+    jsonLd: false,
+  },
 ]
 const tierListSeoCases = [
   {
@@ -322,6 +338,7 @@ async function verifyRenderedHtml(categoryStates = []) {
         blockedApi: blockedApi ?? null,
         requireItemList: requireItemList ?? false,
       })),
+      ...communityPostSeoCases,
       ...tierListSeoCases.map(({ path, canonical, noindex, alternateKo, alternateEn }) => ({
         path,
         noindex,
@@ -336,6 +353,7 @@ async function verifyRenderedHtml(categoryStates = []) {
       noindex,
       blockedApi = null,
       requireItemList = false,
+      requireDiscussionForum = false,
       jsonLd = true,
       canonical = null,
       alternateKo = null,
@@ -366,6 +384,22 @@ async function verifyRenderedHtml(categoryStates = []) {
           const robots = document.querySelector('meta[name="robots"]')?.getAttribute('content') || ''
           const jsonLd = Array.from(document.querySelectorAll('script[data-cbc-route-jsonld="true"]'))
             .map((element) => element.textContent || '')
+          const schemas = jsonLd.flatMap((value) => {
+            try {
+              const parsed = JSON.parse(value)
+              return Array.isArray(parsed?.['@graph']) ? parsed['@graph'] : [parsed]
+            } catch {
+              return []
+            }
+          })
+          const discussionForum = schemas
+            .filter((schema) => schema?.['@type'] === 'DiscussionForumPosting')
+          const forum = discussionForum[0]
+          const forumHasContent = typeof forum?.text === 'string' && forum.text.trim().length > 0
+            || Boolean(forum?.image)
+            || Boolean(forum?.video)
+          const hasTimezone = (value) => typeof value === 'string'
+            && /(?:Z|[+-]\d{2}:?\d{2})$/.test(value)
           const canonicalHref = document.querySelector('link[rel="canonical"]')?.getAttribute('href') || ''
           const alternateHref = (lang) => document
             .querySelector(`link[rel="alternate"][hreflang="${lang}"]`)?.getAttribute('href') || ''
@@ -377,6 +411,15 @@ async function verifyRenderedHtml(categoryStates = []) {
             && document.querySelectorAll('script[data-cbc-route-jsonld="true"]').length === expected.jsonLdCount
             && /noindex/i.test(robots) === expected.noindex
             && (!expected.itemList || jsonLd.some((value) => value.includes('"@type":"ItemList"')))
+            && (!expected.discussionForum || (
+              discussionForum.length === 1
+              && forumHasContent
+              && forum.url === expected.canonical
+              && hasTimezone(forum.datePublished)
+              && hasTimezone(forum.dateModified)
+              && typeof forum.author?.name === 'string'
+              && forum.author.name.trim().length > 0
+            ))
             && (!expected.canonical || canonicalHref === expected.canonical)
             && (!expected.alternateKo || alternateHref('ko') === expected.alternateKo)
             && (!expected.alternateEn || alternateHref('en') === expected.alternateEn)
@@ -384,6 +427,7 @@ async function verifyRenderedHtml(categoryStates = []) {
         }, { timeout: 15_000 }, {
           noindex,
           itemList: requireItemList,
+          discussionForum: requireDiscussionForum,
           jsonLdCount: expectedJsonLdCount,
           canonical: expectedCanonical,
           alternateKo: expectedAlternateKo,
@@ -399,6 +443,31 @@ async function verifyRenderedHtml(categoryStates = []) {
           jsonLd: document.querySelectorAll('script[data-cbc-route-jsonld="true"]').length,
           itemList: Array.from(document.querySelectorAll('script[data-cbc-route-jsonld="true"]'))
             .some((element) => (element.textContent || '').includes('"@type":"ItemList"')),
+          discussionForumValid: (() => {
+            const schemas = Array.from(document.querySelectorAll('script[data-cbc-route-jsonld="true"]'))
+              .flatMap((element) => {
+                try {
+                  const parsed = JSON.parse(element.textContent || '{}')
+                  return Array.isArray(parsed?.['@graph']) ? parsed['@graph'] : [parsed]
+                } catch {
+                  return []
+                }
+              })
+            const forums = schemas.filter((schema) => schema?.['@type'] === 'DiscussionForumPosting')
+            const forum = forums[0]
+            const hasContent = typeof forum?.text === 'string' && forum.text.trim().length > 0
+              || Boolean(forum?.image)
+              || Boolean(forum?.video)
+            const hasTimezone = (value) => typeof value === 'string'
+              && /(?:Z|[+-]\d{2}:?\d{2})$/.test(value)
+            return forums.length === 1
+              && hasContent
+              && Boolean(forum?.url)
+              && hasTimezone(forum?.datePublished)
+              && hasTimezone(forum?.dateModified)
+              && typeof forum?.author?.name === 'string'
+              && forum.author.name.trim().length > 0
+          })(),
           robotsContent: document.querySelector('meta[name="robots"]')?.getAttribute('content') || '',
           canonicalHref: document.querySelector('link[rel="canonical"]')?.getAttribute('href') || '',
           alternateKo: document.querySelector('link[rel="alternate"][hreflang="ko"]')?.getAttribute('href') || '',
@@ -416,6 +485,31 @@ async function verifyRenderedHtml(categoryStates = []) {
         jsonLd: document.querySelectorAll('script[data-cbc-route-jsonld="true"]').length,
         itemList: Array.from(document.querySelectorAll('script[data-cbc-route-jsonld="true"]'))
           .some((element) => (element.textContent || '').includes('"@type":"ItemList"')),
+        discussionForumValid: (() => {
+          const schemas = Array.from(document.querySelectorAll('script[data-cbc-route-jsonld="true"]'))
+            .flatMap((element) => {
+              try {
+                const parsed = JSON.parse(element.textContent || '{}')
+                return Array.isArray(parsed?.['@graph']) ? parsed['@graph'] : [parsed]
+              } catch {
+                return []
+              }
+            })
+          const forums = schemas.filter((schema) => schema?.['@type'] === 'DiscussionForumPosting')
+          const forum = forums[0]
+          const hasContent = typeof forum?.text === 'string' && forum.text.trim().length > 0
+            || Boolean(forum?.image)
+            || Boolean(forum?.video)
+          const hasTimezone = (value) => typeof value === 'string'
+            && /(?:Z|[+-]\d{2}:?\d{2})$/.test(value)
+          return forums.length === 1
+            && hasContent
+            && Boolean(forum?.url)
+            && hasTimezone(forum?.datePublished)
+            && hasTimezone(forum?.dateModified)
+            && typeof forum?.author?.name === 'string'
+            && forum.author.name.trim().length > 0
+        })(),
         robotsContent: document.querySelector('meta[name="robots"]')?.getAttribute('content') || '',
         canonicalHref: document.querySelector('link[rel="canonical"]')?.getAttribute('href') || '',
         alternateKo: document.querySelector('link[rel="alternate"][hreflang="ko"]')?.getAttribute('href') || '',
@@ -431,6 +525,8 @@ async function verifyRenderedHtml(categoryStates = []) {
         `${path}: unexpected rendered JSON-LD count ${state.jsonLd}`)
       invariant(!requireItemList || state.itemList,
         `${path}: SSR ItemList must survive while the client list API is unavailable`)
+      invariant(!requireDiscussionForum || state.discussionForumValid,
+        `${path}: rendered DiscussionForumPosting must include content, URL, dated timezones, and author`)
       invariant(noindex === /noindex/i.test(state.robotsContent),
         `${path}: unexpected rendered robots ${state.robotsContent}`)
       if (expectedCanonical) invariant(state.canonicalHref === expectedCanonical,
@@ -444,7 +540,53 @@ async function verifyRenderedHtml(categoryStates = []) {
       if (expectedAlternateEn) invariant(state.alternateEn === expectedAlternateEn,
         `${path}: unexpected rendered en alternate ${state.alternateEn}`)
     }
-    console.log('rendered HTML: metadata, H1 and JSON-LD are singular')
+
+    const clientNavigationPath = `/ko/community/free/${representativeCommunityPostId}`
+    const clientNavigationCanonical = `${canonicalOrigin}${clientNavigationPath}`
+    await page.goto(`${baseUrl}/ko/community/free`, { waitUntil: 'domcontentloaded' })
+    await page.waitForFunction(
+      () => !document.querySelector('[data-seo-fallback]') && document.querySelectorAll('h1').length === 1,
+      { timeout: 15_000 },
+    )
+    await page.evaluate((path) => {
+      window.history.pushState({}, '', path)
+      window.dispatchEvent(new PopStateEvent('popstate'))
+    }, clientNavigationPath)
+    await page.waitForFunction((expected) => {
+      if (window.location.pathname !== expected.path
+          || document.querySelectorAll('script[data-cbc-route-jsonld="true"]').length !== 1) {
+        return false
+      }
+      const schemas = Array.from(document.querySelectorAll('script[data-cbc-route-jsonld="true"]'))
+        .flatMap((element) => {
+          try {
+            const parsed = JSON.parse(element.textContent || '{}')
+            return Array.isArray(parsed?.['@graph']) ? parsed['@graph'] : [parsed]
+          } catch {
+            return []
+          }
+        })
+      const forums = schemas.filter((schema) => schema?.['@type'] === 'DiscussionForumPosting')
+      const forum = forums[0]
+      const hasContent = typeof forum?.text === 'string' && forum.text.trim().length > 0
+        || Boolean(forum?.image)
+        || Boolean(forum?.video)
+      const hasTimezone = (value) => typeof value === 'string'
+        && /(?:Z|[+-]\d{2}:?\d{2})$/.test(value)
+      return forums.length === 1
+        && hasContent
+        && forum.url === expected.canonical
+        && hasTimezone(forum.datePublished)
+        && hasTimezone(forum.dateModified)
+        && typeof forum.author?.name === 'string'
+        && forum.author.name.trim().length > 0
+        && document.querySelector('link[rel="canonical"]')?.getAttribute('href') === expected.canonical
+    }, { timeout: 15_000 }, {
+      path: clientNavigationPath,
+      canonical: clientNavigationCanonical,
+    })
+
+    console.log('rendered HTML: metadata, H1 and JSON-LD are singular; client navigation schema is valid')
   } finally {
     await browser.close()
   }
@@ -460,6 +602,9 @@ async function main() {
   })
   for (const { path, canonical, noindex } of boardSeoCases) {
     await verifyHtml(path, { canonical, noindex, jsonLd: !noindex })
+  }
+  for (const { path, canonical, noindex, jsonLd } of communityPostSeoCases) {
+    await verifyHtml(path, { canonical, noindex, jsonLd })
   }
   for (const { path, canonical, noindex, alternateKo, alternateEn } of tierListSeoCases) {
     await verifyHtml(path, {

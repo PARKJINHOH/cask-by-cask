@@ -20,6 +20,7 @@ interface Props {
   noindex?: boolean
   deferIndexState?: boolean
   deferJsonLd?: boolean
+  preferExistingJsonLd?: boolean
   jsonLd?: JsonLd | JsonLd[]
   locale?: 'ko_KR' | 'en_US'
   alternateKo?: string
@@ -119,6 +120,42 @@ function preserveMatchingCollectionJsonLd(canonical?: string) {
   }
 }
 
+function preserveMatchingRouteJsonLd(canonical?: string): boolean {
+  const matches = Array.from(document.querySelectorAll<HTMLScriptElement>(
+    'script[data-cbc-route-jsonld="true"]',
+  ))
+  let kept = false
+
+  for (const element of matches) {
+    let matchesCanonical = false
+    try {
+      const parsed = JSON.parse(element.textContent || '{}') as { '@graph'?: unknown[] }
+      const graph = Array.isArray(parsed['@graph']) ? parsed['@graph'] : [parsed]
+      matchesCanonical = Boolean(canonical) && graph.some((node) => {
+        if (!node || typeof node !== 'object') return false
+        const schema = node as Record<string, unknown>
+        const mainEntityOfPage = schema.mainEntityOfPage
+        const mainEntityCanonical = mainEntityOfPage && typeof mainEntityOfPage === 'object'
+          ? (mainEntityOfPage as Record<string, unknown>)['@id']
+          : mainEntityOfPage
+        return schema.url === canonical
+          || schema['@id'] === canonical
+          || mainEntityCanonical === canonical
+      })
+    } catch {
+      matchesCanonical = false
+    }
+
+    if (matchesCanonical && !kept) {
+      kept = true
+    } else {
+      element.remove()
+    }
+  }
+
+  return kept
+}
+
 const MANAGED_SEO_SELECTOR = [
   'title',
   'meta[name="description"]',
@@ -152,6 +189,7 @@ export default function SeoMeta({
   noindex = false,
   deferIndexState = false,
   deferJsonLd = false,
+  preferExistingJsonLd = false,
   jsonLd,
   locale = 'ko_KR',
   alternateKo,
@@ -190,7 +228,11 @@ export default function SeoMeta({
       upsertMeta('name', 'twitter:image', ogImage)
       if (!deferIndexState) {
         if (deferJsonLd) preserveMatchingCollectionJsonLd(canonical)
-        else syncRouteJsonLd(jsonLd, noindex)
+        else if (!preferExistingJsonLd
+          || noindex
+          || !preserveMatchingRouteJsonLd(canonical)) {
+          syncRouteJsonLd(jsonLd, noindex)
+        }
       }
     }
 
@@ -218,6 +260,7 @@ export default function SeoMeta({
     ogImage,
     ogImageAlt,
     ogType,
+    preferExistingJsonLd,
     title,
   ])
 
