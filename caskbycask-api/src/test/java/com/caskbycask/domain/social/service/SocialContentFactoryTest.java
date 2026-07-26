@@ -1,6 +1,9 @@
 package com.caskbycask.domain.social.service;
 
 import com.caskbycask.domain.community.repository.PostRepository;
+import com.caskbycask.domain.community.entity.Post;
+import com.caskbycask.domain.community.entity.PostPrefix;
+import com.caskbycask.domain.community.entity.enums.BoardType;
 import com.caskbycask.domain.review.entity.Review;
 import com.caskbycask.domain.review.repository.ReviewRepository;
 import com.caskbycask.domain.social.config.SocialPublishingProperties;
@@ -184,8 +187,44 @@ class SocialContentFactoryTest {
 
         assertThat(korean.displayTitle()).isEqualTo("더 글렌드로낙 싱글 캐스크 캐스크 123");
         assertThat(korean.imageTitle()).isEqualTo("더 글렌드로낙 싱글 캐스크");
+        assertThat(korean.imageLabel()).isEqualTo("후기");
         assertThat(english.displayTitle()).isEqualTo("The Glendronach Single Cask Cask 123");
         assertThat(english.imageTitle()).isEqualTo("The Glendronach Single Cask");
+        assertThat(english.imageLabel()).isEqualTo("Review");
+    }
+
+    @Test
+    void newsImageLabelUsesRegisteredPostPrefixForRegularAndAiNews() {
+        SocialPublishingProperties properties = new SocialPublishingProperties();
+        properties.setSiteUrl("https://www.caskbycask.net");
+        SocialContentFactory factory = new SocialContentFactory(
+                reviewRepository, postRepository, imageRepository, properties);
+        User author = User.builder().email("admin@example.com").nickname("관리자").build();
+        PostPrefix prefix = PostPrefix.builder()
+                .boardType(BoardType.NOTICE)
+                .name("출시")
+                .colorHex("#2563EB")
+                .build();
+        Post post = Post.builder()
+                .boardType(BoardType.NOTICE)
+                .prefix(prefix)
+                .author(author)
+                .title("신제품 출시 소식")
+                .content("<p>본문</p>")
+                .contentSanitized("<p>본문</p>")
+                .build();
+        ReflectionTestUtils.setField(post, "id", 50L);
+        given(postRepository.findById(50L)).willReturn(Optional.of(post));
+
+        SocialPublishBundle regularBundle = postBundle(
+                50L, SocialSourceType.POST);
+        SocialPublishBundle aiBundle = postBundle(
+                50L, SocialSourceType.AI_NEWS_ARTICLE);
+
+        assertThat(factory.create(regularBundle, SocialPlatform.INSTAGRAM).imageLabel())
+                .isEqualTo("출시");
+        assertThat(factory.create(aiBundle, SocialPlatform.INSTAGRAM).imageLabel())
+                .isEqualTo("출시");
     }
 
     private static SocialPublishBundle reviewBundle(Long reviewId, String locale) {
@@ -198,6 +237,21 @@ class SocialContentFactoryTest {
                 .consentVersion("2026-07-24")
                 .consentedAt(LocalDateTime.now())
                 .mediaMode(SocialMediaMode.REVIEW_IMAGE)
+                .shortCode("AbCdEf2345")
+                .build();
+    }
+
+    private static SocialPublishBundle postBundle(Long postId, SocialSourceType originType) {
+        return SocialPublishBundle.builder()
+                .originType(originType)
+                .originId(postId)
+                .contentType(SocialSourceType.POST)
+                .contentId(postId)
+                .locale("ko")
+                .consentVersion("2026-07-24")
+                .consentedAt(LocalDateTime.now())
+                .mediaMode(SocialMediaMode.DIRECT_UPLOAD)
+                .directImageUrl("/api/social/images/upload.jpg")
                 .shortCode("AbCdEf2345")
                 .build();
     }

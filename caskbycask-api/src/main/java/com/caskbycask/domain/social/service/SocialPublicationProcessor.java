@@ -123,12 +123,14 @@ public class SocialPublicationProcessor {
         }
         String relativeImage = switch (publication.getBundle().getMediaMode()) {
             case REVIEW_IMAGE -> imageRenderService.renderReview(
-                    content.sourceImageUrl(), content.imageTitle());
-            case DIRECT_UPLOAD -> imageRenderService.renderDirect(publication.getBundle().getDirectImageUrl());
+                    content.sourceImageUrl(), content.imageTitle(), content.imageLabel());
+            case DIRECT_UPLOAD -> imageRenderService.renderDirect(
+                    publication.getBundle().getDirectImageUrl(), content.imageLabel());
             case TEMPLATE -> imageRenderService.renderTemplate(
                     publication.getBundle().getThumbnailTemplate().getBackgroundImageUrl(),
                     publication.getBundle().getThumbnailText() != null
-                            ? publication.getBundle().getThumbnailText() : content.displayTitle());
+                            ? publication.getBundle().getThumbnailText() : content.displayTitle(),
+                    content.imageLabel());
         };
         return new Prepared(content.caption(), publicImageUrl(relativeImage), relativeImage);
     }

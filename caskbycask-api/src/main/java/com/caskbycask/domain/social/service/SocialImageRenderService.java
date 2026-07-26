@@ -45,6 +45,11 @@ public class SocialImageRenderService {
     private static final int REVIEW_CAPTION_START_FONT_SIZE = 58;
     private static final int REVIEW_CAPTION_MIN_FONT_SIZE = 26;
     private static final int REVIEW_CAPTION_PREFERRED_MAX_LINES = 3;
+    private static final int CONTENT_LABEL_X = 64;
+    private static final int CONTENT_LABEL_Y = 54;
+    private static final int CONTENT_LABEL_FONT_SIZE = 32;
+    private static final int CONTENT_LABEL_HORIZONTAL_PADDING = 20;
+    private static final int CONTENT_LABEL_VERTICAL_PADDING = 11;
     private static final long MAX_SOURCE_BYTES = 15L * 1024 * 1024;
     private static final long MAX_OUTPUT_BYTES = 8L * 1024 * 1024;
     private static final long MAX_SOURCE_PIXELS = 40_000_000L;
@@ -54,17 +59,17 @@ public class SocialImageRenderService {
 
     private final SocialPublishingProperties properties;
 
-    public String renderReview(String sourceUrl, String spiritName) {
+    public String renderReview(String sourceUrl, String spiritName, String imageLabel) {
         BufferedImage source = readTrustedImage(sourceUrl);
-        return writeJpeg(composeReviewImage(source, spiritName), "review");
+        return writeJpeg(composeReviewImage(source, spiritName, imageLabel), "review");
     }
 
-    public String renderDirect(String sourceUrl) {
+    public String renderDirect(String sourceUrl, String imageLabel) {
         BufferedImage source = readTrustedImage(sourceUrl);
-        return writeJpeg(composeCovered(source), "direct");
+        return writeJpeg(composeCovered(source, imageLabel), "direct");
     }
 
-    public String renderTemplate(String backgroundUrl, String text) {
+    public String renderTemplate(String backgroundUrl, String text, String imageLabel) {
         BufferedImage background = readTrustedImage(backgroundUrl);
         BufferedImage canvas = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_RGB);
         Graphics2D graphics = canvas.createGraphics();
@@ -94,6 +99,7 @@ public class SocialImageRenderService {
             graphics.drawString(line, x, y);
             y += lineHeight;
         }
+        drawContentLabel(graphics, imageLabel);
         graphics.dispose();
         return writeJpeg(canvas, "template");
     }
@@ -122,7 +128,7 @@ public class SocialImageRenderService {
         return resolved;
     }
 
-    private BufferedImage composeReviewImage(BufferedImage source, String spiritName) {
+    private BufferedImage composeReviewImage(BufferedImage source, String spiritName, String imageLabel) {
         BufferedImage canvas = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_RGB);
         Graphics2D graphics = canvas.createGraphics();
         configure(graphics);
@@ -136,6 +142,7 @@ public class SocialImageRenderService {
         int y = (HEIGHT - drawHeight) / 2;
         graphics.drawImage(source, x, y, drawWidth, drawHeight, null);
         drawReviewCaption(graphics, spiritName);
+        drawContentLabel(graphics, imageLabel);
         graphics.dispose();
         return canvas;
     }
@@ -197,7 +204,7 @@ public class SocialImageRenderService {
     private static Font reviewCaptionFont(int size) {
         Font base = preferredFont(size, Font.PLAIN);
         return base.deriveFont(Map.of(
-                TextAttribute.WEIGHT, TextAttribute.WEIGHT_SEMIBOLD,
+                TextAttribute.WEIGHT, TextAttribute.WEIGHT_BOLD,
                 TextAttribute.TRACKING, -0.01f
         ));
     }
@@ -206,11 +213,43 @@ public class SocialImageRenderService {
         return wrap(text, metrics, maxWidth, Integer.MAX_VALUE);
     }
 
+    private static void drawContentLabel(Graphics2D graphics, String imageLabel) {
+        String printableLabel = imageLabel == null ? "" : imageLabel.replaceAll("\\s+", " ").trim();
+        if (printableLabel.isEmpty()) return;
+
+        Font font = preferredFont(CONTENT_LABEL_FONT_SIZE, Font.BOLD);
+        if (font.canDisplayUpTo(printableLabel) >= 0) {
+            throw new IllegalStateException(
+                    "The server font cannot display the SNS thumbnail text. Install Noto Sans CJK KR.");
+        }
+        graphics.setFont(font);
+        FontMetrics metrics = graphics.getFontMetrics();
+        int boxWidth = metrics.stringWidth(printableLabel) + CONTENT_LABEL_HORIZONTAL_PADDING * 2;
+        int boxHeight = metrics.getHeight() + CONTENT_LABEL_VERTICAL_PADDING * 2;
+
+        graphics.setColor(new Color(12, 12, 14, 215));
+        graphics.fillRoundRect(
+                CONTENT_LABEL_X, CONTENT_LABEL_Y, boxWidth, boxHeight, 14, 14);
+        graphics.setColor(new Color(255, 255, 255, 42));
+        graphics.drawRoundRect(
+                CONTENT_LABEL_X, CONTENT_LABEL_Y, boxWidth, boxHeight, 14, 14);
+
+        graphics.setColor(Color.WHITE);
+        int textX = CONTENT_LABEL_X + CONTENT_LABEL_HORIZONTAL_PADDING;
+        int baseline = CONTENT_LABEL_Y + CONTENT_LABEL_VERTICAL_PADDING + metrics.getAscent();
+        graphics.drawString(printableLabel, textX, baseline);
+    }
+
     private BufferedImage composeCovered(BufferedImage source) {
+        return composeCovered(source, null);
+    }
+
+    private BufferedImage composeCovered(BufferedImage source, String imageLabel) {
         BufferedImage canvas = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_RGB);
         Graphics2D graphics = canvas.createGraphics();
         configure(graphics);
         drawCover(graphics, source, WIDTH, HEIGHT);
+        drawContentLabel(graphics, imageLabel);
         graphics.dispose();
         return canvas;
     }

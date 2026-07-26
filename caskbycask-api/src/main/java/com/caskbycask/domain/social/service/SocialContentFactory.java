@@ -110,7 +110,8 @@ public class SocialContentFactory {
                 imageUrl,
                 "/" + bundle.getLocale() + "/reviews/" + review.getId(),
                 name,
-                reviewImageTitle(spirit, english, name)
+                reviewImageTitle(spirit, english, name),
+                english ? "Review" : "후기"
         );
     }
 
@@ -132,7 +133,9 @@ public class SocialContentFactory {
                 truncate(body, limit),
                 bundle.getDirectImageUrl(),
                 "/" + bundle.getLocale() + "/community/notice/" + post.getId(),
-                post.getTitle()
+                post.getTitle(),
+                post.getTitle(),
+                post.getPrefix() != null ? post.getPrefix().getName() : "일반"
         );
     }
 

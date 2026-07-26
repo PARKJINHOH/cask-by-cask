@@ -54,11 +54,13 @@ class SocialImageRenderServiceTest {
         Files.createDirectories(source.getParent());
         Files.write(source, jpeg(810, 1080));
 
-        String imageUrl = service.renderReview("/uploads/spirits/review.jpg", "글렌피딕 12년");
+        String imageUrl = service.renderReview(
+                "/uploads/spirits/review.jpg", "글렌피딕 12년", "후기");
         BufferedImage rendered = readGenerated(imageUrl);
         Color corner = new Color(rendered.getRGB(0, 0));
         Color center = new Color(rendered.getRGB(rendered.getWidth() / 2, rendered.getHeight() / 2));
         Color captionBackground = new Color(rendered.getRGB(80, 1200));
+        Color labelBackground = new Color(rendered.getRGB(75, 75));
 
         assertThat(rendered.getWidth()).isEqualTo(1080);
         assertThat(rendered.getHeight()).isEqualTo(1350);
@@ -70,6 +72,10 @@ class SocialImageRenderServiceTest {
         assertThat(captionBackground.getGreen()).isLessThan(40);
         assertThat(captionBackground.getBlue()).isLessThan(40);
         assertThat(countBrightPixels(rendered, 150, 1100, 930, 1280)).isGreaterThan(100);
+        assertThat(labelBackground.getRed()).isLessThan(50);
+        assertThat(labelBackground.getGreen()).isLessThan(50);
+        assertThat(labelBackground.getBlue()).isLessThan(50);
+        assertThat(countBrightPixels(rendered, 70, 55, 250, 125)).isGreaterThan(50);
     }
 
     @Test
@@ -78,7 +84,8 @@ class SocialImageRenderServiceTest {
         Files.createDirectories(source.getParent());
         Files.write(source, transparentPng(810, 1080));
 
-        String imageUrl = service.renderReview("/uploads/spirits/transparent.png", "Transparent Bottle");
+        String imageUrl = service.renderReview(
+                "/uploads/spirits/transparent.png", "Transparent Bottle", "Review");
         BufferedImage rendered = readGenerated(imageUrl);
         Color transparentCorner = new Color(rendered.getRGB(200, 200));
         Color bottleCenter = new Color(rendered.getRGB(rendered.getWidth() / 2, rendered.getHeight() / 2));
@@ -95,11 +102,12 @@ class SocialImageRenderServiceTest {
                 "file", "background.png", "image/png", png(1200, 800));
         String backgroundUrl = service.storeTemplateBackground(background);
 
-        String imageUrl = service.renderTemplate(backgroundUrl, "New whisky release");
+        String imageUrl = service.renderTemplate(backgroundUrl, "New whisky release", "출시");
         BufferedImage rendered = readGenerated(imageUrl);
 
         assertThat(rendered.getWidth()).isEqualTo(1080);
         assertThat(rendered.getHeight()).isEqualTo(1350);
+        assertThat(new Color(rendered.getRGB(75, 75)).getRed()).isLessThan(80);
     }
 
     @Test
