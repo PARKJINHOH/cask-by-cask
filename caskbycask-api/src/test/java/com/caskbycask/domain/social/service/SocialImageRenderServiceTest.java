@@ -53,10 +53,11 @@ class SocialImageRenderServiceTest {
         Files.createDirectories(source.getParent());
         Files.write(source, jpeg(810, 1080));
 
-        String imageUrl = service.renderReview("/uploads/spirits/review.jpg");
+        String imageUrl = service.renderReview("/uploads/spirits/review.jpg", "글렌피딕 12년");
         BufferedImage rendered = readGenerated(imageUrl);
         Color corner = new Color(rendered.getRGB(0, 0));
         Color center = new Color(rendered.getRGB(rendered.getWidth() / 2, rendered.getHeight() / 2));
+        Color captionBackground = new Color(rendered.getRGB(80, 1200));
 
         assertThat(rendered.getWidth()).isEqualTo(1080);
         assertThat(rendered.getHeight()).isEqualTo(1350);
@@ -64,6 +65,10 @@ class SocialImageRenderServiceTest {
         assertThat(corner.getGreen()).isGreaterThan(245);
         assertThat(corner.getBlue()).isGreaterThan(245);
         assertThat(center).isNotEqualTo(Color.WHITE);
+        assertThat(captionBackground.getRed()).isLessThan(40);
+        assertThat(captionBackground.getGreen()).isLessThan(40);
+        assertThat(captionBackground.getBlue()).isLessThan(40);
+        assertThat(countBrightPixels(rendered, 150, 1100, 930, 1280)).isGreaterThan(100);
     }
 
     @Test
@@ -72,7 +77,7 @@ class SocialImageRenderServiceTest {
         Files.createDirectories(source.getParent());
         Files.write(source, transparentPng(810, 1080));
 
-        String imageUrl = service.renderReview("/uploads/spirits/transparent.png");
+        String imageUrl = service.renderReview("/uploads/spirits/transparent.png", "Transparent Bottle");
         BufferedImage rendered = readGenerated(imageUrl);
         Color transparentCorner = new Color(rendered.getRGB(200, 200));
         Color bottleCenter = new Color(rendered.getRGB(rendered.getWidth() / 2, rendered.getHeight() / 2));
@@ -140,5 +145,18 @@ class SocialImageRenderServiceTest {
             ImageIO.write(image, "png", output);
             return output.toByteArray();
         }
+    }
+
+    private static long countBrightPixels(BufferedImage image, int minX, int minY, int maxX, int maxY) {
+        long count = 0;
+        for (int y = minY; y < maxY; y++) {
+            for (int x = minX; x < maxX; x++) {
+                Color color = new Color(image.getRGB(x, y));
+                if (color.getRed() > 220 && color.getGreen() > 220 && color.getBlue() > 220) {
+                    count++;
+                }
+            }
+        }
+        return count;
     }
 }

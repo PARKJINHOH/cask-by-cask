@@ -37,6 +37,12 @@ public class SocialImageRenderService {
 
     public static final int WIDTH = 1080;
     public static final int HEIGHT = 1350;
+    private static final int REVIEW_CAPTION_HORIZONTAL_MARGIN = 72;
+    private static final int REVIEW_CAPTION_BOTTOM_MARGIN = 60;
+    private static final int REVIEW_CAPTION_HORIZONTAL_PADDING = 56;
+    private static final int REVIEW_CAPTION_VERTICAL_PADDING = 32;
+    private static final int REVIEW_CAPTION_FONT_SIZE = 56;
+    private static final int REVIEW_CAPTION_MAX_LINES = 2;
     private static final long MAX_SOURCE_BYTES = 15L * 1024 * 1024;
     private static final long MAX_OUTPUT_BYTES = 8L * 1024 * 1024;
     private static final long MAX_SOURCE_PIXELS = 40_000_000L;
@@ -46,9 +52,9 @@ public class SocialImageRenderService {
 
     private final SocialPublishingProperties properties;
 
-    public String renderReview(String sourceUrl) {
+    public String renderReview(String sourceUrl, String spiritName) {
         BufferedImage source = readTrustedImage(sourceUrl);
-        return writeJpeg(composeReviewImage(source), "review");
+        return writeJpeg(composeReviewImage(source, spiritName), "review");
     }
 
     public String renderDirect(String sourceUrl) {
@@ -114,7 +120,7 @@ public class SocialImageRenderService {
         return resolved;
     }
 
-    private BufferedImage composeReviewImage(BufferedImage source) {
+    private BufferedImage composeReviewImage(BufferedImage source, String spiritName) {
         BufferedImage canvas = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_RGB);
         Graphics2D graphics = canvas.createGraphics();
         configure(graphics);
@@ -127,8 +133,42 @@ public class SocialImageRenderService {
         int x = (WIDTH - drawWidth) / 2;
         int y = (HEIGHT - drawHeight) / 2;
         graphics.drawImage(source, x, y, drawWidth, drawHeight, null);
+        drawReviewCaption(graphics, spiritName);
         graphics.dispose();
         return canvas;
+    }
+
+    private void drawReviewCaption(Graphics2D graphics, String spiritName) {
+        String printableName = spiritName == null ? "" : spiritName.replaceAll("\\s+", " ").trim();
+        if (printableName.isEmpty()) return;
+
+        Font font = preferredFont(REVIEW_CAPTION_FONT_SIZE, Font.BOLD);
+        if (font.canDisplayUpTo(printableName) >= 0) {
+            throw new IllegalStateException(
+                    "The server font cannot display the SNS thumbnail text. Install Noto Sans CJK KR.");
+        }
+        graphics.setFont(font);
+        FontMetrics metrics = graphics.getFontMetrics();
+        int boxWidth = WIDTH - REVIEW_CAPTION_HORIZONTAL_MARGIN * 2;
+        int textWidth = boxWidth - REVIEW_CAPTION_HORIZONTAL_PADDING * 2;
+        List<String> lines = wrap(printableName, metrics, textWidth, REVIEW_CAPTION_MAX_LINES);
+        int lineGap = 10;
+        int textHeight = lines.size() * metrics.getHeight()
+                + Math.max(0, lines.size() - 1) * lineGap;
+        int boxHeight = textHeight + REVIEW_CAPTION_VERTICAL_PADDING * 2;
+        int boxX = REVIEW_CAPTION_HORIZONTAL_MARGIN;
+        int boxY = HEIGHT - REVIEW_CAPTION_BOTTOM_MARGIN - boxHeight;
+
+        graphics.setColor(new Color(15, 15, 15, 230));
+        graphics.fillRect(boxX, boxY, boxWidth, boxHeight);
+
+        graphics.setColor(Color.WHITE);
+        int baseline = boxY + REVIEW_CAPTION_VERTICAL_PADDING + metrics.getAscent();
+        for (String line : lines) {
+            int textX = (WIDTH - metrics.stringWidth(line)) / 2;
+            graphics.drawString(line, textX, baseline);
+            baseline += metrics.getHeight() + lineGap;
+        }
     }
 
     private BufferedImage composeCovered(BufferedImage source) {

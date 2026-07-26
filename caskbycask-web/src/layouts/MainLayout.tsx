@@ -20,6 +20,8 @@ import LevelBadge from '@/shared/components/LevelBadge'
 import DefaultAvatar from '@/shared/components/DefaultAvatar'
 import AdminIcon from '@/shared/components/icons/AdminIcon'
 import ProducerIcon from '@/shared/components/icons/ProducerIcon'
+import InstagramIcon from '@/shared/components/icons/InstagramIcon'
+import ThreadsIcon from '@/shared/components/icons/ThreadsIcon'
 import AttendanceButton from '@/domain/score/components/AttendanceButton'
 import axios from 'axios'
 import { spiritApi } from '@/domain/spirit/api/spiritApi'
@@ -31,6 +33,35 @@ import { scrollToPageTop } from '@/shared/utils/scrollToPageTop'
 
 
 const SEEN_KEY = 'notice:lastSeenId'
+
+function SocialFooterLinks({ className = '' }: { className?: string }) {
+  const { t } = useTranslation()
+
+  return (
+    <div className={`flex items-center gap-2 ${className}`}>
+      <a
+        href="https://www.instagram.com/caskbycask"
+        target="_blank"
+        rel="me noopener noreferrer"
+        aria-label={t('footer.instagramAria')}
+        title={t('footer.instagramAria')}
+        className="inline-flex size-10 items-center justify-center rounded-full border border-neutral-200 text-neutral-500 transition-colors hover:border-neutral-900 hover:bg-neutral-900 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700"
+      >
+        <InstagramIcon size={21} />
+      </a>
+      <a
+        href="https://www.threads.com/@caskbycask"
+        target="_blank"
+        rel="me noopener noreferrer"
+        aria-label={t('footer.threadsAria')}
+        title={t('footer.threadsAria')}
+        className="inline-flex size-10 items-center justify-center rounded-full border border-neutral-200 text-neutral-500 transition-colors hover:border-neutral-900 hover:bg-neutral-900 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700"
+      >
+        <ThreadsIcon size={22} />
+      </a>
+    </div>
+  )
+}
 
 // ── 출석 체크 토스트 핸들러 ──────────────────────────────────────
 // 로그인 직후 authStore에 적재된 pendingAttendanceToast를 소비하여 토스트 표시
@@ -894,6 +925,7 @@ export default function MainLayout() {
               </Link>
               <p className="text-xs text-neutral-400">{t('app.tagline')}</p>
               <p className="text-xs text-neutral-400">{t('footer.brandAlias')}</p>
+              <SocialFooterLinks className="mt-3 justify-center xl:justify-start" />
             </div>
 
             {/* GNB와 중복되지 않는 푸터 전용 링크 */}
@@ -941,6 +973,14 @@ export default function MainLayout() {
             <p className="text-xs text-neutral-400">{t('footer.copyright')}</p>
             <p className="text-xs text-neutral-400">{t('footer.drinkWarning')}</p>
           </div>
+        </div>
+      </footer>
+
+      {/* 모바일 소셜 푸터 */}
+      <footer className="border-t border-neutral-200 bg-canvas py-5 lg:hidden">
+        <div className="user-layout-container flex flex-col items-center gap-3 px-4">
+          <p className="text-xs font-bold text-neutral-700">CaskByCask</p>
+          <SocialFooterLinks />
         </div>
       </footer>
 

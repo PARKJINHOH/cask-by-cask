@@ -653,7 +653,16 @@ export default function TasteTreeBuilder({ mode }: { mode: TasteTreeBuilderMode 
               {(selected.type === 'WHISKY' || (admin && selected.type === 'START')) && <section className="rounded-xl border border-stone-200 bg-stone-50/70 p-4">
                 <h3 className="text-sm font-black text-stone-900">{t('tasteTree.builder.spiritSection')}</h3>
                 <div className="mt-4 space-y-6">
-                  <WhiskyEditor node={selected} updateNode={updateNode} spiritKeyword={spiritKeyword} setSpiritKeyword={setSpiritKeyword} spirits={spiritQuery.data ?? []} isEn={isEn} t={t} />
+                  <WhiskyEditor
+                    node={selected}
+                    updateNode={updateNode}
+                    spiritKeyword={spiritKeyword}
+                    setSpiritKeyword={setSpiritKeyword}
+                    spirits={spiritQuery.data ?? []}
+                    isEn={isEn}
+                    showSeriesIdentifier={admin}
+                    t={t}
+                  />
                   <NodeImageEditor key={selected.key} node={selected} updateNode={updateNode} upload={upload} discardPendingImage={discardPendingImage} t={t} />
                 </div>
               </section>}
@@ -805,7 +814,25 @@ function EdgeEditor({ edge, content, updateEdge, deleteEdge, t }: any) {
   </>
 }
 
-function WhiskyEditor({ node, updateNode, spiritKeyword, setSpiritKeyword, spirits, isEn, t }: any) {
+function getSpiritSearchResultName(spirit: any, isEn: boolean, showSeriesIdentifier: boolean) {
+  const name = isEn ? spirit.nameEn || spirit.nameKo : spirit.nameKo
+  if (!showSeriesIdentifier) return name
+  const seriesIdentifier = isEn
+    ? spirit.seriesIdentifierEn || spirit.seriesIdentifier
+    : spirit.seriesIdentifier
+  return seriesIdentifier ? `${name} (${seriesIdentifier})` : name
+}
+
+function WhiskyEditor({
+  node,
+  updateNode,
+  spiritKeyword,
+  setSpiritKeyword,
+  spirits,
+  isEn,
+  showSeriesIdentifier,
+  t,
+}: any) {
   const whisky = node.whisky ?? { source: 'CUSTOM', nameKo: '' }
   const updateWhisky = (patch: Record<string, unknown>) => updateNode(node.key, { whisky: { ...whisky, ...patch } })
   const selectRegisteredSpirit = (spirit: any) => {
@@ -837,7 +864,7 @@ function WhiskyEditor({ node, updateNode, spiritKeyword, setSpiritKeyword, spiri
       <input value={spiritKeyword} aria-required="true" onChange={(event) => setSpiritKeyword(event.target.value)} placeholder={t('tasteTree.builder.searchPlaceholder')} className={inputClass} />
       {spiritKeyword.trim().length >= 2 && <div className="mt-2 max-h-48 overflow-y-auto rounded-xl border border-stone-200 bg-white">
         {spirits.map((spirit: any) => <button key={spirit.id} type="button" onClick={() => selectRegisteredSpirit(spirit)} className="flex w-full items-center gap-3 border-b border-stone-100 p-2 text-left last:border-0 hover:bg-amber-50">
-          {spirit.imageUrl && <img src={spirit.imageUrl} alt="" className="h-10 w-10 rounded-lg object-contain" />}<span className="min-w-0 text-xs font-bold text-stone-800">{isEn ? spirit.nameEn || spirit.nameKo : spirit.nameKo}</span>
+          {spirit.imageUrl && <img src={spirit.imageUrl} alt="" className="h-10 w-10 rounded-lg object-contain" />}<span className="min-w-0 text-xs font-bold text-stone-800">{getSpiritSearchResultName(spirit, isEn, showSeriesIdentifier)}</span>
         </button>)}
       </div>}
       {whisky.spiritId && <p className="mt-3 rounded-lg bg-emerald-50 p-2 text-xs font-bold text-emerald-700">{whisky.nameKo} #{whisky.spiritId}</p>}

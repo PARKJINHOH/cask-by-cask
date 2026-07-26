@@ -113,6 +113,38 @@ class SocialPublicationProcessorTest {
     }
 
     @Test
+    void reviewImageRenderingUsesLocalizedSpiritNameAsCaption() {
+        SocialPublication publication = queuedUnrenderedPublication();
+        givenConnectedAccount(publication);
+        when(stateService.load(11L)).thenReturn(Optional.of(publication));
+        when(stateService.claim(11L)).thenReturn(Optional.of(publication));
+        when(contentFactory.create(publication.getBundle(), SocialPlatform.INSTAGRAM))
+                .thenReturn(new SocialPublicationContent(
+                        "caption", "https://source/image.jpg", "/ko/reviews/77", "글렌피딕 12년"));
+        when(imageRenderService.renderReview(
+                "https://source/image.jpg", "글렌피딕 12년"))
+                .thenReturn("/api/social/images/review.jpg");
+        when(metaClient.createImageContainer(
+                SocialPlatform.INSTAGRAM, "ig-user", "token",
+                "https://www.caskbycask.net/api/social/images/review.jpg", "caption"))
+                .thenReturn("container");
+        when(metaClient.publishContainer(
+                SocialPlatform.INSTAGRAM, "ig-user", "token", "container"))
+                .thenReturn("media");
+        when(metaClient.getPermalink(SocialPlatform.INSTAGRAM, "token", "media"))
+                .thenReturn("https://instagram.com/p/media");
+
+        processor.process(11L);
+
+        verify(imageRenderService).renderReview(
+                "https://source/image.jpg", "글렌피딕 12년");
+        verify(stateService).snapshot(
+                11L, "caption",
+                "https://www.caskbycask.net/api/social/images/review.jpg",
+                "/api/social/images/review.jpg");
+    }
+
+    @Test
     void uncertainPublishOutcomeMovesToVerificationInsteadOfRetryingPublish() {
         SocialPublication publication = queuedPublication();
         givenConnectedAccount(publication);
@@ -179,6 +211,26 @@ class SocialPublicationProcessorTest {
         return SocialPublication.builder()
                 .id(11L)
                 .bundle(bundle())
+                .platform(SocialPlatform.INSTAGRAM)
+                .status(SocialPublicationStatus.QUEUED)
+                .build();
+    }
+
+    private static SocialPublication queuedUnrenderedPublication() {
+        return SocialPublication.builder()
+                .id(11L)
+                .bundle(SocialPublishBundle.builder()
+                        .id(10L)
+                        .originType(SocialSourceType.REVIEW)
+                        .originId(77L)
+                        .contentType(SocialSourceType.REVIEW)
+                        .contentId(77L)
+                        .locale("ko")
+                        .consentVersion("v1")
+                        .consentedAt(LocalDateTime.now())
+                        .mediaMode(SocialMediaMode.REVIEW_IMAGE)
+                        .shortCode("ABC123")
+                        .build())
                 .platform(SocialPlatform.INSTAGRAM)
                 .status(SocialPublicationStatus.QUEUED)
                 .build();

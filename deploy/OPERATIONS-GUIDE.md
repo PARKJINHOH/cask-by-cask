@@ -554,8 +554,9 @@ Meta 제공 식별자·permalink를 삭제한 뒤 확인 코드 상태 URL을 �
 
 생성 이미지는 `/app/upload/social`에 누적되며 Meta가 `/api/social/images/**`로 직접 가져간다.
 nginx/Cloudflare에서 이 경로를 인증 또는 hotlink 차단 대상으로 지정하지 않고 디스크·백업 점검에 포함한다.
-한글 썸네일 합성을 위해 `fonts-noto-cjk`를 설치하고 `fc-match 'Noto Sans CJK KR'` 결과를
-배포 전 점검한다. 글꼴이 없으면 SNS 템플릿 발행은 실패 이력으로 남고 Meta에는 게시하지 않는다.
+리뷰 이미지 하단 주류명 자막과 한글 썸네일 합성을 위해 `fonts-noto-cjk`를 설치하고
+`fc-match 'Noto Sans CJK KR'` 결과를 배포 전 점검한다. 글꼴이 없으면 SNS 이미지 발행은
+실패 이력으로 남고 Meta에는 게시하지 않는다.
 
 ---
 
