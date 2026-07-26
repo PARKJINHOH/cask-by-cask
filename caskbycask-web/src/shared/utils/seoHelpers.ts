@@ -736,10 +736,22 @@ export function parsePath(segments: string[]): ParsedPath {
   }
 
   const knownPublicRoots = new Set([
-    'ranking', 'terms', 'privacy', 'operation-policy', 'faq', 'calendar',
+    'ranking', 'terms', 'privacy', 'operation-policy', 'faq', 'calendar', 'social',
   ])
   if (remaining.length === 1 && knownPublicRoots.has(remaining[0])) {
     return { type: 'default', lang, canonicalPath: remaining.join('/') }
+  }
+
+  if (remaining[0] === 'reviews') {
+    if (remaining.length === 2 && /^\d+$/.test(remaining[1])) {
+      return {
+        type: 'default',
+        lang,
+        canonicalPath: remaining.join('/'),
+        resourcePath: `/api/public/reviews/${remaining[1]}`,
+      }
+    }
+    return { type: 'not-found', lang }
   }
 
   if (remaining[0] === 'tier-lists' && remaining.length <= 2) {

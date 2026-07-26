@@ -11,6 +11,7 @@ const representativeSpiritIds = (process.env.SEO_VERIFY_SPIRIT_IDS || '295,296,3
   .split(',')
   .map((value) => value.trim())
   .filter(Boolean)
+const representativeReviewId = (process.env.SEO_VERIFY_REVIEW_ID || '11').trim()
 const boardSeoCases = [
   {
     path: '/ko/community/free',
@@ -312,6 +313,8 @@ async function verifyRenderedHtml(categoryStates = []) {
     const renderedSeoCases = [
       { path: '/ko/spirits', noindex: false },
       { path: '/ko/spirits?sort=SCORE_DESC', noindex: true },
+      { path: '/ko/social', noindex: false, jsonLd: false },
+      { path: `/ko/reviews/${representativeReviewId}`, noindex: true, jsonLd: false },
       ...representativeCategories,
       ...boardSeoCases.map(({ path, noindex, blockedClientApiPath: blockedApi, requireItemList }) => ({
         path,

@@ -620,7 +620,8 @@ curl -I https://www.caskbycask.net/sitemap.xml    # sitemap index GET/HEAD, Cach
 curl -s https://www.caskbycask.net/sitemap.xml | head
 curl -I https://www.caskbycask.net/sitemaps/static.xml
 curl -s https://www.caskbycask.net/indexnow-key.txt  # 활성화한 경우에만 200 + 키
-# 배포 러너/개발 PC의 소스 체크아웃에서 전체 sitemap 및 대표 주류 redirect를 검증
+# 배포 러너/개발 PC의 소스 체크아웃에서 전체 sitemap, 대표 주류 redirect,
+# SNS 허브와 공개 리뷰 상세 경로를 검증
 # (/app/next/dist standalone에는 검증 스크립트와 Puppeteer 개발 의존성이 포함되지 않음)
 cd /path/to/cask-by-cask/caskbycask-web
 SEO_VERIFY_BASE_URL=https://www.caskbycask.net SEO_VERIFY_ALL_URLS=true npm run seo:verify
@@ -658,14 +659,17 @@ DB_AUDIT_CONFIG_FILE=/app/env/db-observer.cnf DB_NAME=caskbycask_prod \
 ```
 
 Windows PowerShell에서는 운영 소스와 같은 리비전의 체크아웃에서 아래처럼 실행한다. 전체 sitemap 검증은 운영 부하를 피하기 위해 URL당 기본 1초 간격을 사용하므로 현재 규모에서는 약 10~15분이 걸릴 수 있다.
+공개 리뷰 렌더링 검증의 기본 ID는 `11`이며, 해당 환경에 리뷰 11번이 없으면
+`SEO_VERIFY_REVIEW_ID`에 실제 공개 리뷰 ID를 지정한다.
 
 ```powershell
 cd D:\workspace\easymediaProject\cask-by-cask\caskbycask-web
 $env:SEO_VERIFY_BASE_URL = 'https://www.caskbycask.net'
 $env:SEO_VERIFY_ALL_URLS = 'true'
 $env:SEO_VERIFY_BROWSER = 'true'
+$env:SEO_VERIFY_REVIEW_ID = '11'
 npm.cmd run seo:verify
-Remove-Item Env:SEO_VERIFY_BASE_URL, Env:SEO_VERIFY_ALL_URLS, Env:SEO_VERIFY_BROWSER -ErrorAction SilentlyContinue
+Remove-Item Env:SEO_VERIFY_BASE_URL, Env:SEO_VERIFY_ALL_URLS, Env:SEO_VERIFY_BROWSER, Env:SEO_VERIFY_REVIEW_ID -ErrorAction SilentlyContinue
 ```
 
 Codex 샌드박스나 일부 컨테이너처럼 Chrome OS sandbox가 허용되지 않아 Puppeteer 기동이 실패할 때만 `SEO_VERIFY_BROWSER_NO_SANDBOX=true`를 임시로 추가한다. 일반 PC·배포 러너에서는 설정하지 않으며, 신뢰할 수 없는 사이트를 대상으로 사용하지 않는다. 검사 후에는 `Remove-Item Env:SEO_VERIFY_BROWSER_NO_SANDBOX -ErrorAction SilentlyContinue`로 제거한다.
