@@ -94,8 +94,46 @@ class SocialContentFactoryTest {
                 "피니시\n아로마: Spice · 시나몬");
         assertThat(content.caption()).doesNotContain("테이스팅 노트", "향향향", "맛맛맛", "피니시피니시");
         assertThat(content.caption()).contains("총평: ", "...");
+        assertThat(content.caption()).contains(
+                "#CaskByCask #캐바캐 #테스트위스키 #위스키");
         assertThat(content.caption()).endsWith(
                 "전체 리뷰 보기 → https://www.caskbycask.net/s/AbCdEf2345");
         assertThat(content.caption().codePointCount(0, content.caption().length())).isLessThanOrEqualTo(500);
+
+        SocialPublicationContent instagram = factory.create(bundle, SocialPlatform.INSTAGRAM);
+
+        assertThat(instagram.caption()).startsWith("""
+                테스트 위스키 후기
+
+                전체 리뷰는 프로필 링크에서 확인하세요 🔗
+                전체 리뷰 보기 → https://www.caskbycask.net/s/AbCdEf2345
+
+                향
+                """);
+        assertThat(instagram.caption()).endsWith(
+                "#CaskByCask #캐바캐 #테스트위스키 #위스키");
+        assertThat(instagram.caption().codePointCount(0, instagram.caption().length()))
+                .isLessThanOrEqualTo(2200);
+        assertThat(content.caption()).doesNotContain(
+                "전체 리뷰는 프로필 링크에서 확인하세요 🔗");
+
+        SocialPublishBundle englishBundle = SocialPublishBundle.builder()
+                .originType(SocialSourceType.REVIEW)
+                .originId(20L)
+                .contentType(SocialSourceType.REVIEW)
+                .contentId(20L)
+                .locale("en")
+                .consentVersion("2026-07-24")
+                .consentedAt(LocalDateTime.now())
+                .mediaMode(SocialMediaMode.REVIEW_IMAGE)
+                .shortCode("AbCdEf2345")
+                .build();
+
+        SocialPublicationContent english = factory.create(
+                englishBundle, SocialPlatform.INSTAGRAM);
+
+        assertThat(english.caption()).contains(
+                "#CaskByCask #캐바캐 #TestWhisky #위스키");
+        assertThat(english.caption()).doesNotContain("#테스트위스키");
     }
 }

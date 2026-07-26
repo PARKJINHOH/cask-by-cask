@@ -12,6 +12,7 @@ import com.caskbycask.domain.social.entity.enums.SocialPlatform;
 import com.caskbycask.domain.social.entity.enums.SocialSourceType;
 import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.domain.spirit.entity.SpiritImage;
+import com.caskbycask.domain.spirit.entity.enums.WineVintageStatus;
 import com.caskbycask.domain.spirit.repository.SpiritImageRepository;
 import lombok.RequiredArgsConstructor;
 import org.jsoup.Jsoup;
@@ -20,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -58,10 +60,21 @@ public class SocialContentFactory {
         String shortUrl = normalizedSiteUrl() + "/s/" + bundle.getShortCode();
         boolean english = "en".equals(bundle.getLocale());
         String linkLine = (english ? "Read the full review → " : "전체 리뷰 보기 → ") + shortUrl;
+        String linkBlock = platform == SocialPlatform.INSTAGRAM
+                ? (english ? "Find the full review via the link in our bio 🔗"
+                           : "전체 리뷰는 프로필 링크에서 확인하세요 🔗")
+                        + "\n" + linkLine
+                : linkLine;
+        String hashtagBlock = reviewHashtags(
+                spirit, reviewHashtagDisplayName(spirit, english));
         int limit = platform == SocialPlatform.INSTAGRAM ? 2200 : 500;
-        int contentLimit = Math.max(40, limit - linkLine.codePointCount(0, linkLine.length()) - 2);
+        int contentLimit = Math.max(40, limit
+                - linkBlock.codePointCount(0, linkBlock.length())
+                - hashtagBlock.codePointCount(0, hashtagBlock.length())
+                - 4);
         String title = name + (english ? " Review" : " 후기");
-        StringBuilder content = new StringBuilder(truncateWithDots(title, contentLimit));
+        String renderedTitle = truncateWithDots(title, contentLimit);
+        StringBuilder content = new StringBuilder(renderedTitle);
         appendReviewAromaSection(content, english ? "Nose" : "향",
                 review.getNoseAromaWheelNotes(), english, contentLimit);
         appendReviewAromaSection(content, english ? "Taste" : "맛",
@@ -80,7 +93,16 @@ public class SocialContentFactory {
                                 Math.min(REVIEW_OVERALL_LIMIT, remaining)));
             }
         }
-        String caption = truncateWithDots(content.toString(), contentLimit) + "\n\n" + linkLine;
+        String contentText = truncateWithDots(content.toString(), contentLimit);
+        String caption;
+        if (platform == SocialPlatform.INSTAGRAM) {
+            String reviewDetails = contentText.substring(
+                    Math.min(renderedTitle.length(), contentText.length()));
+            caption = renderedTitle + "\n\n" + linkBlock + reviewDetails
+                    + "\n\n" + hashtagBlock;
+        } else {
+            caption = contentText + "\n\n" + hashtagBlock + "\n\n" + linkBlock;
+        }
         String imageUrl = primaryImageUrl(spirit);
         if (imageUrl == null) throw new IllegalStateException("리뷰에 게시 가능한 대표 이미지가 없습니다.");
         return new SocialPublicationContent(
@@ -164,6 +186,52 @@ public class SocialContentFactory {
         }
         if (labels.isEmpty()) return null;
         return truncateWithDots(String.join(" · ", labels), REVIEW_AROMA_LIMIT);
+    }
+
+    private static String reviewHashtags(Spirit spirit, String displayName) {
+        List<String> tags = new ArrayList<>(4);
+        tags.add("#CaskByCask");
+        tags.add("#캐바캐");
+        String spiritNameTag = hashtag(displayName);
+        if (spiritNameTag != null) tags.add(spiritNameTag);
+        String categoryTag = switch (spirit.getCategory()) {
+            case WHISKY -> "#위스키";
+            case WINE -> "#와인";
+            case COGNAC -> "#꼬냑";
+            default -> null;
+        };
+        if (categoryTag != null) tags.add(categoryTag);
+        return String.join(" ", tags);
+    }
+
+    private static String reviewHashtagDisplayName(Spirit spirit, boolean english) {
+        if (!english) return SpiritSlugUtils.displayNameKo(spirit);
+
+        List<String> parts = new ArrayList<>();
+        addIfPresent(parts, spirit.getNameEn());
+        if (SpiritSlugUtils.hasEdition(spirit)) {
+            addIfPresent(parts, spirit.getSeriesIdentifierEn());
+            addIfPresent(parts, spirit.getVariantValueEn());
+        }
+        WineVintageStatus vintageStatus = spirit.getWineDetail() != null
+                ? spirit.getWineDetail().getVintageStatus() : null;
+        return SpiritSlugUtils.appendWineVintage(
+                String.join(" ", parts),
+                spirit.getCategory(),
+                spirit.getVintageYear(),
+                vintageStatus
+        );
+    }
+
+    private static void addIfPresent(List<String> values, String value) {
+        if (value != null && !value.isBlank()) values.add(value.trim());
+    }
+
+    private static String hashtag(String value) {
+        if (value == null || value.isBlank()) return null;
+        String normalized = Normalizer.normalize(value, Normalizer.Form.NFKC)
+                .replaceAll("[^\\p{L}\\p{N}_]", "");
+        return normalized.isBlank() ? null : "#" + normalized;
     }
 
     private static String decodeAroma(String value) {
