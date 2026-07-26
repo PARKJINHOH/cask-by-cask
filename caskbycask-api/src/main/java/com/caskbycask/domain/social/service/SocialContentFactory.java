@@ -57,30 +57,30 @@ public class SocialContentFactory {
                 ? SpiritSlugUtils.displayNameEn(spirit) : SpiritSlugUtils.displayNameKo(spirit);
         String shortUrl = normalizedSiteUrl() + "/s/" + bundle.getShortCode();
         boolean english = "en".equals(bundle.getLocale());
-        StringBuilder body = new StringBuilder(name).append("\n\n");
-        appendReviewAromaSection(body, english ? "Nose" : "향",
-                review.getNoseAromaWheelNotes(), english);
-        appendReviewAromaSection(body, english ? "Taste" : "맛",
-                review.getTasteAromaWheelNotes(), english);
-        appendReviewAromaSection(body, english ? "Finish" : "피니시",
-                review.getFinishAromaWheelNotes(), english);
         String linkLine = (english ? "Read the full review → " : "전체 리뷰 보기 → ") + shortUrl;
         int limit = platform == SocialPlatform.INSTAGRAM ? 2200 : 500;
         int contentLimit = Math.max(40, limit - linkLine.codePointCount(0, linkLine.length()) - 2);
-        String content = body.toString().stripTrailing();
+        String title = name + (english ? " Review" : " 후기");
+        StringBuilder content = new StringBuilder(truncateWithDots(title, contentLimit));
+        appendReviewAromaSection(content, english ? "Nose" : "향",
+                review.getNoseAromaWheelNotes(), english, contentLimit);
+        appendReviewAromaSection(content, english ? "Taste" : "맛",
+                review.getTasteAromaWheelNotes(), english, contentLimit);
+        appendReviewAromaSection(content, english ? "Finish" : "피니시",
+                review.getFinishAromaWheelNotes(), english, contentLimit);
         String overall = review.getComment();
         if (overall != null && !overall.isBlank()) {
-            String overallLabel = english ? "Overall: " : "총평: ";
+            String overallPrefix = "\n\n" + (english ? "Overall: " : "총평: ");
             int remaining = contentLimit
-                    - content.codePointCount(0, content.length())
-                    - overallLabel.codePointCount(0, overallLabel.length())
-                    - 2;
+                    - content.toString().codePointCount(0, content.length())
+                    - overallPrefix.codePointCount(0, overallPrefix.length());
             if (remaining > 0) {
-                content += "\n\n" + overallLabel
-                        + truncateWithDots(overall.trim(), Math.min(REVIEW_OVERALL_LIMIT, remaining));
+                content.append(overallPrefix)
+                        .append(truncateWithDots(overall.trim(),
+                                Math.min(REVIEW_OVERALL_LIMIT, remaining)));
             }
         }
-        String caption = truncateWithDots(content, contentLimit) + "\n\n" + linkLine;
+        String caption = truncateWithDots(content.toString(), contentLimit) + "\n\n" + linkLine;
         String imageUrl = primaryImageUrl(spirit);
         if (imageUrl == null) throw new IllegalStateException("리뷰에 게시 가능한 대표 이미지가 없습니다.");
         return new SocialPublicationContent(
@@ -135,13 +135,18 @@ public class SocialContentFactory {
     }
 
     private static void appendReviewAromaSection(StringBuilder target, String label,
-                                                 String aromaNotes, boolean english) {
+                                                 String aromaNotes, boolean english,
+                                                 int contentLimit) {
         String aromas = formatAromaNotes(aromaNotes);
         if (aromas == null) return;
 
-        target.append(label).append("\n");
-        appendLine(target, english ? "Aromas" : "아로마", aromas);
-        target.append("\n");
+        String prefix = "\n\n" + label + "\n" + (english ? "Aromas: " : "아로마: ");
+        int remaining = contentLimit
+                - target.toString().codePointCount(0, target.length())
+                - prefix.codePointCount(0, prefix.length());
+        if (remaining <= 3) return;
+        target.append(prefix)
+                .append(truncateWithDots(aromas, Math.min(REVIEW_AROMA_LIMIT, remaining)));
     }
 
     private static String formatAromaNotes(String raw) {

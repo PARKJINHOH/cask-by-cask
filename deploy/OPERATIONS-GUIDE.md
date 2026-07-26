@@ -382,7 +382,7 @@ sudo ss -ltnp | grep ':3000'   # 127.0.0.1:3000 기대, 0.0.0.0:3000이면 중�
 curl -sS http://127.0.0.1:3000/healthz
 ```
 
-SEO 경로는 `/sitemap.xml`, `/sitemaps/**`, `/indexnow-key.txt`를 API(127.0.0.1:8080)로 전달한다. sitemap의 `Cache-Control`과 `ETag`는 API 응답을 그대로 사용하므로 nginx에서 별도 캐시 헤더를 중복 추가하지 않는다. 현재 프론트는 `next/image`를 사용하지 않으며 Next.js 설정에서 이미지 최적화를 비활성화한다. nginx도 `/_next/image`를 정확 일치 경로로 `404` 차단한다. Next.js가 보안 패치된 sharp 버전을 정식 지원하고 스테이징 검증을 마치기 전에는 이 차단을 제거하지 않는다. 설정 교체 후 아래 명령으로 `nginx -t`와 무중단 reload를 수행하고, 11장의 sitemap 점검 명령을 실행한다.
+SEO 경로는 `/sitemap.xml`, `/sitemaps/**`, `/indexnow-key.txt`를 API(127.0.0.1:8080)로 전달한다. SNS 짧은 링크 `/s/**`, `/ko/s/**`, `/en/s/**`도 API로 직접 전달해야 하며, 그렇지 않으면 Next.js 기본 언어 리디렉션 후 404가 발생한다. sitemap의 `Cache-Control`과 `ETag`는 API 응답을 그대로 사용하므로 nginx에서 별도 캐시 헤더를 중복 추가하지 않는다. 현재 프론트는 `next/image`를 사용하지 않으며 Next.js 설정에서 이미지 최적화를 비활성화한다. nginx도 `/_next/image`를 정확 일치 경로로 `404` 차단한다. Next.js가 보안 패치된 sharp 버전을 정식 지원하고 스테이징 검증을 마치기 전에는 이 차단을 제거하지 않는다. 설정 교체 후 아래 명령으로 `nginx -t`와 무중단 reload를 수행하고, 11장의 sitemap 점검 명령을 실행한다.
 
 ### 대표 호스트(canonical host) 정책
 
@@ -439,6 +439,10 @@ sudo chown CHANGE_ME_SSH_USER:CHANGE_ME_SSH_USER /app/next/maintenance.html
 
 # 검증 후 reload (항상 nginx -t 먼저!)
 sudo nginx -t && sudo systemctl reload nginx
+
+# SNS 짧은 링크가 API의 302 응답을 반환하는지 확인
+curl -sSI https://www.caskbycask.net/s/실제_SHORT_CODE | grep -iE '^(HTTP/|location:)'
+curl -sSI https://www.caskbycask.net/ko/s/실제_SHORT_CODE | grep -iE '^(HTTP/|location:)'
 
 # Cloudflare를 우회해 원본 nginx의 일반/404 응답에 always 보안 헤더 3종이 있는지 확인
 for path in /healthz /uploads/__nginx_header_check_missing__.png /favicon.ico; do
@@ -524,7 +528,7 @@ sudo journalctl -u caskbycask-api --since '12 hours ago' | grep -E 'Exchange rat
 ### Instagram·Threads 자동 게시
 
 Meta 앱/권한 준비, 장기 토큰 연결, feature flag 활성화, 상태별 장애 대응은
-[`SOCIAL-PUBLISHING.md`](SOCIAL-PUBLISHING.md)를 따른다. 운영 배포는 Flyway `V52`~`V55` 적용 후
+[`SOCIAL-PUBLISHING.md`](SOCIAL-PUBLISHING.md)를 따른다. 운영 배포는 Flyway `V52`~`V58` 적용 후
 최고관리자가 `관리자 > SNS 게시 관리 > 공식 계정`에서 OAuth 연결과 `연결 확인`을 완료한 다음
 시험 게시를 거쳐 `SOCIAL_PUBLISH_ENABLED=true`로 전환한다.
 

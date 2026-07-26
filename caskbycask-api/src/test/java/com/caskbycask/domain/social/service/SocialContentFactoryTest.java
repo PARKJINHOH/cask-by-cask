@@ -85,6 +85,7 @@ class SocialContentFactoryTest {
 
         SocialPublicationContent content = factory.create(bundle, SocialPlatform.THREADS);
 
+        assertThat(content.caption()).startsWith("테스트 위스키 후기");
         assertThat(content.caption()).contains(
                 "향\n아로마: Vanilla · 바닐라");
         assertThat(content.caption()).contains(

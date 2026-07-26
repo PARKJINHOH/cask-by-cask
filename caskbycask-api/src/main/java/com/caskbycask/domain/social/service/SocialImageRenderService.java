@@ -15,8 +15,6 @@ import javax.imageio.stream.ImageOutputStream;
 import java.awt.*;
 import java.awt.font.FontRenderContext;
 import java.awt.image.BufferedImage;
-import java.awt.image.ConvolveOp;
-import java.awt.image.Kernel;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -50,7 +48,7 @@ public class SocialImageRenderService {
 
     public String renderReview(String sourceUrl) {
         BufferedImage source = readTrustedImage(sourceUrl);
-        return writeJpeg(composeContained(source), "review");
+        return writeJpeg(composeReviewImage(source), "review");
     }
 
     public String renderDirect(String sourceUrl) {
@@ -116,24 +114,14 @@ public class SocialImageRenderService {
         return resolved;
     }
 
-    private BufferedImage composeContained(BufferedImage source) {
+    private BufferedImage composeReviewImage(BufferedImage source) {
         BufferedImage canvas = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_RGB);
         Graphics2D graphics = canvas.createGraphics();
         configure(graphics);
-
-        BufferedImage cover = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_RGB);
-        Graphics2D coverGraphics = cover.createGraphics();
-        configure(coverGraphics);
-        drawCover(coverGraphics, source, WIDTH, HEIGHT);
-        coverGraphics.dispose();
-        cover = blur(cover);
-        graphics.drawImage(cover, 0, 0, null);
-        graphics.setColor(new Color(0, 0, 0, 72));
+        graphics.setColor(Color.WHITE);
         graphics.fillRect(0, 0, WIDTH, HEIGHT);
 
-        int maxWidth = WIDTH - 72;
-        int maxHeight = HEIGHT - 72;
-        double scale = Math.min((double) maxWidth / source.getWidth(), (double) maxHeight / source.getHeight());
+        double scale = Math.min((double) WIDTH / source.getWidth(), (double) HEIGHT / source.getHeight());
         int drawWidth = Math.max(1, (int) Math.round(source.getWidth() * scale));
         int drawHeight = Math.max(1, (int) Math.round(source.getHeight() * scale));
         int x = (WIDTH - drawWidth) / 2;
@@ -150,16 +138,6 @@ public class SocialImageRenderService {
         drawCover(graphics, source, WIDTH, HEIGHT);
         graphics.dispose();
         return canvas;
-    }
-
-    private static BufferedImage blur(BufferedImage source) {
-        int radius = 4;
-        int size = radius * 2 + 1;
-        float[] data = new float[size * size];
-        float value = 1f / data.length;
-        java.util.Arrays.fill(data, value);
-        ConvolveOp op = new ConvolveOp(new Kernel(size, size, data), ConvolveOp.EDGE_NO_OP, null);
-        return op.filter(source, null);
     }
 
     private BufferedImage readTrustedImage(String sourceUrl) {

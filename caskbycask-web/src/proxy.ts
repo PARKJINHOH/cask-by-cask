@@ -14,6 +14,7 @@ interface SpiritSeoResponse {
 
 const SPIRIT_PATH = /^\/(?:(ko|en)\/)?spirits\/([^/]+)\/?$/i
 const LOCALE_PATH = /^\/(ko|en)(?:\/|$)/i
+const SOCIAL_SHORT_LINK_PATH = /^\/(?:(?:ko|en)\/)?s\/[A-Za-z0-9]+\/?$/i
 const LOCALE_REDIRECT_EXEMPT = new Set(['/oauth/callback', '/healthz'])
 const NOINDEX_PATHS = [
   /^\/admin(?:\/|$)/,
@@ -37,6 +38,9 @@ export async function proxy(request: NextRequest) {
   }
 
   const pathname = request.nextUrl.pathname
+  if (SOCIAL_SHORT_LINK_PATH.test(pathname)) {
+    return nextWithSeoContext(request)
+  }
   const match = pathname.match(SPIRIT_PATH)
   if (!match) {
     return redirectToDefaultLocale(request) ?? nextWithSeoContext(request)

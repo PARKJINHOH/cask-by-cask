@@ -28,7 +28,7 @@ public class SocialPublicController {
     private final SocialImageRenderService imageRenderService;
     private final SocialPublishingProperties properties;
 
-    @GetMapping("/s/{code}")
+    @GetMapping({"/s/{code}", "/ko/s/{code}", "/en/s/{code}"})
     public ResponseEntity<Void> shortLink(@PathVariable String code) {
         SocialPublishBundle bundle = bundleRepository.findByShortCode(code)
                 .filter(value -> !value.isSourceDeleted())

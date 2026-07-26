@@ -12,6 +12,7 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -44,6 +45,42 @@ class SocialImageRenderServiceTest {
         assertThat(imageUrl).startsWith("/api/social/images/");
         assertThat(rendered.getWidth()).isEqualTo(1080);
         assertThat(rendered.getHeight()).isEqualTo(1350);
+    }
+
+    @Test
+    void rendersReviewWithoutBlurredBackgroundAndKeepsWholeImage() throws Exception {
+        Path source = tempDir.resolve("spirits/review.jpg");
+        Files.createDirectories(source.getParent());
+        Files.write(source, jpeg(810, 1080));
+
+        String imageUrl = service.renderReview("/uploads/spirits/review.jpg");
+        BufferedImage rendered = readGenerated(imageUrl);
+        Color corner = new Color(rendered.getRGB(0, 0));
+        Color center = new Color(rendered.getRGB(rendered.getWidth() / 2, rendered.getHeight() / 2));
+
+        assertThat(rendered.getWidth()).isEqualTo(1080);
+        assertThat(rendered.getHeight()).isEqualTo(1350);
+        assertThat(corner.getRed()).isGreaterThan(245);
+        assertThat(corner.getGreen()).isGreaterThan(245);
+        assertThat(corner.getBlue()).isGreaterThan(245);
+        assertThat(center).isNotEqualTo(Color.WHITE);
+    }
+
+    @Test
+    void compositesTransparentReviewImageOntoWhiteBackground() throws Exception {
+        Path source = tempDir.resolve("spirits/transparent.png");
+        Files.createDirectories(source.getParent());
+        Files.write(source, transparentPng(810, 1080));
+
+        String imageUrl = service.renderReview("/uploads/spirits/transparent.png");
+        BufferedImage rendered = readGenerated(imageUrl);
+        Color transparentCorner = new Color(rendered.getRGB(200, 200));
+        Color bottleCenter = new Color(rendered.getRGB(rendered.getWidth() / 2, rendered.getHeight() / 2));
+
+        assertThat(transparentCorner.getRed()).isGreaterThan(245);
+        assertThat(transparentCorner.getGreen()).isGreaterThan(245);
+        assertThat(transparentCorner.getBlue()).isGreaterThan(245);
+        assertThat(bottleCenter.getRed()).isLessThan(180);
     }
 
     @Test
@@ -89,6 +126,18 @@ class SocialImageRenderServiceTest {
         graphics.dispose();
         try (ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             ImageIO.write(image, format, output);
+            return output.toByteArray();
+        }
+    }
+
+    private static byte[] transparentPng(int width, int height) throws Exception {
+        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D graphics = image.createGraphics();
+        graphics.setColor(new Color(90, 45, 20, 255));
+        graphics.fillRoundRect(width / 3, height / 8, width / 3, height * 3 / 4, 60, 60);
+        graphics.dispose();
+        try (ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            ImageIO.write(image, "png", output);
             return output.toByteArray();
         }
     }
