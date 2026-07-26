@@ -12,6 +12,7 @@ import { getReviewSaveErrorMessage } from '../utils/reviewErrors'
 import { EMPTY_AROMA_NOTES, parseAromaNotes, serializeAromaNotes } from '../utils/aroma'
 import type { AromaNotes } from '../utils/aroma'
 import type { ReviewItem } from '../types/review.types'
+import { reviewApi } from '../api/reviewApi'
 import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
 import { useSpiritDetail, useSpiritVariants } from '@/domain/spirit/hooks/useSpiritDetail'
 import ReviewVariantCreateModal, { type ReviewVariantDraft } from './ReviewVariantCreateModal'
@@ -149,7 +150,7 @@ export default function ReviewFormModal({
   const totalPreview = (nose + taste + finish) / 3
 
   const onSubmit = async (values: ReviewFormValues) => {
-    if (!editingReview && (socialSelection.instagram || socialSelection.threads)
+    if ((socialSelection.instagram || socialSelection.threads)
       && !socialSelection.consentAccepted) {
       setSocialError(t('social.consentRequired'))
       return
@@ -178,7 +179,19 @@ export default function ReviewFormModal({
     }
     if (editingReview) {
       await updateMutation.mutateAsync({ reviewId: editingReview.id, data: payload })
-      await Promise.all(socialRetryIds.map((publicationId) => socialApi.retry(publicationId)))
+      try {
+        if (socialSelection.instagram || socialSelection.threads) {
+          await reviewApi.requestInitialSocialPublications(
+            spiritId,
+            editingReview.id,
+            socialSelection,
+          )
+        }
+        await Promise.all(socialRetryIds.map((publicationId) => socialApi.retry(publicationId)))
+      } catch {
+        setSocialError(t('social.initialPublishError'))
+        return
+      }
     } else if (pendingVariantDraft && masterId) {
       await createVariantReviewRequest.mutateAsync({
         ...payload,
@@ -404,6 +417,7 @@ export default function ReviewFormModal({
           retryIds={socialRetryIds}
           onRetryIdsChange={setSocialRetryIds}
           reviewSpiritId={targetSpiritId ?? masterId ?? spiritId}
+          allowFirstPublishOnEdit={editingReview?.legacySocialPublishAllowed === true}
         />
         {socialError && <p className="text-sm text-red-600">{socialError}</p>}
 

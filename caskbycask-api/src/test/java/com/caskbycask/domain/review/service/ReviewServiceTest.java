@@ -11,6 +11,8 @@ import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
 import com.caskbycask.domain.spirit.entity.enums.SpiritStatus;
 import com.caskbycask.domain.spirit.repository.SpiritRepository;
 import com.caskbycask.domain.social.service.SocialPublishRequestService;
+import com.caskbycask.domain.social.dto.SocialPublishSelection;
+import com.caskbycask.domain.social.entity.enums.SocialMediaMode;
 import com.caskbycask.domain.user.entity.User;
 import com.caskbycask.domain.user.entity.enums.Role;
 import com.caskbycask.domain.user.repository.UserRepository;
@@ -206,6 +208,40 @@ class ReviewServiceTest {
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.REVIEW_ACCESS_DENIED);
+    }
+
+    @Test
+    @DisplayName("기존 리뷰 작성자는 SNS 미게시 플랫폼의 최초 발행을 요청할 수 있다")
+    void requestInitialSocialPublications_legacyReview_requestsMissingPlatforms() {
+        Review review = buildReview(spirit, user, 80, 80, 80, null, new BigDecimal("80.0"));
+        ReflectionTestUtils.setField(review, "id", 10L);
+        ReflectionTestUtils.setField(review, "legacySocialPublishAllowed", true);
+        given(reviewRepository.findByIdForSocialPublish(10L)).willReturn(Optional.of(review));
+        SocialPublishSelection selection = new SocialPublishSelection(
+                true, true, true, "2026-07-24", "ko",
+                SocialMediaMode.REVIEW_IMAGE, null, null, null);
+
+        reviewService.requestInitialSocialPublications(1L, 10L, 1L, selection);
+
+        verify(socialPublishRequestService)
+                .requestMissingReviewPlatforms(review, user, selection);
+    }
+
+    @Test
+    @DisplayName("신규 리뷰는 수정 화면에서 SNS 최초 발행을 요청할 수 없다")
+    void requestInitialSocialPublications_newReview_throwsNotAllowed() {
+        Review review = buildReview(spirit, user, 80, 80, 80, null, new BigDecimal("80.0"));
+        ReflectionTestUtils.setField(review, "id", 10L);
+        given(reviewRepository.findByIdForSocialPublish(10L)).willReturn(Optional.of(review));
+        SocialPublishSelection selection = new SocialPublishSelection(
+                true, false, true, "2026-07-24", "ko",
+                SocialMediaMode.REVIEW_IMAGE, null, null, null);
+
+        assertThatThrownBy(() ->
+                reviewService.requestInitialSocialPublications(1L, 10L, 1L, selection))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.SOCIAL_INITIAL_PUBLISH_NOT_ALLOWED);
     }
 
     @Test

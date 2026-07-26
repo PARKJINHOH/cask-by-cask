@@ -27,6 +27,7 @@ import {
 } from '@/domain/review/utils/aroma'
 import type { AromaNotes } from '@/domain/review/utils/aroma'
 import type { ReviewItem } from '@/domain/review/types/review.types'
+import { reviewApi } from '@/domain/review/api/reviewApi'
 import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
 import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 import SocialPublishFields from '@/domain/social/components/SocialPublishFields'
@@ -170,7 +171,7 @@ export default function ReviewFormPage() {
   const totalPreview = (nose + taste + finish) / 3
 
   const onSubmit = async (values: ReviewFormValues) => {
-    if (!isEdit && (socialSelection.instagram || socialSelection.threads)
+    if ((socialSelection.instagram || socialSelection.threads)
       && !socialSelection.consentAccepted) {
       setSocialError(t('social.consentRequired'))
       return
@@ -199,7 +200,19 @@ export default function ReviewFormPage() {
     }
     if (isEdit && editingReview) {
       await updateMutation.mutateAsync({ reviewId: editingReview.id, data: payload })
-      await Promise.all(socialRetryIds.map((publicationId) => socialApi.retry(publicationId)))
+      try {
+        if (socialSelection.instagram || socialSelection.threads) {
+          await reviewApi.requestInitialSocialPublications(
+            spiritId,
+            editingReview.id,
+            socialSelection,
+          )
+        }
+        await Promise.all(socialRetryIds.map((publicationId) => socialApi.retry(publicationId)))
+      } catch {
+        setSocialError(t('social.initialPublishError'))
+        return
+      }
     } else if (pendingVariantDraft && masterId) {
       await createVariantReviewRequest.mutateAsync({
         ...payload,
@@ -438,6 +451,7 @@ export default function ReviewFormPage() {
           retryIds={socialRetryIds}
           onRetryIdsChange={setSocialRetryIds}
           reviewSpiritId={targetSpiritId ?? masterId ?? spiritId}
+          allowFirstPublishOnEdit={editingReview?.legacySocialPublishAllowed === true}
         />
         {socialError && <p className="text-sm text-red-600">{socialError}</p>}
 

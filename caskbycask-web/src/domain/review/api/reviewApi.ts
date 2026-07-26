@@ -9,6 +9,7 @@ import type {
   VariantReviewRequestItem,
   VariantReviewRequestStatus,
 } from '../types/review.types'
+import type { SocialPublishSelection } from '@/domain/social/types/social.types'
 
 export const reviewApi = {
   getReviews: (spiritId: number, params?: { sort?: string; page?: number; size?: number }) =>
@@ -50,6 +51,16 @@ export const reviewApi = {
   updateMyReviewRequest: (requestId: number, data: CreateVariantReviewRequest) =>
     axiosInstance.patch<ApiResponse<VariantReviewRequestItem>>(
       `/api/users/me/review-requests/${requestId}`,
+      data,
+    ),
+
+  requestInitialSocialPublications: (
+    spiritId: number,
+    reviewId: number,
+    data: SocialPublishSelection,
+  ) =>
+    axiosInstance.post<ApiResponse<null>>(
+      `/api/spirits/${spiritId}/reviews/${reviewId}/social-publications`,
       data,
     ),
 

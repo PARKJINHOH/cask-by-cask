@@ -10,6 +10,7 @@ import com.caskbycask.domain.review.repository.ReviewRepository;
 import com.caskbycask.domain.score.constant.ScoreActions;
 import com.caskbycask.domain.score.service.ScoreService;
 import com.caskbycask.domain.social.entity.enums.SocialSourceType;
+import com.caskbycask.domain.social.dto.SocialPublishSelection;
 import com.caskbycask.domain.social.service.SocialPublishRequestService;
 import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.domain.spirit.entity.enums.SpiritStatus;
@@ -152,6 +153,19 @@ public class ReviewService {
         return toResponse(review);
     }
 
+    @Transactional
+    public void requestInitialSocialPublications(Long spiritId, Long reviewId, Long userId,
+                                                 SocialPublishSelection selection) {
+        Review review = reviewRepository.findByIdForSocialPublish(reviewId)
+                .orElseThrow(() -> new CustomException(ErrorCode.REVIEW_NOT_FOUND));
+        validateReviewSpirit(review, spiritId);
+        checkOwnership(review, userId);
+        if (!Boolean.TRUE.equals(review.getLegacySocialPublishAllowed())) {
+            throw new CustomException(ErrorCode.SOCIAL_INITIAL_PUBLISH_NOT_ALLOWED);
+        }
+        socialPublishRequestService.requestMissingReviewPlatforms(review, review.getUser(), selection);
+    }
+
     // ── 삭제 ──────────────────────────────────────────────
 
     @Transactional
@@ -236,6 +250,11 @@ public class ReviewService {
         Review review = reviewRepository.findById(reviewId)
                 .orElseThrow(() -> new CustomException(ErrorCode.REVIEW_NOT_FOUND));
 
+        validateReviewSpirit(review, spiritId);
+        return review;
+    }
+
+    private void validateReviewSpirit(Review review, Long spiritId) {
         Long actualSpiritId = review.getSpirit().getId();
         Long parentSpiritId = review.getSpirit().getParent() != null ?
                 review.getSpirit().getParent().getId() : null;
@@ -243,8 +262,6 @@ public class ReviewService {
         if (!actualSpiritId.equals(spiritId) && !spiritId.equals(parentSpiritId)) {
             throw new CustomException(ErrorCode.REVIEW_NOT_FOUND);
         }
-
-        return review;
     }
 
     private User getUser(Long userId) {

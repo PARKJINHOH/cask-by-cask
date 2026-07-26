@@ -8,6 +8,7 @@ import com.caskbycask.domain.review.dto.VariantReviewRequestResponse;
 import com.caskbycask.domain.review.entity.enums.ReviewSort;
 import com.caskbycask.domain.review.service.ReviewService;
 import com.caskbycask.domain.review.service.VariantReviewRequestService;
+import com.caskbycask.domain.social.dto.SocialPublishSelection;
 import com.caskbycask.global.auth.security.CustomUserDetails;
 import com.caskbycask.global.response.ApiResponse;
 import com.caskbycask.global.response.PageResponse;
@@ -63,6 +64,17 @@ public class ReviewController {
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.ok(ApiResponse.success(
                 reviewService.updateReview(spiritId, reviewId, userDetails.getUserId(), request)));
+    }
+
+    @PostMapping("/{reviewId}/social-publications")
+    public ResponseEntity<ApiResponse<Void>> requestInitialSocialPublications(
+            @PathVariable Long spiritId,
+            @PathVariable Long reviewId,
+            @Valid @RequestBody SocialPublishSelection request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        reviewService.requestInitialSocialPublications(
+                spiritId, reviewId, userDetails.getUserId(), request);
+        return ResponseEntity.ok(ApiResponse.success());
     }
 
     @DeleteMapping("/{reviewId}")

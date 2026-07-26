@@ -24,7 +24,9 @@ import org.springframework.util.StringUtils;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -44,6 +46,40 @@ public class SocialPublishRequestService {
         if (!requested(selection)) return;
         createBundle(SocialSourceType.REVIEW, review.getId(), SocialSourceType.REVIEW, review.getId(),
                 requester, selection, SocialMediaMode.REVIEW_IMAGE, SocialPublicationStatus.QUEUED);
+    }
+
+    @Transactional
+    public void requestMissingReviewPlatforms(Review review, User requester,
+                                              SocialPublishSelection selection) {
+        if (!requested(selection)) return;
+
+        Set<SocialPlatform> existingPlatforms = EnumSet.noneOf(SocialPlatform.class);
+        for (SocialPublishBundle bundle :
+                bundleRepository.findByContentTypeAndContentId(SocialSourceType.REVIEW, review.getId())) {
+            publicationRepository.findByBundleIdOrderByPlatformAsc(bundle.getId()).stream()
+                    .map(SocialPublication::getPlatform)
+                    .forEach(existingPlatforms::add);
+        }
+
+        boolean instagram = selection.instagramRequested()
+                && !existingPlatforms.contains(SocialPlatform.INSTAGRAM);
+        boolean threads = selection.threadsRequested()
+                && !existingPlatforms.contains(SocialPlatform.THREADS);
+        if (!instagram && !threads) return;
+
+        SocialPublishSelection missingSelection = new SocialPublishSelection(
+                instagram,
+                threads,
+                selection.consentAccepted(),
+                selection.consentVersion(),
+                selection.locale(),
+                SocialMediaMode.REVIEW_IMAGE,
+                null,
+                null,
+                null
+        );
+        createBundle(SocialSourceType.REVIEW, review.getId(), SocialSourceType.REVIEW, review.getId(),
+                requester, missingSelection, SocialMediaMode.REVIEW_IMAGE, SocialPublicationStatus.QUEUED);
     }
 
     @Transactional

@@ -22,6 +22,7 @@ export interface ReviewItem {
   userLevel?: number
   userProfileImageUrl?: string | null
   userRole?: string
+  legacySocialPublishAllowed: boolean
   userReviewIndex?: number
   userReviewCount?: number
 }

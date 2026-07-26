@@ -79,6 +79,14 @@ public class Review extends BaseTimeEntity {
     @Column(nullable = false)
     private Integer reportCount = 0;
 
+    /**
+     * SNS 기능 도입 전에 존재하던 리뷰에 한해 수정 화면에서 최초 게시를 허용한다.
+     * 신규 리뷰는 작성 시 선택한 플랫폼 외에는 추후 추가 발행할 수 없다.
+     */
+    @Builder.Default
+    @Column(nullable = false)
+    private Boolean legacySocialPublishAllowed = false;
+
     @Column
     private LocalDateTime deletedAt;
 

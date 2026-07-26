@@ -19,6 +19,7 @@ interface Props {
   retryIds?: number[]
   onRetryIdsChange?: (ids: number[]) => void
   reviewSpiritId?: number
+  allowFirstPublishOnEdit?: boolean
 }
 
 const PLATFORM_LABEL: Record<SocialPlatform, string> = {
@@ -35,6 +36,7 @@ export default function SocialPublishFields({
   retryIds = [],
   onRetryIdsChange,
   reviewSpiritId,
+  allowFirstPublishOnEdit = false,
 }: Props) {
   const { t, i18n } = useTranslation()
   const [uploading, setUploading] = useState(false)
@@ -45,13 +47,16 @@ export default function SocialPublishFields({
     queryFn: () => socialApi.capabilities(reviewSpiritId),
     staleTime: 60_000,
   })
-  const { data: states = [] } = useQuery({
+  const { data: states = [], isLoading: statesLoading } = useQuery({
     queryKey: ['social', 'source', source?.type, source?.id],
     queryFn: () => socialApi.sourceStates(source!.type, source!.id),
     enabled: Boolean(editing && source),
   })
 
   const anySelected = selection.instagram || selection.threads
+  const newPublishSelected = !editing
+    ? anySelected
+    : allowFirstPublishOnEdit && anySelected
 
   useEffect(() => {
     const source = editingUpload
@@ -88,6 +93,16 @@ export default function SocialPublishFields({
   const togglePlatform = (platform: SocialPlatform, checked: boolean) => {
     if (editing) {
       const state = stateFor(platform)
+      if (!state && allowFirstPublishOnEdit) {
+        onChange({
+          ...selection,
+          [platform === 'INSTAGRAM' ? 'instagram' : 'threads']: checked,
+          locale: i18n.language === 'en' ? 'en' : 'ko',
+          consentVersion: capabilities?.consentVersion,
+          mediaMode: 'REVIEW_IMAGE',
+        })
+        return
+      }
       if (!state?.canRetry) return
       const next = checked
         ? [...retryIds.filter((id) => id !== state.id), state.id]
@@ -113,10 +128,17 @@ export default function SocialPublishFields({
     const state = stateFor(platform)
     const failedRetry = Boolean(state?.canRetry && retryIds.includes(state.id))
     const checked = editing
-      ? Boolean(state && (state.canRetry ? failedRetry : state.status !== 'CANCELED'))
+      ? state
+        ? Boolean(state.canRetry ? failedRetry : state.status !== 'CANCELED')
+        : platform === 'INSTAGRAM' ? selection.instagram : selection.threads
       : platform === 'INSTAGRAM' ? selection.instagram : selection.threads
     const imageUnavailable = kind === 'review' && capabilities?.reviewImageAvailable === false
-    const disabled = editing ? !state?.canRetry : !availability(platform) || imageUnavailable
+    const canFirstPublish = editing && allowFirstPublishOnEdit && !state
+    const disabled = editing
+      ? statesLoading || (canFirstPublish
+        ? !availability(platform) || imageUnavailable
+        : !state?.canRetry)
+      : !availability(platform) || imageUnavailable
     return (
       <div key={platform} className="flex flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2.5">
         <label className={`flex items-center gap-2 text-sm font-semibold ${disabled ? 'text-neutral-400' : 'text-neutral-700'}`}>
@@ -135,7 +157,11 @@ export default function SocialPublishFields({
           </span>
         )}
         {editing && !state && (
-          <span className="text-xs text-neutral-400">{t('social.notRequestedAtCreation')}</span>
+          <span className={`text-xs ${allowFirstPublishOnEdit ? 'text-emerald-700' : 'text-neutral-400'}`}>
+            {allowFirstPublishOnEdit
+              ? t('social.legacyReviewAvailable')
+              : t('social.notRequestedAtCreation')}
+          </span>
         )}
         {state?.permalink && (
           <a href={state.permalink} target="_blank" rel="noopener noreferrer"
@@ -153,7 +179,11 @@ export default function SocialPublishFields({
       <div>
         <p className="text-sm font-bold text-neutral-800">{t('social.publishTitle')}</p>
         <p className="mt-1 text-xs leading-5 text-neutral-500">
-          {editing ? t('social.editRetryHelp') : t('social.publishHelp')}
+          {editing
+            ? allowFirstPublishOnEdit
+              ? t('social.editLegacyReviewHelp')
+              : t('social.editRetryHelp')
+            : t('social.publishHelp')}
         </p>
       </div>
       <div className="grid gap-2 sm:grid-cols-2">
@@ -163,7 +193,7 @@ export default function SocialPublishFields({
       {!editing && capabilities && !capabilities.enabled && (
         <p className="text-xs text-amber-700">{t('social.disabled')}</p>
       )}
-      {!editing && kind === 'review' && capabilities?.reviewImageAvailable === false && (
+      {kind === 'review' && capabilities?.reviewImageAvailable === false && (
         <p className="text-xs text-amber-700">{t('social.reviewImageRequired')}</p>
       )}
       {!editing && kind === 'news' && anySelected && (
@@ -236,7 +266,7 @@ export default function SocialPublishFields({
           recommendedResolution={t('social.editorRecommendedResolution')}
         />
       )}
-      {!editing && anySelected && (
+      {newPublishSelected && (
         <label className="flex items-start gap-2 border-t border-neutral-200 pt-3 text-xs leading-5 text-neutral-600">
           <input type="checkbox" checked={selection.consentAccepted}
             onChange={(event) => onChange({

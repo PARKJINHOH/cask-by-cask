@@ -55,6 +55,8 @@ public record ReviewResponse(
         String userProfileImageUrl,
         @Schema(description = "작성자 역할")
         Role userRole,
+        @Schema(description = "SNS 기능 도입 전 리뷰의 미게시 플랫폼 최초 발행 허용 여부")
+        boolean legacySocialPublishAllowed,
         @Schema(description = "동일 주류에 대한 사용자 리뷰 번호 (1부터 시작)")
         Integer userReviewIndex,
         @Schema(description = "동일 주류에 대한 사용자 총 리뷰 수")
@@ -89,6 +91,7 @@ public record ReviewResponse(
                 review.getUser().getCurrentLevel(),
                 review.getUser().getProfileImageUrl(),
                 review.getUser().getRole(),
+                Boolean.TRUE.equals(review.getLegacySocialPublishAllowed()),
                 userReviewIndex,
                 userReviewCount
         );
