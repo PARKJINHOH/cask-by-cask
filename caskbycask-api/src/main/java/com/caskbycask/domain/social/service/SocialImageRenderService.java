@@ -55,7 +55,7 @@ public class SocialImageRenderService {
 
     public String renderDirect(String sourceUrl) {
         BufferedImage source = readTrustedImage(sourceUrl);
-        return writeJpeg(composeContained(source), "direct");
+        return writeJpeg(composeCovered(source), "direct");
     }
 
     public String renderTemplate(String backgroundUrl, String text) {
@@ -103,7 +103,7 @@ public class SocialImageRenderService {
     }
 
     public String storeDirectUpload(MultipartFile file) {
-        return writeJpeg(composeContained(decodeUpload(file)), "upload");
+        return writeJpeg(composeCovered(decodeUpload(file)), "upload");
     }
 
     public Path resolveGeneratedImage(String yearMonth, String fileName) {
@@ -139,6 +139,15 @@ public class SocialImageRenderService {
         int x = (WIDTH - drawWidth) / 2;
         int y = (HEIGHT - drawHeight) / 2;
         graphics.drawImage(source, x, y, drawWidth, drawHeight, null);
+        graphics.dispose();
+        return canvas;
+    }
+
+    private BufferedImage composeCovered(BufferedImage source) {
+        BufferedImage canvas = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_RGB);
+        Graphics2D graphics = canvas.createGraphics();
+        configure(graphics);
+        drawCover(graphics, source, WIDTH, HEIGHT);
         graphics.dispose();
         return canvas;
     }

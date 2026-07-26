@@ -58,6 +58,9 @@ class SocialContentFactoryTest {
                 .tasteNote("맛".repeat(200))
                 .finishNote("피니시".repeat(100))
                 .comment("총평".repeat(200))
+                .noseAromaWheelNotes("vanilla,c:%EB%B0%94%EB%8B%90%EB%9D%BC")
+                .tasteAromaWheelNotes("oak,c:%EA%B2%AC%EA%B3%BC%EB%A5%98")
+                .finishAromaWheelNotes("spice,c:%EC%8B%9C%EB%82%98%EB%AA%AC")
                 .build();
         ReflectionTestUtils.setField(review, "id", 20L);
         SpiritImage image = SpiritImage.builder()
@@ -82,7 +85,16 @@ class SocialContentFactoryTest {
 
         SocialPublicationContent content = factory.create(bundle, SocialPlatform.THREADS);
 
-        assertThat(content.caption()).endsWith("https://www.caskbycask.net/s/AbCdEf2345");
+        assertThat(content.caption()).contains(
+                "향\n아로마: Vanilla · 바닐라");
+        assertThat(content.caption()).contains(
+                "맛\n아로마: Oak · 견과류");
+        assertThat(content.caption()).contains(
+                "피니시\n아로마: Spice · 시나몬");
+        assertThat(content.caption()).doesNotContain("테이스팅 노트", "향향향", "맛맛맛", "피니시피니시");
+        assertThat(content.caption()).contains("총평: ", "...");
+        assertThat(content.caption()).endsWith(
+                "전체 리뷰 보기 → https://www.caskbycask.net/s/AbCdEf2345");
         assertThat(content.caption().codePointCount(0, content.caption().length())).isLessThanOrEqualTo(500);
     }
 }

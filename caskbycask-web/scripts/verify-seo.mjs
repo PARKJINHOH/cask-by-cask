@@ -142,6 +142,12 @@ async function verifyMissingRoute(path) {
   invariant(/noindex/i.test(robotsOf(body)), `${path}: 404 response must be noindex`)
 }
 
+async function verifyNoindexAppRoute(path) {
+  const { response, body } = await get(path)
+  invariant(response.status === 200, `${path}: expected app shell 200, got ${response.status}`)
+  invariant(/noindex/i.test(robotsOf(body)), `${path}: app route must be noindex`)
+}
+
 function decodeXml(value) {
   return value.replaceAll('&amp;', '&').replaceAll('&lt;', '<').replaceAll('&gt;', '>')
     .replaceAll('&quot;', '"').replaceAll('&apos;', "'")
@@ -442,6 +448,7 @@ async function verifyRenderedHtml(categoryStates = []) {
 }
 
 async function main() {
+  await verifyNoindexAppRoute('/ko/admin/social')
   await verifyHtml('/ko/spirits', { canonical: '/ko/spirits' })
   await verifyHtml('/ko/spirits?sort=SCORE_DESC', {
     canonical: '/ko/spirits',

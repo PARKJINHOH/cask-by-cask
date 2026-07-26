@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import ImageEditorModal from '@/shared/components/ImageEditorModal'
 import { socialApi } from '../api/socialApi'
 import type {
   SocialPlatform,
@@ -38,6 +39,7 @@ export default function SocialPublishFields({
   const { t, i18n } = useTranslation()
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
+  const [editingUpload, setEditingUpload] = useState<string | null>(null)
   const { data: capabilities } = useQuery({
     queryKey: ['social', 'capabilities', reviewSpiritId],
     queryFn: () => socialApi.capabilities(reviewSpiritId),
@@ -50,6 +52,32 @@ export default function SocialPublishFields({
   })
 
   const anySelected = selection.instagram || selection.threads
+
+  useEffect(() => {
+    const source = editingUpload
+    return () => {
+      if (source) URL.revokeObjectURL(source)
+    }
+  }, [editingUpload])
+
+  const saveEditedDirectImage = async (file: File) => {
+    setUploading(true)
+    setUploadError('')
+    try {
+      const uploaded = await socialApi.uploadDirect(file)
+      onChange({
+        ...selection,
+        mediaMode: 'DIRECT_UPLOAD',
+        directImageUrl: uploaded.imageUrl,
+      })
+      setEditingUpload(null)
+    } catch {
+      setUploadError(t('social.uploadError'))
+    } finally {
+      setUploading(false)
+    }
+  }
+
   const stateFor = (platform: SocialPlatform) =>
     states.find((state) => state.platform === platform)
   const availability = (platform: SocialPlatform) =>
@@ -140,6 +168,9 @@ export default function SocialPublishFields({
       )}
       {!editing && kind === 'news' && anySelected && (
         <div className="space-y-3 border-t border-neutral-200 pt-3">
+          <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+            {t('social.imageRecommendedResolution')}
+          </p>
           <div className="flex flex-wrap gap-4">
             <label className="flex items-center gap-2 text-sm">
               <input type="radio" checked={(selection.mediaMode ?? 'TEMPLATE') === 'TEMPLATE'}
@@ -175,19 +206,12 @@ export default function SocialPublishFields({
             <div className="space-y-2">
               <input type="file" accept="image/jpeg,image/png,image/webp"
                 disabled={uploading}
-                onChange={async (event) => {
+                onChange={(event) => {
                   const file = event.target.files?.[0]
+                  event.currentTarget.value = ''
                   if (!file) return
-                  setUploading(true)
                   setUploadError('')
-                  try {
-                    const uploaded = await socialApi.uploadDirect(file)
-                    onChange({ ...selection, mediaMode: 'DIRECT_UPLOAD', directImageUrl: uploaded.imageUrl })
-                  } catch {
-                    setUploadError(t('social.uploadError'))
-                  } finally {
-                    setUploading(false)
-                  }
+                  setEditingUpload(URL.createObjectURL(file))
                 }} />
               {selection.directImageUrl && (
                 <img src={selection.directImageUrl} alt={t('social.thumbnailPreview')}
@@ -198,6 +222,19 @@ export default function SocialPublishFields({
             </div>
           )}
         </div>
+      )}
+      {editingUpload && (
+        <ImageEditorModal
+          open
+          onClose={() => setEditingUpload(null)}
+          imageSrc={editingUpload}
+          onSave={saveEditedDirectImage}
+          isSaving={uploading}
+          fixedRatio="4:5"
+          initialMode="crop"
+          outputSize={{ width: 1080, height: 1350 }}
+          recommendedResolution={t('social.editorRecommendedResolution')}
+        />
       )}
       {!editing && anySelected && (
         <label className="flex items-start gap-2 border-t border-neutral-200 pt-3 text-xs leading-5 text-neutral-600">

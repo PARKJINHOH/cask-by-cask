@@ -14,6 +14,7 @@ interface ImageEditorModalProps {
     width: number
     height: number
   }
+  recommendedResolution?: string
 }
 
 type EditMode = 'paint' | 'crop' | 'rotate' | 'resize'
@@ -36,6 +37,7 @@ export default function ImageEditorModal({
   initialCropRatio,
   initialMode = 'paint',
   outputSize,
+  recommendedResolution,
 }: ImageEditorModalProps) {
   const [mode, setMode] = useState<EditMode>('paint')
   const [paintType, setPaintType] = useState<PaintType>('mosaic')
@@ -1075,6 +1077,11 @@ export default function ImageEditorModal({
                               ))}
                             </div>
                           )}
+                          {recommendedResolution && (
+                            <div className="text-xs leading-relaxed text-amber-200 bg-amber-950/30 p-3 rounded-xl border border-amber-800/60">
+                              {recommendedResolution}
+                            </div>
+                          )}
 
                           {cropRatio === 'custom' && (
                             <div className="flex items-center gap-2 mt-2 p-2 bg-neutral-950/40 rounded-xl border border-neutral-800">
@@ -1422,32 +1429,44 @@ export default function ImageEditorModal({
                   {mode === 'crop' && (
                     <div className="flex flex-col gap-3">
                       {/* Crop Ratio Selector (horizontal scroll) */}
-                      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-                        {[
-                          { label: '자유', value: 'free' },
-                          { label: '1:1', value: '1:1' },
-                          { label: '9:16', value: '9:16' },
-                          { label: '3:4', value: '3:4' },
-                          { label: '입력', value: 'custom' },
-                        ].map((opt) => (
-                          <button
-                            key={opt.value}
-                            onClick={() => {
-                              setCropRatio(opt.value)
-                              setCropBox(getInitialCropBoxForRatio(opt.value))
-                            }}
-                            className={`py-1.5 px-3 text-xs rounded-lg border transition-all duration-150 shrink-0 ${
-                              cropRatio === opt.value
-                                ? 'bg-neutral-700 border-neutral-600 text-white font-medium shadow-md shadow-neutral-950/20'
-                                : 'bg-neutral-800/50 border-neutral-700 hover:bg-neutral-800 text-neutral-400'
-                            }`}
-                          >
-                            {opt.label}
-                          </button>
-                        ))}
-                      </div>
+                      {fixedRatio ? (
+                        <div className="text-xs text-neutral-300 bg-neutral-800 p-2.5 rounded-lg border border-neutral-700 font-medium">
+                          비율이 {fixedRatio}로 고정되어 편집됩니다.
+                        </div>
+                      ) : (
+                        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+                          {[
+                            { label: '자유', value: 'free' },
+                            { label: '1:1', value: '1:1' },
+                            { label: '9:16', value: '9:16' },
+                            { label: '3:4', value: '3:4' },
+                            { label: '입력', value: 'custom' },
+                          ].map((opt) => (
+                            <button
+                              key={opt.value}
+                              onClick={() => {
+                                setCropRatio(opt.value)
+                                setCropBox(getInitialCropBoxForRatio(opt.value))
+                              }}
+                              className={`py-1.5 px-3 text-xs rounded-lg border transition-all duration-150 shrink-0 ${
+                                cropRatio === opt.value
+                                  ? 'bg-neutral-700 border-neutral-600 text-white font-medium shadow-md shadow-neutral-950/20'
+                                  : 'bg-neutral-800/50 border-neutral-700 hover:bg-neutral-800 text-neutral-400'
+                              }`}
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
 
-                      {cropRatio === 'custom' && (
+                      {recommendedResolution && (
+                        <div className="text-[11px] leading-relaxed text-amber-200 bg-amber-950/30 p-2.5 rounded-lg border border-amber-800/60">
+                          {recommendedResolution}
+                        </div>
+                      )}
+
+                      {!fixedRatio && cropRatio === 'custom' && (
                         <div className="flex items-center gap-2 p-1.5 bg-neutral-950/40 rounded-lg border border-neutral-800">
                           <div className="flex-1 flex items-center gap-1">
                             <span className="text-[10px] text-neutral-400 whitespace-nowrap">가로비율</span>

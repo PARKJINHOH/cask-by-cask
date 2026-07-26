@@ -2242,6 +2242,8 @@
     "templateMode": "배경 + 텍스트",
     "directMode": "이미지 직접 업로드",
     "thumbnailTextPlaceholder": "썸네일에 표시할 제목을 입력해 주세요.",
+    "imageRecommendedResolution": "배경 이미지와 직접 업로드 이미지의 권장 해상도는 1080×1350px(4:5)입니다. 이미지를 선택하면 편집기에서 권장 비율로 자를 수 있습니다.",
+    "editorRecommendedResolution": "SNS 소식 이미지 권장 해상도: 1080×1350px (4:5)",
     "thumbnailPreview": "선택한 썸네일 미리보기",
     "uploading": "이미지를 업로드하고 있습니다.",
     "uploadError": "이미지 업로드에 실패했습니다.",

@@ -18,11 +18,17 @@ import org.jsoup.Jsoup;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class SocialContentFactory {
+
+    private static final int REVIEW_AROMA_LIMIT = 80;
+    private static final int REVIEW_OVERALL_LIMIT = 200;
 
     private final ReviewRepository reviewRepository;
     private final PostRepository postRepository;
@@ -50,14 +56,31 @@ public class SocialContentFactory {
         String name = "en".equals(bundle.getLocale())
                 ? SpiritSlugUtils.displayNameEn(spirit) : SpiritSlugUtils.displayNameKo(spirit);
         String shortUrl = normalizedSiteUrl() + "/s/" + bundle.getShortCode();
+        boolean english = "en".equals(bundle.getLocale());
         StringBuilder body = new StringBuilder(name).append("\n\n");
-        appendLine(body, "en".equals(bundle.getLocale()) ? "Nose" : "향", review.getNoseNote());
-        appendLine(body, "en".equals(bundle.getLocale()) ? "Taste" : "맛", review.getTasteNote());
-        appendLine(body, "en".equals(bundle.getLocale()) ? "Finish" : "피니시", review.getFinishNote());
-        appendLine(body, "en".equals(bundle.getLocale()) ? "Overall" : "총평", review.getComment());
+        appendReviewAromaSection(body, english ? "Nose" : "향",
+                review.getNoseAromaWheelNotes(), english);
+        appendReviewAromaSection(body, english ? "Taste" : "맛",
+                review.getTasteAromaWheelNotes(), english);
+        appendReviewAromaSection(body, english ? "Finish" : "피니시",
+                review.getFinishAromaWheelNotes(), english);
+        String linkLine = (english ? "Read the full review → " : "전체 리뷰 보기 → ") + shortUrl;
         int limit = platform == SocialPlatform.INSTAGRAM ? 2200 : 500;
-        int contentLimit = Math.max(40, limit - shortUrl.codePointCount(0, shortUrl.length()) - 2);
-        String caption = truncate(body.toString().stripTrailing(), contentLimit) + "\n\n" + shortUrl;
+        int contentLimit = Math.max(40, limit - linkLine.codePointCount(0, linkLine.length()) - 2);
+        String content = body.toString().stripTrailing();
+        String overall = review.getComment();
+        if (overall != null && !overall.isBlank()) {
+            String overallLabel = english ? "Overall: " : "총평: ";
+            int remaining = contentLimit
+                    - content.codePointCount(0, content.length())
+                    - overallLabel.codePointCount(0, overallLabel.length())
+                    - 2;
+            if (remaining > 0) {
+                content += "\n\n" + overallLabel
+                        + truncateWithDots(overall.trim(), Math.min(REVIEW_OVERALL_LIMIT, remaining));
+            }
+        }
+        String caption = truncateWithDots(content, contentLimit) + "\n\n" + linkLine;
         String imageUrl = primaryImageUrl(spirit);
         if (imageUrl == null) throw new IllegalStateException("리뷰에 게시 가능한 대표 이미지가 없습니다.");
         return new SocialPublicationContent(
@@ -111,6 +134,41 @@ public class SocialContentFactory {
         }
     }
 
+    private static void appendReviewAromaSection(StringBuilder target, String label,
+                                                 String aromaNotes, boolean english) {
+        String aromas = formatAromaNotes(aromaNotes);
+        if (aromas == null) return;
+
+        target.append(label).append("\n");
+        appendLine(target, english ? "Aromas" : "아로마", aromas);
+        target.append("\n");
+    }
+
+    private static String formatAromaNotes(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        List<String> labels = new ArrayList<>();
+        for (String part : raw.split(",")) {
+            if (part == null || part.isBlank()) continue;
+            boolean custom = part.startsWith("c:");
+            String value = custom ? decodeAroma(part.substring(2)) : part;
+            value = value.replace('_', ' ').trim();
+            if (!custom && !value.isEmpty()) {
+                value = Character.toUpperCase(value.charAt(0)) + value.substring(1);
+            }
+            if (!value.isEmpty()) labels.add(value);
+        }
+        if (labels.isEmpty()) return null;
+        return truncateWithDots(String.join(" · ", labels), REVIEW_AROMA_LIMIT);
+    }
+
+    private static String decodeAroma(String value) {
+        try {
+            return URLDecoder.decode(value, StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException ignored) {
+            return value;
+        }
+    }
+
     private static String truncate(String value, int maxCodePoints) {
         if (value == null) return "";
         int count = value.codePointCount(0, value.length());
@@ -120,6 +178,18 @@ public class SocialContentFactory {
         int lastSpace = shortened.lastIndexOf(' ');
         if (lastSpace > shortened.length() * 0.7) shortened = shortened.substring(0, lastSpace);
         return shortened + "…";
+    }
+
+    private static String truncateWithDots(String value, int maxCodePoints) {
+        if (value == null) return "";
+        int count = value.codePointCount(0, value.length());
+        if (count <= maxCodePoints) return value;
+        if (maxCodePoints <= 3) return ".".repeat(Math.max(0, maxCodePoints));
+        int end = value.offsetByCodePoints(0, maxCodePoints - 3);
+        String shortened = value.substring(0, end).stripTrailing();
+        int lastSpace = shortened.lastIndexOf(' ');
+        if (lastSpace > shortened.length() * 0.7) shortened = shortened.substring(0, lastSpace);
+        return shortened + "...";
     }
 
     private String normalizedSiteUrl() {

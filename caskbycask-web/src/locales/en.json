@@ -2242,6 +2242,8 @@
     "templateMode": "Background + text",
     "directMode": "Upload image",
     "thumbnailTextPlaceholder": "Enter the title to show on the thumbnail.",
+    "imageRecommendedResolution": "The recommended size for background and directly uploaded images is 1080×1350px (4:5). After selecting an image, you can crop it to the recommended ratio in the editor.",
+    "editorRecommendedResolution": "Recommended social news image size: 1080×1350px (4:5)",
     "thumbnailPreview": "Thumbnail preview",
     "uploading": "Uploading image.",
     "uploadError": "Image upload failed.",

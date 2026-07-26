@@ -630,7 +630,7 @@ function isKnownAdminPath(segments: string[]): boolean {
     'reports', 'notices', 'notices/new', 'popups', 'popups/new', 'banners',
     'banners/new', 'events', 'community/post-reports', 'community/ai-news',
     'community/ai-news/new', 'community/bad-words', 'community/emojis',
-    'community/prefixes', 'price-reports', 'stores', 'deals', 'score/points',
+    'community/prefixes', 'social', 'price-reports', 'stores', 'deals', 'score/points',
     'score/levels', 'legal', 'legal/new', 'emails/send', 'emails/history',
     'inquiries', 'logs', 'faq', 'faq/new', 'taste-trees', 'taste-trees/new',
   ])

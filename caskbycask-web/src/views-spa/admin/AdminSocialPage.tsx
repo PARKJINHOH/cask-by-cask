@@ -1,8 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import AdminPageHeader from '@/shared/components/AdminPageHeader'
+import ImageEditorModal from '@/shared/components/ImageEditorModal'
 import { socialApi } from '@/domain/social/api/socialApi'
 import type {
+  SocialAccount,
   SocialPlatform,
   SocialPublicationStatus,
   SocialTemplate,
@@ -156,6 +158,7 @@ function TemplatePanel() {
   const [imageUrl, setImageUrl] = useState('')
   const [displayOrder, setDisplayOrder] = useState(0)
   const [uploading, setUploading] = useState(false)
+  const [editingBackground, setEditingBackground] = useState<string | null>(null)
   const { data: templates = [] } = useQuery({
     queryKey: ['admin', 'social', 'templates'],
     queryFn: socialApi.templates,
@@ -185,12 +188,32 @@ function TemplatePanel() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'social', 'templates'] }),
   })
 
+  useEffect(() => {
+    const source = editingBackground
+    return () => {
+      if (source) URL.revokeObjectURL(source)
+    }
+  }, [editingBackground])
+
+  const saveEditedBackground = async (file: File) => {
+    setUploading(true)
+    try {
+      const uploaded = await socialApi.uploadBackground(file)
+      setImageUrl(uploaded.imageUrl)
+      setEditingBackground(null)
+    } finally {
+      setUploading(false)
+    }
+  }
+
   return (
     <section className="grid gap-6 lg:grid-cols-[340px_1fr]">
       <div className="h-fit space-y-4 rounded-xl border border-neutral-200 bg-white p-5">
         <div>
           <h2 className="font-bold text-neutral-900">배경 등록</h2>
-          <p className="mt-1 text-xs text-neutral-500">업로드 시 1080×1350 JPEG로 정규화됩니다.</p>
+          <p className="mt-1 text-xs leading-5 text-neutral-500">
+            권장 해상도 1080×1350px(4:5). 이미지를 선택하면 권장 비율로 자른 뒤 JPEG로 저장합니다.
+          </p>
         </div>
         <input value={name} onChange={(event) => setName(event.target.value)} maxLength={100}
           placeholder="배경 이름" className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm" />
@@ -198,22 +221,30 @@ function TemplatePanel() {
           onChange={(event) => setDisplayOrder(Number(event.target.value))}
           className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm" />
         <input type="file" accept="image/jpeg,image/png,image/webp" disabled={uploading}
-          onChange={async (event) => {
+          onChange={(event) => {
             const file = event.target.files?.[0]
+            event.currentTarget.value = ''
             if (!file) return
-            setUploading(true)
-            try {
-              const uploaded = await socialApi.uploadBackground(file)
-              setImageUrl(uploaded.imageUrl)
-            } finally {
-              setUploading(false)
-            }
+            setEditingBackground(URL.createObjectURL(file))
           }} />
         {imageUrl && <img src={imageUrl} alt="" className="mx-auto aspect-[4/5] w-40 rounded-lg object-cover" />}
         <button type="button" disabled={!name.trim() || !imageUrl || save.isPending} onClick={() => save.mutate()}
           className="w-full rounded-lg bg-primary-800 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40">
           등록
         </button>
+        {editingBackground && (
+          <ImageEditorModal
+            open
+            onClose={() => setEditingBackground(null)}
+            imageSrc={editingBackground}
+            onSave={saveEditedBackground}
+            isSaving={uploading}
+            fixedRatio="4:5"
+            initialMode="crop"
+            outputSize={{ width: 1080, height: 1350 }}
+            recommendedResolution="SNS 소식 배경 권장 해상도: 1080×1350px (4:5)"
+          />
+        )}
       </div>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {templates.map((template) => (
@@ -240,6 +271,11 @@ function TemplatePanel() {
 
 function AccountPanel() {
   const queryClient = useQueryClient()
+  const [verificationFeedback, setVerificationFeedback] = useState<{
+    platform: SocialPlatform
+    type: 'success' | 'error'
+    message: string
+  } | null>(null)
   const { data: accounts = [] } = useQuery({
     queryKey: ['admin', 'social', 'accounts'],
     queryFn: socialApi.accounts,
@@ -250,7 +286,33 @@ function AccountPanel() {
   })
   const verify = useMutation({
     mutationFn: socialApi.verifyAccount,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'social', 'accounts'] }),
+    onMutate: () => setVerificationFeedback(null),
+    onSuccess: (account, platform) => {
+      queryClient.setQueryData<SocialAccount[]>(
+        ['admin', 'social', 'accounts'],
+        (current = []) => current.map((item) => item.platform === platform ? account : item),
+      )
+      if (account.status === 'CONNECTED') {
+        setVerificationFeedback({
+          platform,
+          type: 'success',
+          message: '연결이 정상입니다. Meta API로 공식 계정 정보를 확인했습니다.',
+        })
+      } else {
+        setVerificationFeedback({
+          platform,
+          type: 'error',
+          message: `연결 확인에 실패했습니다. 현재 상태: ${account.status}`,
+        })
+      }
+    },
+    onError: (_error, platform) => {
+      setVerificationFeedback({
+        platform,
+        type: 'error',
+        message: '연결 확인 요청에 실패했습니다. 잠시 후 다시 시도해주세요.',
+      })
+    },
   })
   const disconnect = useMutation({
     mutationFn: socialApi.disconnectAccount,
@@ -260,6 +322,10 @@ function AccountPanel() {
     <section className="grid gap-4 md:grid-cols-2">
       {(['INSTAGRAM', 'THREADS'] as SocialPlatform[]).map((platform) => {
         const account = accounts.find((item) => item.platform === platform)
+        const isVerifying = verify.isPending && verify.variables === platform
+        const feedback = verificationFeedback?.platform === platform
+          ? verificationFeedback
+          : null
         return (
           <article key={platform} className="rounded-xl border border-neutral-200 bg-white p-5">
             <h2 className="text-lg font-bold">{platform === 'INSTAGRAM' ? 'Instagram' : 'Threads'}</h2>
@@ -269,10 +335,23 @@ function AccountPanel() {
                 <p className="mt-1 text-xs text-neutral-500">
                   상태 {account.status} · 만료 {new Date(account.tokenExpiresAt).toLocaleString('ko-KR')}
                 </p>
+                <p className="mt-1 text-xs text-neutral-500">
+                  최근 확인 {account.lastVerifiedAt
+                    ? new Date(account.lastVerifiedAt).toLocaleString('ko-KR')
+                    : '확인 전'}
+                </p>
                 {account.lastError && <p className="mt-2 text-xs text-red-600">{account.lastError}</p>}
                 <div className="mt-4 flex flex-wrap gap-2">
                   <button type="button" onClick={() => verify.mutate(platform)}
-                    className="rounded-lg border px-3 py-2 text-xs font-semibold">연결 확인</button>
+                    disabled={verify.isPending}
+                    aria-busy={isVerifying}
+                    className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold disabled:cursor-wait disabled:opacity-60">
+                    {isVerifying && (
+                      <span aria-hidden="true"
+                        className="h-3 w-3 animate-spin rounded-full border-2 border-neutral-300 border-t-neutral-700" />
+                    )}
+                    {isVerifying ? '연결 확인 중...' : '연결 확인'}
+                  </button>
                   <button type="button" onClick={() => connect.mutate(platform)}
                     className="rounded-lg bg-primary-800 px-3 py-2 text-xs font-semibold text-white">다시 연결</button>
                   <button type="button" onClick={() => {
@@ -281,6 +360,16 @@ function AccountPanel() {
                     연결 해제
                   </button>
                 </div>
+                {feedback && (
+                  <p role={feedback.type === 'error' ? 'alert' : 'status'} aria-live="polite"
+                    className={`mt-3 rounded-lg border px-3 py-2 text-xs ${
+                      feedback.type === 'success'
+                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                        : 'border-red-200 bg-red-50 text-red-700'
+                    }`}>
+                    {feedback.message}
+                  </p>
+                )}
               </>
             ) : (
               <button type="button" onClick={() => connect.mutate(platform)}
