@@ -269,7 +269,16 @@ public class AiNewsService {
                                                      SocialPublishSelection socialSelection,
                                                      Long actorId) {
         AiNewsArticle article = findArticleForPublish(id);
-        if (article.getStatus() == AiNewsArticleStatus.PUBLISHED) return AiNewsDtos.ArticleDetailResponse.from(article);
+        if (article.getStatus() == AiNewsArticleStatus.PUBLISHED) {
+            if (socialSelection != null && socialSelection.anyRequested()) {
+                if (article.getPostId() == null) {
+                    throw new CustomException(ErrorCode.AI_NEWS_INVALID_STATUS);
+                }
+                socialPublishRequestService.requestPublishedAiArticle(
+                        article.getId(), article.getPostId(), userRepository.getByIdOrThrow(actorId), socialSelection);
+            }
+            return AiNewsDtos.ArticleDetailResponse.from(article);
+        }
         if (article.getStatus() == AiNewsArticleStatus.DELETED
                 || article.getStatus() == AiNewsArticleStatus.REJECTED
                 || article.getStatus() == AiNewsArticleStatus.SKIPPED_DUPLICATE) {

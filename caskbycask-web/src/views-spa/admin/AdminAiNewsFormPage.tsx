@@ -81,7 +81,7 @@ export default function AdminAiNewsFormPage() {
     mutationFn: async (action: 'save' | 'publish' | 'schedule') => {
       if (!title.trim() || !content.trim()) throw new Error('제목과 본문을 입력하세요.')
       if ((action === 'publish' || action === 'schedule')
-        && !socialSelectionValid(socialSelection, !isEdit || detail?.status !== 'PUBLISHED')) {
+        && !socialSelectionValid(socialSelection, true)) {
         throw new Error('SNS 게시 동의와 썸네일 설정을 확인하세요.')
       }
       if (action === 'schedule' && (!scheduledAt || new Date(scheduledAt).getTime() <= Date.now())) {
@@ -102,7 +102,7 @@ export default function AdminAiNewsFormPage() {
           sourceUrls: sources.map((source) => source.sourceUrl),
         })
         await Promise.all(socialRetryIds.map((publicationId) => socialApi.retry(publicationId, true)))
-        if (action === 'publish' && updated.status !== 'PUBLISHED') {
+        if (action === 'publish') {
           await adminAiNewsApi.publish(updated.id, null, socialSelection)
         }
         if (action === 'schedule') await adminAiNewsApi.publish(updated.id, scheduledAt, socialSelection)
@@ -134,6 +134,7 @@ export default function AdminAiNewsFormPage() {
   })
 
   const canPublish = !detail || !['PUBLISHED', 'DELETED', 'REJECTED', 'SKIPPED_DUPLICATE', 'REWRITE_REQUESTED'].includes(detail.status)
+  const canPublishSocial = detail?.status === 'PUBLISHED'
 
   const cancelScheduleMut = useMutation({
     mutationFn: () => adminAiNewsApi.cancelSchedule(articleId!),
@@ -296,6 +297,7 @@ export default function AdminAiNewsFormPage() {
           onChange={setSocialSelection}
           editing={Boolean(isEdit && detail && detail.status !== 'DRAFT' && detail.status !== 'PENDING_REVIEW')}
           source={articleId ? { type: 'AI_NEWS_ARTICLE', id: articleId } : undefined}
+          allowFirstPublishOnEdit={canPublishSocial}
           retryIds={socialRetryIds}
           onRetryIdsChange={setSocialRetryIds}
         />
@@ -323,7 +325,7 @@ export default function AdminAiNewsFormPage() {
           <div className="flex gap-2">
             <button type="button" onClick={() => save.mutate('save')} disabled={save.isPending} className="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-semibold text-neutral-700 hover:bg-neutral-50">저장</button>
             {canPublish && <button type="button" onClick={() => save.mutate('schedule')} disabled={save.isPending || !scheduledAt} className="rounded-lg border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-50">예약 발행</button>}
-            {canPublish && <button type="button" onClick={() => save.mutate('publish')} disabled={save.isPending} className="rounded-lg bg-primary-800 px-5 py-2 text-sm font-semibold text-white hover:bg-primary-900">즉시 발행</button>}
+            {(canPublish || canPublishSocial) && <button type="button" onClick={() => save.mutate('publish')} disabled={save.isPending} className="rounded-lg bg-primary-800 px-5 py-2 text-sm font-semibold text-white hover:bg-primary-900">{canPublishSocial ? 'SNS 게시' : '즉시 발행'}</button>}
           </div>
         </div>
       </div>

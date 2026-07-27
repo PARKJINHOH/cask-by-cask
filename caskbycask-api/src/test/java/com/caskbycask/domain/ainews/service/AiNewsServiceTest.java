@@ -15,7 +15,10 @@ import com.caskbycask.domain.community.repository.PostPrefixRepository;
 import com.caskbycask.domain.community.service.PostImageService;
 import com.caskbycask.domain.community.service.PostService;
 import com.caskbycask.domain.producer.repository.ProducerRepository;
+import com.caskbycask.domain.social.dto.SocialPublishSelection;
+import com.caskbycask.domain.social.entity.enums.SocialMediaMode;
 import com.caskbycask.domain.social.service.SocialPublishRequestService;
+import com.caskbycask.domain.user.entity.User;
 import com.caskbycask.domain.user.repository.UserRepository;
 import com.caskbycask.global.exception.CustomException;
 import com.caskbycask.domain.user.policy.AccountPolicy;
@@ -147,6 +150,35 @@ class AiNewsServiceTest {
         assertThat(result.status()).isEqualTo(AiNewsArticleStatus.SCHEDULED);
         assertThat(result.scheduledAt()).isEqualTo(scheduledAt);
         assertThat(result.publishedAt()).isNull();
+        verifyNoInteractions(postService);
+    }
+
+    @Test
+    void publishedArticleCanRequestFirstSocialPublicationWithoutRepublishingCommunityPost() {
+        AiNewsArticle article = AiNewsArticle.builder()
+                .id(24L)
+                .articleType(AiNewsArticleType.TIP_INFO)
+                .status(AiNewsArticleStatus.PUBLISHED)
+                .category(AiNewsCategory.WHISKY)
+                .title("기존 발행 소식")
+                .content("<p>본문</p>")
+                .confidenceScore(BigDecimal.ONE)
+                .dedupeKey("tip:published-social")
+                .postId(91L)
+                .publishedAt(LocalDateTime.now().minusDays(1))
+                .build();
+        User requester = User.builder().email("admin@example.com").nickname("관리자").build();
+        SocialPublishSelection selection = new SocialPublishSelection(
+                false, true, true, "2026-07-24", "ko",
+                SocialMediaMode.DIRECT_UPLOAD, null, null, "/api/social/images/news.webp");
+        given(articleRepository.findForPublishById(24L)).willReturn(Optional.of(article));
+        given(userRepository.getByIdOrThrow(7L)).willReturn(requester);
+
+        AiNewsDtos.ArticleDetailResponse result = service.publish(24L, null, selection, 7L);
+
+        assertThat(result.status()).isEqualTo(AiNewsArticleStatus.PUBLISHED);
+        verify(socialPublishRequestService)
+                .requestPublishedAiArticle(24L, 91L, requester, selection);
         verifyNoInteractions(postService);
     }
 

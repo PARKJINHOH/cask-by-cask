@@ -108,12 +108,52 @@ public class SocialPublishRequestService {
     @Transactional
     public void requestAiArticle(Long articleId, User requester, SocialPublishSelection selection) {
         if (!requested(selection)) return;
-        if (!bundleRepository.findByOriginTypeAndOriginId(SocialSourceType.AI_NEWS_ARTICLE, articleId).isEmpty()) {
-            return;
+        requestMissingAiArticlePlatforms(
+                articleId, null, null, requester, selection, SocialPublicationStatus.WAITING_SOURCE);
+    }
+
+    @Transactional
+    public void requestPublishedAiArticle(Long articleId, Long postId, User requester,
+                                          SocialPublishSelection selection) {
+        if (!requested(selection)) return;
+        requestMissingAiArticlePlatforms(
+                articleId, SocialSourceType.POST, postId, requester, selection, SocialPublicationStatus.QUEUED);
+    }
+
+    private void requestMissingAiArticlePlatforms(Long articleId,
+                                                  SocialSourceType contentType,
+                                                  Long contentId,
+                                                  User requester,
+                                                  SocialPublishSelection selection,
+                                                  SocialPublicationStatus initialStatus) {
+        Set<SocialPlatform> existingPlatforms = EnumSet.noneOf(SocialPlatform.class);
+        for (SocialPublishBundle bundle :
+                bundleRepository.findByOriginTypeAndOriginId(SocialSourceType.AI_NEWS_ARTICLE, articleId)) {
+            publicationRepository.findByBundleIdOrderByPlatformAsc(bundle.getId()).stream()
+                    .map(SocialPublication::getPlatform)
+                    .forEach(existingPlatforms::add);
         }
+
+        boolean instagram = selection.instagramRequested()
+                && !existingPlatforms.contains(SocialPlatform.INSTAGRAM);
+        boolean threads = selection.threadsRequested()
+                && !existingPlatforms.contains(SocialPlatform.THREADS);
+        if (!instagram && !threads) return;
+
+        SocialPublishSelection missingSelection = new SocialPublishSelection(
+                instagram,
+                threads,
+                selection.consentAccepted(),
+                selection.consentVersion(),
+                selection.locale(),
+                selection.mediaMode(),
+                selection.templateId(),
+                selection.thumbnailText(),
+                selection.directImageUrl()
+        );
         SocialMediaMode mode = resolveNewsMode(selection);
-        createBundle(SocialSourceType.AI_NEWS_ARTICLE, articleId, null, null,
-                requester, selection, mode, SocialPublicationStatus.WAITING_SOURCE);
+        createBundle(SocialSourceType.AI_NEWS_ARTICLE, articleId, contentType, contentId,
+                requester, missingSelection, mode, initialStatus);
     }
 
     @Transactional

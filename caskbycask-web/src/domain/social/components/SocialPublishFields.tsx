@@ -54,9 +54,7 @@ export default function SocialPublishFields({
   })
 
   const anySelected = selection.instagram || selection.threads
-  const newPublishSelected = !editing
-    ? anySelected
-    : allowFirstPublishOnEdit && anySelected
+  const newPublishSelected = anySelected && (!editing || allowFirstPublishOnEdit)
 
   useEffect(() => {
     const source = editingUpload
@@ -99,7 +97,12 @@ export default function SocialPublishFields({
           [platform === 'INSTAGRAM' ? 'instagram' : 'threads']: checked,
           locale: i18n.language === 'en' ? 'en' : 'ko',
           consentVersion: capabilities?.consentVersion,
-          mediaMode: 'REVIEW_IMAGE',
+          mediaMode: kind === 'review'
+            ? 'REVIEW_IMAGE'
+            : selection.mediaMode ?? 'TEMPLATE',
+          templateId: kind === 'news'
+            ? selection.templateId ?? capabilities?.templates[0]?.id
+            : selection.templateId,
         })
         return
       }
@@ -159,7 +162,7 @@ export default function SocialPublishFields({
         {editing && !state && (
           <span className={`text-xs ${allowFirstPublishOnEdit ? 'text-emerald-700' : 'text-neutral-400'}`}>
             {allowFirstPublishOnEdit
-              ? t('social.legacyReviewAvailable')
+              ? t(kind === 'news' ? 'social.newsFirstPublishAvailable' : 'social.legacyReviewAvailable')
               : t('social.notRequestedAtCreation')}
           </span>
         )}
@@ -181,7 +184,7 @@ export default function SocialPublishFields({
         <p className="mt-1 text-xs leading-5 text-neutral-500">
           {editing
             ? allowFirstPublishOnEdit
-              ? t('social.editLegacyReviewHelp')
+              ? t(kind === 'news' ? 'social.editPublishedNewsHelp' : 'social.editLegacyReviewHelp')
               : t('social.editRetryHelp')
             : t('social.publishHelp')}
         </p>
@@ -196,7 +199,7 @@ export default function SocialPublishFields({
       {kind === 'review' && capabilities?.reviewImageAvailable === false && (
         <p className="text-xs text-amber-700">{t('social.reviewImageRequired')}</p>
       )}
-      {!editing && kind === 'news' && anySelected && (
+      {kind === 'news' && newPublishSelected && (
         <div className="space-y-3 border-t border-neutral-200 pt-3">
           <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
             {t('social.imageRecommendedResolution')}

@@ -69,7 +69,7 @@ public class AiNewsAdminController {
     @PostMapping("/articles/{id}/publish")
     public ResponseEntity<ApiResponse<AiNewsDtos.ArticleDetailResponse>> publish(
             @PathVariable Long id,
-            @RequestBody(required = false) AiNewsDtos.PublishRequest request,
+            @Valid @RequestBody(required = false) AiNewsDtos.PublishRequest request,
             @AuthenticationPrincipal CustomUserDetails user) {
         LocalDateTime scheduledAt = request != null ? request.scheduledAt() : null;
         return ResponseEntity.ok(ApiResponse.success(aiNewsService.publish(
