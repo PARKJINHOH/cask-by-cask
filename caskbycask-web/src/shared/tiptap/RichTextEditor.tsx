@@ -14,7 +14,7 @@ import { TableRow } from '@tiptap/extension-table-row'
 import { TableCell } from '@tiptap/extension-table-cell'
 import { TableHeader } from '@tiptap/extension-table-header'
 import { ResizableImage } from './ResizableImage'
-import { VideoEmbed, toEmbedUrl, handleVideoEnter } from './VideoEmbed'
+import { VideoEmbed, toVideoEmbed, handleVideoEnter } from './VideoEmbed'
 import { UploadedVideo } from './UploadedVideo'
 import { SpiritEmbed, type SpiritEmbedAttrs } from './SpiritEmbed'
 import { ReviewEmbed, type ReviewEmbedAttrs } from './ReviewEmbed'
@@ -281,10 +281,10 @@ export default function RichTextEditor({
         }
         // YouTube/Vimeo URL 붙여넣기 → 임베드
         const text = enableVideoEmbed ? (event.clipboardData?.getData('text/plain') ?? '') : ''
-        const embedUrl = toEmbedUrl(text.trim())
-        if (embedUrl) {
+        const embed = toVideoEmbed(text.trim())
+        if (embed) {
           event.preventDefault()
-          const node = view.state.schema.nodes.videoEmbed?.create({ src: embedUrl })
+          const node = view.state.schema.nodes.videoEmbed?.create(embed)
           if (node) {
             view.dispatch(view.state.tr.replaceSelectionWith(node))
             return true
@@ -458,9 +458,9 @@ export default function RichTextEditor({
     if (!editor) return
     const url = window.prompt('YouTube 또는 Vimeo URL을 입력하세요')
     if (!url) return
-    const embedUrl = toEmbedUrl(url)
-    if (!embedUrl) { alert('YouTube 또는 Vimeo URL만 지원합니다.'); return }
-    editor.chain().focus().insertContent({ type: 'videoEmbed', attrs: { src: embedUrl } }).run()
+    const embed = toVideoEmbed(url)
+    if (!embed) { alert('YouTube 또는 Vimeo URL만 지원합니다.'); return }
+    editor.chain().focus().insertContent({ type: 'videoEmbed', attrs: embed }).run()
   }, [editor])
 
   const handleSpiritSelect = useCallback((attrs: SpiritEmbedAttrs) => {
