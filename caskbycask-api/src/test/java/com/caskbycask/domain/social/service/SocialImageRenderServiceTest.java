@@ -151,6 +151,32 @@ class SocialImageRenderServiceTest {
     }
 
     @Test
+    void rendersEditionImageNoticeAtTheRightEdgeAboveTheTitleBackground() {
+        BufferedImage source = new BufferedImage(810, 1080, BufferedImage.TYPE_INT_RGB);
+        Graphics2D sourceGraphics = source.createGraphics();
+        sourceGraphics.setColor(new Color(127, 73, 42));
+        sourceGraphics.fillRect(0, 0, source.getWidth(), source.getHeight());
+        sourceGraphics.dispose();
+
+        BufferedImage withoutNotice = service.composeReviewImage(
+                source, "러셀 리저브 13년", "2025 여름 에디션", null, "후기");
+        BufferedImage withNotice = service.composeReviewImage(
+                source,
+                "러셀 리저브 13년",
+                "2025 여름 에디션",
+                "※ 대표 이미지는 리뷰한 에디션과 다를 수 있습니다.",
+                "후기");
+
+        long changedPixelsAtRight = countChangedPixels(
+                withoutNotice, withNotice, 550, 1080, 1016, 1180);
+        long changedPixelsAtLeft = countChangedPixels(
+                withoutNotice, withNotice, 64, 1080, 400, 1180);
+
+        assertThat(changedPixelsAtRight).isGreaterThan(200);
+        assertThat(changedPixelsAtLeft).isLessThan(changedPixelsAtRight);
+    }
+
+    @Test
     void rendersTemplateAsPortraitJpeg() throws Exception {
         MockMultipartFile background = new MockMultipartFile(
                 "file", "background.png", "image/png", png(1200, 800));

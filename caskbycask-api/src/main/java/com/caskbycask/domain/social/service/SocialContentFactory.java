@@ -105,7 +105,8 @@ public class SocialContentFactory {
                 name,
                 reviewImageTitle(spirit, english, name),
                 english ? "Review" : "후기",
-                reviewImageIdentifier(spirit, english)
+                reviewImageIdentifier(spirit, english),
+                reviewImageNotice(spirit, english)
         );
     }
 
@@ -243,6 +244,13 @@ public class SocialContentFactory {
         return english
                 ? firstNonBlank(spirit.getVariantValueEn(), spirit.getVariantValue())
                 : firstNonBlank(spirit.getVariantValue(), null);
+    }
+
+    private static String reviewImageNotice(Spirit spirit, boolean english) {
+        if (!SpiritSlugUtils.hasEdition(spirit)) return null;
+        return english
+                ? "Representative image may differ from the reviewed edition."
+                : "※ 대표 이미지는 리뷰한 에디션과 다를 수 있습니다.";
     }
 
     private static String firstNonBlank(String primary, String fallback) {

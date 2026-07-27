@@ -89,6 +89,7 @@ class SocialContentFactoryTest {
 
         SocialPublicationContent content = factory.create(bundle, SocialPlatform.THREADS);
 
+        assertThat(content.imageNotice()).isNull();
         assertThat(content.caption()).startsWith("테스트 위스키 후기");
         assertThat(content.caption()).contains(
                 "향\n아로마: Vanilla · 바닐라");
@@ -199,10 +200,14 @@ class SocialContentFactoryTest {
         assertThat(korean.displayTitle()).isEqualTo("더 글렌드로낙 싱글 캐스크 캐스크 123");
         assertThat(korean.imageTitle()).isEqualTo("더 글렌드로낙 싱글 캐스크");
         assertThat(korean.imageIdentifier()).isEqualTo("캐스크 123");
+        assertThat(korean.imageNotice())
+                .isEqualTo("※ 대표 이미지는 리뷰한 에디션과 다를 수 있습니다.");
         assertThat(korean.imageLabel()).isEqualTo("후기");
         assertThat(english.displayTitle()).isEqualTo("The Glendronach Single Cask Cask 123");
         assertThat(english.imageTitle()).isEqualTo("The Glendronach Single Cask");
         assertThat(english.imageIdentifier()).isEqualTo("Cask 123");
+        assertThat(english.imageNotice())
+                .isEqualTo("Representative image may differ from the reviewed edition.");
         assertThat(english.imageLabel()).isEqualTo("Review");
     }
 

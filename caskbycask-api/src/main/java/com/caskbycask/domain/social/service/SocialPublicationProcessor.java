@@ -124,6 +124,7 @@ public class SocialPublicationProcessor {
                                     item.getSourceImageUrl(),
                                     content.imageTitle(),
                                     content.imageIdentifier(),
+                                    content.imageNotice(),
                                     content.imageLabel())
                             : imageRenderService.renderDirect(item.getSourceImageUrl(), null);
                     publishMediaService.markRendered(item, relative);
@@ -156,7 +157,8 @@ public class SocialPublicationProcessor {
         String relativeImage = switch (publication.getBundle().getMediaMode()) {
             case REVIEW_IMAGE -> imageRenderService.renderReview(
                     content.sourceImageUrl(), content.imageTitle(),
-                    content.imageIdentifier(), content.imageLabel());
+                    content.imageIdentifier(), content.imageNotice(),
+                    content.imageLabel());
             case DIRECT_UPLOAD -> imageRenderService.renderDirect(
                     publication.getBundle().getDirectImageUrl(), content.imageLabel());
             case TEMPLATE -> imageRenderService.renderTemplate(

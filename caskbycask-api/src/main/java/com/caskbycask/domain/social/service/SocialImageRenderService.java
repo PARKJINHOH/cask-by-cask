@@ -51,6 +51,10 @@ public class SocialImageRenderService {
     private static final int REVIEW_IDENTIFIER_MIN_FONT_SIZE = 22;
     private static final int REVIEW_IDENTIFIER_BOTTOM_GAP = 16;
     private static final float REVIEW_IDENTIFIER_OUTLINE_WIDTH = 1.0f;
+    private static final int REVIEW_NOTICE_START_FONT_SIZE = 21;
+    private static final int REVIEW_NOTICE_MIN_FONT_SIZE = 15;
+    private static final int REVIEW_META_HORIZONTAL_GAP = 24;
+    private static final int REVIEW_META_VERTICAL_GAP = 8;
     private static final int CONTENT_LABEL_X = 64;
     private static final int CONTENT_LABEL_Y = 54;
     private static final int CONTENT_LABEL_FONT_SIZE = 32;
@@ -66,14 +70,21 @@ public class SocialImageRenderService {
     private final SocialPublishingProperties properties;
 
     public String renderReview(String sourceUrl, String spiritName, String imageLabel) {
-        return renderReview(sourceUrl, spiritName, null, imageLabel);
+        return renderReview(sourceUrl, spiritName, null, null, imageLabel);
     }
 
     public String renderReview(String sourceUrl, String spiritName,
                                String imageIdentifier, String imageLabel) {
+        return renderReview(sourceUrl, spiritName, imageIdentifier, null, imageLabel);
+    }
+
+    public String renderReview(String sourceUrl, String spiritName,
+                               String imageIdentifier, String imageNotice,
+                               String imageLabel) {
         BufferedImage source = readTrustedImage(sourceUrl);
         return writeJpeg(
-                composeReviewImage(source, spiritName, imageIdentifier, imageLabel),
+                composeReviewImage(
+                        source, spiritName, imageIdentifier, imageNotice, imageLabel),
                 "review");
     }
 
@@ -170,6 +181,12 @@ public class SocialImageRenderService {
 
     BufferedImage composeReviewImage(BufferedImage source, String spiritName,
                                      String imageIdentifier, String imageLabel) {
+        return composeReviewImage(source, spiritName, imageIdentifier, null, imageLabel);
+    }
+
+    BufferedImage composeReviewImage(BufferedImage source, String spiritName,
+                                     String imageIdentifier, String imageNotice,
+                                     String imageLabel) {
         BufferedImage canvas = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_RGB);
         Graphics2D graphics = canvas.createGraphics();
         configure(graphics);
@@ -182,18 +199,20 @@ public class SocialImageRenderService {
         int x = (WIDTH - drawWidth) / 2;
         int y = (HEIGHT - drawHeight) / 2;
         graphics.drawImage(source, x, y, drawWidth, drawHeight, null);
-        drawReviewCaption(graphics, spiritName, imageIdentifier);
+        drawReviewCaption(graphics, spiritName, imageIdentifier, imageNotice);
         drawContentLabel(graphics, imageLabel);
         graphics.dispose();
         return canvas;
     }
 
     private void drawReviewCaption(Graphics2D graphics, String spiritName,
-                                   String imageIdentifier) {
+                                   String imageIdentifier, String imageNotice) {
         String printableName = spiritName == null ? "" : spiritName.replaceAll("\\s+", " ").trim();
         if (printableName.isEmpty()) return;
         String printableIdentifier = imageIdentifier == null
                 ? "" : imageIdentifier.replaceAll("\\s+", " ").trim();
+        String printableNotice = imageNotice == null
+                ? "" : imageNotice.replaceAll("\\s+", " ").trim();
 
         int boxWidth = WIDTH - REVIEW_CAPTION_HORIZONTAL_MARGIN * 2;
         int textWidth = boxWidth - REVIEW_CAPTION_HORIZONTAL_PADDING * 2;
@@ -227,42 +246,85 @@ public class SocialImageRenderService {
             graphics.drawString(line, textX, baseline);
             baseline += metrics.getHeight() + lineGap;
         }
-        drawReviewIdentifier(graphics, printableIdentifier, boxX, boxWidth, boxY);
+        drawReviewMeta(
+                graphics, printableIdentifier, printableNotice, boxX, boxWidth, boxY);
     }
 
-    private static void drawReviewIdentifier(Graphics2D graphics, String identifier,
-                                             int boxX, int boxWidth, int boxY) {
+    private static void drawReviewMeta(Graphics2D graphics, String identifier,
+                                       String notice, int boxX, int boxWidth, int boxY) {
+        if (identifier.isEmpty() && notice.isEmpty()) return;
+
+        Font noticeFont = notice.isEmpty()
+                ? null : fitReviewNoticeFont(graphics, notice, boxWidth);
+        if (noticeFont != null && noticeFont.canDisplayUpTo(notice) >= 0) {
+            throw new IllegalStateException(
+                    "The server font cannot display the SNS thumbnail text. Install Noto Sans CJK KR.");
+        }
+        FontMetrics noticeMetrics = null;
+        int noticeWidth = 0;
+        int noticeBaseline = 0;
+        if (noticeFont != null) {
+            graphics.setFont(noticeFont);
+            noticeMetrics = graphics.getFontMetrics();
+            noticeWidth = noticeMetrics.stringWidth(notice);
+            noticeBaseline = boxY - REVIEW_IDENTIFIER_BOTTOM_GAP - noticeMetrics.getDescent();
+            drawOutlinedText(
+                    graphics,
+                    notice,
+                    noticeFont,
+                    boxX + boxWidth - noticeWidth,
+                    noticeBaseline,
+                    1.0f);
+        }
+
         if (identifier.isEmpty()) return;
 
-        int maxWidth = boxWidth;
-        Font font = fitReviewIdentifierFont(graphics, identifier, maxWidth);
+        Font font = fitReviewIdentifierFont(graphics, identifier, boxWidth);
         if (font.canDisplayUpTo(identifier) >= 0) {
             throw new IllegalStateException(
                     "The server font cannot display the SNS thumbnail text. Install Noto Sans CJK KR.");
         }
         graphics.setFont(font);
         FontMetrics metrics = graphics.getFontMetrics();
-        int textX = boxX;
         int baseline = boxY - REVIEW_IDENTIFIER_BOTTOM_GAP - metrics.getDescent();
+        if (noticeMetrics != null
+                && metrics.stringWidth(identifier) + REVIEW_META_HORIZONTAL_GAP
+                > boxWidth - noticeWidth) {
+            baseline = noticeBaseline - noticeMetrics.getHeight() - REVIEW_META_VERTICAL_GAP;
+        }
         int underlineY = baseline + Math.max(3, metrics.getDescent() / 2);
 
+        drawOutlinedText(
+                graphics,
+                identifier,
+                font,
+                boxX,
+                baseline,
+                REVIEW_IDENTIFIER_OUTLINE_WIDTH);
+        Stroke originalStroke = graphics.getStroke();
+        graphics.setStroke(new BasicStroke(REVIEW_IDENTIFIER_OUTLINE_WIDTH));
+        graphics.setColor(new Color(20, 20, 23));
+        graphics.drawLine(
+                boxX, underlineY,
+                boxX + metrics.stringWidth(identifier), underlineY);
+        graphics.setStroke(originalStroke);
+    }
+
+    private static void drawOutlinedText(Graphics2D graphics, String text, Font font,
+                                         int textX, int baseline, float outlineWidth) {
         TextLayout textLayout = new TextLayout(
-                identifier, font, graphics.getFontRenderContext());
+                text, font, graphics.getFontRenderContext());
         Shape textShape = textLayout.getOutline(
                 AffineTransform.getTranslateInstance(textX, baseline));
         Stroke originalStroke = graphics.getStroke();
         graphics.setStroke(new BasicStroke(
-                REVIEW_IDENTIFIER_OUTLINE_WIDTH * 2,
+                outlineWidth * 2,
                 BasicStroke.CAP_ROUND,
                 BasicStroke.JOIN_ROUND));
         graphics.setColor(Color.WHITE);
         graphics.draw(textShape);
-
         graphics.setColor(new Color(20, 20, 23));
         graphics.fill(textShape);
-        graphics.drawLine(
-                textX, underlineY,
-                textX + metrics.stringWidth(identifier), underlineY);
         graphics.setStroke(originalStroke);
     }
 
@@ -283,6 +345,19 @@ public class SocialImageRenderService {
         return preferredFont(size, Font.BOLD).deriveFont(Map.of(
                 TextAttribute.WEIGHT, TextAttribute.WEIGHT_EXTRABOLD
         ));
+    }
+
+    private static Font fitReviewNoticeFont(Graphics2D graphics,
+                                            String notice, int maxWidth) {
+        Font smallest = null;
+        for (int size = REVIEW_NOTICE_START_FONT_SIZE;
+             size >= REVIEW_NOTICE_MIN_FONT_SIZE; size--) {
+            Font font = preferredFont(size, Font.PLAIN);
+            smallest = font;
+            graphics.setFont(font);
+            if (graphics.getFontMetrics().stringWidth(notice) <= maxWidth) return font;
+        }
+        return smallest;
     }
 
     private static ReviewCaptionLayout fitReviewCaption(Graphics2D graphics,
