@@ -121,9 +121,10 @@ class SocialPublicationProcessorTest {
         when(contentFactory.create(publication.getBundle(), SocialPlatform.INSTAGRAM))
                 .thenReturn(new SocialPublicationContent(
                         "caption", "https://source/image.jpg", "/ko/reviews/77",
-                        "글렌피딕 12년 캐스크 123", "글렌피딕 12년", "후기"));
+                        "글렌피딕 12년 캐스크 123", "글렌피딕 12년", "후기",
+                        "캐스크 123"));
         when(imageRenderService.renderReview(
-                "https://source/image.jpg", "글렌피딕 12년", "후기"))
+                "https://source/image.jpg", "글렌피딕 12년", "캐스크 123", "후기"))
                 .thenReturn("/api/social/images/review.jpg");
         when(metaClient.createImageContainer(
                 SocialPlatform.INSTAGRAM, "ig-user", "token",
@@ -138,7 +139,7 @@ class SocialPublicationProcessorTest {
         processor.process(11L);
 
         verify(imageRenderService).renderReview(
-                "https://source/image.jpg", "글렌피딕 12년", "후기");
+                "https://source/image.jpg", "글렌피딕 12년", "캐스크 123", "후기");
         verify(stateService).snapshot(
                 11L, "caption",
                 "https://www.caskbycask.net/api/social/images/review.jpg",

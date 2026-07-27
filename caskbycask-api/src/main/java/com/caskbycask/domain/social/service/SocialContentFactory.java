@@ -104,7 +104,8 @@ public class SocialContentFactory {
                 "/" + bundle.getLocale() + "/reviews/" + review.getId(),
                 name,
                 reviewImageTitle(spirit, english, name),
-                english ? "Review" : "후기"
+                english ? "Review" : "후기",
+                reviewImageIdentifier(spirit, english)
         );
     }
 
@@ -235,6 +236,13 @@ public class SocialContentFactory {
                 ? firstNonBlank(spirit.getSeriesIdentifierEn(), spirit.getSeriesIdentifier())
                 : spirit.getSeriesIdentifier());
         return parts.isEmpty() ? fullName : String.join(" ", parts);
+    }
+
+    private static String reviewImageIdentifier(Spirit spirit, boolean english) {
+        if (!SpiritSlugUtils.hasEdition(spirit)) return null;
+        return english
+                ? firstNonBlank(spirit.getVariantValueEn(), spirit.getVariantValue())
+                : firstNonBlank(spirit.getVariantValue(), null);
     }
 
     private static String firstNonBlank(String primary, String fallback) {

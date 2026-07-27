@@ -6,16 +6,23 @@ public record SocialPublicationContent(
         String destinationPath,
         String displayTitle,
         String imageTitle,
-        String imageLabel
+        String imageLabel,
+        String imageIdentifier
 ) {
     public SocialPublicationContent(String caption, String sourceImageUrl,
                                     String destinationPath, String displayTitle) {
-        this(caption, sourceImageUrl, destinationPath, displayTitle, displayTitle, null);
+        this(caption, sourceImageUrl, destinationPath, displayTitle, displayTitle, null, null);
     }
 
     public SocialPublicationContent(String caption, String sourceImageUrl,
                                     String destinationPath, String displayTitle,
                                     String imageTitle) {
-        this(caption, sourceImageUrl, destinationPath, displayTitle, imageTitle, null);
+        this(caption, sourceImageUrl, destinationPath, displayTitle, imageTitle, null, null);
+    }
+
+    public SocialPublicationContent(String caption, String sourceImageUrl,
+                                    String destinationPath, String displayTitle,
+                                    String imageTitle, String imageLabel) {
+        this(caption, sourceImageUrl, destinationPath, displayTitle, imageTitle, imageLabel, null);
     }
 }

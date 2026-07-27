@@ -97,6 +97,32 @@ class SocialImageRenderServiceTest {
     }
 
     @Test
+    void rendersBoldBlackUnderlinedIdentifierAtTheLeftEdgeOfTheTitleBackground() {
+        BufferedImage source = new BufferedImage(810, 1080, BufferedImage.TYPE_INT_RGB);
+        Graphics2D sourceGraphics = source.createGraphics();
+        sourceGraphics.setColor(new Color(127, 73, 42));
+        sourceGraphics.fillRect(0, 0, source.getWidth(), source.getHeight());
+        sourceGraphics.dispose();
+
+        BufferedImage withoutIdentifier = service.composeReviewImage(
+                source, "러셀 리저브 13년", null, "후기");
+        BufferedImage withIdentifier = service.composeReviewImage(
+                source, "러셀 리저브 13년", "2025 여름 에디션", "후기");
+
+        long changedPixels = countChangedPixels(
+                withoutIdentifier, withIdentifier, 64, 1000, 1016, 1200);
+        long blackPixelsAtLeftEdge = countDarkPixels(
+                withIdentifier, 60, 1080, 220, 1170);
+        long whiteOutlinePixels = countBrightPixels(
+                withIdentifier, 60, 1080, 400, 1170);
+
+        assertThat(changedPixels).isGreaterThan(500);
+        assertThat(changedPixels).isLessThan(15_000);
+        assertThat(blackPixelsAtLeftEdge).isGreaterThan(100);
+        assertThat(whiteOutlinePixels).isGreaterThan(50);
+    }
+
+    @Test
     void rendersTemplateAsPortraitJpeg() throws Exception {
         MockMultipartFile background = new MockMultipartFile(
                 "file", "background.png", "image/png", png(1200, 800));
@@ -178,6 +204,31 @@ class SocialImageRenderServiceTest {
             for (int x = minX; x < maxX; x++) {
                 Color color = new Color(image.getRGB(x, y));
                 if (color.getRed() > 220 && color.getGreen() > 220 && color.getBlue() > 220) {
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
+
+    private static long countChangedPixels(BufferedImage first, BufferedImage second,
+                                           int minX, int minY, int maxX, int maxY) {
+        long count = 0;
+        for (int y = minY; y < maxY; y++) {
+            for (int x = minX; x < maxX; x++) {
+                if (first.getRGB(x, y) != second.getRGB(x, y)) count++;
+            }
+        }
+        return count;
+    }
+
+    private static long countDarkPixels(BufferedImage image,
+                                        int minX, int minY, int maxX, int maxY) {
+        long count = 0;
+        for (int y = minY; y < maxY; y++) {
+            for (int x = minX; x < maxX; x++) {
+                Color color = new Color(image.getRGB(x, y));
+                if (color.getRed() < 60 && color.getGreen() < 60 && color.getBlue() < 60) {
                     count++;
                 }
             }

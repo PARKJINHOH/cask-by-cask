@@ -198,9 +198,11 @@ class SocialContentFactoryTest {
 
         assertThat(korean.displayTitle()).isEqualTo("더 글렌드로낙 싱글 캐스크 캐스크 123");
         assertThat(korean.imageTitle()).isEqualTo("더 글렌드로낙 싱글 캐스크");
+        assertThat(korean.imageIdentifier()).isEqualTo("캐스크 123");
         assertThat(korean.imageLabel()).isEqualTo("후기");
         assertThat(english.displayTitle()).isEqualTo("The Glendronach Single Cask Cask 123");
         assertThat(english.imageTitle()).isEqualTo("The Glendronach Single Cask");
+        assertThat(english.imageIdentifier()).isEqualTo("Cask 123");
         assertThat(english.imageLabel()).isEqualTo("Review");
     }
 
