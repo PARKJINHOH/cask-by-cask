@@ -184,4 +184,5 @@ class SocialImageRenderServiceTest {
         }
         return count;
     }
+
 }

@@ -60,11 +60,9 @@ public class SocialContentFactory {
         String shortUrl = normalizedSiteUrl() + "/s/" + bundle.getShortCode();
         boolean english = "en".equals(bundle.getLocale());
         String linkLine = shortUrl;
-        String linkBlock = platform == SocialPlatform.INSTAGRAM
-                ? (english ? "Find the full review via the link in our bio 🔗"
-                           : "전체 리뷰는 프로필 링크에서 확인하세요 🔗")
-                        + "\n" + linkLine
-                : linkLine;
+        String linkBlock = (english ? "Find the full review via the link in our bio 🔗"
+                                    : "전체 리뷰는 프로필 링크에서 확인하세요 🔗")
+                + "\n" + linkLine;
         String hashtagBlock = reviewHashtags(
                 spirit, reviewHashtagDisplayName(spirit, english));
         int limit = platform == SocialPlatform.INSTAGRAM ? 2200 : 500;
@@ -94,15 +92,10 @@ public class SocialContentFactory {
             }
         }
         String contentText = truncateWithDots(content.toString(), contentLimit);
-        String caption;
-        if (platform == SocialPlatform.INSTAGRAM) {
-            String reviewDetails = contentText.substring(
-                    Math.min(renderedTitle.length(), contentText.length()));
-            caption = renderedTitle + "\n\n" + linkBlock + reviewDetails
-                    + "\n\n" + hashtagBlock;
-        } else {
-            caption = contentText + "\n\n" + hashtagBlock + "\n\n" + linkBlock;
-        }
+        String reviewDetails = contentText.substring(
+                Math.min(renderedTitle.length(), contentText.length()));
+        String caption = renderedTitle + "\n\n" + linkBlock + reviewDetails
+                + "\n\n" + hashtagBlock;
         String imageUrl = primaryImageUrl(spirit);
         if (imageUrl == null) throw new IllegalStateException("리뷰에 게시 가능한 대표 이미지가 없습니다.");
         return new SocialPublicationContent(

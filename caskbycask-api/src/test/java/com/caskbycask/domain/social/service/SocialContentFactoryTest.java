@@ -38,7 +38,7 @@ class SocialContentFactoryTest {
     @Mock SpiritImageRepository imageRepository;
 
     @Test
-    void threadsReviewCaptionKeepsShortUrlWhenReviewIsLong() {
+    void reviewCaptionPlacesLinkBelowTitleAndKeepsItWhenReviewIsLong() {
         SocialPublishingProperties properties = new SocialPublishingProperties();
         properties.setSiteUrl("https://www.caskbycask.net");
         SocialContentFactory factory = new SocialContentFactory(
@@ -100,9 +100,14 @@ class SocialContentFactoryTest {
         assertThat(content.caption()).contains("총평: ", "...");
         assertThat(content.caption()).contains(
                 "#위스키 #테스트위스키 #캐바캐 #CaskByCask");
+        assertThat(content.caption()).contains("""
+                전체 리뷰는 프로필 링크에서 확인하세요 🔗
+                https://www.caskbycask.net/s/AbCdEf2345
+
+                향
+                """);
         assertThat(content.caption()).endsWith(
-                "https://www.caskbycask.net/s/AbCdEf2345");
-        assertThat(content.caption()).doesNotContain("전체 리뷰 보기 →");
+                "#위스키 #테스트위스키 #캐바캐 #CaskByCask");
         assertThat(content.caption().codePointCount(0, content.caption().length())).isLessThanOrEqualTo(500);
 
         SocialPublicationContent instagram = factory.create(bundle, SocialPlatform.INSTAGRAM);
@@ -119,8 +124,14 @@ class SocialContentFactoryTest {
                 "#위스키 #테스트위스키 #캐바캐 #CaskByCask");
         assertThat(instagram.caption().codePointCount(0, instagram.caption().length()))
                 .isLessThanOrEqualTo(2200);
-        assertThat(content.caption()).doesNotContain(
-                "전체 리뷰는 프로필 링크에서 확인하세요 🔗");
+        assertThat(content.caption()).startsWith("""
+                테스트 위스키 후기
+
+                전체 리뷰는 프로필 링크에서 확인하세요 🔗
+                https://www.caskbycask.net/s/AbCdEf2345
+
+                향
+                """);
 
         SocialPublishBundle englishBundle = SocialPublishBundle.builder()
                 .originType(SocialSourceType.REVIEW)
