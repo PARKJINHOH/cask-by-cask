@@ -488,7 +488,8 @@ sudo systemctl restart caskbycask-api   # 수정 후 재시작해야 반영
 | `OAUTH_NAVER_CLIENT_ID` / `OAUTH_NAVER_CLIENT_SECRET` | 네이버 로그인 키 (네이버 개발자센터) |
 | `OAUTH_GOOGLE_CLIENT_ID` / `OAUTH_GOOGLE_CLIENT_SECRET` | 구글 로그인 키 (Google Cloud Console) |
 | `EXCHANGE_RATE_PROVIDER_URL` | 해외·면세 가격 원화 환산용 공개 환율 API. 기본값 `https://api.frankfurter.dev` |
-| `EXCHANGE_RATE_CONNECT_TIMEOUT_MS` / `EXCHANGE_RATE_READ_TIMEOUT_MS` | 환율 API 연결/응답 제한 시간. 기본값 3000ms/5000ms |
+| `EXCHANGE_RATE_CONNECT_TIMEOUT_MS` / `EXCHANGE_RATE_READ_TIMEOUT_MS` | 환율 API 연결/응답 제한 시간. 기본값 3000ms/15000ms |
+| `EXCHANGE_RATE_RETRY_MAX_ATTEMPTS` / `EXCHANGE_RATE_RETRY_INITIAL_BACKOFF_MS` | 환율 API 최대 시도 횟수와 최초 재시도 대기시간. 기본값 3회/1000ms이며 이후 대기시간은 2배 증가 |
 | `SOCIAL_PUBLISH_ENABLED` | Instagram·Threads 비동기 게시 feature flag. 공식 계정 연결·시험 전에는 `false` |
 | `SOCIAL_PUBLIC_MEDIA_BASE_URL` | Meta가 생성 이미지를 가져갈 수 있는 HTTPS 공개 기준 URL |
 | `SOCIAL_OAUTH_REDIRECT_URI` | Meta 콘솔에 등록한 공식 계정 연결 콜백 URL |
@@ -515,9 +516,20 @@ sudo systemctl restart caskbycask-api   # 수정 후 재시작해야 반영
 
 - API가 매일 `00:05`, `06:05`, `12:05`, `18:05`(Asia/Seoul)에 Frankfurter 공개 참고 환율을 조회한다.
 - `TWD`, `USD`, `JPY`, `CNY`, `EUR`의 외화 1단위당 원화 환율과 기준일을 `exchange_rates`에 저장한다.
+- 네트워크 오류, HTTP 429 또는 5xx 응답은 최대 3회 시도하며 기본 1초, 2초의 지수 백오프를 적용한다. HTTP 4xx(429 제외)와 응답 검증 오류는 재시도하지 않는다.
+- 환율 갱신은 `exchange-rate-scheduling-*` 전용 스케줄러에서 실행되어 재시도 대기 중에도 다른 배치 작업을 막지 않는다.
 - 외부 API가 실패하면 기존 행을 덮어쓰지 않고 마지막 정상 환율을 계속 사용한다. 저장 이력이 전혀 없을 때만 사용자가 자동 환산을 선택할 수 없으며 원화 직접 입력은 계속 가능하다.
 - 가격 제보에는 등록 당시 환율과 원화 실구매가가 별도 스냅샷으로 저장되므로 이후 환율 갱신이 과거 그래프를 바꾸지 않는다.
-- 정상 로그: `Exchange rates refreshed`. 실패 로그: `Exchange-rate refresh failed; keeping the last successful rates`.
+- 정상 로그: `Exchange rates refreshed`. 재시도 로그: `Exchange-rate provider request failed; retrying`. 모든 시도 실패 후 최종 로그: `Exchange-rate refresh failed; keeping the last successful rates`.
+
+기존 운영 서버의 `/app/env/api.env`는 배포 시 자동 교체되지 않으므로 아래 값을 직접 확인한 뒤 API를 재시작한다. 변수를 생략하면 애플리케이션 기본값이 적용된다.
+
+```dotenv
+EXCHANGE_RATE_CONNECT_TIMEOUT_MS=3000
+EXCHANGE_RATE_READ_TIMEOUT_MS=15000
+EXCHANGE_RATE_RETRY_MAX_ATTEMPTS=3
+EXCHANGE_RATE_RETRY_INITIAL_BACKOFF_MS=1000
+```
 - 제공자 상태 확인:
 
 ```bash
@@ -790,6 +802,13 @@ tail -n 100 /app/caskbycask-crawler/logs/ai-news.log
 
 - `CRON_TZ=Asia/Seoul` 기준 핫딜은 `current/run.sh`를 짝수 시각 정각(`0 */2 * * *`)에, AI 소식·팁은 핫딜 17분 후(`17 */2 * * *`)에 실행한다.
 - `AI_NEWS_IMAGE_GENERATION_ENABLED=false`이면 Gemini 이미지 API를 호출하지 않는다. 승인 공식 이미지가 없는 원고는 이미지 없이 검토 대기로 보존한다.
+- AI 원고의 HTML 태그·공백 제외 본문이 1,000자 미만이면 실제 측정 길이와 부족한 글자 수를 넣어 한 번만 재작성한다.
+  첫 응답의 Gemini `finishReason`이 `MAX_TOKENS`일 때만 재작성 출력 상한을 8,192토큰으로 명시한다.
+- 재작성 후에도 1,000자 미만인 신규 출시·팁·관리자 요청 원고는 폐기하거나 자동 발행하지 않고 이미지 생성 없이
+  `PENDING_REVIEW`로 보존한다. 기존 원고 재작성은 짧은 결과로 원문을 덮어쓰지 않고 실패 처리한다.
+- 분량 미달 로그에는 `plainTextLength`, `finishReason`, `responseTextLength`, `evidenceSourceCount`,
+  `evidenceTextLength`가 기록된다. 검토 대기로 보존된 원고는 Slack `AI 소식 분량 미달 원고 검토 대기`
+  경고에서 1·2차 길이와 근거 분량을 확인한다.
 - 코드 배포는 `.env`, `targets.json`, SQLite, `logs/`, `temp/`를 덮어쓰지 않는다. `.venv`는 각
   릴리스 안에서 hash lock으로 새로 설치되며 `current`/`previous`와 함께 전환된다.
 - 배포는 핫딜·AI 소식의 두 `flock`을 획득한 뒤 cron을 갱신하고 링크를 교체한다. 실행 중 작업이
@@ -818,6 +837,7 @@ tail -n 100 /app/caskbycask-crawler/logs/ai-news.log
 | **디스크/SSL** | 디스크 임계 초과·SSL 만료 임박 | `check-resources.sh` | 서버(cron) |
 | **SNS 토큰 만료** | Instagram/Threads 장기 토큰 자동 갱신 실패 후 만료 | `SocialTokenRefreshScheduler` ERROR 로그 → `SlackErrorAppender` | 서버(매일 03:20) |
 | **크롤러 장애** | 네이버 카페 쿠키/인증, 내부 API 토큰, Gemini 인증·quota, 게시글 처리 오류 | `caskbycask-crawler/alerts/slack_notifier.py` | 서버(cron) |
+| **AI 원고 분량 미달** | 1회 재작성 후에도 HTML·공백 제외 본문이 1,000자 미만 | 원고 자동 발행 차단·이미지 생성 생략·관리자 검토 대기 저장 후 Slack 경고 | 서버(cron) |
 | ~~서비스 다운~~ ⏸️보류 | `/healthz` 무응답 = VM 통째 다운 | `synology/healthcheck.sh` | 시놀로지 |
 
 > ⏸️ **서비스 다운(외부 헬스체크)은 현재 보류.** 이 알람은 크롤러용 시놀로지 DS220+ 가 상시 켜져 있다는 전제인데, `caskbycask-crawler` 가 아직 운영에 반영되지 않았다. 크롤러를 운영에 올릴 때 함께 활성화한다(5번 절차). 그 전까지 **VM 통째 다운 감지는 공백** — 서버 내부 알람(ERROR·종료·디스크)은 VM 이 죽으면 못 뜨므로, 필요하면 임시로 UptimeRobot 등 무료 외부 모니터로 메울 수 있다.
@@ -866,7 +886,7 @@ crontab -e
 | `Flyway upgrade recommended: MariaDB 11.8 is newer...` | Flyway 버전이 MariaDB 11.8 을 공식 지원하지 않음 | ✅ `flyway-core 12.8.1` 로 해결 (2026-06-16) |
 | `BadWordFilter cache refreshed — 0 words loaded` | `bad_words` 테이블에 시드 데이터 없음 | ✅ `V12__seed_bad_words.sql` 마이그레이션으로 해결 (2026-06-16) |
 | `The cache 'authUser' is not recording statistics` | Caffeine 캐시 빌드 시 `recordStats()` 미호출 | ✅ `CacheConfig` 에 `.recordStats()` 추가 (2026-06-16) |
-| `Exchange-rate refresh failed; keeping the last successful rates` | 공개 환율 API 네트워크/응답 장애 | 마지막 정상 환율을 계속 사용. 9장의 제공자 상태 확인 명령과 API 서버 outbound HTTPS를 점검 |
+| `Exchange-rate refresh failed; keeping the last successful rates` | 공개 환율 API 네트워크/응답 장애가 최대 재시도 횟수까지 지속됨 | 마지막 정상 환율을 계속 사용. 9장의 제공자 상태 확인 명령과 API 서버 outbound HTTPS를 점검 |
 
 > 위 3개 WARN 은 2026-06-16 이후 빌드부터 사라진다. 다시 나타나면 해당 코드/마이그레이션이 누락된 것.
 

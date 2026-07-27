@@ -20,6 +20,21 @@ def append_error_detail(details: list[dict[str, str]], stage: str,
     })
 
 
+def append_review_detail(details: list[dict[str, str]], stage: str,
+                         reason: str, **context: object) -> None:
+    message = re.sub(r"\s+", " ", str(reason)).strip()
+    rendered_context = {
+        key: re.sub(r"\s+", " ", str(value)).strip()[:300]
+        for key, value in context.items()
+        if value is not None and str(value).strip()
+    }
+    details.append({
+        "stage": stage,
+        "message": message[:1000],
+        "context": ", ".join(f"{key}={value}" for key, value in rendered_context.items()),
+    })
+
+
 def format_error_alert(run_id: int, run_key: str, stats: dict[str, int],
                        details: list[dict[str, str]]) -> str:
     lines = [
@@ -37,5 +52,26 @@ def format_error_alert(run_id: int, run_key: str, stats: dict[str, int],
         lines.append(
             f"{index}. `{detail['stage']}`{context}\n"
             f"   {detail['type']}: {detail['message']}"
+        )
+    return "\n".join(lines)[:2500]
+
+
+def format_review_alert(run_id: int, run_key: str, stats: dict[str, int],
+                        details: list[dict[str, str]]) -> str:
+    lines = [
+        f"*실행*: runId={run_id} · runKey={run_key}",
+        (
+            "*통계*: "
+            f"후보 {stats['candidateCount']} · 발행 {stats['publishedCount']} · "
+            f"검토 대기 {stats['reviewCount']} · 중복 {stats['duplicateCount']} · "
+            f"오류 {stats['errorCount']}"
+        ),
+        f"*분량 미달 검토 원고* ({len(details)}건)",
+    ]
+    for index, detail in enumerate(details, 1):
+        context = f" ({detail['context']})" if detail["context"] else ""
+        lines.append(
+            f"{index}. `{detail['stage']}`{context}\n"
+            f"   {detail['message']}"
         )
     return "\n".join(lines)[:2500]

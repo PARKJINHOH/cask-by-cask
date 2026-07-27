@@ -10,6 +10,7 @@ from typing import Any
 from google import genai
 from google.genai import types
 
+from logger import get_logger
 from news_models import DraftArticle, SearchSource, UsageAccumulator
 from news_prompts import (
     AI_NEWS_MIN_TEXT_LENGTH,
@@ -17,6 +18,10 @@ from news_prompts import (
     AI_NEWS_TITLE_MAX_LENGTH,
     AI_NEWS_WRITING_PROMPT,
 )
+
+
+AI_NEWS_RETRY_MAX_OUTPUT_TOKENS = 8192
+log = get_logger("news_gemini")
 
 
 ARTICLE_SCHEMA = {
@@ -106,6 +111,7 @@ class GeminiNewsWriter:
         self.image_generation_enabled = image_generation_enabled
         self.usage = UsageAccumulator()
         self._image_unavailable_reason: str | None = None
+        self._last_response_metadata: dict[str, Any] = {}
 
     def classify_releases(self, sources: list[SearchSource], max_candidates: int,
                           category_ratios: dict[str, int] | None = None) -> list[dict[str, Any]]:
@@ -154,7 +160,7 @@ summary, source_indexes(서로 다른 근거 인덱스), confidence(0~1).
             "output_fields": ["title", "content_html", "confidence", "semantic_fingerprint", "image_prompt", "hashtags"],
             "image_prompt_rule": "브랜드 로고나 실제 라벨을 만들지 않는 가로형 비브랜드 에디토리얼 이미지용 영문 프롬프트",
         }
-        result = self._request_article(prompt)
+        result = self._request_article(prompt, allow_short_review=True)
         return self._draft_from_result("RELEASE_NEWS", candidate["category"],
                                        f"release:{candidate['event_key']}", None,
                                        candidate["source_indexes"], result)
@@ -173,12 +179,12 @@ summary, source_indexes(서로 다른 근거 인덱스), confidence(0~1).
                 "결과는 자동 발행하지 않고 관리자 임시저장 원고로 만든다.",
             ],
         }
-        result = self._request_json(self.writer_model, AI_NEWS_WRITING_PROMPT,
-                                    prompt, REQUESTED_ARTICLE_SCHEMA)
+        result = self._request_article(
+            prompt,
+            response_schema=REQUESTED_ARTICLE_SCHEMA,
+            allow_short_review=True,
+        )
         category = str(result.get("category") or "").upper()
-        if self._plain_text_length(str(result.get("content_html") or "")) < AI_NEWS_MIN_TEXT_LENGTH:
-            result = self._request_article({**prompt, "category": category,
-                                            "revision_request": "본문 최소 분량과 SEO 규칙을 충족하도록 보강한다."})
         return self._draft_from_result(
             "RELEASE_NEWS", category, f"admin-request:{request['id']}", None,
             list(range(len(sources))), result,
@@ -197,7 +203,7 @@ summary, source_indexes(서로 다른 근거 인덱스), confidence(0~1).
                 "존재하지 않는 병은 표현하지 않는 영문 프롬프트"
             ),
         }
-        result = self._request_article(prompt)
+        result = self._request_article(prompt, allow_short_review=True)
         return self._draft_from_result("TIP_INFO", topic["category"],
                                        f"tip:{topic['normalizedKey']}", int(topic["id"]),
                                        list(range(len(sources))), result)
@@ -358,54 +364,199 @@ JSON {"topics":[{"title":"한국어 50자 이하","normalized_key":"영문-소�
                 break
         if not title or not content:
             raise RuntimeError("AI 원고 응답에 제목 또는 본문이 없습니다.")
-        if self._plain_text_length(content) < AI_NEWS_MIN_TEXT_LENGTH:
-            raise RuntimeError(f"AI 원고 본문이 최소 {AI_NEWS_MIN_TEXT_LENGTH:,}자보다 짧습니다.")
+        content_length = self._plain_text_length(content)
+        minimum_length_met = content_length >= AI_NEWS_MIN_TEXT_LENGTH
+        allow_short_review = bool(result.get("_allow_short_review"))
+        generation_warning = str(result.get("_length_diagnostics") or "").strip() or None
+        if not minimum_length_met and not allow_short_review:
+            detail = f" ({generation_warning})" if generation_warning else ""
+            raise RuntimeError(
+                f"AI 원고 본문이 최소 {AI_NEWS_MIN_TEXT_LENGTH:,}자보다 짧습니다.{detail}"
+            )
         return DraftArticle(article_type, category, title, content, dedupe_key, fingerprint,
                             confidence, source_indexes, image_prompt, hashtags=hashtags, topic_id=topic_id,
-                            model_name=self.writer_model)
+                            model_name=self.writer_model,
+                            auto_publish_requested=minimum_length_met,
+                            generation_warning=generation_warning if not minimum_length_met else None)
 
-    def _request_article(self, prompt: dict[str, Any]) -> dict[str, Any]:
-        result = self._request_json(self.writer_model, AI_NEWS_WRITING_PROMPT, prompt, ARTICLE_SCHEMA)
-        if self._plain_text_length(str(result.get("content_html") or "")) >= AI_NEWS_MIN_TEXT_LENGTH:
+    def _request_article(
+        self,
+        prompt: dict[str, Any],
+        *,
+        response_schema: dict[str, Any] = ARTICLE_SCHEMA,
+        allow_short_review: bool = False,
+    ) -> dict[str, Any]:
+        evidence_stats = self._evidence_stats(prompt)
+        result = self._request_json(
+            self.writer_model, AI_NEWS_WRITING_PROMPT, prompt, response_schema
+        )
+        first_attempt = self._article_attempt_diagnostic(result, 1)
+        attempts = [first_attempt]
+        if first_attempt["plainTextLength"] >= AI_NEWS_MIN_TEXT_LENGTH:
             return result
 
+        self._log_short_article(prompt, first_attempt, evidence_stats)
+        shortfall = AI_NEWS_MIN_TEXT_LENGTH - first_attempt["plainTextLength"]
         revision_prompt = {
             **prompt,
             "revision_request": (
-                f"이전 원고의 순수 본문이 {AI_NEWS_MIN_TEXT_LENGTH:,}자 미만이다. "
+                f"이전 원고의 순수 본문은 실제 검증 결과 "
+                f"{first_attempt['plainTextLength']:,}자이며 최소 기준보다 {shortfall:,}자 부족하다. "
                 "근거 안에서 설명과 독자에게 유용한 세부 내용을 "
-                f"보강하여 순수 텍스트 {AI_NEWS_RECOMMENDED_TEXT_LENGTH}자로 다시 작성하라. "
+                f"보강하여 HTML 태그와 공백을 제외한 순수 텍스트 "
+                f"{AI_NEWS_RECOMMENDED_TEXT_LENGTH}자로 전체 원고를 다시 작성하라. "
+                "글자 수를 맞추기 위해 근거에 없는 사실을 추가하거나 같은 내용을 반복하지 않는다. "
                 "제목과 본문은 SEO 작성 규칙을 지킨다."
             ),
+            "length_validation": {
+                "previous_plain_text_length": first_attempt["plainTextLength"],
+                "minimum_plain_text_length": AI_NEWS_MIN_TEXT_LENGTH,
+                "shortfall": shortfall,
+                "evidence_source_count": evidence_stats["sourceCount"],
+                "evidence_text_length": evidence_stats["textLength"],
+                "previous_finish_reason": first_attempt["finishReason"],
+            },
             "previous_draft": {
                 "title": result.get("title"),
                 "content_html": result.get("content_html"),
             },
         }
-        return self._request_json(self.writer_model, AI_NEWS_WRITING_PROMPT, revision_prompt, ARTICLE_SCHEMA)
+        retry_output_tokens = (
+            AI_NEWS_RETRY_MAX_OUTPUT_TOKENS
+            if self._is_output_limit_finish_reason(first_attempt["finishReason"])
+            else None
+        )
+        revised = self._request_json(
+            self.writer_model,
+            AI_NEWS_WRITING_PROMPT,
+            revision_prompt,
+            response_schema,
+            max_output_tokens=retry_output_tokens,
+        )
+        second_attempt = self._article_attempt_diagnostic(revised, 2)
+        attempts.append(second_attempt)
+        if second_attempt["plainTextLength"] >= AI_NEWS_MIN_TEXT_LENGTH:
+            return revised
+
+        self._log_short_article(prompt, second_attempt, evidence_stats)
+        best_result = max(
+            (result, revised),
+            key=lambda item: self._plain_text_length(str(item.get("content_html") or "")),
+        )
+        diagnostics = self._length_diagnostics(
+            prompt, attempts, evidence_stats, retry_output_tokens is not None
+        )
+        if not allow_short_review:
+            raise RuntimeError(
+                f"AI 원고 본문이 최소 {AI_NEWS_MIN_TEXT_LENGTH:,}자보다 짧습니다. "
+                f"{diagnostics}"
+            )
+        return {
+            **best_result,
+            "_allow_short_review": True,
+            "_length_diagnostics": diagnostics,
+        }
 
     @staticmethod
     def _plain_text_length(content_html: str) -> int:
         without_tags = re.sub(r"<[^>]*>", " ", content_html)
         return len(re.sub(r"\s+", "", html.unescape(without_tags)))
 
+    @staticmethod
+    def _evidence_stats(prompt: dict[str, Any]) -> dict[str, int]:
+        evidence = prompt.get("evidence")
+        if not isinstance(evidence, list):
+            return {"sourceCount": 0, "textLength": 0}
+        text_length = sum(
+            len(re.sub(r"\s+", "", str(item.get("text") or "")))
+            for item in evidence
+            if isinstance(item, dict)
+        )
+        return {"sourceCount": len(evidence), "textLength": text_length}
+
+    def _article_attempt_diagnostic(
+        self, result: dict[str, Any], attempt: int
+    ) -> dict[str, Any]:
+        metadata = getattr(self, "_last_response_metadata", {})
+        return {
+            "attempt": attempt,
+            "plainTextLength": self._plain_text_length(
+                str(result.get("content_html") or "")
+            ),
+            "finishReason": str(metadata.get("finishReason") or "UNKNOWN"),
+            "responseTextLength": int(metadata.get("responseTextLength") or 0),
+        }
+
+    @staticmethod
+    def _log_short_article(
+        prompt: dict[str, Any],
+        attempt: dict[str, Any],
+        evidence_stats: dict[str, int],
+    ) -> None:
+        log.warning(
+            "AI 원고 분량 미달 task=%s attempt=%s plainTextLength=%s required=%s "
+            "finishReason=%s responseTextLength=%s evidenceSourceCount=%s evidenceTextLength=%s",
+            prompt.get("task"),
+            attempt["attempt"],
+            attempt["plainTextLength"],
+            AI_NEWS_MIN_TEXT_LENGTH,
+            attempt["finishReason"],
+            attempt["responseTextLength"],
+            evidence_stats["sourceCount"],
+            evidence_stats["textLength"],
+        )
+
+    @staticmethod
+    def _length_diagnostics(
+        prompt: dict[str, Any],
+        attempts: list[dict[str, Any]],
+        evidence_stats: dict[str, int],
+        output_limit_increased: bool,
+    ) -> str:
+        rendered_attempts = ", ".join(
+            f"{item['attempt']}차={item['plainTextLength']:,}자"
+            f"(finishReason={item['finishReason']})"
+            for item in attempts
+        )
+        return (
+            f"task={prompt.get('task') or 'unknown'}; {rendered_attempts}; "
+            f"근거={evidence_stats['sourceCount']}건/"
+            f"{evidence_stats['textLength']:,}자; "
+            f"출력상한상향={'적용' if output_limit_increased else '미적용'}"
+        )
+
+    @staticmethod
+    def _is_output_limit_finish_reason(finish_reason: str) -> bool:
+        normalized = str(finish_reason).strip().upper().rsplit(".", 1)[-1]
+        return normalized == "MAX_TOKENS"
+
     def _request_json(self, model: str, system: str, payload: dict[str, Any],
-                      response_schema: dict[str, Any]) -> dict[str, Any]:
+                      response_schema: dict[str, Any],
+                      *, max_output_tokens: int | None = None) -> dict[str, Any]:
         user_text = json.dumps(payload, ensure_ascii=False)
         last_error: json.JSONDecodeError | None = None
         last_text = ""
         for attempt in range(2):
+            config_kwargs: dict[str, Any] = {
+                "system_instruction": (
+                    system + ("\n반드시 스키마에 맞는 완전한 JSON 객체를 반환한다." if attempt else "")
+                ),
+                "response_mime_type": "application/json",
+                "response_json_schema": response_schema,
+                "temperature": 0.1,
+            }
+            if max_output_tokens is not None:
+                config_kwargs["max_output_tokens"] = max_output_tokens
             response = self.client.models.generate_content(
                 model=model,
                 contents=user_text,
-                config=types.GenerateContentConfig(
-                    system_instruction=system + ("\n반드시 스키마에 맞는 완전한 JSON 객체를 반환한다." if attempt else ""),
-                    response_mime_type="application/json",
-                    response_json_schema=response_schema,
-                    temperature=0.1,
-                ),
+                config=types.GenerateContentConfig(**config_kwargs),
             )
             last_text = response.text or "{}"
+            self._last_response_metadata = {
+                "finishReason": self._response_finish_reason(response),
+                "responseTextLength": len(last_text),
+            }
             usage = getattr(response, "usage_metadata", None)
             input_tokens = int(getattr(usage, "prompt_token_count", 0) or 0)
             output_tokens = (
@@ -420,6 +571,21 @@ JSON {"topics":[{"title":"한국어 50자 이하","normalized_key":"영문-소�
         raise RuntimeError(
             f"Gemini JSON 응답 파싱에 2회 실패했습니다: {last_error}; 응답={last_text[:500]}"
         ) from last_error
+
+    @staticmethod
+    def _response_finish_reason(response: Any) -> str:
+        candidates = getattr(response, "candidates", None) or []
+        if not candidates:
+            return "UNKNOWN"
+        candidate = candidates[0]
+        if isinstance(candidate, dict):
+            reason = candidate.get("finish_reason") or candidate.get("finishReason")
+        else:
+            reason = getattr(candidate, "finish_reason", None)
+        if reason is None:
+            return "UNKNOWN"
+        value = getattr(reason, "name", None) or getattr(reason, "value", None) or reason
+        return str(value).strip().upper().rsplit(".", 1)[-1] or "UNKNOWN"
 
     @staticmethod
     def _parse_json(text: str) -> dict[str, Any]:

@@ -107,6 +107,8 @@ class DraftArticle:
     image_kind: str | None = None
     image_rights_evidence: str | None = None
     model_name: str | None = None
+    auto_publish_requested: bool = True
+    generation_warning: str | None = None
 
 
 @dataclass

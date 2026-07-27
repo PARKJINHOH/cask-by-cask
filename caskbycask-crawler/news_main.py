@@ -10,7 +10,12 @@ import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
 
-from alerts.ai_news_error_alert import append_error_detail, format_error_alert
+from alerts.ai_news_error_alert import (
+    append_error_detail,
+    append_review_detail,
+    format_error_alert,
+    format_review_alert,
+)
 from alerts.slack_notifier import SlackNotifier
 from logger import setup_logging
 from news_config import NewsSettings
@@ -61,7 +66,7 @@ def _article_payload(draft: DraftArticle, sources: list[SearchSource]) -> dict:
         "topicId": draft.topic_id,
         "prefixId": None,
         "pinned": False,
-        "autoPublishRequested": True,
+        "autoPublishRequested": draft.auto_publish_requested,
         "imageUrl": draft.image_url,
         "imageKind": draft.image_kind,
         "imageRightsEvidence": draft.image_rights_evidence,
@@ -184,6 +189,16 @@ def _process_draft(api: AiNewsApi, writer: GeminiNewsWriter, draft: DraftArticle
             log.info("중복 제외 key=%s articleId=%s", draft.dedupe_key, duplicate.get("articleId"))
             return None
 
+    if not draft.auto_publish_requested:
+        log.warning(
+            "AI 원고 분량 미달 - 이미지 생성 없이 검토 대기로 저장 key=%s diagnostics=%s",
+            draft.dedupe_key,
+            draft.generation_warning,
+        )
+        response = api.submit_article(_article_payload(draft, sources))
+        log.info("원고 저장 id=%s status=%s title=%s", response.get("id"), response.get("status"), draft.title)
+        return response
+
     if draft.article_type == "RELEASE_NEWS":
         approved = fetch_approved_official_image(selected, config, temp_dir, api.timeout, log)
         if approved:
@@ -300,6 +315,7 @@ def run() -> int:
     stats = {"candidateCount": 0, "publishedCount": 0, "reviewCount": 0,
              "duplicateCount": 0, "errorCount": 0}
     error_details: list[dict[str, str]] = []
+    review_details: list[dict[str, str]] = []
     search = TavilyNewsSearch(settings.tavily_api_key, settings.http_timeout_sec,
                               settings.search_results_per_query)
     writer = GeminiNewsWriter(settings.gemini_api_key, settings.classifier_model,
@@ -350,6 +366,14 @@ def run() -> int:
                 payload["autoPublishRequested"] = False
                 response = api.complete_draft_request(request_id, payload)
                 stats["reviewCount"] += 1
+                if requested_draft.generation_warning:
+                    append_review_detail(
+                        review_details,
+                        "관리자 AI 작성 요청",
+                        requested_draft.generation_warning,
+                        requestId=request_id,
+                        articleId=response.get("articleId"),
+                    )
                 log.info("관리자 AI 작성 요청 임시저장 완료 requestId=%s articleId=%s title=%s",
                          request_id, response.get("articleId"), requested_draft.title)
             except Exception as error:  # noqa: BLE001
@@ -419,6 +443,15 @@ def run() -> int:
                         stats["publishedCount"] += 1
                     else:
                         stats["reviewCount"] += 1
+                        if draft.generation_warning:
+                            append_review_detail(
+                                review_details,
+                                "출시 소식 후보",
+                                draft.generation_warning,
+                                eventKey=candidate.get("event_key"),
+                                category=candidate.get("category"),
+                                articleId=response.get("id"),
+                            )
                 except Exception as error:  # noqa: BLE001
                     stats["errorCount"] += 1
                     append_error_detail(
@@ -484,6 +517,15 @@ def run() -> int:
                                 stats["publishedCount"] += 1
                             else:
                                 stats["reviewCount"] += 1
+                                if draft.generation_warning:
+                                    append_review_detail(
+                                        review_details,
+                                        "팁·정보 주제",
+                                        draft.generation_warning,
+                                        topicId=topic.get("id"),
+                                        topicKey=topic.get("normalizedKey"),
+                                        articleId=response.get("id"),
+                                    )
                 except Exception as error:  # noqa: BLE001
                     stats["errorCount"] += 1
                     append_error_detail(
@@ -514,6 +556,12 @@ def run() -> int:
     if stats["errorCount"]:
         notifier.warning_once("ai_news_errors", "AI 소식 일부 처리 실패",
                               format_error_alert(run_id, run_key, stats, error_details))
+    if review_details:
+        notifier.warning_once(
+            "ai_news_short_drafts",
+            "AI 소식 분량 미달 원고 검토 대기",
+            format_review_alert(run_id, run_key, stats, review_details),
+        )
     log.info("AI 소식 실행 완료: %s", stats)
     return 1 if fatal_error else 0
 

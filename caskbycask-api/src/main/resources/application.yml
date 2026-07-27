@@ -114,7 +114,9 @@ exchange-rate:
   provider-url: ${EXCHANGE_RATE_PROVIDER_URL:https://api.frankfurter.dev}
   refresh-cron: ${EXCHANGE_RATE_REFRESH_CRON:0 5 0,6,12,18 * * *}
   connect-timeout-ms: ${EXCHANGE_RATE_CONNECT_TIMEOUT_MS:3000}
-  read-timeout-ms: ${EXCHANGE_RATE_READ_TIMEOUT_MS:5000}
+  read-timeout-ms: ${EXCHANGE_RATE_READ_TIMEOUT_MS:15000}
+  retry-max-attempts: ${EXCHANGE_RATE_RETRY_MAX_ATTEMPTS:3}
+  retry-initial-backoff-ms: ${EXCHANGE_RATE_RETRY_INITIAL_BACKOFF_MS:1000}
 
 # SEO 메타 — sitemap.xml 의 base URL 및 index.html 파일 경로
 seo:

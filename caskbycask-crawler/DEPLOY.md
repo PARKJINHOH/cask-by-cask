@@ -257,6 +257,7 @@ GitHub Actions의 `target=crawler` 또는 `target=all`은 새 릴리스를 `/app
 | 같은 딜이 여러 건 올라옴 | `DUPLICATE_LOOKBACK_HOURS` 상향 또는 `DUPLICATE_JACCARD_THRESHOLD`, `DUPLICATE_NGRAM_THRESHOLD` 하향 |
 | 핫딜 AI 429 | `GEMINI_REQUEST_INTERVAL_SEC` 확인 또는 상향 (기본 5초) |
 | AI 소식 Gemini 429 | Google AI Studio 프로젝트의 무료 티어 rate limit 확인. 다음 2시간 실행을 기다리거나 후보 수를 낮춤 |
+| AI 소식 분량 미달 검토 경고 | `ai-news.log`의 `plainTextLength`, `finishReason`, `evidenceSourceCount`, `evidenceTextLength` 확인. 재작성 후에도 1,000자 미만인 신규 원고는 이미지 생성 없이 검토 대기로 보존되며 자동 발행되지 않음 |
 | 크롤링 차단/429 | `REQUEST_DELAY_SEC` 상향 (예: 2.0~3.0) |
 | 로그 위치 | `/app/caskbycask-crawler/logs/crawler.log` |
 

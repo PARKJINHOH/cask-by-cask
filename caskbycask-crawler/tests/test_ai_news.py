@@ -72,8 +72,14 @@ from models import PostDetail, RawPost
 from analyzer.gemini_analyzer import GeminiAnalyzer
 from news_models import (DraftArticle, SearchSource, UsageAccumulator, canonicalize_url,
                          local_datetime_string, truncate_utf16)
-from news_gemini import GeminiNewsWriter
-from alerts.ai_news_error_alert import append_error_detail, format_error_alert
+from news_gemini import AI_NEWS_RETRY_MAX_OUTPUT_TOKENS, GeminiNewsWriter
+from news_main import _process_draft
+from alerts.ai_news_error_alert import (
+    append_error_detail,
+    append_review_detail,
+    format_error_alert,
+    format_review_alert,
+)
 from news_prompts import AI_NEWS_MIN_TEXT_LENGTH, AI_NEWS_WRITING_PROMPT
 from news_tavily import TavilyNewsSearch
 from news_source_config import matching_source_config
@@ -258,6 +264,33 @@ class NewsModelTest(unittest.TestCase):
         self.assertIn("출시 소식 후보", body)
         self.assertIn("eventKey=new-release", body)
         self.assertIn("RuntimeError: Gemini 응답 형식 오류", body)
+
+    def test_ai_news_review_alert_includes_length_diagnostics(self) -> None:
+        details: list[dict[str, str]] = []
+        append_review_detail(
+            details,
+            "출시 소식 후보",
+            "1차=812자(finishReason=STOP), 2차=934자(finishReason=STOP); 근거=1건/1,420자",
+            eventKey="short-release",
+            articleId=91,
+        )
+
+        body = format_review_alert(
+            74,
+            "ai-news-20260727T031702Z",
+            {
+                "candidateCount": 1,
+                "publishedCount": 0,
+                "reviewCount": 1,
+                "duplicateCount": 0,
+                "errorCount": 0,
+            },
+            details,
+        )
+
+        self.assertIn("분량 미달 검토 원고", body)
+        self.assertIn("eventKey=short-release", body)
+        self.assertIn("2차=934자", body)
 
 
 class NewsSourceConfigTest(unittest.TestCase):
@@ -514,6 +547,92 @@ class GeminiNewsWriterTest(unittest.TestCase):
         self.assertEqual(2, writer._request_json.call_count)
         revision_payload = writer._request_json.call_args_list[1].args[2]
         self.assertIn("revision_request", revision_payload)
+        self.assertEqual(4, revision_payload["length_validation"]["previous_plain_text_length"])
+        self.assertEqual(996, revision_payload["length_validation"]["shortfall"])
+
+    def test_second_short_article_is_kept_for_review_with_diagnostics(self) -> None:
+        writer = GeminiNewsWriter.__new__(GeminiNewsWriter)
+        writer.writer_model = "gemini-test-lite"
+        first = {
+            "title": "첫 원고",
+            "content_html": f"<p>{'가' * 700}</p>",
+            "confidence": 0.91,
+            "semantic_fingerprint": "first",
+            "image_prompt": "editorial image",
+            "hashtags": [],
+        }
+        second = {
+            **first,
+            "title": "보강 원고",
+            "content_html": f"<p>{'나' * 900}</p>",
+        }
+        writer._request_json = Mock(side_effect=[first, second])
+
+        result = writer._request_article(
+            {
+                "task": "출시 소식 원고 작성과 최종 사실 검증",
+                "evidence": [{"text": "근거 본문"}],
+            },
+            allow_short_review=True,
+        )
+        draft = writer._draft_from_result(
+            "RELEASE_NEWS",
+            "WHISKY",
+            "release:short",
+            None,
+            [0],
+            result,
+        )
+
+        self.assertEqual("보강 원고", draft.title)
+        self.assertFalse(draft.auto_publish_requested)
+        self.assertIn("1차=700자", draft.generation_warning)
+        self.assertIn("2차=900자", draft.generation_warning)
+        self.assertIn("근거=1건/4자", draft.generation_warning)
+
+    def test_second_short_rewrite_does_not_replace_existing_article(self) -> None:
+        writer = GeminiNewsWriter.__new__(GeminiNewsWriter)
+        writer.writer_model = "gemini-test-lite"
+        short = {
+            "title": "짧은 원고",
+            "content_html": f"<p>{'가' * 800}</p>",
+        }
+        writer._request_json = Mock(side_effect=[short, short])
+
+        with self.assertRaisesRegex(
+            RuntimeError,
+            r"최소 1,000자보다 짧습니다.*1차=800자.*2차=800자",
+        ):
+            writer._request_article({"task": "기존 AI 소식 원고 재작성"})
+
+    def test_retry_sets_output_limit_only_after_max_tokens_finish_reason(self) -> None:
+        writer = GeminiNewsWriter.__new__(GeminiNewsWriter)
+        writer.writer_model = "gemini-test-lite"
+        results = [
+            {"title": "첫 원고", "content_html": f"<p>{'가' * 700}</p>"},
+            {"title": "보강 원고", "content_html": f"<p>{'나' * 1000}</p>"},
+        ]
+
+        def request_json(*args, **kwargs):
+            index = request_json.call_count
+            request_json.call_count += 1
+            writer._last_response_metadata = {
+                "finishReason": "MAX_TOKENS" if index == 0 else "STOP",
+                "responseTextLength": 900 if index == 0 else 1300,
+            }
+            return results[index]
+
+        request_json.call_count = 0
+        writer._request_json = Mock(side_effect=request_json)
+
+        result = writer._request_article({"task": "테스트"})
+
+        self.assertEqual("보강 원고", result["title"])
+        self.assertNotIn("max_output_tokens", writer._request_json.call_args_list[0].kwargs)
+        self.assertEqual(
+            AI_NEWS_RETRY_MAX_OUTPUT_TOKENS,
+            writer._request_json.call_args_list[1].kwargs["max_output_tokens"],
+        )
 
     def test_plain_text_length_excludes_html_and_whitespace(self) -> None:
         self.assertEqual(5, GeminiNewsWriter._plain_text_length("<h2>가 나</h2><p>다&amp;라</p>"))
@@ -521,6 +640,9 @@ class GeminiNewsWriterTest(unittest.TestCase):
     def test_json_response_and_thinking_tokens_are_counted(self) -> None:
         response = types.SimpleNamespace(
             text='{"ok": true}',
+            candidates=[types.SimpleNamespace(
+                finish_reason=types.SimpleNamespace(name="STOP"),
+            )],
             usage_metadata=types.SimpleNamespace(
                 prompt_token_count=11,
                 candidates_token_count=7,
@@ -538,9 +660,45 @@ class GeminiNewsWriterTest(unittest.TestCase):
         self.assertTrue(result["ok"])
         self.assertEqual(11, writer.usage.input_tokens)
         self.assertEqual(12, writer.usage.output_tokens)
+        self.assertEqual("STOP", writer._last_response_metadata["finishReason"])
+        self.assertEqual(len(response.text), writer._last_response_metadata["responseTextLength"])
         config = generate.call_args.kwargs["config"]
         self.assertEqual("application/json", config_value(config, "response_mime_type"))
         self.assertEqual(schema, config_value(config, "response_json_schema"))
+
+    def test_json_request_applies_explicit_output_limit_when_requested(self) -> None:
+        response = types.SimpleNamespace(
+            text='{"ok": true}',
+            candidates=[types.SimpleNamespace(
+                finish_reason=types.SimpleNamespace(name="STOP"),
+            )],
+            usage_metadata=None,
+        )
+        generate = Mock(return_value=response)
+        writer = GeminiNewsWriter.__new__(GeminiNewsWriter)
+        writer.client = types.SimpleNamespace(
+            models=types.SimpleNamespace(generate_content=generate)
+        )
+        writer.usage = UsageAccumulator()
+        schema = {
+            "type": "object",
+            "properties": {"ok": {"type": "boolean"}},
+            "required": ["ok"],
+        }
+
+        writer._request_json(
+            "gemini-test-lite",
+            "system",
+            {"value": "테스트"},
+            schema,
+            max_output_tokens=AI_NEWS_RETRY_MAX_OUTPUT_TOKENS,
+        )
+
+        config = generate.call_args.kwargs["config"]
+        self.assertEqual(
+            AI_NEWS_RETRY_MAX_OUTPUT_TOKENS,
+            config_value(config, "max_output_tokens"),
+        )
 
     def test_malformed_json_is_retried_once(self) -> None:
         responses = [
@@ -616,6 +774,49 @@ class GeminiNewsWriterTest(unittest.TestCase):
                 writer.generate_image("image", Path(temp), "tip:test")
 
         create.assert_not_called()
+
+    def test_short_new_draft_skips_image_and_is_submitted_for_review(self) -> None:
+        draft = DraftArticle(
+            article_type="RELEASE_NEWS",
+            category="WHISKY",
+            title="검토 원고",
+            content_html="<p>짧은 본문</p>",
+            dedupe_key="release:short-review",
+            semantic_fingerprint="short review",
+            confidence=0.9,
+            source_indexes=[0],
+            image_prompt="editorial image",
+            auto_publish_requested=False,
+            generation_warning="1차=700자, 2차=900자",
+        )
+        source = SearchSource(
+            title="Official release",
+            url="https://example.com/release",
+            domain="example.com",
+            content="공식 출시 근거",
+        )
+        api = Mock()
+        api.check_duplicate.return_value = {"duplicate": False}
+        api.submit_article.return_value = {"id": 92, "status": "PENDING_REVIEW"}
+        writer = Mock()
+        writer.image_generation_enabled = True
+
+        with tempfile.TemporaryDirectory() as temp:
+            response = _process_draft(
+                api,
+                writer,
+                draft,
+                [source],
+                Path(temp),
+                {},
+                Mock(),
+            )
+
+        self.assertEqual("PENDING_REVIEW", response["status"])
+        submitted = api.submit_article.call_args.args[0]
+        self.assertFalse(submitted["autoPublishRequested"])
+        writer.generate_image.assert_not_called()
+        api.upload_image.assert_not_called()
 
 
 if __name__ == "__main__":

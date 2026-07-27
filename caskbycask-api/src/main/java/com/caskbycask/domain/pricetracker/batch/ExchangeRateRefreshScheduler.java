@@ -13,7 +13,10 @@ public class ExchangeRateRefreshScheduler {
 
     private final ExchangeRateService exchangeRateService;
 
-    @Scheduled(cron = "${exchange-rate.refresh-cron:0 5 0,6,12,18 * * *}", zone = "Asia/Seoul")
+    @Scheduled(
+            cron = "${exchange-rate.refresh-cron:0 5 0,6,12,18 * * *}",
+            zone = "Asia/Seoul",
+            scheduler = "exchangeRateTaskScheduler")
     public void refresh() {
         try {
             exchangeRateService.refresh();
