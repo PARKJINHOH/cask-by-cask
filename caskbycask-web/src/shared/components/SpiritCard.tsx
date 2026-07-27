@@ -13,6 +13,8 @@ export interface SpiritCardProps {
   spirit: SpiritListItem
   className?: string
   listView?: boolean
+  showSecondaryName?: boolean
+  uniformTwoLineName?: boolean
   imageFit?: 'cover' | 'contain'
   detailState?: { returnTo?: string }
 }
@@ -41,6 +43,8 @@ function SpiritCard({
   spirit,
   className = '',
   listView = false,
+  showSecondaryName = true,
+  uniformTwoLineName = false,
   imageFit = 'cover',
   detailState,
 }: SpiritCardProps) {
@@ -49,16 +53,18 @@ function SpiritCard({
   const { primaryName, secondaryName } = getLocalizedSpiritListNames(spirit, i18n.language)
   const countryLabel  = localizeCountry(spirit.country, i18n.language)
   const detailPath = getSpiritDetailPath(spirit, i18n.language)
+  const linkTitle = showSecondaryName && secondaryName
+    ? `${primaryName} (${secondaryName})`
+    : primaryName
 
   if (listView) {
     return (
       <div className={className}>
-        <article className="bg-white rounded-xl shadow-sm flex items-center gap-3 p-3
-          transition-all duration-200 ease-out
-          hover:shadow-md">
+        <article className="bg-white rounded-xl border border-neutral-200 flex items-center gap-3 p-3
+          transition-all duration-200 ease-out hover:border-neutral-300 hover:shadow-md sm:gap-4">
 
           {/* 썸네일 — 클릭 시 라이트박스 */}
-          <div className="relative w-16 h-16 flex-shrink-0">
+          <div className="relative w-20 h-20 flex-shrink-0 sm:w-24 sm:h-24">
             {spirit.primaryImageUrl ? (
               <button
                 type="button"
@@ -73,7 +79,9 @@ function SpiritCard({
                   alt={primaryName}
                   loading="lazy"
                   draggable="false"
-                  className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                  className={`w-full h-full hover:scale-105 transition-transform duration-300 ${
+                    imageFit === 'contain' ? 'object-contain' : 'object-cover'
+                  }`}
                 />
               </button>
             ) : (
@@ -102,9 +110,9 @@ function SpiritCard({
             className="flex-1 flex items-center gap-3 min-w-0 focus-visible:outline-none
               focus-visible:ring-2 focus-visible:ring-primary-500 rounded-lg"
             aria-label={primaryName}
-            title={secondaryName ? `${primaryName} (${secondaryName})` : primaryName}
+            title={linkTitle}
           >
-            <div className="flex-1 min-w-0 space-y-0.5">
+            <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <Badge variant={spirit.category} size="sm">
                   {t(`spirit.category.${spirit.category}`)}
@@ -113,13 +121,22 @@ function SpiritCard({
                   <span className="text-xs text-neutral-400">{countryLabel}</span>
                 )}
               </div>
-              <h3 className="text-sm font-semibold text-neutral-900 line-clamp-1 leading-snug" title={primaryName}>
+              <h3
+                className={`mt-1 text-sm font-semibold text-neutral-900 leading-5 ${
+                  uniformTwoLineName ? 'line-clamp-2 min-h-10' : 'line-clamp-1'
+                }`}
+                title={primaryName}
+              >
                 {primaryName}
               </h3>
-              <p className="text-xs text-neutral-400 line-clamp-1" title={secondaryName || undefined}>{secondaryName}</p>
+              {showSecondaryName && (
+                <p className="text-xs text-neutral-400 line-clamp-1" title={secondaryName || undefined}>
+                  {secondaryName}
+                </p>
+              )}
             </div>
 
-            <div className="flex-shrink-0 flex flex-col items-end gap-1 pr-1">
+            <div className="hidden flex-shrink-0 flex-col items-end gap-1 pr-1 sm:flex">
               {spirit.avgScore != null && (
                 <span className="text-sm font-bold" style={{ color: scoreColor(spirit.avgScore) }}>
                   ★ {spirit.avgScore.toFixed(1)}
@@ -216,7 +233,12 @@ function SpiritCard({
       <div className="px-2.5 py-2">
         {/* 이름 + 점수 (한 줄) */}
         <div className="flex items-start justify-between gap-1.5">
-          <h3 className="text-sm font-semibold text-neutral-900 line-clamp-1 leading-tight min-w-0" title={primaryName}>
+          <h3
+            className={`text-sm font-semibold text-neutral-900 leading-[1.125rem] min-w-0 ${
+              uniformTwoLineName ? 'line-clamp-2 min-h-9' : 'line-clamp-1'
+            }`}
+            title={primaryName}
+          >
             {primaryName}
           </h3>
           {spirit.avgScore != null && (
@@ -226,10 +248,16 @@ function SpiritCard({
           )}
         </div>
 
-        <p className="text-xs text-neutral-400 line-clamp-1 mb-1" title={secondaryName || undefined}>{secondaryName}</p>
+        {showSecondaryName && (
+          <p className="text-xs text-neutral-400 line-clamp-1 mb-1" title={secondaryName || undefined}>
+            {secondaryName}
+          </p>
+        )}
 
         {/* 국가 · 도수 + 리뷰수 */}
-        <div className="flex items-center justify-between gap-1.5 text-xs text-neutral-500">
+        <div className={`flex items-center justify-between gap-1.5 text-xs text-neutral-500 ${
+          showSecondaryName ? '' : 'mt-1'
+        }`}>
           <span className="line-clamp-1 min-w-0">{metaParts.join(' · ')}</span>
           {spirit.reviewCount > 0 && (
             <span className="flex-shrink-0 text-neutral-400">
@@ -246,7 +274,7 @@ function SpiritCard({
         className="absolute inset-0 z-10 rounded-2xl focus-visible:outline-none
           focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500"
         aria-label={primaryName}
-        title={secondaryName ? `${primaryName} (${secondaryName})` : primaryName}
+        title={linkTitle}
       />
 
       {spirit.primaryImageUrl && (

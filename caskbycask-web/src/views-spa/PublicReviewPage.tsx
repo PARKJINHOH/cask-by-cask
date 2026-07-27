@@ -1,9 +1,11 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { socialApi } from '@/domain/social/api/socialApi'
 import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 import Spinner from '@/shared/components/Spinner'
+import ImageLightbox from '@/shared/components/ImageLightbox'
 import { stripLocalePrefix } from '@/domain/spirit/utils/spiritUrl'
 
 function score(value: number | null) {
@@ -15,6 +17,7 @@ export default function PublicReviewPage() {
   const id = Number(reviewId)
   const { t, i18n } = useTranslation()
   const isEn = i18n.language === 'en'
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const { data, isLoading, isError } = useQuery({
     queryKey: ['public-review', id],
     queryFn: () => socialApi.publicReview(id),
@@ -38,6 +41,8 @@ export default function PublicReviewPage() {
   const title = isEn ? (data.displayNameEn || data.displayNameKo) : data.displayNameKo
   const subtitle = isEn ? data.displayNameKo : data.displayNameEn
   const canonicalPath = isEn ? data.canonicalPathEn : data.canonicalPathKo
+  const reviewImages = data.images ?? []
+  const reviewImageUrls = reviewImages.map((image) => image.imageUrl)
   const notes = [
     ['nose', data.noseScore, data.noseNote],
     ['taste', data.tasteScore, data.tasteNote],
@@ -57,8 +62,43 @@ export default function PublicReviewPage() {
       <main className="mx-auto max-w-5xl px-4 py-8 sm:py-12">
         <div className="overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-sm">
           <div className="grid md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-            <div className="flex min-h-80 items-center justify-center bg-neutral-100 p-5">
-              {data.imageUrl ? (
+            <div className="flex min-h-80 flex-col items-center justify-center gap-3 bg-neutral-100 p-5">
+              {reviewImages.length > 0 ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setLightboxIndex(0)}
+                    aria-label={t('review.images.open', { number: 1 })}
+                    className="w-full overflow-hidden rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700"
+                  >
+                    <img
+                      src={reviewImages[0].imageUrl}
+                      alt={t('review.images.previewAlt', { number: 1 })}
+                      className="aspect-[4/5] max-h-[620px] w-full object-cover"
+                    />
+                  </button>
+                  {reviewImages.length > 1 && (
+                    <div className="grid w-full grid-cols-3 gap-2">
+                      {reviewImages.map((image, index) => (
+                        <button
+                          key={image.id}
+                          type="button"
+                          onClick={() => setLightboxIndex(index)}
+                          aria-label={t('review.images.open', { number: index + 1 })}
+                          className="overflow-hidden rounded-xl border-2 border-transparent focus-visible:border-primary-700 focus-visible:outline-none"
+                        >
+                          <img
+                            src={image.imageUrl}
+                            alt={t('review.images.previewAlt', { number: index + 1 })}
+                            className="aspect-[4/5] w-full object-cover"
+                            loading={index === 0 ? 'eager' : 'lazy'}
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : data.imageUrl ? (
                 <img src={data.imageUrl} alt={title} className="max-h-[620px] w-full rounded-2xl object-contain" />
               ) : (
                 <span className="text-sm text-neutral-400">{t('social.noImage')}</span>
@@ -109,6 +149,12 @@ export default function PublicReviewPage() {
           </div>
         </div>
       </main>
+      <ImageLightbox
+        images={reviewImageUrls}
+        initialIndex={lightboxIndex ?? 0}
+        open={lightboxIndex != null}
+        onClose={() => setLightboxIndex(null)}
+      />
     </>
   )
 }

@@ -7,9 +7,14 @@ import com.caskbycask.domain.community.entity.enums.NotificationType;
 import com.caskbycask.domain.community.service.NotificationService;
 import com.caskbycask.domain.review.dto.ModerationRequest;
 import com.caskbycask.domain.review.dto.AdminReviewResponse;
+import com.caskbycask.domain.review.dto.ReviewImageResponse;
 import com.caskbycask.domain.review.entity.Review;
+import com.caskbycask.domain.review.entity.ReviewImage;
 import com.caskbycask.domain.review.repository.ReviewRepository;
+import com.caskbycask.domain.review.service.ReviewImageService;
 import com.caskbycask.domain.review.service.ReviewService;
+import com.caskbycask.domain.social.entity.enums.SocialSourceType;
+import com.caskbycask.domain.social.service.SocialPublishRequestService;
 import com.caskbycask.global.email.EmailSender;
 import com.caskbycask.global.exception.CustomException;
 import com.caskbycask.global.exception.ErrorCode;
@@ -22,6 +27,9 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.Map;
+
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -31,8 +39,10 @@ public class AdminContentService {
     private static final String TARGET_SPIRIT = "SPIRIT";
 
     private final ReviewRepository reviewRepository;
+    private final ReviewImageService reviewImageService;
     private final CommentRepository commentRepository;
     private final ReviewService reviewService;
+    private final SocialPublishRequestService socialPublishRequestService;
     private final EmailSender emailSender;
     private final NotificationService notificationService;
 
@@ -43,8 +53,14 @@ public class AdminContentService {
         Pageable sorted = PageRequest.of(
                 pageable.getPageNumber(), pageable.getPageSize(),
                 Sort.by(Sort.Direction.DESC, "createdAt"));
-        return reviewRepository.findForAdmin(isHidden, spiritId, sorted)
-                .map(AdminReviewResponse::from);
+        Page<Review> reviews = reviewRepository.findForAdmin(isHidden, spiritId, sorted);
+        Map<Long, List<ReviewImage>> imagesByReview = reviewImageService.findByReviewIds(
+                reviews.getContent().stream().map(Review::getId).toList());
+        return reviews.map(review -> AdminReviewResponse.from(
+                review,
+                imagesByReview.getOrDefault(review.getId(), List.of()).stream()
+                        .map(ReviewImageResponse::from)
+                        .toList()));
     }
 
     @Transactional
@@ -75,6 +91,8 @@ public class AdminContentService {
 
         Long spiritId = review.getSpirit().getId();
         review.softDelete();
+        socialPublishRequestService.markSourceDeleted(SocialSourceType.REVIEW, reviewId);
+        reviewImageService.deleteForReview(reviewId);
         reviewService.recalculateAvgScore(spiritId);
         sendReviewModerationEmailIfNeeded(review, request, "리뷰 삭제 안내", "삭제 처리");
         sendReviewModerationNotification(review, "리뷰가 운영 정책에 따라 삭제 처리되었습니다.", moderationReason(request), TARGET_MY_REVIEWS);

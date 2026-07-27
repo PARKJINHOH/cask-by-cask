@@ -6,6 +6,12 @@ import ReviewScoreSection from './ReviewScoreSection'
 import { EMPTY_AROMA_NOTES } from '../utils/aroma'
 import type { CreateVariantReviewRequest, VariantReviewRequestItem } from '../types/review.types'
 import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
+import ReviewImageField, {
+  existingReviewImageDrafts,
+  reviewImageSubmission,
+  type ReviewImageDraft,
+} from './ReviewImageField'
+import type { ReviewImagePlanItem } from '../types/review.types'
 
 interface Props {
   open: boolean
@@ -13,7 +19,10 @@ interface Props {
   isLoading: boolean
   mode?: 'pending' | 'resubmitReview'
   onClose: () => void
-  onSubmit: (data: CreateVariantReviewRequest) => Promise<void>
+  onSubmit: (
+    data: CreateVariantReviewRequest,
+    media: { imagePlan: ReviewImagePlanItem[]; images: File[] },
+  ) => Promise<void>
 }
 
 type FieldErrors = Partial<Record<'variantValue' | 'abv' | 'volumeMl' | 'noseNote' | 'tasteNote' | 'finishNote', string>>
@@ -41,6 +50,7 @@ export default function PendingVariantReviewEditModal({
   const [finishNote, setFinishNote] = useState('')
   const [comment, setComment] = useState('')
   const [errors, setErrors] = useState<FieldErrors>({})
+  const [reviewImages, setReviewImages] = useState<ReviewImageDraft[]>([])
 
   const variantValueRef = useRef<HTMLInputElement>(null)
   const abvRef = useRef<HTMLInputElement>(null)
@@ -61,6 +71,7 @@ export default function PendingVariantReviewEditModal({
     setFinishNote(request.finishNote ?? '')
     setComment(request.comment ?? '')
     setErrors({})
+    setReviewImages(existingReviewImageDrafts(request.images))
   }, [open, request])
 
   const handleSubmit = async (event: FormEvent) => {
@@ -89,6 +100,7 @@ export default function PendingVariantReviewEditModal({
       return
     }
 
+    const media = reviewImageSubmission(reviewImages)
     await onSubmit({
       variantValue: variantValue.trim(),
       variantValueEn: variantValueEn.trim() || null,
@@ -105,7 +117,7 @@ export default function PendingVariantReviewEditModal({
       noseAromaWheelNotes: request.noseAromaWheelNotes ?? undefined,
       tasteAromaWheelNotes: request.tasteAromaWheelNotes ?? undefined,
       finishAromaWheelNotes: request.finishAromaWheelNotes ?? undefined,
-    })
+    }, { imagePlan: media.imagePlan, images: media.files })
   }
 
   const totalPreview = (noseScore + tasteScore + finishScore) / 3
@@ -282,6 +294,14 @@ export default function PendingVariantReviewEditModal({
             className="w-full resize-none rounded-xl border border-neutral-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400"
           />
         </div>
+
+        <div className="h-px bg-neutral-200" aria-hidden="true" />
+
+        <ReviewImageField
+          value={reviewImages}
+          onChange={setReviewImages}
+          disabled={isLoading}
+        />
 
         <div className="flex justify-end gap-2 border-t border-neutral-100 pt-4">
           <Button type="button" variant="secondary" size="sm" onClick={onClose} disabled={isLoading}>

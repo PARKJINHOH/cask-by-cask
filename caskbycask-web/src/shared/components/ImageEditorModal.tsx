@@ -1,5 +1,6 @@
 import { Fragment, useState, useEffect, useRef } from 'react'
 import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from '@headlessui/react'
+import { useTranslation } from 'react-i18next'
 
 interface ImageEditorModalProps {
   open: boolean
@@ -14,7 +15,12 @@ interface ImageEditorModalProps {
     width: number
     height: number
   }
+  fitOutputSize?: {
+    width: number
+    height: number
+  }
   recommendedResolution?: string
+  showInstagramCropPreset?: boolean
 }
 
 type EditMode = 'paint' | 'crop' | 'rotate' | 'resize'
@@ -27,6 +33,12 @@ interface CropBox {
   h: number // 0 ~ 1
 }
 
+interface CropRatioOption {
+  label: string
+  value: string
+  instagram?: boolean
+}
+
 export default function ImageEditorModal({
   open,
   onClose,
@@ -37,8 +49,11 @@ export default function ImageEditorModal({
   initialCropRatio,
   initialMode = 'paint',
   outputSize,
+  fitOutputSize,
   recommendedResolution,
+  showInstagramCropPreset = false,
 }: ImageEditorModalProps) {
+  const { t } = useTranslation()
   const [mode, setMode] = useState<EditMode>('paint')
   const [paintType, setPaintType] = useState<PaintType>('mosaic')
   const [brushSize, setBrushSize] = useState<number>(30)
@@ -850,6 +865,32 @@ export default function ImageEditorModal({
         outputSize.width,
         outputSize.height,
       )
+    } else if (fitOutputSize) {
+      const scale = Math.min(
+        1,
+        fitOutputSize.width / canvas.width,
+        fitOutputSize.height / canvas.height,
+      )
+      if (scale < 1) {
+        outputCanvas = document.createElement('canvas')
+        outputCanvas.width = Math.max(1, Math.round(canvas.width * scale))
+        outputCanvas.height = Math.max(1, Math.round(canvas.height * scale))
+        const outputContext = outputCanvas.getContext('2d')
+        if (!outputContext) return
+        outputContext.imageSmoothingEnabled = true
+        outputContext.imageSmoothingQuality = 'high'
+        outputContext.drawImage(
+          canvas,
+          0,
+          0,
+          canvas.width,
+          canvas.height,
+          0,
+          0,
+          outputCanvas.width,
+          outputCanvas.height,
+        )
+      }
     }
 
     outputCanvas.toBlob((blob) => {
@@ -858,6 +899,20 @@ export default function ImageEditorModal({
       onSave(file)
     }, 'image/png')
   }
+
+  const cropRatioOptions: CropRatioOption[] = [
+    { label: t('imageEditor.free'), value: 'free' },
+    { label: '1:1', value: '1:1' },
+    { label: '21:5', value: '21:5' },
+    { label: '16:9', value: '16:9' },
+    { label: '4:3', value: '4:3' },
+    { label: '3:4', value: '3:4' },
+    { label: '9:16', value: '9:16' },
+    ...(showInstagramCropPreset
+      ? [{ label: '4:5', value: '4:5', instagram: true }]
+      : []),
+    { label: t('imageEditor.custom'), value: 'custom' },
+  ]
 
   return (
     <Transition appear show={open} as={Fragment}>
@@ -889,14 +944,14 @@ export default function ImageEditorModal({
               {/* Header */}
               <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-800 bg-neutral-900/50 backdrop-blur">
                 <DialogTitle className="text-base font-semibold text-neutral-100">
-                  이미지 편집
+                  {t('imageEditor.title')}
                 </DialogTitle>
                 <div className="flex items-center gap-3">
                   <button
                     onClick={handleUndo}
                     disabled={historyIndex <= 0}
                     className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 disabled:opacity-30 transition-all duration-150"
-                    title="실행 취소"
+                    title={t('imageEditor.undo')}
                   >
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
@@ -906,7 +961,7 @@ export default function ImageEditorModal({
                     onClick={handleRedo}
                     disabled={historyIndex >= history.length - 1}
                     className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 disabled:opacity-30 transition-all duration-150"
-                    title="다시 실행"
+                    title={t('imageEditor.redo')}
                   >
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M21 10H11a8 8 0 00-8 8v2m18-8l-6 6m6-6l-6-6" />
@@ -916,7 +971,7 @@ export default function ImageEditorModal({
                   <button
                     onClick={onClose}
                     className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 transition-all duration-150"
-                    title="닫기"
+                    title={t('imageEditor.close')}
                   >
                     <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                       <line x1="18" y1="6" x2="6" y2="18" />
@@ -932,7 +987,7 @@ export default function ImageEditorModal({
                 {/* Left Sidebar Toolbar (for Desktop/Large screens) */}
                 <div className="hidden md:flex flex-col gap-6 w-60 border-r border-neutral-800 p-6 bg-neutral-900/30">
                   <div className="space-y-4">
-                    <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">도구 선택</span>
+                    <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">{t('imageEditor.tools')}</span>
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         onClick={() => handleModeChange('paint')}
@@ -945,7 +1000,7 @@ export default function ImageEditorModal({
                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                         </svg>
-                        브러시
+                        {t('imageEditor.brush')}
                       </button>
                       <button
                         onClick={() => handleModeChange('crop')}
@@ -958,7 +1013,7 @@ export default function ImageEditorModal({
                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M8 2v14a2 2 0 002 2h14M18 22V10a2 2 0 00-2-2H2" />
                         </svg>
-                        자르기
+                        {t('imageEditor.crop')}
                       </button>
                       <button
                         onClick={() => handleModeChange('rotate')}
@@ -971,7 +1026,7 @@ export default function ImageEditorModal({
                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89M9 11l3-3 3 3" />
                         </svg>
-                        기울기/회전
+                        {t('imageEditor.rotate')}
                       </button>
                       <button
                         onClick={() => handleModeChange('resize')}
@@ -984,7 +1039,7 @@ export default function ImageEditorModal({
                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
                         </svg>
-                        해상도
+                        {t('imageEditor.resize')}
                       </button>
                     </div>
                   </div>
@@ -996,7 +1051,7 @@ export default function ImageEditorModal({
                     {mode === 'paint' && (
                       <>
                         <div className="space-y-3">
-                          <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">효과 타입</span>
+                          <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">{t('imageEditor.effectType')}</span>
                           <div className="flex rounded-lg overflow-hidden bg-neutral-800 p-1 border border-neutral-700">
                             <button
                               onClick={() => setPaintType('mosaic')}
@@ -1004,7 +1059,7 @@ export default function ImageEditorModal({
                                 paintType === 'mosaic' ? 'bg-neutral-700 text-white font-medium' : 'text-neutral-400 hover:text-neutral-200'
                               }`}
                             >
-                              모자이크
+                              {t('imageEditor.mosaic')}
                             </button>
                             <button
                               onClick={() => setPaintType('blur')}
@@ -1012,14 +1067,14 @@ export default function ImageEditorModal({
                                 paintType === 'blur' ? 'bg-neutral-700 text-white font-medium' : 'text-neutral-400 hover:text-neutral-200'
                               }`}
                             >
-                              블러
+                              {t('imageEditor.blur')}
                             </button>
                           </div>
                         </div>
 
                         <div className="space-y-3">
                           <div className="flex justify-between items-center">
-                            <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">브러시 크기</span>
+                            <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">{t('imageEditor.brushSize')}</span>
                             <span className="text-xs font-mono text-neutral-300">{brushSize}px</span>
                           </div>
                           <input
@@ -1043,37 +1098,41 @@ export default function ImageEditorModal({
                     {mode === 'crop' && (
                       <div className="space-y-4">
                         <div className="space-y-2">
-                          <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">자르기 비율</span>
+                          <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">{t('imageEditor.cropRatio')}</span>
                           {fixedRatio ? (
                             <div className="text-xs text-neutral-300 bg-neutral-800 p-3 rounded-xl border border-neutral-700 font-medium">
-                              비율이 {fixedRatio}로 고정되어 편집됩니다.
+                              {t('imageEditor.fixedRatio', { ratio: fixedRatio })}
                             </div>
                           ) : (
                             <div className="grid grid-cols-2 gap-2">
-                              {[
-                                { label: '자유', value: 'free' },
-                                { label: '1:1', value: '1:1' },
-                                { label: '21:5', value: '21:5' },
-                                { label: '16:9', value: '16:9' },
-                                { label: '4:3', value: '4:3' },
-                                { label: '3:4', value: '3:4' },
-                                { label: '9:16', value: '9:16' },
-                                { label: '입력', value: 'custom' },
-                              ].map((opt) => (
-                                <button
-                                  key={opt.value}
-                                  onClick={() => {
-                                    setCropRatio(opt.value)
-                                    setCropBox(getInitialCropBoxForRatio(opt.value))
-                                  }}
-                                  className={`py-2 px-3 text-xs rounded-xl border transition-all duration-150 ${
-                                    cropRatio === opt.value
-                                      ? 'bg-neutral-700 border-neutral-600 text-white font-medium shadow-md shadow-neutral-950/20'
-                                      : 'bg-neutral-800/50 border-neutral-700 hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200'
-                                  }`}
-                                >
-                                  {opt.label}
-                                </button>
+                              {cropRatioOptions.map((opt) => (
+                                <div key={opt.value} className="group relative">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setCropRatio(opt.value)
+                                      setCropBox(getInitialCropBoxForRatio(opt.value))
+                                    }}
+                                    aria-label={opt.instagram
+                                      ? `${opt.label}, ${t('imageEditor.instagramResolution')}`
+                                      : opt.label}
+                                    className={`w-full py-2 px-3 text-xs rounded-xl border transition-all duration-150 ${
+                                      cropRatio === opt.value
+                                        ? 'bg-neutral-700 border-neutral-600 text-white font-medium shadow-md shadow-neutral-950/20'
+                                        : 'bg-neutral-800/50 border-neutral-700 hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200'
+                                    }`}
+                                  >
+                                    {opt.label}
+                                  </button>
+                                  {opt.instagram && (
+                                    <span
+                                      role="tooltip"
+                                      className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-white px-2.5 py-1.5 text-[10px] font-semibold text-neutral-800 opacity-0 shadow-lg transition-opacity after:absolute after:left-1/2 after:top-full after:-translate-x-1/2 after:border-4 after:border-transparent after:border-t-white group-hover:opacity-100 group-focus-within:opacity-100"
+                                    >
+                                      {t('imageEditor.instagramResolution')}
+                                    </span>
+                                  )}
+                                </div>
                               ))}
                             </div>
                           )}
@@ -1086,7 +1145,7 @@ export default function ImageEditorModal({
                           {cropRatio === 'custom' && (
                             <div className="flex items-center gap-2 mt-2 p-2 bg-neutral-950/40 rounded-xl border border-neutral-800">
                               <div className="flex-1 flex flex-col gap-1">
-                                <label className="text-[10px] text-neutral-400 font-medium">가로 비율</label>
+                                <label className="text-[10px] text-neutral-400 font-medium">{t('imageEditor.widthRatio')}</label>
                                 <input
                                   type="number"
                                   min="1"
@@ -1097,7 +1156,7 @@ export default function ImageEditorModal({
                               </div>
                               <span className="text-neutral-500 self-end mb-1.5">:</span>
                               <div className="flex-1 flex flex-col gap-1">
-                                <label className="text-[10px] text-neutral-400 font-medium">세로 비율</label>
+                                <label className="text-[10px] text-neutral-400 font-medium">{t('imageEditor.heightRatio')}</label>
                                 <input
                                   type="number"
                                   min="1"
@@ -1108,20 +1167,25 @@ export default function ImageEditorModal({
                               </div>
                             </div>
                           )}
+                          {showInstagramCropPreset && (
+                            <p className="text-xs leading-relaxed text-amber-200">
+                              {t('imageEditor.instagramRecommendedRatio')}
+                            </p>
+                          )}
                         </div>
 
                         <div className="h-px bg-neutral-800" />
 
                         <div className="space-y-3">
-                          <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">자르기 실행</span>
+                          <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">{t('imageEditor.cropAction')}</span>
                           <p className="text-xs text-neutral-400 leading-relaxed">
-                            영역 모서리나 테두리를 드래그하여 조절한 뒤 아래 버튼을 클릭하세요.
+                            {t('imageEditor.cropHint')}
                           </p>
                           <button
                             onClick={handleApplyCrop}
                             className="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 active:bg-amber-700 text-white text-xs font-semibold shadow-lg shadow-amber-950/20 transition-all duration-150"
                           >
-                            선택 영역 자르기
+                            {t('imageEditor.applyCrop')}
                           </button>
                         </div>
                       </div>
@@ -1131,7 +1195,7 @@ export default function ImageEditorModal({
                       <div className="space-y-4">
                         <div className="space-y-3">
                           <div className="flex justify-between items-center">
-                            <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">기울기 조절</span>
+                            <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">{t('imageEditor.tilt')}</span>
                             <span className="text-xs font-mono text-neutral-300">{tiltAngle}°</span>
                           </div>
                           <input
@@ -1148,14 +1212,14 @@ export default function ImageEditorModal({
                               disabled={tiltAngle === 0}
                               className="flex-1 py-1.5 text-xs rounded-lg border border-neutral-700 bg-neutral-800/40 hover:bg-neutral-800 text-neutral-300 disabled:opacity-30 disabled:hover:bg-transparent transition-all duration-150"
                             >
-                              기울기 초기화
+                              {t('imageEditor.resetTilt')}
                             </button>
                             <button
                               onClick={handleApplyTilt}
                               disabled={tiltAngle === 0}
                               className="flex-1 py-1.5 text-xs rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold disabled:opacity-30 transition-all duration-150"
                             >
-                              기울기 적용
+                              {t('imageEditor.applyTilt')}
                             </button>
                           </div>
                         </div>
@@ -1163,7 +1227,7 @@ export default function ImageEditorModal({
                         <div className="h-px bg-neutral-800" />
 
                         <div className="space-y-3">
-                          <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">90도 회전</span>
+                          <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">{t('imageEditor.rotate90')}</span>
                           <button
                             onClick={handleRotate}
                             className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-neutral-700 bg-neutral-800/40 hover:bg-neutral-800 text-neutral-200 text-xs font-medium transition-all duration-150"
@@ -1171,7 +1235,7 @@ export default function ImageEditorModal({
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89M9 11l3-3 3 3" />
                             </svg>
-                            90° 시계방향 회전
+                            {t('imageEditor.rotateClockwise')}
                           </button>
                         </div>
                       </div>
@@ -1180,10 +1244,10 @@ export default function ImageEditorModal({
                     {mode === 'resize' && (
                       <div className="space-y-4">
                         <div className="space-y-3">
-                          <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">해상도 변경</span>
+                          <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">{t('imageEditor.resizeAction')}</span>
                           <div className="flex items-center gap-2 p-2 bg-neutral-950/40 rounded-xl border border-neutral-800">
                             <div className="flex-1 flex flex-col gap-1">
-                              <label className="text-[10px] text-neutral-400 font-medium">가로 (px)</label>
+                              <label className="text-[10px] text-neutral-400 font-medium">{t('imageEditor.widthPx')}</label>
                               <input
                                 type="number"
                                 min="1"
@@ -1194,7 +1258,7 @@ export default function ImageEditorModal({
                             </div>
                             <span className="text-neutral-500 self-end mb-2">×</span>
                             <div className="flex-1 flex flex-col gap-1">
-                              <label className="text-[10px] text-neutral-400 font-medium">세로 (px)</label>
+                              <label className="text-[10px] text-neutral-400 font-medium">{t('imageEditor.heightPx')}</label>
                               <input
                                 type="number"
                                 min="1"
@@ -1212,7 +1276,7 @@ export default function ImageEditorModal({
                               onChange={(e) => setKeepAspectRatio(e.target.checked)}
                               className="rounded border-neutral-700 bg-neutral-800 text-primary-600 focus:ring-primary-500/30 font-sans"
                             />
-                            가로세로 비율 유지
+                            {t('imageEditor.keepRatio')}
                           </label>
                         </div>
 
@@ -1220,7 +1284,7 @@ export default function ImageEditorModal({
                           onClick={handleApplyResize}
                           className="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold shadow-lg shadow-amber-950/20 transition-all duration-150"
                         >
-                          해상도 변경 적용
+                          {t('imageEditor.applyResize')}
                         </button>
                       </div>
                     )}
@@ -1352,7 +1416,7 @@ export default function ImageEditorModal({
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                       </svg>
-                      브러시
+                      {t('imageEditor.brush')}
                     </button>
                     <button
                       onClick={() => handleModeChange('crop')}
@@ -1363,7 +1427,7 @@ export default function ImageEditorModal({
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M8 2v14a2 2 0 002 2h14M18 22V10a2 2 0 00-2-2H2" />
                       </svg>
-                      자르기
+                      {t('imageEditor.crop')}
                     </button>
                     <button
                       onClick={() => handleModeChange('rotate')}
@@ -1374,7 +1438,7 @@ export default function ImageEditorModal({
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89M9 11l3-3 3 3" />
                       </svg>
-                      기울기/회전
+                      {t('imageEditor.rotate')}
                     </button>
                     <button
                       onClick={() => handleModeChange('resize')}
@@ -1385,7 +1449,7 @@ export default function ImageEditorModal({
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
                       </svg>
-                      해상도
+                      {t('imageEditor.resize')}
                     </button>
                   </div>
 
@@ -1400,7 +1464,7 @@ export default function ImageEditorModal({
                             paintType === 'mosaic' ? 'bg-neutral-700 text-white font-medium' : 'text-neutral-400'
                           }`}
                         >
-                          모자이크
+                          {t('imageEditor.mosaic')}
                         </button>
                         <button
                           onClick={() => setPaintType('blur')}
@@ -1408,7 +1472,7 @@ export default function ImageEditorModal({
                             paintType === 'blur' ? 'bg-neutral-700 text-white font-medium' : 'text-neutral-400'
                           }`}
                         >
-                          블러
+                          {t('imageEditor.blur')}
                         </button>
                       </div>
                       {/* Slider */}
@@ -1431,31 +1495,38 @@ export default function ImageEditorModal({
                       {/* Crop Ratio Selector (horizontal scroll) */}
                       {fixedRatio ? (
                         <div className="text-xs text-neutral-300 bg-neutral-800 p-2.5 rounded-lg border border-neutral-700 font-medium">
-                          비율이 {fixedRatio}로 고정되어 편집됩니다.
+                          {t('imageEditor.fixedRatio', { ratio: fixedRatio })}
                         </div>
                       ) : (
-                        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-                          {[
-                            { label: '자유', value: 'free' },
-                            { label: '1:1', value: '1:1' },
-                            { label: '9:16', value: '9:16' },
-                            { label: '3:4', value: '3:4' },
-                            { label: '입력', value: 'custom' },
-                          ].map((opt) => (
-                            <button
-                              key={opt.value}
-                              onClick={() => {
-                                setCropRatio(opt.value)
-                                setCropBox(getInitialCropBoxForRatio(opt.value))
-                              }}
-                              className={`py-1.5 px-3 text-xs rounded-lg border transition-all duration-150 shrink-0 ${
-                                cropRatio === opt.value
-                                  ? 'bg-neutral-700 border-neutral-600 text-white font-medium shadow-md shadow-neutral-950/20'
-                                  : 'bg-neutral-800/50 border-neutral-700 hover:bg-neutral-800 text-neutral-400'
-                              }`}
-                            >
-                              {opt.label}
-                            </button>
+                        <div className="flex gap-2 overflow-x-auto pb-1 pt-8 scrollbar-none">
+                          {cropRatioOptions.map((opt) => (
+                            <div key={opt.value} className="group relative shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCropRatio(opt.value)
+                                  setCropBox(getInitialCropBoxForRatio(opt.value))
+                                }}
+                                aria-label={opt.instagram
+                                  ? `${opt.label}, ${t('imageEditor.instagramResolution')}`
+                                  : opt.label}
+                                className={`py-1.5 px-3 text-xs rounded-lg border transition-all duration-150 ${
+                                  cropRatio === opt.value
+                                    ? 'bg-neutral-700 border-neutral-600 text-white font-medium shadow-md shadow-neutral-950/20'
+                                    : 'bg-neutral-800/50 border-neutral-700 hover:bg-neutral-800 text-neutral-400'
+                                }`}
+                              >
+                                {opt.label}
+                              </button>
+                              {opt.instagram && (
+                                <span
+                                  role="tooltip"
+                                  className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-white px-2.5 py-1.5 text-[10px] font-semibold text-neutral-800 opacity-0 shadow-lg transition-opacity after:absolute after:left-1/2 after:top-full after:-translate-x-1/2 after:border-4 after:border-transparent after:border-t-white group-hover:opacity-100 group-focus-within:opacity-100"
+                                >
+                                  {t('imageEditor.instagramResolution')}
+                                </span>
+                              )}
+                            </div>
                           ))}
                         </div>
                       )}
@@ -1469,7 +1540,7 @@ export default function ImageEditorModal({
                       {!fixedRatio && cropRatio === 'custom' && (
                         <div className="flex items-center gap-2 p-1.5 bg-neutral-950/40 rounded-lg border border-neutral-800">
                           <div className="flex-1 flex items-center gap-1">
-                            <span className="text-[10px] text-neutral-400 whitespace-nowrap">가로비율</span>
+                            <span className="text-[10px] text-neutral-400 whitespace-nowrap">{t('imageEditor.widthRatio')}</span>
                             <input
                               type="number"
                               min="1"
@@ -1480,7 +1551,7 @@ export default function ImageEditorModal({
                           </div>
                           <span className="text-neutral-500">:</span>
                           <div className="flex-1 flex items-center gap-1">
-                            <span className="text-[10px] text-neutral-400 whitespace-nowrap">세로비율</span>
+                            <span className="text-[10px] text-neutral-400 whitespace-nowrap">{t('imageEditor.heightRatio')}</span>
                             <input
                               type="number"
                               min="1"
@@ -1491,14 +1562,19 @@ export default function ImageEditorModal({
                           </div>
                         </div>
                       )}
+                      {showInstagramCropPreset && (
+                        <p className="text-[11px] leading-relaxed text-amber-200">
+                          {t('imageEditor.instagramRecommendedRatio')}
+                        </p>
+                      )}
 
                       <div className="flex items-center justify-between gap-4">
-                        <span className="text-[11px] text-neutral-400">자르려는 영역을 조절 후 오른쪽 버튼을 눌러주세요.</span>
+                        <span className="text-[11px] text-neutral-400">{t('imageEditor.cropHintMobile')}</span>
                         <button
                           onClick={handleApplyCrop}
                           className="py-1.5 px-4 bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold rounded-lg shrink-0 shadow-lg shadow-amber-950/20"
                         >
-                          자르기 적용
+                          {t('imageEditor.applyCrop')}
                         </button>
                       </div>
                     </div>
@@ -1507,7 +1583,7 @@ export default function ImageEditorModal({
                   {mode === 'rotate' && (
                     <div className="flex flex-col gap-3">
                       <div className="flex items-center gap-3">
-                        <span className="text-xs font-semibold text-neutral-400 shrink-0">기울기 조절</span>
+                        <span className="text-xs font-semibold text-neutral-400 shrink-0">{t('imageEditor.tilt')}</span>
                         <input
                           type="range"
                           min="-45"
@@ -1527,7 +1603,7 @@ export default function ImageEditorModal({
                           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89M9 11l3-3 3 3" />
                           </svg>
-                          90° 회전
+                          {t('imageEditor.rotate90')}
                         </button>
                         <div className="flex gap-2">
                           <button
@@ -1535,14 +1611,14 @@ export default function ImageEditorModal({
                             disabled={tiltAngle === 0}
                             className="px-3 py-1.5 text-xs rounded-lg border border-neutral-700 bg-neutral-800/40 text-neutral-300 disabled:opacity-30"
                           >
-                            초기화
+                            {t('imageEditor.reset')}
                           </button>
                           <button
                             onClick={handleApplyTilt}
                             disabled={tiltAngle === 0}
                             className="px-4 py-1.5 text-xs rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold disabled:opacity-30"
                           >
-                            기울기 적용
+                            {t('imageEditor.applyTilt')}
                           </button>
                         </div>
                       </div>
@@ -1553,7 +1629,7 @@ export default function ImageEditorModal({
                     <div className="flex flex-col gap-3">
                       <div className="flex items-center gap-2 p-1.5 bg-neutral-950/40 rounded-lg border border-neutral-800">
                         <div className="flex-1 flex items-center gap-1.5">
-                          <span className="text-[10px] text-neutral-400">가로</span>
+                          <span className="text-[10px] text-neutral-400">{t('imageEditor.width')}</span>
                           <input
                             type="number"
                             min="1"
@@ -1564,7 +1640,7 @@ export default function ImageEditorModal({
                         </div>
                         <span className="text-neutral-500">×</span>
                         <div className="flex-1 flex items-center gap-1.5">
-                          <span className="text-[10px] text-neutral-400">세로</span>
+                          <span className="text-[10px] text-neutral-400">{t('imageEditor.height')}</span>
                           <input
                             type="number"
                             min="1"
@@ -1580,7 +1656,7 @@ export default function ImageEditorModal({
                             onChange={(e) => setKeepAspectRatio(e.target.checked)}
                             className="rounded border-neutral-700 bg-neutral-800 text-primary-600 focus:ring-primary-500/30"
                           />
-                          비율 유지
+                          {t('imageEditor.keepRatioShort')}
                         </label>
                       </div>
 
@@ -1588,7 +1664,7 @@ export default function ImageEditorModal({
                         onClick={handleApplyResize}
                         className="w-full py-1.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold rounded-lg shadow-lg shadow-amber-950/20"
                       >
-                        해상도 적용
+                        {t('imageEditor.applyResize')}
                       </button>
                     </div>
                   )}
@@ -1604,7 +1680,7 @@ export default function ImageEditorModal({
                   disabled={isSaving}
                   className="px-5 py-2.5 rounded-xl border border-neutral-700 hover:bg-neutral-800 text-neutral-200 text-xs font-medium transition-all duration-150 disabled:opacity-50"
                 >
-                  취소
+                  {t('imageEditor.cancel')}
                 </button>
                 <button
                   onClick={handleSaveClick}
@@ -1617,10 +1693,10 @@ export default function ImageEditorModal({
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                       </svg>
-                      저장 중...
+                      {t('imageEditor.saving')}
                     </>
                   ) : (
-                    '적용하기'
+                    t('imageEditor.apply')
                   )}
                 </button>
               </div>

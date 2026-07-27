@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record VariantReviewRequestResponse(
         @Schema(description = "Request ID")
@@ -71,9 +72,16 @@ public record VariantReviewRequestResponse(
         @Schema(description = "Created at")
         LocalDateTime createdAt,
         @Schema(description = "Reviewed at")
-        LocalDateTime reviewedAt
+        LocalDateTime reviewedAt,
+        @Schema(description = "Review images")
+        List<ReviewImageResponse> images
 ) {
     public static VariantReviewRequestResponse from(SpiritVariantReviewRequest request) {
+        return from(request, List.of());
+    }
+
+    public static VariantReviewRequestResponse from(SpiritVariantReviewRequest request,
+                                                    List<ReviewImageResponse> images) {
         var master = request.getMasterSpirit();
         return new VariantReviewRequestResponse(
                 request.getId(),
@@ -106,7 +114,8 @@ public record VariantReviewRequestResponse(
                 request.getReview() != null ? request.getReview().getId() : null,
                 request.getRejectReason(),
                 request.getCreatedAt(),
-                request.getReviewedAt()
+                request.getReviewedAt(),
+                images == null ? List.of() : List.copyOf(images)
         );
     }
 }

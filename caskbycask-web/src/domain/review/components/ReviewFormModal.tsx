@@ -21,6 +21,11 @@ import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFiel
 import SocialPublishFields from '@/domain/social/components/SocialPublishFields'
 import { socialApi } from '@/domain/social/api/socialApi'
 import { EMPTY_SOCIAL_SELECTION, type SocialPublishSelection } from '@/domain/social/types/social.types'
+import ReviewImageField, {
+  existingReviewImageDrafts,
+  reviewImageSubmission,
+  type ReviewImageDraft,
+} from './ReviewImageField'
 
 const ADD_VARIANT_SELECT_VALUE = '__ADD_VARIANT__'
 
@@ -79,6 +84,9 @@ export default function ReviewFormModal({
   const [socialSelection, setSocialSelection] = useState<SocialPublishSelection>(EMPTY_SOCIAL_SELECTION)
   const [socialRetryIds, setSocialRetryIds] = useState<number[]>([])
   const [socialError, setSocialError] = useState('')
+  const [reviewImages, setReviewImages] = useState<ReviewImageDraft[]>(
+    existingReviewImageDrafts(editingReview?.images),
+  )
   const editionSelectRef = useRef<HTMLSelectElement>(null)
 
   useEffect(() => {
@@ -140,6 +148,7 @@ export default function ReviewFormModal({
       setSocialSelection(EMPTY_SOCIAL_SELECTION)
       setSocialRetryIds([])
       setSocialError('')
+      setReviewImages(existingReviewImageDrafts(editingReview?.images))
     }
   }, [open, editingReview, reset])
 
@@ -177,8 +186,14 @@ export default function ReviewFormModal({
       finishAromaWheelNotes: showAroma ? serializeAromaNotes(finishAromas) : undefined,
       ...(!editingReview ? { socialPublish: socialSelection } : {}),
     }
+    const imageSubmission = reviewImageSubmission(reviewImages)
     if (editingReview) {
-      await updateMutation.mutateAsync({ reviewId: editingReview.id, data: payload })
+      await updateMutation.mutateAsync({
+        reviewId: editingReview.id,
+        data: payload,
+        imagePlan: imageSubmission.imagePlan,
+        images: imageSubmission.files,
+      })
       try {
         if (socialSelection.instagram || socialSelection.threads) {
           await reviewApi.requestInitialSocialPublications(
@@ -194,15 +209,18 @@ export default function ReviewFormModal({
       }
     } else if (pendingVariantDraft && masterId) {
       await createVariantReviewRequest.mutateAsync({
-        ...payload,
-        variantValue: pendingVariantDraft.variantValue,
-        variantValueEn: pendingVariantDraft.variantValueEn,
-        abv: pendingVariantDraft.abv,
-        volumeMl: pendingVariantDraft.volumeMl,
-        requestMemo: pendingVariantDraft.requestMemo,
+        data: {
+          ...payload,
+          variantValue: pendingVariantDraft.variantValue,
+          variantValueEn: pendingVariantDraft.variantValueEn,
+          abv: pendingVariantDraft.abv,
+          volumeMl: pendingVariantDraft.volumeMl,
+          requestMemo: pendingVariantDraft.requestMemo,
+        },
+        images: imageSubmission.files,
       })
     } else {
-      await createMutation.mutateAsync(payload)
+      await createMutation.mutateAsync({ data: payload, images: imageSubmission.files })
     }
     onSuccess?.()
     onClose()
@@ -407,6 +425,14 @@ export default function ReviewFormModal({
         {serverError && (
           <p className="text-sm text-red-600">{serverErrorMessage}</p>
         )}
+
+        <div className="h-px bg-neutral-200" aria-hidden="true" />
+
+        <ReviewImageField
+          value={reviewImages}
+          onChange={setReviewImages}
+          disabled={isPending}
+        />
 
         <SocialPublishFields
           kind="review"

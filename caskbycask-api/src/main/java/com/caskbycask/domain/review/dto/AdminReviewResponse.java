@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record AdminReviewResponse(
         @Schema(description = "Review ID")
@@ -42,9 +43,15 @@ public record AdminReviewResponse(
         @Schema(description = "Report count")
         Integer reportCount,
         @Schema(description = "Created at")
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        List<ReviewImageResponse> images
 ) {
     public static AdminReviewResponse from(Review review) {
+        return from(review, List.of());
+    }
+
+    public static AdminReviewResponse from(
+            Review review, List<ReviewImageResponse> images) {
         return new AdminReviewResponse(
                 review.getId(),
                 review.getUser().getId(),
@@ -65,7 +72,8 @@ public record AdminReviewResponse(
                 review.getFinishNote(),
                 review.getIsHidden(),
                 review.getReportCount(),
-                review.getCreatedAt()
+                review.getCreatedAt(),
+                images == null ? List.of() : images
         );
     }
 }

@@ -2,6 +2,7 @@ package com.caskbycask.domain.social.service;
 
 import com.caskbycask.domain.review.entity.Review;
 import com.caskbycask.domain.review.entity.SpiritVariantReviewRequest;
+import com.caskbycask.domain.review.repository.ReviewRepository;
 import com.caskbycask.domain.social.dto.SocialPublicationResponse;
 import com.caskbycask.domain.social.dto.SocialPublishSelection;
 import com.caskbycask.domain.social.config.SocialPublishingProperties;
@@ -39,13 +40,17 @@ public class SocialPublishRequestService {
     private final SocialPublicationRepository publicationRepository;
     private final SocialThumbnailTemplateRepository templateRepository;
     private final SocialPublishingProperties properties;
+    private final SocialPublishMediaService publishMediaService;
+    private final ReviewRepository reviewRepository;
     private final SecureRandom random = new SecureRandom();
 
     @Transactional
     public void requestReview(Review review, User requester, SocialPublishSelection selection) {
         if (!requested(selection)) return;
-        createBundle(SocialSourceType.REVIEW, review.getId(), SocialSourceType.REVIEW, review.getId(),
+        SocialPublishBundle bundle = createBundle(
+                SocialSourceType.REVIEW, review.getId(), SocialSourceType.REVIEW, review.getId(),
                 requester, selection, SocialMediaMode.REVIEW_IMAGE, SocialPublicationStatus.QUEUED);
+        publishMediaService.snapshotReview(bundle, review);
     }
 
     @Transactional
@@ -78,8 +83,10 @@ public class SocialPublishRequestService {
                 null,
                 null
         );
-        createBundle(SocialSourceType.REVIEW, review.getId(), SocialSourceType.REVIEW, review.getId(),
+        SocialPublishBundle bundle = createBundle(
+                SocialSourceType.REVIEW, review.getId(), SocialSourceType.REVIEW, review.getId(),
                 requester, missingSelection, SocialMediaMode.REVIEW_IMAGE, SocialPublicationStatus.QUEUED);
+        publishMediaService.snapshotReview(bundle, review);
     }
 
     @Transactional
@@ -112,6 +119,15 @@ public class SocialPublishRequestService {
     @Transactional
     public void bindVariantReview(Long requestId, Long reviewId) {
         bindAndQueue(SocialSourceType.VARIANT_REVIEW_REQUEST, requestId, SocialSourceType.REVIEW, reviewId);
+    }
+
+    /**
+     * 승인 대기 중인 하위 에디션 요청은 실제 Review가 생성될 때 미디어를 스냅샷한다.
+     * 따라서 승인 전 이미지 편집은 별도 파일 복사 없이 자동으로 최종 구성에 반영된다.
+     */
+    @Transactional
+    public void refreshWaitingVariantReviewMedia(SpiritVariantReviewRequest request) {
+        // Intentionally deferred until bindVariantReview.
     }
 
     @Transactional
@@ -184,6 +200,7 @@ public class SocialPublishRequestService {
                 .directImageUrl(source.getDirectImageUrl())
                 .shortCode(uniqueShortCode())
                 .build());
+        publishMediaService.copy(source, republishBundle);
 
         SocialPublication republish = publicationRepository.save(SocialPublication.builder()
                 .bundle(republishBundle)
@@ -219,16 +236,22 @@ public class SocialPublishRequestService {
                               SocialSourceType contentType, Long contentId) {
         for (SocialPublishBundle bundle : bundleRepository.findByOriginTypeAndOriginId(originType, originId)) {
             bundle.bindContent(contentType, contentId);
+            if (contentType == SocialSourceType.REVIEW) {
+                Review review = reviewRepository.findById(contentId)
+                        .orElseThrow(() -> new CustomException(ErrorCode.REVIEW_NOT_FOUND));
+                publishMediaService.snapshotReview(bundle, review);
+            }
             publicationRepository.findByBundleIdOrderByPlatformAsc(bundle.getId()).stream()
                     .filter(value -> value.getStatus() == SocialPublicationStatus.WAITING_SOURCE)
                     .forEach(SocialPublication::queue);
         }
     }
 
-    private void createBundle(SocialSourceType originType, Long originId,
-                              SocialSourceType contentType, Long contentId,
-                              User requester, SocialPublishSelection selection,
-                              SocialMediaMode mediaMode, SocialPublicationStatus initialStatus) {
+    private SocialPublishBundle createBundle(SocialSourceType originType, Long originId,
+                                             SocialSourceType contentType, Long contentId,
+                                             User requester, SocialPublishSelection selection,
+                                             SocialMediaMode mediaMode,
+                                             SocialPublicationStatus initialStatus) {
         SocialThumbnailTemplate template = null;
         if (mediaMode == SocialMediaMode.TEMPLATE) {
             if (selection.templateId() == null) throw new CustomException(ErrorCode.SOCIAL_TEMPLATE_REQUIRED);
@@ -256,6 +279,7 @@ public class SocialPublishRequestService {
                 .build());
         if (selection.instagramRequested()) createPublication(bundle, SocialPlatform.INSTAGRAM, initialStatus);
         if (selection.threadsRequested()) createPublication(bundle, SocialPlatform.THREADS, initialStatus);
+        return bundle;
     }
 
     private void createPublication(SocialPublishBundle bundle, SocialPlatform platform,

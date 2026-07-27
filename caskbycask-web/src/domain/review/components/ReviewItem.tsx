@@ -7,6 +7,7 @@ import type { ReviewItem as ReviewItemType } from '../types/review.types'
 import UserBadge from '@/shared/components/UserBadge'
 import type { UserRole } from '@/domain/auth/types/auth.types'
 import { getSpiritDetailPath } from '@/domain/spirit/utils/spiritUrl'
+import ReviewImageStrip from './ReviewImageStrip'
 
 function formatAromaId(id: string): string {
   return id.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
@@ -104,7 +105,7 @@ export default function ReviewItem({ review, currentUserId, onEdit, onDelete, sh
   return (
     <article className="p-5 bg-white rounded-xl border border-neutral-100 space-y-5">
       {/* 헤더 */}
-      <div className="flex items-start justify-between gap-2 pb-3 border-b border-neutral-100">
+      <div className="flex flex-col gap-3 border-b border-neutral-100 pb-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3 min-w-0">
           <UserBadge
             user={{
@@ -136,7 +137,8 @@ export default function ReviewItem({ review, currentUserId, onEdit, onDelete, sh
             }
           />
         </div>
-        <div className="flex items-center gap-3 flex-shrink-0">
+        <div className="flex w-full items-center justify-between gap-3 sm:w-auto sm:justify-end sm:flex-shrink-0">
+          <ReviewImageStrip images={review.images} />
           <span className="text-2xl font-bold tabular-nums" style={{ color: scoreColor(review.totalScore) }}>
             {Number(review.totalScore).toFixed(1)}
           </span>

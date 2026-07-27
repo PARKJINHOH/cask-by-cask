@@ -4,6 +4,7 @@ import { useAuthStore } from '@/domain/auth/store/authStore'
 import type {
   CreateReviewRequest,
   CreateVariantReviewRequest,
+  ReviewImagePlanItem,
   UpdateReviewRequest,
   VariantReviewRequestStatus,
 } from '../types/review.types'
@@ -42,7 +43,8 @@ export function useMyReviewRequests(page = 0, status?: VariantReviewRequestStatu
 export function useCreateReview(spiritId: number) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (data: CreateReviewRequest) => reviewApi.createReview(spiritId, data),
+    mutationFn: ({ data, images = [] }: { data: CreateReviewRequest; images?: File[] }) =>
+      reviewApi.createReview(spiritId, data, images),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reviews', spiritId] })
       queryClient.invalidateQueries({ queryKey: ['spirit', spiritId] })
@@ -53,8 +55,8 @@ export function useCreateReview(spiritId: number) {
 export function useCreateVariantReviewRequest(spiritId: number) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (data: CreateVariantReviewRequest) =>
-      reviewApi.createVariantReviewRequest(spiritId, data),
+    mutationFn: ({ data, images = [] }: { data: CreateVariantReviewRequest; images?: File[] }) =>
+      reviewApi.createVariantReviewRequest(spiritId, data, images),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-review-requests'] })
     },
@@ -64,8 +66,14 @@ export function useCreateVariantReviewRequest(spiritId: number) {
 export function useUpdateMyReviewRequest() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ requestId, data }: { requestId: number; data: CreateVariantReviewRequest }) =>
-      reviewApi.updateMyReviewRequest(requestId, data),
+    mutationFn: ({
+      requestId, data, imagePlan, images = [],
+    }: {
+      requestId: number
+      data: CreateVariantReviewRequest
+      imagePlan?: ReviewImagePlanItem[]
+      images?: File[]
+    }) => reviewApi.updateMyReviewRequest(requestId, data, imagePlan, images),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-review-requests'] })
     },
@@ -75,8 +83,14 @@ export function useUpdateMyReviewRequest() {
 export function useResubmitMyReviewRequest() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ requestId, data }: { requestId: number; data: CreateVariantReviewRequest }) =>
-      reviewApi.resubmitMyReviewRequest(requestId, data),
+    mutationFn: ({
+      requestId, data, imagePlan, images = [],
+    }: {
+      requestId: number
+      data: CreateVariantReviewRequest
+      imagePlan?: ReviewImagePlanItem[]
+      images?: File[]
+    }) => reviewApi.resubmitMyReviewRequest(requestId, data, imagePlan, images),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-review-requests'] })
     },
@@ -96,8 +110,14 @@ export function useDeleteMyReviewRequest() {
 export function useUpdateReview(spiritId: number) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ reviewId, data }: { reviewId: number; data: UpdateReviewRequest }) =>
-      reviewApi.updateReview(spiritId, reviewId, data),
+    mutationFn: ({
+      reviewId, data, imagePlan, images = [],
+    }: {
+      reviewId: number
+      data: UpdateReviewRequest
+      imagePlan?: ReviewImagePlanItem[]
+      images?: File[]
+    }) => reviewApi.updateReview(spiritId, reviewId, data, imagePlan, images),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reviews', spiritId] })
       queryClient.invalidateQueries({ queryKey: ['spirit', spiritId] })

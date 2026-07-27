@@ -1,3 +1,14 @@
+export interface ReviewImageItem {
+  id: number
+  imageUrl: string
+  sortOrder: number
+}
+
+export interface ReviewImagePlanItem {
+  imageId?: number
+  fileIndex?: number
+}
+
 export interface ReviewItem {
   id: number
   userId: number
@@ -25,6 +36,7 @@ export interface ReviewItem {
   legacySocialPublishAllowed: boolean
   userReviewIndex?: number
   userReviewCount?: number
+  images: ReviewImageItem[]
 }
 
 export interface ReviewEmbedItem {
@@ -103,6 +115,7 @@ export interface VariantReviewRequestItem {
   rejectReason: string | null
   createdAt: string
   reviewedAt: string | null
+  images: ReviewImageItem[]
 }
 
 export interface UpdateReviewRequest {

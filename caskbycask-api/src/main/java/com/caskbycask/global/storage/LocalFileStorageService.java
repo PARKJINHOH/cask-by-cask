@@ -70,6 +70,20 @@ public class LocalFileStorageService implements FileStorageService {
             String detectedMimeType,
             WebpConversionMode conversionMode
     ) {
+        return uploadImage(
+                file, originalSavedFileName, subPath, detectedMimeType,
+                conversionMode, false);
+    }
+
+    @Override
+    public ImageUploadResult uploadImage(
+            MultipartFile file,
+            String originalSavedFileName,
+            String subPath,
+            String detectedMimeType,
+            WebpConversionMode conversionMode,
+            boolean forceReencode
+    ) {
         Path targetDir  = resolveAndValidate(subPath, null);
         Path originalPath = resolveAndValidate(subPath, originalSavedFileName);
 
@@ -83,7 +97,7 @@ public class LocalFileStorageService implements FileStorageService {
         }
 
         // JPG/PNG → WebP 변환본 추가 저장. 실패 시 graceful degrade (원본 서빙).
-        if (webpConversionService.isConvertibleMime(detectedMimeType)) {
+        if (forceReencode || webpConversionService.isConvertibleMime(detectedMimeType)) {
             String webpFileName = stripExtension(originalSavedFileName) + ".webp";
             Path webpPath = resolveAndValidate(subPath, webpFileName);
             try {

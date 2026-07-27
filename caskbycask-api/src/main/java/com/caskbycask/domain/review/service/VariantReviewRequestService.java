@@ -35,6 +35,9 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @Slf4j
 @Service
@@ -55,9 +58,17 @@ public class VariantReviewRequestService {
     private final EmailSender emailSender;
     private final NotificationService notificationService;
     private final SocialPublishRequestService socialPublishRequestService;
+    private final ReviewImageService reviewImageService;
 
     @Transactional
     public VariantReviewRequestResponse create(Long spiritId, Long userId, CreateVariantReviewRequest request) {
+        return create(spiritId, userId, request, List.of());
+    }
+
+    @Transactional
+    public VariantReviewRequestResponse create(Long spiritId, Long userId,
+                                               CreateVariantReviewRequest request,
+                                               List<MultipartFile> images) {
         Spirit selected = spiritRepository.findByIdAndStatus(spiritId, SpiritStatus.ACTIVE)
                 .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_NOT_FOUND));
         Spirit master = selected.getParent() != null ? selected.getParent() : selected;
@@ -95,8 +106,10 @@ public class VariantReviewRequestService {
                 .finishAromaWheelNotes(normalize(request.finishAromaWheelNotes()))
                 .build());
 
+        var savedImages = reviewImageService.saveForVariantRequest(saved, images);
         socialPublishRequestService.requestVariantReview(saved, requester, request.socialPublish());
-        return VariantReviewRequestResponse.from(saved);
+        return VariantReviewRequestResponse.from(
+                saved, savedImages.stream().map(ReviewImageResponse::from).toList());
     }
 
     @Transactional(readOnly = true)
@@ -106,12 +119,28 @@ public class VariantReviewRequestService {
                 pageable.getPageSize(),
                 Sort.by(Sort.Direction.DESC, "createdAt")
         );
-        return requestRepository.findByRequester(userId, status, sorted)
-                .map(VariantReviewRequestResponse::from);
+        Page<SpiritVariantReviewRequest> requests =
+                requestRepository.findByRequester(userId, status, sorted);
+        var imagesByRequest = reviewImageService.findByVariantRequestIds(
+                requests.getContent().stream()
+                        .map(SpiritVariantReviewRequest::getId)
+                        .toList());
+        return requests.map(request -> VariantReviewRequestResponse.from(
+                request,
+                imagesByRequest.getOrDefault(request.getId(), List.of()).stream()
+                        .map(ReviewImageResponse::from)
+                        .toList()));
     }
 
     @Transactional
     public VariantReviewRequestResponse updateMyRequest(Long requestId, Long userId, CreateVariantReviewRequest update) {
+        return updateMyRequest(requestId, userId, update, null, List.of());
+    }
+
+    @Transactional
+    public VariantReviewRequestResponse updateMyRequest(
+            Long requestId, Long userId, CreateVariantReviewRequest update,
+            List<ReviewImagePlanItem> imagePlan, List<MultipartFile> images) {
         SpiritVariantReviewRequest request = getEditableMyRequest(requestId, userId);
         badWordFilter.validate(update.comment());
         request.updatePending(
@@ -131,18 +160,29 @@ public class VariantReviewRequestService {
                 normalize(update.tasteAromaWheelNotes()),
                 normalize(update.finishAromaWheelNotes())
         );
-        return VariantReviewRequestResponse.from(request);
+        var updatedImages = reviewImageService.replaceForVariantRequest(request, imagePlan, images);
+        socialPublishRequestService.refreshWaitingVariantReviewMedia(request);
+        return VariantReviewRequestResponse.from(
+                request, updatedImages.stream().map(ReviewImageResponse::from).toList());
     }
 
     @Transactional
     public void deleteMyRequest(Long requestId, Long userId) {
         SpiritVariantReviewRequest request = getEditableMyRequest(requestId, userId);
         socialPublishRequestService.cancelOrigin(SocialSourceType.VARIANT_REVIEW_REQUEST, requestId);
+        reviewImageService.deleteForVariantRequest(requestId);
         requestRepository.delete(request);
     }
 
     @Transactional
     public VariantReviewRequestResponse resubmitMyReview(Long requestId, Long userId, CreateVariantReviewRequest update) {
+        return resubmitMyReview(requestId, userId, update, null, List.of());
+    }
+
+    @Transactional
+    public VariantReviewRequestResponse resubmitMyReview(
+            Long requestId, Long userId, CreateVariantReviewRequest update,
+            List<ReviewImagePlanItem> imagePlan, List<MultipartFile> images) {
         SpiritVariantReviewRequest request = getReviewOnlyRejectedMyRequest(requestId, userId);
         Spirit linkedVariant = request.getLinkedVariant();
 
@@ -164,7 +204,9 @@ public class VariantReviewRequestService {
                 normalize(update.tasteAromaWheelNotes()),
                 normalize(update.finishAromaWheelNotes())
         );
-        return VariantReviewRequestResponse.from(request);
+        var updatedImages = reviewImageService.replaceForVariantRequest(request, imagePlan, images);
+        return VariantReviewRequestResponse.from(
+                request, updatedImages.stream().map(ReviewImageResponse::from).toList());
     }
 
     @Transactional(readOnly = true)
@@ -179,8 +221,17 @@ public class VariantReviewRequestService {
                 Sort.by(Sort.Direction.DESC, "createdAt")
         );
         String normalizedKeyword = StringUtils.hasText(keyword) ? keyword.trim() : null;
-        return requestRepository.findForAdmin(status, normalizedKeyword, sorted)
-                .map(AdminVariantReviewRequestResponse::from);
+        Page<SpiritVariantReviewRequest> requests =
+                requestRepository.findForAdmin(status, normalizedKeyword, sorted);
+        var imagesByRequest = reviewImageService.findByVariantRequestIds(
+                requests.getContent().stream()
+                        .map(SpiritVariantReviewRequest::getId)
+                        .toList());
+        return requests.map(request -> AdminVariantReviewRequestResponse.from(
+                request,
+                imagesByRequest.getOrDefault(request.getId(), List.of()).stream()
+                        .map(ReviewImageResponse::from)
+                        .toList()));
     }
 
     @Transactional
@@ -218,13 +269,18 @@ public class VariantReviewRequestService {
                 .finishAromaWheelNotes(request.getFinishAromaWheelNotes())
                 .build());
 
+        List<ReviewImageResponse> responseImages =
+                reviewImageService.findByVariantRequestId(request.getId()).stream()
+                        .map(ReviewImageResponse::from)
+                        .toList();
         reviewService.recalculateAvgScore(variant.getId());
         scoreService.award(request.getRequestUser().getId(), ScoreActions.SPIRIT_REVIEW_WRITE, "SPIRIT_REVIEW", review.getId());
+        reviewImageService.transferToReview(request.getId(), review);
         request.approve(variant, review, admin, merged);
         socialPublishRequestService.bindVariantReview(request.getId(), review.getId());
         sendVariantReviewApprovedNotification(request, variant, merged);
 
-        return AdminVariantReviewRequestResponse.from(request);
+        return AdminVariantReviewRequestResponse.from(request, responseImages);
     }
 
     @Transactional
@@ -273,13 +329,18 @@ public class VariantReviewRequestService {
                 .finishAromaWheelNotes(request.getFinishAromaWheelNotes())
                 .build());
 
+        List<ReviewImageResponse> responseImages =
+                reviewImageService.findByVariantRequestId(request.getId()).stream()
+                        .map(ReviewImageResponse::from)
+                        .toList();
         reviewService.recalculateAvgScore(variant.getId());
         scoreService.award(request.getRequestUser().getId(), ScoreActions.SPIRIT_REVIEW_WRITE, "SPIRIT_REVIEW", review.getId());
+        reviewImageService.transferToReview(request.getId(), review);
         request.approve(variant, review, admin, false);
         socialPublishRequestService.bindVariantReview(request.getId(), review.getId());
         sendVariantReviewApprovedNotification(request, variant, false);
 
-        return AdminVariantReviewRequestResponse.from(request);
+        return AdminVariantReviewRequestResponse.from(request, responseImages);
     }
 
     @Transactional
@@ -320,7 +381,11 @@ public class VariantReviewRequestService {
         socialPublishRequestService.cancelOrigin(SocialSourceType.VARIANT_REVIEW_REQUEST, request.getId());
         sendReviewOnlyRejectedNotification(request, reason);
 
-        return AdminVariantReviewRequestResponse.from(request);
+        return AdminVariantReviewRequestResponse.from(
+                request,
+                reviewImageService.findByVariantRequestId(request.getId()).stream()
+                        .map(ReviewImageResponse::from)
+                        .toList());
     }
 
     @Transactional

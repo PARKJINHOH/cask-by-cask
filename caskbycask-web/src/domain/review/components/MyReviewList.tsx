@@ -15,8 +15,14 @@ import {
   useUpdateMyReviewRequest,
 } from '../hooks/useReviews'
 import { scoreColor, formatDate } from '@/shared/utils/format'
-import type { CreateVariantReviewRequest, ReviewItem, VariantReviewRequestItem } from '../types/review.types'
+import type {
+  CreateVariantReviewRequest,
+  ReviewImagePlanItem,
+  ReviewItem,
+  VariantReviewRequestItem,
+} from '../types/review.types'
 import { getSpiritDetailPath } from '@/domain/spirit/utils/spiritUrl'
+import ReviewImageStrip from './ReviewImageStrip'
 
 type ReviewTab = 'approved' | 'pending' | 'rejected'
 type RequestEditMode = 'pending' | 'resubmitReview'
@@ -86,15 +92,21 @@ export default function MyReviewList() {
     await deleteRequestMutation.mutateAsync(request.id)
   }
 
-  const handlePendingUpdate = async (data: CreateVariantReviewRequest) => {
+  const handlePendingUpdate = async (
+    data: CreateVariantReviewRequest,
+    media: { imagePlan: ReviewImagePlanItem[]; images: File[] },
+  ) => {
     if (!editingRequest) return
-    await updateRequestMutation.mutateAsync({ requestId: editingRequest.id, data })
+    await updateRequestMutation.mutateAsync({ requestId: editingRequest.id, data, ...media })
     setEditingRequest(null)
   }
 
-  const handleRejectedResubmit = async (data: CreateVariantReviewRequest) => {
+  const handleRejectedResubmit = async (
+    data: CreateVariantReviewRequest,
+    media: { imagePlan: ReviewImagePlanItem[]; images: File[] },
+  ) => {
     if (!editingRequest) return
-    await resubmitRequestMutation.mutateAsync({ requestId: editingRequest.id, data })
+    await resubmitRequestMutation.mutateAsync({ requestId: editingRequest.id, data, ...media })
     setEditingRequest(null)
     setPendingPage(0)
     setActiveTab('pending')
@@ -179,6 +191,7 @@ export default function MyReviewList() {
                       </p>
                     </div>
                     <div className="flex items-center gap-3 flex-shrink-0">
+                      <ReviewImageStrip images={review.images} compact />
                       <span
                         className="text-xl font-bold tabular-nums"
                         style={{ color: scoreColor(review.totalScore) }}
@@ -292,6 +305,8 @@ export default function MyReviewList() {
                       </span>
                     </div>
                   </div>
+
+                  <ReviewImageStrip images={request.images} compact className="mt-3" />
 
                   <div className="mt-3 space-y-1.5 rounded-lg bg-white/70 p-3">
                     <ScoreBar label="향" value={request.noseScore} />
@@ -411,6 +426,8 @@ export default function MyReviewList() {
                         </span>
                       </div>
                     </div>
+
+                    <ReviewImageStrip images={request.images} compact className="mt-3" />
 
                     <div className="mt-3 space-y-1.5 rounded-lg bg-white/80 p-3">
                       <ScoreBar label="향" value={request.noseScore} />

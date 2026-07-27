@@ -1,6 +1,7 @@
 package com.caskbycask.domain.social.service;
 
 import com.caskbycask.domain.review.entity.Review;
+import com.caskbycask.domain.review.repository.ReviewRepository;
 import com.caskbycask.domain.social.config.SocialPublishingProperties;
 import com.caskbycask.domain.social.dto.SocialPublishSelection;
 import com.caskbycask.domain.social.entity.SocialPublication;
@@ -35,13 +36,16 @@ class SocialPublishRequestServiceTest {
     @Mock SocialPublishBundleRepository bundleRepository;
     @Mock SocialPublicationRepository publicationRepository;
     @Mock SocialThumbnailTemplateRepository templateRepository;
+    @Mock SocialPublishMediaService publishMediaService;
+    @Mock ReviewRepository reviewRepository;
 
     @Test
     void legacyReviewRequestCreatesOnlyPlatformWithoutExistingHistory() {
         SocialPublishingProperties properties = new SocialPublishingProperties();
         properties.setEnabled(true);
         SocialPublishRequestService service = new SocialPublishRequestService(
-                bundleRepository, publicationRepository, templateRepository, properties);
+                bundleRepository, publicationRepository, templateRepository, properties,
+                publishMediaService, reviewRepository);
 
         Review review = Review.builder().build();
         ReflectionTestUtils.setField(review, "id", 20L);
@@ -86,7 +90,8 @@ class SocialPublishRequestServiceTest {
         SocialPublishingProperties properties = new SocialPublishingProperties();
         properties.setEnabled(true);
         SocialPublishRequestService service = new SocialPublishRequestService(
-                bundleRepository, publicationRepository, templateRepository, properties);
+                bundleRepository, publicationRepository, templateRepository, properties,
+                publishMediaService, reviewRepository);
 
         User requester = User.builder().email("reviewer@example.com").nickname("리뷰어").build();
         SocialPublishBundle originalBundle = SocialPublishBundle.builder()

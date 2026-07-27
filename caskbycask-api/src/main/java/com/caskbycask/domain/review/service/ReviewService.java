@@ -1,10 +1,8 @@
 package com.caskbycask.domain.review.service;
 
-import com.caskbycask.domain.review.dto.ReviewRequest;
-import com.caskbycask.domain.review.dto.ReviewEmbedResponse;
-import com.caskbycask.domain.review.dto.ReviewResponse;
-import com.caskbycask.domain.review.dto.UpdateReviewRequest;
+import com.caskbycask.domain.review.dto.*;
 import com.caskbycask.domain.review.entity.Review;
+import com.caskbycask.domain.review.entity.ReviewImage;
 import com.caskbycask.domain.review.entity.enums.ReviewSort;
 import com.caskbycask.domain.review.repository.ReviewRepository;
 import com.caskbycask.domain.score.constant.ScoreActions;
@@ -27,10 +25,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -42,6 +42,7 @@ public class ReviewService {
     private final ScoreService scoreService;
     private final BadWordFilter badWordFilter;
     private final SocialPublishRequestService socialPublishRequestService;
+    private final ReviewImageService reviewImageService;
 
     // ── 조회 ──────────────────────────────────────────────
 
@@ -52,8 +53,7 @@ public class ReviewService {
             default -> Sort.by(Sort.Direction.DESC, "createdAt");
         };
         Pageable sorted = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), dataSort);
-        return reviewRepository.findBySpiritForDisplay(spiritId, sorted)
-                .map(this::toResponse);
+        return withImages(reviewRepository.findBySpiritForDisplay(spiritId, sorted));
     }
 
     @Transactional(readOnly = true)
@@ -61,8 +61,7 @@ public class ReviewService {
         Pageable sorted = PageRequest.of(
                 pageable.getPageNumber(), pageable.getPageSize(),
                 Sort.by(Sort.Direction.DESC, "createdAt"));
-        return reviewRepository.findByUserIdWithUser(userId, sorted)
-                .map(this::toResponse);
+        return withImages(reviewRepository.findByUserIdWithUser(userId, sorted));
     }
 
     @Transactional(readOnly = true)
@@ -70,8 +69,7 @@ public class ReviewService {
         Pageable sorted = PageRequest.of(
                 pageable.getPageNumber(), pageable.getPageSize(),
                 Sort.by(Sort.Direction.DESC, "createdAt"));
-        return reviewRepository.findPublicByUserId(userId, sorted)
-                .map(this::toResponse);
+        return withImages(reviewRepository.findPublicByUserId(userId, sorted));
     }
 
     @Transactional(readOnly = true)
@@ -87,6 +85,12 @@ public class ReviewService {
 
     @Transactional
     public ReviewResponse createReview(Long spiritId, Long userId, ReviewRequest request) {
+        return createReview(spiritId, userId, request, List.of());
+    }
+
+    @Transactional
+    public ReviewResponse createReview(Long spiritId, Long userId, ReviewRequest request,
+                                       List<MultipartFile> images) {
         Spirit spirit = spiritRepository.findByIdAndStatus(spiritId, SpiritStatus.ACTIVE)
                 .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_NOT_FOUND));
 
@@ -111,13 +115,14 @@ public class ReviewService {
                 .build();
 
         Review saved = reviewRepository.save(review);
+        List<ReviewImage> savedImages = reviewImageService.saveForReview(saved, images);
         recalculateAvgScore(spiritId);
 
         // [레벨] 술 상세 리뷰 작성 점수 지급
         scoreService.award(userId, ScoreActions.SPIRIT_REVIEW_WRITE, "SPIRIT_REVIEW", saved.getId());
         socialPublishRequestService.requestReview(saved, user, request.socialPublish());
 
-        return toResponse(saved);
+        return toResponse(saved, savedImages);
     }
 
     // ── 수정 ──────────────────────────────────────────────
@@ -125,6 +130,14 @@ public class ReviewService {
     @Transactional
     public ReviewResponse updateReview(Long spiritId, Long reviewId, Long userId,
                                        UpdateReviewRequest request) {
+        return updateReview(spiritId, reviewId, userId, request, null, List.of());
+    }
+
+    @Transactional
+    public ReviewResponse updateReview(Long spiritId, Long reviewId, Long userId,
+                                       UpdateReviewRequest request,
+                                       List<ReviewImagePlanItem> imagePlan,
+                                       List<MultipartFile> images) {
         Review review = getReview(spiritId, reviewId);
         checkOwnership(review, userId);
 
@@ -148,9 +161,11 @@ public class ReviewService {
 
         // flush to trigger @PreUpdate → totalScore 재계산
         reviewRepository.flush();
+        List<ReviewImage> updatedImages =
+                reviewImageService.replaceForReview(review, imagePlan, images);
         recalculateAvgScore(review.getSpirit().getId());
 
-        return toResponse(review);
+        return toResponse(review, updatedImages);
     }
 
     @Transactional
@@ -175,6 +190,7 @@ public class ReviewService {
 
         review.softDelete();
         socialPublishRequestService.markSourceDeleted(SocialSourceType.REVIEW, reviewId);
+        reviewImageService.deleteForReview(reviewId);
         recalculateAvgScore(review.getSpirit().getId());
 
         // [패치 1] 리뷰 삭제 시에도 지급액 차감 (기존: 차감 없음 → 파밍 가능했음).
@@ -220,6 +236,10 @@ public class ReviewService {
     // ── Private helpers ────────────────────────────────────
 
     private ReviewResponse toResponse(Review review) {
+        return toResponse(review, reviewImageService.findByReviewId(review.getId()));
+    }
+
+    private ReviewResponse toResponse(Review review, List<ReviewImage> images) {
         Long userId = review.getUser().getId();
         Long spiritId = review.getSpirit().getId();
         Long masterSpiritId = review.getSpirit().getParent() != null ?
@@ -243,7 +263,19 @@ public class ReviewService {
             index = count;
         }
 
-        return ReviewResponse.from(review, index, count);
+        return ReviewResponse.from(
+                review,
+                index,
+                count,
+                images.stream().map(ReviewImageResponse::from).toList()
+        );
+    }
+
+    private Page<ReviewResponse> withImages(Page<Review> page) {
+        Map<Long, List<ReviewImage>> imagesByReview = reviewImageService.findByReviewIds(
+                page.getContent().stream().map(Review::getId).toList());
+        return page.map(review ->
+                toResponse(review, imagesByReview.getOrDefault(review.getId(), List.of())));
     }
 
     private Review getReview(Long spiritId, Long reviewId) {

@@ -112,6 +112,44 @@ public class MetaSocialClient {
         return requiredId(response);
     }
 
+    public String createImageCarouselContainer(SocialPlatform platform, String userId,
+                                               String accessToken, List<String> imageUrls,
+                                               String caption) {
+        if (imageUrls == null || imageUrls.size() < 2 || imageUrls.size() > 4) {
+            throw new IllegalArgumentException("Review carousel must contain between 2 and 4 images.");
+        }
+        List<String> childIds = new java.util.ArrayList<>(imageUrls.size());
+        for (String imageUrl : imageUrls) {
+            MultiValueMap<String, String> childForm = new LinkedMultiValueMap<>();
+            childForm.add("access_token", accessToken);
+            childForm.add("image_url", imageUrl);
+            childForm.add("is_carousel_item", "true");
+            if (platform == SocialPlatform.THREADS) {
+                childForm.add("media_type", "IMAGE");
+            }
+            String childResource = platform == SocialPlatform.INSTAGRAM ? "/media" : "/threads";
+            String childId = requiredId(postForm(
+                    apiBase(provider(platform)) + "/" + encodePath(userId) + childResource,
+                    childForm, false));
+            waitUntilContainerReady(platform, accessToken, childId);
+            childIds.add(childId);
+        }
+
+        MultiValueMap<String, String> parentForm = new LinkedMultiValueMap<>();
+        parentForm.add("access_token", accessToken);
+        parentForm.add("media_type", "CAROUSEL");
+        parentForm.add("children", String.join(",", childIds));
+        if (platform == SocialPlatform.INSTAGRAM) {
+            parentForm.add("caption", caption);
+        } else {
+            parentForm.add("text", caption);
+        }
+        String parentResource = platform == SocialPlatform.INSTAGRAM ? "/media" : "/threads";
+        return requiredId(postForm(
+                apiBase(provider(platform)) + "/" + encodePath(userId) + parentResource,
+                parentForm, false));
+    }
+
     public String publishContainer(SocialPlatform platform, String userId,
                                    String accessToken, String containerId) {
         var provider = provider(platform);

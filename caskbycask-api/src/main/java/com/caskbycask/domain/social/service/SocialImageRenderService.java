@@ -82,6 +82,22 @@ public class SocialImageRenderService {
         return writeJpeg(composeCovered(source, imageLabel), "direct");
     }
 
+    public String renderReviewUpload(String subPath, String savedFileName) {
+        if (subPath == null || !subPath.matches("reviews/\\d{6}")
+                || savedFileName == null
+                || !savedFileName.matches("[0-9a-fA-F-]{36}\\.webp")) {
+            throw new IllegalArgumentException("Invalid review image path.");
+        }
+        try {
+            Path path = resolveUploadPath(subPath + "/" + savedFileName);
+            return writeJpeg(
+                    composeContained(decodeTrustedImage(Files.readAllBytes(path))),
+                    "direct");
+        } catch (IOException exception) {
+            throw new IllegalStateException("Review image loading failed.", exception);
+        }
+    }
+
     public String renderTemplate(String backgroundUrl, String text, String imageLabel) {
         BufferedImage background = readTrustedImage(backgroundUrl);
         BufferedImage canvas = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_RGB);
@@ -139,6 +155,17 @@ public class SocialImageRenderService {
         Path resolved = base.resolve("social").resolve(yearMonth).resolve(fileName).normalize();
         if (!resolved.startsWith(base)) throw new IllegalArgumentException("Invalid social image path.");
         return resolved;
+    }
+
+    public void deleteGeneratedImage(String imageUrl) {
+        if (imageUrl == null || !imageUrl.startsWith("/api/social/images/")) return;
+        String[] parts = imageUrl.substring("/api/social/images/".length()).split("/", 2);
+        if (parts.length != 2) return;
+        try {
+            Files.deleteIfExists(resolveGeneratedImage(parts[0], parts[1]));
+        } catch (Exception ignored) {
+            // 롤백 정리는 원래 예외를 가리지 않는다.
+        }
     }
 
     BufferedImage composeReviewImage(BufferedImage source, String spiritName,
@@ -327,6 +354,29 @@ public class SocialImageRenderService {
         return canvas;
     }
 
+    private BufferedImage composeContained(BufferedImage source) {
+        BufferedImage canvas = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_RGB);
+        Graphics2D graphics = canvas.createGraphics();
+        configure(graphics);
+        graphics.setColor(Color.WHITE);
+        graphics.fillRect(0, 0, WIDTH, HEIGHT);
+
+        double scale = Math.min(
+                (double) WIDTH / source.getWidth(),
+                (double) HEIGHT / source.getHeight());
+        int drawWidth = Math.max(1, (int) Math.round(source.getWidth() * scale));
+        int drawHeight = Math.max(1, (int) Math.round(source.getHeight() * scale));
+        graphics.drawImage(
+                source,
+                (WIDTH - drawWidth) / 2,
+                (HEIGHT - drawHeight) / 2,
+                drawWidth,
+                drawHeight,
+                null);
+        graphics.dispose();
+        return canvas;
+    }
+
     private BufferedImage readTrustedImage(String sourceUrl) {
         if (sourceUrl == null || sourceUrl.isBlank()) {
             throw new IllegalArgumentException("SNS image is required.");
@@ -346,17 +396,7 @@ public class SocialImageRenderService {
             } else {
                 throw new IllegalArgumentException("Unsupported SNS image URL.");
             }
-            if (bytes.length == 0 || bytes.length > MAX_SOURCE_BYTES) {
-                throw new IllegalArgumentException("SNS image size is invalid.");
-            }
-            BufferedImage image;
-            try {
-                image = ImmutableImage.loader().fromBytes(bytes).awt();
-            } catch (Exception ignored) {
-                image = ImageIO.read(new ByteArrayInputStream(bytes));
-            }
-            validateDecodedImage(image);
-            return image;
+            return decodeTrustedImage(bytes);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("SNS image loading failed.", e);
@@ -553,6 +593,20 @@ public class SocialImageRenderService {
             lines.set(lastIndex, last + "…");
         }
         return lines;
+    }
+
+    private static BufferedImage decodeTrustedImage(byte[] bytes) throws IOException {
+        if (bytes.length == 0 || bytes.length > MAX_SOURCE_BYTES) {
+            throw new IllegalArgumentException("SNS image size is invalid.");
+        }
+        BufferedImage image;
+        try {
+            image = ImmutableImage.loader().fromBytes(bytes).awt();
+        } catch (Exception ignored) {
+            image = ImageIO.read(new ByteArrayInputStream(bytes));
+        }
+        validateDecodedImage(image);
+        return image;
     }
 
     private record ReviewCaptionLayout(Font font, FontMetrics metrics, List<String> lines) {}

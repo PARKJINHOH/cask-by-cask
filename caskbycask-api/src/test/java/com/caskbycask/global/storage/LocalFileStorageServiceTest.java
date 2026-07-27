@@ -58,4 +58,32 @@ class LocalFileStorageServiceTest {
                 .isEqualTo(convertedBytes);
         verify(webpConversionService).toWebp(sourceBytes, WebpConversionMode.LOSSLESS);
     }
+
+    @Test
+    void forceReencodeOverwritesWebpInputAtTheSameUuidPath() throws Exception {
+        byte[] sourceBytes = {1, 2, 3};
+        byte[] convertedBytes = {4, 5, 6};
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "proof.webp", "image/webp", sourceBytes);
+        given(webpConversionService.toWebp(
+                any(byte[].class), eq(WebpConversionMode.LOSSY)))
+                .willReturn(convertedBytes);
+        LocalFileStorageService service = new LocalFileStorageService(
+                tempDir.toString(), webpConversionService);
+
+        ImageUploadResult result = service.uploadImage(
+                file,
+                "123e4567-e89b-12d3-a456-426614174000.webp",
+                "reviews/202607",
+                "image/webp",
+                WebpConversionMode.LOSSY,
+                true);
+
+        assertThat(result.mimeType()).isEqualTo("image/webp");
+        assertThat(Files.readAllBytes(tempDir.resolve(
+                "reviews/202607/123e4567-e89b-12d3-a456-426614174000.webp")))
+                .isEqualTo(convertedBytes);
+        verify(webpConversionService).toWebp(
+                sourceBytes, WebpConversionMode.LOSSY);
+    }
 }

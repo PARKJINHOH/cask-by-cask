@@ -5,6 +5,7 @@ import com.caskbycask.domain.seo.util.SpiritSlugUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record PublicReviewResponse(
         Long id,
@@ -24,9 +25,15 @@ public record PublicReviewResponse(
         String tasteNote,
         String finishNote,
         String comment,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        List<ReviewImageResponse> images
 ) {
     public static PublicReviewResponse from(Review review, String imageUrl) {
+        return from(review, imageUrl, List.of());
+    }
+
+    public static PublicReviewResponse from(Review review, String imageUrl,
+                                            List<ReviewImageResponse> images) {
         var spirit = review.getSpirit();
         return new PublicReviewResponse(
                 review.getId(),
@@ -46,7 +53,8 @@ public record PublicReviewResponse(
                 review.getTasteNote(),
                 review.getFinishNote(),
                 review.getComment(),
-                review.getCreatedAt()
+                review.getCreatedAt(),
+                images == null ? List.of() : List.copyOf(images)
         );
     }
 }

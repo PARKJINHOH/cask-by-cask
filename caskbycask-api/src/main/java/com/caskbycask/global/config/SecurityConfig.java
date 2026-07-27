@@ -126,6 +126,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/spirits/{id:\\d+}", "/spirits/{id:\\d+}-*", "/ko/spirits/{id:\\d+}", "/ko/spirits/{id:\\d+}-*", "/en/spirits/{id:\\d+}", "/en/spirits/{id:\\d+}-*").permitAll()
                         .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/notices/images/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/reviews/images/**").permitAll()
+                        .requestMatchers(HttpMethod.HEAD, "/api/reviews/images/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/popups/images/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/profiles/images/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/tier-list/images/**").permitAll()

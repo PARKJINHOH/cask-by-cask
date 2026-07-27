@@ -33,6 +33,11 @@ import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFiel
 import SocialPublishFields from '@/domain/social/components/SocialPublishFields'
 import { socialApi } from '@/domain/social/api/socialApi'
 import { EMPTY_SOCIAL_SELECTION, type SocialPublishSelection } from '@/domain/social/types/social.types'
+import ReviewImageField, {
+  existingReviewImageDrafts,
+  reviewImageSubmission,
+  type ReviewImageDraft,
+} from '@/domain/review/components/ReviewImageField'
 
 const ADD_VARIANT_SELECT_VALUE = '__ADD_VARIANT__'
 
@@ -92,6 +97,9 @@ export default function ReviewFormPage() {
   const [socialSelection, setSocialSelection] = useState<SocialPublishSelection>(EMPTY_SOCIAL_SELECTION)
   const [socialRetryIds, setSocialRetryIds] = useState<number[]>([])
   const [socialError, setSocialError] = useState('')
+  const [reviewImages, setReviewImages] = useState<ReviewImageDraft[]>(
+    existingReviewImageDrafts(editingReview?.images),
+  )
   const editionSelectRef = useRef<HTMLSelectElement>(null)
 
   // 페이지 진입 시 최상단으로 스크롤 이동
@@ -161,6 +169,7 @@ export default function ReviewFormPage() {
       setNoseAromas(parseAromaNotes(editingReview.noseAromaWheelNotes))
       setTasteAromas(parseAromaNotes(editingReview.tasteAromaWheelNotes))
       setFinishAromas(parseAromaNotes(editingReview.finishAromaWheelNotes))
+      setReviewImages(existingReviewImageDrafts(editingReview.images))
     }
   }, [editingReview, reset])
 
@@ -198,8 +207,14 @@ export default function ReviewFormPage() {
       finishAromaWheelNotes: showAroma ? serializeAromaNotes(finishAromas) : undefined,
       ...(!isEdit ? { socialPublish: socialSelection } : {}),
     }
+    const imageSubmission = reviewImageSubmission(reviewImages)
     if (isEdit && editingReview) {
-      await updateMutation.mutateAsync({ reviewId: editingReview.id, data: payload })
+      await updateMutation.mutateAsync({
+        reviewId: editingReview.id,
+        data: payload,
+        imagePlan: imageSubmission.imagePlan,
+        images: imageSubmission.files,
+      })
       try {
         if (socialSelection.instagram || socialSelection.threads) {
           await reviewApi.requestInitialSocialPublications(
@@ -215,17 +230,20 @@ export default function ReviewFormPage() {
       }
     } else if (pendingVariantDraft && masterId) {
       await createVariantReviewRequest.mutateAsync({
-        ...payload,
-        variantValue: pendingVariantDraft.variantValue,
-        variantValueEn: pendingVariantDraft.variantValueEn,
-        abv: pendingVariantDraft.abv,
-        volumeMl: pendingVariantDraft.volumeMl,
-        requestMemo: pendingVariantDraft.requestMemo,
+        data: {
+          ...payload,
+          variantValue: pendingVariantDraft.variantValue,
+          variantValueEn: pendingVariantDraft.variantValueEn,
+          abv: pendingVariantDraft.abv,
+          volumeMl: pendingVariantDraft.volumeMl,
+          requestMemo: pendingVariantDraft.requestMemo,
+        },
+        images: imageSubmission.files,
       })
       navigate('/mypage?tab=reviews', { replace: true })
       return
     } else {
-      await createMutation.mutateAsync(payload)
+      await createMutation.mutateAsync({ data: payload, images: imageSubmission.files })
     }
     navigate(`/spirits/${spiritId}`, { replace: true })
   }
@@ -441,6 +459,14 @@ export default function ReviewFormPage() {
         {serverError && (
           <p className="text-sm text-red-600">{serverErrorMessage}</p>
         )}
+
+        <div className="h-px bg-neutral-200" aria-hidden="true" />
+
+        <ReviewImageField
+          value={reviewImages}
+          onChange={setReviewImages}
+          disabled={isPending}
+        />
 
         <SocialPublishFields
           kind="review"

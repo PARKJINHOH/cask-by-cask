@@ -46,6 +46,7 @@ class ReviewServiceTest {
     @Mock private UserRepository userRepository;
     @Mock private ScoreService scoreService;
     @Mock private SocialPublishRequestService socialPublishRequestService;
+    @Mock private ReviewImageService reviewImageService;
     @Mock private BadWordFilter badWordFilter; // [패치 5] 리뷰 욕설 필터 의존성
 
     @InjectMocks

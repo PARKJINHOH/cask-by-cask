@@ -3,6 +3,7 @@ package com.caskbycask.domain.review.controller;
 import com.caskbycask.domain.review.dto.CreateVariantReviewRequest;
 import com.caskbycask.domain.review.dto.ReviewRequest;
 import com.caskbycask.domain.review.dto.ReviewResponse;
+import com.caskbycask.domain.review.dto.ReviewImagePlanItem;
 import com.caskbycask.domain.review.dto.UpdateReviewRequest;
 import com.caskbycask.domain.review.dto.VariantReviewRequestResponse;
 import com.caskbycask.domain.review.entity.enums.ReviewSort;
@@ -17,9 +18,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/spirits/{spiritId}/reviews")
@@ -38,7 +43,7 @@ public class ReviewController {
                 PageResponse.from(reviewService.getReviews(spiritId, sort, pageable))));
     }
 
-    @PostMapping
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponse<ReviewResponse>> createReview(
             @PathVariable Long spiritId,
             @Valid @RequestBody ReviewRequest request,
@@ -47,7 +52,19 @@ public class ReviewController {
                 reviewService.createReview(spiritId, userDetails.getUserId(), request)));
     }
 
-    @PostMapping("/variant-request")
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<ReviewResponse>> createReviewWithImages(
+            @PathVariable Long spiritId,
+            @Valid @RequestPart("request") ReviewRequest request,
+            @RequestPart(value = "images", required = false) List<MultipartFile> images,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(
+                reviewService.createReview(
+                        spiritId, userDetails.getUserId(), request,
+                        images == null ? List.of() : images)));
+    }
+
+    @PostMapping(value = "/variant-request", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponse<VariantReviewRequestResponse>> createVariantReviewRequest(
             @PathVariable Long spiritId,
             @Valid @RequestBody CreateVariantReviewRequest request,
@@ -56,7 +73,19 @@ public class ReviewController {
                 variantReviewRequestService.create(spiritId, userDetails.getUserId(), request)));
     }
 
-    @PatchMapping("/{reviewId}")
+    @PostMapping(value = "/variant-request", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<VariantReviewRequestResponse>> createVariantReviewRequestWithImages(
+            @PathVariable Long spiritId,
+            @Valid @RequestPart("request") CreateVariantReviewRequest request,
+            @RequestPart(value = "images", required = false) List<MultipartFile> images,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(
+                variantReviewRequestService.create(
+                        spiritId, userDetails.getUserId(), request,
+                        images == null ? List.of() : images)));
+    }
+
+    @PatchMapping(value = "/{reviewId}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponse<ReviewResponse>> updateReview(
             @PathVariable Long spiritId,
             @PathVariable Long reviewId,
@@ -64,6 +93,20 @@ public class ReviewController {
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.ok(ApiResponse.success(
                 reviewService.updateReview(spiritId, reviewId, userDetails.getUserId(), request)));
+    }
+
+    @PatchMapping(value = "/{reviewId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<ReviewResponse>> updateReviewWithImages(
+            @PathVariable Long spiritId,
+            @PathVariable Long reviewId,
+            @Valid @RequestPart("request") UpdateReviewRequest request,
+            @RequestPart(value = "imagePlan", required = false) List<ReviewImagePlanItem> imagePlan,
+            @RequestPart(value = "images", required = false) List<MultipartFile> images,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(ApiResponse.success(
+                reviewService.updateReview(
+                        spiritId, reviewId, userDetails.getUserId(), request, imagePlan,
+                        images == null ? List.of() : images)));
     }
 
     @PostMapping("/{reviewId}/social-publications")

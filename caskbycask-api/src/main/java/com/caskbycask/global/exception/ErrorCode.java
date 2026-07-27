@@ -79,6 +79,13 @@ public enum ErrorCode {
     REVIEW_NOT_FOUND(HttpStatus.NOT_FOUND, "REVIEW_001", "리뷰를 찾을 수 없습니다."),
     DUPLICATE_REVIEW(HttpStatus.CONFLICT, "REVIEW_002", "이미 해당 술에 리뷰를 작성하셨습니다."),
     REVIEW_ACCESS_DENIED(HttpStatus.FORBIDDEN, "REVIEW_003", "본인이 작성한 리뷰가 아닙니다."),
+    REVIEW_IMAGE_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "REVIEW_004", "리뷰 이미지는 최대 3장까지 등록할 수 있습니다."),
+    REVIEW_IMAGE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "REVIEW_005", "리뷰 이미지 파일은 장당 10MB를 초과할 수 없습니다."),
+    REVIEW_IMAGE_TOTAL_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "REVIEW_006", "리뷰 이미지 총 용량은 30MB를 초과할 수 없습니다."),
+    REVIEW_IMAGE_INVALID_FORMAT(HttpStatus.BAD_REQUEST, "REVIEW_007", "JPG, PNG, WEBP 형식의 이미지만 등록할 수 있습니다."),
+    REVIEW_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "REVIEW_008", "리뷰 이미지를 찾을 수 없습니다."),
+    REVIEW_IMAGE_DIMENSIONS_EXCEEDED(HttpStatus.BAD_REQUEST, "REVIEW_009", "리뷰 이미지는 4천만 픽셀을 초과할 수 없습니다."),
+    REVIEW_IMAGE_PLAN_INVALID(HttpStatus.BAD_REQUEST, "REVIEW_010", "리뷰 이미지 변경 정보가 올바르지 않습니다."),
 
     // Comment
     COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "COMMENT_001", "댓글을 찾을 수 없습니다."),

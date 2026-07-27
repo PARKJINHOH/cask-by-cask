@@ -3,8 +3,10 @@ package com.caskbycask.domain.social.service;
 import com.caskbycask.domain.social.config.SocialPublishingProperties;
 import com.caskbycask.domain.social.entity.SocialAccountConnection;
 import com.caskbycask.domain.social.entity.SocialPublishBundle;
+import com.caskbycask.domain.social.entity.SocialPublishBundleMedia;
 import com.caskbycask.domain.social.entity.SocialPublication;
 import com.caskbycask.domain.social.entity.enums.SocialConnectionStatus;
+import com.caskbycask.domain.social.entity.enums.SocialMediaRole;
 import com.caskbycask.domain.social.entity.enums.SocialMediaMode;
 import com.caskbycask.domain.social.entity.enums.SocialPlatform;
 import com.caskbycask.domain.social.entity.enums.SocialPublicationStatus;
@@ -19,6 +21,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.anyString;
@@ -40,6 +43,8 @@ class SocialPublicationProcessorTest {
     @Mock
     private SocialImageRenderService imageRenderService;
     @Mock
+    private SocialPublishMediaService publishMediaService;
+    @Mock
     private SocialTokenCipher tokenCipher;
     @Mock
     private MetaSocialClient metaClient;
@@ -57,6 +62,7 @@ class SocialPublicationProcessorTest {
                 connectionRepository,
                 contentFactory,
                 imageRenderService,
+                publishMediaService,
                 tokenCipher,
                 metaClient,
                 new SimpleMeterRegistry()
@@ -135,6 +141,52 @@ class SocialPublicationProcessorTest {
                 11L, "caption",
                 "https://www.caskbycask.net/api/social/images/review.jpg",
                 "/api/social/images/review.jpg");
+    }
+
+    @Test
+    void reviewMediaRowsCreateCarouselInSnapshotOrder() {
+        SocialPublication publication = queuedPublication();
+        givenConnectedAccount(publication);
+        when(stateService.load(11L)).thenReturn(Optional.of(publication));
+        when(stateService.claim(11L)).thenReturn(Optional.of(publication));
+        when(contentFactory.create(publication.getBundle(), SocialPlatform.INSTAGRAM))
+                .thenReturn(new SocialPublicationContent(
+                        "caption", "https://source/image.jpg", "/ko/reviews/77", "Review"));
+        when(publishMediaService.find(10L)).thenReturn(List.of(
+                SocialPublishBundleMedia.builder()
+                        .bundle(publication.getBundle())
+                        .sortOrder(0)
+                        .mediaRole(SocialMediaRole.REPRESENTATIVE)
+                        .sourceImageUrl("/source/cover.jpg")
+                        .renderedImageUrl("/api/social/images/cover.jpg")
+                        .build(),
+                SocialPublishBundleMedia.builder()
+                        .bundle(publication.getBundle())
+                        .sortOrder(1)
+                        .mediaRole(SocialMediaRole.REVIEW_UPLOAD)
+                        .sourceImageUrl("/source/proof.jpg")
+                        .renderedImageUrl("/api/social/images/proof.jpg")
+                        .build()));
+        List<String> publicUrls = List.of(
+                "https://www.caskbycask.net/api/social/images/cover.jpg",
+                "https://www.caskbycask.net/api/social/images/proof.jpg");
+        when(metaClient.createImageCarouselContainer(
+                SocialPlatform.INSTAGRAM, "ig-user", "token", publicUrls, "caption"))
+                .thenReturn("carousel");
+        when(metaClient.publishContainer(
+                SocialPlatform.INSTAGRAM, "ig-user", "token", "carousel"))
+                .thenReturn("media");
+        when(metaClient.getPermalink(SocialPlatform.INSTAGRAM, "token", "media"))
+                .thenReturn("https://instagram.com/p/media");
+
+        processor.process(11L);
+
+        verify(metaClient).createImageCarouselContainer(
+                SocialPlatform.INSTAGRAM, "ig-user", "token", publicUrls, "caption");
+        verify(metaClient, never()).createImageContainer(
+                eq(SocialPlatform.INSTAGRAM), anyString(), anyString(), anyString(), anyString());
+        verify(stateService).snapshot(
+                11L, "caption", publicUrls.getFirst(), "/api/social/images/cover.jpg");
     }
 
     @Test

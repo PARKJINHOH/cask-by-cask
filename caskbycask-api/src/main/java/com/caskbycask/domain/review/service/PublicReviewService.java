@@ -16,6 +16,7 @@ public class PublicReviewService {
 
     private final ReviewRepository reviewRepository;
     private final SpiritImageRepository imageRepository;
+    private final ReviewImageService reviewImageService;
 
     @Transactional(readOnly = true)
     public PublicReviewResponse get(Long reviewId) {
@@ -25,7 +26,13 @@ public class PublicReviewService {
         if (imageUrl == null && review.getSpirit().getParent() != null) {
             imageUrl = firstImage(review.getSpirit().getParent().getId());
         }
-        return PublicReviewResponse.from(review, imageUrl);
+        return PublicReviewResponse.from(
+                review,
+                imageUrl,
+                reviewImageService.findByReviewId(reviewId).stream()
+                        .map(com.caskbycask.domain.review.dto.ReviewImageResponse::from)
+                        .toList()
+        );
     }
 
     private String firstImage(Long spiritId) {

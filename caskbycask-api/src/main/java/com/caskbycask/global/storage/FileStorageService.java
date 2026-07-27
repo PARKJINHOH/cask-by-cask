@@ -46,6 +46,18 @@ public interface FileStorageService {
         return uploadImage(file, originalSavedFileName, subPath, detectedMimeType);
     }
 
+    default ImageUploadResult uploadImage(
+            MultipartFile file,
+            String originalSavedFileName,
+            String subPath,
+            String detectedMimeType,
+            WebpConversionMode conversionMode,
+            boolean forceReencode
+    ) {
+        return uploadImage(
+                file, originalSavedFileName, subPath, detectedMimeType, conversionMode);
+    }
+
     /**
      * 파일 삭제. savedFileName 기준.
      * 구현체는 dual-save 로 생성된 sibling 파일({uuid}.원본확장자) 도 함께 제거해야 한다.

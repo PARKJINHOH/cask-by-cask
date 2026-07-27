@@ -7,6 +7,7 @@ import com.caskbycask.domain.community.repository.UserBlockRepository;
 import com.caskbycask.domain.review.dto.ReviewResponse;
 import com.caskbycask.domain.review.dto.ReviewEmbedResponse;
 import com.caskbycask.domain.review.dto.CreateVariantReviewRequest;
+import com.caskbycask.domain.review.dto.ReviewImagePlanItem;
 import com.caskbycask.domain.review.dto.VariantReviewRequestResponse;
 import com.caskbycask.domain.review.entity.enums.VariantReviewRequestStatus;
 import com.caskbycask.domain.review.service.ReviewService;
@@ -220,7 +221,8 @@ public class UserController {
                 PageResponse.from(variantReviewRequestService.getMyRequests(userDetails.getUserId(), status, pageable))));
     }
 
-    @PatchMapping("/me/review-requests/{requestId}")
+    @PatchMapping(value = "/me/review-requests/{requestId}",
+            consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponse<VariantReviewRequestResponse>> updateMyReviewRequest(
             @PathVariable Long requestId,
             @Valid @RequestBody CreateVariantReviewRequest request,
@@ -229,13 +231,42 @@ public class UserController {
                 variantReviewRequestService.updateMyRequest(requestId, userDetails.getUserId(), request)));
     }
 
-    @PatchMapping("/me/review-requests/{requestId}/resubmit-review")
+    @PatchMapping(value = "/me/review-requests/{requestId}",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<VariantReviewRequestResponse>> updateMyReviewRequestWithImages(
+            @PathVariable Long requestId,
+            @Valid @RequestPart("request") CreateVariantReviewRequest request,
+            @RequestPart(value = "imagePlan", required = false) List<ReviewImagePlanItem> imagePlan,
+            @RequestPart(value = "images", required = false) List<MultipartFile> images,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(ApiResponse.success(
+                variantReviewRequestService.updateMyRequest(
+                        requestId, userDetails.getUserId(), request, imagePlan,
+                        images == null ? List.of() : images)));
+    }
+
+    @PatchMapping(value = "/me/review-requests/{requestId}/resubmit-review",
+            consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponse<VariantReviewRequestResponse>> resubmitMyReviewRequest(
             @PathVariable Long requestId,
             @Valid @RequestBody CreateVariantReviewRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.ok(ApiResponse.success(
                 variantReviewRequestService.resubmitMyReview(requestId, userDetails.getUserId(), request)));
+    }
+
+    @PatchMapping(value = "/me/review-requests/{requestId}/resubmit-review",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<VariantReviewRequestResponse>> resubmitMyReviewRequestWithImages(
+            @PathVariable Long requestId,
+            @Valid @RequestPart("request") CreateVariantReviewRequest request,
+            @RequestPart(value = "imagePlan", required = false) List<ReviewImagePlanItem> imagePlan,
+            @RequestPart(value = "images", required = false) List<MultipartFile> images,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(ApiResponse.success(
+                variantReviewRequestService.resubmitMyReview(
+                        requestId, userDetails.getUserId(), request, imagePlan,
+                        images == null ? List.of() : images)));
     }
 
     @DeleteMapping("/me/review-requests/{requestId}")

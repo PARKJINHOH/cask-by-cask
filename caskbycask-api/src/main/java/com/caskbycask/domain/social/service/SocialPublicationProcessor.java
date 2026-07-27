@@ -3,7 +3,9 @@ package com.caskbycask.domain.social.service;
 import com.caskbycask.domain.social.config.SocialPublishingProperties;
 import com.caskbycask.domain.social.entity.SocialAccountConnection;
 import com.caskbycask.domain.social.entity.SocialPublication;
+import com.caskbycask.domain.social.entity.SocialPublishBundleMedia;
 import com.caskbycask.domain.social.entity.enums.SocialMediaMode;
+import com.caskbycask.domain.social.entity.enums.SocialMediaRole;
 import com.caskbycask.domain.social.entity.enums.SocialPublicationStatus;
 import com.caskbycask.domain.social.repository.SocialAccountConnectionRepository;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -13,6 +15,8 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -24,6 +28,7 @@ public class SocialPublicationProcessor {
     private final SocialAccountConnectionRepository connectionRepository;
     private final SocialContentFactory contentFactory;
     private final SocialImageRenderService imageRenderService;
+    private final SocialPublishMediaService publishMediaService;
     private final SocialTokenCipher tokenCipher;
     private final MetaSocialClient metaClient;
     private final MeterRegistry meterRegistry;
@@ -48,12 +53,17 @@ public class SocialPublicationProcessor {
             String token = tokenCipher.decrypt(connection.getEncryptedAccessToken());
 
             Prepared prepared = prepare(publication);
-            stateService.snapshot(publicationId, prepared.caption(), prepared.publicImageUrl(),
-                    prepared.relativeImageUrl());
+            stateService.snapshot(publicationId, prepared.caption(),
+                    prepared.publicImageUrls().getFirst(),
+                    prepared.relativeImageUrls().getFirst());
 
-            String containerId = metaClient.createImageContainer(
-                    publication.getPlatform(), connection.getExternalUserId(), token,
-                    prepared.publicImageUrl(), prepared.caption());
+            String containerId = prepared.publicImageUrls().size() == 1
+                    ? metaClient.createImageContainer(
+                            publication.getPlatform(), connection.getExternalUserId(), token,
+                            prepared.publicImageUrls().getFirst(), prepared.caption())
+                    : metaClient.createImageCarouselContainer(
+                            publication.getPlatform(), connection.getExternalUserId(), token,
+                            prepared.publicImageUrls(), prepared.caption());
             stateService.containerCreated(publicationId, containerId);
             metaClient.waitUntilContainerReady(publication.getPlatform(), token, containerId);
             stateService.publishing(publicationId);
@@ -100,17 +110,48 @@ public class SocialPublicationProcessor {
     }
 
     private Prepared prepare(SocialPublication publication) {
+        List<SocialPublishBundleMedia> media =
+                publishMediaService.find(publication.getBundle().getId());
+        if (!media.isEmpty()) {
+            SocialPublicationContent content = contentFactory.create(
+                    publication.getBundle(), publication.getPlatform());
+            List<String> relativeImages = new ArrayList<>(media.size());
+            for (SocialPublishBundleMedia item : media) {
+                String relative = item.getRenderedImageUrl();
+                if (relative == null) {
+                    relative = item.getMediaRole() == SocialMediaRole.REPRESENTATIVE
+                            ? imageRenderService.renderReview(
+                                    item.getSourceImageUrl(),
+                                    content.imageTitle(),
+                                    content.imageIdentifier(),
+                                    content.imageLabel())
+                            : imageRenderService.renderDirect(item.getSourceImageUrl(), null);
+                    publishMediaService.markRendered(item, relative);
+                }
+                relativeImages.add(relative);
+            }
+            String caption = publication.getCaptionSnapshot() != null
+                    ? publication.getCaptionSnapshot()
+                    : content.caption();
+            return new Prepared(
+                    caption,
+                    relativeImages.stream().map(this::publicImageUrl).toList(),
+                    List.copyOf(relativeImages)
+            );
+        }
         if (publication.getCaptionSnapshot() != null
                 && publication.getImageUrlSnapshot() != null
                 && publication.getAttemptCount() > 1) {
             return new Prepared(publication.getCaptionSnapshot(),
-                    publication.getImageUrlSnapshot(), publication.getBundle().getRenderedImageUrl());
+                    List.of(publication.getImageUrlSnapshot()),
+                    List.of(publication.getBundle().getRenderedImageUrl()));
         }
         SocialPublicationContent content = contentFactory.create(
                 publication.getBundle(), publication.getPlatform());
         if (publication.getBundle().getRenderedImageUrl() != null) {
             String relativeImage = publication.getBundle().getRenderedImageUrl();
-            return new Prepared(content.caption(), publicImageUrl(relativeImage), relativeImage);
+            return new Prepared(content.caption(), List.of(publicImageUrl(relativeImage)),
+                    List.of(relativeImage));
         }
         String relativeImage = switch (publication.getBundle().getMediaMode()) {
             case REVIEW_IMAGE -> imageRenderService.renderReview(
@@ -124,7 +165,8 @@ public class SocialPublicationProcessor {
                             ? publication.getBundle().getThumbnailText() : content.displayTitle(),
                     content.imageLabel());
         };
-        return new Prepared(content.caption(), publicImageUrl(relativeImage), relativeImage);
+        return new Prepared(content.caption(), List.of(publicImageUrl(relativeImage)),
+                List.of(relativeImage));
     }
 
     private void verifyUncertain(SocialPublication publication) {
@@ -183,5 +225,9 @@ public class SocialPublicationProcessor {
         return message.length() <= 1000 ? message : message.substring(0, 1000);
     }
 
-    private record Prepared(String caption, String publicImageUrl, String relativeImageUrl) {}
+    private record Prepared(
+            String caption,
+            List<String> publicImageUrls,
+            List<String> relativeImageUrls
+    ) {}
 }

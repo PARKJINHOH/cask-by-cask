@@ -34,6 +34,8 @@ import {
 } from '@/domain/spirit/config/spiritSeo'
 
 const SORT_VALUES: SpiritSort[] = ['LATEST', 'SCORE_DESC', 'REVIEW_COUNT_DESC']
+const CATALOG_VIEW_STORAGE_KEY = 'di_spirit_catalog_view'
+type CatalogViewMode = 'grid' | 'list'
 
 // ── 필터 패널 ─────────────────────────────────────────────────
 interface FilterPanelProps {
@@ -214,7 +216,20 @@ export default function SpiritListPage() {
   const [searchParams, setSearchParams] = useSearchParams()
 
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [viewMode, setViewMode] = useState<CatalogViewMode>('grid')
   const detailState = { returnTo: `${location.pathname}${location.search}` }
+
+  useEffect(() => {
+    const savedViewMode = window.localStorage.getItem(CATALOG_VIEW_STORAGE_KEY)
+    if (savedViewMode === 'grid' || savedViewMode === 'list') {
+      setViewMode(savedViewMode)
+    }
+  }, [])
+
+  const handleViewModeChange = (nextViewMode: CatalogViewMode) => {
+    setViewMode(nextViewMode)
+    window.localStorage.setItem(CATALOG_VIEW_STORAGE_KEY, nextViewMode)
+  }
 
   // PC 좌측 필터 패널 — 본문(목록)과 완전히 독립된 스크롤 영역.
   // row(relative) 안에서 absolute 로 배치하고, 스크롤에 따라 top 을 직접 계산해
@@ -716,6 +731,54 @@ export default function SpiritListPage() {
                   </option>
                 ))}
               </select>
+              <div
+                className="flex rounded-lg border border-neutral-300 bg-white p-0.5"
+                role="group"
+                aria-label={t('spirit.viewMode.label')}
+              >
+                <button
+                  type="button"
+                  onClick={() => handleViewModeChange('grid')}
+                  aria-label={t('spirit.viewMode.grid')}
+                  aria-pressed={viewMode === 'grid'}
+                  title={t('spirit.viewMode.grid')}
+                  className={`rounded-md p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2
+                    focus-visible:ring-primary-400 ${
+                    viewMode === 'grid'
+                      ? 'bg-primary-800 text-white shadow-sm'
+                      : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800'
+                  }`}
+                >
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="3" width="7" height="7" rx="1" />
+                    <rect x="14" y="3" width="7" height="7" rx="1" />
+                    <rect x="3" y="14" width="7" height="7" rx="1" />
+                    <rect x="14" y="14" width="7" height="7" rx="1" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleViewModeChange('list')}
+                  aria-label={t('spirit.viewMode.list')}
+                  aria-pressed={viewMode === 'list'}
+                  title={t('spirit.viewMode.list')}
+                  className={`rounded-md p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2
+                    focus-visible:ring-primary-400 ${
+                    viewMode === 'list'
+                      ? 'bg-primary-800 text-white shadow-sm'
+                      : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800'
+                  }`}
+                >
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="9" y1="6" x2="21" y2="6" />
+                    <line x1="9" y1="12" x2="21" y2="12" />
+                    <line x1="9" y1="18" x2="21" y2="18" />
+                    <rect x="3" y="4" width="2" height="2" rx="0.5" />
+                    <rect x="3" y="10" width="2" height="2" rx="0.5" />
+                    <rect x="3" y="16" width="2" height="2" rx="0.5" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -732,11 +795,21 @@ export default function SpiritListPage() {
             />
           ) : (
             <div
-              className={`grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 lg:gap-4
+              className={`${viewMode === 'grid'
+                ? 'grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4 lg:gap-4'
+                : 'flex flex-col gap-3'}
                 transition-opacity ${isFetching ? 'opacity-70 pointer-events-none' : ''}`}
             >
               {data.content.map((spirit) => (
-                <SpiritCard key={spirit.id} spirit={spirit} detailState={detailState} imageFit="contain" />
+                <SpiritCard
+                  key={spirit.id}
+                  spirit={spirit}
+                  detailState={detailState}
+                  imageFit="contain"
+                  listView={viewMode === 'list'}
+                  showSecondaryName={false}
+                  uniformTwoLineName
+                />
               ))}
             </div>
           )}

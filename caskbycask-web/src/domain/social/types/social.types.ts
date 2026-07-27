@@ -92,6 +92,7 @@ export interface PublicReview {
   finishNote: string | null
   comment: string | null
   createdAt: string
+  images: Array<{ id: number; imageUrl: string; sortOrder: number }>
 }
 
 export const EMPTY_SOCIAL_SELECTION: SocialPublishSelection = {

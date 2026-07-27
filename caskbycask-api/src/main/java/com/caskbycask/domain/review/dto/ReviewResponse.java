@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record ReviewResponse(
         @Schema(description = "리뷰 고유 ID")
@@ -60,13 +61,20 @@ public record ReviewResponse(
         @Schema(description = "동일 주류에 대한 사용자 리뷰 번호 (1부터 시작)")
         Integer userReviewIndex,
         @Schema(description = "동일 주류에 대한 사용자 총 리뷰 수")
-        Integer userReviewCount
+        Integer userReviewCount,
+        @Schema(description = "리뷰 이미지 (표시 순서)")
+        List<ReviewImageResponse> images
 ) {
     public static ReviewResponse from(Review review) {
-        return from(review, null, null);
+        return from(review, null, null, List.of());
     }
 
     public static ReviewResponse from(Review review, Integer userReviewIndex, Integer userReviewCount) {
+        return from(review, userReviewIndex, userReviewCount, List.of());
+    }
+
+    public static ReviewResponse from(Review review, Integer userReviewIndex, Integer userReviewCount,
+                                      List<ReviewImageResponse> images) {
         return new ReviewResponse(
                 review.getId(),
                 review.getUser().getId(),
@@ -93,7 +101,8 @@ public record ReviewResponse(
                 review.getUser().getRole(),
                 Boolean.TRUE.equals(review.getLegacySocialPublishAllowed()),
                 userReviewIndex,
-                userReviewCount
+                userReviewCount,
+                images == null ? List.of() : List.copyOf(images)
         );
     }
 }

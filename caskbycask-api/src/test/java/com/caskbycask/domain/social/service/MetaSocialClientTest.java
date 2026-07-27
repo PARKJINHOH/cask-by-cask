@@ -157,6 +157,58 @@ class MetaSocialClientTest {
     }
 
     @Test
+    void carouselFormsPreserveImageOrderForInstagramAndThreads() {
+        MetaSocialClient client = new MetaSocialClient(properties());
+        List<String> imageUrls = List.of(
+                "https://www.caskbycask.net/cover.jpg",
+                "https://www.caskbycask.net/proof-1.jpg",
+                "https://www.caskbycask.net/proof-2.jpg");
+
+        client.createImageCarouselContainer(
+                SocialPlatform.INSTAGRAM, "ig-user", "ig-token", imageUrls, "instagram caption");
+
+        List<RecordedRequest> instagramPosts = requests.stream()
+                .filter(request -> "POST".equals(request.method()))
+                .filter(request -> "/ig/v25.0/ig-user/media".equals(request.path()))
+                .toList();
+        assertThat(instagramPosts).hasSize(4);
+        assertThat(instagramPosts.subList(0, 3))
+                .extracting(request -> request.form().get("image_url"))
+                .containsExactlyElementsOf(imageUrls);
+        assertThat(instagramPosts.subList(0, 3))
+                .allSatisfy(request -> assertThat(request.form())
+                        .containsEntry("is_carousel_item", "true")
+                        .doesNotContainKeys("caption", "text"));
+        assertThat(instagramPosts.get(3).form())
+                .containsEntry("media_type", "CAROUSEL")
+                .containsEntry("children", "ig-container,ig-container,ig-container")
+                .containsEntry("caption", "instagram caption");
+
+        requests.clear();
+        client.createImageCarouselContainer(
+                SocialPlatform.THREADS, "threads-user", "threads-token", imageUrls, "threads text");
+
+        List<RecordedRequest> threadsPosts = requests.stream()
+                .filter(request -> "POST".equals(request.method()))
+                .filter(request -> "/threads/v1.0/threads-user/threads".equals(request.path()))
+                .toList();
+        assertThat(threadsPosts).hasSize(4);
+        assertThat(threadsPosts.subList(0, 3))
+                .extracting(request -> request.form().get("image_url"))
+                .containsExactlyElementsOf(imageUrls);
+        assertThat(threadsPosts.subList(0, 3))
+                .allSatisfy(request -> assertThat(request.form())
+                        .containsEntry("is_carousel_item", "true")
+                        .containsEntry("media_type", "IMAGE")
+                        .doesNotContainKeys("caption", "text"));
+        assertThat(threadsPosts.get(3).form())
+                .containsEntry("media_type", "CAROUSEL")
+                .containsEntry("children",
+                        "threads-container,threads-container,threads-container")
+                .containsEntry("text", "threads text");
+    }
+
+    @Test
     void recentMediaRecoveryUsesPlatformFieldsAndSinceBoundary() {
         MetaSocialClient client = new MetaSocialClient(properties());
         LocalDateTime since = LocalDateTime.of(2026, 7, 25, 12, 0);
@@ -257,6 +309,8 @@ class MetaSocialClientTest {
                     "{\"status_code\":\"FINISHED\",\"status\":\"Finished\"}";
             case "/threads/v1.0/th-container" ->
                     "{\"id\":\"th-container\",\"status\":\"FINISHED\"}";
+            case "/threads/v1.0/threads-container" ->
+                    "{\"id\":\"threads-container\",\"status\":\"FINISHED\"}";
             case "/ig/v25.0/ig-user/media" -> "GET".equals(request.method())
                     ? """
                     {"data":[

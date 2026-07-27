@@ -49,6 +49,34 @@ class SocialImageRenderServiceTest {
     }
 
     @Test
+    void rendersStoredReviewUploadWithoutCallingItsPublicHttpEndpoint() throws Exception {
+        String fileName = "123e4567-e89b-12d3-a456-426614174000.webp";
+        Path source = tempDir.resolve("reviews/202607").resolve(fileName);
+        Files.createDirectories(source.getParent());
+        Files.write(source, jpeg(1600, 900));
+
+        String imageUrl = service.renderReviewUpload("reviews/202607", fileName);
+        BufferedImage rendered = readGenerated(imageUrl);
+        Color topMargin = new Color(rendered.getRGB(100, 100));
+        Color imageCenter = new Color(rendered.getRGB(
+                rendered.getWidth() / 2, rendered.getHeight() / 2));
+
+        assertThat(rendered.getWidth()).isEqualTo(1080);
+        assertThat(rendered.getHeight()).isEqualTo(1350);
+        assertThat(topMargin.getRed()).isGreaterThan(245);
+        assertThat(topMargin.getGreen()).isGreaterThan(245);
+        assertThat(topMargin.getBlue()).isGreaterThan(245);
+        assertThat(imageCenter).isNotEqualTo(Color.WHITE);
+    }
+
+    @Test
+    void rejectsReviewUploadPathTraversal() {
+        assertThatThrownBy(() -> service.renderReviewUpload(
+                "reviews/../../secret", "123e4567-e89b-12d3-a456-426614174000.webp"))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
     void rendersReviewWithoutBlurredBackgroundAndKeepsWholeImage() throws Exception {
         Path source = tempDir.resolve("spirits/review.jpg");
         Files.createDirectories(source.getParent());
