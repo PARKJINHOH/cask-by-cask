@@ -1,6 +1,5 @@
 package com.caskbycask.domain.social.service;
 
-import com.caskbycask.domain.community.service.NotificationService;
 import com.caskbycask.domain.social.config.SocialPublishingProperties;
 import com.caskbycask.domain.social.entity.SocialAccountConnection;
 import com.caskbycask.domain.social.entity.SocialPublishBundle;
@@ -11,7 +10,6 @@ import com.caskbycask.domain.social.entity.enums.SocialPlatform;
 import com.caskbycask.domain.social.entity.enums.SocialPublicationStatus;
 import com.caskbycask.domain.social.entity.enums.SocialSourceType;
 import com.caskbycask.domain.social.repository.SocialAccountConnectionRepository;
-import com.caskbycask.domain.user.repository.UserRepository;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -45,11 +43,6 @@ class SocialPublicationProcessorTest {
     private SocialTokenCipher tokenCipher;
     @Mock
     private MetaSocialClient metaClient;
-    @Mock
-    private UserRepository userRepository;
-    @Mock
-    private NotificationService notificationService;
-
     private SocialPublishingProperties properties;
     private SocialPublicationProcessor processor;
 
@@ -66,8 +59,6 @@ class SocialPublicationProcessorTest {
                 imageRenderService,
                 tokenCipher,
                 metaClient,
-                userRepository,
-                notificationService,
                 new SimpleMeterRegistry()
         );
     }

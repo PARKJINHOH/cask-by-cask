@@ -1,15 +1,11 @@
 package com.caskbycask.domain.social.service;
 
-import com.caskbycask.domain.community.entity.enums.NotificationType;
-import com.caskbycask.domain.community.service.NotificationService;
 import com.caskbycask.domain.social.config.SocialPublishingProperties;
 import com.caskbycask.domain.social.entity.SocialAccountConnection;
 import com.caskbycask.domain.social.entity.SocialPublication;
 import com.caskbycask.domain.social.entity.enums.SocialMediaMode;
 import com.caskbycask.domain.social.entity.enums.SocialPublicationStatus;
 import com.caskbycask.domain.social.repository.SocialAccountConnectionRepository;
-import com.caskbycask.domain.user.entity.User;
-import com.caskbycask.domain.user.repository.UserRepository;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,8 +26,6 @@ public class SocialPublicationProcessor {
     private final SocialImageRenderService imageRenderService;
     private final SocialTokenCipher tokenCipher;
     private final MetaSocialClient metaClient;
-    private final UserRepository userRepository;
-    private final NotificationService notificationService;
     private final MeterRegistry meterRegistry;
 
     public void process(Long publicationId) {
@@ -81,14 +75,12 @@ public class SocialPublicationProcessor {
             stateService.published(publicationId, mediaId, permalink);
             meterRegistry.counter("social.publication", "platform", publication.getPlatform().name(),
                     "result", "success").increment();
-            notifySuccess(publication, permalink);
         } catch (SocialProviderException e) {
             if (e.isOutcomeUncertain()) {
                 stateService.verifying(publicationId, e.getProviderCode(), e.getMessage());
             } else {
-                SocialPublicationStatus status = stateService.retryOrFail(
+                stateService.retryOrFail(
                         publicationId, e.getProviderCode(), e.getMessage(), e.isRetryable());
-                if (status == SocialPublicationStatus.FAILED) notifyFailure(publication);
             }
             meterRegistry.counter("social.publication", "platform", publication.getPlatform().name(),
                     "result", "failure").increment();
@@ -96,7 +88,6 @@ public class SocialPublicationProcessor {
                     publicationId, publication.getPlatform(), e.getProviderCode());
         } catch (Exception e) {
             stateService.fail(publicationId, "LOCAL_ERROR", safeMessage(e));
-            notifyFailure(publication);
             meterRegistry.counter("social.publication", "platform", publication.getPlatform().name(),
                     "result", "failure").increment();
             log.warn("SNS publication failed locally: publicationId={}, platform={}",
@@ -145,7 +136,6 @@ public class SocialPublicationProcessor {
                 String permalink = metaClient.getPermalink(
                         publication.getPlatform(), token, publication.getExternalMediaId());
                 stateService.published(publication.getId(), publication.getExternalMediaId(), permalink);
-                notifySuccess(publication, permalink);
                 return;
             }
             var found = metaClient.findRecentByCaption(
@@ -154,12 +144,10 @@ public class SocialPublicationProcessor {
             if (found.isPresent()) {
                 var media = found.get();
                 stateService.published(publication.getId(), media.mediaId(), media.permalink());
-                notifySuccess(publication, media.permalink());
             } else if (publication.getLastAttemptAt() != null
                     && Duration.between(publication.getLastAttemptAt(), LocalDateTime.now()).toMinutes() >= 30) {
                 stateService.fail(publication.getId(), "VERIFY_TIMEOUT",
                         "The provider result could not be verified. Check the platform before retrying.");
-                notifyFailure(publication);
             } else {
                 stateService.verifying(publication.getId(), "VERIFY_PENDING",
                         "The provider result is still being verified.");
@@ -170,11 +158,9 @@ public class SocialPublicationProcessor {
                 if (publication.getExternalMediaId() != null) {
                     stateService.publishedWithoutPermalink(publication.getId(), "PERMALINK_UNAVAILABLE",
                             "The post was published, but its direct link could not be retrieved.");
-                    notifyLinkUnavailable(publication);
                 } else {
                     stateService.fail(publication.getId(), "VERIFY_TIMEOUT",
                             "The provider result could not be verified. Check the platform before retrying.");
-                    notifyFailure(publication);
                 }
             } else {
                 stateService.verifying(publication.getId(), "VERIFY_RETRY",
@@ -183,46 +169,6 @@ public class SocialPublicationProcessor {
             log.warn("Uncertain SNS publication reconciliation failed: publicationId={}",
                     publication.getId(), e);
         }
-    }
-
-    private void notifySuccess(SocialPublication publication, String permalink) {
-        if (publication.getBundle().getRequestedBy() == null) return;
-        User recipient = userRepository.findById(publication.getBundle().getRequestedBy().getId()).orElse(null);
-        if (recipient == null) return;
-        notificationService.send(
-                recipient,
-                NotificationType.SOCIAL_PUBLICATION,
-                publication.getPlatform().name() + " 게시가 완료되었습니다.",
-                "SOCIAL_PUBLICATION",
-                publication.getId()
-        );
-    }
-
-    private void notifyFailure(SocialPublication publication) {
-        if (publication.getBundle().getRequestedBy() == null) return;
-        User recipient = userRepository.findById(publication.getBundle().getRequestedBy().getId()).orElse(null);
-        if (recipient == null) return;
-        notificationService.send(
-                recipient,
-                NotificationType.SOCIAL_PUBLICATION,
-                publication.getPlatform().name() + " 게시에 실패했습니다. SNS 게시 이력에서 확인해주세요.",
-                "SOCIAL_PUBLICATION",
-                publication.getId()
-        );
-    }
-
-    private void notifyLinkUnavailable(SocialPublication publication) {
-        if (publication.getBundle().getRequestedBy() == null) return;
-        User recipient = userRepository.findById(publication.getBundle().getRequestedBy().getId()).orElse(null);
-        if (recipient == null) return;
-        notificationService.send(
-                recipient,
-                NotificationType.SOCIAL_PUBLICATION,
-                publication.getPlatform().name()
-                        + " 게시는 완료됐지만 링크를 가져오지 못했습니다. 플랫폼에서 직접 확인해주세요.",
-                "SOCIAL_PUBLICATION",
-                publication.getId()
-        );
     }
 
     private String publicImageUrl(String relativeImageUrl) {

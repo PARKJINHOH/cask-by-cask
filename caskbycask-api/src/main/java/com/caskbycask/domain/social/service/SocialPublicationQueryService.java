@@ -5,6 +5,7 @@ import com.caskbycask.domain.social.dto.SocialPublicDtos;
 import com.caskbycask.domain.social.entity.SocialPublication;
 import com.caskbycask.domain.social.entity.enums.SocialPlatform;
 import com.caskbycask.domain.social.entity.enums.SocialPublicationStatus;
+import com.caskbycask.domain.social.entity.enums.SocialSourceType;
 import com.caskbycask.domain.social.repository.SocialPublicationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -37,12 +38,16 @@ public class SocialPublicationQueryService {
     public List<SocialPublicDtos.HubItem> publicHub(int size) {
         List<SocialPublication> publications = publicationRepository.findByStatusOrderByPublishedAtDesc(
                 SocialPublicationStatus.PUBLISHED,
-                PageRequest.of(0, Math.min(Math.max(size, 1) * 2, 100))
+                PageRequest.of(0, Math.min(Math.max(size, 1) * 6, 100))
         ).getContent();
-        Map<Long, List<SocialPublication>> grouped = new LinkedHashMap<>();
+        Map<ContentKey, List<SocialPublication>> grouped = new LinkedHashMap<>();
         for (SocialPublication publication : publications) {
-            if (publication.getBundle().isSourceDeleted()) continue;
-            grouped.computeIfAbsent(publication.getBundle().getId(), ignored -> new java.util.ArrayList<>())
+            var bundle = publication.getBundle();
+            if (bundle.isSourceDeleted() || bundle.getContentType() == null || bundle.getContentId() == null) {
+                continue;
+            }
+            ContentKey key = new ContentKey(bundle.getContentType(), bundle.getContentId());
+            grouped.computeIfAbsent(key, ignored -> new java.util.ArrayList<>())
                     .add(publication);
         }
         return grouped.values().stream()
@@ -56,6 +61,8 @@ public class SocialPublicationQueryService {
         SocialPublication first = publications.getFirst();
         try {
             SocialPublicationContent content = contentFactory.create(first.getBundle(), first.getPlatform());
+            Map<SocialPlatform, SocialPublication> latestByPlatform = new LinkedHashMap<>();
+            publications.forEach(value -> latestByPlatform.putIfAbsent(value.getPlatform(), value));
             return new SocialPublicDtos.HubItem(
                     first.getBundle().getId(),
                     first.getBundle().getContentType(),
@@ -63,7 +70,7 @@ public class SocialPublicationQueryService {
                     content.displayTitle(),
                     first.getImageUrlSnapshot(),
                     content.destinationPath(),
-                    publications.stream()
+                    latestByPlatform.values().stream()
                             .map(value -> new SocialPublicDtos.PlatformLink(
                                     value.getPlatform(), value.getPermalink()))
                             .toList(),
@@ -77,4 +84,6 @@ public class SocialPublicationQueryService {
             return null;
         }
     }
+
+    private record ContentKey(SocialSourceType type, Long id) {}
 }

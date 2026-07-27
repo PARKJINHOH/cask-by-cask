@@ -24,7 +24,6 @@ const TYPE_ICON: Record<NotificationType, string> = {
   COMMENT: '💬', REPLY: '↩', MENTION: '@', LIKE: '♥', MESSAGE: '✉', SYSTEM: 'ℹ',
   BYOB_APPLY: '🍾', BYOB_APPROVE: '✅', BYOB_REJECT: '❌', BYOB_REMOVE: '🚫',
   REQUEST_APPROVED: '✅', REQUEST_REJECTED: '❌', PRICE_ALERT: '₩',
-  SOCIAL_PUBLICATION: '↗',
 }
 
 function relativeTime(dateStr: string): string {
@@ -42,7 +41,6 @@ function targetPath(item: NotificationItem): string | null {
   if (item.targetType === 'MY_REVIEWS' || item.targetType === 'SPIRIT_VARIANT_REVIEW_REQUEST') {
     return '/mypage?tab=reviews'
   }
-  if (item.targetType === 'SOCIAL_PUBLICATION') return '/mypage?tab=social'
   if (!item.targetId) return null
   if (item.targetType === 'SPIRIT') return `/spirits/${item.targetId}`
   switch (item.type) {

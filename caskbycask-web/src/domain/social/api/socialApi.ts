@@ -38,6 +38,12 @@ export const socialApi = {
     const response = await axiosInstance.post<ApiResponse<SocialPublication>>(path)
     return response.data.data!
   },
+  republish: async (id: number) => {
+    const response = await axiosInstance.post<ApiResponse<SocialPublication>>(
+      `/api/admin/social/publications/${id}/republish`,
+    )
+    return response.data.data!
+  },
   uploadDirect: async (file: File) => {
     const form = new FormData()
     form.append('file', file)

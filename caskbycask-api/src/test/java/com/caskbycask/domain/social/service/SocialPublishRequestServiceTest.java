@@ -21,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -78,5 +79,59 @@ class SocialPublishRequestServiceTest {
                 ArgumentCaptor.forClass(SocialPublication.class);
         verify(publicationRepository, times(1)).save(publicationCaptor.capture());
         assertThat(publicationCaptor.getValue().getPlatform()).isEqualTo(SocialPlatform.THREADS);
+    }
+
+    @Test
+    void adminRepublishCreatesSeparateAnonymousHistoryAndPreservesOriginal() {
+        SocialPublishingProperties properties = new SocialPublishingProperties();
+        properties.setEnabled(true);
+        SocialPublishRequestService service = new SocialPublishRequestService(
+                bundleRepository, publicationRepository, templateRepository, properties);
+
+        User requester = User.builder().email("reviewer@example.com").nickname("리뷰어").build();
+        SocialPublishBundle originalBundle = SocialPublishBundle.builder()
+                .id(30L)
+                .originType(SocialSourceType.REVIEW)
+                .originId(20L)
+                .contentType(SocialSourceType.REVIEW)
+                .contentId(20L)
+                .requestedBy(requester)
+                .locale("ko")
+                .consentVersion("2026-07-24")
+                .consentedAt(java.time.LocalDateTime.now())
+                .mediaMode(SocialMediaMode.REVIEW_IMAGE)
+                .renderedImageUrl("/api/social/images/original.jpg")
+                .shortCode("Existing01")
+                .build();
+        SocialPublication original = SocialPublication.builder()
+                .id(40L)
+                .bundle(originalBundle)
+                .platform(SocialPlatform.INSTAGRAM)
+                .status(SocialPublicationStatus.PUBLISHED)
+                .permalink("https://instagram.com/p/original")
+                .build();
+        given(publicationRepository.findWithBundleById(40L)).willReturn(Optional.of(original));
+        given(bundleRepository.save(any(SocialPublishBundle.class)))
+                .willAnswer(invocation -> invocation.getArgument(0));
+        given(publicationRepository.save(any(SocialPublication.class)))
+                .willAnswer(invocation -> invocation.getArgument(0));
+
+        service.republish(40L);
+
+        ArgumentCaptor<SocialPublishBundle> bundleCaptor =
+                ArgumentCaptor.forClass(SocialPublishBundle.class);
+        verify(bundleRepository).save(bundleCaptor.capture());
+        assertThat(bundleCaptor.getValue().getRequestedBy()).isNull();
+        assertThat(bundleCaptor.getValue().getContentType()).isEqualTo(SocialSourceType.REVIEW);
+        assertThat(bundleCaptor.getValue().getContentId()).isEqualTo(20L);
+        assertThat(bundleCaptor.getValue().getRenderedImageUrl()).isNull();
+
+        ArgumentCaptor<SocialPublication> publicationCaptor =
+                ArgumentCaptor.forClass(SocialPublication.class);
+        verify(publicationRepository).save(publicationCaptor.capture());
+        assertThat(publicationCaptor.getValue().getPlatform()).isEqualTo(SocialPlatform.INSTAGRAM);
+        assertThat(publicationCaptor.getValue().getStatus()).isEqualTo(SocialPublicationStatus.QUEUED);
+        assertThat(original.getStatus()).isEqualTo(SocialPublicationStatus.PUBLISHED);
+        assertThat(original.getPermalink()).isEqualTo("https://instagram.com/p/original");
     }
 }

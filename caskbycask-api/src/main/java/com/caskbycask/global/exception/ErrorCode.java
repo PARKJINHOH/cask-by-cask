@@ -295,6 +295,7 @@ public enum ErrorCode {
     SOCIAL_OAUTH_STATE_INVALID(HttpStatus.BAD_REQUEST, "SOCIAL_009", "SNS 계정 연결 요청이 만료되었거나 유효하지 않습니다."),
     SOCIAL_PUBLISHING_DISABLED(HttpStatus.SERVICE_UNAVAILABLE, "SOCIAL_010", "SNS 자동 게시 기능이 아직 활성화되지 않았습니다."),
     SOCIAL_INITIAL_PUBLISH_NOT_ALLOWED(HttpStatus.CONFLICT, "SOCIAL_011", "이 리뷰는 수정 화면에서 SNS 최초 게시를 요청할 수 없습니다."),
+    SOCIAL_PUBLICATION_NOT_REPUBLISHABLE(HttpStatus.CONFLICT, "SOCIAL_012", "게시 완료 또는 외부 삭제 상태의 SNS 게시물만 재등록할 수 있습니다."),
 
     // Common
     NOT_FOUND(HttpStatus.NOT_FOUND, "COMMON_001", "리소스를 찾을 수 없습니다."),

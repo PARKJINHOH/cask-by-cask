@@ -48,6 +48,13 @@ public class SocialAdminController {
                 publishRequestService.retry(id, user.getUserId(), true)));
     }
 
+    @PostMapping("/publications/{id}/republish")
+    public ResponseEntity<ApiResponse<SocialPublicationResponse>> republish(
+            @PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(
+                publishRequestService.republish(id)));
+    }
+
     @GetMapping("/templates")
     public ResponseEntity<ApiResponse<List<SocialAdminDtos.TemplateResponse>>> templates() {
         return ResponseEntity.ok(ApiResponse.success(templateService.allTemplates()));

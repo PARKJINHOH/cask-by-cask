@@ -75,6 +75,18 @@ function PublicationPanel() {
     mutationFn: (id: number) => socialApi.retry(id, true),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'social', 'publications'] }),
   })
+  const republish = useMutation({
+    mutationFn: (id: number) => socialApi.republish(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'social', 'publications'] }),
+  })
+
+  const requestRepublish = (id: number) => {
+    if (!window.confirm(
+      '기존 게시물을 Instagram 또는 Threads에서 삭제했는지 확인해주세요.\n'
+      + '기존 이력은 보존하고 새로운 재등록 요청을 생성합니다.',
+    )) return
+    republish.mutate(id)
+  }
 
   return (
     <section className="space-y-4">
@@ -132,6 +144,12 @@ function PublicationPanel() {
                   <button type="button" disabled={retry.isPending} onClick={() => retry.mutate(item.id)}
                     className="rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">
                     다시 발행
+                  </button>
+                )}
+                {(item.status === 'PUBLISHED' || item.status === 'EXTERNALLY_DELETED') && (
+                  <button type="button" disabled={republish.isPending} onClick={() => requestRepublish(item.id)}
+                    className="rounded-lg bg-primary-800 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">
+                    재등록 요청
                   </button>
                 )}
               </div>

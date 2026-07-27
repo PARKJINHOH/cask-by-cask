@@ -151,6 +151,49 @@ public class SocialPublishRequestService {
         return SocialPublicationResponse.from(publication);
     }
 
+    /**
+     * 이미 발행된 게시물을 관리자가 외부 플랫폼에서 삭제한 뒤 다시 등록할 때 사용한다.
+     * 기존 게시 이력과 요청 사용자는 그대로 보존하고, 사용자 이력에 노출되지 않는 별도 번들을 만든다.
+     */
+    @Transactional
+    public SocialPublicationResponse republish(Long publicationId) {
+        SocialPublication original = publicationRepository.findWithBundleById(publicationId)
+                .orElseThrow(() -> new CustomException(ErrorCode.SOCIAL_PUBLICATION_NOT_FOUND));
+        if (original.getStatus() != SocialPublicationStatus.PUBLISHED
+                && original.getStatus() != SocialPublicationStatus.EXTERNALLY_DELETED) {
+            throw new CustomException(ErrorCode.SOCIAL_PUBLICATION_NOT_REPUBLISHABLE);
+        }
+
+        SocialPublishBundle source = original.getBundle();
+        if (source.isSourceDeleted() || source.getContentType() == null || source.getContentId() == null) {
+            throw new CustomException(ErrorCode.SOCIAL_PUBLICATION_NOT_REPUBLISHABLE);
+        }
+
+        SocialPublishBundle republishBundle = bundleRepository.save(SocialPublishBundle.builder()
+                .originType(source.getOriginType())
+                .originId(source.getOriginId())
+                .contentType(source.getContentType())
+                .contentId(source.getContentId())
+                .requestedBy(null)
+                .locale(source.getLocale())
+                .consentVersion(source.getConsentVersion())
+                .consentedAt(source.getConsentedAt())
+                .mediaMode(source.getMediaMode())
+                .thumbnailTemplate(source.getThumbnailTemplate())
+                .thumbnailText(source.getThumbnailText())
+                .directImageUrl(source.getDirectImageUrl())
+                .shortCode(uniqueShortCode())
+                .build());
+
+        SocialPublication republish = publicationRepository.save(SocialPublication.builder()
+                .bundle(republishBundle)
+                .platform(original.getPlatform())
+                .status(SocialPublicationStatus.QUEUED)
+                .nextAttemptAt(LocalDateTime.now())
+                .build());
+        return SocialPublicationResponse.from(republish);
+    }
+
     @Transactional(readOnly = true)
     public Page<SocialPublicationResponse> myHistory(Long userId, int page, int size) {
         return publicationRepository.findByBundleRequestedByIdOrderByCreatedAtDesc(
