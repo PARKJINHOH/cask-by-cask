@@ -18,7 +18,10 @@ import DraftListModal from '@/shared/components/DraftListModal'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { useMe } from '@/domain/user/hooks/useUser'
 import { formatHashtagInput, MAX_HASHTAGS, MAX_HASHTAG_LENGTH, parseHashtagInput } from '@/shared/utils/hashtags'
-import SocialPublishFields from '@/domain/social/components/SocialPublishFields'
+import SocialPublishFields, {
+  extractEditorImageUrls,
+  socialEditorImageLimit,
+} from '@/domain/social/components/SocialPublishFields'
 import { socialApi } from '@/domain/social/api/socialApi'
 import { EMPTY_SOCIAL_SELECTION, type SocialPublishSelection } from '@/domain/social/types/social.types'
 
@@ -554,6 +557,7 @@ export default function PostFormPage() {
             <SocialPublishFields
               kind="news"
               contentHtml={content}
+              previewTitle={title}
               selection={socialSelection}
               onChange={(next) => {
                 setSocialSelection(next)
@@ -580,6 +584,7 @@ export default function PostFormPage() {
               if (!socialSelectionValid(
                 socialSelection,
                 boardType === 'NOTICE' && canPublishOfficialSocial && !isEdit,
+                content,
               )) {
                 setSocialError(t('social.completeSettings'))
                 return
@@ -597,9 +602,15 @@ export default function PostFormPage() {
   )
 }
 
-function socialSelectionValid(selection: SocialPublishSelection, applies: boolean) {
+function socialSelectionValid(
+  selection: SocialPublishSelection,
+  applies: boolean,
+  contentHtml: string,
+) {
   if (!applies || (!selection.instagram && !selection.threads)) return true
   if (!selection.consentAccepted) return false
+  const editorImageLimit = socialEditorImageLimit(selection)
+  if (editorImageLimit != null && extractEditorImageUrls(contentHtml).length > editorImageLimit) return false
   if ((selection.mediaMode ?? 'TEMPLATE') === 'TEMPLATE') return Boolean(selection.templateId)
   return Boolean(selection.directImageUrl)
 }

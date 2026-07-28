@@ -60,6 +60,12 @@ public class SocialImageRenderService {
     private static final int CONTENT_LABEL_FONT_SIZE = 32;
     private static final int CONTENT_LABEL_HORIZONTAL_PADDING = 20;
     private static final int CONTENT_LABEL_VERTICAL_PADDING = 11;
+    private static final int TEMPLATE_TITLE_START_FONT_SIZE = 68;
+    private static final int TEMPLATE_TITLE_MIN_FONT_SIZE = 44;
+    private static final int TEMPLATE_TITLE_MAX_LINES = 5;
+    private static final int TEMPLATE_TITLE_MAX_WIDTH = 760;
+    private static final int TEMPLATE_FRAME_OUTER_MARGIN = 28;
+    private static final int TEMPLATE_FRAME_INNER_MARGIN = 42;
     private static final long MAX_SOURCE_BYTES = 15L * 1024 * 1024;
     private static final long MAX_OUTPUT_BYTES = 8L * 1024 * 1024;
     private static final long MAX_SOURCE_PIXELS = 40_000_000L;
@@ -122,22 +128,30 @@ public class SocialImageRenderService {
         drawCover(graphics, background, WIDTH, HEIGHT);
         graphics.setColor(new Color(0, 0, 0, 95));
         graphics.fillRect(0, 0, WIDTH, HEIGHT);
-        graphics.setColor(new Color(0, 0, 0, 100));
-        graphics.fillRoundRect(100, 355, 880, 640, 48, 48);
+        drawTemplateFrame(graphics);
 
-        String printableText = text == null ? "" : text.trim();
-        Font font = preferredFont(64, Font.BOLD);
-        if (!printableText.isEmpty() && font.canDisplayUpTo(printableText) >= 0) {
+        String printableText = normalizeTemplateText(text);
+        TemplateTitleLayout layout = fitTemplateTitle(graphics, printableText);
+        Font font = layout.font();
+        if (!printableText.isEmpty()
+                && font.canDisplayUpTo(printableText.replace("\n", "")) >= 0) {
             graphics.dispose();
             throw new IllegalStateException(
                     "The server font cannot display the SNS thumbnail text. Install Noto Sans CJK KR.");
         }
         graphics.setFont(font);
-        graphics.setColor(Color.WHITE);
-        FontMetrics metrics = graphics.getFontMetrics();
-        List<String> lines = wrap(printableText, metrics, 760, 6);
+        FontMetrics metrics = layout.metrics();
+        List<String> lines = layout.lines();
         int lineHeight = metrics.getHeight() + 14;
         int totalHeight = lines.size() * lineHeight;
+        int panelHeight = Math.max(300, totalHeight + 120);
+        int panelY = (HEIGHT - panelHeight) / 2;
+        graphics.setColor(new Color(0, 0, 0, 145));
+        graphics.fillRoundRect(96, panelY, 888, panelHeight, 48, 48);
+        graphics.setColor(new Color(255, 255, 255, 38));
+        graphics.setStroke(new BasicStroke(2f));
+        graphics.drawRoundRect(96, panelY, 888, panelHeight, 48, 48);
+        graphics.setColor(Color.WHITE);
         int y = (HEIGHT - totalHeight) / 2 + metrics.getAscent();
         for (String line : lines) {
             int x = (WIDTH - metrics.stringWidth(line)) / 2;
@@ -147,6 +161,50 @@ public class SocialImageRenderService {
         drawContentLabel(graphics, imageLabel);
         graphics.dispose();
         return writeJpeg(canvas, "template");
+    }
+
+    private static void drawTemplateFrame(Graphics2D graphics) {
+        Stroke originalStroke = graphics.getStroke();
+        graphics.setColor(new Color(224, 178, 88, 225));
+        graphics.setStroke(new BasicStroke(5f));
+        graphics.drawRoundRect(
+                TEMPLATE_FRAME_OUTER_MARGIN,
+                TEMPLATE_FRAME_OUTER_MARGIN,
+                WIDTH - TEMPLATE_FRAME_OUTER_MARGIN * 2,
+                HEIGHT - TEMPLATE_FRAME_OUTER_MARGIN * 2,
+                34,
+                34);
+        graphics.setColor(new Color(255, 239, 198, 150));
+        graphics.setStroke(new BasicStroke(2f));
+        graphics.drawRoundRect(
+                TEMPLATE_FRAME_INNER_MARGIN,
+                TEMPLATE_FRAME_INNER_MARGIN,
+                WIDTH - TEMPLATE_FRAME_INNER_MARGIN * 2,
+                HEIGHT - TEMPLATE_FRAME_INNER_MARGIN * 2,
+                26,
+                26);
+        graphics.setStroke(originalStroke);
+    }
+
+    private static TemplateTitleLayout fitTemplateTitle(Graphics2D graphics, String text) {
+        TemplateTitleLayout smallest = null;
+        for (int size = TEMPLATE_TITLE_START_FONT_SIZE;
+             size >= TEMPLATE_TITLE_MIN_FONT_SIZE; size -= 2) {
+            Font font = preferredFont(size, Font.BOLD);
+            graphics.setFont(font);
+            FontMetrics metrics = graphics.getFontMetrics();
+            List<String> lines = wrapTemplateTitle(
+                    text, metrics, TEMPLATE_TITLE_MAX_WIDTH, Integer.MAX_VALUE);
+            TemplateTitleLayout candidate = new TemplateTitleLayout(font, metrics, lines);
+            smallest = candidate;
+            if (lines.size() <= TEMPLATE_TITLE_MAX_LINES) return candidate;
+        }
+        FontMetrics metrics = smallest.metrics();
+        return new TemplateTitleLayout(
+                smallest.font(),
+                metrics,
+                wrapTemplateTitle(
+                        text, metrics, TEMPLATE_TITLE_MAX_WIDTH, TEMPLATE_TITLE_MAX_LINES));
     }
 
     public String storeTemplateBackground(MultipartFile file) {
@@ -391,6 +449,81 @@ public class SocialImageRenderService {
 
     static List<String> wrapFully(String text, FontMetrics metrics, int maxWidth) {
         return wrap(text, metrics, maxWidth, Integer.MAX_VALUE);
+    }
+
+    static List<String> wrapWords(String text, FontMetrics metrics, int maxWidth, int maxLines) {
+        String normalized = text == null ? "" : text.replaceAll("\\s+", " ").trim();
+        if (normalized.isEmpty()) return List.of("");
+
+        List<String> naturalLines = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        for (String word : normalized.split(" ")) {
+            String candidate = current.isEmpty() ? word : current + " " + word;
+            if (metrics.stringWidth(candidate) <= maxWidth) {
+                current.setLength(0);
+                current.append(candidate);
+                continue;
+            }
+            if (!current.isEmpty()) {
+                naturalLines.add(current.toString());
+                current.setLength(0);
+            }
+            if (metrics.stringWidth(word) <= maxWidth) {
+                current.append(word);
+                continue;
+            }
+            List<String> fragments = wrap(word, metrics, maxWidth, Integer.MAX_VALUE);
+            for (int index = 0; index < fragments.size() - 1; index++) {
+                naturalLines.add(fragments.get(index));
+            }
+            current.append(fragments.getLast());
+        }
+        if (!current.isEmpty()) naturalLines.add(current.toString());
+        if (naturalLines.size() <= maxLines) return naturalLines;
+
+        List<String> truncated = new ArrayList<>(naturalLines.subList(0, maxLines));
+        int lastIndex = truncated.size() - 1;
+        String last = truncated.get(lastIndex);
+        while (!last.isEmpty() && metrics.stringWidth(last + "…") > maxWidth) {
+            int lastCodePoint = last.offsetByCodePoints(last.length(), -1);
+            last = last.substring(0, lastCodePoint).stripTrailing();
+        }
+        truncated.set(lastIndex, last + "…");
+        return truncated;
+    }
+
+    static List<String> wrapTemplateTitle(
+            String text, FontMetrics metrics, int maxWidth, int maxLines) {
+        String normalized = normalizeTemplateText(text);
+        if (normalized.isEmpty()) return List.of("");
+
+        List<String> naturalLines = new ArrayList<>();
+        for (String manualLine : normalized.split("\\n", -1)) {
+            naturalLines.addAll(wrapWords(
+                    manualLine, metrics, maxWidth, Integer.MAX_VALUE));
+        }
+        if (naturalLines.size() <= maxLines) return naturalLines;
+
+        List<String> truncated = new ArrayList<>(naturalLines.subList(0, maxLines));
+        int lastIndex = truncated.size() - 1;
+        String last = truncated.get(lastIndex);
+        while (!last.isEmpty() && metrics.stringWidth(last + "…") > maxWidth) {
+            int lastCodePoint = last.offsetByCodePoints(last.length(), -1);
+            last = last.substring(0, lastCodePoint).stripTrailing();
+        }
+        truncated.set(lastIndex, last + "…");
+        return truncated;
+    }
+
+    private static String normalizeTemplateText(String text) {
+        if (text == null || text.isBlank()) return "";
+        String normalizedNewlines = text
+                .replace("\r\n", "\n")
+                .replace('\r', '\n');
+        return java.util.Arrays.stream(normalizedNewlines.split("\\n", -1))
+                .map(line -> line.replaceAll("[\\t ]+", " ").strip())
+                .collect(java.util.stream.Collectors.joining("\n"))
+                .strip();
     }
 
     private static void drawContentLabel(Graphics2D graphics, String imageLabel) {
@@ -690,4 +823,5 @@ public class SocialImageRenderService {
     }
 
     private record ReviewCaptionLayout(Font font, FontMetrics metrics, List<String> lines) {}
+    private record TemplateTitleLayout(Font font, FontMetrics metrics, List<String> lines) {}
 }

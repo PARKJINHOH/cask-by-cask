@@ -21,6 +21,7 @@ interface Props {
   reviewSpiritId?: number
   allowFirstPublishOnEdit?: boolean
   contentHtml?: string
+  previewTitle?: string
 }
 
 const PLATFORM_LABEL: Record<SocialPlatform, string> = {
@@ -39,6 +40,7 @@ export default function SocialPublishFields({
   reviewSpiritId,
   allowFirstPublishOnEdit = false,
   contentHtml = '',
+  previewTitle = '',
 }: Props) {
   const { t, i18n } = useTranslation()
   const [uploading, setUploading] = useState(false)
@@ -59,6 +61,10 @@ export default function SocialPublishFields({
 
   const anySelected = selection.instagram || selection.threads
   const newPublishSelected = anySelected && (!editing || allowFirstPublishOnEdit)
+  const selectedTemplate = capabilities?.templates.find((template) => template.id === selection.templateId)
+  const thumbnailPreviewText = selection.thumbnailText?.trim() || previewTitle.trim()
+  const editorImageLimit = socialEditorImageLimit(selection)
+  const editorImagesOverLimit = editorImageLimit != null && editorImageUrls.length > editorImageLimit
 
   useEffect(() => {
     const source = editingUpload
@@ -241,10 +247,37 @@ export default function SocialPublishFields({
                   </button>
                 ))}
               </div>
-              <input type="text" maxLength={200} value={selection.thumbnailText ?? ''}
+              <textarea rows={3} maxLength={200} value={selection.thumbnailText ?? ''}
                 onChange={(event) => onChange({ ...selection, thumbnailText: event.target.value })}
                 placeholder={t('social.thumbnailTextPlaceholder')}
-                className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm" />
+                className="w-full resize-y rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm leading-6" />
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-xs leading-5 text-neutral-500">
+                  {t('social.thumbnailTextHelp')}
+                </p>
+                <span className="shrink-0 text-xs tabular-nums text-neutral-400">
+                  {(selection.thumbnailText ?? '').length}/200
+                </span>
+              </div>
+              {selectedTemplate && (
+                <div className="rounded-lg border border-neutral-200 bg-white p-3">
+                  <p className="mb-2 text-xs font-semibold text-neutral-700">
+                    {t('social.thumbnailCompositionPreview')}
+                  </p>
+                  <div className="relative mx-auto aspect-[4/5] w-full max-w-64 overflow-hidden rounded-lg bg-neutral-950 shadow-sm">
+                    <img src={selectedTemplate.backgroundImageUrl} alt=""
+                      className="absolute inset-0 h-full w-full object-cover" />
+                    <div className="absolute inset-0 bg-black/40" />
+                    <div className="pointer-events-none absolute inset-2 rounded-lg border-2 border-amber-300/80" />
+                    <div className="pointer-events-none absolute inset-3 rounded-md border border-amber-100/50" />
+                    <div className="absolute inset-x-[9%] top-1/2 -translate-y-1/2 rounded-2xl border border-white/15 bg-black/55 px-5 py-8">
+                      <p className="whitespace-pre-line break-words text-center text-xl font-bold leading-snug text-white [text-wrap:balance]">
+                        {thumbnailPreviewText || t('social.thumbnailPreviewFallback')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </>
           ) : (
             <div className="space-y-2">
@@ -299,6 +332,15 @@ export default function SocialPublishFields({
               <p className="mt-1 text-xs leading-5 text-neutral-500">
                 {t('social.editorImagesHelp', { count: editorImageUrls.length })}
               </p>
+              {editorImageLimit != null && (
+                <p className={`mt-1 text-xs leading-5 ${
+                  editorImagesOverLimit ? 'font-semibold text-red-600' : 'text-neutral-500'
+                }`}>
+                  {editorImagesOverLimit
+                    ? t('social.editorImagesLimitError', { count: editorImageUrls.length, limit: editorImageLimit })
+                    : t('social.editorImagesLimitHelp', { limit: editorImageLimit })}
+                </p>
+              )}
               <div className="mt-2 flex flex-wrap gap-2">
                 {editorImageUrls.map((imageUrl, index) => (
                   <img key={`${imageUrl}-${index}`} src={imageUrl}
@@ -339,12 +381,18 @@ export default function SocialPublishFields({
   )
 }
 
-function extractEditorImageUrls(contentHtml: string) {
+export function extractEditorImageUrls(contentHtml: string) {
   if (!contentHtml || typeof DOMParser === 'undefined') return []
   const document = new DOMParser().parseFromString(contentHtml, 'text/html')
   return Array.from(document.querySelectorAll<HTMLImageElement>('img[src]'))
     .map((image) => image.getAttribute('src')?.trim() ?? '')
     .filter(Boolean)
+}
+
+export function socialEditorImageLimit(selection: SocialPublishSelection) {
+  if (selection.instagram) return 9
+  if (selection.threads) return 19
+  return null
 }
 
 function statusClass(state: SocialPublication) {

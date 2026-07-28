@@ -213,6 +213,19 @@ class MetaSocialClientTest {
     }
 
     @Test
+    void rejectsInstagramCarouselAboveContentPublishingApiLimit() {
+        MetaSocialClient client = new MetaSocialClient(properties());
+        List<String> elevenImages = java.util.stream.IntStream.range(0, 11)
+                .mapToObj(index -> "https://www.caskbycask.net/image-" + index + ".jpg")
+                .toList();
+
+        assertThatThrownBy(() -> client.createImageCarouselContainer(
+                SocialPlatform.INSTAGRAM, "ig-user", "ig-token", elevenImages, "caption"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("10 images for INSTAGRAM");
+    }
+
+    @Test
     void recentMediaRecoveryUsesPlatformFieldsAndSinceBoundary() {
         MetaSocialClient client = new MetaSocialClient(properties());
         LocalDateTime since = LocalDateTime.of(2026, 7, 25, 12, 0);

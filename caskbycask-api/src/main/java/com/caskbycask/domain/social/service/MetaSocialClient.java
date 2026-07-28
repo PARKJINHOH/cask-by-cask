@@ -26,7 +26,8 @@ import java.util.Optional;
 public class MetaSocialClient {
 
     private static final ZoneId SERVICE_ZONE = ZoneId.of("Asia/Seoul");
-    public static final int MAX_CAROUSEL_IMAGES = 20;
+    public static final int MAX_INSTAGRAM_CAROUSEL_IMAGES = 10;
+    public static final int MAX_THREADS_CAROUSEL_IMAGES = 20;
 
     private final SocialPublishingProperties properties;
     private final RestClient restClient;
@@ -116,11 +117,12 @@ public class MetaSocialClient {
     public String createImageCarouselContainer(SocialPlatform platform, String userId,
                                                String accessToken, List<String> imageUrls,
                                                String caption) {
+        int maxImages = maxCarouselImages(platform);
         if (imageUrls == null || imageUrls.size() < 2
-                || imageUrls.size() > MAX_CAROUSEL_IMAGES) {
+                || imageUrls.size() > maxImages) {
             throw new IllegalArgumentException(
                     "Image carousel must contain between 2 and "
-                            + MAX_CAROUSEL_IMAGES + " images.");
+                            + maxImages + " images for " + platform + ".");
         }
         List<String> childIds = new java.util.ArrayList<>(imageUrls.size());
         for (String imageUrl : imageUrls) {
@@ -152,6 +154,12 @@ public class MetaSocialClient {
         return requiredId(postForm(
                 apiBase(provider(platform)) + "/" + encodePath(userId) + parentResource,
                 parentForm, false));
+    }
+
+    public static int maxCarouselImages(SocialPlatform platform) {
+        return platform == SocialPlatform.INSTAGRAM
+                ? MAX_INSTAGRAM_CAROUSEL_IMAGES
+                : MAX_THREADS_CAROUSEL_IMAGES;
     }
 
     public String publishContainer(SocialPlatform platform, String userId,

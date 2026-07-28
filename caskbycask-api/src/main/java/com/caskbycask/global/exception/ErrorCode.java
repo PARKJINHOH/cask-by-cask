@@ -303,6 +303,8 @@ public enum ErrorCode {
     SOCIAL_PUBLISHING_DISABLED(HttpStatus.SERVICE_UNAVAILABLE, "SOCIAL_010", "SNS 자동 게시 기능이 아직 활성화되지 않았습니다."),
     SOCIAL_INITIAL_PUBLISH_NOT_ALLOWED(HttpStatus.CONFLICT, "SOCIAL_011", "이 리뷰는 수정 화면에서 SNS 최초 게시를 요청할 수 없습니다."),
     SOCIAL_PUBLICATION_NOT_REPUBLISHABLE(HttpStatus.CONFLICT, "SOCIAL_012", "게시 완료 또는 외부 삭제 상태의 SNS 게시물만 재등록할 수 있습니다."),
+    SOCIAL_EDITOR_IMAGE_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "SOCIAL_013",
+            "SNS 썸네일을 포함하려면 Instagram 본문 이미지는 최대 9장, Threads 본문 이미지는 최대 19장까지 게시할 수 있습니다."),
 
     // Common
     NOT_FOUND(HttpStatus.NOT_FOUND, "COMMON_001", "리소스를 찾을 수 없습니다."),

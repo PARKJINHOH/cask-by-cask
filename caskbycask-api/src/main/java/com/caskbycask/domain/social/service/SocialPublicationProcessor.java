@@ -118,7 +118,7 @@ public class SocialPublicationProcessor {
             boolean news = publication.getBundle().getContentType()
                     == com.caskbycask.domain.social.entity.enums.SocialSourceType.POST;
             boolean includeNewsCover = news
-                    && media.size() < MetaSocialClient.MAX_CAROUSEL_IMAGES;
+                    && media.size() < MetaSocialClient.maxCarouselImages(publication.getPlatform());
             List<String> relativeImages = new ArrayList<>(
                     media.size() + (includeNewsCover ? 1 : 0));
             if (includeNewsCover) {

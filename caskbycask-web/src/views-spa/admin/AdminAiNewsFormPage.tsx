@@ -9,7 +9,10 @@ import AdminPageHeader from '@/shared/components/AdminPageHeader'
 import Spinner from '@/shared/components/Spinner'
 import AdminAiNewsRequestPanel from './AdminAiNewsRequestPanel'
 import { formatHashtagInput, MAX_HASHTAGS, MAX_HASHTAG_LENGTH, parseHashtagInput } from '@/shared/utils/hashtags'
-import SocialPublishFields from '@/domain/social/components/SocialPublishFields'
+import SocialPublishFields, {
+  extractEditorImageUrls,
+  socialEditorImageLimit,
+} from '@/domain/social/components/SocialPublishFields'
 import { EMPTY_SOCIAL_SELECTION, type SocialPublishSelection } from '@/domain/social/types/social.types'
 import { socialApi } from '@/domain/social/api/socialApi'
 import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
@@ -81,7 +84,7 @@ export default function AdminAiNewsFormPage() {
     mutationFn: async (action: 'save' | 'publish' | 'schedule') => {
       if (!title.trim() || !content.trim()) throw new Error('제목과 본문을 입력하세요.')
       if ((action === 'publish' || action === 'schedule')
-        && !socialSelectionValid(socialSelection, true)) {
+        && !socialSelectionValid(socialSelection, true, content)) {
         throw new Error('SNS 게시 동의와 썸네일 설정을 확인하세요.')
       }
       if (action === 'schedule' && (!scheduledAt || new Date(scheduledAt).getTime() <= Date.now())) {
@@ -294,6 +297,7 @@ export default function AdminAiNewsFormPage() {
         <SocialPublishFields
           kind="news"
           contentHtml={content}
+          previewTitle={title}
           selection={socialSelection}
           onChange={setSocialSelection}
           editing={Boolean(isEdit && detail && detail.status !== 'DRAFT' && detail.status !== 'PENDING_REVIEW')}
@@ -340,9 +344,15 @@ function Field({ label, children, required = false }: { label: string; children:
 }
 const inputCls = 'w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100 disabled:bg-neutral-100'
 
-function socialSelectionValid(selection: SocialPublishSelection, applies: boolean) {
+function socialSelectionValid(
+  selection: SocialPublishSelection,
+  applies: boolean,
+  contentHtml: string,
+) {
   if (!applies || (!selection.instagram && !selection.threads)) return true
   if (!selection.consentAccepted) return false
+  const editorImageLimit = socialEditorImageLimit(selection)
+  if (editorImageLimit != null && extractEditorImageUrls(contentHtml).length > editorImageLimit) return false
   if ((selection.mediaMode ?? 'TEMPLATE') === 'TEMPLATE') return Boolean(selection.templateId)
   return Boolean(selection.directImageUrl)
 }

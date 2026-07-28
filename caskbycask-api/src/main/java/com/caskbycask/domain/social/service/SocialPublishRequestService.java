@@ -104,7 +104,8 @@ public class SocialPublishRequestService {
         SocialPublishBundle bundle = createBundle(
                 SocialSourceType.POST, postId, SocialSourceType.POST, postId,
                 requester, selection, mode, SocialPublicationStatus.QUEUED);
-        publishMediaService.snapshotPost(bundle, postId);
+        int editorImageCount = publishMediaService.snapshotPost(bundle, postId).size();
+        validateNewsMediaCount(bundle, editorImageCount);
     }
 
     @Transactional
@@ -158,7 +159,8 @@ public class SocialPublishRequestService {
                 SocialSourceType.AI_NEWS_ARTICLE, articleId, contentType, contentId,
                 requester, missingSelection, mode, initialStatus);
         if (contentType == SocialSourceType.POST && contentId != null) {
-            publishMediaService.snapshotPost(bundle, contentId);
+            int editorImageCount = publishMediaService.snapshotPost(bundle, contentId).size();
+            validateNewsMediaCount(bundle, editorImageCount);
         }
     }
 
@@ -287,11 +289,27 @@ public class SocialPublishRequestService {
                         .orElseThrow(() -> new CustomException(ErrorCode.REVIEW_NOT_FOUND));
                 publishMediaService.snapshotReview(bundle, review);
             } else if (contentType == SocialSourceType.POST) {
-                publishMediaService.snapshotPost(bundle, contentId);
+                int editorImageCount = publishMediaService.snapshotPost(bundle, contentId).size();
+                validateNewsMediaCount(bundle, editorImageCount);
             }
             publicationRepository.findByBundleIdOrderByPlatformAsc(bundle.getId()).stream()
                     .filter(value -> value.getStatus() == SocialPublicationStatus.WAITING_SOURCE)
                     .forEach(SocialPublication::queue);
+        }
+    }
+
+    private void validateNewsMediaCount(SocialPublishBundle bundle, int editorImageCount) {
+        for (SocialPublication publication :
+                publicationRepository.findByBundleIdOrderByPlatformAsc(bundle.getId())) {
+            int editorImageLimit = MetaSocialClient.maxCarouselImages(publication.getPlatform()) - 1;
+            if (editorImageCount > editorImageLimit) {
+                throw new CustomException(
+                        ErrorCode.SOCIAL_EDITOR_IMAGE_LIMIT_EXCEEDED,
+                        java.util.Map.of(
+                                "platform", publication.getPlatform().name(),
+                                "maxEditorImages", editorImageLimit,
+                                "editorImageCount", editorImageCount));
+            }
         }
     }
 

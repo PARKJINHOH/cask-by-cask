@@ -6,7 +6,9 @@ import com.caskbycask.domain.social.config.SocialPublishingProperties;
 import com.caskbycask.domain.social.dto.SocialPublishSelection;
 import com.caskbycask.domain.social.entity.SocialPublication;
 import com.caskbycask.domain.social.entity.SocialPublishBundle;
+import com.caskbycask.domain.social.entity.SocialPublishBundleMedia;
 import com.caskbycask.domain.social.entity.enums.SocialMediaMode;
+import com.caskbycask.domain.social.entity.enums.SocialMediaRole;
 import com.caskbycask.domain.social.entity.enums.SocialPlatform;
 import com.caskbycask.domain.social.entity.enums.SocialPublicationStatus;
 import com.caskbycask.domain.social.entity.enums.SocialSourceType;
@@ -14,6 +16,8 @@ import com.caskbycask.domain.social.repository.SocialPublicationRepository;
 import com.caskbycask.domain.social.repository.SocialPublishBundleRepository;
 import com.caskbycask.domain.social.repository.SocialThumbnailTemplateRepository;
 import com.caskbycask.domain.user.entity.User;
+import com.caskbycask.global.exception.CustomException;
+import com.caskbycask.global.exception.ErrorCode;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -25,7 +29,9 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -136,6 +142,65 @@ class SocialPublishRequestServiceTest {
         assertThat(publicationCaptor.getValue().getPlatform()).isEqualTo(SocialPlatform.THREADS);
         assertThat(publicationCaptor.getValue().getStatus()).isEqualTo(SocialPublicationStatus.QUEUED);
         verify(publishMediaService).snapshotPost(bundleCaptor.getValue(), 50L);
+    }
+
+    @Test
+    void rejectsInstagramNewsWhenEditorImagesExceedNineWithThumbnail() {
+        SocialPublishingProperties properties = new SocialPublishingProperties();
+        properties.setEnabled(true);
+        SocialPublishRequestService service = new SocialPublishRequestService(
+                bundleRepository, publicationRepository, templateRepository, properties,
+                publishMediaService, reviewRepository);
+
+        User requester = User.builder().email("admin@example.com").nickname("관리자").build();
+        given(bundleRepository.save(any(SocialPublishBundle.class)))
+                .willAnswer(invocation -> {
+                    SocialPublishBundle bundle = invocation.getArgument(0);
+                    ReflectionTestUtils.setField(bundle, "id", 42L);
+                    return bundle;
+                });
+        given(publishMediaService.snapshotPost(any(SocialPublishBundle.class), eq(50L)))
+                .willAnswer(invocation -> {
+                    SocialPublishBundle bundle = invocation.getArgument(0);
+                    return java.util.stream.IntStream.range(0, 10)
+                            .mapToObj(index -> SocialPublishBundleMedia.builder()
+                                    .bundle(bundle)
+                                    .sortOrder(index)
+                                    .mediaRole(SocialMediaRole.EDITOR_IMAGE)
+                                    .sourceImageUrl("/uploads/editor-" + index + ".jpg")
+                                    .build())
+                            .toList();
+                });
+        SocialPublishBundle savedBundle = SocialPublishBundle.builder()
+                .id(42L)
+                .originType(SocialSourceType.AI_NEWS_ARTICLE)
+                .originId(40L)
+                .contentType(SocialSourceType.POST)
+                .contentId(50L)
+                .requestedBy(requester)
+                .locale("ko")
+                .consentVersion("2026-07-24")
+                .mediaMode(SocialMediaMode.DIRECT_UPLOAD)
+                .directImageUrl("/api/social/images/cover.webp")
+                .shortCode("LimitTest01")
+                .build();
+        SocialPublication instagram = SocialPublication.builder()
+                .bundle(savedBundle)
+                .platform(SocialPlatform.INSTAGRAM)
+                .status(SocialPublicationStatus.QUEUED)
+                .build();
+        given(publicationRepository.findByBundleIdOrderByPlatformAsc(42L))
+                .willReturn(List.of(instagram));
+        SocialPublishSelection selection = new SocialPublishSelection(
+                true, true, false, "2026-07-24", "ko",
+                SocialMediaMode.DIRECT_UPLOAD, null, null,
+                "/api/social/images/cover.webp");
+
+        assertThatThrownBy(() ->
+                service.requestPublishedAiArticle(40L, 50L, requester, selection))
+                .isInstanceOfSatisfying(CustomException.class, error ->
+                        assertThat(error.getErrorCode())
+                                .isEqualTo(ErrorCode.SOCIAL_EDITOR_IMAGE_LIMIT_EXCEEDED));
     }
 
     @Test

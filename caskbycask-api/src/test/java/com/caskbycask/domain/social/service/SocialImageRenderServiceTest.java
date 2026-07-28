@@ -188,6 +188,56 @@ class SocialImageRenderServiceTest {
         assertThat(rendered.getWidth()).isEqualTo(1080);
         assertThat(rendered.getHeight()).isEqualTo(1350);
         assertThat(new Color(rendered.getRGB(75, 75)).getRed()).isLessThan(80);
+        Color outerFrame = new Color(rendered.getRGB(28, 100));
+        assertThat(outerFrame.getRed()).isGreaterThan(150);
+        assertThat(outerFrame.getGreen()).isGreaterThan(100);
+    }
+
+    @Test
+    void wrapsTemplateTitleAtWordBoundariesWhenWordsFit() {
+        BufferedImage image = new BufferedImage(1080, 1350, BufferedImage.TYPE_INT_RGB);
+        Graphics2D graphics = image.createGraphics();
+        graphics.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 48));
+        String title = "메타 베브 코리아 신제품 위스키 국내 공식 출시 소식";
+
+        var lines = SocialImageRenderService.wrapWords(
+                title, graphics.getFontMetrics(), 260, 6);
+        graphics.dispose();
+
+        assertThat(String.join(" ", lines)).isEqualTo(title);
+        assertThat(lines).allMatch(line ->
+                java.util.Arrays.stream(line.split(" "))
+                        .allMatch(word -> title.contains(word)));
+    }
+
+    @Test
+    void preservesUserLineBreaksWhenWrappingTemplateTitle() {
+        BufferedImage image = new BufferedImage(1080, 1350, BufferedImage.TYPE_INT_RGB);
+        Graphics2D graphics = image.createGraphics();
+        graphics.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 48));
+        String title = "캐바캐가 전하는\n신제품 위스키\n국내 출시 소식";
+
+        var lines = SocialImageRenderService.wrapTemplateTitle(
+                title, graphics.getFontMetrics(), 760, 5);
+        graphics.dispose();
+
+        assertThat(lines).containsExactly(
+                "캐바캐가 전하는",
+                "신제품 위스키",
+                "국내 출시 소식");
+    }
+
+    @Test
+    void keepsBlankUserLineWhenWrappingTemplateTitle() {
+        BufferedImage image = new BufferedImage(1080, 1350, BufferedImage.TYPE_INT_RGB);
+        Graphics2D graphics = image.createGraphics();
+        graphics.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 48));
+
+        var lines = SocialImageRenderService.wrapTemplateTitle(
+                "첫 번째 줄\n\n두 번째 줄", graphics.getFontMetrics(), 760, 5);
+        graphics.dispose();
+
+        assertThat(lines).containsExactly("첫 번째 줄", "", "두 번째 줄");
     }
 
     @Test
