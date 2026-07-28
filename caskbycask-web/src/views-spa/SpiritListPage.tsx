@@ -231,19 +231,8 @@ export default function SpiritListPage() {
     window.localStorage.setItem(CATALOG_VIEW_STORAGE_KEY, nextViewMode)
   }
 
-  // PC 좌측 필터 패널 — 본문(목록)과 완전히 독립된 스크롤 영역.
-  // row(relative) 안에서 absolute 로 배치하고, 스크롤에 따라 top 을 직접 계산해
-  // "뷰포트 상단에서 chromeTop 만큼 떨어진 위치에 고정"되다가 row 하단(=footer 직전)에서 멈추도록 함
-  // → fixed 와 달리 footer 를 침범하지 않음.
-  const rowRef = useRef<HTMLDivElement>(null)
-  const filterContentRef = useRef<HTMLDivElement>(null)
+  // PC 좌측 필터 패널을 sticky 헤더와 GNB 아래에 고정하기 위한 상단 간격.
   const [chromeTop, setChromeTop] = useState(0) // 헤더+GNB 높이 + 여백
-  // 패널 높이 = min(필터 내용의 실제 높이, 뷰포트에서 사용 가능한 높이).
-  // - 필터가 적용 안 된 기본 상태처럼 내용이 짧으면 그 높이만큼만 차지(스크롤바 없음)
-  // - 내용이 길어 화면을 넘으면 뷰포트 높이로 제한하고 패널 내부에서만 스크롤
-  // spacer 의 min-height 로도 사용해 본문(row) 높이를 패널 높이만큼 확보 → footer 침범 방지.
-  const [panelHeight, setPanelHeight] = useState<number | null>(null)
-  const [panelTop, setPanelTop] = useState(0)
 
   // 헤더 + GNB(둘 다 sticky) 높이 측정 → 패널의 viewport 기준 top 오프셋
   useLayoutEffect(() => {
@@ -258,51 +247,6 @@ export default function SpiritListPage() {
     window.addEventListener('resize', update)
     return () => window.removeEventListener('resize', update)
   }, [])
-
-  // 필터 내용의 실제 높이 → panelHeight
-  useLayoutEffect(() => {
-    const PANEL_PADDING_Y = 32 // p-4 (1rem) * 2
-    const update = () => {
-      const content = filterContentRef.current
-      if (!content) return
-      const contentHeight = content.getBoundingClientRect().height + PANEL_PADDING_Y
-      const viewportMax = window.innerHeight - chromeTop - 24
-      setPanelHeight(Math.min(contentHeight, viewportMax))
-    }
-    update()
-    window.addEventListener('resize', update)
-    const ro = new ResizeObserver(update)
-    if (filterContentRef.current) ro.observe(filterContentRef.current)
-    return () => {
-      window.removeEventListener('resize', update)
-      ro.disconnect()
-    }
-  }, [chromeTop])
-
-  // 스크롤 위치에 따라 패널의 top(row 기준 absolute) 계산
-  // - 0 ~ (rowHeight - panelHeight) 범위로 clamp → row 상단에서 시작해 row 하단(footer 직전)에서 멈춤
-  useLayoutEffect(() => {
-    if (panelHeight == null) return
-    const update = () => {
-      const row = rowRef.current
-      if (!row) return
-      const rect = row.getBoundingClientRect()
-      const rowTopDoc = rect.top + window.scrollY
-      const desired = window.scrollY + chromeTop - rowTopDoc
-      const max = Math.max(rect.height - panelHeight, 0)
-      setPanelTop(Math.min(Math.max(desired, 0), max))
-    }
-    update()
-    window.addEventListener('scroll', update, { passive: true })
-    window.addEventListener('resize', update)
-    const ro = new ResizeObserver(update)
-    if (rowRef.current) ro.observe(rowRef.current)
-    return () => {
-      window.removeEventListener('scroll', update)
-      window.removeEventListener('resize', update)
-      ro.disconnect()
-    }
-  }, [panelHeight, chromeTop])
 
   // URL에서 필터 값 읽기
   const categoryValues = searchParams.getAll('category')
@@ -651,30 +595,19 @@ export default function SpiritListPage() {
         jsonLd={seoJsonLd}
       />
 
-      <div ref={rowRef} className="flex gap-6 relative">
-        {/* PC 좌측 필터 패널 — 본문(목록)과 완전히 독립된 스크롤 영역.
-            spacer 로 자리만 차지(min-height 로 패널 높이만큼 확보 → footer 침범 방지),
-            실제 패널은 row(relative) 기준 absolute 로 배치하고 스크롤에 맞춰 top 을 계산해
-            "뷰포트 상단에 고정된 것처럼" 보이다가 row 하단(=footer 직전)에서 멈춤.
-            overscroll-contain 으로 사이드바 스크롤이 목록(페이지)으로 전파되지 않음(그 반대도 동일).
-            패널 높이 = min(필터 내용 실제 높이, 뷰포트 가용 높이) — 필터 미적용 등으로
-            내용이 짧으면 스크롤바 없이 내용 높이만큼만 차지. */}
+      <div className="flex items-start gap-6">
+        {/* PC 좌측 필터 패널 — 목록 스크롤과 독립적으로 헤더·GNB 아래에 고정.
+            내용이 뷰포트보다 길 때만 패널 내부에서 스크롤하고, row 하단에서 자연스럽게 멈춘다. */}
         <aside
-          className="hidden lg:block w-72 flex-shrink-0"
-          style={panelHeight != null ? { minHeight: panelHeight } : undefined}
-        />
-        <div
-          className="hidden lg:block absolute left-0 w-72 z-10 bg-white rounded-2xl border border-neutral-200 p-4
+          className="hidden lg:block sticky w-72 flex-shrink-0 bg-white rounded-2xl border border-neutral-200 p-4
             overflow-y-auto overscroll-contain"
           style={{
-            top: panelTop,
-            height: panelHeight ?? 'auto',
+            top: chromeTop,
+            maxHeight: `calc(100dvh - ${chromeTop + 24}px)`,
           }}
         >
-          <div ref={filterContentRef}>
-            <FilterPanel {...filterProps} />
-          </div>
-        </div>
+          <FilterPanel {...filterProps} />
+        </aside>
 
         {/* 메인 영역 */}
         <div className="flex-1 min-w-0">
@@ -732,7 +665,7 @@ export default function SpiritListPage() {
                 ))}
               </select>
               <div
-                className="flex rounded-lg border border-neutral-300 bg-white p-0.5"
+                className="flex rounded-sm border border-neutral-300 bg-white p-0.5"
                 role="group"
                 aria-label={t('spirit.viewMode.label')}
               >
@@ -742,7 +675,7 @@ export default function SpiritListPage() {
                   aria-label={t('spirit.viewMode.grid')}
                   aria-pressed={viewMode === 'grid'}
                   title={t('spirit.viewMode.grid')}
-                  className={`rounded-md p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2
+                  className={`rounded-sm p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2
                     focus-visible:ring-primary-400 ${
                     viewMode === 'grid'
                       ? 'bg-primary-800 text-white shadow-sm'
@@ -762,7 +695,7 @@ export default function SpiritListPage() {
                   aria-label={t('spirit.viewMode.list')}
                   aria-pressed={viewMode === 'list'}
                   title={t('spirit.viewMode.list')}
-                  className={`rounded-md p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2
+                  className={`rounded-sm p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2
                     focus-visible:ring-primary-400 ${
                     viewMode === 'list'
                       ? 'bg-primary-800 text-white shadow-sm'

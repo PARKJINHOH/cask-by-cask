@@ -134,7 +134,12 @@ function SpiritCarousel({ spirits }: { spirits: SpiritListItem[] }) {
       >
         {spirits.map((s) => (
           <div key={s.id} className="flex-shrink-0 w-32 sm:w-36 lg:w-44 pointer-events-none">
-            <SpiritCard spirit={s} imageFit="contain" />
+            <SpiritCard
+              spirit={s}
+              imageFit="contain"
+              showSecondaryName={false}
+              uniformTwoLineName
+            />
           </div>
         ))}
       </div>
