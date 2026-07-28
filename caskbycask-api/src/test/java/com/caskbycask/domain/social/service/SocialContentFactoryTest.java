@@ -239,10 +239,25 @@ class SocialContentFactoryTest {
         SocialPublishBundle aiBundle = postBundle(
                 50L, SocialSourceType.AI_NEWS_ARTICLE);
 
-        assertThat(factory.create(regularBundle, SocialPlatform.INSTAGRAM).imageLabel())
-                .isEqualTo("출시");
-        assertThat(factory.create(aiBundle, SocialPlatform.INSTAGRAM).imageLabel())
-                .isEqualTo("출시");
+        SocialPublicationContent regular =
+                factory.create(regularBundle, SocialPlatform.INSTAGRAM);
+        SocialPublicationContent ai =
+                factory.create(aiBundle, SocialPlatform.THREADS);
+
+        assertThat(regular.imageLabel()).isEqualTo("출시");
+        assertThat(ai.imageLabel()).isEqualTo("출시");
+        assertThat(regular.caption()).startsWith("""
+                신제품 출시 소식
+                자세한 내용은 CaskByCask(캐바캐) 홈페이지를 확인해주세요
+
+                본문
+                """);
+        assertThat(ai.caption()).startsWith("""
+                신제품 출시 소식
+                자세한 내용은 CaskByCask(캐바캐) 홈페이지를 확인해주세요
+
+                본문
+                """);
     }
 
     private static SocialPublishBundle reviewBundle(Long reviewId, String locale) {

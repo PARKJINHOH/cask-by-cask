@@ -1,5 +1,9 @@
 package com.caskbycask.domain.social.service;
 
+import com.caskbycask.domain.community.entity.Post;
+import com.caskbycask.domain.community.entity.PostImage;
+import com.caskbycask.domain.community.repository.PostImageRepository;
+import com.caskbycask.domain.community.repository.PostRepository;
 import com.caskbycask.domain.review.entity.Review;
 import com.caskbycask.domain.review.repository.ReviewImageRepository;
 import com.caskbycask.domain.social.entity.SocialPublishBundle;
@@ -10,11 +14,15 @@ import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.domain.spirit.entity.SpiritImage;
 import com.caskbycask.domain.spirit.repository.SpiritImageRepository;
 import lombok.RequiredArgsConstructor;
+import org.jsoup.Jsoup;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.net.URI;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +31,8 @@ public class SocialPublishMediaService {
     private final SocialPublishBundleMediaRepository mediaRepository;
     private final ReviewImageRepository reviewImageRepository;
     private final SpiritImageRepository spiritImageRepository;
+    private final PostRepository postRepository;
+    private final PostImageRepository postImageRepository;
     private final SocialImageRenderService imageRenderService;
 
     public List<SocialPublishBundleMedia> find(Long bundleId) {
@@ -64,6 +74,32 @@ public class SocialPublishMediaService {
         return find(bundle.getId());
     }
 
+    public List<SocialPublishBundleMedia> snapshotPost(SocialPublishBundle bundle, Long postId) {
+        mediaRepository.deleteByBundleId(bundle.getId());
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new IllegalStateException("소식 게시글을 찾을 수 없습니다."));
+
+        int order = 0;
+        String content = post.getContentSanitized() != null
+                ? post.getContentSanitized() : post.getContent();
+        Map<String, PostImage> uploadedImages = new HashMap<>();
+        for (PostImage image : postImageRepository.findByPostId(postId)) {
+            uploadedImages.put(image.getImageUrl(), image);
+        }
+        for (String imageUrl : Jsoup.parse(content == null ? "" : content)
+                .select("img[src]").eachAttr("src")) {
+            String sourceImageUrl = resolveEditorImageUrl(imageUrl, uploadedImages);
+            if (sourceImageUrl == null) continue;
+            mediaRepository.save(SocialPublishBundleMedia.builder()
+                    .bundle(bundle)
+                    .sortOrder(order++)
+                    .mediaRole(SocialMediaRole.EDITOR_IMAGE)
+                    .sourceImageUrl(sourceImageUrl)
+                    .build());
+        }
+        return find(bundle.getId());
+    }
+
     public void copy(SocialPublishBundle source, SocialPublishBundle target) {
         for (SocialPublishBundleMedia media : find(source.getId())) {
             mediaRepository.save(SocialPublishBundleMedia.builder()
@@ -90,6 +126,28 @@ public class SocialPublishMediaService {
                             spiritImageRepository.findBySpiritIdOrderBySortOrderAscIdAsc(spiritId);
                     return images.isEmpty() ? null : images.getFirst().getImageUrl();
                 });
+    }
+
+    private static String resolveEditorImageUrl(
+            String imageUrl, Map<String, PostImage> uploadedImages) {
+        if (imageUrl == null || imageUrl.isBlank()) return null;
+        PostImage uploaded = uploadedImages.get(imageUrl);
+        if (uploaded == null && imageUrl.startsWith("https://")) {
+            try {
+                uploaded = uploadedImages.get(URI.create(imageUrl).getPath());
+            } catch (IllegalArgumentException ignored) {
+                return null;
+            }
+        }
+        if (uploaded != null) {
+            return "/uploads/" + uploaded.getSubPath() + "/" + uploaded.getSavedFileName();
+        }
+        if (imageUrl.startsWith("/uploads/")
+                || imageUrl.startsWith("/api/social/images/")
+                || imageUrl.startsWith("https://")) {
+            return imageUrl;
+        }
+        return null;
     }
 
     private void registerRollbackDelete(String imageUrl) {

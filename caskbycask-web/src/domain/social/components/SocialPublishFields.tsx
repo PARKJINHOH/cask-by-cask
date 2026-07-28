@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import ImageEditorModal from '@/shared/components/ImageEditorModal'
@@ -20,6 +20,7 @@ interface Props {
   onRetryIdsChange?: (ids: number[]) => void
   reviewSpiritId?: number
   allowFirstPublishOnEdit?: boolean
+  contentHtml?: string
 }
 
 const PLATFORM_LABEL: Record<SocialPlatform, string> = {
@@ -37,11 +38,14 @@ export default function SocialPublishFields({
   onRetryIdsChange,
   reviewSpiritId,
   allowFirstPublishOnEdit = false,
+  contentHtml = '',
 }: Props) {
   const { t, i18n } = useTranslation()
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
   const [editingUpload, setEditingUpload] = useState<string | null>(null)
+  const directImageInputRef = useRef<HTMLInputElement>(null)
+  const editorImageUrls = useMemo(() => extractEditorImageUrls(contentHtml), [contentHtml])
   const { data: capabilities } = useQuery({
     queryKey: ['social', 'capabilities', reviewSpiritId],
     queryFn: () => socialApi.capabilities(reviewSpiritId),
@@ -59,9 +63,16 @@ export default function SocialPublishFields({
   useEffect(() => {
     const source = editingUpload
     return () => {
-      if (source) URL.revokeObjectURL(source)
+      if (source?.startsWith('blob:')) URL.revokeObjectURL(source)
     }
   }, [editingUpload])
+
+  const closeImageEditor = () => setEditingUpload(null)
+
+  const openSelectedFile = (file: File) => {
+    setUploadError('')
+    setEditingUpload(URL.createObjectURL(file))
+  }
 
   const saveEditedDirectImage = async (file: File) => {
     setUploading(true)
@@ -73,7 +84,7 @@ export default function SocialPublishFields({
         mediaMode: 'DIRECT_UPLOAD',
         directImageUrl: uploaded.imageUrl,
       })
-      setEditingUpload(null)
+      closeImageEditor()
     } catch {
       setUploadError(t('social.uploadError'))
     } finally {
@@ -237,21 +248,64 @@ export default function SocialPublishFields({
             </>
           ) : (
             <div className="space-y-2">
-              <input type="file" accept="image/jpeg,image/png,image/webp"
+              <input ref={directImageInputRef} type="file" accept="image/jpeg,image/png,image/webp"
+                className="hidden"
                 disabled={uploading}
                 onChange={(event) => {
                   const file = event.target.files?.[0]
                   event.currentTarget.value = ''
                   if (!file) return
-                  setUploadError('')
-                  setEditingUpload(URL.createObjectURL(file))
+                  openSelectedFile(file)
                 }} />
+              <button type="button" disabled={uploading}
+                onClick={() => directImageInputRef.current?.click()}
+                className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-primary-300 bg-white px-4 py-2 text-sm font-semibold text-primary-800 transition-colors hover:bg-primary-50 disabled:cursor-not-allowed disabled:opacity-50">
+                <svg aria-hidden="true" className="h-4 w-4" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <circle cx="8.5" cy="8.5" r="1.5" />
+                  <path d="m21 15-5-5L5 21" />
+                </svg>
+                {t(selection.directImageUrl ? 'social.changeImage' : 'social.selectImage')}
+              </button>
               {selection.directImageUrl && (
-                <img src={selection.directImageUrl} alt={t('social.thumbnailPreview')}
-                  className="h-40 rounded-lg border border-neutral-200 object-cover" />
+                <div className="flex items-center gap-3 rounded-lg border border-neutral-200 bg-white p-2.5">
+                  <img src={selection.directImageUrl} alt={t('social.thumbnailPreview')}
+                    className="h-28 w-24 shrink-0 rounded-md border border-neutral-200 object-cover" />
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" disabled={uploading}
+                      onClick={() => setEditingUpload(selection.directImageUrl ?? null)}
+                      className="rounded-lg border border-neutral-300 px-3 py-1.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 disabled:opacity-50">
+                      {t('social.editImage')}
+                    </button>
+                    <button type="button" disabled={uploading}
+                      onClick={() => onChange({ ...selection, directImageUrl: undefined })}
+                      className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50">
+                      {t('social.removeImage')}
+                    </button>
+                  </div>
+                </div>
               )}
               {uploading && <p className="text-xs text-neutral-500">{t('social.uploading')}</p>}
               {uploadError && <p className="text-xs text-red-600">{uploadError}</p>}
+            </div>
+          )}
+          {editorImageUrls.length > 0 && (
+            <div className="rounded-lg border border-neutral-200 bg-white p-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-semibold text-neutral-700">{t('social.editorImages')}</p>
+                <span className="text-xs tabular-nums text-neutral-400">{editorImageUrls.length}</span>
+              </div>
+              <p className="mt-1 text-xs leading-5 text-neutral-500">
+                {t('social.editorImagesHelp', { count: editorImageUrls.length })}
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {editorImageUrls.map((imageUrl, index) => (
+                  <img key={`${imageUrl}-${index}`} src={imageUrl}
+                    alt={t('social.editorImagePreview', { number: index + 1 })}
+                    className="h-16 w-16 rounded-md border border-neutral-200 object-cover" />
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -259,7 +313,7 @@ export default function SocialPublishFields({
       {editingUpload && (
         <ImageEditorModal
           open
-          onClose={() => setEditingUpload(null)}
+          onClose={closeImageEditor}
           imageSrc={editingUpload}
           onSave={saveEditedDirectImage}
           isSaving={uploading}
@@ -283,6 +337,14 @@ export default function SocialPublishFields({
       )}
     </section>
   )
+}
+
+function extractEditorImageUrls(contentHtml: string) {
+  if (!contentHtml || typeof DOMParser === 'undefined') return []
+  const document = new DOMParser().parseFromString(contentHtml, 'text/html')
+  return Array.from(document.querySelectorAll<HTMLImageElement>('img[src]'))
+    .map((image) => image.getAttribute('src')?.trim() ?? '')
+    .filter(Boolean)
 }
 
 function statusClass(state: SocialPublication) {

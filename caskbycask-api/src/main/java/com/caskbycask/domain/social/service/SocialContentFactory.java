@@ -31,6 +31,8 @@ public class SocialContentFactory {
 
     private static final int REVIEW_AROMA_LIMIT = 80;
     private static final int REVIEW_OVERALL_LIMIT = 200;
+    private static final String NEWS_SITE_NOTICE =
+            "자세한 내용은 CaskByCask(캐바캐) 홈페이지를 확인해주세요";
 
     private final ReviewRepository reviewRepository;
     private final PostRepository postRepository;
@@ -119,7 +121,7 @@ public class SocialContentFactory {
         String shortUrl = normalizedSiteUrl() + "/s/" + bundle.getShortCode();
         String hashtags = post.getHashtags().isEmpty() ? "" : "\n\n"
                 + post.getHashtags().stream().map(tag -> "#" + tag).reduce((a, b) -> a + " " + b).orElse("");
-        String prefix = post.getTitle() + "\n\n";
+        String prefix = post.getTitle() + "\n" + NEWS_SITE_NOTICE + "\n\n";
         int limit = platform == SocialPlatform.INSTAGRAM ? 2200 : 500;
         int reserve = shortUrl.length() + hashtags.length() + 3;
         String body = prefix + truncate(text, Math.max(40, limit - reserve - prefix.length()))

@@ -293,6 +293,7 @@ export default function AdminAiNewsFormPage() {
         </div>}
         <SocialPublishFields
           kind="news"
+          contentHtml={content}
           selection={socialSelection}
           onChange={setSocialSelection}
           editing={Boolean(isEdit && detail && detail.status !== 'DRAFT' && detail.status !== 'PENDING_REVIEW')}

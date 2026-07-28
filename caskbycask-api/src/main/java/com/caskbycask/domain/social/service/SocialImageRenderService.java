@@ -93,6 +93,11 @@ public class SocialImageRenderService {
         return writeJpeg(composeCovered(source, imageLabel), "direct");
     }
 
+    public String renderEditorImage(String sourceUrl) {
+        BufferedImage source = readTrustedImage(sourceUrl);
+        return writeJpeg(composeContained(source), "editor");
+    }
+
     public String renderReviewUpload(String subPath, String savedFileName) {
         if (subPath == null || !subPath.matches("reviews/\\d{6}")
                 || savedFileName == null

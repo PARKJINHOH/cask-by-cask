@@ -101,8 +101,10 @@ public class SocialPublishRequestService {
     public void requestPost(Long postId, User requester, SocialPublishSelection selection) {
         if (!requested(selection)) return;
         SocialMediaMode mode = resolveNewsMode(selection);
-        createBundle(SocialSourceType.POST, postId, SocialSourceType.POST, postId,
+        SocialPublishBundle bundle = createBundle(
+                SocialSourceType.POST, postId, SocialSourceType.POST, postId,
                 requester, selection, mode, SocialPublicationStatus.QUEUED);
+        publishMediaService.snapshotPost(bundle, postId);
     }
 
     @Transactional
@@ -152,8 +154,12 @@ public class SocialPublishRequestService {
                 selection.directImageUrl()
         );
         SocialMediaMode mode = resolveNewsMode(selection);
-        createBundle(SocialSourceType.AI_NEWS_ARTICLE, articleId, contentType, contentId,
+        SocialPublishBundle bundle = createBundle(
+                SocialSourceType.AI_NEWS_ARTICLE, articleId, contentType, contentId,
                 requester, missingSelection, mode, initialStatus);
+        if (contentType == SocialSourceType.POST && contentId != null) {
+            publishMediaService.snapshotPost(bundle, contentId);
+        }
     }
 
     @Transactional
@@ -280,6 +286,8 @@ public class SocialPublishRequestService {
                 Review review = reviewRepository.findById(contentId)
                         .orElseThrow(() -> new CustomException(ErrorCode.REVIEW_NOT_FOUND));
                 publishMediaService.snapshotReview(bundle, review);
+            } else if (contentType == SocialSourceType.POST) {
+                publishMediaService.snapshotPost(bundle, contentId);
             }
             publicationRepository.findByBundleIdOrderByPlatformAsc(bundle.getId()).stream()
                     .filter(value -> value.getStatus() == SocialPublicationStatus.WAITING_SOURCE)

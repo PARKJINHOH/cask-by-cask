@@ -162,7 +162,9 @@ class MetaSocialClientTest {
         List<String> imageUrls = List.of(
                 "https://www.caskbycask.net/cover.jpg",
                 "https://www.caskbycask.net/proof-1.jpg",
-                "https://www.caskbycask.net/proof-2.jpg");
+                "https://www.caskbycask.net/proof-2.jpg",
+                "https://www.caskbycask.net/proof-3.jpg",
+                "https://www.caskbycask.net/proof-4.jpg");
 
         client.createImageCarouselContainer(
                 SocialPlatform.INSTAGRAM, "ig-user", "ig-token", imageUrls, "instagram caption");
@@ -171,17 +173,18 @@ class MetaSocialClientTest {
                 .filter(request -> "POST".equals(request.method()))
                 .filter(request -> "/ig/v25.0/ig-user/media".equals(request.path()))
                 .toList();
-        assertThat(instagramPosts).hasSize(4);
-        assertThat(instagramPosts.subList(0, 3))
+        assertThat(instagramPosts).hasSize(6);
+        assertThat(instagramPosts.subList(0, 5))
                 .extracting(request -> request.form().get("image_url"))
                 .containsExactlyElementsOf(imageUrls);
-        assertThat(instagramPosts.subList(0, 3))
+        assertThat(instagramPosts.subList(0, 5))
                 .allSatisfy(request -> assertThat(request.form())
                         .containsEntry("is_carousel_item", "true")
                         .doesNotContainKeys("caption", "text"));
-        assertThat(instagramPosts.get(3).form())
+        assertThat(instagramPosts.get(5).form())
                 .containsEntry("media_type", "CAROUSEL")
-                .containsEntry("children", "ig-container,ig-container,ig-container")
+                .containsEntry("children",
+                        "ig-container,ig-container,ig-container,ig-container,ig-container")
                 .containsEntry("caption", "instagram caption");
 
         requests.clear();
@@ -192,19 +195,20 @@ class MetaSocialClientTest {
                 .filter(request -> "POST".equals(request.method()))
                 .filter(request -> "/threads/v1.0/threads-user/threads".equals(request.path()))
                 .toList();
-        assertThat(threadsPosts).hasSize(4);
-        assertThat(threadsPosts.subList(0, 3))
+        assertThat(threadsPosts).hasSize(6);
+        assertThat(threadsPosts.subList(0, 5))
                 .extracting(request -> request.form().get("image_url"))
                 .containsExactlyElementsOf(imageUrls);
-        assertThat(threadsPosts.subList(0, 3))
+        assertThat(threadsPosts.subList(0, 5))
                 .allSatisfy(request -> assertThat(request.form())
                         .containsEntry("is_carousel_item", "true")
                         .containsEntry("media_type", "IMAGE")
                         .doesNotContainKeys("caption", "text"));
-        assertThat(threadsPosts.get(3).form())
+        assertThat(threadsPosts.get(5).form())
                 .containsEntry("media_type", "CAROUSEL")
                 .containsEntry("children",
-                        "threads-container,threads-container,threads-container")
+                        "threads-container,threads-container,threads-container,"
+                                + "threads-container,threads-container")
                 .containsEntry("text", "threads text");
     }
 

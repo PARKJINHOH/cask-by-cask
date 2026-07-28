@@ -115,18 +115,34 @@ public class SocialPublicationProcessor {
         if (!media.isEmpty()) {
             SocialPublicationContent content = contentFactory.create(
                     publication.getBundle(), publication.getPlatform());
-            List<String> relativeImages = new ArrayList<>(media.size());
+            boolean news = publication.getBundle().getContentType()
+                    == com.caskbycask.domain.social.entity.enums.SocialSourceType.POST;
+            boolean includeNewsCover = news
+                    && media.size() < MetaSocialClient.MAX_CAROUSEL_IMAGES;
+            List<String> relativeImages = new ArrayList<>(
+                    media.size() + (includeNewsCover ? 1 : 0));
+            if (includeNewsCover) {
+                String cover = publication.getBundle().getRenderedImageUrl();
+                if (cover == null) {
+                    cover = renderBundleImage(publication, content);
+                }
+                relativeImages.add(cover);
+            }
             for (SocialPublishBundleMedia item : media) {
                 String relative = item.getRenderedImageUrl();
                 if (relative == null) {
-                    relative = item.getMediaRole() == SocialMediaRole.REPRESENTATIVE
-                            ? imageRenderService.renderReview(
+                    relative = switch (item.getMediaRole()) {
+                        case REPRESENTATIVE -> imageRenderService.renderReview(
                                     item.getSourceImageUrl(),
                                     content.imageTitle(),
                                     content.imageIdentifier(),
                                     content.imageNotice(),
-                                    content.imageLabel())
-                            : imageRenderService.renderDirect(item.getSourceImageUrl(), null);
+                                    content.imageLabel());
+                        case REVIEW_UPLOAD ->
+                                imageRenderService.renderDirect(item.getSourceImageUrl(), null);
+                        case EDITOR_IMAGE ->
+                                imageRenderService.renderEditorImage(item.getSourceImageUrl());
+                    };
                     publishMediaService.markRendered(item, relative);
                 }
                 relativeImages.add(relative);
@@ -154,7 +170,14 @@ public class SocialPublicationProcessor {
             return new Prepared(content.caption(), List.of(publicImageUrl(relativeImage)),
                     List.of(relativeImage));
         }
-        String relativeImage = switch (publication.getBundle().getMediaMode()) {
+        String relativeImage = renderBundleImage(publication, content);
+        return new Prepared(content.caption(), List.of(publicImageUrl(relativeImage)),
+                List.of(relativeImage));
+    }
+
+    private String renderBundleImage(SocialPublication publication,
+                                     SocialPublicationContent content) {
+        return switch (publication.getBundle().getMediaMode()) {
             case REVIEW_IMAGE -> imageRenderService.renderReview(
                     content.sourceImageUrl(), content.imageTitle(),
                     content.imageIdentifier(), content.imageNotice(),
@@ -167,8 +190,6 @@ public class SocialPublicationProcessor {
                             ? publication.getBundle().getThumbnailText() : content.displayTitle(),
                     content.imageLabel());
         };
-        return new Prepared(content.caption(), List.of(publicImageUrl(relativeImage)),
-                List.of(relativeImage));
     }
 
     private void verifyUncertain(SocialPublication publication) {

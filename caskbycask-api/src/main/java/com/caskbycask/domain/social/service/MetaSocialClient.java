@@ -26,6 +26,7 @@ import java.util.Optional;
 public class MetaSocialClient {
 
     private static final ZoneId SERVICE_ZONE = ZoneId.of("Asia/Seoul");
+    public static final int MAX_CAROUSEL_IMAGES = 20;
 
     private final SocialPublishingProperties properties;
     private final RestClient restClient;
@@ -115,8 +116,11 @@ public class MetaSocialClient {
     public String createImageCarouselContainer(SocialPlatform platform, String userId,
                                                String accessToken, List<String> imageUrls,
                                                String caption) {
-        if (imageUrls == null || imageUrls.size() < 2 || imageUrls.size() > 4) {
-            throw new IllegalArgumentException("Review carousel must contain between 2 and 4 images.");
+        if (imageUrls == null || imageUrls.size() < 2
+                || imageUrls.size() > MAX_CAROUSEL_IMAGES) {
+            throw new IllegalArgumentException(
+                    "Image carousel must contain between 2 and "
+                            + MAX_CAROUSEL_IMAGES + " images.");
         }
         List<String> childIds = new java.util.ArrayList<>(imageUrls.size());
         for (String imageUrl : imageUrls) {

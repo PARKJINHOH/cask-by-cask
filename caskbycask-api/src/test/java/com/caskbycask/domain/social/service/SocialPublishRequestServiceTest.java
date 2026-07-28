@@ -135,6 +135,7 @@ class SocialPublishRequestServiceTest {
         verify(publicationRepository, times(1)).save(publicationCaptor.capture());
         assertThat(publicationCaptor.getValue().getPlatform()).isEqualTo(SocialPlatform.THREADS);
         assertThat(publicationCaptor.getValue().getStatus()).isEqualTo(SocialPublicationStatus.QUEUED);
+        verify(publishMediaService).snapshotPost(bundleCaptor.getValue(), 50L);
     }
 
     @Test

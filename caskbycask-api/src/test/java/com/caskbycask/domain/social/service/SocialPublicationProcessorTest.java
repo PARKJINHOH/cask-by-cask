@@ -198,6 +198,70 @@ class SocialPublicationProcessorTest {
     }
 
     @Test
+    void newsEditorImagesFollowTheSelectedCoverInDocumentOrder() {
+        SocialPublishBundle bundle = SocialPublishBundle.builder()
+                .id(10L)
+                .originType(SocialSourceType.POST)
+                .originId(77L)
+                .contentType(SocialSourceType.POST)
+                .contentId(77L)
+                .locale("ko")
+                .consentVersion("v1")
+                .consentedAt(LocalDateTime.now())
+                .mediaMode(SocialMediaMode.DIRECT_UPLOAD)
+                .directImageUrl("/api/social/images/upload.jpg")
+                .renderedImageUrl("/api/social/images/cover.jpg")
+                .shortCode("ABC123")
+                .build();
+        SocialPublication publication = SocialPublication.builder()
+                .id(11L)
+                .bundle(bundle)
+                .platform(SocialPlatform.INSTAGRAM)
+                .status(SocialPublicationStatus.QUEUED)
+                .build();
+        givenConnectedAccount(publication);
+        when(stateService.load(11L)).thenReturn(Optional.of(publication));
+        when(stateService.claim(11L)).thenReturn(Optional.of(publication));
+        when(contentFactory.create(bundle, SocialPlatform.INSTAGRAM))
+                .thenReturn(new SocialPublicationContent(
+                        "caption", null, "/ko/community/notice/77", "News"));
+        when(publishMediaService.find(10L)).thenReturn(List.of(
+                SocialPublishBundleMedia.builder()
+                        .bundle(bundle)
+                        .sortOrder(0)
+                        .mediaRole(SocialMediaRole.EDITOR_IMAGE)
+                        .sourceImageUrl("/uploads/posts/first.webp")
+                        .renderedImageUrl("/api/social/images/first.jpg")
+                        .build(),
+                SocialPublishBundleMedia.builder()
+                        .bundle(bundle)
+                        .sortOrder(1)
+                        .mediaRole(SocialMediaRole.EDITOR_IMAGE)
+                        .sourceImageUrl("/uploads/posts/second.webp")
+                        .renderedImageUrl("/api/social/images/second.jpg")
+                        .build()));
+        List<String> publicUrls = List.of(
+                "https://www.caskbycask.net/api/social/images/cover.jpg",
+                "https://www.caskbycask.net/api/social/images/first.jpg",
+                "https://www.caskbycask.net/api/social/images/second.jpg");
+        when(metaClient.createImageCarouselContainer(
+                SocialPlatform.INSTAGRAM, "ig-user", "token", publicUrls, "caption"))
+                .thenReturn("carousel");
+        when(metaClient.publishContainer(
+                SocialPlatform.INSTAGRAM, "ig-user", "token", "carousel"))
+                .thenReturn("media");
+        when(metaClient.getPermalink(SocialPlatform.INSTAGRAM, "token", "media"))
+                .thenReturn("https://instagram.com/p/media");
+
+        processor.process(11L);
+
+        verify(metaClient).createImageCarouselContainer(
+                SocialPlatform.INSTAGRAM, "ig-user", "token", publicUrls, "caption");
+        verify(stateService).snapshot(
+                11L, "caption", publicUrls.getFirst(), "/api/social/images/cover.jpg");
+    }
+
+    @Test
     void uncertainPublishOutcomeMovesToVerificationInsteadOfRetryingPublish() {
         SocialPublication publication = queuedPublication();
         givenConnectedAccount(publication);

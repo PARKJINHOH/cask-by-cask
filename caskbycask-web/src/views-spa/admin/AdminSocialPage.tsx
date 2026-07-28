@@ -177,6 +177,7 @@ function TemplatePanel() {
   const [displayOrder, setDisplayOrder] = useState(0)
   const [uploading, setUploading] = useState(false)
   const [editingBackground, setEditingBackground] = useState<string | null>(null)
+  const [selectedFileName, setSelectedFileName] = useState('')
   const { data: templates = [] } = useQuery({
     queryKey: ['admin', 'social', 'templates'],
     queryFn: socialApi.templates,
@@ -192,6 +193,7 @@ function TemplatePanel() {
       setName('')
       setImageUrl('')
       setDisplayOrder(0)
+      setSelectedFileName('')
       queryClient.invalidateQueries({ queryKey: ['admin', 'social', 'templates'] })
       queryClient.invalidateQueries({ queryKey: ['social', 'capabilities'] })
     },
@@ -233,18 +235,54 @@ function TemplatePanel() {
             권장 해상도 1080×1350px(4:5). 이미지를 선택하면 권장 비율로 자른 뒤 JPEG로 저장합니다.
           </p>
         </div>
-        <input value={name} onChange={(event) => setName(event.target.value)} maxLength={100}
-          placeholder="배경 이름" className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm" />
-        <input type="number" min={0} max={10000} value={displayOrder}
-          onChange={(event) => setDisplayOrder(Number(event.target.value))}
-          className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm" />
-        <input type="file" accept="image/jpeg,image/png,image/webp" disabled={uploading}
-          onChange={(event) => {
-            const file = event.target.files?.[0]
-            event.currentTarget.value = ''
-            if (!file) return
-            setEditingBackground(URL.createObjectURL(file))
-          }} />
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-semibold text-neutral-700">배경 이름</span>
+          <input value={name} onChange={(event) => setName(event.target.value)} maxLength={100}
+            placeholder="예: 기본 앰버 배경"
+            className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm" />
+          <span className="mt-1.5 block text-xs leading-5 text-neutral-500">
+            썸네일 선택 화면에서 배경을 구분할 관리용 이름입니다. SNS 게시물에는 표시되지 않습니다.
+          </span>
+        </label>
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-semibold text-neutral-700">표시 순서</span>
+          <input type="number" min={0} max={10000} value={displayOrder}
+            onChange={(event) => setDisplayOrder(Number(event.target.value))}
+            className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm" />
+          <span className="mt-1.5 block text-xs leading-5 text-neutral-500">
+            숫자가 작을수록 썸네일 배경 목록 앞에 표시됩니다. 입력 범위는 0~10,000입니다.
+          </span>
+        </label>
+        <div>
+          <p className="mb-1.5 text-xs font-semibold text-neutral-700">배경 이미지</p>
+          <div className="flex min-w-0 items-center overflow-hidden rounded-lg border border-neutral-300 bg-white">
+            <input id="social-template-background-file" type="file"
+              accept="image/jpeg,image/png,image/webp" disabled={uploading} className="sr-only"
+              onChange={(event) => {
+                const file = event.target.files?.[0]
+                event.currentTarget.value = ''
+                if (!file) return
+                setSelectedFileName(file.name)
+                setEditingBackground(URL.createObjectURL(file))
+              }} />
+            <label htmlFor="social-template-background-file"
+              className={`shrink-0 border-r border-neutral-300 px-3 py-2 text-sm font-semibold transition-colors ${
+                uploading
+                  ? 'cursor-not-allowed bg-neutral-100 text-neutral-400'
+                  : 'cursor-pointer bg-primary-50 text-primary-800 hover:bg-primary-100'
+              }`}>
+              {uploading ? '업로드 중...' : '파일 선택'}
+            </label>
+            <span className={`min-w-0 flex-1 truncate px-3 py-2 text-sm ${
+              selectedFileName || imageUrl ? 'text-neutral-700' : 'text-neutral-400'
+            }`} title={selectedFileName || undefined}>
+              {selectedFileName || (imageUrl ? '이미지 업로드 완료' : '선택된 파일 없음')}
+            </span>
+          </div>
+          <p className="mt-1.5 text-xs leading-5 text-neutral-500">
+            JPG, PNG, WebP 파일을 선택할 수 있으며, 선택 후 편집기에서 4:5 비율로 자릅니다.
+          </p>
+        </div>
         {imageUrl && <img src={imageUrl} alt="" className="mx-auto aspect-[4/5] w-40 rounded-lg object-cover" />}
         <button type="button" disabled={!name.trim() || !imageUrl || save.isPending} onClick={() => save.mutate()}
           className="w-full rounded-lg bg-primary-800 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40">
@@ -253,7 +291,10 @@ function TemplatePanel() {
         {editingBackground && (
           <ImageEditorModal
             open
-            onClose={() => setEditingBackground(null)}
+            onClose={() => {
+              setEditingBackground(null)
+              setSelectedFileName('')
+            }}
             imageSrc={editingBackground}
             onSave={saveEditedBackground}
             isSaving={uploading}

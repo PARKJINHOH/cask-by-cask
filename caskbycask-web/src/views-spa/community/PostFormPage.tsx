@@ -553,6 +553,7 @@ export default function PostFormPage() {
           <>
             <SocialPublishFields
               kind="news"
+              contentHtml={content}
               selection={socialSelection}
               onChange={(next) => {
                 setSocialSelection(next)
