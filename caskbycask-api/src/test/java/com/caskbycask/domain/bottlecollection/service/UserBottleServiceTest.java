@@ -50,13 +50,13 @@ class UserBottleServiceTest {
         UserBottleRequest req = new UserBottleRequest(
             null, "글렌드로낙 18년", SpiritCategory.WHISKY,
             LocalDate.of(2025, 12, 5), null, null,
-            220000, "대만-가품양주", BottleStatus.OPENED, true, null
+            220000, "대만-가품양주", 700, BottleStatus.OPENED, true, null
         );
 
         UserBottle saved = UserBottle.builder()
             .user(user).spiritNameText("글렌드로낙 18년")
             .category(SpiritCategory.WHISKY).purchaseDate(LocalDate.of(2025, 12, 5))
-            .price(220000).store("대만-가품양주").status(BottleStatus.OPENED)
+            .price(220000).store("대만-가품양주").volumeMl(700).status(BottleStatus.OPENED)
             .isPublic(true).build();
         ReflectionTestUtils.setField(saved, "id", 1L);
         given(userBottleRepository.save(any())).willReturn(saved);
@@ -64,6 +64,7 @@ class UserBottleServiceTest {
         UserBottleResponse resp = userBottleService.createBottle(1L, req);
 
         assertThat(resp.spiritNameText()).isEqualTo("글렌드로낙 18년");
+        assertThat(resp.volumeMl()).isEqualTo(700);
         assertThat(resp.isPublic()).isTrue();
         then(userBottleRepository).should().save(any(UserBottle.class));
     }

@@ -73,6 +73,10 @@ public class UserBottle extends BaseTimeEntity {
     @Comment("구매처")
     private String store;
 
+    @Column(name = "volume_ml")
+    @Comment("보틀 용량(ml)")
+    private Integer volumeMl;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     @Comment("개봉 상태 — UNOPENED/OPENED")
@@ -95,7 +99,7 @@ public class UserBottle extends BaseTimeEntity {
 
     public void update(Spirit spirit, String spiritNameText, SpiritCategory category,
                        LocalDate purchaseDate, String batch, String bottlingYear,
-                       Integer price, String store, BottleStatus status,
+                       Integer price, String store, Integer volumeMl, BottleStatus status,
                        Boolean isPublic, String memo) {
         this.spirit = spirit;
         this.spiritNameText = spiritNameText;
@@ -105,6 +109,7 @@ public class UserBottle extends BaseTimeEntity {
         this.bottlingYear = bottlingYear;
         this.price = price;
         this.store = store;
+        this.volumeMl = volumeMl;
         this.status = status;
         this.isPublic = isPublic;
         this.memo = memo;

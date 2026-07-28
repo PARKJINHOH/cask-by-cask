@@ -29,6 +29,7 @@ export interface UserBottle {
   bottlingYear: string | null;
   price: number | null;
   store: string | null;
+  volumeMl: number | null;
   status: BottleStatus;
   isPublic: boolean;
   memo: string | null;
@@ -81,6 +82,7 @@ export interface UserBottleRequest {
   bottlingYear?: string;
   price?: number | null;
   store?: string | null;
+  volumeMl?: number | null;
   status: BottleStatus;
   isPublic: boolean;
   memo?: string;

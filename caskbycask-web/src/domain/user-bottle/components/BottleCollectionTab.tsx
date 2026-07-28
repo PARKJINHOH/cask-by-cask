@@ -20,8 +20,7 @@ export function BottleCollectionTab() {
   const { t, i18n } = useTranslation();
   const [category, setCategory] = useState<SpiritCategory | undefined>();
   const [status, setStatus] = useState<BottleStatus | undefined>();
-  const [startDate, setStartDate] = useState<string | undefined>();
-  const [endDate, setEndDate] = useState<string | undefined>();
+  const [year, setYear] = useState<number | undefined>();
   const [view, setView] = useState<'table' | 'card'>('table');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<UserBottle | undefined>();
@@ -34,8 +33,7 @@ export function BottleCollectionTab() {
   const { data, isLoading } = useMyBottles({
     category,
     status,
-    startDate,
-    endDate,
+    year,
     page,
     size: 10,
     sortKey,
@@ -69,8 +67,7 @@ export function BottleCollectionTab() {
   const handleReset = () => {
     setCategory(undefined);
     setStatus(undefined);
-    setStartDate(undefined);
-    setEndDate(undefined);
+    setYear(undefined);
     setPage(0);
   };
 
@@ -84,18 +81,6 @@ export function BottleCollectionTab() {
     setSortDir('ASC');
   };
 
-  const handleStartDateChange = (value?: string) => {
-    setPage(0);
-    setStartDate(value);
-    if (value && endDate && value > endDate) setEndDate(value);
-  };
-
-  const handleEndDateChange = (value?: string) => {
-    setPage(0);
-    setEndDate(value);
-    if (value && startDate && value < startDate) setStartDate(value);
-  };
-
   if (isLoading) return <div className="py-8 text-center text-neutral-400">{t('common.loading')}</div>;
 
   return (
@@ -103,11 +88,12 @@ export function BottleCollectionTab() {
       {data?.stats && <BottleStats stats={data.stats} />}
       <BottleFilterBar
         category={category} status={status}
-        startDate={startDate} endDate={endDate}
+        year={year}
+        availableYears={data?.purchaseYears ?? []}
         view={view}
         onCategoryChange={(value) => { setPage(0); setCategory(value); }}
         onStatusChange={(value) => { setPage(0); setStatus(value); }}
-        onStartDateChange={handleStartDateChange} onEndDateChange={handleEndDateChange}
+        onYearChange={(value) => { setPage(0); setYear(value); }}
         onReset={handleReset}
         onViewChange={setView}
         onAdd={() => { setEditing(undefined); setModalOpen(true); }}

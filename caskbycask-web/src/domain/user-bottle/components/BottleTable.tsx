@@ -49,6 +49,7 @@ export function BottleTable({
     { key: 'purchaseDate', sortKey: 'PURCHASE_DATE' },
     { key: 'name', sortKey: 'NAME' },
     { key: 'batch' },
+    { key: 'volume' },
     { key: 'price', sortKey: 'PRICE' },
     { key: 'status', sortKey: 'STATUS' },
   ];
@@ -141,6 +142,9 @@ export function BottleTable({
                 </button>
               </td>
               <td className="px-3 py-2 text-neutral-400 max-w-[160px] truncate" title={b.batch ?? undefined}>{b.batch ?? '-'}</td>
+              <td className="px-3 py-2 text-right whitespace-nowrap text-xs text-neutral-600">
+                {b.volumeMl != null ? `${b.volumeMl.toLocaleString()} ml` : '-'}
+              </td>
               <td className="px-3 py-2 text-right whitespace-nowrap text-xs text-neutral-600">
                 {b.price != null && b.price > 0 ? money.format(b.price) : '-'}
               </td>

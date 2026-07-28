@@ -43,12 +43,12 @@ export function BottleList({
   }
 
   return (
-    <>
+    <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
       {/* PC: view 상태 따름 */}
       <div className="hidden md:block">
         {view === 'table'
           ? <BottleTable {...shared} sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
-          : <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
+          : <div className="grid grid-cols-2 gap-4 p-4 lg:grid-cols-3">
               {bottles.map(b => <BottleCard key={b.id} bottle={b} editable={editable}
                 onDetail={onDetail} onDelete={onDelete}
                 onToggleStatus={onToggleStatus} onTogglePublic={onTogglePublic} />)}
@@ -56,11 +56,11 @@ export function BottleList({
         }
       </div>
       {/* 모바일: 카드 고정 */}
-      <div className="md:hidden grid grid-cols-1 gap-3 pt-2">
+      <div className="grid grid-cols-1 gap-3 p-3 md:hidden">
         {bottles.map(b => <BottleCard key={b.id} bottle={b} editable={editable}
           onDetail={onDetail} onDelete={onDelete}
           onToggleStatus={onToggleStatus} onTogglePublic={onTogglePublic} />)}
       </div>
-    </>
+    </div>
   );
 }

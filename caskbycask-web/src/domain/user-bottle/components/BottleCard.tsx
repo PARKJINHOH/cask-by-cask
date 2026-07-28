@@ -41,6 +41,11 @@ export function BottleCard({ bottle: b, editable, onDetail, onDelete, onToggleSt
         {name}
       </h3>
       {b.batch && <p className="text-xs text-neutral-400 mt-0.5 truncate" title={b.batch}>{b.batch}</p>}
+      {b.volumeMl != null && (
+        <p className="mt-1 text-xs text-neutral-500">
+          {t('collection.table.volume')} {b.volumeMl.toLocaleString()} ml
+        </p>
+      )}
       <div className="flex items-center justify-between gap-3 mt-2">
         <span className="text-sm font-medium whitespace-nowrap">
           {b.price != null && b.price > 0 ? money.format(b.price) : '-'}

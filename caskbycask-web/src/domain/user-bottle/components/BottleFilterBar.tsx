@@ -7,14 +7,13 @@ const STATUSES: (BottleStatus | 'ALL')[] = ['ALL', 'OPENED', 'UNOPENED'];
 interface Props {
   category?: SpiritCategory;
   status?: BottleStatus;
-  startDate?: string;
-  endDate?: string;
-  onStartDateChange?: (v?: string) => void;
-  onEndDateChange?: (v?: string) => void;
+  year?: number;
+  availableYears?: number[];
+  onYearChange?: (v?: number) => void;
   onReset?: () => void;
   view: 'table' | 'card';
   onCategoryChange: (v?: SpiritCategory) => void;
-  onStatusChange: (v?: BottleStatus) => void;
+  onStatusChange?: (v?: BottleStatus) => void;
   onViewChange: (v: 'table' | 'card') => void;
   onAdd?: () => void;
 }
@@ -22,120 +21,107 @@ interface Props {
 export function BottleFilterBar({
   category,
   status,
-  startDate,
-  endDate,
+  year,
+  availableYears = [],
   view,
   onCategoryChange,
   onStatusChange,
-  onStartDateChange,
-  onEndDateChange,
+  onYearChange,
   onReset,
   onViewChange,
   onAdd,
 }: Props) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
+  const hasFirstRow = onYearChange || onStatusChange || onReset || onAdd;
 
   return (
-    <div className="flex flex-col gap-2 py-2 lg:flex-row lg:items-center lg:justify-between">
-      <div className="flex gap-1 flex-wrap">
-        {CATS.map(c => (
-          <button
-            key={c}
-            onClick={() => onCategoryChange(c === 'ALL' ? undefined : c)}
-            className={`h-9 px-3 rounded-full text-sm transition-colors ${
-              (c === 'ALL' && !category) || c === category
-                ? 'bg-amber-600 text-white'
-                : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
-            }`}
-          >
-            {c === 'ALL' ? t('collection.filter.all') : t(`collection.filter.${c}`)}
-          </button>
-        ))}
-      </div>
+    <div className="space-y-3 rounded-2xl border border-neutral-200 bg-white p-3 sm:p-4">
+      {hasFirstRow && (
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            {onYearChange && (
+              <select
+                value={year ?? 'ALL'}
+                onChange={e => onYearChange(e.target.value === 'ALL' ? undefined : Number(e.target.value))}
+                className="h-9 min-w-28 rounded-lg border border-neutral-300 bg-white px-2 text-sm text-neutral-700"
+                aria-label={t('collection.filter.year')}
+              >
+                <option value="ALL">{t('collection.filter.allYears')}</option>
+                {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+            )}
 
-      <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-        {onReset && (
-          <button
-            onClick={onReset}
-            title={t('collection.filter.reset')}
-            aria-label={t('collection.filter.reset')}
-            className="h-9 w-9 flex items-center justify-center border border-neutral-300 rounded hover:bg-neutral-50 transition-colors text-neutral-500"
-            type="button"
-          >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M3 12a9 9 0 1 0 3-6.708M3 3v6h6"
-              />
-            </svg>
-          </button>
-        )}
+            {onStatusChange && (
+              <select
+                value={status ?? 'ALL'}
+                onChange={e => onStatusChange(e.target.value === 'ALL' ? undefined : e.target.value as BottleStatus)}
+                className="h-9 min-w-24 rounded-lg border border-neutral-300 bg-white px-2 text-sm text-neutral-700"
+                aria-label={t('collection.form.status')}
+              >
+                {STATUSES.map(s => (
+                  <option key={s} value={s}>
+                    {s === 'ALL' ? t('collection.filter.allStatuses') : t(`collection.status.${s}`)}
+                  </option>
+                ))}
+              </select>
+            )}
 
-        {onStartDateChange && onEndDateChange && (
-          <div className="flex items-center gap-1">
-            <input
-              type="date"
-              max={endDate ?? '9999-12-31'}
-              lang={i18n.language}
-              value={startDate ?? ''}
-              onChange={e => onStartDateChange(e.target.value || undefined)}
-              placeholder={t('collection.filter.startDate')}
-              className="h-9 text-sm border border-neutral-300 rounded px-2 w-[130px]"
-            />
-            <span className="text-neutral-400 text-sm">{t('collection.filter.dateSeparator')}</span>
-            <input
-              type="date"
-              max="9999-12-31"
-              min={startDate}
-              lang={i18n.language}
-              value={endDate ?? ''}
-              onChange={e => onEndDateChange(e.target.value || undefined)}
-              placeholder={t('collection.filter.endDate')}
-              className="h-9 text-sm border border-neutral-300 rounded px-2 w-[130px]"
-            />
+            {onReset && (
+              <button
+                onClick={onReset}
+                title={t('collection.filter.reset')}
+                aria-label={t('collection.filter.reset')}
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-300 text-neutral-500 transition-colors hover:bg-neutral-50"
+                type="button"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12a9 9 0 1 0 3-6.708M3 3v6h6" />
+                </svg>
+              </button>
+            )}
           </div>
-        )}
 
-        <select
-          value={status ?? 'ALL'}
-          onChange={e => onStatusChange(e.target.value === 'ALL' ? undefined : e.target.value as BottleStatus)}
-          className="h-9 min-w-24 text-sm border border-neutral-300 rounded px-2"
-        >
-          {STATUSES.map(s => (
-            <option key={s} value={s}>
-              {s === 'ALL' ? t('collection.filter.all') : t(`collection.status.${s}`)}
-            </option>
+          {onAdd && (
+            <button
+              onClick={onAdd}
+              className="h-9 shrink-0 whitespace-nowrap rounded-lg bg-amber-600 px-3 text-sm text-white transition-colors hover:bg-amber-700"
+            >
+              {t('collection.addBottle')}
+            </button>
+          )}
+        </div>
+      )}
+
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-wrap gap-1">
+          {CATS.map(c => (
+            <button
+              key={c}
+              onClick={() => onCategoryChange(c === 'ALL' ? undefined : c)}
+              className={`h-9 rounded-full px-3 text-sm transition-colors ${
+                (c === 'ALL' && !category) || c === category
+                  ? 'bg-amber-600 text-white'
+                  : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+              }`}
+            >
+              {c === 'ALL' ? t('collection.filter.all') : t(`collection.filter.${c}`)}
+            </button>
           ))}
-        </select>
+        </div>
 
-        <div className="hidden md:flex gap-1">
+        <div className="hidden shrink-0 gap-1 md:flex">
           {(['table', 'card'] as const).map(v => (
             <button
               key={v}
               onClick={() => onViewChange(v)}
-              className={`h-9 px-3 text-sm rounded ${view === v ? 'bg-amber-600 text-white' : 'bg-neutral-100 text-neutral-600'}`}
+              className={`h-9 rounded-lg px-3 text-sm ${
+                view === v ? 'bg-amber-600 text-white' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+              }`}
             >
               {t(`collection.view.${v}`)}
             </button>
           ))}
         </div>
-
-        {onAdd && (
-          <button
-            onClick={onAdd}
-            className="h-9 px-3 bg-amber-600 text-white text-sm rounded hover:bg-amber-700 transition-colors whitespace-nowrap"
-          >
-            {t('collection.addBottle')}
-          </button>
-        )}
       </div>
     </div>
   );

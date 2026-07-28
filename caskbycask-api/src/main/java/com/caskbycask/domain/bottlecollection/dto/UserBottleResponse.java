@@ -31,6 +31,7 @@ public record UserBottleResponse(
     String bottlingYear,
     Integer price,
     String store,
+    Integer volumeMl,
     BottleStatus status,
     Boolean isPublic,
     String memo,
@@ -72,7 +73,7 @@ public record UserBottleResponse(
                     : null,
             b.getSpiritNameText(),
             b.getCategory(), b.getPurchaseDate(), b.getBatch(), b.getBottlingYear(),
-            b.getPrice(), b.getStore(), b.getStatus(), b.getIsPublic(),
+            b.getPrice(), b.getStore(), b.getVolumeMl(), b.getStatus(), b.getIsPublic(),
             b.getMemo(), images, urls, b.getCreatedAt()
         );
     }

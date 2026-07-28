@@ -43,6 +43,7 @@ public class UserBottleService {
             .category(req.category()).purchaseDate(req.purchaseDate())
             .batch(normalizeText(req.batch())).bottlingYear(normalizeText(req.bottlingYear()))
             .price(req.price()).store(normalizeText(req.store()))
+            .volumeMl(req.volumeMl())
             .status(req.status()).isPublic(Boolean.TRUE.equals(req.isPublic())).memo(normalizeText(req.memo()))
             .build();
 
@@ -98,7 +99,8 @@ public class UserBottleService {
         validateBottleName(spirit, spiritNameText);
         bottle.update(spirit, spiritNameText, req.category(),
             req.purchaseDate(), normalizeText(req.batch()), normalizeText(req.bottlingYear()),
-            req.price(), normalizeText(req.store()), req.status(), Boolean.TRUE.equals(req.isPublic()), normalizeText(req.memo()));
+            req.price(), normalizeText(req.store()), req.volumeMl(), req.status(),
+            Boolean.TRUE.equals(req.isPublic()), normalizeText(req.memo()));
         return UserBottleResponse.from(bottle);
     }
 

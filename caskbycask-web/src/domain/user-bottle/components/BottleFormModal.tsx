@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { UserBottle, UserBottleImage, UserBottleRequest, SpiritCategory, BottleStatus } from '../types/userBottle.types';
+import type { UserBottle, UserBottleImage, UserBottleRequest, SpiritCategory } from '../types/userBottle.types';
 import { useCreateBottle, useUpdateBottle, useUploadBottleImage, useReplaceBottleImage, useDeleteBottleImage } from '../hooks/useUserBottle';
 import axiosInstance from '@/shared/api/axiosInstance';
 import { getLocalizedSpiritListNames } from '@/domain/spirit/utils/spiritDisplayName';
@@ -34,6 +34,7 @@ const defaultForm = (): UserBottleRequest => ({
   purchaseDate: null,
   price: null,
   store: null,
+  volumeMl: null,
   status: 'UNOPENED',
   isPublic: false,
 });
@@ -92,6 +93,7 @@ export function BottleFormModal({ open, onClose, editing }: Props) {
         bottlingYear: editing.bottlingYear ?? undefined,
         price: editing.price ?? null,
         store: editing.store ?? null,
+        volumeMl: editing.volumeMl ?? null,
         status: editing.status,
         isPublic: editing.isPublic,
         memo: editing.memo ?? undefined,
@@ -258,15 +260,16 @@ export function BottleFormModal({ open, onClose, editing }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white flex items-center justify-between px-5 py-4 border-b z-10">
-          <h2 className="font-bold text-neutral-900 text-base">
-            {editing ? t('collection.form.title.edit') : t('collection.form.title.add')}
-          </h2>
-          <button type="button" onClick={handleClose} className="text-neutral-400 hover:text-neutral-600 text-xl leading-none">x</button>
-        </div>
+      <div className="w-full max-w-md overflow-hidden rounded-xl bg-white">
+        <div className="max-h-[90vh] overflow-y-auto">
+          <div className="sticky top-0 bg-white flex items-center justify-between px-5 py-4 border-b z-10">
+            <h2 className="font-bold text-neutral-900 text-base">
+              {editing ? t('collection.form.title.edit') : t('collection.form.title.add')}
+            </h2>
+            <button type="button" onClick={handleClose} className="text-neutral-400 hover:text-neutral-600 text-xl leading-none">x</button>
+          </div>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          <form onSubmit={handleSubmit} className="p-5 space-y-4">
           <RequiredFieldsNotice />
           <div>
             <FormFieldLabel required className="mb-1">{t('collection.form.spiritName')}</FormFieldLabel>
@@ -379,21 +382,51 @@ export function BottleFormModal({ open, onClose, editing }: Props) {
             </div>
           </div>
 
-          <div>
-            <FieldLabel>{t('collection.form.status')}</FieldLabel>
-            <div className="flex gap-4">
-              {(['UNOPENED', 'OPENED'] as BottleStatus[]).map((s) => (
-                <label key={s} className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="status"
-                    value={s}
-                    checked={form.status === s}
-                    onChange={() => setForm((f) => ({ ...f, status: s }))}
-                  />
-                  <span className="text-sm">{t(`collection.status.${s}`)}</span>
-                </label>
-              ))}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <FieldLabel>{t('collection.form.status')}</FieldLabel>
+              <div className="flex h-[38px] items-center justify-between rounded-lg border border-neutral-300 px-3">
+                <span className="text-sm text-neutral-700">{t(`collection.status.${form.status}`)}</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={form.status === 'OPENED'}
+                  aria-label={t('collection.form.status')}
+                  onClick={() => setForm((f) => ({
+                    ...f,
+                    status: f.status === 'OPENED' ? 'UNOPENED' : 'OPENED',
+                  }))}
+                  className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors ${
+                    form.status === 'OPENED' ? 'bg-amber-500' : 'bg-neutral-300'
+                  }`}
+                >
+                  <span className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                    form.status === 'OPENED' ? 'translate-x-5' : ''
+                  }`} />
+                </button>
+              </div>
+            </div>
+            <div>
+              <FieldLabel>{t('collection.form.volume')}</FieldLabel>
+              <div className="relative">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={6}
+                  value={form.volumeMl ?? ''}
+                  placeholder="700"
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/\D/g, '').slice(0, 6);
+                    setForm((f) => ({
+                      ...f,
+                      volumeMl: digits === '' ? null : Math.min(Number(digits), 100000),
+                    }));
+                  }}
+                  className="w-full rounded-lg border border-neutral-300 py-2 pl-3 pr-9 text-sm"
+                />
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-400">ml</span>
+              </div>
             </div>
           </div>
 
@@ -470,7 +503,8 @@ export function BottleFormModal({ open, onClose, editing }: Props) {
               {t('collection.form.save')}
             </button>
           </div>
-        </form>
+          </form>
+        </div>
       </div>
 
       {selectedPending && (

@@ -72,6 +72,10 @@ export function BottleDetailModal({ bottle, open, editable, onClose, onEdit, onD
             <DetailRow label={t('collection.detail.store')} value={b.store || noData} />
             <DetailRow label={t('collection.detail.batch')} value={b.batch || noData} />
             <DetailRow label={t('collection.detail.bottlingYear')} value={b.bottlingYear || noData} />
+            <DetailRow
+              label={t('collection.detail.volume')}
+              value={b.volumeMl != null ? `${b.volumeMl.toLocaleString()} ml` : noData}
+            />
             <DetailRow label={t('collection.detail.status')}>
               <span className={`text-xs px-2 py-0.5 rounded-full ${
                 b.status === 'OPENED' ? 'bg-green-100 text-green-700' : 'bg-neutral-200 text-neutral-500'

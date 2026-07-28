@@ -26,8 +26,8 @@ export default function UserBottlePublicPage() {
       </h1>
       {data?.stats && <BottleStats stats={data.stats} />}
       <BottleFilterBar
-        category={category} status={undefined} view={view}
-        onCategoryChange={setCategory} onStatusChange={() => {}} onViewChange={setView}
+        category={category} view={view}
+        onCategoryChange={setCategory} onViewChange={setView}
       />
       <BottleList
         bottles={data?.bottles ?? []} view={view} editable={false}
