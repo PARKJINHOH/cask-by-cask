@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQueries } from '@tanstack/react-query'
@@ -922,7 +922,6 @@ export default function SpiritDetailPage() {
   const [lightboxIdx, setLightboxIdx]   = useState(-1)
   const [reviewVariantFilterId, setReviewVariantFilterId] = useState<number | null>(null)
   const [priceVariantId, setPriceVariantId] = useState<number | null>(null)
-  const topVariantSelectionRef = useRef<number | null>(null)
 
   const { data: spirit, isLoading } = useSpiritDetail(spiritId)
   const { data: spiritSeo } = useSpiritSeo(spiritId)
@@ -990,23 +989,14 @@ export default function SpiritDetailPage() {
   }, [spiritSeo, isEn, location.pathname, navigate])
 
   // 변형(다른 배치) 간 이동 시 갤러리·탭 상태 초기화
+  // 리뷰 배치/병입 필터는 항상 "전체"로 초기화한다.
   useEffect(() => {
-    const syncedReviewFilterId = topVariantSelectionRef.current === spiritId ? spiritId : null
-    topVariantSelectionRef.current = null
     setSelectedImg(0)
     setActiveTab('reviews')
     setLightboxIdx(-1)
-    setReviewVariantFilterId(syncedReviewFilterId)
+    setReviewVariantFilterId(null)
     setPriceVariantId(null)
   }, [spiritId])
-
-  // 에디션 직접 진입은 해당 에디션 리뷰를 기본값으로 사용한다.
-  // 정규 주류는 null을 유지해 기존 규칙대로 전체 에디션 집계를 보여준다.
-  useEffect(() => {
-    if (spirit?.parentId != null) {
-      setReviewVariantFilterId(spirit.id)
-    }
-  }, [spirit?.id, spirit?.parentId])
 
   if (isLoading) return <Spinner fullscreen />
 
@@ -1219,8 +1209,6 @@ export default function SpiritDetailPage() {
                   onChange={(e) => {
                     const targetId = Number(e.target.value)
                     const targetPath = localizedSeoPath(variantSeoById.get(targetId), isEn)
-                    topVariantSelectionRef.current = targetId
-                    setReviewVariantFilterId(targetId)
                     navigate(targetPath ?? `/spirits/${targetId}`)
                   }}
                   className="text-xs font-semibold text-neutral-700 bg-white border border-neutral-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-pointer min-w-[200px] shadow-sm hover:border-neutral-300 transition-colors"
