@@ -1,5 +1,6 @@
 import { Metadata } from 'next'
 import {
+  SPIRIT_CATEGORIES,
   SPIRIT_CATEGORY_META,
   isSpiritSeoCategory,
   type SpiritSeoCategory,
@@ -252,7 +253,7 @@ export interface SeoSnapshotItem {
 }
 
 export interface SeoSnapshotData {
-  kind: 'spirit' | 'spirits-list' | 'community' | 'byob' | 'board-list' | 'notice' | 'tier-list'
+  kind: 'home' | 'spirit' | 'spirits-list' | 'community' | 'byob' | 'board-list' | 'notice' | 'tier-list'
   lang: 'ko' | 'en'
   eyebrow: string
   title: string
@@ -265,6 +266,8 @@ export interface SeoSnapshotData {
   sourceUrls?: string[]
   hashtags?: string[]
   items?: SeoSnapshotItem[]
+  /** 목록 섹션의 제목. 주류 목록과 게시글 목록이 같은 문구를 쓰지 않도록 경로별로 지정한다. */
+  itemsHeading?: string
   links: Array<{ label: string; href: string }>
 }
 
@@ -991,6 +994,11 @@ export async function getBoardListSeoSnapshot(
   }
 
   const countLabel = resolvedLang === 'en' ? 'Public posts' : '공개 글'
+  const itemsHeading = board === 'notices'
+    ? (resolvedLang === 'en' ? 'Notices' : '공지사항 목록')
+    : board === 'byob'
+      ? (resolvedLang === 'en' ? 'BYOB gatherings' : 'BYOB 모임 목록')
+      : (resolvedLang === 'en' ? 'Latest public posts' : '최신 공개 글')
   return {
     kind: 'board-list',
     lang: resolvedLang,
@@ -1003,6 +1011,7 @@ export async function getBoardListSeoSnapshot(
       : [{ label: countLabel, value: totalElements.toLocaleString(resolvedLang === 'en' ? 'en-US' : 'ko-KR') }],
     details: [],
     items,
+    itemsHeading,
     links: [
       { label: resolvedLang === 'en' ? 'Home' : '홈', href: '/ko' },
       { label: config.eyebrow[resolvedLang], href: canonicalPath },
@@ -1313,6 +1322,455 @@ export function getDefaultMetadata(
 }
 
 /**
+ * 라우트 키 단위 기본 metadata 대신, 엔티티 정보를 반영한 metadata 를 반환한다.
+ *
+ * `DEFAULT_ROUTE_METADATA` 는 라우트 키(`producers`, `users`, `price-tracker` 등) 단위이므로
+ * 그대로 쓰면 생산자·리뷰·사용자 페이지 수백 개가 동일한 title/description 을 갖는다.
+ * 검색엔진은 이를 중복으로 판단해 대표 1개만 남기고, 노출돼도 제목이 내용을 설명하지 못해
+ * 클릭률이 떨어진다. 여기서 경로별로 엔티티 이름을 반영한다.
+ *
+ * 엔티티 조회가 일시적으로 실패하면 기존 라우트 기본값으로 되돌아간다.
+ * (장애 중 색인 가능 상태를 유지하기 위한 안전한 기본값)
+ */
+export async function getPublicRouteMetadata(
+  lang: 'ko' | 'en' | null,
+  canonicalPath?: string,
+): Promise<Metadata> {
+  const segments = (canonicalPath ?? '').split('/').filter(Boolean)
+  const fallback = () => getDefaultMetadata(lang, canonicalPath)
+
+  if (segments[0] === 'reviews' && segments[1]) {
+    return (await getPublicReviewMetadata(segments[1], lang)) ?? fallback()
+  }
+  if (segments[0] === 'producers' && segments[1]) {
+    return (await getProducerMetadata(segments[1], lang)) ?? fallback()
+  }
+  if (segments[0] === 'price-tracker' && segments[1] === 'spirits' && segments[2]) {
+    return (await getSpiritPriceMetadata(segments[2], lang)) ?? fallback()
+  }
+  if (segments[0] === 'users' && segments[1] && segments[2]) {
+    return (await getUserPublicMetadata(segments[1], segments[2], lang)) ?? fallback()
+  }
+  if (segments[0] === 'taste-trees' && segments[1] === 't' && segments[2]) {
+    return (await getSharedTasteTreeMetadata(segments[2], lang)) ?? fallback()
+  }
+  return fallback()
+}
+
+interface PublicReviewResponse {
+  id: number
+  spiritId: number
+  displayNameKo: string
+  displayNameEn: string | null
+  canonicalPathKo: string | null
+  canonicalPathEn: string | null
+  imageUrl: string | null
+  nickname: string | null
+  totalScore: number | string | null
+  noseNote: string | null
+  tasteNote: string | null
+  finishNote: string | null
+  comment: string | null
+  createdAt: string | null
+}
+
+/**
+ * 공개 리뷰 상세.
+ *
+ * 리뷰 본문은 사용자가 한국어로 작성하므로 게시글과 동일하게 한국어 원문으로 신호를 통합한다.
+ * (영문 alternate 를 내보내면 같은 한국어 콘텐츠가 두 URL 로 색인되는 잘못된 신호가 된다)
+ * SNS 짧은 링크(`/s/{code}`)의 착지 경로이므로 OG 태그도 함께 채운다.
+ */
+async function getPublicReviewMetadata(
+  id: string,
+  lang: 'ko' | 'en' | null,
+): Promise<Metadata | null> {
+  const review = await fetchApiData<PublicReviewResponse>(`/api/public/reviews/${id}`, 300)
+  if (!review) return null
+
+  const isEn = normalizeLang(lang) === 'en'
+  const spiritName = isEn
+    ? (review.displayNameEn || review.displayNameKo)
+    : review.displayNameKo
+  const nickname = review.nickname?.trim()
+  const score = review.totalScore == null ? null : Number(review.totalScore)
+  const scoreText = score == null || Number.isNaN(score)
+    ? null
+    : (Number.isInteger(score) ? String(score) : score.toFixed(1))
+
+  const title = isEn
+    ? `${spiritName} tasting note${nickname ? ` by ${nickname}` : ''} — CaskByCask`
+    : `${spiritName} 시음 후기${nickname ? ` (${nickname})` : ''} — CaskByCask`
+
+  const noteText = stripHtmlAndSummarize(
+    [review.comment, review.noseNote, review.tasteNote, review.finishNote]
+      .filter(Boolean)
+      .join(' '),
+    120,
+  )
+  const description = isEn
+    ? [scoreText && `Rated ${scoreText}/100.`, noteText || `A tasting note for ${spiritName}.`]
+      .filter(Boolean).join(' ')
+    : [scoreText && `평점 ${scoreText}점.`, noteText || `${spiritName} 시음 노트입니다.`]
+      .filter(Boolean).join(' ')
+
+  const canonical = `${SITE_URL}/ko/reviews/${review.id}`
+  const ogImage = toAbsoluteImageUrl(review.imageUrl) || DEFAULT_OG_IMAGE
+
+  return {
+    title,
+    description,
+    robots: buildRobots(true),
+    alternates: { canonical },
+    openGraph: {
+      title,
+      description,
+      url: canonical,
+      type: 'article',
+      siteName: 'CaskByCask',
+      locale: 'ko_KR',
+      images: [{ url: ogImage, alt: title }],
+      publishedTime: toKstIsoDateTime(review.createdAt),
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [ogImage],
+    },
+  }
+}
+
+interface ProducerResponse {
+  id: number
+  type: 'DISTILLERY' | 'WINERY' | 'COGNAC_HOUSE' | 'OTHER' | null
+  nameKo: string
+  nameEn: string | null
+  country: string | null
+  region: string | null
+  foundedYear: number | null
+  descriptionKo: string | null
+  descriptionEn: string | null
+}
+
+const PRODUCER_TYPE_SEO_LABEL: Record<string, { ko: string; en: string }> = {
+  DISTILLERY: { ko: '증류소', en: 'Distillery' },
+  WINERY: { ko: '와이너리', en: 'Winery' },
+  COGNAC_HOUSE: { ko: '꼬냑 하우스', en: 'Cognac House' },
+  OTHER: { ko: '생산자', en: 'Producer' },
+}
+
+/**
+ * 생산자(증류소·와이너리·꼬냑 하우스) 상세.
+ *
+ * 증류소명은 검색 수요가 크므로 이름을 title 앞에 둔다.
+ * 이름·소개가 한/영 모두 존재하므로 언어별 self-canonical 과 hreflang 을 유지한다.
+ */
+async function getProducerMetadata(
+  id: string,
+  lang: 'ko' | 'en' | null,
+): Promise<Metadata | null> {
+  const producer = await fetchApiData<ProducerResponse>(`/api/producers/${id}`, 3600)
+  if (!producer) return null
+
+  const resolvedLang = normalizeLang(lang)
+  const isEn = resolvedLang === 'en'
+  const name = isEn ? (producer.nameEn || producer.nameKo) : producer.nameKo
+  const typeLabel = PRODUCER_TYPE_SEO_LABEL[producer.type ?? 'OTHER'] ?? PRODUCER_TYPE_SEO_LABEL.OTHER
+  const title = isEn
+    ? `${name} ${typeLabel.en} — CaskByCask`
+    : `${name} ${typeLabel.ko} 정보 — CaskByCask`
+
+  const place = [producer.country, producer.region].filter(Boolean).join(' ')
+  const intro = stripHtmlAndSummarize(
+    (isEn ? producer.descriptionEn || producer.descriptionKo : producer.descriptionKo) || '',
+    140,
+  )
+  const description = intro || (isEn
+    ? [
+      `${name} is a ${typeLabel.en.toLowerCase()}${place ? ` in ${place}` : ''}`
+      + `${producer.foundedYear ? `, founded in ${producer.foundedYear}` : ''}.`,
+      'Explore its spirits, ratings, and reviews on CaskByCask.',
+    ].join(' ')
+    : [
+      `${place ? `${place} ` : ''}${typeLabel.ko} ${name}${producer.foundedYear ? ` (${producer.foundedYear}년 설립)` : ''}의 정보와`,
+      '생산 주류, 사용자 평점 리뷰를 CaskByCask에서 확인하세요.',
+    ].join(' '))
+
+  const canonicalKo = `${SITE_URL}/ko/producers/${producer.id}`
+  const canonicalEn = `${SITE_URL}/en/producers/${producer.id}`
+  const canonical = isEn ? canonicalEn : canonicalKo
+
+  return {
+    title,
+    description,
+    robots: buildRobots(true),
+    alternates: {
+      canonical,
+      languages: { ko: canonicalKo, en: canonicalEn, 'x-default': canonicalKo },
+    },
+    openGraph: {
+      title,
+      description,
+      url: canonical,
+      type: 'website',
+      siteName: 'CaskByCask',
+      locale: isEn ? 'en_US' : 'ko_KR',
+      images: [{ url: DEFAULT_OG_IMAGE, alt: title }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [DEFAULT_OG_IMAGE],
+    },
+  }
+}
+
+/**
+ * 주류별 가격 상세.
+ *
+ * 이 화면의 내용(가격 추이·매장)은 주류 상세 페이지의 가격 탭에 이미 포함되어 있어
+ * 사실상 부분집합이다. 두 URL 이 같은 주류로 색인 경쟁하지 않도록 canonical 을
+ * 주류 상세로 통합한다. 페이지 자체는 계속 200 으로 동작하므로 기능 영향은 없다.
+ * (자체 색인이 필요해지면 canonical 을 self 로 되돌리면 된다)
+ */
+async function getSpiritPriceMetadata(
+  id: string,
+  lang: 'ko' | 'en' | null,
+): Promise<Metadata | null> {
+  const [seo, spirit] = await Promise.all([
+    getSpiritSeo(id),
+    fetchApiData<SpiritDetailResponse>(`/api/spirits/${id}`, 3600),
+  ])
+  if (!seo || !spirit) return null
+
+  const isEn = normalizeLang(lang) === 'en'
+  const { nameKo, nameEn } = formatSpiritDisplayNames(spirit)
+  const name = isEn ? nameEn : nameKo
+  const title = isEn
+    ? `${name} price history — CaskByCask`
+    : `${name} 가격 정보 — CaskByCask`
+  const description = isEn
+    ? `Historical purchase prices and approved deals reported by users for ${name}.`
+    : `${name}의 사용자 제보 구매 가격과 승인된 핫딜 정보를 확인하세요.`
+  const canonical = isEn ? seo.canonicalUrlEn : seo.canonicalUrlKo
+  const ogImage = seo.primaryImageUrl || DEFAULT_OG_IMAGE
+
+  return {
+    title,
+    description,
+    robots: buildRobots(true),
+    alternates: { canonical },
+    openGraph: {
+      title,
+      description,
+      url: canonical,
+      type: 'website',
+      siteName: 'CaskByCask',
+      locale: isEn ? 'en_US' : 'ko_KR',
+      images: [{ url: ogImage, alt: title }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [ogImage],
+    },
+  }
+}
+
+interface UserBottleListResponse {
+  totalElements: number | null
+  ownerNickname: string | null
+}
+
+/** 사용자 공개 보틀·리뷰 목록. 닉네임을 반영해 사용자별로 title 을 구분한다. */
+async function getUserPublicMetadata(
+  userId: string,
+  section: string,
+  lang: 'ko' | 'en' | null,
+): Promise<Metadata | null> {
+  if (section !== 'bottles' && section !== 'reviews') return null
+  const summary = await fetchApiData<UserBottleListResponse>(
+    `/api/users/${userId}/bottles?page=0&size=1`,
+    300,
+  )
+  const nickname = summary?.ownerNickname?.trim()
+  if (!nickname) return null
+
+  const resolvedLang = normalizeLang(lang)
+  const isEn = resolvedLang === 'en'
+  const isBottles = section === 'bottles'
+  const title = isEn
+    ? `${nickname}'s ${isBottles ? 'bottle collection' : 'spirit reviews'} — CaskByCask`
+    : `${nickname}님의 ${isBottles ? '보틀 컬렉션' : '주류 리뷰'} — CaskByCask`
+  const description = isEn
+    ? `Browse the ${isBottles ? 'bottles' : 'spirit reviews'} shared publicly by ${nickname} on CaskByCask.`
+    : `${nickname}님이 공개한 ${isBottles ? '보유 보틀' : '주류 리뷰'}를 확인하세요.`
+
+  const canonicalKo = `${SITE_URL}/ko/users/${userId}/${section}`
+  const canonicalEn = `${SITE_URL}/en/users/${userId}/${section}`
+  const canonical = isEn ? canonicalEn : canonicalKo
+
+  return {
+    title,
+    description,
+    robots: buildRobots(true),
+    alternates: {
+      canonical,
+      languages: { ko: canonicalKo, en: canonicalEn, 'x-default': canonicalKo },
+    },
+    openGraph: {
+      title,
+      description,
+      url: canonical,
+      type: 'profile',
+      siteName: 'CaskByCask',
+      locale: isEn ? 'en_US' : 'ko_KR',
+      images: [{ url: DEFAULT_OG_IMAGE, alt: title }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [DEFAULT_OG_IMAGE],
+    },
+  }
+}
+
+interface TasteTreeViewResponse {
+  shareKey: string | null
+  ownerNickname: string | null
+  title: string | null
+  description: string | null
+}
+
+/** 공개 공유 취향 트리. 트리 제목을 반영해 공유 링크마다 title 을 구분한다. */
+async function getSharedTasteTreeMetadata(
+  shareKey: string,
+  lang: 'ko' | 'en' | null,
+): Promise<Metadata | null> {
+  const tree = await fetchApiData<TasteTreeViewResponse>(
+    `/api/taste-trees/share/${encodeURIComponent(shareKey)}`,
+    300,
+  )
+  const treeTitle = tree?.title?.trim()
+  if (!treeTitle) return null
+
+  const resolvedLang = normalizeLang(lang)
+  const isEn = resolvedLang === 'en'
+  const title = isEn
+    ? `${treeTitle} — Spirits taste tree | CaskByCask`
+    : `${treeTitle} — 주류 취향 트리 | CaskByCask`
+  const intro = stripHtmlAndSummarize(tree?.description || '', 140)
+  const description = intro || (isEn
+    ? `Follow the choices in "${treeTitle}" to discover spirits that match your taste.`
+    : `"${treeTitle}" 취향 트리의 선택지를 따라가며 취향에 맞는 주류를 찾아보세요.`)
+
+  const path = `/taste-trees/t/${encodeURIComponent(shareKey)}`
+  const canonicalKo = `${SITE_URL}/ko${path}`
+  const canonicalEn = `${SITE_URL}/en${path}`
+  const canonical = isEn ? canonicalEn : canonicalKo
+
+  return {
+    title,
+    description,
+    robots: buildRobots(true),
+    alternates: {
+      canonical,
+      languages: { ko: canonicalKo, en: canonicalEn, 'x-default': canonicalKo },
+    },
+    openGraph: {
+      title,
+      description,
+      url: canonical,
+      type: 'website',
+      siteName: 'CaskByCask',
+      locale: isEn ? 'en_US' : 'ko_KR',
+      images: [{ url: DEFAULT_OG_IMAGE, alt: title }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [DEFAULT_OG_IMAGE],
+    },
+  }
+}
+
+/**
+ * 홈의 raw HTML 요약을 생성한다.
+ *
+ * 홈은 사이트에서 링크 권위가 가장 높지만 본문이 클라이언트에서만 렌더링되어,
+ * JS를 실행하지 않는 크롤러에게는 H1도 내부 링크도 없는 빈 문서였다.
+ * 카테고리·주요 경로·주류 canonical 링크를 서버 HTML로 제공해 주류 상세 페이지가
+ * 홈에서 바로 발견되게 한다.
+ * (SPA가 마운트되면 이 블록은 숨겨지고 동일한 내용을 클라이언트가 렌더링한다)
+ */
+export async function getHomeSeoSnapshot(lang: 'ko' | 'en' | null): Promise<SeoSnapshotData> {
+  const resolvedLang = normalizeLang(lang)
+  const isEn = resolvedLang === 'en'
+  const page = await fetchApiData<PageResponse<SpiritListSeoItemResponse>>(
+    '/api/spirits?page=0&size=12',
+    300,
+  )
+
+  const items = (page?.content ?? []).map((spirit) => ({
+    title: appendWineVintageDisplay(
+      isEn ? (spirit.nameEn || spirit.nameKo) : spirit.nameKo,
+      spirit,
+    ),
+    href: isEn
+      ? (spirit.canonicalPathEn || `/en/spirits/${spirit.id}`)
+      : (spirit.canonicalPathKo || `/ko/spirits/${spirit.id}`),
+    meta: isEn
+      ? (spirit.producerNameEn || spirit.producerNameKo)
+      : spirit.producerNameKo,
+  }))
+  const totalElements = page?.totalElements
+
+  const categoryLinks = SPIRIT_CATEGORIES.map((category) => ({
+    label: isEn ? SPIRIT_CATEGORY_META[category].titleEn : SPIRIT_CATEGORY_META[category].titleKo,
+    href: `/${resolvedLang}/spirits?category=${category}`,
+  }))
+
+  return {
+    kind: 'home',
+    lang: resolvedLang,
+    eyebrow: isEn ? 'Spirits information and reviews' : '주류 정보와 리뷰',
+    title: isEn
+      ? 'CaskByCask — Whisky, Wine and Cognac Information and Reviews'
+      : 'CaskByCask(캐바캐) — 위스키·와인·꼬냑 주류 정보와 리뷰',
+    description: isEn
+      ? 'Explore whisky, wine, cognac and other spirits with detailed specs, tasting notes, user ratings, and community discussions.'
+      : '위스키·와인·꼬냑 등 주류의 상세 정보와 시음 노트, 사용자 평점 리뷰, 커뮤니티를 CaskByCask에서 확인하세요.',
+    image: null,
+    metrics: totalElements == null
+      ? []
+      : [{
+        label: isEn ? 'Spirits' : '등록 주류',
+        value: totalElements.toLocaleString(isEn ? 'en-US' : 'ko-KR'),
+      }],
+    details: [],
+    items,
+    itemsHeading: isEn ? 'Spirits in the catalog' : '등록된 주류',
+    links: [
+      { label: isEn ? 'All spirits' : '주류 전체', href: `/${resolvedLang}/spirits` },
+      ...categoryLinks,
+      { label: isEn ? 'Tier lists' : '티어리스트', href: `/${resolvedLang}/tier-lists` },
+      { label: isEn ? 'Taste trees' : '취향 트리', href: `/${resolvedLang}/taste-trees` },
+      { label: isEn ? 'Price information' : '가격 정보', href: `/${resolvedLang}/price-tracker` },
+      { label: isEn ? 'Rankings' : '랭킹', href: `/${resolvedLang}/ranking` },
+      { label: 'FAQ', href: `/${resolvedLang}/faq` },
+      // 게시판과 공지는 한국어 원문으로 신호를 통합하므로 항상 /ko 경로를 가리킨다.
+      { label: isEn ? 'Community' : '커뮤니티', href: '/ko/community/all' },
+      { label: isEn ? 'Notices' : '공지사항', href: '/ko/notices' },
+    ],
+  }
+}
+
+/**
  * 주류 목록 페이지 메타데이터를 반환합니다.
  */
 interface SpiritsListSeoState {
@@ -1486,6 +1944,9 @@ export async function getSpiritsListSeoSnapshot(
     }],
     details: [],
     items,
+    itemsHeading: isEn
+      ? (state.category ? `${state.meta.titleEn} list` : 'Spirits in the catalog')
+      : (state.category ? `${state.meta.titleKo} 목록` : '등록된 주류'),
     links: [
       { label: isEn ? 'Home' : '홈', href: `/${state.lang}` },
       ...(state.category
@@ -1618,20 +2079,22 @@ export async function getSpiritDetailMetadata(id: string, lang: 'ko' | 'en' | nu
     const ageEn = spirit.commonDetail?.ageStatement ? `${spirit.commonDetail.ageStatement}yo` : ''
     const description = `${nameKo}의 원산지, ${abv}, ${age} 캐스크 정보 등 상세한 주류 정보와 함께 테이스팅 노트 및 평점(${spirit.avgScore ?? spirit.scoreAvg ?? 0}점) 리뷰를 만나보세요. Discover detailed specs (${abvEn}, ${ageEn}), tasting notes, and ratings for ${nameEn || nameKo} on CaskByCask.`
     
-    const canonical = `https://www.caskbycask.net${prefix}/spirits/${id}`
+    // SEO API 를 쓸 수 없어 slug 를 알 수 없는 상태다.
+    // 이 경로에서 만들 수 있는 URL(`/spirits/{id}`)은 sitemap 에 없고 정상 시 canonical 로 301 되는
+    // 주소이므로, canonical 로 선언하면 "canonical 이 리다이렉트된다"는 잘못된 신호가 된다.
+    // 따라서 canonical 을 생략하고 noindex 로 응답해 다음 정상 크롤에서 복구되게 한다.
+    // og:url 은 색인 신호가 아니고 SNS 미리보기 대상이므로 유지한다.
+    const shareUrl = `https://www.caskbycask.net${prefix}/spirits/${id}`
     const ogImage = spirit.imageUrl || 'https://www.caskbycask.net/og-image.png'
 
     return {
       title,
       description,
-      robots: buildRobots(true),
-      alternates: {
-        canonical,
-      },
+      robots: buildRobots(false),
       openGraph: {
         title,
         description,
-        url: canonical,
+        url: shareUrl,
         images: [
           {
             url: ogImage,

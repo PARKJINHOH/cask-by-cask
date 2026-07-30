@@ -9,7 +9,10 @@
     "typecheck": "next typegen && tsc --noEmit",
     "start": "next start",
     "seo:verify": "node scripts/verify-seo.mjs",
-    "test:auth-cache": "node --test scripts/session-query-cache.test.mjs"
+    "test:auth-cache": "node --test scripts/session-query-cache.test.mjs",
+    "test:proxy-seo": "node --test scripts/proxy-seo.test.mjs",
+    "test:seo-indexing": "node --test scripts/seo-indexing.test.mjs",
+    "test:seo-entity": "node --test scripts/seo-entity-metadata.test.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

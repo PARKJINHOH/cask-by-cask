@@ -7,6 +7,8 @@ import type { SeoSnapshotData } from '@/shared/utils/seoHelpers'
 import {
   parsePath,
   getDefaultMetadata,
+  getPublicRouteMetadata,
+  getHomeSeoSnapshot,
   getTierListMetadata,
   getTierListSeoSnapshot,
   getSpiritsListMetadata,
@@ -46,7 +48,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
     case 'home':
       return getDefaultMetadata(parsed.lang)
     case 'default':
-      return getDefaultMetadata(parsed.lang, parsed.canonicalPath)
+      return getPublicRouteMetadata(parsed.lang, parsed.canonicalPath)
     case 'tier-list':
       return getTierListMetadata(parsed.lang, parsed.tierListShareKey, resolvedSearchParams)
     case 'spirits-list':
@@ -86,7 +88,9 @@ export default async function CatchAllPage({ params, searchParams }: Props) {
 
   let jsonLdData: object | null = null
   let snapshot: SeoSnapshotData | null = null
-  if (parsed.type === 'spirits-list') {
+  if (parsed.type === 'home') {
+    snapshot = await getHomeSeoSnapshot(parsed.lang)
+  } else if (parsed.type === 'spirits-list') {
     ;[jsonLdData, snapshot] = await Promise.all([
       getSpiritsListJsonLd(parsed.lang, resolvedSearchParams),
       getSpiritsListSeoSnapshot(parsed.lang, resolvedSearchParams),

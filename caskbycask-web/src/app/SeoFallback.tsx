@@ -108,7 +108,8 @@ export default function SeoFallback({ snapshot }: Props) {
         {snapshot.items && snapshot.items.length > 0 && (
           <section className="border-t border-neutral-200 p-6 md:p-8" aria-labelledby="seo-list-heading">
             <h2 id="seo-list-heading" className="text-xl font-bold text-neutral-950">
-              {snapshot.lang === 'en' ? 'Latest public posts' : '최신 공개 글'}
+              {snapshot.itemsHeading
+                ?? (snapshot.lang === 'en' ? 'Latest public posts' : '최신 공개 글')}
             </h2>
             <ul className="mt-4 divide-y divide-neutral-100">
               {snapshot.items.map((item) => (
