@@ -121,11 +121,12 @@ public class SocialContentFactory {
         String shortUrl = normalizedSiteUrl() + "/s/" + bundle.getShortCode();
         String hashtags = post.getHashtags().isEmpty() ? "" : "\n\n"
                 + post.getHashtags().stream().map(tag -> "#" + tag).reduce((a, b) -> a + " " + b).orElse("");
-        String prefix = post.getTitle() + "\n" + NEWS_SITE_NOTICE + "\n\n";
+        String prefix = post.getTitle() + "\n\n";
+        String siteNotice = "\n\n[" + NEWS_SITE_NOTICE + "]";
         int limit = platform == SocialPlatform.INSTAGRAM ? 2200 : 500;
-        int reserve = shortUrl.length() + hashtags.length() + 3;
-        String body = prefix + truncate(text, Math.max(40, limit - reserve - prefix.length()))
-                + hashtags + "\n\n" + shortUrl;
+        int reserve = shortUrl.length() + siteNotice.length() + hashtags.length() + 2;
+        String body = prefix + truncate(text, Math.max(0, limit - reserve - prefix.length()))
+                + siteNotice + hashtags + "\n\n" + shortUrl;
         return new SocialPublicationContent(
                 truncate(body, limit),
                 bundle.getDirectImageUrl(),
@@ -277,8 +278,10 @@ public class SocialContentFactory {
 
     private static String truncate(String value, int maxCodePoints) {
         if (value == null) return "";
+        if (maxCodePoints <= 0) return "";
         int count = value.codePointCount(0, value.length());
         if (count <= maxCodePoints) return value;
+        if (maxCodePoints == 1) return "…";
         int end = value.offsetByCodePoints(0, Math.max(1, maxCodePoints - 1));
         String shortened = value.substring(0, end).stripTrailing();
         int lastSpace = shortened.lastIndexOf(' ');

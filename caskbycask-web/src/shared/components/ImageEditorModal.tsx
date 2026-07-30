@@ -23,8 +23,146 @@ interface ImageEditorModalProps {
   showInstagramCropPreset?: boolean
 }
 
-type EditMode = 'paint' | 'crop' | 'rotate' | 'resize'
+type EditMode = 'paint' | 'crop' | 'rotate' | 'resize' | 'adjust'
 type PaintType = 'mosaic' | 'blur'
+
+/** 밝기/대비/채도/선명도 기본값(%) — 100 = 원본 그대로 */
+const ADJUST_DEFAULT = 100
+
+type AdjustKey = 'brightness' | 'contrast' | 'saturation' | 'sharpness'
+type AdjustValues = Record<AdjustKey, number>
+
+const ADJUST_SLIDERS: { key: AdjustKey; labelKey: string; min: number; max: number }[] = [
+  { key: 'brightness', labelKey: 'imageEditor.brightness', min: 20, max: 200 },
+  { key: 'contrast', labelKey: 'imageEditor.contrast', min: 20, max: 200 },
+  { key: 'saturation', labelKey: 'imageEditor.saturation', min: 0, max: 200 },
+  { key: 'sharpness', labelKey: 'imageEditor.sharpness', min: 0, max: 200 },
+]
+
+const ADJUST_IDENTITY: AdjustValues = {
+  brightness: ADJUST_DEFAULT,
+  contrast: ADJUST_DEFAULT,
+  saturation: ADJUST_DEFAULT,
+  sharpness: ADJUST_DEFAULT,
+}
+
+const isAdjustIdentity = (values: AdjustValues): boolean =>
+  ADJUST_SLIDERS.every((slider) => values[slider.key] === ADJUST_DEFAULT)
+
+const clamp255 = (v: number): number => (v < 0 ? 0 : v > 255 ? 255 : v)
+
+const supportsCtxFilter = (ctx: CanvasRenderingContext2D): boolean =>
+  typeof (ctx as { filter?: unknown }).filter === 'string'
+
+/**
+ * CanvasRenderingContext2D.filter 미지원 브라우저용 폴백.
+ * CSS filter 와 동일한 순서(brightness → contrast → saturate)/계수로 픽셀을 직접 변환한다.
+ */
+const applyAdjustFallback = (
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  brightnessPercent: number,
+  contrastPercent: number,
+  saturationPercent: number,
+) => {
+  if (width <= 0 || height <= 0) return
+  const imgData = ctx.getImageData(0, 0, width, height)
+  const data = imgData.data
+
+  const b = brightnessPercent / 100
+  const c = contrastPercent / 100
+  const s = saturationPercent / 100
+
+  // CSS saturate() 행렬 계수
+  const rr = 0.213 + 0.787 * s
+  const rg = 0.715 - 0.715 * s
+  const rb = 0.072 - 0.072 * s
+  const gr = 0.213 - 0.213 * s
+  const gg = 0.715 + 0.285 * s
+  const gb = 0.072 - 0.072 * s
+  const br = 0.213 - 0.213 * s
+  const bg = 0.715 - 0.715 * s
+  const bb = 0.072 + 0.928 * s
+
+  for (let i = 0; i < data.length; i += 4) {
+    let r = data[i] * b
+    let g = data[i + 1] * b
+    let bl = data[i + 2] * b
+
+    r = (r - 127.5) * c + 127.5
+    g = (g - 127.5) * c + 127.5
+    bl = (bl - 127.5) * c + 127.5
+
+    data[i] = clamp255(r * rr + g * rg + bl * rb)
+    data[i + 1] = clamp255(r * gr + g * gg + bl * gb)
+    data[i + 2] = clamp255(r * br + g * bg + bl * bb)
+  }
+
+  ctx.putImageData(imgData, 0, 0)
+}
+
+/**
+ * 언샤프 마스크. out = orig + amount × (orig − blurred)
+ * - amount > 0 → 선명하게 (경계 대비 강조)
+ * - amount < 0 → 부드럽게 (블러 쪽으로 보간)
+ *
+ * 블러는 GPU 가속되는 ctx.filter 로 만들고, 픽셀 합성만 JS 로 처리한다.
+ * blurred 의 alpha 는 캔버스 경계에서 감소하지만 getImageData 는 straight alpha 를
+ * 돌려주므로 RGB 는 "캔버스 내부 픽셀만의 가중 평균"으로 정규화되어 있다 → 경계 halo 없음.
+ */
+const applySharpen = (
+  canvas: HTMLCanvasElement,
+  ctx: CanvasRenderingContext2D,
+  amount: number,
+) => {
+  const w = canvas.width
+  const h = canvas.height
+  if (w <= 0 || h <= 0 || amount === 0) return
+
+  // 원본 해상도가 클수록 반경을 키워야 화면 미리보기에서 효과가 보인다
+  const radius = Math.max(1, Math.min(4, Math.round(Math.min(w, h) / 400)))
+
+  const blurCanvas = document.createElement('canvas')
+  blurCanvas.width = w
+  blurCanvas.height = h
+  const blurCtx = blurCanvas.getContext('2d')
+  if (!blurCtx) return
+
+  if (supportsCtxFilter(blurCtx)) {
+    blurCtx.filter = `blur(${radius}px)`
+    blurCtx.drawImage(canvas, 0, 0)
+    blurCtx.filter = 'none'
+  } else {
+    // 폴백: 축소 → 확대 보간으로 블러 근사
+    const dw = Math.max(1, Math.round(w / (radius + 1)))
+    const dh = Math.max(1, Math.round(h / (radius + 1)))
+    const tmp = document.createElement('canvas')
+    tmp.width = dw
+    tmp.height = dh
+    const tmpCtx = tmp.getContext('2d')
+    if (!tmpCtx) return
+    tmpCtx.imageSmoothingEnabled = true
+    tmpCtx.imageSmoothingQuality = 'high'
+    tmpCtx.drawImage(canvas, 0, 0, dw, dh)
+    blurCtx.imageSmoothingEnabled = true
+    blurCtx.imageSmoothingQuality = 'high'
+    blurCtx.drawImage(tmp, 0, 0, dw, dh, 0, 0, w, h)
+  }
+
+  const srcData = ctx.getImageData(0, 0, w, h)
+  const blurData = blurCtx.getImageData(0, 0, w, h)
+  const s = srcData.data
+  const b = blurData.data
+
+  for (let i = 0; i < s.length; i += 4) {
+    s[i] = clamp255(s[i] + amount * (s[i] - b[i]))
+    s[i + 1] = clamp255(s[i + 1] + amount * (s[i + 1] - b[i + 1]))
+    s[i + 2] = clamp255(s[i + 2] + amount * (s[i + 2] - b[i + 2]))
+  }
+
+  ctx.putImageData(srcData, 0, 0)
+}
 
 interface CropBox {
   x: number // 0 ~ 1
@@ -82,6 +220,14 @@ export default function ImageEditorModal({
   // Rotation / Tilt state
   const tiltBaseCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const [tiltAngle, setTiltAngle] = useState<number>(0)
+
+  // Brightness / Contrast / Saturation / Sharpness state (percent, 100 = 원본)
+  const adjustBaseCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const [adjustValues, setAdjustValues] = useState<AdjustValues>(ADJUST_IDENTITY)
+  const hasPendingAdjust = !isAdjustIdentity(adjustValues)
+  // 선명도는 픽셀 연산이 필요해 비용이 크므로 rAF 로 슬라이더 입력을 합친다
+  const adjustRafRef = useRef<number | null>(null)
+  const pendingAdjustRef = useRef<AdjustValues | null>(null)
 
   // Resize resolution state
   const [resizeW, setResizeW] = useState<string>('')
@@ -280,6 +426,8 @@ export default function ImageEditorModal({
     }
     setTiltAngle(0)
     tiltBaseCanvasRef.current = null
+    setAdjustValues(ADJUST_IDENTITY)
+    adjustBaseCanvasRef.current = null
   }, [open, imageSrc, fixedRatio, initialCropRatio, initialMode])
 
   const handleCustomRatioChange = (w: string, h: string) => {
@@ -289,17 +437,32 @@ export default function ImageEditorModal({
     setCropBox(getInitialCropBoxForRatio('custom', w, h))
   }
 
-  const initTiltBase = () => {
+  /** 현재 캔버스 픽셀을 그대로 복사한 오프스크린 캔버스를 만든다 (미리보기 원본 보관용) */
+  const captureCurrentCanvas = (): HTMLCanvasElement | null => {
     const canvas = canvasRef.current
-    if (!canvas) return
-    const baseCanvas = document.createElement('canvas')
-    baseCanvas.width = canvas.width
-    baseCanvas.height = canvas.height
-    const baseCtx = baseCanvas.getContext('2d')
-    if (baseCtx) {
-      baseCtx.drawImage(canvas, 0, 0)
-      tiltBaseCanvasRef.current = baseCanvas
-    }
+    if (!canvas || canvas.width === 0 || canvas.height === 0) return null
+    const copy = document.createElement('canvas')
+    copy.width = canvas.width
+    copy.height = canvas.height
+    const copyCtx = copy.getContext('2d')
+    if (!copyCtx) return null
+    copyCtx.drawImage(canvas, 0, 0)
+    return copy
+  }
+
+  const initTiltBase = () => {
+    tiltBaseCanvasRef.current = captureCurrentCanvas()
+  }
+
+  /**
+   * 회전한 w×h 이미지가 w×h 프레임을 빈 공간 없이 덮기 위한 최소 확대 배율.
+   * 프레임을 -θ 만큼 회전시킨 바운딩 박스가 확대된 이미지 안에 들어가야 한다는 조건에서 유도.
+   */
+  const getTiltCoverScale = (angleRad: number, w: number, h: number): number => {
+    if (w <= 0 || h <= 0) return 1
+    const cos = Math.abs(Math.cos(angleRad))
+    const sin = Math.abs(Math.sin(angleRad))
+    return Math.max((w * cos + h * sin) / w, (w * sin + h * cos) / h)
   }
 
   const applyTiltAngle = (angleDegrees: number) => {
@@ -309,25 +472,27 @@ export default function ImageEditorModal({
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    const angleRad = (angleDegrees * Math.PI) / 180
-    const cos = Math.abs(Math.cos(angleRad))
-    const sin = Math.abs(Math.sin(angleRad))
     const w = baseCanvas.width
     const h = baseCanvas.height
-    const newWidth = Math.round(w * cos + h * sin)
-    const newHeight = Math.round(w * sin + h * cos)
 
-    canvas.width = newWidth
-    canvas.height = newHeight
+    // 캔버스 크기는 원본 그대로 유지하고, 이미지를 확대해서 채운다 → 모서리 빈 공간 없음
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w
+      canvas.height = h
+    }
 
-    ctx.clearRect(0, 0, newWidth, newHeight)
+    const angleRad = (angleDegrees * Math.PI) / 180
+    const scale = getTiltCoverScale(angleRad, w, h)
+
+    ctx.clearRect(0, 0, w, h)
     ctx.save()
-    ctx.translate(newWidth / 2, newHeight / 2)
+    ctx.imageSmoothingEnabled = true
+    ctx.imageSmoothingQuality = 'high'
+    ctx.translate(w / 2, h / 2)
     ctx.rotate(angleRad)
+    ctx.scale(scale, scale)
     ctx.drawImage(baseCanvas, -w / 2, -h / 2)
     ctx.restore()
-
-    regenerateEffects()
   }
 
   const restorePreTilt = () => {
@@ -342,6 +507,7 @@ export default function ImageEditorModal({
         regenerateEffects()
       }
     }
+    setTiltAngle(0)
   }
 
   const handleApplyTilt = () => {
@@ -349,6 +515,8 @@ export default function ImageEditorModal({
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
+
+    regenerateEffects()
 
     const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height)
     setHistory((prev) => {
@@ -367,14 +535,147 @@ export default function ImageEditorModal({
     applyTiltAngle(angle)
   }
 
+  // ── Brightness / Contrast / Saturation / Sharpness ──────────────────
+  const initAdjustBase = () => {
+    adjustBaseCanvasRef.current = captureCurrentCanvas()
+  }
+
+  const renderAdjustPreview = (values: AdjustValues) => {
+    const canvas = canvasRef.current
+    const baseCanvas = adjustBaseCanvasRef.current
+    if (!canvas || !baseCanvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    if (canvas.width !== baseCanvas.width || canvas.height !== baseCanvas.height) {
+      canvas.width = baseCanvas.width
+      canvas.height = baseCanvas.height
+    }
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+    // 1) 밝기 · 대비 · 채도 — ctx.filter 미지원 브라우저는 픽셀 연산으로 폴백
+    if (supportsCtxFilter(ctx)) {
+      ctx.filter = `brightness(${values.brightness}%) contrast(${values.contrast}%) saturate(${values.saturation}%)`
+      ctx.drawImage(baseCanvas, 0, 0)
+      ctx.filter = 'none'
+    } else {
+      ctx.drawImage(baseCanvas, 0, 0)
+      applyAdjustFallback(
+        ctx,
+        canvas.width,
+        canvas.height,
+        values.brightness,
+        values.contrast,
+        values.saturation,
+      )
+    }
+
+    // 2) 선명도 — CSS filter 로는 불가능하므로 언샤프 마스크를 마지막에 적용
+    if (values.sharpness !== ADJUST_DEFAULT) {
+      applySharpen(canvas, ctx, (values.sharpness - ADJUST_DEFAULT) / 100)
+    }
+  }
+
+  const cancelPendingAdjustRender = () => {
+    if (adjustRafRef.current !== null) {
+      cancelAnimationFrame(adjustRafRef.current)
+      adjustRafRef.current = null
+    }
+    pendingAdjustRef.current = null
+  }
+
+  /** 예약된 미리보기 렌더를 즉시 반영한다 — 캔버스 픽셀을 읽기 전에 반드시 호출 */
+  const flushAdjustRender = () => {
+    const pending = pendingAdjustRef.current
+    cancelPendingAdjustRender()
+    if (pending) renderAdjustPreview(pending)
+  }
+
+  const scheduleAdjustRender = (values: AdjustValues) => {
+    pendingAdjustRef.current = values
+    if (adjustRafRef.current !== null) return
+    adjustRafRef.current = requestAnimationFrame(() => {
+      adjustRafRef.current = null
+      const pending = pendingAdjustRef.current
+      pendingAdjustRef.current = null
+      if (pending) renderAdjustPreview(pending)
+    })
+  }
+
+  // 모달이 닫히거나 언마운트될 때 예약된 렌더 정리
+  useEffect(() => {
+    if (!open) cancelPendingAdjustRender()
+    return () => cancelPendingAdjustRender()
+  }, [open])
+
+  const handleAdjustChange = (key: AdjustKey, value: number) => {
+    const next: AdjustValues = { ...adjustValues, [key]: value }
+    setAdjustValues(next)
+    scheduleAdjustRender(next)
+  }
+
+  const handleResetAdjust = () => {
+    cancelPendingAdjustRender()
+    setAdjustValues(ADJUST_IDENTITY)
+    renderAdjustPreview(ADJUST_IDENTITY)
+  }
+
+  const restorePreAdjust = () => {
+    cancelPendingAdjustRender()
+    const canvas = canvasRef.current
+    const baseCanvas = adjustBaseCanvasRef.current
+    if (canvas && baseCanvas) {
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        canvas.width = baseCanvas.width
+        canvas.height = baseCanvas.height
+        ctx.drawImage(baseCanvas, 0, 0)
+        regenerateEffects()
+      }
+    }
+    setAdjustValues(ADJUST_IDENTITY)
+  }
+
+  const handleApplyAdjust = () => {
+    flushAdjustRender()
+
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    regenerateEffects()
+
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+    setHistory((prev) => {
+      const next = prev.slice(0, historyIndex + 1)
+      next.push(imgData)
+      return next
+    })
+    setHistoryIndex((prev) => prev + 1)
+
+    initAdjustBase()
+    setAdjustValues(ADJUST_IDENTITY)
+  }
+
   const handleModeChange = (newMode: EditMode) => {
+    if (newMode === mode) return
+    // 적용하지 않은 미리보기는 모드 전환 시 되돌린다
     if (mode === 'rotate' && tiltAngle !== 0) {
       restorePreTilt()
+    }
+    if (mode === 'adjust') {
+      if (hasPendingAdjust) {
+        restorePreAdjust()
+      } else {
+        cancelPendingAdjustRender()
+      }
     }
     setMode(newMode)
   }
 
-  // Manage rotation & tilt base canvas state
+  // Manage tilt / adjust base canvas state (모드 전환·히스토리 변경 시 재기준화)
   useEffect(() => {
     if (mode === 'rotate') {
       initTiltBase()
@@ -382,7 +683,14 @@ export default function ImageEditorModal({
     } else {
       tiltBaseCanvasRef.current = null
     }
-  }, [mode])
+
+    if (mode === 'adjust') {
+      initAdjustBase()
+      setAdjustValues(ADJUST_IDENTITY)
+    } else {
+      adjustBaseCanvasRef.current = null
+    }
+  }, [mode, historyIndex])
 
   // Sync resize dimensions when canvas changes or mode changes
   useEffect(() => {
@@ -628,6 +936,7 @@ export default function ImageEditorModal({
   // Undo/Redo logic
   const handleUndo = () => {
     if (historyIndex <= 0) return
+    cancelPendingAdjustRender()
     const prevIndex = historyIndex - 1
     setHistoryIndex(prevIndex)
     restoreHistoryState(prevIndex)
@@ -635,6 +944,7 @@ export default function ImageEditorModal({
 
   const handleRedo = () => {
     if (historyIndex >= history.length - 1) return
+    cancelPendingAdjustRender()
     const nextIndex = historyIndex + 1
     setHistoryIndex(nextIndex)
     restoreHistoryState(nextIndex)
@@ -825,6 +1135,9 @@ export default function ImageEditorModal({
 
   // Handle Save
   const handleSaveClick = () => {
+    // 예약된 밝기/선명도 미리보기가 남아 있으면 먼저 캔버스에 반영
+    flushAdjustRender()
+
     const canvas = canvasRef.current
     if (!canvas) return
 
@@ -1041,6 +1354,19 @@ export default function ImageEditorModal({
                         </svg>
                         {t('imageEditor.resize')}
                       </button>
+                      <button
+                        onClick={() => handleModeChange('adjust')}
+                        className={`col-span-2 flex items-center justify-center py-2.5 rounded-xl border text-xs gap-2 transition-all duration-150 ${
+                          mode === 'adjust'
+                            ? 'bg-primary-600 border-primary-500 text-white font-medium shadow-lg shadow-primary-900/20'
+                            : 'bg-neutral-800/50 border-neutral-700 hover:bg-neutral-800 text-neutral-300'
+                        }`}
+                      >
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1.5m0 15V21m-6.364-2.636l1.061-1.061m10.606-10.606l1.061-1.061M3 12h1.5m15 0H21M5.636 5.636l1.061 1.061m10.606 10.606l1.061 1.061M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                        {t('imageEditor.adjust')}
+                      </button>
                     </div>
                   </div>
 
@@ -1206,6 +1532,9 @@ export default function ImageEditorModal({
                             onChange={(e) => handleTiltSliderChange(Number(e.target.value))}
                             className="w-full h-1 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-primary-500"
                           />
+                          <p className="text-xs text-neutral-400 leading-relaxed">
+                            {t('imageEditor.tiltZoomHint')}
+                          </p>
                           <div className="flex gap-2">
                             <button
                               onClick={() => handleTiltSliderChange(0)}
@@ -1286,6 +1615,54 @@ export default function ImageEditorModal({
                         >
                           {t('imageEditor.applyResize')}
                         </button>
+                      </div>
+                    )}
+
+                    {mode === 'adjust' && (
+                      <div className="space-y-4">
+                        <div className="space-y-4">
+                          <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">{t('imageEditor.adjustAction')}</span>
+
+                          {ADJUST_SLIDERS.map((slider) => (
+                            <div key={slider.key} className="space-y-2">
+                              <div className="flex justify-between items-center">
+                                <label htmlFor={`adjust-${slider.key}`} className="text-xs text-neutral-300">
+                                  {t(slider.labelKey)}
+                                </label>
+                                <span className="text-xs font-mono text-neutral-400">
+                                  {adjustValues[slider.key] - ADJUST_DEFAULT > 0 ? '+' : ''}
+                                  {adjustValues[slider.key] - ADJUST_DEFAULT}
+                                </span>
+                              </div>
+                              <input
+                                id={`adjust-${slider.key}`}
+                                type="range"
+                                min={slider.min}
+                                max={slider.max}
+                                value={adjustValues[slider.key]}
+                                onChange={(e) => handleAdjustChange(slider.key, Number(e.target.value))}
+                                className="w-full h-1 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-primary-500"
+                              />
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleResetAdjust}
+                            disabled={!hasPendingAdjust}
+                            className="flex-1 py-1.5 text-xs rounded-lg border border-neutral-700 bg-neutral-800/40 hover:bg-neutral-800 text-neutral-300 disabled:opacity-30 transition-all duration-150"
+                          >
+                            {t('imageEditor.reset')}
+                          </button>
+                          <button
+                            onClick={handleApplyAdjust}
+                            disabled={!hasPendingAdjust}
+                            className="flex-1 py-1.5 text-xs rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold disabled:opacity-30 transition-all duration-150"
+                          >
+                            {t('imageEditor.applyAdjust')}
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -1406,10 +1783,10 @@ export default function ImageEditorModal({
                 <div className="flex md:hidden flex-col border-t border-neutral-800 bg-neutral-900/60 p-4 gap-4">
                   
                   {/* Tool Swapper */}
-                  <div className="flex items-center gap-2">
+                  <div className="grid grid-cols-5 gap-1.5">
                     <button
                       onClick={() => handleModeChange('paint')}
-                      className={`flex-1 py-2 px-3 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 ${
+                      className={`flex flex-col items-center justify-center py-2 px-1 rounded-lg border text-[10px] font-semibold gap-1 ${
                         mode === 'paint' ? 'bg-primary-600 border-primary-500 text-white' : 'bg-neutral-800 border-neutral-700 text-neutral-300'
                       }`}
                     >
@@ -1420,7 +1797,7 @@ export default function ImageEditorModal({
                     </button>
                     <button
                       onClick={() => handleModeChange('crop')}
-                      className={`flex-1 py-2 px-3 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 ${
+                      className={`flex flex-col items-center justify-center py-2 px-1 rounded-lg border text-[10px] font-semibold gap-1 ${
                         mode === 'crop' ? 'bg-primary-600 border-primary-500 text-white' : 'bg-neutral-800 border-neutral-700 text-neutral-300'
                       }`}
                     >
@@ -1431,18 +1808,29 @@ export default function ImageEditorModal({
                     </button>
                     <button
                       onClick={() => handleModeChange('rotate')}
-                      className={`flex-1 py-2 px-3 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 ${
+                      className={`flex flex-col items-center justify-center py-2 px-1 rounded-lg border text-[10px] font-semibold gap-1 ${
                         mode === 'rotate' ? 'bg-primary-600 border-primary-500 text-white' : 'bg-neutral-800 border-neutral-700 text-neutral-300'
                       }`}
                     >
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89M9 11l3-3 3 3" />
                       </svg>
-                      {t('imageEditor.rotate')}
+                      {t('imageEditor.rotateShort')}
+                    </button>
+                    <button
+                      onClick={() => handleModeChange('adjust')}
+                      className={`flex flex-col items-center justify-center py-2 px-1 rounded-lg border text-[10px] font-semibold gap-1 ${
+                        mode === 'adjust' ? 'bg-primary-600 border-primary-500 text-white' : 'bg-neutral-800 border-neutral-700 text-neutral-300'
+                      }`}
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1.5m0 15V21m-6.364-2.636l1.061-1.061m10.606-10.606l1.061-1.061M3 12h1.5m15 0H21M5.636 5.636l1.061 1.061m10.606 10.606l1.061 1.061M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                      </svg>
+                      {t('imageEditor.adjustShort')}
                     </button>
                     <button
                       onClick={() => handleModeChange('resize')}
-                      className={`flex-1 py-2 px-3 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 ${
+                      className={`flex flex-col items-center justify-center py-2 px-1 rounded-lg border text-[10px] font-semibold gap-1 ${
                         mode === 'resize' ? 'bg-primary-600 border-primary-500 text-white' : 'bg-neutral-800 border-neutral-700 text-neutral-300'
                       }`}
                     >
@@ -1594,7 +1982,11 @@ export default function ImageEditorModal({
                         />
                         <span className="text-xs font-mono text-neutral-300 w-10 text-right">{tiltAngle}°</span>
                       </div>
-                      
+
+                      <p className="text-[11px] leading-relaxed text-neutral-400">
+                        {t('imageEditor.tiltZoomHint')}
+                      </p>
+
                       <div className="flex items-center justify-between gap-2">
                         <button
                           onClick={handleRotate}
@@ -1666,6 +2058,55 @@ export default function ImageEditorModal({
                       >
                         {t('imageEditor.applyResize')}
                       </button>
+                    </div>
+                  )}
+
+                  {mode === 'adjust' && (
+                    <div className="flex flex-col gap-3">
+                      <div className="grid grid-cols-2 gap-x-3 gap-y-2.5">
+                        {ADJUST_SLIDERS.map((slider) => (
+                          <div key={slider.key} className="space-y-1">
+                            <div className="flex items-center justify-between gap-1">
+                              <label
+                                htmlFor={`adjust-mobile-${slider.key}`}
+                                className="text-[11px] font-medium text-neutral-400 truncate"
+                              >
+                                {t(slider.labelKey)}
+                              </label>
+                              <span className="text-[10px] font-mono text-neutral-300 shrink-0">
+                                {adjustValues[slider.key] - ADJUST_DEFAULT > 0 ? '+' : ''}
+                                {adjustValues[slider.key] - ADJUST_DEFAULT}
+                              </span>
+                            </div>
+                            <input
+                              id={`adjust-mobile-${slider.key}`}
+                              type="range"
+                              min={slider.min}
+                              max={slider.max}
+                              value={adjustValues[slider.key]}
+                              onChange={(e) => handleAdjustChange(slider.key, Number(e.target.value))}
+                              className="w-full h-1 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-primary-500"
+                            />
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={handleResetAdjust}
+                          disabled={!hasPendingAdjust}
+                          className="px-3 py-1.5 text-xs rounded-lg border border-neutral-700 bg-neutral-800/40 text-neutral-300 disabled:opacity-30"
+                        >
+                          {t('imageEditor.reset')}
+                        </button>
+                        <button
+                          onClick={handleApplyAdjust}
+                          disabled={!hasPendingAdjust}
+                          className="px-4 py-1.5 text-xs rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold disabled:opacity-30"
+                        >
+                          {t('imageEditor.applyAdjust')}
+                        </button>
+                      </div>
                     </div>
                   )}
 

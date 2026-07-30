@@ -230,6 +230,7 @@ class SocialContentFactoryTest {
                 .title("신제품 출시 소식")
                 .content("<p>본문</p>")
                 .contentSanitized("<p>본문</p>")
+                .hashtags(new java.util.ArrayList<>(java.util.List.of("신제품", "위스키")))
                 .build();
         ReflectionTestUtils.setField(post, "id", 50L);
         given(postRepository.findById(50L)).willReturn(Optional.of(post));
@@ -248,16 +249,38 @@ class SocialContentFactoryTest {
         assertThat(ai.imageLabel()).isEqualTo("출시");
         assertThat(regular.caption()).startsWith("""
                 신제품 출시 소식
-                자세한 내용은 CaskByCask(캐바캐) 홈페이지를 확인해주세요
 
                 본문
                 """);
         assertThat(ai.caption()).startsWith("""
                 신제품 출시 소식
-                자세한 내용은 CaskByCask(캐바캐) 홈페이지를 확인해주세요
 
                 본문
                 """);
+        assertThat(regular.caption()).contains("""
+                본문
+
+                [자세한 내용은 CaskByCask(캐바캐) 홈페이지를 확인해주세요]
+
+                #신제품 #위스키
+                """);
+        assertThat(ai.caption()).contains("""
+                본문
+
+                [자세한 내용은 CaskByCask(캐바캐) 홈페이지를 확인해주세요]
+
+                #신제품 #위스키
+                """);
+        assertThat(regular.caption())
+                .contains("[자세한 내용은 CaskByCask(캐바캐) 홈페이지를 확인해주세요]"
+                        + "\n\n#신제품 #위스키");
+        assertThat(ai.caption())
+                .contains("[자세한 내용은 CaskByCask(캐바캐) 홈페이지를 확인해주세요]"
+                        + "\n\n#신제품 #위스키");
+        assertThat(regular.caption()).endsWith("https://www.caskbycask.net/s/AbCdEf2345");
+        assertThat(ai.caption()).endsWith("https://www.caskbycask.net/s/AbCdEf2345");
+        assertThat(ai.caption().codePointCount(0, ai.caption().length()))
+                .isLessThanOrEqualTo(500);
     }
 
     private static SocialPublishBundle reviewBundle(Long reviewId, String locale) {
