@@ -27,6 +27,8 @@ const SITE = 'https://www.caskbycask.net'
 const CANONICAL_URL_KO = `${SITE}${CACHED_SLUG_PATH}`
 const CANONICAL_URL_EN = `${SITE}${CACHED_SLUG_PATH_EN}`
 const UNCACHED_ID = '999'
+const GONE_ID = '555'
+const BROKEN_CANONICAL_ID = '666'
 
 const SPIRIT_SEO_PAYLOAD = {
   canonicalId: Number(CACHED_ID),
@@ -48,6 +50,21 @@ function startFakeBackend() {
     if (req.url === `/api/seo/spirits/${CACHED_ID}`) {
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ success: true, data: SPIRIT_SEO_PAYLOAD }))
+      return
+    }
+    // 삭제된 리소스: 확정적 부재이므로 404 와 동일하게 취급되어야 한다.
+    if (req.url === `/api/seo/spirits/${GONE_ID}`) {
+      res.writeHead(410, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ success: false, data: null }))
+      return
+    }
+    // canonical 경로가 비어 있는 비정상 응답: 깨진 목적지로 리다이렉트하면 안 된다.
+    if (req.url === `/api/seo/spirits/${BROKEN_CANONICAL_ID}`) {
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({
+        success: true,
+        data: { ...SPIRIT_SEO_PAYLOAD, canonicalPathKo: null, canonicalPathEn: '' },
+      }))
       return
     }
     res.writeHead(404, { 'Content-Type': 'application/json' })
@@ -196,6 +213,18 @@ test('주류 canonical 리다이렉트 SEO 계약', async (t) => {
     const missing = await probe('/ko/spirits/777')
     assert.equal(missing.status, 404)
     assert.equal(missing.location, null)
+  })
+
+  await t.test('백엔드 정상: 410 Gone 도 확정적 부재로 404 처리', async () => {
+    const gone = await probe(`/ko/spirits/${GONE_ID}`)
+    assert.equal(gone.status, 404, '410 을 일시 장애로 오해하면 안 된다')
+  })
+
+  await t.test('백엔드 정상: canonical 이 비어 있으면 리다이렉트하지 않는다', async () => {
+    // url.pathname 에 빈 값을 넣으면 `/undefined` 같은 깨진 목적지가 된다.
+    const broken = await probe(`/ko/spirits/${BROKEN_CANONICAL_ID}`)
+    assert.equal(broken.status, 200, '깨진 canonical 로 리다이렉트하지 않고 렌더링을 진행한다')
+    assert.equal(broken.location, null)
   })
 
   await t.test('locale 없는 경로는 /ko 로 308', async () => {

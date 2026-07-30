@@ -9,8 +9,9 @@ import EditorTooltip from './EditorTooltip'
 
 // ── 글꼴 / 글자 크기 / 줄간격 옵션 ─────────────────────────────
 // 글꼴: Pretendard(기본)만 웹폰트 로드 → 나머지는 시스템 폰트 폴백.
+// family 이름은 layout.tsx 가 불러오는 가변+subset 웹폰트('Pretendard Variable')를 따른다.
 const FONT_FAMILIES: SelectOption[] = [
-  { value: '', label: '기본', style: { fontFamily: 'Pretendard, sans-serif' } },
+  { value: '', label: '기본', style: { fontFamily: "'Pretendard Variable', Pretendard, sans-serif" } },
   { value: 'serif', label: '명조', style: { fontFamily: 'serif' } },
   { value: 'Arial, sans-serif', label: '고딕', style: { fontFamily: 'Arial, sans-serif' } },
   { value: 'ui-monospace, monospace', label: '모노', style: { fontFamily: 'ui-monospace, monospace' } },

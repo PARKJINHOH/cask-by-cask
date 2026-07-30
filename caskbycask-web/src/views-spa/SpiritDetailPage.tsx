@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, lazy, Suspense } from 'react'
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQueries } from '@tanstack/react-query'
@@ -20,7 +20,6 @@ import WishlistButtons from '@/domain/wishlist/components/WishlistButtons'
 import SeoMeta, { buildCanonical, SITE_URL } from '@/shared/components/SeoMeta'
 import { DEFAULT_OG_IMAGE } from '@/shared/config/site'
 import type { SpiritDetail, SpiritImage, SpiritSeo, SpiritVariant } from '@/domain/spirit/types/spirit.types'
-import PriceRangeChart from '@/domain/pricetracker/components/PriceRangeChart'
 import StoreDetailPanel from '@/domain/pricetracker/components/StoreDetailPanel'
 import PriceAlertInline from '@/domain/pricetracker/components/PriceAlertInline'
 import PriceAlertBanner from '@/domain/pricetracker/components/PriceAlertBanner'
@@ -30,6 +29,10 @@ import { usePriceVolumeSelection } from '@/domain/pricetracker/hooks/usePriceVol
 import { useState as useStateForPrice } from 'react'
 import type { StoreType } from '@/domain/pricetracker/types/pricetracker.types'
 import { CATEGORY_TO_PRODUCER_TYPE, PRODUCER_TYPE_LABEL } from '@/domain/producer/types/producer.types'
+
+// 가격 차트는 recharts(약 313KB)를 끌어오지만 기본 탭이 '리뷰'라 첫 화면에서는 쓰이지 않는다.
+// 가격 탭을 열 때만 내려받도록 지연 로드한다.
+const PriceRangeChart = lazy(() => import('@/domain/pricetracker/components/PriceRangeChart'))
 
 type Tab = 'reviews' | 'community' | 'price'
 
@@ -824,14 +827,23 @@ function PriceTabContent({
 
       <div className="flex flex-col lg:flex-row gap-4">
         <div className="flex-1 min-w-0 bg-white rounded-2xl border border-neutral-200 p-4">
-          <PriceRangeChart
-            data={chartData ?? undefined} isLoading={chartLoading || !volumeReady}
-            period={period} onPeriodChange={setPeriod}
-            storeType={storeType} onStoreTypeChange={setStoreType}
-            onPointClick={(date) => setSelectedDate(date)}
-            selectedDate={selectedDate}
-            seriesLabels={variantLabelMap}
-          />
+          {/* 지연 로드 중에도 차트 영역 높이를 유지해 레이아웃이 밀리지 않게 한다. */}
+          <Suspense
+            fallback={(
+              <div className="flex min-h-[300px] items-center justify-center">
+                <Spinner />
+              </div>
+            )}
+          >
+            <PriceRangeChart
+              data={chartData ?? undefined} isLoading={chartLoading || !volumeReady}
+              period={period} onPeriodChange={setPeriod}
+              storeType={storeType} onStoreTypeChange={setStoreType}
+              onPointClick={(date) => setSelectedDate(date)}
+              selectedDate={selectedDate}
+              seriesLabels={variantLabelMap}
+            />
+          </Suspense>
         </div>
         <div className="lg:w-72 bg-white rounded-2xl border border-neutral-200 min-h-[300px]">
           <StoreDetailPanel details={details ?? undefined} isLoading={detailLoading} selectedDate={selectedDate} />

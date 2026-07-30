@@ -29,7 +29,7 @@ CaskByCask는 주류(위스키·와인·꼬냑·기타) 정보와 사용자 리�
 - Spring Security + JWT (Stateless, Redis Refresh Token, 키 회전 지원)
 - Spring Data JPA + QueryDSL (Jakarta)
 - MariaDB · Flyway (스키마 마이그레이션)
-- Redis (Lettuce) + Caffeine (인증 hot-path 캐싱)
+- Redis (Lettuce) + Caffeine (인증 hot-path·주류 SEO 조회 단TTL 캐싱)
 - Bucket4j (Redis 기반 Rate Limiting)
 - SpringDoc OpenAPI (Swagger UI — local/dev 한정)
 

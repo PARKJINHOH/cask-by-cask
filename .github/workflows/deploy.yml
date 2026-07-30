@@ -146,6 +146,20 @@ jobs:
         working-directory: caskbycask-web
         run: |
           npm run build
+      # SEO 계약 회귀 검증. 빌드 산출물로 next start 를 띄우고 가짜 백엔드를 붙여 확인하므로
+      # 반드시 빌드 이후에 실행한다. 외부 네트워크·DB·운영 API 가 필요하지 않다.
+      #   · test:proxy-seo    canonical 301 / locale 308 / noindex 헤더 / 백엔드 장애 시 색인 보호
+      #   · test:seo-indexing 라우트별 index·noindex 판정, canonical·hreflang 단일성, H1
+      #   · test:seo-entity   엔티티별 title 구분(중복 title 방지), canonical 통합 정책
+      - name: Verify SEO redirect contract
+        working-directory: caskbycask-web
+        run: npm run test:proxy-seo
+      - name: Verify SEO indexing policy
+        working-directory: caskbycask-web
+        run: npm run test:seo-indexing
+      - name: Verify SEO entity metadata
+        working-directory: caskbycask-web
+        run: npm run test:seo-entity
       - name: Copy static & public to standalone
         working-directory: caskbycask-web
         run: |

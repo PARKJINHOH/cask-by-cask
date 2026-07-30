@@ -15,7 +15,7 @@ main push (코드만)
    ▼
 GitHub Actions — 대상 잡만 실행, 나머지는 skipped
    ├─ build-api (Ubuntu 24.04 x64) : clean test bootJar → app.jar ➔ Oracle Object Storage 업로드
-   ├─ build-web (Ubuntu 24.04 ARM64) : npm ci + cache test + typecheck + standalone build → dist.tar.gz ➔ Oracle Object Storage 업로드
+   ├─ build-web (Ubuntu 24.04 ARM64) : npm ci + cache test + typecheck + standalone build + SEO 계약 검증 3종 → dist.tar.gz ➔ Oracle Object Storage 업로드
    ├─ test-crawler (Ubuntu 24.04 ARM64/Python 3.12) : hash lock 설치 → compile + unit test
    └─ deploy    : 앱 아티팩트와 crawler 소스 묶음을 전송 ➔ 해당 교체 스크립트 실행
    ▼

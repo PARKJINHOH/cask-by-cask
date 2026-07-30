@@ -112,6 +112,34 @@ const FIXTURES = {
     title: '입문자용 위스키 고르기',
     description: null,
   },
+
+  // ── 방어 가드 확인용: 이름/canonical 이 비어 있는 비정상 응답 ──────────────
+  '/api/public/reviews/13': {
+    id: 13, spiritId: 999,
+    displayNameKo: '  ', displayNameEn: '',
+    canonicalPathKo: null, canonicalPathEn: null,
+    imageUrl: null, nickname: '익명', totalScore: 70,
+    noseNote: null, tasteNote: null, finishNote: null, comment: null,
+    createdAt: '2026-07-03T12:00:00',
+  },
+  '/api/producers/9': {
+    id: 9, type: null, nameKo: null, nameEn: null,
+    country: null, region: null, foundedYear: null,
+    descriptionKo: null, descriptionEn: null,
+  },
+  '/api/seo/spirits/245': {
+    canonicalId: 245,
+    canonicalPathKo: null, canonicalPathEn: null,
+    canonicalUrlKo: null, canonicalUrlEn: null,
+    titleKo: null, titleEn: null,
+    descriptionKo: null, descriptionEn: null,
+    primaryImageUrl: null, updatedAt: null, relationType: 'STANDALONE',
+  },
+  '/api/spirits/245': {
+    id: 245, nameKo: '이름 있는 주류', nameEn: 'Named Spirit',
+    category: 'WHISKY', variantType: 'NONE', country: '대만',
+    avgScore: 80, reviewCount: 1,
+  },
 }
 
 function startFakeBackend() {
@@ -171,6 +199,7 @@ async function readHead(path) {
 
   return {
     status: res.status,
+    xRobots: res.headers.get('x-robots-tag'),
     title: html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.trim() ?? null,
     description: tags
       .filter((tag) => tag.toLowerCase().startsWith('<meta') && attr(tag, 'name')?.toLowerCase() === 'description')
@@ -261,7 +290,7 @@ test('엔티티별 metadata', async (t) => {
     assert.deepEqual(en.canonical, [`${SITE}${SPIRIT_CANONICAL_EN}`])
   })
 
-  await t.test('사용자 공개 목록: 닉네임과 구획을 반영', async () => {
+  await t.test('사용자 공개 목록: 닉네임을 반영하되 색인에서 제외', async () => {
     const bottles = await readHead('/ko/users/5/bottles')
     const reviews = await readHead('/ko/users/5/reviews')
     assert.equal(bottles.status, 200)
@@ -269,8 +298,16 @@ test('엔티티별 metadata', async (t) => {
     assert.match(bottles.title, /인피튜드님의 보틀 컬렉션/)
     assert.match(reviews.title, /인피튜드님의 주류 리뷰/)
     assert.notEqual(bottles.title, reviews.title)
-    assert.deepEqual(bottles.canonical, [`${SITE}/ko/users/5/bottles`])
-    assert.deepEqual(reviews.canonical, [`${SITE}/ko/users/5/reviews`])
+
+    // 본문이 주류 상세·리뷰와 중복되고 사용자 수만큼 URL 이 늘어나므로 색인하지 않는다.
+    assert.deepEqual(bottles.robots, ['noindex, follow'])
+    assert.deepEqual(reviews.robots, ['noindex, follow'])
+    // noindex 와 canonical 을 함께 선언하면 신호가 충돌한다.
+    assert.deepEqual(bottles.canonical, [])
+    assert.deepEqual(bottles.hreflangKo, [])
+    assert.deepEqual(bottles.hreflangEn, [])
+    // 링크 추적은 유지해야 하므로 헤더로 nofollow 를 보내지 않는다.
+    assert.equal(bottles.xRobots, null)
   })
 
   await t.test('공유 취향 트리: 트리 제목을 반영', async () => {
@@ -297,5 +334,28 @@ test('엔티티별 metadata', async (t) => {
       titles.push(head.title)
     }
     assert.equal(new Set(titles).size, titles.length, '엔티티 페이지 title 은 서로 달라야 한다')
+  })
+
+  // 외부 API 응답은 타입 선언과 다를 수 있다. 이름이 비어 있는데 그대로 title 을 만들면
+  // `null 시음 후기` 같은 문자열이 색인되므로, 라우트 기본 metadata 로 폴백해야 한다.
+  await t.test('이름이 비어 있는 응답은 깨진 title 대신 기본 metadata 로 폴백', async () => {
+    for (const path of [
+      '/ko/reviews/13',                  // displayNameKo/En 이 빈 문자열
+      '/ko/producers/9',                 // nameKo/En 이 null
+      '/ko/price-tracker/spirits/245',   // canonicalUrl 이 없음
+    ]) {
+      const head = await readHead(path)
+      assert.equal(head.status, 200, `${path}: 200 이어야 한다`)
+      assert.doesNotMatch(head.title, /null|undefined/, `${path}: title 에 null/undefined 노출 금지`)
+      assert.doesNotMatch(
+        head.description ?? '',
+        /null|undefined/,
+        `${path}: description 에 null/undefined 노출 금지`,
+      )
+      // 폴백은 라우트 기본값이므로 색인 가능 상태를 유지한다.
+      assert.deepEqual(head.robots, ['index, follow'], `${path}: 폴백은 색인을 유지한다`)
+      assert.ok(head.canonical.length === 1, `${path}: canonical 은 정확히 1개`)
+      assert.doesNotMatch(head.canonical[0], /null|undefined/, `${path}: canonical 오염 금지`)
+    }
   })
 })

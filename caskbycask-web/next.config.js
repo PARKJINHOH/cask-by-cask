@@ -6,6 +6,19 @@ const nextConfig = {
     // Next.js 지원 범위에 들어올 때까지 앱에서 이미지 최적화를 사용하지 않는다.
     unoptimized: true,
   },
+  async headers() {
+    return [
+      {
+        // self-host Pretendard 조각. public/ 정적 파일은 기본적으로 캐시되지 않으므로
+        // 명시적으로 장기 캐시를 준다. 경로에 버전이 포함되어(`/fonts/pretendard/v1.3.9/...`)
+        // 버전 교체 = URL 교체이므로 immutable 이 안전하다.
+        source: '/fonts/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+    ]
+  },
   async rewrites() {
     return [
       {

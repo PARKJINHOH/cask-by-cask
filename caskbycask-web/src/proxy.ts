@@ -83,7 +83,9 @@ async function lookupSpiritSeo(id: string): Promise<SpiritSeoResult> {
     const res = await fetch(`${API_URL}/api/seo/spirits/${id}`, {
       cache: 'no-store',
     })
-    if (res.status === 404) {
+    // 404 와 410 은 "확정적으로 없음". seoHelpers 의 isApiResourceNotFound 와 판정을 맞춘다.
+    // (제한된 콘텐츠 401/403 이나 일시 장애 5xx 를 영구 부재로 바꾸지 않는다)
+    if (res.status === 404 || res.status === 410) {
       writeSpiritSeoCache(id, { kind: 'not-found' })
       return { status: 'not-found' }
     }
@@ -123,6 +125,9 @@ const NOINDEX_PATHS = [
   // /price-tracker/spirits/{id})를 건드리지 않도록 하위 경로만 정확히 지정한다.
   /^\/taste-trees\/(?:new|mine|\d+\/edit)(?:\/|$)/,
   /^\/price-tracker\/register(?:\/|$)/,
+  // 참고: 사용자 공개 목록(/users/{id}/bottles|reviews)은 여기에 넣지 않는다.
+  // 이 헤더는 `noindex, nofollow` 를 보내지만 해당 경로는 링크 추적(`follow`)을 유지해야 하므로,
+  // HTML meta 의 `noindex, follow` 단독으로 처리한다(신호 충돌 방지).
 ]
 
 export async function proxy(request: NextRequest) {
@@ -167,6 +172,11 @@ export async function proxy(request: NextRequest) {
   }
 
   const canonicalPath = lang === 'en' ? result.seo.canonicalPathEn : result.seo.canonicalPathKo
+  // 응답에 canonical 경로가 없거나 형식이 어긋나면 리다이렉트하지 않는다.
+  // (`url.pathname = undefined` 는 `/undefined` 같은 깨진 목적지로 이어진다)
+  if (typeof canonicalPath !== 'string' || !canonicalPath.startsWith('/')) {
+    return nextWithSeoContext(request)
+  }
   if (normalizePath(pathname) === normalizePath(canonicalPath)) {
     return nextWithSeoContext(request)
   }

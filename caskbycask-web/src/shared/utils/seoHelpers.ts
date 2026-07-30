@@ -1349,7 +1349,12 @@ export async function getPublicRouteMetadata(
     return (await getSpiritPriceMetadata(segments[2], lang)) ?? fallback()
   }
   if (segments[0] === 'users' && segments[1] && segments[2]) {
-    return (await getUserPublicMetadata(segments[1], segments[2], lang)) ?? fallback()
+    // 이 경로는 정책상 색인 대상이 아니다. 조회가 실패해도 라우트 기본값(index)으로
+    // 되돌아가면 정책이 뒤집히므로 noindex 를 유지한 채 폴백한다.
+    return (await getUserPublicMetadata(segments[1], segments[2], lang))
+      ?? getNoindexMetadata(lang, normalizeLang(lang) === 'en'
+        ? 'Public spirits collection — CaskByCask'
+        : '사용자 공개 목록 — CaskByCask')
   }
   if (segments[0] === 'taste-trees' && segments[1] === 't' && segments[2]) {
     return (await getSharedTasteTreeMetadata(segments[2], lang)) ?? fallback()
@@ -1375,6 +1380,21 @@ interface PublicReviewResponse {
 }
 
 /**
+ * 표시용 이름을 안전하게 꺼낸다.
+ *
+ * 위 interface 들은 외부 API 응답에 대한 선언일 뿐 런타임 보장이 아니다. 이름이 비어 있는데
+ * 그대로 title 을 만들면 `null 시음 후기 — CaskByCask` 같은 문자열이 색인되므로,
+ * 값이 없으면 호출부가 라우트 기본 metadata 로 폴백하도록 null 을 반환한다.
+ */
+function firstNonBlank(...values: Array<string | null | undefined>): string | null {
+  for (const value of values) {
+    const trimmed = value?.trim()
+    if (trimmed) return trimmed
+  }
+  return null
+}
+
+/**
  * 공개 리뷰 상세.
  *
  * 리뷰 본문은 사용자가 한국어로 작성하므로 게시글과 동일하게 한국어 원문으로 신호를 통합한다.
@@ -1390,8 +1410,10 @@ async function getPublicReviewMetadata(
 
   const isEn = normalizeLang(lang) === 'en'
   const spiritName = isEn
-    ? (review.displayNameEn || review.displayNameKo)
-    : review.displayNameKo
+    ? firstNonBlank(review.displayNameEn, review.displayNameKo)
+    : firstNonBlank(review.displayNameKo, review.displayNameEn)
+  if (!spiritName) return null
+
   const nickname = review.nickname?.trim()
   const score = review.totalScore == null ? null : Number(review.totalScore)
   const scoreText = score == null || Number.isNaN(score)
@@ -1475,7 +1497,11 @@ async function getProducerMetadata(
 
   const resolvedLang = normalizeLang(lang)
   const isEn = resolvedLang === 'en'
-  const name = isEn ? (producer.nameEn || producer.nameKo) : producer.nameKo
+  const name = isEn
+    ? firstNonBlank(producer.nameEn, producer.nameKo)
+    : firstNonBlank(producer.nameKo, producer.nameEn)
+  if (!name) return null
+
   const typeLabel = PRODUCER_TYPE_SEO_LABEL[producer.type ?? 'OTHER'] ?? PRODUCER_TYPE_SEO_LABEL.OTHER
   const title = isEn
     ? `${name} ${typeLabel.en} — CaskByCask`
@@ -1547,14 +1573,18 @@ async function getSpiritPriceMetadata(
 
   const isEn = normalizeLang(lang) === 'en'
   const { nameKo, nameEn } = formatSpiritDisplayNames(spirit)
-  const name = isEn ? nameEn : nameKo
+  const name = isEn ? firstNonBlank(nameEn, nameKo) : firstNonBlank(nameKo, nameEn)
+  // canonical 을 주류 상세로 통합하는 것이 이 함수의 핵심이므로, 대상 URL 이 없으면
+  // 잘못된 canonical 을 내보내는 대신 라우트 기본 metadata 로 넘긴다.
+  const canonical = firstNonBlank(isEn ? seo.canonicalUrlEn : seo.canonicalUrlKo)
+  if (!name || !canonical) return null
+
   const title = isEn
     ? `${name} price history — CaskByCask`
     : `${name} 가격 정보 — CaskByCask`
   const description = isEn
     ? `Historical purchase prices and approved deals reported by users for ${name}.`
     : `${name}의 사용자 제보 구매 가격과 승인된 핫딜 정보를 확인하세요.`
-  const canonical = isEn ? seo.canonicalUrlEn : seo.canonicalUrlKo
   const ogImage = seo.primaryImageUrl || DEFAULT_OG_IMAGE
 
   return {
@@ -1585,7 +1615,17 @@ interface UserBottleListResponse {
   ownerNickname: string | null
 }
 
-/** 사용자 공개 보틀·리뷰 목록. 닉네임을 반영해 사용자별로 title 을 구분한다. */
+/**
+ * 사용자 공개 보틀·리뷰 목록.
+ *
+ * 색인 대상에서 제외한다. 이 화면은 사용자가 보유·평가한 주류 목록이라 본문이 주류 상세·리뷰
+ * 페이지와 중복되고, 사용자명 기반 검색 수요가 없어 색인 가치가 낮다. 사용자 수만큼 URL 이
+ * 늘어나므로 그대로 두면 크롤 예산이 주류 페이지에서 빠져나간다.
+ *
+ * `follow` 는 유지한다. 이 목록의 링크를 따라 주류 상세로 들어가는 경로는 살려두어야 한다.
+ * `noindex` 와 canonical 을 함께 선언하면 신호가 충돌하므로 canonical·hreflang 은 내보내지 않는다.
+ * 페이지 자체는 계속 200 으로 동작하고 OG 태그도 유지하므로 링크 공유에는 영향이 없다.
+ */
 async function getUserPublicMetadata(
   userId: string,
   section: string,
@@ -1599,8 +1639,7 @@ async function getUserPublicMetadata(
   const nickname = summary?.ownerNickname?.trim()
   if (!nickname) return null
 
-  const resolvedLang = normalizeLang(lang)
-  const isEn = resolvedLang === 'en'
+  const isEn = normalizeLang(lang) === 'en'
   const isBottles = section === 'bottles'
   const title = isEn
     ? `${nickname}'s ${isBottles ? 'bottle collection' : 'spirit reviews'} — CaskByCask`
@@ -1609,22 +1648,14 @@ async function getUserPublicMetadata(
     ? `Browse the ${isBottles ? 'bottles' : 'spirit reviews'} shared publicly by ${nickname} on CaskByCask.`
     : `${nickname}님이 공개한 ${isBottles ? '보유 보틀' : '주류 리뷰'}를 확인하세요.`
 
-  const canonicalKo = `${SITE_URL}/ko/users/${userId}/${section}`
-  const canonicalEn = `${SITE_URL}/en/users/${userId}/${section}`
-  const canonical = isEn ? canonicalEn : canonicalKo
-
   return {
     title,
     description,
-    robots: buildRobots(true),
-    alternates: {
-      canonical,
-      languages: { ko: canonicalKo, en: canonicalEn, 'x-default': canonicalKo },
-    },
+    robots: buildRobots(false),
     openGraph: {
       title,
       description,
-      url: canonical,
+      url: `${SITE_URL}/${isEn ? 'en' : 'ko'}/users/${userId}/${section}`,
       type: 'profile',
       siteName: 'CaskByCask',
       locale: isEn ? 'en_US' : 'ko_KR',

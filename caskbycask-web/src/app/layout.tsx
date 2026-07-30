@@ -1,5 +1,9 @@
 import type { Metadata } from 'next'
 import { headers } from 'next/headers'
+// Pretendard 는 self-host 한다(가변 + dynamic subset, 92조각).
+// 번들된 CSS 로 들어가므로 서드파티 연결과 별도 CSS 요청이 모두 사라진다.
+// 자산 갱신은 `npm run fonts:sync` — 생성 파일은 직접 편집하지 않는다.
+import '@/fonts/pretendard.css'
 import '@/index.css'
 
 export const metadata: Metadata = {
@@ -45,11 +49,6 @@ export default async function RootLayout({
               gtag('config', 'G-879K3LVK58');
             `,
           }}
-        />
-        {/* Pretendard 폰트 웹폰트 적용 */}
-        <link
-          rel="stylesheet"
-          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"
         />
       </head>
       <body className="antialiased">

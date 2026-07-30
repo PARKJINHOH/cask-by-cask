@@ -152,8 +152,17 @@ title·description을 갖는다. 검색엔진은 이를 중복으로 판단해 �
 | `/reviews/{id}` | `{주류명} 시음 후기 ({닉네임})` | `/ko` 고정 (본문이 한국어라 hreflang 미출력) |
 | `/producers/{id}` | `{생산자명} {증류소\|와이너리\|꼬냑 하우스} 정보` | 언어별 self + hreflang |
 | `/price-tracker/spirits/{id}` | `{주류명} 가격 정보` | **주류 상세 canonical로 통합** |
-| `/users/{id}/bottles\|reviews` | `{닉네임}님의 보틀 컬렉션\|주류 리뷰` | 언어별 self + hreflang |
+| `/users/{id}/bottles\|reviews` | `{닉네임}님의 보틀 컬렉션\|주류 리뷰` | **없음 (noindex, follow)** |
 | `/taste-trees/t/{shareKey}` | `{트리 제목} — 주류 취향 트리` | 언어별 self + hreflang |
+
+`/users/{id}/bottles|reviews`는 색인 대상에서 제외한다. 본문이 주류 상세·리뷰 페이지와 중복되고
+사용자명 기반 검색 수요가 없는데 사용자 수만큼 URL이 늘어나, 그대로 두면 크롤 예산이 주류 페이지에서
+빠져나간다. `follow`는 유지해 목록의 주류 링크를 따라가는 경로는 살려두며, `noindex`와 신호가
+충돌하지 않도록 canonical·hreflang은 내보내지 않는다. 조회가 실패해도 라우트 기본값(index)으로
+되돌아가지 않고 `noindex`를 유지한다. 페이지는 계속 `200`이고 OG 태그도 남아 링크 공유에는 영향이 없다.
+
+`X-Robots-Tag` 헤더 목록(`proxy.ts`)에는 넣지 않는다. 그 헤더는 `noindex, nofollow`를 보내므로
+`follow` 정책과 어긋난다. HTML meta 단독으로 처리한다.
 
 `/price-tracker/spirits/{id}`만 canonical을 자기 자신이 아닌 주류 상세로 보낸다. 이 화면의 가격 추이·매장
 정보는 주류 상세의 가격 탭에 이미 포함되어 사실상 부분집합이고, sitemap에도 등재되지 않는다. 두 URL이
@@ -215,7 +224,89 @@ proxy는 canonical 판정을 위해 `/api/seo/spirits/{id}`를 조회한다. 이
 
 이 계약은 `npm run test:proxy-seo`가 회귀 검증한다(백엔드 정상/장애 양쪽 모두).
 
+### 웹폰트 (Core Web Vitals)
+
+본문 서체는 Pretendard **가변(variable) + dynamic subset** 배포본을 **self-host** 한다.
+
+- 정적(static) 배포본은 weight 하나가 한글 전체를 담은 약 750KB 파일이다. 본문에서 실제 렌더링되는
+  weight가 400·500·600·700 네 종이므로 그대로 쓰면 페이지당 약 **3,048KB**를 내려받는다.
+- 가변 + dynamic subset은 `unicode-range`로 92개 조각(조각당 8~43KB)으로 나뉘어 페이지에 실제로
+  등장하는 문자 범위만 받고, 하나의 파일이 45~920 weight를 모두 커버한다. 홈 실측 기준
+  폰트 **291KB + CSS 48KB**다.
+- self-host이므로 서드파티 요청이 **0건**이다. CDN 장애·차단으로 서체가 폴백으로 떨어지는 위험이
+  없고 추가 DNS/TLS 연결도 사라진다. 정적 자산이라 Cloudflare 엣지 캐시를 그대로 탄다.
+- 모든 `@font-face`에 `font-display: swap`이 포함되어 있어 폰트 대기 중에도 텍스트가 먼저 그려진다.
+- family 이름이 `'Pretendard Variable'`이므로 `src/index.css`의 `--font-sans`, `html { font-family }`,
+  TipTap 편집기의 기본 글꼴 옵션이 이 이름을 함께 유지해야 한다. 이름이 어긋나면 폰트가 조용히
+  미적용되고 폴백 서체로 렌더링된다.
+
+#### 폰트 자산 관리
+
+| 항목 | 위치 |
+|---|---|
+| 동기화 스크립트 | `caskbycask-web/scripts/sync-pretendard.mjs` (`npm run fonts:sync`) |
+| 폰트 파일 | `public/fonts/pretendard/<버전>/*.woff2` (92개, 약 2.8MB) |
+| `@font-face` CSS | `src/fonts/pretendard.css` — **생성물이므로 직접 편집 금지** |
+| 캐시 헤더 | `next.config.js`의 `headers()` — `/fonts/:path*`에 `immutable`, 1년 |
+
+- 조각 파일명(`PretendardVariable.subset.N.woff2`)은 버전이 올라가도 동일하므로 **경로에 버전을 넣는다.**
+  버전 교체가 URL 교체가 되어 `immutable` 장기 캐시가 안전해진다.
+- 버전을 올릴 때는 스크립트의 `PRETENDARD_VERSION`만 바꿔 `npm run fonts:sync`를 다시 실행한다.
+  이전 버전 디렉토리는 스크립트가 정리하고, CSS도 함께 재생성된다.
+- `public/`은 CI의 "Copy static & public to standalone" 단계에서 그대로 복사되므로 별도 배포 작업이 없다.
+
+### JS 번들 (Core Web Vitals)
+
+클라이언트 앱은 route 단위 코드 스플리팅을 쓰지만, **레이아웃이나 상세 페이지가 무거운 의존성을
+정적 import 하면 그 의존성이 초기 번들로 끌려온다.** 다음 두 곳이 그런 경우였고 지연 로드로 분리했다.
+
+| 위치 | 끌려온 의존성 | 조치 |
+|---|---|---|
+| `MainLayout` → `ForcePasswordChangeModal` | zod + @hookform/resolvers (약 288KB) | 강제 변경이 필요한 사용자일 때만 마운트 |
+| `SpiritDetailPage` → `PriceRangeChart` | recharts (약 313KB) | '가격' 탭을 열 때만 로드 |
+
+실측 다운로드량(비압축 JS 합계):
+
+| 경로 | 이전 | 이후 |
+|---|---|---|
+| `/ko` | 1,454KB | 1,129KB |
+| `/ko/spirits` | 1,427KB | 1,103KB |
+| `/ko/spirits/{id}-{slug}` | 1,887KB | 1,168KB |
+
+주의: `React.lazy`는 **컴포넌트가 렌더되는 순간** 청크를 내려받는다. 컴포넌트 내부에서 조건을 검사해
+`null`을 반환하더라도 모듈은 이미 로드된다. 따라서 조건은 반드시 부모에서 검사해 마운트 자체를 막아야
+분리 효과가 생긴다.
+
+이미지는 목록·카드·썸네일에 `loading="lazy"`, 주류 상세 대표 이미지에 `loading="eager"`와
+`fetchPriority="high"`, 배너 슬라이더는 첫 장만 `eager`로 이미 적용되어 있다.
+
+### SEO API 캐싱 (백엔드)
+
+`/api/seo/spirits/{id}`는 주류 페이지 요청의 임계 경로다. Next.js proxy 가 canonical 판정을 위해
+호출하고 클라이언트 SPA 도 상세 진입 시 호출하며, 한 번 조회에 주류 상세·에디션 목록·대표 이미지·
+최근 가격·최근 핫딜까지 5~6개 쿼리가 나간다. 그래서 백엔드에 Caffeine 캐시(`spiritSeo`, TTL 60초,
+최대 2,000건)를 적용해 반복 조회를 흡수한다.
+
+- TTL 60초는 이미 존재하는 지연(proxy canonical 캐시 5분, Next.js ISR 3600초)보다 짧으므로
+  색인 신호의 최악 지연을 늘리지 않는다.
+- 개별 무효화는 하지 않는다. 다만 비활성 주류는 예외를 던지고 **예외는 캐시되지 않으므로**
+  404 전환은 즉시 반영된다.
+- 단일 인스턴스 인메모리 캐시다. 다중 인스턴스로 확장하면 인스턴스별로만 적용되므로
+  그때 Redis 로 옮기거나 TTL 을 줄인다.
+
+`npm run test:proxy-seo`(프론트)와 `SpiritSeoServiceCacheTest`(백엔드)가 이 계약을 검증한다.
+
+> 참고: 과거 API 가 Vite 시절 `index.html` 을 읽어 메타를 주입하던 `SeoPageController` 는 제거했다.
+> nginx 가 `/spirits*` 를 Next.js(3000)로 보내고 API(8080)로는 `/api`·sitemap·IndexNow 만 보내므로
+> 도달할 수 없는 코드였고, 참조하던 `seo.index-path`(`/app/vite/dist/index.html`)도 존재하지 않는
+> 경로였다. 페이지 HTML 은 Next.js 가 단독으로 소유한다.
+
 ### 트러블슈팅 및 검증
+
+> 아래 세 검증(`test:proxy-seo`, `test:seo-indexing`, `test:seo-entity`)은 GitHub Actions 의
+> `build-web` 잡에서 **빌드 직후 자동 실행되는 배포 게이트**다. 실패하면 배포가 중단된다.
+> 수동 배포(`deploy/local/manual-deploy.ps1`)는 Actions 를 거치지 않아 게이트가 실행되지 않으므로,
+> SEO 관련 코드를 수정한 뒤 수동 배포할 때는 로컬에서 먼저 실행한다.
 - **빌드 검증**: 로컬 빌드 시 터미널 로그에서 각 라우트별 렌더링 타입(○ Static, λ SSR)이 정상적으로 설계와 일치하는지 확인합니다. 로그 마지막에 `ƒ Proxy (Middleware)` 줄이 있어야 URL 정규화가 활성 상태입니다.
 - **리다이렉트 계약 검증**: `cd caskbycask-web && npm run build && npm run test:proxy-seo`. 가짜 백엔드를 띄워 canonical 301·locale 308·noindex 헤더·hreflang 쌍을 확인하고, 백엔드를 내린 뒤 stale 캐시 리다이렉트·slug URL 200·slug 없는 URL만 503인지까지 검증합니다. 외부 네트워크나 운영 API가 필요하지 않으므로 배포 전 로컬에서 항상 실행할 수 있습니다.
 - **색인 정책 검증**: `cd caskbycask-web && npm run build && npm run test:seo-indexing`. 라우트별로 index/noindex 판정, canonical, hreflang이 각각 정확히 1개인지, 비공개 경로에 canonical이 없는지, 공개 경로에 noindex 헤더가 잘못 붙지 않는지, snapshot 경로의 H1이 1개인지, 홈이 주류 경로 내부 링크를 제공하는지 확인합니다. 백엔드를 의도적으로 죽은 포트로 지정하므로 **API 장애 중에도 공개 경로가 색인 가능 상태를 유지하는지**까지 함께 검증합니다.
@@ -260,11 +351,94 @@ proxy는 canonical 판정을 위해 `/api/seo/spirits/{id}`를 조회한다. 이
 3. Search Console "페이지" → 색인 제외 사유 확인 (예: "noindex로 차단됨", "표준 URL과 다름")
 4. `sitemap.xml`의 모든 하위 sitemap 응답 200 확인, 주류 shard의 마지막 lastmod가 합리적인 날짜인지
 5. SSL 인증서 만료 확인 (`openssl s_client -connect www.caskbycask.net:443 -servername www.caskbycask.net 2>/dev/null | openssl x509 -noout -dates`)
+6. 색인 신호(canonical·robots·리다이렉트) 자체가 의심되면 로컬에서 계약 검증을 돌려 재현한다. 운영 API 없이 동작하므로 즉시 실행할 수 있다.
+
+   ```powershell
+   cd caskbycask-web
+   npm run build
+   npm run test:proxy-seo; npm run test:seo-indexing; npm run test:seo-entity
+   ```
+
+7. 주류 URL 이 대량으로 `503` 이면 백엔드 SEO API(`/api/seo/spirits/{id}`)를 먼저 확인한다. proxy 는
+   캐시가 없고 API 도 응답하지 않을 때만 slug 없는 URL 에 `503` 을 반환한다. `curl -sI https://www.caskbycask.net/ko/spirits/{id}-{slug}` 가 `200` 이면 정규 URL 은 정상이다.
+
+---
+
+## 11. 배포 후 운영 검증 (SEO 영향 변경 시)
+
+배포 순서는 `api` → `web` 두 번으로 나눈다(이유는 [`OPERATIONS-GUIDE.md`](./OPERATIONS-GUIDE.md)
+2장 "SEO 영향이 있는 변경의 배포 순서" 참고). 배포 직후 아래를 순서대로 확인한다.
+
+### 1) 리다이렉트 체인 (홉 수가 늘어나지 않았는지)
+
+```powershell
+# 기대: 308 -> /ko
+curl.exe -sI https://www.caskbycask.net/ | Select-String "HTTP/|location"
+# 기대: 301 -> /ko/spirits/{id}-{slug}  (1홉)
+curl.exe -sI https://www.caskbycask.net/spirits/244 | Select-String "HTTP/|location"
+# 기대: 200 (정규 URL 은 리다이렉트 없음)
+curl.exe -sI https://www.caskbycask.net/ko/spirits/244-카발란-솔리스트-px-셰리-px151126026a | Select-String "HTTP/"
+```
+
+### 2) 색인 신호
+
+```powershell
+# 공개 주류: index, follow + self-canonical
+curl.exe -sL https://www.caskbycask.net/ko/spirits | Select-String 'name="robots"|rel="canonical"'
+# 사용자 공개 목록: noindex, follow + canonical 없음
+curl.exe -sL https://www.caskbycask.net/ko/users/1/bottles | Select-String 'name="robots"|rel="canonical"'
+# 비공개: X-Robots-Tag 헤더
+curl.exe -sI https://www.caskbycask.net/ko/mypage | Select-String "x-robots-tag"
+```
+
+### 3) 웹폰트 (self-host)
+
+```powershell
+# 기대: 200, content-type: font/woff2, cache-control 에 immutable
+curl.exe -sI https://www.caskbycask.net/fonts/pretendard/v1.3.9/PretendardVariable.subset.0.woff2 |
+  Select-String "HTTP/|content-type|cache-control"
+# 기대: 출력 없음 (외부 CDN 참조가 남아 있지 않아야 한다)
+curl.exe -sL https://www.caskbycask.net/ko | Select-String "jsdelivr"
+```
+
+### 4) sitemap · robots
+
+```powershell
+curl.exe -sI https://www.caskbycask.net/sitemap.xml | Select-String "HTTP/|content-type"
+curl.exe -sI https://www.caskbycask.net/robots.txt  | Select-String "HTTP/"
+```
+
+### 5) 전체 렌더링 검증
+
+```powershell
+cd caskbycask-web
+$env:SEO_VERIFY_BASE_URL = 'https://www.caskbycask.net'
+npm.cmd run seo:verify
+Remove-Item Env:SEO_VERIFY_BASE_URL -ErrorAction SilentlyContinue
+```
+
+### 6) 이후 며칠간 Search Console 에서 볼 것
+
+| 지표 | 기대 방향 | 의미 |
+|---|---|---|
+| 서버 오류(5xx) | **감소** | 주류 URL 이 `503` 을 반환하던 문제 해소 |
+| `noindex 태그에 의해 제외됨` | 증가 | `/users/{id}/*` 색인 제외 — **의도된 변화** |
+| `대체 페이지(적절한 표준 태그 있음)` | 증가 | `/price-tracker/spirits/{id}` → 주류 상세로 통합 — **의도된 변화** |
+| `중복, 사용자가 표준으로 지정하지 않음` | 감소 | 엔티티별 title·canonical 분리 효과 |
+| 주류 페이지 노출·클릭 | 증가 | 색인 통합과 5xx 해소 후 2~4주 반영 |
+
+증가가 기대되는 두 항목은 색인 제외 사유이지만 정책상 의도한 것이다. 반면 **주류 URL 에서
+`서버 오류(5xx)` 나 `찾을 수 없음(404)` 이 늘어나면 즉시 조사**한다(10장 응급 대응).
 
 ---
 
 ## 변경 이력
 
+- 2026-07-30: Pretendard를 **self-host**로 전환(`npm run fonts:sync`, `public/fonts/pretendard/<버전>/`, 92개 약 2.8MB). 서드파티 요청 0건, 경로에 버전을 넣어 `immutable` 1년 캐시. `/users/{id}/bottles|reviews`를 `noindex, follow`로 전환(canonical·hreflang 미출력, 조회 실패 시에도 noindex 유지)
+- 2026-07-30: SEO 계약 검증 3종을 GitHub Actions `build-web` 잡의 배포 게이트로 등록(빌드 직후 실행, 실패 시 배포 중단). 외부 API 응답이 비어 있을 때 `null`이 title·canonical 로 새는 경로 차단, proxy 의 `410 Gone` 판정과 canonical 형식 검증 추가
+- 2026-07-30: `/api/seo/spirits/{id}` 에 Caffeine 캐시(TTL 60초, 최대 2,000건) 적용 — proxy 가 모든 주류 요청에서 의존하는 엔드포인트의 조회 비용(5~6쿼리)을 낮춰 장애 전이 가능성을 줄였다. 도달 불가 레거시 `SeoPageController` 와 고아 설정 `seo.index-path` 제거
+- 2026-07-30: 초기 JS 번들에 끌려오던 zod(약 288KB)와 recharts(약 313KB)를 지연 로드로 분리. 홈·주류 목록 약 -325KB, 주류 상세 약 -719KB(1,887KB → 1,168KB)
+- 2026-07-30: Pretendard를 가변+dynamic subset 배포본으로 전환. 홈 실측 폰트 전송량 약 3,048KB → 343KB(약 89% 감소). `cdn.jsdelivr.net` preconnect 추가. family가 `'Pretendard Variable'`로 바뀌어 `index.css`·TipTap 기본 글꼴 옵션도 동기 수정
 - 2026-07-30: 엔티티별 metadata 도입. 라우트 키 단위 기본값 때문에 리뷰·생산자·사용자·공유 취향 트리·주류 가격 페이지가 동일 title을 공유하던 문제 해소(`/reviews/{id}`는 사이트 기본값과 같아 홈과 title이 동일했음). `/price-tracker/spirits/{id}`는 canonical을 주류 상세로 통합. 회귀 테스트 `npm run test:seo-entity` 추가
 - 2026-07-30: 홈 SEO snapshot 추가(단일 H1 + 카테고리·주요 경로·주류 canonical 내부 링크). `SeoFallback` 목록 제목을 경로별로 분리해 주류 목록에 "최신 공개 글"이 표시되던 문구 오류 교정. proxy `X-Robots-Tag` 목록에 `taste-trees/new|mine|{id}/edit`·`price-tracker/register` 추가(공개 경로 미영향). 색인 정책 회귀 테스트 `npm run test:seo-indexing` 추가
 - 2026-07-30: 주류 canonical 조회에 stale-while-error 캐시 도입. SEO API 장애 시 주류 URL 전체가 503이 되던 문제를 해소하고, slug 없는 요청만 503을 유지하도록 축소. fallback metadata의 잘못된 canonical 제거(noindex 전환). Next.js 16의 `proxy.ts` 규약과 리다이렉트 체인 계약 문서화. 회귀 테스트 `npm run test:proxy-seo` 추가

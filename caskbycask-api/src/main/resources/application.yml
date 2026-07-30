@@ -118,10 +118,10 @@ exchange-rate:
   retry-max-attempts: ${EXCHANGE_RATE_RETRY_MAX_ATTEMPTS:3}
   retry-initial-backoff-ms: ${EXCHANGE_RATE_RETRY_INITIAL_BACKOFF_MS:1000}
 
-# SEO 메타 — sitemap.xml 의 base URL 및 index.html 파일 경로
+# SEO 메타 — sitemap.xml / IndexNow 의 base URL
+# (페이지 HTML 은 Next.js 가 렌더링한다. API 는 sitemap·IndexNow·SEO 조회 API 만 담당)
 seo:
   site-url: ${SEO_SITE_URL:https://www.caskbycask.net}
-  index-path: ${SEO_INDEX_PATH:../caskbycask-web/dist/index.html}
   index-now:
     enabled: ${INDEXNOW_ENABLED:false}
     key: ${INDEXNOW_KEY:}

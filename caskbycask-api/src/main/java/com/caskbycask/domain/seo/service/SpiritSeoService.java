@@ -18,6 +18,7 @@ import com.caskbycask.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +32,19 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class SpiritSeoService {
 
+    /**
+     * 주류 SEO 조회 캐시 이름.
+     *
+     * 이 엔드포인트는 주류 페이지 요청의 임계 경로에 있다. Next.js proxy 가 canonical 판정을 위해
+     * 호출하고, 클라이언트 SPA 도 상세 진입 시 호출한다. 한 번 조회에 주류 상세·에디션 목록·대표
+     * 이미지·최근 가격·최근 핫딜까지 5~6개 쿼리가 나가므로 짧은 TTL 로 반복 조회를 흡수한다.
+     *
+     * staleness: TTL 만 사용하고 개별 무효화는 하지 않는다. 60초는 이미 존재하는 지연
+     * (proxy canonical 캐시 5분, Next.js ISR 3600초)보다 짧아 색인 신호의 최악 지연을 늘리지 않는다.
+     * 주류가 비활성화되면 예외가 발생하고 예외는 캐시되지 않으므로 404 전환은 즉시 반영된다.
+     */
+    public static final String SEO_CACHE_NAME = "spiritSeo";
+
     private final SpiritRepository spiritRepository;
     private final SpiritImageRepository spiritImageRepository;
     private final PriceReportRepository priceReportRepository;
@@ -39,6 +53,7 @@ public class SpiritSeoService {
     @Value("${seo.site-url:https://www.caskbycask.net}")
     private String siteUrl;
 
+    @Cacheable(cacheNames = SEO_CACHE_NAME, key = "#id")
     @Transactional(readOnly = true)
     public SpiritSeoResponse getSpiritSeo(Long id) {
         Spirit requested = spiritRepository.findByIdWithAllDetails(id, SpiritStatus.ACTIVE)

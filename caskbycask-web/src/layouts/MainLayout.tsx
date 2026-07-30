@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, Suspense } from 'react'
+import { useState, useRef, useEffect, Suspense, lazy } from 'react'
 import { Outlet, Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 
 import RouteFallback from '@/shared/components/RouteFallback'
@@ -15,7 +15,6 @@ import { useToast } from '@/shared/hooks/useToast'
 import { useLatestNotice } from '@/domain/notice/hooks/useNotices'
 import NotificationBell from '@/domain/notification/components/NotificationBell'
 import MessagePopup from '@/domain/message/components/MessagePopup'
-import ForcePasswordChangeModal from '@/domain/user/components/ForcePasswordChangeModal'
 import LevelBadge from '@/shared/components/LevelBadge'
 import DefaultAvatar from '@/shared/components/DefaultAvatar'
 import AdminIcon from '@/shared/components/icons/AdminIcon'
@@ -30,6 +29,10 @@ import { getSpiritListDisplayNames } from '@/domain/spirit/utils/spiritDisplayNa
 import { getSpiritDetailPath } from '@/domain/spirit/utils/spiritUrl'
 import { SEARCH_DEBOUNCE_MS } from '@/shared/hooks/useDebouncedValue'
 import { scrollToPageTop } from '@/shared/utils/scrollToPageTop'
+
+// 임시 비밀번호 발급 사용자에게만 열리는 모달. 평소에는 null 을 반환한다.
+// 정적 import 하면 zod/@hookform/resolvers 가 모든 페이지의 초기 번들에 포함되므로 지연 로드한다.
+const ForcePasswordChangeModal = lazy(() => import('@/domain/user/components/ForcePasswordChangeModal'))
 
 
 const SEEN_KEY = 'notice:lastSeenId'
@@ -857,7 +860,11 @@ function UserDropdown() {
 export default function MainLayout() {
   const { t } = useTranslation()
   const { isLoggedIn, isAuthReady } = useAuthStore()
+  const { data: profile } = useMe()
   const showAuthedActions = isAuthReady && isLoggedIn
+  // lazy 컴포넌트는 렌더되는 순간 청크를 내려받으므로, 모달 내부의 조건 검사만으로는
+  // 번들 분리 효과가 없다. 실제로 강제 변경이 필요한 사용자일 때만 마운트한다.
+  const needsPasswordChange = showAuthedActions && Boolean(profile?.mustChangePassword)
 
   return (
     <div className="min-h-screen bg-canvas flex flex-col">
@@ -994,7 +1001,11 @@ export default function MainLayout() {
       {showAuthedActions && <MessagePopup />}
 
       {/* 임시 비밀번호 강제 변경 모달 (필요 시 자동 노출) */}
-      <ForcePasswordChangeModal />
+      {needsPasswordChange && (
+        <Suspense fallback={null}>
+          <ForcePasswordChangeModal />
+        </Suspense>
+      )}
     </div>
   )
 }

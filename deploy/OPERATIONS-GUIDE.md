@@ -79,7 +79,12 @@ ARM64에서 검증·빌드한다. Actions는 커밋 SHA로 고정하고 `content
    - `ref` 입력란 비워두면 `main` 배포 (기본값)
    - 🕐 **사용자 적은 시간대 권장**
 3. 자동 진행 (대상에 해당하는 잡만 실행, 나머지는 `skipped`):
-   - `build-api` (`fonts-noto-cjk` 설치 → `clean test bootJar`) · `build-web` (`npm ci` → 세션 캐시 테스트 → 타입 검사 → Next.js Standalone Build) · `test-crawler` (Python 3.12 ARM64 hash lock 설치 → 전체 테스트) — 대상이면 병렬 실행
+   - `build-api` (`fonts-noto-cjk` 설치 → `clean test bootJar`) · `build-web` (`npm ci` → 세션 캐시 테스트 → 타입 검사 → Next.js Standalone Build → **SEO 계약 검증 3종**) · `test-crawler` (Python 3.12 ARM64 hash lock 설치 → 전체 테스트) — 대상이면 병렬 실행
+     - SEO 계약 검증은 빌드 산출물로 `next start`를 띄우고 가짜 백엔드를 붙여 확인하므로 반드시 빌드 이후에 실행한다. 외부 네트워크·DB·운영 API가 필요하지 않다.
+       - `npm run test:proxy-seo` — 주류 canonical `301`, locale `308`, 비공개 경로 `X-Robots-Tag`, 백엔드 장애 시 색인 보호(stale 캐시 리다이렉트 / slug URL은 200 / slug 없는 URL만 503)
+       - `npm run test:seo-indexing` — 라우트별 index·noindex 판정, canonical·hreflang 단일성, snapshot 경로 H1, 홈의 주류 내부 링크
+       - `npm run test:seo-entity` — 엔티티별 title 구분(중복 title 방지), 리뷰의 한국어 canonical 통합, 주류 가격 페이지의 주류 상세 canonical 통합
+     - 실패 시 배포가 중단된다. 색인 정책이 깨진 산출물을 운영에 올리지 않기 위한 게이트다. 상세 정책은 [`deploy/SEO.md`](./SEO.md) 참고.
    - `deploy` 잡은 운영 셸 스크립트 구문과 API/Web 실패·롤백 상태 전이 테스트를 먼저 검사하고, 빌드된 산출물만 서버로 전송 → 해당 교체 스크립트 실행
    - both 일 때: 프론트 먼저 교체(Next.js 서비스 재시작) → 백엔드 jar 교체 → 재시작 → **readiness 헬스체크**
 4. API/Web은 신규 서비스 재시작과 로컬 health를 모두 통과해야 성공한다. 실패하면 직전 파일을 복원하고, **구버전 재시작과 로컬 health까지 통과한 경우에만 롤백 복구 완료**로 기록한다. 롤백이 성공해도 해당 Actions 배포는 실패로 남는다.
@@ -89,6 +94,25 @@ ARM64에서 검증·빌드한다. Actions는 커밋 SHA로 고정하고 `content
      API 변경은 직전 웹과 하위 호환을 유지하고, 호환되지 않으면 10장의 웹 수동 롤백도 즉시 수행한다.
 5. 완료 시 **Slack `#server-prd` 로 결과 통보**(BE·FE·crawler·배포 단계별, `SLACK_WEBHOOK_URL` Secret 설정 시).
    - 배포 안 한 쪽은 `⏭`(skipped) 로 표시 — 예: `백엔드 ⏭ · 프론트 ✅ · 크롤러 ⏭` (web 만 배포). 요약에 대상(`· web`)도 표기됨.
+
+### SEO 영향이 있는 변경의 배포 순서
+
+`both` 는 **프론트를 먼저 교체한 뒤 백엔드를 교체**한다. 평소에는 문제가 없지만,
+**주류 SEO 조회(`/api/seo/spirits/{id}`)에 의존하는 프론트 변경이 있을 때는 `api` → `web` 순서로
+두 번 나눠 실행한다.**
+
+이유: Next.js proxy 는 주류 canonical 을 판정하기 위해 이 API 를 호출하고, 결과를 프로세스 메모리에
+캐싱한다(5분 TTL + stale-while-error). 새로 뜬 프론트 프로세스는 **캐시가 비어 있다.** 이 상태에서
+백엔드가 재시작 중이면 캐시도 없고 API 도 없는 구간이 생겨, slug 없는 주류 URL(`/ko/spirits/244`)이
+`503` 을 반환한다. `api` 를 먼저 올려 readiness 를 통과시킨 뒤 `web` 을 올리면 이 구간이 사라진다.
+
+```
+1) Actions → Deploy (manual) → target: api   → readiness 통과 확인
+2) Actions → Deploy (manual) → target: web
+```
+
+> API 기동 시 Hibernate Search 재색인이 매번 실행되므로 readiness 통과까지 시간이 걸릴 수 있다.
+> `api` 잡의 헬스체크 성공을 확인한 뒤 `web` 을 시작한다.
 
 ### 배포가 전송하는 것 / 안 하는 것
 
@@ -138,6 +162,13 @@ GitHub Actions 자체 장애나 GitHub 접속 문제로 워크플로를 실행�
 - 최종 교체/재시작/헬스체크/롤백은 기존 서버 스크립트가 담당한다.
 - Windows에서 만든 Next.js standalone 산출물을 그대로 운영 Ubuntu aarch64 서버에 올리는 방식은 네이티브 의존성(`sharp`, `@next/swc`) 때문에 기본 금지다. 정말 필요하면 `-WebBuildMode local -AllowCrossPlatformWebBuild`를 명시한다.
 - 이 경로는 Actions 아티팩트/Slack 배포 결과 이력이 남지 않는다. 배포 후 `/app/scripts/status.sh`와 각 헬스체크를 직접 확인한다.
+- ⚠️ 수동 배포는 GitHub Actions 를 거치지 않으므로 **SEO 계약 검증 게이트가 실행되지 않는다.** SEO 관련 코드(`src/proxy.ts`, `src/shared/utils/seoHelpers.ts`, `src/app/**`)를 건드린 뒤 수동 배포할 때는 로컬에서 먼저 실행한다.
+
+  ```powershell
+  cd caskbycask-web
+  npm run build
+  npm run test:proxy-seo; npm run test:seo-indexing; npm run test:seo-entity
+  ```
 
 ---
 

@@ -269,13 +269,23 @@ test('라우트별 색인 정책', async (t) => {
   await t.test('API 장애 시 엔티티 경로는 라우트 기본값으로 폴백하고 색인을 유지한다', async () => {
     for (const [path, canonical] of [
       ['/ko/producers/7', `${SITE}/ko/producers/7`],
-      ['/ko/users/5/bottles', `${SITE}/ko/users/5/bottles`],
       ['/ko/taste-trees/t/abc123', `${SITE}/ko/taste-trees/t/abc123`],
     ]) {
       const head = await readHead(path)
       assert.equal(head.status, 200, `${path}: 장애 중에도 200 이어야 한다`)
       assert.deepEqual(head.robots, ['index, follow'], `${path}: 장애로 noindex 가 되면 안 된다`)
       assert.deepEqual(head.canonical, [canonical], `${path}: self-canonical 을 유지해야 한다`)
+    }
+  })
+
+  // 사용자 공개 목록은 정책상 색인 대상이 아니다. 조회 실패로 라우트 기본값(index)으로
+  // 되돌아가면 정책이 뒤집히므로 장애 중에도 noindex 여야 한다.
+  await t.test('API 장애 시에도 사용자 공개 목록은 noindex 를 유지한다', async () => {
+    for (const path of ['/ko/users/5/bottles', '/ko/users/5/reviews', '/en/users/5/bottles']) {
+      const head = await readHead(path)
+      assert.equal(head.status, 200, `${path}: 200 이어야 한다`)
+      assert.deepEqual(head.robots, ['noindex, follow'], `${path}: 장애 중에도 noindex 유지`)
+      assert.deepEqual(head.canonical, [], `${path}: noindex 에 canonical 을 함께 두지 않는다`)
     }
   })
 
