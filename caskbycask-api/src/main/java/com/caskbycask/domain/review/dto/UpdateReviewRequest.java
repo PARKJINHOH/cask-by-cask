@@ -23,20 +23,20 @@ public record UpdateReviewRequest(
         @DecimalMax(value = "100.0", message = "점수는 100 이하이어야 합니다.")
         BigDecimal finishScore,
 
-        @Schema(description = "향 노트 (300자 이내, null이면 변경 안 함)")
-        @Size(max = 300, message = "향 노트는 300자 이내여야 합니다.")
+        @Schema(description = "향 노트 (1000자 이내, null이면 변경 안 함)")
+        @Size(max = 1000, message = "향 노트는 1000자 이내여야 합니다.")
         String noseNote,
 
-        @Schema(description = "맛 노트 (300자 이내, null이면 변경 안 함)")
-        @Size(max = 300, message = "맛 노트는 300자 이내여야 합니다.")
+        @Schema(description = "맛 노트 (1000자 이내, null이면 변경 안 함)")
+        @Size(max = 1000, message = "맛 노트는 1000자 이내여야 합니다.")
         String tasteNote,
 
-        @Schema(description = "피니시 노트 (300자 이내, null이면 변경 안 함)")
-        @Size(max = 300, message = "피니시 노트는 300자 이내여야 합니다.")
+        @Schema(description = "피니시 노트 (1000자 이내, null이면 변경 안 함)")
+        @Size(max = 1000, message = "피니시 노트는 1000자 이내여야 합니다.")
         String finishNote,
 
-        @Schema(description = "기타 텍스트 코멘트 (500자 이내, null이면 변경 안 함)")
-        @Size(max = 500, message = "코멘트는 500자 이내여야 합니다.")
+        @Schema(description = "기타 텍스트 코멘트 (1000자 이내, null이면 변경 안 함)")
+        @Size(max = 1000, message = "코멘트는 1000자 이내여야 합니다.")
         String comment,
 
         @Schema(description = "향 아로마 휠 (800자 이내, null이면 변경 안 함)")

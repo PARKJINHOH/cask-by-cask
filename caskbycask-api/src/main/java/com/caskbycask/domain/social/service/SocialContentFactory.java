@@ -16,6 +16,12 @@ import com.caskbycask.domain.spirit.entity.enums.WineVintageStatus;
 import com.caskbycask.domain.spirit.repository.SpiritImageRepository;
 import lombok.RequiredArgsConstructor;
 import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.nodes.Node;
+import org.jsoup.nodes.TextNode;
+import org.jsoup.select.NodeTraversor;
+import org.jsoup.select.NodeVisitor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +30,8 @@ import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
@@ -33,6 +41,15 @@ public class SocialContentFactory {
     private static final int REVIEW_OVERALL_LIMIT = 200;
     private static final String NEWS_SITE_NOTICE =
             "자세한 내용은 CaskByCask(캐바캐) 홈페이지를 확인해주세요";
+
+    /** 소식 본문 HTML → 평문 변환 시 줄바꿈으로 취급할 블록 태그. */
+    private static final Set<String> BLOCK_TAGS = Set.of(
+            "p", "div", "h1", "h2", "h3", "h4", "h5", "h6",
+            "ul", "ol", "li", "blockquote", "pre", "hr", "table", "tr");
+    /** 웹 본문에서 white-space: pre-wrap 이 적용되어 원본 개행이 보이는 태그. */
+    private static final Set<String> PRE_WRAP_TAGS = Set.of("p", "pre");
+    /** 개행을 제외한 공백(nbsp 포함). */
+    private static final Pattern SPACES_EXCEPT_NEWLINE = Pattern.compile("[ \\t\\f\\u000B\\u00A0]+");
 
     private final ReviewRepository reviewRepository;
     private final PostRepository postRepository;
@@ -117,7 +134,7 @@ public class SocialContentFactory {
                 .filter(value -> value.getBoardType() == BoardType.NOTICE)
                 .filter(value -> !Boolean.TRUE.equals(value.getIsHidden()))
                 .orElseThrow(() -> new IllegalStateException("소식이 삭제되었거나 비공개 상태입니다."));
-        String text = Jsoup.parse(post.getContentSanitized()).text().replaceAll("\\s+", " ").trim();
+        String text = newsPlainText(post.getContentSanitized());
         String shortUrl = normalizedSiteUrl() + "/s/" + bundle.getShortCode();
         String hashtags = post.getHashtags().isEmpty() ? "" : "\n\n"
                 + post.getHashtags().stream().map(tag -> "#" + tag).reduce((a, b) -> a + " " + b).orElse("");
@@ -126,7 +143,7 @@ public class SocialContentFactory {
         int limit = platform == SocialPlatform.INSTAGRAM ? 2200 : 500;
         int reserve = shortUrl.length() + siteNotice.length() + hashtags.length() + 2;
         String body = prefix + truncate(text, Math.max(0, limit - reserve - prefix.length()))
-                + siteNotice + hashtags + "\n\n" + shortUrl;
+                + siteNotice + "\n\n" + shortUrl + hashtags;
         return new SocialPublicationContent(
                 truncate(body, limit),
                 bundle.getDirectImageUrl(),
@@ -135,6 +152,66 @@ public class SocialContentFactory {
                 post.getTitle(),
                 post.getPrefix() != null ? post.getPrefix().getName() : "일반"
         );
+    }
+
+    /**
+     * 소식 본문 HTML을 SNS 캡션용 평문으로 변환한다.
+     * 웹 본문(.notice-content) 렌더링과 동일하게 블록 태그·{@code <br>}·
+     * {@code <p>} 내부 개행(white-space: pre-wrap)을 줄바꿈으로 살린다.
+     */
+    private static String newsPlainText(String html) {
+        if (html == null || html.isBlank()) return "";
+        Document document = Jsoup.parseBodyFragment(html);
+        document.outputSettings().prettyPrint(false);
+        StringBuilder builder = new StringBuilder();
+        NodeTraversor.traverse(new NodeVisitor() {
+            @Override
+            public void head(Node node, int depth) {
+                if (node instanceof TextNode textNode) {
+                    builder.append(keepsRawLineBreaks(textNode)
+                            ? SPACES_EXCEPT_NEWLINE.matcher(textNode.getWholeText()).replaceAll(" ")
+                            : textNode.text());
+                } else if (node instanceof Element element && "br".equals(element.tagName())) {
+                    builder.append('\n');
+                }
+            }
+
+            @Override
+            public void tail(Node node, int depth) {
+                if (node instanceof Element element && BLOCK_TAGS.contains(element.tagName())) {
+                    builder.append('\n');
+                }
+            }
+        }, document.body());
+        return normalizeCaptionLines(builder.toString());
+    }
+
+    /** {@code white-space: pre-wrap} 이 적용되는 블록 안의 텍스트는 원본 개행을 유지한다. */
+    private static boolean keepsRawLineBreaks(TextNode node) {
+        for (Node parent = node.parent(); parent != null; parent = parent.parent()) {
+            if (parent instanceof Element element && PRE_WRAP_TAGS.contains(element.tagName())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** 줄 단위 공백 정리 + 연속 빈 줄은 1줄까지만 유지(SNS 글자 수 절약). */
+    private static String normalizeCaptionLines(String value) {
+        List<String> lines = new ArrayList<>();
+        int blankRun = 0;
+        for (String raw : value.replace("\r\n", "\n").replace('\r', '\n').split("\n", -1)) {
+            String line = SPACES_EXCEPT_NEWLINE.matcher(raw).replaceAll(" ").trim();
+            if (line.isEmpty()) {
+                if (lines.isEmpty() || ++blankRun > 1) continue;
+                lines.add("");
+            } else {
+                blankRun = 0;
+                lines.add(line);
+            }
+        }
+        while (!lines.isEmpty() && lines.getLast().isEmpty()) lines.removeLast();
+        return String.join("\n", lines);
     }
 
     private String primaryImageUrl(Spirit spirit) {

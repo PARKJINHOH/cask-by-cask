@@ -262,25 +262,73 @@ class SocialContentFactoryTest {
 
                 [자세한 내용은 CaskByCask(캐바캐) 홈페이지를 확인해주세요]
 
-                #신제품 #위스키
-                """);
+                https://www.caskbycask.net/s/AbCdEf2345
+
+                #신제품 #위스키""");
         assertThat(ai.caption()).contains("""
                 본문
 
                 [자세한 내용은 CaskByCask(캐바캐) 홈페이지를 확인해주세요]
 
-                #신제품 #위스키
-                """);
+                https://www.caskbycask.net/s/AbCdEf2345
+
+                #신제품 #위스키""");
         assertThat(regular.caption())
                 .contains("[자세한 내용은 CaskByCask(캐바캐) 홈페이지를 확인해주세요]"
-                        + "\n\n#신제품 #위스키");
+                        + "\n\nhttps://www.caskbycask.net/s/AbCdEf2345");
         assertThat(ai.caption())
                 .contains("[자세한 내용은 CaskByCask(캐바캐) 홈페이지를 확인해주세요]"
-                        + "\n\n#신제품 #위스키");
-        assertThat(regular.caption()).endsWith("https://www.caskbycask.net/s/AbCdEf2345");
-        assertThat(ai.caption()).endsWith("https://www.caskbycask.net/s/AbCdEf2345");
+                        + "\n\nhttps://www.caskbycask.net/s/AbCdEf2345");
+        assertThat(regular.caption()).endsWith("#신제품 #위스키");
+        assertThat(ai.caption()).endsWith("#신제품 #위스키");
         assertThat(ai.caption().codePointCount(0, ai.caption().length()))
                 .isLessThanOrEqualTo(500);
+    }
+
+    @Test
+    void newsCaptionKeepsBodyLineBreaks() {
+        SocialPublishingProperties properties = new SocialPublishingProperties();
+        properties.setSiteUrl("https://www.caskbycask.net");
+        SocialContentFactory factory = new SocialContentFactory(
+                reviewRepository, postRepository, imageRepository, properties);
+        User author = User.builder().email("admin@example.com").nickname("관리자").build();
+        String html = """
+                <p>첫째 줄<br>둘째 줄</p><p></p><p>셋째 줄
+                넷째 줄</p><ul><li>항목 1</li><li>항목 2</li></ul>""";
+        Post post = Post.builder()
+                .boardType(BoardType.NOTICE)
+                .author(author)
+                .title("줄바꿈 소식")
+                .content(html)
+                .contentSanitized(html)
+                .hashtags(new java.util.ArrayList<>(java.util.List.of("위스키")))
+                .build();
+        ReflectionTestUtils.setField(post, "id", 51L);
+        given(postRepository.findById(51L)).willReturn(Optional.of(post));
+
+        String instagram = factory.create(
+                postBundle(51L, SocialSourceType.POST), SocialPlatform.INSTAGRAM).caption();
+        String threads = factory.create(
+                postBundle(51L, SocialSourceType.AI_NEWS_ARTICLE), SocialPlatform.THREADS).caption();
+
+        String expectedBody = """
+                줄바꿈 소식
+
+                첫째 줄
+                둘째 줄
+
+                셋째 줄
+                넷째 줄
+                항목 1
+                항목 2
+
+                [자세한 내용은 CaskByCask(캐바캐) 홈페이지를 확인해주세요]
+
+                https://www.caskbycask.net/s/AbCdEf2345
+
+                #위스키""";
+        assertThat(instagram).isEqualTo(expectedBody);
+        assertThat(threads).isEqualTo(expectedBody);
     }
 
     private static SocialPublishBundle reviewBundle(Long reviewId, String locale) {

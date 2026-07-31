@@ -40,10 +40,10 @@ const reviewSchema = z.object({
   noseScore:   z.number().min(0, '0 이상이어야 합니다.').max(100, '100 이하여야 합니다.'),
   tasteScore:  z.number().min(0, '0 이상이어야 합니다.').max(100, '100 이하여야 합니다.'),
   finishScore: z.number().min(0, '0 이상이어야 합니다.').max(100, '100 이하여야 합니다.'),
-  noseNote:    z.string().min(20, '최소 20글자 이상 작성해주세요.').max(200, '200자 이내로 작성해주세요.'),
-  tasteNote:   z.string().min(20, '최소 20글자 이상 작성해주세요.').max(200, '200자 이내로 작성해주세요.'),
-  finishNote:  z.string().min(20, '최소 20글자 이상 작성해주세요.').max(200, '200자 이내로 작성해주세요.'),
-  comment:     z.string().max(500, '500자 이내로 작성해주세요.').optional(),
+  noseNote:    z.string().min(20, '최소 20글자 이상 작성해주세요.').max(1000, '1000자 이내로 작성해주세요.'),
+  tasteNote:   z.string().min(20, '최소 20글자 이상 작성해주세요.').max(1000, '1000자 이내로 작성해주세요.'),
+  finishNote:  z.string().min(20, '최소 20글자 이상 작성해주세요.').max(1000, '1000자 이내로 작성해주세요.'),
+  comment:     z.string().max(1000, '1000자 이내로 작성해주세요.').optional(),
 })
 
 type ReviewFormValues = z.infer<typeof reviewSchema>
@@ -405,7 +405,7 @@ export default function ReviewFormModal({
                 <textarea
                   {...field}
                   rows={4}
-                  maxLength={500}
+                  maxLength={1000}
                   placeholder={t('review.overallPlaceholder')}
                   className="w-full px-3 py-2.5 text-sm border border-neutral-300 rounded-xl resize-none
                     focus:outline-none focus:ring-2 focus:ring-primary-400
@@ -414,7 +414,7 @@ export default function ReviewFormModal({
                 <div className="flex items-start justify-between mt-1">
                   <p className="text-xs text-red-500 min-h-[1rem]">{errors.comment?.message ?? ''}</p>
                   <p className="text-xs text-neutral-400 tabular-nums flex-shrink-0 ml-2">
-                    {commentValue?.length ?? 0}/500
+                    {commentValue?.length ?? 0}/1000
                   </p>
                 </div>
               </div>

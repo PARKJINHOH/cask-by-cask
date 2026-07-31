@@ -175,7 +175,7 @@ export default function ReviewScoreSection({
           value={note}
           onChange={(e) => onNoteChange(e.target.value)}
           placeholder={notePlaceholder}
-          maxLength={200}
+          maxLength={1000}
           rows={5}
           className="w-full px-3.5 py-2.5 text-sm border border-neutral-300 rounded-xl resize-none
             focus:outline-none focus:ring-2 focus:ring-primary-400
@@ -183,7 +183,7 @@ export default function ReviewScoreSection({
         />
         <div className="flex items-start justify-between mt-0.5">
           <p className="text-xs text-red-500 min-h-[1.25rem]">{noteError ?? ''}</p>
-          <p className="text-[10px] text-neutral-400 tabular-nums">{note.length}/200</p>
+          <p className="text-[10px] text-neutral-400 tabular-nums">{note.length}/1000</p>
         </div>
       </div>
     </div>

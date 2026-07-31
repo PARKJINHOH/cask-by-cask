@@ -171,14 +171,14 @@ export default function ScoreInput({
             onChange={(e) => onNoteChange(e.target.value)}
             disabled={disabled}
             placeholder={notePlaceholder}
-            maxLength={200}
+            maxLength={1000}
             rows={2}
             className="w-full px-3 py-2.5 text-sm border border-neutral-300 rounded-xl resize-y
               focus:outline-none focus:ring-2 focus:ring-primary-400
               placeholder:text-neutral-300 leading-relaxed min-h-[4rem]"
           />
           <p className="text-right text-[10px] text-neutral-300 mt-0.5 tabular-nums">
-            {(note ?? '').length}/200
+            {(note ?? '').length}/1000
           </p>
         </div>
       )}

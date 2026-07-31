@@ -289,7 +289,7 @@ export default function PendingVariantReviewEditModal({
             value={comment}
             onChange={(event) => setComment(event.target.value)}
             rows={4}
-            maxLength={500}
+            maxLength={1000}
             placeholder={t('review.overallPlaceholder')}
             className="w-full resize-none rounded-xl border border-neutral-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400"
           />

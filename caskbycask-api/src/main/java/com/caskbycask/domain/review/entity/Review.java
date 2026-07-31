@@ -50,16 +50,16 @@ public class Review extends BaseTimeEntity {
     @Column(nullable = false, precision = 4, scale = 1)
     private BigDecimal totalScore;
 
-    @Column(length = 300)
+    @Column(length = 1000)
     private String noseNote;
 
-    @Column(length = 300)
+    @Column(length = 1000)
     private String tasteNote;
 
-    @Column(length = 300)
+    @Column(length = 1000)
     private String finishNote;
 
-    @Column(length = 500)
+    @Column(length = 1000)
     private String comment;
 
     @Column(length = 800)

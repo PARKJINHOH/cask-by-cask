@@ -58,19 +58,19 @@ public record CreateVariantReviewRequest(
         BigDecimal finishScore,
 
         @Schema(description = "Nose note")
-        @Size(max = 300, message = "Nose note must be 300 characters or less.")
+        @Size(max = 1000, message = "Nose note must be 1000 characters or less.")
         String noseNote,
 
         @Schema(description = "Taste note")
-        @Size(max = 300, message = "Taste note must be 300 characters or less.")
+        @Size(max = 1000, message = "Taste note must be 1000 characters or less.")
         String tasteNote,
 
         @Schema(description = "Finish note")
-        @Size(max = 300, message = "Finish note must be 300 characters or less.")
+        @Size(max = 1000, message = "Finish note must be 1000 characters or less.")
         String finishNote,
 
         @Schema(description = "Overall comment")
-        @Size(max = 500, message = "Comment must be 500 characters or less.")
+        @Size(max = 1000, message = "Comment must be 1000 characters or less.")
         String comment,
 
         @Schema(description = "Nose aroma wheel notes")
