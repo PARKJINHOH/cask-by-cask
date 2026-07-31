@@ -1,5 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { localizeCountry } from '@/shared/utils/countryName'
+import { localizeRegion } from '@/shared/utils/regionName'
+import { useWineRegionCatalog, REGION_CATALOG_CATEGORIES } from '@/domain/location/hooks/useWineRegionCatalog'
 import type {
   SpiritCategory, WhiskyStyle, WineType, CognacGrade,
   WineSweetness, WineBody, WineIntensity,
@@ -34,6 +36,26 @@ interface Chip { key: string; label: string; onRemove: () => void }
 
 export default function ActiveFilterChips({ state, onClear, onClearAll }: ActiveFilterChipsProps) {
   const { t, i18n } = useTranslation()
+
+  // 산지 이름 번역 — 텍스트 사전에 없는 산지는 백엔드 카탈로그(ko/en 단일 소스)로 번역한다.
+  // 영어 모드에서만 필요하므로 그때만 카탈로그를 받는다.
+  const catalogCategory = REGION_CATALOG_CATEGORIES.includes(state.category as SpiritCategory)
+    ? (state.category as SpiritCategory)
+    : null
+  const { countries } = useWineRegionCatalog(
+    !!state.region && !!catalogCategory && i18n.language === 'en',
+    catalogCategory ?? 'WINE',
+  )
+  const regionLabel = (name: string) => {
+    if (i18n.language !== 'en') return name
+    for (const c of countries) {
+      for (const l1 of c.regions) {
+        if (l1.nameKo === name) return l1.nameEn
+        for (const l2 of l1.children ?? []) if (l2.nameKo === name) return l2.nameEn
+      }
+    }
+    return localizeRegion(name, 'en')
+  }
 
   const chips: Chip[] = []
 
@@ -103,7 +125,9 @@ export default function ActiveFilterChips({ state, onClear, onClearAll }: Active
   if (state.region) {
     chips.push({
       key: 'region',
-      label: state.region,
+      // 지역 값은 한글 산지명으로 저장되므로 영어 모드에서는 번역해 보여준다.
+      // 텍스트 사전에 없는 산지(위스키 라우스·와인 샹파뉴 등)는 백엔드 카탈로그로 번역한다.
+      label: regionLabel(state.region),
       onRemove: () => onClear('region'),
     })
   }

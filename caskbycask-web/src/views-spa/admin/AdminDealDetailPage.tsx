@@ -13,6 +13,7 @@ import {
 } from '@/domain/admin/components/dealUi'
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
 import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
+import { formatPriceInput, parsePriceInput } from '@/shared/utils/moneyInput'
 
 const EMPTY_FORM = {
   drinkName: '', drinkCategory: '', volumeMl: '', originalPrice: '0', dealPrice: '0',
@@ -594,15 +595,8 @@ export default function AdminDealDetailPage() {
 const inputCls =
   'w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400'
 
-function parsePriceInput(value: string): number {
-  const digits = value.replace(/[^\d]/g, '')
-  return digits === '' ? 0 : Number(digits)
-}
-
-function formatPriceInput(value: string | number | null | undefined): string {
-  const parsed = typeof value === 'number' ? value : parsePriceInput(String(value ?? ''))
-  return new Intl.NumberFormat('ko-KR').format(Math.max(0, parsed))
-}
+// 금액 입력 포맷·파싱은 공용 유틸(shared/utils/moneyInput)을 쓴다 —
+// 화면마다 따로 구현하면 콤마 규칙이 어긋난다.
 
 function calculateDiscountRate(originalPrice: number, dealPrice: number): number {
   if (originalPrice <= 0 || dealPrice <= 0 || originalPrice <= dealPrice) return 0
@@ -636,7 +630,6 @@ function toConnectionOption(spirit: SpiritDetail | SpiritVariant): SpiritConnect
       variantValueEn: spirit.variantValueEn,
       batchNo,
       bottledDate,
-      bottledYear: spirit.bottledYear,
       abv: spirit.abv,
       volumeMl: spirit.volumeMl,
     }),
@@ -663,7 +656,6 @@ function composeVariantLabel({
   variantValueEn,
   batchNo,
   bottledDate,
-  bottledYear,
   abv,
   volumeMl,
 }: {
@@ -674,14 +666,13 @@ function composeVariantLabel({
   variantValueEn?: string | null
   batchNo?: string | null
   bottledDate?: string | null
-  bottledYear?: number | null
   abv?: number | null
   volumeMl?: number | null
 }) {
   const parts = [
     variantType && variantType !== 'NONE' ? seriesIdentifier || seriesIdentifierEn : null,
     variantValue || variantValueEn || (batchNo ? `Batch ${batchNo}` : null),
-    bottledDate ? `병입 ${bottledDate}` : bottledYear ? `${bottledYear} 병입` : null,
+    bottledDate ? `병입 ${bottledDate}` : null,
     abv != null ? `${abv}%` : null,
     volumeMl != null ? `${volumeMl}ml` : null,
   ].filter(Boolean)

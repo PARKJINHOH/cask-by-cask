@@ -420,7 +420,7 @@ export default function AdminSpiritDetailPage() {
   const permanentlyDeleteSpirit = usePermanentlyDeleteSpirit()
   const restoreSpirit = useRestoreSpirit()
 
-  const form = useSpiritForm()
+  const form = useSpiritForm({ requireProductionInfo: true })
 
   const { toasts, showToast, removeToast } = useToast()
   const [initialized, setInitialized] = useState(false)
@@ -606,7 +606,8 @@ export default function AdminSpiritDetailPage() {
   }
 
   return (
-    <div className="p-6 mx-auto space-y-6 pb-28 max-w-3xl lg:max-w-6xl xl:max-w-7xl">
+    // PC 에서 가로 폭을 모두 쓴다 — 위스키는 3열(캐스크 전용 컬럼)이라 폭이 넓을수록 유리하다
+    <div className="p-6 space-y-6 pb-28">
       {/* 헤더 */}
       <AdminPageHeader
         breadcrumbs={[
@@ -727,7 +728,7 @@ export default function AdminSpiritDetailPage() {
       {/* 하단 고정 액션바 */}
       {(activeTab === 'detail' || isApprovalMode) && (
       <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/90 backdrop-blur border-t border-neutral-200">
-        <div className="max-w-3xl lg:max-w-6xl xl:max-w-7xl mx-auto px-6 py-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="px-6 py-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           {isApprovalMode ? (
             <p className="text-xs text-neutral-500">
               리뷰 탭에서 미승인 리뷰를 확인하고 검수 완료 또는 리뷰 미승인을 선택해야 저장됩니다.

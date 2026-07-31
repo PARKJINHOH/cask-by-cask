@@ -232,7 +232,7 @@ class SpiritServiceManagementAccessTest {
         return new UpdateSpiritRequest(
                 null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null);
     }
 
     private Producer producer(Long id, String name) {

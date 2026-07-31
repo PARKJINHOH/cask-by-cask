@@ -695,6 +695,36 @@
   animation: tasteTreeBorderGlow 2.8s ease-in-out infinite;
 }
 
+/* ── 산지 지도 하이라이트 (WineOriginMap) ──────────────────────
+   기본 상태를 '최종 모습'으로 두고, 클라이언트에서 뷰에 들어온 뒤에만
+   .wom-animate 를 붙여 등장 연출을 재생한다.
+   → JS 없이 서버 렌더만 되어도 지도가 완성된 상태로 보인다(SSR 안전).
+   prefers-reduced-motion 은 하단 전역 미디어쿼리가 즉시 최종 상태로 만든다. */
+@keyframes womZoneFill {
+  from { fill: var(--color-neutral-200); }
+  to   { fill: var(--color-amber-500); }
+}
+@keyframes womPinDrop {
+  from { opacity: 0; transform: translateY(-14px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes womLabelIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes womRingPulse {
+  from { opacity: 0.8; r: 5;  stroke-width: 2; }
+  to   { opacity: 0;   r: 22; stroke-width: 0.4; }
+}
+
+.wom-animate .wom-zone--target { animation: womZoneFill 0.7s ease-out 0.1s both; }
+.wom-animate .wom-pin          { animation: womPinDrop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.55s both; }
+.wom-animate .wom-label        { animation: womLabelIn 0.4s ease-out 0.8s both; }
+.wom-animate .wom-ring         { animation: womRingPulse 1.8s ease-out 1s 3 both; }
+/* 펄스 링은 연출 중에만 보인다 */
+.wom-ring { opacity: 0; }
+
+/* 모션 축소 설정 (접근성) ─────────────────────────────────── */
 /* ── 모션 축소 설정 존중 (접근성) ──────────────────────────────
    사용자가 OS에서 '동작 줄이기'를 켠 경우 애니메이션·전환을 사실상 제거.
    Tailwind 레이어보다 우선하도록 최상위 미디어 쿼리로 선언. */

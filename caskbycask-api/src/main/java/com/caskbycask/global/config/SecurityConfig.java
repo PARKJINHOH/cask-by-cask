@@ -143,6 +143,8 @@ public class SecurityConfig {
                         // 내 등록요청 조회는 비공개(로그인 필수) — 아래 광범위한 /api/spirits/** permitAll 보다 먼저 선언
                         .requestMatchers(HttpMethod.GET, "/api/spirits/requests/me", "/api/spirits/requests/me/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/spirits/**").permitAll()
+                        // 와인 산지 카탈로그 — 공개 읽기 전용 참조 데이터(민감 정보 없음). 쓰기 API 없음.
+                        .requestMatchers(HttpMethod.GET, "/api/wine-regions").permitAll()
                         // 내 등록요청 조회는 비공개(로그인 필수) — 아래 광범위한 /api/producers/** permitAll 보다 먼저 선언
                         .requestMatchers(HttpMethod.GET, "/api/producers/requests/me", "/api/producers/requests/me/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/producers/**").permitAll()

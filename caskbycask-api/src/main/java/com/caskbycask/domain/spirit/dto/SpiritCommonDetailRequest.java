@@ -36,11 +36,11 @@ public record SpiritCommonDetailRequest(
         Integer ageStatementMaxMonths,
 
         @Schema(description = "증류 연월 (YYYY 또는 YYYY-MM)")
-        @Pattern(regexp = "^\\d{4}(-\\d{2})?$", message = "날짜 형식이 올바르지 않습니다 (YYYY 또는 YYYY-MM).")
+        @Pattern(regexp = "^\\d{4}(-(0[1-9]|1[0-2]))?$", message = "날짜 형식이 올바르지 않습니다 (YYYY 또는 YYYY-MM, 월은 01~12).")
         String distilledDate,
 
         @Schema(description = "병입 연월 (YYYY 또는 YYYY-MM)")
-        @Pattern(regexp = "^\\d{4}(-\\d{2})?$", message = "날짜 형식이 올바르지 않습니다 (YYYY 또는 YYYY-MM).")
+        @Pattern(regexp = "^\\d{4}(-(0[1-9]|1[0-2]))?$", message = "날짜 형식이 올바르지 않습니다 (YYYY 또는 YYYY-MM, 월은 01~12).")
         String bottledDate,
 
         @Schema(description = "출시일")

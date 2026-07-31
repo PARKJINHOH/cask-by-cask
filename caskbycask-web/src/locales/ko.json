@@ -359,10 +359,8 @@
       "abv": "알코올 도수",
       "country": "국가",
       "region": "지역",
-      "bottler": "병입업체명",
       "whiskyNotes": "기타 정보",
       "whiskyNotesPlaceholder": "예) 2021~2022 출시 제품, PX 50% 포트 20%",
-      "bottledYear": "병입년도",
       "vintageYear": "빈티지",
       "producer": "생산자",
       "producerByCategory": {
@@ -757,21 +755,34 @@
       "BEER":     "맥주",
       "OTHER":    "기타"
     },
+    "taste": {
+      "sweetness": "당도",
+      "body":      "바디",
+      "acidity":   "산도",
+      "tannin":    "타닌",
+      "unset":     "미지정",
+      "title":     "맛"
+    },
     "wineSweetness": {
-      "DRY":     "드라이",
-      "OFF_DRY": "오프드라이",
-      "MEDIUM":  "미디엄",
-      "SWEET":   "스위트"
+      "DRY":          "드라이",
+      "OFF_DRY":      "오프드라이",
+      "MEDIUM":       "미디엄",
+      "MEDIUM_SWEET": "미디엄 스위트",
+      "SWEET":        "스위트"
     },
     "wineBody": {
-      "LIGHT":  "라이트",
-      "MEDIUM": "미디엄",
-      "FULL":   "풀바디"
+      "LIGHT":        "라이트",
+      "LIGHT_MEDIUM": "라이트 미디엄",
+      "MEDIUM":       "미디엄",
+      "MEDIUM_FULL":  "미디엄 풀",
+      "FULL":         "풀바디"
     },
     "wineIntensity": {
-      "LOW":    "낮음",
-      "MEDIUM": "중간",
-      "HIGH":   "높음"
+      "LOW":         "낮음",
+      "LOW_MEDIUM":  "약간 낮음",
+      "MEDIUM":      "중간",
+      "MEDIUM_HIGH": "약간 높음",
+      "HIGH":        "높음"
     },
     "wineCertification": {
       "ORGANIC":     "Organic",
@@ -789,11 +800,19 @@
       "category": "카테고리",
       "country": "국가",
       "region": "지역",
+      "originMap": {
+        "title": "산지 지도",
+        "loading": "산지 지도 불러오는 중",
+        "adminPreview": "사용자 화면 미리보기",
+        "zoomHint": "세부 산지 보기",
+        "back": "국가 지도로",
+        "countryAlt": "{{country}} 지도 — {{region}} 산지 강조",
+        "zoomAlt": "{{parent}} 확대 지도 — {{region}} 산지 강조",
+        "source": "경계 데이터: {{source}}"
+      },
       "abv": "도수",
       "volume": "용량",
-      "bottledYear": "병입년도",
       "vintageYear": "빈티지",
-      "bottler": "병입자",
       "avgScore": "평균 점수",
       "reviewCount": "리뷰 수",
       "notFound": "술 정보를 찾을 수 없습니다.",
@@ -1933,7 +1952,14 @@
     "customInputPlaceholder": "지역 직접 입력",
     "backToList": "목록으로 돌아가기",
     "searchCountry": "국가 검색...",
-    "noResult": "검색 결과 없음"
+    "noResult": "검색 결과 없음",
+    "wineRegion": {
+      "selectL1": "산지 선택",
+      "selectL2": "세부 산지 선택 (선택)",
+      "wholeL1": "{{name}} 전체",
+      "loading": "산지 목록 불러오는 중...",
+      "loadError": "산지 목록을 불러오지 못했습니다."
+    }
   },
   "maturing": {
     "nextLevelProgress": "다음 레벨까지 {{percent}}%",

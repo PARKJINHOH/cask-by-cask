@@ -3,6 +3,7 @@ import type {
   SpiritCommonDetailResponse, WhiskyDetailResponse, WineDetailResponse,
   CognacDetailResponse, OtherDetailResponse,
   WhiskyStyle, WineType, WineVintageStatus, CognacGrade, OtherSpiritType,
+  SpiritWineRegion,
 } from '@/domain/spirit/types/spirit.types'
 
 // ── 폼용 Detail Request 타입 ─────────────────────────────────
@@ -257,7 +258,6 @@ export interface AdminSpiritVariant {
   nameKo: string
   nameEn: string
   category: SpiritCategory
-  bottledYear: number | null
   vintageYear: number | null
   abv: number | null
   volumeMl: number | null
@@ -377,13 +377,13 @@ export interface AdminSpiritDetail {
   producerId: number | null
   producerNameKo: string | null
   producerNameEn: string | null
-  bottler: string | null
-  bottledYear: number | null
   vintageYear: number | null
   abv: number | null
   volumeMl: number | null
   country: string | null
   region: string | null
+  /** 산지 (지도 표시용, 와인·위스키·꼬냑·기타 공용) — 산지 미지정 시 null. 폼 제출 시에는 regionCode 로 평탄화해 보낸다 */
+  wineRegion: SpiritWineRegion | null
   avgScore: number | null
   reviewCount: number
   viewCount?: number
@@ -414,13 +414,16 @@ export interface UpdateSpiritPayload {
   nameEn?: string
   category?: SpiritCategory
   producerId?: number | null
-  bottler?: string | null
-  bottledYear?: number | null
   vintageYear?: number | null
   abv?: number | null
   volumeMl?: number | null
   country?: string | null
   region?: string | null
+  /**
+   * 산지 코드 (WineRegion — 와인·위스키·꼬냑·기타 공용). 지정 시 백엔드가 region 을 L1 산지명으로 동기화한다.
+   * 수정 요청에서 **null 은 '해제'** 로 반영되므로(백엔드 abvMin/abvMax 와 동일 규약) 항상 전송할 것.
+   */
+  regionCode?: string | null
   isVariantSplit?: boolean
   variants?: CreateVariantRequest[]
   variantType?: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE' | null
@@ -445,13 +448,16 @@ export interface CreateSpiritPayload {
   category: SpiritCategory
   status?: SpiritStatus
   producerId?: number | null
-  bottler?: string | null
-  bottledYear?: number | null
   vintageYear?: number | null
   abv?: number | null
   volumeMl?: number | null
   country?: string | null
   region?: string | null
+  /**
+   * 산지 코드 (WineRegion — 와인·위스키·꼬냑·기타 공용). 지정 시 백엔드가 region 을 L1 산지명으로 동기화한다.
+   * 수정 요청에서 **null 은 '해제'** 로 반영되므로(백엔드 abvMin/abvMax 와 동일 규약) 항상 전송할 것.
+   */
+  regionCode?: string | null
   isVariantSplit?: boolean
   variants?: CreateVariantRequest[]
   variantType?: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE' | null
@@ -482,8 +488,6 @@ export interface SpiritRegisterRequestDetail {
   category: SpiritCategory
   producerId: number | null
   producerNameKo: string | null
-  bottler: string | null
-  bottledYear: number | null
   vintageYear: number | null
   abv: number | null
   volumeMl: number | null
@@ -493,6 +497,8 @@ export interface SpiritRegisterRequestDetail {
   volumeMlMax: number | null
   country: string | null
   region: string | null
+  /** 산지 코드 (WineRegion) — 신청자가 지정한 산지 */
+  regionCode: string | null
   ageStatement: number | null
   ageStatementMonths: number | null
   ageStatementMin: number | null
@@ -548,13 +554,13 @@ export interface UpdateRequestBody {
   nameEn: string
   category: SpiritCategory
   producerId?: number | null
-  bottler?: string | null
-  bottledYear?: number | null
   vintageYear?: number | null
   abv?: number | null
   volumeMl?: number | null
   country?: string | null
   region?: string | null
+  /** 산지 코드 (WineRegion) — null 은 '해제' */
+  regionCode?: string | null
 }
 
 export interface SpiritRegisterRequest {

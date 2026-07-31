@@ -22,8 +22,6 @@ public record SpiritVariantResponse(
         String nameEn,
         @Schema(description = "카테고리")
         SpiritCategory category,
-        @Schema(description = "병입년도")
-        Integer bottledYear,
         @Schema(description = "빈티지")
         Integer vintageYear,
         @Schema(description = "와인 빈티지 상태")
@@ -71,7 +69,6 @@ public record SpiritVariantResponse(
                 spirit.getNameKo(),
                 spirit.getNameEn(),
                 spirit.getCategory(),
-                spirit.getBottledYear(),
                 spirit.getVintageYear(),
                 spirit.getCategory() == SpiritCategory.WINE && spirit.getWineDetail() != null
                         ? spirit.getWineDetail().getVintageStatus()

@@ -11,16 +11,24 @@ import CountryRegionSelector from '@/domain/location/components/CountryRegionSel
 import InfoTooltip from '@/shared/components/InfoTooltip'
 import { RequiredMark } from '@/shared/components/FormFieldLabel'
 import { ISO3166_COUNTRIES } from '@/domain/location/data/iso3166Countries'
+import { REGION_CATALOG_CATEGORIES } from '@/domain/location/hooks/useWineRegionCatalog'
+import {
+  ABV_MIN, ABV_MAX, VOLUME_ML_MIN, VOLUME_ML_MAX, LIMIT_MESSAGE,
+  suspiciousVolume, suspiciousAbv,
+} from '@/domain/spirit/data/spiritLimits'
 import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
 import type {
   AdminSpiritDetail, CreateSpiritPayload, SpiritRegisterRequestDetail,
   CreateVariantRequest, SpiritCommonDetailRequest, WhiskyDetailRequest,
 } from '@/domain/admin/types/admin.types'
 import SpiritCommonDetailSection, {
-  type CommonDetailForm, DEFAULT_COMMON_DETAIL,
+  type CommonDetailForm, DEFAULT_COMMON_DETAIL, hasCommonDetailFields,
 } from '@/domain/admin/components/SpiritCommonDetailSection'
-import WhiskyDetailSection, { type WhiskyDetailForm, DEFAULT_WHISKY } from '@/domain/admin/components/WhiskyDetailSection'
+import WhiskyDetailSection, {
+  WhiskyCaskSection, type WhiskyDetailForm, DEFAULT_WHISKY,
+} from '@/domain/admin/components/WhiskyDetailSection'
 import WineDetailSection, { type WineDetailForm, DEFAULT_WINE } from '@/domain/admin/components/WineDetailSection'
+import WineRegionPreview from '@/domain/admin/components/WineRegionPreview'
 import CognacDetailSection, { type CognacDetailForm, DEFAULT_COGNAC } from '@/domain/admin/components/CognacDetailSection'
 import OtherDetailSection, { type OtherDetailForm, DEFAULT_OTHER } from '@/domain/admin/components/OtherDetailSection'
 
@@ -58,7 +66,14 @@ export const CATEGORY_LABEL: Record<SpiritCategory, string> = {
 export const PRODUCER_LABEL: Record<SpiritCategory, string> = {
   WHISKY: '증류소', COGNAC: '증류소', WINE: '양조장', OTHER: '생산자',
 }
-export const DATE_RE = /^\d{4}(-\d{2})?$/
+/**
+ * 증류·병입 연월 형식 — `YYYY` 또는 `YYYY-MM`.
+ *
+ * 월은 반드시 01~12 여야 한다. 예전 정규식(`-\d{2}`)은 `1993-30` 같은
+ * 존재하지 않는 월을 통과시켜 실제로 잘못된 데이터가 저장된 적이 있다.
+ * 백엔드 `SpiritCommonDetailRequest` 의 `@Pattern` 과 같은 규칙을 유지할 것.
+ */
+export const DATE_RE = /^\d{4}(-(0[1-9]|1[0-2]))?$/
 
 function trimStringsRecursively<T>(obj: T): T {
   if (obj === null || obj === undefined) return obj
@@ -82,13 +97,13 @@ function trimStringsRecursively<T>(obj: T): T {
 
 
 // 카테고리별 입력 예시 placeholder (이름/병입업체)
-const PLACEHOLDERS: Record<SpiritCategory, { nameEn: string; nameKo: string; bottler: string }> = {
-  WHISKY: { nameEn: 'Balvenie 12Y DoubleWood', nameKo: '예) 발베니 12년 더블우드', bottler: '예) Gordon & MacPhail' },
-  COGNAC: { nameEn: 'Rémy Martin XO',          nameKo: '예) 레미 마르탱 XO',       bottler: '예) 메종 직병입' },
-  WINE:   { nameEn: 'Château Margaux',         nameKo: '예) 샤토 마고',            bottler: '예) 도멘 직병입' },
-  OTHER:  { nameEn: 'Bombay Sapphire',         nameKo: '예) 봄베이 사파이어',       bottler: '예) 병입업체명' },
+const PLACEHOLDERS: Record<SpiritCategory, { nameEn: string; nameKo: string }> = {
+  WHISKY: { nameEn: 'Balvenie 12Y DoubleWood', nameKo: '예) 발베니 12년 더블우드' },
+  COGNAC: { nameEn: 'Rémy Martin XO',          nameKo: '예) 레미 마르탱 XO' },
+  WINE:   { nameEn: 'Château Margaux',         nameKo: '예) 샤토 마고' },
+  OTHER:  { nameEn: 'Bombay Sapphire',         nameKo: '예) 봄베이 사파이어' },
 }
-const DEFAULT_PLACEHOLDER = { nameEn: 'Balvenie 12Y DoubleWood', nameKo: '예) 발베니 12년 더블우드', bottler: '' }
+const DEFAULT_PLACEHOLDER = { nameEn: 'Balvenie 12Y DoubleWood', nameKo: '예) 발베니 12년 더블우드' }
 
 export const CARD = 'bg-white rounded-2xl shadow-sm p-6 space-y-5'
 const INPUT = 'w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400'
@@ -201,17 +216,25 @@ function migrateLegacyCasks(
 }
 
 // ── 폼 상태 훅 (상태 · 검증 · 페이로드 · 프리필 단일 정의) ───────────
-export function useSpiritForm() {
+/**
+ * 주류 등록/수정 폼 상태.
+ *
+ * @param options.requireProductionInfo
+ *   생산자·국가를 필수로 검증한다. 관리자 등록/수정 화면에서만 true 로 준다 —
+ *   사용자 술 등록 요청 화면은 일반 이용자가 쓰므로 기존처럼 선택으로 둔다.
+ */
+export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
+  const adminRequired = options?.requireProductionInfo ?? false
   const [category, setCategory] = useState<SpiritCategory | null>(null)
   const [nameKo, setNameKo] = useState('')
   const [nameEn, setNameEn] = useState('')
   const [producerId, setProducerId] = useState<number | null>(null)
   const [producerName, setProducerName] = useState('')
-  const [bottler, setBottler] = useState('')
-  const [bottledYear, setBottledYear] = useState('')
   const [countryCode, setCountryCode] = useState<string | null>(null)
   const [country, setCountry] = useState('')
   const [region, setRegion] = useState('')
+  // 와인 산지 코드 (WineRegion) — 지도 표시용. 와인 이외 카테고리에서는 항상 null
+  const [regionCode, setRegionCode] = useState<string | null>(null)
 
   // 하위 에디션 관련 상태
   const [isVariantSplit, setIsVariantSplit] = useState(false)
@@ -335,11 +358,10 @@ export function useSpiritForm() {
     setNameEn('')
     setProducerId(null)
     setProducerName('')
-    setBottler('')
-    setBottledYear('')
     setCountryCode(null)
     setCountry('')
     setRegion('')
+    setRegionCode(null)
     setIsVariantSplit(false)
     setVariantType('NONE')
     setSeriesIdentifier('')
@@ -362,9 +384,32 @@ export function useSpiritForm() {
   // 카테고리 선택 (와인은 와인 상세의 빈티지 상태/연도를 사용)
   const selectCategory = (cat: SpiritCategory) => {
     if (cat === category) return
-    if (cat === 'WINE' && category !== 'WINE') setBottledYear('')
+    // 산지 코드는 산지 카탈로그를 쓰는 카테고리(와인·위스키) 전용이므로
+    // 그 밖으로 나가면 해제한다 (지도와 데이터 불일치 방지).
+    // 와인 ↔ 위스키 전환도 산지 목록이 완전히 다르므로 해제한다.
+    if (!REGION_CATALOG_CATEGORIES.includes(cat) || cat !== category) setRegionCode(null)
+
+    // 카테고리를 바꾸면 **카테고리 하위 입력을 모두 초기화**한다.
+    // 하위 에디션은 위스키 전용이라, 배치 분리를 켠 뒤 꼬냑으로 바꾸면
+    // 에디션 목록이 그대로 남아 보이는 문제가 있었다.
+    // 이전 카테고리의 상세 입력(캐스크·포도품종·크뤼 등)도 함께 비운다.
+    resetCategoryDetails()
+
     setCategory(cat)
     setErrors({})
+  }
+
+  /** 카테고리 하위 입력(에디션 + 카테고리별 상세) 초기화 */
+  const resetCategoryDetails = () => {
+    setIsVariantSplit(false)
+    setVariantType('NONE')
+    setVariants([])
+    setSeriesIdentifier('')
+    setSeriesIdentifierEn('')
+    setWhiskyDetail(DEFAULT_WHISKY)
+    setWineDetail(DEFAULT_WINE)
+    setCognacDetail(DEFAULT_COGNAC)
+    setOtherDetail(DEFAULT_OTHER)
   }
 
   // ── 프리필: 술 상세(AdminSpiritDetail) → 폼 ──
@@ -374,11 +419,11 @@ export function useSpiritForm() {
     setNameEn(s.nameEn)
     setProducerId(s.producerId)
     setProducerName(s.producerNameKo ?? '')
-    setBottler(s.bottler ?? '')
-    setBottledYear(s.bottledYear?.toString() ?? '')
     setCountryCode(ISO3166_COUNTRIES.find((c) => c.nameKo === s.country)?.code ?? null)
     setCountry(s.country ?? '')
+    // region 텍스트는 백엔드가 이미 L1 산지명으로 동기화해 두므로 그대로 사용한다
     setRegion(s.region ?? '')
+    setRegionCode(s.wineRegion?.code ?? null)
 
     // 에디션 및 도수 범위 지정 프리필
     const inferredVariantType =
@@ -542,11 +587,10 @@ export function useSpiritForm() {
     setNameEn(r.nameEn)
     setProducerId(r.producerId)
     setProducerName(r.producerNameKo ?? '')
-    setBottler(r.bottler ?? '')
-    setBottledYear(r.bottledYear?.toString() ?? '')
     setCountryCode(ISO3166_COUNTRIES.find((c) => c.nameKo === r.country)?.code ?? null)
     setCountry(r.country ?? '')
     setRegion(r.region ?? '')
+    setRegionCode(r.regionCode ?? null)
 
     setCommonDetail({
       ...DEFAULT_COMMON_DETAIL,
@@ -700,27 +744,27 @@ export function useSpiritForm() {
     // 도수 범위 지정 여부에 따른 검증
     if (isAbvRange) {
       if (requireMasterSpecs && !abvMin) errs.abvMin = '최소 도수는 필수입니다.'
-      else if (abvMin && (Number(abvMin) < 0 || Number(abvMin) > 100)) errs.abvMin = '도수는 0~100 사이여야 합니다.'
+      else if (abvMin && (Number(abvMin) < ABV_MIN || Number(abvMin) > ABV_MAX)) errs.abvMin = LIMIT_MESSAGE.abv
       if (requireMasterSpecs && !abvMax) errs.abvMax = '최대 도수는 필수입니다.'
-      else if (abvMax && (Number(abvMax) < 0 || Number(abvMax) > 100)) errs.abvMax = '도수는 0~100 사이여야 합니다.'
+      else if (abvMax && (Number(abvMax) < ABV_MIN || Number(abvMax) > ABV_MAX)) errs.abvMax = LIMIT_MESSAGE.abv
       if (abvMin && abvMax && Number(abvMin) > Number(abvMax)) errs.abvMin = '최소 도수가 최대 도수보다 큽니다.'
     } else {
       if (requireMasterSpecs && !commonDetail.abv) errs.abv = '알코올 도수는 필수입니다.'
-      else if (commonDetail.abv && (Number(commonDetail.abv) < 0 || Number(commonDetail.abv) > 100))
-        errs.abv = '도수는 0~100 사이여야 합니다.'
+      else if (commonDetail.abv && (Number(commonDetail.abv) < ABV_MIN || Number(commonDetail.abv) > ABV_MAX))
+        errs.abv = LIMIT_MESSAGE.abv
     }
 
     // 용량 범위 지정 여부에 따른 검증
     if (isVolumeMlRange) {
       if (requireMasterSpecs && !volumeMlMin) errs.volumeMlMin = '최소 용량은 필수입니다.'
-      else if (volumeMlMin && (Number(volumeMlMin) < 1 || Number(volumeMlMin) > 100000)) errs.volumeMlMin = '용량은 1~100,000 사이여야 합니다.'
+      else if (volumeMlMin && (Number(volumeMlMin) < VOLUME_ML_MIN || Number(volumeMlMin) > VOLUME_ML_MAX)) errs.volumeMlMin = LIMIT_MESSAGE.volumeMl
       if (requireMasterSpecs && !volumeMlMax) errs.volumeMlMax = '최대 용량은 필수입니다.'
-      else if (volumeMlMax && (Number(volumeMlMax) < 1 || Number(volumeMlMax) > 100000)) errs.volumeMlMax = '용량은 1~100,000 사이여야 합니다.'
+      else if (volumeMlMax && (Number(volumeMlMax) < VOLUME_ML_MIN || Number(volumeMlMax) > VOLUME_ML_MAX)) errs.volumeMlMax = LIMIT_MESSAGE.volumeMl
       if (volumeMlMin && volumeMlMax && Number(volumeMlMin) > Number(volumeMlMax)) errs.volumeMlMin = '최소 용량이 최대 용량보다 큽니다.'
     } else {
       if (requireMasterSpecs && !commonDetail.volumeMl) errs.volumeMl = '용량은 필수입니다.'
-      else if (commonDetail.volumeMl && (Number(commonDetail.volumeMl) < 1 || Number(commonDetail.volumeMl) > 100000))
-        errs.volumeMl = '용량은 1~100,000 사이여야 합니다.'
+      else if (commonDetail.volumeMl && (Number(commonDetail.volumeMl) < VOLUME_ML_MIN || Number(commonDetail.volumeMl) > VOLUME_ML_MAX))
+        errs.volumeMl = LIMIT_MESSAGE.volumeMl
     }
 
     if (commonDetail.distilledDate && !DATE_RE.test(commonDetail.distilledDate))
@@ -747,6 +791,14 @@ export function useSpiritForm() {
     if (category === 'COGNAC' && !cognacDetail.grade) errs.grade = '등급을 선택해주세요.'
     if (category === 'OTHER' && !otherDetail.otherType) errs.otherType = '주종을 선택해주세요.'
 
+    // 생산 정보 필수 — 관리자 등록/수정에만 적용한다.
+    // 사용자 술 등록 요청(admin=false)은 일반 이용자가 쓰는 화면이라 기존처럼 선택으로 둔다.
+    // 목록에 없는 생산자는 선택기 안에서 직접 등록할 수 있으므로 필수로 둬도 막히지 않는다.
+    if (adminRequired && category) {
+      if (!producerId) errs.producerId = `${PRODUCER_LABEL[category]}을(를) 선택하거나 직접 등록해주세요.`
+      if (!countryCode) errs.country = '국가는 필수입니다.'
+    }
+
     // 하위 에디션 검증
     if (isVariantSplit) {
       if (!seriesIdentifier.trim()) {
@@ -756,11 +808,11 @@ export function useSpiritForm() {
         if (!v.variantValue.trim()) {
           errs[`variantValue_${idx}`] = '에디션 식별 값은 필수입니다.'
         }
-        if (v.abv != null && (Number(v.abv) < 0 || Number(v.abv) > 100)) {
-          errs[`variantAbv_${idx}`] = '도수는 0~100 사이여야 합니다.'
+        if (v.abv != null && (Number(v.abv) < ABV_MIN || Number(v.abv) > ABV_MAX)) {
+          errs[`variantAbv_${idx}`] = LIMIT_MESSAGE.abv
         }
-        if (v.volumeMl != null && (Number(v.volumeMl) < 1 || Number(v.volumeMl) > 100000)) {
-          errs[`variantVolumeMl_${idx}`] = '용량은 1~100,000 사이여야 합니다.'
+        if (v.volumeMl != null && (Number(v.volumeMl) < VOLUME_ML_MIN || Number(v.volumeMl) > VOLUME_ML_MAX)) {
+          errs[`variantVolumeMl_${idx}`] = LIMIT_MESSAGE.volumeMl
         }
         if (v.commonDetail?.distilledDate && !DATE_RE.test(v.commonDetail.distilledDate)) {
           errs[`variantDistilledDate_${idx}`] = '형식: YYYY 또는 YYYY-MM'
@@ -939,8 +991,6 @@ export function useSpiritForm() {
     const payload: CreateSpiritPayload = {
       nameKo, nameEn, category: category as SpiritCategory,
       producerId: producerId ?? null,
-      bottler: bottler || null,
-      bottledYear: category !== 'WINE' && bottledYear ? Number(bottledYear) : null,
       vintageYear: category === 'WINE'
         && wineDetail.vintageStatus === 'VINTAGE'
         && wineDetail.vintageYear
@@ -950,6 +1000,10 @@ export function useSpiritForm() {
       volumeMl: common.volumeMl,
       country: country || null,
       region: region || null,
+      // 산지 코드는 와인·위스키 전용. 수정 요청에서 null 은 '해제'로 반영되므로 항상 전송한다
+      regionCode: category && REGION_CATALOG_CATEGORIES.includes(category)
+        ? (regionCode || null)
+        : null,
       commonDetail: common,
       isVariantSplit,
       seriesIdentifier: isVariantSplit ? (seriesIdentifier.trim() || null) : null,
@@ -979,11 +1033,13 @@ export function useSpiritForm() {
   }
 
   return {
+    /** 생산자·국가를 필수로 검증하는지 (UI 가 필수 표시를 붙일 때 사용) */
+    requireProductionInfo: adminRequired,
     category, setCategory, selectCategory,
     nameKo, setNameKo, nameEn, setNameEn,
     producerId, setProducerId, producerName,
-    bottler, setBottler, bottledYear, setBottledYear,
     countryCode, country, region, setCountryValue, setRegion,
+    regionCode, setRegionCode,
     isVariantSplit, setIsVariantSplit, variantType, setVariantType,
     seriesIdentifier, setSeriesIdentifier, seriesIdentifierEn, setSeriesIdentifierEn,
     variants, setVariants,
@@ -1126,7 +1182,7 @@ function SortableTab({
   )
 }
 
-// ── 폼 UI (4섹션: 기본 / 생산·병입 / 카테고리 상세 / 공통 상세) ───────
+// ── 폼 UI (기본 / 생산 / 카테고리 상세 / 공통 상세 + 위스키는 캐스크 전용 컬럼) ───────
 interface SpiritFormFieldsProps {
   form: SpiritFormApi
   /** true면 카테고리 변경 불가 (값만 수정) — 주류 상세 화면용 */
@@ -1163,6 +1219,14 @@ export default function SpiritFormFields({
   const isMasterSpecsRequired = !form.isVariantSplit
 
   const [activeVariantIdx, setActiveVariantIdx] = useState(0)
+
+  // 에디션 목록이 줄거나 비워지면(카테고리 전환·에디션 삭제) 열려 있던 인덱스를 보정한다.
+  // 보정하지 않으면 캐스크 컬럼과 에디션 카드가 존재하지 않는 인덱스를 가리켜 빈 화면이 된다.
+  useEffect(() => {
+    if (activeVariantIdx > 0 && activeVariantIdx >= form.variants.length) {
+      setActiveVariantIdx(Math.max(0, form.variants.length - 1))
+    }
+  }, [form.variants.length, activeVariantIdx])
 
   const pointerSensor = useSensor(PointerSensor, {
     activationConstraint: {
@@ -1206,20 +1270,63 @@ export default function SpiritFormFields({
     setActiveVariantIdx(activeVariantIndex)
   }, [activeVariantIndex, form.variants.length])
 
-  // 기타 카테고리 — 목록에 없는 생산자 즉시 직접 생성 후 선택 (관리자 기본 동작)
+  // 목록에 없는 생산자를 즉시 직접 생성 후 선택 (관리자 기본 동작).
+  // 생산자 종류는 현재 카테고리에 맞춰야 한다 — 위스키는 DISTILLERY, 와인은 WINERY 등.
+  // (예전에는 'OTHER' 로 고정되어 있어 증류소를 만들어도 위스키 목록에 나타나지 않았다)
   const handleCreateProducer = async (data: NewProducerInput) => {
-    const res = await adminProducerApi.create({ type: 'OTHER', ...data })
+    const producerType = category ? CATEGORY_TO_PRODUCER_TYPE[category] : 'OTHER'
+    const res = await adminProducerApi.create({ type: producerType, ...data })
     await queryClient.invalidateQueries({ queryKey: ['producers'] })
     return res.data.data?.id ?? null
   }
 
   const ProducerSelectorComp = producerSelector ?? AdminProducerSelector
   const handleCreateProducerFinal = onCreateProducer ?? handleCreateProducer
+  // 관리자 등록/수정에서는 생산 정보(생산자·국가)를 필수로 받는다
+  const requireProduction = form.requireProductionInfo
+
+  /**
+   * 위스키는 캐스크 입력이 매우 길어(대분류 11종 × 세부 오크통 다중 입력)
+   * PC 에서 **3열**로 배치한다 — 좌: 기본·생산·이미지 / 중: 위스키 상세·에디션 / 우: 캐스크.
+   * 나머지 카테고리는 기존 2열(2:3) 비율을 유지한다.
+   */
+  const isWhisky = category === 'WHISKY'
+
+  /**
+   * 입력 오타 힌트 — 범위는 맞지만 실무적으로 의심스러운 값에 안내를 띄운다.
+   * 저장을 막지 않는다(실존하는 비표준 규격·저도주가 있으므로).
+   * 범위형(min~max)일 때는 최소값 기준으로 판단한다.
+   */
+  const volumeHint = suspiciousVolume(
+    form.isVolumeMlRange ? form.volumeMlMin : form.commonDetail.volumeMl,
+  )
+  const abvHint = suspiciousAbv(
+    form.isAbvRange ? form.abvMin : form.commonDetail.abv,
+    category,
+  )
+  /** 3열일 때 캐스크 컬럼이 편집하는 대상 — 에디션 분리 시 활성 에디션, 그 외에는 마스터 */
+  const caskTarget = isWhisky && form.isVariantSplit && form.variants[activeVariantIdx]
+    ? {
+      label: `에디션 · ${form.variants[activeVariantIdx].variantValue || `${activeVariantIdx + 1}번째`}`,
+      value: toWhiskyDetailForm(form.variants[activeVariantIdx].whiskyDetail),
+      onChange: (u: Partial<WhiskyDetailForm>) =>
+        form.updateVariantWhisky(activeVariantIdx, toWhiskyDetailRequest(u)),
+    }
+    : { label: null, value: form.whiskyDetail, onChange: form.updateWhisky }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
-      {/* ═══ 좌측: ① 기본 / ② 생산·병입 / ④ 공통 상세 + 이미지 ═══ */}
-      <div className="lg:col-span-2 space-y-6">
+    <div className={`grid grid-cols-1 gap-6 items-start ${
+      isWhisky ? 'lg:grid-cols-3' : 'lg:grid-cols-5'
+    }`}>
+      {/* ═══ 최상단: 이미지 (전체 폭 1줄) ═══
+          주류 수정 화면과 같은 위치·형태로 맞춘다 — 대표 이미지 지정과 순서 변경을
+          다른 입력과 나란히 두면 좁아서 썸네일이 잘 보이지 않는다. */}
+      {imageSlot && (
+        <div className={isWhisky ? 'lg:col-span-3' : 'lg:col-span-5'}>{imageSlot}</div>
+      )}
+
+      {/* ═══ 좌측: ① 기본 / ② 생산 / ④ 공통 상세 ═══ */}
+      <div className={`space-y-6 ${isWhisky ? '' : 'lg:col-span-2'}`}>
         <div className={CARD}>
           <SectionTitle title="카테고리 & 기본 정보" />
 
@@ -1375,6 +1482,12 @@ export default function SpiritFormFields({
                 {(errors.abv || errors.abvMin || errors.abvMax) && (
                   <p className="text-xs text-red-500 mt-1">{errors.abv || errors.abvMin || errors.abvMax}</p>
                 )}
+                {/* 오타 힌트 — 스카치·꼬냑은 법정 최저 40%라 20% 미만은 4.6↔46 오타일 가능성이 높다 */}
+                {abvHint && category && (
+                  <p className="text-xs text-amber-600 mt-1">
+                    {CATEGORY_LABEL[category]} 치고 도수가 낮습니다. 소수점을 잘못 넣진 않았나요?
+                  </p>
+                )}
               </div>
             </div>
             <div className="grid grid-cols-1">
@@ -1389,7 +1502,7 @@ export default function SpiritFormFields({
                 {form.isVolumeMlRange ? (
                     <div className="flex items-center gap-2">
                       <div className="relative flex-1">
-                        <input type="number" min="1" max="100000" value={form.volumeMlMin}
+                        <input type="number" min={VOLUME_ML_MIN} max={VOLUME_ML_MAX} value={form.volumeMlMin}
                                required={isMasterSpecsRequired} aria-required={isMasterSpecsRequired || undefined}
                                disabled={isMasterSpecsDisabled}
                                onChange={(e) => form.setVolumeMlMin(e.target.value)}
@@ -1400,7 +1513,7 @@ export default function SpiritFormFields({
                       </div>
                       <span className="text-neutral-400">~</span>
                       <div className="relative flex-1">
-                        <input type="number" min="1" max="100000" value={form.volumeMlMax}
+                        <input type="number" min={VOLUME_ML_MIN} max={VOLUME_ML_MAX} value={form.volumeMlMax}
                                required={isMasterSpecsRequired} aria-required={isMasterSpecsRequired || undefined}
                                disabled={isMasterSpecsDisabled}
                                onChange={(e) => form.setVolumeMlMax(e.target.value)}
@@ -1412,7 +1525,7 @@ export default function SpiritFormFields({
                     </div>
                 ) : (
                     <div className="relative">
-                      <input type="number" min="1" max="100000" value={form.commonDetail.volumeMl}
+                      <input type="number" min={VOLUME_ML_MIN} max={VOLUME_ML_MAX} value={form.commonDetail.volumeMl}
                              required={isMasterSpecsRequired} aria-required={isMasterSpecsRequired || undefined}
                              disabled={isMasterSpecsDisabled}
                              onWheel={(e) => e.currentTarget.blur()}
@@ -1429,6 +1542,12 @@ export default function SpiritFormFields({
                 )}
                 {(errors.volumeMl || errors.volumeMlMin || errors.volumeMlMax) && (
                     <p className="text-xs text-red-500 mt-1">{errors.volumeMl || errors.volumeMlMin || errors.volumeMlMax}</p>
+                )}
+                {/* 오타 힌트 — 저장은 막지 않는다 (640·720ml 처럼 실존하는 비표준 규격이 있다) */}
+                {volumeHint != null && (
+                  <p className="text-xs text-amber-600 mt-1">
+                    표준 병 규격이 아닙니다. {volumeHint.toLocaleString('ko-KR')}ml 를 의도하셨나요?
+                  </p>
                 )}
               </div>
             </div>
@@ -1486,12 +1605,15 @@ export default function SpiritFormFields({
         </div>
         </div>
 
-        {/* ② 생산 / 병입 */}
+        {/* ② 생산 정보 */}
         {category && (
           <div className={CARD}>
-            <SectionTitle title="생산 / 병입 정보" hint="선택" />
-            <div>
-              <label className={LABEL}>{producerLabel}</label>
+            <SectionTitle title="생산 정보" hint={requireProduction ? undefined : '선택'} />
+            <div data-field="producerId">
+              <label className={LABEL}>
+                {producerLabel}{requireProduction && <RequiredMark />}
+                <InfoTooltip text={`목록에 없으면 선택기 안에서 '${producerLabel} 직접 등록'으로 바로 추가할 수 있습니다.`} />
+              </label>
               <ProducerSelectorComp value={form.producerId} defaultName={form.producerName}
                 onChange={(id, producer) => {
                   form.setProducerId(id ?? null)
@@ -1505,6 +1627,7 @@ export default function SpiritFormFields({
                 type={CATEGORY_TO_PRODUCER_TYPE[category]}
                 onCreateNew={handleCreateProducerFinal}
                 defaultCountry={ISO3166_COUNTRIES.find((c) => c.code === form.countryCode)?.nameKo ?? ''} />
+              {errors.producerId && <p className="text-xs text-red-500 mt-1">{errors.producerId}</p>}
             </div>
             {category === 'WHISKY' && (
               <div>
@@ -1518,35 +1641,39 @@ export default function SpiritFormFields({
                   className={INPUT} />
               </div>
             )}
-            <div>
-              <label className={LABEL}>국가 / 지역</label>
+            <div data-field="country">
+              <label className={LABEL}>
+                {category === 'WINE' ? '국가 / 산지' : '국가 / 지역'}
+                {requireProduction && <RequiredMark />}
+                {category === 'WINE' && (
+                  <InfoTooltip text="산지를 고르면 사용자 상세 페이지에 국가 지도와 확대 지도로 산지가 표시됩니다. 세부 산지는 선택 사항입니다." />
+                )}
+              </label>
               <CountryRegionSelector
                 countryCode={form.countryCode} regionNameKo={form.region}
                 onCountryChange={form.setCountryValue}
                 onRegionChange={form.setRegion}
+                category={category}
+                regionCode={form.regionCode}
+                onRegionCodeChange={form.setRegionCode}
+                admin={admin}
               />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className={category === 'WINE' ? 'sm:col-span-2' : ''}>
-                <label className={LABEL}>병입업체</label>
-                <input value={form.bottler} onChange={(e) => form.setBottler(e.target.value)} maxLength={200}
-                  placeholder={ph.bottler} className={INPUT} />
-              </div>
-              {category !== 'WINE' && (
-                <div>
-                  <label className={LABEL}>병입 연도</label>
-                  <input type="number" min={1800} max={2100} value={form.bottledYear}
-                    onChange={(e) => form.setBottledYear(e.target.value)}
-                    onWheel={(e) => e.currentTarget.blur()}
-                    className={INPUT} />
-                </div>
+              {/* 선택한 산지가 사용자 화면에 어떻게 보이는지 즉시 확인 — 잘못 고른 산지를 저장 전에 잡는다 */}
+              {REGION_CATALOG_CATEGORIES.includes(category) && form.regionCode && (
+                <WineRegionPreview
+                  regionCode={form.regionCode}
+                  category={category}
+                  className="mt-3"
+                />
               )}
+              {errors.country && <p className="text-xs text-red-500 mt-1">{errors.country}</p>}
             </div>
           </div>
         )}
 
-        {/* ④ 공통 상세 정보 (위스키 제외 카테고리만 카드 형태로 타이틀 없이 렌더링) */}
-        {category && category !== 'WHISKY' && (
+        {/* ④ 공통 상세 정보 — 표시할 필드가 있는 카테고리만 카드로 렌더한다
+            (와인은 전 항목이 빈티지로 대체되어 숨겨지므로 빈 카드가 생기지 않게 한다) */}
+        {hasCommonDetailFields(category) && (
           <div className={CARD}>
             <SpiritCommonDetailSection
               value={form.commonDetail}
@@ -1557,20 +1684,20 @@ export default function SpiritFormFields({
             />
           </div>
         )}
-
-        {imageSlot}
       </div>
 
-      {/* ═══ 우측: ③ 카테고리 상세 및 에디션 (넓게) ═══ */}
-      <div className="lg:col-span-3 space-y-6">
+      {/* ═══ 중앙: ③ 카테고리 상세 및 에디션 ═══ */}
+      <div className={`space-y-6 ${isWhisky ? '' : 'lg:col-span-3'}`}>
         {!category ? (
           <div className="rounded-2xl border-2 border-dashed border-neutral-200 bg-neutral-50/50 py-12 text-center">
             <p className="text-sm text-neutral-400">카테고리를 먼저 선택하면 상세 입력 항목이 표시됩니다.</p>
           </div>
         ) : (
           <>
-            {/* 하위 에디션 설정 카드 */}
-            {category && form.isVariantSplit && (
+            {/* 하위 에디션 설정 카드 — 에디션 분리는 위스키 전용이다.
+                카테고리 전환 시 상태를 초기화하지만, 조건에서도 카테고리를 확인해
+                어떤 경로로든 다른 카테고리에 에디션 목록이 노출되지 않게 한다. */}
+            {isWhisky && form.isVariantSplit && (
               <div className={CARD}>
                 <SectionTitle title="하위 에디션 목록" hint="각 에디션별 개별 정보 입력" />
 
@@ -1682,9 +1809,73 @@ export default function SpiritFormFields({
         )}
       </div>
 
-      {bottomSlot && <div className="lg:col-span-5">{bottomSlot}</div>}
+      {/* ═══ 우측: 캐스크 전용 컬럼 (위스키만) ═══
+          입력이 길어 스크롤이 과해지는 것을 막고, 에디션 분리 시에는
+          현재 열린 에디션의 캐스크를 여기서 편집한다. */}
+      {isWhisky && category && (
+        <div className="space-y-6">
+          <div className={`${CARD} lg:sticky lg:top-4`}>
+            <SectionTitle
+              title="캐스크"
+              hint={caskTarget.label ?? '마스터 공통'}
+            />
+            {caskTarget.label && (
+              <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 -mt-1">
+                지금 편집 중인 에디션의 캐스크입니다. 에디션 탭을 바꾸면 이 영역도 함께 바뀝니다.
+              </p>
+            )}
+            <WhiskyCaskSection value={caskTarget.value} onChange={caskTarget.onChange} />
+          </div>
+        </div>
+      )}
+
+      {bottomSlot && (
+        <div className={isWhisky ? 'lg:col-span-3' : 'lg:col-span-5'}>{bottomSlot}</div>
+      )}
     </div>
   )
+}
+
+/**
+ * 폼 형태 → 요청 형태 변환 (위스키 상세).
+ *
+ * <p>하위 에디션은 상태를 요청 DTO 형태(`WhiskyDetailRequest`)로 들고 있고
+ * 입력 컴포넌트는 폼 형태(`WhiskyDetailForm`)를 쓰기 때문에 경계에서 변환한다.
+ * 에디션 카드와 **캐스크 전용 컬럼**이 같은 변환을 써야 하므로 모듈 함수로 둔다.
+ */
+function toWhiskyDetailRequest(u: Partial<WhiskyDetailForm>): Partial<WhiskyDetailRequest> {
+  const converted: Partial<WhiskyDetailRequest> = {}
+  if (u.style !== undefined) converted.style = u.style || null
+  if (u.styleOther !== undefined) converted.styleOther = u.styleOther || null
+  if (u.brandName !== undefined) converted.brandName = u.brandName || null
+  if (u.bottlingType !== undefined) converted.bottlingType = u.bottlingType || null
+  if (u.caskTypes !== undefined) converted.caskTypes = u.caskTypes
+  if (u.caskFinishes !== undefined) converted.caskFinishes = u.caskFinishes
+  if (u.caskTypeOther !== undefined) converted.caskTypeOther = u.caskTypeOther || null
+  if (u.caskDetails !== undefined) converted.caskDetails = u.caskDetails
+  if (u.isNonChillFiltered !== undefined) converted.isNonChillFiltered = u.isNonChillFiltered
+  if (u.isNaturalColour !== undefined) converted.isNaturalColour = u.isNaturalColour
+  if (u.isSingleCask !== undefined) converted.isSingleCask = u.isSingleCask
+  if (u.isCaskStrength !== undefined) converted.isCaskStrength = u.isCaskStrength
+  if (u.isPeated !== undefined) {
+    converted.isPeated = u.isPeated
+    if (!u.isPeated) {
+      converted.phenolPpm = null
+      converted.phenolPpmMin = null
+      converted.phenolPpmMax = null
+    }
+  }
+  if (u.phenolPpm !== undefined) {
+    converted.phenolPpm = u.phenolPpm === '' ? null : Number(u.phenolPpm)
+  }
+  if (u.phenolPpmMin !== undefined) {
+    converted.phenolPpmMin = u.phenolPpmMin === '' ? null : Number(u.phenolPpmMin)
+  }
+  if (u.phenolPpmMax !== undefined) {
+    converted.phenolPpmMax = u.phenolPpmMax === '' ? null : Number(u.phenolPpmMax)
+  }
+  if (u.notes !== undefined) converted.notes = u.notes || null
+  return converted
 }
 
 function toWhiskyDetailForm(detail?: WhiskyDetailRequest): WhiskyDetailForm {
@@ -1825,39 +2016,7 @@ function VariantItemCard({
   const whiskyFormValue = toWhiskyDetailForm(variant.whiskyDetail)
 
   const handleWhiskyChange = (u: Partial<WhiskyDetailForm>) => {
-    const converted: Partial<WhiskyDetailRequest> = {}
-    if (u.style !== undefined) converted.style = u.style || null
-    if (u.styleOther !== undefined) converted.styleOther = u.styleOther || null
-    if (u.brandName !== undefined) converted.brandName = u.brandName || null
-    if (u.bottlingType !== undefined) converted.bottlingType = u.bottlingType || null
-    if (u.caskTypes !== undefined) converted.caskTypes = u.caskTypes
-    if (u.caskFinishes !== undefined) converted.caskFinishes = u.caskFinishes
-    if (u.caskTypeOther !== undefined) converted.caskTypeOther = u.caskTypeOther || null
-    if (u.caskDetails !== undefined) converted.caskDetails = u.caskDetails
-    if (u.isNonChillFiltered !== undefined) converted.isNonChillFiltered = u.isNonChillFiltered
-    if (u.isNaturalColour !== undefined) converted.isNaturalColour = u.isNaturalColour
-    if (u.isSingleCask !== undefined) converted.isSingleCask = u.isSingleCask
-    if (u.isCaskStrength !== undefined) converted.isCaskStrength = u.isCaskStrength
-    if (u.isPeated !== undefined) {
-      converted.isPeated = u.isPeated
-      if (!u.isPeated) {
-        converted.phenolPpm = null
-        converted.phenolPpmMin = null
-        converted.phenolPpmMax = null
-      }
-    }
-    if (u.phenolPpm !== undefined) {
-      converted.phenolPpm = u.phenolPpm === '' ? null : Number(u.phenolPpm)
-    }
-    if (u.phenolPpmMin !== undefined) {
-      converted.phenolPpmMin = u.phenolPpmMin === '' ? null : Number(u.phenolPpmMin)
-    }
-    if (u.phenolPpmMax !== undefined) {
-      converted.phenolPpmMax = u.phenolPpmMax === '' ? null : Number(u.phenolPpmMax)
-    }
-    if (u.notes !== undefined) converted.notes = u.notes || null
-
-    onUpdateWhisky(converted)
+    onUpdateWhisky(toWhiskyDetailRequest(u))
   }
 
   const handleCommonChange = (u: Partial<CommonDetailForm>) => {
@@ -1969,8 +2128,8 @@ function VariantItemCard({
               <input
                 type="number"
                 data-field={`variantVolumeMl_${index}`}
-                min="1"
-                max="100000"
+                min={VOLUME_ML_MIN}
+                max={VOLUME_ML_MAX}
                 value={variant.volumeMl ?? ''}
                 onChange={(e) => onUpdate({ volumeMl: e.target.value === '' ? null : Number(e.target.value) })}
                 onWheel={(e) => e.currentTarget.blur()}

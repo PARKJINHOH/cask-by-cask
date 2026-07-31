@@ -102,7 +102,6 @@ export function BottleCollectionTab() {
         bottles={data?.bottles ?? []} view={view} editable
         sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
         onDetail={b => setDetailBottle(b)}
-        onDelete={handleDelete}
         onToggleStatus={id => toggleStatusMut.mutate(id)}
         onTogglePublic={id => togglePublicMut.mutate(id)}
       />

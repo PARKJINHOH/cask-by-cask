@@ -3,15 +3,19 @@ import type {
   SpiritCategory, WhiskyStyle, WineType, CognacGrade,
   WineSweetness, WineBody, WineIntensity,
 } from '@/domain/spirit/types/spirit.types'
+import {
+  WINE_SWEETNESS_SCALE, WINE_BODY_SCALE, WINE_INTENSITY_SCALE,
+} from '@/domain/spirit/data/wineTasteScale'
 
 const WHISKY_STYLES: WhiskyStyle[] = [
   'SINGLE_MALT', 'BLENDED_MALT', 'BLENDED_WHISKY',
   'BOURBON', 'WHEATED_BOURBON', 'TENNESSEE', 'RYE', 'POT_STILL', 'GRAIN_CORN',
 ]
 const WINE_TYPES: WineType[] = ['RED', 'WHITE', 'ROSE', 'SPARKLING', 'DESSERT', 'ORANGE', 'FORTIFIED']
-const WINE_SWEETNESS: WineSweetness[] = ['DRY', 'OFF_DRY', 'MEDIUM', 'SWEET']
-const WINE_BODY: WineBody[] = ['LIGHT', 'MEDIUM', 'FULL']
-const WINE_LEVELS: WineIntensity[] = ['LOW', 'MEDIUM', 'HIGH']
+// 필터 목록은 표시 스케일(wineTasteScale)에서 가져와 5단계 정의가 한 곳에만 존재하게 한다
+const WINE_SWEETNESS: WineSweetness[] = [...WINE_SWEETNESS_SCALE]
+const WINE_BODY: WineBody[] = [...WINE_BODY_SCALE]
+const WINE_LEVELS: WineIntensity[] = [...WINE_INTENSITY_SCALE]
 const COGNAC_GRADES: CognacGrade[] = ['VS', 'NAPOLEON', 'VSOP', 'XO', 'XXO', 'HORS_DAGE']
 
 const CATEGORIES: SpiritCategory[] = ['WHISKY', 'COGNAC', 'WINE', 'OTHER']

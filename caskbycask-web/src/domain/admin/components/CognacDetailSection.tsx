@@ -38,6 +38,7 @@ const CRUS: Array<[string, string]> = [
   ['BORDERIES', 'Borderies'],
   ['FINS_BOIS', 'Fins Bois'],
   ['BONS_BOIS', 'Bons Bois'],
+  ['BOIS_ORDINAIRES', 'Bois Ordinaires (Bois à Terroirs)'],
 ]
 
 export default function CognacDetailSection({ value, onChange, errors }: Props) {
@@ -74,8 +75,8 @@ export default function CognacDetailSection({ value, onChange, errors }: Props) 
       {/* 크뤼 */}
       <div>
         <label className={LABEL}>
-          크뤼 (원산지 등급)
-          <InfoTooltip text="원산지 세부 등급. '샴페인'과 이름만 같고 다른 지역입니다. Grande Champagne이 최상위." />
+          크뤼 (원산지 구역)
+          <InfoTooltip text="토양의 백악질 비율로 나뉘는 꼬냑 AOC 법정 6개 구역. 샹파뉴 와인과는 이름만 같고 다른 지역입니다. Grande Champagne이 최상위." />
         </label>
         <select value={value.cru} onChange={(e) => onChange({ cru: e.target.value })} className={INPUT}>
           <option value="">선택 안 함</option>
@@ -104,7 +105,7 @@ export default function CognacDetailSection({ value, onChange, errors }: Props) 
         </div>
         <div>
           <label className={LABEL}>
-            선언 숙성연수
+            표기 숙성연수
             <InfoTooltip text="라벨에 표기된 숙성 연수(예: 20년). 표기가 없으면 비워두세요." />
           </label>
           <div className="relative">
@@ -117,10 +118,10 @@ export default function CognacDetailSection({ value, onChange, errors }: Props) 
         </div>
       </div>
 
-      {/* 오크(우드) 종류 */}
+      {/* 오크 종류 */}
       <div>
         <label className={LABEL}>
-          오크(우드) 종류
+          오크 종류
           <InfoTooltip text="숙성에 사용한 프렌치 오크 숲. 리무쟁=강한 타닌, 트롱세=섬세함." />
         </label>
         <select value={value.oakType} onChange={(e) => onChange({ oakType: e.target.value })} className={INPUT}>
@@ -145,7 +146,7 @@ export default function CognacDetailSection({ value, onChange, errors }: Props) 
         <label className={LABEL}>블렌드 설명</label>
         <textarea value={value.blendDetail} rows={3} maxLength={300}
           onChange={(e) => onChange({ blendDetail: e.target.value })}
-          className={`${INPUT} resize-none`} />
+          className={`${INPUT} resize`} />
       </div>
     </div>
   )

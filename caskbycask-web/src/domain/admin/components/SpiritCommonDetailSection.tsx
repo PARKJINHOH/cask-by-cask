@@ -49,6 +49,16 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 
+/**
+ * 해당 카테고리에서 이 섹션이 보여줄 필드가 하나라도 있는지.
+ *
+ * <p>와인은 NAS·숙성년수·증류연월·병입연월·출시일·배치/병번호가 모두 숨겨져(빈티지로 대체)
+ * 표시할 필드가 남지 않는다. 호출부가 이 값을 확인하지 않으면 **빈 카드**만 렌더된다.
+ */
+export function hasCommonDetailFields(category: SpiritCategory | '' | null | undefined): boolean {
+  return !!category && category !== 'WHISKY' && category !== 'WINE'
+}
+
 export default function SpiritCommonDetailSection({ value, onChange, dateErrors, category }: Props) {
   // 카테고리별 표시 규칙
   //  - 와인 : NAS·숙성년수·증류연월·병입연월·배치/병번호/총병수 숨김 (빈티지로 대체)

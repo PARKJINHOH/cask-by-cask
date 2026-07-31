@@ -59,13 +59,17 @@ export default function GrapeVarietyInput({ value, onChange }: Props) {
         </div>
       ))}
 
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <button
           type="button"
           onClick={add}
-          className="text-xs text-amber-600 hover:text-amber-700 font-medium flex items-center gap-1"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-300
+            bg-amber-50 text-amber-700 text-xs font-semibold
+            hover:bg-amber-100 hover:border-amber-400 transition-colors
+            focus:outline-none focus:ring-2 focus:ring-primary-400"
         >
-          + 품종 추가
+          <span aria-hidden="true" className="text-sm leading-none">+</span>
+          품종 추가
         </button>
         {value.length > 0 && (
           <span className={`text-xs ${isOver ? TOTAL_ERROR_CLS : TOTAL_OK_CLS}`}>

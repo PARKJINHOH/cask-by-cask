@@ -6,6 +6,7 @@ import axiosInstance from '@/shared/api/axiosInstance';
 import { getLocalizedSpiritListNames } from '@/domain/spirit/utils/spiritDisplayName';
 import ImageEditorModal from '@/shared/components/ImageEditorModal';
 import { formatOptionalPriceInput, parsePriceInput } from '@/shared/utils/moneyInput';
+import { formatYearMonth } from '@/shared/utils/yearMonth';
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue';
 import FormFieldLabel, { RequiredFieldsNotice } from '@/shared/components/FormFieldLabel';
 
@@ -371,12 +372,18 @@ export function BottleFormModal({ open, onClose, editing }: Props) {
             </div>
             <div>
               <FieldLabel>{stripOptional(t('collection.form.bottlingYear'))}</FieldLabel>
+              {/* 주류 상세의 증류·병입 연월과 같은 규칙(YYYY 또는 YYYY-MM).
+                  숫자만 입력해도 하이픈이 자동으로 들어가고, 없는 월(13~)은 입력되지 않는다. */}
               <input
                 type="text"
+                inputMode="numeric"
                 value={form.bottlingYear ?? ''}
-                placeholder="2022.02"
-                onChange={(e) => setForm((f) => ({ ...f, bottlingYear: e.target.value || undefined }))}
-                maxLength={100}
+                placeholder="2022-02"
+                onChange={(e) => setForm((f) => ({
+                  ...f,
+                  bottlingYear: formatYearMonth(e.target.value) || undefined,
+                }))}
+                maxLength={7}
                 className="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm"
               />
             </div>

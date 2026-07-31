@@ -48,9 +48,6 @@ public record TierListItemResponse(
         if (spirit.getCommonDetail() != null && StringUtils.hasText(spirit.getCommonDetail().getBatchNo())) {
             return "Batch " + spirit.getCommonDetail().getBatchNo();
         }
-        if (spirit.getBottledYear() != null) {
-            return String.valueOf(spirit.getBottledYear());
-        }
         return null;
     }
 

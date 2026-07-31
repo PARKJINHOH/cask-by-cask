@@ -22,8 +22,6 @@ public record AdminSpiritVariantResponse(
         String nameEn,
         @Schema(description = "카테고리")
         SpiritCategory category,
-        @Schema(description = "병입년도")
-        Integer bottledYear,
         @Schema(description = "빈티지")
         Integer vintageYear,
         @Schema(description = "알코올 도수 %")
@@ -58,7 +56,6 @@ public record AdminSpiritVariantResponse(
                 spirit.getNameKo(),
                 spirit.getNameEn(),
                 spirit.getCategory(),
-                spirit.getBottledYear(),
                 spirit.getVintageYear(),
                 spirit.getAbv(),
                 spirit.getVolumeMl(),

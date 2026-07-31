@@ -18,7 +18,7 @@ const MAX_IMAGES = 10
 
 export default function AdminSpiritFormPage() {
   const navigate = useNavigate()
-  const form = useSpiritForm()
+  const form = useSpiritForm({ requireProductionInfo: true })
 
   const [isSaving, setIsSaving] = useState(false)
   const [saveType, setSaveType] = useState<SpiritStatus | null>(null)
@@ -89,7 +89,8 @@ export default function AdminSpiritFormPage() {
   }
 
   return (
-    <div className="p-6 mx-auto space-y-6 pb-28 max-w-3xl lg:max-w-6xl xl:max-w-7xl">
+    // PC 에서 가로 폭을 모두 쓴다 — 위스키는 3열(캐스크 전용 컬럼)이라 폭이 넓을수록 유리하다
+    <div className="p-6 space-y-6 pb-28">
       <AdminPageHeader
         breadcrumbs={[
           { label: '주류 관리', to: '/admin/spirits' },
@@ -109,7 +110,7 @@ export default function AdminSpiritFormPage() {
             <p className="text-xs text-neutral-400">
               첫 번째 이미지가 대표 이미지로 설정됩니다. (최대 {MAX_IMAGES}장)
             </p>
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
               {previews.map((url, i) => (
                 <div
                   key={url}
@@ -186,7 +187,7 @@ export default function AdminSpiritFormPage() {
 
       {/* 하단 고정 액션바 */}
       <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/90 backdrop-blur border-t border-neutral-200">
-        <div className="max-w-3xl lg:max-w-6xl xl:max-w-7xl mx-auto px-6 py-3 flex justify-end gap-2">
+        <div className="px-6 py-3 flex justify-end gap-2">
           <Button variant="secondary" onClick={() => navigate('/admin/spirits')} disabled={isSaving}>취소</Button>
           <Button
             variant="secondary"

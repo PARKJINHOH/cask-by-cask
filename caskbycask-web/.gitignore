@@ -11,6 +11,10 @@ dist-ssr
 out
 *.tsbuildinfo
 
+# 산지 지도 생성 스크립트가 내려받는 원본 지리 데이터 캐시 (npm run map:build)
+# 산출물(src/domain/location/data/wineRegionMap/*.ts)만 커밋한다
+.cache
+
 # Env
 .env
 .env.local

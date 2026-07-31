@@ -112,7 +112,7 @@ function ImageSection({ requestId, imageUrls }: { requestId: number; imageUrls: 
       {imageUrls.length === 0 ? (
         <p className="text-xs text-neutral-400">등록된 이미지가 없습니다.</p>
       ) : (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
           {imageUrls.map((url) => (
             <div key={url} className="relative group aspect-square rounded-xl overflow-hidden border border-neutral-200">
               <img src={url} alt="" className="w-full h-full object-cover" />
@@ -150,7 +150,7 @@ export default function AdminRequestDetailPage() {
   const approve = useApproveRequestWithDetail()
   const reject = useRejectRequest()
 
-  const form = useSpiritForm()
+  const form = useSpiritForm({ requireProductionInfo: true })
 
   const [actionError, setActionError] = useState('')
   const [rejectMode, setRejectMode] = useState(false)
@@ -195,7 +195,8 @@ export default function AdminRequestDetailPage() {
   const isPending = req.status === 'PENDING'
 
   return (
-    <div className="p-6 mx-auto space-y-6 pb-28 max-w-3xl lg:max-w-6xl xl:max-w-7xl">
+    // PC 에서 가로 폭을 모두 쓴다 (주류 등록/수정 화면과 동일)
+    <div className="p-6 space-y-6 pb-28">
       {/* 헤더 */}
       <AdminPageHeader
         breadcrumbs={[
@@ -251,7 +252,7 @@ export default function AdminRequestDetailPage() {
       {/* 하단 고정 액션바 */}
       {isPending && !rejectMode && (
         <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/90 backdrop-blur border-t border-neutral-200">
-          <div className="max-w-3xl lg:max-w-6xl xl:max-w-7xl mx-auto px-6 py-3 flex justify-end gap-2">
+          <div className="px-6 py-3 flex justify-end gap-2">
             <Button variant="danger" onClick={() => setRejectMode(true)}>반려</Button>
             <Button onClick={handleApprove} isLoading={approve.isPending}>승인 및 등록</Button>
           </div>

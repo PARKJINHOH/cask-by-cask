@@ -20,8 +20,8 @@ export interface SpiritRegisterRequestForm {
   abvMax?: number | null
   country?: string
   region?: string
-  bottler?: string
-  bottledYear?: number | null
+  /** 산지 코드 (WineRegion, 지도 표시용 — 와인·위스키·꼬냑·기타 공용) */
+  regionCode?: string | null
   vintageYear?: number | null
   volumeMl?: number | null
   volumeMlMin?: number | null

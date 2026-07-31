@@ -88,7 +88,6 @@ type SpiritTarget = {
   vintageStatus?: 'VINTAGE' | 'NON_VINTAGE' | 'UNKNOWN' | null
   batchNo?: string | null
   bottledDate?: string | null
-  bottledYear?: number | null
   abv?: number | null
   volumeMl?: number | null
 }
@@ -153,13 +152,11 @@ function shortVariantLabel(target: {
   variantValueEn?: string | null
   batchNo?: string | null
   bottledDate?: string | null
-  bottledYear?: number | null
 }, isEn: boolean) {
   const variantValue = isEn ? (target.variantValueEn || target.variantValue) : target.variantValue
   return variantValue
     || (target.batchNo ? `Batch ${target.batchNo}` : null)
     || target.bottledDate
-    || (target.bottledYear != null ? String(target.bottledYear) : null)
     || null
 }
 

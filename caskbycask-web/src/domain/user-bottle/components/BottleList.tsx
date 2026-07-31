@@ -9,7 +9,6 @@ interface Props {
   view: 'table' | 'card';
   editable?: boolean;
   onDetail?: (b: UserBottle) => void;
-  onDelete?: (b: UserBottle) => void;
   onToggleStatus?: (id: number) => void;
   onTogglePublic?: (id: number) => void;
   sortKey?: BottleSortKey;
@@ -22,7 +21,6 @@ export function BottleList({
   view,
   editable,
   onDetail,
-  onDelete,
   onToggleStatus,
   onTogglePublic,
   sortKey,
@@ -30,7 +28,7 @@ export function BottleList({
   onSort,
 }: Props) {
   const { t } = useTranslation();
-  const shared = { bottles, editable, onDetail, onDelete, onToggleStatus, onTogglePublic };
+  const shared = { bottles, editable, onDetail, onToggleStatus, onTogglePublic };
 
   if (bottles.length === 0) {
     return (
@@ -48,9 +46,9 @@ export function BottleList({
       <div className="hidden md:block">
         {view === 'table'
           ? <BottleTable {...shared} sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
-          : <div className="grid grid-cols-2 gap-4 p-4 lg:grid-cols-3">
+          : <div className="grid grid-cols-2 gap-3 p-3 lg:grid-cols-3">
               {bottles.map(b => <BottleCard key={b.id} bottle={b} editable={editable}
-                onDetail={onDetail} onDelete={onDelete}
+                onDetail={onDetail}
                 onToggleStatus={onToggleStatus} onTogglePublic={onTogglePublic} />)}
             </div>
         }
@@ -58,7 +56,7 @@ export function BottleList({
       {/* 모바일: 카드 고정 */}
       <div className="grid grid-cols-1 gap-3 p-3 md:hidden">
         {bottles.map(b => <BottleCard key={b.id} bottle={b} editable={editable}
-          onDetail={onDetail} onDelete={onDelete}
+          onDetail={onDetail}
           onToggleStatus={onToggleStatus} onTogglePublic={onTogglePublic} />)}
       </div>
     </div>

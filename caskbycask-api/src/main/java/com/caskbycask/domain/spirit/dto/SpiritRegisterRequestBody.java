@@ -34,24 +34,17 @@ public record SpiritRegisterRequestBody(
         @NotNull(message = "카테고리는 필수입니다.") SpiritCategory category,
         @Schema(description = "증류소 ID (선택)")
         Long producerId,
-        @Schema(description = "병입업체명 (선택)")
-        @Size(max = 200, message = "병입업체명은 200자 이하여야 합니다.")
-        String bottler,
-        @Schema(description = "병입 연도 (선택)")
-        @Min(value = 1800, message = "병입 연도는 1800년 이후여야 합니다.")
-        @Max(value = 2100, message = "병입 연도는 2100년 이하여야 합니다.")
-        Integer bottledYear,
         @Schema(description = "빈티지 연도 (선택)")
-        @Min(value = 1800, message = "빈티지 연도는 1800년 이후여야 합니다.")
-        @Max(value = 2100, message = "빈티지 연도는 2100년 이하여야 합니다.")
+        @Min(value = SpiritLimits.YEAR_MIN, message = "빈티지 연도는 1800년 이후여야 합니다.")
+        @Max(value = SpiritLimits.YEAR_MAX, message = "빈티지 연도는 2100년 이하여야 합니다.")
         Integer vintageYear,
         @Schema(description = "알코올 도수 % (0.0~100.0)")
         @DecimalMin(value = "0.0", message = "도수는 0.0 이상이어야 합니다.")
         @DecimalMax(value = "100.0", message = "도수는 100.0 이하이어야 합니다.")
         BigDecimal abv,
         @Schema(description = "용량 ml (선택)")
-        @Min(value = 1, message = "용량은 1ml 이상이어야 합니다.")
-        @Max(value = 100000, message = "용량은 100000ml 이하여야 합니다.")
+        @Min(value = SpiritLimits.VOLUME_ML_MIN, message = "용량은 1ml 이상이어야 합니다.")
+        @Max(value = SpiritLimits.VOLUME_ML_MAX, message = "용량은 30000ml 이하여야 합니다.")
         Integer volumeMl,
         @Schema(description = "최소 알코올 도수 % (선택, 범위 지정 시)")
         @DecimalMin(value = "0.0", message = "최소 도수는 0.0 이상이어야 합니다.")
@@ -62,12 +55,12 @@ public record SpiritRegisterRequestBody(
         @DecimalMax(value = "100.0", message = "최대 도수는 100.0 이하이어야 합니다.")
         BigDecimal abvMax,
         @Schema(description = "최소 용량 ml (선택, 범위 지정 시)")
-        @Min(value = 1, message = "최소 용량은 1ml 이상이어야 합니다.")
-        @Max(value = 100000, message = "최소 용량은 100000ml 이하여야 합니다.")
+        @Min(value = SpiritLimits.VOLUME_ML_MIN, message = "최소 용량은 1ml 이상이어야 합니다.")
+        @Max(value = SpiritLimits.VOLUME_ML_MAX, message = "최소 용량은 30000ml 이하여야 합니다.")
         Integer volumeMlMin,
         @Schema(description = "최대 용량 ml (선택, 범위 지정 시)")
-        @Min(value = 1, message = "최대 용량은 1ml 이상이어야 합니다.")
-        @Max(value = 100000, message = "최대 용량은 100000ml 이하여야 합니다.")
+        @Min(value = SpiritLimits.VOLUME_ML_MIN, message = "최대 용량은 1ml 이상이어야 합니다.")
+        @Max(value = SpiritLimits.VOLUME_ML_MAX, message = "최대 용량은 30000ml 이하여야 합니다.")
         Integer volumeMlMax,
         @Schema(description = "생산 국가 (선택)")
         @Size(max = 100, message = "생산 국가는 100자 이하여야 합니다.")
@@ -75,6 +68,9 @@ public record SpiritRegisterRequestBody(
         @Schema(description = "생산 지역 (선택)")
         @Size(max = 100, message = "생산 지역은 100자 이하여야 합니다.")
         String region,
+        @Schema(description = "와인 산지 코드 (선택, WineRegion — 지도 표시용)", example = "FR_BORDEAUX_MEDOC")
+        @Size(max = 40, message = "산지 코드는 40자 이하여야 합니다.")
+        String regionCode,
         @Schema(description = "숙성 연수 (선택, isNas=true 시 무시)")
         Integer ageStatement,
         @Schema(description = "숙성 개월 (선택, 0~11, isNas=true 시 무시)")
@@ -96,10 +92,10 @@ public record SpiritRegisterRequestBody(
         @Schema(description = "NAS(숙성 연수 미표기) 여부 (선택)")
         Boolean isNas,
         @Schema(description = "증류 연월 (선택, YYYY 또는 YYYY-MM)")
-        @Pattern(regexp = "^\\d{4}(-\\d{2})?$", message = "증류 연월 형식이 올바르지 않습니다 (YYYY 또는 YYYY-MM).")
+        @Pattern(regexp = "^\\d{4}(-(0[1-9]|1[0-2]))?$", message = "증류 연월 형식이 올바르지 않습니다 (YYYY 또는 YYYY-MM, 월은 01~12).")
         String distilledDate,
         @Schema(description = "병입 연월 (선택, YYYY 또는 YYYY-MM)")
-        @Pattern(regexp = "^\\d{4}(-\\d{2})?$", message = "병입 연월 형식이 올바르지 않습니다 (YYYY 또는 YYYY-MM).")
+        @Pattern(regexp = "^\\d{4}(-(0[1-9]|1[0-2]))?$", message = "병입 연월 형식이 올바르지 않습니다 (YYYY 또는 YYYY-MM, 월은 01~12).")
         String bottledDate,
         @Schema(description = "출시일 (선택)")
         LocalDate releaseDate,

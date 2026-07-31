@@ -5,7 +5,9 @@ import { useQueries } from '@tanstack/react-query'
 import { useSpiritDetail, useSpiritSeo } from '@/domain/spirit/hooks/useSpiritDetail'
 import { spiritSeoApi } from '@/domain/spirit/api/spiritSeoApi'
 import { localizeCountry } from '@/shared/utils/countryName'
-import { localizeRegion } from '@/shared/utils/regionName'
+import { localizeSpiritRegion } from '@/shared/utils/regionName'
+import WineOriginMap from '@/domain/location/components/WineOriginMap'
+import WineTasteBars from '@/domain/spirit/components/WineTasteBars'
 import Badge from '@/shared/components/Badge'
 import StarScore from '@/shared/components/StarScore'
 import Spinner from '@/shared/components/Spinner'
@@ -262,6 +264,7 @@ function SpiritDetailSections({ spirit, isEn }: { spirit: SpiritDetail; isEn: bo
   const CRU_LABEL: Record<string, string> = {
     GRANDE_CHAMPAGNE: 'Grande Champagne', PETITE_CHAMPAGNE: 'Petite Champagne',
     BORDERIES: 'Borderies', FINS_BOIS: 'Fins Bois', BONS_BOIS: 'Bons Bois',
+    BOIS_ORDINAIRES: 'Bois Ordinaires',
   }
   const OTHER_TYPE_LABEL: Record<string, string> = {
     RUM: isEn ? 'Rum' : '럼', GIN: isEn ? 'Gin' : '진', VODKA: isEn ? 'Vodka' : '보드카',
@@ -331,6 +334,16 @@ function SpiritDetailSections({ spirit, isEn }: { spirit: SpiritDetail; isEn: bo
         {whisky && (
           <div>
             <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest mb-2">Whisky</p>
+            {/* 산지 지도 — 스카치 5대 지역 등 산지 코드가 지정된 경우에만 표시한다.
+                위스키는 맛 5단계 지표가 없으므로 2분할 대신 지도만 좌측 폭으로 둔다. */}
+            {spirit.wineRegion && (
+              <div className="mb-4 lg:max-w-md">
+                <WineOriginMap
+                  wineRegion={spirit.wineRegion}
+                  countryLabel={localizeCountry(spirit.country, isEn ? 'en' : 'ko')}
+                />
+              </div>
+            )}
             <DetailGrid>
               <DI label={isEn ? 'Style' : '스타일'}
                 value={whisky.style === 'OTHER'
@@ -407,6 +420,32 @@ function SpiritDetailSections({ spirit, isEn }: { spirit: SpiritDetail; isEn: bo
         {wine && (
           <div>
             <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest mb-2">Wine</p>
+
+            {/* ── 상단 2분할: 좌 맛 5단계 바 / 우 산지 지도 ───────────
+                items-start 로 각 카드가 내용 높이에 맞게 잡히게 한다
+                (맛 카드가 지도 높이만큼 늘어나 빈 공간이 생기지 않도록)
+                산지가 지정되지 않은 와인은 지도가 없으므로 1열로 둔다 */}
+            <div className={`grid grid-cols-1 gap-3 mb-4 items-start ${
+              spirit.wineRegion ? 'lg:grid-cols-2' : 'max-w-md'
+            }`}>
+              <div className="rounded-2xl ring-1 ring-neutral-100 bg-white p-4 sm:p-5">
+                <h3 className="text-sm font-bold text-neutral-900 mb-3">{t('spirit.taste.title')}</h3>
+                <WineTasteBars
+                  values={{
+                    sweetness: wine.sweetness, body: wine.body,
+                    acidity: wine.acidity, tannin: wine.tannin,
+                  }}
+                />
+              </div>
+              {spirit.wineRegion && (
+                <WineOriginMap
+                  wineRegion={spirit.wineRegion}
+                  countryLabel={localizeCountry(spirit.country, isEn ? 'en' : 'ko')}
+                />
+              )}
+            </div>
+
+            {/* ── 그 아래 나머지 와인 정보 ──────────────────────────── */}
             <DetailGrid>
               <DI label={isEn ? 'Type' : '종류'} value={wine.wineType ? t(`spirit.wineType.${wine.wineType}`) : null} />
               <DI
@@ -433,10 +472,7 @@ function SpiritDetailSections({ spirit, isEn }: { spirit: SpiritDetail; isEn: bo
                 value={wine.isNaturalWine != null
                   ? t(wine.isNaturalWine ? 'spirit.wineForm.yes' : 'spirit.wineForm.no')
                   : null} />
-              <DI label={isEn ? 'Sweetness' : '당도'} value={wine.sweetness ? t(`spirit.wineSweetness.${wine.sweetness}`) : null} />
-              <DI label={isEn ? 'Body' : '바디'} value={wine.body ? t(`spirit.wineBody.${wine.body}`) : null} />
-              <DI label={isEn ? 'Acidity' : '산도'} value={wine.acidity ? t(`spirit.wineIntensity.${wine.acidity}`) : null} />
-              <DI label={isEn ? 'Tannin' : '타닌'} value={wine.tannin ? t(`spirit.wineIntensity.${wine.tannin}`) : null} />
+              {/* 당도·바디·산도·타닌은 상단 5단계 바로 표시하므로 여기서는 중복 표기하지 않는다 */}
             </DetailGrid>
             {wine.grapeVarieties && wine.grapeVarieties.length > 0 && (
               <div className="mt-4">
@@ -455,6 +491,15 @@ function SpiritDetailSections({ spirit, isEn }: { spirit: SpiritDetail; isEn: bo
         {cognac && (
           <div>
             <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest mb-2">Cognac</p>
+            {/* 산지 지도 — 꼬냑 지방과 법정 6개 크뤼. 맛 지표가 없어 지도만 좌측 폭으로 둔다 */}
+            {spirit.wineRegion && (
+              <div className="mb-4 lg:max-w-md">
+                <WineOriginMap
+                  wineRegion={spirit.wineRegion}
+                  countryLabel={localizeCountry(spirit.country, isEn ? 'en' : 'ko')}
+                />
+              </div>
+            )}
             <div className="flex items-center gap-4 flex-wrap">
               {cognac.grade && (
                 <span className="px-4 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-lg font-bold">
@@ -493,6 +538,15 @@ function SpiritDetailSections({ spirit, isEn }: { spirit: SpiritDetail; isEn: bo
             <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest mb-2">
               {isEn ? 'Other' : '기타'}
             </p>
+            {/* 산지 지도 — 아르마냑·칼바도스·전통주처럼 산지 코드가 지정된 경우에만 표시한다 */}
+            {spirit.wineRegion && (
+              <div className="mb-4 lg:max-w-md">
+                <WineOriginMap
+                  wineRegion={spirit.wineRegion}
+                  countryLabel={localizeCountry(spirit.country, isEn ? 'en' : 'ko')}
+                />
+              </div>
+            )}
             <DetailGrid>
               <DI label={isEn ? 'Type' : '주종'}
                 value={other.otherType ? OTHER_TYPE_LABEL[other.otherType] ?? other.otherType : null} />
@@ -671,7 +725,7 @@ function Gallery({
 function formatVariantSelectLabel(variant: SpiritVariant, isEn: boolean) {
   const valText = isEn ? (variant.variantValueEn || variant.variantValue) : variant.variantValue
   const batchText = variant.batchNo ? `Batch ${variant.batchNo}` : null
-  const bottledText = variant.bottledDate || (variant.bottledYear ? String(variant.bottledYear) : null)
+  const bottledText = variant.bottledDate
   const main = valText || batchText || bottledText || String(variant.id)
   const specs = [
     variant.abv != null ? `${variant.abv}%` : null,
@@ -686,7 +740,6 @@ function toVariantOption(spirit: SpiritDetail): SpiritVariant {
     nameKo: spirit.nameKo,
     nameEn: spirit.nameEn,
     category: spirit.category,
-    bottledYear: spirit.bottledYear,
     vintageYear: spirit.vintageYear,
     vintageStatus: spirit.wineDetail?.vintageStatus ?? null,
     abv: spirit.abv,
@@ -1029,7 +1082,8 @@ export default function SpiritDetailPage() {
   const secondaryProducer = isEn ? spirit.producerNameKo : spirit.producerNameEn
   const brandName = spirit.whiskyDetail?.brandName || null
   const countryLabel = localizeCountry(spirit.country, i18n.language)
-  const regionLabel  = localizeRegion(spirit.region, i18n.language)
+  // 와인 산지 코드가 있으면 백엔드가 내려준 산지명을 쓴다 (텍스트 사전에 없는 산지도 정확히 번역)
+  const regionLabel  = localizeSpiritRegion(spirit.wineRegion, spirit.region, i18n.language)
 
   // 에디션(자식 variant)은 자체 이미지가 없고 이미지는 마스터(부모)에만 저장된다.
   // 표시용 갤러리 이미지는 본인 것을 우선하되, 없으면 마스터 이미지로 폴백한다.
@@ -1240,16 +1294,10 @@ export default function SpiritDetailPage() {
             {/* 핵심 스펙 — 도수 · 용량 · 국가/지역 · 숙성연수 */}
             <CoreSpecStrip spirit={spirit} countryLabel={countryLabel} regionLabel={regionLabel} isEn={isEn} />
 
-            {/* 보조 메타 — 병입자 · 병입년도 · 빈티지 */}
-            {(spirit.bottler || spirit.bottledYear || spirit.vintageYear
+            {/* 보조 메타 — 빈티지 (병입 정보는 공통 상세의 병입 연월로 대체) */}
+            {(spirit.vintageYear
               || spirit.wineDetail?.vintageStatus === 'NON_VINTAGE') && (
               <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-[12px] text-neutral-400 -mt-1">
-                {spirit.bottler && (
-                  <span>{t('spirit.detail.bottler')} <b className="text-neutral-600 font-semibold">{spirit.bottler}</b></span>
-                )}
-                {spirit.bottledYear && (
-                  <span>{t('spirit.detail.bottledYear')} <b className="text-neutral-600 font-semibold">{spirit.bottledYear}</b></span>
-                )}
                 {(spirit.vintageYear || spirit.wineDetail?.vintageStatus === 'NON_VINTAGE') && (
                   <span>{t('spirit.detail.vintageYear')} <b className="text-neutral-600 font-semibold">
                     {spirit.vintageYear ?? t('spirit.wineVintageStatus.NON_VINTAGE')}

@@ -67,8 +67,6 @@ interface SpiritDetailResponse {
   producerId?: number | null
   producerNameKo: string | null
   producerNameEn: string | null
-  bottler?: string | null
-  bottledYear?: number | null
   vintageYear?: number | null
   abv?: number | string | null
   abvMin?: number | string | null
@@ -538,9 +536,7 @@ function localLabels(lang: 'ko' | 'en') {
         country: 'Country',
         region: 'Region',
         age: 'Age statement',
-        bottler: 'Bottler',
         vintage: 'Vintage',
-        bottledYear: 'Bottled year',
         releaseDate: 'Release date',
         batchNo: 'Batch No.',
         bottleNo: 'Bottle No.',
@@ -573,9 +569,7 @@ function localLabels(lang: 'ko' | 'en') {
         country: '국가',
         region: '지역',
         age: '숙성 연수',
-        bottler: '병입자',
         vintage: '빈티지',
-        bottledYear: '병입 연도',
         releaseDate: '출시일',
         batchNo: '배치 번호',
         bottleNo: '병 번호',
@@ -2189,9 +2183,7 @@ export async function getSpiritDetailJsonLd(id: string, lang: 'ko' | 'en' | null
     { label: labels.abv, value: formatAbvValue(spirit.abv, spirit.abvMin, spirit.abvMax) },
     { label: labels.volume, value: formatVolumeValue(spirit.volumeMl, spirit.volumeMlMin, spirit.volumeMlMax) },
     { label: labels.age, value: formatAgeStatement(spirit.commonDetail, isEn ? 'en' : 'ko') },
-    { label: labels.bottler, value: spirit.bottler },
     { label: labels.vintage, value: spirit.vintageYear ?? (spirit.wineDetail?.vintageStatus === 'NON_VINTAGE' ? 'NV' : null) },
-    { label: labels.bottledYear, value: spirit.bottledYear },
     { label: labels.whiskyStyle, value: spirit.whiskyDetail?.style },
     { label: labels.cask, value: spirit.whiskyDetail?.caskTypes?.filter(Boolean).join(', ') },
     { label: labels.wineType, value: spirit.wineDetail?.wineType },
@@ -2446,9 +2438,7 @@ export async function getSpiritSeoSnapshot(id: string, lang: 'ko' | 'en' | null)
       { label: labels.region, value: spirit.region },
       { label: labels.volume, value: volume },
       { label: labels.age, value: age },
-      { label: labels.bottler, value: spirit.bottler },
       { label: labels.vintage, value: spirit.vintageYear ?? (spirit.wineDetail?.vintageStatus === 'NON_VINTAGE' ? 'NV' : null) },
-      { label: labels.bottledYear, value: spirit.bottledYear },
       { label: labels.releaseDate, value: spirit.category === 'WINE' ? null : formatDateOnly(spirit.commonDetail?.releaseDate) },
       { label: labels.batchNo, value: spirit.commonDetail?.batchNo },
       { label: labels.bottleNo, value: spirit.commonDetail?.bottleNo },

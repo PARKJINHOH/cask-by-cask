@@ -39,7 +39,7 @@ public class SpiritCognacDetail {
      */
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
-    @Comment("크뤼(원산지) — GRANDE_CHAMPAGNE/PETITE_CHAMPAGNE/BORDERIES/FINS_BOIS/BONS_BOIS")
+    @Comment("크뤼(원산지) — 꼬냑 AOC 법정 6개 구역")
     private CognacCru cru;
 
     /** Fine Champagne = Grande + Petite Champagne 블렌드 (Grande 50%+) */

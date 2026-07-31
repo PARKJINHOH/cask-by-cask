@@ -2,6 +2,9 @@ import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ISO3166_COUNTRIES } from '../data/iso3166Countries';
 import { REGION_SUGGESTIONS, type RegionSuggestion } from '../data/regionSuggestions';
+import WineRegionSelector from './WineRegionSelector';
+import { useWineRegionCatalog, REGION_CATALOG_CATEGORIES } from '../hooks/useWineRegionCatalog';
+import type { SpiritCategory } from '@/domain/spirit/types/spirit.types';
 
 interface Props {
   countryCode: string | null;
@@ -9,6 +12,16 @@ interface Props {
   onCountryChange: (code: string | null, nameKo: string, nameEn: string) => void;
   onRegionChange: (nameKo: string, nameEn: string) => void;
   disabled?: boolean;
+  /**
+   * 'WINE' 이고 해당 국가가 산지 카탈로그에 있으면 산지 2단 선택기를 쓴다.
+   * 미전달(생산자 등록 등)이면 기존 동작을 그대로 유지한다.
+   */
+  category?: SpiritCategory | null;
+  /** 와인 산지 코드 — 와인 모드에서만 사용 */
+  regionCode?: string | null;
+  onRegionCodeChange?: (code: string | null) => void;
+  /** 관리자 화면은 한국어 고정 */
+  admin?: boolean;
 }
 
 const CUSTOM_VALUE = '__custom__';
@@ -19,6 +32,10 @@ export default function CountryRegionSelector({
   onCountryChange,
   onRegionChange,
   disabled,
+  category,
+  regionCode,
+  onRegionCodeChange,
+  admin,
 }: Props) {
   const { t, i18n } = useTranslation();
   const [query, setQuery] = useState('');
@@ -27,6 +44,18 @@ export default function CountryRegionSelector({
 
   const regions = countryCode ? (REGION_SUGGESTIONS[countryCode] ?? []) : [];
   const hasRegions = regions.length > 0;
+
+  // 산지 카탈로그 모드 — 카테고리가 카탈로그 대상(와인·위스키)이고
+  // 그 국가가 카탈로그에 있을 때만 사용한다.
+  // 카탈로그에 없는 국가(예: 멕시코)는 기존 지역 목록으로 자연스럽게 폴백된다.
+  const catalogCategory =
+    category && REGION_CATALOG_CATEGORIES.includes(category) ? category : null;
+  const wineMode = !!catalogCategory && !!onRegionCodeChange;
+  const { isSupportedCountry } = useWineRegionCatalog(
+    wineMode && !!countryCode,
+    catalogCategory ?? 'WINE',
+  );
+  const useWineRegions = wineMode && isSupportedCountry(countryCode);
 
   // 저장된 지역 값(한국어/영어 어느 쪽이든)을 목록 항목과 매칭 (대소문자·공백 무시)
   const norm = (s: string) => s.trim().toLowerCase();
@@ -64,6 +93,7 @@ export default function CountryRegionSelector({
     const c = ISO3166_COUNTRIES.find((x) => x.code === code)!;
     onCountryChange(code, c.nameKo, c.nameEn);
     onRegionChange('', '');
+    onRegionCodeChange?.(null);
     setIsCustomInput(false);
     setQuery('');
     setOpen(false);
@@ -72,6 +102,7 @@ export default function CountryRegionSelector({
   const handleClear = () => {
     onCountryChange(null, '', '');
     onRegionChange('', '');
+    onRegionCodeChange?.(null);
     setIsCustomInput(false);
     setQuery('');
     setOpen(false);
@@ -95,6 +126,24 @@ export default function CountryRegionSelector({
 
   // 지역 영역 렌더링
   const renderRegion = () => {
+    // 산지 카탈로그 모드 — 카탈로그 기반 2단 선택기 (지도 표시용 코드 저장)
+    if (useWineRegions) {
+      return (
+        <WineRegionSelector
+          countryCode={countryCode}
+          regionCode={regionCode ?? null}
+          category={catalogCategory ?? 'WINE'}
+          disabled={disabled}
+          admin={admin}
+          onChange={(code, l1NameKo, l1NameEn) => {
+            onRegionCodeChange?.(code);
+            // 지역 텍스트도 L1 이름으로 맞춰 폼 상태와 저장 결과를 일치시킨다
+            onRegionChange(l1NameKo, l1NameEn);
+          }}
+        />
+      );
+    }
+
     // 국가에 사전 정의된 지역 목록이 없는 경우 → 텍스트 입력
     if (!hasRegions) {
       return (

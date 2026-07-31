@@ -60,6 +60,113 @@
   4. 관리자(`/admin/**`) 페이지는 한국어 고정 유지
 
 
+## 산지 지도 (Origin Map) — 와인 · 위스키 · 꼬냑
+사용자 상세 페이지에서 산지를 **한 화면 안에서 국가 지도 ⇄ 세부 산지 확대 지도로 전환**해 보여주는 기능.
+- **산지 카탈로그의 단일 소스는 백엔드 `WineRegion` enum** (`domain/spirit/entity/enums/WineRegion.java`).
+  이름은 역사적으로 `WineRegion` 이지만 **와인 전용이 아니다** — 각 산지가 `categories` 로
+  쓰이는 카테고리를 선언한다. 미국·프랑스·호주·일본은 카테고리가 겹치므로 필터가 필수다
+  (버번 등록 화면에 나파 밸리가 나오면 안 된다).
+  - **와인 22개국** = 프랑스·이탈리아·스페인·포르투갈·독일·오스트리아·헝가리·그리스·조지아·레바논·중국·
+    미국·칠레·아르헨티나·우루과이·호주·뉴질랜드·남아프리카 공화국·일본·인도·캐나다·잉글랜드
+  - **위스키 20개국** = 스코틀랜드·잉글랜드·웨일스·북아일랜드·아일랜드·일본·대만·한국·인도·캐나다·
+    미국·호주·남아공·독일·프랑스·스웨덴·네덜란드·덴마크·핀란드·이스라엘
+  - **꼬냑** = 프랑스 꼬냑 지방 + 법정 6개 크뤼
+  **어떤 산지를 넣을지는 시드 SQL(V4 증류소 / V5 와이너리 / V6 꼬냑)에 실제로 등록된
+  (country, region) 값을 기준으로 정한다** — 실데이터에 없는 산지를 추측으로 넣지 않는다.
+  한글 표기는 **wine21·와인나라 등 국내 통용 표기**를 따른다(복합어는 띄어쓰기: `나파 밸리`, `코트 드 뉘`).
+  한국 시도는 기존 지역 텍스트 사전과 어긋나지 않게 통용 표기(`강원도`·`제주도`·`서울`)를 쓴다.
+- `GET /api/wine-regions?category=WHISKY` 로 카테고리별 카탈로그를 받는다.
+  **category 미지정 시 와인만 반환**하므로 이미 배포된 프론트엔드는 영향이 없다.
+- **지도 도형은 프론트 `caskbycask-web/src/domain/location/data/wineRegionMap/*.ts`** 가 소유한다.
+  이 파일들은 **자동 생성물**이므로 직접 수정하지 말고 `npm run map:build` 로 재생성한다.
+  형상은 **정밀도 우선**(원해상도 소스 + 서브픽셀 단순화)으로 만들고, 국가당 **300KB 상한**을 지킨다.
+  용량은 국가별 동적 import 로 지연 로딩해 흡수한다 — 지도 카드가 화면에 들어올 때 그 국가만 받는다.
+  스코틀랜드는 `GB-SCT` 처럼 하이픈이 있어 파일명은 `gb-sct.ts`, export 이름은 `GB_SCT_MAP` 이다.
+- 지역 라벨은 `localizeSpiritRegion(spirit.wineRegion, spirit.region, lang)` 를 쓴다.
+  `spirit.region` 텍스트 사전(`REGION_SUGGESTIONS`)에는 샹파뉴·보졸레·라우스·사이타마 등이 없어
+  텍스트만으로는 영어 모드에서 한글이 노출된다. 백엔드가 내려준 ko/en 산지명을 우선할 것.
+  지역 필터 칩(`RegionChips`·`ActiveFilterChips`)도 같은 이유로 카탈로그를 조회해 번역한다.
+- 저장 형태: `spirit.region_code`(varchar 40, nullable)에 관리자가 고른 **가장 깊은 레벨**을 저장하고,
+  기존 `spirit.region` 텍스트는 서비스가 **L1 산지명으로 자동 동기화**한다.
+  → 기존 지역 필터(`GET /api/spirits/regions`)·검색·SEO 가 그대로 동작한다. `region` 컬럼 의미를 바꾸지 말 것.
+- `UpdateSpiritRequest.regionCode` 는 `abvMin`/`abvMax` 와 같은 규약으로 **null = 해제**다(변경 안 함이 아님).
+  관리자 폼은 항상 이 필드를 전송해야 한다. 카테고리를 바꾸면(와인↔위스키 포함) 산지 코드를 해제한다.
+- 상세 페이지: **와인은 PC 2분할**(좌: 맛 5단계 바 / 우: 산지 지도),
+  **위스키는 맛 지표가 없어 지도 단독**으로 좌측 폭(`lg:max-w-md`)에 둔다.
+  산지 텍스트(`국가 › L1 › L2`)는 지도 위 별도 영역에 표시하고, 산지가 없으면 2분할 대신 1열로 둔다.
+  지도는 페이지 이동 없이 같은 카드 안에서 확대/복귀한다(좌상단 뒤로가기).
+
+### 스카치 위스키 산지의 법적 근거
+스카치 위스키 규정(The Scotch Whisky Regulations 2009) 제10조가 정한 **법정 지리적 표시 5개**를 그대로 쓴다.
+- 캠벨타운 = Argyll and Bute 의회의 **South Kintyre ward**
+- 아일라 = **아일라 섬** 전체
+- 스페이사이드 = Moray 의회 8개 ward(= **Moray 전역**) + Highland 의회 **Badenoch and Strathspey ward**
+- 하이랜드/로우랜드 = 법정 분할선(그리녹–카드로스–얼즈 시트–월리스 기념탑–A91–M90–언 강–테이 강) 북/남
+  이 선은 도로·강 기반이라 행정경계와 일치하지 않아 **의회구역을 북/남으로 배정해 근사**한다
+  (선이 관통하는 스털링·퍼스 앤 킨로스·웨스트 던바턴셔는 다수 면적 기준 — 근거를 빌드 설정 주석에 남겼다).
+- 규정상 **하이랜드는 스페이사이드를 지리적으로 포함**한다. 지도에서 구역이 겹치는 것은 정상이며,
+  대상 구역을 **마지막에 그려** 강조가 가려지지 않게 한다(컴포넌트·프리뷰 하네스 모두).
+- '아일랜드(섬)' 은 법정 표시가 아니라 업계 통용 구분이다 — 실제 섬 경계(오크니·셰틀랜드·헤브리디스 +
+  스카이·멀·주라·아란)로만 구성하고 비법정임을 주석에 남겼다.
+
+### 산지를 추가·수정할 때
+1. 백엔드 `WineRegion` enum 에 항목 추가 (L2 는 `parentCode` 로 L1 지정). 코드 40자 이내.
+   위스키 등 와인이 아닌 산지는 **5번째 인자로 카테고리를 지정**한다(4-인자 생성자는 WINE 기본값).
+   코드 접두사는 `countryCode` 의 하이픈을 언더스코어로 바꾼 값이어야 한다(`GB-SCT` → `GB_SCT_ISLAY`).
+2. `caskbycask-web/scripts/build-wine-region-map.mjs` 의 해당 국가 설정에 매핑 추가
+   (FR=INAO AOC 이름 · `departement` / US=AVA·주·카운티 FIPS / IT=레조네·코무네 /
+   ES=자치공동체·무니시피오 / CL=코무나 / AU=Wine Australia GI /
+   PT·DE·AT=GISCO NUTS3 `nuts`·`nutsPrefix` /
+   HU·NZ·AR·ZA·JP·TW·KR·IN·CA·SE·NL·DK·FI·IL·CN·GR·GE·LB·UY=geoBoundaries `unit`(상위) · `subUnit`(하위) /
+   GB-SCT=`council`·`ward`·`island` / GB-ENG·GB-WLS·GB-NIR=`council` / IE=OSi `county`).
+   이름이 틀리면 빌드가 유사 후보와 함께 일괄 보고한다.
+   - `subUnit` 은 이름이 주(州) 경계를 넘어 중복되므로(`San Rafael`·`Maipú`) `within` 으로 상위 단위를 함께 지정한다.
+     내부 판정은 **평면 ray casting**(`containsPlanar`)이다 — `d3.geoContains` 는 링 감김 방향에 결과가 뒤집혀 쓰지 않는다.
+   - `island` 은 멀티폴리곤에서 섬 하나를 좌표로 특정한다. 단순화 때문에 해안 마을 좌표가 폴리곤 밖으로
+     밀려날 수 있어, 내부 판정 실패 시 **점을 감싸는 가장 작은 bbox** 폴리곤으로 폴백한다.
+3. `npm run map:build` → `npm run map:preview` 로 형상 시각 확인 → `npm run map:stats` 로 용량·커버리지 확인.
+4. 새 국가라면 `wineRegionMap/index.ts` 의 `WINE_REGION_MAP_LOADERS` 에 **등록**해야 한다(누락 시 조용히 미표시).
+   여기서 `_MAP` 을 정적 import 하면 코드 스플리팅이 깨진다 — 테스트가 이를 막는다.
+5. `npm run test:wine-region-map` + `npm run test:wine-origin-map` + `npm run test:region-label`
+   + `npm run map:verify` + `npm run map:verify-ui` 통과 확인.
+   - 이 스크립트들은 Java enum 을 정규식으로 파싱한다. 생성자 형태(카테고리 varargs)나
+     국가 코드 형식(`GB-SCT`)을 바꾸면 **정규식도 함께 고쳐야** 한다.
+
+### 지켜야 할 제약
+- **산지 도형은 공개 산지·행정 경계 데이터에서만 만든다. 수작업 도형 금지.**
+  공식 산지 경계가 없으면 그 산지를 품는 **실제 행정구역으로 근사**하고 코드에 근거를 주석으로 남긴다
+  (미국 카운티, 남아공 드라켄스타인=파를 등). 추측으로 구성 단위 목록을 만들지 말 것.
+- 국가 파일이 300KB 를 넘으면 빌드가 실패한다. 완화는 **배경 문맥 도형부터** —
+  `tolZoomOutline`·`minAreaCountry` 를 올리고, 대상 산지 도형의 정밀도를 깎는 것은 마지막 수단.
+- 경계 데이터 출처는 `CountryMap.attribution` 에 담아 지도 카드 하단에 표시한다 —
+  Licence Ouverte / CC BY 계열 라이선스의 **출처 표기 의무** 이행 수단이므로 제거하지 말 것.
+  geoBoundaries 오스트리아는 CC BY-SA 라 의도적으로 GISCO NUTS 를 쓴다.
+  **일본·대만도 geoBoundaries ADM2 가 CC BY-SA 라 ADM1(ODbL)만 쓴다.** 무라이선스 소스는 금지.
+- 기하 데이터가 없는 국가·산지는 지도를 렌더하지 않고 기존 텍스트 표기만 남긴다(그레이스풀 폴백).
+- `d3-geo`·`topojson-client`·`polygon-clipping` 은 **빌드 전용 devDependency** 다. 런타임 코드에서 import 금지.
+- 원본 지리 데이터는 `caskbycask-web/.cache/` 에 캐싱되며 gitignore 대상이다(산출물만 커밋).
+
+### 현재 커버리지 (`npm run map:stats`)
+- L1 **226/226**, L2 **87/107**.
+- 미구축 L2 20건은 지도 없이 텍스트 표기만 나온다:
+  스페인 DO 13건(리오하 알타·알라베사·오리엔탈, 리베라 델 두에로, 루에다, 토로, 비에르소,
+  페네데스, 몬산트, 리아스 바이사스, 리베이라 사크라, 발데오라스, 몬티야 모릴레스) —
+  **공식 DO 경계 지오데이터가 공개되어 있지 않다**(OSM 에도 없음). 무니시피오 목록을 관보에서
+  전사해야 하므로 추측 금지 원칙상 보류. 후미야도 같은 이유로 보류. /
+  오스트리아 바하우·캄프탈·크렘스탈, 태즈메이니아 2건,
+  남아공 프란슈크(스텔렌보스 자치구 내부라 독립 경계 없음).
+- 위스키 산지는 모두 L1 이다(법정 세부 산지가 없다) — 확대 지도가 없으므로 국가 지도만 표시된다.
+- 프랑스는 와인 AOC + 꼬냑 6개 크뤼 + 브랜디·위스키 근사까지 담아 300KB 에 근접한다.
+  용량은 **법정 경계가 아닌 근사 도형부터** 완화한다 —
+  `tolRegion`(칼바도스·브르타뉴)·`tolZoomRegion`(꼬냑 크뤼)·`tolZoomOutline`(확대 배경) 순.
+
+## 와인 맛 지표 (당도·바디·산도·타닌)
+- **5단계** 스케일이다(wine21 필터와 동일). enum 은 `Sweetness`·`Body`·`Acidity`·`Tannin`,
+  각 값에 `level`(1~5)이 있고 마이그레이션은 `V64` 다.
+- MySQL `enum(...)` 컬럼은 `ddl-auto=validate` 를 통과하도록 **알파벳 순서**로 정의한다.
+- 표시 컴포넌트는 관리자·사용자가 **`WineTasteBars` 하나를 공유**한다(관리자는 편집 가능, 사용자는 읽기 전용).
+  스케일 정의는 `wineTasteScale.ts` 가 백엔드 enum 순서를 미러링한다 — 한쪽만 바꾸면 어긋난다.
+
 ## 응답은 한국어로 해줘.
 ## Git 규칙
 - 절대로 임의로 commit, push, branch 생성, merge 하지 말 것.

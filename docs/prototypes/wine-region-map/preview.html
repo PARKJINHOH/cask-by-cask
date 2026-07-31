@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<title>와인 산지 지도 — 렌더링 방식 비교 프로토타입</title>
+<style>
+  :root {
+    --amber-50:#fffbeb; --amber-100:#fef3c7; --amber-300:#fcd34d;
+    --amber-500:#f59e0b; --amber-600:#d97706; --amber-700:#b45309; --amber-800:#92400e;
+    --n-50:#fafafa; --n-100:#f5f5f5; --n-200:#e5e5e5; --n-300:#d4d4d4;
+    --n-400:#a3a3a3; --n-500:#737373; --n-600:#525252; --n-700:#404040; --n-900:#171717;
+    --map-bg:#f8fafc; --map-land:#e7e5e4; --map-land-stroke:#d6d3d1;
+    --sea:#eff6ff;
+  }
+  * { box-sizing:border-box; }
+  body {
+    margin:0; background:var(--n-50); color:var(--n-900);
+    font-family:'Pretendard','Malgun Gothic',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+    line-height:1.6; -webkit-font-smoothing:antialiased;
+  }
+  .wrap { max-width:1240px; margin:0 auto; padding:24px 20px 64px; }
+  h1 { font-size:22px; margin:0 0 6px; letter-spacing:-.02em; }
+  h2 { font-size:16px; margin:32px 0 10px; letter-spacing:-.01em; }
+  .lead { color:var(--n-600); font-size:13.5px; margin:0 0 4px; }
+  .warn {
+    margin:16px 0 24px; padding:12px 14px; border-radius:10px; font-size:12.5px;
+    background:#fffbeb; border:1px solid var(--amber-300); color:var(--amber-800);
+  }
+  .warn code { background:rgba(0,0,0,.06); padding:1px 5px; border-radius:4px; }
+
+  /* ── 탭 ── */
+  .tabs { display:flex; gap:8px; flex-wrap:wrap; margin:0 0 16px; }
+  .tab {
+    appearance:none; cursor:pointer; font:inherit; font-size:13px; font-weight:600;
+    padding:9px 16px; border-radius:10px; border:1px solid var(--n-200);
+    background:#fff; color:var(--n-600); transition:all .15s;
+  }
+  .tab:hover { border-color:var(--amber-300); }
+  .tab[aria-selected="true"] { background:var(--amber-600); border-color:var(--amber-600); color:#fff; }
+
+  /* ── 컨트롤 ── */
+  .controls {
+    display:flex; gap:18px; flex-wrap:wrap; align-items:center;
+    padding:14px 16px; background:#fff; border:1px solid var(--n-200);
+    border-radius:12px; margin-bottom:16px;
+  }
+  .ctl { display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--n-600); }
+  .ctl > label { font-weight:600; color:var(--n-700); }
+  select, .btn {
+    font:inherit; font-size:12.5px; padding:6px 10px; border-radius:8px;
+    border:1px solid var(--n-200); background:#fff; color:var(--n-900);
+  }
+  .btn { cursor:pointer; font-weight:600; transition:all .15s; }
+  .btn:hover { border-color:var(--amber-400,#fbbf24); background:var(--amber-50); }
+  .switch { display:inline-flex; align-items:center; gap:6px; cursor:pointer; user-select:none; }
+
+  /* ── 지도 스테이지 ── */
+  .stage { background:#fff; border:1px solid var(--n-200); border-radius:14px; padding:18px; }
+  .stage.mobile-view { max-width:375px; margin:0 auto; }
+  .panels { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .stage.mobile-view .panels { grid-template-columns:1fr; }
+  @media (max-width:760px) { .panels { grid-template-columns:1fr; } }
+
+  .panel { min-width:0; }
+  .panel-head { display:flex; align-items:baseline; gap:8px; margin:0 0 8px; }
+  .panel-title { font-size:12px; font-weight:700; color:var(--n-700); }
+  .panel-sub { font-size:11px; color:var(--n-400); }
+  .panel-box {
+    position:relative; border-radius:12px; overflow:hidden;
+    background:var(--sea); border:1px solid var(--n-200);
+  }
+  .panel-box svg { display:block; width:100%; height:auto; }
+  .empty {
+    display:flex; align-items:center; justify-content:center; text-align:center;
+    min-height:220px; padding:24px; font-size:12px; color:var(--n-500);
+    background:var(--n-50);
+  }
+
+  /* ── 지도 요소 ── */
+  .zone { fill:var(--map-land); stroke:var(--map-land-stroke); stroke-width:.6; }
+  .zone-outline { fill:#fff; stroke:var(--n-300); stroke-width:1; }
+  .river { fill:none; stroke:#93c5fd; stroke-width:2; stroke-linecap:round; opacity:.9; }
+  .zone.dim { fill:#ebe9e7; }
+  .zone.target { fill:var(--amber-500); stroke:var(--amber-700); stroke-width:1; }
+  .zone.ancestor { fill:var(--amber-100); stroke:var(--amber-300); }
+  .label {
+    font-size:11px; font-weight:700; fill:var(--n-900); paint-order:stroke;
+    stroke:#fff; stroke-width:3.5; stroke-linejoin:round;
+  }
+  .label.sm { font-size:9.5px; font-weight:600; fill:var(--n-500); stroke-width:3; }
+  .pin-stem { stroke:var(--amber-800); stroke-width:1.6; }
+  .pin-dot { fill:var(--amber-600); stroke:#fff; stroke-width:2; }
+  .pin-ring { fill:none; stroke:var(--amber-500); stroke-width:2; }
+
+  /* 애니메이션 — .playing 이 붙은 동안만 동작 */
+  .anim .zone.target { fill:var(--map-land); stroke:var(--map-land-stroke); }
+  .anim .pin, .anim .label.target-label { opacity:0; }
+  .anim .pin-ring { opacity:0; }
+  .playing .zone.target { animation:zoneFill .7s ease-out .1s forwards; }
+  .playing .pin { animation:pinDrop .5s cubic-bezier(.34,1.56,.64,1) .55s forwards; }
+  .playing .label.target-label { animation:labelIn .4s ease-out .8s forwards; }
+  .playing .pin-ring { animation:ringPulse 1.8s ease-out 1s 3; }
+  @keyframes zoneFill {
+    from { fill:var(--map-land); stroke:var(--map-land-stroke); }
+    to   { fill:var(--amber-500); stroke:var(--amber-700); }
+  }
+  @keyframes pinDrop {
+    from { opacity:0; transform:translateY(-14px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+  @keyframes labelIn {
+    from { opacity:0; transform:translateY(5px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+  @keyframes ringPulse {
+    0%   { opacity:.85; stroke-width:2;  r:5; }
+    100% { opacity:0;   stroke-width:.4; r:20; }
+  }
+  /* reduced-motion: 최종 상태만 즉시 표시 */
+  .reduce .anim .zone.target { fill:var(--amber-500); stroke:var(--amber-700); }
+  .reduce .anim .pin, .reduce .anim .label.target-label { opacity:1; }
+  .reduce .zone.target, .reduce .pin, .reduce .label.target-label, .reduce .pin-ring { animation:none !important; }
+  .reduce .pin-ring { opacity:0; }
+  @media (prefers-reduced-motion:reduce) {
+    .zone.target, .pin, .label.target-label, .pin-ring { animation:none !important; }
+    .anim .zone.target { fill:var(--amber-500); stroke:var(--amber-700); }
+    .anim .pin, .anim .label.target-label { opacity:1; }
+    .anim .pin-ring { opacity:0; }
+  }
+
+  /* ── 계측/평가 ── */
+  .metrics {
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px;
+    margin-top:16px; padding-top:16px; border-top:1px solid var(--n-100);
+  }
+  .metric { background:var(--n-50); border-radius:9px; padding:9px 11px; }
+  .metric dt { font-size:10.5px; color:var(--n-500); font-weight:600; margin:0; }
+  .metric dd { font-size:14px; font-weight:700; margin:2px 0 0; letter-spacing:-.01em; }
+  .note {
+    margin-top:14px; padding:11px 13px; border-radius:9px; font-size:12px;
+    background:var(--n-50); border:1px solid var(--n-200); color:var(--n-600);
+  }
+  .note strong { color:var(--n-900); }
+  table { width:100%; border-collapse:collapse; font-size:12.5px; margin-top:8px; background:#fff; }
+  th, td { border:1px solid var(--n-200); padding:8px 10px; text-align:left; vertical-align:top; }
+  th { background:var(--n-50); font-weight:700; white-space:nowrap; }
+  .verdict { color:var(--amber-800); font-weight:700; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>와인 산지 지도 — 렌더링 방식 비교 프로토타입</h1>
+  <p class="lead">
+    같은 시나리오(프랑스 &gt; 보르도 &gt; 메독 / 미국 &gt; 캘리포니아 &gt; 나파밸리)를 세 가지 방식으로 렌더링합니다.
+    국가 지도 + 하위 확대 2단, 구역 색상, 둥근 핀, 지역명 라벨, 하이라이트 애니메이션이 모두 포함됩니다.
+  </p>
+  <p class="lead">
+    <strong>A</strong> 좌표를 손으로 찍어 만든 단순 형상 ·
+    <strong>A′</strong> 실제 지리 데이터를 <em>오프라인에서</em> 단순화해 SVG path 문자열로 베이킹(런타임 의존성 0) ·
+    <strong>B</strong> 실제 지리 데이터를 <em>런타임에</em> 내려받아 투영
+  </p>
+
+  <div class="warn">
+    <strong>✔ 결정 완료 (보관용 기록)</strong> — 이 비교를 근거로 <strong>방식 A′</strong> 가 채택되었습니다.
+    실제 구현은 <code>caskbycask-web/scripts/build-wine-region-map.mjs</code> 가 공개 산지·행정 경계
+    데이터를 오프라인 가공해 <code>src/domain/location/data/wineRegionMap/*.ts</code> 로 베이킹합니다.
+    확대 지도의 수작업 형상은 전량 제거되었고 6개국 모두 실제 경계 데이터를 씁니다.
+    이 파일은 결정 근거를 남기기 위한 기록이며 제품 코드가 아닙니다.
+  </div>
+
+  <div class="warn">
+    <strong>프로토타입 고지</strong> — 이 파일은 렌더링 방식 결정용 산출물이며 제품 코드가 아닙니다.
+    <code>caskbycask-web/public/</code> 밖(<code>docs/prototypes/</code>)에 있으므로 운영에 노출되지 않습니다.
+    방식 A의 도형은 비교용으로 손으로 단순화한 근사 형상이며, 실제 구현 시에는 퍼블릭 도메인
+    <em>Natural Earth</em> 데이터를 오프라인 가공해 정밀도를 올립니다.
+    방식 B는 외부 CDN에서 실제 행정경계 데이터를 내려받으므로 <strong>인터넷 연결이 필요</strong>합니다.
+  </div>
+
+  <div class="tabs" role="tablist" aria-label="렌더링 방식">
+    <button class="tab" role="tab" id="tab-a" aria-selected="true"  data-mode="a">방식 A — 수작업 단순화 SVG</button>
+    <button class="tab" role="tab" id="tab-a2" aria-selected="false" data-mode="a2">방식 A′ — Natural Earth 오프라인 가공 (권장)</button>
+    <button class="tab" role="tab" id="tab-b" aria-selected="false" data-mode="b">방식 B — 실제 지리 데이터 + d3-geo</button>
+  </div>
+
+  <div class="controls">
+    <div class="ctl">
+      <label for="scenario">시나리오</label>
+      <select id="scenario">
+        <option value="fr">프랑스 &gt; 보르도 &gt; 메독</option>
+        <option value="us">미국 &gt; 캘리포니아 &gt; 나파밸리</option>
+      </select>
+    </div>
+    <div class="ctl">
+      <label for="lang">언어</label>
+      <select id="lang">
+        <option value="ko">한국어</option>
+        <option value="en">English</option>
+      </select>
+    </div>
+    <label class="ctl switch"><input type="checkbox" id="mobile" /> 모바일 폭(375px)</label>
+    <label class="ctl switch"><input type="checkbox" id="reduce" /> reduced-motion 강제</label>
+    <button class="btn" id="replay">애니메이션 다시 재생</button>
+  </div>
+
+  <div class="stage" id="stage">
+    <div class="panels">
+      <section class="panel">
+        <div class="panel-head">
+          <span class="panel-title" id="p1-title">① 국가 지도</span>
+          <span class="panel-sub" id="p1-sub"></span>
+        </div>
+        <div class="panel-box" id="p1"></div>
+      </section>
+      <section class="panel">
+        <div class="panel-head">
+          <span class="panel-title" id="p2-title">② 확대 지도</span>
+          <span class="panel-sub" id="p2-sub"></span>
+        </div>
+        <div class="panel-box" id="p2"></div>
+      </section>
+    </div>
+
+    <dl class="metrics">
+      <div class="metric"><dt>렌더링 방식</dt><dd id="m-mode">—</dd></div>
+      <div class="metric"><dt>지리 데이터 전송량</dt><dd id="m-bytes">—</dd></div>
+      <div class="metric"><dt>데이터 준비 시간</dt><dd id="m-fetch">—</dd></div>
+      <div class="metric"><dt>렌더 시간</dt><dd id="m-render">—</dd></div>
+      <div class="metric"><dt>런타임 의존성</dt><dd id="m-dep">—</dd></div>
+    </dl>
+
+    <p class="note" id="verdict"></p>
+  </div>
+
+  <h2>방식 비교 요약</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>기준</th>
+        <th>A — 수작업 SVG</th>
+        <th class="verdict">A′ — Natural Earth 오프라인 가공</th>
+        <th>B — 런타임 d3-geo</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>전송량</td>
+        <td>국가당 수 KB</td>
+        <td>국가당 수십 KB (TS에 베이킹)</td>
+        <td>데이터셋당 0.8~3.3 MB</td>
+      </tr>
+      <tr>
+        <td>런타임 의존성</td>
+        <td>없음</td>
+        <td>없음 (순수 인라인 SVG)</td>
+        <td><code>d3-geo</code> + <code>topojson-client</code></td>
+      </tr>
+      <tr>
+        <td>SSR / SEO</td>
+        <td>SSR 안전</td>
+        <td>SSR 안전</td>
+        <td>fetch·투영이 클라이언트 전용 → 초기 HTML에 지도 없음</td>
+      </tr>
+      <tr>
+        <td>L1 정확도</td>
+        <td>낮음 (손으로 찍은 근사 형상)</td>
+        <td>높음 (행정경계 기반, 단순화만 적용)</td>
+        <td>가장 높음 (원본 그대로)</td>
+      </tr>
+      <tr>
+        <td>L2 표현</td>
+        <td>가능 — 직접 정의</td>
+        <td>가능 — 미국은 카운티에서 파생, 프랑스는 수작업 정의</td>
+        <td><strong>프랑스 불가</strong>. 메독·생테밀리옹은 행정단위가 아니라 데이터셋에 없음</td>
+      </tr>
+      <tr>
+        <td>제작 비용</td>
+        <td>구역마다 좌표를 직접 찍어야 함 (가장 큼)</td>
+        <td>매핑표 + 생성 스크립트 1개. 이후 국가 추가가 저렴</td>
+        <td>매핑표만. 단 L2는 결국 수작업 필요</td>
+      </tr>
+      <tr>
+        <td>초보자 가독성</td>
+        <td>디테일이 없어 단순하지만 형상이 어색함</td>
+        <td>형상은 정확하고 디테일은 정리됨</td>
+        <td>해안선 디테일이 많아 시선이 분산됨</td>
+      </tr>
+      <tr>
+        <td>오프라인/네트워크 장애</td>
+        <td>영향 없음</td>
+        <td>영향 없음</td>
+        <td>지도가 아예 표시되지 않음</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p class="note" style="margin-top:14px">
+    <strong>확인 포인트 1 — L2는 행정경계에 없다.</strong>
+    방식 B의 ② 확대 지도에서 프랑스 시나리오를 보세요. 보르도(=지롱드 주)까지는 실제 경계로 정확히 그려지지만,
+    메독·생테밀리옹 같은 세부 산지는 행정경계 데이터에 존재하지 않습니다.
+    즉 L2를 표현하려면 어떤 방식을 택해도 수작업 형상 정의가 필요합니다.
+    (B·A′의 확대 패널에서 색칠된 구역은 수작업 형상을 겹친 것이고, 흰 실루엣만 실제 지롱드 주 경계입니다.)
+  </p>
+  <p class="note">
+    <strong>확인 포인트 2 — A′는 A의 장점과 B의 정확도를 동시에 가진다.</strong>
+    A′ 탭의 전송량 계측값을 보세요. 실제 지리 데이터를 오프라인에서 단순화하면
+    B의 MB 단위가 수십 KB로 줄고, 런타임 의존성과 SSR 문제도 사라집니다.
+    A′의 생성 스크립트는 개발 시에만 1회 실행되며 산출물(SVG path 문자열)만 저장소에 커밋됩니다.
+  </p>
+
+</div>
+
+<script type="module">
+/* ═══════════════════════════════════════════════════════════════════
+   공통 — 투영 / path 유틸
+   경위도(lon,lat) 링을 viewBox 좌표로 변환한다.
+   중심 위도의 cos 값으로 x를 압축한 단순 등장방형 투영 (프로토타입용).
+   ═══════════════════════════════════════════════════════════════════ */
+const SVG_NS = 'http://www.w3.org/2000/svg'
+
+function boundsOf(rings) {
+  let minLon = Infinity, minLat = Infinity, maxLon = -Infinity, maxLat = -Infinity
+  for (const ring of rings) for (const [lon, lat] of ring) {
+    if (lon < minLon) minLon = lon
+    if (lon > maxLon) maxLon = lon
+    if (lat < minLat) minLat = lat
+    if (lat > maxLat) maxLat = lat
+  }
+  return [minLon, minLat, maxLon, maxLat]
+}
+
+function makeProjection(bounds, width, height, pad = 12) {
+  const [minLon, minLat, maxLon, maxLat] = bounds
+  const kx = Math.cos(((minLat + maxLat) / 2) * Math.PI / 180)
+  const w = (maxLon - minLon) * kx
+  const h = maxLat - minLat
+  const s = Math.min((width - pad * 2) / w, (height - pad * 2) / h)
+  const offX = pad + ((width - pad * 2) - w * s) / 2
+  const offY = pad + ((height - pad * 2) - h * s) / 2
+  return ([lon, lat]) => [
+    +(offX + (lon - minLon) * kx * s).toFixed(1),
+    +(offY + (maxLat - lat) * s).toFixed(1),
+  ]
+}
+
+const ringPath = (ring, proj) =>
+  ring.map((pt, i) => `${i ? 'L' : 'M'}${proj(pt).join(',')}`).join('') + 'Z'
+const linePath = (line, proj) =>
+  line.map((pt, i) => `${i ? 'L' : 'M'}${proj(pt).join(',')}`).join('')
+
+function el(name, attrs = {}, children = []) {
+  const node = document.createElementNS(SVG_NS, name)
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v !== null && v !== undefined) node.setAttribute(k, String(v))
+  }
+  for (const c of [].concat(children)) {
+    node.appendChild(typeof c === 'string' ? document.createTextNode(c) : c)
+  }
+  return node
+}
+
+/** 둥근 핀(막대 + 원 + pulse ring) — 참고 이미지의 '둥근 점 + 화살표' 표현 */
+function pinGroup(x, y) {
+  const g = el('g', { class: 'pin', 'transform-origin': `${x}px ${y}px` })
+  g.appendChild(el('line', { class: 'pin-stem', x1: x, y1: y, x2: x, y2: y - 13 }))
+  g.appendChild(el('circle', { class: 'pin-dot', cx: x, cy: y - 16, r: 4.5 }))
+  g.appendChild(el('circle', { class: 'pin-ring', cx: x, cy: y, r: 5 }))
+  return g
+}
+
+function labelText(x, y, text, { target = false, small = false, align = 'middle' } = {}) {
+  return el('text', {
+    class: `label${small ? ' sm' : ''}${target ? ' target-label' : ''}`,
+    x, y, 'text-anchor': align,
+  }, text)
+}
+
+/** 비대상 구역의 작은 라벨 — 구역 정의의 labelDx/labelDy/labelAlign 오프셋을 반영해 겹침을 회피 */
+function smallLabelFor(proj, region, text) {
+  const [x, y] = proj(region.marker)
+  return labelText(
+    x + (region.labelDx ?? 0),
+    y + 3 + (region.labelDy ?? 0),
+    text,
+    { small: true, align: region.labelAlign ?? 'middle' },
+  )
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   방식 A 데이터 — 손으로 단순화한 경위도 링
+   실제 구현에서는 이 좌표를 Natural Earth 기반 오프라인 가공으로 대체하고,
+   사전 투영된 SVG path 문자열을 TS 파일에 베이킹한다.
+   ※ 와인 산지는 행정구역과 일치하지 않는다(보르도 ≈ 지롱드, 샴페인 ≈ 마른).
+     아래 형상은 산지 구역을 의도적으로 근사·단순화한 것이다.
+   ═══════════════════════════════════════════════════════════════════ */
+const FR_OUTLINE = [
+  [2.38,51.03],[1.85,50.95],[1.08,49.92],[0.11,49.49],[-1.62,49.64],[-1.60,48.83],
+  [-2.03,48.65],[-4.49,48.39],[-4.10,47.99],[-3.37,47.75],[-2.20,47.28],[-1.78,46.50],
+  [-1.15,46.16],[-1.03,45.62],[-1.17,44.66],[-1.56,43.48],[-0.37,42.80],[1.52,42.50],
+  [3.03,42.50],[3.00,43.18],[3.88,43.60],[5.37,43.30],[5.93,43.12],[7.27,43.70],
+  [6.65,44.90],[5.92,45.57],[6.15,46.20],[7.59,47.56],[7.75,48.58],[7.94,49.04],
+  [6.13,49.60],[4.72,49.77],[3.97,50.28],[3.06,50.63],
+]
+const FR_CORSICA = [
+  [9.40,43.00],[9.55,42.60],[9.53,42.20],[9.28,41.59],[9.16,41.39],[8.90,41.60],
+  [8.74,41.93],[8.60,42.30],[8.76,42.57],[9.20,42.85],
+]
+
+const FRANCE = {
+  countryCode: 'FR',
+  nameKo: '프랑스', nameEn: 'France',
+  outline: FR_OUTLINE,
+  extraLand: [FR_CORSICA],
+  regions: {
+    FR_BORDEAUX: { nameKo:'보르도', nameEn:'Bordeaux', marker:[-0.58,44.84], ring:[
+      [-1.15,45.55],[-0.90,45.60],[-0.30,45.30],[0.10,44.90],[0.00,44.50],[-0.40,44.20],[-1.00,44.40],[-1.20,45.00]] },
+    FR_BOURGOGNE: { nameKo:'부르고뉴', nameEn:'Burgundy', marker:[4.60,47.10], ring:[
+      [3.60,47.90],[4.60,47.90],[5.20,47.20],[5.00,46.50],[4.40,46.40],[3.90,47.00],[3.55,47.50]] },
+    FR_CHAMPAGNE: { nameKo:'샹파뉴', nameEn:'Champagne', marker:[4.03,49.10], ring:[
+      [3.60,49.45],[4.90,49.40],[5.00,48.70],[4.40,48.30],[3.70,48.70]] },
+    FR_ALSACE: { nameKo:'알자스', nameEn:'Alsace', marker:[7.42,48.35], ring:[
+      [7.20,49.00],[7.80,48.90],[7.60,48.00],[7.15,47.80],[7.00,48.30]] },
+    FR_LOIRE: { nameKo:'루아르', nameEn:'Loire Valley', marker:[0.68,47.39], ring:[
+      [-2.10,47.35],[-0.60,47.62],[0.70,47.62],[2.00,47.55],[3.10,47.50],[3.00,47.08],
+      [1.50,47.08],[0.00,47.15],[-1.40,47.02],[-2.20,47.15]] },
+    FR_RHONE: { nameKo:'론', nameEn:'Rhône Valley', marker:[4.82,44.60], ring:[
+      [4.60,45.60],[5.10,45.50],[5.20,44.60],[5.00,43.90],[4.50,44.00],[4.40,44.80]] },
+    FR_PROVENCE: { nameKo:'프로방스', nameEn:'Provence', marker:[6.05,43.55], ring:[
+      [5.20,44.00],[6.40,44.00],[7.00,43.60],[6.40,43.10],[5.50,43.20],[5.20,43.50]] },
+    FR_LANGUEDOC: { nameKo:'랑그도크루시옹', nameEn:'Languedoc-Roussillon', marker:[3.10,43.40], ring:[
+      [2.50,43.90],[3.50,43.82],[4.30,43.70],[4.00,43.30],[3.00,42.80],[2.40,43.00],[2.20,43.50]] },
+    FR_BEAUJOLAIS: { nameKo:'보졸레', nameEn:'Beaujolais', marker:[4.70,46.10], ring:[
+      [4.55,46.35],[4.88,46.33],[4.92,45.85],[4.58,45.87]] },
+    FR_JURA: { nameKo:'쥐라', nameEn:'Jura', marker:[5.70,46.90], ring:[
+      [5.40,47.20],[5.92,47.18],[5.95,46.60],[5.48,46.62]] },
+    FR_SAVOIE: { nameKo:'사부아', nameEn:'Savoie', marker:[6.20,45.68], ring:[
+      [5.75,46.02],[6.60,46.10],[6.72,45.42],[5.92,45.32]] },
+    FR_SUD_OUEST: { nameKo:'쉬드우에스트', nameEn:'South West', marker:[0.70,43.90], ring:[
+      [-0.50,44.50],[0.60,44.60],[1.80,44.40],[1.90,43.60],[1.00,43.20],[-0.20,43.30],[-0.60,43.90]] },
+    FR_CORSE: { nameKo:'코르시카', nameEn:'Corsica', marker:[9.05,42.20], ring:FR_CORSICA },
+  },
+  /** L1 확대 지도 — 보르도 */
+  zooms: {
+    FR_BORDEAUX: {
+      outline: [[-1.15,45.55],[-0.90,45.60],[-0.30,45.30],[0.10,44.90],[0.00,44.50],
+                [-0.40,44.20],[-1.00,44.40],[-1.20,45.00]],
+      rivers: [
+        [[-1.05,45.52],[-0.85,45.32],[-0.68,45.12],[-0.58,44.92],[-0.50,44.80],[-0.35,44.58],[-0.22,44.42]],
+        [[-0.58,44.92],[-0.35,44.95],[-0.10,44.88],[0.08,44.84]],
+      ],
+      regions: {
+        FR_BORDEAUX_MEDOC: { nameKo:'메독', nameEn:'Médoc', marker:[-0.80,45.20], ring:[
+          [-1.06,45.54],[-0.82,45.50],[-0.62,45.16],[-0.74,44.98],[-0.95,45.04],[-1.10,45.30]] },
+        FR_BORDEAUX_SAINT_EMILION: { nameKo:'생테밀리옹', nameEn:'Saint-Émilion', marker:[-0.15,44.90],
+          labelDx:14, labelDy:14, labelAlign:'start', ring:[
+          [-0.26,44.99],[-0.04,44.98],[0.01,44.84],[-0.23,44.83]] },
+        FR_BORDEAUX_POMEROL: { nameKo:'포므롤', nameEn:'Pomerol', marker:[-0.225,44.925],
+          labelDx:-14, labelDy:-8, labelAlign:'end', ring:[
+          [-0.29,44.95],[-0.18,44.96],[-0.16,44.90],[-0.28,44.89]] },
+        FR_BORDEAUX_GRAVES: { nameKo:'그라브', nameEn:'Graves', marker:[-0.56,44.70], ring:[
+          [-0.74,44.86],[-0.50,44.84],[-0.34,44.64],[-0.52,44.53],[-0.74,44.64]] },
+        FR_BORDEAUX_SAUTERNES: { nameKo:'소테른', nameEn:'Sauternes', marker:[-0.32,44.53], ring:[
+          [-0.44,44.59],[-0.27,44.58],[-0.21,44.47],[-0.41,44.46]] },
+        FR_BORDEAUX_ENTRE_DEUX_MERS: { nameKo:'앙트르되메르', nameEn:'Entre-Deux-Mers', marker:[-0.25,44.76], ring:[
+          [-0.46,44.94],[-0.14,44.88],[0.02,44.70],[-0.26,44.58],[-0.52,44.72]] },
+      },
+    },
+  },
+}
+
+const US_OUTLINE = [
+  [-124.70,48.40],[-122.80,49.00],[-95.15,49.00],[-95.15,49.38],[-89.50,48.00],
+  [-84.50,46.50],[-83.00,42.30],[-79.00,43.30],[-76.50,44.00],[-71.50,45.00],
+  [-67.80,47.10],[-67.00,44.80],[-70.70,43.10],[-71.00,41.50],[-74.00,40.60],
+  [-75.50,39.00],[-76.00,37.00],[-75.90,35.20],[-80.90,32.00],[-81.50,30.70],
+  [-80.10,26.90],[-80.40,25.20],[-82.70,27.80],[-84.00,30.10],[-88.00,30.20],
+  [-90.00,29.00],[-93.80,29.70],[-97.20,25.90],[-99.50,27.60],[-101.40,29.80],
+  [-104.00,29.30],[-106.50,31.80],[-111.00,31.30],[-114.80,32.50],[-117.10,32.50],
+  [-118.50,34.00],[-120.60,34.50],[-121.90,36.60],[-122.50,37.80],[-124.20,40.40],
+  [-124.20,43.30],[-124.00,46.30],
+]
+const US_CA_RING = [
+  [-124.20,41.90],[-120.00,42.00],[-120.00,39.00],[-114.60,35.00],[-114.60,34.30],
+  [-117.10,32.50],[-118.50,34.00],[-120.60,34.50],[-121.90,36.60],[-122.50,37.80],[-124.20,40.40],
+]
+
+const USA = {
+  countryCode: 'US',
+  nameKo: '미국', nameEn: 'United States',
+  outline: US_OUTLINE,
+  extraLand: [],
+  regions: {
+    US_CALIFORNIA: { nameKo:'캘리포니아', nameEn:'California', marker:[-121.20,37.40], ring:US_CA_RING },
+    US_OREGON: { nameKo:'오리건', nameEn:'Oregon', marker:[-120.50,44.00], ring:[
+      [-124.50,46.20],[-116.50,46.00],[-116.50,42.00],[-124.40,42.00]] },
+    US_WASHINGTON: { nameKo:'워싱턴', nameEn:'Washington', marker:[-120.50,47.40], ring:[
+      [-124.70,48.40],[-117.00,49.00],[-117.00,46.00],[-124.00,46.30]] },
+    US_NEW_YORK: { nameKo:'뉴욕', nameEn:'New York', marker:[-76.30,42.90], ring:[
+      [-79.80,43.30],[-76.50,44.00],[-73.40,45.00],[-73.30,42.00],[-74.00,40.60],
+      [-75.50,42.00],[-79.80,42.00]] },
+  },
+  zooms: {
+    US_CALIFORNIA: {
+      outline: US_CA_RING,
+      rivers: [],
+      regions: {
+        US_CALIFORNIA_NAPA_VALLEY: { nameKo:'나파밸리', nameEn:'Napa Valley', marker:[-122.32,38.45], ring:[
+          [-122.55,38.72],[-122.34,38.76],[-122.10,38.36],[-122.26,38.17],[-122.46,38.40]] },
+        US_CALIFORNIA_SONOMA: { nameKo:'소노마', nameEn:'Sonoma', marker:[-122.82,38.50],
+          labelDx:-14, labelAlign:'end', ring:[
+          [-123.16,38.80],[-122.60,38.86],[-122.42,38.30],[-122.52,38.10],[-123.02,38.30]] },
+        US_CALIFORNIA_MENDOCINO: { nameKo:'멘도시노', nameEn:'Mendocino', marker:[-123.35,39.20],
+          labelDy:-6, ring:[
+          [-123.80,39.60],[-123.00,39.62],[-122.90,38.85],[-123.72,38.82]] },
+        US_CALIFORNIA_LODI: { nameKo:'로다이', nameEn:'Lodi', marker:[-121.30,38.15],
+          labelDx:14, labelDy:8, labelAlign:'start', ring:[
+          [-121.62,38.42],[-121.00,38.40],[-121.00,37.90],[-121.60,37.92]] },
+        US_CALIFORNIA_PASO_ROBLES: { nameKo:'파소로블스', nameEn:'Paso Robles', marker:[-120.70,35.65], ring:[
+          [-121.10,35.92],[-120.30,35.90],[-120.30,35.40],[-121.10,35.42]] },
+        US_CALIFORNIA_SANTA_BARBARA: { nameKo:'산타바바라', nameEn:'Santa Barbara', marker:[-120.15,34.68], ring:[
+          [-120.62,34.96],[-119.70,34.90],[-119.70,34.40],[-120.60,34.45]] },
+      },
+    },
+  },
+}
+
+/** 시나리오 정의 — 국가 / 선택된 L1 / 선택된 L2 */
+const SCENARIOS = {
+  fr: { country: FRANCE, l1: 'FR_BORDEAUX',   l2: 'FR_BORDEAUX_MEDOC' },
+  us: { country: USA,    l1: 'US_CALIFORNIA', l2: 'US_CALIFORNIA_NAPA_VALLEY' },
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   방식 A 렌더러
+   ═══════════════════════════════════════════════════════════════════ */
+const VB_W = 460, VB_H = 400
+
+function renderCountryA(country, l1Code, lang) {
+  const rings = [country.outline, ...country.extraLand,
+                 ...Object.values(country.regions).map((r) => r.ring)]
+  const proj = makeProjection(boundsOf(rings), VB_W, VB_H, 14)
+  const name = (r) => (lang === 'en' ? r.nameEn : r.nameKo)
+
+  const svg = el('svg', {
+    viewBox: `0 0 ${VB_W} ${VB_H}`, class: 'anim', role: 'img',
+    'aria-label': `${lang === 'en' ? country.nameEn : country.nameKo} ${name(country.regions[l1Code])}`,
+  })
+  svg.appendChild(el('title', {}, `${lang === 'en' ? country.nameEn : country.nameKo}`))
+
+  // 국토 실루엣
+  svg.appendChild(el('path', { class: 'zone-outline', d: ringPath(country.outline, proj) }))
+  for (const land of country.extraLand) {
+    svg.appendChild(el('path', { class: 'zone-outline', d: ringPath(land, proj) }))
+  }
+  // 산지 구역
+  for (const [code, r] of Object.entries(country.regions)) {
+    const isTarget = code === l1Code
+    svg.appendChild(el('path', {
+      class: `zone${isTarget ? ' target' : ' dim'}`, d: ringPath(r.ring, proj),
+    }))
+  }
+  // 비대상 구역 라벨(작게) → 대상 구역 라벨(강조)
+  for (const [code, r] of Object.entries(country.regions)) {
+    if (code === l1Code) continue
+    svg.appendChild(smallLabelFor(proj, r, name(r)))
+  }
+  const target = country.regions[l1Code]
+  const [tx, ty] = proj(target.marker)
+  svg.appendChild(pinGroup(tx, ty))
+  svg.appendChild(labelText(tx, ty + 18, name(target), { target: true }))
+  return svg
+}
+
+function renderZoomA(country, l1Code, l2Code, lang, overlayOnly = false) {
+  const zoom = country.zooms[l1Code]
+  if (!zoom) return null
+  const rings = [zoom.outline, ...Object.values(zoom.regions).map((r) => r.ring)]
+  const proj = makeProjection(boundsOf(rings), VB_W, VB_H, 18)
+  const name = (r) => (lang === 'en' ? r.nameEn : r.nameKo)
+
+  const svg = el('svg', {
+    viewBox: `0 0 ${VB_W} ${VB_H}`, class: 'anim', role: 'img',
+    'aria-label': name(country.regions[l1Code]),
+  })
+  if (!overlayOnly) {
+    svg.appendChild(el('path', { class: 'zone-outline', d: ringPath(zoom.outline, proj) }))
+  }
+  for (const [code, r] of Object.entries(zoom.regions)) {
+    svg.appendChild(el('path', {
+      class: `zone${code === l2Code ? ' target' : ' dim'}`, d: ringPath(r.ring, proj),
+    }))
+  }
+  for (const line of zoom.rivers ?? []) {
+    svg.appendChild(el('path', { class: 'river', d: linePath(line, proj) }))
+  }
+  for (const [code, r] of Object.entries(zoom.regions)) {
+    if (code === l2Code) continue
+    svg.appendChild(smallLabelFor(proj, r, name(r)))
+  }
+  const target = zoom.regions[l2Code]
+  const [tx, ty] = proj(target.marker)
+  svg.appendChild(pinGroup(tx, ty))
+  svg.appendChild(labelText(tx, ty + 18, name(target), { target: true }))
+  return { svg, proj, zoom }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   방식 B 렌더러 — 실제 행정경계 데이터 + d3-geo
+     · 프랑스: 데파르트망 GeoJSON (france-geojson, 공개 데이터)
+     · 미국  : us-atlas counties-10m TopoJSON
+   와인 산지 → 행정단위 코드 매핑으로 L1 구역을 합성한다.
+   ═══════════════════════════════════════════════════════════════════ */
+const SRC = {
+  fr: 'https://cdn.jsdelivr.net/gh/gregoiredavid/france-geojson@master/departements.geojson',
+  us: 'https://cdn.jsdelivr.net/npm/us-atlas@3/counties-10m.json',
+}
+
+/** 프랑스 와인 산지 → 데파르트망 코드 (근사) */
+const FR_DEPT_MAP = {
+  FR_BORDEAUX:  ['33'],
+  FR_BOURGOGNE: ['21','71','89','58'],
+  FR_CHAMPAGNE: ['51','10','52','02'],
+  FR_ALSACE:    ['67','68'],
+  FR_LOIRE:     ['44','49','37','41','45','18','72'],
+  FR_RHONE:     ['69','26','07','84','30'],
+  FR_PROVENCE:  ['83','13','04','06'],
+  FR_LANGUEDOC: ['11','34','66','48'],
+  FR_BEAUJOLAIS:['69'],
+  FR_JURA:      ['39'],
+  FR_SAVOIE:    ['73','74'],
+  FR_SUD_OUEST: ['47','32','40','64','65','31','81','82','46','24','12'],
+  FR_CORSE:     ['2A','2B'],
+}
+/** 캘리포니아 AVA → 카운티 FIPS (근사) */
+const CA_COUNTY_MAP = {
+  US_CALIFORNIA_NAPA_VALLEY:   ['06055'],
+  US_CALIFORNIA_SONOMA:        ['06097'],
+  US_CALIFORNIA_MENDOCINO:     ['06045'],
+  US_CALIFORNIA_LODI:          ['06077'],
+  US_CALIFORNIA_PASO_ROBLES:   ['06079'],
+  US_CALIFORNIA_SANTA_BARBARA: ['06083'],
+}
+/** 미국 L1 → 주 FIPS */
+const US_STATE_MAP = {
+  US_CALIFORNIA: ['06'], US_OREGON: ['41'], US_WASHINGTON: ['53'], US_NEW_YORK: ['36'],
+}
+
+let d3geo = null, topojson = null
+const geoCache = new Map()
+
+async function loadGeo(key) {
+  if (geoCache.has(key)) return geoCache.get(key)
+  const t0 = performance.now()
+  const res = await fetch(SRC[key])
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  const buf = await res.arrayBuffer()
+  const json = JSON.parse(new TextDecoder().decode(buf))
+  const entry = { json, bytes: buf.byteLength, ms: performance.now() - t0 }
+  geoCache.set(key, entry)
+  return entry
+}
+
+function featureCollection(features) {
+  return { type: 'FeatureCollection', features }
+}
+
+/** 여러 feature 를 하나의 path 문자열로 합성 (내부 경계선은 그리지 않으므로 시각적으로 병합됨) */
+function mergedPath(pathGen, features) {
+  return features.map((f) => pathGen(f)).filter(Boolean).join(' ')
+}
+
+/**
+ * 실제 지리 데이터를 내려받아 "와인 산지 → 행정단위" 매핑을 적용한다.
+ * 방식 B(런타임 렌더)와 방식 A′(오프라인 베이킹) 가 공통으로 사용한다.
+ */
+async function prepareGeo(scenarioKey, l1Code) {
+  if (!d3geo) {
+    d3geo = await import('https://cdn.jsdelivr.net/npm/d3-geo@3/+esm')
+    topojson = await import('https://cdn.jsdelivr.net/npm/topojson-client@3/+esm')
+  }
+  const { json, bytes, ms } = await loadGeo(scenarioKey)
+
+  let unitsByRegion = {}, allUnits = [], zoomUnitsByRegion = null, zoomParentUnits = []
+  let projectionOf = null
+  if (scenarioKey === 'fr') {
+    // 해외영토(971~976)는 제외 — 본토 경계 계산이 왜곡됨
+    const metro = json.features.filter((f) => String(f.properties.code).length === 2)
+    const byCode = new Map(metro.map((f) => [String(f.properties.code), f]))
+    allUnits = metro
+    projectionOf = () => d3geo.geoConicConformal().rotate([-3, 0]).parallels([44, 49])
+    for (const [code, depts] of Object.entries(FR_DEPT_MAP)) {
+      unitsByRegion[code] = depts.map((d) => byCode.get(d)).filter(Boolean)
+    }
+    zoomParentUnits = unitsByRegion[l1Code] ?? []
+    zoomUnitsByRegion = null // 프랑스는 L2 행정경계가 존재하지 않음
+  } else {
+    const counties = topojson.feature(json, json.objects.counties).features
+    const states = topojson.feature(json, json.objects.states).features
+    const CONUS_SKIP = new Set(['02', '15', '72', '78', '60', '66', '69'])
+    allUnits = states.filter((f) => !CONUS_SKIP.has(String(f.id).padStart(2, '0')))
+    projectionOf = () => d3geo.geoAlbers().rotate([96, 0]).parallels([29.5, 45.5])
+    const stateById = new Map(states.map((f) => [String(f.id).padStart(2, '0'), f]))
+    for (const [code, fips] of Object.entries(US_STATE_MAP)) {
+      unitsByRegion[code] = fips.map((s) => stateById.get(s)).filter(Boolean)
+    }
+    const countyById = new Map(counties.map((f) => [String(f.id).padStart(5, '0'), f]))
+    zoomParentUnits = unitsByRegion[l1Code] ?? []
+    zoomUnitsByRegion = {}
+    for (const [code, fips] of Object.entries(CA_COUNTY_MAP)) {
+      zoomUnitsByRegion[code] = fips.map((c) => countyById.get(c)).filter(Boolean)
+    }
+  }
+  // 확대 지도 투영 기준 — L2 행정단위가 있으면 그 합집합에 맞춘다.
+  // (캘리포니아처럼 L1 이 매우 크고 L2 가 작을 때 L1 전체에 맞추면 대상이 점처럼 작아진다)
+  const zoomFitUnits = zoomUnitsByRegion
+    ? Object.values(zoomUnitsByRegion).flat()
+    : zoomParentUnits
+  return {
+    bytes, fetchMs: ms, unitsByRegion, allUnits,
+    zoomUnitsByRegion, zoomParentUnits,
+    zoomFitUnits: zoomFitUnits.length ? zoomFitUnits : zoomParentUnits,
+    projectionOf,
+  }
+}
+
+async function renderB(scenarioKey, l1Code, l2Code, lang) {
+  const geo = await prepareGeo(scenarioKey, l1Code)
+  const { bytes, fetchMs, unitsByRegion, allUnits, zoomUnitsByRegion, zoomParentUnits,
+          zoomFitUnits, projectionOf } = geo
+  const country = SCENARIOS[scenarioKey].country
+  const name = (r) => (lang === 'en' ? r.nameEn : r.nameKo)
+  const ms = fetchMs
+
+  const t0 = performance.now()
+
+  // ── ① 국가 지도 ────────────────────────────────────────────
+  const svg1 = el('svg', {
+    viewBox: `0 0 ${VB_W} ${VB_H}`, class: 'anim', role: 'img',
+    'aria-label': `${lang === 'en' ? country.nameEn : country.nameKo}`,
+  })
+  const proj1 = projectionOf()
+    .fitExtent([[14, 14], [VB_W - 14, VB_H - 14]], featureCollection(allUnits))
+  const path1 = d3geo.geoPath(proj1)
+
+  svg1.appendChild(el('path', { class: 'zone-outline', d: mergedPath(path1, allUnits) }))
+  for (const [code, feats] of Object.entries(unitsByRegion)) {
+    if (!feats.length) continue
+    svg1.appendChild(el('path', {
+      class: `zone${code === l1Code ? ' target' : ' dim'}`, d: mergedPath(path1, feats),
+    }))
+  }
+  for (const [code, r] of Object.entries(country.regions)) {
+    if (code === l1Code || !unitsByRegion[code]?.length) continue
+    svg1.appendChild(smallLabelFor(proj1, r, name(r)))
+  }
+  const tgt1 = country.regions[l1Code]
+  const [x1, y1] = proj1(tgt1.marker)
+  svg1.appendChild(pinGroup(x1, y1))
+  svg1.appendChild(labelText(x1, y1 + 18, name(tgt1), { target: true }))
+
+  // ── ② 확대 지도 ────────────────────────────────────────────
+  const svg2 = el('svg', { viewBox: `0 0 ${VB_W} ${VB_H}`, class: 'anim', role: 'img' })
+  const proj2 = projectionOf()
+    .fitExtent([[18, 18], [VB_W - 18, VB_H - 18]], featureCollection(zoomFitUnits))
+  const path2 = d3geo.geoPath(proj2)
+  svg2.appendChild(el('path', { class: 'zone-outline', d: mergedPath(path2, zoomParentUnits) }))
+
+  let zoomNote
+  if (zoomUnitsByRegion) {
+    for (const [code, feats] of Object.entries(zoomUnitsByRegion)) {
+      if (!feats.length) continue
+      svg2.appendChild(el('path', {
+        class: `zone${code === l2Code ? ' target' : ' dim'}`, d: mergedPath(path2, feats),
+      }))
+    }
+    const zoomDefs = country.zooms[l1Code].regions
+    for (const [code, r] of Object.entries(zoomDefs)) {
+      if (code === l2Code || !zoomUnitsByRegion[code]?.length) continue
+      svg2.appendChild(smallLabelFor(proj2, r, name(r)))
+    }
+    const tgt2 = zoomDefs[l2Code]
+    const [x2, y2] = proj2(tgt2.marker)
+    svg2.appendChild(pinGroup(x2, y2))
+    svg2.appendChild(labelText(x2, y2 + 18, name(tgt2), { target: true }))
+    zoomNote = '카운티 경계가 AVA에 근사하므로 실제 데이터로 L2 표현이 가능한 예외 사례입니다.'
+  } else {
+    // 행정경계 데이터에 L2 가 없음 → 수작업 형상을 겹쳐 하이브리드를 시연
+    const zoomDefs = country.zooms[l1Code].regions
+    const projHand = makeProjection(
+      boundsOf([country.zooms[l1Code].outline, ...Object.values(zoomDefs).map((r) => r.ring)]),
+      VB_W, VB_H, 18,
+    )
+    for (const [code, r] of Object.entries(zoomDefs)) {
+      svg2.appendChild(el('path', {
+        class: `zone${code === l2Code ? ' target' : ' dim'}`,
+        d: ringPath(r.ring, projHand), opacity: .85,
+      }))
+    }
+    for (const [code, r] of Object.entries(zoomDefs)) {
+      if (code === l2Code) continue
+      svg2.appendChild(smallLabelFor(projHand, r, name(r)))
+    }
+    const tgt2 = zoomDefs[l2Code]
+    const [x2, y2] = projHand(tgt2.marker)
+    svg2.appendChild(pinGroup(x2, y2))
+    svg2.appendChild(labelText(x2, y2 + 18, name(tgt2), { target: true }))
+    zoomNote = '⚠ 메독·생테밀리옹 등 세부 산지는 행정경계 데이터에 없습니다. ' +
+               '흰 실루엣만 실제 지롱드 주 경계이고, 색칠된 구역은 방식 A의 수작업 형상을 겹친 것입니다.'
+  }
+
+  return { svg1, svg2, bytes, fetchMs: ms, renderMs: performance.now() - t0, zoomNote }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   방식 A′ 렌더러 — Natural Earth 계열 실제 데이터를 "오프라인에서" 가공
+   ── 1단계(빌드 시 1회): 투영 → Douglas-Peucker 단순화 → SVG path 문자열 베이킹
+   ── 2단계(런타임): 베이킹된 문자열만으로 렌더 (d3-geo 불필요, SSR 안전)
+   프로토타입에서는 두 단계를 한 화면에서 순차 실행해 각각의 비용을 따로 계측한다.
+   ═══════════════════════════════════════════════════════════════════ */
+const BAKE_TOL_COUNTRY = 1.0   // viewBox px 기준 단순화 허용 오차
+const BAKE_TOL_ZOOM    = 0.8
+const BAKE_MIN_AREA    = 4     // px² — 이보다 작은 섬/조각은 제거
+
+function sqSegDist(p, a, b) {
+  let x = a[0], y = a[1]
+  let dx = b[0] - x, dy = b[1] - y
+  if (dx !== 0 || dy !== 0) {
+    const t = ((p[0] - x) * dx + (p[1] - y) * dy) / (dx * dx + dy * dy)
+    if (t > 1) { x = b[0]; y = b[1] }
+    else if (t > 0) { x += dx * t; y += dy * t }
+  }
+  dx = p[0] - x; dy = p[1] - y
+  return dx * dx + dy * dy
+}
+
+/** Douglas-Peucker 링 단순화 */
+function simplifyRing(points, tol) {
+  if (points.length < 5) return points
+  const sqTol = tol * tol
+  const keep = new Uint8Array(points.length)
+  keep[0] = keep[points.length - 1] = 1
+  const stack = [[0, points.length - 1]]
+  while (stack.length) {
+    const [first, last] = stack.pop()
+    let maxSq = 0, idx = -1
+    for (let i = first + 1; i < last; i++) {
+      const sq = sqSegDist(points[i], points[first], points[last])
+      if (sq > maxSq) { maxSq = sq; idx = i }
+    }
+    if (maxSq > sqTol && idx > 0) {
+      keep[idx] = 1
+      stack.push([first, idx], [idx, last])
+    }
+  }
+  return points.filter((_, i) => keep[i])
+}
+
+const ringArea = (pts) => {
+  let a = 0
+  for (let i = 0, n = pts.length, j = n - 1; i < n; j = i++) {
+    a += pts[j][0] * pts[i][1] - pts[i][0] * pts[j][1]
+  }
+  return a / 2
+}
+
+/** GeoJSON feature 목록 → 투영·단순화된 단일 SVG path 문자열 */
+function bakePath(features, projection, tol) {
+  const parts = []
+  for (const f of features) {
+    const geom = f.geometry
+    if (!geom) continue
+    const polys = geom.type === 'MultiPolygon' ? geom.coordinates
+                : geom.type === 'Polygon' ? [geom.coordinates] : []
+    for (const poly of polys) {
+      for (const ring of poly) {
+        const projected = []
+        for (const c of ring) {
+          const p = projection(c)
+          if (p && Number.isFinite(p[0]) && Number.isFinite(p[1])) projected.push(p)
+        }
+        if (projected.length < 4) continue
+        const simp = simplifyRing(projected, tol)
+        if (simp.length < 4) continue
+        if (Math.abs(ringArea(simp)) < BAKE_MIN_AREA) continue
+        parts.push(
+          simp.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join('') + 'Z'
+        )
+      }
+    }
+  }
+  return parts.join('')
+}
+
+/** 베이킹된 데이터로만 SVG 를 구성 (런타임에 지리 라이브러리 미사용) */
+function renderBaked(baked, targetCode, lang, ariaLabel) {
+  const svg = el('svg', {
+    viewBox: baked.viewBox, class: 'anim', role: 'img', 'aria-label': ariaLabel,
+  })
+  svg.appendChild(el('title', {}, ariaLabel))
+  if (baked.outlinePath) {
+    svg.appendChild(el('path', { class: 'zone-outline', d: baked.outlinePath }))
+  }
+  for (const [code, r] of Object.entries(baked.regions)) {
+    svg.appendChild(el('path', {
+      class: `zone${code === targetCode ? ' target' : ' dim'}`, d: r.path,
+    }))
+  }
+  for (const [code, r] of Object.entries(baked.regions)) {
+    if (code === targetCode) continue
+    svg.appendChild(labelText(
+      r.marker[0] + (r.labelDx ?? 0), r.marker[1] + 3 + (r.labelDy ?? 0),
+      lang === 'en' ? r.nameEn : r.nameKo,
+      { small: true, align: r.labelAlign ?? 'middle' },
+    ))
+  }
+  const t = baked.regions[targetCode]
+  if (t) {
+    svg.appendChild(pinGroup(t.marker[0], t.marker[1]))
+    svg.appendChild(labelText(t.marker[0], t.marker[1] + 18,
+      lang === 'en' ? t.nameEn : t.nameKo, { target: true }))
+  }
+  return svg
+}
+
+async function renderA2(scenarioKey, l1Code, l2Code, lang) {
+  const geo = await prepareGeo(scenarioKey, l1Code)
+  const country = SCENARIOS[scenarioKey].country
+  const zoomDefs = country.zooms[l1Code].regions
+
+  // ── 1단계: 오프라인 가공 (실제 구현에서는 빌드 스크립트가 수행) ──
+  const tBake = performance.now()
+  const meta = (r) => ({
+    nameKo: r.nameKo, nameEn: r.nameEn,
+    labelDx: r.labelDx, labelDy: r.labelDy, labelAlign: r.labelAlign,
+  })
+
+  const proj1 = geo.projectionOf()
+    .fitExtent([[14, 14], [VB_W - 14, VB_H - 14]], featureCollection(geo.allUnits))
+  const bakedCountry = {
+    viewBox: `0 0 ${VB_W} ${VB_H}`,
+    outlinePath: bakePath(geo.allUnits, proj1, BAKE_TOL_COUNTRY),
+    regions: {},
+  }
+  for (const [code, feats] of Object.entries(geo.unitsByRegion)) {
+    if (!feats.length) continue
+    const r = country.regions[code]
+    const m = proj1(r.marker)
+    bakedCountry.regions[code] = {
+      ...meta(r),
+      path: bakePath(feats, proj1, BAKE_TOL_COUNTRY),
+      marker: [+m[0].toFixed(1), +m[1].toFixed(1)],
+    }
+  }
+
+  const proj2 = geo.projectionOf()
+    .fitExtent([[18, 18], [VB_W - 18, VB_H - 18]], featureCollection(geo.zoomFitUnits))
+  const bakedZoom = {
+    viewBox: `0 0 ${VB_W} ${VB_H}`,
+    outlinePath: bakePath(geo.zoomParentUnits, proj2, BAKE_TOL_ZOOM),
+    regions: {},
+  }
+  let zoomNote
+  if (geo.zoomUnitsByRegion) {
+    for (const [code, feats] of Object.entries(geo.zoomUnitsByRegion)) {
+      if (!feats.length) continue
+      const r = zoomDefs[code]
+      const m = proj2(r.marker)
+      bakedZoom.regions[code] = {
+        ...meta(r),
+        path: bakePath(feats, proj2, BAKE_TOL_ZOOM),
+        marker: [+m[0].toFixed(1), +m[1].toFixed(1)],
+      }
+    }
+    zoomNote = '캘리포니아는 카운티 경계가 AVA에 근사해 L2도 실제 데이터에서 파생했습니다.'
+  } else {
+    // 프랑스 L2는 행정경계에 없음 → 수작업 형상을 같은 파이프라인으로 베이킹
+    const projHand = makeProjection(
+      boundsOf([country.zooms[l1Code].outline, ...Object.values(zoomDefs).map((r) => r.ring)]),
+      VB_W, VB_H, 18,
+    )
+    for (const [code, r] of Object.entries(zoomDefs)) {
+      const m = projHand(r.marker)
+      bakedZoom.regions[code] = { ...meta(r), path: ringPath(r.ring, projHand), marker: m }
+    }
+    zoomNote = '⚠ 메독·생테밀리옹은 행정경계 데이터에 없어 수작업으로 정의한 형상입니다. ' +
+               '흰 실루엣만 실제 지롱드 주 경계입니다.'
+  }
+  const bakeMs = performance.now() - tBake
+  const bakedBytes = new TextEncoder()
+    .encode(JSON.stringify([bakedCountry, bakedZoom])).byteLength
+
+  // ── 2단계: 런타임 렌더 (베이킹된 문자열만 사용) ──
+  const tRender = performance.now()
+  const cName = lang === 'en' ? country.nameEn : country.nameKo
+  const l1 = country.regions[l1Code]
+  const l1Name = lang === 'en' ? l1.nameEn : l1.nameKo
+  const l2Name = lang === 'en' ? zoomDefs[l2Code].nameEn : zoomDefs[l2Code].nameKo
+  const svg1 = renderBaked(bakedCountry, l1Code, lang, `${cName} ${l1Name}`)
+  const svg2 = renderBaked(bakedZoom, l2Code, lang, `${l1Name} ${l2Name}`)
+  const renderMs = performance.now() - tRender
+
+  return { svg1, svg2, bakedBytes, bakeMs, renderMs, sourceBytes: geo.bytes, zoomNote }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   화면 제어
+   ═══════════════════════════════════════════════════════════════════ */
+const $ = (id) => document.getElementById(id)
+const state = { mode: 'a', scenario: 'fr', lang: 'ko' }
+
+const fmtBytes = (n) =>
+  n < 1024 ? `${n} B`
+  : n < 1024 * 1024 ? `${(n / 1024).toFixed(1)} KB`
+  : `${(n / 1024 / 1024).toFixed(2)} MB`
+
+/** 방식 A 의 실제 페이로드 크기 — 좌표 데이터를 JSON 직렬화해 근사 측정 */
+function measureHandAuthored() {
+  const payload = JSON.stringify([FRANCE, USA])
+  return new TextEncoder().encode(payload).byteLength
+}
+
+function setPanel(id, node) {
+  const box = $(id)
+  box.innerHTML = ''
+  box.appendChild(node)
+}
+function setEmpty(id, message) {
+  const box = $(id)
+  box.innerHTML = ''
+  const div = document.createElement('div')
+  div.className = 'empty'
+  div.textContent = message
+  box.appendChild(div)
+}
+
+function replay() {
+  for (const svg of document.querySelectorAll('#stage svg.anim')) {
+    svg.classList.remove('playing')
+    void svg.getBoundingClientRect()  // 강제 리플로우로 애니메이션 재시작
+    svg.classList.add('playing')
+  }
+}
+
+async function render() {
+  const { mode, scenario, lang } = state
+  const sc = SCENARIOS[scenario]
+  const country = sc.country
+  const l1 = country.regions[sc.l1]
+  const l2 = country.zooms[sc.l1].regions[sc.l2]
+  const nm = (r) => (lang === 'en' ? r.nameEn : r.nameKo)
+
+  $('p1-title').textContent = lang === 'en' ? '① Country' : '① 국가 지도'
+  $('p2-title').textContent = lang === 'en' ? '② Zoom' : '② 확대 지도'
+  $('p1-sub').textContent = `${nm(country)} — ${nm(l1)}`
+  $('p2-sub').textContent = `${nm(l1)} — ${nm(l2)}`
+
+  if (mode === 'a') {
+    const t0 = performance.now()
+    setPanel('p1', renderCountryA(country, sc.l1, lang))
+    const zoom = renderZoomA(country, sc.l1, sc.l2, lang)
+    if (zoom) setPanel('p2', zoom.svg)
+    else setEmpty('p2', '확대 지도 데이터 없음 — 국가 지도만 표시됩니다(그레이스풀 폴백)')
+    const renderMs = performance.now() - t0
+
+    $('m-mode').textContent = '수작업 단순화 SVG'
+    $('m-bytes').textContent = fmtBytes(measureHandAuthored()) + ' (2개국 전체)'
+    $('m-fetch').textContent = '0 ms (네트워크 없음)'
+    $('m-render').textContent = `${renderMs.toFixed(1)} ms`
+    $('m-dep').textContent = '없음'
+    $('verdict').innerHTML =
+      '<strong>방식 A</strong> — 네트워크 요청 없이 즉시 렌더되고, L1·L2 모두 자유롭게 표현됩니다. ' +
+      '형상은 근사이지만 초보자가 "어디쯤인지" 파악하는 목적에는 오히려 군더더기가 없습니다. ' +
+      '서버에서 그대로 렌더되므로 SSR·SEO에 영향이 없습니다.'
+    replay()
+    return
+  }
+
+  // 방식 A′ — 실제 데이터를 오프라인 가공해 베이킹한 결과로 렌더
+  if (mode === 'a2') {
+    setEmpty('p1', '실제 지리 데이터를 내려받아 가공하는 중…')
+    setEmpty('p2', '실제 지리 데이터를 내려받아 가공하는 중…')
+    $('m-mode').textContent = 'Natural Earth 오프라인 가공 (베이킹)'
+    $('m-bytes').textContent = $('m-fetch').textContent = $('m-render').textContent = '측정 중…'
+    $('m-dep').textContent = '없음 (빌드 시에만 d3-geo)'
+    try {
+      const out = await renderA2(scenario, sc.l1, sc.l2, lang)
+      setPanel('p1', out.svg1)
+      setPanel('p2', out.svg2)
+      $('m-bytes').textContent = `${fmtBytes(out.bakedBytes)} (원본 ${fmtBytes(out.sourceBytes)} → 베이킹)`
+      $('m-fetch').textContent = `0 ms (런타임 네트워크 없음)`
+      $('m-render').textContent = `${out.renderMs.toFixed(1)} ms`
+      $('verdict').innerHTML =
+        `<strong>방식 A′ (권장)</strong> — 실제 행정경계 데이터를 빌드 시 1회 단순화해 SVG path 문자열로 ` +
+        `베이킹합니다. 원본 ${fmtBytes(out.sourceBytes)} → 산출물 <strong>${fmtBytes(out.bakedBytes)}</strong> ` +
+        `(가공 ${out.bakeMs.toFixed(0)} ms, 개발 시 1회). 런타임에는 문자열만 렌더하므로 ` +
+        `네트워크·의존성이 없고 SSR 로 그대로 나갑니다. 형상 정확도는 방식 B와 사실상 동일합니다. ` +
+        out.zoomNote
+      replay()
+    } catch (err) {
+      setEmpty('p1', `지리 데이터를 불러오지 못했습니다 (${err.message}). 인터넷 연결을 확인하세요.`)
+      setEmpty('p2', '—')
+      $('m-bytes').textContent = $('m-fetch').textContent = $('m-render').textContent = '실패'
+      $('verdict').innerHTML =
+        '<strong>참고</strong> — 이 탭은 <em>가공 과정</em>을 시연하려고 런타임에 원본을 내려받습니다. ' +
+        '실제 구현에서는 가공 결과만 저장소에 커밋되므로 사용자 브라우저는 네트워크를 쓰지 않습니다.'
+    }
+    return
+  }
+
+  // 방식 B
+  setEmpty('p1', '실제 지리 데이터를 내려받는 중…')
+  setEmpty('p2', '실제 지리 데이터를 내려받는 중…')
+  $('m-mode').textContent = '실제 지리 데이터 + d3-geo'
+  $('m-bytes').textContent = $('m-fetch').textContent = $('m-render').textContent = '측정 중…'
+  $('m-dep').textContent = 'd3-geo, topojson-client'
+
+  try {
+    const out = await renderB(scenario, sc.l1, sc.l2, lang)
+    setPanel('p1', out.svg1)
+    setPanel('p2', out.svg2)
+    $('m-bytes').textContent = fmtBytes(out.bytes) + ' (1개국)'
+    $('m-fetch').textContent = `${out.fetchMs.toFixed(0)} ms`
+    $('m-render').textContent = `${out.renderMs.toFixed(1)} ms`
+    $('verdict').innerHTML =
+      '<strong>방식 B</strong> — 국가·주 경계는 실제 데이터라 정확합니다. 다만 국가당 MB 단위 데이터를 ' +
+      '내려받아야 하고 <code>d3-geo</code> 의존성이 추가되며, fetch·투영이 클라이언트에서 일어나므로 ' +
+      '초기 HTML(SSR)에는 지도가 담기지 않습니다. ' + out.zoomNote
+    replay()
+  } catch (err) {
+    setEmpty('p1', `지리 데이터를 불러오지 못했습니다 (${err.message}). 인터넷 연결을 확인하세요.`)
+    setEmpty('p2', '—')
+    $('m-bytes').textContent = $('m-fetch').textContent = $('m-render').textContent = '실패'
+    $('verdict').innerHTML =
+      '<strong>방식 B는 외부 CDN 의존</strong> — 네트워크가 없으면 지도가 아예 표시되지 않습니다. ' +
+      '실제 구현에서는 데이터를 자체 호스팅해야 하며, 그만큼 번들·전송 비용이 늘어납니다.'
+  }
+}
+
+// ── 이벤트 배선 ──────────────────────────────────────────────
+for (const tab of document.querySelectorAll('.tab')) {
+  tab.addEventListener('click', () => {
+    for (const t of document.querySelectorAll('.tab')) t.setAttribute('aria-selected', 'false')
+    tab.setAttribute('aria-selected', 'true')
+    state.mode = tab.dataset.mode
+    render()
+  })
+}
+$('scenario').addEventListener('change', (e) => { state.scenario = e.target.value; render() })
+$('lang').addEventListener('change', (e) => { state.lang = e.target.value; render() })
+$('mobile').addEventListener('change', (e) => {
+  $('stage').classList.toggle('mobile-view', e.target.checked)
+})
+$('reduce').addEventListener('change', (e) => {
+  document.body.classList.toggle('reduce', e.target.checked)
+  replay()
+})
+$('replay').addEventListener('click', replay)
+
+render()
+</script>
+</body>
+</html>

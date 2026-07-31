@@ -6,6 +6,14 @@ import { RequiredFieldsNotice } from '@/shared/components/FormFieldLabel'
 
 export type { NewProducerInput } from '../types/producer.types'
 
+/** 직접 등록 버튼에 쓰는 생산자 종류 표현 */
+const CREATE_TERM: Record<string, string> = {
+  DISTILLERY: '증류소',
+  WINERY: '양조장',
+  COGNAC_HOUSE: '꼬냑 생산자',
+  OTHER: '생산자',
+}
+
 interface DropdownPos {
   top: number
   left: number
@@ -27,8 +35,10 @@ export default function AdminProducerSelector({
   const triggerRef            = useRef<HTMLButtonElement>(null)
   const searchRef             = useRef<HTMLInputElement>(null)
 
-  // ── 신규 생산자 직접 등록 (기타 카테고리) ─────────────────────
-  const allowCreate = !!onCreateNew && type === 'OTHER'
+  // ── 신규 생산자 직접 등록 ─────────────────────────────────────
+  // 증류소·양조장·꼬냑 생산자 모두 목록에 없을 수 있어 전 카테고리에서 허용한다.
+  // 생성 시 producer.type 은 호출부(onCreateNew)가 현재 카테고리에 맞게 지정한다.
+  const allowCreate = !!onCreateNew
   const [creating, setCreating]     = useState(false)
   const [newKo, setNewKo]           = useState('')
   const [newEn, setNewEn]           = useState('')
@@ -212,7 +222,7 @@ export default function AdminProducerSelector({
         )}
       </ul>
 
-      {/* 목록에 없는 생산자 직접 등록 (기타 카테고리) */}
+      {/* 목록에 없는 생산자 직접 등록 — 증류소·양조장·꼬냑 메종 모두 지원한다 */}
       {allowCreate && (
         <div className="border-t border-neutral-100 shrink-0">
           {!creating ? (
@@ -222,7 +232,7 @@ export default function AdminProducerSelector({
               onClick={startCreate}
               className="w-full text-left px-4 py-2.5 text-sm font-medium text-amber-700 hover:bg-amber-50 transition-colors"
             >
-              + 목록에 없는 생산자 직접 등록
+              + 목록에 없는 {(type && CREATE_TERM[type]) || '생산자'} 직접 등록
             </button>
           ) : (
             <div className="p-2 space-y-2">

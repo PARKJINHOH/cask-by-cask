@@ -135,7 +135,7 @@ export default function OtherDetailSection({ value, onChange, errors }: Props) {
         <label className={LABEL}>추가 설명 / 비고</label>
         <textarea value={value.notes} rows={3} maxLength={500}
           onChange={(e) => onChange({ notes: e.target.value })}
-          className={`${INPUT} resize-none`} />
+          className={`${INPUT} resize`} />
       </div>
     </div>
   )

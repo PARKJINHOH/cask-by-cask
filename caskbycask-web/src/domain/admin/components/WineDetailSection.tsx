@@ -1,6 +1,7 @@
 import AppellationAutocomplete from '@/shared/components/AppellationAutocomplete'
 import GrapeVarietyInput, { type GrapeVarietyRow } from '@/shared/components/GrapeVarietyInput'
 import InfoTooltip from '@/shared/components/InfoTooltip'
+import WineTasteBars from '@/domain/spirit/components/WineTasteBars'
 import { RequiredMark } from '@/shared/components/FormFieldLabel'
 import { useTranslation } from 'react-i18next'
 
@@ -44,11 +45,9 @@ const HARVEST_METHODS = ['Hand-picked', 'Machine-harvested']
 const FERMENTATION_VESSELS = ['Stainless Steel', 'Concrete', 'Oak Vat', 'Amphora']
 const OAK_TYPES = ['French Oak', 'American Oak', 'Hungarian Oak']
 
-// 관능(맛) 지표 — 선택식. 초보도 라벨로 직관적으로 고를 수 있게.
-const SWEETNESS = [['DRY','드라이'],['OFF_DRY','오프드라이'],['MEDIUM','미디엄'],['SWEET','스위트']]
-const BODY      = [['LIGHT','라이트'],['MEDIUM','미디엄'],['FULL','풀바디']]
-const LEVEL     = [['LOW','낮음'],['MEDIUM','중간'],['HIGH','높음']]
-// 한 줄짜리 세그먼트 라디오 (미지정 포함)
+// 관능(맛) 지표는 WineTasteBars(5단계 바)가 담당한다 — 사용자 상세와 동일 컴포넌트를 공유.
+
+/** 한 줄짜리 세그먼트 라디오 — 빈티지 상태처럼 값이 적은 선택지에 쓴다 */
 function Segment({ label, hint, options, value, onChange, allowClear = true }: {
   label: string
   hint?: string
@@ -59,12 +58,16 @@ function Segment({ label, hint, options, value, onChange, allowClear = true }: {
 }) {
   return (
     <div>
-      <label className={LABEL}>{label}{hint && <span className="ml-1 font-normal text-neutral-400">{hint}</span>}</label>
+      <label className={LABEL}>
+        {label}{hint && <span className="ml-1 font-normal text-neutral-400">{hint}</span>}
+      </label>
       <div className="flex flex-wrap gap-2">
         {options.map(([v, l]) => (
           <button key={v} type="button" onClick={() => onChange(allowClear && value === v ? '' : v)}
             className={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${
-              value === v ? 'border-amber-500 bg-amber-50 text-amber-700 font-medium' : 'border-neutral-200 text-neutral-600 hover:border-amber-300'
+              value === v
+                ? 'border-amber-500 bg-amber-50 text-amber-700 font-medium'
+                : 'border-neutral-200 text-neutral-600 hover:border-amber-300'
             }`}>{l}</button>
         ))}
       </div>
@@ -135,6 +138,9 @@ export default function WineDetailSection({ value, onChange, errors, admin = tru
                 <input type="radio" value={v} checked={value.wineType === v}
                   onChange={() => onChange({ wineType: v })} className="accent-amber-500" />
                 {l}
+                {v === 'SPARKLING' && (
+                  <InfoTooltip text="샴페인·까바·프로세코 등 모든 발포성 와인이 여기 해당합니다. 샴페인은 스파클링을 고르고 산지를 샹파뉴로 지정하세요." />
+                )}
                 {v === 'ORANGE' && (
                   <InfoTooltip text="청포도를 껍질째 발효한 와인. 탄닌과 산미가 강합니다." />
                 )}
@@ -150,13 +156,21 @@ export default function WineDetailSection({ value, onChange, errors, admin = tru
 
       <p className="text-xs font-semibold text-neutral-500">선택 정보</p>
 
-      {/* 관능(맛) 지표 — 가장 직관적인 정보. 라벨 뒷면·리뷰·판매처 설명에서 확인 가능. */}
+      {/* 관능(맛) 지표 — 5단계 바. 사용자 상세와 같은 컴포넌트를 써서 표시가 어긋나지 않게 한다 */}
       <div className="rounded-xl border border-neutral-200 bg-neutral-50/40 p-4 space-y-4">
-        <p className="text-xs font-semibold text-neutral-600">맛 (관능) <span className="font-normal text-neutral-400">아는 만큼만 선택 · 다시 누르면 해제</span></p>
-        <Segment label="당도" options={SWEETNESS} value={value.sweetness} onChange={(v) => onChange({ sweetness: v })} />
-        <Segment label="바디" hint="입안 무게감" options={BODY} value={value.body} onChange={(v) => onChange({ body: v })} />
-        <Segment label="산도" options={LEVEL} value={value.acidity} onChange={(v) => onChange({ acidity: v })} />
-        <Segment label="타닌" hint="주로 레드" options={LEVEL} value={value.tannin} onChange={(v) => onChange({ tannin: v })} />
+        <p className="text-xs font-semibold text-neutral-600">
+          맛 (관능) <span className="font-normal text-neutral-400">아는 것만 선택 (다시 누르면 해제)</span>
+        </p>
+        <WineTasteBars
+          admin={admin}
+          values={{
+            sweetness: value.sweetness || null,
+            body: value.body || null,
+            acidity: value.acidity || null,
+            tannin: value.tannin || null,
+          }}
+          onChange={(key, next) => onChange({ [key]: next ?? '' } as Partial<WineDetailForm>)}
+        />
       </div>
 
       {/* 빈티지 — 수확 연도 / 논빈티지를 명시적으로 구분 */}
@@ -251,12 +265,19 @@ export default function WineDetailSection({ value, onChange, errors, admin = tru
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={`${LABEL} ${!value.isOakAged ? 'opacity-40' : ''}`}>오크 종류</label>
-          <select value={value.oakType} onChange={(e) => onChange({ oakType: e.target.value })}
+          {/* 목록에 없는 오크(슬라보니안·아카시아·체리 등)도 직접 입력할 수 있게 datalist 를 쓴다 */}
+          <input
+            type="text"
+            list="wine-oak-types"
+            value={value.oakType}
+            maxLength={100}
+            onChange={(e) => onChange({ oakType: e.target.value })}
             disabled={value.isOakAged !== true}
-            className={`${INPUT} ${value.isOakAged !== true ? 'opacity-40 cursor-not-allowed' : ''}`}>
-            <option value="">선택 안 함</option>
-            {OAK_TYPES.map((v) => <option key={v} value={v}>{v}</option>)}
-          </select>
+            placeholder="선택하거나 직접 입력 (예: Slavonian Oak)"
+            className={`${INPUT} ${value.isOakAged !== true ? 'opacity-40 cursor-not-allowed' : ''}`} />
+          <datalist id="wine-oak-types">
+            {OAK_TYPES.map((v) => <option key={v} value={v} />)}
+          </datalist>
         </div>
         <div>
           <label className={`${LABEL} ${!value.isOakAged ? 'opacity-40' : ''}`}>오크 숙성 기간</label>

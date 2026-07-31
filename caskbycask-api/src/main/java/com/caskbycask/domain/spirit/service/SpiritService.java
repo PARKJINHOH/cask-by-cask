@@ -18,6 +18,7 @@ import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
 import com.caskbycask.domain.spirit.entity.enums.SpiritStatus;
 import com.caskbycask.domain.spirit.entity.enums.VariantLinkType;
 import com.caskbycask.domain.spirit.entity.enums.VariantType;
+import com.caskbycask.domain.spirit.entity.enums.WineRegion;
 import com.caskbycask.domain.spirit.entity.enums.WineVintageStatus;
 import com.caskbycask.domain.spirit.repository.SpiritImageRepository;
 import com.caskbycask.domain.spirit.repository.SpiritRegisterRequestRepository;
@@ -87,6 +88,7 @@ public class SpiritService {
     private final BadWordFilter badWordFilter;
     private final SpiritSearchService spiritSearchService;
     private final EmailSender emailSender;
+    private final WineRegionService wineRegionService;
 
     /** Optional field injection keeps domain unit tests and IndexNow-disabled environments isolated. */
     @Autowired(required = false)
@@ -274,13 +276,12 @@ public class SpiritService {
                 .nameEn(master.getNameEn())
                 .category(master.getCategory())
                 .producer(master.getProducer())
-                .bottler(master.getBottler())
-                .bottledYear(master.getBottledYear())
                 .vintageYear(master.getVintageYear())
                 .abv(master.getAbv())
                 .volumeMl(master.getVolumeMl())
                 .country(master.getCountry())
                 .region(master.getRegion())
+                .regionCode(master.getRegionCode())
                 .status(SpiritStatus.PENDING)
                 .registeredBy(user)
                 .parent(master)
@@ -553,19 +554,19 @@ public class SpiritService {
         validateVariantSplitSeriesIdentifier(request.isVariantSplit(), masterVariantType, seriesIdentifier);
         Integer normalizedVintageYear = resolveCreateVintageYear(
                 request.category(), request.vintageYear(), request.wineDetail());
+        WineRegion regionCode = wineRegionService.resolve(request.regionCode());
 
         Spirit spirit = Spirit.builder()
                 .nameKo(request.nameKo())
                 .nameEn(request.nameEn())
                 .category(request.category())
                 .producer(producer)
-                .bottler(request.bottler())
-                .bottledYear(request.bottledYear())
                 .vintageYear(normalizedVintageYear)
                 .abv(request.abv())
                 .volumeMl(request.volumeMl())
                 .country(request.country())
-                .region(request.region())
+                .region(resolveRegionText(regionCode, request.region()))
+                .regionCode(regionCode)
                 .status(request.status() != null ? request.status() : SpiritStatus.ACTIVE)
                 .registeredBy(registeredBy)
                 .variantType(masterVariantType)
@@ -596,13 +597,12 @@ public class SpiritService {
                         .nameEn(saved.getNameEn())
                         .category(saved.getCategory())
                         .producer(saved.getProducer())
-                        .bottler(saved.getBottler())
-                        .bottledYear(saved.getBottledYear())
                         .vintageYear(saved.getVintageYear())
                         .abv(vReq.abv())
                         .volumeMl(vReq.volumeMl())
                         .country(saved.getCountry())
                         .region(saved.getRegion())
+                        .regionCode(saved.getRegionCode())
                         .status(request.status() != null ? request.status() : SpiritStatus.ACTIVE)
                         .registeredBy(registeredBy)
                         .parent(saved)
@@ -663,19 +663,20 @@ public class SpiritService {
         validateVariantSplitSeriesIdentifier(request.isVariantSplit(), masterVariantType, seriesIdentifier);
         SpiritCategory nextCategory = request.category() != null ? request.category() : spirit.getCategory();
         Integer normalizedVintageYear = resolveUpdateVintageYear(spirit, nextCategory, request);
+        // 산지 코드는 abvMin/abvMax 와 동일한 규약 — null 이 오면 '해제'로 반영한다(관리자 폼이 항상 필드를 전송).
+        WineRegion nextRegionCode = wineRegionService.resolve(request.regionCode());
 
         spirit.update(
                 request.nameKo() != null ? request.nameKo() : spirit.getNameKo(),
                 request.nameEn() != null ? request.nameEn() : spirit.getNameEn(),
                 nextCategory,
                 producer,
-                request.bottler() != null ? request.bottler() : spirit.getBottler(),
-                request.bottledYear() != null ? request.bottledYear() : spirit.getBottledYear(),
                 normalizedVintageYear,
                 request.abv() != null ? request.abv() : spirit.getAbv(),
                 request.volumeMl() != null ? request.volumeMl() : spirit.getVolumeMl(),
                 request.country() != null ? request.country() : spirit.getCountry(),
-                request.region() != null ? request.region() : spirit.getRegion(),
+                resolveRegionText(nextRegionCode,
+                        request.region() != null ? request.region() : spirit.getRegion()),
                 spirit.getParent(),
                 masterVariantType,
                 request.variantValue() != null ? request.variantValue() : spirit.getVariantValue(),
@@ -688,6 +689,7 @@ public class SpiritService {
                 request.volumeMlMin(),
                 request.volumeMlMax()
         );
+        spirit.assignRegionCode(nextRegionCode);
 
         if (nextCategory == SpiritCategory.WINE && spirit.getCommonDetail() != null) {
             spirit.getCommonDetail().clearReleaseDate();
@@ -715,7 +717,7 @@ public class SpiritService {
                         // 기존 에디션 정보 업데이트
                         existing.update(
                                 spirit.getNameKo(), spirit.getNameEn(), spirit.getCategory(),
-                                spirit.getProducer(), spirit.getBottler(), spirit.getBottledYear(),
+                                spirit.getProducer(),
                                 spirit.getVintageYear(), vReq.abv(), vReq.volumeMl(),
                                 spirit.getCountry(), spirit.getRegion(),
                                 spirit, vReq.variantType(), vReq.variantValue(), vReq.variantValueEn(),
@@ -735,13 +737,12 @@ public class SpiritService {
                                 .nameEn(spirit.getNameEn())
                                 .category(spirit.getCategory())
                                 .producer(spirit.getProducer())
-                                .bottler(spirit.getBottler())
-                                .bottledYear(spirit.getBottledYear())
                                 .vintageYear(spirit.getVintageYear())
                                 .abv(vReq.abv())
                                 .volumeMl(vReq.volumeMl())
                                 .country(spirit.getCountry())
                                 .region(spirit.getRegion())
+                                .regionCode(spirit.getRegionCode())
                                 .status(spirit.getStatus())
                                 .registeredBy(user)
                                 .parent(spirit)
@@ -771,7 +772,7 @@ public class SpiritService {
                     if (!processedIds.contains(existing.getId())) {
                         existing.update(
                                 existing.getNameKo(), existing.getNameEn(), existing.getCategory(),
-                                existing.getProducer(), existing.getBottler(), existing.getBottledYear(),
+                                existing.getProducer(),
                                 existing.getVintageYear(), existing.getAbv(), existing.getVolumeMl(),
                                 existing.getCountry(), existing.getRegion(),
                                 null, existing.getVariantType(), existing.getVariantValue(), existing.getVariantValueEn(),
@@ -788,7 +789,7 @@ public class SpiritService {
                 for (Spirit existing : existingVariants) {
                     existing.update(
                             existing.getNameKo(), existing.getNameEn(), existing.getCategory(),
-                            existing.getProducer(), existing.getBottler(), existing.getBottledYear(),
+                            existing.getProducer(),
                             existing.getVintageYear(), existing.getAbv(), existing.getVolumeMl(),
                             existing.getCountry(), existing.getRegion(),
                             null, existing.getVariantType(), existing.getVariantValue(), existing.getVariantValueEn(),
@@ -984,8 +985,7 @@ public class SpiritService {
         // 기존값을 그대로 보존한다. 필드 추가에 영향받지 않도록 JSON 트리에서 기본 필드만 덮어쓴다.
         ObjectNode merged = objectMapper.valueToTree(existing);
         ObjectNode incoming = objectMapper.valueToTree(body);
-        for (String f : List.of("nameKo", "nameEn", "category", "producerId", "bottler",
-                "bottledYear", "vintageYear", "abv", "volumeMl", "country", "region",
+        for (String f : List.of("nameKo", "nameEn", "category", "producerId", "vintageYear", "abv", "volumeMl", "country", "region", "regionCode",
                 "abvMin", "abvMax", "volumeMlMin", "volumeMlMax")) {
             JsonNode v = incoming.get(f);
             if (v != null) merged.set(f, v);
@@ -1053,19 +1053,19 @@ public class SpiritService {
         validateVariantSplitSeriesIdentifier(detail.isVariantSplit(), masterVariantType, seriesIdentifier);
         Integer normalizedVintageYear = resolveCreateVintageYear(
                 detail.category(), detail.vintageYear(), detail.wineDetail());
+        WineRegion regionCode = wineRegionService.resolve(detail.regionCode());
 
         Spirit spirit = Spirit.builder()
                 .nameKo(detail.nameKo())
                 .nameEn(detail.nameEn())
                 .category(detail.category())
                 .producer(producer)
-                .bottler(detail.bottler())
-                .bottledYear(detail.bottledYear())
                 .vintageYear(normalizedVintageYear)
                 .abv(detail.abv())
                 .volumeMl(detail.volumeMl())
                 .country(detail.country())
-                .region(detail.region())
+                .region(resolveRegionText(regionCode, detail.region()))
+                .regionCode(regionCode)
                 .status(SpiritStatus.ACTIVE)
                 .registeredBy(req.getUser())
                 .variantType(masterVariantType)
@@ -1096,13 +1096,12 @@ public class SpiritService {
                         .nameEn(saved.getNameEn())
                         .category(saved.getCategory())
                         .producer(saved.getProducer())
-                        .bottler(saved.getBottler())
-                        .bottledYear(saved.getBottledYear())
                         .vintageYear(saved.getVintageYear())
                         .abv(vReq.abv())
                         .volumeMl(vReq.volumeMl())
                         .country(saved.getCountry())
                         .region(saved.getRegion())
+                        .regionCode(saved.getRegionCode())
                         .status(SpiritStatus.ACTIVE)
                         .registeredBy(req.getUser())
                         .parent(saved)
@@ -1536,6 +1535,20 @@ public class SpiritService {
         } catch (JsonProcessingException e) {
             throw new CustomException(ErrorCode.INVALID_INPUT);
         }
+    }
+
+    /**
+     * 산지 코드가 지정되면 {@code region} 텍스트를 L1 산지명으로 동기화한다.
+     *
+     * <p>기존 지역 필터({@code GET /api/spirits/regions})·검색·SEO 가 {@code region} 텍스트에 의존하므로
+     * 관리자가 산지를 고르면 텍스트도 자동으로 맞춰 이중 입력을 없앤다.
+     * L2(예: 메독)를 골라도 필터 버킷은 초보자에게 익숙한 L1(예: 보르도)로 남는다.
+     *
+     * @param regionCode      해석된 산지 코드 (null 이면 산지 미지정)
+     * @param fallbackRegion  산지 미지정 시 사용할 기존/요청 지역 텍스트
+     */
+    private String resolveRegionText(WineRegion regionCode, String fallbackRegion) {
+        return regionCode != null ? regionCode.topLevel().getNameKo() : fallbackRegion;
     }
 
     /**

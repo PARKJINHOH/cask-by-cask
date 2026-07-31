@@ -32,18 +32,9 @@ public record CreateSpiritRequest(
         @Schema(description = "증류소 ID (선택)")
         Long producerId,
 
-        @Schema(description = "병입업체명 (독립 병입인 경우)")
-        @Size(max = 200, message = "병입업체명은 200자 이하여야 합니다.")
-        String bottler,
-
-        @Schema(description = "병입 연도")
-        @Min(value = 1800, message = "병입 연도는 1800년 이후여야 합니다.")
-        @Max(value = 2100, message = "병입 연도는 2100년 이하여야 합니다.")
-        Integer bottledYear,
-
         @Schema(description = "빈티지 연도 (원액 수확 연도)")
-        @Min(value = 1800, message = "빈티지 연도는 1800년 이후여야 합니다.")
-        @Max(value = 2100, message = "빈티지 연도는 2100년 이하여야 합니다.")
+        @Min(value = SpiritLimits.YEAR_MIN, message = "빈티지 연도는 1800년 이후여야 합니다.")
+        @Max(value = SpiritLimits.YEAR_MAX, message = "빈티지 연도는 2100년 이하여야 합니다.")
         Integer vintageYear,
 
         @Schema(description = "알코올 도수 % (0.0~100.0)")
@@ -52,8 +43,8 @@ public record CreateSpiritRequest(
         BigDecimal abv,
 
         @Schema(description = "용량 ml")
-        @Min(value = 1, message = "용량은 1ml 이상이어야 합니다.")
-        @Max(value = 100000, message = "용량은 100000ml 이하여야 합니다.")
+        @Min(value = SpiritLimits.VOLUME_ML_MIN, message = "용량은 1ml 이상이어야 합니다.")
+        @Max(value = SpiritLimits.VOLUME_ML_MAX, message = "용량은 30000ml 이하여야 합니다.")
         Integer volumeMl,
 
         @Schema(description = "생산 국가")
@@ -63,6 +54,12 @@ public record CreateSpiritRequest(
         @Schema(description = "생산 지역")
         @Size(max = 100, message = "생산 지역은 100자 이하여야 합니다.")
         String region,
+
+        @Schema(description = "산지 코드 (WineRegion, 지도 표시용 — 와인·위스키·꼬냑·기타 공용). "
+                + "지정 시 생산 지역이 L1 산지명으로 자동 동기화됨",
+                example = "FR_BORDEAUX_MEDOC")
+        @Size(max = 40, message = "산지 코드는 40자 이하여야 합니다.")
+        String regionCode,
 
         @Schema(description = "공통 상세 정보 (모든 카테고리)")
         @Valid SpiritCommonDetailRequest commonDetail,
@@ -115,13 +112,13 @@ public record CreateSpiritRequest(
         BigDecimal abvMax,
 
         @Schema(description = "최소 용량")
-        @Min(value = 1, message = "최소 용량은 1ml 이상이어야 합니다.")
-        @Max(value = 100000, message = "최소 용량은 100000ml 이하여야 합니다.")
+        @Min(value = SpiritLimits.VOLUME_ML_MIN, message = "최소 용량은 1ml 이상이어야 합니다.")
+        @Max(value = SpiritLimits.VOLUME_ML_MAX, message = "최소 용량은 30000ml 이하여야 합니다.")
         Integer volumeMlMin,
 
         @Schema(description = "최대 용량")
-        @Min(value = 1, message = "최대 용량은 1ml 이상이어야 합니다.")
-        @Max(value = 100000, message = "최대 용량은 100000ml 이하여야 합니다.")
+        @Min(value = SpiritLimits.VOLUME_ML_MIN, message = "최대 용량은 1ml 이상이어야 합니다.")
+        @Max(value = SpiritLimits.VOLUME_ML_MAX, message = "최대 용량은 30000ml 이하여야 합니다.")
         Integer volumeMlMax,
 
         @Schema(description = "노출 상태 (ACTIVE, HIDDEN, PENDING)")

@@ -95,11 +95,14 @@ export interface SpiritDetail extends SpiritListItem {
   producerId: number | null
   producerNameKo: string | null
   producerNameEn: string | null
-  bottler: string | null
-  bottledYear: number | null
   vintageYear: number | null
   volumeMl: number | null
   region: string | null
+  /**
+   * 와인 산지 (지도 표시용) — 산지 미지정 시 null.
+   * 국가 지도에서 칠할 L1 = parentCode ?? code / 확대 지도에서 칠할 L2 = parentCode ? code : null
+   */
+  wineRegion: SpiritWineRegion | null
   status: SpiritStatus
   images: SpiritImage[]
   createdAt: string
@@ -128,7 +131,6 @@ export interface SpiritVariant {
   nameKo: string
   nameEn: string
   category: SpiritCategory
-  bottledYear: number | null
   vintageYear: number | null
   vintageStatus: WineVintageStatus | null
   abv: number | null
@@ -162,11 +164,13 @@ export type WhiskyCaskType =
   | 'NEW_OAK' | 'FRENCH_OAK' | 'CHINKAPIN' | 'MIZUNARA' | 'EX_UMESHU' | 'TEAK_WOOD' | 'PEATED_CASK' | 'OTHER'
 export type WineType = 'RED' | 'WHITE' | 'ROSE' | 'SPARKLING' | 'DESSERT' | 'ORANGE' | 'FORTIFIED'
 export type WineCertification = 'ORGANIC' | 'BIODYNAMIC' | 'SUSTAINABLE' | 'NONE'
-export type WineSweetness = 'DRY' | 'OFF_DRY' | 'MEDIUM' | 'SWEET'
-export type WineBody = 'LIGHT' | 'MEDIUM' | 'FULL'
-export type WineIntensity = 'LOW' | 'MEDIUM' | 'HIGH'
+// 와인 맛 지표는 5단계다 — 백엔드 WineSweetness/WineBody/WineIntensity enum 과 값·순서를 일치시킬 것.
+// (표시용 스케일 정의는 domain/spirit/data/wineTasteScale.ts)
+export type WineSweetness = 'DRY' | 'OFF_DRY' | 'MEDIUM' | 'MEDIUM_SWEET' | 'SWEET'
+export type WineBody = 'LIGHT' | 'LIGHT_MEDIUM' | 'MEDIUM' | 'MEDIUM_FULL' | 'FULL'
+export type WineIntensity = 'LOW' | 'LOW_MEDIUM' | 'MEDIUM' | 'MEDIUM_HIGH' | 'HIGH'
 export type CognacGrade = 'VS' | 'NAPOLEON' | 'VSOP' | 'XO' | 'XXO' | 'HORS_DAGE'
-export type CognacCru = 'GRANDE_CHAMPAGNE' | 'PETITE_CHAMPAGNE' | 'BORDERIES' | 'FINS_BOIS' | 'BONS_BOIS'
+export type CognacCru = 'GRANDE_CHAMPAGNE' | 'PETITE_CHAMPAGNE' | 'BORDERIES' | 'FINS_BOIS' | 'BONS_BOIS' | 'BOIS_ORDINAIRES'
 export type OtherSpiritType = 'RUM' | 'GIN' | 'VODKA' | 'TEQUILA' | 'MEZCAL' | 'BRANDY' | 'LIQUEUR' | 'SAKE' | 'SOJU' | 'BAIJIU' | 'ABSINTHE' | 'BEER' | 'OTHER'
 // ── 상세 응답 타입 ──────────────────────────────────────────────
 export interface GrapeVariety { name: string; percentage: number | null }
@@ -282,3 +286,24 @@ export interface RegionStats {
   region: string
   count: number
 }
+
+/**
+ * 와인 산지 (백엔드 WineRegion enum 기반, 지도 표시용).
+ * 코드는 백엔드가 단일 소스이며 프론트는 코드 → 기하 데이터(wineRegionMap)를 매핑한다.
+ */
+export interface SpiritWineRegion {
+  /** 선택된 산지 코드 (L1 또는 L2) — 예: FR_BORDEAUX_MEDOC */
+  code: string
+  /** ISO 3166-1 alpha-2 국가 코드 — 예: FR */
+  countryCode: string
+  nameKo: string
+  nameEn: string
+  /** 상위 L1 코드 — 선택값이 L1 이면 null */
+  parentCode: string | null
+  parentNameKo: string | null
+  parentNameEn: string | null
+}
+
+/** GET /api/wine-regions — 국가별 L1 산지 트리 (관리자 산지 선택기용) */
+export type { RegionNode as WineRegionNode, RegionCountry as WineRegionCountry }
+  from '@/domain/location/data/wineRegionSelection'

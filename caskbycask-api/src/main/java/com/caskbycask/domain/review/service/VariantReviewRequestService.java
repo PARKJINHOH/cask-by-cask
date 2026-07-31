@@ -449,8 +449,6 @@ public class VariantReviewRequestService {
                 .nameEn(master.getNameEn())
                 .category(master.getCategory())
                 .producer(master.getProducer())
-                .bottler(master.getBottler())
-                .bottledYear(master.getBottledYear())
                 .vintageYear(master.getVintageYear())
                 .abv(request.getAbv())
                 .volumeMl(request.getVolumeMl())

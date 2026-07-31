@@ -4,6 +4,7 @@ import com.caskbycask.domain.producer.entity.Producer;
 import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
 import com.caskbycask.domain.spirit.entity.enums.SpiritStatus;
 import com.caskbycask.domain.spirit.entity.enums.VariantType;
+import com.caskbycask.domain.spirit.entity.enums.WineRegion;
 import com.caskbycask.domain.spirit.entity.enums.WineVintageStatus;
 import com.caskbycask.domain.spirit.support.SpiritSearchTextNormalizer;
 import com.caskbycask.domain.user.entity.User;
@@ -29,7 +30,8 @@ import java.util.List;
                 @Index(name = "idx_spirit_category", columnList = "category"),
                 @Index(name = "idx_spirit_status", columnList = "status"),
                 @Index(name = "idx_spirit_producer_id", columnList = "producer_id"),
-                @Index(name = "idx_spirit_vintage_year", columnList = "vintage_year")
+                @Index(name = "idx_spirit_vintage_year", columnList = "vintage_year"),
+                @Index(name = "idx_spirit_region_code", columnList = "region_code")
         }
 )
 @Getter
@@ -70,14 +72,6 @@ public class Spirit extends BaseTimeEntity {
     @IndexingDependency(reindexOnUpdate = ReindexOnUpdate.SHALLOW)
     private Producer producer;
 
-    @Column(length = 200)
-    @Comment("병입자")
-    private String bottler;
-
-    @Column
-    @Comment("병입 연도")
-    private Integer bottledYear;
-
     @Column
     @Comment("빈티지 연도")
     @GenericField
@@ -101,6 +95,19 @@ public class Spirit extends BaseTimeEntity {
     @Comment("지역")
     @KeywordField
     private String region;
+
+    /**
+     * 산지 코드 — 산지 지도 표시용. 와인·위스키·꼬냑·기타(브랜디·전통주) 모두 사용한다.
+     *
+     * <p>{@code region}(한글 지역명 텍스트)과 병행 저장한다. {@code region} 은 기존 지역 필터·검색·SEO 가
+     * 사용하는 값이라 그대로 두고, 이 필드가 지정되면 서비스가 {@code region} 을 L1 산지명으로 동기화한다.
+     *
+     * <p>검색 인덱스 대상이 아니다 — Hibernate Search 애노테이션을 붙이지 않아 리인덱싱이 필요 없다.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "region_code", length = 40)
+    @Comment("산지 코드(WineRegion) — 지도 표시용")
+    private WineRegion regionCode;
 
     @Column(precision = 4, scale = 1)
     @Comment("평균 평점")
@@ -271,7 +278,7 @@ public class Spirit extends BaseTimeEntity {
     private SpiritOtherDetail otherDetail;
 
     public void update(String nameKo, String nameEn, SpiritCategory category,
-                       Producer producer, String bottler, Integer bottledYear,
+                       Producer producer,
                        Integer vintageYear, BigDecimal abv, Integer volumeMl,
                        String country, String region,
                        Spirit parent, VariantType variantType, String variantValue, String variantValueEn,
@@ -282,8 +289,6 @@ public class Spirit extends BaseTimeEntity {
         this.nameEn = nameEn;
         this.category = category;
         this.producer = producer;
-        this.bottler = bottler;
-        this.bottledYear = bottledYear;
         this.vintageYear = vintageYear;
         this.abv = abv;
         this.volumeMl = volumeMl;
@@ -304,6 +309,17 @@ public class Spirit extends BaseTimeEntity {
     /** 하위 에디션 표시 순서 지정 (마스터 화면에서의 목록 순서 보존용) */
     public void assignDisplayOrder(Integer order) {
         this.displayOrder = order;
+    }
+
+    /**
+     * 산지 코드 지정. {@code null} 은 산지 미지정(해제)을 뜻한다.
+     *
+     * <p>파라미터가 21개인 {@link #update} 에 넣지 않고 별도 메서드로 분리했다 —
+     * 기존 호출부(에디션 분리·숨김 처리 등)의 인자 순서를 건드리지 않아 회귀 위험이 없다.
+     * {@code region} 텍스트 동기화는 서비스가 담당한다.
+     */
+    public void assignRegionCode(WineRegion regionCode) {
+        this.regionCode = regionCode;
     }
 
     public void addVariant(Spirit variant) {

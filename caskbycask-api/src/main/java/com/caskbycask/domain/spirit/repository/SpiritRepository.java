@@ -148,7 +148,7 @@ public interface SpiritRepository extends JpaRepository<Spirit, Long>, SpiritQue
               AND s.status = com.caskbycask.domain.spirit.entity.enums.SpiritStatus.ACTIVE
               AND (LOWER(s.nameKo) = LOWER(:nameKo)
                    OR (:nameEn <> '' AND LOWER(s.nameEn) = LOWER(:nameEn)))
-            ORDER BY s.bottledYear DESC, s.vintageYear DESC, s.id DESC
+            ORDER BY s.vintageYear DESC, s.id DESC
             """)
     List<Spirit> findActiveVariantsByName(@Param("id") Long id,
                                           @Param("nameKo") String nameKo,

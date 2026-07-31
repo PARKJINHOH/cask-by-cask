@@ -26,10 +26,6 @@ public record SpiritDetailResponse(
         String producerNameKo,
         @Schema(description = "증류소 영문명")
         String producerNameEn,
-        @Schema(description = "병입업체명")
-        String bottler,
-        @Schema(description = "병입 연도")
-        Integer bottledYear,
         @Schema(description = "빈티지 연도")
         Integer vintageYear,
         @Schema(description = "알코올 도수 %")
@@ -40,6 +36,8 @@ public record SpiritDetailResponse(
         String country,
         @Schema(description = "생산 지역")
         String region,
+        @Schema(description = "와인 산지 (지도 표시용) — 산지 미지정 시 null")
+        SpiritWineRegionResponse wineRegion,
         @Schema(description = "전체 리뷰 평균 점수")
         BigDecimal avgScore,
         @Schema(description = "리뷰 수")
@@ -125,13 +123,12 @@ public record SpiritDetailResponse(
                 spirit.getProducer() != null ? spirit.getProducer().getId() : null,
                 spirit.getProducer() != null ? spirit.getProducer().getNameKo() : null,
                 spirit.getProducer() != null ? spirit.getProducer().getNameEn() : null,
-                spirit.getBottler(),
-                spirit.getBottledYear(),
                 spirit.getVintageYear(),
                 spirit.getAbv(),
                 spirit.getVolumeMl(),
                 spirit.getCountry(),
                 spirit.getRegion(),
+                SpiritWineRegionResponse.from(spirit.getRegionCode()),
                 spirit.getAvgScore(),
                 spirit.getReviewCount(),
                 spirit.getStatus(),

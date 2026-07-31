@@ -5,11 +5,23 @@
  *   "202505" → "2025-05"
  *   "2025-05"→ "2025-05"
  * 최대 6자리(YYYYMM)까지만 인식한다.
+ *
+ * 월이 두 자리가 되는 순간 01~12 범위를 넘으면 **마지막 입력을 무시**한다.
+ *   "1993" + "3" → "1993-3"   (아직 유효한 접두사)
+ *   "1993-3" + "0" → "1993-3" (30월은 없으므로 무시)
+ * 값을 임의로 바꾸지 않고(예: 30→12) 입력만 막아 잘못된 데이터가 저장되지 않게 한다.
  */
 export function formatYearMonth(input: string): string {
   const digits = input.replace(/\D/g, '').slice(0, 6)
   if (digits.length <= 4) return digits
-  return `${digits.slice(0, 4)}-${digits.slice(4)}`
+  const year = digits.slice(0, 4)
+  const month = digits.slice(4)
+  if (month.length === 2) {
+    const n = Number(month)
+    // 유효한 월이 아니면 두 번째 자리를 버린다 (첫 자리는 유효한 접두사이므로 남긴다)
+    if (n < 1 || n > 12) return `${year}-${month.slice(0, 1)}`
+  }
+  return `${year}-${month}`
 }
 
 /**
