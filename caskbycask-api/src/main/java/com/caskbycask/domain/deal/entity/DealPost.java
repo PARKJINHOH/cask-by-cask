@@ -12,9 +12,15 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * 주류 핫딜 (크롤러 caskbycask-crawler 가 수집·AI분석한 결과).
- * 수신 시 is_visible=false, status=PENDING 으로 적재되어 관리자 검토 큐에 들어간다.
- * 관리자가 승인하면 is_visible=true / APPROVED 로 전환되어 사용자에게 노출된다.
+ * 주류 가격 동향 항목.
+ *
+ * <p>출처는 두 가지다.
+ * <ul>
+ *   <li>크롤러(caskbycask-crawler) 수집·AI분석 — is_visible=false, status=PENDING 으로 적재되어
+ *       관리자 검토 큐에 들어가고, 관리자가 승인하면 노출된다.</li>
+ *   <li>관리자 직접 등록(source_site=ADMIN) — 사람이 확인한 값이라 바로 APPROVED + 노출로 저장된다.
+ *       원문 URL 이 없으면 {@code admin://deal/{UUID}} 내부 멱등키를 쓴다.</li>
+ * </ul>
  */
 @Entity
 @Table(
@@ -44,9 +50,9 @@ public class DealPost extends BaseTimeEntity {
     @Comment("원문 URL(멱등키)")
     private String sourceUrl;
 
-    /** 출처 사이트 (DCINSIDE / NAVER_CAFE 등). */
+    /** 출처 사이트 (DCINSIDE / NAVER_CAFE / ADMIN 등). */
     @Column(name = "source_site", nullable = false, length = 50)
-    @Comment("출처 사이트(DCINSIDE/NAVER_CAFE 등)")
+    @Comment("출처 사이트(DCINSIDE/NAVER_CAFE/ADMIN 등)")
     private String sourceSite;
 
     @Column(name = "drink_name", length = 200)

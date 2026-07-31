@@ -167,6 +167,39 @@
 - 표시 컴포넌트는 관리자·사용자가 **`WineTasteBars` 하나를 공유**한다(관리자는 편집 가능, 사용자는 읽기 전용).
   스케일 정의는 `wineTasteScale.ts` 가 백엔드 enum 순서를 미러링한다 — 한쪽만 바꾸면 어긋난다.
 
+## 가격 데이터 (가격 동향 · 가격 등록 승인)
+가격 차트(`PriceChartService`)는 **두 테이블을 합쳐** 그린다. 성격이 달라 화면·메뉴도 둘로 나뉜다.
+
+| 소스 | 테이블 | 유입 경로 | 관리자 메뉴 |
+|---|---|---|---|
+| 사용자 제보 | `price_reports` | 사용자 `POST /api/price-reports` → 검토 후 승인 | 가격 등록 승인 |
+| 수집·직접 등록 | `deal_posts` | 크롤러 `POST /api/internal/deals`(PENDING) / 관리자 `POST /api/admin/deals`(즉시 APPROVED) | 가격 동향 |
+
+- **명칭은 '핫딜' 대신 '가격 동향'** 을 쓴다(할인 홍보가 아니라 가격 정보 제공이라는 성격을 드러낸다).
+  테이블·엔티티·API 경로(`deal_posts`/`DealPost`/`/api/admin/deals`)는 **바꾸지 않았다** — 운영 중 스키마라서
+  이름만 UI 레이어에서 바꿨다. 코드에서 deal 을 만나면 '가격 동향'으로 읽을 것.
+- 사용자 노출 배지는 `price.panel.hotDeal`(ko `특가` / en `Special Price`) 번역키다.
+  문구를 바꾸려면 이 키만 고치면 된다 — 컴포넌트에 하드코딩 금지(`admin-menu.test.mjs` 가 막는다).
+- **관리자 직접 등록**(`DealAdminService.create`)의 제약과 이유:
+  - `spiritId` **필수** — 차트는 `spirit_id + APPROVED + is_visible` 로 집계하므로 미연결 건은 유령 데이터가 된다.
+  - `source_url` 은 NOT NULL + UNIQUE(크롤러 멱등키)라, 원문이 없으면 `admin://deal/{UUID}` 를 생성한다.
+    `admin://` 은 http(s) 가 아니므로 `isOpenableSourceUrl()` 로 링크 렌더를 건너뛴다.
+  - **KRW 만 허용**한다. 차트가 deal 금액을 환율 환산 없이 원화로 집계하기 때문(`buildTempPrices`).
+    외화 가격은 환율 스냅샷을 저장하는 **가격 제보** 경로를 써야 한다.
+  - 관측일(`observedAt`)을 `crawled_at` 에 저장한다 — 차트 X축이 `crawledAt ?: createdAt` 이다.
+  - 등록자에게 **점수를 주지 않는다**(제보 점수는 `price_reports` 승인 시에만 지급).
+- 관리자 화면은 `/admin/deals/new` 가 `AdminDealDetailPage` 의 **등록 모드**를 재사용한다
+  (주류 검색·배치 선택 로직을 복제하지 않기 위함). 정적 경로라 `deals/:id` 보다 먼저 매칭된다.
+
+## 관리자 화면 용어 규칙
+- 주류는 **'주류'** 로 쓴다(사이드바·페이지 제목·확인창 모두). '술'은 쓰지 않는다.
+- 사이드바 라벨과 페이지 `h1`·breadcrumb 은 **같은 말**을 써야 한다. 한쪽만 바꾸면 어긋난다.
+- 메뉴 라벨이 실제 기능 범위를 좁게 말하면 안 된다 —
+  테이스팅 트리는 전 카테고리 공통이라 `주류 트리`(과거 '위스키 트리'),
+  커뮤니티 신고는 댓글까지 다루므로 `게시글·댓글 신고`.
+- 메뉴 키는 라우트 `path` 다. **라벨을 바꿔도 권한 데이터(`allowedMenus`)는 영향받지 않는다.**
+- 회귀 방지: `npm run test:admin-menu`.
+
 ## 응답은 한국어로 해줘.
 ## Git 규칙
 - 절대로 임의로 commit, push, branch 생성, merge 하지 말 것.

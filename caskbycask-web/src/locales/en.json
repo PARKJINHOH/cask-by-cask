@@ -1804,6 +1804,8 @@
       "verified": "Verified",
       "anonymous": "Anonymous",
       "unknownStore": "User Submitted",
+      "hotDeal": "Special Price",
+      "hotDealReporter": "Collected",
       "showMore": "Show Details",
       "hideMore": "Collapse",
       "description": "Description",

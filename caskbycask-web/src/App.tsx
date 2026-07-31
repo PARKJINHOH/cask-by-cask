@@ -212,6 +212,8 @@ export default function App() {
               <Route path="price-reports" element={<AdminPriceReportPage />} />
               <Route path="price-reports/:id" element={<AdminPriceReportDetailPage />} />
               <Route path="deals" element={<AdminDealListPage />} />
+              {/* 정적 경로가 :id 보다 우선 매칭된다 — 등록 모드 */}
+              <Route path="deals/new" element={<AdminDealDetailPage />} />
               <Route path="deals/:id" element={<AdminDealDetailPage />} />
               <Route path="score/points" element={<AdminScorePage />} />
               <Route path="score/levels" element={<AdminLevelPage />} />

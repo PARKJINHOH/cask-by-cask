@@ -50,7 +50,7 @@ export default function AdminRequestPage() {
 
   return (
     <div className="p-6 space-y-5">
-      <h1 className="text-xl font-bold text-neutral-900">등록 요청</h1>
+      <h1 className="text-xl font-bold text-neutral-900">주류 등록 요청</h1>
 
       {/* 필터 */}
       <div className="flex items-end gap-3 p-4 bg-white rounded-xl shadow-sm">

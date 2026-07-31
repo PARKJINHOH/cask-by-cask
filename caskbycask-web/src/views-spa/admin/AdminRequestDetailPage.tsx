@@ -200,12 +200,12 @@ export default function AdminRequestDetailPage() {
       {/* 헤더 */}
       <AdminPageHeader
         breadcrumbs={[
-          { label: '등록 요청', to: listReturnTo },
+          { label: '주류 등록 요청', to: listReturnTo },
           { label: '요청 상세' },
         ]}
         backTo={listReturnTo}
         backLabel="요청 목록"
-        title="등록 요청 상세"
+        title="주류 등록 요청 상세"
         badge={<Badge variant={req.status} size="md">{STATUS_LABEL[req.status]}</Badge>}
       />
 

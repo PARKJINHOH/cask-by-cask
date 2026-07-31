@@ -584,7 +584,7 @@ export default function AdminSpiritDetailPage() {
   }
 
   const handlePermanentDelete = async () => {
-    if (!spirit || !confirm(`"${spirit.nameKo}"을(를) 영구 삭제하시겠습니까?\n\n술 정보와 연결된 이미지가 삭제되며 복구할 수 없습니다.`)) return
+    if (!spirit || !confirm(`"${spirit.nameKo}"을(를) 영구 삭제하시겠습니까?\n\n주류 정보와 연결된 이미지가 삭제되며 복구할 수 없습니다.`)) return
     try {
       await permanentlyDeleteSpirit.mutateAsync(spiritId)
       goList()
@@ -617,7 +617,7 @@ export default function AdminSpiritDetailPage() {
         backTo={listReturnTo}
         useBackToPath
         backLabel="주류 목록"
-        title="술 상세 / 수정"
+        title="주류 상세 / 수정"
         badge={<Badge variant={spirit.status} size="md">{STATUS_LABEL[spirit.status]}</Badge>}
       />
 

@@ -150,9 +150,9 @@ export default function AdminSpiritPage() {
   return (
     <div ref={pageRef} className="p-6 space-y-5">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-neutral-900">술 관리</h1>
+        <h1 className="text-xl font-bold text-neutral-900">주류 관리</h1>
         <Button size="sm" onClick={() => navigate('/admin/spirits/new')}>
-          + 술 직접 등록
+          + 주류 직접 등록
         </Button>
       </div>
 

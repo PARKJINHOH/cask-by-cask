@@ -9,7 +9,7 @@ import { adminDealApi } from '@/domain/admin/api/adminDealApi'
 import type { DealStatus } from '@/domain/admin/types/deal.types'
 import {
   ConfidenceBadge, DealStatusBadge, SourceLinkButton,
-  formatDiscount, formatPrice, siteLabel,
+  formatDiscount, formatPrice, isOpenableSourceUrl, siteLabel,
 } from '@/domain/admin/components/dealUi'
 
 const STATUS_TABS: Array<{ value: DealStatus | 'ALL'; label: string }> = [
@@ -85,11 +85,21 @@ export default function AdminDealListPage() {
 
   return (
     <div ref={pageRef} className="p-6 space-y-5">
-      <div>
-        <h1 className="text-xl font-bold text-neutral-900">핫딜 검토</h1>
-        <p className="mt-1 text-sm text-neutral-500">
-          크롤러가 수집·AI 분석한 주류 핫딜을 검토하고 승인/반려합니다. 승인 시 사용자에게 노출됩니다.
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-neutral-900">가격 동향</h1>
+          <p className="mt-1 text-sm text-neutral-500">
+            크롤러가 수집·AI 분석한 가격과 관리자가 직접 등록한 가격을 함께 관리합니다.
+            승인 시 주류 상세의 가격 차트에 노출됩니다.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => navigate('/admin/deals/new', { state: detailState })}
+          className="h-9 shrink-0 rounded-lg bg-primary-800 px-4 text-sm font-medium text-white transition-colors hover:bg-primary-900"
+        >
+          + 가격 직접 등록
+        </button>
       </div>
 
       {/* 상태 필터 탭 */}
@@ -166,7 +176,7 @@ export default function AdminDealListPage() {
                       className="rounded border-neutral-300 text-primary-800 focus:ring-primary-800 cursor-pointer"
                     />
                   </th>
-                  <th className="text-left px-3 py-3 text-neutral-500 font-medium w-32 whitespace-nowrap">수집일시</th>
+                  <th className="text-left px-3 py-3 text-neutral-500 font-medium w-32 whitespace-nowrap">확인일시</th>
                   <th className="text-left px-3 py-3 text-neutral-500 font-medium w-28">출처</th>
                   <th className="text-left px-4 py-3 text-neutral-500 font-medium">주류명</th>
                   <th className="text-left px-3 py-3 text-neutral-500 font-medium w-20">카테고리</th>
@@ -234,7 +244,9 @@ export default function AdminDealListPage() {
                         <DealStatusBadge status={item.status} />
                       </td>
                       <td className="px-3 py-3 text-center">
-                        <SourceLinkButton url={item.sourceUrl} />
+                        {isOpenableSourceUrl(item.sourceUrl)
+                          ? <SourceLinkButton url={item.sourceUrl} />
+                          : <span className="text-xs text-neutral-300" title="관리자 직접 등록 — 원문 없음">-</span>}
                       </td>
                     </tr>
                   ))
@@ -249,7 +261,7 @@ export default function AdminDealListPage() {
                 type="button"
                 disabled={selectedIds.length === 0 || isDeleting}
                 onClick={() => {
-                  if (window.confirm(`선택한 ${selectedIds.length}개의 핫딜을 삭제하시겠습니까? 삭제 후에는 목록에서 사라집니다.`)) {
+                  if (window.confirm(`선택한 ${selectedIds.length}개의 가격 정보를 삭제하시겠습니까? 삭제 후에는 목록에서 사라집니다.`)) {
                     deleteBulkMut.mutate(selectedIds)
                   }
                 }}

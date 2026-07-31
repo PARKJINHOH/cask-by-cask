@@ -1,12 +1,20 @@
 import axiosInstance from '@/shared/api/axiosInstance'
 import type { ApiResponse, PageResponse } from '@/shared/types/common.types'
-import type { DealPostDetail, DealPostSummary, DealStatus, UpdateDealRequest } from '../types/deal.types'
+import type {
+  CreateDealRequest, DealPostDetail, DealPostSummary, DealStatus, UpdateDealRequest,
+} from '../types/deal.types'
 
 export const adminDealApi = {
   list: async (params: { status?: DealStatus; drinkName?: string; page?: number; size?: number }) => {
     const res = await axiosInstance.get<ApiResponse<PageResponse<DealPostSummary>>>(
       '/api/admin/deals', { params },
     )
+    return res.data.data!
+  },
+
+  /** 관리자 직접 등록 — 바로 승인·노출 상태로 저장된다. */
+  create: async (data: CreateDealRequest) => {
+    const res = await axiosInstance.post<ApiResponse<DealPostDetail>>('/api/admin/deals', data)
     return res.data.data!
   },
 

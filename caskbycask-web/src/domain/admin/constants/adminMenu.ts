@@ -60,10 +60,11 @@ export const ADMIN_NAV: AdminNavEntry[] = [
     groupLabel: '주류',
     groupIcon: '🥃',
     items: [
-      { path: '/admin/spirits/requests', label: '등록 요청' },
+      { path: '/admin/spirits/requests', label: '주류 등록 요청' },
       { path: '/admin/spirits/variant-requests', label: '하위 에디션/리뷰 승인', exact: true },
       { path: '/admin/spirits',          label: '주류 관리', exact: true },
-      { path: '/admin/taste-trees',      label: '위스키 트리', exact: true },
+      // 테이스팅 트리는 위스키 전용이 아니라 전 카테고리(위스키·와인·꼬냑) 공통이다.
+      { path: '/admin/taste-trees',      label: '주류 트리', exact: true },
     ],
   },
   {
@@ -81,12 +82,13 @@ export const ADMIN_NAV: AdminNavEntry[] = [
     groupIcon: '💰',
     items: [
       { path: '/admin/price-reports', label: '가격 등록 승인', exact: true },
-      { path: '/admin/deals',         label: '핫딜 검토',      exact: true },
+      // 크롤러 수집 + 관리자 직접 등록 가격을 함께 다루므로 '핫딜' 대신 '가격 동향'.
+      { path: '/admin/deals',         label: '가격 동향',      exact: true },
     ],
   },
   {
     type: 'group',
-    groupLabel: '레벨',
+    groupLabel: '점수·레벨',
     groupIcon: '🏅',
     items: [
       { path: '/admin/score/points', label: '점수 설정', exact: true },
@@ -100,7 +102,7 @@ export const ADMIN_NAV: AdminNavEntry[] = [
     items: [
       { path: '/admin/community/ai-news',      label: '소식(AI)', exact: true },
       { path: '/admin/social',                 label: 'SNS 게시 관리', exact: true },
-      { path: '/admin/community/post-reports', label: '게시글 신고' },
+      { path: '/admin/community/post-reports', label: '게시글·댓글 신고' },
       { path: '/admin/community/bad-words',    label: '욕설 필터' },
       { path: '/admin/community/emojis',       label: '이모지 관리', exact: true },
       { path: '/admin/community/prefixes',     label: '말머리 관리', exact: true },

@@ -1,11 +1,16 @@
-// 핫딜 관리 공용 UI/포맷 (목록·상세 공유). 관리자 전용이라 한국어 고정.
+// 가격 동향(핫딜 수집·관리자 직접 등록) 공용 UI/포맷 (목록·상세 공유). 관리자 전용이라 한국어 고정.
 import type { DealStatus } from '../types/deal.types'
 
 export const SITE_LABEL: Record<string, string> = {
   DCINSIDE: '디시인사이드',
   NAVER_CAFE: '네이버 카페',
+  ADMIN: '관리자 직접 등록',
 }
 export const siteLabel = (s: string | null | undefined) => (s ? SITE_LABEL[s] ?? s : '-')
+
+/** 관리자 직접 등록은 원문 URL 이 없을 수 있다(내부 멱등키 `admin://`). 링크로 열 수 있는지 판별. */
+export const isOpenableSourceUrl = (url: string | null | undefined): boolean =>
+  Boolean(url && /^https?:\/\//i.test(url))
 
 export const DEAL_STATUS_LABEL: Record<DealStatus, string> = {
   PENDING: '검토 대기',

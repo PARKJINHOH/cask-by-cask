@@ -273,10 +273,11 @@ public enum ErrorCode {
     FEEDBACK_TOTAL_IMAGE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "FEEDBACK_006", "첨부 이미지 총 크기는 6MB를 초과할 수 없습니다."),
     FEEDBACK_INVALID_IMAGE_FORMAT(HttpStatus.BAD_REQUEST, "FEEDBACK_007", "JPG, PNG, WEBP, GIF 형식의 이미지만 첨부할 수 있습니다."),
 
-    // Deal (주류 핫딜 자동수집)
-    DEAL_NOT_FOUND(HttpStatus.NOT_FOUND, "DEAL_001", "핫딜을 찾을 수 없습니다."),
-    DEAL_ALREADY_EXISTS(HttpStatus.CONFLICT, "DEAL_002", "이미 수집된 핫딜입니다."),
-    DEAL_ALREADY_PROCESSED(HttpStatus.CONFLICT, "DEAL_003", "이미 처리된 핫딜입니다. 검토 대기 상태에서만 승인/반려할 수 있습니다."),
+    // Deal (가격 동향 — 크롤러 자동수집 + 관리자 직접 등록)
+    DEAL_NOT_FOUND(HttpStatus.NOT_FOUND, "DEAL_001", "가격 정보를 찾을 수 없습니다."),
+    DEAL_ALREADY_EXISTS(HttpStatus.CONFLICT, "DEAL_002", "이미 등록된 가격 정보입니다."),
+    DEAL_ALREADY_PROCESSED(HttpStatus.CONFLICT, "DEAL_003", "이미 처리된 가격 정보입니다. 검토 대기 상태에서만 승인/반려할 수 있습니다."),
+    DEAL_CURRENCY_NOT_SUPPORTED(HttpStatus.BAD_REQUEST, "DEAL_004", "관리자 직접 등록은 원화(KRW)만 지원합니다. 외화 가격은 환율 환산이 필요하므로 가격 제보 승인 경로를 이용해주세요."),
 
     // AI News
     AI_NEWS_NOT_FOUND(HttpStatus.NOT_FOUND, "AI_NEWS_001", "AI 소식 원고를 찾을 수 없습니다."),

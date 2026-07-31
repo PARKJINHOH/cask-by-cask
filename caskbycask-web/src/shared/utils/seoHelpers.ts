@@ -1254,7 +1254,7 @@ const DEFAULT_ROUTE_METADATA: Record<string, {
     en: { title: 'Spirits Producer Information — CaskByCask', description: 'Explore distilleries, wineries, cognac houses, and their spirits.' },
   },
   'price-tracker': {
-    ko: { title: '주류 가격 정보 — CaskByCask', description: '사용자가 확인한 과거 구매 가격과 승인된 핫딜 정보를 살펴보세요.' },
+    ko: { title: '주류 가격 정보 — CaskByCask', description: '사용자가 확인한 과거 구매 가격과 승인된 특가 정보를 살펴보세요.' },
     en: { title: 'Spirits Price Information — CaskByCask', description: 'Browse user-reported historical purchase prices and approved deal information.' },
   },
   users: {
@@ -1578,7 +1578,7 @@ async function getSpiritPriceMetadata(
     : `${name} 가격 정보 — CaskByCask`
   const description = isEn
     ? `Historical purchase prices and approved deals reported by users for ${name}.`
-    : `${name}의 사용자 제보 구매 가격과 승인된 핫딜 정보를 확인하세요.`
+    : `${name}의 사용자 제보 구매 가격과 승인된 특가 정보를 확인하세요.`
   const ogImage = seo.primaryImageUrl || DEFAULT_OG_IMAGE
 
   return {
@@ -2448,7 +2448,7 @@ export async function getSpiritSeoSnapshot(id: string, lang: 'ko' | 'en' | null)
       { label: labels.wineType, value: grapes },
       { label: labels.cognacGrade, value: spirit.cognacDetail?.grade },
       { label: isEn ? 'Recently confirmed purchase price' : '최근 확인 가격', value: recentPrice },
-      { label: isEn ? 'Recently approved hot deal' : '최근 승인 핫딜', value: recentHotDeal },
+      { label: isEn ? 'Recently approved special price' : '최근 승인 특가', value: recentHotDeal },
     ]),
     sourceUrls: hotDealSource ? [hotDealSource] : [],
     links: [

@@ -98,7 +98,7 @@ export default function AdminSpiritFormPage() {
         ]}
         backTo="/admin/spirits"
         backLabel="주류 목록"
-        title="새 술 등록"
+        title="새 주류 등록"
       />
 
       <RequiredFieldsNotice admin className="mb-4" />

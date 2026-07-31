@@ -1,5 +1,6 @@
 package com.caskbycask.domain.deal.controller;
 
+import com.caskbycask.domain.deal.dto.CreateDealRequest;
 import com.caskbycask.domain.deal.dto.DealPostDetailResponse;
 import com.caskbycask.domain.deal.dto.DealPostSummaryResponse;
 import com.caskbycask.domain.deal.dto.UpdateDealRequest;
@@ -9,11 +10,13 @@ import com.caskbycask.global.response.ApiResponse;
 import com.caskbycask.global.response.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * 관리자 핫딜 검토 API. 인증/인가는 SecurityConfig 의
+ * 관리자 가격 동향 API (크롤러 수집분 검토 + 관리자 직접 등록).
+ * 인증/인가는 SecurityConfig 의
  * {@code /api/admin/**} → hasAnyRole("SUPER_ADMIN","ADMIN") 규칙을 따른다.
  */
 @RestController
@@ -37,6 +40,15 @@ public class DealAdminController {
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<DealPostDetailResponse>> detail(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(dealAdminService.detail(id)));
+    }
+
+    /** 관리자 직접 가격 등록 — 검토 대기를 건너뛰고 바로 승인·노출 상태로 저장된다. */
+    @PostMapping
+    public ResponseEntity<ApiResponse<DealPostDetailResponse>> create(
+            @Valid @RequestBody CreateDealRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(dealAdminService.create(request)));
     }
 
     @PatchMapping("/{id}/approve")

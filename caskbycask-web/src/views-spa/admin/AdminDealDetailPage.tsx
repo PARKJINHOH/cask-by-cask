@@ -4,12 +4,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import Spinner from '@/shared/components/Spinner'
 import { formatDateTime } from '@/shared/utils/format'
 import { adminDealApi } from '@/domain/admin/api/adminDealApi'
-import { DEAL_CATEGORIES, type DealPostDetail, type UpdateDealRequest } from '@/domain/admin/types/deal.types'
+import { DEAL_CATEGORIES, type CreateDealRequest, type DealPostDetail, type UpdateDealRequest } from '@/domain/admin/types/deal.types'
 import type { StoreType } from '@/domain/pricetracker/types/pricetracker.types'
 import { spiritApi } from '@/domain/spirit/api/spiritApi'
 import type { SpiritDetail, SpiritListItem, SpiritVariant } from '@/domain/spirit/types/spirit.types'
 import {
-  ConfidenceBadge, DealStatusBadge, SourceLinkButton, formatDiscount, formatPrice, siteLabel,
+  ConfidenceBadge, DealStatusBadge, SourceLinkButton, formatDiscount, formatPrice,
+  isOpenableSourceUrl, siteLabel,
 } from '@/domain/admin/components/dealUi'
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
 import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
@@ -18,6 +19,15 @@ import { formatPriceInput, parsePriceInput } from '@/shared/utils/moneyInput'
 const EMPTY_FORM = {
   drinkName: '', drinkCategory: '', volumeMl: '', originalPrice: '0', dealPrice: '0',
   seller: '', dealCondition: '', summaryKo: '', currency: 'KRW',
+  // 등록 모드 전용 — 수정 모드에서는 상단 메타(출처/수집 일시)로 표시된다.
+  sourceUrl: '', observedAt: todayString(),
+}
+
+function todayString(): string {
+  const now = new Date()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${now.getFullYear()}-${month}-${day}`
 }
 
 type SpiritConnectionOption = {
@@ -36,6 +46,8 @@ type SpiritConnectionPicker = {
 export default function AdminDealDetailPage() {
   const { id: idParam } = useParams<{ id: string }>()
   const id = Number(idParam)
+  // 라우트가 /admin/deals/new 이면 등록 모드 — 상세 조회 없이 빈 폼으로 시작한다.
+  const isCreateMode = idParam === undefined || idParam === 'new'
   const navigate = useNavigate()
   const location = useLocation()
   const qc = useQueryClient()
@@ -65,7 +77,7 @@ export default function AdminDealDetailPage() {
   const { data: detail, isLoading } = useQuery({
     queryKey: ['admin', 'deals', id],
     queryFn: () => adminDealApi.detail(id),
-    enabled: Number.isFinite(id),
+    enabled: !isCreateMode && Number.isFinite(id),
     staleTime: 0,
   })
 
@@ -81,6 +93,8 @@ export default function AdminDealDetailPage() {
       dealCondition: detail.dealCondition ?? '',
       summaryKo: detail.summaryKo ?? '',
       currency: detail.currency ?? 'KRW',
+      sourceUrl: detail.sourceUrl ?? '',
+      observedAt: detail.crawledAt ? detail.crawledAt.slice(0, 10) : todayString(),
     })
     setSpiritId(detail.spiritId)
     setSpiritNameKo(detail.spiritNameKo)
@@ -150,6 +164,23 @@ export default function AdminDealDetailPage() {
       storeType,
     }
   }
+
+  const buildCreatePayload = (): CreateDealRequest => ({
+    spiritId: spiritId as number,
+    drinkName: form.drinkName.trim() || null,
+    drinkCategory: form.drinkCategory || null,
+    volumeMl: volumeMlValue,
+    originalPrice: originalPriceValue,
+    dealPrice: dealPriceValue,
+    currency: form.currency || 'KRW',
+    seller: form.seller.trim() || null,
+    dealCondition: form.dealCondition.trim() || null,
+    expiryInfo: null,
+    summaryKo: form.summaryKo.trim() || null,
+    storeType,
+    sourceUrl: form.sourceUrl.trim() || null,
+    observedAt: form.observedAt || null,
+  })
 
   const goList = () => navigate(listReturnTo)
   const invalidateDealQueries = () => qc.invalidateQueries({ queryKey: ['admin', 'deals'] })
@@ -228,8 +259,15 @@ export default function AdminDealDetailPage() {
       goList()
     },
   })
+  const createMut = useMutation({
+    mutationFn: () => adminDealApi.create(buildCreatePayload()),
+    onSuccess: () => {
+      invalidateDealQueries()
+      goList()
+    },
+  })
 
-  const busy = approveMut.isPending || deleteMut.isPending || updateMut.isPending
+  const busy = approveMut.isPending || deleteMut.isPending || updateMut.isPending || createMut.isPending
 
   const validatePrices = (): boolean => {
     const dp = dealPriceValue
@@ -259,7 +297,7 @@ export default function AdminDealDetailPage() {
   }
 
   const onDelete = () => {
-    if (!window.confirm('이 핫딜을 삭제하시겠습니까? 삭제 후에는 목록에서 사라집니다.')) return
+    if (!window.confirm('이 가격 정보를 삭제하시겠습니까? 삭제 후에는 목록에서 사라집니다.')) return
     deleteMut.mutate()
   }
   const onUpdate = () => {
@@ -272,17 +310,31 @@ export default function AdminDealDetailPage() {
     updateMut.mutate()
   }
 
-  if (isLoading) {
+  const onCreate = () => {
+    if (!spiritId) {
+      window.alert('가격을 등록하려면 등록된 주류를 먼저 연결해주세요.')
+      return
+    }
+    if (!validatePrices()) return
+    if (!form.observedAt) {
+      window.alert('가격 확인일을 입력해주세요. 가격 차트의 기준 날짜가 됩니다.')
+      return
+    }
+    if (!window.confirm('이 가격을 등록하시겠습니까? 등록 즉시 주류 상세의 가격 차트에 노출됩니다.')) return
+    createMut.mutate()
+  }
+
+  if (!isCreateMode && isLoading) {
     return (
       <div className="flex justify-center py-20">
         <Spinner size="lg" className="text-primary-800" />
       </div>
     )
   }
-  if (!detail) {
+  if (!isCreateMode && !detail) {
     return (
       <div className="p-6">
-        <p className="text-neutral-500">핫딜을 찾을 수 없습니다.</p>
+        <p className="text-neutral-500">가격 정보를 찾을 수 없습니다.</p>
         <button onClick={goList} className="mt-3 text-sm text-primary-700 hover:underline">목록으로</button>
       </div>
     )
@@ -293,45 +345,98 @@ export default function AdminDealDetailPage() {
       <div className="flex items-center justify-between gap-3">
         <button onClick={goList} className="text-sm text-neutral-500 hover:text-neutral-800">목록</button>
         <div className="flex items-center gap-2">
-          <DealStatusBadge status={detail.status} />
-          {detail.isVisible && (
-            <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">
-              노출 중
+          {isCreateMode ? (
+            <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary-50 text-primary-800">
+              관리자 직접 등록
             </span>
+          ) : (
+            <>
+              <DealStatusBadge status={detail!.status} />
+              {detail!.isVisible && (
+                <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                  노출 중
+                </span>
+              )}
+            </>
           )}
         </div>
       </div>
 
-      <div className="bg-neutral-50 rounded-xl p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-        <Meta label="출처" value={siteLabel(detail.sourceSite)} />
-        <Meta label="수집 일시" value={detail.crawledAt ? formatDateTime(detail.crawledAt) : '-'} />
-        <Meta label="신뢰도"><ConfidenceBadge score={detail.confidenceScore} /></Meta>
-        <div>
-          <p className="text-xs text-neutral-500 mb-1">원문</p>
-          <div className="flex items-center gap-2">
-            <SourceLinkButton url={detail.sourceUrl} />
-            <a
-              href={detail.sourceUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-primary-700 hover:underline truncate max-w-[140px]"
-            >
-              새 창에서 열기
-            </a>
+      {isCreateMode ? (
+        <div className="bg-white rounded-xl shadow-sm p-5 space-y-4">
+          <div>
+            <h1 className="text-lg font-bold text-neutral-900">가격 직접 등록</h1>
+            <p className="mt-1 text-sm text-neutral-500">
+              사용자 제보나 크롤러 수집을 기다리지 않고 관리자가 확인한 가격을 바로 등록합니다.
+              검토 대기를 건너뛰고 <strong className="font-semibold text-neutral-700">등록 즉시 가격 차트에 노출</strong>되므로
+              금액·용량·확인일을 반드시 교차검증한 값으로 입력해주세요.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="가격 확인일" required>
+              <input
+                type="date"
+                required
+                aria-required="true"
+                max={todayString()}
+                className={inputCls}
+                value={form.observedAt}
+                onChange={(e) => setForm({ ...form, observedAt: e.target.value })}
+              />
+            </Field>
+            <Field label="출처 URL (선택)">
+              <div>
+                <input
+                  type="url"
+                  inputMode="url"
+                  placeholder="https://..."
+                  className={inputCls}
+                  value={form.sourceUrl}
+                  onChange={(e) => setForm({ ...form, sourceUrl: e.target.value })}
+                />
+                <p className="mt-1 text-[11px] text-neutral-400">
+                  전단·매장 확인처럼 원문 링크가 없으면 비워두세요. 내부 식별키가 자동 생성됩니다.
+                </p>
+              </div>
+            </Field>
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="bg-neutral-50 rounded-xl p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+          <Meta label="출처" value={siteLabel(detail!.sourceSite)} />
+          <Meta label="확인 일시" value={detail!.crawledAt ? formatDateTime(detail!.crawledAt) : '-'} />
+          <Meta label="신뢰도"><ConfidenceBadge score={detail!.confidenceScore} /></Meta>
+          <div>
+            <p className="text-xs text-neutral-500 mb-1">원문</p>
+            {isOpenableSourceUrl(detail!.sourceUrl) ? (
+              <div className="flex items-center gap-2">
+                <SourceLinkButton url={detail!.sourceUrl} />
+                <a
+                  href={detail!.sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-primary-700 hover:underline truncate max-w-[140px]"
+                >
+                  새 창에서 열기
+                </a>
+              </div>
+            ) : (
+              <p className="text-xs text-neutral-400">원문 없음 (관리자 직접 등록)</p>
+            )}
+          </div>
+        </div>
+      )}
 
-      {detail.summaryKo && (
+      {!isCreateMode && detail!.summaryKo && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
           <p className="text-xs font-semibold text-amber-700 mb-1">AI 분석 요약</p>
-          <p className="text-sm text-neutral-700 whitespace-pre-wrap">{detail.summaryKo}</p>
+          <p className="text-sm text-neutral-700 whitespace-pre-wrap">{detail!.summaryKo}</p>
         </div>
       )}
 
       <div className="bg-white rounded-xl shadow-sm p-5 space-y-4">
         <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">
-          AI 분석 결과 및 노출 정보
+          {isCreateMode ? '가격 정보' : 'AI 분석 결과 및 노출 정보'}
         </p>
         <RequiredFieldsNotice admin />
 
@@ -380,15 +485,22 @@ export default function AdminDealDetailPage() {
             />
           </Field>
           <Field label="할인가" required>
-            <input
-              type="text"
-              inputMode="numeric"
-              required
-              aria-required="true"
-              className={inputCls}
-              value={form.dealPrice}
-              onChange={(e) => setForm({ ...form, dealPrice: formatPriceInput(e.target.value) })}
-            />
+            <div>
+              <input
+                type="text"
+                inputMode="numeric"
+                required
+                aria-required="true"
+                className={inputCls}
+                value={form.dealPrice}
+                onChange={(e) => setForm({ ...form, dealPrice: formatPriceInput(e.target.value) })}
+              />
+              {isCreateMode && (
+                <p className="mt-1 text-[11px] text-neutral-400">
+                  차트에 찍히는 실제 가격입니다. 할인이 아닌 평시 시세라면 정상가와 같은 금액을 입력하세요.
+                </p>
+              )}
+            </div>
           </Field>
           <Field label="할인율">
             <div className={`${inputCls} bg-neutral-50 text-neutral-800 tabular-nums`}>
@@ -396,20 +508,29 @@ export default function AdminDealDetailPage() {
             </div>
           </Field>
           <Field label="통화" required>
-            <select
-              required
-              aria-required="true"
-              className={inputCls}
-              value={form.currency}
-              onChange={(e) => setForm({ ...form, currency: e.target.value })}
-            >
-              <option value="KRW">원화 (KRW)</option>
-              <option value="USD">달러 (USD)</option>
-              <option value="JPY">엔화 (JPY)</option>
-              <option value="TWD">대만 달러 (TWD)</option>
-              <option value="HKD">홍콩 달러 (HKD)</option>
-              <option value="SGD">싱가포르 달러 (SGD)</option>
-            </select>
+            <div>
+              <select
+                required
+                aria-required="true"
+                disabled={isCreateMode}
+                className={`${inputCls}${isCreateMode ? ' bg-neutral-50 text-neutral-500' : ''}`}
+                value={isCreateMode ? 'KRW' : form.currency}
+                onChange={(e) => setForm({ ...form, currency: e.target.value })}
+              >
+                <option value="KRW">원화 (KRW)</option>
+                {!isCreateMode && <option value="USD">달러 (USD)</option>}
+                {!isCreateMode && <option value="JPY">엔화 (JPY)</option>}
+                {!isCreateMode && <option value="TWD">대만 달러 (TWD)</option>}
+                {!isCreateMode && <option value="HKD">홍콩 달러 (HKD)</option>}
+                {!isCreateMode && <option value="SGD">싱가포르 달러 (SGD)</option>}
+              </select>
+              {isCreateMode && (
+                <p className="mt-1 text-[11px] text-neutral-400">
+                  가격 차트는 이 금액을 원화로 그대로 집계합니다(환율 환산 없음).
+                  외화 가격은 환산이 필요하므로 '가격 등록 승인' 경로를 이용해주세요.
+                </p>
+              )}
+            </div>
           </Field>
           <Field label="판매처">
             <input
@@ -558,35 +679,58 @@ export default function AdminDealDetailPage() {
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2 bg-white rounded-xl shadow-sm p-4">
-        <button
-          onClick={onDelete}
-          disabled={busy}
-          className="px-4 py-2 text-sm font-medium border border-neutral-300 text-neutral-600 rounded-lg
-            hover:bg-neutral-50 transition-colors disabled:opacity-40"
-        >
-          {deleteMut.isPending ? '삭제 중...' : '삭제'}
-        </button>
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          {detail.status === 'APPROVED' ? (
+        {isCreateMode ? (
+          <>
             <button
-              onClick={onUpdate}
+              onClick={goList}
+              disabled={busy}
+              className="px-4 py-2 text-sm font-medium border border-neutral-300 text-neutral-600 rounded-lg
+                hover:bg-neutral-50 transition-colors disabled:opacity-40"
+            >
+              취소
+            </button>
+            <button
+              onClick={onCreate}
               disabled={busy}
               className="px-5 py-2 text-sm font-medium bg-primary-800 text-white rounded-lg
                 hover:bg-primary-900 transition-colors disabled:opacity-40"
             >
-              {updateMut.isPending ? '수정 중...' : '수정'}
+              {createMut.isPending ? '등록 중...' : '등록 후 노출'}
             </button>
-          ) : (
+          </>
+        ) : (
+          <>
             <button
-              onClick={onApprove}
+              onClick={onDelete}
               disabled={busy}
-              className="px-5 py-2 text-sm font-medium bg-primary-800 text-white rounded-lg
-                hover:bg-primary-900 transition-colors disabled:opacity-40"
+              className="px-4 py-2 text-sm font-medium border border-neutral-300 text-neutral-600 rounded-lg
+                hover:bg-neutral-50 transition-colors disabled:opacity-40"
             >
-              {approveMut.isPending ? '처리 중...' : '승인 후 노출'}
+              {deleteMut.isPending ? '삭제 중...' : '삭제'}
             </button>
-          )}
-        </div>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {detail!.status === 'APPROVED' ? (
+                <button
+                  onClick={onUpdate}
+                  disabled={busy}
+                  className="px-5 py-2 text-sm font-medium bg-primary-800 text-white rounded-lg
+                    hover:bg-primary-900 transition-colors disabled:opacity-40"
+                >
+                  {updateMut.isPending ? '수정 중...' : '수정'}
+                </button>
+              ) : (
+                <button
+                  onClick={onApprove}
+                  disabled={busy}
+                  className="px-5 py-2 text-sm font-medium bg-primary-800 text-white rounded-lg
+                    hover:bg-primary-900 transition-colors disabled:opacity-40"
+                >
+                  {approveMut.isPending ? '처리 중...' : '승인 후 노출'}
+                </button>
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
   )

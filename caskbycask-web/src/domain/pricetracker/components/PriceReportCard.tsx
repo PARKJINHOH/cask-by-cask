@@ -29,7 +29,7 @@ export default function PriceReportCard({ detail, isBest }: Props) {
   const displayName =
     detail.storeName ?? detail.suggestedStoreName ?? t('price.panel.unknownStore', '직접 등록')
   const reporterLabel = detail.isHotDeal
-    ? (detail.reporterNickname ?? '수집')
+    ? (detail.reporterNickname ?? t('price.panel.hotDealReporter', '수집'))
     : detail.isAnonymous
     ? t('price.panel.anonymous')
     : (detail.reporterNickname ?? t('price.panel.anonymous'))
@@ -56,7 +56,7 @@ export default function PriceReportCard({ detail, isBest }: Props) {
               <span className="font-semibold text-neutral-900 truncate">{displayName}</span>
               {detail.isHotDeal && (
                 <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-red-100 text-red-700 rounded text-[10px] font-bold">
-                  핫딜
+                  {t('price.panel.hotDeal', '특가')}
                 </span>
               )}
               {isBest && (

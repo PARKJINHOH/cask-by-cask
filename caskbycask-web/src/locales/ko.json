@@ -1804,6 +1804,8 @@
       "verified": "인증",
       "anonymous": "익명",
       "unknownStore": "직접 등록",
+      "hotDeal": "특가",
+      "hotDealReporter": "수집",
       "showMore": "상세 보기",
       "hideMore": "접기",
       "description": "가격 설명",

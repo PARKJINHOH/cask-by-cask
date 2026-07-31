@@ -180,7 +180,7 @@ export default function AdminDashboardPage() {
           sub="콘텐츠 + 게시글 신고 합산"
         />
         <KpiCard
-          label="미승인 술 등록 요청"
+          label="미승인 주류 등록 요청"
           value={kpis?.pendingRequests ?? 0}
           sub="PENDING 상태"
         />
@@ -230,9 +230,9 @@ export default function AdminDashboardPage() {
           </ResponsiveContainer>
         </div>
 
-        {/* 카테고리별 술 등록 현황 */}
+        {/* 카테고리별 주류 등록 현황 */}
         <div className="bg-white rounded-xl border border-neutral-200 p-5">
-          <h2 className="text-sm font-semibold text-neutral-700 mb-4">카테고리별 술 등록 현황</h2>
+          <h2 className="text-sm font-semibold text-neutral-700 mb-4">카테고리별 주류 등록 현황</h2>
           {categoryChartData.length === 0 ? (
             <div className="flex items-center justify-center h-[220px] text-sm text-neutral-400">
               데이터 없음
