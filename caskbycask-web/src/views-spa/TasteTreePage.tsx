@@ -9,7 +9,7 @@ import { useAuthStore } from '@/domain/auth/store/authStore'
 import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 import Toast from '@/shared/components/Toast'
 import { useToast } from '@/shared/hooks/useToast'
-import { scrollToElementTop, scrollToPageTop } from '@/shared/utils/scrollToPageTop'
+import { scrollToPageTop } from '@/shared/utils/scrollToPageTop'
 
 export default function TasteTreePage() {
   const { shareKey } = useParams<{ shareKey?: string }>()
@@ -25,7 +25,6 @@ function TasteTreeDirectory() {
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(0)
   const pageRef = useRef<HTMLDivElement>(null)
-  const listTopRef = useRef<HTMLElement>(null)
   const query = useQuery({
     queryKey: ['taste-trees', 'public', type, sort, keyword, page],
     queryFn: () => tasteTreeApi.search({ type, sort, keyword, page, size: 12 }).then((response) => response.data.data!),
@@ -41,7 +40,7 @@ function TasteTreeDirectory() {
   }
   const changePage = (nextPage: number) => {
     setPage(nextPage)
-    scrollToElementTop(listTopRef.current)
+    scrollToPageTop(pageRef.current)
   }
 
   return (
@@ -59,7 +58,7 @@ function TasteTreeDirectory() {
         </div>
       </header>
 
-      <section ref={listTopRef} className="mt-6 rounded-2xl border border-stone-200 bg-white p-3 shadow-sm sm:p-4">
+      <section className="mt-6 rounded-2xl border border-stone-200 bg-white p-3 shadow-sm sm:p-4">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div className="grid grid-cols-2 gap-2">
             {(['OFFICIAL', 'USER'] as const).map((value) => (

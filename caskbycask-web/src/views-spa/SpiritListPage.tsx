@@ -752,6 +752,7 @@ export default function SpiritListPage() {
               currentPage={page}
               totalPages={data.totalPages}
               onPageChange={(p) => setParam({ page: p })}
+              scrollTarget="page"
               className="mt-8 mb-[calc(5rem+env(safe-area-inset-bottom))] lg:mb-0"
             />
           )}

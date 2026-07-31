@@ -148,6 +148,7 @@ export default function ByobListPage() {
                 currentPage={page}
                 totalPages={totalPages}
                 onPageChange={(p) => setListParam(status, p)}
+                scrollTarget="page"
               />
             </div>
           )}

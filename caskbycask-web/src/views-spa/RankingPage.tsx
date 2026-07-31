@@ -298,6 +298,7 @@ export default function RankingPage() {
             currentPage={page}
             totalPages={data.totalPages}
             onPageChange={setPage}
+            scrollTarget="page"
           />
         </>
       )}

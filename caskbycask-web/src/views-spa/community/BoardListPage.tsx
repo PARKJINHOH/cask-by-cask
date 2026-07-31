@@ -625,6 +625,7 @@ export default function BoardListPage({ boardType, title }: Props) {
                 currentPage={pageParam}
                 totalPages={totalPages}
                 onPageChange={(p) => setParam('page', String(p))}
+                scrollTarget="page"
               />
             </div>
           )}

@@ -1,6 +1,7 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { reviewApi } from '../api/reviewApi'
 import { useAuthStore } from '@/domain/auth/store/authStore'
+import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
 import type {
   CreateReviewRequest,
   CreateVariantReviewRequest,
@@ -146,14 +147,44 @@ export function useDeleteMyReview() {
       queryClient.invalidateQueries({ queryKey: ['my-reviews'] })
       queryClient.invalidateQueries({ queryKey: ['reviews'] })
       queryClient.invalidateQueries({ queryKey: ['spirit'] })
+      queryClient.invalidateQueries({ queryKey: ['user-reviews'] })
+      queryClient.invalidateQueries({ queryKey: ['user-review-category-counts'] })
     },
   })
 }
 
-export function useUserReviews(userId: number, page = 0) {
+export interface UserReviewsQueryParams {
+  page?: number
+  size?: number
+  category?: SpiritCategory | null
+  keyword?: string
+}
+
+export function useUserReviews(userId: number, params: UserReviewsQueryParams = {}) {
+  const { page = 0, size = 10, category = null, keyword = '' } = params
+  const normalizedKeyword = keyword.trim()
+
   return useQuery({
-    queryKey: ['user-reviews', userId, page],
-    queryFn: () => reviewApi.getUserReviews(userId, { page, size: 100 }).then((res) => res.data.data!),
+    queryKey: ['user-reviews', userId, page, size, category, normalizedKeyword],
+    queryFn: () =>
+      reviewApi
+        .getUserReviews(userId, {
+          page,
+          size,
+          category: category ?? undefined,
+          keyword: normalizedKeyword || undefined,
+        })
+        .then((res) => res.data.data!),
+    enabled: !!userId,
+    // 페이지/탭/검색 전환 시 이전 결과를 유지해 목록이 깜빡이지 않도록 한다.
+    placeholderData: keepPreviousData,
+  })
+}
+
+export function useUserReviewCategoryCounts(userId: number) {
+  return useQuery({
+    queryKey: ['user-review-category-counts', userId],
+    queryFn: () => reviewApi.getUserReviewCategoryCounts(userId).then((res) => res.data.data!),
     enabled: !!userId,
   })
 }

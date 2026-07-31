@@ -2,6 +2,7 @@ package com.caskbycask.domain.review.dto;
 
 import com.caskbycask.domain.seo.util.SpiritSlugUtils;
 import com.caskbycask.domain.review.entity.Review;
+import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
 import com.caskbycask.domain.user.entity.enums.Role;
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -22,6 +23,8 @@ public record ReviewResponse(
         String spiritNameKo,
         @Schema(description = "술 영문명")
         String spiritNameEn,
+        @Schema(description = "술 카테고리 (WHISKY/COGNAC/WINE/OTHER)")
+        SpiritCategory spiritCategory,
         @Schema(description = "KO canonical path")
         String spiritCanonicalPathKo,
         @Schema(description = "EN canonical path")
@@ -82,6 +85,7 @@ public record ReviewResponse(
                 review.getSpirit().getId(),
                 review.getSpirit().getNameKo(),
                 review.getSpirit().getNameEn(),
+                review.getSpirit().getCategory(),
                 SpiritSlugUtils.canonicalPathKo(review.getSpirit()),
                 SpiritSlugUtils.canonicalPathEn(review.getSpirit()),
                 review.getNoseScore(),

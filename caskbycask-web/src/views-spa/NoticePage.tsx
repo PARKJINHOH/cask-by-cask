@@ -234,7 +234,7 @@ export default function NoticePage() {
 
           {totalPages > 1 && (
             <div className="mt-8 flex justify-center">
-              <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
+              <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} scrollTarget="page" />
             </div>
           )}
         </>

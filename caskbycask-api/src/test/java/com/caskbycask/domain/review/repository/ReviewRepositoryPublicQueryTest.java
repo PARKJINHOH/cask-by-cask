@@ -1,5 +1,6 @@
 package com.caskbycask.domain.review.repository;
 
+import com.caskbycask.domain.review.dto.ReviewResponse;
 import com.caskbycask.domain.review.entity.Review;
 import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
@@ -58,12 +59,43 @@ class ReviewRepositoryPublicQueryTest {
         entityManager.flush();
         entityManager.clear();
 
-        Page<Review> result = reviewRepository.findPublicByUserId(user.getId(), PageRequest.of(0, 10));
+        Page<Review> result = reviewRepository.searchPublicUserReviews(
+                user.getId(), null, null, PageRequest.of(0, 10));
 
         assertThat(result.getTotalElements()).isEqualTo(1);
         assertThat(result.getContent())
                 .extracting(Review::getComment)
                 .containsExactly("visible");
+    }
+
+    @Test
+    void reviewResponseExposesSpiritCategory() {
+        User user = User.builder()
+                .email("category-review@example.com")
+                .nickname("cat01")
+                .role(Role.MEMBER)
+                .build();
+        entityManager.persist(user);
+
+        Spirit wine = Spirit.builder()
+                .nameKo("샤또 마고")
+                .nameEn("Chateau Margaux")
+                .category(SpiritCategory.WINE)
+                .build();
+        wine.approve();
+        entityManager.persist(wine);
+
+        entityManager.persist(review(user, wine, "wine review"));
+        entityManager.flush();
+        entityManager.clear();
+
+        Page<Review> result = reviewRepository.searchPublicUserReviews(
+                user.getId(), null, null, PageRequest.of(0, 10));
+
+        ReviewResponse response = ReviewResponse.from(result.getContent().get(0));
+        assertThat(response.spiritCategory()).isEqualTo(SpiritCategory.WINE);
+        assertThat(response.spiritNameKo()).isEqualTo("샤또 마고");
+        assertThat(response.spiritNameEn()).isEqualTo("Chateau Margaux");
     }
 
     private Spirit spirit(String name) {

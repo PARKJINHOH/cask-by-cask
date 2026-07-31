@@ -11,6 +11,7 @@ import com.caskbycask.domain.social.entity.enums.SocialSourceType;
 import com.caskbycask.domain.social.dto.SocialPublishSelection;
 import com.caskbycask.domain.social.service.SocialPublishRequestService;
 import com.caskbycask.domain.spirit.entity.Spirit;
+import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
 import com.caskbycask.domain.spirit.entity.enums.SpiritStatus;
 import com.caskbycask.domain.spirit.repository.SpiritRepository;
 import com.caskbycask.domain.user.entity.User;
@@ -65,11 +66,16 @@ public class ReviewService {
     }
 
     @Transactional(readOnly = true)
-    public Page<ReviewResponse> getPublicUserReviews(Long userId, Pageable pageable) {
-        Pageable sorted = PageRequest.of(
-                pageable.getPageNumber(), pageable.getPageSize(),
-                Sort.by(Sort.Direction.DESC, "createdAt"));
-        return withImages(reviewRepository.findPublicByUserId(userId, sorted));
+    public Page<ReviewResponse> getPublicUserReviews(Long userId, SpiritCategory category, String keyword,
+                                                    Pageable pageable) {
+        Pageable paged = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
+        return withImages(reviewRepository.searchPublicUserReviews(userId, category, keyword, paged));
+    }
+
+    @Transactional(readOnly = true)
+    public UserReviewCategoryCountResponse getPublicUserReviewCategoryCounts(Long userId) {
+        return UserReviewCategoryCountResponse.from(
+                reviewRepository.countPublicUserReviewsByCategory(userId));
     }
 
     @Transactional(readOnly = true)

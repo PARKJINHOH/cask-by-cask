@@ -1,3 +1,6 @@
+import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
+
+
 export interface ReviewImageItem {
   id: number
   imageUrl: string
@@ -16,6 +19,7 @@ export interface ReviewItem {
   spiritId: number
   spiritNameKo: string
   spiritNameEn: string
+  spiritCategory: SpiritCategory
   spiritCanonicalPathKo?: string | null
   spiritCanonicalPathEn?: string | null
   noseScore: number
@@ -37,6 +41,13 @@ export interface ReviewItem {
   userReviewIndex?: number
   userReviewCount?: number
   images: ReviewImageItem[]
+}
+
+/** 사용자 공개 리뷰의 카테고리별 개수 (GET /api/users/{userId}/reviews/category-counts) */
+export interface UserReviewCategoryCounts {
+  total: number
+  /** 4개 카테고리 전부 포함 — 리뷰가 없는 카테고리는 0 */
+  counts: Record<SpiritCategory, number>
 }
 
 /** 메인 "최근 등록된 리뷰" 카드 항목 (GET /api/public/reviews/recent) */

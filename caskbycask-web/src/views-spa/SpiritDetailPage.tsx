@@ -12,6 +12,7 @@ import Spinner from '@/shared/components/Spinner'
 import Modal from '@/shared/components/Modal'
 import Button from '@/shared/components/Button'
 import ImageLightbox from '@/shared/components/ImageLightbox'
+import { scrollToPageTop } from '@/shared/utils/scrollToPageTop'
 import ReviewList from '@/domain/review/components/ReviewList'
 import { useReviews } from '@/domain/review/hooks/useReviews'
 import { buildBreadcrumbSchema, buildReviewSchema } from '@/shared/utils/seoSchema'
@@ -1002,12 +1003,14 @@ export default function SpiritDetailPage() {
 
   // 변형(다른 배치) 간 이동 시 갤러리·탭 상태 초기화
   // 리뷰 배치/병입 필터는 항상 "전체"로 초기화한다.
+  // 에디션이 바뀌면 내용 전체가 교체되므로 페이지 최상단으로 스크롤한다.
   useEffect(() => {
     setSelectedImg(0)
     setActiveTab('reviews')
     setLightboxIdx(-1)
     setReviewVariantFilterId(null)
     setPriceVariantId(null)
+    scrollToPageTop(null)
   }, [spiritId])
 
   if (isLoading) return <Spinner fullscreen />

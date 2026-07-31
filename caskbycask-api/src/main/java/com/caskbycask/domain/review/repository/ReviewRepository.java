@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Optional;
 import jakarta.persistence.LockModeType;
 
-public interface ReviewRepository extends JpaRepository<Review, Long> {
+public interface ReviewRepository extends JpaRepository<Review, Long>, ReviewQueryRepository {
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT r FROM Review r WHERE r.id = :reviewId")
@@ -111,23 +111,6 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
             """,
             countQuery = "SELECT COUNT(r) FROM Review r WHERE r.user.id = :userId")
     Page<Review> findByUserIdWithUser(@Param("userId") Long userId, Pageable pageable);
-
-    @Query(value = """
-            SELECT r FROM Review r
-            JOIN FETCH r.user
-            JOIN FETCH r.spirit s
-            WHERE r.user.id = :userId
-              AND r.isHidden = false
-              AND s.status = com.caskbycask.domain.spirit.entity.enums.SpiritStatus.ACTIVE
-            """,
-            countQuery = """
-            SELECT COUNT(r) FROM Review r
-            JOIN r.spirit s
-            WHERE r.user.id = :userId
-              AND r.isHidden = false
-              AND s.status = com.caskbycask.domain.spirit.entity.enums.SpiritStatus.ACTIVE
-            """)
-    Page<Review> findPublicByUserId(@Param("userId") Long userId, Pageable pageable);
 
     @Query(value = """
             SELECT r FROM Review r

@@ -9,9 +9,11 @@ import com.caskbycask.domain.review.dto.ReviewEmbedResponse;
 import com.caskbycask.domain.review.dto.CreateVariantReviewRequest;
 import com.caskbycask.domain.review.dto.ReviewImagePlanItem;
 import com.caskbycask.domain.review.dto.VariantReviewRequestResponse;
+import com.caskbycask.domain.review.dto.UserReviewCategoryCountResponse;
 import com.caskbycask.domain.review.entity.enums.VariantReviewRequestStatus;
 import com.caskbycask.domain.review.service.ReviewService;
 import com.caskbycask.domain.review.service.VariantReviewRequestService;
+import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
 import com.caskbycask.domain.user.dto.AdultVerificationRequest;
 import com.caskbycask.domain.user.dto.UpdateEmailSubscriptionRequest;
 import com.caskbycask.domain.user.dto.UpdateNicknameRequest;
@@ -280,8 +282,17 @@ public class UserController {
     @GetMapping("/{userId}/reviews")
     public ResponseEntity<ApiResponse<PageResponse<ReviewResponse>>> getUserReviews(
             @PathVariable Long userId,
+            @RequestParam(required = false) SpiritCategory category,
+            @RequestParam(required = false) String keyword,
             @PageableDefault(size = 10) Pageable pageable) {
+        return ResponseEntity.ok(ApiResponse.success(PageResponse.from(
+                reviewService.getPublicUserReviews(userId, category, keyword, pageable))));
+    }
+
+    @GetMapping("/{userId}/reviews/category-counts")
+    public ResponseEntity<ApiResponse<UserReviewCategoryCountResponse>> getUserReviewCategoryCounts(
+            @PathVariable Long userId) {
         return ResponseEntity.ok(ApiResponse.success(
-                PageResponse.from(reviewService.getPublicUserReviews(userId, pageable))));
+                reviewService.getPublicUserReviewCategoryCounts(userId)));
     }
 }

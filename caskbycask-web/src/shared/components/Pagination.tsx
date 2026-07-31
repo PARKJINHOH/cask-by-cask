@@ -4,10 +4,16 @@
   onPageChange: (page: number) => void
   className?: string
   scrollToTopOnChange?: boolean
+  /**
+   * 페이지 변경 후 스크롤 목표 위치.
+   * - `'list'` (기본): 목록 컨테이너 상단 — 댓글·마이페이지 탭처럼 페이지 중간에 있는 목록용
+   * - `'page'`: 페이지(또는 스크롤 컨테이너) 최상단 — 페이지 레벨 목록용
+   */
+  scrollTarget?: 'list' | 'page'
 }
 
 import { useRef } from 'react'
-import { scrollToElementTop } from '@/shared/utils/scrollToPageTop'
+import { scrollToElementTop, scrollToPageTop } from '@/shared/utils/scrollToPageTop'
 
 /** Returns at most 5 page numbers with '...' where needed. */
 function buildPages(current: number, total: number): (number | '...')[] {
@@ -34,6 +40,7 @@ export default function Pagination({
   onPageChange,
   className = '',
   scrollToTopOnChange = true,
+  scrollTarget = 'list',
 }: PaginationProps) {
   const navRef = useRef<HTMLElement>(null)
 
@@ -42,9 +49,13 @@ export default function Pagination({
   const handlePageChange = (page: number) => {
     if (page === currentPage || page < 0 || page >= totalPages) return
     onPageChange(page)
-    if (scrollToTopOnChange) {
-      scrollToElementTop(navRef.current?.parentElement ?? null, navRef.current)
+    if (!scrollToTopOnChange) return
+
+    if (scrollTarget === 'page') {
+      scrollToPageTop(navRef.current)
+      return
     }
+    scrollToElementTop(navRef.current?.parentElement ?? null, navRef.current)
   }
 
   return (

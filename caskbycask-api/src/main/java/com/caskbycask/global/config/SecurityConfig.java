@@ -172,6 +172,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/users/me/review-embeds").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/users/*/bottles").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/users/*/reviews").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/users/*/reviews/category-counts").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/score-history/level-config").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/legal/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/faq").permitAll()

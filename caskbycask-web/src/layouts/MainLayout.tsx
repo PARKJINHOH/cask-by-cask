@@ -149,6 +149,18 @@ type GNBItem =
   | { key: string; label: string; to: string }
   | { key: string; label: string; children: GNBChild[] }
 
+/**
+ * 마우스 hover 로만 드롭다운을 열고 닫기 위한 포인터 판별.
+ *
+ * 터치 디바이스는 탭 한 번에 pointerenter → focus → click 이 연달아 발생한다.
+ * pointerenter 로 열어버리면 직후의 click 이 "이미 열려 있음"으로 판단해 즉시 닫아
+ * 모바일에서 드롭다운이 아예 열리지 않는다. 따라서 hover 계열 핸들러는
+ * 실제 마우스 입력일 때만 동작시키고, 터치·펜 입력은 click 토글에 맡긴다.
+ */
+function isMousePointer(event: React.PointerEvent): boolean {
+  return event.pointerType === 'mouse'
+}
+
 function GNB() {
   const { t } = useTranslation()
   const location = useLocation()
@@ -244,7 +256,7 @@ function GNB() {
     <nav
       ref={navRef}
       className="bg-canvas border-b-2 border-neutral-200 sticky top-16 z-30"
-      onMouseLeave={() => setOpen(null)}
+      onPointerLeave={(event) => { if (isMousePointer(event)) setOpen(null) }}
     >
       <div
         className="user-layout-container overflow-x-auto overscroll-x-contain px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -260,11 +272,10 @@ function GNB() {
                 <li
                   key={menu.key}
                   className={`flex items-center ${isSpirits ? 'mr-1' : ''}`}
-                  onMouseEnter={() => setOpen(null)}
+                  onPointerEnter={(event) => { if (isMousePointer(event)) setOpen(null) }}
                 >
                   <Link
                     to={menu.to}
-                    onFocus={() => setOpen(null)}
                     className={
                       isSpirits
                         ? `inline-flex items-center px-2 sm:px-3.5 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold rounded-lg text-white transition-colors whitespace-nowrap ${isActive ? 'bg-primary-900 ring-2 ring-primary-300 ring-offset-1' : 'bg-primary-800 hover:bg-primary-900'}`
@@ -289,14 +300,15 @@ function GNB() {
               <li
                 key={menu.key}
                 className="relative"
-                onMouseEnter={(event) => openDropdown(menu.key, event.currentTarget)}
+                onPointerEnter={(event) => {
+                  if (isMousePointer(event)) openDropdown(menu.key, event.currentTarget)
+                }}
               >
                 <button
                   className={itemCls(isOpen || isActive)}
                   onClick={(event) => isOpen
                     ? setOpen(null)
                     : openDropdown(menu.key, event.currentTarget)}
-                  onFocus={(event) => openDropdown(menu.key, event.currentTarget)}
                   aria-haspopup="true"
                   aria-expanded={isOpen}
                 >
@@ -312,10 +324,12 @@ function GNB() {
               </li>
             )
           })}
-          <li className="ml-auto flex-shrink-0" onMouseEnter={() => setOpen(null)}>
+          <li
+            className="ml-auto flex-shrink-0"
+            onPointerEnter={(event) => { if (isMousePointer(event)) setOpen(null) }}
+          >
             <Link
               to="/calendar"
-              onFocus={() => setOpen(null)}
               className={`inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-lg
                 border transition-colors whitespace-nowrap ${isPathActive('/calendar')
                   ? 'border-primary-400 bg-primary-50 text-primary-800'

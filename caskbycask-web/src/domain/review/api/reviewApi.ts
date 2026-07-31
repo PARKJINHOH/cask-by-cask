@@ -8,9 +8,11 @@ import type {
   ReviewItem,
   ReviewImagePlanItem,
   UpdateReviewRequest,
+  UserReviewCategoryCounts,
   VariantReviewRequestItem,
   VariantReviewRequestStatus,
 } from '../types/review.types'
+import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
 import type { SocialPublishSelection } from '@/domain/social/types/social.types'
 
 export const reviewApi = {
@@ -132,8 +134,24 @@ export const reviewApi = {
   deleteMyReviewRequest: (requestId: number) =>
     axiosInstance.delete<ApiResponse<null>>(`/api/users/me/review-requests/${requestId}`),
 
-  getUserReviews: (userId: number, params?: { page?: number; size?: number }) =>
-    axiosInstance.get<ApiResponse<PageResponse<ReviewItem>>>(`/api/users/${userId}/reviews`, { params }),
+  getUserReviews: (
+    userId: number,
+    params?: { page?: number; size?: number; category?: SpiritCategory; keyword?: string },
+  ) =>
+    axiosInstance.get<ApiResponse<PageResponse<ReviewItem>>>(`/api/users/${userId}/reviews`, {
+      // category/keyword 는 값이 있을 때만 전송 (빈 문자열 전송 시 서버가 필터로 오인하지 않도록)
+      params: {
+        page: params?.page,
+        size: params?.size,
+        ...(params?.category ? { category: params.category } : {}),
+        ...(params?.keyword?.trim() ? { keyword: params.keyword.trim() } : {}),
+      },
+    }),
+
+  getUserReviewCategoryCounts: (userId: number) =>
+    axiosInstance.get<ApiResponse<UserReviewCategoryCounts>>(
+      `/api/users/${userId}/reviews/category-counts`,
+    ),
 }
 
 const multipartConfig = {
