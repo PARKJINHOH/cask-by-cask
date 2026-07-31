@@ -3,6 +3,7 @@ import type { ApiResponse, PageResponse } from '@/shared/types/common.types'
 import type {
   CreateReviewRequest,
   CreateVariantReviewRequest,
+  RecentReviewItem,
   ReviewEmbedItem,
   ReviewItem,
   ReviewImagePlanItem,
@@ -13,6 +14,12 @@ import type {
 import type { SocialPublishSelection } from '@/domain/social/types/social.types'
 
 export const reviewApi = {
+  /** 메인 "최근 등록된 리뷰" — 마스터 주류 단위 중복 없이 최신순 (공개 API) */
+  getRecentReviews: (size = 10) =>
+    axiosInstance.get<ApiResponse<RecentReviewItem[]>>('/api/public/reviews/recent', {
+      params: { size },
+    }),
+
   getReviews: (spiritId: number, params?: { sort?: string; page?: number; size?: number }) =>
     axiosInstance.get<ApiResponse<PageResponse<ReviewItem>>>(
       `/api/spirits/${spiritId}/reviews`,

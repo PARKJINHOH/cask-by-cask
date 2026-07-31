@@ -32,6 +32,31 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
             """)
     Optional<Review> findPublicById(@Param("reviewId") Long reviewId);
 
+    /**
+     * 메인 "최근 등록된 리뷰" 용 조회.
+     * 마스터 주류 단위(에디션은 부모로 묶음)로 가장 최근 리뷰 1건만 남기고 최신순으로 정렬한다.
+     * createdAt 은 JPA Auditing 으로만 채워지고 수정되지 않으므로 MAX(id) 를 최신 기준으로 사용한다.
+     * 삭제 리뷰는 Review 의 @SQLRestriction(deleted_at IS NULL) 이 서브쿼리까지 적용해 자동 제외된다.
+     */
+    @Query("""
+            SELECT r FROM Review r
+            JOIN FETCH r.user
+            JOIN FETCH r.spirit s
+            LEFT JOIN FETCH s.parent p
+            WHERE r.isHidden = false
+              AND s.status = com.caskbycask.domain.spirit.entity.enums.SpiritStatus.ACTIVE
+              AND r.id = (
+                  SELECT MAX(r2.id) FROM Review r2
+                  JOIN r2.spirit s2
+                  LEFT JOIN s2.parent p2
+                  WHERE COALESCE(p2.id, s2.id) = COALESCE(p.id, s.id)
+                    AND r2.isHidden = false
+                    AND s2.status = com.caskbycask.domain.spirit.entity.enums.SpiritStatus.ACTIVE
+              )
+            ORDER BY r.createdAt DESC, r.id DESC
+            """)
+    List<Review> findRecentDistinctBySpirit(Pageable pageable);
+
     // [점수이력 링크] 리뷰 id → 술 id 배치 조회 (행: [reviewId, spiritId])
     @Query("SELECT r.id, r.spirit.id FROM Review r WHERE r.id IN :ids")
     List<Object[]> findIdAndSpiritIdByIdIn(@Param("ids") Collection<Long> ids);

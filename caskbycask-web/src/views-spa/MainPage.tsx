@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 import { spiritApi } from '@/domain/spirit/api/spiritApi'
 import { eventApi } from '@/domain/event/api/eventApi'
+import { reviewApi } from '@/domain/review/api/reviewApi'
 import { useBanners } from '@/domain/banner/hooks/useBanners'
 import { usePopups } from '@/domain/popup/hooks/usePopups'
 import { usePinnedNotices } from '@/domain/notice/hooks/useNotices'
@@ -13,8 +14,11 @@ import { PopupViewer } from '@/domain/popup/components/PopupViewer'
 import BannerSlider from '@/domain/banner/components/BannerSlider'
 import SpiritCard from '@/shared/components/SpiritCard'
 import AdultBadge from '@/shared/components/AdultBadge'
-import { formatBoardDate } from '@/shared/utils/format'
+import { formatBoardDate, scoreColor } from '@/shared/utils/format'
+import { getLocalizedSpiritListNames } from '@/domain/spirit/utils/spiritDisplayName'
+import { getSpiritDetailPath } from '@/domain/spirit/utils/spiritUrl'
 import type { SpiritListItem } from '@/domain/spirit/types/spirit.types'
+import type { RecentReviewItem } from '@/domain/review/types/review.types'
 import type { NoticeListItem } from '@/domain/notice/types/notice.types'
 import type { PostListItem } from '@/domain/community/types/community.types'
 
@@ -55,6 +59,7 @@ const CATEGORY_MENU = [
 ] as const
 
 // ── 섹션 헤더 ────────────────────────────────────────────────────
+// link 가 없으면 타이틀만 노출한다. (전용 목록 페이지가 없는 섹션용)
 function SectionHeader({
   title,
   link,
@@ -62,8 +67,8 @@ function SectionHeader({
   badge,
 }: {
   title: string
-  link: string
-  linkLabel: string
+  link?: string
+  linkLabel?: string
   badge?: boolean
 }) {
   return (
@@ -72,22 +77,25 @@ function SectionHeader({
         {badge && <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />}
         <h2 className="text-base font-bold text-neutral-900 tracking-tight">{title}</h2>
       </div>
-      <Link
-        to={link}
-        className="text-xs text-primary-800 hover:text-primary-900 font-medium
-          flex items-center gap-0.5 transition-colors"
-      >
-        {linkLabel}
-        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <polyline points="9 18 15 12 9 6" />
-        </svg>
-      </Link>
+      {link && (
+        <Link
+          to={link}
+          className="text-xs text-primary-800 hover:text-primary-900 font-medium
+            flex items-center gap-0.5 transition-colors"
+        >
+          {linkLabel}
+          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </Link>
+      )}
     </div>
   )
 }
 
-// ── 술 카드 캐러셀 (PC: 4×1 페이지네이션 + drag, MO: 가로 터치/drag 스크롤) ───
-function SpiritCarousel({ spirits }: { spirits: SpiritListItem[] }) {
+// ── 가로 드래그 캐러셀 (PC: 화살표 + drag, MO: 가로 터치/drag 스크롤) ───
+// 술 카드/리뷰 카드가 공유한다. itemCount 가 바뀌면 화살표 표시를 다시 계산한다.
+function DragCarousel({ itemCount, children }: { itemCount: number; children: React.ReactNode }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const dragStart = useRef({ isDragging: false, startX: 0, scrollLeft: 0, moved: false, startTime: 0 })
   const [showLeft, setShowLeft] = useState(false)
@@ -108,7 +116,7 @@ function SpiritCarousel({ spirits }: { spirits: SpiritListItem[] }) {
       clearTimeout(timer)
       window.removeEventListener('resize', updateArrows)
     }
-  }, [spirits])
+  }, [itemCount])
 
   const onMouseDown = (e: React.MouseEvent) => {
     if (!containerRef.current) return
@@ -178,16 +186,7 @@ function SpiritCarousel({ spirits }: { spirits: SpiritListItem[] }) {
         onClickCapture={onClickCapture}
         onScroll={updateArrows}
       >
-        {spirits.map((s) => (
-          <div key={s.id} className="flex-shrink-0 w-32 sm:w-36 lg:w-44">
-            <SpiritCard
-              spirit={s}
-              imageFit="contain"
-              showSecondaryName={false}
-              uniformTwoLineName
-            />
-          </div>
-        ))}
+        {children}
       </div>
 
       {showLeft && (
@@ -214,6 +213,174 @@ function SpiritCarousel({ spirits }: { spirits: SpiritListItem[] }) {
         </button>
       )}
     </div>
+  )
+}
+
+// ── 술 카드 캐러셀 ───────────────────────────────────────────────
+function SpiritCarousel({ spirits }: { spirits: SpiritListItem[] }) {
+  return (
+    <DragCarousel itemCount={spirits.length}>
+      {spirits.map((s) => (
+        <div key={s.id} className="flex-shrink-0 w-32 sm:w-36 lg:w-44">
+          <SpiritCard
+            spirit={s}
+            imageFit="contain"
+            showSecondaryName={false}
+            uniformTwoLineName
+          />
+        </div>
+      ))}
+    </DragCarousel>
+  )
+}
+
+// ── 최근 등록된 리뷰 카드 캐러셀 ─────────────────────────────────
+// 표시명은 서버(SpiritSlugUtils)가 에디션·빈티지 접미어까지 만들어 내려주므로 그대로 사용한다.
+function RecentReviewCarousel({ reviews }: { reviews: RecentReviewItem[] }) {
+  const { i18n } = useTranslation()
+  const isEn = i18n.language === 'en'
+
+  return (
+    <DragCarousel itemCount={reviews.length}>
+      {reviews.map((review) => {
+        const name = isEn
+          ? (review.displayNameEn || review.displayNameKo)
+          : review.displayNameKo
+        const totalScore = Number(review.totalScore)
+
+        return (
+          <div key={review.id} className="flex-shrink-0 w-32 sm:w-36 lg:w-44">
+            <Link
+              to={`/reviews/${review.id}`}
+              title={name}
+              className="group block h-full overflow-hidden rounded-xl border border-neutral-200 bg-white
+                transition-all duration-200 hover:border-neutral-300 hover:shadow-md
+                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+            >
+              <div className="aspect-square w-full overflow-hidden bg-white">
+                {review.imageUrl ? (
+                  <img
+                    src={review.imageUrl}
+                    alt=""
+                    loading="lazy"
+                    draggable="false"
+                    className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
+                  />
+                ) : (
+                  <div
+                    className="flex h-full w-full items-center justify-center bg-neutral-50 text-neutral-300"
+                    aria-hidden="true"
+                  >
+                    <svg
+                      className="h-10 w-10" viewBox="0 0 24 24" fill="none"
+                      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+                    >
+                      <path d="M10 2h4" />
+                      <path d="M10.5 2v4.2a3 3 0 0 1-.45 1.58L9 9.6A4 4 0 0 0 8.5 11.6V19a3 3 0 0 0 3 3h1a3 3 0 0 0 3-3v-7.4a4 4 0 0 0-.5-2l-1.05-1.82A3 3 0 0 1 13.5 6.2V2" />
+                      <path d="M8.5 13h7" />
+                    </svg>
+                  </div>
+                )}
+              </div>
+
+              <div className="px-2.5 py-2">
+                <p className="line-clamp-2 min-h-[2.25rem] break-keep text-xs font-medium leading-snug
+                  text-neutral-800 transition-colors group-hover:text-primary-800">
+                  {name}
+                </p>
+                <div className="mt-1.5 flex items-center justify-between gap-1">
+                  <span
+                    className="text-sm font-bold"
+                    style={{ color: scoreColor(totalScore) }}
+                  >
+                    {totalScore.toFixed(1)}
+                  </span>
+                  <span className="truncate text-[11px] text-neutral-400" title={review.nickname}>
+                    {review.nickname}
+                  </span>
+                </div>
+                <p className="mt-0.5 text-[11px] text-neutral-400">
+                  {formatBoardDate(review.createdAt)}
+                </p>
+              </div>
+            </Link>
+          </div>
+        )
+      })}
+    </DragCarousel>
+  )
+}
+
+// ── 평점 Top 5 목록 (사이드바) ────────────────────────────────────
+// 사이드바 폭(PC 320px)에 맞춘 목록형. 순위 + 40px 썸네일 + 이름 + 평점.
+function TopRatedList({ spirits }: { spirits: SpiritListItem[] }) {
+  const { t, i18n } = useTranslation()
+
+  return (
+    <ol className="overflow-hidden rounded-xl border border-neutral-100 bg-white">
+      {spirits.map((spirit, index) => {
+        const { primaryName, secondaryName } = getLocalizedSpiritListNames(spirit, i18n.language)
+        const detailPath = getSpiritDetailPath(spirit, i18n.language)
+
+        return (
+          <li key={spirit.id} className="border-b border-neutral-50 last:border-b-0">
+            <Link
+              to={detailPath}
+              title={secondaryName ? `${primaryName} (${secondaryName})` : primaryName}
+              className="group flex items-center gap-2.5 px-3 py-2.5 transition-colors hover:bg-primary-50/40
+                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+            >
+              <span
+                className="w-4 flex-shrink-0 text-center text-xs font-bold text-primary-800"
+                aria-label={t('home.sections.rank', { rank: index + 1 })}
+              >
+                {index + 1}
+              </span>
+
+              <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-md bg-white">
+                {spirit.primaryImageUrl ? (
+                  <img
+                    src={spirit.primaryImageUrl}
+                    alt=""
+                    loading="lazy"
+                    draggable="false"
+                    className="h-full w-full object-contain"
+                  />
+                ) : (
+                  <div
+                    className="flex h-full w-full items-center justify-center bg-neutral-50 text-neutral-300"
+                    aria-hidden="true"
+                  >
+                    <svg
+                      className="h-5 w-5" viewBox="0 0 24 24" fill="none"
+                      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+                    >
+                      <path d="M10 2h4" />
+                      <path d="M10.5 2v4.2a3 3 0 0 1-.45 1.58L9 9.6A4 4 0 0 0 8.5 11.6V19a3 3 0 0 0 3 3h1a3 3 0 0 0 3-3v-7.4a4 4 0 0 0-.5-2l-1.05-1.82A3 3 0 0 1 13.5 6.2V2" />
+                      <path d="M8.5 13h7" />
+                    </svg>
+                  </div>
+                )}
+              </div>
+
+              <p className="min-w-0 flex-1 break-keep text-xs font-medium leading-snug text-neutral-800
+                line-clamp-2 transition-colors group-hover:text-primary-800">
+                {primaryName}
+              </p>
+
+              {spirit.avgScore != null && (
+                <span
+                  className="flex-shrink-0 text-xs font-bold"
+                  style={{ color: scoreColor(spirit.avgScore) }}
+                >
+                  {spirit.avgScore.toFixed(1)}
+                </span>
+              )}
+            </Link>
+          </li>
+        )
+      })}
+    </ol>
   )
 }
 
@@ -490,15 +657,23 @@ export default function MainPage() {
     if (popups.length > 0) setIsPopupOpen(true)
   }, [popups.length])
 
+  // 평점 Top 5 (사이드바 목록형)
   const { data: topRatedData } = useQuery({
-    queryKey: ['home', 'topRated'],
-    queryFn: () => spiritApi.search({ sort: 'SCORE_DESC', size: 10 }).then((r) => r.data.data!),
+    queryKey: ['home', 'topRated', 5],
+    queryFn: () => spiritApi.search({ sort: 'SCORE_DESC', size: 5 }).then((r) => r.data.data!),
     staleTime: 60_000,
   })
 
   const { data: recentData } = useQuery({
     queryKey: ['home', 'recent'],
     queryFn: () => spiritApi.search({ sort: 'LATEST', size: 10 }).then((r) => r.data.data!),
+    staleTime: 60_000,
+  })
+
+  // 최근 등록된 리뷰 (마스터 주류 단위 중복 없이 최신순, 최근 등록된 술과 동일 개수)
+  const { data: recentReviews = [] } = useQuery({
+    queryKey: ['home', 'recentReviews', 10],
+    queryFn: () => reviewApi.getRecentReviews(10).then((r) => r.data.data ?? []),
     staleTime: 60_000,
   })
 
@@ -528,7 +703,7 @@ export default function MainPage() {
 
       {/* 본문: 2열 (주 콘텐츠 + 사이드바) */}
       <div className="max-w-7xl mx-auto px-4 py-6 lg:py-8">
-        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_240px] lg:gap-7">
+        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-7">
 
           {/* 주 콘텐츠 */}
           <div className="space-y-10 min-w-0">
@@ -550,27 +725,37 @@ export default function MainPage() {
               </section>
             )}
 
-            {/* 평점 높은 술 */}
-            {topRated.length > 0 && (
+            {/* 최근 등록된 리뷰 (전용 목록 페이지가 없어 전체보기 링크 없음) */}
+            {recentReviews.length > 0 && (
               <section>
-                <SectionHeader
-                  title={t('home.sections.topRated')}
-                  link="/spirits?sort=SCORE_DESC"
-                  linkLabel={t('home.sections.viewAll')}
-                />
-                <SpiritCarousel spirits={topRated} />
+                <SectionHeader title={t('home.sections.recentReviews')} />
+                <RecentReviewCarousel reviews={recentReviews} />
               </section>
             )}
 
           </div>
 
-          {/* 사이드바 */}
-          <aside className="mt-10 lg:mt-0 space-y-5">
-            <EventCard />
+          {/* 사이드바 — PC: 시음회 → 평점 Top 5 → 배너 / MO: 평점 Top 5 → 시음회 → 배너 */}
+          <aside className="mt-10 flex flex-col gap-5 lg:mt-0">
+            <div className="order-2 lg:order-1">
+              <EventCard />
+            </div>
+
+            {/* 평점 Top 5 */}
+            {topRated.length > 0 && (
+              <section className="order-1 lg:order-2">
+                <SectionHeader
+                  title={t('home.sections.topRated5')}
+                  link="/spirits?sort=SCORE_DESC"
+                  linkLabel={t('home.sections.viewAll')}
+                />
+                <TopRatedList spirits={topRated} />
+              </section>
+            )}
 
             {/* 사이드바 배너 */}
             {sideBanners.some((banner) => banner.pcImage) && (
-              <div className="rounded-xl shadow-sm">
+              <div className="order-3 rounded-xl shadow-sm">
                 <BannerSlider
                   banners={sideBanners.filter((banner) => banner.pcImage)}
                   aspectClass="aspect-[4/5]"

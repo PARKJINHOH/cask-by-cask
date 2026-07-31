@@ -39,6 +39,20 @@ export interface ReviewItem {
   images: ReviewImageItem[]
 }
 
+/** 메인 "최근 등록된 리뷰" 카드 항목 (GET /api/public/reviews/recent) */
+export interface RecentReviewItem {
+  id: number
+  spiritId: number
+  displayNameKo: string
+  displayNameEn: string | null
+  canonicalPathKo?: string | null
+  canonicalPathEn?: string | null
+  imageUrl: string | null
+  nickname: string
+  totalScore: number
+  createdAt: string
+}
+
 export interface ReviewEmbedItem {
   id: number
   spiritId: number

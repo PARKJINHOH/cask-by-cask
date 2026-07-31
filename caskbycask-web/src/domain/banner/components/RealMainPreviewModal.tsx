@@ -4,14 +4,17 @@ import { sanitizeHtml } from '@/shared/utils/sanitize'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { spiritApi } from '@/domain/spirit/api/spiritApi'
+import { reviewApi } from '@/domain/review/api/reviewApi'
 import { useBanners } from '@/domain/banner/hooks/useBanners'
 import { usePinnedNotices } from '@/domain/notice/hooks/useNotices'
 import { usePosts } from '@/domain/community/hooks/usePosts'
 import SpiritCard from '@/shared/components/SpiritCard'
 import AdultBadge from '@/shared/components/AdultBadge'
-import { formatBoardDate } from '@/shared/utils/format'
+import { formatBoardDate, scoreColor } from '@/shared/utils/format'
+import { getLocalizedSpiritListNames } from '@/domain/spirit/utils/spiritDisplayName'
 import BannerSlider from '@/domain/banner/components/BannerSlider'
 import type { SpiritListItem } from '@/domain/spirit/types/spirit.types'
+import type { RecentReviewItem } from '@/domain/review/types/review.types'
 import type { NoticeListItem } from '@/domain/notice/types/notice.types'
 import type { PostListItem } from '@/domain/community/types/community.types'
 import type { BannerResponse } from '@/domain/banner/types/banner.types'
@@ -28,12 +31,13 @@ interface RealMainPreviewModalProps {
 }
 
 // ── 섹션 헤더 ────────────────────────────────────────────────────
+// linkLabel 이 없으면 타이틀만 노출한다. (실제 메인의 SectionHeader 와 동일 규칙)
 function SectionHeader({
   title,
   linkLabel,
 }: {
   title: string
-  linkLabel: string
+  linkLabel?: string
 }) {
   return (
     <div className="flex items-center justify-between mb-4 select-none">
@@ -41,18 +45,90 @@ function SectionHeader({
         <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
         <h2 className="text-base font-bold text-neutral-900 tracking-tight">{title}</h2>
       </div>
-      <div className="text-xs text-primary-800 font-medium flex items-center gap-0.5">
-        {linkLabel}
-        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <polyline points="9 18 15 12 9 6" />
-        </svg>
-      </div>
+      {linkLabel && (
+        <div className="text-xs text-primary-800 font-medium flex items-center gap-0.5">
+          {linkLabel}
+          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </div>
+      )}
     </div>
   )
 }
 
-// ── 술 카드 캐러셀 (PC: 4×1 페이지네이션 + drag, MO: 가로 터치/drag 스크롤) ───
-function SpiritCarousel({ spirits }: { spirits: SpiritListItem[] }) {
+// ── 병 모양 플레이스홀더 (이미지 없는 주류) ───────────────────────
+function BottlePlaceholder({ className }: { className: string }) {
+  return (
+    <div
+      className="flex h-full w-full items-center justify-center bg-neutral-50 text-neutral-300"
+      aria-hidden="true"
+    >
+      <svg
+        className={className} viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+      >
+        <path d="M10 2h4" />
+        <path d="M10.5 2v4.2a3 3 0 0 1-.45 1.58L9 9.6A4 4 0 0 0 8.5 11.6V19a3 3 0 0 0 3 3h1a3 3 0 0 0 3-3v-7.4a4 4 0 0 0-.5-2l-1.05-1.82A3 3 0 0 1 13.5 6.2V2" />
+        <path d="M8.5 13h7" />
+      </svg>
+    </div>
+  )
+}
+
+// ── 평점 Top 5 목록 (사이드바) — 실제 메인의 TopRatedList 모사 ─────
+function TopRatedList({ spirits }: { spirits: SpiritListItem[] }) {
+  const { i18n } = useTranslation()
+
+  return (
+    <ol className="overflow-hidden rounded-xl border border-neutral-100 bg-white select-none">
+      {spirits.map((spirit, index) => {
+        const { primaryName } = getLocalizedSpiritListNames(spirit, i18n.language)
+
+        return (
+          <li
+            key={spirit.id}
+            className="flex items-center gap-2.5 border-b border-neutral-50 px-3 py-2.5 last:border-b-0"
+          >
+            <span className="w-4 flex-shrink-0 text-center text-xs font-bold text-primary-800">
+              {index + 1}
+            </span>
+
+            <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-md bg-white">
+              {spirit.primaryImageUrl ? (
+                <img
+                  src={spirit.primaryImageUrl}
+                  alt=""
+                  loading="lazy"
+                  draggable="false"
+                  className="h-full w-full object-contain"
+                />
+              ) : (
+                <BottlePlaceholder className="h-5 w-5" />
+              )}
+            </div>
+
+            <p className="min-w-0 flex-1 break-keep text-xs font-medium leading-snug text-neutral-800 line-clamp-2">
+              {primaryName}
+            </p>
+
+            {spirit.avgScore != null && (
+              <span
+                className="flex-shrink-0 text-xs font-bold"
+                style={{ color: scoreColor(spirit.avgScore) }}
+              >
+                {spirit.avgScore.toFixed(1)}
+              </span>
+            )}
+          </li>
+        )
+      })}
+    </ol>
+  )
+}
+
+// ── 가로 드래그 캐러셀 (PC: 화살표 + drag, MO: 가로 터치/drag 스크롤) ───
+function DragCarousel({ itemCount, children }: { itemCount: number; children: React.ReactNode }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const dragStart = useRef({ isDragging: false, startX: 0, scrollLeft: 0, moved: false, startTime: 0 })
   const [showLeft, setShowLeft] = useState(false)
@@ -72,7 +148,7 @@ function SpiritCarousel({ spirits }: { spirits: SpiritListItem[] }) {
       clearTimeout(timer)
       window.removeEventListener('resize', updateArrows)
     }
-  }, [spirits])
+  }, [itemCount])
 
   const onMouseDown = (e: React.MouseEvent) => {
     if (!containerRef.current) return
@@ -132,16 +208,7 @@ function SpiritCarousel({ spirits }: { spirits: SpiritListItem[] }) {
         onDragStart={(e) => e.preventDefault()}
         onScroll={updateArrows}
       >
-        {spirits.map((s) => (
-          <div key={s.id} className="flex-shrink-0 w-32 sm:w-36 lg:w-44 pointer-events-none">
-            <SpiritCard
-              spirit={s}
-              imageFit="contain"
-              showSecondaryName={false}
-              uniformTwoLineName
-            />
-          </div>
-        ))}
+        {children}
       </div>
 
       {showLeft && (
@@ -170,6 +237,76 @@ function SpiritCarousel({ spirits }: { spirits: SpiritListItem[] }) {
         </button>
       )}
     </div>
+  )
+}
+
+// ── 술 카드 캐러셀 ───────────────────────────────────────────────
+function SpiritCarousel({ spirits }: { spirits: SpiritListItem[] }) {
+  return (
+    <DragCarousel itemCount={spirits.length}>
+      {spirits.map((s) => (
+        <div key={s.id} className="flex-shrink-0 w-32 sm:w-36 lg:w-44 pointer-events-none">
+          <SpiritCard
+            spirit={s}
+            imageFit="contain"
+            showSecondaryName={false}
+            uniformTwoLineName
+          />
+        </div>
+      ))}
+    </DragCarousel>
+  )
+}
+
+// ── 최근 등록된 리뷰 카드 캐러셀 — 실제 메인의 RecentReviewCarousel 모사 ──
+function RecentReviewCarousel({ reviews }: { reviews: RecentReviewItem[] }) {
+  const { i18n } = useTranslation()
+  const isEn = i18n.language === 'en'
+
+  return (
+    <DragCarousel itemCount={reviews.length}>
+      {reviews.map((review) => {
+        const name = isEn
+          ? (review.displayNameEn || review.displayNameKo)
+          : review.displayNameKo
+        const totalScore = Number(review.totalScore)
+
+        return (
+          <div
+            key={review.id}
+            className="flex-shrink-0 w-32 overflow-hidden rounded-xl border border-neutral-200 bg-white
+              pointer-events-none sm:w-36 lg:w-44"
+          >
+            <div className="aspect-square w-full overflow-hidden bg-white">
+              {review.imageUrl ? (
+                <img
+                  src={review.imageUrl}
+                  alt=""
+                  loading="lazy"
+                  draggable="false"
+                  className="h-full w-full object-contain"
+                />
+              ) : (
+                <BottlePlaceholder className="h-10 w-10" />
+              )}
+            </div>
+
+            <div className="px-2.5 py-2">
+              <p className="line-clamp-2 min-h-[2.25rem] break-keep text-xs font-medium leading-snug text-neutral-800">
+                {name}
+              </p>
+              <div className="mt-1.5 flex items-center justify-between gap-1">
+                <span className="text-sm font-bold" style={{ color: scoreColor(totalScore) }}>
+                  {totalScore.toFixed(1)}
+                </span>
+                <span className="truncate text-[11px] text-neutral-400">{review.nickname}</span>
+              </div>
+              <p className="mt-0.5 text-[11px] text-neutral-400">{formatBoardDate(review.createdAt)}</p>
+            </div>
+          </div>
+        )
+      })}
+    </DragCarousel>
   )
 }
 
@@ -400,8 +537,8 @@ export default function RealMainPreviewModal({
   const { data: dbSideBanners = [] } = useBanners(bannerLanguage, 'SIDE')
 
   const { data: topRatedData } = useQuery({
-    queryKey: ['preview', 'topRated'],
-    queryFn: () => spiritApi.search({ sort: 'SCORE_DESC', size: 10 }).then((r) => r.data.data!),
+    queryKey: ['preview', 'topRated', 5],
+    queryFn: () => spiritApi.search({ sort: 'SCORE_DESC', size: 5 }).then((r) => r.data.data!),
     staleTime: 60_000,
     enabled: open,
   })
@@ -409,6 +546,13 @@ export default function RealMainPreviewModal({
   const { data: recentData } = useQuery({
     queryKey: ['preview', 'recent'],
     queryFn: () => spiritApi.search({ sort: 'LATEST', size: 10 }).then((r) => r.data.data!),
+    staleTime: 60_000,
+    enabled: open,
+  })
+
+  const { data: recentReviews = [] } = useQuery({
+    queryKey: ['preview', 'recentReviews', 10],
+    queryFn: () => reviewApi.getRecentReviews(10).then((r) => r.data.data ?? []),
     staleTime: 60_000,
     enabled: open,
   })
@@ -533,7 +677,7 @@ export default function RealMainPreviewModal({
                       </header>
 
                       {/* 본문 레이아웃: 2열 */}
-                      <div className="px-6 py-8 grid grid-cols-[minmax(0,1fr)_240px] gap-6 bg-neutral-50/50">
+                      <div className="px-6 py-8 grid grid-cols-[minmax(0,1fr)_320px] gap-6 bg-neutral-50/50">
                         
                         {/* 주 콘텐츠 (게시판 리스트 모사) */}
                         <div className="space-y-10 min-w-0">
@@ -560,21 +704,29 @@ export default function RealMainPreviewModal({
                             </section>
                           )}
 
-                          {/* 평점 높은 술 */}
-                          {topRated.length > 0 && (
+                          {/* 최근 등록된 리뷰 */}
+                          {recentReviews.length > 0 && (
                             <section>
-                              <SectionHeader
-                                title={t('home.sections.topRated')}
-                                linkLabel={t('home.sections.viewAll')}
-                              />
-                              <SpiritCarousel spirits={topRated} />
+                              <SectionHeader title={t('home.sections.recentReviews')} />
+                              <RecentReviewCarousel reviews={recentReviews} />
                             </section>
                           )}
                         </div>
 
-                        {/* 사이드바 */}
+                        {/* 사이드바 — 시음회 → 평점 Top 5 → 배너 */}
                         <aside className="space-y-5">
                           <EventCard />
+
+                          {/* 평점 Top 5 */}
+                          {topRated.length > 0 && (
+                            <section>
+                              <SectionHeader
+                                title={t('home.sections.topRated5')}
+                                linkLabel={t('home.sections.viewAll')}
+                              />
+                              <TopRatedList spirits={topRated} />
+                            </section>
+                          )}
 
                           {/* 사이드바 배너 영역 렌더링 */}
                           {sideBanners.some((banner) => banner.pcImage) && (
@@ -647,14 +799,22 @@ export default function RealMainPreviewModal({
                             </section>
                           )}
 
-                          {/* 평점 높은 술 */}
+                          {/* 최근 등록된 리뷰 */}
+                          {recentReviews.length > 0 && (
+                            <section>
+                              <SectionHeader title={t('home.sections.recentReviews')} />
+                              <RecentReviewCarousel reviews={recentReviews} />
+                            </section>
+                          )}
+
+                          {/* 평점 Top 5 (모바일에선 시음회 위) */}
                           {topRated.length > 0 && (
                             <section>
                               <SectionHeader
-                                title={t('home.sections.topRated')}
+                                title={t('home.sections.topRated5')}
                                 linkLabel={t('home.sections.viewAll')}
                               />
-                              <SpiritCarousel spirits={topRated} />
+                              <TopRatedList spirits={topRated} />
                             </section>
                           )}
 

@@ -73,7 +73,7 @@
 /* 사용자 본문은 긴 문장과 게시글 가독성을 위해 공통 외곽보다 좁게 유지한다. */
 .user-content-container {
   width: 100%;
-  max-width: 65rem;
+  max-width: 70rem;
   margin-inline: auto;
 }
 

@@ -241,7 +241,9 @@
     },
     "sections": {
       "recent": "Recently Added",
-      "topRated": "Top Rated",
+      "recentReviews": "Latest Reviews",
+      "topRated5": "Top 5 Rated",
+      "rank": "No. {{rank}}",
       "popular": "Most Popular",
       "weeklyPopular": "Trending This Week",
       "notices": "Notices",

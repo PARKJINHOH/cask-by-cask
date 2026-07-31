@@ -241,7 +241,9 @@
     },
     "sections": {
       "recent": "최근 등록된 술",
-      "topRated": "평점 높은 술",
+      "recentReviews": "최근 등록된 리뷰",
+      "topRated5": "평점 Top 5",
+      "rank": "{{rank}}위",
       "popular": "인기 술",
       "weeklyPopular": "이번 주 인기",
       "notices": "공지사항",
