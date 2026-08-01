@@ -16,6 +16,7 @@ export interface WineDetailForm {
   harvestMethod: string; fermentationVessel: string; oakType: string; oakAgedMonths: string
   // 관능(맛) 지표
   sweetness: string; body: string; acidity: string; tannin: string
+  notes: string
 }
 
 export const DEFAULT_WINE: WineDetailForm = {
@@ -25,6 +26,7 @@ export const DEFAULT_WINE: WineDetailForm = {
   soilType: '', altitudeM: '', harvestMethod: '', fermentationVessel: '',
   oakType: '', oakAgedMonths: '',
   sweetness: '', body: '', acidity: '', tannin: '',
+  notes: '',
 }
 
 interface Props {
@@ -314,6 +316,15 @@ export default function WineDetailSection({ value, onChange, errors, admin = tru
             </label>
           ))}
         </div>
+      </div>
+
+      {/* 기타 정보 (참고용 자유 입력) */}
+      <div>
+        <label className={LABEL}>기타 정보</label>
+        <textarea value={value.notes} rows={3} maxLength={500}
+          onChange={(e) => onChange({ notes: e.target.value })}
+          placeholder="출시·양조 관련 참고 정보를 입력하세요."
+          className={`${INPUT} resize`} />
       </div>
     </div>
   )

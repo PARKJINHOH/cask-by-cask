@@ -70,6 +70,10 @@ public record WineDetailRequest(
         WineIntensity acidity,
 
         @Schema(description = "타닌 (LOW, MEDIUM, HIGH)")
-        WineIntensity tannin
+        WineIntensity tannin,
+
+        @Schema(description = "기타 정보 (출시·양조 관련 참고 설명)")
+        @Size(max = 500, message = "기타 정보는 500자 이하여야 합니다.")
+        String notes
 
 ) {}

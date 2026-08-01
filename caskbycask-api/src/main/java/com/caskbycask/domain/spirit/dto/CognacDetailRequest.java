@@ -35,6 +35,10 @@ public record CognacDetailRequest(
 
         @Schema(description = "캐스크 피니시 / 추가 숙성 (자유 입력)")
         @Size(max = 200, message = "캐스크 피니시는 200자 이하여야 합니다.")
-        String caskFinish
+        String caskFinish,
+
+        @Schema(description = "기타 정보 (출시·숙성 관련 참고 설명)")
+        @Size(max = 500, message = "기타 정보는 500자 이하여야 합니다.")
+        String notes
 
 ) {}

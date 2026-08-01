@@ -232,6 +232,7 @@ export interface WineDetailResponse {
   body: WineBody | null
   acidity: WineIntensity | null
   tannin: WineIntensity | null
+  notes: string | null
 }
 
 export interface CognacDetailResponse {
@@ -243,6 +244,7 @@ export interface CognacDetailResponse {
   ageYears: number | null
   oakType: string | null
   caskFinish: string | null
+  notes: string | null
 }
 
 export interface OtherDetailResponse {

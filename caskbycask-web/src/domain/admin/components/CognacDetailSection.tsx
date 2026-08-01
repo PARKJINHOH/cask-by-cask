@@ -3,11 +3,11 @@ import { RequiredMark } from '@/shared/components/FormFieldLabel'
 
 export interface CognacDetailForm {
   grade: string; cru: string; isFineChampagne: boolean; blendDetail: string
-  vintageYear: string; ageYears: string; oakType: string; caskFinish: string
+  vintageYear: string; ageYears: string; oakType: string; caskFinish: string; notes: string
 }
 export const DEFAULT_COGNAC: CognacDetailForm = {
   grade: '', cru: '', isFineChampagne: false, blendDetail: '',
-  vintageYear: '', ageYears: '', oakType: '', caskFinish: '',
+  vintageYear: '', ageYears: '', oakType: '', caskFinish: '', notes: '',
 }
 
 // 프렌치 오크 숲(원산지) — 꼬냑 숙성에 주로 쓰임
@@ -146,6 +146,15 @@ export default function CognacDetailSection({ value, onChange, errors }: Props) 
         <label className={LABEL}>블렌드 설명</label>
         <textarea value={value.blendDetail} rows={3} maxLength={300}
           onChange={(e) => onChange({ blendDetail: e.target.value })}
+          className={`${INPUT} resize`} />
+      </div>
+
+      {/* 기타 정보 (참고용 자유 입력) */}
+      <div>
+        <label className={LABEL}>기타 정보</label>
+        <textarea value={value.notes} rows={3} maxLength={500}
+          onChange={(e) => onChange({ notes: e.target.value })}
+          placeholder="출시·숙성 관련 참고 정보를 입력하세요."
           className={`${INPUT} resize`} />
       </div>
     </div>

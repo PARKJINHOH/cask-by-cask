@@ -558,6 +558,7 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
         oakAgedMonths: w?.oakAgedMonths?.toString() ?? '',
         sweetness: w?.sweetness ?? '', body: w?.body ?? '',
         acidity: w?.acidity ?? '', tannin: w?.tannin ?? '',
+        notes: w?.notes ?? '',
       })
     }
     if (s.cognacDetail) {
@@ -567,6 +568,7 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
         isFineChampagne: c.isFineChampagne ?? false, blendDetail: c.blendDetail ?? '',
         vintageYear: c.vintageYear?.toString() ?? '', ageYears: c.ageYears?.toString() ?? '',
         oakType: c.oakType ?? '', caskFinish: c.caskFinish ?? '',
+        notes: c.notes ?? '',
       })
     }
     if (s.otherDetail) {
@@ -654,6 +656,7 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
         oakAgedMonths: w?.oakAgedMonths?.toString() ?? '',
         sweetness: w?.sweetness ?? '', body: w?.body ?? '',
         acidity: w?.acidity ?? '', tannin: w?.tannin ?? '',
+        notes: w?.notes ?? '',
       })
     } else if (r.category === 'COGNAC') {
       const c = r.cognacDetail
@@ -663,6 +666,7 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
         isFineChampagne: c?.isFineChampagne ?? false, blendDetail: c?.blendDetail ?? '',
         vintageYear: c?.vintageYear?.toString() ?? '', ageYears: c?.ageYears?.toString() ?? '',
         oakType: c?.oakType ?? '', caskFinish: c?.caskFinish ?? '',
+        notes: c?.notes ?? '',
       })
     } else if (r.category === 'OTHER') {
       const o = r.otherDetail
@@ -903,6 +907,7 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
           body: wineDetail.body || null,
           acidity: wineDetail.acidity || null,
           tannin: wineDetail.tannin || null,
+          notes: wineDetail.notes || null,
         },
       }
       case 'COGNAC': return {
@@ -915,6 +920,7 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
           ageYears: cognacDetail.ageYears ? Number(cognacDetail.ageYears) : null,
           oakType: cognacDetail.oakType || null,
           caskFinish: cognacDetail.caskFinish || null,
+          notes: cognacDetail.notes || null,
         },
       }
       case 'OTHER': return {

@@ -56,6 +56,9 @@ public record WineDetailResponse(
         WineIntensity acidity,
 
         @Schema(description = "타닌 (LOW, MEDIUM, HIGH)")
-        WineIntensity tannin
+        WineIntensity tannin,
+
+        @Schema(description = "기타 정보")
+        String notes
 
 ) {}

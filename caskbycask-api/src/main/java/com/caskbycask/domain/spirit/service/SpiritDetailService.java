@@ -218,6 +218,7 @@ public class SpiritDetailService {
         extra.put("fermentationVessel", req.fermentationVessel());
         extra.put("oakType", isOakAged ? req.oakType() : null);
         extra.put("oakAgedMonths", isOakAged ? req.oakAgedMonths() : null);
+        extra.put("notes", req.notes());
         // 관능(맛) 지표는 전용 컬럼으로 저장 (검색/필터 대상) — extraData 에는 넣지 않음
         String extraJson = serialize(extra);
 
@@ -276,6 +277,7 @@ public class SpiritDetailService {
         extra.put("ageYears", req.ageYears());
         extra.put("oakType", req.oakType());
         extra.put("caskFinish", req.caskFinish());
+        extra.put("notes", req.notes());
         String extraJson = serialize(extra);
 
         cognacDetailRepo.findById(spirit.getId()).ifPresentOrElse(
@@ -429,7 +431,8 @@ public class SpiritDetailService {
                 str(extra, "fermentationVessel"), str(extra, "oakType"),
                 num(extra, "oakAgedMonths"),
                 detail.getSweetness(), detail.getBody(),
-                detail.getAcidity(), detail.getTannin()
+                detail.getAcidity(), detail.getTannin(),
+                str(extra, "notes")
         );
     }
 
@@ -440,7 +443,8 @@ public class SpiritDetailService {
                 detail.getGrade(), detail.getCru(), detail.getIsFineChampagne(),
                 str(extra, "blendDetail"),
                 num(extra, "vintageYear"), num(extra, "ageYears"),
-                str(extra, "oakType"), str(extra, "caskFinish")
+                str(extra, "oakType"), str(extra, "caskFinish"),
+                str(extra, "notes")
         );
     }
 

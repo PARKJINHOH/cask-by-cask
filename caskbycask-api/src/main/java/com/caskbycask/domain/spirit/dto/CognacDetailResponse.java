@@ -28,6 +28,9 @@ public record CognacDetailResponse(
         String oakType,
 
         @Schema(description = "캐스크 피니시 / 추가 숙성")
-        String caskFinish
+        String caskFinish,
+
+        @Schema(description = "기타 정보")
+        String notes
 
 ) {}
