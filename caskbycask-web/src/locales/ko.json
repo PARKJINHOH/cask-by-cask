@@ -78,6 +78,7 @@
     "fontSans": "고딕",
     "fontMono": "모노",
     "toolbar": {
+      "label": "서식 도구 모음",
       "groups": {
         "history": "편집 이력",
         "font": "글꼴과 크기",
@@ -87,6 +88,7 @@
         "list": "목록",
         "block": "문단 블록",
         "insert": "콘텐츠 삽입",
+        "siteCards": "CaskByCask 전용 카드",
         "tableEdit": "표 편집",
         "imageEdit": "이미지 크기"
       },

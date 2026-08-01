@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect } from 'react'
+import { useRef, useState } from 'react'
 import type { Editor } from '@tiptap/react'
 import { useTranslation } from 'react-i18next'
+import EditorPopover from './EditorPopover'
 import EditorTooltip from './EditorTooltip'
 
 // 글자 색상 팔레트 (공통)
@@ -18,71 +19,77 @@ interface Props {
 export default function EditorColorPicker({ editor }: Props) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+  const [autoFocus, setAutoFocus] = useState(false)
+  const triggerRef = useRef<HTMLButtonElement>(null)
   const current = (editor.getAttributes('textStyle').color as string | undefined) ?? undefined
 
-  useEffect(() => {
-    const onDocMouseDown = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', onDocMouseDown)
-    return () => document.removeEventListener('mousedown', onDocMouseDown)
-  }, [])
-
   return (
-    <div ref={ref} className="relative">
+    <>
       <EditorTooltip content={t('editor.toolbar.textColor')} disabled={open}>
         <button
+          ref={triggerRef}
           type="button"
+          data-toolbar-item=""
           aria-label={t('editor.toolbar.textColor')}
           aria-expanded={open}
           aria-haspopup="dialog"
-          onMouseDown={(e) => { e.preventDefault(); setOpen((o) => !o) }}
-          className="h-8 w-8 flex flex-col items-center justify-center rounded text-neutral-600 hover:bg-neutral-100 transition-colors"
+          // 동작은 click 에서 처리 — 키보드(Enter/Space)로도 열 수 있어야 한다.
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={(e) => {
+            setAutoFocus(e.detail === 0)
+            setOpen((o) => !o)
+          }}
+          className="h-7 w-7 flex flex-col items-center justify-center rounded text-neutral-600 hover:bg-neutral-100 transition-colors"
         >
           <span className="text-xs font-bold leading-none">A</span>
           <span className="block w-4 h-1 rounded-sm mt-0.5" style={{ backgroundColor: current ?? '#111827' }} />
         </button>
       </EditorTooltip>
 
-      {open && (
-        <div className="absolute z-30 mt-1 left-0 p-2 bg-white border border-neutral-200 rounded-lg shadow-lg w-[176px]">
-          <div className="grid grid-cols-6 gap-1">
-            {COLORS.map((c) => {
-              const isActive = current?.toLowerCase() === c.toLowerCase()
-              return (
-                <button
-                  key={c}
-                  type="button"
-                  title={c}
-                  aria-label={c}
-                  onMouseDown={(e) => {
-                    e.preventDefault()
-                    editor.chain().focus().setColor(c).run()
-                    setOpen(false)
-                  }}
-                  className={[
-                    'w-5 h-5 rounded transition-transform hover:scale-110',
-                    isActive ? 'ring-2 ring-offset-1 ring-primary-500' : 'border border-neutral-200',
-                  ].join(' ')}
-                  style={{ backgroundColor: c }}
-                />
-              )
-            })}
-          </div>
-          <button
-            type="button"
-            onMouseDown={(e) => {
-              e.preventDefault()
-              editor.chain().focus().unsetColor().run()
-              setOpen(false)
-            }}
-            className="mt-2 w-full text-xs text-neutral-500 hover:text-neutral-700 py-1 border-t border-neutral-100"
-          >
-            {t('editor.toolbar.removeTextColor')}
-          </button>
+      <EditorPopover
+        anchorRef={triggerRef}
+        open={open}
+        onClose={() => setOpen(false)}
+        autoFocus={autoFocus}
+        label={t('editor.toolbar.textColor')}
+        className="w-[176px] p-2"
+      >
+        <div className="grid grid-cols-6 gap-1">
+          {COLORS.map((c) => {
+            const isActive = current?.toLowerCase() === c.toLowerCase()
+            return (
+              <button
+                key={c}
+                type="button"
+                title={c}
+                aria-label={c}
+                aria-pressed={isActive}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  editor.chain().focus().setColor(c).run()
+                  setOpen(false)
+                }}
+                className={[
+                  'w-5 h-5 rounded transition-transform hover:scale-110',
+                  isActive ? 'ring-2 ring-offset-1 ring-primary-500' : 'border border-neutral-200',
+                ].join(' ')}
+                style={{ backgroundColor: c }}
+              />
+            )
+          })}
         </div>
-      )}
-    </div>
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => {
+            editor.chain().focus().unsetColor().run()
+            setOpen(false)
+          }}
+          className="mt-2 w-full text-xs text-neutral-600 hover:text-neutral-800 py-1 border-t border-neutral-100"
+        >
+          {t('editor.toolbar.removeTextColor')}
+        </button>
+      </EditorPopover>
+    </>
   )
 }

@@ -3,7 +3,8 @@
    여기서는 편집기 고유 동작(최소 높이, 플레이스홀더, 셀 선택, 노드 선택)만 정의. */
 
 .di-richtext {
-  /* 콘텐츠가 늘어도 브라우저 페이지를 밀어내지 않고 편집 영역 안에서 스크롤한다.
+  /* 데스크톱 기준 — 콘텐츠가 늘어도 페이지를 밀어내지 않고 편집 영역 안에서 스크롤한다.
+     (모바일은 아래 미디어 쿼리에서 내부 스크롤 없이 페이지 스크롤만 쓰도록 덮어쓴다)
      화면 높이에 따라 기본 높이는 달라지며 수동 리사이즈도 뷰포트 안에서 제한한다.
      iOS Safari 에서 contenteditable 이 flex item 일 때 캐럿(커서)이 가로로 누워버리는
      렌더링 버그가 있으므로, flex 레이아웃 대신 block 레이아웃을 사용한다. */
@@ -14,7 +15,8 @@
   overflow-y: auto;
   resize: vertical;
   scrollbar-gutter: stable;
-  overscroll-behavior: contain;
+  /* 편집 영역 끝에 닿으면 페이지 스크롤로 자연스럽게 이어지도록 연쇄를 막지 않는다. */
+  overscroll-behavior-y: auto;
   box-sizing: border-box;
 }
 
@@ -41,15 +43,90 @@
   outline: none;
 }
 
+/* 모바일/태블릿 — 편집 영역을 내용 길이에 맞춰 늘리고 내부 스크롤을 아예 없앤다.
+   화면을 채우는 스크롤 박스가 사라지므로 세로 스크롤은 항상 페이지 스크롤 하나로 동작한다.
+   (툴바는 sticky 로 화면에 남으므로 길게 써도 서식 도구에 접근할 수 있다) */
+@media (max-width: 767px) {
+  .di-richtext {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+    resize: none;
+    /* 기본 입력 영역 높이 — 가상 키보드가 화면의 40~50% 를 덮으므로, 키보드가 올라온 상태에서도
+       편집 영역이 남은 공간을 채우도록 화면 높이의 약 절반으로 잡는다. 작은 기기에서는 300px,
+       아주 큰 기기에서는 520px 로 제한해 다른 입력 항목이 화면 밖으로 밀리지 않게 한다.
+       dvh 는 주소창이 접힐 때마다 값이 변해 글 쓰는 도중 높이가 흔들리므로, 주소창이 펼쳐진
+       상태(최소 뷰포트)를 기준으로 하는 svh 를 쓴다. svh 미지원 브라우저는 위 px 값을 쓴다. */
+    min-height: 360px;
+    min-height: clamp(300px, 52svh, 520px);
+  }
+
+  /* 짧은 입력 폼(문의하기 등)은 더 낮게 */
+  .di-richtext.di-richtext--compact {
+    min-height: 260px;
+    min-height: clamp(240px, 38svh, 380px);
+  }
+
+  /* 부모 높이가 auto 라 100% 가 잡히지 않는다. inherit 로 같은 높이를 물려받아
+     빈 영역을 눌러도 편집 영역이 잡히게 한다. */
+  .di-richtext .ProseMirror {
+    min-height: inherit;
+  }
+}
+
+/* 툴바는 편집 영역이 길어져도 화면에 남는다. 래퍼가 overflow:clip 이라
+   스크롤 컨테이너를 만들지 않으므로 페이지 스크롤 기준으로 sticky 가 동작한다. */
+.rich-text-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
 .rich-text-toolbar .di-toolbar-button > svg {
   width: 1rem !important;
   height: 1rem !important;
 }
 
+/* 키보드 포커스 표시 — 툴바 버튼에는 hover 스타일만 있어 포커스 위치가 보이지 않았다. */
+.rich-text-toolbar [data-toolbar-item]:focus-visible,
+[data-editor-popover] button:focus-visible {
+  outline: 2px solid var(--color-primary-600);
+  outline-offset: 1px;
+  border-radius: 0.25rem;
+}
+
+/* 모바일 — 툴바 행이 3~4줄로 접히며 화면을 차지하던 것을 행별 가로 스크롤로 바꾼다.
+   (행당 높이가 고정되어 툴바 전체 높이가 1/2 이하로 줄어든다) */
+@media (max-width: 767px) {
+  .rich-text-toolbar .di-toolbar-row {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+  .rich-text-toolbar .di-toolbar-row::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* 사이트 전용 카드(주류 정보 / 내 리뷰) 버튼 — 일반 서식 도구와 색으로도 구분한다. */
+.rich-text-toolbar .di-toolbar-site-group {
+  border-color: var(--color-primary-200);
+  background-color: #ffffff;
+}
+.rich-text-toolbar .di-toolbar-site-group .di-toolbar-button {
+  color: var(--color-primary-700);
+}
+.rich-text-toolbar .di-toolbar-site-group .di-toolbar-button:hover:not(:disabled) {
+  background-color: var(--color-primary-50);
+}
+
 /* Placeholder */
 .di-richtext .ProseMirror p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
-  color: #9ca3af;
+  /* neutral-400(#9ca3af)은 흰 배경 대비 2.5:1 로 WCAG 4.5:1 미달 → neutral-500 */
+  color: var(--color-neutral-500);
   pointer-events: none;
   float: left;
   height: 0;

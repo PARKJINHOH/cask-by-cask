@@ -861,7 +861,19 @@ export const ResizableImage = Image.extend({
           previewHandle.className = `di-image-resize-preview__handle di-image-resize-preview__handle--${previewPos}`
           preview.appendChild(previewHandle)
         })
-        document.body.appendChild(preview)
+        // 미리보기는 body 위 레이어라 그대로 두면 편집 영역 밖(글자수 표시줄·페이지 본문)까지
+        // 넘쳐 보인다. 편집 영역 크기의 클리핑 레이어 안에 넣어 실제 이미지와 같은 범위에서만 보이게 한다.
+        const previewClip = document.createElement('span')
+        previewClip.className = 'di-image-resize-clip'
+        const clipRect = scrollContainer?.getBoundingClientRect()
+        const clipOriginLeft = clipRect?.left ?? 0
+        const clipOriginTop = clipRect?.top ?? 0
+        previewClip.style.left = `${clipOriginLeft}px`
+        previewClip.style.top = `${clipOriginTop}px`
+        previewClip.style.width = `${clipRect?.width ?? window.innerWidth}px`
+        previewClip.style.height = `${clipRect?.height ?? window.innerHeight}px`
+        previewClip.appendChild(preview)
+        document.body.appendChild(previewClip)
 
         wrapper.classList.add('di-image--resizing')
         media.style.visibility = 'hidden'
@@ -891,8 +903,9 @@ export const ResizableImage = Image.extend({
             : textAlign === 'right' || textAlign === 'end'
               ? wrapperRect.right - previewWidth
               : wrapperRect.left
-          preview.style.left = `${previewLeft}px`
-          preview.style.top = `${rect.top}px`
+          // 좌표는 클리핑 레이어(편집 영역) 기준으로 환산한다.
+          preview.style.left = `${previewLeft - clipOriginLeft}px`
+          preview.style.top = `${rect.top - clipOriginTop}px`
           preview.style.width = `${previewWidth}px`
         }
 
@@ -927,7 +940,7 @@ export const ResizableImage = Image.extend({
               .run()
           }
           activeResizeCleanup = null
-          preview.remove()
+          previewClip.remove()
           media.style.visibility = ''
           restoreEditorScroll()
           wrapper.classList.remove('di-image--resizing')
@@ -952,7 +965,7 @@ export const ResizableImage = Image.extend({
           handle.removeEventListener('pointercancel', onUp)
           if (handle.hasPointerCapture(event.pointerId)) handle.releasePointerCapture(event.pointerId)
           if (animationFrame != null) cancelAnimationFrame(animationFrame)
-          preview.remove()
+          previewClip.remove()
           media.style.visibility = ''
           wrapper.classList.remove('di-image--resizing')
           if (scrollContainer) {

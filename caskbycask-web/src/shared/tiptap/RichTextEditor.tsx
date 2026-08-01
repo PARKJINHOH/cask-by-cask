@@ -87,7 +87,6 @@ export default function RichTextEditor({
   enableImages = true,
   compactHeight = false,
 }: Props) {
-  const editorShellRef = useRef<HTMLDivElement>(null)
   const [uploadProgress, setUploadProgress] = useState<number | null>(null)
   const [uploadLabel, setUploadLabel] = useState<'이미지' | '동영상'>('이미지')
   // 여러 장 동시 업로드 시 진행 위치(예: 2/5). 단일 업로드면 null.
@@ -110,80 +109,8 @@ export default function RichTextEditor({
   const [editImagePos, setEditImagePos] = useState<number | null>(null)
   const [isEditingSaving, setIsEditingSaving] = useState(false)
 
-  // 편집 중 브라우저가 캐럿을 화면에 맞추려고 페이지 자체를 스크롤하지 않도록 잠근다.
-  // 에디터 내부 스크롤은 그대로 유지하고, 포커스가 완전히 빠질 때 기존 페이지 위치를 복원한다.
-  useEffect(() => {
-    const shell = editorShellRef.current
-    if (!shell) return
-
-    let locked = false
-    let scrollX = 0
-    let scrollY = 0
-    let focusOutFrame: number | null = null
-    const body = document.body
-    const html = document.documentElement
-    const previous = {
-      position: body.style.position,
-      top: body.style.top,
-      left: body.style.left,
-      right: body.style.right,
-      width: body.style.width,
-      overflow: body.style.overflow,
-      paddingRight: body.style.paddingRight,
-      scrollBehavior: html.style.scrollBehavior,
-    }
-
-    const lockPageScroll = () => {
-      if (locked) return
-      locked = true
-      scrollX = window.scrollX
-      scrollY = window.scrollY
-      const scrollbarGap = Math.max(0, window.innerWidth - html.clientWidth)
-      const currentPaddingRight = Number.parseFloat(window.getComputedStyle(body).paddingRight) || 0
-      body.style.position = 'fixed'
-      body.style.top = `${-scrollY}px`
-      body.style.left = `${-scrollX}px`
-      body.style.right = '0'
-      body.style.width = '100%'
-      body.style.overflow = 'hidden'
-      if (scrollbarGap > 0) body.style.paddingRight = `${currentPaddingRight + scrollbarGap}px`
-    }
-
-    const unlockPageScroll = () => {
-      if (!locked) return
-      locked = false
-      body.style.position = previous.position
-      body.style.top = previous.top
-      body.style.left = previous.left
-      body.style.right = previous.right
-      body.style.width = previous.width
-      body.style.overflow = previous.overflow
-      body.style.paddingRight = previous.paddingRight
-      html.style.scrollBehavior = 'auto'
-      window.scrollTo(scrollX, scrollY)
-      html.style.scrollBehavior = previous.scrollBehavior
-    }
-
-    const handleFocusIn = () => {
-      if (focusOutFrame != null) cancelAnimationFrame(focusOutFrame)
-      lockPageScroll()
-    }
-    const handleFocusOut = () => {
-      focusOutFrame = requestAnimationFrame(() => {
-        focusOutFrame = null
-        if (!shell.contains(document.activeElement)) unlockPageScroll()
-      })
-    }
-
-    shell.addEventListener('focusin', handleFocusIn)
-    shell.addEventListener('focusout', handleFocusOut)
-    return () => {
-      shell.removeEventListener('focusin', handleFocusIn)
-      shell.removeEventListener('focusout', handleFocusOut)
-      if (focusOutFrame != null) cancelAnimationFrame(focusOutFrame)
-      unlockPageScroll()
-    }
-  }, [])
+  // 편집 중 페이지 스크롤은 잠그지 않는다. (일반적인 웹 에디터와 동일하게 동작 —
+  // 특히 모바일에서 body 를 고정하면 본문 세로 스크롤 자체가 막혀 폼을 사용할 수 없다.)
 
   const handleImageUpload = useCallback(async (file: File): Promise<string | null> => {
     if (!uploadImage) return null
@@ -476,7 +403,6 @@ export default function RichTextEditor({
 
   return (
     <div
-      ref={editorShellRef}
       onClick={(e) => {
         const target = e.target as HTMLElement
         // 툴바, 버튼, 입력필드, 셀렉트박스 및 술 카드 다이얼로그 내부 클릭 시에는 포커스 동작 무시
@@ -492,7 +418,8 @@ export default function RichTextEditor({
         }
         editor?.commands.focus()
       }}
-      className="border border-neutral-300 rounded-xl overflow-hidden bg-white focus-within:ring-2 focus-within:ring-primary-300 focus-within:border-primary-400"
+      // overflow-hidden 은 스크롤 컨테이너를 만들어 툴바 sticky 를 무력화하므로 clip 을 쓴다.
+      className="border border-neutral-300 rounded-xl overflow-clip bg-white focus-within:ring-2 focus-within:ring-primary-300 focus-within:border-primary-400"
     >
       {/* 숨김 파일 input */}
       {uploadImage && (
@@ -560,7 +487,8 @@ export default function RichTextEditor({
         className={`di-richtext notice-content${compactHeight ? ' di-richtext--compact' : ''}`}
       />
 
-      <div className={['flex justify-end px-3 py-1.5 bg-neutral-50 border-t border-neutral-100 text-xs tabular-nums', isNearLimit ? 'text-amber-600' : 'text-neutral-400'].join(' ')}>
+      {/* 글자수 — neutral-400/amber-600 은 밝은 배경 대비가 2~3:1 이라 neutral-500/amber-700 사용 */}
+      <div className={['flex justify-end px-3 py-1.5 bg-neutral-50 border-t border-neutral-100 text-xs tabular-nums', isNearLimit ? 'text-amber-700' : 'text-neutral-500'].join(' ')}>
         {charCount.toLocaleString()} / {maxChars.toLocaleString()}자
       </div>
 

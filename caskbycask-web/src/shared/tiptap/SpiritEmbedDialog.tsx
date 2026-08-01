@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react'
 import { useTranslation } from 'react-i18next'
 import { spiritApi } from '@/domain/spirit/api/spiritApi'
 import type { SpiritAutocompleteItem } from '@/domain/spirit/types/spirit.types'
@@ -56,16 +57,6 @@ export default function SpiritEmbedDialog({ open, onClose, onSelect }: Props) {
     }
   }, [debouncedKeyword, open])
 
-  // ESC 닫기
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [open, onClose])
-
-  if (!open) return null
-
   const pick = (s: SpiritAutocompleteItem) => {
     const displayName = getSpiritListDisplayNames(s)
     onSelect({
@@ -80,83 +71,84 @@ export default function SpiritEmbedDialog({ open, onClose, onSelect }: Props) {
     onClose()
   }
 
+  // Headless UI Dialog — 배경 스크롤 잠금 / 포커스 트랩 / ESC 닫기 / aria-modal 을 함께 처리한다.
   return (
-    <div
-      className="fixed inset-0 z-[60] flex items-start justify-center bg-black/40 p-4 pt-[12vh]"
-      onMouseDown={onClose}
-    >
-      <div
-        className="w-full max-w-lg bg-white rounded-2xl shadow-xl overflow-hidden"
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        {/* 검색 입력 */}
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-neutral-100">
-          <svg className="w-4 h-4 text-neutral-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-          <input
-            ref={inputRef}
-            type="text"
-            value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
-            placeholder={t('editor.spiritSearchPlaceholder')}
-            className="flex-1 text-sm outline-none bg-transparent"
-          />
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-neutral-400 hover:text-neutral-600 text-lg leading-none px-1"
-          >
-            ×
-          </button>
-        </div>
+    <Dialog open={open} onClose={onClose} className="relative z-[60]">
+      <div className="fixed inset-0 bg-black/40" aria-hidden="true" />
+      <div className="fixed inset-0 flex items-start justify-center p-4 pt-[12vh]">
+        <DialogPanel className="di-spirit-embed-dialog w-full max-w-lg bg-white rounded-2xl shadow-xl overflow-hidden">
+          <DialogTitle className="sr-only">{t('editor.spiritCardButton')}</DialogTitle>
 
-        {/* 결과 목록 */}
-        <div className="max-h-[50vh] overflow-y-auto">
-          {loading && (
-            <div className="py-10 text-center text-sm text-neutral-400">{t('common.loading')}</div>
-          )}
-          {!loading && keyword.trim() && results.length === 0 && (
-            <div className="py-10 text-center text-sm text-neutral-400">{t('editor.spiritNoResult')}</div>
-          )}
-          {!loading && !keyword.trim() && (
-            <div className="py-10 text-center text-sm text-neutral-400">{t('editor.spiritSearchHint')}</div>
-          )}
-          {results.map((s) => {
-            const { primaryName, secondaryName } = getLocalizedSpiritListNames(s, i18n.language)
-            return (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => pick(s)}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-neutral-50 transition-colors border-b border-neutral-50 last:border-0"
-              >
-                {s.imageUrl ? (
-                  <img
-                    src={s.imageUrl}
-                    alt=""
-                    className="w-9 h-9 rounded object-cover bg-neutral-100 shrink-0"
-                  />
-                ) : (
-                  <span className="w-9 h-9 rounded bg-neutral-100 flex items-center justify-center text-base shrink-0">
-                    {SPIRIT_CATEGORY_EMOJI[s.category] ?? '🍶'}
+          {/* 검색 입력 */}
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-neutral-100">
+            <svg className="w-4 h-4 text-neutral-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              ref={inputRef}
+              type="text"
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+              placeholder={t('editor.spiritSearchPlaceholder')}
+              className="flex-1 text-sm outline-none bg-transparent"
+            />
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label={t('common.close')}
+              className="text-neutral-500 hover:text-neutral-700 text-lg leading-none px-1"
+            >
+              ×
+            </button>
+          </div>
+
+          {/* 결과 목록 */}
+          <div className="max-h-[50vh] overflow-y-auto">
+            {loading && (
+              <div className="py-10 text-center text-sm text-neutral-500">{t('common.loading')}</div>
+            )}
+            {!loading && keyword.trim() && results.length === 0 && (
+              <div className="py-10 text-center text-sm text-neutral-500">{t('editor.spiritNoResult')}</div>
+            )}
+            {!loading && !keyword.trim() && (
+              <div className="py-10 text-center text-sm text-neutral-500">{t('editor.spiritSearchHint')}</div>
+            )}
+            {results.map((s) => {
+              const { primaryName, secondaryName } = getLocalizedSpiritListNames(s, i18n.language)
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => pick(s)}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-neutral-50 transition-colors border-b border-neutral-50 last:border-0"
+                >
+                  {s.imageUrl ? (
+                    <img
+                      src={s.imageUrl}
+                      alt=""
+                      className="w-9 h-9 rounded object-cover bg-neutral-100 shrink-0"
+                    />
+                  ) : (
+                    <span className="w-9 h-9 rounded bg-neutral-100 flex items-center justify-center text-base shrink-0">
+                      {SPIRIT_CATEGORY_EMOJI[s.category] ?? '🍶'}
+                    </span>
+                  )}
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium text-neutral-800 truncate">{primaryName}</span>
+                    {secondaryName && <span className="block text-xs text-neutral-500 truncate">{secondaryName}</span>}
                   </span>
-                )}
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-medium text-neutral-800 truncate">{primaryName}</span>
-                  {secondaryName && <span className="block text-xs text-neutral-400 truncate">{secondaryName}</span>}
-                </span>
-                {s.avgScore != null && (
-                  <span className="text-xs text-amber-600 font-semibold tabular-nums shrink-0">
-                    ★ {s.avgScore.toFixed(1)}
-                  </span>
-                )}
-              </button>
-            )
-          })}
-        </div>
+                  {s.avgScore != null && (
+                    <span className="text-xs text-amber-700 font-semibold tabular-nums shrink-0">
+                      ★ {s.avgScore.toFixed(1)}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        </DialogPanel>
       </div>
-    </div>
+    </Dialog>
   )
 }

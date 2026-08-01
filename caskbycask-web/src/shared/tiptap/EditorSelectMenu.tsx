@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
+import EditorPopover from './EditorPopover'
 import EditorTooltip from './EditorTooltip'
 
 export interface SelectOption {
@@ -26,65 +27,72 @@ export default function EditorSelectMenu({
   title, current, options, activeValue, onSelect, width = 84, icon,
 }: Props) {
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const onDocMouseDown = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', onDocMouseDown)
-    return () => document.removeEventListener('mousedown', onDocMouseDown)
-  }, [])
+  const [autoFocus, setAutoFocus] = useState(false)
+  const triggerRef = useRef<HTMLButtonElement>(null)
 
   return (
-    <div ref={ref} className="relative">
+    <>
       <EditorTooltip content={title} disabled={open}>
         <button
+          ref={triggerRef}
           type="button"
+          data-toolbar-item=""
           aria-label={title}
           aria-expanded={open}
           aria-haspopup="listbox"
-          onMouseDown={(e) => { e.preventDefault(); setOpen((o) => !o) }}
+          // mousedown 기본동작만 막아 에디터 선택 영역을 지키고, 실제 동작은 click 에서 처리한다.
+          // (키보드 Enter/Space 는 click 만 발생시키므로 mousedown 에서 처리하면 조작 자체가 불가능하다)
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={(e) => {
+            setAutoFocus(e.detail === 0) // detail 0 == 키보드로 활성화
+            setOpen((o) => !o)
+          }}
           style={{ minWidth: width }}
-          className="h-8 px-2 flex items-center justify-between gap-1 rounded text-[13px] text-neutral-700 hover:bg-neutral-100 transition-colors border border-transparent hover:border-neutral-200"
+          className="h-7 px-1.5 flex items-center justify-between gap-0.5 rounded text-[13px] text-neutral-700 hover:bg-neutral-100 transition-colors border border-transparent hover:border-neutral-200"
         >
           <span className="flex items-center gap-1 truncate">
             {icon}
             <span className="truncate">{current}</span>
           </span>
-          <svg className="w-3 h-3 text-neutral-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg className="w-3 h-3 text-neutral-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <polyline points="6 9 12 15 18 9" />
           </svg>
         </button>
       </EditorTooltip>
 
-      {open && (
-        <div role="listbox" className="absolute z-30 mt-1 left-0 py-1 bg-white border border-neutral-200 rounded-lg shadow-lg min-w-[140px] max-h-72 overflow-y-auto">
-          {options.map((opt) => {
-            const isActive = activeValue != null && activeValue === opt.value
-            return (
-              <button
-                key={opt.value}
-                type="button"
-                role="option"
-                aria-selected={isActive}
-                onMouseDown={(e) => {
-                  e.preventDefault()
-                  onSelect(opt.value)
-                  setOpen(false)
-                }}
-                style={opt.style}
-                className={[
-                  'w-full text-left px-3 py-1.5 text-sm hover:bg-neutral-100 transition-colors whitespace-nowrap',
-                  isActive ? 'bg-primary-50 text-primary-900 font-medium' : 'text-neutral-700',
-                ].join(' ')}
-              >
-                {opt.label}
-              </button>
-            )
-          })}
-        </div>
-      )}
-    </div>
+      <EditorPopover
+        anchorRef={triggerRef}
+        open={open}
+        onClose={() => setOpen(false)}
+        autoFocus={autoFocus}
+        role="listbox"
+        label={title}
+        className="min-w-[140px] max-h-72 overflow-y-auto py-1"
+      >
+        {options.map((opt) => {
+          const isActive = activeValue != null && activeValue === opt.value
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              role="option"
+              aria-selected={isActive}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                onSelect(opt.value)
+                setOpen(false)
+              }}
+              style={opt.style}
+              className={[
+                'w-full text-left px-3 py-1.5 text-sm hover:bg-neutral-100 transition-colors whitespace-nowrap',
+                isActive ? 'bg-primary-50 text-primary-900 font-medium' : 'text-neutral-700',
+              ].join(' ')}
+            >
+              {opt.label}
+            </button>
+          )
+        })}
+      </EditorPopover>
+    </>
   )
 }

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, useRef, type FocusEvent as ReactFocusEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
 import { useEditorState } from '@tiptap/react'
 import type { Editor } from '@tiptap/react'
 import { useTranslation } from 'react-i18next'
@@ -60,12 +60,17 @@ function ToolbarButton({ onClick, isActive, disabled, title, children }: Toolbar
     <EditorTooltip content={title}>
       <button
         type="button"
+        data-toolbar-item=""
         aria-label={title}
         aria-pressed={isActive ?? undefined}
         disabled={disabled}
-        onMouseDown={(e) => { e.preventDefault(); onClick() }}
+        // mousedown 은 기본동작(포커스 이동)만 막아 에디터 선택 영역을 유지하고,
+        // 실제 실행은 click 에서 한다. 키보드 Enter/Space 는 click 만 발생시키므로
+        // mousedown 에서 실행하면 키보드 사용자가 툴바를 전혀 쓸 수 없다.
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={onClick}
         className={[
-          'di-toolbar-button h-8 w-8 flex items-center justify-center rounded text-[15px] transition-colors',
+          'di-toolbar-button h-7 w-7 flex items-center justify-center rounded text-[15px] transition-colors',
           'disabled:opacity-40 disabled:cursor-not-allowed',
           isActive ? 'bg-primary-100 text-primary-900' : 'text-neutral-600 hover:bg-neutral-100',
         ].join(' ')}
@@ -84,7 +89,7 @@ interface ToolbarGroupProps {
 
 function ToolbarGroup({ label, children, className = '' }: ToolbarGroupProps) {
   return (
-    <div role="group" aria-label={label} className={`flex shrink-0 items-center gap-0.5 rounded-md border border-neutral-200/80 bg-white/70 p-0.5 ${className}`}>
+    <div role="group" aria-label={label} className={`flex shrink-0 items-center rounded-md border border-neutral-200/80 bg-white/70 p-0.5 ${className}`}>
       {children}
     </div>
   )
@@ -166,6 +171,58 @@ export default function RichTextToolbar({
     },
   })
 
+  // ── 툴바 키보드 이동 (roving tabindex) ──────────────────────────
+  // Tab 은 툴바 전체를 한 번만 지나가고(본문에 닿기까지 25번 Tab 하지 않도록),
+  // 버튼 사이 이동은 방향키/Home/End 로 한다. WAI-ARIA toolbar 패턴.
+  const toolbarRef = useRef<HTMLDivElement>(null)
+  const activeItemRef = useRef<HTMLElement | null>(null)
+
+  const toolbarItems = () =>
+    Array.from(toolbarRef.current?.querySelectorAll<HTMLElement>('[data-toolbar-item]:not([disabled])') ?? [])
+
+  const syncRovingTabIndex = (next?: HTMLElement | null) => {
+    const items = toolbarItems()
+    if (items.length === 0) return
+    const active = next && items.includes(next)
+      ? next
+      : (activeItemRef.current && items.includes(activeItemRef.current) ? activeItemRef.current : items[0])
+    activeItemRef.current = active
+    items.forEach((item) => { item.tabIndex = item === active ? 0 : -1 })
+  }
+
+  // 버튼 활성/비활성(실행취소 등)이나 행 노출이 바뀔 때마다 다시 맞춘다.
+  useEffect(syncRovingTabIndex)
+
+  const handleToolbarFocus = (event: ReactFocusEvent<HTMLDivElement>) => {
+    const item = (event.target as HTMLElement).closest<HTMLElement>('[data-toolbar-item]')
+    // 포털로 띄운 팝오버 내부의 포커스도 React 트리를 타고 올라오므로 제외한다.
+    if (!item || !toolbarRef.current?.contains(item)) return
+    syncRovingTabIndex(item)
+  }
+
+  const handleToolbarKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement
+    if (target.closest('[data-editor-popover]')) return
+    const current = target.closest<HTMLElement>('[data-toolbar-item]')
+    if (!current || !toolbarRef.current?.contains(current)) return
+
+    const items = toolbarItems()
+    const index = items.indexOf(current)
+    if (index === -1) return
+
+    const last = items.length - 1
+    let next: number
+    switch (event.key) {
+      case 'ArrowRight': case 'ArrowDown': next = index === last ? 0 : index + 1; break
+      case 'ArrowLeft': case 'ArrowUp': next = index === 0 ? last : index - 1; break
+      case 'Home': next = 0; break
+      case 'End': next = last; break
+      default: return
+    }
+    event.preventDefault()
+    items[next]?.focus()
+  }
+
   const addLink = () => {
     const prev = editor.getAttributes('link').href ?? ''
     const url = window.prompt(t('editor.toolbar.linkPrompt'), prev)
@@ -200,9 +257,17 @@ export default function RichTextToolbar({
     : t('editor.toolbar.lineHeightLabel')
 
   return (
-    <div className="rich-text-toolbar border-b border-neutral-200 bg-neutral-50">
+    <div
+      ref={toolbarRef}
+      role="toolbar"
+      aria-label={t('editor.toolbar.label')}
+      aria-orientation="horizontal"
+      onFocus={handleToolbarFocus}
+      onKeyDown={handleToolbarKeyDown}
+      className="rich-text-toolbar border-b border-neutral-200 bg-neutral-50"
+    >
       {/* 1행: 실행 이력 / 글꼴 / 문자 서식 / 제목 */}
-      <div className="flex flex-wrap items-center gap-1 p-2 pb-1">
+      <div className="di-toolbar-row flex flex-wrap items-center gap-1 px-1.5 pt-1.5 pb-1">
         <ToolbarGroup label={t('editor.toolbar.groups.history')}>
           <ToolbarButton title={t('editor.toolbar.undo')} onClick={() => editor.chain().focus().undo().run()} disabled={!s.canUndo}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -219,11 +284,11 @@ export default function RichTextToolbar({
         <ToolbarGroup label={t('editor.toolbar.groups.font')}>
           <EditorSelectMenu
             title={t('editor.toolbar.font')} current={fontName} options={localizedFontFamilies}
-            activeValue={s.fontFamily} onSelect={setFontFamily} width={94}
+            activeValue={s.fontFamily} onSelect={setFontFamily} width={84}
           />
           <EditorSelectMenu
             title={t('editor.toolbar.fontSize')} current={sizeLabel} options={localizedFontSizes}
-            activeValue={normalizedFontSize} onSelect={setFontSize} width={82}
+            activeValue={normalizedFontSize} onSelect={setFontSize} width={74}
           />
         </ToolbarGroup>
 
@@ -261,8 +326,65 @@ export default function RichTextToolbar({
         </ToolbarGroup>
       </div>
 
-      {/* 2행: 문단 / 목록 / 블록 / 삽입 */}
-      <div className="flex flex-wrap items-center gap-1 px-2 pb-2">
+      {/* 2행: 삽입 / 사이트 전용 카드 / 문단 / 목록 / 블록 */}
+      <div className="di-toolbar-row flex flex-wrap items-center gap-1 px-1.5 pb-1.5">
+        {/* 사진 → 영상 → 유튜브 → 링크 → 표 순 */}
+        <ToolbarGroup label={t('editor.toolbar.groups.insert')}>
+          {onImageUpload && (
+            <ToolbarButton title={t('editor.toolbar.imageAdd')} onClick={onImageUpload}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
+              </svg>
+            </ToolbarButton>
+          )}
+          {onVideoUpload && (
+            <ToolbarButton title={t('editor.toolbar.videoUpload')} onClick={onVideoUpload}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M15 10l4.553-2.276A1 1 0 0121 8.723v6.554a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" />
+              </svg>
+            </ToolbarButton>
+          )}
+          {onVideoEmbed && (
+            <ToolbarButton title={t('editor.toolbar.videoEmbed')} onClick={onVideoEmbed}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 000-1.664z" /><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </ToolbarButton>
+          )}
+          <ToolbarButton title={t('editor.toolbar.link')} onClick={addLink} isActive={s.isLink}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+            </svg>
+          </ToolbarButton>
+          <ToolbarButton title={t('editor.toolbar.tableInsert')} onClick={addTable}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="3" y1="15" x2="21" y2="15" /><line x1="9" y1="3" x2="9" y2="21" /><line x1="15" y1="3" x2="15" y2="21" />
+            </svg>
+          </ToolbarButton>
+        </ToolbarGroup>
+
+        {/* 사이트 전용 카드 — 일반 서식 도구와 구분되도록 별도 그룹(강조 테두리)으로 둔다. */}
+        {(onSpiritEmbed || onReviewEmbed) && (
+          <ToolbarGroup label={t('editor.toolbar.groups.siteCards')} className="di-toolbar-site-group">
+            {onSpiritEmbed && (
+              <ToolbarButton title={t('editor.toolbar.spiritCard')} onClick={onSpiritEmbed}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M8 3h8l-1 6a4 4 0 0 1-3 3 4 4 0 0 1-3-3L8 3z" /><line x1="12" y1="12" x2="12" y2="19" /><line x1="8" y1="21" x2="16" y2="21" />
+                </svg>
+              </ToolbarButton>
+            )}
+            {onReviewEmbed && (
+              <ToolbarButton title={t('editor.toolbar.reviewCard')} onClick={onReviewEmbed}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M5 3h11a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2V3z" />
+                  <path d="M18 7h1a2 2 0 0 1 2 2v10H9" /><path d="M8 8h7M8 12h5" />
+                </svg>
+              </ToolbarButton>
+            )}
+          </ToolbarGroup>
+        )}
+
         <ToolbarGroup label={t('editor.toolbar.groups.paragraph')}>
           <EditorSelectMenu
             title={t('editor.toolbar.lineHeight')}
@@ -270,7 +392,7 @@ export default function RichTextToolbar({
             options={localizedLineHeights}
             activeValue={s.lineHeight}
             onSelect={setLineHeight}
-            width={76}
+            width={70}
             icon={
               <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="10" y1="6" x2="21" y2="6" /><line x1="10" y1="12" x2="21" y2="12" /><line x1="10" y1="18" x2="21" y2="18" />
@@ -342,60 +464,11 @@ export default function RichTextToolbar({
           </ToolbarButton>
         </ToolbarGroup>
 
-        <ToolbarGroup label={t('editor.toolbar.groups.insert')}>
-          <ToolbarButton title={t('editor.toolbar.link')} onClick={addLink} isActive={s.isLink}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-            </svg>
-          </ToolbarButton>
-          {onImageUpload && (
-            <ToolbarButton title={t('editor.toolbar.imageAdd')} onClick={onImageUpload}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
-              </svg>
-            </ToolbarButton>
-          )}
-          {onVideoEmbed && (
-            <ToolbarButton title={t('editor.toolbar.videoEmbed')} onClick={onVideoEmbed}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 000-1.664z" /><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </ToolbarButton>
-          )}
-          {onVideoUpload && (
-            <ToolbarButton title={t('editor.toolbar.videoUpload')} onClick={onVideoUpload}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M15 10l4.553-2.276A1 1 0 0121 8.723v6.554a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" />
-              </svg>
-            </ToolbarButton>
-          )}
-          {onSpiritEmbed && (
-            <ToolbarButton title={t('editor.toolbar.spiritCard')} onClick={onSpiritEmbed}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M8 3h8l-1 6a4 4 0 0 1-3 3 4 4 0 0 1-3-3L8 3z" /><line x1="12" y1="12" x2="12" y2="19" /><line x1="8" y1="21" x2="16" y2="21" />
-              </svg>
-            </ToolbarButton>
-          )}
-          {onReviewEmbed && (
-            <ToolbarButton title={t('editor.toolbar.reviewCard')} onClick={onReviewEmbed}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M5 3h11a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2V3z" />
-                <path d="M18 7h1a2 2 0 0 1 2 2v10H9" /><path d="M8 8h7M8 12h5" />
-              </svg>
-            </ToolbarButton>
-          )}
-          <ToolbarButton title={t('editor.toolbar.tableInsert')} onClick={addTable}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="3" width="18" height="18" rx="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="3" y1="15" x2="21" y2="15" /><line x1="9" y1="3" x2="9" y2="21" /><line x1="15" y1="3" x2="15" y2="21" />
-            </svg>
-          </ToolbarButton>
-        </ToolbarGroup>
       </div>
 
       {/* 3행: 현재 선택 대상에 필요한 기능만 노출 */}
       {(s.isTable || s.isImage) && (
-        <div className="flex flex-wrap items-center gap-1 border-t border-neutral-200 bg-primary-50/40 px-2 py-1.5">
+        <div className="di-toolbar-row flex flex-wrap items-center gap-1 border-t border-neutral-200 bg-primary-50/40 px-1.5 py-1">
           {s.isTable && (
             <ToolbarGroup label={t('editor.toolbar.groups.tableEdit')}>
               <span className="px-1 text-xs font-medium text-neutral-500">{t('editor.toolbar.tableLabel')}</span>

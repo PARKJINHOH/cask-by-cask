@@ -242,15 +242,22 @@
  * 실제 NodeView의 폭은 pointerup 때 한 번만 변경하고, 드래그 중에는 viewport 기준
  * fixed 레이어만 갱신해 편집기 scrollHeight와 crxMouse의 전역 제스처 처리가 충돌하지 않는다.
  */
-.di-image-resize-preview {
+/* 미리보기를 편집 영역 밖으로 넘치지 않게 잘라내는 레이어 (좌표·크기는 JS 가 지정) */
+.di-image-resize-clip {
   position: fixed;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 2147483646;
+}
+
+.di-image-resize-preview {
+  position: absolute;
   display: block;
   max-width: none;
   margin: 0;
   padding: 0;
   line-height: 0;
   pointer-events: none;
-  z-index: 2147483646;
   will-change: left, width;
 }
 
