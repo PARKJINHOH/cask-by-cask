@@ -153,7 +153,8 @@
   background: transparent;
   cursor: grab !important;
   z-index: 3;
-  touch-action: none;
+  /* 이미지 위 세로 스와이프는 언제나 페이지 스크롤로 넘긴다. (터치 기기 기본 동작 보장) */
+  touch-action: pan-y pinch-zoom;
   -webkit-user-drag: element;
   user-select: none;
 }
@@ -198,40 +199,21 @@
   cursor: grabbing !important;
 }
 
-.di-image-touch-drag-preview {
-  position: fixed;
-  width: 60px;
-  height: 60px;
-  background-position: center;
-  background-size: cover;
-  opacity: 0.7;
-  pointer-events: none;
-  z-index: 10000;
-  border: 2px dashed #2563eb;
-  border-radius: var(--radius-surface);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-}
-
-/* 터치 기기에서는 이미지 위 세로 스와이프를 페이지 스크롤로 넘긴다. */
-@media (hover: none) and (pointer: coarse) {
+/* 터치 기기 — 드래그로만 쓸 수 있는 이미지 조작(이동/모서리 리사이즈/2단 분할)은 숨기고
+   이미지 영역을 스크롤에 완전히 양보한다. 남는 조작은 탭(선택)과 더블탭(편집)뿐이다. */
+@media (pointer: coarse) {
   .ProseMirror .di-image__frame {
     cursor: default;
   }
 
   .ProseMirror .di-image__drag-surface {
     cursor: default !important;
-    touch-action: pan-y pinch-zoom;
     -webkit-touch-callout: none;
     -webkit-user-drag: none;
   }
 
-  .ProseMirror .di-image__drag-surface--touch-dragging {
-    cursor: grabbing !important;
-  }
-
   .ProseMirror .di-image.ProseMirror-selectednode .di-image__handle,
-  .ProseMirror .di-image--half-left .di-image__pair-divider,
-  .di-toolbar-image-size {
+  .ProseMirror .di-image--half-left .di-image__pair-divider {
     display: none !important;
     pointer-events: none;
   }

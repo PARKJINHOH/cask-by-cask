@@ -1,4 +1,4 @@
-import { useEffect, useRef, type FocusEvent as ReactFocusEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type FocusEvent as ReactFocusEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
 import { useEditorState } from '@tiptap/react'
 import type { Editor } from '@tiptap/react'
 import { useTranslation } from 'react-i18next'
@@ -45,6 +45,23 @@ const DEFAULT_TOOLBAR_STATE = {
   isAlignLeft: false, isAlignCenter: false, isAlignRight: false, isAlignJustify: false,
   isTable: false, isImage: false,
   fontFamily: '', fontSize: '', lineHeight: '', canUndo: false, canRedo: false,
+}
+
+/**
+ * 마우스가 없는 터치 기기 여부.
+ * 초기값을 false 로 두고 마운트 후 동기화해 SSR/hydration 결과가 어긋나지 않게 한다.
+ */
+function useCoarsePointer() {
+  const [coarse, setCoarse] = useState(false)
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return
+    const query = window.matchMedia('(pointer: coarse)')
+    const sync = () => setCoarse(query.matches)
+    sync()
+    query.addEventListener('change', sync)
+    return () => query.removeEventListener('change', sync)
+  }, [])
+  return coarse
 }
 
 interface ToolbarButtonProps {
@@ -113,6 +130,11 @@ export default function RichTextToolbar({
   editor, onImageUpload, onVideoUpload, onVideoEmbed, onSpiritEmbed, onReviewEmbed,
 }: Props) {
   const { t } = useTranslation()
+  // 터치 기기에서 숨기는 도구 — 셀 단위 커서 이동이 필요한 표, 드래그로 폭을 잡는 이미지 크기.
+  // (이미지 모서리 핸들·2단 분할 divider 는 editor-image.css 의 (pointer: coarse) 에서 숨긴다)
+  const isCoarsePointer = useCoarsePointer()
+  const showTableTools = !isCoarsePointer
+  const showImageSizeTools = !isCoarsePointer
   const localizedFontFamilies = FONT_FAMILIES.map((option) => ({
     ...option,
     label: option.value === ''
@@ -357,11 +379,13 @@ export default function RichTextToolbar({
               <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
             </svg>
           </ToolbarButton>
-          <ToolbarButton title={t('editor.toolbar.tableInsert')} onClick={addTable}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="3" width="18" height="18" rx="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="3" y1="15" x2="21" y2="15" /><line x1="9" y1="3" x2="9" y2="21" /><line x1="15" y1="3" x2="15" y2="21" />
-            </svg>
-          </ToolbarButton>
+          {showTableTools && (
+            <ToolbarButton title={t('editor.toolbar.tableInsert')} onClick={addTable}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="3" y1="15" x2="21" y2="15" /><line x1="9" y1="3" x2="9" y2="21" /><line x1="15" y1="3" x2="15" y2="21" />
+              </svg>
+            </ToolbarButton>
+          )}
         </ToolbarGroup>
 
         {/* 사이트 전용 카드 — 일반 서식 도구와 구분되도록 별도 그룹(강조 테두리)으로 둔다. */}
@@ -467,9 +491,9 @@ export default function RichTextToolbar({
       </div>
 
       {/* 3행: 현재 선택 대상에 필요한 기능만 노출 */}
-      {(s.isTable || s.isImage) && (
+      {((s.isTable && showTableTools) || (s.isImage && showImageSizeTools)) && (
         <div className="di-toolbar-row flex flex-wrap items-center gap-1 border-t border-neutral-200 bg-primary-50/40 px-1.5 py-1">
-          {s.isTable && (
+          {s.isTable && showTableTools && (
             <ToolbarGroup label={t('editor.toolbar.groups.tableEdit')}>
               <span className="px-1 text-xs font-medium text-neutral-500">{t('editor.toolbar.tableLabel')}</span>
               <ToolbarButton title={t('editor.toolbar.rowBefore')} onClick={() => editor.chain().focus().addRowBefore().run()}>
@@ -495,7 +519,7 @@ export default function RichTextToolbar({
               </ToolbarButton>
             </ToolbarGroup>
           )}
-          {s.isImage && (
+          {s.isImage && showImageSizeTools && (
             <ToolbarGroup label={t('editor.toolbar.groups.imageEdit')} className="di-toolbar-image-size">
               <span className="px-1 text-xs font-medium text-neutral-500">{t('editor.image')}</span>
               {(['25%', '50%', '75%', '100%'] as const).map((width) => (
