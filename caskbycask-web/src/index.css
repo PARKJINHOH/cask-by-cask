@@ -724,6 +724,29 @@
 /* 펄스 링은 연출 중에만 보인다 */
 .wom-ring { opacity: 0; }
 
+/* 국가 지도에서 확대 가능한 산지에 마우스·키보드 포커스 피드백을 준다.
+   transform-box 로 산지 자체의 경계 상자를 기준 삼아 주변 도형은 움직이지 않는다. */
+.wom-region-trigger,
+.wom-region-trigger:focus,
+.wom-region-trigger:focus-visible,
+.wom-region-trigger:active {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent;
+}
+.wom-region-trigger .wom-zone--target {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1), filter 180ms ease;
+}
+.wom-region-trigger:hover .wom-zone--target,
+.wom-region-trigger:focus .wom-zone--target {
+  transform: scale(1.035);
+  filter: drop-shadow(0 2px 2px rgb(146 64 14 / 0.24));
+}
+.wom-region-trigger:active .wom-zone--target {
+  transform: scale(1.018);
+}
+
 /* 모션 축소 설정 (접근성) ─────────────────────────────────── */
 /* ── 모션 축소 설정 존중 (접근성) ──────────────────────────────
    사용자가 OS에서 '동작 줄이기'를 켠 경우 애니메이션·전환을 사실상 제거.

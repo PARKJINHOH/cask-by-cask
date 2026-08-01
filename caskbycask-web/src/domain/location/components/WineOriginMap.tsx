@@ -14,8 +14,10 @@ interface Props {
   className?: string
 }
 
+type MapView = 'country' | 'region' | 'subregion'
+
 /**
- * 와인 산지 지도 — 국가 지도 + 하위 확대 지도 2단.
+ * 산지 지도 — 국가 → 산지 → 세부 산지 3단 탐색.
  *
  * <p><b>정밀도 우선</b>: 기하 데이터는 공개 산지·행정 경계를 거의 원해상도로 베이킹한
  * SVG path 문자열이다. 그만큼 용량이 있어 국가별로 동적 import 되며, 카드가 화면에
@@ -32,8 +34,8 @@ export default function WineOriginMap({ wineRegion, countryLabel, className }: P
   const [inView, setInView] = useState(false)
   const [map, setMap] = useState<CountryMap | null>(null)
   const [animate, setAnimate] = useState(false)
-  /** 'country' = 국가 지도, 'zoom' = 세부 산지 확대 지도 (한 페이지 안에서 전환) */
-  const [view, setView] = useState<'country' | 'zoom'>('country')
+  /** 상세 페이지에 들어올 때는 항상 국가 지도에서 시작한다. */
+  const [view, setView] = useState<MapView>('country')
 
   const supported = hasWineRegionMap(wineRegion.countryCode)
 
@@ -79,16 +81,25 @@ export default function WineOriginMap({ wineRegion, countryLabel, className }: P
 
   const l1Shape = map?.regions[l1Code]
   const zoom = map && l1Shape ? map.zooms[l1Code] : undefined
-  // L2 가 선택됐고 그 기하 데이터가 있을 때만 확대 지도로 전환할 수 있다
+  // L1 은 국가 도형 안에서 언제나 확대할 수 있고, L2 는 실제 확대 도형이 있을 때만 진입한다.
   const zoomShape = l2Code && zoom ? zoom.regions[l2Code] : undefined
-  const canZoom = !!(zoom && zoomShape && l2Name)
-  const showingZoom = canZoom && view === 'zoom'
+  const canShowRegion = !!l1Shape
+  const canShowSubregion = !!(zoom && zoomShape && l2Name)
+  const currentView: MapView = view === 'subregion' && !canShowSubregion
+    ? (canShowRegion ? 'region' : 'country')
+    : view === 'region' && !canShowRegion
+      ? 'country'
+      : view
 
   // 데이터를 받았지만 이 산지의 도형이 없으면 카드를 통째로 접는다
   if (map && !l1Shape) return null
 
-  /** 산지 계층 — 지도 위에 별도 영역으로 분리해 보여준다 */
-  const originParts = [countryLabel, l1Name, l2Name].filter(Boolean) as string[]
+  /** 전체 계층은 항상 노출하고, 각 인디케이터로 해당 지도 단계에 이동한다. */
+  const originParts = [
+    { label: countryLabel, targetView: 'country' as const },
+    { label: l1Name, targetView: canShowRegion ? 'region' as const : null },
+    ...(l2Name ? [{ label: l2Name, targetView: canShowSubregion ? 'subregion' as const : null }] : []),
+  ].filter((part) => !!part.label)
 
   return (
     <div
@@ -99,28 +110,47 @@ export default function WineOriginMap({ wineRegion, countryLabel, className }: P
         {t('spirit.detail.originMap.title')}
       </h3>
 
-      {/* ── 산지 계층 (지도 위 별도 영역) ───────────────────────── */}
-      <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 mb-3">
-        {originParts.map((part, i) => (
-          <span key={part} className="flex items-center gap-1.5">
-            {i > 0 && <span aria-hidden="true" className="text-neutral-300">›</span>}
-            <span
-              className={i === originParts.length - 1
-                ? 'text-[13px] font-bold text-amber-700'
-                : 'text-[13px] font-medium text-neutral-500'}
-            >
-              {part}
+      {/* ── 지도 단계 인디케이터 (국가 › 산지 › 세부 산지) ──────── */}
+      <nav
+        aria-label={t('spirit.detail.originMap.indicatorLabel')}
+        className="flex flex-wrap items-center gap-x-1.5 gap-y-1 mb-3"
+      >
+        {originParts.map((part, i) => {
+          const isCurrent = part.targetView === currentView
+          return (
+            <span key={`${part.label}-${i}`} className="flex items-center gap-1.5">
+              {i > 0 && <span aria-hidden="true" className="text-neutral-300">›</span>}
+              {part.targetView ? (
+                <button
+                  type="button"
+                  onClick={() => setView(part.targetView!)}
+                  aria-current={isCurrent ? 'location' : undefined}
+                  className={`rounded px-0.5 text-[13px] transition-colors
+                    outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-1
+                    ${isCurrent
+                      ? 'font-bold text-amber-700'
+                      : 'font-medium text-neutral-500 hover:text-amber-700'}`}
+                >
+                  {part.label}
+                </button>
+              ) : (
+                <span className={isCurrent
+                  ? 'text-[13px] font-bold text-amber-700'
+                  : 'text-[13px] font-medium text-neutral-400'}>
+                  {part.label}
+                </span>
+              )}
             </span>
-          </span>
-        ))}
-      </div>
+          )
+        })}
+      </nav>
 
-      {/* ── 지도 (국가 ⇄ 확대 전환) ─────────────────────────────── */}
+      {/* ── 지도 (국가 → 산지 → 세부 산지 전환) ─────────────────── */}
       {map && l1Shape ? (
         <div className="relative">
-          {showingZoom ? (
+          {currentView === 'subregion' ? (
             <MapPanel
-              caption={l1Name}
+              caption={l2Name!}
               viewBox={map.viewBox}
               outlinePath={zoom!.outlinePath}
               shapes={zoom!.regions}
@@ -128,7 +158,23 @@ export default function WineOriginMap({ wineRegion, countryLabel, className }: P
               targetLabel={l2Name!}
               ariaLabel={t('spirit.detail.originMap.zoomAlt', { parent: l1Name, region: l2Name })}
               animate={animate}
-              focusOnTarget={Object.keys(zoom!.regions).length > 1}
+              focusOnTarget
+            />
+          ) : currentView === 'region' ? (
+            <MapPanel
+              caption={l1Name}
+              viewBox={map.viewBox}
+              outlinePath={map.outlinePath}
+              shapes={map.regions}
+              targetCode={l1Code}
+              targetLabel={l1Name}
+              ariaLabel={t('spirit.detail.originMap.regionAlt', { country: countryLabel, region: l1Name })}
+              animate={animate}
+              focusOnTarget
+              onTargetClick={canShowSubregion ? () => setView('subregion') : undefined}
+              targetClickLabel={canShowSubregion
+                ? t('spirit.detail.originMap.subregionHint', { region: l2Name })
+                : undefined}
             />
           ) : (
             <MapPanel
@@ -140,16 +186,16 @@ export default function WineOriginMap({ wineRegion, countryLabel, className }: P
               targetLabel={l1Name}
               ariaLabel={t('spirit.detail.originMap.countryAlt', { country: countryLabel, region: l1Name })}
               animate={animate}
-              /* 세부 산지가 있으면 대상 구역을 눌러 확대 지도로 들어간다 */
-              onTargetClick={canZoom ? () => setView('zoom') : undefined}
-              targetClickLabel={canZoom
-                ? t('spirit.detail.originMap.zoomHint', { region: l2Name })
+              /* 모든 L1 산지는 대상 도형을 눌러 산지 단계로 확대한다. */
+              onTargetClick={() => setView('region')}
+              targetClickLabel={canShowRegion
+                ? t('spirit.detail.originMap.zoomHint', { region: l1Name })
                 : undefined}
             />
           )}
 
-          {/* 확대 상태에서만 좌측 상단 뒤로가기 */}
-          {showingZoom && (
+          {/* 산지·세부 산지 상태에서 좌측 상단 국가 복귀 */}
+          {currentView !== 'country' && (
             <button
               type="button"
               onClick={() => setView('country')}
@@ -226,8 +272,8 @@ function MapPanel({
   viewBox: string
   outlinePath: string
   shapes: Record<string, RegionShape>
-  targetCode: string
-  targetLabel: string
+  targetCode?: string
+  targetLabel?: string
   ariaLabel: string
   animate: boolean
   focusOnTarget?: boolean
@@ -235,32 +281,20 @@ function MapPanel({
   onTargetClick?: () => void
   targetClickLabel?: string
 }) {
-  const target = shapes[targetCode]
-  const [mx, my] = target.marker
-  const dx = target.labelDx ?? 0
-  const dy = target.labelDy ?? 0
-  const effectiveViewBox = focusOnTarget ? focusViewBox(viewBox, target.bbox) : viewBox
+  const target = targetCode ? shapes[targetCode] : undefined
+  const [mx, my] = target?.marker ?? [0, 0]
+  const dx = target?.labelDx ?? 0
+  const dy = target?.labelDy ?? 0
+  const effectiveViewBox = focusOnTarget && target ? focusViewBox(viewBox, target.bbox) : viewBox
   // 확대 시 선·글자가 같이 커지지 않도록 축척에 맞춰 보정한다
   const baseWidth = Number(viewBox.split(' ')[2])
   const scale = Number(effectiveViewBox.split(' ')[2]) / baseWidth
-  const clickable = !!onTargetClick
+  const clickable = !!(onTargetClick && target)
 
   return (
     <figure className="m-0">
-      <figcaption className="flex items-center justify-between gap-2 text-[11px] font-semibold text-neutral-500 mb-1">
+      <figcaption className="text-[11px] font-semibold text-neutral-500 mb-1">
         <span>{caption}</span>
-        {clickable && targetClickLabel && (
-          <span className="inline-flex items-center gap-1 text-amber-700">
-            <svg viewBox="0 0 24 24" className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2.2"
-              aria-hidden="true">
-              <circle cx="11" cy="11" r="7" />
-              <line x1="16.5" y1="16.5" x2="21" y2="21" strokeLinecap="round" />
-              <line x1="11" y1="8" x2="11" y2="14" strokeLinecap="round" />
-              <line x1="8" y1="11" x2="14" y2="11" strokeLinecap="round" />
-            </svg>
-            {targetClickLabel}
-          </span>
-        )}
       </figcaption>
       <div className="rounded-xl overflow-hidden bg-sky-50/60 ring-1 ring-neutral-100">
         <svg
@@ -278,17 +312,27 @@ function MapPanel({
               <path key={code} d={shape.path} fill="#e7e5e4" stroke="#d6d3d1" strokeWidth={0.5 * scale} />
             ))}
           {/* 대상 구역 — 확대 가능하면 클릭 대상이 된다 */}
-          <g
+          {target && targetLabel && <g
+            className={clickable ? 'wom-region-trigger' : undefined}
             {...(clickable
               ? {
                 role: 'button',
                 tabIndex: 0,
                 'aria-label': targetClickLabel,
                 onClick: onTargetClick,
-                onKeyDown: (e: React.KeyboardEvent) => {
-                  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onTargetClick!() }
+                // PC 마우스 클릭은 SVG 그룹에 브라우저 기본 검은 외곽선을 만들 수 있다.
+                // 마우스 포커스만 막고 Tab 키보드 포커스는 그대로 유지한다.
+                onPointerDown: (e: React.PointerEvent<SVGGElement>) => {
+                  if (e.pointerType === 'mouse') e.preventDefault()
                 },
-                style: { cursor: 'pointer' },
+                onKeyDown: (e: React.KeyboardEvent) => {
+                  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onTargetClick?.() }
+                },
+                style: {
+                  cursor: 'pointer',
+                  outline: 'none',
+                  WebkitTapHighlightColor: 'transparent',
+                },
               }
               : {})}
           >
@@ -331,7 +375,7 @@ function MapPanel({
             >
               {targetLabel}
             </text>
-          </g>
+          </g>}
         </svg>
       </div>
     </figure>

@@ -29,8 +29,8 @@ for (const f of readdirSync(MAP_DIR).filter((x) => x.endsWith('.ts') && !['types
 }
 
 const indexCss = readFileSync(join(WEB_ROOT, 'src', 'index.css'), 'utf8')
-const END = '.wom-ring { opacity: 0; }'
-const womCss = indexCss.slice(indexCss.indexOf('@keyframes womZoneFill'), indexCss.indexOf(END) + END.length)
+const END = '/* 모션 축소 설정 (접근성)'
+const womCss = indexCss.slice(indexCss.indexOf('@keyframes womZoneFill'), indexCss.indexOf(END))
 
 const CSS = `
   :root { --color-neutral-200:#e5e5e5; --color-amber-500:#f59e0b;
@@ -53,12 +53,12 @@ const CSS = `
   .ends { display:flex; justify-content:space-between; margin-top:4px; }
   .ends span { font-size:10.5px; color:#a3a3a3; }
   .origin { display:flex; gap:6px; align-items:center; margin-bottom:12px; flex-wrap:wrap; }
-  .origin span { font-size:13px; }
+  .origin span, .origin button { font-size:13px; }
+  .origin button { border:0; background:none; padding:0 2px; cursor:pointer; }
   .origin .mid { color:#737373; font-weight:500; }
   .origin .last { color:#b45309; font-weight:700; }
   .origin .sep { color:#d4d4d4; }
-  figcaption { display:flex; justify-content:space-between; font-size:11px; font-weight:600; color:#737373; margin-bottom:4px; }
-  figcaption .hint { color:#b45309; }
+  figcaption { font-size:11px; font-weight:600; color:#737373; margin-bottom:4px; }
   .box { border-radius:12px; overflow:hidden; background:#f0f9ff99; border:1px solid #f5f5f5; position:relative; }
   svg { display:block; width:100%; height:auto; }
   .back { position:absolute; top:28px; left:8px; background:rgba(255,255,255,.95); border:1px solid #e5e5e5;
@@ -114,13 +114,15 @@ function panel(caption, map, outlinePath, shapes, targetCode, targetLabel, { foc
   const s = Number(vb.split(' ')[2]) / Number(map.viewBox.split(' ')[2])
   const others = Object.entries(shapes).filter(([c]) => c !== targetCode)
     .map(([, sh]) => `<path d="${sh.path}" fill="#e7e5e4" stroke="#d6d3d1" stroke-width="${0.5 * s}"/>`).join('')
-  return `<figure style="margin:0"><figcaption><span>${caption}</span>
-      ${hint ? `<span class="hint">🔍 ${hint}</span>` : ''}</figcaption>
+  return `<figure style="margin:0"><figcaption><span>${caption}</span></figcaption>
     <div class="box">
       <svg viewBox="${vb}" role="img" aria-label="${caption} ${targetLabel}" class="wom-animate">
         <path d="${outlinePath}" fill="#fff" stroke="#e5e5e5" stroke-width="${0.8 * s}"/>
         ${others}
-        <g${hint ? ' role="button" tabindex="0" style="cursor:pointer"' : ''}>
+        <g${hint ? ` class="wom-region-trigger" role="button" tabindex="0"
+          onpointerdown="if(event.pointerType==='mouse')event.preventDefault()"
+          onclick="this.dataset.clicked='true'"
+          style="cursor:pointer;outline:none;-webkit-tap-highlight-color:transparent"` : ''}>
           <path class="wom-zone--target" d="${target.path}" fill="var(--color-amber-500)"
                 stroke="var(--color-amber-700)" stroke-width="${(hint ? 1.6 : 1) * s}"/>
           <g class="wom-pin" style="transform-origin:${mx}px ${my}px">
@@ -136,20 +138,34 @@ function panel(caption, map, outlinePath, shapes, targetCode, targetLabel, { foc
     </div></figure>`
 }
 
-function card([cc, l1, l2, country, l1Name, l2Name, taste], zoomed) {
+function card([cc, l1, l2, country, l1Name, l2Name, taste], requestedStage) {
   const map = MAPS[cc]
   const zoom = l2 ? map.zooms[l1] : null
-  const canZoom = !!(zoom && zoom.regions[l2])
-  const parts = [country, l1Name, l2Name].filter(Boolean)
-  const origin = parts.map((p, i) =>
-    `${i ? '<span class="sep">›</span>' : ''}<span class="${i === parts.length - 1 ? 'last' : 'mid'}">${p}</span>`).join('')
-  const mapBody = zoomed && canZoom
-    ? panel(l1Name, map, zoom.outlinePath, zoom.regions, l2, l2Name,
+  const canShowSubregion = !!(zoom && zoom.regions[l2])
+  const stage = requestedStage === 'subregion' && !canShowSubregion ? 'region' : requestedStage
+  // 실제 컴포넌트처럼 전체 계층을 유지하고 국가·확대 단계 인디케이터를 버튼으로 만든다.
+  const parts = [
+    { label: country, view: 'country' },
+    { label: l1Name, view: 'region' },
+    ...(l2Name ? [{ label: l2Name, view: canShowSubregion ? 'subregion' : null }] : []),
+  ]
+  const origin = parts.map((p, i) => {
+    const active = p.view === stage
+    const item = p.view
+      ? `<button data-view="${p.view}" class="${active ? 'last' : 'mid'}">${p.label}</button>`
+      : `<span class="mid">${p.label}</span>`
+    return `${i ? '<span class="sep">›</span>' : ''}${item}`
+  }).join('')
+  const mapBody = stage === 'subregion'
+    ? panel(l2Name, map, zoom.outlinePath, zoom.regions, l2, l2Name,
       { focus: Object.keys(zoom.regions).length > 1, back: true })
-    : panel(country, map, map.outlinePath, map.regions, l1, l1Name,
-      { hint: canZoom ? '세부 산지 보기' : null })
+    : stage === 'region'
+      ? panel(l1Name, map, map.outlinePath, map.regions, l1, l1Name,
+        { focus: true, hint: canShowSubregion ? `${l2Name} 세부 산지 보기` : null, back: true })
+      : panel(country, map, map.outlinePath, map.regions, l1, l1Name,
+        { hint: `${l1Name} 지도 보기` })
 
-  const mapCard = `<div class="card"><h3 class="h3">산지 지도</h3>
+  const mapCard = `<div class="card"><h3 class="h3">지도</h3>
         <div class="origin">${origin}</div>${mapBody}
         <p class="src">경계 데이터: ${map.attribution}</p></div>`
 
@@ -180,7 +196,7 @@ const CASES = [
 mkdirSync(OUT_DIR, { recursive: true })
 const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox'] })
 
-async function shoot(name, { zoomed, width }) {
+async function shoot(name, { stage, width }) {
   const page = await browser.newPage()
   const errors = []
   page.on('pageerror', (e) => errors.push(e.message))
@@ -188,7 +204,7 @@ async function shoot(name, { zoomed, width }) {
   await page.setViewport({ width, height: 1200 })
   const html = `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8">
     <style>${CSS}${womCss}</style></head><body>
-    ${CASES.map((c) => card(c, zoomed)).join('')}</body></html>`
+    ${CASES.map((c) => card(c, stage)).join('')}</body></html>`
   const p = join(OUT_DIR, `${name}.html`)
   writeFileSync(p, html, 'utf8')
   await page.goto(`file://${p.replace(/\\/g, '/')}`, { waitUntil: 'load' })
@@ -203,9 +219,43 @@ async function shoot(name, { zoomed, width }) {
     emptyPaths: [...document.querySelectorAll('svg path')].filter((x) => !x.getAttribute('d')).length,
     clickableZones: document.querySelectorAll('g[role="button"]').length,
     backButtons: document.querySelectorAll('.back').length,
+    indicatorButtons: document.querySelectorAll('.origin button').length,
+    countryIndicators: document.querySelectorAll('.origin [data-view="country"]').length,
+    regionIndicators: document.querySelectorAll('.origin [data-view="region"]').length,
+    subregionIndicators: document.querySelectorAll('.origin [data-view="subregion"]').length,
     originLast: [...document.querySelectorAll('.origin .last')].map((x) => x.textContent),
     targetFill: getComputedStyle(document.querySelector('.wom-zone--target')).fill,
   }))
+
+  // 국가 화면에서 확대 가능한 산지에 마우스를 올리면 해당 도형만 확대되는지 확인한다.
+  const hoverTarget = await page.$('.wom-region-trigger .wom-zone--target')
+  if (hoverTarget) {
+    await hoverTarget.hover()
+    await new Promise((r) => setTimeout(r, 220))
+    state.hoverTransform = await hoverTarget.evaluate((el) => getComputedStyle(el).transform)
+    const box = await hoverTarget.boundingBox()
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+    await page.mouse.down()
+    const pressedStyle = await hoverTarget.evaluate((el) => {
+      const style = getComputedStyle(el.parentElement)
+      return {
+        outlineStyle: style.outlineStyle,
+        outlineWidth: style.outlineWidth,
+        stroke: getComputedStyle(el).stroke,
+      }
+    })
+    state.pressedOutlineStyle = pressedStyle.outlineStyle
+    state.pressedOutlineWidth = pressedStyle.outlineWidth
+    state.pressedStroke = pressedStyle.stroke
+    await page.mouse.up()
+    state.pointerClickFired = await hoverTarget.evaluate((el) => el.parentElement.dataset.clicked === 'true')
+  } else {
+    state.hoverTransform = null
+    state.pressedOutlineStyle = null
+    state.pressedOutlineWidth = null
+    state.pressedStroke = null
+    state.pointerClickFired = null
+  }
 
   // 케이스별로 잘라 저장한다 — fullPage 로 한 장에 담으면 세로가 매우 길어져
   // 이미지 뷰어(최대 2000px)에서 열 수 없다.
@@ -219,9 +269,10 @@ async function shoot(name, { zoomed, width }) {
 
 const results = []
 for (const [name, opts] of Object.entries({
-  'country-pc': { zoomed: false, width: 1200 },
-  'zoomed-pc': { zoomed: true, width: 1200 },
-  'country-mobile': { zoomed: false, width: 390 },
+  'country-pc': { stage: 'country', width: 1200 },
+  'region-pc': { stage: 'region', width: 1200 },
+  'subregion-pc': { stage: 'subregion', width: 1200 },
+  'country-mobile': { stage: 'country', width: 390 },
 })) {
   const { state, errors } = await shoot(name, opts)
   results.push({ name, ...state, errors })
@@ -244,22 +295,33 @@ for (const r of results) {
   if (r.steps !== WINE_CASES * 4 * 5) problems.push(`${r.name}: 5단계 칸 수 ${r.steps}`)
   if (r.filled === 0) problems.push(`${r.name}: 채워진 단계가 없다`)
   if (r.svgs !== CASES.length) problems.push(`${r.name}: 지도 ${r.svgs}개 (한 번에 하나만 보여야 함)`)
+  if (r.countryIndicators !== CASES.length) problems.push(`${r.name}: 국가 인디케이터 ${r.countryIndicators} (기대 ${CASES.length})`)
+  if (r.regionIndicators !== CASES.length) problems.push(`${r.name}: 산지 인디케이터 ${r.regionIndicators} (기대 ${CASES.length})`)
+  if (r.subregionIndicators < 1) problems.push(`${r.name}: 클릭 가능한 세부 산지 인디케이터가 없다`)
   if (r.emptyPaths !== 0) problems.push(`${r.name}: 빈 path ${r.emptyPaths}`)
   if (r.targetFill !== AMBER) problems.push(`${r.name}: 대상 색상 ${r.targetFill}`)
   if (r.errors.length) problems.push(`${r.name}: 콘솔 오류 ${r.errors.length}`)
 }
 const country = results.find((r) => r.name === 'country-pc')
-const zoomed = results.find((r) => r.name === 'zoomed-pc')
-// 국가 뷰: 확대 가능한 산지(보르도)만 클릭 대상, 뒤로가기 없음
-if (country.clickableZones !== 1) problems.push(`국가 뷰 클릭 구역 ${country.clickableZones} (기대 1 — 보르도만)`)
+const regionView = results.find((r) => r.name === 'region-pc')
+const subregion = results.find((r) => r.name === 'subregion-pc')
+// 국가 뷰: 모든 L1 산지가 클릭 대상이며 뒤로가기는 없다.
+if (country.clickableZones !== CASES.length) problems.push(`국가 뷰 클릭 구역 ${country.clickableZones} (기대 ${CASES.length})`)
 if (country.backButtons !== 0) problems.push('국가 뷰에 뒤로가기가 있다')
-// 확대 뷰: 뒤로가기 1개, 산지 끝이 세부 산지(메독)
-if (zoomed.backButtons !== 1) problems.push(`확대 뷰 뒤로가기 ${zoomed.backButtons} (기대 1)`)
-if (!zoomed.originLast.includes('메독')) problems.push('확대 뷰 산지 계층에 메독이 없다')
+if (!country.hoverTransform || country.hoverTransform === 'none') problems.push('국가 뷰 산지 마우스 오버 확대 모션이 없다')
+if (country.pressedOutlineStyle !== 'none') problems.push(`마우스를 누른 산지의 외곽선이 남아 있다: ${country.pressedOutlineStyle}`)
+if (country.pressedStroke === 'rgb(0, 0, 0)') problems.push('마우스를 누른 산지의 경계선이 검은색으로 바뀐다')
+if (!country.pointerClickFired) problems.push('마우스 포커스 외곽선 제거 후 클릭 이벤트가 발생하지 않는다')
+// 산지 뷰: 모든 카드가 국가 복귀 버튼을 가지며, L2 도형이 있는 보르도만 세부 산지 클릭 대상이다.
+if (regionView.backButtons !== CASES.length) problems.push(`산지 뷰 뒤로가기 ${regionView.backButtons} (기대 ${CASES.length})`)
+if (regionView.clickableZones !== 1) problems.push(`산지 뷰 세부 산지 클릭 구역 ${regionView.clickableZones} (기대 1)`)
+// 세부 산지 뷰: 도형이 있는 메독은 L2 단계, 나머지는 L1 단계로 안전하게 폴백한다.
+if (subregion.backButtons !== CASES.length) problems.push(`세부 산지 뷰 뒤로가기 ${subregion.backButtons} (기대 ${CASES.length})`)
+if (!subregion.originLast.includes('메독')) problems.push('세부 산지 뷰 인디케이터에 메독이 없다')
 
 if (problems.length) {
   console.error('\nFAIL\n  ' + problems.join('\n  '))
   process.exit(1)
 }
-console.log(`\nPASS — 2분할 레이아웃·맛 5단계 바·국가↔확대 전환·뒤로가기 정상`)
+console.log(`\nPASS — 2분할 레이아웃·맛 5단계 바·국가→산지→세부 산지 전환·뒤로가기 정상`)
 console.log(`스크린샷: ${OUT_DIR}`)

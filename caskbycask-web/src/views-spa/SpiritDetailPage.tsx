@@ -385,6 +385,7 @@ function SpiritDetailSections({
             )}
             {spirit.wineRegion && (
               <WineOriginMap
+                key={spirit.id}
                 wineRegion={spirit.wineRegion}
                 countryLabel={localizeCountry(spirit.country, isEn ? 'en' : 'ko')}
                 className={hasSplitMapLayout
@@ -545,6 +546,9 @@ function SpiritDetailSections({
                 <DI label={isEn ? 'Cask Finish' : '캐스크 피니시'} value={cognac.caskFinish} />
               </DetailGrid>
             </div>
+            {cognac.blendDetail && (
+              <p className="text-sm text-neutral-600 leading-relaxed mt-3">{cognac.blendDetail}</p>
+            )}
           </div>
         )}
 
@@ -1001,7 +1005,8 @@ export default function SpiritDetailPage() {
   // 카테고리별 서술형 추가 정보 — 상세 카드 대신 이미지 오른쪽 상단 정보 영역에 표시한다.
   const headerAdditionalInfo = (
     spirit.whiskyDetail?.notes
-    ?? spirit.cognacDetail?.blendDetail
+    ?? spirit.wineDetail?.notes
+    ?? spirit.cognacDetail?.notes
     ?? spirit.otherDetail?.notes
   )?.trim()
 
@@ -1218,17 +1223,6 @@ export default function SpiritDetailPage() {
               </p>
             )}
 
-            {/* 보조 메타 — 빈티지 (병입 정보는 공통 상세의 병입 연월로 대체) */}
-            {(spirit.vintageYear
-              || spirit.wineDetail?.vintageStatus === 'NON_VINTAGE') && (
-              <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-[12px] text-neutral-400 -mt-1">
-                {(spirit.vintageYear || spirit.wineDetail?.vintageStatus === 'NON_VINTAGE') && (
-                  <span>{t('spirit.detail.vintageYear')} <b className="text-neutral-600 font-semibold">
-                    {spirit.vintageYear ?? t('spirit.wineVintageStatus.NON_VINTAGE')}
-                  </b></span>
-                )}
-              </div>
-            )}
           </div>
         </div>
       </div>

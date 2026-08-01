@@ -50,7 +50,7 @@ export default function WineRegionPreview({
   return (
     <div className={className}>
       <p className="text-[11px] text-neutral-500 mb-1.5">{tr('spirit.detail.originMap.adminPreview')}</p>
-      <WineOriginMap wineRegion={wineRegion} countryLabel={countryLabel} />
+      <WineOriginMap key={regionCode} wineRegion={wineRegion} countryLabel={countryLabel} />
     </div>
   )
 }

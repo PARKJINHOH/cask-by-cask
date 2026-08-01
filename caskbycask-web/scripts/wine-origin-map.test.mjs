@@ -5,7 +5,7 @@
  * 컴포넌트의 JSX 자체는 단순 매핑이라, 버그가 생기는 지점은 다음 세 가지다.
  *   ① 산지 코드 → L1/L2 도출 (백엔드 wineRegion 응답 해석)
  *   ② 기하 데이터 조회 실패 시 폴백 (지도 미표시)
- *   ③ 확대 패널 표시 여부 판정
+ *   ③ 국가 → 산지 → 세부 산지 단계별 진입 가능 여부 판정
  * 그 규칙을 컴포넌트와 동일한 식으로 재현해 고정한다.
  *
  * 실행: npm run test:wine-origin-map
@@ -45,7 +45,14 @@ function resolve(wineRegion) {
 
   const zoom = map.zooms[l1Code]
   const zoomShape = l2Code && zoom ? zoom.regions[l2Code] : undefined
-  return { rendered: true, l1Code, l2Code, showZoom: !!(zoom && zoomShape), attribution: map.attribution }
+  return {
+    rendered: true,
+    l1Code,
+    l2Code,
+    canShowRegion: true,
+    canShowSubregion: !!zoomShape,
+    attribution: map.attribution,
+  }
 }
 
 const region = (code, countryCode, parentCode = null) => ({
@@ -85,33 +92,37 @@ describe('기하 데이터 로딩', () => {
 })
 
 describe('L1 만 선택된 경우', () => {
-  test('국가 지도만 렌더하고 확대 패널은 생략한다', () => {
+  test('확대 데이터가 없는 L1 도 국가 도형 안에서 산지 단계로 확대할 수 있다', () => {
     const r = resolve(region('FR_CHAMPAGNE', 'FR'))
     assert.equal(r.rendered, true)
     assert.equal(r.l1Code, 'FR_CHAMPAGNE')
     assert.equal(r.l2Code, null)
-    assert.equal(r.showZoom, false)
+    assert.equal(r.canShowRegion, true)
+    assert.equal(r.canShowSubregion, false)
   })
 
-  test('확대 지도가 있는 L1 이라도 L2 미선택이면 확대 패널은 생략한다', () => {
+  test('확대 지도가 있는 L1 은 L2 미선택이어도 산지 지도로 들어갈 수 있다', () => {
     const r = resolve(region('FR_BORDEAUX', 'FR'))
     assert.equal(r.rendered, true)
-    assert.equal(r.showZoom, false)
+    assert.equal(r.canShowRegion, true)
+    assert.equal(r.canShowSubregion, false)
   })
 })
 
 describe('L2 까지 선택된 경우', () => {
-  test('국가 지도 + 확대 지도 2단을 렌더한다', () => {
+  test('국가 → 산지 → 세부 산지 3단을 렌더한다', () => {
     const r = resolve(region('FR_BORDEAUX_MEDOC', 'FR', 'FR_BORDEAUX'))
     assert.equal(r.rendered, true)
     assert.equal(r.l1Code, 'FR_BORDEAUX')
     assert.equal(r.l2Code, 'FR_BORDEAUX_MEDOC')
-    assert.equal(r.showZoom, true)
+    assert.equal(r.canShowRegion, true)
+    assert.equal(r.canShowSubregion, true)
   })
 
-  test('미국 AVA 도 2단으로 렌더된다', () => {
+  test('미국 AVA 도 3단으로 렌더된다', () => {
     const r = resolve(region('US_CALIFORNIA_NAPA_VALLEY', 'US', 'US_CALIFORNIA'))
-    assert.equal(r.showZoom, true)
+    assert.equal(r.canShowRegion, true)
+    assert.equal(r.canShowSubregion, true)
     assert.equal(r.l1Code, 'US_CALIFORNIA')
   })
 })
@@ -156,10 +167,11 @@ describe('그레이스풀 폴백', () => {
     assert.equal(r.reason, 'l1-not-built')
   })
 
-  test('L2 기하가 아직 없으면 국가 지도만 렌더한다', () => {
+  test('L2 기하가 아직 없어도 산지 단계까지는 렌더한다', () => {
     const r = resolve(region('FR_LANGUEDOC_FAKE', 'FR', 'FR_LANGUEDOC'))
     assert.equal(r.rendered, true)
-    assert.equal(r.showZoom, false, 'L2 기하가 없으면 확대 패널을 생략해야 한다')
+    assert.equal(r.canShowRegion, true)
+    assert.equal(r.canShowSubregion, false, 'L2 기하가 없으면 세부 산지 단계만 생략해야 한다')
   })
 })
 
@@ -209,5 +221,47 @@ describe('출처 표기 · 접근성 · SSR', () => {
       assert.match(css, new RegExp(`@keyframes ${kf}`), `${kf} 키프레임 누락`)
     }
     assert.match(css, /@media \(prefers-reduced-motion: reduce\)/)
+    assert.match(css, /\.wom-region-trigger:hover/, '확대 가능한 산지의 마우스 오버 모션이 필요하다')
+    assert.match(css, /\.wom-region-trigger:focus/, '키보드 포커스 모션이 필요하다')
+  })
+
+  test('국가·산지 인디케이터를 항상 표시하고 각 지도 단계로 이동할 수 있다', () => {
+    assert.match(src, /label: countryLabel, targetView: 'country'/)
+    assert.match(src, /label: l1Name, targetView: canShowRegion \? 'region'/)
+    assert.match(src, /label: l2Name, targetView: canShowSubregion \? 'subregion'/)
+    assert.match(src, /onClick=\{\(\) => setView\(part\.targetView!\)\}/)
+    assert.match(src, /aria-current=/)
+    assert.match(src, /originMap\.indicatorLabel/)
+  })
+
+  test('상세 페이지 진입 시 국가 단계에서 시작하고 주류가 바뀌면 지도를 새로 마운트한다', () => {
+    assert.match(src, /useState<MapView>\('country'\)/)
+    const detailPage = readFileSync(join(WEB_ROOT, 'src', 'views-spa', 'SpiritDetailPage.tsx'), 'utf8')
+    assert.match(detailPage, /<WineOriginMap\s+key=\{spirit\.id\}/)
+  })
+
+  test('산지는 클릭·키보드로 확대할 수 있고 확대 화면에 국가 복귀 버튼이 있다', () => {
+    assert.match(src, /wom-region-trigger/)
+    assert.match(src, /onTargetClick/)
+    assert.match(src, /e\.key === 'Enter' \|\| e\.key === ' '/)
+    assert.match(src, /setView\('country'\)/)
+    assert.match(src, /originMap\.back/)
+  })
+
+  test('지도 우측 상단 확대 안내 문구는 렌더하지 않고 접근성 이름으로만 사용한다', () => {
+    assert.doesNotMatch(src, /\{clickable && targetClickLabel && \(/)
+    assert.match(src, /'aria-label': targetClickLabel/)
+  })
+
+  test('인디케이터 포커스 링은 키보드 탐색에서만 표시한다', () => {
+    assert.match(src, /outline-none focus-visible:ring-2/)
+    assert.match(src, /focus-visible:ring-2/)
+  })
+
+  test('PC에서 산지 도형을 클릭하거나 누르고 있을 때 기본 검은 외곽선이 생기지 않는다', () => {
+    assert.match(src, /e\.pointerType === 'mouse'/)
+    assert.match(src, /WebkitTapHighlightColor: 'transparent'/)
+    const css = readFileSync(join(WEB_ROOT, 'src', 'index.css'), 'utf8')
+    assert.match(css, /\.wom-region-trigger:active[\s\S]*outline: none !important/)
   })
 })
