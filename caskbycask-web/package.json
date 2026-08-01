@@ -15,6 +15,7 @@
                     "test:seo-indexing":  "node --test scripts/seo-indexing.test.mjs",
                     "test:seo-entity":  "node --test scripts/seo-entity-metadata.test.mjs",
                     "test:wine-region":  "node --test scripts/wine-region-selection.test.mjs",
+                    "test:legacy-region":  "node --test scripts/legacy-region-ui.test.mjs",
                     "test:wine-region-map":  "node --test scripts/wine-region-map.test.mjs",
                     "test:wine-origin-map":  "node --test scripts/wine-origin-map.test.mjs",
                     "test:region-label":  "node --import ./scripts/test-alias-register.mjs --test scripts/region-label.test.mjs",

@@ -25,6 +25,8 @@ export interface Producer {
   nameEn: string
   country: string
   region: string | null
+  /** 주류 등록 시 기본 선택할 WineRegion 코드. 복수·미매핑 산지는 null */
+  regionCode: string | null
   website: string | null
   foundedYear: number | null
   descriptionKo: string | null

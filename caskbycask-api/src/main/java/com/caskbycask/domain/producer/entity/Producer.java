@@ -1,6 +1,7 @@
 package com.caskbycask.domain.producer.entity;
 
 import com.caskbycask.global.entity.BaseTimeEntity;
+import com.caskbycask.domain.spirit.entity.enums.WineRegion;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.Comment;
@@ -55,6 +56,15 @@ public class Producer extends BaseTimeEntity {
     @Comment("지역")
     private String region;
 
+    /**
+     * 자유 입력 지역을 현재 산지 카탈로그에 연결하는 코드.
+     * 복수 산지처럼 하나로 확정할 수 없는 생산자는 null 로 두고 주류별로 산지를 선택한다.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "region_code", length = WineRegion.MAX_CODE_LENGTH)
+    @Comment("기본 산지 코드(WineRegion) — 주류 등록 시 제안값")
+    private WineRegion regionCode;
+
     @Column(length = 500)
     @Comment("웹사이트")
     private String website;
@@ -98,6 +108,7 @@ public class Producer extends BaseTimeEntity {
     }
 
     public void update(ProducerType type, String nameKo, String nameEn, String country, String region,
+                       WineRegion regionCode,
                        String website, Integer foundedYear, String descriptionKo, String descriptionEn,
                        String searchKeywords) {
         this.type = type;
@@ -105,6 +116,7 @@ public class Producer extends BaseTimeEntity {
         this.nameEn = nameEn;
         this.country = country;
         this.region = region;
+        this.regionCode = regionCode;
         this.website = website;
         this.foundedYear = foundedYear;
         this.descriptionKo = descriptionKo;

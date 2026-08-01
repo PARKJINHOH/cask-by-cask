@@ -17,6 +17,8 @@ public record ProducerResponse(
         String country,
         @Schema(description = "소재 지역")
         String region,
+        @Schema(description = "기본 산지 코드(WineRegion). 복수·미매핑 산지는 null")
+        String regionCode,
         @Schema(description = "공식 웹사이트 URL")
         String website,
         @Schema(description = "설립연도")
@@ -36,6 +38,7 @@ public record ProducerResponse(
                 producer.getNameEn(),
                 producer.getCountry(),
                 producer.getRegion(),
+                producer.getRegionCode() != null ? producer.getRegionCode().getCode() : null,
                 producer.getWebsite(),
                 producer.getFoundedYear(),
                 producer.getDescriptionKo(),

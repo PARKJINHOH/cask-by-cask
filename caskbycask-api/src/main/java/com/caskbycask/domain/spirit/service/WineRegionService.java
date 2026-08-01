@@ -70,4 +70,13 @@ public class WineRegionService {
         return WineRegion.fromCode(code)
                 .orElseThrow(() -> new CustomException(ErrorCode.INVALID_INPUT));
     }
+
+    /** 산지 코드가 실제 주류 카테고리에서도 사용 가능한지 함께 검증한다. */
+    public WineRegion resolve(String code, SpiritCategory category) {
+        WineRegion region = resolve(code);
+        if (region != null && !region.supports(category)) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+        return region;
+    }
 }

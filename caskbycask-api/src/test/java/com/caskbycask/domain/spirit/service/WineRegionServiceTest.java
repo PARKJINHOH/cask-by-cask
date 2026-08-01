@@ -99,4 +99,16 @@ class WineRegionServiceTest {
                 .extracting(e -> ((CustomException) e).getErrorCode())
                 .isEqualTo(ErrorCode.INVALID_INPUT);
     }
+
+    @Test
+    @DisplayName("카테고리 검증 resolve 는 와인 산지를 위스키 코드로 허용하지 않는다")
+    void resolveRejectsCategoryMismatch() {
+        assertThatThrownBy(() -> service.resolve("FR_BORDEAUX", SpiritCategory.WHISKY))
+                .isInstanceOf(CustomException.class)
+                .extracting(e -> ((CustomException) e).getErrorCode())
+                .isEqualTo(ErrorCode.INVALID_INPUT);
+
+        assertThat(service.resolve("GB_SCT_SPEYSIDE", SpiritCategory.WHISKY))
+                .isEqualTo(WineRegion.GB_SCT_SPEYSIDE);
+    }
 }

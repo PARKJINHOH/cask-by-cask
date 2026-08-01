@@ -46,7 +46,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
 /**
- * 와인 산지 코드({@code spirit.region_code}) 저장·상속·동기화 검증.
+ * 산지 코드({@code spirit.region_code}) 저장·상속·동기화 검증.
  *
  * <p>핵심 규약
  * <ul>
@@ -54,7 +54,7 @@ import static org.mockito.Mockito.verify;
  *       (기존 지역 필터·검색·SEO 가 {@code region} 을 쓰기 때문)</li>
  *   <li>수정 시 {@code regionCode == null} 은 '해제'다 (abvMin/abvMax 와 동일한 규약)</li>
  *   <li>에디션(variant)은 마스터의 산지 코드를 상속한다</li>
- *   <li>산지 코드를 안 쓰는 기존 카테고리(위스키 등)의 동작은 바뀌지 않는다</li>
+ *   <li>산지 코드를 보내지 않으면 기존 자유 입력 지역 텍스트를 유지한다</li>
  * </ul>
  */
 @ExtendWith(MockitoExtension.class)

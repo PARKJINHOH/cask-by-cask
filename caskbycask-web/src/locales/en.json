@@ -1960,7 +1960,8 @@
       "selectL2": "Select sub-region (optional)",
       "wholeL1": "All of {{name}}",
       "loading": "Loading wine regions...",
-      "loadError": "Failed to load wine regions."
+      "loadError": "Failed to load wine regions.",
+      "legacyUnmapped": "The existing region ‘{{region}}’ could not be matched to a region code. Please select the actual origin for this spirit."
     }
   },
   "maturing": {

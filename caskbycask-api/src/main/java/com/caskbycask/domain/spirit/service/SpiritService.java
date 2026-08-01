@@ -554,7 +554,7 @@ public class SpiritService {
         validateVariantSplitSeriesIdentifier(request.isVariantSplit(), masterVariantType, seriesIdentifier);
         Integer normalizedVintageYear = resolveCreateVintageYear(
                 request.category(), request.vintageYear(), request.wineDetail());
-        WineRegion regionCode = wineRegionService.resolve(request.regionCode());
+        WineRegion regionCode = wineRegionService.resolve(request.regionCode(), request.category());
 
         Spirit spirit = Spirit.builder()
                 .nameKo(request.nameKo())
@@ -664,7 +664,7 @@ public class SpiritService {
         SpiritCategory nextCategory = request.category() != null ? request.category() : spirit.getCategory();
         Integer normalizedVintageYear = resolveUpdateVintageYear(spirit, nextCategory, request);
         // 산지 코드는 abvMin/abvMax 와 동일한 규약 — null 이 오면 '해제'로 반영한다(관리자 폼이 항상 필드를 전송).
-        WineRegion nextRegionCode = wineRegionService.resolve(request.regionCode());
+        WineRegion nextRegionCode = wineRegionService.resolve(request.regionCode(), nextCategory);
 
         spirit.update(
                 request.nameKo() != null ? request.nameKo() : spirit.getNameKo(),
@@ -1053,7 +1053,7 @@ public class SpiritService {
         validateVariantSplitSeriesIdentifier(detail.isVariantSplit(), masterVariantType, seriesIdentifier);
         Integer normalizedVintageYear = resolveCreateVintageYear(
                 detail.category(), detail.vintageYear(), detail.wineDetail());
-        WineRegion regionCode = wineRegionService.resolve(detail.regionCode());
+        WineRegion regionCode = wineRegionService.resolve(detail.regionCode(), detail.category());
 
         Spirit spirit = Spirit.builder()
                 .nameKo(detail.nameKo())

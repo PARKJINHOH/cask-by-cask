@@ -13,11 +13,11 @@ interface Props {
   onRegionChange: (nameKo: string, nameEn: string) => void;
   disabled?: boolean;
   /**
-   * 'WINE' 이고 해당 국가가 산지 카탈로그에 있으면 산지 2단 선택기를 쓴다.
+   * 카테고리와 국가가 산지 카탈로그에 있으면 산지 2단 선택기를 쓴다.
    * 미전달(생산자 등록 등)이면 기존 동작을 그대로 유지한다.
    */
   category?: SpiritCategory | null;
-  /** 와인 산지 코드 — 와인 모드에서만 사용 */
+  /** 산지 코드 — 카탈로그 모드에서 사용 */
   regionCode?: string | null;
   onRegionCodeChange?: (code: string | null) => void;
   /** 관리자 화면은 한국어 고정 */
@@ -38,6 +38,8 @@ export default function CountryRegionSelector({
   admin,
 }: Props) {
   const { t, i18n } = useTranslation();
+  const tr = (key: string, opts?: Record<string, unknown>) =>
+    t(key, admin ? { lng: 'ko', ...(opts ?? {}) } : opts);
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -217,9 +219,10 @@ export default function CountryRegionSelector({
   };
 
   return (
-    <div className="flex gap-2">
-      {/* 국가 콤보박스 */}
-      <div ref={containerRef} className="relative w-full">
+    <div className="grid grid-cols-1 gap-3 w-full min-w-0">
+      {/* 국가는 한 줄 전체 폭을 사용한다. 산지 2단 선택기가 다시 분할되므로
+          같은 줄에 두면 L1/L2 가 카드 폭의 1/4까지 줄어드는 문제가 있었다. */}
+      <div ref={containerRef} className="relative w-full min-w-0">
         {open ? (
           <input
             autoFocus
@@ -272,8 +275,15 @@ export default function CountryRegionSelector({
         )}
       </div>
 
-      {/* 지역 */}
-      {renderRegion()}
+      {/* 지역/산지는 다음 줄 전체 폭에서 렌더한다. */}
+      <div className="w-full min-w-0">
+        {renderRegion()}
+        {useWineRegions && !regionCode && regionNameKo.trim() && (
+          <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+            {tr('location.wineRegion.legacyUnmapped', { region: regionNameKo })}
+          </p>
+        )}
+      </div>
     </div>
   );
 }

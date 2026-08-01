@@ -233,7 +233,7 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
   const [countryCode, setCountryCode] = useState<string | null>(null)
   const [country, setCountry] = useState('')
   const [region, setRegion] = useState('')
-  // 와인 산지 코드 (WineRegion) — 지도 표시용. 와인 이외 카테고리에서는 항상 null
+  // 산지 코드 (역사적 명칭 WineRegion) — 와인·위스키·꼬냑·기타 지도 표시용
   const [regionCode, setRegionCode] = useState<string | null>(null)
 
   // 하위 에디션 관련 상태
@@ -1000,7 +1000,7 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
       volumeMl: common.volumeMl,
       country: country || null,
       region: region || null,
-      // 산지 코드는 와인·위스키 전용. 수정 요청에서 null 은 '해제'로 반영되므로 항상 전송한다
+      // 카탈로그 대상 카테고리의 산지 코드. 수정 요청에서 null 은 '해제'로 반영되므로 항상 전송한다
       regionCode: category && REGION_CATALOG_CATEGORIES.includes(category)
         ? (regionCode || null)
         : null,
@@ -1622,6 +1622,9 @@ export default function SpiritFormFields({
                     const code = ISO3166_COUNTRIES.find((c) => c.nameKo === producer.country)?.code ?? null
                     form.setCountryValue(code, producer.country)
                     form.setRegion(producer.region ?? '')
+                    // 생산자의 구조화 산지를 기본값으로 사용한다. 미매핑 생산자로 바꿀 때는
+                    // 이전 생산자의 코드가 남지 않도록 반드시 null 로 함께 덮어쓴다.
+                    form.setRegionCode(producer.regionCode ?? null)
                   }
                 }}
                 type={CATEGORY_TO_PRODUCER_TYPE[category]}

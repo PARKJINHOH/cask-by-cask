@@ -9,6 +9,8 @@ import com.caskbycask.domain.producer.entity.ProducerRegisterRequest;
 import com.caskbycask.domain.producer.repository.ProducerRegisterRequestRepository;
 import com.caskbycask.domain.producer.repository.ProducerRepository;
 import com.caskbycask.domain.spirit.entity.enums.RequestStatus;
+import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
+import com.caskbycask.domain.spirit.service.LegacyWineRegionResolver;
 import com.caskbycask.domain.spirit.repository.SpiritRepository;
 import com.caskbycask.domain.user.entity.User;
 import com.caskbycask.domain.user.repository.UserRepository;
@@ -37,6 +39,7 @@ public class ProducerService {
     private final UserRepository userRepository;
     private final NotificationService notificationService;
     private final ObjectMapper objectMapper;
+    private final LegacyWineRegionResolver legacyWineRegionResolver;
 
     // ── 공개 조회 ──────────────────────────────────────────────
 
@@ -80,12 +83,14 @@ public class ProducerService {
 
     @Transactional
     public ProducerResponse create(CreateProducerRequest request) {
+        ProducerType type = request.type() != null ? request.type() : ProducerType.DISTILLERY;
         Producer producer = Producer.builder()
-                .type(request.type() != null ? request.type() : ProducerType.DISTILLERY)
+                .type(type)
                 .nameKo(request.nameKo())
                 .nameEn(request.nameEn())
                 .country(request.country())
                 .region(request.region())
+                .regionCode(resolveRegionCode(type, request.country(), request.region()))
                 .website(request.website())
                 .foundedYear(request.foundedYear())
                 .descriptionKo(request.descriptionKo())
@@ -98,12 +103,16 @@ public class ProducerService {
     @Transactional
     public ProducerResponse update(Long id, UpdateProducerRequest request) {
         Producer producer = getProducer(id);
+        ProducerType type = request.type() != null ? request.type() : producer.getType();
+        String country = request.country() != null ? request.country() : producer.getCountry();
+        String region = request.region() != null ? request.region() : producer.getRegion();
         producer.update(
-                request.type()          != null ? request.type()          : producer.getType(),
+                type,
                 request.nameKo()        != null ? request.nameKo()        : producer.getNameKo(),
                 request.nameEn()        != null ? request.nameEn()        : producer.getNameEn(),
-                request.country()       != null ? request.country()       : producer.getCountry(),
-                request.region()        != null ? request.region()        : producer.getRegion(),
+                country,
+                region,
+                resolveRegionCode(type, country, region),
                 request.website()       != null ? request.website()       : producer.getWebsite(),
                 request.foundedYear()   != null ? request.foundedYear()   : producer.getFoundedYear(),
                 request.descriptionKo() != null ? request.descriptionKo() : producer.getDescriptionKo(),
@@ -187,6 +196,9 @@ public class ProducerService {
                 .nameEn(body.nameEn())
                 .country(body.country())
                 .region(body.region())
+                .regionCode(resolveRegionCode(
+                        body.type() != null ? body.type() : ProducerType.DISTILLERY,
+                        body.country(), body.region()))
                 .website(body.website())
                 .foundedYear(body.foundedYear())
                 .descriptionKo(body.descriptionKo())
@@ -232,6 +244,17 @@ public class ProducerService {
 
     private User getUser(Long userId) {
         return userRepository.getByIdOrThrow(userId);
+    }
+
+    private com.caskbycask.domain.spirit.entity.enums.WineRegion resolveRegionCode(
+            ProducerType type, String country, String region) {
+        SpiritCategory category = switch (type) {
+            case DISTILLERY -> SpiritCategory.WHISKY;
+            case WINERY -> SpiritCategory.WINE;
+            case COGNAC_HOUSE -> SpiritCategory.COGNAC;
+            case OTHER -> SpiritCategory.OTHER;
+        };
+        return legacyWineRegionResolver.resolve(category, country, region).orElse(null);
     }
 
     private ProducerRegisterRequest getProducerRequest(Long id) {

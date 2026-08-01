@@ -19,7 +19,7 @@ interface Props {
 }
 
 const SELECT =
-  'w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white ' +
+  'w-full min-w-0 border border-neutral-200 rounded-lg px-3 py-2.5 text-sm bg-white ' +
   'focus:outline-none focus:ring-2 focus:ring-primary-400 ' +
   'disabled:bg-neutral-50 disabled:text-neutral-400'
 
@@ -67,7 +67,7 @@ export default function WineRegionSelector({
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
+    <div className={`grid grid-cols-1 gap-3 w-full min-w-0 ${subRegions.length > 0 ? 'md:grid-cols-2' : ''}`}>
       {/* L1 대산지 */}
       <select
         className={SELECT}
