@@ -169,8 +169,12 @@ export type WineCertification = 'ORGANIC' | 'BIODYNAMIC' | 'SUSTAINABLE' | 'NONE
 export type WineSweetness = 'DRY' | 'OFF_DRY' | 'MEDIUM' | 'MEDIUM_SWEET' | 'SWEET'
 export type WineBody = 'LIGHT' | 'LIGHT_MEDIUM' | 'MEDIUM' | 'MEDIUM_FULL' | 'FULL'
 export type WineIntensity = 'LOW' | 'LOW_MEDIUM' | 'MEDIUM' | 'MEDIUM_HIGH' | 'HIGH'
-export type CognacGrade = 'VS' | 'NAPOLEON' | 'VSOP' | 'XO' | 'XXO' | 'HORS_DAGE'
+export type CognacGrade = 'VS' | 'NAPOLEON' | 'VSOP' | 'XO' | 'XXO' | 'EXTRA' | 'HORS_DAGE'
 export type CognacCru = 'GRANDE_CHAMPAGNE' | 'PETITE_CHAMPAGNE' | 'BORDERIES' | 'FINS_BOIS' | 'BONS_BOIS' | 'BOIS_ORDINAIRES'
+/** 숙성에 쓰는 프렌치 오크 숲 — 백엔드 `CognacOakType` */
+export type CognacOakType =
+  | 'LIMOUSIN' | 'TRONCAIS' | 'ALLIER' | 'NEVERS' | 'VOSGES'
+  | 'JUPILLES' | 'BERTRANGES' | 'FRENCH_OAK' | 'OTHER'
 export type OtherSpiritType = 'RUM' | 'GIN' | 'VODKA' | 'TEQUILA' | 'MEZCAL' | 'BRANDY' | 'LIQUEUR' | 'SAKE' | 'SOJU' | 'BAIJIU' | 'ABSINTHE' | 'BEER' | 'OTHER'
 // ── 상세 응답 타입 ──────────────────────────────────────────────
 export interface GrapeVariety { name: string; percentage: number | null }
@@ -235,14 +239,22 @@ export interface WineDetailResponse {
   notes: string | null
 }
 
+export interface CruCompositionResponse {
+  cru: CognacCru
+  percentage: number | null
+}
+
 export interface CognacDetailResponse {
   grade: CognacGrade | null
+  /** 대표 크뤼 — 구성 중 비율이 가장 높은 것 */
   cru: CognacCru | null
+  /** 1개면 싱글 크뤼, 2개 이상이면 멀티 크뤼 블렌드 */
+  cruComposition: CruCompositionResponse[] | null
   isFineChampagne: boolean | null
   blendDetail: string | null
   vintageYear: number | null
   ageYears: number | null
-  oakType: string | null
+  oakTypes: CognacOakType[] | null
   caskFinish: string | null
   notes: string | null
 }

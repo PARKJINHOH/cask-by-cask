@@ -85,14 +85,21 @@ export interface WineDetailRequest {
   notes?: string | null
 }
 
+export interface CruCompositionRequest {
+  cru: string
+  percentage?: number | null
+}
+
 export interface CognacDetailRequest {
   grade?: string | null
+  /** 대표 크뤼 — 구성을 보내면 서버가 비율 최상위 크뤼로 덮어쓴다 */
   cru?: string | null
+  cruComposition?: CruCompositionRequest[] | null
   isFineChampagne?: boolean | null
   blendDetail?: string | null
   vintageYear?: number | null
   ageYears?: number | null
-  oakType?: string | null
+  oakTypes?: string[] | null
   caskFinish?: string | null
   notes?: string | null
 }

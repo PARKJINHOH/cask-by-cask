@@ -2,17 +2,25 @@ package com.caskbycask.domain.spirit.dto;
 
 import com.caskbycask.domain.spirit.entity.enums.CognacCru;
 import com.caskbycask.domain.spirit.entity.enums.CognacGrade;
+import com.caskbycask.domain.spirit.entity.enums.CognacOakType;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 
+import java.util.List;
+
 public record CognacDetailRequest(
 
-        @Schema(description = "꼬냑 등급 (VS, NAPOLEON, VSOP, XO, XXO, HORS_DAGE)")
+        @Schema(description = "꼬냑 등급 (VS, NAPOLEON, VSOP, XO, XXO, EXTRA, HORS_DAGE)")
         CognacGrade grade,
 
-        @Schema(description = "크뤼 (원산지 세부 등급 — Grande Champagne이 최상위)")
+        @Schema(description = "대표 크뤼. cruComposition 을 보내면 비율이 가장 높은 크뤼로 서버가 덮어쓴다.")
         CognacCru cru,
+
+        @Schema(description = "크뤼 구성 (비율 합계 100% 이하). 1개면 싱글 크뤼, 2개 이상이면 멀티 크뤼 블렌드")
+        @Valid
+        List<CruCompositionRequest> cruComposition,
 
         @Schema(description = "Fine Champagne 여부 (Grande + Petite Champagne 블렌드, Grande 50%+)")
         Boolean isFineChampagne,
@@ -29,9 +37,8 @@ public record CognacDetailRequest(
         @Min(value = 0, message = "숙성 연수는 0 이상이어야 합니다.")
         Integer ageYears,
 
-        @Schema(description = "오크(우드) 종류 (LIMOUSIN, TRONCAIS, ALLIER, OTHER)")
-        @Size(max = 30, message = "오크 종류 값이 올바르지 않습니다.")
-        String oakType,
+        @Schema(description = "오크(우드) 종류 — 프렌치 오크 숲. 리무쟁·트롱세 병용처럼 복수 선택 가능")
+        List<CognacOakType> oakTypes,
 
         @Schema(description = "캐스크 피니시 / 추가 숙성 (자유 입력)")
         @Size(max = 200, message = "캐스크 피니시는 200자 이하여야 합니다.")

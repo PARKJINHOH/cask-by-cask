@@ -271,25 +271,64 @@ public class SpiritDetailService {
     private void saveCognacDetail(Spirit spirit, CognacDetailRequest req) {
         if (req == null) return;
 
+        List<CruCompositionRequest> composition = normalizeCruComposition(req.cruComposition());
+
         Map<String, Object> extra = new LinkedHashMap<>();
         extra.put("blendDetail", req.blendDetail());
         extra.put("vintageYear", req.vintageYear());
         extra.put("ageYears", req.ageYears());
-        extra.put("oakType", req.oakType());
+        extra.put("oakTypes", req.oakTypes());
+        extra.put("cruComposition", composition);
         extra.put("caskFinish", req.caskFinish());
         extra.put("notes", req.notes());
         String extraJson = serialize(extra);
 
+        // 대표 크뤼 — 구성을 보냈으면 비율이 가장 높은 크뤼로 덮어쓴다.
+        // cru 컬럼만 보는 기존 소비처(상세 표시, 향후 필터)를 그대로 살리기 위함.
+        CognacCru cru = representativeCru(composition, req.cru());
+
         cognacDetailRepo.findById(spirit.getId()).ifPresentOrElse(
-            existing -> existing.update(req.grade(), req.cru(), req.isFineChampagne(), extraJson),
+            existing -> existing.update(req.grade(), cru, req.isFineChampagne(), extraJson),
             () -> cognacDetailRepo.save(SpiritCognacDetail.builder()
                 .spirit(spirit)
                 .grade(req.grade())
-                .cru(req.cru())
+                .cru(cru)
                 .isFineChampagne(req.isFineChampagne())
                 .extraData(extraJson)
                 .build())
         );
+    }
+
+    /** 빈 행 제거 후 크뤼 중복·비율 합계(100% 이하)를 검증한다. */
+    private List<CruCompositionRequest> normalizeCruComposition(List<CruCompositionRequest> rows) {
+        if (rows == null) return null;
+
+        List<CruCompositionRequest> cleaned = rows.stream()
+                .filter(r -> r != null && r.cru() != null)
+                .toList();
+        if (cleaned.isEmpty()) return null;
+
+        long distinct = cleaned.stream().map(CruCompositionRequest::cru).distinct().count();
+        if (distinct != cleaned.size()) throw new CustomException(ErrorCode.DUPLICATE_CRU_COMPOSITION);
+
+        int total = cleaned.stream()
+                .mapToInt(r -> r.percentage() != null ? r.percentage() : 0)
+                .sum();
+        if (total > 100) throw new CustomException(ErrorCode.INVALID_CRU_PERCENTAGE);
+
+        return cleaned;
+    }
+
+    /**
+     * 구성 중 비율이 가장 높은 크뤼. 비율이 전부 미상이면 첫 번째 행을 쓴다.
+     * 구성이 비어 있으면 요청의 단일 {@code cru} 를 그대로 둔다.
+     */
+    private CognacCru representativeCru(List<CruCompositionRequest> composition, CognacCru fallback) {
+        if (composition == null || composition.isEmpty()) return fallback;
+        return composition.stream()
+                .max(Comparator.comparingInt(r -> r.percentage() != null ? r.percentage() : 0))
+                .map(CruCompositionRequest::cru)
+                .orElse(fallback);
     }
 
     private void saveOtherDetail(Spirit spirit, OtherDetailRequest req) {
@@ -439,13 +478,46 @@ public class SpiritDetailService {
     private CognacDetailResponse buildCognacDetailResponse(SpiritCognacDetail detail) {
         if (detail == null) return null;
         Map<String, Object> extra = parseExtra(detail.getExtraData());
+
+        // 크뤼 구성이 없는 기존 행은 단일 cru 컬럼을 1줄짜리 구성으로 승격시켜 내려준다.
+        List<CruCompositionResponse> composition = cruCompositionFromExtra(extra);
+        if (composition.isEmpty() && detail.getCru() != null) {
+            composition = List.of(new CruCompositionResponse(detail.getCru(), null));
+        }
+
         return new CognacDetailResponse(
-                detail.getGrade(), detail.getCru(), detail.getIsFineChampagne(),
+                detail.getGrade(), detail.getCru(), composition, detail.getIsFineChampagne(),
                 str(extra, "blendDetail"),
                 num(extra, "vintageYear"), num(extra, "ageYears"),
-                str(extra, "oakType"), str(extra, "caskFinish"),
+                cognacOakTypes(extra), str(extra, "caskFinish"),
                 str(extra, "notes")
         );
+    }
+
+    private List<CruCompositionResponse> cruCompositionFromExtra(Map<String, Object> extra) {
+        if (extra == null || !(extra.get("cruComposition") instanceof List<?> list)) return List.of();
+        return list.stream()
+                .filter(r -> r instanceof Map<?, ?>)
+                .map(r -> {
+                    Map<?, ?> m = (Map<?, ?>) r;
+                    CognacCru cru = m.get("cru") instanceof String s ? parseEnum(s, CognacCru.class) : null;
+                    Integer pct   = m.get("percentage") instanceof Number n ? n.intValue() : null;
+                    return cru == null ? null : new CruCompositionResponse(cru, pct);
+                })
+                .filter(Objects::nonNull)
+                .toList();
+    }
+
+    /**
+     * 오크 종류. 단수 {@code oakType} 문자열만 있던 과거 데이터는 1개짜리 배열로 승격시켜 읽는다
+     * (해당 행이 다음에 저장될 때 자연히 신규 형식이 된다).
+     */
+    private List<CognacOakType> cognacOakTypes(Map<String, Object> extra) {
+        List<CognacOakType> types = enumList(extra, "oakTypes", CognacOakType.class);
+        if (!types.isEmpty()) return types;
+
+        CognacOakType legacy = parseEnum(str(extra, "oakType"), CognacOakType.class);
+        return legacy == null ? List.of() : List.of(legacy);
     }
 
     private OtherDetailResponse buildOtherDetailResponse(SpiritOtherDetail detail) {
@@ -489,5 +561,23 @@ public class SpiritDetailService {
     private Integer num(Map<String, Object> map, String key) {
         if (map == null) return null;
         return map.get(key) instanceof Number n ? n.intValue() : null;
+    }
+
+    /** extra_data 의 문자열 배열을 enum 리스트로. 모르는 값은 조용히 버린다. */
+    private <E extends Enum<E>> List<E> enumList(Map<String, Object> map, String key, Class<E> type) {
+        if (map == null || !(map.get(key) instanceof List<?> list)) return List.of();
+        return list.stream()
+                .map(v -> v instanceof String s ? parseEnum(s, type) : null)
+                .filter(Objects::nonNull)
+                .toList();
+    }
+
+    private <E extends Enum<E>> E parseEnum(String value, Class<E> type) {
+        if (value == null || value.isBlank()) return null;
+        try {
+            return Enum.valueOf(type, value);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 }

@@ -16,7 +16,7 @@ const WINE_TYPES: WineType[] = ['RED', 'WHITE', 'ROSE', 'SPARKLING', 'DESSERT', 
 const WINE_SWEETNESS: WineSweetness[] = [...WINE_SWEETNESS_SCALE]
 const WINE_BODY: WineBody[] = [...WINE_BODY_SCALE]
 const WINE_LEVELS: WineIntensity[] = [...WINE_INTENSITY_SCALE]
-const COGNAC_GRADES: CognacGrade[] = ['VS', 'NAPOLEON', 'VSOP', 'XO', 'XXO', 'HORS_DAGE']
+const COGNAC_GRADES: CognacGrade[] = ['VS', 'NAPOLEON', 'VSOP', 'XO', 'XXO', 'EXTRA', 'HORS_DAGE']
 
 const CATEGORIES: SpiritCategory[] = ['WHISKY', 'COGNAC', 'WINE', 'OTHER']
 

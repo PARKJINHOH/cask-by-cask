@@ -1,47 +1,47 @@
+import { useTranslation } from 'react-i18next'
 import InfoTooltip from '@/shared/components/InfoTooltip'
 import { RequiredMark } from '@/shared/components/FormFieldLabel'
+import CruCompositionInput, { type CruCompositionRow } from '@/shared/components/CruCompositionInput'
+import {
+  COGNAC_GRADES, COGNAC_GRADE_MIN_YEARS, COGNAC_OAK_TYPES,
+} from '@/domain/spirit/data/cognac'
 
 export interface CognacDetailForm {
-  grade: string; cru: string; isFineChampagne: boolean; blendDetail: string
-  vintageYear: string; ageYears: string; oakType: string; caskFinish: string; notes: string
+  grade: string; cruComposition: CruCompositionRow[]; isFineChampagne: boolean; blendDetail: string
+  vintageYear: string; ageYears: string; oakTypes: string[]; caskFinish: string; notes: string
 }
 export const DEFAULT_COGNAC: CognacDetailForm = {
-  grade: '', cru: '', isFineChampagne: false, blendDetail: '',
-  vintageYear: '', ageYears: '', oakType: '', caskFinish: '', notes: '',
+  grade: '', cruComposition: [], isFineChampagne: false, blendDetail: '',
+  vintageYear: '', ageYears: '', oakTypes: [], caskFinish: '', notes: '',
 }
-
-// 프렌치 오크 숲(원산지) — 꼬냑 숙성에 주로 쓰임
-const OAK_TYPES: Array<[string, string]> = [
-  ['LIMOUSIN', 'Limousin (리무쟁)'],
-  ['TRONCAIS', 'Tronçais (트롱세)'],
-  ['ALLIER', 'Allier (알리에)'],
-  ['OTHER', '기타'],
-]
 
 interface Props { value: CognacDetailForm; onChange: (u: Partial<CognacDetailForm>) => void; errors?: Record<string, string> }
 
 const INPUT = 'w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400'
 const LABEL = 'block text-xs font-medium text-neutral-600 mb-1.5'
 
-const GRADES: Array<[string, string, string]> = [
-  ['VS', 'VS', '2년+'],
-  ['NAPOLEON', 'Napoléon', '6년+'],
-  ['VSOP', 'VSOP', '4년+'],
-  ['XO', 'XO', '10년+'],
-  ['XXO', 'XXO', '14년+'],
-  ['HORS_DAGE', "Hors d'Age", '30년+'],
-]
-
-const CRUS: Array<[string, string]> = [
-  ['GRANDE_CHAMPAGNE', 'Grande Champagne'],
-  ['PETITE_CHAMPAGNE', 'Petite Champagne'],
-  ['BORDERIES', 'Borderies'],
-  ['FINS_BOIS', 'Fins Bois'],
-  ['BONS_BOIS', 'Bons Bois'],
-  ['BOIS_ORDINAIRES', 'Bois Ordinaires (Bois à Terroirs)'],
-]
+/** Fine Champagne 법적 요건: Grande + Petite Champagne 만으로 구성되고 Grande 가 50% 이상 */
+function qualifiesAsFineChampagne(rows: CruCompositionRow[]): boolean {
+  if (rows.length !== 2) return false
+  const crus = rows.map((r) => r.cru)
+  if (!crus.includes('GRANDE_CHAMPAGNE') || !crus.includes('PETITE_CHAMPAGNE')) return false
+  const grande = Number(rows.find((r) => r.cru === 'GRANDE_CHAMPAGNE')?.percentage) || 0
+  return grande >= 50
+}
 
 export default function CognacDetailSection({ value, onChange, errors }: Props) {
+  const { t } = useTranslation()
+
+  const cruCount = value.cruComposition.filter((r) => r.cru).length
+  const showFineChampagneHint = !value.isFineChampagne && qualifiesAsFineChampagne(value.cruComposition)
+
+  const toggleOak = (oak: string) => {
+    const next = value.oakTypes.includes(oak)
+      ? value.oakTypes.filter((o) => o !== oak)
+      : [...value.oakTypes, oak]
+    onChange({ oakTypes: next })
+  }
+
   return (
     <div className="space-y-5">
       {/* 필수 정보 */}
@@ -52,12 +52,12 @@ export default function CognacDetailSection({ value, onChange, errors }: Props) 
             등급 <RequiredMark />
           </label>
           <div className="flex flex-wrap gap-3" role="radiogroup" aria-required="true">
-            {GRADES.map(([v, l, years]) => (
-              <label key={v} className="flex flex-col items-center cursor-pointer select-none">
-                <input type="radio" value={v} checked={value.grade === v}
-                  onChange={() => onChange({ grade: v })} className="accent-amber-500 mb-1" />
-                <span className="text-xs font-semibold text-neutral-700">{l}</span>
-                <span className="text-[10px] text-neutral-400">{years}</span>
+            {COGNAC_GRADES.map((g) => (
+              <label key={g} className="flex flex-col items-center cursor-pointer select-none">
+                <input type="radio" value={g} checked={value.grade === g}
+                  onChange={() => onChange({ grade: g })} className="accent-amber-500 mb-1" />
+                <span className="text-xs font-semibold text-neutral-700">{t(`spirit.cognacGrade.${g}`)}</span>
+                <span className="text-[10px] text-neutral-400">{COGNAC_GRADE_MIN_YEARS[g] ?? ' '}</span>
               </label>
             ))}
             <label className="flex flex-col items-center cursor-pointer select-none">
@@ -72,24 +72,35 @@ export default function CognacDetailSection({ value, onChange, errors }: Props) 
 
       <p className="text-xs font-semibold text-neutral-500">선택 정보</p>
 
-      {/* 크뤼 */}
+      {/* 크뤼 구성 */}
       <div>
         <label className={LABEL}>
-          크뤼 (원산지 구역)
-          <InfoTooltip text="토양의 백악질 비율로 나뉘는 꼬냑 AOC 법정 6개 구역. 샹파뉴 와인과는 이름만 같고 다른 지역입니다. Grande Champagne이 최상위." />
+          크뤼 구성 (원산지 구역, 비율 합계 ≤ 100%)
+          <InfoTooltip text="토양의 백악질 비율로 나뉘는 꼬냑 AOC 법정 6개 구역. 샹파뉴 와인과는 이름만 같고 다른 지역입니다. Grande Champagne이 최상위. 꼬냑은 여러 크뤼를 섞는 것이 기본이라 섞인 크뤼를 모두 입력하세요. 비율을 모르면 비워두면 됩니다." />
         </label>
-        <select value={value.cru} onChange={(e) => onChange({ cru: e.target.value })} className={INPUT}>
-          <option value="">선택 안 함</option>
-          {CRUS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-        </select>
+        <CruCompositionInput value={value.cruComposition}
+          onChange={(rows) => onChange({ cruComposition: rows })} />
+        {cruCount > 0 && (
+          <p className="text-xs text-neutral-500 mt-1.5">
+            {cruCount === 1 ? '싱글 크뤼로 표시됩니다.' : `멀티 크뤼 블렌드(${cruCount}개 크뤼)로 표시됩니다.`}
+          </p>
+        )}
+        {errors?.cruComposition && <p className="text-xs text-red-500 mt-1">{errors.cruComposition}</p>}
       </div>
 
       {/* Fine Champagne */}
-      <label className="flex items-center gap-2 cursor-pointer select-none text-sm">
-        <input type="checkbox" checked={value.isFineChampagne}
-          onChange={(e) => onChange({ isFineChampagne: e.target.checked })} className="w-4 h-4 accent-amber-500" />
-        Fine Champagne (Grande + Petite Champagne 블렌드, Grande 50% 이상)
-      </label>
+      <div>
+        <label className="flex items-center gap-2 cursor-pointer select-none text-sm">
+          <input type="checkbox" checked={value.isFineChampagne}
+            onChange={(e) => onChange({ isFineChampagne: e.target.checked })} className="w-4 h-4 accent-amber-500" />
+          Fine Champagne (Grande + Petite Champagne 블렌드, Grande 50% 이상)
+        </label>
+        {showFineChampagneHint && (
+          <p className="text-xs text-amber-600 mt-1.5">
+            입력한 크뤼 구성이 Fine Champagne 요건을 충족합니다. 라벨에 표기되어 있다면 체크하세요.
+          </p>
+        )}
+      </div>
 
       {/* 빈티지 / 선언 숙성연수 */}
       <div className="grid grid-cols-2 gap-4">
@@ -118,16 +129,26 @@ export default function CognacDetailSection({ value, onChange, errors }: Props) 
         </div>
       </div>
 
-      {/* 오크 종류 */}
+      {/* 오크 종류 — 리무쟁·트롱세 병용이 흔해 복수 선택 */}
       <div>
         <label className={LABEL}>
-          오크 종류
-          <InfoTooltip text="숙성에 사용한 프렌치 오크 숲. 리무쟁=강한 타닌, 트롱세=섬세함." />
+          오크 종류 (복수 선택)
+          <InfoTooltip text="숙성에 사용한 프렌치 오크 숲. 리무쟁=굵은 결·강한 타닌, 트롱세=촘촘한 결·섬세함. 두 숲을 함께 쓰는 하우스가 많습니다." />
         </label>
-        <select value={value.oakType} onChange={(e) => onChange({ oakType: e.target.value })} className={INPUT}>
-          <option value="">선택 안 함</option>
-          {OAK_TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-        </select>
+        <div className="flex flex-wrap gap-2">
+          {COGNAC_OAK_TYPES.map((oak) => {
+            const on = value.oakTypes.includes(oak)
+            return (
+              <button key={oak} type="button" onClick={() => toggleOak(oak)} aria-pressed={on}
+                className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors
+                  focus:outline-none focus:ring-2 focus:ring-primary-400 ${on
+                    ? 'border-amber-400 bg-amber-100 text-amber-800'
+                    : 'border-neutral-200 bg-white text-neutral-600 hover:border-amber-300 hover:bg-amber-50'}`}>
+                {t(`spirit.cognacOak.${oak}`)}
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       {/* 캐스크 피니시 / 추가 숙성 */}
@@ -143,7 +164,10 @@ export default function CognacDetailSection({ value, onChange, errors }: Props) 
 
       {/* 블렌드 설명 */}
       <div>
-        <label className={LABEL}>블렌드 설명</label>
+        <label className={LABEL}>
+          블렌드 설명
+          <InfoTooltip text="아상블라주에 대한 서술. 예: 약 40종의 오드비를 블렌딩, 최고령 원액 25년." />
+        </label>
         <textarea value={value.blendDetail} rows={3} maxLength={300}
           onChange={(e) => onChange({ blendDetail: e.target.value })}
           className={`${INPUT} resize`} />

@@ -20,6 +20,7 @@
                     "test:wine-origin-map":  "node --test scripts/wine-origin-map.test.mjs",
                     "test:region-label":  "node --import ./scripts/test-alias-register.mjs --test scripts/region-label.test.mjs",
                     "test:wine-taste":  "node --import ./scripts/test-alias-register.mjs --test scripts/wine-taste.test.mjs",
+                    "test:cognac":  "node --import ./scripts/test-alias-register.mjs --test scripts/cognac.test.mjs",
                     "map:build":  "node scripts/build-wine-region-map.mjs",
                     "map:preview":  "node scripts/preview-wine-region-map.mjs",
                     "map:verify":  "node scripts/verify-wine-origin-map.mjs",

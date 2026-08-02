@@ -740,7 +740,31 @@
       "VSOP":      "VSOP",
       "XO":        "XO",
       "XXO":       "XXO",
+      "EXTRA":     "Extra",
       "HORS_DAGE": "Hors d'Age"
+    },
+    "cognacCru": {
+      "GRANDE_CHAMPAGNE": "Grande Champagne (그랑드 샹파뉴)",
+      "PETITE_CHAMPAGNE": "Petite Champagne (프티트 샹파뉴)",
+      "BORDERIES":        "Borderies (보르드리)",
+      "FINS_BOIS":        "Fins Bois (팽 부아)",
+      "BONS_BOIS":        "Bons Bois (봉 부아)",
+      "BOIS_ORDINAIRES":  "Bois Ordinaires (부아 조르디네르)"
+    },
+    "cognacBlend": {
+      "singleCru": "싱글 크뤼",
+      "multiCru":  "멀티 크뤼 블렌드"
+    },
+    "cognacOak": {
+      "LIMOUSIN":   "Limousin (리무쟁)",
+      "TRONCAIS":   "Tronçais (트롱세)",
+      "ALLIER":     "Allier (알리에)",
+      "NEVERS":     "Nevers (느베르)",
+      "VOSGES":     "Vosges (보주)",
+      "JUPILLES":   "Jupilles (쥐피유)",
+      "BERTRANGES": "Bertranges (베르트랑주)",
+      "FRENCH_OAK": "프렌치 오크 (숲 미표기)",
+      "OTHER":      "기타"
     },
     "otherType": {
       "RUM":      "럼",

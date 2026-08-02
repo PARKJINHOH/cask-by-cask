@@ -209,6 +209,10 @@ function SpiritDetailSections({
   const whisky = spirit.whiskyDetail
   const wine = spirit.wineDetail
   const cognac = spirit.cognacDetail
+  // 크뤼 구성이 없던 시절 데이터는 대표 cru 하나만 있으므로 1줄짜리 구성으로 취급한다.
+  const cognacCrus = cognac?.cruComposition?.length
+    ? cognac.cruComposition
+    : cognac?.cru ? [{ cru: cognac.cru, percentage: null }] : []
   const other = spirit.otherDetail
   const whiskyStyle = whisky?.style ?? parentWhiskyDetail?.style ?? null
   const whiskyStyleOther = whisky?.style ? whisky.styleOther : parentWhiskyDetail?.styleOther
@@ -273,24 +277,12 @@ function SpiritDetailSections({
     const l = CASK_LABEL[c]
     return l ? (isEn ? l.en : l.ko) : c
   }
-  const GRADE_LABEL: Record<string, string> = {
-    VS: 'VS', NAPOLEON: 'Napoléon', VSOP: 'VSOP', XO: 'XO', XXO: 'XXO', HORS_DAGE: "Hors d'Age",
-  }
-  const CRU_LABEL: Record<string, string> = {
-    GRANDE_CHAMPAGNE: 'Grande Champagne', PETITE_CHAMPAGNE: 'Petite Champagne',
-    BORDERIES: 'Borderies', FINS_BOIS: 'Fins Bois', BONS_BOIS: 'Bons Bois',
-    BOIS_ORDINAIRES: 'Bois Ordinaires',
-  }
   const OTHER_TYPE_LABEL: Record<string, string> = {
     RUM: isEn ? 'Rum' : '럼', GIN: isEn ? 'Gin' : '진', VODKA: isEn ? 'Vodka' : '보드카',
     TEQUILA: isEn ? 'Tequila' : '데킬라', MEZCAL: isEn ? 'Mezcal' : '메스칼',
     BRANDY: isEn ? 'Brandy' : '브랜디', LIQUEUR: isEn ? 'Liqueur' : '리큐르',
     SAKE: isEn ? 'Sake' : '사케', SOJU: isEn ? 'Soju' : '소주', BAIJIU: isEn ? 'Baijiu' : '바이주',
     ABSINTHE: isEn ? 'Absinthe' : '압생트', BEER: isEn ? 'Beer' : '맥주', OTHER: isEn ? 'Other' : '기타',
-  }
-  // 꼬냑 오크 라벨 (상세 전용 — 필터 없음). 관능 값은 spirit.wine* 번역키 사용.
-  const COGNAC_OAK_LABEL: Record<string, string> = {
-    LIMOUSIN: 'Limousin', TRONCAIS: 'Tronçais', ALLIER: 'Allier', OTHER: isEn ? 'Other' : '기타',
   }
   const reportName = isEn ? (spirit.nameEn || spirit.nameKo) : spirit.nameKo
   const reportHref = `/request/feedback/new?type=ETC`
@@ -523,13 +515,26 @@ function SpiritDetailSections({
             <div className="flex items-center gap-4 flex-wrap">
               {cognac.grade && (
                 <span className="px-4 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-lg font-bold">
-                  {GRADE_LABEL[cognac.grade] ?? cognac.grade}
+                  {t(`spirit.cognacGrade.${cognac.grade}`)}
                 </span>
               )}
-              {cognac.cru && (
+              {cognacCrus.length > 0 && (
                 <div>
-                  <p className="text-xs text-neutral-400">{isEn ? 'Cru' : '크뤼'}</p>
-                  <p className="text-sm font-medium text-neutral-900">{CRU_LABEL[cognac.cru] ?? cognac.cru}</p>
+                  {/* 꼬냑은 여러 크뤼를 섞는 것이 기본이라 '블렌드'를 별도 필드로 두지 않고
+                      구성 개수에서 파생한다 — 변별력은 그 반대편(싱글 크뤼)에 있다. */}
+                  <p className="text-xs text-neutral-400">
+                    {isEn ? 'Cru' : '크뤼'}
+                    <span className="ml-1.5 text-neutral-500">
+                      {t(cognacCrus.length === 1 ? 'spirit.cognacBlend.singleCru' : 'spirit.cognacBlend.multiCru')}
+                    </span>
+                  </p>
+                  <div className="flex flex-wrap">
+                    {cognacCrus.map((c) => (
+                      <Badge2 key={c.cru}>
+                        {t(`spirit.cognacCru.${c.cru}`)}{c.percentage != null ? ` ${c.percentage}%` : ''}
+                      </Badge2>
+                    ))}
+                  </div>
                 </div>
               )}
               {cognac.isFineChampagne && (
@@ -542,7 +547,10 @@ function SpiritDetailSections({
               <DetailGrid>
                 <DI label={isEn ? 'Vintage' : '빈티지'} value={cognac.vintageYear} />
                 <DI label={isEn ? 'Age' : '숙성연수'} value={cognac.ageYears != null ? `${cognac.ageYears}${isEn ? ' yr' : '년'}` : null} />
-                <DI label={isEn ? 'Oak' : '오크'} value={cognac.oakType ? (COGNAC_OAK_LABEL[cognac.oakType] ?? cognac.oakType) : null} />
+                <DI label={isEn ? 'Oak' : '오크'}
+                  value={cognac.oakTypes?.length
+                    ? cognac.oakTypes.map((o) => t(`spirit.cognacOak.${o}`)).join(', ')
+                    : null} />
                 <DI label={isEn ? 'Cask Finish' : '캐스크 피니시'} value={cognac.caskFinish} />
               </DetailGrid>
             </div>

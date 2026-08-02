@@ -17,6 +17,7 @@ import {
   suspiciousVolume, suspiciousAbv,
 } from '@/domain/spirit/data/spiritLimits'
 import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
+import type { CruCompositionRow } from '@/shared/components/CruCompositionInput'
 import type {
   AdminSpiritDetail, CreateSpiritPayload, SpiritRegisterRequestDetail,
   CreateVariantRequest, SpiritCommonDetailRequest, WhiskyDetailRequest,
@@ -74,6 +75,20 @@ export const PRODUCER_LABEL: Record<SpiritCategory, string> = {
  * 백엔드 `SpiritCommonDetailRequest` 의 `@Pattern` 과 같은 규칙을 유지할 것.
  */
 export const DATE_RE = /^\d{4}(-(0[1-9]|1[0-2]))?$/
+
+/**
+ * 응답의 꼬냑 크뤼 구성을 폼 행으로. 구성이 없던 시절 데이터는 단일 `cru` 를
+ * 1줄짜리 구성으로 승격시킨다(서버도 같은 규칙으로 내려준다).
+ */
+function toCruRows(
+  composition: ReadonlyArray<{ cru: string; percentage?: number | null }> | null | undefined,
+  legacyCru: string | null | undefined,
+): CruCompositionRow[] {
+  if (composition?.length) {
+    return composition.map((c) => ({ cru: c.cru, percentage: c.percentage?.toString() ?? '' }))
+  }
+  return legacyCru ? [{ cru: legacyCru, percentage: '' }] : []
+}
 
 function trimStringsRecursively<T>(obj: T): T {
   if (obj === null || obj === undefined) return obj
@@ -564,10 +579,10 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
     if (s.cognacDetail) {
       const c = s.cognacDetail
       setCognacDetail({
-        grade: c.grade ?? '', cru: c.cru ?? '',
+        grade: c.grade ?? '', cruComposition: toCruRows(c.cruComposition, c.cru),
         isFineChampagne: c.isFineChampagne ?? false, blendDetail: c.blendDetail ?? '',
         vintageYear: c.vintageYear?.toString() ?? '', ageYears: c.ageYears?.toString() ?? '',
-        oakType: c.oakType ?? '', caskFinish: c.caskFinish ?? '',
+        oakTypes: c.oakTypes ?? [], caskFinish: c.caskFinish ?? '',
         notes: c.notes ?? '',
       })
     }
@@ -662,10 +677,10 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
       const c = r.cognacDetail
       setCognacDetail({
         ...DEFAULT_COGNAC,
-        grade: r.cognacGrade ?? c?.grade ?? '', cru: c?.cru ?? '',
+        grade: r.cognacGrade ?? c?.grade ?? '', cruComposition: toCruRows(c?.cruComposition, c?.cru),
         isFineChampagne: c?.isFineChampagne ?? false, blendDetail: c?.blendDetail ?? '',
         vintageYear: c?.vintageYear?.toString() ?? '', ageYears: c?.ageYears?.toString() ?? '',
-        oakType: c?.oakType ?? '', caskFinish: c?.caskFinish ?? '',
+        oakTypes: c?.oakTypes ?? [], caskFinish: c?.caskFinish ?? '',
         notes: c?.notes ?? '',
       })
     } else if (r.category === 'OTHER') {
@@ -792,7 +807,14 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
       const total = wineDetail.grapeVarieties.reduce((sum, g) => sum + (Number(g.percentage) || 0), 0)
       if (total > 100) errs.grapeVarieties = '포도 품종 비율 합계가 100%를 초과합니다.'
     }
-    if (category === 'COGNAC' && !cognacDetail.grade) errs.grade = '등급을 선택해주세요.'
+    if (category === 'COGNAC') {
+      if (!cognacDetail.grade) errs.grade = '등급을 선택해주세요.'
+      const rows = cognacDetail.cruComposition.filter((r) => r.cru)
+      const cruTotal = rows.reduce((sum, r) => sum + (Number(r.percentage) || 0), 0)
+      if (cruTotal > 100) errs.cruComposition = '크뤼 구성 비율 합계가 100%를 초과합니다.'
+      else if (new Set(rows.map((r) => r.cru)).size !== rows.length)
+        errs.cruComposition = '같은 크뤼를 중복해서 입력할 수 없습니다.'
+    }
     if (category === 'OTHER' && !otherDetail.otherType) errs.otherType = '주종을 선택해주세요.'
 
     // 생산 정보 필수 — 관리자 등록/수정에만 적용한다.
@@ -910,18 +932,25 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
           notes: wineDetail.notes || null,
         },
       }
-      case 'COGNAC': return {
-        cognacDetail: {
-          grade: cognacDetail.grade || null,
-          cru: cognacDetail.cru || null,
-          isFineChampagne: cognacDetail.isFineChampagne ?? null,
-          blendDetail: cognacDetail.blendDetail || null,
-          vintageYear: cognacDetail.vintageYear ? Number(cognacDetail.vintageYear) : null,
-          ageYears: cognacDetail.ageYears ? Number(cognacDetail.ageYears) : null,
-          oakType: cognacDetail.oakType || null,
-          caskFinish: cognacDetail.caskFinish || null,
-          notes: cognacDetail.notes || null,
-        },
+      case 'COGNAC': {
+        const cruRows = cognacDetail.cruComposition.filter((r) => r.cru)
+        return {
+          cognacDetail: {
+            grade: cognacDetail.grade || null,
+            // 대표 크뤼는 서버가 구성에서 비율 최상위로 정한다.
+            cru: null,
+            cruComposition: cruRows.map((r) => ({
+              cru: r.cru, percentage: r.percentage ? Number(r.percentage) : null,
+            })),
+            isFineChampagne: cognacDetail.isFineChampagne ?? null,
+            blendDetail: cognacDetail.blendDetail || null,
+            vintageYear: cognacDetail.vintageYear ? Number(cognacDetail.vintageYear) : null,
+            ageYears: cognacDetail.ageYears ? Number(cognacDetail.ageYears) : null,
+            oakTypes: cognacDetail.oakTypes,
+            caskFinish: cognacDetail.caskFinish || null,
+            notes: cognacDetail.notes || null,
+          },
+        }
       }
       case 'OTHER': return {
         otherDetail: {

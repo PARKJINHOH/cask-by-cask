@@ -740,7 +740,31 @@
       "VSOP":      "VSOP",
       "XO":        "XO",
       "XXO":       "XXO",
+      "EXTRA":     "Extra",
       "HORS_DAGE": "Hors d'Age"
+    },
+    "cognacCru": {
+      "GRANDE_CHAMPAGNE": "Grande Champagne",
+      "PETITE_CHAMPAGNE": "Petite Champagne",
+      "BORDERIES":        "Borderies",
+      "FINS_BOIS":        "Fins Bois",
+      "BONS_BOIS":        "Bons Bois",
+      "BOIS_ORDINAIRES":  "Bois Ordinaires"
+    },
+    "cognacBlend": {
+      "singleCru": "Single Cru",
+      "multiCru":  "Multi-Cru Blend"
+    },
+    "cognacOak": {
+      "LIMOUSIN":   "Limousin",
+      "TRONCAIS":   "Tronçais",
+      "ALLIER":     "Allier",
+      "NEVERS":     "Nevers",
+      "VOSGES":     "Vosges",
+      "JUPILLES":   "Jupilles",
+      "BERTRANGES": "Bertranges",
+      "FRENCH_OAK": "French Oak (unspecified)",
+      "OTHER":      "Other"
     },
     "otherType": {
       "RUM":      "Rum",

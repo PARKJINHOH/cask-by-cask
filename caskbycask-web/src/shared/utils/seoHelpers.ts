@@ -129,7 +129,7 @@ interface SpiritDetailResponse {
     blendDetail?: string | null
     vintageYear?: number | null
     ageYears?: number | null
-    oakType?: string | null
+    oakTypes?: string[] | null
     caskFinish?: string | null
   } | null
   otherDetail?: {
