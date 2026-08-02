@@ -436,7 +436,7 @@ export function buildImportPlan(raw: Record<string, unknown>): BuildSuccess | Bu
 
 /** 적용에 필요한 폼 API 만 추린 타입 — 테스트는 이 모양의 가짜 폼을 넘긴다. */
 export type ImportTargetForm = Pick<SpiritFormApi,
-  | 'reset' | 'selectCategory'
+  | 'reset' | 'setCategory'
   | 'setNameKo' | 'setNameEn' | 'setCountryValue' | 'setRegion' | 'setRegionCode'
   | 'setIsAbvRange' | 'setAbvMin' | 'setAbvMax'
   | 'updateCommon' | 'updateWhisky' | 'updateWine' | 'updateCognac'
@@ -449,10 +449,17 @@ export type ImportTargetForm = Pick<SpiritFormApi,
  *
  * <p>먼저 `reset()` 으로 폼을 비운다 — 두 번 붙여넣었을 때 이전 값(캐스크 체크·에디션 등)이
  * 남아 섞이면 무엇이 이번 JSON 에서 온 값인지 알 수 없게 된다.
+ *
+ * <p><b>카테고리는 {@code selectCategory} 가 아니라 {@code setCategory} 로 넣는다.</b>
+ * {@code selectCategory} 는 "같은 카테고리면 아무것도 하지 않는다"는 가드가 있는데,
+ * 그 비교 대상이 <b>이번 렌더의 값</b>이라 바로 앞의 {@code reset()}(→ null) 이 아직 반영되지 않았다.
+ * 이미 꼬냑이 선택된 상태에서 꼬냑 JSON 을 붙여넣으면 가드에 걸려 {@code setCategory} 가 실행되지 않고,
+ * {@code reset()} 의 null 만 남아 카테고리 상세 카드가 통째로 사라진다.
+ * {@code reset()} 이 이미 산지 코드·에디션·카테고리 상세를 모두 비우므로 가드가 하는 일은 필요 없다.
  */
 export function applyImportPlan(form: ImportTargetForm, plan: ImportPlan) {
   form.reset()
-  form.selectCategory(plan.category)
+  form.setCategory(plan.category)
 
   const f = plan.fields
   if (f.nameKo !== undefined) form.setNameKo(f.nameKo)

@@ -18,8 +18,14 @@ const DOCS = join(HERE, '..', '..', 'docs')
 const { parseSpiritResearchJson, buildImportPlan, applyImportPlan } =
   await import('@/domain/admin/utils/spiritResearchJson')
 
-/** 폼 API 를 흉내 내 호출을 기록한다 */
-function fakeForm() {
+/**
+ * 폼 API 를 흉내 내 호출을 기록한다.
+ *
+ * `renderedCategory` 는 **이번 렌더 시점의 카테고리**다 — React 상태는 이벤트 핸들러 안에서
+ * 즉시 갱신되지 않으므로, `selectCategory` 의 "같으면 아무것도 안 함" 가드는 이 값과 비교한다.
+ * 실제 폼과 같은 조건을 만들어야 "꼬냑 선택 → 꼬냑 JSON 붙여넣기" 회귀를 잡을 수 있다.
+ */
+function fakeForm(renderedCategory = null) {
   const calls = []
   const state = {
     category: null, nameKo: '', nameEn: '', country: null, countryCode: null,
@@ -32,8 +38,13 @@ function fakeForm() {
   return {
     calls,
     state,
-    reset: () => { calls.push('reset') },
-    selectCategory: (c) => { calls.push('selectCategory'); state.category = c },
+    reset: () => { calls.push('reset'); state.category = null },
+    setCategory: (c) => { calls.push('setCategory'); state.category = c },
+    selectCategory: (c) => {
+      calls.push('selectCategory')
+      if (c === renderedCategory) return // 실제 폼의 가드 — 렌더 시점 값과 비교한다
+      state.category = c
+    },
     setNameKo: (v) => { state.nameKo = v },
     setNameEn: (v) => { state.nameEn = v },
     setCountryValue: (code, name) => { state.countryCode = code; state.country = name },
@@ -521,7 +532,26 @@ describe('applyImportPlan', () => {
     const form = fakeForm()
     applyImportPlan(form, plan)
     assert.equal(form.calls[0], 'reset')
-    assert.equal(form.calls[1], 'selectCategory')
+    assert.equal(form.calls[1], 'setCategory')
+  })
+
+  // 회귀: 꼬냑을 이미 고른 상태에서 꼬냑 JSON 을 붙여넣으면 상세 카드가 사라졌다.
+  // reset() 이 카테고리를 비우는데 selectCategory 의 "같으면 아무것도 안 함" 가드가
+  // **렌더 시점의 옛 값**과 비교해 통과해 버려, setCategory 가 실행되지 않았다.
+  for (const category of ['COGNAC', 'WHISKY', 'WINE']) {
+    test(`${category} 를 이미 고른 상태에서 같은 카테고리를 붙여넣어도 카테고리가 유지된다`, () => {
+      const { plan } = buildImportPlan({ category, nameKo: '테스트' })
+      const form = fakeForm(category) // 화면에 이미 이 카테고리가 선택되어 있다
+      applyImportPlan(form, plan)
+      assert.equal(form.state.category, category, '카테고리가 비어 상세 입력이 사라진다')
+    })
+  }
+
+  test('다른 카테고리로 바꿔 붙여넣어도 정상 반영된다', () => {
+    const { plan } = buildImportPlan({ category: 'WINE', nameKo: '테스트' })
+    const form = fakeForm('COGNAC')
+    applyImportPlan(form, plan)
+    assert.equal(form.state.category, 'WINE')
   })
 
   test('생산자는 이름만 넘기고 연결은 화면이 한다', () => {
