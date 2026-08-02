@@ -77,16 +77,54 @@ export const reviewApi = {
   deleteReview: (spiritId: number, reviewId: number) =>
     axiosInstance.delete<ApiResponse<null>>(`/api/spirits/${spiritId}/reviews/${reviewId}`),
 
-  getMyReviews: (params?: { page?: number; size?: number }) =>
-    axiosInstance.get<ApiResponse<PageResponse<ReviewItem>>>('/api/users/me/reviews', { params }),
+  getMyReviews: (params?: { page?: number; size?: number; category?: SpiritCategory }) =>
+    axiosInstance.get<ApiResponse<PageResponse<ReviewItem>>>('/api/users/me/reviews', {
+      // category 는 값이 있을 때만 전송 (빈 값 전송 시 서버가 필터로 오인하지 않도록)
+      params: {
+        page: params?.page,
+        size: params?.size,
+        ...(params?.category ? { category: params.category } : {}),
+      },
+    }),
+
+  getMyReviewCategoryCounts: () =>
+    axiosInstance.get<ApiResponse<UserReviewCategoryCounts>>('/api/users/me/reviews/category-counts'),
+
+  /** 리뷰 수정 페이지 진입용 단건 조회 (본인 리뷰) */
+  getMyReview: (reviewId: number) =>
+    axiosInstance.get<ApiResponse<ReviewItem>>(`/api/users/me/reviews/${reviewId}`),
 
   getMyReviewEmbeds: (params?: { page?: number; size?: number }) =>
     axiosInstance.get<ApiResponse<PageResponse<ReviewEmbedItem>>>('/api/users/me/review-embeds', { params }),
 
-  getMyReviewRequests: (params?: { page?: number; size?: number; status?: VariantReviewRequestStatus }) =>
+  getMyReviewRequests: (params?: {
+    page?: number
+    size?: number
+    status?: VariantReviewRequestStatus
+    category?: SpiritCategory
+  }) =>
     axiosInstance.get<ApiResponse<PageResponse<VariantReviewRequestItem>>>(
       '/api/users/me/review-requests',
-      { params },
+      {
+        params: {
+          page: params?.page,
+          size: params?.size,
+          ...(params?.status ? { status: params.status } : {}),
+          ...(params?.category ? { category: params.category } : {}),
+        },
+      },
+    ),
+
+  getMyReviewRequestCategoryCounts: (status?: VariantReviewRequestStatus) =>
+    axiosInstance.get<ApiResponse<UserReviewCategoryCounts>>(
+      '/api/users/me/review-requests/category-counts',
+      { params: status ? { status } : undefined },
+    ),
+
+  /** 리뷰 수정 페이지 진입용 단건 조회 (본인 하위 에디션 요청) */
+  getMyReviewRequest: (requestId: number) =>
+    axiosInstance.get<ApiResponse<VariantReviewRequestItem>>(
+      `/api/users/me/review-requests/${requestId}`,
     ),
 
   updateMyReviewRequest: (

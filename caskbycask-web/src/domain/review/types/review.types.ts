@@ -12,6 +12,8 @@ export interface ReviewImagePlanItem {
   fileIndex?: number
 }
 
+export type SpiritVariantType = 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE'
+
 export interface ReviewItem {
   id: number
   userId: number
@@ -22,6 +24,14 @@ export interface ReviewItem {
   spiritCategory: SpiritCategory
   spiritCanonicalPathKo?: string | null
   spiritCanonicalPathEn?: string | null
+  /** 하위 에디션 리뷰일 때만 채워진다 (마스터/단일 주류는 null) */
+  spiritVariantType?: SpiritVariantType | null
+  spiritSeriesIdentifier?: string | null
+  spiritSeriesIdentifierEn?: string | null
+  spiritVariantValue?: string | null
+  spiritVariantValueEn?: string | null
+  spiritAbv?: number | null
+  spiritVolumeMl?: number | null
   noseScore: number
   tasteScore: number
   finishScore: number
@@ -115,7 +125,8 @@ export interface VariantReviewRequestItem {
   masterNameEn: string
   masterCanonicalPathKo?: string | null
   masterCanonicalPathEn?: string | null
-  variantType: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE' | null
+  masterCategory?: SpiritCategory | null
+  variantType: SpiritVariantType | null
   seriesIdentifier: string | null
   seriesIdentifierEn: string | null
   variantValue: string

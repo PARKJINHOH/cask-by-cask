@@ -105,15 +105,6 @@ public interface ReviewRepository extends JpaRepository<Review, Long>, ReviewQue
 
     @Query(value = """
             SELECT r FROM Review r
-            JOIN FETCH r.user
-            JOIN FETCH r.spirit
-            WHERE r.user.id = :userId
-            """,
-            countQuery = "SELECT COUNT(r) FROM Review r WHERE r.user.id = :userId")
-    Page<Review> findByUserIdWithUser(@Param("userId") Long userId, Pageable pageable);
-
-    @Query(value = """
-            SELECT r FROM Review r
             JOIN FETCH r.spirit s
             LEFT JOIN FETCH s.parent
             WHERE r.user.id = :userId

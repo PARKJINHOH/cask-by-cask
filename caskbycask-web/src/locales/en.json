@@ -1053,7 +1053,16 @@
       "rejectedEditDesc": "The edition information is already registered and cannot be edited. Update the review content and request another review.",
       "rejectedResubmit": "Request re-approval",
       "rejectReason": "Reason:",
-      "reviewedAt": "Reviewed"
+      "reviewedAt": "Reviewed",
+      "categoryFilter": "Spirit category filter",
+      "noCategoryResultDesc": "Try selecting another category.",
+      "editionSection": "Edition info",
+      "editionSpirit": "Spirit",
+      "editionReadOnly": "Read-only",
+      "editionReadOnlyHelp": "Edition details of a registered spirit cannot be changed from a review. Please contact us if something looks wrong.",
+      "editLocked": "This request has already been processed and can no longer be edited.",
+      "editNotFound": "The review you are trying to edit was not found.",
+      "backToList": "Back to my reviews"
     },
     "scraps": {
       "empty": "No scrapped posts.",

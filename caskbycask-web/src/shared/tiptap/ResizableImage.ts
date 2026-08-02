@@ -5,6 +5,7 @@ import { Fragment, Slice } from '@tiptap/pm/model'
 import { Plugin } from '@tiptap/pm/state'
 import { dropPoint } from '@tiptap/pm/transform'
 import i18n from '@/shared/utils/i18n'
+import { isTouchInput, subscribeTouchInput } from './pointerMode'
 
 const INTERNAL_IMAGE_DRAG = 'application/x-caskbycask-image-pos'
 const activeImageDragPositions = new WeakMap<object, number>()
@@ -369,12 +370,15 @@ export const ResizableImage = Image.extend({
 
       // 이미지 전체를 잡고 이동하되 이벤트 대상은 img가 아닌 투명 표면으로 둔다.
       // crxMouse가 왼쪽 드래그를 이미지 Super Drag로 오인하는 가능성을 줄인다.
+      // 마우스 전용이며, 터치 입력에서는 아래 applyPointerMode 가 DOM 에서 통째로 떼어내
+      // 이미지 위 스와이프가 다른 본문 영역과 똑같이 페이지 스크롤로 처리되게 한다.
       const dragSurface = document.createElement('span')
       dragSurface.className = 'di-image__drag-surface'
       dragSurface.draggable = true
-      frame.appendChild(dragSurface)
 
-      dragSurface.addEventListener('dblclick', (e) => {
+      // 편집 열기 제스처는 이미지 영역(frame) 자체에 걸어 둔다. 마우스는 더블클릭,
+      // 터치는 더블탭이며 조작 표면이 없어도 동일하게 동작한다.
+      frame.addEventListener('dblclick', (e) => {
         e.preventDefault()
         e.stopPropagation()
         dispatchImageEdit()
@@ -387,14 +391,14 @@ export const ResizableImage = Image.extend({
       let touchMoved = false
       let touchStartPoint: { x: number; y: number } | null = null
 
-      dragSurface.addEventListener('touchstart', (e) => {
+      frame.addEventListener('touchstart', (e) => {
         touchMoved = e.touches.length !== 1
         touchStartPoint = e.touches.length === 1
           ? { x: e.touches[0].clientX, y: e.touches[0].clientY }
           : null
       }, { passive: true })
 
-      dragSurface.addEventListener('touchmove', (e) => {
+      frame.addEventListener('touchmove', (e) => {
         if (touchMoved) return
         if (e.touches.length !== 1 || !touchStartPoint) {
           touchMoved = true
@@ -408,12 +412,14 @@ export const ResizableImage = Image.extend({
         if (distance > TOUCH_TAP_SLOP_PX) touchMoved = true
       }, { passive: true })
 
-      dragSurface.addEventListener('touchcancel', () => {
+      frame.addEventListener('touchcancel', () => {
         touchMoved = true
         lastTap = 0
       }, { passive: true })
 
-      dragSurface.addEventListener('touchend', (e) => {
+      // touchend 는 스크롤이 끝난 뒤에 오므로 non-passive 여도 스크롤을 막지 않는다.
+      // 더블탭일 때만 preventDefault 해서 브라우저 더블탭 확대를 억제한다.
+      frame.addEventListener('touchend', (e) => {
         if (touchMoved) {
           lastTap = 0
           return
@@ -436,7 +442,6 @@ export const ResizableImage = Image.extend({
       dividerHandle.setAttribute('aria-valuemax', String(MAX_PAIR_WIDTH))
       dividerHandle.setAttribute('aria-valuenow', String(DEFAULT_PAIR_WIDTH))
       dividerHandle.tabIndex = 0
-      frame.appendChild(dividerHandle)
 
       const commitPairWidth = (nextWidth: number) => {
         const leftPos = getPos()
@@ -460,7 +465,8 @@ export const ResizableImage = Image.extend({
       }
 
       const resizePair = (event: PointerEvent) => {
-        if (event.pointerType === 'touch') return
+        // 크기 조절은 마우스 드래그 전용. 터치/펜 입력은 언제나 스크롤·선택으로 넘긴다.
+        if (event.pointerType !== 'mouse' || isTouchInput()) return
         if (currentNode.attrs.layout !== 'half-left' || !currentNode.attrs.pairId) return
         event.preventDefault()
         event.stopPropagation()
@@ -555,15 +561,39 @@ export const ResizableImage = Image.extend({
 
       // 모서리 리사이즈 핸들 4개
       const handlePositions = ['nw', 'ne', 'sw', 'se'] as const
-      handlePositions.forEach((pos) => {
+      const cornerHandles = handlePositions.map((pos) => {
         const handle = document.createElement('span')
         handle.className = `di-image__handle di-image__handle--${pos}`
         handle.addEventListener('pointerdown', (event) => startResize(event, pos))
-        frame.appendChild(handle)
+        return handle
       })
 
+      // 마우스 전용 조작 요소 — 터치 입력에서는 DOM 에 붙이지 않는다.
+      // CSS(pointer: coarse)만으로 숨기면 일부 모바일 브라우저에서 미디어 쿼리가 어긋날 때
+      // 핸들이 살아 있고, touch-action: none 인 조작 표면이 이미지 위 스크롤까지 먹는다.
+      const mouseOnlyControls = [dragSurface, dividerHandle, ...cornerHandles]
+      let pointerModeApplied: boolean | null = null
+
+      const applyPointerMode = (isTouch: boolean) => {
+        if (pointerModeApplied === isTouch) return
+        pointerModeApplied = isTouch
+        wrapper.classList.toggle('di-image--touch', isTouch)
+        if (isTouch) {
+          activeResizeCleanup?.()
+          activeResizeCleanup = null
+          mouseOnlyControls.forEach((element) => element.remove())
+          return
+        }
+        mouseOnlyControls.forEach((element) => {
+          if (element.parentNode !== frame) frame.appendChild(element)
+        })
+      }
+      applyPointerMode(isTouchInput())
+      const unsubscribePointerMode = subscribeTouchInput(applyPointerMode)
+
       function startResize(event: PointerEvent, pos: (typeof handlePositions)[number]) {
-        if (event.pointerType === 'touch') return
+        // 크기 조절은 마우스 드래그 전용. 터치/펜 입력은 언제나 스크롤·선택으로 넘긴다.
+        if (event.pointerType !== 'mouse' || isTouchInput()) return
         if (currentNode.attrs.layout === 'half-left' || currentNode.attrs.layout === 'half-right') return
         activeResizeCleanup?.()
         activeResizeCleanup = null
@@ -746,6 +776,7 @@ export const ResizableImage = Image.extend({
         destroy() {
           activeResizeCleanup?.()
           layoutObserver?.disconnect()
+          unsubscribePointerMode()
           i18n.off('languageChanged', updateSourceInputLabels)
         },
         stopEvent(event) {
@@ -754,9 +785,11 @@ export const ResizableImage = Image.extend({
             || (target != null && dividerHandle.contains(target))
             || (target instanceof HTMLElement && target.classList.contains('di-image__handle'))
         },
-        ignoreMutation(mutation) {
-          return mutation.target === sourceInput
-            || (mutation.type === 'attributes' && wrapper.contains(mutation.target))
+        ignoreMutation() {
+          // content 를 갖지 않는 leaf NodeView — 내부 DOM(출처 입력·조작 표면·핸들)은 전부
+          // 이 NodeView 가 직접 관리한다. 입력 방식 전환으로 조작 요소를 붙였다 떼도
+          // ProseMirror 가 노드를 다시 그리지 않게 모든 변형을 무시한다.
+          return true
         },
       }
     }

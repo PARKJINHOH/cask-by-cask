@@ -37,7 +37,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -113,14 +115,15 @@ public class VariantReviewRequestService {
     }
 
     @Transactional(readOnly = true)
-    public Page<VariantReviewRequestResponse> getMyRequests(Long userId, VariantReviewRequestStatus status, Pageable pageable) {
+    public Page<VariantReviewRequestResponse> getMyRequests(Long userId, VariantReviewRequestStatus status,
+                                                            SpiritCategory category, Pageable pageable) {
         Pageable sorted = PageRequest.of(
                 pageable.getPageNumber(),
                 pageable.getPageSize(),
                 Sort.by(Sort.Direction.DESC, "createdAt")
         );
         Page<SpiritVariantReviewRequest> requests =
-                requestRepository.findByRequester(userId, status, sorted);
+                requestRepository.findByRequester(userId, status, category, sorted);
         var imagesByRequest = reviewImageService.findByVariantRequestIds(
                 requests.getContent().stream()
                         .map(SpiritVariantReviewRequest::getId)
@@ -130,6 +133,32 @@ public class VariantReviewRequestService {
                 imagesByRequest.getOrDefault(request.getId(), List.of()).stream()
                         .map(ReviewImageResponse::from)
                         .toList()));
+    }
+
+    /** 마이페이지 하위 에디션 요청 탭의 카테고리 개수 배지 (상태별) */
+    @Transactional(readOnly = true)
+    public UserReviewCategoryCountResponse getMyRequestCategoryCounts(Long userId, VariantReviewRequestStatus status) {
+        Map<SpiritCategory, Long> counts = new EnumMap<>(SpiritCategory.class);
+        for (Object[] row : requestRepository.countByRequesterGroupByCategory(userId, status)) {
+            if (row.length < 2 || row[0] == null) continue;
+            counts.put((SpiritCategory) row[0], row[1] == null ? 0L : ((Number) row[1]).longValue());
+        }
+        return UserReviewCategoryCountResponse.from(counts);
+    }
+
+    /** 리뷰 수정 페이지 진입용 단건 조회 — 본인 요청만 허용한다. */
+    @Transactional(readOnly = true)
+    public VariantReviewRequestResponse getMyRequest(Long requestId, Long userId) {
+        SpiritVariantReviewRequest request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new CustomException(ErrorCode.REVIEW_NOT_FOUND));
+        if (!request.getRequestUser().getId().equals(userId)) {
+            throw new CustomException(ErrorCode.REVIEW_ACCESS_DENIED);
+        }
+        return VariantReviewRequestResponse.from(
+                request,
+                reviewImageService.findByVariantRequestId(requestId).stream()
+                        .map(ReviewImageResponse::from)
+                        .toList());
     }
 
     @Transactional

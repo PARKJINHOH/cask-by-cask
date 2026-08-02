@@ -57,12 +57,27 @@ public class ReviewService {
         return withImages(reviewRepository.findBySpiritForDisplay(spiritId, sorted));
     }
 
+    /** 마이페이지 "내 리뷰" 목록 — 카테고리 필터 지원, 최신순 정렬은 쿼리에서 처리한다. */
     @Transactional(readOnly = true)
-    public Page<ReviewResponse> getMyReviews(Long userId, Pageable pageable) {
-        Pageable sorted = PageRequest.of(
-                pageable.getPageNumber(), pageable.getPageSize(),
-                Sort.by(Sort.Direction.DESC, "createdAt"));
-        return withImages(reviewRepository.findByUserIdWithUser(userId, sorted));
+    public Page<ReviewResponse> getMyReviews(Long userId, SpiritCategory category, Pageable pageable) {
+        Pageable paged = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
+        return withImages(reviewRepository.searchMyReviews(userId, category, paged));
+    }
+
+    /** 마이페이지 "내 리뷰" 카테고리 탭의 개수 배지 */
+    @Transactional(readOnly = true)
+    public UserReviewCategoryCountResponse getMyReviewCategoryCounts(Long userId) {
+        return UserReviewCategoryCountResponse.from(
+                reviewRepository.countMyReviewsByCategory(userId));
+    }
+
+    /** 리뷰 수정 페이지 진입용 단건 조회 — 본인 리뷰만 허용한다. */
+    @Transactional(readOnly = true)
+    public ReviewResponse getMyReview(Long reviewId, Long userId) {
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new CustomException(ErrorCode.REVIEW_NOT_FOUND));
+        checkOwnership(review, userId);
+        return toResponse(review);
     }
 
     @Transactional(readOnly = true)

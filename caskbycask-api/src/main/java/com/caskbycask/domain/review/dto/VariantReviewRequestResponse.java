@@ -2,6 +2,7 @@ package com.caskbycask.domain.review.dto;
 
 import com.caskbycask.domain.review.entity.SpiritVariantReviewRequest;
 import com.caskbycask.domain.review.entity.enums.VariantReviewRequestStatus;
+import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
 import com.caskbycask.domain.spirit.entity.enums.VariantType;
 import com.caskbycask.domain.seo.util.SpiritSlugUtils;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -23,6 +24,8 @@ public record VariantReviewRequestResponse(
         String masterCanonicalPathKo,
         @Schema(description = "Master spirit canonical path for English")
         String masterCanonicalPathEn,
+        @Schema(description = "Master spirit category (WHISKY/COGNAC/WINE/OTHER)")
+        SpiritCategory masterCategory,
         @Schema(description = "Variant type")
         VariantType variantType,
         @Schema(description = "Shared series identifier")
@@ -90,6 +93,7 @@ public record VariantReviewRequestResponse(
                 master.getNameEn(),
                 SpiritSlugUtils.canonicalPathKo(master),
                 SpiritSlugUtils.canonicalPathEn(master),
+                master.getCategory(),
                 request.getVariantType(),
                 request.getSeriesIdentifier(),
                 request.getSeriesIdentifierEn(),

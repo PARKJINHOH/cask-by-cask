@@ -75,6 +75,7 @@ const AdminLegalFormPage = lazy(() => import('@/views-spa/admin/AdminLegalFormPa
 const AdminEmailPage = lazy(() => import('@/views-spa/admin/AdminEmailPage'))
 const AdminEmailHistoryPage = lazy(() => import('@/views-spa/admin/AdminEmailHistoryPage'))
 const ReviewFormPage = lazy(() => import('@/views-spa/ReviewFormPage'))
+const ReviewEditPage = lazy(() => import('@/views-spa/ReviewEditPage'))
 const InquiryPage = lazy(() => import('@/views-spa/InquiryPage'))
 const FaqPage = lazy(() => import('@/views-spa/FaqPage'))
 const EventCalendarPage = lazy(() => import('@/views-spa/EventCalendarPage'))
@@ -156,6 +157,9 @@ export default function App() {
               <Route path="taste-trees/mine" element={<MyTasteTreesPage />} />
               <Route path="spirits/:id/review/write" element={<ReviewFormPage />} />
               <Route path="spirits/:id/review/:reviewId/edit" element={<ReviewFormPage />} />
+              {/* 마이페이지 내 리뷰 수정 — 정적 세그먼트가 있는 request 경로가 우선 매칭된다 */}
+              <Route path="review/request/:requestId" element={<ReviewEditPage />} />
+              <Route path="review/:reviewId" element={<ReviewEditPage />} />
               <Route path="community/:boardType/write" element={<PostFormPage />} />
               <Route path="community/:boardType/:id/edit" element={<PostFormPage />} />
               <Route path="community/byob/write" element={<ByobFormPage />} />

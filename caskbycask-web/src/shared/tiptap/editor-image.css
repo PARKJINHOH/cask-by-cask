@@ -199,8 +199,25 @@
   cursor: grabbing !important;
 }
 
-/* 터치 기기 — 드래그로만 쓸 수 있는 이미지 조작(이동/모서리 리사이즈/2단 분할)은 숨기고
-   이미지 영역을 스크롤에 완전히 양보한다. 남는 조작은 탭(선택)과 더블탭(편집)뿐이다. */
+/* 터치 기기 — 드래그로만 쓸 수 있는 이미지 조작(이동/모서리 리사이즈/2단 분할)은 쓰지 않고
+   이미지 영역을 스크롤에 완전히 양보한다. 남는 조작은 탭(선택)과 더블탭(편집)뿐이다.
+
+   실제 제거는 ResizableImage 의 applyPointerMode 가 DOM 에서 직접 수행한다(pointerMode.ts).
+   아래 규칙은 그 결과에 스타일을 맞추고, 혹시 조작 요소가 남아 있어도 이미지 위 스크롤을
+   막지 않도록 하는 2차 방어선이다. */
+.ProseMirror .di-image--touch .di-image__frame {
+  cursor: default;
+  touch-action: auto;
+}
+
+.ProseMirror .di-image--touch .di-image__drag-surface,
+.ProseMirror .di-image--touch .di-image__handle,
+.ProseMirror .di-image--touch .di-image__pair-divider {
+  display: none !important;
+  pointer-events: none !important;
+  touch-action: auto !important;
+}
+
 @media (pointer: coarse) {
   .ProseMirror .di-image__frame {
     cursor: default;
@@ -210,6 +227,8 @@
     cursor: default !important;
     -webkit-touch-callout: none;
     -webkit-user-drag: none;
+    /* 남아 있더라도 세로 스크롤·핀치 줌은 브라우저에 그대로 넘긴다. */
+    touch-action: pan-y pinch-zoom !important;
   }
 
   .ProseMirror .di-image.ProseMirror-selectednode .di-image__handle,

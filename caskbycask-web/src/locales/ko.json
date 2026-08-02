@@ -1043,7 +1043,16 @@
       "rejectedEditDesc": "에디션 정보는 이미 등록되어 수정할 수 없습니다. 리뷰 내용을 보완해 다시 검수 요청해주세요.",
       "rejectedResubmit": "재승인 요청",
       "rejectReason": "사유:",
-      "reviewedAt": "검수일"
+      "reviewedAt": "검수일",
+      "categoryFilter": "주류 카테고리 필터",
+      "noCategoryResultDesc": "다른 카테고리를 선택해보세요.",
+      "editionSection": "에디션 정보",
+      "editionSpirit": "주류",
+      "editionReadOnly": "수정 불가",
+      "editionReadOnlyHelp": "이미 등록된 에디션 정보는 리뷰에서 변경할 수 없습니다. 잘못된 정보는 문의하기로 알려주세요.",
+      "editLocked": "이미 처리된 요청이라 수정할 수 없습니다.",
+      "editNotFound": "수정할 리뷰를 찾을 수 없습니다.",
+      "backToList": "내 리뷰 목록으로"
     },
     "scraps": {
       "empty": "스크랩한 게시글이 없습니다.",

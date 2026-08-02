@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FocusEvent as ReactFocusEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
+import { useEffect, useRef, type FocusEvent as ReactFocusEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
 import { useEditorState } from '@tiptap/react'
 import type { Editor } from '@tiptap/react'
 import { useTranslation } from 'react-i18next'
@@ -6,6 +6,7 @@ import EditorColorPicker from './EditorColorPicker'
 import EditorHighlightPicker from './EditorHighlightPicker'
 import EditorSelectMenu, { type SelectOption } from './EditorSelectMenu'
 import EditorTooltip from './EditorTooltip'
+import { useTouchInput } from './pointerMode'
 
 // ── 글꼴 / 글자 크기 / 줄간격 옵션 ─────────────────────────────
 // 글꼴: Pretendard(기본)만 웹폰트 로드 → 나머지는 시스템 폰트 폴백.
@@ -45,23 +46,6 @@ const DEFAULT_TOOLBAR_STATE = {
   isAlignLeft: false, isAlignCenter: false, isAlignRight: false, isAlignJustify: false,
   isTable: false, isImage: false,
   fontFamily: '', fontSize: '', lineHeight: '', canUndo: false, canRedo: false,
-}
-
-/**
- * 마우스가 없는 터치 기기 여부.
- * 초기값을 false 로 두고 마운트 후 동기화해 SSR/hydration 결과가 어긋나지 않게 한다.
- */
-function useCoarsePointer() {
-  const [coarse, setCoarse] = useState(false)
-  useEffect(() => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return
-    const query = window.matchMedia('(pointer: coarse)')
-    const sync = () => setCoarse(query.matches)
-    sync()
-    query.addEventListener('change', sync)
-    return () => query.removeEventListener('change', sync)
-  }, [])
-  return coarse
 }
 
 interface ToolbarButtonProps {
@@ -131,10 +115,10 @@ export default function RichTextToolbar({
 }: Props) {
   const { t } = useTranslation()
   // 터치 기기에서 숨기는 도구 — 셀 단위 커서 이동이 필요한 표, 드래그로 폭을 잡는 이미지 크기.
-  // (이미지 모서리 핸들·2단 분할 divider 는 editor-image.css 의 (pointer: coarse) 에서 숨긴다)
-  const isCoarsePointer = useCoarsePointer()
-  const showTableTools = !isCoarsePointer
-  const showImageSizeTools = !isCoarsePointer
+  // (이미지 모서리 핸들·2단 분할 divider 는 ResizableImage 가 DOM 에서 제거한다)
+  const isTouch = useTouchInput()
+  const showTableTools = !isTouch
+  const showImageSizeTools = !isTouch
   const localizedFontFamilies = FONT_FAMILIES.map((option) => ({
     ...option,
     label: option.value === ''

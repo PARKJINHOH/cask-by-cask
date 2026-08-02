@@ -201,9 +201,27 @@ public class UserController {
     @GetMapping("/me/reviews")
     public ResponseEntity<ApiResponse<PageResponse<ReviewResponse>>> getMyReviews(
             @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(required = false) SpiritCategory category,
             @PageableDefault(size = 10) Pageable pageable) {
         return ResponseEntity.ok(ApiResponse.success(
-                PageResponse.from(reviewService.getMyReviews(userDetails.getUserId(), pageable))));
+                PageResponse.from(reviewService.getMyReviews(userDetails.getUserId(), category, pageable))));
+    }
+
+    /** 정적 경로가 {reviewId} 보다 먼저 매칭되도록 위에 선언한다. */
+    @GetMapping("/me/reviews/category-counts")
+    public ResponseEntity<ApiResponse<UserReviewCategoryCountResponse>> getMyReviewCategoryCounts(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(ApiResponse.success(
+                reviewService.getMyReviewCategoryCounts(userDetails.getUserId())));
+    }
+
+    /** 리뷰 수정 페이지(/review/{id}) 진입용 단건 조회 — 본인 리뷰만 */
+    @GetMapping("/me/reviews/{reviewId}")
+    public ResponseEntity<ApiResponse<ReviewResponse>> getMyReview(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long reviewId) {
+        return ResponseEntity.ok(ApiResponse.success(
+                reviewService.getMyReview(reviewId, userDetails.getUserId())));
     }
 
     @GetMapping("/me/review-embeds")
@@ -218,9 +236,29 @@ public class UserController {
     public ResponseEntity<ApiResponse<PageResponse<VariantReviewRequestResponse>>> getMyReviewRequests(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestParam(required = false) VariantReviewRequestStatus status,
+            @RequestParam(required = false) SpiritCategory category,
             @PageableDefault(size = 10) Pageable pageable) {
+        return ResponseEntity.ok(ApiResponse.success(PageResponse.from(
+                variantReviewRequestService.getMyRequests(
+                        userDetails.getUserId(), status, category, pageable))));
+    }
+
+    /** 정적 경로가 {requestId} 보다 먼저 매칭되도록 위에 선언한다. */
+    @GetMapping("/me/review-requests/category-counts")
+    public ResponseEntity<ApiResponse<UserReviewCategoryCountResponse>> getMyReviewRequestCategoryCounts(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(required = false) VariantReviewRequestStatus status) {
         return ResponseEntity.ok(ApiResponse.success(
-                PageResponse.from(variantReviewRequestService.getMyRequests(userDetails.getUserId(), status, pageable))));
+                variantReviewRequestService.getMyRequestCategoryCounts(userDetails.getUserId(), status)));
+    }
+
+    /** 리뷰 수정 페이지(/review/request/{id}) 진입용 단건 조회 — 본인 요청만 */
+    @GetMapping("/me/review-requests/{requestId}")
+    public ResponseEntity<ApiResponse<VariantReviewRequestResponse>> getMyReviewRequest(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long requestId) {
+        return ResponseEntity.ok(ApiResponse.success(
+                variantReviewRequestService.getMyRequest(requestId, userDetails.getUserId())));
     }
 
     @PatchMapping(value = "/me/review-requests/{requestId}",

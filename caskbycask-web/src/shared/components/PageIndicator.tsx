@@ -8,6 +8,8 @@ interface IndicatorConfig {
   backTo?: string
 }
 
+const MY_REVIEWS_PATH = '/mypage?tab=reviews'
+
 function exact(path: string, pathname: string) {
   return matchPath({ path, end: true }, pathname)
 }
@@ -231,6 +233,18 @@ function getIndicatorConfig(pathname: string, state: unknown, t: TFunction): Ind
   }
   if (exact('/price-tracker', pathname)) {
     return { items: sectionCrumbs(t, t('pageIndicator.priceTracker'), '/price-tracker') }
+  }
+
+  // 마이페이지 "내 리뷰" 에서 진입하는 리뷰 수정 페이지 (승인 리뷰 / 하위 에디션 요청)
+  if (exact('/review/request/:requestId', pathname) || exact('/review/:reviewId', pathname)) {
+    return {
+      items: [
+        homeCrumb(t),
+        { label: t('nav.mypage'), to: MY_REVIEWS_PATH },
+        { label: t('pageIndicator.reviewEdit') },
+      ],
+      backTo: MY_REVIEWS_PATH,
+    }
   }
 
   if (exact('/mypage', pathname)) return { items: sectionCrumbs(t, t('nav.mypage'), '/mypage'), backTo: '/' }

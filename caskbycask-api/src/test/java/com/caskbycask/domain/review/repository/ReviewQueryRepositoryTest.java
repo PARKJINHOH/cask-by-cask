@@ -212,6 +212,60 @@ class ReviewQueryRepositoryTest {
         assertThat(counts.values()).allMatch(count -> count == 0L);
     }
 
+    @Test
+    @DisplayName("내 리뷰 목록은 숨김 리뷰·비ACTIVE 주류 리뷰까지 본인 것 전부를 최신순으로 반환한다")
+    void searchMyReviewsReturnsAllOwnReviews() {
+        Page<Review> result = reviewRepository.searchMyReviews(owner.getId(), null, PageRequest.of(0, 10));
+
+        assertThat(result.getTotalElements()).isEqualTo(6);
+        assertThat(result.getContent())
+                .extracting(Review::getComment)
+                .containsExactlyInAnyOrder(
+                        "balvenie-1", "lagavulin-1", "hidden-whisky", "cognac-1", "wine-1", "other-hidden");
+        assertThat(result.getContent())
+                .extracting(Review::getId)
+                .isSortedAccordingTo((a, b) -> Long.compare(b, a));
+    }
+
+    @Test
+    @DisplayName("내 리뷰 목록의 카테고리 필터는 해당 카테고리만 반환하고 페이징 메타데이터도 정확하다")
+    void searchMyReviewsFiltersByCategory() {
+        Page<Review> whisky = reviewRepository.searchMyReviews(
+                owner.getId(), SpiritCategory.WHISKY, PageRequest.of(0, 2));
+        assertThat(whisky.getTotalElements()).isEqualTo(3);
+        assertThat(whisky.getTotalPages()).isEqualTo(2);
+        assertThat(whisky.getContent()).hasSize(2);
+
+        // 공개 목록에서는 제외되는 비ACTIVE 주류도 내 리뷰에서는 조회된다
+        Page<Review> other = reviewRepository.searchMyReviews(
+                owner.getId(), SpiritCategory.OTHER, PageRequest.of(0, 10));
+        assertThat(other.getContent()).extracting(Review::getComment).containsExactly("other-hidden");
+    }
+
+    @Test
+    @DisplayName("내 리뷰 목록은 타인 리뷰를 반환하지 않는다")
+    void searchMyReviewsExcludesOtherUsers() {
+        Page<Review> result = reviewRepository.searchMyReviews(other.getId(), null, PageRequest.of(0, 10));
+
+        assertThat(result.getContent()).extracting(Review::getComment).containsExactly("other-user");
+    }
+
+    @Test
+    @DisplayName("내 리뷰 카테고리 집계는 숨김·비ACTIVE 건까지 포함하고 없는 카테고리는 0이다")
+    void countMyReviewsByCategoryIncludesNonPublicReviews() {
+        Map<SpiritCategory, Long> counts = reviewRepository.countMyReviewsByCategory(owner.getId());
+
+        assertThat(counts).hasSize(SpiritCategory.values().length);
+        assertThat(counts.get(SpiritCategory.WHISKY)).isEqualTo(3L);
+        assertThat(counts.get(SpiritCategory.COGNAC)).isEqualTo(1L);
+        assertThat(counts.get(SpiritCategory.WINE)).isEqualTo(1L);
+        assertThat(counts.get(SpiritCategory.OTHER)).isEqualTo(1L);
+
+        Map<SpiritCategory, Long> emptyCounts =
+                reviewRepository.countMyReviewsByCategory(persistUser("none@example.com", "none01").getId());
+        assertThat(emptyCounts.values()).allMatch(count -> count == 0L);
+    }
+
     private User persistUser(String email, String nickname) {
         User user = User.builder()
                 .email(email)
