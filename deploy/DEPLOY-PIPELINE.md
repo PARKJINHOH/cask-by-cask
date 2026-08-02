@@ -17,11 +17,11 @@ GitHub Actions — 대상 잡만 실행, 나머지는 skipped
    ├─ build-api (Ubuntu 24.04 x64) : clean test bootJar → app.jar ➔ Oracle Object Storage 업로드
    ├─ build-web (Ubuntu 24.04 ARM64) : npm ci + cache test + typecheck + standalone build + SEO 계약 검증 3종 → dist.tar.gz ➔ Oracle Object Storage 업로드
    ├─ test-crawler (Ubuntu 24.04 ARM64/Python 3.12) : hash lock 설치 → compile + unit test
-   └─ deploy    : 앱 아티팩트와 crawler 소스 묶음을 전송 ➔ 해당 교체 스크립트 실행
+   └─ deploy    : 앱 아티팩트와 crawler 소스 묶음을 전송 ➔ 해당 교체 스크립트 실행 (API → Web → crawler 순)
    ▼
 서버 (Ubuntu 24.04 aarch64, Oracle Cloud 춘천)
-   ├─ deploy-web.sh : dist 교체 → 재시작 → health → 실패 시 롤백
    ├─ deploy-api.sh : jar 교체 → 재시작 → 헬스체크 → 실패 시 롤백
+   ├─ deploy-web.sh : dist 교체 → 재시작 → health → 실패 시 롤백 (API 교체 실패 시 실행 안 함)
    └─ deploy-crawler.sh : 릴리스별 venv 설치·테스트 → 실행 lock/cron 확인 → current/previous 교체
 ```
 

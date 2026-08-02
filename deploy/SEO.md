@@ -366,7 +366,8 @@ proxy는 canonical 판정을 위해 `/api/seo/spirits/{id}`를 조회한다. 이
 
 ## 11. 배포 후 운영 검증 (SEO 영향 변경 시)
 
-배포 순서는 `api` → `web` 두 번으로 나눈다(이유는 [`OPERATIONS-GUIDE.md`](./OPERATIONS-GUIDE.md)
+배포는 `both` 한 번으로 실행한다. Actions 의 `deploy` 잡이 `api` → `web` 순서를 보장하고
+API readiness 가 실패하면 프론트는 교체하지 않는다(이유는 [`OPERATIONS-GUIDE.md`](./OPERATIONS-GUIDE.md)
 2장 "SEO 영향이 있는 변경의 배포 순서" 참고). 배포 직후 아래를 순서대로 확인한다.
 
 ### 1) 리다이렉트 체인 (홉 수가 늘어나지 않았는지)

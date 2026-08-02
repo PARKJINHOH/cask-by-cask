@@ -369,16 +369,10 @@ jobs:
         run: |
           PORT="${SSH_PORT:-22}"
           scp -i ~/.ssh/id_deploy -P $PORT artifacts/crawler/crawler-dist.tar.gz "$SSH_USER@$SSH_HOST:/app/caskbycask-crawler-dist.tar.gz"
-      # 교체 — 빌드된 쪽만. (프론트 먼저=무중단, 백엔드는 health check + 실패 시 롤백)
-      - name: Deploy web (swap)
-        if: ${{ needs.build-web.result == 'success' }}
-        env:
-          SSH_HOST: ${{ secrets.SSH_HOST }}
-          SSH_USER: ${{ secrets.SSH_USER }}
-          SSH_PORT: ${{ secrets.SSH_PORT }}
-        run: |
-          PORT="${SSH_PORT:-22}"
-          ssh -i ~/.ssh/id_deploy -p $PORT $SSH_USER@$SSH_HOST 'bash /app/scripts/deploy-web.sh'
+      # 교체 — 빌드된 쪽만. 순서는 항상 백엔드 → 프론트(both/all 포함).
+      # 프론트 proxy 는 주류 canonical 판정에 백엔드 SEO API 를 호출하고 결과를 프로세스
+      # 메모리에 캐싱하므로, 캐시가 빈 신규 프론트가 뜨기 전에 API readiness 를 먼저
+      # 통과시켜야 slug 없는 주류 URL 이 503 을 반환하는 구간이 생기지 않는다.
       - name: Deploy api (swap + health check + rollback)
         if: ${{ needs.build-api.result == 'success' }}
         env:
@@ -388,6 +382,17 @@ jobs:
         run: |
           PORT="${SSH_PORT:-22}"
           ssh -i ~/.ssh/id_deploy -p $PORT $SSH_USER@$SSH_HOST 'bash /app/scripts/deploy-api.sh'
+      # API 교체가 실패(자동 롤백 포함)하면 프론트는 교체하지 않는다.
+      # 조건에 status 함수가 없으면 success() 가 암묵 적용되지만, 의도를 드러내기 위해 명시한다.
+      - name: Deploy web (swap)
+        if: ${{ success() && needs.build-web.result == 'success' }}
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+        run: |
+          PORT="${SSH_PORT:-22}"
+          ssh -i ~/.ssh/id_deploy -p $PORT $SSH_USER@$SSH_HOST 'bash /app/scripts/deploy-web.sh'
       - name: Deploy crawler (release swap)
         if: ${{ inputs.target == 'crawler' || inputs.target == 'all' }}
         env:

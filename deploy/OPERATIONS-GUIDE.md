@@ -86,33 +86,37 @@ ARM64에서 검증·빌드한다. Actions는 커밋 SHA로 고정하고 `content
        - `npm run test:seo-entity` — 엔티티별 title 구분(중복 title 방지), 리뷰의 한국어 canonical 통합, 주류 가격 페이지의 주류 상세 canonical 통합
      - 실패 시 배포가 중단된다. 색인 정책이 깨진 산출물을 운영에 올리지 않기 위한 게이트다. 상세 정책은 [`deploy/SEO.md`](./SEO.md) 참고.
    - `deploy` 잡은 운영 셸 스크립트 구문과 API/Web 실패·롤백 상태 전이 테스트를 먼저 검사하고, 빌드된 산출물만 서버로 전송 → 해당 교체 스크립트 실행
-   - both 일 때: 프론트 먼저 교체(Next.js 서비스 재시작) → 백엔드 jar 교체 → 재시작 → **readiness 헬스체크**
+   - both/all 일 때: **백엔드 jar 교체 → 재시작 → readiness 헬스체크** 통과 후 프론트 dist 교체(Next.js 서비스 재시작). API 교체가 실패하면 프론트는 교체하지 않고 잡이 끝난다.
 4. API/Web은 신규 서비스 재시작과 로컬 health를 모두 통과해야 성공한다. 실패하면 직전 파일을 복원하고, **구버전 재시작과 로컬 health까지 통과한 경우에만 롤백 복구 완료**로 기록한다. 롤백이 성공해도 해당 Actions 배포는 실패로 남는다.
    - API/Web별 `.deploy.lock`은 **교체·재시작 구간**의 동시 실행을 거절한다. 고정 staging 경로 업로드는 잠금 범위 밖이므로 Actions와 로컬 수동 배포를 동시에 시작하지 않는다.
    - health 요청은 connect 1초·요청 2초, 단계별 총 API 120초·Web 15초로 제한하며, 교체 도중 HUP/INT/TERM 또는 예기치 않은 종료가 발생해도 검증 전이면 같은 롤백 경로를 실행한다.
-   - `both`/`all`에서 웹 교체 후 API가 실패하면 API만 자동 롤백되고 웹은 새 버전으로 남는다.
-     API 변경은 직전 웹과 하위 호환을 유지하고, 호환되지 않으면 10장의 웹 수동 롤백도 즉시 수행한다.
+   - `both`/`all`에서 API 교체가 실패하면 API는 자동 롤백되고 **웹은 아예 교체되지 않는다**(직전 버전 유지).
+     반대로 API 성공 후 웹이 실패하면 웹만 자동 롤백되고 API는 새 버전으로 남는다. 이 경우 새 API는
+     직전 웹과 하위 호환이어야 하며, 호환되지 않으면 10장의 API 수동 롤백을 즉시 수행한다.
 5. 완료 시 **Slack `#server-prd` 로 결과 통보**(BE·FE·crawler·배포 단계별, `SLACK_WEBHOOK_URL` Secret 설정 시).
    - 배포 안 한 쪽은 `⏭`(skipped) 로 표시 — 예: `백엔드 ⏭ · 프론트 ✅ · 크롤러 ⏭` (web 만 배포). 요약에 대상(`· web`)도 표기됨.
 
 ### SEO 영향이 있는 변경의 배포 순서
 
-`both` 는 **프론트를 먼저 교체한 뒤 백엔드를 교체**한다. 평소에는 문제가 없지만,
-**주류 SEO 조회(`/api/seo/spirits/{id}`)에 의존하는 프론트 변경이 있을 때는 `api` → `web` 순서로
-두 번 나눠 실행한다.**
+`both`/`all` 은 **백엔드를 먼저 교체해 readiness 를 통과시킨 뒤 프론트를 교체**한다.
+따라서 주류 SEO 조회(`/api/seo/spirits/{id}`)에 의존하는 프론트 변경도 **한 번의 `both` 실행으로
+안전하게 배포된다.** 예전처럼 `api` → `web` 두 번으로 나눠 실행할 필요가 없다.
 
 이유: Next.js proxy 는 주류 canonical 을 판정하기 위해 이 API 를 호출하고, 결과를 프로세스 메모리에
-캐싱한다(5분 TTL + stale-while-error). 새로 뜬 프론트 프로세스는 **캐시가 비어 있다.** 이 상태에서
-백엔드가 재시작 중이면 캐시도 없고 API 도 없는 구간이 생겨, slug 없는 주류 URL(`/ko/spirits/244`)이
-`503` 을 반환한다. `api` 를 먼저 올려 readiness 를 통과시킨 뒤 `web` 을 올리면 이 구간이 사라진다.
+캐싱한다(5분 TTL + stale-while-error). 새로 뜬 프론트 프로세스는 **캐시가 비어 있다.** 프론트를 먼저
+교체하면 캐시도 없고 백엔드도 재시작 중인 구간이 생겨, slug 없는 주류 URL(`/ko/spirits/244`)이
+`503` 을 반환한다. API 를 먼저 올려 readiness 를 통과시키면 이 구간이 사라진다.
 
 ```
-1) Actions → Deploy (manual) → target: api   → readiness 통과 확인
-2) Actions → Deploy (manual) → target: web
+Actions → Deploy (manual) → target: both
+  1) deploy-api.sh  : jar 교체 → 재시작 → readiness 통과 (실패 시 API 롤백 후 잡 종료)
+  2) deploy-web.sh  : dist 교체 → 재시작 → health   (1) 이 성공했을 때만 실행
 ```
 
 > API 기동 시 Hibernate Search 재색인이 매번 실행되므로 readiness 통과까지 시간이 걸릴 수 있다.
-> `api` 잡의 헬스체크 성공을 확인한 뒤 `web` 을 시작한다.
+> `deploy` 잡은 API readiness(최대 120초)를 기다린 뒤에야 프론트 교체로 넘어간다.
+> 배포 시간을 줄이려고 `api` 와 `web` 을 각각 따로(동시에) 실행하면 이 순서 보장이 깨지므로,
+> 두 쪽을 함께 올릴 때는 반드시 `both` 를 사용한다.
 
 ### 배포가 전송하는 것 / 안 하는 것
 
