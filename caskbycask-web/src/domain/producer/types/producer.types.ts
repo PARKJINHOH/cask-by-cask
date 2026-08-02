@@ -1,6 +1,6 @@
 export type ProducerType = 'DISTILLERY' | 'WINERY' | 'COGNAC_HOUSE' | 'OTHER'
 
-import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
+import type { SpiritCategory, SpiritWineRegion } from '@/domain/spirit/types/spirit.types'
 
 /** 주류 카테고리 → 생산자 타입 매핑 (카테고리별 게이팅) */
 export const CATEGORY_TO_PRODUCER_TYPE: Record<SpiritCategory, ProducerType> = {
@@ -27,6 +27,8 @@ export interface Producer {
   region: string | null
   /** 주류 등록 시 기본 선택할 WineRegion 코드. 복수·미매핑 산지는 null */
   regionCode: string | null
+  /** 산지 (지도 표시용) — regionCode 를 풀어놓은 형태. 산지 미지정 시 null */
+  wineRegion: SpiritWineRegion | null
   website: string | null
   foundedYear: number | null
   descriptionKo: string | null

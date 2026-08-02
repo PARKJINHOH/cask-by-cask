@@ -92,11 +92,11 @@ class SocialContentFactoryTest {
         assertThat(content.imageNotice()).isNull();
         assertThat(content.caption()).startsWith("테스트 위스키 후기");
         assertThat(content.caption()).contains(
-                "향\n아로마: Vanilla · 바닐라");
+                "향\nVanilla · 바닐라");
         assertThat(content.caption()).contains(
-                "맛\n아로마: Oak · 견과류");
+                "맛\nOak · 견과류");
         assertThat(content.caption()).contains(
-                "피니시\n아로마: Spice · 시나몬");
+                "피니시Spice · 시나몬");
         assertThat(content.caption()).doesNotContain("테이스팅 노트", "향향향", "맛맛맛", "피니시피니시");
         assertThat(content.caption()).contains("총평: ", "...");
         assertThat(content.caption()).contains(

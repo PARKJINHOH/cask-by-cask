@@ -2,6 +2,7 @@ package com.caskbycask.domain.producer.dto;
 
 import com.caskbycask.domain.producer.entity.Producer;
 import com.caskbycask.domain.producer.entity.ProducerType;
+import com.caskbycask.domain.spirit.dto.SpiritWineRegionResponse;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 public record ProducerResponse(
@@ -19,6 +20,8 @@ public record ProducerResponse(
         String region,
         @Schema(description = "기본 산지 코드(WineRegion). 복수·미매핑 산지는 null")
         String regionCode,
+        @Schema(description = "산지 (지도 표시용) — 산지 미지정 시 null")
+        SpiritWineRegionResponse wineRegion,
         @Schema(description = "공식 웹사이트 URL")
         String website,
         @Schema(description = "설립연도")
@@ -39,6 +42,7 @@ public record ProducerResponse(
                 producer.getCountry(),
                 producer.getRegion(),
                 producer.getRegionCode() != null ? producer.getRegionCode().getCode() : null,
+                SpiritWineRegionResponse.from(producer.getRegionCode()),
                 producer.getWebsite(),
                 producer.getFoundedYear(),
                 producer.getDescriptionKo(),

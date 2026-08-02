@@ -241,7 +241,7 @@ public class SocialContentFactory {
         String aromas = formatAromaNotes(aromaNotes);
         if (aromas == null) return;
 
-        String prefix = "\n\n" + label + "\n" + (english ? "Aromas: " : "아로마: ");
+        String prefix = "\n\n" + label + "\n";
         int remaining = contentLimit
                 - target.toString().codePointCount(0, target.length())
                 - prefix.codePointCount(0, prefix.length());
