@@ -39,13 +39,11 @@ interface Props {
 const INPUT = 'w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white'
 const LABEL = 'block text-xs font-medium text-neutral-600 mb-1.5'
 
-const WINE_TYPES = [
-  ['RED','레드'],['WHITE','화이트'],['ROSE','로제'],['SPARKLING','스파클링'],['DESSERT','디저트'],['ORANGE','오렌지'],['FORTIFIED','주정강화'],
-]
-const CERTIFICATIONS = [['NONE','없음'],['ORGANIC','Organic'],['BIODYNAMIC','Biodynamic'],['SUSTAINABLE','Sustainable']]
-const HARVEST_METHODS = ['Hand-picked', 'Machine-harvested']
-const FERMENTATION_VESSELS = ['Stainless Steel', 'Concrete', 'Oak Vat', 'Amphora']
-const OAK_TYPES = ['French Oak', 'American Oak', 'Hungarian Oak']
+// 목록의 단일 소스는 domain/spirit/data/wine.ts
+import {
+  WINE_TYPES, CERTIFICATIONS, HARVEST_METHODS, FERMENTATION_VESSELS,
+  WINE_OAK_TYPES as OAK_TYPES,
+} from '@/domain/spirit/data/wine'
 
 // 관능(맛) 지표는 WineTasteBars(5단계 바)가 담당한다 — 사용자 상세와 동일 컴포넌트를 공유.
 

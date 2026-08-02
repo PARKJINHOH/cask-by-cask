@@ -6,6 +6,7 @@ import AdminPageHeader from '@/shared/components/AdminPageHeader'
 import ImageLightbox from '@/shared/components/ImageLightbox'
 import ImageEditorModal from '@/shared/components/ImageEditorModal'
 import SpiritFormFields, { useSpiritForm, CARD, SectionTitle } from '@/domain/admin/components/SpiritFormFields'
+import SpiritJsonImportCard from '@/domain/admin/components/SpiritJsonImportCard'
 import type { SpiritStatus } from '@/domain/spirit/types/spirit.types'
 import { RequiredFieldsNotice } from '@/shared/components/FormFieldLabel'
 
@@ -100,6 +101,9 @@ export default function AdminSpiritFormPage() {
         backLabel="주류 목록"
         title="새 주류 등록"
       />
+
+      {/* 조사 프롬프트가 만든 JSON 을 붙여넣어 입력칸만 채운다 — 등록은 아래 버튼으로 직접 한다 */}
+      <SpiritJsonImportCard form={form} />
 
       <RequiredFieldsNotice admin className="mb-4" />
       <SpiritFormFields

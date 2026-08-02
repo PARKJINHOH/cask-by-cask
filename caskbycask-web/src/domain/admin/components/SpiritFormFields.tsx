@@ -12,6 +12,7 @@ import InfoTooltip from '@/shared/components/InfoTooltip'
 import { RequiredMark } from '@/shared/components/FormFieldLabel'
 import { ISO3166_COUNTRIES } from '@/domain/location/data/iso3166Countries'
 import { REGION_CATALOG_CATEGORIES } from '@/domain/location/hooks/useWineRegionCatalog'
+import { WHISKY_STYLES } from '@/domain/spirit/data/whisky'
 import {
   ABV_MIN, ABV_MAX, VOLUME_ML_MIN, VOLUME_ML_MAX, LIMIT_MESSAGE,
   suspiciousVolume, suspiciousAbv,
@@ -49,18 +50,8 @@ export const CATEGORIES: Array<[SpiritCategory, string]> = [
   ['WINE',   '와인'],
   ['OTHER',  '기타'],
 ]
-export const WHISKY_STYLES = [
-  ['SINGLE_MALT', '싱글 몰트'],
-  ['BLENDED_MALT', '블렌디드 몰트'],
-  ['BLENDED_WHISKY', '블렌디드'],
-  ['BOURBON', '버번'],
-  ['WHEATED_BOURBON', '밀 버번'],
-  ['TENNESSEE', '테네시'],
-  ['RYE', '라이'],
-  ['POT_STILL', '싱글 팟 스틸'],
-  ['GRAIN_CORN', '그레인 / 콘'],
-  ['OTHER', '기타'],
-]
+// 목록의 단일 소스는 domain/spirit/data/whisky.ts — 기존 import 경로 유지를 위해 재export 한다
+export { WHISKY_STYLES } from '@/domain/spirit/data/whisky'
 export const CATEGORY_LABEL: Record<SpiritCategory, string> = {
   WHISKY: '위스키', COGNAC: '꼬냑', WINE: '와인', OTHER: '기타',
 }
@@ -1072,7 +1063,8 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
     requireProductionInfo: adminRequired,
     category, setCategory, selectCategory,
     nameKo, setNameKo, nameEn, setNameEn,
-    producerId, setProducerId, producerName,
+    // setProducerName 은 JSON 붙여넣기 입력이 이름만 아는 생산자를 선택기에 보여주기 위해 쓴다
+    producerId, setProducerId, producerName, setProducerName,
     countryCode, country, region, setCountryValue, setRegion,
     regionCode, setRegionCode,
     isVariantSplit, setIsVariantSplit, variantType, setVariantType,

@@ -191,6 +191,29 @@
 - 관리자 화면은 `/admin/deals/new` 가 `AdminDealDetailPage` 의 **등록 모드**를 재사용한다
   (주류 검색·배치 선택 로직을 복제하지 않기 위함). 정적 경로라 `deals/:id` 보다 먼저 매칭된다.
 
+## 주류 정보 조사 프롬프트 (docs/*-research-prompt.md)
+관리자가 AI에게 주류 정보를 조사시켜 **관리자 > 주류 등록 폼에 그대로 옮겨 적기 위한** 프롬프트 모음.
+카테고리별로 3개다 — `docs/cognac-research-prompt.md` · `docs/whisky-research-prompt.md` · `docs/wine-research-prompt.md`.
+
+- **이 문서들은 등록 폼의 사본이다.** 허용 값(enum)·길이 제한·필수 여부를 코드와 1:1로 옮겨 적어 뒀다.
+  프롬프트가 코드보다 낡으면 AI가 **저장되지 않는 값**을 만들어 오고, 그걸 눈으로 걸러야 한다.
+- ※ **아래를 바꾸면 해당 프롬프트 문서도 같은 PR 안에서 반드시 함께 고친다.**
+
+| 바뀐 것 | 함께 고칠 문서 |
+|---|---|
+| `CognacGrade` · `CognacCru` · `CognacOakType`, `caskbycask-web/src/domain/spirit/data/cognac.ts` | cognac |
+| `WhiskyStyle`, `BROAD_CASK_CATEGORIES`(`WhiskyDetailSection.tsx`), 에디션 유형(`SpiritFormFields.tsx`), 병입 구분 OB/IB | whisky |
+| `WineType` · `WineVintageStatus` · `WineCertification`, 관능 5단계(`wineTasteScale.ts`), 수확 방법 · 발효 용기 · 오크 종류 선택지(`WineDetailSection.tsx`) | wine |
+| `WineRegion` enum 의 산지 코드 추가·삭제·이름 변경 | 해당 카테고리 전부 |
+| `spiritLimits.ts` / `SpiritLimits.java` 의 도수 · 용량 · 연도 범위 | 3개 전부 |
+| 각 `*DetailRequest.java` 의 `@Size`·`@Min`·`@Max` 및 record 필드 추가·삭제 | 해당 카테고리 |
+| 카테고리별로 숨기는 필드 규칙(`hasCommonDetailFields`, `dropAging`, 위스키 전용 게이팅) | 해당 카테고리 |
+
+- 각 문서 상단에 그 카테고리가 참조하는 소스 경로 목록이 있다. **소스를 옮기면 그 목록도 갱신**할 것.
+- 위스키 프롬프트의 **에디션 조사 기준 연도**("2023년 이후")는 최근 3년을 뜻한다.
+  해가 바뀌면 문서 상단 안내대로 프롬프트 본문의 연도를 직접 올린다.
+- 프롬프트 본문은 ` ```` ` 4중 백틱 블록 안에 있다 — 안에 3중 백틱 코드펜스가 들어가기 때문이다. 구조를 깨지 말 것.
+
 ## 관리자 화면 용어 규칙
 - 주류는 **'주류'** 로 쓴다(사이드바·페이지 제목·확인창 모두). '술'은 쓰지 않는다.
 - 사이드바 라벨과 페이지 `h1`·breadcrumb 은 **같은 말**을 써야 한다. 한쪽만 바꾸면 어긋난다.
