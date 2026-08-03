@@ -353,7 +353,7 @@ public class PostService {
 
         post.update(newTitle, newContent, sanitized, prefix, newAdultOnly);
         if (BoardType.NOTICE.equals(post.getBoardType()) && request.getHashtags() != null) {
-            post.replaceHashtags(HashtagNormalizer.normalize(request.getHashtags()));
+            replaceNoticeHashtagsSafely(post, HashtagNormalizer.normalize(request.getHashtags()));
         }
         postImageService.syncImageUsage(post, newContent);
         postVideoService.syncVideoUsage(post, newContent);
@@ -387,11 +387,19 @@ public class PostService {
 
         post.update(newTitle, newContent, sanitized, prefix, false);
         if (BoardType.NOTICE.equals(post.getBoardType()) && request.getHashtags() != null) {
-            post.replaceHashtags(HashtagNormalizer.normalize(request.getHashtags()));
+            replaceNoticeHashtagsSafely(post, HashtagNormalizer.normalize(request.getHashtags()));
         }
         postImageService.syncImageUsage(post, newContent);
         postVideoService.syncVideoUsage(post, newContent);
         return PostDetailResponse.builder(post, true).build();
+    }
+
+    /** AI 소식 원고와 같은 유니크 키 충돌을 피하도록 기존 해시태그 행을 먼저 제거한다. */
+    private void replaceNoticeHashtagsSafely(Post post, List<String> hashtags) {
+        if (post.getHashtags().equals(hashtags)) return;
+        post.replaceHashtags(List.of());
+        postRepository.flush();
+        post.replaceHashtags(hashtags);
     }
 
     // ═══════════════════════════════════════════

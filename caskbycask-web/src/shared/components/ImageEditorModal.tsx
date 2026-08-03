@@ -1,6 +1,21 @@
 import { Fragment, useState, useEffect, useRef } from 'react'
 import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from '@headlessui/react'
 import { useTranslation } from 'react-i18next'
+import {
+  TEXT_FONT_OPTIONS,
+  TEXT_FONT_SIZE_MAX,
+  TEXT_FONT_SIZE_MIN,
+  TEXT_MAX_LENGTH,
+  TEXT_OUTLINE_WIDTH_MAX,
+  clampTextPosition,
+  createDefaultTextStyle,
+  drawText,
+  getTextFont,
+  measureTextBounds,
+  type TextFontKey,
+  type TextPosition,
+  type TextStyleState,
+} from './imageEditorText'
 
 interface ImageEditorModalProps {
   open: boolean
@@ -23,8 +38,210 @@ interface ImageEditorModalProps {
   showInstagramCropPreset?: boolean
 }
 
-type EditMode = 'paint' | 'crop' | 'rotate' | 'resize' | 'adjust'
+type EditMode = 'paint' | 'crop' | 'rotate' | 'resize' | 'adjust' | 'text'
 type PaintType = 'mosaic' | 'blur'
+
+interface TextControlsProps {
+  idPrefix: string
+  compact?: boolean
+  style: TextStyleState
+  isApplying: boolean
+  onChange: (patch: Partial<TextStyleState>) => void
+  onPositionChange: (position: TextPosition) => void
+  onApply: () => void
+}
+
+function TextControls({
+  idPrefix,
+  compact = false,
+  style,
+  isApplying,
+  onChange,
+  onPositionChange,
+  onApply,
+}: TextControlsProps) {
+  const { t } = useTranslation()
+  const canApply = Boolean(style.content.trim()) && !isApplying
+
+  return (
+    <div className={compact ? 'flex flex-col gap-3' : 'space-y-4'}>
+      <div className={compact ? 'grid grid-cols-2 gap-2' : 'space-y-3'}>
+        <div className={compact ? 'col-span-2 space-y-1' : 'space-y-2'}>
+          <div className="flex items-center justify-between gap-2">
+            <label htmlFor={`${idPrefix}-content`} className="text-xs font-medium text-neutral-300">
+              {t('imageEditor.textContent')}
+            </label>
+            <span className="text-[10px] font-mono text-neutral-500">
+              {style.content.length}/{TEXT_MAX_LENGTH}
+            </span>
+          </div>
+          <textarea
+            id={`${idPrefix}-content`}
+            rows={compact ? 2 : 3}
+            maxLength={TEXT_MAX_LENGTH}
+            value={style.content}
+            onChange={(event) => onChange({ content: event.target.value })}
+            placeholder={t('imageEditor.textPlaceholder')}
+            className="w-full resize-none rounded-lg border border-neutral-700 bg-neutral-950/50 px-3 py-2 text-xs text-white placeholder:text-neutral-600 focus:border-primary-500 focus:outline-none"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <label htmlFor={`${idPrefix}-font`} className="text-[11px] font-medium text-neutral-400">
+            {t('imageEditor.font')}
+          </label>
+          <select
+            id={`${idPrefix}-font`}
+            value={style.fontKey}
+            onChange={(event) => onChange({ fontKey: event.target.value as TextFontKey })}
+            className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-2 py-2 text-xs text-white focus:border-primary-500 focus:outline-none"
+          >
+            {TEXT_FONT_OPTIONS.map((font) => (
+              <option key={font.key} value={font.key} style={{ fontFamily: font.family, fontWeight: font.weight }}>
+                {t(font.labelKey)}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="space-y-1.5">
+          <label htmlFor={`${idPrefix}-size`} className="text-[11px] font-medium text-neutral-400">
+            {t('imageEditor.fontSize')}
+          </label>
+          <div className="flex items-center gap-2">
+            <input
+              id={`${idPrefix}-size`}
+              type="number"
+              min={TEXT_FONT_SIZE_MIN}
+              max={TEXT_FONT_SIZE_MAX}
+              value={style.fontSize}
+              onChange={(event) => onChange({
+                fontSize: Math.max(
+                  TEXT_FONT_SIZE_MIN,
+                  Math.min(TEXT_FONT_SIZE_MAX, Number(event.target.value) || TEXT_FONT_SIZE_MIN),
+                ),
+              })}
+              className="min-w-0 flex-1 rounded-lg border border-neutral-700 bg-neutral-800 px-2 py-2 text-xs text-white focus:border-primary-500 focus:outline-none"
+            />
+            <span className="text-[10px] text-neutral-500">px</span>
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <span className="text-[11px] font-medium text-neutral-400">{t('imageEditor.textColor')}</span>
+          <label className="flex h-9 cursor-pointer items-center gap-2 rounded-lg border border-neutral-700 bg-neutral-800 px-2">
+            <input
+              type="color"
+              value={style.color}
+              onChange={(event) => onChange({ color: event.target.value })}
+              aria-label={t('imageEditor.textColor')}
+              className="h-6 w-8 cursor-pointer border-0 bg-transparent p-0"
+            />
+            <span className="text-[10px] font-mono uppercase text-neutral-300">{style.color}</span>
+          </label>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="flex items-center gap-2 text-[11px] font-medium text-neutral-400">
+            <input
+              type="checkbox"
+              checked={style.outlineEnabled}
+              onChange={(event) => onChange({ outlineEnabled: event.target.checked })}
+              className="rounded border-neutral-700 bg-neutral-800 text-primary-600 focus:ring-primary-500/30"
+            />
+            {t('imageEditor.outline')}
+          </label>
+          <label className={`flex h-9 items-center gap-2 rounded-lg border border-neutral-700 bg-neutral-800 px-2 ${
+            style.outlineEnabled ? 'cursor-pointer' : 'opacity-40'
+          }`}>
+            <input
+              type="color"
+              value={style.outlineColor}
+              disabled={!style.outlineEnabled}
+              onChange={(event) => onChange({ outlineColor: event.target.value })}
+              aria-label={t('imageEditor.outlineColor')}
+              className="h-6 w-8 cursor-pointer border-0 bg-transparent p-0"
+            />
+            <span className="text-[10px] font-mono uppercase text-neutral-300">{style.outlineColor}</span>
+          </label>
+        </div>
+      </div>
+
+      <div className={compact ? 'grid grid-cols-2 gap-3' : 'space-y-3'}>
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between gap-2">
+            <label htmlFor={`${idPrefix}-outline-width`} className="text-[11px] font-medium text-neutral-400">
+              {t('imageEditor.outlineWidth')}
+            </label>
+            <span className="text-[10px] font-mono text-neutral-300">{style.outlineWidth}px</span>
+          </div>
+          <input
+            id={`${idPrefix}-outline-width`}
+            type="range"
+            min="0"
+            max={TEXT_OUTLINE_WIDTH_MAX}
+            value={style.outlineWidth}
+            disabled={!style.outlineEnabled}
+            onChange={(event) => onChange({ outlineWidth: Number(event.target.value) })}
+            className="h-1 w-full cursor-pointer appearance-none rounded-lg bg-neutral-800 accent-primary-500 disabled:opacity-40"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between gap-2">
+            <label htmlFor={`${idPrefix}-position-x`} className="text-[11px] font-medium text-neutral-400">
+              {t('imageEditor.positionX')}
+            </label>
+            <span className="text-[10px] font-mono text-neutral-300">{Math.round(style.position.x * 100)}%</span>
+          </div>
+          <input
+            id={`${idPrefix}-position-x`}
+            type="range"
+            min="0"
+            max="100"
+            value={Math.round(style.position.x * 100)}
+            onChange={(event) => onPositionChange({ ...style.position, x: Number(event.target.value) / 100 })}
+            className="h-1 w-full cursor-pointer appearance-none rounded-lg bg-neutral-800 accent-primary-500"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between gap-2">
+            <label htmlFor={`${idPrefix}-position-y`} className="text-[11px] font-medium text-neutral-400">
+              {t('imageEditor.positionY')}
+            </label>
+            <span className="text-[10px] font-mono text-neutral-300">{Math.round(style.position.y * 100)}%</span>
+          </div>
+          <input
+            id={`${idPrefix}-position-y`}
+            type="range"
+            min="0"
+            max="100"
+            value={Math.round(style.position.y * 100)}
+            onChange={(event) => onPositionChange({ ...style.position, y: Number(event.target.value) / 100 })}
+            className="h-1 w-full cursor-pointer appearance-none rounded-lg bg-neutral-800 accent-primary-500"
+          />
+        </div>
+      </div>
+
+      <p className="text-[10px] leading-relaxed text-neutral-500">
+        {t('imageEditor.textDragHint')}
+      </p>
+      <p className="text-[10px] leading-relaxed text-neutral-500">
+        {t('imageEditor.fontLicense')}
+      </p>
+
+      <button
+        type="button"
+        onClick={onApply}
+        disabled={!canApply}
+        className="w-full rounded-lg bg-amber-600 px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-amber-950/20 transition-colors hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-30"
+      >
+        {isApplying ? t('imageEditor.applyingText') : t('imageEditor.applyText')}
+      </button>
+    </div>
+  )
+}
 
 /** 밝기/대비/채도/선명도 기본값(%) — 100 = 원본 그대로 */
 const ADJUST_DEFAULT = 100
@@ -198,6 +415,7 @@ export default function ImageEditorModal({
 
   // Canvas refs
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const textOverlayCanvasRef = useRef<HTMLCanvasElement>(null)
   const mosaicCanvasRef = useRef<HTMLCanvasElement>(document.createElement('canvas'))
   const blurCanvasRef = useRef<HTMLCanvasElement>(document.createElement('canvas'))
   const containerRef = useRef<HTMLDivElement>(null)
@@ -205,6 +423,16 @@ export default function ImageEditorModal({
   // Drawing state
   const isDrawingRef = useRef(false)
   const lastPosRef = useRef({ x: 0, y: 0 })
+
+  // Text state — 적용 전에는 투명 오버레이 캔버스에서 미리보고, 적용 시 본 캔버스에 합성한다.
+  const [textStyle, setTextStyle] = useState<TextStyleState>(() => createDefaultTextStyle())
+  const [isApplyingText, setIsApplyingText] = useState(false)
+  const [isDraggingText, setIsDraggingText] = useState(false)
+  const textDragRef = useRef<{
+    pointerId: number
+    offsetX: number
+    offsetY: number
+  } | null>(null)
 
   // History state
   const [history, setHistory] = useState<ImageData[]>([])
@@ -411,6 +639,15 @@ export default function ImageEditorModal({
       const initialData = ctx.getImageData(0, 0, canvas.width, canvas.height)
       setHistory([initialData])
       setHistoryIndex(0)
+      setTextStyle(createDefaultTextStyle(
+        Math.max(
+          TEXT_FONT_SIZE_MIN,
+          Math.min(TEXT_FONT_SIZE_MAX, Math.round(Math.min(canvas.width, canvas.height) * 0.08)),
+        ),
+      ))
+      setIsApplyingText(false)
+      setIsDraggingText(false)
+      textDragRef.current = null
 
       const startingRatio = fixedRatio ?? initialCropRatio
       if (startingRatio) {
@@ -767,6 +1004,185 @@ export default function ImageEditorModal({
     const x = (clientX - rect.left) * (canvas.width / rect.width)
     const y = (clientY - rect.top) * (canvas.height / rect.height)
     return { x, y }
+  }
+
+  const ensureTextFontLoaded = async (style: TextStyleState) => {
+    if (!document.fonts || !style.content.trim()) return
+    const font = getTextFont(style.fontKey)
+    try {
+      await document.fonts.load(
+        `${font.weight} ${style.fontSize}px ${font.family}`,
+        style.content,
+      )
+    } catch {
+      // 이미 CSS 에 self-host 폰트가 선언되어 있다. Font Loading API 가 실패한 구형
+      // 브라우저에서는 Canvas 자체 폴백으로 계속 진행한다.
+    }
+  }
+
+  const clampCurrentTextPosition = (
+    position: TextPosition,
+    style: TextStyleState = textStyle,
+  ): TextPosition => {
+    const canvas = canvasRef.current
+    const overlayCanvas = textOverlayCanvasRef.current
+    if (!canvas || !overlayCanvas || canvas.width <= 0 || canvas.height <= 0) return position
+
+    if (overlayCanvas.width !== canvas.width || overlayCanvas.height !== canvas.height) {
+      overlayCanvas.width = canvas.width
+      overlayCanvas.height = canvas.height
+    }
+    const overlayContext = overlayCanvas.getContext('2d')
+    if (!overlayContext) return position
+    return clampTextPosition(overlayContext, overlayCanvas, style, position)
+  }
+
+  const handleTextStyleChange = (patch: Partial<TextStyleState>) => {
+    setTextStyle((current) => ({ ...current, ...patch }))
+  }
+
+  const handleTextPositionChange = (position: TextPosition) => {
+    setTextStyle((current) => ({
+      ...current,
+      position: clampCurrentTextPosition(position, current),
+    }))
+  }
+
+  // 실제 출력과 동일한 Canvas API 로 텍스트를 미리 그려 폰트·외곽선 차이를 없앤다.
+  useEffect(() => {
+    let cancelled = false
+
+    const renderPreview = async () => {
+      const canvas = canvasRef.current
+      const overlayCanvas = textOverlayCanvasRef.current
+      if (!canvas || !overlayCanvas) return
+
+      if (overlayCanvas.width !== canvas.width || overlayCanvas.height !== canvas.height) {
+        overlayCanvas.width = canvas.width
+        overlayCanvas.height = canvas.height
+      }
+
+      const overlayContext = overlayCanvas.getContext('2d')
+      if (!overlayContext) return
+      overlayContext.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height)
+
+      if (!open || mode !== 'text' || !textStyle.content.trim()) return
+      await ensureTextFontLoaded(textStyle)
+      if (cancelled) return
+
+      const clampedPosition = clampTextPosition(
+        overlayContext,
+        overlayCanvas,
+        textStyle,
+        textStyle.position,
+      )
+      const previewStyle = { ...textStyle, position: clampedPosition }
+      drawText(overlayContext, overlayCanvas, previewStyle)
+
+      if (
+        clampedPosition.x !== textStyle.position.x
+        || clampedPosition.y !== textStyle.position.y
+      ) {
+        setTextStyle((current) => ({ ...current, position: clampedPosition }))
+      }
+    }
+
+    void renderPreview()
+    return () => {
+      cancelled = true
+    }
+  }, [historyIndex, mode, open, textStyle])
+
+  useEffect(() => {
+    if (mode === 'text') return
+    textDragRef.current = null
+    setIsDraggingText(false)
+  }, [mode])
+
+  const commitCurrentCanvasToHistory = () => {
+    const canvas = canvasRef.current
+    const ctx = canvas?.getContext('2d')
+    if (!canvas || !ctx) return
+
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+    const nextHistory = history.slice(0, historyIndex + 1)
+    nextHistory.push(imageData)
+    setHistory(nextHistory)
+    setHistoryIndex(nextHistory.length - 1)
+  }
+
+  const handleApplyText = async () => {
+    const canvas = canvasRef.current
+    const ctx = canvas?.getContext('2d')
+    if (!canvas || !ctx || !textStyle.content.trim() || isApplyingText) return
+
+    setIsApplyingText(true)
+    try {
+      await ensureTextFontLoaded(textStyle)
+      const appliedStyle = {
+        ...textStyle,
+        position: clampCurrentTextPosition(textStyle.position, textStyle),
+      }
+      drawText(ctx, canvas, appliedStyle)
+      regenerateEffects()
+      commitCurrentCanvasToHistory()
+      setTextStyle((current) => ({
+        ...current,
+        content: '',
+        position: { x: 0.5, y: 0.5 },
+      }))
+    } finally {
+      setIsApplyingText(false)
+    }
+  }
+
+  const handleTextPointerDown = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    if (mode !== 'text' || !textStyle.content.trim()) return
+    const coords = getCanvasCoords(event.clientX, event.clientY)
+    const canvas = canvasRef.current
+    const overlayCanvas = textOverlayCanvasRef.current
+    const overlayContext = overlayCanvas?.getContext('2d')
+    if (!coords || !canvas || !overlayCanvas || !overlayContext) return
+
+    const bounds = measureTextBounds(overlayContext, overlayCanvas, textStyle)
+    const hitPadding = Math.max(8, 12 / Math.max(canvasScale, 0.01))
+    const isInside = coords.x >= bounds.left - hitPadding
+      && coords.x <= bounds.right + hitPadding
+      && coords.y >= bounds.top - hitPadding
+      && coords.y <= bounds.bottom + hitPadding
+    if (!isInside) return
+
+    event.preventDefault()
+    event.currentTarget.setPointerCapture(event.pointerId)
+    textDragRef.current = {
+      pointerId: event.pointerId,
+      offsetX: coords.x - textStyle.position.x * canvas.width,
+      offsetY: coords.y - textStyle.position.y * canvas.height,
+    }
+    setIsDraggingText(true)
+  }
+
+  const handleTextPointerMove = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    const drag = textDragRef.current
+    const canvas = canvasRef.current
+    if (!drag || drag.pointerId !== event.pointerId || !canvas) return
+    const coords = getCanvasCoords(event.clientX, event.clientY)
+    if (!coords) return
+
+    event.preventDefault()
+    handleTextPositionChange({
+      x: (coords.x - drag.offsetX) / canvas.width,
+      y: (coords.y - drag.offsetY) / canvas.height,
+    })
+  }
+
+  const handleTextPointerEnd = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    if (textDragRef.current?.pointerId !== event.pointerId) return
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+    textDragRef.current = null
+    setIsDraggingText(false)
   }
 
   const startDrawing = (clientX: number, clientY: number) => {
@@ -1134,29 +1550,52 @@ export default function ImageEditorModal({
   }
 
   // Handle Save
-  const handleSaveClick = () => {
+  const handleSaveClick = async () => {
+    if (isApplyingText) return
     // 예약된 밝기/선명도 미리보기가 남아 있으면 먼저 캔버스에 반영
     flushAdjustRender()
 
     const canvas = canvasRef.current
     if (!canvas) return
 
-    let outputCanvas = canvas
+    let sourceCanvas = canvas
+    const hasPendingText = mode === 'text' && Boolean(textStyle.content.trim())
+
+    if (hasPendingText) {
+      setIsApplyingText(true)
+      await ensureTextFontLoaded(textStyle)
+      sourceCanvas = document.createElement('canvas')
+      sourceCanvas.width = canvas.width
+      sourceCanvas.height = canvas.height
+      const sourceContext = sourceCanvas.getContext('2d')
+      if (!sourceContext) {
+        setIsApplyingText(false)
+        return
+      }
+      sourceContext.drawImage(canvas, 0, 0)
+      drawText(sourceContext, sourceCanvas, {
+        ...textStyle,
+        position: clampCurrentTextPosition(textStyle.position, textStyle),
+      })
+      setIsApplyingText(false)
+    }
+
+    let outputCanvas = sourceCanvas
 
     if (outputSize) {
       const targetRatio = outputSize.width / outputSize.height
-      const sourceRatio = canvas.width / canvas.height
+      const sourceRatio = sourceCanvas.width / sourceCanvas.height
       let sourceX = 0
       let sourceY = 0
-      let sourceWidth = canvas.width
-      let sourceHeight = canvas.height
+      let sourceWidth = sourceCanvas.width
+      let sourceHeight = sourceCanvas.height
 
       if (sourceRatio > targetRatio) {
-        sourceWidth = canvas.height * targetRatio
-        sourceX = (canvas.width - sourceWidth) / 2
+        sourceWidth = sourceCanvas.height * targetRatio
+        sourceX = (sourceCanvas.width - sourceWidth) / 2
       } else if (sourceRatio < targetRatio) {
-        sourceHeight = canvas.width / targetRatio
-        sourceY = (canvas.height - sourceHeight) / 2
+        sourceHeight = sourceCanvas.width / targetRatio
+        sourceY = (sourceCanvas.height - sourceHeight) / 2
       }
 
       outputCanvas = document.createElement('canvas')
@@ -1168,7 +1607,7 @@ export default function ImageEditorModal({
       outputContext.imageSmoothingEnabled = true
       outputContext.imageSmoothingQuality = 'high'
       outputContext.drawImage(
-        canvas,
+        sourceCanvas,
         sourceX,
         sourceY,
         sourceWidth,
@@ -1181,23 +1620,23 @@ export default function ImageEditorModal({
     } else if (fitOutputSize) {
       const scale = Math.min(
         1,
-        fitOutputSize.width / canvas.width,
-        fitOutputSize.height / canvas.height,
+        fitOutputSize.width / sourceCanvas.width,
+        fitOutputSize.height / sourceCanvas.height,
       )
       if (scale < 1) {
         outputCanvas = document.createElement('canvas')
-        outputCanvas.width = Math.max(1, Math.round(canvas.width * scale))
-        outputCanvas.height = Math.max(1, Math.round(canvas.height * scale))
+        outputCanvas.width = Math.max(1, Math.round(sourceCanvas.width * scale))
+        outputCanvas.height = Math.max(1, Math.round(sourceCanvas.height * scale))
         const outputContext = outputCanvas.getContext('2d')
         if (!outputContext) return
         outputContext.imageSmoothingEnabled = true
         outputContext.imageSmoothingQuality = 'high'
         outputContext.drawImage(
-          canvas,
+          sourceCanvas,
           0,
           0,
-          canvas.width,
-          canvas.height,
+          sourceCanvas.width,
+          sourceCanvas.height,
           0,
           0,
           outputCanvas.width,
@@ -1342,6 +1781,19 @@ export default function ImageEditorModal({
                         {t('imageEditor.rotate')}
                       </button>
                       <button
+                        onClick={() => handleModeChange('text')}
+                        className={`flex flex-col items-center justify-center py-3 rounded-xl border text-xs gap-1.5 transition-all duration-150 ${
+                          mode === 'text'
+                            ? 'bg-primary-600 border-primary-500 text-white font-medium shadow-lg shadow-primary-900/20'
+                            : 'bg-neutral-800/50 border-neutral-700 hover:bg-neutral-800 text-neutral-300'
+                        }`}
+                      >
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 5h12M12 5v14m-4 0h8" />
+                        </svg>
+                        {t('imageEditor.text')}
+                      </button>
+                      <button
                         onClick={() => handleModeChange('resize')}
                         className={`flex flex-col items-center justify-center py-3 rounded-xl border text-xs gap-1.5 transition-all duration-150 ${
                           mode === 'resize'
@@ -1356,7 +1808,7 @@ export default function ImageEditorModal({
                       </button>
                       <button
                         onClick={() => handleModeChange('adjust')}
-                        className={`col-span-2 flex items-center justify-center py-2.5 rounded-xl border text-xs gap-2 transition-all duration-150 ${
+                        className={`flex flex-col items-center justify-center py-3 rounded-xl border text-xs gap-1.5 transition-all duration-150 ${
                           mode === 'adjust'
                             ? 'bg-primary-600 border-primary-500 text-white font-medium shadow-lg shadow-primary-900/20'
                             : 'bg-neutral-800/50 border-neutral-700 hover:bg-neutral-800 text-neutral-300'
@@ -1665,6 +2117,17 @@ export default function ImageEditorModal({
                         </div>
                       </div>
                     )}
+
+                    {mode === 'text' && (
+                      <TextControls
+                        idPrefix="image-text-desktop"
+                        style={textStyle}
+                        isApplying={isApplyingText}
+                        onChange={handleTextStyleChange}
+                        onPositionChange={handleTextPositionChange}
+                        onApply={() => { void handleApplyText() }}
+                      />
+                    )}
                   </div>
 
                 </div>
@@ -1694,6 +2157,24 @@ export default function ImageEditorModal({
                       style={{
                         touchAction: mode === 'paint' ? 'none' : 'auto',
                         cursor: getCursorStyle(),
+                      }}
+                    />
+
+                    {/* Text preview / drag layer — intrinsic size mirrors the image canvas. */}
+                    <canvas
+                      ref={textOverlayCanvasRef}
+                      aria-label={t('imageEditor.textPositionCanvas')}
+                      className="absolute inset-0 block h-full w-full select-none"
+                      onPointerDown={handleTextPointerDown}
+                      onPointerMove={handleTextPointerMove}
+                      onPointerUp={handleTextPointerEnd}
+                      onPointerCancel={handleTextPointerEnd}
+                      style={{
+                        pointerEvents: mode === 'text' ? 'auto' : 'none',
+                        touchAction: mode === 'text' ? 'none' : 'auto',
+                        cursor: mode === 'text' && textStyle.content.trim()
+                          ? (isDraggingText ? 'grabbing' : 'grab')
+                          : 'default',
                       }}
                     />
 
@@ -1780,10 +2261,10 @@ export default function ImageEditorModal({
                 </div>
 
                 {/* Bottom Toolbar for Mobile (Hidden on Desktop) */}
-                <div className="flex md:hidden flex-col border-t border-neutral-800 bg-neutral-900/60 p-4 gap-4">
+                <div className="flex max-h-[48vh] flex-col gap-4 overflow-y-auto border-t border-neutral-800 bg-neutral-900/60 p-4 md:hidden">
                   
                   {/* Tool Swapper */}
-                  <div className="grid grid-cols-5 gap-1.5">
+                  <div className="grid grid-cols-6 gap-1.5">
                     <button
                       onClick={() => handleModeChange('paint')}
                       className={`flex flex-col items-center justify-center py-2 px-1 rounded-lg border text-[10px] font-semibold gap-1 ${
@@ -1816,6 +2297,17 @@ export default function ImageEditorModal({
                         <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89M9 11l3-3 3 3" />
                       </svg>
                       {t('imageEditor.rotateShort')}
+                    </button>
+                    <button
+                      onClick={() => handleModeChange('text')}
+                      className={`flex flex-col items-center justify-center py-2 px-1 rounded-lg border text-[10px] font-semibold gap-1 ${
+                        mode === 'text' ? 'bg-primary-600 border-primary-500 text-white' : 'bg-neutral-800 border-neutral-700 text-neutral-300'
+                      }`}
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 5h12M12 5v14m-4 0h8" />
+                      </svg>
+                      {t('imageEditor.textShort')}
                     </button>
                     <button
                       onClick={() => handleModeChange('adjust')}
@@ -2061,6 +2553,18 @@ export default function ImageEditorModal({
                     </div>
                   )}
 
+                  {mode === 'text' && (
+                    <TextControls
+                      idPrefix="image-text-mobile"
+                      compact
+                      style={textStyle}
+                      isApplying={isApplyingText}
+                      onChange={handleTextStyleChange}
+                      onPositionChange={handleTextPositionChange}
+                      onApply={() => { void handleApplyText() }}
+                    />
+                  )}
+
                   {mode === 'adjust' && (
                     <div className="flex flex-col gap-3">
                       <div className="grid grid-cols-2 gap-x-3 gap-y-2.5">
@@ -2118,14 +2622,14 @@ export default function ImageEditorModal({
               <div className="px-6 py-4 border-t border-neutral-800 flex items-center justify-end gap-3 bg-neutral-900/80">
                 <button
                   onClick={onClose}
-                  disabled={isSaving}
+                  disabled={isSaving || isApplyingText}
                   className="px-5 py-2.5 rounded-xl border border-neutral-700 hover:bg-neutral-800 text-neutral-200 text-xs font-medium transition-all duration-150 disabled:opacity-50"
                 >
                   {t('imageEditor.cancel')}
                 </button>
                 <button
-                  onClick={handleSaveClick}
-                  disabled={isSaving}
+                  onClick={() => { void handleSaveClick() }}
+                  disabled={isSaving || isApplyingText}
                   className="px-5 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-500 active:bg-primary-700 disabled:bg-primary-700 text-white text-xs font-semibold shadow-lg shadow-primary-900/20 flex items-center gap-2 transition-all duration-150"
                 >
                   {isSaving ? (

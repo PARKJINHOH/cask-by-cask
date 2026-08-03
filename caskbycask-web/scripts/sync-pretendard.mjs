@@ -12,7 +12,8 @@
 //
 // 사용법: npm run fonts:sync
 //   버전을 올릴 때는 PRETENDARD_VERSION 만 바꿔 다시 실행한다.
-//   생성물: public/fonts/pretendard/*.woff2 (92개, 약 2.8MB), src/fonts/pretendard.css
+//   생성물: public/fonts/pretendard/v*/**/*.woff2, public/fonts/pretendard/LICENSE.txt,
+//           src/fonts/pretendard.css
 //   ⚠️ 생성물은 수동 편집하지 않는다. 이 스크립트가 단일 출처다.
 import { mkdir, writeFile, readdir, rm } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -20,6 +21,7 @@ import { join } from 'node:path'
 const PRETENDARD_VERSION = 'v1.3.9'
 const CSS_URL = `https://cdn.jsdelivr.net/gh/orioncactus/pretendard@${PRETENDARD_VERSION}`
   + '/dist/web/variable/pretendardvariable-dynamic-subset.min.css'
+const LICENSE_URL = `https://raw.githubusercontent.com/orioncactus/pretendard/${PRETENDARD_VERSION}/LICENSE`
 
 // 조각 파일명(PretendardVariable.subset.N.woff2)은 버전이 올라가도 동일하다.
 // 따라서 경로에 버전을 포함시켜야 `immutable` 장기 캐시가 안전하다(버전 교체 = URL 교체).
@@ -64,6 +66,7 @@ if (new Set(names).size !== names.length) fail('woff2 파일명이 중복된다.
 
 await mkdir(FONT_ROOT, { recursive: true })
 await mkdir(join('src', 'fonts'), { recursive: true })
+await writeFile(join(FONT_ROOT, 'LICENSE.txt'), await fetchOk(LICENSE_URL, 'text'))
 
 // 이전 버전 디렉토리를 남겨두면 저장소에 쓰이지 않는 폰트가 누적된다.
 for (const entry of await readdir(FONT_ROOT, { withFileTypes: true }).catch(() => [])) {

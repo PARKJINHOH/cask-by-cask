@@ -31,7 +31,8 @@
                     "map:verify-ui":  "node scripts/verify-wine-detail-ui.mjs",
                     "admin:verify-form":  "node scripts/verify-admin-form.mjs",
                     "test:spirit-limits":  "node --import ./scripts/test-alias-register.mjs --test scripts/spirit-limits.test.mjs",
-                    "test:admin-menu":  "node --test scripts/admin-menu.test.mjs"
+                    "test:admin-menu":  "node --test scripts/admin-menu.test.mjs",
+                    "test:image-editor":  "node --test scripts/image-editor-text.test.mjs"
                 },
     "dependencies":  {
                          "@dnd-kit/core":  "^6.3.1",

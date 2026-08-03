@@ -38,6 +38,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
@@ -240,6 +241,7 @@ class AiNewsServiceTest {
                 .confidenceScore(BigDecimal.ONE)
                 .dedupeKey("release:source-edit")
                 .build();
+        article.replaceHashtags(List.of("신제품", "위스키"));
         article.addSource(AiNewsArticleSource.builder()
                 .sourceUrl("https://example.com/original")
                 .canonicalUrl("https://example.com/original")
@@ -266,6 +268,10 @@ class AiNewsServiceTest {
                 AiNewsSourceConfig.builder()
                         .sourceName("공식 사이트").sourceUrl("https://new.example")
                         .domain("new.example").sourceType(AiNewsSourceType.OFFICIAL).build()));
+        doAnswer(invocation -> {
+            assertThat(article.getHashtags()).isEmpty();
+            return null;
+        }).when(articleRepository).flush();
 
         AiNewsDtos.ArticleDetailResponse result = service.updateArticle(12L,
                 new AiNewsDtos.ArticleAdminUpdateRequest(
@@ -282,6 +288,7 @@ class AiNewsServiceTest {
                 .doesNotContain("removed.example");
         assertThat(result.sources().getFirst().evidenceSummary()).isEqualTo("보존할 근거");
         assertThat(result.hashtags()).containsExactly("위스키", "신제품");
+        verify(articleRepository).flush();
     }
 
     @Test

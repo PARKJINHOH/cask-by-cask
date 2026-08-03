@@ -100,13 +100,15 @@ public class AiNewsService {
             if (canRetryMissingTipImage(existing, request)) {
                 BigDecimal confidence = request.confidenceScore() != null
                         ? request.confidenceScore() : existing.getConfidenceScore();
+                List<String> hashtags = request.hashtags() != null
+                        ? HashtagNormalizer.normalize(request.hashtags())
+                        : List.copyOf(existing.getHashtags());
+                clearArticleHashtagsBeforeReplacement(existing, hashtags);
                 existing.applyImageRetry(request.title().trim(), withLeadImage(request.content(), request.imageUrl()),
                         request.category(), confidence, trimToNull(request.semanticFingerprint()),
                         request.imageUrl().trim(), request.imageKind().trim(),
                         trimToNull(request.imageRightsEvidence()), trimToNull(request.modelName()),
-                        request.hashtags() != null
-                                ? HashtagNormalizer.normalize(request.hashtags())
-                                : List.copyOf(existing.getHashtags()));
+                        hashtags);
                 String holdReason = autoPublishHoldReason(existing, resolveStoredSources(existing), getSettingsEntity(),
                         Boolean.TRUE.equals(request.autoPublishRequested()));
                 if (holdReason == null) publishWithSystemAuthor(existing);
@@ -239,6 +241,7 @@ public class AiNewsService {
         List<String> hashtags = request.hashtags() != null
                 ? HashtagNormalizer.normalize(request.hashtags())
                 : List.copyOf(article.getHashtags());
+        clearArticleHashtagsBeforeReplacement(article, hashtags);
         article.updateDraft(request.title().trim(), request.content(), request.category(), request.prefixId(),
                 Boolean.TRUE.equals(request.pinned()),
                 request.confidenceScore() != null ? request.confidenceScore() : article.getConfidenceScore(),
@@ -388,13 +391,25 @@ public class AiNewsService {
         if (article.getStatus() != AiNewsArticleStatus.REWRITE_REQUESTED) {
             throw new CustomException(ErrorCode.AI_NEWS_INVALID_STATUS);
         }
+        List<String> hashtags = request.hashtags() != null
+                ? HashtagNormalizer.normalize(request.hashtags())
+                : List.copyOf(article.getHashtags());
+        clearArticleHashtagsBeforeReplacement(article, hashtags);
         article.completeRewrite(request.title().trim(), withLeadImage(request.content(), article.getImageUrl()),
                 request.confidenceScore() != null ? request.confidenceScore() : BigDecimal.ZERO,
                 trimToNull(request.semanticFingerprint()), trimToNull(request.modelName()),
-                request.hashtags() != null
-                        ? HashtagNormalizer.normalize(request.hashtags())
-                        : List.copyOf(article.getHashtags()));
+                hashtags);
         return AiNewsDtos.ArticleDetailResponse.from(article);
+    }
+
+    /**
+     * 순서가 있는 ElementCollection을 제자리 갱신하면 (article_id, hashtag) 유니크 키와
+     * 일시적으로 충돌할 수 있다. 변경 시 기존 행을 먼저 삭제·flush한 뒤 호출부가 새 목록을 채운다.
+     */
+    private void clearArticleHashtagsBeforeReplacement(AiNewsArticle article, List<String> hashtags) {
+        if (article.getHashtags().equals(hashtags)) return;
+        article.replaceHashtags(List.of());
+        articleRepository.flush();
     }
 
     @Transactional(readOnly = true)
