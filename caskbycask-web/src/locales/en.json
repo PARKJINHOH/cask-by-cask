@@ -762,7 +762,8 @@
       "XO":        "XO",
       "XXO":       "XXO",
       "EXTRA":     "Extra",
-      "HORS_DAGE": "Hors d'Age"
+      "HORS_DAGE": "Hors d'Age",
+      "NO_STATEMENT": "No Grade Statement"
     },
     "cognacCru": {
       "GRANDE_CHAMPAGNE": "Grande Champagne",
@@ -773,9 +774,12 @@
       "BOIS_ORDINAIRES":  "Bois Ordinaires"
     },
     "cognacBlend": {
-      "singleCru": "Single Cru",
-      "multiCru":  "Multi-Cru Blend"
+      "singleCru":     "Single Cru",
+      "singleCruHelp": "Made from eaux-de-vie of a single cru. Uncommon — most cognac blends several crus.",
+      "multiCru":      "Multi-Cru Blend",
+      "multiCruHelp":  "Blends eaux-de-vie from several crus. This is the norm for cognac."
     },
+    "cognacFineChampagneHelp": "A legally protected term: only Grande and Petite Champagne, with Grande Champagne at 50% or more.",
     "cognacOak": {
       "LIMOUSIN":   "Limousin",
       "TRONCAIS":   "Tronçais",
@@ -784,7 +788,7 @@
       "VOSGES":     "Vosges",
       "JUPILLES":   "Jupilles",
       "BERTRANGES": "Bertranges",
-      "FRENCH_OAK": "French Oak (unspecified)",
+      "FRENCH_OAK": "French Oak (origin unspecified)",
       "OTHER":      "Other"
     },
     "otherType": {

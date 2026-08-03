@@ -3,8 +3,11 @@ import InfoTooltip from '@/shared/components/InfoTooltip'
 import { RequiredMark } from '@/shared/components/FormFieldLabel'
 import CruCompositionInput, { type CruCompositionRow } from '@/shared/components/CruCompositionInput'
 import {
-  COGNAC_GRADES, COGNAC_GRADE_MIN_YEARS, COGNAC_OAK_TYPES,
+  COGNAC_GRADES, COGNAC_GRADE_MIN_YEARS, COGNAC_GRADE_NO_STATEMENT, COGNAC_OAK_TYPES,
 } from '@/domain/spirit/data/cognac'
+
+/** 숙성 위계에 놓이는 등급만 — '등급 표기 없음'은 위계 밖이라 따로 렌더한다 */
+const AGING_GRADES = COGNAC_GRADES.filter((g) => g !== COGNAC_GRADE_NO_STATEMENT)
 
 export interface CognacDetailForm {
   grade: string; cruComposition: CruCompositionRow[]; isFineChampagne: boolean; blendDetail: string
@@ -51,20 +54,37 @@ export default function CognacDetailSection({ value, onChange, errors }: Props) 
           <label className={LABEL}>
             등급 <RequiredMark />
           </label>
-          <div className="flex flex-wrap gap-3" role="radiogroup" aria-required="true">
-            {COGNAC_GRADES.map((g) => (
-              <label key={g} className="flex flex-col items-center cursor-pointer select-none">
-                <input type="radio" value={g} checked={value.grade === g}
-                  onChange={() => onChange({ grade: g })} className="accent-amber-500 mb-1" />
-                <span className="text-xs font-semibold text-neutral-700">{t(`spirit.cognacGrade.${g}`)}</span>
-                <span className="text-[10px] text-neutral-400">{COGNAC_GRADE_MIN_YEARS[g] ?? ' '}</span>
+          <div role="radiogroup" aria-required="true" className="space-y-3">
+            {/* 숙성 위계에 놓이는 등급들 */}
+            <div className="flex flex-wrap gap-3">
+              {AGING_GRADES.map((g) => (
+                <label key={g} className="flex flex-col items-center cursor-pointer select-none">
+                  <input type="radio" value={g} checked={value.grade === g}
+                    onChange={() => onChange({ grade: g })} className="accent-amber-500 mb-1" />
+                  <span className="text-xs font-semibold text-neutral-700">{t(`spirit.cognacGrade.${g}`)}</span>
+                  <span className="text-[10px] text-neutral-400">{COGNAC_GRADE_MIN_YEARS[g] ?? ' '}</span>
+                </label>
+              ))}
+            </div>
+
+            {/* 위계 밖 — '표기가 없다'(사실)와 '아직 안 정했다'(미입력)는 다르다 */}
+            <div className="flex flex-wrap items-center gap-4 border-t border-amber-200/70 pt-3">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input type="radio" value={COGNAC_GRADE_NO_STATEMENT}
+                  checked={value.grade === COGNAC_GRADE_NO_STATEMENT}
+                  onChange={() => onChange({ grade: COGNAC_GRADE_NO_STATEMENT })}
+                  className="accent-amber-500" />
+                <span className="text-xs font-semibold text-neutral-700">
+                  {t(`spirit.cognacGrade.${COGNAC_GRADE_NO_STATEMENT}`)}
+                </span>
+                <InfoTooltip text="라벨에 VS·VSOP·XO 같은 등급 표기가 아예 없는 제품에 씁니다. 큐베 이름만으로 파는 레미 마르탱 1738 Accord Royal, 마르텔 코르동 블루, 헤네시 파라디, 루이 13세 등이 여기 해당합니다. 등급을 짐작해서 넣지 마세요." />
               </label>
-            ))}
-            <label className="flex flex-col items-center cursor-pointer select-none">
-              <input type="radio" value="" checked={!value.grade}
-                onChange={() => onChange({ grade: '' })} className="accent-amber-500 mb-1" />
-              <span className="text-xs text-neutral-400">미지정</span>
-            </label>
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input type="radio" value="" checked={!value.grade}
+                  onChange={() => onChange({ grade: '' })} className="accent-amber-500" />
+                <span className="text-xs text-neutral-400">아직 확인 안 함</span>
+              </label>
+            </div>
           </div>
           {errors?.grade && <p className="text-xs text-red-500 mt-1">{errors.grade}</p>}
         </div>
@@ -132,8 +152,8 @@ export default function CognacDetailSection({ value, onChange, errors }: Props) 
       {/* 오크 종류 — 리무쟁·트롱세 병용이 흔해 복수 선택 */}
       <div>
         <label className={LABEL}>
-          오크 종류 (복수 선택)
-          <InfoTooltip text="숙성에 사용한 프렌치 오크 숲. 리무쟁=굵은 결·강한 타닌, 트롱세=촘촘한 결·섬세함. 두 숲을 함께 쓰는 하우스가 많습니다." />
+          오크 산지 (복수 선택)
+          <InfoTooltip text="오크통을 만든 나무가 자란 프랑스 지역입니다. 리무쟁은 나뭇결이 굵어 향과 타닌이 진하게 배고, 트롱세는 결이 촘촘해 은은하게 뱁니다. 두 곳을 함께 쓰는 하우스가 많으니 확인된 것을 모두 고르세요. 알리에는 트롱세를 포함하는 넓은 지역 표기입니다. 산지가 공개되지 않았으면 '프랑스산 (산지 미표기)'을 고르세요." />
         </label>
         <div className="flex flex-wrap gap-2">
           {COGNAC_OAK_TYPES.map((oak) => {

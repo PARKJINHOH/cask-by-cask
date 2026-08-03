@@ -70,7 +70,7 @@ JSON 외의 설명은 배열 뒤에 `## 메모`로 따로 적으세요.
 
   "_sources": ["https://..."],
   "_confidence": "높음",
-  "_uncertain": ["크뤼별 비율 비공개", "오크 숲은 리무쟁 확인, 트롱세는 추정이라 제외 검토"]
+  "_uncertain": ["크뤼별 비율 비공개", "오크 산지는 리무쟁만 확인, 트롱세는 추정이라 제외"]
 }
 ```
 
@@ -118,9 +118,13 @@ XXO        최소 14년
 EXTRA      법정 기준 없음. 하우스가 XO 이상 프레스티지 레인지에 붙이는 표기
            (Rémy Martin Extra, Camus Extra, Frapin Extra 등)
 HORS_DAGE  30년 이상급으로 통용. 라벨에 "Hors d'Age" 표기가 있을 때만
+NO_STATEMENT  라벨에 등급 표기가 **아예 없는** 제품. 큐베 이름만으로 판다
+              (Rémy Martin 1738 Accord Royal, Martell Cordon Bleu,
+               Hennessy Paradis, Louis XIII 등)
 ```
-라벨에 등급 표기가 아예 없는 제품(빈티지 전용, Paradis·Louis XIII 같은 프레스티지 큐베)은
-공식적으로 대응되는 등급이 있으면 그 값을, 없으면 `null`을 쓰고 `_uncertain`에 이유를 적으세요.
+**라벨을 확인했는데 등급 표기가 없으면 `NO_STATEMENT` 를 쓰세요.** 등급을 짐작해 넣지 마세요 —
+"VSOP급"·"XO 상당" 같은 추정은 사용자에게 사실로 표시됩니다.
+`null` 은 **아직 확인하지 못했다**는 뜻이므로 둘을 구분해서 쓰세요.
 
 ### `cruComposition` — 크뤼 구성 (선택)
 ```
@@ -138,13 +142,19 @@ FINS_BOIS          BONS_BOIS          BOIS_ORDINAIRES
 Grande Champagne + Petite Champagne **만**으로 구성되고 Grande가 50% 이상일 때 `true`.
 **라벨에 "Fine Champagne" 표기가 실제로 있을 때만** `true`로 하세요. 추정 금지.
 
-### `oakTypes` — 프렌치 오크 숲 (선택, 복수)
+### `oakTypes` — 프렌치 오크 산지 (선택, 복수)
+
+오크통을 만든 나무가 자란 프랑스 지역입니다. 숲 이름과 지방·데파르트망 이름이 섞여 있는데,
+라벨·공식 자료의 표기가 그렇기 때문입니다. **표기된 그대로** 고르고 임의로 바꾸지 마세요.
+
 ```
 LIMOUSIN    TRONCAIS    ALLIER      NEVERS      VOSGES
 JUPILLES    BERTRANGES  FRENCH_OAK  OTHER
 ```
-- 두 숲을 함께 쓰는 하우스가 많으니 확인된 것을 모두 넣으세요.
-- 숲이 특정되지 않고 "프렌치 오크"라고만 알려졌으면 `["FRENCH_OAK"]`.
+- 리무쟁·트롱세를 함께 쓰는 하우스가 많으니 확인된 것을 모두 넣으세요.
+- `ALLIER` 는 `TRONCAIS` 를 포함하는 넓은 표기입니다. 자료가 "Tronçais" 라고 하면 `TRONCAIS` 를,
+  "Allier" 라고만 하면 `ALLIER` 를 쓰세요 — 임의로 좁히거나 넓히지 마세요.
+- 산지가 특정되지 않고 "프렌치 오크"라고만 알려졌으면 `["FRENCH_OAK"]`.
 - 정보가 없으면 빈 배열 `[]`.
 
 ### 나머지
@@ -163,7 +173,7 @@ JUPILLES    BERTRANGES  FRENCH_OAK  OTHER
 
 1. **정체성** — 어떤 위치의 제품인지 (하우스의 주력 / 프레스티지 큐베 / 한정판)
 2. **원료·산지 특성** — 포도 품종(위니 블랑 등), 크뤼가 맛에 주는 성격
-3. **증류·숙성** — 샤랑테식 알람빅, 리(lees) 포함 여부, 오크 숲과 신통/사용통, 셀러 환경
+3. **증류·숙성** — 샤랑테식 알람빅, 리(lees) 포함 여부, 오크 산지와 신통/사용통, 셀러 환경
 4. **블렌딩** — 오드비 개수, 최고령 원액, 셀러마스터 (※ `blendDetail`과 겹치면 여기서는 생략)
 5. **첨가물 공시** — 캐러멜 색소(E150a)·당분·boisé 사용 여부가 공개되어 있으면 명시
 6. **맛 프로필** — 공식 테이스팅 노트 기준의 향·맛·피니시
@@ -237,6 +247,6 @@ JSON을 내놓기 전에 스스로 점검하세요.
 - `_confidence`가 "낮음"이거나 `_uncertain`이 비어 있지 않은 항목은 등록 전에 직접 확인할 것.
 - 크뤼 비율을 자신 있게 채워 온 대형 하우스 제품(헤네시·마르텔·쿠르부아지에)은 거의 환각이다.
   이들은 비율을 공개하지 않는다.
-- 등급 없는 프레스티지 큐베(Paradis, Louis XIII, Richard Hennessy)는 `grade`가 필수라
-  등록이 막힌다. 하우스가 공식적으로 XO 이상임을 밝힌 경우에만 그 등급을 쓰고,
-  아니면 등급 체계 확장이 필요한 케이스로 따로 모아둘 것.
+- 등급 표기가 없는 큐베(1738 Accord Royal, Cordon Bleu, Paradis, Louis XIII)는 `NO_STATEMENT` 로
+  등록한다. AI가 이런 제품에 VSOP·XO를 붙여 오면 **라벨에 실제로 그 표기가 있는지** 확인할 것 —
+  자사 등급 라인업보다 위에 두려고 일부러 표기를 뺀 제품이 많다.

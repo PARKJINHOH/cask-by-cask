@@ -512,50 +512,70 @@ function SpiritDetailSections({
             ? `order-2 lg:col-start-1 ${hasTopDetail ? 'lg:row-start-2' : 'lg:row-start-1'}`
             : undefined}>
             <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest mb-2">Cognac</p>
-            <div className="flex items-center gap-4 flex-wrap">
-              {cognac.grade && (
+
+            {/* ① 핵심 식별자 — 등급과 법정 표기만. 크뤼·오크는 아래 목록으로 내려
+                한 줄 안에서 서로 다른 크기의 요소가 뒤섞이지 않게 한다. */}
+            <div className="flex items-center gap-2.5 flex-wrap">
+              {/* 'NO_STATEMENT' 는 등급이 아니라 "등급이 없다"는 사실이라
+                  다른 등급과 같은 큰 배지로 강조하면 잘못 읽힌다 — 작고 차분하게 둔다 */}
+              {cognac.grade && (cognac.grade === 'NO_STATEMENT' ? (
+                <span className="px-3 py-1.5 rounded-lg bg-neutral-100 border border-neutral-200 text-neutral-500 text-xs font-medium">
+                  {t('spirit.cognacGrade.NO_STATEMENT')}
+                </span>
+              ) : (
                 <span className="px-4 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-lg font-bold">
                   {t(`spirit.cognacGrade.${cognac.grade}`)}
                 </span>
-              )}
-              {cognacCrus.length > 0 && (
-                <div>
-                  {/* 꼬냑은 여러 크뤼를 섞는 것이 기본이라 '블렌드'를 별도 필드로 두지 않고
-                      구성 개수에서 파생한다 — 변별력은 그 반대편(싱글 크뤼)에 있다. */}
-                  <p className="text-xs text-neutral-400">
-                    {isEn ? 'Cru' : '크뤼'}
-                    <span className="ml-1.5 text-neutral-500">
-                      {t(cognacCrus.length === 1 ? 'spirit.cognacBlend.singleCru' : 'spirit.cognacBlend.multiCru')}
-                    </span>
-                  </p>
-                  <div className="flex flex-wrap">
-                    {cognacCrus.map((c) => (
-                      <Badge2 key={c.cru}>
-                        {t(`spirit.cognacCru.${c.cru}`)}{c.percentage != null ? ` ${c.percentage}%` : ''}
-                      </Badge2>
-                    ))}
-                  </div>
-                </div>
-              )}
+              ))}
               {cognac.isFineChampagne && (
-                <Badge2 detail="Fine Champagne (Grande + Petite Champagne 블렌드, Grande 50% 이상)">
-                  Fine Champagne
-                </Badge2>
+                <Badge2 detail={t('spirit.cognacFineChampagneHelp')}>Fine Champagne</Badge2>
               )}
             </div>
+
+            {/* ② 나머지는 와인·위스키와 같은 행 리스트로 통일한다 */}
             <div className="mt-3">
               <DetailGrid>
+                {/* 크뤼는 개수·비율이 붙어 길어지므로 칩 + 전체 폭. 콤마 문자열이면 이름 중간에서 줄이 바뀐다 */}
+                <DIChips label={isEn ? 'Cru' : '크뤼'} className="sm:col-span-2">
+                  {cognacCrus.length > 0 ? (
+                    <>
+                      {/* 꼬냑은 여러 크뤼를 섞는 것이 기본이라 '블렌드'를 별도 필드로 두지 않고
+                          구성 개수에서 파생한다 — 변별력은 그 반대편(싱글 크뤼)에 있다. */}
+                      <Badge2 detail={t(cognacCrus.length === 1
+                        ? 'spirit.cognacBlend.singleCruHelp'
+                        : 'spirit.cognacBlend.multiCruHelp')}>
+                        {t(cognacCrus.length === 1
+                          ? 'spirit.cognacBlend.singleCru'
+                          : 'spirit.cognacBlend.multiCru')}
+                      </Badge2>
+                      {cognacCrus.map((c) => (
+                        <Badge2 key={c.cru}>
+                          {t(`spirit.cognacCru.${c.cru}`)}{c.percentage != null ? ` ${c.percentage}%` : ''}
+                        </Badge2>
+                      ))}
+                    </>
+                  ) : null}
+                </DIChips>
+                {/* '오크'만 쓰면 일반 이용자에게는 무엇을 가리키는지 안 보인다 — 나무가 자란 지역임을 라벨로 밝힌다 */}
+                <DIChips label={isEn ? 'Oak Origin' : '오크 산지'} className="sm:col-span-2">
+                  {cognac.oakTypes?.length
+                    ? cognac.oakTypes.map((o) => (
+                      <Badge2 key={o}>{t(`spirit.cognacOak.${o}`)}</Badge2>
+                    ))
+                    : null}
+                </DIChips>
                 <DI label={isEn ? 'Vintage' : '빈티지'} value={cognac.vintageYear} />
                 <DI label={isEn ? 'Age' : '숙성연수'} value={cognac.ageYears != null ? `${cognac.ageYears}${isEn ? ' yr' : '년'}` : null} />
-                <DI label={isEn ? 'Oak' : '오크'}
-                  value={cognac.oakTypes?.length
-                    ? cognac.oakTypes.map((o) => t(`spirit.cognacOak.${o}`)).join(', ')
-                    : null} />
                 <DI label={isEn ? 'Cask Finish' : '캐스크 피니시'} value={cognac.caskFinish} />
               </DetailGrid>
             </div>
+
+            {/* ③ 서술형 설명 — 와인의 포도 품종 블록과 같은 라벨 + 본문 형태 */}
             {cognac.blendDetail && (
-              <p className="text-sm text-neutral-600 leading-relaxed mt-3">{cognac.blendDetail}</p>
+              <div className="mt-4">
+                <p className="text-[11px] text-neutral-400 mb-1.5">{isEn ? 'Blend' : '블렌드'}</p>
+                <p className="text-sm text-neutral-600 leading-relaxed">{cognac.blendDetail}</p>
+              </div>
             )}
           </div>
         )}

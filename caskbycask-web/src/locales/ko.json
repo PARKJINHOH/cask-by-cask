@@ -762,29 +762,33 @@
       "XO":        "XO",
       "XXO":       "XXO",
       "EXTRA":     "Extra",
-      "HORS_DAGE": "Hors d'Age"
+      "HORS_DAGE": "Hors d'Age",
+      "NO_STATEMENT": "등급 표기 없음"
     },
     "cognacCru": {
-      "GRANDE_CHAMPAGNE": "Grande Champagne (그랑드 샹파뉴)",
-      "PETITE_CHAMPAGNE": "Petite Champagne (프티트 샹파뉴)",
-      "BORDERIES":        "Borderies (보르드리)",
-      "FINS_BOIS":        "Fins Bois (팽 부아)",
-      "BONS_BOIS":        "Bons Bois (봉 부아)",
-      "BOIS_ORDINAIRES":  "Bois Ordinaires (부아 조르디네르)"
+      "GRANDE_CHAMPAGNE": "그랑드 샹파뉴 (Grande Champagne)",
+      "PETITE_CHAMPAGNE": "프티트 샹파뉴 (Petite Champagne)",
+      "BORDERIES":        "보르드리 (Borderies)",
+      "FINS_BOIS":        "팽 부아 (Fins Bois)",
+      "BONS_BOIS":        "봉 부아 (Bons Bois)",
+      "BOIS_ORDINAIRES":  "부아 조르디네르 (Bois Ordinaires)"
     },
     "cognacBlend": {
-      "singleCru": "싱글 크뤼",
-      "multiCru":  "멀티 크뤼 블렌드"
+      "singleCru":     "싱글 크뤼",
+      "singleCruHelp": "한 개 크뤼의 오드비만 썼습니다. 꼬냑은 여러 크뤼를 섞는 것이 기본이라 드문 편입니다.",
+      "multiCru":      "멀티 크뤼 블렌드",
+      "multiCruHelp":  "여러 크뤼의 오드비를 섞었습니다. 꼬냑에서는 일반적인 방식입니다."
     },
+    "cognacFineChampagneHelp": "그랑드 샹파뉴와 프티트 샹파뉴만 섞고, 그랑드 샹파뉴가 50% 이상일 때만 붙일 수 있는 법정 표기입니다.",
     "cognacOak": {
-      "LIMOUSIN":   "Limousin (리무쟁)",
-      "TRONCAIS":   "Tronçais (트롱세)",
-      "ALLIER":     "Allier (알리에)",
-      "NEVERS":     "Nevers (느베르)",
-      "VOSGES":     "Vosges (보주)",
-      "JUPILLES":   "Jupilles (쥐피유)",
-      "BERTRANGES": "Bertranges (베르트랑주)",
-      "FRENCH_OAK": "프렌치 오크 (숲 미표기)",
+      "LIMOUSIN":   "리무쟁 (Limousin)",
+      "TRONCAIS":   "트롱세 (Tronçais)",
+      "ALLIER":     "알리에 (Allier)",
+      "NEVERS":     "느베르 (Nevers)",
+      "VOSGES":     "보주 (Vosges)",
+      "JUPILLES":   "쥐피유 (Jupilles)",
+      "BERTRANGES": "베르트랑주 (Bertranges)",
+      "FRENCH_OAK": "프랑스산 (산지 미표기)",
       "OTHER":      "기타"
     },
     "otherType": {

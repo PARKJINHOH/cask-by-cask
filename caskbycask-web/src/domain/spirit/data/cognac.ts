@@ -6,13 +6,27 @@
  * 관리자 등록 폼과 사용자 상세 페이지가 같은 정의를 공유해야 표기가 어긋나지 않는다.
  */
 
-/** 등급 — 숙성 위계 순 (라벨 옆 연수 힌트는 폼에서만 노출) */
-export const COGNAC_GRADES = ['VS', 'NAPOLEON', 'VSOP', 'XO', 'XXO', 'EXTRA', 'HORS_DAGE'] as const
+/**
+ * 등급 — 숙성 위계 순. 마지막 `NO_STATEMENT` 는 위계 밖이라 뒤에 둔다.
+ * (라벨 옆 연수 힌트는 폼에서만 노출)
+ */
+export const COGNAC_GRADES = [
+  'VS', 'NAPOLEON', 'VSOP', 'XO', 'XXO', 'EXTRA', 'HORS_DAGE', 'NO_STATEMENT',
+] as const
 
-/** 등급별 법정 최소 숙성연수 힌트. Extra 는 법정 기준이 없어 표시하지 않는다. */
+/**
+ * 등급별 법정 최소 숙성연수 힌트.
+ * Extra 는 법정 기준이 없고, NO_STATEMENT 는 등급 자체가 없어 표시하지 않는다.
+ */
 export const COGNAC_GRADE_MIN_YEARS: Partial<Record<CognacGradeValue, string>> = {
   VS: '2년+', NAPOLEON: '6년+', VSOP: '4년+', XO: '10년+', XXO: '14년+', HORS_DAGE: '30년+',
 }
+
+/**
+ * 라벨에 BNIC 등급 표기가 없는 제품(1738 Accord Royal, Cordon Bleu, Paradis 등).
+ * 숙성 위계에 놓을 수 없으므로 화면에서 다른 등급과 다르게 다룬다.
+ */
+export const COGNAC_GRADE_NO_STATEMENT = 'NO_STATEMENT'
 
 /** 크뤼 — 꼬냑 AOC 법정 6개 구역. 백악질 비율이 높은(=상위) 순 */
 export const COGNAC_CRUS = [
@@ -20,7 +34,7 @@ export const COGNAC_CRUS = [
   'FINS_BOIS', 'BONS_BOIS', 'BOIS_ORDINAIRES',
 ] as const
 
-/** 숙성에 쓰는 프렌치 오크 숲 — 사용 빈도 순 */
+/** 숙성에 쓰는 프렌치 오크 산지(숲·지방이 섞여 있다) — 사용 빈도 순 */
 export const COGNAC_OAK_TYPES = [
   'LIMOUSIN', 'TRONCAIS', 'ALLIER', 'NEVERS', 'VOSGES',
   'JUPILLES', 'BERTRANGES', 'FRENCH_OAK', 'OTHER',

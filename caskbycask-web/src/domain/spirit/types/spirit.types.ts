@@ -169,9 +169,12 @@ export type WineCertification = 'ORGANIC' | 'BIODYNAMIC' | 'SUSTAINABLE' | 'NONE
 export type WineSweetness = 'DRY' | 'OFF_DRY' | 'MEDIUM' | 'MEDIUM_SWEET' | 'SWEET'
 export type WineBody = 'LIGHT' | 'LIGHT_MEDIUM' | 'MEDIUM' | 'MEDIUM_FULL' | 'FULL'
 export type WineIntensity = 'LOW' | 'LOW_MEDIUM' | 'MEDIUM' | 'MEDIUM_HIGH' | 'HIGH'
-export type CognacGrade = 'VS' | 'NAPOLEON' | 'VSOP' | 'XO' | 'XXO' | 'EXTRA' | 'HORS_DAGE'
+export type CognacGrade =
+  | 'VS' | 'NAPOLEON' | 'VSOP' | 'XO' | 'XXO' | 'EXTRA' | 'HORS_DAGE'
+  /** 라벨에 등급 표기가 없는 큐베 — null(모름)과 구분된다 */
+  | 'NO_STATEMENT'
 export type CognacCru = 'GRANDE_CHAMPAGNE' | 'PETITE_CHAMPAGNE' | 'BORDERIES' | 'FINS_BOIS' | 'BONS_BOIS' | 'BOIS_ORDINAIRES'
-/** 숙성에 쓰는 프렌치 오크 숲 — 백엔드 `CognacOakType` */
+/** 숙성에 쓰는 프렌치 오크 산지 — 백엔드 `CognacOakType` */
 export type CognacOakType =
   | 'LIMOUSIN' | 'TRONCAIS' | 'ALLIER' | 'NEVERS' | 'VOSGES'
   | 'JUPILLES' | 'BERTRANGES' | 'FRENCH_OAK' | 'OTHER'

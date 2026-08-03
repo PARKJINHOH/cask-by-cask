@@ -70,7 +70,8 @@ function fakeForm(renderedCategory = null) {
 /** 프롬프트 문서의 예시 JSON 을 그대로 꺼낸다 — 문서와 코드가 어긋나면 여기서 걸린다 */
 function exampleFromDoc(name) {
   const src = readFileSync(join(DOCS, `${name}-research-prompt.md`), 'utf8')
-  const m = /```json\n([\s\S]*?)```/.exec(src)
+  // 개행은 \r?\n 로 받는다 — 윈도우 체크아웃(CRLF)에서 문서가 멀쩡한데도 못 찾는 일이 없도록.
+  const m = /```json\r?\n([\s\S]*?)```/.exec(src)
   assert.ok(m, `${name} 문서에서 예시 JSON 을 찾지 못했다`)
   return m[1]
 }

@@ -9,7 +9,7 @@
  */
 import { test, describe } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -120,35 +120,42 @@ describe('i18n 라벨이 ko/en 양쪽에 모두 있다', () => {
 describe('DB 마이그레이션이 모든 등급·크뤼를 허용한다', () => {
   // grade/cru 는 실제 DB enum 컬럼이라 마이그레이션이 빠지면 저장 시 오류가 난다.
   // (oakType 은 extra_data JSON 이라 컬럼 제약이 없다)
-  const enumColumn = (file, column) => {
+  //
+  // 값을 추가할 때마다 새 마이그레이션이 생기므로 파일명을 고정하지 않고
+  // **그 컬럼을 마지막으로 MODIFY 한 마이그레이션**(=현재 스키마)을 찾아서 본다.
+  const latestEnumColumn = (column) => {
+    const marker = `MODIFY ${column}`
+    const files = readdirSync(MIGRATION_DIR)
+      .filter((f) => f.endsWith('.sql'))
+      .filter((f) => readFileSync(join(MIGRATION_DIR, f), 'utf8').includes(marker))
+      .sort((a, b) => Number(a.match(/^V(\d+)/)[1]) - Number(b.match(/^V(\d+)/)[1]))
+    assert.ok(files.length > 0, `${column} 을 MODIFY 하는 마이그레이션이 없다`)
+
+    const file = files[files.length - 1]
     const sql = readFileSync(join(MIGRATION_DIR, file), 'utf8')
-    const block = sql.slice(sql.indexOf(`MODIFY ${column}`))
-    return block.slice(block.indexOf('enum'), block.indexOf(')') + 1)
+    const block = sql.slice(sql.indexOf(marker))
+    return { file, list: block.slice(block.indexOf('enum'), block.indexOf(')') + 1) }
   }
 
-  test('grade 컬럼에 EXTRA 를 포함한 전 등급이 있다', () => {
-    const list = enumColumn('V69__add_cognac_grade_extra.sql', 'grade')
+  test('grade 컬럼에 모든 등급이 있다', () => {
+    const { file, list } = latestEnumColumn('grade')
     for (const value of COGNAC_GRADES) {
-      assert.ok(list.includes(`'${value}'`), `grade 에 ${value} 누락 — 저장 시 오류가 난다`)
+      assert.ok(list.includes(`'${value}'`), `${file} 의 grade 에 ${value} 누락 — 저장 시 오류가 난다`)
     }
   })
 
   test('cru 컬럼에 법정 6개 구역이 모두 있다', () => {
-    const list = enumColumn('V65__add_cognac_cru_bois_ordinaires.sql', 'cru')
+    const { file, list } = latestEnumColumn('cru')
     for (const value of COGNAC_CRUS) {
-      assert.ok(list.includes(`'${value}'`), `cru 에 ${value} 누락 — 저장 시 오류가 난다`)
+      assert.ok(list.includes(`'${value}'`), `${file} 의 cru 에 ${value} 누락 — 저장 시 오류가 난다`)
     }
   })
 
   // Hibernate 가 생성하는 enum 순서는 알파벳순이라 ddl-auto=validate 를 통과하려면
   // 마이그레이션의 나열 순서도 알파벳순이어야 한다 (V64·V65 주석에 명시된 규칙)
   test('마이그레이션 enum 나열이 알파벳순이다', () => {
-    const cases = [
-      ['V69__add_cognac_grade_extra.sql', 'grade'],
-      ['V65__add_cognac_cru_bois_ordinaires.sql', 'cru'],
-    ]
-    for (const [file, column] of cases) {
-      const list = enumColumn(file, column)
+    for (const column of ['grade', 'cru']) {
+      const { file, list } = latestEnumColumn(column)
       const values = [...list.matchAll(/'([A-Z_]+)'/g)].map((x) => x[1])
       assert.deepEqual(values, [...values].sort(), `${file} 의 ${column} 나열이 알파벳순이 아니다`)
     }
@@ -156,14 +163,24 @@ describe('DB 마이그레이션이 모든 등급·크뤼를 허용한다', () =>
 })
 
 describe('등급 힌트', () => {
-  test('Extra 는 법정 최소 숙성연수가 없어 힌트를 두지 않는다', () => {
-    assert.equal(COGNAC_GRADE_MIN_YEARS.EXTRA, undefined)
-  })
+  // 법정 최소 숙성연수가 없는 두 값 — 힌트를 붙이면 없는 기준을 있는 것처럼 보여준다
+  const NO_YEAR_HINT = ['EXTRA', 'NO_STATEMENT']
+
+  for (const grade of NO_YEAR_HINT) {
+    test(`${grade} 는 법정 최소 숙성연수가 없어 힌트를 두지 않는다`, () => {
+      assert.equal(COGNAC_GRADE_MIN_YEARS[grade], undefined)
+    })
+  }
 
   test('나머지 등급은 모두 힌트를 갖는다', () => {
-    for (const grade of COGNAC_GRADES.filter((g) => g !== 'EXTRA')) {
+    for (const grade of COGNAC_GRADES.filter((g) => !NO_YEAR_HINT.includes(g))) {
       assert.ok(COGNAC_GRADE_MIN_YEARS[grade], `${grade} 힌트 누락`)
     }
+  })
+
+  test("'등급 표기 없음'은 숙성 위계의 맨 뒤에 둔다", () => {
+    // 위계 밖의 값이라 VS~Hors d'Age 사이에 끼면 등급 순서가 잘못 읽힌다
+    assert.equal(COGNAC_GRADES[COGNAC_GRADES.length - 1], 'NO_STATEMENT')
   })
 })
 

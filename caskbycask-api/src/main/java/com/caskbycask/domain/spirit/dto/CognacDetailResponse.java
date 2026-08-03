@@ -30,7 +30,7 @@ public record CognacDetailResponse(
         @Schema(description = "선언 숙성 연수 (년)")
         Integer ageYears,
 
-        @Schema(description = "오크(우드) 종류 — 프렌치 오크 숲 (복수)")
+        @Schema(description = "오크 산지 — 프렌치 오크가 자란 지역 (복수)")
         List<CognacOakType> oakTypes,
 
         @Schema(description = "캐스크 피니시 / 추가 숙성")

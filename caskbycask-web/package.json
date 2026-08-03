@@ -29,6 +29,7 @@
                     "map:stats":  "node scripts/stats-wine-region-map.mjs",
                     "map:find":  "node scripts/find-aoc-name.mjs",
                     "map:verify-ui":  "node scripts/verify-wine-detail-ui.mjs",
+                    "verify:cognac-ui":  "node scripts/verify-cognac-detail-ui.mjs",
                     "admin:verify-form":  "node scripts/verify-admin-form.mjs",
                     "test:spirit-limits":  "node --import ./scripts/test-alias-register.mjs --test scripts/spirit-limits.test.mjs",
                     "test:admin-menu":  "node --test scripts/admin-menu.test.mjs",

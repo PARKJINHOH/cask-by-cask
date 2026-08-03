@@ -37,7 +37,7 @@ public record CognacDetailRequest(
         @Min(value = 0, message = "숙성 연수는 0 이상이어야 합니다.")
         Integer ageYears,
 
-        @Schema(description = "오크(우드) 종류 — 프렌치 오크 숲. 리무쟁·트롱세 병용처럼 복수 선택 가능")
+        @Schema(description = "오크 산지 — 프렌치 오크가 자란 지역. 리무쟁·트롱세 병용처럼 복수 선택 가능")
         List<CognacOakType> oakTypes,
 
         @Schema(description = "캐스크 피니시 / 추가 숙성 (자유 입력)")
