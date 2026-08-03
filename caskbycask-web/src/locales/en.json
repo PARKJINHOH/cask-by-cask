@@ -775,11 +775,12 @@
     },
     "cognacBlend": {
       "singleCru":     "Single Cru",
-      "singleCruHelp": "Made from eaux-de-vie of a single cru. Uncommon — most cognac blends several crus.",
+      "singleCruHelp": "Made from grapes of a single growing area. Uncommon — most cognac blends several.",
       "multiCru":      "Multi-Cru Blend",
-      "multiCruHelp":  "Blends eaux-de-vie from several crus. This is the norm for cognac."
+      "multiCruHelp":  "Blends eaux-de-vie from several growing areas. This is the norm for cognac."
     },
     "cognacFineChampagneHelp": "A legally protected term: only Grande and Petite Champagne, with Grande Champagne at 50% or more.",
+    "cognacFineChampagneNote": "Grande Champagne 50%+ with Petite Champagne",
     "cognacOak": {
       "LIMOUSIN":   "Limousin",
       "TRONCAIS":   "Tronçais",

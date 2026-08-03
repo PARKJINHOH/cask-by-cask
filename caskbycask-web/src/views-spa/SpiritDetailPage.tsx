@@ -137,22 +137,33 @@ function formatPhenolPpm(
 }
 // ── 카테고리 상세 섹션 ─────────────────────────────────────
 
-function Badge2({ children, detail }: { children: React.ReactNode; detail?: string }) {
+// `tone='neutral'` — 설명(툴팁)은 달되 강조는 하지 않는다.
+// 꼬냑 등급·Fine Champagne 처럼 '사실 표기'일 뿐 우열이나 특별함을 뜻하지 않는 값에 쓴다.
+//
+// `size='row'` — 상세 목록의 값 자리에 놓일 때. 옆 행(`DI`)의 값과 글자 크기를 맞춰
+// 같은 목록 안에서 값끼리 크기가 들쭉날쭉해 보이지 않게 한다.
+function Badge2({ children, detail, tone = 'amber', size = 'chip' }: {
+  children: React.ReactNode; detail?: string; tone?: 'amber' | 'neutral'; size?: 'chip' | 'row'
+}) {
   const [open, setOpen] = useState(false)
+  const sizeClass = size === 'row' ? 'text-[14px] px-2.5 py-1' : 'text-xs px-2 py-0.5'
   if (!detail) {
     return (
-      <span className="inline-block px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600 text-xs font-medium mr-1 mb-1">
+      <span className={`inline-block rounded-full bg-neutral-100 text-neutral-600 font-medium mr-1 mb-1 ${sizeClass}`}>
         {children}
       </span>
     )
   }
+  const toneClass = tone === 'neutral'
+    ? 'border-neutral-200 bg-neutral-100 text-neutral-600 hover:bg-neutral-200 hover:border-neutral-300'
+    : 'border-amber-200 bg-amber-50/60 text-amber-700 hover:bg-amber-100 hover:border-amber-300'
   return (
     <span className="group relative inline-block mr-1 mb-1">
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); setOpen((o) => !o) }}
-        className="px-2 py-0.5 rounded-full border border-amber-200 bg-amber-50/60 text-amber-700 text-xs font-medium
-          hover:bg-amber-100 hover:border-amber-300 transition-colors cursor-help"
+        className={`rounded-full border font-medium
+          transition-colors cursor-help ${sizeClass} ${toneClass}`}
       >
         {children}
       </button>
@@ -171,23 +182,45 @@ function DetailGrid({ children, cols = 2 }: { children: React.ReactNode; cols?: 
   return <dl className={`grid grid-cols-1 ${gridColsClass} sm:gap-x-12`}>{children}</dl>
 }
 
-function DI({ label, value }: { label: string; value: React.ReactNode }) {
+// `prose` — 한 문장이 아니라 문단인 값(블렌드 설명 등, 최대 300자).
+// 다른 값처럼 우측정렬·굵게 두면 줄마다 시작점이 어긋나 읽기 어려워지므로
+// 행 골격(라벨 좌 · 값 우)은 그대로 두고 글줄만 좌측정렬·보통 굵기로 흘린다.
+function DI({ label, value, prose }: { label: string; value: React.ReactNode; prose?: boolean }) {
   if (value === null || value === undefined || value === '') return null
   return (
-    <div className="flex items-center justify-between gap-4 py-3 border-b border-neutral-100">
-      <dt className="text-[13px] text-neutral-400 flex-shrink-0">{label}</dt>
-      <dd className="text-[14px] font-semibold text-neutral-900 text-right">{value}</dd>
+    <div className={`flex justify-between gap-4 py-3 border-b border-neutral-200 ${prose ? 'items-start' : 'items-center'}`}>
+      <dt className={`text-[13px] text-neutral-400 flex-shrink-0 ${prose ? 'pt-0.5' : ''}`}>{label}</dt>
+      <dd className={prose
+        ? 'text-[14px] text-neutral-600 leading-relaxed text-left'
+        : 'text-[14px] font-semibold text-neutral-900 text-right'}>{value}</dd>
     </div>
   )
 }
 
+// 다중값이지만 칩이 필요 없는 값(오크 산지·특성 등) — 한 줄에 하나씩, 옆 행의 값과 똑같은 글자로.
+// 칩은 툴팁이 달리거나(크뤼) 안에 세부 항목이 들어가는(캐스크) 값에만 남긴다.
+function RowText({ children }: { children: React.ReactNode }) {
+  return <span className="text-[14px] font-semibold text-neutral-900 text-right">{children}</span>
+}
+
 // 멀티값 필드(캐스크 등): 콤마 문자열 대신 개별 칩으로 표시 → 이름 중간 줄바꿈 방지
-function DIChips({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
+//
+// `stack` — 한 줄에 여러 개를 흘리지 않고 **한 항목당 한 줄**로 세운다.
+// 캐스크·크뤼처럼 항목 자체가 길고(세부 분류·비율이 붙는다) 각각이 독립된 사실이라
+// 가로로 이어 놓으면 어디까지가 한 항목인지 경계가 흐려진다.
+// 칩에 박힌 mr/mb 는 세로 나열에서 간격을 어긋나게 하므로 여기서 지운다.
+function DIChips({ label, children, className, stack }: {
+  label: string; children: React.ReactNode; className?: string; stack?: boolean
+}) {
   if (!children) return null
   return (
-    <div className={`flex items-start justify-start gap-4 py-3 border-b border-neutral-100 ${className ?? ''}`}>
+    // `DI` 와 같은 골격: 라벨 좌 · 값 우. 값이 칩이라는 이유로 정렬이 달라지면
+    // 같은 목록인데 행마다 값을 찾는 위치가 바뀐다.
+    <div className={`flex items-start justify-between gap-4 py-3 border-b border-neutral-200 ${className ?? ''}`}>
       <dt className="text-[13px] text-neutral-400 flex-shrink-0 pt-1">{label}</dt>
-      <dd className="flex flex-wrap justify-start gap-2 items-center">
+      <dd className={`flex min-w-0 ${stack
+        ? 'flex-col items-end gap-1.5 [&>*]:mr-0 [&>*]:mb-0'
+        : 'flex-wrap justify-end gap-2 items-center'}`}>
         {children}
       </dd>
     </div>
@@ -310,9 +343,12 @@ function SpiritDetailSections({
         </Link>
       </div>
 
+      {/* 공통 정보와 카테고리 상세는 끊긴 블록이 아니라 이어지는 한 목록으로 읽혀야 한다.
+          세로 간격을 최소로 두어 공통 마지막 행과 카테고리 첫 행이 같은 리스트처럼 붙는다.
+          (가로 간격은 지도 2분할 레이아웃에서만 쓰이므로 따로 유지) */}
       <div className={hasSplitMapLayout
-        ? 'grid grid-cols-1 gap-8 items-start lg:grid-cols-2 lg:gap-x-4'
-        : 'space-y-8'}>
+        ? 'grid grid-cols-1 gap-x-8 gap-y-2 items-start lg:grid-cols-2 lg:gap-x-4'
+        : 'space-y-2'}>
         {/* 와인 핵심 정보·공통 상세 + 산지 지도 — PC에서는 좌우 2분할, 모바일에서는 세로 배치 */}
         {(hasTopDetail || spirit.wineRegion) && (
           <div className={hasSplitMapLayout
@@ -394,10 +430,10 @@ function SpiritDetailSections({
             ? `order-2 lg:col-start-1 ${hasTopDetail ? 'lg:row-start-2' : 'lg:row-start-1'}`
             : undefined}>
             <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest mb-2">Whisky</p>
-            <DetailGrid>
+            <DetailGrid cols={1}>
               <DI label={isEn ? 'Bottling' : '병입'}
                 value={whisky.bottlingType ? BOTTLING_LABEL[whisky.bottlingType] ?? whisky.bottlingType : null} />
-              <DIChips label={isEn ? 'Cask' : '캐스크'} className="sm:col-span-2">
+              <DIChips label={isEn ? 'Cask' : '캐스크'} stack>
                 {(whisky.caskTypes ?? []).map((c) => {
                   const label = caskLabel(c)
                   const details = whisky.caskDetails?.[c] || []
@@ -406,17 +442,19 @@ function SpiritDetailSections({
                     smallCats = [whisky.caskTypeOther]
                   }
                   const isFinish = whisky.caskFinishes?.includes(c) ?? false
-                  const colorClass = 'bg-indigo-50/70 text-indigo-700 border border-indigo-200/50 rounded px-1 py-0 text-[11px] font-semibold break-keep'
+                  // 세부 분류도 같은 목록의 값이라 글자 크기를 옆 행과 맞춘다
+                  const colorClass = 'bg-indigo-50/70 text-indigo-700 border border-indigo-200/50 rounded px-1.5 py-0 text-[14px] font-semibold break-keep'
 
                   return (
-                    <div key={c} className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[12.5px] font-medium break-keep flex-wrap ${
+                    <div key={c} className={`inline-flex items-center justify-end gap-1.5 rounded-md px-2.5 py-1 text-[14px] font-medium break-keep flex-wrap ${
                       isFinish
                         ? 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200'
                         : 'bg-neutral-100 text-neutral-700'
                     }`}>
                       <span>{label} {isFinish && (isEn ? '(Finish)' : '(피니시)')}</span>
                       {smallCats.length > 0 && (
-                        <div className="flex items-center gap-1 flex-wrap pl-1">
+                        // 줄이 넘어가도 값은 계속 오른쪽에 붙어 있어야 한다
+                        <div className="flex items-center justify-end gap-1 flex-wrap pl-1">
                           {smallCats.map((sc, idx) => {
                             return (
                               <span key={idx} className="flex items-center gap-1">
@@ -434,24 +472,27 @@ function SpiritDetailSections({
               </DIChips>
               <DI label={isEn ? 'Phenol (ppm)' : '피트 강도'}
                 value={formatPhenolPpm(whisky.phenolPpm, whisky.phenolPpmMin, whisky.phenolPpmMax)} />
+              {/* 표기 플래그도 결국 값이다 — 목록 밖에 따로 떠 있으면 이 줄만 정렬 규칙에서 벗어난다.
+                  뱃지를 빼면서 툴팁에만 있던 한국어 뜻을 본문으로 끌어올린다 — 설명이 사라지면 안 된다. */}
+              <DIChips label={isEn ? 'Attributes' : '특성'} stack>
+                {(() => {
+                  const flags: [unknown, string, string][] = [
+                    [whisky.isNonChillFiltered, 'Non-Chill Filtered', '저온 여과 생략'],
+                    [whisky.isNaturalColour, 'Natural Colour', '캐러멜 색소 무첨가'],
+                    [whisky.isSingleCask, 'Single Cask', '단일 캐스크'],
+                    [whisky.isCaskStrength, 'Cask Strength', '원액 그대로'],
+                    [whisky.isPeated, 'Peated', '피트 사용'],
+                  ]
+                  const on = flags.filter(([v]) => v)
+                  // 빈 배열은 truthy 라 DIChips 가 숨기지 못한다 — 없으면 명시적으로 null
+                  return on.length
+                    ? on.map(([, label, ko]) => (
+                      <RowText key={label}>{isEn ? label : `${label} (${ko})`}</RowText>
+                    ))
+                    : null
+                })()}
+              </DIChips>
             </DetailGrid>
-            <div className="flex flex-wrap gap-1.5 mt-4">
-              {whisky.isNonChillFiltered && (
-                <Badge2 detail="Non-Chill Filtered (저온 여과 생략)">Non-Chill Filtered</Badge2>
-              )}
-              {whisky.isNaturalColour && (
-                <Badge2 detail="Natural Colour (캐러멜 색소 무첨가)">Natural Colour</Badge2>
-              )}
-              {whisky.isSingleCask && (
-                <Badge2 detail="Single Cask (단일 캐스크)">Single Cask</Badge2>
-              )}
-              {whisky.isCaskStrength && (
-                <Badge2 detail="Cask Strength (원액 그대로)">Cask Strength</Badge2>
-              )}
-              {whisky.isPeated && (
-                <Badge2 detail="Peated (피트 사용)">Peated</Badge2>
-              )}
-            </div>
           </div>
         )}
 
@@ -474,7 +515,7 @@ function SpiritDetailSections({
             </div>
 
             {/* ── 그 아래 나머지 와인 정보 ──────────────────────────── */}
-            <DetailGrid>
+            <DetailGrid cols={1}>
               <DI label={isEn ? 'Appellation' : '원산지 명칭'} value={wine.appellationDesignation} />
               <DI label={isEn ? 'Soil' : '토양'} value={wine.soilType} />
               <DI label={isEn ? 'Altitude' : '고도'} value={wine.altitudeM != null ? `${wine.altitudeM}m` : null} />
@@ -492,17 +533,15 @@ function SpiritDetailSections({
                   ? t(wine.isNaturalWine ? 'spirit.wineForm.yes' : 'spirit.wineForm.no')
                   : null} />
               {/* 당도·바디·산도·타닌은 상단 5단계 바로 표시하므로 여기서는 중복 표기하지 않는다 */}
+              {/* 품종도 크뤼·캐스크와 같은 다중값이라 같은 규칙(라벨 좌·값 우, 한 줄에 하나)으로 둔다 */}
+              <DIChips label={isEn ? 'Grape Varieties' : '포도 품종'} stack>
+                {wine.grapeVarieties?.length
+                  ? wine.grapeVarieties.map((g, i) => (
+                    <Badge2 size="row" key={i}>{g.name}{g.percentage ? ` ${g.percentage}%` : ''}</Badge2>
+                  ))
+                  : null}
+              </DIChips>
             </DetailGrid>
-            {wine.grapeVarieties && wine.grapeVarieties.length > 0 && (
-              <div className="mt-4">
-                <p className="text-[11px] text-neutral-400 mb-1.5">{isEn ? 'Grape Varieties' : '포도 품종'}</p>
-                <div className="flex flex-wrap">
-                  {wine.grapeVarieties.map((g, i) => (
-                    <Badge2 key={i}>{g.name}{g.percentage ? ` ${g.percentage}%` : ''}</Badge2>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         )}
 
@@ -513,35 +552,29 @@ function SpiritDetailSections({
             : undefined}>
             <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest mb-2">Cognac</p>
 
-            {/* ① 핵심 식별자 — 등급과 법정 표기만. 크뤼·오크는 아래 목록으로 내려
-                한 줄 안에서 서로 다른 크기의 요소가 뒤섞이지 않게 한다. */}
-            <div className="flex items-center gap-2.5 flex-wrap">
-              {/* 'NO_STATEMENT' 는 등급이 아니라 "등급이 없다"는 사실이라
-                  다른 등급과 같은 큰 배지로 강조하면 잘못 읽힌다 — 작고 차분하게 둔다 */}
-              {cognac.grade && (cognac.grade === 'NO_STATEMENT' ? (
-                <span className="px-3 py-1.5 rounded-lg bg-neutral-100 border border-neutral-200 text-neutral-500 text-xs font-medium">
-                  {t('spirit.cognacGrade.NO_STATEMENT')}
-                </span>
-              ) : (
-                <span className="px-4 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-lg font-bold">
-                  {t(`spirit.cognacGrade.${cognac.grade}`)}
-                </span>
-              ))}
-              {cognac.isFineChampagne && (
-                <Badge2 detail={t('spirit.cognacFineChampagneHelp')}>Fine Champagne</Badge2>
-              )}
-            </div>
-
-            {/* ② 나머지는 와인·위스키와 같은 행 리스트로 통일한다 */}
-            <div className="mt-3">
-              <DetailGrid>
+            <div className="mt-1">
+              <DetailGrid cols={1}>
+                {/* 등급도 다른 값과 같은 한 행이다. 큰 배지로 띄우면 이 값만 목록에서 벗어난다.
+                    'NO_STATEMENT' 는 등급이 아니라 "등급이 없다"는 사실이라 흐리게 둔다. */}
+                <DI label={isEn ? 'Grade' : '등급'}
+                  value={!cognac.grade ? null : cognac.grade === 'NO_STATEMENT'
+                    ? <span className="text-neutral-400">{t('spirit.cognacGrade.NO_STATEMENT')}</span>
+                    : t(`spirit.cognacGrade.${cognac.grade}`)} />
+                {/* Fine Champagne 은 위스키 '특성' 과 같은 성격의 표기 플래그다.
+                    툴팁을 없앤 대신 뜻을 괄호로 붙인다 — 처음 보는 사람에게 용어만 남기면 의미가 없다. */}
+                <DIChips label={isEn ? 'Attributes' : '특성'} stack>
+                  {cognac.isFineChampagne
+                    ? <RowText>Fine Champagne ({t('spirit.cognacFineChampagneNote')})</RowText>
+                    : null}
+                </DIChips>
                 {/* 크뤼는 개수·비율이 붙어 길어지므로 칩 + 전체 폭. 콤마 문자열이면 이름 중간에서 줄이 바뀐다 */}
-                <DIChips label={isEn ? 'Cru' : '크뤼'} className="sm:col-span-2">
+                {/* '크뤼'만 쓰면 일반 이용자에게는 전달되지 않는다 — 무엇의 산지인지 라벨로 밝히고 용어는 괄호로 남긴다 */}
+                <DIChips label={isEn ? 'Cru (Growing Area)' : '포도 산지 (크뤼)'} stack>
                   {cognacCrus.length > 0 ? (
                     <>
                       {/* 꼬냑은 여러 크뤼를 섞는 것이 기본이라 '블렌드'를 별도 필드로 두지 않고
                           구성 개수에서 파생한다 — 변별력은 그 반대편(싱글 크뤼)에 있다. */}
-                      <Badge2 detail={t(cognacCrus.length === 1
+                      <Badge2 size="row" detail={t(cognacCrus.length === 1
                         ? 'spirit.cognacBlend.singleCruHelp'
                         : 'spirit.cognacBlend.multiCruHelp')}>
                         {t(cognacCrus.length === 1
@@ -549,34 +582,28 @@ function SpiritDetailSections({
                           : 'spirit.cognacBlend.multiCru')}
                       </Badge2>
                       {cognacCrus.map((c) => (
-                        <Badge2 key={c.cru}>
+                        <Badge2 size="row" key={c.cru}>
                           {t(`spirit.cognacCru.${c.cru}`)}{c.percentage != null ? ` ${c.percentage}%` : ''}
                         </Badge2>
                       ))}
                     </>
                   ) : null}
                 </DIChips>
-                {/* '오크'만 쓰면 일반 이용자에게는 무엇을 가리키는지 안 보인다 — 나무가 자란 지역임을 라벨로 밝힌다 */}
-                <DIChips label={isEn ? 'Oak Origin' : '오크 산지'} className="sm:col-span-2">
+                {/* '오크 산지'는 오크통을 만든 나무가 자란 곳이다 — 통 이야기임이 드러나게 쓴다 */}
+                <DIChips label={isEn ? 'Oak Origin' : '오크통 산지'} stack>
                   {cognac.oakTypes?.length
                     ? cognac.oakTypes.map((o) => (
-                      <Badge2 key={o}>{t(`spirit.cognacOak.${o}`)}</Badge2>
+                      <RowText key={o}>{t(`spirit.cognacOak.${o}`)}</RowText>
                     ))
                     : null}
                 </DIChips>
                 <DI label={isEn ? 'Vintage' : '빈티지'} value={cognac.vintageYear} />
                 <DI label={isEn ? 'Age' : '숙성연수'} value={cognac.ageYears != null ? `${cognac.ageYears}${isEn ? ' yr' : '년'}` : null} />
                 <DI label={isEn ? 'Cask Finish' : '캐스크 피니시'} value={cognac.caskFinish} />
+                {/* 서술형이지만 따로 떼면 이 값만 정렬·크기가 달라진다 — 같은 행 규칙 안에 둔다 */}
+                <DI label={isEn ? 'Blend' : '블렌드'} value={cognac.blendDetail} prose />
               </DetailGrid>
             </div>
-
-            {/* ③ 서술형 설명 — 와인의 포도 품종 블록과 같은 라벨 + 본문 형태 */}
-            {cognac.blendDetail && (
-              <div className="mt-4">
-                <p className="text-[11px] text-neutral-400 mb-1.5">{isEn ? 'Blend' : '블렌드'}</p>
-                <p className="text-sm text-neutral-600 leading-relaxed">{cognac.blendDetail}</p>
-              </div>
-            )}
           </div>
         )}
 
@@ -588,7 +615,7 @@ function SpiritDetailSections({
             <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest mb-2">
               {isEn ? 'Other' : '기타'}
             </p>
-            <DetailGrid>
+            <DetailGrid cols={1}>
               <DI label={isEn ? 'Type' : '주종'}
                 value={other.otherType ? OTHER_TYPE_LABEL[other.otherType] ?? other.otherType : null} />
               <DI label={isEn ? 'Cask' : '캐스크'} value={other.caskType} />

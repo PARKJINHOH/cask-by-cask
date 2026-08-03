@@ -39,56 +39,81 @@ const ko = JSON.parse(readFileSync(join(WEB_ROOT, 'src', 'locales', 'ko.json'), 
 const t = (path) => path.split('.').reduce((o, k) => o?.[k], ko) ?? `!${path}`
 
 // ── SpiritDetailPage 의 꼬냑 블록과 같은 마크업 ──────────
-const badge = (text, amber = false) => amber
-  ? `<span class="group relative inline-block mr-1 mb-1"><button type="button" class="px-2 py-0.5 rounded-full border border-amber-200 bg-amber-50/60 text-amber-700 text-xs font-medium">${text}</button></span>`
-  : `<span class="inline-block px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600 text-xs font-medium mr-1 mb-1">${text}</span>`
+/** 상세 목록의 값 자리에 놓이는 칩 — 글자 크기는 옆 행(di)의 값과 같아야 한다 */
+const badge = (text, tone = 'plain') => tone === 'plain'
+  ? `<span class="inline-block px-2.5 py-1 rounded-full bg-neutral-100 text-neutral-600 text-[14px] font-medium mr-1 mb-1">${text}</span>`
+  : `<span class="group relative inline-block mr-1 mb-1"><button type="button" class="px-2.5 py-1 rounded-full border text-[14px] font-medium ${
+      tone === 'neutral'
+        ? 'border-neutral-200 bg-neutral-100 text-neutral-600'
+        : 'border-amber-200 bg-amber-50/60 text-amber-700'
+    }">${text}</button></span>`
 
-const di = (label, value) => value == null ? '' : `
-  <div class="flex items-center justify-between gap-4 py-3 border-b border-neutral-100">
-    <dt class="text-[13px] text-neutral-400 flex-shrink-0">${label}</dt>
-    <dd class="text-[14px] font-semibold text-neutral-900 text-right">${value}</dd>
+/** 뱃지가 아닌 일반 텍스트 값 — 옆 행(di)의 값과 같은 글자 */
+const rowText = (text) => `<span class="text-[14px] font-semibold text-neutral-900 text-right">${text}</span>`
+
+/** prose=true 면 문단형 값 — 행 골격은 같고 글줄만 좌측정렬·보통 굵기 */
+const di = (label, value, prose = false) => value == null ? '' : `
+  <div class="flex justify-between gap-4 py-3 border-b border-neutral-200 ${prose ? 'items-start' : 'items-center'}">
+    <dt class="text-[13px] text-neutral-400 flex-shrink-0 ${prose ? 'pt-0.5' : ''}">${label}</dt>
+    <dd class="${prose
+      ? 'text-[14px] text-neutral-600 leading-relaxed text-left'
+      : 'text-[14px] font-semibold text-neutral-900 text-right'}">${value}</dd>
   </div>`
 
-const diChips = (label, chips) => !chips ? '' : `
-  <div class="flex items-start justify-start gap-4 py-3 border-b border-neutral-100 sm:col-span-2">
+/** stack=true 면 한 항목당 한 줄 (SpiritDetailPage 의 DIChips stack 모드와 같아야 한다) */
+const diChips = (label, chips, stack = false) => !chips ? '' : `
+  <div class="flex items-start justify-between gap-4 py-3 border-b border-neutral-200">
     <dt class="text-[13px] text-neutral-400 flex-shrink-0 pt-1">${label}</dt>
-    <dd class="flex flex-wrap justify-start gap-2 items-center">${chips}</dd>
+    <dd class="flex min-w-0 ${stack
+      ? 'flex-col items-end gap-1.5 [&>*]:mr-0 [&>*]:mb-0'
+      : 'flex-wrap justify-end gap-2 items-center'}">${chips}</dd>
   </div>`
+
+/** 공통 정보 — 카테고리 상세와 얼마나 붙는지 보려면 위에 실제로 있어야 한다 */
+const commonSection = () => `
+  <p class="text-[11px] font-bold text-neutral-400 uppercase tracking-widest mb-2">공통</p>
+  <dl class="grid grid-cols-1 sm:grid-cols-2 sm:gap-x-12">
+    ${di('숙성 연수', 'NAS')}${di('용량', '700ml')}${di('도수', '40%')}${di('출시일', '2023-05')}
+  </dl>`
 
 function cognacSection(c) {
   const crus = c.cruComposition ?? []
-  const gradeBadge = !c.grade ? '' : c.grade === 'NO_STATEMENT'
-    ? `<span class="px-3 py-1.5 rounded-lg bg-neutral-100 border border-neutral-200 text-neutral-500 text-xs font-medium">${t('spirit.cognacGrade.NO_STATEMENT')}</span>`
-    : `<span class="px-4 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-lg font-bold">${t(`spirit.cognacGrade.${c.grade}`)}</span>`
+  // 등급도 다른 값과 같은 한 행. 색을 넣지 않고, 미표기는 흐리게.
+  const gradeValue = !c.grade ? null : c.grade === 'NO_STATEMENT'
+    ? `<span class="text-neutral-400">${t('spirit.cognacGrade.NO_STATEMENT')}</span>`
+    : t(`spirit.cognacGrade.${c.grade}`)
 
   const cruChips = crus.length === 0 ? null
-    : badge(t(crus.length === 1 ? 'spirit.cognacBlend.singleCru' : 'spirit.cognacBlend.multiCru'), true)
+    : badge(t(crus.length === 1 ? 'spirit.cognacBlend.singleCru' : 'spirit.cognacBlend.multiCru'), 'amber')
       + crus.map((x) => badge(`${t(`spirit.cognacCru.${x.cru}`)}${x.percentage != null ? ` ${x.percentage}%` : ''}`)).join('')
 
-  const oakChips = !c.oakTypes?.length ? null
-    : c.oakTypes.map((o) => badge(t(`spirit.cognacOak.${o}`))).join('')
+  // 오크 산지는 툴팁도 세부 항목도 없는 단순 값이라 뱃지를 두르지 않는다
+  const oakText = !c.oakTypes?.length ? null
+    : c.oakTypes.map((o) => rowText(t(`spirit.cognacOak.${o}`))).join('')
 
+  // 공통 정보와 카테고리 상세 사이 간격은 space-y-2 — 끊긴 블록이 아니라 이어지는 목록으로 읽혀야 한다.
+  // 카테고리 상세는 공통과 달리 1열이다.
   return `
   <div class="bg-white rounded-3xl ring-1 ring-neutral-100 p-6 lg:p-8">
-    <p class="text-[11px] font-bold text-neutral-400 uppercase tracking-widest mb-2">Cognac</p>
-    <div class="flex items-center gap-2.5 flex-wrap">
-      ${gradeBadge}
-      ${c.isFineChampagne ? badge('Fine Champagne', true) : ''}
+    <div class="space-y-2">
+      ${commonSection()}
+      <div>
+        <p class="text-[11px] font-bold text-neutral-400 uppercase tracking-widest mb-2">Cognac</p>
+        <div class="mt-1">
+          <dl class="grid grid-cols-1">
+            ${di('등급', gradeValue)}
+            ${diChips('특성', c.isFineChampagne
+              ? rowText(`Fine Champagne (${t('spirit.cognacFineChampagneNote')})`) : null, true)}
+            ${diChips('포도 산지 (크뤼)', cruChips, true)}
+            ${diChips('오크통 산지', oakText, true)}
+            ${di('빈티지', c.vintageYear)}
+            ${di('숙성연수', c.ageYears != null ? `${c.ageYears}년` : null)}
+            ${di('캐스크 피니시', c.caskFinish)}
+            ${di('블렌드', c.blendDetail, true)}
+          </dl>
+        </div>
+      </div>
     </div>
-    <div class="mt-3">
-      <dl class="grid grid-cols-1 sm:grid-cols-2 sm:gap-x-12">
-        ${diChips('크뤼', cruChips)}
-        ${diChips('오크 산지', oakChips)}
-        ${di('빈티지', c.vintageYear)}
-        ${di('숙성연수', c.ageYears != null ? `${c.ageYears}년` : null)}
-        ${di('캐스크 피니시', c.caskFinish)}
-      </dl>
-    </div>
-    ${c.blendDetail ? `
-    <div class="mt-4">
-      <p class="text-[11px] text-neutral-400 mb-1.5">블렌드</p>
-      <p class="text-sm text-neutral-600 leading-relaxed">${c.blendDetail}</p>
-    </div>` : ''}
   </div>`
 }
 
@@ -128,6 +153,20 @@ const CASES = {
   minimal: {
     title: '최소 입력 — 등급만',
     data: { grade: 'VSOP', cruComposition: [], oakTypes: [] },
+  },
+  // 서술형 값의 상한(blendDetail @Size(max=300))에서도 읽히는지 — 길이는 실제로 들어올 수 있는 값이다
+  'long-blend': {
+    title: '블렌드 설명 300자 — 서술형 값의 상한',
+    data: {
+      grade: 'XO',
+      cruComposition: [{ cru: 'GRANDE_CHAMPAGNE', percentage: 60 }, { cru: 'BORDERIES', percentage: 40 }],
+      isFineChampagne: false, oakTypes: ['LIMOUSIN'],
+      blendDetail: '그랑드 샹파뉴와 보르드리의 오드비를 중심으로 블렌딩했다. '
+        + '백악질 토양에서 자란 위니 블랑을 전통 샤랑트식 단식 증류기로 두 번 증류한 뒤 '
+        + '리무쟁 오크통에서 장기 숙성했으며, 셀러 마스터가 매년 관능 평가를 거쳐 '
+        + '숙성이 정점에 이른 원액만 골라 조합한다. 최고령 원액은 30년을 넘고, '
+        + '가장 어린 원액도 법정 기준을 크게 웃도는 기간 동안 숙성을 거친다.',
+    },
   },
 }
 
