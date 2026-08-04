@@ -2,20 +2,28 @@ import { Fragment, useState, useEffect, useRef } from 'react'
 import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from '@headlessui/react'
 import { useTranslation } from 'react-i18next'
 import {
+  TEXT_FONT_GROUPS,
   TEXT_FONT_OPTIONS,
   TEXT_FONT_SIZE_MAX,
   TEXT_FONT_SIZE_MIN,
+  TEXT_LAYER_MAX,
   TEXT_MAX_LENGTH,
   TEXT_OUTLINE_WIDTH_MAX,
   clampTextPosition,
-  createDefaultTextStyle,
-  drawText,
+  createTextLayer,
+  drawTextLayers,
+  findTextLayerAtPoint,
+  getDrawableTextLayers,
   getTextFont,
+  hasTextContent,
   measureTextBounds,
   type TextFontKey,
+  type TextLayer,
   type TextPosition,
   type TextStyleState,
 } from './imageEditorText'
+import { ensureEditorFontCssLoaded } from './imageEditorFontCss'
+import './image-editor.css'
 
 interface ImageEditorModalProps {
   open: boolean
@@ -44,8 +52,12 @@ type PaintType = 'mosaic' | 'blur'
 interface TextControlsProps {
   idPrefix: string
   compact?: boolean
-  style: TextStyleState
+  layers: TextLayer[]
+  activeLayer: TextLayer
   isApplying: boolean
+  onSelectLayer: (layerId: string) => void
+  onAddLayer: () => void
+  onRemoveLayer: (layerId: string) => void
   onChange: (patch: Partial<TextStyleState>) => void
   onPositionChange: (position: TextPosition) => void
   onApply: () => void
@@ -54,17 +66,87 @@ interface TextControlsProps {
 function TextControls({
   idPrefix,
   compact = false,
-  style,
+  layers,
+  activeLayer,
   isApplying,
+  onSelectLayer,
+  onAddLayer,
+  onRemoveLayer,
   onChange,
   onPositionChange,
   onApply,
 }: TextControlsProps) {
   const { t } = useTranslation()
-  const canApply = Boolean(style.content.trim()) && !isApplying
+  const style = activeLayer
+  const drawableCount = getDrawableTextLayers(layers).length
+  const canApply = drawableCount > 0 && !isApplying
+  const canAddLayer = layers.length < TEXT_LAYER_MAX
 
   return (
     <div className={compact ? 'flex flex-col gap-3' : 'space-y-4'}>
+      {/* 텍스트 레이어 목록 — ＋ 로 늘리고, 고른 것 하나를 아래 컨트롤이 편집한다. */}
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[11px] font-medium text-neutral-400">{t('imageEditor.textLayers')}</span>
+          <span className="text-[10px] font-mono text-neutral-500">{layers.length}/{TEXT_LAYER_MAX}</span>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {layers.map((layer, index) => {
+            const isActive = layer.id === activeLayer.id
+            const preview = layer.content.trim().split('\n')[0]
+            return (
+              <span
+                key={layer.id}
+                className={`inline-flex max-w-full items-center gap-1 rounded-lg border py-1 pl-2 pr-1 text-[11px] transition-colors ${
+                  isActive
+                    ? 'border-primary-500 bg-primary-600/20 text-white'
+                    : 'border-neutral-700 bg-neutral-800/60 text-neutral-400 hover:bg-neutral-800'
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={() => onSelectLayer(layer.id)}
+                  aria-pressed={isActive}
+                  className="min-w-0 max-w-[7.5rem] truncate text-left"
+                  title={preview || t('imageEditor.textLayerName', { index: index + 1 })}
+                >
+                  <span className="font-mono text-neutral-500">{index + 1}.</span>{' '}
+                  {preview || <span className="italic text-neutral-600">{t('imageEditor.emptyTextLayer')}</span>}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onRemoveLayer(layer.id)}
+                  aria-label={t('imageEditor.removeTextLayer')}
+                  title={t('imageEditor.removeTextLayer')}
+                  className="shrink-0 rounded p-0.5 leading-none text-neutral-500 hover:bg-neutral-700 hover:text-red-300"
+                >
+                  <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </span>
+            )
+          })}
+          <button
+            type="button"
+            onClick={onAddLayer}
+            disabled={!canAddLayer}
+            aria-label={t('imageEditor.addTextLayer')}
+            title={canAddLayer
+              ? t('imageEditor.addTextLayer')
+              : t('imageEditor.textLayerLimit', { count: TEXT_LAYER_MAX })}
+            className="inline-flex items-center gap-1 rounded-lg border border-dashed border-neutral-600 px-2 py-1 text-[11px] font-medium text-neutral-300 transition-colors hover:border-primary-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            {t('imageEditor.addTextLayer')}
+          </button>
+        </div>
+      </div>
+
       <div className={compact ? 'grid grid-cols-2 gap-2' : 'space-y-3'}>
         <div className={compact ? 'col-span-2 space-y-1' : 'space-y-2'}>
           <div className="flex items-center justify-between gap-2">
@@ -96,10 +178,14 @@ function TextControls({
             onChange={(event) => onChange({ fontKey: event.target.value as TextFontKey })}
             className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-2 py-2 text-xs text-white focus:border-primary-500 focus:outline-none"
           >
-            {TEXT_FONT_OPTIONS.map((font) => (
-              <option key={font.key} value={font.key} style={{ fontFamily: font.family, fontWeight: font.weight }}>
-                {t(font.labelKey)}
-              </option>
+            {TEXT_FONT_GROUPS.map((group) => (
+              <optgroup key={group.key} label={t(group.labelKey)}>
+                {TEXT_FONT_OPTIONS.filter((font) => font.groupKey === group.key).map((font) => (
+                  <option key={font.key} value={font.key} style={{ fontFamily: font.family, fontWeight: font.weight }}>
+                    {t(font.labelKey)}
+                  </option>
+                ))}
+              </optgroup>
             ))}
           </select>
         </div>
@@ -225,9 +311,10 @@ function TextControls({
       </div>
 
       <p className="text-[10px] leading-relaxed text-neutral-500">
+        {t('imageEditor.textLayerHint')}
+        {' '}
         {t('imageEditor.textDragHint')}
-      </p>
-      <p className="text-[10px] leading-relaxed text-neutral-500">
+        {' · '}
         {t('imageEditor.fontLicense')}
       </p>
 
@@ -242,6 +329,18 @@ function TextControls({
     </div>
   )
 }
+
+/** 이미지 크기에 비례한 기본 글자 크기 — 작은 이미지에 거대한 글자가 얹히지 않게 한다. */
+const defaultTextFontSize = (canvas: HTMLCanvasElement): number => Math.max(
+  TEXT_FONT_SIZE_MIN,
+  Math.min(TEXT_FONT_SIZE_MAX, Math.round(Math.min(canvas.width, canvas.height) * 0.08)),
+)
+
+/** 새 레이어는 기존 것과 겹치지 않게 세로로 조금씩 내려 배치한다. */
+const nextTextLayerPosition = (index: number): TextPosition => ({
+  x: 0.5,
+  y: Math.min(0.9, 0.5 + (index % 5) * 0.09),
+})
 
 /** 밝기/대비/채도/선명도 기본값(%) — 100 = 원본 그대로 */
 const ADJUST_DEFAULT = 100
@@ -425,11 +524,15 @@ export default function ImageEditorModal({
   const lastPosRef = useRef({ x: 0, y: 0 })
 
   // Text state — 적용 전에는 투명 오버레이 캔버스에서 미리보고, 적용 시 본 캔버스에 합성한다.
-  const [textStyle, setTextStyle] = useState<TextStyleState>(() => createDefaultTextStyle())
+  // 레이어 배열은 항상 1개 이상을 유지한다(마지막을 지우면 빈 레이어로 교체).
+  const [textLayers, setTextLayers] = useState<TextLayer[]>(() => [createTextLayer()])
+  const [activeTextLayerId, setActiveTextLayerId] = useState<string | null>(null)
+  const activeTextLayer = textLayers.find((layer) => layer.id === activeTextLayerId) ?? textLayers[0]
   const [isApplyingText, setIsApplyingText] = useState(false)
   const [isDraggingText, setIsDraggingText] = useState(false)
   const textDragRef = useRef<{
     pointerId: number
+    layerId: string
     offsetX: number
     offsetY: number
   } | null>(null)
@@ -639,12 +742,9 @@ export default function ImageEditorModal({
       const initialData = ctx.getImageData(0, 0, canvas.width, canvas.height)
       setHistory([initialData])
       setHistoryIndex(0)
-      setTextStyle(createDefaultTextStyle(
-        Math.max(
-          TEXT_FONT_SIZE_MIN,
-          Math.min(TEXT_FONT_SIZE_MAX, Math.round(Math.min(canvas.width, canvas.height) * 0.08)),
-        ),
-      ))
+      const initialLayer = createTextLayer(defaultTextFontSize(canvas))
+      setTextLayers([initialLayer])
+      setActiveTextLayerId(initialLayer.id)
       setIsApplyingText(false)
       setIsDraggingText(false)
       textDragRef.current = null
@@ -1006,23 +1106,31 @@ export default function ImageEditorModal({
     return { x, y }
   }
 
-  const ensureTextFontLoaded = async (style: TextStyleState) => {
-    if (!document.fonts || !style.content.trim()) return
-    const font = getTextFont(style.fontKey)
-    try {
-      await document.fonts.load(
-        `${font.weight} ${style.fontSize}px ${font.family}`,
-        style.content,
-      )
-    } catch {
-      // 이미 CSS 에 self-host 폰트가 선언되어 있다. Font Loading API 가 실패한 구형
-      // 브라우저에서는 Canvas 자체 폴백으로 계속 진행한다.
-    }
+  /**
+   * 캔버스에 그리기 전에 해당 글자들의 폰트 조각을 확보한다.
+   * 장식용 서체 CSS 는 편집기가 열릴 때 <link> 로 주입되므로 그것부터 기다린다.
+   */
+  const ensureTextFontLoaded = async (styles: TextStyleState[]) => {
+    const drawable = getDrawableTextLayers(styles)
+    if (drawable.length === 0) return
+    await ensureEditorFontCssLoaded()
+    if (!document.fonts) return
+    await Promise.all(drawable.map(async (style) => {
+      const font = getTextFont(style.fontKey)
+      try {
+        await document.fonts.load(
+          `${font.weight} ${style.fontSize}px ${font.family}`,
+          style.content,
+        )
+      } catch {
+        // Font Loading API 가 실패한 구형 브라우저에서는 Canvas 자체 폴백으로 계속 진행한다.
+      }
+    }))
   }
 
   const clampCurrentTextPosition = (
     position: TextPosition,
-    style: TextStyleState = textStyle,
+    style: TextStyleState,
   ): TextPosition => {
     const canvas = canvasRef.current
     const overlayCanvas = textOverlayCanvasRef.current
@@ -1037,15 +1145,66 @@ export default function ImageEditorModal({
     return clampTextPosition(overlayContext, overlayCanvas, style, position)
   }
 
+  const patchTextLayer = (layerId: string, patch: Partial<TextStyleState>) => {
+    setTextLayers((current) => current.map((layer) => (
+      layer.id === layerId ? { ...layer, ...patch } : layer
+    )))
+  }
+
   const handleTextStyleChange = (patch: Partial<TextStyleState>) => {
-    setTextStyle((current) => ({ ...current, ...patch }))
+    if (!activeTextLayer) return
+    patchTextLayer(activeTextLayer.id, patch)
+  }
+
+  const setTextLayerPosition = (layerId: string, position: TextPosition) => {
+    setTextLayers((current) => current.map((layer) => (
+      layer.id === layerId
+        ? { ...layer, position: clampCurrentTextPosition(position, layer) }
+        : layer
+    )))
   }
 
   const handleTextPositionChange = (position: TextPosition) => {
-    setTextStyle((current) => ({
-      ...current,
-      position: clampCurrentTextPosition(position, current),
-    }))
+    if (!activeTextLayer) return
+    setTextLayerPosition(activeTextLayer.id, position)
+  }
+
+  const handleSelectTextLayer = (layerId: string) => {
+    setActiveTextLayerId(layerId)
+  }
+
+  /** 편집 중인 레이어의 서식(내용·위치 제외) — 새 레이어가 물려받는다. */
+  const inheritedTextStyle = (): Partial<TextStyleState> => {
+    if (!activeTextLayer) return {}
+    const { id: _id, content: _content, position: _position, ...rest } = activeTextLayer
+    return rest
+  }
+
+  const handleAddTextLayer = () => {
+    if (textLayers.length >= TEXT_LAYER_MAX) return
+    const canvas = canvasRef.current
+    // 새 레이어는 현재 편집 중인 서식을 물려받는다 — 같은 톤으로 여러 줄을 얹는 흐름이 많다.
+    const layer = createTextLayer(canvas ? defaultTextFontSize(canvas) : undefined, {
+      ...inheritedTextStyle(),
+      position: nextTextLayerPosition(textLayers.length),
+    })
+    setTextLayers((current) => [...current, layer])
+    setActiveTextLayerId(layer.id)
+  }
+
+  const handleRemoveTextLayer = (layerId: string) => {
+    const remaining = textLayers.filter((layer) => layer.id !== layerId)
+    if (remaining.length === 0) {
+      const canvas = canvasRef.current
+      const fresh = createTextLayer(canvas ? defaultTextFontSize(canvas) : undefined)
+      setTextLayers([fresh])
+      setActiveTextLayerId(fresh.id)
+      return
+    }
+    setTextLayers(remaining)
+    if (activeTextLayer?.id === layerId) {
+      setActiveTextLayerId(remaining[remaining.length - 1].id)
+    }
   }
 
   // 실제 출력과 동일한 Canvas API 로 텍스트를 미리 그려 폰트·외곽선 차이를 없앤다.
@@ -1066,24 +1225,44 @@ export default function ImageEditorModal({
       if (!overlayContext) return
       overlayContext.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height)
 
-      if (!open || mode !== 'text' || !textStyle.content.trim()) return
-      await ensureTextFontLoaded(textStyle)
+      const drawable = getDrawableTextLayers(textLayers)
+      if (!open || mode !== 'text' || drawable.length === 0) return
+      await ensureTextFontLoaded(drawable)
       if (cancelled) return
 
-      const clampedPosition = clampTextPosition(
-        overlayContext,
-        overlayCanvas,
-        textStyle,
-        textStyle.position,
-      )
-      const previewStyle = { ...textStyle, position: clampedPosition }
-      drawText(overlayContext, overlayCanvas, previewStyle)
+      const clamped = drawable.map((layer) => ({
+        ...layer,
+        position: clampTextPosition(overlayContext, overlayCanvas, layer, layer.position),
+      }))
+      drawTextLayers(overlayContext, overlayCanvas, clamped)
 
-      if (
-        clampedPosition.x !== textStyle.position.x
-        || clampedPosition.y !== textStyle.position.y
-      ) {
-        setTextStyle((current) => ({ ...current, position: clampedPosition }))
+      // 편집 중인 레이어를 점선으로 표시한다(오버레이에만 그리므로 결과 이미지에는 남지 않는다).
+      const focused = clamped.find((layer) => layer.id === activeTextLayer?.id)
+      if (focused && clamped.length > 1) {
+        const bounds = measureTextBounds(overlayContext, overlayCanvas, focused)
+        overlayContext.save()
+        overlayContext.strokeStyle = 'rgba(255, 255, 255, 0.85)'
+        overlayContext.lineWidth = Math.max(1, 2 / Math.max(canvasScale, 0.01))
+        overlayContext.setLineDash([overlayContext.lineWidth * 4, overlayContext.lineWidth * 3])
+        overlayContext.strokeRect(
+          bounds.left,
+          bounds.top,
+          bounds.right - bounds.left,
+          bounds.bottom - bounds.top,
+        )
+        overlayContext.restore()
+      }
+
+      const moved = clamped.filter((layer) => {
+        const original = textLayers.find((item) => item.id === layer.id)
+        return original
+          && (original.position.x !== layer.position.x || original.position.y !== layer.position.y)
+      })
+      if (moved.length > 0) {
+        setTextLayers((current) => current.map((layer) => {
+          const fixed = moved.find((item) => item.id === layer.id)
+          return fixed ? { ...layer, position: fixed.position } : layer
+        }))
       }
     }
 
@@ -1091,13 +1270,19 @@ export default function ImageEditorModal({
     return () => {
       cancelled = true
     }
-  }, [historyIndex, mode, open, textStyle])
+  }, [activeTextLayer?.id, canvasScale, historyIndex, mode, open, textLayers])
 
   useEffect(() => {
     if (mode === 'text') return
     textDragRef.current = null
     setIsDraggingText(false)
   }, [mode])
+
+  // 글꼴 <select> 의 미리보기가 실제 서체로 보이려면 CSS 가 먼저 붙어 있어야 한다.
+  useEffect(() => {
+    if (!open) return
+    void ensureEditorFontCssLoaded()
+  }, [open])
 
   const commitCurrentCanvasToHistory = () => {
     const canvas = canvasRef.current
@@ -1114,50 +1299,48 @@ export default function ImageEditorModal({
   const handleApplyText = async () => {
     const canvas = canvasRef.current
     const ctx = canvas?.getContext('2d')
-    if (!canvas || !ctx || !textStyle.content.trim() || isApplyingText) return
+    const drawable = getDrawableTextLayers(textLayers)
+    if (!canvas || !ctx || drawable.length === 0 || isApplyingText) return
 
     setIsApplyingText(true)
     try {
-      await ensureTextFontLoaded(textStyle)
-      const appliedStyle = {
-        ...textStyle,
-        position: clampCurrentTextPosition(textStyle.position, textStyle),
-      }
-      drawText(ctx, canvas, appliedStyle)
+      await ensureTextFontLoaded(drawable)
+      drawTextLayers(ctx, canvas, drawable.map((layer) => ({
+        ...layer,
+        position: clampCurrentTextPosition(layer.position, layer),
+      })))
       regenerateEffects()
       commitCurrentCanvasToHistory()
-      setTextStyle((current) => ({
-        ...current,
-        content: '',
-        position: { x: 0.5, y: 0.5 },
-      }))
+      // 적용된 레이어는 캔버스에 구워졌으므로 편집 목록은 빈 상태로 되돌린다.
+      const fresh = createTextLayer(defaultTextFontSize(canvas), inheritedTextStyle())
+      setTextLayers([fresh])
+      setActiveTextLayerId(fresh.id)
     } finally {
       setIsApplyingText(false)
     }
   }
 
   const handleTextPointerDown = (event: React.PointerEvent<HTMLCanvasElement>) => {
-    if (mode !== 'text' || !textStyle.content.trim()) return
+    if (mode !== 'text') return
     const coords = getCanvasCoords(event.clientX, event.clientY)
     const canvas = canvasRef.current
     const overlayCanvas = textOverlayCanvasRef.current
     const overlayContext = overlayCanvas?.getContext('2d')
     if (!coords || !canvas || !overlayCanvas || !overlayContext) return
 
-    const bounds = measureTextBounds(overlayContext, overlayCanvas, textStyle)
     const hitPadding = Math.max(8, 12 / Math.max(canvasScale, 0.01))
-    const isInside = coords.x >= bounds.left - hitPadding
-      && coords.x <= bounds.right + hitPadding
-      && coords.y >= bounds.top - hitPadding
-      && coords.y <= bounds.bottom + hitPadding
-    if (!isInside) return
+    // 겹친 레이어는 위에 그려진(= 나중에 추가된) 것을 먼저 집는다.
+    const hit = findTextLayerAtPoint(overlayContext, overlayCanvas, textLayers, coords, hitPadding)
+    if (!hit) return
 
     event.preventDefault()
     event.currentTarget.setPointerCapture(event.pointerId)
+    setActiveTextLayerId(hit.id)
     textDragRef.current = {
       pointerId: event.pointerId,
-      offsetX: coords.x - textStyle.position.x * canvas.width,
-      offsetY: coords.y - textStyle.position.y * canvas.height,
+      layerId: hit.id,
+      offsetX: coords.x - hit.position.x * canvas.width,
+      offsetY: coords.y - hit.position.y * canvas.height,
     }
     setIsDraggingText(true)
   }
@@ -1170,7 +1353,7 @@ export default function ImageEditorModal({
     if (!coords) return
 
     event.preventDefault()
-    handleTextPositionChange({
+    setTextLayerPosition(drag.layerId, {
       x: (coords.x - drag.offsetX) / canvas.width,
       y: (coords.y - drag.offsetY) / canvas.height,
     })
@@ -1559,11 +1742,11 @@ export default function ImageEditorModal({
     if (!canvas) return
 
     let sourceCanvas = canvas
-    const hasPendingText = mode === 'text' && Boolean(textStyle.content.trim())
+    const pendingTextLayers = mode === 'text' ? getDrawableTextLayers(textLayers) : []
 
-    if (hasPendingText) {
+    if (pendingTextLayers.length > 0) {
       setIsApplyingText(true)
-      await ensureTextFontLoaded(textStyle)
+      await ensureTextFontLoaded(pendingTextLayers)
       sourceCanvas = document.createElement('canvas')
       sourceCanvas.width = canvas.width
       sourceCanvas.height = canvas.height
@@ -1573,10 +1756,10 @@ export default function ImageEditorModal({
         return
       }
       sourceContext.drawImage(canvas, 0, 0)
-      drawText(sourceContext, sourceCanvas, {
-        ...textStyle,
-        position: clampCurrentTextPosition(textStyle.position, textStyle),
-      })
+      drawTextLayers(sourceContext, sourceCanvas, pendingTextLayers.map((layer) => ({
+        ...layer,
+        position: clampCurrentTextPosition(layer.position, layer),
+      })))
       setIsApplyingText(false)
     }
 
@@ -1681,7 +1864,7 @@ export default function ImageEditorModal({
           <div className="fixed inset-0 bg-neutral-950/90 backdrop-blur-[4px]" aria-hidden="true" />
         </TransitionChild>
 
-        <div className="fixed inset-0 overflow-y-auto flex items-center justify-center p-4">
+        <div className="di-image-editor-scroll fixed inset-0 overflow-y-auto flex items-center justify-center p-4">
           <TransitionChild
             as={Fragment}
             enter="ease-out duration-200"
@@ -1825,7 +2008,7 @@ export default function ImageEditorModal({
                   <div className="h-px bg-neutral-800" />
 
                   {/* Mode Specific Controls */}
-                  <div className="flex-1 space-y-5 overflow-y-auto pr-1">
+                  <div className="di-image-editor-scroll flex-1 space-y-5 overflow-y-auto pr-1">
                     {mode === 'paint' && (
                       <>
                         <div className="space-y-3">
@@ -2121,8 +2304,12 @@ export default function ImageEditorModal({
                     {mode === 'text' && (
                       <TextControls
                         idPrefix="image-text-desktop"
-                        style={textStyle}
+                        layers={textLayers}
+                        activeLayer={activeTextLayer}
                         isApplying={isApplyingText}
+                        onSelectLayer={handleSelectTextLayer}
+                        onAddLayer={handleAddTextLayer}
+                        onRemoveLayer={handleRemoveTextLayer}
                         onChange={handleTextStyleChange}
                         onPositionChange={handleTextPositionChange}
                         onApply={() => { void handleApplyText() }}
@@ -2172,7 +2359,7 @@ export default function ImageEditorModal({
                       style={{
                         pointerEvents: mode === 'text' ? 'auto' : 'none',
                         touchAction: mode === 'text' ? 'none' : 'auto',
-                        cursor: mode === 'text' && textStyle.content.trim()
+                        cursor: mode === 'text' && textLayers.some(hasTextContent)
                           ? (isDraggingText ? 'grabbing' : 'grab')
                           : 'default',
                       }}
@@ -2261,7 +2448,7 @@ export default function ImageEditorModal({
                 </div>
 
                 {/* Bottom Toolbar for Mobile (Hidden on Desktop) */}
-                <div className="flex max-h-[48vh] flex-col gap-4 overflow-y-auto border-t border-neutral-800 bg-neutral-900/60 p-4 md:hidden">
+                <div className="di-image-editor-scroll flex max-h-[48vh] flex-col gap-4 overflow-y-auto border-t border-neutral-800 bg-neutral-900/60 p-4 md:hidden">
                   
                   {/* Tool Swapper */}
                   <div className="grid grid-cols-6 gap-1.5">
@@ -2557,8 +2744,12 @@ export default function ImageEditorModal({
                     <TextControls
                       idPrefix="image-text-mobile"
                       compact
-                      style={textStyle}
+                      layers={textLayers}
+                      activeLayer={activeTextLayer}
                       isApplying={isApplyingText}
+                      onSelectLayer={handleSelectTextLayer}
+                      onAddLayer={handleAddTextLayer}
+                      onRemoveLayer={handleRemoveTextLayer}
                       onChange={handleTextStyleChange}
                       onPositionChange={handleTextPositionChange}
                       onApply={() => { void handleApplyText() }}

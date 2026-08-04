@@ -10,6 +10,7 @@
                     "start":  "next start",
                     "seo:verify":  "node scripts/verify-seo.mjs",
                     "fonts:sync":  "node scripts/sync-pretendard.mjs",
+                    "fonts:sync-editor":  "node scripts/sync-editor-fonts.mjs",
                     "test:auth-cache":  "node --test scripts/session-query-cache.test.mjs",
                     "test:proxy-seo":  "node --test scripts/proxy-seo.test.mjs",
                     "test:seo-indexing":  "node --test scripts/seo-indexing.test.mjs",

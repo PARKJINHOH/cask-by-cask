@@ -1,15 +1,22 @@
 import { describe, test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const {
+  TEXT_FONT_GROUPS,
   TEXT_FONT_OPTIONS,
+  TEXT_LAYER_MAX,
+  TEXT_OUTLINE_WIDTH_MAX,
   clampTextPosition,
   createDefaultTextStyle,
+  createTextLayer,
   drawText,
+  drawTextLayers,
+  findTextLayerAtPoint,
+  getDrawableTextLayers,
   getTextLines,
   measureTextBounds,
 } = await import('../src/shared/components/imageEditorText.ts')
@@ -44,12 +51,46 @@ function fakeContext(widthPerCharacter = 20) {
 }
 
 describe('이미지 에디터 텍스트 스타일', () => {
-  test('self-host Pretendard 굵기만 제공한다', () => {
-    assert.deepEqual(TEXT_FONT_OPTIONS.map((font) => font.weight), [400, 600, 700, 900])
+  test('self-host 서체만 제공한다 (시스템 폰트 금지)', () => {
+    // 브라우저마다 결과가 달라지는 시스템 폰트가 섞이면 출력 이미지가 재현되지 않는다.
+    const allowed = [
+      'Pretendard Variable', 'Black Han Sans', 'Do Hyeon', 'Jua',
+      'Nanum Pen Script', 'Gowun Batang', 'Song Myung',
+    ]
     for (const font of TEXT_FONT_OPTIONS) {
-      assert.match(font.family, /Pretendard Variable/)
-      assert.match(font.labelKey, /^imageEditor\.fontPretendard/)
+      const primary = font.family.match(/^'([^']+)'/)?.[1]
+      assert.ok(allowed.includes(primary), `허용되지 않은 서체: ${font.family}`)
+      assert.match(font.labelKey, /^imageEditor\.font[A-Z]/)
     }
+  })
+
+  test('Pretendard 는 굵기 4단계를 유지한다', () => {
+    const pretendard = TEXT_FONT_OPTIONS.filter((font) => font.key.startsWith('pretendard'))
+    assert.deepEqual(pretendard.map((font) => font.weight), [400, 600, 700, 900])
+    for (const font of pretendard) {
+      assert.match(font.family, /Pretendard Variable/)
+    }
+  })
+
+  test('장식용 서체는 Pretendard 로 폴백한다', () => {
+    const decorative = TEXT_FONT_OPTIONS.filter((font) => !font.key.startsWith('pretendard'))
+    assert.ok(decorative.length >= 6, '장식용 서체가 6종 이상이어야 한다')
+    for (const font of decorative) {
+      // 자소가 빠진 글자에서 네모칸(tofu)이 나오지 않게 한다.
+      assert.match(font.family, /Pretendard Variable/, font.key)
+    }
+  })
+
+  test('모든 서체가 그룹에 속한다', () => {
+    const groupKeys = new Set(TEXT_FONT_GROUPS.map((group) => group.key))
+    for (const font of TEXT_FONT_OPTIONS) {
+      assert.ok(groupKeys.has(font.groupKey), `${font.key} 의 그룹이 없다: ${font.groupKey}`)
+    }
+  })
+
+  test('폰트 키가 중복되지 않는다', () => {
+    const keys = TEXT_FONT_OPTIONS.map((font) => font.key)
+    assert.equal(new Set(keys).size, keys.length)
   })
 
   test('Pretendard 저작권 고지와 OFL 전문을 함께 배포한다', () => {
@@ -60,6 +101,26 @@ describe('이미지 에디터 텍스트 스타일', () => {
     assert.match(license, /Copyright \(c\) 2021, Kil Hyung-jin/)
     assert.match(license, /SIL OPEN FONT LICENSE Version 1\.1/)
     assert.match(license, /with Reserved Font Name Pretendard/)
+  })
+
+  test('에디터 전용 서체도 self-host 자산과 OFL 전문을 함께 배포한다', () => {
+    // OFL 은 재배포 시 라이선스 사본 동봉을 요구한다. 자산이 없으면 CSS 만 남아 폴백된다.
+    const editorRoot = join(HERE, '..', 'public', 'fonts', 'editor')
+    const css = readFileSync(join(editorRoot, 'editor-fonts.css'), 'utf8')
+    assert.ok(!css.includes('fonts.gstatic.com'), 'CSS 에 외부 CDN 경로가 남아 있다')
+
+    for (const slug of ['blackhansans', 'dohyeon', 'jua', 'nanumpenscript', 'gowunbatang', 'songmyung']) {
+      const license = readFileSync(join(editorRoot, slug, 'LICENSE.txt'), 'utf8')
+      assert.match(license, /SIL OPEN FONT LICENSE Version 1\.1/, slug)
+      assert.ok(css.includes(`/fonts/editor/${slug}/`), `${slug} 의 @font-face 가 없다`)
+    }
+
+    // CSS 가 참조하는 woff2 가 실제로 저장소에 있는지 확인한다.
+    const refs = [...css.matchAll(/url\((\/fonts\/editor\/[^)]+\.woff2)\)/g)].map((m) => m[1])
+    assert.ok(refs.length > 0, 'CSS 에서 woff2 참조를 찾지 못했다')
+    for (const ref of refs) {
+      assert.ok(existsSync(join(HERE, '..', 'public', ref)), `누락된 폰트 파일: ${ref}`)
+    }
   })
 
   test('기본값은 흰색 굵은 글자와 검은 외곽선이다', () => {
@@ -73,8 +134,85 @@ describe('이미지 에디터 텍스트 스타일', () => {
     assert.equal(style.position.y, 0.5)
   })
 
+  test('외곽선 굵기 상한은 30px 이다', () => {
+    assert.equal(TEXT_OUTLINE_WIDTH_MAX, 30)
+  })
+
   test('Windows 줄바꿈을 여러 줄로 정규화한다', () => {
     assert.deepEqual(getTextLines('첫 줄\r\n둘째 줄'), ['첫 줄', '둘째 줄'])
+  })
+})
+
+describe('텍스트 레이어', () => {
+  const canvas = { width: 1000, height: 500 }
+
+  test('레이어마다 고유 id 를 부여한다', () => {
+    const ids = Array.from({ length: 5 }, () => createTextLayer().id)
+    assert.equal(new Set(ids).size, ids.length)
+  })
+
+  test('레이어마다 글꼴을 따로 지정할 수 있다', () => {
+    const layer = createTextLayer(40, { fontKey: 'blackHanSans', color: '#ff0000' })
+    assert.equal(layer.fontKey, 'blackHanSans')
+    assert.equal(layer.color, '#ff0000')
+    assert.equal(layer.fontSize, 40)
+  })
+
+  test('서식을 물려받아도 id 는 새로 만든다', () => {
+    // 편집 중인 레이어를 통째로 넘겨 새 레이어를 만드는 경로가 있다. id 가 복사되면
+    // 두 레이어가 같은 키를 갖게 되어 선택·삭제가 엉킨다.
+    const source = createTextLayer(40, { content: '원본', fontKey: 'jua' })
+    const copied = createTextLayer(40, source)
+    assert.notEqual(copied.id, source.id)
+    assert.equal(copied.fontKey, 'jua')
+  })
+
+  test('상한이 정의되어 있다', () => {
+    assert.equal(typeof TEXT_LAYER_MAX, 'number')
+    assert.ok(TEXT_LAYER_MAX >= 2)
+  })
+
+  test('빈 레이어는 그리지 않는다', () => {
+    const layers = [
+      createTextLayer(40, { content: '첫째' }),
+      createTextLayer(40, { content: '   ' }),
+      createTextLayer(40, { content: '둘째' }),
+    ]
+    assert.deepEqual(getDrawableTextLayers(layers).map((l) => l.content), ['첫째', '둘째'])
+  })
+
+  test('레이어를 추가된 순서대로 그린다 (뒤쪽이 위)', () => {
+    const context = fakeContext()
+    const layers = [
+      createTextLayer(40, { content: 'one', outlineEnabled: false, position: { x: 0.25, y: 0.5 } }),
+      createTextLayer(40, { content: 'two', outlineEnabled: false, position: { x: 0.75, y: 0.5 } }),
+    ]
+    drawTextLayers(context, canvas, layers)
+
+    assert.deepEqual(
+      context.calls.filter(([type]) => type === 'fill').map(([, text, x]) => [text, x]),
+      [['one', 250], ['two', 750]],
+    )
+  })
+
+  test('겹친 레이어는 위에 그려진 것을 먼저 집는다', () => {
+    const context = fakeContext(10)
+    const under = createTextLayer(40, { content: 'AAAA', outlineEnabled: false, position: { x: 0.5, y: 0.5 } })
+    const over = createTextLayer(40, { content: 'BBBB', outlineEnabled: false, position: { x: 0.5, y: 0.5 } })
+    const hit = findTextLayerAtPoint(context, canvas, [under, over], { x: 500, y: 250 })
+    assert.equal(hit?.id, over.id)
+  })
+
+  test('어느 레이어에도 닿지 않으면 null 이다', () => {
+    const context = fakeContext(10)
+    const layer = createTextLayer(40, { content: 'AB', outlineEnabled: false, position: { x: 0.1, y: 0.1 } })
+    assert.equal(findTextLayerAtPoint(context, canvas, [layer], { x: 950, y: 480 }), null)
+  })
+
+  test('내용이 빈 레이어는 집히지 않는다', () => {
+    const context = fakeContext(10)
+    const layer = createTextLayer(40, { content: '', position: { x: 0.5, y: 0.5 } })
+    assert.equal(findTextLayerAtPoint(context, canvas, [layer], { x: 500, y: 250 }), null)
   })
 })
 
@@ -149,6 +287,8 @@ describe('텍스트 UI 번역', () => {
     'text', 'textContent', 'textPlaceholder', 'font', 'fontSize', 'textColor',
     'outline', 'outlineColor', 'outlineWidth', 'positionX', 'positionY',
     'textDragHint', 'textPositionCanvas', 'fontLicense', 'applyText', 'applyingText',
+    'textLayers', 'addTextLayer', 'removeTextLayer', 'textLayerName', 'emptyTextLayer',
+    'textLayerLimit', 'textLayerHint',
   ]
 
   for (const language of ['ko', 'en']) {
@@ -161,6 +301,10 @@ describe('텍스트 UI 번역', () => {
       for (const font of TEXT_FONT_OPTIONS) {
         const key = font.labelKey.replace('imageEditor.', '')
         assert.equal(typeof locale.imageEditor[key], 'string', `${language}: ${font.labelKey}`)
+      }
+      for (const group of TEXT_FONT_GROUPS) {
+        const key = group.labelKey.replace('imageEditor.', '')
+        assert.equal(typeof locale.imageEditor[key], 'string', `${language}: ${group.labelKey}`)
       }
     })
   }
