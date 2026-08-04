@@ -110,6 +110,19 @@
   }
 }
 
+/* 이미지 크기(25%/50%/75%/100%) 버튼 — 라벨이 네 글자라 28px 정사각 버튼에서는
+   숫자끼리 맞붙어 어디까지가 한 버튼인지 구분되지 않았다. 폭을 내용에 맞추고 사이를 띄운다. */
+.rich-text-toolbar .di-toolbar-image-size {
+  gap: 0.25rem;
+  padding: 0.125rem 0.25rem;
+}
+.rich-text-toolbar .di-toolbar-image-size .di-toolbar-button {
+  width: auto;
+  min-width: 2.5rem;
+  padding-inline: 0.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
 /* 사이트 전용 카드(주류 정보 / 내 리뷰) 버튼 — 일반 서식 도구와 색으로도 구분한다. */
 .rich-text-toolbar .di-toolbar-site-group {
   border-color: var(--color-primary-200);
