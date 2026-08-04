@@ -1874,7 +1874,9 @@ export default function ImageEditorModal({
             leaveFrom="opacity-100 scale-100"
             leaveTo="opacity-0 scale-95"
           >
-            <DialogPanel className="w-full max-w-5xl bg-neutral-900 text-neutral-100 rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[90vh] md:h-[85vh]">
+            {/* PC 는 편집 영역이 클수록 정확하게 다듬을 수 있어 화면 폭을 넓게 쓴다.
+                (모바일은 하단 툴 시트가 화면을 나눠 쓰므로 기존 비율을 유지) */}
+            <DialogPanel className="w-full max-w-5xl md:max-w-6xl xl:max-w-7xl bg-neutral-900 text-neutral-100 rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[90vh]">
               
               {/* Header */}
               <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-800 bg-neutral-900/50 backdrop-blur">
@@ -1920,7 +1922,7 @@ export default function ImageEditorModal({
               <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
                 
                 {/* Left Sidebar Toolbar (for Desktop/Large screens) */}
-                <div className="hidden md:flex flex-col gap-6 w-60 border-r border-neutral-800 p-6 bg-neutral-900/30">
+                <div className="hidden md:flex flex-col gap-6 w-64 xl:w-72 shrink-0 border-r border-neutral-800 p-5 xl:p-6 bg-neutral-900/30">
                   <div className="space-y-4">
                     <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">{t('imageEditor.tools')}</span>
                     <div className="grid grid-cols-2 gap-2">
@@ -2319,15 +2321,17 @@ export default function ImageEditorModal({
 
                 </div>
                 
-                {/* Canvas Viewport (Center) */}
-                <div className="flex-1 flex items-center justify-center p-6 bg-neutral-950/20 overflow-hidden relative">
+                {/* Canvas Viewport (Center)
+                    캔버스 세로 상한은 모달 높이(90vh)에서 헤더·푸터·여백을 뺀 값 안에 들어가야 한다.
+                    66vh 는 세로 720px 화면에서도 잘리지 않는 상한이다. */}
+                <div className="flex-1 min-w-0 flex items-center justify-center p-4 md:p-5 bg-neutral-950/20 overflow-hidden relative">
                   <div
                     ref={containerRef}
                     className="relative inline-block overflow-hidden max-w-full max-h-full border border-neutral-800 rounded-lg shadow-xl"
                   >
                     <canvas
                       ref={canvasRef}
-                      className="block max-w-full max-h-[50vh] md:max-h-[60vh] h-auto w-auto object-contain select-none bg-neutral-900"
+                      className="block max-w-full max-h-[50vh] md:max-h-[66vh] h-auto w-auto object-contain select-none bg-neutral-900"
                       onMouseDown={(e) => startDrawing(e.clientX, e.clientY)}
                       onMouseMove={(e) => handleDrawingMove(e.clientX, e.clientY)}
                       onMouseUp={endDrawing}
