@@ -10,7 +10,9 @@ import com.caskbycask.domain.producer.repository.ProducerRegisterRequestReposito
 import com.caskbycask.domain.producer.repository.ProducerRepository;
 import com.caskbycask.domain.spirit.entity.enums.RequestStatus;
 import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
+import com.caskbycask.domain.spirit.entity.enums.WineRegion;
 import com.caskbycask.domain.spirit.service.LegacyWineRegionResolver;
+import com.caskbycask.domain.spirit.service.WineRegionService;
 import com.caskbycask.domain.spirit.repository.SpiritRepository;
 import com.caskbycask.domain.user.entity.User;
 import com.caskbycask.domain.user.repository.UserRepository;
@@ -40,6 +42,7 @@ public class ProducerService {
     private final NotificationService notificationService;
     private final ObjectMapper objectMapper;
     private final LegacyWineRegionResolver legacyWineRegionResolver;
+    private final WineRegionService wineRegionService;
 
     // ── 공개 조회 ──────────────────────────────────────────────
 
@@ -90,7 +93,7 @@ public class ProducerService {
                 .nameEn(request.nameEn())
                 .country(request.country())
                 .region(request.region())
-                .regionCode(resolveRegionCode(type, request.country(), request.region()))
+                .regionCode(resolveRegionCode(type, request.country(), request.region(), request.regionCode()))
                 .website(request.website())
                 .foundedYear(request.foundedYear())
                 .descriptionKo(request.descriptionKo())
@@ -112,7 +115,7 @@ public class ProducerService {
                 request.nameEn()        != null ? request.nameEn()        : producer.getNameEn(),
                 country,
                 region,
-                resolveRegionCode(type, country, region),
+                resolveRegionCode(type, country, region, request.regionCode()),
                 request.website()       != null ? request.website()       : producer.getWebsite(),
                 request.foundedYear()   != null ? request.foundedYear()   : producer.getFoundedYear(),
                 request.descriptionKo() != null ? request.descriptionKo() : producer.getDescriptionKo(),
@@ -198,7 +201,7 @@ public class ProducerService {
                 .region(body.region())
                 .regionCode(resolveRegionCode(
                         body.type() != null ? body.type() : ProducerType.DISTILLERY,
-                        body.country(), body.region()))
+                        body.country(), body.region(), null))
                 .website(body.website())
                 .foundedYear(body.foundedYear())
                 .descriptionKo(body.descriptionKo())
@@ -246,14 +249,24 @@ public class ProducerService {
         return userRepository.getByIdOrThrow(userId);
     }
 
-    private com.caskbycask.domain.spirit.entity.enums.WineRegion resolveRegionCode(
-            ProducerType type, String country, String region) {
+    /**
+     * 생산자의 산지 코드를 정한다.
+     *
+     * <p>관리자가 산지 선택기로 고른 코드({@code requestedCode})가 있으면 그 값을 그대로 쓴다 —
+     * 세부 산지(예: 꼬냑의 크뤼)는 지역 텍스트("꼬냑")만으로는 표현할 수 없기 때문이다.
+     * 코드가 없으면(사용자 등록 요청 등) 기존처럼 국가·지역 텍스트에서 해석한다.
+     */
+    private WineRegion resolveRegionCode(
+            ProducerType type, String country, String region, String requestedCode) {
         SpiritCategory category = switch (type) {
             case DISTILLERY -> SpiritCategory.WHISKY;
             case WINERY -> SpiritCategory.WINE;
             case COGNAC_HOUSE -> SpiritCategory.COGNAC;
             case OTHER -> SpiritCategory.OTHER;
         };
+        if (StringUtils.hasText(requestedCode)) {
+            return wineRegionService.resolve(requestedCode.trim(), category);
+        }
         return legacyWineRegionResolver.resolve(category, country, region).orElse(null);
     }
 
