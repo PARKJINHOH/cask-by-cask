@@ -93,17 +93,30 @@ JSON 외의 설명은 배열 뒤에 `## 메모`로 따로 적으세요.
 | `producer` | 꼬냑 하우스명. 브랜드가 아니라 **생산 주체** |
 | `country` | 항상 `"프랑스"` |
 | `region` | 항상 `"꼬냑"` |
-| `regionCode` | 아래 목록에서 1개. 단일 크뤼 제품이면 해당 크뤼 코드, 여러 크뤼 블렌드면 `FR_COGNAC` |
+| `regionCode` | 산지 + **세부 산지(크뤼)**를 한 값으로 담는다. 아래 규칙 참고 |
+
+등록 폼의 `생산 정보 > 국가 / 지역`은 **국가 → 지역(꼬냑) → 세부 산지(크뤼)** 3단이고,
+`regionCode` 하나가 그 선택 결과를 그대로 나타냅니다.
+
+- **세부 산지가 확인되면 크뤼 코드를 쓰세요** — 라벨·공식 자료가 단일 크뤼를 명시한 제품
+  (`Grande Champagne`, `Premier Cru de Cognac`, `Borderies` 등 단일 크뤼 표기)이 여기 해당합니다.
+- 여러 크뤼를 섞은 블렌드이거나 크뤼를 확인하지 못했으면 `FR_COGNAC` — **세부 산지 미지정**입니다.
+- **`Fine Champagne` 는 크뤼가 아닙니다.** 그랑드 + 프티트 샹파뉴 두 크뤼의 블렌드이므로
+  `FR_COGNAC` 를 쓰고, `isFineChampagne` 를 `true` 로 두세요.
+- 세부 산지는 **`cruComposition` 과 별개**입니다. 크뤼를 여러 개 나열하더라도 `regionCode` 는
+  하나만 고를 수 있으므로, 단일 크뤼가 아니면 `FR_COGNAC` 로 두고 구성은 `cruComposition` 에 남기세요.
+- 하우스가 그랑드 샹파뉴 그로어라는 이유만으로 개별 제품을 그랑드 샹파뉴로 **단정하지 마세요.**
+  그 제품 자체의 크뤼 표기를 확인한 경우에만 크뤼 코드를 씁니다.
 
 `regionCode` 허용 값:
 ```
-FR_COGNAC                     (크뤼 미특정 / 멀티 크뤼 블렌드)
-FR_COGNAC_GRANDE_CHAMPAGNE
-FR_COGNAC_PETITE_CHAMPAGNE
-FR_COGNAC_BORDERIES
-FR_COGNAC_FINS_BOIS
-FR_COGNAC_BONS_BOIS
-FR_COGNAC_BOIS_ORDINAIRES
+FR_COGNAC                     (세부 산지 미지정 — 멀티 크뤼 블렌드 / 크뤼 미확인)
+FR_COGNAC_GRANDE_CHAMPAGNE    그랑드 샹파뉴
+FR_COGNAC_PETITE_CHAMPAGNE    프티트 샹파뉴
+FR_COGNAC_BORDERIES           보르드리
+FR_COGNAC_FINS_BOIS           팽 부아
+FR_COGNAC_BONS_BOIS           봉 부아
+FR_COGNAC_BOIS_ORDINAIRES     부아 조르디네르
 ```
 
 ## 꼬냑 상세
@@ -223,6 +236,7 @@ JSON을 내놓기 전에 스스로 점검하세요.
 - [ ] `grade`가 채워져 있는가 (없으면 등록 자체가 막힙니다)
 - [ ] 모든 enum 값이 위 목록에 있는 철자 그대로인가
 - [ ] `cruComposition`에 중복 크뤼가 없고 비율 합계가 100 이하인가
+- [ ] `regionCode`가 세부 산지까지 반영했는가 — 단일 크뤼면 크뤼 코드, 아니면 `FR_COGNAC`
 - [ ] 지어낸 숫자가 하나도 없는가 — 모르면 `null`
 - [ ] `notes`가 **400자 이내**이고, 사실 나열이 아니라 제품을 파악할 수 있는 문단인가
 - [ ] 글자 수 제한(`blendDetail` 300, `caskFinish` 200)을 넘지 않는가

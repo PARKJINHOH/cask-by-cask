@@ -47,6 +47,8 @@ export interface CreateProducerPayload {
   nameEn: string
   country: string
   region?: string
+  /** 산지 코드 (세부 산지 포함). 미전달 시 서버가 국가·지역 텍스트로 해석한다 */
+  regionCode?: string | null
   website?: string
   foundedYear?: number
   descriptionKo?: string
@@ -60,6 +62,8 @@ export interface UpdateProducerPayload {
   nameEn?: string
   country?: string
   region?: string | null
+  /** 산지 코드 (세부 산지 포함). 미전달 시 서버가 국가·지역 텍스트로 해석한다 */
+  regionCode?: string | null
   website?: string | null
   foundedYear?: number | null
   descriptionKo?: string | null

@@ -30,6 +30,8 @@ interface FormValues {
   nameEn: string
   country: string
   region?: string
+  /** 산지 코드 — 세부 산지(꼬냑 크뤼)까지 담는다. 미지정이면 서버가 지역 텍스트로 해석 */
+  regionCode?: string | null
   website?: string
   foundedYear?: number | ''
   descriptionKo?: string
@@ -52,28 +54,42 @@ function ProducerForm({ initial, onSave, onCancel, isPending }: ProducerFormProp
   const [countryCode, setCountryCode] = useState<string | null>(initialCountryEntry?.code ?? null)
   const [countryNameKo, setCountryNameKo] = useState(initialCountryEntry?.nameKo ?? '')
   const [regionNameKo, setRegionNameKo] = useState(initial?.region ?? '')
+  // 산지 코드는 카탈로그 선택기를 쓰는 종류(현재는 꼬냑 하우스)에서만 이어받는다.
+  // 다른 종류의 코드를 들고 오면 카테고리가 달라 서버 검증에서 막힌다.
+  const [regionCode, setRegionCode] = useState<string | null>(
+    initial?.type === 'COGNAC_HOUSE' ? initial.regionCode ?? null : null,
+  )
   const [countryError, setCountryError] = useState(false)
 
-  const { register, handleSubmit, formState: { errors } } = useForm<Omit<FormValues, 'country' | 'region'>>({
-    defaultValues: initial ? {
-      type: initial.type,
-      nameKo: initial.nameKo,
-      nameEn: initial.nameEn,
-      website: initial.website ?? '',
-      foundedYear: initial.foundedYear ?? '',
-      descriptionKo: initial.descriptionKo ?? '',
-      descriptionEn: initial.descriptionEn ?? '',
-      searchKeywords: initial.searchKeywords ?? '',
-    } : undefined,
+  type InnerValues = Omit<FormValues, 'country' | 'region' | 'regionCode'>
+  const { register, handleSubmit, watch, formState: { errors } } = useForm<InnerValues>({
+    defaultValues: {
+      type: initial?.type ?? 'DISTILLERY',
+      nameKo: initial?.nameKo ?? '',
+      nameEn: initial?.nameEn ?? '',
+      website: initial?.website ?? '',
+      foundedYear: initial?.foundedYear ?? '',
+      descriptionKo: initial?.descriptionKo ?? '',
+      descriptionEn: initial?.descriptionEn ?? '',
+      searchKeywords: initial?.searchKeywords ?? '',
+    },
   })
 
-  const onSubmit = (data: Omit<FormValues, 'country' | 'region'>) => {
+  // 꼬냑 하우스만 산지 카탈로그(꼬냑 → 크뤼) 2단 선택기를 쓴다.
+  // 그 외 종류는 기존 지역 텍스트 목록 그대로 — 서버가 지역 텍스트로 산지 코드를 해석한다.
+  const type = watch('type')
+  const regionCatalogCategory = type === 'COGNAC_HOUSE' ? 'COGNAC' : null
+
+  const onSubmit = (data: InnerValues) => {
     if (!countryNameKo) { setCountryError(true); return }
     setCountryError(false)
     onSave({
       ...data,
       country: countryNameKo,
       region: regionNameKo || undefined,
+      // 카탈로그 모드에서만 코드를 명시한다. 그 외에는 서버 해석에 맡긴다
+      // (종류를 바꿔 카테고리가 달라졌을 때 이전 카테고리 코드가 남지 않게 한다).
+      regionCode: regionCatalogCategory ? regionCode : undefined,
       website: data.website || undefined,
       foundedYear: data.foundedYear ? Number(data.foundedYear) : undefined,
       descriptionKo: data.descriptionKo || undefined,
@@ -91,7 +107,6 @@ function ProducerForm({ initial, onSave, onCancel, isPending }: ProducerFormProp
             required
             aria-required="true"
             {...register('type', { required: true })}
-            defaultValue={initial?.type ?? 'DISTILLERY'}
             className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg bg-white
               focus:outline-none focus:ring-2 focus:ring-primary-400"
           >
@@ -156,7 +171,9 @@ function ProducerForm({ initial, onSave, onCancel, isPending }: ProducerFormProp
           />
         </div>
         <div className="space-y-1 sm:col-span-2">
-          <label className="block text-xs font-medium text-neutral-600">국가 <RequiredMark /> / 지역</label>
+          <label className="block text-xs font-medium text-neutral-600">
+            국가 <RequiredMark /> / 지역{regionCatalogCategory && ' / 세부 산지'}
+          </label>
           <div aria-required="true"><CountryRegionSelector
             countryCode={countryCode}
             regionNameKo={regionNameKo}
@@ -166,7 +183,16 @@ function ProducerForm({ initial, onSave, onCancel, isPending }: ProducerFormProp
               if (nameKo) setCountryError(false)
             }}
             onRegionChange={(nameKo) => setRegionNameKo(nameKo)}
+            category={regionCatalogCategory}
+            regionCode={regionCode}
+            onRegionCodeChange={setRegionCode}
+            admin
           /></div>
+          {regionCatalogCategory && (
+            <p className="text-xs text-neutral-400">
+              세부 산지(크뤼)는 선택 사항입니다. 확인된 크뤼가 없으면 비워 두세요 — 꼬냑 지방 전체로 등록됩니다.
+            </p>
+          )}
           {countryError && <p className="text-xs text-red-500">국가를 선택해주세요.</p>}
         </div>
         <div className="space-y-1 sm:col-span-2">
@@ -359,6 +385,7 @@ export default function AdminProducerPage() {
       nameEn: form.nameEn,
       country: form.country,
       region: form.region || undefined,
+      regionCode: form.regionCode ?? undefined,
       website: form.website || undefined,
       foundedYear: form.foundedYear ? Number(form.foundedYear) : undefined,
       descriptionKo: form.descriptionKo || undefined,
@@ -376,6 +403,7 @@ export default function AdminProducerPage() {
       nameEn: form.nameEn,
       country: form.country,
       region: form.region || null,
+      regionCode: form.regionCode ?? null,
       website: form.website || null,
       foundedYear: form.foundedYear ? Number(form.foundedYear) : null,
       descriptionKo: form.descriptionKo || null,
@@ -511,6 +539,7 @@ export default function AdminProducerPage() {
                     <span className="inline-flex items-center">국가<SortArrows active={sort.field === 'country'} dir={sort.dir} /></span>
                   </th>
                   <th className="text-left px-4 py-3 text-neutral-500 font-medium">지역</th>
+                  <th className="text-left px-4 py-3 text-neutral-500 font-medium whitespace-nowrap">세부 산지</th>
                   <th className="text-left px-4 py-3 text-neutral-500 font-medium cursor-pointer select-none hover:text-neutral-700" onClick={() => handleSort('foundedYear')}>
                     <span className="inline-flex items-center">설립연도<SortArrows active={sort.field === 'foundedYear'} dir={sort.dir} /></span>
                   </th>
@@ -522,7 +551,7 @@ export default function AdminProducerPage() {
               <tbody className="divide-y divide-neutral-100">
                 {!data || data.empty ? (
                   <tr>
-                    <td colSpan={10} className="px-4 py-10 text-center text-neutral-400">
+                    <td colSpan={11} className="px-4 py-10 text-center text-neutral-400">
                       데이터가 없습니다.
                     </td>
                   </tr>
@@ -540,6 +569,12 @@ export default function AdminProducerPage() {
                       <td className="px-4 py-3 text-neutral-500">{d.nameEn}</td>
                       <td className="px-4 py-3 text-neutral-500">{d.country}</td>
                       <td className="px-4 py-3 text-neutral-400">{d.region ?? '-'}</td>
+                      {/* 세부 산지 = L2 산지(꼬냑의 크뤼 등). L1 만 지정됐으면 미등록으로 본다 */}
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {d.wineRegion?.parentCode
+                          ? <span className="text-neutral-600">{d.wineRegion.nameKo}</span>
+                          : <span className="text-neutral-300">미등록</span>}
+                      </td>
                       <td className="px-4 py-3 text-neutral-400">{d.foundedYear ?? '-'}</td>
                       <td className="px-4 py-3 text-neutral-400">
                         {d.website

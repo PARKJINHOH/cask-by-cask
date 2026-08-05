@@ -28,6 +28,10 @@ public record CreateProducerRequest(
         @Size(max = 100, message = "지역명은 100자 이하로 입력해주세요.")
         String region,
 
+        @Schema(description = "산지 코드(WineRegion) — 세부 산지까지 지정 (선택). "
+                + "비우면 국가·지역 텍스트로 자동 해석한다.", example = "FR_COGNAC_GRANDE_CHAMPAGNE")
+        String regionCode,
+
         @Schema(description = "공식 웹사이트 URL (선택)")
         @Size(max = 500, message = "웹사이트 URL은 500자 이하로 입력해주세요.")
         String website,
