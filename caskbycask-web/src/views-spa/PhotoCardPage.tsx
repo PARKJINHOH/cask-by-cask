@@ -72,7 +72,7 @@ export default function PhotoCardPage() {
   // 비회원 저장본에는 브랜드 마크가 얹힌다 — 편집 화면에도 같이 그려 결과와 어긋나지 않게 한다.
   const editor = usePhotoCardEditor({ watermark: !isLoggedIn })
 
-  const size = frameSizeOf(editor.layout.frame.ratio, PHOTO_CARD_MAX_EDGE)
+  const size = frameSizeOf(editor.layout.frame, PHOTO_CARD_MAX_EDGE)
   const viewport = usePhotoCardViewport(size)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   usePhotoCardShortcuts(editor, viewport)

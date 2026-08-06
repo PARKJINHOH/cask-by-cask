@@ -47,7 +47,7 @@ export default function SelectionInspector({ editor, canvasRef }: Props) {
   const count = editor.selectedLayerIds.length
   if (count === 0) return null
 
-  const size = frameSizeOf(editor.layout.frame.ratio, PHOTO_CARD_MAX_EDGE)
+  const size = frameSizeOf(editor.layout.frame, PHOTO_CARD_MAX_EDGE)
   const patch = (values: Parameters<typeof editor.patchLayer>[1], gesture?: string) => {
     if (layer) editor.patchLayer(layer.id, values, gesture)
   }

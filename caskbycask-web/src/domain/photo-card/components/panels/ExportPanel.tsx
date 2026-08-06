@@ -26,7 +26,7 @@ export default function ExportPanel({
   const { t } = useTranslation()
   const hasPhoto = Boolean(editor.photoImage)
   const maxEdge = PHOTO_CARD_EXPORT_SIZES.find((size) => size.key === sizeKey)?.maxEdge ?? undefined
-  const preview = frameSizeOf(editor.layout.frame.ratio, maxEdge ?? editor.nativeMaxEdge)
+  const preview = frameSizeOf(editor.layout.frame, maxEdge ?? editor.nativeMaxEdge)
 
   return (
     <div className="space-y-5">

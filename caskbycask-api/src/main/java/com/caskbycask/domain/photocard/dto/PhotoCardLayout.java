@@ -35,6 +35,15 @@ public record PhotoCardLayout(
             /** 카드 전체 모서리 둥글기 — 짧은 변 대비 비율 */
             Double radius,
             Padding padding,
+            /**
+             * 카드 확장 — 비율로 정해지는 <b>기준 프레임</b> 바깥으로 각 변을 넓힌다.
+             * 단위는 padding 과 같은 기준 프레임 짧은 변 대비 비율이다.
+             * <p>
+             * padding 과 역할이 다르다 — padding 은 카드 크기를 두고 사진을 줄여 여백을 만들고,
+             * extend 는 사진·글자를 그대로 둔 채 카드를 키워 배경을 덧댄다.
+             * 늘리지 않은 카드는 null 이라 직렬화에서 빠진다(기존 템플릿 JSON 이 그대로다).
+             */
+            Padding extend,
             Photo photo
     ) {}
 

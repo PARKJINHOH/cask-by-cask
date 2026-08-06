@@ -9,7 +9,7 @@ const SRC = join(HERE, '..', 'src', 'domain', 'photo-card')
 
 const {
   PHOTO_CARD_BINDINGS, PHOTO_CARD_MAX_LAYERS, PHOTO_CARD_MAX_TEXT_LENGTH,
-  PHOTO_CARD_SCHEMA_VERSION, normalizeLayer, normalizeLayout,
+  PHOTO_CARD_MAX_EXTEND, PHOTO_CARD_SCHEMA_VERSION, normalizeLayer, normalizeLayout,
 } = await import('../src/domain/photo-card/utils/layoutSchema.ts')
 
 const { BUILTIN_LAYOUTS, defaultPhotoCardLayout } =
@@ -24,7 +24,7 @@ const { getDrawableLayers, resolveBindingValue, resolveLayerText } =
 
 const {
   frameSizeOf, measureLayerBounds, findLayerAtPoint, photoRectOf, toPx,
-  drawPhoto, photoPlacementOf, reflowLayersForFrame, shortSideOf, textBaselineYOf,
+  drawPhoto, photoPlacementOf, reanchorLayersForExtend, reflowLayersForFrame, shortSideOf, textBaselineYOf,
   drawWatermark, watermarkRectOf,
   WATERMARK_MARGIN_RATIO, WATERMARK_OPACITY, WATERMARK_WIDTH_RATIO,
 } = await import('../src/domain/photo-card/utils/photoCardRender.ts')
@@ -306,10 +306,10 @@ describe('바인딩 해석', () => {
 
 describe('렌더 기하', () => {
   test('비율별 프레임 크기 — 긴 변이 상한이다', () => {
-    assert.deepEqual(frameSizeOf('1:1', 1000), { width: 1000, height: 1000 })
-    assert.deepEqual(frameSizeOf('4:5', 1000), { width: 800, height: 1000 })
-    assert.deepEqual(frameSizeOf('16:9', 1000), { width: 1000, height: 563 })
-    assert.deepEqual(frameSizeOf('9:16', 1000), { width: 563, height: 1000 })
+    assert.deepEqual(frameSizeOf({ ratio: '1:1' }, 1000), { width: 1000, height: 1000 })
+    assert.deepEqual(frameSizeOf({ ratio: '4:5' }, 1000), { width: 800, height: 1000 })
+    assert.deepEqual(frameSizeOf({ ratio: '16:9' }, 1000), { width: 1000, height: 563 })
+    assert.deepEqual(frameSizeOf({ ratio: '9:16' }, 1000), { width: 563, height: 1000 })
   })
 
   test('크기는 프레임 짧은 변 기준이라 비율이 달라도 글자가 같아 보인다', () => {
@@ -322,7 +322,7 @@ describe('렌더 기하', () => {
 
   test('하단 밴드 템플릿의 사진 영역이 여백만큼 줄어든다', () => {
     const layout = BUILTIN_LAYOUTS.find((b) => b.key === 'classic').layout
-    const size = frameSizeOf('4:5', 1000)          // 800 x 1000, 짧은 변 800
+    const size = frameSizeOf({ ratio: '4:5' }, 1000)          // 800 x 1000, 짧은 변 800
     const rect = photoRectOf(layout, size)
     assert.equal(Math.round(rect.left), 36)         // 0.045 * 800
     assert.equal(Math.round(rect.top), 36)
@@ -338,7 +338,7 @@ describe('렌더 기하', () => {
     for (const ratio of ['1:1', '3:4', '9:16', '16:9']) {
       const frame = { ...layout.frame, ratio }
       const layers = reflowLayersForFrame(layout, frame)
-      const size = frameSizeOf(ratio, 1000)
+      const size = frameSizeOf({ ratio }, 1000)
       const rect = photoRectOf({ ...layout, frame }, size)
       const photoBottom = rect.top + rect.height
 
@@ -354,7 +354,7 @@ describe('렌더 기하', () => {
         const b = list.find((l) => l.id === second)
         return ((b.position.y - a.position.y) * canvas.height) / shortSideOf(canvas)
       }
-      const base = frameSizeOf(layout.frame.ratio, 1000)
+      const base = frameSizeOf(layout.frame, 1000)
       assert.ok(
         Math.abs(gapOf(layers, 'classic-name', 'classic-producer', size)
           - gapOf(layout.layers, 'classic-name', 'classic-producer', base)) < 0.002,
@@ -368,7 +368,7 @@ describe('렌더 기하', () => {
     // 사진 아래 거리를 그대로 유지하면 글이 카드 밖으로 밀려나므로, 밴드 안에서의 자리를 지킨다.
     const layout = BUILTIN_LAYOUTS.find((b) => b.key === 'classic').layout
     const frame = { ...layout.frame, padding: { top: 0, right: 0, bottom: 0.1, left: 0 } }
-    const size = frameSizeOf(frame.ratio, 1000)
+    const size = frameSizeOf(frame, 1000)
     const rect = photoRectOf({ ...layout, frame }, size)
     const photoBottom = rect.top + rect.height
 
@@ -434,6 +434,92 @@ describe('렌더 기하', () => {
     const size = { width: 800, height: 1000 }
     const layer = { id: 'a', type: 'TEXT', position: { x: 0.1, y: 0.1 }, binding: 'NONE', text: 'AB', fontSizeRatio: 0.03 }
     assert.equal(findLayerAtPoint(ctx, size, [layer], emptyContext(), { x: 790, y: 990 }), null)
+  })
+})
+
+describe('카드 크기 확장', () => {
+  const classic = () => BUILTIN_LAYOUTS.find((b) => b.key === 'classic').layout
+
+  test('늘리지 않은 카드는 예전과 같은 값이다 (기존 템플릿 회귀)', () => {
+    // extend 가 붙었다고 기존 템플릿의 렌더가 1px 이라도 달라지면 안 된다.
+    const zero = { top: 0, right: 0, bottom: 0, left: 0 }
+    assert.deepEqual(frameSizeOf({ ratio: '4:5', extend: zero }, 1000), { width: 800, height: 1000 })
+    assert.deepEqual(frameSizeOf({ ratio: '4:5' }, 1000), { width: 800, height: 1000 })
+  })
+
+  test('늘린 만큼 캔버스가 커지고, 전체가 상한 안에 들어간다', () => {
+    // 4:5 기준 프레임은 짧은 변 = 가로다. 아래로 짧은 변의 0.25 만큼 늘리면 카드는 1:1.5 가 된다.
+    const size = frameSizeOf({ ratio: '4:5', extend: { top: 0, right: 0, bottom: 0.25, left: 0 } }, 1000)
+    assert.equal(Math.max(size.width, size.height), 1000, '긴 변이 상한을 넘었다')
+    assert.equal(size.width, 667)                     // 1 / 1.5 * 1000
+    assert.equal(size.height, 1000)
+    assert.equal(Math.round(size.base.height), 833)   // 기준 프레임(4:5)의 세로 = 짧은 변 * 1.25
+    assert.equal(Math.round(size.base.top), 0)
+  })
+
+  test('환산 기준은 기준 프레임 짧은 변이다 — 늘려도 글자·여백이 그대로다', () => {
+    // 회귀 배경: 캔버스 짧은 변으로 환산하면 좌우를 넓힐 때 글자까지 같이 커진다.
+    const extend = { top: 0, right: 0.2, bottom: 0, left: 0.2 }
+    const size = frameSizeOf({ ratio: '4:5', extend }, 1000)
+    assert.ok(Math.abs(shortSideOf(size) - size.base.width) < 1,
+      '환산 기준이 캔버스를 따라갔다')
+    // 늘어난 자리는 배경일 뿐이므로 사진 크기는 확장 전과 같은 비례를 지킨다.
+    const grown = photoRectOf(classic(), size)
+    const plain = photoRectOf(classic(), frameSizeOf({ ratio: '4:5' }, 1000))
+    const scale = size.base.width / 800
+    assert.ok(Math.abs(grown.width - plain.width * scale) < 1, '사진 가로가 따로 논다')
+    assert.ok(Math.abs(grown.height - plain.height * scale) < 1, '사진 세로가 따로 논다')
+  })
+
+  test('사진은 늘어난 자리로 번지지 않고 기준 프레임 안에 남는다', () => {
+    const extend = { top: 0.1, right: 0.1, bottom: 0.1, left: 0.1 }
+    const size = frameSizeOf({ ratio: '4:5', extend }, 1000)
+    const rect = photoRectOf(classic(), size)
+    assert.ok(rect.left >= size.base.left - 0.5, '사진이 왼쪽 여백을 침범했다')
+    assert.ok(rect.top >= size.base.top - 0.5, '사진이 위쪽 여백을 침범했다')
+    assert.ok(rect.left + rect.width <= size.base.left + size.base.width + 0.5)
+    assert.ok(rect.top + rect.height <= size.base.top + size.base.height + 0.5)
+  })
+
+  test('카드를 늘려도 요소는 사진 대비 제자리에 남는다', () => {
+    // 회귀 배경: 좌표는 캔버스 대비 비율이라, 아래로 늘리기만 해도 밴드의 글이 위로 딸려 올라간다.
+    const layout = classic()
+    const frame = { ...layout.frame, extend: { top: 0, right: 0, bottom: 0.3, left: 0 } }
+    const layers = reanchorLayersForExtend(layout, frame)
+
+    const before = frameSizeOf(layout.frame, 1000)
+    const after = frameSizeOf(frame, 1000)
+    const photoBottom = photoRectOf({ ...layout, frame }, after)
+    for (const layer of layers) {
+      const source = layout.layers.find((l) => l.id === layer.id)
+      // 기준 프레임 안에서 잰 거리(짧은 변 대비)가 그대로여야 제자리다.
+      const wasY = (source.position.y * before.height) / shortSideOf(before)
+      const nowY = (layer.position.y * after.height - after.base.top) / shortSideOf(after)
+      assert.ok(Math.abs(wasY - nowY) < 0.002, `${layer.id} 가 카드와 함께 밀렸다`)
+      assert.ok(layer.position.y * after.height > photoBottom.top + photoBottom.height,
+        `${layer.id} 가 사진 위로 올라갔다`)
+    }
+  })
+
+  test('저장할 때 늘리지 않은 카드는 extend 필드를 남기지 않는다', () => {
+    const layout = normalizeLayout(classic())
+    assert.equal('extend' in layout.frame, false)
+
+    const grown = normalizeLayout({
+      ...classic(),
+      frame: { ...classic().frame, extend: { top: 0, right: 0, bottom: 0.2, left: 0 } },
+    })
+    assert.deepEqual(grown.frame.extend, { top: 0, right: 0, bottom: 0.2, left: 0 })
+  })
+
+  test('저장할 때 확장값은 상한 안으로 잘린다', () => {
+    const layout = normalizeLayout({
+      ...classic(),
+      frame: { ...classic().frame, extend: { top: 99, right: -5, bottom: null, left: 0.4 } },
+    })
+    assert.deepEqual(layout.frame.extend, {
+      top: PHOTO_CARD_MAX_EXTEND, right: 0, bottom: 0, left: 0.4,
+    })
   })
 })
 
@@ -669,7 +755,7 @@ describe('사진 확대 · 이동', () => {
 describe('비회원 저장본 · 임시저장', () => {
   test('워터마크는 어느 비율에서든 오른쪽 아래 같은 여백에 앉는다', () => {
     for (const ratio of ['1:1', '4:5', '9:16', '16:9']) {
-      const size = frameSizeOf(ratio, 2048)
+      const size = frameSizeOf({ ratio }, 2048)
       const short = shortSideOf(size)
       const rect = watermarkRectOf(size)
       assert.equal(Math.round(rect.width), Math.round(short * WATERMARK_WIDTH_RATIO), ratio)
@@ -692,7 +778,7 @@ describe('비회원 저장본 · 임시저장', () => {
       globalAlpha: 1,
       drawImage(...args) { drawn.push({ alpha: this.globalAlpha, args }) },
     }
-    const size = frameSizeOf('4:5', 1000)
+    const size = frameSizeOf({ ratio: '4:5' }, 1000)
     drawWatermark(ctx, size, { width: 512, height: 512 })
 
     assert.equal(drawn.length, 1)
@@ -702,7 +788,7 @@ describe('비회원 저장본 · 임시저장', () => {
 
   test('세로로 긴 마크도 오른쪽 아래 끝이 맞는다', () => {
     // 마크 그림의 비율은 바뀔 수 있다. 높이가 커져도 아래·오른쪽 끝은 그대로여야 한다.
-    const size = frameSizeOf('4:5', 1000)
+    const size = frameSizeOf({ ratio: '4:5' }, 1000)
     const square = watermarkRectOf(size, 1)
     const tall = watermarkRectOf(size, 2)
     assert.equal(tall.height, tall.width * 2)

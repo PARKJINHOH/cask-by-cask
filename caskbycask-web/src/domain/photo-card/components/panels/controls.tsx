@@ -63,6 +63,57 @@ export function SliderField({
   )
 }
 
+/**
+ * 숫자를 직접 적는 입력. 슬라이더로는 "정확히 200px" 을 맞추기 어려운 값에 쓴다.
+ *
+ * 타이핑 한 글자마다 값이 바뀌므로(2 → 20 → 200) onChange 는 슬라이더와 같이 gesture 로 묶고,
+ * 칸을 벗어날 때(onCommit) 되돌리기 단계를 끊는다.
+ */
+export function NumberField({
+  label, value, min, max, step = 1, suffix, disabled, onChange, onCommit,
+}: {
+  label: string
+  value: number
+  min: number
+  max: number
+  step?: number
+  /** 칸 안 오른쪽에 붙는 단위 표기(예: "px") */
+  suffix?: string
+  disabled?: boolean
+  onChange: (value: number) => void
+  onCommit: () => void
+}) {
+  return (
+    <label className={`block ${disabled ? 'opacity-40' : ''}`}>
+      <span className="mb-1 block text-[11px] font-medium text-neutral-500">{label}</span>
+      <span className="relative flex items-center">
+        <input
+          type="number"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          disabled={disabled}
+          onChange={(event) => {
+            // 칸을 비우면 NaN 이 된다 — 지우는 중일 뿐이므로 최솟값으로 본다.
+            const next = Number(event.target.value)
+            onChange(Math.max(min, Math.min(max, Number.isFinite(next) ? next : min)))
+          }}
+          onBlur={onCommit}
+          className={`w-full rounded-lg border border-neutral-300 py-1.5 pl-2 text-[11px] font-semibold text-neutral-700 ${
+            suffix ? 'pr-7' : 'pr-2'
+          }`}
+        />
+        {suffix && (
+          <span className="pointer-events-none absolute right-2 text-[11px] font-medium text-neutral-400">
+            {suffix}
+          </span>
+        )}
+      </span>
+    </label>
+  )
+}
+
 export function SegmentedField<T extends string>({ label, value, options, onChange }: {
   label?: string
   value: T

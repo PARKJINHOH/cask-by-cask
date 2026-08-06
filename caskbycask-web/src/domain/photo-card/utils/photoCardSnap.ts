@@ -5,6 +5,7 @@ import type {
   PhotoCardPosition,
 } from '../types/photoCard.types'
 import {
+  baseRectOf,
   measureLayerBounds,
   photoRectOf,
   shortSideOf,
@@ -79,13 +80,15 @@ export const collectSnapTargets = (
   push(lines, 'y', size.height / 2, 'frame')
   push(lines, 'y', size.height, 'frame')
 
-  // 여백 안쪽 경계 — 정보 밴드 가장자리에 글자를 맞출 때 쓴다
+  // 여백 안쪽 경계 — 정보 밴드 가장자리에 글자를 맞출 때 쓴다.
+  // 여백은 카드가 아니라 기준 프레임 기준이다 — 카드를 넓혔으면 그만큼 안쪽에서 시작한다.
   const shortSide = shortSideOf(size)
+  const base = baseRectOf(size)
   const padding = layout.frame.padding
-  push(lines, 'x', toPx(padding.left, shortSide), 'padding')
-  push(lines, 'x', size.width - toPx(padding.right, shortSide), 'padding')
-  push(lines, 'y', toPx(padding.top, shortSide), 'padding')
-  push(lines, 'y', size.height - toPx(padding.bottom, shortSide), 'padding')
+  push(lines, 'x', base.left + toPx(padding.left, shortSide), 'padding')
+  push(lines, 'x', base.left + base.width - toPx(padding.right, shortSide), 'padding')
+  push(lines, 'y', base.top + toPx(padding.top, shortSide), 'padding')
+  push(lines, 'y', base.top + base.height - toPx(padding.bottom, shortSide), 'padding')
 
   // 사진 액자
   const photo = photoRectOf(layout, size)

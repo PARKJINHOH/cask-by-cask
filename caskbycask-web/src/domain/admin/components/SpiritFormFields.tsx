@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type TextareaHTMLAttributes } from 'react'
+import { useState, useEffect, useMemo, useRef, type TextareaHTMLAttributes } from 'react'
 import { DndContext, PointerSensor, useSensor, useSensors, closestCenter, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, horizontalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -33,6 +33,8 @@ import WineDetailSection, { type WineDetailForm, DEFAULT_WINE } from '@/domain/a
 import WineRegionPreview from '@/domain/admin/components/WineRegionPreview'
 import CognacDetailSection, { type CognacDetailForm, DEFAULT_COGNAC } from '@/domain/admin/components/CognacDetailSection'
 import OtherDetailSection, { type OtherDetailForm, DEFAULT_OTHER } from '@/domain/admin/components/OtherDetailSection'
+import useIsDesktop from '@/shared/hooks/useIsDesktop'
+import { scrollToPageTop } from '@/shared/utils/scrollToPageTop'
 
 // ══════════════════════════════════════════════════════════════════
 //  술 등록/수정/요청-승인 공유 폼 — 단일 소스 (SINGLE SOURCE OF TRUTH)
@@ -778,13 +780,26 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
   }
 
   // ── 검증 (단일 정의) ──
+  /**
+   * 첫 오류 입력칸으로 스크롤·포커스.
+   *
+   * <p>앵커(`data-field`)가 없는 항목이거나 닫힌 에디션 안에 있어 DOM 에 존재하지
+   * 않을 수 있다. 그때 아무것도 하지 않으면 화면이 전혀 움직이지 않아
+   * **"저장을 눌러도 아무 일이 없다"** 로 보이므로, 최소한 폼 맨 위로 올린다.
+   * 관리자 레이아웃은 window 가 아니라 안쪽 컨테이너가 스크롤되므로
+   * `scrollToPageTop` 으로 스크롤 조상을 찾아 올린다(`window.scrollTo` 는 무반응).
+   */
   const focusFirstError = (errs: Record<string, string>) => {
     const firstKey = Object.keys(errs)[0]
     if (!firstKey) return
     window.setTimeout(() => {
       const target = document.querySelector<HTMLElement>(`[data-field="${firstKey}"], [name="${firstKey}"]`)
-      target?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      target?.focus()
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        target.focus()
+        return
+      }
+      scrollToPageTop(document.querySelector<HTMLElement>('[data-spirit-form]'))
     }, 0)
   }
 
@@ -1260,6 +1275,11 @@ interface SortableTabProps {
   index: number
   variant: any
   isActive: boolean
+  /** 이 에디션에 검증 오류가 있는지 — 열려 있지 않으면 메시지가 안 보이므로 탭에 표시한다 */
+  hasError: boolean
+  /** 드래그 정렬 허용 여부 (PC 전용) */
+  sortable: boolean
+  label: string
   onClick: () => void
   onRemove: () => void
 }
@@ -1269,6 +1289,9 @@ function SortableTab({
   index,
   variant,
   isActive,
+  hasError,
+  sortable,
+  label,
   onClick,
   onRemove,
 }: SortableTabProps) {
@@ -1279,13 +1302,15 @@ function SortableTab({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id })
+  } = useSortable({ id, disabled: !sortable })
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.6 : 1,
     zIndex: isDragging ? 50 : 'auto',
+    // PointerSensor 로 드래그하는 동안 브라우저 스크롤 제스처와 겹치지 않게 한다
+    touchAction: sortable ? ('none' as const) : undefined,
   }
 
   return (
@@ -1293,26 +1318,37 @@ function SortableTab({
       ref={setNodeRef}
       style={style}
       {...attributes}
-      {...listeners}
+      {...(sortable ? listeners : {})}
       onClick={onClick}
-      className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all flex items-center gap-1.5 cursor-grab active:cursor-grabbing select-none ${
-        isActive
+      className={`px-3 py-2 lg:py-1.5 text-xs font-semibold rounded-lg border transition-all flex items-center gap-1.5 select-none ${
+        sortable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
+      } ${
+        // 오류 표시가 우선이지만, 열려 있는 탭인지도 알아야 하므로 링으로 함께 표시한다
+        hasError
+          ? `border-red-400 bg-red-50 text-red-600 ${isActive ? 'ring-2 ring-amber-400' : ''}`
+          : isActive
           ? 'border-amber-500 bg-amber-50 text-amber-700 shadow-sm'
           : 'border-neutral-200 bg-white text-neutral-500 hover:border-amber-300 hover:bg-amber-50/50'
       }`}
     >
       <NumberSvg num={index + 1} active={isActive} />
-      <span>{variant.variantValue || '새 에디션'}</span>
-      <span
+      <span>{variant.variantValue || `새 ${label}`}</span>
+      {hasError && <span className="text-red-500" aria-label="입력 오류">!</span>}
+      {/* 실수로 눌러 통째로 날아가는 일이 잦아 확인을 받는다. 터치에서는 목표가 더 작다 */}
+      <button
+        type="button"
         onClick={(e) => {
           e.stopPropagation()
-          onRemove()
+          const name = variant.variantValue?.trim() || `${index + 1}번째 ${label}`
+          if (confirm(`"${name}"을(를) 삭제하시겠습니까?\n입력한 내용이 함께 사라집니다.`)) onRemove()
         }}
-        className="hover:text-red-500 hover:bg-neutral-200/60 p-0.5 rounded transition-colors ml-1 cursor-pointer"
-        title="에디션 삭제"
+        onPointerDown={(e) => e.stopPropagation()}
+        className="hover:text-red-500 hover:bg-neutral-200/60 p-1 lg:p-0.5 rounded transition-colors ml-1 cursor-pointer"
+        aria-label={`${label} 삭제`}
+        title={`${label} 삭제`}
       >
         ✕
-      </span>
+      </button>
     </div>
   )
 }
@@ -1363,6 +1399,11 @@ export default function SpiritFormFields({
     }
   }, [form.variants.length, activeVariantIdx])
 
+  // 에디션 탭 드래그 정렬·캐스크 3열 배치는 PC 전용이다 (모바일에서는 탭 클릭으로만 전환)
+  const isDesktop = useIsDesktop()
+  /** 캐스크는 대분류 11종 × 세부 오크통이라 모바일에서 펼쳐 두면 스크롤 벽이 된다 — 접어서 시작 */
+  const [isCaskOpenOnMobile, setIsCaskOpenOnMobile] = useState(false)
+
   const pointerSensor = useSensor(PointerSensor, {
     activationConstraint: {
       distance: 8,
@@ -1404,6 +1445,43 @@ export default function SpiritFormFields({
     if (activeVariantIndex < 0 || activeVariantIndex >= form.variants.length) return
     setActiveVariantIdx(activeVariantIndex)
   }, [activeVariantIndex, form.variants.length])
+
+  /**
+   * 검증에 걸린 에디션 인덱스들.
+   *
+   * <p>에디션은 **활성 탭 하나만** 렌더되기 때문에, 닫혀 있는 에디션의 오류 메시지는
+   * 화면에 아예 존재하지 않는다. `focusFirstError` 의 `querySelector` 도 실패해
+   * 저장을 눌러도 아무 일이 없는 것처럼 보였다. 오류가 난 에디션으로 자동 전환한다.
+   */
+  const errorVariantIndexes = useMemo(() => {
+    const indexes = new Set<number>()
+    Object.keys(errors).forEach((key) => {
+      const matched = /^variant[A-Za-z]*_(\d+)$/.exec(key)
+      if (matched) indexes.add(Number(matched[1]))
+    })
+    return indexes
+  }, [errors])
+
+  // 검증 1회당 한 번만 자동 전환한다. 매번 전환하면 오류를 고치기 전에는
+  // 사용자가 다른 에디션 탭으로 이동할 수 없게 되어(눌러도 되돌아옴) 오히려 갇힌다.
+  const handledErrorsRef = useRef<Record<string, string> | null>(null)
+  useEffect(() => {
+    if (handledErrorsRef.current === errors) return
+    handledErrorsRef.current = errors
+    if (errorVariantIndexes.size === 0) return
+    if (errorVariantIndexes.has(activeVariantIdx)) return
+    const firstErrorIdx = Math.min(...errorVariantIndexes)
+    if (firstErrorIdx >= form.variants.length) return
+    setActiveVariantIdx(firstErrorIdx)
+    // 탭이 바뀐 뒤에야 입력칸이 DOM 에 생기므로 렌더 후에 스크롤한다
+    window.setTimeout(() => {
+      const key = Object.keys(errors).find((k) => k.endsWith(`_${firstErrorIdx}`))
+      if (!key) return
+      const target = document.querySelector<HTMLElement>(`[data-field="${key}"]`)
+      target?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      target?.focus()
+    }, 0)
+  }, [errorVariantIndexes, activeVariantIdx, form.variants.length, errors])
 
   // 목록에 없는 생산자를 즉시 직접 생성 후 선택 (관리자 기본 동작).
   // 생산자 종류는 현재 카테고리에 맞춰야 한다 — 위스키는 DISTILLERY, 와인은 WINERY 등.
@@ -1450,7 +1528,8 @@ export default function SpiritFormFields({
     : { label: null, value: form.whiskyDetail, onChange: form.updateWhisky }
 
   return (
-    <div className={`grid grid-cols-1 gap-6 items-start ${
+    // data-spirit-form: 오류 앵커를 못 찾았을 때 폼 맨 위로 올리기 위한 표식 (focusFirstError 참고)
+    <div data-spirit-form className={`grid grid-cols-1 gap-6 items-start ${
       isWhisky ? 'lg:grid-cols-3' : 'lg:grid-cols-5'
     }`}>
       {/* ═══ 최상단: 이미지 (전체 폭 1줄) ═══
@@ -1577,6 +1656,7 @@ export default function SpiritFormFields({
                   <div className="flex items-center gap-2">
                     <div className="relative flex-1">
                       <input type="number" step="0.1" min="0" max="100" value={form.abvMin}
+                         data-field="abvMin"
                          required={isMasterSpecsRequired} aria-required={isMasterSpecsRequired || undefined}
                          disabled={isMasterSpecsDisabled}
                          onChange={(e) => form.setAbvMin(e.target.value)}
@@ -1588,6 +1668,7 @@ export default function SpiritFormFields({
                     <span className="text-neutral-400">~</span>
                     <div className="relative flex-1">
                       <input type="number" step="0.1" min="0" max="100" value={form.abvMax}
+                         data-field="abvMax"
                          required={isMasterSpecsRequired} aria-required={isMasterSpecsRequired || undefined}
                          disabled={isMasterSpecsDisabled}
                          onChange={(e) => form.setAbvMax(e.target.value)}
@@ -1600,6 +1681,7 @@ export default function SpiritFormFields({
                 ) : (
                   <div className="relative">
                     <input type="number" step="0.1" min="0" max="100" value={form.commonDetail.abv}
+                       data-field="abv"
                        required={isMasterSpecsRequired} aria-required={isMasterSpecsRequired || undefined}
                        disabled={isMasterSpecsDisabled}
                        onWheel={(e) => e.currentTarget.blur()}
@@ -1638,6 +1720,7 @@ export default function SpiritFormFields({
                     <div className="flex items-center gap-2">
                       <div className="relative flex-1">
                         <input type="number" min={VOLUME_ML_MIN} max={VOLUME_ML_MAX} value={form.volumeMlMin}
+                               data-field="volumeMlMin"
                                required={isMasterSpecsRequired} aria-required={isMasterSpecsRequired || undefined}
                                disabled={isMasterSpecsDisabled}
                                onChange={(e) => form.setVolumeMlMin(e.target.value)}
@@ -1649,6 +1732,7 @@ export default function SpiritFormFields({
                       <span className="text-neutral-400">~</span>
                       <div className="relative flex-1">
                         <input type="number" min={VOLUME_ML_MIN} max={VOLUME_ML_MAX} value={form.volumeMlMax}
+                               data-field="volumeMlMax"
                                required={isMasterSpecsRequired} aria-required={isMasterSpecsRequired || undefined}
                                disabled={isMasterSpecsDisabled}
                                onChange={(e) => form.setVolumeMlMax(e.target.value)}
@@ -1661,6 +1745,7 @@ export default function SpiritFormFields({
                 ) : (
                     <div className="relative">
                       <input type="number" min={VOLUME_ML_MIN} max={VOLUME_ML_MAX} value={form.commonDetail.volumeMl}
+                             data-field="volumeMl"
                              required={isMasterSpecsRequired} aria-required={isMasterSpecsRequired || undefined}
                              disabled={isMasterSpecsDisabled}
                              onWheel={(e) => e.currentTarget.blur()}
@@ -1692,7 +1777,7 @@ export default function SpiritFormFields({
               {/* 스타일 */}
               <div>
                 <label className={LABEL}>스타일 <RequiredMark /></label>
-                <div className="flex flex-wrap gap-2" role="radiogroup" aria-required="true">
+                <div className="flex flex-wrap gap-2" role="radiogroup" aria-required="true" data-field="style">
                   {WHISKY_STYLES.map(([v, l]) => (
                     <label key={v} className="flex items-center gap-1.5 cursor-pointer text-xs select-none">
                       <input type="radio" value={v} checked={form.whiskyDetail.style === v}
@@ -1872,6 +1957,9 @@ export default function SpiritFormFields({
                             index={idx}
                             variant={v}
                             isActive={activeVariantIdx === idx}
+                            hasError={errorVariantIndexes.has(idx)}
+                            sortable={isDesktop}
+                            label={category === 'WINE' ? '빈티지' : '에디션'}
                             onClick={() => setActiveVariantIdx(idx)}
                             onRemove={() => form.removeVariant(idx)}
                           />
@@ -1961,16 +2049,39 @@ export default function SpiritFormFields({
       {isWhisky && category && (
         <div className="space-y-6">
           <div className={`${CARD} lg:sticky lg:top-4`}>
-            <SectionTitle
-              title="캐스크"
-              hint={caskTarget.label ?? '마스터 공통'}
-            />
-            {caskTarget.label && (
-              <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 -mt-1">
-                지금 편집 중인 에디션의 캐스크입니다. 에디션 탭을 바꾸면 이 영역도 함께 바뀝니다.
-              </p>
-            )}
-            <WhiskyCaskSection value={caskTarget.value} onChange={caskTarget.onChange} />
+            {/* PC — 3열 중 한 컬럼을 통째로 쓰므로 항상 펼쳐 둔다 */}
+            <div className="hidden lg:block">
+              <SectionTitle
+                title="캐스크"
+                hint={caskTarget.label ?? '마스터 공통'}
+              />
+            </div>
+
+            {/* 모바일 — 3열이 1열로 접히면 캐스크가 화면 맨 아래로 밀려 스크롤이 끝없이 길어진다.
+                접은 상태로 시작하고, 어떤 에디션의 캐스크인지 헤더에 같이 보여준다. */}
+            <button
+              type="button"
+              onClick={() => setIsCaskOpenOnMobile((prev) => !prev)}
+              aria-expanded={isCaskOpenOnMobile}
+              className="lg:hidden flex w-full items-center justify-between gap-2 text-left"
+            >
+              <span className="min-w-0">
+                <span className="text-sm font-bold text-neutral-800">캐스크</span>
+                <span className="ml-2 text-xs text-neutral-400">{caskTarget.label ?? '마스터 공통'}</span>
+              </span>
+              <span className="flex-shrink-0 text-xs font-semibold text-amber-700">
+                {isCaskOpenOnMobile ? '접기' : '펼치기'}
+              </span>
+            </button>
+
+            <div className={isCaskOpenOnMobile ? 'space-y-5' : 'hidden lg:block lg:space-y-5'}>
+              {caskTarget.label && (
+                <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
+                  지금 편집 중인 에디션의 캐스크입니다. 에디션 탭을 바꾸면 이 영역도 함께 바뀝니다.
+                </p>
+              )}
+              <WhiskyCaskSection value={caskTarget.value} onChange={caskTarget.onChange} />
+            </div>
           </div>
         </div>
       )}

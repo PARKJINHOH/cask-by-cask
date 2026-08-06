@@ -206,9 +206,10 @@ describe('카테고리 전환 시 하위 입력 초기화', () => {
     }
   })
 
-  test('하위 에디션 카드는 위스키에서만 렌더된다', () => {
-    // 위스키에서 배치 분리를 켠 뒤 꼬냑으로 바꾸면 에디션 목록이 남아 보이던 문제
-    assert.ok(formSrc.includes('{isWhisky && form.isVariantSplit && ('),
+  test('하위 에디션 카드는 위스키·와인에서만 렌더된다', () => {
+    // 위스키에서 배치 분리를 켠 뒤 꼬냑으로 바꾸면 에디션 목록이 남아 보이던 문제.
+    // 이후 와인 빈티지가 같은 카드를 쓰게 되어 조건에 WINE 이 함께 들어간다.
+    assert.ok(formSrc.includes("{(isWhisky || category === 'WINE') && form.isVariantSplit && ("),
       '에디션 카드 조건에 카테고리 확인이 없다')
     assert.ok(!formSrc.includes('{category && form.isVariantSplit && ('),
       '카테고리 무관 조건이 남아 있다')

@@ -70,6 +70,15 @@ export interface PhotoCardFrame {
   /** 카드 전체 모서리 둥글기 — 짧은 변 대비 비율. PNG 로 뽑으면 잘린 모서리가 투명해진다. */
   radius: number
   padding: PhotoCardPadding
+  /**
+   * 카드 확장 — 비율 프리셋으로 정해지는 <b>기준 프레임</b> 바깥으로 각 변을 넓힌다.
+   * 단위는 기준 프레임 짧은 변 대비 비율(padding 과 같은 기준)이다.
+   *
+   * padding 과 역할이 다르다 — padding 은 카드 크기를 그대로 두고 <b>사진을 줄여</b> 여백을 만들고,
+   * extend 는 사진·글자를 그대로 둔 채 <b>카드를 키워</b> 배경을 덧댄다.
+   * 값이 전부 0 이면 필드 자체를 남기지 않는다(기존 템플릿 JSON 이 커지지 않게).
+   */
+  extend?: PhotoCardPadding
   photo: PhotoCardPhoto
 }
 

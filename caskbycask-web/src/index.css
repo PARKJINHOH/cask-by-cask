@@ -813,9 +813,16 @@
   .admin-content-area select,
   .admin-content-area textarea {
     font-size: 11px !important;
-    height: 1.75rem !important;
     padding-left: 0.5rem !important;
     padding-right: 0.5rem !important;
+  }
+
+  /* 높이 축소는 '한 줄 입력'에만 적용한다.
+     - textarea 는 내용에 따라 늘어나야 한다(높이를 박으면 긴 값이 잘려 보이지 않는다).
+     - 체크박스/라디오는 w-4 h-4 정사각형이라 높이만 늘리면 찌그러진다. */
+  .admin-content-area input:not([type="checkbox"]):not([type="radio"]),
+  .admin-content-area select {
+    height: 1.75rem !important;
   }
 
   /* 관리자 컨텐츠 영역의 테이블 글꼴 축소 */
@@ -860,5 +867,35 @@
   .admin-content-area button[role="switch"] {
     transform: scale(0.75) !important;
     transform-origin: left center !important;
+  }
+
+  /* ── 예외: 긴 입력 폼(.admin-form-area) ────────────────────────
+     위 규칙들은 '목록/필터 표'를 한 화면에 우겨넣기 위한 것이라
+     주류 등록·수정 같은 긴 입력 폼에 그대로 걸리면 못 쓰게 된다.
+       · 11px 입력칸 → iOS Safari 가 포커스마다 화면을 확대한다(16px 미만이면 확대).
+       · 28px 고정 높이 → 주류 이름처럼 긴 값이 잘리고 스크롤도 안 된다.
+       · 28px 버튼    → 터치 최소 권장치(44px)에 한참 못 미친다.
+     폼 영역에서만 되돌린다. 표 최적화는 그대로 둔다. */
+  .admin-content-area .admin-form-area input:not([type="checkbox"]):not([type="radio"]),
+  .admin-content-area .admin-form-area select,
+  .admin-content-area .admin-form-area textarea {
+    font-size: 16px !important;
+  }
+  .admin-content-area .admin-form-area input:not([type="checkbox"]):not([type="radio"]),
+  .admin-content-area .admin-form-area select {
+    height: 2.5rem !important;
+  }
+  .admin-content-area .admin-form-area label {
+    font-size: 12px !important;
+  }
+  .admin-content-area .admin-form-area button,
+  .admin-content-area .admin-form-area a[role="button"] {
+    font-size: 13px !important;
+    min-height: 2.25rem !important;
+  }
+  /* 하단 고정 액션바에 마지막 입력칸이 가리지 않도록 여백을 되살린다
+     (위 `[class*="p-6"]` 규칙이 pb-28 을 덮어쓴다) */
+  .admin-content-area .admin-form-area {
+    padding-bottom: 6.5rem !important;
   }
 }

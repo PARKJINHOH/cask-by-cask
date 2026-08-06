@@ -58,10 +58,8 @@ export default function AdminSpiritFormPage() {
   }
 
   const handleSubmit = async (status: SpiritStatus) => {
-    if (!form.validate()) {
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-      return
-    }
+    // validate() 가 첫 오류 입력칸으로 스크롤·포커스한다 (관리자 레이아웃에서 window.scrollTo 는 무반응)
+    if (!form.validate()) return
     setSaveType(status)
     setIsSaving(true)
     setSaveError('')
@@ -91,7 +89,8 @@ export default function AdminSpiritFormPage() {
 
   return (
     // PC 에서 가로 폭을 모두 쓴다 — 위스키는 3열(캐스크 전용 컬럼)이라 폭이 넓을수록 유리하다
-    <div className="p-6 space-y-6 pb-28">
+    // admin-form-area: 모바일 '관리자 표 최적화' CSS(11px·28px 고정)에서 제외한다 (index.css 참고)
+    <div className="admin-form-area p-6 space-y-6 pb-28">
       <AdminPageHeader
         breadcrumbs={[
           { label: '주류 관리', to: '/admin/spirits' },
@@ -128,6 +127,7 @@ export default function AdminSpiritFormPage() {
                       대표
                     </span>
                   )}
+                  {/* 캔버스 이미지 편집기는 PC 전용 */}
                   <button
                     type="button"
                     onClick={(e) => {
@@ -136,7 +136,7 @@ export default function AdminSpiritFormPage() {
                     }}
                     aria-label="이미지 편집"
                     title="이미지 편집"
-                    className="absolute top-1 right-8 z-10 w-6 h-6 flex items-center justify-center rounded-full
+                    className="hidden lg:flex absolute top-1 right-8 z-10 w-6 h-6 items-center justify-center rounded-full
                       bg-amber-600/80 text-white text-xs leading-none opacity-0 group-hover:opacity-100
                       transition-opacity hover:bg-amber-600"
                   >
@@ -144,6 +144,7 @@ export default function AdminSpiritFormPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                     </svg>
                   </button>
+                  {/* 터치에는 hover 가 없다 — 모바일에서는 항상 보이게 둔다 */}
                   <button
                     type="button"
                     onClick={(e) => {
@@ -151,8 +152,8 @@ export default function AdminSpiritFormPage() {
                       removeImage(i)
                     }}
                     aria-label="삭제"
-                    className="absolute top-1 right-1 z-10 w-6 h-6 rounded-full bg-black/60 text-white text-sm leading-none
-                      flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-black/80 transition-opacity"
+                    className="absolute top-1 right-1 z-10 w-7 h-7 lg:w-6 lg:h-6 rounded-full bg-black/70 text-white text-sm leading-none
+                      flex items-center justify-center lg:opacity-0 lg:group-hover:opacity-100 hover:bg-black/80 transition-opacity"
                   >×</button>
                 </div>
               ))}

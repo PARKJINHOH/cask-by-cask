@@ -32,6 +32,7 @@ import SpiritFormFields, { useSpiritForm, CARD } from '@/domain/admin/components
 import AdminSpiritReviewPanel from '@/domain/admin/components/AdminSpiritReviewPanel'
 import Toast from '@/shared/components/Toast'
 import { useToast } from '@/shared/hooks/useToast'
+import useIsDesktop from '@/shared/hooks/useIsDesktop'
 
 // ── 상수 ────────────────────────────────────────────────────────
 const STATUS_LABEL: Record<string, string> = {
@@ -146,6 +147,9 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 
 // ── 이미지 섹션 ──────────────────────────────────────────────────
 function SpiritImageSection({ spiritId, images }: { spiritId: number; images: AdminSpiritImageItem[] }) {
+  // 순서 변경(HTML5 드래그)과 캔버스 이미지 편집은 PC 전용이다.
+  // 모바일에서도 추가·삭제·대표 지정은 그대로 쓸 수 있다.
+  const isDesktop = useIsDesktop()
   const fileRef = useRef<HTMLInputElement>(null)
   const upload = useUploadSpiritImage()
   const deleteImg = useDeleteSpiritImage()
@@ -305,20 +309,22 @@ function SpiritImageSection({ spiritId, images }: { spiritId: number; images: Ad
       ) : (
         <>
         <div className="space-y-0.5">
-          <p className="text-xs text-neutral-400">이미지를 드래그하여 순서를 변경할 수 있습니다. 맨 왼쪽(1번)이 대표 이미지입니다.</p>
+          {/* 드래그 정렬은 PC 전용 — 모바일에서는 안내 문구도 바꿔야 "왜 안 되지" 를 만들지 않는다 */}
+          <p className="hidden lg:block text-xs text-neutral-400">이미지를 드래그하여 순서를 변경할 수 있습니다. 맨 왼쪽(1번)이 대표 이미지입니다.</p>
+          <p className="lg:hidden text-xs text-neutral-400">맨 왼쪽(1번)이 대표 이미지입니다. 순서 변경과 이미지 편집은 PC에서 할 수 있습니다.</p>
           <p className="text-xs text-neutral-400">좌측 상단에 체커보드 패턴이 보이면 해당 부분이 투명 처리된 이미지입니다.</p>
         </div>
         <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
           {order.map((img, idx) => (
             <div
               key={img.id}
-              draggable
+              draggable={isDesktop}
               onDragStart={() => { dragIndexRef.current = idx }}
               onDragOver={(e) => e.preventDefault()}
               onDrop={(e) => { e.preventDefault(); handleDrop(idx) }}
               onClick={() => setLightboxIndex(idx)}
               className="relative group aspect-square rounded-xl overflow-hidden border border-neutral-200
-                bg-white cursor-grab active:cursor-grabbing"
+                bg-white cursor-pointer lg:cursor-grab lg:active:cursor-grabbing"
             >
               <div className="absolute top-0 left-0 w-1/3 h-1/3 checker-corner" />
               <img src={img.imageUrl} alt="" className="relative w-full h-full object-cover pointer-events-none" />
@@ -330,13 +336,13 @@ function SpiritImageSection({ spiritId, images }: { spiritId: number; images: Ad
                   대표
                 </span>
               )}
-              {/* 편집 — 우측 상단 X버튼 왼쪽 */}
+              {/* 편집 — 우측 상단 X버튼 왼쪽. 캔버스 편집기는 PC 전용이라 모바일에서는 아예 감춘다 */}
               <button
                 onClick={(e) => {
                   e.stopPropagation()
                   setEditingImage(img)
                 }}
-                className="absolute top-1 right-8 z-10 w-6 h-6 flex items-center justify-center rounded-full
+                className="hidden lg:flex absolute top-1 right-8 z-10 w-6 h-6 items-center justify-center rounded-full
                   bg-amber-600/80 text-white text-xs leading-none opacity-0 group-hover:opacity-100
                   transition-opacity hover:bg-amber-600"
                 aria-label="이미지 편집"
@@ -346,7 +352,8 @@ function SpiritImageSection({ spiritId, images }: { spiritId: number; images: Ad
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                 </svg>
               </button>
-              {/* 삭제 — 우측 상단 */}
+              {/* 삭제 — 우측 상단.
+                  터치에는 hover 가 없다. 모바일에서는 항상 보이게 두고 PC 에서만 hover 로 드러낸다. */}
               <button
                 onClick={(e) => {
                   e.stopPropagation()
@@ -354,25 +361,38 @@ function SpiritImageSection({ spiritId, images }: { spiritId: number; images: Ad
                     deleteImg.mutate({ id: spiritId, imageId: img.id })
                 }}
                 disabled={deleteImg.isPending}
-                className="absolute top-1 right-1 z-10 w-6 h-6 flex items-center justify-center rounded-full
-                  bg-red-500/80 text-white text-sm leading-none opacity-0 group-hover:opacity-100
+                className="absolute top-1 right-1 z-10 w-7 h-7 lg:w-6 lg:h-6 flex items-center justify-center rounded-full
+                  bg-red-500/90 text-white text-sm leading-none
+                  lg:opacity-0 lg:group-hover:opacity-100
                   transition-opacity hover:bg-red-500 disabled:opacity-50"
                 aria-label="이미지 삭제"
               >
                 ✕
               </button>
               {!img.isPrimary && (
-                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100
-                  transition-opacity flex items-center justify-center">
+                <>
+                  {/* PC — 타일 전체를 덮는 hover 오버레이 */}
+                  <div className="hidden lg:flex absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100
+                    transition-opacity items-center justify-center">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setPrimary.mutate({ id: spiritId, imageId: img.id }) }}
+                      disabled={setPrimary.isPending}
+                      className="text-white text-xs font-semibold px-2 py-1 bg-amber-600/90 rounded
+                        hover:bg-amber-700 disabled:opacity-50"
+                    >
+                      대표 설정
+                    </button>
+                  </div>
+                  {/* 모바일 — 항상 보이는 버튼. 순서 드래그를 못 쓰는 대신 여기서 대표를 지정한다 */}
                   <button
                     onClick={(e) => { e.stopPropagation(); setPrimary.mutate({ id: spiritId, imageId: img.id }) }}
                     disabled={setPrimary.isPending}
-                    className="text-white text-xs font-semibold px-2 py-1 bg-amber-600/90 rounded
-                      hover:bg-amber-700 disabled:opacity-50"
+                    className="lg:hidden absolute bottom-1 right-1 z-10 px-2 py-1 rounded-md bg-amber-600/90
+                      text-white text-[10px] font-semibold leading-none disabled:opacity-50"
                   >
-                    대표 설정
+                    대표
                   </button>
-                </div>
+                </>
               )}
             </div>
           ))}
@@ -512,9 +532,11 @@ export default function AdminSpiritDetailPage() {
       await new Promise<void>((resolve) => window.setTimeout(resolve, 0))
     }
 
+    // validate() 가 첫 오류 입력칸으로 스크롤·포커스한다.
+    // (여기서 window.scrollTo 를 부르면 안 된다 — 관리자 레이아웃은 안쪽 컨테이너가 스크롤돼 무반응이고,
+    //  오류 입력칸으로 가는 스크롤과 서로 부딪힌다)
     if (!form.validate()) {
       setActiveTab('detail')
-      window.scrollTo({ top: 0, behavior: 'smooth' })
       return
     }
     if (!validateApprovalVariantSpecs()) return
@@ -607,7 +629,8 @@ export default function AdminSpiritDetailPage() {
 
   return (
     // PC 에서 가로 폭을 모두 쓴다 — 위스키는 3열(캐스크 전용 컬럼)이라 폭이 넓을수록 유리하다
-    <div className="p-6 space-y-6 pb-28">
+    // admin-form-area: 모바일 '관리자 표 최적화' CSS(11px·28px 고정)에서 제외한다 (index.css 참고)
+    <div className="admin-form-area p-6 space-y-6 pb-28">
       {/* 헤더 */}
       <AdminPageHeader
         breadcrumbs={[

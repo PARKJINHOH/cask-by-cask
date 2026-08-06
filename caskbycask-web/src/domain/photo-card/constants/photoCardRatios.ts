@@ -19,6 +19,23 @@ const RATIO_VALUES: Record<PhotoCardRatio, number> = {
 
 export const ratioValue = (ratio: PhotoCardRatio): number => RATIO_VALUES[ratio] ?? 1
 
+/**
+ * 카드 크기를 px 로 <b>보여 줄 때</b>의 기준 짧은 변.
+ *
+ * 레이아웃은 전부 비율로 저장돼 실제 px 는 내보내기 크기(1350/2048/원본)마다 달라진다.
+ * 그래서 "몇 px 늘릴지"를 말하려면 고정된 기준 하나가 필요하다 — 디자인 도구의 '설계 크기'와 같다.
+ * 1080 은 인스타그램 기준 가로폭이라 4:5 가 1080×1350 처럼 익숙한 숫자로 떨어진다.
+ */
+export const PHOTO_CARD_DESIGN_SHORT_SIDE = 1080
+
+/** 설계 크기 기준의 기준 프레임(확장 전) 크기. 카드 크기 입력이 px 로 보이는 근거다. */
+export const designBaseSizeOf = (ratio: PhotoCardRatio): { width: number; height: number } => {
+  const value = ratioValue(ratio)
+  return value >= 1
+    ? { width: Math.round(PHOTO_CARD_DESIGN_SHORT_SIDE * value), height: PHOTO_CARD_DESIGN_SHORT_SIDE }
+    : { width: PHOTO_CARD_DESIGN_SHORT_SIDE, height: Math.round(PHOTO_CARD_DESIGN_SHORT_SIDE / value) }
+}
+
 /** 미리보기 캔버스의 긴 변. 화면에서는 CSS 로 줄여 보여 준다. */
 export const PHOTO_CARD_MAX_EDGE = 2048
 

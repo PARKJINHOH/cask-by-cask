@@ -19,6 +19,11 @@ export const PHOTO_CARD_MAX_TEXT_LENGTH = 200
 export const PHOTO_CARD_MAX_TEMPLATES = 30
 export const PHOTO_CARD_MIN_FONT_SIZE_RATIO = 0.005
 export const PHOTO_CARD_MAX_FONT_SIZE_RATIO = 0.3
+/**
+ * 한 변에 더할 수 있는 최대 확장 — 기준 프레임 짧은 변 대비.
+ * 1 이면 사방으로 짧은 변만큼씩, 즉 카드가 최대 3배까지 커진다. 그 이상은 사진이 점만 해진다.
+ */
+export const PHOTO_CARD_MAX_EXTEND = 1
 
 export const PHOTO_CARD_LAYER_TYPES: PhotoCardLayerType[] = ['TEXT', 'IMAGE', 'DIVIDER', 'BOX', 'ICON']
 export const PHOTO_CARD_IMAGE_SOURCES: PhotoCardImageSource[] = ['PRODUCER_LOGO', 'SPIRIT_IMAGE', 'UPLOAD']
@@ -132,6 +137,15 @@ export const normalizeLayer = (layer: PhotoCardLayer): PhotoCardLayer => {
 export const normalizeLayout = (layout: PhotoCardLayout): PhotoCardLayout => {
   const padding = layout.frame?.padding ?? { top: 0, right: 0, bottom: 0, left: 0 }
   const photo = layout.frame?.photo ?? { fit: 'COVER' as const, radius: 0, x: 0.5, y: 0.5, w: 1, h: 1 }
+  const extend = layout.frame?.extend
+  const safeExtend = {
+    top: ratio(extend?.top, 0, 0, PHOTO_CARD_MAX_EXTEND),
+    right: ratio(extend?.right, 0, 0, PHOTO_CARD_MAX_EXTEND),
+    bottom: ratio(extend?.bottom, 0, 0, PHOTO_CARD_MAX_EXTEND),
+    left: ratio(extend?.left, 0, 0, PHOTO_CARD_MAX_EXTEND),
+  }
+  // 늘리지 않은 카드는 필드를 아예 남기지 않는다 — 기존 템플릿 JSON 이 그대로 유지된다.
+  const extended = Object.values(safeExtend).some((value) => value > 0)
   return {
     // 서버가 어차피 자기 상수로 덮어쓴다. 여기서도 클라이언트 값을 넘겨받지 않는다.
     schemaVersion: PHOTO_CARD_SCHEMA_VERSION,
@@ -145,6 +159,7 @@ export const normalizeLayout = (layout: PhotoCardLayout): PhotoCardLayout => {
         bottom: ratio(padding.bottom, 0, 0, 0.5),
         left: ratio(padding.left, 0, 0, 0.5),
       },
+      ...(extended ? { extend: safeExtend } : {}),
       photo: {
         fit: photo.fit === 'CONTAIN' ? 'CONTAIN' : 'COVER',
         radius: ratio(photo.radius, 0, 0, 0.5),

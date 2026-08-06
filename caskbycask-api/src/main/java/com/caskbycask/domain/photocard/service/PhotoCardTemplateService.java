@@ -50,6 +50,11 @@ public class PhotoCardTemplateService {
     private static final int MAX_TEMPLATES_PER_USER = 30;
     private static final double MIN_FONT_SIZE_RATIO = 0.005;
     private static final double MAX_FONT_SIZE_RATIO = 0.30;
+    /**
+     * 한 변에 더할 수 있는 최대 카드 확장 — 기준 프레임 짧은 변 대비.
+     * 프론트 {@code layoutSchema.ts} 의 PHOTO_CARD_MAX_EXTEND 와 같아야 한다.
+     */
+    private static final double MAX_EXTEND = 1.0;
 
     private static final Pattern HEX_COLOR = Pattern.compile("^#[0-9a-fA-F]{6}$");
     /** 반투명을 허용하는 자리(박스 채움)는 8자리도 받는다. */
@@ -417,6 +422,21 @@ public class PhotoCardTemplateService {
                 ratio(padding.left(), 0.0, 0.0, 0.5, "여백")
         );
 
+        // 카드 확장 — 늘리지 않았으면 필드를 남기지 않는다(기존 템플릿 JSON 이 그대로 유지된다).
+        PhotoCardLayout.Padding safeExtend = null;
+        if (frame.extend() != null) {
+            PhotoCardLayout.Padding extend = frame.extend();
+            PhotoCardLayout.Padding clamped = new PhotoCardLayout.Padding(
+                    ratio(extend.top(), 0.0, 0.0, MAX_EXTEND, "카드 크기"),
+                    ratio(extend.right(), 0.0, 0.0, MAX_EXTEND, "카드 크기"),
+                    ratio(extend.bottom(), 0.0, 0.0, MAX_EXTEND, "카드 크기"),
+                    ratio(extend.left(), 0.0, 0.0, MAX_EXTEND, "카드 크기")
+            );
+            if (clamped.top() > 0 || clamped.right() > 0 || clamped.bottom() > 0 || clamped.left() > 0) {
+                safeExtend = clamped;
+            }
+        }
+
         PhotoCardLayout.Photo photo = frame.photo() != null ? frame.photo()
                 : new PhotoCardLayout.Photo("COVER", 0.0, 0.5, 0.5, 1.0, 1.0);
         String fit = photo.fit() != null ? photo.fit().toUpperCase(Locale.ROOT) : "COVER";
@@ -434,7 +454,7 @@ public class PhotoCardTemplateService {
         return new PhotoCardLayout.Frame(
                 ratio, background,
                 ratio(frame.radius(), 0.0, 0.0, 0.5, "카드 모서리"),
-                safePadding, safePhoto);
+                safePadding, safeExtend, safePhoto);
     }
 
     private PhotoCardLayout.Layer normalizeLayer(PhotoCardLayout.Layer layer) {

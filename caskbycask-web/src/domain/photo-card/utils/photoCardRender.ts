@@ -5,6 +5,7 @@ import type {
   PhotoCardDataContext,
   PhotoCardLayer,
   PhotoCardLayout,
+  PhotoCardPadding,
   PhotoCardRatio,
 } from '../types/photoCard.types'
 import { getDrawableLayers, getSelectableLayers, resolveLayerText } from './resolveBindings'
@@ -25,9 +26,25 @@ import { getDrawableLayers, getSelectableLayers, resolveLayerText } from './reso
  * 짧은 변을 기준으로 삼아야 1:1 과 9:16 에서 글자 크기가 같아 보인다.
  */
 
+export interface PhotoRect {
+  left: number
+  top: number
+  width: number
+  height: number
+}
+
 export interface PhotoCardCanvasSize {
   width: number
   height: number
+  /**
+   * 비율→px 환산 기준. <b>확장 전 기준 프레임</b>의 짧은 변이다(확장이 없으면 캔버스 짧은 변과 같다).
+   *
+   * 카드를 넓혀도 글자·여백·사진이 그대로 남는 것은 이 값이 캔버스 크기와 따로 놀기 때문이다.
+   * 캔버스 짧은 변으로 환산하면 좌우를 넓힐 때 글자까지 함께 커진다.
+   */
+  unit?: number
+  /** 기준 프레임이 캔버스 안에서 차지하는 자리. 확장이 없으면 캔버스 전체다. */
+  base?: PhotoRect
 }
 
 /**
@@ -50,14 +67,69 @@ export const IDENTITY_PHOTO_TRANSFORM: PhotoTransform = { scale: 1, offsetX: 0, 
 const clamp = (value: number, min: number, max: number): number =>
   Math.max(min, Math.min(max, value))
 
-export const frameSizeOf = (ratio: PhotoCardRatio, maxEdge: number): PhotoCardCanvasSize => {
-  const value = ratioValue(ratio)
-  return value >= 1
-    ? { width: maxEdge, height: Math.max(1, Math.round(maxEdge / value)) }
-    : { width: Math.max(1, Math.round(maxEdge * value)), height: maxEdge }
+/** frameSizeOf 가 실제로 쓰는 값. 프레임 전체를 넘겨도 되고 이 두 개만 넘겨도 된다. */
+export interface FrameSizeSource {
+  ratio: PhotoCardRatio
+  extend?: PhotoCardPadding
 }
 
-export const shortSideOf = (size: PhotoCardCanvasSize): number => Math.min(size.width, size.height)
+const extendOf = (extend: PhotoCardPadding | undefined) => ({
+  top: Math.max(0, extend?.top ?? 0),
+  right: Math.max(0, extend?.right ?? 0),
+  bottom: Math.max(0, extend?.bottom ?? 0),
+  left: Math.max(0, extend?.left ?? 0),
+})
+
+/**
+ * 카드 캔버스 크기. 확장까지 포함한 전체가 maxEdge 안에 들어간다.
+ *
+ * 확장이 있으면 기준 프레임은 캔버스보다 작아지고, 그 자리(base)와 환산 단위(unit)를 함께 돌려준다.
+ * 확장이 없을 때는 예전과 완전히 같은 `{ width, height }` 만 돌려준다 —
+ * 기존 템플릿·테스트가 보던 값이 달라지지 않게.
+ */
+export const frameSizeOf = (frame: FrameSizeSource, maxEdge: number): PhotoCardCanvasSize => {
+  const value = ratioValue(frame.ratio)
+  // 기준 프레임을 '짧은 변 = 1' 로 두면 확장값(짧은 변 대비 비율)을 그대로 더할 수 있다.
+  const baseWidth = value >= 1 ? value : 1
+  const baseHeight = value >= 1 ? 1 : 1 / value
+  const ext = extendOf(frame.extend)
+
+  const totalWidth = baseWidth + ext.left + ext.right
+  const totalHeight = baseHeight + ext.top + ext.bottom
+  const scale = maxEdge / Math.max(totalWidth, totalHeight)
+  const width = Math.max(1, Math.round(totalWidth * scale))
+  const height = Math.max(1, Math.round(totalHeight * scale))
+
+  if (ext.top === 0 && ext.right === 0 && ext.bottom === 0 && ext.left === 0) {
+    return { width, height }
+  }
+  return {
+    width,
+    height,
+    unit: scale,
+    base: {
+      left: ext.left * scale,
+      top: ext.top * scale,
+      width: baseWidth * scale,
+      height: baseHeight * scale,
+    },
+  }
+}
+
+/** 기준 프레임이 캔버스 안에서 차지하는 자리. 확장이 없으면 캔버스 전체다. */
+export const baseRectOf = (size: PhotoCardCanvasSize): PhotoRect =>
+  size.base ?? { left: 0, top: 0, width: size.width, height: size.height }
+
+/** 비율→px 환산 기준. 카드를 넓혀도 이 값은 변하지 않는다(=글자·사진 크기가 그대로다). */
+export const shortSideOf = (size: PhotoCardCanvasSize): number =>
+  size.unit ?? Math.min(size.width, size.height)
+
+/**
+ * 캔버스 자체의 짧은 변.
+ * 카드 모서리·워터마크처럼 '늘어난 카드 전체'에 걸리는 값만 이 기준을 쓴다.
+ */
+export const canvasShortSideOf = (size: PhotoCardCanvasSize): number =>
+  Math.min(size.width, size.height)
 
 /** 비율 → 픽셀. 렌더의 모든 크기 계산이 이 함수를 통과한다. */
 export const toPx = (ratioSize: number | undefined, shortSide: number, fallback = 0): number =>
@@ -65,21 +137,20 @@ export const toPx = (ratioSize: number | undefined, shortSide: number, fallback 
 
 // ── 사진 영역 ────────────────────────────────────────────────
 
-export interface PhotoRect {
-  left: number
-  top: number
-  width: number
-  height: number
-}
-
-/** 프레임 안에서 사진이 차지할 사각형. padding 을 뺀 영역에 photo(x,y,w,h) 를 얹는다. */
+/**
+ * 사진이 차지할 사각형. <b>기준 프레임</b> 안에서 padding 을 뺀 영역에 photo(x,y,w,h) 를 얹는다.
+ *
+ * 캔버스가 아니라 기준 프레임을 쓴다 — 카드를 넓혔을 때 늘어난 자리는 배경으로 남고
+ * 사진은 원래 크기·자리를 지켜야 하기 때문이다.
+ */
 export const photoRectOf = (layout: PhotoCardLayout, size: PhotoCardCanvasSize): PhotoRect => {
   const shortSide = shortSideOf(size)
+  const base = baseRectOf(size)
   const padding = layout.frame.padding
-  const innerLeft = toPx(padding.left, shortSide)
-  const innerTop = toPx(padding.top, shortSide)
-  const innerWidth = size.width - innerLeft - toPx(padding.right, shortSide)
-  const innerHeight = size.height - innerTop - toPx(padding.bottom, shortSide)
+  const innerLeft = base.left + toPx(padding.left, shortSide)
+  const innerTop = base.top + toPx(padding.top, shortSide)
+  const innerWidth = base.width - toPx(padding.left, shortSide) - toPx(padding.right, shortSide)
+  const innerHeight = base.height - toPx(padding.top, shortSide) - toPx(padding.bottom, shortSide)
 
   const photo = layout.frame.photo
   const width = Math.max(1, innerWidth * photo.w)
@@ -112,8 +183,8 @@ export const reflowLayersForFrame = (
 ): PhotoCardLayer[] => {
   // 비율만 쓰므로 기준 크기가 무엇이든 결과는 같다.
   const PROBE_EDGE = 1000
-  const fromSize = frameSizeOf(layout.frame.ratio, PROBE_EDGE)
-  const toSize = frameSizeOf(nextFrame.ratio, PROBE_EDGE)
+  const fromSize = frameSizeOf(layout.frame, PROBE_EDGE)
+  const toSize = frameSizeOf(nextFrame, PROBE_EDGE)
   const from = photoRectOf(layout, fromSize)
   const to = photoRectOf({ ...layout, frame: nextFrame }, toSize)
   if (from.width <= 1 || from.height <= 1) return layout.layers
@@ -151,6 +222,49 @@ export const reflowLayersForFrame = (
       y: mapAxis(layer.position.y * fromSize.height,
         from.top, from.height, fromSize.height,
         to.top, to.height, toSize.height) / toSize.height,
+    },
+  }))
+}
+
+/**
+ * 카드를 넓혔을 때(frame.extend 변경) 요소를 제자리에 붙잡아 둔다.
+ *
+ * 요소 좌표는 <b>캔버스 대비</b> 비율이라, 캔버스만 커지면 같은 0.5 가 다른 자리를 가리킨다 —
+ * 아래로 200px 늘렸을 뿐인데 밴드에 앉아 있던 글이 위로 딸려 올라간다.
+ * 기준 프레임 안에서의 상대 위치를 그대로 새 캔버스 좌표로 옮겨, 사용자가 맞춰 둔 자리를 지킨다.
+ *
+ * reflowLayersForFrame 과 달리 <b>사진 액자를 기준으로 다시 앉히지 않는다</b> —
+ * 확장은 액자 안쪽을 하나도 건드리지 않으므로, 재배치하면 오히려 자리가 틀어진다.
+ */
+export const reanchorLayersForExtend = (
+  layout: PhotoCardLayout,
+  nextFrame: PhotoCardLayout['frame'],
+): PhotoCardLayer[] => {
+  const PROBE_EDGE = 1000
+  const fromSize = frameSizeOf(layout.frame, PROBE_EDGE)
+  const toSize = frameSizeOf(nextFrame, PROBE_EDGE)
+  const from = baseRectOf(fromSize)
+  const to = baseRectOf(toSize)
+  if (from.width <= 0 || from.height <= 0) return layout.layers
+
+  const mapAxis = (
+    value: number,
+    fromStart: number, fromLength: number, fromTotal: number,
+    toStart: number, toLength: number, toTotal: number,
+  ) => clamp(
+    (toStart + ((value * fromTotal - fromStart) / fromLength) * toLength) / toTotal,
+    0, 1,
+  )
+
+  return layout.layers.map((layer) => ({
+    ...layer,
+    position: {
+      x: mapAxis(layer.position.x,
+        from.left, from.width, fromSize.width,
+        to.left, to.width, toSize.width),
+      y: mapAxis(layer.position.y,
+        from.top, from.height, fromSize.height,
+        to.top, to.height, toSize.height),
     },
   }))
 }
@@ -546,7 +660,8 @@ export const WATERMARK_OPACITY = 0.5
  * @param aspect 마크 그림의 세로/가로 비. 정사각이 아니어도 아래·오른쪽 끝이 맞는다.
  */
 export const watermarkRectOf = (size: PhotoCardCanvasSize, aspect = 1) => {
-  const shortSide = shortSideOf(size)
+  // 마크는 '내보낸 이미지' 오른쪽 아래에 붙는 표시라, 늘어난 카드 전체를 기준으로 잡는다.
+  const shortSide = canvasShortSideOf(size)
   const width = shortSide * WATERMARK_WIDTH_RATIO
   const height = width * aspect
   const margin = shortSide * WATERMARK_MARGIN_RATIO
@@ -594,7 +709,8 @@ export const drawPhotoCard = (
 
   // 카드 모서리를 둥글게 잘라 낸다. PNG 로 뽑으면 잘린 부분이 투명해지고,
   // JPG 는 투명을 담지 못해 검게 나오므로 배경색으로 한 번 칠한 뒤 클립한다.
-  const frameRadius = toPx(layout.frame.radius, shortSideOf(size))
+  // 카드 모서리는 늘어난 카드 전체의 모서리다 — 기준 프레임이 아니라 캔버스를 기준으로 깎는다.
+  const frameRadius = toPx(layout.frame.radius, canvasShortSideOf(size))
   if (frameRadius > 0) {
     roundedRectPath(ctx, 0, 0, size.width, size.height, frameRadius)
     ctx.clip()

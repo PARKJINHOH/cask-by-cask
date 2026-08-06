@@ -25,7 +25,8 @@ import {
 } from '../utils/layoutSchema'
 import type { PhotoCardDraft } from '../utils/photoCardDraft'
 import {
-  drawPhotoCard, drawWatermark, frameSizeOf, photoRectOf, reflowLayersForFrame, shortSideOf,
+  drawPhotoCard, drawWatermark, frameSizeOf, photoRectOf,
+  reanchorLayersForExtend, reflowLayersForFrame, shortSideOf,
   IDENTITY_PHOTO_TRANSFORM, type LoadedImages, type PhotoTransform,
 } from '../utils/photoCardRender'
 import {
@@ -71,7 +72,7 @@ export const placeCarriedLayers = (layout: PhotoCardLayout, bindings: PhotoCardB
   const fitsInBand = step >= minGap
 
   // 사진 아래 경계 — 밴드에 자리가 없을 때 캡션을 올릴 기준
-  const probe = frameSizeOf(layout.frame.ratio, 1000)
+  const probe = frameSizeOf(layout.frame, 1000)
   const rect = photoRectOf(layout, probe)
   const photoBottomY = (rect.top + rect.height) / probe.height
 
@@ -403,7 +404,7 @@ export const usePhotoCardEditor = ({ watermark = false }: EditorOptions = {}) =>
     const load = async () => {
       setFontsReady(false)
       await ensureEditorFontCssLoaded()
-      const size = frameSizeOf(layout.frame.ratio, PHOTO_CARD_MAX_EDGE)
+      const size = frameSizeOf(layout.frame, PHOTO_CARD_MAX_EDGE)
       const shortSide = shortSideOf(size)
       if (typeof document !== 'undefined' && document.fonts) {
         await Promise.all(getDrawableLayers(layout.layers, dataContext)
@@ -661,6 +662,26 @@ export const usePhotoCardEditor = ({ watermark = false }: EditorOptions = {}) =>
     }), gesture ?? 'frame:padding')
   }, [withLayout])
 
+  /**
+   * 카드 확장 — 비율 프리셋 바깥으로 각 변을 넓힌다(짧은 변 대비 비율).
+   *
+   * 늘어난 자리는 배경색이 되고 사진·글자 크기는 그대로다. 캔버스가 커지면 요소 좌표가
+   * 가리키는 자리가 달라지므로, 늘린 만큼 좌표를 다시 계산해 맞춰 둔 자리를 지킨다.
+   */
+  const setFrameExtend = useCallback((patch: Partial<PhotoCardPadding>, gesture?: string) => {
+    withLayout((current) => {
+      const before: PhotoCardPadding = {
+        top: 0, right: 0, bottom: 0, left: 0, ...current.frame.extend,
+      }
+      const after: PhotoCardPadding = { ...before, ...patch }
+      if ((['top', 'right', 'bottom', 'left'] as const).every((side) => after[side] === before[side])) {
+        return current
+      }
+      const frame = { ...current.frame, extend: after }
+      return { ...current, frame, layers: reanchorLayersForExtend(current, frame) }
+    }, gesture ?? 'frame:extend')
+  }, [withLayout])
+
   const patchPhoto = useCallback((
     patch: Partial<PhotoCardLayout['frame']['photo']>,
     gesture?: string,
@@ -693,8 +714,10 @@ export const usePhotoCardEditor = ({ watermark = false }: EditorOptions = {}) =>
 
     commit((current) => {
       // 가로는 언제나 꽉 채운다 — 좌우 여백을 없애는 것이 이 기능의 목적이다.
+      // 카드 확장은 빼고 잰다 — 여백·사진 값은 전부 기준 프레임 기준이고,
+      // 늘려 둔 바깥 여백은 사진 액자와 아무 상관이 없다(그대로 유지된다).
       let ratio = current.layout.frame.ratio
-      let size = frameSizeOf(ratio, PHOTO_CARD_MAX_EDGE)
+      let size = frameSizeOf({ ratio }, PHOTO_CARD_MAX_EDGE)
       let height = size.width / aspect
 
       // 지금 카드가 사진보다 낮으면 가로를 꽉 채울 수 없다(사진이 카드 밖으로 나간다).
@@ -705,7 +728,7 @@ export const usePhotoCardEditor = ({ watermark = false }: EditorOptions = {}) =>
           .sort((a, b) => ratioValue(b.value) - ratioValue(a.value))[0]
         if (taller) {
           ratio = taller.value
-          size = frameSizeOf(ratio, PHOTO_CARD_MAX_EDGE)
+          size = frameSizeOf({ ratio }, PHOTO_CARD_MAX_EDGE)
           height = size.width / aspect
         }
       }
@@ -818,7 +841,7 @@ export const usePhotoCardEditor = ({ watermark = false }: EditorOptions = {}) =>
    */
   const nativeMaxEdge = useMemo(() => {
     if (!photoImage) return PHOTO_CARD_MAX_EDGE
-    const probe = frameSizeOf(layout.frame.ratio, 1000)
+    const probe = frameSizeOf(layout.frame, 1000)
     const rect = photoRectOf(layout, probe)
     if (rect.width <= 0 || rect.height <= 0) return PHOTO_CARD_MAX_EDGE
     const longEdge = Math.max(probe.width, probe.height)
@@ -844,7 +867,7 @@ export const usePhotoCardEditor = ({ watermark = false }: EditorOptions = {}) =>
     watermark = false,
   ): Promise<Blob | null> => {
     if (!photoImage) return null
-    const size = frameSizeOf(layout.frame.ratio, maxEdge ?? nativeMaxEdge)
+    const size = frameSizeOf(layout.frame, maxEdge ?? nativeMaxEdge)
     const canvas = document.createElement('canvas')
     canvas.width = size.width
     canvas.height = size.height
@@ -897,7 +920,8 @@ export const usePhotoCardEditor = ({ watermark = false }: EditorOptions = {}) =>
     lockedIds, toggleLock,
     patchLayer, moveLayersTo, nudgeLayers,
     addLayer, addBoundText, addIcon, duplicateLayer, removeLayer, removeLayers, reorderLayer,
-    setFrameRadius, setPhotoRadius, setFramePadding, setBackgroundColor, setPhotoFit, patchPhoto,
+    setFrameRadius, setPhotoRadius, setFramePadding, setFrameExtend,
+    setBackgroundColor, setPhotoFit, patchPhoto,
     fitPhotoArea,
     photoFile, photoUrl, photoImage, setPhoto,
     photoTransform, patchPhotoTransform, resetPhotoTransform,
