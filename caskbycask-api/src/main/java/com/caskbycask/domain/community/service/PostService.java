@@ -16,6 +16,10 @@ import com.caskbycask.domain.producer.entity.Producer;
 import com.caskbycask.domain.producer.repository.ProducerRepository;
 import com.caskbycask.domain.score.constant.ScoreActions;
 import com.caskbycask.domain.score.service.ScoreService;
+import com.caskbycask.domain.spirit.entity.Spirit;
+import com.caskbycask.domain.spirit.entity.SpiritImage;
+import com.caskbycask.domain.spirit.repository.SpiritImageRepository;
+import com.caskbycask.domain.spirit.repository.SpiritRepository;
 import com.caskbycask.domain.social.entity.enums.SocialSourceType;
 import com.caskbycask.domain.social.service.SocialPublishRequestService;
 import com.caskbycask.domain.user.entity.User;
@@ -34,8 +38,11 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -51,6 +58,9 @@ public class PostService {
     private final PostPrefixRepository postPrefixRepository;
     private final PostImageRepository postImageRepository;
     private final PostVideoRepository postVideoRepository;
+    private final PostSpiritTagRepository postSpiritTagRepository;
+    private final SpiritRepository spiritRepository;
+    private final SpiritImageRepository spiritImageRepository;
     private final SeriesRepository seriesRepository;
     private final DeletedPostRepository deletedPostRepository;
     private final UserBlockRepository userBlockRepository;
@@ -136,25 +146,110 @@ public class PostService {
         List<Long> postIds = posts.getContent().stream()
                 .map(Post::getId)
                 .toList();
-        Map<Long, String> thumbnailImageUrls = firstImageUrlsByPostIds(postIds);
+        Map<Long, PostThumbnail> thumbnails = firstThumbnailsByPostIds(postIds);
         Map<Long, String> thumbnailVideoUrls = firstVideoUrlsByPostIds(postIds);
+        Map<Long, List<PostSpiritTagInfo>> spiritTags = spiritTagsByPostIds(postIds);
         return posts.map(post -> PostListResponse.from(
                 post,
-                thumbnailImageUrls.get(post.getId()),
-                thumbnailVideoUrls.get(post.getId())
+                thumbnails.get(post.getId()),
+                thumbnailVideoUrls.get(post.getId()),
+                spiritTags.getOrDefault(post.getId(), List.of())
         ));
     }
 
-    private Map<Long, String> firstImageUrlsByPostIds(List<Long> postIds) {
+    private Map<Long, PostThumbnail> firstThumbnailsByPostIds(List<Long> postIds) {
         if (postIds.isEmpty()) {
             return Map.of();
         }
-        return postImageRepository.findFirstImageUrlsByPostIds(postIds).stream()
+        return postImageRepository.findFirstThumbnailsByPostIds(postIds).stream()
                 .collect(Collectors.toMap(
-                        row -> (Long) row[0],
-                        row -> (String) row[1],
+                        PostThumbnail::postId,
+                        thumbnail -> thumbnail,
                         (first, ignored) -> first
                 ));
+    }
+
+    /**
+     * 게시글별 주류 태그를 한 번에 조회한다 (목록에서 게시글마다 조회하면 N+1).
+     * 대표 이미지는 주류 id 를 모아 별도로 한 번 더 조회해 붙인다.
+     */
+    private Map<Long, List<PostSpiritTagInfo>> spiritTagsByPostIds(List<Long> postIds) {
+        if (postIds.isEmpty()) {
+            return Map.of();
+        }
+        List<PostSpiritTag> tags = postSpiritTagRepository.findByPostIdInWithSpirit(postIds);
+        if (tags.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, String> imageUrls = primarySpiritImageUrls(tags);
+        Map<Long, List<PostSpiritTagInfo>> result = new LinkedHashMap<>();
+        for (PostSpiritTag tag : tags) {
+            result.computeIfAbsent(tag.getPost().getId(), key -> new ArrayList<>())
+                    .add(PostSpiritTagInfo.of(tag, imageUrls.get(tag.getSpirit().getId())));
+        }
+        return result;
+    }
+
+    /**
+     * 주류 상세의 "이 술의 사진" — 그 주류가 태그된 이미지 갤러리 글을 최신순으로.
+     * 숨김·삭제 글 제외 조건은 쿼리가 강제한다.
+     */
+    @Transactional(readOnly = true)
+    public Page<PostListResponse> getPhotoPostsBySpirit(Long spiritId, int page, int size) {
+        int safeSize = Math.min(Math.max(size, 1), 50);
+        return toPostListResponses(postSpiritTagRepository
+                .findPublicPhotoPostsBySpiritId(spiritId, PageRequest.of(page, safeSize)));
+    }
+
+    /** 상세 화면용 주류 태그. 이미지 갤러리가 아니면 조회조차 하지 않는다. */
+    private List<PostSpiritTagInfo> spiritTagsOf(Post post) {
+        if (!BoardType.PHOTO.equals(post.getBoardType())) {
+            return List.of();
+        }
+        List<PostSpiritTag> tags = postSpiritTagRepository.findByPostIdWithSpirit(post.getId());
+        if (tags.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, String> imageUrls = primarySpiritImageUrls(tags);
+        return tags.stream()
+                .map(tag -> PostSpiritTagInfo.of(tag, imageUrls.get(tag.getSpirit().getId())))
+                .toList();
+    }
+
+    private Map<Long, String> primarySpiritImageUrls(List<PostSpiritTag> tags) {
+        List<Long> spiritIds = tags.stream()
+                .map(tag -> tag.getSpirit().getId())
+                .distinct()
+                .toList();
+        if (spiritIds.isEmpty()) {
+            return Map.of();
+        }
+        return spiritImageRepository.findBySpiritIdInAndIsPrimaryTrue(spiritIds).stream()
+                .collect(Collectors.toMap(
+                        image -> image.getSpirit().getId(),
+                        SpiritImage::getImageUrl,
+                        (first, ignored) -> first
+                ));
+    }
+
+    /** 주류 태그 지정 — 이미지 갤러리 글에서만 쓴다. 다른 게시판은 요청이 와도 무시한다. */
+    private void applySpiritTags(Post post, List<Long> spiritTagIds) {
+        if (!BoardType.PHOTO.equals(post.getBoardType())) {
+            return;
+        }
+        if (spiritTagIds == null || spiritTagIds.isEmpty()) {
+            post.replaceSpiritTags(List.of());
+            return;
+        }
+        List<Long> uniqueIds = spiritTagIds.stream().filter(Objects::nonNull).distinct().toList();
+        List<Spirit> spirits = spiritRepository.findAllById(uniqueIds);
+        if (spirits.size() != uniqueIds.size()) {
+            throw new CustomException(ErrorCode.SPIRIT_NOT_FOUND);
+        }
+        // 요청 순서를 유지한다(사용자가 고른 순서가 카드/태그 노출 순서다).
+        Map<Long, Spirit> byId = spirits.stream()
+                .collect(Collectors.toMap(Spirit::getId, spirit -> spirit));
+        post.replaceSpiritTags(uniqueIds.stream().map(byId::get).toList());
     }
 
     private Map<Long, String> firstVideoUrlsByPostIds(List<Long> postIds) {
@@ -192,7 +287,8 @@ public class PostService {
         postViewCountService.tryIncrementViewCount(postId, userId, clientIp);
 
         PostDetailResponse.Builder builder = PostDetailResponse.builder(post, showContent)
-                .isHidden(hidden);
+                .isHidden(hidden)
+                .spiritTags(spiritTagsOf(post));
 
         if (showContent && BoardType.NOTICE.equals(post.getBoardType())
                 && AI_SYSTEM_AUTHOR_EMAIL.equalsIgnoreCase(post.getAuthor().getEmail())) {
@@ -285,6 +381,9 @@ public class PostService {
 
         Post post = postRepository.save(postBuilder.build());
 
+        // 5-1. 주류 태그 (이미지 갤러리 전용 — 그 외 게시판은 내부에서 무시된다)
+        applySpiritTags(post, request.getSpiritTagIds());
+
         if (series != null) {
             series.incrementPostCount();
         }
@@ -313,7 +412,7 @@ public class PostService {
             socialPublishRequestService.requestPost(post.getId(), author, request.getSocialPublish());
         }
 
-        return PostDetailResponse.builder(post, true).build();
+        return PostDetailResponse.builder(post, true).spiritTags(spiritTagsOf(post)).build();
     }
 
     // ═══════════════════════════════════════════
@@ -355,10 +454,14 @@ public class PostService {
         if (BoardType.NOTICE.equals(post.getBoardType()) && request.getHashtags() != null) {
             replaceNoticeHashtagsSafely(post, HashtagNormalizer.normalize(request.getHashtags()));
         }
+        // 주류 태그는 null(미전송) = 변경 안 함, 빈 배열 = 전부 해제.
+        if (request.getSpiritTagIds() != null) {
+            applySpiritTags(post, request.getSpiritTagIds());
+        }
         postImageService.syncImageUsage(post, newContent);
         postVideoService.syncVideoUsage(post, newContent);
 
-        return PostDetailResponse.builder(post, true).build();
+        return PostDetailResponse.builder(post, true).spiritTags(spiritTagsOf(post)).build();
     }
 
     /** AI 소식 관리 전용 수정. 로그인한 관리자가 시스템 작성자의 글을 수정할 수 있게 한다. */
@@ -391,7 +494,7 @@ public class PostService {
         }
         postImageService.syncImageUsage(post, newContent);
         postVideoService.syncVideoUsage(post, newContent);
-        return PostDetailResponse.builder(post, true).build();
+        return PostDetailResponse.builder(post, true).spiritTags(spiritTagsOf(post)).build();
     }
 
     /** AI 소식 원고와 같은 유니크 키 충돌을 피하도록 기존 해시태그 행을 먼저 제거한다. */
@@ -520,14 +623,16 @@ public class PostService {
         List<Long> postIds = scraps.getContent().stream()
                 .map(scrap -> scrap.getPost().getId())
                 .toList();
-        Map<Long, String> thumbnailImageUrls = firstImageUrlsByPostIds(postIds);
+        Map<Long, PostThumbnail> thumbnails = firstThumbnailsByPostIds(postIds);
         Map<Long, String> thumbnailVideoUrls = firstVideoUrlsByPostIds(postIds);
+        Map<Long, List<PostSpiritTagInfo>> spiritTags = spiritTagsByPostIds(postIds);
         return scraps.map(scrap -> {
             Post post = scrap.getPost();
             return PostListResponse.from(
                     post,
-                    thumbnailImageUrls.get(post.getId()),
-                    thumbnailVideoUrls.get(post.getId())
+                    thumbnails.get(post.getId()),
+                    thumbnailVideoUrls.get(post.getId()),
+                    spiritTags.getOrDefault(post.getId(), List.of())
             );
         });
     }
@@ -578,7 +683,7 @@ public class PostService {
         Post saved = postRepository.save(restored);
         deletedPostRepository.delete(deleted);
 
-        return PostDetailResponse.builder(saved, true).build();
+        return PostDetailResponse.builder(saved, true).spiritTags(spiritTagsOf(saved)).build();
     }
 
     @Transactional
@@ -668,6 +773,11 @@ public class PostService {
     private String resolvePostActionType(Post post) {
         if (BoardType.NOTICE.equals(post.getBoardType())) {
             return ScoreActions.POST_WRITE_NOTICE;
+        }
+        // 이미지 갤러리는 말머리를 쓰지 않으므로 게시판만으로 판정한다.
+        // (없으면 POST_WRITE_GENERAL 로 떨어져 일일 한도 없이 적립된다)
+        if (BoardType.PHOTO.equals(post.getBoardType())) {
+            return ScoreActions.POST_WRITE_PHOTO;
         }
         if (post.getPrefix() == null) {
             return ScoreActions.POST_WRITE_GENERAL;

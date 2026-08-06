@@ -1,5 +1,6 @@
 package com.caskbycask.domain.community.repository;
 
+import com.caskbycask.domain.community.dto.PostThumbnail;
 import com.caskbycask.domain.community.entity.PostImage;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -22,7 +23,8 @@ public interface PostImageRepository extends JpaRepository<PostImage, Long> {
     Optional<PostImage> findBySavedFileName(String savedFileName);
 
     @Query("""
-        select i.post.id, i.imageUrl
+        select new com.caskbycask.domain.community.dto.PostThumbnail(
+            i.post.id, i.imageUrl, i.width, i.height)
         from PostImage i
         where i.post.id in :postIds
           and i.id in (
@@ -32,7 +34,7 @@ public interface PostImageRepository extends JpaRepository<PostImage, Long> {
               group by i2.post.id
           )
         """)
-    List<Object[]> findFirstImageUrlsByPostIds(@Param("postIds") Collection<Long> postIds);
+    List<PostThumbnail> findFirstThumbnailsByPostIds(@Param("postIds") Collection<Long> postIds);
 
     // 고아 정리 후보: 미연결(is_used=false) + 업로드 후 유예기간 경과
     List<PostImage> findByIsUsedFalseAndCreatedAtBefore(LocalDateTime cutoff);

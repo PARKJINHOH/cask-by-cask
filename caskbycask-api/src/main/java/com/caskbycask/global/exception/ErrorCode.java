@@ -119,6 +119,13 @@ public enum ErrorCode {
     TASTE_TREE_ALREADY_PUBLISHED(HttpStatus.CONFLICT, "TASTE_TREE_006", "이미 게시된 트리 버전입니다."),
     TASTE_TREE_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "TASTE_TREE_007", "트리 이미지를 찾을 수 없습니다."),
 
+    // PhotoCard (포토카드 템플릿)
+    PHOTO_CARD_TEMPLATE_NOT_FOUND(HttpStatus.NOT_FOUND, "PHOTO_CARD_001", "포토카드 템플릿을 찾을 수 없습니다."),
+    PHOTO_CARD_TEMPLATE_ACCESS_DENIED(HttpStatus.FORBIDDEN, "PHOTO_CARD_002", "템플릿을 수정할 권한이 없습니다."),
+    PHOTO_CARD_TEMPLATE_INVALID_LAYOUT(HttpStatus.BAD_REQUEST, "PHOTO_CARD_003", "포토카드 배치 정보가 올바르지 않습니다."),
+    PHOTO_CARD_TEMPLATE_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "PHOTO_CARD_004", "저장할 수 있는 템플릿 개수를 초과했습니다."),
+    PHOTO_CARD_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "PHOTO_CARD_005", "포토카드 이미지를 찾을 수 없습니다."),
+
     // Report
     ALREADY_REPORTED(HttpStatus.CONFLICT, "REPORT_001", "이미 신고한 항목입니다."),
     REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "REPORT_002", "신고 내역을 찾을 수 없습니다."),

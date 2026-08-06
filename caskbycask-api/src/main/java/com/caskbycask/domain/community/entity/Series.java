@@ -27,7 +27,7 @@ public class Series extends BaseTimeEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    @Comment("게시판 유형 — FREE/NOTICE")
+    @Comment("게시판 유형 — FREE/NOTICE/PHOTO")
     private BoardType boardType;
 
     @Column(nullable = false, length = 200)

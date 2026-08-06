@@ -9,10 +9,16 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface ProducerRepository extends JpaRepository<Producer, Long> {
 
+    Optional<Producer> findFirstByTypeAndNameEnIgnoreCase(ProducerType type, String nameEn);
+
     List<Producer> findAllByWebsiteIsNotNull();
+
+    /** 로고 이미지 서빙용 — 저장 파일명으로 subPath 를 복원한다. */
+    Optional<Producer> findByLogoSavedFileName(String logoSavedFileName);
 
     @Query("""
             SELECT d FROM Producer d
@@ -25,6 +31,7 @@ public interface ProducerRepository extends JpaRepository<Producer, Long> {
               AND (:country IS NULL OR LOWER(d.country) LIKE LOWER(CONCAT('%', :country, '%')))
               AND (:foundedYear IS NULL OR d.foundedYear = :foundedYear)
               AND (:type IS NULL OR d.type = :type)
+              AND (:hasLogo IS NULL OR d.logoImageUrl IS NOT NULL)
             """)
     Page<Producer> search(
             @Param("keyword") String keyword,
@@ -33,6 +40,11 @@ public interface ProducerRepository extends JpaRepository<Producer, Long> {
             @Param("country") String country,
             @Param("foundedYear") Integer foundedYear,
             @Param("type") ProducerType type,
+            /**
+             * null 이면 전체, null 이 아니면 로고가 등록된 생산자만.
+             * 값 자체는 보지 않는다 — 호출부(ProducerService)에서 걸지 말지를 정해 null 로 넘긴다.
+             */
+            @Param("hasLogo") Boolean hasLogo,
             Pageable pageable
     );
 }

@@ -48,6 +48,7 @@ function targetPath(item: NotificationItem): string | null {
     case 'MENTION':
     case 'LIKE':
       if (item.targetType === 'NOTICE') return `/community/notice/${item.targetId}`
+      if (item.targetType === 'PHOTO') return `/community/photo/${item.targetId}`
       return `/community/free/${item.targetId}`
     case 'MESSAGE':
       return '/mypage?tab=messages'

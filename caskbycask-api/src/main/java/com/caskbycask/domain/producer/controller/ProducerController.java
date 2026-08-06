@@ -33,9 +33,11 @@ public class ProducerController {
             @RequestParam(required = false) String country,
             @RequestParam(required = false) Integer foundedYear,
             @RequestParam(required = false) com.caskbycask.domain.producer.entity.ProducerType type,
+            /** 로고가 등록된 생산자만 — 포토카드 로고 고르기에서 쓴다. */
+            @RequestParam(required = false) Boolean hasLogo,
             @PageableDefault(size = 20, sort = "nameKo") Pageable pageable) {
         return ResponseEntity.ok(ApiResponse.success(PageResponse.from(
-                producerService.search(keyword, nameKo, nameEn, country, foundedYear, type, pageable))));
+                producerService.search(keyword, nameKo, nameEn, country, foundedYear, type, hasLogo, pageable))));
     }
 
     @GetMapping("/{id}")

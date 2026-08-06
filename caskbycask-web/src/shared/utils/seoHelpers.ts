@@ -514,6 +514,7 @@ function boardLabel(boardType: string | null | undefined, lang: 'ko' | 'en'): st
   const normalized = boardType?.toUpperCase()
   if (normalized === 'NOTICE') return lang === 'en' ? 'Community Notice' : '커뮤니티 공지'
   if (normalized === 'FREE') return lang === 'en' ? 'Free Board' : '자유게시판'
+  if (normalized === 'PHOTO') return lang === 'en' ? 'Spirits Photos' : '주류 사진'
   return lang === 'en' ? 'Community' : '커뮤니티'
 }
 
@@ -606,7 +607,7 @@ function isKnownPrivatePath(segments: string[]): boolean {
   const exact = new Set([
     'login', 'signup', 'oauth/callback', 'oauth/signup', 'account-recovery', 'inquiry',
     'notifications', 'mypage', 'price-tracker/register',
-    'taste-trees/new', 'taste-trees/mine',
+    'taste-trees/new', 'taste-trees/mine', 'photo-card',
     'request/spirit', 'request/spirit/my', 'request/producer',
     'request/feedback', 'request/feedback/new',
   ])
@@ -615,8 +616,8 @@ function isKnownPrivatePath(segments: string[]): boolean {
     /^taste-trees\/\d+\/edit$/,
     /^spirits\/\d+\/review\/write$/,
     /^spirits\/\d+\/review\/\d+\/edit$/,
-    /^community\/(?:all|notice|free|byob)\/write$/,
-    /^community\/(?:all|notice|free|byob)\/\d+\/edit$/,
+    /^community\/(?:all|notice|free|byob|photo)\/write$/,
+    /^community\/(?:all|notice|free|byob|photo)\/\d+\/edit$/,
     /^request\/feedback\/\d+(?:\/edit)?$/,
   ].some((pattern) => pattern.test(path))
 }
@@ -633,6 +634,7 @@ function isKnownAdminPath(segments: string[]): boolean {
     'community/prefixes', 'social', 'price-reports', 'stores', 'deals', 'score/points',
     'score/levels', 'legal', 'legal/new', 'emails/send', 'emails/history',
     'inquiries', 'logs', 'faq', 'faq/new', 'taste-trees', 'taste-trees/new',
+    'photo-cards',
   ])
   if (exact.has(path)) return true
   return [
@@ -704,7 +706,7 @@ export function parsePath(segments: string[]): ParsedPath {
   // 3) /community
   if (remaining[0] === 'community') {
     const board = remaining[1] as BoardListType | undefined
-    if (!board || !['all', 'notice', 'free', 'byob'].includes(board)) {
+    if (!board || !['all', 'notice', 'free', 'byob', 'photo'].includes(board)) {
       return { type: 'not-found', lang }
     }
     if (remaining.length === 2) {
@@ -849,6 +851,15 @@ const BOARD_LIST_CONFIG: Record<BoardListType, {
       en: 'Read product releases, industry updates, distillery news, and community events.',
     },
   },
+  photo: {
+    path: '/community/photo',
+    eyebrow: { ko: '주류 사진', en: 'Spirits Photos' },
+    title: { ko: '위스키·와인·꼬냑 사진 갤러리 — CaskByCask', en: 'Spirits Photo Gallery — CaskByCask' },
+    description: {
+      ko: '오늘의 한 잔, 바에서의 한 컷. 촬영 정보와 주류 정보를 함께 담은 회원들의 사진을 모았습니다.',
+      en: "Today's dram, a shot at the bar. Member photos with shot data and spirit details.",
+    },
+  },
   free: {
     path: '/community/free',
     eyebrow: { ko: '주류 커뮤니티', en: 'Spirits Community' },
@@ -969,7 +980,9 @@ export async function getBoardListSeoSnapshot(
         meta: formatDateOnly(byob.eventAt),
       }))
   } else {
-    const boardType = board === 'notice' ? 'NOTICE' : board === 'free' ? 'FREE' : null
+    const boardType = board === 'notice' ? 'NOTICE'
+      : board === 'free' ? 'FREE'
+      : board === 'photo' ? 'PHOTO' : null
     const query = new URLSearchParams({ page: '0', size: '20', sort: 'LATEST' })
     if (boardType) query.set('boardType', boardType)
     const page = await fetchApiData<PageResponse<CommunityPostListItemResponse>>(`/api/posts?${query.toString()}`, 60)
@@ -977,7 +990,7 @@ export async function getBoardListSeoSnapshot(
     items = (page?.content || [])
       .filter((post) => !post.isLocked && !post.adultOnly)
       .map((post) => {
-        const pathBoard = post.boardType?.toUpperCase() === 'NOTICE' ? 'notice' : 'free'
+        const pathBoard = (post.boardType || 'FREE').toLowerCase()
         return {
           title: post.title,
           href: `/ko/community/${pathBoard}/${post.id}`,
@@ -2561,13 +2574,14 @@ export async function getByobPostSeoSnapshot(id: string, lang: 'ko' | 'en' | nul
  */
 export async function getCommunityPostMetadata(boardType: string, id: string, lang: 'ko' | 'en' | null): Promise<Metadata> {
   const numericId = extractLeadingId(id)
-  const normalizedBoard = boardType === 'notice' || boardType === 'free' ? boardType : null
+  const normalizedBoard = boardType === 'notice' || boardType === 'free' || boardType === 'photo'
+    ? boardType : null
   if (!numericId || !normalizedBoard) return getNoindexMetadata(lang, '커뮤니티 게시글 — CaskByCask')
 
   const post = await fetchApiData<CommunityPostResponse>(`/api/posts/${numericId}`, 60)
   if (!post) return getNoindexMetadata(lang, '존재하지 않는 게시글 — CaskByCask')
 
-  const canonicalBoard = post.boardType?.toUpperCase() === 'NOTICE' ? 'notice' : 'free'
+  const canonicalBoard = (post.boardType || 'FREE').toLowerCase()
   const title = `${post.title} — CaskByCask`
   const description = stripHtmlAndSummarize(getPostContentHtml(post))
     || 'CaskByCask 커뮤니티 게시글 상세 페이지입니다.'
@@ -2607,7 +2621,7 @@ export async function getCommunityPostMetadata(boardType: string, id: string, la
 export async function getCommunityPostJsonLd(boardType: string, id: string, lang: 'ko' | 'en' | null): Promise<object | null> {
   if (normalizeLang(lang) === 'en') return null
   const numericId = extractLeadingId(id)
-  if (!numericId || (boardType !== 'notice' && boardType !== 'free')) return null
+  if (!numericId || (boardType !== 'notice' && boardType !== 'free' && boardType !== 'photo')) return null
 
   const post = await fetchApiData<CommunityPostResponse>(`/api/posts/${numericId}`, 60)
   if (!post || post.adultOnly || post.isLocked || post.isHidden) return null
@@ -2616,7 +2630,7 @@ export async function getCommunityPostJsonLd(boardType: string, id: string, lang
   const text = stripHtmlToText(body)
   const image = toAbsoluteImageUrl(post.imageUrl || post.images?.[0]?.imageUrl)
   if ((!text && !image) || !post.createdAt) return null
-  const canonicalBoard = post.boardType?.toUpperCase() === 'NOTICE' ? 'notice' : 'free'
+  const canonicalBoard = (post.boardType || 'FREE').toLowerCase()
   const isNewsArticle = canonicalBoard === 'notice'
   const canonical = `${SITE_URL}/ko/community/${canonicalBoard}/${numericId}`
   const postingId = `${canonical}#posting`

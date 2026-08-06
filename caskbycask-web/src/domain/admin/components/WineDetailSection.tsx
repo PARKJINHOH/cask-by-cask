@@ -47,34 +47,6 @@ import {
 
 // 관능(맛) 지표는 WineTasteBars(5단계 바)가 담당한다 — 사용자 상세와 동일 컴포넌트를 공유.
 
-/** 한 줄짜리 세그먼트 라디오 — 빈티지 상태처럼 값이 적은 선택지에 쓴다 */
-function Segment({ label, hint, options, value, onChange, allowClear = true }: {
-  label: string
-  hint?: string
-  options: string[][]
-  value: string
-  onChange: (v: string) => void
-  allowClear?: boolean
-}) {
-  return (
-    <div>
-      <label className={LABEL}>
-        {label}{hint && <span className="ml-1 font-normal text-neutral-400">{hint}</span>}
-      </label>
-      <div className="flex flex-wrap gap-2">
-        {options.map(([v, l]) => (
-          <button key={v} type="button" onClick={() => onChange(allowClear && value === v ? '' : v)}
-            className={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${
-              value === v
-                ? 'border-amber-500 bg-amber-50 text-amber-700 font-medium'
-                : 'border-neutral-200 text-neutral-600 hover:border-amber-300'
-            }`}>{l}</button>
-        ))}
-      </div>
-    </div>
-  )
-}
-
 function BooleanSegment({ label, hint, value, onChange, optionLabels }: {
   label: string
   hint?: React.ReactNode
@@ -118,11 +90,6 @@ export default function WineDetailSection({ value, onChange, errors, admin = tru
     no: tr('spirit.wineForm.no'),
     unknown: tr('spirit.wineForm.unknown'),
   }
-  const vintageStatuses = [
-    ['VINTAGE', tr('spirit.wineForm.vintageStatus.VINTAGE')],
-    ['NON_VINTAGE', tr('spirit.wineForm.vintageStatus.NON_VINTAGE')],
-  ]
-
   return (
     <div className="space-y-5">
       {/* 필수 정보 */}
@@ -175,17 +142,22 @@ export default function WineDetailSection({ value, onChange, errors, admin = tru
 
       {/* 빈티지 — 수확 연도 / 논빈티지를 명시적으로 구분 */}
       <div className="space-y-3">
-        <Segment
-          label={tr('spirit.wineForm.vintage')}
-          hint={tr('spirit.wineForm.vintageHint')}
-          options={vintageStatuses}
-          value={value.vintageStatus}
-          allowClear={false}
-          onChange={(v) => onChange({
-            vintageStatus: v as WineDetailForm['vintageStatus'],
-            vintageYear: v === 'VINTAGE' ? value.vintageYear : '',
-          })}
-        />
+        <div>
+          <label className={LABEL}>{tr('spirit.wineForm.vintage')}</label>
+          <p className="mb-2 text-xs text-neutral-400">{tr('spirit.wineForm.vintageHint')}</p>
+          <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm font-medium text-neutral-700">
+            <input
+              type="checkbox"
+              checked={value.vintageStatus === 'NON_VINTAGE'}
+              onChange={(e) => onChange({
+                vintageStatus: e.target.checked ? 'NON_VINTAGE' : 'VINTAGE',
+                vintageYear: e.target.checked ? '' : value.vintageYear,
+              })}
+              className="h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+            />
+            {tr('spirit.wineForm.vintageStatus.NON_VINTAGE')}
+          </label>
+        </div>
         {value.vintageStatus === 'VINTAGE' && (
           <div>
             <label className={LABEL}>{tr('spirit.wineForm.vintageYear')} <RequiredMark /></label>

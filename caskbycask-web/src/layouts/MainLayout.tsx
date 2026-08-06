@@ -209,6 +209,7 @@ function GNB() {
         { key: 'communityNews',  label: t('menu.communityNews'),  to: '/community/notice' },
         { key: 'communityBoard', label: t('menu.communityBoard'), to: '/community/free' },
         { key: 'communityByob',  label: t('menu.communityByob'),  to: '/community/byob' },
+        { key: 'communityPhoto', label: t('photoGallery.title'),  to: '/community/photo' },
       ],
     },
     {
@@ -217,6 +218,7 @@ function GNB() {
       children: [
         { key: 'tierList', label: t('menu.tierList'), to: '/tier-lists' },
         { key: 'tasteTree', label: t('menu.tasteTree'), to: '/taste-trees' },
+        { key: 'photoCard', label: t('photoCard.title'), to: '/photo-card' },
       ],
     },
   ]

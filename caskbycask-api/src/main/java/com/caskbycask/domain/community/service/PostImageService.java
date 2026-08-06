@@ -9,6 +9,8 @@ import com.caskbycask.domain.user.repository.UserRepository;
 import com.caskbycask.global.exception.CustomException;
 import com.caskbycask.global.exception.ErrorCode;
 import com.caskbycask.global.storage.FileStorageService;
+import com.caskbycask.global.storage.ImageDimensionReader;
+import com.caskbycask.global.storage.ImageDimensionReader.Dimension;
 import com.caskbycask.global.storage.ValidatedImageUploader;
 import com.caskbycask.global.storage.ValidatedImageUploader.StoredImage;
 import com.caskbycask.global.util.HtmlImageUrlExtractor;
@@ -28,11 +30,17 @@ public class PostImageService {
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
     private final ValidatedImageUploader validatedImageUploader;
+    private final ImageDimensionReader imageDimensionReader;
 
     @Transactional
     public PostImageUploadResponse upload(MultipartFile file, Long uploaderId) {
         // [보안] 4단계 검증 + 연월별 디렉토리 저장 (공통 흐름)
         StoredImage stored = validatedImageUploader.upload(file, "posts");
+
+        // 이미지 갤러리 목록(justified 그리드)이 비율을 미리 알아야 한다.
+        // StoredImage 레코드는 배너·공지·팝업 등 6개 서비스가 공유하므로 건드리지 않고
+        // 여기서만 따로 읽는다. 못 읽으면 null 로 두고 프론트가 보정한다.
+        Dimension dimension = imageDimensionReader.read(file).orElse(null);
 
         User uploader = userRepository.getByIdOrThrow(uploaderId);
 
@@ -43,6 +51,8 @@ public class PostImageService {
                 .mimeType(stored.mimeType())
                 .imageUrl(stored.imageUrl())
                 .subPath(stored.subPath())
+                .width(dimension != null ? dimension.width() : null)
+                .height(dimension != null ? dimension.height() : null)
                 .uploadedBy(uploader)
                 .build();
 

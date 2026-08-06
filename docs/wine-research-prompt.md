@@ -12,6 +12,7 @@
 - 관능 5단계 척도 — `caskbycask-web/src/domain/spirit/data/wineTasteScale.ts`
 - 산지 코드 — `caskbycask-api/.../entity/enums/WineRegion.java` (카테고리 미지정 = 와인 기본값)
 - 길이·범위 제약 — `.../dto/WineDetailRequest.java`
+- 빈티지 하위 항목 구조 — `.../dto/CreateVariantRequest.java`, `VariantType.VINTAGE`
 
 **와인은 다른 카테고리와 달리 공통 상세(숙성연수·증류/병입연월·출시일·배치번호·병번호·총병수)가
 폼에서 전부 숨겨진다.** 빈티지가 그 역할을 대신한다. 프롬프트도 그에 맞춰 해당 필드를 요구하지 않는다.
@@ -33,8 +34,8 @@
    → ④ 전문 매체(Decanter, Wine Advocate 등) 순입니다.
 3. **허용 값만 사용.** 아래 목록에 없는 값은 절대 쓰지 마세요. 해당 값이 없으면 `null`입니다.
 4. **한국어 이름은 원어 발음이 아니라 국내 통용 표기를 따릅니다.** 아래 "한국어 이름 규칙" 참고.
-5. **빈티지가 다르면 다른 제품입니다.** 특정 빈티지를 지정받았으면 그 빈티지의 정보를 조사하세요.
-   빈티지 지정이 없으면 최근 유통되는 빈티지를 쓰고 `_uncertain`에 어느 빈티지 기준인지 적으세요.
+5. **제품명은 마스터, 빈티지는 하위 항목입니다.** 같은 와인의 여러 빈티지를 `vintages[]`에 묶으세요.
+   특정 빈티지를 지정받았으면 그 빈티지만, 지정이 없으면 현재 확인 가능한 빈티지만 넣으세요.
 
 # 한국어 이름 규칙
 
@@ -82,9 +83,9 @@
 
 ## 이름 구성
 
-`nameKo`는 `생산자 + 제품명 + 빈티지` 형태로 씁니다.
-- `샤토 마고 2018`, `펜폴즈 그랜지 2017`, `클라우디 베이 소비뇽 블랑 2023`
-- 논빈티지(샴페인 등)는 연도를 빼거나 `NV`를 씁니다 — `뵈브 클리코 옐로라벨 NV`
+`nameKo`와 `nameEn`에는 **빈티지를 붙이지 않습니다.** 연도/NV는 `vintages[]`에서만 표현합니다.
+- `샤토 마고`, `펜폴즈 그랜지`, `클라우디 베이 소비뇽 블랑`
+- 논빈티지도 제품명에 `NV`를 붙이지 않습니다 — `뵈브 클리코 옐로라벨`
 
 # 출력 형식
 
@@ -94,45 +95,42 @@ JSON 외의 설명은 배열 뒤에 `## 메모`로 따로 적으세요.
 ```json
 {
   "category": "WINE",
-  "nameKo": "샤토 마고 2018",
-  "nameEn": "Château Margaux 2018",
+  "nameKo": "샤토 마고",
+  "nameEn": "Château Margaux",
   "producer": { "nameKo": "샤토 마고", "nameEn": "Château Margaux" },
   "country": "프랑스",
   "region": "보르도",
   "regionCode": "FR_BORDEAUX_MEDOC",
-  "abv": 13.5,
-  "volumeMl": 750,
-
-  "wineType": "RED",
-  "vintageStatus": "VINTAGE",
-  "vintageYear": 2018,
-
-  "grapeVarieties": [
-    { "name": "Cabernet Sauvignon", "percentage": 90 },
-    { "name": "Merlot", "percentage": 4 },
-    { "name": "Cabernet Franc", "percentage": 3 },
-    { "name": "Petit Verdot", "percentage": 3 }
+  "vintages": [
+    {
+      "wineType": "RED",
+      "vintageStatus": "VINTAGE",
+      "vintageYear": 2018,
+      "abv": 13.5,
+      "volumeMl": 750,
+      "grapeVarieties": [
+        { "name": "Cabernet Sauvignon", "percentage": 90 },
+        { "name": "Merlot", "percentage": 4 },
+        { "name": "Cabernet Franc", "percentage": 3 },
+        { "name": "Petit Verdot", "percentage": 3 }
+      ],
+      "appellationDesignation": "AOC Margaux",
+      "soilType": "Gravel",
+      "altitudeM": null,
+      "harvestMethod": "Hand-picked",
+      "fermentationVessel": "Oak Vat",
+      "isOakAged": true,
+      "oakType": "French Oak",
+      "oakAgedMonths": 24,
+      "isNaturalWine": false,
+      "certification": null,
+      "sweetness": "DRY",
+      "body": "FULL",
+      "acidity": "MEDIUM_HIGH",
+      "tannin": "HIGH",
+      "notes": "2018년은 좌안에서 개화기 강우와 여름 가뭄을 거쳐 폴리페놀이 두텁게 쌓인 해로 평가가 높다. 그해 수확량의 약 36%만 그랑 뱅에 담았으며 신품 프렌치 오크 100%로 숙성했다."
+    }
   ],
-
-  "appellationDesignation": "AOC Margaux",
-  "soilType": "Gravel",
-  "altitudeM": null,
-  "harvestMethod": "Hand-picked",
-  "fermentationVessel": "Oak Vat",
-
-  "isOakAged": true,
-  "oakType": "French Oak",
-  "oakAgedMonths": 24,
-
-  "isNaturalWine": false,
-  "certification": null,
-
-  "sweetness": "DRY",
-  "body": "FULL",
-  "acidity": "MEDIUM_HIGH",
-  "tannin": "HIGH",
-
-  "notes": "보르도 1855년 등급의 1등급(프리미에 크뤼) 다섯 곳 중 하나이며, 마고 아펠라시옹을 대표하는 샤토의 그랑 뱅이다. 2018년은 좌안에서 개화기 강우와 여름 가뭄을 거쳐 폴리페놀이 두텁게 쌓인 해로 평가가 높다. 자갈 토양의 밭에서 손수확하며 그해 수확량의 약 36%만 그랑 뱅에 담았다. 숙성은 신품 프렌치 오크 100%로 진행한다.",
 
   "_sources": ["https://..."],
   "_nameKoBasis": "신세계L&B 공식 제품 페이지 표기",
@@ -148,11 +146,12 @@ JSON 외의 설명은 배열 뒤에 `## 메모`로 따로 적으세요.
 | 필드 | 규칙 |
 |---|---|
 | `category` | 항상 `"WINE"`. 관리자 화면 붙여넣기가 이 값으로 카테고리를 정한다 |
-| `nameKo` | 200자 이내. 위 "한국어 이름 규칙" 필수 적용 |
-| `nameEn` | 라벨 표기 그대로, 200자 이내. 악센트 유지 (`Château`, `Rosé`) |
+| `nameKo` | 200자 이내. 위 "한국어 이름 규칙" 필수 적용. **빈티지/NV 제외** |
+| `nameEn` | 라벨 표기 그대로, 200자 이내. 악센트 유지. **빈티지/NV 제외** |
 | `producer` | **양조장**(샤토/도멘/와이너리). 수입사가 아닙니다 |
-| `abv` | 0~100. 소수 첫째 자리까지 (13.5) |
-| `volumeMl` | 1~30000. 표준 750. 하프 375, 매그넘 1500 |
+| `vintages` | 빈티지 하위 항목 배열. 1건 이상. 같은 연도 또는 NV 중복 금지 |
+| `vintages[].abv` | **필수**. 0~100. 소수 첫째 자리까지 (13.5) |
+| `vintages[].volumeMl` | **필수**. 1~30000. 표준 750. 하프 375, 매그넘 1500 |
 
 **주의:** 와인은 등록 폼에 `브랜드명`·`에디션`·`병입 연월`·`출시일`·`배치 번호`·`병 번호`·
 `총 병 수`·`숙성 연수` 입력란이 **없습니다.** 빈티지가 그 역할을 합니다.
@@ -241,10 +240,11 @@ FORTIFIED  주정강화 — 포트·셰리·마데이라·마르살라
 
 | 필드 | 규칙 |
 |---|---|
-| `vintageStatus` | `VINTAGE` 또는 `NON_VINTAGE`. 모르면 `UNKNOWN` |
-| `vintageYear` | `vintageStatus`가 `VINTAGE`일 때 **필수**. 1800~현재 |
+| `vintages[].vintageStatus` | `VINTAGE` 또는 `NON_VINTAGE`. `UNKNOWN`은 등록할 수 없음 |
+| `vintages[].vintageYear` | 상태가 `VINTAGE`일 때 **필수**. 1800~현재 |
 
-`NON_VINTAGE`(NV 샴페인 등)이면 `vintageYear`는 반드시 `null`.
+`NON_VINTAGE`(NV 샴페인 등)이면 `vintageYear`는 반드시 `null`. 한 배열 안에서 연도/NV는 중복할 수 없습니다.
+와인 종류·품종·양조·맛·노트는 빈티지마다 달라질 수 있으므로 모두 각 `vintages[]` 항목 안에 둡니다.
 
 ## 포도 품종
 
@@ -335,9 +335,10 @@ tannin     LOW → LOW_MEDIUM → MEDIUM → MEDIUM_HIGH → HIGH
 
 JSON을 내놓기 전에 스스로 점검하세요.
 
-- [ ] `nameKo`가 원어 발음 음차가 아니라 **국내 통용 표기**인가. `_nameKoBasis`에 근거를 적었는가
-- [ ] `wineType`이 채워져 있는가 (없으면 등록이 막힙니다)
-- [ ] `vintageStatus`가 `VINTAGE`면 `vintageYear`가 있는가. `NON_VINTAGE`면 `vintageYear`가 `null`인가
+- [ ] `nameKo`가 **국내 통용 표기**이고 이름에 빈티지/NV가 붙지 않았는가. `_nameKoBasis`에 근거를 적었는가
+- [ ] `vintages[]`가 1건 이상이며 각 항목의 `wineType`·`abv`·`volumeMl`이 채워져 있는가
+- [ ] 각 항목이 `VINTAGE`면 `vintageYear`가 있고, `NON_VINTAGE`면 `vintageYear`가 `null`인가
+- [ ] 같은 빈티지 연도 또는 NV가 중복되지 않았는가
 - [ ] 모든 enum 값(`wineType`·`vintageStatus`·`certification`·관능 4축·`regionCode`)이
       위 목록에 있는 철자 그대로인가
 - [ ] `harvestMethod`·`fermentationVessel`이 정해진 선택지 그대로인가 (자유 문구 금지)
@@ -363,8 +364,8 @@ JSON을 내놓기 전에 스스로 점검하세요.
 
 ## 사용 팁
 
-- **빈티지를 반드시 함께 지정할 것.** 같은 와인이라도 빈티지마다 도수·블렌드 비율·관능이 다르다.
-  빈티지 없이 시키면 AI가 여러 빈티지 정보를 섞어 온다.
+- **빈티지를 가능하면 함께 지정할 것.** 여러 빈티지를 조사할 때는 한 마스터의 `vintages[]`에 넣되,
+  도수·블렌드 비율·관능·노트를 빈티지 사이에서 복사하지 않는다.
 - **블렌드 비율**은 AI가 가장 자주 지어내는 항목이다. 보르도 그랑 크뤼처럼 매년 비율을 공식 발표하는
   곳이 아니면 `percentage`가 전부 채워져 온 것은 의심할 것.
 - **관능 지표 4축**도 근거 없이 채우기 쉽다. `DRY`/`FULL` 같은 극단값은 대체로 맞지만

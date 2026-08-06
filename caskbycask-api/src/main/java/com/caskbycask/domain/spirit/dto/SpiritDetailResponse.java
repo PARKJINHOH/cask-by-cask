@@ -26,6 +26,10 @@ public record SpiritDetailResponse(
         String producerNameKo,
         @Schema(description = "증류소 영문명")
         String producerNameEn,
+        @Schema(description = "증류소 로고 이미지 URL — 포토카드 등에서 사용")
+        String producerLogoImageUrl,
+        @Schema(description = "증류소 소재 국가")
+        String producerCountry,
         @Schema(description = "빈티지 연도")
         Integer vintageYear,
         @Schema(description = "알코올 도수 %")
@@ -99,6 +103,21 @@ public record SpiritDetailResponse(
         @Schema(description = "조회수")
         Integer viewCount,
 
+        @Schema(description = "외부 데이터 제공자")
+        String sourceProvider,
+
+        @Schema(description = "외부 원문 URL")
+        String sourceUrl,
+
+        @Schema(description = "이용 허가된 외부 대표 이미지 URL")
+        String sourceImageUrl,
+
+        @Schema(description = "외부 제공자 평점")
+        BigDecimal sourceRating,
+
+        @Schema(description = "외부 제공자 평점 참여 수")
+        Integer sourceRatingCount,
+
         @Schema(description = "하위 에디션 목록")
         List<SpiritVariantResponse> variants
 ) {
@@ -123,6 +142,8 @@ public record SpiritDetailResponse(
                 spirit.getProducer() != null ? spirit.getProducer().getId() : null,
                 spirit.getProducer() != null ? spirit.getProducer().getNameKo() : null,
                 spirit.getProducer() != null ? spirit.getProducer().getNameEn() : null,
+                spirit.getProducer() != null ? spirit.getProducer().getLogoImageUrl() : null,
+                spirit.getProducer() != null ? spirit.getProducer().getCountry() : null,
                 spirit.getVintageYear(),
                 spirit.getAbv(),
                 spirit.getVolumeMl(),
@@ -152,6 +173,11 @@ public record SpiritDetailResponse(
                 spirit.getVolumeMlMin(),
                 spirit.getVolumeMlMax(),
                 spirit.getViewCount(),
+                spirit.getSourceProvider(),
+                spirit.getSourceUrl(),
+                spirit.getSourceImageUrl(),
+                spirit.getSourceRating(),
+                spirit.getSourceRatingCount(),
                 variants
         );
     }

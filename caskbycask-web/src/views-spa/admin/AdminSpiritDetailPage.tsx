@@ -688,6 +688,37 @@ export default function AdminSpiritDetailPage() {
 
       {activeTab === 'detail' ? (
         <>
+          {spirit.sourceProvider === 'VIVINO' && spirit.sourceImageUrl && (
+            <section className="mb-5 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h2 className="font-bold text-neutral-900">수집 대표 이미지 미리보기</h2>
+                  <p className="mt-1 text-xs text-neutral-500">숨김 상태에서도 라이선스 문의용 화면을 촬영할 수 있습니다.</p>
+                </div>
+                {spirit.sourceUrl && (
+                  <a href={spirit.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-blue-600 underline">
+                    원문 열기
+                  </a>
+                )}
+              </div>
+              <div className="relative mx-auto aspect-[4/5] max-w-xs overflow-hidden rounded-xl border border-neutral-200 bg-neutral-50">
+                <img src={spirit.sourceImageUrl} alt={`${spirit.nameKo} 대표 이미지`} className="h-full w-full object-contain" />
+                {spirit.sourceRating != null && (
+                  <div className="absolute bottom-3 right-3 rounded-xl bg-[#a61f5e]/95 px-3 py-2 text-right text-white shadow-lg">
+                    <div className="text-[10px] font-black tracking-[0.18em]">
+                      VIVINO{spirit.sourceUrl?.includes('/fixture-') ? ' · SAMPLE' : ''}
+                    </div>
+                    <div className="mt-0.5 text-xl font-black leading-none">
+                      {spirit.sourceRating.toFixed(1)}
+                      {spirit.sourceRatingCount != null && (
+                        <span className="ml-1 text-[10px] font-medium opacity-80">({spirit.sourceRatingCount.toLocaleString()})</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
           <SpiritImageSection spiritId={spiritId} images={spirit.images} />
 
 

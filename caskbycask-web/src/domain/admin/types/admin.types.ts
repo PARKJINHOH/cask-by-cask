@@ -49,7 +49,7 @@ export interface WhiskyDetailRequest {
 }
 
 export interface CreateVariantRequest {
-  variantType: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK'
+  variantType: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'VINTAGE'
   variantValue: string
   variantValueEn?: string | null
   seriesIdentifier: string
@@ -60,8 +60,10 @@ export interface CreateVariantRequest {
   volumeMl?: number | null
   volumeMlMin?: number | null
   volumeMlMax?: number | null
+  vintageYear?: number | null
   commonDetail?: SpiritCommonDetailRequest
   whiskyDetail?: WhiskyDetailRequest
+  wineDetail?: WineDetailRequest
 }
 
 export interface WineDetailRequest {
@@ -135,13 +137,15 @@ export const ROLE_LABELS: Record<AdminUserRole, string> = {
   IMPORTER: '수입사',
 }
 
-export type BoardType = 'NOTICE' | 'FREE'
+export type BoardType = 'NOTICE' | 'FREE' | 'PHOTO'
 
 export const BOARD_TYPE_LABELS: Record<BoardType, string> = {
   NOTICE: '공지 게시판',
   FREE: '자유 게시판',
+  PHOTO: '이미지 갤러리',
 }
 
+// 모더레이터에게 위임할 수 있는 게시판. 이미지 갤러리는 아직 위임 대상이 아니다.
 export const ALL_BOARD_TYPES: BoardType[] = ['FREE']
 
 // ── AdminUser ──────────────────────────────────────────────────
@@ -275,7 +279,7 @@ export interface AdminSpiritVariant {
   primaryImageUrl: string | null
   status: SpiritStatus
   origin: 'AUTO' | 'MANUAL'
-  variantType?: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE' | null
+  variantType?: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'VINTAGE' | 'NONE' | null
   variantValue?: string | null
   variantValueEn?: string | null
   seriesIdentifier?: string | null
@@ -286,6 +290,7 @@ export interface AdminSpiritVariant {
   volumeMlMax?: number | null
   commonDetail?: SpiritCommonDetailResponse | null
   whiskyDetail?: WhiskyDetailResponse | null
+  wineDetail?: WineDetailResponse | null
 }
 
 export interface AdminVariantRequest {
@@ -397,11 +402,16 @@ export interface AdminSpiritDetail {
   reviewCount: number
   viewCount?: number
   status: SpiritStatus
+  sourceProvider?: string | null
+  sourceUrl?: string | null
+  sourceImageUrl?: string | null
+  sourceRating?: number | null
+  sourceRatingCount?: number | null
   images: AdminSpiritImageItem[]
   createdAt: string
   updatedAt: string
   parentId?: number | null
-  variantType?: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE' | null
+  variantType?: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'VINTAGE' | 'NONE' | null
   variantValue?: string | null
   variantValueEn?: string | null
   seriesIdentifier?: string | null
@@ -435,7 +445,7 @@ export interface UpdateSpiritPayload {
   regionCode?: string | null
   isVariantSplit?: boolean
   variants?: CreateVariantRequest[]
-  variantType?: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE' | null
+  variantType?: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'VINTAGE' | 'NONE' | null
   variantValue?: string | null
   variantValueEn?: string | null
   seriesIdentifier?: string | null
@@ -469,7 +479,7 @@ export interface CreateSpiritPayload {
   regionCode?: string | null
   isVariantSplit?: boolean
   variants?: CreateVariantRequest[]
-  variantType?: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE' | null
+  variantType?: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'VINTAGE' | 'NONE' | null
   variantValue?: string | null
   variantValueEn?: string | null
   seriesIdentifier?: string | null
@@ -609,7 +619,7 @@ export interface PostReportAdmin {
   targetType: PostReportTargetType
   postId: number | null
   postTitle: string | null
-  boardType: 'NOTICE' | 'FREE' | null
+  boardType: BoardType | null
   postLocked: boolean | null
   postHidden: boolean | null
   postReportCount: number | null
@@ -661,7 +671,7 @@ export interface EmojiAdmin {
 
 export interface PostPrefixAdmin {
   id: number
-  boardType: 'NOTICE' | 'FREE'
+  boardType: BoardType
   name: string
   colorHex: string | null
   isActive: boolean

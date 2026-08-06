@@ -64,6 +64,17 @@ public class PostController {
                         authorId, commentAuthorId, distilleryTagId, userId, page, size))));
     }
 
+    /** 주류 상세의 "이 술의 사진" — 해당 주류가 태그된 이미지 갤러리 글 */
+    @GetMapping("/photos/by-spirit/{spiritId}")
+    public ResponseEntity<ApiResponse<PageResponse<PostListResponse>>> getPhotoPostsBySpirit(
+            @PathVariable Long spiritId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "12") int size
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                PageResponse.from(postService.getPhotoPostsBySpirit(spiritId, page, size))));
+    }
+
     @GetMapping("/best")
     public ResponseEntity<ApiResponse<PageResponse<PostListResponse>>> getBestPosts(
             @RequestParam BoardType boardType,

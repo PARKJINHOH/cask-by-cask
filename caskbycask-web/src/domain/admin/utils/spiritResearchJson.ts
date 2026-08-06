@@ -39,7 +39,7 @@ const CASK_CODES = BROAD_CASK_CATEGORIES.map((c) => c.code)
 const WINE_TYPE_CODES = WINE_TYPES.map(([v]) => v)
 const CERTIFICATION_CODES = CERTIFICATIONS.map(([v]) => v)
 const VINTAGE_STATUSES = [...WINE_VINTAGE_STATUSES]
-type VariantTypeCode = (typeof VARIANT_TYPES)[number]
+type VariantTypeCode = (typeof VARIANT_TYPES)[number] | 'VINTAGE'
 
 /** 백엔드 @Size 와 같은 값 — 초과분은 잘라내고 경고한다 */
 const MAX = {
@@ -374,34 +374,14 @@ export function buildImportPlan(raw: Record<string, unknown>): BuildSuccess | Bu
   }
 
   if (category === 'WINE') {
-    const vintageStatus = b.enumValue('빈티지 상태', raw.vintageStatus, VINTAGE_STATUSES)
-    const isOakAged = b.bool('오크 숙성', raw.isOakAged)
-    plan.wineDetail = compact({
-      wineType: b.enumValue('와인 종류', raw.wineType, WINE_TYPE_CODES),
-      vintageStatus,
-      vintageYear: vintageStatus === 'NON_VINTAGE'
-        ? ''
-        : numToStr(b.num('빈티지 연도', raw.vintageYear, YEAR_MIN, thisYear)),
-      appellationDesignation: b.text('원산지 명칭', raw.appellationDesignation, MAX.appellation),
-      soilType: b.text('토양 종류', raw.soilType, MAX.soilType),
-      altitudeM: numToStr(b.num('포도밭 고도', raw.altitudeM, 0, 5000)),
-      harvestMethod: b.exact('수확 방법', raw.harvestMethod, HARVEST_METHODS),
-      fermentationVessel: b.exact('발효 용기', raw.fermentationVessel, FERMENTATION_VESSELS),
-      isOakAged,
-      // 오크 숙성이 아니면 폼이 두 값을 잠그므로 넣지 않는다
-      oakType: isOakAged === true ? b.text('오크 종류', raw.oakType, MAX.oakType) : undefined,
-      oakAgedMonths: isOakAged === true
-        ? numToStr(b.num('오크 숙성 기간', raw.oakAgedMonths, 1, 600))
-        : undefined,
-      isNaturalWine: b.bool('내추럴 와인', raw.isNaturalWine),
-      certification: b.enumValue('인증', raw.certification, CERTIFICATION_CODES),
-      sweetness: b.enumValue('당도', raw.sweetness, [...WINE_SWEETNESS_SCALE]),
-      body: b.enumValue('바디', raw.body, [...WINE_BODY_SCALE]),
-      acidity: b.enumValue('산도', raw.acidity, [...WINE_INTENSITY_SCALE]),
-      tannin: b.enumValue('타닌', raw.tannin, [...WINE_INTENSITY_SCALE]),
-      notes: b.text('기타 정보', raw.notes, MAX.notes),
-      grapeVarieties: buildGrapes(b, raw.grapeVarieties),
-    })
+    if (Array.isArray(raw.vintages) && raw.vintages.length > 0) {
+      plan.wineDetail = { vintageStatus: 'UNKNOWN' }
+      plan.commonDetail = {}
+      plan.variants = buildWineVintages(b, raw, raw.vintages)
+    } else {
+      // 이전 단일 와인 JSON도 계속 읽는다. 신규 프롬프트는 vintages[] 구조를 사용한다.
+      plan.wineDetail = buildWineDetail(b, raw, true)
+    }
   }
 
   if (category === 'OTHER') {
@@ -417,9 +397,17 @@ export function buildImportPlan(raw: Record<string, unknown>): BuildSuccess | Bu
   if (category === 'COGNAC' && !plan.cognacDetail.grade) plan.missingRequired.push('등급')
   if (category === 'WHISKY' && !plan.whiskyDetail.style) plan.missingRequired.push('위스키 스타일')
   if (category === 'WINE') {
-    if (!plan.wineDetail.wineType) plan.missingRequired.push('와인 종류')
-    if (plan.wineDetail.vintageStatus !== 'NON_VINTAGE' && !plan.wineDetail.vintageYear) {
-      plan.missingRequired.push('빈티지 연도')
+    if (plan.variants) {
+      if (plan.variants.items.some((item) => !(item.wineDetail as Record<string, unknown> | undefined)?.wineType)) {
+        plan.missingRequired.push('빈티지별 와인 종류')
+      }
+      if (plan.variants.items.some((item) => item.abv == null)) plan.missingRequired.push('빈티지별 알코올 도수')
+      if (plan.variants.items.some((item) => item.volumeMl == null)) plan.missingRequired.push('빈티지별 용량')
+    } else {
+      if (!plan.wineDetail.wineType) plan.missingRequired.push('와인 종류')
+      if (plan.wineDetail.vintageStatus !== 'NON_VINTAGE' && !plan.wineDetail.vintageYear) {
+        plan.missingRequired.push('빈티지 연도')
+      }
     }
   }
   // 에디션으로 나뉘면 도수·용량은 에디션마다 받는다(마스터 필수 아님)
@@ -569,6 +557,91 @@ function buildGrapes(b: PlanBuilder, raw: unknown) {
   }
   b.mark('포도 품종')
   return rows
+}
+
+function buildWineDetail(
+  b: PlanBuilder,
+  raw: Record<string, unknown>,
+  includeVintageYear: boolean,
+): Record<string, unknown> {
+  const vintageStatus = b.enumValue('빈티지 상태', raw.vintageStatus, VINTAGE_STATUSES)
+  const isOakAged = b.bool('오크 숙성', raw.isOakAged)
+  return compact({
+    wineType: b.enumValue('와인 종류', raw.wineType, WINE_TYPE_CODES),
+    vintageStatus,
+    vintageYear: includeVintageYear
+      ? (vintageStatus === 'NON_VINTAGE'
+        ? ''
+        : numToStr(b.num('빈티지 연도', raw.vintageYear, YEAR_MIN, new Date().getFullYear())))
+      : undefined,
+    appellationDesignation: b.text('원산지 명칭', raw.appellationDesignation, MAX.appellation),
+    soilType: b.text('토양 종류', raw.soilType, MAX.soilType),
+    altitudeM: numToStr(b.num('포도밭 고도', raw.altitudeM, 0, 5000)),
+    harvestMethod: b.exact('수확 방법', raw.harvestMethod, HARVEST_METHODS),
+    fermentationVessel: b.exact('발효 용기', raw.fermentationVessel, FERMENTATION_VESSELS),
+    isOakAged,
+    oakType: isOakAged === true ? b.text('오크 종류', raw.oakType, MAX.oakType) : undefined,
+    oakAgedMonths: isOakAged === true
+      ? numToStr(b.num('오크 숙성 기간', raw.oakAgedMonths, 1, 600))
+      : undefined,
+    isNaturalWine: b.bool('내추럴 와인', raw.isNaturalWine),
+    certification: b.enumValue('인증', raw.certification, CERTIFICATION_CODES),
+    sweetness: b.enumValue('당도', raw.sweetness, [...WINE_SWEETNESS_SCALE]),
+    body: b.enumValue('바디', raw.body, [...WINE_BODY_SCALE]),
+    acidity: b.enumValue('산도', raw.acidity, [...WINE_INTENSITY_SCALE]),
+    tannin: b.enumValue('타닌', raw.tannin, [...WINE_INTENSITY_SCALE]),
+    notes: b.text('기타 정보', raw.notes, MAX.notes),
+    grapeVarieties: buildGrapes(b, raw.grapeVarieties),
+  })
+}
+
+/** 신규 와인 조사 JSON의 vintages[]를 관리자 빈티지 하위 항목으로 바꾼다. */
+function buildWineVintages(
+  b: PlanBuilder,
+  master: Record<string, unknown>,
+  vintages: unknown[],
+): ImportPlan['variants'] {
+  const items: Array<Record<string, unknown>> = []
+  const seen = new Set<string>()
+  for (const candidate of vintages) {
+    if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) {
+      b.warn('빈티지', '객체가 아닌 빈티지 항목을 건너뜁니다.')
+      continue
+    }
+    const merged = { ...master, ...(candidate as Record<string, unknown>) }
+    const status = b.enumValue('빈티지 상태', merged.vintageStatus, VINTAGE_STATUSES)
+    const year = status === 'VINTAGE'
+      ? b.num('빈티지 연도', merged.vintageYear, YEAR_MIN, new Date().getFullYear())
+      : undefined
+    const key = status === 'NON_VINTAGE' ? 'NV' : (year == null ? '' : String(year))
+    if (!key) {
+      b.warn('빈티지', '빈티지 연도 또는 NON_VINTAGE 상태가 없어 항목을 건너뜁니다.')
+      continue
+    }
+    if (seen.has(key)) {
+      b.warn('빈티지', `'${key}' 항목이 중복되어 한 번만 적용했습니다.`)
+      continue
+    }
+    seen.add(key)
+    const wineDetail = buildWineDetail(b, { ...merged, vintageStatus: status }, false)
+    items.push({
+      variantValue: key,
+      variantValueEn: key,
+      vintageYear: status === 'VINTAGE' ? year : null,
+      abv: b.num('빈티지 도수', merged.abv, ABV_MIN, ABV_MAX),
+      volumeMl: b.num('빈티지 용량', merged.volumeMl, VOLUME_ML_MIN, VOLUME_ML_MAX),
+      commonDetail: {},
+      wineDetail,
+    })
+  }
+  if (items.length === 0) return null
+  b.mark(`빈티지 ${items.length}건`)
+  return {
+    variantType: 'VINTAGE',
+    seriesIdentifier: '빈티지',
+    seriesIdentifierEn: 'Vintage',
+    items,
+  }
 }
 
 function buildPeat(b: PlanBuilder, raw: Record<string, unknown>) {

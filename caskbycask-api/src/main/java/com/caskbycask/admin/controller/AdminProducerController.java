@@ -15,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/admin/producers")
@@ -93,6 +94,24 @@ public class AdminProducerController {
             @Valid @RequestBody ProducerRegisterRequestBody body) {
         return ResponseEntity.ok(ApiResponse.success(
                 producerService.updateProducerRequest(id, body)));
+    }
+
+    // ─── 로고 이미지 ───────────────────────────────────────────────
+    // 포토카드에 증류소 로고를 얹기 위해 도입. 생산자 저장(PUT)과 분리한 이유는
+    // UpdateProducerRequest 가 "null = 변경 안 함" 규약이라 삭제를 표현할 수 없기 때문이다.
+
+    @PostMapping(value = "/{id}/logo", consumes = "multipart/form-data")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
+    public ResponseEntity<ApiResponse<ProducerResponse>> uploadLogo(
+            @PathVariable Long id,
+            @RequestParam("image") MultipartFile image) {
+        return ResponseEntity.ok(ApiResponse.success(producerService.uploadLogo(id, image)));
+    }
+
+    @DeleteMapping("/{id}/logo")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
+    public ResponseEntity<ApiResponse<ProducerResponse>> deleteLogo(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(producerService.deleteLogo(id)));
     }
 
     @PatchMapping("/requests/{id}/approve")

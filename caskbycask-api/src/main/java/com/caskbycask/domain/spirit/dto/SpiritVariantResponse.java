@@ -57,12 +57,22 @@ public record SpiritVariantResponse(
         @Schema(description = "공통 상세 정보 (관리자 수정 폼 프리필용)")
         SpiritCommonDetailResponse commonDetail,
         @Schema(description = "위스키 상세 (관리자 수정 폼 프리필용, category=WHISKY 전용)")
-        WhiskyDetailResponse whiskyDetail
+        WhiskyDetailResponse whiskyDetail,
+        @Schema(description = "와인 상세 (관리자 수정 폼 프리필용, category=WINE 전용)")
+        WineDetailResponse wineDetail
 ) {
     /** 위스키 상세까지 포함한 전체 응답 (관리자 상세 화면 — 에디션 수정 폼 프리필) */
     public static SpiritVariantResponse of(Spirit spirit, String primaryImageUrl,
                                            SpiritCommonDetailResponse commonDetail,
                                            WhiskyDetailResponse whiskyDetail) {
+        return of(spirit, primaryImageUrl, commonDetail, whiskyDetail, null);
+    }
+
+    /** 관리자 수정 폼이 카테고리별 자식 상세를 모두 프리필할 수 있는 응답. */
+    public static SpiritVariantResponse of(Spirit spirit, String primaryImageUrl,
+                                           SpiritCommonDetailResponse commonDetail,
+                                           WhiskyDetailResponse whiskyDetail,
+                                           WineDetailResponse wineDetail) {
         SpiritCommonDetail cd = spirit.getCommonDetail();
         return new SpiritVariantResponse(
                 spirit.getId(),
@@ -88,7 +98,8 @@ public record SpiritVariantResponse(
                 spirit.getSeriesIdentifierEn(),
                 spirit.getDisplayOrder(),
                 commonDetail,
-                whiskyDetail
+                whiskyDetail,
+                wineDetail
         );
     }
 }

@@ -7,10 +7,13 @@ import com.caskbycask.domain.spirit.dto.CreateSpiritRequest;
 import com.caskbycask.domain.spirit.dto.CreateVariantRequest;
 import com.caskbycask.domain.spirit.dto.SpiritDetailResponse;
 import com.caskbycask.domain.spirit.dto.UpdateSpiritRequest;
+import com.caskbycask.domain.spirit.dto.WineDetailRequest;
 import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
 import com.caskbycask.domain.spirit.entity.enums.SpiritStatus;
 import com.caskbycask.domain.spirit.entity.enums.WineRegion;
+import com.caskbycask.domain.spirit.entity.enums.WineVintageStatus;
+import com.caskbycask.domain.spirit.entity.enums.VariantType;
 import com.caskbycask.domain.spirit.repository.SpiritImageRepository;
 import com.caskbycask.domain.spirit.repository.SpiritRegisterRequestRepository;
 import com.caskbycask.domain.spirit.repository.SpiritRepository;
@@ -143,7 +146,11 @@ class SpiritServiceRegionCodeTest {
                 null, null, null, null, null,
                 true,
                 List.of(new CreateVariantRequest(
-                        null, "Batch 1", null, null, null, null, null, null, null, null, null, null, null)),
+                        VariantType.VINTAGE, "2015", null, "빈티지", "Vintage",
+                        null, null, null, 750, null, null, 2015, null, null,
+                        new WineDetailRequest(
+                                null, WineVintageStatus.VINTAGE, null, null, null, List.of(),
+                                null, null, null, null, null, null, null, null, null, null, null, null))),
                 null, null, null, null, null, null, null, null, null, SpiritStatus.ACTIVE);
 
         spiritService.createSpirit(request, 1L);

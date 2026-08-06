@@ -21,7 +21,7 @@ import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
 import type { CruCompositionRow } from '@/shared/components/CruCompositionInput'
 import type {
   AdminSpiritDetail, CreateSpiritPayload, SpiritRegisterRequestDetail,
-  CreateVariantRequest, SpiritCommonDetailRequest, WhiskyDetailRequest,
+  CreateVariantRequest, SpiritCommonDetailRequest, WhiskyDetailRequest, WineDetailRequest,
 } from '@/domain/admin/types/admin.types'
 import SpiritCommonDetailSection, {
   type CommonDetailForm, DEFAULT_COMMON_DETAIL, hasCommonDetailFields,
@@ -276,7 +276,10 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
   const setCountryValue = (code: string | null, nameKo: string) => { setCountryCode(code); setCountry(nameKo) }
 
   const addVariant = () => {
-    const currentType = variantType !== 'NONE' ? variantType : (variants[0]?.variantType ?? 'BATCH')
+    const isWineVintage = category === 'WINE'
+    const currentType = isWineVintage
+      ? 'VINTAGE'
+      : (variantType !== 'NONE' ? variantType : (variants[0]?.variantType ?? 'BATCH'))
     setVariants((prev) => [
       ...prev,
       {
@@ -290,6 +293,7 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
         abvMin: null,
         abvMax: null,
         volumeMl: null,
+        vintageYear: null,
         commonDetail: {
           isNas: false,
           ageStatement: null,
@@ -323,6 +327,7 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
           phenolPpmMax: null,
           notes: null,
         },
+        wineDetail: isWineVintage ? toWineDetailRequest(DEFAULT_WINE) : undefined,
       },
     ])
   }
@@ -355,6 +360,18 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
           : v
       )
     )
+  }
+
+  const updateVariantWine = (index: number, updates: Partial<WineDetailRequest>) => {
+    setVariants((prev) => prev.map((v, i) => {
+      if (i !== index) return v
+      const wine = { ...(v.wineDetail || {}), ...updates }
+      const isVintage = wine.vintageStatus === 'VINTAGE'
+      const vintageYear = isVintage && updates.vintageStatus === undefined
+        ? v.vintageYear
+        : null
+      return { ...v, wineDetail: wine, vintageYear }
+    }))
   }
 
   // 폼 전체 초기화 (등록 후 같은 페이지에서 새 입력을 받는 화면용 — 사용자 등록 요청 화면)
@@ -402,6 +419,13 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
     resetCategoryDetails()
 
     setCategory(cat)
+    if (cat === 'WINE' && adminRequired) {
+      setIsVariantSplit(true)
+      setVariantType('VINTAGE')
+      setSeriesIdentifier('빈티지')
+      setSeriesIdentifierEn('Vintage')
+      setVariants([])
+    }
     setErrors({})
   }
 
@@ -454,6 +478,7 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
         volumeMl: v.volumeMl,
         volumeMlMin: v.volumeMlMin,
         volumeMlMax: v.volumeMlMax,
+        vintageYear: v.vintageYear,
         // DTO 데이터 변환
         commonDetail: v.commonDetail ? {
           isNas: v.commonDetail.isNas,
@@ -491,6 +516,26 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
           phenolPpmMin: v.whiskyDetail.phenolPpmMin,
           phenolPpmMax: v.whiskyDetail.phenolPpmMax,
           notes: v.whiskyDetail.notes,
+        } : undefined,
+        wineDetail: v.wineDetail ? {
+          wineType: v.wineDetail.wineType,
+          vintageStatus: v.wineDetail.vintageStatus,
+          isOakAged: v.wineDetail.isOakAged,
+          isNaturalWine: v.wineDetail.isNaturalWine,
+          certification: v.wineDetail.certification,
+          grapeVarieties: v.wineDetail.grapeVarieties,
+          appellationDesignation: v.wineDetail.appellationDesignation,
+          soilType: v.wineDetail.soilType,
+          altitudeM: v.wineDetail.altitudeM,
+          harvestMethod: v.wineDetail.harvestMethod,
+          fermentationVessel: v.wineDetail.fermentationVessel,
+          oakType: v.wineDetail.oakType,
+          oakAgedMonths: v.wineDetail.oakAgedMonths,
+          sweetness: v.wineDetail.sweetness,
+          body: v.wineDetail.body,
+          acidity: v.wineDetail.acidity,
+          tannin: v.wineDetail.tannin,
+          notes: v.wineDetail.notes,
         } : undefined,
       }))
     )
@@ -787,7 +832,7 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
       else if (whiskyDetail.style === 'OTHER' && !whiskyDetail.styleOther.trim())
         errs.styleOther = '스타일을 직접 입력해주세요.'
     }
-    if (category === 'WINE') {
+    if (category === 'WINE' && !isVariantSplit) {
       if (!wineDetail.wineType) errs.wineType = '와인 종류를 선택해주세요.'
       if (wineDetail.vintageStatus === 'VINTAGE') {
         const year = Number(wineDetail.vintageYear)
@@ -818,7 +863,10 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
 
     // 하위 에디션 검증
     if (isVariantSplit) {
-      if (!seriesIdentifier.trim()) {
+      if (variants.length === 0) {
+        errs.variants = category === 'WINE' ? '빈티지를 1건 이상 추가해주세요.' : '에디션을 1건 이상 추가해주세요.'
+      }
+      if (!seriesIdentifier.trim() && category !== 'WINE') {
         errs.seriesIdentifier = '시리즈 식별자는 필수입니다.'
       }
       variants.forEach((v, idx) => {
@@ -831,6 +879,26 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
         if (v.volumeMl != null && (Number(v.volumeMl) < VOLUME_ML_MIN || Number(v.volumeMl) > VOLUME_ML_MAX)) {
           errs[`variantVolumeMl_${idx}`] = LIMIT_MESSAGE.volumeMl
         }
+        if (category === 'WINE') {
+          const status = v.wineDetail?.vintageStatus
+          if (!v.wineDetail?.wineType) errs[`variantWineType_${idx}`] = '와인 종류를 선택해주세요.'
+          if (!status || status === 'UNKNOWN') {
+            errs[`variantVintageStatus_${idx}`] = '빈티지 또는 빈티지 없음(NV)을 선택해주세요.'
+          }
+          if (status === 'VINTAGE') {
+            const year = v.vintageYear
+            if (year == null) errs[`variantVintageYear_${idx}`] = '빈티지 연도를 입력해주세요.'
+            else if (!Number.isInteger(Number(year)) || Number(year) < 1800 || Number(year) > new Date().getFullYear()) {
+              errs[`variantVintageYear_${idx}`] = `빈티지 연도는 1800~${new Date().getFullYear()} 사이여야 합니다.`
+            }
+          }
+          if (v.abv == null) errs[`variantAbv_${idx}`] = '알코올 도수는 필수입니다.'
+          if (v.volumeMl == null) errs[`variantVolumeMl_${idx}`] = '용량은 필수입니다.'
+          const grapeTotal = (v.wineDetail?.grapeVarieties ?? []).reduce(
+            (sum, g) => sum + (Number(g.percentage) || 0), 0,
+          )
+          if (grapeTotal > 100) errs[`variantGrapes_${idx}`] = '포도 품종 비율 합계가 100%를 초과합니다.'
+        }
         if (v.commonDetail?.distilledDate && !DATE_RE.test(v.commonDetail.distilledDate)) {
           errs[`variantDistilledDate_${idx}`] = '형식: YYYY 또는 YYYY-MM'
         }
@@ -838,6 +906,14 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
           errs[`variantBottledDate_${idx}`] = '형식: YYYY 또는 YYYY-MM'
         }
       })
+      if (category === 'WINE') {
+        const vintageKeys = variants.map((v) =>
+          v.wineDetail?.vintageStatus === 'NON_VINTAGE' ? 'NV' : String(v.vintageYear ?? ''),
+        )
+        if (new Set(vintageKeys.filter(Boolean)).size !== vintageKeys.filter(Boolean).length) {
+          errs.variants = '같은 빈티지 연도 또는 NV를 중복 등록할 수 없습니다.'
+        }
+      }
     }
 
     setErrors(errs)
@@ -900,7 +976,7 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
         },
       }
       case 'WINE': return {
-        wineDetail: {
+        wineDetail: isVariantSplit ? ({ vintageStatus: 'UNKNOWN' } as WineDetailRequest) : {
           wineType: wineDetail.wineType || null,
           vintageStatus: wineDetail.vintageStatus,
           isOakAged: wineDetail.isOakAged ?? null,
@@ -988,6 +1064,31 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
     }
   }
 
+  const cleanWineDetail = (w?: WineDetailRequest): WineDetailRequest | undefined => {
+    if (!w) return undefined
+    return {
+      ...w,
+      wineType: w.wineType || null,
+      vintageStatus: w.vintageStatus || 'UNKNOWN',
+      certification: w.certification || null,
+      grapeVarieties: (w.grapeVarieties || []).filter((g) => g.name?.trim()).map((g) => ({
+        name: g.name.trim(), percentage: g.percentage ?? null,
+      })),
+      appellationDesignation: w.appellationDesignation || null,
+      soilType: w.soilType || null,
+      altitudeM: w.altitudeM ?? null,
+      harvestMethod: w.harvestMethod || null,
+      fermentationVessel: w.fermentationVessel || null,
+      oakType: w.isOakAged ? (w.oakType || null) : null,
+      oakAgedMonths: w.isOakAged ? (w.oakAgedMonths ?? null) : null,
+      sweetness: w.sweetness || null,
+      body: w.body || null,
+      acidity: w.acidity || null,
+      tannin: w.tannin || null,
+      notes: w.notes || null,
+    }
+  }
+
   const cleanVariantCommonDetail = (cd?: SpiritCommonDetailRequest): SpiritCommonDetailRequest | undefined => {
     if (!cd) return undefined
     return {
@@ -1012,12 +1113,16 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
   // 최종 페이로드 (등록/수정/승인 공통). category 보장은 호출 전 validate()로.
   const buildPayload = (): CreateSpiritPayload => {
     const common = buildCommonPayload()
-    const selectedVariantType = isVariantSplit ? (variantType !== 'NONE' ? variantType : (variants[0]?.variantType ?? 'BATCH')) : 'NONE'
+    const selectedVariantType = isVariantSplit
+      ? (category === 'WINE' ? 'VINTAGE' : (variantType !== 'NONE' ? variantType : (variants[0]?.variantType ?? 'BATCH')))
+      : 'NONE'
+    const submittedSeriesIdentifier = category === 'WINE' ? '빈티지' : seriesIdentifier.trim()
+    const submittedSeriesIdentifierEn = category === 'WINE' ? 'Vintage' : seriesIdentifierEn.trim()
     const variantsToSubmit = variants.filter((v) => v.variantValue.trim().length > 0)
     const payload: CreateSpiritPayload = {
       nameKo, nameEn, category: category as SpiritCategory,
       producerId: producerId ?? null,
-      vintageYear: category === 'WINE'
+      vintageYear: category === 'WINE' && !isVariantSplit
         && wineDetail.vintageStatus === 'VINTAGE'
         && wineDetail.vintageYear
         ? Number(wineDetail.vintageYear)
@@ -1032,19 +1137,22 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
         : null,
       commonDetail: common,
       isVariantSplit,
-      seriesIdentifier: isVariantSplit ? (seriesIdentifier.trim() || null) : null,
-      seriesIdentifierEn: isVariantSplit ? (seriesIdentifierEn.trim() || null) : null,
+      seriesIdentifier: isVariantSplit ? (submittedSeriesIdentifier || null) : null,
+      seriesIdentifierEn: isVariantSplit ? (submittedSeriesIdentifierEn || null) : null,
       variants: isVariantSplit ? variantsToSubmit.map(v => ({
         ...v,
         variantValue: v.variantValue.trim(),
         variantValueEn: (v.variantValueEn ?? '').trim() || null,
-        seriesIdentifier: seriesIdentifier.trim(),
-        seriesIdentifierEn: seriesIdentifierEn.trim() || null,
+        variantType: category === 'WINE' ? 'VINTAGE' : v.variantType,
+        seriesIdentifier: submittedSeriesIdentifier,
+        seriesIdentifierEn: submittedSeriesIdentifierEn || null,
         volumeMl: v.volumeMl ? Number(v.volumeMl) : null,
         volumeMlMin: v.volumeMlMin ? Number(v.volumeMlMin) : null,
         volumeMlMax: v.volumeMlMax ? Number(v.volumeMlMax) : null,
+        vintageYear: category === 'WINE' ? (v.vintageYear ?? null) : null,
         commonDetail: cleanVariantCommonDetail(v.commonDetail),
         whiskyDetail: category === 'WHISKY' ? (cleanWhiskyDetail(v.whiskyDetail) || undefined) : undefined,
+        wineDetail: category === 'WINE' ? cleanWineDetail(v.wineDetail) : undefined,
       })) : [],
       variantType: selectedVariantType,
       variantValue: null,
@@ -1070,7 +1178,7 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
     isVariantSplit, setIsVariantSplit, variantType, setVariantType,
     seriesIdentifier, setSeriesIdentifier, seriesIdentifierEn, setSeriesIdentifierEn,
     variants, setVariants,
-    addVariant, removeVariant, updateVariant, updateVariantCommon, updateVariantWhisky,
+    addVariant, removeVariant, updateVariant, updateVariantCommon, updateVariantWhisky, updateVariantWine,
     isAbvRange, setIsAbvRange, abvMin, setAbvMin, abvMax, setAbvMax,
     isVolumeMlRange, setIsVolumeMlRange, volumeMlMin, setVolumeMlMin, volumeMlMax, setVolumeMlMax,
     commonDetail, updateCommon,
@@ -1727,18 +1835,23 @@ export default function SpiritFormFields({
             {/* 하위 에디션 설정 카드 — 에디션 분리는 위스키 전용이다.
                 카테고리 전환 시 상태를 초기화하지만, 조건에서도 카테고리를 확인해
                 어떤 경로로든 다른 카테고리에 에디션 목록이 노출되지 않게 한다. */}
-            {isWhisky && form.isVariantSplit && (
+            {(isWhisky || category === 'WINE') && form.isVariantSplit && (
               <div className={CARD}>
-                <SectionTitle title="하위 에디션 목록" hint="각 에디션별 개별 정보 입력" />
+                <SectionTitle
+                  title={category === 'WINE' ? '빈티지 목록' : '하위 에디션 목록'}
+                  hint={category === 'WINE' ? '빈티지별 규격·맛·상세 정보 입력' : '각 에디션별 개별 정보 입력'}
+                />
 
-                <SeriesIdentifierFields
+                {category === 'WHISKY' && <SeriesIdentifierFields
                   variantType={form.variantType}
                   seriesIdentifier={form.seriesIdentifier}
                   seriesIdentifierEn={form.seriesIdentifierEn}
                   errors={errors}
                   onSeriesIdentifierChange={form.setSeriesIdentifier}
                   onSeriesIdentifierEnChange={form.setSeriesIdentifierEn}
-                />
+                />}
+
+                {errors.variants && <p className="text-xs text-red-500">{errors.variants}</p>}
 
                 {/* 탭 바 (다중 에디션 허용 시에만 노출 — 사용자 등록 요청 화면은 1개로 고정) */}
                 {allowMultipleVariants && (
@@ -1777,7 +1890,7 @@ export default function SpiritFormFields({
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
                       </svg>
-                      에디션 추가
+                      {category === 'WINE' ? '빈티지 추가' : '에디션 추가'}
                     </button>
                   </div>
                 )}
@@ -1792,17 +1905,20 @@ export default function SpiritFormFields({
                     onUpdate={(updates) => form.updateVariant(activeVariantIdx, updates)}
                     onUpdateCommon={(updates) => form.updateVariantCommon(activeVariantIdx, updates)}
                     onUpdateWhisky={(updates) => form.updateVariantWhisky(activeVariantIdx, updates)}
+                    onUpdateWine={(updates) => form.updateVariantWine(activeVariantIdx, updates)}
                   />
                 ) : (
                   <div className="rounded-2xl border border-dashed border-neutral-200 bg-neutral-50/50 py-8 text-center text-neutral-400 text-sm">
-                    등록된 에디션이 없습니다. '+ 에디션 추가' 버튼을 눌러 에디션을 등록해주세요.
+                    {category === 'WINE'
+                      ? "등록된 빈티지가 없습니다. '+ 빈티지 추가' 버튼을 눌러 등록해주세요."
+                      : "등록된 에디션이 없습니다. '+ 에디션 추가' 버튼을 눌러 등록해주세요."}
                   </div>
                 )}
               </div>
             )}
 
             {/* 카테고리별 상세 카드 */}
-            {(!form.isVariantSplit || category !== 'WHISKY') && (
+            {(!form.isVariantSplit || (category !== 'WHISKY' && category !== 'WINE')) && (
               <div className={CARD}>
                 <SectionTitle title={`${CATEGORY_LABEL[category]} 상세`} />
                 {category === 'WHISKY' && (
@@ -1931,6 +2047,61 @@ function toWhiskyDetailForm(detail?: WhiskyDetailRequest): WhiskyDetailForm {
   }
 }
 
+/** 와인 하위 빈티지의 요청 DTO와 공용 입력 폼 사이 변환. */
+function toWineDetailRequest(u: Partial<WineDetailForm>): Partial<WineDetailRequest> {
+  const converted: Partial<WineDetailRequest> = {}
+  if (u.wineType !== undefined) converted.wineType = u.wineType || null
+  if (u.vintageStatus !== undefined) converted.vintageStatus = u.vintageStatus
+  if (u.isOakAged !== undefined) converted.isOakAged = u.isOakAged
+  if (u.isNaturalWine !== undefined) converted.isNaturalWine = u.isNaturalWine
+  if (u.certification !== undefined) converted.certification = u.certification || null
+  if (u.grapeVarieties !== undefined) converted.grapeVarieties = u.grapeVarieties.map((g) => ({
+    name: g.name,
+    percentage: g.percentage === '' ? null : Number(g.percentage),
+  }))
+  if (u.appellationDesignation !== undefined) converted.appellationDesignation = u.appellationDesignation || null
+  if (u.soilType !== undefined) converted.soilType = u.soilType || null
+  if (u.altitudeM !== undefined) converted.altitudeM = u.altitudeM === '' ? null : Number(u.altitudeM)
+  if (u.harvestMethod !== undefined) converted.harvestMethod = u.harvestMethod || null
+  if (u.fermentationVessel !== undefined) converted.fermentationVessel = u.fermentationVessel || null
+  if (u.oakType !== undefined) converted.oakType = u.oakType || null
+  if (u.oakAgedMonths !== undefined) converted.oakAgedMonths = u.oakAgedMonths === '' ? null : Number(u.oakAgedMonths)
+  if (u.sweetness !== undefined) converted.sweetness = u.sweetness || null
+  if (u.body !== undefined) converted.body = u.body || null
+  if (u.acidity !== undefined) converted.acidity = u.acidity || null
+  if (u.tannin !== undefined) converted.tannin = u.tannin || null
+  if (u.notes !== undefined) converted.notes = u.notes || null
+  return converted
+}
+
+function toWineDetailForm(detail?: WineDetailRequest, vintageYear?: number | null): WineDetailForm {
+  if (!detail) return { ...DEFAULT_WINE, vintageYear: vintageYear?.toString() ?? '' }
+  return {
+    wineType: detail.wineType ?? '',
+    vintageStatus: detail.vintageStatus ?? (vintageYear == null ? 'UNKNOWN' : 'VINTAGE'),
+    vintageYear: vintageYear?.toString() ?? '',
+    isOakAged: detail.isOakAged ?? null,
+    isNaturalWine: detail.isNaturalWine ?? null,
+    certification: detail.certification ?? '',
+    grapeVarieties: (detail.grapeVarieties ?? []).map((g) => ({
+      name: g.name,
+      percentage: g.percentage?.toString() ?? '',
+    })),
+    appellationDesignation: detail.appellationDesignation ?? '',
+    soilType: detail.soilType ?? '',
+    altitudeM: detail.altitudeM?.toString() ?? '',
+    harvestMethod: detail.harvestMethod ?? '',
+    fermentationVessel: detail.fermentationVessel ?? '',
+    oakType: detail.oakType ?? '',
+    oakAgedMonths: detail.oakAgedMonths?.toString() ?? '',
+    sweetness: detail.sweetness ?? '',
+    body: detail.body ?? '',
+    acidity: detail.acidity ?? '',
+    tannin: detail.tannin ?? '',
+    notes: detail.notes ?? '',
+  }
+}
+
 function toCommonDetailForm(detail?: SpiritCommonDetailRequest): CommonDetailForm {
   if (!detail) return DEFAULT_COMMON_DETAIL
   return {
@@ -2032,6 +2203,7 @@ interface VariantItemCardProps {
   onUpdate: (updates: Partial<CreateVariantRequest>) => void
   onUpdateCommon: (updates: Partial<SpiritCommonDetailRequest>) => void
   onUpdateWhisky: (updates: Partial<WhiskyDetailRequest>) => void
+  onUpdateWine: (updates: Partial<WineDetailRequest>) => void
 }
 
 function VariantItemCard({
@@ -2042,11 +2214,29 @@ function VariantItemCard({
   onUpdate,
   onUpdateCommon,
   onUpdateWhisky,
+  onUpdateWine,
 }: VariantItemCardProps) {
   const whiskyFormValue = toWhiskyDetailForm(variant.whiskyDetail)
 
   const handleWhiskyChange = (u: Partial<WhiskyDetailForm>) => {
     onUpdateWhisky(toWhiskyDetailRequest(u))
+  }
+
+  const handleWineChange = (u: Partial<WineDetailForm>) => {
+    const nextStatus = u.vintageStatus ?? variant.wineDetail?.vintageStatus
+    const yearText = u.vintageYear
+    const vintageYear = nextStatus === 'VINTAGE' && yearText
+      ? Number(yearText)
+      : null
+    const label = nextStatus === 'NON_VINTAGE' ? 'NV' : (yearText ?? variant.vintageYear?.toString() ?? '')
+    onUpdateWine(toWineDetailRequest(u))
+    if (u.vintageStatus !== undefined || u.vintageYear !== undefined) {
+      onUpdate({
+        vintageYear,
+        variantValue: label,
+        variantValueEn: label,
+      })
+    }
   }
 
   const handleCommonChange = (u: Partial<CommonDetailForm>) => {
@@ -2071,11 +2261,13 @@ function VariantItemCard({
 
   return (
     <div className="bg-neutral-50/50 rounded-2xl border border-neutral-200/80 p-5 space-y-6 text-left">
-      {/* 에디션 기본 정보 */}
+      {/* 에디션/빈티지 기본 정보 */}
       <div className="space-y-4">
-        <h4 className="text-xs font-bold text-neutral-600 uppercase tracking-wider">에디션 기본 정보</h4>
+        <h4 className="text-xs font-bold text-neutral-600 uppercase tracking-wider">
+          {category === 'WINE' ? '빈티지 기본 정보' : '에디션 기본 정보'}
+        </h4>
         
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {category !== 'WINE' && <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-[11px] font-semibold text-neutral-500 mb-1">
               식별 값(한글) <RequiredMark />
@@ -2125,7 +2317,7 @@ function VariantItemCard({
               <p className="text-[10px] text-red-500 mt-1">{errors[`variantValueEn_${index}`]}</p>
             )}
           </div>
-        </div>
+        </div>}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
@@ -2197,6 +2389,24 @@ function VariantItemCard({
               onChange={handleWhiskyChange}
             />
           </div>
+        </div>
+      )}
+      {category === 'WINE' && (
+        <div className="pt-5 border-t border-neutral-200 space-y-3">
+          <h4 className="text-xs font-bold text-neutral-600 uppercase tracking-wider">빈티지 와인 상세</h4>
+          {errors[`variantVintageStatus_${index}`] && (
+            <p className="text-xs text-red-500">{errors[`variantVintageStatus_${index}`]}</p>
+          )}
+          <WineDetailSection
+            value={toWineDetailForm(variant.wineDetail, variant.vintageYear)}
+            onChange={handleWineChange}
+            errors={{
+              wineType: errors[`variantWineType_${index}`],
+              vintageYear: errors[`variantVintageYear_${index}`],
+              grapeVarieties: errors[`variantGrapes_${index}`],
+            }}
+            admin
+          />
         </div>
       )}
     </div>

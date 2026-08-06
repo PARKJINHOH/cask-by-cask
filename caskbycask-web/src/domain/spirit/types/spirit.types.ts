@@ -10,7 +10,7 @@ export interface SpiritAutocompleteItem {
   seriesIdentifier?: string | null
   seriesIdentifierEn?: string | null
   parentId?: number | null
-  variantType?: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE' | null
+  variantType?: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'VINTAGE' | 'NONE' | null
   variantValue?: string | null
   variantValueEn?: string | null
   displayOrder?: number | null
@@ -81,6 +81,11 @@ export interface SpiritListItem {
   canonicalPathKo?: string | null
   canonicalPathEn?: string | null
   viewCount?: number
+  sourceProvider?: string | null
+  sourceUrl?: string | null
+  sourceImageUrl?: string | null
+  sourceRating?: number | null
+  sourceRatingCount?: number | null
   status?: SpiritStatus
 }
 
@@ -108,7 +113,7 @@ export interface SpiritDetail extends SpiritListItem {
   createdAt: string
   updatedAt: string
   parentId?: number | null
-  variantType?: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE'
+  variantType?: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'VINTAGE' | 'NONE'
   variantValue?: string | null
   variantValueEn?: string | null
   seriesIdentifier?: string | null
@@ -141,12 +146,15 @@ export interface SpiritVariant {
   avgScore: number | null
   reviewCount: number
   primaryImageUrl: string | null
-  variantType?: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE'
+  variantType?: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'VINTAGE' | 'NONE'
   variantValue?: string | null
   variantValueEn?: string | null
   seriesIdentifier?: string | null
   seriesIdentifierEn?: string | null
   displayOrder?: number | null
+  commonDetail?: SpiritCommonDetailResponse | null
+  whiskyDetail?: WhiskyDetailResponse | null
+  wineDetail?: WineDetailResponse | null
 }
 
 export interface CreateSpiritVariantRequest {

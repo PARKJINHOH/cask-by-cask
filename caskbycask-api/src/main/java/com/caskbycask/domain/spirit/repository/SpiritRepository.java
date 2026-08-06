@@ -18,6 +18,9 @@ import java.util.Optional;
 
 public interface SpiritRepository extends JpaRepository<Spirit, Long>, SpiritQueryRepository {
 
+    Optional<Spirit> findFirstByCategoryAndProducerIdAndParentIsNullAndNameEnIgnoreCase(
+            SpiritCategory category, Long producerId, String nameEn);
+
     Optional<Spirit> findByIdAndStatus(Long id, SpiritStatus status);
 
     @Query("select s.parent.id from Spirit s where s.id = :id")

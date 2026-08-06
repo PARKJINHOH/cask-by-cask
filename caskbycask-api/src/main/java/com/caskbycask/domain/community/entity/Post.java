@@ -3,6 +3,7 @@ package com.caskbycask.domain.community.entity;
 import com.caskbycask.domain.community.entity.enums.BoardType;
 import com.caskbycask.domain.community.entity.enums.PostStatus;
 import com.caskbycask.domain.producer.entity.Producer;
+import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.domain.user.entity.User;
 import com.caskbycask.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
@@ -35,7 +36,7 @@ public class Post extends BaseTimeEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "board_type", nullable = false, length = 20)
-    @Comment("게시판 유형 — FREE/NOTICE")
+    @Comment("게시판 유형 — FREE/NOTICE/PHOTO")
     private BoardType boardType;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -140,6 +141,29 @@ public class Post extends BaseTimeEntity {
     @OrderColumn(name = "sort_order")
     @Column(name = "hashtag", nullable = false, length = 30)
     private List<String> hashtags = new ArrayList<>();
+
+    /**
+     * 주류 태그 (이미지 갤러리 전용).
+     * <p>
+     * ⚠️ cascade = ALL + orphanRemoval 은 필수다. PostMoveService 가 게시글을 물리 삭제하므로
+     * 이 설정이 없으면 FK 제약에 걸려 <b>모든 게시판의 글 삭제가 실패</b>한다.
+     */
+    @Builder.Default
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PostSpiritTag> spiritTags = new ArrayList<>();
+
+    /** 주류 태그를 통째로 교체한다(수정 시 기존 태그를 지우고 새로 넣는다). */
+    public void replaceSpiritTags(List<Spirit> spirits) {
+        this.spiritTags.clear();
+        if (spirits == null) return;
+        for (int i = 0; i < spirits.size(); i++) {
+            this.spiritTags.add(PostSpiritTag.builder()
+                    .post(this)
+                    .spirit(spirits.get(i))
+                    .sortOrder(i)
+                    .build());
+        }
+    }
 
     public void incrementViewCount()    { this.viewCount++; }
     public void incrementLikeCount()    { this.likeCount++; }

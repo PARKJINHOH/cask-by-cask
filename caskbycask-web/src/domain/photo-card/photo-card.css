@@ -1,0 +1,64 @@
+/*
+ * 포토카드 편집기 패널 스크롤.
+ *
+ * 편집 패널은 페이지 안에 있는 또 하나의 스크롤 영역이라, 기본 스크롤바를 그대로 두면
+ * 페이지 스크롤바와 굵기·색이 달라 화면에서 튄다. 이미지 편집기(di-image-editor-scroll)와
+ * 같은 규칙으로 밝은 패널에 맞춰 다듬는다.
+ * scrollbar-gutter 로 자리를 미리 잡아 스크롤이 생겨도 내용 폭이 흔들리지 않게 한다.
+ */
+.di-photo-card-scroll {
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(212 212 212) transparent;
+}
+
+.di-photo-card-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.di-photo-card-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.di-photo-card-scroll::-webkit-scrollbar-thumb {
+  background-color: rgb(212 212 212); /* neutral-300 */
+  border: 2px solid transparent;
+  border-radius: 9999px;
+  background-clip: content-box;
+}
+
+.di-photo-card-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(163 163 163); /* neutral-400 */
+}
+
+/*
+ * 도구 레일.
+ *
+ * 모바일에서는 화면 맨 아래 가로 바가 되고 항목이 화면보다 넓으면 옆으로 넘긴다.
+ * 이때 스크롤바가 보이면 손가락으로 쓰는 바에 군더더기가 생기므로 감춘다
+ * (패널과 달리 '스크롤이 가능하다'는 신호가 필요 없다 — 아이콘이 잘려 보이는 것으로 충분하다).
+ */
+.di-photo-card-rail {
+  scrollbar-width: none;
+}
+
+.di-photo-card-rail::-webkit-scrollbar {
+  display: none;
+}
+
+/*
+ * 카드 뒤 체커보드.
+ *
+ * 카드 모서리를 둥글게 깎으면 잘린 바깥은 투명하다. 캔버스에 흰 배경을 깔면 그 자리가 흰색으로
+ * 보여 PNG 로 뽑았을 때와 달라지므로, 뒤에 체커보드를 깔아 "여기는 비어 있다"를 그대로 보여 준다.
+ * (JPEG 는 투명을 담지 못해 출력 시 카드 배경색으로 채운다 — usePhotoCardEditor.renderToBlob)
+ */
+.di-photo-card-checker {
+  background-color: #ffffff;
+  background-image:
+    linear-gradient(45deg, #d4d4d4 25%, transparent 25%, transparent 75%, #d4d4d4 75%),
+    linear-gradient(45deg, #d4d4d4 25%, transparent 25%, transparent 75%, #d4d4d4 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 8px 8px;
+}

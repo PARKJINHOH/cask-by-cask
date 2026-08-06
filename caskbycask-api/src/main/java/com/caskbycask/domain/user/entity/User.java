@@ -218,7 +218,7 @@ public class User extends BaseTimeEntity {
     @CollectionTable(name = "user_board_permissions", joinColumns = @JoinColumn(name = "user_id"))
     @Enumerated(EnumType.STRING)
     @Column(name = "board_type", length = 20)
-    @Comment("쓰기 허용 게시판 — FREE/NOTICE")
+    @Comment("쓰기 허용 게시판 — FREE/NOTICE/PHOTO")
     @Builder.Default
     private Set<BoardType> boardPermissions = new HashSet<>();
 

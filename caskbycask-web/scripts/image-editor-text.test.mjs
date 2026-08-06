@@ -1,13 +1,18 @@
 import { describe, test } from 'node:test'
 import assert from 'node:assert/strict'
 import { existsSync, readFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const {
+  TEXT_FONT_FAMILIES,
   TEXT_FONT_GROUPS,
   TEXT_FONT_OPTIONS,
+  TEXT_FONT_WEIGHT_LABEL_KEYS,
+  getTextFontFamily,
+  resolveTextFontKey,
   TEXT_LAYER_MAX,
   TEXT_OUTLINE_WIDTH_MAX,
   clampTextPosition,
@@ -55,13 +60,83 @@ describe('이미지 에디터 텍스트 스타일', () => {
     // 브라우저마다 결과가 달라지는 시스템 폰트가 섞이면 출력 이미지가 재현되지 않는다.
     const allowed = [
       'Pretendard Variable', 'Black Han Sans', 'Do Hyeon', 'Jua',
-      'Nanum Pen Script', 'Gowun Batang', 'Song Myung',
+      'Nanum Pen Script', 'Gowun Batang', 'Gowun Dodum', 'Song Myung', 'Noto Sans KR',
+      // 영문 위주 서체 — 전부 self-host. 라이선스 근거는 assets/editor-fonts/<slug>/LICENSE* 참고.
+      'Wanted Sans', 'IBM Plex Sans Condensed', 'Bebas Neue', 'Pacifico',
+      'Stilu', 'Kalamkari', 'Cool Story', 'Magnolia Script', 'Exmouth',
     ]
     for (const font of TEXT_FONT_OPTIONS) {
       const primary = font.family.match(/^'([^']+)'/)?.[1]
       assert.ok(allowed.includes(primary), `허용되지 않은 서체: ${font.family}`)
       assert.match(font.labelKey, /^imageEditor\.font[A-Z]/)
     }
+  })
+
+  test('서체 가족은 굵기를 묶고, 같은 가족은 이름·CSS 가족이 일치한다', () => {
+    // 목록에는 가족만 두고 굵기는 그 안에서 고른다. 같은 familyKey 인데 이름이나
+    // CSS 가족이 다르면 목록에서 같은 서체가 둘로 보이거나 미리보기가 엉뚱해진다.
+    const byFamily = new Map()
+    for (const font of TEXT_FONT_OPTIONS) {
+      assert.ok(font.familyKey, `${font.key}: familyKey 가 없다`)
+      assert.match(font.familyLabelKey, /^imageEditor\.family[A-Z]/, `${font.key}: familyLabelKey 규칙 위반`)
+      const seen = byFamily.get(font.familyKey)
+      if (!seen) { byFamily.set(font.familyKey, font); continue }
+      assert.equal(font.familyLabelKey, seen.familyLabelKey, `${font.familyKey}: 가족 이름이 다르다`)
+      assert.equal(font.family, seen.family, `${font.familyKey}: CSS 가족이 다르다`)
+      assert.equal(font.groupKey, seen.groupKey, `${font.familyKey}: 그룹이 다르다`)
+    }
+    assert.equal(TEXT_FONT_FAMILIES.length, byFamily.size)
+
+    // 가족 안에서 굵기는 중복 없이 가벼운 것부터
+    for (const family of TEXT_FONT_FAMILIES) {
+      const weights = family.weights.map((w) => w.weight)
+      assert.deepEqual(weights, [...weights].sort((a, b) => a - b), `${family.key}: 굵기 정렬이 어긋난다`)
+      assert.equal(new Set(weights).size, weights.length, `${family.key}: 굵기가 중복된다`)
+      for (const entry of family.weights) {
+        assert.ok(TEXT_FONT_WEIGHT_LABEL_KEYS[entry.weight], `${entry.fontKey}: ${entry.weight} 굵기 이름이 없다`)
+      }
+    }
+  })
+
+  test('가족을 바꾸면 가장 가까운 굵기로 이어진다', () => {
+    // 굵은 글씨를 쓰다 가족만 바꿨는데 갑자기 가늘어지면 배치가 무너진다.
+    assert.equal(resolveTextFontKey('pretendard', 700), 'pretendardBold')
+    assert.equal(resolveTextFontKey('pretendard', 300), 'pretendardRegular')
+    // 그 굵기가 없는 가족은 가장 가까운 것으로
+    assert.equal(resolveTextFontKey('jua', 900), 'jua')
+    assert.equal(resolveTextFontKey('notoSansKr', 900), 'notoSansKrBold')
+    assert.equal(resolveTextFontKey('notoSansKr', 300), 'notoSansKrLight')
+    // 아무 fontKey 로도 자기 가족을 찾을 수 있다
+    for (const font of TEXT_FONT_OPTIONS) {
+      assert.equal(getTextFontFamily(font.key).key, font.familyKey, font.key)
+    }
+  })
+
+  test('글꼴 목록 CSS 를 immutable 로 캐시하지 않는다', () => {
+    // 회귀 배경: `/fonts/:path*` 를 통째로 immutable 로 캐시했더니, 경로에 버전이 없는
+    // editor-fonts.css 까지 굳어 버려 서체를 추가해도 브라우저가 옛 목록을 계속 썼다.
+    // (immutable 은 재검증을 안 하므로 새로고침·서버 재기동으로도 풀리지 않는다)
+    const config = readFileSync(join(HERE, '..', 'next.config.js'), 'utf8')
+    assert.ok(
+      !/source:\s*'\/fonts\/:path\*'/.test(config),
+      '`/fonts/:path*` 포괄 규칙은 editor-fonts.css 까지 immutable 로 만든다',
+    )
+    assert.match(
+      config,
+      /'\/fonts\/editor\/editor-fonts\.css'[\s\S]{0,300}?must-revalidate/,
+      'editor-fonts.css 에는 재검증 규칙이 있어야 한다',
+    )
+  })
+
+  test('글꼴 CSS 주소에 붙는 내용 해시가 최신이다', () => {
+    // 해시가 어긋나면 서체를 바꾸고 `npm run fonts:sync-editor` 를 다시 돌리지 않은 것이다.
+    const loader = readFileSync(join(HERE, '..', 'src', 'shared', 'components', 'imageEditorFontCss.ts'), 'utf8')
+    assert.match(loader, /EDITOR_FONT_CSS_VERSION/, '로더가 버전 쿼리를 붙이지 않는다')
+
+    const css = readFileSync(join(HERE, '..', 'public', 'fonts', 'editor', 'editor-fonts.css'), 'utf8')
+    const expected = createHash('sha256').update(css).digest('hex').slice(0, 8)
+    const version = readFileSync(join(HERE, '..', 'src', 'shared', 'components', 'editorFontCssVersion.ts'), 'utf8')
+    assert.match(version, new RegExp(`'${expected}'`), 'fonts:sync-editor 를 다시 실행해야 한다')
   })
 
   test('Pretendard 는 굵기 4단계를 유지한다', () => {

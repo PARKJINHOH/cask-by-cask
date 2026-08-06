@@ -15,6 +15,7 @@ public record AdminProducerResponse(
         /** 산지 코드를 풀어놓은 형태 — 관리자 목록의 세부 산지 표기용. 산지 미지정 시 null */
         SpiritWineRegionResponse wineRegion,
         String website,
+        String logoImageUrl,
         Integer foundedYear,
         String descriptionKo,
         String descriptionEn,
@@ -32,6 +33,7 @@ public record AdminProducerResponse(
                 producer.getRegionCode() != null ? producer.getRegionCode().getCode() : null,
                 SpiritWineRegionResponse.from(producer.getRegionCode()),
                 producer.getWebsite(),
+                producer.getLogoImageUrl(),
                 producer.getFoundedYear(),
                 producer.getDescriptionKo(),
                 producer.getDescriptionEn(),

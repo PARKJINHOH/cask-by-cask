@@ -51,6 +51,16 @@ public class PostImage extends BaseTimeEntity {
     @Comment("저장 하위 경로")
     private String subPath;
 
+    // 이미지 갤러리의 justified 그리드가 비율을 미리 알아야 해서 저장한다.
+    // 기존 이미지는 백필하지 않아 null 일 수 있다(프론트가 onLoad 로 보정).
+    @Column
+    @Comment("이미지 가로(px)")
+    private Integer width;
+
+    @Column
+    @Comment("이미지 세로(px)")
+    private Integer height;
+
     @Builder.Default
     @Column(nullable = false)
     @Comment("사용 중 여부")

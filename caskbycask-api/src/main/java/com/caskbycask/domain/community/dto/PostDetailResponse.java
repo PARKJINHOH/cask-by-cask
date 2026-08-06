@@ -39,6 +39,8 @@ public class PostDetailResponse {
     private final List<PostImageInfo> images;
     private final List<String> sourceUrls;
     private final List<String> hashtags;
+    /** 주류 태그 (이미지 갤러리 전용, 그 외 게시판은 빈 목록) */
+    private final List<PostSpiritTagInfo> spiritTags;
     private final SeriesInfo series;
     private final Boolean isMyPost;   // null if not logged in
     private final Boolean isLiked;    // null if not logged in
@@ -72,6 +74,7 @@ public class PostDetailResponse {
         this.images           = b.images;
         this.sourceUrls       = b.sourceUrls;
         this.hashtags         = b.hashtags;
+        this.spiritTags       = b.spiritTags;
         this.series           = b.series;
         this.isMyPost         = b.isMyPost;
         this.isLiked          = b.isLiked;
@@ -140,6 +143,7 @@ public class PostDetailResponse {
         private List<PostImageInfo> images;
         private List<String> sourceUrls = List.of();
         private List<String> hashtags = List.of();
+        private List<PostSpiritTagInfo> spiritTags = List.of();
         private SeriesInfo series;
         private Boolean isMyPost;
         private Boolean isLiked;
@@ -176,6 +180,10 @@ public class PostDetailResponse {
         }
         public Builder hashtags(List<String> hashtags)    {
             this.hashtags = hashtags != null ? List.copyOf(hashtags) : List.of();
+            return this;
+        }
+        public Builder spiritTags(List<PostSpiritTagInfo> tags) {
+            this.spiritTags = tags != null ? List.copyOf(tags) : List.of();
             return this;
         }
         public Builder series(SeriesInfo s)               { this.series = s; return this; }

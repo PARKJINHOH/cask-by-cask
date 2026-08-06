@@ -430,6 +430,30 @@ export default function PostDetailPage() {
           </div>
         )}
 
+        {/* 주류 태그 — 이미지 갤러리 글에서 포토카드에 쓴 주류로 이동한다 */}
+        {!post.isBlocked && (post.spiritTags?.length ?? 0) > 0 && (
+          <div className="mt-6 flex flex-wrap gap-2">
+            {post.spiritTags!.map((tag) => (
+              <Link
+                key={tag.spiritId}
+                to={`/spirits/${tag.spiritId}`}
+                className="flex items-center gap-2.5 rounded-xl border border-primary-200 bg-primary-50 px-3 py-2 transition-colors hover:bg-primary-100"
+              >
+                <span className="h-10 w-8 shrink-0 overflow-hidden rounded bg-neutral-200">
+                  {tag.imageUrl && <img src={tag.imageUrl} alt="" className="h-full w-full object-cover" />}
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-bold text-neutral-900">{tag.nameKo}</span>
+                  {tag.nameEn && (
+                    <span className="block truncate text-xs text-neutral-500">{tag.nameEn}</span>
+                  )}
+                </span>
+                <span className="ml-1 shrink-0 text-xs font-bold text-primary-700">›</span>
+              </Link>
+            ))}
+          </div>
+        )}
+
         {!!post.contentSanitized && !post.isBlocked && post.hashtags?.length > 0 && (
           <div className="mt-6 flex flex-wrap gap-2" aria-label={t('post.hashtags.label')}>
             {post.hashtags.map((hashtag) => (

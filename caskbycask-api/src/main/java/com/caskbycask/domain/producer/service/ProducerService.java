@@ -18,6 +18,9 @@ import com.caskbycask.domain.user.entity.User;
 import com.caskbycask.domain.user.repository.UserRepository;
 import com.caskbycask.global.exception.CustomException;
 import com.caskbycask.global.exception.ErrorCode;
+import com.caskbycask.global.storage.FileStorageService;
+import com.caskbycask.global.storage.ValidatedImageUploader;
+import com.caskbycask.global.storage.ValidatedImageUploader.StoredImage;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +29,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -40,21 +44,30 @@ public class ProducerService {
     private final ProducerRegisterRequestRepository producerRequestRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
+    private final ValidatedImageUploader validatedImageUploader;
+    private final FileStorageService fileStorageService;
     private final ObjectMapper objectMapper;
     private final LegacyWineRegionResolver legacyWineRegionResolver;
     private final WineRegionService wineRegionService;
 
     // ── 공개 조회 ──────────────────────────────────────────────
 
+    /**
+     * @param hasLogo true 면 로고가 등록된 생산자만 돌려준다.
+     *   포토카드에서 로고를 고를 때 쓴다 — 로고 없는 곳을 섞어 보여 주면 고를 수 없는 항목만 늘어난다.
+     */
     @Transactional(readOnly = true)
     public Page<ProducerResponse> search(
             String keyword, String nameKo, String nameEn, String country, Integer foundedYear,
-            ProducerType type, Pageable pageable) {
+            ProducerType type, Boolean hasLogo, Pageable pageable) {
         String keywordParam = StringUtils.hasText(keyword) ? keyword.trim() : null;
         String nameKoParam = StringUtils.hasText(nameKo) ? nameKo.trim() : null;
         String nameEnParam = StringUtils.hasText(nameEn) ? nameEn.trim() : null;
         String countryParam = StringUtils.hasText(country) ? country.trim() : null;
-        return producerRepository.search(keywordParam, nameKoParam, nameEnParam, countryParam, foundedYear, type, pageable)
+        // 쿼리는 "null 이면 전체"만 본다. false 로 와도 거르지 않도록 여기서 null 로 눕힌다.
+        Boolean logoOnly = Boolean.TRUE.equals(hasLogo) ? Boolean.TRUE : null;
+        return producerRepository.search(keywordParam, nameKoParam, nameEnParam, countryParam,
+                        foundedYear, type, logoOnly, pageable)
                 .map(ProducerResponse::from);
     }
 
@@ -72,7 +85,7 @@ public class ProducerService {
         String nameEnParam = StringUtils.hasText(nameEn) ? nameEn.trim() : null;
         String countryParam = StringUtils.hasText(country) ? country.trim() : null;
         Page<Producer> producers = producerRepository.search(
-                keywordParam, nameKoParam, nameEnParam, countryParam, foundedYear, type, pageable);
+                keywordParam, nameKoParam, nameEnParam, countryParam, foundedYear, type, null, pageable);
         List<Long> producerIds = producers.getContent().stream().map(Producer::getId).toList();
         Map<Long, Long> spiritCounts = producerIds.isEmpty()
                 ? Map.of()
@@ -289,6 +302,51 @@ public class ProducerService {
         } catch (JsonProcessingException e) {
             throw new CustomException(ErrorCode.INVALID_INPUT);
         }
+    }
+
+    // ─── 로고 이미지 ───────────────────────────────────────────────
+    // UpdateProducerRequest 가 "null = 변경 안 함" 규약이라 JSON 필드로는 '삭제'를 표현할 수 없다.
+    // 프로필 이미지와 같은 방식으로 업로드/삭제 엔드포인트를 따로 둔다.
+
+    @Transactional
+    public ProducerResponse uploadLogo(Long producerId, MultipartFile file) {
+        Producer producer = producerRepository.findById(producerId)
+                .orElseThrow(() -> new CustomException(ErrorCode.DISTILLERY_NOT_FOUND));
+
+        // 로고는 글자·도형이 많아 손실 압축에서 뭉개진다 → 무손실 WebP.
+        StoredImage stored = validatedImageUploader.uploadLossless(file, "producers");
+
+        String previousFileName = producer.getLogoSavedFileName();
+        String previousSubPath = producer.getLogoSubPath();
+        producer.updateLogo(stored.imageUrl(), stored.savedFileName(), stored.subPath());
+
+        deleteStoredFileAfterCommit(previousFileName, previousSubPath);
+        return ProducerResponse.from(producer);
+    }
+
+    @Transactional
+    public ProducerResponse deleteLogo(Long producerId) {
+        Producer producer = producerRepository.findById(producerId)
+                .orElseThrow(() -> new CustomException(ErrorCode.DISTILLERY_NOT_FOUND));
+
+        String fileName = producer.getLogoSavedFileName();
+        String subPath = producer.getLogoSubPath();
+        producer.removeLogo();
+
+        deleteStoredFileAfterCommit(fileName, subPath);
+        return ProducerResponse.from(producer);
+    }
+
+    /** 커밋이 확정된 뒤에만 물리 파일을 지운다(롤백 시 파일만 사라지는 사고 방지). */
+    private void deleteStoredFileAfterCommit(String savedFileName, String subPath) {
+        if (savedFileName == null || subPath == null) return;
+        org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                new org.springframework.transaction.support.TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        fileStorageService.delete(savedFileName, subPath);
+                    }
+                });
     }
 
     private ProducerRegisterRequestResponse toResponse(

@@ -63,6 +63,7 @@ export const ADMIN_NAV: AdminNavEntry[] = [
       { path: '/admin/spirits/requests', label: '주류 등록 요청' },
       { path: '/admin/spirits/variant-requests', label: '하위 에디션/리뷰 승인', exact: true },
       { path: '/admin/spirits',          label: '주류 관리', exact: true },
+      { path: '/admin/spirits/wine-crawler', label: '와인 크롤링', exact: true },
       // 테이스팅 트리는 위스키 전용이 아니라 전 카테고리(위스키·와인·꼬냑) 공통이다.
       { path: '/admin/taste-trees',      label: '주류 트리', exact: true },
     ],
@@ -102,6 +103,7 @@ export const ADMIN_NAV: AdminNavEntry[] = [
     items: [
       { path: '/admin/community/ai-news',      label: '소식(AI)', exact: true },
       { path: '/admin/social',                 label: 'SNS 게시 관리', exact: true },
+      { path: '/admin/photo-cards',            label: '포토카드 템플릿', exact: true },
       { path: '/admin/community/post-reports', label: '게시글·댓글 신고' },
       { path: '/admin/community/bad-words',    label: '욕설 필터' },
       { path: '/admin/community/emojis',       label: '이모지 관리', exact: true },

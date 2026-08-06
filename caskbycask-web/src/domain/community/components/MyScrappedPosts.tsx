@@ -9,7 +9,7 @@ import { useMyScrappedPosts, useUnscrapPost } from '../hooks/usePosts'
 import type { PostListItem } from '../types/community.types'
 
 function boardPathOf(boardType: PostListItem['boardType']): string {
-  return boardType === 'NOTICE' ? 'notice' : 'free'
+  return (boardType || 'FREE').toLowerCase()
 }
 
 export default function MyScrappedPosts() {

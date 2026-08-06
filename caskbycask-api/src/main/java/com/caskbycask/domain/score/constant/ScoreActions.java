@@ -21,6 +21,7 @@ public final class ScoreActions {
     public static final String POST_WRITE_SHARING         = "POST_WRITE_SHARING";
     public static final String POST_WRITE_DISTILLERY_TOUR = "POST_WRITE_DISTILLERY_TOUR";
     public static final String POST_WRITE_NOTICE          = "POST_WRITE_NOTICE";
+    public static final String POST_WRITE_PHOTO           = "POST_WRITE_PHOTO";
     public static final String POST_DELETE                = "POST_DELETE";
     public static final String POST_LOCKED                = "POST_LOCKED";
     public static final String POST_LIKED                 = "POST_LIKED";

@@ -803,7 +803,7 @@ function composeVariantLabel({
   abv,
   volumeMl,
 }: {
-  variantType?: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE' | null
+  variantType?: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'VINTAGE' | 'NONE' | null
   seriesIdentifier?: string | null
   seriesIdentifierEn?: string | null
   variantValue?: string | null

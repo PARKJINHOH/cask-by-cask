@@ -916,11 +916,12 @@ function VariantSelector({
   const { t, i18n } = useTranslation()
   const isEn = i18n.language === 'en'
   if (variants.length === 0) return null
+  const isWine = variants.some((variant) => variant.category === 'WINE')
 
   return (
     <div className="flex items-center gap-2 mb-2 bg-neutral-50 border border-neutral-200/60 rounded-2xl p-3 w-fit text-left">
       <label htmlFor="variant-filter-select" className="text-xs font-bold text-neutral-500 shrink-0">
-        {t('spirit.detail.variantFilter')}
+        {t(isWine ? 'spirit.detail.vintageFilter' : 'spirit.detail.variantFilter')}
       </label>
       <select
         id="variant-filter-select"
@@ -931,7 +932,7 @@ function VariantSelector({
         }}
         className="text-xs font-semibold text-neutral-700 bg-white border border-neutral-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-pointer min-w-[180px]"
       >
-        <option value="">{t('spirit.detail.variantAll')}</option>
+        <option value="">{t(isWine ? 'spirit.detail.vintageAll' : 'spirit.detail.variantAll')}</option>
         {variants.map((v) => {
           const label = formatVariantSelectLabel(v, isEn)
           return (
@@ -1069,7 +1070,9 @@ export default function SpiritDetailPage() {
   // 표시용 갤러리 이미지는 본인 것을 우선하되, 없으면 마스터 이미지로 폴백한다.
   const galleryImages = (spirit.images && spirit.images.length > 0)
     ? spirit.images
-    : []
+    : spirit.sourceImageUrl
+      ? [{ id: -1, imageUrl: spirit.sourceImageUrl, isPrimary: true, sortOrder: 0 }]
+      : []
 
   const canonicalUrl = isEn
     ? (spiritSeo?.canonicalUrlEn ?? buildCanonical(`/en/spirits/${spirit.id}`))
@@ -1179,7 +1182,7 @@ export default function SpiritDetailPage() {
       <div className="bg-white rounded-3xl shadow-[0_8px_40px_-12px_rgba(17,24,39,0.12)] ring-1 ring-neutral-100 mb-6 overflow-hidden">
         <div className="md:flex">
           {/* Gallery */}
-          <div className="md:w-80 flex-shrink-0 p-5 md:border-r border-neutral-100">
+          <div className="md:w-80 flex-shrink-0 p-5 md:border-r border-neutral-100 relative">
             <Gallery
               images={galleryImages}
               nameKo={primaryName}
@@ -1187,6 +1190,29 @@ export default function SpiritDetailPage() {
               onSelect={setSelectedImg}
               onImageClick={setLightboxIdx}
             />
+            {spirit.sourceProvider === 'VIVINO' && spirit.sourceRating != null && (
+              <a
+                href={spirit.sourceUrl || undefined}
+                target={spirit.sourceUrl ? '_blank' : undefined}
+                rel={spirit.sourceUrl ? 'noopener noreferrer nofollow' : undefined}
+                onClick={(event) => {
+                  if (!spirit.sourceUrl) event.preventDefault()
+                  event.stopPropagation()
+                }}
+                className="absolute bottom-7 right-7 rounded-xl bg-[#8b1d41]/95 px-3 py-2 text-white shadow-lg ring-1 ring-white/40"
+                aria-label={`VIVINO ${spirit.sourceRating.toFixed(1)}`}
+              >
+                <span className="block text-[10px] font-black tracking-[0.14em] leading-none">
+                  VIVINO{spirit.sourceUrl?.includes('/fixture-') ? ' · SAMPLE' : ''}
+                </span>
+                <span className="mt-1 block text-lg font-black leading-none">
+                  {spirit.sourceRating.toFixed(1)}
+                  {spirit.sourceRatingCount != null && (
+                    <span className="ml-1 text-[10px] font-medium opacity-80">({spirit.sourceRatingCount.toLocaleString()})</span>
+                  )}
+                </span>
+              </a>
+            )}
           </div>
 
           {/* Info */}
@@ -1251,7 +1277,7 @@ export default function SpiritDetailPage() {
                   <svg className="w-4 h-4 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                   </svg>
-                  {t('spirit.detail.variantPageSelect')}
+                  {t(spirit.category === 'WINE' ? 'spirit.detail.vintagePageSelect' : 'spirit.detail.variantPageSelect')}
                 </span>
                 <select
                   value={spirit.id}

@@ -5,6 +5,7 @@ import com.caskbycask.domain.community.entity.enums.BoardType;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 public class PostListResponse {
@@ -32,14 +33,34 @@ public class PostListResponse {
     private final int commentCount;
     private final boolean hasPoll;
     private final String thumbnailImageUrl;
+    // 이미지 갤러리의 justified 그리드가 배치 전에 비율을 알아야 한다.
+    // 예전 이미지는 백필하지 않아 null 일 수 있다(프론트가 img.onLoad 로 보정).
+    private final Integer thumbnailWidth;
+    private final Integer thumbnailHeight;
     private final String thumbnailVideoUrl;
+    /** 주류 태그 (이미지 갤러리 전용, 그 외 게시판은 빈 목록) */
+    private final List<PostSpiritTagInfo> spiritTags;
     // [패치 9] 소식 게시판 증류소 태그 (없으면 null)
     private final Long distilleryTagId;
     private final String distilleryTagNameKo;
     private final String distilleryTagNameEn;
     private final LocalDateTime createdAt;
 
+    private PostListResponse(Post post, PostThumbnail thumbnail, String thumbnailVideoUrl,
+                             List<PostSpiritTagInfo> spiritTags) {
+        this(post, thumbnail != null ? thumbnail.imageUrl() : null, thumbnailVideoUrl,
+                thumbnail != null ? thumbnail.width() : null,
+                thumbnail != null ? thumbnail.height() : null,
+                spiritTags);
+    }
+
     private PostListResponse(Post post, String thumbnailImageUrl, String thumbnailVideoUrl) {
+        this(post, thumbnailImageUrl, thumbnailVideoUrl, null, null, List.of());
+    }
+
+    private PostListResponse(Post post, String thumbnailImageUrl, String thumbnailVideoUrl,
+                             Integer thumbnailWidth, Integer thumbnailHeight,
+                             List<PostSpiritTagInfo> spiritTags) {
         this.id            = post.getId();
         this.boardType     = post.getBoardType();
         this.prefix        = post.getPrefix() != null ? PrefixInfo.from(post.getPrefix()) : null;
@@ -65,7 +86,11 @@ public class PostListResponse {
         this.hasPoll       = post.getPoll() != null;
         boolean exposeThumbnail = !locked && !this.adultOnly;
         this.thumbnailImageUrl = exposeThumbnail ? thumbnailImageUrl : null;
+        // 썸네일을 가릴 때는 크기도 함께 가린다(가려진 자리에 빈 비율 상자가 남지 않게).
+        this.thumbnailWidth  = this.thumbnailImageUrl != null ? thumbnailWidth : null;
+        this.thumbnailHeight = this.thumbnailImageUrl != null ? thumbnailHeight : null;
         this.thumbnailVideoUrl = exposeThumbnail && this.thumbnailImageUrl == null ? thumbnailVideoUrl : null;
+        this.spiritTags = spiritTags != null ? spiritTags : List.of();
         // [패치 9] 소식 게시판 증류소 태그
         this.distilleryTagId     = post.getDistilleryTag() != null ? post.getDistilleryTag().getId() : null;
         this.distilleryTagNameKo = post.getDistilleryTag() != null ? post.getDistilleryTag().getNameKo() : null;
@@ -83,5 +108,11 @@ public class PostListResponse {
 
     public static PostListResponse from(Post post, String thumbnailImageUrl, String thumbnailVideoUrl) {
         return new PostListResponse(post, thumbnailImageUrl, thumbnailVideoUrl);
+    }
+
+    /** 이미지 갤러리용 — 썸네일 크기와 주류 태그까지 함께 담는다. */
+    public static PostListResponse from(Post post, PostThumbnail thumbnail, String thumbnailVideoUrl,
+                                        List<PostSpiritTagInfo> spiritTags) {
+        return new PostListResponse(post, thumbnail, thumbnailVideoUrl, spiritTags);
     }
 }

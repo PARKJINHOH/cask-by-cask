@@ -30,6 +30,8 @@ export interface Producer {
   /** 산지 (지도 표시용) — regionCode 를 풀어놓은 형태. 산지 미지정 시 null */
   wineRegion: SpiritWineRegion | null
   website: string | null
+  /** 로고 이미지 URL — 포토카드에서 증류소 로고로 쓴다 */
+  logoImageUrl: string | null
   foundedYear: number | null
   descriptionKo: string | null
   descriptionEn: string | null

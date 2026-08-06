@@ -1,0 +1,21 @@
+Kalamkari — Ony Studio / Solutype
+
+배포본(dafont 압축파일)에 라이선스 파일이 없고, 폰트 파일의 name 테이블에도
+라이선스(nameID 13) · 라이선스 URL(nameID 14) 항목이 비어 있다.
+따라서 아래 배포 페이지의 제작자 표기가 유일한 이용 허락 근거다.
+
+  출처: https://www.dafont.com/kalamkari.font
+  분류: 100% Free
+  제작자 안내: "This fonts license is 100% Free" / "Any donations are very appreciated."
+  확인일: 2026-08-05
+
+주의:
+  dafont FAQ 는 목록의 라이선스 표시가 "참고(indication)"일 뿐이며 압축파일의
+  readme 나 제작자 사이트를 확인하라고 안내한다. 이 서체는 그 readme 가 없다.
+  상업적 재배포(웹폰트 self-host 포함) 범위를 문서로 확인할 수 없으므로,
+  분쟁 소지를 없애려면 제작자에게 직접 확인하거나 서체를 교체하는 편이 안전하다.
+
+  같은 폴더의 다른 서체들은 근거가 더 분명하다.
+    · Stilu           SIL OFL 1.1 (폰트 파일 내장 + LICENSE.rtf)
+    · Magnolia Script SIL OFL 1.1 (FREE FONT LICENSE.txt 전문 동봉)
+    · Cool Story      제작자 readme + 폰트 내장 "Personal Use & Commercial Use"

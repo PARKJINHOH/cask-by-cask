@@ -197,7 +197,7 @@ public class SpiritDetailService {
         );
     }
 
-    private void saveWineDetail(Spirit spirit, WineDetailRequest req) {
+    public void saveWineDetail(Spirit spirit, WineDetailRequest req) {
         if (req == null) return;
 
         // 포도 품종 비율 합계 검증
@@ -392,6 +392,14 @@ public class SpiritDetailService {
     public WhiskyDetailResponse buildVariantWhiskyDetail(Spirit spirit) {
         return spirit.getCategory() == SpiritCategory.WHISKY
                 ? buildWhiskyDetailResponse(spirit.getWhiskyDetail())
+                : null;
+    }
+
+    /** 하위 빈티지의 와인 상세 응답 빌드 (WINE 카테고리일 때만, 아니면 null). */
+    @Transactional(readOnly = true)
+    public WineDetailResponse buildVariantWineDetail(Spirit spirit) {
+        return spirit.getCategory() == SpiritCategory.WINE
+                ? buildWineDetailResponse(spirit.getWineDetail())
                 : null;
     }
 

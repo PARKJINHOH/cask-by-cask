@@ -1,11 +1,12 @@
 import { lazy } from 'react'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from '@/shared/api/queryClient'
 import ErrorBoundary from '@/shared/components/ErrorBoundary'
 // 레이아웃·라우트 가드는 항상 필요하므로 eager 로드. 페이지는 모두 route 단위 코드 스플리팅.
 import MainLayout from '@/layouts/MainLayout'
 import AdminLayout from '@/layouts/AdminLayout'
+import EditorLayout from '@/layouts/EditorLayout'
 import PrivateRoute from '@/shared/components/PrivateRoute'
 import AdminRoute from '@/shared/components/AdminRoute'
 import AuthSessionBootstrap from '@/domain/auth/components/AuthSessionBootstrap'
@@ -37,6 +38,8 @@ const PostFormPage = lazy(() => import('@/views-spa/community/PostFormPage'))
 const ByobListPage = lazy(() => import('@/views-spa/community/ByobListPage'))
 const ByobDetailPage = lazy(() => import('@/views-spa/community/ByobDetailPage'))
 const ByobFormPage = lazy(() => import('@/views-spa/community/ByobFormPage'))
+const PhotoGalleryPage = lazy(() => import('@/views-spa/community/PhotoGalleryPage'))
+const PhotoCardPage = lazy(() => import('@/views-spa/PhotoCardPage'))
 const NotificationsPage = lazy(() => import('@/views-spa/NotificationsPage'))
 const AdminUserPage = lazy(() => import('@/views-spa/admin/AdminUserPage'))
 const AdminUserDetailPage = lazy(() => import('@/views-spa/admin/AdminUserDetailPage'))
@@ -85,6 +88,7 @@ const AdminDealListPage = lazy(() => import('@/views-spa/admin/AdminDealListPage
 const AdminDealDetailPage = lazy(() => import('@/views-spa/admin/AdminDealDetailPage'))
 const AdminLogPage = lazy(() => import('@/views-spa/admin/AdminLogPage'))
 const AdminDashboardPage = lazy(() => import('@/views-spa/admin/AdminDashboardPage'))
+const AdminWineIngestPage = lazy(() => import('@/views-spa/admin/AdminWineIngestPage'))
 const AdminFaqPage = lazy(() => import('@/views-spa/admin/AdminFaqPage'))
 const AdminFaqFormPage = lazy(() => import('@/views-spa/admin/AdminFaqFormPage'))
 const UserBottlePublicPage = lazy(() => import('@/views-spa/UserBottlePublicPage'))
@@ -102,6 +106,7 @@ const MyTasteTreesPage = lazy(() => import('@/views-spa/MyTasteTreesPage'))
 const AdminTasteTreePage = lazy(() => import('@/views-spa/admin/AdminTasteTreePage'))
 const AdminTasteTreeBuilderPage = lazy(() => import('@/views-spa/admin/AdminTasteTreeBuilderPage'))
 const AdminSocialPage = lazy(() => import('@/views-spa/admin/AdminSocialPage'))
+const AdminPhotoCardTemplatePage = lazy(() => import('@/views-spa/admin/AdminPhotoCardTemplatePage'))
 const PublicReviewPage = lazy(() => import('@/views-spa/PublicReviewPage'))
 const SocialHubPage = lazy(() => import('@/views-spa/SocialHubPage'))
 
@@ -135,6 +140,8 @@ export default function App() {
             <Route path="community/notice" element={<NoticeBoardPage />} />
             <Route path="community/free" element={<FreeBoardPage />} />
             <Route path="community/byob" element={<ByobListPage />} />
+            {/* 이미지 갤러리 — 정적 세그먼트라 community/:boardType/:id 보다 먼저 와야 한다 */}
+            <Route path="community/photo" element={<PhotoGalleryPage />} />
             <Route path="community/byob/:id" element={<ByobDetailPage />} />
             <Route path="community/:boardType/:id" element={<PostDetailPage />} />
             <Route path="tier-lists" element={<TierListPage />} />
@@ -162,6 +169,9 @@ export default function App() {
               <Route path="review/:reviewId" element={<ReviewEditPage />} />
               <Route path="community/:boardType/write" element={<PostFormPage />} />
               <Route path="community/:boardType/:id/edit" element={<PostFormPage />} />
+              {/* 이미지 갤러리 글쓰기는 포토카드 편집기로 보낸다 —
+                  PostFormPage 는 photo 를 FREE 로 저장하므로 진입 자체를 막는다 */}
+              <Route path="community/photo/write" element={<Navigate to="/photo-card" replace />} />
               <Route path="community/byob/write" element={<ByobFormPage />} />
               <Route path="community/byob/:id/edit" element={<ByobFormPage />} />
 <Route path="mypage" element={<MyPage />} />
@@ -177,6 +187,15 @@ export default function App() {
             <Route path="*" element={<NotFoundPage />} />
           </Route>
 
+          {/* 편집기 — 헤더/GNB/푸터 없이 화면 전체를 쓴다.
+              정적 경로라 MainLayout 안의 catch-all(*) 보다 먼저 매칭된다.
+              비회원도 만들고 내려받을 수 있다(저장본에는 브랜드 마크가 얹힌다) —
+              로그인이 필요한 것은 마크 없는 저장·갤러리 업로드·내 템플릿뿐이고,
+              그 자리에서 작업을 임시저장한 뒤 로그인으로 보낸다. */}
+          <Route element={<EditorLayout />}>
+            <Route path="photo-card" element={<PhotoCardPage />} />
+          </Route>
+
           <Route element={<AdminRoute />}>
             <Route path="admin" element={<AdminLayout />}>
               <Route index element={<AdminDashboardPage />} />
@@ -188,6 +207,7 @@ export default function App() {
               <Route path="spirits/requests" element={<AdminRequestPage />} />
               <Route path="spirits/requests/:id" element={<AdminRequestDetailPage />} />
               <Route path="spirits/variant-requests" element={<AdminVariantRequestPage />} />
+              <Route path="spirits/wine-crawler" element={<AdminWineIngestPage />} />
               <Route path="spirits/:id" element={<AdminSpiritDetailPage />} />
               <Route path="producers" element={<AdminProducerPage />} />
               <Route path="producers/requests" element={<AdminProducerRequestPage />} />
@@ -210,6 +230,7 @@ export default function App() {
               <Route path="community/ai-news/requests/:requestId" element={<AdminAiNewsRequestDetailPage />} />
               <Route path="community/ai-news/:id/edit" element={<AdminAiNewsFormPage />} />
               <Route path="social" element={<AdminSocialPage />} />
+              <Route path="photo-cards" element={<AdminPhotoCardTemplatePage />} />
               <Route path="community/bad-words" element={<AdminBadWordPage />} />
               <Route path="community/emojis" element={<AdminEmojiPage />} />
               <Route path="community/prefixes" element={<AdminPrefixPage />} />

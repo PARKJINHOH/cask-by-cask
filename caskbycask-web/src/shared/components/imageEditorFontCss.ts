@@ -7,7 +7,17 @@
  *
  * 생성물: public/fonts/editor/editor-fonts.css — `npm run fonts:sync-editor`
  */
-const EDITOR_FONT_CSS_HREF = '/fonts/editor/editor-fonts.css'
+import { EDITOR_FONT_CSS_VERSION } from './editorFontCssVersion'
+
+/**
+ * 내용 해시를 쿼리로 붙인다.
+ *
+ * 이 CSS 는 한 자리에 계속 덮어써지는 파일이라, 서체를 추가해도 URL 이 그대로면
+ * 예전에 캐시한 브라우저가 새 목록을 받지 못한다(실제로 한 번 겪은 문제다 —
+ * 캐시가 immutable 로 굳으면 새로고침으로도 풀리지 않는다).
+ * 해시가 바뀌면 URL 이 바뀌므로 캐시가 어떻게 굳어 있든 새로 받는다.
+ */
+const EDITOR_FONT_CSS_HREF = `/fonts/editor/editor-fonts.css?v=${EDITOR_FONT_CSS_VERSION}`
 
 let loadPromise: Promise<void> | null = null
 

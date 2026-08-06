@@ -133,6 +133,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/tier-list/images/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/tier-lists/share/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/taste-tree/images/**").permitAll()
+                        // 포토카드 — 공식/공개 템플릿과 이미지는 비로그인도 볼 수 있다.
+                        // (저장·수정·삭제는 컨트롤러의 @PreAuthorize("isAuthenticated()") 가 막는다)
+                        .requestMatchers(HttpMethod.GET, "/api/photo-cards/images/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/photo-cards/templates",
+                                "/api/photo-cards/templates/{id:[0-9]+}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/taste-trees", "/api/taste-trees/official", "/api/taste-trees/facts", "/api/taste-trees/share/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/taste-trees/share/*/view").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/tier-list-drafts/claim").authenticated()
@@ -156,6 +161,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/byob/{id:[0-9]+}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/posts").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/posts/best").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/posts/photos/by-spirit/{spiritId:[0-9]+}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/posts/{id:[0-9]+}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/posts/images/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/posts/videos/**").permitAll()

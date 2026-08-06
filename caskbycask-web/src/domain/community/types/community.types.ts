@@ -1,4 +1,4 @@
-export type BoardType = 'NOTICE' | 'FREE'
+export type BoardType = 'NOTICE' | 'FREE' | 'PHOTO'
 export type PostSort = 'LATEST' | 'BEST' | 'VIEW'
 
 export interface PostPrefix {
@@ -28,8 +28,23 @@ export interface PostListItem {
   commentCount: number
   hasPoll: boolean
   thumbnailImageUrl?: string | null
+  // 이미지 갤러리의 justified 그리드가 배치 전에 비율을 알아야 한다.
+  // 기존 이미지는 백필하지 않아 null 일 수 있다 → onLoad 로 보정한다.
+  thumbnailWidth?: number | null
+  thumbnailHeight?: number | null
   thumbnailVideoUrl?: string | null
+  /** 주류 태그 (이미지 갤러리 전용) */
+  spiritTags?: PostSpiritTagInfo[]
   createdAt: string
+}
+
+/** 게시글에 붙은 주류 태그 */
+export interface PostSpiritTagInfo {
+  spiritId: number
+  nameKo: string
+  nameEn: string | null
+  category: string | null
+  imageUrl: string | null
 }
 
 export interface PollOptionInfo {
@@ -91,6 +106,8 @@ export interface PostDetail {
   images: PostImageInfo[]
   sourceUrls: string[]
   hashtags: string[]
+  /** 주류 태그 (이미지 갤러리 전용) */
+  spiritTags?: PostSpiritTagInfo[]
   series: SeriesInfo | null
   isMyPost: boolean | null
   isLiked: boolean | null
@@ -200,6 +217,8 @@ export interface CreatePostPayload {
   poll?: PollPayload
   seriesId?: number
   hashtags?: string[]
+  /** 이미지 갤러리 전용 주류 태그 (최대 5개) */
+  spiritTagIds?: number[]
   socialPublish?: SocialPublishSelection
 }
 

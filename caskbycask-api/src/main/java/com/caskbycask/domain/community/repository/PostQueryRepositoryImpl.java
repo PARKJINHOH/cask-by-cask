@@ -40,7 +40,9 @@ public class PostQueryRepositoryImpl implements PostQueryRepository {
         if (boardType != null) {
             predicate.and(post.boardType.eq(boardType));
         } else {
-            // "전체" 게시판: NOTICE + FREE 통합 조회
+            // "전체" 게시판: NOTICE + FREE 통합 조회.
+            // PHOTO(이미지 갤러리)는 목록이 이미지형 그리드라 글 목록에 섞이면 안 된다.
+            // 화이트리스트를 유지할 것 — 블랙리스트(ne(PHOTO))로 바꾸면 게시판을 추가할 때마다 샌다.
             predicate.and(post.boardType.in(BoardType.NOTICE, BoardType.FREE));
         }
         predicate.and(post.status.ne(PostStatus.DELETED));

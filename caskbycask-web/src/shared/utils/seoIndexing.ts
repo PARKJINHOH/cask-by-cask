@@ -1,4 +1,4 @@
-export type BoardListType = 'all' | 'notice' | 'free' | 'byob' | 'notices'
+export type BoardListType = 'all' | 'notice' | 'free' | 'byob' | 'photo' | 'notices'
 export type MetadataSearchParams = Record<string, string | string[] | undefined>
 
 function firstSearchParam(value: string | string[] | undefined): string | undefined {

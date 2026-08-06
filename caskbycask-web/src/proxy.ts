@@ -119,7 +119,9 @@ const NOINDEX_PATHS = [
   /^\/oauth(?:\/|$)/,
   /^\/feedback(?:\/|$)/,
   /^\/inquiry(?:\/|$)/,
-  /^\/community\/(?:all|notice|free|byob)\/(?:write|\d+\/edit)(?:\/|$)/,
+  /^\/community\/(?:all|notice|free|byob|photo)\/(?:write|\d+\/edit)(?:\/|$)/,
+  // 포토카드 편집기는 개인 작업 화면이라 색인 대상이 아니다.
+  /^\/photo-card(?:\/|$)/,
   /^\/spirits\/[^/]+\/review\/(?:write|[^/]+\/edit)(?:\/|$)/,
   // 아래 두 패턴은 공개 경로(/taste-trees, /taste-trees/t/{key}, /price-tracker,
   // /price-tracker/spirits/{id})를 건드리지 않도록 하위 경로만 정확히 지정한다.

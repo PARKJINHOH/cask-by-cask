@@ -125,7 +125,6 @@ public class ScoreHistoryLinkResolver {
     }
 
     private String postPath(BoardType boardType, Long postId) {
-        String board = boardType == BoardType.NOTICE ? "notice" : "free";
-        return "/community/" + board + "/" + postId;
+        return "/community/" + boardType.path() + "/" + postId;
     }
 }

@@ -148,7 +148,7 @@ public class Spirit extends BaseTimeEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
-    @Comment("에디션 유형 — BATCH/RELEASE_YEAR/SINGLE_CASK/NONE")
+    @Comment("에디션 유형 — BATCH/RELEASE_YEAR/SINGLE_CASK/VINTAGE/NONE")
     private VariantType variantType;
 
     @Column(length = 100)
@@ -194,6 +194,25 @@ public class Spirit extends BaseTimeEntity {
     @Column
     @Comment("최대 용량(ml)")
     private Integer volumeMlMax;
+
+    @Column(length = 30)
+    @Comment("외부 데이터 제공자")
+    private String sourceProvider;
+
+    @Column(length = 1000)
+    @Comment("외부 원문 URL")
+    private String sourceUrl;
+
+    @Column(length = 1000)
+    @Comment("이용 허가된 외부 대표 이미지 URL")
+    private String sourceImageUrl;
+
+    @Column(precision = 3, scale = 2)
+    @Comment("외부 제공자 평점")
+    private BigDecimal sourceRating;
+
+    @Comment("외부 제공자 평점 참여 수")
+    private Integer sourceRatingCount;
 
     @Transient
     @KeywordField(name = "searchTextKoCompact")
@@ -320,6 +339,15 @@ public class Spirit extends BaseTimeEntity {
      */
     public void assignRegionCode(WineRegion regionCode) {
         this.regionCode = regionCode;
+    }
+
+    public void assignExternalSource(String provider, String url, String imageUrl,
+                                     BigDecimal rating, Integer ratingCount) {
+        this.sourceProvider = provider;
+        this.sourceUrl = url;
+        this.sourceImageUrl = imageUrl;
+        this.sourceRating = rating;
+        this.sourceRatingCount = ratingCount;
     }
 
     public void addVariant(Spirit variant) {

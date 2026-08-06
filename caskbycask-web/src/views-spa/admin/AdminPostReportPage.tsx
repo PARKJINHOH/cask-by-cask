@@ -15,7 +15,8 @@ const STATUS_OPTIONS: Array<{ value: PostReportAdminStatus | ''; label: string }
   { value: 'DISMISSED', label: '무시됨' },
 ]
 
-const boardPath = (bt: PostReportAdmin['boardType']) => (bt === 'NOTICE' ? 'notice' : 'free')
+// 게시판이 늘어날 때마다 여기를 고치지 않도록 enum 이름을 그대로 경로로 쓴다(BoardType.path() 와 동일 규칙).
+const boardPath = (bt: PostReportAdmin['boardType']) => (bt || 'FREE').toLowerCase()
 
 // 게시글/댓글 대상 이동 URL (게시글이 삭제됐으면 null)
 function targetUrl(r: PostReportAdmin): string | null {

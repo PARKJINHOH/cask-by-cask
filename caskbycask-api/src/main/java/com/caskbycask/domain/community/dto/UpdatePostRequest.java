@@ -26,6 +26,10 @@ public class UpdatePostRequest {
     @Size(max = 10, message = "해시태그는 최대 10개까지 입력할 수 있습니다.")
     private List<@jakarta.validation.constraints.NotBlank @Size(max = 30) String> hashtags;
 
+    // 이미지 갤러리(PHOTO) 전용 주류 태그. null = 변경 안 함, 빈 배열 = 전부 해제.
+    @Size(max = 5, message = "주류 태그는 최대 5개까지 붙일 수 있습니다.")
+    private List<Long> spiritTagIds;
+
     public static UpdatePostRequest aiNews(Long prefixId, String title, String content, boolean pinned,
                                            List<String> hashtags) {
         UpdatePostRequest request = new UpdatePostRequest();

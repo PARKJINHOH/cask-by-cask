@@ -9,10 +9,32 @@ const nextConfig = {
   async headers() {
     return [
       {
+        // 편집기 글꼴 목록 CSS.
+        //
+        // ⚠️ 이 파일만은 immutable 로 캐시하면 안 된다. 경로에 버전이 없는 고정 URL 인데
+        // 서체를 추가·교체하면 같은 URL 의 내용이 바뀐다. immutable 은 브라우저에게
+        // "재검증하지 말라"는 뜻이라, 한 번 받아 둔 브라우저는 새로고침이나 서버 재기동으로도
+        // 새 서체를 영원히 받지 못한다(글꼴이 전부 폴백으로 그려진다).
+        // 용량의 대부분은 아래 woff2 조각들이고 이 파일은 목록일 뿐이라, 매번 재검증(304)해도 된다.
+        source: '/fonts/editor/editor-fonts.css',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=0, must-revalidate' },
+        ],
+      },
+      {
         // self-host Pretendard 조각. public/ 정적 파일은 기본적으로 캐시되지 않으므로
         // 명시적으로 장기 캐시를 준다. 경로에 버전이 포함되어(`/fonts/pretendard/v1.3.9/...`)
         // 버전 교체 = URL 교체이므로 immutable 이 안전하다.
-        source: '/fonts/:path*',
+        source: '/fonts/pretendard/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+      {
+        // 편집기 서체 woff2 조각. 파일명이 곧 내용이라(조각 번호·굵기별로 나뉜다)
+        // 내용이 바뀌면 파일명도 바뀐다 — immutable 이 안전하다.
+        // `:file+` 로 한 단계 아래 파일만 잡아, 위의 editor-fonts.css 와 겹치지 않게 한다.
+        source: '/fonts/editor/:slug/:file+',
         headers: [
           { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
         ],

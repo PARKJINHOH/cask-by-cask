@@ -187,7 +187,7 @@ export default function ReviewFormPage() {
     }
     setSocialError('')
     if (masterId && hasSubEditionFlow && !isEdit && targetSpiritId === null && !pendingVariantDraft) {
-      setVariantError(t('review.selectEditionRequired'))
+      setVariantError(t(spirit?.category === 'WINE' ? 'review.selectVintageRequired' : 'review.selectEditionRequired'))
       setTimeout(() => {
         editionSelectRef.current?.focus()
       }, 0)
@@ -259,7 +259,7 @@ export default function ReviewFormPage() {
   const serverErrorMessage = serverError
     ? getReviewSaveErrorMessage(serverError, t('review.saveError'))
     : ''
-  const canAddVariant = !!masterId && hasSubEditionFlow && !isEdit
+  const canAddVariant = !!masterId && hasSubEditionFlow && !isEdit && spirit?.category !== 'WINE'
 
   if (spiritLoading) return <Spinner fullscreen />
 
@@ -288,7 +288,7 @@ export default function ReviewFormPage() {
         {masterId && hasSubEditionFlow && !isEdit && (
           <div className="bg-amber-50/40 border border-amber-200/60 rounded-2xl p-4 space-y-2">
             <label className="block text-xs font-bold text-neutral-700">
-              {t('review.selectEdition')} <RequiredMark />
+              {t(spirit?.category === 'WINE' ? 'review.selectVintage' : 'review.selectEdition')} <RequiredMark />
             </label>
             <select
               required
@@ -309,7 +309,7 @@ export default function ReviewFormPage() {
               }}
               className="w-full sm:w-96 px-3 py-2 text-sm border border-neutral-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-pointer"
             >
-              <option value="">{t('review.selectEditionPlaceholder')}</option>
+              <option value="">{t(spirit?.category === 'WINE' ? 'review.selectVintagePlaceholder' : 'review.selectEditionPlaceholder')}</option>
               {variants.map((v) => {
                 const typeLabel = v.variantType ? t(`spirit.variantType.${v.variantType}`) : ''
                 return (
@@ -318,15 +318,15 @@ export default function ReviewFormPage() {
                   </option>
                 )
               })}
-              <option value={ADD_VARIANT_SELECT_VALUE}>
-                {t('review.addEditionSelectOption')}
-              </option>
+              {spirit?.category !== 'WINE' && (
+                <option value={ADD_VARIANT_SELECT_VALUE}>{t('review.addEditionSelectOption')}</option>
+              )}
             </select>
             {variantError && (
               <p className="text-xs text-red-500 mt-1">{variantError}</p>
             )}
             <p className="text-[11px] text-neutral-400">
-              {t('review.editionWarning')}
+              {t(spirit?.category === 'WINE' ? 'review.vintageWarning' : 'review.editionWarning')}
             </p>
           </div>
         )}

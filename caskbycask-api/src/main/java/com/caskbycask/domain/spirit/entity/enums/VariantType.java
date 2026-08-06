@@ -4,5 +4,6 @@ public enum VariantType {
     BATCH,
     RELEASE_YEAR,
     SINGLE_CASK,
+    VINTAGE,
     NONE
 }

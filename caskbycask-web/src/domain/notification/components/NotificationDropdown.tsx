@@ -40,6 +40,7 @@ function targetPath(item: NotificationItem): string | null {
   switch (item.targetType) {
     case 'FREE':    return `/community/free/${item.targetId}`
     case 'NOTICE':  return `/community/notice/${item.targetId}`
+    case 'PHOTO':   return `/community/photo/${item.targetId}`
     case 'POST':    return `/community/free/${item.targetId}`
     case 'BYOB':    return `/community/byob/${item.targetId}`
     case 'MESSAGE': return `/mypage?tab=messages&messageId=${item.targetId}`

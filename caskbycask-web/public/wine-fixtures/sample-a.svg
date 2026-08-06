@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 800" role="img" aria-label="라이선스 검토용 와인 샘플 A">
+  <rect width="640" height="800" fill="#f5f1ea"/><rect x="245" y="80" width="150" height="80" rx="14" fill="#3f2722"/>
+  <path d="M235 150h170l45 500c8 88-252 88-260 0z" fill="#581c2c"/><rect x="210" y="360" width="220" height="190" rx="14" fill="#fffaf1"/>
+  <text x="320" y="420" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="700" fill="#581c2c">SAMPLE A</text>
+  <text x="320" y="463" text-anchor="middle" font-family="sans-serif" font-size="16" fill="#666">LICENSE REVIEW</text>
+  <text x="320" y="505" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#222">2018</text>
+</svg>

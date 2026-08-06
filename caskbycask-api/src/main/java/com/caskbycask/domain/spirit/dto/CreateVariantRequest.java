@@ -14,7 +14,7 @@ import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 
 public record CreateVariantRequest(
-        @Schema(description = "하위 에디션 유형 (BATCH, RELEASE_YEAR, SINGLE_CASK)")
+        @Schema(description = "하위 에디션 유형 (BATCH, RELEASE_YEAR, SINGLE_CASK, VINTAGE)")
         @NotNull(message = "에디션 유형은 필수입니다.")
         VariantType variantType,
 
@@ -65,9 +65,17 @@ public record CreateVariantRequest(
         @Max(value = SpiritLimits.VOLUME_ML_MAX, message = "최대 용량은 30000ml 이하여야 합니다.")
         Integer volumeMlMax,
 
+        @Schema(description = "와인 빈티지 연도 (variantType=VINTAGE, NON_VINTAGE이면 null)")
+        @Min(value = SpiritLimits.YEAR_MIN, message = "빈티지 연도는 1800년 이후여야 합니다.")
+        @Max(value = SpiritLimits.YEAR_MAX, message = "빈티지 연도는 2100년 이하여야 합니다.")
+        Integer vintageYear,
+
         @Schema(description = "공통 상세 정보")
         @Valid SpiritCommonDetailRequest commonDetail,
 
         @Schema(description = "위스키 상세 정보")
-        @Valid WhiskyDetailRequest whiskyDetail
+        @Valid WhiskyDetailRequest whiskyDetail,
+
+        @Schema(description = "와인 상세 정보 (variantType=VINTAGE)")
+        @Valid WineDetailRequest wineDetail
 ) {}

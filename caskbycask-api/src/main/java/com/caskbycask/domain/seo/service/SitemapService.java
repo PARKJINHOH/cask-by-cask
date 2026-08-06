@@ -74,6 +74,7 @@ public class SitemapService {
         appendKoreanUrl(sb, "/community/free", null);
         appendKoreanUrl(sb, "/community/notice", null);
         appendKoreanUrl(sb, "/community/byob", null);
+        appendKoreanUrl(sb, "/community/photo", null);
         appendMultilingualUrl(sb, "/ranking", null);
         appendMultilingualUrl(sb, "/faq", null);
         appendMultilingualUrl(sb, "/calendar", null);

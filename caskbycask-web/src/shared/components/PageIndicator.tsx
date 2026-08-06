@@ -37,6 +37,7 @@ function sectionCrumbs(t: TFunction, label: string, to: string, current?: string
 function boardLabel(t: TFunction, boardType?: string) {
   if (boardType === 'notice') return t('menu.communityNews')
   if (boardType === 'free') return t('menu.communityBoard')
+  if (boardType === 'photo') return t('photoGallery.title')
   return t('menu.communityAll')
 }
 

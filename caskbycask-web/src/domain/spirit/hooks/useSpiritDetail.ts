@@ -9,7 +9,7 @@ export function formatSpiritName<T extends {
   nameEn: string
   seriesIdentifier?: string | null
   seriesIdentifierEn?: string | null
-  variantType?: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE' | null
+  variantType?: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'VINTAGE' | 'NONE' | null
   variantValue?: string | null
   variantValueEn?: string | null
   category?: string | null

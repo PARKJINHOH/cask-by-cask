@@ -18,6 +18,7 @@ import { PRODUCER_TYPE_LABEL } from '@/domain/producer/types/producer.types'
 import CountryRegionSelector from '@/domain/location/components/CountryRegionSelector'
 import { scrollToPageTop } from '@/shared/utils/scrollToPageTop'
 import { ISO3166_COUNTRIES } from '@/domain/location/data/iso3166Countries'
+import ProducerLogoField from '@/domain/admin/components/ProducerLogoField'
 import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 
 const PRODUCER_TYPES: ProducerType[] = ['DISTILLERY', 'WINERY', 'COGNAC_HOUSE', 'OTHER']
@@ -160,6 +161,10 @@ function ProducerForm({ initial, onSave, onCancel, isPending }: ProducerFormProp
               focus:ring-2 focus:ring-primary-400"
           />
         </div>
+        {/* 로고는 id 가 있어야 붙일 수 있으므로 수정 모드에서만 노출한다. */}
+        {initial && (
+          <ProducerLogoField producerId={initial.id} initialLogoUrl={initial.logoImageUrl ?? null} />
+        )}
         <div className="space-y-1 sm:col-span-2">
           <label className="block text-xs font-medium text-neutral-600">검색 별칭</label>
           <input

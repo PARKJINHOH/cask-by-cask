@@ -46,6 +46,10 @@ public class CreatePostRequest {
     @Size(max = 10, message = "해시태그는 최대 10개까지 입력할 수 있습니다.")
     private List<@NotBlank @Size(max = 30) String> hashtags;
 
+    // 이미지 갤러리(PHOTO) 전용 주류 태그. 다른 게시판에서는 무시된다.
+    @Size(max = 5, message = "주류 태그는 최대 5개까지 붙일 수 있습니다.")
+    private List<Long> spiritTagIds;
+
     @Valid
     private SocialPublishSelection socialPublish;
 

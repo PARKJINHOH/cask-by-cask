@@ -24,6 +24,8 @@ public record ProducerResponse(
         SpiritWineRegionResponse wineRegion,
         @Schema(description = "공식 웹사이트 URL")
         String website,
+        @Schema(description = "로고 이미지 URL — 포토카드 등에서 사용")
+        String logoImageUrl,
         @Schema(description = "설립연도")
         Integer foundedYear,
         @Schema(description = "한글 소개")
@@ -44,6 +46,7 @@ public record ProducerResponse(
                 producer.getRegionCode() != null ? producer.getRegionCode().getCode() : null,
                 SpiritWineRegionResponse.from(producer.getRegionCode()),
                 producer.getWebsite(),
+                producer.getLogoImageUrl(),
                 producer.getFoundedYear(),
                 producer.getDescriptionKo(),
                 producer.getDescriptionEn(),
