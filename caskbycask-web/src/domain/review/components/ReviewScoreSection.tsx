@@ -15,6 +15,14 @@ interface ReviewScoreSectionProps {
   notePlaceholder?: string
   noteError?: string
   scoreError?: string
+  /**
+   * 테이스팅 노트 칸의 오류 앵커 이름(`noseNote` 등).
+   *
+   * 이 칸은 react-hook-form 에 register 되지 않고 `setValue` 로만 값을 넣어서
+   * RHF 의 `shouldFocusError` 가 잡을 ref 가 없다. 검증에 걸려도 화면이 그대로라
+   * 제출이 먹히지 않는 것처럼 보이므로, `focusFirstError` 가 찾을 표식을 직접 단다.
+   */
+  noteFieldName?: string
   showAroma?: boolean
   aromaWheelTitle?: string
   aromaNote: AromaNotes
@@ -34,6 +42,7 @@ export default function ReviewScoreSection({
   notePlaceholder,
   noteError,
   scoreError,
+  noteFieldName,
   showAroma,
   aromaWheelTitle,
   aromaNote,
@@ -172,14 +181,18 @@ export default function ReviewScoreSection({
         <textarea
           required
           aria-required="true"
+          data-field={noteFieldName}
+          aria-invalid={noteError ? true : undefined}
           value={note}
           onChange={(e) => onNoteChange(e.target.value)}
           placeholder={notePlaceholder}
           maxLength={1000}
           rows={5}
-          className="w-full px-3.5 py-2.5 text-sm border border-neutral-300 rounded-xl resize-none
+          className={`w-full px-3.5 py-2.5 text-sm border rounded-xl resize-none
             focus:outline-none focus:ring-2 focus:ring-primary-400
-            placeholder:text-neutral-350 leading-relaxed bg-white"
+            placeholder:text-neutral-350 leading-relaxed bg-white ${
+            noteError ? 'border-red-400' : 'border-neutral-300'
+          }`}
         />
         <div className="flex items-start justify-between mt-0.5">
           <p className="text-xs text-red-500 min-h-[1.25rem]">{noteError ?? ''}</p>

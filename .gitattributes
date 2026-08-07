@@ -12,3 +12,11 @@ gradlew     text eol=lf
 *.bat       text eol=crlf
 *.cmd       text eol=crlf
 *.ps1       text eol=crlf
+
+# 내용 해시를 캐시 키로 쓰는 생성물은 반드시 LF —
+# 줄바꿈이 플랫폼마다 달라지면 같은 파일이 다른 해시가 된다.
+# (editor-fonts.css 의 sha256 앞 8자리가 editorFontCssVersion.ts 에 박히고
+#  imageEditorFontCss.ts 가 그것을 URL 쿼리로 붙인다. Windows 에서 CRLF 로 풀리면
+#  fonts:sync-editor 를 돌릴 때마다 리눅스와 다른 값이 나온다)
+caskbycask-web/public/fonts/editor/editor-fonts.css        text eol=lf
+caskbycask-web/src/shared/components/editorFontCssVersion.ts text eol=lf

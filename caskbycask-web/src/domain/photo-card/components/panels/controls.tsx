@@ -1,4 +1,4 @@
-import { useRef, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { useTouchInput } from '@/shared/tiptap/pointerMode'
 
 /**
@@ -141,11 +141,29 @@ export function SliderField({
   )
 }
 
+/** 단추를 이만큼(ms) 누르고 있으면 '꾹 누름'으로 보고 값이 이어서 바뀐다. */
+const HOLD_DELAY = 400
+/** 꾹 누르는 동안 값이 바뀌는 간격(ms) */
+const HOLD_INTERVAL = 70
+
 /**
  * 숫자를 직접 적는 입력. 슬라이더로는 "정확히 200px" 을 맞추기 어려운 값에 쓴다.
  *
  * 타이핑 한 글자마다 값이 바뀌므로(2 → 20 → 200) onChange 는 슬라이더와 같이 gesture 로 묶고,
  * 칸을 벗어날 때(onCommit) 되돌리기 단계를 끊는다.
+ *
+ * ── 왜 type="number" 가 아닌가 ──
+ * React 는 number 입력만 값을 느슨한 비교(node.value != value)로 맞춘다. 칸에 "050" 이 적혀 있고
+ * 상태가 50 이면 같은 값으로 보아 칸을 고치지 않는다 — 앞의 0 이 지워지지 않던 이유다.
+ * text + inputMode="numeric" 으로 두면 숫자 자판은 그대로 뜨면서 표기는 우리가 정한다.
+ *
+ * ── 적는 동안에는 칸을 비워 둘 수 있다 ──
+ * 빈 칸을 그 자리에서 최솟값으로 되돌리면, 지우자마자 0 이 다시 나타나 그 뒤에 숫자를 붙이게 된다.
+ * 적는 동안은 적은 그대로 두고(칸을 벗어날 때 정리한다), 값으로는 그때그때 자른 수를 넘긴다.
+ *
+ * ── 손가락으로는 ± 단추 ──
+ * 좁은 칸을 짚어 자판을 여는 대신 양옆 단추로 step 만큼 올리고 내린다. 꾹 누르면 이어서 바뀐다.
+ * 칸을 짚었을 때는 전체가 선택되므로, 바로 적으면 앞에 덧붙지 않고 통째로 바뀐다.
  */
 export function NumberField({
   label, value, min, max, step = 1, suffix, disabled, onChange, onCommit,
@@ -155,40 +173,103 @@ export function NumberField({
   min: number
   max: number
   step?: number
-  /** 칸 안 오른쪽에 붙는 단위 표기(예: "px") */
+  /** 이름 줄 오른쪽에 붙는 단위 표기(예: "px") */
   suffix?: string
   disabled?: boolean
   onChange: (value: number) => void
   onCommit: () => void
 }) {
+  const inputId = useId()
+  /** 적는 중인 글자. null 이면 확정된 값을 그대로 보여 준다. */
+  const [draft, setDraft] = useState<string | null>(null)
+  const holdRef = useRef<{ timeout?: number; interval?: number }>({})
+  // 꾹 누르는 동안에는 다시 그려지기를 기다리지 않고 여기서 다음 값을 이어 센다.
+  const latestRef = useRef(value)
+  useEffect(() => { latestRef.current = value }, [value])
+
+  const clamp = (next: number) => Math.max(min, Math.min(max, next))
+
+  const nudge = (delta: number) => {
+    const current = latestRef.current
+    const next = clamp(Math.round((current + delta) / step) * step)
+    if (next === current) return
+    latestRef.current = next
+    onChange(next)
+  }
+
+  const stopHold = () => {
+    window.clearTimeout(holdRef.current.timeout)
+    window.clearInterval(holdRef.current.interval)
+    holdRef.current = {}
+  }
+  useEffect(() => stopHold, [])
+
+  const beginHold = (event: React.PointerEvent<HTMLButtonElement>, delta: number) => {
+    // 단추를 짚어도 자판이 뜨지 않게 — 입력 칸의 초점을 뺏지 않는다.
+    event.preventDefault()
+    event.currentTarget.setPointerCapture(event.pointerId)
+    nudge(delta)
+    holdRef.current.timeout = window.setTimeout(() => {
+      holdRef.current.interval = window.setInterval(() => nudge(delta), HOLD_INTERVAL)
+    }, HOLD_DELAY)
+  }
+
+  const endHold = () => {
+    if (!holdRef.current.timeout && !holdRef.current.interval) return
+    stopHold()
+    onCommit()
+  }
+
+  const stepButton = (delta: number, glyph: string, atLimit: boolean) => (
+    <button
+      type="button"
+      aria-label={`${label} ${delta > 0 ? '+' : '−'}${Math.abs(delta)}`}
+      disabled={disabled || atLimit}
+      onPointerDown={(event) => beginHold(event, delta)}
+      onPointerUp={endHold}
+      onPointerCancel={endHold}
+      className="flex h-10 w-9 shrink-0 items-center justify-center rounded-lg border border-neutral-300 text-sm font-bold text-neutral-600 transition-colors hover:bg-neutral-50 active:bg-neutral-100 disabled:opacity-30"
+      style={{ touchAction: 'none' }}
+    >
+      {glyph}
+    </button>
+  )
+
   return (
-    <label className={`block ${disabled ? 'opacity-40' : ''}`}>
-      <span className="mb-1 block text-[11px] font-medium text-neutral-500">{label}</span>
-      <span className="relative flex items-center">
+    <div className={disabled ? 'opacity-40' : ''}>
+      <label htmlFor={inputId} className="mb-1 flex justify-between text-[11px] font-medium text-neutral-500">
+        {label}
+        {suffix && <span className="font-mono text-neutral-400">{suffix}</span>}
+      </label>
+      <div className="flex items-center gap-1">
+        {stepButton(-step, '−', value <= min)}
         <input
-          type="number"
-          min={min}
-          max={max}
-          step={step}
-          value={value}
+          id={inputId}
+          type="text"
+          inputMode="numeric"
+          value={draft ?? String(value)}
           disabled={disabled}
-          onChange={(event) => {
-            // 칸을 비우면 NaN 이 된다 — 지우는 중일 뿐이므로 최솟값으로 본다.
-            const next = Number(event.target.value)
-            onChange(Math.max(min, Math.min(max, Number.isFinite(next) ? next : min)))
+          // 짚으면 전체 선택 — 모바일에서 지우지 않고 바로 새 숫자를 적을 수 있다.
+          // iOS 사파리는 focus 도중에 부른 select() 를 무시하므로 한 박자 뒤에 잡는다.
+          onFocus={(event) => {
+            const node = event.currentTarget
+            window.setTimeout(() => node.setSelectionRange(0, node.value.length), 0)
           }}
-          onBlur={onCommit}
-          className={`w-full rounded-lg border border-neutral-300 py-1.5 pl-2 text-[11px] font-semibold text-neutral-700 ${
-            suffix ? 'pr-7' : 'pr-2'
-          }`}
+          onChange={(event) => {
+            const raw = event.target.value
+            const digits = raw.replace(/[^\d]/g, '')
+            const text = min < 0 && raw.trimStart().startsWith('-') ? `-${digits}` : digits
+            setDraft(text)
+            // 비었거나 부호만 있는 동안은 값을 건드리지 않는다 — 지우는 중일 뿐이다.
+            if (digits === '') return
+            onChange(clamp(Number(text)))
+          }}
+          onBlur={() => { setDraft(null); onCommit() }}
+          className="h-10 min-w-0 flex-1 rounded-lg border border-neutral-300 px-1 text-center text-xs font-semibold text-neutral-700"
         />
-        {suffix && (
-          <span className="pointer-events-none absolute right-2 text-[11px] font-medium text-neutral-400">
-            {suffix}
-          </span>
-        )}
-      </span>
-    </label>
+        {stepButton(step, '+', value >= max)}
+      </div>
+    </div>
   )
 }
 

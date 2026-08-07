@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -15,6 +15,8 @@ import FormFieldLabel, { RequiredFieldsNotice, RequiredMark } from '@/shared/com
 import { draftApi } from '@/shared/api/draftApi'
 import DraftSavedNotice from '@/shared/components/DraftSavedNotice'
 import DraftListModal from '@/shared/components/DraftListModal'
+import UnsavedChangesDialog from '@/shared/components/UnsavedChangesDialog'
+import { useUnsavedChangesGuard } from '@/shared/hooks/useUnsavedChangesGuard'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { useMe } from '@/domain/user/hooks/useUser'
 import { formatHashtagInput, MAX_HASHTAGS, MAX_HASHTAG_LENGTH, parseHashtagInput } from '@/shared/utils/hashtags'
@@ -34,6 +36,15 @@ const SHARING_PREFIX_NAME = '나눔'
 
 const MAX_TITLE = 50
 const MAX_POLL_OPTIONS = 10
+
+/**
+ * 편집기가 "빈 글"을 그대로 빈 문자열로 주지 않는다 — `<p></p>` 같은 껍데기가 남는다.
+ * 그것까지 작성 내용으로 치면 글쓰기 화면에 들어서기만 해도 이탈 확인창이 뜬다.
+ */
+function isBlankEditorHtml(html: string): boolean {
+  if (/<(img|video|iframe)\b|di-spirit-embed|di-review-embed|data-video-embed/.test(html)) return false
+  return html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim().length === 0
+}
 
 // yyyy가 6자리로 중복 입력되는 브라우저 버그 방지
 function fixDatetimeYear(val: string) {
@@ -93,8 +104,10 @@ export default function PostFormPage() {
   const hashtagsValid = parsedHashtags.length <= MAX_HASHTAGS
     && parsedHashtags.every((hashtag) => hashtag.length <= MAX_HASHTAG_LENGTH)
 
-  // ── 임시저장 (신규 작성 시에만) ──
-  const draftKey = `POST:${boardType}`
+  // ── 임시저장 ──
+  // 수정 모드는 글 단위로 키를 나눈다. 신규 작성용 키와 섞이면 글쓰기 화면의 임시저장
+  // 목록에 남의 글 수정본이 끼어들고, 어느 글의 초안인지도 알 수 없다.
+  const draftKey = isEdit ? `POST:${boardType}:${postId}` : `POST:${boardType}`
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
   const [isSavingDraft, setIsSavingDraft] = useState(false)
   // 목록에서 불러온 임시저장 id (있으면 임시저장 시 해당 항목 갱신)
@@ -113,10 +126,11 @@ export default function PostFormPage() {
     }
   }, [existingPost, isEdit])
 
-  const saveDraft = async () => {
+  /** @returns 저장에 성공했는가. 이탈 확인창이 "임시저장하고 나가기"를 판단할 때 쓴다. */
+  const saveDraft = async (): Promise<boolean> => {
     if (!title.trim() && !content.trim()) {
       showToast(t('post.draft.noContent', '임시저장할 내용이 없습니다.'), 'error')
-      return
+      return false
     }
     setIsSavingDraft(true)
     try {
@@ -135,6 +149,7 @@ export default function PostFormPage() {
       if (saved?.id) setCurrentDraftId(saved.id)
       setLastSavedAt(saved?.updatedAt ?? new Date().toISOString())
       showToast(t('post.draft.savedSuccess', '임시저장되었습니다.'), 'success')
+      return true
     } catch (err: unknown) {
       const code = (err as { response?: { data?: { code?: string } } })?.response?.data?.code
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
@@ -143,6 +158,7 @@ export default function PostFormPage() {
       } else {
         showToast(t('common.error'), 'error')
       }
+      return false
     } finally {
       setIsSavingDraft(false)
     }
@@ -212,8 +228,10 @@ export default function PostFormPage() {
     onSuccess: (res) => {
       const newId = res.data.data?.id
       queryClient.invalidateQueries({ queryKey: ['posts'] })
+      // 게시가 끝났으면 남은 작성 내용이 없다 — 이탈 확인창이 뜨지 않게 먼저 내린다.
+      setSubmitted(true)
       // 게시 완료 → 불러온/저장된 임시저장 삭제
-      if (!isEdit && currentDraftId) draftApi.remove(currentDraftId).catch(() => { /* 무시 */ })
+      if (currentDraftId) draftApi.remove(currentDraftId).catch(() => { /* 무시 */ })
       navigate(newId ? `/community/${boardPath}/${newId}` : `/community/${boardPath}`, { replace: true })
     },
     onError: (err: unknown) => {
@@ -226,6 +244,32 @@ export default function PostFormPage() {
         showToast(t('common.error'), 'error')
       }
     },
+  })
+
+  // ── 이탈 방지 ──
+  // 편집기는 기존 HTML 을 제 형식으로 정규화하면서 onChange 를 몇 번 흘린다. 그 값을
+  // 사용자의 편집으로 오해하면 수정 화면에 들어서기만 해도 확인창이 뜨므로,
+  // 값이 잠잠해진 뒤의 스냅샷을 기준선으로 잡는다.
+  const baselineRef = useRef({ title: '', content: '' })
+  const [baselineReady, setBaselineReady] = useState(!isEdit)
+  useEffect(() => {
+    if (baselineReady || !existingPost) return
+    const timer = window.setTimeout(() => {
+      baselineRef.current = { title, content }
+      setBaselineReady(true)
+    }, 400)
+    return () => window.clearTimeout(timer)
+  }, [baselineReady, existingPost, title, content])
+
+  const [submitted, setSubmitted] = useState(false)
+  const isDirty = !submitted && (isEdit
+    ? baselineReady && (title !== baselineRef.current.title || content !== baselineRef.current.content)
+    : title.trim().length > 0 || !isBlankEditorHtml(content))
+
+  const leaveTo = `/community/${boardPath}`
+  const { leaveDialogOpen, guard, cancelLeave, confirmLeave } = useUnsavedChangesGuard({
+    dirty: isDirty,
+    onLeave: () => navigate(leaveTo),
   })
 
   // 나눔 말머리에서만 '성인 전용' 체크박스 노출. 다른 말머리로 바꾸면 자동 해제.
@@ -261,6 +305,13 @@ export default function PostFormPage() {
         onClose={() => setDraftListOpen(false)}
         onLoad={loadDraft}
         onError={(msg) => showToast(msg, 'error')}
+      />
+      <UnsavedChangesDialog
+        open={leaveDialogOpen}
+        busy={isSavingDraft}
+        onStay={cancelLeave}
+        onDiscard={() => { void confirmLeave() }}
+        onSaveDraft={() => { void confirmLeave(saveDraft) }}
       />
 
       <div className="flex items-center gap-3 mb-6">
@@ -388,42 +439,40 @@ export default function PostFormPage() {
             placeholder={t('post.placeholder.content', '내용을 입력하세요. YouTube/Vimeo URL을 붙여넣으면 자동 임베드됩니다.')}
             onImageError={(msg) => showToast(msg, 'error')}
           />
-          {/* 임시저장 (신규 작성 시) */}
-          {!isEdit && (
-            <div className="mt-2 flex items-center gap-3">
-              <button
-                type="button"
-                onClick={saveDraft}
-                disabled={isSavingDraft}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg
-                  border border-neutral-300 text-neutral-600 hover:bg-neutral-50 disabled:opacity-50 transition-colors"
-              >
-                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                  <polyline points="17 21 17 13 7 13 7 21" />
-                  <polyline points="7 3 7 8 15 8" />
-                </svg>
-                {isSavingDraft ? t('post.draft.saving', '저장 중...') : t('post.draft.save', '임시저장')}
-              </button>
-              <button
-                type="button"
-                onClick={() => setDraftListOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg
-                  border border-neutral-300 text-neutral-600 hover:bg-neutral-50 transition-colors"
-              >
-                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="8" y1="6" x2="21" y2="6" />
-                  <line x1="8" y1="12" x2="21" y2="12" />
-                  <line x1="8" y1="18" x2="21" y2="18" />
-                  <line x1="3" y1="6" x2="3.01" y2="6" />
-                  <line x1="3" y1="12" x2="3.01" y2="12" />
-                  <line x1="3" y1="18" x2="3.01" y2="18" />
-                </svg>
-                {t('post.draft.list', '임시저장목록')}
-              </button>
-              <DraftSavedNotice savedAt={lastSavedAt} />
-            </div>
-          )}
+          {/* 임시저장 — 수정 모드에도 둔다. 긴 글을 고치다 이탈하면 잃는 것은 마찬가지다. */}
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => { void saveDraft() }}
+              disabled={isSavingDraft}
+              className="inline-flex min-h-11 items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg
+                border border-neutral-300 text-neutral-600 hover:bg-neutral-50 disabled:opacity-50 transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                <polyline points="17 21 17 13 7 13 7 21" />
+                <polyline points="7 3 7 8 15 8" />
+              </svg>
+              {isSavingDraft ? t('post.draft.saving', '저장 중...') : t('post.draft.save', '임시저장')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setDraftListOpen(true)}
+              className="inline-flex min-h-11 items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg
+                border border-neutral-300 text-neutral-600 hover:bg-neutral-50 transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="8" y1="6" x2="21" y2="6" />
+                <line x1="8" y1="12" x2="21" y2="12" />
+                <line x1="8" y1="18" x2="21" y2="18" />
+                <line x1="3" y1="6" x2="3.01" y2="6" />
+                <line x1="3" y1="12" x2="3.01" y2="12" />
+                <line x1="3" y1="18" x2="3.01" y2="18" />
+              </svg>
+              {t('post.draft.list', '임시저장목록')}
+            </button>
+            <DraftSavedNotice savedAt={lastSavedAt} />
+          </div>
           <p className="mt-2 text-[11px] text-neutral-400 leading-relaxed">
             {t('post.writeGuideline.text')}{' '}
             <Link to="/operation-policy" className="underline hover:text-neutral-600">
@@ -582,10 +631,13 @@ export default function PostFormPage() {
 
         {/* 제출 버튼 */}
         <div className="flex items-center justify-end gap-3 pt-2">
-          <Link to={`/community/${boardPath}`}
-            className="px-5 py-2.5 text-sm font-medium border border-neutral-200 rounded-xl text-neutral-600 hover:bg-neutral-50 transition-colors">
+          {/* Link 로 두면 확인 없이 빠져나가 작성 내용이 사라진다 — guard 를 거친다 */}
+          <button
+            type="button"
+            onClick={() => guard(() => navigate(leaveTo))}
+            className="inline-flex min-h-11 items-center px-5 py-2.5 text-sm font-medium border border-neutral-200 rounded-xl text-neutral-600 hover:bg-neutral-50 transition-colors">
             {t('common.cancel')}
-          </Link>
+          </button>
           <button
             type="button"
             onClick={() => {
@@ -600,7 +652,7 @@ export default function PostFormPage() {
               mutation.mutate()
             }}
             disabled={!canSubmit || mutation.isPending}
-            className="px-6 py-2.5 text-sm font-medium rounded-xl bg-primary-800 text-white hover:bg-primary-900 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="inline-flex min-h-11 items-center px-6 py-2.5 text-sm font-medium rounded-xl bg-primary-800 text-white hover:bg-primary-900 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             {mutation.isPending ? t('common.saving', '저장 중...') : isEdit ? t('common.save') : t('board.write')}
           </button>

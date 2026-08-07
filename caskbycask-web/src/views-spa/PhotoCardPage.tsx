@@ -1,15 +1,19 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SeoMeta from '@/shared/components/SeoMeta'
 import ImageEditorModal from '@/shared/components/ImageEditorModal'
+import UnsavedChangesDialog from '@/shared/components/UnsavedChangesDialog'
+import useIsDesktop from '@/shared/hooks/useIsDesktop'
+import { useUnsavedChangesGuard } from '@/shared/hooks/useUnsavedChangesGuard'
 import { photoCardApi } from '@/domain/photo-card/api/photoCardApi'
 import {
   PhotoCardDraftResumeDialog, PhotoCardGuestGateDialog, type GuestGate,
 } from '@/domain/photo-card/components/PhotoCardGuestDialogs'
 import PhotoCardPublishDialog from '@/domain/photo-card/components/PhotoCardPublishDialog'
 import PhotoCardSpiritPicker from '@/domain/photo-card/components/PhotoCardSpiritPicker'
-import PhotoCardStage from '@/domain/photo-card/components/PhotoCardStage'
+import PhotoCardFillWizard from '@/domain/photo-card/components/PhotoCardFillWizard'
+import PhotoCardStage, { DOCKED_BAR_HEIGHT } from '@/domain/photo-card/components/PhotoCardStage'
 import PhotoCardToolRail from '@/domain/photo-card/components/PhotoCardToolRail'
 import PhotoCardTopBar from '@/domain/photo-card/components/PhotoCardTopBar'
 import CardPanel from '@/domain/photo-card/components/panels/CardPanel'
@@ -73,12 +77,17 @@ export default function PhotoCardPage() {
   const editor = usePhotoCardEditor({ watermark: !isLoggedIn })
 
   const size = frameSizeOf(editor.layout.frame, PHOTO_CARD_MAX_EDGE)
-  const viewport = usePhotoCardViewport(size)
+  const isDesktop = useIsDesktop()
+  // 좁은 화면에서는 빠른 편집 바가 작업 영역 바닥에 얹힌다. 글자를 고른 뒤에야 비우면
+  // 그때마다 카드가 작아졌다 커지므로, 바가 없을 때도 그 자리는 늘 비워 둔다.
+  const viewport = usePhotoCardViewport(size, isDesktop ? 0 : DOCKED_BAR_HEIGHT)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   usePhotoCardShortcuts(editor, viewport)
 
   const [tool, setTool] = useState<PhotoCardTool>('template')
   const [sheetOpen, setSheetOpen] = useState(true)
+  /** 템플릿을 고른 뒤 요소를 하나씩 채우는 중인가. */
+  const [filling, setFilling] = useState(false)
   const [templateScope, setTemplateScope] = useState<PhotoCardTemplateScope>('OFFICIAL')
   // 도구를 옮기면 패널이 통째로 사라졌다 다시 그려진다. 어느 템플릿을 쓰고 있는지는
   // 패널이 아니라 페이지가 기억해야 도구를 다녀와도 표시가 남는다.
@@ -105,15 +114,30 @@ export default function PhotoCardPage() {
   const selectedMaxEdge = PHOTO_CARD_EXPORT_SIZES.find((item) => item.key === exportSizeKey)?.maxEdge
     ?? undefined
 
+  /** 템플릿을 고른 직후의 요소 채우기를 연다. 좁은 화면에서는 시트가 접혀 있을 수 있다. */
+  const startFill = useCallback(() => {
+    setFilling(true)
+    setSheetOpen(true)
+  }, [])
+
+  const closeFill = useCallback(() => {
+    setFilling(false)
+    // 마지막으로 채우던 자리를 고른 채로 두면, 돌아온 패널이 그 요소의 속성으로 덮인다.
+    editor.selectLayer(null)
+  }, [editor.selectLayer])
+
   // 요소를 고르면 그 요소를 다루는 도구로 옮겨 간다 —
   // 클릭한 것의 속성이 어느 탭에 있는지 사용자가 찾아다니지 않게.
   // 레이어·선택 도구에 있을 때는 그대로 둔다(목록에서 하나씩 눌러 볼 때 화면이 튀지 않게).
   const selectedId = editor.selectedLayer?.id
   const selectedTypeRef = useRef(editor.selectedLayer?.type)
   selectedTypeRef.current = editor.selectedLayer?.type
+  // 채우기는 스스로 요소를 짚어 가며 돈다. 그때마다 도구를 옮기면 흐름이 끝난 자리가 매번 달라진다.
+  const fillingRef = useRef(filling)
+  fillingRef.current = filling
   useEffect(() => {
     const type = selectedTypeRef.current
-    if (!selectedId || !type) return
+    if (!selectedId || !type || fillingRef.current) return
     setSheetOpen(true)
     setTool((current) => (
       current === 'layer' || current === 'select' ? current
@@ -223,18 +247,21 @@ export default function PhotoCardPage() {
     }
   }
 
+  /** 지금 작업 상태를 그대로 맡겨 둔다. @returns 저장에 성공했는가. */
+  const stashDraft = () => savePhotoCardDraft(buildPhotoCardDraft({
+    layout: editor.layout,
+    photoTransform: editor.photoTransform,
+    exif: editor.exif,
+    spirit: editor.spirit,
+    userInput: editor.userInput,
+    photoFile: editor.photoFile,
+  })).catch(() => false)
+
   /** 지금 작업을 맡겨 두고 로그인·회원가입으로 보낸다. 돌아오면 이 페이지에서 이어서 한다. */
   const saveDraftAndLeave = async (target: 'login' | 'signup') => {
     if (draftBusy) return
     setDraftBusy(true)
-    const saved = await savePhotoCardDraft(buildPhotoCardDraft({
-      layout: editor.layout,
-      photoTransform: editor.photoTransform,
-      exif: editor.exif,
-      spirit: editor.spirit,
-      userInput: editor.userInput,
-      photoFile: editor.photoFile,
-    })).catch(() => false)
+    const saved = await stashDraft()
     setDraftBusy(false)
     setGate(null)
     if (!saved) {
@@ -246,6 +273,19 @@ export default function PhotoCardPage() {
       state: { from: { pathname: '/photo-card' } },
     })
   }
+
+  // ── 이탈 방지 ──
+  // 편집기는 페이지가 스크롤되지 않아 「뒤로」 버튼이 없다 — 나가는 길은 하드웨어 백과
+  // 새로고침뿐이라 그 둘만 막으면 된다. 되돌리기가 가능하다는 것은 손을 댔다는 뜻이고,
+  // 사진만 올려 둔 상태도 다시 고르는 비용이 있어 지킬 값으로 친다.
+  // (로그인 게이트·게시 완료는 navigate 로 직접 나가므로 여기 걸리지 않는다)
+  const guardBusy = draftBusy || busy
+  const {
+    leaveDialogOpen, cancelLeave, confirmLeave,
+  } = useUnsavedChangesGuard({
+    dirty: editor.canUndo || editor.photoFile != null,
+    onLeave: () => navigate('/community/photo'),
+  })
 
   const saveAsTemplate = async () => {
     if (!isLoggedIn) {
@@ -280,7 +320,10 @@ export default function PhotoCardPage() {
             busy={busy}
             onSaveAsTemplate={() => { void saveAsTemplate() }}
             appliedKey={appliedTemplate}
-            onApplied={setAppliedTemplate}
+            // 템플릿을 고른 직후가 요소를 채우기 가장 좋은 때다 — 어느 자리가 비었는지
+            // 방금 본 참이고, 채우는 대로 카드에 나타난다.
+            onApplied={(key) => { setAppliedTemplate(key); startFill() }}
+            onStartFill={startFill}
           />
         )
       case 'photo':
@@ -356,6 +399,8 @@ export default function PhotoCardPage() {
           onChange={(next) => {
             setTool(next)
             setSheetOpen(true)
+            // 채우던 중이라도 도구를 고르면 그쪽으로 간다 — 안 그러면 눌러도 화면이 그대로다.
+            setFilling(false)
             // 도구를 직접 고른 것은 "지금 고른 요소 말고 다른 걸 하겠다"는 뜻이다.
             // 선택을 남겨 두면 속성 패널이 도구 내용을 밀어내고, 새로 얹는 요소도 그 아래로 들어간다.
             editor.selectLayer(null)
@@ -370,14 +415,21 @@ export default function PhotoCardPage() {
           onRequestPhoto={() => fileInputRef.current?.click()}
         />
 
-        <aside className="order-2 flex max-h-[45dvh] shrink-0 flex-col border-t border-neutral-200 bg-white lg:order-3 lg:max-h-none lg:w-[384px] lg:border-l lg:border-t-0 2xl:w-[424px]">
+        {/* 좁은 화면의 시트는 내용이 아니라 <b>펼침 여부</b>로만 높이가 정해진다(max-h 가 아니라 h).
+            내용에 따라 늘었다 줄면 그만큼 작업 영역이 흔들린다 — 글자를 하나 얹었을 뿐인데
+            시트가 올라와 카드 아래가 잘리거나, 화면 맞춤이 다시 걸려 카드 크기가 튄다.
+            남는 자리는 비워 두더라도 카드가 놓인 자리는 그대로 두는 편이 낫다. */}
+        <aside className={`order-2 flex shrink-0 flex-col border-t border-neutral-200 bg-white lg:order-3 lg:h-auto lg:w-[384px] lg:border-l lg:border-t-0 2xl:w-[424px] ${
+          sheetOpen ? 'h-[45dvh]' : ''
+        }`}>
           {/* 모바일에서만 보이는 시트 손잡이 — 캔버스를 넓게 보고 싶을 때 접는다 */}
           <button
             type="button"
             onClick={() => setSheetOpen((open) => !open)}
             className="flex shrink-0 items-center justify-between border-b border-neutral-200 px-4 py-2 text-xs font-bold text-neutral-700 lg:hidden"
           >
-            {t(`photoCard.tool${tool.charAt(0).toUpperCase()}${tool.slice(1)}`)}
+            {filling ? t('photoCard.fillTitle')
+              : t(`photoCard.tool${tool.charAt(0).toUpperCase()}${tool.slice(1)}`)}
             <span className="text-neutral-400">{sheetOpen ? '▼' : '▲'}</span>
           </button>
           <div
@@ -385,10 +437,15 @@ export default function PhotoCardPage() {
               sheetOpen ? '' : 'hidden lg:block'
             }`}
           >
-            {/* 고른 요소의 속성은 그 요소를 다루는 도구에서만 함께 보여 준다.
-                사진·카드·내보내기처럼 카드 전체를 다루는 도구에서까지 끼면
-                정작 누른 도구의 내용이 화면 밖으로 밀린다. */}
-            {PANEL_FIRST_TOOLS.has(tool) ? (
+            {/* 요소 채우기는 도구가 아니라 <b>흐름</b>이라, 도는 동안에는 패널 자리를 통째로 쓴다.
+                옆에 도구 내용까지 같이 두면 "지금 무엇에 답하는 중인지"가 흐려진다. */}
+            {filling ? (
+              <PhotoCardFillWizard
+                editor={editor}
+                onClose={closeFill}
+                onOpenSpiritPicker={() => setSpiritPickerOpen(true)}
+              />
+            ) : PANEL_FIRST_TOOLS.has(tool) ? (
               <>
                 {panel}
                 {SELECTION_TOOLS.has(tool) && <SelectionInspector editor={editor} canvasRef={canvasRef} />}
@@ -440,6 +497,23 @@ export default function PhotoCardPage() {
         busy={draftBusy}
         onResume={() => { void resumeDraft() }}
         onDiscard={() => { void discardDraft() }}
+      />
+
+      <UnsavedChangesDialog
+        open={leaveDialogOpen}
+        busy={guardBusy}
+        onStay={cancelLeave}
+        onDiscard={() => { void confirmLeave() }}
+        onSaveDraft={() => {
+          void confirmLeave(async () => {
+            setDraftBusy(true)
+            const saved = await stashDraft()
+            setDraftBusy(false)
+            // 맡겨 두지 못했는데 내보내면 지키려던 작업을 확실하게 잃는다.
+            if (!saved) setNotice(t('photoCard.draftSaveFailed'))
+            return saved
+          })
+        }}
       />
 
       {/* 사진 자체 보정은 기존 이미지 편집기를 그대로 띄워 쓴다. */}

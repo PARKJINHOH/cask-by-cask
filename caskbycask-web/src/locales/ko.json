@@ -147,6 +147,19 @@
     "fontGowunDodum": "고운돋움"
   },
   "editor": {
+    "charCount": "{{current}} / {{max}}자",
+    "upload": {
+      "imageProgress": "이미지 업로드 중...",
+      "videoProgress": "동영상 업로드 중...",
+      "imageTooLarge": "이미지 크기는 {{max}}MB 이하여야 합니다.",
+      "imageCount": "이미지는 최대 {{max}}장까지 첨부할 수 있습니다.",
+      "imageFailed": "이미지 업로드 중 오류가 발생했습니다. 다시 시도해주세요.",
+      "videoFormat": "MP4 또는 WebM 형식의 동영상만 업로드할 수 있습니다.",
+      "videoTooLarge": "동영상 크기는 {{max}}MB 이하여야 합니다.",
+      "videoCount": "동영상은 최대 {{max}}개까지 첨부할 수 있습니다.",
+      "videoFailed": "동영상 업로드 중 오류가 발생했습니다. 다시 시도해주세요.",
+      "totalSize": "이미지·동영상 합계 용량은 {{max}}MB를 초과할 수 없습니다."
+    },
     "spiritSearchPlaceholder": "삽입할 술 이름을 검색하세요",
     "spiritSearchHint": "술 이름을 입력하면 검색됩니다.",
     "spiritNoResult": "검색 결과가 없습니다.",
@@ -1055,6 +1068,12 @@
     "optional": "선택",
     "qualityWarning": "성의 없거나 불성실한 리뷰, 악의적인 점수를 부여한 리뷰는 노출이 제한되거나 예고 없이 삭제될 수 있습니다.",
     "saveError": "저장 중 오류가 발생했습니다. 다시 시도해주세요.",
+    "editionUnnamed": "이름 없는 에디션",
+    "error": {
+      "noteMin": "최소 {{min}}글자 이상 작성해주세요.",
+      "noteMax": "{{max}}자 이내로 작성해주세요.",
+      "checkFields": "입력하지 않았거나 잘못된 항목이 있습니다. 표시된 곳을 확인해주세요."
+    },
     "noReview": "아직 리뷰가 없습니다.",
     "noReviewDesc": "첫 번째 리뷰를 작성해보세요!",
     "noScore": "리뷰 없음",
@@ -1078,7 +1097,9 @@
       "previewAlt": "리뷰 사진 {{number}}",
       "open": "{{number}}번 리뷰 사진 확대",
       "movePrevious": "사진을 앞으로 이동",
-      "moveNext": "사진을 뒤로 이동"
+      "moveNext": "사진을 뒤로 이동",
+      "primary": "대표",
+      "deleteConfirm": "이 사진을 삭제할까요?"
     }
   },
   "comment": {
@@ -1364,9 +1385,19 @@
     "tab": "즐겨찾기",
     "favorites": "즐겨찾기"
   },
+  "unsaved": {
+    "title": "작성 중인 내용이 있습니다",
+    "description": "지금 나가면 작성한 내용이 사라집니다. 어떻게 할까요?",
+    "stay": "계속 쓰기",
+    "saveDraft": "임시저장하고 나가기",
+    "discard": "저장하지 않고 나가기"
+  },
   "common": {
     "loading": "로딩 중...",
     "error": "오류가 발생했습니다.",
+    "errorTitle": "불러오지 못했습니다",
+    "errorDescription": "네트워크 상태를 확인한 뒤 다시 시도해주세요.",
+    "retry": "다시 시도",
     "save": "저장",
     "cancel": "취소",
     "close": "닫기",
@@ -1405,6 +1436,9 @@
     "write": "글쓰기",
     "searchPlaceholder": "제목 또는 내용 검색",
     "title": "제목",
+    "nickname": "닉네임",
+    "createdAt": "작성일",
+    "clearAuthorFilter": "필터 해제",
     "sortLatest": "최신순",
     "sortBest": "추천순",
     "sortView": "조회순",
@@ -2909,6 +2943,19 @@
     "layerNotDrawn": "값 없음",
     "layerEmptyText": "빈 텍스트",
     "templateIncludes": "불러오는 요소 {{count}}개",
+    "fillTitle": "요소 입력",
+    "fillIntro": "템플릿이 불러온 자리를 하나씩 채웁니다. 비워 두면 카드에 나오지 않습니다.",
+    "fillProgress": "{{current}} / {{total}}",
+    "fillPlaceholder": "비워 두면 카드에 나오지 않습니다",
+    "fillFromExif": "사진에서 읽어 온 값입니다. 고치면 그대로 남습니다.",
+    "fillFromSpirit": "주류 정보에서 가져온 값입니다. 고치면 그대로 남습니다.",
+    "fillNoValue": "이 사진에는 이 정보가 없습니다. 직접 적을 수 있습니다.",
+    "fillPrev": "이전",
+    "fillNext": "다음",
+    "fillSkip": "넘기기",
+    "fillDone": "완료",
+    "fillClose": "닫기",
+    "fillReopen": "요소 입력하기",
     "addImageHint": "올린 그림이 카드 위에 얹힙니다. 크기와 위치는 얹은 뒤 조절합니다.",
     "uploading": "올리는 중...",
     "addImageFailed": "이미지를 올리지 못했습니다. 잠시 후 다시 시도해 주세요.",

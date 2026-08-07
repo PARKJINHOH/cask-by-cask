@@ -251,7 +251,7 @@ export default function AdminRequestDetailPage() {
 
       {/* 하단 고정 액션바 */}
       {isPending && !rejectMode && (
-        <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/90 backdrop-blur border-t border-neutral-200">
+        <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/90 backdrop-blur border-t border-neutral-200 pb-[env(safe-area-inset-bottom)]">
           <div className="px-6 py-3 flex justify-end gap-2">
             <Button variant="danger" onClick={() => setRejectMode(true)}>반려</Button>
             <Button onClick={handleApprove} isLoading={approve.isPending}>승인 및 등록</Button>

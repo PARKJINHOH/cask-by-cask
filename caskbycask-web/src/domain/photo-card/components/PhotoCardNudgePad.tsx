@@ -134,7 +134,10 @@ export default function PhotoCardNudgePad({
       role="group"
       aria-label={t('photoCard.nudgePad')}
       title={t('photoCard.nudgePadHint')}
-      className={`grid h-[108px] w-[108px] grid-cols-3 grid-rows-3 rounded-2xl border border-neutral-200 bg-white/95 shadow-lg backdrop-blur ${className}`}
+      // 카드 위에 얹히는 판이라 바탕은 비워 두고 테두리만 남긴다 — 가려진 자리에 무엇이
+      // 있는지 보이지 않으면 정작 맞추려던 위치를 못 본다. 대신 화살표는 흰색에 그림자를 얹어
+      // 밝은 사진 위에서도 읽히게 한다.
+      className={`grid h-[88px] w-[88px] grid-cols-3 grid-rows-3 rounded-2xl border border-white/70 ${className}`}
       style={{ touchAction: 'none', ...style }}
       onPointerDown={beginDrag}
       onPointerMove={moveDrag}
@@ -149,14 +152,17 @@ export default function PhotoCardNudgePad({
           aria-label={t(arrow.labelKey)}
           onClick={() => nudge(arrow.key)}
           style={{ WebkitTapHighlightColor: 'transparent' }}
-          className={`${arrow.cell} flex items-center justify-center rounded-lg text-neutral-500 transition-colors active:bg-primary-100 active:text-primary-700`}
+          className={`${arrow.cell} flex items-center justify-center rounded-lg text-white transition-colors active:bg-white/25`}
         >
           <svg
             viewBox="0 0 24 24"
-            className="h-5 w-5"
+            className="h-4 w-4"
             fill="currentColor"
             aria-hidden="true"
-            style={{ transform: `rotate(${arrow.rotate}deg)` }}
+            style={{
+              transform: `rotate(${arrow.rotate}deg)`,
+              filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.9))',
+            }}
           >
             <path d={ARROW_PATH} />
           </svg>
@@ -164,8 +170,13 @@ export default function PhotoCardNudgePad({
       ))}
 
       {/* 가운데는 '여기를 끌어도 된다'는 표시다. 누르는 자리가 아니라 손잡이라 버튼이 아니다. */}
-      <span className="col-start-2 row-start-2 flex items-center justify-center text-neutral-300" aria-hidden="true">
-        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
+      <span className="col-start-2 row-start-2 flex items-center justify-center text-white/70" aria-hidden="true">
+        <svg
+          viewBox="0 0 24 24"
+          className="h-3.5 w-3.5"
+          fill="currentColor"
+          style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.9))' }}
+        >
           <path d="M12 2l3 3h-2v5h5V8l3 3-3 3v-2h-5v5h2l-3 3-3-3h2v-5H6v2l-3-3 3-3v2h5V5H9l3-3z" />
         </svg>
       </span>

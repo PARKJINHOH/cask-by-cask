@@ -10,6 +10,7 @@ import { useAuth } from '@/domain/auth/hooks/useAuth'
 import { useMe } from '@/domain/user/hooks/useUser'
 import { changeLanguage } from '@/shared/utils/locale'
 import BottomNav from '@/shared/components/BottomNav'
+import { useChromeTop } from '@/shared/hooks/useChromeTop'
 import Toast from '@/shared/components/Toast'
 import { useToast } from '@/shared/hooks/useToast'
 import { useLatestNotice } from '@/domain/notice/hooks/useNotices'
@@ -210,6 +211,9 @@ function GNB() {
         { key: 'communityBoard', label: t('menu.communityBoard'), to: '/community/free' },
         { key: 'communityByob',  label: t('menu.communityByob'),  to: '/community/byob' },
         { key: 'communityPhoto', label: t('photoGallery.title'),  to: '/community/photo' },
+        // 포토카드 편집기는 갤러리 목록 안의 버튼으로만 갈 수 있었다 —
+        // 만들러 들어온 사람이 목록을 한 번 거쳐야 해서 GNB 에도 바로 연다.
+        { key: 'photoCard',      label: t('photoGallery.createCta'), to: '/photo-card' },
       ],
     },
     {
@@ -877,6 +881,9 @@ export default function MainLayout() {
   const { isLoggedIn, isAuthReady } = useAuthStore()
   const { data: profile } = useMe()
   const showAuthedActions = isAuthReady && isLoggedIn
+  // 헤더+GNB 높이를 --di-chrome-top 으로 흘려 보낸다. 본문 안의 sticky 요소
+  // (에디터 툴바 등)가 이 둘 뒤로 숨지 않으려면 그만큼 아래에 붙어야 한다.
+  useChromeTop()
   // lazy 컴포넌트는 렌더되는 순간 청크를 내려받으므로, 모달 내부의 조건 검사만으로는
   // 번들 분리 효과가 없다. 실제로 강제 변경이 필요한 사용자일 때만 마운트한다.
   const needsPasswordChange = showAuthedActions && Boolean(profile?.mustChangePassword)
@@ -912,6 +919,8 @@ export default function MainLayout() {
           <div className="flex items-center gap-1 sm:gap-2 ml-auto flex-shrink-0">
             {showAuthedActions && <AttendanceButton />}
             {showAuthedActions && <NotificationBell />}
+            {/* 비로그인 상태의 언어 전환은 UserDropdown 안의 GuestLangToggle 이 맡는다 —
+                여기서 함께 띄우면 토글이 두 개로 보인다 */}
             {showAuthedActions && <LangToggle />}
             <UserDropdown />
           </div>
@@ -998,8 +1007,9 @@ export default function MainLayout() {
         </div>
       </footer>
 
-      {/* 모바일 소셜 푸터 */}
-      <footer className="border-t border-neutral-200 bg-canvas py-5 lg:hidden">
+      {/* 모바일 소셜 푸터 — main 밖이라 main 의 하단 여백을 물려받지 못한다.
+          문서 맨 끝까지 스크롤하면 고정 탭바(h-16)가 이 자리를 덮으므로 직접 비워 둔다. */}
+      <footer className="border-t border-neutral-200 bg-canvas pt-5 pb-[calc(1.25rem+4rem+env(safe-area-inset-bottom))] lg:hidden">
         <div className="user-layout-container flex flex-col items-center gap-3 px-4">
           <p className="text-xs font-bold text-neutral-700">CaskByCask</p>
           <SocialFooterLinks />

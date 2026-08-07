@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
-import { useForm, Controller } from 'react-hook-form'
+import { useForm, Controller, type FieldErrors } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
+import type { TFunction } from 'i18next'
 import { useTranslation } from 'react-i18next'
 import { useSpiritDetail, useSpiritVariants } from '@/domain/spirit/hooks/useSpiritDetail'
 import Spinner from '@/shared/components/Spinner'
@@ -39,8 +40,24 @@ import ReviewImageField, {
   reviewImageSubmission,
   type ReviewImageDraft,
 } from '@/domain/review/components/ReviewImageField'
+import Toast from '@/shared/components/Toast'
+import UnsavedChangesDialog from '@/shared/components/UnsavedChangesDialog'
+import { useToast } from '@/shared/hooks/useToast'
+import { useUnsavedChangesGuard } from '@/shared/hooks/useUnsavedChangesGuard'
+import { focusFirstError } from '@/shared/utils/focusFirstError'
 
 const ADD_VARIANT_SELECT_VALUE = '__ADD_VARIANT__'
+
+/**
+ * 검증 오류를 잡을 때 훑는 순서 — 화면에 보이는 위(향)부터 아래(총평)까지다.
+ * RHF 의 `errors` 는 객체라 키 순서가 화면 순서와 같다는 보장이 없어 직접 정한다.
+ */
+const FIELD_ORDER: (keyof ReviewFormValues)[] = [
+  'noseScore', 'noseNote',
+  'tasteScore', 'tasteNote',
+  'finishScore', 'finishNote',
+  'comment',
+]
 
 function getAromaWheelKey(category?: SpiritCategory): string {
   if (category === 'WHISKY') return 'review.aromaWheelWhisky'
@@ -49,17 +66,53 @@ function getAromaWheelKey(category?: SpiritCategory): string {
   return 'review.aromaWheel'
 }
 
-const reviewSchema = z.object({
+const NOTE_MIN = 20
+const NOTE_MAX = 1000
+
+/**
+ * 검증 메시지는 화면에 그대로 나오므로 번역을 거쳐야 한다.
+ * 스키마를 상수로 두면 모듈 로드 시점의 언어에 문구가 굳어 EN 화면에 한국어가 남는다.
+ */
+const buildReviewSchema = (t: TFunction) => z.object({
   noseScore:   z.number().min(0).max(100),
   tasteScore:  z.number().min(0).max(100),
   finishScore: z.number().min(0).max(100),
-  noseNote:    z.string().min(20, '최소 20글자 이상 작성해주세요.').max(1000, '1000자 이내로 작성해주세요.'),
-  tasteNote:   z.string().min(20, '최소 20글자 이상 작성해주세요.').max(1000, '1000자 이내로 작성해주세요.'),
-  finishNote:  z.string().min(20, '최소 20글자 이상 작성해주세요.').max(1000, '1000자 이내로 작성해주세요.'),
-  comment:     z.string().max(1000, '1000자 이내로 작성해주세요.').optional(),
+  noseNote:    noteSchema(t),
+  tasteNote:   noteSchema(t),
+  finishNote:  noteSchema(t),
+  comment:     z.string().max(NOTE_MAX, t('review.error.noteMax', { max: NOTE_MAX })).optional(),
 })
 
-type ReviewFormValues = z.infer<typeof reviewSchema>
+const noteSchema = (t: TFunction) => z.string()
+  .min(NOTE_MIN, t('review.error.noteMin', { min: NOTE_MIN }))
+  .max(NOTE_MAX, t('review.error.noteMax', { max: NOTE_MAX }))
+
+/**
+ * 에디션 선택 항목의 표시 문구.
+ *
+ * 도수·용량이 둘 다 비어 있으면 예전에는 빈 괄호 `()` 만 남았고, 에디션 이름이 없으면
+ * 내부 ID 숫자가 그대로 보였다. 값이 없는 조각은 아예 빼고, 이름이 없을 때는
+ * 사람이 읽을 수 있는 문구로 대신한다.
+ */
+function formatEditionOption(
+  variant: { id: number; variantType?: string | null; variantValue?: string | null; abv?: number | null; volumeMl?: number | null },
+  t: TFunction,
+): string {
+  const typeLabel = variant.variantType ? t(`spirit.variantType.${variant.variantType}`) : ''
+  const name = variant.variantValue?.trim() || t('review.editionUnnamed')
+  const specs = [
+    variant.abv != null ? `${variant.abv}%` : null,
+    variant.volumeMl ? `${variant.volumeMl}ml` : null,
+  ].filter(Boolean)
+
+  return [
+    typeLabel ? `[${typeLabel}]` : null,
+    name,
+    specs.length > 0 ? `(${specs.join(', ')})` : null,
+  ].filter(Boolean).join(' ')
+}
+
+type ReviewFormValues = z.infer<ReturnType<typeof buildReviewSchema>>
 
 interface LocationState {
   review?: ReviewItem
@@ -73,6 +126,8 @@ export default function ReviewFormPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { t, i18n } = useTranslation()
+  const { toasts, showToast, removeToast } = useToast()
+  const reviewSchema = useMemo(() => buildReviewSchema(t), [t])
 
   const editingReview = (location.state as LocationState)?.review
 
@@ -135,7 +190,7 @@ export default function ReviewFormPage() {
     watch,
     setValue,
     reset,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isDirty: formIsDirty },
   } = useForm<ReviewFormValues>({
     resolver: zodResolver(reviewSchema),
     defaultValues: {
@@ -240,15 +295,42 @@ export default function ReviewFormPage() {
         },
         images: imageSubmission.files,
       })
+      // 저장이 끝났으면 지킬 내용이 없다 — 이탈 확인창이 뜨지 않게 먼저 내린다.
+      setSubmitted(true)
       navigate('/mypage?tab=reviews', { replace: true })
       return
     } else {
       await createMutation.mutateAsync({ data: payload, images: imageSubmission.files })
     }
+    setSubmitted(true)
     navigate(`/spirits/${spiritId}`, { replace: true })
   }
 
-  const handleCancel = () => navigate(-1)
+  /**
+   * 검증에 걸렸을 때의 안내.
+   *
+   * 노트 칸은 register 되지 않아 RHF 의 `shouldFocusError` 가 잡을 ref 가 없다.
+   * 그대로 두면 모바일에서는 오류 문구가 화면 밖 위쪽에만 그려져 "등록이 안 눌린다"로 보인다.
+   * 화면 순서대로 첫 오류를 찾아 직접 스크롤·포커스하고, 토스트로도 알린다.
+   */
+  const handleInvalid = (formErrors: FieldErrors<ReviewFormValues>) => {
+    const ordered = FIELD_ORDER.filter((field) => formErrors[field])
+    focusFirstError(ordered, '[data-review-form]')
+    const firstMessage = ordered[0] ? formErrors[ordered[0]]?.message : undefined
+    showToast(typeof firstMessage === 'string' ? firstMessage : t('review.error.checkFields'), 'error')
+  }
+
+  // ── 이탈 방지 ──
+  // 리뷰는 노트 세 칸을 각 20자 이상 채워야 해서, 잃으면 다시 쓰는 비용이 크다.
+  // 임시저장 기능이 없는 화면이라 확인창에는 '계속 쓰기 / 나가기'만 둔다.
+  const [submitted, setSubmitted] = useState(false)
+  const imagesDirty = reviewImages.length !== (editingReview?.images?.length ?? 0)
+  const { leaveDialogOpen, guard, cancelLeave, confirmLeave } = useUnsavedChangesGuard({
+    dirty: !submitted && (formIsDirty || imagesDirty),
+    onLeave: () => navigate(`/spirits/${spiritId}`),
+  })
+
+  const handleCancel = () => guard(() => navigate(-1))
 
   const isPending =
     createMutation.isPending ||
@@ -259,6 +341,15 @@ export default function ReviewFormPage() {
   const serverErrorMessage = serverError
     ? getReviewSaveErrorMessage(serverError, t('review.saveError'))
     : ''
+
+  // 저장 실패는 제출 버튼 바로 위에 문구로도 남지만, 폼이 길어 사용자가 다른 곳을 보고 있을 수 있다.
+  // 새 오류가 올 때마다 토스트로 한 번 더 알린다(같은 오류를 반복해서 띄우지는 않는다).
+  const notifiedErrorRef = useRef<unknown>(null)
+  useEffect(() => {
+    if (!serverError || notifiedErrorRef.current === serverError) return
+    notifiedErrorRef.current = serverError
+    showToast(serverErrorMessage, 'error')
+  }, [serverError, serverErrorMessage, showToast])
   const canAddVariant = !!masterId && hasSubEditionFlow && !isEdit && spirit?.category !== 'WINE'
 
   if (spiritLoading) return <Spinner fullscreen />
@@ -266,22 +357,29 @@ export default function ReviewFormPage() {
   const primaryName = getLocalizedNames(spirit?.nameKo, spirit?.nameEn, i18n.language).primaryName
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6">
+    <div className="max-w-7xl mx-auto px-4 py-6" data-review-form>
       <SeoMeta title={`${primaryName ?? ''} 리뷰 작성`} description="CaskByCask 리뷰 작성 페이지." noindex />
+      <Toast toasts={toasts} onRemove={removeToast} />
+      <UnsavedChangesDialog
+        open={leaveDialogOpen}
+        onStay={cancelLeave}
+        onDiscard={() => { void confirmLeave() }}
+      />
       {/* 카드 래퍼 */}
-      <div className="bg-white rounded-2xl shadow-sm border border-neutral-100 p-6 md:p-8">
+      <div className="bg-white rounded-2xl shadow-sm border border-neutral-100 p-4 sm:p-6 md:p-8">
 
         {/* 헤더 */}
         <div className="mb-6 pb-5 border-b border-neutral-100">
           <h1 className="text-xl font-bold text-neutral-900">
             {isEdit ? t('review.edit') : t('review.write')}
           </h1>
+          {/* 긴 주류명이 좁은 화면에서 헤더를 통째로 밀어내지 않도록 두 줄로 자른다 */}
           {primaryName && (
-            <p className="text-sm text-neutral-500 mt-1">{primaryName}</p>
+            <p className="text-sm text-neutral-500 mt-1 line-clamp-2">{primaryName}</p>
           )}
         </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={handleSubmit(onSubmit, handleInvalid)} className="space-y-4">
         <RequiredFieldsNotice />
 
         {/* 에디션 선택 (하위 에디션이 존재하는 경우에만 노출) */}
@@ -310,14 +408,9 @@ export default function ReviewFormPage() {
               className="w-full sm:w-96 px-3 py-2 text-sm border border-neutral-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-pointer"
             >
               <option value="">{t(spirit?.category === 'WINE' ? 'review.selectVintagePlaceholder' : 'review.selectEditionPlaceholder')}</option>
-              {variants.map((v) => {
-                const typeLabel = v.variantType ? t(`spirit.variantType.${v.variantType}`) : ''
-                return (
-                  <option key={v.id} value={v.id}>
-                    [{typeLabel}] {v.variantValue || v.id} ({v.abv != null ? `${v.abv}%` : ''}{v.volumeMl ? `, ${v.volumeMl}ml` : ''})
-                  </option>
-                )
-              })}
+              {variants.map((v) => (
+                <option key={v.id} value={v.id}>{formatEditionOption(v, t)}</option>
+              ))}
               {spirit?.category !== 'WINE' && (
                 <option value={ADD_VARIANT_SELECT_VALUE}>{t('review.addEditionSelectOption')}</option>
               )}
@@ -354,10 +447,11 @@ export default function ReviewFormPage() {
               score={field.value}
               onScoreChange={field.onChange}
               note={noseNote ?? ''}
-              onNoteChange={(v) => setValue('noseNote', v, { shouldValidate: true })}
+              onNoteChange={(v) => setValue('noseNote', v, { shouldValidate: true, shouldDirty: true })}
               notePlaceholder={t('review.nosePlaceholder')}
               scoreError={errors.noseScore?.message}
               noteError={errors.noseNote?.message}
+              noteFieldName="noseNote"
               showAroma={showAroma}
               aromaWheelTitle={aromaWheelTitle}
               aromaNote={noseAromas}
@@ -376,10 +470,11 @@ export default function ReviewFormPage() {
               score={field.value}
               onScoreChange={field.onChange}
               note={tasteNote ?? ''}
-              onNoteChange={(v) => setValue('tasteNote', v, { shouldValidate: true })}
+              onNoteChange={(v) => setValue('tasteNote', v, { shouldValidate: true, shouldDirty: true })}
               notePlaceholder={t('review.tastePlaceholder')}
               scoreError={errors.tasteScore?.message}
               noteError={errors.tasteNote?.message}
+              noteFieldName="tasteNote"
               showAroma={showAroma}
               aromaWheelTitle={aromaWheelTitle}
               aromaNote={tasteAromas}
@@ -398,10 +493,11 @@ export default function ReviewFormPage() {
               score={field.value}
               onScoreChange={field.onChange}
               note={finishNote ?? ''}
-              onNoteChange={(v) => setValue('finishNote', v, { shouldValidate: true })}
+              onNoteChange={(v) => setValue('finishNote', v, { shouldValidate: true, shouldDirty: true })}
               notePlaceholder={t('review.finishPlaceholder')}
               scoreError={errors.finishScore?.message}
               noteError={errors.finishNote?.message}
+              noteFieldName="finishNote"
               showAroma={showAroma}
               aromaWheelTitle={aromaWheelTitle}
               aromaNote={finishAromas}
@@ -456,10 +552,6 @@ export default function ReviewFormPage() {
           />
         </div>
 
-        {serverError && (
-          <p className="text-sm text-red-600">{serverErrorMessage}</p>
-        )}
-
         <div className="h-px bg-neutral-200" aria-hidden="true" />
 
         <ReviewImageField
@@ -485,11 +577,20 @@ export default function ReviewFormPage() {
           {t('review.qualityWarning')}
         </p>
 
+        {/* 저장 실패 문구는 제출 버튼과 같은 화면 안에 둔다 —
+            사진·소셜 발행 섹션 위에 있으면 모바일에서는 항상 뷰포트 밖이었다. */}
+        {serverError && (
+          <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">
+            {serverErrorMessage}
+          </p>
+        )}
+
+        {/* size="md" 는 모바일에서 h-11(44px) 로 커진다 — sm 은 32px 라 터치 최소치에 못 미친다 */}
         <div className="flex gap-2 justify-end pt-2 border-t border-neutral-100">
-          <Button variant="secondary" size="sm" type="button" onClick={handleCancel} disabled={isPending}>
+          <Button variant="secondary" type="button" onClick={handleCancel} disabled={isPending}>
             {t('common.cancel')}
           </Button>
-          <Button size="sm" type="submit" isLoading={isPending}>
+          <Button type="submit" isLoading={isPending}>
             {isEdit ? t('review.submitEdit') : t('review.submit')}
           </Button>
         </div>

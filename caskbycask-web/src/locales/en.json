@@ -147,6 +147,19 @@
     "fontGowunDodum": "Gowun Dodum"
   },
   "editor": {
+    "charCount": "{{current}} / {{max}} characters",
+    "upload": {
+      "imageProgress": "Uploading image...",
+      "videoProgress": "Uploading video...",
+      "imageTooLarge": "Images must be {{max}}MB or smaller.",
+      "imageCount": "You can attach up to {{max}} images.",
+      "imageFailed": "The image failed to upload. Please try again.",
+      "videoFormat": "Only MP4 and WebM videos can be uploaded.",
+      "videoTooLarge": "Videos must be {{max}}MB or smaller.",
+      "videoCount": "You can attach up to {{max}} videos.",
+      "videoFailed": "The video failed to upload. Please try again.",
+      "totalSize": "Images and videos combined cannot exceed {{max}}MB."
+    },
     "spiritSearchPlaceholder": "Search a spirit to insert",
     "spiritSearchHint": "Type a spirit name to search.",
     "spiritNoResult": "No results found.",
@@ -1055,6 +1068,12 @@
     "optional": "optional",
     "qualityWarning": "Insincere reviews or reviews with malicious scoring may be hidden or removed without notice.",
     "saveError": "An error occurred while saving. Please try again.",
+    "editionUnnamed": "Unnamed edition",
+    "error": {
+      "noteMin": "Please write at least {{min}} characters.",
+      "noteMax": "Please keep it under {{max}} characters.",
+      "checkFields": "Some fields are missing or invalid. Please check the highlighted items."
+    },
     "noReview": "No reviews yet.",
     "noReviewDesc": "Be the first to write a review!",
     "noScore": "No reviews",
@@ -1078,7 +1097,9 @@
       "previewAlt": "Review photo {{number}}",
       "open": "Open review photo {{number}}",
       "movePrevious": "Move photo earlier",
-      "moveNext": "Move photo later"
+      "moveNext": "Move photo later",
+      "primary": "Cover",
+      "deleteConfirm": "Delete this photo?"
     }
   },
   "comment": {
@@ -1364,9 +1385,19 @@
     },
     "siteLink": "Back to site"
   },
+  "unsaved": {
+    "title": "You have unsaved changes",
+    "description": "If you leave now, what you have written will be lost. What would you like to do?",
+    "stay": "Keep writing",
+    "saveDraft": "Save draft and leave",
+    "discard": "Leave without saving"
+  },
   "common": {
     "loading": "Loading...",
     "error": "An error occurred.",
+    "errorTitle": "Couldn't load this",
+    "errorDescription": "Check your connection and try again.",
+    "retry": "Try again",
     "save": "Save",
     "cancel": "Cancel",
     "close": "Close",
@@ -1405,6 +1436,9 @@
     "write": "Write",
     "searchPlaceholder": "Search title or content",
     "title": "Title",
+    "nickname": "Author",
+    "createdAt": "Date",
+    "clearAuthorFilter": "Clear filter",
     "sortLatest": "Latest",
     "sortBest": "Most Liked",
     "sortView": "Most Viewed",
@@ -2909,6 +2943,19 @@
     "layerNotDrawn": "No value",
     "layerEmptyText": "Empty text",
     "templateIncludes": "Adds {{count}} elements",
+    "fillTitle": "Fill in the details",
+    "fillIntro": "Fill the slots this template added, one at a time. Leave one empty and it won't appear on the card.",
+    "fillProgress": "{{current}} / {{total}}",
+    "fillPlaceholder": "Leave empty to hide it",
+    "fillFromExif": "Read from the photo. Edit it and your wording stays.",
+    "fillFromSpirit": "Taken from the bottle info. Edit it and your wording stays.",
+    "fillNoValue": "The photo doesn't carry this. You can type it yourself.",
+    "fillPrev": "Back",
+    "fillNext": "Next",
+    "fillSkip": "Skip",
+    "fillDone": "Done",
+    "fillClose": "Close",
+    "fillReopen": "Fill in the details",
     "addImageHint": "Your picture goes on top of the card. Size and position are adjusted after placing.",
     "uploading": "Uploading…",
     "addImageFailed": "Could not upload the image. Please try again.",

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useLayoutEffect, useRef, Fragment } from 'react'
+import { useState, useEffect, useCallback, useRef, Fragment } from 'react'
 import { useLocation, useSearchParams, useNavigate } from 'react-router-dom'
 
 import { useTranslation, Trans } from 'react-i18next'
@@ -15,6 +15,7 @@ import SpiritCard from '@/shared/components/SpiritCard'
 import Spinner from '@/shared/components/Spinner'
 import Pagination from '@/shared/components/Pagination'
 import EmptyState from '@/shared/components/EmptyState'
+import ListErrorState from '@/shared/components/ListErrorState'
 import RangeSlider from '@/shared/components/RangeSlider'
 import CategoryTree from '@/domain/spirit/components/filter/CategoryTree'
 import CountryCombobox from '@/domain/spirit/components/filter/CountryCombobox'
@@ -27,6 +28,8 @@ import { buildBreadcrumbSchema, buildItemListSchema } from '@/shared/utils/seoSc
 import { getLocalizedSpiritListNames, getSpiritListDisplayNames } from '@/domain/spirit/utils/spiritDisplayName'
 import { getSpiritCanonicalPath, getSpiritDetailPath } from '@/domain/spirit/utils/spiritUrl'
 import { SEARCH_DEBOUNCE_MS } from '@/shared/hooks/useDebouncedValue'
+import { useChromeTop } from '@/shared/hooks/useChromeTop'
+import { useKeyboardInset } from '@/shared/hooks/useKeyboardInset'
 import { scrollToPageTop } from '@/shared/utils/scrollToPageTop'
 import {
   SPIRIT_CATEGORY_META as CATEGORY_META,
@@ -231,22 +234,8 @@ export default function SpiritListPage() {
     window.localStorage.setItem(CATALOG_VIEW_STORAGE_KEY, nextViewMode)
   }
 
-  // PC 좌측 필터 패널을 sticky 헤더와 GNB 아래에 고정하기 위한 상단 간격.
-  const [chromeTop, setChromeTop] = useState(0) // 헤더+GNB 높이 + 여백
-
-  // 헤더 + GNB(둘 다 sticky) 높이 측정 → 패널의 viewport 기준 top 오프셋
-  useLayoutEffect(() => {
-    const update = () => {
-      const header = document.querySelector('header')
-      const nav = document.querySelector('nav')
-      const chromeHeight = (header?.getBoundingClientRect().height ?? 0)
-        + (nav?.getBoundingClientRect().height ?? 0)
-      setChromeTop(chromeHeight + 24)
-    }
-    update()
-    window.addEventListener('resize', update)
-    return () => window.removeEventListener('resize', update)
-  }, [])
+  // PC 좌측 필터 패널을 sticky 헤더와 GNB 아래에 고정하기 위한 상단 간격(헤더+GNB 높이 + 여백).
+  const chromeTop = useChromeTop() + 24
 
   // URL에서 필터 값 읽기
   const categoryValues = searchParams.getAll('category')
@@ -271,6 +260,8 @@ export default function SpiritListPage() {
   // 키워드 (Enter 또는 검색 버튼 클릭 시에만 검색)
   const [keywordInput, setKeywordInput] = useState(searchParams.get('keyword') ?? '')
   const [isFocused, setIsFocused] = useState(false)
+  // 하단 고정 검색창이 키보드 뒤로 숨지 않게 덮인 높이를 잰다.
+  const keyboardInset = useKeyboardInset()
   const [results, setResults] = useState<SpiritAutocompleteItem[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [isAutocompleteLoading, setIsAutocompleteLoading] = useState(false)
@@ -461,7 +452,7 @@ export default function SpiritListPage() {
 
   // 쿼리
   const keyword = searchParams.get('keyword') ?? ''
-  const { data, isLoading, isFetching } = useQuery({
+  const { data, isLoading, isFetching, isError, refetch } = useQuery({
     queryKey: ['spirits', {
       keyword, category, whiskyStyle, wineType, cognacGrade,
       wineSweetness, wineBody, wineAcidity, wineTannin,
@@ -720,6 +711,9 @@ export default function SpiritListPage() {
             <div className="flex justify-center py-20">
               <Spinner size="lg" className="text-primary-800" />
             </div>
+          ) : isError ? (
+            // 실패를 "검색 결과 없음"으로 그리면 필터를 의심하게 된다 — 실패는 실패로 말한다.
+            <ListErrorState onRetry={() => { void refetch() }} />
           ) : !data || data.empty ? (
             <EmptyState
               title={t('spirit.noResult.title')}
@@ -764,8 +758,18 @@ export default function SpiritListPage() {
         <FilterPanel {...filterProps} />
       </FilterDrawer>
 
-      {/* 모바일 하단 고정 검색창 (MO only, 스크롤 유지, 포커스 시 크기 변동) */}
-      <div className="lg:hidden fixed left-4 right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30 max-w-md mx-auto">
+      {/* 모바일 하단 고정 검색창 (MO only, 스크롤 유지, 포커스 시 크기 변동)
+          키보드가 올라오면 그 높이만큼 함께 올라간다 — 고정 요소는 레이아웃 뷰포트에
+          붙어 있어, 보정하지 않으면 방금 탭한 검색창이 키보드 뒤로 숨는다.
+          키보드가 떠 있는 동안에는 하단 탭바(4.5rem)가 가릴 일이 없으므로 그 몫은 뺀다. */}
+      <div
+        className="lg:hidden fixed left-4 right-4 z-30 max-w-md mx-auto transition-[bottom] duration-150"
+        style={{
+          bottom: keyboardInset > 0
+            ? `calc(${keyboardInset}px + 0.75rem)`
+            : 'calc(4.5rem + env(safe-area-inset-bottom))',
+        }}
+      >
         <form
           onSubmit={submitKeyword}
           className={`relative transition-all duration-300 ease-out bg-white/95 backdrop-blur-md rounded-full shadow-lg border border-neutral-200/80
@@ -774,7 +778,10 @@ export default function SpiritListPage() {
           {/* 모바일 자동완성 글래스모피즘 드롭다운 (위로 솟아오름) */}
           {isOpen && (results.length > 0 || isAutocompleteLoading) && (
             <div
-              className="absolute bottom-full left-0 right-0 mb-2.5 z-50 bg-white/90 backdrop-blur-md border border-neutral-200/80 rounded-2xl shadow-xl overflow-hidden max-h-60 overflow-y-auto"
+              // 키보드가 올라오면 검색창 위로 남는 자리가 화면의 절반도 안 된다.
+              // max-h 를 고정해 두면 목록이 화면 위로 삐져나가 첫 항목부터 잘린다.
+              className="absolute bottom-full left-0 right-0 mb-2.5 z-50 bg-white/90 backdrop-blur-md border border-neutral-200/80 rounded-2xl shadow-xl overflow-hidden overflow-y-auto overscroll-contain"
+              style={{ maxHeight: `min(15rem, calc(100dvh - ${keyboardInset}px - 10rem))` }}
               onMouseDown={(e) => e.preventDefault()}
             >
               {isAutocompleteLoading && results.length === 0 ? (
@@ -844,8 +851,11 @@ export default function SpiritListPage() {
               setTimeout(() => setIsOpen(false), 200)
             }}
             placeholder={t('spirit.search.placeholder')}
-            className={`w-full pl-5 pr-12 transition-all duration-300 ease-out rounded-full bg-transparent text-neutral-800 focus:outline-none
-              ${isFocused ? 'py-2.5 h-10 text-sm' : 'py-1 h-8 text-xs'}`}
+            // 글자 크기는 포커스 여부와 무관하게 16px 로 둔다 — 그보다 작으면 iOS Safari 가
+            // 탭할 때마다 페이지를 확대하고, 포커스를 잃어도 스스로 풀리지 않는다.
+            // 접힌 모습은 높이(h-11 ↔ h-12)로만 만든다. 접혀 있어도 44px 는 지킨다.
+            className={`w-full pl-5 pr-12 text-base transition-all duration-300 ease-out rounded-full bg-transparent text-neutral-800 focus:outline-none
+              ${isFocused ? 'h-12' : 'h-11'}`}
           />
           <button
             type="submit"

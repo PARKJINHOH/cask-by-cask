@@ -104,31 +104,55 @@ export default function ReviewImageField({ value, onChange, disabled = false }: 
       </div>
 
       {value.length > 0 && (
-        <div className="grid grid-cols-3 gap-2">
+        // 좁은 화면에서 3열로 두면 칸이 93px 밖에 안 돼, 그 안에 버튼 넷을 넣으면
+        // 하나가 38×23px 이 된다(권장 44px 의 절반). 모바일은 2열로 넓혀 잡는다.
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {value.map((draft, index) => (
             <div key={draft.key} className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
-              <img
-                src={draft.previewUrl}
-                alt={t('review.images.previewAlt', { number: index + 1 })}
-                className="aspect-[4/5] w-full object-cover"
-              />
-              <div className="grid grid-cols-2 gap-1 border-t border-neutral-100 p-1.5">
-                <button type="button" disabled={disabled} onClick={() => setEditingKey(draft.key)}
-                  className="rounded-md px-1 py-1 text-[11px] font-semibold text-primary-800 hover:bg-primary-50 disabled:opacity-40">
-                  {t('common.edit')}
+              <div className="relative">
+                <img
+                  src={draft.previewUrl}
+                  alt={t('review.images.previewAlt', { number: index + 1 })}
+                  className="aspect-[4/5] w-full object-cover"
+                />
+                {/* 첫 장이 대표다 — 순서 버튼이 무엇을 위한 것인지 이 배지가 설명한다 */}
+                {index === 0 && (
+                  <span className="absolute left-1.5 top-1.5 rounded-md bg-primary-800/90 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                    {t('review.images.primary')}
+                  </span>
+                )}
+                {/* 삭제는 실수로 눌리면 사진이 곧바로 사라진다 — 사진 위에 떼어 놓고 확인을 받는다 */}
+                <button
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => {
+                    if (window.confirm(t('review.images.deleteConfirm'))) remove(draft)
+                  }}
+                  aria-label={t('common.delete')}
+                  className="absolute right-1.5 top-1.5 flex size-11 items-center justify-center rounded-full
+                    bg-neutral-900/60 text-white transition-colors hover:bg-neutral-900/80 disabled:opacity-40"
+                >
+                  <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
                 </button>
-                <button type="button" disabled={disabled} onClick={() => remove(draft)}
-                  className="rounded-md px-1 py-1 text-[11px] font-semibold text-red-500 hover:bg-red-50 disabled:opacity-40">
-                  {t('common.delete')}
-                </button>
+              </div>
+              <div className="flex items-stretch gap-1 border-t border-neutral-100 p-1">
                 <button type="button" disabled={disabled || index === 0} onClick={() => move(index, -1)}
                   aria-label={t('review.images.movePrevious')}
-                  className="rounded-md border border-neutral-200 py-1 text-xs text-neutral-500 disabled:opacity-30">
+                  className="flex size-11 shrink-0 items-center justify-center rounded-lg border border-neutral-200
+                    text-neutral-500 disabled:opacity-30">
                   ←
+                </button>
+                <button type="button" disabled={disabled} onClick={() => setEditingKey(draft.key)}
+                  className="min-h-11 flex-1 rounded-lg px-1 text-xs font-semibold text-primary-800
+                    hover:bg-primary-50 disabled:opacity-40">
+                  {t('common.edit')}
                 </button>
                 <button type="button" disabled={disabled || index === value.length - 1} onClick={() => move(index, 1)}
                   aria-label={t('review.images.moveNext')}
-                  className="rounded-md border border-neutral-200 py-1 text-xs text-neutral-500 disabled:opacity-30">
+                  className="flex size-11 shrink-0 items-center justify-center rounded-lg border border-neutral-200
+                    text-neutral-500 disabled:opacity-30">
                   →
                 </button>
               </div>
@@ -138,7 +162,7 @@ export default function ReviewImageField({ value, onChange, disabled = false }: 
       )}
 
       {value.length < MAX_IMAGES && (
-        <label className={`flex min-h-20 cursor-pointer items-center justify-center rounded-xl border border-dashed border-neutral-300 bg-white px-4 text-center text-xs font-semibold text-neutral-500 hover:border-primary-300 hover:text-primary-800 ${disabled ? 'pointer-events-none opacity-40' : ''}`}>
+        <label className={`flex min-h-20 cursor-pointer items-center justify-center rounded-xl border border-dashed border-neutral-300 bg-white px-4 py-3 text-center text-xs font-semibold leading-5 text-neutral-500 hover:border-primary-300 hover:text-primary-800 ${disabled ? 'pointer-events-none opacity-40' : ''}`}>
           {t('review.images.add')}
           <input type="file" multiple accept="image/jpeg,image/png,image/webp" className="sr-only"
             disabled={disabled}

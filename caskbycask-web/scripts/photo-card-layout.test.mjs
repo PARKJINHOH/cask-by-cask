@@ -863,6 +863,10 @@ describe('i18n 번역', () => {
     'paddingSection', 'paddingTop', 'paddingBottom', 'paddingHint',
     'backgroundColor', 'letterSpacing', 'lineHeight', 'rotation', 'opacity',
     'addBox', 'addDivider', 'lock', 'unlock', 'duplicate', 'moveUp', 'moveDown',
+    // 템플릿을 고른 뒤 요소를 하나씩 채우는 흐름
+    'fillTitle', 'fillIntro', 'fillProgress', 'fillPlaceholder', 'fillFromExif',
+    'fillFromSpirit', 'fillNoValue', 'fillPrev', 'fillNext', 'fillSkip', 'fillDone',
+    'fillClose', 'fillReopen',
   ]
 
   for (const language of ['ko', 'en']) {

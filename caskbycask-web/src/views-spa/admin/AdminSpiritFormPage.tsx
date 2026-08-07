@@ -42,6 +42,28 @@ export default function AdminSpiritFormPage() {
   }
   const removeImage = (idx: number) => setImages((prev) => prev.filter((_, i) => i !== idx))
 
+  // 업로드는 배열 순서대로 이뤄지고 서버가 첫 장을 대표로 잡는다 — 순서가 곧 대표 지정이다.
+  // 여기에 순서 조작이 없으면, 모바일에서 대표를 바꾸려면 전부 지우고 다시 올리는 수밖에 없다.
+  const moveImage = (idx: number, direction: -1 | 1) => {
+    setImages((prev) => {
+      const target = idx + direction
+      if (target < 0 || target >= prev.length) return prev
+      const next = [...prev]
+      ;[next[idx], next[target]] = [next[target], next[idx]]
+      return next
+    })
+  }
+
+  const makePrimary = (idx: number) => {
+    setImages((prev) => {
+      if (idx <= 0 || idx >= prev.length) return prev
+      const next = [...prev]
+      const [moved] = next.splice(idx, 1)
+      next.unshift(moved)
+      return next
+    })
+  }
+
   const handleEditSave = async (file: File) => {
     if (editingIndex == null) return
     setIsEditingImage(true)
@@ -111,50 +133,61 @@ export default function AdminSpiritFormPage() {
           <div className={CARD}>
             <SectionTitle title="이미지" hint="'등록'을 눌러야 저장됩니다" />
             <p className="text-xs text-neutral-400">
-              첫 번째 이미지가 대표 이미지로 설정됩니다. (최대 {MAX_IMAGES}장)
+              첫 번째(1번) 이미지가 대표 이미지로 설정됩니다. 화살표로 순서를 바꾸거나
+              「대표」를 눌러 맨 앞으로 보낼 수 있습니다. (최대 {MAX_IMAGES}장)
             </p>
-            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+            {/* 모바일은 2열 — 3열이면 칸이 좁아 순서·대표·삭제 버튼이 손가락보다 작아진다 */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
               {previews.map((url, i) => (
-                <div
-                  key={url}
-                  onClick={() => setLightboxIndex(i)}
-                  className="relative group aspect-square rounded-xl overflow-hidden border border-neutral-200 bg-white cursor-zoom-in"
-                >
-                  <div className="absolute top-0 left-0 w-1/3 h-1/3 checker-corner" />
-                  <img src={url} alt="" className="relative w-full h-full object-cover pointer-events-none" />
-                  {i === 0 && (
-                    <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-amber-500 text-white text-[10px] font-semibold">
-                      대표
-                    </span>
-                  )}
-                  {/* 캔버스 이미지 편집기는 PC 전용 */}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setEditingIndex(i)
-                    }}
-                    aria-label="이미지 편집"
-                    title="이미지 편집"
-                    className="hidden lg:flex absolute top-1 right-8 z-10 w-6 h-6 items-center justify-center rounded-full
-                      bg-amber-600/80 text-white text-xs leading-none opacity-0 group-hover:opacity-100
-                      transition-opacity hover:bg-amber-600"
+                <div key={url} className="rounded-xl border border-neutral-200 bg-white overflow-hidden">
+                  <div
+                    onClick={() => setLightboxIndex(i)}
+                    className="relative aspect-square cursor-zoom-in"
                   >
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                    </svg>
-                  </button>
-                  {/* 터치에는 hover 가 없다 — 모바일에서는 항상 보이게 둔다 */}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      removeImage(i)
-                    }}
-                    aria-label="삭제"
-                    className="absolute top-1 right-1 z-10 w-7 h-7 lg:w-6 lg:h-6 rounded-full bg-black/70 text-white text-sm leading-none
-                      flex items-center justify-center lg:opacity-0 lg:group-hover:opacity-100 hover:bg-black/80 transition-opacity"
-                  >×</button>
+                    <div className="absolute top-0 left-0 w-1/3 h-1/3 checker-corner" />
+                    <img src={url} alt="" className="relative w-full h-full object-cover pointer-events-none" />
+                    <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-neutral-900/70 text-white text-[10px] font-semibold tabular-nums">
+                      {i === 0 ? '대표' : i + 1}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        removeImage(i)
+                      }}
+                      aria-label="삭제"
+                      className="absolute top-1 right-1 z-10 w-11 h-11 lg:w-8 lg:h-8 rounded-full bg-black/70 text-white text-base leading-none
+                        flex items-center justify-center hover:bg-black/80 transition-colors"
+                    >×</button>
+                  </div>
+                  {/* 순서 변경·대표 지정·편집 — 모두 터치에서도 쓸 수 있어야 한다.
+                      (편집기는 예전에 PC 전용이었지만 모바일 툴 시트를 갖추고 있어 그대로 연다) */}
+                  <div className="flex items-stretch gap-1 border-t border-neutral-100 p-1">
+                    <button
+                      type="button" disabled={i === 0} onClick={() => moveImage(i, -1)}
+                      aria-label="앞으로 이동" title="앞으로 이동"
+                      className="w-11 h-11 lg:w-8 lg:h-8 shrink-0 flex items-center justify-center rounded-lg border border-neutral-200 text-neutral-500 disabled:opacity-30"
+                    >←</button>
+                    <button
+                      type="button" disabled={i === 0} onClick={() => makePrimary(i)}
+                      title="대표 이미지로 지정"
+                      className="flex-1 min-h-11 lg:min-h-8 rounded-lg px-1 text-[11px] font-semibold text-amber-700 hover:bg-amber-50 disabled:opacity-30"
+                    >대표</button>
+                    <button
+                      type="button" onClick={() => setEditingIndex(i)}
+                      aria-label="이미지 편집" title="이미지 편집"
+                      className="w-11 h-11 lg:w-8 lg:h-8 shrink-0 flex items-center justify-center rounded-lg border border-neutral-200 text-amber-700"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button" disabled={i === previews.length - 1} onClick={() => moveImage(i, 1)}
+                      aria-label="뒤로 이동" title="뒤로 이동"
+                      className="w-11 h-11 lg:w-8 lg:h-8 shrink-0 flex items-center justify-center rounded-lg border border-neutral-200 text-neutral-500 disabled:opacity-30"
+                    >→</button>
+                  </div>
                 </div>
               ))}
               {images.length < MAX_IMAGES && (
@@ -191,7 +224,7 @@ export default function AdminSpiritFormPage() {
       )}
 
       {/* 하단 고정 액션바 */}
-      <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/90 backdrop-blur border-t border-neutral-200">
+      <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/90 backdrop-blur border-t border-neutral-200 pb-[env(safe-area-inset-bottom)]">
         <div className="px-6 py-3 flex justify-end gap-2">
           <Button variant="secondary" onClick={() => navigate('/admin/spirits')} disabled={isSaving}>취소</Button>
           <Button

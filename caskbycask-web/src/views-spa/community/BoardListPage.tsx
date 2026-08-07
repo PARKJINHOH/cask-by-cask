@@ -10,6 +10,7 @@ import Pagination from '@/shared/components/Pagination'
 import UserBadge from '@/shared/components/UserBadge'
 import RecommendBadge from '@/shared/components/RecommendBadge'
 import AdultBadge from '@/shared/components/AdultBadge'
+import ListErrorState from '@/shared/components/ListErrorState'
 import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { formatBoardDate } from '@/shared/utils/format'
@@ -299,7 +300,7 @@ export default function BoardListPage({ boardType, title }: Props) {
             }}
             className="ml-auto text-xs text-primary-500 hover:text-primary-900 underline"
           >
-            필터 해제
+            {t('board.clearAuthorFilter')}
           </button>
         </div>
       )}
@@ -410,6 +411,9 @@ export default function BoardListPage({ boardType, title }: Props) {
       {/* 게시글 목록 */}
       {query.isLoading ? (
         <div className="py-20 text-center text-neutral-400 text-sm">{t('common.loading')}</div>
+      ) : query.isError ? (
+        // 실패를 "글이 없습니다"로 그리면 빈 게시판과 구분되지 않는다 — 다시 시도할 길을 준다.
+        <ListErrorState onRetry={() => { void query.refetch() }} />
       ) : posts.length === 0 && !showPinnedNotices ? (
         <div className="py-20 text-center text-neutral-400 text-sm">{t('board.noPost')}</div>
       ) : (
@@ -422,10 +426,10 @@ export default function BoardListPage({ boardType, title }: Props) {
                   <th className="text-center px-4 py-2.5 font-medium text-neutral-500 w-28">{t('board.prefix')}</th>
                   <th className="text-center px-2 py-2.5 font-medium text-neutral-500 w-10"></th>
                   <th className="text-center px-4 py-2.5 font-medium text-neutral-500">{t('board.title')}</th>
-                  <th className="text-center px-4 py-2.5 font-medium text-neutral-500 w-32">닉네임</th>
+                  <th className="text-center px-4 py-2.5 font-medium text-neutral-500 w-32">{t('board.nickname')}</th>
                   <th className="text-center px-4 py-2.5 font-medium text-neutral-500 w-16">{t('board.likes')}</th>
                   <th className="text-center px-4 py-2.5 font-medium text-neutral-500 w-16">{t('board.views')}</th>
-                  <th className="text-center px-4 py-2.5 font-medium text-neutral-500 w-24">작성일</th>
+                  <th className="text-center px-4 py-2.5 font-medium text-neutral-500 w-24">{t('board.createdAt')}</th>
                 </tr>
               </thead>
               <tbody>

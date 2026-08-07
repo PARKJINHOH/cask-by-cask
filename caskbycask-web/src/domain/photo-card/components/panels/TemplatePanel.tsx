@@ -17,6 +17,8 @@ interface Props {
   /** 마지막으로 적용한 템플릿. 도구를 옮겨 다녀도 유지돼야 해서 페이지가 들고 있다. */
   appliedKey: string | null
   onApplied: (key: string) => void
+  /** 요소 채우기를 다시 연다 — 도중에 닫았거나, 값을 고치러 돌아올 때. */
+  onStartFill: () => void
 }
 
 /**
@@ -38,9 +40,13 @@ const overlayButtonClass = 'absolute inset-0 z-0 rounded-lg active:bg-primary-10
 
 /** 템플릿 도구 — 공식·내 것·공개된 것을 고르고, 지금 배치를 내 템플릿으로 저장한다. */
 export default function TemplatePanel({
-  editor, scope, onScopeChange, isLoggedIn, busy, onSaveAsTemplate, appliedKey, onApplied,
+  editor, scope, onScopeChange, isLoggedIn, busy, onSaveAsTemplate, appliedKey, onApplied, onStartFill,
 }: Props) {
   const { t } = useTranslation()
+  /** 채울 자리(글자 요소)가 하나라도 있어야 '요소 입력'이 뜻을 갖는다. */
+  const hasTextSlots = editor.layout.layers.some(
+    (layer) => layer.type === 'TEXT' && layer.visible !== false,
+  )
 
   const { data, refetch } = useQuery({
     queryKey: ['photoCardTemplates', scope],
@@ -108,6 +114,12 @@ export default function TemplatePanel({
           </button>
         ))}
       </div>
+
+      {hasTextSlots && (
+        <PanelButton tone="primary" onClick={onStartFill}>
+          {t('photoCard.fillReopen')}
+        </PanelButton>
+      )}
 
       {showBuiltins && (
         <ul className="space-y-2">

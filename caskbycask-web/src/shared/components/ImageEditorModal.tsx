@@ -1876,7 +1876,9 @@ export default function ImageEditorModal({
           >
             {/* PC 는 편집 영역이 클수록 정확하게 다듬을 수 있어 화면 폭을 넓게 쓴다.
                 (모바일은 하단 툴 시트가 화면을 나눠 쓰므로 기존 비율을 유지) */}
-            <DialogPanel className="w-full max-w-5xl md:max-w-6xl xl:max-w-7xl bg-neutral-900 text-neutral-100 rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[90vh]">
+            {/* 높이는 vh 가 아니라 dvh 다 — vh 는 주소창이 펼쳐진 상태를 반영하지 못해
+                모바일에서 패널 아래쪽(저장 버튼)이 화면 밖으로 잘린다. */}
+            <DialogPanel className="w-full max-w-5xl md:max-w-6xl xl:max-w-7xl bg-neutral-900 text-neutral-100 rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[90dvh]">
               
               {/* Header */}
               <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-800 bg-neutral-900/50 backdrop-blur">

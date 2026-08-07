@@ -2,6 +2,7 @@ import type { TFunction } from 'i18next'
 import { matchPath, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import Breadcrumb, { type Crumb } from './Breadcrumb'
+import { requestLeave } from '@/shared/hooks/useUnsavedChangesGuard'
 
 interface IndicatorConfig {
   items: Crumb[]
@@ -303,7 +304,9 @@ export default function PageIndicator() {
         {config.backTo && (
           <button
             type="button"
-            onClick={() => navigate(config.backTo!)}
+            // 글쓰기·수정 화면에도 backTo 가 있어, 그냥 이동시키면 작성 내용이 확인 없이 사라진다.
+            // 작성 중인 화면이 없으면 requestLeave 가 그대로 통과시킨다.
+            onClick={() => requestLeave(() => navigate(config.backTo!))}
             className="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg border border-neutral-200 bg-white px-2.5 text-xs font-medium text-neutral-600 transition-colors hover:border-primary-300 hover:bg-primary-50 hover:text-primary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
             aria-label={t('common.back')}
           >

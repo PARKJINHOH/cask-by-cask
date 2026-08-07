@@ -55,10 +55,10 @@ export default function EmptyState({
         <p className="text-sm text-neutral-400 max-w-xs mb-5">{description}</p>
       )}
 
+      {/* size 기본값(md)은 모바일에서 h-11 로 커진다 — sm(32px)은 터치 최소치에 못 미친다 */}
       {action && (
         <Button
           variant={action.variant ?? 'primary'}
-          size="sm"
           onClick={action.onClick}
           className="mt-1"
         >

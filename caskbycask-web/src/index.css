@@ -772,6 +772,31 @@
   scrollbar-width: none;  /* Firefox */
 }
 
+/* ── 모바일 입력칸 최소 글자 크기 (iOS 자동 확대 방지) ──────────
+   iOS Safari 는 글자 16px 미만인 입력칸에 포커스가 가면 페이지를 확대한다.
+   포커스를 잃어도 확대가 풀리지 않아 사용자가 직접 핀치로 되돌려야 한다.
+   사용자 화면 입력칸 대부분이 text-sm(14px)·text-xs(12px) 라 폼마다 반복 발생했다.
+
+   Tailwind 유틸리티(.text-sm 등)보다 우선해야 하므로 !important 를 쓴다.
+   관리자 목록/필터 화면(.admin-content-area)의 11px 압축 규칙은 아래 블록에서 그대로
+   이겨야 하므로, 여기 선택자는 그보다 특정도가 낮게 유지한다 —
+   `:not()` 을 두 개보다 늘리면 `.admin-content-area input:not():not()` 를 넘어서서
+   표 최적화가 깨진다. 체크박스·라디오만 제외하는 이유가 그것이다.
+
+   시각적으로 작아 보여야 하는 입력칸은 font-size 대신 높이·패딩으로 줄인다. */
+@media (max-width: 767px) {
+  input:not([type='checkbox']):not([type='radio']),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /* TipTap 편집 영역도 contenteditable 이라 같은 확대 규칙을 탄다. */
+  .di-richtext .ProseMirror {
+    font-size: 16px;
+  }
+}
+
 /* ── 모바일 관리자 테이블 최적화 ────────────────────────────── */
 @media (max-width: 767px) {
   /* 제목 글꼴 축소 */

@@ -260,6 +260,12 @@ function SpiritImageSection({ spiritId, images }: { spiritId: number; images: Ad
     await uploadFiles(files)
   }
 
+  /** 새 순서를 화면과 서버에 함께 반영한다. */
+  const applyOrder = (next: typeof order) => {
+    setOrder(next)
+    reorder.mutate({ id: spiritId, imageIds: next.map((img) => img.id) })
+  }
+
   const handleDrop = (dropIdx: number) => {
     const dragIdx = dragIndexRef.current
     dragIndexRef.current = null
@@ -268,8 +274,16 @@ function SpiritImageSection({ spiritId, images }: { spiritId: number; images: Ad
     const next = [...order]
     const [moved] = next.splice(dragIdx, 1)
     next.splice(dropIdx, 0, moved)
-    setOrder(next)
-    reorder.mutate({ id: spiritId, imageIds: next.map((img) => img.id) })
+    applyOrder(next)
+  }
+
+  /** 터치에서 쓰는 순서 변경 — HTML5 드래그는 모바일에서 동작하지 않는다. */
+  const moveImage = (idx: number, direction: -1 | 1) => {
+    const target = idx + direction
+    if (target < 0 || target >= order.length) return
+    const next = [...order]
+    ;[next[idx], next[target]] = [next[target], next[idx]]
+    applyOrder(next)
   }
 
   return (
@@ -309,12 +323,13 @@ function SpiritImageSection({ spiritId, images }: { spiritId: number; images: Ad
       ) : (
         <>
         <div className="space-y-0.5">
-          {/* 드래그 정렬은 PC 전용 — 모바일에서는 안내 문구도 바꿔야 "왜 안 되지" 를 만들지 않는다 */}
+          {/* HTML5 드래그는 터치에서 동작하지 않아 모바일은 화살표 버튼으로 옮긴다 */}
           <p className="hidden lg:block text-xs text-neutral-400">이미지를 드래그하여 순서를 변경할 수 있습니다. 맨 왼쪽(1번)이 대표 이미지입니다.</p>
-          <p className="lg:hidden text-xs text-neutral-400">맨 왼쪽(1번)이 대표 이미지입니다. 순서 변경과 이미지 편집은 PC에서 할 수 있습니다.</p>
+          <p className="lg:hidden text-xs text-neutral-400">맨 왼쪽(1번)이 대표 이미지입니다. 화살표로 순서를 바꾸고, 「대표」로 대표 이미지를 지정합니다.</p>
           <p className="text-xs text-neutral-400">좌측 상단에 체커보드 패턴이 보이면 해당 부분이 투명 처리된 이미지입니다.</p>
         </div>
-        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+        {/* 모바일은 2열 — 3열이면 타일이 좁아 번호·순서·대표 버튼이 서로 겹친다 */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
           {order.map((img, idx) => (
             <div
               key={img.id}
@@ -336,14 +351,16 @@ function SpiritImageSection({ spiritId, images }: { spiritId: number; images: Ad
                   대표
                 </span>
               )}
-              {/* 편집 — 우측 상단 X버튼 왼쪽. 캔버스 편집기는 PC 전용이라 모바일에서는 아예 감춘다 */}
+              {/* 편집 — 우측 상단 X버튼 왼쪽.
+                  편집기는 모바일 툴 시트를 갖추고 있어 터치에서도 그대로 쓸 수 있다.
+                  PC 는 hover 로 드러내고, 터치에는 hover 가 없으므로 항상 보인다. */}
               <button
                 onClick={(e) => {
                   e.stopPropagation()
                   setEditingImage(img)
                 }}
-                className="hidden lg:flex absolute top-1 right-8 z-10 w-6 h-6 items-center justify-center rounded-full
-                  bg-amber-600/80 text-white text-xs leading-none opacity-0 group-hover:opacity-100
+                className="absolute top-1 right-9 lg:right-8 z-10 w-7 h-7 lg:w-6 lg:h-6 flex items-center justify-center rounded-full
+                  bg-amber-600/80 text-white text-xs leading-none lg:opacity-0 lg:group-hover:opacity-100
                   transition-opacity hover:bg-amber-600"
                 aria-label="이미지 편집"
                 title="이미지 편집"
@@ -383,17 +400,38 @@ function SpiritImageSection({ spiritId, images }: { spiritId: number; images: Ad
                       대표 설정
                     </button>
                   </div>
-                  {/* 모바일 — 항상 보이는 버튼. 순서 드래그를 못 쓰는 대신 여기서 대표를 지정한다 */}
+                  {/* 모바일 — 항상 보이는 버튼. hover 가 없으니 오버레이로는 닿을 수 없다 */}
                   <button
                     onClick={(e) => { e.stopPropagation(); setPrimary.mutate({ id: spiritId, imageId: img.id }) }}
                     disabled={setPrimary.isPending}
-                    className="lg:hidden absolute bottom-1 right-1 z-10 px-2 py-1 rounded-md bg-amber-600/90
-                      text-white text-[10px] font-semibold leading-none disabled:opacity-50"
+                    className="lg:hidden absolute bottom-1 right-1 z-10 min-h-8 px-2.5 py-1 rounded-md bg-amber-600/90
+                      text-white text-[11px] font-semibold leading-none disabled:opacity-50"
                   >
                     대표
                   </button>
                 </>
               )}
+              {/* 모바일 순서 변경 — HTML5 드래그가 터치에서 동작하지 않는 자리를 메운다.
+                  좌하단은 번호 배지, 우하단은 「대표」가 쓰므로 가운데에 놓는다. */}
+              <div
+                className="lg:hidden absolute bottom-1 left-1/2 -translate-x-1/2 z-10 flex gap-1"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  onClick={() => moveImage(idx, -1)}
+                  disabled={idx === 0 || reorder.isPending}
+                  aria-label="앞으로 이동"
+                  className="w-8 h-8 flex items-center justify-center rounded-md bg-black/60 text-white text-xs
+                    disabled:opacity-30"
+                >←</button>
+                <button
+                  onClick={() => moveImage(idx, 1)}
+                  disabled={idx === order.length - 1 || reorder.isPending}
+                  aria-label="뒤로 이동"
+                  className="w-8 h-8 flex items-center justify-center rounded-md bg-black/60 text-white text-xs
+                    disabled:opacity-30"
+                >→</button>
+              </div>
             </div>
           ))}
         </div>
@@ -781,7 +819,7 @@ export default function AdminSpiritDetailPage() {
 
       {/* 하단 고정 액션바 */}
       {(activeTab === 'detail' || isApprovalMode) && (
-      <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/90 backdrop-blur border-t border-neutral-200">
+      <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/90 backdrop-blur border-t border-neutral-200 pb-[env(safe-area-inset-bottom)]">
         <div className="px-6 py-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           {isApprovalMode ? (
             <p className="text-xs text-neutral-500">

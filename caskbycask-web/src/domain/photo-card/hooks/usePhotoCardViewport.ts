@@ -33,8 +33,13 @@ const distanceOf = (a: { x: number; y: number }, b: { x: number; y: number }) =>
  * offset 은 "컨테이너 중앙에서 얼마나 밀렸는가"(화면 px)다.
  *
  * @param contentSize 카드의 캔버스 내부 크기(px)
+ * @param bottomInset 작업 영역 바닥에서 비워 둘 높이(화면 px).
+ *   좁은 화면에서 빠른 편집 바가 카드 위에 얹히는 만큼이다 — 카드는 그 위쪽에만 놓인다.
  */
-export const usePhotoCardViewport = (contentSize: PhotoCardCanvasSize) => {
+export const usePhotoCardViewport = (
+  contentSize: PhotoCardCanvasSize,
+  bottomInset = 0,
+) => {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [view, setView] = useState<ViewState>({ zoom: 0.3, offset: { x: 0, y: 0 } })
   const [panning, setPanning] = useState(false)
@@ -93,13 +98,15 @@ export const usePhotoCardViewport = (contentSize: PhotoCardCanvasSize) => {
   const fit = useCallback(() => {
     const rect = containerRef.current?.getBoundingClientRect()
     if (!rect || rect.width === 0 || rect.height === 0) return
+    // 바닥에 비워 둘 만큼을 뺀 자리에 맞추고, 그 절반만큼 위로 올려 남은 자리의 한가운데에 둔다.
+    const usableHeight = Math.max(rect.height - bottomInset, 1)
     const zoom = clampZoom(Math.min(
       (rect.width * FIT_MARGIN) / contentSize.width,
-      (rect.height * FIT_MARGIN) / contentSize.height,
+      (usableHeight * FIT_MARGIN) / contentSize.height,
     ))
     adjustedRef.current = false
-    applyView({ zoom, offset: { x: 0, y: 0 } })
-  }, [applyView, contentSize.height, contentSize.width])
+    applyView({ zoom, offset: { x: 0, y: -bottomInset / 2 } })
+  }, [applyView, bottomInset, contentSize.height, contentSize.width])
 
   const zoomToActual = useCallback(() => {
     adjustedRef.current = true

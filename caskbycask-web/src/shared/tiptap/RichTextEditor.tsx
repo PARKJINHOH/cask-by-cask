@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useEditor, EditorContent, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
@@ -87,8 +88,10 @@ export default function RichTextEditor({
   enableImages = true,
   compactHeight = false,
 }: Props) {
+  const { t } = useTranslation()
   const [uploadProgress, setUploadProgress] = useState<number | null>(null)
-  const [uploadLabel, setUploadLabel] = useState<'이미지' | '동영상'>('이미지')
+  // 라벨은 번역해서 보여 주므로 상태에는 종류만 담는다.
+  const [uploadKind, setUploadKind] = useState<'image' | 'video'>('image')
   // 여러 장 동시 업로드 시 진행 위치(예: 2/5). 단일 업로드면 null.
   const [batchProgress, setBatchProgress] = useState<{ current: number; total: number } | null>(null)
   const [spiritOpen, setSpiritOpen] = useState(false)
@@ -115,20 +118,20 @@ export default function RichTextEditor({
   const handleImageUpload = useCallback(async (file: File): Promise<string | null> => {
     if (!uploadImage) return null
     if (file.size > MAX_IMAGE_SIZE) {
-      onImageError?.('이미지 크기는 10MB 이하여야 합니다.')
+      onImageError?.(t('editor.upload.imageTooLarge', { max: MAX_IMAGE_SIZE / 1024 / 1024 }))
       return null
     }
-    setUploadLabel('이미지')
+    setUploadKind('image')
     setUploadProgress(0)
     try {
       return await uploadImage(file, setUploadProgress)
     } catch {
-      onImageError?.('이미지 업로드 중 오류가 발생했습니다.')
+      onImageError?.(t('editor.upload.imageFailed'))
       return null
     } finally {
       setUploadProgress(null)
     }
-  }, [uploadImage, onImageError])
+  }, [uploadImage, onImageError, t])
 
   const editor = useEditor({
     extensions: [
@@ -309,7 +312,7 @@ export default function RichTextEditor({
     const usage = collectMediaUsage(editor, mediaSizesRef.current)
     const remaining = MAX_IMAGE_COUNT - usage.imageCount
     if (images.length > remaining) {
-      onImageError?.(`이미지는 최대 ${MAX_IMAGE_COUNT}장까지 첨부할 수 있습니다.`)
+      onImageError?.(t('editor.upload.imageCount', { max: MAX_IMAGE_COUNT }))
       if (remaining <= 0) return
       images = images.slice(0, remaining)
     }
@@ -318,7 +321,7 @@ export default function RichTextEditor({
     try {
       for (let i = 0; i < images.length; i++) {
         if (images[i].size > budget) {
-          onImageError?.('이미지·동영상 합계 용량은 100MB를 초과할 수 없습니다.')
+          onImageError?.(t('editor.upload.totalSize', { max: MAX_MEDIA_TOTAL / 1024 / 1024 }))
           break
         }
         if (images.length > 1) setBatchProgress({ current: i + 1, total: images.length })
@@ -337,7 +340,7 @@ export default function RichTextEditor({
       removeUploadInsertionAnchor(editor, anchorId)
       setBatchProgress(null)
     }
-  }, [uploadImage, editor, handleImageUpload, onImageError])
+  }, [uploadImage, editor, handleImageUpload, onImageError, t])
 
   useEffect(() => {
     uploadAndInsertImagesRef.current = uploadAndInsertImages
@@ -346,23 +349,23 @@ export default function RichTextEditor({
   const handleVideoFile = useCallback(async (file: File) => {
     if (!uploadVideo || !editor) return
     if (!['video/mp4', 'video/webm'].includes(file.type)) {
-      onVideoError?.('MP4 또는 WebM 형식의 동영상만 업로드할 수 있습니다.')
+      onVideoError?.(t('editor.upload.videoFormat'))
       return
     }
     if (file.size > MAX_VIDEO_SIZE) {
-      onVideoError?.('동영상 크기는 50MB 이하여야 합니다.')
+      onVideoError?.(t('editor.upload.videoTooLarge', { max: MAX_VIDEO_SIZE / 1024 / 1024 }))
       return
     }
     const usage = collectMediaUsage(editor, mediaSizesRef.current)
     if (usage.videoCount >= MAX_VIDEO_COUNT) {
-      onVideoError?.(`동영상은 최대 ${MAX_VIDEO_COUNT}개까지 첨부할 수 있습니다.`)
+      onVideoError?.(t('editor.upload.videoCount', { max: MAX_VIDEO_COUNT }))
       return
     }
     if (file.size > MAX_MEDIA_TOTAL - usage.knownBytes) {
-      onVideoError?.('이미지·동영상 합계 용량은 100MB를 초과할 수 없습니다.')
+      onVideoError?.(t('editor.upload.totalSize', { max: MAX_MEDIA_TOTAL / 1024 / 1024 }))
       return
     }
-    setUploadLabel('동영상')
+    setUploadKind('video')
     setUploadProgress(0)
     try {
       const data = await uploadVideo(file, setUploadProgress)
@@ -374,12 +377,12 @@ export default function RichTextEditor({
         }).run()
       }
     } catch {
-      onVideoError?.('동영상 업로드 중 오류가 발생했습니다.')
+      onVideoError?.(t('editor.upload.videoFailed'))
     } finally {
       setUploadProgress(null)
       if (videoInputRef.current) videoInputRef.current.value = ''
     }
-  }, [uploadVideo, onVideoError, editor])
+  }, [uploadVideo, onVideoError, editor, t])
 
   const insertVideoEmbed = useCallback(() => {
     if (!editor) return
@@ -471,7 +474,7 @@ export default function RichTextEditor({
         <div className="px-4 py-2 border-b border-neutral-100 bg-primary-50/60">
           <div className="flex items-center justify-between mb-1">
             <span className="text-xs font-medium text-primary-800">
-              {uploadLabel} 업로드 중...
+              {uploadKind === 'video' ? t('editor.upload.videoProgress') : t('editor.upload.imageProgress')}
               {batchProgress && ` (${batchProgress.current}/${batchProgress.total})`}
             </span>
             <span className="text-xs text-primary-800 tabular-nums">{uploadProgress}%</span>
@@ -489,7 +492,10 @@ export default function RichTextEditor({
 
       {/* 글자수 — neutral-400/amber-600 은 밝은 배경 대비가 2~3:1 이라 neutral-500/amber-700 사용 */}
       <div className={['flex justify-end px-3 py-1.5 bg-neutral-50 border-t border-neutral-100 text-xs tabular-nums', isNearLimit ? 'text-amber-700' : 'text-neutral-500'].join(' ')}>
-        {charCount.toLocaleString()} / {maxChars.toLocaleString()}자
+        {t('editor.charCount', {
+          current: charCount.toLocaleString(),
+          max: maxChars.toLocaleString(),
+        })}
       </div>
 
       {enableSpiritEmbed && (

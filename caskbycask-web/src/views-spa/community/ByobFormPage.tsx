@@ -5,6 +5,8 @@ import { useByobDetail, useByobActions } from '@/domain/byob/hooks/useByob'
 import PostEditor from '@/domain/community/components/PostEditor'
 import SeoMeta from '@/shared/components/SeoMeta'
 import FormFieldLabel, { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
+import UnsavedChangesDialog from '@/shared/components/UnsavedChangesDialog'
+import { useUnsavedChangesGuard } from '@/shared/hooks/useUnsavedChangesGuard'
 
 function toLocalDatetimeValue(iso: string) {
   if (!iso) return ''
@@ -148,6 +150,29 @@ export default function ByobFormPage() {
 
   const isPending = createMutation.isPending || updateMutation.isPending
 
+  // ── 이탈 방지 ──
+  // 수정 모드는 기존 값이 실린 뒤부터 비교해야 "열자마자 수정됨"이 되지 않는다.
+  const baselineRef = useRef({ title: '', content: '' })
+  const [baselineReady, setBaselineReady] = useState(!isEdit)
+  useEffect(() => {
+    if (baselineReady || !existing) return
+    const timer = window.setTimeout(() => {
+      baselineRef.current = { title, content }
+      setBaselineReady(true)
+    }, 400)
+    return () => window.clearTimeout(timer)
+  }, [baselineReady, existing, title, content])
+
+  const [submitted, setSubmitted] = useState(false)
+  const isDirty = !submitted && (isEdit
+    ? baselineReady && (title !== baselineRef.current.title || content !== baselineRef.current.content)
+    : title.trim().length > 0 || content.replace(/<[^>]*>/g, '').trim().length > 0)
+
+  const { leaveDialogOpen, guard, cancelLeave, confirmLeave } = useUnsavedChangesGuard({
+    dirty: isDirty,
+    onLeave: () => navigate('/community/byob'),
+  })
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
@@ -177,10 +202,13 @@ export default function ByobFormPage() {
     try {
       if (isEdit) {
         await updateMutation.mutateAsync(base)
+        // 저장이 끝났으면 지킬 내용이 없다 — 이탈 확인창이 뜨지 않게 먼저 내린다.
+        setSubmitted(true)
         navigate(`/community/byob/${byobId}`)
       } else {
         const res = await createMutation.mutateAsync({ ...base, exposeToFreeBoard })
         const newId = res.data.data?.id
+        setSubmitted(true)
         navigate(newId ? `/community/byob/${newId}` : '/community/byob')
       }
     } catch {
@@ -194,6 +222,11 @@ export default function ByobFormPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       <SeoMeta title={isEdit ? t('byob.edit') : t('byob.write')} noindex />
+      <UnsavedChangesDialog
+        open={leaveDialogOpen}
+        onStay={cancelLeave}
+        onDiscard={() => { void confirmLeave() }}
+      />
 
       <div className="mb-6 flex items-end justify-between gap-4">
         <h1 className="text-2xl font-bold text-neutral-900">{isEdit ? t('byob.edit') : t('byob.write')}</h1>
@@ -308,13 +341,13 @@ export default function ByobFormPage() {
 
             {/* 액션 */}
             <div className="flex gap-3 pt-2">
-              <button type="button" onClick={() => navigate(-1)}
-                className="flex-1 py-2.5 text-sm font-medium border border-neutral-200 rounded-lg
+              <button type="button" onClick={() => guard(() => navigate(-1))}
+                className="flex-1 min-h-11 py-2.5 text-sm font-medium border border-neutral-200 rounded-lg
                   text-neutral-600 hover:bg-neutral-50 transition-colors">
                 {t('common.cancel')}
               </button>
               <button type="submit" disabled={isPending}
-                className="flex-1 py-2.5 text-sm font-semibold rounded-lg bg-primary-800 text-white
+                className="flex-1 min-h-11 py-2.5 text-sm font-semibold rounded-lg bg-primary-800 text-white
                   hover:bg-primary-900 disabled:opacity-50 transition-colors">
                 {isPending ? t('common.saving') : (isEdit ? t('common.save') : t('byob.write'))}
               </button>

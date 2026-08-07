@@ -34,7 +34,7 @@ import WineRegionPreview from '@/domain/admin/components/WineRegionPreview'
 import CognacDetailSection, { type CognacDetailForm, DEFAULT_COGNAC } from '@/domain/admin/components/CognacDetailSection'
 import OtherDetailSection, { type OtherDetailForm, DEFAULT_OTHER } from '@/domain/admin/components/OtherDetailSection'
 import useIsDesktop from '@/shared/hooks/useIsDesktop'
-import { scrollToPageTop } from '@/shared/utils/scrollToPageTop'
+import { focusFirstError } from '@/shared/utils/focusFirstError'
 
 // ══════════════════════════════════════════════════════════════════
 //  술 등록/수정/요청-승인 공유 폼 — 단일 소스 (SINGLE SOURCE OF TRUTH)
@@ -780,27 +780,10 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
   }
 
   // ── 검증 (단일 정의) ──
-  /**
-   * 첫 오류 입력칸으로 스크롤·포커스.
-   *
-   * <p>앵커(`data-field`)가 없는 항목이거나 닫힌 에디션 안에 있어 DOM 에 존재하지
-   * 않을 수 있다. 그때 아무것도 하지 않으면 화면이 전혀 움직이지 않아
-   * **"저장을 눌러도 아무 일이 없다"** 로 보이므로, 최소한 폼 맨 위로 올린다.
-   * 관리자 레이아웃은 window 가 아니라 안쪽 컨테이너가 스크롤되므로
-   * `scrollToPageTop` 으로 스크롤 조상을 찾아 올린다(`window.scrollTo` 는 무반응).
-   */
-  const focusFirstError = (errs: Record<string, string>) => {
-    const firstKey = Object.keys(errs)[0]
-    if (!firstKey) return
-    window.setTimeout(() => {
-      const target = document.querySelector<HTMLElement>(`[data-field="${firstKey}"], [name="${firstKey}"]`)
-      if (target) {
-        target.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        target.focus()
-        return
-      }
-      scrollToPageTop(document.querySelector<HTMLElement>('[data-spirit-form]'))
-    }, 0)
+  // 첫 오류 입력칸으로 스크롤·포커스 (동작 설명은 focusFirstError 참고).
+  // 앵커를 못 찾으면 [data-spirit-form] 기준으로 폼 맨 위까지만 올린다.
+  const focusFirstErrorField = (errs: Record<string, string>) => {
+    focusFirstError(Object.keys(errs), '[data-spirit-form]')
   }
 
   const validate = (): boolean => {
@@ -939,7 +922,7 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
     }
 
     setErrors(errs)
-    focusFirstError(errs)
+    focusFirstErrorField(errs)
     return Object.keys(errs).length === 0
   }
 
