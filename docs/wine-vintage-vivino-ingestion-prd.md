@@ -1,5 +1,10 @@
 # 와인 빈티지·Vivino 기반 수집 PRD
 
+> 2026-08-07 결정: Vivino 수집 영문명은 원문 기준, 국문명은 관리자 수동 입력으로 확정했다.
+> 이 문서의 과거 자동 국내명 검색·근거 URL 항목과 충돌하면 본 결정을 우선한다.
+> 2026-08-07 추가 결정: Vivino는 별도 API를 제공하지 않으므로, 서면 허가 후 공개 웹페이지의
+> HTML 구조화 데이터만 수집한다. API URL·토큰·로그인 세션은 사용하지 않는다.
+
 - 문서 상태: 구현 전 검토안
 - 작성일: 2026-08-06
 - 대상: `caskbycask-api`, `caskbycask-web`, `caskbycask-crawler`, 운영 배포 문서
@@ -18,7 +23,7 @@
 3. 와인 맛 DB는 이미 5단계 `sweetness/body/acidity/tannin` 구조이므로 컬럼을 교체하지 않는다.
    Vivino식 축인 `Dry ↔ Sweet`, `Light ↔ Bold`, `Soft ↔ Acidic`, `Smooth ↔ Tannic`으로
    표시 문구와 공급자 값 변환 규칙을 바꾼다. 원본 공급자 값은 별도 출처 테이블에 보존한다.
-4. **Vivino 공개 웹사이트 직접 크롤링은 현재 상태로 운영 구현하면 안 된다.**
+4. **Vivino 공개 웹사이트 직접 크롤링은 서면 허가 전에는 실행하면 안 된다.**
    [Vivino Terms of Service](https://www.vivino.com/en/legal/terms-of-service)는 별도 서면 계약 없는
    상업적 이용과 승인 없는 scraper/crawler/bot 접근을 금지한다. 검색엔진 인덱싱 예외도 일반 서비스의
    데이터 재사용 권한이 아니다. [robots.txt](https://www.vivino.com/robots.txt)가 일부 와인 URL을
@@ -29,8 +34,8 @@
    `retailprogram@vivino.com`을 안내한다([Vivino Contact](https://www.vivino.com/contact/?workflow=merchant)).
 6. 따라서 구현을 두 단계로 나눈다.
    - 1단계: 와인 다중 빈티지, 출처/멱등 DB, 내부 수집 API, fixture 기반 로컬 테스트, 관리자 검수 흐름
-   - 2단계: Vivino의 서면 데이터·평점·로고·이미지 사용 허가와 공식 접근 수단을 받은 후
-     `VivinoLicensedProvider`와 운영 표시를 활성화
+   - 2단계: Vivino의 서면 웹 크롤링·데이터·평점·로고·이미지 사용 허가를 받은 후
+     `VivinoWebCrawlerProvider`와 운영 표시를 활성화
 
 > 이 문서의 정책 검토는 기술적 go/no-go 기준이며 법률 자문은 아니다. 실제 계약 범위는
 > Vivino의 서면 답변/계약서와 필요 시 법률 검토로 확정한다.
@@ -216,13 +221,14 @@ JSON 규칙:
 - 각 빈티지는 독립된 리뷰, CaskByCask 평점, 외부 점수, 맛, 도수, 이미지 정보를 가진다.
 - 사용자는 리뷰 작성 전에 정확한 빈티지 또는 NV를 select box에서 고른다.
 - 허가된 공급자 데이터는 1시간에 최대 10개 빈티지 후보만 무작위 처리한다.
-- 영문 제품명을 기준으로 국내 통용 한글명을 근거 URL과 함께 확정한다.
+- 영문 제품명은 Vivino 값을 보존하고 국문명은 관리자 검수에서 직접 입력한다.
 - 필수 정보가 허가된 원천과 국내 허용 원천 모두에 없으면 등록하지 않고 거절 사유를 남긴다.
 - 중복 실행, 서버 재시작, 네트워크 재시도에도 같은 와인/빈티지가 중복 생성되지 않는다.
 
 ### 3.2 비목표
 
 - Vivino의 로그인, 비공개 API, 앱 내부 API, 봇 차단 또는 rate limit 우회
+- 수집 요청에 CaskByCask 서비스명·운영 연락처를 노출하는 구현 (고정 UA 1개만 사용하며 로테이션하지 않는다)
 - Vivino 사용자 리뷰 본문·사용자 프로필·개인정보 수집
 - AI가 출처 없이 한국어 제품명을 생성하거나 빈 값을 추측으로 채우는 기능
 - Vivino 점수를 CaskByCask의 `avgScore`, 랭킹, 추천 점수에 합산하는 기능
@@ -295,8 +301,7 @@ JSON 규칙:
 | `raw_payload` | 허가된 원본 응답 JSON, LONGTEXT |
 | `normalized_payload` | 내부 DTO와 같은 정규화 JSON |
 | `provenance_json` | 필드별 출처 URL·수집시각 |
-| `name_ko_source_site/url` | 한글명 근거 |
-| `match_score` | 한글명 매칭 신뢰도 |
+| `name_ko_reviewed_at/by` | 국문명 수동 검수 이력(후속 확장) |
 | `spirit_id` | 등록된 빈티지 자식 ID, nullable FK |
 | `attempt_count`, `next_retry_at` | 일시 장애 재시도 |
 | 시간 컬럼 | 발견·시도·등록 시각 |
@@ -449,7 +454,7 @@ Content-Type: multipart/form-data
 
 ### 6.2 수집 데이터 표시
 
-- 관리자 상세에 `수집 출처`, `원문`, `한글명 근거`, `최근 동기화`, `거절/경고`를 표시한다.
+- 관리자 상세에 `수집 출처`, `원문`, `국문명 검수 상태`, `최근 동기화`, `거절/경고`를 표시한다.
 - 크롤러가 만든 HIDDEN 와인을 source 필터로 찾을 수 있게 한다.
 - 관리자가 이름/상세를 수정해도 외부 동기화가 덮어쓰지 않도록 필드별 잠금 또는
   `manualOverrides`를 기록한다.
@@ -528,11 +533,12 @@ Content-Type: multipart/form-data
 
 운영 provider는 아래 세 조건이 모두 있어야 네트워크 요청을 시작한다.
 
-1. Vivino가 허가한 공식 API/feed/export 접근 정보
-2. 제품 데이터·평점·로고·대표 이미지 각각의 사용 범위가 적힌 서면 허가
-3. `VIVINO_USAGE_GRANT_REF` 운영 설정
+1. Vivino 공개 웹 크롤링을 허가한 계약/이메일 식별자
+2. 허용 페이지와 제품 데이터·평점·로고·대표 이미지 각각의 사용 범위
+3. 관리자 설정의 허가 확인과 이용 허가 근거
 
-조건이 없으면 fail-closed한다. 공개 HTML, 앱 API, GraphQL/JSON 내부 endpoint를 역분석해 대체하지 않는다.
+조건이 없으면 fail-closed한다. 허가 범위의 공개 HTML과 그 안의 JSON-LD/페이지 상태만 읽으며,
+로그인·앱 API·GraphQL/JSON 내부 endpoint·CAPTCHA·접근 제한을 우회하지 않는다.
 
 ### 9.2 모듈 구조
 
@@ -544,7 +550,7 @@ caskbycask-crawler/
   wine_providers/
     base.py
     fixture_provider.py
-    vivino_licensed_provider.py   # 허가된 계약 방식만 구현
+    vivino_web.py                 # 허가된 공개 HTML만 수집
   wine_enrichment/
     korean_name_resolver.py
     field_fallback_resolver.py
@@ -568,35 +574,24 @@ caskbycask-crawler/
 - 실행 잠금은 `/tmp/caskbycask-wine.lock`을 사용한다. 이전 실행이 끝나지 않았으면 새 실행은 종료한다.
 - 점수 갱신은 신규 등록과 분리된 stale queue로 관리하며, 전체 외부 요청 한도는 운영 계약 한도를 넘지 않는다.
 
-### 9.4 한글명 결정
+### 9.4 국문명 결정
 
-영문명은 공급자 원문을 기준으로 하고 한글명은 다음 우선순위로 찾는다.
-
-1. 국내 공식 수입사/생산자 한국 공식 페이지
-2. 데일리샷
-3. 와인나라
-4. 와인12닷컴
-5. 엑스와인
-
-규칙:
-
-- 검색 API를 사용할 경우 위 도메인 allowlist로 제한한다.
-- 직접 페이지를 읽을 경우 해당 사이트의 robots와 이용약관/허가를 모두 통과한 adapter만 활성화한다.
-- 영문 제품명 정규화 일치 + 생산자 일치가 필수다.
-- 빈티지 페이지이면 연도도 일치해야 한다. 마스터 한글명 근거만 얻을 때는 빈티지가 없어도 된다.
-- 패키지, 잔 세트, 다른 용량, 다른 cuvée는 같은 제품으로 간주하지 않는다.
-- 후보 점수가 기준 미달이면 AI 음차로 보완하지 않고 `KOREAN_NAME_NOT_FOUND`로 거절한다.
-- 저장되는 `nameKo`는 마스터명이며 연도/NV는 화면 helper가 붙인다.
+- 영문명은 허가된 Vivino 원문을 기준으로 저장한다.
+- 크롤러는 국문명을 국내 사이트에서 찾거나 AI/음차로 생성하지 않는다.
+- `spirit.name_ko` 필수 규약 때문에 HIDDEN 수집 단계에서는 영문명을 국문명 컬럼의 임시값으로도 저장한다.
+- 두 이름이 같으면 사용자 화면은 영문명 하나만 표시한다.
+- 관리자가 마스터 국문명을 직접 수정해야 `검수 완료·공개` 동작이 활성화된다.
+- 공개 동작은 마스터와 해당 빈티지를 함께 ACTIVE로 전환하고 자식의 이름도 마스터와 동기화한다.
 
 ### 9.5 필드 fallback과 등록 중단
 
-필드 우선순위는 “허가된 Vivino 원천 → 허용된 국내 원천”이다. 서로 다른 빈티지를 섞지 않는다.
+필드 기준은 허가된 Vivino 원천이다. 서로 다른 빈티지를 섞지 않는다.
 
 등록 필수 항목:
 
 - 공급자 제품/빈티지 ID와 원문 URL
-- 영문명, 근거가 확인된 한글명
-- 생산자 영문/한글명
+- Vivino 기준 영문명
+- 내부 DB에 등록된 생산자 영문명
 - 국가, 최소 L1 산지, 와인 종류
 - 빈티지 상태 및 연도 또는 NV
 - 도수, 용량
@@ -631,19 +626,23 @@ WINE_CRAWLER_MAX_IMPORTS_PER_RUN=10
 WINE_CRAWLER_TARGET_STATUS=HIDDEN
 WINE_CRAWLER_LOG_PATH=/app/caskbycask-crawler/logs/wine-crawler.log
 WINE_CRAWLER_DB_PATH=/app/caskbycask-crawler/wine-candidates.db
-VIVINO_API_BASE_URL=
-VIVINO_API_KEY=
-VIVINO_USAGE_GRANT_REF=
+VIVINO_BASE_URL=https://www.vivino.com
+VIVINO_START_URLS=https://www.vivino.com/explore
+VIVINO_REQUEST_DELAY_SECONDS=5
+VIVINO_REQUEST_TIMEOUT_SECONDS=20
+VIVINO_DISCOVERY_PAGE_LIMIT=3
+VIVINO_MAX_HTML_BYTES=4194304
+# 서비스명·연락처가 없는 값만 허용한다. 비우면 브랜드 없는 기본값을 쓴다.
+VIVINO_CRAWLER_USER_AGENT=
 VIVINO_RATING_BADGE_ENABLED=false
 VIVINO_IMAGE_REUSE_ENABLED=false
-KOREAN_WINE_SEARCH_API_KEY=
 ```
 
 로그/메트릭:
 
 - 후보 수, 무작위 선택 수, enriched, imported, updated, rejected, retry, error
-- 거절 코드별 수: 한글명 없음, 빈티지 불일치, 필수값 없음, 이미지 권한 없음, 중복 충돌
-- 외부 요청 수/상태/429, 국내 source별 성공률
+- 거절 코드별 수: 생산자 없음, 빈티지 불일치, 필수값 없음, 이미지 권한 없음, 중복 충돌
+- 외부 요청 수/상태/429
 - 마지막 성공 시각, 한 시간 import 수, 실행 시간
 - 외부 점수 freshness
 
@@ -708,7 +707,7 @@ cron 갱신 실패 시 현재 릴리스와 기존 crontab을 유지한다.
 - 후보 50개여도 import 요청 최대 10개
 - seed 기반 무작위 결과 재현
 - 같은 external key 재실행 시 중복 없음
-- 국내명 exact/producer/vintage 매칭과 패키지 오탐 거절
+- 영문명/producer/vintage 중복 매칭과 패키지 오탐 거절
 - 필수값 fallback 성공/실패
 - 영구 거절과 일시 retry 분리
 - dry-run에서 백엔드/파일 저장 없음
@@ -762,7 +761,7 @@ py -3 wine_main.py --provider fixture --dry-run --limit 10
 py -3 wine_main.py --provider fixture --limit 1
 ```
 
-- fixture에는 빈티지 2개, NV 1개, 국내명 없음, 필수값 없음, 중복 external key 사례를 포함한다.
+- fixture에는 빈티지 2개, NV 1개, 국문명 미입력, 필수값 없음, 중복 external key 사례를 포함한다.
 - Vivino 허가 전에는 로컬에서도 `--provider vivino`가 네트워크 요청 전에 명확히 실패해야 한다.
 
 ## 14. 구현 후 운영 테스트 절차
@@ -778,7 +777,7 @@ py -3 wine_main.py --provider fixture --limit 1
    - rating/image badge flag=false
 5. `run-wine.sh`를 수동 1회 실행하고 후보/거절/업로드 0건 로그를 검증한다.
 6. 허가된 sandbox에서 limit=1로 HIDDEN 와인 한 건을 등록한다.
-7. 관리자에서 마스터/빈티지/한글명 근거/이미지/맛/외부 점수를 검수한다.
+7. 관리자에서 마스터 국문명을 입력하고 빈티지/이미지/맛/외부 점수를 검수한 뒤 함께 공개한다.
 8. 한 빈티지만 수동 ACTIVE로 바꾸고 사용자 상세·리뷰 select·SEO·이미지 배지를 확인한다.
 9. 동일 작업을 다시 실행해 중복 row가 생기지 않는지 확인한다.
 10. 이상 없으면 cron을 활성화하되 최초 1주일은 HIDDEN 유지 및 매일 표본 검수한다.
@@ -806,7 +805,7 @@ py -3 wine_main.py --provider fixture --limit 1
 
 ### Phase B — Vivino 서면 허가 후
 
-1. 계약/API 문서에 맞는 `VivinoLicensedProvider`
+1. 서면 허가 범위의 공개 HTML을 수집하는 `VivinoWebCrawlerProvider`
 2. 계약상 허용 필드만 수집하도록 allowlist
 3. Ratings·로고·이미지 각각의 허가 feature flag
 4. 허가된 로고 asset과 배지 활성화
@@ -829,14 +828,13 @@ py -3 wine_main.py --provider fixture --limit 1
 ## 17. 구현 시작 전 필수 결정·자료
 
 1. **Vivino 서면 허가/계약 여부**
-   - 데이터 접근 방식(API/feed/export)
+   - 허용되는 공개 페이지·경로와 호출 주기
    - 제품 정보, 빈티지, 맛 값, 평점/평가 수, 로고, 제품 이미지 각각의 사용 범위
    - 캐시/보관 기간과 갱신 주기
 2. **초기 공개 정책**
    - 권장: 1주 이상 HIDDEN 검수 후 자동 ACTIVE 여부 결정
-3. **국내 사이트 접근 권한**
-   - 각 사이트는 검색 결과에 노출된다는 이유만으로 자동 수집하지 않는다.
-   - 공식 API/서면 허가 또는 robots·이용약관상 허용된 범위를 확인해야 한다.
+3. **국문명 운영 책임**
+   - 국문명은 외부 자동 수집 없이 관리자가 직접 입력하며 자동 갱신으로 덮어쓰지 않는다.
 4. **필수 이미지 정책**
    - 허가 이미지가 없으면 요구사항대로 등록 중단할지,
      또는 이미지 없는 HIDDEN 후보만 관리자에게 남길지 최종 선택이 필요하다.

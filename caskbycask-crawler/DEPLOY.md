@@ -241,7 +241,7 @@ GitHub Actions의 `target=crawler` 또는 `target=all`은 새 릴리스를 `/app
   target="$(readlink -f /app/caskbycask-crawler/previous)"
   test -x "$target/.venv/bin/python"
   ln -sfnT "$target" /app/caskbycask-crawler/current
-) 8>/tmp/caskbycask-crawler.lock 7>/tmp/caskbycask-ai-news.lock
+) 8>/tmp/caskbycask-crawler.lock 7>/tmp/caskbycask-ai-news.lock 5>/tmp/caskbycask-wine-crawler.lock
 ```
 
 ---
@@ -268,4 +268,41 @@ GitHub Actions의 `target=crawler` 또는 `target=all`은 새 릴리스를 `/app
 - 외부 이미지 요청은 HTTP(S) 기본 80/443, 공개 DNS/IP만 허용하고 각 리디렉션을 다시 검사합니다. 검증한 IP로 실제 연결을 고정하되 원래 Host/SNI로 인증서를 검증해 DNS rebinding을 막습니다. 환경 proxy와 `.netrc` 자격증명은 사용하지 않습니다.
 - DNS·응답 헤더와 본문에는 총시간 제한을 적용해 slow-drip 응답이 작업을 장기간 점유하지 못하게 합니다.
 - 이미지 본문은 JPEG/PNG/WebP/GIF 실제 포맷, 2천만 픽셀, 60프레임, 10MB 제한을 통과해야 Pillow가 디코딩합니다.
+
+---
+
+## 12. 와인 빈티지 수집 배포
+
+와인 작업은 기존 핫딜·AI 소식 작업과 분리된 `run-wine.sh`와 lock을 사용한다. 배포 후 아래 값을
+`/app/caskbycask-crawler/.env`에 추가한다. 서면 허가 전에는 관리자 LIVE 게이트를 열지 않는다.
+
+```properties
+WINE_FIXTURE_PATH=/app/caskbycask-crawler/current/fixtures/wine_license_review.json
+VIVINO_BASE_URL=https://www.vivino.com
+VIVINO_START_URLS=https://www.vivino.com/explore
+VIVINO_REQUEST_DELAY_SECONDS=5
+VIVINO_REQUEST_TIMEOUT_SECONDS=20
+VIVINO_DISCOVERY_PAGE_LIMIT=3
+VIVINO_MAX_HTML_BYTES=4194304
+# 서비스명·연락처가 없는 값만 허용한다. 비우면 브랜드 없는 기본값을 쓴다.
+VIVINO_CRAWLER_USER_AGENT=
+```
+
+관리자 화면에서 샘플 실행을 만든 뒤 수동 검증:
+
+```bash
+/app/caskbycask-crawler/current/run-wine.sh
+tail -n 100 /app/caskbycask-crawler/logs/wine-cron.log
+```
+
+배포 스크립트가 관리하는 cron:
+
+```cron
+CRON_TZ=Asia/Seoul
+37 * * * * /app/caskbycask-crawler/current/run-wine.sh >> /app/caskbycask-crawler/logs/wine-cron.log 2>&1
+```
+
+관리자 설정의 `자동 수집`, `LIVE`, `웹 크롤링 허가 확인`, `허가 근거` 네 조건 중 하나라도 빠지면 cron은
+LIVE 실행을 만들지 않는다. 수동 LIVE도 `LIVE`, `웹 크롤링 허가 확인`, `허가 근거`가 필요하다.
+LIVE는 API 토큰이나 로그인 쿠키를 사용하지 않으며, 401/403/429·CAPTCHA·bot challenge를 우회하지 않는다.
 

@@ -6,6 +6,7 @@ ARCHIVE="${CRAWLER_ARCHIVE:-/app/caskbycask-crawler-dist.tar.gz}"
 DEPLOY_LOCK_FILE="${CRAWLER_DEPLOY_LOCK_FILE:-/tmp/caskbycask-crawler-deploy.lock}"
 HOTDEAL_LOCK_FILE="${CRAWLER_HOTDEAL_LOCK_FILE:-/tmp/caskbycask-crawler.lock}"
 NEWS_LOCK_FILE="${CRAWLER_NEWS_LOCK_FILE:-/tmp/caskbycask-ai-news.lock}"
+WINE_LOCK_FILE="${CRAWLER_WINE_LOCK_FILE:-/tmp/caskbycask-wine-crawler.lock}"
 LOCK_WAIT_SECONDS="${CRAWLER_LOCK_WAIT_SECONDS:-120}"
 RELEASE_ID="$(date -u +%Y%m%dT%H%M%SZ)-$$"
 RELEASE_DIR="$BASE_DIR/releases/$RELEASE_ID"
@@ -90,7 +91,7 @@ PIP_DISABLE_PIP_VERSION_CHECK=1 "$VENV_DIR/bin/python" -m pip install \
 )
 
 ln -s "$BASE_DIR/.env" "$RELEASE_DIR/.env"
-chmod +x "$RELEASE_DIR/run.sh" "$RELEASE_DIR/run-news.sh"
+chmod +x "$RELEASE_DIR/run.sh" "$RELEASE_DIR/run-news.sh" "$RELEASE_DIR/run-wine.sh"
 
 # 실행 중인 구 릴리스가 끝날 때까지 기다린 뒤 두 작업을 모두 잠근 상태에서 교체한다.
 exec 8>"$HOTDEAL_LOCK_FILE"
@@ -101,6 +102,11 @@ fi
 exec 7>"$NEWS_LOCK_FILE"
 if ! flock -w "$LOCK_WAIT_SECONDS" 7; then
   echo "crawler news job did not stop within ${LOCK_WAIT_SECONDS}s" >&2
+  exit 1
+fi
+exec 5>"$WINE_LOCK_FILE"
+if ! flock -w "$LOCK_WAIT_SECONDS" 5; then
+  echo "crawler wine job did not stop within ${LOCK_WAIT_SECONDS}s" >&2
   exit 1
 fi
 
@@ -118,14 +124,15 @@ fi
     /^# BEGIN CASKBYCASK CRAWLER$/ { managed = 1; next }
     /^# END CASKBYCASK CRAWLER$/ { managed = 0; next }
     managed { next }
-    /caskbycask-crawler\/.*\/run(-news)?\.sh/ { next }
-    /caskbycask-crawler\/run(-news)?\.sh/ { next }
+    /caskbycask-crawler\/.*\/run(-(news|wine))?\.sh/ { next }
+    /caskbycask-crawler\/run(-(news|wine))?\.sh/ { next }
     { print }
   ' "$CRONTAB_BACKUP"
   echo '# BEGIN CASKBYCASK CRAWLER'
   echo 'CRON_TZ=Asia/Seoul'
   echo "0 */2 * * * $CURRENT_LINK/run.sh >> $BASE_DIR/logs/cron.log 2>&1"
   echo "17 */2 * * * $CURRENT_LINK/run-news.sh >> $BASE_DIR/logs/ai-news-cron.log 2>&1"
+  echo "37 * * * * $CURRENT_LINK/run-wine.sh >> $BASE_DIR/logs/wine-cron.log 2>&1"
   echo '# END CASKBYCASK CRAWLER'
 ) > "$CRONTAB_NEXT"
 crontab "$CRONTAB_NEXT"
