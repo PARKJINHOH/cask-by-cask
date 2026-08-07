@@ -31,6 +31,7 @@ import { usePriceVolumeSelection } from '@/domain/pricetracker/hooks/usePriceVol
 import { useState as useStateForPrice } from 'react'
 import type { StoreType } from '@/domain/pricetracker/types/pricetracker.types'
 import { CATEGORY_TO_PRODUCER_TYPE, PRODUCER_TYPE_LABEL } from '@/domain/producer/types/producer.types'
+import { getLocalizedNames } from '@/domain/spirit/utils/spiritDisplayName'
 
 // 가격 차트는 recharts(약 313KB)를 끌어오지만 기본 탭이 '리뷰'라 첫 화면에서는 쓰이지 않는다.
 // 가격 탭을 열 때만 내려받도록 지연 로드한다.
@@ -1052,8 +1053,7 @@ export default function SpiritDetailPage() {
     )
   }
 
-  const primaryName   = isEn ? (spirit.nameEn || spirit.nameKo) : spirit.nameKo
-  const secondaryName = isEn ? spirit.nameKo : spirit.nameEn
+  const { primaryName, secondaryName } = getLocalizedNames(spirit.nameKo, spirit.nameEn, i18n.language)
   const primaryProducer   = isEn ? (spirit.producerNameEn || spirit.producerNameKo) : spirit.producerNameKo
   const secondaryProducer = isEn ? spirit.producerNameKo : spirit.producerNameEn
   const brandName = spirit.whiskyDetail?.brandName || null

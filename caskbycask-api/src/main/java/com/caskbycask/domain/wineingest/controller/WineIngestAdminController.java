@@ -60,4 +60,9 @@ public class WineIngestAdminController {
     public ResponseEntity<ApiResponse<WineIngestDtos.RunResponse>> cancel(@PathVariable Long runId) {
         return ResponseEntity.ok(ApiResponse.success(service.cancelRun(runId)));
     }
+
+    @PostMapping("/items/{itemId}/publish")
+    public ResponseEntity<ApiResponse<WineIngestDtos.ItemResponse>> publish(@PathVariable Long itemId) {
+        return ResponseEntity.ok(ApiResponse.success(service.publishItem(itemId)));
+    }
 }

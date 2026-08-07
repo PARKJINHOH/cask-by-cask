@@ -25,6 +25,10 @@ export type TextFontKey =
   | 'coolStory'
   | 'magnoliaScript'
   | 'exmouth'
+  | 'allura'
+  | 'greatVibes'
+  | 'dancingScript'
+  | 'dancingScriptBold'
 
 export type TextFontGroupKey = 'basic' | 'impact' | 'casual' | 'serif' | 'latin'
 
@@ -161,6 +165,10 @@ export const TEXT_FONT_OPTIONS: TextFontOption[] = [
   { key: 'coolStory', familyKey: 'coolStory', familyLabelKey: 'imageEditor.familyCoolStory', labelKey: 'imageEditor.fontCoolStory', groupKey: 'latin', family: decorativeFamily('Cool Story'), weight: 400 },
   { key: 'magnoliaScript', familyKey: 'magnoliaScript', familyLabelKey: 'imageEditor.familyMagnoliaScript', labelKey: 'imageEditor.fontMagnoliaScript', groupKey: 'latin', family: decorativeFamily('Magnolia Script'), weight: 400 },
   { key: 'exmouth', familyKey: 'exmouth', familyLabelKey: 'imageEditor.familyExmouth', labelKey: 'imageEditor.fontExmouth', groupKey: 'latin', family: decorativeFamily('Exmouth'), weight: 400 },
+  { key: 'allura', familyKey: 'allura', familyLabelKey: 'imageEditor.familyAllura', labelKey: 'imageEditor.fontAllura', groupKey: 'latin', family: decorativeFamily('Allura'), weight: 400 },
+  { key: 'greatVibes', familyKey: 'greatVibes', familyLabelKey: 'imageEditor.familyGreatVibes', labelKey: 'imageEditor.fontGreatVibes', groupKey: 'latin', family: decorativeFamily('Great Vibes'), weight: 400 },
+  { key: 'dancingScript', familyKey: 'dancingScript', familyLabelKey: 'imageEditor.familyDancingScript', labelKey: 'imageEditor.fontDancingScript', groupKey: 'latin', family: decorativeFamily('Dancing Script'), weight: 400 },
+  { key: 'dancingScriptBold', familyKey: 'dancingScript', familyLabelKey: 'imageEditor.familyDancingScript', labelKey: 'imageEditor.fontDancingScriptBold', groupKey: 'latin', family: decorativeFamily('Dancing Script'), weight: 700 },
 ]
 
 /** 서체 가족 — 목록은 가족으로 보여 주고, 굵기는 가족을 고른 뒤에 고른다. */

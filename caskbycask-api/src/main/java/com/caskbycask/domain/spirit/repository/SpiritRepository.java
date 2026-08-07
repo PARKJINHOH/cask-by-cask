@@ -21,6 +21,25 @@ public interface SpiritRepository extends JpaRepository<Spirit, Long>, SpiritQue
     Optional<Spirit> findFirstByCategoryAndProducerIdAndParentIsNullAndNameEnIgnoreCase(
             SpiritCategory category, Long producerId, String nameEn);
 
+    @Query("""
+            SELECT s FROM Spirit s
+            LEFT JOIN FETCH s.wineDetail w
+            LEFT JOIN FETCH s.parent
+            WHERE s.category = com.caskbycask.domain.spirit.entity.enums.SpiritCategory.WINE
+              AND s.producer.id = :producerId
+              AND LOWER(s.nameEn) = LOWER(:nameEn)
+              AND (
+                    (:vintageYear IS NOT NULL AND s.vintageYear = :vintageYear)
+                    OR (:nonVintage = true AND s.vintageYear IS NULL
+                        AND w.vintageStatus = com.caskbycask.domain.spirit.entity.enums.WineVintageStatus.NON_VINTAGE)
+                  )
+            ORDER BY s.id ASC
+            """)
+    List<Spirit> findExistingWineVintage(@Param("producerId") Long producerId,
+                                          @Param("nameEn") String nameEn,
+                                          @Param("vintageYear") Integer vintageYear,
+                                          @Param("nonVintage") boolean nonVintage);
+
     Optional<Spirit> findByIdAndStatus(Long id, SpiritStatus status);
 
     @Query("select s.parent.id from Spirit s where s.id = :id")

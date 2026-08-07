@@ -58,9 +58,10 @@ public interface CalendarEventRepository extends JpaRepository<CalendarEvent, Lo
     List<CalendarEvent> findUpcoming(@Param("today") LocalDate today, Pageable pageable);
 
     /**
-     * 관리자용: 특정 출처(예: USER 제보)의 전체 이벤트를 최근 등록순으로.
+     * 관리자용: 특정 출처(예: USER 제보) 중 아직 비공개인 이벤트를 최근 등록순으로.
+     * 공개 전환된 건은 등록된 이벤트 목록에서 확인한다.
      */
-    List<CalendarEvent> findBySourceOrderByCreatedAtDesc(EventSource source);
+    List<CalendarEvent> findBySourceAndIsVisibleFalseOrderByCreatedAtDesc(EventSource source);
 
     long countBySourceAndIsVisibleFalse(EventSource source);
 

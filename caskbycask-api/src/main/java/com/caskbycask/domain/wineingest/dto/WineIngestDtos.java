@@ -1,6 +1,7 @@
 package com.caskbycask.domain.wineingest.dto;
 
 import com.caskbycask.domain.spirit.dto.WineDetailRequest;
+import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.domain.spirit.entity.enums.WineVintageStatus;
 import com.caskbycask.domain.wineingest.entity.*;
 import com.caskbycask.domain.wineingest.entity.enums.*;
@@ -70,14 +71,26 @@ public final class WineIngestDtos {
             Long id, Long runId, WineIngestItemStatus status, String provider,
             String externalWineId, String externalVintageId, String sourceUrl,
             String wineNameEn, String wineNameKo, String vintageLabel,
-            String reasonCode, String reasonMessage, Long spiritId, LocalDateTime createdAt
+            String reasonCode, String reasonMessage, Long spiritId, Long masterSpiritId,
+            boolean koreanNameReady, boolean published, LocalDateTime createdAt
     ) {
         public static ItemResponse from(WineIngestItem i) {
+            Spirit spirit = i.getSpirit();
+            Spirit master = spirit != null && spirit.getParent() != null ? spirit.getParent() : spirit;
+            boolean koreanNameReady = master != null
+                    && hasText(master.getNameKo())
+                    && !master.getNameKo().trim().equalsIgnoreCase(master.getNameEn().trim());
             return new ItemResponse(i.getId(), i.getRun().getId(), i.getStatus(), i.getProvider(),
                     i.getExternalWineId(), i.getExternalVintageId(), i.getSourceUrl(),
                     i.getWineNameEn(), i.getWineNameKo(), i.getVintageLabel(),
                     i.getReasonCode(), i.getReasonMessage(),
-                    i.getSpirit() != null ? i.getSpirit().getId() : null, i.getCreatedAt());
+                    spirit != null ? spirit.getId() : null,
+                    master != null ? master.getId() : null,
+                    koreanNameReady,
+                    spirit != null && master != null
+                            && spirit.getStatus() == com.caskbycask.domain.spirit.entity.enums.SpiritStatus.ACTIVE
+                            && master.getStatus() == com.caskbycask.domain.spirit.entity.enums.SpiritStatus.ACTIVE,
+                    i.getCreatedAt());
         }
     }
 
@@ -91,6 +104,7 @@ public final class WineIngestDtos {
     public record InternalConfigResponse(
             WineIngestProviderMode providerMode,
             boolean liveNetworkEnabled,
+            boolean automationEnabled,
             int hourlyLimit,
             int maxRunItems,
             boolean slackAlertEnabled,
@@ -105,7 +119,6 @@ public final class WineIngestDtos {
             @Size(max = 1000) String imageUrl,
             @NotBlank @Size(max = 500) String usageGrantRef,
             @NotBlank @Size(max = 200) String nameEn,
-            @NotBlank @Size(max = 200) String nameKo,
             @NotBlank @Size(max = 200) String producerNameEn,
             @NotBlank @Size(max = 100) String country,
             @Size(max = 100) String region,
@@ -116,9 +129,12 @@ public final class WineIngestDtos {
             @NotNull @Min(1) @Max(30000) Integer volumeMl,
             @Valid @NotNull WineDetailRequest wineDetail,
             @DecimalMin("0.0") @DecimalMax("5.0") BigDecimal rating,
-            @Min(0) Integer ratingCount,
-            @NotEmpty List<@NotBlank @Size(max = 1000) String> koreanNameEvidenceUrls
+            @Min(0) Integer ratingCount
     ) {}
+
+    private static boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
 
     public record FailureItemRequest(
             @NotBlank @Size(max = 30) String provider,

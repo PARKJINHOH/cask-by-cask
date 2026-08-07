@@ -350,6 +350,11 @@ public class Spirit extends BaseTimeEntity {
         this.sourceRatingCount = ratingCount;
     }
 
+    public void rename(String nameKo, String nameEn) {
+        this.nameKo = nameKo;
+        this.nameEn = nameEn;
+    }
+
     public void addVariant(Spirit variant) {
         this.variants.add(variant);
         variant.parent = this;

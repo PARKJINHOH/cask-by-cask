@@ -42,6 +42,11 @@ const EDITOR_FONTS = [
   { slug: 'bebasneue', family: 'Bebas Neue', weights: [400] },
   { slug: 'pacifico', family: 'Pacifico', weights: [400] },
   { slug: 'ibmplexsanscondensed', family: 'IBM Plex Sans Condensed', weights: [700] },
+  // 필기체 3종 — 라틴 자소만 있어 한글은 Pretendard 로 폴백된다(imageEditorText 의 decorativeFamily).
+  { slug: 'allura', family: 'Allura', weights: [400] },
+  { slug: 'greatvibes', family: 'Great Vibes', weights: [400] },
+  // 가변 서체라 굵기를 고를 수 있다. 라틴 조각만이라 굵기 하나를 더 얹어도 용량 부담이 없다.
+  { slug: 'dancingscript', family: 'Dancing Script', weights: [400, 700] },
   {
     slug: 'wantedsans',
     family: 'Wanted Sans',

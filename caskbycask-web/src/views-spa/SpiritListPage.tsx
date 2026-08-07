@@ -24,7 +24,7 @@ import ActiveFilterChips, {
 } from '@/domain/spirit/components/filter/ActiveFilterChips'
 import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 import { buildBreadcrumbSchema, buildItemListSchema } from '@/shared/utils/seoSchema'
-import { getSpiritListDisplayNames } from '@/domain/spirit/utils/spiritDisplayName'
+import { getLocalizedSpiritListNames, getSpiritListDisplayNames } from '@/domain/spirit/utils/spiritDisplayName'
 import { getSpiritCanonicalPath, getSpiritDetailPath } from '@/domain/spirit/utils/spiritUrl'
 import { SEARCH_DEBOUNCE_MS } from '@/shared/hooks/useDebouncedValue'
 import { scrollToPageTop } from '@/shared/utils/scrollToPageTop'
@@ -784,7 +784,7 @@ export default function SpiritListPage() {
               ) : results.length > 0 ? (
                 <ul className="py-1">
                   {results.map((item) => {
-                    const displayName = getSpiritListDisplayNames(item)
+                    const displayName = getLocalizedSpiritListNames(item, i18n.language)
                     return (
                       <li key={item.id}>
                         <button
@@ -792,7 +792,7 @@ export default function SpiritListPage() {
 
                           onClick={() => {
                             navigate(getSpiritDetailPath(item, i18n.language))
-                            setKeywordInput(displayName.nameKo)
+                            setKeywordInput(displayName.primaryName)
                             setIsOpen(false)
                           }}
                           className="w-full text-left px-3.5 py-2 flex items-center gap-3 hover:bg-neutral-50/50 transition-colors"
@@ -800,7 +800,7 @@ export default function SpiritListPage() {
                           {item.imageUrl ? (
                             <img
                               src={item.imageUrl}
-                              alt={displayName.nameKo}
+                              alt={displayName.primaryName}
                               className="w-8 h-8 object-contain rounded bg-white flex-shrink-0 border border-neutral-100"
                             />
                           ) : (
@@ -810,11 +810,11 @@ export default function SpiritListPage() {
                           )}
                           <div className="flex-1 min-w-0">
                             <div className="text-xs font-semibold text-neutral-800 truncate">
-                              {displayName.nameKo}
+                              {displayName.primaryName}
                             </div>
-                            <div className="text-[10px] text-neutral-400 truncate">
-                              {displayName.nameEn}
-                            </div>
+                            {displayName.secondaryName && <div className="text-[10px] text-neutral-400 truncate">
+                              {displayName.secondaryName}
+                            </div>}
                           </div>
                           <span className="text-[9px] font-semibold bg-primary-50 text-primary-800 px-1.5 py-0.5 rounded-full flex-shrink-0">
                             {t(`category.${item.category.toLowerCase()}`, item.category)}

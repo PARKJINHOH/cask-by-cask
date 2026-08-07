@@ -238,6 +238,10 @@ public class SpiritService {
                     .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_NOT_FOUND))
                 : selected;
 
+        if (master.getCategory() == SpiritCategory.WINE) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+
         VariantType variantType = resolveVariantTypeForUserCreate(master);
         String seriesIdentifier = resolveSeriesIdentifierForUserCreate(master);
         String seriesIdentifierEn = resolveSeriesIdentifierEnForUserCreate(master, seriesIdentifier);

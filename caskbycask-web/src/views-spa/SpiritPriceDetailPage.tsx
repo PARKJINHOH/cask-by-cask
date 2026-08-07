@@ -11,11 +11,11 @@ import StoreDetailPanel from '@/domain/pricetracker/components/StoreDetailPanel'
 import PriceAlertInline from '@/domain/pricetracker/components/PriceAlertInline'
 import PriceAlertBanner from '@/domain/pricetracker/components/PriceAlertBanner'
 import type { BucketType, StoreType } from '@/domain/pricetracker/types/pricetracker.types'
+import { getLocalizedNames } from '@/domain/spirit/utils/spiritDisplayName'
 
 export default function SpiritPriceDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { t, i18n } = useTranslation()
-  const isEn = i18n.language === 'en'
   const spiritId = Number(id)
 
   const [storeType, setStoreType] = useState<StoreType>('DOMESTIC')
@@ -60,8 +60,9 @@ export default function SpiritPriceDetailPage() {
 
   if (spiritLoading) return <Spinner fullscreen />
 
-  const primaryName = isEn ? (spirit?.nameEn ?? spirit?.nameKo) : spirit?.nameKo
-  const subName = isEn ? spirit?.nameKo : (spirit?.nameEn || undefined)
+  const { primaryName, secondaryName: subName } = getLocalizedNames(
+    spirit?.nameKo, spirit?.nameEn, i18n.language,
+  )
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">

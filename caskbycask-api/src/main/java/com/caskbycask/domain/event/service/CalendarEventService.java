@@ -116,7 +116,7 @@ public class CalendarEventService {
     /** 관리자 검토 대기 중인 사용자 제보 목록(최근 제보순). */
     @Transactional(readOnly = true)
     public List<AdminEventResponse> getSuggestionsForAdmin() {
-        return calendarEventRepository.findBySourceOrderByCreatedAtDesc(EventSource.USER).stream()
+        return calendarEventRepository.findBySourceAndIsVisibleFalseOrderByCreatedAtDesc(EventSource.USER).stream()
                 .map(AdminEventResponse::from)
                 .toList();
     }

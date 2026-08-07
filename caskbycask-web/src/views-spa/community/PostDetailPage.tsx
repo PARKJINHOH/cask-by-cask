@@ -18,6 +18,7 @@ import { formatDotDateTime } from '@/shared/utils/format'
 import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 import { SITE_URL } from '@/shared/config/site'
 import { buildBreadcrumbSchema } from '@/shared/utils/seoSchema'
+import { getLocalizedNames } from '@/domain/spirit/utils/spiritDisplayName'
 
 function toKstIsoDateTime(value: string): string {
   if (/Z$|[+-]\d{2}:?\d{2}$/.test(value)) return value
@@ -433,7 +434,9 @@ export default function PostDetailPage() {
         {/* 주류 태그 — 이미지 갤러리 글에서 포토카드에 쓴 주류로 이동한다 */}
         {!post.isBlocked && (post.spiritTags?.length ?? 0) > 0 && (
           <div className="mt-6 flex flex-wrap gap-2">
-            {post.spiritTags!.map((tag) => (
+            {post.spiritTags!.map((tag) => {
+              const names = getLocalizedNames(tag.nameKo, tag.nameEn, i18n.language)
+              return (
               <Link
                 key={tag.spiritId}
                 to={`/spirits/${tag.spiritId}`}
@@ -443,14 +446,15 @@ export default function PostDetailPage() {
                   {tag.imageUrl && <img src={tag.imageUrl} alt="" className="h-full w-full object-cover" />}
                 </span>
                 <span className="min-w-0">
-                  <span className="block truncate text-sm font-bold text-neutral-900">{tag.nameKo}</span>
-                  {tag.nameEn && (
-                    <span className="block truncate text-xs text-neutral-500">{tag.nameEn}</span>
+                  <span className="block truncate text-sm font-bold text-neutral-900">{names.primaryName}</span>
+                  {names.secondaryName && (
+                    <span className="block truncate text-xs text-neutral-500">{names.secondaryName}</span>
                   )}
                 </span>
                 <span className="ml-1 shrink-0 text-xs font-bold text-primary-700">›</span>
               </Link>
-            ))}
+              )
+            })}
           </div>
         )}
 
@@ -479,9 +483,10 @@ export default function PostDetailPage() {
                 isLoggedIn ? likeMutation.mutate(true) : navigate('/login')
               }}
               disabled={isMyPost}
-              title={isMyPost ? t('post.selfLikeDisabled') : undefined}
+              aria-label={t('post.like')}
+              title={isMyPost ? t('post.selfLikeDisabled') : t('post.like')}
               className={[
-                'flex items-center gap-1.5 px-5 py-2 rounded-full border text-sm font-medium transition-colors',
+                'flex items-center gap-1.5 px-4 py-2 rounded-full border text-sm font-medium transition-colors',
                 isMyPost
                   ? 'border-neutral-100 bg-neutral-50 text-neutral-300 cursor-not-allowed'
                   : post.isLiked === true
@@ -489,11 +494,10 @@ export default function PostDetailPage() {
                   : 'border-neutral-200 text-neutral-600 hover:border-primary-300 hover:bg-primary-50',
               ].join(' ')}
             >
-              <svg className="w-4 h-4" fill={post.isLiked === true ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3H14z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3" />
+              <svg className="w-[18px] h-[18px]" fill={post.isLiked === true ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
               </svg>
-              {t('post.like')} {post.likeCount > 0 && <span className="font-bold">{post.likeCount}</span>}
+              {post.likeCount > 0 && <span className="font-bold">{post.likeCount}</span>}
             </button>
           </div>
         )}

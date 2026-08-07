@@ -47,6 +47,9 @@ export interface WineIngestItem {
   reasonCode: string | null
   reasonMessage: string | null
   spiritId: number | null
+  masterSpiritId: number | null
+  koreanNameReady: boolean
+  published: boolean
   createdAt: string
 }
 

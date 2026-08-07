@@ -344,9 +344,10 @@ export default function PhotoPostView({
                 else navigate('/login')
               }}
               disabled={isMyPost}
-              title={isMyPost ? t('post.selfLikeDisabled') : undefined}
+              aria-label={t('post.like')}
+              title={isMyPost ? t('post.selfLikeDisabled') : t('post.like')}
               className={[
-                'flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-sm font-medium transition-colors',
+                'flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors',
                 isMyPost
                   ? 'cursor-not-allowed border-neutral-100 bg-neutral-50 text-neutral-300'
                   : post.isLiked === true
@@ -354,11 +355,10 @@ export default function PhotoPostView({
                     : 'border-neutral-200 text-neutral-600 hover:border-primary-300 hover:bg-primary-50',
               ].join(' ')}
             >
-              <svg className="h-4 w-4" fill={post.isLiked === true ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3H14z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3" />
+              <svg className="h-[18px] w-[18px]" fill={post.isLiked === true ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
               </svg>
-              {t('post.like')} {post.likeCount > 0 && <span className="font-bold">{post.likeCount}</span>}
+              {post.likeCount > 0 && <span className="font-bold">{post.likeCount}</span>}
             </button>
 
             {isLoggedIn && (

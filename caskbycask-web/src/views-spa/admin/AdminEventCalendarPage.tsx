@@ -173,7 +173,7 @@ export default function AdminEventCalendarPage() {
           <p className="text-sm text-neutral-500 mt-0.5">
             {viewMode === 'calendar'
               ? '날짜 칸을 클릭해 이벤트를 등록하고, 막대를 클릭해 수정·삭제합니다.'
-              : '사용자가 제보한 이벤트입니다. 행을 클릭해 내용을 수정하고 공개로 전환(승인)합니다.'}
+              : '검토 대기 중인 사용자 제보입니다. 행을 클릭해 내용을 수정하고 공개로 전환(승인)하면 목록에서 사라집니다.'}
           </p>
         </div>
         {viewMode === 'calendar' && (
@@ -393,7 +393,7 @@ export default function AdminEventCalendarPage() {
         ) : suggestions.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-neutral-400 text-sm">
             <span className="text-3xl mb-2">📭</span>
-            접수된 사용자 제보가 없습니다.
+            검토 대기 중인 사용자 제보가 없습니다.
           </div>
         ) : (
           <div className="overflow-x-auto rounded-xl border border-neutral-200">
@@ -404,7 +404,6 @@ export default function AdminEventCalendarPage() {
                   <th className="px-4 py-3 font-medium">이벤트명</th>
                   <th className="px-4 py-3 font-medium">카테고리</th>
                   <th className="px-4 py-3 font-medium whitespace-nowrap">기간</th>
-                  <th className="px-4 py-3 font-medium whitespace-nowrap">상태</th>
                   <th className="px-4 py-3 font-medium whitespace-nowrap">제보일</th>
                 </tr>
               </thead>
@@ -430,13 +429,6 @@ export default function AdminEventCalendarPage() {
                     <td className="px-4 py-3 whitespace-nowrap text-neutral-600 tabular-nums">
                       {fmtDate(s.startDate)}
                       {s.endDate && s.endDate !== s.startDate ? ` ~ ${fmtDate(s.endDate)}` : ''}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      {s.isVisible ? (
-                        <span className="inline-flex items-center gap-1 text-emerald-700 text-xs font-medium">● 공개</span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-neutral-500 text-xs font-medium">🔒 검토 대기</span>
-                      )}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-neutral-400 tabular-nums">
                       {s.createdAt?.slice(0, 10).replace(/-/g, '.')}

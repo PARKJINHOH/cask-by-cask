@@ -1,5 +1,5 @@
 type SpiritSeriesNameSource = {
-  nameKo: string
+  nameKo?: string | null
   nameEn?: string | null
   category?: string | null
   vintageYear?: number | null
@@ -66,10 +66,26 @@ export function getLocalizedSpiritListNames<T extends SpiritSeriesNameSource>(
   language: string,
 ) {
   const { nameKo, nameEn } = getSpiritListDisplayNames(spirit)
-  const isEn = language === 'en'
-
-  return {
-    primaryName: isEn ? (nameEn || nameKo) : nameKo,
-    secondaryName: isEn ? nameKo : nameEn,
+  const baseKo = spirit.nameKo?.trim() ?? ''
+  const baseEn = spirit.nameEn?.trim() ?? ''
+  if (!baseKo || (baseEn && baseKo.toLocaleLowerCase() === baseEn.toLocaleLowerCase())) {
+    return { primaryName: nameEn || nameKo, secondaryName: null }
   }
+  return getLocalizedNames(nameKo, nameEn, language)
+}
+
+export function getLocalizedNames(
+  nameKo: string | null | undefined,
+  nameEn: string | null | undefined,
+  language: string,
+) {
+  const ko = nameKo?.trim() ?? ''
+  const en = nameEn?.trim() ?? ''
+  const isEn = language === 'en'
+  const primaryName = isEn ? (en || ko) : (ko || en)
+  const candidate = isEn ? ko : en
+  const secondaryName = candidate && candidate.toLocaleLowerCase() !== primaryName.toLocaleLowerCase()
+    ? candidate
+    : null
+  return { primaryName, secondaryName }
 }

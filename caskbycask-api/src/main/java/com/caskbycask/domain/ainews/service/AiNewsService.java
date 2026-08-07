@@ -73,7 +73,9 @@ public class AiNewsService {
                                                                  LocalDate fromDate,
                                                                  LocalDate toDate,
                                                                  int page, int size) {
-        return articleRepository.search(status, type, category,
+        // 상태 필터가 없으면 삭제된 원고는 감춘다. 삭제됨을 직접 선택하면 그대로 조회·복원할 수 있다.
+        AiNewsArticleStatus excludedStatus = status == null ? AiNewsArticleStatus.DELETED : null;
+        return articleRepository.search(status, excludedStatus, type, category,
                         fromDate != null ? fromDate.atStartOfDay() : null,
                         toDate != null ? toDate.plusDays(1).atStartOfDay() : null,
                         PageRequest.of(Math.max(0, page), Math.min(100, Math.max(1, size))))

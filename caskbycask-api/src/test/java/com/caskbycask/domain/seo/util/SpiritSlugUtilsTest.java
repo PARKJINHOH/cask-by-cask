@@ -130,6 +130,25 @@ class SpiritSlugUtilsTest {
         assertThat(SpiritSlugUtils.displayNameEn(spirit)).isEqualTo("House Wine");
     }
 
+    @Test
+    @DisplayName("국문명 임시값이 영문명과 같으면 한국어 표시명도 영문 형식 하나만 사용한다")
+    void english_only_wine_uses_english_display_name_for_korean_locale() {
+        Spirit spirit = Spirit.builder()
+                .nameKo("Chateau Test")
+                .nameEn("Chateau Test")
+                .category(SpiritCategory.WINE)
+                .vintageYear(2020)
+                .variantType(VariantType.VINTAGE)
+                .seriesIdentifier("빈티지")
+                .seriesIdentifierEn("Vintage")
+                .variantValue("2020")
+                .variantValueEn("2020")
+                .build();
+
+        assertThat(SpiritSlugUtils.displayNameKo(spirit))
+                .isEqualTo("Chateau Test Vintage 2020");
+    }
+
     private Spirit wine(String nameKo, String nameEn,
                         Integer vintageYear, WineVintageStatus vintageStatus) {
         Spirit spirit = Spirit.builder()

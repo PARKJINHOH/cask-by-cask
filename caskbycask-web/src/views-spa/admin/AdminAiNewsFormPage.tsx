@@ -138,6 +138,7 @@ export default function AdminAiNewsFormPage() {
 
   const canPublish = !detail || !['PUBLISHED', 'DELETED', 'REJECTED', 'SKIPPED_DUPLICATE', 'REWRITE_REQUESTED'].includes(detail.status)
   const canPublishSocial = detail?.status === 'PUBLISHED'
+  const socialPublishRequested = socialSelection.instagram || socialSelection.threads || socialRetryIds.length > 0
 
   const cancelScheduleMut = useMutation({
     mutationFn: () => adminAiNewsApi.cancelSchedule(articleId!),
@@ -328,9 +329,19 @@ export default function AdminAiNewsFormPage() {
         <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
           {isEdit ? <button type="button" onClick={() => { if (window.confirm('삭제하시겠습니까?\n\n이미 Instagram 또는 Threads에 게시된 콘텐츠는 자동으로 삭제되지 않습니다. 해당 플랫폼에서 직접 삭제해 주세요.')) deleteMut.mutate() }} disabled={deleteMut.isPending} className="rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50">삭제</button> : <span />}
           <div className="flex gap-2">
-            <button type="button" onClick={() => save.mutate('save')} disabled={save.isPending} className="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-semibold text-neutral-700 hover:bg-neutral-50">저장</button>
-            {canPublish && <button type="button" onClick={() => save.mutate('schedule')} disabled={save.isPending || !scheduledAt} className="rounded-lg border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-50">예약 발행</button>}
-            {(canPublish || canPublishSocial) && <button type="button" onClick={() => save.mutate('publish')} disabled={save.isPending} className="rounded-lg bg-primary-800 px-5 py-2 text-sm font-semibold text-white hover:bg-primary-900">{canPublishSocial ? 'SNS 게시' : '즉시 발행'}</button>}
+            {canPublish ? (
+              <>
+                <button type="button" onClick={() => save.mutate('save')} disabled={save.isPending} className={secondaryBtnCls}>저장</button>
+                <button type="button" onClick={() => save.mutate('schedule')} disabled={save.isPending || !scheduledAt} className="rounded-lg border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-50">예약 발행</button>
+                <button type="button" onClick={() => save.mutate('publish')} disabled={save.isPending} className={primaryBtnCls}>즉시 발행</button>
+              </>
+            ) : (
+              // 발행이 끝난 글은 저장과 SNS 게시가 같은 요청이므로 버튼 하나로 합친다.
+              <button type="button" onClick={() => save.mutate(canPublishSocial ? 'publish' : 'save')} disabled={save.isPending}
+                className={canPublishSocial ? primaryBtnCls : secondaryBtnCls}>
+                {canPublishSocial && socialPublishRequested ? '저장 · SNS 게시' : '저장'}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -343,6 +354,8 @@ function Field({ label, children, required = false }: { label: string; children:
   return <label className="block" aria-required={required || undefined}><span className="mb-1.5 block text-xs font-semibold text-neutral-600">{label}{required && <RequiredMark />}</span>{children}</label>
 }
 const inputCls = 'w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100 disabled:bg-neutral-100'
+const primaryBtnCls = 'rounded-lg bg-primary-800 px-5 py-2 text-sm font-semibold text-white hover:bg-primary-900 disabled:opacity-50'
+const secondaryBtnCls = 'rounded-lg border border-neutral-300 px-4 py-2 text-sm font-semibold text-neutral-700 hover:bg-neutral-50 disabled:opacity-50'
 
 function socialSelectionValid(
   selection: SocialPublishSelection,

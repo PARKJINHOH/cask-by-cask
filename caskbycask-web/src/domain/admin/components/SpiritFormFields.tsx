@@ -871,8 +871,15 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
     // 생산 정보 필수 — 관리자 등록/수정에만 적용한다.
     // 사용자 술 등록 요청(admin=false)은 일반 이용자가 쓰는 화면이라 기존처럼 선택으로 둔다.
     // 목록에 없는 생산자는 선택기 안에서 직접 등록할 수 있으므로 필수로 둬도 막히지 않는다.
+    // 위스키는 증류소·브랜드명 택1 — 발렌타인 같은 블렌디드 위스키는 특정 증류소가 없고
+    // 브랜드명으로만 식별되므로 증류소를 강제하면 등록 자체가 막힌다.
     if (adminRequired && category) {
-      if (!producerId) errs.producerId = `${PRODUCER_LABEL[category]}을(를) 선택하거나 직접 등록해주세요.`
+      if (category === 'WHISKY') {
+        if (!producerId && !whiskyDetail.brandName.trim())
+          errs.producerId = '증류소 또는 브랜드명 중 하나는 반드시 입력해주세요.'
+      } else if (!producerId) {
+        errs.producerId = `${PRODUCER_LABEL[category]}을(를) 선택하거나 직접 등록해주세요.`
+      }
       if (!countryCode) errs.country = '국가는 필수입니다.'
     }
 
@@ -1505,6 +1512,9 @@ export default function SpiritFormFields({
    */
   const isWhisky = category === 'WHISKY'
 
+  /** 위스키만 증류소·브랜드명 택1 필수 — 블렌디드 위스키(발렌타인 등)는 증류소가 특정되지 않는다 */
+  const producerOrBrandRequired = requireProduction && isWhisky
+
   /**
    * 입력 오타 힌트 — 범위는 맞지만 실무적으로 의심스러운 값에 안내를 띄운다.
    * 저장을 막지 않는다(실존하는 비표준 규격·저도주가 있으므로).
@@ -1832,6 +1842,9 @@ export default function SpiritFormFields({
             <div data-field="producerId">
               <label className={LABEL}>
                 {producerLabel}{requireProduction && <RequiredMark />}
+                {producerOrBrandRequired && (
+                  <span className="ml-1 text-[11px] font-normal text-neutral-400">브랜드명과 택1</span>
+                )}
                 <InfoTooltip text={`목록에 없으면 선택기 안에서 '${producerLabel} 직접 등록'으로 바로 추가할 수 있습니다.`} />
               </label>
               <ProducerSelectorComp value={form.producerId} defaultName={form.producerName}
@@ -1853,9 +1866,12 @@ export default function SpiritFormFields({
               {errors.producerId && <p className="text-xs text-red-500 mt-1">{errors.producerId}</p>}
             </div>
             {category === 'WHISKY' && (
-              <div>
+              <div data-field="brandName">
                 <label className={LABEL}>
-                  브랜드명
+                  브랜드명{producerOrBrandRequired && <RequiredMark />}
+                  {producerOrBrandRequired && (
+                    <span className="ml-1 text-[11px] font-normal text-neutral-400">증류소와 택1</span>
+                  )}
                   <InfoTooltip text="블렌디드 위스키 등 증류소와 별개의 상업적 브랜드명. 예) 시바스리갈, 조니워커, 발렌타인, 페이머스 그라우스" />
                 </label>
                 <input value={form.whiskyDetail.brandName}

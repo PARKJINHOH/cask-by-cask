@@ -40,6 +40,27 @@ class WineIngestRunTest {
         assertThat(run.getDuplicateCount()).isEqualTo(1);
     }
 
+    @Test
+    void 자료부족_PASS만_있으면_부분실패다() {
+        WineIngestRun run = runningRun();
+        run.record(WineIngestItemStatus.NOT_FOUND_SKIPPED);
+
+        run.finish(null);
+
+        assertThat(run.getStatus()).isEqualTo(WineIngestRunStatus.PARTIAL);
+        assertThat(run.getSkippedCount()).isEqualTo(1);
+    }
+
+    @Test
+    void 취소사유를_실행이력에_남긴다() {
+        WineIngestRun run = runningRun();
+
+        run.cancel("LIVE gate closed");
+
+        assertThat(run.getStatus()).isEqualTo(WineIngestRunStatus.CANCELLED);
+        assertThat(run.getErrorMessage()).isEqualTo("LIVE gate closed");
+    }
+
     private static WineIngestRun runningRun() {
         WineIngestRun run = WineIngestRun.builder()
                 .runKey("test-run")

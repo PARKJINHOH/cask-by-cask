@@ -63,6 +63,11 @@ public final class SpiritSlugUtils {
     }
 
     public static String displayNameKo(Spirit spirit) {
+        if (!hasText(spirit.getNameKo())
+                || (hasText(spirit.getNameEn())
+                    && spirit.getNameKo().trim().equalsIgnoreCase(spirit.getNameEn().trim()))) {
+            return displayNameEn(spirit);
+        }
         return displayNameKo(
                 spirit.getNameKo(), spirit.getSeriesIdentifier(), spirit.getVariantType(), spirit.getVariantValue(),
                 spirit.getCategory(), spirit.getVintageYear(), wineVintageStatus(spirit));

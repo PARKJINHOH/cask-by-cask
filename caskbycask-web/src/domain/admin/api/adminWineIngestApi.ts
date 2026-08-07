@@ -45,4 +45,8 @@ export const adminWineIngestApi = {
     const res = await axiosInstance.post<ApiResponse<WineIngestRun>>(`/api/admin/wine-ingest/runs/${runId}/cancel`)
     return res.data.data!
   },
+  publishItem: async (itemId: number) => {
+    const res = await axiosInstance.post<ApiResponse<WineIngestItem>>(`/api/admin/wine-ingest/items/${itemId}/publish`)
+    return res.data.data!
+  },
 }

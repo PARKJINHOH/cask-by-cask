@@ -86,7 +86,8 @@ public class PhotoCardTemplateService {
             "gowunBatang", "gowunBatangBold", "songMyung",
             // 영문 위주 서체
             "wantedSansExtraBold", "ibmPlexSansCondBold", "bebasNeue", "pacifico",
-            "stiluSemiBold", "stiluBold", "kalamkari", "coolStory", "magnoliaScript", "exmouth"
+            "stiluSemiBold", "stiluBold", "kalamkari", "coolStory", "magnoliaScript", "exmouth",
+            "allura", "greatVibes", "dancingScript", "dancingScriptBold"
     );
 
     private final PhotoCardTemplateRepository templateRepository;

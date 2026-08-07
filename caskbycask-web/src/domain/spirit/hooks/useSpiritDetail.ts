@@ -19,6 +19,8 @@ export function formatSpiritName<T extends {
 }>(spirit: T): T {
   if (!spirit) return spirit
   const hasEdition = spirit.variantType && spirit.variantType !== 'NONE'
+  const englishOnly = !spirit.nameKo?.trim()
+    || spirit.nameKo.trim().toLocaleLowerCase() === spirit.nameEn?.trim().toLocaleLowerCase()
   let nameKo = spirit.nameKo
   let nameEn = spirit.nameEn
   if (hasEdition) {
@@ -40,10 +42,12 @@ export function formatSpiritName<T extends {
     vintageYear: spirit.vintageYear,
     vintageStatus: spirit.vintageStatus ?? spirit.wineDetail?.vintageStatus,
   }
+  const formattedKo = appendWineVintageDisplay(nameKo, vintageSource)
+  const formattedEn = appendWineVintageDisplay(nameEn || nameKo, vintageSource)
   return {
     ...spirit,
-    nameKo: appendWineVintageDisplay(nameKo, vintageSource),
-    nameEn: appendWineVintageDisplay(nameEn || nameKo, vintageSource),
+    nameKo: englishOnly ? formattedEn : formattedKo,
+    nameEn: formattedEn,
   }
 }
 

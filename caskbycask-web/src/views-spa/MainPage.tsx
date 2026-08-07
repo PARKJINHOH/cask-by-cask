@@ -15,7 +15,7 @@ import BannerSlider from '@/domain/banner/components/BannerSlider'
 import SpiritCard from '@/shared/components/SpiritCard'
 import AdultBadge from '@/shared/components/AdultBadge'
 import { formatBoardDate, scoreColor } from '@/shared/utils/format'
-import { getLocalizedSpiritListNames } from '@/domain/spirit/utils/spiritDisplayName'
+import { getLocalizedNames, getLocalizedSpiritListNames } from '@/domain/spirit/utils/spiritDisplayName'
 import { getSpiritDetailPath } from '@/domain/spirit/utils/spiritUrl'
 import type { SpiritListItem } from '@/domain/spirit/types/spirit.types'
 import type { RecentReviewItem } from '@/domain/review/types/review.types'
@@ -238,14 +238,13 @@ function SpiritCarousel({ spirits }: { spirits: SpiritListItem[] }) {
 // 표시명은 서버(SpiritSlugUtils)가 에디션·빈티지 접미어까지 만들어 내려주므로 그대로 사용한다.
 function RecentReviewCarousel({ reviews }: { reviews: RecentReviewItem[] }) {
   const { i18n } = useTranslation()
-  const isEn = i18n.language === 'en'
 
   return (
     <DragCarousel itemCount={reviews.length}>
       {reviews.map((review) => {
-        const name = isEn
-          ? (review.displayNameEn || review.displayNameKo)
-          : review.displayNameKo
+        const name = getLocalizedNames(
+          review.displayNameKo, review.displayNameEn, i18n.language,
+        ).primaryName
         const totalScore = Number(review.totalScore)
 
         return (

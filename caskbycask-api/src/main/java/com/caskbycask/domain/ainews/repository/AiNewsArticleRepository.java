@@ -23,6 +23,7 @@ public interface AiNewsArticleRepository extends JpaRepository<AiNewsArticle, Lo
     @Query("""
             select a from AiNewsArticle a
             where (:status is null or a.status = :status)
+              and (:excludedStatus is null or a.status <> :excludedStatus)
               and (:articleType is null or a.articleType = :articleType)
               and (:category is null or a.category = :category)
               and (:fromAt is null or a.createdAt >= :fromAt)
@@ -30,6 +31,7 @@ public interface AiNewsArticleRepository extends JpaRepository<AiNewsArticle, Lo
             order by a.createdAt desc
             """)
     Page<AiNewsArticle> search(@Param("status") AiNewsArticleStatus status,
+                               @Param("excludedStatus") AiNewsArticleStatus excludedStatus,
                                @Param("articleType") AiNewsArticleType articleType,
                                @Param("category") AiNewsCategory category,
                                @Param("fromAt") LocalDateTime fromAt,

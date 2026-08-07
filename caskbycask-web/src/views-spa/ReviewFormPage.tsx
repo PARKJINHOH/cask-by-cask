@@ -33,6 +33,7 @@ import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFiel
 import SocialPublishFields from '@/domain/social/components/SocialPublishFields'
 import { socialApi } from '@/domain/social/api/socialApi'
 import { EMPTY_SOCIAL_SELECTION, type SocialPublishSelection } from '@/domain/social/types/social.types'
+import { getLocalizedNames } from '@/domain/spirit/utils/spiritDisplayName'
 import ReviewImageField, {
   existingReviewImageDrafts,
   reviewImageSubmission,
@@ -72,7 +73,6 @@ export default function ReviewFormPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { t, i18n } = useTranslation()
-  const isEn = i18n.language === 'en'
 
   const editingReview = (location.state as LocationState)?.review
 
@@ -263,7 +263,7 @@ export default function ReviewFormPage() {
 
   if (spiritLoading) return <Spinner fullscreen />
 
-  const primaryName = isEn ? (spirit?.nameEn || spirit?.nameKo) : spirit?.nameKo
+  const primaryName = getLocalizedNames(spirit?.nameKo, spirit?.nameEn, i18n.language).primaryName
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">

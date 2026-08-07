@@ -7,6 +7,7 @@ import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 import Spinner from '@/shared/components/Spinner'
 import ImageLightbox from '@/shared/components/ImageLightbox'
 import { stripLocalePrefix } from '@/domain/spirit/utils/spiritUrl'
+import { getLocalizedNames } from '@/domain/spirit/utils/spiritDisplayName'
 
 function score(value: number | null) {
   return value == null ? '-' : Number(value).toFixed(1)
@@ -38,8 +39,9 @@ export default function PublicReviewPage() {
     )
   }
 
-  const title = isEn ? (data.displayNameEn || data.displayNameKo) : data.displayNameKo
-  const subtitle = isEn ? data.displayNameKo : data.displayNameEn
+  const { primaryName: title, secondaryName: subtitle } = getLocalizedNames(
+    data.displayNameKo, data.displayNameEn, i18n.language,
+  )
   const canonicalPath = isEn ? data.canonicalPathEn : data.canonicalPathKo
   const reviewImages = data.images ?? []
   const reviewImageUrls = reviewImages.map((image) => image.imageUrl)

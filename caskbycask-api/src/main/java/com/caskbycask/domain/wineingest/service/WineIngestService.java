@@ -27,10 +27,6 @@ import java.util.*;
 @Service
 @RequiredArgsConstructor
 public class WineIngestService {
-    private static final Set<String> KOREAN_NAME_EVIDENCE_DOMAINS = Set.of(
-            "dailyshot.co", "winenara.com", "wine21.com", "wine12.com", "wine12.co.kr",
-            "xwine.club", "xwine.co.kr");
-
     private final WineIngestSettingsRepository settingsRepository;
     private final WineIngestRunRepository runRepository;
     private final WineIngestItemRepository itemRepository;
@@ -55,7 +51,7 @@ public class WineIngestService {
         if (request.automationEnabled() && request.providerMode() != WineIngestProviderMode.LIVE) {
             throw new CustomException(ErrorCode.INVALID_INPUT);
         }
-        WineIngestSettings settings = requireSettings();
+        WineIngestSettings settings = requireSettingsForUpdate();
         settings.update(request.automationEnabled(), request.providerMode(), request.licenseApproved(),
                 trimToNull(request.usageGrantRef()), request.hourlyLimit(), request.maxRunItems(),
                 request.slackAlertEnabled());
@@ -85,7 +81,7 @@ public class WineIngestService {
 
     @Transactional
     public WineIngestDtos.RunResponse createManualRun(WineIngestDtos.ManualRunRequest request, Long userId) {
-        WineIngestSettings settings = requireSettings();
+        WineIngestSettings settings = requireSettingsForUpdate();
         if (request.runType() == WineIngestRunType.SCHEDULED) throw new CustomException(ErrorCode.INVALID_INPUT);
         if (request.runType() == WineIngestRunType.FIXTURE && request.limit() > 3) {
             throw new CustomException(ErrorCode.INVALID_INPUT);
@@ -102,18 +98,24 @@ public class WineIngestService {
 
     @Transactional
     public WineIngestDtos.RunResponse createScheduledRun() {
-        WineIngestSettings settings = requireSettings();
+        WineIngestSettings settings = requireSettingsForUpdate();
         if (!settings.isAutomationEnabled() || !isLiveAuthorized(settings)) {
-            throw new CustomException(ErrorCode.INVALID_INPUT);
+            return null;
         }
-        int limit = remainingHourlyCapacity(settings, settings.getMaxRunItems());
+        int limit = remainingHourlyCapacityOrZero(settings, settings.getMaxRunItems());
+        if (limit == 0) return null;
         return WineIngestDtos.RunResponse.from(saveQueuedRun(WineIngestRunType.SCHEDULED, limit, null));
     }
 
     private int remainingHourlyCapacity(WineIngestSettings settings, int requestedLimit) {
+        int remaining = remainingHourlyCapacityOrZero(settings, requestedLimit);
+        if (remaining == 0) throw new CustomException(ErrorCode.INVALID_INPUT);
+        return remaining;
+    }
+
+    private int remainingHourlyCapacityOrZero(WineIngestSettings settings, int requestedLimit) {
         long alreadyRequested = runRepository.sumRequestedLimitSince(LocalDateTime.now().minusHours(1));
         int remaining = (int) Math.max(0, settings.getHourlyLimit() - alreadyRequested);
-        if (remaining == 0) throw new CustomException(ErrorCode.INVALID_INPUT);
         return Math.min(requestedLimit, remaining);
     }
 
@@ -138,7 +140,8 @@ public class WineIngestService {
     public WineIngestDtos.InternalConfigResponse internalConfig() {
         WineIngestSettings s = requireSettings();
         return new WineIngestDtos.InternalConfigResponse(s.getProviderMode(), isLiveAuthorized(s),
-                s.getHourlyLimit(), s.getMaxRunItems(), s.isSlackAlertEnabled(), s.getUsageGrantRef());
+                s.isAutomationEnabled(), s.getHourlyLimit(), s.getMaxRunItems(),
+                s.isSlackAlertEnabled(), s.getUsageGrantRef());
     }
 
     @Transactional
@@ -146,16 +149,33 @@ public class WineIngestService {
         runRepository.findByStatusAndLastHeartbeatAtBefore(
                         WineIngestRunStatus.RUNNING, LocalDateTime.now().minusMinutes(30))
                 .forEach(run -> run.finish("30분 동안 heartbeat가 없어 실패 처리했습니다."));
-        List<WineIngestRun> queued = runRepository.findNextForUpdate(
-                WineIngestRunStatus.QUEUED, PageRequest.of(0, 1));
-        if (queued.isEmpty()) return null;
-        WineIngestRun run = queued.get(0);
         WineIngestSettings settings = requireSettings();
-        if (run.getRunType() == WineIngestRunType.MANUAL && !isLiveAuthorized(settings)) return null;
+        while (true) {
+            List<WineIngestRun> queued = runRepository.findNextForUpdate(
+                    WineIngestRunStatus.QUEUED, PageRequest.of(0, 20));
+            if (queued.isEmpty()) return null;
+            for (WineIngestRun run : queued) {
+                String rejection = claimRejectionReason(run, settings);
+                if (rejection != null) {
+                    run.cancel(rejection);
+                    continue;
+                }
+                run.start();
+                return WineIngestDtos.RunResponse.from(run);
+            }
+            runRepository.flush();
+        }
+    }
+
+    private String claimRejectionReason(WineIngestRun run, WineIngestSettings settings) {
+        if (run.getRunType() == WineIngestRunType.MANUAL && !isLiveAuthorized(settings)) {
+            return "LIVE 이용 허가가 비활성화되어 대기 작업을 취소했습니다.";
+        }
         if (run.getRunType() == WineIngestRunType.SCHEDULED
-                && (!settings.isAutomationEnabled() || !isLiveAuthorized(settings))) return null;
-        run.start();
-        return WineIngestDtos.RunResponse.from(run);
+                && (!settings.isAutomationEnabled() || !isLiveAuthorized(settings))) {
+            return "자동 수집 또는 LIVE 이용 허가가 비활성화되어 예약 작업을 취소했습니다.";
+        }
+        return null;
     }
 
     @Transactional
@@ -192,6 +212,19 @@ public class WineIngestService {
                     "IDENTITY_DUPLICATE", "생산자/영문명/빈티지가 같은 와인이 이미 등록되어 PASS 처리했습니다.", null, vintageLabel);
         }
 
+        List<Spirit> existingWines = spiritRepository.findExistingWineVintage(
+                producer.get().getId(), request.nameEn().trim(),
+                request.vintageStatus() == WineVintageStatus.VINTAGE ? request.vintageYear() : null,
+                request.vintageStatus() == WineVintageStatus.NON_VINTAGE);
+        if (!existingWines.isEmpty()) {
+            Spirit existing = existingWines.get(0);
+            saveExternalReference(existing, request, identityKey);
+            return recordItem(run, request, WineIngestItemStatus.DUPLICATE_SKIPPED,
+                    "CATALOG_DUPLICATE",
+                    "기존 주류 DB에 생산자·영문명·빈티지가 같은 와인이 있어 PASS 처리했습니다.",
+                    existing, vintageLabel);
+        }
+
         WineRegion regionCode = wineRegionService.resolve(request.regionCode(), SpiritCategory.WINE);
         String regionText = regionCode != null ? regionCode.topLevel().getNameKo() : trimToNull(request.region());
         Spirit master = spiritRepository
@@ -199,8 +232,18 @@ public class WineIngestService {
                         SpiritCategory.WINE, producer.get().getId(), request.nameEn().trim())
                 .orElseGet(() -> createMaster(request, producer.get(), regionCode, regionText));
 
+        List<Spirit> sameVintage = spiritRepository.findByParentIdAndVariantValueIgnoreCaseAndStatusIn(
+                master.getId(), vintageLabel, Arrays.asList(SpiritStatus.values()));
+        if (!sameVintage.isEmpty()) {
+            Spirit existing = sameVintage.get(0);
+            saveExternalReference(existing, request, identityKey);
+            return recordItem(run, request, WineIngestItemStatus.DUPLICATE_SKIPPED,
+                    "MASTER_VINTAGE_DUPLICATE", "같은 마스터에 동일 빈티지가 이미 있어 PASS 처리했습니다.",
+                    existing, vintageLabel);
+        }
+
         Spirit child = Spirit.builder()
-                .nameKo(request.nameKo().trim()).nameEn(request.nameEn().trim())
+                .nameKo(request.nameEn().trim()).nameEn(request.nameEn().trim())
                 .category(SpiritCategory.WINE).producer(producer.get())
                 .vintageYear(request.vintageStatus() == WineVintageStatus.VINTAGE ? request.vintageYear() : null)
                 .abv(request.abv()).volumeMl(request.volumeMl())
@@ -217,11 +260,7 @@ public class WineIngestService {
 
         master.assignExternalSource(request.provider(), request.sourceUrl(), request.imageUrl(),
                 request.rating(), request.ratingCount());
-        externalReferenceRepository.save(SpiritExternalReference.builder()
-                .spirit(child).provider(request.provider())
-                .externalWineId(request.externalWineId()).externalVintageId(request.externalVintageId())
-                .identityKey(identityKey).sourceUrl(request.sourceUrl())
-                .usageGrantRef(request.usageGrantRef()).build());
+        saveExternalReference(child, request, identityKey);
 
         return recordItem(run, request, WineIngestItemStatus.CREATED,
                 null, null, child, vintageLabel);
@@ -230,7 +269,7 @@ public class WineIngestService {
     private Spirit createMaster(WineIngestDtos.WineImportRequest request, Producer producer,
                                 WineRegion regionCode, String regionText) {
         Spirit master = Spirit.builder()
-                .nameKo(request.nameKo().trim()).nameEn(request.nameEn().trim())
+                .nameKo(request.nameEn().trim()).nameEn(request.nameEn().trim())
                 .category(SpiritCategory.WINE).producer(producer)
                 .country(request.country().trim()).region(regionText).regionCode(regionCode)
                 .status(SpiritStatus.HIDDEN).variantType(VariantType.VINTAGE)
@@ -246,6 +285,35 @@ public class WineIngestService {
                 detail.oakType(), detail.oakAgedMonths(), detail.sweetness(), detail.body(),
                 detail.acidity(), detail.tannin(), null));
         return master;
+    }
+
+    private void saveExternalReference(Spirit spirit, WineIngestDtos.WineImportRequest request,
+                                       String identityKey) {
+        externalReferenceRepository.save(SpiritExternalReference.builder()
+                .spirit(spirit).provider(request.provider())
+                .externalWineId(request.externalWineId()).externalVintageId(request.externalVintageId())
+                .identityKey(identityKey).sourceUrl(request.sourceUrl())
+                .usageGrantRef(request.usageGrantRef()).build());
+    }
+
+    @Transactional
+    public WineIngestDtos.ItemResponse publishItem(Long itemId) {
+        WineIngestItem item = itemRepository.findWithSpiritById(itemId)
+                .orElseThrow(() -> new CustomException(ErrorCode.INVALID_INPUT));
+        if (item.getStatus() != WineIngestItemStatus.CREATED || item.getSpirit() == null) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+        Spirit child = item.getSpirit();
+        Spirit master = child.getParent() != null ? child.getParent() : child;
+        if (!hasText(master.getNameKo()) || !hasText(master.getNameEn())
+                || master.getNameKo().trim().equalsIgnoreCase(master.getNameEn().trim())) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+        master.rename(master.getNameKo().trim(), master.getNameEn().trim());
+        child.rename(master.getNameKo(), master.getNameEn());
+        master.activate();
+        child.activate();
+        return WineIngestDtos.ItemResponse.from(item);
     }
 
     @Transactional
@@ -279,7 +347,7 @@ public class WineIngestService {
         WineIngestItem item = itemRepository.save(WineIngestItem.builder()
                 .run(run).status(status).provider(request.provider())
                 .externalWineId(request.externalWineId()).externalVintageId(request.externalVintageId())
-                .sourceUrl(request.sourceUrl()).wineNameEn(request.nameEn()).wineNameKo(request.nameKo())
+                .sourceUrl(request.sourceUrl()).wineNameEn(request.nameEn()).wineNameKo(null)
                 .vintageLabel(vintageLabel).reasonCode(reasonCode).reasonMessage(reasonMessage)
                 .spirit(spirit).build());
         run.record(status);
@@ -305,15 +373,15 @@ public class WineIngestService {
                 || request.wineDetail().vintageStatus() != request.vintageStatus()) {
             throw new CustomException(ErrorCode.INVALID_INPUT);
         }
-        boolean hasDomesticEvidence = run.getRunType() == WineIngestRunType.FIXTURE
-                && request.koreanNameEvidenceUrls().stream().anyMatch(url -> url.startsWith("fixture:"));
-        hasDomesticEvidence = hasDomesticEvidence || request.koreanNameEvidenceUrls().stream()
-                .anyMatch(url -> KOREAN_NAME_EVIDENCE_DOMAINS.stream().anyMatch(domain -> hostMatches(url, domain)));
-        if (!hasDomesticEvidence) throw new CustomException(ErrorCode.INVALID_INPUT);
     }
 
     private WineIngestSettings requireSettings() {
         return settingsRepository.findById(WineIngestSettings.SINGLETON_ID)
+                .orElseThrow(() -> new CustomException(ErrorCode.INVALID_INPUT));
+    }
+
+    private WineIngestSettings requireSettingsForUpdate() {
+        return settingsRepository.findByIdForUpdate(WineIngestSettings.SINGLETON_ID)
                 .orElseThrow(() -> new CustomException(ErrorCode.INVALID_INPUT));
     }
 

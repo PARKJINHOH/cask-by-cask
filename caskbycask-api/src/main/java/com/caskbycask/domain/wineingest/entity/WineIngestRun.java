@@ -69,18 +69,25 @@ public class WineIngestRun extends BaseTimeEntity {
         this.finishedAt = LocalDateTime.now();
         this.lastHeartbeatAt = this.finishedAt;
         boolean runFailed = errorMessage != null && !errorMessage.isBlank();
+        boolean onlyNotFound = skippedCount > 0 && createdCount == 0
+                && duplicateCount == 0 && failedCount == 0;
         this.status = runFailed && attemptedCount == 0
                 ? WineIngestRunStatus.FAILED
-                : (failedCount == 0 && !runFailed
+                : (failedCount == 0 && !runFailed && !onlyNotFound
                 ? WineIngestRunStatus.SUCCEEDED
                 : (createdCount > 0 || duplicateCount > 0 || skippedCount > 0
                     ? WineIngestRunStatus.PARTIAL : WineIngestRunStatus.FAILED));
     }
 
     public void cancel() {
+        cancel(null);
+    }
+
+    public void cancel(String reason) {
         if (status == WineIngestRunStatus.QUEUED || status == WineIngestRunStatus.RUNNING) {
             status = WineIngestRunStatus.CANCELLED;
             finishedAt = LocalDateTime.now();
+            errorMessage = reason;
         }
     }
 }

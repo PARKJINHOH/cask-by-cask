@@ -64,6 +64,7 @@ describe('이미지 에디터 텍스트 스타일', () => {
       // 영문 위주 서체 — 전부 self-host. 라이선스 근거는 assets/editor-fonts/<slug>/LICENSE* 참고.
       'Wanted Sans', 'IBM Plex Sans Condensed', 'Bebas Neue', 'Pacifico',
       'Stilu', 'Kalamkari', 'Cool Story', 'Magnolia Script', 'Exmouth',
+      'Allura', 'Great Vibes', 'Dancing Script',
     ]
     for (const font of TEXT_FONT_OPTIONS) {
       const primary = font.family.match(/^'([^']+)'/)?.[1]

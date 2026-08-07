@@ -25,6 +25,7 @@ export default function AdminWineIngestPage() {
   const qc = useQueryClient()
   const [selectedRunId, setSelectedRunId] = useState<number | null>(null)
   const [form, setForm] = useState<WineIngestSettings | null>(null)
+  const [formDirty, setFormDirty] = useState(false)
   const { data: dashboard } = useQuery({
     queryKey: ['admin', 'wine-ingest', 'dashboard'],
     queryFn: adminWineIngestApi.dashboard,
@@ -44,11 +45,14 @@ export default function AdminWineIngestPage() {
     refetchInterval: dashboard?.runningCount ? 3000 : false,
   })
 
-  useEffect(() => { if (dashboard?.settings) setForm(dashboard.settings) }, [dashboard?.settings])
+  useEffect(() => {
+    if (dashboard?.settings && !formDirty) setForm(dashboard.settings)
+  }, [dashboard?.settings, formDirty])
   const refresh = () => qc.invalidateQueries({ queryKey: ['admin', 'wine-ingest'] })
   const fixture = useMutation({ mutationFn: () => adminWineIngestApi.createFixtureRun(3), onSuccess: refresh })
   const live = useMutation({ mutationFn: () => adminWineIngestApi.createManualRun(form?.maxRunItems ?? 3), onSuccess: refresh })
   const cancel = useMutation({ mutationFn: adminWineIngestApi.cancel, onSuccess: refresh })
+  const publish = useMutation({ mutationFn: adminWineIngestApi.publishItem, onSuccess: refresh })
   const save = useMutation({
     mutationFn: (value: WineIngestSettings) => adminWineIngestApi.updateSettings({
       automationEnabled: value.automationEnabled,
@@ -59,8 +63,13 @@ export default function AdminWineIngestPage() {
       maxRunItems: value.maxRunItems,
       slackAlertEnabled: value.slackAlertEnabled,
     }),
-    onSuccess: (next) => { setForm(next); refresh() },
+    onSuccess: (next) => { setForm(next); setFormDirty(false); refresh() },
   })
+  const updateForm = (next: WineIngestSettings) => {
+    setForm(next)
+    setFormDirty(true)
+  }
+  const mutationError = fixture.error || live.error || cancel.error || save.error || publish.error
 
   return (
     <div className="space-y-6">
@@ -68,12 +77,13 @@ export default function AdminWineIngestPage() {
         <p className="text-sm text-neutral-500">주류 › 와인 크롤링</p>
         <h1 className="mt-1 text-2xl font-bold text-neutral-900">와인 크롤링</h1>
         <p className="mt-2 text-sm text-neutral-500">수집 실행 상태와 등록·중복·실패 결과를 한 화면에서 확인합니다.</p>
+        {mutationError && <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">요청을 처리하지 못했습니다. 설정과 입력값을 확인한 뒤 다시 시도해 주세요.</p>}
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
         <div className={CARD}><p className="text-xs text-neutral-500">대기</p><p className="mt-1 text-2xl font-bold">{dashboard?.queuedCount ?? 0}</p></div>
         <div className={CARD}><p className="text-xs text-neutral-500">진행 중</p><p className="mt-1 text-2xl font-bold text-blue-700">{dashboard?.runningCount ?? 0}</p></div>
-        <div className={CARD}><p className="text-xs text-neutral-500">라이선스 상태</p><p className="mt-1 font-bold">{dashboard?.settings.liveNetworkEnabled ? 'LIVE 사용 가능' : 'Fixture 전용'}</p></div>
+        <div className={CARD}><p className="text-xs text-neutral-500">웹 수집 허가 상태</p><p className="mt-1 font-bold">{dashboard?.settings.liveNetworkEnabled ? 'Vivino 웹 수집 가능' : 'Fixture 전용'}</p></div>
       </div>
 
       <section className={CARD}>
@@ -86,7 +96,7 @@ export default function AdminWineIngestPage() {
             <button onClick={() => fixture.mutate()} disabled={fixture.isPending}
               className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">샘플 3건 수집</button>
             <button onClick={() => live.mutate()} disabled={!dashboard?.settings.liveNetworkEnabled || live.isPending}
-              className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-30">LIVE 수집 시작</button>
+              className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-30">Vivino 웹 수집 시작</button>
           </div>
         </div>
       </section>
@@ -95,25 +105,25 @@ export default function AdminWineIngestPage() {
         <h2 className="font-bold text-neutral-900">수집 설정</h2>
         <div className="mt-4 grid gap-4 md:grid-cols-4">
           <label className="text-xs font-semibold text-neutral-600">모드
-            <select className={`${INPUT} mt-1 w-full`} value={form.providerMode} onChange={(e) => setForm({ ...form, providerMode: e.target.value as 'FIXTURE' | 'LIVE' })}>
-              <option value="FIXTURE">Fixture</option><option value="LIVE">LIVE (라이선스 필요)</option>
+            <select className={`${INPUT} mt-1 w-full`} value={form.providerMode} onChange={(e) => updateForm({ ...form, providerMode: e.target.value as 'FIXTURE' | 'LIVE' })}>
+              <option value="FIXTURE">Fixture</option><option value="LIVE">Vivino 웹 크롤링 (서면 허가 필요)</option>
             </select>
           </label>
           <label className="text-xs font-semibold text-neutral-600">시간당 최대
-            <input className={`${INPUT} mt-1 w-full`} type="number" min={1} max={10} value={form.hourlyLimit} onChange={(e) => setForm({ ...form, hourlyLimit: Number(e.target.value) })} />
+            <input className={`${INPUT} mt-1 w-full`} type="number" min={1} max={10} value={form.hourlyLimit} onChange={(e) => updateForm({ ...form, hourlyLimit: Number(e.target.value) })} />
           </label>
           <label className="text-xs font-semibold text-neutral-600">실행당 최대
-            <input className={`${INPUT} mt-1 w-full`} type="number" min={1} max={10} value={form.maxRunItems} onChange={(e) => setForm({ ...form, maxRunItems: Number(e.target.value) })} />
+            <input className={`${INPUT} mt-1 w-full`} type="number" min={1} max={10} value={form.maxRunItems} onChange={(e) => updateForm({ ...form, maxRunItems: Number(e.target.value) })} />
           </label>
           <label className="text-xs font-semibold text-neutral-600">이용 허가 근거
-            <input className={`${INPUT} mt-1 w-full`} value={form.usageGrantRef ?? ''} placeholder="계약/이메일 참조" onChange={(e) => setForm({ ...form, usageGrantRef: e.target.value })} />
+            <input className={`${INPUT} mt-1 w-full`} value={form.usageGrantRef ?? ''} placeholder="계약/이메일 참조" onChange={(e) => updateForm({ ...form, usageGrantRef: e.target.value })} />
           </label>
         </div>
         <div className="mt-4 flex flex-wrap gap-5 text-sm">
-          <label className="flex items-center gap-2"><input type="checkbox" checked={form.licenseApproved} onChange={(e) => setForm({ ...form, licenseApproved: e.target.checked })} />라이선스 승인</label>
-          <label className="flex items-center gap-2"><input type="checkbox" checked={form.automationEnabled} onChange={(e) => setForm({ ...form, automationEnabled: e.target.checked })} />자동 수집</label>
-          <label className="flex items-center gap-2"><input type="checkbox" checked={form.slackAlertEnabled} onChange={(e) => setForm({ ...form, slackAlertEnabled: e.target.checked })} />Slack 실패 알림</label>
-          <button onClick={() => save.mutate(form)} disabled={save.isPending} className="ml-auto rounded-lg border border-neutral-300 px-4 py-2 font-semibold">설정 저장</button>
+          <label className="flex items-center gap-2"><input type="checkbox" checked={form.licenseApproved} onChange={(e) => updateForm({ ...form, licenseApproved: e.target.checked })} />웹 크롤링 허가 확인</label>
+          <label className="flex items-center gap-2"><input type="checkbox" checked={form.automationEnabled} onChange={(e) => updateForm({ ...form, automationEnabled: e.target.checked })} />자동 수집</label>
+          <label className="flex items-center gap-2"><input type="checkbox" checked={form.slackAlertEnabled} onChange={(e) => updateForm({ ...form, slackAlertEnabled: e.target.checked })} />Slack 실패 알림</label>
+          <button onClick={() => save.mutate(form)} disabled={save.isPending || !formDirty} className="ml-auto rounded-lg border border-neutral-300 px-4 py-2 font-semibold disabled:opacity-40">설정 저장</button>
         </div>
       </section>}
 
@@ -134,8 +144,15 @@ export default function AdminWineIngestPage() {
 
       {selectedRunId && <section className={CARD}>
         <h2 className="font-bold text-neutral-900">건별 결과</h2>
+        <p className="mt-1 text-xs text-neutral-500">수집 데이터는 영문명으로 숨김 등록됩니다. 마스터에서 국문명을 입력한 뒤 해당 빈티지를 공개하세요.</p>
         <div className="mt-4 space-y-2">{items?.content.length ? items.content.map((item) => <div key={item.id} className="rounded-xl border border-neutral-200 p-3 text-sm">
-          <div className="flex flex-wrap items-center gap-2"><span className={`rounded-full px-2 py-1 text-xs font-semibold ${badge(item.status)}`}>{ITEM_LABEL[item.status]}</span><strong>{item.wineNameKo || item.wineNameEn || '이름 미확인'}</strong><span className="text-neutral-500">{item.vintageLabel}</span>{item.spiritId && <Link className="text-amber-700 underline" to={`/admin/spirits/${item.spiritId}`}>등록 데이터 보기</Link>}</div>
+          <div className="flex flex-wrap items-center gap-2"><span className={`rounded-full px-2 py-1 text-xs font-semibold ${badge(item.status)}`}>{ITEM_LABEL[item.status]}</span><strong>{item.wineNameEn || '이름 미확인'}</strong><span className="text-neutral-500">{item.vintageLabel}</span>
+            {item.masterSpiritId && <Link className="text-amber-700 underline" to={`/admin/spirits/${item.masterSpiritId}`}>마스터·국문명 수정</Link>}
+            {item.spiritId && item.spiritId !== item.masterSpiritId && <Link className="text-amber-700 underline" to={`/admin/spirits/${item.spiritId}`}>빈티지 보기</Link>}
+            {item.status === 'CREATED' && (item.published
+              ? <span className="font-semibold text-emerald-700">공개 완료</span>
+              : <button className="rounded-lg border border-emerald-300 px-2 py-1 text-xs font-semibold text-emerald-700 disabled:border-neutral-200 disabled:text-neutral-400" disabled={!item.koreanNameReady || publish.isPending} onClick={() => publish.mutate(item.id)}>{item.koreanNameReady ? '검수 완료·공개' : '국문명 입력 필요'}</button>)}
+          </div>
           {item.reasonMessage && <p className="mt-2 text-xs text-red-600">{item.reasonCode}: {item.reasonMessage}</p>}
           {item.sourceUrl && <a className="mt-1 block truncate text-xs text-blue-600 underline" href={item.sourceUrl} target="_blank" rel="noopener noreferrer">{item.sourceUrl}</a>}
         </div>) : <p className="text-sm text-neutral-500">아직 처리 결과가 없습니다.</p>}</div>
