@@ -75,14 +75,17 @@ export const socialApi = {
     const response = await axiosInstance.get<ApiResponse<SocialTemplate[]>>('/api/admin/social/templates')
     return response.data.data ?? []
   },
-  createTemplate: async (data: Omit<SocialTemplate, 'id'>) => {
+  // 순서는 서버가 정한다(신규는 맨 아래) — 변경은 reorderTemplates 로만.
+  createTemplate: async (data: Omit<SocialTemplate, 'id' | 'displayOrder'>) => {
     const response = await axiosInstance.post<ApiResponse<SocialTemplate>>('/api/admin/social/templates', data)
     return response.data.data!
   },
-  updateTemplate: async (id: number, data: Omit<SocialTemplate, 'id'>) => {
+  updateTemplate: async (id: number, data: Omit<SocialTemplate, 'id' | 'displayOrder'>) => {
     const response = await axiosInstance.put<ApiResponse<SocialTemplate>>(`/api/admin/social/templates/${id}`, data)
     return response.data.data!
   },
+  reorderTemplates: (ids: number[]) =>
+    axiosInstance.post<ApiResponse<null>>('/api/admin/social/templates/reorder', { ids }),
   deleteTemplate: (id: number) => axiosInstance.delete(`/api/admin/social/templates/${id}`),
   accounts: async () => {
     const response = await axiosInstance.get<ApiResponse<SocialAccount[]>>('/api/admin/social/accounts')

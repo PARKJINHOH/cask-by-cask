@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react'
+import { useRef, type ReactNode } from 'react'
+import { useTouchInput } from '@/shared/tiptap/pointerMode'
 
 /**
  * 속성 패널에서 반복되는 입력 묶음.
@@ -10,6 +11,9 @@ import type { ReactNode } from 'react'
  * 패널 글자는 11px 로 작다. 여기에 기본 굵기(400)와 옅은 회색(neutral-400)을 겹치면
  * 획이 가늘어 읽히지 않는다. 작은 글자에는 medium(500) 이상과 neutral-500 이상을 쓴다.
  */
+
+/** 이만큼(px) 가로로 움직이기 전에는 슬라이더를 끄는 것으로 보지 않는다. */
+const TOUCH_DRAG_THRESHOLD = 6
 
 export function Section({ title, hint, children }: {
   title: string
@@ -25,6 +29,17 @@ export function Section({ title, hint, children }: {
   )
 }
 
+/**
+ * 슬라이더.
+ *
+ * ── 터치에서는 '누른 자리로 뛰기'를 쓰지 않는다 ──
+ * 네이티브 range 는 트랙을 누르는 순간 그 자리 값으로 뛴다. 패널을 손가락으로 굴리다
+ * 바를 스치기만 해도 값이 바뀌어, 되돌리기 전에는 원래 값을 알 수도 없다.
+ * 그래서 터치일 때는 투명한 판을 덮어 네이티브 조작을 막고, <b>누른 자리가 아니라 움직인 거리</b>로
+ * 값을 옮긴다(손가락이 트랙 폭만큼 가면 최소→최대). 스쳐 지나가는 정도로는 값이 변하지 않고,
+ * 판에 touch-action: pan-y 를 두어 세로로 긋는 손짓은 그대로 패널 스크롤로 간다.
+ * 마우스·키보드는 네이티브 그대로다.
+ */
 export function SliderField({
   label, value, min, max, step = 1, display, disabled, onChange, onCommit,
 }: {
@@ -40,25 +55,88 @@ export function SliderField({
   onChange: (value: number) => void
   onCommit: () => void
 }) {
+  const isTouch = useTouchInput()
+  const trackRef = useRef<HTMLSpanElement>(null)
+  const dragRef = useRef<{
+    pointerId: number
+    startX: number
+    startValue: number
+    /** 트랙 폭(px) — 이만큼 움직이면 최소에서 최대까지 간다 */
+    width: number
+    /** 문턱을 넘어 실제 조작이 시작됐는가 */
+    armed: boolean
+  } | null>(null)
+
+  const beginDrag = (event: React.PointerEvent<HTMLSpanElement>) => {
+    if (disabled) return
+    const width = trackRef.current?.getBoundingClientRect().width ?? 0
+    if (width === 0) return
+    dragRef.current = {
+      pointerId: event.pointerId, startX: event.clientX, startValue: value, width, armed: false,
+    }
+  }
+
+  const moveDrag = (event: React.PointerEvent<HTMLSpanElement>) => {
+    const drag = dragRef.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+    const dx = event.clientX - drag.startX
+    if (!drag.armed) {
+      if (Math.abs(dx) < TOUCH_DRAG_THRESHOLD) return
+      drag.armed = true
+      // 문턱을 넘은 뒤에는 손가락이 판 밖으로 나가도 계속 따라온다.
+      event.currentTarget.setPointerCapture(event.pointerId)
+    }
+    const raw = drag.startValue + (dx / drag.width) * (max - min)
+    const next = Math.max(min, Math.min(max, Math.round(raw / step) * step))
+    if (next !== value) onChange(next)
+  }
+
+  const endDrag = (event: React.PointerEvent<HTMLSpanElement>) => {
+    const drag = dragRef.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+    dragRef.current = null
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+    if (drag.armed) onCommit()
+  }
+
   return (
     <label className={`block ${disabled ? 'opacity-40' : ''}`}>
       <span className="mb-1 flex justify-between text-[11px] font-medium text-neutral-500">
         {label}
         <span className="font-mono text-neutral-600">{display}</span>
       </span>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        disabled={disabled}
-        onChange={(event) => onChange(Number(event.target.value))}
-        onPointerUp={onCommit}
-        onKeyUp={onCommit}
-        onBlur={onCommit}
-        className="w-full accent-primary-600"
-      />
+      <span ref={trackRef} className="relative block">
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          disabled={disabled}
+          onChange={(event) => onChange(Number(event.target.value))}
+          onPointerUp={onCommit}
+          onKeyUp={onCommit}
+          onBlur={onCommit}
+          className="w-full accent-primary-600"
+        />
+        {isTouch && !disabled && (
+          <span
+            aria-hidden="true"
+            // 위아래로 조금 넓게 덮는다 — 얇은 바를 손끝으로 정확히 짚기 어렵다.
+            className="absolute -inset-y-2 inset-x-0 block"
+            style={{ touchAction: 'pan-y' }}
+            // 판도 label 안이라, 막지 않으면 톡 누르는 것이 label 을 통해 range 로 전달된다
+            // (브라우저에 따라 그 자리 값으로 뛴다) — 덮어 둔 뜻이 없어진다.
+            onClick={(event) => event.preventDefault()}
+            onPointerDown={beginDrag}
+            onPointerMove={moveDrag}
+            onPointerUp={endDrag}
+            onPointerCancel={endDrag}
+          />
+        )}
+      </span>
     </label>
   )
 }

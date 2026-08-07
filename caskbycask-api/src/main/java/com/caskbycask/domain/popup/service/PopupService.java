@@ -103,7 +103,8 @@ public class PopupService {
                 .linkUrl(request.getLinkUrl())
                 .linkTargetBlank(Boolean.TRUE.equals(request.getLinkTargetBlank()))
                 .isVisible(Boolean.TRUE.equals(request.getIsVisible()))
-                .sortOrder(request.getSortOrder())
+                // 순서는 목록에서 드래그로만 바꾼다. 신규 팝업은 항상 맨 아래.
+                .sortOrder(nextSortOrder())
                 .closeOnOverlay(Boolean.TRUE.equals(request.getCloseOnOverlay()))
                 .isAlwaysVisible(Boolean.TRUE.equals(request.getIsAlwaysVisible()))
                 .startAt(startAt)
@@ -149,7 +150,7 @@ public class PopupService {
                 request.getLinkUrl()       != null ? request.getLinkUrl()       : popup.getLinkUrl(),
                 request.getLinkTargetBlank() != null ? request.getLinkTargetBlank() : popup.getLinkTargetBlank(),
                 request.getIsVisible()     != null ? request.getIsVisible()     : popup.getIsVisible(),
-                request.getSortOrder()     != null ? request.getSortOrder()     : popup.getSortOrder(),
+                popup.getSortOrder(),
                 request.getCloseOnOverlay() != null ? request.getCloseOnOverlay() : popup.getCloseOnOverlay(),
                 newIsAlwaysVisible,
                 newStartAt,
@@ -191,6 +192,13 @@ public class PopupService {
     public void updateSortOrder(Long popupId, Integer sortOrder) {
         Popup popup = findPopupById(popupId);
         popup.setSortOrder(sortOrder);
+    }
+
+    /** 가장 큰 sortOrder 다음 값 — 신규 팝업은 목록 맨 아래로 간다. */
+    private int nextSortOrder() {
+        return popupRepository.findTopByOrderBySortOrderDesc()
+                .map(popup -> popup.getSortOrder() + 1)
+                .orElse(0);
     }
 
     // ═══════════════════════════════════════════

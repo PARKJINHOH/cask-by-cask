@@ -62,14 +62,13 @@ function DragHandle(props: React.HTMLAttributes<HTMLButtonElement>) {
 
 interface RowProps {
   item: AdminFaqListItem
-  order: number
   active: boolean
   onEdit: (id: number) => void
   onDelete: (item: AdminFaqListItem) => void
   onToggleActive: (item: AdminFaqListItem) => void
 }
 
-function SortableFaqRow({ item, order, active, onEdit, onDelete, onToggleActive }: RowProps) {
+function SortableFaqRow({ item, active, onEdit, onDelete, onToggleActive }: RowProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: String(item.id),
   })
@@ -84,12 +83,6 @@ function SortableFaqRow({ item, order, active, onEdit, onDelete, onToggleActive 
     <tr ref={setNodeRef} style={style} className="border-b border-neutral-50 hover:bg-neutral-50 transition-colors">
       <td className="px-3 py-3 w-10">
         <DragHandle {...attributes} {...listeners} />
-      </td>
-      <td className="px-2 py-3 w-16 text-center">
-        <span className="inline-flex items-center justify-center w-6 h-6 rounded-md
-          bg-primary-50 text-primary-800 text-xs font-semibold tabular-nums">
-          {order}
-        </span>
       </td>
       <td className="px-4 py-3 font-medium text-neutral-800">
         <button
@@ -226,7 +219,7 @@ function CategorySection({
             {ordered.length}건
           </span>
           {ordered.length > 1 && (
-            <span className="text-xs text-neutral-400">· 드래그로 순서 변경</span>
+            <span className="text-xs text-neutral-400">· 상단부터 순서대로 노출 · 드래그로 순서 변경</span>
           )}
         </div>
         {isDirty && (
@@ -241,7 +234,6 @@ function CategorySection({
             <thead>
               <tr className="border-b border-neutral-100 bg-neutral-50">
                 <th className="w-10 px-3 py-3" />
-                <th className="text-center px-2 py-3 font-medium text-neutral-500 w-16 whitespace-nowrap">순서</th>
                 <th className="text-left px-4 py-3 font-medium text-neutral-500">질문</th>
                 <th className="text-left px-4 py-3 font-medium text-neutral-500 w-20">노출</th>
                 <th className="text-left px-4 py-3 font-medium text-neutral-500 w-28">등록일</th>
@@ -251,7 +243,7 @@ function CategorySection({
             <tbody>
               {ordered.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-neutral-400 text-sm">
+                  <td colSpan={5} className="px-4 py-8 text-center text-neutral-400 text-sm">
                     등록된 FAQ가 없습니다.
                   </td>
                 </tr>
@@ -260,11 +252,10 @@ function CategorySection({
                   items={ordered.map((i) => String(i.id))}
                   strategy={verticalListSortingStrategy}
                 >
-                  {ordered.map((item, index) => (
+                  {ordered.map((item) => (
                     <SortableFaqRow
                       key={item.id}
                       item={item}
-                      order={index + 1}
                       active={localActive[item.id] ?? item.isActive}
                       onEdit={onEdit}
                       onDelete={onDelete}

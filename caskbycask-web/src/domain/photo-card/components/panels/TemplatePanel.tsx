@@ -19,13 +19,22 @@ interface Props {
   onApplied: (key: string) => void
 }
 
-/** 테두리로 지금 어느 템플릿을 쓰고 있는지 보여 준다. */
+/**
+ * 테두리로 지금 어느 템플릿을 쓰고 있는지 보여 준다.
+ *
+ * relative 인 것은 적용 버튼이 카드 전체를 덮는 투명 판이기 때문이다 —
+ * 이름 줄만 버튼이면 오른쪽 여백이나 '포함' 칩을 눌렀을 때 아무 일도 일어나지 않고,
+ * 눌린 자리(버튼)와 색이 변하는 자리(카드)가 어긋나 터치 표시가 둘로 보인다.
+ */
 const itemClass = (selected: boolean) => [
-  'rounded-lg border px-3 py-2.5 transition-colors',
+  'relative rounded-lg border px-3 py-2.5 transition-colors',
   selected
     ? 'border-primary-500 bg-primary-50/50 ring-1 ring-primary-300'
     : 'border-neutral-200 hover:border-primary-400 hover:bg-primary-50/30',
 ].join(' ')
+
+/** 카드 전체를 덮는 적용 버튼. 내용은 이 위에 얹히고, 눌린 표시는 카드 하나로만 나온다. */
+const overlayButtonClass = 'absolute inset-0 z-0 rounded-lg active:bg-primary-100/40'
 
 /** 템플릿 도구 — 공식·내 것·공개된 것을 고르고, 지금 배치를 내 템플릿으로 저장한다. */
 export default function TemplatePanel({
@@ -107,9 +116,12 @@ export default function TemplatePanel({
               <button
                 type="button"
                 aria-pressed={appliedKey === `builtin:${builtin.key}`}
+                aria-label={t(builtin.nameKey)}
                 onClick={() => use(`builtin:${builtin.key}`, builtin.layout)}
-                className="block w-full text-left"
-              >
+                style={{ WebkitTapHighlightColor: 'transparent' }}
+                className={overlayButtonClass}
+              />
+              <div className="pointer-events-none relative z-10">
                 <span className="flex items-center gap-1.5 text-sm font-bold text-neutral-800">
                   {t(builtin.nameKey)}
                   <span className="rounded bg-primary-100 px-1.5 py-0.5 text-[9px] font-bold text-primary-700">
@@ -119,8 +131,8 @@ export default function TemplatePanel({
                 <span className="mt-0.5 block text-[11px] font-medium leading-relaxed text-neutral-500">
                   {t(builtin.descriptionKey)}
                 </span>
-              </button>
-              <Includes layout={builtin.layout} />
+                <Includes layout={builtin.layout} />
+              </div>
             </li>
           ))}
         </ul>
@@ -132,9 +144,12 @@ export default function TemplatePanel({
             <button
               type="button"
               aria-pressed={appliedKey === `id:${template.id}`}
+              aria-label={template.name}
               onClick={() => use(`id:${template.id}`, template.layout, template.id)}
-              className="block w-full text-left"
-            >
+              style={{ WebkitTapHighlightColor: 'transparent' }}
+              className={overlayButtonClass}
+            />
+            <div className="pointer-events-none relative z-10">
               <span className="flex items-center gap-1.5 text-sm font-bold text-neutral-800">
                 {template.name}
                 <span className={`rounded px-1.5 py-0.5 text-[9px] font-bold ${
@@ -148,10 +163,11 @@ export default function TemplatePanel({
               {template.description && (
                 <span className="mt-0.5 block text-[11px] font-medium text-neutral-500">{template.description}</span>
               )}
-            </button>
-            <Includes layout={template.layout} />
+              <Includes layout={template.layout} />
+            </div>
+            {/* 공개 전환·삭제는 카드 적용과 다른 동작이다 — 덮개 버튼 위로 올려 따로 눌리게 한다. */}
             {template.isMine && (
-              <div className="mt-2 flex gap-2">
+              <div className="relative z-10 mt-2 flex gap-2">
                 <button
                   type="button"
                   onClick={async () => {

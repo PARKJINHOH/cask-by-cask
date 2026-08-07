@@ -76,7 +76,7 @@ export interface CreateBannerPayload {
   linkUrl?: string | null
   linkTargetBlank?: boolean
   isVisible: boolean
-  sortOrder: number
+  // 순서는 서버가 정한다(신규는 맨 아래) — 변경은 updateSortOrder 로만.
   isAlwaysVisible: boolean
   startAt?: string | null
   endAt?: string | null

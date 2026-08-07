@@ -53,9 +53,11 @@ public class NoticeService {
 
     @Transactional(readOnly = true)
     public Page<NoticeListResponse> getPublishedNotices(NoticeCategory category, int page, int size, Long userId) {
-        // isPinned DESC, displayOrder DESC, createdAt DESC — 고정 공지 우선, 노출 순서 우선, 나머지 최신순
+        // isPinned DESC, displayOrder ASC, createdAt DESC
+        //   — 고정 공지 우선, 그다음 관리자가 정한 순서(작을수록 위), 나머지 최신순.
+        //   displayOrder 가 작을수록 위인 규칙은 배너·팝업·FAQ·말머리와 같다.
         Sort sort = Sort.by(Sort.Direction.DESC, "isPinned")
-                .and(Sort.by(Sort.Direction.DESC, "displayOrder"))
+                .and(Sort.by(Sort.Direction.ASC, "displayOrder"))
                 .and(Sort.by(Sort.Direction.DESC, "createdAt"));
         Pageable pageable = PageRequest.of(page, size, sort);
 
@@ -138,7 +140,7 @@ public class NoticeService {
     public Page<NoticeListResponse> getAllNoticesForAdmin(NoticeCategory category, Boolean isPublished,
                                                           int page, int size) {
         Sort sort = Sort.by(Sort.Direction.DESC, "isPinned")
-                .and(Sort.by(Sort.Direction.DESC, "displayOrder"))
+                .and(Sort.by(Sort.Direction.ASC, "displayOrder"))
                 .and(Sort.by(Sort.Direction.DESC, "createdAt"));
         Pageable pageable = PageRequest.of(page, size, sort);
 
@@ -174,6 +176,9 @@ public class NoticeService {
                         ? (request.getPublishedAt() != null ? request.getPublishedAt() : LocalDateTime.now())
                         : null)
                 .author(author)
+                // 공지 목록은 최신순이 기본이라 신규 공지만 맨 위로 올린다.
+                // (다른 관리 화면은 신규가 맨 아래지만, 여기서 아래로 보내면 새 공지가 목록 최하단에 깔린다.)
+                .displayOrder(topDisplayOrder())
                 .build();
 
         Notice saved = noticeRepository.save(notice);
@@ -237,13 +242,21 @@ public class NoticeService {
         notice.softDelete();
     }
 
+    /** 가장 작은 displayOrder 앞의 값 — 신규 공지는 목록 맨 위로 간다. */
+    private int topDisplayOrder() {
+        return noticeRepository.findTopByOrderByDisplayOrderAsc()
+                .map(notice -> notice.getDisplayOrder() - 1)
+                .orElse(0);
+    }
+
+    /** 목록에 보이는 순서대로 id 를 받아 그대로 displayOrder 로 굳힌다(배열 index = displayOrder). */
     @Transactional
     public void updateDisplayOrders(List<Long> noticeIds) {
         for (int i = 0; i < noticeIds.size(); i++) {
             Long noticeId = noticeIds.get(i);
             Notice notice = noticeRepository.findById(noticeId)
                     .orElseThrow(() -> new CustomException(ErrorCode.NOTICE_NOT_FOUND));
-            notice.updateDisplayOrder(noticeIds.size() - i);
+            notice.updateDisplayOrder(i);
         }
     }
 

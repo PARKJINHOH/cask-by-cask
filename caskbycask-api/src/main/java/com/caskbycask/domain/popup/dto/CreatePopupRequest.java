@@ -40,9 +40,7 @@ public class CreatePopupRequest {
     @NotNull(message = "노출 여부는 필수입니다.")
     private Boolean isVisible;
 
-    @NotNull(message = "순서는 필수입니다.")
-    @Min(value = 0, message = "순서는 0 이상이어야 합니다.")
-    private Integer sortOrder;
+    // 순서는 서버가 정한다(신규는 맨 아래) — 변경은 목록의 드래그 정렬로만.
 
     @NotNull(message = "오버레이 닫기 여부는 필수입니다.")
     private Boolean closeOnOverlay;

@@ -284,7 +284,6 @@ export default function AdminBannerFormPage() {
           position:        values.position,
           language:        values.language,
           isVisible:       values.isVisible,
-          sortOrder:       0,
           isAlwaysVisible: values.isAlwaysVisible,
           startAt:         startAtApi,
           endAt:           endAtApi,

@@ -20,6 +20,4 @@ public class SavePrefixRequest {
     private String colorHex;
 
     private Boolean isActive = true;
-
-    private Integer sortOrder = 0;
 }

@@ -62,7 +62,7 @@ export interface CreatePopupPayload {
   linkUrl?: string | null
   linkTargetBlank?: boolean
   isVisible: boolean
-  sortOrder: number
+  // 순서는 서버가 정한다(신규는 맨 아래) — 변경은 updateSortOrder 로만.
   closeOnOverlay: boolean
   isAlwaysVisible: boolean
   startAt?: string | null
@@ -76,7 +76,6 @@ export interface UpdatePopupPayload {
   linkUrl?: string | null
   linkTargetBlank?: boolean
   isVisible?: boolean
-  sortOrder?: number
   closeOnOverlay?: boolean
   isAlwaysVisible?: boolean
   startAt?: string | null

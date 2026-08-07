@@ -105,7 +105,8 @@ public class BannerService {
                 .linkUrl(request.getLinkUrl())
                 .linkTargetBlank(Boolean.TRUE.equals(request.getLinkTargetBlank()))
                 .isVisible(Boolean.TRUE.equals(request.getIsVisible()))
-                .sortOrder(0)
+                // 순서는 목록에서 드래그로만 바꾼다. 신규 배너는 항상 맨 아래.
+                .sortOrder(nextSortOrder())
                 .isAlwaysVisible(Boolean.TRUE.equals(request.getIsAlwaysVisible()))
                 .startAt(startAt)
                 .endAt(endAt)
@@ -209,6 +210,13 @@ public class BannerService {
     @Transactional
     public void updateSortOrder(Long bannerId, Integer sortOrder) {
         findBannerById(bannerId).setSortOrder(sortOrder);
+    }
+
+    /** 가장 큰 sortOrder 다음 값 — 신규 배너는 목록 맨 아래로 간다. */
+    private int nextSortOrder() {
+        return bannerRepository.findTopByOrderBySortOrderDesc()
+                .map(banner -> banner.getSortOrder() + 1)
+                .orElse(0);
     }
 
     // ═══════════════════════════════════════════

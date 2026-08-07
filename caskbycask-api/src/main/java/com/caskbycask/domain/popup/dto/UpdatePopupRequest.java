@@ -4,7 +4,6 @@ import com.caskbycask.domain.popup.entity.enums.PopupDisplayPage;
 import com.caskbycask.domain.popup.entity.enums.PopupLanguage;
 import com.caskbycask.domain.popup.entity.enums.PopupType;
 import jakarta.validation.constraints.AssertTrue;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -32,8 +31,7 @@ public class UpdatePopupRequest {
     private Boolean linkTargetBlank;
     private Boolean isVisible;
 
-    @Min(value = 0, message = "순서는 0 이상이어야 합니다.")
-    private Integer sortOrder;
+    // 순서는 목록의 드래그 정렬(updateSortOrder)로만 바꾼다.
 
     private Boolean closeOnOverlay;
     private Boolean isAlwaysVisible;

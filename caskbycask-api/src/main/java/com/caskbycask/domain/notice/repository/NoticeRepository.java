@@ -40,6 +40,9 @@ public interface NoticeRepository extends JpaRepository<Notice, Long>,
             Pageable pageable
     );
 
+    /** 신규 공지를 목록 맨 위에 붙일 때 쓰는 기준값. */
+    Optional<Notice> findTopByOrderByDisplayOrderAsc();
+
     // [동시성] 애플리케이션 레벨 갱신 대신 DB 레벨 UPDATE로 race condition 방지
     @Modifying
     @Query("UPDATE Notice n SET n.viewCount = n.viewCount + 1 WHERE n.id = :id")

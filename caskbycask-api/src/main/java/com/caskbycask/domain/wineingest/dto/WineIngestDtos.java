@@ -119,7 +119,8 @@ public final class WineIngestDtos {
             @Size(max = 1000) String imageUrl,
             @NotBlank @Size(max = 500) String usageGrantRef,
             @NotBlank @Size(max = 200) String nameEn,
-            @NotBlank @Size(max = 200) String producerNameEn,
+            /** 와이너리는 선택값이다. 미확인이면 생산자 없이 저장하고 관리자 검수에서 연결한다. */
+            @Size(max = 200) String producerNameEn,
             @NotBlank @Size(max = 100) String country,
             @Size(max = 100) String region,
             @Size(max = 40) String regionCode,

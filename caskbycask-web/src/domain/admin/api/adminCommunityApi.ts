@@ -106,11 +106,15 @@ export const adminCommunityApi = {
   getPrefixes: (boardType: BoardType) =>
     axiosInstance.get<ApiResponse<PostPrefixAdmin[]>>('/api/admin/post-prefixes', { params: { boardType } }),
 
-  createPrefix: (data: { boardType: BoardType; name: string; colorHex?: string; isActive?: boolean; sortOrder?: number }) =>
+  // 순서는 서버가 정한다(신규는 맨 아래) — 변경은 reorderPrefixes 로만.
+  createPrefix: (data: { boardType: BoardType; name: string; colorHex?: string; isActive?: boolean }) =>
     axiosInstance.post<ApiResponse<PostPrefixAdmin>>('/api/admin/post-prefixes', data),
 
-  updatePrefix: (id: number, data: { name?: string; colorHex?: string; isActive?: boolean; sortOrder?: number }) =>
+  updatePrefix: (id: number, data: { name?: string; colorHex?: string; isActive?: boolean }) =>
     axiosInstance.patch<ApiResponse<PostPrefixAdmin>>(`/api/admin/post-prefixes/${id}`, data),
+
+  reorderPrefixes: (ids: number[]) =>
+    axiosInstance.post<ApiResponse<null>>('/api/admin/post-prefixes/reorder', { ids }),
 
   togglePrefix: (id: number) =>
     axiosInstance.patch<ApiResponse<PostPrefixAdmin>>(`/api/admin/post-prefixes/${id}/toggle`),

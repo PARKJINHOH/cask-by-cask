@@ -1,4 +1,21 @@
 import { useState, useEffect } from 'react'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { useAdminNoticeList, useUpdateNoticeDisplayOrders } from '@/domain/notice/hooks/useAdminNotices'
 import { NOTICE_CATEGORY_LABELS } from '@/domain/notice/types/notice.types'
 import type { NoticeListItem } from '@/domain/notice/types/notice.types'
@@ -11,6 +28,61 @@ interface AdminNoticeOrderModalProps {
   showToast: (message: string, type: 'success' | 'error') => void
 }
 
+function SortableNoticeRow({ notice }: { notice: NoticeListItem }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: String(notice.id),
+  })
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 10 : undefined,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex select-none items-center justify-between rounded-xl border bg-white p-3 transition-colors ${
+        isDragging
+          ? 'border-primary-500 bg-primary-50/50 shadow-md'
+          : 'border-neutral-200 hover:border-neutral-300 hover:shadow-sm'
+      }`}
+    >
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          aria-label="순서 변경"
+          className="cursor-grab touch-none p-1 text-neutral-400 transition-colors hover:text-neutral-600 active:cursor-grabbing"
+        >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+
+        <div className="flex min-w-0 flex-col gap-1">
+          <div className="flex flex-wrap items-center gap-2">
+            {notice.isPinned && (
+              <span className="inline-block whitespace-nowrap rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
+                고정
+              </span>
+            )}
+            <span className="inline-block whitespace-nowrap rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] font-medium text-neutral-600">
+              {NOTICE_CATEGORY_LABELS[notice.category]}
+            </span>
+            <span className="text-xs text-neutral-400">ID: {notice.id}</span>
+          </div>
+          <span className="truncate pr-4 text-sm font-semibold text-neutral-800">
+            {notice.title}
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function AdminNoticeOrderModal({ open, onClose, showToast }: AdminNoticeOrderModalProps) {
   // 노출 중인 공지사항 조회 (페이지네이션 없이 100개 확보)
   const { data, isLoading } = useAdminNoticeList({
@@ -20,9 +92,13 @@ export default function AdminNoticeOrderModal({ open, onClose, showToast }: Admi
   })
 
   const [items, setItems] = useState<NoticeListItem[]>([])
-  const [draggedIdx, setDraggedIdx] = useState<number | null>(null)
-  
+
   const updateOrdersMutation = useUpdateNoticeDisplayOrders()
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
 
   useEffect(() => {
     if (data?.content) {
@@ -30,50 +106,17 @@ export default function AdminNoticeOrderModal({ open, onClose, showToast }: Admi
     }
   }, [data])
 
-  // 드래그앤드롭 이벤트 핸들러
-  const handleDragStart = (index: number) => {
-    setDraggedIdx(index)
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    setItems((arr) => {
+      const oldIndex = arr.findIndex((i) => String(i.id) === active.id)
+      const newIndex = arr.findIndex((i) => String(i.id) === over.id)
+      return arrayMove(arr, oldIndex, newIndex)
+    })
   }
 
-  const handleDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault()
-    if (draggedIdx === null || draggedIdx === index) return
-
-    const nextItems = [...items]
-    const draggedItem = nextItems[draggedIdx]
-    // 드래그 대상 항목을 기존 위치에서 제거하고 새 위치에 삽입
-    nextItems.splice(draggedIdx, 1)
-    nextItems.splice(index, 0, draggedItem)
-
-    setDraggedIdx(index)
-    setItems(nextItems)
-  }
-
-  const handleDragEnd = () => {
-    setDraggedIdx(null)
-  }
-
-  // 순서 위로 이동
-  const moveUp = (index: number) => {
-    if (index === 0) return
-    const nextItems = [...items]
-    const temp = nextItems[index]
-    nextItems[index] = nextItems[index - 1]
-    nextItems[index - 1] = temp
-    setItems(nextItems)
-  }
-
-  // 순서 아래로 이동
-  const moveDown = (index: number) => {
-    if (index === items.length - 1) return
-    const nextItems = [...items]
-    const temp = nextItems[index]
-    nextItems[index] = nextItems[index + 1]
-    nextItems[index + 1] = temp
-    setItems(nextItems)
-  }
-
-  // 변경된 순서 저장
+  // 변경된 순서 저장 — 배열 index 가 그대로 노출 순서가 된다(위가 먼저).
   const handleSave = async () => {
     try {
       const noticeIds = items.map((item) => item.id)
@@ -92,7 +135,7 @@ export default function AdminNoticeOrderModal({ open, onClose, showToast }: Admi
       title="노출 공지 순서 변경"
       size="md"
       footer={
-        <div className="flex items-center justify-end gap-2 w-full">
+        <div className="flex w-full items-center justify-end gap-2">
           <Button variant="secondary" onClick={onClose}>
             취소
           </Button>
@@ -107,100 +150,39 @@ export default function AdminNoticeOrderModal({ open, onClose, showToast }: Admi
         </div>
       }
     >
-      <div className="flex flex-col h-[55vh] -mx-6 -my-4">
+      <div className="-mx-6 -my-4 flex h-[55vh] flex-col">
         {/* 설명 영역 */}
-        <div className="px-6 py-3 bg-neutral-50 border-b border-neutral-100">
-          <p className="text-xs text-neutral-500 leading-relaxed">
+        <div className="border-b border-neutral-100 bg-neutral-50 px-6 py-3">
+          <p className="text-xs leading-relaxed text-neutral-500">
             * 현재 노출(발행) 상태인 공지만 목록에 표시됩니다.
             <br />
-            * 항목을 마우스로 드래그하여 원하는 위치에 놓거나, 오른쪽의 화살표(▲/▼) 버튼으로 순서를 변경할 수 있습니다.
+            * 상단부터 순서대로 노출됩니다. 왼쪽 손잡이를 드래그해 순서를 바꾸세요.
             <br />
             * 상단 고정(고정 뱃지)된 공지는 고정되지 않은 공지보다 항상 상단에 노출됩니다.
           </p>
         </div>
 
         {/* 목록 영역 */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-2">
+        <div className="flex-1 space-y-2 overflow-y-auto px-6 py-4">
           {isLoading ? (
-            <div className="flex items-center justify-center h-full text-sm text-neutral-400">
+            <div className="flex h-full items-center justify-center text-sm text-neutral-400">
               불러오는 중...
             </div>
           ) : items.length === 0 ? (
-            <div className="flex items-center justify-center h-full text-sm text-neutral-400">
+            <div className="flex h-full items-center justify-center text-sm text-neutral-400">
               노출 중인 공지사항이 없습니다.
             </div>
           ) : (
-            items.map((notice, idx) => {
-              const isDragging = draggedIdx === idx
-              return (
-                <div
-                  key={notice.id}
-                  draggable
-                  onDragStart={() => handleDragStart(idx)}
-                  onDragOver={(e) => handleDragOver(e, idx)}
-                  onDragEnd={handleDragEnd}
-                  className={`flex items-center justify-between p-3 border rounded-xl bg-white transition-all duration-200 select-none
-                    ${isDragging 
-                      ? 'border-primary-500 bg-primary-50/50 shadow-md scale-[1.01] opacity-70' 
-                      : 'border-neutral-200 hover:border-neutral-300 hover:shadow-sm'
-                    }`}
-                >
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    {/* 드래그 핸들러 아이콘 */}
-                    <div className="cursor-grab active:cursor-grabbing text-neutral-400 hover:text-neutral-600 transition-colors p-1">
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-                      </svg>
-                    </div>
-
-                    <div className="flex flex-col min-w-0 gap-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {notice.isPinned && (
-                          <span className="inline-block text-[10px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded font-semibold whitespace-nowrap">
-                            고정
-                          </span>
-                        )}
-                        <span className="inline-block text-[10px] px-1.5 py-0.5 bg-neutral-100 text-neutral-600 rounded font-medium whitespace-nowrap">
-                          {NOTICE_CATEGORY_LABELS[notice.category]}
-                        </span>
-                        <span className="text-xs text-neutral-400">
-                          ID: {notice.id}
-                        </span>
-                      </div>
-                      <span className="text-sm font-semibold text-neutral-800 truncate pr-4">
-                        {notice.title}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* 정렬 버튼 영역 */}
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <button
-                      type="button"
-                      disabled={idx === 0}
-                      onClick={() => moveUp(idx)}
-                      className="p-1.5 rounded-lg border border-neutral-200 bg-white text-neutral-500 hover:bg-neutral-50 hover:text-neutral-700 disabled:opacity-30 disabled:hover:bg-white transition-colors"
-                      title="위로 이동"
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
-                      </svg>
-                    </button>
-                    <button
-                      type="button"
-                      disabled={idx === items.length - 1}
-                      onClick={() => moveDown(idx)}
-                      className="p-1.5 rounded-lg border border-neutral-200 bg-white text-neutral-500 hover:bg-neutral-50 hover:text-neutral-700 disabled:opacity-30 disabled:hover:bg-white transition-colors"
-                      title="아래로 이동"
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              )
-            })
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext
+                items={items.map((notice) => String(notice.id))}
+                strategy={verticalListSortingStrategy}
+              >
+                {items.map((notice) => (
+                  <SortableNoticeRow key={notice.id} notice={notice} />
+                ))}
+              </SortableContext>
+            </DndContext>
           )}
         </div>
       </div>

@@ -11,8 +11,12 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface PopupRepository extends JpaRepository<Popup, Long> {
+
+    /** 신규 팝업을 목록 맨 아래에 붙일 때 쓰는 기준값. */
+    Optional<Popup> findTopByOrderBySortOrderDesc();
 
     @Query("""
             SELECT p FROM Popup p

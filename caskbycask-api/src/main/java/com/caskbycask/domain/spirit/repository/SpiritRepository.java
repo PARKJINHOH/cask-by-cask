@@ -26,7 +26,7 @@ public interface SpiritRepository extends JpaRepository<Spirit, Long>, SpiritQue
             LEFT JOIN FETCH s.wineDetail w
             LEFT JOIN FETCH s.parent
             WHERE s.category = com.caskbycask.domain.spirit.entity.enums.SpiritCategory.WINE
-              AND s.producer.id = :producerId
+              AND ((:producerId IS NULL AND s.producer.id IS NULL) OR s.producer.id = :producerId)
               AND LOWER(s.nameEn) = LOWER(:nameEn)
               AND (
                     (:vintageYear IS NOT NULL AND s.vintageYear = :vintageYear)

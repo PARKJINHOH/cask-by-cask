@@ -21,6 +21,13 @@ interface Props {
   displayScale: number
   /** 카드가 놓인 영역의 크기(화면 px) — 바가 밖으로 나가지 않게 잡아 둔다 */
   displayWidth: number
+  /**
+   * 작업 영역 아래에 붙는 형태로 그릴지.
+   *
+   * 좁은 화면에서는 글자 위에 띄우지 않는다 — 바 하나가 카드보다 넓어 붙일 자리가 없고,
+   * 억지로 띄우면 화면 밖으로 나가거나 정작 고치려는 글자를 가린다.
+   */
+  docked?: boolean
 }
 
 /** 글자 크기를 한 번에 얼마나 키우고 줄일지(프레임 짧은 변 대비). */
@@ -41,14 +48,19 @@ export const showsQuickBar = (layer: PhotoCardLayer | null | undefined, locked: 
   layer?.type === 'TEXT' && !locked
 
 /**
- * 캔버스 위 빠른 편집 바.
+ * 빠른 편집 바.
  *
- * 고른 글자 바로 위에 떠서, 자주 만지는 것(글꼴·굵기·크기·색·삭제)만 담는다 —
- * 오른쪽 패널까지 가지 않고 그 자리에서 고치기 위한 것이다. 나머지 속성은 패널에 그대로 있다.
+ * 자주 만지는 것(글꼴·굵기·크기·색·삭제)만 담는다 — 오른쪽 패널까지 가지 않고
+ * 그 자리에서 고치기 위한 것이다. 나머지 속성은 패널에 그대로 있다.
  * 텍스트일 때만 뜬다. 도형·이미지는 크기 손잡이로 충분하고, 여기 담을 만한 공통 속성이 없다.
+ *
+ * ── 자리 ──
+ * 넓은 화면에서는 고른 글자 바로 위에 띄운다(무엇을 고치는 중인지 눈이 이어진다).
+ * 좁은 화면에서는 그럴 수 없다 — 바가 카드보다 넓어 띄울 자리가 없고, 띄우면 화면 밖으로 나간다.
+ * 모바일 편집기들(Pixlr·Canva)이 그렇듯 작업 영역 아래에 가로로 붙이고, 넘치면 옆으로 굴린다.
  */
 export default function PhotoCardQuickBar({
-  editor, bounds, displayScale, displayWidth,
+  editor, bounds, displayScale, displayWidth, docked = false,
 }: Props) {
   const { t } = useTranslation()
   // 크기를 손으로 칠 때는 "1" 처럼 아직 완성되지 않은 값도 그대로 보여 줘야 한다.
@@ -81,7 +93,121 @@ export default function PhotoCardQuickBar({
   const top = bounds.top * displayScale
   const half = Math.min(BAR_HALF_WIDTH, displayWidth / 2)
 
-  const button = 'inline-flex h-8 items-center justify-center rounded-md px-1.5 text-[12px] font-semibold text-neutral-600 transition-colors hover:bg-neutral-100'
+  const button = 'inline-flex h-8 shrink-0 items-center justify-center rounded-md px-1.5 text-[12px] font-semibold text-neutral-600 transition-colors hover:bg-neutral-100'
+  const divider = <span className="mx-0.5 h-5 w-px shrink-0 bg-neutral-200" />
+
+  const content = (
+    <>
+      {/* 붙임 형태에서는 남는 폭을 글꼴 칸이 가져간다 — 좁은 화면에서 옆으로 굴릴 거리를 줄인다. */}
+      <div className={docked ? 'min-w-[104px] flex-1' : 'w-[196px] shrink-0'}>
+        <FontPicker
+          value={layer.fontKey}
+          onChange={(fontKey) => patch({ fontKey })}
+          showWeights={false}
+          compact
+        />
+      </div>
+
+      {family.weights.length > 1 && (
+        <select
+          value={font.weight}
+          onChange={(event) => patch({
+            fontKey: resolveTextFontKey(family.key, Number(event.target.value)),
+          })}
+          title={t('photoCard.fontWeight')}
+          className="h-8 shrink-0 rounded-md border border-neutral-300 bg-white px-1 text-[12px] font-semibold text-neutral-600"
+        >
+          {family.weights.map((entry) => (
+            <option key={entry.fontKey} value={entry.weight}>
+              {t(TEXT_FONT_WEIGHT_LABEL_KEYS[entry.weight] ?? 'imageEditor.weightRegular')}
+            </option>
+          ))}
+        </select>
+      )}
+
+      {divider}
+
+      <button type="button" className={button} title={t('photoCard.sizeDown')}
+        onClick={() => stepSize(-SIZE_STEP)}>−</button>
+      {/* 숫자를 직접 칠 수 있다. type=number 는 휠에 값이 바뀌고 화살표까지 붙어 쓰지 않는다. */}
+      <input
+        type="text"
+        inputMode="decimal"
+        value={sizeDraft ?? sizePercent.toFixed(1)}
+        title={t('photoCard.fontSize')}
+        aria-label={t('photoCard.fontSize')}
+        onChange={(event) => {
+          setSizeDraft(event.target.value)
+          const next = Number(event.target.value)
+          // 다 치기 전에 잘라 내면 손이 꼬인다 — 범위 안의 온전한 숫자일 때만 반영한다.
+          if (event.target.value.trim() !== '' && Number.isFinite(next)
+            && next >= MIN_SIZE_PERCENT && next <= MAX_SIZE_PERCENT) applySize(next)
+        }}
+        onBlur={(event) => {
+          const next = Number(event.target.value)
+          if (event.target.value.trim() !== '' && Number.isFinite(next)) applySize(next)
+          setSizeDraft(null)
+          editor.endGesture()
+        }}
+        onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur() }}
+        className="h-8 w-12 shrink-0 rounded-md border border-neutral-300 bg-white px-1 text-center font-mono text-[12px] text-neutral-700 focus:border-primary-400 focus:outline-none"
+      />
+      <span className="shrink-0 text-[11px] text-neutral-400">%</span>
+      <button type="button" className={button} title={t('photoCard.sizeUp')}
+        onClick={() => stepSize(SIZE_STEP)}>＋</button>
+
+      {divider}
+
+      <label className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md hover:bg-neutral-100"
+        title={t('photoCard.textColor')}>
+        <span className="h-4 w-4 rounded border border-neutral-300"
+          style={{ backgroundColor: layer.color ?? '#ffffff' }} />
+        <input
+          type="color"
+          value={(layer.color ?? '#ffffff').slice(0, 7)}
+          onChange={(event) => patch({ color: event.target.value }, `quickColor:${layer.id}`)}
+          onBlur={editor.endGesture}
+          className="sr-only"
+        />
+      </label>
+
+      {divider}
+
+      {/* 삭제 — 선택 상자의 ✕ 가 이 바에 가리므로, 지우는 길은 여기 하나로 모은다. */}
+      <button
+        type="button"
+        title={t('photoCard.removeLayer')}
+        aria-label={t('photoCard.removeLayer')}
+        onClick={() => editor.removeLayer(layer.id)}
+        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-neutral-500 transition-colors hover:bg-red-50 hover:text-red-600"
+      >
+        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden="true">
+          <path d="M10 3h4l1 1.5h4V6.5H5V4.5h4L10 3zM6.5 8h11l-.9 11.4a2 2 0 01-2 1.6H9.4a2 2 0 01-2-1.6L6.5 8zm3.3 2.2v7.6h1.4v-7.6H9.8zm3.4 0v7.6h1.4v-7.6h-1.4z" />
+        </svg>
+      </button>
+    </>
+  )
+
+  // 바를 누르는 동안 캔버스가 선택을 풀거나 요소를 끌면 안 된다.
+  // 글꼴 목록을 휠로 굴릴 때 카드가 확대되지도 않아야 한다.
+  const guards = {
+    onPointerDown: (event: React.PointerEvent) => event.stopPropagation(),
+    [NO_ZOOM_ATTRIBUTE]: '',
+  }
+
+  if (docked) {
+    return (
+      <div
+        // 작업 영역의 바닥이지 화면의 바닥이 아니다(아래에 속성 시트·도구 바가 있다).
+        // 그래서 safe-area 여백은 두지 않는다 — 그 몫은 맨 아래 도구 바가 이미 맡고 있다.
+        className="di-photo-card-rail absolute inset-x-0 bottom-0 z-30 flex items-center gap-1 overflow-x-auto border-t border-neutral-200 bg-white px-2 py-1.5 shadow-[0_-4px_14px_rgba(0,0,0,0.18)]"
+        style={{ touchAction: 'pan-x' }}
+        {...guards}
+      >
+        {content}
+      </div>
+    )
+  }
 
   return (
     <div
@@ -94,97 +220,9 @@ export default function PhotoCardQuickBar({
           left: Math.min(Math.max(centerX, half), displayWidth - half),
           top: Math.max(top - 10, 44),
         }}
-        // 바를 누르는 동안 캔버스가 선택을 풀거나 요소를 끌면 안 된다.
-        onPointerDown={(event) => event.stopPropagation()}
-        // 글꼴 목록을 휠로 굴릴 때 카드가 확대되지 않게 한다.
-        {...{ [NO_ZOOM_ATTRIBUTE]: '' }}
+        {...guards}
       >
-        <div className="w-[196px]">
-          <FontPicker
-            value={layer.fontKey}
-            onChange={(fontKey) => patch({ fontKey })}
-            showWeights={false}
-            compact
-          />
-        </div>
-
-        {family.weights.length > 1 && (
-          <select
-            value={font.weight}
-            onChange={(event) => patch({
-              fontKey: resolveTextFontKey(family.key, Number(event.target.value)),
-            })}
-            title={t('photoCard.fontWeight')}
-            className="h-8 rounded-md border border-neutral-300 bg-white px-1 text-[12px] font-semibold text-neutral-600"
-          >
-            {family.weights.map((entry) => (
-              <option key={entry.fontKey} value={entry.weight}>
-                {t(TEXT_FONT_WEIGHT_LABEL_KEYS[entry.weight] ?? 'imageEditor.weightRegular')}
-              </option>
-            ))}
-          </select>
-        )}
-
-        <span className="mx-0.5 h-5 w-px bg-neutral-200" />
-
-        <button type="button" className={button} title={t('photoCard.sizeDown')}
-          onClick={() => stepSize(-SIZE_STEP)}>−</button>
-        {/* 숫자를 직접 칠 수 있다. type=number 는 휠에 값이 바뀌고 화살표까지 붙어 쓰지 않는다. */}
-        <input
-          type="text"
-          inputMode="decimal"
-          value={sizeDraft ?? sizePercent.toFixed(1)}
-          title={t('photoCard.fontSize')}
-          aria-label={t('photoCard.fontSize')}
-          onChange={(event) => {
-            setSizeDraft(event.target.value)
-            const next = Number(event.target.value)
-            // 다 치기 전에 잘라 내면 손이 꼬인다 — 범위 안의 온전한 숫자일 때만 반영한다.
-            if (event.target.value.trim() !== '' && Number.isFinite(next)
-              && next >= MIN_SIZE_PERCENT && next <= MAX_SIZE_PERCENT) applySize(next)
-          }}
-          onBlur={(event) => {
-            const next = Number(event.target.value)
-            if (event.target.value.trim() !== '' && Number.isFinite(next)) applySize(next)
-            setSizeDraft(null)
-            editor.endGesture()
-          }}
-          onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur() }}
-          className="h-8 w-12 rounded-md border border-neutral-300 bg-white px-1 text-center font-mono text-[12px] text-neutral-700 focus:border-primary-400 focus:outline-none"
-        />
-        <span className="text-[11px] text-neutral-400">%</span>
-        <button type="button" className={button} title={t('photoCard.sizeUp')}
-          onClick={() => stepSize(SIZE_STEP)}>＋</button>
-
-        <span className="mx-0.5 h-5 w-px bg-neutral-200" />
-
-        <label className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md hover:bg-neutral-100"
-          title={t('photoCard.textColor')}>
-          <span className="h-4 w-4 rounded border border-neutral-300"
-            style={{ backgroundColor: layer.color ?? '#ffffff' }} />
-          <input
-            type="color"
-            value={(layer.color ?? '#ffffff').slice(0, 7)}
-            onChange={(event) => patch({ color: event.target.value }, `quickColor:${layer.id}`)}
-            onBlur={editor.endGesture}
-            className="sr-only"
-          />
-        </label>
-
-        <span className="mx-0.5 h-5 w-px bg-neutral-200" />
-
-        {/* 삭제 — 선택 상자의 ✕ 가 이 바에 가리므로, 지우는 길은 여기 하나로 모은다. */}
-        <button
-          type="button"
-          title={t('photoCard.removeLayer')}
-          aria-label={t('photoCard.removeLayer')}
-          onClick={() => editor.removeLayer(layer.id)}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-neutral-500 transition-colors hover:bg-red-50 hover:text-red-600"
-        >
-          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden="true">
-            <path d="M10 3h4l1 1.5h4V6.5H5V4.5h4L10 3zM6.5 8h11l-.9 11.4a2 2 0 01-2 1.6H9.4a2 2 0 01-2-1.6L6.5 8zm3.3 2.2v7.6h1.4v-7.6H9.8zm3.4 0v7.6h1.4v-7.6h-1.4z" />
-          </svg>
-        </button>
+        {content}
       </div>
     </div>
   )

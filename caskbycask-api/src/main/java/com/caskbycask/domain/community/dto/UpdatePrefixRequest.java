@@ -13,6 +13,4 @@ public class UpdatePrefixRequest {
     private String colorHex;
 
     private Boolean isActive;
-
-    private Integer sortOrder;
 }

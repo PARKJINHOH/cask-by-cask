@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState, type RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
+import useIsDesktop from '@/shared/hooks/useIsDesktop'
 import type { PhotoCardEditor } from '../hooks/usePhotoCardEditor'
 import type { PhotoCardViewport } from '../hooks/usePhotoCardViewport'
 import type { PhotoCardLayer, PhotoCardPosition } from '../types/photoCard.types'
@@ -17,6 +18,7 @@ import {
   applySnap, collectSnapTargets, type SnapLine,
 } from '../utils/photoCardSnap'
 import PhotoCardCanvas from './PhotoCardCanvas'
+import PhotoCardNudgePad from './PhotoCardNudgePad'
 import PhotoCardOverlay, { type TransformDelta } from './PhotoCardOverlay'
 import PhotoCardQuickBar, { showsQuickBar } from './PhotoCardQuickBar'
 
@@ -41,6 +43,11 @@ const SNAP_TOLERANCE = 6
  * 윈도우의 기본 끌기 문턱(4px)보다 조금 넉넉하게 잡는다.
  */
 const DRAG_THRESHOLD = 5
+
+/** 작업 영역 아래 겹쳐 놓는 것들(안내 문구·미세 이동 패드)이 바닥에서 띄우는 거리(화면 px). */
+const OVERLAY_GAP = 12
+/** 빠른 편집 바가 아래에 붙어 있을 때 그 위로 비켜서는 거리(화면 px). */
+const DOCKED_BAR_GAP = 58
 
 interface DragBase {
   pointerId: number
@@ -75,6 +82,9 @@ export default function PhotoCardStage({
   editor, viewport, size, canvasRef, onRequestPhoto,
 }: Props) {
   const { t } = useTranslation()
+  // 빠른 편집 바를 카드 위에 띄울지(넓은 화면), 작업 영역 아래에 붙일지(좁은 화면).
+  // 어디에 그리느냐의 문제라 CSS 로는 나눌 수 없다 — 붙임 형태는 카드가 아니라 작업 영역의 자식이다.
+  const isDesktop = useIsDesktop()
   const dragRef = useRef<LayerDrag | PhotoDrag | null>(null)
   const resizeBaseRef = useRef<{ layer: PhotoCardLayer; bounds: LayerBounds } | null>(null)
   const [guides, setGuides] = useState<SnapLine[]>([])
@@ -311,6 +321,11 @@ export default function PhotoCardStage({
   const selectedIsLocked = editor.selectedLayer
     ? editor.lockedIds.has(editor.selectedLayer.id)
     : false
+  const quickBarLayer = showsQuickBar(editor.selectedLayer, selectedIsLocked)
+    && selectionBounds.length === 1
+  /** 좁은 화면에서 빠른 편집 바가 바닥을 차지하고 있는가 — 위에 얹은 것들이 그만큼 비켜선다. */
+  const dockedBar = !isDesktop && quickBarLayer && Boolean(editor.photoImage)
+  const overlayBottom = dockedBar ? DOCKED_BAR_GAP : OVERLAY_GAP
 
   return (
     <div
@@ -359,8 +374,9 @@ export default function PhotoCardStage({
                 if (editor.selectedLayer) editor.removeLayer(editor.selectedLayer.id)
               }}
             />
-            {/* 고른 글자 바로 위에 뜨는 빠른 편집 바. 끌고 있는 동안은 방해되므로 감춘다. */}
-            {!dragRef.current && (
+            {/* 고른 글자 바로 위에 뜨는 빠른 편집 바. 끌고 있는 동안은 방해되므로 감춘다.
+                좁은 화면에서는 여기 띄우지 않고 작업 영역 아래에 붙인다(아래 참조). */}
+            {isDesktop && !dragRef.current && (
               <PhotoCardQuickBar
                 editor={editor}
                 bounds={selectionBounds.length === 1 ? selectionBounds[0] : null}
@@ -393,9 +409,42 @@ export default function PhotoCardStage({
         </div>
       )}
 
-      {/* 조작 안내 — 캔버스 위에 얹어 자리를 차지하지 않는다 */}
-      <p className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-black/45 px-3 py-1 text-[11px] text-neutral-300">
-        {t('photoCard.stageHint')}
+      {editor.photoImage && (
+        <>
+          {/* 좁은 화면의 빠른 편집 바. 카드가 아니라 작업 영역에 붙는다 —
+              카드가 화면 밖으로 밀려 있어도 바는 늘 손이 닿는 자리에 있어야 한다. */}
+          {!isDesktop && (
+            <PhotoCardQuickBar
+              editor={editor}
+              bounds={selectionBounds.length === 1 ? selectionBounds[0] : null}
+              displayScale={displayScale}
+              displayWidth={displayWidth}
+              docked
+            />
+          )}
+
+          {/* 미세 이동 패드 — 요소를 골랐을 때만. 손가락이 요소를 가리지 않는 자리에서 옮긴다. */}
+          <PhotoCardNudgePad
+            editor={editor}
+            size={size}
+            displayScale={displayScale}
+            className="absolute right-3 z-20 lg:hidden"
+            style={{ bottom: overlayBottom }}
+          />
+        </>
+      )}
+
+      {/* 조작 안내 — 캔버스 위에 얹어 자리를 차지하지 않는다.
+          바탕이 비치면 사진 위에서 글자가 읽히지 않아 불투명하게 깔고,
+          좁은 화면에서는 요소를 고른 순간 감춘다(패드·편집 바와 자리를 다툰다). */}
+      <p
+        className={`pointer-events-none absolute left-1/2 max-w-[calc(100%-1.5rem)] -translate-x-1/2 truncate rounded-full bg-neutral-900 px-3 py-1 text-[11px] font-medium text-neutral-200 shadow-lg ${
+          editor.selectedLayerIds.length === 0 ? '' : 'hidden lg:block'
+        }`}
+        style={{ bottom: overlayBottom }}
+      >
+        <span className="lg:hidden">{t('photoCard.stageHintTouch')}</span>
+        <span className="hidden lg:inline">{t('photoCard.stageHint')}</span>
       </p>
     </div>
   )

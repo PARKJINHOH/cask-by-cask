@@ -1,5 +1,22 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { adminPhotoCardApi } from '@/domain/photo-card/api/photoCardApi'
 import { BUILTIN_LAYOUTS } from '@/domain/photo-card/constants/builtinLayouts'
 import type { PhotoCardTemplate } from '@/domain/photo-card/types/photoCard.types'
@@ -12,6 +29,13 @@ type Tab = 'official' | 'public'
 export default function AdminPhotoCardTemplatePage() {
   const queryClient = useQueryClient()
   const [tab, setTab] = useState<Tab>('official')
+  // 드롭 직후 ~ 서버 반영 사이에만 쓰는 임시 순서.
+  const [pendingOfficialOrder, setPendingOfficialOrder] = useState<PhotoCardTemplate[] | null>(null)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
 
   const official = useQuery({
     queryKey: ['adminPhotoCardOfficial'],
@@ -47,6 +71,7 @@ export default function AdminPhotoCardTemplatePage() {
   const reorder = useMutation({
     mutationFn: (orderedIds: number[]) => adminPhotoCardApi.reorderOfficial(orderedIds),
     onSuccess: invalidate,
+    onSettled: () => setPendingOfficialOrder(null),
   })
 
   const moderate = useMutation({
@@ -61,19 +86,23 @@ export default function AdminPhotoCardTemplatePage() {
   })
 
   const rows: PhotoCardTemplate[] = tab === 'official'
-    ? official.data ?? []
+    ? pendingOfficialOrder ?? official.data ?? []
     : publicUser.data?.content ?? []
 
   /**
    * 표에 보이는 순서대로 id 를 모아 서버에 넘기면 배열 index 가 그대로 displayOrder 가 된다.
    * 사용자 편집기의 템플릿 목록이 이 순서를 따른다.
+   * 드롭 즉시 저장하고, 응답을 기다리는 동안에는 화면이 튀지 않게 로컬 순서를 보여준다.
    */
-  const moveOfficial = (index: number, delta: number) => {
-    const target = index + delta
-    if (target < 0 || target >= rows.length) return
-    const ids = rows.map((template) => template.id)
-    ;[ids[index], ids[target]] = [ids[target], ids[index]]
-    reorder.mutate(ids)
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIndex = rows.findIndex((template) => String(template.id) === active.id)
+    const newIndex = rows.findIndex((template) => String(template.id) === over.id)
+    if (oldIndex < 0 || newIndex < 0) return
+    const next = arrayMove(rows, oldIndex, newIndex)
+    setPendingOfficialOrder(next)
+    reorder.mutate(next.map((template) => template.id))
   }
 
   /**
@@ -137,14 +166,16 @@ export default function AdminPhotoCardTemplatePage() {
 
       {tab === 'official' && (
         <p className="mt-2 text-xs text-neutral-400">
-          위에서 아래 순서가 사용자 편집기의 템플릿 목록 순서입니다.
+          위에서 아래 순서가 사용자 편집기의 템플릿 목록 순서입니다. 드래그로 순서를 바꾸면 바로 저장됩니다.
         </p>
       )}
 
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <div className="mt-4 overflow-hidden rounded-xl border border-neutral-200 bg-white">
         <table className="w-full text-sm">
           <thead className="bg-neutral-50 text-xs text-neutral-500">
             <tr>
+              {tab === 'official' && <th className="w-10 px-3 py-2.5" />}
               <th className="px-4 py-2.5 text-left font-semibold">이름</th>
               <th className="px-4 py-2.5 text-left font-semibold">비율</th>
               <th className="px-4 py-2.5 text-left font-semibold">요소</th>
@@ -155,73 +186,33 @@ export default function AdminPhotoCardTemplatePage() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((template, index) => (
-              <tr key={template.id} className="border-t border-neutral-100">
-                <td className="px-4 py-3">
-                  <span className="font-semibold text-neutral-900">{template.name}</span>
-                  {template.description && (
-                    <span className="mt-0.5 block text-xs text-neutral-500">{template.description}</span>
-                  )}
-                </td>
-                <td className="px-4 py-3 text-neutral-600">{template.aspectRatio}</td>
-                <td className="px-4 py-3 text-neutral-600">{template.layout?.layers?.length ?? 0}</td>
-                {tab === 'public' && (
-                  <td className="px-4 py-3 text-neutral-600">{template.ownerNickname ?? '-'}</td>
-                )}
-                <td className="px-4 py-3 text-neutral-600">{template.useCount}</td>
-                <td className="px-4 py-3">
-                  <span className={`rounded px-2 py-0.5 text-xs font-bold ${
-                    template.moderationStatus === 'VISIBLE'
-                      ? 'bg-green-100 text-green-700' : 'bg-neutral-200 text-neutral-600'
-                  }`}>
-                    {template.moderationStatus === 'VISIBLE' ? '노출' : '숨김'}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-right">
-                  {tab === 'official' && (
-                    <span className="mr-2 inline-flex items-center gap-1 align-middle">
-                      <button
-                        type="button"
-                        aria-label="위로"
-                        disabled={index === 0 || reorder.isPending}
-                        onClick={() => moveOfficial(index, -1)}
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-neutral-300 bg-white text-xs font-medium text-neutral-600 transition-colors hover:bg-neutral-50 disabled:opacity-40"
-                      >
-                        ↑
-                      </button>
-                      <button
-                        type="button"
-                        aria-label="아래로"
-                        disabled={index === rows.length - 1 || reorder.isPending}
-                        onClick={() => moveOfficial(index, 1)}
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-neutral-300 bg-white text-xs font-medium text-neutral-600 transition-colors hover:bg-neutral-50 disabled:opacity-40"
-                      >
-                        ↓
-                      </button>
-                    </span>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => moderate.mutate({
-                      id: template.id,
-                      status: template.moderationStatus === 'VISIBLE' ? 'HIDDEN' : 'VISIBLE',
-                    })}
-                    className="mr-2 text-xs font-semibold text-primary-700 hover:underline"
-                  >
-                    {template.moderationStatus === 'VISIBLE' ? '숨기기' : '노출하기'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (window.confirm(`'${template.name}' 템플릿을 삭제할까요?`)) remove.mutate(template.id)
-                    }}
-                    className="text-xs font-semibold text-neutral-400 hover:text-red-600"
-                  >
-                    삭제
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {tab === 'official' ? (
+              <SortableContext
+                items={rows.map((template) => String(template.id))}
+                strategy={verticalListSortingStrategy}
+              >
+                {rows.map((template) => (
+                  <SortableTemplateRow
+                    key={template.id}
+                    template={template}
+                    showOwner={false}
+                    onModerate={moderate.mutate}
+                    onRemove={remove.mutate}
+                  />
+                ))}
+              </SortableContext>
+            ) : (
+              rows.map((template) => (
+                <tr key={template.id} className="border-t border-neutral-100">
+                  <TemplateRowCells
+                    template={template}
+                    showOwner
+                    onModerate={moderate.mutate}
+                    onRemove={remove.mutate}
+                  />
+                </tr>
+              ))
+            )}
             {rows.length === 0 && (
               <tr>
                 <td colSpan={7} className="px-4 py-12 text-center text-sm text-neutral-400">
@@ -234,7 +225,95 @@ export default function AdminPhotoCardTemplatePage() {
           </tbody>
         </table>
       </div>
+      </DndContext>
     </div>
+  )
+}
+
+interface TemplateRowProps {
+  template: PhotoCardTemplate
+  showOwner: boolean
+  onModerate: (input: { id: number; status: 'VISIBLE' | 'HIDDEN' }) => void
+  onRemove: (id: number) => void
+}
+
+function SortableTemplateRow({ template, ...props }: TemplateRowProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: String(template.id),
+  })
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 10 : undefined,
+    backgroundColor: isDragging ? '#f9fafb' : undefined,
+  }
+
+  return (
+    <tr ref={setNodeRef} style={style} className="border-t border-neutral-100">
+      <td className="w-10 px-3 py-3">
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          aria-label="순서 변경"
+          className="cursor-grab touch-none p-1 text-neutral-300 transition-colors hover:text-neutral-500 active:cursor-grabbing"
+        >
+          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <line x1="4" y1="8" x2="20" y2="8" strokeLinecap="round" />
+            <line x1="4" y1="12" x2="20" y2="12" strokeLinecap="round" />
+            <line x1="4" y1="16" x2="20" y2="16" strokeLinecap="round" />
+          </svg>
+        </button>
+      </td>
+      <TemplateRowCells template={template} {...props} />
+    </tr>
+  )
+}
+
+function TemplateRowCells({ template, showOwner, onModerate, onRemove }: TemplateRowProps) {
+  return (
+    <>
+      <td className="px-4 py-3">
+        <span className="font-semibold text-neutral-900">{template.name}</span>
+        {template.description && (
+          <span className="mt-0.5 block text-xs text-neutral-500">{template.description}</span>
+        )}
+      </td>
+      <td className="px-4 py-3 text-neutral-600">{template.aspectRatio}</td>
+      <td className="px-4 py-3 text-neutral-600">{template.layout?.layers?.length ?? 0}</td>
+      {showOwner && <td className="px-4 py-3 text-neutral-600">{template.ownerNickname ?? '-'}</td>}
+      <td className="px-4 py-3 text-neutral-600">{template.useCount}</td>
+      <td className="px-4 py-3">
+        <span className={`rounded px-2 py-0.5 text-xs font-bold ${
+          template.moderationStatus === 'VISIBLE'
+            ? 'bg-green-100 text-green-700' : 'bg-neutral-200 text-neutral-600'
+        }`}>
+          {template.moderationStatus === 'VISIBLE' ? '노출' : '숨김'}
+        </span>
+      </td>
+      <td className="px-4 py-3 text-right">
+        <button
+          type="button"
+          onClick={() => onModerate({
+            id: template.id,
+            status: template.moderationStatus === 'VISIBLE' ? 'HIDDEN' : 'VISIBLE',
+          })}
+          className="mr-2 text-xs font-semibold text-primary-700 hover:underline"
+        >
+          {template.moderationStatus === 'VISIBLE' ? '숨기기' : '노출하기'}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            if (window.confirm(`'${template.name}' 템플릿을 삭제할까요?`)) onRemove(template.id)
+          }}
+          className="text-xs font-semibold text-neutral-400 hover:text-red-600"
+        >
+          삭제
+        </button>
+      </td>
+    </>
   )
 }
 

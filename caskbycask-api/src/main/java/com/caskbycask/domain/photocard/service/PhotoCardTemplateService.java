@@ -268,11 +268,21 @@ public class PhotoCardTemplateService {
                 .thumbnailSubPath(request.thumbnailSubPath())
                 .isPublic(true)
                 .moderationStatus(PhotoCardModerationStatus.VISIBLE)
-                .displayOrder(0)
+                // 순서는 목록에서 드래그로만 바꾼다. 신규 공식 템플릿은 항상 맨 아래.
+                .displayOrder(nextOfficialDisplayOrder())
                 .useCount(0L)
                 .build();
 
         return toResponse(templateRepository.save(template), null);
+    }
+
+    /** 공식 템플릿 중 가장 큰 displayOrder 다음 값 — 신규는 목록 맨 아래로 간다. */
+    private int nextOfficialDisplayOrder() {
+        return templateRepository
+                .findByTemplateTypeOrderByDisplayOrderAscIdAsc(PhotoCardTemplateType.OFFICIAL).stream()
+                .mapToInt(PhotoCardTemplate::getDisplayOrder)
+                .max()
+                .orElse(-1) + 1;
     }
 
     @Transactional

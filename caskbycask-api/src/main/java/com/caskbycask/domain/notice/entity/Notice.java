@@ -80,7 +80,7 @@ public class Notice extends BaseTimeEntity {
 
     @Builder.Default
     @Column(nullable = false)
-    @Comment("노출 순서 (높을수록 우선)")
+    @Comment("노출 순서 (작을수록 위)")
     private Integer displayOrder = 0;
 
     @ManyToOne(fetch = FetchType.LAZY)

@@ -199,21 +199,25 @@ public class WineIngestService {
                     "EXTERNAL_ID_DUPLICATE", "동일한 제공자 와인/빈티지 ID가 이미 등록되어 PASS 처리했습니다.", null, vintageLabel);
         }
 
-        Optional<Producer> producer = producerRepository.findFirstByTypeAndNameEnIgnoreCase(
-                ProducerType.WINERY, request.producerNameEn().trim());
-        if (producer.isEmpty()) {
-            return recordItem(run, request, WineIngestItemStatus.FAILED,
-                    "PRODUCER_NOT_FOUND", "등록된 와이너리를 찾지 못했습니다: " + request.producerNameEn(), null, vintageLabel);
-        }
+        // 와이너리는 선택값이다. 원문에 없거나 아직 등록되지 않았으면 생산자 없이 저장하고 검수에서 연결한다.
+        Producer producer = hasText(request.producerNameEn())
+                ? producerRepository.findFirstByTypeAndNameEnIgnoreCase(
+                        ProducerType.WINERY, request.producerNameEn().trim()).orElse(null)
+                : null;
+        Long producerId = producer != null ? producer.getId() : null;
 
-        String identityKey = sha256(producer.get().getId() + "|" + normalize(request.nameEn()) + "|" + vintageLabel);
+        // 생산자를 모르면 외부 와인 ID로 동일성 범위를 잡는다. 이름만 같은 다른 와이너리 와인과 섞이지 않는다.
+        String identityScope = producerId != null
+                ? String.valueOf(producerId)
+                : request.provider() + ":" + request.externalWineId();
+        String identityKey = sha256(identityScope + "|" + normalize(request.nameEn()) + "|" + vintageLabel);
         if (externalReferenceRepository.existsByIdentityKey(identityKey)) {
             return recordItem(run, request, WineIngestItemStatus.DUPLICATE_SKIPPED,
                     "IDENTITY_DUPLICATE", "생산자/영문명/빈티지가 같은 와인이 이미 등록되어 PASS 처리했습니다.", null, vintageLabel);
         }
 
         List<Spirit> existingWines = spiritRepository.findExistingWineVintage(
-                producer.get().getId(), request.nameEn().trim(),
+                producerId, request.nameEn().trim(),
                 request.vintageStatus() == WineVintageStatus.VINTAGE ? request.vintageYear() : null,
                 request.vintageStatus() == WineVintageStatus.NON_VINTAGE);
         if (!existingWines.isEmpty()) {
@@ -227,10 +231,7 @@ public class WineIngestService {
 
         WineRegion regionCode = wineRegionService.resolve(request.regionCode(), SpiritCategory.WINE);
         String regionText = regionCode != null ? regionCode.topLevel().getNameKo() : trimToNull(request.region());
-        Spirit master = spiritRepository
-                .findFirstByCategoryAndProducerIdAndParentIsNullAndNameEnIgnoreCase(
-                        SpiritCategory.WINE, producer.get().getId(), request.nameEn().trim())
-                .orElseGet(() -> createMaster(request, producer.get(), regionCode, regionText));
+        Spirit master = resolveMaster(request, producer, regionCode, regionText);
 
         List<Spirit> sameVintage = spiritRepository.findByParentIdAndVariantValueIgnoreCaseAndStatusIn(
                 master.getId(), vintageLabel, Arrays.asList(SpiritStatus.values()));
@@ -244,7 +245,7 @@ public class WineIngestService {
 
         Spirit child = Spirit.builder()
                 .nameKo(request.nameEn().trim()).nameEn(request.nameEn().trim())
-                .category(SpiritCategory.WINE).producer(producer.get())
+                .category(SpiritCategory.WINE).producer(producer)
                 .vintageYear(request.vintageStatus() == WineVintageStatus.VINTAGE ? request.vintageYear() : null)
                 .abv(request.abv()).volumeMl(request.volumeMl())
                 .country(request.country().trim()).region(regionText).regionCode(regionCode)
@@ -258,12 +259,42 @@ public class WineIngestService {
         child = spiritRepository.save(child);
         spiritDetailService.saveWineDetail(child, request.wineDetail());
 
-        master.assignExternalSource(request.provider(), request.sourceUrl(), request.imageUrl(),
-                request.rating(), request.ratingCount());
+        // 이미 출처 스냅샷이 있는 마스터(관리자 검수본 포함)는 덮어쓰지 않는다.
+        if (master.getSourceProvider() == null) {
+            master.assignExternalSource(request.provider(), request.sourceUrl(), request.imageUrl(),
+                    request.rating(), request.ratingCount());
+        }
         saveExternalReference(child, request, identityKey);
 
+        String notice = producerNotice(request, producer);
         return recordItem(run, request, WineIngestItemStatus.CREATED,
-                null, null, child, vintageLabel);
+                notice != null ? "PRODUCER_UNRESOLVED" : null, notice, child, vintageLabel);
+    }
+
+    /**
+     * 생산자를 아는 와인은 생산자+영문명으로 마스터를 찾는다. 생산자를 모를 때 영문명만으로 묶으면
+     * 다른 와이너리의 동명 와인이 한 마스터에 섞이므로, 같은 외부 와인 ID로 먼저 등록된 빈티지가
+     * 있을 때만 그 마스터를 재사용한다.
+     */
+    private Spirit resolveMaster(WineIngestDtos.WineImportRequest request, Producer producer,
+                                 WineRegion regionCode, String regionText) {
+        Optional<Spirit> existing = producer != null
+                ? spiritRepository.findFirstByCategoryAndProducerIdAndParentIsNullAndNameEnIgnoreCase(
+                        SpiritCategory.WINE, producer.getId(), request.nameEn().trim())
+                : externalReferenceRepository
+                        .findFirstByProviderAndExternalWineIdOrderByIdAsc(
+                                request.provider(), request.externalWineId())
+                        .map(SpiritExternalReference::getSpirit)
+                        .map(spirit -> spirit.getParent() != null ? spirit.getParent() : spirit);
+        return existing.orElseGet(() -> createMaster(request, producer, regionCode, regionText));
+    }
+
+    private static String producerNotice(WineIngestDtos.WineImportRequest request, Producer producer) {
+        if (producer != null) return null;
+        return hasText(request.producerNameEn())
+                ? "등록된 와이너리를 찾지 못해 생산자 없이 저장했습니다. 검수에서 연결하세요: "
+                        + request.producerNameEn().trim()
+                : "수집 원문에 와이너리가 없어 생산자 없이 저장했습니다. 검수에서 연결하세요.";
     }
 
     private Spirit createMaster(WineIngestDtos.WineImportRequest request, Producer producer,

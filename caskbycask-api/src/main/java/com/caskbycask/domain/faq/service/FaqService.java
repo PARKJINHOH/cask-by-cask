@@ -59,17 +59,17 @@ public class FaqService {
 
     @Transactional
     public AdminFaqDetailResponse createFaq(CreateFaqRequest request) {
-        // 신규 FAQ는 같은 언어·카테고리 목록의 맨 위로 배치 (sortOrder가 작을수록 위).
+        // 신규 FAQ는 같은 언어·카테고리 목록의 맨 아래로 배치 (sortOrder가 작을수록 위).
         List<Faq> sameGroup = faqRepository
                 .findByLanguageAndCategoryOrderBySortOrderAsc(request.getLanguage(), request.getCategory());
-        int topOrder = sameGroup.isEmpty() ? 0 : sameGroup.get(0).getSortOrder() - 1;
+        int bottomOrder = sameGroup.stream().mapToInt(Faq::getSortOrder).max().orElse(-1) + 1;
 
         Faq faq = Faq.builder()
                 .language(request.getLanguage())
                 .category(request.getCategory())
                 .question(request.getQuestion())
                 .answer(request.getAnswer())
-                .sortOrder(topOrder)
+                .sortOrder(bottomOrder)
                 .isActive(request.getIsActive() != null ? request.getIsActive() : true)
                 .build();
         return new AdminFaqDetailResponse(faqRepository.save(faq));

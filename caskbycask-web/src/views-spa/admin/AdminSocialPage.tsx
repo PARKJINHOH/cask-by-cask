@@ -1,5 +1,22 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  rectSortingStrategy,
+  useSortable,
+  arrayMove,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import AdminPageHeader from '@/shared/components/AdminPageHeader'
 import ImageEditorModal from '@/shared/components/ImageEditorModal'
 import { socialApi } from '@/domain/social/api/socialApi'
@@ -174,25 +191,37 @@ function TemplatePanel() {
   const queryClient = useQueryClient()
   const [name, setName] = useState('')
   const [imageUrl, setImageUrl] = useState('')
-  const [displayOrder, setDisplayOrder] = useState(0)
   const [uploading, setUploading] = useState(false)
   const [editingBackground, setEditingBackground] = useState<string | null>(null)
   const [selectedFileName, setSelectedFileName] = useState('')
-  const { data: templates = [] } = useQuery({
+  const [ordered, setOrdered] = useState<SocialTemplate[]>([])
+  const [isSortDirty, setIsSortDirty] = useState(false)
+  const { data: templates } = useQuery({
     queryKey: ['admin', 'social', 'templates'],
     queryFn: socialApi.templates,
   })
+
+  // 서버 응답은 이미 displayOrder 오름차순 — 앞에서 뒤가 곧 사용자 배경 목록 순서다.
+  useEffect(() => {
+    if (!templates) return
+    setOrdered(templates)
+    setIsSortDirty(false)
+  }, [templates])
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
+
   const save = useMutation({
     mutationFn: () => socialApi.createTemplate({
       name: name.trim(),
       backgroundImageUrl: imageUrl,
       active: true,
-      displayOrder,
     }),
     onSuccess: () => {
       setName('')
       setImageUrl('')
-      setDisplayOrder(0)
       setSelectedFileName('')
       queryClient.invalidateQueries({ queryKey: ['admin', 'social', 'templates'] })
       queryClient.invalidateQueries({ queryKey: ['social', 'capabilities'] })
@@ -203,10 +232,28 @@ function TemplatePanel() {
       name: template.name,
       backgroundImageUrl: template.backgroundImageUrl,
       active: !template.active,
-      displayOrder: template.displayOrder,
     }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'social', 'templates'] }),
   })
+  const reorder = useMutation({
+    mutationFn: (ids: number[]) => socialApi.reorderTemplates(ids),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'social', 'templates'] })
+      queryClient.invalidateQueries({ queryKey: ['social', 'capabilities'] })
+      setIsSortDirty(false)
+    },
+  })
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    setOrdered((items) => {
+      const oldIndex = items.findIndex((i) => String(i.id) === active.id)
+      const newIndex = items.findIndex((i) => String(i.id) === over.id)
+      setIsSortDirty(true)
+      return arrayMove(items, oldIndex, newIndex)
+    })
+  }
 
   useEffect(() => {
     const source = editingBackground
@@ -242,15 +289,6 @@ function TemplatePanel() {
             className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm" />
           <span className="mt-1.5 block text-xs leading-5 text-neutral-500">
             썸네일 선택 화면에서 배경을 구분할 관리용 이름입니다. SNS 게시물에는 표시되지 않습니다.
-          </span>
-        </label>
-        <label className="block">
-          <span className="mb-1.5 block text-xs font-semibold text-neutral-700">표시 순서</span>
-          <input type="number" min={0} max={10000} value={displayOrder}
-            onChange={(event) => setDisplayOrder(Number(event.target.value))}
-            className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm" />
-          <span className="mt-1.5 block text-xs leading-5 text-neutral-500">
-            숫자가 작을수록 썸네일 배경 목록 앞에 표시됩니다. 입력 범위는 0~10,000입니다.
           </span>
         </label>
         <div>
@@ -305,26 +343,72 @@ function TemplatePanel() {
           />
         )}
       </div>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {templates.map((template) => (
-          <article key={template.id} className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
-            <img src={template.backgroundImageUrl} alt="" className="aspect-[4/5] w-full object-cover" />
-            <div className="space-y-2 p-3">
-              <div className="flex items-center justify-between gap-2">
-                <strong className="truncate text-sm">{template.name}</strong>
-                <span className="text-xs text-neutral-400">#{template.displayOrder}</span>
-              </div>
-              <button type="button" onClick={() => toggle.mutate(template)}
-                className={`w-full rounded-lg px-3 py-2 text-xs font-semibold ${
-                  template.active ? 'bg-emerald-50 text-emerald-700' : 'bg-neutral-100 text-neutral-500'
-                }`}>
-                {template.active ? '사용 중 · 비활성화' : '비활성 · 다시 사용'}
-              </button>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs text-neutral-500">
+            앞에서 뒤 순서가 사용자 썸네일 배경 목록 순서입니다. 드래그로 순서를 바꾸세요.
+          </p>
+          {isSortDirty && (
+            <button type="button" disabled={reorder.isPending}
+              onClick={() => reorder.mutate(ordered.map((template) => template.id))}
+              className="shrink-0 rounded-lg bg-primary-800 px-4 py-2 text-xs font-semibold text-white disabled:opacity-40">
+              {reorder.isPending ? '저장 중...' : '순서 저장'}
+            </button>
+          )}
+        </div>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={ordered.map((t) => String(t.id))} strategy={rectSortingStrategy}>
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {ordered.map((template) => (
+                <SortableTemplateCard
+                  key={template.id}
+                  template={template}
+                  onToggle={() => toggle.mutate(template)}
+                />
+              ))}
             </div>
-          </article>
-        ))}
+          </SortableContext>
+        </DndContext>
       </div>
     </section>
+  )
+}
+
+function SortableTemplateCard({ template, onToggle }: { template: SocialTemplate; onToggle: () => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: String(template.id),
+  })
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 10 : undefined,
+  }
+
+  return (
+    <article ref={setNodeRef} style={style}
+      className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
+      <img src={template.backgroundImageUrl} alt="" className="aspect-[4/5] w-full object-cover" />
+      <div className="space-y-2 p-3">
+        <div className="flex items-center justify-between gap-2">
+          <strong className="truncate text-sm">{template.name}</strong>
+          <button type="button" {...attributes} {...listeners} aria-label="순서 변경"
+            className="shrink-0 cursor-grab touch-none p-1 text-neutral-300 hover:text-neutral-500 active:cursor-grabbing">
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="4" y1="8" x2="20" y2="8" strokeLinecap="round" />
+              <line x1="4" y1="12" x2="20" y2="12" strokeLinecap="round" />
+              <line x1="4" y1="16" x2="20" y2="16" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+        <button type="button" onClick={onToggle}
+          className={`w-full rounded-lg px-3 py-2 text-xs font-semibold ${
+            template.active ? 'bg-emerald-50 text-emerald-700' : 'bg-neutral-100 text-neutral-500'
+          }`}>
+          {template.active ? '사용 중 · 비활성화' : '비활성 · 다시 사용'}
+        </button>
+      </div>
+    </article>
   )
 }
 

@@ -35,6 +35,23 @@ export default function PhotoPanel({ editor, onPickPhoto, onEditPhoto }: Props) 
     )
   }
 
+  /**
+   * 값 동기화를 켜면 그 자리에서 네 변을 '위' 값에 맞춘다.
+   *
+   * 켜 두기만 하고 값이 그대로면 "동기화"라는 말과 화면이 어긋난다 —
+   * 슬라이더를 하나 만지기 전까지는 아무 일도 일어나지 않아 켜졌는지조차 알 수 없다.
+   * 기준을 '위'로 잡는 것은 목록에서 맨 처음 보이는 값이기 때문이다(되돌리기 한 단계로 취소된다).
+   */
+  const toggleLinked = (next: boolean) => {
+    setLinked(next)
+    if (!next) return
+    const base = frame.padding.top ?? 0
+    editor.setFramePadding(
+      { top: base, right: base, bottom: base, left: base }, 'frame:paddingLink',
+    )
+    editor.endGesture()
+  }
+
   return (
     <div className="space-y-5">
       <Section title={t('photoCard.tabPhoto')}>
@@ -108,7 +125,7 @@ export default function PhotoPanel({ editor, onPickPhoto, onEditPhoto }: Props) 
           <input
             type="checkbox"
             checked={linked}
-            onChange={(event) => setLinked(event.target.checked)}
+            onChange={(event) => toggleLinked(event.target.checked)}
             className="h-3.5 w-3.5 accent-primary-600"
           />
           {t('photoCard.paddingLinked')}

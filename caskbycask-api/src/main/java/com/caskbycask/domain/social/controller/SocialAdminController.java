@@ -75,6 +75,13 @@ public class SocialAdminController {
         return ResponseEntity.ok(ApiResponse.success(templateService.update(id, request)));
     }
 
+    @PostMapping("/templates/reorder")
+    public ResponseEntity<ApiResponse<Void>> reorderTemplates(
+            @Valid @RequestBody SocialAdminDtos.TemplateReorderRequest request) {
+        templateService.reorder(request.ids());
+        return ResponseEntity.ok(ApiResponse.success());
+    }
+
     @DeleteMapping("/templates/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteTemplate(@PathVariable Long id) {
         templateService.delete(id);

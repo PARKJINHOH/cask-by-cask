@@ -11,8 +11,12 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface BannerRepository extends JpaRepository<Banner, Long> {
+
+    /** 신규 배너를 목록 맨 아래에 붙일 때 쓰는 기준값. */
+    Optional<Banner> findTopByOrderBySortOrderDesc();
 
     @Query("""
             SELECT b FROM Banner b
