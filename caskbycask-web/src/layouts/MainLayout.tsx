@@ -218,7 +218,6 @@ function GNB() {
       children: [
         { key: 'tierList', label: t('menu.tierList'), to: '/tier-lists' },
         { key: 'tasteTree', label: t('menu.tasteTree'), to: '/taste-trees' },
-        { key: 'photoCard', label: t('photoCard.title'), to: '/photo-card' },
       ],
     },
   ]

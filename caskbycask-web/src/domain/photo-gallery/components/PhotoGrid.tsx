@@ -1,17 +1,22 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { MouseEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import type { PostListItem } from '@/domain/community/types/community.types'
-import { layoutJustifiedRows } from '../utils/justifiedLayout'
+import { columnCountFor, columnWidthFor, layoutPhotoColumns } from '../utils/columnLayout'
 
 interface Props {
   posts: PostListItem[]
+  /** 사진을 눌렀을 때 — 인스타처럼 그 자리에서 상세를 연다 */
+  onSelect?: (post: PostListItem) => void
 }
 
 /** 크기를 모르는 기존 이미지의 기본 비율 — 갤러리는 4:5(인스타 권장)가 가장 흔하다. */
 const FALLBACK = { width: 4, height: 5 }
+/** 사진 사이 간격(px) */
+const GAP = 8
 
-export default function PhotoGrid({ posts }: Props) {
+export default function PhotoGrid({ posts, onSelect }: Props) {
   const { t } = useTranslation()
   const containerRef = useRef<HTMLDivElement>(null)
   const [containerWidth, setContainerWidth] = useState(0)
@@ -40,10 +45,10 @@ export default function PhotoGrid({ posts }: Props) {
     ))
   }, [])
 
-  const rows = useMemo(() => {
+  const columns = useMemo(() => {
     if (containerWidth <= 0) return []
-    // 화면이 좁으면 행 높이를 낮춰 한 행에 지나치게 많은 사진이 들어가지 않게 한다.
-    const targetRowHeight = containerWidth < 640 ? 170 : containerWidth < 1024 ? 220 : 260
+    const columnCount = columnCountFor(containerWidth)
+    const columnWidth = columnWidthFor(containerWidth, columnCount, GAP)
     const items = posts.map((post) => {
       const size = measured[post.id]
         ?? (post.thumbnailWidth && post.thumbnailHeight
@@ -51,22 +56,42 @@ export default function PhotoGrid({ posts }: Props) {
           : FALLBACK)
       return { ...size, post }
     })
-    return layoutJustifiedRows(items, { containerWidth, targetRowHeight, gap: 6 })
+    return layoutPhotoColumns(items, { columnCount, columnWidth, gap: GAP })
   }, [containerWidth, measured, posts])
 
+  /**
+   * 좌클릭은 모달로 연다. 새 탭/새 창(⌘·Ctrl·Shift·가운데 버튼)은 브라우저에 맡겨
+   * 주소를 그대로 열 수 있게 둔다 — 그래서 타일은 계속 진짜 링크(<a>)다.
+   */
+  const handleClick = useCallback((event: MouseEvent<HTMLAnchorElement>, post: PostListItem) => {
+    if (!onSelect) return
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return
+    event.preventDefault()
+    onSelect(post)
+  }, [onSelect])
+
+  // 컨테이너는 항상 그린다 — 폭을 재는 ResizeObserver 가 붙을 자리라
+  // 사진이 없는 동안 걷어 내면 사진이 채워져도 폭이 0 으로 남는다.
   return (
-    <div ref={containerRef} className="flex flex-col gap-1.5">
-      {rows.map((row, rowIndex) => (
-        <div key={rowIndex} className="flex gap-1.5">
-          {row.cells.map(({ item, width, height }) => {
+    <div ref={containerRef} className="flex items-start" style={{ gap: GAP }}>
+      {posts.length === 0 && (
+        <p className="w-full py-16 text-center text-sm text-neutral-400">{t('photoGallery.empty')}</p>
+      )}
+      {columns.map((column, columnIndex) => (
+        <div
+          key={columnIndex}
+          className="flex min-w-0 flex-1 flex-col"
+          style={{ gap: GAP }}
+        >
+          {column.cells.map(({ item, aspectRatio }) => {
             const post = item.post
-            const tag = post.spiritTags?.[0]
             return (
               <Link
                 key={post.id}
                 to={`/community/photo/${post.id}`}
-                style={{ width, height, flex: 'none' }}
-                className="group relative overflow-hidden rounded-md bg-neutral-200"
+                onClick={(event) => handleClick(event, post)}
+                style={{ aspectRatio }}
+                className="group relative block w-full overflow-hidden rounded-lg bg-neutral-200"
               >
                 {post.thumbnailImageUrl && (
                   <img
@@ -74,17 +99,12 @@ export default function PhotoGrid({ posts }: Props) {
                     alt={post.title}
                     loading="lazy"
                     onLoad={(event) => handleLoad(post.id, event.currentTarget)}
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
                   />
                 )}
-                {tag && (
-                  <span className="pointer-events-none absolute left-2 top-2 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-bold text-primary-200 backdrop-blur-sm">
-                    {tag.nameKo}
-                  </span>
-                )}
-                <span className="pointer-events-none absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/70 to-transparent p-2.5 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
-                  <span className="truncate text-xs font-bold">{post.title}</span>
-                  <span className="mt-0.5 flex gap-2.5 text-[11px] opacity-90">
+                <span className="pointer-events-none absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/70 to-transparent p-3 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+                  <span className="truncate text-sm font-bold">{post.title}</span>
+                  <span className="mt-0.5 flex gap-3 text-xs opacity-90">
                     <span>♥ {post.likeCount}</span>
                     <span>💬 {post.commentCount}</span>
                   </span>
@@ -94,9 +114,6 @@ export default function PhotoGrid({ posts }: Props) {
           })}
         </div>
       ))}
-      {rows.length === 0 && posts.length === 0 && (
-        <p className="py-16 text-center text-sm text-neutral-400">{t('photoGallery.empty')}</p>
-      )}
     </div>
   )
 }

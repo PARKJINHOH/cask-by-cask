@@ -47,7 +47,13 @@ export default function PostFormPage() {
   const { boardType: boardTypeParam, id } = useParams<{ boardType: string; id: string }>()
   const postId = id ? Number(id) : undefined
   const isEdit = !!postId
-  const boardType = (boardTypeParam === 'notice' ? 'NOTICE' : 'FREE') as BoardType
+  // 이미지 갤러리(PHOTO)는 글쓰기가 포토카드 편집기로 가고 수정만 이 화면을 쓴다.
+  // FREE 로 뭉뚱그리면 자유게시판 말머리 목록이 딸려 와 저장이 막힌다(갤러리 글은 말머리가 없다).
+  const boardType = (
+    boardTypeParam === 'notice' ? 'NOTICE'
+      : boardTypeParam === 'photo' ? 'PHOTO'
+        : 'FREE'
+  ) as BoardType
   const boardPath = boardTypeParam ?? 'free'
 
   const { t, i18n } = useTranslation()
@@ -232,8 +238,10 @@ export default function PostFormPage() {
   // 성인 전용(주류) 글은 작성·수정 시 성인인증 필요
   const needsAdultVerify = adultOnly && me?.adultVerified !== true
 
+  // 말머리는 목록이 있는 게시판에서만 필수 — 말머리가 없는 게시판(PHOTO)까지 막지 않는다.
+  const prefixSatisfied = prefixes.length === 0 || prefixId !== ''
   const canSubmit = title.trim().length > 0 && content.trim().length > 0 &&
-    prefixId !== '' && !needsAdultVerify && hashtagsValid &&
+    prefixSatisfied && !needsAdultVerify && hashtagsValid &&
     (!pollEnabled || (pollQuestion.trim() && pollOptions.filter((o) => o.trim()).length >= 2))
 
   const addPollOption = () => {

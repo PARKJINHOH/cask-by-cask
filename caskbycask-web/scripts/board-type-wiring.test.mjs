@@ -108,6 +108,17 @@ describe('PHOTO 게시판 배선', () => {
       /\{\s*path:\s*'\/admin\/photo-cards',\s*label:\s*'포토카드 템플릿'/)
   })
 
+  test('수정 화면이 PHOTO 를 FREE 로 뭉뚱그리지 않는다 (말머리 때문에 저장이 막힌다)', () => {
+    const form = read(WEB, 'src/views-spa/community/PostFormPage.tsx')
+    // photo 를 FREE 로 매핑하면 자유게시판 말머리 목록이 딸려 오고,
+    // 갤러리 글은 말머리가 없어 prefixId 가 비어 저장 버튼이 영구 비활성화된다.
+    assert.match(form, /boardTypeParam === 'photo' \? 'PHOTO'/)
+    // 말머리가 없는 게시판까지 필수로 막지 않는지
+    assert.match(form, /prefixes\.length === 0 \|\| prefixId !== ''/)
+    assert.ok(!/canSubmit =[\s\S]{0,200}?\n\s*prefixId !== '' &&/.test(form),
+      'canSubmit 이 말머리를 무조건 요구하면 PHOTO 수정이 막힌다')
+  })
+
   test('주류 태그 삭제 연쇄가 걸려 있다 (없으면 전체 게시글 삭제가 실패한다)', () => {
     const post = read(API, 'src/main/java/com/caskbycask/domain/community/entity/Post.java')
     assert.match(post, /@OneToMany\(mappedBy = "post", cascade = CascadeType\.ALL, orphanRemoval = true\)[\s\S]{0,80}PostSpiritTag/)

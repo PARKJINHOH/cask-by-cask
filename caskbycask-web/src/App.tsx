@@ -39,6 +39,7 @@ const ByobListPage = lazy(() => import('@/views-spa/community/ByobListPage'))
 const ByobDetailPage = lazy(() => import('@/views-spa/community/ByobDetailPage'))
 const ByobFormPage = lazy(() => import('@/views-spa/community/ByobFormPage'))
 const PhotoGalleryPage = lazy(() => import('@/views-spa/community/PhotoGalleryPage'))
+const PhotoPostDetailPage = lazy(() => import('@/views-spa/community/PhotoPostDetailPage'))
 const PhotoCardPage = lazy(() => import('@/views-spa/PhotoCardPage'))
 const NotificationsPage = lazy(() => import('@/views-spa/NotificationsPage'))
 const AdminUserPage = lazy(() => import('@/views-spa/admin/AdminUserPage'))
@@ -142,6 +143,8 @@ export default function App() {
             <Route path="community/byob" element={<ByobListPage />} />
             {/* 이미지 갤러리 — 정적 세그먼트라 community/:boardType/:id 보다 먼저 와야 한다 */}
             <Route path="community/photo" element={<PhotoGalleryPage />} />
+            {/* 사진 상세는 인스타 형태(왼쪽 사진·오른쪽 댓글) 전용 화면을 쓴다 */}
+            <Route path="community/photo/:id" element={<PhotoPostDetailPage />} />
             <Route path="community/byob/:id" element={<ByobDetailPage />} />
             <Route path="community/:boardType/:id" element={<PostDetailPage />} />
             <Route path="tier-lists" element={<TierListPage />} />

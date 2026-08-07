@@ -2592,7 +2592,13 @@
     "loadingMore": "Loading more…",
     "end": "That is all for now.",
     "spiritPhotos": "Photos of this spirit",
-    "spiritPhotosEmpty": "No photos of this spirit yet."
+    "spiritPhotosEmpty": "No photos of this spirit yet.",
+    "share": "Share",
+    "linkCopied": "Link copied.",
+    "noImage": "This photo could not be loaded.",
+    "openViewer": "Open image viewer",
+    "prevPost": "Previous photo",
+    "nextPost": "Next photo"
   },
   "photoCard": {
     "exifFocalLength35": "35mm equiv.",

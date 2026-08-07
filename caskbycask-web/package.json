@@ -40,7 +40,7 @@
         "test:exif": "node --import ./scripts/test-alias-register.mjs --test scripts/exif-reader.test.mjs",
         "test:board-wiring": "node --test scripts/board-type-wiring.test.mjs",
         "test:flyway": "node --test scripts/flyway-migrations.test.mjs",
-        "test:justified": "node --import ./scripts/test-alias-register.mjs --test scripts/justified-layout.test.mjs"
+        "test:photo-gallery": "node --import ./scripts/test-alias-register.mjs --test scripts/photo-gallery-layout.test.mjs"
     },
     "dependencies": {
         "@dnd-kit/core": "^6.3.1",

@@ -2592,7 +2592,13 @@
     "loadingMore": "다음 페이지 불러오는 중…",
     "end": "마지막 사진입니다.",
     "spiritPhotos": "이 술의 사진",
-    "spiritPhotosEmpty": "아직 이 술의 사진이 없습니다."
+    "spiritPhotosEmpty": "아직 이 술의 사진이 없습니다.",
+    "share": "공유",
+    "linkCopied": "링크가 복사되었습니다.",
+    "noImage": "사진을 불러올 수 없습니다.",
+    "openViewer": "이미지 크게 보기",
+    "prevPost": "이전 사진",
+    "nextPost": "다음 사진"
   },
   "photoCard": {
     "exifFocalLength35": "35mm 환산",
