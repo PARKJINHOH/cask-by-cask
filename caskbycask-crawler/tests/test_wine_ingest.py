@@ -9,7 +9,7 @@ from wine_ingest.vivino_web import DEFAULT_USER_AGENT, _decode_html, _number, _p
 
 
 class WineIngestProviderTest(unittest.TestCase):
-    def test_license_review_fixture_contains_three_english_only_items(self):
+    def test_offline_fixture_contains_three_english_only_items(self):
         fixture = Path(__file__).parents[1] / "fixtures" / "wine_license_review.json"
         items = FixtureWineProvider(str(fixture)).collect(10)
         self.assertEqual(3, len(items))
@@ -23,33 +23,16 @@ class WineIngestProviderTest(unittest.TestCase):
             items = FixtureWineProvider(str(path)).collect(10)
             self.assertEqual(3, len(items))
 
-    def test_web_crawler_fails_closed_without_usage_grant(self):
-        with self.assertRaises(RuntimeError):
-            VivinoWebCrawlerProvider(usage_grant_ref="")
-
     def test_web_crawler_rejects_non_vivino_start_url(self):
         with self.assertRaises(ValueError):
             VivinoWebCrawlerProvider(
-                usage_grant_ref="email:approved",
                 start_urls=["https://example.com/w/1"],
             )
 
-    def test_web_crawler_rejects_user_agent_that_exposes_the_service(self):
-        for leaking in (
-            "CaskByCaskWineCrawler/1.0 (contact: drinkindex.cs@gmail.com)",
-            "cask-by-cask-bot/2.0",
-            "WineBot/1.0 (contact: ops@example.com)",
-        ):
-            with self.subTest(user_agent=leaking), self.assertRaises(RuntimeError):
-                VivinoWebCrawlerProvider(usage_grant_ref="email:approved", user_agent=leaking)
-
-    def test_default_user_agent_carries_no_service_identity(self):
-        provider = VivinoWebCrawlerProvider(usage_grant_ref="email:approved", fetcher=lambda _url: "")
-        lowered = provider.user_agent.lower()
-        self.assertEqual(DEFAULT_USER_AGENT, provider.user_agent)
-        self.assertNotIn("caskbycask", lowered)
-        self.assertNotIn("drinkindex", lowered)
-        self.assertNotIn("@", provider.user_agent)
+    def test_blank_user_agent_falls_back_to_the_default(self):
+        self.assertEqual(DEFAULT_USER_AGENT, VivinoWebCrawlerProvider(fetcher=lambda _url: "").user_agent)
+        custom = "WineBot/1.0 (contact: ops@example.com)"
+        self.assertEqual(custom, VivinoWebCrawlerProvider(user_agent=custom, fetcher=lambda _url: "").user_agent)
 
     def test_web_crawler_parses_structured_page_and_maps_taste_levels(self):
         detail_url = "https://www.vivino.com/US/en/example-wine/w/123?year=2020"
@@ -75,7 +58,6 @@ class WineIngestProviderTest(unittest.TestCase):
         self.assertEqual("MEDIUM_FULL", item["wineDetail"]["body"])
         self.assertEqual("HIGH", item["wineDetail"]["acidity"])
         self.assertEqual("MEDIUM_HIGH", item["wineDetail"]["tannin"])
-        self.assertEqual("email:approved", item["usageGrantRef"])
         self.assertNotIn("nameKo", item)
 
     def test_web_crawler_caps_random_detail_fetches_to_ten(self):
@@ -221,7 +203,6 @@ class WineIngestProviderTest(unittest.TestCase):
         rng = Mock()
         rng.shuffle.side_effect = lambda values: None
         return VivinoWebCrawlerProvider(
-            usage_grant_ref="email:approved",
             start_urls=["https://www.vivino.com/explore"],
             fetcher=fetch,
             sleeper=lambda _seconds: None,

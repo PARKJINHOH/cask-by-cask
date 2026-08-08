@@ -8,13 +8,16 @@
 
 허용 값(enum)은 코드와 1:1로 맞춰져 있다. 값을 바꿀 때는 아래 소스도 함께 고쳐야 한다.
 
-- 와인 종류·인증·수확/발효/오크 선택지 — `caskbycask-web/src/domain/admin/components/WineDetailSection.tsx`
+- 와인 종류·인증·수확/발효/오크 선택지 — `caskbycask-web/src/domain/spirit/data/wine.ts`
+  (등록 폼과 JSON 붙여넣기가 **같은 목록**을 참조한다)
 - 관능 5단계 척도 — `caskbycask-web/src/domain/spirit/data/wineTasteScale.ts`
 - 산지 코드 — `caskbycask-api/.../entity/enums/WineRegion.java` (카테고리 미지정 = 와인 기본값)
-- 길이·범위 제약 — `.../dto/WineDetailRequest.java`
+- 길이·범위 제약 — `.../dto/WineDetailRequest.java`, `caskbycask-web/src/domain/spirit/data/spiritLimits.ts`
 - 빈티지 하위 항목 구조 — `.../dto/CreateVariantRequest.java`, `VariantType.VINTAGE`
+- JSON → 폼 매핑 — `caskbycask-web/src/domain/admin/utils/spiritResearchJson.ts`
+  (허용 값이 아니면 **조용히 버리고 경고**한다. 이 문서의 값 목록은 여기와 어긋나면 안 된다)
 
-**와인은 다른 카테고리와 달리 공통 상세(숙성연수·증류/병입연월·출시일·배치번호·병번호·총병수)가
+**와인은 다른 카테고리와 달리 공통 상세(숙성연수·증류/병입연월·병번호·총병수)가
 폼에서 전부 숨겨진다.** 빈티지가 그 역할을 대신한다. 프롬프트도 그에 맞춰 해당 필드를 요구하지 않는다.
 
 ---
@@ -153,7 +156,7 @@ JSON 외의 설명은 배열 뒤에 `## 메모`로 따로 적으세요.
 | `vintages[].abv` | **필수**. 0~100. 소수 첫째 자리까지 (13.5) |
 | `vintages[].volumeMl` | **필수**. 1~30000. 표준 750. 하프 375, 매그넘 1500 |
 
-**주의:** 와인은 등록 폼에 `브랜드명`·`에디션`·`병입 연월`·`출시일`·`배치 번호`·`병 번호`·
+**주의:** 와인은 등록 폼에 `브랜드명`·`에디션`·`병입 연월`·`병 번호`·
 `총 병 수`·`숙성 연수` 입력란이 **없습니다.** 빈티지가 그 역할을 합니다.
 해당 정보를 알아냈으면 `notes`에 문장으로 적으세요.
 

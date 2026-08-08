@@ -140,7 +140,6 @@ export interface SpiritVariant {
   vintageStatus: WineVintageStatus | null
   abv: number | null
   volumeMl: number | null
-  batchNo: string | null
   bottleNo: string | null
   bottledDate: string | null
   avgScore: number | null
@@ -194,17 +193,11 @@ export interface SpiritCommonDetailResponse {
   isNas: boolean
   ageStatement: number | null
   ageStatementMonths: number | null
-  ageStatementMin: number | null
-  ageStatementMinMonths: number | null
-  ageStatementMax: number | null
-  ageStatementMaxMonths: number | null
   distilledDate: string | null
   bottledDate: string | null
-  releaseDate: string | null
   volumeMl: number | null
   abv: number | null
   bottleNo: string | null
-  batchNo: string | null
   totalBottles: number | null
 }
 

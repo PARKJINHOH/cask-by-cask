@@ -300,6 +300,18 @@ public enum ErrorCode {
     AI_NEWS_SYSTEM_AUTHOR_NOT_FOUND(HttpStatus.SERVICE_UNAVAILABLE, "AI_NEWS_009", "AI 소식 시스템 작성자 계정이 준비되지 않았습니다."),
     AI_NEWS_TOPIC_IN_USE(HttpStatus.CONFLICT, "AI_NEWS_010", "이미 생성된 원고가 연결된 정보 주제는 삭제할 수 없습니다."),
 
+    // Wine ingestion (Vivino)
+    WINE_INGEST_SETTINGS_NOT_FOUND(HttpStatus.NOT_FOUND, "WINE_INGEST_001", "와인 수집 설정을 찾을 수 없습니다."),
+    WINE_INGEST_RUN_NOT_FOUND(HttpStatus.NOT_FOUND, "WINE_INGEST_002", "와인 수집 실행을 찾을 수 없습니다."),
+    WINE_INGEST_HOURLY_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "WINE_INGEST_003",
+            "최근 1시간 수집 예약량을 모두 사용했습니다. 잠시 후 다시 시도해주세요."),
+    WINE_INGEST_FIXTURE_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "WINE_INGEST_004",
+            "오프라인 테스트 수집은 한 번에 최대 3건까지 요청할 수 있습니다."),
+    WINE_INGEST_ITEM_NOT_PUBLISHABLE(HttpStatus.CONFLICT, "WINE_INGEST_005",
+            "'등록 성공' 상태의 수집 건만 공개할 수 있습니다."),
+    WINE_INGEST_KOREAN_NAME_REQUIRED(HttpStatus.BAD_REQUEST, "WINE_INGEST_006",
+            "마스터에 영문명과 다른 국문명을 입력한 뒤 공개할 수 있습니다."),
+
     // Instagram / Threads publishing
     SOCIAL_PUBLICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "SOCIAL_001", "SNS 게시 이력을 찾을 수 없습니다."),
     SOCIAL_PUBLICATION_ACCESS_DENIED(HttpStatus.FORBIDDEN, "SOCIAL_002", "본인의 SNS 게시 이력만 접근할 수 있습니다."),

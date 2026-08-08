@@ -13,7 +13,7 @@ export const adminWineIngestApi = {
     const res = await axiosInstance.get<ApiResponse<WineIngestSettings>>('/api/admin/wine-ingest/settings')
     return res.data.data!
   },
-  updateSettings: async (data: Omit<WineIngestSettings, 'liveNetworkEnabled' | 'updatedAt'>) => {
+  updateSettings: async (data: Omit<WineIngestSettings, 'updatedAt'>) => {
     const res = await axiosInstance.put<ApiResponse<WineIngestSettings>>('/api/admin/wine-ingest/settings', data)
     return res.data.data!
   },

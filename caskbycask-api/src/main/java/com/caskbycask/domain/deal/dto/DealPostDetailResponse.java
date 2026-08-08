@@ -38,7 +38,6 @@ public record DealPostDetailResponse(
         String spiritVariantValueEn,
         String spiritSeriesIdentifier,
         String spiritSeriesIdentifierEn,
-        String spiritBatchNo,
         String spiritBottledDate,
         StoreType storeType
 ) {
@@ -74,7 +73,6 @@ public record DealPostDetailResponse(
                 spirit != null ? spirit.getVariantValueEn() : null,
                 spirit != null ? spirit.getSeriesIdentifier() : null,
                 spirit != null ? spirit.getSeriesIdentifierEn() : null,
-                commonDetail != null ? commonDetail.getBatchNo() : null,
                 commonDetail != null ? commonDetail.getBottledDate() : null,
                 d.getStoreType()
         );

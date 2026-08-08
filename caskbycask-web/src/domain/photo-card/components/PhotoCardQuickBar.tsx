@@ -21,13 +21,6 @@ interface Props {
   displayScale: number
   /** 카드가 놓인 영역의 크기(화면 px) — 바가 밖으로 나가지 않게 잡아 둔다 */
   displayWidth: number
-  /**
-   * 작업 영역 아래에 붙는 형태로 그릴지.
-   *
-   * 좁은 화면에서는 글자 위에 띄우지 않는다 — 바 하나가 카드보다 넓어 붙일 자리가 없고,
-   * 억지로 띄우면 화면 밖으로 나가거나 정작 고치려는 글자를 가린다.
-   */
-  docked?: boolean
 }
 
 /** 글자 크기를 한 번에 얼마나 키우고 줄일지(프레임 짧은 변 대비). */
@@ -55,12 +48,12 @@ export const showsQuickBar = (layer: PhotoCardLayer | null | undefined, locked: 
  * 텍스트일 때만 뜬다. 도형·이미지는 크기 손잡이로 충분하고, 여기 담을 만한 공통 속성이 없다.
  *
  * ── 자리 ──
- * 넓은 화면에서는 고른 글자 바로 위에 띄운다(무엇을 고치는 중인지 눈이 이어진다).
- * 좁은 화면에서는 그럴 수 없다 — 바가 카드보다 넓어 띄울 자리가 없고, 띄우면 화면 밖으로 나간다.
- * 모바일 편집기들(Pixlr·Canva)이 그렇듯 작업 영역 아래에 가로로 붙이고, 넘치면 옆으로 굴린다.
+ * 고른 글자 바로 위에 띄운다 — 무엇을 고치는 중인지 눈이 이어진다.
+ * 넓은 화면에서만 쓴다(PhotoCardStage): 좁은 화면에서는 바가 카드보다 넓어 띄울 자리가 없고,
+ * 작업 영역 아래에 붙이면 카드가 그만큼 밀린다. 그쪽은 아래 속성 시트가 같은 값을 모두 담고 있다.
  */
 export default function PhotoCardQuickBar({
-  editor, bounds, displayScale, displayWidth, docked = false,
+  editor, bounds, displayScale, displayWidth,
 }: Props) {
   const { t } = useTranslation()
   // 크기를 손으로 칠 때는 "1" 처럼 아직 완성되지 않은 값도 그대로 보여 줘야 한다.
@@ -98,8 +91,7 @@ export default function PhotoCardQuickBar({
 
   const content = (
     <>
-      {/* 붙임 형태에서는 남는 폭을 글꼴 칸이 가져간다 — 좁은 화면에서 옆으로 굴릴 거리를 줄인다. */}
-      <div className={docked ? 'min-w-[104px] flex-1' : 'w-[196px] shrink-0'}>
+      <div className="w-[196px] shrink-0">
         <FontPicker
           value={layer.fontKey}
           onChange={(fontKey) => patch({ fontKey })}
@@ -193,20 +185,6 @@ export default function PhotoCardQuickBar({
   const guards = {
     onPointerDown: (event: React.PointerEvent) => event.stopPropagation(),
     [NO_ZOOM_ATTRIBUTE]: '',
-  }
-
-  if (docked) {
-    return (
-      <div
-        // 작업 영역의 바닥이지 화면의 바닥이 아니다(아래에 속성 시트·도구 바가 있다).
-        // 그래서 safe-area 여백은 두지 않는다 — 그 몫은 맨 아래 도구 바가 이미 맡고 있다.
-        className="di-photo-card-rail absolute inset-x-0 bottom-0 z-30 flex items-center gap-1 overflow-x-auto border-t border-neutral-200 bg-white px-2 py-1.5 shadow-[0_-4px_14px_rgba(0,0,0,0.18)]"
-        style={{ touchAction: 'pan-x' }}
-        {...guards}
-      >
-        {content}
-      </div>
-    )
   }
 
   return (

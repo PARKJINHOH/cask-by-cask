@@ -1,17 +1,13 @@
-export type WineIngestProviderMode = 'FIXTURE' | 'LIVE'
 export type WineIngestRunType = 'FIXTURE' | 'MANUAL' | 'SCHEDULED'
 export type WineIngestRunStatus = 'CANCELLED' | 'FAILED' | 'PARTIAL' | 'QUEUED' | 'RUNNING' | 'SUCCEEDED'
 export type WineIngestItemStatus = 'CREATED' | 'DUPLICATE_SKIPPED' | 'FAILED' | 'NOT_FOUND_SKIPPED'
 
 export interface WineIngestSettings {
+  /** 켜면 매시 cron이 Vivino 수집을 예약한다. 수동 실행은 이 값과 무관하다. */
   automationEnabled: boolean
-  providerMode: WineIngestProviderMode
-  licenseApproved: boolean
-  usageGrantRef: string | null
   hourlyLimit: number
   maxRunItems: number
   slackAlertEnabled: boolean
-  liveNetworkEnabled: boolean
   updatedAt: string
 }
 

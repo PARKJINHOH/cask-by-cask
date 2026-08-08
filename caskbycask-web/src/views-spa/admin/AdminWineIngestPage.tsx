@@ -21,6 +21,11 @@ const badge = (status: string) => status === 'SUCCEEDED' || status === 'CREATED'
   : status === 'QUEUED' || status.includes('SKIPPED') ? 'bg-amber-50 text-amber-700'
   : status === 'CANCELLED' ? 'bg-neutral-100 text-neutral-600' : 'bg-red-50 text-red-700'
 
+/** 백엔드가 원인별 메시지를 내려주므로 그대로 보여준다. 네트워크 오류 등에만 기본 문구를 쓴다. */
+const errorMessage = (error: unknown) =>
+  (error as { response?: { data?: { message?: string } } })?.response?.data?.message
+  ?? '요청을 처리하지 못했습니다. 설정과 입력값을 확인한 뒤 다시 시도해 주세요.'
+
 export default function AdminWineIngestPage() {
   const qc = useQueryClient()
   const [selectedRunId, setSelectedRunId] = useState<number | null>(null)
@@ -56,9 +61,6 @@ export default function AdminWineIngestPage() {
   const save = useMutation({
     mutationFn: (value: WineIngestSettings) => adminWineIngestApi.updateSettings({
       automationEnabled: value.automationEnabled,
-      providerMode: value.providerMode,
-      licenseApproved: value.licenseApproved,
-      usageGrantRef: value.usageGrantRef,
       hourlyLimit: value.hourlyLimit,
       maxRunItems: value.maxRunItems,
       slackAlertEnabled: value.slackAlertEnabled,
@@ -77,51 +79,49 @@ export default function AdminWineIngestPage() {
         <p className="text-sm text-neutral-500">주류 › 와인 크롤링</p>
         <h1 className="mt-1 text-2xl font-bold text-neutral-900">와인 크롤링</h1>
         <p className="mt-2 text-sm text-neutral-500">수집 실행 상태와 등록·중복·실패 결과를 한 화면에서 확인합니다.</p>
-        {mutationError && <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">요청을 처리하지 못했습니다. 설정과 입력값을 확인한 뒤 다시 시도해 주세요.</p>}
+        {mutationError && <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{errorMessage(mutationError)}</p>}
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
         <div className={CARD}><p className="text-xs text-neutral-500">대기</p><p className="mt-1 text-2xl font-bold">{dashboard?.queuedCount ?? 0}</p></div>
         <div className={CARD}><p className="text-xs text-neutral-500">진행 중</p><p className="mt-1 text-2xl font-bold text-blue-700">{dashboard?.runningCount ?? 0}</p></div>
-        <div className={CARD}><p className="text-xs text-neutral-500">웹 수집 허가 상태</p><p className="mt-1 font-bold">{dashboard?.settings.liveNetworkEnabled ? 'Vivino 웹 수집 가능' : 'Fixture 전용'}</p></div>
+        <div className={CARD}><p className="text-xs text-neutral-500">자동 수집</p><p className="mt-1 font-bold">{dashboard?.settings.automationEnabled ? '켜짐 · 매시 예약' : '꺼짐 · 수동 실행만'}</p></div>
       </div>
 
       <section className={CARD}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="font-bold text-neutral-900">수집 실행</h2>
-            <p className="mt-1 text-xs text-neutral-500">Fixture는 네트워크에 접속하지 않으며 3건 이내 샘플만 등록합니다.</p>
+            <p className="mt-1 text-xs text-neutral-500">오프라인 테스트는 네트워크에 접속하지 않고 번들 샘플 3건만 등록합니다.</p>
+            <p className="mt-1 text-xs text-neutral-500">
+              버튼을 누르면 <strong>대기</strong> 상태로 예약되고, 서버 수집 워커가 <strong>매시 37분</strong>에 가져가 실행합니다.
+            </p>
           </div>
           <div className="flex gap-2">
             <button onClick={() => fixture.mutate()} disabled={fixture.isPending}
-              className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">샘플 3건 수집</button>
-            <button onClick={() => live.mutate()} disabled={!dashboard?.settings.liveNetworkEnabled || live.isPending}
-              className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-30">Vivino 웹 수집 시작</button>
+              className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">오프라인 테스트 3건</button>
+            <button onClick={() => live.mutate()} disabled={live.isPending}
+              className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-30">Vivino 수집 시작</button>
           </div>
         </div>
       </section>
 
       {form && <section className={CARD}>
         <h2 className="font-bold text-neutral-900">수집 설정</h2>
-        <div className="mt-4 grid gap-4 md:grid-cols-4">
-          <label className="text-xs font-semibold text-neutral-600">모드
-            <select className={`${INPUT} mt-1 w-full`} value={form.providerMode} onChange={(e) => updateForm({ ...form, providerMode: e.target.value as 'FIXTURE' | 'LIVE' })}>
-              <option value="FIXTURE">Fixture</option><option value="LIVE">Vivino 웹 크롤링 (서면 허가 필요)</option>
-            </select>
-          </label>
+        <p className="mt-1 text-xs text-neutral-500">Vivino 부하를 낮게 유지하기 위한 수집량 상한입니다. 요청 간격 5초와 429 즉시 중단은 크롤러가 항상 적용합니다.</p>
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
           <label className="text-xs font-semibold text-neutral-600">시간당 최대
             <input className={`${INPUT} mt-1 w-full`} type="number" min={1} max={10} value={form.hourlyLimit} onChange={(e) => updateForm({ ...form, hourlyLimit: Number(e.target.value) })} />
           </label>
           <label className="text-xs font-semibold text-neutral-600">실행당 최대
             <input className={`${INPUT} mt-1 w-full`} type="number" min={1} max={10} value={form.maxRunItems} onChange={(e) => updateForm({ ...form, maxRunItems: Number(e.target.value) })} />
           </label>
-          <label className="text-xs font-semibold text-neutral-600">이용 허가 근거
-            <input className={`${INPUT} mt-1 w-full`} value={form.usageGrantRef ?? ''} placeholder="계약/이메일 참조" onChange={(e) => updateForm({ ...form, usageGrantRef: e.target.value })} />
-          </label>
         </div>
-        <div className="mt-4 flex flex-wrap gap-5 text-sm">
-          <label className="flex items-center gap-2"><input type="checkbox" checked={form.licenseApproved} onChange={(e) => updateForm({ ...form, licenseApproved: e.target.checked })} />웹 크롤링 허가 확인</label>
-          <label className="flex items-center gap-2"><input type="checkbox" checked={form.automationEnabled} onChange={(e) => updateForm({ ...form, automationEnabled: e.target.checked })} />자동 수집</label>
+        <div className="mt-4 flex flex-wrap items-center gap-5 text-sm">
+          <label className="flex items-center gap-2" title="매시 37분 cron이 Vivino 수집 회차를 자동으로 예약합니다.">
+            <input type="checkbox" checked={form.automationEnabled}
+              onChange={(e) => updateForm({ ...form, automationEnabled: e.target.checked })} />자동 수집
+          </label>
           <label className="flex items-center gap-2"><input type="checkbox" checked={form.slackAlertEnabled} onChange={(e) => updateForm({ ...form, slackAlertEnabled: e.target.checked })} />Slack 실패 알림</label>
           <button onClick={() => save.mutate(form)} disabled={save.isPending || !formDirty} className="ml-auto rounded-lg border border-neutral-300 px-4 py-2 font-semibold disabled:opacity-40">설정 저장</button>
         </div>

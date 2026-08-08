@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type RefObject } from 'react'
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import useIsDesktop from '@/shared/hooks/useIsDesktop'
 import type { PhotoCardEditor } from '../hooks/usePhotoCardEditor'
@@ -47,12 +47,12 @@ const DRAG_THRESHOLD = 5
 /** 작업 영역 아래 겹쳐 놓는 것들(안내 문구·미세 이동 패드)이 바닥에서 띄우는 거리(화면 px). */
 const OVERLAY_GAP = 12
 /**
- * 좁은 화면에서 빠른 편집 바가 작업 영역 바닥에 차지하는 높이(화면 px).
+ * 조작 안내를 띄워 두는 시간(ms).
  *
- * 바는 카드 위에 얹히므로, 이만큼은 화면 맞춤에서 미리 비워 둔다(usePhotoCardViewport).
- * 글자를 고를 때만 비우면 그때마다 카드 크기가 튄다 — 늘 비워 두어야 자리가 고정된다.
+ * 한 번 읽으면 그만인 문구다. 계속 남겨 두면 카드 아래를 가리기만 하므로,
+ * 들어온 직후 잠깐 보여 주고 걷는다.
  */
-export const DOCKED_BAR_HEIGHT = 58
+const STAGE_HINT_MS = 10_000
 
 interface DragBase {
   pointerId: number
@@ -101,6 +101,13 @@ export default function PhotoCardStage({
   const dragRef = useRef<LayerDrag | PhotoDrag | null>(null)
   const resizeBaseRef = useRef<{ layer: PhotoCardLayer; bounds: LayerBounds } | null>(null)
   const [guides, setGuides] = useState<SnapLine[]>([])
+  /** 조작 안내가 아직 떠 있는가 — 들어온 뒤 STAGE_HINT_MS 동안만 참이다. */
+  const [hintVisible, setHintVisible] = useState(true)
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setHintVisible(false), STAGE_HINT_MS)
+    return () => window.clearTimeout(timer)
+  }, [])
 
   const displayWidth = size.width * viewport.zoom
   const displayHeight = size.height * viewport.zoom
@@ -332,11 +339,6 @@ export default function PhotoCardStage({
   const selectedIsLocked = editor.selectedLayer
     ? editor.lockedIds.has(editor.selectedLayer.id)
     : false
-  const quickBarLayer = showsQuickBar(editor.selectedLayer, selectedIsLocked)
-    && selectionBounds.length === 1
-  /** 좁은 화면에서 빠른 편집 바가 바닥을 차지하고 있는가 — 위에 얹은 것들이 그만큼 비켜선다. */
-  const dockedBar = !isDesktop && quickBarLayer && Boolean(editor.photoImage)
-  const overlayBottom = dockedBar ? DOCKED_BAR_HEIGHT : OVERLAY_GAP
 
   return (
     <div
@@ -375,8 +377,9 @@ export default function PhotoCardStage({
               selection={selectionBounds}
               guides={guides}
               showHandles={Boolean(editor.selectedLayer) && !selectedIsLocked}
-              // 글자는 빠른 편집 바에 삭제 버튼이 있다. ✕ 를 같이 두면 서로 가린다.
-              showRemove={!showsQuickBar(editor.selectedLayer, selectedIsLocked)}
+              // 넓은 화면에서는 글자 위에 빠른 편집 바가 떠 그 안에 삭제 버튼이 있다 —
+              // ✕ 를 같이 두면 서로 가린다. 좁은 화면에는 그 바가 없으므로 ✕ 를 남긴다.
+              showRemove={!isDesktop || !showsQuickBar(editor.selectedLayer, selectedIsLocked)}
               rotation={editor.selectedLayer?.rotation ?? 0}
               onResize={handleResize}
               onRotate={handleRotate}
@@ -386,7 +389,8 @@ export default function PhotoCardStage({
               }}
             />
             {/* 고른 글자 바로 위에 뜨는 빠른 편집 바. 끌고 있는 동안은 방해되므로 감춘다.
-                좁은 화면에서는 여기 띄우지 않고 작업 영역 아래에 붙인다(아래 참조). */}
+                좁은 화면에서는 아예 띄우지 않는다 — 바가 카드보다 넓어 얹을 자리가 없고,
+                같은 값(글꼴·크기·색)은 아래 속성 시트에 모두 있다. */}
             {isDesktop && !dragRef.current && (
               <PhotoCardQuickBar
                 editor={editor}
@@ -420,44 +424,33 @@ export default function PhotoCardStage({
         </div>
       )}
 
+      {/* 미세 이동 패드 — 요소를 골랐을 때만. 손가락이 요소를 가리지 않는 자리에서 옮긴다. */}
       {editor.photoImage && (
-        <>
-          {/* 좁은 화면의 빠른 편집 바. 카드가 아니라 작업 영역에 붙는다 —
-              카드가 화면 밖으로 밀려 있어도 바는 늘 손이 닿는 자리에 있어야 한다. */}
-          {!isDesktop && (
-            <PhotoCardQuickBar
-              editor={editor}
-              bounds={selectionBounds.length === 1 ? selectionBounds[0] : null}
-              displayScale={displayScale}
-              displayWidth={displayWidth}
-              docked
-            />
-          )}
-
-          {/* 미세 이동 패드 — 요소를 골랐을 때만. 손가락이 요소를 가리지 않는 자리에서 옮긴다. */}
-          <PhotoCardNudgePad
-            editor={editor}
-            size={size}
-            displayScale={displayScale}
-            className="absolute right-3 z-20 lg:hidden"
-            style={{ bottom: overlayBottom }}
-          />
-        </>
+        <PhotoCardNudgePad
+          editor={editor}
+          size={size}
+          displayScale={displayScale}
+          className="absolute right-3 z-20 lg:hidden"
+          style={{ bottom: OVERLAY_GAP }}
+        />
       )}
 
       {/* 조작 안내 — 캔버스 위에 얹어 자리를 차지하지 않는다.
           한 번 읽으면 그만인 문구라 바탕은 비쳐 두고(카드를 가리지 않게), 대신 살짝 흐려
           그 위의 글자가 사진 무늬에 묻히지 않게 한다. 글자 그림자도 같은 몫이다.
-          좁은 화면에서는 요소를 고른 순간 감춘다(패드·편집 바와 자리를 다툰다). */}
-      <p
-        className={`pointer-events-none absolute left-1/2 max-w-[calc(100%-1.5rem)] -translate-x-1/2 truncate rounded-full bg-neutral-900/35 px-3 py-1 text-[11px] font-medium text-white backdrop-blur-sm ${
-          editor.selectedLayerIds.length === 0 ? '' : 'hidden lg:block'
-        }`}
-        style={{ bottom: overlayBottom, textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}
-      >
-        <span className="lg:hidden">{t('photoCard.stageHintTouch')}</span>
-        <span className="hidden lg:inline">{t('photoCard.stageHint')}</span>
-      </p>
+          들어온 뒤 잠깐만 띄우고(STAGE_HINT_MS) 걷으며,
+          좁은 화면에서는 그 사이라도 요소를 고른 순간 감춘다(패드와 자리를 다툰다). */}
+      {hintVisible && (
+        <p
+          className={`pointer-events-none absolute left-1/2 max-w-[calc(100%-1.5rem)] -translate-x-1/2 truncate rounded-full bg-neutral-900/35 px-3 py-1 text-[11px] font-medium text-white backdrop-blur-sm ${
+            editor.selectedLayerIds.length === 0 ? '' : 'hidden lg:block'
+          }`}
+          style={{ bottom: OVERLAY_GAP, textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}
+        >
+          <span className="lg:hidden">{t('photoCard.stageHintTouch')}</span>
+          <span className="hidden lg:inline">{t('photoCard.stageHint')}</span>
+        </p>
+      )}
     </div>
   )
 }

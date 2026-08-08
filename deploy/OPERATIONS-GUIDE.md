@@ -864,33 +864,35 @@ tail -n 100 /app/caskbycask-crawler/logs/ai-news.log
 `HIDDEN`으로 저장한다. 기존 위스키·꼬냑 데이터와 기존 와인의 레코드 형식은 유지하고, 새 와인부터 마스터 아래
 `VINTAGE` 변형으로 저장한다.
 
-라이선스 검토 단계:
+동작 점검 단계:
 
-1. 관리자에서 `샘플 3건 수집`을 눌러 FIXTURE 실행을 만든다.
-2. 로컬 크롤러에서 `python wine_main.py`를 한 번 실행한다.
+1. 관리자에서 `오프라인 테스트 3건`을 눌러 FIXTURE 실행을 만든다.
+2. 크롤러에서 `run-wine.sh`를 한 번 실행한다(또는 매시 37분 cron을 기다린다).
 3. 관리자 목록에서 3건의 성공·중복 PASS·실패 사유와 숨김 상태를 확인한다.
-4. 사용자 상세 미리보기에서 이미지 우측 하단 `VIVINO · SAMPLE` 점수 표시를 촬영한다.
+4. 사용자 상세 미리보기에서 이미지 우측 하단 `VIVINO · SAMPLE` 점수 표시를 확인한다.
 
-FIXTURE는 외부 네트워크를 사용하지 않는 가상 검토 데이터다. LIVE는 별도 API나 토큰을 사용하지 않고,
-Vivino의 서면 허가가 관리자 설정에 기록된 뒤 허가 범위의 공개 HTML만 수집한다.
+FIXTURE는 외부 네트워크를 사용하지 않는 오프라인 점검 데이터다. Vivino 수집은 별도 API나 토큰 없이
+공개 HTML만 읽는다. Vivino 측 조건은 한 번에 과도한 호출을 하지 않는 것이므로, 아래 상한을 임의로
+올리지 않는다.
 
-크롤러 `.env` 항목:
+크롤러 `.env` 항목 — **모두 선택값이다.** 필수 값은 핫딜과 공유하는 `CASKBYCASK_API_URL`,
+`CASKBYCASK_INTERNAL_KEY` 두 개뿐이며 나머지는 코드 기본값으로 동작한다.
 
 | 키 | 용도 |
 |---|---|
-| `WINE_FIXTURE_PATH` | 라이선스 검토용 최대 3건 JSON. 기본 배포 경로 사용 |
+| `WINE_FIXTURE_PATH` | 오프라인 점검용 3건 JSON. 미설정 시 릴리스 내 기본 경로 사용 |
 | `VIVINO_BASE_URL` | 기본값 `https://www.vivino.com`. API URL이 아닌 공개 웹 기준 주소 |
-| `VIVINO_START_URLS` | 서면 허가 범위의 공개 탐색/카탈로그 시작 페이지. 쉼표로 여러 개 지정 |
+| `VIVINO_START_URLS` | 공개 탐색/카탈로그 시작 페이지. 쉼표로 여러 개 지정 |
 | `VIVINO_REQUEST_DELAY_SECONDS` | Vivino 요청 간 최소 간격. 코드가 1초 미만을 허용하지 않으며 운영 권장값은 5초 이상 |
 | `VIVINO_DISCOVERY_PAGE_LIMIT` | 실행당 탐색/페이지네이션 HTML 상한. 기본 3, 코드 절대 상한 10 |
 | `VIVINO_REQUEST_TIMEOUT_SECONDS` / `VIVINO_MAX_HTML_BYTES` | 요청 시간·HTML 응답 크기 안전 제한 |
-| `VIVINO_CRAWLER_USER_AGENT` | 수집 요청에 쓸 User-Agent. 서비스명(`caskbycask`, `cask-by-cask`, `drinkindex`)이나 `@`가 들어 있으면 실행 거부. 비우면 브랜드 없는 기본값 사용 |
+| `VIVINO_CRAWLER_USER_AGENT` | 수집 요청에 쓸 User-Agent. 비우면 일반 브라우저 기본값 사용 |
 | `SLACK_WEBHOOK_URL` | 와인명·원문 링크·실패 사유 알림. 기존 크롤러 webhook 재사용 |
 
 운영 안전장치:
 
-- 관리자 설정의 제공자 모드 `LIVE`, 웹 크롤링 허가 확인, 허가 근거가 모두 있어야 수동 LIVE가 열린다.
-- 자동 실행은 위 조건에 `자동 수집 ON`까지 필요하다. 하나라도 없으면 매시 cron은 LIVE 큐를 만들지 않는다.
+- 수동 실행(`오프라인 테스트 3건`, `Vivino 수집 시작`)은 언제든 가능하다.
+- 예약 실행은 관리자 설정의 `자동 수집`이 켜져 있을 때만 매시 cron이 만든다. 대기 중에 꺼지면 취소된다.
 - 실행당 최대 10건, 최근 1시간 예약량 최대 10건을 API와 크롤러 양쪽에서 제한한다.
 - 크롤러는 Vivino 공개 HTML의 JSON-LD/페이지 내 구조화 데이터만 파싱한다. 로그인·비공개 endpoint·CAPTCHA·접근 제한은 우회하지 않는다.
 - 외부 와인/빈티지 ID와 `생산자 + 정규화 영문명 + 빈티지` 해시를 이중 검사해 중복은 `PASS`한다.
@@ -906,9 +908,10 @@ crontab -l | grep run-wine.sh
 tail -n 100 /app/caskbycask-crawler/logs/wine-cron.log
 ```
 
-웹 크롤링 허가를 받은 후에만 `.env`의 허가된 시작 페이지를 확정하고 관리자에 계약/이메일 식별 문구를 기록한 뒤,
-수동 LIVE 1회 검증 후 자동 수집을 켠다. Vivino HTML 구조가 바뀌어 필수 필드 파싱이 실패하면 자동 수집을 끄고
-Slack의 링크·사유를 기준으로 파서를 수정한다.
+`.env`의 시작 페이지를 확정하고 `Vivino 수집 시작`으로 1회 검증한 뒤 자동 수집을 켠다.
+Vivino HTML 구조가 바뀌어 필수 필드 파싱이 실패하면 자동 수집을 끄고 Slack의 링크·사유를 기준으로 파서를 수정한다.
+Vivino가 429나 bot challenge로 응답하기 시작하면 우회하지 말고 `VIVINO_REQUEST_DELAY_SECONDS`를 올리거나
+`시간당 최대`를 낮춘다.
 
 ---
 

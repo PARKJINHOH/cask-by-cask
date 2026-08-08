@@ -73,7 +73,7 @@ const diChips = (label, chips, stack = false) => !chips ? '' : `
 const commonSection = () => `
   <p class="text-[11px] font-bold text-neutral-400 uppercase tracking-widest mb-2">공통</p>
   <dl class="grid grid-cols-1 sm:grid-cols-2 sm:gap-x-12">
-    ${di('숙성 연수', 'NAS')}${di('용량', '700ml')}${di('도수', '40%')}${di('출시일', '2023-05')}
+    ${di('숙성 연수', 'NAS')}${di('용량', '700ml')}${di('도수', '40%')}${di('병입 연월', '2023-05')}
   </dl>`
 
 function cognacSection(c) {

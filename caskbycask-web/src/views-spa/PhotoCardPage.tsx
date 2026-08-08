@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next'
 import SeoMeta from '@/shared/components/SeoMeta'
 import ImageEditorModal from '@/shared/components/ImageEditorModal'
 import UnsavedChangesDialog from '@/shared/components/UnsavedChangesDialog'
-import useIsDesktop from '@/shared/hooks/useIsDesktop'
 import { useUnsavedChangesGuard } from '@/shared/hooks/useUnsavedChangesGuard'
 import { photoCardApi } from '@/domain/photo-card/api/photoCardApi'
 import {
@@ -13,7 +12,7 @@ import {
 import PhotoCardPublishDialog from '@/domain/photo-card/components/PhotoCardPublishDialog'
 import PhotoCardSpiritPicker from '@/domain/photo-card/components/PhotoCardSpiritPicker'
 import PhotoCardFillWizard from '@/domain/photo-card/components/PhotoCardFillWizard'
-import PhotoCardStage, { DOCKED_BAR_HEIGHT } from '@/domain/photo-card/components/PhotoCardStage'
+import PhotoCardStage from '@/domain/photo-card/components/PhotoCardStage'
 import PhotoCardToolRail from '@/domain/photo-card/components/PhotoCardToolRail'
 import PhotoCardTopBar from '@/domain/photo-card/components/PhotoCardTopBar'
 import CardPanel from '@/domain/photo-card/components/panels/CardPanel'
@@ -77,10 +76,7 @@ export default function PhotoCardPage() {
   const editor = usePhotoCardEditor({ watermark: !isLoggedIn })
 
   const size = frameSizeOf(editor.layout.frame, PHOTO_CARD_MAX_EDGE)
-  const isDesktop = useIsDesktop()
-  // 좁은 화면에서는 빠른 편집 바가 작업 영역 바닥에 얹힌다. 글자를 고른 뒤에야 비우면
-  // 그때마다 카드가 작아졌다 커지므로, 바가 없을 때도 그 자리는 늘 비워 둔다.
-  const viewport = usePhotoCardViewport(size, isDesktop ? 0 : DOCKED_BAR_HEIGHT)
+  const viewport = usePhotoCardViewport(size)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   usePhotoCardShortcuts(editor, viewport)
 

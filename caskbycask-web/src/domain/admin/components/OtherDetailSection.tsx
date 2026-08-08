@@ -97,11 +97,11 @@ export default function OtherDetailSection({ value, onChange, errors }: Props) {
         <div>
           <label className={LABEL}>
             캐스크 / 우드 종류
-            <InfoTooltip text="숙성에 사용한 통. 숙성하지 않았으면 비워두세요." />
+            <InfoTooltip text="숙성에 사용한 통. 상세 화면이 이 값을 언어 구분 없이 그대로 노출하므로 영문으로 적어주세요. 숙성하지 않았으면 비워두세요." />
           </label>
           <input type="text" value={value.caskType} maxLength={100}
             onChange={(e) => onChange({ caskType: e.target.value })}
-            placeholder="예: ex-Bourbon, ex-Sherry, 버진 오크" className={INPUT} />
+            placeholder="예: Ex-Bourbon Barrel, Ex-Sherry Cask, Virgin Oak" className={INPUT} />
         </div>
         <div>
           <label className={LABEL}>

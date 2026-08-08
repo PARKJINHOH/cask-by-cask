@@ -3,15 +3,20 @@
 관리자 > 주류 > 위스키 등록 폼에 그대로 옮겨 적을 수 있는 형태로 AI에게 조사를 시키는 프롬프트다.
 아래 블록 전체를 복사해 AI에 붙여넣고, 마지막 `## 조사 대상`에 제품명을 적으면 된다.
 
-꼬냑용은 [`cognac-research-prompt.md`](./cognac-research-prompt.md) 참고.
+꼬냑용은 [`cognac-research-prompt.md`](./cognac-research-prompt.md),
+와인용은 [`wine-research-prompt.md`](./wine-research-prompt.md) 참고.
 
 허용 값(enum)은 코드와 1:1로 맞춰져 있다. 값을 바꿀 때는 아래 소스도 함께 고쳐야 한다.
 
-- 스타일 — `caskbycask-api/.../entity/enums/WhiskyStyle.java`
-- 캐스크 대분류 11종 — `caskbycask-web/src/domain/admin/components/WhiskyDetailSection.tsx` (`BROAD_CASK_CATEGORIES`)
-- 에디션 유형 — `SpiritFormFields.tsx` (`에디션 유형` 버튼)
+- 스타일·캐스크 대분류 11종·병입 구분·에디션 유형 —
+  `caskbycask-web/src/domain/spirit/data/whisky.ts`
+  (`WHISKY_STYLES` / `BROAD_CASK_CATEGORIES` / `BOTTLING_TYPES` / `VARIANT_TYPES`.
+  등록 폼과 JSON 붙여넣기가 **같은 목록**을 참조한다)
+- 스타일 enum 원본 — `caskbycask-api/.../entity/enums/WhiskyStyle.java`
 - 산지 코드 — `caskbycask-api/.../entity/enums/WineRegion.java` (`SpiritCategory.WHISKY` 태그, 107개)
 - 길이·범위 제약 — `caskbycask-web/src/domain/spirit/data/spiritLimits.ts`
+- JSON → 폼 매핑 — `caskbycask-web/src/domain/admin/utils/spiritResearchJson.ts`
+  (허용 값이 아니면 **조용히 버리고 경고**한다. 이 문서의 값 목록은 여기와 어긋나면 안 된다)
 
 **에디션 기준 연도는 조사 시점에 맞춰 갱신할 것.** 아래 프롬프트는 "2023년 이후"로 적혀 있다(기준일 2026-08).
 
@@ -30,6 +35,8 @@
 2. **출처 필수.** 제품마다 참고한 출처를 URL로 남기세요. 우선순위는
    ① 증류소/브랜드 공식 사이트 → ② 국내 공식 수입사 → ③ Whiskybase·Master of Malt 등 전문 DB
    → ④ 전문 매체·리테일러 순입니다. 개인 블로그만 근거일 때는 `_confidence`를 "낮음"으로.
+   **공식 사이트에 없다고 바로 `null`로 두지 말고**, 세부 캐스크처럼 아래 순위에서 확인되는
+   항목은 하위 출처까지 검색해서 채우세요(아래 "캐스크" 절 참고).
 3. **허용 값만 사용.** 아래 목록에 없는 값은 절대 쓰지 마세요. 해당 값이 없으면 `null`입니다.
 4. **한국어 이름은 원어 발음이 아니라 국내 통용 표기를 따릅니다.** 아래 "한국어 이름 규칙"을
    반드시 먼저 읽으세요. 이 항목이 이 조사에서 가장 중요합니다.
@@ -88,6 +95,7 @@
 - `발베니 12년 더블우드`, `아드벡 우거다일`, `글렌피딕 15년 솔레라`
 - 숙성 연수는 `12년`처럼 한글 "년"을 씁니다 (`12Y`, `12YO` 아님)
 - 캐스크·피니시명은 국내 표기가 있으면 그것을, 없으면 영문 그대로
+  (※ `nameKo`에 한정된 규칙입니다. `casks[].details`는 항상 영문 — "캐스크" 절 참고)
 
 # 출력 형식
 
@@ -114,8 +122,8 @@ JSON 외의 설명은 배열 뒤에 `## 메모`로 따로 적으세요.
   "bottlingType": "OB",
 
   "casks": [
-    { "code": "EX_BOURBON", "isFinish": false, "details": ["아메리칸 오크 배럴"] },
-    { "code": "EX_SHERRY", "isFinish": true,  "details": ["올로로소 셰리 벗"] }
+    { "code": "EX_BOURBON", "isFinish": false, "details": ["American Oak Barrel"] },
+    { "code": "EX_SHERRY", "isFinish": true,  "details": ["Oloroso Sherry Butt"] }
   ],
 
   "isNonChillFiltered": false,
@@ -132,8 +140,6 @@ JSON 외의 설명은 배열 뒤에 `## 메모`로 따로 적으세요.
   "ageStatementMonths": null,
   "distilledDate": null,
   "bottledDate": null,
-  "releaseDate": null,
-  "batchNo": null,
   "bottleNo": null,
   "totalBottles": null,
 
@@ -221,22 +227,55 @@ IB면 `producer`는 **증류소**를 적고, 병입사는 `notes`에 적으세�
 `casks` 배열. `code`는 아래 11개 대분류 중에서만 고르고, 구체적 오크통 명칭은 `details`에 넣으세요.
 
 ```
-EX_BOURBON     버번 캐스크        details 예) 아메리칸 오크 배럴, 퍼스트 필 버번
-NEW_OAK        버진 오크          details 예) 아메리칸 버진 오크
-EX_SHERRY      셰리 캐스크        details 예) 올로로소, PX, 피노, 만자니야
-EX_PORT        포트/주정강화      details 예) 포트, 마데이라, 소테른, 마르살라
-EX_WINE        와인 캐스크        details 예) 레드 와인, 샤르도네, 비노 바리끄
-EX_RUM         럼 캐스크
-EX_COGNAC      꼬냑 캐스크
-EX_CALVADOS    칼바도스 캐스크
-EX_BEER        맥주 캐스크        details 예) 임페리얼 스타우트, IPA
-MIZUNARA       미즈나라 캐스크
-OTHER          기타 캐스크        details 예) 매실주 캐스크, 피티드 캐스크
+EX_BOURBON     버번 캐스크        details 예) American Oak Barrel, First-fill Bourbon Barrel
+NEW_OAK        버진 오크          details 예) American Virgin Oak
+EX_SHERRY      셰리 캐스크        details 예) Oloroso Sherry Butt, Pedro Ximénez Hogshead, Fino, Manzanilla
+EX_PORT        포트/주정강화      details 예) Port Pipe, Madeira Cask, Sauternes Barrique, Marsala Cask
+EX_WINE        와인 캐스크        details 예) Red Wine Barrique, Chardonnay Cask, Vino Barrique
+EX_RUM         럼 캐스크          details 예) Ex-Rum Cask
+EX_COGNAC      꼬냑 캐스크        details 예) Cognac Cask
+EX_CALVADOS    칼바도스 캐스크    details 예) Calvados Cask
+EX_BEER        맥주 캐스크        details 예) Imperial Stout Cask, IPA Cask
+MIZUNARA       미즈나라 캐스크    details 예) Mizunara Puncheon
+OTHER          기타 캐스크        details 예) Umeshu Cask, Peated Quarter Cask
 ```
 
 - `isFinish`: 주 숙성이 아니라 **추가 숙성(피니시)** 으로 쓰인 캐스크면 `true`
 - `details`: 각 100자 이내, 여러 개 가능. 모르면 빈 배열 `[]`
 - 캐스크 정보를 모르면 `casks: []`
+
+### 세부 캐스크(`details`)는 **영문으로** 씁니다 ★
+
+`nameKo`와 달리 `details`는 **한글로 옮기지 말고 영문 표기 그대로** 적으세요.
+라벨·공식 스펙시트에 쓰인 영문 명칭을 그대로 옮기는 것이 원칙입니다.
+
+| 이렇게 쓰지 말 것 | 이렇게 | 
+|---|---|
+| ~~아메리칸 오크 배럴~~ | `American Oak Barrel` |
+| ~~올로로소 셰리 벗~~ | `Oloroso Sherry Butt` |
+| ~~퍼스트 필 버번 배럴~~ | `First-fill Bourbon Barrel` |
+| ~~리필 혹스헤드~~ | `Refill Hogshead` |
+| ~~미즈나라 펀천~~ | `Mizunara Puncheon` |
+
+- 고유명사·원어 표기는 그대로 살립니다 — `Pedro Ximénez`, `Vin Doux Naturel`, `Amontillado`
+- 캐스크 크기·필 등급이 공개돼 있으면 함께 적습니다 — `First-fill Oloroso Sherry Butt`
+- 한 캐스크 대분류에 여러 세부 캐스크가 쓰였으면 배열에 나열 —
+  `"details": ["First-fill Oloroso Sherry Butt", "Refill Sherry Hogshead"]`
+
+### 세부 캐스크는 이렇게 조사하세요 ★
+
+1. **증류소/브랜드 공식 홈페이지가 1순위.** 제품 페이지, 스펙시트, 공식 테이스팅 노트,
+   프레스 릴리즈에 적힌 캐스크 명칭을 그대로 씁니다.
+2. **공식적으로 공개하지 않았다면 거기서 멈추지 말고 다른 웹사이트를 폭넓게 검색하세요.**
+   아래를 찾아보고 **실제로 노출된 캐스크 명칭이 있으면** 적습니다.
+   - 전문 DB — Whiskybase, Master of Malt, The Whisky Exchange, Whiskyfun
+   - 전문 매체 — Whisky Advocate, Whisky Magazine, Scotchwhisky.com, 증류소 마스터 블렌더 인터뷰
+   - 커뮤니티 — Reddit r/Scotch, Whiskybase 코멘트, 국내 위스키 커뮤니티
+   - 국내 공식 수입사 상세페이지, 리테일러 상품 설명, 증류소 투어·마스터클래스 후기
+3. **출처마다 표기가 갈리면** 상위 출처를 따릅니다 — 공식 > 전문 DB > 매체 > 커뮤니티.
+4. **근거가 커뮤니티뿐이면** 적되 `_uncertain`에
+   `"세부 캐스크 — 공식 미공개, 커뮤니티 정보"` 라고 남기세요.
+5. 어디에서도 확인되지 않으면 `details: []`. **그럴듯한 캐스크 이름을 지어내지 마세요.**
 
 ## 특성 플래그
 
@@ -258,16 +297,14 @@ OTHER          기타 캐스크        details 예) 매실주 캐스크, 피티�
 | 필드 | 규칙 |
 |---|---|
 | `isNas` | 숙성 연수 미표기(No Age Statement)면 `true`. 이때 `ageStatement`는 `null` |
-| `ageStatement` | 라벨의 숙성 연수(년). 12년이면 `12` |
-| `ageStatementMonths` | 년 단위로 안 떨어질 때만 (예: 12년 6개월 → `ageStatement: 12`, `ageStatementMonths: 6`) |
+| `ageStatement` | 라벨의 숙성 연수(년). 12년이면 `12`. 0~100 |
+| `ageStatementMonths` | 년 단위로 안 떨어질 때만. **0~11**만 허용 (예: 12년 6개월 → `ageStatement: 12`, `ageStatementMonths: 6`). 12 이상이면 년으로 환산해 `ageStatement`에 넣으세요 |
 | `distilledDate` | `YYYY` 또는 `YYYY-MM` |
-| `bottledDate` | `YYYY` 또는 `YYYY-MM` |
-| `releaseDate` | `YYYY-MM-DD` |
-| `batchNo` | 100자 이내 |
+| `bottledDate` | `YYYY` 또는 `YYYY-MM`. 출시일 칸이 없어 출시 시점도 여기로 갈음합니다 |
 | `bottleNo` | 50자 이내 |
-| `totalBottles` | 숫자 (한정판 총 병 수) |
+| `totalBottles` | 숫자 (한정판 총 병 수). 1~10,000,000 |
 
-상시 판매 정규 제품은 `distilledDate`·`bottledDate`·`batchNo`·`bottleNo`·`totalBottles`를 전부 `null`로 두세요.
+상시 판매 정규 제품은 `distilledDate`·`bottledDate`·`bottleNo`·`totalBottles`를 전부 `null`로 두세요.
 
 ## `notes` — 이 제품의 특징(스펙) 요약 **400자 이내**
 
@@ -313,36 +350,85 @@ OTHER          기타 캐스크        details 예) 매실주 캐스크, 피티�
     {
       "variantValue": "배치 15",
       "variantValueEn": "Batch 15",
+
       "abv": 54.8,
-      "volumeMl": 700,
-      "releaseDate": "2024-03-01",
+      "volumeMl": null,
+
+      "isNas": null,
+      "ageStatement": null,
+      "ageStatementMonths": null,
+      "distilledDate": null,
       "bottledDate": "2024-01",
-      "batchNo": "15",
+      "bottleNo": null,
       "totalBottles": null,
-      "casks": [{ "code": "EX_SHERRY", "isFinish": false, "details": ["올로로소 셰리 벗"] }],
+
+      "isNonChillFiltered": null,
+      "isNaturalColour": null,
+      "isSingleCask": null,
+      "isCaskStrength": null,
+      "isPeated": null,
+      "phenolPpm": null,
+      "phenolPpmMin": null,
+      "phenolPpmMax": null,
+
+      "casks": [{ "code": "EX_SHERRY", "isFinish": false, "details": ["Oloroso Sherry Butt"] }],
       "notes": null
     }
   ]
 }
 ```
 
-### `variantType` — 4개 중 하나
+에디션 항목은 **최상위 제품과 같은 필드 이름**을 씁니다. 위 예시에서 `null` 인 항목은
+"이 에디션은 최상위와 같다"는 뜻입니다 — 아래 상속 규칙 참고.
+
+### `variantType` — 3개 중 하나
 ```
 BATCH         배치        예) 배치 15, Batch 15
 SINGLE_CASK   싱글 캐스크  예) 캐스크 #1234, Cask #1234
 RELEASE_YEAR  출시 연도    예) 2024 릴리즈, 2024 Release
 ```
-(정규 제품은 `editions: null`. `NONE`은 쓰지 마세요.)
+(정규 제품은 `editions: null`. `NONE`·`VINTAGE`는 쓰지 마세요 — 붙여넣기에서 거부됩니다.)
 
 ### 규칙
 - `seriesIdentifier`(한글)는 **필수**. 모든 에디션이 공유하는 이름 조각입니다.
   예: `배치 시리즈`, `연간 릴리즈`, `1993 29년`. 100자 이내
 - `seriesIdentifierEn`은 영문 화면용. 비우면 한글이 대신 쓰입니다
 - 각 에디션의 `variantValue`(한글)는 **필수**
-- 에디션마다 도수·캐스크·병입 정보가 다르면 각 항목에 개별로 적으세요.
-  모든 에디션이 같으면 최상위에만 적고 에디션에서는 `null`
 - **출시 연월이 확인되지 않는 에디션은 넣지 마세요.** 2023년 이후인지 판단할 수 없으면 제외하고
   `_uncertain`에 적으세요
+- 출시일을 적는 칸은 없습니다. 출시 시점은 `bottledDate`(병입 연월)로 남기고,
+  더 정확한 날짜를 알면 그 에디션 `notes`에 문장으로 적으세요
+
+### 최상위 ↔ 에디션 — 무엇을 어디에 적나 ★
+
+에디션이 있는 제품은 **등록 화면이 최상위 상세 대신 에디션별 입력을 보여 줍니다.**
+그래서 아래 두 묶음을 구분해서 적어야 합니다.
+
+**① 에디션이 비워 두면 최상위 값을 물려받는 항목** — 모든 에디션이 같으면 최상위에만 적고
+에디션에서는 `null`. 에디션마다 다른 것만 그 에디션에 적으세요.
+
+```
+abv  volumeMl
+isNas  ageStatement  ageStatementMonths  distilledDate
+isNonChillFiltered  isNaturalColour  isSingleCask  isCaskStrength
+isPeated  phenolPpm  phenolPpmMin  phenolPpmMax
+casks
+```
+
+- 최상위 도수가 배치마다 달라 `abvMin`/`abvMax` **범위**로 적었다면 물려받을 수 없습니다.
+  각 에디션의 `abv`에 그 에디션의 실제 도수를 적으세요
+- `casks`는 배열이라 `[]`(빈 배열)은 "캐스크 미상"으로 봅니다. 최상위 값을 쓰려면 `null`로 두세요
+
+**② 에디션마다 따로 적어야 하는 항목** — 최상위에서 물려받지 않습니다. 그 에디션의 값이 아니면
+`null`로 두세요.
+
+```
+bottledDate  bottleNo  totalBottles  notes
+```
+
+- `notes`는 최상위가 **제품 전체 설명**, 에디션은 **그 판본만의 특징**(캐스크 구성 변화,
+  도수, 출시 배경 등)입니다. 최상위 문장을 복사하지 마세요. 400자 이내
+- 특정 에디션에만 해당하는 내용이 없으면 에디션 `notes`는 `null`
 
 # 마지막 확인
 
@@ -354,6 +440,12 @@ JSON을 내놓기 전에 스스로 점검하세요.
       위 목록에 있는 철자 그대로인가
 - [ ] `editions`에 넣은 항목이 **전부 2023년 이후 출시**인가
 - [ ] 에디션이 있으면 `seriesIdentifier`와 각 `variantValue`가 모두 채워졌는가
+- [ ] 에디션마다 다른 값(도수·캐스크·병입 정보 등)을 **최상위에만 적어 두지 않았는가**.
+      최상위 도수를 범위(`abvMin`/`abvMax`)로 적었다면 각 에디션 `abv`를 채웠는가
+- [ ] 에디션 `notes`에 최상위 `notes` 문장을 복사해 넣지 않았는가
+- [ ] 캐스크 `details`가 **영문 표기**인가 (한글 음차가 남아 있지 않은가)
+- [ ] 공식 자료에 캐스크가 없을 때 전문 DB·매체·커뮤니티까지 찾아봤는가.
+      커뮤니티만 근거면 `_uncertain`에 남겼는가
 - [ ] 특성 플래그를 추정으로 `true`로 만들지 않았는가
 - [ ] 지어낸 숫자가 하나도 없는가 — 모르면 `null`
 - [ ] `notes`가 **400자 이내**이고, 사실 나열이 아니라 제품을 파악할 수 있는 문단인가
@@ -377,9 +469,15 @@ JSON을 내놓기 전에 스스로 점검하세요.
 - **한 번에 3~5개**씩 끊어서 시킬 것. 10개를 한꺼번에 시키면 뒤쪽에서 출처 없이 지어낸다.
 - 한국어 표기는 AI가 가장 자주 틀리는 항목이다. `_nameKoBasis`가 비어 있거나
   "일반적 표기" 같은 두루뭉술한 답이면 직접 확인할 것.
-- 캐스크 `details`를 지나치게 구체적으로 채워 오면 의심할 것. 대부분의 증류소는
-  퍼스트필/리필 구분까지는 공개하지 않는다.
+- 캐스크 `details`는 영문으로 받는다. 한글 음차(`올로로소 셰리 벗`)가 섞여 오면 다시 시킬 것.
+- 공식 미공개 캐스크까지 커뮤니티에서 긁어오게 했으므로, `details`가 지나치게 구체적인데
+  (퍼스트필/리필 구분, 캐스크 번호 등) `_uncertain`이 비어 있으면 의심할 것.
+  대부분의 증류소는 그 수준까지 공개하지 않는다 — 출처 URL을 직접 열어볼 것.
 - IB(독립 병입) 제품은 증류소명이 라벨에 없는 경우(teaspooned malt, "Secret Speyside")가 있다.
   이때는 `producer`를 병입사로 잡지 말고 `_uncertain`에 남긴 뒤 직접 판단할 것.
 - **에디션 기준 연도**는 이 문서 상단 안내대로 조사 시점에 맞춰 프롬프트에서 직접 고칠 것
   (현재 "2023년 이후" = 기준일 2026-08).
+- 에디션이 있는 위스키는 등록 화면에서 **최상위 상세 카드가 숨겨지고 에디션 카드로 대체**된다.
+  숙성 연수·용량·특성처럼 최상위에만 적혀 온 값은 붙여넣기가 각 에디션으로 내려보내므로,
+  에디션 탭을 하나씩 열어 값이 실제로 들어갔는지 확인할 것
+  (상속 대상은 `spiritResearchJson.ts` 의 `EDITION_INHERITED_KEYS` 가 단일 소스다).

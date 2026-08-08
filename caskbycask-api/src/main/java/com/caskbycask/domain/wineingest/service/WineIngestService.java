@@ -44,17 +44,9 @@ public class WineIngestService {
 
     @Transactional
     public WineIngestDtos.SettingsResponse updateSettings(WineIngestDtos.SettingsUpdateRequest request) {
-        if (request.providerMode() == WineIngestProviderMode.LIVE
-                && (!request.licenseApproved() || !hasText(request.usageGrantRef()))) {
-            throw new CustomException(ErrorCode.INVALID_INPUT);
-        }
-        if (request.automationEnabled() && request.providerMode() != WineIngestProviderMode.LIVE) {
-            throw new CustomException(ErrorCode.INVALID_INPUT);
-        }
         WineIngestSettings settings = requireSettingsForUpdate();
-        settings.update(request.automationEnabled(), request.providerMode(), request.licenseApproved(),
-                trimToNull(request.usageGrantRef()), request.hourlyLimit(), request.maxRunItems(),
-                request.slackAlertEnabled());
+        settings.update(request.automationEnabled(), request.hourlyLimit(),
+                request.maxRunItems(), request.slackAlertEnabled());
         return WineIngestDtos.SettingsResponse.from(settings);
     }
 
@@ -84,10 +76,7 @@ public class WineIngestService {
         WineIngestSettings settings = requireSettingsForUpdate();
         if (request.runType() == WineIngestRunType.SCHEDULED) throw new CustomException(ErrorCode.INVALID_INPUT);
         if (request.runType() == WineIngestRunType.FIXTURE && request.limit() > 3) {
-            throw new CustomException(ErrorCode.INVALID_INPUT);
-        }
-        if (request.runType() == WineIngestRunType.MANUAL && !isLiveAuthorized(settings)) {
-            throw new CustomException(ErrorCode.INVALID_INPUT);
+            throw new CustomException(ErrorCode.WINE_INGEST_FIXTURE_LIMIT_EXCEEDED);
         }
         int limit = Math.min(request.limit(), settings.getMaxRunItems());
         if (request.runType() == WineIngestRunType.MANUAL) {
@@ -99,9 +88,7 @@ public class WineIngestService {
     @Transactional
     public WineIngestDtos.RunResponse createScheduledRun() {
         WineIngestSettings settings = requireSettingsForUpdate();
-        if (!settings.isAutomationEnabled() || !isLiveAuthorized(settings)) {
-            return null;
-        }
+        if (!settings.isAutomationEnabled()) return null;
         int limit = remainingHourlyCapacityOrZero(settings, settings.getMaxRunItems());
         if (limit == 0) return null;
         return WineIngestDtos.RunResponse.from(saveQueuedRun(WineIngestRunType.SCHEDULED, limit, null));
@@ -109,7 +96,7 @@ public class WineIngestService {
 
     private int remainingHourlyCapacity(WineIngestSettings settings, int requestedLimit) {
         int remaining = remainingHourlyCapacityOrZero(settings, requestedLimit);
-        if (remaining == 0) throw new CustomException(ErrorCode.INVALID_INPUT);
+        if (remaining == 0) throw new CustomException(ErrorCode.WINE_INGEST_HOURLY_LIMIT_EXCEEDED);
         return remaining;
     }
 
@@ -139,9 +126,8 @@ public class WineIngestService {
     @Transactional(readOnly = true)
     public WineIngestDtos.InternalConfigResponse internalConfig() {
         WineIngestSettings s = requireSettings();
-        return new WineIngestDtos.InternalConfigResponse(s.getProviderMode(), isLiveAuthorized(s),
-                s.isAutomationEnabled(), s.getHourlyLimit(), s.getMaxRunItems(),
-                s.isSlackAlertEnabled(), s.getUsageGrantRef());
+        return new WineIngestDtos.InternalConfigResponse(s.isAutomationEnabled(),
+                s.getHourlyLimit(), s.getMaxRunItems(), s.isSlackAlertEnabled());
     }
 
     @Transactional
@@ -167,13 +153,10 @@ public class WineIngestService {
         }
     }
 
+    /** 예약 대기 중에 자동 수집이 꺼졌으면 실행하지 않는다. 수동 요청은 그대로 진행한다. */
     private String claimRejectionReason(WineIngestRun run, WineIngestSettings settings) {
-        if (run.getRunType() == WineIngestRunType.MANUAL && !isLiveAuthorized(settings)) {
-            return "LIVE 이용 허가가 비활성화되어 대기 작업을 취소했습니다.";
-        }
-        if (run.getRunType() == WineIngestRunType.SCHEDULED
-                && (!settings.isAutomationEnabled() || !isLiveAuthorized(settings))) {
-            return "자동 수집 또는 LIVE 이용 허가가 비활성화되어 예약 작업을 취소했습니다.";
+        if (run.getRunType() == WineIngestRunType.SCHEDULED && !settings.isAutomationEnabled()) {
+            return "자동 수집이 꺼져 있어 예약 작업을 취소했습니다.";
         }
         return null;
     }
@@ -188,8 +171,7 @@ public class WineIngestService {
     @Transactional
     public WineIngestDtos.ItemResponse importWine(String runKey, WineIngestDtos.WineImportRequest request) {
         WineIngestRun run = requireRunningRun(runKey);
-        WineIngestSettings settings = requireSettings();
-        validateImportAuthorization(run, settings, request);
+        validateImportRequest(request);
 
         String vintageLabel = request.vintageStatus() == WineVintageStatus.NON_VINTAGE
                 ? "NV" : String.valueOf(request.vintageYear());
@@ -323,22 +305,21 @@ public class WineIngestService {
         externalReferenceRepository.save(SpiritExternalReference.builder()
                 .spirit(spirit).provider(request.provider())
                 .externalWineId(request.externalWineId()).externalVintageId(request.externalVintageId())
-                .identityKey(identityKey).sourceUrl(request.sourceUrl())
-                .usageGrantRef(request.usageGrantRef()).build());
+                .identityKey(identityKey).sourceUrl(request.sourceUrl()).build());
     }
 
     @Transactional
     public WineIngestDtos.ItemResponse publishItem(Long itemId) {
         WineIngestItem item = itemRepository.findWithSpiritById(itemId)
-                .orElseThrow(() -> new CustomException(ErrorCode.INVALID_INPUT));
+                .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND));
         if (item.getStatus() != WineIngestItemStatus.CREATED || item.getSpirit() == null) {
-            throw new CustomException(ErrorCode.INVALID_INPUT);
+            throw new CustomException(ErrorCode.WINE_INGEST_ITEM_NOT_PUBLISHABLE);
         }
         Spirit child = item.getSpirit();
         Spirit master = child.getParent() != null ? child.getParent() : child;
         if (!hasText(master.getNameKo()) || !hasText(master.getNameEn())
                 || master.getNameKo().trim().equalsIgnoreCase(master.getNameEn().trim())) {
-            throw new CustomException(ErrorCode.INVALID_INPUT);
+            throw new CustomException(ErrorCode.WINE_INGEST_KOREAN_NAME_REQUIRED);
         }
         master.rename(master.getNameKo().trim(), master.getNameEn().trim());
         child.rename(master.getNameKo(), master.getNameEn());
@@ -364,9 +345,14 @@ public class WineIngestService {
         return WineIngestDtos.ItemResponse.from(item);
     }
 
+    /**
+     * 마감은 슬롯 잔여량을 따지지 않는다. 크롤러는 남은 슬롯을 NOT_FOUND_SKIPPED로 채운 뒤 마감하므로
+     * 정상 종료한 회차일수록 attemptedCount == requestedLimit 이다.
+     */
     @Transactional
     public WineIngestDtos.RunResponse finishRun(String runKey, WineIngestDtos.FinishRunRequest request) {
-        WineIngestRun run = requireRunningRun(runKey);
+        WineIngestRun run = requireRun(runKey);
+        if (run.getStatus() != WineIngestRunStatus.RUNNING) throw new CustomException(ErrorCode.INVALID_INPUT);
         run.finish(trimToNull(request.errorMessage()));
         return WineIngestDtos.RunResponse.from(run);
     }
@@ -385,15 +371,9 @@ public class WineIngestService {
         return WineIngestDtos.ItemResponse.from(item);
     }
 
-    private void validateImportAuthorization(WineIngestRun run, WineIngestSettings settings,
-                                             WineIngestDtos.WineImportRequest request) {
+    private void validateImportRequest(WineIngestDtos.WineImportRequest request) {
         if (!"VIVINO".equals(request.provider())) throw new CustomException(ErrorCode.INVALID_INPUT);
         if (!hostMatches(request.sourceUrl(), "vivino.com")) throw new CustomException(ErrorCode.INVALID_INPUT);
-        if (run.getRunType() == WineIngestRunType.FIXTURE) {
-            if (!request.usageGrantRef().startsWith("fixture:")) throw new CustomException(ErrorCode.INVALID_INPUT);
-        } else if (!isLiveAuthorized(settings) || !request.usageGrantRef().equals(settings.getUsageGrantRef())) {
-            throw new CustomException(ErrorCode.INVALID_INPUT);
-        }
         if (request.vintageStatus() == WineVintageStatus.VINTAGE && request.vintageYear() == null) {
             throw new CustomException(ErrorCode.INVALID_INPUT);
         }
@@ -408,22 +388,25 @@ public class WineIngestService {
 
     private WineIngestSettings requireSettings() {
         return settingsRepository.findById(WineIngestSettings.SINGLETON_ID)
-                .orElseThrow(() -> new CustomException(ErrorCode.INVALID_INPUT));
+                .orElseThrow(() -> new CustomException(ErrorCode.WINE_INGEST_SETTINGS_NOT_FOUND));
     }
 
     private WineIngestSettings requireSettingsForUpdate() {
         return settingsRepository.findByIdForUpdate(WineIngestSettings.SINGLETON_ID)
-                .orElseThrow(() -> new CustomException(ErrorCode.INVALID_INPUT));
+                .orElseThrow(() -> new CustomException(ErrorCode.WINE_INGEST_SETTINGS_NOT_FOUND));
     }
 
     private WineIngestRun requireRun(Long id) {
-        return runRepository.findById(id).orElseThrow(() -> new CustomException(ErrorCode.INVALID_INPUT));
+        return runRepository.findById(id)
+                .orElseThrow(() -> new CustomException(ErrorCode.WINE_INGEST_RUN_NOT_FOUND));
     }
 
     private WineIngestRun requireRun(String key) {
-        return runRepository.findByRunKey(key).orElseThrow(() -> new CustomException(ErrorCode.INVALID_INPUT));
+        return runRepository.findByRunKey(key)
+                .orElseThrow(() -> new CustomException(ErrorCode.WINE_INGEST_RUN_NOT_FOUND));
     }
 
+    /** 건별 기록 전용. 요청 상한을 넘는 건을 거부하므로 회차 마감({@link #finishRun})에는 쓰지 않는다. */
     private WineIngestRun requireRunningRun(String key) {
         WineIngestRun run = requireRun(key);
         if (run.getStatus() != WineIngestRunStatus.RUNNING
@@ -431,11 +414,6 @@ public class WineIngestService {
             throw new CustomException(ErrorCode.INVALID_INPUT);
         }
         return run;
-    }
-
-    private static boolean isLiveAuthorized(WineIngestSettings s) {
-        return s.getProviderMode() == WineIngestProviderMode.LIVE
-                && s.isLicenseApproved() && hasText(s.getUsageGrantRef());
     }
 
     private static boolean hostMatches(String url, String domain) {

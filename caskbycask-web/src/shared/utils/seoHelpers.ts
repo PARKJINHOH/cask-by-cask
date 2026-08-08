@@ -84,14 +84,8 @@ interface SpiritDetailResponse {
     isNas?: boolean | null
     ageStatement?: number | null
     ageStatementMonths?: number | null
-    ageStatementMin?: number | null
-    ageStatementMinMonths?: number | null
-    ageStatementMax?: number | null
-    ageStatementMaxMonths?: number | null
     distilledDate?: string | null
     bottledDate?: string | null
-    releaseDate?: string | null
-    batchNo?: string | null
     bottleNo?: string | null
     totalBottles?: number | null
   } | null
@@ -485,11 +479,6 @@ function formatAgeParts(years: number | null | undefined, months: number | null 
 function formatAgeStatement(detail: SpiritDetailResponse['commonDetail'], lang: 'ko' | 'en'): string | null {
   if (!detail) return null
   if (detail.isNas) return 'NAS'
-  const min = formatAgeParts(detail.ageStatementMin, detail.ageStatementMinMonths, lang)
-  const max = formatAgeParts(detail.ageStatementMax, detail.ageStatementMaxMonths, lang)
-  if (min && max) return min === max ? min : `${min} ~ ${max}`
-  if (min) return lang === 'en' ? `${min} or older` : `${min} 이상`
-  if (max) return lang === 'en' ? `up to ${max}` : `${max} 이하`
   return formatAgeParts(detail.ageStatement, detail.ageStatementMonths, lang)
 }
 
@@ -538,8 +527,6 @@ function localLabels(lang: 'ko' | 'en') {
         region: 'Region',
         age: 'Age statement',
         vintage: 'Vintage',
-        releaseDate: 'Release date',
-        batchNo: 'Batch No.',
         bottleNo: 'Bottle No.',
         cask: 'Cask',
         whiskyStyle: 'Whisky style',
@@ -571,8 +558,6 @@ function localLabels(lang: 'ko' | 'en') {
         region: '지역',
         age: '숙성 연수',
         vintage: '빈티지',
-        releaseDate: '출시일',
-        batchNo: '배치 번호',
         bottleNo: '병 번호',
         cask: '캐스크',
         whiskyStyle: '위스키 스타일',
@@ -2452,8 +2437,6 @@ export async function getSpiritSeoSnapshot(id: string, lang: 'ko' | 'en' | null)
       { label: labels.volume, value: volume },
       { label: labels.age, value: age },
       { label: labels.vintage, value: spirit.vintageYear ?? (spirit.wineDetail?.vintageStatus === 'NON_VINTAGE' ? 'NV' : null) },
-      { label: labels.releaseDate, value: spirit.category === 'WINE' ? null : formatDateOnly(spirit.commonDetail?.releaseDate) },
-      { label: labels.batchNo, value: spirit.commonDetail?.batchNo },
       { label: labels.bottleNo, value: spirit.commonDetail?.bottleNo },
       { label: labels.whiskyStyle, value: spirit.whiskyDetail?.style },
       { label: labels.cask, value: caskFinishes ? `${caskTypes || ''} / Finish: ${caskFinishes}` : caskTypes },

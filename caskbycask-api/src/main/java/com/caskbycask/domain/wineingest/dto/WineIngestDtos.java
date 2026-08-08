@@ -17,30 +17,19 @@ public final class WineIngestDtos {
 
     public record SettingsResponse(
             boolean automationEnabled,
-            WineIngestProviderMode providerMode,
-            boolean licenseApproved,
-            String usageGrantRef,
             int hourlyLimit,
             int maxRunItems,
             boolean slackAlertEnabled,
-            boolean liveNetworkEnabled,
             LocalDateTime updatedAt
     ) {
         public static SettingsResponse from(WineIngestSettings s) {
-            boolean live = s.getProviderMode() == WineIngestProviderMode.LIVE
-                    && s.isLicenseApproved()
-                    && s.getUsageGrantRef() != null && !s.getUsageGrantRef().isBlank();
-            return new SettingsResponse(s.isAutomationEnabled(), s.getProviderMode(), s.isLicenseApproved(),
-                    s.getUsageGrantRef(), s.getHourlyLimit(), s.getMaxRunItems(),
-                    s.isSlackAlertEnabled(), live, s.getUpdatedAt());
+            return new SettingsResponse(s.isAutomationEnabled(), s.getHourlyLimit(),
+                    s.getMaxRunItems(), s.isSlackAlertEnabled(), s.getUpdatedAt());
         }
     }
 
     public record SettingsUpdateRequest(
             boolean automationEnabled,
-            @NotNull WineIngestProviderMode providerMode,
-            boolean licenseApproved,
-            @Size(max = 500) String usageGrantRef,
             @Min(1) @Max(10) int hourlyLimit,
             @Min(1) @Max(10) int maxRunItems,
             boolean slackAlertEnabled
@@ -102,13 +91,10 @@ public final class WineIngestDtos {
     ) {}
 
     public record InternalConfigResponse(
-            WineIngestProviderMode providerMode,
-            boolean liveNetworkEnabled,
             boolean automationEnabled,
             int hourlyLimit,
             int maxRunItems,
-            boolean slackAlertEnabled,
-            String usageGrantRef
+            boolean slackAlertEnabled
     ) {}
 
     public record WineImportRequest(
@@ -117,7 +103,6 @@ public final class WineIngestDtos {
             @NotBlank @Size(max = 100) String externalVintageId,
             @NotBlank @Size(max = 1000) String sourceUrl,
             @Size(max = 1000) String imageUrl,
-            @NotBlank @Size(max = 500) String usageGrantRef,
             @NotBlank @Size(max = 200) String nameEn,
             /** 와이너리는 선택값이다. 미확인이면 생산자 없이 저장하고 관리자 검수에서 연결한다. */
             @Size(max = 200) String producerNameEn,

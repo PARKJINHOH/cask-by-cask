@@ -8,6 +8,11 @@
 - 등급·크뤼·오크 목록 — `caskbycask-web/src/domain/spirit/data/cognac.ts`
 - 산지 코드 — `caskbycask-api/.../entity/enums/WineRegion.java` (`FR_COGNAC*`)
 - 길이·범위 제약 — `caskbycask-web/src/domain/spirit/data/spiritLimits.ts`, `.../dto/CognacDetailRequest.java`
+- JSON → 폼 매핑 — `caskbycask-web/src/domain/admin/utils/spiritResearchJson.ts`
+  (허용 값이 아니면 **조용히 버리고 경고**한다. 이 문서의 값 목록은 여기와 어긋나면 안 된다)
+
+위스키용은 [`whisky-research-prompt.md`](./whisky-research-prompt.md),
+와인용은 [`wine-research-prompt.md`](./wine-research-prompt.md) 참고.
 
 ---
 
@@ -23,7 +28,9 @@
    비워두는 것이 낫습니다. 이 데이터는 사용자에게 사실로 제시됩니다.
 2. **출처 필수.** 각 제품마다 참고한 출처를 URL로 남기세요. 우선순위는
    ① 생산자 공식 사이트·공식 투명성 자료 → ② BNIC(꼬냑 공식 기구) → ③ 전문 리테일러/평론 매체 순입니다.
-   개인 블로그·위키만 근거일 때는 `신뢰도`를 "낮음"으로 표기하세요.
+   개인 블로그·위키만 근거일 때는 `_confidence`를 "낮음"으로 표기하세요.
+   **공식 사이트에 없다고 바로 `null`로 두지 말고**, 캐스크 피니시처럼 하위 출처에서 확인되는
+   항목은 거기까지 검색해서 채우세요(아래 "캐스크 피니시" 절 참고).
 3. **허용 값만 사용.** 아래 목록에 없는 값은 절대 쓰지 마세요. 해당하는 값이 없으면 `null`입니다.
 4. **한국어 이름**은 통용되는 한글 표기를 씁니다. 예: `헤네시 XO`, `레미 마르탱 VSOP`, `프라팽 VIP XO`.
 5. 크뤼 구성 비율처럼 **공개되지 않은 수치는 지어내지 마세요.** 크뤼 이름만 알려져 있고 비율이
@@ -63,8 +70,6 @@ JSON 외의 설명은 배열 뒤에 `## 메모`로 따로 적으세요.
   "notes": "1870년 모리스 헤네시가 개인 손님용으로 만든 것이 시초로, XO라는 등급 표기 자체를 정착시킨 제품이다. 위니 블랑을 주체로 네 개 크뤼의 오드비를 블렌딩하며 최고령 원액은 30년에 이른다. 리무쟁과 트롱세 오크통에서 숙성해 타닌과 스파이스가 두텁게 쌓인다. 공식 노트는 말린 과일과 초콜릿, 후추의 매운맛, 오래 남는 오크 여운을 든다.",
 
   "bottledDate": null,
-  "releaseDate": null,
-  "batchNo": null,
   "bottleNo": null,
   "totalBottles": null,
 
@@ -121,7 +126,7 @@ FR_COGNAC_BOIS_ORDINAIRES     부아 조르디네르
 
 ## 꼬냑 상세
 
-### `grade` — **필수**. 다음 7개 중 하나만.
+### `grade` — **필수**. 다음 8개 중 하나만.
 ```
 VS         최소 2년   (V.S., Très Spécial, ★★★ 표기 포함)
 VSOP       최소 4년   (V.S.O.P., Réserve 표기 포함)
@@ -176,8 +181,40 @@ JUPILLES    BERTRANGES  FRENCH_OAK  OTHER
 |---|---|
 | `vintageYear` | 단일 연도 증류 원액(밀레짐)일 때만. 1800~현재. 일반 블렌드는 `null` |
 | `ageYears` | **라벨에 숙성 연수가 표기된 경우만** (예: Frapin 20년). 0~100. 등급으로만 표시되면 `null` |
-| `caskFinish` | 다른 캐스크에서 추가 숙성한 경우만. 200자 이내. 예: `"포트 캐스크 피니시"` |
+| `caskFinish` | 다른 캐스크에서 추가 숙성한 경우만. 200자 이내. **영문 표기** — 예: `"Port Cask Finish"` |
 | `blendDetail` | 아상블라주 서술. 300자 이내. 오드비 개수·최고령 원액·셀러마스터 등을 여기에 |
+
+### `caskFinish` — 세부 캐스크는 **영문으로** 씁니다 ★
+
+`caskFinish` 값은 한글로 옮기지 말고 **영문 표기 그대로** 적으세요. 이 값은 한글 화면·영문 화면이
+같은 문자열을 공유하며, 라벨·공식 자료의 영문 명칭을 그대로 쓰는 것이 원칙입니다.
+
+| 이렇게 쓰지 말 것 | 이렇게 |
+|---|---|
+| ~~포트 캐스크 피니시~~ | `Port Cask Finish` |
+| ~~바뉠스 캐스크 피니시~~ | `Banyuls Cask Finish` |
+| ~~소테른 캐스크 6개월~~ | `Sauternes Cask, 6 months` |
+| ~~퍼스트 필 셰리 캐스크~~ | `First-fill Oloroso Sherry Cask` |
+
+- 고유명사·원어 표기는 그대로 살립니다 — `Pedro Ximénez`, `Vin Doux Naturel`, `Pineau des Charentes`
+- 여러 캐스크를 거쳤으면 한 문장으로 이어 씁니다 — `Port Pipe, then Oloroso Sherry Cask`
+- (`oakTypes` 는 enum 이므로 여기 규칙과 무관합니다. 위 목록의 코드 그대로 쓰세요.)
+
+### 세부 캐스크는 이렇게 조사하세요 ★
+
+1. **하우스 공식 홈페이지가 1순위.** 제품 페이지, 스펙시트, 공식 테이스팅 노트,
+   프레스 릴리즈에 적힌 캐스크 명칭을 그대로 씁니다.
+2. **공식적으로 공개하지 않았다면 거기서 멈추지 말고 다른 웹사이트를 폭넓게 검색하세요.**
+   아래를 찾아보고 **실제로 노출된 캐스크 명칭이 있으면** 적습니다.
+   - 전문 DB·리테일러 — Cognac Expert, The Whisky Exchange, Master of Malt, Wine-Searcher
+   - 전문 매체 — Difford's Guide, Forbes·Decanter 등의 리뷰, 셀러마스터 인터뷰
+   - 커뮤니티 — Reddit r/cognac, 국내 주류 커뮤니티
+   - 국내 공식 수입사 상세페이지, 리테일러 상품 설명, 하우스 투어·시음회 후기
+3. **출처마다 표기가 갈리면** 상위 출처를 따릅니다 — 공식 > BNIC > 전문 DB·매체 > 커뮤니티.
+4. **근거가 커뮤니티뿐이면** 적되 `_uncertain`에
+   `"캐스크 피니시 — 공식 미공개, 커뮤니티 정보"` 라고 남기세요.
+5. 어디에서도 확인되지 않으면 `caskFinish: null`. **그럴듯한 캐스크 이름을 지어내지 마세요.**
+   꼬냑은 피니시를 쓰지 않는 제품이 다수이므로 `null` 이 정상입니다.
 
 ### `notes` — 이 제품의 특징(스펙) 요약 **400자 이내**
 
@@ -210,9 +247,7 @@ JUPILLES    BERTRANGES  FRENCH_OAK  OTHER
 
 | 필드 | 형식 |
 |---|---|
-| `bottledDate` | `YYYY` 또는 `YYYY-MM` |
-| `releaseDate` | `YYYY-MM-DD` |
-| `batchNo` | 100자 이내 |
+| `bottledDate` | `YYYY` 또는 `YYYY-MM`. 출시일 칸이 없어 출시 시점도 여기로 갈음합니다 |
 | `bottleNo` | 50자 이내 |
 | `totalBottles` | 숫자 |
 
@@ -237,6 +272,9 @@ JSON을 내놓기 전에 스스로 점검하세요.
 - [ ] 모든 enum 값이 위 목록에 있는 철자 그대로인가
 - [ ] `cruComposition`에 중복 크뤼가 없고 비율 합계가 100 이하인가
 - [ ] `regionCode`가 세부 산지까지 반영했는가 — 단일 크뤼면 크뤼 코드, 아니면 `FR_COGNAC`
+- [ ] `caskFinish`가 **영문 표기**인가 (한글 음차가 남아 있지 않은가)
+- [ ] 공식 자료에 캐스크가 없을 때 전문 DB·매체·커뮤니티까지 찾아봤는가.
+      커뮤니티만 근거면 `_uncertain`에 남겼는가
 - [ ] 지어낸 숫자가 하나도 없는가 — 모르면 `null`
 - [ ] `notes`가 **400자 이내**이고, 사실 나열이 아니라 제품을 파악할 수 있는 문단인가
 - [ ] 글자 수 제한(`blendDetail` 300, `caskFinish` 200)을 넘지 않는가
@@ -261,6 +299,10 @@ JSON을 내놓기 전에 스스로 점검하세요.
 - `_confidence`가 "낮음"이거나 `_uncertain`이 비어 있지 않은 항목은 등록 전에 직접 확인할 것.
 - 크뤼 비율을 자신 있게 채워 온 대형 하우스 제품(헤네시·마르텔·쿠르부아지에)은 거의 환각이다.
   이들은 비율을 공개하지 않는다.
+- `caskFinish`는 영문으로 받는다. 한글 음차(`포트 캐스크 피니시`)가 오면 다시 시킬 것.
+- 공식 미공개 캐스크까지 커뮤니티에서 긁어오게 했으므로, `caskFinish`가 구체적인데
+  `_uncertain`이 비어 있으면 출처 URL을 직접 열어볼 것. 꼬냑은 피니시를 쓰지 않는 제품이
+  다수라 `null`이 정상인데도 AI가 억지로 채우는 경우가 있다.
 - 등급 표기가 없는 큐베(1738 Accord Royal, Cordon Bleu, Paradis, Louis XIII)는 `NO_STATEMENT` 로
   등록한다. AI가 이런 제품에 VSOP·XO를 붙여 오면 **라벨에 실제로 그 표기가 있는지** 확인할 것 —
   자사 등급 라인업보다 위에 두려고 일부러 표기를 뺀 제품이 많다.

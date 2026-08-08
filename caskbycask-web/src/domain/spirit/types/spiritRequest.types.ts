@@ -29,16 +29,10 @@ export interface SpiritRegisterRequestForm {
   // 공통 상세 (신청자 입력 — 관리자 등록 참고용)
   ageStatement?: number | null
   ageStatementMonths?: number | null
-  ageStatementMin?: number | null       // 숙성 연수 범위 지정 시
-  ageStatementMinMonths?: number | null
-  ageStatementMax?: number | null
-  ageStatementMaxMonths?: number | null
   isNas?: boolean
   distilledDate?: string   // YYYY 또는 YYYY-MM
   bottledDate?: string     // YYYY 또는 YYYY-MM
-  releaseDate?: string     // YYYY-MM-DD
   bottleNo?: string
-  batchNo?: string
   totalBottles?: number | null
   // 카테고리 핵심값 (신청자 입력 — 관리자 등록 참고용)
   whiskyStyle?: WhiskyStyle | null

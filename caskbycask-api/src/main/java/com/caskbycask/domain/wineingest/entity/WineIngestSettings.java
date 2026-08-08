@@ -1,6 +1,5 @@
 package com.caskbycask.domain.wineingest.entity;
 
-import com.caskbycask.domain.wineingest.entity.enums.WineIngestProviderMode;
 import com.caskbycask.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
@@ -17,18 +16,9 @@ public class WineIngestSettings extends BaseTimeEntity {
     @Id
     private Long id;
 
+    /** 켜면 매시 cron이 Vivino 수집 회차를 예약한다. 수동 실행은 이 값과 무관하게 언제든 가능하다. */
     @Column(nullable = false)
     private boolean automationEnabled;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private WineIngestProviderMode providerMode;
-
-    @Column(nullable = false)
-    private boolean licenseApproved;
-
-    @Column(length = 500)
-    private String usageGrantRef;
 
     @Column(nullable = false)
     private int hourlyLimit;
@@ -39,13 +29,9 @@ public class WineIngestSettings extends BaseTimeEntity {
     @Column(nullable = false)
     private boolean slackAlertEnabled;
 
-    public void update(boolean automationEnabled, WineIngestProviderMode providerMode,
-                       boolean licenseApproved, String usageGrantRef,
-                       int hourlyLimit, int maxRunItems, boolean slackAlertEnabled) {
+    public void update(boolean automationEnabled, int hourlyLimit, int maxRunItems,
+                       boolean slackAlertEnabled) {
         this.automationEnabled = automationEnabled;
-        this.providerMode = providerMode;
-        this.licenseApproved = licenseApproved;
-        this.usageGrantRef = usageGrantRef;
         this.hourlyLimit = hourlyLimit;
         this.maxRunItems = maxRunItems;
         this.slackAlertEnabled = slackAlertEnabled;

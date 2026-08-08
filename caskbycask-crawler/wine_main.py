@@ -1,7 +1,7 @@
 """Wine ingestion worker.
 
-Default FIXTURE mode never connects to Vivino. LIVE crawls public Vivino HTML only after the
-backend's written-authorization gate is open. It does not use an API token or login session.
+FIXTURE runs never connect to Vivino and only replay the bundled offline sample. Other runs crawl
+public Vivino HTML at a deliberately low request rate. No API token or login session is used.
 """
 from __future__ import annotations
 
@@ -99,10 +99,7 @@ def main() -> int:
         config = {}
         print(f"[wine] 설정 조회 실패(대기 작업 확인은 계속 진행): {exc}", file=sys.stderr)
     notifier.enabled = notifier.enabled and bool(config.get("slackAlertEnabled", True))
-    if (args.enqueue_scheduled
-            and config.get("automationEnabled")
-            and config.get("liveNetworkEnabled")
-            and config.get("providerMode") == "LIVE"):
+    if args.enqueue_scheduled and config.get("automationEnabled"):
         try:
             api.enqueue_scheduled()
         except Exception as exc:
@@ -121,11 +118,8 @@ def main() -> int:
                 "WINE_FIXTURE_PATH", str(ROOT / "fixtures" / "wine_license_review.json"),
             ))
         else:
-            if not config.get("liveNetworkEnabled") or config.get("providerMode") != "LIVE":
-                raise RuntimeError("backend LIVE license gate is closed")
             base_url = os.getenv("VIVINO_BASE_URL", "https://www.vivino.com").strip()
             provider = VivinoWebCrawlerProvider(
-                usage_grant_ref=str(config.get("usageGrantRef") or ""),
                 base_url=base_url,
                 start_urls=env_urls("VIVINO_START_URLS", f"{base_url.rstrip('/')}/explore"),
                 request_delay_seconds=env_number("VIVINO_REQUEST_DELAY_SECONDS", 5.0),

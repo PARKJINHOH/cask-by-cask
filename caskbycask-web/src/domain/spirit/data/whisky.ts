@@ -26,19 +26,24 @@ export const WHISKY_STYLES: Array<[string, string]> = [
  *
  * 세부 오크통 명칭(퍼스트필·올로로소 등)은 대분류마다 자유 입력으로 여러 개 넣는다 —
  * 종류가 사실상 무한해 enum 으로 고정할 수 없기 때문이다.
+ *
+ * **세부 명칭은 영문으로 입력한다.** 이 값은 상세 화면에서 한글·영문 구분 없이 그대로 노출돼
+ * (`SpiritDetailPage` 의 캐스크 칩) 언어별 번역본이 없다. 조사 프롬프트
+ * (`docs/whisky-research-prompt.md`)도 영문을 요구하므로, 손으로 넣은 값과 붙여넣은 값이
+ * 섞이지 않도록 placeholder 예시를 영문으로 둔다.
  */
 export const BROAD_CASK_CATEGORIES = [
-  { code: 'EX_BOURBON', label: '버번 캐스크 (Bourbon Cask)', placeholder: '예) 버진 오크, 아메리칸 오크' },
-  { code: 'NEW_OAK', label: '버진 오크 (Virgin Oak / New Oak)', placeholder: '예) 아메리칸 버진 오크' },
-  { code: 'EX_SHERRY', label: '셰리 캐스크 (Sherry Cask)', placeholder: '예) 올로로소, PX, 피노, 만자니야' },
-  { code: 'EX_PORT', label: '포트/주정강화 캐스크 (Fortified Wine Cask)', placeholder: '예) 포트, 마데이라, 소테른, 마르살라' },
-  { code: 'EX_WINE', label: '와인 캐스크 (Wine Cask)', placeholder: '예) 레드 와인, 샤르도네, 비노 바리끄' },
-  { code: 'EX_RUM', label: '럼 캐스크 (Rum Cask)', placeholder: '예) 다크 럼, 화이트 럼' },
-  { code: 'EX_COGNAC', label: '꼬냑 캐스크 (Cognac Cask)', placeholder: '예) 그랑 상파뉴 꼬냑' },
-  { code: 'EX_CALVADOS', label: '칼바도스 캐스크 (Calvados Cask)', placeholder: '예) 칼바도스' },
-  { code: 'EX_BEER', label: '맥주 캐스크 (Beer Cask)', placeholder: '예) 임페리얼 스타우트, IPA' },
-  { code: 'MIZUNARA', label: '미즈나라 캐스크 (Mizunara Cask)', placeholder: '예) 미즈나라' },
-  { code: 'OTHER', label: '기타 캐스크 (Other Casks)', placeholder: '예) 매실주 캐스크, 피티드 캐스크' },
+  { code: 'EX_BOURBON', label: '버번 캐스크 (Bourbon Cask)', placeholder: '예) American Oak Barrel, First-fill Bourbon Barrel' },
+  { code: 'NEW_OAK', label: '버진 오크 (Virgin Oak / New Oak)', placeholder: '예) American Virgin Oak' },
+  { code: 'EX_SHERRY', label: '셰리 캐스크 (Sherry Cask)', placeholder: '예) Oloroso Sherry Butt, Pedro Ximénez Hogshead' },
+  { code: 'EX_PORT', label: '포트/주정강화 캐스크 (Fortified Wine Cask)', placeholder: '예) Port Pipe, Madeira Cask, Sauternes Barrique' },
+  { code: 'EX_WINE', label: '와인 캐스크 (Wine Cask)', placeholder: '예) Red Wine Barrique, Chardonnay Cask' },
+  { code: 'EX_RUM', label: '럼 캐스크 (Rum Cask)', placeholder: '예) Ex-Rum Cask, Jamaican Rum Cask' },
+  { code: 'EX_COGNAC', label: '꼬냑 캐스크 (Cognac Cask)', placeholder: '예) Cognac Cask, Grande Champagne Cognac Cask' },
+  { code: 'EX_CALVADOS', label: '칼바도스 캐스크 (Calvados Cask)', placeholder: '예) Calvados Cask' },
+  { code: 'EX_BEER', label: '맥주 캐스크 (Beer Cask)', placeholder: '예) Imperial Stout Cask, IPA Cask' },
+  { code: 'MIZUNARA', label: '미즈나라 캐스크 (Mizunara Cask)', placeholder: '예) Mizunara Puncheon' },
+  { code: 'OTHER', label: '기타 캐스크 (Other Casks)', placeholder: '예) Umeshu Cask, Peated Quarter Cask' },
 ]
 
 /** 병입 구분 — OB(증류소 직접) / IB(독립 병입사) */

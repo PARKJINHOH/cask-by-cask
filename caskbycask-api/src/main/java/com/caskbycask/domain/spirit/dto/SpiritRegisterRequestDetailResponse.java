@@ -11,7 +11,6 @@ import com.caskbycask.domain.spirit.entity.enums.OtherSpiritType;
 import com.caskbycask.domain.spirit.entity.enums.VariantType;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -37,16 +36,10 @@ public record SpiritRegisterRequestDetailResponse(
         String regionCode,
         Integer ageStatement,
         Integer ageStatementMonths,
-        Integer ageStatementMin,
-        Integer ageStatementMinMonths,
-        Integer ageStatementMax,
-        Integer ageStatementMaxMonths,
         Boolean isNas,
         String distilledDate,
         String bottledDate,
-        LocalDate releaseDate,
         String bottleNo,
-        String batchNo,
         Integer totalBottles,
         WhiskyStyle whiskyStyle,
         String whiskyStyleOther,
@@ -109,16 +102,10 @@ public record SpiritRegisterRequestDetailResponse(
                 body.regionCode(),
                 body.ageStatement(),
                 body.ageStatementMonths(),
-                body.ageStatementMin(),
-                body.ageStatementMinMonths(),
-                body.ageStatementMax(),
-                body.ageStatementMaxMonths(),
                 body.isNas(),
                 body.distilledDate(),
                 body.bottledDate(),
-                body.releaseDate(),
                 body.bottleNo(),
-                body.batchNo(),
                 body.totalBottles(),
                 body.whiskyStyle(),
                 body.whiskyStyleOther(),

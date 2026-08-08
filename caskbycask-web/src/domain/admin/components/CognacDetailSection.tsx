@@ -175,11 +175,11 @@ export default function CognacDetailSection({ value, onChange, errors }: Props) 
       <div>
         <label className={LABEL}>
           캐스크 피니시 / 추가 숙성
-          <InfoTooltip text="다른 캐스크에서 추가 숙성한 경우. 예: 포트 캐스크 피니시." />
+          <InfoTooltip text="다른 캐스크에서 추가 숙성한 경우. 상세 화면이 이 값을 언어 구분 없이 그대로 노출하므로 영문으로 적어주세요. 예: Port Cask Finish." />
         </label>
         <input type="text" value={value.caskFinish} maxLength={200}
           onChange={(e) => onChange({ caskFinish: e.target.value })}
-          placeholder="예: 포트 캐스크 피니시" className={INPUT} />
+          placeholder="예: Port Cask Finish" className={INPUT} />
       </div>
 
       {/* 블렌드 설명 */}

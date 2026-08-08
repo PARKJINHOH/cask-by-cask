@@ -299,15 +299,11 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
         commonDetail: {
           isNas: false,
           ageStatement: null,
-          ageStatementMin: null,
-          ageStatementMax: null,
           distilledDate: null,
           bottledDate: null,
-          releaseDate: null,
           volumeMl: null,
           abv: null,
           bottleNo: null,
-          batchNo: null,
           totalBottles: null,
         },
         whiskyDetail: {
@@ -486,17 +482,11 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
           isNas: v.commonDetail.isNas,
           ageStatement: v.commonDetail.ageStatement,
           ageStatementMonths: v.commonDetail.ageStatementMonths,
-          ageStatementMin: v.commonDetail.ageStatementMin,
-          ageStatementMinMonths: v.commonDetail.ageStatementMinMonths,
-          ageStatementMax: v.commonDetail.ageStatementMax,
-          ageStatementMaxMonths: v.commonDetail.ageStatementMaxMonths,
           distilledDate: v.commonDetail.distilledDate,
           bottledDate: v.commonDetail.bottledDate,
-          releaseDate: v.commonDetail.releaseDate,
           volumeMl: v.commonDetail.volumeMl,
           abv: v.commonDetail.abv,
           bottleNo: v.commonDetail.bottleNo,
-          batchNo: v.commonDetail.batchNo,
           totalBottles: v.commonDetail.totalBottles,
         } : undefined,
         // WhiskyDetail DTO 변환
@@ -566,12 +556,10 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
       const cd = s.commonDetail
       setCommonDetail({
         isNas: cd.isNas, ageStatement: cd.ageStatement, ageStatementMonths: cd.ageStatementMonths,
-        ageStatementMin: cd.ageStatementMin, ageStatementMinMonths: cd.ageStatementMinMonths,
-        ageStatementMax: cd.ageStatementMax, ageStatementMaxMonths: cd.ageStatementMaxMonths,
         distilledDate: cd.distilledDate ?? '', bottledDate: cd.bottledDate ?? '',
-        releaseDate: cd.releaseDate ?? '', volumeMl: cd.volumeMl?.toString() ?? s.volumeMl?.toString() ?? '',
+        volumeMl: cd.volumeMl?.toString() ?? s.volumeMl?.toString() ?? '',
         abv: cd.abv?.toString() ?? s.abv?.toString() ?? '', bottleNo: cd.bottleNo ?? '',
-        batchNo: cd.batchNo ?? '', totalBottles: cd.totalBottles?.toString() ?? '',
+        totalBottles: cd.totalBottles?.toString() ?? '',
       })
     } else {
       setCommonDetail({
@@ -651,12 +639,10 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
       ...DEFAULT_COMMON_DETAIL,
       isNas: r.isNas ?? false, ageStatement: r.ageStatement ?? null,
       ageStatementMonths: r.ageStatementMonths ?? null,
-      ageStatementMin: r.ageStatementMin ?? null, ageStatementMinMonths: r.ageStatementMinMonths ?? null,
-      ageStatementMax: r.ageStatementMax ?? null, ageStatementMaxMonths: r.ageStatementMaxMonths ?? null,
       distilledDate: r.distilledDate ?? '', bottledDate: r.bottledDate ?? '',
-      releaseDate: r.releaseDate ?? '', volumeMl: r.volumeMl?.toString() ?? '',
+      volumeMl: r.volumeMl?.toString() ?? '',
       abv: r.abv?.toString() ?? '',
-      bottleNo: r.bottleNo ?? '', batchNo: r.batchNo ?? '', totalBottles: r.totalBottles?.toString() ?? '',
+      bottleNo: r.bottleNo ?? '', totalBottles: r.totalBottles?.toString() ?? '',
     })
 
     // 도수 범위 지정 프리필
@@ -751,10 +737,9 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
         commonDetail: {
           isNas: r.isNas ?? false, ageStatement: r.ageStatement ?? null,
           ageStatementMonths: r.ageStatementMonths ?? null,
-          ageStatementMin: null, ageStatementMax: null,
           distilledDate: r.distilledDate ?? null, bottledDate: r.bottledDate ?? null,
-          releaseDate: r.releaseDate ?? null, volumeMl: r.volumeMl ?? null, abv: r.abv ?? null,
-          bottleNo: null, batchNo: null, totalBottles: null,
+          volumeMl: r.volumeMl ?? null, abv: r.abv ?? null,
+          bottleNo: null, totalBottles: null,
         },
         whiskyDetail: {
           style: r.whiskyStyle || 'SINGLE_MALT', styleOther: r.whiskyStyleOther ?? '',
@@ -937,17 +922,11 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
       isNas: dropAging ? false : commonDetail.isNas,
       ageStatement: dropAging || commonDetail.isNas ? null : (commonDetail.ageStatement ?? null),
       ageStatementMonths: dropAging || commonDetail.isNas ? null : (commonDetail.ageStatementMonths ?? null),
-      ageStatementMin: dropAging || commonDetail.isNas ? null : (commonDetail.ageStatementMin ?? null),
-      ageStatementMinMonths: dropAging || commonDetail.isNas ? null : (commonDetail.ageStatementMinMonths ?? null),
-      ageStatementMax: dropAging || commonDetail.isNas ? null : (commonDetail.ageStatementMax ?? null),
-      ageStatementMaxMonths: dropAging || commonDetail.isNas ? null : (commonDetail.ageStatementMaxMonths ?? null),
       distilledDate: dropAging ? null : (commonDetail.distilledDate || null),
       bottledDate: isWine ? null : (commonDetail.bottledDate || null),
-      releaseDate: isWine ? null : (commonDetail.releaseDate || null),
       volumeMl: isVolumeMlRange ? (volumeMlMin ? Number(volumeMlMin) : null) : (commonDetail.volumeMl ? Number(commonDetail.volumeMl) : null),
       abv: isAbvRange ? (abvMin ? Number(abvMin) : null) : (commonDetail.abv ? Number(commonDetail.abv) : null),
       bottleNo: isWine ? null : (commonDetail.bottleNo || null),
-      batchNo: isWine ? null : (commonDetail.batchNo || null),
       totalBottles: isWine ? null : (commonDetail.totalBottles ? Number(commonDetail.totalBottles) : null),
     }
   }
@@ -1100,15 +1079,9 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
       isNas: cd.isNas ?? false,
       ageStatement: cd.isNas ? null : (cd.ageStatement ?? null),
       ageStatementMonths: cd.isNas ? null : (cd.ageStatementMonths ?? null),
-      ageStatementMin: cd.isNas ? null : (cd.ageStatementMin ?? null),
-      ageStatementMinMonths: cd.isNas ? null : (cd.ageStatementMinMonths ?? null),
-      ageStatementMax: cd.isNas ? null : (cd.ageStatementMax ?? null),
-      ageStatementMaxMonths: cd.isNas ? null : (cd.ageStatementMaxMonths ?? null),
       distilledDate: cd.distilledDate || null,
       bottledDate: cd.bottledDate || null,
-      releaseDate: cd.releaseDate || null,
       bottleNo: cd.bottleNo || null,
-      batchNo: cd.batchNo || null,
       totalBottles: cd.totalBottles ?? null,
       abv: null,
       volumeMl: null,
@@ -2218,17 +2191,11 @@ function toCommonDetailForm(detail?: SpiritCommonDetailRequest): CommonDetailFor
     isNas: !!detail.isNas,
     ageStatement: detail.ageStatement ?? null,
     ageStatementMonths: detail.ageStatementMonths ?? null,
-    ageStatementMin: detail.ageStatementMin ?? null,
-    ageStatementMinMonths: detail.ageStatementMinMonths ?? null,
-    ageStatementMax: detail.ageStatementMax ?? null,
-    ageStatementMaxMonths: detail.ageStatementMaxMonths ?? null,
     distilledDate: detail.distilledDate ?? '',
     bottledDate: detail.bottledDate ?? '',
-    releaseDate: detail.releaseDate ?? '',
     volumeMl: detail.volumeMl?.toString() ?? '',
     abv: detail.abv?.toString() ?? '',
     bottleNo: detail.bottleNo ?? '',
-    batchNo: detail.batchNo ?? '',
     totalBottles: detail.totalBottles?.toString() ?? '',
   }
 }
@@ -2354,15 +2321,9 @@ function VariantItemCard({
     if (u.isNas !== undefined) converted.isNas = u.isNas
     if (u.ageStatement !== undefined) converted.ageStatement = u.ageStatement
     if (u.ageStatementMonths !== undefined) converted.ageStatementMonths = u.ageStatementMonths
-    if (u.ageStatementMin !== undefined) converted.ageStatementMin = u.ageStatementMin
-    if (u.ageStatementMinMonths !== undefined) converted.ageStatementMinMonths = u.ageStatementMinMonths
-    if (u.ageStatementMax !== undefined) converted.ageStatementMax = u.ageStatementMax
-    if (u.ageStatementMaxMonths !== undefined) converted.ageStatementMaxMonths = u.ageStatementMaxMonths
     if (u.distilledDate !== undefined) converted.distilledDate = u.distilledDate || null
     if (u.bottledDate !== undefined) converted.bottledDate = u.bottledDate || null
-    if (u.releaseDate !== undefined) converted.releaseDate = u.releaseDate || null
     if (u.bottleNo !== undefined) converted.bottleNo = u.bottleNo || null
-    if (u.batchNo !== undefined) converted.batchNo = u.batchNo || null
     if (u.totalBottles !== undefined) {
       converted.totalBottles = u.totalBottles === '' ? null : Number(u.totalBottles)
     }

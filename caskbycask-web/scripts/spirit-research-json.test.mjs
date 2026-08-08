@@ -236,10 +236,9 @@ describe('모르는 값은 넣지 않고 경고한다', () => {
 
   test('날짜 형식이 어긋나면 건너뛴다', () => {
     const { plan } = buildImportPlan({
-      category: 'WHISKY', bottledDate: '2024/03', releaseDate: '2024-03', distilledDate: '2011-13',
+      category: 'WHISKY', bottledDate: '2024/03', distilledDate: '2011-13',
     })
     assert.equal(plan.commonDetail.bottledDate, undefined)
-    assert.equal(plan.commonDetail.releaseDate, undefined)
     assert.equal(plan.commonDetail.distilledDate, undefined)
   })
 })
@@ -313,12 +312,12 @@ describe('폼이 잠그는 칸은 채우지 않는다', () => {
     assert.equal(plan.whiskyDetail.styleOther, undefined)
   })
 
-  test('와인은 병입·배치 정보를 만들지 않는다 (폼에서 숨겨진 칸)', () => {
+  test('와인은 병입 정보를 만들지 않는다 (폼에서 숨겨진 칸)', () => {
     const { plan } = buildImportPlan({
-      category: 'WINE', bottledDate: '2020-03', batchNo: 'A1', totalBottles: 500,
+      category: 'WINE', bottledDate: '2020-03', bottleNo: '12/500', totalBottles: 500,
     })
     assert.equal(plan.commonDetail.bottledDate, undefined)
-    assert.equal(plan.commonDetail.batchNo, undefined)
+    assert.equal(plan.commonDetail.bottleNo, undefined)
   })
 })
 
@@ -376,7 +375,7 @@ describe('에디션', () => {
       seriesIdentifier: '배치 시리즈',
       seriesIdentifierEn: 'Batch Series',
       items: [
-        { variantValue: '배치 15', variantValueEn: 'Batch 15', abv: 54.8, batchNo: '15' },
+        { variantValue: '배치 15', variantValueEn: 'Batch 15', abv: 54.8, bottledDate: '2024-01' },
         { variantValue: '배치 16', abv: 55.2 },
       ],
     },
@@ -392,7 +391,7 @@ describe('에디션', () => {
     assert.equal(form.state.seriesIdentifier, '배치 시리즈')
     assert.equal(form.state.variants.length, 2)
     assert.equal(form.state.variants[0].variantValue, '배치 15')
-    assert.equal(form.state.variants[0].commonDetail.batchNo, '15')
+    assert.equal(form.state.variants[0].commonDetail.bottledDate, '2024-01')
     // 폼이 tempId 로 탭을 구분하므로 반드시 있어야 한다
     assert.ok(form.state.variants.every((v) => v.tempId))
   })
@@ -448,6 +447,94 @@ describe('에디션', () => {
     const form = fakeForm()
     applyImportPlan(form, plan)
     assert.equal(form.state.isVariantSplit, false)
+  })
+
+  test('에디션이 직접 적은 숙성·특성·피트를 그대로 옮긴다', () => {
+    // 에디션 카드는 숙성(NAS/연수/증류연월)·특성 체크박스·피트 ppm 을 모두 렌더한다.
+    // 여기서 빠지면 화면은 빈칸인데 경고도 없는 조용한 실패가 된다.
+    const { plan } = buildImportPlan({
+      category: 'WHISKY',
+      editions: {
+        variantType: 'BATCH', seriesIdentifier: 'S',
+        items: [{
+          variantValue: '배치 1',
+          isNas: false, ageStatement: 12, ageStatementMonths: 6, distilledDate: '2010-03',
+          bottleNo: '123/500',
+          isNonChillFiltered: true, isNaturalColour: true, isSingleCask: true,
+          isCaskStrength: true, isPeated: true, phenolPpm: 55,
+        }],
+      },
+    })
+    const { commonDetail, whiskyDetail } = plan.variants.items[0]
+    assert.deepEqual(commonDetail, {
+      isNas: false, ageStatement: 12, ageStatementMonths: 6, distilledDate: '2010-03',
+      bottleNo: '123/500',
+    })
+    assert.equal(whiskyDetail.isNonChillFiltered, true)
+    assert.equal(whiskyDetail.isSingleCask, true)
+    assert.equal(whiskyDetail.isPeated, true)
+    // 에디션 상세는 요청 DTO 형태라 숫자로 들어가야 한다(마스터는 폼 형태라 문자열)
+    assert.equal(whiskyDetail.phenolPpm, 55)
+  })
+
+  test('에디션이 비워 둔 값은 최상위에서 물려받는다', () => {
+    // 프롬프트가 "모든 에디션이 같으면 최상위에만" 이라고 안내하는데,
+    // 위스키에 에디션이 있으면 화면이 최상위 상세 카드를 숨긴다 —
+    // 내려보내지 않으면 사람이 검수할 수 없다.
+    const { plan } = buildImportPlan({
+      category: 'WHISKY',
+      abv: 46.3, volumeMl: 700,
+      isNas: false, ageStatement: 12,
+      isNonChillFiltered: true, isPeated: true, phenolPpm: 55,
+      casks: [{ code: 'EX_SHERRY', details: ['Oloroso Sherry Butt'] }],
+      notes: '제품 전체 설명',
+      editions: {
+        variantType: 'BATCH', seriesIdentifier: 'S',
+        items: [
+          { variantValue: '배치 1', abv: null, volumeMl: null, ageStatement: null, casks: null },
+          { variantValue: '배치 2', abv: 54.8, isSingleCask: true },
+        ],
+      },
+    })
+    const [first, second] = plan.variants.items
+    assert.equal(first.abv, 46.3)
+    assert.equal(first.volumeMl, 700)
+    assert.equal(first.commonDetail.ageStatement, 12)
+    assert.equal(first.whiskyDetail.isNonChillFiltered, true)
+    assert.equal(first.whiskyDetail.phenolPpm, 55)
+    assert.deepEqual(first.whiskyDetail.caskTypes, ['EX_SHERRY'])
+    // 에디션이 직접 적은 값이 최상위를 이긴다
+    assert.equal(second.abv, 54.8)
+    assert.equal(second.whiskyDetail.isSingleCask, true)
+    // 제품 설명·병입분 고유 정보는 물려받지 않는다 — 에디션마다 달라야 한다
+    assert.equal(first.whiskyDetail.notes, undefined)
+    assert.equal(first.commonDetail.bottledDate, undefined)
+  })
+
+  test('최상위 도수가 범위면 에디션이 물려받지 않는다', () => {
+    // 에디션 카드의 도수는 단일 입력칸이라 범위를 옮길 자리가 없다
+    const { plan } = buildImportPlan({
+      category: 'WHISKY', abv: null, abvMin: 56.4, abvMax: 60.1, volumeMl: 700,
+      editions: {
+        variantType: 'RELEASE_YEAR', seriesIdentifier: '연간 릴리즈',
+        items: [{ variantValue: '2025 에디션', abv: 56.4, volumeMl: null }],
+      },
+    })
+    assert.equal(plan.variants.items[0].abv, 56.4)
+    assert.equal(plan.variants.items[0].volumeMl, 700)
+  })
+
+  test('에디션이 casks: [] 로 적으면 최상위 캐스크를 물려받지 않는다', () => {
+    // 빈 배열은 프롬프트에서 "캐스크 미상"이라는 뜻이다 — null 과 구분한다
+    const { plan } = buildImportPlan({
+      category: 'WHISKY',
+      casks: [{ code: 'EX_SHERRY', details: ['Oloroso Sherry Butt'] }],
+      editions: {
+        variantType: 'BATCH', seriesIdentifier: 'S',
+        items: [{ variantValue: '배치 1', casks: [] }],
+      },
+    })
+    assert.equal(plan.variants.items[0].whiskyDetail.caskTypes, undefined)
   })
 })
 

@@ -759,7 +759,6 @@ function parseOptionalVolumeMl(value: string): number | null {
 
 function toConnectionOption(spirit: SpiritDetail | SpiritVariant): SpiritConnectionOption {
   const commonDetail = 'commonDetail' in spirit ? spirit.commonDetail : null
-  const batchNo = 'batchNo' in spirit ? spirit.batchNo : commonDetail?.batchNo
   const bottledDate = 'bottledDate' in spirit ? spirit.bottledDate : commonDetail?.bottledDate
   return {
     id: spirit.id,
@@ -772,7 +771,6 @@ function toConnectionOption(spirit: SpiritDetail | SpiritVariant): SpiritConnect
       seriesIdentifierEn: spirit.seriesIdentifierEn,
       variantValue: spirit.variantValue,
       variantValueEn: spirit.variantValueEn,
-      batchNo,
       bottledDate,
       abv: spirit.abv,
       volumeMl: spirit.volumeMl,
@@ -787,7 +785,6 @@ function buildDealSpiritVariantLabel(detail: DealPostDetail): string | null {
     seriesIdentifierEn: detail.spiritSeriesIdentifierEn,
     variantValue: detail.spiritVariantValue,
     variantValueEn: detail.spiritVariantValueEn,
-    batchNo: detail.spiritBatchNo,
     bottledDate: detail.spiritBottledDate,
   })
 }
@@ -798,7 +795,6 @@ function composeVariantLabel({
   seriesIdentifierEn,
   variantValue,
   variantValueEn,
-  batchNo,
   bottledDate,
   abv,
   volumeMl,
@@ -808,14 +804,13 @@ function composeVariantLabel({
   seriesIdentifierEn?: string | null
   variantValue?: string | null
   variantValueEn?: string | null
-  batchNo?: string | null
   bottledDate?: string | null
   abv?: number | null
   volumeMl?: number | null
 }) {
   const parts = [
     variantType && variantType !== 'NONE' ? seriesIdentifier || seriesIdentifierEn : null,
-    variantValue || variantValueEn || (batchNo ? `Batch ${batchNo}` : null),
+    variantValue || variantValueEn,
     bottledDate ? `병입 ${bottledDate}` : null,
     abv != null ? `${abv}%` : null,
     volumeMl != null ? `${volumeMl}ml` : null,

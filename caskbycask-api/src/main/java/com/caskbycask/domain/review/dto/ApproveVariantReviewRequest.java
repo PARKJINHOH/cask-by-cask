@@ -40,10 +40,6 @@ public record ApproveVariantReviewRequest(
         @Max(value = 11, message = "Age statement months must be 11 or less.")
         Integer ageStatementMonths,
 
-        @Schema(description = "Final batch number when creating a new variant")
-        @Size(max = 100, message = "Batch number must be 100 characters or less.")
-        String batchNo,
-
         @Schema(description = "Final cask number when creating a new whisky variant")
         @Size(max = 100, message = "Cask number must be 100 characters or less.")
         String caskNo,

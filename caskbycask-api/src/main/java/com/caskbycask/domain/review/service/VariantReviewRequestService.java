@@ -528,15 +528,9 @@ public class VariantReviewRequestService {
                 approval != null ? approval.ageStatementMonths() : null,
                 null,
                 null,
-                null,
-                null,
-                null,
-                null,
-                null,
                 request.getVolumeMl(),
                 request.getAbv(),
                 null,
-                normalize(approval != null ? approval.batchNo() : null),
                 null
         ));
 

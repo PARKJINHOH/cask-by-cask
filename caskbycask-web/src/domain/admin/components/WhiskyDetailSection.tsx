@@ -39,7 +39,7 @@ export function WhiskyCaskSection({ value, onChange }: Props) {
     <div>
       <label className={LABEL}>
         캐스크
-        <InfoTooltip text="이 위스키에 사용된 캐스크 대분류를 체크하고, 아래에 구체적인 세부 오크통 명칭을 적어주세요. + 버튼을 눌러 여러 개를 등록할 수 있습니다. 피니시(추가 숙성) 캐스크는 우측 피니시를 체크해주세요." />
+        <InfoTooltip text="이 위스키에 사용된 캐스크 대분류를 체크하고, 아래에 구체적인 세부 오크통 명칭을 영문으로 적어주세요(예: Oloroso Sherry Butt). + 버튼을 눌러 여러 개를 등록할 수 있습니다. 피니시(추가 숙성) 캐스크는 우측 피니시를 체크해주세요." />
       </label>
       <div className="space-y-3">
         {BROAD_CASK_CATEGORIES.map(({ code, label, placeholder }) => {
@@ -134,7 +134,8 @@ export function WhiskyCaskSection({ value, onChange }: Props) {
               {/* 세부 오크통 동적 입력 (체크 시 활성화) */}
               {isChecked && (
                 <div className="pl-6 bg-amber-50/10 rounded-lg p-2 border-l border-amber-200/60 ml-2 space-y-2">
-                  <p className="text-[11px] text-amber-600/80 font-medium">세부 오크통 종류 명칭</p>
+                  {/* 상세 화면이 이 값을 언어 구분 없이 그대로 노출한다 — 영문으로 통일한다 */}
+                  <p className="text-[11px] text-amber-600/80 font-medium">세부 오크통 종류 명칭 (영문)</p>
                   <div className="space-y-2">
                     {details.map((detailVal, idx) => (
                       <div key={idx} className="flex items-center gap-2 w-full">

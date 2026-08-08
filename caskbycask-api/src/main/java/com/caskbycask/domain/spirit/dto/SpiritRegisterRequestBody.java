@@ -19,7 +19,6 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -77,18 +76,6 @@ public record SpiritRegisterRequestBody(
         @Min(value = 0, message = "숙성 개월은 0 이상이어야 합니다.")
         @Max(value = 11, message = "숙성 개월은 11 이하여야 합니다.")
         Integer ageStatementMonths,
-        @Schema(description = "최소 숙성 연수 (선택, 범위 지정 시)")
-        Integer ageStatementMin,
-        @Schema(description = "범위 최소 숙성 개월 (선택, 0~11)")
-        @Min(value = 0, message = "숙성 개월은 0 이상이어야 합니다.")
-        @Max(value = 11, message = "숙성 개월은 11 이하여야 합니다.")
-        Integer ageStatementMinMonths,
-        @Schema(description = "최대 숙성 연수 (선택, 범위 지정 시)")
-        Integer ageStatementMax,
-        @Schema(description = "범위 최대 숙성 개월 (선택, 0~11)")
-        @Min(value = 0, message = "숙성 개월은 0 이상이어야 합니다.")
-        @Max(value = 11, message = "숙성 개월은 11 이하여야 합니다.")
-        Integer ageStatementMaxMonths,
         @Schema(description = "NAS(숙성 연수 미표기) 여부 (선택)")
         Boolean isNas,
         @Schema(description = "증류 연월 (선택, YYYY 또는 YYYY-MM)")
@@ -97,14 +84,9 @@ public record SpiritRegisterRequestBody(
         @Schema(description = "병입 연월 (선택, YYYY 또는 YYYY-MM)")
         @Pattern(regexp = "^\\d{4}(-(0[1-9]|1[0-2]))?$", message = "병입 연월 형식이 올바르지 않습니다 (YYYY 또는 YYYY-MM, 월은 01~12).")
         String bottledDate,
-        @Schema(description = "출시일 (선택)")
-        LocalDate releaseDate,
         @Schema(description = "병 번호 (선택, 예: 123/500)")
         @Size(max = 50, message = "병 번호는 50자 이하여야 합니다.")
         String bottleNo,
-        @Schema(description = "배치 번호 (선택)")
-        @Size(max = 100, message = "배치 번호는 100자 이하여야 합니다.")
-        String batchNo,
         @Schema(description = "총 병 수 (선택)")
         @Min(value = 1, message = "총 병 수는 1 이상이어야 합니다.")
         Integer totalBottles,

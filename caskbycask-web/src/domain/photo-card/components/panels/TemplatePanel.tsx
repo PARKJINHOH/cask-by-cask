@@ -61,6 +61,12 @@ export default function TemplatePanel({
   const showBuiltins = scope === 'OFFICIAL' && templates.length === 0
 
   const use = (key: string, layout: PhotoCardLayout, id?: number) => {
+    // 사진이 없으면 작업 영역에는 업로드 버튼만 있다 — 템플릿을 얹어도 카드가 그려지지 않아
+    // 무엇을 고른 것인지 볼 수 없다. 먼저 사진을 올리도록 안내하고 여기서 멈춘다.
+    if (!editor.photoImage) {
+      window.alert(t('photoCard.templateNeedsPhoto'))
+      return
+    }
     editor.applyLayout(layout)
     onApplied(key)
     if (id) void photoCardApi.markUsed(id).catch(() => {})

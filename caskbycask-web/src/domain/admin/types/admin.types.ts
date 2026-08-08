@@ -11,17 +11,11 @@ export interface SpiritCommonDetailRequest {
   isNas?: boolean
   ageStatement?: number | null
   ageStatementMonths?: number | null
-  ageStatementMin?: number | null
-  ageStatementMinMonths?: number | null
-  ageStatementMax?: number | null
-  ageStatementMaxMonths?: number | null
   distilledDate?: string | null
   bottledDate?: string | null
-  releaseDate?: string | null
   volumeMl?: number | null
   abv?: number | null
   bottleNo?: string | null
-  batchNo?: string | null
   totalBottles?: number | null
 }
 
@@ -274,7 +268,6 @@ export interface AdminSpiritVariant {
   vintageYear: number | null
   abv: number | null
   volumeMl: number | null
-  batchNo: string | null
   bottledDate: string | null
   primaryImageUrl: string | null
   status: SpiritStatus
@@ -352,7 +345,6 @@ export interface ApproveVariantReviewPayload {
   volumeMl?: number | null
   ageStatement?: number | null
   ageStatementMonths?: number | null
-  batchNo?: string | null
   caskNo?: string | null
   detailNotes?: string | null
 }
@@ -520,16 +512,10 @@ export interface SpiritRegisterRequestDetail {
   regionCode: string | null
   ageStatement: number | null
   ageStatementMonths: number | null
-  ageStatementMin: number | null
-  ageStatementMinMonths: number | null
-  ageStatementMax: number | null
-  ageStatementMaxMonths: number | null
   isNas: boolean | null
   distilledDate: string | null
   bottledDate: string | null
-  releaseDate: string | null
   bottleNo: string | null
-  batchNo: string | null
   totalBottles: number | null
   whiskyStyle: WhiskyStyle | null
   whiskyStyleOther: string | null

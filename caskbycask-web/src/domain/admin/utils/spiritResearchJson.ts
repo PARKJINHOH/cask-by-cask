@@ -46,11 +46,10 @@ const MAX = {
   name: 200, notes: 500, blendDetail: 300, caskFinish: 200, brandName: 200,
   styleOther: 100, appellation: 200, soilType: 100, oakType: 100, caskDetail: 100,
   harvestMethod: 50, fermentationVessel: 100, grapeName: 100,
-  batchNo: 100, bottleNo: 50, seriesIdentifier: 100,
+  bottleNo: 50, seriesIdentifier: 100,
 }
 
 const YEAR_MONTH_RE = /^\d{4}(-(0[1-9]|1[0-2]))?$/
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
 export interface ImportWarning {
   /** 화면에 보여줄 항목 이름 (한국어) */
@@ -224,16 +223,6 @@ class PlanBuilder {
     return s
   }
 
-  isoDate(label: string, raw: unknown): string | undefined {
-    if (raw == null || raw === '') return undefined
-    const s = String(raw).trim()
-    if (!DATE_RE.test(s)) {
-      this.warn(label, `'${s}' 는 YYYY-MM-DD 형식이 아닙니다. 건너뜁니다.`)
-      return undefined
-    }
-    this.mark(label)
-    return s
-  }
 }
 
 /** `undefined` 값을 걸러 낸 객체 — 폼 업데이트가 기존 값을 지우지 않게 한다 */
@@ -360,17 +349,13 @@ export function buildImportPlan(raw: Record<string, unknown>): BuildSuccess | Bu
       styleOther: style === 'OTHER' ? b.text('스타일 직접 입력', raw.styleOther, MAX.styleOther) : undefined,
       bottlingType: b.enumValue('병입 구분', raw.bottlingType, [...BOTTLING_TYPES]),
       brandName: b.text('브랜드명', raw.brandName, MAX.brandName),
-      isNonChillFiltered: b.bool('Non-Chill Filtered', raw.isNonChillFiltered),
-      isNaturalColour: b.bool('Natural Colour', raw.isNaturalColour),
-      isSingleCask: b.bool('Single Cask', raw.isSingleCask),
-      isCaskStrength: b.bool('Cask Strength', raw.isCaskStrength),
-      isPeated: b.bool('Peated', raw.isPeated),
       notes: b.text('기타 정보', raw.notes, MAX.notes),
+      ...buildWhiskyFlags(b, raw),
       ...buildPeat(b, raw),
       ...buildCasks(b, raw.casks),
     })
     plan.commonDetail = { ...spec, ...buildAging(b, raw), ...buildBottleMeta(b, raw) }
-    plan.variants = buildEditions(b, raw.editions)
+    plan.variants = buildEditions(b, raw.editions, raw)
   }
 
   if (category === 'WINE') {
@@ -644,14 +629,38 @@ function buildWineVintages(
   }
 }
 
-function buildPeat(b: PlanBuilder, raw: Record<string, unknown>) {
+/** 특성 플래그 — 마스터와 하위 에디션이 같은 체크박스 묶음을 쓴다 */
+function buildWhiskyFlags(b: PlanBuilder, raw: Record<string, unknown>, prefix = '') {
+  return compact({
+    isNonChillFiltered: b.bool(`${prefix}Non-Chill Filtered`, raw.isNonChillFiltered),
+    isNaturalColour: b.bool(`${prefix}Natural Colour`, raw.isNaturalColour),
+    isSingleCask: b.bool(`${prefix}Single Cask`, raw.isSingleCask),
+    isCaskStrength: b.bool(`${prefix}Cask Strength`, raw.isCaskStrength),
+    isPeated: b.bool(`${prefix}Peated`, raw.isPeated),
+  })
+}
+
+/**
+ * 피트 강도.
+ *
+ * <p>마스터는 폼 형태(`WhiskyDetailForm` — 문자열)를, 하위 에디션은 요청 DTO 형태
+ * (`WhiskyDetailRequest` — 숫자)를 들고 있어 `numeric` 으로 구분한다. 형태가 어긋나면
+ * 입력칸이 비어 보이거나 저장 시 400 이 난다.
+ */
+function buildPeat(
+  b: PlanBuilder,
+  raw: Record<string, unknown>,
+  opt: { prefix?: string; numeric?: boolean } = {},
+) {
+  const p = opt.prefix ?? ''
+  const cast = (n: number) => (opt.numeric ? n : String(n))
   if (raw.isPeated !== true) return {}
-  const single = b.num('피트 강도', raw.phenolPpm, 0, 999)
-  if (single !== undefined) return { phenolPpm: String(single) }
-  const lo = b.num('피트 강도 최소', raw.phenolPpmMin, 0, 999)
-  const hi = b.num('피트 강도 최대', raw.phenolPpmMax, 0, 999)
+  const single = b.num(`${p}피트 강도`, raw.phenolPpm, 0, 999)
+  if (single !== undefined) return { phenolPpm: cast(single) }
+  const lo = b.num(`${p}피트 강도 최소`, raw.phenolPpmMin, 0, 999)
+  const hi = b.num(`${p}피트 강도 최대`, raw.phenolPpmMax, 0, 999)
   if (lo !== undefined && hi !== undefined) {
-    return { phenolPpmMin: String(lo), phenolPpmMax: String(hi) }
+    return { phenolPpmMin: cast(lo), phenolPpmMax: cast(hi) }
   }
   return {}
 }
@@ -682,17 +691,22 @@ function buildCasks(b: PlanBuilder, raw: unknown) {
   return { caskTypes, caskFinishes, caskDetails }
 }
 
-/** 숙성 연수 — 위스키 전용(꼬냑·와인은 폼에서 숨겨진다) */
-function buildAging(b: PlanBuilder, raw: Record<string, unknown>) {
-  const isNas = b.bool('NAS', raw.isNas)
+/**
+ * 숙성 연수 — 위스키 전용(꼬냑·와인은 폼에서 숨겨진다).
+ *
+ * <p>연/개월·증류 연월의 형태는 폼(`CommonDetailForm`)과 요청 DTO(`SpiritCommonDetailRequest`)가
+ * 같아서 마스터·하위 에디션이 그대로 공유한다. 경고 문구만 `prefix` 로 구분한다.
+ */
+function buildAging(b: PlanBuilder, raw: Record<string, unknown>, prefix = '') {
+  const isNas = b.bool(`${prefix}NAS`, raw.isNas)
   if (isNas === true) return { isNas: true }
   const out: Record<string, unknown> = {}
   if (isNas === false) out.isNas = false
-  const years = b.num('숙성 연수', raw.ageStatement, 0, 100)
+  const years = b.num(`${prefix}숙성 연수`, raw.ageStatement, 0, 100)
   if (years !== undefined) out.ageStatement = years
-  const months = b.num('숙성 개월', raw.ageStatementMonths, 0, 11)
+  const months = b.num(`${prefix}숙성 개월`, raw.ageStatementMonths, 0, 11)
   if (months !== undefined) out.ageStatementMonths = months
-  const distilled = b.yearMonth('증류 연월', raw.distilledDate)
+  const distilled = b.yearMonth(`${prefix}증류 연월`, raw.distilledDate)
   if (distilled !== undefined) out.distilledDate = distilled
   return out
 }
@@ -701,14 +715,47 @@ function buildAging(b: PlanBuilder, raw: Record<string, unknown>) {
 function buildBottleMeta(b: PlanBuilder, raw: Record<string, unknown>) {
   return compact({
     bottledDate: b.yearMonth('병입 연월', raw.bottledDate),
-    releaseDate: b.isoDate('출시일', raw.releaseDate),
-    batchNo: b.text('배치 번호', raw.batchNo, MAX.batchNo),
     bottleNo: b.text('병 번호', raw.bottleNo, MAX.bottleNo),
     totalBottles: numToStr(b.num('총 병 수', raw.totalBottles, 1, 10_000_000)),
   })
 }
 
-function buildEditions(b: PlanBuilder, raw: unknown): ImportPlan['variants'] {
+/**
+ * 하위 에디션이 마스터에서 물려받는 값.
+ *
+ * <p>위스키에 에디션이 있으면 등록 화면은 **마스터 상세 카드를 통째로 숨기고** 에디션 카드로
+ * 대체한다(`SpiritFormFields` 의 카테고리 상세 카드 조건 참고). 그런데 조사 프롬프트는
+ * "모든 에디션이 같으면 최상위에만 적으라"고 안내한다 — 그대로 두면 최상위 값이 저장은 되지만
+ * 화면 어디에도 뜨지 않아 사람이 검수할 수 없다. 그래서 에디션이 비워 둔 항목만 내려보낸다.
+ *
+ * <p>병입분 고유 정보(병 번호·총 병 수·병입 연월)와 제품 설명(`notes`)은
+ * 에디션마다 달라야 하므로 **물려받지 않는다**. 도수·용량은 에디션 카드에 단일 입력칸이
+ * 하나씩 있어 물려받지만, 마스터가 **범위**(`abvMin`/`abvMax`)면 옮길 칸이 없어 넘어간다.
+ */
+const EDITION_INHERITED_KEYS = [
+  'abv', 'volumeMl',
+  'isNas', 'ageStatement', 'ageStatementMonths', 'distilledDate',
+  'isNonChillFiltered', 'isNaturalColour', 'isSingleCask', 'isCaskStrength',
+  'isPeated', 'phenolPpm', 'phenolPpmMin', 'phenolPpmMax', 'casks',
+] as const
+
+/** 에디션이 `null` 로 두거나 아예 적지 않은 항목만 마스터 값으로 채운다 */
+function inheritFromMaster(
+  master: Record<string, unknown>,
+  item: Record<string, unknown>,
+): Record<string, unknown> {
+  const merged: Record<string, unknown> = { ...item }
+  for (const key of EDITION_INHERITED_KEYS) {
+    if (merged[key] == null) merged[key] = master[key]
+  }
+  return merged
+}
+
+function buildEditions(
+  b: PlanBuilder,
+  raw: unknown,
+  master: Record<string, unknown>,
+): ImportPlan['variants'] {
   if (raw == null) return null
   const src = raw as { variantType?: unknown; seriesIdentifier?: unknown; seriesIdentifierEn?: unknown; items?: unknown }
 
@@ -723,26 +770,30 @@ function buildEditions(b: PlanBuilder, raw: unknown): ImportPlan['variants'] {
   }
 
   const items: Array<Record<string, unknown>> = []
-  for (const item of src.items as Record<string, unknown>[]) {
-    const value = String(item?.variantValue ?? '').trim()
+  for (const raw of src.items as Record<string, unknown>[]) {
+    const value = String(raw?.variantValue ?? '').trim()
     if (!value) {
       b.warn('에디션', '식별 값(한글)이 없는 항목을 건너뜁니다.')
       continue
     }
+    // 에디션 카드는 상세를 요청 DTO 형태로 들고 있다 — 숫자는 문자열로 감싸지 않는다.
+    const item = inheritFromMaster(master, raw)
     items.push(compact({
       variantValue: value.slice(0, MAX.seriesIdentifier),
-      variantValueEn: String(item?.variantValueEn ?? '').trim().slice(0, MAX.seriesIdentifier) || undefined,
-      abv: b.num('에디션 도수', item?.abv, ABV_MIN, ABV_MAX),
-      volumeMl: b.num('에디션 용량', item?.volumeMl, VOLUME_ML_MIN, VOLUME_ML_MAX),
+      variantValueEn: String(item.variantValueEn ?? '').trim().slice(0, MAX.seriesIdentifier) || undefined,
+      abv: b.num('에디션 도수', item.abv, ABV_MIN, ABV_MAX),
+      volumeMl: b.num('에디션 용량', item.volumeMl, VOLUME_ML_MIN, VOLUME_ML_MAX),
       commonDetail: compact({
-        bottledDate: b.yearMonth('에디션 병입 연월', item?.bottledDate),
-        releaseDate: b.isoDate('에디션 출시일', item?.releaseDate),
-        batchNo: b.text('에디션 배치 번호', item?.batchNo, MAX.batchNo),
-        totalBottles: b.num('에디션 총 병 수', item?.totalBottles, 1, 10_000_000),
+        ...buildAging(b, item, '에디션 '),
+        bottledDate: b.yearMonth('에디션 병입 연월', item.bottledDate),
+        bottleNo: b.text('에디션 병 번호', item.bottleNo, MAX.bottleNo),
+        totalBottles: b.num('에디션 총 병 수', item.totalBottles, 1, 10_000_000),
       }),
       whiskyDetail: compact({
-        ...buildCasks(b, item?.casks),
-        notes: b.text('에디션 기타 정보', item?.notes, MAX.notes),
+        ...buildWhiskyFlags(b, item, '에디션 '),
+        ...buildPeat(b, item, { prefix: '에디션 ', numeric: true }),
+        ...buildCasks(b, item.casks),
+        notes: b.text('에디션 기타 정보', item.notes, MAX.notes),
       }),
     }))
   }

@@ -16,10 +16,7 @@ class WineMainTest(unittest.TestCase):
     @patch.object(wine_main, "WineIngestApi")
     def test_schedule_enqueue_failure_does_not_block_claim(self, api_type, notifier_factory, _required):
         api = api_type.return_value
-        api.config.return_value = {
-            "providerMode": "LIVE", "liveNetworkEnabled": True,
-            "automationEnabled": True, "slackAlertEnabled": False,
-        }
+        api.config.return_value = {"automationEnabled": True, "slackAlertEnabled": False}
         api.enqueue_scheduled.side_effect = RuntimeError("hourly capacity exhausted")
         api.claim.return_value = None
         notifier_factory.return_value = Mock(enabled=False)
@@ -53,7 +50,7 @@ class WineMainTest(unittest.TestCase):
         self, api_type, fixture_type, notifier_factory, _required,
     ):
         api = api_type.return_value
-        api.config.return_value = {"providerMode": "FIXTURE", "slackAlertEnabled": False}
+        api.config.return_value = {"automationEnabled": False, "slackAlertEnabled": False}
         api.claim.return_value = {"runKey": "run-1", "runType": "FIXTURE", "requestedLimit": 1}
         api.import_wine.return_value = {"status": "CREATED"}
         fixture_type.return_value.collect.return_value = [{
@@ -99,7 +96,7 @@ class WineMainTest(unittest.TestCase):
         self, api_type, fixture_type, notifier_factory, _required,
     ):
         api = api_type.return_value
-        api.config.return_value = {"providerMode": "FIXTURE", "slackAlertEnabled": False}
+        api.config.return_value = {"automationEnabled": False, "slackAlertEnabled": False}
         api.claim.return_value = {"runKey": "run-1", "runType": "FIXTURE", "requestedLimit": 2}
         api.import_wine.return_value = {"status": "CREATED"}
         fixture_type.return_value.collect.return_value = [
@@ -123,15 +120,11 @@ class WineMainTest(unittest.TestCase):
     @patch.object(wine_main, "required", side_effect=lambda name: f"test-{name}")
     @patch.object(wine_main.SlackNotifier, "from_env")
     @patch.object(wine_main, "WineIngestApi")
-    def test_live_uses_authorized_web_crawler_without_api_token(
+    def test_live_uses_web_crawler_without_api_token(
         self, api_type, notifier_factory, required_value, web_provider_type,
     ):
         api = api_type.return_value
-        api.config.return_value = {
-            "providerMode": "LIVE", "liveNetworkEnabled": True,
-            "automationEnabled": False, "slackAlertEnabled": False,
-            "usageGrantRef": "email:vivino-approval",
-        }
+        api.config.return_value = {"automationEnabled": False, "slackAlertEnabled": False}
         api.claim.return_value = {"runKey": "run-live", "runType": "MANUAL", "requestedLimit": 1}
         web_provider_type.return_value.collect.return_value = []
         notifier_factory.return_value = Mock(enabled=False)
@@ -143,10 +136,6 @@ class WineMainTest(unittest.TestCase):
         self.assertEqual(
             ["CASKBYCASK_API_URL", "CASKBYCASK_INTERNAL_KEY"],
             [call.args[0] for call in required_value.call_args_list],
-        )
-        self.assertEqual(
-            "email:vivino-approval",
-            web_provider_type.call_args.kwargs["usage_grant_ref"],
         )
         web_provider_type.call_args.kwargs["on_progress"]()
         api.heartbeat.assert_called_with("run-live")

@@ -86,7 +86,6 @@ type SpiritTarget = {
   seriesIdentifierEn?: string | null
   vintageYear?: number | null
   vintageStatus?: 'VINTAGE' | 'NON_VINTAGE' | 'UNKNOWN' | null
-  batchNo?: string | null
   bottledDate?: string | null
   abv?: number | null
   volumeMl?: number | null
@@ -150,12 +149,10 @@ function sortItems(items: LocalTierItem[]) {
 function shortVariantLabel(target: {
   variantValue?: string | null
   variantValueEn?: string | null
-  batchNo?: string | null
   bottledDate?: string | null
 }, isEn: boolean) {
   const variantValue = isEn ? (target.variantValueEn || target.variantValue) : target.variantValue
   return variantValue
-    || (target.batchNo ? `Batch ${target.batchNo}` : null)
     || target.bottledDate
     || null
 }

@@ -5,7 +5,6 @@ import lombok.*;
 import org.hibernate.annotations.Comment;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 
 @Entity
 @Table(name = "spirit_common_detail")
@@ -40,22 +39,6 @@ public class SpiritCommonDetail {
     @Comment("숙성 개월(0~11) — 단일 연수의 추가 개월")
     private Integer ageStatementMonths;
 
-    @Column(name = "age_statement_min")
-    @Comment("최소 숙성 연수(년)")
-    private Integer ageStatementMin;
-
-    @Column(name = "age_statement_min_months")
-    @Comment("범위 최소 숙성 개월(0~11)")
-    private Integer ageStatementMinMonths;
-
-    @Column(name = "age_statement_max")
-    @Comment("최대 숙성 연수(년)")
-    private Integer ageStatementMax;
-
-    @Column(name = "age_statement_max_months")
-    @Comment("범위 최대 숙성 개월(0~11)")
-    private Integer ageStatementMaxMonths;
-
     /** 형식: "YYYY" or "YYYY-MM" — 연도만 아는 경우를 위해 String 사용 */
     @Column(length = 7)
     @Comment("증류 연월(YYYY-MM)")
@@ -64,11 +47,6 @@ public class SpiritCommonDetail {
     @Column(length = 7)
     @Comment("병입 연월(YYYY-MM)")
     private String bottledDate;
-
-    /** 출시일은 정확한 날짜가 있는 경우가 많으므로 DATE 타입 사용 */
-    @Column
-    @Comment("출시일")
-    private LocalDate releaseDate;
 
     @Column
     @Comment("용량(ml)")
@@ -83,38 +61,22 @@ public class SpiritCommonDetail {
     @Comment("보틀 번호")
     private String bottleNo;
 
-    @Column(length = 100)
-    @Comment("배치 번호")
-    private String batchNo;
-
     @Column
     @Comment("총 병입 수량")
     private Integer totalBottles;
 
     public void update(boolean isNas, Integer ageStatement, Integer ageStatementMonths,
-                       Integer ageStatementMin, Integer ageStatementMinMonths,
-                       Integer ageStatementMax, Integer ageStatementMaxMonths,
-                       String distilledDate, String bottledDate, java.time.LocalDate releaseDate,
+                       String distilledDate, String bottledDate,
                        Integer volumeMl, java.math.BigDecimal abv,
-                       String bottleNo, String batchNo, Integer totalBottles) {
+                       String bottleNo, Integer totalBottles) {
         this.isNas             = isNas;
         this.ageStatement      = isNas ? null : ageStatement;
         this.ageStatementMonths = isNas ? null : ageStatementMonths;
-        this.ageStatementMin   = isNas ? null : ageStatementMin;
-        this.ageStatementMinMonths = isNas ? null : ageStatementMinMonths;
-        this.ageStatementMax   = isNas ? null : ageStatementMax;
-        this.ageStatementMaxMonths = isNas ? null : ageStatementMaxMonths;
         this.distilledDate    = distilledDate;
         this.bottledDate      = bottledDate;
-        this.releaseDate      = releaseDate;
         this.volumeMl         = volumeMl;
         this.abv              = abv;
         this.bottleNo         = bottleNo;
-        this.batchNo          = batchNo;
         this.totalBottles     = totalBottles;
-    }
-
-    public void clearReleaseDate() {
-        this.releaseDate = null;
     }
 }

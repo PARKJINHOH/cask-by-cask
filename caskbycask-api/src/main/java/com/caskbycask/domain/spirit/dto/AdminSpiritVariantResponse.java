@@ -28,8 +28,6 @@ public record AdminSpiritVariantResponse(
         BigDecimal abv,
         @Schema(description = "용량 ml")
         Integer volumeMl,
-        @Schema(description = "배치 번호")
-        String batchNo,
         @Schema(description = "병입 연월 (YYYY-MM)")
         String bottledDate,
         @Schema(description = "대표 이미지 URL")
@@ -59,7 +57,6 @@ public record AdminSpiritVariantResponse(
                 spirit.getVintageYear(),
                 spirit.getAbv(),
                 spirit.getVolumeMl(),
-                cd != null ? cd.getBatchNo() : null,
                 cd != null ? cd.getBottledDate() : null,
                 primaryImageUrl,
                 spirit.getStatus(),

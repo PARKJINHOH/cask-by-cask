@@ -4,7 +4,6 @@ import com.caskbycask.domain.spirit.entity.SpiritCommonDetail;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 
 public record SpiritCommonDetailResponse(
 
@@ -17,26 +16,11 @@ public record SpiritCommonDetailResponse(
         @Schema(description = "숙성 개월 (0~11, isNas=true면 null)")
         Integer ageStatementMonths,
 
-        @Schema(description = "최소 숙성 연수")
-        Integer ageStatementMin,
-
-        @Schema(description = "범위 최소 숙성 개월 (0~11)")
-        Integer ageStatementMinMonths,
-
-        @Schema(description = "최대 숙성 연수")
-        Integer ageStatementMax,
-
-        @Schema(description = "범위 최대 숙성 개월 (0~11)")
-        Integer ageStatementMaxMonths,
-
         @Schema(description = "증류 연월 (YYYY 또는 YYYY-MM)")
         String distilledDate,
 
         @Schema(description = "병입 연월 (YYYY 또는 YYYY-MM)")
         String bottledDate,
-
-        @Schema(description = "출시일")
-        LocalDate releaseDate,
 
         @Schema(description = "용량 ml")
         Integer volumeMl,
@@ -46,9 +30,6 @@ public record SpiritCommonDetailResponse(
 
         @Schema(description = "병 번호")
         String bottleNo,
-
-        @Schema(description = "배치 번호")
-        String batchNo,
 
         @Schema(description = "총 병 수")
         Integer totalBottles
@@ -61,17 +42,11 @@ public record SpiritCommonDetailResponse(
                 detail.getIsNas(),
                 isNas ? null : detail.getAgeStatement(),
                 isNas ? null : detail.getAgeStatementMonths(),
-                isNas ? null : detail.getAgeStatementMin(),
-                isNas ? null : detail.getAgeStatementMinMonths(),
-                isNas ? null : detail.getAgeStatementMax(),
-                isNas ? null : detail.getAgeStatementMaxMonths(),
                 detail.getDistilledDate(),
                 detail.getBottledDate(),
-                detail.getReleaseDate(),
                 detail.getVolumeMl(),
                 detail.getAbv(),
                 detail.getBottleNo(),
-                detail.getBatchNo(),
                 detail.getTotalBottles()
         );
     }

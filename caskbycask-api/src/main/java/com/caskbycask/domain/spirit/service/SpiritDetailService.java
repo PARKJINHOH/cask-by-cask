@@ -33,32 +33,23 @@ public class SpiritDetailService {
         if (req == null) return;
 
         boolean isNas = Boolean.TRUE.equals(req.isNas());
-        var releaseDate = spirit.getCategory() == SpiritCategory.WINE ? null : req.releaseDate();
 
         commonDetailRepo.findById(spirit.getId()).ifPresentOrElse(
             existing -> existing.update(
                 isNas, req.ageStatement(), req.ageStatementMonths(),
-                req.ageStatementMin(), req.ageStatementMinMonths(),
-                req.ageStatementMax(), req.ageStatementMaxMonths(),
-                req.distilledDate(), req.bottledDate(), releaseDate,
+                req.distilledDate(), req.bottledDate(),
                 req.volumeMl(), req.abv(),
-                req.bottleNo(), req.batchNo(), req.totalBottles()),
+                req.bottleNo(), req.totalBottles()),
             () -> commonDetailRepo.save(SpiritCommonDetail.builder()
                 .spirit(spirit)
                 .isNas(isNas)
                 .ageStatement(isNas ? null : req.ageStatement())
                 .ageStatementMonths(isNas ? null : req.ageStatementMonths())
-                .ageStatementMin(isNas ? null : req.ageStatementMin())
-                .ageStatementMinMonths(isNas ? null : req.ageStatementMinMonths())
-                .ageStatementMax(isNas ? null : req.ageStatementMax())
-                .ageStatementMaxMonths(isNas ? null : req.ageStatementMaxMonths())
                 .distilledDate(req.distilledDate())
                 .bottledDate(req.bottledDate())
-                .releaseDate(releaseDate)
                 .volumeMl(req.volumeMl())
                 .abv(req.abv())
                 .bottleNo(req.bottleNo())
-                .batchNo(req.batchNo())
                 .totalBottles(req.totalBottles())
                 .build())
         );

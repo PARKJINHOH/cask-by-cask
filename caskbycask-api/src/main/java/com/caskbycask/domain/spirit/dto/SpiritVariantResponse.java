@@ -30,8 +30,6 @@ public record SpiritVariantResponse(
         BigDecimal abv,
         @Schema(description = "용량 ml")
         Integer volumeMl,
-        @Schema(description = "배치 번호")
-        String batchNo,
         @Schema(description = "병 번호")
         String bottleNo,
         @Schema(description = "병입 연월 (YYYY-MM)")
@@ -85,7 +83,6 @@ public record SpiritVariantResponse(
                         : null,
                 spirit.getAbv(),
                 spirit.getVolumeMl(),
-                cd != null ? cd.getBatchNo() : null,
                 cd != null ? cd.getBottleNo() : null,
                 cd != null ? cd.getBottledDate() : null,
                 spirit.getAvgScore(),

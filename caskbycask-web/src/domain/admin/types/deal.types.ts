@@ -52,7 +52,6 @@ export interface DealPostDetail {
   spiritVariantValueEn: string | null
   spiritSeriesIdentifier: string | null
   spiritSeriesIdentifierEn: string | null
-  spiritBatchNo: string | null
   spiritBottledDate: string | null
   storeType: StoreType
 }

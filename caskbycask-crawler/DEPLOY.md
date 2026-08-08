@@ -273,22 +273,25 @@ GitHub Actions의 `target=crawler` 또는 `target=all`은 새 릴리스를 `/app
 
 ## 12. 와인 빈티지 수집 배포
 
-와인 작업은 기존 핫딜·AI 소식 작업과 분리된 `run-wine.sh`와 lock을 사용한다. 배포 후 아래 값을
-`/app/caskbycask-crawler/.env`에 추가한다. 서면 허가 전에는 관리자 LIVE 게이트를 열지 않는다.
+와인 작업은 기존 핫딜·AI 소식 작업과 분리된 `run-wine.sh`와 lock을 사용한다. 필수 값은
+`CASKBYCASK_API_URL`과 `CASKBYCASK_INTERNAL_KEY`뿐이고 핫딜 크롤러와 공유하므로,
+**와인 전용 `.env` 추가 없이도 동작한다.** 아래 값은 수집 강도를 조정할 때만 넣는다.
 
 ```properties
 WINE_FIXTURE_PATH=/app/caskbycask-crawler/current/fixtures/wine_license_review.json
 VIVINO_BASE_URL=https://www.vivino.com
 VIVINO_START_URLS=https://www.vivino.com/explore
+# 요청 간격·페이지 상한. Vivino 측 요청 조건이 "한 번에 과도하게 호출하지 않을 것"이므로
+# 값을 낮출 때는 신중히 조정한다. 코드가 1초 미만 간격은 허용하지 않는다.
 VIVINO_REQUEST_DELAY_SECONDS=5
 VIVINO_REQUEST_TIMEOUT_SECONDS=20
 VIVINO_DISCOVERY_PAGE_LIMIT=3
 VIVINO_MAX_HTML_BYTES=4194304
-# 서비스명·연락처가 없는 값만 허용한다. 비우면 브랜드 없는 기본값을 쓴다.
+# 비우면 일반 브라우저 User-Agent를 쓴다. 식별용 문자열을 넣어도 된다.
 VIVINO_CRAWLER_USER_AGENT=
 ```
 
-관리자 화면에서 샘플 실행을 만든 뒤 수동 검증:
+관리자 화면에서 오프라인 테스트 실행을 만든 뒤 수동 검증:
 
 ```bash
 /app/caskbycask-crawler/current/run-wine.sh
@@ -302,7 +305,7 @@ CRON_TZ=Asia/Seoul
 37 * * * * /app/caskbycask-crawler/current/run-wine.sh >> /app/caskbycask-crawler/logs/wine-cron.log 2>&1
 ```
 
-관리자 설정의 `자동 수집`, `LIVE`, `웹 크롤링 허가 확인`, `허가 근거` 네 조건 중 하나라도 빠지면 cron은
-LIVE 실행을 만들지 않는다. 수동 LIVE도 `LIVE`, `웹 크롤링 허가 확인`, `허가 근거`가 필요하다.
-LIVE는 API 토큰이나 로그인 쿠키를 사용하지 않으며, 401/403/429·CAPTCHA·bot challenge를 우회하지 않는다.
+관리자 설정의 `자동 수집`이 꺼져 있으면 cron은 예약 실행을 만들지 않는다. 수동 실행은 자동 수집 상태와
+무관하게 언제든 가능하다. 수집은 API 토큰이나 로그인 쿠키를 사용하지 않으며,
+401/403/429·CAPTCHA·bot challenge를 우회하지 않고 그 회차를 중단한다.
 

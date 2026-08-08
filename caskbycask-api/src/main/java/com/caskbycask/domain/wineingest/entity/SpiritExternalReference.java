@@ -24,5 +24,4 @@ public class SpiritExternalReference extends BaseTimeEntity {
     @Column(nullable = false, length = 100) private String externalVintageId;
     @Column(nullable = false, unique = true, length = 64) private String identityKey;
     @Column(nullable = false, length = 1000) private String sourceUrl;
-    @Column(nullable = false, length = 500) private String usageGrantRef;
 }

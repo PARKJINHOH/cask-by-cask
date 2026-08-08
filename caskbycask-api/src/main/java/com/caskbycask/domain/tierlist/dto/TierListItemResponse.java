@@ -45,9 +45,6 @@ public record TierListItemResponse(
         if (StringUtils.hasText(spirit.getVariantValue())) {
             return spirit.getVariantValue();
         }
-        if (spirit.getCommonDetail() != null && StringUtils.hasText(spirit.getCommonDetail().getBatchNo())) {
-            return "Batch " + spirit.getCommonDetail().getBatchNo();
-        }
         return null;
     }
 

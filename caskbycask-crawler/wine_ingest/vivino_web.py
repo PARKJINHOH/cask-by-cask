@@ -16,13 +16,10 @@ from safe_http import get_public_response, new_public_session, read_limited_body
 
 VIVINO_HOST = "vivino.com"
 DEFAULT_BASE_URL = "https://www.vivino.com"
-# 수집 요청에 서비스명·운영 연락처를 싣지 않는다. 브랜드가 드러나는 값은 아래 가드가 거부한다.
 DEFAULT_USER_AGENT = (
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 )
-#: User-Agent에 실리면 서비스가 식별되는 토큰. 노출 금지 대상이다.
-BRAND_TOKENS = ("caskbycask", "cask-by-cask", "drinkindex")
 #: 차단·레이트리밋 응답. 우회하지 않고 남은 회차를 중단하는 신호로만 쓴다.
 BLOCKING_STATUSES = frozenset({401, 403, 405, 406, 429, 451, 503})
 WINE_PATH_PATTERN = re.compile(r"/w/\d+(?:$|[/?#])", re.IGNORECASE)
@@ -337,18 +334,17 @@ def _grapes(value) -> list[dict]:
 
 
 class VivinoWebCrawlerProvider:
-    """Collects only public Vivino HTML after the backend authorization gate is open.
+    """Collects only public Vivino HTML.
 
     It does not log in, use private endpoints, solve bot challenges, or fall back to an API.
-    Requests carry no service branding or operator contact details; when Vivino answers with a
-    block, rate limit, or bot challenge the run stops instead of retrying or rotating identities.
-    Parsing failures are returned as item failures so the worker can persist and alert them.
+    Request volume is kept low on purpose: a minimum delay between requests, a per-run discovery
+    page budget, and an immediate stop when Vivino answers with a block, rate limit, or bot
+    challenge. Parsing failures are returned as item failures so the worker can persist and alert.
     """
 
     def __init__(
         self,
         *,
-        usage_grant_ref: str,
         base_url: str = DEFAULT_BASE_URL,
         start_urls: Iterable[str] | None = None,
         request_delay_seconds: float = 5.0,
@@ -361,9 +357,6 @@ class VivinoWebCrawlerProvider:
         rng=None,
         on_progress: Callable[[], None] | None = None,
     ):
-        if not usage_grant_ref or not usage_grant_ref.strip():
-            raise RuntimeError("Vivino 웹 크롤링 이용 허가 근거가 필요합니다")
-        self.usage_grant_ref = usage_grant_ref.strip()
         self.base_url = _valid_vivino_url(base_url)
         configured = list(start_urls or [f"{self.base_url.rstrip('/')}/explore"])
         if not configured:
@@ -374,13 +367,6 @@ class VivinoWebCrawlerProvider:
         self.discovery_page_limit = max(1, min(int(discovery_page_limit), 10))
         self.max_html_bytes = max(64 * 1024, min(int(max_html_bytes), 8 * 1024 * 1024))
         self.user_agent = (user_agent or DEFAULT_USER_AGENT).strip()
-        lowered_agent = self.user_agent.lower()
-        leaked = [token for token in BRAND_TOKENS if token in lowered_agent]
-        if leaked or "@" in self.user_agent:
-            raise RuntimeError(
-                "VIVINO_CRAWLER_USER_AGENT에 서비스명이나 연락처를 넣을 수 없습니다: "
-                + ", ".join(leaked or ["contact"])
-            )
         self.fetcher = fetcher
         self.sleeper = sleeper
         self.on_progress = on_progress
@@ -487,7 +473,7 @@ class VivinoWebCrawlerProvider:
                 url,
                 timeout=self.timeout_seconds,
                 allowed_hosts={VIVINO_HOST},
-                # Referer나 쿠키를 얹지 않는다. 서비스가 식별될 헤더는 보내지 않는다.
+                # 로그인 세션을 흉내내지 않도록 Referer나 쿠키는 붙이지 않는다.
                 headers={
                     "User-Agent": self.user_agent,
                     "Accept": "text/html,application/xhtml+xml",
@@ -677,7 +663,6 @@ class VivinoWebCrawlerProvider:
             "externalVintageId": str(vintage_id)[:100],
             "sourceUrl": source_url,
             "imageUrl": image_url,
-            "usageGrantRef": self.usage_grant_ref,
             "nameEn": str(name)[:200],
             "producerNameEn": str(producer_name)[:200] if producer_name else None,
             "country": str(country)[:100],

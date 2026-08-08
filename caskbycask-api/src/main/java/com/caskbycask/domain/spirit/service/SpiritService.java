@@ -701,9 +701,6 @@ public class SpiritService {
         );
         spirit.assignRegionCode(nextRegionCode);
 
-        if (nextCategory == SpiritCategory.WINE && spirit.getCommonDetail() != null) {
-            spirit.getCommonDetail().clearReleaseDate();
-        }
         spiritDetailService.saveCommonDetail(spirit, request.commonDetail());
         spiritDetailService.updateCategoryDetail(spirit, prevCategory, request);
 

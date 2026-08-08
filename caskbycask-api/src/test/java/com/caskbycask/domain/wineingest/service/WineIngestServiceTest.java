@@ -17,6 +17,7 @@ import com.caskbycask.domain.wineingest.entity.WineIngestRun;
 import com.caskbycask.domain.wineingest.entity.WineIngestSettings;
 import com.caskbycask.domain.wineingest.entity.enums.*;
 import com.caskbycask.domain.wineingest.repository.*;
+import com.caskbycask.global.exception.CustomException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -30,6 +31,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -49,21 +51,35 @@ class WineIngestServiceTest {
     @InjectMocks WineIngestService service;
 
     @Test
-    void 허가가_닫힌_LIVE작업은_취소하고_다음_fixture를_claim한다() {
+    void 자동수집이_꺼지면_예약작업은_취소하고_수동작업을_claim한다() {
+        WineIngestRun scheduled = queuedRun("scheduled", WineIngestRunType.SCHEDULED);
         WineIngestRun manual = queuedRun("manual", WineIngestRunType.MANUAL);
-        WineIngestRun fixture = queuedRun("fixture", WineIngestRunType.FIXTURE);
         when(settingsRepository.findById(WineIngestSettings.SINGLETON_ID))
-                .thenReturn(Optional.of(fixtureSettings()));
+                .thenReturn(Optional.of(settings(false)));
         when(runRepository.findByStatusAndLastHeartbeatAtBefore(any(), any())).thenReturn(List.of());
         when(runRepository.findNextForUpdate(eq(WineIngestRunStatus.QUEUED), any(Pageable.class)))
-                .thenReturn(List.of(manual, fixture));
+                .thenReturn(List.of(scheduled, manual));
 
         var claimed = service.claimNextRun();
 
-        assertThat(manual.getStatus()).isEqualTo(WineIngestRunStatus.CANCELLED);
-        assertThat(manual.getErrorMessage()).contains("LIVE 이용 허가");
-        assertThat(claimed.runKey()).isEqualTo("fixture");
-        assertThat(fixture.getStatus()).isEqualTo(WineIngestRunStatus.RUNNING);
+        assertThat(scheduled.getStatus()).isEqualTo(WineIngestRunStatus.CANCELLED);
+        assertThat(scheduled.getErrorMessage()).contains("자동 수집이 꺼져");
+        assertThat(claimed.runKey()).isEqualTo("manual");
+        assertThat(manual.getStatus()).isEqualTo(WineIngestRunStatus.RUNNING);
+    }
+
+    @Test
+    void 자동수집이_꺼져도_수동_Vivino_회차는_만들_수_있다() {
+        when(settingsRepository.findByIdForUpdate(WineIngestSettings.SINGLETON_ID))
+                .thenReturn(Optional.of(settings(false)));
+        when(runRepository.sumRequestedLimitSince(any())).thenReturn(0L);
+        when(runRepository.save(any(WineIngestRun.class))).thenAnswer(call -> call.getArgument(0));
+
+        var run = service.createManualRun(
+                new WineIngestDtos.ManualRunRequest(WineIngestRunType.MANUAL, 3), null);
+
+        assertThat(run.runType()).isEqualTo(WineIngestRunType.MANUAL);
+        assertThat(run.requestedLimit()).isEqualTo(3);
     }
 
     @Test
@@ -93,8 +109,6 @@ class WineIngestServiceTest {
         WineIngestRun run = runningRun();
         Producer winery = Producer.builder().id(7L).type(ProducerType.WINERY).nameEn("Example Winery").build();
         when(runRepository.findByRunKey("live")).thenReturn(Optional.of(run));
-        when(settingsRepository.findById(WineIngestSettings.SINGLETON_ID))
-                .thenReturn(Optional.of(liveSettings()));
         when(externalReferenceRepository.existsByProviderAndExternalWineIdAndExternalVintageId(any(), any(), any()))
                 .thenReturn(false);
         when(producerRepository.findFirstByTypeAndNameEnIgnoreCase(ProducerType.WINERY, "Example Winery"))
@@ -131,8 +145,6 @@ class WineIngestServiceTest {
         master.assignExternalSource("VIVINO", "https://www.vivino.com/curated/w/1",
                 "https://images.vivino.com/curated.png", new BigDecimal("4.8"), 9999);
         when(runRepository.findByRunKey("live")).thenReturn(Optional.of(run));
-        when(settingsRepository.findById(WineIngestSettings.SINGLETON_ID))
-                .thenReturn(Optional.of(liveSettings()));
         when(externalReferenceRepository.existsByProviderAndExternalWineIdAndExternalVintageId(any(), any(), any()))
                 .thenReturn(false);
         when(producerRepository.findFirstByTypeAndNameEnIgnoreCase(ProducerType.WINERY, "Example Winery"))
@@ -159,8 +171,6 @@ class WineIngestServiceTest {
     void 등록되지_않은_와이너리는_생산자_없이_비공개_저장하고_검수_사유를_남긴다() {
         WineIngestRun run = runningRun();
         when(runRepository.findByRunKey("live")).thenReturn(Optional.of(run));
-        when(settingsRepository.findById(WineIngestSettings.SINGLETON_ID))
-                .thenReturn(Optional.of(liveSettings()));
         when(externalReferenceRepository.existsByProviderAndExternalWineIdAndExternalVintageId(any(), any(), any()))
                 .thenReturn(false);
         when(producerRepository.findFirstByTypeAndNameEnIgnoreCase(ProducerType.WINERY, "Unknown Winery"))
@@ -195,8 +205,6 @@ class WineIngestServiceTest {
     void 원문에_와이너리가_없어도_수집을_실패시키지_않는다() {
         WineIngestRun run = runningRun();
         when(runRepository.findByRunKey("live")).thenReturn(Optional.of(run));
-        when(settingsRepository.findById(WineIngestSettings.SINGLETON_ID))
-                .thenReturn(Optional.of(liveSettings()));
         when(externalReferenceRepository.existsByProviderAndExternalWineIdAndExternalVintageId(any(), any(), any()))
                 .thenReturn(false);
         when(externalReferenceRepository.existsByIdentityKey(any())).thenReturn(false);
@@ -224,8 +232,6 @@ class WineIngestServiceTest {
         Spirit priorVintage = Spirit.builder().nameEn("Chateau Test")
                 .category(SpiritCategory.WINE).status(SpiritStatus.HIDDEN).parent(master).build();
         when(runRepository.findByRunKey("live")).thenReturn(Optional.of(run));
-        when(settingsRepository.findById(WineIngestSettings.SINGLETON_ID))
-                .thenReturn(Optional.of(liveSettings()));
         when(externalReferenceRepository.existsByProviderAndExternalWineIdAndExternalVintageId(any(), any(), any()))
                 .thenReturn(false);
         when(externalReferenceRepository.existsByIdentityKey(any())).thenReturn(false);
@@ -248,6 +254,41 @@ class WineIngestServiceTest {
         assertThat(saved.get(0).getParent()).isSameAs(master);
     }
 
+    @Test
+    void 요청_상한을_모두_채운_회차도_정상_마감된다() {
+        WineIngestRun run = runningRun();
+        for (int i = 0; i < run.getRequestedLimit(); i++) run.record(WineIngestItemStatus.CREATED);
+        when(runRepository.findByRunKey("live")).thenReturn(Optional.of(run));
+
+        var response = service.finishRun("live", new WineIngestDtos.FinishRunRequest(null));
+
+        assertThat(response.status()).isEqualTo(WineIngestRunStatus.SUCCEEDED);
+        assertThat(run.getFinishedAt()).isNotNull();
+        assertThat(run.getErrorMessage()).isNull();
+    }
+
+    @Test
+    void 이미_끝난_회차는_다시_마감하지_않는다() {
+        WineIngestRun run = runningRun();
+        run.finish(null);
+        when(runRepository.findByRunKey("live")).thenReturn(Optional.of(run));
+
+        assertThatThrownBy(() -> service.finishRun("live", new WineIngestDtos.FinishRunRequest(null)))
+                .isInstanceOf(CustomException.class);
+    }
+
+    @Test
+    void 요청_상한을_넘는_건별_기록은_거부한다() {
+        WineIngestRun run = runningRun();
+        for (int i = 0; i < run.getRequestedLimit(); i++) run.record(WineIngestItemStatus.CREATED);
+        when(runRepository.findByRunKey("live")).thenReturn(Optional.of(run));
+
+        assertThatThrownBy(() -> service.recordFailure("live", new WineIngestDtos.FailureItemRequest(
+                "VIVINO", null, null, null, "Chateau Test", null, "2020",
+                WineIngestItemStatus.NOT_FOUND_SKIPPED, "CANDIDATE_NOT_FOUND", "수집 후보 없음")))
+                .isInstanceOf(CustomException.class);
+    }
+
     private static WineIngestDtos.WineImportRequest importRequest() {
         return importRequest("Example Winery");
     }
@@ -259,7 +300,7 @@ class WineIngestServiceTest {
                 WineSweetness.DRY, WineBody.MEDIUM, WineIntensity.HIGH, WineIntensity.MEDIUM, null);
         return new WineIngestDtos.WineImportRequest(
                 "VIVINO", "123", "9001", "https://www.vivino.com/US/en/example/w/123?year=2020",
-                "https://images.vivino.com/example.png", "email:vivino-approval",
+                "https://images.vivino.com/example.png",
                 "Chateau Test", producerNameEn, "France", "Bordeaux", null,
                 WineVintageStatus.VINTAGE, 2020, new BigDecimal("13.5"), 750, detail,
                 new BigDecimal("4.3"), 1200);
@@ -273,30 +314,15 @@ class WineIngestServiceTest {
         return run;
     }
 
-    private static WineIngestSettings liveSettings() {
-        return WineIngestSettings.builder()
-                .id(WineIngestSettings.SINGLETON_ID)
-                .automationEnabled(true)
-                .providerMode(WineIngestProviderMode.LIVE)
-                .licenseApproved(true)
-                .usageGrantRef("email:vivino-approval")
-                .hourlyLimit(10)
-                .maxRunItems(3)
-                .slackAlertEnabled(true)
-                .build();
-    }
-
     private static WineIngestRun queuedRun(String key, WineIngestRunType type) {
         return WineIngestRun.builder()
                 .runKey(key).runType(type).status(WineIngestRunStatus.QUEUED).requestedLimit(3).build();
     }
 
-    private static WineIngestSettings fixtureSettings() {
+    private static WineIngestSettings settings(boolean automationEnabled) {
         return WineIngestSettings.builder()
                 .id(WineIngestSettings.SINGLETON_ID)
-                .automationEnabled(false)
-                .providerMode(WineIngestProviderMode.FIXTURE)
-                .licenseApproved(false)
+                .automationEnabled(automationEnabled)
                 .hourlyLimit(10)
                 .maxRunItems(3)
                 .slackAlertEnabled(true)

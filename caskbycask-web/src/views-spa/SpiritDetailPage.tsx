@@ -61,26 +61,6 @@ type AgeDisplaySource = {
   isNas?: boolean | null
   ageStatement?: number | null
   ageStatementMonths?: number | null
-  ageStatementMin?: number | null
-  ageStatementMinMonths?: number | null
-  ageStatementMax?: number | null
-  ageStatementMaxMonths?: number | null
-}
-
-function formatAgeRange(
-  minYears: number | null | undefined,
-  minMonths: number | null | undefined,
-  maxYears: number | null | undefined,
-  maxMonths: number | null | undefined,
-  isEn: boolean,
-  short = false,
-): string | null {
-  const min = formatAge(minYears, minMonths, isEn, short)
-  const max = formatAge(maxYears, maxMonths, isEn, short)
-  if (min && max) return min === max ? min : `${min} ~ ${max}`
-  if (min) return short ? `${min}+` : isEn ? `${min} or older` : `${min} 이상`
-  if (max) return short ? `~${max}` : isEn ? `Up to ${max}` : `${max} 이하`
-  return null
 }
 
 function formatAgeStatement(
@@ -90,14 +70,7 @@ function formatAgeStatement(
 ): string | null {
   if (!detail) return null
   if (detail.isNas) return 'NAS'
-  return formatAgeRange(
-    detail.ageStatementMin,
-    detail.ageStatementMinMonths,
-    detail.ageStatementMax,
-    detail.ageStatementMaxMonths,
-    isEn,
-    short,
-  ) ?? formatAge(detail.ageStatement, detail.ageStatementMonths, isEn, short)
+  return formatAge(detail.ageStatement, detail.ageStatementMonths, isEn, short)
 }
 
 function formatAbv(
@@ -396,13 +369,9 @@ function SpiritDetailSections({
                               : formatAgeStatement(cd, isEn)} />
                           <DI label={isEn ? 'Distilled' : '증류 연월'} value={cd.distilledDate} />
                           <DI label={isEn ? 'Bottled' : '병입 연월'} value={cd.bottledDate} />
-                          {spirit.category !== 'WINE' && (
-                            <DI label={isEn ? 'Release Date' : '출시일'} value={cd.releaseDate} />
-                          )}
                           <DI label={isEn ? 'Volume' : '용량'} value={formatVolume(spirit.volumeMl ?? cd.volumeMl, spirit.volumeMlMin, spirit.volumeMlMax)} />
                           <DI label={isEn ? 'ABV' : '도수'} value={formatAbv(spirit.abv ?? cd.abv, spirit.abvMin, spirit.abvMax)} />
                           <DI label={isEn ? 'Bottle No.' : '병 번호'} value={cd.bottleNo} />
-                          <DI label={isEn ? 'Batch No.' : '배치 번호'} value={cd.batchNo} />
                           <DI label={isEn ? 'Total Bottles' : '총 병 수'}
                             value={cd.totalBottles != null ? cd.totalBottles.toLocaleString() : null} />
                         </>
@@ -697,9 +666,8 @@ function Gallery({
 
 function formatVariantSelectLabel(variant: SpiritVariant, isEn: boolean) {
   const valText = isEn ? (variant.variantValueEn || variant.variantValue) : variant.variantValue
-  const batchText = variant.batchNo ? `Batch ${variant.batchNo}` : null
   const bottledText = variant.bottledDate
-  const main = valText || batchText || bottledText || String(variant.id)
+  const main = valText || bottledText || String(variant.id)
   const specs = [
     variant.abv != null ? `${variant.abv}%` : null,
     variant.volumeMl != null ? `${variant.volumeMl}ml` : null,
@@ -717,7 +685,6 @@ function toVariantOption(spirit: SpiritDetail): SpiritVariant {
     vintageStatus: spirit.wineDetail?.vintageStatus ?? null,
     abv: spirit.abv,
     volumeMl: spirit.volumeMl,
-    batchNo: spirit.commonDetail?.batchNo ?? null,
     bottleNo: spirit.commonDetail?.bottleNo ?? null,
     bottledDate: spirit.commonDetail?.bottledDate ?? null,
     avgScore: spirit.avgScore,
