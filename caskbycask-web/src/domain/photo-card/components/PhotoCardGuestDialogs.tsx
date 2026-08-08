@@ -2,7 +2,7 @@ import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react'
 import { useTranslation } from 'react-i18next'
 
 /** 비회원이 눌렀을 때 로그인이 필요한 동작 — 안내 문구가 조금씩 다르다. */
-export type GuestGate = 'cleanDownload' | 'publish' | 'template'
+export type GuestGate = 'cleanDownload' | 'publish' | 'template' | 'draft'
 
 interface GateProps {
   gate: GuestGate | null
@@ -16,6 +16,7 @@ const GATE_BODY_KEYS: Record<GuestGate, string> = {
   cleanDownload: 'photoCard.guestGateCleanDownload',
   publish: 'photoCard.guestGatePublish',
   template: 'photoCard.guestGateTemplate',
+  draft: 'photoCard.guestGateDraft',
 }
 
 const buttonClass = 'w-full rounded-lg px-4 py-2.5 text-sm font-bold transition-colors disabled:opacity-50'

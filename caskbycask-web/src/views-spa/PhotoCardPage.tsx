@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useQueryClient } from '@tanstack/react-query'
 import SeoMeta from '@/shared/components/SeoMeta'
 import ImageEditorModal from '@/shared/components/ImageEditorModal'
 import UnsavedChangesDialog from '@/shared/components/UnsavedChangesDialog'
 import { useUnsavedChangesGuard } from '@/shared/hooks/useUnsavedChangesGuard'
 import { photoCardApi } from '@/domain/photo-card/api/photoCardApi'
+import {
+  PHOTO_CARD_DRAFT_RETENTION_DAYS, photoCardDraftApi,
+} from '@/domain/photo-card/api/photoCardDraftApi'
 import {
   PhotoCardDraftResumeDialog, PhotoCardGuestGateDialog, type GuestGate,
 } from '@/domain/photo-card/components/PhotoCardGuestDialogs'
@@ -17,6 +21,7 @@ import PhotoCardToolRail from '@/domain/photo-card/components/PhotoCardToolRail'
 import PhotoCardTopBar from '@/domain/photo-card/components/PhotoCardTopBar'
 import CardPanel from '@/domain/photo-card/components/panels/CardPanel'
 import DataPanel from '@/domain/photo-card/components/panels/DataPanel'
+import DraftPanel, { PHOTO_CARD_DRAFTS_QUERY_KEY } from '@/domain/photo-card/components/panels/DraftPanel'
 import ElementPanel from '@/domain/photo-card/components/panels/ElementPanel'
 import ExportPanel from '@/domain/photo-card/components/panels/ExportPanel'
 import LayerPanel from '@/domain/photo-card/components/panels/LayerPanel'
@@ -36,6 +41,10 @@ import {
 import {
   buildPhotoCardDraft, clearPhotoCardDraft, loadPhotoCardDraft, savePhotoCardDraft,
 } from '@/domain/photo-card/utils/photoCardDraft'
+import {
+  buildDraftContent, buildDraftPhotoFile, buildDraftThumbnail, parseDraftContent,
+  suggestDraftName, toRestorableDraft,
+} from '@/domain/photo-card/utils/photoCardServerDraft'
 import { frameSizeOf } from '@/domain/photo-card/utils/photoCardRender'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import '@/domain/photo-card/photo-card.css'
@@ -52,6 +61,16 @@ const MAX_PHOTO_SIZE = 30 * 1024 * 1024
 
 /** 선택한 요소의 속성을 함께 보여 줄 도구들. 요소를 클릭하면 이 중 하나로 자동 전환된다. */
 const SELECTION_TOOLS = new Set<PhotoCardTool>(['select', 'text', 'element'])
+
+/** 서버가 알려 준 실패 이유. 개수 제한처럼 사용자가 손쓸 수 있는 것은 그대로 보여 준다. */
+const apiMessage = (error: unknown): string | null => {
+  const message = (error as { response?: { data?: { message?: string } } })
+    ?.response?.data?.message
+  return typeof message === 'string' && message.trim() ? message : null
+}
+
+const isNotFound = (error: unknown): boolean =>
+  (error as { response?: { status?: number } })?.response?.status === 404
 
 /**
  * 도구 내용을 선택 속성보다 <b>위에</b> 두는 도구들.
@@ -71,6 +90,7 @@ const PANEL_FIRST_TOOLS = new Set<PhotoCardTool>(['text', 'element'])
 export default function PhotoCardPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn)
   // 비회원 저장본에는 브랜드 마크가 얹힌다 — 편집 화면에도 같이 그려 결과와 어긋나지 않게 한다.
   const editor = usePhotoCardEditor({ watermark: !isLoggedIn })
@@ -102,6 +122,8 @@ export default function PhotoCardPage() {
   const [draftBusy, setDraftBusy] = useState(false)
   /** 임시저장이 남아 있으면 그 시각. 되살릴지 물어보는 창이 이 값으로 열린다. */
   const [draftSavedAt, setDraftSavedAt] = useState<number | null>(null)
+  /** 서버 임시저장에서 불러온 뒤 이어서 고치는 중이면 그 id — 저장하면 이것을 덮어쓴다. */
+  const [currentDraftId, setCurrentDraftId] = useState<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   // busy 는 상태 갱신이 비동기라 아주 빠른 더블클릭이 두 번 통과할 수 있다.
   // 실제 중복 실행 차단은 ref 로 한다(렌더와 무관하게 즉시 반영된다).
@@ -270,6 +292,78 @@ export default function PhotoCardPage() {
     })
   }
 
+  // ── 서버 임시저장(회원) ──────────────────────────────────
+  // 브라우저에 잠시 맡기는 위쪽 임시저장과는 쓰임이 다르다. 그쪽은 로그인하러 다녀오는 동안의
+  // 자동 보관(한 칸)이고, 이쪽은 "여기까지 해 두고 다음에 이어서" 하려고 사용자가 직접 남기는
+  // 목록이다. 편집 중인 사진까지 함께 올라가므로 회원만 쓸 수 있고, 보관 기간이 정해져 있다.
+  const saveServerDraft = (asNew: boolean) => runOnce(async () => {
+    if (!isLoggedIn) {
+      setGate('draft')
+      return
+    }
+    // 사진이 없으면 되살릴 것도 없다 — 배치만 남기는 것은 템플릿 저장이 맡는 일이다.
+    if (!editor.photoImage) {
+      setNotice(t('photoCard.draftNeedsPhoto'))
+      return
+    }
+    const photo = await buildDraftPhotoFile(editor.photoFile, editor.photoImage)
+    if (!photo) {
+      setNotice(t('photoCard.draftSaveFailed'))
+      return
+    }
+    try {
+      const saved = await photoCardDraftApi.save({
+        id: asNew ? undefined : currentDraftId ?? undefined,
+        name: suggestDraftName(editor.spirit, editor.userInput),
+        content: buildDraftContent({
+          layout: editor.layout,
+          photoTransform: editor.photoTransform,
+          exif: editor.exif,
+          spirit: editor.spirit,
+          userInput: editor.userInput,
+          photoFile: editor.photoFile,
+        }),
+        thumbnail: await buildDraftThumbnail(editor.renderToBlob),
+        photo,
+      })
+      if (saved?.id) setCurrentDraftId(saved.id)
+      await queryClient.invalidateQueries({ queryKey: PHOTO_CARD_DRAFTS_QUERY_KEY })
+      setNotice(t('photoCard.draftServerSaved', { days: PHOTO_CARD_DRAFT_RETENTION_DAYS }))
+    } catch (error) {
+      // 덮어쓰려던 것이 이미 없다면(다른 기기에서 지웠거나 기간이 지났다) 연결을 끊는다 —
+      // 그대로 두면 누를 때마다 같은 실패를 되풀이한다. 다음 저장은 새 항목으로 들어간다.
+      if (isNotFound(error)) setCurrentDraftId(null)
+      // 개수 제한처럼 서버가 이유를 아는 것은 그 문구를 그대로 보여 준다.
+      setNotice(apiMessage(error) ?? t('photoCard.draftSaveFailed'))
+    }
+  })
+
+  const loadServerDraft = (id: number) => runOnce(async () => {
+    // 불러오면 지금 편집하던 것이 통째로 바뀐다. 손댄 흔적이 있으면 한 번 묻는다.
+    if ((editor.canUndo || editor.photoFile != null)
+      && !window.confirm(t('photoCard.draftLoadConfirm'))) return
+    try {
+      const detail = await photoCardDraftApi.get(id)
+      const content = parseDraftContent(detail?.content)
+      if (!detail || !content) {
+        setNotice(t('photoCard.draftRestoreFailed'))
+        return
+      }
+      const photo = detail.hasPhoto ? await photoCardDraftApi.fetchPhoto(id) : null
+      if (!await editor.restoreDraft(toRestorableDraft(content, photo, detail.savedAt))) {
+        setNotice(t('photoCard.draftRestoreFailed'))
+        return
+      }
+      setCurrentDraftId(id)
+      // 되살린 배치는 어느 템플릿에서 왔는지 알 수 없다 — 이전 표시를 남기면 거짓말이 된다.
+      setAppliedTemplate(null)
+      setFilling(false)
+      setNotice(t('photoCard.draftRestored'))
+    } catch (error) {
+      setNotice(apiMessage(error) ?? t('photoCard.draftRestoreFailed'))
+    }
+  })
+
   // ── 이탈 방지 ──
   // 편집기는 페이지가 스크롤되지 않아 「뒤로」 버튼이 없다 — 나가는 길은 하드웨어 백과
   // 새로고침뿐이라 그 둘만 막으면 된다. 되돌리기가 가능하다는 것은 손을 댔다는 뜻이고,
@@ -339,6 +433,19 @@ export default function PhotoCardPage() {
           <LayerPanel
             editor={editor}
             onEditLayer={(layer) => setTool(layer.type === 'TEXT' ? 'text' : 'element')}
+          />
+        )
+      case 'draft':
+        return (
+          <DraftPanel
+            editor={editor}
+            isLoggedIn={isLoggedIn}
+            busy={busy || draftBusy}
+            currentDraftId={currentDraftId}
+            onSave={({ asNew }) => { void saveServerDraft(asNew) }}
+            onLoad={(id) => { void loadServerDraft(id) }}
+            onDeleted={(id) => setCurrentDraftId((current) => (current === id ? null : current))}
+            onRequireLogin={() => setGate('draft')}
           />
         )
       case 'export':
@@ -470,7 +577,7 @@ export default function PhotoCardPage() {
       <PhotoCardSpiritPicker
         open={spiritPickerOpen}
         onClose={() => setSpiritPickerOpen(false)}
-        onSelect={(info) => editor.setSpirit(info)}
+        onSelect={(info) => editor.pickSpirit(info)}
       />
 
       <PhotoCardPublishDialog

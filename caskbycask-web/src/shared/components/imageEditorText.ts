@@ -82,6 +82,13 @@ export interface TextFontOption {
   familyKey: string
   /** 가족 이름(굵기 빼고). 같은 familyKey 끼리 같아야 한다. */
   familyLabelKey: string
+  /**
+   * 한글 자소가 없는 서체인가.
+   *
+   * 한글을 적으면 Pretendard 로 떨어져(decorativeFamily 의 폴백) 어떤 서체인지 알 수 없다.
+   * 미리보기 문구를 고를 때 쓴다 — 한글이 섞인 문구는 이런 서체에서 보여 줘야 소용이 없다.
+   */
+  latinOnly?: boolean
 }
 
 export interface TextBounds {
@@ -156,19 +163,19 @@ export const TEXT_FONT_OPTIONS: TextFontOption[] = [
   // Bebas Neue·Pacifico·IBM Plex Sans Condensed 는 한글 자소가 없어 한글을 적으면
   // Pretendard 로 떨어진다(decorativeFamily 의 폴백). Wanted Sans 는 한글도 있다.
   { key: 'wantedSansExtraBold', familyKey: 'wantedSans', familyLabelKey: 'imageEditor.familyWantedSans', labelKey: 'imageEditor.fontWantedSansExtraBold', groupKey: 'latin', family: decorativeFamily('Wanted Sans'), weight: 800 },
-  { key: 'ibmPlexSansCondBold', familyKey: 'ibmPlexSansCond', familyLabelKey: 'imageEditor.familyIbmPlexSansCond', labelKey: 'imageEditor.fontIbmPlexSansCondBold', groupKey: 'latin', family: decorativeFamily('IBM Plex Sans Condensed'), weight: 700 },
-  { key: 'bebasNeue', familyKey: 'bebasNeue', familyLabelKey: 'imageEditor.familyBebasNeue', labelKey: 'imageEditor.fontBebasNeue', groupKey: 'latin', family: decorativeFamily('Bebas Neue'), weight: 400 },
-  { key: 'pacifico', familyKey: 'pacifico', familyLabelKey: 'imageEditor.familyPacifico', labelKey: 'imageEditor.fontPacifico', groupKey: 'latin', family: decorativeFamily('Pacifico'), weight: 400 },
-  { key: 'stiluSemiBold', familyKey: 'stilu', familyLabelKey: 'imageEditor.familyStilu', labelKey: 'imageEditor.fontStiluSemiBold', groupKey: 'latin', family: decorativeFamily('Stilu'), weight: 600 },
-  { key: 'stiluBold', familyKey: 'stilu', familyLabelKey: 'imageEditor.familyStilu', labelKey: 'imageEditor.fontStiluBold', groupKey: 'latin', family: decorativeFamily('Stilu'), weight: 700 },
-  { key: 'kalamkari', familyKey: 'kalamkari', familyLabelKey: 'imageEditor.familyKalamkari', labelKey: 'imageEditor.fontKalamkari', groupKey: 'latin', family: decorativeFamily('Kalamkari'), weight: 400 },
-  { key: 'coolStory', familyKey: 'coolStory', familyLabelKey: 'imageEditor.familyCoolStory', labelKey: 'imageEditor.fontCoolStory', groupKey: 'latin', family: decorativeFamily('Cool Story'), weight: 400 },
-  { key: 'magnoliaScript', familyKey: 'magnoliaScript', familyLabelKey: 'imageEditor.familyMagnoliaScript', labelKey: 'imageEditor.fontMagnoliaScript', groupKey: 'latin', family: decorativeFamily('Magnolia Script'), weight: 400 },
-  { key: 'exmouth', familyKey: 'exmouth', familyLabelKey: 'imageEditor.familyExmouth', labelKey: 'imageEditor.fontExmouth', groupKey: 'latin', family: decorativeFamily('Exmouth'), weight: 400 },
-  { key: 'allura', familyKey: 'allura', familyLabelKey: 'imageEditor.familyAllura', labelKey: 'imageEditor.fontAllura', groupKey: 'latin', family: decorativeFamily('Allura'), weight: 400 },
-  { key: 'greatVibes', familyKey: 'greatVibes', familyLabelKey: 'imageEditor.familyGreatVibes', labelKey: 'imageEditor.fontGreatVibes', groupKey: 'latin', family: decorativeFamily('Great Vibes'), weight: 400 },
-  { key: 'dancingScript', familyKey: 'dancingScript', familyLabelKey: 'imageEditor.familyDancingScript', labelKey: 'imageEditor.fontDancingScript', groupKey: 'latin', family: decorativeFamily('Dancing Script'), weight: 400 },
-  { key: 'dancingScriptBold', familyKey: 'dancingScript', familyLabelKey: 'imageEditor.familyDancingScript', labelKey: 'imageEditor.fontDancingScriptBold', groupKey: 'latin', family: decorativeFamily('Dancing Script'), weight: 700 },
+  { key: 'ibmPlexSansCondBold', familyKey: 'ibmPlexSansCond', familyLabelKey: 'imageEditor.familyIbmPlexSansCond', labelKey: 'imageEditor.fontIbmPlexSansCondBold', groupKey: 'latin', family: decorativeFamily('IBM Plex Sans Condensed'), weight: 700, latinOnly: true },
+  { key: 'bebasNeue', familyKey: 'bebasNeue', familyLabelKey: 'imageEditor.familyBebasNeue', labelKey: 'imageEditor.fontBebasNeue', groupKey: 'latin', family: decorativeFamily('Bebas Neue'), weight: 400, latinOnly: true },
+  { key: 'pacifico', familyKey: 'pacifico', familyLabelKey: 'imageEditor.familyPacifico', labelKey: 'imageEditor.fontPacifico', groupKey: 'latin', family: decorativeFamily('Pacifico'), weight: 400, latinOnly: true },
+  { key: 'stiluSemiBold', familyKey: 'stilu', familyLabelKey: 'imageEditor.familyStilu', labelKey: 'imageEditor.fontStiluSemiBold', groupKey: 'latin', family: decorativeFamily('Stilu'), weight: 600, latinOnly: true },
+  { key: 'stiluBold', familyKey: 'stilu', familyLabelKey: 'imageEditor.familyStilu', labelKey: 'imageEditor.fontStiluBold', groupKey: 'latin', family: decorativeFamily('Stilu'), weight: 700, latinOnly: true },
+  { key: 'kalamkari', familyKey: 'kalamkari', familyLabelKey: 'imageEditor.familyKalamkari', labelKey: 'imageEditor.fontKalamkari', groupKey: 'latin', family: decorativeFamily('Kalamkari'), weight: 400, latinOnly: true },
+  { key: 'coolStory', familyKey: 'coolStory', familyLabelKey: 'imageEditor.familyCoolStory', labelKey: 'imageEditor.fontCoolStory', groupKey: 'latin', family: decorativeFamily('Cool Story'), weight: 400, latinOnly: true },
+  { key: 'magnoliaScript', familyKey: 'magnoliaScript', familyLabelKey: 'imageEditor.familyMagnoliaScript', labelKey: 'imageEditor.fontMagnoliaScript', groupKey: 'latin', family: decorativeFamily('Magnolia Script'), weight: 400, latinOnly: true },
+  { key: 'exmouth', familyKey: 'exmouth', familyLabelKey: 'imageEditor.familyExmouth', labelKey: 'imageEditor.fontExmouth', groupKey: 'latin', family: decorativeFamily('Exmouth'), weight: 400, latinOnly: true },
+  { key: 'allura', familyKey: 'allura', familyLabelKey: 'imageEditor.familyAllura', labelKey: 'imageEditor.fontAllura', groupKey: 'latin', family: decorativeFamily('Allura'), weight: 400, latinOnly: true },
+  { key: 'greatVibes', familyKey: 'greatVibes', familyLabelKey: 'imageEditor.familyGreatVibes', labelKey: 'imageEditor.fontGreatVibes', groupKey: 'latin', family: decorativeFamily('Great Vibes'), weight: 400, latinOnly: true },
+  { key: 'dancingScript', familyKey: 'dancingScript', familyLabelKey: 'imageEditor.familyDancingScript', labelKey: 'imageEditor.fontDancingScript', groupKey: 'latin', family: decorativeFamily('Dancing Script'), weight: 400, latinOnly: true },
+  { key: 'dancingScriptBold', familyKey: 'dancingScript', familyLabelKey: 'imageEditor.familyDancingScript', labelKey: 'imageEditor.fontDancingScriptBold', groupKey: 'latin', family: decorativeFamily('Dancing Script'), weight: 700, latinOnly: true },
 ]
 
 /** 서체 가족 — 목록은 가족으로 보여 주고, 굵기는 가족을 고른 뒤에 고른다. */
@@ -179,6 +186,8 @@ export interface TextFontFamily {
   family: string
   /** 가벼운 것부터. 굵기가 하나뿐인 가족도 많다. */
   weights: { weight: number; fontKey: TextFontKey }[]
+  /** 한글 자소가 없는 가족 — TextFontOption.latinOnly 와 같다. */
+  latinOnly: boolean
 }
 
 /**
@@ -202,6 +211,7 @@ export const TEXT_FONT_FAMILIES: TextFontFamily[] = (() => {
       groupKey: option.groupKey,
       family: option.family,
       weights: [{ weight: option.weight, fontKey: option.key }],
+      latinOnly: option.latinOnly === true,
     })
   }
   const families = [...byKey.values()]
@@ -213,6 +223,17 @@ export const getTextFontFamily = (fontKey: TextFontKey): TextFontFamily => {
   const option = getTextFont(fontKey)
   return TEXT_FONT_FAMILIES.find((entry) => entry.key === option.familyKey) ?? TEXT_FONT_FAMILIES[0]
 }
+
+/** 라틴 문자·숫자·문장부호(Common·Inherited) 밖의 글자 — 한글·가나·한자·키릴… */
+const NON_LATIN_PATTERN = /[^\p{Script=Latin}\p{Script=Common}\p{Script=Inherited}]/u
+
+/**
+ * `latinOnly` 서체가 그리지 못하는 글자가 섞였는가.
+ *
+ * 그런 글자는 Pretendard 로 떨어져(decorativeFamily 의 폴백) 서체를 알아볼 수 없다 —
+ * 미리보기에 사용자의 문구를 그대로 쓸지, 서체를 보여 주는 기본 문구로 갈지 가르는 기준이다.
+ */
+export const hasNonLatinGlyphs = (text: string): boolean => NON_LATIN_PATTERN.test(text)
 
 /**
  * 가족 안에서 굵기에 맞는 fontKey 를 찾는다.

@@ -5,7 +5,8 @@
  * 선택된 요소의 속성은 도구와 무관하게 패널 맨 위에 늘 붙는다.
  */
 export type PhotoCardTool =
-  | 'select' | 'template' | 'photo' | 'text' | 'element' | 'data' | 'card' | 'layer' | 'export'
+  | 'select' | 'template' | 'photo' | 'text' | 'element' | 'data' | 'card' | 'layer'
+  | 'draft' | 'export'
 
 export interface PhotoCardToolOption {
   key: PhotoCardTool
@@ -26,5 +27,7 @@ export const PHOTO_CARD_TOOLS: PhotoCardToolOption[] = [
   { key: 'element', labelKey: 'photoCard.toolElement', path: 'M3.5 3.5h8v8h-8v-8zm12.5 9a5 5 0 110 10 5 5 0 010-10z' },
   { key: 'data', labelKey: 'photoCard.toolData', path: 'M4 5h16v2.4H4V5zm0 5.8h16v2.4H4v-2.4zM4 16.6h10V19H4v-2.4z' },
   { key: 'layer', labelKey: 'photoCard.toolLayer', path: 'M12 2l10 5.6-10 5.6L2 7.6 12 2zm7.6 8.2L22 11.5l-10 5.6-10-5.6 2.4-1.3L12 14.4l7.6-4.2zm0 4.6L22 16l-10 5.6L2 16l2.4-1.2L12 19l7.6-4.2z' },
-  { key: 'export', labelKey: 'photoCard.toolExport', path: 'M11 3h2v9.2l3.6-3.6 1.4 1.4L12 16 6 10l1.4-1.4L11 12.2V3zM4 18h16v2.4H4V18z', separated: true },
+  // 임시저장·내보내기는 "만든 것을 어떻게 남길까"라 한 묶음으로 아래에 붙인다.
+  { key: 'draft', labelKey: 'photoCard.toolDraft', path: 'M4 3h13l3 3v15H4V3zM9 5v4h6V5zM8 13v6h8v-6z', separated: true },
+  { key: 'export', labelKey: 'photoCard.toolExport', path: 'M11 3h2v9.2l3.6-3.6 1.4 1.4L12 16 6 10l1.4-1.4L11 12.2V3zM4 18h16v2.4H4V18z' },
 ]

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import type { PhotoCardEditor } from '../hooks/usePhotoCardEditor'
 import type { PhotoCardBinding } from '../types/photoCard.types'
 import { describeLayer } from '../utils/layerLabel'
-import { resolveLayerText } from '../utils/resolveBindings'
+import { isSpiritBinding, resolveLayerText } from '../utils/resolveBindings'
 
 interface Props {
   editor: PhotoCardEditor
@@ -21,8 +21,6 @@ const USER_FIELD: Partial<Record<PhotoCardBinding, 'place' | 'memo' | 'date'>> =
 }
 
 const isExif = (binding: PhotoCardBinding) => binding.startsWith('EXIF_')
-const isSpirit = (binding: PhotoCardBinding) =>
-  binding.startsWith('SPIRIT_') || binding.startsWith('PRODUCER_')
 
 /**
  * 템플릿이 불러온 요소를 하나씩 채우는 흐름.
@@ -166,7 +164,7 @@ export default function PhotoCardFillWizard({ editor, onClose, onOpenSpiritPicke
         {!layer.overridden && hasValue && isExif(binding) && (
           <p className="mt-1 text-[11px] font-medium text-neutral-500">{t('photoCard.fillFromExif')}</p>
         )}
-        {!layer.overridden && hasValue && isSpirit(binding) && (
+        {!layer.overridden && hasValue && isSpiritBinding(binding) && (
           <p className="mt-1 text-[11px] font-medium text-neutral-500">{t('photoCard.fillFromSpirit')}</p>
         )}
         {!hasValue && isExif(binding) && (
@@ -184,7 +182,7 @@ export default function PhotoCardFillWizard({ editor, onClose, onOpenSpiritPicke
       </div>
 
       {/* 주류 이름·생산자는 검색으로 한 번에 채우는 편이 정확하다. 직접 적어도 된다. */}
-      {isSpirit(binding) && (
+      {isSpiritBinding(binding) && (
         <button
           type="button"
           onClick={onOpenSpiritPicker}

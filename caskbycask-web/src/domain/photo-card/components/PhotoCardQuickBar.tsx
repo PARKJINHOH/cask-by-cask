@@ -11,6 +11,7 @@ import {
   PHOTO_CARD_MAX_FONT_SIZE_RATIO, PHOTO_CARD_MIN_FONT_SIZE_RATIO,
 } from '../utils/layoutSchema'
 import type { LayerBounds } from '../utils/photoCardRender'
+import { resolveLayerText } from '../utils/resolveBindings'
 import FontPicker from './panels/FontPicker'
 
 interface Props {
@@ -97,6 +98,7 @@ export default function PhotoCardQuickBar({
           onChange={(fontKey) => patch({ fontKey })}
           showWeights={false}
           compact
+          sample={resolveLayerText(layer, editor.dataContext)}
         />
       </div>
 

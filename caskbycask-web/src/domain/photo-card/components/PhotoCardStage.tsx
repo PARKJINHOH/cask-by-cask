@@ -345,6 +345,15 @@ export default function PhotoCardStage({
       ref={viewport.containerRef}
       className="relative order-1 min-h-0 min-w-0 flex-1 touch-none overflow-hidden bg-neutral-800 lg:order-2"
       style={{ cursor: viewport.handMode ? (viewport.panning ? 'grabbing' : 'grab') : 'default' }}
+      // 카드 <b>바깥</b>의 빈 자리를 눌러도 선택을 푼다 — 카드 안 빈 곳과 결과가 같아야
+      // "놓으려면 아무 데도 아닌 곳을 누른다"는 감각이 카드 경계에서 끊기지 않는다.
+      // 여기서 시작한 입력만 본다(target === currentTarget): 카드·미세 이동 패드 위에서
+      // 시작한 것은 올라오더라도 걸러진다 — 패드는 고른 요소를 옮기는 조작이라
+      // 여기서 선택을 풀면 패드가 스스로 사라진다.
+      // 손바닥 도구·핀치는 캡처 단계에서 전파를 끊으므로 이 자리까지 오지 않는다.
+      onPointerDown={(event) => {
+        if (event.target === event.currentTarget) editor.selectLayer(null)
+      }}
       {...viewport.stageHandlers}
     >
       {editor.photoImage ? (

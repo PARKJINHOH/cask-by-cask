@@ -125,6 +125,9 @@ public enum ErrorCode {
     PHOTO_CARD_TEMPLATE_INVALID_LAYOUT(HttpStatus.BAD_REQUEST, "PHOTO_CARD_003", "포토카드 배치 정보가 올바르지 않습니다."),
     PHOTO_CARD_TEMPLATE_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "PHOTO_CARD_004", "저장할 수 있는 템플릿 개수를 초과했습니다."),
     PHOTO_CARD_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "PHOTO_CARD_005", "포토카드 이미지를 찾을 수 없습니다."),
+    PHOTO_CARD_DRAFT_NOT_FOUND(HttpStatus.NOT_FOUND, "PHOTO_CARD_006", "임시저장을 찾을 수 없습니다. 보관 기간이 지났을 수 있습니다."),
+    PHOTO_CARD_DRAFT_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "PHOTO_CARD_007", "임시저장은 최대 5개까지 보관할 수 있습니다. 기존 임시저장을 삭제 후 다시 시도해주세요."),
+    PHOTO_CARD_DRAFT_TOO_LARGE(HttpStatus.BAD_REQUEST, "PHOTO_CARD_008", "임시저장할 내용이 너무 큽니다."),
 
     // Report
     ALREADY_REPORTED(HttpStatus.CONFLICT, "REPORT_001", "이미 신고한 항목입니다."),

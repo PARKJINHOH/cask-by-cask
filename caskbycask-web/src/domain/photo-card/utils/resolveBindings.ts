@@ -14,6 +14,10 @@ import {
   formatShutter,
 } from './exifReader'
 
+/** 주류 검색 결과로 채워지는 자리인가 — 주류를 새로 고르면 값이 통째로 바뀐다. */
+export const isSpiritBinding = (binding: PhotoCardBinding | undefined): boolean =>
+  binding != null && (binding.startsWith('SPIRIT_') || binding.startsWith('PRODUCER_'))
+
 /**
  * 바인딩이 가리키는 실제 문자열을 만든다.
  *

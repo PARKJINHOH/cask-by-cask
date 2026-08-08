@@ -177,7 +177,11 @@ export default function SelectionInspector({ editor, canvasRef }: Props) {
 
           <div>
             <span className="mb-1 block text-[11px] font-medium text-neutral-500">{t('photoCard.fontLabel')}</span>
-            <FontPicker value={layer.fontKey} onChange={(fontKey) => patch({ fontKey })} />
+            <FontPicker
+              value={layer.fontKey}
+              onChange={(fontKey) => patch({ fontKey })}
+              sample={resolveLayerText(layer, editor.dataContext)}
+            />
           </div>
 
           <SliderField

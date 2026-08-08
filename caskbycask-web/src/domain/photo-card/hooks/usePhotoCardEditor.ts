@@ -30,7 +30,7 @@ import {
   IDENTITY_PHOTO_TRANSFORM, type LoadedImages, type PhotoTransform,
 } from '../utils/photoCardRender'
 import {
-  getDrawableLayers, resolveBindingValue, resolveLayerImageUrl, resolveLayerText,
+  getDrawableLayers, isSpiritBinding, resolveBindingValue, resolveLayerImageUrl, resolveLayerText,
 } from '../utils/resolveBindings'
 
 const EMPTY_USER_INPUT: PhotoCardUserInput = { place: '', memo: '', date: '' }
@@ -101,6 +101,10 @@ export const placeCarriedLayers = (layout: PhotoCardLayout, bindings: PhotoCardB
     }))
   })
 }
+
+/** 손으로 고쳐 둔 주류 글자. 주류를 새로 고르면 그 주류의 값으로 되돌려 준다. */
+const isOverriddenSpiritText = (layer: PhotoCardLayer) =>
+  layer.type === 'TEXT' && layer.overridden === true && isSpiritBinding(layer.binding)
 
 const loadImage = (src: string): Promise<HTMLImageElement | null> =>
   new Promise((resolve) => {
@@ -773,6 +777,30 @@ export const usePhotoCardEditor = ({ watermark = false }: EditorOptions = {}) =>
     })
   }, [commit, photoImage])
 
+  // ── 주류 ────────────────────────────────────────────────
+  /**
+   * 검색으로 고른 주류를 카드에 얹는다.
+   *
+   * 손으로 적어 둔 주류 글자(overridden)는 이때 풀어 준다 — 검색으로 고르는 것은
+   * "이 주류로 하겠다"는 뜻인데, 적어 둔 글이 그대로 남으면 방금 고른 이름이 칸에도 카드에도
+   * 나타나지 않아 검색이 먹지 않은 것처럼 보인다. 지난 주류를 보고 고쳐 둔 도수·용량이
+   * 새 주류 이름 옆에 그대로 남는 것도 막는다.
+   * (직접 적어 둔 값으로 되돌리려면 고른 뒤 다시 적으면 된다 — 그 편집이 다시 overridden 이 된다)
+   */
+  const pickSpirit = useCallback((info: PhotoCardSpiritInfo) => {
+    setSpirit(info)
+    withLayout((current) => (
+      current.layers.some(isOverriddenSpiritText)
+        ? {
+          ...current,
+          layers: current.layers.map((layer) => (
+            isOverriddenSpiritText(layer) ? { ...layer, overridden: false } : layer
+          )),
+        }
+        : current
+    ))
+  }, [withLayout])
+
   /**
    * 템플릿 적용.
    *
@@ -925,7 +953,7 @@ export const usePhotoCardEditor = ({ watermark = false }: EditorOptions = {}) =>
     fitPhotoArea,
     photoFile, photoUrl, photoImage, setPhoto,
     photoTransform, patchPhotoTransform, resetPhotoTransform,
-    exif, setExif, spirit, setSpirit, userInput, setUserInput,
+    exif, setExif, spirit, setSpirit, pickSpirit, userInput, setUserInput,
     dataContext, images, fontsReady, renderToBlob, nativeMaxEdge, watermarkImage,
     undo, redo, canUndo: history.canUndo, canRedo: history.canRedo, endGesture,
   }
