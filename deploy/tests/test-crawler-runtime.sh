@@ -8,12 +8,17 @@ trap cleanup EXIT
 
 mkdir -p "$TMP_DIR/bin" "$TMP_DIR/source/caskbycask-crawler/scripts" \
   "$TMP_DIR/source/caskbycask-crawler/tests" "$TMP_DIR/base/releases/old"
-cp "$ROOT_DIR/caskbycask-crawler/run.sh" "$TMP_DIR/source/caskbycask-crawler/run.sh"
-cp "$ROOT_DIR/caskbycask-crawler/run-news.sh" "$TMP_DIR/source/caskbycask-crawler/run-news.sh"
+# deploy-crawler.sh 가 chmod·cron 등록하는 래퍼는 전부 여기 있어야 한다.
+# 새 크롤러 작업을 추가하면 이 목록도 함께 늘린다.
+CRAWLER_WRAPPERS=(run.sh run-news.sh run-wine.sh)
+for wrapper in "${CRAWLER_WRAPPERS[@]}"; do
+  cp "$ROOT_DIR/caskbycask-crawler/$wrapper" "$TMP_DIR/source/caskbycask-crawler/$wrapper"
+done
 touch "$TMP_DIR/source/caskbycask-crawler/requirements.lock" \
   "$TMP_DIR/source/caskbycask-crawler/requirements.txt" \
   "$TMP_DIR/source/caskbycask-crawler/main.py" \
   "$TMP_DIR/source/caskbycask-crawler/news_main.py" \
+  "$TMP_DIR/source/caskbycask-crawler/wine_main.py" \
   "$TMP_DIR/source/caskbycask-crawler/scripts/verify_requirements_lock.py"
 touch "$TMP_DIR/base/.env"
 ln -s "$TMP_DIR/base/releases/old" "$TMP_DIR/base/current"
@@ -81,6 +86,8 @@ export CRAWLER_ARCHIVE="$TMP_DIR/crawler.tar.gz"
 export CRAWLER_DEPLOY_LOCK_FILE="$TMP_DIR/deploy.lock"
 export CRAWLER_HOTDEAL_LOCK_FILE="$TMP_DIR/hotdeal.lock"
 export CRAWLER_NEWS_LOCK_FILE="$TMP_DIR/news.lock"
+# 세 작업 락을 모두 임시 경로로 돌린다. 하나라도 빠지면 러너/개발 PC의 실제 /tmp 락을 잡는다.
+export CRAWLER_WINE_LOCK_FILE="$TMP_DIR/wine.lock"
 export CRAWLER_LOCK_WAIT_SECONDS=1
 
 # Windows Git Bash는 ln -s를 일반 파일 복사로 에뮬레이션할 수 있어 릴리스 교체 테스트를
@@ -102,7 +109,10 @@ if [ -L "$TMP_DIR/base/current" ]; then
   new_current="$(readlink -f "$TMP_DIR/base/current")"
   [ "$new_current" != "$TMP_DIR/base/releases/old" ]
   [ "$(readlink -f "$TMP_DIR/base/previous")" = "$TMP_DIR/base/releases/old" ]
-  grep -Fq "$TMP_DIR/base/current/run.sh" "$FAKE_CRONTAB_STATE"
+  for wrapper in "${CRAWLER_WRAPPERS[@]}"; do
+    grep -Fq "$TMP_DIR/base/current/$wrapper" "$FAKE_CRONTAB_STATE" \
+      || { echo "crawler cron entry missing for $wrapper" >&2; exit 1; }
+  done
   [ "$(grep -c '^CRON_TZ=UTC$' "$FAKE_CRONTAB_STATE")" -eq 1 ]
   [ "$(grep -c '^# BEGIN CASKBYCASK CRAWLER$' "$FAKE_CRONTAB_STATE")" -eq 1 ]
   [ ! -e "$TMP_DIR/crawler.tar.gz" ]
@@ -135,9 +145,8 @@ fi
 
 # 릴리스 venv가 없으면 system Python으로 우회하지 않고 즉시 실패한다.
 mkdir -p "$TMP_DIR/wrapper"
-cp "$ROOT_DIR/caskbycask-crawler/run.sh" "$TMP_DIR/wrapper/run.sh"
-cp "$ROOT_DIR/caskbycask-crawler/run-news.sh" "$TMP_DIR/wrapper/run-news.sh"
-for wrapper in run.sh run-news.sh; do
+for wrapper in "${CRAWLER_WRAPPERS[@]}"; do
+  cp "$ROOT_DIR/caskbycask-crawler/$wrapper" "$TMP_DIR/wrapper/$wrapper"
   if PATH="$TMP_DIR/bin:$PATH" bash "$TMP_DIR/wrapper/$wrapper" >/dev/null 2>&1; then
     echo "$wrapper accepted a missing release venv" >&2
     exit 1
