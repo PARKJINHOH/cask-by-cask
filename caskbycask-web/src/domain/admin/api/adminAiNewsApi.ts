@@ -5,7 +5,7 @@ import type {
   AiNewsArticleSummary, AiNewsArticleType, AiNewsArticleUpdateRequest,
   AiNewsCategory, AiNewsDraftRequest, AiNewsDraftRequestCreateRequest,
   AiNewsDraftRequestRetryRequest, AiNewsRun, AiNewsSettings, AiNewsSourceConfig,
-  AiNewsSourceConfigRequest, AiNewsTopic, AiNewsTopicRequest,
+  AiNewsSourceConfigRequest, AiNewsSourceType, AiNewsTopic, AiNewsTopicRequest,
   AiNewsTopicStatus, AiNewsUsageSummary,
 } from '../types/aiNews.types'
 import type { SocialPublishSelection } from '@/domain/social/types/social.types'
@@ -99,7 +99,13 @@ export const adminAiNewsApi = {
   deleteDraftRequestHistory: (id: number) =>
     axiosInstance.delete(`/api/admin/ai-news/draft-requests/${id}/history`),
 
-  topics: async (params?: { status?: AiNewsTopicStatus; page?: number; size?: number }) => {
+  topics: async (params?: {
+    status?: AiNewsTopicStatus
+    category?: AiNewsCategory
+    keyword?: string
+    page?: number
+    size?: number
+  }) => {
     const res = await axiosInstance.get<ApiResponse<PageResponse<AiNewsTopic>>>('/api/admin/ai-news/topics', { params })
     return res.data.data!
   },
@@ -107,15 +113,25 @@ export const adminAiNewsApi = {
   updateTopic: (id: number, data: AiNewsTopicRequest) => axiosInstance.put(`/api/admin/ai-news/topics/${id}`, data),
   deleteTopic: (id: number) => axiosInstance.delete(`/api/admin/ai-news/topics/${id}`),
 
-  sources: async (page = 0, size = 10) => {
+  /** blocked 를 넘기지 않으면 차단 출처는 목록에서 빠진다. */
+  sources: async (params?: {
+    sourceType?: AiNewsSourceType
+    enabled?: boolean
+    blocked?: boolean
+    keyword?: string
+    page?: number
+    size?: number
+  }) => {
     const res = await axiosInstance.get<ApiResponse<PageResponse<AiNewsSourceConfig>>>('/api/admin/ai-news/sources', {
-      params: { page, size },
+      params,
     })
     return res.data.data!
   },
   createSource: (data: AiNewsSourceConfigRequest) => axiosInstance.post('/api/admin/ai-news/sources', data),
   updateSource: (id: number, data: AiNewsSourceConfigRequest) => axiosInstance.put(`/api/admin/ai-news/sources/${id}`, data),
+  /** 자동 등록 출처는 삭제 대신 차단으로 남는다(같은 도메인 재등록 방지). */
   deleteSource: (id: number) => axiosInstance.delete(`/api/admin/ai-news/sources/${id}`),
+  unblockSource: (id: number) => axiosInstance.post(`/api/admin/ai-news/sources/${id}/unblock`),
 
   settings: async () => {
     const res = await axiosInstance.get<ApiResponse<AiNewsSettings>>('/api/admin/ai-news/settings')

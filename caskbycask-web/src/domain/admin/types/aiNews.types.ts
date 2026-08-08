@@ -4,6 +4,8 @@ export type AiNewsArticleStatus =
   | 'SKIPPED_DUPLICATE' | 'FAILED' | 'DELETED' | 'REWRITE_REQUESTED'
 export type AiNewsCategory = 'WHISKY' | 'WINE' | 'COGNAC' | 'OTHER'
 export type AiNewsSourceType = 'OFFICIAL' | 'TRUSTED_MEDIA' | 'COMMUNITY' | 'UNAPPROVED'
+/** 출처 목록 필터의 수집 상태. 차단은 enabled 와 별개 축이라 하나의 select 로 합쳐 다룬다. */
+export type AiNewsSourceState = 'ENABLED' | 'DISABLED' | 'BLOCKED'
 export type AiNewsSourceCrawlStatus = 'NOT_CHECKED' | 'SUCCESS' | 'ERROR'
 export type AiNewsTopicStatus = 'READY' | 'SCHEDULED' | 'HOLD' | 'BLOCKED' | 'COMPLETED'
 export type AiNewsDraftRequestStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'CANCELLED'
@@ -141,6 +143,11 @@ export interface AiNewsSourceConfig {
   pathPrefix: string
   sourceType: AiNewsSourceType
   enabled: boolean
+  /** 관리자가 차단한 출처. 행이 남아 있어야 수집이 같은 도메인을 다시 등록하지 않는다. */
+  blocked: boolean
+  blockedAt: string | null
+  /** 관리자가 등록한 게 아니라 기사 수집 중 자동 등록된 출처. 삭제하면 차단으로 남는다. */
+  autoDiscovered: boolean
   autoPublishAllowed: boolean
   imageUseAllowed: boolean
   crawlStatus: AiNewsSourceCrawlStatus

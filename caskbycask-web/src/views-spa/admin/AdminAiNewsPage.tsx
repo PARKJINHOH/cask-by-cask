@@ -4,11 +4,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { adminAiNewsApi } from '@/domain/admin/api/adminAiNewsApi'
 import type {
   AiNewsArticleStatus, AiNewsArticleType, AiNewsCategory, AiNewsSettings,
-  AiNewsSourceConfig, AiNewsSourceConfigRequest, AiNewsSourceType,
+  AiNewsSourceConfig, AiNewsSourceConfigRequest, AiNewsSourceState, AiNewsSourceType,
   AiNewsTopicRequest, AiNewsTopicStatus,
 } from '@/domain/admin/types/aiNews.types'
 import Spinner from '@/shared/components/Spinner'
 import Pagination from '@/shared/components/Pagination'
+import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
 import { formatDateTime } from '@/shared/utils/format'
 import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 
@@ -26,6 +27,9 @@ const categoryLabels: Record<AiNewsCategory, string> = {
 }
 const sourceTypeLabels: Record<AiNewsSourceType, string> = {
   OFFICIAL: '공식', TRUSTED_MEDIA: '전문매체', COMMUNITY: '커뮤니티', UNAPPROVED: '미승인',
+}
+const sourceStateLabels: Record<AiNewsSourceState, string> = {
+  ENABLED: '수집 활성', DISABLED: '수집 비활성', BLOCKED: '차단됨',
 }
 const topicStatusLabels: Record<AiNewsTopicStatus, string> = {
   READY: '작성 대기', SCHEDULED: '작성 예정', HOLD: '보류', BLOCKED: '중복 차단', COMPLETED: '발행 완료',
@@ -186,11 +190,20 @@ function ArticlesTab() {
 function TopicsTab() {
   const qc = useQueryClient()
   const [status, setStatus] = useState<AiNewsTopicStatus | ''>('')
+  const [category, setCategory] = useState<AiNewsCategory | ''>('')
+  const [keywordInput, setKeywordInput] = useState('')
+  const keyword = useDebouncedValue(keywordInput)
+  const [page, setPage] = useState(0)
   const [form, setForm] = useState<AiNewsTopicRequest>({ title: '', normalizedKey: '', category: 'WHISKY', status: 'READY' })
   const { data, isLoading } = useQuery({
-    queryKey: ['admin', 'ai-news', 'topics', status],
-    queryFn: () => adminAiNewsApi.topics({ status: status || undefined, page: 0, size: 100 }),
+    queryKey: ['admin', 'ai-news', 'topics', status, category, keyword, page],
+    queryFn: () => adminAiNewsApi.topics({
+      status: status || undefined, category: category || undefined,
+      keyword: keyword || undefined, page, size: 20,
+    }),
   })
+  // 검색어 확정 시점(디바운스 후)에도 페이지를 처음으로 되돌려야 빈 목록이 나오지 않는다.
+  useEffect(() => { setPage(0) }, [keyword])
   const save = useMutation({
     mutationFn: (payload: AiNewsTopicRequest) => adminAiNewsApi.createTopic(payload),
     onSuccess: () => { setForm({ title: '', normalizedKey: '', category: 'WHISKY', status: 'READY' }); qc.invalidateQueries({ queryKey: ['admin', 'ai-news', 'topics'] }) },
@@ -222,14 +235,18 @@ function TopicsTab() {
           중복 키는 주제를 식별하는 고유값이며 생성 후 변경할 수 없습니다. 삭제는 아직 원고에 사용되지 않은 주제만 가능합니다.
         </p>
       </div>
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
-        {(Object.keys(topicStatusLabels) as AiNewsTopicStatus[]).map((value) => (
-          <div key={value} className="rounded-xl bg-white p-3 shadow-sm">
-            <p className="text-sm font-semibold text-neutral-800">{value} · {topicStatusLabels[value]}</p>
-            <p className="mt-1 text-xs leading-5 text-neutral-500">{topicStatusDescriptions[value]}</p>
-          </div>
-        ))}
-      </div>
+      {/* 상태 설명은 처음 한 번만 읽으면 되므로 접어 두고 필터 바에 자리를 내준다. */}
+      <details className="rounded-xl bg-white p-4 shadow-sm">
+        <summary className="cursor-pointer text-sm font-semibold text-neutral-800">상태별 동작 설명</summary>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+          {(Object.keys(topicStatusLabels) as AiNewsTopicStatus[]).map((value) => (
+            <div key={value} className="rounded-lg border border-neutral-200 p-3">
+              <p className="text-sm font-semibold text-neutral-800">{value} · {topicStatusLabels[value]}</p>
+              <p className="mt-1 text-xs leading-5 text-neutral-500">{topicStatusDescriptions[value]}</p>
+            </div>
+          ))}
+        </div>
+      </details>
       <form onSubmit={submit} className="grid gap-3 rounded-xl bg-white p-4 shadow-sm sm:grid-cols-5">
         <RequiredFieldsNotice admin className="sm:col-span-5" />
         <input required aria-required="true" aria-label="새 정보 글 주제" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="새 정보 글 주제" className={inputCls} />
@@ -240,11 +257,27 @@ function TopicsTab() {
         </select>
         <button disabled={save.isPending} className="rounded-lg bg-primary-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">주제 추가</button>
       </form>
-      <div className="flex justify-end"><select value={status} onChange={(e) => setStatus(e.target.value as AiNewsTopicStatus | '')} className={inputCls}>
-        <option value="">전체 상태</option>{(Object.keys(topicStatusLabels) as AiNewsTopicStatus[]).map((s) => <option key={s} value={s}>{s} · {topicStatusLabels[s]}</option>)}
-      </select></div>
-      {isLoading ? <Loading /> : <div className="grid gap-3 lg:grid-cols-2">
-        {data?.content.map((topic) => (
+      <div className="flex flex-wrap items-center gap-2 rounded-xl bg-white p-4 shadow-sm">
+        <select aria-label="상태 필터" value={status} onChange={(e) => { setStatus(e.target.value as AiNewsTopicStatus | ''); setPage(0) }} className={inputCls}>
+          <option value="">전체 상태</option>
+          {(Object.keys(topicStatusLabels) as AiNewsTopicStatus[]).map((s) => <option key={s} value={s}>{s} · {topicStatusLabels[s]}</option>)}
+        </select>
+        <select aria-label="주종 필터" value={category} onChange={(e) => { setCategory(e.target.value as AiNewsCategory | ''); setPage(0) }} className={inputCls}>
+          <option value="">전체 주종</option>
+          {Object.entries(categoryLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+        </select>
+        <input aria-label="주제 검색" value={keywordInput} onChange={(e) => setKeywordInput(e.target.value)}
+          placeholder="제목 · 중복 키 · 동의어 검색" className={`${inputCls} min-w-56 flex-1`} />
+        {(status || category || keywordInput) && (
+          <button type="button" onClick={() => { setStatus(''); setCategory(''); setKeywordInput(''); setPage(0) }} className={smallBtn}>
+            필터 초기화
+          </button>
+        )}
+      </div>
+      {isLoading ? <Loading /> : !data || data.empty ? (
+        <p className="rounded-xl bg-white py-12 text-center text-sm text-neutral-400 shadow-sm">조건에 맞는 주제가 없습니다.</p>
+      ) : <div className="grid gap-3 lg:grid-cols-2">
+        {data.content.map((topic) => (
           <div key={topic.id} className="rounded-xl bg-white p-4 shadow-sm">
             <div className="flex items-start justify-between gap-3"><div><p className="font-semibold text-neutral-800">{topic.title}</p>
               <p className="mt-1 text-xs text-neutral-400">{topic.normalizedKey} · {categoryLabels[topic.category]}{topic.aiSuggested ? ' · AI 제안' : ''}</p></div>
@@ -262,6 +295,7 @@ function TopicsTab() {
           </div>
         ))}
       </div>}
+      {data && data.totalPages > 1 && <Pagination currentPage={page} totalPages={data.totalPages} onPageChange={setPage} />}
     </div>
   )
 }
@@ -271,13 +305,28 @@ function SourcesTab() {
   const empty: AiNewsSourceConfigRequest = { sourceName: '', sourceUrl: '', sourceType: 'OFFICIAL', enabled: true, autoPublishAllowed: false, imageUseAllowed: false }
   const [form, setForm] = useState<AiNewsSourceConfigRequest>(empty)
   const [editingId, setEditingId] = useState<number | null>(null)
+  const [sourceType, setSourceType] = useState<AiNewsSourceType | ''>('')
+  const [state, setState] = useState<AiNewsSourceState | ''>('')
+  const [keywordInput, setKeywordInput] = useState('')
+  const keyword = useDebouncedValue(keywordInput)
   const [page, setPage] = useState(0)
-  const { data, isLoading } = useQuery({ queryKey: ['admin', 'ai-news', 'sources', page], queryFn: () => adminAiNewsApi.sources(page, 10) })
+  const { data, isLoading } = useQuery({
+    queryKey: ['admin', 'ai-news', 'sources', sourceType, state, keyword, page],
+    queryFn: () => adminAiNewsApi.sources({
+      sourceType: sourceType || undefined,
+      // 활성/비활성은 차단이 아닌 행에서만 의미가 있고, 차단은 별도 축이라 하나의 select 로 합쳐 보낸다.
+      enabled: state === 'ENABLED' ? true : state === 'DISABLED' ? false : undefined,
+      blocked: state === 'BLOCKED' ? true : undefined,
+      keyword: keyword || undefined, page, size: 10,
+    }),
+  })
+  useEffect(() => { setPage(0) }, [keyword])
   const invalidate = () => qc.invalidateQueries({ queryKey: ['admin', 'ai-news', 'sources'] })
   const resetForm = () => { setForm(empty); setEditingId(null) }
   const create = useMutation({ mutationFn: adminAiNewsApi.createSource, onSuccess: () => { resetForm(); setPage(0); invalidate() } })
   const update = useMutation({ mutationFn: ({ id, payload }: { id: number; payload: AiNewsSourceConfigRequest }) => adminAiNewsApi.updateSource(id, payload), onSuccess: () => { resetForm(); invalidate() } })
   const remove = useMutation({ mutationFn: adminAiNewsApi.deleteSource, onSuccess: invalidate })
+  const unblock = useMutation({ mutationFn: adminAiNewsApi.unblockSource, onSuccess: invalidate })
   const submit = (e: FormEvent) => {
     e.preventDefault()
     if (!form.sourceName.trim() || !form.sourceUrl.trim()) return
@@ -320,31 +369,85 @@ function SourcesTab() {
             <button disabled={create.isPending || update.isPending} className="rounded-lg bg-primary-800 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{editingId == null ? (create.isPending ? '추가 중...' : '출처 추가') : (update.isPending ? '저장 중...' : '수정 저장')}</button>
           </div>
         </div>
-        {(create.isError || update.isError) && <p className="text-sm text-red-600">저장하지 못했습니다. 동일한 URL 범위가 이미 등록되어 있거나 입력값 형식이 올바르지 않은지 확인해주세요.</p>}
+        {(create.isError || update.isError) && <p className="text-sm text-red-600">저장하지 못했습니다. 동일한 URL 범위가 이미 등록되어 있거나(차단 목록도 확인하세요) 입력값 형식이 올바르지 않은지 확인해주세요.</p>}
       </form>
+
+      <div className="flex flex-wrap items-center gap-2 rounded-xl bg-white p-4 shadow-sm">
+        <select aria-label="등급 필터" value={sourceType} onChange={(e) => { setSourceType(e.target.value as AiNewsSourceType | ''); setPage(0) }} className={inputCls}>
+          <option value="">전체 등급</option>
+          {Object.entries(sourceTypeLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+        </select>
+        <select aria-label="수집 상태 필터" value={state} onChange={(e) => { setState(e.target.value as AiNewsSourceState | ''); setPage(0) }} className={inputCls}>
+          <option value="">전체 상태 (차단 제외)</option>
+          {Object.entries(sourceStateLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+        </select>
+        <input aria-label="출처 검색" value={keywordInput} onChange={(e) => setKeywordInput(e.target.value)}
+          placeholder="출처 이름 · 도메인 검색" className={`${inputCls} min-w-56 flex-1`} />
+        {(sourceType || state || keywordInput) && (
+          <button type="button" onClick={() => { setSourceType(''); setState(''); setKeywordInput(''); setPage(0) }} className={smallBtn}>
+            필터 초기화
+          </button>
+        )}
+      </div>
+      {state === 'BLOCKED' && (
+        <p className="rounded-xl border border-neutral-200 bg-neutral-50 p-3 text-xs leading-5 text-neutral-600">
+          차단된 출처는 수집·근거에 쓰이지 않고, 같은 도메인이 수집 과정에서 다시 등록되지도 않습니다.
+          다시 쓰려면 차단을 해제한 뒤 수집 활성을 켜세요.
+        </p>
+      )}
+
       {isLoading ? <Loading /> : <>
         <div className="overflow-x-auto rounded-xl bg-white shadow-sm"><table className="w-full min-w-[1050px] text-sm">
           <thead className="border-b bg-neutral-50 text-left text-xs text-neutral-500"><tr><th className="px-4 py-3">수집 상태</th><th className="px-4 py-3">출처</th><th className="px-4 py-3">URL</th><th className="px-4 py-3">등급</th><th className="px-4 py-3">활성</th><th className="px-4 py-3">자동발행</th><th className="px-4 py-3">이미지</th><th className="px-4 py-3">관리</th></tr></thead>
-          <tbody className="divide-y">{data?.content.map((source) => <SourceRow key={source.id} source={source} onChange={(payload) => update.mutate({ id: source.id, payload })} onEdit={() => startEdit(source)} onDelete={() => { if (window.confirm(`'${source.sourceName}' 출처를 삭제하시겠습니까?`)) remove.mutate(source.id) }} />)}</tbody>
-        </table>{data?.empty && <p className="py-12 text-center text-sm text-neutral-500">등록된 출처가 없습니다.</p>}</div>
+          <tbody className="divide-y">{data?.content.map((source) => (
+            <SourceRow key={source.id} source={source}
+              onChange={(payload) => update.mutate({ id: source.id, payload })}
+              onEdit={() => startEdit(source)}
+              onUnblock={() => unblock.mutate(source.id)}
+              onDelete={() => { if (window.confirm(deleteSourceMessage(source))) remove.mutate(source.id) }} />
+          ))}</tbody>
+        </table>{data?.empty && <p className="py-12 text-center text-sm text-neutral-500">조건에 맞는 출처가 없습니다.</p>}</div>
         <Pagination currentPage={data?.page ?? 0} totalPages={data?.totalPages ?? 0} onPageChange={setPage} />
       </>}
     </div>
   )
 }
 
-function SourceRow({ source, onChange, onEdit, onDelete }: { source: AiNewsSourceConfig; onChange: (v: AiNewsSourceConfigRequest) => void; onEdit: () => void; onDelete: () => void }) {
+/** 자동 등록 출처는 지우지 않고 차단으로 남으므로 결과를 다르게 안내한다. */
+function deleteSourceMessage(source: AiNewsSourceConfig) {
+  return source.autoDiscovered
+    ? `'${source.sourceName}' 출처를 차단하시겠습니까?\n\n`
+      + '수집 중 자동 등록된 출처입니다. 목록에서 지우기만 하면 다음 수집에서 같은 도메인이 다시 등록되므로 '
+      + '차단 목록에 남겨 재등록을 막습니다. 상태 필터의 "차단됨"에서 다시 볼 수 있습니다.'
+    : `'${source.sourceName}' 출처를 삭제하시겠습니까?`
+}
+
+function SourceRow({ source, onChange, onEdit, onUnblock, onDelete }: { source: AiNewsSourceConfig; onChange: (v: AiNewsSourceConfigRequest) => void; onEdit: () => void; onUnblock: () => void; onDelete: () => void }) {
   const payload = (patch: Partial<AiNewsSourceConfigRequest>): AiNewsSourceConfigRequest => ({
     sourceName: source.sourceName, sourceUrl: source.sourceUrl, sourceType: source.sourceType, enabled: source.enabled,
     autoPublishAllowed: source.autoPublishAllowed, imageUseAllowed: source.imageUseAllowed, ...patch,
   })
-  return <tr><td className="px-4 py-3"><CrawlStatus source={source} /></td><td className="px-4 py-3 font-semibold">{source.sourceName}</td>
+  // 차단된 출처는 어떤 설정도 수집에 반영되지 않는다. 오해를 막기 위해 편집을 잠그고 해제만 남긴다.
+  const locked = source.blocked
+  return <tr className={locked ? 'bg-neutral-50 text-neutral-500' : undefined}>
+    <td className="px-4 py-3">{locked
+      ? <span className="inline-flex items-center gap-2" title={source.blockedAt ? `차단 · ${formatDateTime(source.blockedAt)}` : '차단됨'}>
+          <span className="h-3 w-3 rounded-full bg-neutral-400" /><span className="text-xs font-semibold text-neutral-600">차단됨</span>
+        </span>
+      : <CrawlStatus source={source} />}</td>
+    <td className="px-4 py-3 font-semibold">{source.sourceName}
+      {source.autoDiscovered && <span className="ml-1.5 rounded bg-neutral-100 px-1.5 py-0.5 text-[11px] font-medium text-neutral-500">자동 등록</span>}</td>
     <td className="max-w-[320px] px-4 py-3"><a href={source.sourceUrl} target="_blank" rel="noopener noreferrer" className="block truncate text-blue-600 underline-offset-2 hover:underline" title={source.sourceUrl}>{source.sourceUrl}</a></td>
-    <td className="px-4 py-3"><select value={source.sourceType} onChange={(e) => onChange(payload({ sourceType: e.target.value as AiNewsSourceType }))} className={inputCls}>{Object.entries(sourceTypeLabels).map(([v,l]) => <option key={v} value={v}>{l}</option>)}</select></td>
-    <td className="px-4 py-3"><input type="checkbox" checked={source.enabled} onChange={(e) => onChange(payload({ enabled: e.target.checked }))} /></td>
-    <td className="px-4 py-3"><input type="checkbox" checked={source.autoPublishAllowed} onChange={(e) => onChange(payload({ autoPublishAllowed: e.target.checked }))} /></td>
-    <td className="px-4 py-3"><input type="checkbox" checked={source.imageUseAllowed} onChange={(e) => onChange(payload({ imageUseAllowed: e.target.checked }))} /></td>
-    <td className="px-4 py-3"><div className="flex gap-2"><button onClick={onEdit} className={smallBtn}>수정</button><button onClick={onDelete} className={smallDangerBtn}>삭제</button></div></td></tr>
+    <td className="px-4 py-3"><select disabled={locked} value={source.sourceType} onChange={(e) => onChange(payload({ sourceType: e.target.value as AiNewsSourceType }))} className={`${inputCls} disabled:bg-neutral-100`}>{Object.entries(sourceTypeLabels).map(([v,l]) => <option key={v} value={v}>{l}</option>)}</select></td>
+    <td className="px-4 py-3"><input type="checkbox" disabled={locked} checked={source.enabled} onChange={(e) => onChange(payload({ enabled: e.target.checked }))} /></td>
+    <td className="px-4 py-3"><input type="checkbox" disabled={locked} checked={source.autoPublishAllowed} onChange={(e) => onChange(payload({ autoPublishAllowed: e.target.checked }))} /></td>
+    <td className="px-4 py-3"><input type="checkbox" disabled={locked} checked={source.imageUseAllowed} onChange={(e) => onChange(payload({ imageUseAllowed: e.target.checked }))} /></td>
+    <td className="px-4 py-3"><div className="flex gap-2">{locked
+      ? <button onClick={onUnblock} className={smallBtn}>차단 해제</button>
+      : <>
+          <button onClick={onEdit} className={smallBtn}>수정</button>
+          <button onClick={onDelete} className={smallDangerBtn}>{source.autoDiscovered ? '차단' : '삭제'}</button>
+        </>}</div></td></tr>
 }
 
 function CrawlStatus({ source }: { source: AiNewsSourceConfig }) {

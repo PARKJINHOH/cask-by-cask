@@ -73,7 +73,7 @@ from analyzer.gemini_analyzer import GeminiAnalyzer
 from news_models import (DraftArticle, SearchSource, UsageAccumulator, canonicalize_url,
                          local_datetime_string, truncate_utf16)
 from news_gemini import AI_NEWS_RETRY_MAX_OUTPUT_TOKENS, GeminiNewsWriter
-from news_main import _process_draft
+from news_main import _drop_blocked_sources, _process_draft
 from alerts.ai_news_error_alert import (
     append_error_detail,
     append_review_detail,
@@ -82,7 +82,7 @@ from alerts.ai_news_error_alert import (
 )
 from news_prompts import AI_NEWS_MIN_TEXT_LENGTH, AI_NEWS_WRITING_PROMPT
 from news_tavily import TavilyNewsSearch
-from news_source_config import matching_source_config
+from news_source_config import is_blocked_source, matching_source_config
 from news_official import _direct_source, _get_public_url, _targeted_match, collect_registered_sources
 
 
@@ -377,6 +377,46 @@ class NewsSourceConfigTest(unittest.TestCase):
         )
 
         self.assertIsNone(matched)
+
+    def test_blocked_domain_scope_covers_every_path(self) -> None:
+        blocked = [{"domain": "spam-news.example", "pathPrefix": ""}]
+
+        self.assertTrue(is_blocked_source(
+            "https://spam-news.example/2026/whisky", "spam-news.example", blocked))
+        self.assertTrue(is_blocked_source(
+            "https://www.spam-news.example/", "spam-news.example", blocked))
+        self.assertFalse(is_blocked_source(
+            "https://other.example/whisky", "other.example", blocked))
+
+    def test_blocked_path_scope_leaves_sibling_paths_usable(self) -> None:
+        blocked = [{"domain": "instagram.com", "pathPrefix": "/spam_account"}]
+
+        self.assertTrue(is_blocked_source(
+            "https://instagram.com/spam_account/p/123", "instagram.com", blocked))
+        # 접두사가 이름의 일부로만 겹치는 계정은 차단 대상이 아니다.
+        self.assertFalse(is_blocked_source(
+            "https://instagram.com/spam_account_fan", "instagram.com", blocked))
+        self.assertFalse(is_blocked_source(
+            "https://instagram.com/metabevkorea", "instagram.com", blocked))
+
+    def test_drop_blocked_sources_removes_only_blocked_candidates(self) -> None:
+        sources = [
+            SearchSource(title="차단", url="https://spam-news.example/a",
+                         domain="spam-news.example", content=""),
+            SearchSource(title="정상", url="https://whiskymag.example/b",
+                         domain="whiskymag.example", content=""),
+        ]
+
+        kept = _drop_blocked_sources(
+            sources, {"blockedSources": [{"domain": "spam-news.example", "pathPrefix": ""}]}, Mock())
+
+        self.assertEqual(["whiskymag.example"], [s.domain for s in kept])
+
+    def test_drop_blocked_sources_is_a_noop_without_a_block_list(self) -> None:
+        sources = [SearchSource(title="정상", url="https://whiskymag.example/b",
+                                domain="whiskymag.example", content="")]
+
+        self.assertEqual(sources, _drop_blocked_sources(sources, {}, Mock()))
 
     def test_social_post_can_be_assigned_to_registered_account_by_handle_evidence(self) -> None:
         configs = [{

@@ -414,9 +414,12 @@ public class AiNewsService {
         articleRepository.flush();
     }
 
+    /** blocked 를 지정하지 않으면 차단 출처는 숨긴다(삭제된 원고를 숨기는 listArticles 와 같은 규칙). */
     @Transactional(readOnly = true)
-    public Page<AiNewsDtos.SourceConfigResponse> sourceConfigs(int page, int size) {
-        return sourceConfigRepository.findAllByOrderBySourceNameAsc(
+    public Page<AiNewsDtos.SourceConfigResponse> sourceConfigs(AiNewsSourceType sourceType, Boolean enabled,
+                                                                Boolean blocked, String keyword,
+                                                                int page, int size) {
+        return sourceConfigRepository.search(sourceType, enabled, Boolean.TRUE.equals(blocked), likeKeyword(keyword),
                         PageRequest.of(Math.max(0, page), Math.min(100, Math.max(1, size))))
                 .map(AiNewsDtos.SourceConfigResponse::from);
     }
@@ -435,7 +438,8 @@ public class AiNewsService {
                 .sourceType(request.sourceType())
                 .enabled(request.enabled() == null || request.enabled())
                 .autoPublishAllowed(Boolean.TRUE.equals(request.autoPublishAllowed()))
-                .imageUseAllowed(Boolean.TRUE.equals(request.imageUseAllowed())).build());
+                .imageUseAllowed(Boolean.TRUE.equals(request.imageUseAllowed()))
+                .autoDiscovered(false).build());
         log(actorId, source.getId(), "AI 소식 출처 추가", scope.display());
         return AiNewsDtos.SourceConfigResponse.from(source);
     }
@@ -459,21 +463,38 @@ public class AiNewsService {
         return AiNewsDtos.SourceConfigResponse.from(source);
     }
 
+    /**
+     * 자동 등록 출처는 지우지 않고 차단으로 남긴다 — 행을 지우면 다음 수집에서 {@code resolveSource} 가
+     * 같은 도메인을 다시 등록해 삭제가 되돌려진다. 관리자가 직접 등록한 출처는 그대로 삭제한다.
+     */
     @Transactional
     public void deleteSourceConfig(Long id, Long actorId) {
         AiNewsSourceConfig source = sourceConfigRepository.findById(id)
                 .orElseThrow(() -> new CustomException(ErrorCode.AI_NEWS_SOURCE_NOT_FOUND));
+        if (source.isAutoDiscovered()) {
+            source.block(LocalDateTime.now(SERVICE_ZONE));
+            log(actorId, id, "AI 소식 출처 차단", source.getDomain());
+            return;
+        }
         sourceConfigRepository.delete(source);
         log(actorId, id, "AI 소식 출처 삭제", source.getDomain());
     }
 
+    @Transactional
+    public AiNewsDtos.SourceConfigResponse unblockSourceConfig(Long id, Long actorId) {
+        AiNewsSourceConfig source = sourceConfigRepository.findById(id)
+                .orElseThrow(() -> new CustomException(ErrorCode.AI_NEWS_SOURCE_NOT_FOUND));
+        source.unblock();
+        log(actorId, id, "AI 소식 출처 차단 해제", source.getDomain());
+        return AiNewsDtos.SourceConfigResponse.from(source);
+    }
+
     @Transactional(readOnly = true)
-    public Page<AiNewsDtos.TopicResponse> topics(AiNewsTopicStatus status, int page, int size) {
+    public Page<AiNewsDtos.TopicResponse> topics(AiNewsTopicStatus status, AiNewsCategory category,
+                                                 String keyword, int page, int size) {
         PageRequest pageable = PageRequest.of(Math.max(0, page), Math.min(100, Math.max(1, size)));
-        Page<AiNewsTopic> result = status == null
-                ? topicRepository.findAllByOrderByCreatedAtDesc(pageable)
-                : topicRepository.findByStatusOrderByCreatedAtDesc(status, pageable);
-        return result.map(AiNewsDtos.TopicResponse::from);
+        return topicRepository.search(status, category, likeKeyword(keyword), pageable)
+                .map(AiNewsDtos.TopicResponse::from);
     }
 
     @Transactional
@@ -532,6 +553,9 @@ public class AiNewsService {
         return new AiNewsDtos.InternalConfigResponse(AiNewsDtos.SettingsResponse.from(settings), usageSummary(),
                 sourceConfigRepository.findByEnabledTrueOrderBySourceNameAsc().stream()
                         .map(AiNewsDtos.SourceConfigResponse::from).toList(),
+                // 차단 출처는 활성 목록에 없다. 크롤러가 검색 결과 단계에서 걸러내도록 별도로 내려준다.
+                sourceConfigRepository.findByBlockedTrueOrderBySourceNameAsc().stream()
+                        .map(AiNewsDtos.SourceScopeResponse::from).toList(),
                 topicRepository.findByStatusOrderByCreatedAtAsc(AiNewsTopicStatus.READY).stream()
                         .map(AiNewsDtos.TopicResponse::from).toList(),
                 topicRepository.findAll().stream().map(AiNewsTopic::getNormalizedKey).toList(),
@@ -917,6 +941,13 @@ public class AiNewsService {
         return AiNewsDtos.SourceConfigResponse.from(source);
     }
 
+    /**
+     * 출처 URL 의 신뢰 등급을 판정한다. 설정 행이 없으면 자동으로 만들어 관리자가 볼 수 있게 한다.
+     *
+     * <p>차단된 출처도 설정 행이 남아 있으므로 아래 첫 분기에서 걸린다 — 새 행을 만들지 않고
+     * (비활성이므로) 미승인·자동발행 불가·이미지 사용 불가로 내려간다. 관리자의 삭제(=차단)가
+     * 다음 수집에서 되돌려지지 않는 이유가 이것이다. 생산자 도메인 자동 승격도 같은 이유로 막힌다.
+     */
     private ResolvedSource resolveSource(String sourceUrl, String domain, AiNewsSourceType claimedType) {
         String path = sourceUrlPath(sourceUrl);
         AiNewsSourceConfig configured = findBestSourceConfig(sourceConfigRepository.findByDomain(domain), path);
@@ -932,14 +963,16 @@ public class AiNewsService {
                     .sourceName(producerScope.display()).sourceUrl("https://" + producerScope.display())
                     .domain(domain).pathPrefix(producerScope.pathPrefix)
                     .sourceType(AiNewsSourceType.OFFICIAL)
-                    .enabled(true).autoPublishAllowed(true).imageUseAllowed(false).build());
+                    .enabled(true).autoPublishAllowed(true).imageUseAllowed(false)
+                    .autoDiscovered(true).build());
             return new ResolvedSource(domain, scopeKey(domain, saved.getPathPrefix()), saved.getSourceType(), true, false);
         }
         AiNewsSourceType initialType = claimedType == AiNewsSourceType.COMMUNITY
                 ? AiNewsSourceType.COMMUNITY : AiNewsSourceType.UNAPPROVED;
         sourceConfigRepository.save(AiNewsSourceConfig.builder()
                 .sourceName(domain).sourceUrl("https://" + domain).domain(domain).pathPrefix("").sourceType(initialType)
-                .enabled(true).autoPublishAllowed(false).imageUseAllowed(false).build());
+                .enabled(true).autoPublishAllowed(false).imageUseAllowed(false)
+                .autoDiscovered(true).build());
         return new ResolvedSource(domain, scopeKey(domain, ""), initialType, false, false);
     }
 
@@ -1141,6 +1174,20 @@ public class AiNewsService {
 
     private static String trimToNull(String value) {
         return hasText(value) ? value.trim() : null;
+    }
+
+    /**
+     * 관리자 검색어를 LIKE 패턴으로 정규화한다. 소문자로 맞추고 와일드카드('%','_')와
+     * escape 문자('!') 를 이스케이프한다 — 중복 키·도메인에는 밑줄이 흔해서
+     * 그대로 두면 "임의의 한 글자"로 해석된다. 빈 값은 null(필터 미적용)이다.
+     */
+    private static String likeKeyword(String raw) {
+        String value = trimToNull(raw);
+        if (value == null) return null;
+        return value.toLowerCase(Locale.ROOT)
+                .replace("!", "!!")
+                .replace("%", "!%")
+                .replace("_", "!_");
     }
 
     private static boolean hasText(String value) {

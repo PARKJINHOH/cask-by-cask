@@ -196,6 +196,25 @@
 - 관리자 화면은 `/admin/deals/new` 가 `AdminDealDetailPage` 의 **등록 모드**를 재사용한다
   (주류 검색·배치 선택 로직을 복제하지 않기 위함). 정적 경로라 `deals/:id` 보다 먼저 매칭된다.
 
+## 소식(AI) 출처 — 자동 등록과 차단
+`ai_news_source_configs` 는 관리자 설정이면서 **AI 가 인용한 도메인의 발견 기록**이기도 하다.
+`AiNewsService.resolveSource()` 가 기사 수집 시 처음 보는 도메인마다 행을 자동 생성하기 때문이다
+(`auto_discovered = true`, 미승인 등급). 크롤러의 일반 Tavily 검색은 도메인을 제한하지 않으므로
+주류와 무관한 도메인도 이렇게 들어온다.
+
+- **자동 등록 출처의 삭제는 hard delete 가 아니라 `blocked` 로 남긴다**(`V81`).
+  행을 지우면 다음 수집에서 `resolveSource` 가 같은 도메인을 다시 등록해 삭제가 되돌려진다.
+  차단 행이 남아 있으면 첫 분기에서 걸려 재등록도, 생산자 도메인 자동 승격도 일어나지 않는다.
+- 관리자가 직접 등록한 출처(`auto_discovered = false`)는 지금처럼 완전 삭제된다.
+- `V81` 백필은 기존 행 중 **미승인 등급만** 자동 등록으로 표시한다. 생산자 도메인 자동 승격으로 만들어진
+  기존 공식 출처는 표시가 없어 첫 삭제가 hard delete 지만, 다시 등록될 때 `auto_discovered = true` 가
+  붙으므로 **두 번째 삭제부터는 차단으로 남는다**(자가 치유). 이 때문에 백필을 더 넓히지 않았다.
+- 출처 목록 API 는 **`blocked` 를 지정하지 않으면 차단 행을 숨긴다**(삭제된 원고를 숨기는 `listArticles` 와 같은 규칙).
+  차단된 URL 을 다시 등록하려 하면 스코프 중복으로 막히므로, 관리자는 상태 필터 `차단됨`에서 찾아 해제해야 한다.
+- 차단 목록은 `GET /api/internal/ai-news/config` 의 `blockedSources` 로 크롤러에 내려간다.
+  크롤러는 `_drop_blocked_sources`(`news_main.py`)로 **검색 결과 단계에서** 걸러 원고 근거로 쓰이지 않게 한다.
+  단, 관리자가 AI 작성 요청에 직접 넣은 참고 URL 은 거르지 않는다.
+
 ## 주류 정보 조사 프롬프트 (docs/*-research-prompt.md)
 관리자가 AI에게 주류 정보를 조사시켜 **관리자 > 주류 등록 폼에 그대로 옮겨 적기 위한** 프롬프트 모음.
 카테고리별로 3개다 — `docs/cognac-research-prompt.md` · `docs/whisky-research-prompt.md` · `docs/wine-research-prompt.md`.

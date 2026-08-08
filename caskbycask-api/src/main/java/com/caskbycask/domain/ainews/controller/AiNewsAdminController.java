@@ -117,9 +117,12 @@ public class AiNewsAdminController {
     @GetMapping("/topics")
     public ResponseEntity<ApiResponse<PageResponse<AiNewsDtos.TopicResponse>>> topics(
             @RequestParam(required = false) AiNewsTopicStatus status,
+            @RequestParam(required = false) AiNewsCategory category,
+            @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "50") int size) {
-        return ResponseEntity.ok(ApiResponse.success(PageResponse.from(aiNewsService.topics(status, page, size))));
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(ApiResponse.success(PageResponse.from(
+                aiNewsService.topics(status, category, keyword, page, size))));
     }
 
     @PostMapping("/topics")
@@ -146,9 +149,14 @@ public class AiNewsAdminController {
 
     @GetMapping("/sources")
     public ResponseEntity<ApiResponse<PageResponse<AiNewsDtos.SourceConfigResponse>>> sources(
+            @RequestParam(required = false) AiNewsSourceType sourceType,
+            @RequestParam(required = false) Boolean enabled,
+            @RequestParam(required = false) Boolean blocked,
+            @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return ResponseEntity.ok(ApiResponse.success(PageResponse.from(aiNewsService.sourceConfigs(page, size))));
+        return ResponseEntity.ok(ApiResponse.success(PageResponse.from(
+                aiNewsService.sourceConfigs(sourceType, enabled, blocked, keyword, page, size))));
     }
 
     @GetMapping("/draft-requests")
@@ -204,11 +212,18 @@ public class AiNewsAdminController {
         return ResponseEntity.ok(ApiResponse.success(aiNewsService.updateSourceConfig(id, request, user.getUserId())));
     }
 
+    /** 자동 등록 출처는 삭제 대신 차단으로 남는다(같은 도메인 재등록 방지). */
     @DeleteMapping("/sources/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteSource(
             @PathVariable Long id, @AuthenticationPrincipal CustomUserDetails user) {
         aiNewsService.deleteSourceConfig(id, user.getUserId());
         return ResponseEntity.ok(ApiResponse.success());
+    }
+
+    @PostMapping("/sources/{id}/unblock")
+    public ResponseEntity<ApiResponse<AiNewsDtos.SourceConfigResponse>> unblockSource(
+            @PathVariable Long id, @AuthenticationPrincipal CustomUserDetails user) {
+        return ResponseEntity.ok(ApiResponse.success(aiNewsService.unblockSourceConfig(id, user.getUserId())));
     }
 
     @GetMapping("/settings")

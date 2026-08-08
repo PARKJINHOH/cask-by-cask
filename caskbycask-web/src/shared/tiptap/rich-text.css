@@ -2,7 +2,11 @@
    타이포그래피(제목/목록/표/인용 등)는 .notice-content 규칙을 공유한다.
    여기서는 편집기 고유 동작(최소 높이, 플레이스홀더, 셀 선택, 노드 선택)만 정의. */
 
-.di-richtext {
+/* 편집 영역 높이 계약. WYSIWYG(.di-richtext)와 관리자 HtmlEditorField 의
+   HTML 편집·미리보기 pane(.di-editor-pane)이 **같은 규칙을 공유**한다 —
+   값을 복제하면 모드를 오갈 때 높이가 튀므로 선택자만 나열한다. */
+.di-richtext,
+.di-editor-pane {
   /* 데스크톱 기준 — 콘텐츠가 늘어도 페이지를 밀어내지 않고 편집 영역 안에서 스크롤한다.
      (모바일은 아래 미디어 쿼리에서 내부 스크롤 없이 페이지 스크롤만 쓰도록 덮어쓴다)
      화면 높이에 따라 기본 높이는 달라지며 수동 리사이즈도 뷰포트 안에서 제한한다.
@@ -47,7 +51,8 @@
    화면을 채우는 스크롤 박스가 사라지므로 세로 스크롤은 항상 페이지 스크롤 하나로 동작한다.
    (툴바는 sticky 로 화면에 남으므로 길게 써도 서식 도구에 접근할 수 있다) */
 @media (max-width: 767px) {
-  .di-richtext {
+  .di-richtext,
+  .di-editor-pane {
     height: auto;
     max-height: none;
     overflow: visible;

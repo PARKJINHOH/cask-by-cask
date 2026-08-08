@@ -21,7 +21,7 @@ from logger import setup_logging
 from news_config import NewsSettings
 from news_images import fetch_approved_official_image
 from news_models import DraftArticle, SearchSource, canonicalize_url, local_datetime_string
-from news_source_config import matching_source_config
+from news_source_config import is_blocked_source, matching_source_config
 from news_official import collect_reference_sources, collect_registered_sources
 from news_gemini import GeminiNewsWriter
 from news_prompts import AI_NEWS_TITLE_MAX_LENGTH
@@ -42,6 +42,23 @@ def _dedupe_sources(sources: list[SearchSource]) -> list[SearchSource]:
         seen.add(key)
         result.append(source)
     return result
+
+
+def _drop_blocked_sources(sources: list[SearchSource], config: dict, log) -> list[SearchSource]:
+    """관리자가 차단한 출처를 후보에서 제외한다.
+
+    일반 검색은 도메인을 제한하지 않아 주류와 무관한 도메인이 계속 유입된다. 관리자가 출처를
+    삭제하면 백엔드가 차단으로 남기므로(재등록 방지), 여기서 같은 목록을 받아 원고 근거로
+    쓰이기 전에 걸러낸다.
+    """
+    blocked_scopes = config.get("blockedSources") or []
+    if not blocked_scopes:
+        return sources
+    kept = [s for s in sources if not is_blocked_source(s.url, s.domain, blocked_scopes)]
+    dropped = len(sources) - len(kept)
+    if dropped:
+        log.info("차단된 출처 %s건을 후보에서 제외했습니다.", dropped)
+    return kept
 
 
 def _apply_source_trust(sources: list[SearchSource], config: dict) -> None:
@@ -343,12 +360,13 @@ def run() -> int:
 
                 if remaining_tavily_credits - search.credits_used >= 1:
                     try:
-                        request_sources.extend(search.search(
+                        # 관리자가 직접 준 참고 URL 은 그대로 쓰고, 검색으로 보강한 결과만 차단 목록으로 거른다.
+                        request_sources.extend(_drop_blocked_sources(search.search(
                             f"{str(draft_request['prompt'])[:500]} "
                             "위스키 와인 꼬냑 럼 데킬라 사케 출시 수입 공식 발표",
                             topic="news",
                             time_range="month",
-                        ))
+                        ), config, log))
                     except Exception as error:  # noqa: BLE001
                         if not request_sources:
                             raise
@@ -417,7 +435,9 @@ def run() -> int:
                 f"위스키 와인 꼬냑 럼 데킬라 사케 신제품 출시 예정 국내 출시 수입 "
                 f"new whisky wine cognac rum tequila sake release announced launch {now_year}"
             )
-            release_sources = _dedupe_sources(general_sources + registered_sources)
+            # 등록 출처는 활성 상태라 차단될 수 없다. 걸러지는 것은 일반 검색이 물어온 도메인이다.
+            release_sources = _drop_blocked_sources(
+                _dedupe_sources(general_sources + registered_sources), config, log)
         else:
             release_sources = []
         _apply_source_trust(release_sources, config)
@@ -491,11 +511,11 @@ def run() -> int:
                         stats["duplicateCount"] += 1
                         log.info("팁 주제 사전 중복 차단 topic=%s reason=%s", topic.get("id"), reason)
                     else:
-                        tip_sources = _dedupe_sources(search.search(
+                        tip_sources = _drop_blocked_sources(_dedupe_sources(search.search(
                             f"{topic['title']} {topic.get('aliases') or ''} "
                             "whisky wine cognac rum tequila sake authoritative guide",
                             topic="general", time_range=None,
-                        ))
+                        )), config, log)
                         _apply_source_trust(tip_sources, config)
                         draft = writer.write_tip(topic, tip_sources)
                         duplicate_judgement = writer.judge_tip_duplicate(topic, draft, duplicate_corpus)

@@ -249,6 +249,9 @@ public final class AiNewsDtos {
             String pathPrefix,
             AiNewsSourceType sourceType,
             boolean enabled,
+            boolean blocked,
+            LocalDateTime blockedAt,
+            boolean autoDiscovered,
             boolean autoPublishAllowed,
             boolean imageUseAllowed,
             AiNewsSourceCrawlStatus crawlStatus,
@@ -258,9 +261,20 @@ public final class AiNewsDtos {
         public static SourceConfigResponse from(AiNewsSourceConfig source) {
             return new SourceConfigResponse(source.getId(), source.getSourceName(), source.getSourceUrl(), source.getDomain(),
                     source.getPathPrefix(),
-                    source.getSourceType(), source.isEnabled(), source.isAutoPublishAllowed(),
+                    source.getSourceType(), source.isEnabled(), source.isBlocked(), source.getBlockedAt(),
+                    source.isAutoDiscovered(), source.isAutoPublishAllowed(),
                     source.isImageUseAllowed(), source.getCrawlStatus(), source.getLastCrawledAt(),
                     source.getLastCrawlError());
+        }
+    }
+
+    /** 크롤러가 검색 결과를 걸러낼 때 쓰는 출처 범위(도메인 + 경로 접두사). */
+    public record SourceScopeResponse(
+            String domain,
+            String pathPrefix
+    ) {
+        public static SourceScopeResponse from(AiNewsSourceConfig source) {
+            return new SourceScopeResponse(source.getDomain(), source.getPathPrefix());
         }
     }
 
@@ -376,6 +390,7 @@ public final class AiNewsDtos {
             SettingsResponse settings,
             UsageSummaryResponse usage,
             List<SourceConfigResponse> sources,
+            List<SourceScopeResponse> blockedSources,
             List<TopicResponse> readyTopics,
             List<String> allTopicKeys,
             List<TipDuplicateCorpusResponse> tipDuplicateCorpus,
