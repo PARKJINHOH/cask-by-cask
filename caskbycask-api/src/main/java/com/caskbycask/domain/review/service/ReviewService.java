@@ -44,6 +44,7 @@ public class ReviewService {
     private final BadWordFilter badWordFilter;
     private final SocialPublishRequestService socialPublishRequestService;
     private final ReviewImageService reviewImageService;
+    private final ReviewAromaProfileService reviewAromaProfileService;
 
     // ── 조회 ──────────────────────────────────────────────
 
@@ -136,6 +137,12 @@ public class ReviewService {
                 .build();
 
         Review saved = reviewRepository.save(review);
+        List<AromaProfileResponse> savedProfiles = reviewAromaProfileService.replaceForReview(
+                saved,
+                request.aromaProfiles(),
+                request.noseAromaWheelNotes(),
+                request.tasteAromaWheelNotes(),
+                request.finishAromaWheelNotes());
         List<ReviewImage> savedImages = reviewImageService.saveForReview(saved, images);
         recalculateAvgScore(spiritId);
 
@@ -143,7 +150,7 @@ public class ReviewService {
         scoreService.award(userId, ScoreActions.SPIRIT_REVIEW_WRITE, "SPIRIT_REVIEW", saved.getId());
         socialPublishRequestService.requestReview(saved, user, request.socialPublish());
 
-        return toResponse(saved, savedImages);
+        return toResponse(saved, savedImages, savedProfiles);
     }
 
     // ── 수정 ──────────────────────────────────────────────
@@ -180,13 +187,20 @@ public class ReviewService {
                 request.finishAromaWheelNotes() != null ? request.finishAromaWheelNotes() : review.getFinishAromaWheelNotes()
         );
 
+        List<AromaProfileResponse> updatedProfiles = reviewAromaProfileService.replaceForReview(
+                review,
+                request.aromaProfiles(),
+                review.getNoseAromaWheelNotes(),
+                review.getTasteAromaWheelNotes(),
+                review.getFinishAromaWheelNotes());
+
         // flush to trigger @PreUpdate → totalScore 재계산
         reviewRepository.flush();
         List<ReviewImage> updatedImages =
                 reviewImageService.replaceForReview(review, imagePlan, images);
         recalculateAvgScore(review.getSpirit().getId());
 
-        return toResponse(review, updatedImages);
+        return toResponse(review, updatedImages, updatedProfiles);
     }
 
     @Transactional
@@ -257,10 +271,18 @@ public class ReviewService {
     // ── Private helpers ────────────────────────────────────
 
     private ReviewResponse toResponse(Review review) {
-        return toResponse(review, reviewImageService.findByReviewId(review.getId()));
+        return toResponse(
+                review,
+                reviewImageService.findByReviewId(review.getId()),
+                reviewAromaProfileService.findByReviewId(review.getId()));
     }
 
     private ReviewResponse toResponse(Review review, List<ReviewImage> images) {
+        return toResponse(review, images, reviewAromaProfileService.findByReviewId(review.getId()));
+    }
+
+    private ReviewResponse toResponse(Review review, List<ReviewImage> images,
+                                      List<AromaProfileResponse> aromaProfiles) {
         Long userId = review.getUser().getId();
         Long spiritId = review.getSpirit().getId();
         Long masterSpiritId = review.getSpirit().getParent() != null ?
@@ -288,15 +310,22 @@ public class ReviewService {
                 review,
                 index,
                 count,
-                images.stream().map(ReviewImageResponse::from).toList()
+                images.stream().map(ReviewImageResponse::from).toList(),
+                aromaProfiles
         );
     }
 
     private Page<ReviewResponse> withImages(Page<Review> page) {
+        List<Long> reviewIds = page.getContent().stream().map(Review::getId).toList();
         Map<Long, List<ReviewImage>> imagesByReview = reviewImageService.findByReviewIds(
-                page.getContent().stream().map(Review::getId).toList());
+                reviewIds);
+        Map<Long, List<AromaProfileResponse>> profilesByReview =
+                reviewAromaProfileService.findByReviewIds(reviewIds);
         return page.map(review ->
-                toResponse(review, imagesByReview.getOrDefault(review.getId(), List.of())));
+                toResponse(
+                        review,
+                        imagesByReview.getOrDefault(review.getId(), List.of()),
+                        profilesByReview.getOrDefault(review.getId(), List.of())));
     }
 
     private Review getReview(Long spiritId, Long reviewId) {

@@ -12,6 +12,22 @@ export interface ReviewImagePlanItem {
   fileIndex?: number
 }
 
+export type AromaProfilePhase = 'NOSE' | 'PALATE' | 'FINISH'
+export type AromaProfileAromaType = 'ID' | 'CUSTOM'
+
+export interface AromaProfileItem {
+  aromaType: AromaProfileAromaType
+  aromaKey: string
+  labelSnapshot: string
+  intensity: number
+}
+
+export interface AromaProfile {
+  phase: AromaProfilePhase
+  schemaVersion: 1
+  items: AromaProfileItem[]
+}
+
 export type SpiritVariantType = 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE'
 
 export interface ReviewItem {
@@ -51,6 +67,7 @@ export interface ReviewItem {
   userReviewIndex?: number
   userReviewCount?: number
   images: ReviewImageItem[]
+  aromaProfiles?: AromaProfile[]
 }
 
 /** 사용자 공개 리뷰의 카테고리별 개수 (GET /api/users/{userId}/reviews/category-counts) */
@@ -105,6 +122,7 @@ export interface CreateReviewRequest {
   noseAromaWheelNotes?: string
   tasteAromaWheelNotes?: string
   finishAromaWheelNotes?: string
+  aromaProfiles?: AromaProfile[]
   socialPublish?: SocialPublishSelection
 }
 
@@ -152,6 +170,7 @@ export interface VariantReviewRequestItem {
   createdAt: string
   reviewedAt: string | null
   images: ReviewImageItem[]
+  aromaProfiles?: AromaProfile[]
 }
 
 export interface UpdateReviewRequest {
@@ -165,5 +184,6 @@ export interface UpdateReviewRequest {
   noseAromaWheelNotes?: string
   tasteAromaWheelNotes?: string
   finishAromaWheelNotes?: string
+  aromaProfiles?: AromaProfile[]
 }
 import type { SocialPublishSelection } from '@/domain/social/types/social.types'

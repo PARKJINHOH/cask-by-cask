@@ -4,7 +4,11 @@ interface ApiErrorResponse {
   detectedWords?: string[] | null
 }
 
-export function getReviewSaveErrorMessage(error: unknown, fallback: string): string {
+export function getReviewSaveErrorMessage(
+  error: unknown,
+  fallback: string,
+  codeMessages: Record<string, string> = {},
+): string {
   const data = (error as { response?: { data?: ApiErrorResponse } })?.response?.data
   if (!data) return fallback
 
@@ -13,6 +17,8 @@ export function getReviewSaveErrorMessage(error: unknown, fallback: string): str
     const detectedWords = data.detectedWords?.filter(Boolean) ?? []
     return detectedWords.length > 0 ? `${message}: ${detectedWords.join(', ')}` : message
   }
+
+  if (data.code && codeMessages[data.code]) return codeMessages[data.code]
 
   return data.message || fallback
 }

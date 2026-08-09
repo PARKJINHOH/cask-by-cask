@@ -61,6 +61,7 @@ public class VariantReviewRequestService {
     private final NotificationService notificationService;
     private final SocialPublishRequestService socialPublishRequestService;
     private final ReviewImageService reviewImageService;
+    private final ReviewAromaProfileService reviewAromaProfileService;
 
     @Transactional
     public VariantReviewRequestResponse create(Long spiritId, Long userId, CreateVariantReviewRequest request) {
@@ -108,10 +109,18 @@ public class VariantReviewRequestService {
                 .finishAromaWheelNotes(normalize(request.finishAromaWheelNotes()))
                 .build());
 
+        List<AromaProfileResponse> savedProfiles = reviewAromaProfileService.replaceForVariantRequest(
+                saved,
+                request.aromaProfiles(),
+                saved.getNoseAromaWheelNotes(),
+                saved.getTasteAromaWheelNotes(),
+                saved.getFinishAromaWheelNotes());
         var savedImages = reviewImageService.saveForVariantRequest(saved, images);
         socialPublishRequestService.requestVariantReview(saved, requester, request.socialPublish());
         return VariantReviewRequestResponse.from(
-                saved, savedImages.stream().map(ReviewImageResponse::from).toList());
+                saved,
+                savedImages.stream().map(ReviewImageResponse::from).toList(),
+                savedProfiles);
     }
 
     @Transactional(readOnly = true)
@@ -124,15 +133,17 @@ public class VariantReviewRequestService {
         );
         Page<SpiritVariantReviewRequest> requests =
                 requestRepository.findByRequester(userId, status, category, sorted);
-        var imagesByRequest = reviewImageService.findByVariantRequestIds(
-                requests.getContent().stream()
-                        .map(SpiritVariantReviewRequest::getId)
-                        .toList());
+        List<Long> requestIds = requests.getContent().stream()
+                .map(SpiritVariantReviewRequest::getId)
+                .toList();
+        var imagesByRequest = reviewImageService.findByVariantRequestIds(requestIds);
+        var profilesByRequest = reviewAromaProfileService.findByVariantRequestIds(requestIds);
         return requests.map(request -> VariantReviewRequestResponse.from(
                 request,
                 imagesByRequest.getOrDefault(request.getId(), List.of()).stream()
                         .map(ReviewImageResponse::from)
-                        .toList()));
+                        .toList(),
+                profilesByRequest.getOrDefault(request.getId(), List.of())));
     }
 
     /** 마이페이지 하위 에디션 요청 탭의 카테고리 개수 배지 (상태별) */
@@ -158,7 +169,8 @@ public class VariantReviewRequestService {
                 request,
                 reviewImageService.findByVariantRequestId(requestId).stream()
                         .map(ReviewImageResponse::from)
-                        .toList());
+                        .toList(),
+                reviewAromaProfileService.findByVariantRequestId(requestId));
     }
 
     @Transactional
@@ -189,10 +201,18 @@ public class VariantReviewRequestService {
                 normalize(update.tasteAromaWheelNotes()),
                 normalize(update.finishAromaWheelNotes())
         );
+        List<AromaProfileResponse> updatedProfiles = reviewAromaProfileService.replaceForVariantRequest(
+                request,
+                update.aromaProfiles(),
+                request.getNoseAromaWheelNotes(),
+                request.getTasteAromaWheelNotes(),
+                request.getFinishAromaWheelNotes());
         var updatedImages = reviewImageService.replaceForVariantRequest(request, imagePlan, images);
         socialPublishRequestService.refreshWaitingVariantReviewMedia(request);
         return VariantReviewRequestResponse.from(
-                request, updatedImages.stream().map(ReviewImageResponse::from).toList());
+                request,
+                updatedImages.stream().map(ReviewImageResponse::from).toList(),
+                updatedProfiles);
     }
 
     @Transactional
@@ -233,9 +253,17 @@ public class VariantReviewRequestService {
                 normalize(update.tasteAromaWheelNotes()),
                 normalize(update.finishAromaWheelNotes())
         );
+        List<AromaProfileResponse> updatedProfiles = reviewAromaProfileService.replaceForVariantRequest(
+                request,
+                update.aromaProfiles(),
+                request.getNoseAromaWheelNotes(),
+                request.getTasteAromaWheelNotes(),
+                request.getFinishAromaWheelNotes());
         var updatedImages = reviewImageService.replaceForVariantRequest(request, imagePlan, images);
         return VariantReviewRequestResponse.from(
-                request, updatedImages.stream().map(ReviewImageResponse::from).toList());
+                request,
+                updatedImages.stream().map(ReviewImageResponse::from).toList(),
+                updatedProfiles);
     }
 
     @Transactional(readOnly = true)
@@ -305,6 +333,7 @@ public class VariantReviewRequestService {
         reviewService.recalculateAvgScore(variant.getId());
         scoreService.award(request.getRequestUser().getId(), ScoreActions.SPIRIT_REVIEW_WRITE, "SPIRIT_REVIEW", review.getId());
         reviewImageService.transferToReview(request.getId(), review);
+        reviewAromaProfileService.transferToReview(request, review);
         request.approve(variant, review, admin, merged);
         socialPublishRequestService.bindVariantReview(request.getId(), review.getId());
         sendVariantReviewApprovedNotification(request, variant, merged);
@@ -365,6 +394,7 @@ public class VariantReviewRequestService {
         reviewService.recalculateAvgScore(variant.getId());
         scoreService.award(request.getRequestUser().getId(), ScoreActions.SPIRIT_REVIEW_WRITE, "SPIRIT_REVIEW", review.getId());
         reviewImageService.transferToReview(request.getId(), review);
+        reviewAromaProfileService.transferToReview(request, review);
         request.approve(variant, review, admin, false);
         socialPublishRequestService.bindVariantReview(request.getId(), review.getId());
         sendVariantReviewApprovedNotification(request, variant, false);

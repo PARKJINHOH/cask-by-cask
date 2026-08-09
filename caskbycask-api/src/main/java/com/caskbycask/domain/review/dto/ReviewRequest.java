@@ -8,6 +8,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
+import java.util.List;
 import com.caskbycask.domain.social.dto.SocialPublishSelection;
 
 public record ReviewRequest(
@@ -58,7 +59,11 @@ public record ReviewRequest(
         String finishAromaWheelNotes,
 
         @Valid
-        SocialPublishSelection socialPublish
+        SocialPublishSelection socialPublish,
+
+        @Schema(description = "향·맛·피니시 아로마 강도 프로파일 (선택)")
+        @Valid
+        List<AromaProfileRequest> aromaProfiles
 ) {
     public ReviewRequest(
             BigDecimal noseScore, BigDecimal tasteScore, BigDecimal finishScore,
@@ -66,6 +71,6 @@ public record ReviewRequest(
             String noseAromaWheelNotes, String tasteAromaWheelNotes, String finishAromaWheelNotes
     ) {
         this(noseScore, tasteScore, finishScore, noseNote, tasteNote, finishNote, comment,
-                noseAromaWheelNotes, tasteAromaWheelNotes, finishAromaWheelNotes, null);
+                noseAromaWheelNotes, tasteAromaWheelNotes, finishAromaWheelNotes, null, null);
     }
 }

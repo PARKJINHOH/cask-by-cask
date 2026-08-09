@@ -26,13 +26,17 @@ import { getReviewSaveErrorMessage } from '@/domain/review/utils/reviewErrors'
 import {
   EMPTY_AROMA_NOTES,
   parseAromaNotes,
+  profileForPhase,
+  replacePhaseProfile,
   serializeAromaNotes,
+  supportsAromaProfiles,
   type AromaNotes,
 } from '@/domain/review/utils/aroma'
 import { reviewSpiritLabel, variantRequestSpiritLabel } from '@/domain/review/utils/reviewDisplay'
 import { getSpiritDetailPath } from '@/domain/spirit/utils/spiritUrl'
 import { EMPTY_SOCIAL_SELECTION, type SocialPublishSelection } from '@/domain/social/types/social.types'
 import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
+import type { AromaProfile } from '@/domain/review/types/review.types'
 
 const MY_REVIEWS_PATH = '/mypage?tab=reviews'
 const NOTE_MIN_LENGTH = 20
@@ -102,6 +106,7 @@ export default function ReviewEditPage() {
   const [noseAromas, setNoseAromas] = useState<AromaNotes>(EMPTY_AROMA_NOTES)
   const [tasteAromas, setTasteAromas] = useState<AromaNotes>(EMPTY_AROMA_NOTES)
   const [finishAromas, setFinishAromas] = useState<AromaNotes>(EMPTY_AROMA_NOTES)
+  const [aromaProfiles, setAromaProfiles] = useState<AromaProfile[]>([])
   const [reviewImages, setReviewImages] = useState<ReviewImageDraft[]>([])
   const [socialSelection, setSocialSelection] = useState<SocialPublishSelection>(EMPTY_SOCIAL_SELECTION)
   const [socialRetryIds, setSocialRetryIds] = useState<number[]>([])
@@ -134,6 +139,7 @@ export default function ReviewEditPage() {
     setNoseAromas(parseAromaNotes(source.noseAromaWheelNotes))
     setTasteAromas(parseAromaNotes(source.tasteAromaWheelNotes))
     setFinishAromas(parseAromaNotes(source.finishAromaWheelNotes))
+    setAromaProfiles(source.aromaProfiles ?? [])
     setReviewImages(existingReviewImageDrafts(source.images))
     setErrors({})
     if (request) {
@@ -159,7 +165,10 @@ export default function ReviewEditPage() {
   const serverError =
     updateReviewMutation.error || updateRequestMutation.error || resubmitRequestMutation.error
   const serverErrorMessage = serverError
-    ? getReviewSaveErrorMessage(serverError, t('review.saveError'))
+    ? getReviewSaveErrorMessage(serverError, t('review.saveError'), {
+        REVIEW_011: t('review.aromaProfile.errorInvalid'),
+        REVIEW_012: t('review.aromaProfile.errorUnsupported'),
+      })
     : ''
 
   const validate = (): FieldErrors => {
@@ -210,9 +219,10 @@ export default function ReviewEditPage() {
       tasteNote: tasteNote.trim(),
       finishNote: finishNote.trim(),
       comment: comment.trim() || undefined,
-      noseAromaWheelNotes: showAroma ? serializeAromaNotes(noseAromas) : undefined,
-      tasteAromaWheelNotes: showAroma ? serializeAromaNotes(tasteAromas) : undefined,
-      finishAromaWheelNotes: showAroma ? serializeAromaNotes(finishAromas) : undefined,
+      noseAromaWheelNotes: showAroma ? (serializeAromaNotes(noseAromas) ?? '') : undefined,
+      tasteAromaWheelNotes: showAroma ? (serializeAromaNotes(tasteAromas) ?? '') : undefined,
+      finishAromaWheelNotes: showAroma ? (serializeAromaNotes(finishAromas) ?? '') : undefined,
+      aromaProfiles: supportsAromaProfiles(category) ? aromaProfiles : [],
     }
 
     if (review) {
@@ -475,6 +485,11 @@ export default function ReviewEditPage() {
             aromaWheelTitle={t(aromaWheelKey(category))}
             aromaNote={noseAromas}
             onAromaNoteChange={setNoseAromas}
+            profileEnabled={category === 'WHISKY'}
+            profilePhase="NOSE"
+            aromaProfile={profileForPhase(aromaProfiles, 'NOSE')}
+            onAromaProfileChange={(profile) => setAromaProfiles((current) =>
+              replacePhaseProfile(current, 'NOSE', profile))}
           />
 
           {/* 맛 */}
@@ -493,6 +508,11 @@ export default function ReviewEditPage() {
             aromaWheelTitle={t(aromaWheelKey(category))}
             aromaNote={tasteAromas}
             onAromaNoteChange={setTasteAromas}
+            profileEnabled={category === 'WHISKY'}
+            profilePhase="PALATE"
+            aromaProfile={profileForPhase(aromaProfiles, 'PALATE')}
+            onAromaProfileChange={(profile) => setAromaProfiles((current) =>
+              replacePhaseProfile(current, 'PALATE', profile))}
           />
 
           {/* 피니시 */}
@@ -511,6 +531,11 @@ export default function ReviewEditPage() {
             aromaWheelTitle={t(aromaWheelKey(category))}
             aromaNote={finishAromas}
             onAromaNoteChange={setFinishAromas}
+            profileEnabled={category === 'WHISKY'}
+            profilePhase="FINISH"
+            aromaProfile={profileForPhase(aromaProfiles, 'FINISH')}
+            onAromaProfileChange={(profile) => setAromaProfiles((current) =>
+              replacePhaseProfile(current, 'FINISH', profile))}
           />
 
           {/* 총점 미리보기 + 총평 */}

@@ -12,6 +12,7 @@ import jakarta.validation.Valid;
 import com.caskbycask.domain.social.dto.SocialPublishSelection;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 public record CreateVariantReviewRequest(
         @Schema(description = "Sub-edition identifier value")
@@ -86,5 +87,9 @@ public record CreateVariantReviewRequest(
         String finishAromaWheelNotes,
 
         @Valid
-        SocialPublishSelection socialPublish
+        SocialPublishSelection socialPublish,
+
+        @Schema(description = "향·맛·피니시 아로마 강도 프로파일 (선택)")
+        @Valid
+        List<AromaProfileRequest> aromaProfiles
 ) {}

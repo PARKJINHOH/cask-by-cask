@@ -77,14 +77,22 @@ public record VariantReviewRequestResponse(
         @Schema(description = "Reviewed at")
         LocalDateTime reviewedAt,
         @Schema(description = "Review images")
-        List<ReviewImageResponse> images
+        List<ReviewImageResponse> images,
+        @Schema(description = "Aroma intensity profiles")
+        List<AromaProfileResponse> aromaProfiles
 ) {
     public static VariantReviewRequestResponse from(SpiritVariantReviewRequest request) {
-        return from(request, List.of());
+        return from(request, List.of(), List.of());
     }
 
     public static VariantReviewRequestResponse from(SpiritVariantReviewRequest request,
                                                     List<ReviewImageResponse> images) {
+        return from(request, images, List.of());
+    }
+
+    public static VariantReviewRequestResponse from(SpiritVariantReviewRequest request,
+                                                     List<ReviewImageResponse> images,
+                                                     List<AromaProfileResponse> aromaProfiles) {
         var master = request.getMasterSpirit();
         return new VariantReviewRequestResponse(
                 request.getId(),
@@ -119,7 +127,8 @@ public record VariantReviewRequestResponse(
                 request.getRejectReason(),
                 request.getCreatedAt(),
                 request.getReviewedAt(),
-                images == null ? List.of() : List.copyOf(images)
+                images == null ? List.of() : List.copyOf(images),
+                aromaProfiles == null ? List.of() : List.copyOf(aromaProfiles)
         );
     }
 }

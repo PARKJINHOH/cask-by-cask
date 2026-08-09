@@ -24,10 +24,13 @@ import { getReviewSaveErrorMessage } from '@/domain/review/utils/reviewErrors'
 import {
   EMPTY_AROMA_NOTES,
   parseAromaNotes,
+  profileForPhase,
+  replacePhaseProfile,
   serializeAromaNotes,
+  supportsAromaProfiles,
 } from '@/domain/review/utils/aroma'
 import type { AromaNotes } from '@/domain/review/utils/aroma'
-import type { ReviewItem } from '@/domain/review/types/review.types'
+import type { AromaProfile, ReviewItem } from '@/domain/review/types/review.types'
 import { reviewApi } from '@/domain/review/api/reviewApi'
 import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
 import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
@@ -183,6 +186,7 @@ export default function ReviewFormPage() {
   const [noseAromas, setNoseAromas]     = useState<AromaNotes>(EMPTY_AROMA_NOTES)
   const [tasteAromas, setTasteAromas]   = useState<AromaNotes>(EMPTY_AROMA_NOTES)
   const [finishAromas, setFinishAromas] = useState<AromaNotes>(EMPTY_AROMA_NOTES)
+  const [aromaProfiles, setAromaProfiles] = useState<AromaProfile[]>(editingReview?.aromaProfiles ?? [])
 
   const {
     control,
@@ -224,6 +228,7 @@ export default function ReviewFormPage() {
       setNoseAromas(parseAromaNotes(editingReview.noseAromaWheelNotes))
       setTasteAromas(parseAromaNotes(editingReview.tasteAromaWheelNotes))
       setFinishAromas(parseAromaNotes(editingReview.finishAromaWheelNotes))
+      setAromaProfiles(editingReview.aromaProfiles ?? [])
       setReviewImages(existingReviewImageDrafts(editingReview.images))
     }
   }, [editingReview, reset])
@@ -257,9 +262,10 @@ export default function ReviewFormPage() {
       tasteNote:             values.tasteNote.trim(),
       finishNote:            values.finishNote.trim(),
       comment:               values.comment?.trim() || undefined,
-      noseAromaWheelNotes:   showAroma ? serializeAromaNotes(noseAromas)   : undefined,
-      tasteAromaWheelNotes:  showAroma ? serializeAromaNotes(tasteAromas)  : undefined,
-      finishAromaWheelNotes: showAroma ? serializeAromaNotes(finishAromas) : undefined,
+      noseAromaWheelNotes:   showAroma ? (serializeAromaNotes(noseAromas)   ?? (isEdit ? '' : undefined)) : undefined,
+      tasteAromaWheelNotes:  showAroma ? (serializeAromaNotes(tasteAromas)  ?? (isEdit ? '' : undefined)) : undefined,
+      finishAromaWheelNotes: showAroma ? (serializeAromaNotes(finishAromas) ?? (isEdit ? '' : undefined)) : undefined,
+      aromaProfiles: supportsAromaProfiles(spirit?.category) ? aromaProfiles : [],
       ...(!isEdit ? { socialPublish: socialSelection } : {}),
     }
     const imageSubmission = reviewImageSubmission(reviewImages)
@@ -325,8 +331,9 @@ export default function ReviewFormPage() {
   // 임시저장 기능이 없는 화면이라 확인창에는 '계속 쓰기 / 나가기'만 둔다.
   const [submitted, setSubmitted] = useState(false)
   const imagesDirty = reviewImages.length !== (editingReview?.images?.length ?? 0)
+  const profilesDirty = JSON.stringify(aromaProfiles) !== JSON.stringify(editingReview?.aromaProfiles ?? [])
   const { leaveDialogOpen, guard, cancelLeave, confirmLeave } = useUnsavedChangesGuard({
-    dirty: !submitted && (formIsDirty || imagesDirty),
+    dirty: !submitted && (formIsDirty || imagesDirty || profilesDirty),
     onLeave: () => navigate(`/spirits/${spiritId}`),
   })
 
@@ -339,7 +346,10 @@ export default function ReviewFormPage() {
     isSubmitting
   const serverError = createMutation.error || createVariantReviewRequest.error || updateMutation.error
   const serverErrorMessage = serverError
-    ? getReviewSaveErrorMessage(serverError, t('review.saveError'))
+    ? getReviewSaveErrorMessage(serverError, t('review.saveError'), {
+        REVIEW_011: t('review.aromaProfile.errorInvalid'),
+        REVIEW_012: t('review.aromaProfile.errorUnsupported'),
+      })
     : ''
 
   // 저장 실패는 제출 버튼 바로 위에 문구로도 남지만, 폼이 길어 사용자가 다른 곳을 보고 있을 수 있다.
@@ -456,6 +466,11 @@ export default function ReviewFormPage() {
               aromaWheelTitle={aromaWheelTitle}
               aromaNote={noseAromas}
               onAromaNoteChange={setNoseAromas}
+              profileEnabled={spirit?.category === 'WHISKY'}
+              profilePhase="NOSE"
+              aromaProfile={profileForPhase(aromaProfiles, 'NOSE')}
+              onAromaProfileChange={(profile) => setAromaProfiles((current) =>
+                replacePhaseProfile(current, 'NOSE', profile))}
             />
           )}
         />
@@ -479,6 +494,11 @@ export default function ReviewFormPage() {
               aromaWheelTitle={aromaWheelTitle}
               aromaNote={tasteAromas}
               onAromaNoteChange={setTasteAromas}
+              profileEnabled={spirit?.category === 'WHISKY'}
+              profilePhase="PALATE"
+              aromaProfile={profileForPhase(aromaProfiles, 'PALATE')}
+              onAromaProfileChange={(profile) => setAromaProfiles((current) =>
+                replacePhaseProfile(current, 'PALATE', profile))}
             />
           )}
         />
@@ -502,6 +522,11 @@ export default function ReviewFormPage() {
               aromaWheelTitle={aromaWheelTitle}
               aromaNote={finishAromas}
               onAromaNoteChange={setFinishAromas}
+              profileEnabled={spirit?.category === 'WHISKY'}
+              profilePhase="FINISH"
+              aromaProfile={profileForPhase(aromaProfiles, 'FINISH')}
+              onAromaProfileChange={(profile) => setAromaProfiles((current) =>
+                replacePhaseProfile(current, 'FINISH', profile))}
             />
           )}
         />

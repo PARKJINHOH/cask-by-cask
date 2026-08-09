@@ -6,6 +6,8 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
+import java.util.List;
+import jakarta.validation.Valid;
 
 public record UpdateReviewRequest(
         @Schema(description = "향(Nose) 점수 (0.0~100.0, null이면 변경 안 함)")
@@ -49,5 +51,18 @@ public record UpdateReviewRequest(
 
         @Schema(description = "피니시 아로마 휠 (800자 이내, null이면 변경 안 함)")
         @Size(max = 800, message = "아로마 휠 데이터는 800자 이내여야 합니다.")
-        String finishAromaWheelNotes
-) {}
+        String finishAromaWheelNotes,
+
+        @Schema(description = "아로마 강도 프로파일 (null=변경 안 함, 빈 배열=전체 삭제)")
+        @Valid
+        List<AromaProfileRequest> aromaProfiles
+) {
+    public UpdateReviewRequest(
+            BigDecimal noseScore, BigDecimal tasteScore, BigDecimal finishScore,
+            String noseNote, String tasteNote, String finishNote, String comment,
+            String noseAromaWheelNotes, String tasteAromaWheelNotes, String finishAromaWheelNotes
+    ) {
+        this(noseScore, tasteScore, finishScore, noseNote, tasteNote, finishNote, comment,
+                noseAromaWheelNotes, tasteAromaWheelNotes, finishAromaWheelNotes, null);
+    }
+}

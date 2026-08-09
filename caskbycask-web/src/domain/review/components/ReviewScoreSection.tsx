@@ -2,7 +2,13 @@ import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ScoreInput from '@/shared/components/ScoreInput'
 import { RequiredMark } from '@/shared/components/FormFieldLabel'
-import type { AromaNotes } from '../utils/aroma'
+import {
+  formatAromaId,
+  syncProfileAfterAromaRemoval,
+  type AromaNotes,
+} from '../utils/aroma'
+import type { AromaProfile, AromaProfilePhase } from '../types/review.types'
+import AromaProfileControl from './AromaProfileControl'
 
 // ── ReviewScoreSection ────────────────────────────────────────────
 
@@ -27,10 +33,10 @@ interface ReviewScoreSectionProps {
   aromaWheelTitle?: string
   aromaNote: AromaNotes
   onAromaNoteChange: (v: AromaNotes) => void
-}
-
-function formatAromaId(id: string): string {
-  return id.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+  profileEnabled?: boolean
+  profilePhase?: AromaProfilePhase
+  aromaProfile?: AromaProfile
+  onAromaProfileChange?: (profile: AromaProfile | null) => void
 }
 
 export default function ReviewScoreSection({
@@ -47,6 +53,10 @@ export default function ReviewScoreSection({
   aromaWheelTitle,
   aromaNote,
   onAromaNoteChange,
+  profileEnabled,
+  profilePhase,
+  aromaProfile,
+  onAromaProfileChange,
 }: ReviewScoreSectionProps) {
   const { t } = useTranslation()
   const [search, setSearch] = useState('')
@@ -71,10 +81,27 @@ export default function ReviewScoreSection({
     searchRef.current?.focus()
   }
 
-  const removeId = (id: string) =>
-    onAromaNoteChange({ ...aromaNote, ids: aromaNote.ids.filter((i) => i !== id) })
-  const removeCustom = (c: string) =>
-    onAromaNoteChange({ ...aromaNote, custom: aromaNote.custom.filter((x) => x !== c) })
+  const removeAroma = (
+    aromaType: 'ID' | 'CUSTOM',
+    aromaKey: string,
+    next: AromaNotes,
+  ) => {
+    const synced = syncProfileAfterAromaRemoval(aromaProfile, { aromaType, aromaKey })
+    if (synced === null && !window.confirm(t('review.aromaProfile.removeAxisConfirm'))) return
+    onAromaNoteChange(next)
+    if (synced !== undefined && synced !== aromaProfile) onAromaProfileChange?.(synced)
+  }
+
+  const removeId = (id: string) => removeAroma(
+    'ID',
+    id,
+    { ...aromaNote, ids: aromaNote.ids.filter((item) => item !== id) },
+  )
+  const removeCustom = (value: string) => removeAroma(
+    'CUSTOM',
+    value,
+    { ...aromaNote, custom: aromaNote.custom.filter((item) => item !== value) },
+  )
 
   return (
     <div className="bg-neutral-50 rounded-2xl p-4 space-y-4">
@@ -169,6 +196,15 @@ export default function ReviewScoreSection({
               </button>
             )}
           </div>
+
+          {profileEnabled && profilePhase && onAromaProfileChange && (
+            <AromaProfileControl
+              phase={profilePhase}
+              aromaNotes={aromaNote}
+              profile={aromaProfile}
+              onChange={onAromaProfileChange}
+            />
+          )}
         </div>
       )}
 

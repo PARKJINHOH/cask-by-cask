@@ -1,13 +1,16 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { formatDate, scoreColor } from '@/shared/utils/format'
-import { parseAromaNotes } from '../utils/aroma'
+import { parseAromaNotes, supportsAromaProfiles } from '../utils/aroma'
 import type { AromaNotes } from '../utils/aroma'
 import type { ReviewItem as ReviewItemType } from '../types/review.types'
 import UserBadge from '@/shared/components/UserBadge'
 import type { UserRole } from '@/domain/auth/types/auth.types'
 import { getSpiritDetailPath } from '@/domain/spirit/utils/spiritUrl'
 import ReviewImageStrip from './ReviewImageStrip'
+import AromaProfileChartPanel from './AromaProfileChartPanel'
+import AromaProfilePreviewButton from './AromaProfilePreviewButton'
 
 function formatAromaId(id: string): string {
   return id.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
@@ -75,6 +78,10 @@ function ReviewSection({ label, score, note, aromaNotes }: ReviewSectionProps) {
   )
 }
 
+function ReviewHeaderDivider() {
+  return <span aria-hidden="true" className="h-8 w-px shrink-0 bg-neutral-200" />
+}
+
 // ── 리뷰 카드 ───────────────────────────────────────────────────
 
 export interface ReviewItemProps {
@@ -88,6 +95,7 @@ export interface ReviewItemProps {
 
 export default function ReviewItem({ review, currentUserId, onEdit, onDelete, showSpiritName, reviewVariantLabel }: ReviewItemProps) {
   const { t, i18n } = useTranslation()
+  const [profileExpanded, setProfileExpanded] = useState(false)
   const isOwner = !!currentUserId && currentUserId === review.userId
   const spiritName = i18n.language === 'en' ? (review.spiritNameEn || review.spiritNameKo) : review.spiritNameKo
   const spiritDetailPath = getSpiritDetailPath({
@@ -101,6 +109,9 @@ export default function ReviewItem({ review, currentUserId, onEdit, onDelete, sh
     { label: t('review.taste'),  score: review.tasteScore,  note: review.tasteNote,  aromaNotes: parseAromaNotes(review.tasteAromaWheelNotes) },
     { label: t('review.finish'), score: review.finishScore, note: review.finishNote, aromaNotes: parseAromaNotes(review.finishAromaWheelNotes) },
   ]
+  const aromaProfiles = supportsAromaProfiles(review.spiritCategory) ? (review.aromaProfiles ?? []) : []
+  const hasAromaProfiles = aromaProfiles.length > 0
+  const profilePanelId = `review-aroma-profile-${review.id}`
 
   return (
     <article className="p-5 bg-white rounded-xl border border-neutral-100 space-y-5">
@@ -137,9 +148,23 @@ export default function ReviewItem({ review, currentUserId, onEdit, onDelete, sh
             }
           />
         </div>
-        <div className="flex w-full items-center justify-between gap-3 sm:w-auto sm:justify-end sm:flex-shrink-0">
-          <ReviewImageStrip images={review.images} />
-          <span className="text-2xl font-bold tabular-nums" style={{ color: scoreColor(review.totalScore) }}>
+        <div className="flex w-full min-w-0 items-center gap-2 sm:w-auto sm:justify-end sm:flex-shrink-0">
+          {hasAromaProfiles && (
+            <AromaProfilePreviewButton
+              profiles={aromaProfiles}
+              expanded={profileExpanded}
+              controlsId={profilePanelId}
+              onToggle={() => setProfileExpanded((current) => !current)}
+            />
+          )}
+          {hasAromaProfiles && <ReviewHeaderDivider />}
+          {review.images.length > 0 && (
+            <div className="min-w-0 flex-1 overflow-x-auto sm:flex-none">
+              <ReviewImageStrip images={review.images} />
+            </div>
+          )}
+          {review.images.length > 0 && <ReviewHeaderDivider />}
+          <span className="ml-auto shrink-0 text-2xl font-bold tabular-nums sm:ml-0" style={{ color: scoreColor(review.totalScore) }}>
             {Number(review.totalScore).toFixed(1)}
           </span>
           {isOwner && (
@@ -168,16 +193,40 @@ export default function ReviewItem({ review, currentUserId, onEdit, onDelete, sh
       )}
 
       {/* 향 / 맛 / 피니시 */}
-      <div className="space-y-5">
-        {sections.map(({ label, score, note, aromaNotes }) => (
-          <ReviewSection
-            key={label}
-            label={label}
-            score={score}
-            note={note}
-            aromaNotes={aromaNotes}
-          />
-        ))}
+      <div className={`grid min-w-0 transition-[grid-template-columns,gap] duration-500 ease-in-out motion-reduce:transition-none ${
+        profileExpanded && hasAromaProfiles
+          ? 'md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] md:gap-5'
+          : 'md:grid-cols-[minmax(0,1fr)_minmax(0,0fr)] md:gap-0'
+      }`}>
+        <div className="min-w-0 space-y-5">
+          {sections.map(({ label, score, note, aromaNotes }) => (
+            <ReviewSection
+              key={label}
+              label={label}
+              score={score}
+              note={note}
+              aromaNotes={aromaNotes}
+            />
+          ))}
+        </div>
+        {hasAromaProfiles && (
+          <div
+            id={profilePanelId}
+            aria-hidden={!profileExpanded}
+            inert={profileExpanded ? undefined : true}
+            className={`min-w-0 overflow-hidden transition-[max-height,opacity,transform,margin] duration-500 ease-in-out motion-reduce:transition-none ${
+              profileExpanded
+                ? 'mt-4 max-h-[48rem] translate-y-0 opacity-100 md:mt-0 md:translate-x-0'
+                : 'pointer-events-none max-h-0 translate-y-2 opacity-0 md:translate-x-4 md:translate-y-0'
+            }`}
+          >
+            {profileExpanded && (
+              <div className="h-full min-w-[16rem] md:min-w-0">
+                <AromaProfileChartPanel profiles={aromaProfiles} chartOnly />
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* 종합평가 */}

@@ -82,18 +82,26 @@ public record ReviewResponse(
         @Schema(description = "동일 주류에 대한 사용자 총 리뷰 수")
         Integer userReviewCount,
         @Schema(description = "리뷰 이미지 (표시 순서)")
-        List<ReviewImageResponse> images
+        List<ReviewImageResponse> images,
+        @Schema(description = "향·맛·피니시 아로마 강도 프로파일")
+        List<AromaProfileResponse> aromaProfiles
 ) {
     public static ReviewResponse from(Review review) {
-        return from(review, null, null, List.of());
+        return from(review, null, null, List.of(), List.of());
     }
 
     public static ReviewResponse from(Review review, Integer userReviewIndex, Integer userReviewCount) {
-        return from(review, userReviewIndex, userReviewCount, List.of());
+        return from(review, userReviewIndex, userReviewCount, List.of(), List.of());
     }
 
     public static ReviewResponse from(Review review, Integer userReviewIndex, Integer userReviewCount,
                                       List<ReviewImageResponse> images) {
+        return from(review, userReviewIndex, userReviewCount, images, List.of());
+    }
+
+    public static ReviewResponse from(Review review, Integer userReviewIndex, Integer userReviewCount,
+                                      List<ReviewImageResponse> images,
+                                      List<AromaProfileResponse> aromaProfiles) {
         Spirit spirit = review.getSpirit();
         // 에디션 값은 실제 하위 에디션일 때만 노출한다 (마스터/단일 주류는 null → 프론트에서 이름만 표기)
         boolean hasEdition = SpiritSlugUtils.hasEdition(spirit);
@@ -132,7 +140,8 @@ public record ReviewResponse(
                 Boolean.TRUE.equals(review.getLegacySocialPublishAllowed()),
                 userReviewIndex,
                 userReviewCount,
-                images == null ? List.of() : List.copyOf(images)
+                images == null ? List.of() : List.copyOf(images),
+                aromaProfiles == null ? List.of() : List.copyOf(aromaProfiles)
         );
     }
 }
