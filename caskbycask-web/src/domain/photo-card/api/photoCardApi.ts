@@ -8,7 +8,7 @@ import type {
 } from '../types/photoCard.types'
 
 export const photoCardApi = {
-  /** scope: OFFICIAL(공식) | MINE(내 것, 비공개 포함) | PUBLIC(다른 사용자가 공개한 것) */
+  /** scope: OFFICIAL(공식) | MINE(내 것, 비공개 포함) | PUBLIC(내 것 포함 공개 템플릿) */
   getTemplates: (scope: PhotoCardTemplateScope) =>
     axiosInstance.get<ApiResponse<PhotoCardTemplate[]>>('/api/photo-cards/templates', { params: { scope } })
       .then((r) => r.data.data),

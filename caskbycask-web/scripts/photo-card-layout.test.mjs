@@ -404,6 +404,26 @@ describe('렌더 기하', () => {
     assert.equal(hit?.id, 'over')
   })
 
+  test('회전한 구분선은 화면에 보이는 방향으로 집는다', () => {
+    const ctx = fakeContext(10)
+    const size = { width: 800, height: 1000 }
+    const divider = {
+      id: 'vertical-divider', type: 'DIVIDER', position: { x: 0.5, y: 0.5 },
+      widthRatio: 0.5, thicknessRatio: 0.002, rotation: 90,
+    }
+
+    assert.equal(
+      findLayerAtPoint(ctx, size, [divider], emptyContext(), { x: 400, y: 650 })?.id,
+      divider.id,
+      '세로 구분선의 끝부분을 선택할 수 없다',
+    )
+    assert.equal(
+      findLayerAtPoint(ctx, size, [divider], emptyContext(), { x: 550, y: 500 }),
+      null,
+      '회전 전 가로 경계가 선택 영역으로 남아 있다',
+    )
+  })
+
   test('아직 글을 안 쓴 빈 텍스트도 집을 수 있다', () => {
     // 회귀 배경: 히트 테스트가 '그리는 목록'을 쓰는 바람에, 방금 얹은 빈 텍스트는
     // 화면에 안 보이는 것을 넘어 클릭조차 되지 않아 옮길 방법이 없었다.
@@ -867,6 +887,7 @@ describe('i18n 번역', () => {
     'fillTitle', 'fillIntro', 'fillProgress', 'fillPlaceholder', 'fillFromExif',
     'fillFromSpirit', 'fillNoValue', 'fillPrev', 'fillNext', 'fillSkip', 'fillDone',
     'fillClose', 'fillReopen',
+    'overwriteTemplate', 'templateOverwriteConfirm', 'templateOverwritten', 'templateOverwriteFailed',
   ]
 
   for (const language of ['ko', 'en']) {

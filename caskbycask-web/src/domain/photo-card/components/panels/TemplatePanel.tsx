@@ -1,9 +1,11 @@
 import { useTranslation } from 'react-i18next'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { photoCardApi } from '../../api/photoCardApi'
 import { BUILTIN_LAYOUTS } from '../../constants/builtinLayouts'
 import type { PhotoCardEditor } from '../../hooks/usePhotoCardEditor'
-import type { PhotoCardLayout, PhotoCardTemplateScope } from '../../types/photoCard.types'
+import type {
+  PhotoCardLayout, PhotoCardTemplate, PhotoCardTemplateScope,
+} from '../../types/photoCard.types'
 import { describeLayer } from '../../utils/layerLabel'
 import { PanelButton, Section } from './controls'
 
@@ -14,6 +16,7 @@ interface Props {
   isLoggedIn: boolean
   busy: boolean
   onSaveAsTemplate: () => void
+  onOverwrite: (template: PhotoCardTemplate) => void
   /** 마지막으로 적용한 템플릿. 도구를 옮겨 다녀도 유지돼야 해서 페이지가 들고 있다. */
   appliedKey: string | null
   onApplied: (key: string) => void
@@ -40,21 +43,28 @@ const overlayButtonClass = 'absolute inset-0 z-0 rounded-lg active:bg-primary-10
 
 /** 템플릿 도구 — 공식·내 것·공개된 것을 고르고, 지금 배치를 내 템플릿으로 저장한다. */
 export default function TemplatePanel({
-  editor, scope, onScopeChange, isLoggedIn, busy, onSaveAsTemplate, appliedKey, onApplied, onStartFill,
+  editor, scope, onScopeChange, isLoggedIn, busy, onSaveAsTemplate, onOverwrite,
+  appliedKey, onApplied, onStartFill,
 }: Props) {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
   /** 채울 자리(글자 요소)가 하나라도 있어야 '요소 입력'이 뜻을 갖는다. */
   const hasTextSlots = editor.layout.layers.some(
     (layer) => layer.type === 'TEXT' && layer.visible !== false,
   )
 
-  const { data, refetch } = useQuery({
+  const { data } = useQuery({
     queryKey: ['photoCardTemplates', scope],
     queryFn: () => photoCardApi.getTemplates(scope),
     enabled: scope !== 'MINE' || isLoggedIn,
     staleTime: 60_000,
   })
   const templates = data ?? []
+
+  const refreshUserTemplates = () => Promise.all([
+    queryClient.invalidateQueries({ queryKey: ['photoCardTemplates', 'MINE'], exact: true }),
+    queryClient.invalidateQueries({ queryKey: ['photoCardTemplates', 'PUBLIC'], exact: true }),
+  ])
 
   // 관리자가 공식 템플릿을 등록하기 전까지는 코드에 든 기본 5종을 보여 준다.
   // 등록 뒤에도 둘 다 그리면 같은 템플릿이 두 번 나온다.
@@ -111,7 +121,13 @@ export default function TemplatePanel({
           <button
             key={key}
             type="button"
-            onClick={() => onScopeChange(key)}
+            onClick={() => {
+              onScopeChange(key)
+              // staleTime 안에 다시 들어와도 서버의 공개 전환·삭제 결과를 즉시 확인한다.
+              void queryClient.invalidateQueries({
+                queryKey: ['photoCardTemplates', key], exact: true,
+              })
+            }}
             className={`flex-1 border-r border-neutral-200 py-2 text-xs font-semibold transition-colors last:border-r-0 ${
               scope === key ? 'bg-primary-600 text-white' : 'text-neutral-500 hover:bg-neutral-50'
             }`}
@@ -121,7 +137,7 @@ export default function TemplatePanel({
         ))}
       </div>
 
-      {hasTextSlots && (
+      {scope === 'OFFICIAL' && hasTextSlots && (
         <PanelButton tone="primary" onClick={onStartFill}>
           {t('photoCard.fillReopen')}
         </PanelButton>
@@ -184,26 +200,36 @@ export default function TemplatePanel({
               <Includes layout={template.layout} />
             </div>
             {/* 공개 전환·삭제는 카드 적용과 다른 동작이다 — 덮개 버튼 위로 올려 따로 눌리게 한다. */}
-            {template.isMine && (
-              <div className="relative z-10 mt-2 flex gap-2">
+            {scope === 'MINE' && template.isMine && (
+              <div className="relative z-10 mt-3 flex flex-wrap gap-2 border-t border-neutral-100 pt-2.5">
                 <button
                   type="button"
+                  disabled={busy}
+                  onClick={() => onOverwrite(template)}
+                  className="rounded-md border border-neutral-300 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
+                >
+                  {t('photoCard.overwriteTemplate')}
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
                   onClick={async () => {
                     await photoCardApi.togglePublic(template.id, !template.isPublic)
-                    await refetch()
+                    await refreshUserTemplates()
                   }}
-                  className="text-[11px] font-semibold text-primary-700 hover:underline"
+                  className="rounded-md border border-primary-600 bg-primary-600 px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
                 >
                   {template.isPublic ? t('photoCard.makePrivate') : t('photoCard.makePublic')}
                 </button>
                 <button
                   type="button"
+                  disabled={busy}
                   onClick={async () => {
                     if (!window.confirm(t('photoCard.deleteTemplateConfirm'))) return
                     await photoCardApi.deleteTemplate(template.id)
-                    await refetch()
+                    await refreshUserTemplates()
                   }}
-                  className="text-[11px] font-semibold text-neutral-500 hover:text-red-600"
+                  className="rounded-md border border-red-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"
                 >
                   {t('photoCard.deleteTemplate')}
                 </button>

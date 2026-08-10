@@ -52,17 +52,16 @@ public interface PhotoCardTemplateRepository extends JpaRepository<PhotoCardTemp
     /** 관리자 목록 — 숨김 포함 전체 */
     List<PhotoCardTemplate> findByTemplateTypeOrderByDisplayOrderAscIdAsc(PhotoCardTemplateType templateType);
 
-    /** 다른 사용자가 공개한 템플릿 (본인 것 제외) */
+    /** 공개된 사용자 템플릿 — 본인이 공개한 것도 공개 탭에서 확인할 수 있다. */
     @Query("""
         select t from PhotoCardTemplate t
         left join fetch t.owner
         where t.templateType = com.caskbycask.domain.photocard.entity.enums.PhotoCardTemplateType.USER
           and t.isPublic = true
           and t.moderationStatus = com.caskbycask.domain.photocard.entity.enums.PhotoCardModerationStatus.VISIBLE
-          and (:excludeUserId is null or t.owner.id <> :excludeUserId)
         order by t.useCount desc, t.updatedAt desc, t.id desc
         """)
-    List<PhotoCardTemplate> findPublicUserTemplates(@Param("excludeUserId") Long excludeUserId);
+    List<PhotoCardTemplate> findPublicUserTemplates();
 
     /** 관리자 — 공개된 사용자 템플릿 검토 목록 */
     @Query("""

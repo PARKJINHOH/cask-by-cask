@@ -10,6 +10,7 @@ import {
   measureLayerBounds,
   photoPlacementOf,
   photoRectOf,
+  rotatePointAround,
   textBaselineYOf,
   type LayerBounds,
   type PhotoCardCanvasSize,
@@ -285,7 +286,7 @@ export default function PhotoCardStage({
   }
 
   // ── 손잡이(크기·회전) ───────────────────────────────────
-  const handleResize = ({ scale, anchor }: TransformDelta) => {
+  const handleResize = ({ scale, anchor, corner }: TransformDelta) => {
     const ctx = measureContext()
     const layer = editor.selectedLayer
     if (!ctx || !layer) return
@@ -308,11 +309,17 @@ export default function PhotoCardStage({
     // 잡은 손잡이의 반대편 모서리가 제자리에 오도록 위치를 되민다.
     const scaled = normalizeLayer({ ...base, ...patch })
     const bounds = measureLayerBounds(ctx, size, scaled, editor.dataContext)
-    const start = resizeBaseRef.current.bounds
-    const keepLeft = Math.abs(anchor.x - start.left) <= Math.abs(anchor.x - start.right)
-    const keepTop = Math.abs(anchor.y - start.top) <= Math.abs(anchor.y - start.bottom)
-    const dx = anchor.x - (keepLeft ? bounds.left : bounds.right)
-    const dy = anchor.y - (keepTop ? bounds.top : bounds.bottom)
+    const scaledCenter = {
+      x: (bounds.left + bounds.right) / 2,
+      y: (bounds.top + bounds.bottom) / 2,
+    }
+    const localAnchor = {
+      x: corner === 'nw' || corner === 'sw' ? bounds.right : bounds.left,
+      y: corner === 'nw' || corner === 'ne' ? bounds.bottom : bounds.top,
+    }
+    const rotatedAnchor = rotatePointAround(localAnchor, scaledCenter, base.rotation ?? 0)
+    const dx = anchor.x - rotatedAnchor.x
+    const dy = anchor.y - rotatedAnchor.y
 
     editor.patchLayer(layer.id, {
       ...patch,

@@ -121,10 +121,10 @@ public class PhotoCardTemplateService {
                 .toList();
     }
 
-    /** 다른 사용자가 공개한 템플릿. */
+    /** 공개된 사용자 템플릿 — 조회자의 공개 템플릿도 포함한다. */
     @Transactional(readOnly = true)
     public List<PhotoCardTemplateResponse> getPublicTemplates(Long viewerUserId) {
-        return templateRepository.findPublicUserTemplates(viewerUserId).stream()
+        return templateRepository.findPublicUserTemplates().stream()
                 .map(template -> toResponse(template, viewerUserId))
                 .toList();
     }

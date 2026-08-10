@@ -218,6 +218,8 @@ export const usePhotoCardEditor = ({ watermark = false }: EditorOptions = {}) =>
   const [watermarkImage, setWatermarkImage] = useState<HTMLImageElement | null>(null)
 
   const objectUrlRef = useRef<string | null>(null)
+  /** 브라우저 권한 없이 편집기 요소만 안전하게 복사하는 내부 클립보드. */
+  const layerClipboardRef = useRef<PhotoCardLayer[]>([])
 
   // ── 되돌리기 ────────────────────────────────────────────
   // 상태 갱신 함수 안에서 ref 를 건드리면 StrictMode 의 이중 호출에 히스토리가 두 번 쌓인다.
@@ -601,6 +603,36 @@ export const usePhotoCardEditor = ({ watermark = false }: EditorOptions = {}) =>
     setSelectedLayerIds([copy.id])
   }, [withLayout])
 
+  const copyLayers = useCallback((layerIds: string[]) => {
+    if (layerIds.length === 0) return false
+    const ids = new Set(layerIds)
+    const copies = docRef.current.layout.layers
+      .filter((layer) => ids.has(layer.id))
+      .map((layer) => JSON.parse(JSON.stringify(layer)) as PhotoCardLayer)
+    if (copies.length === 0) return false
+    layerClipboardRef.current = copies
+    return true
+  }, [])
+
+  const pasteLayers = useCallback(() => {
+    const sources = layerClipboardRef.current
+    const current = docRef.current.layout
+    if (sources.length === 0 || current.layers.length + sources.length > PHOTO_CARD_MAX_LAYERS) return false
+
+    // 붙여넣은 요소를 다시 버퍼 기준으로 삼아 연속 Ctrl+V 때마다 조금씩 어긋나게 보이도록 한다.
+    const copies = sources.map((source) => normalizeLayer({
+      ...JSON.parse(JSON.stringify(source)) as PhotoCardLayer,
+      id: createLayerId(),
+      position: { x: source.position.x + 0.02, y: source.position.y + 0.02 },
+    }))
+    withLayout((layoutNow) => ({ ...layoutNow, layers: [...layoutNow.layers, ...copies] }))
+    layerClipboardRef.current = copies.map(
+      (layer) => JSON.parse(JSON.stringify(layer)) as PhotoCardLayer,
+    )
+    setSelectedLayerIds(copies.map((layer) => layer.id))
+    return true
+  }, [withLayout])
+
   const removeLayers = useCallback((layerIds: string[]) => {
     if (layerIds.length === 0) return
     withLayout((current) => ({
@@ -947,7 +979,8 @@ export const usePhotoCardEditor = ({ watermark = false }: EditorOptions = {}) =>
     selectedLayer, selectedLayers, selectedLayerIds, selectLayer, selectAll,
     lockedIds, toggleLock,
     patchLayer, moveLayersTo, nudgeLayers,
-    addLayer, addBoundText, addIcon, duplicateLayer, removeLayer, removeLayers, reorderLayer,
+    addLayer, addBoundText, addIcon, duplicateLayer, copyLayers, pasteLayers,
+    removeLayer, removeLayers, reorderLayer,
     setFrameRadius, setPhotoRadius, setFramePadding, setFrameExtend,
     setBackgroundColor, setPhotoFit, patchPhoto,
     fitPhotoArea,

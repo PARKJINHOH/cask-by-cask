@@ -28,7 +28,7 @@ public class PhotoCardTemplateController {
 
     /**
      * 템플릿 목록.
-     * @param scope OFFICIAL(공식) | MINE(내 것, 비공개 포함) | PUBLIC(다른 사용자가 공개한 것)
+     * @param scope OFFICIAL(공식) | MINE(내 것, 비공개 포함) | PUBLIC(공개된 사용자 템플릿)
      */
     @GetMapping
     public ResponseEntity<ApiResponse<List<PhotoCardTemplateResponse>>> list(

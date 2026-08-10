@@ -34,7 +34,9 @@ import type { PhotoCardTool } from '@/domain/photo-card/constants/photoCardTools
 import { usePhotoCardEditor } from '@/domain/photo-card/hooks/usePhotoCardEditor'
 import { usePhotoCardShortcuts } from '@/domain/photo-card/hooks/usePhotoCardShortcuts'
 import { usePhotoCardViewport } from '@/domain/photo-card/hooks/usePhotoCardViewport'
-import type { PhotoCardTemplateScope } from '@/domain/photo-card/types/photoCard.types'
+import type {
+  PhotoCardTemplate, PhotoCardTemplateScope,
+} from '@/domain/photo-card/types/photoCard.types'
 import {
   PHOTO_CARD_MAX_TEMPLATES, normalizeLayout,
 } from '@/domain/photo-card/utils/layoutSchema'
@@ -391,10 +393,34 @@ export default function PhotoCardPage() {
         isPublic: false,
       }).then(() => {
         setNotice(t('photoCard.templateSaved'))
+        void queryClient.invalidateQueries({ queryKey: ['photoCardTemplates', 'MINE'], exact: true })
         setTemplateScope('MINE')
       }).catch(() => {
         setNotice(t('photoCard.templateLimit', { count: PHOTO_CARD_MAX_TEMPLATES }))
       })
+    })
+  }
+
+  const overwriteTemplate = async (template: PhotoCardTemplate) => {
+    if (!window.confirm(t('photoCard.templateOverwriteConfirm', { name: template.name }))) return
+    await runOnce(async () => {
+      try {
+        await photoCardApi.updateTemplate(template.id, {
+          name: template.name,
+          description: template.description,
+          layout: normalizeLayout(editor.layout),
+          // 공개 템플릿을 덮어써도 공개 상태가 조용히 바뀌지 않게 현재 값을 명시한다.
+          isPublic: template.isPublic,
+        })
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['photoCardTemplates', 'MINE'], exact: true }),
+          queryClient.invalidateQueries({ queryKey: ['photoCardTemplates', 'PUBLIC'], exact: true }),
+        ])
+        setAppliedTemplate(`id:${template.id}`)
+        setNotice(t('photoCard.templateOverwritten'))
+      } catch {
+        setNotice(t('photoCard.templateOverwriteFailed'))
+      }
     })
   }
 
@@ -409,6 +435,7 @@ export default function PhotoCardPage() {
             isLoggedIn={isLoggedIn}
             busy={busy}
             onSaveAsTemplate={() => { void saveAsTemplate() }}
+            onOverwrite={(template) => { void overwriteTemplate(template) }}
             appliedKey={appliedTemplate}
             // 템플릿을 고른 직후가 요소를 채우기 가장 좋은 때다 — 어느 자리가 비었는지
             // 방금 본 참이고, 채우는 대로 카드에 나타난다.

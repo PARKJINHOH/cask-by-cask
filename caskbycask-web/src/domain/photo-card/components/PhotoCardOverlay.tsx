@@ -1,5 +1,7 @@
 import { useRef } from 'react'
-import type { LayerBounds, PhotoCardCanvasSize } from '../utils/photoCardRender'
+import {
+  rotatePointAround, type LayerBounds, type PhotoCardCanvasSize,
+} from '../utils/photoCardRender'
 import type { SnapLine } from '../utils/photoCardSnap'
 
 /** 화면 기준 크기(px). displayScale 로 나눠 캔버스 좌표로 환산하므로 확대해도 굵기가 일정하다. */
@@ -17,6 +19,8 @@ export interface TransformDelta {
   scale: number
   /** 잡은 손잡이의 대각선 반대편 모서리 — 이 점이 제자리에 있어야 자연스럽다 */
   anchor: { x: number; y: number }
+  /** 드래그 중인 모서리. 회전된 요소의 반대편 모서리를 같은 자리에 고정할 때 필요하다. */
+  corner: ResizeCorner
 }
 
 interface Props {
@@ -63,7 +67,7 @@ export default function PhotoCardOverlay({
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null)
   const dragRef = useRef<
-    | { mode: 'resize'; anchor: { x: number; y: number }; startDistance: number }
+    | { mode: 'resize'; anchor: { x: number; y: number }; corner: ResizeCorner; startDistance: number }
     | { mode: 'rotate'; center: { x: number; y: number }; startAngle: number; startRotation: number }
     | null
   >(null)
@@ -85,6 +89,11 @@ export default function PhotoCardOverlay({
     right: Math.max(acc.right, bounds.right),
     bottom: Math.max(acc.bottom, bounds.bottom),
   }), { ...selection[0] })
+  const center = box ? { x: (box.left + box.right) / 2, y: (box.top + box.bottom) / 2 } : null
+  const rotatesSelection = selection.length === 1 && rotation !== 0
+  const rotationTransform = center && rotatesSelection
+    ? `rotate(${rotation} ${center.x} ${center.y})`
+    : undefined
 
   const startResize = (corner: ResizeCorner) => (event: React.PointerEvent) => {
     if (!box) return
@@ -94,13 +103,16 @@ export default function PhotoCardOverlay({
     event.stopPropagation()
     event.currentTarget.setPointerCapture(event.pointerId)
     // 잡은 손잡이의 대각선 반대편을 고정점으로 삼는다.
-    const anchor = {
+    const localAnchor = {
       x: corner === 'nw' || corner === 'sw' ? box.right : box.left,
       y: corner === 'nw' || corner === 'ne' ? box.bottom : box.top,
     }
+    const localCenter = { x: (box.left + box.right) / 2, y: (box.top + box.bottom) / 2 }
+    const anchor = rotatePointAround(localAnchor, localCenter, rotatesSelection ? rotation : 0)
     dragRef.current = {
       mode: 'resize',
       anchor,
+      corner,
       // 0 으로 나누지 않게 최소값을 둔다. 손잡이를 고정점 위에 정확히 겹쳐 잡는 경우가 있다.
       startDistance: Math.max(Math.hypot(point.x - anchor.x, point.y - anchor.y), 1),
     }
@@ -132,7 +144,7 @@ export default function PhotoCardOverlay({
 
     if (drag.mode === 'resize') {
       const distance = Math.hypot(point.x - drag.anchor.x, point.y - drag.anchor.y)
-      onResize({ scale: distance / drag.startDistance, anchor: drag.anchor })
+      onResize({ scale: distance / drag.startDistance, anchor: drag.anchor, corner: drag.corner })
       return
     }
     const angle = Math.atan2(point.y - drag.center.y, point.x - drag.center.x)
@@ -183,6 +195,7 @@ export default function PhotoCardOverlay({
           stroke="rgba(217, 119, 6, 0.95)"
           strokeWidth={unit(OUTLINE_WIDTH)}
           strokeDasharray={`${unit(5)} ${unit(4)}`}
+          transform={rotationTransform}
         />
       ))}
       {box && selection.length > 1 && (
@@ -200,6 +213,7 @@ export default function PhotoCardOverlay({
       {box && showHandles && (
         <g
           className="pointer-events-auto"
+          transform={rotationTransform}
           onPointerMove={handleMove}
           onPointerUp={handleUp}
           onPointerCancel={handleUp}

@@ -55,6 +55,17 @@ export const usePhotoCardShortcuts = (
         if (selected.length === 1) editor.duplicateLayer(selected[0])
         return
       }
+      if (mod && event.key.toLowerCase() === 'c') {
+        if (selected.length === 0) return
+        event.preventDefault()
+        editor.copyLayers(selected)
+        return
+      }
+      if (mod && event.key.toLowerCase() === 'v') {
+        event.preventDefault()
+        editor.pasteLayers()
+        return
+      }
       if (mod && event.key === '0') {
         event.preventDefault()
         viewport.fit()

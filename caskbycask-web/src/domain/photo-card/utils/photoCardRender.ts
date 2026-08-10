@@ -423,6 +423,29 @@ export interface LayerBounds {
   bottom: number
 }
 
+export interface CanvasPoint {
+  x: number
+  y: number
+}
+
+/** 요소 중심을 기준으로 점을 회전한다. 선택 표시와 히트 테스트가 실제 렌더링 좌표를 공유할 때 쓴다. */
+export const rotatePointAround = (
+  point: CanvasPoint,
+  center: CanvasPoint,
+  degrees: number,
+): CanvasPoint => {
+  if (degrees === 0) return point
+  const radians = (degrees * Math.PI) / 180
+  const cosine = Math.cos(radians)
+  const sine = Math.sin(radians)
+  const dx = point.x - center.x
+  const dy = point.y - center.y
+  return {
+    x: center.x + dx * cosine - dy * sine,
+    y: center.y + dx * sine + dy * cosine,
+  }
+}
+
 /** 드래그 히트 테스트·선택 표시에 쓸 요소 경계. */
 export const measureLayerBounds = (
   ctx: CanvasRenderingContext2D,
@@ -511,12 +534,20 @@ export const findLayerAtPoint = (
   // 그리는 목록이 아니라 '집을 수 있는' 목록을 쓴다 — 아직 글을 안 쓴 빈 텍스트도 잡혀야 한다.
   const pickable = getSelectableLayers(layers, context)
   for (let i = pickable.length - 1; i >= 0; i -= 1) {
-    const bounds = measureLayerBounds(ctx, size, pickable[i], context)
+    const layer = pickable[i]
+    const bounds = measureLayerBounds(ctx, size, layer, context)
+    const center = {
+      x: layer.position.x * size.width,
+      y: layer.position.y * size.height,
+    }
+    // 경계는 요소의 회전 전 로컬 축을 기준으로 잰다. 포인터를 반대로 회전시키면
+    // 세로로 돌린 구분선처럼 가늘고 긴 요소도 화면에 보이는 자리에서 정확히 집힌다.
+    const localPoint = rotatePointAround(point, center, -(layer.rotation ?? 0))
     if (
-      point.x >= bounds.left - padding && point.x <= bounds.right + padding
-      && point.y >= bounds.top - padding && point.y <= bounds.bottom + padding
+      localPoint.x >= bounds.left - padding && localPoint.x <= bounds.right + padding
+      && localPoint.y >= bounds.top - padding && localPoint.y <= bounds.bottom + padding
     ) {
-      return pickable[i]
+      return layer
     }
   }
   return null
