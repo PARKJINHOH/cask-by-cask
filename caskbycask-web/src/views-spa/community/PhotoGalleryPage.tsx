@@ -1,11 +1,13 @@
 import { useCallback, useMemo, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SeoMeta from '@/shared/components/SeoMeta'
 import type { PostSort } from '@/domain/community/types/community.types'
+import { useAuthStore } from '@/domain/auth/store/authStore'
 import InfiniteSentinel from '@/domain/photo-gallery/components/InfiniteSentinel'
 import PhotoGrid from '@/domain/photo-gallery/components/PhotoGrid'
 import PhotoPostModal from '@/domain/photo-gallery/components/PhotoPostModal'
+import PhotoUploadDialog from '@/domain/photo-gallery/components/PhotoUploadDialog'
 import {
   flattenPhotoPosts,
   useInfinitePhotoPosts,
@@ -20,7 +22,10 @@ import {
  */
 export default function PhotoGalleryPage() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
+  const { isLoggedIn } = useAuthStore()
   const [sort, setSort] = useState<PostSort | undefined>(undefined)
+  const [uploadOpen, setUploadOpen] = useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
 
   const query = useMemo(() => ({ sort }), [sort])
@@ -54,7 +59,6 @@ export default function PhotoGalleryPage() {
     <div className="mx-auto w-full max-w-[1400px] px-4 py-6 lg:px-6">
       <SeoMeta
         title={t('photoGallery.title')}
-        description={t('photoGallery.description')}
         canonical="/community/photo"
         alternateKo="/ko/community/photo"
         alternateEn="/en/community/photo"
@@ -63,14 +67,23 @@ export default function PhotoGalleryPage() {
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-neutral-900 lg:text-2xl">{t('photoGallery.title')}</h1>
-          <p className="mt-1 text-sm text-neutral-500">{t('photoGallery.description')}</p>
         </div>
-        <Link
-          to="/photo-card"
-          className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-primary-600 px-4 text-sm font-bold text-white hover:bg-primary-500"
-        >
-          ＋ {t('photoGallery.createCta')}
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* 사진만 올리는 짧은 길 — 포토카드 편집기를 거치지 않는다 */}
+          <button
+            type="button"
+            onClick={() => (isLoggedIn ? setUploadOpen(true) : navigate('/login'))}
+            className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-4 text-sm font-bold text-neutral-700 hover:border-primary-400 hover:text-primary-700"
+          >
+            {t('photoGallery.uploadCta')}
+          </button>
+          <Link
+            to="/photo-card"
+            className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-primary-600 px-4 text-sm font-bold text-white hover:bg-primary-500"
+          >
+            {t('photoGallery.createCta')}
+          </Link>
+        </div>
       </div>
 
       <div className="mb-4 flex flex-wrap gap-1.5">
@@ -119,6 +132,8 @@ export default function PhotoGalleryPage() {
         }
         onDeleted={closePost}
       />
+
+      <PhotoUploadDialog open={uploadOpen} onClose={() => setUploadOpen(false)} />
     </div>
   )
 }

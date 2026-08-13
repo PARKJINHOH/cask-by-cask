@@ -131,7 +131,11 @@ public class Post extends BaseTimeEntity {
     @OneToOne(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private Poll poll;
 
+    // 이미지 갤러리 상세는 이 순서대로 사진을 넘긴다(슬라이드). 업로드 순서 = id 오름차순이라
+    // 정렬을 명시해 둔다 — DB 기본 순서에 기대면 글마다 순서가 달라질 수 있다.
+    // 목록 썸네일(findFirstThumbnailsByPostIds 의 min(id))도 같은 기준이라 첫 장이 서로 어긋나지 않는다.
     @Builder.Default
+    @OrderBy("id asc")
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PostImage> images = new ArrayList<>();
 

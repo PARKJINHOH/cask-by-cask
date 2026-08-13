@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { TouchEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { usePostDetail, usePostActions } from '@/domain/community/hooks/usePostDetail'
@@ -12,6 +13,7 @@ import { useAuthStore } from '@/domain/auth/store/authStore'
 import { formatDotDateTime } from '@/shared/utils/format'
 import type { UserRole } from '@/domain/auth/types/auth.types'
 import { splitPhotoContent } from '../utils/photoContent'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 interface Props {
   postId: number
@@ -30,6 +32,11 @@ interface Props {
   /** 모달은 높이가 고정이라 각 칸이 따로 스크롤된다. 페이지는 문서 스크롤을 쓴다. */
   fill?: boolean
 }
+
+/** 좌우로 이만큼 그어야 사진이 넘어간다(px) */
+const SWIPE_THRESHOLD = 60
+/** 이 이하로 움직이면 '탭'으로 본다(px) */
+const SWIPE_TAP_TOLERANCE = 10
 
 /**
  * 인스타그램 형태의 사진 상세 — 왼쪽에 사진, 오른쪽에 글쓴이·설명·댓글.
@@ -60,6 +67,9 @@ export default function PhotoPostView({
 
   useEffect(() => { onViewerOpenChange?.(viewerOpen) }, [viewerOpen, onViewerOpenChange])
 
+  // 앞뒤 게시글로 넘어가면 사진도 첫 장부터 — 지난 글의 3번째 장에서 이어지면 안 된다.
+  useEffect(() => { setImageIndex(0) }, [postId])
+
   const { images, captionHtml } = useMemo(() => {
     const split = splitPhotoContent(post?.contentSanitized)
     // 업로드된 첨부(images)가 정본이고, 본문에서 뽑은 주소는 옛 글을 위한 보완이다.
@@ -69,6 +79,43 @@ export default function PhotoPostView({
       captionHtml: split.captionHtml,
     }
   }, [post])
+
+  const showPrevImage = useCallback(() => {
+    setImageIndex((index) => (index - 1 + images.length) % images.length)
+  }, [images.length])
+  const showNextImage = useCallback(() => {
+    setImageIndex((index) => (index + 1) % images.length)
+  }, [images.length])
+
+  /**
+   * 모바일 좌우 스와이프로 사진을 넘긴다 — 화살표는 손가락으로 누르기엔 작다.
+   * 세로로 그은 손짓은 그대로 두어 페이지 스크롤을 막지 않고, 스와이프로 끝난
+   * 손짓은 탭으로 세지 않는다(뷰어가 딸려 열리는 것을 막는다).
+   */
+  const swipe = useRef({ startX: 0, startY: 0, dx: 0, horizontal: false, moved: false })
+
+  const handleTouchStart = useCallback((event: TouchEvent<HTMLElement>) => {
+    const touch = event.touches[0]
+    swipe.current = { startX: touch.clientX, startY: touch.clientY, dx: 0, horizontal: false, moved: false }
+  }, [])
+
+  const handleTouchMove = useCallback((event: TouchEvent<HTMLElement>) => {
+    const state = swipe.current
+    const touch = event.touches[0]
+    const dx = touch.clientX - state.startX
+    const dy = touch.clientY - state.startY
+    state.dx = dx
+    if (Math.abs(dx) > SWIPE_TAP_TOLERANCE || Math.abs(dy) > SWIPE_TAP_TOLERANCE) state.moved = true
+    if (Math.abs(dx) > Math.abs(dy)) state.horizontal = true
+  }, [])
+
+  const handleTouchEnd = useCallback(() => {
+    const state = swipe.current
+    if (images.length <= 1 || !state.horizontal) return
+    if (Math.abs(state.dx) <= SWIPE_THRESHOLD) return
+    if (state.dx < 0) showNextImage()
+    else showPrevImage()
+  }, [images.length, showNextImage, showPrevImage])
 
   const handleShare = useCallback(async () => {
     try {
@@ -153,12 +200,15 @@ export default function PhotoPostView({
           'relative flex items-center justify-center bg-neutral-950',
           fill ? 'min-h-0 max-lg:max-h-[52vh]' : 'max-h-[76vh] min-h-[40vh]',
         ].join(' ')}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
         {currentImage ? (
           // 사진을 누르면 확대·이동이 되는 이미지 뷰어로 넘어간다.
           <button
             type="button"
-            onClick={() => setViewerOpen(true)}
+            onClick={() => { if (!swipe.current.moved) setViewerOpen(true) }}
             aria-label={t('photoGallery.openViewer')}
             className="flex h-full w-full cursor-zoom-in items-center justify-center"
           >
@@ -177,7 +227,7 @@ export default function PhotoPostView({
           <>
             <button
               type="button"
-              onClick={() => setImageIndex((index) => (index - 1 + images.length) % images.length)}
+              onClick={showPrevImage}
               aria-label={t('common.imageViewer.previous')}
               className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/45 p-2 text-white hover:bg-black/70"
             >
@@ -185,18 +235,27 @@ export default function PhotoPostView({
             </button>
             <button
               type="button"
-              onClick={() => setImageIndex((index) => (index + 1) % images.length)}
+              onClick={showNextImage}
               aria-label={t('common.imageViewer.next')}
               className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/45 p-2 text-white hover:bg-black/70"
             >
               ›
             </button>
+            {/* 점을 눌러도 그 장으로 간다 — 스와이프가 안 되는 마우스 환경의 지름길 */}
             <span className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5">
               {images.map((image, index) => (
-                <span
+                <button
                   key={image}
-                  className={`h-1.5 w-1.5 rounded-full ${index === imageIndex ? 'bg-white' : 'bg-white/40'}`}
-                />
+                  type="button"
+                  onClick={() => setImageIndex(index)}
+                  aria-label={t('common.imageViewer.goTo', { number: index + 1 })}
+                  aria-current={index === imageIndex}
+                  className="p-1"
+                >
+                  <span
+                    className={`block h-1.5 w-1.5 rounded-full ${index === imageIndex ? 'bg-white' : 'bg-white/40'}`}
+                  />
+                </button>
               ))}
             </span>
           </>
@@ -435,11 +494,12 @@ export default function PhotoPostView({
           <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
             <h3 className="mb-3 text-base font-semibold text-neutral-900">{t('post.report')}</h3>
             <p className="mb-3 text-sm text-neutral-500">{t('post.reportReason')}</p>
-            <textarea
+            <AutoGrowTextarea
               value={reportReason}
               onChange={(event) => setReportReason(event.target.value)}
               rows={3}
-              className="w-full resize-none rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-300"
+              maxLength={500}
+              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-300"
               placeholder={t('comment.reportPlaceholder')}
             />
             <div className="mt-4 flex gap-2">
