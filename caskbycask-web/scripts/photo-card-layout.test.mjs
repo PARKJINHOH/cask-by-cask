@@ -31,6 +31,9 @@ const {
 
 const { buildPhotoCardDraft } = await import('../src/domain/photo-card/utils/photoCardDraft.ts')
 
+const { buildDraftContent, parseDraftContent } =
+  await import('../src/domain/photo-card/utils/photoCardServerDraft.ts')
+
 const { alignLayers, applySnap, collectSnapTargets, distributeLayers } =
   await import('../src/domain/photo-card/utils/photoCardSnap.ts')
 
@@ -853,6 +856,41 @@ describe('비회원 저장본 · 임시저장', () => {
     })
     assert.equal(draft.photo, null)
     assert.equal(draft.photoName, null)
+  })
+
+  test('서버 임시저장을 되살려도 촬영 시각은 Date 로 돌아온다', () => {
+    // JSON 에는 Date 가 없다. 문자열인 채로 편집기에 얹히면 촬영일을 넣은 카드가
+    // 되살아나는 순간 그리기가 터져 편집기 전체가 에러 화면으로 바뀐다.
+    const exif = {
+      cameraMake: 'SONY', cameraModel: 'ILCE-7CM2', lensModel: null,
+      aperture: 1.8, shutterSpeed: 0.008, iso: 400, focalLength: 35, focalLength35: 35,
+      latitude: null, longitude: null, shotAt: new Date(2026, 7, 7, 22, 22),
+    }
+    const restored = parseDraftContent(buildDraftContent({
+      layout: defaultPhotoCardLayout(),
+      photoTransform: { scale: 1, offsetX: 0, offsetY: 0 },
+      exif, spirit: null,
+      userInput: { place: '', memo: '', date: '' },
+      photoFile: null,
+    }))
+
+    assert.ok(restored.exif.shotAt instanceof Date, 'JSON 을 거쳐도 Date 여야 한다')
+    assert.equal(restored.exif.shotAt.getTime(), exif.shotAt.getTime())
+    assert.equal(
+      resolveBindingValue('EXIF_SHOT_AT', { ...restored, user: restored.user }),
+      formatShotAt(exif.shotAt),
+    )
+  })
+
+  test('촬영 시각이 문자열로 남아 있어도 그리기는 멈추지 않는다', () => {
+    // 되살리는 쪽이 놓쳐도 카드 한 줄이 비는 데서 그쳐야 한다 — 예외는 화면 전체를 날린다.
+    const iso = '2026-08-07T13:22:41.000Z'
+    const context = {
+      exif: { cameraMake: null, cameraModel: null, lensModel: null, shotAt: iso },
+      spirit: null, review: null, user: { place: '', memo: '', date: '' },
+    }
+    assert.equal(resolveBindingValue('EXIF_SHOT_AT', context), formatShotAt(new Date(iso)))
+    assert.equal(formatShotAt('알 수 없는 값'), '')
   })
 })
 

@@ -135,10 +135,19 @@ export const formatFocalLength = (value: number | null): string =>
 export const formatFocalLength35 = (value: number | null): string =>
   value ? `${Math.round(value)}mm` : ''
 
-export const formatShotAt = (value: Date | null): string => {
+/**
+ * "2026.08.07" — Date 가 아닌 값이 들어와도 받는다.
+ *
+ * 이 함수는 캔버스를 그리는 <b>도중에</b> 불린다. 여기서 예외가 나면 카드 하나가 덜 그려지는 것이
+ * 아니라 편집기 화면 전체가 에러 화면으로 바뀐다(전역 ErrorBoundary). 촬영 시각은 JSON 을
+ * 거치면 문자열로 돌아오는 값이라(서버 임시저장), 되살리는 쪽이 놓쳐도 그리기는 이어져야 한다.
+ */
+export const formatShotAt = (value: Date | string | number | null): string => {
   if (!value) return ''
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
   const pad = (n: number) => String(n).padStart(2, '0')
-  return `${value.getFullYear()}.${pad(value.getMonth() + 1)}.${pad(value.getDate())}`
+  return `${date.getFullYear()}.${pad(date.getMonth() + 1)}.${pad(date.getDate())}`
 }
 
 /**

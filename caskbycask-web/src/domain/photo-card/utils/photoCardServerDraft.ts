@@ -77,13 +77,30 @@ export const buildDraftContent = (source: {
   photoName: source.photoFile?.name ?? null,
 } satisfies PhotoCardDraftContent)
 
+/**
+ * JSON 을 거치며 문자열이 된 촬영 시각을 Date 로 되돌린다.
+ *
+ * {@link PhotoExif}.shotAt 은 Date 인데 JSON 에는 Date 가 없다 — 저장할 때 ISO 문자열이 되고,
+ * 그대로 편집기에 얹으면 촬영일을 넣어 둔 카드가 되살아나는 <b>순간</b> 그리기가 터진다
+ * (문자열에는 getFullYear 가 없다). 브라우저 임시저장은 구조화 복제라 Date 가 그대로 살아 오므로
+ * 이 문제가 없다 — JSON 을 쓰는 이쪽만 되돌려 놓아야 양쪽이 같은 값을 다루게 된다.
+ */
+const reviveExif = (exif: PhotoExif | null | undefined): PhotoExif | null => {
+  if (!exif) return null
+  // 타입은 Date 지만 JSON 에서 막 나온 실제 값은 문자열이다.
+  const raw = exif.shotAt as Date | string | null
+  if (raw == null) return { ...exif, shotAt: null }
+  const shotAt = raw instanceof Date ? raw : new Date(raw)
+  return { ...exif, shotAt: Number.isNaN(shotAt.getTime()) ? null : shotAt }
+}
+
 /** 서버에서 받은 문자열을 되살릴 수 있는 모양인지 확인한다. 아니면 null — 없는 셈 친다. */
 export const parseDraftContent = (json: string | null | undefined): PhotoCardDraftContent | null => {
   if (!json) return null
   try {
     const parsed = JSON.parse(json) as Partial<PhotoCardDraftContent>
     if (parsed.version !== CONTENT_VERSION || !parsed.layout) return null
-    return parsed as PhotoCardDraftContent
+    return { ...parsed, exif: reviveExif(parsed.exif) } as PhotoCardDraftContent
   } catch {
     return null
   }
