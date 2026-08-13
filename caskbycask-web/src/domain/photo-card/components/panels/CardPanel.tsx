@@ -6,7 +6,7 @@ import {
 } from '../../constants/photoCardRatios'
 import type { PhotoCardEditor } from '../../hooks/usePhotoCardEditor'
 import type { PhotoCardPadding } from '../../types/photoCard.types'
-import { PHOTO_CARD_MAX_BOTTOM_EXTEND, PHOTO_CARD_MAX_EXTEND } from '../../utils/layoutSchema'
+import { PHOTO_CARD_MAX_EXTEND } from '../../utils/layoutSchema'
 import { ColorField, NumberField, PanelButton, Section, SliderField } from './controls'
 
 type ExtendSide = keyof PhotoCardPadding
@@ -145,7 +145,7 @@ export default function CardPanel({ editor }: { editor: PhotoCardEditor }) {
               label={t(side.labelKey)}
               suffix="px"
               min={0}
-              max={toPx(side.key === 'bottom' ? PHOTO_CARD_MAX_BOTTOM_EXTEND : PHOTO_CARD_MAX_EXTEND)}
+              max={toPx(PHOTO_CARD_MAX_EXTEND)}
               step={10}
               value={toPx(extend[side.key] ?? 0)}
               onChange={(value) => setExtend(side.key, value)}

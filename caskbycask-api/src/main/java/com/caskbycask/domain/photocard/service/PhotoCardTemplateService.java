@@ -44,11 +44,10 @@ import java.util.regex.Pattern;
 public class PhotoCardTemplateService {
 
     /** 레이아웃 스키마 버전. 구조를 바꾸면 올리고 마이그레이션 규칙을 함께 넣는다. */
-    public static final int SCHEMA_VERSION = 3;
+    public static final int SCHEMA_VERSION = 1;
 
-    private static final int MAX_LAYERS = 64;
-    /** 리뷰 전문처럼 긴 글도 담을 수 있는 길이. 프론트 PHOTO_CARD_MAX_TEXT_LENGTH 와 같아야 한다. */
-    private static final int MAX_TEXT_LENGTH = 600;
+    private static final int MAX_LAYERS = 24;
+    private static final int MAX_TEXT_LENGTH = 200;
     private static final int MAX_TEMPLATES_PER_USER = 30;
     private static final double MIN_FONT_SIZE_RATIO = 0.005;
     private static final double MAX_FONT_SIZE_RATIO = 0.30;
@@ -57,8 +56,6 @@ public class PhotoCardTemplateService {
      * 프론트 {@code layoutSchema.ts} 의 PHOTO_CARD_MAX_EXTEND 와 같아야 한다.
      */
     private static final double MAX_EXTEND = 1.0;
-    /** 긴 리뷰 카드 전용으로 하단 방향은 더 길게 확장할 수 있다. */
-    private static final double MAX_BOTTOM_EXTEND = 3.0;
 
     private static final Pattern HEX_COLOR = Pattern.compile("^#[0-9a-fA-F]{6}$");
     /** 반투명을 허용하는 자리(박스 채움)는 8자리도 받는다. */
@@ -90,10 +87,7 @@ public class PhotoCardTemplateService {
             "calendar", "star", "heart", "barrel", "quote", "divider"
     );
     private static final Set<String> PHOTO_FITS = Set.of("COVER", "CONTAIN");
-    private static final Set<String> IMAGE_SOURCES = Set.of(
-            "PRODUCER_LOGO", "SPIRIT_IMAGE", "UPLOAD",
-            "REVIEW_AROMA_NOSE", "REVIEW_AROMA_TASTE", "REVIEW_AROMA_FINISH"
-    );
+    private static final Set<String> IMAGE_SOURCES = Set.of("PRODUCER_LOGO", "SPIRIT_IMAGE", "UPLOAD");
 
     /**
      * 프론트 {@code imageEditorText.ts} 의 TEXT_FONT_OPTIONS 와 같아야 한다.
@@ -449,7 +443,6 @@ public class PhotoCardTemplateService {
             throw invalid("카드 비율은 1:4 에서 4:1 사이여야 합니다.");
         }
         String background = requireHex(frame.backgroundColor(), "#ffffff", false);
-        String backgroundTexture = "PAPER".equalsIgnoreCase(frame.backgroundTexture()) ? "PAPER" : "NONE";
 
         PhotoCardLayout.Padding padding = frame.padding() != null ? frame.padding()
                 : new PhotoCardLayout.Padding(0.0, 0.0, 0.0, 0.0);
@@ -467,7 +460,7 @@ public class PhotoCardTemplateService {
             PhotoCardLayout.Padding clamped = new PhotoCardLayout.Padding(
                     ratio(extend.top(), 0.0, 0.0, MAX_EXTEND, "카드 크기"),
                     ratio(extend.right(), 0.0, 0.0, MAX_EXTEND, "카드 크기"),
-                    ratio(extend.bottom(), 0.0, 0.0, MAX_BOTTOM_EXTEND, "카드 크기"),
+                    ratio(extend.bottom(), 0.0, 0.0, MAX_EXTEND, "카드 크기"),
                     ratio(extend.left(), 0.0, 0.0, MAX_EXTEND, "카드 크기")
             );
             if (clamped.top() > 0 || clamped.right() > 0 || clamped.bottom() > 0 || clamped.left() > 0) {
@@ -490,7 +483,7 @@ public class PhotoCardTemplateService {
                 ratio(photo.h(), 1.0, 0.01, 1.0, "사진 크기")
         );
         return new PhotoCardLayout.Frame(
-                ratio, background, backgroundTexture,
+                ratio, background,
                 ratio(frame.radius(), 0.0, 0.0, 0.5, "카드 모서리"),
                 safePadding, safeExtend, safePhoto);
     }
@@ -544,10 +537,6 @@ public class PhotoCardTemplateService {
             throw invalid("사용할 수 없는 글꼴입니다.");
         }
         boolean outlineEnabled = Boolean.TRUE.equals(layer.outlineEnabled());
-        String textAlign = layer.textAlign() == null ? "CENTER" : layer.textAlign().toUpperCase(Locale.ROOT);
-        if (!Set.of("LEFT", "CENTER", "RIGHT").contains(textAlign)) {
-            textAlign = "CENTER";
-        }
         return PhotoCardLayout.Layer.text(
                 id, position, rotation, visible,
                 binding,
@@ -560,9 +549,7 @@ public class PhotoCardTemplateService {
                 requireHex(layer.outlineColor(), "#000000", false),
                 ratio(layer.outlineWidthRatio(), 0.0, 0.0, 0.05, "외곽선 굵기"),
                 layer.letterSpacing() != null ? clamp(layer.letterSpacing(), -0.5, 1.0) : null,
-                layer.lineHeight() != null ? clamp(layer.lineHeight(), 0.5, 3.0) : null,
-                textAlign,
-                layer.widthRatio() != null ? clamp(layer.widthRatio(), 0.05, 1.0) : null
+                layer.lineHeight() != null ? clamp(layer.lineHeight(), 0.5, 3.0) : null
         );
     }
 
