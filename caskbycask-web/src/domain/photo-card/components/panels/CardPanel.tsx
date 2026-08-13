@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  designBaseSizeOf, PHOTO_CARD_DESIGN_SHORT_SIDE, PHOTO_CARD_RATIOS,
+  designBaseSizeOf, formatRatio, parseRatio,
+  PHOTO_CARD_DESIGN_SHORT_SIDE, PHOTO_CARD_MAX_RATIO_SIDE, PHOTO_CARD_RATIOS,
 } from '../../constants/photoCardRatios'
 import type { PhotoCardEditor } from '../../hooks/usePhotoCardEditor'
 import type { PhotoCardPadding } from '../../types/photoCard.types'
@@ -35,6 +36,26 @@ export default function CardPanel({ editor }: { editor: PhotoCardEditor }) {
   const cardWidth = base.width + toPx(extend.left) + toPx(extend.right)
   const cardHeight = base.height + toPx(extend.top) + toPx(extend.bottom)
 
+  /** 올려 둔 사진의 비율. 사진이 없으면 맞출 대상이 없다. */
+  const photoRatio = editor.photoImage
+    ? formatRatio(editor.photoImage.naturalWidth, editor.photoImage.naturalHeight)
+    : null
+
+  /**
+   * 직접 적는 비율.
+   *
+   * 적는 동안에는 카드를 건드리지 않고 여기에만 담아 둔다 — 한 글자마다 비율이 바뀌면
+   * "16" 을 적는 사이에 1:9 로 한 번, 16:9 로 또 한 번 요소가 재배치된다.
+   * 중간 비율을 거쳐 옮겨진 요소는 곧바로 16:9 로 갔을 때와 자리가 다르다.
+   */
+  const [ratioDraft, setRatioDraft] = useState(() => parseRatio(frame.ratio) ?? { width: 4, height: 5 })
+  useEffect(() => {
+    const parsed = parseRatio(frame.ratio)
+    if (parsed) setRatioDraft(parsed)
+  }, [frame.ratio])
+  // 적은 그대로가 아니라 정리된 값(8:10 → 4:5, 상·하한 밖은 잘라 낸 값)이 카드에 들어간다.
+  const draftRatio = formatRatio(ratioDraft.width, ratioDraft.height)
+
   const setExtend = (side: ExtendSide, px: number) => {
     const value = toRatio(px)
     editor.setFrameExtend(
@@ -44,7 +65,7 @@ export default function CardPanel({ editor }: { editor: PhotoCardEditor }) {
 
   return (
     <div className="space-y-5">
-      <Section title={t('photoCard.ratio')}>
+      <Section title={t('photoCard.ratio')} hint={t('photoCard.ratioHint')}>
         <div className="grid grid-cols-5 gap-1">
           {PHOTO_CARD_RATIOS.map((ratio) => (
             <button
@@ -62,6 +83,43 @@ export default function CardPanel({ editor }: { editor: PhotoCardEditor }) {
             </button>
           ))}
         </div>
+
+        <p className="flex justify-between text-[11px] font-medium text-neutral-500">
+          {t('photoCard.ratioCurrent')}
+          <span className="font-mono text-neutral-600">{frame.ratio}</span>
+        </p>
+
+        {/* 사진에 맞춤 — 액자(사진 도구의 '사진에 맞춤')가 아니라 카드 자체를 사진 비율로 만든다.
+            사방에 띠가 남지 않는 대신 아래 정보 밴드 자리도 없어진다. */}
+        <PanelButton
+          onClick={() => { if (photoRatio) editor.changeRatio(photoRatio) }}
+          disabled={!photoRatio || photoRatio === frame.ratio}
+        >
+          {photoRatio ? `${t('photoCard.ratioFitPhoto')} · ${photoRatio}` : t('photoCard.ratioFitPhoto')}
+        </PanelButton>
+
+        <div className="grid grid-cols-2 gap-2">
+          <NumberField
+            label={t('photoCard.ratioWidth')}
+            min={1}
+            max={PHOTO_CARD_MAX_RATIO_SIDE}
+            value={ratioDraft.width}
+            onChange={(width) => setRatioDraft((current) => ({ ...current, width }))}
+          />
+          <NumberField
+            label={t('photoCard.ratioHeight')}
+            min={1}
+            max={PHOTO_CARD_MAX_RATIO_SIDE}
+            value={ratioDraft.height}
+            onChange={(height) => setRatioDraft((current) => ({ ...current, height }))}
+          />
+        </div>
+        <PanelButton
+          onClick={() => { if (draftRatio) editor.changeRatio(draftRatio) }}
+          disabled={!draftRatio || draftRatio === frame.ratio}
+        >
+          {draftRatio ? `${t('photoCard.ratioApply')} · ${draftRatio}` : t('photoCard.ratioApply')}
+        </PanelButton>
       </Section>
 
       {/* 카드 크기 — 비율 프리셋 바깥으로 카드를 넓힌다.

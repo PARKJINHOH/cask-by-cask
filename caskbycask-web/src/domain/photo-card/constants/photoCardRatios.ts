@@ -1,7 +1,7 @@
-import type { PhotoCardRatio } from '../types/photoCard.types'
+import type { PhotoCardRatio, PhotoCardRatioPreset } from '../types/photoCard.types'
 
-/** 프레임 비율 — 백엔드 PhotoCardTemplateService.RATIOS 와 같아야 한다. */
-export const PHOTO_CARD_RATIOS: { value: PhotoCardRatio; label: string; hintKey: string }[] = [
+/** 비율 프리셋 — 카드 도구의 단추가 되는 값들. */
+export const PHOTO_CARD_RATIOS: { value: PhotoCardRatioPreset; label: string; hintKey: string }[] = [
   { value: '1:1', label: '1:1', hintKey: 'photoCard.ratioSquare' },
   { value: '4:5', label: '4:5', hintKey: 'photoCard.ratioInstagram' },
   { value: '3:4', label: '3:4', hintKey: 'photoCard.ratioPortrait' },
@@ -9,15 +9,72 @@ export const PHOTO_CARD_RATIOS: { value: PhotoCardRatio; label: string; hintKey:
   { value: '16:9', label: '16:9', hintKey: 'photoCard.ratioWide' },
 ]
 
-const RATIO_VALUES: Record<PhotoCardRatio, number> = {
-  '1:1': 1,
-  '4:5': 4 / 5,
-  '3:4': 3 / 4,
-  '9:16': 9 / 16,
-  '16:9': 16 / 9,
+/**
+ * 비율의 상·하한 — 프리셋 바깥의 값(사진에 맞춤·직접 입력)도 이 사이여야 한다.
+ * 백엔드 PhotoCardTemplateService 의 MIN/MAX_RATIO_VALUE 와 같아야 한다.
+ *
+ * 파노라마 사진을 그대로 받으면 짧은 변이 몇십 px 로 줄어 글자를 얹을 수 없고,
+ * 내보내기도 한 변만 4096px 인 띠가 된다. 4:1 은 21:9 파노라마까지는 담는 폭이다.
+ */
+export const PHOTO_CARD_MIN_RATIO_VALUE = 0.25
+export const PHOTO_CARD_MAX_RATIO_VALUE = 4
+/** 비율 한 변의 최대 숫자. 백엔드 aspect_ratio 열(varchar 12)에 넉넉히 들어간다. */
+export const PHOTO_CARD_MAX_RATIO_SIDE = 9999
+
+/** 백엔드 RATIO_PATTERN 과 같아야 한다. */
+const RATIO_PATTERN = /^([1-9]\d{0,3}):([1-9]\d{0,3})$/
+
+const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value))
+
+const clampRatioValue = (value: number) =>
+  clamp(value, PHOTO_CARD_MIN_RATIO_VALUE, PHOTO_CARD_MAX_RATIO_VALUE)
+
+const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b))
+
+/** `가로:세로` 를 두 수로. 형식이 어긋나면 null — 옛 템플릿의 알 수 없는 값도 여기서 걸린다. */
+export const parseRatio = (ratio: PhotoCardRatio): { width: number; height: number } | null => {
+  const match = RATIO_PATTERN.exec(String(ratio).trim())
+  return match ? { width: Number(match[1]), height: Number(match[2]) } : null
 }
 
-export const ratioValue = (ratio: PhotoCardRatio): number => RATIO_VALUES[ratio] ?? 1
+/**
+ * 두 수를 비율 문자열로. 최대공약수로 줄여 4032×3024 가 `4:3` 으로 떨어진다 —
+ * `1333:1000` 처럼 적혀 있으면 지금 카드가 어떤 비율인지 읽어 낼 수 없다.
+ *
+ * 상·하한을 벗어나거나 줄이고도 네 자리를 넘으면 짧은 변을 1000 으로 두고 다시 만든다.
+ */
+export const formatRatio = (width: number, height: number): PhotoCardRatio | null => {
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return null
+
+  const aspect = width / height
+  const clamped = clampRatioValue(aspect)
+  let w = Math.round(width)
+  let h = Math.round(height)
+
+  const rebuild = () => {
+    w = clamped >= 1 ? Math.round(1000 * clamped) : 1000
+    h = clamped >= 1 ? 1000 : Math.round(1000 / clamped)
+  }
+  if (clamped !== aspect || w < 1 || h < 1) rebuild()
+
+  const reduce = () => {
+    const divisor = gcd(w, h) || 1
+    w = Math.max(1, Math.round(w / divisor))
+    h = Math.max(1, Math.round(h / divisor))
+  }
+  reduce()
+  if (w > PHOTO_CARD_MAX_RATIO_SIDE || h > PHOTO_CARD_MAX_RATIO_SIDE) {
+    rebuild()
+    reduce()
+  }
+  return `${w}:${h}`
+}
+
+/** 비율 값(가로÷세로). 형식이 어긋나면 정사각으로 본다. */
+export const ratioValue = (ratio: PhotoCardRatio): number => {
+  const parsed = parseRatio(ratio)
+  return parsed ? clampRatioValue(parsed.width / parsed.height) : 1
+}
 
 /**
  * 카드 크기를 px 로 <b>보여 줄 때</b>의 기준 짧은 변.

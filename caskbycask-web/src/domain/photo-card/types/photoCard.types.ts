@@ -1,8 +1,17 @@
 // 백엔드 `domain/photocard/dto/PhotoCardLayout.java` 와 1:1 로 유지한다.
 // 한쪽만 바꾸면 저장은 되는데 화면이 깨지거나, 저장 단계에서 400 이 난다.
 
-/** 프레임 비율. 백엔드 PhotoCardTemplateService.RATIOS 와 같아야 한다. */
-export type PhotoCardRatio = '1:1' | '4:5' | '3:4' | '9:16' | '16:9'
+/** 카드 도구에 프리셋 단추로 놓이는 비율. */
+export type PhotoCardRatioPreset = '1:1' | '4:5' | '3:4' | '9:16' | '16:9'
+
+/**
+ * 프레임 비율 — `가로:세로` 꼴의 문자열.
+ *
+ * 프리셋 말고 사진에 맞춘 값(예: `3:2`)이나 직접 적은 값도 들어온다.
+ * 형식·범위는 백엔드 PhotoCardTemplateService.RATIO_PATTERN 과 같아야 한다.
+ * `string & {}` 를 함께 두는 것은 임의의 문자열을 받으면서도 프리셋 자동완성을 남기기 위해서다.
+ */
+export type PhotoCardRatio = PhotoCardRatioPreset | (string & {})
 
 export type PhotoCardLayerType = 'TEXT' | 'IMAGE' | 'DIVIDER' | 'BOX' | 'ICON'
 

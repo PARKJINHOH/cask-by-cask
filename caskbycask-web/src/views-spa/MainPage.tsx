@@ -249,21 +249,24 @@ function RecentReviewCarousel({ reviews }: { reviews: RecentReviewItem[] }) {
 
         return (
           <div key={review.id} className="flex-shrink-0 w-32 sm:w-36 lg:w-44">
+            {/* 카드 모양·hover 는 바로 위 '최근 등록된 술'(SpiritCard)과 같아야 한다 —
+                같은 폭의 캐러셀이 위아래로 붙어 있어 비율이나 그림자가 다르면 두 줄이 어긋나 보인다.
+                술 카드는 사진을 object-contain 으로 담을 때 확대하지 않는다(여백째로 커져 어색하다). */}
             <Link
               to={`/reviews/${review.id}`}
               title={name}
-              className="group block h-full overflow-hidden rounded-xl border border-neutral-200 bg-white
-                transition-all duration-200 hover:border-neutral-300 hover:shadow-md
-                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+              className="group block h-full overflow-hidden rounded-2xl bg-white shadow-sm
+                transition-all duration-300 ease-out hover:shadow-xl
+                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500"
             >
-              <div className="aspect-square w-full overflow-hidden bg-white">
+              <div className="aspect-[3/4] w-full overflow-hidden bg-white">
                 {review.imageUrl ? (
                   <img
                     src={review.imageUrl}
                     alt=""
                     loading="lazy"
                     draggable="false"
-                    className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
+                    className="h-full w-full object-contain transition-transform duration-300"
                   />
                 ) : (
                   <div
@@ -282,25 +285,27 @@ function RecentReviewCarousel({ reviews }: { reviews: RecentReviewItem[] }) {
                 )}
               </div>
 
+              {/* 정보 줄도 술 카드와 같은 짜임 — 이름 옆에 점수, 그 아래 한 줄에 나머지.
+                  이름은 두 줄 자리(min-h-9)를 늘 잡아 둬야 한 줄짜리 카드와 아래 줄 높이가 맞는다. */}
               <div className="px-2.5 py-2">
-                <p className="line-clamp-2 min-h-[2.25rem] break-keep text-xs font-medium leading-snug
-                  text-neutral-800 transition-colors group-hover:text-primary-800">
-                  {name}
-                </p>
-                <div className="mt-1.5 flex items-center justify-between gap-1">
+                <div className="flex items-start justify-between gap-1.5">
+                  <p className="line-clamp-2 min-h-9 min-w-0 break-keep text-sm font-semibold
+                    leading-[1.125rem] text-neutral-900">
+                    {name}
+                  </p>
                   <span
-                    className="text-sm font-bold"
+                    className="flex-shrink-0 text-xs font-bold"
                     style={{ color: scoreColor(totalScore) }}
                   >
                     {totalScore.toFixed(1)}
                   </span>
-                  <span className="truncate text-[11px] text-neutral-400" title={review.nickname}>
-                    {review.nickname}
+                </div>
+                <div className="mt-1 flex items-center justify-between gap-1.5 text-xs text-neutral-500">
+                  <span className="truncate" title={review.nickname}>{review.nickname}</span>
+                  <span className="flex-shrink-0 text-neutral-400">
+                    {formatBoardDate(review.createdAt)}
                   </span>
                 </div>
-                <p className="mt-0.5 text-[11px] text-neutral-400">
-                  {formatBoardDate(review.createdAt)}
-                </p>
               </div>
             </Link>
           </div>

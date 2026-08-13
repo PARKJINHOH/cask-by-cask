@@ -15,13 +15,20 @@ import { useTouchInput } from '@/shared/tiptap/pointerMode'
 /** 이만큼(px) 가로로 움직이기 전에는 슬라이더를 끄는 것으로 보지 않는다. */
 const TOUCH_DRAG_THRESHOLD = 6
 
+/**
+ * 속성 한 묶음.
+ *
+ * 묶음 사이에는 가로 선을 긋는다 — 패널 하나에 슬라이더가 열 개 넘게 이어지면
+ * 제목 글자만으로는 '카드 크기'가 어디서 끝나고 '배경'이 어디서 시작하는지 눈에 들어오지 않는다.
+ * 맨 위 묶음에는 긋지 않는다(패널 꼭대기에 줄 하나가 떠 있는 것처럼 보인다).
+ */
 export function Section({ title, hint, children }: {
   title: string
   hint?: string
   children: ReactNode
 }) {
   return (
-    <section className="space-y-2.5">
+    <section className="space-y-2.5 border-t border-neutral-200 pt-4 first:border-t-0 first:pt-0">
       <h3 className="text-xs font-semibold text-neutral-500">{title}</h3>
       {children}
       {hint && <p className="text-[11px] font-medium leading-relaxed text-neutral-500">{hint}</p>}
@@ -177,7 +184,8 @@ export function NumberField({
   suffix?: string
   disabled?: boolean
   onChange: (value: number) => void
-  onCommit: () => void
+  /** 값이 곧바로 레이아웃에 반영되지 않는 칸(적용 단추가 따로 있는 경우)은 끊을 gesture 가 없다. */
+  onCommit?: () => void
 }) {
   const inputId = useId()
   /** 적는 중인 글자. null 이면 확정된 값을 그대로 보여 준다. */
@@ -217,7 +225,7 @@ export function NumberField({
   const endHold = () => {
     if (!holdRef.current.timeout && !holdRef.current.interval) return
     stopHold()
-    onCommit()
+    onCommit?.()
   }
 
   const stepButton = (delta: number, glyph: string, atLimit: boolean) => (
@@ -264,7 +272,7 @@ export function NumberField({
             if (digits === '') return
             onChange(clamp(Number(text)))
           }}
-          onBlur={() => { setDraft(null); onCommit() }}
+          onBlur={() => { setDraft(null); onCommit?.() }}
           className="h-10 min-w-0 flex-1 rounded-lg border border-neutral-300 px-1 text-center text-xs font-semibold text-neutral-700"
         />
         {stepButton(step, '+', value >= max)}

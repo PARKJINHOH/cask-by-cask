@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -60,7 +61,21 @@ public class PhotoCardTemplateService {
     /** 반투명을 허용하는 자리(박스 채움)는 8자리도 받는다. */
     private static final Pattern HEX_COLOR_ALPHA = Pattern.compile("^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$");
 
-    private static final Set<String> RATIOS = Set.of("1:1", "4:5", "3:4", "9:16", "16:9");
+    /**
+     * 카드 비율 — {@code 가로:세로}.
+     * <p>
+     * 프리셋(1:1·4:5·3:4·9:16·16:9) 말고 사진에 맞춘 값·직접 적은 값도 온다. 형식만 맞으면 받고
+     * 범위로 한 번 더 거른다. 네 자리까지만 받는 것은 {@code aspect_ratio} 열(varchar 12) 때문이다.
+     * 프론트 {@code photoCardRatios.ts} 의 RATIO_PATTERN 과 같아야 한다.
+     */
+    private static final Pattern RATIO_PATTERN = Pattern.compile("^([1-9]\\d{0,3}):([1-9]\\d{0,3})$");
+    /**
+     * 비율 상·하한. 프론트 PHOTO_CARD_MIN/MAX_RATIO_VALUE 와 같아야 한다.
+     * 파노라마를 그대로 받으면 짧은 변이 글자를 얹을 수 없을 만큼 줄어든다.
+     */
+    private static final double MIN_RATIO_VALUE = 0.25;
+    private static final double MAX_RATIO_VALUE = 4.0;
+
     private static final Set<String> LAYER_TYPES = Set.of("TEXT", "IMAGE", "DIVIDER", "BOX", "ICON");
 
     /**
@@ -418,9 +433,14 @@ public class PhotoCardTemplateService {
     }
 
     private PhotoCardLayout.Frame normalizeFrame(PhotoCardLayout.Frame frame) {
-        String ratio = frame.ratio();
-        if (ratio == null || !RATIOS.contains(ratio)) {
+        String ratio = frame.ratio() == null ? "" : frame.ratio().trim();
+        Matcher ratioMatch = RATIO_PATTERN.matcher(ratio);
+        if (!ratioMatch.matches()) {
             throw invalid("지원하지 않는 이미지 비율입니다.");
+        }
+        double ratioValue = Double.parseDouble(ratioMatch.group(1)) / Double.parseDouble(ratioMatch.group(2));
+        if (ratioValue < MIN_RATIO_VALUE || ratioValue > MAX_RATIO_VALUE) {
+            throw invalid("카드 비율은 1:4 에서 4:1 사이여야 합니다.");
         }
         String background = requireHex(frame.backgroundColor(), "#ffffff", false);
 
