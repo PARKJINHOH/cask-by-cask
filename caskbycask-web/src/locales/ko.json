@@ -688,6 +688,7 @@
       "divider": "또는",
       "naver": "네이버로 시작하기",
       "google": "구글로 시작하기",
+      "quickSignup": "3초 회원가입",
       "providerName": {
         "NAVER": "네이버",
         "GOOGLE": "구글"

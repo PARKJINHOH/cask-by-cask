@@ -688,6 +688,7 @@
       "divider": "or",
       "naver": "Continue with Naver",
       "google": "Continue with Google",
+      "quickSignup": "3-sec Sign Up",
       "providerName": {
         "NAVER": "Naver",
         "GOOGLE": "Google"

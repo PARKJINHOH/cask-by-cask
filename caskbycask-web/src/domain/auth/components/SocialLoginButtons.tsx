@@ -36,11 +36,14 @@ export default function SocialLoginButtons({ returnTo }: { returnTo?: string }) 
         type="button"
         onClick={() => handle('NAVER')}
         disabled={loading !== null}
-        className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#03C75A] px-4 py-2.5
+        className="relative flex w-full items-center justify-center gap-2 rounded-lg bg-[#03C75A] px-4 py-2.5
           text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
       >
         <span className="flex h-4 w-4 items-center justify-center font-bold leading-none">N</span>
-        {t('auth.social.naver')}
+        <span>{t('auth.social.naver')}</span>
+        <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 rounded bg-black/15 px-1.5 py-0.5 text-[11px] font-normal text-white/85">
+          {t('auth.social.quickSignup')}
+        </span>
       </button>
 
       {/* 구글 */}
@@ -48,7 +51,7 @@ export default function SocialLoginButtons({ returnTo }: { returnTo?: string }) 
         type="button"
         onClick={() => handle('GOOGLE')}
         disabled={loading !== null}
-        className="flex w-full items-center justify-center gap-2 rounded-lg border border-neutral-300 bg-white
+        className="relative flex w-full items-center justify-center gap-2 rounded-lg border border-neutral-300 bg-white
           px-4 py-2.5 text-sm font-semibold text-neutral-700 transition-colors hover:bg-neutral-50 disabled:opacity-50"
       >
         <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
@@ -57,7 +60,10 @@ export default function SocialLoginButtons({ returnTo }: { returnTo?: string }) 
           <path fill="#FBBC05" d="M5.84 14.1a6.6 6.6 0 0 1 0-4.2V7.06H2.18a11 11 0 0 0 0 9.88l3.66-2.84Z"/>
           <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38Z"/>
         </svg>
-        {t('auth.social.google')}
+        <span>{t('auth.social.google')}</span>
+        <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 rounded border border-neutral-200/60 bg-neutral-100 px-1.5 py-0.5 text-[11px] font-normal text-neutral-400">
+          {t('auth.social.quickSignup')}
+        </span>
       </button>
 
       {error && <p className="text-center text-xs text-danger-600">{error}</p>}
