@@ -16,8 +16,16 @@ export type PhotoCardRatio = PhotoCardRatioPreset | (string & {})
 export type PhotoCardLayerType = 'TEXT' | 'IMAGE' | 'DIVIDER' | 'BOX' | 'ICON'
 
 export type PhotoCardPhotoFit = 'COVER' | 'CONTAIN'
+export type PhotoCardTextAlign = 'LEFT' | 'CENTER' | 'RIGHT'
+export type PhotoCardBackgroundTexture = 'NONE' | 'PAPER'
 
-export type PhotoCardImageSource = 'PRODUCER_LOGO' | 'SPIRIT_IMAGE' | 'UPLOAD'
+export type PhotoCardImageSource =
+  | 'PRODUCER_LOGO'
+  | 'SPIRIT_IMAGE'
+  | 'UPLOAD'
+  | 'REVIEW_AROMA_NOSE'
+  | 'REVIEW_AROMA_TASTE'
+  | 'REVIEW_AROMA_FINISH'
 
 /**
  * 텍스트 레이어에 자동으로 채울 값의 출처.
@@ -43,9 +51,23 @@ export type PhotoCardBinding =
   | 'SPIRIT_VOLUME'
   | 'SPIRIT_VINTAGE'
   | 'SPIRIT_CATEGORY'
+  | 'SPIRIT_REGION'
+  | 'SPIRIT_DETAIL'
   | 'PRODUCER_NAME_KO'
   | 'PRODUCER_NAME_EN'
   | 'PRODUCER_COUNTRY'
+  | 'REVIEW_TOTAL_SCORE'
+  | 'REVIEW_NOSE_SCORE'
+  | 'REVIEW_TASTE_SCORE'
+  | 'REVIEW_FINISH_SCORE'
+  | 'REVIEW_NOSE_NOTE'
+  | 'REVIEW_TASTE_NOTE'
+  | 'REVIEW_FINISH_NOTE'
+  | 'REVIEW_OVERALL'
+  | 'REVIEW_AROMA_NOSE'
+  | 'REVIEW_AROMA_TASTE'
+  | 'REVIEW_AROMA_FINISH'
+  | 'REVIEW_ATTRIBUTION'
   | 'USER_PLACE'
   | 'USER_MEMO'
   | 'USER_DATE'
@@ -76,6 +98,8 @@ export interface PhotoCardPhoto {
 export interface PhotoCardFrame {
   ratio: PhotoCardRatio
   backgroundColor: string
+  /** 출력에도 동일하게 적용되는 카드 배경 질감 */
+  backgroundTexture?: PhotoCardBackgroundTexture
   /** 카드 전체 모서리 둥글기 — 짧은 변 대비 비율. PNG 로 뽑으면 잘린 모서리가 투명해진다. */
   radius: number
   padding: PhotoCardPadding
@@ -117,6 +141,7 @@ export interface PhotoCardLayer {
   outlineWidthRatio?: number
   letterSpacing?: number
   lineHeight?: number
+  textAlign?: PhotoCardTextAlign
 
   // ── ICON ─────────────────────────────
   /** photoCardIcons.ts 의 key */
@@ -127,7 +152,8 @@ export interface PhotoCardLayer {
   uploadUrl?: string | null
   opacity?: number
 
-  // ── IMAGE / DIVIDER / BOX ────────────
+  // ── TEXT / IMAGE / DIVIDER / BOX ─────
+  /** TEXT 에서는 자동 줄바꿈할 최대 폭, 나머지 타입에서는 요소 자체의 폭 */
   widthRatio?: number
   heightRatio?: number
   thicknessRatio?: number
@@ -218,6 +244,40 @@ export interface PhotoCardSpiritInfo {
   producerCountry: string
   producerLogoUrl: string | null
   spiritImageUrl: string | null
+  region?: string
+  detail?: string
+}
+
+/** 리뷰 공유 템플릿이 다른 리뷰에서도 같은 자리에 새 값을 채우기 위한 데이터. */
+export interface PhotoCardReviewInfo {
+  totalScore: string
+  noseScore: string
+  tasteScore: string
+  finishScore: string
+  noseNote: string
+  tasteNote: string
+  finishNote: string
+  overall: string
+  aromaNose: string
+  aromaTaste: string
+  aromaFinish: string
+  /**
+   * 편집기에서는 수치를 다시 편집하지 않고 이 값으로 레이더 이미지 레이어만 생성한다.
+   * 레이아웃에는 phase별 이미지 출처만 저장되므로 템플릿을 다른 리뷰에 적용하면 새 값으로 다시 그려진다.
+   */
+  aromaProfiles?: PhotoCardAromaProfile[]
+  attribution: string
+}
+
+export type PhotoCardAromaPhase = 'NOSE' | 'PALATE' | 'FINISH'
+
+export interface PhotoCardAromaProfile {
+  phase: PhotoCardAromaPhase
+  title: string
+  items: Array<{
+    label: string
+    intensity: number
+  }>
 }
 
 /** 사용자가 직접 적는 값 */
@@ -231,5 +291,6 @@ export interface PhotoCardUserInput {
 export interface PhotoCardDataContext {
   exif: PhotoExif | null
   spirit: PhotoCardSpiritInfo | null
+  review: PhotoCardReviewInfo | null
   user: PhotoCardUserInput
 }

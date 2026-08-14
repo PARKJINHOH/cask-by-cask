@@ -1,5 +1,6 @@
 import type {
   PhotoCardLayout,
+  PhotoCardReviewInfo,
   PhotoCardSpiritInfo,
   PhotoCardUserInput,
   PhotoExif,
@@ -22,6 +23,7 @@ export interface PhotoCardDraftContent {
   photoTransform: PhotoTransform
   exif: PhotoExif | null
   spirit: PhotoCardSpiritInfo | null
+  review?: PhotoCardReviewInfo | null
   user: PhotoCardUserInput
   /** 되살린 사진에 붙일 이름. 표시용일 뿐 편집에는 쓰이지 않는다. */
   photoName: string | null
@@ -65,6 +67,7 @@ export const buildDraftContent = (source: {
   photoTransform: PhotoTransform
   exif: PhotoExif | null
   spirit: PhotoCardSpiritInfo | null
+  review?: PhotoCardReviewInfo | null
   userInput: PhotoCardUserInput
   photoFile: File | null
 }): string => JSON.stringify({
@@ -73,6 +76,7 @@ export const buildDraftContent = (source: {
   photoTransform: { ...source.photoTransform },
   exif: source.exif,
   spirit: source.spirit,
+  review: source.review ?? null,
   user: { ...source.userInput },
   photoName: source.photoFile?.name ?? null,
 } satisfies PhotoCardDraftContent)
@@ -117,6 +121,7 @@ export const toRestorableDraft = (
   photoTransform: content.photoTransform,
   exif: content.exif ?? null,
   spirit: content.spirit ?? null,
+  review: content.review ?? null,
   user: content.user,
   photo,
   photoName: content.photoName,

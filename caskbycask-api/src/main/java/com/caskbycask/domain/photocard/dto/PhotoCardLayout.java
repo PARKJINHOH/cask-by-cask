@@ -32,6 +32,8 @@ public record PhotoCardLayout(
             String ratio,
             /** #rrggbb */
             String backgroundColor,
+            /** NONE | PAPER */
+            String backgroundTexture,
             /** 카드 전체 모서리 둥글기 — 짧은 변 대비 비율 */
             Double radius,
             Padding padding,
@@ -90,13 +92,15 @@ public record PhotoCardLayout(
             Double outlineWidthRatio,
             Double letterSpacing,
             Double lineHeight,
+            /** LEFT | CENTER | RIGHT */
+            String textAlign,
 
             // ── ICON ────────────────────────────
             /** 프론트 photoCardIcons.ts 의 key */
             String iconKey,
 
             // ── IMAGE ───────────────────────────
-            /** PRODUCER_LOGO | SPIRIT_IMAGE | UPLOAD */
+            /** PRODUCER_LOGO | SPIRIT_IMAGE | UPLOAD | REVIEW_AROMA_* */
             String source,
             String uploadUrl,
             Double opacity,
@@ -120,19 +124,20 @@ public record PhotoCardLayout(
                                  PhotoCardBinding binding, boolean overridden, String text,
                                  String fontKey, double fontSizeRatio, String color,
                                  boolean outlineEnabled, String outlineColor, double outlineWidthRatio,
-                                 Double letterSpacing, Double lineHeight) {
+                                 Double letterSpacing, Double lineHeight, String textAlign, Double widthRatio) {
             return new Layer(id, "TEXT", position, rotation, visible,
                     binding, overridden, text, fontKey, fontSizeRatio, color,
                     outlineEnabled, outlineColor, outlineWidthRatio, letterSpacing, lineHeight,
+                    textAlign,
                     null,
                     null, null, null,
-                    null, null, null, null, null, null, null);
+                    widthRatio, null, null, null, null, null, null);
         }
 
         public static Layer icon(String id, Position position, double rotation, boolean visible,
                                  String iconKey, double widthRatio, String fill, double opacity) {
             return new Layer(id, "ICON", position, rotation, visible,
-                    null, null, null, null, null, null, null, null, null, null, null,
+                    null, null, null, null, null, null, null, null, null, null, null, null,
                     iconKey,
                     null, null, opacity,
                     widthRatio, null, null, null, fill, null, null);
@@ -141,7 +146,7 @@ public record PhotoCardLayout(
         public static Layer image(String id, Position position, double rotation, boolean visible,
                                   String source, String uploadUrl, double opacity, double widthRatio) {
             return new Layer(id, "IMAGE", position, rotation, visible,
-                    null, null, null, null, null, null, null, null, null, null, null,
+                    null, null, null, null, null, null, null, null, null, null, null, null,
                     null,
                     source, uploadUrl, opacity,
                     widthRatio, null, null, null, null, null, null);
@@ -150,7 +155,7 @@ public record PhotoCardLayout(
         public static Layer divider(String id, Position position, double rotation, boolean visible,
                                     double widthRatio, double thicknessRatio, String fill) {
             return new Layer(id, "DIVIDER", position, rotation, visible,
-                    null, null, null, null, null, null, null, null, null, null, null,
+                    null, null, null, null, null, null, null, null, null, null, null, null,
                     null,
                     null, null, null,
                     widthRatio, null, thicknessRatio, null, fill, null, null);
@@ -160,7 +165,7 @@ public record PhotoCardLayout(
                                 double opacity, double widthRatio, double heightRatio, double radius,
                                 String fill, String strokeColor, double strokeWidthRatio) {
             return new Layer(id, "BOX", position, rotation, visible,
-                    null, null, null, null, null, null, null, null, null, null, null,
+                    null, null, null, null, null, null, null, null, null, null, null, null,
                     null,
                     null, null, opacity,
                     widthRatio, heightRatio, null, radius, fill, strokeColor, strokeWidthRatio);

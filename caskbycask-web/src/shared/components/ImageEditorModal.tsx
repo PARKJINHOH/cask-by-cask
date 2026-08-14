@@ -34,7 +34,6 @@ interface ImageEditorModalProps {
   isSaving: boolean
   fixedRatio?: string
   initialCropRatio?: string
-  initialMode?: EditMode
   outputSize?: {
     width: number
     height: number
@@ -44,6 +43,8 @@ interface ImageEditorModalProps {
     height: number
   }
   recommendedResolution?: string
+  /** 이 편집 흐름에서 권장하는 자르기 비율. 해당 버튼을 주황색으로 강조한다. */
+  recommendedCropRatio?: string
   showInstagramCropPreset?: boolean
   /**
    * 저장 포맷. **기본은 PNG 로 유지한다** — 배너·주류 이미지 등 투명도가 필요한 호출부가 있다.
@@ -91,6 +92,32 @@ function TextControls({
   const drawableCount = getDrawableTextLayers(layers).length
   const canApply = drawableCount > 0 && !isApplying
   const canAddLayer = layers.length < TEXT_LAYER_MAX
+  const [fontSizeDraft, setFontSizeDraft] = useState<string | null>(null)
+
+  useEffect(() => {
+    setFontSizeDraft(null)
+  }, [activeLayer.id])
+
+  const applyFontSize = (raw: string) => {
+    const value = Number(raw)
+    if (!Number.isFinite(value)) return
+    onChange({
+      fontSize: Math.max(TEXT_FONT_SIZE_MIN, Math.min(TEXT_FONT_SIZE_MAX, Math.round(value))),
+    })
+  }
+
+  const commitFontSize = () => {
+    if (fontSizeDraft?.trim()) applyFontSize(fontSizeDraft)
+    setFontSizeDraft(null)
+  }
+
+  const stepFontSize = (delta: number) => {
+    const draftValue = fontSizeDraft?.trim() ? Number(fontSizeDraft) : style.fontSize
+    const current = Number.isFinite(draftValue) ? draftValue : style.fontSize
+    const next = Math.max(TEXT_FONT_SIZE_MIN, Math.min(TEXT_FONT_SIZE_MAX, Math.round(current + delta)))
+    setFontSizeDraft(String(next))
+    onChange({ fontSize: next })
+  }
 
   return (
     <div className={compact ? 'flex flex-col gap-3' : 'space-y-4'}>
@@ -201,20 +228,52 @@ function TextControls({
             {t('imageEditor.fontSize')}
           </label>
           <div className="flex items-center gap-2">
-            <input
-              id={`${idPrefix}-size`}
-              type="number"
-              min={TEXT_FONT_SIZE_MIN}
-              max={TEXT_FONT_SIZE_MAX}
-              value={style.fontSize}
-              onChange={(event) => onChange({
-                fontSize: Math.max(
-                  TEXT_FONT_SIZE_MIN,
-                  Math.min(TEXT_FONT_SIZE_MAX, Number(event.target.value) || TEXT_FONT_SIZE_MIN),
-                ),
-              })}
-              className="min-w-0 flex-1 rounded-lg border border-neutral-700 bg-neutral-800 px-2 py-2 text-xs text-white focus:border-primary-500 focus:outline-none"
-            />
+            <div className="flex min-w-0 flex-1 overflow-hidden rounded-lg border border-neutral-700 bg-neutral-800 focus-within:border-primary-500">
+              <input
+                id={`${idPrefix}-size`}
+                type="number"
+                min={TEXT_FONT_SIZE_MIN}
+                max={TEXT_FONT_SIZE_MAX}
+                value={fontSizeDraft ?? style.fontSize}
+                onChange={(event) => {
+                  setFontSizeDraft(event.target.value)
+                  if (event.target.value.trim()) applyFontSize(event.target.value)
+                }}
+                onBlur={commitFontSize}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') event.currentTarget.blur()
+                }}
+                className="min-w-0 flex-1 appearance-none bg-transparent px-2 py-2 text-xs text-white outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              />
+              <span className="flex w-7 shrink-0 flex-col border-l border-neutral-700">
+                <button
+                  type="button"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => stepFontSize(1)}
+                  disabled={style.fontSize >= TEXT_FONT_SIZE_MAX}
+                  aria-label={t('imageEditor.increaseFontSize')}
+                  title={t('imageEditor.increaseFontSize')}
+                  className="flex flex-1 items-center justify-center border-b border-neutral-700 text-neutral-400 transition-colors hover:bg-neutral-700 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+                >
+                  <svg className="h-2.5 w-2.5" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="m3 7.5 3-3 3 3" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => stepFontSize(-1)}
+                  disabled={style.fontSize <= TEXT_FONT_SIZE_MIN}
+                  aria-label={t('imageEditor.decreaseFontSize')}
+                  title={t('imageEditor.decreaseFontSize')}
+                  className="flex flex-1 items-center justify-center text-neutral-400 transition-colors hover:bg-neutral-700 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+                >
+                  <svg className="h-2.5 w-2.5" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="m3 4.5 3 3 3-3" />
+                  </svg>
+                </button>
+              </span>
+            </div>
             <span className="text-[10px] text-neutral-500">px</span>
           </div>
         </div>
@@ -497,6 +556,7 @@ interface CropRatioOption {
   label: string
   value: string
   instagram?: boolean
+  recommended?: boolean
 }
 
 export default function ImageEditorModal({
@@ -507,10 +567,10 @@ export default function ImageEditorModal({
   isSaving,
   fixedRatio,
   initialCropRatio,
-  initialMode = 'paint',
   outputSize,
   fitOutputSize,
   recommendedResolution,
+  recommendedCropRatio,
   showInstagramCropPreset = false,
   outputFormat = 'image/png',
   outputQuality = 0.92,
@@ -763,7 +823,7 @@ export default function ImageEditorModal({
       }
     }
     img.src = imageSrc
-    setMode(initialMode)
+    setMode('paint')
     if (fixedRatio ?? initialCropRatio) {
       setCropRatio((fixedRatio ?? initialCropRatio)!)
     } else {
@@ -773,7 +833,7 @@ export default function ImageEditorModal({
     tiltBaseCanvasRef.current = null
     setAdjustValues(ADJUST_IDENTITY)
     adjustBaseCanvasRef.current = null
-  }, [open, imageSrc, fixedRatio, initialCropRatio, initialMode])
+  }, [open, imageSrc, fixedRatio, initialCropRatio])
 
   const handleCustomRatioChange = (w: string, h: string) => {
     setCustomRatioW(w)
@@ -1875,11 +1935,14 @@ export default function ImageEditorModal({
     { label: '4:3', value: '4:3' },
     { label: '3:4', value: '3:4' },
     { label: '9:16', value: '9:16' },
-    ...(showInstagramCropPreset
-      ? [{ label: '4:5', value: '4:5', instagram: true }]
+    ...(showInstagramCropPreset || recommendedCropRatio === '4:5'
+      ? [{ label: '4:5', value: '4:5', instagram: showInstagramCropPreset }]
       : []),
     { label: t('imageEditor.custom'), value: 'custom' },
-  ]
+  ].map((option) => ({
+    ...option,
+    recommended: option.value === recommendedCropRatio,
+  }))
 
   return (
     <Transition appear show={open} as={Fragment}>
@@ -2110,23 +2173,29 @@ export default function ImageEditorModal({
                                       setCropRatio(opt.value)
                                       setCropBox(getInitialCropBoxForRatio(opt.value))
                                     }}
-                                    aria-label={opt.instagram
-                                      ? `${opt.label}, ${t('imageEditor.instagramResolution')}`
-                                      : opt.label}
+                                    aria-label={opt.recommended
+                                      ? `${opt.label}, ${t('imageEditor.recommendedRatio')}`
+                                      : opt.instagram ? `${opt.label}, ${t('imageEditor.instagramResolution')}` : opt.label}
                                     className={`w-full py-2 px-3 text-xs rounded-xl border transition-all duration-150 ${
-                                      cropRatio === opt.value
+                                      opt.recommended && cropRatio === opt.value
+                                        ? 'bg-amber-950/45 border-amber-400 text-amber-100 font-bold ring-1 ring-amber-400/60 shadow-md shadow-amber-950/20'
+                                        : opt.recommended
+                                          ? 'bg-amber-950/20 border-amber-500/90 text-amber-200 hover:bg-amber-950/35 font-semibold'
+                                          : cropRatio === opt.value
                                         ? 'bg-neutral-700 border-neutral-600 text-white font-medium shadow-md shadow-neutral-950/20'
                                         : 'bg-neutral-800/50 border-neutral-700 hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200'
                                     }`}
                                   >
                                     {opt.label}
                                   </button>
-                                  {opt.instagram && (
+                                  {(opt.recommended || opt.instagram) && (
                                     <span
                                       role="tooltip"
                                       className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-white px-2.5 py-1.5 text-[10px] font-semibold text-neutral-800 opacity-0 shadow-lg transition-opacity after:absolute after:left-1/2 after:top-full after:-translate-x-1/2 after:border-4 after:border-transparent after:border-t-white group-hover:opacity-100 group-focus-within:opacity-100"
                                     >
-                                      {t('imageEditor.instagramResolution')}
+                                      {opt.recommended
+                                        ? t('imageEditor.recommendedRatio')
+                                        : t('imageEditor.instagramResolution')}
                                     </span>
                                   )}
                                 </div>
@@ -2164,7 +2233,11 @@ export default function ImageEditorModal({
                               </div>
                             </div>
                           )}
-                          {showInstagramCropPreset && (
+                          {recommendedCropRatio ? (
+                            <p className="text-xs leading-relaxed text-amber-200">
+                              {t('imageEditor.recommendedRatioNotice', { ratio: recommendedCropRatio })}
+                            </p>
+                          ) : showInstagramCropPreset && (
                             <p className="text-xs leading-relaxed text-amber-200">
                               {t('imageEditor.instagramRecommendedRatio')}
                             </p>
@@ -2612,23 +2685,29 @@ export default function ImageEditorModal({
                                   setCropRatio(opt.value)
                                   setCropBox(getInitialCropBoxForRatio(opt.value))
                                 }}
-                                aria-label={opt.instagram
-                                  ? `${opt.label}, ${t('imageEditor.instagramResolution')}`
-                                  : opt.label}
+                                aria-label={opt.recommended
+                                  ? `${opt.label}, ${t('imageEditor.recommendedRatio')}`
+                                  : opt.instagram ? `${opt.label}, ${t('imageEditor.instagramResolution')}` : opt.label}
                                 className={`py-1.5 px-3 text-xs rounded-lg border transition-all duration-150 ${
-                                  cropRatio === opt.value
+                                  opt.recommended && cropRatio === opt.value
+                                    ? 'bg-amber-950/45 border-amber-400 text-amber-100 font-bold ring-1 ring-amber-400/60 shadow-md shadow-amber-950/20'
+                                    : opt.recommended
+                                      ? 'bg-amber-950/20 border-amber-500/90 text-amber-200 font-semibold'
+                                      : cropRatio === opt.value
                                     ? 'bg-neutral-700 border-neutral-600 text-white font-medium shadow-md shadow-neutral-950/20'
                                     : 'bg-neutral-800/50 border-neutral-700 hover:bg-neutral-800 text-neutral-400'
                                 }`}
                               >
                                 {opt.label}
                               </button>
-                              {opt.instagram && (
+                              {(opt.recommended || opt.instagram) && (
                                 <span
                                   role="tooltip"
                                   className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-white px-2.5 py-1.5 text-[10px] font-semibold text-neutral-800 opacity-0 shadow-lg transition-opacity after:absolute after:left-1/2 after:top-full after:-translate-x-1/2 after:border-4 after:border-transparent after:border-t-white group-hover:opacity-100 group-focus-within:opacity-100"
                                 >
-                                  {t('imageEditor.instagramResolution')}
+                                  {opt.recommended
+                                    ? t('imageEditor.recommendedRatio')
+                                    : t('imageEditor.instagramResolution')}
                                 </span>
                               )}
                             </div>
@@ -2667,7 +2746,11 @@ export default function ImageEditorModal({
                           </div>
                         </div>
                       )}
-                      {showInstagramCropPreset && (
+                      {recommendedCropRatio ? (
+                        <p className="text-[11px] leading-relaxed text-amber-200">
+                          {t('imageEditor.recommendedRatioNotice', { ratio: recommendedCropRatio })}
+                        </p>
+                      ) : showInstagramCropPreset && (
                         <p className="text-[11px] leading-relaxed text-amber-200">
                           {t('imageEditor.instagramRecommendedRatio')}
                         </p>

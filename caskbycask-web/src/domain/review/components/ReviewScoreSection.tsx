@@ -8,6 +8,7 @@ import {
   type AromaNotes,
 } from '../utils/aroma'
 import type { AromaProfile, AromaProfilePhase } from '../types/review.types'
+import { REVIEW_TEXT_MAX_LENGTH } from '../constants/reviewLimits'
 import AromaProfileControl from './AromaProfileControl'
 import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
@@ -223,7 +224,7 @@ export default function ReviewScoreSection({
           value={note}
           onChange={(e) => onNoteChange(e.target.value)}
           placeholder={notePlaceholder}
-          maxLength={1000}
+          maxLength={REVIEW_TEXT_MAX_LENGTH}
           rows={5}
           className={`w-full px-3.5 py-2.5 text-sm border rounded-xl
             focus:outline-none focus:ring-2 focus:ring-primary-400

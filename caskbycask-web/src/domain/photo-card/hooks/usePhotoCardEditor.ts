@@ -14,6 +14,7 @@ import type {
   PhotoCardPhotoFit,
   PhotoCardPosition,
   PhotoCardRatio,
+  PhotoCardReviewInfo,
   PhotoCardSpiritInfo,
   PhotoCardUserInput,
   PhotoExif,
@@ -210,6 +211,7 @@ export const usePhotoCardEditor = ({ watermark = false }: EditorOptions = {}) =>
   const [photoImage, setPhotoImage] = useState<HTMLImageElement | null>(null)
   const [exif, setExif] = useState<PhotoExif | null>(null)
   const [spirit, setSpirit] = useState<PhotoCardSpiritInfo | null>(null)
+  const [review, setReview] = useState<PhotoCardReviewInfo | null>(null)
   const [userInput, setUserInput] = useState<PhotoCardUserInput>(EMPTY_USER_INPUT)
   const [images, setImages] = useState<LoadedImages>(() => new Map())
   const [fontsReady, setFontsReady] = useState(false)
@@ -297,8 +299,8 @@ export const usePhotoCardEditor = ({ watermark = false }: EditorOptions = {}) =>
   const photoTransform = doc.photoTransform
 
   const dataContext: PhotoCardDataContext = useMemo(
-    () => ({ exif, spirit, user: userInput }),
-    [exif, spirit, userInput],
+    () => ({ exif, spirit, review, user: userInput }),
+    [exif, review, spirit, userInput],
   )
 
   // ── 선택 ────────────────────────────────────────────────
@@ -820,6 +822,7 @@ export const usePhotoCardEditor = ({ watermark = false }: EditorOptions = {}) =>
    * (직접 적어 둔 값으로 되돌리려면 고른 뒤 다시 적으면 된다 — 그 편집이 다시 overridden 이 된다)
    */
   const pickSpirit = useCallback((info: PhotoCardSpiritInfo) => {
+    if (spirit?.spiritId !== info.spiritId) setReview(null)
     setSpirit(info)
     withLayout((current) => (
       current.layers.some(isOverriddenSpiritText)
@@ -831,7 +834,7 @@ export const usePhotoCardEditor = ({ watermark = false }: EditorOptions = {}) =>
         }
         : current
     ))
-  }, [withLayout])
+  }, [spirit?.spiritId, withLayout])
 
   /**
    * 템플릿 적용.
@@ -879,6 +882,7 @@ export const usePhotoCardEditor = ({ watermark = false }: EditorOptions = {}) =>
     }
     setExif(draft.exif)
     setSpirit(draft.spirit)
+    setReview(draft.review ?? null)
     setUserInput(draft.user)
     pastRef.current = []
     futureRef.current = []
@@ -986,7 +990,7 @@ export const usePhotoCardEditor = ({ watermark = false }: EditorOptions = {}) =>
     fitPhotoArea,
     photoFile, photoUrl, photoImage, setPhoto,
     photoTransform, patchPhotoTransform, resetPhotoTransform,
-    exif, setExif, spirit, setSpirit, pickSpirit, userInput, setUserInput,
+    exif, setExif, spirit, setSpirit, pickSpirit, review, setReview, userInput, setUserInput,
     dataContext, images, fontsReady, renderToBlob, nativeMaxEdge, watermarkImage,
     undo, redo, canUndo: history.canUndo, canRedo: history.canRedo, endGesture,
   }

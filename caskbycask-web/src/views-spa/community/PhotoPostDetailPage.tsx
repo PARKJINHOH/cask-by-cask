@@ -24,7 +24,6 @@ export default function PhotoPostDetailPage() {
     <div className="mx-auto w-full max-w-[1280px] px-4 py-6 lg:px-6">
       <SeoMeta
         title={t('photoGallery.title')}
-        description={t('photoGallery.description')}
         canonical={`/community/photo/${postId}`}
       />
 

@@ -361,7 +361,6 @@ export default function SocialPublishFields({
           onSave={saveEditedDirectImage}
           isSaving={uploading}
           fixedRatio="4:5"
-          initialMode="crop"
           outputSize={{ width: 1080, height: 1350 }}
           recommendedResolution={t('social.editorRecommendedResolution')}
         />

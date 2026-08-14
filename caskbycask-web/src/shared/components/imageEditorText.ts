@@ -99,7 +99,7 @@ export interface TextBounds {
 }
 
 export const TEXT_MAX_LENGTH = 200
-export const TEXT_FONT_SIZE_MIN = 12
+export const TEXT_FONT_SIZE_MIN = 8
 export const TEXT_FONT_SIZE_MAX = 400
 export const TEXT_OUTLINE_WIDTH_MAX = 30
 /** 레이어 상한 — 미리보기를 매 입력마다 다시 그리므로 무제한이면 편집이 버벅인다. */

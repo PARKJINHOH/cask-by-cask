@@ -78,16 +78,16 @@ public class SpiritVariantReviewRequest extends BaseTimeEntity {
     @Column(nullable = false, precision = 4, scale = 1)
     private BigDecimal totalScore;
 
-    @Column(length = 1000)
+    @Column(length = 600)
     private String noseNote;
 
-    @Column(length = 1000)
+    @Column(length = 600)
     private String tasteNote;
 
-    @Column(length = 1000)
+    @Column(length = 600)
     private String finishNote;
 
-    @Column(length = 1000)
+    @Column(length = 600)
     private String comment;
 
     @Column(length = 800)

@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { photoCardApi } from '../../api/photoCardApi'
 import { BUILTIN_LAYOUTS } from '../../constants/builtinLayouts'
+import { REVIEW_SHARE_SYSTEM_TEMPLATE_APPLIED_KEY } from '../../constants/systemTemplates'
 import type { PhotoCardEditor } from '../../hooks/usePhotoCardEditor'
 import type {
   PhotoCardLayout, PhotoCardTemplate, PhotoCardTemplateScope,
@@ -22,6 +23,8 @@ interface Props {
   onApplied: (key: string) => void
   /** 요소 채우기를 다시 연다 — 도중에 닫았거나, 값을 고치러 돌아올 때. */
   onStartFill: () => void
+  /** 리뷰 공유에서 넘어온 데이터로 만든 동적 공식 템플릿. 리뷰가 없으면 안내용 항목만 보인다. */
+  reviewOfficialLayout: PhotoCardLayout | null
 }
 
 /**
@@ -44,7 +47,7 @@ const overlayButtonClass = 'absolute inset-0 z-0 rounded-lg active:bg-primary-10
 /** 템플릿 도구 — 공식·내 것·공개된 것을 고르고, 지금 배치를 내 템플릿으로 저장한다. */
 export default function TemplatePanel({
   editor, scope, onScopeChange, isLoggedIn, busy, onSaveAsTemplate, onOverwrite,
-  appliedKey, onApplied, onStartFill,
+  appliedKey, onApplied, onStartFill, reviewOfficialLayout,
 }: Props) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
@@ -141,6 +144,41 @@ export default function TemplatePanel({
         <PanelButton tone="primary" onClick={onStartFill}>
           {t('photoCard.fillReopen')}
         </PanelButton>
+      )}
+
+      {scope === 'OFFICIAL' && (
+        <ul className="space-y-2">
+          <li className={itemClass(appliedKey === REVIEW_SHARE_SYSTEM_TEMPLATE_APPLIED_KEY)}>
+            <button
+              type="button"
+              aria-pressed={appliedKey === REVIEW_SHARE_SYSTEM_TEMPLATE_APPLIED_KEY}
+              aria-label={t('photoCard.builtinReviewShare')}
+              onClick={() => {
+                if (!reviewOfficialLayout) {
+                  window.alert(t('photoCard.reviewTemplateNeedsReview'))
+                  return
+                }
+                use(REVIEW_SHARE_SYSTEM_TEMPLATE_APPLIED_KEY, reviewOfficialLayout)
+              }}
+              style={{ WebkitTapHighlightColor: 'transparent' }}
+              className={overlayButtonClass}
+            />
+            <div className="pointer-events-none relative z-10">
+              <span className="flex items-center gap-1.5 text-sm font-bold text-neutral-800">
+                {t('photoCard.builtinReviewShare')}
+                <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-800">
+                  {t('photoCard.officialBadge')}
+                </span>
+              </span>
+              <span className="mt-0.5 block text-[11px] font-medium leading-relaxed text-neutral-500">
+                {reviewOfficialLayout
+                  ? t('photoCard.builtinReviewShareDesc')
+                  : t('photoCard.reviewTemplateNeedsReview')}
+              </span>
+              {reviewOfficialLayout && <Includes layout={reviewOfficialLayout} />}
+            </div>
+          </li>
+        </ul>
       )}
 
       {showBuiltins && (

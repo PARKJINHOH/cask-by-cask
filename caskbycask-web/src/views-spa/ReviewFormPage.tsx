@@ -31,6 +31,7 @@ import {
 } from '@/domain/review/utils/aroma'
 import type { AromaNotes } from '@/domain/review/utils/aroma'
 import type { AromaProfile, ReviewItem } from '@/domain/review/types/review.types'
+import { REVIEW_NOTE_MIN_LENGTH, REVIEW_TEXT_MAX_LENGTH } from '@/domain/review/constants/reviewLimits'
 import { reviewApi } from '@/domain/review/api/reviewApi'
 import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
 import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
@@ -70,8 +71,8 @@ function getAromaWheelKey(category?: SpiritCategory): string {
   return 'review.aromaWheel'
 }
 
-const NOTE_MIN = 20
-const NOTE_MAX = 1000
+const NOTE_MIN = REVIEW_NOTE_MIN_LENGTH
+const NOTE_MAX = REVIEW_TEXT_MAX_LENGTH
 
 /**
  * 검증 메시지는 화면에 그대로 나오므로 번역을 거쳐야 한다.
@@ -262,7 +263,7 @@ export default function ReviewFormPage() {
       noseNote:              values.noseNote.trim(),
       tasteNote:             values.tasteNote.trim(),
       finishNote:            values.finishNote.trim(),
-      comment:               values.comment?.trim() || undefined,
+      comment:               isEdit ? (values.comment?.trim() ?? '') : (values.comment?.trim() || undefined),
       noseAromaWheelNotes:   showAroma ? (serializeAromaNotes(noseAromas)   ?? (isEdit ? '' : undefined)) : undefined,
       tasteAromaWheelNotes:  showAroma ? (serializeAromaNotes(tasteAromas)  ?? (isEdit ? '' : undefined)) : undefined,
       finishAromaWheelNotes: showAroma ? (serializeAromaNotes(finishAromas) ?? (isEdit ? '' : undefined)) : undefined,
@@ -561,7 +562,7 @@ export default function ReviewFormPage() {
                 <AutoGrowTextarea
                   {...field}
                   rows={4}
-                  maxLength={1000}
+                  maxLength={REVIEW_TEXT_MAX_LENGTH}
                   placeholder={t('review.overallPlaceholder')}
                   className="w-full px-3 py-2.5 text-sm border border-neutral-300 rounded-xl
                     focus:outline-none focus:ring-2 focus:ring-primary-400
@@ -570,7 +571,7 @@ export default function ReviewFormPage() {
                 <div className="flex items-start justify-between mt-1">
                   <p className="text-xs text-red-500 min-h-[1rem]">{errors.comment?.message ?? ''}</p>
                   <p className="text-xs text-neutral-400 tabular-nums flex-shrink-0 ml-2">
-                    {commentValue?.length ?? 0}/1000
+                    {commentValue?.length ?? 0}/{REVIEW_TEXT_MAX_LENGTH}
                   </p>
                 </div>
               </div>

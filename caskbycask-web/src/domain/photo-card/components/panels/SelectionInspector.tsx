@@ -212,6 +212,15 @@ export default function SelectionInspector({ editor, canvasRef }: Props) {
             onCommit={editor.endGesture}
           />
 
+          <SliderField
+            label={t('photoCard.textBoxWidth')}
+            display={`${Math.round((layer.widthRatio ?? 1) * 100)}%`}
+            min={5} max={100}
+            value={Math.round((layer.widthRatio ?? 1) * 100)}
+            onChange={(value) => patch({ widthRatio: value / 100 }, `textWidth:${layer.id}`)}
+            onCommit={editor.endGesture}
+          />
+
           <div className="grid grid-cols-2 gap-2">
             <ColorField label={t('photoCard.textColor')} value={layer.color ?? '#ffffff'}
               onChange={(color) => patch({ color })} />
@@ -236,7 +245,9 @@ export default function SelectionInspector({ editor, canvasRef }: Props) {
         // 골라 둔 그림을 나중에 다른 출처로 바꾸면 가리킬 대상이 사라져 빈 자리만 남는다.
         <Section
           title={t('photoCard.addImage')}
-          hint={layer.source === 'UPLOAD' ? undefined : t('photoCard.imageEditLogoHint')}
+          hint={layer.source?.startsWith('REVIEW_AROMA_')
+            ? t('photoCard.reviewAromaImageHint')
+            : layer.source === 'UPLOAD' ? undefined : t('photoCard.imageEditLogoHint')}
         >
           {/* 편집은 내가 올린 그림만. 생산자 로고는 여러 카드가 함께 쓰는 자산이라
               한 카드에서 고치면 다른 곳까지 바뀐다 — 로고는 관리자에서 고친다. */}
@@ -270,7 +281,6 @@ export default function SelectionInspector({ editor, canvasRef }: Props) {
             open
             imageSrc={layer.uploadUrl}
             isSaving={savingImage}
-            initialMode="crop"
             onClose={() => setEditingImage(false)}
             onSave={async (edited) => {
               setSavingImage(true)

@@ -792,7 +792,6 @@ function NodeImageEditor({ node, updateNode, upload, discardPendingImage, t }: a
       imageSrc={localEditUrl || image}
       onSave={editImage}
       isSaving={isEditingImage}
-      initialMode="crop"
       initialCropRatio="3:4"
     />}
   </section>

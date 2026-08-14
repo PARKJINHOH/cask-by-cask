@@ -337,7 +337,6 @@ function TemplatePanel() {
             onSave={saveEditedBackground}
             isSaving={uploading}
             fixedRatio="4:5"
-            initialMode="crop"
             outputSize={{ width: 1080, height: 1350 }}
             recommendedResolution="SNS 소식 배경 권장 해상도: 1080×1350px (4:5)"
           />

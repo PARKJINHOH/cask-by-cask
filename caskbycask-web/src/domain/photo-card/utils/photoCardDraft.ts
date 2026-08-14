@@ -1,5 +1,6 @@
 import type {
   PhotoCardLayout,
+  PhotoCardReviewInfo,
   PhotoCardSpiritInfo,
   PhotoCardUserInput,
   PhotoExif,
@@ -35,6 +36,7 @@ export interface PhotoCardDraft {
   photoTransform: PhotoTransform
   exif: PhotoExif | null
   spirit: PhotoCardSpiritInfo | null
+  review: PhotoCardReviewInfo | null
   user: PhotoCardUserInput
   /** 원본 사진. 없으면(사진을 아직 안 고른 상태) 레이아웃만 되살린다. */
   photo: Blob | null
@@ -92,6 +94,7 @@ export const buildPhotoCardDraft = (source: {
   photoTransform: PhotoTransform
   exif: PhotoExif | null
   spirit: PhotoCardSpiritInfo | null
+  review?: PhotoCardReviewInfo | null
   userInput: PhotoCardUserInput
   photoFile: File | null
 }): PhotoCardDraft => ({
@@ -100,6 +103,7 @@ export const buildPhotoCardDraft = (source: {
   photoTransform: { ...source.photoTransform },
   exif: source.exif,
   spirit: source.spirit,
+  review: source.review ?? null,
   user: { ...source.userInput },
   photo: source.photoFile,
   photoName: source.photoFile?.name ?? null,

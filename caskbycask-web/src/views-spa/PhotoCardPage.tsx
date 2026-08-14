@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import SeoMeta from '@/shared/components/SeoMeta'
@@ -30,12 +30,13 @@ import SelectionInspector from '@/domain/photo-card/components/panels/SelectionI
 import TemplatePanel from '@/domain/photo-card/components/panels/TemplatePanel'
 import TextPanel from '@/domain/photo-card/components/panels/TextPanel'
 import { PHOTO_CARD_EXPORT_SIZES, PHOTO_CARD_MAX_EDGE } from '@/domain/photo-card/constants/photoCardRatios'
+import { REVIEW_SHARE_SYSTEM_EXPORT_SIZE_KEY } from '@/domain/photo-card/constants/systemTemplates'
 import type { PhotoCardTool } from '@/domain/photo-card/constants/photoCardTools'
 import { usePhotoCardEditor } from '@/domain/photo-card/hooks/usePhotoCardEditor'
 import { usePhotoCardShortcuts } from '@/domain/photo-card/hooks/usePhotoCardShortcuts'
 import { usePhotoCardViewport } from '@/domain/photo-card/hooks/usePhotoCardViewport'
 import type {
-  PhotoCardTemplate, PhotoCardTemplateScope,
+  PhotoCardLayout, PhotoCardTemplate, PhotoCardTemplateScope,
 } from '@/domain/photo-card/types/photoCard.types'
 import {
   PHOTO_CARD_MAX_TEMPLATES, normalizeLayout,
@@ -49,6 +50,11 @@ import {
 } from '@/domain/photo-card/utils/photoCardServerDraft'
 import { frameSizeOf } from '@/domain/photo-card/utils/photoCardRender'
 import { useAuthStore } from '@/domain/auth/store/authStore'
+import type { ReviewPhotoCardRouteState } from '@/domain/review/share/reviewShare.types'
+import {
+  REVIEW_SHARE_OFFICIAL_TEMPLATE_APPLIED_KEY,
+  reviewShareOutputMaxEdgeOf,
+} from '@/domain/review/share/reviewShareLayout'
 import '@/domain/photo-card/photo-card.css'
 
 /**
@@ -92,6 +98,7 @@ const PANEL_FIRST_TOOLS = new Set<PhotoCardTool>(['text', 'element'])
 export default function PhotoCardPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const location = useLocation()
   const queryClient = useQueryClient()
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn)
   // 비회원 저장본에는 브랜드 마크가 얹힌다 — 편집 화면에도 같이 그려 결과와 어긋나지 않게 한다.
@@ -110,6 +117,7 @@ export default function PhotoCardPage() {
   // 도구를 옮기면 패널이 통째로 사라졌다 다시 그려진다. 어느 템플릿을 쓰고 있는지는
   // 패널이 아니라 페이지가 기억해야 도구를 다녀와도 표시가 남는다.
   const [appliedTemplate, setAppliedTemplate] = useState<string | null>(null)
+  const [reviewOfficialLayout, setReviewOfficialLayout] = useState<PhotoCardLayout | null>(null)
   const [spiritPickerOpen, setSpiritPickerOpen] = useState(false)
   const [photoEditorOpen, setPhotoEditorOpen] = useState(false)
   const [publishOpen, setPublishOpen] = useState(false)
@@ -130,9 +138,17 @@ export default function PhotoCardPage() {
   // busy 는 상태 갱신이 비동기라 아주 빠른 더블클릭이 두 번 통과할 수 있다.
   // 실제 중복 실행 차단은 ref 로 한다(렌더와 무관하게 즉시 반영된다).
   const runningRef = useRef(false)
+  const incomingReviewDraft = (
+    location.state as Partial<ReviewPhotoCardRouteState> | null
+  )?.reviewPhotoCardDraft
+  const incomingReviewRestoredRef = useRef(false)
 
-  const selectedMaxEdge = PHOTO_CARD_EXPORT_SIZES.find((item) => item.key === exportSizeKey)?.maxEdge
-    ?? undefined
+  const reviewOfficialMaxEdge = reviewOfficialLayout
+    ? reviewShareOutputMaxEdgeOf(editor.layout)
+    : null
+  const selectedMaxEdge = exportSizeKey === REVIEW_SHARE_SYSTEM_EXPORT_SIZE_KEY
+    ? reviewOfficialMaxEdge ?? undefined
+    : PHOTO_CARD_EXPORT_SIZES.find((item) => item.key === exportSizeKey)?.maxEdge ?? undefined
 
   /** 템플릿을 고른 직후의 요소 채우기를 연다. 좁은 화면에서는 시트가 접혀 있을 수 있다. */
   const startFill = useCallback(() => {
@@ -229,14 +245,37 @@ export default function PhotoCardPage() {
   })
 
   // ── 임시저장 ────────────────────────────────────────────
+  // 리뷰 공유에서 넘어온 카드는 일반 임시저장보다 우선한다. 이미지를 픽셀로 굳혀 가져오는 것이 아니라
+  // 레이아웃·각 텍스트 요소·주류 데이터·선택한 원본 사진을 그대로 복원하므로 곧바로 개별 편집할 수 있다.
+  useEffect(() => {
+    if (!incomingReviewDraft || incomingReviewRestoredRef.current) return
+    incomingReviewRestoredRef.current = true
+    setDraftBusy(true)
+    void editor.restoreDraft(incomingReviewDraft).then((restored) => {
+      if (!restored) {
+        setNotice(t('review.share.photoCardLoadFailed'))
+        return
+      }
+      setReviewOfficialLayout(normalizeLayout(incomingReviewDraft.layout))
+      setAppliedTemplate(REVIEW_SHARE_OFFICIAL_TEMPLATE_APPLIED_KEY)
+      setExportSizeKey(REVIEW_SHARE_SYSTEM_EXPORT_SIZE_KEY)
+      setExportFormat('image/png')
+      setFilling(false)
+      setTool('layer')
+      setSheetOpen(true)
+      setNotice(t('review.share.photoCardLoaded'))
+    }).finally(() => setDraftBusy(false))
+  }, [editor.restoreDraft, incomingReviewDraft, t])
+
   // 들어올 때 맡겨 둔 작업이 있는지 본다. 로그인하고 돌아온 사람이 여기서 이어서 하게 된다.
   useEffect(() => {
+    if (incomingReviewDraft) return
     let cancelled = false
     void loadPhotoCardDraft().then((draft) => {
       if (!cancelled && draft) setDraftSavedAt(draft.savedAt)
     })
     return () => { cancelled = true }
-  }, [])
+  }, [incomingReviewDraft])
 
   const resumeDraft = async () => {
     if (draftBusy) return
@@ -246,6 +285,9 @@ export default function PhotoCardPage() {
       // 사진을 다시 열지 못하면(브라우저가 못 읽는 형식 등) 지우지 않는다 — 지우면 되찾을 길이 없다.
       if (draft && await editor.restoreDraft(draft)) {
         await clearPhotoCardDraft()
+        setReviewOfficialLayout(null)
+        setExportSizeKey('high')
+        setExportFormat('image/jpeg')
         setDraftSavedAt(null)
         setNotice(t('photoCard.draftRestored'))
       } else {
@@ -273,6 +315,7 @@ export default function PhotoCardPage() {
     photoTransform: editor.photoTransform,
     exif: editor.exif,
     spirit: editor.spirit,
+    review: editor.review,
     userInput: editor.userInput,
     photoFile: editor.photoFile,
   })).catch(() => false)
@@ -322,6 +365,7 @@ export default function PhotoCardPage() {
           photoTransform: editor.photoTransform,
           exif: editor.exif,
           spirit: editor.spirit,
+          review: editor.review,
           userInput: editor.userInput,
           photoFile: editor.photoFile,
         }),
@@ -359,6 +403,9 @@ export default function PhotoCardPage() {
       setCurrentDraftId(id)
       // 되살린 배치는 어느 템플릿에서 왔는지 알 수 없다 — 이전 표시를 남기면 거짓말이 된다.
       setAppliedTemplate(null)
+      setReviewOfficialLayout(null)
+      setExportSizeKey('high')
+      setExportFormat('image/jpeg')
       setFilling(false)
       setNotice(t('photoCard.draftRestored'))
     } catch (error) {
@@ -441,6 +488,7 @@ export default function PhotoCardPage() {
             // 방금 본 참이고, 채우는 대로 카드에 나타난다.
             onApplied={(key) => { setAppliedTemplate(key); startFill() }}
             onStartFill={startFill}
+            reviewOfficialLayout={reviewOfficialLayout}
           />
         )
       case 'photo':
@@ -488,6 +536,7 @@ export default function PhotoCardPage() {
             onDownload={() => { void download(!isLoggedIn) }}
             onDownloadClean={() => setGate('cleanDownload')}
             onPublish={() => { void openPublish() }}
+            reviewOfficialMaxEdge={reviewOfficialMaxEdge}
           />
         )
       default:
@@ -653,7 +702,6 @@ export default function PhotoCardPage() {
           onClose={() => setPhotoEditorOpen(false)}
           imageSrc={editor.photoUrl}
           isSaving={false}
-          initialMode="crop"
           onSave={async (edited) => {
             // 보정 결과는 캔버스에서 나온 이미지라 EXIF 가 없다.
             // 그대로 다시 읽으면 카드에 넣으려던 촬영 정보가 통째로 사라진다.

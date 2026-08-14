@@ -1,0 +1,2 @@
+export const REVIEW_NOTE_MIN_LENGTH = 20
+export const REVIEW_TEXT_MAX_LENGTH = 600

@@ -8,7 +8,12 @@ import type {
   PhotoCardPadding,
   PhotoCardRatio,
 } from '../types/photoCard.types'
-import { getDrawableLayers, getSelectableLayers, resolveLayerText } from './resolveBindings'
+import {
+  getDrawableLayers,
+  getSelectableLayers,
+  resolveLayerImageUrl,
+  resolveLayerText,
+} from './resolveBindings'
 
 /**
  * 포토카드 캔버스 렌더러.
@@ -383,7 +388,9 @@ const applyTextFont = (
   const fontSize = Math.max(1, toPx(layer.fontSizeRatio, shortSide, 0.04))
   ctx.font = `${font.weight} ${fontSize}px ${font.family}`
   // 글자는 언제나 가운데 기준이다 — position 이 곧 글의 시각 중심이라 앵커 분기가 없다.
-  ctx.textAlign = 'center'
+  ctx.textAlign = layer.textAlign === 'LEFT'
+    ? 'left'
+    : layer.textAlign === 'RIGHT' ? 'right' : 'center'
   ctx.textBaseline = 'middle'
   ctx.lineJoin = 'round'
   // 자간은 em 배수로 저장한다(백엔드도 -0.5~1.0 으로 받는다). font 를 먼저 정한 뒤 걸어야 한다.
@@ -394,6 +401,68 @@ const applyTextFont = (
   }
   return fontSize
 }
+
+/**
+ * 캔버스가 실제로 재는 폭으로 문단을 줄바꿈한다.
+ * 공백이 있는 문장은 단어 단위를 우선하고, 한 단어가 칸보다 길거나 한글처럼 공백이 드문 문장은
+ * 글자 단위로 한 번 더 나눈다. 미리보기·히트 테스트·최종 출력이 모두 이 함수를 사용한다.
+ */
+export const wrapPhotoCardText = (
+  ctx: CanvasRenderingContext2D,
+  value: string,
+  maxWidth?: number,
+): string[] => {
+  const paragraphs = getTextLines(value)
+  if (!maxWidth || !Number.isFinite(maxWidth) || maxWidth <= 0) return paragraphs
+
+  const wrapped: string[] = []
+  paragraphs.forEach((paragraph) => {
+    if (!paragraph) {
+      wrapped.push('')
+      return
+    }
+
+    const tokens = paragraph.match(/\s+|\S+/gu) ?? [paragraph]
+    let line = ''
+    const pushLine = () => {
+      wrapped.push(line.trimEnd())
+      line = ''
+    }
+
+    tokens.forEach((token) => {
+      if (/^\s+$/u.test(token)) {
+        if (line && !line.endsWith(' ')) line += ' '
+        return
+      }
+
+      const candidate = line ? `${line}${token}` : token
+      if (ctx.measureText(candidate).width <= maxWidth) {
+        line = candidate
+        return
+      }
+      if (line.trim()) pushLine()
+
+      Array.from(token).forEach((character) => {
+        const next = `${line}${character}`
+        if (line && ctx.measureText(next).width > maxWidth) pushLine()
+        line += character
+      })
+    })
+    if (line || wrapped.length === 0) pushLine()
+  })
+  return wrapped.length > 0 ? wrapped : ['']
+}
+
+const textLinesForLayer = (
+  ctx: CanvasRenderingContext2D,
+  size: PhotoCardCanvasSize,
+  layer: PhotoCardLayer,
+  context: PhotoCardDataContext,
+): string[] => wrapPhotoCardText(
+  ctx,
+  resolveLayerText(layer, context),
+  layer.widthRatio == null ? undefined : toPx(layer.widthRatio, shortSideOf(size)),
+)
 
 /** baseline 오프셋을 잴 때 쓰는 고정 표본. 글자 내용과 무관하게 같은 값이 나와야 줄이 맞는다. */
 const BASELINE_PROBE = 'Hxg'
@@ -459,10 +528,13 @@ export const measureLayerBounds = (
 
   if (layer.type === 'TEXT') {
     const fontSize = applyTextFont(ctx, layer, shortSide)
-    const lines = getTextLines(resolveLayerText(layer, context))
+    const lines = textLinesForLayer(ctx, size, layer, context)
     const lineHeight = fontSize * (layer.lineHeight ?? 1.25)
     const outline = layer.outlineEnabled ? toPx(layer.outlineWidthRatio, shortSide) : 0
-    const width = Math.max(fontSize, ...lines.map((line) => ctx.measureText(line || ' ').width)) + outline * 2
+    const measuredWidth = Math.max(fontSize, ...lines.map((line) => ctx.measureText(line || ' ').width)) + outline * 2
+    const width = layer.textAlign === 'CENTER' || layer.textAlign == null || layer.widthRatio == null
+      ? measuredWidth
+      : Math.max(measuredWidth, toPx(layer.widthRatio, shortSide))
     const height = Math.max(lineHeight, lines.length * lineHeight) + outline * 2
     const left = centerX - width / 2
     return { left, top: centerY - height / 2, right: left + width, bottom: centerY + height / 2 }
@@ -515,7 +587,7 @@ export const textBaselineYOf = (
   if (!value.trim()) return null
 
   const fontSize = applyTextFont(ctx, layer, shortSideOf(size))
-  const lines = getTextLines(value)
+  const lines = textLinesForLayer(ctx, size, layer, context)
   const lineHeight = fontSize * (layer.lineHeight ?? 1.25)
   // drawTextLayer 의 firstLineY 와 같은 식이어야 한다.
   const firstLineY = layer.position.y * size.height - ((lines.length - 1) * lineHeight) / 2
@@ -564,9 +636,13 @@ const drawTextLayer = (
 
   const shortSide = shortSideOf(size)
   const fontSize = applyTextFont(ctx, layer, shortSide)
-  const lines = getTextLines(value)
+  const lines = textLinesForLayer(ctx, size, layer, context)
   const lineHeight = fontSize * (layer.lineHeight ?? 1.25)
-  const x = layer.position.x * size.width
+  const centerX = layer.position.x * size.width
+  const textWidth = layer.widthRatio == null ? 0 : toPx(layer.widthRatio, shortSide)
+  const x = layer.textAlign === 'LEFT'
+    ? centerX - textWidth / 2
+    : layer.textAlign === 'RIGHT' ? centerX + textWidth / 2 : centerX
   const firstLineY = layer.position.y * size.height - ((lines.length - 1) * lineHeight) / 2
   const outline = layer.outlineEnabled ? toPx(layer.outlineWidthRatio, shortSide) : 0
 
@@ -722,6 +798,40 @@ export const drawWatermark = (
   ctx.globalAlpha = 1
 }
 
+/** 리뷰 공유 미리보기의 은은한 한지 결을 캔버스 출력에도 동일하게 재현한다. */
+const drawPaperTexture = (
+  ctx: CanvasRenderingContext2D,
+  size: PhotoCardCanvasSize,
+) => {
+  const shortSide = canvasShortSideOf(size)
+  const lineGap = Math.max(8, shortSide * 0.025)
+  const slope = Math.tan((8 * Math.PI) / 180)
+
+  ctx.save()
+  ctx.globalAlpha = 0.025
+  ctx.strokeStyle = '#153047'
+  ctx.lineWidth = Math.max(0.5, shortSide * 0.00035)
+  for (let startY = -size.width * slope; startY < size.height; startY += lineGap) {
+    ctx.beginPath()
+    ctx.moveTo(0, startY)
+    ctx.lineTo(size.width, startY + size.width * slope)
+    ctx.stroke()
+  }
+
+  const dotWidth = Math.max(0.7, shortSide * 0.0015)
+  const gapX = Math.max(13, shortSide * 0.047)
+  const gapY = Math.max(15, shortSide * 0.053)
+  ctx.globalAlpha = 0.028
+  ctx.fillStyle = '#b58232'
+  for (let row = 0, dotY = gapY * 0.7; dotY < size.height; row += 1, dotY += gapY) {
+    const offset = row % 2 === 0 ? gapX * 0.2 : gapX * 0.72
+    for (let dotX = offset; dotX < size.width; dotX += gapX) {
+      ctx.fillRect(dotX, dotY, dotWidth, dotWidth)
+    }
+  }
+  ctx.restore()
+}
+
 /**
  * 전체 렌더. 미리보기 캔버스와 최종 출력 캔버스가 같은 함수를 쓴다 —
  * 보이는 그대로 저장된다는 보장이 여기서 나온다.
@@ -748,6 +858,7 @@ export const drawPhotoCard = (
   }
   ctx.fillStyle = layout.frame.backgroundColor ?? '#ffffff'
   ctx.fillRect(0, 0, size.width, size.height)
+  if (layout.frame.backgroundTexture === 'PAPER') drawPaperTexture(ctx, size)
 
   if (photo) drawPhoto(ctx, layout, size, photo, photoTransform)
 
@@ -765,11 +876,7 @@ export const drawPhotoCard = (
       case 'BOX': drawBoxLayer(ctx, size, layer); break
       case 'ICON': drawIconLayer(ctx, size, layer); break
       case 'IMAGE': {
-        const url = layer.source === 'UPLOAD'
-          ? layer.uploadUrl ?? ''
-          : layer.source === 'PRODUCER_LOGO'
-            ? context.spirit?.producerLogoUrl ?? ''
-            : context.spirit?.spiritImageUrl ?? ''
+        const url = resolveLayerImageUrl(layer, context) ?? ''
         const image = images.get(url)
         if (image) drawImageLayer(ctx, size, layer, image)
         break

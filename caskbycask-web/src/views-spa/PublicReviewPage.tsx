@@ -8,6 +8,7 @@ import Spinner from '@/shared/components/Spinner'
 import ImageLightbox from '@/shared/components/ImageLightbox'
 import { stripLocalePrefix } from '@/domain/spirit/utils/spiritUrl'
 import { getLocalizedNames } from '@/domain/spirit/utils/spiritDisplayName'
+import ShareUrlButton from '@/shared/components/ShareUrlButton'
 
 function score(value: number | null) {
   return value == null ? '-' : Number(value).toFixed(1)
@@ -62,7 +63,10 @@ export default function PublicReviewPage() {
         locale={isEn ? 'en_US' : 'ko_KR'}
       />
       <main className="mx-auto max-w-5xl px-4 py-8 sm:py-12">
-        <div className="overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-sm">
+        <div className="relative overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-sm">
+          <div className="absolute right-4 top-4 z-10">
+            <ShareUrlButton />
+          </div>
           <div className="grid md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
             <div className="flex min-h-80 flex-col items-center justify-center gap-3 bg-neutral-100 p-5">
               {reviewImages.length > 0 ? (

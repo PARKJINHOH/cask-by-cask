@@ -21,6 +21,11 @@ export const describeLayer = (layer: PhotoCardLayer, t: TFunction): string => {
       return t(PHOTO_CARD_ICONS.find((icon) => icon.key === layer.iconKey)?.labelKey
         ?? 'photoCard.iconSection')
     case 'IMAGE':
+      if (layer.source?.startsWith('REVIEW_AROMA_')) {
+        return t(layer.source === 'REVIEW_AROMA_NOSE' ? 'photoCard.imageSourceAromaNose'
+          : layer.source === 'REVIEW_AROMA_TASTE' ? 'photoCard.imageSourceAromaTaste'
+            : 'photoCard.imageSourceAromaFinish')
+      }
       return t(layer.source === 'SPIRIT_IMAGE' ? 'photoCard.imageSourceSpirit'
         : layer.source === 'UPLOAD' ? 'photoCard.imageSourceUpload'
           : 'photoCard.imageSourceLogo')

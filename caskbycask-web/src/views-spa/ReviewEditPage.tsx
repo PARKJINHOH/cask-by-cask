@@ -37,10 +37,11 @@ import { getSpiritDetailPath } from '@/domain/spirit/utils/spiritUrl'
 import { EMPTY_SOCIAL_SELECTION, type SocialPublishSelection } from '@/domain/social/types/social.types'
 import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
 import type { AromaProfile } from '@/domain/review/types/review.types'
+import { REVIEW_NOTE_MIN_LENGTH, REVIEW_TEXT_MAX_LENGTH } from '@/domain/review/constants/reviewLimits'
 import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 const MY_REVIEWS_PATH = '/mypage?tab=reviews'
-const NOTE_MIN_LENGTH = 20
+const NOTE_MIN_LENGTH = REVIEW_NOTE_MIN_LENGTH
 
 type FieldErrorKey = 'variantValue' | 'abv' | 'volumeMl' | 'noseNote' | 'tasteNote' | 'finishNote'
 type FieldErrors = Partial<Record<FieldErrorKey, string>>
@@ -219,7 +220,7 @@ export default function ReviewEditPage() {
       noseNote: noseNote.trim(),
       tasteNote: tasteNote.trim(),
       finishNote: finishNote.trim(),
-      comment: comment.trim() || undefined,
+      comment: comment.trim(),
       noseAromaWheelNotes: showAroma ? (serializeAromaNotes(noseAromas) ?? '') : undefined,
       tasteAromaWheelNotes: showAroma ? (serializeAromaNotes(tasteAromas) ?? '') : undefined,
       finishAromaWheelNotes: showAroma ? (serializeAromaNotes(finishAromas) ?? '') : undefined,
@@ -564,12 +565,12 @@ export default function ReviewEditPage() {
                 value={comment}
                 onChange={(event) => setComment(event.target.value)}
                 rows={4}
-                maxLength={1000}
+                maxLength={REVIEW_TEXT_MAX_LENGTH}
                 placeholder={t('review.overallPlaceholder')}
                 className="min-h-[5rem] w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-sm
                   placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary-400"
               />
-              <p className="mt-1 text-right text-xs tabular-nums text-neutral-400">{comment.length}/1000</p>
+              <p className="mt-1 text-right text-xs tabular-nums text-neutral-400">{comment.length}/{REVIEW_TEXT_MAX_LENGTH}</p>
             </div>
           </div>
 

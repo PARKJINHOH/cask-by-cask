@@ -8,8 +8,9 @@ const HERE = dirname(fileURLToPath(import.meta.url))
 const SRC = join(HERE, '..', 'src', 'domain', 'photo-card')
 
 const {
-  PHOTO_CARD_BINDINGS, PHOTO_CARD_MAX_LAYERS, PHOTO_CARD_MAX_TEXT_LENGTH,
-  PHOTO_CARD_MAX_EXTEND, PHOTO_CARD_SCHEMA_VERSION, normalizeLayer, normalizeLayout,
+  PHOTO_CARD_BINDINGS, PHOTO_CARD_IMAGE_SOURCES, PHOTO_CARD_MAX_LAYERS, PHOTO_CARD_MAX_TEXT_LENGTH,
+  PHOTO_CARD_MAX_BOTTOM_EXTEND, PHOTO_CARD_MAX_EXTEND, PHOTO_CARD_SCHEMA_VERSION,
+  normalizeLayer, normalizeLayout,
 } = await import('../src/domain/photo-card/utils/layoutSchema.ts')
 
 const { BUILTIN_LAYOUTS, defaultPhotoCardLayout } =
@@ -19,12 +20,13 @@ const {
   formatAperture, formatCamera, formatFocalLength, formatIso, formatShotAt, formatShutter,
 } = await import('../src/domain/photo-card/utils/exifReader.ts')
 
-const { getDrawableLayers, resolveBindingValue, resolveLayerText } =
+const { getDrawableLayers, resolveBindingValue, resolveLayerImageUrl, resolveLayerText } =
   await import('../src/domain/photo-card/utils/resolveBindings.ts')
 
 const {
   frameSizeOf, measureLayerBounds, findLayerAtPoint, photoRectOf, toPx,
   drawPhoto, photoPlacementOf, reanchorLayersForExtend, reflowLayersForFrame, shortSideOf, textBaselineYOf,
+  wrapPhotoCardText,
   drawWatermark, watermarkRectOf,
   WATERMARK_MARGIN_RATIO, WATERMARK_OPACITY, WATERMARK_WIDTH_RATIO,
 } = await import('../src/domain/photo-card/utils/photoCardRender.ts')
@@ -39,6 +41,17 @@ const { alignLayers, applySnap, collectSnapTargets, distributeLayers } =
 
 const { USER_BINDINGS, placeCarriedLayers } =
   await import('../src/domain/photo-card/hooks/usePhotoCardEditor.ts')
+
+const {
+  buildReviewPhotoCardLayout, isReviewShareCardAlreadyTall,
+  REVIEW_SHARE_PREVIEW_WIDTH, REVIEW_SHARE_TALL_HEIGHT_RATIO,
+  reviewShareCardMetrics, reviewShareOutputMaxEdgeOf, reviewSharePreviewScale,
+  reviewShareRecommendedImageOf,
+} =
+  await import('../src/domain/review/share/reviewShareLayout.ts')
+
+const { shouldCacheBustReviewExport } =
+  await import('../src/domain/review/share/reviewShareExport.ts')
 
 const { TEXT_FONT_OPTIONS } = await import('../src/shared/components/imageEditorText.ts')
 
@@ -65,13 +78,279 @@ function fakeContext(widthPerCharacter = 10) {
 const emptyContext = () => ({
   exif: null,
   spirit: null,
+  review: null,
   user: { place: '', memo: '', date: '' },
 })
 
+const reviewContent = {
+  brand: 'CaskByCask',
+  spiritNameKo: '클라이넬리쉬 14년',
+  spiritNameEn: 'Clynelish 14 Year Old',
+  scoreLabel: 'SCORE',
+  total: '90.2',
+  infoCategoryLabel: 'CATEGORY',
+  infoOriginLabel: 'ORIGIN',
+  infoAbvLabel: 'ABV',
+  infoAgedLabel: 'AGED',
+  infoProducerLabel: 'PRODUCER',
+  category: '위스키',
+  country: '스코틀랜드',
+  region: '하이랜드',
+  abv: '46%',
+  detail: '14년',
+  producer: 'Clynelish',
+  noseLabel: '향',
+  tasteLabel: '맛',
+  finishLabel: '피니시',
+  nose: '90.8',
+  taste: '90.1',
+  finish: '89.7',
+  noseNote: '밀랍, 바닐라, 사과',
+  tasteNote: '달콤한 과일과 후추',
+  finishNote: '긴 피니시',
+  tastingNotesTitle: 'TASTING NOTES',
+  overallTitle: '종합평가',
+  overall: '좋은 밸런스',
+  aromaNose: '향 · 밀랍 5 · 바닐라 4',
+  aromaTaste: '맛 · 과일 4 · 몰트 3',
+  aromaFinish: '피니시 · 오크 4 · 후추 3',
+  tastingProfileTitle: 'TASTING PROFILE',
+  attribution: '',
+  home: 'CaskByCask',
+}
+
 describe('포토카드 레이아웃 스키마', () => {
+  test('모바일 미리보기는 360px 기준 카드를 컨테이너에 맞춰 비례 축소한다', () => {
+    assert.equal(REVIEW_SHARE_PREVIEW_WIDTH, 360)
+    assert.equal(reviewSharePreviewScale(360), 1)
+    assert.equal(reviewSharePreviewScale(280), 280 / 360)
+    assert.equal(reviewSharePreviewScale(720), 1)
+    assert.equal(reviewSharePreviewScale(-20), 0)
+  })
+
+  test('공식 리뷰 미리보기와 편집기 기본 출력은 가로 1080px로 같다', () => {
+    for (const length of ['AUTO', 'TALL']) {
+      const layout = buildReviewPhotoCardLayout(reviewContent, 'PORTRAIT', true, false, length)
+      const size = frameSizeOf(layout.frame, reviewShareOutputMaxEdgeOf(layout))
+      assert.equal(size.width, 1080)
+    }
+    const long = { ...reviewContent, noseNote: '긴 향 노트 '.repeat(100) }
+    const longLayout = buildReviewPhotoCardLayout(long, 'PORTRAIT', true)
+    const longSize = frameSizeOf(longLayout.frame, reviewShareOutputMaxEdgeOf(longLayout))
+    assert.equal(longSize.width, 1080)
+    assert.ok(longSize.height > 1350)
+  })
+
+  test('직접 등록한 blob/data 이미지는 캐시 버스터로 URL을 훼손하지 않는다', () => {
+    assert.equal(shouldCacheBustReviewExport('blob:http://localhost:3000/image-id'), false)
+    assert.equal(shouldCacheBustReviewExport('data:image/png;base64,abc'), false)
+    assert.equal(shouldCacheBustReviewExport('/api/reviews/images/review.webp'), true)
+    assert.equal(shouldCacheBustReviewExport('https://cdn.example.com/spirit.webp'), true)
+  })
+
+  test('리뷰 공유 레이아웃은 모든 리뷰 데이터를 독립 레이어로 유지한다', () => {
+    const layout = buildReviewPhotoCardLayout(reviewContent, 'PORTRAIT', true)
+    assert.equal(layout.frame.ratio, '4:5')
+    assert.ok(layout.layers.length <= PHOTO_CARD_MAX_LAYERS)
+    assert.equal(new Set(layout.layers.map((layer) => layer.id)).size, layout.layers.length)
+    assert.equal(layout.layers.find((layer) => layer.id === 'review-note-nose')?.binding,
+      'REVIEW_NOSE_NOTE')
+    assert.equal(layout.layers.find((layer) => layer.id === 'review-note-nose')?.overridden,
+      false)
+    assert.equal(layout.layers.find((layer) => layer.id === 'review-note-nose')?.textAlign,
+      'LEFT')
+    assert.equal(layout.layers.some((layer) => layer.id === 'review-tasting-title'), true)
+    assert.equal(layout.layers.some((layer) => layer.id === 'review-overall-title'), true)
+    assert.equal(layout.layers.find((layer) => layer.id === 'review-home')?.text,
+      reviewContent.home)
+    assert.ok(layout.frame.photo.x > 0.7, '세로형 이미지는 정보 오른쪽에 있어야 한다')
+    assert.equal(layout.frame.photo.radius, 0, '제품 사진에는 테두리나 둥근 모서리를 두지 않는다')
+    assert.equal(layout.frame.backgroundColor, '#fafaf8')
+    assert.equal(layout.frame.backgroundTexture, 'PAPER')
+    assert.equal(layout.frame.radius, 0)
+    assert.equal(layout.layers.some((layer) => layer.id === 'review-brand'), false)
+    assert.equal(layout.layers.some((layer) => layer.id === 'review-attribution'), false)
+    assert.equal(layout.layers.find((layer) => layer.id === 'review-score-label')?.text, 'SCORE')
+    assert.equal(layout.layers.find((layer) => layer.id === 'review-total')?.color, '#153047')
+    assert.equal(layout.layers.find((layer) => layer.id === 'review-name-ko')?.fontSizeRatio, 0.05)
+    assert.equal(layout.layers.find((layer) => layer.id === 'review-name-en')?.fontSizeRatio, 0.025)
+    assert.equal(layout.layers.find((layer) => layer.id === 'review-category-label')?.text, 'CATEGORY')
+    assert.equal(layout.layers.find((layer) => layer.id === 'review-origin')?.binding, 'SPIRIT_REGION')
+    assert.equal(layout.layers.find((layer) => layer.id === 'review-label-nose')?.text, '향')
+    assert.equal(layout.layers.find((layer) => layer.id === 'review-score-nose')?.color, '#153047')
+    assert.ok(
+      layout.layers.find((layer) => layer.id === 'review-producer-divider').position.y
+        < layout.layers.find((layer) => layer.id === 'review-tasting-title').position.y,
+      '아로마가 있어도 정보 표와 TASTING NOTES 가 겹치지 않아야 한다',
+    )
+    assert.ok(
+      layout.layers.find((layer) => layer.id === 'review-label-nose').position.y
+        < layout.layers.find((layer) => layer.id === 'review-note-nose').position.y,
+      '행 라벨과 점수는 긴 노트의 가운데가 아니라 첫 줄 위치에 있어야 한다',
+    )
+    assert.equal(layout.layers.some((layer) => layer.id === 'review-divider-overall'), true)
+    assert.deepEqual(
+      layout.layers.filter((layer) => layer.id.startsWith('review-aroma-')).map((layer) => layer.type),
+      ['IMAGE', 'IMAGE', 'IMAGE'],
+      '아로마는 수치 편집이 불가능한 이미지 레이어여야 한다',
+    )
+  })
+
+  test('공식 리뷰 템플릿 사진은 모든 배치·아로마 수·카드 길이에서 선을 침범하지 않는다', () => {
+    const aromaKeys = ['aromaNose', 'aromaTaste', 'aromaFinish']
+    for (const placement of ['PORTRAIT', 'LANDSCAPE']) {
+      for (let aromaCount = 0; aromaCount <= 3; aromaCount += 1) {
+        const content = { ...reviewContent }
+        aromaKeys.forEach((key, index) => { content[key] = index < aromaCount ? reviewContent[key] : '' })
+        for (const length of ['AUTO', 'TALL']) {
+          const layout = buildReviewPhotoCardLayout(content, placement, true, false, length)
+          const size = frameSizeOf(layout.frame, 2048)
+          const shortSide = shortSideOf(size)
+          const photo = photoRectOf(layout, size)
+          const heading = layout.layers.find((layer) => layer.id === 'review-divider-top')
+          assert.ok(heading, `${placement}/${aromaCount}/${length}: TASTING NOTES 선이 없다`)
+          const headingY = heading.position.y * size.height
+          assert.ok(
+            photo.top + photo.height + shortSide * 0.015 <= headingY,
+            `${placement}/${aromaCount}/${length}: 사진 하단이 TASTING NOTES 선을 침범한다`,
+          )
+          const recommendation = reviewShareRecommendedImageOf(placement)
+          assert.ok(
+            Math.abs(photo.width / photo.height - recommendation.width / recommendation.height) < 0.005,
+            `${placement}/${aromaCount}/${length}: 사진 슬롯이 권장 비율과 다르다`,
+          )
+        }
+      }
+    }
+  })
+
+  test('긴 리뷰는 전문을 유지한 채 카드 아래쪽을 자동 확장한다', () => {
+    const long = {
+      ...reviewContent,
+      noseNote: '오렌지 껍질과 밀랍, 바닐라가 천천히 이어진다. '.repeat(12),
+      tasteNote: '달콤한 과일과 후추, 크리미한 질감이 길게 이어진다. '.repeat(12),
+      finishNote: '오크와 시트러스의 긴 여운이 남는다. '.repeat(12),
+      overall: `종합평가 · ${'균형이 좋고 변화가 풍부하다. '.repeat(18)}`,
+    }
+    const metrics = reviewShareCardMetrics(long, 'PORTRAIT', true, 'AUTO')
+    const layout = buildReviewPhotoCardLayout(long, 'PORTRAIT', true)
+    assert.ok(metrics.extendBottom > 0)
+    assert.equal(layout.frame.extend?.bottom, metrics.extendBottom)
+    assert.ok(metrics.contentEnd + 0.12 <= metrics.totalHeightRatio + Number.EPSILON)
+    assert.ok(layout.layers.every((layer) => layer.position.y >= 0 && layer.position.y <= 1))
+    assert.equal(layout.layers.find((layer) => layer.id === 'review-note-nose')?.widthRatio, 0.65)
+    assert.equal(isReviewShareCardAlreadyTall(long, 'PORTRAIT', true), true)
+    assert.equal(
+      reviewShareCardMetrics(long, 'PORTRAIT', true, 'AUTO').totalHeightRatio,
+      reviewShareCardMetrics(long, 'PORTRAIT', true, 'TALL').totalHeightRatio,
+      '이미 긴 세로형이면 길이 탭을 바꿔도 결과 높이가 같아야 한다',
+    )
+  })
+
+  test('짧은 리뷰만 카드 길이를 바꿀 수 있고 긴 세로형 기준은 16:9다', () => {
+    assert.equal(REVIEW_SHARE_TALL_HEIGHT_RATIO, 16 / 9)
+    assert.equal(isReviewShareCardAlreadyTall(reviewContent, 'PORTRAIT', true), false)
+    assert.ok(
+      reviewShareCardMetrics(reviewContent, 'PORTRAIT', true, 'TALL').totalHeightRatio
+        >= REVIEW_SHARE_TALL_HEIGHT_RATIO,
+    )
+  })
+
+  test('각 항목이 최대 600자여도 전문이 카드 하단에서 잘리지 않는다', () => {
+    const maxLength = {
+      ...reviewContent,
+      noseNote: '향'.repeat(600),
+      tasteNote: '맛'.repeat(600),
+      finishNote: '피니시'.repeat(300),
+      overall: '총'.repeat(600),
+    }
+    const metrics = reviewShareCardMetrics(maxLength, 'PORTRAIT', true, 'AUTO')
+    const layout = buildReviewPhotoCardLayout(maxLength, 'PORTRAIT', true)
+    assert.ok(metrics.totalHeightRatio > 2.25, '기존 카드 높이 상한보다 더 길어져야 한다')
+    assert.ok(metrics.contentEnd + 0.12 <= metrics.totalHeightRatio + Number.EPSILON)
+    assert.ok((layout.frame.extend?.bottom ?? 0) <= PHOTO_CARD_MAX_BOTTOM_EXTEND)
+    assert.equal(
+      layout.layers.filter((layer) => layer.type === 'IMAGE' && layer.id.startsWith('review-aroma-')).length,
+      3,
+      '긴 리뷰에서도 아로마 이미지 레이어를 잘라 내지 않는다',
+    )
+    assert.equal(layout.layers.some((layer) => layer.id === 'review-home'), true)
+  })
+
+  test('가로형 리뷰 이미지는 권장 16:9 슬롯을 쓰고 아로마 제외도 가능하다', () => {
+    const layout = buildReviewPhotoCardLayout(reviewContent, 'LANDSCAPE', false)
+    const metrics = reviewShareCardMetrics(reviewContent, 'LANDSCAPE', false)
+    const rect = photoRectOf(layout, frameSizeOf(layout.frame, 2048))
+    assert.equal(layout.frame.photo.x, 0.5)
+    assert.ok(Math.abs(rect.width / rect.height - 16 / 9) < 0.005)
+    assert.deepEqual(reviewShareRecommendedImageOf('LANDSCAPE'), {
+      ratio: '16:9', width: 1920, height: 1080,
+    })
+    assert.ok(metrics.topEnd >= 0.7, '차트가 없으면 제품 사진 영역을 확장해야 한다')
+    assert.equal(layout.layers.some((layer) => layer.id.startsWith('review-aroma-')), false)
+    assert.equal(layout.layers.find((layer) => layer.id === 'review-home')?.text,
+      reviewContent.home)
+  })
+
+  test('세로형도 아로마가 없으면 제품 사진 영역을 더 크게 쓴다', () => {
+    const withAroma = buildReviewPhotoCardLayout(reviewContent, 'PORTRAIT', true)
+    const withoutAroma = buildReviewPhotoCardLayout(reviewContent, 'PORTRAIT', false)
+    assert.ok(withoutAroma.frame.photo.w > withAroma.frame.photo.w)
+    assert.ok(withoutAroma.frame.photo.h > withAroma.frame.photo.h)
+    const rect = photoRectOf(withoutAroma, frameSizeOf(withoutAroma.frame, 2048))
+    assert.ok(Math.abs(rect.width / rect.height - 4 / 5) < 0.005)
+    assert.deepEqual(reviewShareRecommendedImageOf('PORTRAIT'), {
+      ratio: '4:5', width: 1080, height: 1350,
+    })
+  })
+
+  test('비어 있는 리뷰 행과 차트는 만들지 않고 남은 차트만 자동 정렬한다', () => {
+    const sparse = {
+      ...reviewContent,
+      noseNote: '', tasteNote: '', finishNote: '', overall: '',
+      aromaNose: '', aromaTaste: reviewContent.aromaTaste, aromaFinish: '',
+    }
+    const layout = buildReviewPhotoCardLayout(sparse, 'PORTRAIT', true)
+    assert.equal(layout.layers.some((layer) => layer.id.startsWith('review-note-')), false)
+    assert.equal(layout.layers.some((layer) => layer.id.startsWith('review-score-nose')), false)
+    assert.equal(layout.layers.some((layer) => layer.id === 'review-overall'), false)
+    const charts = layout.layers.filter((layer) => layer.id.startsWith('review-aroma-'))
+    assert.equal(charts.length, 1)
+    assert.equal(charts[0].id, 'review-aroma-taste')
+    assert.equal(charts[0].position.x, 0.5)
+    assert.equal(charts[0].widthRatio, 0.34)
+  })
+
+  test('레이더 차트 두 개는 같은 크기로 좌우 대칭 배치한다', () => {
+    const two = { ...reviewContent, aromaTaste: '' }
+    const charts = buildReviewPhotoCardLayout(two, 'PORTRAIT', true).layers
+      .filter((layer) => layer.id.startsWith('review-aroma-'))
+    assert.deepEqual(charts.map((layer) => layer.position.x), [0.32, 0.68])
+    assert.ok(charts.every((layer) => layer.widthRatio === 0.31))
+  })
+
   test('스키마 버전은 서버 상수로 고정된다 (클라이언트 값 무시)', () => {
     const layout = normalizeLayout({ ...defaultPhotoCardLayout(), schemaVersion: 999 })
     assert.equal(layout.schemaVersion, PHOTO_CARD_SCHEMA_VERSION)
+  })
+
+  test('리뷰용 종이 질감만 저장하고 알 수 없는 배경 질감은 제거한다', () => {
+    const base = defaultPhotoCardLayout()
+    assert.equal(normalizeLayout({
+      ...base, frame: { ...base.frame, backgroundTexture: 'PAPER' },
+    }).frame.backgroundTexture, 'PAPER')
+    assert.equal(normalizeLayout({
+      ...base, frame: { ...base.frame, backgroundTexture: 'UNKNOWN' },
+    }).frame.backgroundTexture, 'NONE')
+  })
+
+  test('긴 카드 하단 확장 상한은 프론트와 서버가 같다', () => {
+    const java = readFileSync(join(HERE, '..', '..', 'caskbycask-api', 'src', 'main', 'java',
+      'com', 'caskbycask', 'domain', 'photocard', 'service', 'PhotoCardTemplateService.java'), 'utf8')
+    const serverMax = Number(java.match(/MAX_BOTTOM_EXTEND\s*=\s*([\d.]+)/)?.[1])
+    assert.equal(serverMax, PHOTO_CARD_MAX_BOTTOM_EXTEND)
+    assert.equal(Number(java.match(/MAX_LAYERS\s*=\s*(\d+)/)?.[1]), PHOTO_CARD_MAX_LAYERS)
+    assert.equal(Number(java.match(/SCHEMA_VERSION\s*=\s*(\d+)/)?.[1]), PHOTO_CARD_SCHEMA_VERSION)
   })
 
   test('레이어 수 상한을 넘기면 잘라 낸다', () => {
@@ -121,13 +400,22 @@ describe('포토카드 레이아웃 스키마', () => {
     assert.equal(layer.outlineColor, '#000000')
   })
 
-  test('문단 정렬은 더 이상 저장하지 않는다', () => {
+  test('예전 align 필드는 저장하지 않는다', () => {
     // 글자는 언제나 가운데 기준으로 그린다. 옛 템플릿 JSON 에 남아 있는 align 은
     // 여기서 조용히 떨어져야 저장할 때마다 쓰지 않는 값이 따라다니지 않는다.
     const layer = normalizeLayer({
       id: 'x', type: 'TEXT', position: { x: 0.5, y: 0.5 }, align: 'right',
     })
     assert.equal('align' in layer, false)
+  })
+
+  test('새 텍스트 정렬은 왼쪽·가운데·오른쪽만 저장한다', () => {
+    assert.equal(normalizeLayer({
+      id: 'left', type: 'TEXT', position: { x: 0.5, y: 0.5 }, textAlign: 'LEFT',
+    }).textAlign, 'LEFT')
+    assert.equal(normalizeLayer({
+      id: 'invalid', type: 'TEXT', position: { x: 0.5, y: 0.5 }, textAlign: 'JUSTIFY',
+    }).textAlign, 'CENTER')
   })
 
   test('글꼴 화이트리스트가 백엔드 FONT_KEYS 와 일치한다', () => {
@@ -165,6 +453,14 @@ describe('포토카드 레이아웃 스키마', () => {
       source: 'PRODUCER_LOGO', uploadUrl: 'https://evil.example/x.png',
     })
     assert.equal(layer.uploadUrl, null)
+  })
+
+  test('리뷰 아로마 이미지 출처는 프론트와 백엔드 저장 허용 목록에 함께 있다', () => {
+    const sources = ['REVIEW_AROMA_NOSE', 'REVIEW_AROMA_TASTE', 'REVIEW_AROMA_FINISH']
+    sources.forEach((source) => assert.ok(PHOTO_CARD_IMAGE_SOURCES.includes(source)))
+    const java = readFileSync(join(HERE, '..', '..', 'caskbycask-api', 'src', 'main', 'java',
+      'com', 'caskbycask', 'domain', 'photocard', 'service', 'PhotoCardTemplateService.java'), 'utf8')
+    sources.forEach((source) => assert.ok(java.includes(`"${source}"`)))
   })
 
   test('GPS 는 바인딩으로만 존재하고 기본 템플릿에는 들어가지 않는다', () => {
@@ -266,8 +562,45 @@ describe('바인딩 해석', () => {
       producerNameEn: 'Ardbeg', producerCountry: '스코틀랜드',
       producerLogoUrl: '/api/producers/images/a.webp', spiritImageUrl: null,
     },
+    review: null,
     user: { place: '이태원 Bar Cham', memo: '오늘의 한 잔', date: '2026.08.02' },
   }
+
+  test('리뷰 템플릿은 저장된 이전 문구가 아니라 현재 리뷰 데이터를 채운다', () => {
+    const current = {
+      ...context,
+      review: {
+        totalScore: '총점 91.0', noseScore: '향 92.0', tasteScore: '맛 90.0', finishScore: '피니시 91.0',
+        noseNote: '새 향 노트', tasteNote: '새 맛 노트', finishNote: '새 피니시 노트',
+        overall: '새 종합평가', aromaNose: '', aromaTaste: '', aromaFinish: '',
+        attribution: '@new-reviewer · 2026. 8. 11.',
+      },
+    }
+    const layout = buildReviewPhotoCardLayout(reviewContent, 'PORTRAIT', false)
+    const noseLayer = layout.layers.find((layer) => layer.id === 'review-note-nose')
+    assert.equal(noseLayer.text, '')
+    assert.equal(resolveLayerText(noseLayer, current), '새 향 노트')
+  })
+
+  test('아로마 레이어는 현재 리뷰 데이터로 읽기 전용 이미지를 다시 만든다', () => {
+    const layer = { id: 'aroma', type: 'IMAGE', position: { x: 0.5, y: 0.5 }, source: 'REVIEW_AROMA_NOSE' }
+    const withIntensity = (intensity) => ({
+      ...context,
+      review: {
+        totalScore: '', noseScore: '', tasteScore: '', finishScore: '',
+        noseNote: '', tasteNote: '', finishNote: '', overall: '',
+        aromaNose: '', aromaTaste: '', aromaFinish: '', attribution: '',
+        aromaProfiles: [{
+          phase: 'NOSE', title: '향',
+          items: [{ label: '바닐라', intensity }, { label: '사과', intensity: 3 }, { label: '오크', intensity: 2 }],
+        }],
+      },
+    })
+    const first = resolveLayerImageUrl(layer, withIntensity(2))
+    const changed = resolveLayerImageUrl(layer, withIntensity(5))
+    assert.match(first, /^data:image\/svg\+xml/)
+    assert.notEqual(first, changed, '템플릿에 과거 그림이 고정되지 않고 현재 수치로 다시 생성돼야 한다')
+  })
 
   test('EXIF·주류·생산자·사용자 입력을 모두 해석한다', () => {
     assert.equal(resolveBindingValue('EXIF_CAMERA', context), 'SONY ILCE-7CM2')
@@ -310,6 +643,12 @@ describe('바인딩 해석', () => {
 })
 
 describe('렌더 기하', () => {
+  test('한글·공백 없는 긴 문장은 지정한 폭으로 자동 줄바꿈한다', () => {
+    const ctx = fakeContext(10)
+    assert.deepEqual(wrapPhotoCardText(ctx, 'ABCDEFGHIJK', 50), ['ABCDE', 'FGHIJ', 'K'])
+    assert.deepEqual(wrapPhotoCardText(ctx, '가나다라마바사', 30), ['가나다', '라마바', '사'])
+  })
+
   test('비율별 프레임 크기 — 긴 변이 상한이다', () => {
     assert.deepEqual(frameSizeOf({ ratio: '1:1' }, 1000), { width: 1000, height: 1000 })
     assert.deepEqual(frameSizeOf({ ratio: '4:5' }, 1000), { width: 800, height: 1000 })
@@ -540,10 +879,10 @@ describe('카드 크기 확장', () => {
   test('저장할 때 확장값은 상한 안으로 잘린다', () => {
     const layout = normalizeLayout({
       ...classic(),
-      frame: { ...classic().frame, extend: { top: 99, right: -5, bottom: null, left: 0.4 } },
+      frame: { ...classic().frame, extend: { top: 99, right: -5, bottom: 99, left: 0.4 } },
     })
     assert.deepEqual(layout.frame.extend, {
-      top: PHOTO_CARD_MAX_EXTEND, right: 0, bottom: 0, left: 0.4,
+      top: PHOTO_CARD_MAX_EXTEND, right: 0, bottom: PHOTO_CARD_MAX_BOTTOM_EXTEND, left: 0.4,
     })
   })
 })
@@ -860,6 +1199,22 @@ describe('비회원 저장본 · 임시저장', () => {
     assert.equal(draft.photoName, null)
   })
 
+  test('아로마 원본 데이터도 임시저장에 남아 이미지 레이어를 다시 만들 수 있다', () => {
+    const review = {
+      totalScore: '', noseScore: '', tasteScore: '', finishScore: '',
+      noseNote: '', tasteNote: '', finishNote: '', overall: '',
+      aromaNose: '', aromaTaste: '', aromaFinish: '', attribution: '',
+      aromaProfiles: [{ phase: 'NOSE', title: '향', items: [{ label: '바닐라', intensity: 5 }] }],
+    }
+    const draft = buildPhotoCardDraft({
+      layout: buildReviewPhotoCardLayout(reviewContent, 'PORTRAIT', true),
+      photoTransform: { scale: 1, offsetX: 0, offsetY: 0 },
+      exif: null, spirit: null, review,
+      userInput: { place: '', memo: '', date: '' }, photoFile: null,
+    })
+    assert.deepEqual(draft.review?.aromaProfiles, review.aromaProfiles)
+  })
+
   test('서버 임시저장을 되살려도 촬영 시각은 Date 로 돌아온다', () => {
     // JSON 에는 Date 가 없다. 문자열인 채로 편집기에 얹히면 촬영일을 넣은 카드가
     // 되살아나는 순간 그리기가 터져 편집기 전체가 에러 화면으로 바뀐다.
@@ -900,6 +1255,7 @@ describe('i18n 번역', () => {
   const requiredKeys = [
     'title', 'subtitle', 'uploadPhoto', 'uploadHint', 'exifSection', 'spiritSection',
     'templateSection', 'layerSection', 'exportSection', 'noExif', 'searchSpirit',
+    'sizeReviewOfficial',
     'addText', 'addImage', 'addShape', 'removeLayer', 'download', 'publishToGallery',
     // 비회원 흐름 — 워터마크 안내와 임시저장 안내
     'downloadWithMark', 'downloadClean', 'guestMarkHint', 'guestMarkHoverHint', 'guestGateTitle',
@@ -909,10 +1265,11 @@ describe('i18n 번역', () => {
     'draftSaving', 'draftRestoring',
     'saveAsTemplate', 'templateOfficial', 'templateMine', 'templatePublic',
     // 문단 정렬(왼쪽·가운데·오른쪽)은 화면에서 뺐다 — 요소끼리 맞추는 alignObjects* 와는 다른 것이다.
-    'makePublic', 'makePrivate', 'gpsNotice', 'fontLabel', 'fontSize',
+    'makePublic', 'makePrivate', 'gpsNotice', 'fontLabel', 'fontSize', 'textBoxWidth',
     'textColor', 'outline', 'positionX', 'positionY',
     'place', 'memo', 'dragHint', 'templateLimit', 'builtinClassic', 'builtinPolaroid',
     'builtinMinimal', 'builtinDarkBar', 'builtinStacked',
+    'builtinReviewShare', 'builtinReviewShareDesc', 'reviewTemplateNeedsReview',
     // 개편으로 들어온 화면들 — 도구 레일·정렬·사진 확대·여백
     'toolSelect', 'toolTemplate', 'toolPhoto', 'toolText', 'toolElement',
     'toolData', 'toolCard', 'toolLayer', 'toolExport',
@@ -922,6 +1279,8 @@ describe('i18n 번역', () => {
     'photoZoom', 'photoOffsetX', 'photoTransformReset',
     'paddingSection', 'paddingTop', 'paddingBottom', 'paddingHint',
     'backgroundColor', 'letterSpacing', 'lineHeight', 'rotation', 'opacity',
+    'imageSourceAromaNose', 'imageSourceAromaTaste', 'imageSourceAromaFinish',
+    'reviewAromaImageHint',
     'addBox', 'addDivider', 'lock', 'unlock', 'duplicate', 'moveUp', 'moveDown',
     // 템플릿을 고른 뒤 요소를 하나씩 채우는 흐름
     'fillTitle', 'fillIntro', 'fillProgress', 'fillPlaceholder', 'fillFromExif',
@@ -936,6 +1295,15 @@ describe('i18n 번역', () => {
       for (const key of requiredKeys) {
         assert.equal(typeof locale.photoCard?.[key], 'string', `${language}: photoCard.${key}`)
         assert.ok(locale.photoCard[key].length > 0, `${language}: photoCard.${key} 가 비어 있음`)
+      }
+      for (const key of [
+        'cardLengthTitle', 'cardLengthAUTO', 'cardLengthTALL', 'cardLengthLocked',
+        'autoExpandedHint', 'recommendedImage', 'cardRendering',
+        'summaryImageTitle', 'summaryImageHint', 'previewImage', 'photoCardLoginRequired',
+        'scoreLabel', 'infoCategory', 'infoOrigin', 'infoAbv', 'infoAged', 'infoProducer',
+        'tastingNotes', 'tastingProfile', 'editUploadImage',
+      ]) {
+        assert.equal(typeof locale.review?.share?.[key], 'string', `${language}: review.share.${key}`)
       }
     })
   }

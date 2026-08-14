@@ -20,6 +20,8 @@ interface Props {
   fontsReady: boolean
   /** 비회원 저장본에 얹히는 브랜드 마크. 있으면 미리보기에도 같은 자리에 그린다. */
   watermark: HTMLImageElement | null
+  /** 실제 캔버스 그리기가 끝난 뒤 호출한다. 공유 미리보기의 저장 버튼 준비 상태에 쓴다. */
+  onRendered?: () => void
 }
 
 /**
@@ -33,6 +35,7 @@ interface Props {
  */
 export default function PhotoCardCanvas({
   canvasRef, size, layout, context, photo, images, photoTransform, fontsReady, watermark,
+  onRendered,
 }: Props) {
   const { t } = useTranslation()
 
@@ -50,7 +53,8 @@ export default function PhotoCardCanvas({
     drawPhotoCard(ctx, size, layout, context, photo, images, photoTransform)
     // 요소가 아니라 저장본에 찍히는 표시라 레이어 목록에도, 선택에도 잡히지 않는다.
     if (watermark) drawWatermark(ctx, size, watermark)
-  }, [canvasRef, context, images, layout, photo, photoTransform, size, watermark])
+    onRendered?.()
+  }, [canvasRef, context, images, layout, onRendered, photo, photoTransform, size, watermark])
 
   // fontsReady 는 그리기 인자가 아니지만, 글꼴이 붙은 뒤 한 번 더 그려야 폴백 글꼴이 남지 않는다.
   useEffect(() => { render() }, [render, fontsReady])

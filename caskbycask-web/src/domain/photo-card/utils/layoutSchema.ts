@@ -13,8 +13,9 @@ import type {
  * 프론트 검증·정규화. 백엔드 `PhotoCardTemplateService` 의 상한과 같은 값을 쓴다.
  * 서버가 최종 관문이지만, 여기서 먼저 맞춰 두면 저장 버튼을 누른 뒤에야 400 을 보는 일이 없다.
  */
-export const PHOTO_CARD_SCHEMA_VERSION = 1
-export const PHOTO_CARD_MAX_LAYERS = 24
+export const PHOTO_CARD_SCHEMA_VERSION = 3
+// 리뷰 카드의 라벨·값·구분선과 아로마 이미지까지 모두 독립 편집 요소로 유지한다.
+export const PHOTO_CARD_MAX_LAYERS = 64
 /** 리뷰 전문처럼 긴 글도 카드 한 장에 담을 수 있는 길이. 백엔드 MAX_TEXT_LENGTH 와 같아야 한다. */
 export const PHOTO_CARD_MAX_TEXT_LENGTH = 600
 export const PHOTO_CARD_MAX_TEMPLATES = 30
@@ -25,9 +26,14 @@ export const PHOTO_CARD_MAX_FONT_SIZE_RATIO = 0.3
  * 1 이면 사방으로 짧은 변만큼씩, 즉 카드가 최대 3배까지 커진다. 그 이상은 사진이 점만 해진다.
  */
 export const PHOTO_CARD_MAX_EXTEND = 1
+/** 긴 리뷰 카드가 전문을 유지할 수 있도록 하단만 더 길게 확장한다. */
+export const PHOTO_CARD_MAX_BOTTOM_EXTEND = 3
 
 export const PHOTO_CARD_LAYER_TYPES: PhotoCardLayerType[] = ['TEXT', 'IMAGE', 'DIVIDER', 'BOX', 'ICON']
-export const PHOTO_CARD_IMAGE_SOURCES: PhotoCardImageSource[] = ['PRODUCER_LOGO', 'SPIRIT_IMAGE', 'UPLOAD']
+export const PHOTO_CARD_IMAGE_SOURCES: PhotoCardImageSource[] = [
+  'PRODUCER_LOGO', 'SPIRIT_IMAGE', 'UPLOAD',
+  'REVIEW_AROMA_NOSE', 'REVIEW_AROMA_TASTE', 'REVIEW_AROMA_FINISH',
+]
 
 /** 백엔드 `PhotoCardBinding` enum 과 같아야 한다. GPS 항목은 의도적으로 없다. */
 export const PHOTO_CARD_BINDINGS: PhotoCardBinding[] = [
@@ -35,8 +41,11 @@ export const PHOTO_CARD_BINDINGS: PhotoCardBinding[] = [
   'EXIF_CAMERA', 'EXIF_LENS', 'EXIF_APERTURE', 'EXIF_SHUTTER',
   'EXIF_ISO', 'EXIF_FOCAL_LENGTH', 'EXIF_FOCAL_LENGTH_35', 'EXIF_SHOT_AT', 'EXIF_GPS',
   'SPIRIT_NAME_KO', 'SPIRIT_NAME_EN', 'SPIRIT_ABV', 'SPIRIT_VOLUME',
-  'SPIRIT_VINTAGE', 'SPIRIT_CATEGORY',
+  'SPIRIT_VINTAGE', 'SPIRIT_CATEGORY', 'SPIRIT_REGION', 'SPIRIT_DETAIL',
   'PRODUCER_NAME_KO', 'PRODUCER_NAME_EN', 'PRODUCER_COUNTRY',
+  'REVIEW_TOTAL_SCORE', 'REVIEW_NOSE_SCORE', 'REVIEW_TASTE_SCORE', 'REVIEW_FINISH_SCORE',
+  'REVIEW_NOSE_NOTE', 'REVIEW_TASTE_NOTE', 'REVIEW_FINISH_NOTE', 'REVIEW_OVERALL',
+  'REVIEW_AROMA_NOSE', 'REVIEW_AROMA_TASTE', 'REVIEW_AROMA_FINISH', 'REVIEW_ATTRIBUTION',
   'USER_PLACE', 'USER_MEMO', 'USER_DATE',
 ]
 
@@ -95,6 +104,9 @@ export const normalizeLayer = (layer: PhotoCardLayer): PhotoCardLayer => {
         // 범위는 백엔드 normalizeTextLayer 의 clamp 와 같다.
         letterSpacing: layer.letterSpacing != null ? ratio(layer.letterSpacing, 0, -0.5, 1) : undefined,
         lineHeight: layer.lineHeight != null ? ratio(layer.lineHeight, 1.25, 0.5, 3) : undefined,
+        textAlign: layer.textAlign === 'LEFT' || layer.textAlign === 'RIGHT'
+          ? layer.textAlign : 'CENTER',
+        widthRatio: layer.widthRatio != null ? ratio(layer.widthRatio, 1, 0.05, 1) : undefined,
       }
     case 'IMAGE':
       return {
@@ -142,7 +154,7 @@ export const normalizeLayout = (layout: PhotoCardLayout): PhotoCardLayout => {
   const safeExtend = {
     top: ratio(extend?.top, 0, 0, PHOTO_CARD_MAX_EXTEND),
     right: ratio(extend?.right, 0, 0, PHOTO_CARD_MAX_EXTEND),
-    bottom: ratio(extend?.bottom, 0, 0, PHOTO_CARD_MAX_EXTEND),
+    bottom: ratio(extend?.bottom, 0, 0, PHOTO_CARD_MAX_BOTTOM_EXTEND),
     left: ratio(extend?.left, 0, 0, PHOTO_CARD_MAX_EXTEND),
   }
   // 늘리지 않은 카드는 필드를 아예 남기지 않는다 — 기존 템플릿 JSON 이 그대로 유지된다.
@@ -153,6 +165,7 @@ export const normalizeLayout = (layout: PhotoCardLayout): PhotoCardLayout => {
     frame: {
       ratio: (layout.frame?.ratio ?? '4:5') as PhotoCardRatio,
       backgroundColor: color(layout.frame?.backgroundColor, '#ffffff'),
+      backgroundTexture: layout.frame?.backgroundTexture === 'PAPER' ? 'PAPER' : 'NONE',
       radius: ratio(layout.frame?.radius, 0, 0, 0.5),
       padding: {
         top: ratio(padding.top, 0, 0, 0.5),

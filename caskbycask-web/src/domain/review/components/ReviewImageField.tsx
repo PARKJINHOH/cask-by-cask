@@ -181,7 +181,6 @@ export default function ReviewImageField({ value, onChange, disabled = false }: 
           onClose={() => setEditingKey(null)}
           imageSrc={editing.previewUrl}
           initialCropRatio="4:5"
-          initialMode="crop"
           fitOutputSize={{ width: 1080, height: 1350 }}
           showInstagramCropPreset
           isSaving={false}

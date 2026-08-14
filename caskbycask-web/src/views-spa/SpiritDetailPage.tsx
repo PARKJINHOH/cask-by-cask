@@ -20,6 +20,7 @@ import { buildBreadcrumbSchema, buildReviewSchema } from '@/shared/utils/seoSche
 import CommentList from '@/domain/comment/components/CommentList'
 import WishlistButtons from '@/domain/wishlist/components/WishlistButtons'
 import { useRequireLogin } from '@/domain/auth/hooks/useRequireLogin'
+import ShareUrlButton from '@/shared/components/ShareUrlButton'
 import SeoMeta, { buildCanonical, SITE_URL } from '@/shared/components/SeoMeta'
 import { DEFAULT_OG_IMAGE } from '@/shared/config/site'
 import type { SpiritDetail, SpiritImage, SpiritSeo, SpiritVariant } from '@/domain/spirit/types/spirit.types'
@@ -1187,11 +1188,12 @@ export default function SpiritDetailPage() {
           {/* Info */}
           <div className="flex-1 p-5 md:p-6 flex flex-col gap-4 min-w-0 relative">
             {/* Favorites button — top right */}
-            <div className="absolute top-4 right-4">
+            <div className="absolute top-4 right-4 flex items-center gap-2">
               <WishlistButtons spiritId={spiritId} onNeedLogin={() => setLoginModal(true)} />
+              <ShareUrlButton />
             </div>
 
-            <div className="pr-12">
+            <div className="pr-24">
               <Badge variant={spirit.category} size="sm" className="mb-2">
                 {t(`spirit.category.${spirit.category}`)}
               </Badge>

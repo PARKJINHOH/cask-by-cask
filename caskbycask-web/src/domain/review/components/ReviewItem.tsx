@@ -11,6 +11,7 @@ import { getSpiritDetailPath } from '@/domain/spirit/utils/spiritUrl'
 import ReviewImageStrip from './ReviewImageStrip'
 import AromaProfileChartPanel from './AromaProfileChartPanel'
 import AromaProfilePreviewButton from './AromaProfilePreviewButton'
+import ReviewShareModal from '../share/ReviewShareModal'
 
 function formatAromaId(id: string): string {
   return id.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
@@ -164,6 +165,26 @@ export default function ReviewItem({ review, currentUserId, onEdit, onDelete, sh
             </div>
           )}
           {review.images.length > 0 && <ReviewHeaderDivider />}
+          <ReviewShareModal
+            review={{
+              id: review.id,
+              spiritId: review.spiritId,
+              spiritNameKo: review.spiritNameKo,
+              spiritNameEn: review.spiritNameEn,
+              nickname: review.nickname,
+              noseScore: review.noseScore,
+              tasteScore: review.tasteScore,
+              finishScore: review.finishScore,
+              totalScore: review.totalScore,
+              noseNote: review.noseNote,
+              tasteNote: review.tasteNote,
+              finishNote: review.finishNote,
+              comment: review.comment,
+              createdAt: review.createdAt,
+              images: review.images,
+              aromaProfiles: review.aromaProfiles ?? [],
+            }}
+          />
           <span className="ml-auto shrink-0 text-2xl font-bold tabular-nums sm:ml-0" style={{ color: scoreColor(review.totalScore) }}>
             {Number(review.totalScore).toFixed(1)}
           </span>

@@ -13,6 +13,7 @@ import {
   formatShotAt,
   formatShutter,
 } from './exifReader'
+import { resolveReviewAromaImageUrl } from './reviewAromaImage'
 
 /** 주류 검색 결과로 채워지는 자리인가 — 주류를 새로 고르면 값이 통째로 바뀐다. */
 export const isSpiritBinding = (binding: PhotoCardBinding | undefined): boolean =>
@@ -29,7 +30,7 @@ export const resolveBindingValue = (
   binding: PhotoCardBinding | undefined,
   context: PhotoCardDataContext,
 ): string => {
-  const { exif, spirit, user } = context
+  const { exif, spirit, review, user } = context
   switch (binding) {
     case 'EXIF_CAMERA': return formatCamera(exif)
     case 'EXIF_LENS': return exif?.lensModel ?? ''
@@ -47,10 +48,25 @@ export const resolveBindingValue = (
     case 'SPIRIT_VOLUME': return spirit?.volumeMl ? `${spirit.volumeMl}ml` : ''
     case 'SPIRIT_VINTAGE': return spirit?.vintageYear ?? ''
     case 'SPIRIT_CATEGORY': return spirit?.category ?? ''
+    case 'SPIRIT_REGION': return spirit?.region ?? ''
+    case 'SPIRIT_DETAIL': return spirit?.detail ?? ''
 
     case 'PRODUCER_NAME_KO': return spirit?.producerNameKo ?? ''
     case 'PRODUCER_NAME_EN': return spirit?.producerNameEn ?? ''
     case 'PRODUCER_COUNTRY': return spirit?.producerCountry ?? ''
+
+    case 'REVIEW_TOTAL_SCORE': return review?.totalScore ?? ''
+    case 'REVIEW_NOSE_SCORE': return review?.noseScore ?? ''
+    case 'REVIEW_TASTE_SCORE': return review?.tasteScore ?? ''
+    case 'REVIEW_FINISH_SCORE': return review?.finishScore ?? ''
+    case 'REVIEW_NOSE_NOTE': return review?.noseNote ?? ''
+    case 'REVIEW_TASTE_NOTE': return review?.tasteNote ?? ''
+    case 'REVIEW_FINISH_NOTE': return review?.finishNote ?? ''
+    case 'REVIEW_OVERALL': return review?.overall ?? ''
+    case 'REVIEW_AROMA_NOSE': return review?.aromaNose ?? ''
+    case 'REVIEW_AROMA_TASTE': return review?.aromaTaste ?? ''
+    case 'REVIEW_AROMA_FINISH': return review?.aromaFinish ?? ''
+    case 'REVIEW_ATTRIBUTION': return review?.attribution ?? ''
 
     case 'USER_PLACE': return user.place
     case 'USER_MEMO': return user.memo
@@ -82,6 +98,10 @@ export const resolveLayerImageUrl = (
     case 'PRODUCER_LOGO': return context.spirit?.producerLogoUrl ?? null
     case 'SPIRIT_IMAGE': return context.spirit?.spiritImageUrl ?? null
     case 'UPLOAD': return layer.uploadUrl ?? null
+    case 'REVIEW_AROMA_NOSE':
+    case 'REVIEW_AROMA_TASTE':
+    case 'REVIEW_AROMA_FINISH':
+      return resolveReviewAromaImageUrl(layer.source, context.review)
     default: return null
   }
 }

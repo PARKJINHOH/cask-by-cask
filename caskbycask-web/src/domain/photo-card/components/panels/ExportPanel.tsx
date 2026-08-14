@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { PHOTO_CARD_EXPORT_SIZES } from '../../constants/photoCardRatios'
+import { REVIEW_SHARE_SYSTEM_EXPORT_SIZE_KEY } from '../../constants/systemTemplates'
 import type { PhotoCardEditor } from '../../hooks/usePhotoCardEditor'
 import { frameSizeOf } from '../../utils/photoCardRender'
 import { PanelButton, Section, SegmentedField } from './controls'
@@ -16,16 +17,26 @@ interface Props {
   /** 비회원 전용 — 마크 없는 저장은 로그인이 필요하다는 안내를 띄운다 */
   onDownloadClean: () => void
   onPublish: () => void
+  /** 리뷰 공유 미리보기와 같은 가로 1080px 출력의 긴 변. 리뷰에서 진입했을 때만 보인다. */
+  reviewOfficialMaxEdge?: number | null
 }
 
 /** 내보내기 도구 — 크기·포맷을 정하고 파일로 뽑거나 갤러리에 올린다. */
 export default function ExportPanel({
   editor, format, onFormatChange, sizeKey, onSizeKeyChange,
-  busy, isLoggedIn, onDownload, onDownloadClean, onPublish,
+  busy, isLoggedIn, onDownload, onDownloadClean, onPublish, reviewOfficialMaxEdge,
 }: Props) {
   const { t } = useTranslation()
   const hasPhoto = Boolean(editor.photoImage)
-  const maxEdge = PHOTO_CARD_EXPORT_SIZES.find((size) => size.key === sizeKey)?.maxEdge ?? undefined
+  const exportSizes = reviewOfficialMaxEdge == null ? PHOTO_CARD_EXPORT_SIZES : [
+    {
+      key: REVIEW_SHARE_SYSTEM_EXPORT_SIZE_KEY,
+      labelKey: 'photoCard.sizeReviewOfficial',
+      maxEdge: reviewOfficialMaxEdge,
+    },
+    ...PHOTO_CARD_EXPORT_SIZES,
+  ]
+  const maxEdge = exportSizes.find((size) => size.key === sizeKey)?.maxEdge ?? undefined
   const preview = frameSizeOf(editor.layout.frame, maxEdge ?? editor.nativeMaxEdge)
 
   return (
@@ -35,7 +46,7 @@ export default function ExportPanel({
         hint={t('photoCard.outputSizeHint', { width: preview.width, height: preview.height })}
       >
         <div className="flex overflow-hidden rounded-lg border border-neutral-300">
-          {PHOTO_CARD_EXPORT_SIZES.map((size) => (
+          {exportSizes.map((size) => (
             <button
               key={size.key}
               type="button"

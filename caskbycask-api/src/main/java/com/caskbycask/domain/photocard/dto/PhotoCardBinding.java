@@ -35,11 +35,27 @@ public enum PhotoCardBinding {
     SPIRIT_VOLUME,
     SPIRIT_VINTAGE,
     SPIRIT_CATEGORY,
+    SPIRIT_REGION,
+    SPIRIT_DETAIL,
 
     // ── 생산자(증류소·와이너리·꼬냑하우스) ────
     PRODUCER_NAME_KO,
     PRODUCER_NAME_EN,
     PRODUCER_COUNTRY,
+
+    // ── 리뷰 공유 카드 ──────────────────────────
+    REVIEW_TOTAL_SCORE,
+    REVIEW_NOSE_SCORE,
+    REVIEW_TASTE_SCORE,
+    REVIEW_FINISH_SCORE,
+    REVIEW_NOSE_NOTE,
+    REVIEW_TASTE_NOTE,
+    REVIEW_FINISH_NOTE,
+    REVIEW_OVERALL,
+    REVIEW_AROMA_NOSE,
+    REVIEW_AROMA_TASTE,
+    REVIEW_AROMA_FINISH,
+    REVIEW_ATTRIBUTION,
 
     // ── 사용자 입력 ────────────────────────────
     USER_PLACE,

@@ -14,6 +14,7 @@ const {
   getTextFontFamily,
   resolveTextFontKey,
   TEXT_LAYER_MAX,
+  TEXT_FONT_SIZE_MIN,
   TEXT_OUTLINE_WIDTH_MAX,
   clampTextPosition,
   createDefaultTextStyle,
@@ -56,6 +57,10 @@ function fakeContext(widthPerCharacter = 20) {
 }
 
 describe('이미지 에디터 텍스트 스타일', () => {
+  test('폰트 크기는 8px까지 허용한다', () => {
+    assert.equal(TEXT_FONT_SIZE_MIN, 8)
+  })
+
   test('self-host 서체만 제공한다 (시스템 폰트 금지)', () => {
     // 브라우저마다 결과가 달라지는 시스템 폰트가 섞이면 출력 이미지가 재현되지 않는다.
     const allowed = [
@@ -364,7 +369,8 @@ describe('텍스트 UI 번역', () => {
     'outline', 'outlineColor', 'outlineWidth', 'positionX', 'positionY',
     'textDragHint', 'textPositionCanvas', 'fontLicense', 'applyText', 'applyingText',
     'textLayers', 'addTextLayer', 'removeTextLayer', 'textLayerName', 'emptyTextLayer',
-    'textLayerLimit', 'textLayerHint',
+    'textLayerLimit', 'textLayerHint', 'increaseFontSize', 'decreaseFontSize',
+    'recommendedRatio', 'recommendedRatioNotice',
   ]
 
   for (const language of ['ko', 'en']) {
