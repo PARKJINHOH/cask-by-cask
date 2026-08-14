@@ -314,8 +314,11 @@ export function buildReviewPhotoCardLayout(
       position: { x: portrait ? headerCenter : 0.82, y: y(portrait ? 0.223 : 0.045) },
       widthRatio: portrait ? headerWidth : 0.24,
     },
-    textLayer('review-score-label', content.scoreLabel, portrait ? 0.1 : 0.74, y(portrait ? 0.278 : 0.085), portrait ? 0.019 : 0.017, '#b47719', {
-      fontKey: 'gowunBatangBold', widthRatio: portrait ? 0.08 : 0.11, textAlign: 'LEFT', letterSpacing: 0.18,
+    // widthRatio 는 "SCORE"의 넓은 letterSpacing(0.18em)까지 감안한 값이어야 한다 —
+    // 실측 폭(약 87.7px/1080 기준)보다 좁으면 캔버스 줄바꿈이 마지막 글자를 다음 줄로 넘긴다.
+    // x 는 좌측 정렬 기준선(headerLeft=0.06)이 그대로 유지되도록 widthRatio 절반만큼 같이 옮긴다.
+    textLayer('review-score-label', content.scoreLabel, portrait ? 0.11 : 0.74, y(portrait ? 0.278 : 0.085), portrait ? 0.019 : 0.017, '#b47719', {
+      fontKey: 'gowunBatangBold', widthRatio: portrait ? 0.1 : 0.11, textAlign: 'LEFT', letterSpacing: 0.18,
     }),
     textLayer('review-total', content.total, portrait ? 0.215 : 0.86, y(portrait ? 0.278 : 0.085), portrait ? 0.039 : 0.036, '#153047', {
       fontKey: 'pretendardMedium', binding: 'REVIEW_TOTAL_SCORE', widthRatio: portrait ? 0.13 : 0.11,
